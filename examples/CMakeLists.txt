@@ -1,0 +1,6 @@
+add_subdirectory(DrawGrid)
+add_subdirectory(OldDrawGrid)
+add_subdirectory(DrawMatrix)
+add_subdirectory(MatSolve)
+add_subdirectory(OctreeCutcell)
+add_subdirectory(Solver)

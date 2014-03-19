@@ -2,7 +2,6 @@ projects/
 AsmJit/
 compile32_vs2013/
 compile64_vs2013/
-examples/
 examples/Data/
 examples/Matrices/
 examples/Grids/

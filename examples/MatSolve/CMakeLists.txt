@@ -1,0 +1,24 @@
+project(MatSolve)
+set(SOURCE main.cpp)
+
+add_executable(MatSolve ${SOURCE})
+
+target_link_libraries(MatSolve inmost)
+
+if(USE_MPI)
+  message("linking MatSolve with MPI")
+  target_link_libraries(MatSolve ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(MatSolve PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+
+if(USE_SOLVER_ANI)
+  message("linking MatSolve with ani3d")
+  target_link_libraries(MatSolve ani3d)
+endif()
+if(USE_SOLVER_PETSC)
+  message("linking MatSolve with PETSc")
+  link_directories(${PETSC_LIBRARY_DIRS})
+  target_link_libraries(MatSolve ${PETSC_LIBRARIES})
+endif()
