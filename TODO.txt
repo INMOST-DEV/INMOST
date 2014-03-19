@@ -1,0 +1,123 @@
+
+//FOR 2D
+// Node -> Vertex
+// Edge -> Vertex
+// Face -> Line, Curve
+// Cell -> Tri, Quad, Polygon, MultiLine
+
+//FOR 3D
+// Node -> Vertex
+// Edge -> Line, Curve
+// Face -> Tri, Quad, Polygon, MultiLine
+// Cell -> Tet, Hex, Prism, Pyramid, Polyhedron, MultiPolygon
+
+
+
+//TODO:
+
+
+1D???
+
+
+//serial
+//1.0 read/write formats
+//	1.1 read gmv
+//	1.2 read different kinds of vtk besides unstructured
+//	1.3	read/write xml vtk formats
+
+//  1.4 pmf: print error when markers cannot be represented in current type and data was lost
+//  1.5 pmf: save hide_marker, new_marker values
+//  1.6 pmf: save topology checking information
+
+
+//2. enchance iterators
+// iterators should return pointers or references?
+
+//3. geometry.cpp
+// 3.0 decide how FixNormalOrientation should update geometric data
+// 3.1 replace calculation of normale by hyperplane equation for any dimension??
+// 3.2 correct Inside function to check weather point inside Segment, Polygon
+// 3.3 dynamically balanced obtree or octree or kd-tree to query elements by position
+
+
+//4. (done, need check) add some low-level mesh modification procedures to elements
+//	5.1 add some high-level mesh modification procedures: split by plane, 
+//  5.2 csg: difference, union, intersection
+//  5.3 calculate volume for concave elements, choose elements by minimum volume, not minimum number of elements in incident_matrix class (modify.cpp)
+
+//5. reduce size used by sparse data
+
+//6. new ElementSet class, derived from Element class
+// 6.1 support ierarhy
+
+//7. algorithm that checks topology on element creation
+// 7.1 complete unimplemented tests for star-shaped objects, concavity
+
+//parallel:
+//1. algorithm in EndModification or ResolveModification to keep the mesh in parallel consistent state after element creation/deletion
+//	1.1 restore contiguous global id
+
+//2. test algorithm that checks for halo in ExchangeMarked, if performance increases
+
+//3. decide how to exchange ElementSets between processors
+
+//4. exchange data of type DATA_REFERENCE, by GlobalID and ElementType
+
+//5. mesh_file.cpp
+//  5.1 on parallel load, when there are more processors then parts in mesh - duplicate mesh on other processors??
+//  5.2 when mesh is duplicated over many processors use local clusterization algorithm in ResolveShared
+
+// shared parallel
+//1. avoid markers in nbAdjElements, getAdjElements, getNodes, getEdges, getFaces, getCells, BridgeAdjacency
+
+// partitioner:
+//1. implement K-means clustering
+
+//solver:
+//0. workaround for overlapping vertices and matrices
+
+//1. read TODO on top of solver_*.hpp
+
+//autodiff:
+//1. read TODO on top of INMOST_autodiff.h
+
+
+//TODO:
+
+
+// Recheck computation of derivatives!!!!
+// Detect similar parts of the tree in Automatizator
+// Restructure tree expressions
+// Intorduce multivariate tables
+// Generate opencl code
+
+// Make so that stencil may be represented by tags, by set or by callback_function
+
+//RegisterTable and table implementation should account for boundary conditions beyond data
+
+
+
+
+//SOLVER todo:
+
+//TODO:
+// how to calculate diagonal perturbation?
+// how to calculate schur complement faster
+// 
+// done! implement crout-ILU from 
+//   Documents/Read/solver/crout/crout.pdf to ILUC_preconditioner
+// done! implement condition estimation for |L^{-1}| and |U^{-1}| and adaptive tau for ILUC_preconditioner from 
+//   Documents\Read\solver\Read_now\bollhofer_siam.pdf
+// done! try to make ILUC2_preconditioner - second order ILU from ILUC_preconditioner
+// done! implement diagonal pivoting for ILUC - maybe need to update diagonal at every step
+//   goto references [7],[10]-(data structure!) from
+//   Documents\Read\solver\crout\crout.pdf
+// return dropped values to diagonal if control vector is provided from
+//   Documents\Read\solver\stabilization\milut.pdf
+// try to apply dropping while forming linked list,should correctly calculate condition estimates 
+
+// Calculate schur complement faster:
+//   Documents\Read\solver\sparse_matmul\sparse.pdf
+
+// in ILUC_preconditioner, replace matrix structures by CSR, estimate number of nonzeros in rows/cols
+// before filling, if necessery (how?)

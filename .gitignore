@@ -2,10 +2,6 @@ projects/
 AsmJit/
 compile32_vs2013/
 compile64_vs2013/
-development/
-inmost_autodiff.h
-autodiff.cpp
-TODO.txt
 examples/
 examples/Data/
 examples/Matrices/
