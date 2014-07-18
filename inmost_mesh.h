@@ -31,14 +31,18 @@ namespace INMOST
 	
 	
 	typedef INMOST_DATA_BULK_TYPE GeometricData;
-		
 	static const GeometricData CENTROID     = 0;
 	static const GeometricData NORMAL       = 1;
 	static const GeometricData ORIENTATION  = 2;
 	static const GeometricData MEASURE      = 3;
 	static const GeometricData BARYCENTER   = 4;
 	
-	
+	typedef INMOST_DATA_BULK_TYPE SyncBitOp; //< This type is used for marker synchronization
+	static const SyncBitOp SYNC_BIT_NEW = 0;
+	static const SyncBitOp SYNC_BIT_OR  = 1;
+	static const SyncBitOp SYNC_BIT_XOR = 2;
+	static const SyncBitOp SYNC_BIT_AND = 3;
+
 	//Use topolgy checking for debug purposes
 	typedef INMOST_DATA_ENUM_TYPE TopologyCheck; 
 	static const TopologyCheck THROW_EXCEPTION        = 0x00000001; //done//throw TopologyError exception on error
@@ -74,7 +78,7 @@ namespace INMOST
 	static const TopologyCheck NEED_TEST_CLOSURE      = 0x40000000; //done//silent, test's for closure in ComputeGeometricType, needed to detect MultiLine and MultiPolygon
 	static const TopologyCheck DISABLE_2D             = 0x80000000; //done//don't allow 2d grids, where edges appear to be vertexes, faces are edges and cells are faces
 	static const TopologyCheck GRID_CONFORMITY        = NEED_TEST_CLOSURE | PROHIBIT_MULTILINE | PROHIBIT_MULTIPOLYGON  | INTERLEAVED_FACES | TRIPLE_SHARED_FACE;
-	static const TopologyCheck DEFAULT_CHECK          = THROW_EXCEPTION | DUPLICATE_EDGE | DUPLICATE_FACE | PRINT_NOTIFY | GRID_CONFORMITY;
+	static const TopologyCheck DEFAULT_CHECK          = THROW_EXCEPTION | DUPLICATE_EDGE | DUPLICATE_FACE | PRINT_NOTIFY;
 	
 	__INLINE static const char * TopologyCheckNotifyString(TopologyCheck c)
 	{
@@ -115,6 +119,9 @@ namespace INMOST
 		}
 	}
 	
+	/// This function helps to determine whether one type is chosen or multiple
+	__INLINE static bool OneType(ElementType t) {return t > 0 && (t & (t-1)) == 0;}
+
 	__INLINE static int ElementNum(ElementType t)
 	{
 		unsigned int v = static_cast<unsigned int>(t);  // 32-bit value to find the log2 of 
@@ -148,7 +155,7 @@ namespace INMOST
 	typedef array<INMOST_DATA_REAL_TYPE>    inner_real_array;
 	typedef array<INMOST_DATA_INTEGER_TYPE> inner_integer_array;
 	typedef array<INMOST_DATA_BULK_TYPE>    inner_bulk_array;
-	typedef array<Element *>              inner_reference_array;
+	typedef array<Element *>                inner_reference_array;
 		
 	enum DataType
 	{
@@ -247,8 +254,8 @@ namespace INMOST
 		__INLINE size_t GetBytesSize() const {assert(mem!=NULL); return DataTypeBytesSize(mem->dtype);}
 		__INLINE INMOST_DATA_ENUM_TYPE GetSize() const {assert(mem!=NULL); return mem->size;}
 		__INLINE std::string GetTagName() const {assert(mem!=NULL); return mem->tagname;}
-		__INLINE bool isDefined(ElementType type) const {assert(mem!=NULL && (type>0 && ((type & (type-1)) == 0))); return GetPosition(type) != ENUMUNDEF;}
-		__INLINE bool isSparse(ElementType type) const {assert(mem!=NULL && (type>0 && ((type & (type-1)) == 0))); return mem->sparse[ElementNum(type)];}
+		__INLINE bool isDefined(ElementType type) const {assert(mem!=NULL && OneType(type)); return GetPosition(type) != ENUMUNDEF;}
+		__INLINE bool isSparse(ElementType type) const {assert(mem!=NULL && OneType(type)); return mem->sparse[ElementNum(type)];}
 		__INLINE bool isValid() const {return mem != NULL;}
 		__INLINE Mesh * GetMeshLink() const {assert(mem!=NULL); return mem->m_link;}		
 		__INLINE bool isSparseNum(INMOST_DATA_ENUM_TYPE typenum) const {assert(mem!=NULL); return mem->sparse[typenum];}
@@ -370,6 +377,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp atomic
 #endif
+			//std::cout << "set " << ElementTypeName(GetElementType()) << " " << LocalID() << " " << n << std::endl;
 			markers |= n;
 		}
 		__INLINE bool    GetMarker(MIDType n) const  {return (markers & n) != 0;}
@@ -378,6 +386,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp atomic
 #endif
+			//std::cout << "rem " << ElementTypeName(GetElementType()) << " " << LocalID() << " " << n << std::endl;
 			markers &= ~n;
 		}
 		__INLINE void    ClearMarkerSpace() {markers = 0;}
@@ -426,7 +435,7 @@ namespace INMOST
 		std::pair< ElementSet::iterator, bool > Insert(const Element * e);
 		template<class InputIterator>
 		void Insert(InputIterator first, InputIterator last) {isInputForwardIterators<Element *, InputIterator>(); eset.insert(first,last);}
-		void Insert(ElementSet e);
+		void Insert(const ElementSet & e);
 		void Insert(std::vector<Element *> e);
 		void Insert(array<Element *> e);
 		bool Erase(Element * e);
@@ -740,6 +749,7 @@ namespace INMOST
 		std::pair<Cell *, bool> CreateCell(Node ** c_nodes, const INMOST_DATA_ENUM_TYPE * c_f_nodeinds, const INMOST_DATA_ENUM_TYPE * c_f_numnodes, INMOST_DATA_ENUM_TYPE num_c_faces, Node ** suggest_nodes_order = NULL, INMOST_DATA_ENUM_TYPE numsuggest_nodes_order = 0);
 		Element * ElementByLocalID(ElementType etype, INMOST_DATA_INTEGER_TYPE lid)
 		{
+			assert(OneType(etype));
 			switch(etype)
 			{
 			case NODE: return nodes[lid];
@@ -754,8 +764,15 @@ namespace INMOST
 		Face * FaceByLocalID(INMOST_DATA_INTEGER_TYPE lid) {return faces[lid];}
 		Cell * CellByLocalID(INMOST_DATA_INTEGER_TYPE lid) { return cells[lid]; }
 		ElementSet * EsetByLocalID(INMOST_DATA_INTEGER_TYPE lid) { return sets[lid]; }
-		INMOST_DATA_INTEGER_TYPE MaxLocalID(ElementType etype)
+
+		INMOST_DATA_INTEGER_TYPE MaxLocalIDNODE() const {return static_cast<INMOST_DATA_INTEGER_TYPE>(nodes.size());}
+		INMOST_DATA_INTEGER_TYPE MaxLocalIDEDGE() const {return static_cast<INMOST_DATA_INTEGER_TYPE>(edges.size());}
+		INMOST_DATA_INTEGER_TYPE MaxLocalIDFACE() const {return static_cast<INMOST_DATA_INTEGER_TYPE>(faces.size());}
+		INMOST_DATA_INTEGER_TYPE MaxLocalIDCELL() const {return static_cast<INMOST_DATA_INTEGER_TYPE>(cells.size());}
+		INMOST_DATA_INTEGER_TYPE MaxLocalIDESET() const {return static_cast<INMOST_DATA_INTEGER_TYPE>(sets.size());}
+		INMOST_DATA_INTEGER_TYPE MaxLocalID(ElementType etype) const
 		{
+			assert(OneType(etype));
 			switch(etype)
 			{
 			case NODE: return static_cast<INMOST_DATA_INTEGER_TYPE>(nodes.size());
@@ -765,7 +782,6 @@ namespace INMOST
 			}
 			return 0;
 		}
-
 		ElementSet * CreateSet();
 		ElementSet * CreateOrderedSet();
 		Element * FindSharedAdjacency(Element ** arr, unsigned num);
@@ -898,6 +914,8 @@ namespace INMOST
 		__INLINE const Tag ProcessorsTag() const {return tag_processors;}
 		__INLINE Tag RedistributeTag() {return CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,CELL,NONE,1);}
 		
+		ElementType SynchronizeElementType(ElementType etype);
+		void SynchronizeMarker(MIDType marker, ElementType mask, SyncBitOp op);
 		
 		//for debug
 		void                 BeginSequentialCode();
@@ -912,14 +930,14 @@ namespace INMOST
 		class iteratorEdge;
 		class iteratorNode;
 		
-		__INLINE INMOST_DATA_ENUM_TYPE NumberOfCells()   {return cells.size() - empty_cells.size();}
-		__INLINE INMOST_DATA_ENUM_TYPE NumberOfFaces()   { return faces.size() - empty_faces.size(); }
-		__INLINE INMOST_DATA_ENUM_TYPE NumberOfEdges()   { return edges.size() - empty_edges.size(); }
-		__INLINE INMOST_DATA_ENUM_TYPE NumberOfNodes()   { return nodes.size() - empty_nodes.size(); }
-		__INLINE INMOST_DATA_ENUM_TYPE NumberOfSets()    { return sets.size() - empty_sets.size(); }
+		__INLINE INMOST_DATA_ENUM_TYPE NumberOfCells()   {return static_cast<INMOST_DATA_ENUM_TYPE>(cells.size() - empty_cells.size());}
+		__INLINE INMOST_DATA_ENUM_TYPE NumberOfFaces()   { return static_cast<INMOST_DATA_ENUM_TYPE>(faces.size() - empty_faces.size()); }
+		__INLINE INMOST_DATA_ENUM_TYPE NumberOfEdges()   { return static_cast<INMOST_DATA_ENUM_TYPE>(edges.size() - empty_edges.size()); }
+		__INLINE INMOST_DATA_ENUM_TYPE NumberOfNodes()   { return static_cast<INMOST_DATA_ENUM_TYPE>(nodes.size() - empty_nodes.size()); }
+		__INLINE INMOST_DATA_ENUM_TYPE NumberOfSets()    { return static_cast<INMOST_DATA_ENUM_TYPE>(sets.size() - empty_sets.size()); }
 		__INLINE INMOST_DATA_ENUM_TYPE NumberOfElements(){ return NumberOfCells() + NumberOfFaces() + NumberOfEdges() + NumberOfNodes(); }
 		__INLINE INMOST_DATA_ENUM_TYPE NumberOfAll()     { return NumberOfSets() + NumberOfElements(); }
-		unsigned int NumberOf(ElementType t);
+		INMOST_DATA_ENUM_TYPE NumberOf(ElementType t);
 		base_iterator Begin(ElementType Types);
 		base_iterator End();
 		iteratorElement BeginElement(ElementType Types);
@@ -1114,6 +1132,7 @@ namespace INMOST
 	private:
 		MIDType hide_element, new_element;
 	public:
+		bool isMeshModified() {return new_element != 0;} //In case mesh is modified, on element creation TieElements will always place elements to the end
 		MIDType HideMarker() {return hide_element;}
 		MIDType NewMarker() {return new_element;}
 		void SwapModification(); // swap hidden and new elements, so that old mesh is recovered

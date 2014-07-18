@@ -31,7 +31,7 @@ set(HEADER inmost.h
            container.hpp
            io.hpp
            solver_ilu2.hpp
-#          solver_ddpqiluc2.hpp
+           solver_ddpqiluc2.hpp
            solver_bcgsl.hpp
            solver_prototypes.hpp)
 
@@ -56,7 +56,7 @@ option(USE_PARTITIONER_PARMETIS "Use ParMetis partitioner" OFF)
 option(USE_PARTITIONER_ZOLTAN "Use Zoltan partitioner" OFF)
 option(USE_SOLVER_PETSC "Use PETSc solver" OFF)
 option(USE_AUTODIFF_OPENCL "Use OpenCL for automatic differentiation (under work)" OFF)
-option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" ON)
+option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_find/")

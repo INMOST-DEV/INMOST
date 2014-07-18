@@ -11,9 +11,9 @@ using namespace INMOST;
 
 #define DEFAULT_TAU 0.005
 #define DEFAULT_TAU2 0.00001
-#define LFILL //control, that factorization is not less then fill for ilu2
+//#define LFILL //control, that factorization is not less then fill for ilu2
 
-#define ADDR(row,col) ((row)*size+(col))
+
 
 class ILU2_preconditioner : public Method
 {
@@ -449,7 +449,6 @@ public:
 	{
 		if (!isFinalized())
 		{
-			info->RestoreMatrix(*Alink);
 			luv.clear();
 			lui.clear();
 			init = false;

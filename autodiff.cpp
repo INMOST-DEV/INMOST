@@ -13,14 +13,216 @@
 
 namespace INMOST
 {
+#if defined(NEW_VERSION)
+	
+	//! returns offset from the end of precomputed z
+	void Automatizator::DerivativeFill(expr & var, INMOST_DATA_ENUM_TYPE element, INMOST_DATA_ENUM_TYPE parent, Solver::Row & entries, INMOST_DATA_REAL_TYPE multval, void * user_data)
+	{
+		INMOST_DATA_ENUM_TYPE voffset = var.values_offset(element), doffset = var.derivatives_offset(element);
+		INMOST_DATA_ENUM_TYPE k = var.data.size()-1;
+		Storage * e = var.current_stencil[element].first;
+		INMOST_DATA_REAL_TYPE lval, rval, ret;
+		var.values[doffset+k] = multval;
+		expr::expr_data * arr = &var.data[0], *it;
+		//for (expr::data_type::reverse_iterator it = var.data.rbegin(); it != var.data.rend(); ++it)
+		do
+		{
+			it = arr+k;
+			switch (it->op)
+			{
+			case AD_EXT: 
+				assert(parent != ENUMUNDEF); 
+				it->left.e->values[it->left.e->derivatives_offset(parent)+it->right.i] += var.values[doffset+k]; 
+				break;
+			case AD_COND:
+				{
+					expr & next = var.values[voffset+it->left.i] > 0.0 ? *it->right.q->left.e : *it->right.q->right.e;
+					DerivativeFill(next, 0, element, entries,var.values[doffset+k], user_data);
+				}
+				break;
+			case AD_PLUS:  
+				var.values[doffset+it->left.i] += var.values[doffset+k];
+				var.values[doffset+it->right.i] += var.values[doffset+k];
+				break;
+			case AD_MINUS:
+				var.values[doffset+it->left.i] += var.values[doffset+k];
+				var.values[doffset+it->right.i] -= var.values[doffset+k];
+				break;
+			case AD_MULT:
+				rval = var.values[voffset+it->right.i];
+				lval = var.values[voffset+it->left.i];
+				var.values[doffset+it->left.i] += var.values[doffset+k]*rval;
+				var.values[doffset+it->right.i] += var.values[doffset+k]*lval;
+				break;
+			case AD_DIV:
+				rval = var.values[voffset+it->right.i];
+				lval = var.values[voffset+it->left.i];
+				var.values[doffset+it->left.i] += var.values[doffset+k]/rval;
+				var.values[doffset+it->right.i] -= var.values[doffset+k]*lval/(rval*rval);
+				break;
+			case AD_POW:
+				ret = var.values[voffset+k];
+				rval = var.values[voffset+it->right.i];
+				lval = var.values[voffset+it->left.i];
+				var.values[doffset+it->right.i] += var.values[doffset+k] * ::log(lval);
+				var.values[doffset+it->left.i] += var.values[doffset+k] * ret * rval / lval;
+				break;
+			case AD_SQRT:
+				ret = var.values[voffset+k];
+				var.values[doffset+it->left.i] += 0.5 * var.values[doffset+k] / ret;
+				break;
+			case AD_ABS:
+				lval = var.values[voffset+it->left.i];
+				var.values[doffset+it->left.i] += var.values[doffset+k] * (lval > 0.0 ? 1.0 : -1.0);
+				break;
+			case AD_EXP:
+				ret = var.values[voffset+k];
+				var.values[doffset+it->left.i] += var.values[doffset+k] * ret;
+				break;
+			case AD_LOG:   
+				lval = var.values[voffset+it->left.i];
+				var.values[doffset+it->left.i] += var.values[doffset+k] / lval;
+				break;
+			case AD_SIN:   
+				lval = var.values[voffset+it->left.i];
+				var.values[doffset+it->left.i] += var.values[doffset+k] * ::cos(lval);
+				break;
+			case AD_COS:   
+				lval = var.values[voffset+it->left.i];
+				var.values[doffset+it->left.i] -= var.values[doffset+k] * ::sin(lval);
+				break;
+			case AD_COND_MARK: break;
+			case AD_COND_TYPE: break;
+			case AD_CONST: break;
+			case AD_MES: break;
+			case AD_VAL: 
+				{
+					expr & next = *it->right.e;
+					next.current_stencil.resize(1);
+					next.current_stencil[0] = stencil_pair(e,1.0);
+					next.resize_for_stencil();
+					var.values[doffset+it->left.i] += var.values[doffset+k] * EvaluateSub(next,0,element,user_data); 
+					break;
+				}
+			default:
+				if (it->op >= AD_FUNC) {}
+				else if (it->op >= AD_TABLE) 
+				{
+					lval = var.values[voffset+it->left.i];
+					var.values[doffset+it->left.i] += var.values[doffset+k] *  reg_tables[it->op]->get_derivative(lval);
+				}
+				else if (it->op >= AD_STNCL)
+				{
+					for (INMOST_DATA_ENUM_TYPE j = 0; j < it->left.e->current_stencil.size(); ++j) if(  it->left.e->current_stencil[j].first != NULL )
+					{
+						DerivativeFill(*it->left.e,  j, ENUMUNDEF,  entries, var.values[doffset+k] *  it->left.e->current_stencil[j].second, user_data);
+					}
+				}
+				else if (it->op >= AD_CTAG) {}
+				else if (it->op >= AD_TAG)
+				{
+					if (isDynamicValid(e, it->op))
+					{
+						entries[GetDynamicIndex(e,it->op,it->left.i)] += var.values[doffset+k];
+					}
+				}
+				else assert(false);
+			}
+		} while(k-- != 0);
+	}
+	INMOST_DATA_REAL_TYPE Automatizator::EvaluateSub(expr & var, INMOST_DATA_ENUM_TYPE element, INMOST_DATA_ENUM_TYPE parent, void * user_data)
+	{
+		INMOST_DATA_ENUM_TYPE k = 0, offset = var.values_offset(element);
+		Storage * e = var.current_stencil[element].first;
+		expr::expr_data * arr = &var.data[0], *it;
+		//for (expr::data_type::iterator it = var.data.begin(); it != var.data.end(); ++it)
+		do
+		{
+			it = arr+k;
+			switch (it->op)
+			{
+			case AD_EXT: 
+				assert(parent != ENUMUNDEF); 
+				var.values[offset+k] = it->left.e->values[it->left.e->values_offset(parent)+it->right.i]; 
+				break;
+			case AD_COND:
+				{
+					expr & next = var.values[offset+it->left.i] > 0.0 ? *it->right.q->left.e : *it->right.q->right.e;
+					next.current_stencil.resize(1);
+					next.current_stencil[0] = stencil_pair(e,1.0);
+					next.resize_for_stencil();
+					var.values[offset+k] = EvaluateSub(next, 0,element, user_data);
+				}
+				break;
+			case AD_PLUS:  var.values[offset+k] = var.values[offset+it->left.i] + var.values[offset+it->right.i]; break;
+			case AD_MINUS: var.values[offset+k] = var.values[offset+it->left.i] - var.values[offset+it->right.i]; break;
+			case AD_MULT:  var.values[offset+k] = var.values[offset+it->left.i] * var.values[offset+it->right.i]; break;
+			case AD_DIV:   var.values[offset+k] = var.values[offset+it->left.i] / var.values[offset+it->right.i]; break;
+			case AD_POW:   var.values[offset+k] = ::pow(var.values[offset+it->left.i], var.values[offset+it->right.i]); break;
+			case AD_SQRT:  var.values[offset+k] = ::sqrt(var.values[offset+it->left.i]); break;
+			case AD_ABS:   var.values[offset+k] = ::fabs(var.values[offset+it->left.i]); break;
+			case AD_EXP:   var.values[offset+k] = ::exp(var.values[offset+it->left.i]); break;
+			case AD_LOG:   var.values[offset+k] = ::log(var.values[offset+it->left.i]); break;
+			case AD_SIN:   var.values[offset+k] = ::sin(var.values[offset+it->left.i]); break;
+			case AD_COS:   var.values[offset+k] = ::cos(var.values[offset+it->left.i]); break;
+			case AD_CONST: var.values[offset+k] = it->left.r; break;
+			case AD_COND_TYPE: var.values[offset+k] = ((e->GetElementType() & it->left.i)? 1.0 : -1.0); break;
+			case AD_COND_MARK: var.values[offset+k] = e->GetMarker(it->left.i) ? 1.0 : -1.0; break;
+			case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); m->GetGeometricData(static_cast<Element *>(e), MEASURE, &var.values[offset+k]); break;
+			case AD_VAL: var.values[offset+k] = var.values[offset+it->left.i]; break;
+			default:
+				if (it->op >= AD_FUNC) var.values[offset+k] = reg_funcs[it->op].func(e, user_data);
+				else if (it->op >= AD_TABLE) var.values[offset+k] = reg_tables[it->op]->get_value(var.values[offset+it->left.i]);
+				else if (it->op >= AD_STNCL)
+				{
+					it->left.e->current_stencil.clear();
+					GetStencil(it->op,e,user_data,it->left.e->current_stencil);
+					it->left.e->resize_for_stencil();
+					var.values[offset+k] = 0.0;
+					for (INMOST_DATA_ENUM_TYPE j = 0; j < it->left.e->current_stencil.size(); ++j) if( it->left.e->current_stencil[j].first != NULL )
+						var.values[offset+k] += EvaluateSub(*it->left.e,j,ENUMUNDEF,user_data) * it->left.e->current_stencil[j].second;
+				}
+				else if (it->op >= AD_CTAG) var.values[offset+k] = GetStaticValue(e, it->op, it->left.i);
+				else if (it->op >= AD_TAG) var.values[offset+k] = GetDynamicValue(e, it->op, it->left.i);
+				else assert(false);
+			}
+			//k++;
+		} while(++k != var.data.size());
+		return var.values[offset+var.data.size()-1];
+	}
+
+	INMOST_DATA_REAL_TYPE Automatizator::Evaluate(expr & var, Storage * e, void * user_data)
+	{
+		var.current_stencil.resize(1);
+		var.current_stencil[0] = stencil_pair(e,1.0);
+		var.resize_for_stencil();
+		return EvaluateSub(var,0,ENUMUNDEF,user_data);
+	}
+	
+	INMOST_DATA_REAL_TYPE Automatizator::Derivative(expr & var, Storage * e, Solver::Row & out, Storage::real multiply, void * user_data)
+	{
+		INMOST_DATA_REAL_TYPE ret;
+		var.current_stencil.resize(1);
+		var.current_stencil[0] = stencil_pair(e,1.0);
+		var.resize_for_stencil();
+		ret = EvaluateSub(var,0,ENUMUNDEF,user_data);
+		DerivativeFill(var, 0, ENUMUNDEF, out, multiply, user_data);
+		return ret*multiply;
+	}
+#else
 
 	INMOST_DATA_REAL_TYPE Automatizator::DerivativePrecompute(const expr & var, Storage * e, precomp_values_t & values, void * user_data)
 	{
-		/*
 		assert(var.op != AD_NONE);
 		INMOST_DATA_REAL_TYPE lval, rval, ret = 0.0;
 		switch (var.op)
 		{
+		case AD_COND_TYPE:
+			lval = (e->GetElementType() & reinterpret_cast<ElementType>(var.left))? 1.0 : -1.0;
+			return lval;
+		case AD_COND_MARK:
+			lval = e->GetMarker(reinterpret_cast<MIDType>(var.left))? 1.0 : -1.0;
+			return lval;
 		case AD_COND:
 			lval = Evaluate(*var.left, e, user_data);
 			rval = DerivativePrecompute(*(lval > 0.0 ? var.right->left : var.right->right), e, values, user_data);
@@ -54,6 +256,11 @@ namespace INMOST
 			ret = ::pow(lval, rval);
 			values.push_back(ret);
 			return ret*var.coef;
+		case AD_SQRT:
+			lval = DerivativePrecompute(*var.left, e, values, user_data);
+			ret = ::sqrt(lval);
+			values.push_back(ret);
+			return ret*var.coef;
 		case AD_INV:
 			lval = DerivativePrecompute(*var.left, e, values, user_data);
 			values.push_back(lval);
@@ -85,6 +292,11 @@ namespace INMOST
 			assert(!(e->GetElementType() & (ESET | MESH)));
 			m->GetGeometricData(static_cast<Element *>(e), MEASURE, &ret);
 			return ret*var.coef;
+		case AD_VAL:
+			lval = DerivativePrecompute(*var.left, e, values, user_data);
+			rval = Evaluate(*var.left,e,user_data);
+			values.push_back(rval);
+			return lval*var.coef;
 		}
 		if (var.op >= AD_FUNC)
 		{
@@ -100,14 +312,14 @@ namespace INMOST
 		}
 		else if (var.op >= AD_STNCL)
 		{
-			stencil_kind_domain st = reg_stencils[var.op];
+			stencil_kind_domain & st = reg_stencils[var.op];
 			assert(st.domainmask == 0 || e->GetMarker(st.domainmask));
 			if (st.kind == 0)
 			{
 				Storage::reference_array elems = e->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
 				Storage::real_array coefs = e->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
 				assert(elems.size() == coefs.size());
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k)
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) if( elems[k] != NULL )
 				{
 					lval = DerivativePrecompute(*var.left, elems[k], values, user_data);
 					ret += lval * coefs[k];
@@ -117,7 +329,7 @@ namespace INMOST
 			{
 				stencil_pairs get_st;
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k)
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if( get_st[k].first != NULL )
 				{
 					lval = DerivativePrecompute(*var.left, get_st[k].first, values, user_data);
 					ret += lval * get_st[k].second;
@@ -138,17 +350,18 @@ namespace INMOST
 			return ret*var.coef;
 		}
 		assert(false);
-		*/
 		return 0.0;
 	}
 	//! returns offset from the end of precomputed values
 	void Automatizator::DerivativeFill(const expr & var, Storage * e, Solver::Row & entries, precomp_values_t & values, INMOST_DATA_REAL_TYPE multval, void * user_data)
 	{
-		/*
 		assert(var.op != AD_NONE);
 		INMOST_DATA_REAL_TYPE lval, rval, ret;
 		switch (var.op)
 		{
+		case AD_COND_MARK:
+		case AD_COND_TYPE:
+			return;
 		case AD_COND:
 			lval = values.back(); values.pop_back();
 			DerivativeFill(*(lval > 0.0 ? var.right->left : var.right->right), e, entries, values, multval*var.coef, user_data);
@@ -180,6 +393,10 @@ namespace INMOST
 			DerivativeFill(*var.right, e, entries, values, multval * ret * ::log(lval) * var.coef, user_data);
 			DerivativeFill(*var.left, e, entries, values, multval * ret * rval / lval * var.coef, user_data);
 			return;
+		case AD_SQRT:
+			ret = values.back(); values.pop_back();
+			DerivativeFill(*var.left, e, entries, values, 0.5 * multval / ret * var.coef, user_data);
+			return;
 		case AD_INV:
 			lval = values.back(); values.pop_back();
 			DerivativeFill(*var.left, e, entries, values, -multval / (lval * lval) * var.coef, user_data);
@@ -206,6 +423,10 @@ namespace INMOST
 			return;
 		case AD_CONST: return;
 		case AD_MES: return;
+		case AD_VAL: 
+			rval = values.back(); values.pop_back();
+			DerivativeFill(*var.left, e, entries, values, multval * var.coef * rval, user_data);
+			return;
 		}
 		if (var.op >= AD_FUNC)
 		{
@@ -219,21 +440,21 @@ namespace INMOST
 		}
 		else if (var.op >= AD_STNCL)
 		{
-			stencil_kind_domain st = reg_stencils[var.op];
+			stencil_kind_domain & st = reg_stencils[var.op];
 			assert(st.domainmask == 0 || e->GetMarker(st.domainmask));
 			if (st.kind == 0)
 			{
 				Storage::reference_array elems = e->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
 				Storage::real_array coefs = e->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
 				assert(elems.size() == coefs.size());
-				for (INMOST_DATA_ENUM_TYPE k = elems.size(); k > 0; --k)
+				for (INMOST_DATA_ENUM_TYPE k = elems.size(); k > 0; --k) if( elems[k-1] != NULL )
 					DerivativeFill(*var.left, elems[k - 1], entries, values, var.coef * coefs[k - 1] * multval, user_data);
 			}
 			else if (st.kind == 1)
 			{
 				stencil_pairs get_st;
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
-				for (INMOST_DATA_ENUM_TYPE k = get_st.size(); k > 0; --k)
+				for (INMOST_DATA_ENUM_TYPE k = get_st.size(); k > 0; --k) if( get_st[k-1].first != NULL )
 					DerivativeFill(*var.left, get_st[k - 1].first, entries, values, var.coef * get_st[k - 1].second*multval, user_data);
 			}
 			return;
@@ -244,74 +465,76 @@ namespace INMOST
 			if (isDynamicValid(e, var.op))
 			{
 				INMOST_DATA_ENUM_TYPE ind = GetDynamicIndex(e, var.op, *(INMOST_DATA_ENUM_TYPE *)(&var.left));
-				std::cout << ind << ", " << multval*var.coef << std::endl;
 				entries[ind] += multval * var.coef;
 			}
 			return;
 		}
 		assert(false);
-		*/
 		return;
 	}
 	INMOST_DATA_REAL_TYPE Automatizator::Evaluate(const expr & var, Storage * e, void * user_data)
 	{
-		return EvaluateSub(var, e, user_data, NULL);
-	}
-	INMOST_DATA_REAL_TYPE Automatizator::EvaluateSub(const expr & var, Storage * e, void * user_data, values_container * parent_values)
-	{
-		values_container values(var.data.size());
-		INMOST_DATA_ENUM_TYPE k = 0;
-		for (expr::data_type::const_iterator it = var.data.begin(); it != var.data.end(); ++it)
+		assert(var.op != AD_NONE);
+		switch (var.op)
 		{
-			switch (it->op)
-			{
-			case AD_EXT: values[k] = (*parent_values)[it->right.i]; break;
-			case AD_COND:  
-				if (values[it->left.i] > 0.0)
-					values[k] = EvaluateSub(*it->right.q->left.e, e, user_data,&values);
-				else
-					values[k] = EvaluateSub(*it->right.q->right.e, e, user_data,&values);
-				break;
-			case AD_PLUS:  values[k] = values[it->left.i] + values[it->right.i]; break;
-			case AD_MINUS: values[k] = values[it->left.i] - values[it->right.i]; break;
-			case AD_MULT:  values[k] = values[it->left.i] * values[it->right.i]; break;
-			case AD_DIV:   values[k] = values[it->left.i] / values[it->right.i]; break;
-			case AD_POW:   values[k] = ::pow(values[it->left.i], values[it->right.i]); break;
-			case AD_ABS:   values[k] = ::fabs(values[it->left.i]); break;
-			case AD_EXP:   values[k] = ::exp(values[it->left.i]); break;
-			case AD_LOG:   values[k] = ::log(values[it->left.i]); break;
-			case AD_SIN:   values[k] = ::sin(values[it->left.i]); break;
-			case AD_COS:   values[k] = ::cos(values[it->left.i]); break;
-			case AD_CONST: values[k] = it->left.r; break;
-			case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); m->GetGeometricData(static_cast<Element *>(e), MEASURE, &values[k]); break;
-			default:
-				if (it->op >= AD_FUNC) values[k] = reg_funcs[it->op].func(e, user_data);
-				else if (it->op >= AD_TABLE) values[k] = reg_tables[it->op]->get_value(values[it->left.i]);
-				else if (it->op >= AD_STNCL)
-				{
-					stencil_pairs get_st;
-					GetStencil(it->op, e, user_data, get_st);
-					values[k] = 0.0;
-					for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k)
-						values[k] += EvaluateSub(*it->left.e, get_st[k].first, user_data,NULL) * get_st[k].second;
-				}
-				else if (it->op >= AD_CTAG) values[k] = GetStaticValue(e, it->op, it->left.i);
-				else if (it->op >= AD_TAG) values[k] = GetDynamicValue(e, it->op, it->left.i);
-				else assert(false);
-			}
-			k++;
+		case AD_COND_MARK: return e->GetMarker(reinterpret_cast<MIDType>(var.left)) ? 1.0 : -1.0;
+		case AD_COND_TYPE: return (e->GetElementType() & reinterpret_cast<ElementType>(var.left)) ? 1.0 : -1.0;
+		case AD_COND:  return Evaluate(*(Evaluate(*var.left, e, user_data) > 0.0 ? var.right->left : var.right->right), e, user_data)*var.coef;
+		case AD_PLUS:  return (Evaluate(*var.left, e, user_data) + Evaluate(*var.right, e, user_data))*var.coef;
+		case AD_MINUS: return (Evaluate(*var.left, e, user_data) - Evaluate(*var.right, e, user_data))*var.coef;
+		case AD_MULT:  return (Evaluate(*var.left, e, user_data) * Evaluate(*var.right, e, user_data))*var.coef;
+		case AD_DIV:   return (Evaluate(*var.left, e, user_data) / Evaluate(*var.right, e, user_data))*var.coef;
+		case AD_INV:   return var.coef / Evaluate(*var.left, e, user_data);
+		case AD_POW:   return ::pow(Evaluate(*var.left, e, user_data), Evaluate(*var.right, e, user_data))*var.coef;
+		case AD_SQRT:  return ::sqrt(Evaluate(*var.left, e, user_data))*var.coef;
+		case AD_ABS:   return ::fabs(Evaluate(*var.left, e, user_data))*var.coef;
+		case AD_EXP:   return ::exp(Evaluate(*var.left, e, user_data))*var.coef;
+		case AD_LOG:   return ::log(Evaluate(*var.left, e, user_data))*var.coef;
+		case AD_SIN:   return ::sin(Evaluate(*var.left, e, user_data))*var.coef;
+		case AD_COS:   return ::cos(Evaluate(*var.left, e, user_data))*var.coef;
+		case AD_CONST: return var.coef;
+		case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); Storage::real ret; m->GetGeometricData(static_cast<Element *>(e), MEASURE, &ret); return ret*var.coef;
+		case AD_VAL:   return Evaluate(*var.left,e,user_data)*var.coef;
 		}
-		return values[var.data.size()-1];
+		if (var.op >= AD_FUNC) return reg_funcs[var.op].func(e, user_data);
+		if (var.op >= AD_TABLE) return reg_tables[var.op]->get_value(Evaluate(*var.left, e, user_data))*var.coef;
+		if (var.op >= AD_STNCL)
+		{
+			INMOST_DATA_REAL_TYPE ret = 0.0;
+			stencil_kind_domain & st = reg_stencils[var.op];
+			assert(st.domainmask == 0 || e->GetMarker(st.domainmask));
+			if (st.kind == 0)
+			{
+				Storage::reference_array elems = e->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
+				Storage::real_array coefs = e->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
+				assert(elems.size() == coefs.size());
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) if( elems[k] != NULL )
+					ret += var.coef * Evaluate(*var.left, elems[k], user_data) * coefs[k];
+			}
+			else if (st.kind == 1)
+			{
+				stencil_pairs get_st;
+				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if ( get_st[k].first != NULL )
+					ret += var.coef * Evaluate(*var.left, get_st[k].first, user_data) * get_st[k].second;
+			}
+			return ret;
+		}
+		if (var.op >= AD_CTAG) return GetStaticValue(e, var.op, *(INMOST_DATA_ENUM_TYPE *)(&var.left))*var.coef;
+		if (var.op >= AD_TAG) return  GetDynamicValue(e, var.op, *(INMOST_DATA_ENUM_TYPE *)(&var.left))*var.coef;
+		assert(false);
+		return 0.0;
 	}
 
-	INMOST_DATA_REAL_TYPE Automatizator::Derivative(const expr & var, Storage * e, Solver::Row & out, void * user_data)
+	INMOST_DATA_REAL_TYPE Automatizator::Derivative(const expr & var, Storage * e, Solver::Row & out, Storage::real multiply, void * user_data)
 	{
 		INMOST_DATA_REAL_TYPE ret;
 		precomp_values_t values;
 		ret = DerivativePrecompute(var, e, values, user_data);
-		DerivativeFill(var, e, out, values, 1.0, user_data);
-		return ret;
+		DerivativeFill(var, e, out, values, multiply, user_data);
+		return ret*multiply;
 	}
+#endif
 	Automatizator::Automatizator(Mesh * m) :first_num(0), last_num(0), m(m) {}
 	Automatizator::~Automatizator()
 	{
@@ -401,62 +624,68 @@ namespace INMOST
 		first_num = last_num = 0;
 		const ElementType paralleltypes = NODE | EDGE | FACE | CELL;
 		for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
-		for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
-		if (it->indices.isDefined(etype) && it->indices.isSparse(etype))
-		for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-			jt->DelData(it->indices);
+		{
+			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+				if (it->indices.isDefined(etype) && it->indices.isSparse(etype))
+				{
+					for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+						jt->DelData(it->indices);
+				}
+		}
 
 
 		for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
 		{
 			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
-			if (it->indices.isDefined(etype))
 			{
-				if (it->indices.GetSize() == ENUMUNDEF)
+				if (it->indices.isDefined(etype))
 				{
-					if (!it->indices.isSparse(etype))
+					if (it->indices.GetSize() == ENUMUNDEF)
 					{
-						for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-						if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+						if (!it->indices.isSparse(etype))
 						{
-							Storage::integer_array indarr = jt->IntegerArray(it->indices);
-							indarr.resize(jt->RealArray(it->d.t).size());
-							for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-								*qt = last_num++;
+							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+							{
+								Storage::integer_array indarr = jt->IntegerArray(it->indices);
+								indarr.resize(jt->RealArray(it->d.t).size());
+								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+									*qt = last_num++;
+							}
+						}
+						else
+						{
+							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+							{
+								Storage::integer_array indarr = jt->IntegerArray(it->indices);
+								indarr.resize(jt->RealArray(it->d.t).size());
+								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+									*qt = last_num++;
+							}
 						}
 					}
 					else
 					{
-						for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-						if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+						if (!it->indices.isSparse(etype))
 						{
-							Storage::integer_array indarr = jt->IntegerArray(it->indices);
-							indarr.resize(jt->RealArray(it->d.t).size());
-							for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-								*qt = last_num++;
+							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+							{
+								Storage::integer_array indarr = jt->IntegerArray(it->indices);
+								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+									*qt = last_num++;
+							}
 						}
-					}
-				}
-				else
-				{
-					if (!it->indices.isSparse(etype))
-					{
-						for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-						if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+						else
 						{
-							Storage::integer_array indarr = jt->IntegerArray(it->indices);
-							for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-								*qt = last_num++;
-						}
-					}
-					else
-					{
-						for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-						if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
-						{
-							Storage::integer_array indarr = jt->IntegerArray(it->indices);
-							for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-								*qt = last_num++;
+							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+							{
+								Storage::integer_array indarr = jt->IntegerArray(it->indices);
+								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+									*qt = last_num++;
+							}
 						}
 					}
 				}
@@ -468,56 +697,58 @@ namespace INMOST
 			MPI_Scan(&last_num, &first_num, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, m->GetCommunicator());
 			first_num -= last_num;
 			ElementType exch_mask = NONE;
-			if (first_num > 0) for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+			for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
 			{
 				for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
-				if (it->indices.isDefined(etype))
 				{
-					exch_mask |= etype;
-					if (it->indices.GetSize() == ENUMUNDEF)
+					if (it->indices.isDefined(etype))
 					{
-						if (!it->indices.isSparse(etype))
+						exch_mask |= etype;
+						if (it->indices.GetSize() == ENUMUNDEF)
 						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+							if (!it->indices.isSparse(etype))
 							{
-								Storage::integer_array indarr = jt->IntegerArray(it->indices);
-								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-									*qt += first_num;
+								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+								{
+									Storage::integer_array indarr = jt->IntegerArray(it->indices);
+									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										*qt += first_num;
+								}
+							}
+							else
+							{
+								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+								{
+									Storage::integer_array indarr = jt->IntegerArray(it->indices);
+									indarr.resize(jt->RealArray(it->d.t).size());
+									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										*qt += first_num;
+								}
 							}
 						}
 						else
 						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+							if (!it->indices.isSparse(etype))
 							{
-								Storage::integer_array indarr = jt->IntegerArray(it->indices);
-								indarr.resize(jt->RealArray(it->d.t).size());
-								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-									*qt += first_num;
+								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+								{
+									Storage::integer_array indarr = jt->IntegerArray(it->indices);
+									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										*qt += first_num;
+								}
 							}
-						}
-					}
-					else
-					{
-						if (!it->indices.isSparse(etype))
-						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+							else
 							{
-								Storage::integer_array indarr = jt->IntegerArray(it->indices);
-								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-									*qt += first_num;
-							}
-						}
-						else
-						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
-							{
-								Storage::integer_array indarr = jt->IntegerArray(it->indices);
-								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
-									*qt += first_num;
+								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+								{
+									Storage::integer_array indarr = jt->IntegerArray(it->indices);
+									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										*qt += first_num;
+								}
 							}
 						}
 					}
@@ -545,1529 +776,54 @@ namespace INMOST
 		return ret;
 	}
 
-#if defined(USE_AUTODIFF_ASMJIT)
-	
-
-	asmjit::kVarType GetEnumType()
+	INMOST_DATA_ENUM_TYPE Automatizator::GetStencil(INMOST_DATA_ENUM_TYPE stnclind, Storage * elem, void * user_data, stencil_pairs & ret)
 	{
-		switch (sizeof(INMOST_DATA_ENUM_TYPE))
+		stencil_kind_domain & st = reg_stencils[stnclind];
+		assert(st.domainmask == 0 || elem->GetMarker(st.domainmask));
+		if (st.kind == 0)
 		{
-		case 1: return asmjit::kVarTypeUInt8;
-		case 2: return asmjit::kVarTypeUInt16;
-		case 4: return asmjit::kVarTypeUInt32;
-		case 8: return asmjit::kVarTypeUInt64;
+			Storage::reference_array elems = elem->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
+			Storage::real_array coefs = elem->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
+			assert(elems.size() == coefs.size());
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) ret.push_back(std::make_pair(elems[k], coefs[k]));
 		}
-		assert(0);
-		return asmjit::kVarTypeInvalid;
+		else if (st.kind == 1) reinterpret_cast<stencil_callback>(st.link)(elem, ret, user_data);
+		return static_cast<INMOST_DATA_ENUM_TYPE>(ret.size());
 	}
-	asmjit::kVarType GetIntegerType()
+
+	INMOST_DATA_ENUM_TYPE Automatizator::table::binary_search(INMOST_DATA_REAL_TYPE arg)
 	{
-		switch (sizeof(INMOST_DATA_INTEGER_TYPE))
+		int l = 0, r = static_cast<int>(size)-1, mid = 0;
+		while (r >= l)
 		{
-		case 1: return asmjit::kVarTypeInt8;
-		case 2: return asmjit::kVarTypeInt16;
-		case 4: return asmjit::kVarTypeInt32;
-		case 8: return asmjit::kVarTypeInt64;
+			mid = (l + r) / 2;
+			if (args[mid] > arg) r = mid - 1;
+			else if (args[mid] < arg) l = mid + 1;
+			else return mid;
 		}
-		assert(0);
-		return asmjit::kVarTypeInvalid;
+		mid = (l + r) / 2;
+		if (mid > static_cast<int>(size - 2)) mid = static_cast<int>(size - 2);
+		return static_cast<INMOST_DATA_ENUM_TYPE>(mid);
 	}
-	asmjit::kVarType GetRealType()
+	INMOST_DATA_REAL_TYPE Automatizator::table::get_value(INMOST_DATA_REAL_TYPE arg)
 	{
-		switch (sizeof(INMOST_DATA_REAL_TYPE))
-		{
-		case 4: return asmjit::kVarTypeInt32;//asmjit::kVarTypeFp32;
-		case 8: return asmjit::kVarTypeInt64; //asmjit::kVarTypeFp64;
-		case 10:
-		case 16:
-			return asmjit::kVarTypeFpEx;
-		}
-		assert(0);
-		return asmjit::kVarTypeInvalid;
+		if (arg < args[0]) return vals[0];
+		INMOST_DATA_ENUM_TYPE i = binary_search(arg);
+		return vals[i] + (vals[i + 1] - vals[i]) * (arg - args[i]) / (args[i + 1] - args[i]);
 	}
-	asmjit::host::kVarType GetRealTypeXmm()
+	INMOST_DATA_REAL_TYPE Automatizator::table::get_derivative(INMOST_DATA_REAL_TYPE arg)
 	{
-		switch (sizeof(INMOST_DATA_REAL_TYPE))
-		{
-		case 4: return asmjit::host::kVarTypeXmm;
-		case 8: return asmjit::host::kVarTypeXmm;
-		}
-		assert(0);
-		return asmjit::host::kVarTypeXmm;
+		if (arg < args[0]) return 0.0;
+		INMOST_DATA_ENUM_TYPE i = binary_search(arg);
+		return (vals[i + 1] - vals[i]) / (args[i + 1] - args[i]);
 	}
-	void SetFloat(asmjit::host::Compiler & comp, asmjit::host::XmmVar & var, INMOST_DATA_REAL_TYPE value)
+	std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> Automatizator::table::get_both(INMOST_DATA_REAL_TYPE arg)
 	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		GpVar gpreg(comp.newGpVar(GetRealType()));
-		const int64_t * i = reinterpret_cast<const int64_t *>(&value);
-		comp.mov(gpreg, imm(i[0]));
-		if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movd(var, gpreg); else comp.movq(var, gpreg);
-		comp.unuse(gpreg);
+		if (arg < args[0]) return std::make_pair(vals[0], 0.0);
+		INMOST_DATA_ENUM_TYPE i = binary_search(arg);
+		INMOST_DATA_REAL_TYPE der = (vals[i + 1] - vals[i]) / (args[i + 1] - args[i]);
+		return std::make_pair(vals[i] + der * (arg - args[i]), der);
 	}
-	void * Automatizator::GenerateEvaluateASMJIT(const expr & var)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		Compiler comp(&runtime);
-		X86X64FuncNode * func = comp.addFunc(kFuncConvHostCDecl, FuncBuilder2<INMOST_DATA_REAL_TYPE, Storage *, void *>());
-		GpVar a0(comp.newGpVar(kVarTypeUIntPtr));
-		GpVar a1(comp.newGpVar(kVarTypeUIntPtr));
-		comp.setArg(0, a0);
-		comp.setArg(1, a1);
-		XmmVar ret = GenerateEvaluateSubASMJIT(var, comp,a0,a1, 0);
-		comp.ret(ret);
-		comp.endFunc();
-		return comp.make();
-	}
-
-	void * Automatizator::GenerateDerivativeASMJIT(const expr & var)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		Compiler comp(&runtime);
-		X86X64FuncNode * func = comp.addFunc(kFuncConvHostCDecl, FuncBuilder3<INMOST_DATA_REAL_TYPE, Storage *, void *, Solver::Row *>());
-		GpVar a0(comp.newGpVar(kVarTypeUIntPtr));
-		GpVar a1(comp.newGpVar(kVarTypeUIntPtr));
-		GpVar a2(comp.newGpVar(kVarTypeUIntPtr));
-		comp.setArg(0, a0);
-		comp.setArg(1, a1);
-		comp.setArg(2, a2);
-		XmmVar ret = GenerateDerivativePrecomputeSubASMJIT(var, comp, a0, a1, 0);
-		XmmVar mult(comp.newXmmVar(GetRealTypeXmm()));
-		SetFloat(comp, mult, 1.0);
-		GenerateDerivativeFillSubASMJIT(var, comp, a0, a1, a2, mult, 0);
-		comp.unuse(mult);
-		comp.ret(ret);
-		comp.endFunc();
-		return comp.make();
-	}
-
-	void * Automatizator::GenerateCode(const expr & var)
-	{
-		typedef std::pair<void *, void *> ret_t;
-		ret_t * code = new ret_t;
-		code->first = GenerateEvaluateASMJIT(var);
-		code->second = GenerateDerivativeASMJIT(var);
-		return (void *)code;
-	}
-
-	
-	
-	void MultCoef(const INMOST_DATA_REAL_TYPE & coef, asmjit::host::Compiler & comp, asmjit::host::XmmVar & var)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		if (fabs(coef - 1.0) > 1e-9)
-		{
-			XmmVar vconst(comp.newXmmVar(GetRealTypeXmm()));
-			SetFloat(comp, vconst, coef);
-			if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(var, vconst); else comp.mulsd(var, vconst);
-			comp.unuse(vconst);
-		}
-	}
-
-	INMOST_DATA_REAL_TYPE Automatizator::GetGeometricDataJIT(Mesh * m, Storage * e) 
-	{ 
-		Storage::real ret; 
-		m->GetGeometricData(static_cast<Element *>(e), MEASURE, &ret);  
-		return ret; 
-	}
-	INMOST_DATA_REAL_TYPE    Automatizator::GetTableValueJIT(INMOST_DATA_REAL_TYPE arg, table_ptr tab) { return tab->get_value(arg); }
-	INMOST_DATA_REAL_TYPE    Automatizator::GetTableDerivativeJIT(INMOST_DATA_REAL_TYPE arg, table_ptr tab) { return tab->get_derivative(arg); }
-	INMOST_DATA_REAL_TYPE    Automatizator::GetValueJIT(Storage * e, Tag * t, INMOST_DATA_ENUM_TYPE comp) {return e->RealArray(*t)[comp];}
-	INMOST_DATA_ENUM_TYPE    Automatizator::GetIndexJIT(Storage * e, Tag * t, INMOST_DATA_ENUM_TYPE comp) { return static_cast<INMOST_DATA_ENUM_TYPE>(e->IntegerArray(*t)[comp]); }
-	void                   Automatizator::PushJIT(INMOST_DATA_REAL_TYPE val, Automatizator * aut)
-	{
-		std::cout << "in: " << val << std::endl;
-		aut->stacks[THREAD_NUM].push_back(val); 
-		//return val;
-	}
-	INMOST_DATA_REAL_TYPE    Automatizator::PopJIT(Automatizator * aut)
-	{ 
-		INMOST_DATA_REAL_TYPE ret = aut->stacks[THREAD_NUM].back();
-		std::cout << "out: " << ret << std::endl;
-		aut->stacks[THREAD_NUM].pop_back();
-		return ret;
-	}
-	INMOST_DATA_REAL_TYPE    Automatizator::InsertPairJIT(INMOST_DATA_REAL_TYPE val, INMOST_DATA_ENUM_TYPE ind, Solver::Row * row)
-	{
-		std::cout << ind << ", " << val << std::endl;
-		(*row)[ind] += val;
-		return val;
-	}
-	void                   Automatizator::ClearStencilJIT(Automatizator * aut, INMOST_DATA_ENUM_TYPE id, INMOST_DATA_ENUM_TYPE nested)
-	{
-		assert(nested < MAX_NESTED);
-		aut->stencil_storage[THREAD_NUM][nested].pairs.clear();
-	}
-	INMOST_DATA_ENUM_TYPE    Automatizator::GetStencilJIT(Automatizator * aut, Storage * elem, void * user_data, INMOST_DATA_ENUM_TYPE id, INMOST_DATA_ENUM_TYPE nested)
-	{
-		assert(nested < MAX_NESTED);
-		INMOST_DATA_ENUM_TYPE size = aut->GetStencil(id, elem, user_data, aut->stencil_storage[THREAD_NUM][nested].pairs);
-		return size;
-	}
-	INMOST_DATA_REAL_TYPE    Automatizator::GetStencilCoefJIT(Automatizator * aut, INMOST_DATA_ENUM_TYPE k, INMOST_DATA_ENUM_TYPE nested) 
-	{ 
-		assert(nested < MAX_NESTED); 
-		return aut->stencil_storage[THREAD_NUM][nested].pairs[k].second; 
-	}
-	Storage *              Automatizator::GetStencilElemJIT(Automatizator * aut, INMOST_DATA_ENUM_TYPE k, INMOST_DATA_ENUM_TYPE nested) 
-	{ 
-		assert(nested < MAX_NESTED); return aut->stencil_storage[THREAD_NUM][nested].pairs[k].first; 
-	}
-	
-	asmjit::host::XmmVar   Automatizator::GenerateEvaluateSubASMJIT(const expr & var, asmjit::host::Compiler & comp, asmjit::host::GpVar & elem, asmjit::host::GpVar & user_data, INMOST_DATA_ENUM_TYPE nested)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		/*
-		assert(var.op != AD_NONE);
-		
-		switch (var.op)
-		{
-		case AD_COND:
-		{
-						XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-						XmmVar v0 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-						XmmVar zero(comp.newXmmVar(GetRealTypeXmm()));
-						SetFloat(comp, zero, 0.0);
-						Label Brench(comp.newLabel()), Exit(comp.newLabel());
-						//GpVar vzero(comp.newGpVar(GetRealType()));
-						//INMOST_DATA_REAL_TYPE zeroval = 0.0;
-						//const int64_t * i = reinterpret_cast<const int64_t *>(&zeroval);
-						//comp.mov(vzero, imm(i[0]));
-						//comp.movq(zero, vzero);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.comiss(zero, v0); else comp.comisd(zero, v0); // zero -> zero <= v0
-						//if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.cmpss(zero, v0, 2); else comp.cmpsd(zero, v0, 2); // zero -> zero <= v0
-						//comp.movq(vzero, zero);
-						//comp.cmp(vzero, imm(0));
-						comp.unuse(v0);
-						comp.ja(Brench);
-						//comp.movq(ret, vzero); //redundant!!
-						XmmVar v1 = GenerateEvaluateSubASMJIT(*var.right->left, comp, elem, user_data, nested);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(ret, v1); else comp.movsd(ret, v1);
-						comp.unuse(v1);
-						comp.jmp(Exit);
-						comp.bind(Brench);
-						//comp.movq(ret, vzero); //redundant!!
-						XmmVar v2 = GenerateEvaluateSubASMJIT(*var.right->right, comp, elem, user_data, nested);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(ret, v2); else comp.movsd(ret, v2);
-						comp.unuse(v2);
-						comp.bind(Exit);
-						MultCoef(var.coef, comp, ret);
-						//comp.unuse(vzero);
-						comp.unuse(zero);
-						return ret;
-		}
-		case AD_PLUS:
-		{
-						XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateEvaluateSubASMJIT(*var.right, comp, elem, user_data, nested);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.addss(v1, v2); else comp.addsd(v1, v2);
-						comp.unuse(v2);
-						MultCoef(var.coef, comp, v1);
-						return v1;
-		}
-		case AD_MINUS:
-		{
-						 XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateEvaluateSubASMJIT(*var.right, comp, elem, user_data, nested);
-						 if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.subss(v1, v2); else comp.subsd(v1, v2);
-						 comp.unuse(v2);
-						 MultCoef(var.coef, comp, v1);	
-						 return v1;
-		}
-		case AD_MULT:
-		{
-						XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateEvaluateSubASMJIT(*var.right, comp, elem, user_data, nested);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(v1, v2); else comp.mulsd(v1, v2);
-						comp.unuse(v2);
-						MultCoef(var.coef, comp, v1);
-						return v1;
-		}
-		case AD_DIV:
-		{
-					   XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateEvaluateSubASMJIT(*var.right, comp, elem, user_data, nested);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(v1, v2); else comp.divsd(v1, v2);
-					   comp.unuse(v2);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_INV:
-		{
-					   
-					   XmmVar vconst(comp.newXmmVar(GetRealTypeXmm()));
-						SetFloat(comp, vconst, var.coef);
-						XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(vconst, v1); else comp.divsd(vconst, v1);
-					   comp.unuse(v1);
-					   return vconst;
-		}
-		case AD_POW:
-		{
-					   XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateEvaluateSubASMJIT(*var.right, comp, elem, user_data, nested);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float, float)>(::pow))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double, double)>(::pow))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setArg(0, v2);
-					   ctx->setRet(0, v1);
-					   comp.unuse(v2);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_ABS:
-		{
-					   XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::fabs))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::fabs))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_EXP:
-		{
-					   XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::exp))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::exp))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_LOG:
-		{
-					   XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::log))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::log))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_SIN:
-		{
-					   XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::sin))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::sin))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_COS:
-		{
-					   XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::cos))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::cos))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_CONST:
-		{
-						 XmmVar vconst(comp.newXmmVar(GetRealTypeXmm()));
-						SetFloat(comp, vconst, var.coef);
-						return vconst;
-		}
-		case AD_MES:
-		{
-					   XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-					   GpVar address(comp.newGpVar());
-					   GpVar vmesh(comp.newGpVar(kVarTypeUIntPtr));
-					   GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-					   comp.mov(vmesh, imm(reinterpret_cast<int64_t>(m)));
-					   comp.mov(velem, elem);
-					   X86X64CallNode *ctx;
-					   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Mesh *, Storage *)>(Automatizator::GetGeometricDataJIT))));
-					   ctx = comp.call(address, kFuncConvHost, FuncBuilder2<INMOST_DATA_REAL_TYPE, Mesh *, Storage *>());
-					   ctx->setArg(0, vmesh);
-					   ctx->setArg(1, velem);
-					   ctx->setRet(0, ret);
-					   comp.unuse(address);
-					   comp.unuse(vmesh);
-					   comp.unuse(velem);
-					   MultCoef(var.coef, comp, ret);
-					   return ret;
-		}
-		}
-		if (var.op >= AD_FUNC) 
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			GpVar address(comp.newGpVar());
-			GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vuser_data(comp.newGpVar(kVarTypeUIntPtr));
-			comp.mov(velem, elem);
-			comp.mov(vuser_data, user_data);
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Storage *, void *)>(reg_funcs[var.op].func))));
-			X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder2<INMOST_DATA_REAL_TYPE, Storage *, void *>());
-			ctx->setArg(0, velem);
-			ctx->setArg(1, vuser_data);
-			ctx->setRet(0, ret);
-			comp.unuse(address);
-			comp.unuse(velem);
-			comp.unuse(vuser_data);
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		if (var.op >= AD_TABLE)
-		{
-			XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-#if defined(DPRNT)
-			{
-				GpVar addrprnt(comp.newGpVar());
-				comp.mov(addrprnt, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(INMOST_DATA_REAL_TYPE)>(Automatizator::PrintConst))));
-				X86X64CallNode *ctx = comp.call(addrprnt, kFuncConvHost, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-				ctx->setArg(0, v1);
-				ctx->setRet(0, v1);
-			}
-#endif
-#if defined(DPRNT)
-			{
-				GpVar addrprnt(comp.newGpVar());
-				GpVar opid(comp, GetEnumType());
-				GpVar self(comp, kVarTypeUIntPtr);
-				const int64_t vop = static_cast<const INMOST_DATA_ENUM_TYPE &>(var.op);
-				comp.mov(opid, imm(vop));
-				comp.mov(self, imm_ptr(this));
-				comp.mov(addrprnt, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(INMOST_DATA_REAL_TYPE, Automatizator *, INMOST_DATA_ENUM_TYPE)>(Automatizator::PrintOp1))));
-				X86X64CallNode *ctx = comp.call(addrprnt, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, Automatizator *, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, v1);
-				ctx->setArg(1, self);
-				ctx->setArg(2, opid);
-				ctx->setRet(0, v1);
-			}
-#endif
-
-			GpVar address(comp.newGpVar());
-			GpVar vtable(comp.newGpVar(kVarTypeUIntPtr));
-			comp.mov(vtable, imm(reinterpret_cast<int64_t>(reg_tables[var.op])));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(INMOST_DATA_REAL_TYPE,table_ptr)>(Automatizator::GetTableValueJIT))));
-			X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, table_ptr>());
-			ctx->setArg(0, v1);
-			ctx->setArg(1, vtable);
-			ctx->setRet(0, v1);
-			comp.unuse(address);
-			comp.unuse(vtable);
-			MultCoef(var.coef, comp, v1);
-			return v1;
-		}
-		if (var.op >= AD_STNCL)
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			SetFloat(comp, ret, 0.0);
-			
-			GpVar index(comp.newGpVar(GetEnumType()));
-			GpVar stencil_size(comp.newGpVar(GetEnumType()));
-			GpVar stencil_elem(comp.newGpVar(kVarTypeUIntPtr));
-			
-			
-			
-			{
-				const int64_t opid = static_cast<const INMOST_DATA_ENUM_TYPE &>(var.op);
-				GpVar address(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vuser_data(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar stencil_id(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				
-				comp.mov(self, imm_ptr(this));
-				comp.mov(velem, elem);
-				comp.mov(vuser_data, user_data);
-				comp.mov(stencil_id, imm(opid));
-				comp.mov(vnested, imm(nested));
-				comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_ENUM_TYPE(*)(Automatizator *, Storage *, void *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilJIT))));
-				X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder5<INMOST_DATA_ENUM_TYPE, Automatizator *, Storage *, void *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, velem);
-				ctx->setArg(2, vuser_data);
-				ctx->setArg(3, stencil_id);
-				ctx->setArg(4, vnested);
-				ctx->setRet(0, stencil_size);
-				
-				comp.unuse(address);
-				comp.unuse(self);
-				comp.unuse(velem);
-				comp.unuse(vuser_data);
-				comp.unuse(stencil_id);
-				comp.unuse(vnested);
-			}
-
-			comp.mov(index, imm(0));
-			Label L_1(comp.newLabel());
-			comp.bind(L_1);
-			{
-				GpVar address_elem(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vindex(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				comp.mov(self, imm_ptr(this));
-				comp.mov(vindex, index);
-				comp.mov(vnested, imm(nested));
-				comp.mov(address_elem, imm(reinterpret_cast<int64_t>(static_cast<Storage *(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilElemJIT))));
-				X86X64CallNode *ctx = comp.call(address_elem, kFuncConvHost, FuncBuilder3<Storage *, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, vindex);
-				ctx->setArg(2, vnested);
-				ctx->setRet(0, stencil_elem);
-				comp.unuse(address_elem);
-				comp.unuse(vindex);
-				comp.unuse(vnested);
-			}
-			//std::cout << "for " << reg_stencils[var.op].name << " nested " << nested << std::endl;
-			XmmVar v1 = GenerateEvaluateSubASMJIT(*var.left, comp, stencil_elem, user_data, nested+1);
-			{
-				XmmVar stencil_coef(comp.newXmmVar(GetRealTypeXmm()));
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vindex(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				GpVar address_coef(comp.newGpVar());
-				comp.mov(self, imm_ptr(this));
-				comp.mov(vindex, index);
-				comp.mov(vnested, imm(nested));
-				comp.mov(address_coef, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilCoefJIT))));
-				X86X64CallNode * ctx = comp.call(address_coef, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, vindex);
-				ctx->setArg(2, vnested);
-				ctx->setRet(0, stencil_coef);
-				comp.unuse(vindex);
-				comp.unuse(vnested);
-				comp.unuse(address_coef);
-				if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(v1, stencil_coef); else comp.mulsd(v1, stencil_coef);
-				comp.unuse(stencil_coef);
-			}
-			
-			if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.addss(ret, v1); else comp.addsd(ret, v1);
-			comp.unuse(v1);
-
-			comp.inc(index);
-			comp.cmp(index, stencil_size);
-			comp.jne(L_1);
-
-			comp.unuse(index);
-			comp.unuse(stencil_size);
-			comp.unuse(stencil_elem);
-			
-
-			{
-				const int64_t opid = static_cast<const INMOST_DATA_ENUM_TYPE &>(var.op);
-				GpVar address(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar stencil_id(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				comp.mov(self, imm_ptr(this));
-				comp.mov(stencil_id, imm(opid));
-				comp.mov(vnested, imm(nested));
-				comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<void(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::ClearStencilJIT))));
-				X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder3<void, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, stencil_id);
-				ctx->setArg(2, vnested);
-				comp.unuse(address);
-				comp.unuse(self);
-				comp.unuse(stencil_id);
-				comp.unuse(vnested);
-			}
-
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		if (var.op >= AD_CTAG)
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			GpVar address(comp.newGpVar());
-			GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vtag(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vcomp(comp.newGpVar(GetEnumType()));
-			comp.mov(velem, elem);
-			comp.mov(vtag, imm_ptr(reinterpret_cast<void *>(&reg_ctags[var.op].t)));
-			comp.mov(vcomp, imm(*(INMOST_DATA_ENUM_TYPE *)(&var.left)));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Storage *, Tag *, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetValueJIT))));
-			X86X64CallNode * ctx = comp.call(address, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, Storage *, Tag *, INMOST_DATA_ENUM_TYPE>());
-			ctx->setArg(0, velem);
-			ctx->setArg(1, vtag);
-			ctx->setArg(2, vcomp);
-			ctx->setRet(0,ret);
-			comp.unuse(velem);
-			comp.unuse(vtag);
-			comp.unuse(vcomp);
-			comp.unuse(address);
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		if (var.op >= AD_TAG)
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			GpVar address(comp.newGpVar());
-			GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vtag(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vcomp(comp.newGpVar(GetEnumType()));
-			comp.mov(velem, elem);
-			comp.mov(vtag, imm_ptr(reinterpret_cast<void *>(&reg_tags[var.op].d.t)));
-			comp.mov(vcomp, imm(*(INMOST_DATA_ENUM_TYPE *)(&var.left)));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Storage *, Tag *, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetValueJIT))));
-			X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, Storage *, Tag *, INMOST_DATA_ENUM_TYPE>());
-			ctx->setArg(0, velem);
-			ctx->setArg(1, vtag);
-			ctx->setArg(2, vcomp);
-			ctx->setRet(0, ret);
-			comp.unuse(velem);
-			comp.unuse(vtag);
-			comp.unuse(vcomp);
-			comp.unuse(address);
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		assert(false);
-		*/
-		return comp.newXmmVar();
-	}
-
-	void Automatizator::PushCode(asmjit::host::Compiler & comp, asmjit::host::XmmVar & var)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-		GpVar address(comp.newGpVar());
-		//comp.spill(var);
-		XmmVar tmp(comp.newXmmVar(GetRealTypeXmm()));
-		if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(tmp, var); else comp.movsd(tmp, var);
-		comp.mov(self, imm_ptr(this));
-		comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<void(*)(INMOST_DATA_REAL_TYPE, Automatizator *)>(Automatizator::PushJIT))));
-		X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder2<void, INMOST_DATA_REAL_TYPE, Automatizator *>());
-		ctx->setArg(0, tmp);
-		ctx->setArg(1, self);
-		//ctx->setRet(0, tmp);
-		//comp.alloc(var);
-		comp.unuse(tmp);
-		comp.unuse(self);
-		comp.unuse(address);
-	}
-
-
-	void Automatizator::PopCode(asmjit::host::Compiler & comp, asmjit::host::XmmVar & var)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-		GpVar address(comp.newGpVar());
-		XmmVar tmp(comp.newXmmVar(GetRealTypeXmm()));
-		comp.mov(self, imm_ptr(this));
-		comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Automatizator *)>(Automatizator::PopJIT))));
-		X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder1<INMOST_DATA_REAL_TYPE, Automatizator *>());
-		ctx->setArg(0, self);
-		ctx->setRet(0, tmp);
-		if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(var, tmp); else comp.movsd(var, tmp);
-		comp.unuse(tmp);
-		comp.unuse(self);
-		comp.unuse(address);
-	}
-
-	asmjit::host::XmmVar   Automatizator::GenerateDerivativePrecomputeSubASMJIT(const expr & var, asmjit::host::Compiler & comp, asmjit::host::GpVar & elem, asmjit::host::GpVar & user_data, INMOST_DATA_ENUM_TYPE nested)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		/*
-		assert(var.op != AD_NONE);
-
-		switch (var.op)
-		{
-		case AD_COND:
-		{
-						XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-						XmmVar v0 = GenerateEvaluateSubASMJIT(*var.left, comp, elem, user_data, nested);
-						XmmVar zero(comp.newXmmVar(GetRealTypeXmm()));
-						SetFloat(comp, zero, 0.0);
-						Label Brench(comp.newLabel()), Exit(comp.newLabel());
-						
-						//GpVar vzero(comp.newGpVar(GetRealType()));
-						//INMOST_DATA_REAL_TYPE zeroval = 0.0;
-						//const int64_t * i = reinterpret_cast<const int64_t *>(&zeroval);
-						//comp.mov(vzero, imm(i[0]));
-						//comp.movq(zero, vzero);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.comiss(zero, v0); else comp.comisd(zero, v0); // zero -> zero <= v0
-						//if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.cmpss(zero, v0, 2); else comp.cmpsd(zero, v0, 2); // zero -> zero <= v0
-						//comp.movq(vzero, zero);
-						//comp.cmp(vzero, imm(0));
-						comp.ja(Brench);
-						//comp.movq(ret, vzero); //redundant!!
-						XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.right->left, comp, elem, user_data, nested);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(ret, v1); else comp.movsd(ret, v1);
-						comp.unuse(v1);
-						comp.jmp(Exit);
-						comp.bind(Brench);
-						//comp.movq(ret, vzero); //redundant!!
-						XmmVar v2 = GenerateDerivativePrecomputeSubASMJIT(*var.right->right, comp, elem, user_data, nested);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(ret, v2); else comp.movsd(ret, v2);
-						comp.unuse(v2);
-						comp.bind(Exit);
-						MultCoef(var.coef, comp, ret);
-						//comp.unuse(vzero);
-						comp.unuse(zero);
-						PushCode(comp, v0);
-						comp.unuse(v0);
-						return ret;
-		}
-		case AD_PLUS:
-		{
-						XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateDerivativePrecomputeSubASMJIT(*var.right, comp, elem, user_data, nested);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.addss(v1, v2); else comp.addsd(v1, v2);
-						comp.unuse(v2);
-						MultCoef(var.coef, comp, v1);
-						return v1;
-		}
-		case AD_MINUS:
-		{
-						 XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateDerivativePrecomputeSubASMJIT(*var.right, comp, elem, user_data, nested);
-						 if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.subss(v1, v2); else comp.subsd(v1, v2);
-						 comp.unuse(v2);
-						 MultCoef(var.coef, comp, v1);
-						 return v1;
-		}
-		case AD_MULT:
-		{
-						XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-						comp.save(v1);
-						XmmVar v2 = GenerateDerivativePrecomputeSubASMJIT(*var.right, comp, elem, user_data, nested);
-						comp.save(v2);
-						//comp.spill(v1);
-						//comp.spill(v2);
-						
-						PushCode(comp, v1);
-						PushCode(comp, v2);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(v1, v2); else comp.mulsd(v1, v2);
-						MultCoef(var.coef, comp, v1);
-						comp.unuse(v2);
-						return v1;
-		}
-		case AD_DIV:
-		{
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateDerivativePrecomputeSubASMJIT(*var.right, comp, elem, user_data, nested);
-					   PushCode(comp, v1);
-					   PushCode(comp, v2);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(v1, v2); else comp.divsd(v1, v2);
-					   comp.unuse(v2);
-					   return v1;
-		}
-		case AD_INV:
-		{
-
-					   XmmVar vconst(comp.newXmmVar(GetRealTypeXmm()));
-					   SetFloat(comp, vconst, var.coef);
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   PushCode(comp, v1);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(vconst, v1); else comp.divsd(vconst, v1);
-					   comp.unuse(v1);
-					   return vconst;
-		}
-		case AD_POW:
-		{
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested), v2 = GenerateDerivativePrecomputeSubASMJIT(*var.right, comp, elem, user_data, nested);
-					   PushCode(comp, v1);
-					   PushCode(comp, v2);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float, float)>(::pow))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double, double)>(::pow))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setArg(0, v2);
-					   ctx->setRet(0, v1);
-					   PushCode(comp, v1);
-					   comp.unuse(v2);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_ABS:
-		{
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   PushCode(comp, v1);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::fabs))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::fabs))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_EXP:
-		{
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::exp))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::exp))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   PushCode(comp, v1);
-					   return v1;
-		}
-		case AD_LOG:
-		{
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   PushCode(comp, v1);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::log))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::log))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_SIN:
-		{
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   PushCode(comp, v1);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::sin))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::sin))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_COS:
-		{
-					   XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-					   PushCode(comp, v1);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::cos))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::cos))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   MultCoef(var.coef, comp, v1);
-					   return v1;
-		}
-		case AD_CONST:
-		{
-						 XmmVar vconst(comp.newXmmVar(GetRealTypeXmm()));
-						 SetFloat(comp,vconst, var.coef);
-						 return vconst;
-		}
-		case AD_MES:
-		{
-					   XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-					   GpVar address(comp.newGpVar());
-					   GpVar vmesh(comp.newGpVar(kVarTypeUIntPtr));
-					   GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-					   comp.mov(vmesh, imm(reinterpret_cast<int64_t>(m)));
-					   comp.mov(velem, elem);
-					   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Mesh *, Storage *)>(Automatizator::GetGeometricDataJIT))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder2<INMOST_DATA_REAL_TYPE, Mesh *, Storage *>());
-					   ctx->setArg(0, vmesh);
-					   ctx->setArg(1, velem);
-					   ctx->setRet(0, ret);
-					   comp.unuse(address);
-					   comp.unuse(vmesh);
-					   comp.unuse(velem);
-					   MultCoef(var.coef, comp, ret);
-					   return ret;
-		}
-		}
-		if (var.op >= AD_FUNC)
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			GpVar address(comp.newGpVar());
-			GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vuser_data(comp.newGpVar(kVarTypeUIntPtr));
-			comp.mov(velem, elem);
-			comp.mov(vuser_data, user_data);
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Storage *, void *)>(reg_funcs[var.op].func))));
-			X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder2<INMOST_DATA_REAL_TYPE, Storage *, void *>());
-			ctx->setArg(0, velem);
-			ctx->setArg(1, vuser_data);
-			ctx->setRet(0, ret);
-			comp.unuse(address);
-			comp.unuse(velem);
-			comp.unuse(vuser_data);
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		if (var.op >= AD_TABLE)
-		{
-			XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, elem, user_data, nested);
-			PushCode(comp, v1);
-			GpVar address(comp.newGpVar());
-			GpVar vtable(comp.newGpVar(kVarTypeUIntPtr));
-			comp.mov(vtable, imm(reinterpret_cast<int64_t>(reg_tables[var.op])));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(INMOST_DATA_REAL_TYPE, table_ptr)>(Automatizator::GetTableValueJIT))));
-			X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, table_ptr>());
-			ctx->setArg(0, v1);
-			ctx->setArg(1, vtable);
-			ctx->setRet(0, v1);
-			comp.unuse(address);
-			comp.unuse(vtable);
-			MultCoef(var.coef, comp, v1);
-			return v1;
-		}
-		if (var.op >= AD_STNCL)
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			SetFloat(comp, ret, 0.0);
-
-			GpVar index(comp.newGpVar(GetEnumType()));
-			GpVar stencil_size(comp.newGpVar(GetEnumType()));
-			GpVar stencil_elem(comp.newGpVar(kVarTypeUIntPtr));
-
-
-
-			{
-				const int64_t opid = static_cast<const INMOST_DATA_ENUM_TYPE &>(var.op);
-				GpVar address(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vuser_data(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar stencil_id(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-
-				comp.mov(self, imm_ptr(this));
-				comp.mov(velem, elem);
-				comp.mov(vuser_data, user_data);
-				comp.mov(stencil_id, imm(opid));
-				comp.mov(vnested, imm(nested));
-				comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_ENUM_TYPE(*)(Automatizator *, Storage *, void *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilJIT))));
-				X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder5<INMOST_DATA_ENUM_TYPE, Automatizator *, Storage *, void *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, velem);
-				ctx->setArg(2, vuser_data);
-				ctx->setArg(3, stencil_id);
-				ctx->setArg(4, vnested);
-				ctx->setRet(0, stencil_size);
-
-				comp.unuse(address);
-				comp.unuse(self);
-				comp.unuse(velem);
-				comp.unuse(vuser_data);
-				comp.unuse(stencil_id);
-				comp.unuse(vnested);
-			}
-			comp.mov(index, imm(0));
-			Label L_1(comp.newLabel());
-			comp.bind(L_1);
-			{
-				GpVar address_elem(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vindex(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				comp.mov(self, imm_ptr(this));
-				comp.mov(vindex, index);
-				comp.mov(vnested, imm(nested));
-				comp.mov(address_elem, imm(reinterpret_cast<int64_t>(static_cast<Storage *(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilElemJIT))));
-				X86X64CallNode *ctx = comp.call(address_elem, kFuncConvHost, FuncBuilder3<Storage *, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, vindex);
-				ctx->setArg(2, vnested);
-				ctx->setRet(0, stencil_elem);
-				comp.unuse(address_elem);
-				comp.unuse(self);
-				comp.unuse(vindex);
-				comp.unuse(vnested);
-			}
-			//std::cout << "for " << reg_stencils[var.op].name << " nested " << nested << std::endl;
-			XmmVar v1 = GenerateDerivativePrecomputeSubASMJIT(*var.left, comp, stencil_elem, user_data, nested + 1);
-			{
-				XmmVar stencil_coef(comp.newXmmVar(GetRealTypeXmm()));
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vindex(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				GpVar address_coef(comp.newGpVar());
-				comp.mov(self, imm_ptr(this));
-				comp.mov(vindex, index);
-				comp.mov(vnested, imm(nested));
-				comp.mov(address_coef, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilCoefJIT))));
-				X86X64CallNode * ctx = comp.call(address_coef, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, vindex);
-				ctx->setArg(2, vnested);
-				ctx->setRet(0, stencil_coef);
-				comp.unuse(vindex);
-				comp.unuse(vnested);
-				comp.unuse(address_coef);
-				if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(v1, stencil_coef); else comp.mulsd(v1, stencil_coef);
-				comp.unuse(stencil_coef);
-			}
-
-			if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.addss(ret, v1); else comp.addsd(ret, v1);
-			comp.unuse(v1);
-
-			comp.inc(index);
-			comp.cmp(index, stencil_size);
-			comp.jne(L_1);
-
-			comp.unuse(index);
-			comp.unuse(stencil_size);
-			comp.unuse(stencil_elem);
-
-
-			{
-				const int64_t opid = static_cast<const INMOST_DATA_ENUM_TYPE &>(var.op);
-				GpVar address(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar stencil_id(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				comp.mov(self, imm_ptr(this));
-				comp.mov(stencil_id, imm(opid));
-				comp.mov(vnested, imm(nested));
-				comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<void(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::ClearStencilJIT))));
-				X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder3<void, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, stencil_id);
-				ctx->setArg(2, vnested);
-				comp.unuse(address);
-				comp.unuse(self);
-				comp.unuse(stencil_id);
-				comp.unuse(vnested);
-			}
-
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		if (var.op >= AD_CTAG)
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			GpVar address(comp.newGpVar());
-			GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vtag(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vcomp(comp.newGpVar(GetEnumType()));
-			comp.mov(velem, elem);
-			comp.mov(vtag, imm_ptr(reinterpret_cast<void *>(&reg_ctags[var.op].t)));
-			comp.mov(vcomp, imm(*(INMOST_DATA_ENUM_TYPE *)(&var.left)));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Storage *, Tag *, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetValueJIT))));
-			X86X64CallNode * ctx = comp.call(address, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, Storage *, Tag *, INMOST_DATA_ENUM_TYPE>());
-			ctx->setArg(0, velem);
-			ctx->setArg(1, vtag);
-			ctx->setArg(2, vcomp);
-			ctx->setRet(0, ret);
-			comp.unuse(velem);
-			comp.unuse(vtag);
-			comp.unuse(vcomp);
-			comp.unuse(address);
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		if (var.op >= AD_TAG)
-		{
-			XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-			GpVar address(comp.newGpVar());
-			GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vtag(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vcomp(comp.newGpVar(GetEnumType()));
-			comp.mov(velem, elem);
-			comp.mov(vtag, imm_ptr(reinterpret_cast<void *>(&reg_tags[var.op].d.t)));
-			comp.mov(vcomp, imm(*(INMOST_DATA_ENUM_TYPE *)(&var.left)));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Storage *, Tag *, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetValueJIT))));
-			X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, Storage *, Tag *, INMOST_DATA_ENUM_TYPE>());
-			ctx->setArg(0, velem);
-			ctx->setArg(1, vtag);
-			ctx->setArg(2, vcomp);
-			ctx->setRet(0, ret);
-			comp.unuse(velem);
-			comp.unuse(vtag);
-			comp.unuse(vcomp);
-			comp.unuse(address);
-			MultCoef(var.coef, comp, ret);
-			return ret;
-		}
-		assert(false);
-		*/
-		return comp.newXmmVar();
-	}
-
-
-	void      Automatizator::GenerateDerivativeFillSubASMJIT(const expr & var, asmjit::host::Compiler & comp, asmjit::host::GpVar & elem, asmjit::host::GpVar & user_data, asmjit::host::GpVar & row, asmjit::host::XmmVar & multval, INMOST_DATA_ENUM_TYPE nested)
-	{
-		using namespace asmjit;
-		using namespace asmjit::host;
-		/*
-		assert(var.op != AD_NONE);
-
-		switch (var.op)
-		{
-		case AD_COND:
-		{
-						MultCoef(var.coef, comp, multval);
-						XmmVar v0(comp.newXmmVar(GetRealTypeXmm()));
-						PopCode(comp, v0);
-						XmmVar zero(comp.newXmmVar(GetRealTypeXmm()));
-						Label Brench(comp.newLabel()), Exit(comp.newLabel());
-						SetFloat(comp, zero, 0.0);
-						//GpVar vzero(comp.newGpVar(GetRealType()));
-						//INMOST_DATA_REAL_TYPE zeroval = 0.0;
-						//const int64_t * i = reinterpret_cast<const int64_t *>(&zeroval);
-						//comp.mov(vzero, imm(i[0]));
-						//comp.movq(zero, vzero);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.comiss(zero, v0); else comp.comisd(zero, v0); // zero -> zero <= v0
-						//if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.cmpss(zero, v0, 2); else comp.cmpsd(zero, v0, 2); // zero -> zero <= v0
-						//comp.movq(vzero, zero);
-						//comp.cmp(vzero, imm(0));
-						comp.ja(Brench);
-						//comp.movq(v0, vzero); //redundant!!
-						GenerateDerivativeFillSubASMJIT(*var.right->left, comp, elem, user_data,row, multval, nested);
-						comp.jmp(Exit);
-						comp.bind(Brench);
-						//comp.movq(v0, vzero); //redundant!!
-						GenerateDerivativeFillSubASMJIT(*var.right->right, comp, elem, user_data,row, multval, nested);
-						comp.bind(Exit);
-						comp.unuse(zero);
-						comp.unuse(v0);
-						return;
-		}
-		case AD_PLUS:
-		{
-						MultCoef(var.coef, comp, multval);
-						GenerateDerivativeFillSubASMJIT(*var.right, comp, elem, user_data,row, multval, nested);
-						GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, multval, nested);
-						return;
-		}
-		case AD_MINUS:
-		{
-						 MultCoef(-var.coef, comp, multval);
-						 GenerateDerivativeFillSubASMJIT(*var.right, comp, elem, user_data,row, multval, nested);
-						 MultCoef(-1.0, comp, multval);
-						 GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, multval, nested);
-						 return;
-		}
-		case AD_MULT:
-		{
-						XmmVar v1(comp.newXmmVar(GetRealTypeXmm())), v2(comp.newXmmVar(GetRealTypeXmm()));
-						PopCode(comp, v2);
-						PopCode(comp, v1);
-						MultCoef(var.coef, comp, multval);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(v1, multval); else comp.mulsd(v1, multval);
-						if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(v2, multval); else comp.mulsd(v2, multval);
-						GenerateDerivativeFillSubASMJIT(*var.right, comp, elem, user_data,row, v1, nested);
-						comp.unuse(v1);
-						GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, v2, nested); 
-						comp.unuse(v2);
-						return;
-		}
-		case AD_DIV:
-		{
-					   XmmVar v1(comp.newXmmVar(GetRealTypeXmm())), v2(comp.newXmmVar(GetRealTypeXmm())), lv(comp.newXmmVar(GetRealTypeXmm())), rv0(comp.newXmmVar(GetRealTypeXmm())), rv(comp.newXmmVar(GetRealTypeXmm()));
-					   PopCode(comp, v2);
-					   PopCode(comp, v1);
-					   MultCoef(var.coef, comp, multval);
-					   SetFloat(comp, rv, 0.0);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(lv, multval); else comp.movsd(lv, multval);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(lv, v2);      else comp.divsd(lv, v2);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(rv0, lv);     else comp.movsd(rv0, lv);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(rv0, v1);     else comp.mulsd(rv0, v1);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(rv0, v2);     else comp.divsd(rv0, v2);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.subss(rv, rv0);     else comp.subsd(rv, rv0);
-					   comp.unuse(v1);
-					   comp.unuse(v2);
-					   comp.unuse(rv0);
-					   GenerateDerivativeFillSubASMJIT(*var.right, comp, elem, user_data,row, rv, nested);
-					   comp.unuse(rv);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, lv, nested);
-					   comp.unuse(lv);
-					   return;
-		}
-		case AD_INV:
-		{
-					   XmmVar v1(comp.newXmmVar(GetRealTypeXmm())), newmult(comp.newXmmVar(GetRealTypeXmm()));
-					   PopCode(comp, v1);
-					   SetFloat(comp,newmult, 0.0);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.subss(newmult, multval);     else comp.subsd(newmult, multval);
-					   MultCoef(var.coef, comp, newmult);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(newmult, v1);     else comp.divsd(newmult, v1);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(newmult, v1);     else comp.divsd(newmult, v1);
-					   comp.unuse(v1);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, newmult, nested);
-					   comp.unuse(newmult);
-					   return;
-		}
-		case AD_POW:
-		{
-					   XmmVar v1(comp.newXmmVar(GetRealTypeXmm())), v2(comp.newXmmVar(GetRealTypeXmm())), ret(comp.newXmmVar(GetRealTypeXmm())), lv(comp.newXmmVar(GetRealTypeXmm())), rv(comp.newXmmVar(GetRealTypeXmm()));
-					   PopCode(comp, ret);
-					   PopCode(comp, v2);
-					   PopCode(comp, v1);
-					   MultCoef(var.coef, comp, multval);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(multval, ret); else comp.mulsd(multval,ret);
-					   comp.unuse(ret);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(lv, multval); else comp.movsd(lv, multval);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(rv, multval); else comp.movsd(rv, multval);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(rv, v2);      else comp.mulsd(rv, v2);
-					   comp.unuse(v2);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(rv, v1);      else comp.divsd(rv, v1);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::log))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::log))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(lv, v1); else comp.mulsd(lv, v1);
-					   comp.unuse(v1);
-					   GenerateDerivativeFillSubASMJIT(*var.right, comp, elem, user_data,row, rv, nested);
-					   comp.unuse(rv);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, lv, nested);
-					   comp.unuse(lv);
-					   return;
-		}
-		case AD_ABS:
-		{
-					   XmmVar v1(comp.newXmmVar(GetRealTypeXmm()));
-					   PopCode(comp, v1);
-					   MultCoef(var.coef, comp, multval);
-					   XmmVar zero(comp.newXmmVar(GetRealTypeXmm()));
-					   SetFloat(comp, zero, 0.0);
-					   Label Brench(comp.newLabel()), Exit(comp.newLabel());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.comiss(zero, v1); else comp.comisd(zero, v1); // zero -> zero <= v0
-					   comp.unuse(v1);
-					   comp.ja(Brench);
-					   SetFloat(comp, zero, 1.0);
-					   comp.jmp(Exit);
-					   comp.bind(Brench);
-					   SetFloat(comp, zero, -1.0);
-					   comp.bind(Exit);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(multval, zero);      else comp.mulsd(multval, zero);
-					   comp.unuse(zero);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, multval, nested);
-					   return;
-		}
-		case AD_EXP:
-		{
-					   XmmVar ret(comp.newXmmVar(GetRealTypeXmm()));
-					   PopCode(comp, ret);
-					   MultCoef(var.coef, comp, multval);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(multval, ret);      else comp.mulsd(multval, ret);
-					   comp.unuse(ret);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, multval, nested);
-					   return;
-		}
-		case AD_LOG:
-		{
-					   XmmVar v1(comp.newXmmVar(GetRealTypeXmm()));
-					   PopCode(comp, v1);
-					   MultCoef(var.coef, comp, multval);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.divss(multval, v1);      else comp.divsd(multval, v1);
-					   comp.unuse(v1);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, multval, nested);
-					   return;
-		}
-		case AD_SIN:
-		{
-					   XmmVar v1(comp.newXmmVar(GetRealTypeXmm()));
-					   PopCode(comp, v1);
-					   MultCoef(var.coef, comp, multval);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::cos))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::cos))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(multval, v1);      else comp.mulsd(multval, v1);
-					   comp.unuse(v1);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, multval, nested);
-					   return;
-		}
-		case AD_COS:
-		{
-					   XmmVar v1(comp.newXmmVar(GetRealTypeXmm())), newmult(comp.newXmmVar(GetRealTypeXmm()));
-					   SetFloat(comp, newmult, 0.0);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.subss(newmult, multval);      else comp.mulsd(newmult, multval);
-					   MultCoef(var.coef, comp, newmult);
-					   PopCode(comp, v1);
-					   GpVar address(comp.newGpVar());
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4)
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<float(__cdecl*)(float)>(::sin))));
-					   else
-						   comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<double(__cdecl*)(double)>(::sin))));
-					   X86X64CallNode *ctx = comp.call(address, kFuncConvHostCDecl, FuncBuilder1<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>());
-					   ctx->setArg(0, v1);
-					   ctx->setRet(0, v1);
-					   comp.unuse(address);
-					   if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(multval, v1);      else comp.mulsd(multval, v1);
-					   comp.unuse(v1);
-					   GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, newmult, nested);
-					   comp.unuse(newmult);
-					   return;
-		}
-		case AD_CONST: return;
-		case AD_MES: return;
-		}
-		if (var.op >= AD_FUNC)
-		{
-			return;
-		}
-		if (var.op >= AD_TABLE)
-		{
-			XmmVar v1(comp.newXmmVar(GetRealTypeXmm()));
-			PopCode(comp, v1);
-			GpVar address(comp.newGpVar());
-			GpVar vtable(comp.newGpVar(kVarTypeUIntPtr));
-			comp.mov(vtable, imm(reinterpret_cast<int64_t>(reg_tables[var.op])));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(INMOST_DATA_REAL_TYPE, table_ptr)>(Automatizator::GetTableDerivativeJIT))));
-			X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, table_ptr>());
-			ctx->setArg(0, v1);
-			ctx->setArg(1, vtable);
-			ctx->setRet(0, v1);
-			comp.unuse(address);
-			comp.unuse(vtable);
-			if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(multval, v1);      else comp.mulsd(multval, v1);
-			comp.unuse(v1);
-			MultCoef(var.coef, comp, multval);
-			GenerateDerivativeFillSubASMJIT(*var.left, comp, elem, user_data,row, multval, nested);
-			return;
-		}
-		if (var.op >= AD_STNCL)
-		{
-			
-			
-			MultCoef(var.coef, comp, multval);
-			GpVar index(comp.newGpVar(GetEnumType()));
-			GpVar stencil_size(comp.newGpVar(GetEnumType()));
-			GpVar stencil_elem(comp.newGpVar(kVarTypeUIntPtr));
-			
-			XmmVar newmult(comp.newXmmVar(GetRealTypeXmm()));
-
-			
-			{
-				const int64_t opid = static_cast<const INMOST_DATA_ENUM_TYPE &>(var.op);
-				GpVar address(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vuser_data(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar stencil_id(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-
-				comp.mov(self, imm_ptr(this));
-				comp.mov(velem, elem);
-				comp.mov(vuser_data, user_data);
-				comp.mov(stencil_id, imm(opid));
-				comp.mov(vnested, imm(nested));
-				comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_ENUM_TYPE(*)(Automatizator *, Storage *, void *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilJIT))));
-				X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder5<INMOST_DATA_ENUM_TYPE, Automatizator *, Storage *, void *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, velem);
-				ctx->setArg(2, vuser_data);
-				ctx->setArg(3, stencil_id);
-				ctx->setArg(4, vnested);
-				ctx->setRet(0, stencil_size);
-
-				comp.unuse(address);
-				comp.unuse(self);
-				comp.unuse(velem);
-				comp.unuse(vuser_data);
-				comp.unuse(stencil_id);
-				comp.unuse(vnested);
-			}
-			
-			comp.mov(index, stencil_size);
-			//comp.mov(index, imm(0));
-			
-			
-			Label L_1(comp.newLabel());
-			comp.bind(L_1);
-			
-			comp.dec(index);
-			XmmVar stencil_coef(comp.newXmmVar(GetRealTypeXmm()));
-			{
-
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vindex(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				GpVar address_coef(comp.newGpVar());
-				comp.mov(self, imm_ptr(this));
-				comp.mov(vindex, index);
-				comp.mov(vnested, imm(nested));
-				comp.mov(address_coef, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_REAL_TYPE(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilCoefJIT))));
-				X86X64CallNode * ctx = comp.call(address_coef, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, vindex);
-				ctx->setArg(2, vnested);
-				ctx->setRet(0, stencil_coef);
-				comp.unuse(self);
-				comp.unuse(vindex);
-				comp.unuse(vnested);
-				comp.unuse(address_coef);
-			}
-			if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(newmult, multval);      else comp.movsd(newmult, multval);
-			if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.mulss(newmult, stencil_coef); else comp.mulsd(newmult, stencil_coef);
-			comp.unuse(stencil_coef);
-			
-
-			
-
-			{
-				GpVar address_elem(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar vindex(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				comp.mov(self, imm_ptr(this));
-				comp.mov(vindex, index);
-				comp.mov(vnested, imm(nested));
-				comp.mov(address_elem, imm(reinterpret_cast<int64_t>(static_cast<Storage *(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetStencilElemJIT))));
-				X86X64CallNode *ctx = comp.call(address_elem, kFuncConvHost, FuncBuilder3<Storage *, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, vindex);
-				ctx->setArg(2, vnested);
-				ctx->setRet(0, stencil_elem);
-				comp.unuse(address_elem);
-				comp.unuse(self);
-				comp.unuse(vindex);
-				comp.unuse(vnested);
-			}
-			
-			
-			
-			
-
-			
-
-
-			
-			
-			GenerateDerivativeFillSubASMJIT(*var.left, comp, stencil_elem, user_data,row,newmult, nested + 1);
-			
-			comp.cmp(index, 0);
-			comp.jne(L_1);
-			
-			comp.unuse(index);
-			comp.unuse(stencil_size);
-			comp.unuse(stencil_elem);
-			
-
-			{
-				const int64_t opid = static_cast<const INMOST_DATA_ENUM_TYPE &>(var.op);
-				GpVar address(comp.newGpVar());
-				GpVar self(comp.newGpVar(kVarTypeUIntPtr));
-				GpVar stencil_id(comp.newGpVar(GetEnumType()));
-				GpVar vnested(comp.newGpVar(GetEnumType()));
-				comp.mov(self, imm_ptr(this));
-				comp.mov(stencil_id, imm(opid));
-				comp.mov(vnested, imm(nested));
-				comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<void(*)(Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE)>(Automatizator::ClearStencilJIT))));
-				X86X64CallNode *ctx = comp.call(address, kFuncConvHost, FuncBuilder3<void, Automatizator *, INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>());
-				ctx->setArg(0, self);
-				ctx->setArg(1, stencil_id);
-				ctx->setArg(2, vnested);
-				comp.unuse(address);
-				comp.unuse(self);
-				comp.unuse(stencil_id);
-				comp.unuse(vnested);
-			}
-			
-			
-			return;
-		}
-		if (var.op >= AD_CTAG)
-		{
-			return;
-		}
-		if (var.op >= AD_TAG)
-		{
-			MultCoef(var.coef, comp, multval);
-			GpVar address(comp.newGpVar());
-			GpVar vrow(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vindex(comp.newGpVar(GetEnumType()));
-			GpVar velem(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vtag(comp.newGpVar(kVarTypeUIntPtr));
-			GpVar vcomp(comp.newGpVar(GetEnumType()));
-			comp.mov(velem, elem);
-			comp.mov(vtag, imm_ptr(reinterpret_cast<void *>(&reg_tags[var.op].indices)));
-			comp.mov(vcomp, imm(*(INMOST_DATA_ENUM_TYPE *)(&var.left)));
-			comp.mov(address, imm(reinterpret_cast<int64_t>(static_cast<INMOST_DATA_ENUM_TYPE(*)(Storage *, Tag *, INMOST_DATA_ENUM_TYPE)>(Automatizator::GetIndexJIT))));
-			X86X64CallNode * ctx = comp.call(address, kFuncConvHost, FuncBuilder3<INMOST_DATA_ENUM_TYPE, Storage *, Tag *, INMOST_DATA_ENUM_TYPE>());
-			ctx->setArg(0, velem);
-			ctx->setArg(1, vtag);
-			ctx->setArg(2, vcomp);
-			ctx->setRet(0, vindex);
-			XmmVar tmp(comp.newXmmVar(GetRealTypeXmm()));
-			if (sizeof(INMOST_DATA_REAL_TYPE) == 4) comp.movss(tmp, multval); else comp.movsd(tmp, multval);
-			comp.mov(vrow, row);
-			comp.mov(address, imm_ptr((static_cast<INMOST_DATA_REAL_TYPE(*)(INMOST_DATA_REAL_TYPE, INMOST_DATA_ENUM_TYPE, Solver::Row *)>(Automatizator::InsertPairJIT))));
-			ctx = comp.call(address, kFuncConvHost, FuncBuilder3<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, INMOST_DATA_ENUM_TYPE, Solver::Row *>());
-			ctx->setArg(0, tmp);
-			ctx->setArg(1, vindex);
-			ctx->setArg(2, vrow);
-			ctx->setRet(0,tmp);
-			return;
-		}
-		assert(false);
-		*/
-		return;
-	}
-
-	INMOST_DATA_REAL_TYPE Automatizator::Evaluate(void * prog, Storage * elem, void * user_data)
-	{
-		typedef std::pair<void *, void *> input_t;
-		typedef INMOST_DATA_REAL_TYPE(*Func)(Storage *, void *);
-		input_t * inp = (input_t *)prog;
-		Func func = asmjit_cast<Func>(inp->first);
-		return func(elem, user_data);
-	}
-
-	INMOST_DATA_REAL_TYPE Automatizator::Derivative(void * prog, Storage * elem, Solver::Row & row, void * user_data)
-	{
-		typedef std::pair<void *, void *> input_t;
-		typedef INMOST_DATA_REAL_TYPE(*Func)(Storage *, void *, Solver::Row *);
-		input_t * inp = (input_t *)prog;
-		Func func = asmjit_cast<Func>(inp->second);
-		return func(elem, user_data,&row);
-	}
-#endif
 };
 
 #endif //USE_AUTODIFF

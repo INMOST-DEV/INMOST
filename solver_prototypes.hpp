@@ -32,6 +32,7 @@ class IterativeMethod : public Method
 public:
 	virtual INMOST_DATA_ENUM_TYPE GetIterations() = 0;
 	virtual INMOST_DATA_REAL_TYPE GetResidual() = 0;
+	virtual std::string GetReason() = 0;
 	virtual ~IterativeMethod() {}
 };
 

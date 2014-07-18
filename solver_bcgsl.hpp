@@ -8,7 +8,9 @@
 
 #include "inmost_solver.h"
 
+//#if !defined(NDEBUG)
 #define REPORT_RESIDUAL
+//#endif
 
 namespace INMOST
 {
@@ -21,6 +23,7 @@ namespace INMOST
 		Solver::Vector r0, t, * u, * r;
 		Solver::Matrix * Alink;
 		Method * prec;
+		std::string reason;
 		Solver::OrderInfo * info;
 		bool init;
 	public:
@@ -137,8 +140,8 @@ namespace INMOST
 			iters = 0;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
-			info->Update(SOL);
-			info->Update(RHS);
+			if( is_parallel ) info->Update(SOL);
+			if( is_parallel ) info->Update(RHS);
 			if( prec != NULL ) prec->ReplaceSOL(SOL);
 			if( prec != NULL ) prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
@@ -164,12 +167,13 @@ namespace INMOST
 				//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 				//std::cout << "iter " << last_it << " resid " << resid << "\r";
 				//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-				printf("iter %3d resid %12g | %12g\r", last_it, resid, atol);
+				printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
 				fflush(stdout);
 			}
 #endif
 			long double tt, ts, tp, ttt;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < maxits; ++i)
+			INMOST_DATA_ENUM_TYPE i = 0;
+			while( true )
 			{
 				ts = tp = 0;
 				rho0 = -omega*rho0;
@@ -181,6 +185,11 @@ namespace INMOST
 					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
 						rho1 += r[j][k]*r0[k];
 					if( is_parallel ) info->Integrate(&rho1,1);
+					if( fabs(rho0) < 1.0e-54 ) 
+					{
+						reason = "denominator(1) is zero";
+						goto exit;
+					}
 					beta = alpha * rho1/rho0;
 					rho0 = rho1;
 					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
@@ -201,7 +210,12 @@ namespace INMOST
 						for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
 							temp[0] += u[j+1][k]*r0[k];
 						if( is_parallel ) info->Integrate(temp,1);
-						alpha = rho0 / (temp[0] + 1e-15);
+						if( fabs(temp[0]) < 1.0e-54 ) 
+						{
+							reason = "denominator(2) is zero";
+							goto exit;
+						}
+						alpha = rho0 / temp[0];
 					}
 					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
 						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
@@ -288,18 +302,44 @@ namespace INMOST
 					//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
 					//std::cout << "iter " << last_it << " resid " << resid << "\r";
 					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-					printf("iter %3d resid %12g | %12g\r", last_it, resid, atol);
+					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
 					fflush(stdout);
 				}
 #endif
 				last_resid = resid;
-				if( resid < atol || resid < rtol*resid0 || resid > divtol) break;
+				if( resid != resid )
+				{
+					reason = "residual is NAN";
+					break;
+				}
+				if( resid < atol )
+				{
+					reason = "converged due to absolute tolerance";
+					break;
+				}
+				if( resid < rtol*resid0 )
+				{
+					reason = "converged due to relative tolerance";
+					break;
+				}
+				if( resid > divtol )
+				{
+					reason = "diverged due to divergence tolerance";
+					break;
+				}
+				if( i == maxits )
+				{
+					reason = "reached maximum iteration number";
+					break;
+				}
+				i++;
 			}
 			if (prec != NULL)
 			{
 				prec->Solve(SOL, r0);
 				std::copy(r0.Begin(), r0.End(), SOL.Begin());
 			}
+exit:
 			//info->RestoreMatrix(A);
 			info->RestoreVector(SOL);
 			info->RestoreVector(RHS);
@@ -310,6 +350,7 @@ namespace INMOST
 		bool ReplaceRHS(Solver::Vector & RHS) { return true; }
 		bool ReplaceSOL(Solver::Vector & SOL) { return true; }
 		Method * Duplicate() { return new BCGSL_solver(*this);}
+		std::string GetReason() {return reason;}
 	};
 
 
@@ -323,6 +364,7 @@ namespace INMOST
 		Method * prec;
 		Solver::OrderInfo * info;
 		bool init;
+		std::string reason;
 	public:
 		INMOST_DATA_ENUM_TYPE GetIterations() {return last_it;}
 		INMOST_DATA_REAL_TYPE GetResidual() {return last_resid;}
@@ -415,14 +457,16 @@ namespace INMOST
 		bool Solve(Solver::Vector & RHS, Solver::Vector & SOL)
 		{
 			assert(isInitialized());
+			INMOST_DATA_REAL_TYPE tempa = 0.0, tempb=0.0;
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
+			INMOST_DATA_INTEGER_TYPE ivbeg,ivend, ivlocbeg, ivlocend;
 			INMOST_DATA_REAL_TYPE rho = 1, alpha = 1, beta, omega = 1;
 			INMOST_DATA_REAL_TYPE resid0, resid, temp[2];
 			bool is_parallel = info->GetSize() > 1;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
-			info->Update(SOL);
-			info->Update(RHS);
+			if( is_parallel ) info->Update(SOL);
+			if( is_parallel ) info->Update(RHS);
 			if (prec != NULL)prec->ReplaceSOL(SOL);
 			if (prec != NULL)prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
@@ -443,113 +487,216 @@ namespace INMOST
 			}
 			last_resid = resid = resid0 = sqrt(resid);
 			last_it = 0;
+			ivbeg = vbeg;
+			ivend = vend;
+			ivlocbeg = vlocbeg;
+			ivlocend = vlocend;
 #if defined(REPORT_RESIDUAL)
 			if( info->GetRank() == 0 ) 
 			{
 				//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 				//std::cout << "iter " << last_it << " resid " << resid << "\r";
 				//printf("iter %3d resid %12g | %12g relative %12g | %12g\r",last_it,resid,atol,resid/resid0,rtol);
-				printf("iter %3d resid %12g | %12g\r", last_it, resid, atol);
+				printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
 				fflush(stdout);
 			}
 #endif
-			long double tt, ts, tp, ttt;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < maxits; ++i)
+#pragma omp parallel
 			{
-				ts = tp = 0;
-				tt = Timer();
+				long double tt, ts, tp, ttt;
+				INMOST_DATA_ENUM_TYPE i = 0;
+				while(true)
 				{
-					beta = 1.0 /rho * alpha / omega;
-					rho = 0;
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) 
-						rho += r0[k]*r[k];
-					if( is_parallel ) info->Integrate(&rho,1);
-					beta *= rho;
-				}
-				{
-					for(INMOST_DATA_ENUM_TYPE k = vbeg; k != vend; ++k) 
-						p[k] = r[k] + beta*(p[k] - omega*v[k]); //global indexes r, p, v
-				}
-				{
-					ttt = Timer();
-					if (prec != NULL)prec->Solve(p, y);
-					tp += Timer() - ttt;
-					if( is_parallel ) info->Update(y);
-					ttt = Timer();
-					Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
-					ts += Timer() - ttt;
-					if( is_parallel ) info->Update(v);
-				}
-				{
-					alpha = 0;
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++)  
-						alpha += r0[k]*v[k];
-					if( is_parallel ) info->Integrate(&alpha,1);
-					alpha = rho / alpha; //local indexes, r0, v
-				}
-				{
-					for(INMOST_DATA_ENUM_TYPE k = vbeg; k != vend; ++k) 
-						s[k] = r[k] - alpha * v[k]; //global indexes r, v
-				}
+					ts = tp = 0;
+					tt = Timer();
+					{
+						if( fabs(rho) < 1.0e-31 )
+						{
+							reason = "denominator(1) is zero";
+							break;
+						}
+						if( fabs(omega) < 1.0e-31 )
+						{
+							reason = "denominator(2) is zero";
+							break;
+						}
+						beta = 1.0 /rho * alpha / omega;
+						rho = 0;
+#pragma omp for reduction(+:rho)
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
+							rho += r0[k]*r[k];
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Integrate(&rho,1);
+						}
+						beta *= rho;
+					}
+					{
+#pragma omp for
+						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+							p[k] = r[k] + beta*(p[k] - omega*v[k]); //global indexes r, p, v
+					}
+					{
+						ttt = Timer();
+						if (prec != NULL)
+						{
+#pragma omp single
+							prec->Solve(p, y);
+						}
+						tp += Timer() - ttt;
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Update(y);
+						}
+						ttt = Timer();
+						Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
+						ts += Timer() - ttt;
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Update(v);
+						}
+					}
+					{
+						alpha = 0;
+#pragma omp for reduction(+:alpha)
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)  
+							alpha += r0[k]*v[k];
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Integrate(&alpha,1);
+						}
+						if( fabs(alpha) < 1.0e-31 )
+						{
+							reason = "denominator(3) is zero";
+							break;
+						}
+
+						alpha = rho / alpha; //local indexes, r0, v
+					}
+					{
+#pragma omp for
+						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+							s[k] = r[k] - alpha * v[k]; //global indexes r, v
+					}
 				
-				{
-					ttt = Timer();
-					if (prec != NULL)prec->Solve(s, z);
-					tp += Timer() - ttt;
-					if( is_parallel ) info->Update(z);
-					ttt = Timer();
-					Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
-					ts += Timer() - ttt;
-					if( is_parallel ) info->Update(t);
-				}
-				{
-					temp[0] = temp[1] = 0;
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++)
 					{
-						temp[0] += t[k]*s[k];
-						temp[1] += t[k]*t[k];
+						ttt = Timer();
+						if (prec != NULL)
+						{
+#pragma omp single
+							prec->Solve(s, z);
+						}
+						tp += Timer() - ttt;
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Update(z);
+						}
+						ttt = Timer();
+						Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
+						ts += Timer() - ttt;
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Update(t);
+						}
 					}
-					if( is_parallel ) info->Integrate(temp,2);
-					/*
-					if (fabs(temp[0]) < 1.0e-35)
 					{
-						if (fabs(temp[1]) > 1.0e-35)
-							break; //breakdown
-						else omega = 0.0;
+						
+						temp[0] = temp[1] = 0;
+#pragma omp for reduction(+:tempa) reduction(+:tempb)
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)
+						{
+							tempa += t[k]*s[k];
+							tempb += t[k]*t[k];
+						}
+						temp[0] = tempa;
+						temp[1] = tempb;
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Integrate(temp,2);
+						}
+						/*
+						if (fabs(temp[0]) < 1.0e-35)
+						{
+							if (fabs(temp[1]) > 1.0e-35)
+								break; //breakdown
+							else omega = 0.0;
+						}
+						else 
+						*/
+						omega = temp[0] / (temp[1]+1e-35); //local indexes t, s
 					}
-					else 
-					*/
-					omega = temp[0] / (temp[1]+1e-35); //local indexes t, s
-				}
-				{
-					for(INMOST_DATA_ENUM_TYPE k = vbeg; k != vend; ++k) 
-						SOL[k] += alpha * y[k] + omega * z[k]; // global indexes SOL, y, z
-				}
-				{
-					for(INMOST_DATA_ENUM_TYPE k = vbeg; k != vend; ++k) 
-						r[k] = s[k] - omega * t[k]; // global indexes r, s, t
-				}
-				last_it = i+1;
-				{
-					resid = 0;
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) 
-						resid += r[k]*r[k];
-					if( is_parallel ) info->Integrate(&resid,1);
-					resid = sqrt(resid);
-				}
-				tt = Timer() - tt;
+					{
+#pragma omp for
+						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+							SOL[k] += alpha * y[k] + omega * z[k]; // global indexes SOL, y, z
+					}
+					{
+#pragma omp for
+						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+							r[k] = s[k] - omega * t[k]; // global indexes r, s, t
+					}
+					last_it = i+1;
+					{
+						resid = 0;
+#pragma omp for reduction(+:resid)
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
+							resid += r[k]*r[k];
+						if( is_parallel ) 
+						{
+#pragma omp single
+							info->Integrate(&resid,1);
+						}
+						resid = sqrt(resid);
+					}
+					tt = Timer() - tt;
 #if defined(REPORT_RESIDUAL)
-				if( info->GetRank() == 0 ) 
-				{
-					//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5 << " precond " << tp*0.5 << std::endl;
-					//std::cout << "iter " << last_it << " resid " << resid << "\r";
-					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-					printf("iter %3d resid %12g | %12g\r", last_it, resid, atol);
-					fflush(stdout);
-				}
+					if( info->GetRank() == 0 ) 
+					{
+						//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5 << " precond " << tp*0.5 << std::endl;
+						//std::cout << "iter " << last_it << " resid " << resid << "\r";
+						//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
+#pragma omp single
+						{
+							printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+							fflush(stdout);
+						}
+					}
 #endif
-				last_resid = resid;
-				if( resid < atol || resid < rtol*resid0 || resid > divtol) break;
+					last_resid = resid;
+					if( resid != resid )
+					{
+						reason = "residual is NAN";
+						break;
+					}
+					if( resid > divtol )
+					{
+						reason = "diverged due to divergence tolerance";
+						break;
+					}
+					if( resid < atol )
+					{
+						reason = "converged due to absolute tolerance";
+						break;
+					}
+					if( resid < rtol*resid0 )
+					{
+						reason = "converged due to relative tolerance";
+						break;
+					}
+					if( i == maxits )
+					{
+						reason = "reached maximum iteration number";
+						break;
+					}
+					i++;
+				}
 			}
 			//info->RestoreMatrix(A);
 			info->RestoreVector(SOL);
@@ -561,6 +708,7 @@ namespace INMOST
 		bool ReplaceRHS(Solver::Vector & RHS) { return true; }
 		bool ReplaceSOL(Solver::Vector & SOL) { return true; }
 		Method * Duplicate() { return new BCGS_solver(*this);}
+		std::string GetReason() {return reason;}
 	};
 }
 

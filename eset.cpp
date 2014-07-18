@@ -51,7 +51,7 @@ namespace INMOST
 		return std::pair<ElementSet::iterator, bool>(ElementSet::iterator(ret.first),ret.second);
 	}
 	
-	void ElementSet::Insert(ElementSet e)
+	void ElementSet::Insert(const ElementSet & e)
 	{
 		eset.insert(e.eset.begin(),e.eset.end());
 	}
