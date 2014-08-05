@@ -108,12 +108,24 @@
 #define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UNSIGNED
 
 
+/// Cross-platform timer that return current time in seconds.
+/// The timer is similar to MPI_Wtime() and omp_get_wtime() but is independent on both flags USE_MPI and USE_OMP.
+///
+/// double seconds = Timer(); @n
+/// ...some code... @n
+/// std::cout << "Time spent is " << seconds << " seconds." << std::endl;
 long double Timer();
 
 namespace INMOST
 {
+	/// Types of errors may occur in INMOST.
+	/// All of these error are fatal ones.
+	/// If error is detected then "throw" exception is generated.
+	/// The names of the error type are very intuitive and self-explained ones.
+	/// Use "try{...} catch{...}" blocks to implement exception handling.
 	enum ErrorType 
 	{
+		/// The list of errors connected to mesh consistency.
 		Failure=100,
 		NoTagPosition,
 		WrongDataType,
@@ -136,7 +148,7 @@ namespace INMOST
 		NoSpaceForMarker,
 		ElementBelongsToNobody,
 
-		
+		/// The list of general type errors.
 		BadFileName,
 		BadFile,		
 		CorruptedIerarchy,
@@ -148,7 +160,7 @@ namespace INMOST
 		BadParameter,
 		TopologyCheckError,
 		
-		//solver
+		/// The list of errors may occur in the Linear Solver.
 		ErrorInSolver = 400,
 		DataCorruptedInSolver,
 		DifferentCommunicatorInSolver,
@@ -158,11 +170,12 @@ namespace INMOST
 		PrepareMatrixFirst,
 		CannotReusePreconditionerOfDifferentSize,
 		
-		//partitioner
+		/// The list of errors may occur in the Partitioner.
 		ErrorInPartitioner = 500,
 		UnknownWeightSize,
 		DistributionTagWasNotFilled,
 		
+		/// The very tail of the errors list.
 		NotImplemented = 1000,
 		Impossible
 	};
