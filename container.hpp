@@ -1427,11 +1427,14 @@ namespace INMOST
 				assert(array != NULL);
 				array = array - beg_index;
 				for (IndType i = beg_index; i < end_index; ++i) new (array + i) ValType(c);
+
+				//std::cout << __FUNCTION__ << " address " << array << std::endl;
 			}
 			else array = NULL;
 		}
 		interval(const interval & other)
 		{
+			//std::cout << __FUNCTION__ << std::endl;
 			beg_index = other.beg_index;
 			end_index = other.end_index;
 			if( beg_index != end_index )
@@ -1439,12 +1442,17 @@ namespace INMOST
 				array = static_cast<ValType *>(malloc(sizeof(ValType)*(end_index-beg_index)));
 				assert(array != NULL);
 				array = array - beg_index;
-				for(IndType i = beg_index; i < end_index; ++i) new (array+i) ValType(other.array[i]);
+				for(IndType i = beg_index; i < end_index; ++i) 
+				{
+					new (array+i) ValType(other.array[i]);
+				}
+				//std::cout << __FUNCTION__ << " address " << array << std::endl;
 			}
 			else array = NULL;
 		}
 		~interval()
 		{
+			//std::cout << __FUNCTION__ << " delete address " << array << std::endl;
 			for(IndType i = beg_index; i < end_index; i++) (array[i]).~ValType();
 			if( beg_index != end_index ) free(array+beg_index);
 			array = NULL;
@@ -1462,6 +1470,7 @@ namespace INMOST
 					assert(array != NULL);
 					array = array - beg_index;
 					for(IndType i = beg_index; i < end_index; ++i) new (array+i) ValType(other.array[i]);
+					//std::cout << __FUNCTION__ << " address " << array << std::endl;
 				}
 				else 
 				{
@@ -1518,13 +1527,18 @@ namespace INMOST
 		}
 		void set_interval_end(IndType end)
 		{
-			for(IndType i = end; i < end_index; ++i) (array[i]).~ValType();
+			if( end == end_index ) return;
 			if( beg_index != end )
 			{
-				array = static_cast<ValType *>(realloc(array+beg_index,sizeof(ValType)*(end-beg_index)));
-				assert(array != NULL);
-				array = array - beg_index;
-				for(IndType i = end_index; i < end; ++i) new (array+i) ValType();
+				ValType * array_new = static_cast<ValType *>(malloc(sizeof(ValType)*(end-beg_index)));
+				assert(array_new != NULL);
+				array_new = array_new - beg_index;
+				for(IndType i = beg_index; i < std::min(end,end_index); ++i) new (array_new+i) ValType(array[i]);
+				for(IndType i = end_index; i < end; ++i) new (array_new+i) ValType();
+				for(IndType i = beg_index; i < end_index; ++i) array[i].~ValType();
+
+				if( array != NULL ) free(array+beg_index);
+				array = array_new;
 			}
 			else
 			{
@@ -1818,6 +1832,15 @@ namespace INMOST
 			}
 		}
 	public:
+		void report_addr()
+		{
+			std::cout << "stack:     " << &stack << std::endl;
+			std::cout << "pbegin:    " << pbegin << std::endl;
+			std::cout << "pend:      " << pend << std::endl;
+			std::cout << "preserved: " << preserved << std::endl;
+			std::cout << "size:      " << pend-pbegin << std::endl;
+			std::cout << "reserved:  " << preserved-pbegin << std::endl;
+		}
 		void reserve(enumerator n)
 		{
 			//std::cout << n << std::endl;
@@ -1890,6 +1913,7 @@ namespace INMOST
 		}
 		dynarray(const dynarray & other)
 		{
+			//std::cout << __FUNCTION__ << std::endl;
 			enumerator n = other.size();
 			preallocate(n);
 			for(enumerator k = 0; k < n; k++)

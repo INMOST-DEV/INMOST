@@ -393,12 +393,15 @@ void DrawEntry(int i, int j)//, Storage::real r)
 }
 
 
+interval<int,double> row_sum;
+
 void draw()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 	set_output_matrix();
 
+	/*
 	glColor3f(0, 1, 1);
 	glBegin(GL_LINES);
 	glVertex2i(ord->GetMatrixPartSize(), 0);
@@ -407,12 +410,41 @@ void draw()
 	glVertex2i(0, m->Size() - ord->GetMatrixPartSize());
 	glVertex2i(m->Size(), m->Size() - ord->GetMatrixPartSize());
 	glEnd();
-	
+	*/
+
 	glColor3f(0,0,0);
 	glBegin(GL_QUADS);
 	for(Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 		for(Solver::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
-			DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
+			if( jt->first != it - m->Begin() )
+			//DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
+			DrawEntry((it - m->Begin()), m->Size() - jt->first);//, sqrt((jt->second-min)/(max-min)));
+	glEnd();
+
+	
+	/*
+	glColor3f(0.0, 1.0, 0);
+	glBegin(GL_QUADS);
+	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	{
+		int ind = it - m->Begin();
+		if (fabs((*it)[ind]) > row_sum[it-m->Begin()]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+			DrawEntry((it - m->Begin()), m->Size() - ind);
+	}
+	glEnd();
+	*/
+
+	
+	glBegin(GL_QUADS);
+	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	{
+		
+		int ind = it - m->Begin();
+		double t = fabs((*it)[ind]) / row_sum[ind];
+		//if (fabs((*it)[ind]) < row_sum[ind]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+		glColor3f(0.0, t, 1.0-t);
+			DrawEntry(ind, m->Size() - ind);
+	}
 	glEnd();
 
 	zoom += 1;
@@ -421,7 +453,8 @@ void draw()
 	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 	{
 		int ind = it - m->Begin();
-		if (fabs((*it)[ind]) < 1e-9) DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+		if (fabs((*it)[ind]) < 1e-9) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+			DrawEntry((it - m->Begin()), m->Size() - ind);
 	}
 	glEnd();
 	zoom -= 1;
@@ -457,11 +490,29 @@ int main(int argc, char ** argv)
 	Solver::Initialize(&argc,&argv,NULL);
 	m = new Solver::Matrix();
 	m->Load(argv[1]);
-	ord = new Reorder_ARMS(m,0,m->Size());
+	//ord = new Reorder_ARMS(m,0,m->Size());
 	std::cout << "Matrix size: " << m->Size() << std::endl;
-	INMOST_DATA_ENUM_TYPE nnz = 0;
+	INMOST_DATA_ENUM_TYPE nnz = 0, nnzrow;
+	
+	row_sum.set_interval_beg(0);
+	row_sum.set_interval_end(m->Size());
+	std::fill(row_sum.begin(),row_sum.end(),0.0);
+
 	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	{
 		nnz += it->Size();
+
+		nnzrow = 0;
+		for(Solver::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+		{
+			nnzrow++;
+			row_sum[it-m->Begin()] += fabs(jt->second);
+		}
+		row_sum[it-m->Begin()] /= (double)nnzrow;
+	}
+
+	
+
 	std::cout << "Nonzeros: " << nnz << std::endl;
 	
 	zoom = m->Size() / 1000;

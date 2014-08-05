@@ -168,15 +168,18 @@ namespace INMOST
 				{
 					char type;
 					in.get(type);
-					uconv.read_iValue(in,lid);
-					switch(static_cast<ElementType>(type))
+					if (type != NONE)
 					{
-					case NODE: X->ReferenceArray(t)[k] = new_nodes[lid]; break;
-					case EDGE: X->ReferenceArray(t)[k] = new_edges[lid]; break;
-					case FACE: X->ReferenceArray(t)[k] = new_faces[lid]; break;
-					case CELL: X->ReferenceArray(t)[k] = new_cells[lid]; break;
+						uconv.read_iValue(in, lid);
+						switch (static_cast<ElementType>(type))
+						{
+						case NODE: X->ReferenceArray(t)[k] = new_nodes[lid]; break;
+						case EDGE: X->ReferenceArray(t)[k] = new_edges[lid]; break;
+						case FACE: X->ReferenceArray(t)[k] = new_faces[lid]; break;
+						case CELL: X->ReferenceArray(t)[k] = new_cells[lid]; break;
+						}
 					}
-					
+					else X->ReferenceArray(t)[k] = NULL;
 				}
 			}
 			break;
@@ -207,10 +210,17 @@ namespace INMOST
 				for(k = 0; k < size; k++)
 				{
 					Element * e = X.ReferenceArray(t)[k];
-					char type = e->GetElementType();
-					lid = e->LocalID();
-					out.put(type);
-					uconv.write_iValue(out,lid);
+					if (e != NULL)
+					{
+						char type = e->GetElementType();
+						lid = e->LocalID();
+						out.put(type);
+						uconv.write_iValue(out, lid);
+					}
+					else
+					{
+						out.put(NONE);
+					}
 				}
 			}
 		break;
@@ -2461,7 +2471,7 @@ namespace INMOST
 									case DATA_REAL:
 									{
 										Storage::real_array arr = (*it)->RealArray(tags[i]);
-										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%f ",arr[m]);
+										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m]);
 										fprintf(f,"\n");
 									}
 									break;
@@ -2512,7 +2522,7 @@ namespace INMOST
 									case DATA_REAL:
 									{
 										Storage::real_array arr = (*it)->RealArray(tags[i]);
-										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%f ",arr[m]);
+										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m]);
 										fprintf(f,"\n");
 									}
 									break;
@@ -2882,7 +2892,7 @@ namespace INMOST
 				{
 					MPI_File fh;
 					MPI_Status stat;
-					ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh);
+					REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					if( GetProcessorRank() == 0 )
 					{
@@ -2894,16 +2904,16 @@ namespace INMOST
 						for(k = 0; k < numprocs; k++) uconv.write_iValue(header,datasizes[k]);
 
 						std::string header_data(header.str());
-						ierr = MPI_File_write_shared(fh,&header_data[0],header_data.size(),MPI_CHAR,&stat);
+						REPORT_MPI(ierr = MPI_File_write_shared(fh,&header_data[0],header_data.size(),MPI_CHAR,&stat));
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					}
 					{
 						std::string local_data(out.str());
-						ierr = MPI_File_write_ordered(fh,&local_data[0],local_data.size(),MPI_CHAR,&stat);
+						REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],local_data.size(),MPI_CHAR,&stat));
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					}
 
-					ierr = MPI_File_close(&fh);
+					REPORT_MPI(ierr = MPI_File_close(&fh));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 				}
 				else
@@ -2926,7 +2936,7 @@ namespace INMOST
 						file_contents.resize(sizesum);
 					}
 					else file_contents.resize(1); //protect from accessing bad pointer
-					ierr = MPI_Gatherv(&local_data[0],local_data.size(),MPI_CHAR,&file_contents[0],&recvcounts[0],&displs[0],MPI_CHAR,0,GetCommunicator());
+					REPORT_MPI(ierr = MPI_Gatherv(&local_data[0],local_data.size(),MPI_CHAR,&file_contents[0],&recvcounts[0],&displs[0],MPI_CHAR,0,GetCommunicator()));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					if( GetProcessorRank() == 0 )
 					{

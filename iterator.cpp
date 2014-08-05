@@ -45,9 +45,9 @@ namespace INMOST
 		}
 		return -1;
 	}	
-	unsigned int Mesh::NumberOf(ElementType t)
+	INMOST_DATA_ENUM_TYPE Mesh::NumberOf(ElementType t)
 	{
-		unsigned int ret = 0;
+		INMOST_DATA_ENUM_TYPE ret = 0;
 		for(ElementType m = NODE; m <= MESH; m = m << 1)
 			if( m & t )
 			{

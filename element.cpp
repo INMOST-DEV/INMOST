@@ -372,19 +372,27 @@ namespace INMOST
 	
 	adjacent<Node> Element::getNodes()
 	{
-		return adjacent<Node>(); //this operation will be virtualized by proper algorithm	
+		adjacent<Node> ret;
+		ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	adjacent<Edge> Element::getEdges()
 	{
-		return adjacent<Edge>(); //this operation will be virtualized by proper algorithm	
+		adjacent<Edge> ret;
+		ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	adjacent<Face> Element::getFaces()
 	{
-		return adjacent<Face>(); //this operation will be virtualized by proper algorithm	
+		adjacent<Face> ret;
+		ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	adjacent<Cell> Element::getCells()
 	{
-		return adjacent<Cell>(); //this operation will be virtualized by proper algorithm	
+		adjacent<Cell> ret;
+		ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	
 	

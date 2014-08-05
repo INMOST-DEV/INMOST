@@ -31,7 +31,7 @@
 
 #define USE_QSORT //use qsort instead of std::sort
 #define USE_PARALLEL_STORAGE
-//#define USE_PARALLEL_WRITE_TIME
+#define USE_PARALLEL_WRITE_TIME
 
 
 #define USE_COMPARE CompareElementsPointer

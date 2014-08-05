@@ -16,21 +16,23 @@ using namespace INMOST;
 #define REORDER_NNZ
 #define DDPQ_TAU 0.8 //ratio is time consumed for factorization by time for schur complement calculation
 //#define DDPQ_TAU std::max(0.1,1.0/(1.0+exp(-ratio*5)))
-#define DDPQ_ADAPT_TAU
+//#define DDPQ_ADAPT_TAU
 #define ESTIMATOR
 #define RESCALE_B
 #define PIVOT_THRESHOLD
-#define DIAGONAL_PERTURBATION
+//#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 0.001
 #define DIAGONAL_PERTURBATION_ABS 1.0e-15
 //#define DIAGONAL_PIVOT //probably there is some bug
 #define DIAGONAL_PIVOT_TAU 0.01
+#define SCHUR_DROPPING
+#define SCHUR_TAU 1.0//sqrt(tau)
 #define ILUC2
 #define ILUC2_TAU pow(tau,1.75)
 
 
 
-#define ADDR(row,col) ((row)*size+(col))
+
 
 class ILUC_preconditioner : public Method
 {
@@ -65,7 +67,7 @@ class ILUC_preconditioner : public Method
 	std::vector<Interval> level_interval;
 	//reordering information
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE > ddP,ddQ;
-	INMOST_DATA_ENUM_TYPE reorder_nnz, ddpq_tau_adapt, estimator;
+	INMOST_DATA_ENUM_TYPE reorder_nnz;
 	INMOST_DATA_REAL_TYPE ddpq_tau, iluc2_tau;
 	INMOST_DATA_REAL_TYPE tau, eps;
 	INMOST_DATA_ENUM_TYPE sciters;
@@ -238,15 +240,13 @@ public:
 	{
 		if (name == "scale_iters") return sciters;
 		else if( name == "reorder_nnz") return reorder_nnz;
-		else if( name == "ddpq_tau_adapt" ) return ddpq_tau_adapt;
-		else if( name == "estimator" ) return estimator;
 		throw - 1;
 	}
 	INMOST_DATA_REAL_TYPE & RealParameter(std::string name)
 	{
 		if (name == "tau") return tau;
 		else if( name == "ddpq_tau" ) return ddpq_tau;
-		else if( name == "tau2" ) return iluc2_tau;
+		else if( name == "iluc2_tau" ) return iluc2_tau;
 		throw - 1;
 	}
 	void Copy(const Method * other)
@@ -275,16 +275,6 @@ public:
 		init = false;
 		sciters = 8;
 		eps = 1e-54;
-#if defined(DDPQ_ADAPT_TAU)
-		ddpq_tau_adapt = 1;
-#else
-		ddpq_tau_adapt = 0;
-#endif
-#if defined(ESTIMATOR)
-		estimator = 1;
-#else
-		estimator = 0;
-#endif
 		ddpq_tau = DDPQ_TAU;
 		reorder_nnz = 1;
 		iluc2_tau = ILUC2_TAU;
@@ -296,62 +286,40 @@ public:
 		const INMOST_DATA_REAL_TYPE subst = 1.0;
 		const INMOST_DATA_REAL_TYPE tol_modif = 1e-12;
 		const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
-
 		
 		INMOST_DATA_ENUM_TYPE wbeg, wend; //working interval
 		INMOST_DATA_ENUM_TYPE mobeg, moend; // total interval
-		
 		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next, mi, mj;
 		INMOST_DATA_REAL_TYPE l,u,udiag, max_diag, min_diag, mean_diag;
+#if defined(SCHUR_DROPPING)
+		INMOST_DATA_REAL_TYPE EnormF, FnormF, Dnorm, drop, Cmax;
+		INMOST_DATA_REAL_TYPE Emax, Fmax, LnormF, UnormF, CnormF, Smax, Snorm;
+#endif
 		INMOST_DATA_ENUM_TYPE nzA, nzS, nzA2, nzLU = 0, nzEF = 0, nzL, nzU;
 		Solver::Vector DL, DR;
 		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
-		
-		
 		//prepare temporal array
 		temp.set_interval_beg(mobeg);
 		temp.set_interval_end(moend);
 		std::fill(temp.begin(), temp.end(), 0.0);
-
-		
 		//prepare reordering vectors
 		ddP.set_interval_beg(mobeg);
 		ddP.set_interval_end(moend);
 		ddQ.set_interval_beg(mobeg);
 		ddQ.set_interval_end(moend);
-
-		
-
 		//prepare rescaling vectors
 		DL.SetInterval(mobeg, moend);
 		DR.SetInterval(mobeg, moend);
 		std::fill(DL.Begin(), DL.End(), 0.0);
-
-		
-
 		for (k = mobeg; k != moend; k++) ddP[k] = ddQ[k] = k;
-
-
-		
 		//preinitialize data
 		level_size.clear();
-
-		
-
 		// supplementary data for ddPQ reordering
 		interval<INMOST_DATA_ENUM_TYPE, bool> donePQ(mobeg, moend);
-
-		
-
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> invP(mobeg, moend), invQ(mobeg,moend), localP(mobeg, moend), localQ(mobeg,moend);
-
-
-		
 #if defined(REORDER_DDPQ)
 		wgt_coords sort_wgts(2 * (moend - mobeg));
 #endif
-		
-
 		//supplimentary data structures for ILUC
 		INMOST_DATA_ENUM_TYPE LU_Beg;
 		U_Address.set_interval_beg(mobeg);
@@ -369,7 +337,6 @@ public:
 		interval<INMOST_DATA_ENUM_TYPE, Interval> A_Address(mobeg, moend), C_Address(mobeg,moend), S_Address(mobeg,moend), LF_Address(mobeg,moend), LFt_Address(mobeg,moend);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ulist(mobeg, moend), Llist(mobeg, moend), Blist(mobeg,moend), Flist(mobeg,moend);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ubeg(mobeg, moend,EOL), Lbeg(mobeg, moend,EOL), Bbeg(mobeg,moend,EOL), Fbeg(mobeg,moend,EOL);
-
 		
 
 		//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
@@ -380,14 +347,12 @@ public:
 		//INMOST_DATA_REAL_TYPE DropLk, DropUk;
 		//interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> DropU(mobeg,moend,0.0), DropL(mobeg,moend,0.0);
 		//data structure for linked list
-
 		
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValues(mobeg, moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndeces(mobeg, moend+1,UNDEF);
 		double tfactor = 0.0, trescale = 0.0, tschur = 0.0, treorder = 0.0, treassamble = 0.0, ttotal, tt;
 		double tlfactor, tlrescale, tlschur, tlreorder, tlreassamble, ratio = 1.0, ratio2 = 1.0;
 		ttotal = Timer();
-
 		
 		//calculate number of nonzeros
 		nzA = 0;
@@ -529,7 +494,7 @@ public:
 #endif
 			if (cbeg == cend && cbeg != wend)
 			{
-				//std::cout << __FILE__ << ":" << __LINE__ << " singular matrix, factored " << mobeg << ".." << cend << " out of " << mobeg << ".." << moend << std::endl;
+				std::cout << __FILE__ << ":" << __LINE__ << " singular matrix, factored " << mobeg << ".." << cend << " out of " << mobeg << ".." << moend << std::endl;
 				for (k = cbeg; k < cend; ++k)
 					LU_Diag[k] = tol_modif;
 				break;
@@ -819,12 +784,12 @@ public:
 				//Initialize data for condition estimator
 				tt = Timer();
 				NuU = NuL = 1.0;
-				if( estimator )
-				{
-					EstU[cbeg] = EstL[cbeg] = 0.0;
-					for (INMOST_DATA_ENUM_TYPE it = U_Address[cbeg].first; it != U_Address[cbeg].last; ++it) EstU[LU_Entries[it].first] = LU_Entries[it].second;
-					for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it != L_Address[cbeg].last; ++it) EstL[LU_Entries[it].first] = LU_Entries[it].second;
-				}				
+#if defined(ESTIMATOR)
+				EstU[cbeg] = EstL[cbeg] = 0.0;
+				for (INMOST_DATA_ENUM_TYPE it = U_Address[cbeg].first; it != U_Address[cbeg].last; ++it) EstU[LU_Entries[it].first] = LU_Entries[it].second;
+				for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it != L_Address[cbeg].last; ++it) EstL[LU_Entries[it].first] = LU_Entries[it].second;
+#endif
+				
 				nzLU += L_Address[cbeg].Size() + U_Address[cbeg].Size() + 1;
 				max_diag = min_diag = fabs(LU_Diag[cbeg]);
 				NuD = 1.0;
@@ -1133,43 +1098,42 @@ public:
 						Ui = LineIndeces[Ui];
 					}
 					//estimate condition for U^{-1}
-					if( estimator )
+#if defined(ESTIMATOR)
+					mup = 1.0 - EstU[k];
+					mum = -1.0 - EstU[k];
+					np = nm = 0;
+					//start from the element next after diagonal position
+					Ui = LineIndeces[k];
+					while (Ui != EOL)
 					{
-						mup = 1.0 - EstU[k];
-						mum = -1.0 - EstU[k];
-						np = nm = 0;
-						//start from the element next after diagonal position
-						Ui = LineIndeces[k];
-						while (Ui != EOL)
-						{
-							v = EstU[Ui];
-							vp = fabs(v + LineValues[Ui] * mup);
-							vm = fabs(v + LineValues[Ui] * mum);
-							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
-							Ui = LineIndeces[Ui];
-						}
-						NuU_old = NuU;
-						if (np > nm) NuU = mup; else NuU = mum;
-						Ui = LineIndeces[k];
-						while (Ui != EOL)
-						{
-							EstU[Ui] += LineValues[Ui] * NuU;
-							Ui = LineIndeces[Ui];
-						}
-						NuU = std::max(fabs(mup), fabs(mum));
-						NuU = std::max(NuU_old,NuU);
+						v = EstU[Ui];
+						vp = fabs(v + LineValues[Ui] * mup);
+						vm = fabs(v + LineValues[Ui] * mum);
+						v = fabs(v);
+						if (vp > std::max(2 * v, 0.5)) np++;
+						if (std::max(2 * vp, 0.5) < v) np--;
+						if (vm > std::max(2 * v, 0.5)) nm++;
+						if (std::max(2 * vm, 0.5) < v) nm--;
+						Ui = LineIndeces[Ui];
 					}
+					NuU_old = NuU;
+					if (np > nm) NuU = mup; else NuU = mum;
+					Ui = LineIndeces[k];
+					while (Ui != EOL)
+					{
+						EstU[Ui] += LineValues[Ui] * NuU;
+						Ui = LineIndeces[Ui];
+					}
+					NuU = std::max(fabs(mup), fabs(mum));
+					NuU = std::max(NuU_old,NuU);
+#endif
 					//insert line to U part
 					U_Address[k].first = LU_Entries.size();
 					Ui = LineIndeces[k];
 					while (Ui != EOL)
 					{
 						u = fabs(LineValues[Ui]);
-						if (u > tau/NuU) // apply dropping rule
+						if (u > std::max(tau/NuU,tau2)) // apply dropping rule
 							LU_Entries.push_back(Solver::Row::entry(Ui, LineValues[Ui]));
 #if defined(ILUC2)
 						else if (u > tau2)
@@ -1350,43 +1314,42 @@ public:
 						Li = LineIndeces[Li];
 					}
 					//estimate condition for L^{-1}
-					if( estimator )
+#if defined(ESTIMATOR)
+					mup = 1.0 - EstL[k];
+					mum = -1.0 - EstL[k];
+					np = nm = 0;
+					//start from the element next after diagonal position
+					Li = LineIndeces[k];
+					while (Li != EOL)
 					{
-						mup = 1.0 - EstL[k];
-						mum = -1.0 - EstL[k];
-						np = nm = 0;
-						//start from the element next after diagonal position
-						Li = LineIndeces[k];
-						while (Li != EOL)
-						{
-							v = EstL[Li];
-							vp = fabs(v + LineValues[Li] * mup);
-							vm = fabs(v + LineValues[Li] * mum);
-							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
-							Li = LineIndeces[Li];
-						}
-						NuL_old = NuL;
-						if (np > nm) NuL = mup; else NuL = mum;
-						Li = LineIndeces[k];
-						while (Li != EOL)
-						{
-							EstL[Li] += LineValues[Li] * NuL;
-							Li = LineIndeces[Li];
-						}
-						NuL = std::max(fabs(mup), fabs(mum));
-						NuL = std::max(NuL,NuL_old);
+						v = EstL[Li];
+						vp = fabs(v + LineValues[Li] * mup);
+						vm = fabs(v + LineValues[Li] * mum);
+						v = fabs(v);
+						if (vp > std::max(2 * v, 0.5)) np++;
+						if (std::max(2 * vp, 0.5) < v) np--;
+						if (vm > std::max(2 * v, 0.5)) nm++;
+						if (std::max(2 * vm, 0.5) < v) nm--;
+						Li = LineIndeces[Li];
 					}
+					NuL_old = NuL;
+					if (np > nm) NuL = mup; else NuL = mum;
+					Li = LineIndeces[k];
+					while (Li != EOL)
+					{
+						EstL[Li] += LineValues[Li] * NuL;
+						Li = LineIndeces[Li];
+					}
+					NuL = std::max(fabs(mup), fabs(mum));
+					NuL = std::max(NuL,NuL_old);
+#endif
 					//insert column to L part
 					Li = LineIndeces[k];
 					L_Address[k].first = LU_Entries.size();
 					while (Li != EOL)
 					{
 						u = fabs(LineValues[Li]);
-						if (u > tau/NuL) //apply dropping 
+						if (u > std::max(tau/NuL,tau2)) //apply dropping 
 							LU_Entries.push_back(Solver::Row::entry(Li, LineValues[Li]));
 #if defined(ILUC2)
 						else if (u > tau2)
@@ -1610,7 +1573,7 @@ public:
 #elif defined(REPORT_ILU_PROGRESS)
 					if (k % 100 == 0)
 					{
-						printf("%d %d/%d factor %6.2f%%\t\t\r",level_size.size(), cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
+						printf("factor %6.2f%%\t\t\r", level_size.size(), 100.0f*(k - cbeg) / (float)(cend - cbeg));
 						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
 						fflush(stdout);
 					}
@@ -1681,6 +1644,89 @@ public:
 			tt = Timer();
 			double t0, t1, t2;
 			t0 = Timer();
+#if defined(SCHUR_DROPPING)
+			Cmax = 0.0;
+			CnormF = 0.0;
+			for (k = 0; k < C_Entries.size(); ++k) 
+			{
+				INMOST_DATA_REAL_TYPE v = fabs(C_Entries[k].second);
+				CnormF += v*v;
+				if (Cmax < v) Cmax = v;
+			}
+			Dnorm = 0.0;
+			for (k = cbeg; k < cend; ++k)
+			{
+				Dnorm += 1.0/(LU_Diag[k]*LU_Diag[k]);
+			}
+			Dnorm = sqrt(Dnorm);
+			//estimate maximum of schur complement
+			EnormF = FnormF = LnormF = UnormF = 0.0;
+			Emax = Fmax = 0.0;
+			for (k = cend; k < wend; ++k)
+			{
+				INMOST_DATA_REAL_TYPE v, q;
+				q= 0.0;
+				for (j = E_Address.back()->at(k).first; j < E_Address.back()->at(k).last; j++)
+				{
+					v = fabs(E_Entries[j].second);
+					q+= v*v;
+					if( v > Emax ) Emax = v;
+				}
+				EnormF += q;
+				
+			}
+			for(k = cbeg; k < cend; k++)
+			{
+				INMOST_DATA_REAL_TYPE v, q;
+				q = 0.0;
+				for (j = F_Address[k].first; j < F_Address[k].last; j++)
+				{
+					v = fabs(F_Entries[j].second);
+					q += v*v;
+					if( v > Fmax ) Fmax = v;
+				}
+				FnormF += q;
+				q = 0.0;
+				for(j = L_Address[k].first; j < L_Address[k].last; j++)
+				{
+					v = LU_Entries[j].second;
+					q += v*v;
+				}
+				LnormF += q;
+				q = 0.0;
+				for(j = U_Address[k].first; j < U_Address[k].last; j++)
+				{
+					v = LU_Entries[j].second;
+					q += v*v;
+				}
+				UnormF += q;
+			}
+			EnormF = sqrt(EnormF);
+			FnormF = sqrt(FnormF);
+			LnormF = sqrt(LnormF);
+			UnormF = sqrt(UnormF);
+			CnormF = sqrt(CnormF);
+			//drop = 1.0e-10;//1.0e-5*::pow(0.25,static_cast<INMOST_DATA_REAL_TYPE>(level_size.size()));//std::min(Cmax / (EnormF*NuU/UnormF*Dnorm*NuL/LnormF*FnormF),(CnormF + EnormF*NuU/UnormF*NuL/LnormF*FnormF)/Dnorm);//1.0e-7;//Cmax / (EnormF*NuU*Dnorm*NuL*FnormF)*SCHUR_TAU;
+			//drop = std::min(1.0e-6,CnormF / (EnormF*NuU*Dnorm*NuL*FnormF));
+			//drop = SCHUR_TAU*std::min(1.0e-5,std::min(CnormF / (EnormF*NuU*Dnorm*NuL*FnormF),(CnormF + EnormF*NuU/UnormF*NuL/LnormF*FnormF)/Dnorm));
+			//drop = 1.0e-6;
+			//drop = std::min(1.0e-6,Cmax / (EnormF*NuU*Dnorm*NuL*FnormF));
+			drop = 1.0e-12;
+#if defined(REPORT_ILU)
+			//std::cout << "dropping: " << drop << " Cmax: " << Cmax << " EnormF: " << EnormF << " NuU*Dnorm*NuL: " << NuU*Dnorm*NuL << " FnormF: " << FnormF << std::endl;
+			std::cout << "condU: " << NuU << " ||U||f: " << UnormF << " ||U^-1||f: " << NuU / UnormF << std::endl;
+			std::cout << "condL: " << NuL << " ||L||f: " << LnormF << " ||L^-1||f: " << NuL / LnormF << std::endl;
+			std::cout << " ||C||f: " << CnormF << " ||D^-1||f: " << Dnorm << " ||F||f: " << FnormF << " ||E||f: " << EnormF << std::endl;
+			std::cout << " ||S||f estimate: " << CnormF + EnormF*NuU/UnormF*Dnorm*NuL/LnormF*FnormF << " ||E L^-1 D^-1 U^-1 F||f estimate: " << EnormF*NuU/UnormF*Dnorm*NuL/LnormF*FnormF << std::endl;
+			std::cout << "old dropping: " << Cmax / (EnormF*NuU*Dnorm*NuL*FnormF) << std::endl;
+			std::cout << "new1 dropping: " << Cmax / (CnormF + EnormF*std::max(1.0,NuU/UnormF)*Dnorm*std::max(1.0,NuL/LnormF)*FnormF) << std::endl;
+			std::cout << "new2 dropping: " << (CnormF + EnormF*std::max(1.0,NuU/UnormF)*std::max(1.0,NuL/LnormF)*FnormF)/Dnorm << std::endl;
+			std::cout << "new3 dropping: " << (CnormF + EnormF*NuU/UnormF*NuL/LnormF*FnormF)/Dnorm << std::endl;
+			std::cout << "new4 dropping: " << Cmax / (EnormF*NuU/UnormF*Dnorm*NuL/LnormF*FnormF) << std::endl;
+			std::cout << "current dropping: " << drop << std::endl;
+			//std::cout << "Emax: " << Emax << " Fmax: " << Fmax << std::endl;
+#endif
+#endif
 			//Setup column addressing for F block
 			std::fill(Fbeg.begin() + cend - mobeg, Fbeg.begin() + wend - mobeg, EOL);
 			for (k = cend; k > cbeg; --k)
@@ -1767,7 +1813,7 @@ public:
 							j = LU_Entries[ru].first;
 							if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 								LineValues[j] -= u;
-							else if( fabs(u) > std::min(tau/NuU,tau2) )
+							else if( fabs(u) > tau2 )
 							{
 								next = curr;
 								while (next < j + 1)
@@ -1792,7 +1838,7 @@ public:
 								j = LU2_Entries[ru].first;
 								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 									LineValues[j] -= u;
-								else if( fabs(u) > std::min(tau/NuU,tau2) )
+								else if( fabs(u) > std::max(tau/NuU,tau2) )
 								{
 									next = curr;
 									while (next < j + 1)
@@ -1817,7 +1863,7 @@ public:
 					LF_Address[i].first = LF_Entries.size();
 					while (Li != EOL)
 					{
-						if (fabs(LineValues[Li - 1]) > std::min(tau/NuU,tau2) )
+						if (fabs(LineValues[Li - 1]) > tau2)
 							LF_Entries.push_back(Solver::Row::entry(Li - 1, LineValues[Li - 1]));
 						Li = LineIndeces[Li];
 					}
@@ -1834,7 +1880,7 @@ public:
 #if defined(REPORT_ILU_PROGRESS)
 					if (i % 100 == 0)
 					{
-						printf("%d %d/%d schur1 %6.2f%%\t\t\r", level_size.size(), cend,moend, 100.f*(i - cend) / (1.f*(wend - cend)));
+						printf("%d schur1 %6.2f%%\t\t\r", level_size.size(), 100.f*(i - cend) / (1.f*(wend - cend)));
 						fflush(stdout);
 					}
 #endif
@@ -1922,7 +1968,7 @@ public:
 							j = LU_Entries[ru].first;
 							if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 								LineValues[j] -= u;
-							else if (fabs(u)  > std::min(tau/NuL,tau2))
+							else if (fabs(u)  > tau2)
 							{
 								next = curr;
 								while (next < j + 1)
@@ -1947,7 +1993,7 @@ public:
 								j = LU2_Entries[ru].first;
 								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 									LineValues[j] -= u;
-								else if (fabs(u)  > std::min(tau/NuL,tau2))
+								else if (fabs(u)  > std::max(tau/NuL,tau2))
 								{
 									next = curr;
 									while (next < j + 1)
@@ -1973,7 +2019,7 @@ public:
 					while (Li != EOL)
 					{
 						j = LineIndeces[Li];
-						if (fabs(LineValues[Li - 1]) < std::min(tau/NuL,tau2) )//tau2)
+						if (fabs(LineValues[Li - 1]) < tau2)
 						{
 							LineIndeces[Ui] = j;
 							LineIndeces[Li] = UNDEF;
@@ -2024,26 +2070,25 @@ public:
 					tt1 = Timer() - tt1;
 
 					tt2 = Timer();
-					INMOST_DATA_REAL_TYPE Smax = 1.0e-54;
-					INMOST_DATA_REAL_TYPE Snorm = 0.0, Snum = 0.0;
+					Smax = 1.0e-54;
+					Snorm = 0.0;
 					Ui = Ubeg[cbeg];
 					while (Ui != EOL)
 					{
 						u = fabs(temp[Ui]);
 						if( u > Smax ) Smax = u;
 						Snorm += u*u;
-						Snum++;
 						Ui = Ulist[Ui];
 					}
-					Snorm = sqrt(Snorm/Snum);
+					Snorm = sqrt(Snorm);
 					//insert obtained row
 					Ui = Ubeg[cbeg];
 					S_Address[i].first = S_Entries.size();
 					while (Ui != EOL)
 					{
 						//drop values
-						if( fabs(temp[Ui])/Smax > std::min(tau2,std::min(tau/NuU,tau/NuL)) * Smax / Snorm)
-						//if( fabs(temp[Ui]) > tau * Smax )// Snorm)
+						//if( fabs(temp[Ui])/Smax > tau2 * Smax / Snorm)
+						if( fabs(temp[Ui]) > tau2 * Smax / Snorm)
 							S_Entries.push_back(Solver::Row::entry(Ui, temp[Ui]));
 						Ui = Ulist[Ui];
 					}
@@ -2074,7 +2119,7 @@ public:
 #elif defined(REPORT_ILU_PROGRESS)
 					if (i % 100 == 0)
 					{
-						printf("%d %d/%d schur2 %6.2f%%\t\t\r", level_size.size(),cend,moend,100.f*(i - cend) / (1.f*(wend - cend)));
+						printf("%d schur2 %6.2f%%\t\t\r", level_size.size(),100.f*(i - cend) / (1.f*(wend - cend)));
 						fflush(stdout);
 					}
 #endif
@@ -2211,50 +2256,49 @@ public:
 					//TODO
 					//can it be done better on dense factors?
 					//estimate condition for U^{-1}
-					if( estimator )
+#if defined(ESTIMATOR)
+					mup = 1.0 - EstU[wbeg + i];
+					mum = -1.0 - EstU[wbeg + i];
+					np = nm = 0;
+					//start from the element next after diagonal position
+					for (Ui = i + 1; Ui < size; Ui++)
 					{
-						mup = 1.0 - EstU[wbeg + i];
-						mum = -1.0 - EstU[wbeg + i];
-						np = nm = 0;
-						//start from the element next after diagonal position
-						for (Ui = i + 1; Ui < size; Ui++)
-						{
-							v = EstU[wbeg + Ui];
-							vp = fabs(v + entries[ADDR(i,Ui)] * mup);
-							vm = fabs(v + entries[ADDR(i,Ui)] * mum);
-							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
-						}
-						NuU_old = NuU;
-						if (np > nm) NuU = mup; else NuU = mum;
-						for (Ui = i + 1; Ui < size; Ui++) EstU[wbeg + Ui] += entries[ADDR(i,Ui)] * NuU;
-						NuU = std::max(fabs(mup), fabs(mum));
-						NuU = std::max(NuU,NuU_old);
-						//estimate condition for L^{-1}
-						mup = 1.0 - EstL[wbeg+i];
-						mum = -1.0 - EstL[wbeg+i];
-						np = nm = 0;
-						//start from the element next after diagonal position
-						for (Li = i + 1; Li < size; Li++)
-						{
-							v = EstL[wbeg+Li];
-							vp = fabs(v + entries[ADDR(Li,i)] * mup);
-							vm = fabs(v + entries[ADDR(Li,i)] * mum);
-							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
-						}
-						NuL_old = NuL;
-						if (np > nm) NuL = mup; else NuL = mum;
-						for (Li = i + 1; Li < size; Li++) EstL[wbeg+Li] += entries[ADDR(Li,i)] * NuL;
-						NuL = std::max(fabs(mup), fabs(mum));
-						NuL = std::max(NuL,NuL_old);
+						v = EstU[wbeg + Ui];
+						vp = fabs(v + entries[ADDR(i,Ui)] * mup);
+						vm = fabs(v + entries[ADDR(i,Ui)] * mum);
+						v = fabs(v);
+						if (vp > std::max(2 * v, 0.5)) np++;
+						if (std::max(2 * vp, 0.5) < v) np--;
+						if (vm > std::max(2 * v, 0.5)) nm++;
+						if (std::max(2 * vm, 0.5) < v) nm--;
 					}
+					NuU_old = NuU;
+					if (np > nm) NuU = mup; else NuU = mum;
+					for (Ui = i + 1; Ui < size; Ui++) EstU[wbeg + Ui] += entries[ADDR(i,Ui)] * NuU;
+					NuU = std::max(fabs(mup), fabs(mum));
+					NuU = std::max(NuU,NuU_old);
+					//estimate condition for L^{-1}
+					mup = 1.0 - EstL[wbeg+i];
+					mum = -1.0 - EstL[wbeg+i];
+					np = nm = 0;
+					//start from the element next after diagonal position
+					for (Li = i + 1; Li < size; Li++)
+					{
+						v = EstL[wbeg+Li];
+						vp = fabs(v + entries[ADDR(Li,i)] * mup);
+						vm = fabs(v + entries[ADDR(Li,i)] * mum);
+						v = fabs(v);
+						if (vp > std::max(2 * v, 0.5)) np++;
+						if (std::max(2 * vp, 0.5) < v) np--;
+						if (vm > std::max(2 * v, 0.5)) nm++;
+						if (std::max(2 * vm, 0.5) < v) nm--;
+					}
+					NuL_old = NuL;
+					if (np > nm) NuL = mup; else NuL = mum;
+					for (Li = i + 1; Li < size; Li++) EstL[wbeg+Li] += entries[ADDR(Li,i)] * NuL;
+					NuL = std::max(fabs(mup), fabs(mum));
+					NuL = std::max(NuL,NuL_old);
+#endif
 				}
 #if defined(REPORT_ILU)
 				std::cout << level_size.size() << " finishing reorder " << std::endl;
@@ -2311,15 +2355,14 @@ public:
 
 			ratio = (tlrescale + tlfactor)/(tlreorder + tlreassamble + tlschur);
 			ratio2 = (trescale + tfactor)/(treorder + treassamble + tschur);
-			if( ddpq_tau_adapt )
-			{
-				if( ratio < 1.0 && ratio2 < 1.0 )
-					ddpq_tau /= 1.015;
-				else
-					ddpq_tau *= 1.015;
-				ddpq_tau = std::max(0.01,ddpq_tau);
-				ddpq_tau = std::min(0.99,ddpq_tau);
-			}
+#if defined(DDPQ_ADAPT_TAU)
+			if( ratio < 1.0 && ratio2 < 1.0 )
+				ddpq_tau /= 1.015;
+			else
+				ddpq_tau *= 1.015;
+			ddpq_tau = std::max(0.01,ddpq_tau);
+			ddpq_tau = std::min(0.99,ddpq_tau);
+#endif
 			/*
 //#if defined(REPORT_ILU)
 			std::cout << "============================================================================" << std::endl;
@@ -2328,6 +2371,7 @@ public:
 			std::cout << " time ratio " << ratio << std::endl;
 			std::cout << " time ratio2 " << ratio2 << std::endl;
 			std::cout << " ddpq_tau " << ddpq_tau << std::endl;
+			std::cout << " schur_tau " << drop << std::endl;
 			std::cout <<  cbeg << "..." << cend << " of " << mobeg << "..." << moend << " level " << level_size.size() << std::endl;
 			std::cout << "============================================================================" << std::endl;
 //#endif
@@ -2365,16 +2409,7 @@ public:
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < E_Address.size(); k++)
 			delete E_Address[k];
 		E_Address.clear();
-		E_Entries.clear();
-		F_Entries.clear();
 		F_Address.clear();
-		B_Entries.clear();
-		B_Address.clear();
-		temp.clear();
-		ddP.clear();
-		ddQ.clear();
-		level_size.clear();
-		LU_Diag.clear();
 		return true;
 	}
 	void Multiply(int level, Solver::Vector & input, Solver::Vector & output)
@@ -2468,7 +2503,9 @@ public:
 		INMOST_DATA_ENUM_TYPE k, level, mobeg, moend, vbeg, vend;
 		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
 		info->GetVectorRegion(vbeg, vend);
+		for (k = vbeg; k < mobeg; k++) temp[k] = 0;
 		for (k = mobeg; k < moend; k++) temp[k] = input[k];
+		for (k = moend; k < vend; k++) temp[k] = 0;
 		//the original matrix A was separated by multilevel algorithm to the following form
 		//     | B  F |
 		// A = |      |
@@ -2489,9 +2526,7 @@ public:
 		// 4) u = ~f - B^{-1} F y
 		//first reorder input as prescribed by P
 		// ~y = Pt y
-		for (k = vbeg; k < mobeg; k++) output[k] = 0;
 		for (k = mobeg; k < moend; ++k) output[k] = temp[ddP[k]];
-		for (k = moend; k < vend; k++) output[k] = 0;
 
 		level = 0;
 		//perform recursively first two steps of solve phase
@@ -2524,10 +2559,6 @@ public:
 	bool ReplaceSOL(Solver::Vector & x) { return true; }
 	bool ReplaceRHS(Solver::Vector & b) { return true; }
 	Method * Duplicate() { return new ILUC_preconditioner(*this); }
-	~ILUC_preconditioner()
-	{
-		if (!isFinalized()) Finalize();
-	}
 };
 
 #endif //__SOLVER_DDPQILUC2__

@@ -9,11 +9,6 @@
 #include <sstream>
 #include <bitset>
 #include <stddef.h>
-//0.001,0.0001
-#define TAU1 0.01
-#define TAU2 0.00075
-//#define TAU1 0.001
-//#define TAU2 0.000001
 
 #define KSOLVER BCGSL_solver
 
@@ -29,6 +24,8 @@ namespace INMOST
 #define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {std::cout << #x << " not successfull " << std::endl; MPI_Abort(comm,-1000);}}
 #define HASH_TABLE_SIZE 2048
 
+	bool Solver::is_initialized = false;
+	bool Solver::is_finalized = false;
 
 	int comparator(const void * pa, const void *pb)
 	{
@@ -122,7 +119,10 @@ namespace INMOST
 				GUARD_MPI(MPI_Comm_group(comm,&oldg));
 				GUARD_MPI(MPI_Group_incl(oldg,size,&ranks[0],&newg));
 				GUARD_MPI(MPI_Comm_create(comm,newg,&newcomm));
-				GUARD_MPI(MPI_Comm_free(&comm));
+				if( comm != INMOST_MPI_COMM_WORLD )
+				{
+					GUARD_MPI(MPI_Comm_free(&comm));
+				}
 				comm = newcomm;
 				//compute new rank
 				MPI_Comm_rank(comm,&rank);
@@ -356,6 +356,7 @@ namespace INMOST
 			{
 				send_row_sizes.resize(total_send);
 				recv_row_sizes.resize(total_recv);
+
 				INMOST_DATA_ENUM_TYPE j = 1, q = 0, f = 0, total_rows_send = 0, total_rows_recv = 0;
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < vector_exchange_recv[0]; k++) //recv sizes of rows
 				{
@@ -365,6 +366,7 @@ namespace INMOST
 				}
 				j = 1;
 				q = 0;
+
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < vector_exchange_send[0]; k++) //send sizes of rows
 				{
 					for(INMOST_DATA_ENUM_TYPE r = 0; r < vector_exchange_send[j+1]; r++)
@@ -379,6 +381,8 @@ namespace INMOST
 				}
 				send_row_data.clear();
 				send_row_data.reserve(total_rows_send);
+
+				
 				j = 1;
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < vector_exchange_send[0]; k++) //accumulate data in array
 				{
@@ -386,9 +390,13 @@ namespace INMOST
 						send_row_data.insert(send_row_data.end(),m[vector_exchange_send[j+2+r]].Begin(),m[vector_exchange_send[j+2+r]].End());
 					j += vector_exchange_send[j+1]+2;
 				}
+
+				
 				//replace by mpi_waitsome
 				if( vector_exchange_recv[0]+vector_exchange_send[0] > 0 )
 					GUARD_MPI(MPI_Waitall(vector_exchange_recv[0]+vector_exchange_send[0],&requests[0],MPI_STATUSES_IGNORE));
+
+				
 				j = 1;
 				q = 0;
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < vector_exchange_recv[0]; k++) //compute total size of data to receive
@@ -412,6 +420,8 @@ namespace INMOST
 					j += vector_exchange_recv[j+1]+2;
 					f += local_size;
 				}
+
+	
 				j = 1;
 				q = 0;
 				f = 0;
@@ -425,6 +435,8 @@ namespace INMOST
 					j += vector_exchange_send[j+1]+2;
 					f += local_size;
 				}
+
+	
 				local_start = local_end;
 				m.SetInterval(local_matrix_begin,ext_pos);
 				local_end = ext_pos;
@@ -464,16 +476,40 @@ namespace INMOST
 					jt->first = extended_indexes[jt->first-initial_matrix_end];
 		m.isParallel() = false;
 		have_matrix = false;
+#if defined(USE_MPI)
+		if( comm != INMOST_MPI_COMM_WORLD )
+		{
+			MPI_Comm_free(&comm);
+			comm = INMOST_MPI_COMM_WORLD;
+		}
+#endif
 		//std::cout << __FUNCTION__ << std::endl;
 	}
 
 	Solver::OrderInfo::~OrderInfo()
 	{
 #if defined(USE_MPI)
-		MPI_Comm_free(&comm);
+		if( comm != INMOST_MPI_COMM_WORLD )
+			MPI_Comm_free(&comm);
 #endif
 	}
 	
+	void Solver::OrderInfo::Clear()
+	{
+		global_to_proc.clear();
+		global_overlap.clear();
+		vector_exchange_recv.clear();
+		vector_exchange_send.clear();
+		send_storage.clear();
+		recv_storage.clear();
+		send_requests.clear();
+		recv_requests.clear();
+		extended_indexes.clear();
+		local_vector_begin = local_vector_end = 0;
+		initial_matrix_begin = initial_matrix_end = 0;
+		local_matrix_begin = local_matrix_end = 0;
+		have_matrix = false;
+	}
 	
 	void Solver::OrderInfo::PrepareVector(Vector & v)
 	{
@@ -722,7 +758,8 @@ namespace INMOST
 	
 	void Solver::Matrix::MatVec(INMOST_DATA_REAL_TYPE alpha, Solver::Vector & x, INMOST_DATA_REAL_TYPE beta, Solver::Vector & out) const //y = alpha*A*x + beta * y
 	{
-		INMOST_DATA_ENUM_TYPE ind, mbeg, mend;
+		INMOST_DATA_ENUM_TYPE mbeg, mend;
+		INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
 		if( out.Empty() )
 		{
 			INMOST_DATA_ENUM_TYPE vbeg,vend;
@@ -733,7 +770,10 @@ namespace INMOST
 		//~ assert(GetFirstIndex() == out.GetFirstIndex());
 		//~ assert(Size() == out.Size());
 		GetInterval(mbeg,mend);
-		for(ind = mbeg; ind < mend; ++ind) //iterate rows of matrix
+		imbeg = mbeg;
+		imend = mend;
+#pragma omp for private(ind)
+		for(ind = imbeg; ind < imend; ++ind) //iterate rows of matrix
 			out[ind] = beta * out[ind] + alpha * (*this)[ind].RowVec(x);
 		// outer procedure should update Sout vector, if needed
 	}
@@ -995,16 +1035,33 @@ namespace INMOST
 #if defined(USE_MPI)
 		{
 			int flag = 0;
+			int ierr = 0;
 			MPI_Initialized(&flag);
-			if( !flag ) MPI_Init(argc,argv);
+			if( !flag ) 
+			{
+				ierr = MPI_Init(argc,argv);
+				if( ierr != MPI_SUCCESS )
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Init" << std::endl;
+				}
+			}
 			MPI_Datatype type[3] = { INMOST_MPI_DATA_ENUM_TYPE, INMOST_MPI_DATA_REAL_TYPE, MPI_UB};
 			int blocklen[3] = { 1, 1, 1 };
 			MPI_Aint disp[3];
 			disp[0] = offsetof(Solver::Row::entry,first);
 			disp[1] = offsetof(Solver::Row::entry,second);
 			disp[2] = sizeof(Solver::Row::entry);
-			MPI_Type_create_struct(3, blocklen, disp, type, &RowEntryType);
-			MPI_Type_commit(&RowEntryType);
+			ierr = MPI_Type_create_struct(3, blocklen, disp, type, &RowEntryType);
+			if( ierr != MPI_SUCCESS )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_create_struct" << std::endl;
+			}
+			ierr = MPI_Type_commit(&RowEntryType);
+			if( ierr != MPI_SUCCESS )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_commit" << std::endl;
+			}
+			is_initialized = true;
 		}
 #endif
 	}
@@ -1026,6 +1083,8 @@ namespace INMOST
 			MPI_Finalized(&flag);
 			if( !flag ) 
 				MPI_Finalize();
+			is_initialized = false;
+			is_finalized = true;
 		}
 #endif
 	}
@@ -1034,7 +1093,7 @@ namespace INMOST
 		IterativeMethod * method = (IterativeMethod *)solver_data;
 		if (name[0] == ':')
 			 method->EnumParameter(name.substr(1, name.size() - 1)) = val;
-		if (name == "overlap") overlap = val;
+		else if (name == "overlap") overlap = val;
 		else method->EnumParameter(name) = val;
 	}
 	void Solver::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE val)
@@ -1045,12 +1104,15 @@ namespace INMOST
 	}
 	Solver::Solver(Type pack, std::string _name, INMOST_MPI_Comm _comm)
 	{
-		overlap = 1;
+		overlap = 2;
 		comm = _comm;
 		_pack = pack;
 		name = _name;
 		solver_data = NULL;
-		matrix_data = rhs_data = solution_data = NULL;
+		local_size = global_size = 0;
+		last_it = 0;
+		last_resid = 0;
+		matrix_data = rhs_data = solution_data = precond_data =  NULL;
 #if defined(USE_SOLVER_PETSC)
 		if( _pack == PETSC )
 		{
@@ -1125,8 +1187,10 @@ namespace INMOST
 			throw - 1;
 		}
 	}
-	Solver::~Solver()
+	void Solver::Clear()
 	{
+		local_size = global_size = overlap = 0;
+		info.Clear();
 #if defined(USE_SOLVER_PETSC)
 		if( _pack == PETSC )
 		{
@@ -1153,17 +1217,21 @@ namespace INMOST
 #endif
 		if (_pack == INNER_ILU2 || _pack == INNER_MLILUC)
 		{
-			if( solver_data != NULL ) 
-			{
-				delete (Method *)solver_data;
-				solver_data = NULL;
-			}
 			if( matrix_data != NULL )
 			{
 				delete (Solver::Matrix * )matrix_data;
 				matrix_data = NULL;
 			}
+			if( solver_data != NULL ) 
+			{
+				delete (Method *)solver_data;
+				solver_data = NULL;
+			}
 		}
+	}
+	Solver::~Solver()
+	{
+		Clear();
 	}
 	Solver & Solver::operator =(Solver const & other)
 	{
@@ -1236,12 +1304,13 @@ namespace INMOST
 	
 	void Solver::SetMatrix(Matrix & A, bool OldPreconditioner)
 	{
-		bool modified_pattern = false, ok = false;
-		for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
-			modified_pattern |= it->modified_pattern;
+		bool ok = false;
 #if defined(USE_SOLVER_PETSC)
 		if( _pack == PETSC )
 		{
+			bool modified_pattern = false;
+			for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
+				modified_pattern |= it->modified_pattern;
 			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
 			if( matrix_data == NULL ) 
 			{
@@ -1333,6 +1402,9 @@ namespace INMOST
 #if defined(USE_SOLVER_ANI)
 		if( _pack == ANI )
 		{
+			bool modified_pattern = false;
+			for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
+				modified_pattern |= it->modified_pattern;
 			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
 			if( matrix_data == NULL )
 			{ 
@@ -1383,12 +1455,13 @@ namespace INMOST
 #endif
 		if (_pack == INNER_ILU2 || _pack == INNER_MLILUC)
 		{
-			if( matrix_data != NULL ) delete (Solver::Matrix *)matrix_data;
+			
 			Solver::Matrix * mat = new Solver::Matrix(A);
-			matrix_data = (void *)mat;
 			info.PrepareMatrix(*mat, overlap);
 			IterativeMethod * sol = (IterativeMethod *)solver_data;
 			sol->ReplaceMAT(*mat);
+			if( matrix_data != NULL ) delete (Solver::Matrix *)matrix_data;
+			matrix_data = (void *)mat;
 			ok = true;
 		}
 		for(Matrix::iterator it = A.Begin(); it != A.End(); it++) it->modified_pattern = false;
@@ -1476,7 +1549,7 @@ namespace INMOST
 			VectorPreallocateAni(solution_data,local_size);
 			{
 				VectorFillAni(rhs_data,&RHS[vbeg]);
-				VectorFinalizeAni(rhs_data);
+				VectorFinalizeAni(rhs_data);s
 				
 				VectorFillAni(solution_data,&SOL[vbeg]);
 				VectorFinalizeAni(solution_data);
@@ -1491,13 +1564,24 @@ namespace INMOST
 		if (_pack == INNER_ILU2 || _pack == INNER_MLILUC)
 		{
 			IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
-			if (!sol->isInitialized()) sol->Initialize();
+			if (!sol->isInitialized()) 
+			{
+				sol->Initialize();
+			}
 			bool ret = sol->Solve(RHS,SOL);
 			last_it = sol->GetIterations();
 			last_resid = sol->GetResidual();
 			return ret;
 		}
 		throw NotImplemented;
+	}
+
+	std::string Solver::GetReason()
+	{
+		IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
+		if( sol != NULL )
+			return sol->GetReason();
+		else return "solver is not initialized";
 	}
 	
 	INMOST_DATA_ENUM_TYPE Solver::Iterations()

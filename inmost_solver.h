@@ -49,6 +49,7 @@ namespace INMOST
 			INMOST_MPI_Comm comm;
 			int rank,size;
 		public:
+			void Clear();
 			bool & HaveMatrix() { return have_matrix; }
 			OrderInfo();
 			OrderInfo(const OrderInfo & other);
@@ -120,6 +121,8 @@ namespace INMOST
 			
 			bool                 & isParallel() {return is_parallel;}
 			std::string          GetName() {return name;}
+
+			void Clear() {data.clear();}
 			//~ friend class Solver;
 		};
 
@@ -134,7 +137,7 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE first; 
 				INMOST_DATA_REAL_TYPE second;
 				entry_s() :first(0), second(0.0) {}
-				entry_s(const entry_s & other) :first(other.first), second(other.second) {}
+				entry_s(const entry_s & other) :first(other.first), second(other.second) {}//{std::cout << __FUNCTION__ << " " << first << " " << second << std::endl;}
 				entry_s(INMOST_DATA_ENUM_TYPE first, INMOST_DATA_REAL_TYPE second):first(first),second(second){}
 				entry_s & operator =(entry_s const & other) {first = other.first, second = other.second; return *this;}
 				bool operator < (const entry_s & other) const { return first < other.first || (first == other.first && second < other.second); }
@@ -158,6 +161,7 @@ namespace INMOST
 			bool marker;
 			Entries data;
 		public:
+			void Report() {data.report_addr();}
 			void SetMarker() { marker = true; }
 			void RemMarker() { marker = false; }
 			bool GetMarker() { return marker; }
@@ -170,6 +174,9 @@ namespace INMOST
 			}
 			Row(const Row & other) :marker(other.marker),data(other.data) 
 			{ 
+				//std::cout << __FUNCTION__ << " ";
+				//for(iterator it = Begin(); it != End(); ++it) std::cout << it->first << "," << it->second << " ";
+				//std::cout << std::endl;
 #if defined(USE_OMP)
 				omp_init_lock(&lock);
 #endif
@@ -292,6 +299,7 @@ namespace INMOST
 			
 			void MatVec(INMOST_DATA_REAL_TYPE alpha, Solver::Vector & x, INMOST_DATA_REAL_TYPE beta, Solver::Vector & out) const; //y = alpha*A*x + beta * y
 
+			void Clear() {for(Matrix::iterator it = Begin(); it != End(); ++it) it->Clear(); data.clear();}
 
 			void				 Load(std::string file, INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, INMOST_DATA_ENUM_TYPE end = ENUMUNDEF);
 			void                 Save(std::string file);
@@ -302,6 +310,7 @@ namespace INMOST
 		};
 		
 	private:
+		static bool is_initialized, is_finalized;
 		INMOST_MPI_Comm comm;
 		std::string name;
 		INMOST_DATA_ENUM_TYPE local_size, global_size;
@@ -331,12 +340,16 @@ namespace INMOST
 		INMOST_DATA_REAL_TYPE Residual();
 		void SetMatrix(Matrix & A, bool OldPreconditioner = false);
 		bool Solve(Vector & RHS, Vector & SOL);
-
+		std::string GetReason();
 
 		Solver(Type pack, std::string _name = "", INMOST_MPI_Comm comm = INMOST_MPI_COMM_WORLD);
 		~Solver();
 		static void Initialize(int * argc, char *** argv, const char * database = "");
 		static void Finalize();
+		static bool isInitialized() {return is_initialized;}
+		static bool isFinalized() {return is_finalized;}
+
+		void Clear();
 	};
 }
 

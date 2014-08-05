@@ -277,11 +277,33 @@ namespace INMOST
 	
 	Mesh::~Mesh()
 	{
+		//Mesh::iteratorTag t = BeginTag();
+		//while(t != EndTag()) DeleteTag(*t);
 		for(sets_container::iterator it = sets.begin(); it != sets.end(); it++) if( *it != NULL ) delete *it;
-		for(cells_container::iterator it = cells.begin(); it != cells.end(); it++) if( *it != NULL ) delete *it;
-		for(faces_container::iterator it = faces.begin(); it != faces.end(); it++) if( *it != NULL ) delete *it;
-		for(edges_container::iterator it = edges.begin(); it != edges.end(); it++) if( *it != NULL ) delete *it;
-		for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL ) delete *it;
+		for(cells_container::iterator it = cells.begin(); it != cells.end(); it++) if( *it != NULL ) 
+		{
+			(*it)->high_conn.clear();
+			(*it)->low_conn.clear();
+			delete *it;
+		}
+		for(faces_container::iterator it = faces.begin(); it != faces.end(); it++) if( *it != NULL ) 
+		{
+			(*it)->high_conn.clear();
+			(*it)->low_conn.clear();
+			delete *it;
+		}
+		for(edges_container::iterator it = edges.begin(); it != edges.end(); it++) if( *it != NULL ) 
+		{
+			(*it)->high_conn.clear();
+			(*it)->low_conn.clear();
+			delete *it;
+		}
+		for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL ) 
+		{
+			(*it)->high_conn.clear();
+			(*it)->low_conn.clear();
+			delete *it;
+		}
 #if defined(USE_MPI)
 #if defined(USE_MPI2)
 		if( m_state == Mesh::Parallel )
@@ -1446,7 +1468,7 @@ namespace INMOST
 		switch(e->GetElementType())
 		{
 			case ESET:
-				if( !empty_sets.empty() )
+				if( !empty_sets.empty() && !isMeshModified() )
 				{
 					e->local_id = empty_sets.back();
 					sets[empty_sets.back()] = static_cast<ElementSet *>(e);
@@ -1459,7 +1481,7 @@ namespace INMOST
 				}
 				break;
 			case NODE:
-				if( !empty_nodes.empty() )
+				if( !empty_nodes.empty() && !isMeshModified() )
 				{
 					e->local_id = empty_nodes.back();
 					nodes[empty_nodes.back()] = static_cast<Node *>(e);
@@ -1472,7 +1494,7 @@ namespace INMOST
 				}
 				break;
 			case EDGE:
-				if( !empty_edges.empty() )
+				if( !empty_edges.empty() && !isMeshModified() )
 				{
 					e->local_id = empty_edges.back();
 					edges[empty_edges.back()] = static_cast<Edge *>(e);
@@ -1485,7 +1507,7 @@ namespace INMOST
 				}
 				break;
 			case FACE:
-				if( !empty_faces.empty() )
+				if( !empty_faces.empty() && !isMeshModified() )
 				{
 					e->local_id = empty_faces.back();
 					faces[empty_faces.back()] = static_cast<Face *>(e);
@@ -1498,7 +1520,7 @@ namespace INMOST
 				}
 				break;
 			case CELL:
-				if( !empty_cells.empty() )
+				if( !empty_cells.empty() && !isMeshModified() )
 				{
 					e->local_id = empty_cells.back();
 					cells[empty_cells.back()] = static_cast<Cell *>(e);
@@ -1541,9 +1563,38 @@ namespace INMOST
 	
 #define DOWNSIZE_FACTOR 2
 
+	int CompareElementsForReorderApply(const void * a, const void * b, void * udata)
+	{
+		return (*(Storage **)a)->Integer(*(Tag *)udata) - (*(Storage **)b)->Integer(*(Tag *)udata);
+
+	}
+
 	
 	void Mesh::ReorderApply(Tag index, ElementType mask)
 	{
+		ReorderEmpty(mask);
+		if( mask & ESET )
+		{
+			sort(&sets[0],sets.size(),sizeof(ElementSet *),CompareElementsForReorderApply,SwapElement,&index);
+		}
+		if( mask & CELL )
+		{
+			sort(&cells[0],cells.size(),sizeof(Cell *),CompareElementsForReorderApply,SwapElement,&index);
+		}
+		if( mask & FACE )
+		{
+			sort(&faces[0],faces.size(),sizeof(Face *),CompareElementsForReorderApply,SwapElement,&index);
+		}
+		if( mask & EDGE )
+		{
+			sort(&edges[0],edges.size(),sizeof(Edge *),CompareElementsForReorderApply,SwapElement,&index);
+		}
+		if( mask & NODE )
+		{
+			sort(&nodes[0],nodes.size(),sizeof(Node *),CompareElementsForReorderApply,SwapElement,&index);
+		}
+		return;
+
 		throw NotImplemented;
 		/*
 		if( mask & CELL )
@@ -1885,6 +1936,7 @@ namespace INMOST
 	
 	size_t Mesh::GetArrayCapacity(ElementType etype)
 	{
+		assert(OneType(etype));
 		switch(etype)
 		{
 			case NODE: return nodes.capacity(); break;
@@ -1895,6 +1947,7 @@ namespace INMOST
 		}
 		return 0;
 	}
+
 	
 	bool Mesh::isOriginal(Element * e)
 	{

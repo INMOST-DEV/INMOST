@@ -29,6 +29,94 @@ static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 
 namespace INMOST
 {
+
+	void UnpackSyncMarkerOR(Tag tag, Element * element, INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		element->Bulk(tag) |= *data;
+	}
+
+	void UnpackSyncMarkerXOR(Tag tag, Element * element, INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		element->Bulk(tag) ^= *data;
+	}
+
+	
+	void UnpackSyncMarkerAND(Tag tag, Element * element, INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		element->Bulk(tag) &= *data;
+	}
+
+	void Mesh::SynchronizeMarker(MIDType marker, ElementType mask, SyncBitOp op)
+	{
+#if defined(USE_MPI)
+		if( m_state == Mesh::Parallel )
+		{
+			Tag t = CreateTag("TEMP_SYNC_MARKER",DATA_BULK,mask,mask,1);
+
+			for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+				if( it->GetMarker(marker) && (it->GetStatus() & (Element::Shared | (op != SYNC_BIT_NEW ? Element::Ghost :Element::Any))) )
+					it->Bulk(t) = 1;
+
+			
+			
+			switch(op)
+			{
+			case SYNC_BIT_NEW:
+				ExchangeData(t,mask);
+				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+				{
+					if( it->GetStatus() == Element::Ghost )
+					{
+						if( it->HaveData(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+					}
+				}
+				break;
+			case SYNC_BIT_OR:
+				ReduceData(t,mask,UnpackSyncMarkerOR);
+				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+				{
+					if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+					{
+						if( !it->GetMarker(marker) && it->HaveData(t) ) it->SetMarker(marker);
+					}
+				}
+				break;
+			case SYNC_BIT_AND:
+				ReduceData(t,mask,UnpackSyncMarkerAND);
+				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+				{
+					if( it->GetStatus() & (Element::Ghost | Element::Shared))
+					{
+						if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+					}
+				}
+				break;
+			case SYNC_BIT_XOR:
+				ReduceData(t,mask,UnpackSyncMarkerXOR);
+				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+				{
+					if( it->GetStatus() & (Element::Ghost | Element::Shared))
+					{
+						if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+					}
+				}
+				break;
+			}
+			
+
+			DeleteTag(t,mask);
+		}
+#endif
+	}
+
+	ElementType Mesh::SynchronizeElementType(ElementType etype)
+	{
+		ElementType etypeout = etype;
+#if defined(USE_MPI)
+		MPI_Allreduce(&etype,&etypeout,1,INMOST_MPI_DATA_BULK_TYPE,MPI_BOR,GetCommunicator());
+#endif
+		return etypeout;
+	}
 	Storage::integer Mesh::TotalNumberOf(ElementType mask)
 	{
 		Storage::integer number = 0, ret = 0;
@@ -712,7 +800,9 @@ namespace INMOST
 						}
 					}
 					if( !send_reqs.empty() )
+					{
 						REPORT_MPI(MPI_Waitall(send_reqs.size(),&send_reqs[0],MPI_STATUSES_IGNORE));
+					}
 					//~ REPORT_MPI(MPI_Allgather(usend,2,MPI_UNSIGNED,&sendsizeall[0],2,MPI_UNSIGNED,comm));
 //~ #endif
 					double time2 = Timer();
@@ -773,7 +863,9 @@ namespace INMOST
 							}
 						}
 						if( !send_reqs.empty() )
+						{
 							REPORT_MPI(MPI_Waitall(send_reqs.size(),&send_reqs[0],MPI_STATUSES_IGNORE));
+						}
 					}			
 					
 					time2 = Timer() - time2;
@@ -1043,7 +1135,9 @@ namespace INMOST
 						}
 						RecomputeParallelStorage(current_mask);
 						if( !send_reqs.empty() )
+						{
 							REPORT_MPI(MPI_Waitall(send_reqs.size(),&send_reqs[0],MPI_STATUSES_IGNORE));
+						}
 						AssignGlobalID(current_mask);					
 #if defined(USE_PARALLEL_STORAGE)
 						for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
@@ -1623,6 +1717,7 @@ namespace INMOST
 		if( tag.GetDataType() == DATA_REFERENCE ) return; //NOT IMPLEMENTED
 		ENTER_FUNC();
 #if defined(USE_MPI)
+		ElementType pack_types[2] = {NONE,NONE};
 		std::vector<Element *>::iterator eit;
 		std::vector<INMOST_DATA_BULK_TYPE> array_data_send;
 		std::vector<INMOST_DATA_ENUM_TYPE> array_size_send(2);
@@ -1631,9 +1726,11 @@ namespace INMOST
 		unsigned int size = tag.GetSize();
 		for(int i = 0; i < 4; i++) if( (mask & (1 << i)) && tag.isDefined(1 << i) )
 		{
+			pack_types[0] |= 1 << i;
 			REPORT_VAL(ElementTypeName(mask & (1<<i)),elements[i].size());
 			if( tag.isSparse(1 << i) )
 			{
+				pack_types[1] |= 1 << i;
 				unsigned int count = array_size_send.size();
 				array_size_send.push_back(0);
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++)
@@ -1662,12 +1759,17 @@ namespace INMOST
 		}
 		array_size_send[0] = array_size_send.size()-2;
 		array_size_send[1] = array_data_send.size();
+		REPORT_VAL("size_size",array_size_send[0]);
+		REPORT_VAL("data_size",array_size_send[1]);
 		int buffer_size = 0,position = buffer.size(),temp;
+		MPI_Pack_size(2,INMOST_MPI_DATA_BULK_TYPE,comm,&temp);
+		buffer_size+= temp;
 		MPI_Pack_size(array_size_send.size(),INMOST_MPI_DATA_ENUM_TYPE,comm,&temp);
 		buffer_size+= temp;
 		MPI_Pack_size(array_data_send.size()/tag.GetBytesSize(),tag.GetBulkDataType(),comm,&temp);
 		buffer_size+= temp;
 		buffer.resize(position+buffer_size);
+		MPI_Pack(pack_types,2,INMOST_MPI_DATA_BULK_TYPE,&buffer[0],buffer.size(),&position,comm);
 		if( !array_size_send.empty() ) MPI_Pack(&array_size_send[0],array_size_send.size(),INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],buffer.size(),&position,comm);
 		if( !array_data_send.empty() ) MPI_Pack(&array_data_send[0],array_data_send.size()/tag.GetBytesSize(),tag.GetBulkDataType(),&buffer[0],buffer.size(),&position,comm);
 		buffer.resize(position);		
@@ -1686,22 +1788,28 @@ namespace INMOST
 		if( !buffer.empty() )
 		{
 			int pos = 0, k = 0;
+			ElementType recv_mask[2];
 			INMOST_DATA_ENUM_TYPE data_recv, size_recv;
 			std::vector<Element *>::iterator eit;
 			unsigned int size = tag.GetSize();
 			std::vector<INMOST_DATA_BULK_TYPE> array_data_recv;
 			std::vector<INMOST_DATA_ENUM_TYPE> array_size_recv;
-		
+			MPI_Unpack(&buffer[0],1,&position,recv_mask,2,INMOST_MPI_DATA_BULK_TYPE,comm);
 			MPI_Unpack(&buffer[0],buffer.size(),&position,&size_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
 			MPI_Unpack(&buffer[0],buffer.size(),&position,&data_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
 			array_size_recv.resize(size_recv);
 			array_data_recv.resize(data_recv);
 			if( !array_size_recv.empty() ) MPI_Unpack(&buffer[0],buffer.size(),&position,&array_size_recv[0],array_size_recv.size(),INMOST_MPI_DATA_ENUM_TYPE,comm);
 			if( !array_data_recv.empty() ) MPI_Unpack(&buffer[0],buffer.size(),&position,&array_data_recv[0],array_data_recv.size()/tag.GetBytesSize(),tag.GetBulkDataType(),comm);
-			for(int i = 0; i < 4; i++) if( (mask & (1<<i)) && tag.isDefined(1 << i) )
+			for(int i = 0; i < 4; i++) if( (recv_mask[0] & (1<<i)) )//&& tag.isDefined(1 << i) )
 			{
-				REPORT_VAL("etype",ElementTypeName(mask & (1<<i)));
+				REPORT_VAL("etype",ElementTypeName(recv_mask[0] & (1<<i)));
 				REPORT_VAL("elements",elements[i].size());
+				if( !tag.isDefined(1 << i) ) 
+				{
+					tag = CreateTag(tag.GetTagName(),tag.GetDataType(),1<<i,recv_mask[1] & (1<<i),size);
+				}
+
 				if( tag.isSparse(1 << i) )
 				{
 					unsigned int count = array_size_recv[k++];
@@ -1754,6 +1862,7 @@ namespace INMOST
 	
 	void Mesh::ExchangeDataInnerBegin(std::vector<Tag> tags, parallel_storage & from, parallel_storage & to, ElementType mask, exchange_data & storage)
 	{
+		/*
 		{ // checks for bad input
 			if( mask == NONE ) return;
 			std::vector<Tag>::iterator it = tags.begin();
@@ -1762,6 +1871,7 @@ namespace INMOST
 				else ++it;
 			if( tags.empty() ) return;
 		}
+		*/
 		if( m_state == Serial ) return;
 		ENTER_FUNC();
 #if defined(USE_MPI)
@@ -1797,7 +1907,10 @@ namespace INMOST
 			if( send_size[p-procs.begin()] )
 			{
 				for(unsigned int k = 0; k < tags.size(); k++)
+				{
+					REPORT_VAL("processor",*p);
 					PackTagData(tags[k],from[*p].get_container(),mask,storage.send_buffers[num_send].second);
+				}
 				storage.send_buffers[num_send].first = *p;
 				num_send++;
 			}
@@ -1850,11 +1963,16 @@ namespace INMOST
 			{
 				int position = 0;
 				for(unsigned int k = 0; k < tags.size(); k++)
+				{
+					REPORT_VAL("processor",storage.recv_buffers[*qt].first);
 					UnpackTagData(tags[k],to[storage.recv_buffers[*qt].first].get_container(),mask,storage.recv_buffers[*qt].second,position,Operation);
+				}
 			}
 		}
 		if( !storage.send_reqs.empty() )
+		{
 			REPORT_MPI(MPI_Waitall(storage.send_reqs.size(),&storage.send_reqs[0],MPI_STATUSES_IGNORE));
+		}
 #endif
 		EXIT_FUNC();
 	}
@@ -2781,10 +2899,14 @@ namespace INMOST
 					REPORT_MPI(MPI_Isend(&send_recv_size[i+recv_bufs.size()],1,MPI_INT,send_bufs[i].first,mpi_tag,comm,&reqs[i+recv_bufs.size()]));	
 				}
 				if( !recv_bufs.empty() )
+				{
 					REPORT_MPI(MPI_Waitall(recv_bufs.size(),&reqs[0],MPI_STATUSES_IGNORE));
+				}
 				for(i = 0; i < recv_bufs.size(); i++) recv_bufs[i].second.resize(send_recv_size[i]);
 				if( !send_bufs.empty() )
+				{
 					REPORT_MPI(MPI_Waitall(send_bufs.size(),&reqs[recv_bufs.size()],MPI_STATUSES_IGNORE));
+				}
 			}
 		}
 		else if( todo == UnknownSource )
@@ -2795,7 +2917,10 @@ namespace INMOST
 			memset(shared_space,0,sizeof(unsigned)*mpisize); //zero bits where we receive data
 			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 			for(i = 0; i < end; i++) shared_space[mpisize+i] = send_bufs[i].second.size()+1; //put data to special part of the memory
-			for(i = 0; i < end; i++) REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,MPI_UNSIGNED,send_bufs[i].first,mpirank,1,MPI_UNSIGNED,window)); //request rdma
+			for(i = 0; i < end; i++) 
+			{
+				REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,MPI_UNSIGNED,send_bufs[i].first,mpirank,1,MPI_UNSIGNED,window)); //request rdma
+			}
 			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSUCCEED,window)); //end exchange session
 			if( parallel_strategy == 0 )
 			{
@@ -2830,26 +2955,24 @@ namespace INMOST
 			}
 			else if( parallel_strategy == 1 || parallel_strategy == 2 )
 			{
-				std::vector< unsigned > sends_dest_and_size;
-				sends_dest_and_size.reserve(send_bufs.size()*2);
-				exch_buffer_type::iterator kt;
-				for(kt = send_bufs.begin(); kt != send_bufs.end(); kt++)
+				std::vector< unsigned > sends_dest_and_size(send_bufs.size()*2+1);
+				for(int i = 0; i < send_bufs.size(); i++)
 				{
-					sends_dest_and_size.push_back(kt->first);
-					sends_dest_and_size.push_back(kt->second.size());
+					sends_dest_and_size[i*2+0] = send_bufs[i].first;
+					sends_dest_and_size[i*2+1] = send_bufs[i].second.size();
 				}
 				unsigned recvsize = 0;
 				int k,j;
 				std::vector<int> allsize(mpisize);
-				int size = sends_dest_and_size.size();
+				int size = send_bufs.size()*2;
 				REPORT_MPI(MPI_Allgather(&size,1,MPI_INT,&allsize[0],1,MPI_INT,comm));
 				std::vector<int> displs(mpisize+1,0);
 				for(k = 0; k < mpisize; k++)
 					recvsize += allsize[k];
 				for(k = 1; k < mpisize+1; k++)
 					displs[k] = displs[k-1]+allsize[k-1];
-				std::vector<unsigned> recvs_dest_and_size(recvsize);
-				REPORT_MPI(MPI_Allgatherv(&sends_dest_and_size[0],sends_dest_and_size.size(),MPI_UNSIGNED,&recvs_dest_and_size[0],&allsize[0],&displs[0],MPI_UNSIGNED,comm));
+				std::vector<unsigned> recvs_dest_and_size(recvsize+1);
+				REPORT_MPI(MPI_Allgatherv(&sends_dest_and_size[0],send_bufs.size()*2,MPI_UNSIGNED,&recvs_dest_and_size[0],&allsize[0],&displs[0],MPI_UNSIGNED,comm));
 				recv_bufs.clear();
 				for(k = 0; k < mpisize; k++)
 					for(j = displs[k]; j < displs[k+1]; j+=2)
@@ -2882,7 +3005,9 @@ namespace INMOST
 		else
 		{
 			if( !recv_reqs.empty() )
+			{
 				REPORT_MPI(MPI_Waitsome(recv_reqs.size(),&recv_reqs[0],&outcount,&ret[0],MPI_STATUSES_IGNORE));
+			}
 			else outcount = MPI_UNDEFINED;
 			if( outcount == MPI_UNDEFINED ) ret.clear();
 			else ret.resize(outcount);
@@ -3042,7 +3167,9 @@ namespace INMOST
 		if( action == AGhost ) //second round to inform owner about ghosted elements
 		{
 			if( !send_reqs.empty() )
+			{
 				REPORT_MPI(MPI_Waitall(send_reqs.size(),&send_reqs[0],MPI_STATUSES_IGNORE));
+			}
 			//Inform owners about the fact that we have received their elements
 			tag_list.clear();
 			tag_list_recv.clear();
@@ -3143,7 +3270,9 @@ namespace INMOST
 		{
 			//wait for second round of communication
 			if( !send_reqs.empty() )
+			{
 				REPORT_MPI(MPI_Waitall(num_wait,&send_reqs[0],MPI_STATUSES_IGNORE));
+			}
 			//Probably now owner should send processors_tag data
 			ExchangeData(tag_processors,CELL | FACE | EDGE | NODE);
 		}
@@ -3152,7 +3281,9 @@ namespace INMOST
 		if( action == AMigrate ) 
 		{
 			if( !send_reqs.empty() )
+			{
 				REPORT_MPI(MPI_Waitall(send_reqs.size(),&send_reqs[0],MPI_STATUSES_IGNORE));
+			}
 		}
 #endif
 		EXIT_FUNC();
