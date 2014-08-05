@@ -294,7 +294,11 @@ namespace INMOST
 		friend class Mesh;
 	};
 	
-
+	/// Base class for Mesh, Element, and ElementSet classes.
+	/// This base class is used for the Mesh class, as well as Element classes, and ElementSet class.
+	/// 
+	/// Storage class is used for representing different data objects in memory.
+	/// Each data object is associated with corresponding Tag.
 	class Storage //implemented in storage.cpp
 	{
 	protected:
@@ -319,22 +323,38 @@ namespace INMOST
 		__INLINE void * GetLink(Tag t) {void * p; if( !t.isSparseNum(etypenum) ) p = GetDenseLink(t); else {void * & q = GetSparseLink(t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); p = q;} return p;}
 		__INLINE void * GetLink(Tag t) const {void * p; if( !t.isSparseNum(etypenum) ) p = GetDenseLink(t); else p = GetSparseLink(t); return p;}
 	public:
+		/// Storage type for representing real values.
 		typedef INMOST_DATA_REAL_TYPE real; 
+		/// Storage type for representing integer values.
 		typedef INMOST_DATA_INTEGER_TYPE integer;
+		/// Storage type for representing one byte of abstact data.
 		typedef INMOST_DATA_BULK_TYPE bulk;
+		/// Storage type for representing references to Element.
 		typedef Element * reference;
+		/// Storage type for representing arrays of real values.
 		typedef shell<real> real_array;
+		/// Storage type for representing arrays of integer values.
 		typedef shell<integer> integer_array;
+		/// Storage type for representing abstact data as a series of bytes.
 		typedef shell<bulk> bulk_array;
+		/// Storage type for representing arrays of Element references.
 		typedef shell<Element *> reference_array;
 		virtual ~Storage();
+		/// Retrieve real value associated with Tag.
 		__INLINE real      & Real     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL     ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::real     *>(p)[0]; else return static_cast<inner_real_array     *>(p)->at_safe(0);}
+		/// Retrieve integer value associated with Tag.
 		__INLINE integer   & Integer  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER  ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::integer  *>(p)[0]; else return static_cast<inner_integer_array  *>(p)->at_safe(0);}
+		/// Retrieve one byte of abstract data associated with Tag.
 		__INLINE bulk      & Bulk     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK     ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::bulk     *>(p)[0]; else return static_cast<inner_bulk_array     *>(p)->at_safe(0);}
+		/// Retrieve Element reference associated with Tag.
 		__INLINE reference & Reference(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::reference*>(p)[0]; else return static_cast<inner_reference_array*>(p)->at_safe(0);}
+		/// Retrieve array of real values associated with Tag.
 		__INLINE real_array      RealArray     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL     ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::real_array     (*static_cast<inner_real_array     *>(p)); else return Storage::real_array     (static_cast<Storage::real      *>(p),tag.GetSize());}
+		/// Retrieve array of integer values associated with Tag.
 		__INLINE integer_array   IntegerArray  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER  ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::integer_array  (*static_cast<inner_integer_array  *>(p)); else return Storage::integer_array  (static_cast<Storage::integer   *>(p),tag.GetSize());}
+		/// Retrieve abstract data associated with Tag as a series of bytes.
 		__INLINE bulk_array      BulkArray     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK     ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::bulk_array     (*static_cast<inner_bulk_array     *>(p)); else return Storage::bulk_array     (static_cast<Storage::bulk      *>(p),tag.GetSize());}
+		/// Retrieve array of Element references associated with Tag.
 		__INLINE reference_array ReferenceArray(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::reference_array(*static_cast<inner_reference_array*>(p)); else return Storage::reference_array(static_cast<Storage::reference *>(p),tag.GetSize());}
 		
 		//optimized data requests for dense data with fixed size
@@ -357,11 +377,28 @@ namespace INMOST
 		__INLINE bulk      & BulkDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_bulk_array     *>(GetDenseLink(tag))->at_safe(0);}
 		__INLINE reference & ReferenceDV(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_reference_array*>(GetDenseLink(tag))->at_safe(0);}
 		
+		/// Return the data length associated with Tag.
+		/// For abstract data return the number of bytes, otherwise return the length of associated array. 
+		/// @see Storage::SetDataSize
 		size_t GetDataSize(Tag tag) const; //For DATA_BULK return number of bytes, otherwise return the length of array
+		/// Set the length of  data associated with Tag.
+		/// @param tag Identifying Tag.
+		/// @param new_size The number of bytes for abstract data, otherwise the length of the array.
+		/// @see Storage::GetDataSize
 		void SetDataSize(Tag tag,size_t new_size);
+		/// Extract part of the data associated with Tag.
+		/// Copy part of the associated array or data to the destination memory.
+		/// @param tag Identifying Tag.
+		/// @param shift Starting position of the copied data.
+		/// For abstact data – number of bytes to skip, otherwise number of values to skip.
+		/// @param size Number of elements to copy.
+		/// For abstact data – number of bytes to copy, otherwise number of values to copy.
+		/// @param data Destination position to copy data to.
+		/// @see Storage::SetData
 		void GetData(Tag tag,size_t shift, size_t size, void * data) const;
 		void SetData(Tag tag,size_t shift, size_t size, void * data);
 		void DelData(Tag tag);
+		/// Check if any data is associated with Tag.
 		bool HaveData(Tag tag) const {if(tag.isSparseNum(etypenum)) { if( GetSparseLink(tag) != NULL ) return true; return false; } else {if( tag.GetPositionNum(etypenum) != ENUMUNDEF ) return true; return false;}}
 		__INLINE ElementType GetElementType() const {return 1 << etypenum;}
 		__INLINE INMOST_DATA_ENUM_TYPE GetElementNum() const {return etypenum;}
