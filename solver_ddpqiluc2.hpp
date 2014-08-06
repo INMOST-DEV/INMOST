@@ -2042,7 +2042,7 @@ public:
 					while (Ui != EOL)
 					{
 						//drop values
-						if( fabs(temp[Ui])/Smax > std::min(tau2,std::min(tau/NuU,tau/NuL)) * Smax / Snorm)
+						if( fabs(temp[Ui])/Smax > std::max(tau2,std::min(tau/NuU,tau/NuL)) * Smax / Snorm)
 						//if( fabs(temp[Ui]) > tau * Smax )// Snorm)
 							S_Entries.push_back(Solver::Row::entry(Ui, temp[Ui]));
 						Ui = Ulist[Ui];
@@ -2109,14 +2109,14 @@ public:
 /////////// DENSE FACTORIZATION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			tt = Timer();
-			/*
+			
 			if ((1.0 * nzA / ((wend - wbeg)*(wend - wbeg))) > 0.75 && (1.0*(wend - wbeg)) / (1.0 *(moend - mobeg)) > 0.1)
 			{
 				std::cout << "Try to sparsify schur complement!!!" << std::endl;
 				std::cout << "Sparsity: " << 1.0 * nzA / ((wend - wbeg)*(wend - wbeg)) << std::endl;
 				std::cout << "Schur size: " << wend - wbeg << " total size: " << moend - mobeg << std::endl;
 			}
-			*/
+			
 			if ( (wend-wbeg > 0 && wend - wbeg < 64) || (1.0 * nzA / ((wend - wbeg)*(wend - wbeg))) > 0.75)
 			//if ( wend-wbeg > 0 && wend - wbeg < 2 )
 			{
@@ -2133,6 +2133,13 @@ public:
 				//Allocate matrix
 				INMOST_DATA_ENUM_TYPE size = wend - wbeg;
 				INMOST_DATA_REAL_TYPE * entries = new INMOST_DATA_REAL_TYPE[size*size];
+				
+				if( entries == NULL )
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " array of size " << size*size << " was not allocated " << std::endl;
+					throw -1;
+				}
+
 				std::fill(entries, entries + size*size, 0.0);
 				//Fill the matrix
 				for (k = wbeg; k < wend; ++k)

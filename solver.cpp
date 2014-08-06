@@ -66,7 +66,14 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE mbeg,mend;
 		int initial_rank;
 #if defined(USE_MPI)
-		MPI_Comm_dup(m.GetCommunicator(), &comm);
+		if( comm != INMOST_MPI_COMM_WORLD )
+		{
+			MPI_Comm_free(&comm);
+			comm = INMOST_MPI_COMM_WORLD;
+		}
+		if( m.GetCommunicator() == INMOST_MPI_COMM_WORLD )
+			comm = INMOST_MPI_COMM_WORLD;
+		else MPI_Comm_dup(m.GetCommunicator(), &comm);
 		MPI_Comm_rank(comm,&rank);
 		MPI_Comm_size(comm,&size);
 #else
@@ -548,7 +555,9 @@ namespace INMOST
 		extended_indexes(other.extended_indexes)
 	{
 #if defined(USE_MPI)
-		MPI_Comm_dup(other.comm,&comm);
+		if( other.comm == INMOST_MPI_COMM_WORLD )
+			comm = INMOST_MPI_COMM_WORLD;
+		else MPI_Comm_dup(other.comm,&comm);
 #else
 		comm = other.comm;
 #endif
@@ -570,7 +579,9 @@ namespace INMOST
 	Solver::OrderInfo & Solver::OrderInfo::operator =(OrderInfo const & other) 
 	{
 #if defined(USE_MPI)
-		MPI_Comm_dup(other.comm,&comm);
+		if( other.comm == INMOST_MPI_COMM_WORLD )
+			comm = INMOST_MPI_COMM_WORLD;
+		else MPI_Comm_dup(other.comm,&comm);
 #else
 		comm = other.comm;
 #endif
