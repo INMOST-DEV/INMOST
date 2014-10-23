@@ -212,15 +212,15 @@ namespace INMOST
 		TagMemory & operator =(TagMemory const & other);
 	private:
 		TagMemory();
-		INMOST_DATA_ENUM_TYPE pos[__NET]; 
-		DataType dtype;                 
-		std::string tagname;            
-		INMOST_MPI_Type bulk_data_type;   
-		INMOST_DATA_ENUM_TYPE size;       
-		bool sparse[__NET];             
-		size_t record_size;
-		TagManager * tag_manager;
-		Mesh * m_link;
+		INMOST_DATA_ENUM_TYPE  pos[__NET]; 
+		DataType               dtype;                 
+		std::string            tagname;            
+		INMOST_MPI_Type        bulk_data_type;   
+		INMOST_DATA_ENUM_TYPE  size;       
+		bool                   sparse[__NET];
+		size_t                 record_size;
+		TagManager *           tag_manager;
+		Mesh *                 m_link;
 		friend class Tag;
 	};
 
@@ -228,18 +228,18 @@ namespace INMOST
 	{
 	private:
 		TagMemory * mem;
-		__INLINE size_t GetRecordSize() {return mem->record_size;}
-		__INLINE void SetSize(INMOST_DATA_ENUM_TYPE size) {mem->size = size;}
 		Tag(Mesh * m, std::string name, DataType _dtype, INMOST_DATA_ENUM_TYPE size); //Create me through TagManager::CreateTag
-		__INLINE void SetPosition(INMOST_DATA_ENUM_TYPE pos, ElementType type) {mem->pos[ElementNum(type)] = pos;}
-		__INLINE INMOST_DATA_ENUM_TYPE GetPosition(ElementType type) const {assert(mem != NULL); return mem->pos[ElementNum(type)];}
-		__INLINE void SetSparse(ElementType type) {mem->sparse[ElementNum(type)] = true;}
-		__INLINE void SetTagManager(TagManager * tm) {mem->tag_manager = tm;}
-		__INLINE TagManager * GetTagManager() {return mem->tag_manager;}
-		void ShrinkData(ElementType type, size_t new_size);
-		void AllocateData(ElementType t);
-		__INLINE INMOST_DATA_ENUM_TYPE GetPositionNum(INMOST_DATA_ENUM_TYPE typenum) const {assert(mem != NULL); return mem->pos[typenum];}
-		__INLINE void SetBulkDataType(INMOST_MPI_Type type){assert(mem!=NULL); if( mem->dtype == DATA_BULK ) mem->bulk_data_type = type;}
+		__INLINE size_t                 GetRecordSize() {return mem->record_size;}
+		__INLINE void                   SetSize(INMOST_DATA_ENUM_TYPE size) {mem->size = size;}
+		__INLINE void                   SetPosition(INMOST_DATA_ENUM_TYPE pos, ElementType type) {mem->pos[ElementNum(type)] = pos;}
+		__INLINE INMOST_DATA_ENUM_TYPE  GetPosition(ElementType type) const {assert(mem != NULL); return mem->pos[ElementNum(type)];}
+		__INLINE void                   SetSparse(ElementType type) {mem->sparse[ElementNum(type)] = true;}
+		__INLINE void                   SetTagManager(TagManager * tm) {mem->tag_manager = tm;}
+		__INLINE TagManager *           GetTagManager() {return mem->tag_manager;}
+		void                            ShrinkData(ElementType type, size_t new_size);
+		void                            AllocateData(ElementType t);
+		__INLINE INMOST_DATA_ENUM_TYPE  GetPositionNum(INMOST_DATA_ENUM_TYPE typenum) const {assert(mem != NULL); return mem->pos[typenum];}
+		__INLINE void                   SetBulkDataType(INMOST_MPI_Type type){assert(mem!=NULL); if( mem->dtype == DATA_BULK ) mem->bulk_data_type = type;}
 	public:
 		~Tag() {mem = NULL;}
 		Tag() {mem = NULL;}
@@ -249,16 +249,16 @@ namespace INMOST
 		bool operator ==(const Tag & other) const {return mem == other.mem;}
 		bool operator !=(const Tag & other) const {return mem != other.mem;}
 		Tag & operator =(Tag const & other) {mem = other.mem; return *this;	}
-		__INLINE DataType GetDataType() const {assert(mem!=NULL); return mem->dtype;}
-		__INLINE INMOST_MPI_Type GetBulkDataType() const {assert(mem!=NULL); return mem->bulk_data_type;}
-		__INLINE size_t GetBytesSize() const {assert(mem!=NULL); return DataTypeBytesSize(mem->dtype);}
-		__INLINE INMOST_DATA_ENUM_TYPE GetSize() const {assert(mem!=NULL); return mem->size;}
-		__INLINE std::string GetTagName() const {assert(mem!=NULL); return mem->tagname;}
-		__INLINE bool isDefined(ElementType type) const {assert(mem!=NULL && OneType(type)); return GetPosition(type) != ENUMUNDEF;}
-		__INLINE bool isSparse(ElementType type) const {assert(mem!=NULL && OneType(type)); return mem->sparse[ElementNum(type)];}
-		__INLINE bool isValid() const {return mem != NULL;}
-		__INLINE Mesh * GetMeshLink() const {assert(mem!=NULL); return mem->m_link;}		
-		__INLINE bool isSparseNum(INMOST_DATA_ENUM_TYPE typenum) const {assert(mem!=NULL); return mem->sparse[typenum];}
+		__INLINE DataType               GetDataType() const {assert(mem!=NULL); return mem->dtype;}
+		__INLINE INMOST_MPI_Type        GetBulkDataType() const {assert(mem!=NULL); return mem->bulk_data_type;}
+		__INLINE size_t                 GetBytesSize() const {assert(mem!=NULL); return DataTypeBytesSize(mem->dtype);}
+		__INLINE INMOST_DATA_ENUM_TYPE  GetSize() const {assert(mem!=NULL); return mem->size;}
+		__INLINE std::string            GetTagName() const {assert(mem!=NULL); return mem->tagname;}
+		__INLINE bool                   isDefined(ElementType type) const {assert(mem!=NULL && OneType(type)); return GetPosition(type) != ENUMUNDEF;}
+		__INLINE bool                   isSparse(ElementType type) const {assert(mem!=NULL && OneType(type)); return mem->sparse[ElementNum(type)];}
+		__INLINE bool                   isValid() const {return mem != NULL;}
+		__INLINE Mesh *                 GetMeshLink() const {assert(mem!=NULL); return mem->m_link;}		
+		__INLINE bool                   isSparseNum(INMOST_DATA_ENUM_TYPE typenum) const {assert(mem!=NULL); return mem->sparse[typenum];}
 		friend class TagManager;
 		friend class Storage;
 		friend class Mesh;
@@ -272,30 +272,28 @@ namespace INMOST
 		TagManager & assign(Mesh * m, TagManager const & other);
 	public:
 		typedef chunk_array<INMOST_DATA_ENUM_TYPE> 	empty_data;
-		typedef chunk_array<Tag> tag_array_type;
-		typedef tag_array_type::iterator iteratorTag;
-		typedef chunk_array<INMOST_DATA_BULK_TYPE> dense_sub_type;
-		typedef chunk_array< dense_sub_type> dense_data_array_type;
-		
+		typedef chunk_array<Tag>                    tag_array_type;
+		typedef tag_array_type::iterator            iteratorTag;
+		typedef chunk_array<INMOST_DATA_BULK_TYPE>  dense_sub_type;
+		typedef chunk_array< dense_sub_type>        dense_data_array_type;
 		virtual ~TagManager();
-		bool HaveTag(std::string name);
-		Tag GetTag(std::string name);
-		void ListTagNames(std::vector<std::string> & list) const;
-		Tag CreateTag(Mesh * m, std::string name, DataType dtype, ElementType etype, ElementType sparse, INMOST_DATA_ENUM_TYPE size = ENUMUNDEF); 
-		virtual Tag DeleteTag(Tag tag, ElementType mask); 
 		
-		__INLINE INMOST_DATA_ENUM_TYPE NumberOfTags() { return static_cast<INMOST_DATA_ENUM_TYPE>(tags.size()); }
-		__INLINE iteratorTag BeginTag() {return tags.begin(); }
-		__INLINE iteratorTag EndTag() {return tags.end(); }
-		bool ElementDefined(Tag const & tag, ElementType etype);
+		bool                            HaveTag(std::string name) const;
+		Tag                             GetTag(std::string name) const;
+		void                            ListTagNames(std::vector<std::string> & list) const;
+		Tag                             CreateTag(Mesh * m, std::string name, DataType dtype, ElementType etype, ElementType sparse, INMOST_DATA_ENUM_TYPE size = ENUMUNDEF); 
+		virtual Tag                     DeleteTag(Tag tag, ElementType mask); 
+		__INLINE INMOST_DATA_ENUM_TYPE  NumberOfTags() const { return static_cast<INMOST_DATA_ENUM_TYPE>(tags.size()); }
+		__INLINE iteratorTag            BeginTag() {return tags.begin(); }
+		__INLINE iteratorTag            EndTag() {return tags.end(); }
+		bool                            ElementDefined(Tag const & tag, ElementType etype) const;
 	private:
-		typedef tag_array_type::iterator tag_iterator;
-		typedef tag_array_type::const_iterator tag_const_iterator;
-		
-		tag_array_type tags;
-		empty_data empty_dense_data;
-		dense_data_array_type dense_data;
-		__INLINE dense_sub_type & GetDenseData(int pos) {return dense_data[pos];}
+		typedef tag_array_type::iterator            tag_iterator;
+		typedef tag_array_type::const_iterator      tag_const_iterator;
+		tag_array_type         tags;
+		empty_data             empty_dense_data;
+		dense_data_array_type  dense_data;
+		__INLINE dense_sub_type &       GetDenseData(int pos) {return dense_data[pos];}
 		friend class Storage;
 		friend class Tag;
 		friend class Mesh;
@@ -313,86 +311,85 @@ namespace INMOST
 		Storage(Mesh * m, INMOST_DATA_ENUM_TYPE lid, const Storage & other); // use this instead
 		Storage & assign(Mesh * m, INMOST_DATA_ENUM_TYPE lid, Storage const & other);
 		Storage(Mesh *m, ElementType _etype);
-		typedef std::pair<Tag, void *> sparse_sub_type;
-		typedef array< sparse_sub_type > sparse_data_array_type;
-		void CopyData(Tag t, void * adata, void * bdata);
-		void DestroyVariableData(Tag t, void * adata);
-		void MoveData(int new_local_id);
-		void SwapData(int new_local_id);
-		INMOST_DATA_ENUM_TYPE etypenum;
-		INMOST_DATA_ENUM_TYPE local_id;
-		Mesh * m_link;
-		MIDType markers;
-		sparse_data_array_type inner_data;
-		__INLINE void * & GetSparseLink(Tag t) {for(sparse_data_array_type::iterator it = inner_data.begin(); it != inner_data.end(); ++it) if( it->first == t ) return it->second; inner_data.push_back(sparse_sub_type(t,(void *)NULL)); return inner_data.back().second;}
-		__INLINE void * GetSparseLink(Tag t) const {for(sparse_data_array_type::const_iterator it = inner_data.begin(); it != inner_data.end(); ++it) if( it->first == t ) return it->second; return NULL;}
-		__INLINE void * GetDenseLink(Tag t) const {return &(t.GetTagManager()->GetDenseData(t.GetPositionNum(etypenum))[LocalID()*t.GetRecordSize()]);}
-		__INLINE void * GetLink(Tag t) {void * p; if( !t.isSparseNum(etypenum) ) p = GetDenseLink(t); else {void * & q = GetSparseLink(t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); p = q;} return p;}
-		__INLINE void * GetLink(Tag t) const {void * p; if( !t.isSparseNum(etypenum) ) p = GetDenseLink(t); else p = GetSparseLink(t); return p;}
+		typedef std::pair<Tag, void *>    sparse_sub_type;
+		typedef array< sparse_sub_type >  sparse_data_array_type;
+		void                              CopyData(Tag t, void * adata, void * bdata);
+		void                              DestroyVariableData(Tag t, void * adata);
+		void                              MoveData(INMOST_DATA_INTEGER_TYPE new_local_id);
+		INMOST_DATA_ENUM_TYPE             etypenum;
+		INMOST_DATA_ENUM_TYPE             local_id;
+		Mesh *                            m_link;
+		MIDType                           markers;
+		sparse_data_array_type            inner_data;
+		__INLINE void * &                 GetSparseLink(Tag t) {for(sparse_data_array_type::iterator it = inner_data.begin(); it != inner_data.end(); ++it) if( it->first == t ) return it->second; inner_data.push_back(sparse_sub_type(t,(void *)NULL)); return inner_data.back().second;}
+		__INLINE void *                   GetSparseLink(Tag t) const {for(sparse_data_array_type::const_iterator it = inner_data.begin(); it != inner_data.end(); ++it) if( it->first == t ) return it->second; return NULL;}
+		__INLINE void *                   GetDenseLink (Tag t) const {return &(t.GetTagManager()->GetDenseData(t.GetPositionNum(etypenum))[LocalID()*t.GetRecordSize()]);}
+		__INLINE void *                   GetLink      (Tag t) {void * p; if( !t.isSparseNum(etypenum) ) p = GetDenseLink(t); else {void * & q = GetSparseLink(t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); p = q;} return p;}
+		__INLINE void *                   GetLink      (Tag t) const {void * p; if( !t.isSparseNum(etypenum) ) p = GetDenseLink(t); else p = GetSparseLink(t); return p;}
 	public:
 		/// Storage type for representing real values.
-		typedef INMOST_DATA_REAL_TYPE real; 
+		typedef INMOST_DATA_REAL_TYPE     real; 
 		/// Storage type for representing integer values.
-		typedef INMOST_DATA_INTEGER_TYPE integer;
+		typedef INMOST_DATA_INTEGER_TYPE  integer;
 		/// Storage type for representing one byte of abstact data.
-		typedef INMOST_DATA_BULK_TYPE bulk;
+		typedef INMOST_DATA_BULK_TYPE     bulk;
 		/// Storage type for representing references to Element.
-		typedef Element * reference;
+		typedef Element *                 reference;
 		/// Storage type for representing arrays of real values.
-		typedef shell<real> real_array;
+		typedef shell<real>               real_array;
 		/// Storage type for representing arrays of integer values.
-		typedef shell<integer> integer_array;
+		typedef shell<integer>            integer_array;
 		/// Storage type for representing abstact data as a series of bytes.
-		typedef shell<bulk> bulk_array;
+		typedef shell<bulk>               bulk_array;
 		/// Storage type for representing arrays of Element references.
-		typedef shell<Element *> reference_array;
+		typedef shell<reference>          reference_array;
 		virtual ~Storage();
 		/// Retrieve real value associated with Tag.
-		__INLINE real      & Real     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL     ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::real     *>(p)[0]; else return static_cast<inner_real_array     *>(p)->at_safe(0);}
+		__INLINE real      &              Real            (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL     ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::real     *>(p)[0]; else return static_cast<inner_real_array     *>(p)->at_safe(0);}
 		/// Retrieve integer value associated with Tag.
-		__INLINE integer   & Integer  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER  ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::integer  *>(p)[0]; else return static_cast<inner_integer_array  *>(p)->at_safe(0);}
+		__INLINE integer   &              Integer         (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER  ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::integer  *>(p)[0]; else return static_cast<inner_integer_array  *>(p)->at_safe(0);}
 		/// Retrieve one byte of abstract data associated with Tag.
-		__INLINE bulk      & Bulk     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK     ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::bulk     *>(p)[0]; else return static_cast<inner_bulk_array     *>(p)->at_safe(0);}
+		__INLINE bulk      &              Bulk            (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK     ); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::bulk     *>(p)[0]; else return static_cast<inner_bulk_array     *>(p)->at_safe(0);}
 		/// Retrieve Element reference associated with Tag.
-		__INLINE reference & Reference(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::reference*>(p)[0]; else return static_cast<inner_reference_array*>(p)->at_safe(0);}
+		__INLINE reference &              Reference       (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE); void * p = GetLink(tag); if( tag.GetSize() != ENUMUNDEF ) return static_cast<Storage::reference*>(p)[0]; else return static_cast<inner_reference_array*>(p)->at_safe(0);}
 		/// Retrieve array of real values associated with Tag.
-		__INLINE real_array      RealArray     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL     ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::real_array     (*static_cast<inner_real_array     *>(p)); else return Storage::real_array     (static_cast<Storage::real      *>(p),tag.GetSize());}
+		__INLINE real_array               RealArray       (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL     ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::real_array     (*static_cast<inner_real_array     *>(p)); else return Storage::real_array     (static_cast<Storage::real      *>(p),tag.GetSize());}
 		/// Retrieve array of integer values associated with Tag.
-		__INLINE integer_array   IntegerArray  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER  ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::integer_array  (*static_cast<inner_integer_array  *>(p)); else return Storage::integer_array  (static_cast<Storage::integer   *>(p),tag.GetSize());}
+		__INLINE integer_array            IntegerArray    (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER  ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::integer_array  (*static_cast<inner_integer_array  *>(p)); else return Storage::integer_array  (static_cast<Storage::integer   *>(p),tag.GetSize());}
 		/// Retrieve abstract data associated with Tag as a series of bytes.
-		__INLINE bulk_array      BulkArray     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK     ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::bulk_array     (*static_cast<inner_bulk_array     *>(p)); else return Storage::bulk_array     (static_cast<Storage::bulk      *>(p),tag.GetSize());}
+		__INLINE bulk_array               BulkArray       (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK     ); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::bulk_array     (*static_cast<inner_bulk_array     *>(p)); else return Storage::bulk_array     (static_cast<Storage::bulk      *>(p),tag.GetSize());}
 		/// Retrieve array of Element references associated with Tag.
-		__INLINE reference_array ReferenceArray(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::reference_array(*static_cast<inner_reference_array*>(p)); else return Storage::reference_array(static_cast<Storage::reference *>(p),tag.GetSize());}
+		__INLINE reference_array          ReferenceArray  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE); void * p = GetLink(tag); if( tag.GetSize() == ENUMUNDEF ) return Storage::reference_array(*static_cast<inner_reference_array*>(p)); else return Storage::reference_array(static_cast<Storage::reference *>(p),tag.GetSize());}
 		
 		//optimized data requests for dense data with fixed size
-		__INLINE real_array      RealArrayDF     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::real_array     (static_cast<Storage::real     *>(GetDenseLink(tag)),tag.GetSize());}
-		__INLINE integer_array   IntegerArrayDF  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::integer_array  (static_cast<Storage::integer  *>(GetDenseLink(tag)),tag.GetSize());}
-		__INLINE bulk_array      BulkArrayDF     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::bulk_array     (static_cast<Storage::bulk     *>(GetDenseLink(tag)),tag.GetSize());}
-		__INLINE reference_array ReferenceArrayDF(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::reference_array(static_cast<Storage::reference*>(GetDenseLink(tag)),tag.GetSize());}
-		__INLINE real      & RealDF     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::real     *>(GetDenseLink(tag))[0];}
-		__INLINE integer   & IntegerDF  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::integer  *>(GetDenseLink(tag))[0];}
-		__INLINE bulk      & BulkDF     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::bulk     *>(GetDenseLink(tag))[0];}
-		__INLINE reference & ReferenceDF(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::reference*>(GetDenseLink(tag))[0];}
+		__INLINE real_array               RealArrayDF     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::real_array     (static_cast<Storage::real     *>(GetDenseLink(tag)),tag.GetSize());}
+		__INLINE integer_array            IntegerArrayDF  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::integer_array  (static_cast<Storage::integer  *>(GetDenseLink(tag)),tag.GetSize());}
+		__INLINE bulk_array               BulkArrayDF     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::bulk_array     (static_cast<Storage::bulk     *>(GetDenseLink(tag)),tag.GetSize());}
+		__INLINE reference_array          ReferenceArrayDF(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::reference_array(static_cast<Storage::reference*>(GetDenseLink(tag)),tag.GetSize());}
+		__INLINE real      &              RealDF          (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::real     *>(GetDenseLink(tag))[0];}
+		__INLINE integer   &              IntegerDF       (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::integer  *>(GetDenseLink(tag))[0];}
+		__INLINE bulk      &              BulkDF          (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::bulk     *>(GetDenseLink(tag))[0];}
+		__INLINE reference &              ReferenceDF     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() != ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<Storage::reference*>(GetDenseLink(tag))[0];}
 		
 		//optimized data requests for dense data with variable size
-		__INLINE real_array      RealArrayDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::real_array     (*static_cast<inner_real_array     *>(GetDenseLink(tag)));}
-		__INLINE integer_array   IntegerArrayDV  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::integer_array  (*static_cast<inner_integer_array  *>(GetDenseLink(tag)));}
-		__INLINE bulk_array      BulkArrayDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::bulk_array     (*static_cast<inner_bulk_array     *>(GetDenseLink(tag)));}
-		__INLINE reference_array ReferenceArrayDV(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::reference_array(*static_cast<inner_reference_array*>(GetDenseLink(tag)));}
-		__INLINE real      & RealDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_real_array     *>(GetDenseLink(tag))->at_safe(0);}
-		__INLINE integer   & IntegerDV  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_integer_array  *>(GetDenseLink(tag))->at_safe(0);}
-		__INLINE bulk      & BulkDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_bulk_array     *>(GetDenseLink(tag))->at_safe(0);}
-		__INLINE reference & ReferenceDV(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_reference_array*>(GetDenseLink(tag))->at_safe(0);}
+		__INLINE real_array               RealArrayDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::real_array     (*static_cast<inner_real_array     *>(GetDenseLink(tag)));}
+		__INLINE integer_array            IntegerArrayDV  (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::integer_array  (*static_cast<inner_integer_array  *>(GetDenseLink(tag)));}
+		__INLINE bulk_array               BulkArrayDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::bulk_array     (*static_cast<inner_bulk_array     *>(GetDenseLink(tag)));}
+		__INLINE reference_array          ReferenceArrayDV(Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType())); return Storage::reference_array(*static_cast<inner_reference_array*>(GetDenseLink(tag)));}
+		__INLINE real      &              RealDV          (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REAL      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_real_array     *>(GetDenseLink(tag))->at_safe(0);}
+		__INLINE integer   &              IntegerDV       (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_INTEGER   && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_integer_array  *>(GetDenseLink(tag))->at_safe(0);}
+		__INLINE bulk      &              BulkDV          (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_BULK      && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_bulk_array     *>(GetDenseLink(tag))->at_safe(0);}
+		__INLINE reference &              ReferenceDV     (Tag tag) {assert(tag.isValid() && GetMeshLink() == tag.GetMeshLink() && tag.GetDataType() == DATA_REFERENCE && tag.GetSize() == ENUMUNDEF && !tag.isSparse(GetElementType()));  return static_cast<inner_reference_array*>(GetDenseLink(tag))->at_safe(0);}
 		
 		/// Return the data length associated with Tag.
 		/// For abstract data return the number of bytes, otherwise return the length of associated array. 
 		/// @see Storage::SetDataSize
-		size_t GetDataSize(Tag tag) const; //For DATA_BULK return number of bytes, otherwise return the length of array
+		size_t                           GetDataSize      (Tag tag) const; //For DATA_BULK return number of bytes, otherwise return the length of array
 		/// Set the length of  data associated with Tag.
 		/// @param tag Identifying Tag.
 		/// @param new_size The number of bytes for abstract data, otherwise the length of the array.
 		/// @see Storage::GetDataSize
-		void SetDataSize(Tag tag,size_t new_size);
+		void                             SetDataSize      (Tag tag,size_t new_size);
 		/// Extract part of the data associated with Tag.
 		/// Copy part of the associated array or data to the destination memory.
 		/// @param tag Identifying Tag.
@@ -402,37 +399,39 @@ namespace INMOST
 		/// For abstact data – number of bytes to copy, otherwise number of values to copy.
 		/// @param data Destination position to copy data to.
 		/// @see Storage::SetData
-		void GetData(Tag tag,size_t shift, size_t size, void * data) const;
-		void SetData(Tag tag,size_t shift, size_t size, void * data);
-		void DelData(Tag tag);
+		void                             GetData          (Tag tag,size_t shift, size_t size, void * data) const;
+		void                             SetData          (Tag tag,size_t shift, size_t size, void * data);
+		void                             DelData          (Tag tag);
 		/// Check if any data is associated with Tag.
-		bool HaveData(Tag tag) const {if(tag.isSparseNum(etypenum)) { if( GetSparseLink(tag) != NULL ) return true; return false; } else {if( tag.GetPositionNum(etypenum) != ENUMUNDEF ) return true; return false;}}
-		__INLINE ElementType GetElementType() const {return 1 << etypenum;}
-		__INLINE INMOST_DATA_ENUM_TYPE GetElementNum() const {return etypenum;}
-		__INLINE void    SetMarker(MIDType n) 
+		bool                             HaveData         (Tag tag) const {if(tag.isSparseNum(etypenum)) { if( GetSparseLink(tag) != NULL ) return true; return false; } else {if( tag.GetPositionNum(etypenum) != ENUMUNDEF ) return true; return false;}}
+		/// Swap dense data with the element of the same type and given local_id 
+		void                             SwapDenseData    (INMOST_DATA_INTEGER_TYPE local_id);
+		/// Swap sparse data with the element of the same type and given local_id 
+		void                             SwapSparseData   (INMOST_DATA_INTEGER_TYPE local_id);
+		__INLINE ElementType             GetElementType   () const {return 1 << etypenum;}
+		__INLINE INMOST_DATA_ENUM_TYPE   GetElementNum    () const {return etypenum;}
+		__INLINE void                    SetMarker        (MIDType n) 
 		{
 #if defined(USE_OMP)
 #pragma omp atomic
 #endif
-			//std::cout << "set " << ElementTypeName(GetElementType()) << " " << LocalID() << " " << n << std::endl;
 			markers |= n;
 		}
-		__INLINE bool    GetMarker(MIDType n) const  {return (markers & n) != 0;}
-		__INLINE void    RemMarker(MIDType n) 
+		__INLINE bool                   GetMarker         (MIDType n) const  {return (markers & n) != 0;}
+		__INLINE void                   RemMarker         (MIDType n) 
 		{
 #if defined(USE_OMP)
 #pragma omp atomic
 #endif
-			//std::cout << "rem " << ElementTypeName(GetElementType()) << " " << LocalID() << " " << n << std::endl;
 			markers &= ~n;
 		}
-		__INLINE void    ClearMarkerSpace() {markers = 0;}
-		__INLINE MIDType GetMarkerSpace() const {return markers;}
-		__INLINE MIDType SetMarkerSpace(MIDType _markers) {return markers | (_markers);}
-		__INLINE static size_t  MaxMarker() {return sizeof(MIDType)*8;}
-		__INLINE INMOST_DATA_ENUM_TYPE LocalID() const {return local_id;}
-		__INLINE Mesh * GetMeshLink() const {return m_link;}
-		friend void SwapElement(void * pa, void * pb, void * udata);
+		__INLINE void                   ClearMarkerSpace() {markers = 0;}
+		__INLINE MIDType                GetMarkerSpace() const {return markers;}
+		__INLINE MIDType                SetMarkerSpace(MIDType _markers) {return markers | (_markers);}
+		__INLINE static size_t          MaxMarker() {return sizeof(MIDType)*8;}
+		__INLINE INMOST_DATA_ENUM_TYPE  LocalID() const {return local_id;}
+		__INLINE Mesh *                 GetMeshLink() const {return m_link;}
+		friend void                     SwapElement(void * pa, void * pb, void * udata);
 		friend class Mesh;
 	};
 
@@ -507,6 +506,7 @@ namespace INMOST
 		container_type & get_container() {return container;};
 	public:
 		adjacent() {}
+		adjacent(size_t n) : container(n) {}
 		template<class InputIterator>
 		adjacent(InputIterator first, InputIterator last) :container(first,last) {isInputForwardIterators<Element *, InputIterator>();}
 		adjacent(const adjacent & other ) {container = other.container;}
@@ -544,6 +544,7 @@ namespace INMOST
 		void swap(adjacent<AdjacentType> & other) {container.swap(other.container);}
 		void push_back(Element & x) {container.push_back(&x);}
 		void push_back(Element * x) {container.push_back(x);}
+		void resize(size_t n) {container.resize(n);}
 		bool empty() {return container.empty();}
 		void clear() {container.clear();}
 		void reserve(size_t n) {container.reserve(n);}
@@ -559,9 +560,8 @@ namespace INMOST
 	{
 	public:
 		enum GeometricType {Unset,Vertex,Line,MultiLine,Tri,Quad,Polygon,MultiPolygon,Tet,Hex,Prism,Pyramid,Polyhedron,Set};
-		static const char * GeometricTypeName(GeometricType t);
-		static unsigned int GetGeometricDimension(GeometricType m_type);
-		
+		static const char *       GeometricTypeName(GeometricType t);
+		static unsigned int       GetGeometricDimension(GeometricType m_type);
 		typedef INMOST_DATA_BULK_TYPE Status;
 		static const Status Owned  = 1;
 		static const Status Shared = 2;
@@ -570,19 +570,24 @@ namespace INMOST
 		static const char * StatusName(Status s);
 	public:
 		//typedef dynarray<Element *,16> adj_type;
-		typedef array<Element *> adj_type;
-		typedef adj_type::iterator adj_iterator;
-		typedef adj_type::reverse_iterator adj_reverse_iterator;
+		typedef array<Element *>                 adj_type;
+		typedef adj_type::iterator               adj_iterator;
+		typedef adj_type::const_iterator         const_adj_iterator;
+		typedef adj_type::reverse_iterator       adj_reverse_iterator;
+		typedef adj_type::const_reverse_iterator const_adj_reverse_iterator;
 	protected:
-		GeometricType m_type;
-		adj_type high_conn, low_conn;
+		GeometricType       m_type;
+		adj_type            high_conn;
+		adj_type            low_conn;
 		friend class Mesh;
 		friend class Node;
 		friend class Edge;
 		friend class Face;
 		friend class Cell;
-		friend int CompareElementsUnique(Element * a,Element * b);
-		friend int CompareElementsCentroid(Element * a,Element * b);
+		friend int              CompareElementsUnique(Element * a,Element * b);
+		friend int              CompareElementsCentroid(Element * a,Element * b);
+		adj_type &              HighConn() {return high_conn;}
+		adj_type &              LowConn() {return low_conn;}
 	protected:
 		Element(Mesh * m, ElementType _etype);
 		Element(const Element & other);            // don't use this
@@ -590,40 +595,52 @@ namespace INMOST
 		Element & operator =(Element const & other);
 	public:
 		virtual ~Element();
-		INMOST_DATA_ENUM_TYPE nbAdjElements(ElementType _etype) const;
-		adjacent<Element> getAdjElements(ElementType _etype) const;  //unordered
-		adjacent<Element> BridgeAdjacencies(ElementType Bridge, ElementType Dest, MIDType mask = 0);
-		__INLINE GeometricType GetGeometricType() const {return m_type;}
-		__INLINE unsigned int GetElementDimension() const {return GetGeometricDimension(m_type);}
-		Status GetStatus();
-		void SetStatus(Status status);
-		virtual adjacent<Node> getNodes(); //unordered
-		virtual adjacent<Edge> getEdges(); //unordered
-		virtual adjacent<Face> getFaces(); //unordered
-		virtual adjacent<Cell> getCells(); //unordered
-		Node * getAsNode(); //does dynamic conversation for you, if not a node returns NULL
-		Edge * getAsEdge(); //does dynamic conversation for you, if not an edge returns NULL
-		Face * getAsFace(); //does dynamic conversation for you, if not a face returns NULL
-		Cell * getAsCell(); //does dynamic conversation for you, if not a cell returns NULL
-		Storage::integer & GlobalID();
-		bool CheckElementConnectivity();
-		static bool CheckConnectivity(Mesh * m);
+		INMOST_DATA_ENUM_TYPE   nbAdjElements(ElementType _etype) const;
+		adjacent<Element>       getAdjElements(ElementType _etype) const;  //unordered
+		INMOST_DATA_ENUM_TYPE   nbAdjElements(ElementType _etype, MIDType mask) const;
+		adjacent<Element>       getAdjElements(ElementType _etype, MIDType mask) const;  //unordered
+		adjacent<Element>       BridgeAdjacencies(ElementType Bridge, ElementType Dest, MIDType mask = 0);
+		adjacent<Node>          BridgeAdjacencies2Node(ElementType Bridge, MIDType mask = 0);
+		adjacent<Edge>          BridgeAdjacencies2Edge(ElementType Bridge, MIDType mask = 0);
+		adjacent<Face>          BridgeAdjacencies2Face(ElementType Bridge, MIDType mask = 0);
+		adjacent<Cell>          BridgeAdjacencies2Cell(ElementType Bridge, MIDType mask = 0);
+		virtual adjacent<Node>  getNodes(); //unordered
+		virtual adjacent<Edge>  getEdges(); //unordered
+		virtual adjacent<Face>  getFaces(); //unordered
+		virtual adjacent<Cell>  getCells(); //unordered
+		virtual adjacent<Node>  getNodes(MIDType mask); //unordered
+		virtual adjacent<Edge>  getEdges(MIDType mask); //unordered
+		virtual adjacent<Face>  getFaces(MIDType mask); //unordered
+		virtual adjacent<Cell>  getCells(MIDType mask); //unordered
+		Node *                  getAsNode(); //does dynamic conversation for you, if not a node returns NULL
+		Edge *                  getAsEdge(); //does dynamic conversation for you, if not an edge returns NULL
+		Face *                  getAsFace(); //does dynamic conversation for you, if not a face returns NULL
+		Cell *                  getAsCell(); //does dynamic conversation for you, if not a cell returns NULL
+		__INLINE GeometricType  GetGeometricType() const {return m_type;}
+		__INLINE unsigned int   GetElementDimension() const {return GetGeometricDimension(m_type);}
+		Status                  GetStatus();
+		void                    SetStatus(Status status);
+		Storage::integer &      GlobalID();
+		bool                    CheckElementConnectivity();
+		static bool             CheckConnectivity(Mesh * m);
 		//implemented in geometry.cpp
-		void CastRay(Storage::real * pos, Storage::real * dir, dynarray< std::pair<Element *, Storage::real> , 16 > & hits);
-		void ComputeGeometricType();
-		void Centroid(Storage::real * cnt);
-		void Barycenter(Storage::real * cnt);
-		Storage::real Mean(Storage::real (*func)(Storage::real* x,Storage::real t),Storage::real time);
-		bool Boundary();
-		bool Planarity(); // check that all nodes lay on one plane
+		void                    CastRay(Storage::real * pos, Storage::real * dir, dynarray< std::pair<Element *, Storage::real> , 16 > & hits);
+		void                    ComputeGeometricType();
+		void                    Centroid(Storage::real * cnt);
+		void                    Barycenter(Storage::real * cnt);
+		Storage::real           Mean(Storage::real (*func)(Storage::real* x,Storage::real t),Storage::real time);
+		bool                    Boundary();
+		bool                    Planarity(); // check that all nodes lay on one plane
 		//implemented in modify.cpp
-		bool Hide(); // if true then element was hidden, works only inside BeginModification and EndModification, on EndModification all Hidden elements are deleted
-		bool Show(); // if true then element was recovered
-		bool Delete(); // if true then element was deleted, otherwise it was hidden
-		bool Hidden();
-		bool New();
-		void Disconnect(bool delete_upper_adjacent);
-		//void Connect(std::vector<Element *> adjacent); //connect faces to cell, edges to face, nodes to edge and recompute geometric data, not implemented
+		bool                    Hide(); // if true then element was hidden, works only inside BeginModification and EndModification, on EndModification all Hidden elements are deleted
+		bool                    Show(); // if true then element was recovered
+		bool                    Delete(); // if true then element was deleted, otherwise it was hidden
+		bool                    Hidden();
+		bool                    New();
+		void                    Disconnect(bool delete_upper_adjacent); //disconnect all elements, delete upper dependent
+		void                    Disconnect(Element ** adjacent, INMOST_DATA_ENUM_TYPE num); //disconnect upper or lower adjacent elements from current element, geometric data is updated automatically
+		void                    Connect(Element ** adjacent, INMOST_DATA_ENUM_TYPE num); //connect lower adjacent elements to current element, geometric data is updated automatically
+		void                    UpdateGeometricData(); //update geometric data for element, calls RecomputeGeometricData from Mesh
 	};
 	
 	class Node : public Element //implemented in node.cpp
@@ -636,10 +653,15 @@ namespace INMOST
 	public:
 		~Node();
 		
-		adjacent<Edge> getEdges(); //unordered
-		adjacent<Face> getFaces(); //unordered
-		adjacent<Cell> getCells(); //unordered
-		Storage::real_array Coords(); 
+		adjacent<Edge>              getEdges(); //unordered
+		adjacent<Face>              getFaces(); //unordered
+		adjacent<Cell>              getCells(); //unordered
+
+		adjacent<Edge>              getEdges(MIDType mask); //unordered
+		adjacent<Face>              getFaces(MIDType mask); //unordered
+		adjacent<Cell>              getCells(MIDType mask); //unordered
+
+		Storage::real_array         Coords(); 
 		friend class Mesh;
 	};
 	
@@ -653,16 +675,23 @@ namespace INMOST
 	public:
 		~Edge();
 		
-		adjacent<Node> getNodes(); //ordered
-		adjacent<Face> getFaces(); //unordered
-		adjacent<Cell> getCells(); //unordered
+		adjacent<Node>              getNodes(); //ordered
+		adjacent<Face>              getFaces(); //unordered
+		adjacent<Cell>              getCells(); //unordered
+
+		adjacent<Node>              getNodes(MIDType mask); //ordered
+		adjacent<Face>              getFaces(MIDType mask); //unordered
+		adjacent<Cell>              getCells(MIDType mask); //unordered
+
+		Node *                      getBeg() const;
+		Node *                      getEnd() const;
 		//implemented in modify.cpp
-		static Edge * UniteEdges(Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect);
-		static bool TestUniteEdges(Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect);
-		static dynarray<Edge *,32> SplitEdge(Edge * e, Node ** nodes, INMOST_DATA_ENUM_TYPE nnodes, MIDType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
-		static bool TestSplitEdge(Edge * e, Node ** nodes, INMOST_DATA_ENUM_TYPE nnodes, MIDType del_protect);
+		static Edge *               UniteEdges(Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect);
+		static bool                 TestUniteEdges(Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect);
+		static dynarray<Edge *,32>  SplitEdge(Edge * e, Node ** nodes, INMOST_DATA_ENUM_TYPE nnodes, MIDType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
+		static bool                 TestSplitEdge(Edge * e, Node ** nodes, INMOST_DATA_ENUM_TYPE nnodes, MIDType del_protect);
 		//implemented in geometry.cpp
-		Storage::real Length();
+		Storage::real               Length();
 		friend class Mesh;
 	};
 	
@@ -676,31 +705,39 @@ namespace INMOST
 	public:
 		~Face();
 		
-		adjacent<Node> getNodes(); //ordered
-		adjacent<Edge> getEdges(); //ordered
-		adjacent<Cell> getCells(); //unordered
-		Cell * BackCell();
-		Cell * FrontCell();
-		bool FaceOrientedOutside(Cell * c);
-		void ReorderEdges();
-		
-		bool CheckEdgeOrder(); //not implemented// returns true if edges of face form an ordered closed loop
-		bool FixEdgeOrder(); //not implemented// returns true if edges were successfully reordered to form a closed loop
+		adjacent<Node>              getNodes(); //ordered
+		adjacent<Edge>              getEdges(); //ordered
+		adjacent<Cell>              getCells(); //unordered
+
+		adjacent<Node>              getNodes(MIDType mask); //ordered
+		adjacent<Edge>              getEdges(MIDType mask); //ordered
+		adjacent<Cell>              getCells(MIDType mask); //unordered
+
+		//this is for 2d case when the face is represented by segment
+		Node *                      getBeg() const;
+		Node *                      getEnd() const;
+
+		Cell *                      BackCell() const;
+		Cell *                      FrontCell() const;
+		bool                        FaceOrientedOutside(Cell * c) const;
+		void                        ReorderEdges();
+		bool                        CheckEdgeOrder(); //not implemented// returns true if edges of face form an ordered closed loop
+		bool                        FixEdgeOrder(); //not implemented// returns true if edges were successfully reordered to form a closed loop
 		//implemented in modify.cpp
-		static Face * UniteFaces(Face ** faces, INMOST_DATA_ENUM_TYPE nfaces, MIDType del_protect);
-		static bool TestUniteFaces(Face ** faces, INMOST_DATA_ENUM_TYPE nfaces,  MIDType del_protect);
-		static dynarray<Face *,32> SplitFace(Face * face, Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect); //provide all edges that lay inside face
-		static bool TestSplitFace(Face * face, Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect);	
-		void SwapCells(); //swap back cell and front cell
+		static Face *               UniteFaces(Face ** faces, INMOST_DATA_ENUM_TYPE nfaces, MIDType del_protect);
+		static bool                 TestUniteFaces(Face ** faces, INMOST_DATA_ENUM_TYPE nfaces,  MIDType del_protect);
+		static dynarray<Face *,32>  SplitFace(Face * face, Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect); //provide all edges that lay inside face
+		static bool                 TestSplitFace(Face * face, Edge ** edges, INMOST_DATA_ENUM_TYPE nedges, MIDType del_protect);	
+		void                        SwapCells(); //swap back cell and front cell
 		//implemented in geometry.cpp
-		Storage::real Area();
-		void Normal(Storage::real * nrm);
-		void UnitNormal(Storage::real * nrm);
-		void OrientedNormal(Cell * c, Storage::real * nrm);
-		void OrientedUnitNormal(Cell * c, Storage::real * nrm);
-		bool FixNormalOrientation();  //returns true if orientation was corrected, otherwise returns false
-		bool CheckNormalOrientation(); //returns true if orientation is correct, otherwise returns false
-		bool Closure(); // test integrity of polygon
+		Storage::real               Area();
+		void                        Normal(Storage::real * nrm);
+		void                        UnitNormal(Storage::real * nrm);
+		void                        OrientedNormal(Cell * c, Storage::real * nrm);
+		void                        OrientedUnitNormal(Cell * c, Storage::real * nrm);
+		bool                        FixNormalOrientation();  //returns true if orientation was corrected, otherwise returns false
+		bool                        CheckNormalOrientation(); //returns true if orientation is correct, otherwise returns false
+		bool                        Closure(); // test integrity of polygon
 		friend class Mesh;
 	};
 	
@@ -714,24 +751,28 @@ namespace INMOST
 	public:
 		~Cell();
 		
-		adjacent<Node> getNodes(); //ordered (for known geometric types only)
-		adjacent<Edge> getEdges(); //unordered
-		adjacent<Face> getFaces(); //ordered (keeps order it was created in)
+		adjacent<Node>              getNodes(); //ordered (for known geometric types only)
+		adjacent<Edge>              getEdges(); //unordered
+		adjacent<Face>              getFaces(); //ordered (keeps order it was created in)
+
+		adjacent<Node>              getNodes(MIDType mask); //ordered (for known geometric types only)
+		adjacent<Edge>              getEdges(MIDType mask); //unordered
+		adjacent<Face>              getFaces(MIDType mask); //ordered (keeps order it was created in)
 		
 		
-		bool CheckEdgeOrder(); //not implemented//2D only, returns true if edges of face form an ordered closed loop
-		bool FixEdgeOrder(); //not implemented//2D only, returns true if edges were successfully reordered to form a closed loop
+		bool                        CheckEdgeOrder(); //not implemented//2D only, returns true if edges of face form an ordered closed loop
+		bool                        FixEdgeOrder(); //not implemented//2D only, returns true if edges were successfully reordered to form a closed loop
 		//implemented in modify.cpp
-		static Cell * UniteCells(Cell ** cells, INMOST_DATA_ENUM_TYPE ncells, MIDType del_protect);
-		static bool TestUniteCells(Cell ** cells, INMOST_DATA_ENUM_TYPE ncells, MIDType del_protect);
-		static dynarray<Cell *,32> SplitCell(Cell * cell, Face ** faces, INMOST_DATA_ENUM_TYPE nfaces, MIDType del_protect); //provide all faces, that lay inside cell
-		static bool TestSplitCell(Cell * cell, Face ** faces, INMOST_DATA_ENUM_TYPE nfaces, MIDType del_protect);
+		static Cell *               UniteCells(Cell ** cells, INMOST_DATA_ENUM_TYPE ncells, MIDType del_protect);
+		static bool                 TestUniteCells(Cell ** cells, INMOST_DATA_ENUM_TYPE ncells, MIDType del_protect);
+		static dynarray<Cell *,32>  SplitCell(Cell * cell, Face ** faces, INMOST_DATA_ENUM_TYPE nfaces, MIDType del_protect); //provide all faces, that lay inside cell
+		static bool                 TestSplitCell(Cell * cell, Face ** faces, INMOST_DATA_ENUM_TYPE nfaces, MIDType del_protect);
 		//implemented in geometry.cpp
-		Cell * Neighbour(Face * f);
-		adjacent<Cell> NeighbouringCells(); // get all cells that share any face with current
-		bool Inside(Storage::real * point); //is point inside cell, check for 2d case
-		Storage::real Volume();
-		bool Closure(); // test integrity of cell
+		Cell *                      Neighbour(Face * f);
+		adjacent<Cell>              NeighbouringCells(); // get all cells that share any face with current
+		bool                        Inside(Storage::real * point); //is point inside cell, check for 2d case
+		Storage::real               Volume();
+		bool                        Closure(); // test integrity of cell
 		friend class Mesh;
 	};
 	
@@ -757,7 +798,7 @@ namespace INMOST
 		empty_container empty_nodes;
 		sets_container  sets;
 		empty_container empty_sets;
-		Tag tag_global_id, tag_coords;
+		Tag tag_global_id, tag_coords;//, tag_shared_elems;
 		MeshState m_state;
 		unsigned int dim;
 		Element * last_created_element;
@@ -821,7 +862,7 @@ namespace INMOST
 		}
 		ElementSet * CreateSet();
 		ElementSet * CreateOrderedSet();
-		Element * FindSharedAdjacency(Element ** arr, unsigned num);
+		Element * FindSharedAdjacency(Element * const * arr, unsigned num) ;
 		void ReorderEmpty(ElementType reordertypes);
 		void ReorderApply(Tag index, ElementType mask);
 		bool isOriginal(Element * e); //don't know now what this function was for, should detect the copy-constructed element, but copy-construction is prohibited
@@ -1037,12 +1078,12 @@ namespace INMOST
 				return NULL;
 			}
 			__INLINE base_iterator & operator =(base_iterator const & other) {m = other.m; Number = other.Number; types = other.types; CurrentType = other.CurrentType; return *this;}
-			__INLINE bool operator ==(const base_iterator & other) { assert( m == other.m ); if( Number == other.Number && CurrentType == other.CurrentType ) return true; return false;}
-			__INLINE bool operator !=(const base_iterator & other) { assert( m == other.m ); if( Number != other.Number || CurrentType != other.CurrentType ) return true; return false;}
-			__INLINE bool operator <(const base_iterator & other) { assert( m == other.m ); if( (CurrentType < other.CurrentType) || (CurrentType == other.CurrentType && Number < other.Number) ) return true; return false;}
-			__INLINE bool operator >(const base_iterator & other) { assert( m == other.m ); if( (CurrentType > other.CurrentType) || (CurrentType == other.CurrentType && Number > other.Number) ) return true; return false;}
-			__INLINE bool operator <=(const base_iterator & other) {assert( m != other.m ); if( (CurrentType < other.CurrentType) || (CurrentType == other.CurrentType && Number <= other.Number) ) return true; return false;}
-			__INLINE bool operator >=(const base_iterator & other) {assert( m == other.m ); if( (CurrentType > other.CurrentType) || (CurrentType == other.CurrentType && Number >= other.Number) ) return true; return false;}
+			__INLINE bool operator ==(const base_iterator & other) const { assert( m == other.m ); if( Number == other.Number && CurrentType == other.CurrentType ) return true; return false;}
+			__INLINE bool operator !=(const base_iterator & other) const { assert( m == other.m ); if( Number != other.Number || CurrentType != other.CurrentType ) return true; return false;}
+			__INLINE bool operator <(const base_iterator & other) const { assert( m == other.m ); if( (CurrentType < other.CurrentType) || (CurrentType == other.CurrentType && Number < other.Number) ) return true; return false;}
+			__INLINE bool operator >(const base_iterator & other) const { assert( m == other.m ); if( (CurrentType > other.CurrentType) || (CurrentType == other.CurrentType && Number > other.Number) ) return true; return false;}
+			__INLINE bool operator <=(const base_iterator & other) const {assert( m != other.m ); if( (CurrentType < other.CurrentType) || (CurrentType == other.CurrentType && Number <= other.Number) ) return true; return false;}
+			__INLINE bool operator >=(const base_iterator & other) const {assert( m == other.m ); if( (CurrentType > other.CurrentType) || (CurrentType == other.CurrentType && Number >= other.Number) ) return true; return false;}
 			void Print();
 			friend base_iterator Mesh::Begin(ElementType Types);
 			friend base_iterator Mesh::End();
@@ -1108,40 +1149,48 @@ namespace INMOST
 			friend iteratorNode Mesh::EndNode();
 		};
 	private:
-		int GetTypeEnd(ElementType t);
+		int          GetTypeEnd(ElementType t);
 	private:
+		std::vector< std::pair<std::string, std::string> > file_options;
 		//implemented in io.hpp
 		io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
 		io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
 	private:
 		//implemented in mesh_file.cpp
-		void WriteTag  (std::ostream & output, Tag X);
-		Tag  ReadTag   (std::istream & input);
-		void ReadData  (std::istream & input, Tag t, Storage * e,std::vector<Node *> & new_nodes,std::vector<Edge *> & new_edges,std::vector<Face *> & new_faces,std::vector<Cell *> & new_cells);
-		void WriteData (std::ostream & output, Tag t, Storage & e);
-		void WriteElementSet(std::ostream & output, ElementSet * X);
+		void         WriteTag  (std::ostream & output, Tag X);
+		Tag          ReadTag   (std::istream & input);
+		void         ReadData  (std::istream & input, Tag t, Storage * e,std::vector<Node *> & new_nodes,std::vector<Edge *> & new_edges,std::vector<Face *> & new_faces,std::vector<Cell *> & new_cells);
+		void         WriteData (std::ostream & output, Tag t, Storage & e);
+		void         WriteElementSet(std::ostream & output, ElementSet * X);
 		ElementSet * ReadElementSet(std::istream & input,std::vector<Node *> & new_nodes,std::vector<Edge *> & new_edges,std::vector<Face *> & new_faces,std::vector<Cell *> & new_cells);
-		Node * ReadNode(std::istream & input, std::vector<Node *> & old_nodes);
-		void WriteNode(std::ostream & output,Node * X);
-		Edge * ReadEdge(std::istream & input, std::vector<Node *> & nodes);
-		void WriteEdge(std::ostream & output,Edge * X);
-		Face * ReadFace(std::istream & input, std::vector<Edge *> & edges);
-		void WriteFace(std::ostream & output,Face * X);
-		Cell * ReadCell(std::istream & input,std::vector<Face *> & faces, std::vector<Node *> & nodes);
-		void WriteCell(std::ostream & output,Cell * X);
+		Node *       ReadNode(std::istream & input, std::vector<Node *> & old_nodes);
+		void         WriteNode(std::ostream & output,Node * X);
+		Edge *       ReadEdge(std::istream & input, std::vector<Node *> & nodes);
+		void         WriteEdge(std::ostream & output,Edge * X);
+		Face *       ReadFace(std::istream & input, std::vector<Edge *> & edges);
+		void         WriteFace(std::ostream & output,Face * X);
+		Cell *       ReadCell(std::istream & input,std::vector<Face *> & faces, std::vector<Node *> & nodes);
+		void         WriteCell(std::ostream & output,Cell * X);
 	public:
-		void Load(std::string File); // .vtk, .pvtk, .pmf
-		void Save(std::string File); // .vtk, .pvtk, .gmv, .pmf
-		bool isParallelFileFormat(std::string File);
+		/// Current availible file options:
+		/// "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
+		void         SetFileOptions(std::vector< std::pair<std::string,std::string> > options);
+		void         Load(std::string File); // .vtk, .pvtk, .pmf
+		void         Save(std::string File); // .vtk, .pvtk, .gmv, .pmf
+		bool         isParallelFileFormat(std::string File);
 	public:
 		
 		//implemented in geometry.cpp
 	private:
 		void RestoreGeometricTags();
-		Tag measure_tag, centroid_tag, normal_tag, barycenter_tag, dot_tag;
-		bool remember[5][3];
-		bool HideGeometricData(GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
-		bool ShowGeometricData(GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
+		Tag          measure_tag;
+		Tag          centroid_tag;
+		Tag          normal_tag;
+		Tag          barycenter_tag;
+		Tag          dot_tag;
+		bool         remember[5][3];
+		bool         HideGeometricData(GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
+		bool         ShowGeometricData(GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
 		//~ MIDType reorient;
 	public:
 		typedef std::map<GeometricData, ElementType> GeomParam;
@@ -1169,9 +1218,9 @@ namespace INMOST
 	private:
 		MIDType hide_element, new_element;
 	public:
-		bool isMeshModified() {return new_element != 0;} //In case mesh is modified, on element creation TieElements will always place elements to the end
-		MIDType HideMarker() {return hide_element;}
-		MIDType NewMarker() {return new_element;}
+		bool isMeshModified() const {return new_element != 0;} //In case mesh is modified, on element creation TieElements will always place elements to the end
+		MIDType HideMarker() const {return hide_element;}
+		MIDType NewMarker() const {return new_element;}
 		void SwapModification(); // swap hidden and new elements, so that old mesh is recovered
 		void BeginModification();  //allow elements to be hidden
 		void ApplyModification();  //modify DATA_REFERENCE tags so that links to hidden elements are converted to NULL and removed from sets
@@ -1183,8 +1232,8 @@ namespace INMOST
 		//~ void BeginMoveModification();
 		//~ void EndMoveModification();
 		
-		static INMOST_DATA_ENUM_TYPE getNext(Element ** arr, INMOST_DATA_ENUM_TYPE size, INMOST_DATA_ENUM_TYPE k, MIDType marker);
-		static INMOST_DATA_ENUM_TYPE Count(Element ** arr, INMOST_DATA_ENUM_TYPE size, MIDType marker);
+		static INMOST_DATA_ENUM_TYPE getNext(Element * const * arr, INMOST_DATA_ENUM_TYPE size, INMOST_DATA_ENUM_TYPE k, MIDType marker);
+		static INMOST_DATA_ENUM_TYPE Count(Element * const * arr, INMOST_DATA_ENUM_TYPE size, MIDType marker);
 		//implemented in mesh.cpp
 	private:
 		Tag tag_topologyerror;

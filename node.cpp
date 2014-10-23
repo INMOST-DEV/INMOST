@@ -36,6 +36,23 @@ namespace INMOST
 			return aret;
 		}
 	}
+
+	adjacent<Edge> Node::getEdges(MIDType mask)
+	{
+		adjacent<Edge> aret;
+		if( !GetMeshLink()->HideMarker() )
+		{
+			for(adj_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+				if( (*it)->GetMarker(mask) ) aret.push_back((*it));
+		}
+		else
+		{
+			MIDType hm = GetMeshLink()->HideMarker();
+			for(adj_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+				if( (*it)->GetMarker(mask) &&!(*it)->GetMarker(hm) ) aret.push_back((*it));
+		}
+		return aret;
+	}
 	
 	adjacent<Face> Node::getFaces()
 	{
@@ -68,6 +85,38 @@ namespace INMOST
 		m->ReleaseMarker(mrk);
 		return aret;
 	}
+
+	adjacent<Face> Node::getFaces(MIDType mask)
+	{
+		adjacent<Face> aret;
+		Mesh * m = GetMeshLink();
+		MIDType mrk = m->CreateMarker();
+		if( !GetMeshLink()->HideMarker() )
+		{
+			for(Element::adj_iterator it = high_conn.begin(); it != high_conn.end(); it++) //edges
+				for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) //faces
+					if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk))
+					{
+						aret.push_back(*jt);
+						(*jt)->SetMarker(mrk);
+					}
+		}
+		else
+		{
+			MIDType hm = GetMeshLink()->HideMarker();
+			for(Element::adj_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )//edges
+				for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) ) //faces
+					if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk))
+					{
+						aret.push_back(*jt);
+						(*jt)->SetMarker(mrk);
+					}
+		}
+		for(adjacent<Face>::iterator it = aret.begin(); it != aret.end(); it++)
+			it->RemMarker(mrk);
+		m->ReleaseMarker(mrk);
+		return aret;
+	}
 	
 	adjacent<Cell> Node::getCells()
 	{
@@ -81,6 +130,23 @@ namespace INMOST
 				if( !(*it)->GetMarker(hm) ) aret.push_back((*it));
 			return aret;
 		}
+	}
+
+	adjacent<Cell> Node::getCells(MIDType mask)
+	{
+		adjacent<Cell> aret;
+		if( !GetMeshLink()->HideMarker() )
+		{
+			for(adj_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+				if( (*it)->GetMarker(mask) ) aret.push_back((*it));
+		}
+		else
+		{
+			MIDType hm = GetMeshLink()->HideMarker();
+			for(adj_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+				if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
+		}
+		return aret;
 	}
 
 	Storage::real_array Node::Coords() {return RealArrayDF(GetMeshLink()->CoordsTag());}

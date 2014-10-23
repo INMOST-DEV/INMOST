@@ -817,7 +817,7 @@ namespace INMOST
 			else
 			{
 				memset(ret,0,sizeof(real)*mdim);
-				if( edim == 2 && mdim == 3)
+				if( edim == 2 )//&& mdim == 3)
 				{
 					adjacent<Node> nodes = e->getNodes();
 					
@@ -844,13 +844,22 @@ namespace INMOST
 					ret[1] *= 0.5;
 					ret[2] *= 0.5;
 				}
-				else if( edim == 1 && mdim == 2 )
+				else if( edim == 1 )//&& mdim == 2 )
 				{
 					adjacent<Node> nodes = e->getNodes();
 					Storage::real_array a = nodes[0].Coords();
 					Storage::real_array b = nodes[1].Coords();
 					ret[0] = b[1] - a[1];
-					ret[1] = b[0] - a[0];
+					ret[1] = a[0] - b[0];
+					Storage::real l = sqrt(ret[0]*ret[0]+ret[1]*ret[1]);
+					if( l )
+					{
+						ret[0] /= l;
+						ret[1] /= l;
+					}
+					l = sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]));
+					ret[0] *= l;
+					ret[1] *= l;
 				}
 			}
 			break;

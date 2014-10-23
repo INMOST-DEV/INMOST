@@ -22,5 +22,6 @@ void motion(int nmx, int nmy);
 void click(int b, int s, int nmx, int nmy);
 void quatinit();
 void rotate();
+void rotatevector(double * vec);
 
 #endif

@@ -52,40 +52,23 @@
 #define GMSH_SKIP_KEYWORD 16
 
 //eclipse states
-#define ECLSTRCMP(x,y) strncmp(x,y,8)
+#define ECLSTRCMP(x,y) strncmp(x,y,std::min(8u,strlen(y)))
 
 #define ECL_NEVER -1
 #define ECL_NONE 0
 #define ECL_SKIP_SECTION 1
 #define ECL_INCLUDE 2
-#define ECL_DIMENS 3
-#define ECL_DX 4
-#define ECL_DY 5
-#define ECL_DZ 6
-#define ECL_TOPS 7
-#define ECL_PERMX 8
-#define ECL_PERMY 9
-#define ECL_PERMZ 10
-#define ECL_PORO 11
-#define ECL_MAPAXIS 12
-#define ECL_INRAD 13
-#define ECL_COORDS 14
-#define ECL_ZCORN 15
 
-#define ECL_GTYPE_NONE 0
-#define ECL_GTYPE_TOPS 1
-#define ECL_GTYPE_ZCORN 2
-#define ECL_GTYPE_RADIAL 3
-#define ECL_GTYPE_CARTESIAN 4
+#define ECL_READ_RUNSPEC 4
+#define ECL_READ_GRID 5
+#define ECL_READ_EDIT 6
+#define ECL_READ_PROPS 7
+#define ECL_READ_REGIONS 8
+#define ECL_READ_SOLUTION 9
+#define ECL_READ_SUMMARY 10
+#define ECL_READ_SCHEDULE 11
 
-
-#define ECL_VAR_NONE 0
-#define ECL_VAR_REAL 1
-#define ECL_VAR_INT 2
-
-#define ECL_IJK_DATA(i,j,k) (i + (j+k*dims[1])*dims[0])
-
-
+#define ECL_DIMENS 13
 
 template<typename T>
 void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
@@ -104,8 +87,6 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 	}
 }
 
-
-
 #if defined(USE_PARALLEL_WRITE_TIME)
 #define REPORT_MPI(x) {WriteTab(out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>\n"; x;}
 #define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>\n";}
@@ -120,6 +101,7 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 #define EXIT_FUNC() 
 #endif
 
+//#define VTK_DEFINE_CELLS
 
 #define GMV_HEADER 0
 #define GMV_NODES 1
@@ -127,6 +109,7 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 
 namespace INMOST
 {
+
 
 	typedef char HeaderType;
 	const HeaderType EndOfData  = 0x01;
@@ -140,26 +123,6 @@ namespace INMOST
 	const HeaderType EoMHeader  = 0x09;
 	const HeaderType INMOSTFile   = 0x10;
 	const HeaderType MeshDataHeader = 0x11;
-
-	void Mesh::SetFileOptions(std::vector< std::pair< std::string, std::string > > options)
-	{
-		std::vector<bool> newoptions(options.size(),true);
-		for(size_t k = 0; k < file_options.size(); k++)
-		{
-			for(size_t m = 0; m < options.size(); m++)
-			{
-				if(file_options[k].first == options[m].first)
-				{
-					file_options[k].second = options[m].second;
-					newoptions[m] = false;
-				}
-			}
-		}
-		for(size_t m = 0; m < options.size(); m++) if( newoptions[m] )
-		{
-			file_options.push_back(options[m]);
-		}
-	}
 
 	
 	std::ostream & operator <<(std::ostream & out, HeaderType H)
@@ -528,27 +491,15 @@ namespace INMOST
 				std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << LFile << std::endl;
 				throw BadFileName;
 			}
-			std::vector<Node *> old_nodes(NumberOfNodes());
-			{
-				unsigned qq = 0;
-				for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL )
-					old_nodes[qq++] = *it;
-			}
-			if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
 			std::vector< std::pair< std::pair<FILE *,std::string>, int> > fs(1,std::make_pair(std::make_pair(f,LFile),0));
-			char readline[2048], *p, *pend, rec[2048];
-			int text_end, text_start, state = ECL_NONE, nchars;
+			char readline[2048], *p, *pend, fname[2048];
+			int text_end, text_start, state, nchars;
+			int retstate = ECL_NONE;
+			int keyword_with_end_symbol = 1;
 			int waitlines = 0;
-			int have_dimens = 0, totread, downread, numrecs, offset;
-			int gtype = ECL_GTYPE_NONE;
-			int argtype = ECL_VAR_NONE;
-			int radial = ECL_GTYPE_NONE;
-			Storage::real * read_arrayf = NULL;
-			Storage::integer * read_arrayi = NULL;
-			Storage::integer dims[3], mapaxis[6] = {0,1,0,0,1,0};
-			Storage::real inrad = 0;
-			std::vector<Storage::real> xyz,perm,poro, tops,zcorn;
-			std::vector<Storage::integer> actnum;
+			int nx,ny,nz;
+			std::vector<Storage::real> xyz,perm,poro, dx, dy, dz, tops, zcorn, coord;
+			std::vector<int> actnum;
 			while(!fs.empty())
 			{
 				while(fgets(readline,2048,fs.back().first.first) != NULL)
@@ -566,181 +517,469 @@ namespace INMOST
 						for(char * q = p; q < pend; q++) *q = toupper(*q);
 					}
 					if( p[0] == '-' && p[1] == '-' ) continue; //skip comment
-					if(waitlines) {waitlines--; continue;} //skip meaningful lines
+					if(waitlines--) continue; //skip meaningful lines
 					switch(state)
 					{
 					case ECL_NONE:
-						if( !ECLSTRCMP(p,"END") ) //end of data - don't read beyond
+						if( !ECLSTRCMP(p,"RUNSPEC") )
+						{
+							retstate = state = ECL_READ_RUNSPEC;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"GRID") )
+						{
+							retstate = state = ECL_READ_GRID;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"EDIT") )
+						{
+							retstate = state = ECL_READ_EDIT;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"PROPS") )
+						{
+							retstate = state = ECL_READ_PROPS;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"REGIONS") )
+						{
+							retstate = state = ECL_READ_REGIONS;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SOLUTION") )
+						{
+							retstate = state = ECL_READ_SOLUTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SUMMARY") )
+						{
+							retstate = state = ECL_READ_SUMMARY;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SCHEDULE") )
+						{
+							retstate = state = ECL_READ_SCHEDULE;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"END") ) //end of data - don't read beyond
 						{
 							goto ecl_exit_loop;
 						}
-						else if( !ECLSTRCMP(p,"INCLUDE") ) state = ECL_INCLUDE;
-						else if( !ECLSTRCMP(p,"DIMENS") || !ECLSTRCMP(p,"SPECGRID") )
+					case ECL_READ_RUNSPEC:
+						if( !ECLSTRCMP(p,"TITLE") )
 						{
-							read_arrayi = dims;
-							numrecs = 1;
-							downread = totread = 3;
-							argtype = ECL_VAR_INT;
-							offset = state = ECL_DIMENS;
-							have_dimens = 1;
+							waitlines = 1; //skip title
+							break;
 						}
-						else if( !ECLSTRCMP(p,"MAPAXIS") )
+						else if( !ECLSTRCMP(p,"DIMENS") )
 						{
-							read_arrayi = mapaxis;
-							numrecs = 1;
-							downread = totread = 6;
-							argtype = ECL_VAR_INT;
-							offset = state = ECL_MAPAXIS;
+							keyword_with_end_symbol = 0;
+							state = ECL_DIMENS;
+							break;
 						}
+						else if( !ECLSTRCMP(p,"OIL") ) break;
+						else if( !ECLSTRCMP(p,"WATER") ) break;
+						else if( !ECLSTRCMP(p,"GAS") ) break;
+						else if( !ECLSTRCMP(p,"VAPOIL") ) break;
+						else if( !ECLSTRCMP(p,"DISGAS") ) break;
+						else if( !ECLSTRCMP(p,"FIELD") ) break;
+						else if( !ECLSTRCMP(p,"METRIC") ) break;
+						else if( !ECLSTRCMP(p,"LAB") ) break;
+						else if( !ECLSTRCMP(p,"WELLDIMS" ) )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"START" ) )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"UNIFIN") ) break;
+						else if( !ECLSTRCMP(p,"UNIFOUT") ) break;
+						else if( !ECLSTRCMP(p,"NOSIM") ) break;
+						else if( !ECLSTRCMP(p,"TABDIMS") )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"EQLDIMS") ) //???
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"WELLDIMS") ) // Maximum wells, maximum connections per well, maximum groups, maximum number of wells in group
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"NSTACK") )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"AQUDIMS") )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"GRIDOPTS") )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						
+						else if( !ECLSTRCMP(p,"ROCKCOMP") )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						//1. MAXLGR Maximum number of LGRs in the model
+						//2. MAXCELLS Maximum number of cells in any LGR
+						//3. MAXAMLGC Maximum amalgamated coarse cells (not covered in these notes)
+						//4. MAXAMLGF Maximum number of LGR amalgamations
+						//5. MAXLGRAM Maximum number of LGRs in any amalgamation
+						//6. LSTACK Equivalent to NSTACK for Local Grid solving (default: Equal to NSTACK)
+						else if( !ECLSTRCMP(p,"LGR") )
+						{
+							keyword_with_end_symbol = 1;
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"GRID") )
+						{
+							keyword_with_end_symbol = 1;
+							retstate = state = ECL_READ_GRID;
+							break;
+						}
+					case ECL_READ_GRID:
+						if( !ECLSTRCMP(p,"INIT") ) break;
 						else if( !ECLSTRCMP(p,"DX") )
 						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_DX;
 						}
 						else if( !ECLSTRCMP(p,"DY") )
 						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_DX;
-							state = ECL_DY;
 						}
 						else if( !ECLSTRCMP(p,"DZ") )
 						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_DX;
-							state = ECL_DZ;
-						}
-						else if( !ECLSTRCMP(p,"COORD") )
-						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(2*(dims[0]+1)*(dims[1]+1));
-							read_arrayf = &xyz[0];
-							numrecs = 1;
-							downread = totread = 2*(dims[0]+1)*(dims[1]+1);
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_COORDS;
-							gtype = ECL_GTYPE_ZCORN;
-						}
-						else if( !ECLSTRCMP(p,"ZCORN") )
-						{
-							assert(have_dimens);
-							if( zcorn.empty() ) zcorn.resize(dims[0]*dims[1]*dims[2]*8);
-							read_arrayf = &zcorn[0];
-							numrecs = 1;
-							downread = totread = dims[0]*dims[1]*dims[2]*8;
-							argtype = ECL_VAR_REAL;
-							state = offset = ECL_ZCORN;
 						}
 						else if( !ECLSTRCMP(p,"TOPS") )
 						{
-							assert(have_dimens);
-							tops.resize(dims[0]*dims[1]*dims[2]);
-							read_arrayf = &tops[0];
-							numrecs = 1;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_TOPS;
-							gtype = ECL_GTYPE_TOPS;
 						}
 						else if( !ECLSTRCMP(p,"PERMX") )
 						{
-							assert(have_dimens);
-							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_PERMX;
 						}
 						else if( !ECLSTRCMP(p,"PERMY") )
 						{
-							assert(have_dimens);
-							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_PERMX;
-							state = ECL_PERMY;
 						}
 						else if( !ECLSTRCMP(p,"PERMZ") )
 						{
-							assert(have_dimens);
-							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_PERMX;
-							state = ECL_PERMZ;
 						}
 						else if( !ECLSTRCMP(p,"PORO") )
 						{
-							assert(have_dimens);
-							poro.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &poro[0];
-							numrecs = 1;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_PORO;
 						}
-						else if( !ECLSTRCMP(p,"RADIAL") )
+						else if( !ECLSTRCMP(p,"PROPS") )
 						{
-							radial = ECL_GTYPE_RADIAL;
+							retstate = state = ECL_READ_PROPS;
+							break;
 						}
-						else if( !ECLSTRCMP(p,"CART") )
+						else if( !ECLSTRCMP(p,"EDIT") )
 						{
-							radial = ECL_GTYPE_CARTESIAN;
+							retstate = state = ECL_READ_EDIT;
+							break;
 						}
-						else if( !ECLSTRCMP(p,"INRAD") )
+					case ECL_READ_EDIT:
+
+						if( !ECLSTRCMP(p,"PROPS") )
 						{
-							if( radial != ECL_GTYPE_RADIAL ) 
-							{
-								std::cout << __FILE__ << ":" << __LINE__ << " inner radius specified for cartesian grid ";
-								std::cout << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-							}
-							if( radial == ECL_GTYPE_NONE ) radial = ECL_GTYPE_RADIAL;
-							state = ECL_INRAD;
+							retstate = state = ECL_READ_PROPS;
+							break;
+						}
+					case ECL_READ_PROPS:
+						//number of tables to skip may depend on SATNUM
+						if( !ECLSTRCMP(p,"SWOF") ) //Sw, krw, kro, Pcwo
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SWFN") ) // Sw, krw, Pcwo
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SOF2") ) // So, kro
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SGOF") ) // Sg, krg, krog, Pcog
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"PVTW") ) // p, Bw, Cw, mu_w, C_mu
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"PVDO") ) // p, Bo, mu_o
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"PVDG") ) // Pg, Bg, mu_g
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"PVTO") ) // Rs, p_bp, Bo, mu_o
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"RSCONST") ) //Rs, p_bp
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"ROCK") ) // p, C_r
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"ROCKTAB") ) // p, PVMul Perm-mul
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"DENSITY") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SOLUTION") )
+						{
+							retstate = state = ECL_READ_SOLUTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"REGIONS") )
+						{
+							retstate = state = ECL_READ_REGIONS;
+							break;
+						}
+					case ECL_READ_REGIONS:
+						if( !ECLSTRCMP(p,"SATNUM") ) //relative permeability and capillary pressure
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"EQLNUM") ) //setting initial pressures and saturations
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"PVTNUM") ) //PVT data regions (fluid densities, FVFs, viscosities)
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"FIPNUM") ) //Fluid-in-Place regions
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SOLUTION") )
+						{
+							retstate = state = ECL_READ_SOLUTION;
+							break;
+						}
+					case ECL_READ_SOLUTION:
+						if( !ECLSTRCMP(p,"EQUIL") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"RESTART") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"RSVD") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"RPTSOL") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SUMMARY") )
+						{
+							retstate = state = ECL_READ_SUMMARY;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SCHEDULE") )
+						{
+							retstate = state = ECL_READ_SCHEDULE;
+							break;
+						}
+					case ECL_READ_SUMMARY:
+						if( !ECLSTRCMP(p,"RUNSUM") ) break; //Field Oil Production Rate
+						else if( !ECLSTRCMP(p,"FOPR") ) break; //Field Oil Production Rate
+						else if( !ECLSTRCMP(p,"FOPT") ) break; //Field Oil Production Total
+						else if( !ECLSTRCMP(p,"FGOR") ) break; //Field Gas-Oil ratio
+						else if( !ECLSTRCMP(p,"FOE") ) break; //Field Oil efficiency
+						else if( !ECLSTRCMP(p,"FWCT") ) break; //Field Water Cut
+						else if( !ECLSTRCMP(p,"FPR") ) break; //Field Pressure (averaged reservoir pressure)
+						else if( !ECLSTRCMP(p,"FOIP") ) break; //Field Oil In Place
+						else if( !ECLSTRCMP(p,"FWPR") ) break; //Field Water Production Rate
+						else if( !ECLSTRCMP(p,"FWIR") ) break; //Field Water Injection Rate
+						else if( !ECLSTRCMP(p,"WBHP") ) break; //Well bottom hole pressure
+						else if( !ECLSTRCMP(p,"WWCT") ) break; //Well Water Cut for all wells
+						else if( !ECLSTRCMP(p,"WGOR") ) //Well gas-oil production rate
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"BGSAT") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"BOSAT") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"WBHP") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"BPR") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"SCHEDULE") )
+						{
+							retstate = state = ECL_READ_SCHEDULE;
+							break;
+						}
+					case ECL_READ_SCHEDULE:
+						if( !ECLSTRCMP(p,"RPTRST") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"RPTSCHED") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						// can set up sets for wells
+						else if( !ECLSTRCMP(p,"WELSPECS") )  //well specification (names)
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"COMPDAT") )  //well connections
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"WCONPROD") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"WCONINJE") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"WCONHIST") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"WECON") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"GECON") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"WELTARG") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"DATES") || !ECLSTRCMP(p,"DATE") || !ECLSTRCMP(p,"TSTEP") ) //every set of wells should get timing
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+						else if( !ECLSTRCMP(p,"TUNING") )
+						{
+							state = ECL_SKIP_SECTION;
+							break;
+						}
+					case ECL_NEVER: //fall here for unknown keyword
+						if( !ECLSTRCMP(p,"NOECHO") ) break;
+						else if( !ECLSTRCMP(p,"ECHO") ) break;
+
+						else if( !ECLSTRCMP(p,"INCLUDE") ) // can include from anywhere
+						{
+							state = ECL_INCLUDE;
+						}
+						else if( !ECLSTRCMP(p,"/") )
+						{
+							retstate = state = ECL_NONE;
+						}
+						else if( keyword_with_end_symbol )
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " skipping data in section " << p << " in " << fs.back().first.second << " line " << fs.back().second << std::endl;
+							state = ECL_SKIP_SECTION;
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " skipping keyword " << p << " in " << fs.back().first.second << " line " << fs.back().second << std::endl;
 						}
 						break;
 					case ECL_SKIP_SECTION:
-						if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE;
+						if( *(pend-1) == '/' || *p == '/' ) state = retstate;
 						break;
 					case ECL_INCLUDE:
-						if( 1 == sscanf(p," %s",rec) )
+						if( 1 == sscanf(p," %s",fname) )
 						{
 							int shift_one = 0;
-							if( (rec[0] == '\'' || rec[0] == '"') && rec[0] == rec[strlen(rec)-1] ) //remove quotes
+							if( (fname[0] == '\'' || fname[0] == '"') && fname[0] == fname[strlen(fname)-1] ) //remove quotes
 							{
-								rec[strlen(rec)-1] = '\0';
+								fname[strlen(fname)-1] = '\0';
 								shift_one = 1;
 							}
-							f = fopen(rec+shift_one,"r");
+							f = fopen(fname+shift_one,"r");
 							if( f == NULL )
 							{
-								std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << rec+shift_one << " included from "<< fs.back().first.second << " line " << fs.back().second << std::endl;
+								std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << fname+shift_one << " included from "<< fs.back().first.second << " line " << fs.back().second << std::endl;
 								throw BadFileName;
 							}
-							fs.push_back(std::make_pair(std::make_pair(f,std::string(rec+shift_one)),0));
-							if( *(pend-1) == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
+							fs.push_back(std::make_pair(std::make_pair(f,std::string(fname+shift_one)),0));
+							if( *(pend-1) == '/' ) state = retstate; else state = ECL_SKIP_SECTION;
 						}
 						else
 						{
@@ -748,224 +987,26 @@ namespace INMOST
 							throw BadFile;
 						}
 						break;
-					case ECL_ZCORN:
-					case ECL_COORDS:
-					case ECL_MAPAXIS:
 					case ECL_DIMENS:
-					case ECL_DX:
-					case ECL_DY:
-					case ECL_DZ:
-					case ECL_PERMX:
-					case ECL_PERMY:
-					case ECL_PERMZ:
-					case ECL_PORO:
-					case ECL_TOPS:
-						while( downread > 0 && p < pend )
+						if( 3 == sscanf(p," %d %d %d",&nx,&ny,&nz) )
 						{
-							if( 1 == sscanf(p,"%s%n",rec,&nchars) )
-							{
-								p += nchars;
-								while(isspace(*p) && p < pend) ++p;
-								int count = 1;
-								int begval = 0;
-								for(int q = 0; q < strlen(rec); ++q)
-									if( rec[q] == '*' )
-									{
-										begval = q+1;
-										rec[q] = '\0';
-										break;
-									}
-								if( begval > 0 ) count = atoi(rec);
-								if( argtype == ECL_VAR_REAL )
-								{
-									Storage::real val = atof(rec+begval);
-									while(count)
-									{
-										read_arrayf[numrecs*(totread-(downread--))+(state-offset)] = val;
-										count--;
-									}
-								}
-								else if( argtype == ECL_VAR_INT )
-								{
-									Storage::integer val = atof(rec+begval);
-									while(count)
-									{
-										read_arrayi[numrecs*(totread-(downread--))+(state-offset)] = val;
-										count--;
-									}
-								}
-								else
-								{
-									std::cout << __FILE__ << ":" << __LINE__ << " probably forgot to set up argument type to read " << std::endl;
-									throw Impossible;
-								}
-							}
-							else
-							{
-								std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-								throw BadFile;
-							}
-							if( *p == '/' ) 
-							{
-								if( downread > 0 )
-								{
-									std::cout << __FILE__ << ":" << __LINE__ << " early data termination, read " << totread-downread << " of " << totread << " records in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-									throw BadFile;
-								}
-							}
-						}
-						if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
-						break;
-					case ECL_INRAD:
-						if( 1 == sscanf(p,"%lf%n",&inrad,&nchars) )
-						{
-							p += nchars;
-							while(isspace(*p) && p < pend) ++p;
+							xyz.resize(3*nx*ny*nz);
+							perm.resize(3*nx*ny*nz);
+							poro.resize(nx*ny*nz);
+							if( *(pend-1) == '/' ) state = retstate; else state = ECL_SKIP_SECTION;
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot read dimensions, string " << p << " in " << fs.back().first.second << " line " << fs.back().second << std::endl;
 							throw BadFile;
 						}
-						if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
 						break;
 					}
 				}
 ecl_exit_loop:
 				fclose(fs.back().first.first);
-				fs.pop_back();
 			}
-			if( radial == ECL_GTYPE_RADIAL )
-			{
-				std::cout << __FILE__ << ":" << __LINE__ << " radial grids not supported yet " << std::endl;
-			}
-			if( gtype == ECL_GTYPE_TOPS )
-			{
-				std::vector<Node *> newnodes;
-				newnodes.reserve((dims[0]+1)*(dims[1]+1)*(dims[2]+1));
-				Storage::real x, y, z, node_xyz[3];
-				x = 0.0;
-				for(int i = 0; i < dims[0]+1; i++)
-				{
-					Storage::integer pif = std::min(dims[0]-1,i), pib = std::max(i-1,0);
-					y = 0.0;
-					for(int j = 0; j < dims[1]+1; j++)
-					{
-						Storage::integer pjf = std::min(dims[1]-1,j), pjb = std::max(j-1,0);
-						z = (
-							 tops[ECL_IJK_DATA(pib,pjb,0)]+
-							 tops[ECL_IJK_DATA(pib,pjf,0)]+
-							 tops[ECL_IJK_DATA(pif,pjb,0)]+
-							 tops[ECL_IJK_DATA(pif,pjf,0)]
-						    )*0.25;
-						z -= (
-							  xyz[3*ECL_IJK_DATA(pib,pjb,0)+2]+
-							  xyz[3*ECL_IJK_DATA(pib,pjf,0)+2]+
-							  xyz[3*ECL_IJK_DATA(pif,pjb,0)+2]+
-							  xyz[3*ECL_IJK_DATA(pif,pjf,0)+2]
-							 )*0.25;
-						for(int k = 0; k < dims[2]+1; k++)
-						{
-							Storage::integer pkf = std::min(dims[2]-1,k), pkb = std::max(k-1,0);
-							node_xyz[0] = x;
-							node_xyz[1] = y;
-							node_xyz[2] = z;
-							int find = -1;
-							if( !old_nodes.empty() )
-								find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Element*),CompareCoordSearch,node_xyz);
-							if( find == -1 ) newnodes.push_back(CreateNode(node_xyz));
-							else newnodes.push_back(old_nodes[find]);
-							//std::cout << i << " " << j << " " << k << " ( " << x << " , " << y << " , " << z << ") " << newnodes.back()->LocalID() << std::endl; 
-							x += (
-								  (
-								   xyz[3*ECL_IJK_DATA(pib,pjb,pkf)+0]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkf)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkf)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkf)+0]
-								  )
-								-
-								  (
-								   xyz[3*ECL_IJK_DATA(pib,pjb,pkb)+0]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkb)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkb)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkb)+0]
-								  )
-								 )*0.25;
-							y += (
-								  (
-							       xyz[3*ECL_IJK_DATA(pib,pjb,pkf)+1]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkf)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkf)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkf)+1]
-								  )
-								-
-								  (
-								   xyz[3*ECL_IJK_DATA(pib,pjb,pkb)+1]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkb)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkb)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkb)+1]
-								  )
-								 )*0.25;
-							z += (
-								  xyz[3*ECL_IJK_DATA(pib,pjb,pkb)+2]+
-								  xyz[3*ECL_IJK_DATA(pib,pjf,pkb)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjb,pkb)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjf,pkb)+2]+
-							      xyz[3*ECL_IJK_DATA(pib,pjb,pkf)+2]+
-								  xyz[3*ECL_IJK_DATA(pib,pjf,pkf)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjb,pkf)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjf,pkf)+2]
-								 )*0.125;
-						}
-						y += (
-							  xyz[3*ECL_IJK_DATA(pib,pjb,0)+1]+
-							  xyz[3*ECL_IJK_DATA(pif,pjb,0)+1]+
-							  xyz[3*ECL_IJK_DATA(pib,pjf,0)+1]+
-							  xyz[3*ECL_IJK_DATA(pif,pjf,0)+1]
-							 )*0.25; 
-					}
-					x += (
-						  xyz[3*ECL_IJK_DATA(pib,0,0)+0]+
-						  xyz[3*ECL_IJK_DATA(pif,0,0)+0]
-						 )*0.5; 
-				}
-				Tag tagporo,tagperm;
-				if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
-				if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
-
-				const INMOST_DATA_ENUM_TYPE nvf[24] = { 2, 3, 1, 0, 4, 5, 7, 6, 0, 1, 5, 4, 3, 2, 6, 7, 2, 0, 4, 6, 1, 3, 7, 5 };
-				const INMOST_DATA_ENUM_TYPE numnodes[6] = { 4, 4, 4, 4, 4, 4 };
-				for(int i = 0; i < dims[0]; i++)
-					for(int j = 0; j < dims[1]; j++)
-						for(int k = 0; k < dims[2]; k++)
-						{
-							Node * verts[8];
-							verts[0] = newnodes[((i+0)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+0)];
-							verts[1] = newnodes[((i+1)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+0)];
-							verts[2] = newnodes[((i+0)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+0)];
-							verts[3] = newnodes[((i+1)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+0)];
-							verts[4] = newnodes[((i+0)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+1)];
-							verts[5] = newnodes[((i+1)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+1)];
-							verts[6] = newnodes[((i+0)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+1)];
-							verts[7] = newnodes[((i+1)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+1)];
-							//for(int q = 0; q < 8; q++)
-							//	std::cout << verts[q]->Coords()[0] << " " << verts[q]->Coords()[1] << " " << verts[q]->Coords()[2] << " " << verts[q]->LocalID() << std::endl;
-							Cell * c = CreateCell(verts,nvf,numnodes,6).first;
-							if( !poro.empty() ) c->RealDF(tagporo) = poro[(i*dims[1]+j)*dims[2]+k];
-							if( !perm.empty() )
-							{
-								Storage::real_array arr_perm = c->RealArrayDF(tagperm);
-								arr_perm[0] = perm[3*((i*dims[1]+j)*dims[2]+k)+0];
-								arr_perm[1] = perm[3*((i*dims[1]+j)*dims[2]+k)+1];
-								arr_perm[2] = perm[3*((i*dims[1]+j)*dims[2]+k)+2];
-							}
-						}
-			}
-			else if( gtype == ECL_GTYPE_ZCORN )
-			{
-				std::vector<Node *> block_nodes(dims[0]*dims[1]*dims[2]*8);
-				Storage::integer block_zcorn[8];
-			}
+			
 		}
 		else
 		if(LFile.find(".pvtk") != std::string::npos) //this is legacy parallel vtk
@@ -1064,18 +1105,6 @@ ecl_exit_loop:
 		else if(LFile.find(".vtk") != std::string::npos) //this is legacy vtk
 		{
 			MIDType unused_marker = CreateMarker();
-			bool grid_is_2d = false;
-			for(size_t k = 0; k < file_options.size(); ++k)
-			{
-				if( file_options[k].first == "VTK_GRID_DIMS" )
-				{
-					if( atoi(file_options[k].second.c_str()) == 2 )
-					{
-						grid_is_2d = true;
-						break;
-					}
-				}
-			}
 			std::vector<Node *> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
@@ -1637,6 +1666,9 @@ ecl_exit_loop:
 								{
 									case 1: // VTK_VERTEX
 									{
+#if defined(VTK_DEFINE_CELLS)
+										printf("VTK_VERTEX found, but 0d cell objects are not supported\n");
+#else
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
@@ -1645,10 +1677,14 @@ ecl_exit_loop:
 										j = j + 1 + cp[j];
 										assert(c_nodes.size() == 1);
 										newcells.push_back(c_nodes[0]);
+#endif
 										break;
 									}
 									case 2: //VTK_POLY_VERTEX
 									{
+#if defined(VTK_DEFINE_CELLS)
+										printf("VTK_POLY_VERTEX cannot be represented\n"); //use set?
+#else
 										{
 											ElementSet * eset = CreateSet();
 											for(int k = j+1; k < j+1+cp[j]; k++)
@@ -1659,10 +1695,14 @@ ecl_exit_loop:
 											newcells.push_back(eset);
 										}
 										j = j + 1 + cp[j];
+#endif
 										break;
 									}
 									case 3: //VTK_LINE
 									{
+#if defined(VTK_DEFINE_CELLS)
+										printf("VTK_LINE found, but 1d cell objects are not supported\n");
+#else
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
@@ -1671,11 +1711,11 @@ ecl_exit_loop:
 										j = j + 1 + cp[j];
 										assert(c_nodes.size() == 2);
 										newcells.push_back(CreateEdge(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 4: //VTK_POLY_LINE
 									{
-										/*
 #if defined(VTK_DEFINE_CELLS)
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
@@ -1696,7 +1736,6 @@ ecl_exit_loop:
 										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
 										newcells.push_back(c);
 #else
-										*/
 										{
 											ElementSet * eset = CreateSet();
 											for(int k = j+1; k < j+cp[j]; k++)
@@ -1710,7 +1749,7 @@ ecl_exit_loop:
 											j = j + 1 + cp[j];
 											newcells.push_back(eset);
 										}
-//#endif
+#endif
 										break;
 									}
 									case 5: //VTK_TRIANGLE
@@ -1722,21 +1761,21 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 3 ) throw BadFile;
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										f_edges.resize(2);
+										for(unsigned int k = 0; k < 3; k++)
 										{
-											f_edges.resize(2);
-											for(unsigned int k = 0; k < 3; k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%3];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],3,&c_nodes[0],c_nodes.size()).first;
-											newcells.push_back(c);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%3];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],3).first);
+										Cell * c = CreateCell(&c_faces[0],2,&c_nodes[0],c_nodes.size()).first;
+										newcells.push_back(c);
+#else
+										newcells.push_back(CreateFace(&c_nodes[0],3).first);
+#endif
 										break;
 									}
 									case 6: //VTK_TRIANGLE_STRIP
@@ -1748,55 +1787,50 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() < 3 ) throw BadFile;
-										/*
 #if defined(VTK_DEFINE_CELLS)
 										for(INMOST_DATA_ENUM_TYPE l = c_nodes.size(); l > 2; l--)
 												c_faces.push_back(CreateFace(&c_nodes[l-3],3).first);
 										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
 										newcells.push_back(c);
 #else //treat it as a set of faces
-										*/
 										{
 											ElementSet * eset = CreateSet();
 											for(INMOST_DATA_ENUM_TYPE l = c_nodes.size(); l > 2; l--)
 												eset->Insert(CreateFace(&c_nodes[l-3],3).first);
 										}
-//#endif
+#endif
 										break;
 									}
 									case 7: //VTK_POLYGON
 									{
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
-											for(int k = j+1; k < j+1+cp[j]; k++)
-											{
-												c_nodes.push_back(newnodes[cp[k]]);
-												newnodes[cp[k]]->RemMarker(unused_marker);
-											}
-											j = j + 1 + cp[j];
-											f_edges.resize(2);
-											for(unsigned int k = 0; k < c_nodes.size(); k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%c_nodes.size()];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
-											c_faces.clear();
-											newcells.push_back(c);
+											c_nodes.push_back(newnodes[cp[k]]);
+											newnodes[cp[k]]->RemMarker(unused_marker);
 										}
-										else
+										j = j + 1 + cp[j];
+										f_edges.resize(2);
+										for(unsigned int k = 0; k < c_nodes.size(); k++)
 										{
-											for(int k = j+1; k < j+1+cp[j]; k++)
-											{
-												c_nodes.push_back(newnodes[cp[k]]);
-												newnodes[cp[k]]->RemMarker(unused_marker);
-											}
-											j = j + 1 + cp[j];
-											newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%c_nodes.size()];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
+										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
+										c_faces.clear();
+										newcells.push_back(c);
+#else
+										for(int k = j+1; k < j+1+cp[j]; k++)
+										{
+											c_nodes.push_back(newnodes[cp[k]]);
+											newnodes[cp[k]]->RemMarker(unused_marker);
+										}
+										j = j + 1 + cp[j];
+										newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 8: //VTK_PIXEL
@@ -1811,21 +1845,21 @@ ecl_exit_loop:
 										Node * temp = c_nodes[2];
 										c_nodes[2] = c_nodes[3];
 										c_nodes[3] = temp;
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										f_edges.resize(2);
+										for(int k = 0; k < 4; k++)
 										{
-											f_edges.resize(2);
-											for(int k = 0; k < 4; k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%4];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
-											newcells.push_back(c);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%4];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
+										newcells.push_back(c);
+#else
+										newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 9: //VTK_QUAD
@@ -1837,22 +1871,22 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 4 ) throw BadFile;
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										f_edges.resize(2);
+										for(int k = 0; k < 4; k++)
 										{
-											f_edges.resize(2);
-											for(int k = 0; k < 4; k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%4];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
-											c_faces.clear();
-											newcells.push_back(c);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%4];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
+										c_faces.clear();
+										newcells.push_back(c);
+#else
+										newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 10: //VTK_TETRA
@@ -3862,14 +3896,7 @@ read_elem_num_link:
 			sprintf(keyword,"nodev"); fwrite(keyword,1,8,file);
 			keynum = static_cast<Storage::integer>(nodes.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
 			for(Mesh::nodes_container::iterator n = nodes.begin(); n != nodes.end(); n++)
-			{
-				fwrite(&(*n)->Coords()[0],sizeof(Storage::real),GetDimensions(),file);
-				if( GetDimensions() < 3 )
-				{
-					Storage::real zero = 0.0;
-					fwrite(&zero,sizeof(Storage::real),3-GetDimensions(),file);
-				}
-			}
+				fwrite(&(*n)->Coords()[0],sizeof(Storage::real),3,file);
 			sprintf(keyword,"faces"); fwrite(keyword,1,8,file);
 			keynum = static_cast<Storage::integer>(faces.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
 			keynum = static_cast<Storage::integer>(cells.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
@@ -4083,16 +4110,8 @@ read_elem_num_link:
 					fwrite(&fn->Coords()[0],sizeof(Storage::real),1,file);
 				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 					fwrite(&fn->Coords()[1],sizeof(Storage::real),1,file);
-				if( GetDimensions() > 2 )
-				{
-					for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
-						fwrite(&fn->Coords()[2],sizeof(Storage::real),1,file);
-				}
-				else 
-				{
-					Storage::real zero = 0.0;
-					fwrite(&zero,sizeof(Storage::real),fnodes.size(),file);
-				}
+				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+					fwrite(&fn->Coords()[2],sizeof(Storage::real),1,file);
 			}
 			sprintf(keyword,"endpoly"); fwrite(keyword,1,8,file);
 			sprintf(keyword,"endgmv"); fwrite(keyword,1,8,file);

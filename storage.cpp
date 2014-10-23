@@ -51,7 +51,7 @@ namespace INMOST
 		}
 	}
 	
-	void Storage::MoveData(int new_local_id)
+	void Storage::MoveData(INMOST_DATA_INTEGER_TYPE new_local_id)
 	{
 		Mesh * m = GetMeshLink();
 		if( m == NULL ) return;
@@ -66,7 +66,13 @@ namespace INMOST
 			memset(&arr[from],0,record_size);
 		}
 	}
-	void Storage::SwapData(int new_local_id)
+	void Storage::SwapSparseData(INMOST_DATA_INTEGER_TYPE new_local_id)
+	{
+		Mesh * m = GetMeshLink();
+		if( m == NULL ) return;
+		inner_data.swap(m->ElementByLocalID(GetElementType(),new_local_id)->inner_data);
+	}
+	void Storage::SwapDenseData(INMOST_DATA_INTEGER_TYPE new_local_id)
 	{
 		Mesh * m = GetMeshLink();
 		if( m == NULL ) return;

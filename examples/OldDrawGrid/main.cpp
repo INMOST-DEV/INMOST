@@ -14,24 +14,141 @@ int drawgrid = 0;
 int interactive = 0;
 double zoom = 1;
 int width = 800, height = 800;
-double l = 1e20, r = -1e20, b = 1e20, t = -1e20, zfar = -1e20, znear = 1e20;
+double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20, snear = 1e20;
+double shift[3] = {0,0,0};
+bool perspective = false;
 std::map<GeometricData,ElementType> table;
-void reshape(int w, int h)
+
+void set_matrix3d()
 {
+	double aspect = (double)width/(double)height;
+	double side = std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+	//double center[3] = { (sleft+sright)*0.5, (sbottom+stop)*0.5, (sfar+snear)*0.5};
 	const double sc = 2;
-	double aspect = (double)w/(double)h;
-	double center[3] = { (l+r)*0.5, (b+t)*0.5, (zfar+znear)*0.5};
-	double side = std::max(std::max( r-l, t-b ), zfar-znear)*0.5;
-	width = w;
-	height = h;
 	glMatrixMode (GL_PROJECTION);
 	glLoadIdentity ();
-	glOrtho(center[0]-sc*side*zoom*aspect,center[0]+sc*zoom*side*aspect,
-			center[1]-sc*side*zoom,center[1]+sc*zoom*side,
-			center[2]-sc*side*100,center[2]+sc*side*100);
+	//~ glOrtho(center[0]-sc*side*zoom*aspect,center[0]+sc*zoom*side*aspect,
+		//~ center[1]-sc*side*zoom,center[1]+sc*zoom*side,
+		//~ center[2]-sc*side*100,center[2]+sc*side*100);
+	if( !perspective )
+	{
+		glOrtho(-sc*side*zoom*aspect,sc*side*zoom*aspect,
+				-sc*side*zoom,sc*side*zoom,
+				-sc*side*100,sc*side*100);
+	}
+	else
+		gluPerspective(60.0, aspect, 0.00001, 1000.0);
 	glMatrixMode (GL_MODELVIEW);
+}
+
+void set_matrix2d()
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(-1,1,-1,1,-1,1);
+	glMatrixMode(GL_MODELVIEW);
+}
+
+void reshape(int w, int h)
+{
+	width = w;
+	height = h;
+	set_matrix3d();
 	glViewport(0, 0, w, h);
 }
+
+
+int actionstate  = 0;
+double mymx = 0;
+double mymy = 0;
+
+void myclickmotion(int nmx, int nmy) // Mouse
+{
+	double lmx = 2.*(nmx/(double)width - 0.5),lmy = 2.*(0.5 - nmy/(double)height), dmx = lmx-mymx, dmy = lmy - mymy;
+	if( actionstate == 1 )
+	{
+		double shiftmod[3] = {0,0,0};
+		shiftmod[0] += dmx*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		shiftmod[1] += dmy*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		rotatevector((double*)shiftmod);
+		shift[0] += shiftmod[0];
+		shift[1] += shiftmod[1];
+		shift[2] += shiftmod[2];
+		glutPostRedisplay();
+		mymx = lmx;
+		mymy = lmy;
+	}
+	else if( actionstate == 2 )
+	{
+		zoom *= expf(-dmy);
+		reshape(width,height);
+		double shiftmod[3] = {0,0,0};
+		shiftmod[2] += dmx*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		rotatevector((double*)shiftmod);
+		shift[0] += shiftmod[0];
+		shift[1] += shiftmod[1];
+		shift[2] += shiftmod[2];
+		glutPostRedisplay();
+		mymx = lmx;
+		mymy = lmy;
+	}
+	else if( actionstate == 3 )
+		clickmotion(nmx,nmy);
+}
+void mymotion(int nmx, int nmy) // Mouse
+{
+	motion(nmx,nmy);
+	mymx = 2.*(nmx/(double)width - 0.5);
+	mymy = 2.*(0.5 - nmy/(double)height);
+}
+
+void myclick(int b, int s, int nmx, int nmy) // Mouse
+{
+	if( b == GLUT_LEFT_BUTTON )
+	{
+		if( s == GLUT_DOWN )
+		{
+			actionstate = 3;
+		}
+		else
+		{
+			actionstate = 0;
+		}
+		click(b,s,nmx,nmy);
+	}
+	else if( b == GLUT_MIDDLE_BUTTON )
+	{
+		if( s == GLUT_DOWN )
+		{
+			actionstate = 1;
+			interactive = true;
+		}
+		else
+		{
+			actionstate = 0;
+			interactive = false;
+		}
+		mymx = 2.*(nmx/(double)width - 0.5);
+		mymy = 2.*(0.5 - nmy/(double)height);
+	}
+	else if( b == GLUT_RIGHT_BUTTON )
+	{
+		if( s == GLUT_DOWN )
+		{
+			actionstate = 2;
+			interactive = true;
+		}
+		else
+		{
+			actionstate = 0;
+			interactive = false;
+		}
+		mymx = 2.*(nmx/(double)width - 0.5);
+		mymy = 2.*(0.5 - nmy/(double)height);
+	}
+	glutPostRedisplay();
+}
+
 
 void clear_half()
 {
@@ -95,26 +212,88 @@ void keyboard(unsigned char key, int x, int y)
 		delete mesh;
 		exit(-1);
 	}
-	if( key == '=' || key == '+')
+	else if( key == 'p' )
+	{
+		perspective = !perspective;
+		reshape(width,height);
+		glutPostRedisplay();
+		interactive = true;
+	}
+	
+	else if( key == '=' || key == '+')
 	{
 		zoom /= 1.1;
 		reshape(width,height);
 		glutPostRedisplay();
+		interactive = true;
+		//reset_timer = Timer();
 	}
-	if( key == '_' || key == '-')
+	else if( key == '_' || key == '-')
 	{
 		zoom *= 1.1;	
 		reshape(width,height);
 		glutPostRedisplay();
+		interactive = true;
+		//reset_timer = Timer();
 	}
 	if( key == ' ')
 	{
 		drawgrid = (drawgrid+1)%2;
 		glutPostRedisplay();
 	}
-	if( key == 'r' )
+	else if( key == 'w' )
 	{
-		clear_half();
+		double shiftmod[3] = {0,0,0};
+		shiftmod[1] -= 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		rotatevector((double*)shiftmod);
+		shift[0] += shiftmod[0];
+		shift[1] += shiftmod[1];
+		shift[2] += shiftmod[2];
+		glutPostRedisplay();
+		interactive = true;
+	}
+	else if( key == 's' )
+	{
+		double shiftmod[3] = {0,0,0};
+		shiftmod[1] += 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		rotatevector((double*)shiftmod);
+		shift[0] += shiftmod[0];
+		shift[1] += shiftmod[1];
+		shift[2] += shiftmod[2];
+		glutPostRedisplay();
+		interactive = true;
+	}
+	else if( key == 'a' )
+	{
+		double shiftmod[3] = {0,0,0};
+		shiftmod[0] += 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		rotatevector((double*)shiftmod);
+		shift[0] += shiftmod[0];
+		shift[1] += shiftmod[1];
+		shift[2] += shiftmod[2];
+		glutPostRedisplay();
+		interactive = true;
+	}
+	else if( key == 'd' )
+	{
+		double shiftmod[3] = {0,0,0};
+		shiftmod[0] -= 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		rotatevector((double*)shiftmod);
+		shift[0] += shiftmod[0];
+		shift[1] += shiftmod[1];
+		shift[2] += shiftmod[2];
+		glutPostRedisplay();
+		interactive = true;
+	}
+	else if( key == 'r' )
+	{
+		shift[0] = 0.0f;
+		shift[1] = 0.0f;
+		shift[2] = 0.0f;
+		zoom = 1;
+		quatinit();
+		glutPostRedisplay();
+		interactive = true;
 	}
 	else if( key == 'q' )
 	{
@@ -124,6 +303,16 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		mesh->RemoveGeometricData(table);
 	}
+}
+
+void keyboard2(unsigned char key, int x, int y)
+{
+	if( key == '=' || key == '+' ||  key == '_' || key == '-' || key == 'w' || key == 's' || key == 'a' || key == 'd' || key == 'r' || key == 'p' || key == 'z')
+	{
+		interactive = false;
+		glutPostRedisplay();
+	}
+	
 }
 
 void DrawFace(Element * f)
@@ -151,17 +340,37 @@ void draw()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
+	set_matrix3d();
 
-	glTranslated((l+r)*0.5,(b+t)*0.5,(znear+zfar)*0.5);
+
+	if( perspective )
+		glTranslated(0,0,-zoom*2*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5);
 	rotate();
-	glTranslated(-(l+r)*0.5,-(b+t)*0.5,-(znear+zfar)*0.5);
+	glLineWidth(3.0);
+	glBegin(GL_LINES);
+	glColor3f(1,0,0);
+	glVertex3d(0,0,0);
+	glVertex3d(zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5*0.1,0,0);
+	glColor3f(0,1,0);
+	glVertex3d(0,0,0);
+	glVertex3d(0,zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5*0.1,0);
+	glColor3f(0,0,1);
+	glVertex3d(0,0,0);
+	glVertex3d(0,0,zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5*0.1);
+	glEnd();
+	glLineWidth(1.0);
+	//glPointSize(1);
+	
+	//glTranslated(-(sleft+sright)*0.5+shift[0],-(sbottom+stop)*0.5 + shift[1],-(snear+sfar)*0.5 + shift[2]);
+	
+	glTranslated(shift[0],shift[1],shift[2]);
 
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
 	
 	if( drawgrid)
 	{
 		const double scale = 2;
-		double mc[3] = {(l+r)*0.5,(t+b)*0.5,(znear+zfar)*0.5};
+		double mc[3] = {(sleft+sright)*0.5,(stop+sbottom)*0.5,(snear+sfar)*0.5};
 		Storage::real cc[3];
 		for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); it++)
 		{
@@ -318,14 +527,19 @@ int main(int argc, char ** argv)
 	for(Mesh::iteratorNode n = mesh->BeginNode(); n != mesh->EndNode(); n++)
 	{
 		Storage::real_array c = n->Coords();
-		if( c[0] > r ) r = c[0];
-		if( c[0] < l ) l = c[0];
-		if( c[1] > t ) t = c[1];
-		if( c[1] < b ) b = c[1];
-		if( c[2] > zfar ) zfar = c[2];
-		if( c[2] < znear ) znear = c[2];
+		if( c[0] > sright ) sright = c[0];
+		if( c[0] < sleft ) sleft = c[0];
+		if( c[1] > stop ) stop = c[1];
+		if( c[1] < sbottom ) sbottom = c[1];
+		if( c[2] > sfar ) sfar = c[2];
+		if( c[2] < snear ) snear = c[2];
 	}
-	printf("%g:%g %g:%g %g:%g\n",l,r,b,t,znear,zfar);
+	printf("%g:%g %g:%g %g:%g\n",sleft,sright,sbottom,stop,snear,sfar);
+	
+	shift[0] = -(sleft+sright)*0.5;
+	shift[1] = -(sbottom+stop)*0.5;
+	shift[2] =  -(sfar+snear)*0.5;
+
 	quatinit();
 	glutInit(&argc,argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
@@ -344,9 +558,9 @@ int main(int argc, char ** argv)
 	glutReshapeFunc(reshape);
 	
 	glutKeyboardFunc(keyboard);
-	glutMouseFunc(click);
-	glutMotionFunc(clickmotion);
-	glutPassiveMotionFunc(motion);
+	glutMouseFunc(myclick);
+	glutMotionFunc(myclickmotion);
+	glutPassiveMotionFunc(mymotion);
 	//glutIdleFunc(idle);
 	
 	glutPostRedisplay();

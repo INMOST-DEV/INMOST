@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-//vtk states
-
 #define R_VERSION     0
 #define R_USERDATA    1
 #define R_DATATYPE    2
@@ -25,9 +23,6 @@
 #define R_ATTRDATA    11
 
 #define R_QUIT		  100
-
-
-//gmsh states
 
 #define GMSH_VERNONE 0
 #define GMSH_VER1 1
@@ -51,40 +46,6 @@
 #define GMSH_FORMAT 15
 #define GMSH_SKIP_KEYWORD 16
 
-//eclipse states
-#define ECLSTRCMP(x,y) strncmp(x,y,8)
-
-#define ECL_NEVER -1
-#define ECL_NONE 0
-#define ECL_SKIP_SECTION 1
-#define ECL_INCLUDE 2
-#define ECL_DIMENS 3
-#define ECL_DX 4
-#define ECL_DY 5
-#define ECL_DZ 6
-#define ECL_TOPS 7
-#define ECL_PERMX 8
-#define ECL_PERMY 9
-#define ECL_PERMZ 10
-#define ECL_PORO 11
-#define ECL_MAPAXIS 12
-#define ECL_INRAD 13
-#define ECL_COORDS 14
-#define ECL_ZCORN 15
-
-#define ECL_GTYPE_NONE 0
-#define ECL_GTYPE_TOPS 1
-#define ECL_GTYPE_ZCORN 2
-#define ECL_GTYPE_RADIAL 3
-#define ECL_GTYPE_CARTESIAN 4
-
-
-#define ECL_VAR_NONE 0
-#define ECL_VAR_REAL 1
-#define ECL_VAR_INT 2
-
-#define ECL_IJK_DATA(i,j,k) (i + (j+k*dims[1])*dims[0])
-
 
 
 template<typename T>
@@ -104,8 +65,6 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 	}
 }
 
-
-
 #if defined(USE_PARALLEL_WRITE_TIME)
 #define REPORT_MPI(x) {WriteTab(out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>\n"; x;}
 #define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>\n";}
@@ -120,6 +79,7 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 #define EXIT_FUNC() 
 #endif
 
+//#define VTK_DEFINE_CELLS
 
 #define GMV_HEADER 0
 #define GMV_NODES 1
@@ -127,6 +87,7 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 
 namespace INMOST
 {
+
 
 	typedef char HeaderType;
 	const HeaderType EndOfData  = 0x01;
@@ -140,26 +101,6 @@ namespace INMOST
 	const HeaderType EoMHeader  = 0x09;
 	const HeaderType INMOSTFile   = 0x10;
 	const HeaderType MeshDataHeader = 0x11;
-
-	void Mesh::SetFileOptions(std::vector< std::pair< std::string, std::string > > options)
-	{
-		std::vector<bool> newoptions(options.size(),true);
-		for(size_t k = 0; k < file_options.size(); k++)
-		{
-			for(size_t m = 0; m < options.size(); m++)
-			{
-				if(file_options[k].first == options[m].first)
-				{
-					file_options[k].second = options[m].second;
-					newoptions[m] = false;
-				}
-			}
-		}
-		for(size_t m = 0; m < options.size(); m++) if( newoptions[m] )
-		{
-			file_options.push_back(options[m]);
-		}
-	}
 
 	
 	std::ostream & operator <<(std::ostream & out, HeaderType H)
@@ -522,450 +463,171 @@ namespace INMOST
 		*/
 		if(LFile.find(".grdecl") != std::string::npos) // this is eclipse grid
 		{
-			FILE * f = fopen(LFile.c_str(),"r");
-			if( f == NULL )
+		
+			Storage::real origin[2], axisx[2], axisy[2];
+			std::vector<Cell *> new_cells;
+			Storage::integer nx,ny,nz, i , j , k, m, q;
+			std::vector< std::vector< std::vector< std::vector<Storage::real> > > > coords, zcorn;
+			std::vector< std::vector< std::vector<Storage::integer> > > pinch;
+			size_t l;
+			std::string str;
+			std::fstream stream(File.c_str(),std::ios::in);
+			while(stream.good())
 			{
-				std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << LFile << std::endl;
-				throw BadFileName;
-			}
-			std::vector<Node *> old_nodes(NumberOfNodes());
-			{
-				unsigned qq = 0;
-				for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL )
-					old_nodes[qq++] = *it;
-			}
-			if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
-			std::vector< std::pair< std::pair<FILE *,std::string>, int> > fs(1,std::make_pair(std::make_pair(f,LFile),0));
-			char readline[2048], *p, *pend, rec[2048];
-			int text_end, text_start, state = ECL_NONE, nchars;
-			int waitlines = 0;
-			int have_dimens = 0, totread, downread, numrecs, offset;
-			int gtype = ECL_GTYPE_NONE;
-			int argtype = ECL_VAR_NONE;
-			int radial = ECL_GTYPE_NONE;
-			Storage::real * read_arrayf = NULL;
-			Storage::integer * read_arrayi = NULL;
-			Storage::integer dims[3], mapaxis[6] = {0,1,0,0,1,0};
-			Storage::real inrad = 0;
-			std::vector<Storage::real> xyz,perm,poro, tops,zcorn;
-			std::vector<Storage::integer> actnum;
-			while(!fs.empty())
-			{
-				while(fgets(readline,2048,fs.back().first.first) != NULL)
+				getline(stream,str);
+				l = str.find_first_not_of(" \t\r\n");
+				if( l != std::string::npos ) str.substr(l,str.size()-l).swap(str);
+				else str.clear();
+				l = str.find_last_not_of(" \t\r\n");
+				if( l != std::string::npos ) str.resize(l+1);
+				else str.clear();
+				
+				if( str.empty() ) continue;
+				if( str[0] == '-' && str[1] == '-' ) continue;
+				
+				if( str == "NOECHO" ) continue;
+				else if( str == "PINCH" )
 				{
-					fs.back().second++; //line number
-					{
-						if( readline[strlen(readline)-1] == '\n' ) readline[strlen(readline)-1] = '\0';
-						text_end = strlen(readline);
-						for(text_start = 0; isspace(readline[text_start]) && text_start < text_end; text_start++);
-						if( text_start == text_end ) continue;
-						for(text_end = text_end-1; isspace(readline[text_end]) && text_end > text_start; text_end--);
-						readline[text_end+1] = '\0';
-						p = readline + text_start;
-						pend = readline + text_end + 1;
-						for(char * q = p; q < pend; q++) *q = toupper(*q);
-					}
-					if( p[0] == '-' && p[1] == '-' ) continue; //skip comment
-					if(waitlines) {waitlines--; continue;} //skip meaningful lines
-					switch(state)
-					{
-					case ECL_NONE:
-						if( !ECLSTRCMP(p,"END") ) //end of data - don't read beyond
-						{
-							goto ecl_exit_loop;
-						}
-						else if( !ECLSTRCMP(p,"INCLUDE") ) state = ECL_INCLUDE;
-						else if( !ECLSTRCMP(p,"DIMENS") || !ECLSTRCMP(p,"SPECGRID") )
-						{
-							read_arrayi = dims;
-							numrecs = 1;
-							downread = totread = 3;
-							argtype = ECL_VAR_INT;
-							offset = state = ECL_DIMENS;
-							have_dimens = 1;
-						}
-						else if( !ECLSTRCMP(p,"MAPAXIS") )
-						{
-							read_arrayi = mapaxis;
-							numrecs = 1;
-							downread = totread = 6;
-							argtype = ECL_VAR_INT;
-							offset = state = ECL_MAPAXIS;
-						}
-						else if( !ECLSTRCMP(p,"DX") )
-						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_DX;
-						}
-						else if( !ECLSTRCMP(p,"DY") )
-						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_DX;
-							state = ECL_DY;
-						}
-						else if( !ECLSTRCMP(p,"DZ") )
-						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_DX;
-							state = ECL_DZ;
-						}
-						else if( !ECLSTRCMP(p,"COORD") )
-						{
-							assert(have_dimens);
-							if( xyz.empty() ) xyz.resize(2*(dims[0]+1)*(dims[1]+1));
-							read_arrayf = &xyz[0];
-							numrecs = 1;
-							downread = totread = 2*(dims[0]+1)*(dims[1]+1);
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_COORDS;
-							gtype = ECL_GTYPE_ZCORN;
-						}
-						else if( !ECLSTRCMP(p,"ZCORN") )
-						{
-							assert(have_dimens);
-							if( zcorn.empty() ) zcorn.resize(dims[0]*dims[1]*dims[2]*8);
-							read_arrayf = &zcorn[0];
-							numrecs = 1;
-							downread = totread = dims[0]*dims[1]*dims[2]*8;
-							argtype = ECL_VAR_REAL;
-							state = offset = ECL_ZCORN;
-						}
-						else if( !ECLSTRCMP(p,"TOPS") )
-						{
-							assert(have_dimens);
-							tops.resize(dims[0]*dims[1]*dims[2]);
-							read_arrayf = &tops[0];
-							numrecs = 1;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_TOPS;
-							gtype = ECL_GTYPE_TOPS;
-						}
-						else if( !ECLSTRCMP(p,"PERMX") )
-						{
-							assert(have_dimens);
-							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_PERMX;
-						}
-						else if( !ECLSTRCMP(p,"PERMY") )
-						{
-							assert(have_dimens);
-							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_PERMX;
-							state = ECL_PERMY;
-						}
-						else if( !ECLSTRCMP(p,"PERMZ") )
-						{
-							assert(have_dimens);
-							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
-							numrecs = 3;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = ECL_PERMX;
-							state = ECL_PERMZ;
-						}
-						else if( !ECLSTRCMP(p,"PORO") )
-						{
-							assert(have_dimens);
-							poro.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &poro[0];
-							numrecs = 1;
-							downread = totread = dims[0]*dims[1]*dims[2];
-							argtype = ECL_VAR_REAL;
-							offset = state = ECL_PORO;
-						}
-						else if( !ECLSTRCMP(p,"RADIAL") )
-						{
-							radial = ECL_GTYPE_RADIAL;
-						}
-						else if( !ECLSTRCMP(p,"CART") )
-						{
-							radial = ECL_GTYPE_CARTESIAN;
-						}
-						else if( !ECLSTRCMP(p,"INRAD") )
-						{
-							if( radial != ECL_GTYPE_RADIAL ) 
-							{
-								std::cout << __FILE__ << ":" << __LINE__ << " inner radius specified for cartesian grid ";
-								std::cout << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-							}
-							if( radial == ECL_GTYPE_NONE ) radial = ECL_GTYPE_RADIAL;
-							state = ECL_INRAD;
-						}
-						else
-						{
-							std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-						}
-						break;
-					case ECL_SKIP_SECTION:
-						if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE;
-						break;
-					case ECL_INCLUDE:
-						if( 1 == sscanf(p," %s",rec) )
-						{
-							int shift_one = 0;
-							if( (rec[0] == '\'' || rec[0] == '"') && rec[0] == rec[strlen(rec)-1] ) //remove quotes
-							{
-								rec[strlen(rec)-1] = '\0';
-								shift_one = 1;
-							}
-							f = fopen(rec+shift_one,"r");
-							if( f == NULL )
-							{
-								std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << rec+shift_one << " included from "<< fs.back().first.second << " line " << fs.back().second << std::endl;
-								throw BadFileName;
-							}
-							fs.push_back(std::make_pair(std::make_pair(f,std::string(rec+shift_one)),0));
-							if( *(pend-1) == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
-						}
-						else
-						{
-							std::cout << __FILE__ << ":" << __LINE__ << " cannot read file name, string " << p << " in " << fs.back().first.second << " line " << fs.back().second << std::endl;
-							throw BadFile;
-						}
-						break;
-					case ECL_ZCORN:
-					case ECL_COORDS:
-					case ECL_MAPAXIS:
-					case ECL_DIMENS:
-					case ECL_DX:
-					case ECL_DY:
-					case ECL_DZ:
-					case ECL_PERMX:
-					case ECL_PERMY:
-					case ECL_PERMZ:
-					case ECL_PORO:
-					case ECL_TOPS:
-						while( downread > 0 && p < pend )
-						{
-							if( 1 == sscanf(p,"%s%n",rec,&nchars) )
-							{
-								p += nchars;
-								while(isspace(*p) && p < pend) ++p;
-								int count = 1;
-								int begval = 0;
-								for(int q = 0; q < strlen(rec); ++q)
-									if( rec[q] == '*' )
-									{
-										begval = q+1;
-										rec[q] = '\0';
-										break;
-									}
-								if( begval > 0 ) count = atoi(rec);
-								if( argtype == ECL_VAR_REAL )
-								{
-									Storage::real val = atof(rec+begval);
-									while(count)
-									{
-										read_arrayf[numrecs*(totread-(downread--))+(state-offset)] = val;
-										count--;
-									}
-								}
-								else if( argtype == ECL_VAR_INT )
-								{
-									Storage::integer val = atof(rec+begval);
-									while(count)
-									{
-										read_arrayi[numrecs*(totread-(downread--))+(state-offset)] = val;
-										count--;
-									}
-								}
-								else
-								{
-									std::cout << __FILE__ << ":" << __LINE__ << " probably forgot to set up argument type to read " << std::endl;
-									throw Impossible;
-								}
-							}
-							else
-							{
-								std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-								throw BadFile;
-							}
-							if( *p == '/' ) 
-							{
-								if( downread > 0 )
-								{
-									std::cout << __FILE__ << ":" << __LINE__ << " early data termination, read " << totread-downread << " of " << totread << " records in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-									throw BadFile;
-								}
-							}
-						}
-						if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
-						break;
-					case ECL_INRAD:
-						if( 1 == sscanf(p,"%lf%n",&inrad,&nchars) )
-						{
-							p += nchars;
-							while(isspace(*p) && p < pend) ++p;
-						}
-						else
-						{
-							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-							throw BadFile;
-						}
-						if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
-						break;
-					}
+					getline(stream,str,'/');
 				}
-ecl_exit_loop:
-				fclose(fs.back().first.first);
-				fs.pop_back();
-			}
-			if( radial == ECL_GTYPE_RADIAL )
-			{
-				std::cout << __FILE__ << ":" << __LINE__ << " radial grids not supported yet " << std::endl;
-			}
-			if( gtype == ECL_GTYPE_TOPS )
-			{
-				std::vector<Node *> newnodes;
-				newnodes.reserve((dims[0]+1)*(dims[1]+1)*(dims[2]+1));
-				Storage::real x, y, z, node_xyz[3];
-				x = 0.0;
-				for(int i = 0; i < dims[0]+1; i++)
+				else if( str == "MAPUNITS" )
 				{
-					Storage::integer pif = std::min(dims[0]-1,i), pib = std::max(i-1,0);
-					y = 0.0;
-					for(int j = 0; j < dims[1]+1; j++)
-					{
-						Storage::integer pjf = std::min(dims[1]-1,j), pjb = std::max(j-1,0);
-						z = (
-							 tops[ECL_IJK_DATA(pib,pjb,0)]+
-							 tops[ECL_IJK_DATA(pib,pjf,0)]+
-							 tops[ECL_IJK_DATA(pif,pjb,0)]+
-							 tops[ECL_IJK_DATA(pif,pjf,0)]
-						    )*0.25;
-						z -= (
-							  xyz[3*ECL_IJK_DATA(pib,pjb,0)+2]+
-							  xyz[3*ECL_IJK_DATA(pib,pjf,0)+2]+
-							  xyz[3*ECL_IJK_DATA(pif,pjb,0)+2]+
-							  xyz[3*ECL_IJK_DATA(pif,pjf,0)+2]
-							 )*0.25;
-						for(int k = 0; k < dims[2]+1; k++)
-						{
-							Storage::integer pkf = std::min(dims[2]-1,k), pkb = std::max(k-1,0);
-							node_xyz[0] = x;
-							node_xyz[1] = y;
-							node_xyz[2] = z;
-							int find = -1;
-							if( !old_nodes.empty() )
-								find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Element*),CompareCoordSearch,node_xyz);
-							if( find == -1 ) newnodes.push_back(CreateNode(node_xyz));
-							else newnodes.push_back(old_nodes[find]);
-							//std::cout << i << " " << j << " " << k << " ( " << x << " , " << y << " , " << z << ") " << newnodes.back()->LocalID() << std::endl; 
-							x += (
-								  (
-								   xyz[3*ECL_IJK_DATA(pib,pjb,pkf)+0]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkf)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkf)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkf)+0]
-								  )
-								-
-								  (
-								   xyz[3*ECL_IJK_DATA(pib,pjb,pkb)+0]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkb)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkb)+0]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkb)+0]
-								  )
-								 )*0.25;
-							y += (
-								  (
-							       xyz[3*ECL_IJK_DATA(pib,pjb,pkf)+1]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkf)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkf)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkf)+1]
-								  )
-								-
-								  (
-								   xyz[3*ECL_IJK_DATA(pib,pjb,pkb)+1]+
-								   xyz[3*ECL_IJK_DATA(pib,pjf,pkb)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjb,pkb)+1]+
-								   xyz[3*ECL_IJK_DATA(pif,pjf,pkb)+1]
-								  )
-								 )*0.25;
-							z += (
-								  xyz[3*ECL_IJK_DATA(pib,pjb,pkb)+2]+
-								  xyz[3*ECL_IJK_DATA(pib,pjf,pkb)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjb,pkb)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjf,pkb)+2]+
-							      xyz[3*ECL_IJK_DATA(pib,pjb,pkf)+2]+
-								  xyz[3*ECL_IJK_DATA(pib,pjf,pkf)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjb,pkf)+2]+
-								  xyz[3*ECL_IJK_DATA(pif,pjf,pkf)+2]
-								 )*0.125;
-						}
-						y += (
-							  xyz[3*ECL_IJK_DATA(pib,pjb,0)+1]+
-							  xyz[3*ECL_IJK_DATA(pif,pjb,0)+1]+
-							  xyz[3*ECL_IJK_DATA(pib,pjf,0)+1]+
-							  xyz[3*ECL_IJK_DATA(pif,pjf,0)+1]
-							 )*0.25; 
-					}
-					x += (
-						  xyz[3*ECL_IJK_DATA(pib,0,0)+0]+
-						  xyz[3*ECL_IJK_DATA(pif,0,0)+0]
-						 )*0.5; 
+					getline(stream,str,'/');
 				}
-				Tag tagporo,tagperm;
-				if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
-				if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
+				else if( str == "MAPAXES" )
+				{
+					getline(stream,str,'/');
+					std::istringstream sstream(str);
+					sstream >> origin[0] >> origin[1] >> axisx[0] >> axisx[1] >> axisy[0] >> axisy[1];
+				}
+				else if( str == "GRIDUNIT" )
+				{
+					getline(stream,str,'/');
+				}
+				else if( str == "SPECGRID" )
+				{
+					getline(stream,str,'/');
+					std::istringstream sstream(str);
+					sstream >> nx >> ny >> nz;
+					
+					
+					coords.resize(nx+1);
+					for(i = 0; i < nx+1; i++)
+					{
+						coords[i].resize(ny+1);
+						for(j = 0; j < ny+1; j++)
+						{
+							coords[i][j].resize(2);
+							for(l = 0; l < 2; l++)
+								coords[i][j][l].resize(3);
+						}
+					}
+						
+					zcorn.resize(nx);
+					for(i = 0; i < nx; i++)
+					{
+						zcorn[i].resize(ny);
+						for(j = 0; j < ny; j++)
+						{
+							zcorn[i][j].resize(nz);
+							for(k = 0; k < nz; k++)
+								zcorn[i][j][k].resize(8);
+						}
+					}
+					pinch.resize(nx+1);
+					for(i = 0; i < nx+1; i++)
+					{
+						pinch[i].resize(ny+1);
+						for(j = 0; j < ny+1; j++)
+							pinch[i][j].resize(nz+1);
+					}
 
-				const INMOST_DATA_ENUM_TYPE nvf[24] = { 2, 3, 1, 0, 4, 5, 7, 6, 0, 1, 5, 4, 3, 2, 6, 7, 2, 0, 4, 6, 1, 3, 7, 5 };
-				const INMOST_DATA_ENUM_TYPE numnodes[6] = { 4, 4, 4, 4, 4, 4 };
-				for(int i = 0; i < dims[0]; i++)
-					for(int j = 0; j < dims[1]; j++)
-						for(int k = 0; k < dims[2]; k++)
-						{
-							Node * verts[8];
-							verts[0] = newnodes[((i+0)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+0)];
-							verts[1] = newnodes[((i+1)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+0)];
-							verts[2] = newnodes[((i+0)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+0)];
-							verts[3] = newnodes[((i+1)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+0)];
-							verts[4] = newnodes[((i+0)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+1)];
-							verts[5] = newnodes[((i+1)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+1)];
-							verts[6] = newnodes[((i+0)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+1)];
-							verts[7] = newnodes[((i+1)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+1)];
-							//for(int q = 0; q < 8; q++)
-							//	std::cout << verts[q]->Coords()[0] << " " << verts[q]->Coords()[1] << " " << verts[q]->Coords()[2] << " " << verts[q]->LocalID() << std::endl;
-							Cell * c = CreateCell(verts,nvf,numnodes,6).first;
-							if( !poro.empty() ) c->RealDF(tagporo) = poro[(i*dims[1]+j)*dims[2]+k];
-							if( !perm.empty() )
-							{
-								Storage::real_array arr_perm = c->RealArrayDF(tagperm);
-								arr_perm[0] = perm[3*((i*dims[1]+j)*dims[2]+k)+0];
-								arr_perm[1] = perm[3*((i*dims[1]+j)*dims[2]+k)+1];
-								arr_perm[2] = perm[3*((i*dims[1]+j)*dims[2]+k)+2];
-							}
-						}
+				}
+				else if( str == "COORDSYS" )
+				{
+					getline(stream,str,'/');
+				}
+				else if( str == "COORD" )
+				{
+					for(j = 0; j < ny+1; j++)
+						for(i = 0; i < nx+1; i++)
+							for(l = 0; l < 2; l++)
+								for(k = 0; k < 3; k++)
+									stream >> coords[i][j][l][k];
+					getline(stream,str,'/');
+				}
+				else if( str == "ZCORN" )
+				{
+					for(k = 0; k < nz; k++)
+					{
+						for(q = 0; q < 2; q++)
+							for(j = 0; j < ny; j++)
+								for(m = 0; m < 2; m++)
+									for(i = 0; i < nx; i++)
+										for(l = 0; l < 2; l++)
+											stream >> zcorn[i][j][k][l+m*2+(1-q)*4];
+					}
+					getline(stream,str,'/');
+				}
+				else if( str == "ACTNUM" )
+				{
+					pinch.resize(nx+1);
+					for(k = 0; k < nz+1; k++)
+						for(j = 0; j < ny+1; j++)
+							for(i = 0; i < nx+1; i++)
+								stream >> pinch[i][j][k];
+					getline(stream,str,'/');
+				}
+				else
+				{
+					std::cout << "Ignoring keyword " << str << std::endl;
+					getline(stream,str,'/');
+				}
 			}
-			else if( gtype == ECL_GTYPE_ZCORN )
 			{
-				std::vector<Node *> block_nodes(dims[0]*dims[1]*dims[2]*8);
-				Storage::integer block_zcorn[8];
+				std::vector< std::vector < std::map< Storage::real, Node * > > > nodes;
+				nodes.resize(nx+1);
+				for(i = 0; i < nx+1; i++) nodes[i].resize(ny+1);
+				
+				//nx = ny = 15;
+				//nz = 80;
+				
+				//std::cout << "Creating grid" << std::endl;
+				
+				Node * c_nodes[8];
+				int cbad = 0, cflat = 0;
+				for(i = 0; i < nx; i++)
+				{
+					for(j = 0; j < ny; j++)
+					{
+						for(k = 0; k < nz; k++)
+						{
+							for(l = 0; l < 8; l++)
+							{
+								int i2 = i + l%2, j2 = j + (l/2)%2;
+								std::map<Storage::real, Node * >::iterator search = nodes[i2][j2].find(zcorn[i][j][k][l]);
+								if( search == nodes[i2][j2].end() )
+								{
+									Storage::real node_coords[3];
+									Storage::real alpha = (zcorn[i][j][k][l]-coords[i2][j2][1][2])/(coords[i2][j2][0][2]-coords[i2][j2][1][2]);
+									node_coords[0] = coords[i2][j2][1][0] + alpha * (coords[i2][j2][0][0] - coords[i2][j2][1][0]);
+									node_coords[1] = coords[i2][j2][1][1] + alpha * (coords[i2][j2][0][1] - coords[i2][j2][1][1]);
+									node_coords[2] = zcorn[i][j][k][l];
+									search = nodes[i2][j2].insert(std::pair<Storage::real,Node *>(zcorn[i][j][k][l],CreateNode(node_coords))).first;
+								}
+								c_nodes[l] = search->second;
+							}
+							INMOST_DATA_ENUM_TYPE nodesnum[24] = {2,3,1,0,5,7,6,4,4,6,2,0,3,7,5,1,1,5,4,0,6,7,3,2};
+							INMOST_DATA_ENUM_TYPE facessize[6] = {4,4,4,4,4,4};
+							//const int nodesnum[6][4] = {{0,1,3,2},{4,6,7,5},{0,2,6,4},{1,5,7,3},{0,4,5,1},{2,3,7,6}};
+							new_cells.push_back(CreateCell(c_nodes,nodesnum,facessize,6).first);
+						}
+					}
+				}
+				std::cout << "bad cells: " << cbad << " flat cells: " << cflat << std::endl;
+				//std::cout << "Done" << std::endl;
 			}
+			stream.close();
 		}
 		else
 		if(LFile.find(".pvtk") != std::string::npos) //this is legacy parallel vtk
@@ -1064,18 +726,6 @@ ecl_exit_loop:
 		else if(LFile.find(".vtk") != std::string::npos) //this is legacy vtk
 		{
 			MIDType unused_marker = CreateMarker();
-			bool grid_is_2d = false;
-			for(size_t k = 0; k < file_options.size(); ++k)
-			{
-				if( file_options[k].first == "VTK_GRID_DIMS" )
-				{
-					if( atoi(file_options[k].second.c_str()) == 2 )
-					{
-						grid_is_2d = true;
-						break;
-					}
-				}
-			}
 			std::vector<Node *> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
@@ -1637,6 +1287,9 @@ ecl_exit_loop:
 								{
 									case 1: // VTK_VERTEX
 									{
+#if defined(VTK_DEFINE_CELLS)
+										printf("VTK_VERTEX found, but 0d cell objects are not supported\n");
+#else
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
@@ -1645,10 +1298,14 @@ ecl_exit_loop:
 										j = j + 1 + cp[j];
 										assert(c_nodes.size() == 1);
 										newcells.push_back(c_nodes[0]);
+#endif
 										break;
 									}
 									case 2: //VTK_POLY_VERTEX
 									{
+#if defined(VTK_DEFINE_CELLS)
+										printf("VTK_POLY_VERTEX cannot be represented\n"); //use set?
+#else
 										{
 											ElementSet * eset = CreateSet();
 											for(int k = j+1; k < j+1+cp[j]; k++)
@@ -1659,10 +1316,14 @@ ecl_exit_loop:
 											newcells.push_back(eset);
 										}
 										j = j + 1 + cp[j];
+#endif
 										break;
 									}
 									case 3: //VTK_LINE
 									{
+#if defined(VTK_DEFINE_CELLS)
+										printf("VTK_LINE found, but 1d cell objects are not supported\n");
+#else
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
@@ -1671,11 +1332,11 @@ ecl_exit_loop:
 										j = j + 1 + cp[j];
 										assert(c_nodes.size() == 2);
 										newcells.push_back(CreateEdge(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 4: //VTK_POLY_LINE
 									{
-										/*
 #if defined(VTK_DEFINE_CELLS)
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
@@ -1696,7 +1357,6 @@ ecl_exit_loop:
 										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
 										newcells.push_back(c);
 #else
-										*/
 										{
 											ElementSet * eset = CreateSet();
 											for(int k = j+1; k < j+cp[j]; k++)
@@ -1710,7 +1370,7 @@ ecl_exit_loop:
 											j = j + 1 + cp[j];
 											newcells.push_back(eset);
 										}
-//#endif
+#endif
 										break;
 									}
 									case 5: //VTK_TRIANGLE
@@ -1722,21 +1382,21 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 3 ) throw BadFile;
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										f_edges.resize(2);
+										for(unsigned int k = 0; k < 3; k++)
 										{
-											f_edges.resize(2);
-											for(unsigned int k = 0; k < 3; k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%3];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],3,&c_nodes[0],c_nodes.size()).first;
-											newcells.push_back(c);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%3];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],3).first);
+										Cell * c = CreateCell(&c_faces[0],2,&c_nodes[0],c_nodes.size()).first;
+										newcells.push_back(c);
+#else
+										newcells.push_back(CreateFace(&c_nodes[0],3).first);
+#endif
 										break;
 									}
 									case 6: //VTK_TRIANGLE_STRIP
@@ -1748,55 +1408,50 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() < 3 ) throw BadFile;
-										/*
 #if defined(VTK_DEFINE_CELLS)
 										for(INMOST_DATA_ENUM_TYPE l = c_nodes.size(); l > 2; l--)
 												c_faces.push_back(CreateFace(&c_nodes[l-3],3).first);
 										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
 										newcells.push_back(c);
 #else //treat it as a set of faces
-										*/
 										{
 											ElementSet * eset = CreateSet();
 											for(INMOST_DATA_ENUM_TYPE l = c_nodes.size(); l > 2; l--)
 												eset->Insert(CreateFace(&c_nodes[l-3],3).first);
 										}
-//#endif
+#endif
 										break;
 									}
 									case 7: //VTK_POLYGON
 									{
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
-											for(int k = j+1; k < j+1+cp[j]; k++)
-											{
-												c_nodes.push_back(newnodes[cp[k]]);
-												newnodes[cp[k]]->RemMarker(unused_marker);
-											}
-											j = j + 1 + cp[j];
-											f_edges.resize(2);
-											for(unsigned int k = 0; k < c_nodes.size(); k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%c_nodes.size()];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
-											c_faces.clear();
-											newcells.push_back(c);
+											c_nodes.push_back(newnodes[cp[k]]);
+											newnodes[cp[k]]->RemMarker(unused_marker);
 										}
-										else
+										j = j + 1 + cp[j];
+										f_edges.resize(2);
+										for(unsigned int k = 0; k < c_nodes.size(); k++)
 										{
-											for(int k = j+1; k < j+1+cp[j]; k++)
-											{
-												c_nodes.push_back(newnodes[cp[k]]);
-												newnodes[cp[k]]->RemMarker(unused_marker);
-											}
-											j = j + 1 + cp[j];
-											newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%c_nodes.size()];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
+										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
+										c_faces.clear();
+										newcells.push_back(c);
+#else
+										for(int k = j+1; k < j+1+cp[j]; k++)
+										{
+											c_nodes.push_back(newnodes[cp[k]]);
+											newnodes[cp[k]]->RemMarker(unused_marker);
+										}
+										j = j + 1 + cp[j];
+										newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 8: //VTK_PIXEL
@@ -1811,21 +1466,21 @@ ecl_exit_loop:
 										Node * temp = c_nodes[2];
 										c_nodes[2] = c_nodes[3];
 										c_nodes[3] = temp;
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										f_edges.resize(2);
+										for(int k = 0; k < 4; k++)
 										{
-											f_edges.resize(2);
-											for(int k = 0; k < 4; k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%4];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
-											newcells.push_back(c);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%4];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
+										newcells.push_back(c);
+#else
+										newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 9: //VTK_QUAD
@@ -1837,22 +1492,22 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 4 ) throw BadFile;
-										if( grid_is_2d )
+#if defined(VTK_DEFINE_CELLS)
+										f_edges.resize(2);
+										for(int k = 0; k < 4; k++)
 										{
-											f_edges.resize(2);
-											for(int k = 0; k < 4; k++)
-											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%4];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
-											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
-											c_faces.clear();
-											newcells.push_back(c);
+											e_nodes[0] = c_nodes[k];
+											f_edges[0] = CreateEdge(e_nodes, 1).first;
+											e_nodes[0] = c_nodes[(k+1)%4];
+											f_edges[1] = CreateEdge(e_nodes, 1).first;
+											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
+										c_faces.clear();
+										newcells.push_back(c);
+#else
+										newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+#endif
 										break;
 									}
 									case 10: //VTK_TETRA
@@ -2408,7 +2063,7 @@ ecl_exit_loop:
 					memcpy(&it->RealArrayDF(permiability)[0],K,sizeof(Storage::real)*9);
 				}
 			}
-			fclose(f);
+			
 		}
 		else if(LFile.find(".msh") != std::string::npos ) // GMSH file format
 		{
@@ -2974,8 +2629,6 @@ read_elem_num_link:
 			{
 				std::cout << __FILE__ ":" << __LINE__ << " probably file " << LFile << " is not complitely written " << " line " << line <<std::endl;
 			}
-
-			fclose(f);
 		}
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
 		{
@@ -3862,14 +3515,7 @@ read_elem_num_link:
 			sprintf(keyword,"nodev"); fwrite(keyword,1,8,file);
 			keynum = static_cast<Storage::integer>(nodes.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
 			for(Mesh::nodes_container::iterator n = nodes.begin(); n != nodes.end(); n++)
-			{
-				fwrite(&(*n)->Coords()[0],sizeof(Storage::real),GetDimensions(),file);
-				if( GetDimensions() < 3 )
-				{
-					Storage::real zero = 0.0;
-					fwrite(&zero,sizeof(Storage::real),3-GetDimensions(),file);
-				}
-			}
+				fwrite(&(*n)->Coords()[0],sizeof(Storage::real),3,file);
 			sprintf(keyword,"faces"); fwrite(keyword,1,8,file);
 			keynum = static_cast<Storage::integer>(faces.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
 			keynum = static_cast<Storage::integer>(cells.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
@@ -4083,16 +3729,8 @@ read_elem_num_link:
 					fwrite(&fn->Coords()[0],sizeof(Storage::real),1,file);
 				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 					fwrite(&fn->Coords()[1],sizeof(Storage::real),1,file);
-				if( GetDimensions() > 2 )
-				{
-					for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
-						fwrite(&fn->Coords()[2],sizeof(Storage::real),1,file);
-				}
-				else 
-				{
-					Storage::real zero = 0.0;
-					fwrite(&zero,sizeof(Storage::real),fnodes.size(),file);
-				}
+				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+					fwrite(&fn->Coords()[2],sizeof(Storage::real),1,file);
 			}
 			sprintf(keyword,"endpoly"); fwrite(keyword,1,8,file);
 			sprintf(keyword,"endgmv"); fwrite(keyword,1,8,file);
@@ -4297,8 +3935,6 @@ read_elem_num_link:
 		LFile.resize(File.size());
 		std::transform(File.begin(),File.end(),LFile.begin(),::tolower);
 		if(LFile.find(".grdecl") != std::string::npos) return false;
-		if(LFile.find(".msh") != std::string::npos) return false;
-		if(LFile.find(".grid") != std::string::npos) return false;
 		else if(LFile.find(".vtk") != std::string::npos) return false;
 		else if(LFile.find(".gmv") != std::string::npos) return false;
 		else if(LFile.find(".pvtk") != std::string::npos) return true;

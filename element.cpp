@@ -230,6 +230,142 @@ namespace INMOST
 		}
 		return ret;
 	}
+
+
+	INMOST_DATA_ENUM_TYPE Element::nbAdjElements(ElementType _etype, MIDType mask)const 
+	{
+		assert( !(_etype & MESH) );
+		assert( !(_etype & ESET) );
+		
+		dynarray<Element *,128> result;
+		unsigned int conn[4] = {0,0,0,0};
+		unsigned int myconn, i, ret = 0;
+		
+		for(ElementType e = NODE, i = 0; e <= CELL; i++, e = e << 1)
+		{
+			if( _etype & e ) conn[i] = 1;
+			if( GetElementType() & e ) myconn = i;
+		}
+		if( !GetMeshLink()->HideMarker() )
+		{
+			for(i = 0; i < 4; i++) if( conn[i] )
+			{
+				if( i == myconn )
+				{
+					if( GetMarker(mask) ) ret += 1;
+				}
+				else if( i == (myconn + 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it) 
+						if( (*it)->GetMarker(mask) ) ret++;
+				}
+				else if( i == (myconn - 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it) 
+						if( (*it)->GetMarker(mask) ) ret++;
+				}
+				else if( i == (myconn - 2 + 4)%4 )
+				{
+					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
+							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+						ret += result.size();
+						for(dynarray<Element *,128>::iterator it = result.begin(); it != result.end(); it++)
+							(*it)->RemMarker(mrk);
+						
+						result.clear();
+						m->ReleaseMarker(mrk);
+					}
+					else
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
+							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+						ret += result.size();
+						for(dynarray<Element *,128>::iterator it = result.begin(); it != result.end(); it++)
+							(*it)->RemMarker(mrk);
+						result.clear();
+						m->ReleaseMarker(mrk);
+					}
+				}
+			}
+		}
+		else
+		{
+			MIDType hm = GetMeshLink()->HideMarker();
+			for(i = 0; i < 4; i++) if( conn[i] )
+			{
+				if( i == myconn )
+				{
+					if( !GetMarker(hm) && GetMarker(mask) ) ret ++;
+				}
+				else if( i == (myconn + 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+						if( !(*it)->GetMarker(hm) && (*it)->GetMarker(mask) ) ret++;
+				}
+				else if( i == (myconn - 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+						if( !(*it)->GetMarker(hm) && (*it)->GetMarker(mask) ) ret++;
+				}
+				else if( i == (myconn - 2 + 4)%4 )
+				{
+					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+						ret += result.size();
+						for(dynarray<Element *,128>::iterator it = result.begin(); it != result.end(); it++)
+							(*it)->RemMarker(mrk);
+						
+						result.clear();
+						m->ReleaseMarker(mrk);
+					}
+					else
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+								
+						ret += result.size();
+						for(dynarray<Element *,128>::iterator it = result.begin(); it != result.end(); it++)
+							(*it)->RemMarker(mrk);
+						result.clear();
+						m->ReleaseMarker(mrk);
+					}
+				}
+			}
+		}
+		return ret;
+	}
 	
 	adjacent<Element> Element::getAdjElements(ElementType _etype) const 
 	{
@@ -356,7 +492,133 @@ namespace INMOST
 		return result;
 	}
 	
-	
+	adjacent<Element> Element::getAdjElements(ElementType _etype, MIDType mask) const 
+	{
+		assert( !(_etype & MESH) );
+		assert( !(_etype & ESET) );
+		
+		adjacent<Element> result;
+		unsigned int conn[4] = {0,0,0,0};
+		unsigned int myconn, i = 0;
+		
+		for(ElementType e = NODE; e <= CELL; e = e << 1)
+		{
+			if( _etype & e ) conn[i] = 1;
+			if( GetElementType() & e ) myconn = i;
+			i++;
+		}
+		if( !GetMeshLink()->HideMarker() )
+		{
+			for(i = 0; i < 4; i++) if( conn[i] )
+			{
+				if( i == myconn )
+				{
+					if( GetMarker(mask) ) result.push_back(const_cast<Element *>(this));
+				}
+				else if( i == (myconn + 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+						if( (*it)->GetMarker(mask) ) result.push_back(*it);
+					
+				}
+				else if( i == (myconn - 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+						if( (*it)->GetMarker(mask) ) result.push_back(*it);
+				}
+				else if( i == (myconn - 2 + 4)%4 )
+				{
+					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
+							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+						for(adjacent<Element>::iterator it = result.begin(); it != result.end(); it++)
+							it->RemMarker(mrk);
+						m->ReleaseMarker(mrk);
+					}
+					else
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
+							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+						for(adjacent<Element>::iterator it = result.begin(); it != result.end(); it++)
+							it->RemMarker(mrk);
+						m->ReleaseMarker(mrk);
+					}
+				}
+			}
+		}
+		else
+		{
+			MIDType hm = GetMeshLink()->HideMarker();
+			for(i = 0; i < 4; i++) if( conn[i] )
+			{
+				if( i == myconn )
+				{
+					if( !GetMarker(hm) && GetMarker(mask) )
+						result.push_back(const_cast<Element *>(this));
+				}
+				else if( i == (myconn + 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+						if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) result.push_back(*it);
+					
+				}
+				else if( i == (myconn - 1 + 4)%4 )
+				{
+					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+						if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) result.push_back(*it);
+				}
+				else if( i == (myconn - 2 + 4)%4 )
+				{
+					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+						for(adjacent<Element>::iterator it = result.begin(); it != result.end(); it++)
+							it->RemMarker(mrk);
+						m->ReleaseMarker(mrk);
+					}
+					else
+					{
+						Mesh * m = GetMeshLink();
+						MIDType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								{
+									result.push_back(*jt);
+									(*jt)->SetMarker(mrk);
+								}
+						for(adjacent<Element>::iterator it = result.begin(); it != result.end(); it++)
+							it->RemMarker(mrk);
+						m->ReleaseMarker(mrk);
+					}
+				}
+			}
+		}
+		return result;
+	}
 	
 	Element & Element::operator =(Element const & other)
 	{
@@ -395,6 +657,31 @@ namespace INMOST
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	
+	adjacent<Node> Element::getNodes(MIDType mask)
+	{
+		adjacent<Node> ret;
+		if( GetMarker(mask) ) ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
+	}
+	adjacent<Edge> Element::getEdges(MIDType mask)
+	{
+		adjacent<Edge> ret;
+		if( GetMarker(mask) ) ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
+	}
+	adjacent<Face> Element::getFaces(MIDType mask)
+	{
+		adjacent<Face> ret;
+		if( GetMarker(mask) ) ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
+	}
+	adjacent<Cell> Element::getCells(MIDType mask)
+	{
+		adjacent<Cell> ret;
+		if( GetMarker(mask) ) ret.push_back(this);
+		return ret; //this operation will be virtualized by proper algorithm	
+	}
+	
 	
 		
 	void SwapElement(void * pa, void * pb, void * udata)
@@ -405,7 +692,7 @@ namespace INMOST
 				  
 		Element * c = *b;
 		int lid = (*b)->LocalID(), rid = (*a)->LocalID();
-		(*a)->SwapData(lid);
+		(*a)->SwapDenseData(lid);
 		*b = *a;
 		*a = c;
 		(*b)->local_id = lid;
@@ -535,6 +822,103 @@ namespace INMOST
 		{
 			adjacent<Element> sub = it->getAdjElements(Dest);
 			for(adjacent<Element>::iterator jt = sub.begin(); jt != sub.end(); jt++)
+				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				{
+					adjcells.push_back(&*jt);
+					jt->SetMarker(mrk);
+				}
+		}
+		for(adjacent<Element>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
+		m->ReleaseMarker(mrk);
+		return adjcells;
+	}
+
+
+	adjacent<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MIDType mask)
+	{
+		Mesh * m = GetMeshLink();
+		MIDType mrk = m->CreateMarker();
+		adjacent<Node> adjcells;
+		adjacent<Element> adjfaces = getAdjElements(Bridge);
+		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(NODE);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(adjacent<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		{
+			adjacent<Node> sub = it->getNodes();
+			for(adjacent<Node>::iterator jt = sub.begin(); jt != sub.end(); jt++)
+				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				{
+					adjcells.push_back(&*jt);
+					jt->SetMarker(mrk);
+				}
+		}
+		for(adjacent<Element>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
+		m->ReleaseMarker(mrk);
+		return adjcells;
+	}
+
+	adjacent<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MIDType mask)
+	{
+		Mesh * m = GetMeshLink();
+		MIDType mrk = m->CreateMarker();
+		adjacent<Edge> adjcells;
+		adjacent<Element> adjfaces = getAdjElements(Bridge);
+		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(EDGE);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(adjacent<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		{
+			adjacent<Edge> sub = it->getEdges();
+			for(adjacent<Edge>::iterator jt = sub.begin(); jt != sub.end(); jt++)
+				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				{
+					adjcells.push_back(&*jt);
+					jt->SetMarker(mrk);
+				}
+		}
+		for(adjacent<Element>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
+		m->ReleaseMarker(mrk);
+		return adjcells;
+	}
+
+	adjacent<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MIDType mask)
+	{
+		Mesh * m = GetMeshLink();
+		MIDType mrk = m->CreateMarker();
+		adjacent<Face> adjcells;
+		adjacent<Element> adjfaces = getAdjElements(Bridge);
+		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(FACE);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(adjacent<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		{
+			adjacent<Face> sub = it->getFaces();
+			for(adjacent<Face>::iterator jt = sub.begin(); jt != sub.end(); jt++)
+				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				{
+					adjcells.push_back(&*jt);
+					jt->SetMarker(mrk);
+				}
+		}
+		for(adjacent<Element>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
+		m->ReleaseMarker(mrk);
+		return adjcells;
+	}
+
+	adjacent<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MIDType mask)
+	{
+		Mesh * m = GetMeshLink();
+		MIDType mrk = m->CreateMarker();
+		adjacent<Cell> adjcells;
+		adjacent<Element> adjfaces = getAdjElements(Bridge);
+		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(CELL);
+		for(adjacent<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(adjacent<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		{
+			adjacent<Cell> sub = it->getCells();
+			for(adjacent<Cell>::iterator jt = sub.begin(); jt != sub.end(); jt++)
 				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
 				{
 					adjcells.push_back(&*jt);

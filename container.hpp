@@ -388,13 +388,14 @@ namespace INMOST
 			etype & operator *() { return *e; }
 			etype * operator ->() { return e; }
 			_iterator & operator =(_iterator const & other) { e = other.e; return *this; }
-			bool operator ==(const _iterator & other) { return e == other.e;}
-			bool operator !=(const _iterator & other) { return e != other.e;}
-			bool operator <(const _iterator & other) { return e < other.e;}
-			bool operator >(const _iterator & other) { return e > other.e;}
-			bool operator <=(const _iterator & other) { return e <= other.e;}
-			bool operator >=(const _iterator & other) { return e >= other.e;}
+			bool operator ==(const _iterator & other) const { return e == other.e;}
+			bool operator !=(const _iterator & other) const { return e != other.e;}
+			bool operator <(const _iterator & other) const { return e < other.e;}
+			bool operator >(const _iterator & other) const { return e > other.e;}
+			bool operator <=(const _iterator & other) const { return e <= other.e;}
+			bool operator >=(const _iterator & other) const { return e >= other.e;}
 			operator void *() {return static_cast<void *> (e);}
+			operator const void *() {return const_cast<const void *> (e);}
 		};
 		typedef _iterator<element> iterator;
 		typedef _iterator<const element> const_iterator;
@@ -425,12 +426,12 @@ namespace INMOST
 			etype & operator *() { return *e; }
 			etype * operator ->() { return e; }
 			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
-			bool operator ==(const _reverse_iterator & other) { return e == other.e;}
-			bool operator !=(const _reverse_iterator & other) { return e != other.e;}
-			bool operator <(const _reverse_iterator & other) { return e < other.e;}
-			bool operator >(const _reverse_iterator & other) { return e > other.e;}
-			bool operator <=(const _reverse_iterator & other) { return e <= other.e;}
-			bool operator >=(const _reverse_iterator & other) { return e >= other.e;}
+			bool operator ==(const _reverse_iterator & other) const { return e == other.e;}
+			bool operator !=(const _reverse_iterator & other) const { return e != other.e;}
+			bool operator <(const _reverse_iterator & other) const { return e < other.e;}
+			bool operator >(const _reverse_iterator & other) const { return e > other.e;}
+			bool operator <=(const _reverse_iterator & other) const { return e <= other.e;}
+			bool operator >=(const _reverse_iterator & other) const { return e >= other.e;}
 			operator void *() {return static_cast<void *> (e);}
 		};
 		typedef _reverse_iterator<element> reverse_iterator;

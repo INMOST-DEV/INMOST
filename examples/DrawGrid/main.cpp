@@ -29,6 +29,7 @@ int edges = 1;
 bool perspective = false;
 int text = 4;
 int display_orphans = 1;
+int badfaces = 1;
 ElementSet * problem_set, * orphan_edges, * orphan_faces;
 
 
@@ -322,6 +323,7 @@ void keyboard(unsigned char key, int x, int y)
 	else if( key == 'e' )
 	{
 		edges = !edges;
+		glutPostRedisplay();
 	}
 	else if( key == 27 )
 	{
@@ -346,9 +348,9 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if( key == ' ')
 	{
-		
-		drawgrid = (drawgrid+1)%2;
-		glutPostRedisplay();
+		mesh->Save("out.vtk");
+		//drawgrid = (drawgrid+1)%2;
+		//glutPostRedisplay();
 	}
 	else if( key == 'q' )
 	{
@@ -435,6 +437,12 @@ void keyboard(unsigned char key, int x, int y)
 		display_orphans = !display_orphans;
 		glutPostRedisplay();
 	}
+
+	else if( key == 'l' )
+	{
+		badfaces = !badfaces;
+		glutPostRedisplay();
+	}
 }
 
 
@@ -497,11 +505,13 @@ face2gl DrawFace(Element * f, int mmat, double campos[3])
 
 	if( edges )
 	{
-		glColor3f(0,0,1);
+		//glLineWidth(2.0);
+		if( boundary == 1 ) glColor3f(0,0,1); else glColor3f(0,0,0);
 		glBegin(GL_LINE_LOOP);
 		for( adjacent<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 			glVertex3dv(&(kt->Coords()[0]));
 		glEnd();
+		//glLineWidth(1.0);
 	}
 	return ret;
 }
@@ -591,8 +601,24 @@ void draw()
 
 
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
+	int pacef = std::max(1,mesh->MaxLocalIDFACE()/10000);
+
 	
 	std::vector<face2gl> polygons;
+
+	if( badfaces )
+	{
+		
+		for(INMOST_DATA_INTEGER_TYPE it = 0; it < mesh->MaxLocalIDFACE(); it += (interactive ? pacef : 1))
+		{
+			Face * f = mesh->FaceByLocalID(it);
+			if( f != NULL )
+			{
+				if( !f->CheckNormalOrientation() )
+					polygons.push_back(DrawFace(f,1,campos));
+			}
+		}
+	}
 	
 	
 	char str[2048];
@@ -1234,7 +1260,7 @@ void draw()
 		//for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); it++)
 		if( colort.isValid() )
 		{
-			for(int i = 0; i < end; i+= interactive ? 10 : 1)
+			for(int i = 0; i < end; i+= interactive ? pacef : 1)
 			{
 				Element * it = mesh->ElementByLocalID(FACE,i);
 				if( it == NULL ) continue;
@@ -1248,7 +1274,7 @@ void draw()
 		}
 		else
 		{
-			for(int i = 0; i < end; i+= interactive ? 10 : 1)
+			for(int i = 0; i < end; i+= interactive ? pacef : 1)
 			{
 				Element * it = mesh->ElementByLocalID(FACE,i);
 				if( it == NULL ) continue;
@@ -1257,6 +1283,55 @@ void draw()
 			}
 		}
 	}
+
+	if( display_orphans )
+	{
+		if( orphan_edges != NULL ) for(ElementSet::iterator iit = orphan_edges->begin(); iit != orphan_edges->end(); ++iit)
+		{
+			Element * it = &*iit;//mesh->ElementByLocalID(EDGE,i);
+			//if( it == NULL ) continue;
+			//if( it->nbAdjElements(CELL) == 0 )
+			{
+				Storage::real cnt[3];
+				
+				adjacent<Node> nodes = it->getNodes();
+				
+				{
+					glBegin(GL_LINES);
+					glVertex3dv(&nodes[0].Coords()[0]);
+					glVertex3dv(&nodes[1].Coords()[0]);
+					glEnd();
+					
+				}
+			}
+		}
+		if( orphan_faces != NULL ) for(ElementSet::iterator iit = orphan_faces->begin(); iit != orphan_faces->end(); ++iit)
+		{
+			Element * it = &*iit;
+			{
+				
+				Storage::integer_array mats;
+				Storage::real cnt[3];
+				adjacent<Edge> edges = it->getEdges();
+				
+				for(unsigned k = 0; k < edges.size(); k++)
+				{
+					adjacent<Node> nodes = edges[k].getNodes();
+					{
+						glBegin(GL_LINES);
+						glVertex3dv(&nodes[0].Coords()[0]);
+						glVertex3dv(&nodes[1].Coords()[0]);
+						glEnd();
+					}					
+				}
+				
+				
+				if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
+					polygons.push_back(DrawFace(&*it,0,campos));
+			}
+		}
+	}
+
 	
 	std::sort(polygons.begin(),polygons.end());
 	
@@ -1602,6 +1677,8 @@ int main(int argc, char ** argv)
 	for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
 		if(it->nbAdjElements(NODE) == 0 ) delete &*it;
 	*/
+	
+
 
 	if( argc <= 2 )
 	{
@@ -1625,7 +1702,28 @@ int main(int argc, char ** argv)
 	
 	//mesh = new Mesh(*read);
 
-	
+	int badorient = 0;
+	tiny_map<Element::GeometricType,int,16> neighbours;
+	tiny_map<Element::GeometricType,int,16> elemtypes;
+	for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it)
+		if( !it->CheckNormalOrientation() ) 
+		{
+			badorient++;
+			if( it->BackCell() != NULL ) neighbours[it->BackCell()->GetGeometricType()]++;
+			if( it->FrontCell() != NULL ) neighbours[it->FrontCell()->GetGeometricType()]++;
+			elemtypes[it->GetGeometricType()]++;
+		}
+
+	if( badorient ) 
+	{
+		std::cout << "Found " << badorient << " badly oriented faces" << std::endl;
+		std::cout << "types of bad faces: " << std::endl;
+		for(tiny_map<Element::GeometricType,int,16>::iterator it = elemtypes.begin(); it != elemtypes.end(); ++it)
+			std::cout << Element::GeometricTypeName(it->first) << ": " << it->second << std::endl;
+		std::cout << "neighbours of bad faces: " << std::endl;
+		for(tiny_map<Element::GeometricType,int,16>::iterator it = neighbours.begin(); it != neighbours.end(); ++it)
+			std::cout << Element::GeometricTypeName(it->first) << ": " << it->second << std::endl;
+	}
 	
 	if( mesh->HaveTag("MATERIAL") ) mat = mesh->GetTag("MATERIAL");
 	//~ 

@@ -218,14 +218,14 @@ namespace INMOST
 		
 		return new_tag;
 	}
-	Tag TagManager::GetTag(std::string name)
+	Tag TagManager::GetTag(std::string name) const
 	{
 		for(INMOST_DATA_BIG_ENUM_TYPE i = 0; i < tags.size(); i++)
 			if( tags[i].GetTagName() == name )
 				return tags[i];
 		throw TagNotFound;
 	}
-	bool TagManager::HaveTag(std::string name)
+	bool TagManager::HaveTag(std::string name) const
 	{
 		for(INMOST_DATA_BIG_ENUM_TYPE i = 0; i < tags.size(); i++)
 			if( tags[i].GetTagName() == name )
@@ -291,7 +291,7 @@ namespace INMOST
 	}
 		
 	
-	bool TagManager::ElementDefined(Tag const & tag, ElementType etype)
+	bool TagManager::ElementDefined(Tag const & tag, ElementType etype) const
 	{
 		INMOST_DATA_ENUM_TYPE pos = tag.GetPosition(etype);
 		if( pos == ENUMUNDEF ) return false;

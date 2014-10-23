@@ -5,6 +5,7 @@
 
 //#define HEAVY_DUPLICATE_CHECK //depricated, left for future debug
 
+#include <unordered_map>
 
 namespace INMOST
 {
@@ -48,7 +49,8 @@ namespace INMOST
 		//tag_global_id = CreateTag("GLOBAL_ID",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE,NONE,1);
 		tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
 		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
-		
+		//tag_shared_elems = CreateTag("SHARED_ELEMS_TAG",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+
 		epsilon = 1.0e-8;
 		m_state = Mesh::Serial;
 
@@ -96,6 +98,7 @@ namespace INMOST
 		
 		tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
 		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
+		//tag_shared_elems = CreateTag("SHARED_ELEMS_TAG",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		
 		if( m_state == Mesh::Parallel ) SetCommunicator(other.comm);
 		else comm = INMOST_MPI_COMM_WORLD;
@@ -203,7 +206,7 @@ namespace INMOST
 		
 		tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
 		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
-
+		//tag_shared_elems = CreateTag("SHARED_ELEMS_TAG",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		
 		
 		if( m_state == Mesh::Parallel ) SetCommunicator(other.comm);
@@ -341,7 +344,7 @@ namespace INMOST
 	
 	
 	
-	Element * Mesh::FindSharedAdjacency(Element ** arr, unsigned s)
+	Element * Mesh::FindSharedAdjacency(Element * const * arr, unsigned s) 
 	{
 		if( s == 0 ) return NULL;
 		if( !HideMarker() )
@@ -386,15 +389,17 @@ namespace INMOST
 			*/
 			
 			{
-				for(Element::adj_iterator it = arr[0]->high_conn.begin(); it != arr[0]->high_conn.end(); ++it)
+				unsigned iend = arr[0]->high_conn.size();
+				for(unsigned it = 0; it < iend; ++it)
 				{
-					unsigned int flag0 = 0;
+					unsigned flag0 = 0;
 					for(unsigned i = 1; i < s; ++i)
 					{
+						unsigned jend = arr[i]->high_conn.size();
 						bool flag1 = false;
-						for(Element::adj_iterator jt = arr[i]->high_conn.begin(); jt != arr[i]->high_conn.end(); ++jt)
+						for(unsigned jt = 0; jt < jend; ++jt)
 						{
-							if( *it == *jt )
+							if( arr[0]->high_conn[it] == arr[i]->high_conn[jt] )
 							{
 								flag0++;
 								flag1 = true;
@@ -404,9 +409,55 @@ namespace INMOST
 						if( !flag1 )
 							break;
 					}
-					if( flag0 == s-1 ) return (*it);
+					if( flag0 == s-1 ) return arr[0]->high_conn[it];
 				}
 			}
+			
+			/*
+			{
+				//typedef std::map<Element *,int> set_type;
+				//typedef tiny_map<Element *,int,64> set_type;
+				//typedef small_hash<unsigned,int,64> set_type;
+				typedef std::unordered_map<unsigned,int> set_type;
+				set_type visits;
+				for(unsigned i = 0; i < s; ++i)
+				{
+					unsigned jend = arr[i]->high_conn.size();
+					for(unsigned jt = 0; jt < jend; ++jt)
+						visits[reinterpret_cast<unsigned>(arr[i]->high_conn[jt])]++;
+				}
+				for(set_type::iterator it = visits.begin(); it != visits.end(); ++it)
+					if( it->second == s ) return reinterpret_cast<Element *>(it->first);
+			}
+			*/
+			/*
+			{
+				//typedef std::map<Element *,int> set_type;
+				//typedef tiny_map<Element *,int,64> set_type;
+				//typedef small_hash<unsigned,int,64> set_type;
+				Element * ret = NULL;
+				unsigned q = s;
+				for(unsigned i = 0; i < s && !ret; ++i)
+				{
+					unsigned jend = arr[i]->high_conn.size();
+					for(unsigned jt = 0; jt < jend && !ret; ++jt)
+					{
+						if( ++arr[i]->high_conn[jt]->RealDF(tag_shared_elems) == s)
+						{
+							ret = arr[i]->high_conn[jt];
+							q = i+1;
+						}
+					}
+				}
+				for(unsigned i = 0; i < q; ++i)
+				{
+					unsigned jend = arr[i]->high_conn.size();
+					for(unsigned jt = 0; jt < jend; ++jt)
+						arr[i]->high_conn[jt]->RealDF(tag_shared_elems) = 0.0;
+				}
+				return ret;
+			}
+			*/
 		}
 		else
 		{
@@ -1175,10 +1226,48 @@ namespace INMOST
 	{
 		if( dim == dims ) return;
 		if( dims < 2 || dims > 3 ) throw DimensionIsNotSupportedByGeometry;
-		if( NumberOfNodes() > 0) throw DimensionIsFixed;
-		dim = dims;
-		DeleteTag(tag_coords);
-		tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
+
+		if( NumberOfNodes() > 0)
+		{
+			Storage::real * temp = new Storage::real[dims*NumberOfNodes()];
+			Storage::integer j = 0;
+			for(Storage::integer k = 0; k < MaxLocalIDNODE(); ++k)
+			{
+				Node * n = NodeByLocalID(k);
+				if( n != NULL )
+				{
+					Storage::real_array c = n->Coords();
+					for(Storage::integer i = 0; i < dims; i++)
+					{
+						temp[j+i] = c[i];
+					}
+					j+=dims;
+				}
+			}
+			DeleteTag(tag_coords);
+			tag_coords = CreateTag("COORD",DATA_REAL,NODE,NONE,dims);
+			j = 0;
+			for(Storage::integer k = 0; k < MaxLocalIDNODE(); ++k)
+			{
+				Node * n = NodeByLocalID(k);
+				if( n != NULL )
+				{
+					Storage::real_array c = n->Coords();
+					for(Storage::integer i = 0; i < dims; i++)
+					{
+						c[i] = temp[j+i];
+					}
+					j+=dims;
+				}
+			}
+			dim = dims;
+		}
+		else
+		{
+			dim = dims;
+			DeleteTag(tag_coords);
+			tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
+		}
 	}
 	
 	
