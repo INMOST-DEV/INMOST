@@ -53,8 +53,13 @@ namespace INMOST
 		{
 			Tag t = CreateTag("TEMP_SYNC_MARKER",DATA_BULK,mask,mask,1);
 
+			//workaround for old gcc compiler
+			const Element::Status SGhost = Element::Ghost;
+			const Element::Status SAny = Element::Any;
+			Element::Status Expr = (Element::Shared | ((op != SYNC_BIT_NEW) ? SGhost : SAny));
+
 			for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				if( it->GetMarker(marker) && (it->GetStatus() & (Element::Shared | (op != SYNC_BIT_NEW ? Element::Ghost :Element::Any))) )
+				if( it->GetMarker(marker) && (it->GetStatus() & Expr) )
 					it->Bulk(t) = 1;
 
 			
