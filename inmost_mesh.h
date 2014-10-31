@@ -993,6 +993,8 @@ namespace INMOST
 		Storage::integer Integrate(Storage::integer input);
 		Storage::integer ExclusiveSum(Storage::integer input); 
 		Storage::real Integrate(Tag t,ElementType mask);
+		Storage::real AggregateMax(Storage::real input);
+		Storage::integer AggregateMax(Storage::integer input);
 		void RecomputeParallelStorage(ElementType mask);
 		__INLINE const Tag SendtoTag() const {return tag_sendto;}
 		__INLINE const Tag SharedTag() const {return tag_shared;}

@@ -255,8 +255,23 @@ namespace INMOST
 		return output;
 	}
 	
+	Storage::real Mesh::AggregateMax(Storage::real input)
+	{
+		Storage::real output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm);
+#endif
+		return output;
+	}
 	
-	
+	Storage::integer Mesh::AggregateMax(Storage::integer input)
+	{
+		Storage::integer output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm);
+#endif
+		return output;
+	}
 	
 	void DefaultUnpack(Tag tag, Element * element, INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
 	{
