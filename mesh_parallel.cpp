@@ -798,7 +798,7 @@ namespace INMOST
 //~ #else
 					std::vector<unsigned> sendsizeall(mpisize*2);
 					int pack_size2 = 0;
-					unsigned usend[2] = {sendsize,pack_real.size()};
+					unsigned long usend[2] = {(unsigned)sendsize,pack_real.size()};
 					MPI_Pack_size(2,MPI_UNSIGNED,comm,&pack_size2);
 					
 					for(unsigned k = 0; k < procs.size(); k++)

@@ -1103,8 +1103,8 @@ namespace INMOST
 			for(adjacent<Element>::iterator f = rfaces.begin(); f != rfaces.end(); f++)
 			{
 				adjacent<Node> nodes = f->getNodes();
-				n[k] = nodes.size();
-				for(int i = 0; i < n.back(); i++)
+				int nn = n[k] = nodes.size();
+				for(int i = 0; i < nn; i++)
 				{
 					Storage::real_array a = nodes[i].Coords();
 					v.insert(v.end(),a.begin(),a.end());

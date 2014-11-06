@@ -11,7 +11,10 @@
 //#undef REPORT_ILU_PROGRESS
 using namespace INMOST;
 
+#ifndef DEFAULT_TAU
 #define DEFAULT_TAU 0.01
+#endif
+
 #define REORDER_DDPQ
 #define REORDER_NNZ
 #define DDPQ_TAU 0.8 //ratio is time consumed for factorization by time for schur complement calculation
@@ -1610,7 +1613,7 @@ public:
 #elif defined(REPORT_ILU_PROGRESS)
 					if (k % 100 == 0)
 					{
-						printf("%d %d/%d factor %6.2f%%\t\t\r",level_size.size(), cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
+						printf("%lu %d/%d factor %6.2f%%\t\t\r",static_cast<unsigned long>(level_size.size()), cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
 						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
 						fflush(stdout);
 					}
@@ -1834,7 +1837,7 @@ public:
 #if defined(REPORT_ILU_PROGRESS)
 					if (i % 100 == 0)
 					{
-						printf("%d %d/%d schur1 %6.2f%%\t\t\r", level_size.size(), cend,moend, 100.f*(i - cend) / (1.f*(wend - cend)));
+						printf("%lu %d/%d schur1 %6.2f%%\t\t\r", static_cast<unsigned long>(level_size.size()), cend,moend, 100.f*(i - cend) / (1.f*(wend - cend)));
 						fflush(stdout);
 					}
 #endif
@@ -2074,7 +2077,7 @@ public:
 #elif defined(REPORT_ILU_PROGRESS)
 					if (i % 100 == 0)
 					{
-						printf("%d %d/%d schur2 %6.2f%%\t\t\r", level_size.size(),cend,moend,100.f*(i - cend) / (1.f*(wend - cend)));
+						printf("%lu %d/%d schur2 %6.2f%%\t\t\r", static_cast<unsigned long>(level_size.size()),cend,moend,100.f*(i - cend) / (1.f*(wend - cend)));
 						fflush(stdout);
 					}
 #endif
