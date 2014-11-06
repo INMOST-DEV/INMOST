@@ -1,13 +1,14 @@
-//g++ main.cpp -lpetsc -L/usr/X11R6/lib -lX11 -ldmumps -lmumps_common -lmpi_f77 -lscalapack -lpord -lblacs -lparmetis -lmetis -lmpi -lHYPRE -lgfortran -lblas -llapack ../../INMOST.a
-//mpicxx main.cpp -lpetsc -L/usr/X11R6/lib -lX11 -ldmumps -lmumps_common -lmpi_f77 -lscalapack -lpord -lblacs -lparmetis -lmetis -lmpi -lHYPRE -lgfortran -lblas -llapack ../../INMOST.a -lzoltan -lparmetis -lmetis
-// run ./a.out grids/rezultMesh.vtk MATERIALS -ksp_monitor -ksp_view -mat_type aij -vec_type standard
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
 
 #include "../../inmost.h"
-#include <stdio.h>
+using namespace INMOST;
+
 #ifndef M_PI
 #define M_PI 3.141592653589
 #endif
-using namespace INMOST;
 
 #if defined(USE_MPI)
 #define BARRIER MPI_Barrier(MPI_COMM_WORLD);
@@ -49,28 +50,29 @@ Storage::real func_rhs(Storage::real x[3], Storage::real tmp)
 
 int main(int argc,char ** argv)
 {
-	Solver::Initialize(&argc,&argv,"");
+	Solver::Initialize(&argc,&argv,""); // Initialize the solver and MPI activity
 #if defined(USE_PARTITIONER)
-	Partitioner::Initialize(&argc,&argv);
+	Partitioner::Initialize(&argc,&argv); // Initialize the partitioner activity
 #endif
 	if( argc > 1 )
 	{
 		Tag phi, tensor_K, id;
-		Mesh * m = new Mesh();
+		Mesh * m = new Mesh(); // Create an empty mesh
 		double ttt = Timer();
 		bool repartition = false;
-		m->SetCommunicator(INMOST_MPI_COMM_WORLD);
-		if( m->GetProcessorRank() == 0 ) std::cout << argv[0] << std::endl;
+		m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
+		if( m->GetProcessorRank() == 0 ) // If the current process is the master one
+			std::cout << argv[0] << std::endl;
 		
-		if( m->isParallelFileFormat(argv[1]) ) 
+		if( m->isParallelFileFormat(argv[1]) )
 		{
-			m->Load(argv[1]);
+			m->Load(argv[1]); // Load mesh from the parallel file format
 			repartition = true;
 		}
 		else
 		{
-			if( m->GetProcessorRank() == 0 ) 
-				m->Load(argv[1]);
+			if( m->GetProcessorRank() == 0 )
+				m->Load(argv[1]); // Load mesh from the serial file format
 		}
 		BARRIER
 		
@@ -88,16 +90,16 @@ int main(int argc,char ** argv)
 #if defined(USE_PARTITIONER)
 		ttt = Timer();
 		Partitioner * p = new Partitioner(m);
-		p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition);
-		p->Evaluate();
+		p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition); // Specify the partitioner
+		p->Evaluate(); // Compute the partitioner and store new processor ID in the mesh
 		delete p;
 		BARRIER
 	
 		if( m->GetProcessorRank() == 0 ) std::cout << "Evaluate: " << Timer()-ttt << std::endl;
 		
 		ttt = Timer();
-		m->Redistribute();
-		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
+		m->Redistribute(); // Redistribute the mesh data
+		m->ReorderEmpty(CELL|FACE|EDGE|NODE); // Clean the data after reordring
 		BARRIER
 	
 		if( m->GetProcessorRank() == 0 ) std::cout << "Redistribute: " << Timer()-ttt << std::endl;
@@ -107,24 +109,24 @@ int main(int argc,char ** argv)
 		m->AssignGlobalID(CELL | EDGE | FACE | NODE);
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;		
-		id = m->GlobalIDTag();
+		id = m->GlobalIDTag(); // Get the tag of the global ID
 		
-		phi = m->CreateTag("Solution",DATA_REAL,CELL,NONE,1);
-		tensor_K = m->CreateTag("K",DATA_REAL,CELL,NONE,1);
+		phi = m->CreateTag("Solution",DATA_REAL,CELL,NONE,1); // Create a new tag for the solution phi
+		tensor_K = m->CreateTag("K",DATA_REAL,CELL,NONE,1); // Create a new tag for K tensor
 		
-		for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
-		if( cell->GetStatus() != Element::Ghost )
-			cell->Real(tensor_K) = 1.0;
+		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
+			if( cell->GetStatus() != Element::Ghost ) // If the cell is an own one
+				cell->Real(tensor_K) = 1.0; // Store the tensor K value into the tag
 		
 		ttt = Timer();
-		m->ExchangeGhost(1,FACE);
+		m->ExchangeGhost(1,FACE); // Exchange the date (phi and tensor_K) over processes
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
 		
 		ttt = Timer();
-		Solver S(Solver::INNER_ILU2);
-		Solver::Matrix A;
-		Solver::Vector x,b;
+		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
+		Solver::Matrix A; // Declare the matrix of the linear system to be solved
+		Solver::Vector x,b; // Declare the solution and the right-hand side vectors
 		
 		std::map<GeometricData,ElementType> table;
 		
@@ -138,48 +140,49 @@ int main(int argc,char ** argv)
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
 		
 		unsigned idmax = 0, idmin = UINT_MAX;
-		for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
-		if( cell->GetStatus() != Element::Ghost )
-		{
-			unsigned pid = cell->Integer(id);
-			unsigned pid2 = cell->GlobalID();
-			if( pid < idmin ) idmin = pid;
-			if( pid+1 > idmax ) idmax = pid+1;
-		}
-		
+		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+			if( cell->GetStatus() != Element::Ghost )
+			{
+				unsigned pid = cell->Integer(id);
+				unsigned pid2 = cell->GlobalID();
+				if( pid < idmin ) idmin = pid;
+				if( pid+1 > idmax ) idmax = pid+1;
+			}
+
+		// Set the indeces intervals for the matrix and vectors
 		A.SetInterval(idmin,idmax);
 		x.SetInterval(idmin,idmax);
 		b.SetInterval(idmin,idmax);
 		//~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
 		
-		//solve \nabla \cdot \nabla phi = f equation
-		for(Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face)
+		// Solve \nabla \cdot \nabla phi = f equation
+		for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
 		{
 			//~ std::cout << face->LocalID() << " / " << m->NumberOfFaces() << std::endl;
 			Element::Status s1,s2;
 			Cell * r1 = face->BackCell();
 			Cell * r2 = face->FrontCell();
-			if( ((r1 == NULL || (s1 = r1->GetStatus()) == Element::Ghost)?0:1)+ 
+			if( ((r1 == NULL || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +
 			    ((r2 == NULL || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
 			Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1[3], Coef;
-			Storage::real f_area = face->Area();
-			Storage::real vol1 = r1->Volume(), vol2;
+			Storage::real f_area = face->Area(); // Get the face area
+			Storage::real vol1 = r1->Volume(), vol2; // Get the cell volume
 			Storage::integer id1 = r1->Integer(id), id2;
 			Storage::real K1 = r1->Real(tensor_K), K2, Kav;
-			face->Normal(f_nrm);
+			face->Normal(f_nrm); // Get the face normal
 			f_nrm[0] /= f_area;
 			f_nrm[1] /= f_area;
 			f_nrm[2] /= f_area;
-			r1->Barycenter(r1_cnt);
-			face->Barycenter(f_cnt);
-			if( r2 == NULL ) //boundary condition
+			r1->Barycenter(r1_cnt);  // Get the barycenter of the cell
+			face->Barycenter(f_cnt); // Get the barycenter of the face
+			if( r2 == NULL ) // boundary condition
 			{
 				Storage::real bnd_pnt[3], dist;
 				make_vec(f_cnt,r1_cnt,d1);
 				dist = dot_prod(f_nrm,d1) / dot_prod(f_nrm,f_nrm);
 				// bnd_pnt is a projection of the cell center to the face
-				bnd_pnt[0] = r1_cnt[0] + dist * f_nrm[0], 
-				bnd_pnt[1] = r1_cnt[1] + dist * f_nrm[1], 
+				bnd_pnt[0] = r1_cnt[0] + dist * f_nrm[0];
+				bnd_pnt[1] = r1_cnt[1] + dist * f_nrm[1];
 				bnd_pnt[2] = r1_cnt[2] + dist * f_nrm[2];
 				Coef = K1 * f_area / dist;
 				A[id1][id1] += -Coef;
@@ -195,7 +198,7 @@ int main(int argc,char ** argv)
 				Kav = 2.0 / ( 1.0 / K1 + 1.0 / K2 ); // Harmonic mean
 				make_vec(r2_cnt,r1_cnt,d1);
 				Coef = transmissibility(d1,Kav,f_nrm)/dot_prod(d1,d1) * f_area;
-				
+
 				if( s1 != Element::Ghost )
 				{
 					A[id1][id1] += -Coef;
@@ -208,81 +211,85 @@ int main(int argc,char ** argv)
 				}
 			}
 		}
-		for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
-		if( cell->GetStatus() != Element::Ghost )
-			b[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
-			
+		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+			if( cell->GetStatus() != Element::Ghost )
+				b[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
+
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
-		
-		m->RemoveGeometricData(table);
-		
-		//~ ttt = Timer();
-		//~ A.Save("A.mtx");
-		//~ b.Save("b.rhs");
-		//~ BARRIER
-		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Save matrix and RHS: " << Timer()-ttt << std::endl;
+
+		m->RemoveGeometricData(table); // Clean the computed geometric data
+
+		if( argc > 3 ) // Save the matrix and RHS if required
+		{
+			ttt = Timer();
+			A.Save(std::string(argv[2])); // "A.mtx"
+			b.Save(std::string(argv[3])); // "b.rhs"
+			BARRIER
+			if( m->GetProcessorRank() == 0 ) std::cout << "Save matrix \"" << argv[2] << "\" and RHS \"" << argv[3] << "\": " << Timer()-ttt << std::endl;
+		}
 		
 		ttt = Timer();
 		
-		S.SetMatrix(A);
-		S.Solve(b,x);
+		S.SetMatrix(A); // Compute the preconditioner for the original matrix
+		S.Solve(b,x);   // Solve the linear system with the previously computted preconditioner
 		
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Solve system: " << Timer()-ttt << std::endl;
 
 		ttt = Timer();
-		
+
 		Storage::real err_C = 0.0, err_L2 = 0.0;
-		for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); cell++)
-		if( cell->GetStatus() != Element::Ghost )
-		{
-			Storage::real exact = cell->Mean(func, 0);
-			Storage::real err = fabs (x[cell->Integer(id)] - exact);
-			if (err > err_C)
-				err_C = err;
-			err_L2 += err * err * cell->Volume();
-// 			x[cell->Integer(id)] = err;
-		}
-		err_C = m->AggregateMax(err_C);
-		err_L2 = sqrt(m->Integrate(err_L2));
-		if( m->GetProcessorRank() == 0 ) std::cout << "err_C = " << err_C << std::endl;
+		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+			if( cell->GetStatus() != Element::Ghost )
+			{
+				Storage::real exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
+				Storage::real err = fabs (x[cell->Integer(id)] - exact);
+				if (err > err_C)
+					err_C = err;
+				err_L2 += err * err * cell->Volume();
+// 				x[cell->Integer(id)] = err;
+			}
+		err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
+		err_L2 = sqrt(m->Integrate(err_L2)); // Compute the global L2 norm for the error
+		if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;
 		if( m->GetProcessorRank() == 0 ) std::cout << "err_L2 = " << err_L2 << std::endl;
-		
+
 		BARRIER
-		if( m->GetProcessorRank() == 0 ) std::cout << "Compute residual: " << Timer()-ttt << std::endl;
+		if( m->GetProcessorRank() == 0 ) std::cout << "Compute true residual: " << Timer()-ttt << std::endl;
 
 		ttt = Timer();
-		
-		for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); cell++)
-		if( cell->GetStatus() != Element::Ghost )
-			cell->Real(phi) = x[cell->Integer(id)];
-		
+		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+			if( cell->GetStatus() != Element::Ghost )
+				cell->Real(phi) = x[cell->Integer(id)];
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Retrive data: " << Timer()-ttt << std::endl;
-		
+
 		ttt = Timer();
-		m->ExchangeData(phi,CELL);
+		m->ExchangeData(phi,CELL); // Data exchange over processors
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange phi: " << Timer()-ttt << std::endl;
-		
-		ttt = Timer();
-		if (m->GetProcessorsNumber() == 1 )
-			m->Save("grid.vtk");
+
+		std::string filename = "result";
+		if( m->GetProcessorsNumber() == 1 )
+			filename += ".vtk";
 		else
-			m->Save("grid.pvtk");
+			filename += ".pvtk";
+		ttt = Timer();
+		m->Save(filename);
 		BARRIER
-		if( m->GetProcessorRank() == 0 ) std::cout << "Save pvtk: " << Timer()-ttt << std::endl;
-		
+		if( m->GetProcessorRank() == 0 ) std::cout << "Save \"" << filename << "\": " << Timer()-ttt << std::endl;
+
 		delete m;
 	}
 	else
 	{
-		std::cout << argv[0] << " [mesh_file]" << std::endl;
+		std::cout << argv[0] << " mesh_file [A.mtx b.rhs]" << std::endl;
 	}
+
 #if defined(USE_PARTITIONER)
-	Partitioner::Finalize();
+	Partitioner::Finalize(); // Finalize the partitioner activity
 #endif
-	Solver::Finalize();
+	Solver::Finalize(); // Finalize solver and close MPI activity
 	return 0;
 }

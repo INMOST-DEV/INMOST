@@ -1,9 +1,9 @@
-
-#include "../../inmost.h"
 #include <string>
 #include <iostream>
 
+#include "../../inmost.h"
 using namespace INMOST;
+
 #if defined(USE_MPI)
 #define BARRIER MPI_Barrier(MPI_COMM_WORLD);
 #else
@@ -12,22 +12,10 @@ using namespace INMOST;
 
 int main(int argc, char ** argv)
 {
-	/*
-	int i;
-	for (int j = 0; j < 10000; j++) 
-	{
-		Solver::Matrix A;
-		double t = Timer();
-		for(int i = 0; i < 10000; i++)
-			A[i][i] = 0;
-		printf("%d %g\n",j,Timer()-t);
-	}
-	return 0;
-	*/
 	int rank,procs;
 	if( argc < 3 )
 	{
-		std::cout << "usage: " << argv[0] << " method_number<0:Inner,1:ANI3D,2:PETSc,3:Trilinos> matrix.mtx [right_hand_side.rhs] [petsc_options.txt]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_MLILUC,2:ANI,3:PETSC> matrix.mtx [right_hand_side.rhs] [solver_options.txt]" << std::endl;
 		return -1;
 	}
 	Solver::Type type;
@@ -37,63 +25,62 @@ int main(int argc, char ** argv)
 		case 1: type = Solver::INNER_MLILUC; break;
 		case 2: type = Solver::ANI; break;
 		case 3: type = Solver::PETSC; break;
-		
 	}
-	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL);
+	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
 	{
 #if defined(USE_MPI)
-		MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-		MPI_Comm_size(MPI_COMM_WORLD,&procs);
+		MPI_Comm_rank(MPI_COMM_WORLD,&rank);  // Get the rank of the current process
+		MPI_Comm_size(MPI_COMM_WORLD,&procs); // Get the total number of processors used
 #else
 		rank = 0;
 		procs = 1;
 #endif
 		//std::cout << rank << "/" << procs << " " << argv[0] << std::endl;
-		Solver::Matrix mat("A");
-		Solver::Vector b("rhs");
-		Solver::Vector x("sol");
-		//std::cout << rank << " load matrix from " << std::string(argv[2]) << std::endl;
+		Solver::Matrix mat("A"); // Declare the matrix of the linear system to be solved
+		Solver::Vector b("rhs"); // Declare the right-hand side vector
+		Solver::Vector x("sol"); // Declare the solution vector
+		//std::cout << rank << " load matrix from " << std::string(argv[2]) << " ..." << std::endl;
 		long double t = Timer(), tt = Timer();
 		mat.Load(std::string(argv[2])); //if interval parameters not set, matrix will be divided automatically
 		BARRIER
 		if( !rank ) std::cout << "load matrix: " << Timer() - t << std::endl;
 		//mat.Save("test.mtx");
 		t = Timer();
-		if( argc > 3 ) 
+		if( argc > 3 )
 		{
 			//std::cout << rank << " load vector from " << std::string(argv[3]) << std::endl;
-			b.Load(std::string(argv[3]));
+			b.Load(std::string(argv[3])); // Load RHS vector
 		}
-		else
+		else // Set local RHS to 1 if it was not specified
 		{
 			INMOST_DATA_ENUM_TYPE mbeg,mend,k;
 			mat.GetInterval(mbeg,mend);
 			b.SetInterval(mbeg,mend);
-			for(k = mbeg; k < mend; k++) b[k] = 1.0;
+			for( k = mbeg; k < mend; ++k ) b[k] = 1.0;
 		}
 		BARRIER
 		if( !rank ) std::cout << "load vector: " << Timer() - t << std::endl;
 		bool success = false;
 		int iters;
 		double resid, realresid = 0;
-		
+
 		{
-			Solver s(type);
+			Solver s(type); // Declare the linear solver by specified type
 			t = Timer();
-			s.SetMatrix(mat);
+			s.SetMatrix(mat); // Compute the preconditioner for the original matrix
 			BARRIER
 			if( !rank ) std::cout << "preconditioner: " << Timer() - t << std::endl;
 			t = Timer();
-			success = s.Solve(b,x);
+			success = s.Solve(b,x); // Solve the linear system with the previously computted preconditioner
 			BARRIER
 			if( !rank ) std::cout << "solver: " << Timer() - t << std::endl;
-			iters = s.Iterations();
-			resid = s.Residual();
+			iters = s.Iterations(); // Get the number of iterations performed
+			resid = s.Residual();   // Get the final residual achieved
 			//x.Save("output.rhs");
 		}
 		tt = Timer() - tt;
-		
-		{
+
+		{ // Compute the true residual
 			double aresid = 0, bresid = 0;
 			Solver::Vector test;
 			t = Timer();
@@ -101,14 +88,13 @@ int main(int argc, char ** argv)
 			info.PrepareMatrix(mat,0);
 			info.PrepareVector(x);
 			info.Update(x);
-			
-			
-			mat.MatVec(1.0,x,0.0,test);
-		
+
+			mat.MatVec(1.0,x,0.0,test); // Multiply the original matrix by a vector
+
 			{
 				INMOST_DATA_ENUM_TYPE mbeg,mend,k;
 				info.GetLocalRegion(info.GetRank(),mbeg,mend);
-				for(k = mbeg; k < mend; k++)
+				for( k = mbeg; k < mend; ++k )
 				{
 					aresid += (test[k]-b[k])*(test[k]-b[k]);
 					bresid += b[k]*b[k];
@@ -121,29 +107,29 @@ int main(int argc, char ** argv)
 #endif
 			realresid = sqrt(recv[0]/recv[1]);
 			//realresid = sqrt(realresid);
-			
+
 			info.RestoreVector(x);
 			if( !rank ) std::cout << "norms: " << Timer() - t << std::endl;
 		}
-		
-		
+
 		{
-			if( rank == 0 ) 
+			if( rank == 0 )
 			{
-				std::cout  << procs << " processors";
+				std::cout << procs << " processors";
 				if( success )
 				{
-					std::cout  << " solved in " << tt << " secs";
-					std::cout  << " with " << iters << " iterations to " << resid << " norm";
+					std::cout << " solved in " << tt << " secs";
+					std::cout << " with " << iters << " iterations to " << resid << " norm";
 				}
 				else std::cout << " failed to solve";
-				std::cout  << " matrix " << argv[2];
-				if( argc > 3 ) std::cout  << " vector " << argv[3];
-				std::cout << " real residual ||Ax-b||/||b|| " << realresid;
+				std::cout  << " matrix \"" << argv[2] << "\"";
+				if( argc > 3 ) std::cout  << " vector \"" << argv[3] << "\"";
+				std::cout << " true residual ||Ax-b||/||b|| " << realresid;
 				std::cout << std::endl;
 			}
 		}
 	}
-	Solver::Finalize();
+
+	Solver::Finalize(); // Finalize solver and close MPI activity
 	return 0;
 }
