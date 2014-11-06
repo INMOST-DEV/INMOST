@@ -54,19 +54,19 @@ namespace INMOST
 	}
 
 
-	adjacent<Node> Cell::getNodes(MIDType mask)
+	adjacent<Node> Cell::getNodes(MIDType mask, bool invert)
 	{
 		adjacent<Node> aret;
 		if( !GetMeshLink()->HideMarker() )
 		{
 			for(adj_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) ) aret.push_back((*it));
+				if( invert ^ (*it)->GetMarker(mask) ) aret.push_back((*it));
 		}
 		else
 		{
 			MIDType hm = GetMeshLink()->HideMarker();
 			for(adj_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
+				if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
 		}
 		return aret;
 	}
@@ -169,7 +169,7 @@ namespace INMOST
 	}
 
 
-	adjacent<Edge> Cell::getEdges(MIDType mask)
+	adjacent<Edge> Cell::getEdges(MIDType mask, bool invert)
 	{
 		adjacent<Edge> aret;
 		if( !GetMeshLink()->HideMarker() )
@@ -179,8 +179,8 @@ namespace INMOST
 				aret.reserve(low_conn.size());
 				Element * last, * first;
 				Element * q = low_conn[0]; //edge 0
-				if( q->low_conn[0]->GetMarker(mask) ) aret.push_back(q->low_conn[0]); //node 0
-				if( q->low_conn[1]->GetMarker(mask) ) aret.push_back(q->low_conn[1]); //node 1
+				if( invert ^ q->low_conn[0]->GetMarker(mask) ) aret.push_back(q->low_conn[0]); //node 0
+				if( invert ^ q->low_conn[1]->GetMarker(mask) ) aret.push_back(q->low_conn[1]); //node 1
 				first = q->low_conn[0];
 				last  = q->low_conn[1];
 				Element * r = low_conn[1]; //edge 1
@@ -200,12 +200,12 @@ namespace INMOST
 							if( last == (*it)->low_conn[0] ) 
 							{
 								last = (*it)->low_conn[1];
-								if( last->GetMarker(mask) ) aret.push_back(last);
+								if( invert ^ last->GetMarker(mask) ) aret.push_back(last);
 							}
 							else 
 							{
 								last = (*it)->low_conn[0];
-								if( last->GetMarker(mask) ) aret.push_back(last);
+								if( invert ^ last->GetMarker(mask) ) aret.push_back(last);
 							}
 							++it;
 						}
@@ -216,7 +216,7 @@ namespace INMOST
 				MIDType mrk = m->CreateMarker();
 				for(Element::adj_iterator it = low_conn.begin(); it != low_conn.end(); it++) //faces
 					for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) //edges
-						if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk))
+						if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk))
 						{
 							aret.push_back(*jt);
 							(*jt)->SetMarker(mrk);
@@ -239,10 +239,10 @@ namespace INMOST
 				i = Mesh::getNext(&low_conn[0],low_conn.size(),i,hm);
 				Element * q = low_conn[i]; //edge 0
 				k = Mesh::getNext(&q->low_conn[0],q->low_conn.size(),k,hm);
-				if( q->low_conn[k]->GetMarker(mask) ) aret.push_back(q->low_conn[k]); //node 0
+				if( invert ^ q->low_conn[k]->GetMarker(mask) ) aret.push_back(q->low_conn[k]); //node 0
 				first = q->low_conn[k];
 				k = Mesh::getNext(&q->low_conn[0],q->low_conn.size(),k,hm);
-				if( q->low_conn[k]->GetMarker(mask) ) aret.push_back(q->low_conn[k]); //node 1
+				if( invert ^ q->low_conn[k]->GetMarker(mask) ) aret.push_back(q->low_conn[k]); //node 1
 				last = q->low_conn[k];
 				i = Mesh::getNext(&low_conn[0],low_conn.size(),i,hm);
 				Element * r = low_conn[i]; //edge 1
@@ -267,12 +267,12 @@ namespace INMOST
 					if( last == (*it)->low_conn[k1] ) 
 					{
 						last = (*it)->low_conn[k2];
-						if( last->GetMarker(mask) ) aret.push_back(last);
+						if( invert ^ last->GetMarker(mask) ) aret.push_back(last);
 					}
 					else 
 					{
 						last = (*it)->low_conn[k1];
-						if( last->GetMarker(mask) ) aret.push_back(last);
+						if( invert ^ last->GetMarker(mask) ) aret.push_back(last);
 					}
 					++it;
 				}
@@ -283,7 +283,7 @@ namespace INMOST
 				MIDType mrk = m->CreateMarker();
 				for(Element::adj_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) ) //faces
 					for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )//edges
-						if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk))
+						if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk))
 						{
 							aret.push_back(*jt);
 							(*jt)->SetMarker(mrk);
@@ -311,19 +311,19 @@ namespace INMOST
 	}
 
 
-	adjacent<Face> Cell::getFaces(MIDType mask)
+	adjacent<Face> Cell::getFaces(MIDType mask, bool invert)
 	{
 		adjacent<Face> aret;
 		if( !GetMeshLink()->HideMarker() )
 		{
 			for(adj_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) ) aret.push_back((*it));
+				if( invert ^ (*it)->GetMarker(mask) ) aret.push_back((*it));
 		}
 		else
 		{
 			MIDType hm = GetMeshLink()->HideMarker();
 			for(adj_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
+				if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
 		}
 		return aret;
 	}

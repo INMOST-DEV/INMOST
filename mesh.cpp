@@ -1514,124 +1514,135 @@ namespace INMOST
 	
 	void Mesh::UntieElement(Storage * e)
 	{
-		INMOST_DATA_ENUM_TYPE pos = e->LocalID();
-		switch(e->GetElementType())
+#if defined(USE_OMP)
+#pragma omp critical [storage_interraction]
+#endif
 		{
-			case ESET:
-				if( pos >= sets.size() || sets[pos] != e ) return;
-				empty_sets.push_back(pos);
-				sets[pos] = NULL;
-				break;
-			case CELL:
-				if( pos >= cells.size() || cells[pos] != e ) return;
-				empty_cells.push_back(pos);
-				cells[pos] = NULL;
-				break;
-			case FACE:
-				if( pos >= faces.size() || faces[pos] != e ) return;
-				empty_faces.push_back(pos);
-				faces[pos] = NULL;
-				break;
-			case EDGE:
-				if( pos >= edges.size() || edges[pos] != e ) return;
-				empty_edges.push_back(pos);
-				edges[pos] = NULL;
-				break;
-			case NODE:
-				if( pos >= nodes.size() || nodes[pos] != e ) return;
-				empty_nodes.push_back(pos);
-				nodes[pos] = NULL;
-				break;
-			default:
-				throw Impossible;
+			INMOST_DATA_ENUM_TYPE pos = e->LocalID();
+			switch(e->GetElementType())
+			{
+				case ESET:
+					if( pos >= sets.size() || sets[pos] != e ) return;
+					empty_sets.push_back(pos);
+					sets[pos] = NULL;
+					break;
+				case CELL:
+					if( pos >= cells.size() || cells[pos] != e ) return;
+					empty_cells.push_back(pos);
+					cells[pos] = NULL;
+					break;
+				case FACE:
+					if( pos >= faces.size() || faces[pos] != e ) return;
+					empty_faces.push_back(pos);
+					faces[pos] = NULL;
+					break;
+				case EDGE:
+					if( pos >= edges.size() || edges[pos] != e ) return;
+					empty_edges.push_back(pos);
+					edges[pos] = NULL;
+					break;
+				case NODE:
+					if( pos >= nodes.size() || nodes[pos] != e ) return;
+					empty_nodes.push_back(pos);
+					nodes[pos] = NULL;
+					break;
+				default:
+					throw Impossible;
+			}
 		}
-		if( e->GetElementType() & (CELL | FACE | EDGE | NODE) )
-			for(unsigned int i = 0; i < sets.size(); i++) if( sets[i] != NULL ) sets[i]->Erase(static_cast<Element *>(e));
+		// This should be done through BeginModification - ApplyModification - EndModification
+		//if( e->GetElementType() & (CELL | FACE | EDGE | NODE) )
+		//	for(unsigned int i = 0; i < sets.size(); i++) if( sets[i] != NULL ) sets[i]->Erase(static_cast<Element *>(e));
 	}
 	
 	
 	void Mesh::TieElement(Storage * e)
 	{
-		ElementType etype = e->GetElementType();
-		size_t old_size = GetArrayCapacity(etype);
-		switch(e->GetElementType())
+#if defined(USE_OMP)
+#pragma omp critical [storage_interraction]
+#endif
 		{
-			case ESET:
-				if( !empty_sets.empty() && !isMeshModified() )
-				{
-					e->local_id = empty_sets.back();
-					sets[empty_sets.back()] = static_cast<ElementSet *>(e);
-					empty_sets.pop_back();
-				}
-				else
-				{
-					e->local_id = sets.size();
-					sets.push_back(static_cast<ElementSet *>(e));
-				}
-				break;
-			case NODE:
-				if( !empty_nodes.empty() && !isMeshModified() )
-				{
-					e->local_id = empty_nodes.back();
-					nodes[empty_nodes.back()] = static_cast<Node *>(e);
-					empty_nodes.pop_back();
-				}
-				else 
-				{
-					e->local_id = nodes.size();
-					nodes.push_back(static_cast<Node *>(e));
-				}
-				break;
-			case EDGE:
-				if( !empty_edges.empty() && !isMeshModified() )
-				{
-					e->local_id = empty_edges.back();
-					edges[empty_edges.back()] = static_cast<Edge *>(e);
-					empty_edges.pop_back();
-				}
-				else 
-				{
-					e->local_id = edges.size();
-					edges.push_back(static_cast<Edge *>(e));
-				}
-				break;
-			case FACE:
-				if( !empty_faces.empty() && !isMeshModified() )
-				{
-					e->local_id = empty_faces.back();
-					faces[empty_faces.back()] = static_cast<Face *>(e);
-					empty_faces.pop_back();
-				}
-				else 
-				{
-					e->local_id = faces.size();
-					faces.push_back(static_cast<Face *>(e));
-				}
-				break;
-			case CELL:
-				if( !empty_cells.empty() && !isMeshModified() )
-				{
-					e->local_id = empty_cells.back();
-					cells[empty_cells.back()] = static_cast<Cell *>(e);
-					empty_cells.pop_back();
-				}
-				else 
-				{
-					e->local_id = cells.size();
-					cells.push_back(static_cast<Cell *>(e));
-				}
-				break;
-			case MESH:
-				{
-					e->local_id = 0;
-				}
-				break;
-		}
-		if( GetArrayCapacity(etype) != old_size )
-		{
-			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); ++t)
-				if( t->isDefined(etype) && !t->isSparse(etype) )
-					t->AllocateData(etype);
+			ElementType etype = e->GetElementType();
+			size_t old_size = GetArrayCapacity(etype);
+			switch(e->GetElementType())
+			{
+				case ESET:
+					if( !empty_sets.empty() && !isMeshModified() )
+					{
+						e->local_id = empty_sets.back();
+						sets[empty_sets.back()] = static_cast<ElementSet *>(e);
+						empty_sets.pop_back();
+					}
+					else
+					{
+						e->local_id = sets.size();
+						sets.push_back(static_cast<ElementSet *>(e));
+					}
+					break;
+				case NODE:
+					if( !empty_nodes.empty() && !isMeshModified() )
+					{
+						e->local_id = empty_nodes.back();
+						nodes[empty_nodes.back()] = static_cast<Node *>(e);
+						empty_nodes.pop_back();
+					}
+					else 
+					{
+						e->local_id = nodes.size();
+						nodes.push_back(static_cast<Node *>(e));
+					}
+					break;
+				case EDGE:
+					if( !empty_edges.empty() && !isMeshModified() )
+					{
+						e->local_id = empty_edges.back();
+						edges[empty_edges.back()] = static_cast<Edge *>(e);
+						empty_edges.pop_back();
+					}
+					else 
+					{
+						e->local_id = edges.size();
+						edges.push_back(static_cast<Edge *>(e));
+					}
+					break;
+				case FACE:
+					if( !empty_faces.empty() && !isMeshModified() )
+					{
+						e->local_id = empty_faces.back();
+						faces[empty_faces.back()] = static_cast<Face *>(e);
+						empty_faces.pop_back();
+					}
+					else 
+					{
+						e->local_id = faces.size();
+						faces.push_back(static_cast<Face *>(e));
+					}
+					break;
+				case CELL:
+					if( !empty_cells.empty() && !isMeshModified() )
+					{
+						e->local_id = empty_cells.back();
+						cells[empty_cells.back()] = static_cast<Cell *>(e);
+						empty_cells.pop_back();
+					}
+					else 
+					{
+						e->local_id = cells.size();
+						cells.push_back(static_cast<Cell *>(e));
+					}
+					break;
+				case MESH:
+					{
+						e->local_id = 0;
+					}
+					break;
+			}
+			if( GetArrayCapacity(etype) != old_size )
+			{
+				for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); ++t)
+					if( t->isDefined(etype) && !t->isSparse(etype) )
+						t->AllocateData(etype);
+			}
 		}
 	}
 	

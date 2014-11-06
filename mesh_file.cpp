@@ -141,26 +141,29 @@ namespace INMOST
 	const HeaderType INMOSTFile   = 0x10;
 	const HeaderType MeshDataHeader = 0x11;
 
-	void Mesh::SetFileOptions(std::vector< std::pair< std::string, std::string > > options)
+	void Mesh::SetFileOption(std::string key, std::string val)
 	{
-		std::vector<bool> newoptions(options.size(),true);
 		for(size_t k = 0; k < file_options.size(); k++)
 		{
-			for(size_t m = 0; m < options.size(); m++)
+			if(file_options[k].first == key)
 			{
-				if(file_options[k].first == options[m].first)
-				{
-					file_options[k].second = options[m].second;
-					newoptions[m] = false;
-				}
+				file_options[k].second = val;
 			}
 		}
-		for(size_t m = 0; m < options.size(); m++) if( newoptions[m] )
-		{
-			file_options.push_back(options[m]);
-		}
+		file_options.push_back(std::make_pair(key,val));
 	}
 
+	std::string Mesh::GetFileOption(std::string key)
+	{
+		for(size_t k = 0; k < file_options.size(); k++)
+		{
+			if(file_options[k].first == key)
+			{
+				return file_options[k].second;
+			}
+		}
+		return "";
+	}
 	
 	std::ostream & operator <<(std::ostream & out, HeaderType H)
 	{
@@ -497,6 +500,19 @@ namespace INMOST
 		std::string LFile;
 		LFile.resize(File.size());
 		std::transform(File.begin(),File.end(),LFile.begin(),::tolower);
+		int verbosity = 0;
+		for(size_t k = 0; k < file_options.size(); ++k)
+		{
+			if( file_options[k].first == "VERBOSITY" )
+			{
+				verbosity = atoi(file_options[k].second.c_str());
+				if( verbosity < 0 || verbosity > 2 )
+				{
+					printf("%s:%d Unknown verbosity option: %s\n",__FILE__,__LINE__,file_options[k].second.c_str());
+					verbosity = 1;
+				}
+			}
+		}
 //		long double load_timer = Timer();
 		/*
 		if(File.find("gmv") != std::string::npos) //this is gmv
@@ -535,7 +551,7 @@ namespace INMOST
 					old_nodes[qq++] = *it;
 			}
 			if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
-			std::vector< std::pair< std::pair<FILE *,std::string>, int> > fs(1,std::make_pair(std::make_pair(f,LFile),0));
+			std::vector< std::pair< std::pair<FILE *,std::string>, int> > fs(1,std::make_pair(std::make_pair(f,File),0));
 			char readline[2048], *p, *pend, rec[2048];
 			int text_end, text_start, state = ECL_NONE, nchars;
 			int waitlines = 0;
@@ -996,19 +1012,19 @@ ecl_exit_loop:
 						attrl = str.find("version=\"pvtk-1.0\"",l);
 						if( attrl == std::string::npos ) 
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " version information not found in " << LFile << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " version information not found in " << File << std::endl;
 							throw BadFile;
 						}
 						attrl = str.find("dataType=\"vtkUnstructuredGrid\"",l);
 						if( attrl == std::string::npos ) 
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " data type information not found in " << LFile << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " data type information not found in " << File << std::endl;
 							throw BadFile;
 						}
 						attrl = str.find("numberOfPieces");
 						if( attrl == std::string::npos ) 
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " number of files not found in " << LFile << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " number of files not found in " << File << std::endl;
 							throw BadFile;
 						}
 						ql = str.find_first_of('"',attrl);
@@ -1022,7 +1038,7 @@ ecl_exit_loop:
 					}
 					else 
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " unexpected xml tag " << tag << " in " << LFile << " expected File instead " << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " unexpected xml tag " << tag << " in " << File << " expected File instead " << std::endl;
 						throw BadFile;
 					}
 				}
@@ -1040,7 +1056,7 @@ ecl_exit_loop:
 					}
 					else 
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " unexpected xml tag " << tag << " in " << LFile << " expected Piece instead " << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " unexpected xml tag " << tag << " in " << File << " expected Piece instead " << std::endl;
 						throw BadFile;
 					}
 				}
@@ -1048,7 +1064,7 @@ ecl_exit_loop:
 				{
 					if( tag != "/File" ) 
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " unexpected xml tag " << tag << " in " << LFile << " expected /File instead " << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " unexpected xml tag " << tag << " in " << File << " expected /File instead " << std::endl;
 						throw BadFile;
 					}
 					else break;
@@ -1087,7 +1103,7 @@ ecl_exit_loop:
 			FILE * f = fopen(File.c_str(),"r");
 			if( !f ) 
 			{
-				std::cout << __FILE__ << ":" << __LINE__ << " cannot open " << LFile << std::endl;
+				std::cout << __FILE__ << ":" << __LINE__ << " cannot open " << File << std::endl;
 				throw BadFileName;
 			}
 			std::vector<Tag> datatags;
@@ -1119,7 +1135,7 @@ ecl_exit_loop:
 						filled = sscanf(readline,"# vtk DataFile Version %1d.%1d",&h,&l);
 						if( filled == 0 ) 
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " version information not found in " << LFile << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " version information not found in " << File << std::endl;
 							throw BadFile;
 						}
 						//file version checker
@@ -1140,7 +1156,7 @@ ecl_exit_loop:
 							state = R_WAITDATA;
 						else 
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " unexpected data type " << readline << " in " << LFile << " expected BINARY or ASCII instead " << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " unexpected data type " << readline << " in " << File << " expected BINARY or ASCII instead " << std::endl;
 							throw BadFile;
 						}
 						break;
@@ -1154,13 +1170,14 @@ ecl_exit_loop:
 						filled = sscanf(readline," %s ",dataname);
 						if( filled != 1 ) 
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " cannot read attribute name in " << LFile << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot read attribute name in " << File << std::endl;
 							throw BadFile;
 						}
 						if( !strcmp(dataname,"SCALARS") )
 						{
 							DataType t = DATA_BULK;
 							filled = sscanf(readline," SCALARS %s %s %d",attrname,attrtype,&nentries);
+							if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
 							if( filled < 2 ) 
 							{
 								printf("%s:%d found %d arguments to SCALARS field, must be >= 2\nline:\n%s\n",__FILE__,__LINE__,filled,readline); 
@@ -1175,20 +1192,22 @@ ecl_exit_loop:
 								t = DATA_REAL;
 							else
 							{
-								std::cout << __FILE__ << ":" << __LINE__ << " unexpected data type " << attrtype << " in " << LFile << std::endl;
+								std::cout << __FILE__ << ":" << __LINE__ << " unexpected data type " << attrtype << " in " << File << std::endl;
 								std::cout << "expected one of: bit, unsigned_char, char, unsigned_short, short, unsigned_int, int, unsigned_long, long, float, double" << std::endl;
 								throw BadFile;
 							}
 							if( fgets(readline,2048,f) == NULL ) 
 							{
-								std::cout << __FILE__ << ":" << __LINE__ << " expected LOOKUP_TABLE in " << LFile << std::endl;
+								std::cout << __FILE__ << ":" << __LINE__ << " expected LOOKUP_TABLE in " << File << std::endl;
 								throw BadFile; //LOOK_UP TABLE
 							}
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
+								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
+
 									if( t == DATA_INTEGER )
 									{
 										if( newcells[it] != NULL )
@@ -1207,6 +1226,11 @@ ecl_exit_loop:
 										}
 										else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
 									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
 								}
 								filled = fscanf(f,"\n");
 								datatags.push_back(attr);
@@ -1214,6 +1238,7 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
+								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
 									if( t == DATA_INTEGER )
@@ -1226,6 +1251,11 @@ ecl_exit_loop:
 										Storage::real_array attrdata = newnodes[it]->RealArray(attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
 								filled = fscanf(f,"\n");
 							}
@@ -1235,9 +1265,11 @@ ecl_exit_loop:
 						{	
 							char attrname[1024];
 							filled = sscanf(readline," COLOR_SCALARS %s %d",attrname,&nentries);
+							if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,read_into_cell & ESET,nentries);
+								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 									if( newcells[it] != NULL )
@@ -1246,6 +1278,11 @@ ecl_exit_loop:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									if( verbosity > 1 && it%100 == 0)
+									{
+										printf("data %3.1f%%\r",(it*report_pace)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
 								}
 								filled = fscanf(f,"\n");
 								datatags.push_back(attr);
@@ -1253,10 +1290,16 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,DATA_REAL,NODE,NONE,nentries);
+								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
 									Storage::real_array attrdata = newnodes[it]->RealArray(attr);
 									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
 								filled = fscanf(f,"\n");
 							}
@@ -1282,6 +1325,7 @@ ecl_exit_loop:
 							if( !strcmp(dataname,"TENSORS") ) nentries = 9;
 							DataType t = DATA_BULK;
 							filled = sscanf(readline,"%*s %s %s",attrname,attrtype);
+							if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
 							if( filled != 2 ) throw BadFile;
 							for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 							if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -1296,6 +1340,7 @@ ecl_exit_loop:
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
+								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 									if( t == DATA_INTEGER )
@@ -1316,6 +1361,11 @@ ecl_exit_loop:
 										}
 										else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
 								}
 								filled = fscanf(f,"\n");
 								datatags.push_back(attr);
@@ -1323,6 +1373,7 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
+								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
 									if( t == DATA_INTEGER )
@@ -1334,6 +1385,11 @@ ecl_exit_loop:
 									{
 										Storage::real_array attrdata = newnodes[it]->RealArray(attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
 									}
 								}
 								filled = fscanf(f,"\n");
@@ -1361,6 +1417,7 @@ ecl_exit_loop:
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
+								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 									if( t == DATA_INTEGER )
@@ -1379,6 +1436,11 @@ ecl_exit_loop:
 											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										} else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									}
+									if( verbosity > 1 && it%100 == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
 								}
 								filled = fscanf(f,"\n");
 								datatags.push_back(attr);
@@ -1386,6 +1448,7 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
+								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
 									if( t == DATA_INTEGER )
@@ -1397,6 +1460,11 @@ ecl_exit_loop:
 									{
 										Storage::real_array attrdata = newnodes[it]->RealArray(attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( verbosity > 1 && it%100 == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
 									}
 								}
 								filled = fscanf(f,"\n");
@@ -1429,6 +1497,7 @@ ecl_exit_loop:
 								{
 									Tag attr  = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
 									if( ntuples != newcells.size() ) printf("number of tuples in field is not equal to number of cells\n");
+									unsigned report_pace = std::max<unsigned>(ntuples/250,1);
 									for(unsigned int it = 0; it < ntuples; it++)
 									{
 										if( t == DATA_INTEGER )
@@ -1447,6 +1516,11 @@ ecl_exit_loop:
 												for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 											} else for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 										}
+										if( verbosity > 1 && it%report_pace == 0)
+										{
+											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
+											fflush(stdout);
+										}
 									}
 									filled = fscanf(f,"\n");
 									datatags.push_back(attr);
@@ -1455,6 +1529,7 @@ ecl_exit_loop:
 								{
 									Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
 									if( ntuples != newnodes.size() ) printf("number of tuples in field is not equal to number of nodes\n");
+									unsigned report_pace = std::max<unsigned>(ntuples/250,1);
 									for(unsigned int it = 0; it < ntuples; it++)
 									{
 										if( t == DATA_INTEGER )
@@ -1466,6 +1541,11 @@ ecl_exit_loop:
 										{
 											Storage::real_array attrdata = newnodes[it]->RealArray(attr);
 											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										}
+										if( verbosity > 1 && it%report_pace == 0)
+										{
+											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
+											fflush(stdout);
 										}
 									}
 									filled = fscanf(f,"\n");
@@ -1489,6 +1569,7 @@ ecl_exit_loop:
 							if( npoints != newcells.size() ) printf("number of attributes is not equal to number of cells\n");
 							state = R_ATTRDATA;
 							read_into = 2;
+							if( verbosity > 0 ) printf("Reading data for cells.\n");
 							break;
 						}
 						else if( !strcmp(datatype,"POINT_DATA") )
@@ -1496,6 +1577,7 @@ ecl_exit_loop:
 							if( npoints != newnodes.size() ) printf("number of attributes is not equal to number of nodes\n");
 							state = R_ATTRDATA;
 							read_into = 1;
+							if( verbosity > 0 ) printf("Reading data for nodes.\n");
 							break;
 						}
 						else
@@ -1534,7 +1616,9 @@ ecl_exit_loop:
 						filled = sscanf(readline,"%*s %d %s",&npoints,datatype);
 						newnodes.reserve(npoints);
 						//printf("number of nodes: %d\n",npoints);
+						if( verbosity > 0 ) printf("Reading %d nodes.\n",npoints);
 						if( filled != 2 ) throw BadFile;
+						unsigned report_pace = std::max<unsigned>(npoints/250,1);
 						if( binary )
 						{
 							i = 0;
@@ -1557,6 +1641,11 @@ ecl_exit_loop:
 								if( find == -1 ) newnodes.push_back(CreateNode(coords));
 								else newnodes.push_back(old_nodes[find]);
 								newnodes.back()->SetMarker(unused_marker);
+								if( verbosity > 1 && i%report_pace == 0)
+								{
+									printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));
+									fflush(stdout);
+								}
 								i++;
 							}
 						}
@@ -1577,6 +1666,11 @@ ecl_exit_loop:
 								if( find == -1 ) newnodes.push_back(CreateNode(coords));
 								else newnodes.push_back(old_nodes[find]);
 								newnodes.back()->SetMarker(unused_marker);
+								if( verbosity > 1 && i%report_pace == 0)
+								{
+									printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));
+									fflush(stdout);
+								}
 								i++;
 							}
 							filled = fscanf(f,"\n");
@@ -1619,16 +1713,18 @@ ecl_exit_loop:
 							filled = fscanf(f,"\n");
 						}
 						{
+							if( verbosity > 0 ) printf("Reading %d cells.\n",ncells);
 							int j = 0;
 							dynarray<Node *,256> c_nodes;
 							Node * e_nodes[2];
 							dynarray<Edge *,64> f_edges;
 							dynarray<Face *,64> c_faces;
 							dynarray<Edge *,64> v_edges;
+							unsigned report_pace = std::max<unsigned>(ncells/250,1);
 							for(i = 0; i < ncells; i++)
 							{
 								//printf("load progress: %20.2f%%\r",(float)(i+1)/(float)ncells*100.0f);
-								fflush(stdin);
+								//fflush(stdin);
 								c_nodes.clear();
 								f_edges.clear();
 								c_faces.clear();
@@ -2125,6 +2221,11 @@ ecl_exit_loop:
 										printf("Cell type %d is not known\n",ct[i]);
 									}
 								}
+								if( verbosity > 1 && i%report_pace == 0)
+								{
+									printf("cells %3.1f%%\r",(i*100.0)/(1.0*ncells));
+									fflush(stdout);
+								}
 							}
 							ReorderEmpty(FACE | EDGE);
 							state = R_ATTRIBUTES;
@@ -2270,7 +2371,7 @@ ecl_exit_loop:
 				}
 				else
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " cannot read coordinates from " << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " cannot read coordinates from " << File << std::endl;
 					throw BadFile;
 				}
 			}
@@ -2279,14 +2380,14 @@ ecl_exit_loop:
 			{
 				if( 1 != fscanf(f," %d",&nbfacenodes) )
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " cannot read number of nodes from " << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " cannot read number of nodes from " << File << std::endl;
 					throw BadFile;
 				}
 				for(int j = 0; j < nbfacenodes; j++)
 				{
 					if( 1 != fscanf(f," %d", &num) )
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " cannot read node number from " << LFile << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read node number from " << File << std::endl;
 						throw BadFile;
 					}
 					if( num < 0 || num >= nbnodes )
@@ -2298,7 +2399,7 @@ ecl_exit_loop:
 				}
 				if( 1 != fscanf(f," %d",&num) )
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " cannot read zone number from " << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " cannot read zone number from " << File << std::endl;
 					throw BadFile;
 				}
 				if( num >= nbzones )
@@ -2316,14 +2417,14 @@ ecl_exit_loop:
 			{
 				if( 1 != fscanf(f," %d",&nbpolyhedronfaces) )
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " cannot read number of faces from " << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " cannot read number of faces from " << File << std::endl;
 					throw BadFile;
 				}
 				for(int j = 0; j < nbpolyhedronfaces; j++)
 				{
 					if( 1 != fscanf(f," %d", &num) )
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " cannot read face number from " << LFile << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read face number from " << File << std::endl;
 						throw BadFile;
 					}
 					if( num < 0 || num >= nbpolygon )
@@ -2335,7 +2436,7 @@ ecl_exit_loop:
 				}
 				if( 1 != fscanf(f," %d",&num) )
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " cannot read face number from " << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " cannot read face number from " << File << std::endl;
 					throw BadFile;
 				}
 				if( num >= nbzones )
@@ -2353,24 +2454,24 @@ ecl_exit_loop:
 			{
 				if( 4 != fscanf(f," %d %lf %lf %d",&num,&poro,&vfac,&nbK) )
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " cannot read zone data from " << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " cannot read zone data from " << File << std::endl;
 					throw BadFile;
 				}
 				if( num < 0 || num >= nbzones )
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " zone number out of range " << num << "/" << nbzones << " in file "  << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " zone number out of range " << num << "/" << nbzones << " in file "  << File << std::endl;
 					throw BadFile;
 				}
 				if( !(nbK == 1 || nbK == 2 || nbK == 3 || nbK == 6 || nbK == 9) )
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " strange size for permiability tensor: " << nbK << " in file "  << LFile << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " strange size for permiability tensor: " << nbK << " in file "  << File << std::endl;
 					throw BadFile;
 				}
 				for(int j = 0; j < nbK; j++)
 				{
 					if( 1 != fscanf(f," %lf",readK+j) )
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " cannot read permiability component " << j << "/" << nbK << " from " << LFile << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read permiability component " << j << "/" << nbK << " from " << File << std::endl;
 						throw BadFile;
 					}
 				}
@@ -2427,7 +2528,7 @@ ecl_exit_loop:
 			FILE * f = fopen(File.c_str(),"r");
 			if( f == NULL )
 			{
-				std::cout << __FILE__ << ":" << __LINE__ << " cannot open " << LFile << std::endl;
+				std::cout << __FILE__ << ":" << __LINE__ << " cannot open " << File << std::endl;
 				throw BadFileName;
 			}
 			std::vector<Node *> old_nodes(NumberOfNodes());
@@ -2438,6 +2539,7 @@ ecl_exit_loop:
 			}
 			if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
 			int line = 0;
+			unsigned report_pace;
 			while( fgets(readline,2048,f) != NULL )
 			{
 				line++;
@@ -2463,7 +2565,7 @@ ecl_exit_loop:
 					{
 						if( ver == GMSH_NONE )
 						{
-							std::cout << __FILE__ << ":" << __LINE__ <<  " bad keyword sequence in " << LFile << " line " << line << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ <<  " bad keyword sequence in " << File << " line " << line << std::endl;
 							throw BadFile;
 						}
 						state = GMSH_ELEMENTS_TOT;
@@ -2484,7 +2586,7 @@ ecl_exit_loop:
 					{
 						if( ver == GMSH_NONE )
 						{
-							std::cout << __FILE__ << ":" << __LINE__ <<  " bad keyword sequence in " << LFile << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ <<  " bad keyword sequence in " << File << " line " << line <<std::endl;
 							throw BadFile;
 						}
 						state = GMSH_ELEMENTS_TOT;
@@ -2503,11 +2605,11 @@ ecl_exit_loop:
 								skip_keyword[q+4] = '\0';
 							}
 							state = GMSH_SKIP_KEYWORD;
-							std::cout << __FILE__ << ":" << __LINE__ << " skipping unknown keyword " << skip_keyword+4 << " in " << LFile << " line " << line << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " skipping unknown keyword " << skip_keyword+4 << " in " << File << " line " << line << std::endl;
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ <<  " Unexpected line for " << LFile << " format: " << p << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ <<  " Unexpected line for " << File << " format: " << p << " line " << line <<std::endl;
 							throw BadFile;
 						}
 					}
@@ -2525,10 +2627,12 @@ ecl_exit_loop:
 						while(isspace(*p) && p < pend) ++p;
 						newnodes.resize(nnodes);
 						state = GMSH_NODES_NUM;
+						report_pace = std::max<unsigned>(nnodes/250,1);
+						if( verbosity > 0 ) printf("Reading %d nodes.\n",nnodes);
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " error reading number of nodes in " << LFile << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " error reading number of nodes in " << File << std::endl;
 						throw BadFile;
 					}
 					if( p >= pend ) break;
@@ -2547,18 +2651,18 @@ read_node_num_link:
 						if( ver == GMSH_VER1 && !strcmp(p,"$ENDNOD"))
 						{
 							state = GMSH_NONE;
-							if( nnodes ) std::cout << __FILE__ << ":" << __LINE__ << " number of node records mismatch with reported number of nodes " << nnodes << " in " << LFile << " line " << line <<std::endl;
+							if( nnodes ) std::cout << __FILE__ << ":" << __LINE__ << " number of node records mismatch with reported number of nodes " << nnodes << " in " << File << " line " << line <<std::endl;
 							break;
 						}
 						else if( ver == GMSH_VER2 && !strcmp(p,"$EndNodes") )
 						{
 							state = GMSH_NONE;
-							if( nnodes ) std::cout << __FILE__ << ":" << __LINE__ << " number of node records mismatch with reported number of nodes " << nnodes << " in " << LFile << " line " << line <<std::endl;
+							if( nnodes ) std::cout << __FILE__ << ":" << __LINE__ << " number of node records mismatch with reported number of nodes " << nnodes << " in " << File << " line " << line <<std::endl;
 							break;
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " error reading node number in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " error reading node number in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 					}
@@ -2572,7 +2676,7 @@ read_node_num_link:
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " error reading X-coord in " << LFile << " line " << line <<std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " error reading X-coord in " << File << " line " << line <<std::endl;
 						throw BadFile;
 					}
 					if( p >= pend ) break;
@@ -2585,7 +2689,7 @@ read_node_num_link:
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " error reading Y-coord in " << LFile << " line " << line <<std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " error reading Y-coord in " << File << " line " << line <<std::endl;
 						throw BadFile;
 					}
 					if( p >= pend ) break;
@@ -2600,11 +2704,16 @@ read_node_num_link:
 						if( find == -1 ) newnodes[nodenum] = CreateNode(xyz);
 						else newnodes[nodenum] = old_nodes[find];
 						nnodes--;
+						if( verbosity > 1 && (newnodes.size()-nnodes)%report_pace == 0 )
+						{
+							printf("%3.1f%%\r",((newnodes.size()-nnodes)*100.0)/(newnodes.size()*1.0));
+							fflush(stdout);
+						}
 						state = GMSH_NODES_NUM;
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " error reading Z-coord in " << LFile << " line " << line <<std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " error reading Z-coord in " << File << " line " << line <<std::endl;
 						throw BadFile;
 					}
 					if( p < pend ) goto read_node_num_link; else break;
@@ -2615,10 +2724,12 @@ read_node_num_link:
 						while(isspace(*p) && p < pend) ++p;
 						newelems.resize(ncells);
 						state = GMSH_ELEMENTS_NUM;
+						report_pace = std::max<unsigned>(ncells/250,1);
+						printf("Reading %d elements\n",ncells);
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " error reading total number of elements in " << LFile << " line " << line <<std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " error reading total number of elements in " << File << " line " << line <<std::endl;
 						throw BadFile;
 					}
 					if( p >= pend ) break;
@@ -2637,19 +2748,19 @@ read_elem_num_link:
 					{
 						if( ver == GMSH_VER1 && !strcmp(p,"$ENDELM"))
 						{
-							if( ncells ) std::cout << __FILE__ << ":" << __LINE__ << " number of element records mismatch with reported number of elements " << ncells << " in " << LFile << " line " << line <<std::endl;
+							if( ncells ) std::cout << __FILE__ << ":" << __LINE__ << " number of element records mismatch with reported number of elements " << ncells << " in " << File << " line " << line <<std::endl;
 							state = GMSH_NONE;
 							break;
 						}
 						else if( ver == GMSH_VER2 && !strcmp(p,"$EndElements") )
 						{
-							if( ncells ) std::cout << __FILE__ << ":" << __LINE__ << " number of element records mismatch with reported number of elements " << ncells << " in " << LFile << " line " << line <<std::endl;
+							if( ncells ) std::cout << __FILE__ << ":" << __LINE__ << " number of element records mismatch with reported number of elements " << ncells << " in " << File << " line " << line <<std::endl;
 							state = GMSH_NONE;
 							break;
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " error reading element number in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " error reading element number in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 					}
@@ -2681,7 +2792,7 @@ read_elem_num_link:
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " error reading element type in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " error reading element type in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 						throw BadFile;
 					}
 					if( p >= pend ) break;
@@ -2697,7 +2808,7 @@ read_elem_num_link:
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " error reading physical tag in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " error reading physical tag in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 						if( p >= pend ) break;
@@ -2714,7 +2825,7 @@ read_elem_num_link:
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " error reading element tag in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " error reading element tag in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 						if( p >= pend ) break;
@@ -2736,7 +2847,7 @@ read_elem_num_link:
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " error reading number of nodes of element in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " error reading number of nodes of element in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 						if( p >= pend ) break;
@@ -2754,7 +2865,7 @@ read_elem_num_link:
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " error reading number of tags " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " error reading number of tags " << File << " got " << p << " instead " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 						if( p >= pend ) break;
@@ -2773,7 +2884,7 @@ read_elem_num_link:
 							}
 							else
 							{
-								std::cout << __FILE__ << ":" << __LINE__ << " error reading element tag in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+								std::cout << __FILE__ << ":" << __LINE__ << " error reading element tag in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 								throw BadFile;
 							}
 						}
@@ -2787,7 +2898,7 @@ read_elem_num_link:
 							--nodelist[nodelist.size()-elemnodes];
 							if( nodelist[nodelist.size()-elemnodes] < 0 || nodelist[nodelist.size()-elemnodes] >= newnodes.size() )
 							{
-								std::cout << __FILE__ << ":" << __LINE__ << " got node " << nodelist[nodelist.size()-elemnodes] << " but must be within [0:" << newnodes.size()-1 << "] in file " << LFile << " line " << line << std::endl;
+								std::cout << __FILE__ << ":" << __LINE__ << " got node " << nodelist[nodelist.size()-elemnodes] << " but must be within [0:" << newnodes.size()-1 << "] in file " << File << " line " << line << std::endl;
 								throw BadFile;
 							}
 							p += nchars;
@@ -2931,11 +3042,16 @@ read_elem_num_link:
 								c_nodes.clear();
 								state = GMSH_ELEMENTS_NUM;
 								ncells--;
+								if( verbosity > 1 && (newelems.size()-ncells)%report_pace == 0 )
+								{
+									printf("%3.1f%%\r",((newelems.size()-ncells)*100.0)/(newelems.size()*1.0));
+									fflush(stdout);
+								}
 							}
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " error reading node list for element in " << LFile << " got " << p << " instead " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " error reading node list for element in " << File << " got " << p << " instead " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 					}
@@ -2943,14 +3059,14 @@ read_elem_num_link:
 				case GMSH_FORMAT:
 					if( 4 == sscanf(p, "%1d.%1d %d %d\n",&verlow,&verhigh,&ascii,&float_size) )
 					{
-						if( !(verlow == 2 && verhigh == 0) )
+						if( !(verlow == 2 && verhigh == 0) && verbosity > 0)
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " version of file " << LFile << " is " << verlow << "." << verhigh << " expected 2.0 ";
-							std::cout << " in " << LFile << " line " << line << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " version of file " << File << " is " << verlow << "." << verhigh << " expected 2.0 ";
+							std::cout << " in " << File << " line " << line << std::endl;
 						}
 						if( ascii != 0 )
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " file " << LFile << " is binary, gmsh binary is not currently supported " << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " file " << File << " is binary, gmsh binary is not currently supported " << " line " << line <<std::endl;
 							throw BadFile;
 						}
 					}
@@ -2963,7 +3079,7 @@ read_elem_num_link:
 						}
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " unexpected line content " << p << " in file " << LFile << " line " << line <<std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " unexpected line content " << p << " in file " << File << " line " << line <<std::endl;
 						}
 					}
 					break;
@@ -2972,7 +3088,7 @@ read_elem_num_link:
 
 			if( state != GMSH_NONE )
 			{
-				std::cout << __FILE__ ":" << __LINE__ << " probably file " << LFile << " is not complitely written " << " line " << line <<std::endl;
+				std::cout << __FILE__ ":" << __LINE__ << " probably file " << File << " is not complitely written " << " line " << line <<std::endl;
 			}
 
 			fclose(f);
@@ -3567,7 +3683,23 @@ read_elem_num_link:
 		return -1;
 	}
 	
-	
+	INMOST_DATA_ENUM_TYPE VtkElementNodes(ElementType t)
+	{
+		switch(t)
+		{
+			case Element::Tri: return 3;
+			case Element::Quad: return 4;
+			case Element::MultiLine: return ENUMUNDEF;
+			case Element::Polygon: return ENUMUNDEF;
+			case Element::Tet: return 4;
+			case Element::Hex: return 8;
+			case Element::Prism: return 6;
+			case Element::Pyramid: return 5;
+			case Element::Polyhedron: return ENUMUNDEF;
+			case Element::MultiPolygon: return ENUMUNDEF;
+		}
+		return -1;
+	}
 	
 	void Mesh::Save(std::string File)
 	{
@@ -3662,6 +3794,7 @@ read_elem_num_link:
 						case Element::Prism:
 						{
 							adjacent<Node> nodes = (*it)->getNodes();
+							if( nodes.size() != 6 ) goto safe_output;
 							values.push_back(nodes.size());
 							values.push_back(nodes[0].LocalID());
 							values.push_back(nodes[2].LocalID());
@@ -3674,6 +3807,7 @@ read_elem_num_link:
 						case Element::Hex:
 						{
 							adjacent<Node> nodes = (*it)->getNodes();
+							if( nodes.size() != 8 ) goto safe_output;
 							values.push_back(nodes.size());
 							values.push_back(nodes[0].LocalID());
 							values.push_back(nodes[3].LocalID());
@@ -3688,6 +3822,7 @@ read_elem_num_link:
 						case Element::Pyramid:
 						{
 							adjacent<Node> nodes = (*it)->getNodes();
+							if( nodes.size() != 5 ) goto safe_output;
 							values.push_back(nodes.size());
 							values.push_back(nodes[0].LocalID());
 							values.push_back(nodes[3].LocalID());
@@ -3699,6 +3834,7 @@ read_elem_num_link:
 						case Element::Polyhedron:
 						case Element::MultiPolygon:
 						{
+safe_output:
 							//printf("polyhedron!!!\n");
 							adjacent<Face> faces = (*it)->getFaces();
                             int totalNum = 1 + faces.size();
@@ -3736,7 +3872,13 @@ read_elem_num_link:
 			}
 			fprintf(f,"CELL_TYPES %u\n",cells.size());
 			for(Mesh::cells_container::iterator it = cells.begin(); it != cells.end(); it++)
-				fprintf(f,"%d\n",VtkElementType((*it)->GetGeometricType()));
+			{
+				INMOST_DATA_ENUM_TYPE nnodes =  VtkElementNodes((*it)->GetGeometricType());
+				if( nnodes == ENUMUNDEF || nnodes == (*it)->high_conn.size() ) //nodes match - output correct type
+					fprintf(f,"%d\n",VtkElementType((*it)->GetGeometricType()));
+				else //number of nodes mismatch with expected - some topology checks must be off
+					fprintf(f,"%d\n",VtkElementType(Element::MultiPolygon));
+			}
 			
 			{
 				std::vector<std::string> tag_names;

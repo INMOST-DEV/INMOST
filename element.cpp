@@ -232,7 +232,7 @@ namespace INMOST
 	}
 
 
-	INMOST_DATA_ENUM_TYPE Element::nbAdjElements(ElementType _etype, MIDType mask)const 
+	INMOST_DATA_ENUM_TYPE Element::nbAdjElements(ElementType _etype, MIDType mask, bool invert)const 
 	{
 		assert( !(_etype & MESH) );
 		assert( !(_etype & ESET) );
@@ -252,17 +252,17 @@ namespace INMOST
 			{
 				if( i == myconn )
 				{
-					if( GetMarker(mask) ) ret += 1;
+					if( invert ^ GetMarker(mask) ) ret += 1;
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it) 
-						if( (*it)->GetMarker(mask) ) ret++;
+						if( invert ^ (*it)->GetMarker(mask) ) ret++;
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it) 
-						if( (*it)->GetMarker(mask) ) ret++;
+						if( invert ^ (*it)->GetMarker(mask) ) ret++;
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
@@ -272,7 +272,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
 							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -290,7 +290,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
 							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -311,17 +311,17 @@ namespace INMOST
 			{
 				if( i == myconn )
 				{
-					if( !GetMarker(hm) && GetMarker(mask) ) ret ++;
+					if( !GetMarker(hm) && (invert ^ GetMarker(mask)) ) ret ++;
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
-						if( !(*it)->GetMarker(hm) && (*it)->GetMarker(mask) ) ret++;
+						if( !(*it)->GetMarker(hm) && (invert ^ (*it)->GetMarker(mask)) ) ret++;
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
-						if( !(*it)->GetMarker(hm) && (*it)->GetMarker(mask) ) ret++;
+						if( !(*it)->GetMarker(hm) && (invert ^ (*it)->GetMarker(mask)) ) ret++;
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
@@ -331,7 +331,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
 							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -349,7 +349,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
 							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -492,7 +492,7 @@ namespace INMOST
 		return result;
 	}
 	
-	adjacent<Element> Element::getAdjElements(ElementType _etype, MIDType mask) const 
+	adjacent<Element> Element::getAdjElements(ElementType _etype, MIDType mask, bool invert) const 
 	{
 		assert( !(_etype & MESH) );
 		assert( !(_etype & ESET) );
@@ -513,18 +513,18 @@ namespace INMOST
 			{
 				if( i == myconn )
 				{
-					if( GetMarker(mask) ) result.push_back(const_cast<Element *>(this));
+					if( invert ^ GetMarker(mask) ) result.push_back(const_cast<Element *>(this));
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
-						if( (*it)->GetMarker(mask) ) result.push_back(*it);
+						if( invert ^ (*it)->GetMarker(mask) ) result.push_back(*it);
 					
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
-						if( (*it)->GetMarker(mask) ) result.push_back(*it);
+						if( invert ^ (*it)->GetMarker(mask) ) result.push_back(*it);
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
@@ -534,7 +534,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
 							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -549,7 +549,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
 							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -568,19 +568,19 @@ namespace INMOST
 			{
 				if( i == myconn )
 				{
-					if( !GetMarker(hm) && GetMarker(mask) )
+					if( !GetMarker(hm) && (invert ^ GetMarker(mask)) )
 						result.push_back(const_cast<Element *>(this));
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
-						if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) result.push_back(*it);
+						if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) result.push_back(*it);
 					
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
 					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
-						if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) result.push_back(*it);
+						if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) result.push_back(*it);
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
@@ -590,7 +590,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
 							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -605,7 +605,7 @@ namespace INMOST
 						MIDType mrk = m->CreateMarker();
 						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
 							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
-								if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
 									(*jt)->SetMarker(mrk);
@@ -657,28 +657,28 @@ namespace INMOST
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	
-	adjacent<Node> Element::getNodes(MIDType mask)
+	adjacent<Node> Element::getNodes(MIDType mask,bool invert)
 	{
 		adjacent<Node> ret;
-		if( GetMarker(mask) ) ret.push_back(this);
+		if( invert ^ GetMarker(mask) ) ret.push_back(this);
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
-	adjacent<Edge> Element::getEdges(MIDType mask)
+	adjacent<Edge> Element::getEdges(MIDType mask,bool invert)
 	{
 		adjacent<Edge> ret;
-		if( GetMarker(mask) ) ret.push_back(this);
+		if( invert ^ GetMarker(mask) ) ret.push_back(this);
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
-	adjacent<Face> Element::getFaces(MIDType mask)
+	adjacent<Face> Element::getFaces(MIDType mask,bool invert)
 	{
 		adjacent<Face> ret;
-		if( GetMarker(mask) ) ret.push_back(this);
+		if( invert ^ GetMarker(mask) ) ret.push_back(this);
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
-	adjacent<Cell> Element::getCells(MIDType mask)
+	adjacent<Cell> Element::getCells(MIDType mask,bool invert)
 	{
 		adjacent<Cell> ret;
-		if( GetMarker(mask) ) ret.push_back(this);
+		if( invert ^ GetMarker(mask) ) ret.push_back(this);
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	
@@ -810,7 +810,7 @@ namespace INMOST
 	
 	
 	
-	adjacent<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MIDType mask)
+	adjacent<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MIDType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
 		MIDType mrk = m->CreateMarker();
@@ -822,7 +822,7 @@ namespace INMOST
 		{
 			adjacent<Element> sub = it->getAdjElements(Dest);
 			for(adjacent<Element>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
 				{
 					adjcells.push_back(&*jt);
 					jt->SetMarker(mrk);
@@ -835,7 +835,7 @@ namespace INMOST
 	}
 
 
-	adjacent<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MIDType mask)
+	adjacent<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MIDType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
 		MIDType mrk = m->CreateMarker();
@@ -847,7 +847,7 @@ namespace INMOST
 		{
 			adjacent<Node> sub = it->getNodes();
 			for(adjacent<Node>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
 				{
 					adjcells.push_back(&*jt);
 					jt->SetMarker(mrk);
@@ -859,7 +859,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	adjacent<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MIDType mask)
+	adjacent<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MIDType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
 		MIDType mrk = m->CreateMarker();
@@ -871,7 +871,7 @@ namespace INMOST
 		{
 			adjacent<Edge> sub = it->getEdges();
 			for(adjacent<Edge>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
 				{
 					adjcells.push_back(&*jt);
 					jt->SetMarker(mrk);
@@ -883,7 +883,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	adjacent<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MIDType mask)
+	adjacent<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MIDType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
 		MIDType mrk = m->CreateMarker();
@@ -895,7 +895,7 @@ namespace INMOST
 		{
 			adjacent<Face> sub = it->getFaces();
 			for(adjacent<Face>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
 				{
 					adjcells.push_back(&*jt);
 					jt->SetMarker(mrk);
@@ -907,7 +907,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	adjacent<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MIDType mask)
+	adjacent<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MIDType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
 		MIDType mrk = m->CreateMarker();
@@ -919,7 +919,7 @@ namespace INMOST
 		{
 			adjacent<Cell> sub = it->getCells();
 			for(adjacent<Cell>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || jt->GetMarker(mask)) )
+				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
 				{
 					adjcells.push_back(&*jt);
 					jt->SetMarker(mrk);

@@ -220,7 +220,7 @@ namespace INMOST
 			case CELL:
 				if( lc[0]->GetElementDimension() == 1 )
 				{
-					if( TestClosure(lc,s) )
+					if( !GetTopologyCheck(NEED_TEST_CLOSURE) || TestClosure(lc,s) )
 					{
 						if( s == 3 )
 							ret = Element::Tri;
@@ -267,7 +267,8 @@ namespace INMOST
 	{
 		m_type = Unset;
 		adjacent<Element> lc = getAdjElements(GetElementType() >> 1);
-		m_type = GetMeshLink()->ComputeGeometricType(GetElementType(),lc.data(),lc.size());
+		if( !lc.empty() )
+			m_type = GetMeshLink()->ComputeGeometricType(GetElementType(),lc.data(),lc.size());
 		/*
 		if( lc.size() == 0 && etypenum != 0) return;
 		switch(etypenum)
@@ -471,8 +472,11 @@ namespace INMOST
 					if( (mask & etype) && !HaveGeometricData(CENTROID,etype))
 					{
 						centroid_tag = CreateTag("GEOM_UTIL_CENTROID",DATA_REAL,etype,NONE,GetDimensions());
-						for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); ++e)
-							GetGeometricData(&*e,CENTROID,&e->RealDF(centroid_tag));
+						for(INMOST_DATA_INTEGER_TYPE k = 0; k < MaxLocalID(etype); ++k)
+						{
+							Element * e = ElementByLocalID(etype,k);
+							if( e != NULL ) GetGeometricData(e,CENTROID,&e->RealDF(centroid_tag));
+						}
 						ShowGeometricData(CENTROID,etype);
 					}
 				}

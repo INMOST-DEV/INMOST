@@ -84,19 +84,19 @@ namespace INMOST
 		}
 	}
 
-	adjacent<Node> Edge::getNodes(MIDType mask)
+	adjacent<Node> Edge::getNodes(MIDType mask, bool invert)
 	{
 		adjacent<Node> aret;
 		if( !GetMeshLink()->HideMarker() )
 		{	
 			for(adj_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) ) aret.push_back((*it));
+				if( invert ^ (*it)->GetMarker(mask) ) aret.push_back((*it));
 		}
 		else
 		{
 			MIDType hm = GetMeshLink()->HideMarker();
 			for(adj_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
+				if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
 		}
 		return aret;
 	}
@@ -116,19 +116,19 @@ namespace INMOST
 	}
 
 
-	adjacent<Face> Edge::getFaces(MIDType mask)
+	adjacent<Face> Edge::getFaces(MIDType mask, bool invert)
 	{
 		adjacent<Face> aret;
 		if( !GetMeshLink()->HideMarker() )
 		{
 			for(adj_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) ) aret.push_back((*it));
+				if( (invert ^ (*it)->GetMarker(mask)) ) aret.push_back((*it));
 		}
 		else
 		{
 			MIDType hm = GetMeshLink()->HideMarker();
 			for(adj_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
-				if( (*it)->GetMarker(mask) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
+				if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) aret.push_back((*it));
 		}
 		return aret;
 	}
@@ -165,7 +165,7 @@ namespace INMOST
 		return aret;
 	}
 
-	adjacent<Cell> Edge::getCells(MIDType mask)
+	adjacent<Cell> Edge::getCells(MIDType mask, bool invert)
 	{
 		adjacent<Cell> aret;
 		Mesh * m = GetMeshLink();
@@ -174,7 +174,7 @@ namespace INMOST
 		{
 			for(Element::adj_iterator it = high_conn.begin(); it != high_conn.end(); it++) //faces
 				for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) //cels
-					if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+					if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 					{
 						aret.push_back(*jt);
 						(*jt)->SetMarker(mrk);
@@ -185,7 +185,7 @@ namespace INMOST
 			MIDType hm = GetMeshLink()->HideMarker();
 			for(Element::adj_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) ) //faces
 				for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) ) //cels
-					if( (*jt)->GetMarker(mask) && !(*jt)->GetMarker(mrk) )
+					if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 					{
 						aret.push_back(*jt);
 						(*jt)->SetMarker(mrk);

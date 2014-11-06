@@ -1833,6 +1833,8 @@ namespace INMOST
 			}
 		}
 	public:
+		element * data() {return pbegin;}
+		const element * data() const {return pbegin;}
 		void report_addr()
 		{
 			std::cout << "stack:     " << &stack << std::endl;

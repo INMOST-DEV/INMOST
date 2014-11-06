@@ -2077,129 +2077,158 @@ public:
 	void Element::Disconnect(Element ** adjacent, INMOST_DATA_ENUM_TYPE num)
 	{
 		INMOST_DATA_ENUM_TYPE k = 0;
-		dynarray<Element *,64> arr;
+		dynarray<Element *,64> arr[4];
 		MIDType mrk = GetMeshLink()->CreateMarker(), mod = GetMeshLink()->CreateMarker();
 		for(k = 0; k < num; k++) adjacent[k]->SetMarker(mrk);
 		adj_iterator it;
-		it = low_conn.begin();
-		while(it != low_conn.end() ) 
+		// disconnects nodes from current edge, edges from current face, faces from current cell
+		if( GetElementType() > NODE ) //cannot disconnect cells from current node
 		{
-			if( (*it)->GetMarker(mrk) )
+			it = low_conn.begin();
+			//look into nodes (edge), edges (face), faces (cell)
+			while(it != low_conn.end() ) 
 			{
-				if( GetElementType() == CELL )
+				if( (*it)->GetMarker(mrk) ) //element should be disconnected
 				{
-					MIDType hm = GetMeshLink()->HideMarker();
-					if( !(*it)->high_conn.empty() && Mesh::Count(&(*it)->high_conn[0],(*it)->high_conn.size(),hm) == 2 )
+					if( GetElementType() == CELL ) //update some geometric data
 					{
-						INMOST_DATA_ENUM_TYPE k1 = static_cast<INMOST_DATA_ENUM_TYPE>(-1), k2;
-						k1 = Mesh::getNext(&(*it)->high_conn[0],(*it)->high_conn.size(),k1,hm);
-						if( (*it)->high_conn[k1] == this ) //the first cell is current
+						MIDType hm = GetMeshLink()->HideMarker();
+						if( !(*it)->high_conn.empty() && Mesh::Count(&(*it)->high_conn[0],(*it)->high_conn.size(),hm) == 2 )
 						{
-							k2 = Mesh::getNext(&(*it)->high_conn[0],(*it)->high_conn.size(),k1,hm);
-							(*it)->high_conn[k1] = (*it)->high_conn[k2];
-							(*it)->high_conn[k2] = this;
-							(*it)->getAsFace()->FixNormalOrientation(); //restore orientation
+							INMOST_DATA_ENUM_TYPE k1 = static_cast<INMOST_DATA_ENUM_TYPE>(-1), k2;
+							k1 = Mesh::getNext(&(*it)->high_conn[0],(*it)->high_conn.size(),k1,hm);
+							if( (*it)->high_conn[k1] == this ) //the first cell is current
+							{
+								k2 = Mesh::getNext(&(*it)->high_conn[0],(*it)->high_conn.size(),k1,hm);
+								(*it)->high_conn[k1] = (*it)->high_conn[k2];
+								(*it)->high_conn[k2] = this;
+								(*it)->getAsFace()->FixNormalOrientation(); //restore orientation
+							}
 						}
 					}
-				}
-
-				for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); ++jt)
-				{
-					if( *jt == this )
+					//look into edges of node (edge) faces of edge (face) cells of face (cell)
+					for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); ++jt)
 					{
-						(*it)->high_conn.erase(jt);
-						if( !(*it)->GetMarker(mod) ) 
-						{
-							(*it)->SetMarker(mod);
-							arr.push_back(*it);
-						}
-						break;
-					}
-				}
-				if( !GetMarker(mod) )
-				{
-					SetMarker(mod);
-					arr.push_back(*it);
-				}
-				it = low_conn.erase(it);
-			}
-			else it++;
-		}
-		if( GetElementType() < CELL )
-		{
-			it = high_conn.begin();
-			while(it != high_conn.end() ) 
-			{
-				if( (*it)->GetMarker(mrk) )
-				{
-					for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); ++jt)
-					{
-						if( *jt == this )
+						if( *jt == this ) //remove me
 						{
 							(*it)->high_conn.erase(jt);
+							/* //don't update me
+							//only lower adjacencies affect geometric data of element
+							//this may be subject to change
 							if( !(*it)->GetMarker(mod) ) 
 							{
 								(*it)->SetMarker(mod);
-								arr.push_back(*it);
+								arr[(*it)->GetElementNum()].push_back(*it);
+							}
+							*/
+							break;
+						}
+					}
+					//update my data
+					if( !GetMarker(mod) ) 
+					{
+						SetMarker(mod);
+						arr[GetElementNum()].push_back(this);
+					}
+					//disconnect element
+					it = low_conn.erase(it);
+				}
+				else it++;
+			}
+		}
+		// disconnect edges from current node, faces from current edge, cells from current face
+		if( GetElementType() < CELL ) //Cell cannot be disconnected from nodes
+		{
+			it = high_conn.begin();
+			//go over edges (node), faces (edge), cells (face)
+			while(it != high_conn.end() ) 
+			{
+				if( (*it)->GetMarker(mrk) ) //should be disconnected
+				{
+					//look into nodes of edge (node), edges of face (edge), faces of cell (face)
+					for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); ++jt)
+					{
+						if( *jt == this ) //remove me
+						{
+							(*it)->low_conn.erase(jt);
+							// lower adjacencies of edge (node), face (edge), cell (face) where modified
+							// update it's geometric data
+							if( !(*it)->GetMarker(mod) ) 
+							{
+								(*it)->SetMarker(mod);
+								arr[(*it)->GetElementNum()].push_back(*it);
 							}
 							break;
 						}
 					}
+					/* //don't update me
+					//only lower adjacencies affect geometric data of element
+					//this may be subject to change
 					if( !GetMarker(mod) )
 					{
 						SetMarker(mod);
-						arr.push_back(*it);
+						arr[GetElementNum()].push_back(this);
 					}
+					*/
+					//disconnect element
 					it = high_conn.erase(it);
 				}
 				else it++;
 			}
 		}
 		for(k = 0; k < num; k++) adjacent[k]->RemMarker(mrk);
-		for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1 )
+		//if element placed below on ierarhy was modified, then all upper elements
+		//should be also modified, start from lowest elements in ierarchy and go up
+		for(ElementType etype = NODE; etype <= CELL; etype = etype << 1 )
 		{
-			for(dynarray<Element *, 64>::iterator it = arr.begin(); it != arr.end(); it++) 
+			int el_num = ElementNum(etype);
+			for(dynarray<Element *, 64>::iterator it = arr[el_num].begin(); it != arr[el_num].end(); it++) 
 			{
-				if( (*it)->GetGeometricType() == etype )
+				assert( (*it)->GetElementType() == etype );
+				if( etype < CELL ) //check for upper adjacencies of current element
 				{
-					if( etype < CELL )
+					//check all upper adjacencies that may be affected by modification of me
+					for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); ++jt)
 					{
-						for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); ++jt)
+						if( !(*jt)->GetMarker(mod))
 						{
-							if( !(*jt)->GetMarker(mod))
-							{
-								(*jt)->SetMarker(mod);
-								arr.push_back(*jt);
-							}
+							(*jt)->SetMarker(mod);
+							arr[(*jt)->GetElementNum()].push_back(*jt);
 						}
 					}
-					else 
+					(*it)->ComputeGeometricType();
+				}
+				else //update nodes for current cell
+				{
+					//remove me from old nodes
+					for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); ++jt) //iterate over my nodes
+					{
+						adj_iterator kt = (*jt)->low_conn.begin(); 
+						while(kt != (*jt)->low_conn.end()) //iterate over nodes's cells
+						{
+							if( (*kt) == (*it) ) // if nodes's cell is equal to modified cell, then remove connection
+							{
+								kt = (*jt)->low_conn.erase(kt);
+								break;
+							}
+							else kt++;
+						}
+					}
+					(*it)->high_conn.clear(); //disconnect cell from all of it's nodes
+					if( !(*it)->low_conn.empty() )
 					{
 						dynarray<Node *, 64> newnodes;
-						//remove me from old nodes
-						for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); ++jt) //iterate over my nodes
-						{
-							adj_iterator kt = (*jt)->low_conn.begin(); 
-							while(kt != (*jt)->low_conn.end()) //iterate over nodes's cells
-							{
-								if( (*kt) == (*it) )
-								{
-									kt = (*jt)->low_conn.erase(kt);
-									break;
-								}
-								else kt++;
-							}
-						}
-						(*it)->high_conn.clear();
-						GetMeshLink()->RestoreCellNodes((*it)->getAsCell(),newnodes);
-						(*it)->high_conn.insert((*it)->high_conn.end(),newnodes.begin(),newnodes.end());
-						//add me to new cells
+						(*it)->ComputeGeometricType();
+						GetMeshLink()->RestoreCellNodes((*it)->getAsCell(),newnodes); //find new nodes of the cell
+						(*it)->high_conn.insert((*it)->high_conn.end(),newnodes.begin(),newnodes.end()); //connect to new nodes
+						//add me to my new nodes
 						for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); ++jt)
 							(*jt)->low_conn.push_back(*it);
 					}
-					(*it)->UpdateGeometricData();
-					(*it)->RemMarker(mod);
 				}
+				(*it)->UpdateGeometricData();
+				
+				(*it)->RemMarker(mod);
 			}
 		}
 		GetMeshLink()->ReleaseMarker(mod);
@@ -2215,9 +2244,40 @@ public:
 			assert( !(adjacent[k]->GetElementType() == FACE && adjacent[k]->high_conn.size() > 1) ); // face already connected to two cells
 
 			adjacent[k]->high_conn.push_back(this);
-			low_conn.push_back(adjacent[k]);
+			//this may be dead slow
+			//low_conn.push_back(adjacent[k]);
 		}
+		low_conn.insert(low_conn.end(),adjacent,adjacent+num);
+		if( GetElementType() == CELL ) //update cell nodes
+		{
+			//remove me from old nodes
+			for(adj_iterator jt = high_conn.begin(); jt != high_conn.end(); ++jt) //iterate over my nodes
+			{
+				adj_iterator kt = (*jt)->low_conn.begin(); 
+				while(kt != (*jt)->low_conn.end()) //iterate over nodes's cells
+				{
+					if( (*kt) == this ) // if nodes's cell is equal to modified cell, then remove connection
+					{
+						kt = (*jt)->low_conn.erase(kt);
+						break;
+					}
+					else kt++;
+				}
+			}
+			high_conn.clear(); //disconnect cell from all of it's nodes
+			if( !low_conn.empty() )
+			{
+				dynarray<Node *, 64> newnodes;
+				ComputeGeometricType();
+				GetMeshLink()->RestoreCellNodes(getAsCell(),newnodes); //find new nodes of the cell
+				high_conn.insert(high_conn.end(),newnodes.begin(),newnodes.end()); //connect to new nodes
+				//add me to my new nodes
+				for(adj_iterator jt = high_conn.begin(); jt != high_conn.end(); ++jt) (*jt)->low_conn.push_back(this);
+			}
+		}
+		else ComputeGeometricType();
 		UpdateGeometricData();
+		
 	}
 }
 

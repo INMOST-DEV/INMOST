@@ -549,7 +549,7 @@ namespace INMOST
 		void clear() {container.clear();}
 		void reserve(size_t n) {container.reserve(n);}
 		size_t size() const { return container.size(); }
-		AdjacentType ** data() {return reinterpret_cast<AdjacentType **>(&container[0]);}
+		AdjacentType ** data() {return reinterpret_cast<AdjacentType **>(container.data());}
 		void unite(const adjacent<AdjacentType>  & other);
 		void substract(const adjacent<AdjacentType>  & other);
 		void intersect(const adjacent<AdjacentType>  & other);
@@ -597,21 +597,21 @@ namespace INMOST
 		virtual ~Element();
 		INMOST_DATA_ENUM_TYPE   nbAdjElements(ElementType _etype) const;
 		adjacent<Element>       getAdjElements(ElementType _etype) const;  //unordered
-		INMOST_DATA_ENUM_TYPE   nbAdjElements(ElementType _etype, MIDType mask) const;
-		adjacent<Element>       getAdjElements(ElementType _etype, MIDType mask) const;  //unordered
-		adjacent<Element>       BridgeAdjacencies(ElementType Bridge, ElementType Dest, MIDType mask = 0);
-		adjacent<Node>          BridgeAdjacencies2Node(ElementType Bridge, MIDType mask = 0);
-		adjacent<Edge>          BridgeAdjacencies2Edge(ElementType Bridge, MIDType mask = 0);
-		adjacent<Face>          BridgeAdjacencies2Face(ElementType Bridge, MIDType mask = 0);
-		adjacent<Cell>          BridgeAdjacencies2Cell(ElementType Bridge, MIDType mask = 0);
+		INMOST_DATA_ENUM_TYPE   nbAdjElements(ElementType _etype, MIDType mask, bool invert_mask = false) const;
+		adjacent<Element>       getAdjElements(ElementType _etype, MIDType mask, bool invert_mask = false) const;  //unordered
+		adjacent<Element>       BridgeAdjacencies(ElementType Bridge, ElementType Dest, MIDType mask = 0, bool invert_mask = false);
+		adjacent<Node>          BridgeAdjacencies2Node(ElementType Bridge, MIDType mask = 0, bool invert_mask = false);
+		adjacent<Edge>          BridgeAdjacencies2Edge(ElementType Bridge, MIDType mask = 0, bool invert_mask = false);
+		adjacent<Face>          BridgeAdjacencies2Face(ElementType Bridge, MIDType mask = 0, bool invert_mask = false);
+		adjacent<Cell>          BridgeAdjacencies2Cell(ElementType Bridge, MIDType mask = 0, bool invert_mask = false);
 		virtual adjacent<Node>  getNodes(); //unordered
 		virtual adjacent<Edge>  getEdges(); //unordered
 		virtual adjacent<Face>  getFaces(); //unordered
 		virtual adjacent<Cell>  getCells(); //unordered
-		virtual adjacent<Node>  getNodes(MIDType mask); //unordered
-		virtual adjacent<Edge>  getEdges(MIDType mask); //unordered
-		virtual adjacent<Face>  getFaces(MIDType mask); //unordered
-		virtual adjacent<Cell>  getCells(MIDType mask); //unordered
+		virtual adjacent<Node>  getNodes(MIDType mask,bool invert_mask = false); //unordered
+		virtual adjacent<Edge>  getEdges(MIDType mask,bool invert_mask = false); //unordered
+		virtual adjacent<Face>  getFaces(MIDType mask,bool invert_mask = false); //unordered
+		virtual adjacent<Cell>  getCells(MIDType mask,bool invert_mask = false); //unordered
 		Node *                  getAsNode(); //does dynamic conversation for you, if not a node returns NULL
 		Edge *                  getAsEdge(); //does dynamic conversation for you, if not an edge returns NULL
 		Face *                  getAsFace(); //does dynamic conversation for you, if not a face returns NULL
@@ -638,9 +638,18 @@ namespace INMOST
 		bool                    Hidden();
 		bool                    New();
 		void                    Disconnect(bool delete_upper_adjacent); //disconnect all elements, delete upper dependent
-		void                    Disconnect(Element ** adjacent, INMOST_DATA_ENUM_TYPE num); //disconnect upper or lower adjacent elements from current element, geometric data is updated automatically
-		void                    Connect(Element ** adjacent, INMOST_DATA_ENUM_TYPE num); //connect lower adjacent elements to current element, geometric data is updated automatically
-		void                    UpdateGeometricData(); //update geometric data for element, calls RecomputeGeometricData from Mesh
+		/// Disconnects nodes from this edge, edges from this face, faces from this cell, cannot disconnect cells from this node;
+		/// Disconnects edges from this node, faces from this edge, cells from this face, cannot disconnect nodes from this cell;
+		/// Updates geometric data and cell nodes automatically.
+		void                    Disconnect(Element ** adjacent, INMOST_DATA_ENUM_TYPE num);
+		/// Connects lower adjacencies to current element, 
+		/// geometric data and cell nodes are updated automatically.
+		/// TODO:
+		///		1. asserts in this function should be replaced by Topography checks;
+		///		2. this function should be used for creation of elements instead of current implementation.
+		void                    Connect(Element ** adjacent, INMOST_DATA_ENUM_TYPE num); 
+		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
+		void                    UpdateGeometricData(); 
 	};
 	
 	class Node : public Element //implemented in node.cpp
@@ -657,9 +666,9 @@ namespace INMOST
 		adjacent<Face>              getFaces(); //unordered
 		adjacent<Cell>              getCells(); //unordered
 
-		adjacent<Edge>              getEdges(MIDType mask); //unordered
-		adjacent<Face>              getFaces(MIDType mask); //unordered
-		adjacent<Cell>              getCells(MIDType mask); //unordered
+		adjacent<Edge>              getEdges(MIDType mask,bool invert_mask = false); //unordered
+		adjacent<Face>              getFaces(MIDType mask,bool invert_mask = false); //unordered
+		adjacent<Cell>              getCells(MIDType mask,bool invert_mask = false); //unordered
 
 		Storage::real_array         Coords(); 
 		friend class Mesh;
@@ -679,9 +688,9 @@ namespace INMOST
 		adjacent<Face>              getFaces(); //unordered
 		adjacent<Cell>              getCells(); //unordered
 
-		adjacent<Node>              getNodes(MIDType mask); //ordered
-		adjacent<Face>              getFaces(MIDType mask); //unordered
-		adjacent<Cell>              getCells(MIDType mask); //unordered
+		adjacent<Node>              getNodes(MIDType mask,bool invert_mask = false); //ordered
+		adjacent<Face>              getFaces(MIDType mask,bool invert_mask = false); //unordered
+		adjacent<Cell>              getCells(MIDType mask,bool invert_mask = false); //unordered
 
 		Node *                      getBeg() const;
 		Node *                      getEnd() const;
@@ -709,9 +718,9 @@ namespace INMOST
 		adjacent<Edge>              getEdges(); //ordered
 		adjacent<Cell>              getCells(); //unordered
 
-		adjacent<Node>              getNodes(MIDType mask); //ordered
-		adjacent<Edge>              getEdges(MIDType mask); //ordered
-		adjacent<Cell>              getCells(MIDType mask); //unordered
+		adjacent<Node>              getNodes(MIDType mask,bool invert_mask = false); //ordered
+		adjacent<Edge>              getEdges(MIDType mask,bool invert_mask = false); //ordered
+		adjacent<Cell>              getCells(MIDType mask,bool invert_mask = false); //unordered
 
 		//this is for 2d case when the face is represented by segment
 		Node *                      getBeg() const;
@@ -755,9 +764,9 @@ namespace INMOST
 		adjacent<Edge>              getEdges(); //unordered
 		adjacent<Face>              getFaces(); //ordered (keeps order it was created in)
 
-		adjacent<Node>              getNodes(MIDType mask); //ordered (for known geometric types only)
-		adjacent<Edge>              getEdges(MIDType mask); //unordered
-		adjacent<Face>              getFaces(MIDType mask); //ordered (keeps order it was created in)
+		adjacent<Node>              getNodes(MIDType mask,bool invert_mask = false); //ordered (for known geometric types only)
+		adjacent<Edge>              getEdges(MIDType mask,bool invert_mask = false); //unordered
+		adjacent<Face>              getFaces(MIDType mask,bool invert_mask = false); //ordered (keeps order it was created in)
 		
 		
 		bool                        CheckEdgeOrder(); //not implemented//2D only, returns true if edges of face form an ordered closed loop
@@ -1174,8 +1183,13 @@ namespace INMOST
 	public:
 		/// Current availible file options:
 		/// "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
-		void         SetFileOptions(std::vector< std::pair<std::string,std::string> > options);
+		/// "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
+		void         SetFileOption(std::string,std::string);
+		std::string  GetFileOption(std::string);
 		void         Load(std::string File); // .vtk, .pvtk, .pmf
+		/// Remeber: .pmf stores all references to elements. If reference are broken due to mesh modification,
+		///          saving or loading such a mesh may lead to seagfault. To automatically maintain correct
+		///          references modify mesh using BeginModification, ApplyModification, EndModification
 		void         Save(std::string File); // .vtk, .pvtk, .gmv, .pmf
 		bool         isParallelFileFormat(std::string File);
 	public:

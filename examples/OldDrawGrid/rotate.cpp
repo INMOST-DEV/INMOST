@@ -17,6 +17,7 @@
 #include "my_glut.h"
 #include "rotate.h"
 #include "math.h"
+#include <vector>
 
 struct quaternion
 {
@@ -35,7 +36,7 @@ double mx,my;
 extern int width, height;
 extern int interactive;
 //
-
+std::vector<quaternion> storage;
 
 void clickmotion(int nmx, int nmy) // Mouse
 {
@@ -119,6 +120,19 @@ void quatinit()
 	q.w = 1.0;
 }
 
+void quatpush()
+{
+	storage.push_back(q);
+}
+
+void quatpop()
+{
+	if( !storage.empty() )
+	{
+		q = storage.back();
+		storage.pop_back();
+	}
+}
 
 void rotatevector(double * vec)
 {
@@ -154,9 +168,105 @@ void rotatevector(double * vec)
 	vec[2] = ret[2]/ret[3];
 }
 
+void revrotatevector(double * vec)
+{
+	int i;
+	double rot[16];
+	double temp[4] = {vec[0],vec[1],vec[2],1.0};
+	double ret[4];
+	q.w = -q.w;
+	rot[ 0] = (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
+	rot[ 1] = 2.*(q.x*q.y - q.w*q.z);
+	rot[ 2] = 2.*(q.x*q.z + q.w*q.y);
+	rot[ 3] = 0.0;
+	rot[ 4] = 2.*(q.x*q.y + q.w*q.z);
+	rot[ 5] = (q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z);
+	rot[ 6] = 2.*(q.y*q.z - q.w*q.x);
+	rot[ 7] = 0.0;
+	rot[ 8] = 2.*(q.x*q.z - q.w*q.y);
+	rot[ 9] = 2.*(q.y*q.z + q.w*q.x);
+	rot[10] = (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+	rot[11] = 0.0;
+	rot[12] = 0.0;
+	rot[13] = 0.0;
+	rot[14] = 0.0;
+	rot[15] = (q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+	for(i=0; i < 4; i++)
+	{
+		ret[i]  = temp[0] * rot[i*4];
+		ret[i] += temp[1] * rot[i*4+1];
+		ret[i] += temp[2] * rot[i*4+2];
+		ret[i] += temp[3] * rot[i*4+3];
+	}
+	vec[0] = ret[0]/ret[3];
+	vec[1] = ret[1]/ret[3];
+	vec[2] = ret[2]/ret[3];
+	q.w = -q.w;
+}
+
+
+void rotatevector_from_stack(double * vec)
+{
+	int i;
+	struct quaternion q = storage.back();
+	double rot[16];
+	double temp[4] = {vec[0],vec[1],vec[2],1.0};
+	double ret[4];
+	rot[ 0] = (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
+	rot[ 1] = 2.*(q.x*q.y - q.w*q.z);
+	rot[ 2] = 2.*(q.x*q.z + q.w*q.y);
+	rot[ 3] = 0.0;
+	rot[ 4] = 2.*(q.x*q.y + q.w*q.z);
+	rot[ 5] = (q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z);
+	rot[ 6] = 2.*(q.y*q.z - q.w*q.x);
+	rot[ 7] = 0.0;
+	rot[ 8] = 2.*(q.x*q.z - q.w*q.y);
+	rot[ 9] = 2.*(q.y*q.z + q.w*q.x);
+	rot[10] = (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+	rot[11] = 0.0;
+	rot[12] = 0.0;
+	rot[13] = 0.0;
+	rot[14] = 0.0;
+	rot[15] = (q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+	for(i=0; i < 4; i++)
+	{
+		ret[i]  = temp[0] * rot[i*4];
+		ret[i] += temp[1] * rot[i*4+1];
+		ret[i] += temp[2] * rot[i*4+2];
+		ret[i] += temp[3] * rot[i*4+3];
+	}
+	vec[0] = ret[0]/ret[3];
+	vec[1] = ret[1]/ret[3];
+	vec[2] = ret[2]/ret[3];
+}
+
 void rotate()
 {
 	double rot[16];
+	rot[ 0] = (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
+	rot[ 1] = 2.*(q.x*q.y - q.w*q.z);
+	rot[ 2] = 2.*(q.x*q.z + q.w*q.y);
+	rot[ 3] = 0.0;
+	rot[ 4] = 2.*(q.x*q.y + q.w*q.z);
+	rot[ 5] = (q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z);
+	rot[ 6] = 2.*(q.y*q.z - q.w*q.x);
+	rot[ 7] = 0.0;
+	rot[ 8] = 2.*(q.x*q.z - q.w*q.y);
+	rot[ 9] = 2.*(q.y*q.z + q.w*q.x);
+	rot[10] = (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+	rot[11] = 0.0;
+	rot[12] = 0.0;
+	rot[13] = 0.0;
+	rot[14] = 0.0;
+	rot[15] = (q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+	glMultMatrixd(rot);
+}
+
+
+void rotate_from_stack()
+{
+	double rot[16];
+	struct quaternion q = storage.back();
 	rot[ 0] = (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
 	rot[ 1] = 2.*(q.x*q.y - q.w*q.z);
 	rot[ 2] = 2.*(q.x*q.z + q.w*q.y);
