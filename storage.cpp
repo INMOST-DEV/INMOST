@@ -93,9 +93,9 @@ namespace INMOST
 			//std::cout << "swap " << t->GetTagName() << " from " << local_id << " to " << new_local_id << " record size: " << record_size << " bytes: " << bytes << " data size: " << data_size << std::endl;
 			
 			temp.resize(record_size);
-			memcpy(&temp[0],&arr[to],record_size);
+			memcpy(temp.data(),&arr[to],record_size);
 			memcpy(&arr[to],&arr[from],record_size);
-			memcpy(&arr[from],&temp[0],record_size);
+			memcpy(&arr[from],temp.data(),record_size);
 		}
 	}
 	Storage::Storage(Mesh * m, ElementType _etype)

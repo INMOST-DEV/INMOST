@@ -858,7 +858,7 @@ namespace INMOST
 		typedef chunk_array<Face *,15>                 faces_container;
 		typedef chunk_array<Cell *,15>                 cells_container;
 		typedef chunk_array<ElementSet *,7>            sets_container;
-		typedef std::vector<INMOST_DATA_ENUM_TYPE>     empty_container;
+		typedef chunk_array<INMOST_DATA_ENUM_TYPE,7>     empty_container;
 
 		//typedef std::vector<Node *>                 nodes_container;
 		//typedef std::vector<Edge *>                 edges_container;
@@ -956,6 +956,7 @@ namespace INMOST
 		ElementSet * CreateOrderedSet();
 		Element * FindSharedAdjacency(Element * const * arr, unsigned num) ;
 		void ReorderEmpty(ElementType reordertypes);
+		//Bug inside: sort would not work on chunk_array, because it is not contiguous in memory
 		void ReorderApply(Tag index, ElementType mask);
 		bool isOriginal(Element * e); //don't know now what this function was for, should detect the copy-constructed element, but copy-construction is prohibited
 		INMOST_DATA_ENUM_TYPE GetArrayCapacity(ElementType etype); //This function is needed by TagManager, may be made private in future

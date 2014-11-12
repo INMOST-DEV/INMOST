@@ -395,13 +395,15 @@ namespace INMOST
 		if( !HideMarker() )
 		{
 			/*
-			dynarray<Element *, 64> inter(arr[0]->HighConn().begin(),arr[0]->HighConn().end());
+			Element::adj_type const & hc = arr[0]->HighConn();
+			dynarray<Element *, 64> inter(hc.data(),hc.data()+hc.size());
 			MarkerType mrk = CreateMarker();
 			for(unsigned i = 1; i < s; i++)
 			{
-				for(Element::adj_iterator jt = arr[i]->HighConn().begin(); jt != arr[i]->HighConn().end(); ++jt) (*jt)->SetMarker(mrk);
+				Element::adj_type const & ihc = arr[i]->HighConn();
+				for(Element::adj_type::enumerator jt = 0; jt < ihc.size(); ++jt) ihc[jt]->SetMarker(mrk);
 				{
-					size_t m = 0, n = 0;
+					int m = 0, n = 0;
 					while( m < inter.size() ) 
 					{
 						if( inter[m]->GetMarker(mrk) )
@@ -410,7 +412,7 @@ namespace INMOST
 					}
 					inter.resize(n);
 				}
-				for(Element::adj_iterator jt = arr[i]->HighConn().begin(); jt != arr[i]->HighConn().end(); ++jt) (*jt)->RemMarker(mrk);
+				for(Element::adj_type::enumerator jt = 0; jt < ihc.size(); ++jt) ihc[jt]->RemMarker(mrk);
 				if( inter.empty() )
 				{
 					ReleaseMarker(mrk);

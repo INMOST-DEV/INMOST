@@ -20,7 +20,7 @@ Mesh * ParallelCubeGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 	m->SetCommunicator(comm); // Set the MPI communicator, usually MPI_COMM_WORLD
 
 #if defined(USE_MPI)
-	MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
+	//MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
 #endif
 
 	rank = m->GetProcessorRank(); // Get the rank of the current process
@@ -56,9 +56,9 @@ Mesh * ParallelCubeGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 	int localsize[3], localstart[3], localend[3];
 	int avgsize[3] =
 	{
-		(int)ceil(sizes[0]/procs_per_axis[0]),
-		(int)ceil(sizes[1]/procs_per_axis[1]),
-		(int)ceil(sizes[2]/procs_per_axis[2])
+		(int)ceil((double)sizes[0]/procs_per_axis[0]),
+		(int)ceil((double)sizes[1]/procs_per_axis[1]),
+		(int)ceil((double)sizes[2]/procs_per_axis[2])
 	};
 
 	for(int j = 0; j < 3; j++)
@@ -125,7 +125,7 @@ Mesh * ParallelCubePrismGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 	m->SetCommunicator(comm); // Set the MPI communicator, usually MPI_COMM_WORLD
 
 #if defined(USE_MPI)
-	MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
+	//MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
 #endif
 
 	rank = m->GetProcessorRank(); // Get the rank of the current process
@@ -160,9 +160,9 @@ Mesh * ParallelCubePrismGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 	int localsize[3], localstart[3], localend[3];
 	int avgsize[3] =
 	{
-		(int)ceil(sizes[0]/procs_per_axis[0]),
-		(int)ceil(sizes[1]/procs_per_axis[1]),
-		(int)ceil(sizes[2]/procs_per_axis[2])
+		(int)ceil((double)sizes[0]/procs_per_axis[0]),
+		(int)ceil((double)sizes[1]/procs_per_axis[1]),
+		(int)ceil((double)sizes[2]/procs_per_axis[2])
 	};
 
 	for(int j = 0; j < 3; j++)

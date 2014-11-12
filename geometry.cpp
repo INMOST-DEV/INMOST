@@ -104,7 +104,7 @@ namespace INMOST
 			d = 0.0;
 			adjacent<Node> nodes = f->getNodes();
 			for (unsigned int i=1; i<nodes.size()-1; i++) 
-				d += c = det4v(point, &nodes[0].Coords()[0], &nodes[i].Coords()[0], &nodes[i+1].Coords()[0]);
+				d += c = det4v(point, nodes[0].Coords().data(), nodes[i].Coords().data(), nodes[i+1].Coords().data());
 			if (f->getAsFace()->FaceOrientedOutside(this) == 0)  c = -1.0;  else c = 1.0;
 			if (c*d > eps)  vp++;  else if (c*d < eps)  vm++;  else  vz++;
 		}
@@ -530,7 +530,7 @@ namespace INMOST
 					{
 						adjacent<Node> nodes = e->getNodes();
 						Storage::real c[3];
-						vec_diff(&nodes[0].Coords()[0],&nodes[1].Coords()[0],c,mdim);
+						vec_diff(nodes[0].Coords().data(),nodes[1].Coords().data(),c,mdim);
 						*ret = vec_len(c,mdim);
 						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 						break;
@@ -707,7 +707,7 @@ namespace INMOST
 			break;
 			case CENTROID:
 			if(etype == NODE )
-				memcpy(ret,&e->getAsNode()->Coords()[0],sizeof(real)*mdim);
+				memcpy(ret,e->getAsNode()->Coords().data(),sizeof(real)*mdim);
 			else if(HaveGeometricData(CENTROID,etype))
 			{
 				memcpy(ret,&e->RealDF(centroid_tag),sizeof(real)*mdim);
@@ -728,7 +728,7 @@ namespace INMOST
 			break;
 			case BARYCENTER:
 			if( etype == NODE )
-				memcpy(ret,&e->getAsNode()->Coords()[0],sizeof(real)*mdim);
+				memcpy(ret,e->getAsNode()->Coords().data(),sizeof(real)*mdim);
 			else if(HaveGeometricData(BARYCENTER,etype))
 				memcpy(ret,&e->RealDF(barycenter_tag),sizeof(real)*mdim);
 			else
@@ -797,7 +797,7 @@ namespace INMOST
 						{
 							Storage::real_array v1 = nodes[j].Coords();
 							Storage::real_array v2 = nodes[j+1].Coords();
-							c = det3v(&v0[0],&v1[0],&v2[0]);
+							c = det3v(v0.data(),v1.data(),v2.data());
 							d += c;
 							y[0] += c * (v0[0] + v1[0] + v2[0]);
 							y[1] += c * (v0[1] + v1[1] + v2[1]);
@@ -817,7 +817,7 @@ namespace INMOST
 			break;
 			case NORMAL:
 			if( HaveGeometricData(NORMAL,etype) )
-				memcpy(ret,&e->RealArray(normal_tag)[0],sizeof(real)*GetDimensions());
+				memcpy(ret,&e->RealDF(normal_tag),sizeof(real)*GetDimensions());
 			else
 			{
 				memset(ret,0,sizeof(real)*mdim);
@@ -885,12 +885,12 @@ namespace INMOST
 		if( p.size() <= 3 ) return true;
 		unsigned int i, s = p.size();
 		Storage::real v[2][3] = {{0,0,0},{0,0,0}};
-		vec_diff(&p[1].Coords()[0],&p[0].Coords()[0],v[0],3);
-		vec_diff(&p[2].Coords()[0],&p[0].Coords()[0],v[1],3);
+		vec_diff(p[1].Coords().data(),p[0].Coords().data(),v[0],3);
+		vec_diff(p[2].Coords().data(),p[0].Coords().data(),v[1],3);
 		vec_cross_product(v[0],v[1],v[1]);
 		for(i = 3; i < s; i++)
 		{
-			vec_diff(&p[i].Coords()[0],&p[0].Coords()[0],v[0],3);
+			vec_diff(p[i].Coords().data(),p[0].Coords().data(),v[0],3);
 			if( fabs(vec_dot_product(v[0],v[1],3)) > m->GetEpsilon() ) return false;
 		}
 		return true;
@@ -1081,11 +1081,11 @@ namespace INMOST
 				if( it == nodes.end() ) break;
 				Storage::real_array av1 = jt->getAsNode()->Coords();
 				Storage::real_array av2 = it->getAsNode()->Coords();
-				tval = meantri(&av0[0],&av1[0],&av2[0],m->GetDimensions(),func,time);
-				vec_diff(&av1[0],&av0[0],&v1[0],dim);
-				vec_diff(&av2[0],&av0[0],&v2[0],dim);
+				tval = meantri(av0.data(),av1.data(),av2.data(),m->GetDimensions(),func,time);
+				vec_diff(av1.data(),av0.data(),v1,dim);
+				vec_diff(av2.data(),av0.data(),v2,dim);
 				if( dim == 2 ) v1[2] = v2[2] = 0;
-				vec_cross_product(&v1[0],&v2[0],product);
+				vec_cross_product(v1,v2,product);
 				tvol = vec_dot_product(product,normal,dim)*0.5;
 				val += tval*tvol;
 				vol += tvol;
@@ -1165,7 +1165,7 @@ namespace INMOST
 			Storage::real middle[3];
 			for (unsigned int i = 0 ; i < dim ; i++) middle[i] = (x1[i]+x2[i])*0.5;
 			//Simpson formula
-			return (func(&x1[0],time) + 4*func(middle,time) + func(&x2[0],time))/6e0;
+			return (func(x1.data(),time) + 4*func(middle,time) + func(x2.data(),time))/6e0;
 		}
 		return 0;
 	}
@@ -1265,10 +1265,10 @@ namespace INMOST
 				Storage::real tri[3][3];
 				Centroid(tri[2]);
 				adjacent<Node> nodes = getNodes();
-				memcpy(tri[0],&nodes[nodes.size()-1].Coords()[0],sizeof(Storage::real)*dim);
+				memcpy(tri[0],nodes[nodes.size()-1].Coords().data(),sizeof(Storage::real)*dim);
 				for(unsigned q = 0; q < nodes.size(); q++)
 				{
-					memcpy(tri[1],&nodes[q].Coords()[0],sizeof(Storage::real)*dim);
+					memcpy(tri[1],nodes[q].Coords().data(),sizeof(Storage::real)*dim);
 					Storage::real a[3],b[3],c[3],n[3], d, k, m;
 					Storage::real dot00,dot01,dot02,dot11,dot12,invdenom, uq,vq;
 					a[0] = tri[0][0] - tri[2][0];
