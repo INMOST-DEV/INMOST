@@ -73,7 +73,7 @@ struct vert
 struct grid
 {
 	Mesh * mesh;
-	MIDType octree_node;
+	MarkerType octree_node;
 	Tag materials, cell_material, parent, united, problem,edge_face_number, face_center_node, Kvec, K;
 	
 	

@@ -78,23 +78,27 @@ namespace INMOST
 		mem->tag_manager = NULL;
 		mem->m_link = m;
 	}
-	TagManager::TagManager()
+	TagManager::TagManager() :dense_data(1)
 	{
 	}
-	TagManager::TagManager(Mesh * m, const TagManager & other)
-		:tags(64), empty_dense_data(64), dense_data(64)
+	TagManager::TagManager(Mesh * m, const TagManager & other) : dense_data(1)
+		//:tags(64), empty_dense_data(64), dense_data(64)
 	{
 		tags.resize(other.tags.size());
-		dense_data.resize(other.dense_data.size());
+		dense_data.resize(other.dense_data.size(),dense_sub_type(0));
 		for(unsigned int i = 0; i < other.tags.size(); i++)
 		{
 			tags[i].mem = new TagMemory(m,*other.tags[i].mem);
 			tags[i].SetTagManager(this);
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if( tags[i].isDefined(etype) && !tags[i].isSparse(etype) )
-					tags[i].AllocateData(etype);
+				{
+					dense_data[tags[i].GetPosition(etype)] = dense_sub_type(tags[i].GetRecordSize());
+					//tags[i].AllocateData(etype);
+				}
 		}
-		
+		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+			ReallocateData(etype);
 		//The rest of the data should be allocated and copied while copying data of
 		//individual elements
 	}
@@ -121,16 +125,21 @@ namespace INMOST
 		//	delete it->mem;
 		//}
 		tags.resize(other.tags.size());
-		dense_data.resize(other.dense_data.size());
+		dense_data.resize(other.dense_data.size(),dense_sub_type(0));
+		dense_data.clear();
 		for(unsigned int i = 0; i < other.tags.size(); i++)
 		{
 			tags[i].mem = new TagMemory(m,*other.tags[i].mem);
 			tags[i].SetTagManager(this);
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if( tags[i].isDefined(etype) && !tags[i].isSparse(etype) )
-					tags[i].AllocateData(etype);
+				{
+					dense_data[tags[i].GetPosition(etype)] = dense_sub_type(tags[i].GetRecordSize());
+					//tags[i].AllocateData(etype);
+				}
 		}
-		
+		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+			ReallocateData(etype);
 		//~ sparse_data.resize(other.sparse_data.size());
 		//The rest of the data should be allocated and copied while copying data of
 		//individual elements
@@ -206,11 +215,16 @@ namespace INMOST
 					{
 						new_pos = empty_dense_data.back();
 						empty_dense_data.pop_back();
-						dense_data[new_pos] = chunk_array<INMOST_DATA_BULK_TYPE>(new_tag.GetRecordSize()*8192);
+						//dense_data[new_pos] = dense_sub_type(new_tag.GetRecordSize()*8192);
+						dense_data[new_pos] = dense_sub_type(new_tag.GetRecordSize());
 					}
-					else dense_data.push_back(chunk_array<INMOST_DATA_BULK_TYPE>(new_tag.GetRecordSize()*8192));
+					else //dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()*8192));
+						dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()));
 					new_tag.SetPosition(new_pos,mask);
-					new_tag.AllocateData(mask);
+					INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(mask);
+					if( new_size < 1024 && mask != MESH ) new_size = 1024;
+					if( new_size < 1    && mask == MESH ) new_size = 1;
+					new_tag.ReallocateData(mask,new_size);
 				}
 			}
 		}
@@ -244,7 +258,7 @@ namespace INMOST
 			{
 				//~ if( tag.isSparse(mask) ) {}//sparse_data.erase(sparse_data.begin()+tpos);
 				//~ else dense_data.erase(dense_data.begin()+tpos);
-				//~ for(size_t i = 0; i < tags.size(); i++) 
+				//~ for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++) 
 				//~ {
 					//~ for(ElementType imask = NODE; imask <= MESH; imask = imask << 1 )
 						//~ if( tag.isSparse(mask) == tags[i].isSparse(imask) )
@@ -269,7 +283,7 @@ namespace INMOST
 		if( delete_entirely )
 		{
 			bool flag = false;
-			for(size_t i = 0; i < tags.size(); i++)
+			for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++)
 				if( tags[i] == tag )
 				{
 					tags.erase(tags.begin()+i);
@@ -297,76 +311,56 @@ namespace INMOST
 		if( pos == ENUMUNDEF ) return false;
 		return true;
 	}
-	
-	void Tag::ShrinkData(ElementType type, size_t new_size)
+
+	void TagManager::ReallocateData(ElementType type)
 	{
-		size_t old_size;
-		if( isSparse(type) ) return;
-		INMOST_DATA_ENUM_TYPE data_pos = GetPosition(type);
-		if( data_pos == ENUMUNDEF ) return;
-		INMOST_DATA_ENUM_TYPE data_size = GetSize(), record_size;
-		size_t bytes = GetBytesSize();
-		record_size = (data_size == ENUMUNDEF ? VariableDataSize(GetDataType()) : bytes * data_size);
-		TagManager::dense_sub_type & arr = GetTagManager()->GetDenseData(data_pos);
-		old_size = arr.size()/record_size;
-		//if( new_size < 1024 ) new_size = 1024;
-		if( data_size == ENUMUNDEF )
+		INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(type);
+		if( new_size < 1024 && type != MESH ) new_size = 1024;
+		if( new_size < 1    && type == MESH ) new_size = 1;
+		sparse_data_array_type & arr = sparse_data[ElementNum(type)];
+		INMOST_DATA_ENUM_TYPE old_size = arr.size();
+		for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) 
 		{
-			if( new_size*record_size < arr.size() )
-			{
-				TagManager::dense_sub_type::iterator it = arr.begin() + new_size*record_size;
-				switch(GetDataType())
-				{
-					case DATA_REAL:      while( it < arr.end() ) { void * p = static_cast<void *>(&*it); if( p != NULL ) (*static_cast<inner_real_array      *>( p )).~inner_real_array(); it+=record_size; }  break;
-					case DATA_INTEGER:   while( it < arr.end() ) { void * p = static_cast<void *>(&*it); if( p != NULL ) (*static_cast<inner_integer_array   *>( p )).~inner_integer_array(); it+=record_size; }  break;
-					case DATA_BULK:      while( it < arr.end() ) { void * p = static_cast<void *>(&*it); if( p != NULL ) (*static_cast<inner_bulk_array      *>( p )).~inner_bulk_array(); it+=record_size; }  break;
-					case DATA_REFERENCE: while( it < arr.end() ) { void * p = static_cast<void *>(&*it); if( p != NULL ) (*static_cast<inner_reference_array *>( p )).~inner_reference_array(); it+=record_size; }  break;
-				}
-			}
+			void * p = static_cast<void *>(&arr[it]); 
+			if( p != NULL ) (*static_cast<sparse_sub_type*>( p )).~sparse_sub_type();
 		}
-		arr.resize(new_size*record_size,0);
-		if( data_size == ENUMUNDEF )
-		{
-			if( old_size*record_size < arr.size() )
-			{
-				TagManager::dense_sub_type::iterator it = arr.begin() + old_size*record_size;
-				switch(GetDataType())
-				{
-					case DATA_REAL:      while( it < arr.end() ) { new (&*it) inner_real_array();      it+=record_size; }  break;
-					case DATA_INTEGER:   while( it < arr.end() ) { new (&*it) inner_integer_array();   it+=record_size; }  break;
-					case DATA_BULK:      while( it < arr.end() ) { new (&*it) inner_bulk_array();      it+=record_size; }  break;
-					case DATA_REFERENCE: while( it < arr.end() ) { new (&*it) inner_reference_array(); it+=record_size; }  break;
-				}
-			}
-		}
-		//std::cout << "Shrink " << GetTagName() << " for " << ElementTypeName(type) << " from " << old_size << " to " << new_size << std::endl;
-		//~ TagManager::dense_sub_type(arr).swap(arr);
+		arr.resize(new_size);
+		for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) sparse_sub_type();
+		for(iteratorTag t = BeginTag(); t != EndTag(); ++t)
+			if( t->isDefined(type) && !t->isSparse(type) ) t->ReallocateData(type,new_size);
 	}
 	
-	void Tag::AllocateData(ElementType t)
+	void Tag::ReallocateData(ElementType t, INMOST_DATA_ENUM_TYPE new_size)
 	{
-		Mesh * m = GetMeshLink();
-		if( m == NULL ) return;
-		TagManager::dense_sub_type & arr = GetTagManager()->GetDenseData(GetPosition(t));
-		INMOST_DATA_ENUM_TYPE record_size = GetRecordSize();
-		INMOST_DATA_ENUM_TYPE old_size = arr.size();
-		INMOST_DATA_ENUM_TYPE new_size = m->GetArrayCapacity(t);
-		if( new_size < 1024 ) new_size = 1024;
-		new_size *= record_size;
-		arr.resize(new_size);
-		//std::cout << "tag " << GetTagName() << " was " << old_size << " now " << new_size << std::endl;
-		if( GetSize() == ENUMUNDEF ) //Initialize variable-sized data
+		INMOST_DATA_ENUM_TYPE        data_pos    = GetPosition(t);
+		INMOST_DATA_ENUM_TYPE        data_size   = GetSize();
+		TagManager::dense_sub_type & arr         = GetTagManager()->GetDenseData(data_pos);
+		INMOST_DATA_ENUM_TYPE        old_size    = arr.size();
+		DataType                     data_type   = GetDataType();
+		if( data_size == ENUMUNDEF )
 		{
-			TagManager::dense_sub_type::iterator it = arr.begin() + old_size;
-			switch(GetDataType())
+			if( new_size < old_size )
 			{
-				case DATA_REAL:      while( it < arr.end() ) {new ( &*it ) inner_real_array();      it+=record_size; }  break;
-				case DATA_INTEGER:   while( it < arr.end() ) {new ( &*it ) inner_integer_array();   it+=record_size; }  break;
-				case DATA_BULK:      while( it < arr.end() ) {new ( &*it ) inner_bulk_array();      it+=record_size; }  break;
-				case DATA_REFERENCE: while( it < arr.end() ) {new ( &*it ) inner_reference_array(); it+=record_size; }  break;
+				switch(data_type)
+				{
+					case DATA_REAL:      for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_real_array      *>( p )).~inner_real_array();     } break;
+					case DATA_INTEGER:   for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_integer_array   *>( p )).~inner_integer_array();  } break;
+					case DATA_BULK:      for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_bulk_array      *>( p )).~inner_bulk_array();     } break;
+					case DATA_REFERENCE: for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_reference_array *>( p )).~inner_reference_array();} break;
+				}
 			}
 		}
-		//else if( new_size-old_size > 0 ) memset(&arr[old_size],0,new_size-old_size);
+		arr.resize(new_size);
+		if(  data_size == ENUMUNDEF ) //Initialize variable-sized data
+		{
+			switch(data_type)
+			{
+				case DATA_REAL:      for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_real_array();      break;
+				case DATA_INTEGER:   for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_integer_array();   break;
+				case DATA_BULK:      for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_bulk_array();      break;
+				case DATA_REFERENCE: for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_reference_array(); break;
+			}
+		}
 	}
 	
 	

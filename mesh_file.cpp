@@ -143,7 +143,7 @@ namespace INMOST
 
 	void Mesh::SetFileOption(std::string key, std::string val)
 	{
-		for(size_t k = 0; k < file_options.size(); k++)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); k++)
 		{
 			if(file_options[k].first == key)
 			{
@@ -155,7 +155,7 @@ namespace INMOST
 
 	std::string Mesh::GetFileOption(std::string key)
 	{
-		for(size_t k = 0; k < file_options.size(); k++)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); k++)
 		{
 			if(file_options[k].first == key)
 			{
@@ -328,9 +328,12 @@ namespace INMOST
 			ret = CreateNode(&coords[0]);
 		else 
 			ret = old_nodes[find];
-		MIDType markers;
+		//Backward compatibility for file format, remove in future
+		MarkerType markers;
 		uconv.read_iValue(in,markers);
+#if !defined(NEW_MARKERS)
 		ret->SetMarkerSpace(markers);
+#endif
 		return ret;
 	}
 	void Mesh::WriteNode(std::ostream & out,Node * X)
@@ -338,7 +341,9 @@ namespace INMOST
 		Storage::real_array coords = X->Coords();
 		for(Storage::real_array::iterator it = coords.begin(); it != coords.end(); it++)
 			iconv.write_fValue(out,*it);
+#if !defined(NEW_MARKERS)
 		uconv.write_iValue(out,X->GetMarkerSpace());
+#endif
 	}
 
 	Edge * Mesh::ReadEdge(std::istream & in, std::vector<Node *> & nodes)
@@ -354,9 +359,12 @@ namespace INMOST
 			sub_elements.push_back(nodes[lid]);
 		}
 		ret = CreateEdge(&sub_elements[0], sub_elements.size()).first;
-		MIDType markers;
+		//Backward compatibility for file format, remove in future
+#if !defined(NEW_MARKERS)
+		MarkerType markers;
 		uconv.read_iValue(in,markers);
 		ret->SetMarkerSpace(markers);
+#endif
 		return ret;	
 	}
 	void Mesh::WriteEdge(std::ostream & out,Edge * X)
@@ -370,7 +378,9 @@ namespace INMOST
 			lid = it->LocalID();
 			uconv.write_iValue(out,lid);
 		}
+#if !defined(NEW_MARKERS)
 		uconv.write_iValue(out,X->GetMarkerSpace());
+#endif
 	}
 	
 	Face * Mesh::ReadFace(std::istream & in, std::vector<Edge *> & edges)
@@ -385,9 +395,12 @@ namespace INMOST
 			sub_elements.push_back(edges[lid]);
 		}
 		ret = CreateFace(&sub_elements[0], sub_elements.size()).first;
-		MIDType markers;
+		//Backward compatibility for file format, remove in future
+#if !defined(NEW_MARKERS)
+		MarkerType markers;
 		uconv.read_iValue(in,markers);
 		ret->SetMarkerSpace(markers);
+#endif
 		return ret;	
 	}
 	void Mesh::WriteFace(std::ostream & out,Face * X)
@@ -400,7 +413,9 @@ namespace INMOST
 			lid = it->LocalID();
 			uconv.write_iValue(out,lid);
 		}
+#if !defined(NEW_MARKERS)
 		uconv.write_iValue(out,X->GetMarkerSpace());
+#endif
 	}
 
 	Cell * Mesh::ReadCell(std::istream & in, std::vector<Face *> & faces, std::vector<Node *> & nodes)
@@ -422,9 +437,12 @@ namespace INMOST
 			suggest_nodes.push_back(nodes[lid]);
 		}
 		ret = CreateCell(&sub_elements[0],sub_elements.size(),&suggest_nodes[0],suggest_nodes.size()).first;
-		MIDType markers;
+		//Backward compatibility for file format, remove in future
+#if !defined(NEW_MARKERS)
+		MarkerType markers;
 		uconv.read_iValue(in,markers);
 		ret->SetMarkerSpace(markers);
+#endif
 		return ret;	
 	}
 	void Mesh::WriteCell(std::ostream & out,Cell * X)
@@ -444,7 +462,9 @@ namespace INMOST
 			lid = it->LocalID();
 			uconv.write_iValue(out,lid);
 		}
+#if !defined(NEW_MARKERS)
 		uconv.write_iValue(out,X->GetMarkerSpace());
+#endif
 	}
 	
 	void Mesh::WriteElementSet(std::ostream & out, ElementSet * X)
@@ -460,7 +480,9 @@ namespace INMOST
 			out.put(type);
 			uconv.write_iValue(out,lid);
 		}
+#if !defined(NEW_MARKERS)
 		uconv.write_iValue(out,X->GetMarkerSpace());
+#endif
 	}
 	
 
@@ -485,9 +507,12 @@ namespace INMOST
 				case CELL: ret->Insert(new_cells[lid]); break;
 			}
 		}
-		MIDType markers;
+		//Backward compatibility for file format, remove in future
+#if !defined(NEW_MARKERS)
+		MarkerType markers;
 		uconv.read_iValue(in,markers);
 		ret->SetMarkerSpace(markers);
+#endif
 		return ret;
 	}
 
@@ -501,7 +526,7 @@ namespace INMOST
 		LFile.resize(File.size());
 		std::transform(File.begin(),File.end(),LFile.begin(),::tolower);
 		int verbosity = 0;
-		for(size_t k = 0; k < file_options.size(); ++k)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "VERBOSITY" )
 			{
@@ -987,7 +1012,7 @@ ecl_exit_loop:
 		if(LFile.find(".pvtk") != std::string::npos) //this is legacy parallel vtk
 		{
 			int state = 0, np, nf = 0;
-			size_t l,attrl, ql,qr;
+			INMOST_DATA_ENUM_TYPE l,attrl, ql,qr;
 			//~ if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
 			std::string str, tag, attrval, path = "";
 			std::vector<std::string> files;
@@ -1079,9 +1104,9 @@ ecl_exit_loop:
 		}
 		else if(LFile.find(".vtk") != std::string::npos) //this is legacy vtk
 		{
-			MIDType unused_marker = CreateMarker();
+			MarkerType unused_marker = CreateMarker();
 			bool grid_is_2d = false;
-			for(size_t k = 0; k < file_options.size(); ++k)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 			{
 				if( file_options[k].first == "VTK_GRID_DIMS" )
 				{
@@ -2329,9 +2354,9 @@ ecl_exit_loop:
 		{
 			Tag volume_factor, porosity, permiability, zone;
 			zone = CreateTag("MATERIAL",DATA_INTEGER,CELL|FACE|ESET,ESET,1);
-			volume_factor = CreateTag("VOLUME_FACTOR",DATA_REAL,CELL|FACE,NONE,1);
-			porosity = CreateTag("PORO",DATA_REAL,CELL|FACE,NONE,1);
-			permiability = CreateTag("PERM",DATA_REAL,CELL|FACE,NONE,9);
+			volume_factor = CreateTag("VOLUME_FACTOR",DATA_REAL,CELL|FACE,FACE,1);
+			porosity = CreateTag("PORO",DATA_REAL,CELL|FACE,FACE,1);
+			permiability = CreateTag("PERM",DATA_REAL,CELL|FACE,FACE,9);
 			std::vector<Node *> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
@@ -2339,8 +2364,14 @@ ecl_exit_loop:
 					old_nodes[qq++] = *it;
 				if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
 			}
-			FILE * f = fopen(LFile.c_str(),"r");
+			FILE * f = fopen(File.c_str(),"r");
+			if( f == NULL ) 
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " cannot open " << File << std::endl;
+				throw BadFileName;
+			}
 			int nbnodes, nbpolygon, nbpolyhedra, nbzones, volcorr, nbfacenodes, nbpolyhedronfaces, num, nbK;
+			int report_pace;
 			Storage::real K[9],readK[9], poro, vfac;
 			std::vector<Node *> newnodes;
 			std::vector<Face *> newpolygon;
@@ -2353,11 +2384,20 @@ ecl_exit_loop:
 			newpolygon.resize(nbpolygon);
 			newpolyhedron.resize(nbpolyhedra);
 			newsets.resize(nbzones);
+			if( verbosity > 0 ) printf("Creating %d sets for zones.\n",nbzones);
+			report_pace = std::max<int>(nbzones/250,1);
 			for(int i = 0; i < nbzones; i++)
 			{
 				newsets[i] = CreateSet();
 				newsets[i]->Integer(zone) = i;
+				if( verbosity > 1 &&  i % report_pace == 0 )
+				{
+					printf("sets %3.1f%%\r",(i*100.0)/(1.0*nbzones));
+					fflush(stdout);
+				}
 			}
+			if( verbosity > 0 ) printf("Reading %d nodes.\n",nbnodes);
+			report_pace = std::max<int>(nbnodes/250,1);
 			for(int i = 0; i < nbnodes; i++)
 			{
 				Storage::real xyz[3];
@@ -2374,8 +2414,14 @@ ecl_exit_loop:
 					std::cout << __FILE__ << ":" << __LINE__ << " cannot read coordinates from " << File << std::endl;
 					throw BadFile;
 				}
+				if( verbosity > 1 &&  i % report_pace == 0 )
+				{
+					printf("nodes %3.1f%%\r",(i*100.0)/(1.0*nbnodes));
+					fflush(stdout);
+				}
 			}
-
+			if( verbosity > 0 ) printf("Reading %d faces.\n",nbpolygon);
+			report_pace = std::max<int>(nbpolygon/250,1);
 			for(int i = 0; i < nbpolygon; i++)
 			{
 				if( 1 != fscanf(f," %d",&nbfacenodes) )
@@ -2408,11 +2454,18 @@ ecl_exit_loop:
 					throw BadFile;
 				}
 				newpolygon[i] = CreateFace(&f_nodes[0],f_nodes.size()).first;
-				newpolygon[i]->IntegerDF(zone) = num;
+				newpolygon[i]->Integer(zone) = num;
 				if( num >= 0 ) newsets[num]->Insert(newpolygon[i]);
 				f_nodes.clear();
-			}
 
+				if( verbosity > 1 &&  i % report_pace == 0 )
+				{
+					printf("faces %3.1f%%\r",(i*100.0)/(1.0*nbpolygon));
+					fflush(stdout);
+				}
+			}
+			if( verbosity > 0 ) printf("Reading %d cells.\n",nbpolyhedra);
+			report_pace = std::max<int>(nbpolyhedra/250,1);
 			for(int i = 0; i < nbpolyhedra; i++)
 			{
 				if( 1 != fscanf(f," %d",&nbpolyhedronfaces) )
@@ -2445,14 +2498,21 @@ ecl_exit_loop:
 					throw BadFile;
 				}
 				newpolyhedron[i] = CreateCell(&c_faces[0],c_faces.size()).first;
-				newpolyhedron[i]->IntegerDF(zone) = num;
+				newpolyhedron[i]->Integer(zone) = num;
 				if( num >= 0 ) newsets[num]->Insert(newpolyhedron[i]);
 				c_faces.clear();
-			}
 
+				if( verbosity > 1 &&  i % report_pace == 0 )
+				{
+					printf("cells %3.1f%%\r",(i*100.0)/(1.0*nbpolyhedra));
+					fflush(stdout);
+				}
+			}
+			report_pace = std::max<int>(nbzones/250,1);
+			if( verbosity > 0 ) printf("Reading %d zones data.\n",nbzones);
 			for(int i = 0; i < nbzones; i++)
 			{
-				if( 4 != fscanf(f," %d %lf %lf %d",&num,&poro,&vfac,&nbK) )
+				if( 4 != fscanf(f," %d %lf %lf %d",&num,&vfac,&poro,&nbK) )
 				{
 					std::cout << __FILE__ << ":" << __LINE__ << " cannot read zone data from " << File << std::endl;
 					throw BadFile;
@@ -2504,9 +2564,14 @@ ecl_exit_loop:
 				}
 				for(ElementSet::iterator it = newsets[num]->begin(); it != newsets[num]->end(); ++it)
 				{
-					it->RealDF(volume_factor) = vfac;
-					it->RealDF(porosity) = poro;
-					memcpy(&it->RealArrayDF(permiability)[0],K,sizeof(Storage::real)*9);
+					it->Real(volume_factor) = vfac;
+					it->Real(porosity) = poro;
+					memcpy(&it->RealArray(permiability)[0],K,sizeof(Storage::real)*9);
+				}
+				if( verbosity > 1 &&  i % report_pace == 0 )
+				{
+					printf("data %3.1f%%\r",(i*100.0)/(1.0*nbzones));
+					fflush(stdout);
 				}
 			}
 			fclose(f);
@@ -3466,7 +3531,7 @@ read_elem_num_link:
 				else if (token == INMOST::MeshDataHeader)
 				{
 					REPORT_STR("MeshDataHeader");
-					for(size_t j = 0; j < tags.size(); j++) 
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < tags.size(); j++) 
 					{
 						REPORT_VAL("TagName",tags[j].GetTagName());
 						Tag * jt = &tags[j];
@@ -3874,7 +3939,7 @@ safe_output:
 			for(Mesh::cells_container::iterator it = cells.begin(); it != cells.end(); it++)
 			{
 				INMOST_DATA_ENUM_TYPE nnodes =  VtkElementNodes((*it)->GetGeometricType());
-				if( nnodes == ENUMUNDEF || nnodes == (*it)->high_conn.size() ) //nodes match - output correct type
+				if( nnodes == ENUMUNDEF || nnodes == (*it)->HighConn().size() ) //nodes match - output correct type
 					fprintf(f,"%d\n",VtkElementType((*it)->GetGeometricType()));
 				else //number of nodes mismatch with expected - some topology checks must be off
 					fprintf(f,"%d\n",VtkElementType(Element::MultiPolygon));
@@ -4197,7 +4262,7 @@ safe_output:
 						keynum = 0;
 						fwrite(&keynum,sizeof(Storage::integer),1,file);
 						
-						for(size_t q = 0; q < t->GetSize(); q++)
+						for(INMOST_DATA_ENUM_TYPE q = 0; q < t->GetSize(); q++)
 						{
 							for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); e++)
 							{

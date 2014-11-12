@@ -9,11 +9,11 @@ namespace INMOST
 	{
 		
 		INMOST_DATA_ENUM_TYPE data_size = t.GetSize();
-		size_t bytes = t.GetBytesSize();
+		INMOST_DATA_ENUM_TYPE bytes = t.GetBytesSize();
 		if( data_size == ENUMUNDEF ) //variable size array
 		{
 			DataType type = t.GetDataType();
-			if( adata != NULL ) DestroyVariableData(t,adata);
+			if( adata != NULL ) Storage::DestroyVariableData(t,adata);
 			if( type == DATA_REAL )           new (adata) inner_real_array     (*static_cast< inner_real_array      * >(bdata));
 			else if( type == DATA_INTEGER )   new (adata) inner_integer_array  (*static_cast< inner_integer_array   * >(bdata));
 			else if( type == DATA_BULK )      new (adata) inner_bulk_array     (*static_cast< inner_bulk_array      * >(bdata));
@@ -61,7 +61,7 @@ namespace INMOST
 			if( data_pos == ENUMUNDEF ) continue;
 			TagManager::dense_sub_type & arr = t->GetTagManager()->GetDenseData(data_pos);
 			INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
-			INMOST_DATA_ENUM_TYPE from = record_size*local_id, to = record_size*new_local_id;
+			INMOST_DATA_ENUM_TYPE from = local_id, to = new_local_id;
 			memcpy(&arr[to],&arr[from],record_size);
 			memset(&arr[from],0,record_size);
 		}
@@ -70,7 +70,11 @@ namespace INMOST
 	{
 		Mesh * m = GetMeshLink();
 		if( m == NULL ) return;
+#if defined(NEW_SPARSE)
+		SLink().swap(m->ElementByLocalID(GetElementType(),new_local_id)->SLink());
+#else
 		inner_data.swap(m->ElementByLocalID(GetElementType(),new_local_id)->inner_data);
+#endif
 	}
 	void Storage::SwapDenseData(INMOST_DATA_INTEGER_TYPE new_local_id)
 	{
@@ -84,7 +88,7 @@ namespace INMOST
 			if( data_pos == ENUMUNDEF ) continue;
 			TagManager::dense_sub_type & arr = t->GetTagManager()->GetDenseData(data_pos);
 			INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
-			INMOST_DATA_ENUM_TYPE from = record_size*local_id, to = record_size*new_local_id;
+			INMOST_DATA_ENUM_TYPE from = local_id, to = new_local_id;
 			
 			//std::cout << "swap " << t->GetTagName() << " from " << local_id << " to " << new_local_id << " record size: " << record_size << " bytes: " << bytes << " data size: " << data_size << std::endl;
 			
@@ -104,14 +108,18 @@ namespace INMOST
 		assert( i == 1 );
 #endif
 		etypenum = ElementNum(_etype);
+#if !defined(NEW_MARKERS)
 		markers = 0;
+#endif
 		m_link = m;
 		if( m != NULL ) m->TieElement(this);
 	}
 	Storage::Storage(Mesh * m, INMOST_DATA_ENUM_TYPE lid, const Storage & other)
 	{
 		etypenum = other.etypenum;
+#if !defined(NEW_MARKERS)
 		markers = other.markers;
+#endif
 		m_link = m;
 		local_id = lid;
 		//if( m != NULL ) m->TieElement(this);
@@ -126,7 +134,7 @@ namespace INMOST
 			if( b != NULL )
 			{
 				a = GetLink(*t);
-				CopyData(*t,a,b);
+				Storage::CopyData(*t,a,b);
 			}
 		}
 	}
@@ -138,7 +146,13 @@ namespace INMOST
 	{
 		Mesh * other_mesh = other.GetMeshLink();
 		etypenum = other.etypenum;
-		markers = other.markers;
+#if defined(NEW_MARKERS)
+		Storage::bulk marker_space[MarkerFields];
+		other.GetMarkerSpace(marker_space);
+		SetMarkerSpace(marker_space);
+#else
+		markers = other.GetMarkerSpace();
+#endif
 		
 		m_link = m;
 		local_id = lid;
@@ -154,7 +168,7 @@ namespace INMOST
 			if( b != NULL )
 			{
 				a = GetLink(*t);
-				CopyData(*t,a,b);
+				Storage::CopyData(*t,a,b);
 			}
 		}
 		
@@ -162,7 +176,7 @@ namespace INMOST
 	}
 	
 	
-	size_t Storage::GetDataSize(Tag tag) const
+	INMOST_DATA_ENUM_TYPE Storage::GetDataSize(const Tag & tag) const
 	{
 		if( tag.GetSize() == ENUMUNDEF )
 		{
@@ -179,7 +193,7 @@ namespace INMOST
 		}
 		return tag.GetSize();
 	}
-	void Storage::SetDataSize(Tag tag,size_t new_size)
+	void Storage::SetDataSize(const Tag & tag,INMOST_DATA_ENUM_TYPE new_size)
 	{
 		assert( tag.GetMeshLink() == GetMeshLink() );
 		void * adata = GetLink(tag);
@@ -199,13 +213,13 @@ namespace INMOST
 			return;
 		throw BadTag;
 	}
-	void Storage::GetData(Tag tag,size_t shift, size_t size, void * data_out) const
+	void Storage::GetData(const Tag & tag,INMOST_DATA_ENUM_TYPE shift, INMOST_DATA_ENUM_TYPE size, void * data_out) const
 	{
 		assert( tag.GetMeshLink() == GetMeshLink() );
 		void * adata = GetLink(tag);
 		if( adata == NULL ) throw NoData;
 		INMOST_DATA_ENUM_TYPE data_size = tag.GetSize();
-		size_t bytes = tag.GetBytesSize();
+		INMOST_DATA_ENUM_TYPE bytes = tag.GetBytesSize();
 		if( data_size == ENUMUNDEF )
 		{
 			switch(tag.GetDataType())
@@ -219,13 +233,13 @@ namespace INMOST
 		else memcpy(data_out,static_cast<INMOST_DATA_BULK_TYPE *>(adata)+shift*bytes,size*bytes);
 		return;
 	}
-	void Storage::SetData(Tag tag,size_t shift, size_t size, void * data_in)
+	void Storage::SetData(const Tag & tag,INMOST_DATA_ENUM_TYPE shift, INMOST_DATA_ENUM_TYPE size, void * data_in)
 	{
 		assert( tag.GetMeshLink() == GetMeshLink() );
 		void * adata = GetLink(tag);
 		if( adata == NULL ) throw NoData;
 		INMOST_DATA_ENUM_TYPE data_size = tag.GetSize();
-		size_t bytes = tag.GetBytesSize();
+		INMOST_DATA_ENUM_TYPE bytes = tag.GetBytesSize();
 		if( data_size == ENUMUNDEF )
 		{
 			switch(tag.GetDataType())
@@ -249,29 +263,31 @@ namespace INMOST
 		if( !(GetElementType() & MESH) )
 			m->UntieElement(this);
 	}
-	void Storage::DelData(Tag tag)
+	void Storage::DelData(const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == GetMeshLink() );
 		if( tag.isSparse(GetElementType()) )
 		{
-			/* old sparse data
-			TagManager::sparse_sub_type & arr = tag.GetTagManager()->GetSparseData(tag.GetPosition(GetElementType()));
-			TagManager::sparse_sub_type::iterator it = arr.find(this);
-			if( it != arr.end() )
+#if defined(NEW_SPARSE)
+			sparse_type & s = SLink();
+			INMOST_DATA_ENUM_TYPE tag_size = tag.GetSize();
+			for(int i = 0; i < s.size(); ++i) if( s[i].tag == tag.mem )
 			{
-				if( tag.GetSize() == ENUMUNDEF ) DestroyVariableData(tag,it->second);
-				free(it->second);
-				arr.erase(it);
+				if( tag_size == ENUMUNDEF ) Storage::DestroyVariableData(tag,s[i].rec);
+				free(s[i].rec);
+				s.erase(s.begin()+i);
+				break;
 			}
-			*/
+#else
 			for(sparse_data_array_type::iterator it = inner_data.begin(); it != inner_data.end(); ++it)
 				if( it->first == tag ) 
 				{
-					if( tag.GetSize() == ENUMUNDEF ) DestroyVariableData(tag,it->second);
+					if( tag.GetSize() == ENUMUNDEF ) Storage::DestroyVariableData(tag,it->second);
 					free(it->second);
 					it = inner_data.erase(it);
 					break;
 				}
+#endif
 		}
 		else 
 		{
@@ -279,13 +295,44 @@ namespace INMOST
 			if( data != NULL )
 			{
 				if( tag.GetSize() == ENUMUNDEF )
-					DestroyVariableData(tag,data);
+					Storage::DestroyVariableData(tag,data);
 				else memset(data,0,tag.GetRecordSize());
 			}
 		}
 	}
 
-	
+#if defined(NEW_MARKERS)
+	void Storage::SetMarker(MarkerType n) 
+	{
+		assert( (n >> MarkerShift) < MarkerFields );
+		static_cast<Storage::bulk *>(GetDenseLink(GetMeshLink()->MarkersTag()))[n >> MarkerShift] |= static_cast<Storage::bulk>(n & MarkerMask);
+	}
+	bool Storage::GetMarker(MarkerType n) const  
+	{
+		assert( (n >> MarkerShift) < MarkerFields );
+		return (static_cast<Storage::bulk *>(GetDenseLink(GetMeshLink()->MarkersTag()))[n >> MarkerShift] & static_cast<Storage::bulk>(n & MarkerMask)) != 0;
+	}
+	void Storage::RemMarker(MarkerType n) 
+	{
+		assert( (n >> MarkerShift) < MarkerFields );
+		static_cast<Storage::bulk *>(GetDenseLink(GetMeshLink()->MarkersTag()))[n >> MarkerShift] &= ~static_cast<Storage::bulk>(n & MarkerMask);
+	}
+	void Storage::ClearMarkerSpace() 
+	{
+		Storage::bulk * marker_space = static_cast<Storage::bulk *>(GetDenseLink(GetMeshLink()->MarkersTag()));
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k) marker_space[k] = 0;
+	}
+	void Storage::GetMarkerSpace(Storage::bulk copy[MarkerFields]) const 
+	{
+		Storage::bulk * marker_space = static_cast<Storage::bulk *>(GetDenseLink(GetMeshLink()->MarkersTag()));
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k) copy[k] = marker_space[k];
+	}
+	void Storage::SetMarkerSpace(Storage::bulk source[MarkerFields]) 
+	{
+		Storage::bulk * marker_space = static_cast<Storage::bulk *>(GetDenseLink(GetMeshLink()->MarkersTag()));
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k) marker_space[k] = source[k];
+	}
+#endif
 
 }
 

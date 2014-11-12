@@ -61,7 +61,7 @@ namespace INMOST
 	Element::Element(Mesh * m, ElementType _etype)
 	:Storage(m,_etype)
 	{
-		m_type = Unset;
+		SetGeometricType(Unset);
 #if !defined(NDEBUG)
 		assert( !(_etype & MESH) );
 		assert( !(_etype & ESET) );
@@ -73,9 +73,9 @@ namespace INMOST
 	Element::Element(Mesh *m, INMOST_DATA_ENUM_TYPE lid, const Element & other)
 	:Storage(m,lid,other)
 	{
-		m_type = other.m_type;
-		high_conn.clear();
-		low_conn.clear();
+		SetGeometricType(other.GetGeometricType());
+		HighConn().clear();
+		LowConn().clear();
 		//high_conn and low_conn may be filled only from outside
 	}
 	
@@ -83,8 +83,8 @@ namespace INMOST
 	{
 		//~ std::cout << " deleted " << Element::GeometricTypeName(GetGeometricType()) << std::endl;
 		Disconnect(true);
-		high_conn.clear();
-		low_conn.clear();
+		HighConn().clear();
+		LowConn().clear();
 	}
 	
 	
@@ -117,20 +117,20 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					ret += high_conn.size();
+					ret += HighConn().size();
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					ret += low_conn.size();
+					ret += LowConn().size();
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
-							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++)
+							for(adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++)
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -145,14 +145,14 @@ namespace INMOST
 					}
 					else if( GetElementType() & FACE )
 					{
-						ret += low_conn.size();
+						ret += LowConn().size();
 					}
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
-							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++)
+							for(adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++)
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -170,7 +170,7 @@ namespace INMOST
 		}
 		else
 		{
-			MIDType hm = GetMeshLink()->HideMarker();
+			MarkerType hm = GetMeshLink()->HideMarker();
 			for(i = 0; i < 4; i++) if( conn[i] )
 			{
 				if( i == myconn )
@@ -179,12 +179,12 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+					for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); ++it)
 						if( !(*it)->GetMarker(hm) ) ret++;
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+					for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); ++it)
 						if( !(*it)->GetMarker(hm) ) ret++;
 				}
 				else if( i == (myconn - 2 + 4)%4 )
@@ -192,9 +192,9 @@ namespace INMOST
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -210,9 +210,9 @@ namespace INMOST
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -232,7 +232,7 @@ namespace INMOST
 	}
 
 
-	INMOST_DATA_ENUM_TYPE Element::nbAdjElements(ElementType _etype, MIDType mask, bool invert)const 
+	INMOST_DATA_ENUM_TYPE Element::nbAdjElements(ElementType _etype, MarkerType mask, bool invert)const 
 	{
 		assert( !(_etype & MESH) );
 		assert( !(_etype & ESET) );
@@ -256,12 +256,12 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it) 
+					for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); ++it) 
 						if( invert ^ (*it)->GetMarker(mask) ) ret++;
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it) 
+					for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); ++it) 
 						if( invert ^ (*it)->GetMarker(mask) ) ret++;
 				}
 				else if( i == (myconn - 2 + 4)%4 )
@@ -269,9 +269,9 @@ namespace INMOST
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
-							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++)
+							for(adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++)
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -287,9 +287,9 @@ namespace INMOST
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
-							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++)
+							for(adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++)
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -306,7 +306,7 @@ namespace INMOST
 		}
 		else
 		{
-			MIDType hm = GetMeshLink()->HideMarker();
+			MarkerType hm = GetMeshLink()->HideMarker();
 			for(i = 0; i < 4; i++) if( conn[i] )
 			{
 				if( i == myconn )
@@ -315,12 +315,12 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+					for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); ++it)
 						if( !(*it)->GetMarker(hm) && (invert ^ (*it)->GetMarker(mask)) ) ret++;
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+					for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); ++it)
 						if( !(*it)->GetMarker(hm) && (invert ^ (*it)->GetMarker(mask)) ) ret++;
 				}
 				else if( i == (myconn - 2 + 4)%4 )
@@ -328,9 +328,9 @@ namespace INMOST
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -346,9 +346,9 @@ namespace INMOST
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -392,20 +392,20 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					result.insert(result.end(),high_conn.begin(),high_conn.end());
+					result.insert(result.end(),HighConn().begin(),HighConn().end());
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					result.insert(result.end(),low_conn.begin(),low_conn.end());
+					result.insert(result.end(),LowConn().begin(),LowConn().end());
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
-							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++)
+							for(adj_type::iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++)
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -418,9 +418,9 @@ namespace INMOST
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
-							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++)
+							for(adj_type::iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++)
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -435,7 +435,7 @@ namespace INMOST
 		}
 		else
 		{
-			MIDType hm = GetMeshLink()->HideMarker();
+			MarkerType hm = GetMeshLink()->HideMarker();
 			for(i = 0; i < 4; i++) if( conn[i] )
 			{
 				if( i == myconn )
@@ -445,13 +445,13 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+					for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); ++it)
 						if( !(*it)->GetMarker(hm) ) result.push_back(*it);
 					
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+					for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); ++it)
 						if( !(*it)->GetMarker(hm) ) result.push_back(*it);
 				}
 				else if( i == (myconn - 2 + 4)%4 )
@@ -459,9 +459,9 @@ namespace INMOST
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_type::iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -474,9 +474,9 @@ namespace INMOST
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_type::iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -492,7 +492,7 @@ namespace INMOST
 		return result;
 	}
 	
-	adjacent<Element> Element::getAdjElements(ElementType _etype, MIDType mask, bool invert) const 
+	adjacent<Element> Element::getAdjElements(ElementType _etype, MarkerType mask, bool invert) const 
 	{
 		assert( !(_etype & MESH) );
 		assert( !(_etype & ESET) );
@@ -517,13 +517,13 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+					for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); ++it)
 						if( invert ^ (*it)->GetMarker(mask) ) result.push_back(*it);
 					
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+					for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); ++it)
 						if( invert ^ (*it)->GetMarker(mask) ) result.push_back(*it);
 				}
 				else if( i == (myconn - 2 + 4)%4 )
@@ -531,9 +531,9 @@ namespace INMOST
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++)
-							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++)
+							for(adj_type::iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++)
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -546,9 +546,9 @@ namespace INMOST
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++)
-							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++)
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++)
+							for(adj_type::iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++)
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -563,7 +563,7 @@ namespace INMOST
 		}
 		else
 		{
-			MIDType hm = GetMeshLink()->HideMarker();
+			MarkerType hm = GetMeshLink()->HideMarker();
 			for(i = 0; i < 4; i++) if( conn[i] )
 			{
 				if( i == myconn )
@@ -573,13 +573,13 @@ namespace INMOST
 				}
 				else if( i == (myconn + 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); ++it)
+					for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); ++it)
 						if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) result.push_back(*it);
 					
 				}
 				else if( i == (myconn - 1 + 4)%4 )
 				{
-					for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); ++it)
+					for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); ++it)
 						if( (invert ^ (*it)->GetMarker(mask)) && !(*it)->GetMarker(hm) ) result.push_back(*it);
 				}
 				else if( i == (myconn - 2 + 4)%4 )
@@ -587,9 +587,9 @@ namespace INMOST
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = high_conn.begin(); it != high_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_type::iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = HighConn().begin(); it != HighConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_type::iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -602,9 +602,9 @@ namespace INMOST
 					else
 					{
 						Mesh * m = GetMeshLink();
-						MIDType mrk = m->CreateMarker();
-						for(adj_type::const_iterator it = low_conn.begin(); it != low_conn.end(); it++) if( !(*it)->GetMarker(hm) )
-							for(adj_type::iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )
+						MarkerType mrk = m->CreateMarker();
+						for(adj_type::const_iterator it = LowConn().begin(); it != LowConn().end(); it++) if( !(*it)->GetMarker(hm) )
+							for(adj_type::iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) if( !(*jt)->GetMarker(hm) )
 								if( (invert ^ (*jt)->GetMarker(mask)) && !(*jt)->GetMarker(mrk) )
 								{
 									result.push_back(*jt);
@@ -623,11 +623,9 @@ namespace INMOST
 	Element & Element::operator =(Element const & other)
 	{
 		Storage::operator =(other);
-		high_conn.clear();
-		low_conn.clear();
-		m_type = other.m_type;
-		high_conn = other.high_conn;
-		low_conn = other.low_conn;
+		HighConn().clear();
+		LowConn().clear();
+		SetGeometricType(other.GetGeometricType());
 		return *this;
 	}
 	
@@ -657,25 +655,25 @@ namespace INMOST
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
 	
-	adjacent<Node> Element::getNodes(MIDType mask,bool invert)
+	adjacent<Node> Element::getNodes(MarkerType mask,bool invert)
 	{
 		adjacent<Node> ret;
 		if( invert ^ GetMarker(mask) ) ret.push_back(this);
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
-	adjacent<Edge> Element::getEdges(MIDType mask,bool invert)
+	adjacent<Edge> Element::getEdges(MarkerType mask,bool invert)
 	{
 		adjacent<Edge> ret;
 		if( invert ^ GetMarker(mask) ) ret.push_back(this);
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
-	adjacent<Face> Element::getFaces(MIDType mask,bool invert)
+	adjacent<Face> Element::getFaces(MarkerType mask,bool invert)
 	{
 		adjacent<Face> ret;
 		if( invert ^ GetMarker(mask) ) ret.push_back(this);
 		return ret; //this operation will be virtualized by proper algorithm	
 	}
-	adjacent<Cell> Element::getCells(MIDType mask,bool invert)
+	adjacent<Cell> Element::getCells(MarkerType mask,bool invert)
 	{
 		adjacent<Cell> ret;
 		if( invert ^ GetMarker(mask) ) ret.push_back(this);
@@ -693,6 +691,7 @@ namespace INMOST
 		Element * c = *b;
 		int lid = (*b)->LocalID(), rid = (*a)->LocalID();
 		(*a)->SwapDenseData(lid);
+		(*a)->SwapSparseData(lid);
 		*b = *a;
 		*a = c;
 		(*b)->local_id = lid;
@@ -749,10 +748,10 @@ namespace INMOST
 	{
 		if( !GetMeshLink()->HideMarker() )
 		{
-			for(adj_iterator jt = high_conn.begin(); jt != high_conn.end(); jt++) //iterate over upper adjacent
+			for(adj_iterator jt = HighConn().begin(); jt != HighConn().end(); jt++) //iterate over upper adjacent
 			{
 				bool found = false;
-				for(adj_iterator kt = (*jt)->low_conn.begin(); kt != (*jt)->low_conn.end(); kt++) //search for the link to me
+				for(adj_iterator kt = (*jt)->LowConn().begin(); kt != (*jt)->LowConn().end(); kt++) //search for the link to me
 					if( *kt == this )
 					{
 						found = true;
@@ -760,10 +759,10 @@ namespace INMOST
 					}
 				if( !found ) return false;
 			}
-			for(adj_iterator jt = low_conn.begin(); jt != low_conn.end(); jt++) //iterate over lower adjacent
+			for(adj_iterator jt = LowConn().begin(); jt != LowConn().end(); jt++) //iterate over lower adjacent
 			{
 				bool found = false;
-				for(adj_iterator kt = (*jt)->high_conn.begin(); kt != (*jt)->high_conn.end(); kt++) //search for the link to me
+				for(adj_iterator kt = (*jt)->HighConn().begin(); kt != (*jt)->HighConn().end(); kt++) //search for the link to me
 					if( *kt == this )
 					{
 						found = true;
@@ -774,11 +773,11 @@ namespace INMOST
 		}
 		else
 		{
-			MIDType hm = GetMeshLink()->HideMarker();
-			for(adj_iterator jt = high_conn.begin(); jt != high_conn.end(); jt++) if( !(*jt)->GetMarker(hm) )//iterate over upper adjacent
+			MarkerType hm = GetMeshLink()->HideMarker();
+			for(adj_iterator jt = HighConn().begin(); jt != HighConn().end(); jt++) if( !(*jt)->GetMarker(hm) )//iterate over upper adjacent
 			{
 				bool found = false;
-				for(adj_iterator kt = (*jt)->low_conn.begin(); kt != (*jt)->low_conn.end(); kt++) if( !(*kt)->GetMarker(hm) )//search for the link to me
+				for(adj_iterator kt = (*jt)->LowConn().begin(); kt != (*jt)->LowConn().end(); kt++) if( !(*kt)->GetMarker(hm) )//search for the link to me
 					if( *kt == this )
 					{
 						found = true;
@@ -786,10 +785,10 @@ namespace INMOST
 					}
 				if( !found ) return false;
 			}
-			for(adj_iterator jt = low_conn.begin(); jt != low_conn.end(); jt++) if( !(*jt)->GetMarker(hm) ) //iterate over lower adjacent
+			for(adj_iterator jt = LowConn().begin(); jt != LowConn().end(); jt++) if( !(*jt)->GetMarker(hm) ) //iterate over lower adjacent
 			{
 				bool found = false;
-				for(adj_iterator kt = (*jt)->high_conn.begin(); kt != (*jt)->high_conn.end(); kt++) if( !(*kt)->GetMarker(hm) ) //search for the link to me
+				for(adj_iterator kt = (*jt)->HighConn().begin(); kt != (*jt)->HighConn().end(); kt++) if( !(*kt)->GetMarker(hm) ) //search for the link to me
 					if( *kt == this )
 					{
 						found = true;
@@ -810,10 +809,10 @@ namespace INMOST
 	
 	
 	
-	adjacent<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MIDType mask, bool invert)
+	adjacent<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MarkerType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
-		MIDType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreateMarker();
 		adjacent<Element> adjcells;
 		adjacent<Element> adjfaces = getAdjElements(Bridge);
 		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(Dest);
@@ -835,10 +834,10 @@ namespace INMOST
 	}
 
 
-	adjacent<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MIDType mask, bool invert)
+	adjacent<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MarkerType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
-		MIDType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreateMarker();
 		adjacent<Node> adjcells;
 		adjacent<Element> adjfaces = getAdjElements(Bridge);
 		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(NODE);
@@ -859,10 +858,10 @@ namespace INMOST
 		return adjcells;
 	}
 
-	adjacent<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MIDType mask, bool invert)
+	adjacent<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MarkerType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
-		MIDType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreateMarker();
 		adjacent<Edge> adjcells;
 		adjacent<Element> adjfaces = getAdjElements(Bridge);
 		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(EDGE);
@@ -883,10 +882,10 @@ namespace INMOST
 		return adjcells;
 	}
 
-	adjacent<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MIDType mask, bool invert)
+	adjacent<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MarkerType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
-		MIDType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreateMarker();
 		adjacent<Face> adjcells;
 		adjacent<Element> adjfaces = getAdjElements(Bridge);
 		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(FACE);
@@ -907,10 +906,10 @@ namespace INMOST
 		return adjcells;
 	}
 
-	adjacent<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MIDType mask, bool invert)
+	adjacent<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MarkerType mask, bool invert)
 	{
 		Mesh * m = GetMeshLink();
-		MIDType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreateMarker();
 		adjacent<Cell> adjcells;
 		adjacent<Element> adjfaces = getAdjElements(Bridge);
 		adjacent<Element> my = Bridge & GetElementType() ? adjacent<Element>() : getAdjElements(CELL);
@@ -942,5 +941,33 @@ namespace INMOST
 	void Element::Centroid  (Storage::real * cnt) {m_link->GetGeometricData(this,CENTROID,cnt);}
 	void Element::Barycenter(Storage::real * cnt) {m_link->GetGeometricData(this,BARYCENTER,cnt);}
 	
+#if defined(NEW_CONNECTIONS)
+	Element::adj_type &       Element::HighConn() 
+	{
+		return *static_cast<inner_reference_array*>(GetDenseLink(GetMeshLink()->HighConnTag()));
+	}
+	Element::adj_type &       Element::LowConn () 
+	{
+		return *static_cast<inner_reference_array*>(GetDenseLink(GetMeshLink()->LowConnTag()));
+	}
+	Element::adj_type const & Element::HighConn() const 
+	{
+		return *static_cast<inner_reference_array*>(GetDenseLink(GetMeshLink()->HighConnTag()));
+	}
+	Element::adj_type const & Element::LowConn () const 
+	{
+		return *static_cast<inner_reference_array*>(GetDenseLink(GetMeshLink()->LowConnTag()));
+	}
+#endif
+
+	Element::GeometricType Element::GetGeometricType() const
+	{
+		return static_cast<const Storage::bulk *>(GetDenseLink(GetMeshLink()->GeomTypeTag()))[0];
+	}
+
+	void Element::SetGeometricType(GeometricType t)
+	{
+		static_cast<Storage::bulk *>(GetDenseLink(GetMeshLink()->GeomTypeTag()))[0] = t;
+	}
 }
 #endif

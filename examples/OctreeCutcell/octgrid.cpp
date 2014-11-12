@@ -319,7 +319,7 @@ void cellGetFaceVerts(struct grid * g, int m, int side, int * nverts, Node * ver
 
 
 
-std::vector<Edge *> traverse_edges_sub(Edge * start, Edge * current, MIDType edgeset, MIDType visited_bridge, MIDType visited_edge)
+std::vector<Edge *> traverse_edges_sub(Edge * start, Edge * current, MarkerType edgeset, MarkerType visited_bridge, MarkerType visited_edge)
 {
 	//~ if( current == start ) return std::vector<Edge *> (1,start);
 	std::vector< std::vector<Edge *> > paths;
@@ -366,7 +366,7 @@ std::vector<Edge *> traverse_edges_sub(Edge * start, Edge * current, MIDType edg
 }
 //This function may be slow, because we collect all the arrays
 //should detect shortest path here, then collect one array with shortest path
-std::vector<Edge *> traverse_edges(Edge * start, MIDType edgeset, MIDType visited_bridge, MIDType visited_edge)
+std::vector<Edge *> traverse_edges(Edge * start, MarkerType edgeset, MarkerType visited_bridge, MarkerType visited_edge)
 {
 	std::vector< std::vector<Edge *> > paths;
 	adjacent<Node> n = start->getNodes();
@@ -757,7 +757,7 @@ public:
 		if( !head_column.empty() )
 		{
 			Mesh * m = head_column[0]->GetMeshLink();
-			MIDType hide_marker = m->CreateMarker();
+			MarkerType hide_marker = m->CreateMarker();
 
 			visits.resize(head_column.size());
 			for(typename dynarray<T, 256>::iterator it = head_column.begin(); it != head_column.end(); ++it)
@@ -857,7 +857,7 @@ public:
 		if( !ret.empty() )
 		{
 			Mesh * m = ret[0]->GetMeshLink();
-			MIDType hide_marker = m->CreateMarker();
+			MarkerType hide_marker = m->CreateMarker();
 			for(unsigned k = 0; k < ret.size(); k++) ret[k]->SetMarker(hide_marker);
 			for(unsigned k = 0; k < head_column.size(); k++)
 				if( head_column[k]->GetMarker(hide_marker) ) visits[k]--;
@@ -875,9 +875,9 @@ public:
 
 class edge_Comparator
 	{
-	private: MIDType medge;
+	private: MarkerType medge;
 	public:
-		edge_Comparator(MIDType medge):medge(medge){}
+		edge_Comparator(MarkerType medge):medge(medge){}
 		bool operator()(Edge * a, Edge * b){return a->GetMarker(medge) < b->GetMarker(medge);}
 	};
 
@@ -1046,10 +1046,10 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 	
 	else
 	{
-		MIDType face_on_face = g->mesh->CreateMarker();
-		MIDType edge_on_face = g->mesh->CreateMarker();
-		MIDType edge_on_edge = g->mesh->CreateMarker();
-		MIDType multi_edge   = g->mesh->CreateMarker();
+		MarkerType face_on_face = g->mesh->CreateMarker();
+		MarkerType edge_on_face = g->mesh->CreateMarker();
+		MarkerType edge_on_edge = g->mesh->CreateMarker();
+		MarkerType multi_edge   = g->mesh->CreateMarker();
 		
 		dynarray<Element *,16> en1;
 		tiny_map<int,int, 64> edges_mat;
@@ -1144,7 +1144,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 					en1.clear();
 					adjacent<Element> nodesn0 = n0->BridgeAdjacencies(EDGE,NODE);
 					adjacent<Element> nodesn2 = n2->BridgeAdjacencies(EDGE,NODE);
-					MIDType inter = g->mesh->CreateMarker();
+					MarkerType inter = g->mesh->CreateMarker();
 					
 					if( inter == 0 ) throw -1;
 					
@@ -1736,7 +1736,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 							{
 								//mark elements to skip
 								mat_union.clear();
-								MIDType skip = g->mesh->CreateMarker();
+								MarkerType skip = g->mesh->CreateMarker();
 								for(unsigned jj = 1; jj < face_elements.size()+1; jj++) //start from edge
 								{
 									int de = (found+jj)%face_elements.size(); // actual element
@@ -1999,7 +1999,7 @@ exit_work:				if( !success )
 					
 					if( print ) std::cout << "created face centered node!" << std::endl;
 					
-					MIDType del = g->mesh->CreateMarker();
+					MarkerType del = g->mesh->CreateMarker();
 					for(j = 1; j < face_elements.size(); j+=2) if( !face_elements[j]->GetMarker(edge_on_edge) ) face_elements[j]->SetMarker(del);
 
 					dynarray<Edge*,128>::iterator it = face_edges.begin();
@@ -2438,7 +2438,7 @@ exit_work:				if( !success )
 				mat.insert(mat.end(),mat_union.begin(),mat_union.end());
 				
 				//now connect central node with cuts on edges
-				MIDType mrk = g->mesh->CreateMarker();
+				MarkerType mrk = g->mesh->CreateMarker();
 				for(j = 0; j < l; j++)
 				{
 					//edge_cut_nodes[j].insert(edge_cut_nodes[j].end(),edge_cut_nodes2[j].begin(),edge_cut_nodes2[j].end());// do we need to connect degenerate cuts?
@@ -2512,7 +2512,7 @@ exit_work:				if( !success )
 					
 					
 				//Node * remember[2] = {edge_nodes[0],edge_nodes[1]};
-				//MIDType mrk = g->mesh->CreateMarker();
+				//MarkerType mrk = g->mesh->CreateMarker();
 				/*
 				for(j = 0; j < l; j++)
 				{
@@ -2594,7 +2594,7 @@ exit_work:				if( !success )
 						mat1 = node_in_face[j]->IntegerArray(g->materials);
 						break;
 					}
-				MIDType mrk = g->mesh->CreateMarker();
+				MarkerType mrk = g->mesh->CreateMarker();
 				for(j = 0; j < l; j++)
 				{
 					edge_cut_nodes[j].insert(edge_cut_nodes[j].end(),edge_cut_nodes2[j].begin(),edge_cut_nodes2[j].end());// do we need to connect degenerate cuts?
@@ -2697,7 +2697,7 @@ exit_work:				if( !success )
 				if( print ) std::cout << " connections between edgecuts " << std::endl; 
 				Storage::real c1,c2;
 				Storage::integer_array mats1,mats2;
-				MIDType mrk = g->mesh->CreateMarker();
+				MarkerType mrk = g->mesh->CreateMarker();
 				for(j = 0; j < l; j++)
 				{
 					edge_cut_nodes[j].insert(edge_cut_nodes[j].end(),edge_cut_nodes2[j].begin(),edge_cut_nodes2[j].end());
@@ -2920,7 +2920,7 @@ exit_work:				if( !success )
 				
 				if( print ) matrix.print_matrix();
 				
-				MIDType mrk = g->mesh->CreateMarker();
+				MarkerType mrk = g->mesh->CreateMarker();
 				int num_loops = 0;
 				
 				dynarray<Edge *,32> loop;
@@ -4124,7 +4124,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 {
 	//~ if( !g->cells[m].busy || !g->cells[m].leaf || g->cells[m].mr->empty() ) return;
 	Storage::real cell_vol = g->cells[m].vol;
-	MIDType cell_visited = g->mesh->CreateMarker();
+	MarkerType cell_visited = g->mesh->CreateMarker();
 	bool restart = false;
 	do
 	{
@@ -4169,8 +4169,8 @@ void cellUniteSmallElements(struct grid * g, int m)
 				
 				//~ for(std::map<Cell *, Storage::real>::iterator j = around_cell.begin(); j != around_cell.end(); ++j)
 					//~ std::cout << j->second << std::endl;
-				MIDType skip_current = g->mesh->CreateMarker();
-				MIDType visited = g->mesh->CreateMarker();
+				MarkerType skip_current = g->mesh->CreateMarker();
+				MarkerType visited = g->mesh->CreateMarker();
 				while(unite_vol/cell_vol < MINVOLFRAC )
 				{
 					std::map<Cell *, Storage::real>::iterator k = around_cell.end();
@@ -4216,7 +4216,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 						//~ std::cout << unite[j] << " " << Element::GeometricTypeName(unite[j]->GetGeometricType()) << " ";
 					//~ std::cout << std::endl;
 					//remove them from array we look at
-					MIDType rem = g->mesh->CreateMarker();
+					MarkerType rem = g->mesh->CreateMarker();
 					for(int j = 0; j < unite.size(); j++) unite[j]->SetMarker(rem);
 					for(int j = 0; j < g->cells[m].mr->size(); j++)
 						if( (*g->cells[m].mr)[j]->GetMarker(rem) )
@@ -4279,7 +4279,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 								{
 									//~ if( it->first == NULL ) //boundary faces, compare normals
 									{
-										MIDType fv = g->mesh->CreateMarker();
+										MarkerType fv = g->mesh->CreateMarker();
 										
 										bool found = false;
 										do
@@ -4321,7 +4321,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 												if( unite.size() > 1 )
 												{
 													Storage::real unite_area = 0;
-													MIDType rem = g->mesh->CreateMarker();
+													MarkerType rem = g->mesh->CreateMarker();
 													for(unsigned i = 0; i < unite.size(); i++) 
 													{
 														unite_area += unite[i]->Area();

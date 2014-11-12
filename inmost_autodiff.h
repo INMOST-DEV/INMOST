@@ -91,13 +91,13 @@ namespace INMOST
 		typedef dynarray<stencil_pair, 64> stencil_pairs;
 		typedef void(*stencil_callback)(Storage * current_element, stencil_pairs & out_stencil, void * user_data);
 	private:
-		typedef struct{ Tag t; MIDType domain_mask; } tagdomain;
+		typedef struct{ Tag t; MarkerType domain_mask; } tagdomain;
 		typedef small_hash<INMOST_DATA_ENUM_TYPE, tagdomain, 128> const_tag_type;
 		typedef struct{ tagdomain d; Tag indices; } tagpair;
 		typedef small_hash<INMOST_DATA_ENUM_TYPE, tagpair, 128> tagpairs_type;
 		typedef std::vector<tagpair> index_enum;
 		typedef struct { Tag elements, coefs; } stencil_tag;
-		typedef struct { std::string name; INMOST_DATA_ENUM_TYPE kind; MIDType domainmask; void * link; } stencil_kind_domain;
+		typedef struct { std::string name; INMOST_DATA_ENUM_TYPE kind; MarkerType domainmask; void * link; } stencil_kind_domain;
 		typedef small_hash<INMOST_DATA_ENUM_TYPE, stencil_kind_domain, 128> stencil_type;
 		typedef struct func_name_callback_t { std::string name; func_callback func; } func_name_callback;
 		typedef small_hash<INMOST_DATA_ENUM_TYPE, func_name_callback, 128> func_type;
@@ -139,22 +139,22 @@ namespace INMOST
 		__INLINE INMOST_DATA_ENUM_TYPE GetFirstIndex() { return first_num; }
 		__INLINE INMOST_DATA_ENUM_TYPE GetLastIndex() { return last_num; }
 		INMOST_DATA_ENUM_TYPE RegisterFunc(std::string name, func_callback func);
-		INMOST_DATA_ENUM_TYPE RegisterStencil(std::string name, Tag elements_tag, Tag coefs_tag, MIDType domain_mask = 0);
-		INMOST_DATA_ENUM_TYPE RegisterStencil(std::string name, stencil_callback func, MIDType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE RegisterStencil(std::string name, Tag elements_tag, Tag coefs_tag, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE RegisterStencil(std::string name, stencil_callback func, MarkerType domain_mask = 0);
 		INMOST_DATA_ENUM_TYPE RegisterTable(std::string name, INMOST_DATA_REAL_TYPE * Arguments, INMOST_DATA_REAL_TYPE * Values, INMOST_DATA_ENUM_TYPE size);
-		INMOST_DATA_ENUM_TYPE RegisterDynamicTag(Tag t, ElementType typemask, MIDType domain_mask = 0);
-		INMOST_DATA_ENUM_TYPE RegisterStaticTag(Tag t, MIDType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE RegisterDynamicTag(Tag t, ElementType typemask, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE RegisterStaticTag(Tag t, MarkerType domain_mask = 0);
 		void EnumerateDynamicTags();
 		__INLINE Tag                 GetDynamicValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.t; }
 		__INLINE Tag                 GetDynamicIndexTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].indices; }
-		__INLINE MIDType             GetDynamicMask(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.domain_mask; }
+		__INLINE MarkerType             GetDynamicMask(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.domain_mask; }
 		__INLINE Tag                 GetStaticValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_ctags[ind].t; }
-		__INLINE MIDType             GetStaticMask(INMOST_DATA_ENUM_TYPE ind) { return reg_ctags[ind].domain_mask; }
+		__INLINE MarkerType             GetStaticMask(INMOST_DATA_ENUM_TYPE ind) { return reg_ctags[ind].domain_mask; }
 		__INLINE INMOST_DATA_REAL_TYPE GetDynamicValue(Storage * e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetDynamicValueTag(ind))[comp]; }
 		__INLINE INMOST_DATA_ENUM_TYPE GetDynamicIndex(Storage * e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetDynamicIndexTag(ind))[comp]; }
-		__INLINE bool                isDynamicValid(Storage * e, INMOST_DATA_ENUM_TYPE ind) { MIDType mask = GetDynamicMask(ind); return mask == 0 || e->GetMarker(mask); }
+		__INLINE bool                isDynamicValid(Storage * e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetDynamicMask(ind); return mask == 0 || e->GetMarker(mask); }
 		__INLINE INMOST_DATA_REAL_TYPE GetStaticValue(Storage * e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetStaticValueTag(ind))[comp]; }
-		__INLINE bool                isStaticValid(Storage * e, INMOST_DATA_ENUM_TYPE ind) { MIDType mask = GetStaticMask(ind); return mask == 0 || e->GetMarker(mask); }
+		__INLINE bool                isStaticValid(Storage * e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetStaticMask(ind); return mask == 0 || e->GetMarker(mask); }
 #if defined(NEW_VERSION)
 		INMOST_DATA_REAL_TYPE Evaluate(expr & var, Storage * e, void * user_data);
 		INMOST_DATA_REAL_TYPE Derivative(expr & var, Storage * e, Solver::Row & out, Storage::real multiply, void * user_data);
@@ -607,7 +607,7 @@ namespace INMOST
 	__INLINE expr measure() { return expr(AD_MES,ENUMUNDEF); }
 	__INLINE expr condition(const expr & cond, const expr & if_gt, const expr & if_le) { return expr(cond, if_gt, if_le); }
 	__INLINE expr condition_etype(ElementType etypes, const expr & if_true, const expr & if_false) { return expr(expr(AD_COND_TYPE, etypes), if_true, if_false); }
-	__INLINE expr condition_marker(MIDType marker, const expr & if_true, const expr & if_false) { return expr(expr(AD_COND_MARK, marker), if_true, if_false); }
+	__INLINE expr condition_marker(MarkerType marker, const expr & if_true, const expr & if_false) { return expr(expr(AD_COND_MARK, marker), if_true, if_false); }
 	__INLINE expr stencil(INMOST_DATA_ENUM_TYPE stncl, const expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return expr(stncl, &v); }
 	__INLINE expr tabval(INMOST_DATA_ENUM_TYPE tabl, const expr & v) { assert(tabl >= AD_TABLE && tabl < AD_FUNC); return expr(tabl, v); }
 	__INLINE expr tagval(INMOST_DATA_ENUM_TYPE reg_tag, INMOST_DATA_ENUM_TYPE comp = 0) { assert(reg_tag >= AD_TAG && reg_tag < AD_STNCL); return expr(reg_tag, comp); }
@@ -690,7 +690,7 @@ namespace INMOST
 	__INLINE expr ad_val(const expr & v, const expr & multiplyer = expr(0.0)) {return expr(AD_VAL,new expr(v), new expr(multiplyer));}
 	__INLINE expr measure() { return expr(AD_MES, NULL, NULL); }
 	__INLINE expr condition_etype(ElementType etype, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(AD_COND_TYPE,etype), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
-	__INLINE expr condition_marker(MIDType marker, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(AD_COND_MARK,marker), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
+	__INLINE expr condition_marker(MarkerType marker, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(AD_COND_MARK,marker), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
 	__INLINE expr condition(const expr & cond, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(cond), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
 	__INLINE expr stencil(INMOST_DATA_ENUM_TYPE stncl, const expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return expr(stncl, new expr(v), NULL); }
 	__INLINE expr tabval(INMOST_DATA_ENUM_TYPE tabl, const expr & v) { assert(tabl >= AD_TABLE && tabl < AD_FUNC); return expr(tabl, new expr(v), NULL); }

@@ -46,7 +46,7 @@ namespace INMOST
 		element->Bulk(tag) &= *data;
 	}
 
-	void Mesh::SynchronizeMarker(MIDType marker, ElementType mask, SyncBitOp op)
+	void Mesh::SynchronizeMarker(MarkerType marker, ElementType mask, SyncBitOp op)
 	{
 #if defined(USE_MPI)
 		if( m_state == Mesh::Parallel )
@@ -308,13 +308,13 @@ namespace INMOST
 		element->SetData(tag,0,size,data);
 	}
 
-	void ArraySetMarker(std::vector<Element *> & arr, MIDType marker)
+	void ArraySetMarker(std::vector<Element *> & arr, MarkerType marker)
 	{
 		for(std::vector<Element *>::iterator it = arr.begin(); it != arr.end(); it++)
 			(*it)->SetMarker(marker);
 	}
 	
-	void ArrayRemMarker(std::vector<Element *> & arr, MIDType marker)
+	void ArrayRemMarker(std::vector<Element *> & arr, MarkerType marker)
 	{
 		for(std::vector<Element *>::iterator it = arr.begin(); it != arr.end(); it++)
 			(*it)->RemMarker(marker);
@@ -1689,7 +1689,7 @@ namespace INMOST
 		{
 			std::vector<Element *> all_visited;
 			Tag on_skin = CreateTag("TEMPORARY_ON_SKIN",DATA_INTEGER,bridge_type,bridge_type);
-			MIDType busy = CreateMarker();
+			MarkerType busy = CreateMarker();
 			for(std::map< int , std::vector<Element *> >::iterator kt = skin_faces.begin(); kt != skin_faces.end(); kt++)
 			{
 				for(std::vector<Element *>::iterator it = kt->second.begin(); it != kt->second.end(); it++)
@@ -1758,8 +1758,8 @@ namespace INMOST
 					{
 						array_size_send.push_back(eit-elements[i].begin());
 						array_size_send[count]++;
-						size_t s = (*eit)->GetDataSize(tag);
-						size_t had_s = array_data_send.size();
+						INMOST_DATA_ENUM_TYPE s = (*eit)->GetDataSize(tag);
+						INMOST_DATA_ENUM_TYPE had_s = array_data_send.size();
 						array_data_send.resize(had_s+s*tag.GetBytesSize());
 						(*eit)->GetData(tag,0,s,&array_data_send[had_s]);
 						if( size == ENUMUNDEF ) array_size_send.push_back(s);						
@@ -1769,8 +1769,8 @@ namespace INMOST
 			{
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++)
 				{
-					size_t s = (*eit)->GetDataSize(tag);
-					size_t had_s = array_data_send.size();
+					INMOST_DATA_ENUM_TYPE s = (*eit)->GetDataSize(tag);
+					INMOST_DATA_ENUM_TYPE had_s = array_data_send.size();
 					array_data_send.resize(had_s+s*tag.GetBytesSize());
 					(*eit)->GetData(tag,0,s,&array_data_send[had_s]);
 					if( size == ENUMUNDEF ) array_size_send.push_back(s);
@@ -2196,7 +2196,7 @@ namespace INMOST
 		}
 		{
 			adjacent<Element> adj;
-			MIDType busy = CreateMarker();
+			MarkerType busy = CreateMarker();
 			ArraySetMarker(snodes,busy);
 			ArraySetMarker(sedges,busy);
 			ArraySetMarker(sfaces,busy);
@@ -2310,8 +2310,8 @@ namespace INMOST
 		}
 		//pack edges
 		{
-			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(sedges.size());
-			std::vector<Storage::integer> low_conn_nums;
+			dynarray<INMOST_DATA_ENUM_TYPE,64> low_conn_size(sedges.size());
+			dynarray<Storage::integer,64> low_conn_nums;
 			position = buffer.size();
 			new_size = 0;
 			num = 0; k = 0;
@@ -2319,7 +2319,7 @@ namespace INMOST
 			{
 				//num += (*it)->low_conn.size();
 				low_conn_size[k] = 0;//(*it)->low_conn.size();
-				for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->Hidden() )
+				for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) if( !(*jt)->Hidden() )
 				{
 					std::vector<Element *>::iterator find = std::lower_bound(snodes.begin(),snodes.end(),(*jt));
 					if( find == snodes.end() || (*find) != (*jt) ) throw Failure;
@@ -2347,14 +2347,14 @@ namespace INMOST
 			buffer.resize(position+new_size);
 			temp = sedges.size();
 			MPI_Pack(&temp				,1				,INMOST_MPI_DATA_ENUM_TYPE		,&buffer[0],buffer.size(),&position,comm);
-			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0]	,sedges.size()	,INMOST_MPI_DATA_ENUM_TYPE		,&buffer[0],buffer.size(),&position,comm);
-			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0]	,num			,INMOST_MPI_DATA_INTEGER_TYPE		,&buffer[0],buffer.size(),&position,comm);
+			if( !low_conn_size.empty() ) MPI_Pack(low_conn_size.data()	,sedges.size()	,INMOST_MPI_DATA_ENUM_TYPE		,&buffer[0],buffer.size(),&position,comm);
+			if( !low_conn_nums.empty() ) MPI_Pack(low_conn_nums.data()	,num			,INMOST_MPI_DATA_INTEGER_TYPE	,&buffer[0],buffer.size(),&position,comm);
 			buffer.resize(position);
 		}
 		//pack faces
 		{
-			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(sfaces.size());
-			std::vector<Storage::integer> low_conn_nums;
+			dynarray<INMOST_DATA_ENUM_TYPE,64> low_conn_size(sfaces.size());
+			dynarray<Storage::integer,64> low_conn_nums;
 			position = buffer.size();
 			new_size = 0;
 			num = 0; k = 0;
@@ -2362,7 +2362,7 @@ namespace INMOST
 			{
 				//num += (*it)->low_conn.size();
 				low_conn_size[k] = 0;//(*it)->low_conn.size();
-				for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->Hidden() )
+				for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) if( !(*jt)->Hidden() )
 				{
 					std::vector<Element *>::iterator find = std::lower_bound(sedges.begin(),sedges.end(),(*jt));
 					if( find == sedges.end() || (*find) != (*jt) ) throw Failure;
@@ -2390,15 +2390,15 @@ namespace INMOST
 			buffer.resize(position+new_size);
 			temp = sfaces.size();
 			MPI_Pack(&temp				,1				,INMOST_MPI_DATA_ENUM_TYPE		,&buffer[0],buffer.size(),&position,comm);
-			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0]	,sfaces.size()	,INMOST_MPI_DATA_ENUM_TYPE		,&buffer[0],buffer.size(),&position,comm);
-			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0]	,num			,INMOST_MPI_DATA_INTEGER_TYPE		,&buffer[0],buffer.size(),&position,comm);
+			if( !low_conn_size.empty() ) MPI_Pack(low_conn_size.data()	,sfaces.size()	,INMOST_MPI_DATA_ENUM_TYPE		,&buffer[0],buffer.size(),&position,comm);
+			if( !low_conn_nums.empty() ) MPI_Pack(low_conn_nums.data()	,num			,INMOST_MPI_DATA_INTEGER_TYPE	,&buffer[0],buffer.size(),&position,comm);
 			buffer.resize(position);
 		}
 		//pack cells
 		{
-			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(scells.size()), high_conn_size(scells.size());
-			std::vector<Storage::integer> low_conn_nums;
-			std::vector<Storage::integer> high_conn_nums;
+			dynarray<INMOST_DATA_ENUM_TYPE,64> low_conn_size(scells.size()), high_conn_size(scells.size());
+			dynarray<Storage::integer,64> low_conn_nums;
+			dynarray<Storage::integer,64> high_conn_nums;
 			INMOST_DATA_ENUM_TYPE num_high = 0;
 			position = buffer.size();
 			new_size = 0;
@@ -2407,7 +2407,7 @@ namespace INMOST
 			{
 				//num += (*it)->low_conn.size();
 				low_conn_size[k] = 0;//(*it)->low_conn.size();				
-				for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) if( !(*jt)->Hidden() )
+				for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) if( !(*jt)->Hidden() )
 				{
 					std::vector<Element *>::iterator find = std::lower_bound(sfaces.begin(),sfaces.end(),(*jt));
 					if( find == sfaces.end() || (*find) != (*jt) ) throw Failure;
@@ -2417,7 +2417,7 @@ namespace INMOST
 				}
 				//num_high += (*it)->high_conn.size();
 				high_conn_size[k] = 0;//(*it)->high_conn.size();
-				for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) if( !(*jt)->Hidden() )
+				for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) if( !(*jt)->Hidden() )
 				{
 					std::vector<Element *>::iterator find = std::lower_bound(snodes.begin(),snodes.end(),(*jt));
 					if( find == snodes.end() || (*find) != (*jt) ) throw Failure;
@@ -2448,10 +2448,10 @@ namespace INMOST
 			buffer.resize(position+new_size);
 			temp = scells.size();
 			MPI_Pack(&temp				,1				,INMOST_MPI_DATA_ENUM_TYPE	,&buffer[0],buffer.size(),&position,comm);
-			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0]	,scells.size()	,INMOST_MPI_DATA_ENUM_TYPE	,&buffer[0],buffer.size(),&position,comm);
-			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0]	,num			,INMOST_MPI_DATA_INTEGER_TYPE	,&buffer[0],buffer.size(),&position,comm);
-			if( !high_conn_size.empty() ) MPI_Pack(&high_conn_size[0]	,scells.size()	,INMOST_MPI_DATA_ENUM_TYPE	,&buffer[0],buffer.size(),&position,comm);
-			if( !high_conn_nums.empty() ) MPI_Pack(&high_conn_nums[0]	,num_high		,INMOST_MPI_DATA_INTEGER_TYPE	,&buffer[0],buffer.size(),&position,comm);
+			if( !low_conn_size.empty() ) MPI_Pack(low_conn_size.data()	,scells.size()	,INMOST_MPI_DATA_ENUM_TYPE	,&buffer[0],buffer.size(),&position,comm);
+			if( !low_conn_nums.empty() ) MPI_Pack(low_conn_nums.data()	,num			,INMOST_MPI_DATA_INTEGER_TYPE	,&buffer[0],buffer.size(),&position,comm);
+			if( !high_conn_size.empty() ) MPI_Pack(high_conn_size.data()	,scells.size()	,INMOST_MPI_DATA_ENUM_TYPE	,&buffer[0],buffer.size(),&position,comm);
+			if( !high_conn_nums.empty() ) MPI_Pack(high_conn_nums.data()	,num_high		,INMOST_MPI_DATA_INTEGER_TYPE	,&buffer[0],buffer.size(),&position,comm);
 			buffer.resize(position);
 		}
 		all.insert(all.end(),scells.begin(),scells.end());
@@ -2606,13 +2606,13 @@ namespace INMOST
 			if( num > 0 )
 			{
 				low_conn_size.resize(num);
-				MPI_Unpack(&buffer[0],buffer.size(),&position,&low_conn_size[0],num,INMOST_MPI_DATA_ENUM_TYPE,comm);
+				MPI_Unpack(&buffer[0],buffer.size(),&position,low_conn_size.data(),num,INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
 				if( temp > 0 )
 				{
 					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],buffer.size(),&position,&low_conn_nums[0],temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],buffer.size(),&position,low_conn_nums.data(),temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 			}
 			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
@@ -2650,13 +2650,13 @@ namespace INMOST
 			if( num > 0 )
 			{
 				low_conn_size.resize(num);
-				if( !buffer.empty() && !low_conn_size.empty() ) MPI_Unpack(&buffer[0],buffer.size(),&position,&low_conn_size[0],num,INMOST_MPI_DATA_ENUM_TYPE,comm);
+				if( !buffer.empty() && !low_conn_size.empty() ) MPI_Unpack(&buffer[0],buffer.size(),&position,low_conn_size.data(),num,INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
 				if( temp > 0 )
 				{
 					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],buffer.size(),&position,&low_conn_nums[0],temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],buffer.size(),&position,low_conn_nums.data(),temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 			}
 			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
@@ -2695,22 +2695,22 @@ namespace INMOST
 			if( num > 0 )
 			{
 				low_conn_size.resize(num);
-				MPI_Unpack(&buffer[0],buffer.size(),&position,&low_conn_size[0],num,INMOST_MPI_DATA_ENUM_TYPE,comm);
+				MPI_Unpack(&buffer[0],buffer.size(),&position,low_conn_size.data(),num,INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
 				if( temp > 0 )
 				{
 					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],buffer.size(),&position,&low_conn_nums[0],temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],buffer.size(),&position,low_conn_nums.data(),temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 				high_conn_size.resize(num);
-				MPI_Unpack(&buffer[0],buffer.size(),&position,&high_conn_size[0],num,INMOST_MPI_DATA_ENUM_TYPE,comm);
+				MPI_Unpack(&buffer[0],buffer.size(),&position,high_conn_size.data(),num,INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += high_conn_size[i];
 				if( temp > 0 )
 				{
 					high_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],buffer.size(),&position,&high_conn_nums[0],temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],buffer.size(),&position,high_conn_nums.data(),temp,INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 			}
 			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
@@ -3119,7 +3119,7 @@ namespace INMOST
 			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");
 			{
 				std::vector< std::vector<Element *> > delete_elements(4);
-				MIDType delete_marker = CreateMarker();
+				MarkerType delete_marker = CreateMarker();
 				
 				for(std::map< int , std::vector<Element *> >::iterator it = send_elements.begin(); it != send_elements.end(); it++)
 					if( !it->second.empty() )
@@ -3370,7 +3370,7 @@ namespace INMOST
 			time = Timer();
 			for(Storage::integer_array::iterator p = procs.begin(); p != procs.end(); p++)
 			{
-				MIDType busy = CreateMarker();
+				MarkerType busy = CreateMarker();
 				all_visited.clear();
 				for(std::vector<Element *>::iterator it = shared_skin[*p].begin(); it != shared_skin[*p].end(); it++)
 				{
@@ -3413,7 +3413,7 @@ namespace INMOST
 				{
 					std::vector<Element *> & ref_cur = current_layers[*p];
 					std::vector<Element *> & ref_old = old_layers[*p];
-					MIDType busy = CreateMarker();
+					MarkerType busy = CreateMarker();
 					all_visited.clear();
 					ArraySetMarker(ref_old,busy);
 					for(std::vector<Element *>::iterator it = ref_old.begin(); it != ref_old.end(); it++)
@@ -3582,7 +3582,7 @@ namespace INMOST
 			if( bridge == FACE ) redistribute_skin.swap(skin_faces);
 			else
 			{
-				MIDType busy = CreateMarker();
+				MarkerType busy = CreateMarker();
 				// Here should first find all adjacent elements of skin_faces of given type,
 				// then distribute them between sets according to new processors
 				for(std::map<int, std::vector<Element *> >::iterator it = skin_faces.begin(); it != skin_faces.end(); it++)
@@ -3612,7 +3612,7 @@ namespace INMOST
 			{
 				time2 = Timer();
 				std::map<int, std::vector<Element *> > current_layers,old_layers;
-				MIDType busy = CreateMarker();
+				MarkerType busy = CreateMarker();
 				for(std::map<int, std::vector<Element *> >::iterator it = redistribute_skin.begin(); it != redistribute_skin.end(); it++)
 				{
 					all_visited.clear();
@@ -3650,7 +3650,7 @@ namespace INMOST
 					current_layers.clear();
 					for(std::map< int, std::vector<Element *> >::iterator qt = old_layers.begin(); qt != old_layers.end(); qt++)
 					{
-						MIDType busy = CreateMarker();
+						MarkerType busy = CreateMarker();
 						all_visited.clear();
 						ArraySetMarker(qt->second,busy);
 						for(std::vector<Element *>::iterator it = qt->second.begin(); it != qt->second.end(); it++)

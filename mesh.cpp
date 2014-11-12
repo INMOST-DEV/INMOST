@@ -23,12 +23,14 @@ namespace INMOST
 	//~ }
 	
 	Mesh::Mesh()
-	:TagManager(),Storage(this,MESH),
-	cells(8192),empty_cells(8192),
-	faces(8192),empty_faces(8192),
-	edges(8192),empty_edges(8192),
-	nodes(8192),empty_nodes(8192),
-	sets(128), empty_sets(128)
+	:TagManager(),Storage(this,MESH)
+	//for chunk_array
+	,
+	cells(1),empty_cells(1),
+	faces(1),empty_faces(1),
+	edges(1),empty_edges(1),
+	nodes(1),empty_nodes(1),
+	sets(1), empty_sets(1)
 	{
 		
 		
@@ -47,8 +49,16 @@ namespace INMOST
 		//~ cells.reserve(1024);
 		
 		//tag_global_id = CreateTag("GLOBAL_ID",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE,NONE,1);
-		tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
+		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
 		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
+#if defined(NEW_CONNECTIONS)
+		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+#endif
+#if defined(NEW_MARKERS)
+		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
+#endif
+		tag_geom_type     = CreateTag("GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		//tag_shared_elems = CreateTag("SHARED_ELEMS_TAG",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 
 		epsilon = 1.0e-8;
@@ -79,10 +89,23 @@ namespace INMOST
 	Mesh::Mesh(const Mesh & other)
 	:TagManager(this,other),Storage(this,0,other),
 	empty_cells(other.empty_cells),empty_faces(other.empty_faces),
-	empty_edges(other.empty_edges),empty_nodes(other.empty_nodes)
+	empty_edges(other.empty_edges),empty_nodes(other.empty_nodes),
+	empty_sets(other.empty_sets)
+	,
+	cells(1),
+	faces(1),
+	edges(1),
+	nodes(1),
+	sets(1) 
 	{
 		INMOST_DATA_ENUM_TYPE i;
+#if defined(NEW_MARKERS)
+		Storage::bulk marker_space[MarkerFields];
+		other.GetMarkerSpace(marker_space);
+		SetMarkerSpace(marker_space);
+#else
 		markers = other.GetMarkerSpace();
+#endif
 		m_state = other.m_state;
 		
 		checkset = other.checkset;
@@ -96,8 +119,16 @@ namespace INMOST
 		dim = other.dim;
 
 		
-		tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
+		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
 		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
+#if defined(NEW_CONNECTIONS)
+		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+#endif
+#if defined(NEW_MARKERS)
+		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
+#endif
+		tag_geom_type     = CreateTag("GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		//tag_shared_elems = CreateTag("SHARED_ELEMS_TAG",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		
 		if( m_state == Mesh::Parallel ) SetCommunicator(other.comm);
@@ -110,12 +141,15 @@ namespace INMOST
 		//~ faces.reserve(other.faces.size());
 		//~ cells.reserve(other.cells.size());
 		//~ sets.reserve(other.sets.size());
+		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1 )
+			ReallocateData(etype);
 
+		/*
 		for(iteratorTag t = BeginTag(); t != EndTag(); t++)
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1 )
 				if( t->isDefined(etype) && !t->isSparse(etype) )
 					t->AllocateData(etype);
-		
+		*/
 		
 		for(nodes_container::const_iterator it = other.nodes.begin(); it != other.nodes.end(); it++) if( (*it) != NULL ) nodes.push_back(new Node(this,(*it)->LocalID(),*(*it))); else nodes.push_back(NULL);
 		for(edges_container::const_iterator it = other.edges.begin(); it != other.edges.end(); it++) if( (*it) != NULL ) edges.push_back(new Edge(this,(*it)->LocalID(),*(*it))); else edges.push_back(NULL);
@@ -125,26 +159,26 @@ namespace INMOST
 		i = 0;
 		for(nodes_container::const_iterator it = other.nodes.begin(); it != other.nodes.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) nodes[i]->low_conn.push_back(cells[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) nodes[i]->high_conn.push_back(edges[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) nodes[i]->LowConn().push_back(cells[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) nodes[i]->HighConn().push_back(edges[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(edges_container::const_iterator it = other.edges.begin(); it != other.edges.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) edges[i]->low_conn.push_back(nodes[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) edges[i]->high_conn.push_back(faces[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) edges[i]->LowConn().push_back(nodes[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) edges[i]->HighConn().push_back(faces[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(faces_container::const_iterator it = other.faces.begin(); it != other.faces.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) faces[i]->low_conn.push_back(edges[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) faces[i]->high_conn.push_back(cells[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) faces[i]->LowConn().push_back(edges[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) faces[i]->HighConn().push_back(cells[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(cells_container::const_iterator it = other.cells.begin(); it != other.cells.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) cells[i]->low_conn.push_back(faces[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) cells[i]->high_conn.push_back(nodes[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) cells[i]->LowConn().push_back(faces[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) cells[i]->HighConn().push_back(nodes[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(sets_container::const_iterator it = other.sets.begin(); it != other.sets.end(); it++, i++) if( (*it) != NULL )
@@ -196,7 +230,7 @@ namespace INMOST
 		
 		TagManager::assign(this,other);
 		Storage::assign(this,0,other);
-		markers = other.GetMarkerSpace();
+
 		m_state = other.m_state;
 		dim = other.dim;
 		checkset = other.checkset;
@@ -204,8 +238,16 @@ namespace INMOST
 		memcpy(remember,other.remember,sizeof(remember));
 
 		
-		tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
+		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
 		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
+#if defined(NEW_CONNECTIONS)
+		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+#endif
+#if defined(NEW_MARKERS)
+		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
+#endif
+		tag_geom_type     = CreateTag("GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		//tag_shared_elems = CreateTag("SHARED_ELEMS_TAG",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		
 		
@@ -227,11 +269,14 @@ namespace INMOST
 		//~ cells.reserve(other.cells.size());
 		//~ sets.reserve(other.sets.size());
 
+		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1 )
+			ReallocateData(etype);
+		/*
 		for(iteratorTag t = BeginTag(); t != EndTag(); t++)
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1 )
 				if( t->isDefined(etype) && !t->isSparse(etype) )
 					t->AllocateData(etype);
-		
+		*/
 		for(nodes_container::const_iterator it = other.nodes.begin(); it != other.nodes.end(); it++) if( (*it) != NULL ) nodes.push_back(new Node(this,(*it)->LocalID(),*(*it))); else nodes.push_back(NULL);
 		for(edges_container::const_iterator it = other.edges.begin(); it != other.edges.end(); it++) if( (*it) != NULL ) edges.push_back(new Edge(this,(*it)->LocalID(),*(*it))); else edges.push_back(NULL);
 		for(faces_container::const_iterator it = other.faces.begin(); it != other.faces.end(); it++) if( (*it) != NULL ) faces.push_back(new Face(this,(*it)->LocalID(),*(*it))); else faces.push_back(NULL);
@@ -240,26 +285,26 @@ namespace INMOST
 		i = 0;
 		for(nodes_container::const_iterator it = other.nodes.begin(); it != other.nodes.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) nodes[i]->low_conn.push_back(cells[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) nodes[i]->high_conn.push_back(edges[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) nodes[i]->LowConn().push_back(cells[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) nodes[i]->HighConn().push_back(edges[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(edges_container::const_iterator it = other.edges.begin(); it != other.edges.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) edges[i]->low_conn.push_back(nodes[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) edges[i]->high_conn.push_back(faces[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) edges[i]->LowConn().push_back(nodes[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) edges[i]->HighConn().push_back(faces[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(faces_container::const_iterator it = other.faces.begin(); it != other.faces.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) faces[i]->low_conn.push_back(edges[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) faces[i]->high_conn.push_back(cells[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) faces[i]->LowConn().push_back(edges[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) faces[i]->HighConn().push_back(cells[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(cells_container::const_iterator it = other.cells.begin(); it != other.cells.end(); it++, i++) if( (*it) != NULL )
 		{
-			for(Element::adj_iterator jt = (*it)->low_conn.begin(); jt != (*it)->low_conn.end(); jt++) cells[i]->low_conn.push_back(faces[(*jt)->LocalID()]);
-			for(Element::adj_iterator jt = (*it)->high_conn.begin(); jt != (*it)->high_conn.end(); jt++) cells[i]->high_conn.push_back(nodes[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->LowConn().begin(); jt != (*it)->LowConn().end(); jt++) cells[i]->LowConn().push_back(faces[(*jt)->LocalID()]);
+			for(Element::adj_iterator jt = (*it)->HighConn().begin(); jt != (*it)->HighConn().end(); jt++) cells[i]->HighConn().push_back(nodes[(*jt)->LocalID()]);
 		}
 		i = 0;
 		for(sets_container::const_iterator it = other.sets.begin(); it != other.sets.end(); it++, i++) if( (*it) != NULL )
@@ -285,26 +330,26 @@ namespace INMOST
 		for(sets_container::iterator it = sets.begin(); it != sets.end(); it++) if( *it != NULL ) delete *it;
 		for(cells_container::iterator it = cells.begin(); it != cells.end(); it++) if( *it != NULL ) 
 		{
-			(*it)->high_conn.clear();
-			(*it)->low_conn.clear();
+			(*it)->HighConn().clear();
+			(*it)->LowConn().clear();
 			delete *it;
 		}
 		for(faces_container::iterator it = faces.begin(); it != faces.end(); it++) if( *it != NULL ) 
 		{
-			(*it)->high_conn.clear();
-			(*it)->low_conn.clear();
+			(*it)->HighConn().clear();
+			(*it)->LowConn().clear();
 			delete *it;
 		}
 		for(edges_container::iterator it = edges.begin(); it != edges.end(); it++) if( *it != NULL ) 
 		{
-			(*it)->high_conn.clear();
-			(*it)->low_conn.clear();
+			(*it)->HighConn().clear();
+			(*it)->LowConn().clear();
 			delete *it;
 		}
 		for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL ) 
 		{
-			(*it)->high_conn.clear();
-			(*it)->low_conn.clear();
+			(*it)->HighConn().clear();
+			(*it)->LowConn().clear();
 			delete *it;
 		}
 #if defined(USE_MPI)
@@ -350,11 +395,11 @@ namespace INMOST
 		if( !HideMarker() )
 		{
 			/*
-			dynarray<Element *, 64> inter(arr[0]->high_conn.begin(),arr[0]->high_conn.end());
-			MIDType mrk = CreateMarker();
+			dynarray<Element *, 64> inter(arr[0]->HighConn().begin(),arr[0]->HighConn().end());
+			MarkerType mrk = CreateMarker();
 			for(unsigned i = 1; i < s; i++)
 			{
-				for(Element::adj_iterator jt = arr[i]->high_conn.begin(); jt != arr[i]->high_conn.end(); ++jt) (*jt)->SetMarker(mrk);
+				for(Element::adj_iterator jt = arr[i]->HighConn().begin(); jt != arr[i]->HighConn().end(); ++jt) (*jt)->SetMarker(mrk);
 				{
 					size_t m = 0, n = 0;
 					while( m < inter.size() ) 
@@ -365,7 +410,7 @@ namespace INMOST
 					}
 					inter.resize(n);
 				}
-				for(Element::adj_iterator jt = arr[i]->high_conn.begin(); jt != arr[i]->high_conn.end(); ++jt) (*jt)->RemMarker(mrk);
+				for(Element::adj_iterator jt = arr[i]->HighConn().begin(); jt != arr[i]->HighConn().end(); ++jt) (*jt)->RemMarker(mrk);
 				if( inter.empty() )
 				{
 					ReleaseMarker(mrk);
@@ -376,40 +421,54 @@ namespace INMOST
 			return inter[0];
 			*/
 			/*
-			if( arr[0]->GetElementType() == NODE )// there should be only 2 nodes
+			if( arr[0]->GetElementType() == NODE )// this is edge
 			{
-				for(Element::adj_iterator it = arr[0]->high_conn.begin(); it != arr[0]->high_conn.end(); ++it)
+				//there are 2 nodes
+				if( s == 2 )
 				{
-					if( ((*it)->low_conn[0] == arr[0] && (*it)->low_conn[1] == arr[1]) || ((*it)->low_conn[1] == arr[0] && (*it)->low_conn[0] == arr[1]) )
-						return *it;
+					//check that any of edges of current node links to the other node
+					Element::adj_type const & hc = arr[0]->HighConn();
+					int i, iend = hc.size(), ss = s;
+					for(i = 0; i < iend; ++i)
+					{
+						Element::adj_type const & lc = hc[i]->LowConn();
+						//assert(lc.size() == 2);
+						if( (lc[0] == arr[1] || lc[1] == arr[1]) ) return hc[i];
+					}
+				}
+				else if( s == 1 )
+				{
+					Element::adj_type const & hc = arr[0]->HighConn();
+					if( !hc.empty() ) return hc.front();
 				}
 				return NULL;
 			}
 			else
 			*/
-			
 			{
-				unsigned iend = arr[0]->high_conn.size();
-				for(unsigned it = 0; it < iend; ++it)
+				int flag0, flag1, i , ss = s;
+				dynarray<Element::adj_type const *, 64> hcarr(ss);
+				for(i = 0; i < ss; i++) hcarr[i] = &arr[i]->HighConn();
+				int it, iend = hcarr[0]->size(), jt, jend;
+				for(it = 0; it < iend; ++it)
 				{
-					unsigned flag0 = 0;
-					for(unsigned i = 1; i < s; ++i)
+					flag0 = 0;
+					for(i = 1; i < ss; ++i)
 					{
-						unsigned jend = arr[i]->high_conn.size();
-						bool flag1 = false;
-						for(unsigned jt = 0; jt < jend; ++jt)
+						jend = hcarr[i]->size();
+						flag1 = 0;
+						for(jt = 0; jt < jend; ++jt)
 						{
-							if( arr[0]->high_conn[it] == arr[i]->high_conn[jt] )
+							if( hcarr[0]->at(it) == hcarr[i]->at(jt) )
 							{
 								flag0++;
-								flag1 = true;
+								flag1 = 1;
 								break;
 							}
 						}
-						if( !flag1 )
-							break;
+						if( flag1 == 0 ) break;
 					}
-					if( flag0 == s-1 ) return arr[0]->high_conn[it];
+					if( flag0 == ss-1 ) return hcarr[0]->at(it);
 				}
 			}
 			
@@ -422,9 +481,9 @@ namespace INMOST
 				set_type visits;
 				for(unsigned i = 0; i < s; ++i)
 				{
-					unsigned jend = arr[i]->high_conn.size();
+					unsigned jend = arr[i]->HighConn().size();
 					for(unsigned jt = 0; jt < jend; ++jt)
-						visits[reinterpret_cast<unsigned>(arr[i]->high_conn[jt])]++;
+						visits[reinterpret_cast<unsigned>(arr[i]->HighConn()[jt])]++;
 				}
 				for(set_type::iterator it = visits.begin(); it != visits.end(); ++it)
 					if( it->second == s ) return reinterpret_cast<Element *>(it->first);
@@ -439,21 +498,21 @@ namespace INMOST
 				unsigned q = s;
 				for(unsigned i = 0; i < s && !ret; ++i)
 				{
-					unsigned jend = arr[i]->high_conn.size();
+					unsigned jend = arr[i]->HighConn().size();
 					for(unsigned jt = 0; jt < jend && !ret; ++jt)
 					{
-						if( ++arr[i]->high_conn[jt]->RealDF(tag_shared_elems) == s)
+						if( ++arr[i]->HighConn()[jt]->RealDF(tag_shared_elems) == s)
 						{
-							ret = arr[i]->high_conn[jt];
+							ret = arr[i]->HighConn()[jt];
 							q = i+1;
 						}
 					}
 				}
 				for(unsigned i = 0; i < q; ++i)
 				{
-					unsigned jend = arr[i]->high_conn.size();
+					unsigned jend = arr[i]->HighConn().size();
 					for(unsigned jt = 0; jt < jend; ++jt)
-						arr[i]->high_conn[jt]->RealDF(tag_shared_elems) = 0.0;
+						arr[i]->HighConn()[jt]->RealDF(tag_shared_elems) = 0.0;
 				}
 				return ret;
 			}
@@ -462,15 +521,19 @@ namespace INMOST
 		else
 		{
 			unsigned ss = Mesh::Count(arr,s,HideMarker());
-			for(Element::adj_iterator it = arr[0]->high_conn.begin(); it != arr[0]->high_conn.end(); ++it) if( !(*it)->Hidden() )
+			Element::adj_type & const hc0 = arr[0]->HighConn();
+			unsigned iend = hc0.size();
+			for(unsigned it = 0; it < iend; ++it) if( !hc0[it]->Hidden() )
 			{
 				unsigned int flag0 = 0;
 				for(unsigned i = 1; i < s; i++)
 				{
 					bool flag1 = false;
-					for(Element::adj_iterator jt = arr[i]->high_conn.begin(); jt != arr[i]->high_conn.end(); ++jt) if( !(*jt)->Hidden() )
+					Element::adj_type & const hci = arr[i]->HighConn();
+					unsigned jend = hci.size();
+					for(unsigned jt = 0; jt < jend; ++jt) if( !hci[jt]->Hidden() )
 					{
-						if( *it == *jt )
+						if( hc0[it] == hci[jt] )
 						{
 							flag0++;
 							flag1 = true;
@@ -480,7 +543,7 @@ namespace INMOST
 					if( !flag1 )
 						break;
 				}
-				if( flag0 == ss-1 ) return (*it);
+				if( flag0 == ss-1 ) return hc0[it];
 			}
 		}
 		return NULL;
@@ -512,7 +575,7 @@ namespace INMOST
 		if( GetTopologyCheck(ADJACENT_DUPLICATE) )
 		{
 			bool have_dup = false;
-			MIDType dup = CreateMarker();
+			MarkerType dup = CreateMarker();
 			for(i = 0; i < s; i++)
 			{
 				if( adj[i]->GetMarker(dup) ) 
@@ -791,7 +854,7 @@ namespace INMOST
 	{
 		INMOST_DATA_ENUM_TYPE i = 0;
 		Node * e = new Node(this);
-		e->m_type = Element::Vertex;
+		e->SetGeometricType(Element::Vertex);
 		Storage::real_array v = e->RealArray(tag_coords);
 		for(i = 0; i < dim; i++) v[i] = coords[i];
 		e->SetMarker(NewMarker());
@@ -817,9 +880,11 @@ namespace INMOST
 			e = new Edge(this);
 			for(i = 0; i < s; i++)
 			{
-				e_nodes[i]->high_conn.push_back(e);
-				e->low_conn.push_back(e_nodes[i]);
+				e_nodes[i]->HighConn().push_back(e);
+				//e->LowConn().push_back(e_nodes[i]);
 			}
+			Element::adj_type & lc = e->LowConn();
+			lc.insert(lc.end(),reinterpret_cast<Element **>(e_nodes),reinterpret_cast<Element **>(e_nodes+s));
 			e->ComputeGeometricType();
 			e->SetMarker(NewMarker());
 			RecomputeGeometricData(e);
@@ -878,9 +943,11 @@ namespace INMOST
 			e = new Face(this);
 			for(i = 0; i < s; i++)
 			{
-				f_edges[i]->high_conn.push_back(e);
-				e->low_conn.push_back(f_edges[i]);
+				f_edges[i]->HighConn().push_back(e);
+				//e->LowConn().push_back(f_edges[i]);
 			}
+			Element::adj_type & lc = e->LowConn();
+			lc.insert(lc.end(),reinterpret_cast<Element **>(f_edges),reinterpret_cast<Element **>(f_edges+s));
 			e->ComputeGeometricType();
 			e->SetMarker(NewMarker());
 			RecomputeGeometricData(e);
@@ -964,9 +1031,9 @@ namespace INMOST
 				 */
 			case Element::Hex:
 			{
-				MIDType mrk = CreateMarker();
-				MIDType cemrk = CreateMarker();
-				MIDType femrk = CreateMarker();
+				MarkerType mrk = CreateMarker();
+				MarkerType cemrk = CreateMarker();
+				MarkerType femrk = CreateMarker();
 				//printf("%lx %lx %lx\n",mrk,cemrk,femrk);
 				adjacent<Face> faces = c->getFaces();
 				Face * face = &faces[0];
@@ -1022,9 +1089,9 @@ namespace INMOST
 				 */
 			case Element::Prism:
 			{
-				MIDType mrk = CreateMarker();
-				MIDType cemrk = CreateMarker();
-				MIDType femrk = CreateMarker();
+				MarkerType mrk = CreateMarker();
+				MarkerType cemrk = CreateMarker();
+				MarkerType femrk = CreateMarker();
 				ret.reserve(6);
 				Face * face;
 				adjacent<Face> faces = c->getFaces();
@@ -1082,7 +1149,7 @@ namespace INMOST
 			{
 				ret.reserve(5);
 				Face * quad, * triangle;
-				MIDType mrk = CreateMarker();
+				MarkerType mrk = CreateMarker();
 				adjacent<Face> faces = c->getFaces();
 				for(unsigned int i = 0; i < faces.size(); i++) //go over faces
 					if( faces[i].nbAdjElements(EDGE) == 4 ) //check if number of edges = 4
@@ -1125,31 +1192,48 @@ namespace INMOST
 			}
 			default: //Tet, MultiPolygon, Polyhedron
 			{
-				MIDType mrk = CreateMarker();
+				MarkerType mrk = CreateMarker();
 				if( !HideMarker() )
 				{
-					for(Element::adj_iterator i = c->low_conn.begin(); i != c->low_conn.end(); i++) //iterate over faces
-						for(Element::adj_iterator j = (*i)->low_conn.begin(); j != (*i)->low_conn.end(); j++) //iterate over face edges
-							for(Element::adj_iterator k = (*j)->low_conn.begin(); k != (*j)->low_conn.end(); k++) //iterator over edge nodes
-								if( !(*k)->GetMarker(mrk) )
+					Element::adj_type & lc = c->LowConn();
+					for(Element::adj_type::enumerator i = 0; i < lc.size(); i++) //iterate over faces
+					{
+						Element::adj_type & ilc = lc[i]->LowConn();
+						for(Element::adj_type::enumerator j = 0; j < ilc.size(); j++) //iterate over face edges
+						{
+							Element::adj_type & jlc = ilc[j]->LowConn();
+							for(Element::adj_type::enumerator k = 0; k < jlc.size(); k++) //iterator over edge nodes
+							{
+								if( !jlc[k]->GetMarker(mrk) )
 								{
-									(*k)->SetMarker(mrk);
-									ret.push_back(static_cast<Node *>(*k));
+									jlc[k]->SetMarker(mrk);
+									ret.push_back(static_cast<Node *>(jlc[k]));
 								}
+							}
+						}
+					}
 				}
 				else
 				{
-					for(Element::adj_iterator i = c->low_conn.begin(); i != c->low_conn.end(); i++) if( !(*i)->Hidden() )  //iterate over faces
-						for(Element::adj_iterator j = (*i)->low_conn.begin(); j != (*i)->low_conn.end(); j++) if( !(*j)->Hidden() ) //iterate over face edges
-							for(Element::adj_iterator k = (*j)->low_conn.begin(); k != (*j)->low_conn.end(); k++) if( !(*k)->Hidden() ) //iterator over edge nodes
-								if( !(*k)->GetMarker(mrk) )
+					Element::adj_type & lc = c->LowConn();
+					for(Element::adj_type::enumerator i = 0; i < lc.size(); i++) if( !lc[i]->Hidden() )  //iterate over faces
+					{
+						Element::adj_type & ilc = lc[i]->LowConn();
+						for(Element::adj_type::enumerator j = 0; j < ilc.size(); j++) if( !ilc[j]->Hidden() ) //iterate over face edges
+						{
+							Element::adj_type & jlc = ilc[j]->LowConn();
+							for(Element::adj_type::enumerator k = 0; k < jlc.size(); k++) if( !jlc[k]->Hidden() ) //iterator over edge nodes
+							{
+								if( !jlc[k]->GetMarker(mrk) )
 								{
-									(*k)->SetMarker(mrk);
-									ret.push_back(static_cast<Node *>(*k));
+									jlc[k]->SetMarker(mrk);
+									ret.push_back(static_cast<Node *>(jlc[k]));
 								}
+							}
+						}
+					}
 				}
-				for(dynarray<Node *,64>::iterator it = ret.begin(); it != ret.end(); it++)
-					(*it)->RemMarker(mrk);
+				for(dynarray<Node *,64>::enumerator it = 0; it < ret.size(); it++) ret[it]->RemMarker(mrk);
 				ReleaseMarker(mrk);
 				break;
 			}
@@ -1177,9 +1261,11 @@ namespace INMOST
 			e = new Cell(this);		
 			for(i = 0; i < s; i++)
 			{
-				c_faces[i]->high_conn.push_back(e);
-				e->low_conn.push_back(c_faces[i]);
+				c_faces[i]->HighConn().push_back(e);
+				//e->LowConn().push_back(c_faces[i]);
 			}
+			Element::adj_type & lc = e->LowConn();
+			lc.insert(lc.begin(),reinterpret_cast<Element **>(c_faces),reinterpret_cast<Element **>(c_faces+s));
 			e->ComputeGeometricType();		
 			{
 				dynarray<Node *,64> temp_nodes;
@@ -1191,9 +1277,11 @@ namespace INMOST
 				}
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < sn; k++)
 				{
-					c_nodes[k]->low_conn.push_back(static_cast<Element *>(e));
-					e->high_conn.push_back(static_cast<Element *>(c_nodes[k]));
+					c_nodes[k]->LowConn().push_back(static_cast<Element *>(e));
+					//e->HighConn().push_back(static_cast<Element *>(c_nodes[k]));
 				}
+				Element::adj_type & hc = e->HighConn();
+				hc.insert(hc.begin(),reinterpret_cast<Element **>(c_nodes),reinterpret_cast<Element **>(c_nodes+sn));
 				e->SetMarker(NewMarker());
 				RecomputeGeometricData(e);
 				chk |= EndTopologyCheck(e);
@@ -1348,16 +1436,16 @@ namespace INMOST
 			if( a->GetElementType() != b->GetElementType() )
 			{
 				if( a->GetElementType() < b->GetElementType() )
-					return CompareElementsUnique(a,b->low_conn[0]);
+					return CompareElementsUnique(a,b->LowConn()[0]);
 				else
-					return CompareElementsUnique(a->low_conn[0],b);
+					return CompareElementsUnique(a->LowConn()[0],b);
 			}
 			switch( a->GetGeometricType() )
 			{
 				case Element::Vertex:
 				{
 					if( a->GetElementType() > NODE )
-						return CompareElementsUnique(a->low_conn[0],b->low_conn[0]);
+						return CompareElementsUnique(a->LowConn()[0],b->LowConn()[0]);
 					Storage::real_array 
 						ca = a->RealArray(ma->CoordsTag()),
 						cb = b->RealArray(mb->CoordsTag());
@@ -1374,16 +1462,16 @@ namespace INMOST
 				case Element::Line:
 				{
 					if( a->GetElementType() > EDGE )
-						return CompareElementsUnique(a->low_conn[0],b->low_conn[0]);
+						return CompareElementsUnique(a->LowConn()[0],b->LowConn()[0]);
 					Element::adj_type ca, cb;
-					if( CompareElementsUnique(a->low_conn.front(),a->low_conn.back()) <= 0 )
-						ca.insert(ca.begin(),a->low_conn.begin(),a->low_conn.end());
+					if( CompareElementsUnique(a->LowConn().front(),a->LowConn().back()) <= 0 )
+						ca.insert(ca.begin(),a->LowConn().begin(),a->LowConn().end());
 					else
-						ca.insert(ca.begin(),a->low_conn.rbegin(),a->low_conn.rend());
-					if( CompareElementsUnique(b->low_conn.front(),b->low_conn.back()) <= 0 )
-						cb.insert(cb.begin(),b->low_conn.begin(),b->low_conn.end());
+						ca.insert(ca.begin(),a->LowConn().rbegin(),a->LowConn().rend());
+					if( CompareElementsUnique(b->LowConn().front(),b->LowConn().back()) <= 0 )
+						cb.insert(cb.begin(),b->LowConn().begin(),b->LowConn().end());
 					else
-						cb.insert(cb.begin(),b->low_conn.rbegin(),b->low_conn.rend());
+						cb.insert(cb.begin(),b->LowConn().rbegin(),b->LowConn().rend());
 					for(unsigned int i = 0; i < ca.size(); i++)
 					{
 						int test = CompareElementsUnique(ca[i],cb[i]);
@@ -1405,10 +1493,10 @@ namespace INMOST
 				case Element::Polygon:
 				{
 					if( a->GetElementType() > FACE )
-						return CompareElementsUnique(a->low_conn[0],b->low_conn[0]);
-					if( a->low_conn.size() != b->low_conn.size() )
-						return a->low_conn.size() - b->low_conn.size();
-					Element::adj_type ca(a->low_conn), cb(b->low_conn);
+						return CompareElementsUnique(a->LowConn()[0],b->LowConn()[0]);
+					if( a->LowConn().size() != b->LowConn().size() )
+						return a->LowConn().size() - b->LowConn().size();
+					Element::adj_type ca(a->LowConn()), cb(b->LowConn());
 #if defined(USE_QSORT)
 					qsort(&ca[0],ca.size(),sizeof(Element *),CompareElementsCUnique);
 					qsort(&cb[0],cb.size(),sizeof(Element *),CompareElementsCUnique);
@@ -1430,9 +1518,9 @@ namespace INMOST
 				case Element::Pyramid:
 				case Element::Polyhedron:
 				{
-					if( a->low_conn.size() != b->low_conn.size() )
-						return a->low_conn.size() - b->low_conn.size();
-					Element::adj_type ca(a->low_conn), cb(b->low_conn);
+					if( a->LowConn().size() != b->LowConn().size() )
+						return a->LowConn().size() - b->LowConn().size();
+					Element::adj_type ca(a->LowConn()), cb(b->LowConn());
 #if defined(USE_QSORT)
 					qsort(&ca[0],ca.size(),sizeof(Element *),CompareElementsCUnique);
 					qsort(&cb[0],cb.size(),sizeof(Element *),CompareElementsCUnique);
@@ -1466,9 +1554,9 @@ namespace INMOST
 			if( a->GetElementType() != b->GetElementType() )
 			{
 				if( a->GetElementType() < b->GetElementType() )
-					return CompareElementsCentroid(a,b->low_conn[0]);
+					return CompareElementsCentroid(a,b->LowConn()[0]);
 				else
-					return CompareElementsCentroid(a->low_conn[0],b);
+					return CompareElementsCentroid(a->LowConn()[0],b);
 			}
 			Storage::real ca[3] = {0,0,0};
 			Storage::real cb[3] = {0,0,0};
@@ -1563,7 +1651,7 @@ namespace INMOST
 #endif
 		{
 			ElementType etype = e->GetElementType();
-			size_t old_size = GetArrayCapacity(etype);
+			INMOST_DATA_ENUM_TYPE old_size = GetArrayCapacity(etype);
 			switch(e->GetElementType())
 			{
 				case ESET:
@@ -1639,9 +1727,12 @@ namespace INMOST
 			}
 			if( GetArrayCapacity(etype) != old_size )
 			{
+				ReallocateData(etype);
+				/*
 				for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); ++t)
 					if( t->isDefined(etype) && !t->isSparse(etype) )
 						t->AllocateData(etype);
+				*/
 			}
 		}
 	}
@@ -1776,10 +1867,8 @@ namespace INMOST
 					
 					//Downsize data
 					//std::cout << "Downsize cell data" << std::endl;
-					
-					for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++)
-						if( TagManager::ElementDefined(*t,CELL) )
-							t->ShrinkData(CELL,cells.capacity());
+					ReallocateData(CELL);
+
 				}
 			}
 			else
@@ -1817,10 +1906,7 @@ namespace INMOST
 					//~ empty_container(empty_faces).swap(empty_faces);
 					//Downsize data
 					//std::cout << "Downsize face data" << std::endl;
-					
-					for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++)
-						if( TagManager::ElementDefined(*t,FACE) )
-							t->ShrinkData(FACE,faces.capacity());
+					ReallocateData(FACE);
 				}
 			}
 			else
@@ -1859,10 +1945,7 @@ namespace INMOST
 					
 					//Downsize data
 					//std::cout << "Downsize edge data" << std::endl;
-					
-					for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++)
-						if( TagManager::ElementDefined(*t,EDGE) )
-							t->ShrinkData(EDGE,edges.capacity());
+					ReallocateData(EDGE);
 				}
 			}
 			else
@@ -1901,10 +1984,7 @@ namespace INMOST
 					
 					//Downsize data
 					//std::cout << "Downsize node data" << std::endl;
-					
-					for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++)
-						if( TagManager::ElementDefined(*t,NODE) )
-							t->ShrinkData(NODE,nodes.capacity());
+					ReallocateData(NODE);
 				}
 			}
 			else
@@ -1940,10 +2020,7 @@ namespace INMOST
 					//~ sets_container(sets).swap(sets);
 					//~ empty_container(empty_sets).swap(empty_sets);
 					//Downsize data
-					
-					for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++)
-						if( TagManager::ElementDefined(*t,ESET) )
-							t->ShrinkData(ESET,sets.capacity());
+					ReallocateData(ESET);
 				}
 			}
 			else
@@ -2018,23 +2095,38 @@ namespace INMOST
 		//~ DeleteTag(temp,etype);
 	}
 
-	MIDType Mesh::CreateMarker()
+	MarkerType Mesh::CreateMarker()
 	{
-		MIDType marker_space = markers;
-		MIDType ret = ((~marker_space) & (-(~marker_space)));
+#if defined(NEW_MARKERS)
+		Storage::bulk * marker_space = static_cast<Storage::bulk * >(GetDenseLink(GetMeshLink()->MarkersTag()));
+		INMOST_DATA_ENUM_TYPE ret;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k)
+		{
+			Storage::bulk mask = ((~marker_space[k]) & (-(~marker_space[k])));
+			if( mask )
+			{
+				ret = (k << MarkerShift) | mask;
+				marker_space[k] |= mask;
+				return ret;
+			}
+		}
+#else
+		MarkerType marker_space = markers;
+		MarkerType ret = ((~marker_space) & (-(~marker_space)));
 		if( ret )
 		{
 			SetMarker(ret);
 			return ret;
 		}
+#endif
 		throw NoSpaceForMarker;
 	}
-	void Mesh::ReleaseMarker(MIDType n)
+	void Mesh::ReleaseMarker(MarkerType n)
 	{
 		RemMarker(n);
 	}
 	
-	size_t Mesh::GetArrayCapacity(ElementType etype)
+	INMOST_DATA_ENUM_TYPE Mesh::GetArrayCapacity(ElementType etype)
 	{
 		assert(OneType(etype));
 		switch(etype)

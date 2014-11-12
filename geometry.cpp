@@ -168,7 +168,7 @@ namespace INMOST
 		{
 			for(i = 0; i < num; i++)
 			{
-				for(Element::adj_iterator jt = elements[i]->low_conn.begin(); jt!= elements[i]->low_conn.end()	; jt++)
+				for(Element::adj_iterator jt = elements[i]->LowConn().begin(); jt!= elements[i]->LowConn().end()	; jt++)
 					find_and_add(e_visit,*jt);
 			}
 		}
@@ -176,7 +176,7 @@ namespace INMOST
 		{
 			for(i = 0; i < num; i++) if( !elements[i]->GetMarker(HideMarker()) )
 			{
-				for(Element::adj_iterator jt = elements[i]->low_conn.begin(); jt!= elements[i]->low_conn.end()	; jt++) if( !(*jt)->GetMarker(HideMarker()) )
+				for(Element::adj_iterator jt = elements[i]->LowConn().begin(); jt!= elements[i]->LowConn().end()	; jt++) if( !(*jt)->GetMarker(HideMarker()) )
 					find_and_add(e_visit,*jt);
 			}
 		}
@@ -265,10 +265,10 @@ namespace INMOST
 
 	void Element::ComputeGeometricType()
 	{
-		m_type = Unset;
+		SetGeometricType(Unset);
 		adjacent<Element> lc = getAdjElements(GetElementType() >> 1);
 		if( !lc.empty() )
-			m_type = GetMeshLink()->ComputeGeometricType(GetElementType(),lc.data(),lc.size());
+			SetGeometricType(GetMeshLink()->ComputeGeometricType(GetElementType(),lc.data(),lc.size()));
 		/*
 		if( lc.size() == 0 && etypenum != 0) return;
 		switch(etypenum)
@@ -365,8 +365,8 @@ namespace INMOST
 
 		if( e->GetElementType() == CELL && HaveGeometricData(ORIENTATION,FACE)) //then correct the normal
 		{
-			for(Element::adj_iterator it = e->low_conn.begin(); it != e->low_conn.end(); ++it)
-				if( !(*it)->GetMarker(HideMarker()) && (*it)->high_conn.size() == 1 )
+			for(Element::adj_iterator it = e->LowConn().begin(); it != e->LowConn().end(); ++it)
+				if( !(*it)->GetMarker(HideMarker()) && (*it)->HighConn().size() == 1 )
 				{
 					(*it)->getAsFace()->FixNormalOrientation();
 				}
@@ -899,12 +899,12 @@ namespace INMOST
 
 	bool Cell::Closure()
 	{
-		return low_conn.size() > 0 ? GetMeshLink()->TestClosure(&low_conn[0],low_conn.size()) : false;
+		return LowConn().size() > 0 ? GetMeshLink()->TestClosure(LowConn().data(),LowConn().size()) : false;
 	}
 
 	bool Face::Closure()
 	{
-		return low_conn.size() > 0 ? GetMeshLink()->TestClosure(&low_conn[0],low_conn.size()) : false;
+		return LowConn().size() > 0 ? GetMeshLink()->TestClosure(LowConn().data(),LowConn().size()) : false;
 	}
 
 

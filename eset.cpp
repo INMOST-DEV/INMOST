@@ -155,7 +155,7 @@ namespace INMOST
 	}
 	
 	
-	size_t ElementSet::size() const
+	INMOST_DATA_ENUM_TYPE ElementSet::size() const
 	{
 		return eset.size();
 	}
@@ -179,12 +179,12 @@ namespace INMOST
 	}
 	
 	
-	void ElementSet::SetElementsMarker(MIDType marker)
+	void ElementSet::SetElementsMarker(MarkerType marker)
 	{
 		for(ElementSet::iterator it = begin(); it != end(); it++)
 			it->SetMarker(marker);
 	}
-	void ElementSet::RemElementsMarker(MIDType marker)
+	void ElementSet::RemElementsMarker(MarkerType marker)
 	{
 		for(ElementSet::iterator it = begin(); it != end(); it++)
 			it->RemMarker(marker);

@@ -221,7 +221,7 @@ namespace INMOST
 			lval = (e->GetElementType() & reinterpret_cast<ElementType>(var.left))? 1.0 : -1.0;
 			return lval;
 		case AD_COND_MARK:
-			lval = e->GetMarker(reinterpret_cast<MIDType>(var.left))? 1.0 : -1.0;
+			lval = e->GetMarker(reinterpret_cast<MarkerType>(var.left))? 1.0 : -1.0;
 			return lval;
 		case AD_COND:
 			lval = Evaluate(*var.left, e, user_data);
@@ -477,7 +477,7 @@ namespace INMOST
 		assert(var.op != AD_NONE);
 		switch (var.op)
 		{
-		case AD_COND_MARK: return e->GetMarker(reinterpret_cast<MIDType>(var.left)) ? 1.0 : -1.0;
+		case AD_COND_MARK: return e->GetMarker(reinterpret_cast<MarkerType>(var.left)) ? 1.0 : -1.0;
 		case AD_COND_TYPE: return (e->GetElementType() & reinterpret_cast<ElementType>(var.left)) ? 1.0 : -1.0;
 		case AD_COND:  return Evaluate(*(Evaluate(*var.left, e, user_data) > 0.0 ? var.right->left : var.right->right), e, user_data)*var.coef;
 		case AD_PLUS:  return (Evaluate(*var.left, e, user_data) + Evaluate(*var.right, e, user_data))*var.coef;
@@ -560,7 +560,7 @@ namespace INMOST
 		return ret;
 	}
 	//register stencil that can be got from tags
-	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStencil(std::string name, Tag elements_tag, Tag coefs_tag, MIDType domain_mask)
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStencil(std::string name, Tag elements_tag, Tag coefs_tag, MarkerType domain_mask)
 	{
 		INMOST_DATA_ENUM_TYPE ret = reg_stencils.size() + AD_STNCL;
 		stencil_kind_domain st;
@@ -575,7 +575,7 @@ namespace INMOST
 		return ret;
 	}
 	//register stencil that can be got from function
-	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStencil(std::string name, stencil_callback func, MIDType domain_mask)
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStencil(std::string name, stencil_callback func, MarkerType domain_mask)
 	{
 		INMOST_DATA_ENUM_TYPE ret = reg_stencils.size() + AD_STNCL;
 		stencil_kind_domain st;
@@ -601,7 +601,7 @@ namespace INMOST
 	}
 	/// set data of tag t defined on domain_mask to be dynamic data
 	/// don't register tag twice
-	INMOST_DATA_ENUM_TYPE Automatizator::RegisterDynamicTag(Tag t, ElementType typemask, MIDType domain_mask)
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterDynamicTag(Tag t, ElementType typemask, MarkerType domain_mask)
 	{
 		tagpair p;
 		p.d.domain_mask = domain_mask;
@@ -766,7 +766,7 @@ namespace INMOST
 	}
 	/// register tag, data for which don't change through iterations
 	/// don't register tag twice
-	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStaticTag(Tag t, MIDType domain_mask)
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStaticTag(Tag t, MarkerType domain_mask)
 	{
 		INMOST_DATA_ENUM_TYPE ret = reg_ctags.size() + AD_CTAG;
 		tagdomain d;

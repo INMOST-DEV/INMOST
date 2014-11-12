@@ -360,7 +360,7 @@ namespace INMOST
 	class array
 	{
 	public:
-		typedef size_t enumerator;
+		typedef int enumerator;
 		template<typename etype>
 		class _iterator
 		{
@@ -440,6 +440,8 @@ namespace INMOST
 		element * m_arr;
 		enumerator m_size;
 	public:
+		__INLINE element * data() {return m_arr;}
+		__INLINE const element * data() const {return m_arr;}
 		array() {m_arr = NULL; m_size = 0;}
 		array(enumerator n,element c = element())
 		{
@@ -483,27 +485,27 @@ namespace INMOST
 			m_arr = NULL;
 			m_size = 0;
 		}
-		const element & operator [] (enumerator n) const 
+		__INLINE const element & operator [] (enumerator n) const 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		element & operator [] (enumerator n) 
+		__INLINE element & operator [] (enumerator n) 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		const element & at (enumerator n) const 
+		__INLINE const element & at (enumerator n) const 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		element & at (enumerator n) 
+		__INLINE element & at (enumerator n) 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		element & at_safe (enumerator n) 
+		__INLINE element & at_safe (enumerator n) 
 		{
 			if( n >= m_size ) resize(n+1);
 			return m_arr[n];
@@ -549,32 +551,32 @@ namespace INMOST
 				m_arr = NULL;
 			}
 		}
-		element & back() 
+		__INLINE element & back() 
 		{
 			assert(m_arr != NULL);
 			assert(m_size > 0);
 			return m_arr[m_size-1];
 		}
-		const element & back() const 
+		__INLINE const element & back() const 
 		{
 			assert(m_arr != NULL);
 			assert(m_size > 0);
 			return m_arr[m_size-1];
 		}
-		element & front() 
+		__INLINE element & front() 
 		{
 			assert(m_arr != NULL);
 			assert(m_size > 0);
 			return m_arr[0];
 		}
-		const element & front() const 
+		__INLINE const element & front() const 
 		{
 			assert(m_arr != NULL);
 			assert(m_size > 0);
 			return m_arr[0];
 		}
-		enumerator capacity() { return m_size; }
-		bool empty() const { if( m_size ) return false; return true; }
+		__INLINE enumerator capacity() { return m_size; }
+		__INLINE bool empty() const { if( m_size ) return false; return true; }
 		void resize(enumerator n, element c = element() )
 		{
 			enumerator oldsize = m_size;
@@ -592,7 +594,7 @@ namespace INMOST
 				m_arr = NULL;
 			}
 		}
-		enumerator size() const {return m_size;}
+		__INLINE enumerator size() const {return m_size;}
 		void clear() 
 		{ 
 			for(enumerator i = 0; i < m_size; i++) m_arr[i].~element();
@@ -609,14 +611,14 @@ namespace INMOST
 			other.m_arr = t_m_arr;
 			other.m_size = t_m_size;
 		}
-		iterator begin() { return m_arr; }
-		iterator end() { return m_arr+m_size; }
-		const_iterator begin() const { return m_arr; }
-		const_iterator end() const { return m_arr+m_size; }
-		reverse_iterator rbegin() { return reverse_iterator(m_arr+m_size-1); }
-		reverse_iterator rend() { return reverse_iterator(m_arr-1); }
-		const_reverse_iterator rbegin() const { return const_reverse_iterator(m_arr+m_size-1); }
-		const_reverse_iterator rend() const { return const_reverse_iterator(m_arr-1); }
+		__INLINE iterator begin() { return m_arr; }
+		__INLINE iterator end() { return m_arr+m_size; }
+		__INLINE const_iterator begin() const { return m_arr; }
+		__INLINE const_iterator end() const { return m_arr+m_size; }
+		__INLINE reverse_iterator rbegin() { return reverse_iterator(m_arr+m_size-1); }
+		__INLINE reverse_iterator rend() { return reverse_iterator(m_arr-1); }
+		__INLINE const_reverse_iterator rbegin() const { return const_reverse_iterator(m_arr+m_size-1); }
+		__INLINE const_reverse_iterator rend() const { return const_reverse_iterator(m_arr-1); }
 		iterator erase(iterator pos) 
 		{ 
 			ptrdiff_t d = pos-begin();
@@ -695,11 +697,18 @@ namespace INMOST
 		template <class InputIterator>
 		void insert(iterator pos, InputIterator first, InputIterator last)
 		{
-			isInputForwardIterators<element,InputIterator>();
+			
 			ptrdiff_t n = 0;
+			/*
 			{
+				isInputForwardIterators<element,InputIterator>();
 				InputIterator it = first;
 				while(it != last) { n++; it++;}
+			}
+			*/
+			{
+				isInputRandomIterators<element,InputIterator>();
+				n = last - first;
 			}
 			if( n > 0 )
 			{
@@ -762,7 +771,7 @@ namespace INMOST
 	class shell
 	{
 	public:
-		typedef size_t enumerator;
+		typedef int enumerator;
 		enum Error
 		{
 			ArrayOfFixedSize
@@ -848,6 +857,8 @@ namespace INMOST
 		enumerator local_size;
 		bool fixed;
 	public:
+		__INLINE element * data() {return *m_arr;}
+		__INLINE const element * data() const {return *m_arr;}
 		shell() {m_arr = NULL; m_size = NULL; fixed = false;}
 		shell(array<element> & arr) //dynamic
 		{
@@ -882,22 +893,22 @@ namespace INMOST
 		~shell()
 		{
 		}
-		const element & operator [] (enumerator n) const 
+		__INLINE const element & operator [] (enumerator n) const 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
 		}
-		element & operator [] (enumerator n) 
+		__INLINE element & operator [] (enumerator n) 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
 		}
-		const element & at (enumerator n) const 
+		__INLINE const element & at (enumerator n) const 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
 		}
-		element & at (enumerator n) 
+		__INLINE element & at (enumerator n) 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
@@ -942,32 +953,32 @@ namespace INMOST
 				(*m_arr) = NULL;
 			}
 		}
-		element & back() 
+		__INLINE element & back() 
 		{
 			assert(*m_arr != NULL);
 			assert(*m_size > 0 );
 			return (*m_arr)[(*m_size)-1];
 		}
-		const element & back() const 
+		__INLINE const element & back() const 
 		{
 			assert(*m_arr != NULL);
 			assert(*m_size > 0 );
 			return (*m_arr)[(*m_size)-1];
 		}
-		element & front() 
+		__INLINE element & front() 
 		{
 			assert(*m_arr != NULL);
 			assert(*m_size > 0 );
 			return (*m_arr)[0];
 		}
-		const element & front() const 
+		__INLINE const element & front() const 
 		{
 			assert(*m_arr != NULL);
 			assert(*m_size > 0 );
 			return (*m_arr)[0];
 		}
-		enumerator capacity() { return (*m_size); }
-		bool empty() const { if( *m_size ) return false; return true; }
+		__INLINE enumerator capacity() { return (*m_size); }
+		__INLINE bool empty() const { if( *m_size ) return false; return true; }
 		void resize(enumerator n, element c = element() )
 		{
 			if( fixed ) throw ArrayOfFixedSize;
@@ -986,7 +997,7 @@ namespace INMOST
 				*m_arr = NULL;
 			}
 		}
-		enumerator size() const {return *m_size;}
+		__INLINE enumerator size() const {return *m_size;}
 		void clear() 
 		{ 
 			if( fixed ) throw ArrayOfFixedSize;
@@ -1004,14 +1015,14 @@ namespace INMOST
 			*other.m_arr = t_m_arr;
 			*other.m_size = t_m_size;
 		}
-		iterator begin() { return *m_arr; }
-		iterator end() { return *m_arr+(*m_size); }
-		const_iterator begin() const { return *m_arr; }
-		const_iterator end() const { return *m_arr+(*m_size); }
-		reverse_iterator rbegin() { return reverse_iterator(*m_arr+(*m_size)-1); }
-		reverse_iterator rend() { return reverse_iterator(*m_arr-1); }
-		const_reverse_iterator rbegin() const { return const_reverse_iterator(*m_arr+(*m_size)-1); }
-		const_reverse_iterator rend() const { return const_reverse_iterator(*m_arr-1); }
+		__INLINE iterator begin() { return *m_arr; }
+		__INLINE iterator end() { return *m_arr+(*m_size); }
+		__INLINE const_iterator begin() const { return *m_arr; }
+		__INLINE const_iterator end() const { return *m_arr+(*m_size); }
+		__INLINE reverse_iterator rbegin() { return reverse_iterator(*m_arr+(*m_size)-1); }
+		__INLINE reverse_iterator rend() { return reverse_iterator(*m_arr-1); }
+		__INLINE const_reverse_iterator rbegin() const { return const_reverse_iterator(*m_arr+(*m_size)-1); }
+		__INLINE const_reverse_iterator rend() const { return const_reverse_iterator(*m_arr-1); }
 		iterator erase(iterator pos) 
 		{ 
 			if( fixed ) throw ArrayOfFixedSize;
@@ -1564,7 +1575,7 @@ namespace INMOST
 		//const_iterator end() {return array + (end_index-end_index);}
 		IndType get_interval_beg() const { return beg_index; }
 		IndType get_interval_end() const { return end_index; }
-		size_t size() const {return end_index - beg_index;}
+		int size() const {return end_index - beg_index;}
 		bool empty() const {return beg_index == end_index;}
 	};
 	
@@ -1727,14 +1738,14 @@ namespace INMOST
 		const_iterator end() const {return array + (last_index-beg_index);}
 		IndType get_interval_beg() const { return beg_index; }
 		IndType get_interval_end() const { return last_index; }
-		size_t size() const {return last_index - beg_index;}
+		int size() const {return last_index - beg_index;}
 	};
 	*/
 	template<typename element, unsigned int stacked>
 	class dynarray
 	{
 	public:
-		typedef size_t enumerator;
+		typedef int enumerator;
 		template<typename dtype>
 		class _iterator
 		{
@@ -1833,8 +1844,8 @@ namespace INMOST
 			}
 		}
 	public:
-		element * data() {return pbegin;}
-		const element * data() const {return pbegin;}
+		__INLINE element * data() {return pbegin;}
+		__INLINE const element * data() const {return pbegin;}
 		void report_addr()
 		{
 			std::cout << "stack:     " << &stack << std::endl;
@@ -1942,22 +1953,22 @@ namespace INMOST
 			}
 			return *this;
 		}
-		const element & operator [] (enumerator n) const 
+		__INLINE const element & operator [] (enumerator n) const 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
 		}
-		element & operator [] (enumerator n) 
+		__INLINE element & operator [] (enumerator n) 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
 		}
-		const element & at (enumerator n) const 
+		__INLINE const element & at (enumerator n) const 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
 		}
-		element & at (enumerator n) 
+		__INLINE element & at (enumerator n) 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
@@ -1972,21 +1983,21 @@ namespace INMOST
 		{
 			(*(pend--)).~element();
 		}
-		element & back() {return *(pend-1);}
-		const element & back() const {return *(pend-1);}
-		element & front() {return *pbegin;}
-		const element & front() const {return *pbegin;}
-		size_t capacity() { return preserved-pbegin; }
-		bool empty() const { return pend==pbegin; }
-		void resize(size_t n, element c = element() )
+		__INLINE element & back() {return *(pend-1);}
+		__INLINE const element & back() const {return *(pend-1);}
+		__INLINE element & front() {return *pbegin;}
+		__INLINE const element & front() const {return *pbegin;}
+		__INLINE enumerator capacity() { return preserved-pbegin; }
+		__INLINE bool empty() const { return pend==pbegin; }
+		void resize(enumerator n, element c = element() )
 		{
-			size_t oldsize = size();
+			enumerator oldsize = size();
 			while( capacity() < n ) reserve(capacity()*2);
 			for(element * i = pbegin+n; i < pbegin+oldsize; i++) (*i).~element(); //delete elements, located over the size
 			for(element * i = pbegin+oldsize; i < pbegin+n; i++) new (i) element(c); //initialize extra entities
 			pend = pbegin + n;
 		}
-		size_t size() const {return pend-pbegin;}
+		__INLINE enumerator size() const {return pend-pbegin;}
 		void clear() 
 		{ 
 			for(element * i = pbegin; i < pend; i++) (*i).~element();
@@ -1996,7 +2007,7 @@ namespace INMOST
 		}
 		void move(dynarray<element,stacked> & other)
 		{
-			size_t k = size(), n = other.size();
+			enumerator k = size(), n = other.size();
 			if( n > static_cast<enumerator>(stacked) ) free(other.pbegin);
 			if( k > static_cast<enumerator>(stacked) )
 			{
@@ -2016,7 +2027,7 @@ namespace INMOST
 		}
 		void swap(dynarray<element,stacked> & other)
 		{
-			size_t k = size(), n = other.size();
+			enumerator k = size(), n = other.size();
 			if( k <= static_cast<enumerator>(stacked) && n <= static_cast<enumerator>(stacked) )
 			{
 				char temp[stacked*sizeof(element)];
@@ -2060,14 +2071,14 @@ namespace INMOST
 				other.preserved = temp;
 			}
 		}
-		iterator begin() { return pbegin; }
-		iterator end() { return pend; }
-		const_iterator begin() const { return pbegin; }
-		const_iterator end() const { return pend; }
-		reverse_iterator rbegin() { return reverse_iterator(pend-1); }
-		reverse_iterator rend() { return reverse_iterator(pbegin-1); }
-		const_reverse_iterator rbegin() const { return const_reverse_iterator(pend-1); }
-		const_reverse_iterator rend() const { return const_reverse_iterator(pbegin-1); }
+		__INLINE iterator begin() { return pbegin; }
+		__INLINE iterator end() { return pend; }
+		__INLINE const_iterator begin() const { return pbegin; }
+		__INLINE const_iterator end() const { return pend; }
+		__INLINE reverse_iterator rbegin() { return reverse_iterator(pend-1); }
+		__INLINE reverse_iterator rend() { return reverse_iterator(pbegin-1); }
+		__INLINE const_reverse_iterator rbegin() const { return const_reverse_iterator(pend-1); }
+		__INLINE const_reverse_iterator rend() const { return const_reverse_iterator(pbegin-1); }
 		iterator erase(iterator pos)
 		{ 
 			ptrdiff_t d = pos-begin();
@@ -2097,14 +2108,14 @@ namespace INMOST
 			new (pbegin+d) element(x);
 			return pbegin+d;
 		}
-		void insert(iterator pos, size_t n, const element & x)
+		void insert(iterator pos, enumerator n, const element & x)
 		{
 			ptrdiff_t d = pos-iterator(pbegin);
 			ptrdiff_t s = iterator(pend)-pos;
 			while( capacity()-size() < n ) reserve(capacity()*2);
 			if( s > 0 ) memmove(pbegin+d+n,pbegin+d,sizeof(element)*s);
 			pend+=n;
-			for(size_t i = 0; i < n; i++) new (pbegin+d+i) element(x);
+			for(enumerator i = 0; i < n; i++) new (pbegin+d+i) element(x);
 		}
 		template <class InputIterator>
 		void insert(iterator pos, InputIterator first, InputIterator last)
@@ -2333,36 +2344,46 @@ namespace INMOST
 		}
 	};
 
-	template<typename element>
+	template<typename element, int block_bits>
 	class chunk_array
 	{
 	public:
-		typedef size_t enumerator; //need signed type for reverse iterator? (reverse iterators commented)
+		typedef int enumerator; //need signed type for reverse iterator? (reverse iterators commented)
 	private:
+		static enumerator const block_bits_mask = (1 << (block_bits)) - 1;
+		static enumerator const block_val = 1 << block_bits;
+		static enumerator const block_size = sizeof(element)*block_val;
+		static enumerator const fwd_alloc_chunk_bits = 6;
+		static enumerator const fwd_alloc_chunk_bits_mask = (1 << (fwd_alloc_chunk_bits))-1;
+		static enumerator const fwd_alloc_chunk_val = 1 << fwd_alloc_chunk_bits;
+		static enumerator const fwd_alloc_chunk_size = sizeof(element *)*fwd_alloc_chunk_val;
 		element ** chunks;
-		enumerator chunk;
+		enumerator record_size;
 		enumerator m_size;
-		static const enumerator block = 64;
 		
-		element & access_element(enumerator k) {return chunks[k/chunk][k%chunk];}
-		const element & access_element(enumerator k) const {return chunks[k/chunk][k%chunk];}
+		__INLINE enumerator GetChunkNumber(enumerator k) const {return k >> block_bits;}
+		__INLINE enumerator GetElementNumber(enumerator k) const {return (k & block_bits_mask) * record_size;}
+		__INLINE element * access_block(enumerator k) {return chunks[GetChunkNumber(k)];}
+		__INLINE const element * access_block(enumerator k) const {return chunks[GetChunkNumber(k)];}
+		__INLINE element & access_element(enumerator k) {return access_block(k)[GetElementNumber(k)];}
+		__INLINE const element & access_element(enumerator k) const {return access_block(k)[GetElementNumber(k)];}
 	public:
-		element & operator [] (enumerator i) 
+		__INLINE element & operator [] (enumerator i) 
 		{
 			assert(i < size()); 
 			return access_element(i);
 		}
-		const element & operator [] (enumerator i) const 
+		__INLINE const element & operator [] (enumerator i) const 
 		{
 			assert(i < size()); 
 			return access_element(i);
 		}
-		element & at(enumerator i) 
+		__INLINE element & at(enumerator i) 
 		{
 			assert(i < size()); 
 			return access_element(i);
 		}
-		const element & at(enumerator i) const 
+		__INLINE const element & at(enumerator i) const 
 		{
 			assert(i < size()); 
 			return access_element(i);
@@ -2374,7 +2395,7 @@ namespace INMOST
 		class iterator
 		{
 		private:
-			chunk_array<element> * link;
+			chunk_array<element, block_bits> * link;
 			enumerator pos;
 		public:
 			typedef element * pointer;
@@ -2383,7 +2404,7 @@ namespace INMOST
 			typedef ptrdiff_t difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			iterator(){pos = 0; link = NULL;}
-			iterator(chunk_array<element> * c, enumerator pos):link(c),pos(pos){}
+			iterator(chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
 			iterator(const iterator & other){link = other.link; pos = other.pos;}
 			~iterator() {};
 			iterator operator -(enumerator n) { return iterator(link,pos-n); }
@@ -2409,7 +2430,7 @@ namespace INMOST
 		class const_iterator
 		{
 		private:
-			const chunk_array<element> * const link;
+			const chunk_array<element,block_bits> * const link;
 			enumerator pos;
 		public:
 			typedef element * pointer;
@@ -2418,7 +2439,7 @@ namespace INMOST
 			typedef ptrdiff_t difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			const_iterator(){pos = 0; link = NULL;}
-			const_iterator(const chunk_array<element> * c, enumerator pos):link(c),pos(pos){}
+			const_iterator(const chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
 			const_iterator(const const_iterator & other) :link(other.link) {pos = other.pos;}
 			~const_iterator() {};
 			const_iterator operator -(enumerator n) { return const_iterator(link,pos-n); }
@@ -2446,7 +2467,7 @@ namespace INMOST
 		{
 		private:
 			enumerator pos;
-			chunk_array<element> * link;
+			chunk_array<element,block_bits> * link;
 		public:
 			typedef element * pointer;
 			typedef element & reference;
@@ -2454,7 +2475,7 @@ namespace INMOST
 			typedef ptrdiff_t difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			reverse_iterator(){pos = 0; link = NULL;}
-			reverse_iterator(chunk_array<element> * c, enumerator pos):link(c),pos(pos){}
+			reverse_iterator(chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
 			reverse_iterator(const reverse_iterator & other){link = other.link; pos = other.pos;}
 			~reverse_iterator() {};
 			reverse_iterator operator -(enumerator n) { return reverse_iterator(link,pos+n); }
@@ -2480,7 +2501,7 @@ namespace INMOST
 		{
 		private:
 			enumerator pos;
-			const chunk_array<element> * const link;
+			const chunk_array<element,block_bits> * const link;
 		public:
 			typedef element * pointer;
 			typedef element & reference;
@@ -2488,7 +2509,7 @@ namespace INMOST
 			typedef ptrdiff_t difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			const_reverse_iterator(){pos = 0; link = NULL;}
-			const_reverse_iterator(const chunk_array<element> * c, enumerator pos):link(c),pos(pos){}
+			const_reverse_iterator(const chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
 			const_reverse_iterator(const const_reverse_iterator & other) : link(other.link) {pos = other.pos;}
 			~const_reverse_iterator() {};
 			const_reverse_iterator operator -(enumerator n) { return const_reverse_iterator(link,pos+n); }
@@ -2516,11 +2537,11 @@ namespace INMOST
 		void inner_resize(enumerator new_size)
 		{
 			//~ enumerator oldnchunks  = m_size  /chunk;
-			enumerator oldnchunks2 = m_size/chunk + (  m_size % chunk? 1 : 0);
-			enumerator oldn = oldnchunks2/block + (oldnchunks2%block? 1 : 0);
+			enumerator oldnchunks2 = (m_size >> block_bits) + ( (m_size & block_bits_mask) ? 1 : 0);
+			enumerator oldn = (oldnchunks2 >> fwd_alloc_chunk_bits) + ( (oldnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
 			//~ enumerator newnchunks = new_size/chunk;
-			enumerator newnchunks2 = new_size/chunk + (new_size % chunk? 1 : 0);
-			enumerator newn = newnchunks2/block + (newnchunks2%block? 1 : 0);
+			enumerator newnchunks2 = (new_size >> block_bits) + ( (new_size & block_bits_mask)? 1 : 0);
+			enumerator newn = (newnchunks2 >> fwd_alloc_chunk_bits) + ( (newnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
 			
 			//~ std::cout << "new " << new_size << " " << newn << " " << newnchunks2 << " old " << m_size << " " << oldn << " " << oldnchunks2 << " block " << block << " chunk " << chunk << std::endl;
 			
@@ -2536,9 +2557,9 @@ namespace INMOST
 			{
 				if( newn > 0 )
 				{
-					chunks = (element **) realloc(chunks,sizeof(element *)*newn*block);
+					chunks = (element **) realloc(chunks,fwd_alloc_chunk_size*newn);
 					assert(chunks != NULL);
-					if( newn > oldn ) memset(chunks+oldn*block,0,sizeof(element*)*(newn-oldn)*block);
+					if( newn > oldn ) memset(chunks+oldn*fwd_alloc_chunk_val,0,fwd_alloc_chunk_size*(newn-oldn));
 				}
 				else
 				{
@@ -2549,20 +2570,24 @@ namespace INMOST
 			for(enumerator q = oldnchunks2; q < newnchunks2; q++) 
 			{
 				assert(chunks[q] == NULL);
-				chunks[q] = (element *)malloc(sizeof(element)*chunk);
+				chunks[q] = (element *)malloc(block_size*record_size);
 				assert(chunks[q] != NULL);
 			}
 			//for(enumerator q = m_size; q < new_size; q++) new (&access_element(q)) element();
 		}
 	public:
 		
-		enumerator capacity() const {return (m_size/(chunk) + (m_size%(chunk) == 0? 0 : 1))*(chunk);}
+		enumerator capacity() const 
+		{
+			enumerator chunks = ((m_size>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+			return chunks*block_val;
+		}
 		enumerator size() const {return m_size;}
 		bool empty() const {return size() == 0;}
 		void clear()
 		{
 			for(enumerator q = 0; q < m_size; q++) access_element(q).~element();
-			enumerator cend = m_size/chunk + (m_size % chunk? 1 : 0);
+			enumerator cend = (m_size >> block_bits) + ((m_size & block_bits_mask)? 1 : 0);
 			for(enumerator q = 0; q < cend; q++) 
 			{
 				free(chunks[q]);
@@ -2572,25 +2597,25 @@ namespace INMOST
 			chunks = NULL;
 			m_size = 0;
 		}
-		chunk_array(enumerator setchunk)
+		chunk_array(enumerator set_record_size = 1)
 		{
-			chunk = setchunk;
+			record_size = set_record_size;
 			m_size = 0;
 			chunks = NULL;
-		}
-		chunk_array()
-		{
-			chunks = NULL;
-			m_size = 0;
-			chunk = 8;
 		}
 		chunk_array(const chunk_array & other)
 		{
 			chunks = NULL;
-			chunk = other.chunk;
+			record_size = other.record_size;
 			m_size = 0;
 			inner_resize(other.size());
-			for(enumerator k = 0; k < other.size(); k++) new(&access_element(k)) element(other.access_element(k));
+			for(enumerator k = 0; k < other.size(); k++) 
+			{
+				element * espace = &access_element(k);
+				const element * other_espace = &other.access_element(k);
+				for( enumerator i = 0; i < record_size; i++)
+					new(espace+i) element(*(other_espace+i));
+			}
 			m_size = other.size();
 		}
 		chunk_array & operator =(chunk_array const & other)
@@ -2598,9 +2623,15 @@ namespace INMOST
 			if( this != &other )
 			{
 				clear();
-				chunk = other.chunk;
+				record_size = other.record_size;
 				inner_resize(other.size());
-				for(enumerator k = 0; k < other.size(); k++) new(&access_element(k)) element(other.access_element(k));
+				for(enumerator k = 0; k < other.size(); k++) 
+				{
+					element * espace = &access_element(k);
+					const element * other_espace = &other.access_element(k);
+					for( enumerator i = 0; i < record_size; i++)
+						new(espace+i) element(*(other_espace+i));
+				}
 				m_size = other.size();
 			}
 			return *this;
@@ -2621,17 +2652,7 @@ namespace INMOST
 		*/
 		~chunk_array()
 		{
-			for(enumerator q = 0; q < m_size; q++) access_element(q).~element();
-			enumerator cend = m_size/chunk + (m_size % chunk? 1 : 0);
-			for(enumerator q = 0; q < cend; q++) 
-			{
-				free(chunks[q]);
-				chunks[q] = NULL;
-			}
-			free(chunks);
-			chunks = NULL;
-			m_size = 0;
-			chunk = 8;
+			clear();
 		}
 		
 		element & front() { assert(!empty()); return access_element(0);}
@@ -2648,15 +2669,21 @@ namespace INMOST
 		void push_back(const element & e)
 		{
 			inner_resize(m_size+1);
-			new (&access_element(m_size++)) element(e);
+			element * espace = &access_element(m_size);
+			for(enumerator i = 0; i < record_size; ++i) new (espace+i) element(e);
+			m_size++;
 		}
 		void resize(enumerator n, const element & e = element())
 		{
 			inner_resize(n);
 			for(enumerator k  = m_size; k < n; k++)
-				new (&access_element(k)) element(e);
+			{
+				element * espace = &access_element(k);
+				for(enumerator i = 0; i < record_size; ++i) new (espace+i) element(e);
+			}
 			m_size = n;
 		}
+		
 		iterator erase(iterator pos)
 		{
 			//destruct current
@@ -2664,15 +2691,18 @@ namespace INMOST
 			iterator it = pos, jt = it++;
 			while(it != end()) (*jt++) = (*it++);//std::move(*jt++);
 			//destruct last
-			(access_element(m_size-1)).~element();
+			element * espace = &access_element(m_size-1);
+			for(enumerator i = 0; i < record_size; i++) (*(espace+i)).~element();
 			inner_resize(m_size-1);
 			m_size--;
 			return pos;
 		}
+		
 		iterator begin() {return iterator(this,0);}
 		iterator end() {return iterator(this,m_size);}
 		const_iterator begin() const {return const_iterator(this,0);}
 		const_iterator end() const {return const_iterator(this,m_size);}
+		
 		//~ reverse_iterator rbegin() {return reverse_iterator(this,m_size-1);}
 		//~ reverse_iterator rend() {return reverse_iterator(this,-1);}
 		//~ const_reverse_iterator rbegin() const {return const_reverse_iterator(this,m_size-1);}
