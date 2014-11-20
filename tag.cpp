@@ -3,7 +3,90 @@
 
 namespace INMOST
 {
-	
+	const char * DataTypeName(DataType t)
+	{
+		switch(t)
+		{
+			case DATA_REAL:      return "REAL";
+			case DATA_INTEGER:   return "INTEGER";
+			case DATA_BULK:      return "BULK";
+			case DATA_REFERENCE: return "REFERENCE";
+		}
+		return "UNKNOWN";
+	}
+
+
+	__INLINE static INMOST_DATA_ENUM_TYPE DataTypeBytesSize(DataType t)
+	{
+		switch(t)
+		{
+			case DATA_BULK:      return sizeof(INMOST_DATA_BULK_TYPE);
+			case DATA_INTEGER:   return sizeof(INMOST_DATA_INTEGER_TYPE);
+			case DATA_REAL:      return sizeof(INMOST_DATA_REAL_TYPE);
+			case DATA_REFERENCE: return sizeof(HandleType);
+		}
+		return 0;
+	}
+
+
+	__INLINE static INMOST_DATA_ENUM_TYPE VariableDataSize(DataType t)
+	{
+		switch(t)
+		{
+			case DATA_REAL:      return sizeof(inner_real_array);
+			case DATA_INTEGER:   return sizeof(inner_integer_array);
+			case DATA_BULK:      return sizeof(inner_bulk_array);
+			case DATA_REFERENCE: return sizeof(inner_reference_array);
+		}
+		return 0;
+	}
+
+
+	void TagManager::CopyData(const Tag & t, void * adata, const void * bdata)
+	{
+		
+		INMOST_DATA_ENUM_TYPE data_size = t.GetSize();
+		INMOST_DATA_ENUM_TYPE bytes = t.GetBytesSize();
+		if( data_size == ENUMUNDEF ) //variable size array
+		{
+			DataType type = t.GetDataType();
+			if( adata != NULL ) TagManager::DestroyVariableData(t,adata);
+			if( type == DATA_REAL )           new (adata) inner_real_array     (*static_cast<const inner_real_array      * >(bdata));
+			else if( type == DATA_INTEGER )   new (adata) inner_integer_array  (*static_cast<const inner_integer_array   * >(bdata));
+			else if( type == DATA_BULK )      new (adata) inner_bulk_array     (*static_cast<const inner_bulk_array      * >(bdata));
+			else if( type == DATA_REFERENCE ) new (adata) inner_reference_array(*static_cast<const inner_reference_array * >(bdata));
+		}
+		else // fixed size array
+			memcpy(adata,bdata,data_size*bytes);
+	}
+	void TagManager::DestroyVariableData(const Tag & t, void * adata)
+	{
+		INMOST_DATA_ENUM_TYPE data_size = t.GetSize();
+		if( data_size == ENUMUNDEF && adata != NULL ) //variable size array
+		{
+			DataType type = t.GetDataType();
+			if( type == DATA_REAL ) 
+			{
+				(*static_cast<inner_real_array *> (adata)).~inner_real_array();
+				new (adata) inner_real_array(); //reinitialize for reuse
+			}
+			else if( type == DATA_INTEGER ) 
+			{
+				(*static_cast<inner_integer_array *> (adata)).~inner_integer_array();
+				new (adata) inner_integer_array();
+			}
+			else if( type == DATA_BULK ) 
+			{
+				(*static_cast<inner_bulk_array *> (adata)).~inner_bulk_array();
+				new (adata) inner_bulk_array();
+			}
+			else if( type == DATA_REFERENCE ) 
+			{
+				(*static_cast<inner_reference_array *> (adata)).~inner_reference_array();
+				new (adata) inner_reference_array();
+			}
+		}
+	}
 	
 	TagMemory::TagMemory(Mesh * m, const TagMemory & other)
 	{
@@ -12,29 +95,29 @@ namespace INMOST
 			pos[i]	= other.pos[i];
 			sparse[i] = other.sparse[i];
 		}
-		tagname		= other.tagname;
-		dtype		= other.dtype;
+		tagname		   = other.tagname;
+		dtype		   = other.dtype;
 		bulk_data_type = other.bulk_data_type;
-		tag_manager = other.tag_manager;
-		m_link = m;
-		size = other.size;
-		record_size = other.record_size;
+		m_link         = m;
+		size           = other.size;
+		record_size    = other.record_size;
+		bytes_size     = other.bytes_size;
 	}
 	
 	TagMemory & TagMemory::operator =(TagMemory const & other)
 	{
 		for(int i = 0; i < __NET; i++)
 		{
-			pos[i]  = other.pos[i];
-			sparse[i] = other.sparse[i];
+			pos[i]      = other.pos[i];
+			sparse[i]   = other.sparse[i];
 		}
 		tagname         = other.tagname;
 		dtype           = other.dtype;
-		bulk_data_type = other.bulk_data_type;
-		tag_manager = other.tag_manager;
-		m_link = other.m_link;
-		size = other.size;
-		record_size = other.record_size;
+		bulk_data_type  = other.bulk_data_type;
+		m_link          = other.m_link;
+		size            = other.size;
+		record_size     = other.record_size;
+		bytes_size      = other.bytes_size;
 		return *this;	
 	}
 	
@@ -71,25 +154,23 @@ namespace INMOST
 			case DATA_INTEGER:   mem->bulk_data_type = INMOST_MPI_DATA_INTEGER_TYPE; break;
 			case DATA_REFERENCE: mem->bulk_data_type = INMOST_MPI_DATA_ENUM_TYPE; break;
 		}
+		mem->bytes_size = DataTypeBytesSize(mem->dtype);
 		if(mem->size == ENUMUNDEF )
 			mem->record_size = VariableDataSize(mem->dtype);
 		else
-			mem->record_size = mem->size * DataTypeBytesSize(mem->dtype);
-		mem->tag_manager = NULL;
+			mem->record_size = mem->size * mem->bytes_size;
 		mem->m_link = m;
 	}
-	TagManager::TagManager() :dense_data(1)
+	TagManager::TagManager()
 	{
 	}
-	TagManager::TagManager(Mesh * m, const TagManager & other) : dense_data(1)
-		//:tags(64), empty_dense_data(64), dense_data(64)
+	TagManager::TagManager(const TagManager & other)
 	{
 		tags.resize(other.tags.size());
 		dense_data.resize(other.dense_data.size(),dense_sub_type(0));
-		for(unsigned int i = 0; i < other.tags.size(); i++)
+		for(tag_array_type::size_type i = 0; i < other.tags.size(); i++)
 		{
-			tags[i].mem = new TagMemory(m,*other.tags[i].mem);
-			tags[i].SetTagManager(this);
+			tags[i].mem = new TagMemory(dynamic_cast<Mesh *>(this),*other.tags[i].mem);
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if( tags[i].isDefined(etype) && !tags[i].isSparse(etype) )
 				{
@@ -97,13 +178,12 @@ namespace INMOST
 					//tags[i].AllocateData(etype);
 				}
 		}
-		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
-			ReallocateData(etype);
+		
 		//The rest of the data should be allocated and copied while copying data of
 		//individual elements
 	}
 
-	TagManager & TagManager::assign(Mesh * m, TagManager const & other)
+	TagManager & TagManager::operator =(TagManager const & other)
 	{
 
 		//for(tag_iterator it = tags.begin(); it != tags.end(); it++)
@@ -125,12 +205,11 @@ namespace INMOST
 		//	delete it->mem;
 		//}
 		tags.resize(other.tags.size());
-		dense_data.resize(other.dense_data.size(),dense_sub_type(0));
 		dense_data.clear();
-		for(unsigned int i = 0; i < other.tags.size(); i++)
+		dense_data.resize(other.dense_data.size(),dense_sub_type(0));
+		for(tag_array_type::size_type i = 0; i < other.tags.size(); i++)
 		{
-			tags[i].mem = new TagMemory(m,*other.tags[i].mem);
-			tags[i].SetTagManager(this);
+			tags[i].mem = new TagMemory(dynamic_cast<Mesh *>(this),*other.tags[i].mem);
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if( tags[i].isDefined(etype) && !tags[i].isSparse(etype) )
 				{
@@ -138,8 +217,8 @@ namespace INMOST
 					//tags[i].AllocateData(etype);
 				}
 		}
-		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
-			ReallocateData(etype);
+		for(int i = 0; i < 6; i++)
+			sparse_data[i].clear();
 		//~ sparse_data.resize(other.sparse_data.size());
 		//The rest of the data should be allocated and copied while copying data of
 		//individual elements
@@ -148,6 +227,8 @@ namespace INMOST
 	
 	TagManager::~TagManager()
 	{
+		dense_data.clear();
+		for(int i = 0; i < 6; i++) sparse_data[i].clear();
 		for(tag_iterator it = tags.begin(); it != tags.end(); it++) delete it->mem;
 		tags.clear();
 	}
@@ -157,44 +238,20 @@ namespace INMOST
 	Tag TagManager::CreateTag(Mesh *m, std::string name, DataType dtype, ElementType etype,ElementType sparse, INMOST_DATA_ENUM_TYPE size)
 	{
 		Tag new_tag;
-		for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++)
+		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 			if( tags[i].GetTagName() == name )
 			{
-				if( tags[i].GetDataType() != dtype || (size != ENUMUNDEF && size != tags[i].GetSize()) )
-				{
-					throw TagExists;
-				}
+				assert( tags[i].GetDataType() == dtype && (size == ENUMUNDEF || size == tags[i].GetSize()) );
+				//if( tags[i].GetDataType() != dtype || (size != ENUMUNDEF && size != tags[i].GetSize()) )
+				//{
+				//	throw TagExists;
+				//}
 				new_tag = tags[i];
 				break;
-				//for(ElementType mask = NODE; mask <= MESH; mask = mask << 1)
-				//	if( (etype&mask) && tags[i].GetPosition(etype&mask) == ENUMUNDEF )
-				//	{
-				//		if( sparse & mask ) 
-				//		{
-				//			//~ tags[i].SetPosition(sparse_data.size(),mask);
-				//			//~ sparse_data.resize(sparse_data.size()+1);
-				//			tags[i].SetSparse(mask);
-				//		}
-				//		else 
-				//		{
-				//			INMOST_DATA_ENUM_TYPE new_pos = dense_data.size();
-				//			if( !empty_dense_data.empty() )
-				//			{
-				//				new_pos = empty_dense_data.back();
-				//				empty_dense_data.pop_back();
-				//				dense_data[new_pos] = chunk_array<INMOST_DATA_BULK_TYPE>(tags[i].GetRecordSize()*4096);
-				//			}
-				//			else dense_data.push_back(chunk_array<INMOST_DATA_BULK_TYPE>(tags[i].GetRecordSize()*4096));
-				//			tags[i].SetPosition(new_pos,mask);
-				//			tags[i].AllocateData(mask);
-				//		}
-				//	}
-				//return tags[i];
 			}
 		if( !new_tag.isValid() )
 		{
 			new_tag = Tag(m,name,dtype,size);
-			new_tag.SetTagManager(this);
 			tags.push_back(new_tag);
 		}
 		for(ElementType mask = NODE; mask <= MESH; mask = mask << 1)
@@ -203,28 +260,24 @@ namespace INMOST
 			{
 				if( sparse & mask )
 				{
-					//~ new_tag.SetPosition(sparse_data.size(),mask);
-					//~ sparse_data.resize(sparse_data.size()+1);
 					new_tag.SetPosition(ENUMUNDEF-1,mask);
 					new_tag.SetSparse(mask);
 				}
 				else
 				{
-					INMOST_DATA_ENUM_TYPE new_pos = dense_data.size();
+					INMOST_DATA_ENUM_TYPE new_pos = static_cast<INMOST_DATA_ENUM_TYPE>(dense_data.size());
 					if( !empty_dense_data.empty() )
 					{
 						new_pos = empty_dense_data.back();
 						empty_dense_data.pop_back();
-						//dense_data[new_pos] = dense_sub_type(new_tag.GetRecordSize()*8192);
 						dense_data[new_pos] = dense_sub_type(new_tag.GetRecordSize());
 					}
-					else //dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()*8192));
-						dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()));
+					else dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()));
 					new_tag.SetPosition(new_pos,mask);
-					INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(mask);
+					INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(ElementNum(mask));
 					if( new_size < 1024 && mask != MESH ) new_size = 1024;
 					if( new_size < 1    && mask == MESH ) new_size = 1;
-					new_tag.ReallocateData(mask,new_size);
+					ReallocateData(new_tag,ElementNum(mask),new_size);
 				}
 			}
 		}
@@ -234,14 +287,15 @@ namespace INMOST
 	}
 	Tag TagManager::GetTag(std::string name) const
 	{
-		for(INMOST_DATA_BIG_ENUM_TYPE i = 0; i < tags.size(); i++)
+		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 			if( tags[i].GetTagName() == name )
 				return tags[i];
-		throw TagNotFound;
+		assert(false);
+		return Tag();
 	}
 	bool TagManager::HaveTag(std::string name) const
 	{
-		for(INMOST_DATA_BIG_ENUM_TYPE i = 0; i < tags.size(); i++)
+		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 			if( tags[i].GetTagName() == name )
 				return true;
 		return false;
@@ -256,21 +310,6 @@ namespace INMOST
 			if( tpos == ENUMUNDEF ) continue;
 			if( mask & type_mask )
 			{
-				//~ if( tag.isSparse(mask) ) {}//sparse_data.erase(sparse_data.begin()+tpos);
-				//~ else dense_data.erase(dense_data.begin()+tpos);
-				//~ for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++) 
-				//~ {
-					//~ for(ElementType imask = NODE; imask <= MESH; imask = imask << 1 )
-						//~ if( tag.isSparse(mask) == tags[i].isSparse(imask) )
-						//~ {
-							//~ ipos = tags[i].GetPosition(imask);
-							//~ if( ipos == ENUMUNDEF ) continue;
-							//~ if( ipos > tpos ) 
-							//~ {
-								//~ tags[i].SetPosition(ipos-1,imask);
-							//~ }
-						//~ }
-				//~ }
 				if( !tag.isSparse(mask) ) 
 				{
 					dense_data[tpos].clear(); //here all data should be deleted
@@ -283,14 +322,14 @@ namespace INMOST
 		if( delete_entirely )
 		{
 			bool flag = false;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++)
+			for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 				if( tags[i] == tag )
 				{
 					tags.erase(tags.begin()+i);
 					flag = true;
 					break;
 				}
-			if( !flag ) throw TagNotFound;
+			assert(flag);
 			delete tag.mem;
 			tag.mem = NULL;
 		}
@@ -312,31 +351,23 @@ namespace INMOST
 		return true;
 	}
 
-	void TagManager::ReallocateData(ElementType type)
+	void TagManager::ReallocateData(INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size)
 	{
-		INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(type);
-		if( new_size < 1024 && type != MESH ) new_size = 1024;
-		if( new_size < 1    && type == MESH ) new_size = 1;
-		sparse_data_array_type & arr = sparse_data[ElementNum(type)];
-		INMOST_DATA_ENUM_TYPE old_size = arr.size();
-		for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) 
-		{
-			void * p = static_cast<void *>(&arr[it]); 
-			if( p != NULL ) (*static_cast<sparse_sub_type*>( p )).~sparse_sub_type();
-		}
-		arr.resize(new_size);
-		for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) sparse_sub_type();
-		for(iteratorTag t = BeginTag(); t != EndTag(); ++t)
-			if( t->isDefined(type) && !t->isSparse(type) ) t->ReallocateData(type,new_size);
+		if( new_size < 1024 && etypenum != ElementNum(MESH) ) new_size = 1024;
+		if( new_size != 1   && etypenum == ElementNum(MESH) ) new_size = 1;
+		sparse_data[etypenum].resize(new_size);
+		back_links[etypenum].resize(new_size,ENUMUNDEF);
+		for(iteratorTag t = tags.begin(); t != tags.end(); ++t)
+			if( t->isDefined(1 << etypenum) && !t->isSparse(1 << etypenum) ) ReallocateData(*t,etypenum,new_size);
 	}
 	
-	void Tag::ReallocateData(ElementType t, INMOST_DATA_ENUM_TYPE new_size)
+	void TagManager::ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size)
 	{
-		INMOST_DATA_ENUM_TYPE        data_pos    = GetPosition(t);
-		INMOST_DATA_ENUM_TYPE        data_size   = GetSize();
-		TagManager::dense_sub_type & arr         = GetTagManager()->GetDenseData(data_pos);
-		INMOST_DATA_ENUM_TYPE        old_size    = arr.size();
-		DataType                     data_type   = GetDataType();
+		INMOST_DATA_ENUM_TYPE        data_pos    = t.GetPositionNum(etypenum);
+		INMOST_DATA_ENUM_TYPE        data_size   = t.GetSize();
+		TagManager::dense_sub_type & arr         = GetDenseData(data_pos);
+		INMOST_DATA_ENUM_TYPE        old_size    = static_cast<INMOST_DATA_ENUM_TYPE>(arr.size());
+		DataType                     data_type   = t.GetDataType();
 		if( data_size == ENUMUNDEF )
 		{
 			if( new_size < old_size )

@@ -35,7 +35,7 @@ namespace INMOST
 		hi = (char *) base + width * (num - 1);
 		
 	recurse:
-		size = (hi - lo) / width + 1;
+		size = static_cast<unsigned>((hi - lo) / width) + 1;
 		
 		if (size <= CUTOFF) 
 		{

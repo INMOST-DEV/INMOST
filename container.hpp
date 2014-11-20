@@ -17,350 +17,42 @@
 
 template<class element, class T1> struct isInputRandomIterators
 {
-	static void constraints(T1 a, T1 b) { element x = static_cast<element>(*a); (void)x; ++a; (void)a++; a==a; a!=a; a-b; }
+	static void constraints(T1 a, T1 b) { /*element x = static_cast<element>(*a); (void)x;*/ ++a; (void)a++; a==a; a!=a; a-b; }
 	isInputRandomIterators() { void(*p)(T1,T1) = constraints; (void)p; }
 };
 
 template<class element, class T1> struct isInputForwardIterators
 {
-	static void constraints(T1 a) { element x = static_cast<element>(*a); (void)x; ++a; (void)a++; }
+	static void constraints(T1 a) { /*element x = static_cast<element>(*a); (void)x;*/ ++a; (void)a++; }
 	isInputForwardIterators() { void(*p)(T1) = constraints; (void)p; }
 };
 
 namespace INMOST
 {
-	/* //store size inside allocated memory
-	template<typename element>//, typename enumerator = unsigned int>
-	class array
-	{
-	public:
-		typedef unsigned int enumerator;
-		template<typename etype>
-		class _iterator
-		{
-		private:
-			etype * e;
-		public:
-			typedef etype * pointer;
-			typedef etype & reference;
-			typedef etype value_type;
-			typedef ptrdiff_t difference_type;
-			typedef std::random_access_iterator_tag iterator_category;
-			_iterator():e(NULL){}
-			_iterator(etype * i):e(i){}
-			_iterator(const _iterator & other){e = other.e;}
-			~_iterator() {};
-			_iterator operator -(enumerator n) { return _iterator(e-n); }
-			_iterator & operator -=(enumerator n) { e-=n; return *this; }
-			_iterator operator +(enumerator n) { return _iterator(e+n); }
-			_iterator & operator +=(enumerator n) { e+=n; return *this; }
-			_iterator & operator ++(){ ++e; return *this;}
-			_iterator operator ++(int){ return _iterator(e++); }
-			_iterator & operator --(){ --e; return *this; }
-			_iterator operator --(int){ return _iterator(e--); }
-			ptrdiff_t operator -(const _iterator & other) const {return e-other.e;}
-			etype & operator *() { return *e; }
-			etype * operator ->() { return e; }
-			_iterator & operator =(_iterator const & other) { e = other.e; return *this; }
-			bool operator ==(const _iterator & other) { return e == other.e;}
-			bool operator !=(const _iterator & other) { return e != other.e;}
-			bool operator <(const _iterator & other) { return e < other.e;}
-			bool operator >(const _iterator & other) { return e > other.e;}
-			bool operator <=(const _iterator & other) { return e <= other.e;}
-			bool operator >=(const _iterator & other) { return e >= other.e;}
-			operator void *() {return static_cast<void *> (e);}
-		};
-		typedef _iterator<element> iterator;
-		typedef _iterator<const element> const_iterator;
-		template<typename etype>
-		class _reverse_iterator
-		{
-		private:
-			etype * e;
-		public:
-			typedef etype * pointer;
-			typedef etype & reference;
-			typedef etype value_type;
-			typedef ptrdiff_t difference_type;
-			typedef std::random_access_iterator_tag iterator_category;
-			_reverse_iterator():e(NULL){}
-			_reverse_iterator(etype * i):e(i){}
-			_reverse_iterator(const _reverse_iterator & other){e = other.e;}
-			~_reverse_iterator() {};
-			_reverse_iterator operator -(enumerator n) { return _reverse_iterator(e+n); }
-			_reverse_iterator & operator -=(enumerator n) { e+=n; return *this; }
-			_reverse_iterator operator +(enumerator n) {return _reverse_iterator(e-n); }
-			_reverse_iterator & operator +=(enumerator n) { e-=n; return *this; }
-			_reverse_iterator & operator ++(){ --e; return *this;}
-			_reverse_iterator operator ++(int){ return _reverse_iterator(e--); }
-			_reverse_iterator & operator --(){ ++e; return *this; }
-			_reverse_iterator operator --(int){ return _reverse_iterator(e++); }
-			ptrdiff_t operator -(const _reverse_iterator & other) const {return other.e-e;}
-			etype & operator *() { return *e; }
-			etype * operator ->() { return e; }
-			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
-			bool operator ==(const _reverse_iterator & other) { return e == other.e;}
-			bool operator !=(const _reverse_iterator & other) { return e != other.e;}
-			bool operator <(const _reverse_iterator & other) { return e < other.e;}
-			bool operator >(const _reverse_iterator & other) { return e > other.e;}
-			bool operator <=(const _reverse_iterator & other) { return e <= other.e;}
-			bool operator >=(const _reverse_iterator & other) { return e >= other.e;}
-			operator void *() {return static_cast<void *> (e);}
-		};
-		typedef _reverse_iterator<element> reverse_iterator;
-		typedef _reverse_iterator<const element> const_reverse_iterator;
-	private:
-		element * m_arr;
-		enumerator & get_size() {return reinterpret_cast<enumerator &>(*m_arr);}
-		element * get_arr() {return reinterpret_cast<element *>(reinterpret_cast<char *>(m_arr)+sizeof(enumerator));}
-		void alloc_size(enumerator n) {m_arr = static_cast<element *>(malloc(sizeof(element)*n+sizeof(enumerator))); assert(m_arr != NULL);}
-		void realloc_size(enumerator n) {m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*n+sizeof(enumerator))); assert(m_arr != NULL);}
-		array(element * link) {m_arr = link;} //for shell
-	public:
-		array() 
-		{
-			m_arr = NULL;
-		}
-		array(enumerator n,element c = element())
-		{
-			alloc_size(n);
-			get_size() = n;
-			for(enumerator i = 0; i < m_size; i++) new (get_arr()+i) element(c);
-		}
-		template<class InputIterator>
-		array(InputIterator first, InputIterator last)
-		{
-			isInputForwardIterators<element,InputIterator>();
-			enumerator m_size = 0;
-			{
-				InputIterator it = first;
-				while(it != last) { m_size++; it++;}
-			}
-			alloc_size(m_size);
-			get_size() = m_size;
-			{
-				enumerator i = 0;
-				InputIterator it = first;
-				while(it != last) new (get_arr()+i++) element(*it++);
-			}
-		}
-		array(const array & other)
-		{
-			if( other.m_arr != NULL )
-			{
-				alloc_size(other.get_size());
-				get_size() = other.get_size();
-				for(enumerator i = 0; i < get_size(); i++) new (get_arr()+i) element(other.get_arr()[i]);
-			} else m_arr = NULL;
-		}
-		~array()
-		{
-			for(enumerator i = 0; i < get_size(); i++) get_arr()[i].~element();
-			if( m_arr != NULL ) free(m_arr);
-			m_arr = NULL;
-		}
-		const element & operator [] (enumerator n) const 
-		{
-			assert( m_arr != NULL );
-			assert( n >= 0 && n < get_size() );
-			return get_arr()[n];
-		}
-		element & operator [] (enumerator n) 
-		{
-			assert( m_arr != NULL );
-			assert( n >= 0 && n < get_size() );	
-			return get_arr()[n];
-		}
-		const element & at (enumerator n) const 
-		{
-			assert( m_arr != NULL );
-			assert( n >= 0 && n < get_size() );	
-			return get_arr()[n];
-		}
-		element & at (enumerator n) 
-		{
-			assert( m_arr != NULL );
-			assert( n >= 0 && n < get_size() );	
-			return get_arr()[n];
-		}
-		element & at_safe (enumerator n) 
-		{
-			assert( n >= 0 );
-			if( m_arr == NULL || n >= get_size() ) alloc_size(n+1);
-			return get_arr()[n];
-		}
-		array & operator =(array const & other)
-		{
-			if( this != &other )
-			{
-				if( m_arr != NULL )
-				{
-					for(enumerator i = 0; i < get_size(); i++) get_arr()[i].~element();
-					free(m_arr);
-					m_arr = NULL;
-				}
-				if( other.m_arr != NULL )
-				{
-					allocate_size(other.get_size());
-					for(enumerator i = 0; i < get_size(); i++) get_arr()[i].element(other.get_arr()[i]);
-				}
-			}
-			return *this;
-		}
-		void push_back(const element & e)
-		{
-			if( m_arr == 0 ) allocate_size(1); else reallocate_size(get_size()+1);
-			new (get_arr()+get_size()-1) element(e);
-		}
-		void pop_back()
-		{
-			get_arr()[get_size()--].~element();
-			realloc_size(get_size());
-		}
-		element & back() {assert(m_arr != NULL); return get_arr()[get_size()-1];}
-		const element & back() const {assert(m_arr != NULL); return get_arr()[get_size()-1];}
-		element & front() {assert(m_arr != NULL); return get_arr()[0];}
-		const element & front() const {assert(m_arr != NULL); return get_arr()[0];}
-		enumerator capacity() const { return m_arr == 0 ? 0 : get_size(); }
-		bool empty() const { if( m_arr == NULL ) return false; return true; }
-		void resize(enumerator n, element c = element() )
-		{
-			if( m_arr == NULL )
-			{
-				allocate_size(n);
-				get_size() = n;
-				for(enumerator i = 0; i < n; i++) new (get_arr()+i) element(c);
-			}
-			else
-			{
-				enumerator oldsize = get_size();
-				for(enumerator i = n; i < oldsize; i++) get_arr()[i].~element(); //delete elements, located over the size
-				reallocate_size(n);
-				get_size() = n;
-				for(enumerator i = oldsize; i < n; i++) new (get_arr()+i) element(c); //initialize extra entities
-			}
-		}
-		enumerator size() const {return m_arr == NULL ? 0 : get_size();}
-		void clear() 
-		{ 
-			if( m_arr != NULL )
-			{
-				for(enumerator i = 0; i < get_size(); i++) get_arr()[i].~element();
-				free(m_arr); m_arr = NULL; 
-			}
-		}
-		void swap(array<element> & other)
-		{
-			element * t_m_arr = m_arr;
-			enumerator t_m_size = m_size;
-			m_arr = other.m_arr;
-		}
-		iterator begin() { return m_arr != NULL ? get_arr() : NULL; }
-		iterator end() { return m_arr != NULL ? get_arr()+get_size() : NULL; }
-		const_iterator begin() const { return m_arr != NULL ? get_arr() : NULL; }
-		const_iterator end() const { return m_arr != NULL ? get_arr()+get_size() : NULL; }
-		reverse_iterator rbegin() { return reverse_iterator(m_arr != NULL ? get_arr() + get_size()-1 : NULL); }
-		reverse_iterator rend() { return reverse_iterator(m_arr != NULL ? get_arr()-1 : NULL); }
-		const_reverse_iterator rbegin() const { return const_reverse_iterator(m_arr != NULL ? get_arr() + get_size()-1 : NULL); }
-		const_reverse_iterator rend() const { return const_reverse_iterator(m_arr != NULL ? get_arr()-1 : NULL); }
-		iterator erase(iterator pos) 
-		{ 
-			assert(m_arr != NULL);
-			assert(pos != NULL);
-			ptrdiff_t d = pos-begin();
-			ptrdiff_t s = (end()-pos)-1;
-			(*pos).~element();
-			get_size()--;
-			if( get_size() )
-			{
-				if( s > 0 ) memmove(get_arr()+d,get_arr()+d+1,sizeof(element)*s);
-				realloc_size(get_size())
-			}
-			else clear();
-			return m_arr == NULL ? iterator(NULL) : begin()+d;
-		}
-		iterator erase(iterator b, iterator e)
-		{
-			assert(m_arr != NULL);
-			assert(pos != NULL);
-			ptrdiff_t d = b-begin();
-			ptrdiff_t s = end()-e;
-			ptrdiff_t n = e-b;
-			for(iterator i = b; i != e; i++) (*i).~element();
-			get_size() -= n;
-			if( get_size() )
-			{
-				if( s > 0 ) memmove(get_arr()+d,get_arr()+d+1,sizeof(element)*s);
-				realloc_size(get_size());
-			}
-			else clear();
-			return m_arr == NULL ? iterator(NULL) : begin()+d;
-		}
-		iterator insert(iterator pos, const element & x)
-		{
-			if( m_arr == NULL)
-			{
-				allocate_data(0);
-				pos = begin();
-			}
-			ptrdiff_t d = pos-begin();
-			ptrdiff_t s = end()-pos;
-			get_size()++;
-			realloc_size(get_size());
-			if( s > 0 ) memmove(get_arr()+d+1,get_arr()+d,sizeof(element)*s);
-			new (get_arr()+d) element(x);
-			return iterator(get_arr()+d);
-		}
-		void insert(iterator pos, enumerator n, const element & x)
-		{
-			if( m_arr == NULL)
-			{
-				allocate_data(0);
-				pos = begin();
-			}
-			ptrdiff_t d = pos-begin();
-			ptrdiff_t s = end()-pos;
-			get_size()+=n;
-			realloc_size(get_size());
-			if( s > 0 ) memmove(get_arr()+d+n,get_arr()+d,sizeof(element)*s);
-			for(enumerator i = 0; i < n; i++) new (get_arr()+d+i) element(x);
-		}
-		template <class InputIterator>
-		void insert(iterator pos, InputIterator first, InputIterator last)
-		{
-			isInputForwardIterators<element,InputIterator>();
-			ptrdiff_t n = 0;
-			{
-				InputIterator it = first;
-				while(it != last) { n++; it++;}
-			}
-			if( m_arr == NULL)
-			{
-				allocate_data(0);
-				pos = begin();
-			}
-			ptrdiff_t d = pos-begin();
-			ptrdiff_t s = end()-pos;
-			get_size()+=n;
-			realloc_size(get_size());
-			if( s > 0 ) memmove(get_arr()+d+n,get_arr()+d,sizeof(element)*s);
-			{
-				InputIterator it = first;
-				enumerator i = 0;
-				while(it != last) new (get_arr()+d+i++) element(*it++);
-			}
-		}
-		template<class> friend class shell;
-	};	
-	*/
+	//add more templates as needed
+	template<class T> struct make_unsigned;
+	template<> struct make_unsigned<char> {typedef unsigned char type;};
+	template<> struct make_unsigned<short> {typedef unsigned short type;};
+	template<> struct make_unsigned<int> {typedef unsigned int type;};
+	template<> struct make_unsigned<long> {typedef unsigned long type;};
+	template<> struct make_unsigned<long long> {typedef unsigned long long type;};
+	template<> struct make_unsigned<unsigned char> {typedef unsigned char type;};
+	template<> struct make_unsigned<unsigned short> {typedef unsigned short type;};
+	template<> struct make_unsigned<unsigned int> {typedef unsigned int type;};
+	template<> struct make_unsigned<unsigned long> {typedef unsigned long type;};
+	template<> struct make_unsigned<unsigned long long> {typedef unsigned long long type;};
 	
-	
+#define USE_OPTIMIZED_ARRAY_ALLOCATION
 
+	// notice: array class would not properly support classes that contain self-references
+	//         like std::map
+	// notice: next class shell have to implement same algorithms as array
 	template<typename element>//, typename enumerator = unsigned int>
 	class array
 	{
 	public:
-		typedef int enumerator;
+		typedef unsigned size_type;
+		typedef make_unsigned<size_type>::type uenum;
 		template<typename etype>
 		class _iterator
 		{
@@ -376,10 +68,10 @@ namespace INMOST
 			_iterator(etype * i):e(i){}
 			_iterator(const _iterator & other){e = other.e;}
 			~_iterator() {};
-			_iterator operator -(enumerator n) { return _iterator(e-n); }
-			_iterator & operator -=(enumerator n) { e-=n; return *this; }
-			_iterator operator +(enumerator n) { return _iterator(e+n); }
-			_iterator & operator +=(enumerator n) { e+=n; return *this; }
+			_iterator operator -(size_t n) { return _iterator(e-n); }
+			_iterator & operator -=(size_t n) { e-=n; return *this; }
+			_iterator operator +(size_t n) { return _iterator(e+n); }
+			_iterator & operator +=(size_t n) { e+=n; return *this; }
 			_iterator & operator ++(){ ++e; return *this;}
 			_iterator operator ++(int){ return _iterator(e++); }
 			_iterator & operator --(){ --e; return *this; }
@@ -414,10 +106,10 @@ namespace INMOST
 			_reverse_iterator(etype * i):e(i){}
 			_reverse_iterator(const _reverse_iterator & other){e = other.e;}
 			~_reverse_iterator() {};
-			_reverse_iterator operator -(enumerator n) { return _reverse_iterator(e+n); }
-			_reverse_iterator & operator -=(enumerator n) { e+=n; return *this; }
-			_reverse_iterator operator +(enumerator n) {return _reverse_iterator(e-n); }
-			_reverse_iterator & operator +=(enumerator n) { e-=n; return *this; }
+			_reverse_iterator operator -(size_t n) { return _reverse_iterator(e+n); }
+			_reverse_iterator & operator -=(size_t n) { e+=n; return *this; }
+			_reverse_iterator operator +(size_t n) {return _reverse_iterator(e-n); }
+			_reverse_iterator & operator +=(size_t n) { e-=n; return *this; }
 			_reverse_iterator & operator ++(){ --e; return *this;}
 			_reverse_iterator operator ++(int){ return _reverse_iterator(e--); }
 			_reverse_iterator & operator --(){ ++e; return *this; }
@@ -438,31 +130,42 @@ namespace INMOST
 		typedef _reverse_iterator<const element> const_reverse_iterator;
 	private:
 		element * m_arr;
-		enumerator m_size;
+		size_type m_size;
+		//notice: push_back, pop_back, insert, erase are optimized for current growth_formula
+		__INLINE static size_type growth_formula(size_type future_size)
+		{
+			uenum v = static_cast<uenum>(future_size);
+			v--;
+			v|= (v>>1);
+			v|= (v>>2);
+			v|= (v>>4);
+			v|= (v>>8);
+			v|= (v>>16);
+			//TODO produces compiler warning
+			//if( sizeof(size_type) > 4 ) v|= (v>>32); //must be compile time brench
+			v++;
+			return static_cast<size_type>(v);
+		}
 	public:
 		__INLINE element * data() {return m_arr;}
 		__INLINE const element * data() const {return m_arr;}
 		array() {m_arr = NULL; m_size = 0;}
-		array(enumerator n,element c = element())
+		array(size_type n,element c = element())
 		{
 			m_size = n;
-			m_arr = static_cast<element *>(malloc(sizeof(element)*m_size));
+			m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
 			assert(m_arr != NULL);
-			for(enumerator i = 0; i < m_size; i++) new (m_arr+i) element(c);
+			for(size_type i = 0; i < m_size; i++) new (m_arr+i) element(c);
 		}
 		template<class InputIterator>
 		array(InputIterator first, InputIterator last)
 		{
-			isInputForwardIterators<element,InputIterator>();
-			m_size = 0;
-			{
-				InputIterator it = first;
-				while(it != last) { m_size++; it++;}
-			}
-			m_arr = static_cast<element *>(malloc(sizeof(element)*m_size));
+			//isInputForwardIterators<element,InputIterator>();
+			m_size = static_cast<size_type>(std::distance(first,last));
+			m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
 			assert(m_arr != NULL);
 			{
-				enumerator i = 0;
+				size_type i = 0;
 				InputIterator it = first;
 				while(it != last) new (m_arr+i++) element(*it++);
 			}
@@ -472,40 +175,40 @@ namespace INMOST
 			m_size = other.m_size;
 			if( m_size ) 
 			{
-				m_arr = static_cast<element *>(malloc(sizeof(element)*(m_size)));
+				m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
 				assert(m_arr != NULL);
 			}
 			else m_arr = NULL;
-			for(enumerator i = 0; i < m_size; i++) new (m_arr+i) element(other.m_arr[i]);
+			for(size_type i = 0; i < m_size; i++) new (m_arr+i) element(other.m_arr[i]);
 		}
 		~array()
 		{
-			for(enumerator i = 0; i < m_size; i++) m_arr[i].~element();
+			for(size_type i = 0; i < m_size; i++) m_arr[i].~element();
 			if( m_arr != NULL ) free(m_arr);
 			m_arr = NULL;
 			m_size = 0;
 		}
-		__INLINE const element & operator [] (enumerator n) const 
+		__INLINE const element & operator [] (size_type n) const 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		__INLINE element & operator [] (enumerator n) 
+		__INLINE element & operator [] (size_type n) 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		__INLINE const element & at (enumerator n) const 
+		__INLINE const element & at (size_type n) const 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		__INLINE element & at (enumerator n) 
+		__INLINE element & at (size_type n) 
 		{
 			assert(n < m_size);
 			return m_arr[n];
 		}
-		__INLINE element & at_safe (enumerator n) 
+		__INLINE element & at_safe (size_type n) 
 		{
 			if( n >= m_size ) resize(n+1);
 			return m_arr[n];
@@ -514,7 +217,7 @@ namespace INMOST
 		{
 			if( this != &other )
 			{
-				for(enumerator i = 0; i < m_size; i++) m_arr[i].~element();
+				for(size_type i = 0; i < m_size; i++) m_arr[i].~element();
 				if(m_arr != NULL ) 
 				{
 					free(m_arr);
@@ -523,7 +226,7 @@ namespace INMOST
 				if( other.m_arr != NULL )
 				{
 					m_size = other.m_size;
-					m_arr = static_cast<element *>(malloc(sizeof(element)*m_size));
+					m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
 					assert(m_arr != NULL);
 					memcpy(m_arr,other.m_arr,sizeof(element)*m_size);
 				}
@@ -532,7 +235,19 @@ namespace INMOST
 		}
 		void push_back(const element & e)
 		{
-			m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(++m_size)));
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+			//unoptimized variant
+			if( m_size+1 > growth_formula(m_size) )
+				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(++m_size)));
+			else ++m_size;
+#else
+			//optimized for current growth_formula
+			if( m_size < 2 )
+				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(++m_size)));
+			else if( ((m_size+1) & (m_size-1)) == 1 )
+				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(m_size++ << 1)));
+			else m_size++;
+#endif
 			assert(m_arr != NULL);
 			new (m_arr+m_size-1) element(e);
 		}
@@ -540,9 +255,17 @@ namespace INMOST
 		{
 			assert(m_arr != NULL);
 			m_arr[m_size--].~element();
-			if( m_size > 0 )
+			if( m_size > 0)
 			{
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+				//unoptimized variant
+				size_type gf = growth_formula(m_size);
+				if( m_size+1 > gf )
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+#else
+				if( ((m_size+1) & (m_size-1)) == 1 || m_size == 1)
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+#endif
 				assert(m_arr != NULL);
 			} 
 			else 
@@ -575,18 +298,19 @@ namespace INMOST
 			assert(m_size > 0);
 			return m_arr[0];
 		}
-		__INLINE enumerator capacity() { return m_size; }
+		__INLINE size_type capacity() { return m_size; }
 		__INLINE bool empty() const { if( m_size ) return false; return true; }
-		void resize(enumerator n, element c = element() )
+		void resize(size_type n, element c = element() )
 		{
-			enumerator oldsize = m_size;
+			size_type oldsize = m_size;
 			m_size = n;
-			for(enumerator i = m_size; i < oldsize; i++) m_arr[i].~element(); //delete elements, located over the size
+			for(size_type i = m_size; i < oldsize; i++) m_arr[i].~element(); //delete elements, located over the size
 			if( m_size > 0 )
 			{
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+				if( growth_formula(oldsize) != growth_formula(m_size) )
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(m_size)));
 				assert(m_arr != NULL);
-				for(enumerator i = oldsize; i < m_size; i++) new (m_arr+i) element(c); //initialize extra entities
+				for(size_type i = oldsize; i < m_size; i++) new (m_arr+i) element(c); //initialize extra entities
 			}
 			else
 			{
@@ -594,10 +318,11 @@ namespace INMOST
 				m_arr = NULL;
 			}
 		}
-		__INLINE enumerator size() const {return m_size;}
+		__INLINE size_type size() const {return m_size;}
+		__INLINE size_type capacity() const {return growth_formula(m_size);}
 		void clear() 
 		{ 
-			for(enumerator i = 0; i < m_size; i++) m_arr[i].~element();
+			for(size_type i = 0; i < m_size; i++) m_arr[i].~element();
 			m_size = 0; 
 			if( m_arr ) free(m_arr); 
 			m_arr = NULL; 
@@ -605,7 +330,7 @@ namespace INMOST
 		void swap(array<element> & other)
 		{
 			element * t_m_arr = m_arr;
-			enumerator t_m_size = m_size;
+			size_type t_m_size = m_size;
 			m_arr = other.m_arr;
 			m_size = other.m_size;
 			other.m_arr = t_m_arr;
@@ -628,7 +353,15 @@ namespace INMOST
 			if( m_size > 0 )
 			{
 				if( s > 0 ) memmove(m_arr+d,m_arr+d+1,sizeof(element)*s);
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(m_size)));
+				//unoptimized variant
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+				size_type gf = growth_formula(m_size);
+				if( m_size+1 > gf )
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+#else
+				if( ((m_size+1) & (m_size-1)) == 1 || m_size == 1)
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+#endif
 				assert(m_arr != NULL);
 			}
 			else
@@ -648,7 +381,9 @@ namespace INMOST
 			if( m_size > 0 )
 			{
 				if( s > 0 ) memmove(m_arr+d,m_arr+d+1,sizeof(element)*s);
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+				size_type gf = growth_formula(m_size);
+				if( m_size+n > gf )
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
 				assert(m_arr != NULL);
 			}
 			else
@@ -668,14 +403,26 @@ namespace INMOST
 			}
 			ptrdiff_t d = pos-begin();
 			ptrdiff_t s = end()-pos;
-			m_size++;
-			m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+
+			//unoptimized variant
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+			if( m_size+1 > growth_formula(m_size) )
+				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(++m_size)));
+			else ++m_size;
+#else
+			//optimized for current growth_formula
+			if( m_size < 2 )
+				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(++m_size)));
+			else if( ((m_size+1) & (m_size-1)) == 1 )
+				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(m_size++ << 1)));
+			else ++m_size;
+#endif
 			assert(m_arr != NULL);
 			if( s > 0 ) memmove(m_arr+d+1,m_arr+d,sizeof(element)*s);
 			new (m_arr+d) element(x);
 			return m_arr+d;
 		}
-		void insert(iterator pos, enumerator n, const element & x)
+		void insert(iterator pos, size_type n, const element & x)
 		{
 			if( n > 0 )
 			{
@@ -687,29 +434,20 @@ namespace INMOST
 				}
 				ptrdiff_t d = pos-begin();
 				ptrdiff_t s = end()-pos;
+
+				if( m_size+n > growth_formula(m_size) )
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(m_size+n)));
 				m_size+=n;
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+
 				assert(m_arr != NULL);
 				if( s > 0 ) memmove(m_arr+d+n,m_arr+d,sizeof(element)*s);
-				for(enumerator i = 0; i < n; i++) new (m_arr+d+i) element(x);
+				for(size_type i = 0; i < n; i++) new (m_arr+d+i) element(x);
 			}
 		}
 		template <class InputIterator>
 		void insert(iterator pos, InputIterator first, InputIterator last)
 		{
-			
-			ptrdiff_t n = 0;
-			/*
-			{
-				isInputForwardIterators<element,InputIterator>();
-				InputIterator it = first;
-				while(it != last) { n++; it++;}
-			}
-			*/
-			{
-				isInputRandomIterators<element,InputIterator>();
-				n = last - first;
-			}
+			size_type n = static_cast<size_type>(std::distance(first,last));
 			if( n > 0 )
 			{
 				if( static_cast<void *>(pos) == NULL)
@@ -720,13 +458,16 @@ namespace INMOST
 				}
 				ptrdiff_t d = pos-begin();
 				ptrdiff_t s = end()-pos;
+
+				if( m_size+n > growth_formula(m_size) )
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(m_size+n)));
 				m_size+=n;
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+				
 				assert(m_arr != NULL);
 				if( s > 0 ) memmove(m_arr+d+n,m_arr+d,sizeof(element)*s);
 				{
 					InputIterator it = first;
-					enumerator i = 0;
+					size_type i = 0;
 					while(it != last) new (m_arr+d+i++) element(*it++);
 				}
 			}
@@ -735,12 +476,7 @@ namespace INMOST
 		void replace(iterator m_first, iterator m_last, InputIterator first, InputIterator last)
 		{
 			assert( m_size >= 0 );
-			isInputForwardIterators<element,InputIterator>();
-			ptrdiff_t n = 0;
-			{
-				InputIterator it = first;
-				while(it != last) { n++; it++;}
-			}
+			ptrdiff_t n = static_cast<ptrdiff_t>(std::distance(first,last));
 			if( static_cast<void *>(m_first) == NULL && m_arr == NULL)
 			{
 				assert(m_arr == NULL);
@@ -753,14 +489,15 @@ namespace INMOST
 			for(iterator it = m_first; it != m_last; it++) (*it).~element();
 			if( n-q != 0 )
 			{
-				m_size += n;
-				m_size -= q;
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+				size_type gf = growth_formula(m_size+(n-q));
+				if( gf != growth_formula(m_size) )
+					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+				m_size+=(n-q);
 				if( s > 0 ) memmove(m_arr+d+n,m_arr+d+q,sizeof(element)*s);
 			}
 			{
 				InputIterator it = first;
-				enumerator i = 0;
+				size_type i = 0;
 				while(it != last) new (m_arr+d+i++) element(*it++);
 			}
 		}
@@ -771,11 +508,7 @@ namespace INMOST
 	class shell
 	{
 	public:
-		typedef int enumerator;
-		enum Error
-		{
-			ArrayOfFixedSize
-		};
+		typedef typename array<element>::size_type size_type;
 		template<typename dtype>
 		class _iterator
 		{
@@ -791,10 +524,10 @@ namespace INMOST
 			_iterator(dtype * i):e(i){}
 			_iterator(const _iterator & other){e = other.e;}
 			~_iterator() {};
-			_iterator operator -(enumerator n) { return _iterator(e-n); }
-			_iterator & operator -=(enumerator n) { e-=n; return *this; }
-			_iterator operator +(enumerator n) { return _iterator(e+n); }
-			_iterator & operator +=(enumerator n) { e+=n; return *this; }
+			_iterator operator -(size_t n) { return _iterator(e-n); }
+			_iterator & operator -=(size_t n) { e-=n; return *this; }
+			_iterator operator +(size_t n) { return _iterator(e+n); }
+			_iterator & operator +=(size_t n) { e+=n; return *this; }
 			_iterator & operator ++(){ ++e; return *this;}
 			_iterator operator ++(int){ return _iterator(e++); }
 			_iterator & operator --(){ --e; return *this; }
@@ -828,10 +561,10 @@ namespace INMOST
 			_reverse_iterator(dtype * i):e(i){}
 			_reverse_iterator(const _reverse_iterator & other){e = other.e;}
 			~_reverse_iterator() {};
-			_reverse_iterator operator -(enumerator n) { return _reverse_iterator(e+n); }
-			_reverse_iterator & operator -=(enumerator n) { e+=n; return *this; }
-			_reverse_iterator operator +(enumerator n) {return _reverse_iterator(e-n); }
-			_reverse_iterator & operator +=(enumerator n) { e-=n; return *this; }
+			_reverse_iterator operator -(size_t n) { return _reverse_iterator(e+n); }
+			_reverse_iterator & operator -=(size_t n) { e+=n; return *this; }
+			_reverse_iterator operator +(size_t n) {return _reverse_iterator(e-n); }
+			_reverse_iterator & operator +=(size_t n) { e-=n; return *this; }
 			_reverse_iterator & operator ++(){ --e; return *this;}
 			_reverse_iterator operator ++(int){ return _reverse_iterator(e--); }
 			_reverse_iterator & operator --(){ ++e; return *this; }
@@ -852,9 +585,9 @@ namespace INMOST
 		typedef _reverse_iterator<const element> const_reverse_iterator;
 	private:
 		element ** m_arr;
-		enumerator * m_size;
+		size_type * m_size;
 		element * local_link;
-		enumerator local_size;
+		size_type local_size;
 		bool fixed;
 	public:
 		__INLINE element * data() {return *m_arr;}
@@ -866,7 +599,7 @@ namespace INMOST
 			m_size = &arr.m_size;
 			fixed = false;
 		}
-		shell(element * link, enumerator size) //fixed
+		shell(element * link, size_type size) //fixed
 		{
 			m_arr = &local_link;
 			*m_arr = link;
@@ -893,22 +626,22 @@ namespace INMOST
 		~shell()
 		{
 		}
-		__INLINE const element & operator [] (enumerator n) const 
+		__INLINE const element & operator [] (size_type n) const 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
 		}
-		__INLINE element & operator [] (enumerator n) 
+		__INLINE element & operator [] (size_type n) 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
 		}
-		__INLINE const element & at (enumerator n) const 
+		__INLINE const element & at (size_type n) const 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
 		}
-		__INLINE element & at (enumerator n) 
+		__INLINE element & at (size_type n) 
 		{
 			assert(n < *m_size );
 			return *((*m_arr)+n);
@@ -932,19 +665,39 @@ namespace INMOST
 		}
 		void push_back(const element & e)
 		{
-			if( fixed ) throw ArrayOfFixedSize;
-			*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(++(*m_size))));
+			assert( !fixed && "array size is fixed");
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+			//unoptimized variant
+			if( (*m_size)+1 > array<element>::growth_formula(*m_size) )
+				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula(++(*m_size))));
+			else ++(*m_size);
+#else
+			//optimized for current growth_formula
+			if( *m_size < 2 )
+				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(++(*m_size))));
+			else if( (((*m_size)+1) & ((*m_size)-1)) == 1 )
+				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*((*m_size)++ << 1)));
+			else ++m_size;
+#endif
 			assert((*m_arr) != NULL);
 			new ((*m_arr)+(*m_size)-1) element(e);
 		}
 		void pop_back()
 		{
-			if( fixed ) throw ArrayOfFixedSize;
+			assert( !fixed && "array size is fixed");
 			assert((*m_arr) != NULL);
 			(*m_arr)[(*m_size)--].~element();
 			if( (*m_size) > 0 )
 			{
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*((*m_size))));
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+				//unoptimized variant
+				size_type gf = array<element>::growth_formula(*m_size);
+				if( (*m_size)+1 > gf )
+					*m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+#else
+				if( (((*m_size)+1) & ((*m_size)-1)) == 1 || (*m_size) == 1)
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+#endif
 				assert( (*m_arr) != NULL );
 			}
 			else
@@ -977,19 +730,20 @@ namespace INMOST
 			assert(*m_size > 0 );
 			return (*m_arr)[0];
 		}
-		__INLINE enumerator capacity() { return (*m_size); }
+		__INLINE size_type capacity() { return array<element>::growth_formula(*m_size); }
 		__INLINE bool empty() const { if( *m_size ) return false; return true; }
-		void resize(enumerator n, element c = element() )
+		void resize(size_type n, element c = element() )
 		{
-			if( fixed ) throw ArrayOfFixedSize;
-			enumerator oldsize = *m_size;
+			assert( !fixed && "array size is fixed");
+			size_type oldsize = *m_size;
 			*m_size = n;
-			for(enumerator i = *m_size; i < oldsize; i++) (*m_arr)[i].~element(); //delete elements, located over the size
+			for(size_type i = *m_size; i < oldsize; i++) (*m_arr)[i].~element(); //delete elements, located over the size
 			if( *m_size > 0 )
 			{
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+				if( array<element>::growth_formula(oldsize) != array<element>::growth_formula(*m_size) )
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula(*m_size)));
 				assert( (*m_arr) != NULL );
-				for(enumerator i = oldsize; i < *m_size; i++) new ((*m_arr)+i) element(c); //initialize extra entities
+				for(size_type i = oldsize; i < *m_size; i++) new ((*m_arr)+i) element(c); //initialize extra entities
 			}
 			else
 			{
@@ -997,11 +751,11 @@ namespace INMOST
 				*m_arr = NULL;
 			}
 		}
-		__INLINE enumerator size() const {return *m_size;}
+		__INLINE size_type size() const {return *m_size;}
 		void clear() 
 		{ 
-			if( fixed ) throw ArrayOfFixedSize;
-			for(enumerator i = 0; i < *m_size; i++) (*m_arr)[i].~element();
+			assert( !fixed && "array size is fixed");
+			for(size_type i = 0; i < *m_size; i++) (*m_arr)[i].~element();
 			*m_size = 0; 
 			if( *m_arr ) free(*m_arr); 
 			*m_arr = NULL; 
@@ -1009,7 +763,7 @@ namespace INMOST
 		void swap(shell<element> & other)
 		{
 			element * t_m_arr = *m_arr;
-			enumerator t_m_size = *m_size;
+			size_type t_m_size = *m_size;
 			*m_arr = *other.m_arr;
 			*m_size = *other.m_size;
 			*other.m_arr = t_m_arr;
@@ -1025,7 +779,7 @@ namespace INMOST
 		__INLINE const_reverse_iterator rend() const { return const_reverse_iterator(*m_arr-1); }
 		iterator erase(iterator pos) 
 		{ 
-			if( fixed ) throw ArrayOfFixedSize;
+			assert( !fixed && "array size is fixed");
 			ptrdiff_t d = pos-begin();
 			ptrdiff_t s = iterator(*m_arr+(*m_size)-1)-pos;
 			(*pos).~element();
@@ -1033,7 +787,14 @@ namespace INMOST
 			if( (*m_size) > 0 )
 			{
 				if( s > 0 )memmove(*m_arr+d,*m_arr+d+1,sizeof(element)*s);
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+				size_type gf = array<element>::growth_formula(*m_size);
+				if( (*m_size)+1 > gf )
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*gf));
+#else
+				if( (((*m_size)+1) & ((*m_size)-1)) == 1 || (*m_size) == 1)
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+#endif
 				assert((*m_arr) != NULL);
 			}
 			else
@@ -1045,7 +806,7 @@ namespace INMOST
 		}
 		iterator erase(iterator b, iterator e)
 		{
-			if( fixed ) throw ArrayOfFixedSize;
+			assert( !fixed && "array size is fixed");
 			ptrdiff_t d = b-begin();
 			ptrdiff_t s = end()-e;
 			ptrdiff_t n = e-b;
@@ -1053,8 +814,10 @@ namespace INMOST
 			(*m_size) -= n;
 			if( (*m_size) > 0 )
 			{
-				if( s > 0 ) memmove(*m_arr+d,*m_arr+d+n,sizeof(element)*s);			
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+				if( s > 0 ) memmove(*m_arr+d,*m_arr+d+n,sizeof(element)*s);	
+				size_type gf = array<element>::growth_formula(*m_size);
+				if( (*m_size)+n > gf )
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*gf));
 				assert((*m_arr) != NULL);
 			}
 			else
@@ -1066,7 +829,7 @@ namespace INMOST
 		}
 		iterator insert(iterator pos, const element & x)
 		{
-			if( fixed ) throw ArrayOfFixedSize;
+			assert( !fixed && "array size is fixed");
 			if( static_cast<void *>(pos) == NULL )
 			{
 				assert((*m_arr) == NULL);
@@ -1075,16 +838,28 @@ namespace INMOST
 			}
 			ptrdiff_t d = pos-begin();
 			ptrdiff_t s = end()-pos;
-			(*m_size)++;
-			*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+
+#if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
+			//unoptimized variant
+			if( (*m_size)+1 > array<element>::growth_formula(*m_size) )
+				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula(++(*m_size))));
+			else ++(*m_size);
+#else
+			//optimized for current growth_formula
+			if( *m_size < 2 )
+				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(++(*m_size))));
+			else if( (((*m_size)+1) & ((*m_size)-1)) == 1 )
+				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*((*m_size)++ << 1)));
+			else ++(*m_size);
+#endif
 			assert((*m_arr) != NULL);
 			if( s > 0 ) memmove((*m_arr)+d+1,(*m_arr)+d,sizeof(element)*s);
 			new ((*m_arr)+d) element(x);
 			return (*m_arr)+d;
 		}
-		void insert(iterator pos, enumerator n, const element & x)
+		void insert(iterator pos, size_type n, const element & x)
 		{
-			if( fixed ) throw ArrayOfFixedSize;
+			assert( !fixed && "array size is fixed");
 			if( n > 0 )
 			{
 				if( static_cast<void *>(pos) == NULL)
@@ -1095,23 +870,21 @@ namespace INMOST
 				}
 				ptrdiff_t d = pos-iterator(*m_arr);
 				ptrdiff_t s = iterator((*m_arr)+(*m_size))-pos;
+
+				if( (*m_size)+n > array<element>::growth_formula(*m_size) )
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula((*m_size)+n)));
 				(*m_size)+=n;
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+				
 				assert((*m_arr) != NULL);
 				if( s > 0 ) memmove((*m_arr)+d+n,(*m_arr)+d,sizeof(element)*s);
-				for(enumerator i = 0; i < n; i++) new ((*m_arr)+d+i) element(x);
+				for(size_type i = 0; i < n; i++) new ((*m_arr)+d+i) element(x);
 			}
 		}
 		template <class InputIterator>
 		void insert(iterator pos, InputIterator first, InputIterator last)
 		{
-			if( fixed ) throw ArrayOfFixedSize;
-			isInputForwardIterators<element,InputIterator>();
-			ptrdiff_t n = 0;
-			{
-				InputIterator it = first;
-				while(it != last) { n++; it++;}
-			}
+			assert( !fixed && "array size is fixed");
+			ptrdiff_t n = static_cast<ptrdiff_t>(std::distance(first,last));
 			if( n > 0 )
 			{
 				if( static_cast<void *>(pos) == NULL)
@@ -1122,13 +895,17 @@ namespace INMOST
 				}
 				ptrdiff_t d = pos-iterator(*m_arr);
 				ptrdiff_t s = iterator((*m_arr)+(*m_size))-pos;
-				(*m_size)+=n;
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+
+
+				if( (*m_size)+n > array<element>::growth_formula(*m_size) )
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula((*m_size)+static_cast<size_type>(n))));
+				(*m_size)+=static_cast<size_type>(n);
+
 				assert((*m_arr) != NULL);
 				if( s > 0 ) memmove((*m_arr)+d+n,(*m_arr)+d,sizeof(element)*s);
 				{
 					InputIterator it = first;
-					enumerator i = 0;
+					size_type i = 0;
 					while(it != last) new ((*m_arr)+d+i++) element(*it++);
 				}
 			}
@@ -1136,13 +913,7 @@ namespace INMOST
 		template <class InputIterator>
 		void replace(iterator m_first, iterator m_last, InputIterator first, InputIterator last)
 		{
-			if( fixed ) throw ArrayOfFixedSize;
-			isInputForwardIterators<element,InputIterator>();
-			ptrdiff_t n = 0;
-			{
-				InputIterator it = first;
-				while(it != last) { n++; it++;}
-			}
+			ptrdiff_t n = static_cast<ptrdiff_t>(std::distance(first,last));
 			if( static_cast<void *>(m_first) == NULL)
 			{
 				assert((*m_arr)==NULL);
@@ -1155,14 +926,17 @@ namespace INMOST
 			for(iterator it = m_first; it != m_last; it++) (*it).~element();
 			if( n-q != 0 )
 			{
-				*m_size += n;
-				*m_size -= q;
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
-				if( s > 0 ) memmove((*m_arr)+d+n,(*m_arr)+d+q,sizeof(element)*s);
+				assert( !fixed && "array size is fixed");
+				size_type gf = array<element>::growth_formula((*m_size)+static_cast<size_type>(n-q));
+				if( gf != array<element>::growth_formula(*m_size) )
+					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*gf));
+				(*m_size)+=static_cast<size_type>(n-q);
 			}
+			if( s > 0 ) 
+				memmove((*m_arr)+d+n,(*m_arr)+d+q,sizeof(element)*s);
 			{
 				InputIterator it = first;
-				enumerator i = 0;
+				size_type i = 0;
 				while(it != last) new ((*m_arr)+d+i++) element(*it++);
 			}
 		}
@@ -1745,7 +1519,7 @@ namespace INMOST
 	class dynarray
 	{
 	public:
-		typedef int enumerator;
+		typedef size_t size_type;
 		template<typename dtype>
 		class _iterator
 		{
@@ -1755,21 +1529,21 @@ namespace INMOST
 			typedef dtype * pointer;
 			typedef dtype & reference;
 			typedef dtype value_type;
-			typedef ptrdiff_t difference_type;
+			typedef size_type difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			_iterator():e(NULL){}
 			_iterator(dtype * i):e(i){}
 			_iterator(const _iterator & other){e = other.e;}
 			~_iterator() {};
-			_iterator operator -(enumerator n) { return _iterator(e-n); }
-			_iterator & operator -=(enumerator n) { e-=n; return *this; }
-			_iterator operator +(enumerator n) { return _iterator(e+n); }
-			_iterator & operator +=(enumerator n) { e+=n; return *this; }
+			_iterator operator -(size_type n) { return _iterator(e-n); }
+			_iterator & operator -=(size_type n) { e-=n; return *this; }
+			_iterator operator +(size_type n) { return _iterator(e+n); }
+			_iterator & operator +=(size_type n) { e+=n; return *this; }
 			_iterator & operator ++(){ ++e; return *this;}
 			_iterator operator ++(int){ return _iterator(e++); }
 			_iterator & operator --(){ --e; return *this; }
 			_iterator operator --(int){ return _iterator(e--); }
-			ptrdiff_t operator -(const _iterator & other) const {return e-other.e;}
+			size_type operator -(const _iterator & other) const {return static_cast<size_type>(e-other.e);}
 			dtype & operator *() { return *e; }
 			dtype * operator ->() { return e; }
 			_iterator & operator =(_iterator const & other) { e = other.e; return *this; }
@@ -1793,21 +1567,21 @@ namespace INMOST
 			typedef dtype * pointer;
 			typedef dtype & reference;
 			typedef dtype value_type;
-			typedef ptrdiff_t difference_type;
+			typedef size_type difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			_reverse_iterator():e(NULL){}
 			_reverse_iterator(dtype * i):e(i){}
 			_reverse_iterator(const _reverse_iterator & other){e = other.e;}
 			~_reverse_iterator() {};
-			_reverse_iterator operator -(enumerator n) { return _reverse_iterator(e+n); }
-			_reverse_iterator & operator -=(enumerator n) { e+=n; return *this; }
-			_reverse_iterator operator +(enumerator n) {return _reverse_iterator(e-n); }
-			_reverse_iterator & operator +=(enumerator n) { e-=n; return *this; }
+			_reverse_iterator operator -(size_type n) { return _reverse_iterator(e+n); }
+			_reverse_iterator & operator -=(size_type n) { e+=n; return *this; }
+			_reverse_iterator operator +(size_type n) {return _reverse_iterator(e-n); }
+			_reverse_iterator & operator +=(size_type n) { e-=n; return *this; }
 			_reverse_iterator & operator ++(){ --e; return *this;}
 			_reverse_iterator operator ++(int){ return _reverse_iterator(e--); }
 			_reverse_iterator & operator --(){ ++e; return *this; }
 			_reverse_iterator operator --(int){ return _reverse_iterator(e++); }
-			ptrdiff_t operator -(const _reverse_iterator & other) const {return other.e-e;}
+			size_type operator -(const _reverse_iterator & other) const {return static_cast<size_type>(other.e-e);}
 			dtype & operator *() { return *e; }
 			dtype * operator ->() { return e; }
 			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
@@ -1827,13 +1601,13 @@ namespace INMOST
 		element * pbegin;
 		element * pend;
 		element * preserved;
-		void preallocate(enumerator n)
+		void preallocate(size_type n)
 		{
-			if( n <= static_cast<enumerator>(stacked) )
+			if( n <= static_cast<size_type>(stacked) )
 			{
 				pbegin = stack;
 				pend = pbegin + n;
-				preserved = stack+static_cast<enumerator>(stacked);
+				preserved = stack+static_cast<size_type>(stacked);
 			}
 			else
 			{
@@ -1855,18 +1629,18 @@ namespace INMOST
 			std::cout << "size:      " << pend-pbegin << std::endl;
 			std::cout << "reserved:  " << preserved-pbegin << std::endl;
 		}
-		void reserve(enumerator n)
+		void reserve(size_type n)
 		{
 			//std::cout << n << std::endl;
-			enumerator k = size();
-			if( n > static_cast<enumerator>(stacked) )
+			size_type k = size();
+			if( n > static_cast<size_type>(stacked) )
 			{
-				for(enumerator i = n; i < k; i++) pbegin[i].~element();
+				for(size_type i = n; i < k; i++) pbegin[i].~element();
 				if( pbegin == stack )
 				{
 					pbegin = static_cast<element *>(malloc(sizeof(element)*n));
 					assert(pbegin != NULL);
-					for(enumerator i = 0; i < k; i++) 
+					for(size_type i = 0; i < k; i++) 
 					{
 						new (pbegin+i) element(stack[i]);
 						stack[i].~element();
@@ -1876,7 +1650,7 @@ namespace INMOST
 				{
 					element * pbegin_new = static_cast<element *>(malloc(sizeof(element)*n));
 					assert(pbegin_new != NULL);
-					for(enumerator i = 0; i < k; i++) 
+					for(size_type i = 0; i < k; i++) 
 					{
 						new (pbegin_new+i) element(pbegin[i]);
 						pbegin[i].~element();
@@ -1891,20 +1665,20 @@ namespace INMOST
 			else if( pbegin != stack )
 			{
 				memcpy(stack,pbegin,sizeof(element)*n);
-				for(enumerator i = n; i < k; i++) pbegin[i].~element();
+				for(size_type i = n; i < k; i++) pbegin[i].~element();
 				free(pbegin);
 				pbegin = stack;
 				pend = stack+n;
-				preserved = stack+static_cast<enumerator>(stacked);
+				preserved = stack+static_cast<size_type>(stacked);
 			}
 			*/
 		}
 		dynarray()
 		{
 			pbegin = pend = stack;
-			preserved = stack+static_cast<enumerator>(stacked);
+			preserved = stack+static_cast<size_type>(stacked);
 		}
-		dynarray(enumerator n,element c = element())
+		dynarray(size_type n,element c = element())
 		{
 			preallocate(n);
 			for(element * i = pbegin; i < pend; i++) new (i) element(c);
@@ -1912,12 +1686,7 @@ namespace INMOST
 		template<class InputIterator>
 		dynarray(InputIterator first, InputIterator last)
 		{
-			isInputForwardIterators<element,InputIterator>();
-			enumerator n = 0;
-			{
-				InputIterator it = first;
-				while(it != last) { n++; it++;}
-			}
+			size_type n = static_cast<size_type>(std::distance(first,last));
 			preallocate(n);
 			{
 				InputIterator it = first;
@@ -1928,9 +1697,9 @@ namespace INMOST
 		dynarray(const dynarray & other)
 		{
 			//std::cout << __FUNCTION__ << std::endl;
-			enumerator n = other.size();
+			size_type n = other.size();
 			preallocate(n);
-			for(enumerator k = 0; k < n; k++)
+			for(size_type k = 0; k < n; k++)
 				new (pbegin+k) element(other.pbegin[k]);
 		}
 		
@@ -1943,32 +1712,32 @@ namespace INMOST
 		{
 			if( this != &other )
 			{
-				enumerator n = size();
+				size_type n = size();
 				for(element * i = pbegin; i != pend; ++i) (*i).~element();
 				if(pbegin != stack) free(pbegin);
 				n = other.size();
 				preallocate(n);
-				for(enumerator k = 0; k < n; k++)
+				for(size_type k = 0; k < n; k++)
 					new (pbegin+k) element(other.pbegin[k]);
 			}
 			return *this;
 		}
-		__INLINE const element & operator [] (enumerator n) const 
+		__INLINE const element & operator [] (size_type n) const 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
 		}
-		__INLINE element & operator [] (enumerator n) 
+		__INLINE element & operator [] (size_type n) 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
 		}
-		__INLINE const element & at (enumerator n) const 
+		__INLINE const element & at (size_type n) const 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
 		}
-		__INLINE element & at (enumerator n) 
+		__INLINE element & at (size_type n) 
 		{
 			assert(pbegin+n < pend);
 			return pbegin[n];
@@ -1987,29 +1756,29 @@ namespace INMOST
 		__INLINE const element & back() const {return *(pend-1);}
 		__INLINE element & front() {return *pbegin;}
 		__INLINE const element & front() const {return *pbegin;}
-		__INLINE enumerator capacity() { return preserved-pbegin; }
+		__INLINE size_type capacity() { return static_cast<size_type>(preserved-pbegin); }
 		__INLINE bool empty() const { return pend==pbegin; }
-		void resize(enumerator n, element c = element() )
+		void resize(size_type n, element c = element() )
 		{
-			enumerator oldsize = size();
+			size_type oldsize = size();
 			while( capacity() < n ) reserve(capacity()*2);
 			for(element * i = pbegin+n; i < pbegin+oldsize; i++) (*i).~element(); //delete elements, located over the size
 			for(element * i = pbegin+oldsize; i < pbegin+n; i++) new (i) element(c); //initialize extra entities
 			pend = pbegin + n;
 		}
-		__INLINE enumerator size() const {return pend-pbegin;}
+		__INLINE size_type size() const {return static_cast<size_type>(pend-pbegin);}
 		void clear() 
 		{ 
 			for(element * i = pbegin; i < pend; i++) (*i).~element();
 			pend = pbegin;
 			//pbegin = pend = stack;
-			//preserved = stack+static_cast<enumerator>(stacked);
+			//preserved = stack+static_cast<size_type>(stacked);
 		}
 		void move(dynarray<element,stacked> & other)
 		{
-			enumerator k = size(), n = other.size();
-			if( n > static_cast<enumerator>(stacked) ) free(other.pbegin);
-			if( k > static_cast<enumerator>(stacked) )
+			size_type k = size(), n = other.size();
+			if( n > static_cast<size_type>(stacked) ) free(other.pbegin);
+			if( k > static_cast<size_type>(stacked) )
 			{
 				other.pbegin = pbegin;
 				other.pend = pend;
@@ -2020,15 +1789,15 @@ namespace INMOST
 				memcpy(other.stack,stack,sizeof(element)*k);
 				other.pbegin = other.stack;
 				other.pend = other.stack+k;
-				other.preserved = other.stack+static_cast<enumerator>(stacked);
+				other.preserved = other.stack+static_cast<size_type>(stacked);
 			}
 			pbegin = pend = stack;
-			preserved = stack+static_cast<enumerator>(stacked);
+			preserved = stack+static_cast<size_type>(stacked);
 		}
 		void swap(dynarray<element,stacked> & other)
 		{
-			enumerator k = size(), n = other.size();
-			if( k <= static_cast<enumerator>(stacked) && n <= static_cast<enumerator>(stacked) )
+			size_type k = size(), n = other.size();
+			if( k <= static_cast<size_type>(stacked) && n <= static_cast<size_type>(stacked) )
 			{
 				char temp[stacked*sizeof(element)];
 				memcpy(temp,stack,sizeof(element)*k);
@@ -2037,7 +1806,7 @@ namespace INMOST
 				other.pend = other.pbegin+k;
 				pend = pbegin+n;
 			}
-			else if( k <= static_cast<enumerator>(stacked) && n > static_cast<enumerator>(stacked) )
+			else if( k <= static_cast<size_type>(stacked) && n > static_cast<size_type>(stacked) )
 			{
 				memcpy(other.stack,stack,sizeof(element)*k);
 				pbegin = other.pbegin;
@@ -2045,9 +1814,9 @@ namespace INMOST
 				preserved = other.preserved;
 				other.pbegin = other.stack;
 				other.pend = other.stack+k;
-				other.preserved = other.stack+static_cast<enumerator>(stacked);
+				other.preserved = other.stack+static_cast<size_type>(stacked);
 			}
-			else if( k > static_cast<enumerator>(stacked) && n <= static_cast<enumerator>(stacked) )
+			else if( k > static_cast<size_type>(stacked) && n <= static_cast<size_type>(stacked) )
 			{
 				memcpy(stack,other.stack,sizeof(element)*n);
 				other.pbegin = pbegin;
@@ -2055,7 +1824,7 @@ namespace INMOST
 				other.preserved = preserved;
 				pbegin = stack;
 				pend = stack+n;
-				preserved = stack+static_cast<enumerator>(stacked);
+				preserved = stack+static_cast<size_type>(stacked);
 			}
 			else
 			{
@@ -2108,20 +1877,19 @@ namespace INMOST
 			new (pbegin+d) element(x);
 			return pbegin+d;
 		}
-		void insert(iterator pos, enumerator n, const element & x)
+		void insert(iterator pos, size_type n, const element & x)
 		{
 			ptrdiff_t d = pos-iterator(pbegin);
 			ptrdiff_t s = iterator(pend)-pos;
 			while( capacity()-size() < n ) reserve(capacity()*2);
 			if( s > 0 ) memmove(pbegin+d+n,pbegin+d,sizeof(element)*s);
 			pend+=n;
-			for(enumerator i = 0; i < n; i++) new (pbegin+d+i) element(x);
+			for(size_type i = 0; i < n; i++) new (pbegin+d+i) element(x);
 		}
 		template <class InputIterator>
 		void insert(iterator pos, InputIterator first, InputIterator last)
 		{
-			isInputForwardIterators<element,InputIterator>();
-			ptrdiff_t n = last-first;
+			ptrdiff_t n = static_cast<ptrdiff_t>(std::distance(first,last));
 			ptrdiff_t d = pos-iterator(pbegin);
 			ptrdiff_t s = iterator(pend)-pos;
 			while( capacity() < size()+n ) reserve(capacity()*2);
@@ -2140,7 +1908,7 @@ namespace INMOST
 	{
 	public:
 		typedef dynarray<std::pair<key,value>,stacked> container;
-		typedef typename dynarray<std::pair<key,value>,stacked>::enumerator enumerator;
+		typedef typename dynarray<std::pair<key,value>,stacked>::size_type size_type;
 	private:
 		container inner_data;
 	public:
@@ -2183,7 +1951,7 @@ namespace INMOST
 			inner_data.push_back(std::pair<key,value>(x,value()));
 			return inner_data.back().second;
 		}
-		enumerator size() {return inner_data.size();}
+		size_type size() {return inner_data.size();}
 		void clear() {inner_data.clear();}
 		bool empty() const {return inner_data.empty();}
 		iterator erase(iterator pos) {return inner_data.erase(typename container::iterator(pos));}
@@ -2344,46 +2112,48 @@ namespace INMOST
 		}
 	};
 
+	
+
 	template<typename element, int block_bits>
 	class chunk_array
 	{
 	public:
-		typedef int enumerator; //need signed type for reverse iterator? (reverse iterators commented)
+		typedef size_t size_type; //need signed type for reverse iterator? (reverse iterators commented)
+		typedef make_unsigned<size_type>::type uenum; //this is required for right bit shifts not to create leading 1s
 	private:
-		static enumerator const block_bits_mask = (1 << (block_bits)) - 1;
-		static enumerator const block_val = 1 << block_bits;
-		static enumerator const block_size = sizeof(element)*block_val;
-		static enumerator const fwd_alloc_chunk_bits = 6;
-		static enumerator const fwd_alloc_chunk_bits_mask = (1 << (fwd_alloc_chunk_bits))-1;
-		static enumerator const fwd_alloc_chunk_val = 1 << fwd_alloc_chunk_bits;
-		static enumerator const fwd_alloc_chunk_size = sizeof(element *)*fwd_alloc_chunk_val;
+		static size_type const block_bits_mask = (1 << (block_bits)) - 1;
+		static size_type const block_val = 1 << block_bits;
+		static size_type const block_size = sizeof(element)*block_val;
+		static size_type const fwd_alloc_chunk_bits = 6;
+		static size_type const fwd_alloc_chunk_bits_mask = (1 << (fwd_alloc_chunk_bits))-1;
+		static size_type const fwd_alloc_chunk_val = 1 << fwd_alloc_chunk_bits;
+		static size_type const fwd_alloc_chunk_size = sizeof(element *)*fwd_alloc_chunk_val;
 		element ** chunks;
-		enumerator record_size;
-		enumerator m_size;
-		
-		__INLINE enumerator GetChunkNumber(enumerator k) const {return k >> block_bits;}
-		__INLINE enumerator GetElementNumber(enumerator k) const {return (k & block_bits_mask) * record_size;}
-		__INLINE element * access_block(enumerator k) {return chunks[GetChunkNumber(k)];}
-		__INLINE const element * access_block(enumerator k) const {return chunks[GetChunkNumber(k)];}
-		__INLINE element & access_element(enumerator k) {return access_block(k)[GetElementNumber(k)];}
-		__INLINE const element & access_element(enumerator k) const {return access_block(k)[GetElementNumber(k)];}
+		size_type m_size;
+		//This neads static_cast to unsigned to 
+		__INLINE size_type GetChunkNumber(size_type k) const {return static_cast<uenum>(k) >> block_bits;}
+		__INLINE size_type GetElementNumber(size_type k) const {return (k & block_bits_mask);}
+		__INLINE element * access_block(size_type k) {return chunks[GetChunkNumber(k)];}
+		__INLINE const element * access_block(size_type k) const {return chunks[GetChunkNumber(k)];}
+		__INLINE element & access_element(size_type k) {return access_block(k)[GetElementNumber(k)];}
+		__INLINE const element & access_element(size_type k) const {return access_block(k)[GetElementNumber(k)];}
 	public:
-		__INLINE element & operator [] (enumerator i) 
+		__INLINE element & operator [] (size_type i) 
 		{
 			assert(i < size()); 
 			return access_element(i);
 		}
-		__INLINE const element & operator [] (enumerator i) const 
+		__INLINE const element & operator [] (size_type i) const 
 		{
 			assert(i < size()); 
 			return access_element(i);
 		}
-		__INLINE element & at(enumerator i) 
+		__INLINE element & at(size_type i) 
 		{
 			assert(i < size()); 
 			return access_element(i);
 		}
-		__INLINE const element & at(enumerator i) const 
+		__INLINE const element & at(size_type i) const 
 		{
 			assert(i < size()); 
 			return access_element(i);
@@ -2396,7 +2166,7 @@ namespace INMOST
 		{
 		private:
 			chunk_array<element, block_bits> * link;
-			enumerator pos;
+			size_type pos;
 		public:
 			typedef element * pointer;
 			typedef element & reference;
@@ -2404,13 +2174,13 @@ namespace INMOST
 			typedef ptrdiff_t difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			iterator(){pos = 0; link = NULL;}
-			iterator(chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
+			iterator(chunk_array<element,block_bits> * c, size_type pos):link(c),pos(pos){}
 			iterator(const iterator & other){link = other.link; pos = other.pos;}
 			~iterator() {};
-			iterator operator -(enumerator n) { return iterator(link,pos-n); }
-			iterator & operator -=(enumerator n) { pos-=n; return *this; }
-			iterator operator +(enumerator n) { return iterator(link,pos+n); }
-			iterator & operator +=(enumerator n) { pos+=n; return *this; }
+			iterator operator -(size_type n) { return iterator(link,pos-n); }
+			iterator & operator -=(size_type n) { pos-=n; return *this; }
+			iterator operator +(size_type n) { return iterator(link,pos+n); }
+			iterator & operator +=(size_type n) { pos+=n; return *this; }
 			iterator & operator ++(){ ++pos; return *this;}
 			iterator operator ++(int){ return iterator(link,pos++); }
 			iterator & operator --(){ --pos; return *this; }
@@ -2431,7 +2201,7 @@ namespace INMOST
 		{
 		private:
 			const chunk_array<element,block_bits> * const link;
-			enumerator pos;
+			size_type pos;
 		public:
 			typedef element * pointer;
 			typedef element & reference;
@@ -2439,13 +2209,13 @@ namespace INMOST
 			typedef ptrdiff_t difference_type;
 			typedef std::random_access_iterator_tag iterator_category;
 			const_iterator(){pos = 0; link = NULL;}
-			const_iterator(const chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
+			const_iterator(const chunk_array<element,block_bits> * c, size_type pos):link(c),pos(pos){}
 			const_iterator(const const_iterator & other) :link(other.link) {pos = other.pos;}
 			~const_iterator() {};
-			const_iterator operator -(enumerator n) { return const_iterator(link,pos-n); }
-			const_iterator & operator -=(enumerator n) { pos-=n; return *this; }
-			const_iterator operator +(enumerator n) { return const_iterator(link,pos+n); }
-			const_iterator & operator +=(enumerator n) { pos+=n; return *this; }
+			const_iterator operator -(size_type n) { return const_iterator(link,pos-n); }
+			const_iterator & operator -=(size_type n) { pos-=n; return *this; }
+			const_iterator operator +(size_type n) { return const_iterator(link,pos+n); }
+			const_iterator & operator +=(size_type n) { pos+=n; return *this; }
 			const_iterator & operator ++(){ ++pos; return *this;}
 			const_iterator operator ++(int){ return const_iterator(link,pos++); }
 			const_iterator & operator --(){ --pos; return *this; }
@@ -2462,92 +2232,20 @@ namespace INMOST
 			bool operator >=(const const_iterator & other) { assert(link == other.link); return pos >= other.pos;}
 		};
 		
-		/*
-		class reverse_iterator
+		void inner_resize(size_type new_size)
 		{
-		private:
-			enumerator pos;
-			chunk_array<element,block_bits> * link;
-		public:
-			typedef element * pointer;
-			typedef element & reference;
-			typedef element value_type;
-			typedef ptrdiff_t difference_type;
-			typedef std::random_access_iterator_tag iterator_category;
-			reverse_iterator(){pos = 0; link = NULL;}
-			reverse_iterator(chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
-			reverse_iterator(const reverse_iterator & other){link = other.link; pos = other.pos;}
-			~reverse_iterator() {};
-			reverse_iterator operator -(enumerator n) { return reverse_iterator(link,pos+n); }
-			reverse_iterator & operator -=(enumerator n) { pos+=n; return *this; }
-			reverse_iterator operator +(enumerator n) {return reverse_iterator(link,pos-n); }
-			reverse_iterator & operator +=(enumerator n) { pos-=n; return *this; }
-			reverse_iterator & operator ++(){ --pos; return *this;}
-			reverse_iterator operator ++(int){ return reverse_iterator(link,pos--); }
-			reverse_iterator & operator --(){ ++pos; return *this; }
-			reverse_iterator operator --(int){ return _reverse_iterator(link,pos++); }
-			ptrdiff_t operator -(const reverse_iterator & other) const {return other.pos-pos;}
-			element & operator *() { return link[pos]; }
-			element * operator ->() { return &link[pos]; }
-			reverse_iterator & operator =(reverse_iterator const & other) { pos = other.pos; link = other.link; return *this;}
-			bool operator ==(const reverse_iterator & other) { assert(link == other.link); return pos == other.pos;}
-			bool operator !=(const reverse_iterator & other) { assert(link == other.link); return pos != other.pos;}
-			bool operator <(const reverse_iterator & other) { assert(link == other.link); return pos < other.pos;}
-			bool operator >(const reverse_iterator & other) { assert(link == other.link); return pos > other.pos;}
-			bool operator <=(const reverse_iterator & other) { assert(link == other.link); return pos <= other.pos;}
-			bool operator >=(const reverse_iterator & other) { assert(link == other.link); return pos >= other.pos;}
-		};
-		class const_reverse_iterator
-		{
-		private:
-			enumerator pos;
-			const chunk_array<element,block_bits> * const link;
-		public:
-			typedef element * pointer;
-			typedef element & reference;
-			typedef element value_type;
-			typedef ptrdiff_t difference_type;
-			typedef std::random_access_iterator_tag iterator_category;
-			const_reverse_iterator(){pos = 0; link = NULL;}
-			const_reverse_iterator(const chunk_array<element,block_bits> * c, enumerator pos):link(c),pos(pos){}
-			const_reverse_iterator(const const_reverse_iterator & other) : link(other.link) {pos = other.pos;}
-			~const_reverse_iterator() {};
-			const_reverse_iterator operator -(enumerator n) { return const_reverse_iterator(link,pos+n); }
-			const_reverse_iterator & operator -=(enumerator n) { pos+=n; return *this; }
-			const_reverse_iterator operator +(enumerator n) {return const_reverse_iterator(link,pos-n); }
-			const_reverse_iterator & operator +=(enumerator n) { pos-=n; return *this; }
-			const_reverse_iterator & operator ++(){ --pos; return *this;}
-			const_reverse_iterator operator ++(int){ return const_reverse_iterator(link,pos--); }
-			const_reverse_iterator & operator --(){ ++pos; return *this; }
-			const_reverse_iterator operator --(int){ return const_reverse_iterator(link,pos++); }
-			ptrdiff_t operator -(const const_reverse_iterator & other) const {return other.pos-pos;}
-			const element & operator *() { return link.at(pos); }
-			const element * operator ->() { return &link.at(pos); }
-			const_reverse_iterator & operator =(const_reverse_iterator const & other) { pos = other.pos; link = other.link; return *this;}
-			bool operator ==(const const_reverse_iterator & other) { assert(link == other.link); return pos == other.pos;}
-			bool operator !=(const const_reverse_iterator & other) { assert(link == other.link); return pos != other.pos;}
-			bool operator <(const const_reverse_iterator & other) { assert(link == other.link); return pos < other.pos;}
-			bool operator >(const const_reverse_iterator & other) { assert(link == other.link); return pos > other.pos;}
-			bool operator <=(const const_reverse_iterator & other) { assert(link == other.link); return pos <= other.pos;}
-			bool operator >=(const const_reverse_iterator & other) { assert(link == other.link); return pos >= other.pos;}
-		};
-		*/
-	
-		
-		void inner_resize(enumerator new_size)
-		{
-			//~ enumerator oldnchunks  = m_size  /chunk;
-			enumerator oldnchunks2 = (m_size >> block_bits) + ( (m_size & block_bits_mask) ? 1 : 0);
-			enumerator oldn = (oldnchunks2 >> fwd_alloc_chunk_bits) + ( (oldnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
-			//~ enumerator newnchunks = new_size/chunk;
-			enumerator newnchunks2 = (new_size >> block_bits) + ( (new_size & block_bits_mask)? 1 : 0);
-			enumerator newn = (newnchunks2 >> fwd_alloc_chunk_bits) + ( (newnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
+			//~ size_type oldnchunks  = m_size  /chunk;
+			size_type oldnchunks2 = (static_cast<uenum>(m_size) >> block_bits) + ( (m_size & block_bits_mask) ? 1 : 0);
+			size_type oldn = (static_cast<uenum>(oldnchunks2) >> fwd_alloc_chunk_bits) + ( (oldnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
+			//~ size_type newnchunks = new_size/chunk;
+			size_type newnchunks2 = (static_cast<uenum>(new_size) >> block_bits) + ( (new_size & block_bits_mask)? 1 : 0);
+			size_type newn = (static_cast<uenum>(newnchunks2) >> fwd_alloc_chunk_bits) + ( (newnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
 			
 			//~ std::cout << "new " << new_size << " " << newn << " " << newnchunks2 << " old " << m_size << " " << oldn << " " << oldnchunks2 << " block " << block << " chunk " << chunk << std::endl;
 			
-			for(enumerator q = new_size; q < m_size; q++) 
+			for(size_type q = new_size; q < m_size; q++) 
 				access_element(q).~element();
-			for(enumerator q = newnchunks2; q < oldnchunks2; q++) 
+			for(size_type q = newnchunks2; q < oldnchunks2; q++) 
 			{
 				assert(chunks[q] != NULL);
 				free(chunks[q]);
@@ -2567,28 +2265,28 @@ namespace INMOST
 					chunks = NULL;
 				}
 			}
-			for(enumerator q = oldnchunks2; q < newnchunks2; q++) 
+			for(size_type q = oldnchunks2; q < newnchunks2; q++) 
 			{
 				assert(chunks[q] == NULL);
-				chunks[q] = (element *)malloc(block_size*record_size);
+				chunks[q] = (element *)malloc(block_size);
 				assert(chunks[q] != NULL);
 			}
-			//for(enumerator q = m_size; q < new_size; q++) new (&access_element(q)) element();
+			//for(size_type q = m_size; q < new_size; q++) new (&access_element(q)) element();
 		}
 	public:
 		
-		enumerator capacity() const 
+		size_type capacity() const 
 		{
-			enumerator chunks = ((m_size>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+			size_type chunks = ((static_cast<uenum>(m_size)>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
 			return chunks*block_val;
 		}
-		enumerator size() const {return m_size;}
+		size_type size() const {return m_size;}
 		bool empty() const {return size() == 0;}
 		void clear()
 		{
-			for(enumerator q = 0; q < m_size; q++) access_element(q).~element();
-			enumerator cend = (m_size >> block_bits) + ((m_size & block_bits_mask)? 1 : 0);
-			for(enumerator q = 0; q < cend; q++) 
+			for(size_type q = 0; q < m_size; q++) access_element(q).~element();
+			size_type cend = (static_cast<uenum>(m_size) >> block_bits) + ((m_size & block_bits_mask)? 1 : 0);
+			for(size_type q = 0; q < cend; q++) 
 			{
 				free(chunks[q]);
 				chunks[q] = NULL;
@@ -2597,25 +2295,18 @@ namespace INMOST
 			chunks = NULL;
 			m_size = 0;
 		}
-		chunk_array(enumerator set_record_size = 1)
+		chunk_array()
 		{
-			record_size = set_record_size;
 			m_size = 0;
 			chunks = NULL;
 		}
 		chunk_array(const chunk_array & other)
 		{
 			chunks = NULL;
-			record_size = other.record_size;
 			m_size = 0;
 			inner_resize(other.size());
-			for(enumerator k = 0; k < other.size(); k++) 
-			{
-				element * espace = &access_element(k);
-				const element * other_espace = &other.access_element(k);
-				for( enumerator i = 0; i < record_size; i++)
-					new(espace+i) element(*(other_espace+i));
-			}
+			for(size_type k = 0; k < other.size(); k++) 
+				new(&access_element(k)) element(other.access_element(k));
 			m_size = other.size();
 		}
 		chunk_array & operator =(chunk_array const & other)
@@ -2623,15 +2314,9 @@ namespace INMOST
 			if( this != &other )
 			{
 				clear();
-				record_size = other.record_size;
 				inner_resize(other.size());
-				for(enumerator k = 0; k < other.size(); k++) 
-				{
-					element * espace = &access_element(k);
-					const element * other_espace = &other.access_element(k);
-					for( enumerator i = 0; i < record_size; i++)
-						new(espace+i) element(*(other_espace+i));
-				}
+				for(size_type k = 0; k < other.size(); k++) 
+					new(&access_element(k)) element(other.access_element(k));
 				m_size = other.size();
 			}
 			return *this;
@@ -2669,18 +2354,14 @@ namespace INMOST
 		void push_back(const element & e)
 		{
 			inner_resize(m_size+1);
-			element * espace = &access_element(m_size);
-			for(enumerator i = 0; i < record_size; ++i) new (espace+i) element(e);
+			new (&access_element(m_size)) element(e);
 			m_size++;
 		}
-		void resize(enumerator n, const element & e = element())
+		void resize(size_type n, const element & e = element())
 		{
 			inner_resize(n);
-			for(enumerator k  = m_size; k < n; k++)
-			{
-				element * espace = &access_element(k);
-				for(enumerator i = 0; i < record_size; ++i) new (espace+i) element(e);
-			}
+			for(size_type k = m_size; k < n; k++)
+				new (&access_element(k)) element(e);
 			m_size = n;
 		}
 		
@@ -2691,8 +2372,7 @@ namespace INMOST
 			iterator it = pos, jt = it++;
 			while(it != end()) (*jt++) = (*it++);//std::move(*jt++);
 			//destruct last
-			element * espace = &access_element(m_size-1);
-			for(enumerator i = 0; i < record_size; i++) (*(espace+i)).~element();
+			//access_element(m_size-1).~element();
 			inner_resize(m_size-1);
 			m_size--;
 			return pos;
@@ -2709,6 +2389,144 @@ namespace INMOST
 		//~ const_reverse_iterator rend() const {return const_reverse_iterator(this,-1);}
 		
 		//don't need other standard functions?
+	};
+
+
+	template<int block_bits>
+	class chunk_bulk_array
+	{
+	public:
+		typedef size_t size_type; 
+		typedef make_unsigned<size_type>::type uenum; //this is required for right shift not to create leading 1s
+	private:
+		static size_type const block_bits_mask = (1 << (block_bits)) - 1;
+		static size_type const block_val = 1 << block_bits;
+		static size_type const block_size = sizeof(char)*block_val;
+		static size_type const fwd_alloc_chunk_bits = 6;
+		static size_type const fwd_alloc_chunk_bits_mask = (1 << (fwd_alloc_chunk_bits))-1;
+		static size_type const fwd_alloc_chunk_val = 1 << fwd_alloc_chunk_bits;
+		static size_type const fwd_alloc_chunk_size = sizeof(char *)*fwd_alloc_chunk_val;
+		char ** chunks;
+		size_type record_size;
+		size_type m_size;
+		
+		__INLINE size_type GetChunkNumber(size_type k) const {return static_cast<uenum>(k) >> block_bits;}
+		__INLINE size_type GetElementNumber(size_type k) const {return (k & block_bits_mask) * record_size;}
+		__INLINE char * access_block(size_type k) {return chunks[GetChunkNumber(k)];}
+		__INLINE const char * access_block(size_type k) const {return chunks[GetChunkNumber(k)];}
+		__INLINE char & access_element(size_type k) {return access_block(k)[GetElementNumber(k)];}
+		__INLINE const char & access_element(size_type k) const {return access_block(k)[GetElementNumber(k)];}
+	public:
+		__INLINE char & operator [] (size_type i) 
+		{
+			assert(i < size()); 
+			return access_element(i);
+		}
+		__INLINE const char & operator [] (size_type i) const 
+		{
+			assert(i < size()); 
+			return access_element(i);
+		}
+		__INLINE char & at(size_type i) 
+		{
+			assert(i < size()); 
+			return access_element(i);
+		}
+		__INLINE const char & at(size_type i) const 
+		{
+			assert(i < size()); 
+			return access_element(i);
+		}
+		void inner_resize(size_type new_size)
+		{
+			size_type oldnchunks2 = (static_cast<uenum>(m_size) >> block_bits) + ( (m_size & block_bits_mask) ? 1 : 0);
+			size_type oldn = (static_cast<uenum>(oldnchunks2) >> fwd_alloc_chunk_bits) + ( (oldnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
+			size_type newnchunks2 = (static_cast<uenum>(new_size) >> block_bits) + ( (new_size & block_bits_mask)? 1 : 0);
+			size_type newn = (static_cast<uenum>(newnchunks2) >> fwd_alloc_chunk_bits) + ( (newnchunks2 & fwd_alloc_chunk_bits_mask) ? 1 : 0);
+			for(size_type q = newnchunks2; q < oldnchunks2; q++) 
+			{
+				assert(chunks[q] != NULL);
+				free(chunks[q]);
+				chunks[q] = NULL;
+			}
+			if( newn != oldn )	
+			{
+				if( newn > 0 )
+				{
+					chunks = reinterpret_cast<char **>(realloc(chunks,fwd_alloc_chunk_size*newn));
+					assert(chunks != NULL);
+					if( newn > oldn ) memset(chunks+oldn*fwd_alloc_chunk_val,0,fwd_alloc_chunk_size*(newn-oldn));
+				}
+				else
+				{
+					free(chunks);
+					chunks = NULL;
+				}
+			}
+			for(size_type q = oldnchunks2; q < newnchunks2; q++) 
+			{
+				assert(chunks[q] == NULL);
+				chunks[q] = static_cast<char *>(malloc(block_size*record_size));
+				memset(chunks[q],0,block_size*record_size);
+				assert(chunks[q] != NULL);
+			}
+		}
+	public:
+		
+		size_type capacity() const 
+		{
+			size_type nchunks = ((static_cast<uenum>(m_size)>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+			return nchunks*block_val*record_size;
+		}
+		size_type size() const {return m_size;}
+		bool empty() const {return size() == 0;}
+		void clear()
+		{
+			size_type nchunks = ((static_cast<uenum>(m_size)>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+			for(size_type q = 0; q < nchunks; q++) 
+			{
+				free(chunks[q]);
+				chunks[q] = NULL;
+			}
+			free(chunks);
+			chunks = NULL;
+			m_size = 0;
+		}
+		chunk_bulk_array(size_type set_record_size = 1)
+		{
+			record_size = set_record_size;
+			m_size = 0;
+			chunks = NULL;
+		}
+		chunk_bulk_array(const chunk_bulk_array & other)
+		{
+			chunks = NULL;
+			record_size = other.record_size;
+			m_size = 0;
+			inner_resize(other.size());
+			size_type nchunks = ((static_cast<uenum>(m_size)>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+			for(size_type k = 0; k < nchunks; k++) memcpy(chunks[k],other.chunks[k],block_size*record_size);
+			m_size = other.size();
+		}
+		chunk_bulk_array & operator =(chunk_bulk_array const & other)
+		{
+			if( this != &other )
+			{
+				clear();
+				record_size = other.record_size;
+				inner_resize(other.size());
+				size_type nchunks = ((static_cast<uenum>(m_size)>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+				for(size_type k = 0; k < nchunks; k++) memcpy(chunks[k],other.chunks[k],block_size*record_size);
+				m_size = other.size();
+			}
+			return *this;
+		}
+		~chunk_bulk_array() {clear();}
+		void resize(size_type n)
+		{
+			inner_resize(n);
+			m_size = n;
+		}
 	};
 }
 

@@ -1,3 +1,6 @@
+#ifdef _MSC_VER //kill some warnings
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 #include "inmost.h"
 
 #if defined(USE_MESH)
@@ -6,6 +9,8 @@
 #include <sstream>
 #include <stdlib.h>
 #include <stdio.h>
+
+
 
 //vtk states
 
@@ -177,347 +182,7 @@ namespace INMOST
 		return in;
 	}
 
-	void Mesh::WriteTag(std::ostream & out, Tag X)
-	{
-		std::string name = X.GetTagName();
-		INMOST_DATA_ENUM_TYPE namesize = name.size();
-		INMOST_DATA_BULK_TYPE datatype = static_cast<INMOST_DATA_BULK_TYPE>(X.GetDataType());
-		ElementType sparsemask = NONE;
-		ElementType definedmask = NONE;
-		INMOST_DATA_ENUM_TYPE datalength = X.GetSize();
-		for(ElementType current_type = NODE; current_type <= MESH; current_type = current_type << 1)
-		{
-			if( X.isSparse(current_type) ) sparsemask |= current_type;
-			if( X.isDefined(current_type) ) definedmask |= current_type;
-		}
-		uconv.write_iValue(out,namesize);
-		out.write(name.c_str(), name.size());
-		out.put(datatype);
-		out.put(sparsemask);
-		out.put(definedmask);
-		uconv.write_iValue(out,datalength);
-	}
 	
-	Tag Mesh::ReadTag(std::istream & in)
-	{
-		INMOST_DATA_ENUM_TYPE namesize;
-		std::string name;
-		char datatype;
-		char sparsemask,definedmask;
-		INMOST_DATA_ENUM_TYPE datalength;
-		uconv.read_iValue(in,namesize);
-		name.resize(namesize);
-		in.read(reinterpret_cast<char *>(&name[0]), namesize);
-		in.get(datatype);
-		in.get(sparsemask);
-		in.get(definedmask);
-		uconv.read_iValue(in,datalength);
-		return CreateTag(name,static_cast<DataType>(datatype),static_cast<ElementType>(definedmask),static_cast<ElementType>(sparsemask),datalength);
-	}
-	void Mesh::ReadData(std::istream & in, Tag t, Storage * X,std::vector<Node *> & new_nodes,std::vector<Edge *> & new_edges,std::vector<Face *> & new_faces,std::vector<Cell *> & new_cells)
-	{
-		
-		if( !t.isDefined(X->GetElementType()) ) return;
-		//if( t.isSparse(X->GetElementType()) )
-		//{
-		//	char have_data;
-		//	in.get(have_data);
-		//	if(!have_data) return;
-		//}
-		INMOST_DATA_ENUM_TYPE size = t.GetSize(),k,lid;
-		if( size == ENUMUNDEF )
-		{
-			uconv.read_iValue(in,size);
-			X->SetDataSize(t,size);
-		}
-		switch(t.GetDataType())
-		{
-		case DATA_REAL:      
-			{
-			//	INMOST_DATA_REAL_TYPE stub;
-				for(k = 0; k < size; k++) 
-					iconv.read_fValue(in,X->RealArray(t)[k]); 
-			//			iconv.read_fValue(in,stub); 
-			}
-			break;
-		case DATA_INTEGER:   
-			{
-				for(k = 0; k < size; k++) 
-					iconv.read_iValue(in,X->IntegerArray(t)[k]); 
-			}
-			break;
-		case DATA_BULK:      
-			{
-				in.read(reinterpret_cast<char *>(&X->Bulk(t)),size); 
-			}
-			break;
-		case DATA_REFERENCE: 
-			{
-				for(k = 0; k < size; k++)
-				{
-					char type;
-					in.get(type);
-					if (type != NONE)
-					{
-						uconv.read_iValue(in, lid);
-						switch (static_cast<ElementType>(type))
-						{
-						case NODE: X->ReferenceArray(t)[k] = new_nodes[lid]; break;
-						case EDGE: X->ReferenceArray(t)[k] = new_edges[lid]; break;
-						case FACE: X->ReferenceArray(t)[k] = new_faces[lid]; break;
-						case CELL: X->ReferenceArray(t)[k] = new_cells[lid]; break;
-						}
-					}
-					else X->ReferenceArray(t)[k] = NULL;
-				}
-			}
-			break;
-		}
-	}
-	void Mesh::WriteData(std::ostream & out, Tag t, Storage & X)
-	{
-		if( !t.isDefined(X.GetElementType()) ) return;
-		//if( t.isSparse(X.GetElementType()) )
-		//{
-		//	char have_data = X.HaveData(t);
-		//	out.put(have_data);
-		//	if(!have_data) return;
-		//}
-		INMOST_DATA_ENUM_TYPE size = t.GetSize(),k, lid;
-		if( size == ENUMUNDEF )
-		{
-			size = X.GetDataSize(t);
-			uconv.write_iValue(out,size);
-		}
-		switch(t.GetDataType())
-		{
-		case DATA_REAL:      for(k = 0; k < size; k++) iconv.write_fValue(out,X.RealArray(t)[k]); break;
-		case DATA_INTEGER:   for(k = 0; k < size; k++) iconv.write_iValue(out,X.IntegerArray(t)[k]); break;
-		case DATA_BULK:      out.write(reinterpret_cast<char *>(&X.Bulk(t)),size); break;
-		case DATA_REFERENCE: 
-			{
-				for(k = 0; k < size; k++)
-				{
-					Element * e = X.ReferenceArray(t)[k];
-					if (e != NULL)
-					{
-						char type = e->GetElementType();
-						lid = e->LocalID();
-						out.put(type);
-						uconv.write_iValue(out, lid);
-					}
-					else
-					{
-						out.put(NONE);
-					}
-				}
-			}
-		break;
-		}
-	}
-	Node * Mesh::ReadNode(std::istream & in, std::vector<Node *> & old_nodes)
-	{
-		Node * ret;
-		unsigned int dim = GetDimensions();
-		Storage::real coords[3];
-		for(unsigned int i = 0; i < dim; i++)
-			iconv.read_fValue(in,coords[i]);
-		int find = -1;
-		if( !old_nodes.empty() ) find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareCoordSearch,&coords[0]);
-		if( find == -1 ) 
-			ret = CreateNode(&coords[0]);
-		else 
-			ret = old_nodes[find];
-		//Backward compatibility for file format, remove in future
-		MarkerType markers;
-		uconv.read_iValue(in,markers);
-#if !defined(NEW_MARKERS)
-		ret->SetMarkerSpace(markers);
-#endif
-		return ret;
-	}
-	void Mesh::WriteNode(std::ostream & out,Node * X)
-	{
-		Storage::real_array coords = X->Coords();
-		for(Storage::real_array::iterator it = coords.begin(); it != coords.end(); it++)
-			iconv.write_fValue(out,*it);
-#if !defined(NEW_MARKERS)
-		uconv.write_iValue(out,X->GetMarkerSpace());
-#endif
-	}
-
-	Edge * Mesh::ReadEdge(std::istream & in, std::vector<Node *> & nodes)
-	{
-		Edge * ret;
-		INMOST_DATA_ENUM_TYPE nlow,lid,i;
-		dynarray<Node *,64> sub_elements;
-		uconv.read_iValue(in,nlow);
-		//assert(nlow == 2);
-		for(i = 0; i < nlow; i++)
-		{
-			uconv.read_iValue(in,lid);
-			sub_elements.push_back(nodes[lid]);
-		}
-		ret = CreateEdge(&sub_elements[0], sub_elements.size()).first;
-		//Backward compatibility for file format, remove in future
-#if !defined(NEW_MARKERS)
-		MarkerType markers;
-		uconv.read_iValue(in,markers);
-		ret->SetMarkerSpace(markers);
-#endif
-		return ret;	
-	}
-	void Mesh::WriteEdge(std::ostream & out,Edge * X)
-	{
-		adjacent<Node> sub = X->getNodes();
-		INMOST_DATA_ENUM_TYPE nlow =sub.size(),lid;
-		assert(nlow == 2 );
-		uconv.write_iValue(out,nlow);
-		for(adjacent<Node>::iterator it = sub.begin(); it != sub.end(); it++)
-		{
-			lid = it->LocalID();
-			uconv.write_iValue(out,lid);
-		}
-#if !defined(NEW_MARKERS)
-		uconv.write_iValue(out,X->GetMarkerSpace());
-#endif
-	}
-	
-	Face * Mesh::ReadFace(std::istream & in, std::vector<Edge *> & edges)
-	{
-		Face * ret;
-		INMOST_DATA_ENUM_TYPE nlow,lid,i;
-		dynarray<Edge *,64> sub_elements;
-		uconv.read_iValue(in,nlow);
-		for(i = 0; i < nlow; i++)
-		{
-			uconv.read_iValue(in,lid);
-			sub_elements.push_back(edges[lid]);
-		}
-		ret = CreateFace(&sub_elements[0], sub_elements.size()).first;
-		//Backward compatibility for file format, remove in future
-#if !defined(NEW_MARKERS)
-		MarkerType markers;
-		uconv.read_iValue(in,markers);
-		ret->SetMarkerSpace(markers);
-#endif
-		return ret;	
-	}
-	void Mesh::WriteFace(std::ostream & out,Face * X)
-	{
-		adjacent<Edge> sub = X->getEdges();
-		INMOST_DATA_ENUM_TYPE nlow =sub.size(),lid;
-		uconv.write_iValue(out,nlow);
-		for(adjacent<Node>::iterator it = sub.begin(); it != sub.end(); it++)
-		{
-			lid = it->LocalID();
-			uconv.write_iValue(out,lid);
-		}
-#if !defined(NEW_MARKERS)
-		uconv.write_iValue(out,X->GetMarkerSpace());
-#endif
-	}
-
-	Cell * Mesh::ReadCell(std::istream & in, std::vector<Face *> & faces, std::vector<Node *> & nodes)
-	{
-		Cell * ret = NULL;
-		INMOST_DATA_ENUM_TYPE nlow, nhigh,lid,i;
-		dynarray<Face *,64> sub_elements;
-		dynarray<Node *,64> suggest_nodes;
-		uconv.read_iValue(in,nlow);
-		for(i = 0; i < nlow; i++)
-		{
-			uconv.read_iValue(in,lid);
-			sub_elements.push_back(faces[lid]);
-		}
-		uconv.read_iValue(in,nhigh);
-		for(i = 0; i < nhigh; i++)
-		{
-			uconv.read_iValue(in,lid);
-			suggest_nodes.push_back(nodes[lid]);
-		}
-		ret = CreateCell(&sub_elements[0],sub_elements.size(),&suggest_nodes[0],suggest_nodes.size()).first;
-		//Backward compatibility for file format, remove in future
-#if !defined(NEW_MARKERS)
-		MarkerType markers;
-		uconv.read_iValue(in,markers);
-		ret->SetMarkerSpace(markers);
-#endif
-		return ret;	
-	}
-	void Mesh::WriteCell(std::ostream & out,Cell * X)
-	{
-		adjacent<Node> nodes = X->getNodes();
-		adjacent<Face> sub = X->getFaces();
-		INMOST_DATA_ENUM_TYPE nlow = sub.size(), nhigh = nodes.size(),lid;
-		uconv.write_iValue(out,nlow);
-		for(adjacent<Face>::iterator it = sub.begin(); it != sub.end(); it++)
-		{
-			lid = it->LocalID();
-			uconv.write_iValue(out,lid);
-		}
-		uconv.write_iValue(out,nhigh);
-		for(adjacent<Node>::iterator it = nodes.begin(); it != nodes.end(); it++)
-		{
-			lid = it->LocalID();
-			uconv.write_iValue(out,lid);
-		}
-#if !defined(NEW_MARKERS)
-		uconv.write_iValue(out,X->GetMarkerSpace());
-#endif
-	}
-	
-	void Mesh::WriteElementSet(std::ostream & out, ElementSet * X)
-	{
-		INMOST_DATA_ENUM_TYPE size = X->size(),lid;
-		char ordered = X->isOrdered();
-		uconv.write_iValue(out,size);
-		out.put(ordered);
-		for(ElementSet::iterator it = X->begin(); it != X->end(); it++)
-		{
-			char type = static_cast<char>(it->GetElementType());
-			lid = it->LocalID();
-			out.put(type);
-			uconv.write_iValue(out,lid);
-		}
-#if !defined(NEW_MARKERS)
-		uconv.write_iValue(out,X->GetMarkerSpace());
-#endif
-	}
-	
-
-	
-	ElementSet * Mesh::ReadElementSet(std::istream & in,std::vector<Node *> & new_nodes,std::vector<Edge *> & new_edges,std::vector<Face *> & new_faces,std::vector<Cell *> & new_cells)
-	{
-		INMOST_DATA_ENUM_TYPE size, lid, it;
-		char ordered;
-		uconv.read_iValue(in,size);
-		in.get(ordered);
-		ElementSet * ret = ordered? CreateOrderedSet() : CreateSet();
-		for(it = 0; it < size; it++)
-		{
-			char type;
-			in.get(type);
-			uconv.read_iValue(in,lid);
-			switch(static_cast<ElementType>(type))
-			{
-				case NODE: ret->Insert(new_nodes[lid]); break;
-				case EDGE: ret->Insert(new_edges[lid]); break;
-				case FACE: ret->Insert(new_faces[lid]); break;
-				case CELL: ret->Insert(new_cells[lid]); break;
-			}
-		}
-		//Backward compatibility for file format, remove in future
-#if !defined(NEW_MARKERS)
-		MarkerType markers;
-		uconv.read_iValue(in,markers);
-		ret->SetMarkerSpace(markers);
-#endif
-		return ret;
-	}
-
-
-
 	void Mesh::Load(std::string File)
 	{
 		ENTER_FUNC();
@@ -569,13 +234,14 @@ namespace INMOST
 				std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << LFile << std::endl;
 				throw BadFileName;
 			}
-			std::vector<Node *> old_nodes(NumberOfNodes());
+			std::vector<HandleType> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
-				for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL )
+				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
 					old_nodes[qq++] = *it;
 			}
-			if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
+			if( !old_nodes.empty() ) 
+				std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
 			std::vector< std::pair< std::pair<FILE *,std::string>, int> > fs(1,std::make_pair(std::make_pair(f,File),0));
 			char readline[2048], *p, *pend, rec[2048];
 			int text_end, text_start, state = ECL_NONE, nchars;
@@ -597,7 +263,7 @@ namespace INMOST
 					fs.back().second++; //line number
 					{
 						if( readline[strlen(readline)-1] == '\n' ) readline[strlen(readline)-1] = '\0';
-						text_end = strlen(readline);
+						text_end = static_cast<int>(strlen(readline));
 						for(text_start = 0; isspace(readline[text_start]) && text_start < text_end; text_start++);
 						if( text_start == text_end ) continue;
 						for(text_end = text_end-1; isspace(readline[text_end]) && text_end > text_start; text_end--);
@@ -637,7 +303,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
+							read_arrayf = xyz.data();
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -647,7 +313,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
+							read_arrayf = xyz.data();
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -658,7 +324,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &xyz[0];
+							read_arrayf = xyz.data();
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -669,7 +335,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(2*(dims[0]+1)*(dims[1]+1));
-							read_arrayf = &xyz[0];
+							read_arrayf = xyz.data();
 							numrecs = 1;
 							downread = totread = 2*(dims[0]+1)*(dims[1]+1);
 							argtype = ECL_VAR_REAL;
@@ -680,7 +346,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( zcorn.empty() ) zcorn.resize(dims[0]*dims[1]*dims[2]*8);
-							read_arrayf = &zcorn[0];
+							read_arrayf = zcorn.data();
 							numrecs = 1;
 							downread = totread = dims[0]*dims[1]*dims[2]*8;
 							argtype = ECL_VAR_REAL;
@@ -690,7 +356,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							tops.resize(dims[0]*dims[1]*dims[2]);
-							read_arrayf = &tops[0];
+							read_arrayf = tops.data();
 							numrecs = 1;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -701,7 +367,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
+							read_arrayf = perm.data();
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -711,7 +377,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
+							read_arrayf = perm.data();
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -722,7 +388,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &perm[0];
+							read_arrayf = perm.data();
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -733,7 +399,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							poro.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = &poro[0];
+							read_arrayf = poro.data();
 							numrecs = 1;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -809,7 +475,7 @@ namespace INMOST
 								while(isspace(*p) && p < pend) ++p;
 								int count = 1;
 								int begval = 0;
-								for(int q = 0; q < strlen(rec); ++q)
+								for(int q = 0; q < static_cast<int>(strlen(rec)); ++q)
 									if( rec[q] == '*' )
 									{
 										begval = q+1;
@@ -828,7 +494,7 @@ namespace INMOST
 								}
 								else if( argtype == ECL_VAR_INT )
 								{
-									Storage::integer val = atof(rec+begval);
+									Storage::integer val = atoi(rec+begval);
 									while(count)
 									{
 										read_arrayi[numrecs*(totread-(downread--))+(state-offset)] = val;
@@ -882,10 +548,10 @@ ecl_exit_loop:
 			}
 			if( gtype == ECL_GTYPE_TOPS )
 			{
-				std::vector<Node *> newnodes;
-				newnodes.reserve((dims[0]+1)*(dims[1]+1)*(dims[2]+1));
+				std::vector<HandleType> newnodes((dims[0]+1)*(dims[1]+1)*(dims[2]+1));
 				Storage::real x, y, z, node_xyz[3];
 				x = 0.0;
+				int numnode = 0;
 				for(int i = 0; i < dims[0]+1; i++)
 				{
 					Storage::integer pif = std::min(dims[0]-1,i), pib = std::max(i-1,0);
@@ -913,9 +579,12 @@ ecl_exit_loop:
 							node_xyz[2] = z;
 							int find = -1;
 							if( !old_nodes.empty() )
-								find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Element*),CompareCoordSearch,node_xyz);
-							if( find == -1 ) newnodes.push_back(CreateNode(node_xyz));
-							else newnodes.push_back(old_nodes[find]);
+							{
+								std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),node_xyz,CentroidComparator(this));
+								if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+							}
+							if( find == -1 ) newnodes[numnode++] = CreateNode(node_xyz)->GetHandle();
+							else newnodes[numnode++] = old_nodes[find];
 							//std::cout << i << " " << j << " " << k << " ( " << x << " , " << y << " , " << z << ") " << newnodes.back()->LocalID() << std::endl; 
 							x += (
 								  (
@@ -974,13 +643,13 @@ ecl_exit_loop:
 				if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
 				if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
 
-				const INMOST_DATA_ENUM_TYPE nvf[24] = { 2, 3, 1, 0, 4, 5, 7, 6, 0, 1, 5, 4, 3, 2, 6, 7, 2, 0, 4, 6, 1, 3, 7, 5 };
-				const INMOST_DATA_ENUM_TYPE numnodes[6] = { 4, 4, 4, 4, 4, 4 };
+				const Storage::integer nvf[24] = { 2, 3, 1, 0, 4, 5, 7, 6, 0, 1, 5, 4, 3, 2, 6, 7, 2, 0, 4, 6, 1, 3, 7, 5 };
+				const Storage::integer numnodes[6] = { 4, 4, 4, 4, 4, 4 };
 				for(int i = 0; i < dims[0]; i++)
 					for(int j = 0; j < dims[1]; j++)
 						for(int k = 0; k < dims[2]; k++)
 						{
-							Node * verts[8];
+							HandleType verts[8];
 							verts[0] = newnodes[((i+0)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+0)];
 							verts[1] = newnodes[((i+1)*(dims[1]+1)+(j+0))*(dims[2]+1)+(k+0)];
 							verts[2] = newnodes[((i+0)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+0)];
@@ -991,7 +660,7 @@ ecl_exit_loop:
 							verts[7] = newnodes[((i+1)*(dims[1]+1)+(j+1))*(dims[2]+1)+(k+1)];
 							//for(int q = 0; q < 8; q++)
 							//	std::cout << verts[q]->Coords()[0] << " " << verts[q]->Coords()[1] << " " << verts[q]->Coords()[2] << " " << verts[q]->LocalID() << std::endl;
-							Cell * c = CreateCell(verts,nvf,numnodes,6).first;
+							Cell c = CreateCell(ElementArray<Node>(this,verts,verts+8),nvf,numnodes,6).first;
 							if( !poro.empty() ) c->RealDF(tagporo) = poro[(i*dims[1]+j)*dims[2]+k];
 							if( !perm.empty() )
 							{
@@ -1004,20 +673,20 @@ ecl_exit_loop:
 			}
 			else if( gtype == ECL_GTYPE_ZCORN )
 			{
-				std::vector<Node *> block_nodes(dims[0]*dims[1]*dims[2]*8);
-				Storage::integer block_zcorn[8];
+				//std::vector<HandleType> block_nodes(dims[0]*dims[1]*dims[2]*8);
+				//Storage::integer block_zcorn[8];
 			}
 		}
 		else
 		if(LFile.find(".pvtk") != std::string::npos) //this is legacy parallel vtk
 		{
 			int state = 0, np, nf = 0;
-			INMOST_DATA_ENUM_TYPE l,attrl, ql,qr;
+			std::string::size_type attrl, ql, qr, l;
 			//~ if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
 			std::string str, tag, attrval, path = "";
 			std::vector<std::string> files;
 			std::fstream stream(File.c_str(),std::ios::in);
-			l = File.find_last_of("/\\");
+			l = static_cast<INMOST_DATA_ENUM_TYPE>(File.find_last_of("/\\"));
 			if( l != std::string::npos )
 				path = File.substr(0,l+1);
 			while(stream.good())
@@ -1117,13 +786,15 @@ ecl_exit_loop:
 					}
 				}
 			}
-			std::vector<Node *> old_nodes(NumberOfNodes());
+			std::vector<HandleType> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
-				for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL )
+				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
 					old_nodes[qq++] = *it;
 			}
-			if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
+			if( !old_nodes.empty() ) 
+				std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
+
 			
 			FILE * f = fopen(File.c_str(),"r");
 			if( !f ) 
@@ -1132,8 +803,8 @@ ecl_exit_loop:
 				throw BadFileName;
 			}
 			std::vector<Tag> datatags;
-			std::vector<Node *> newnodes;
-			std::vector<Storage *> newcells;
+			std::vector<HandleType> newnodes;
+			std::vector<HandleType> newcells;
 			std::vector<int> cp;
 			std::vector<int> ct;
 			unsigned int state = R_VERSION;
@@ -1229,7 +900,7 @@ ecl_exit_loop:
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
-								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 
@@ -1237,7 +908,7 @@ ecl_exit_loop:
 									{
 										if( newcells[it] != NULL )
 										{
-											Storage::integer_array attrdata = newcells[it]->IntegerArray(attr);
+											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										}
 										else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
@@ -1246,7 +917,7 @@ ecl_exit_loop:
 									{
 										if( newcells[it] != NULL )
 										{
-											Storage::real_array attrdata = newcells[it]->RealArray(attr);
+											Storage::real_array attrdata = RealArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										}
 										else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
@@ -1263,17 +934,17 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
-								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size())/250,1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
 									if( t == DATA_INTEGER )
 									{
-										Storage::integer_array attrdata = newnodes[it]->IntegerArray(attr);
+										Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									if( t == DATA_REAL )
 									{
-										Storage::real_array attrdata = newnodes[it]->RealArray(attr);
+										Storage::real_array attrdata = RealArray(newnodes[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									if( verbosity > 1 && it%report_pace == 0)
@@ -1294,12 +965,12 @@ ecl_exit_loop:
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,read_into_cell & ESET,nentries);
-								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 									if( newcells[it] != NULL )
 									{
-										Storage::real_array attrdata = newcells[it]->RealArray(attr);
+										Storage::real_array attrdata = RealArray(newcells[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
@@ -1315,10 +986,10 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,DATA_REAL,NODE,NONE,nentries);
-								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size()/250),1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									Storage::real_array attrdata = newnodes[it]->RealArray(attr);
+									Storage::real_array attrdata = RealArray(newnodes[it],attr);
 									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
@@ -1365,14 +1036,14 @@ ecl_exit_loop:
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
-								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 									if( t == DATA_INTEGER )
 									{
 										if( newcells[it] != NULL )
 										{
-											Storage::integer_array attrdata = newcells[it]->IntegerArray(attr);
+											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										}
 										else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
@@ -1381,7 +1052,7 @@ ecl_exit_loop:
 									{
 										if( newcells[it] != NULL )
 										{
-											Storage::real_array attrdata = newcells[it]->RealArray(attr);
+											Storage::real_array attrdata = RealArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										}
 										else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
@@ -1398,17 +1069,17 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
-								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size()/250),1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
 									if( t == DATA_INTEGER )
 									{
-										Storage::integer_array attrdata = newnodes[it]->IntegerArray(attr);
+										Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									if( t == DATA_REAL )
 									{
-										Storage::real_array attrdata = newnodes[it]->RealArray(attr);
+										Storage::real_array attrdata = RealArray(newnodes[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									if( verbosity > 1 && it%report_pace == 0)
@@ -1442,14 +1113,14 @@ ecl_exit_loop:
 							if( read_into == 2 )
 							{
 								Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
-								unsigned report_pace = std::max<unsigned>(newcells.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 									if( t == DATA_INTEGER )
 									{
 										if( newcells[it] != NULL )
 										{
-											Storage::integer_array attrdata = newcells[it]->IntegerArray(attr);
+											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										} else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
 									}
@@ -1457,7 +1128,7 @@ ecl_exit_loop:
 									{
 										if( newcells[it] != NULL )
 										{
-											Storage::real_array attrdata = newcells[it]->RealArray(attr);
+											Storage::real_array attrdata = RealArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										} else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									}
@@ -1473,17 +1144,17 @@ ecl_exit_loop:
 							if( read_into == 1 )
 							{
 								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
-								unsigned report_pace = std::max<unsigned>(newnodes.size()/250,1);
+								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size()/250),1);
 								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
 									if( t == DATA_INTEGER )
 									{
-										Storage::integer_array attrdata = newnodes[it]->IntegerArray(attr);
+										Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									if( t == DATA_REAL )
 									{
-										Storage::real_array attrdata = newnodes[it]->RealArray(attr);
+										Storage::real_array attrdata = RealArray(newnodes[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									if( verbosity > 1 && it%100 == 0)
@@ -1529,7 +1200,7 @@ ecl_exit_loop:
 										{
 											if( newcells[it] != NULL )
 											{
-												Storage::integer_array attrdata = newcells[it]->IntegerArray(attr);
+												Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 												for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 											} else for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
 										}
@@ -1537,7 +1208,7 @@ ecl_exit_loop:
 										{
 											if( newcells[it] != NULL )
 											{
-												Storage::real_array attrdata = newcells[it]->RealArray(attr);
+												Storage::real_array attrdata = RealArray(newcells[it],attr);
 												for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 											} else for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 										}
@@ -1559,12 +1230,12 @@ ecl_exit_loop:
 									{
 										if( t == DATA_INTEGER )
 										{
-											Storage::integer_array attrdata = newnodes[it]->IntegerArray(attr);
+											Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
 											for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										}
 										if( t == DATA_REAL )
 										{
-											Storage::real_array attrdata = newnodes[it]->RealArray(attr);
+											Storage::real_array attrdata = RealArray(newnodes[it],attr);
 											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										}
 										if( verbosity > 1 && it%report_pace == 0)
@@ -1639,7 +1310,7 @@ ecl_exit_loop:
 						int npoints = 0, i = 0, ncells = 0, ncells2 = 0, nints = 0;
 						char datatype[1024];
 						filled = sscanf(readline,"%*s %d %s",&npoints,datatype);
-						newnodes.reserve(npoints);
+						newnodes.resize(npoints);
 						//printf("number of nodes: %d\n",npoints);
 						if( verbosity > 0 ) printf("Reading %d nodes.\n",npoints);
 						if( filled != 2 ) throw BadFile;
@@ -1662,10 +1333,15 @@ ecl_exit_loop:
 								else throw BadFile;
 								int find = -1;
 								if( !old_nodes.empty() )
-									find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Element*),CompareCoordSearch,coords);
-								if( find == -1 ) newnodes.push_back(CreateNode(coords));
-								else newnodes.push_back(old_nodes[find]);
-								newnodes.back()->SetMarker(unused_marker);
+								{
+									std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
+									if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+								}
+								if( find == -1 ) 
+									newnodes[i] = CreateNode(coords)->GetHandle();
+								else 
+									newnodes[i] = old_nodes[find];
+								SetMarker(newnodes[i],unused_marker);
 								if( verbosity > 1 && i%report_pace == 0)
 								{
 									printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));
@@ -1687,10 +1363,13 @@ ecl_exit_loop:
 								if( filled != 3 ) throw BadFile;
 								int find = -1;
 								if( !old_nodes.empty() )
-									find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Element*),CompareCoordSearch,coords);
-								if( find == -1 ) newnodes.push_back(CreateNode(coords));
-								else newnodes.push_back(old_nodes[find]);
-								newnodes.back()->SetMarker(unused_marker);
+								{
+									std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
+									if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+								}
+								if( find == -1 ) newnodes[i] = CreateNode(coords)->GetHandle();
+								else newnodes[i] = old_nodes[find];
+								SetMarker(newnodes[i],unused_marker);
 								if( verbosity > 1 && i%report_pace == 0)
 								{
 									printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));
@@ -1706,9 +1385,9 @@ ecl_exit_loop:
 						if( filled != 2 ) throw BadFile;
 						cp.resize(nints);
 						ct.resize(ncells);
-						newcells.reserve(ncells);
+						
 						if( binary )
-							filled = fread(&cp[0],sizeof(int),nints,f);
+							filled = static_cast<int>(fread(&cp[0],sizeof(int),nints,f));
 						else
 						{
 							i = 0;
@@ -1725,7 +1404,7 @@ ecl_exit_loop:
 						if( filled != 1 ) throw BadFile;
 						if( ncells2 != ncells ) throw BadFile;
 						if( binary )
-							filled = fread(&ct[0],sizeof(int),nints,f);
+							filled = static_cast<int>(fread(&ct[0],sizeof(int),nints,f));
 						else
 						{
 							i = 0;
@@ -1740,16 +1419,18 @@ ecl_exit_loop:
 						{
 							if( verbosity > 0 ) printf("Reading %d cells.\n",ncells);
 							int j = 0;
-							dynarray<Node *,256> c_nodes;
-							Node * e_nodes[2];
-							dynarray<Edge *,64> f_edges;
-							dynarray<Face *,64> c_faces;
-							dynarray<Edge *,64> v_edges;
+							ElementArray<Node> c_nodes(this);
+							ElementArray<Node> e_nodes(this);
+							ElementArray<Edge> f_edges(this);
+							ElementArray<Face> c_faces(this);
+							ElementArray<Edge> v_edges(this);
 							unsigned report_pace = std::max<unsigned>(ncells/250,1);
+							newcells.resize(ncells);
 							for(i = 0; i < ncells; i++)
 							{
 								//printf("load progress: %20.2f%%\r",(float)(i+1)/(float)ncells*100.0f);
 								//fflush(stdin);
+								e_nodes.clear();
 								c_nodes.clear();
 								f_edges.clear();
 								c_faces.clear();
@@ -1761,23 +1442,25 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										assert(c_nodes.size() == 1);
-										newcells.push_back(c_nodes[0]);
+										newcells[i] = c_nodes.at(0);
 										break;
 									}
 									case 2: //VTK_POLY_VERTEX
 									{
 										{
-											ElementSet * eset = CreateSet();
+											std::stringstream setname;
+											setname << "VTK_POLY_VERTEX_" << rand();
+											ElementSet eset = CreateSet(setname.str()).first;
 											for(int k = j+1; k < j+1+cp[j]; k++)
 											{
-												eset->Insert(newnodes[cp[k]]);
-												newnodes[cp[k]]->RemMarker(unused_marker);
+												eset->PutElement(newnodes[cp[k]]);
+												RemMarker(newnodes[cp[k]],unused_marker);
 											}
-											newcells.push_back(eset);
+											newcells[i] = eset->GetHandle();
 										}
 										j = j + 1 + cp[j];
 										break;
@@ -1787,11 +1470,11 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										assert(c_nodes.size() == 2);
-										newcells.push_back(CreateEdge(&c_nodes[0],c_nodes.size()).first);
+										newcells[i] = CreateEdge(c_nodes).first->GetHandle();
 										break;
 									}
 									case 4: //VTK_POLY_LINE
@@ -1815,21 +1498,24 @@ ecl_exit_loop:
 											c_faces.push_back(CreateFace(&f_edges[0],2).first);
 										}
 										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
-										newcells.push_back(c);
+										newcells[i] = c;
 #else
 										*/
 										{
-											ElementSet * eset = CreateSet();
+											std::stringstream setname;
+											setname << "VTK_POLY_LINE_" << rand();
+											ElementSet eset = CreateSet(setname.str()).first;
+											e_nodes.resize(2);
 											for(int k = j+1; k < j+cp[j]; k++)
 											{
-												e_nodes[0] = newnodes[cp[k]];
-												e_nodes[1] = newnodes[cp[k+1]];
-												eset->Insert(CreateEdge(e_nodes,2).first);
-												newnodes[cp[k]]->RemMarker(unused_marker);
+												e_nodes.at(0) = newnodes[cp[k]];
+												e_nodes.at(1) = newnodes[cp[k+1]];
+												//eset->Insert(CreateEdge(e_nodes).first);
+												RemMarker(newnodes[cp[k]],unused_marker);
 											}
-											newnodes[cp[j+cp[j]]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[j+cp[j]]],unused_marker);
 											j = j + 1 + cp[j];
-											newcells.push_back(eset);
+											newcells[i] = eset->GetHandle();
 										}
 //#endif
 										break;
@@ -1839,25 +1525,26 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 3 ) throw BadFile;
 										if( grid_is_2d )
 										{
+											e_nodes.resize(1);
 											f_edges.resize(2);
 											for(unsigned int k = 0; k < 3; k++)
 											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%3];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
+												e_nodes.at(0) = c_nodes.at(k);
+												f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+												e_nodes.at(0) = c_nodes.at((k+1)%3);
+												f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+												c_faces.push_back(CreateFace(f_edges).first);
 											}
-											Cell * c = CreateCell(&c_faces[0],3,&c_nodes[0],c_nodes.size()).first;
-											newcells.push_back(c);
+											Cell c = CreateCell(c_faces).first;
+											newcells[i] = c->GetHandle();
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],3).first);
+										else newcells[i] = CreateFace(c_nodes).first->GetHandle();
 										break;
 									}
 									case 6: //VTK_TRIANGLE_STRIP
@@ -1865,7 +1552,7 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() < 3 ) throw BadFile;
@@ -1874,13 +1561,18 @@ ecl_exit_loop:
 										for(INMOST_DATA_ENUM_TYPE l = c_nodes.size(); l > 2; l--)
 												c_faces.push_back(CreateFace(&c_nodes[l-3],3).first);
 										Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
-										newcells.push_back(c);
+										newcells[i] = c;
 #else //treat it as a set of faces
 										*/
 										{
-											ElementSet * eset = CreateSet();
-											for(INMOST_DATA_ENUM_TYPE l = c_nodes.size(); l > 2; l--)
-												eset->Insert(CreateFace(&c_nodes[l-3],3).first);
+											std::stringstream setname;
+											setname << "VTK_TRIANGLE_STRIP_" << rand();
+											ElementSet eset = CreateSet(setname.str()).first;
+											for(ElementArray<Node>::size_type l = c_nodes.size(); l > 2; l--)
+											{
+												Face f = CreateFace(ElementArray<Node>(this,c_nodes.data()+l-3,c_nodes.data()+l)).first;
+												eset->PutElement(f);
+											}
 										}
 //#endif
 										break;
@@ -1892,31 +1584,31 @@ ecl_exit_loop:
 											for(int k = j+1; k < j+1+cp[j]; k++)
 											{
 												c_nodes.push_back(newnodes[cp[k]]);
-												newnodes[cp[k]]->RemMarker(unused_marker);
+												RemMarker(newnodes[cp[k]],unused_marker);
 											}
 											j = j + 1 + cp[j];
+											e_nodes.resize(1);
 											f_edges.resize(2);
-											for(unsigned int k = 0; k < c_nodes.size(); k++)
+											for(ElementArray<Node>::size_type k = 0; k < c_nodes.size(); k++)
 											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%c_nodes.size()];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
+												e_nodes.at(0) = c_nodes.at(k);
+												f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+												e_nodes.at(0) = c_nodes.at((k+1)%c_nodes.size());
+												f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+												c_faces.push_back(CreateFace(f_edges).first);
 											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],c_nodes.size()).first;
-											c_faces.clear();
-											newcells.push_back(c);
+											Cell c = CreateCell(c_faces,c_nodes).first;
+											newcells[i] = c->GetHandle();
 										}
 										else
 										{
 											for(int k = j+1; k < j+1+cp[j]; k++)
 											{
 												c_nodes.push_back(newnodes[cp[k]]);
-												newnodes[cp[k]]->RemMarker(unused_marker);
+												RemMarker(newnodes[cp[k]],unused_marker);
 											}
 											j = j + 1 + cp[j];
-											newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+											newcells[i] = CreateFace(c_nodes).first->GetHandle();
 										}
 										break;
 									}
@@ -1925,28 +1617,29 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 4 ) throw BadFile;
-										Node * temp = c_nodes[2];
-										c_nodes[2] = c_nodes[3];
-										c_nodes[3] = temp;
+										HandleType temp = c_nodes.at(2);
+										c_nodes.at(2) = c_nodes.at(3);
+										c_nodes.at(3) = temp;
 										if( grid_is_2d )
 										{
+											e_nodes.resize(1);
 											f_edges.resize(2);
 											for(int k = 0; k < 4; k++)
 											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%4];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
+												e_nodes.at(0) = c_nodes.at(k);
+												f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+												e_nodes.at(0) = c_nodes.at((k+1)%4);
+												f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+												c_faces.push_back(CreateFace(f_edges).first);
 											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
-											newcells.push_back(c);
+											Cell c = CreateCell(c_faces,c_nodes).first;
+											newcells[i] = c->GetHandle();
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+										else newcells[i] = CreateFace(c_nodes).first->GetHandle();
 										break;
 									}
 									case 9: //VTK_QUAD
@@ -1954,26 +1647,26 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 4 ) throw BadFile;
 										if( grid_is_2d )
 										{
+											e_nodes.resize(1);
 											f_edges.resize(2);
 											for(int k = 0; k < 4; k++)
 											{
-												e_nodes[0] = c_nodes[k];
-												f_edges[0] = CreateEdge(e_nodes, 1).first;
-												e_nodes[0] = c_nodes[(k+1)%4];
-												f_edges[1] = CreateEdge(e_nodes, 1).first;
-												c_faces.push_back(CreateFace(&f_edges[0],2).first);
+												e_nodes.at(0) = c_nodes.at(k);
+												f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+												e_nodes.at(0) = c_nodes.at((k+1)%4);
+												f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+												c_faces.push_back(CreateFace(f_edges).first);
 											}
-											Cell * c = CreateCell(&c_faces[0],c_faces.size(),&c_nodes[0],4).first;
-											c_faces.clear();
-											newcells.push_back(c);
+											Cell c = CreateCell(c_faces,c_nodes).first;
+											newcells[i] = c->GetHandle();
 										}
-										else newcells.push_back(CreateFace(&c_nodes[0],c_nodes.size()).first);
+										else newcells[i] = CreateFace(c_nodes).first->GetHandle();
 										break;
 									}
 									case 10: //VTK_TETRA
@@ -1981,14 +1674,14 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 4 ) throw BadFile;
-										const INMOST_DATA_ENUM_TYPE nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
-										const INMOST_DATA_ENUM_TYPE sizes[4] = {3,3,3,3};
-										Cell * c = CreateCell(&c_nodes[0],nodesnum,sizes,4).first;
-										newcells.push_back(c);
+										const integer nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
+										const integer sizes[4] = {3,3,3,3};
+										Cell c = CreateCell(c_nodes,nodesnum,sizes,4).first;
+										newcells[i] = c->GetHandle();
 										break;
 									}
 									case 11: //VTK_VOXEL
@@ -1996,24 +1689,24 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if (c_nodes.size() != 8) throw BadFile;
 										{
-											Node * temp;
-											temp = c_nodes[2];
-											c_nodes[2] = c_nodes[3];
-											c_nodes[3] = temp;
-											temp = c_nodes[6];
-											c_nodes[6] = c_nodes[7];
-											c_nodes[7] = temp;
+											HandleType temp;
+											temp = c_nodes.at(2);
+											c_nodes.at(2) = c_nodes.at(3);
+											c_nodes.at(3) = temp;
+											temp = c_nodes.at(6);
+											c_nodes.at(6) = c_nodes.at(7);
+											c_nodes.at(7) = temp;
 										}
 										//INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,4,6,2,1,3,7,5,2,6,7,3,0,1,5,4,0,2,3,1,4,5,7,6};
-										const INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
-										const INMOST_DATA_ENUM_TYPE sizes[6] = {4,4,4,4,4,4};
-										Cell * c = CreateCell(&c_nodes[0],nodesnum,sizes,6).first;
-										newcells.push_back(c);
+										const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
+										const integer sizes[6] = {4,4,4,4,4,4};
+										Cell c = CreateCell(c_nodes,nodesnum,sizes,6).first;
+										newcells[i] = c->GetHandle();
 										break;
 									}
 									case 12: //VTK_HEXAHEDRON
@@ -2022,14 +1715,14 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 8 ) throw BadFile;
-										const INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
-										const INMOST_DATA_ENUM_TYPE sizes[6] = {4,4,4,4,4,4};
-										Cell * c = CreateCell(&c_nodes[0],nodesnum,sizes,6).first;
-										newcells.push_back(c);
+										const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
+										const integer sizes[6] = {4,4,4,4,4,4};
+										Cell c = CreateCell(c_nodes,nodesnum,sizes,6).first;
+										newcells[i] = c->GetHandle();
 										break;
 									}
 									case 13: //VTK_WEDGE
@@ -2037,14 +1730,14 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 6 ) throw BadFile;
-										const INMOST_DATA_ENUM_TYPE nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {4,4,4,3,3};
-										Cell * c = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
-										newcells.push_back(c);
+										const integer nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
+										const integer sizes[5] = {4,4,4,3,3};
+										Cell c = CreateCell(c_nodes,nodesnum,sizes,5).first;
+										newcells[i] = c->GetHandle();
 										break;
 									}
 									case 14: //VTK_PYRAMID
@@ -2052,14 +1745,14 @@ ecl_exit_loop:
 										for(int k = j+1; k < j+1+cp[j]; k++)
 										{
 											c_nodes.push_back(newnodes[cp[k]]);
-											newnodes[cp[k]]->RemMarker(unused_marker);
+											RemMarker(newnodes[cp[k]],unused_marker);
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 5 ) throw BadFile;
-										const INMOST_DATA_ENUM_TYPE nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {3,3,3,3,4};
-										Cell * c = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
-										newcells.push_back(c);
+										const integer nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
+										const integer sizes[5] = {3,3,3,3,4};
+										Cell c = CreateCell(c_nodes,nodesnum,sizes,5).first;
+										newcells[i] = c->GetHandle();
 										break;
 									}
 									case 15: //VTK_PENTAGONAL_PRISM
@@ -2156,19 +1849,19 @@ ecl_exit_loop:
 									{
 										int k = j;
 										k++; //skip number of total number of integers
-										dynarray<INMOST_DATA_ENUM_TYPE,64> sizes(cp[k++]);
-										for(INMOST_DATA_ENUM_TYPE m = 0; m < sizes.size(); m++)
+										dynarray<integer,64> sizes(cp[k++]);
+										for(dynarray<integer,64>::size_type m = 0; m < sizes.size(); m++)
 										{
 											sizes[m] = cp[k++];
-											for (INMOST_DATA_ENUM_TYPE l = 0; l < sizes[m]; l++)
+											for (integer l = 0; l < sizes[m]; l++)
 											{
 												c_nodes.push_back(newnodes[cp[k++]]);
 												c_nodes.back()->RemMarker(unused_marker);
 											}
 										}
 										j = k;
-										Cell * c = CreateCell(&c_nodes[0],&sizes[0],sizes.size()).first;
-										newcells.push_back(c);
+										Cell c = CreateCell(c_nodes,sizes.data(),static_cast<integer>(sizes.size())).first;
+										newcells[i] = c->GetHandle();
 										break;
 									}
 									case 51: //VTK_PARAMETRIC_CURVE
@@ -2248,7 +1941,7 @@ ecl_exit_loop:
 								}
 								if( verbosity > 1 && i%report_pace == 0)
 								{
-									printf("cells %3.1f%%\r",(i*100.0)/(1.0*ncells));
+									printf("cells %3.1f%% cells %8d faces %8d edges %8d\r",(i*100.0)/(1.0*ncells),NumberOfCells(),NumberOfFaces(),NumberOfEdges());
 									fflush(stdout);
 								}
 							}
@@ -2257,11 +1950,11 @@ ecl_exit_loop:
 						}
 						for(i = 0; i < ncells; i++)
 						{
-							read_into_cell |= newcells[i]->GetElementType();
-							if( newcells[i]->GetElementType() == ESET )
+							read_into_cell |= GetHandleElementType(newcells[i]);
+							if( GetHandleElementType(newcells[i]) == ESET )
 							{
-								ElementSet * set = dynamic_cast<ElementSet *>(newcells[i]);
-								for(ElementSet::iterator it = set->begin(); it != set->end(); ++it)
+								ElementSet set = ElementSet(this,newcells[i]);
+								for(ElementSet::iterator it = set->Begin(); it != set->End(); ++it)
 									read_into_cell |= it->GetElementType();
 							}
 						}
@@ -2295,11 +1988,12 @@ ecl_exit_loop:
 				}
 			}
 			//move data from sets to elements, delete sets
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < newcells.size(); i++)
+			for(std::vector<HandleType>::size_type i = 0; i < newcells.size(); i++)
 			{
-				if( newcells[i]->GetElementType() & ESET )
+				if( GetHandleElementType(newcells[i]) & ESET )
 				{
-					ElementSet * set = dynamic_cast<ElementSet *>(newcells[i]);
+					ElementSet set = ElementSet(this,newcells[i]);
+					/*
 					for(ElementSet::iterator it = set->begin(); it != set->end(); ++it)
 					{
 						for(std::vector<Tag>::iterator jt = datatags.begin(); jt != datatags.end(); ++jt)
@@ -2331,7 +2025,8 @@ ecl_exit_loop:
 							}
 						}
 					}
-					delete set;
+					*/
+					Destroy(newcells[i]);
 				}
 			}
 
@@ -2339,11 +2034,10 @@ ecl_exit_loop:
 			{
 				int count_unused = 0;
 				for(unsigned q = 0; q < newnodes.size(); q++)
-					if( newnodes[q]->GetMarker(unused_marker) )
+					if( GetMarker(newnodes[q],unused_marker) )
 					{
 						count_unused++;
-						delete newnodes[q];
-						//~ newnodes[q]->RemMarker(unused_marker);
+						Destroy(newnodes[q]);
 					}
 				if( count_unused ) std::cout << __FILE__ << ":" << __LINE__ << " Warning: deleted " << count_unused << " unused nodes, file " << File << std::endl;
 			}
@@ -2357,13 +2051,15 @@ ecl_exit_loop:
 			volume_factor = CreateTag("VOLUME_FACTOR",DATA_REAL,CELL|FACE,FACE,1);
 			porosity = CreateTag("PORO",DATA_REAL,CELL|FACE,FACE,1);
 			permiability = CreateTag("PERM",DATA_REAL,CELL|FACE,FACE,9);
-			std::vector<Node *> old_nodes(NumberOfNodes());
+			std::vector<HandleType> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
-				for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL )
+				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
 					old_nodes[qq++] = *it;
-				if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
 			}
+			if( !old_nodes.empty() ) 
+				std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
+
 			FILE * f = fopen(File.c_str(),"r");
 			if( f == NULL ) 
 			{
@@ -2373,12 +2069,12 @@ ecl_exit_loop:
 			int nbnodes, nbpolygon, nbpolyhedra, nbzones, volcorr, nbfacenodes, nbpolyhedronfaces, num, nbK;
 			int report_pace;
 			Storage::real K[9],readK[9], poro, vfac;
-			std::vector<Node *> newnodes;
-			std::vector<Face *> newpolygon;
-			std::vector<Cell *> newpolyhedron;
-			std::vector<ElementSet *> newsets;
-			dynarray<Node *, 64> f_nodes;
-			dynarray<Face *, 64> c_faces;
+			std::vector<HandleType> newnodes;
+			std::vector<HandleType> newpolygon;
+			std::vector<HandleType> newpolyhedron;
+			ElementArray<ElementSet> newsets(this);
+			ElementArray<Node> f_nodes(this);
+			ElementArray<Face> c_faces(this);
 			fscanf(f," %d %d %d %d %d",&nbnodes,&nbpolygon,&nbpolyhedra,&nbzones,&volcorr);
 			newnodes.resize(nbnodes);
 			newpolygon.resize(nbpolygon);
@@ -2388,7 +2084,9 @@ ecl_exit_loop:
 			report_pace = std::max<int>(nbzones/250,1);
 			for(int i = 0; i < nbzones; i++)
 			{
-				newsets[i] = CreateSet();
+				std::stringstream str;
+				str << "ZONE_" << i << "_SET";
+				newsets[i] = CreateSet(str.str()).first;
 				newsets[i]->Integer(zone) = i;
 				if( verbosity > 1 &&  i % report_pace == 0 )
 				{
@@ -2405,8 +2103,11 @@ ecl_exit_loop:
 				{
 					int find = -1;
 					if( !old_nodes.empty() )
-						find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Element *),CompareCoordSearch,xyz);
-					if( find == -1 ) newnodes[i] = CreateNode(xyz);
+					{
+						std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),xyz,CentroidComparator(this));
+						if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+					}
+					if( find == -1 ) newnodes[i] = CreateNode(xyz)->GetHandle();
 					else newnodes[i] = old_nodes[find];
 				}
 				else
@@ -2453,9 +2154,10 @@ ecl_exit_loop:
 					std::cout << __FILE__ << ":" << __LINE__ << " zone number is out of range: " << num << "/" << nbzones << std::endl;
 					throw BadFile;
 				}
-				newpolygon[i] = CreateFace(&f_nodes[0],f_nodes.size()).first;
-				newpolygon[i]->Integer(zone) = num;
-				if( num >= 0 ) newsets[num]->Insert(newpolygon[i]);
+				Face f = CreateFace(f_nodes).first;
+				f->Integer(zone) = num;
+				if( num >= 0 ) newsets[num]->PutElement(f);
+				newpolygon[i] = f->GetHandle();
 				f_nodes.clear();
 
 				if( verbosity > 1 &&  i % report_pace == 0 )
@@ -2497,9 +2199,10 @@ ecl_exit_loop:
 					std::cout << __FILE__ << ":" << __LINE__ << " zone number is out of range: " << num << "/" << nbzones << std::endl;
 					throw BadFile;
 				}
-				newpolyhedron[i] = CreateCell(&c_faces[0],c_faces.size()).first;
-				newpolyhedron[i]->Integer(zone) = num;
-				if( num >= 0 ) newsets[num]->Insert(newpolyhedron[i]);
+				Cell c = CreateCell(c_faces).first;
+				c->Integer(zone) = num;
+				newpolyhedron[i] = c->GetHandle();
+				if( num >= 0 ) newsets[num]->PutElement(newpolyhedron[i]);
 				c_faces.clear();
 
 				if( verbosity > 1 &&  i % report_pace == 0 )
@@ -2562,11 +2265,11 @@ ecl_exit_loop:
 					//just copy
 					memcpy(K,readK,sizeof(Storage::real)*9);
 				}
-				for(ElementSet::iterator it = newsets[num]->begin(); it != newsets[num]->end(); ++it)
+				for(ElementSet::iterator it = newsets[num]->Begin(); it != newsets[num]->End(); ++it)
 				{
 					it->Real(volume_factor) = vfac;
 					it->Real(porosity) = poro;
-					memcpy(&it->RealArray(permiability)[0],K,sizeof(Storage::real)*9);
+					memcpy(it->RealArray(permiability).data(),K,sizeof(Storage::real)*9);
 				}
 				if( verbosity > 1 &&  i % report_pace == 0 )
 				{
@@ -2580,36 +2283,37 @@ ecl_exit_loop:
 		{
 			Tag gmsh_tags;
 			char readline[2048], * p, * pend;
-			std::vector<Node *> newnodes;
-			std::vector<Element *> newelems;
+			std::vector<HandleType> newnodes;
+			std::vector<HandleType> newelems;
 			Storage::real xyz[3];
 			int text_start, text_end, state = GMSH_NONE, ver = GMSH_VERNONE;
 			int nnodes, ncells, nchars, nodenum, elemnum, elemtype, numtags, elemnodes, temp;
-			int ascii, float_size, verlow, verhigh, one;
+			int ascii, float_size, verlow, verhigh;
 			char skip_keyword[2048];
-			std::vector<int> elemtags;
-			std::vector<int> nodelist;
-			dynarray<Node *,27> c_nodes;
+			dynarray<int,128> elemtags;
+			dynarray<int,128> nodelist;
+			ElementArray<Node> c_nodes(this);
 			FILE * f = fopen(File.c_str(),"r");
 			if( f == NULL )
 			{
 				std::cout << __FILE__ << ":" << __LINE__ << " cannot open " << File << std::endl;
 				throw BadFileName;
 			}
-			std::vector<Node *> old_nodes(NumberOfNodes());
+			std::vector<HandleType> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
-				for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL )
+				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
 					old_nodes[qq++] = *it;
 			}
-			if( !old_nodes.empty() ) qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
+			if( !old_nodes.empty() ) 
+				std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
 			int line = 0;
 			unsigned report_pace;
 			while( fgets(readline,2048,f) != NULL )
 			{
 				line++;
 				if( readline[strlen(readline)-1] == '\n' ) readline[strlen(readline)-1] = '\0';
-				text_end = strlen(readline);
+				text_end = static_cast<int>(strlen(readline));
 				for(text_start = 0; isspace(readline[text_start]) && text_start < text_end; text_start++);
 				if( text_start == text_end ) continue;
 				for(text_end = text_end-1; isspace(readline[text_end]) && text_end > text_start; text_end--);
@@ -2706,7 +2410,7 @@ read_node_num_link:
 					if( 1 == sscanf(p,"%d%n",&nodenum,&nchars) )
 					{
 						--nodenum;
-						if( nodenum >= newnodes.size() ) std::cout << __FILE__ << ":" << __LINE__ << " node number is bigger then total number of nodes " << nodenum << " / " << newnodes.size() << " line " << line <<std::endl;
+						if( nodenum >= static_cast<int>(newnodes.size()) ) std::cout << __FILE__ << ":" << __LINE__ << " node number is bigger then total number of nodes " << nodenum << " / " << newnodes.size() << " line " << line <<std::endl;
 						p += nchars;
 						while(isspace(*p) && p < pend) ++p;
 						state = GMSH_NODES_X;
@@ -2765,8 +2469,11 @@ read_node_num_link:
 						while(isspace(*p) && p < pend) ++p;
 						int find = -1;
 						if( !old_nodes.empty() )
-							find = binary_search(&old_nodes[0],old_nodes.size(),sizeof(Element *),CompareCoordSearch,xyz);
-						if( find == -1 ) newnodes[nodenum] = CreateNode(xyz);
+						{
+							std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),xyz,CentroidComparator(this));
+							if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+						}
+						if( find == -1 ) newnodes[nodenum] = CreateNode(xyz)->GetHandle();
 						else newnodes[nodenum] = old_nodes[find];
 						nnodes--;
 						if( verbosity > 1 && (newnodes.size()-nnodes)%report_pace == 0 )
@@ -2804,7 +2511,7 @@ read_elem_num_link:
 					{
 						--elemnum;
 						//std::cout << __FILE__ << ":" << __LINE__ << " element number: " << elemnum << " line " << line << std::endl;
-						if( elemnum >= newelems.size() ) std::cout << __FILE__ << ":" << __LINE__ << " element number is bigger then total number of elements " << elemnum << " / " << newelems.size() << " line " << line <<std::endl;
+						if( elemnum >= static_cast<int>(newelems.size()) ) std::cout << __FILE__ << ":" << __LINE__ << " element number is bigger then total number of elements " << elemnum << " / " << newelems.size() << " line " << line <<std::endl;
 						p += nchars;
 						while(isspace(*p) && p < pend) ++p;
 						state = GMSH_ELEMENTS_TYPE;
@@ -2961,7 +2668,7 @@ read_elem_num_link:
 						if( 1 == sscanf(p,"%d%n",&nodelist[nodelist.size()-elemnodes],&nchars) )
 						{
 							--nodelist[nodelist.size()-elemnodes];
-							if( nodelist[nodelist.size()-elemnodes] < 0 || nodelist[nodelist.size()-elemnodes] >= newnodes.size() )
+							if( nodelist[nodelist.size()-elemnodes] < 0 || nodelist[nodelist.size()-elemnodes] >= static_cast<int>(newnodes.size()) )
 							{
 								std::cout << __FILE__ << ":" << __LINE__ << " got node " << nodelist[nodelist.size()-elemnodes] << " but must be within [0:" << newnodes.size()-1 << "] in file " << File << " line " << line << std::endl;
 								throw BadFile;
@@ -2975,123 +2682,123 @@ read_elem_num_link:
 
 							if( --elemnodes == 0 ) 
 							{
-								for(unsigned k = 0; k < nodelist.size(); ++k)
+								for(dynarray<int,128>::size_type k = 0; k < nodelist.size(); ++k)
 									c_nodes.push_back(newnodes[nodelist[k]]);
 
 								//Create new element
 								switch(elemtype)
 								{
-								case 1: newelems[elemnum] = CreateEdge(&c_nodes[0],2).first; break; //edge
-								case 2: newelems[elemnum] = CreateFace(&c_nodes[0],3).first; break; //triangle
-								case 3: newelems[elemnum] = CreateFace(&c_nodes[0],4).first; break; //quad
+								case 1: newelems[elemnum] = CreateEdge(c_nodes).first->GetHandle(); break; //edge
+								case 2: newelems[elemnum] = CreateFace(c_nodes).first->GetHandle(); break; //triangle
+								case 3: newelems[elemnum] = CreateFace(c_nodes).first->GetHandle(); break; //quad
 								case 4: //tetra
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
-										const INMOST_DATA_ENUM_TYPE sizes[4] = {3,3,3,3};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,4).first;
+										const integer nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
+										const integer sizes[4] = {3,3,3,3};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,4).first->GetHandle();
 									}
 									break;
 								case 5: //hex
 									{
-										//const INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
-										const INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,3,2,1,4,5,6,7,0,4,7,3,1,2,6,5,0,1,5,4,2,3,7,6};
-										const INMOST_DATA_ENUM_TYPE sizes[6] = {4,4,4,4,4,4};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,6).first;
+										//const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
+										const integer nodesnum[24] = {0,3,2,1,4,5,6,7,0,4,7,3,1,2,6,5,0,1,5,4,2,3,7,6};
+										const integer sizes[6] = {4,4,4,4,4,4};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,6).first->GetHandle();
 									}
 									break;
 								case 6: //prism
 									{
-										//const INMOST_DATA_ENUM_TYPE nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
-										const INMOST_DATA_ENUM_TYPE nodesnum[18] = {0,3,5,2,1,2,5,4,0,1,4,3,3,4,5,0,2,1};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {4,4,4,3,3};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
+										//const integer nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
+										const integer nodesnum[18] = {0,3,5,2,1,2,5,4,0,1,4,3,3,4,5,0,2,1};
+										const integer sizes[5] = {4,4,4,3,3};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,5).first->GetHandle();
 									}
 									break;
 								case 7: //pyramid
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {3,3,3,3,4};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
+										const integer nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
+										const integer sizes[5] = {3,3,3,3,4};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,5).first->GetHandle();
 									}
 									break;
 								case 8: //second order edge
 									{
 										//treat as just an edge
-										newelems[elemnum] = CreateEdge(&c_nodes[0],2).first;
+										newelems[elemnum] = CreateEdge(ElementArray<Node>(this,c_nodes.data(),c_nodes.data()+2)).first->GetHandle();
 									}
 									break;
 								case 9: //second order tri with nodes on edges
 									{
-										newelems[elemnum] = CreateFace(&c_nodes[0],3).first;
+										newelems[elemnum] = CreateFace(ElementArray<Node>(this,c_nodes.data(),c_nodes.data()+3)).first->GetHandle();
 									}
 									break;
 								case 10: //second order quad with nodes on edges and in center
 									{
-										newelems[elemnum] = CreateFace(&c_nodes[0],4).first;
+										newelems[elemnum] = CreateFace(ElementArray<Node>(this,c_nodes.data(),c_nodes.data()+4)).first->GetHandle();
 									}
 									break;
 								case 11: // second order tet with nodes on edges
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
-										const INMOST_DATA_ENUM_TYPE sizes[4] = {3,3,3,3};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,4).first;
+										const integer nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
+										const integer sizes[4] = {3,3,3,3};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,4).first->GetHandle();
 									}
 									break;
 								case 12: // second order hex with nodes in centers of edges and faces and in center of volume
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
-										const INMOST_DATA_ENUM_TYPE sizes[6] = {4,4,4,4,4,4};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,6).first;
+										const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
+										const integer sizes[6] = {4,4,4,4,4,4};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,6).first->GetHandle();
 									}
 									break;
 								case 13: // second order prism  with nodes in centers of edges and quad faces
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[18] = {0,3,5,2,1,2,5,4,0,1,4,3,3,4,5,0,2,1};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {4,4,4,3,3};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
+										const integer nodesnum[18] = {0,3,5,2,1,2,5,4,0,1,4,3,3,4,5,0,2,1};
+										const integer sizes[5] = {4,4,4,3,3};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,5).first->GetHandle();
 									}
 									break;
 								case 14: // second order pyramid with nodes in centers of edges and quad faces
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {3,3,3,3,4};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
+										const integer nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
+										const integer sizes[5] = {3,3,3,3,4};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,5).first->GetHandle();
 									}
 									break;
 								case 15: // vertex
 									{
-										newelems[elemnum] = c_nodes[0];
+										newelems[elemnum] = c_nodes.at(0);
 									}
 									break;
 								case 16: // second order quad with nodes on edges
 									{
-										newelems[elemnum] = CreateFace(&c_nodes[0],4).first;
+										newelems[elemnum] = CreateFace(ElementArray<Node>(this,c_nodes.data(),c_nodes.data()+4)).first->GetHandle();
 									}
 									break;
 								case 17: // second order hex with nodes on edges
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
-										const INMOST_DATA_ENUM_TYPE sizes[6] = {4,4,4,4,4,4};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,6).first;
+										const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
+										const integer sizes[6] = {4,4,4,4,4,4};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,6).first->GetHandle();
 									}
 									break;
 								case 18: // second order prism with nodes on edges
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[18] = {0,3,5,2,1,2,5,4,0,1,4,3,3,4,5,0,2,1};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {4,4,4,3,3};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
+										const integer nodesnum[18] = {0,3,5,2,1,2,5,4,0,1,4,3,3,4,5,0,2,1};
+										const integer sizes[5] = {4,4,4,3,3};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,5).first->GetHandle();
 									}
 									break;
 								case 19: // second order pyramid with nodes on edges
 									{
-										const INMOST_DATA_ENUM_TYPE nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
-										const INMOST_DATA_ENUM_TYPE sizes[5] = {3,3,3,3,4};
-										newelems[elemnum] = CreateCell(&c_nodes[0],nodesnum,sizes,5).first;
+										const integer nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
+										const integer sizes[5] = {3,3,3,3,4};
+										newelems[elemnum] = CreateCell(c_nodes,nodesnum,sizes,5).first->GetHandle();
 									}
 									break;
 								}
 
-								Storage::integer_array ptags = newelems[elemnum]->IntegerArray(gmsh_tags);
+								Storage::integer_array ptags = IntegerArray(newelems[elemnum],gmsh_tags);
 
 								if( ver == GMSH_VER2 )
 								{
@@ -3161,7 +2868,7 @@ read_elem_num_link:
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
 		{
 			REPORT_STR("start load pmf");
-			std::vector<INMOST_DATA_ENUM_TYPE> myprocs;
+			dynarray<INMOST_DATA_ENUM_TYPE,128> myprocs;
 			std::stringstream in(std::ios::in | std::ios::out | std::ios::binary);
 			HeaderType token;
 #if defined(USE_MPI)
@@ -3178,11 +2885,9 @@ read_elem_num_link:
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), recvsize = 0, mpirank = GetProcessorRank();
 					std::vector<INMOST_DATA_ENUM_TYPE> recvsizes;
-
 					if( mpirank == 0 ) //the alternative is to read alltogether
 					{
 						INMOST_DATA_ENUM_TYPE datanum, chunk,pos,k,q;
-						std::vector<INMOST_DATA_ENUM_TYPE> datasizes;
 						std::stringstream header;
 						
 						buffer.resize(3);
@@ -3198,16 +2903,16 @@ read_elem_num_link:
 
 						buffer.resize(uconv.get_source_iByteSize());
 						//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
-						ierr = MPI_File_read_shared(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
+						ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat);
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 
 						header << buffer;
 						uconv.read_iValue(header,datanum);
 
 						buffer.resize(datanum*uconv.get_source_iByteSize());
-						datasizes.resize(datanum);
+						std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
 						//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
-						ierr = MPI_File_read_shared(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
+						ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat);
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 
 						header << buffer;
@@ -3259,7 +2964,7 @@ read_elem_num_link:
 								recvsizes[recvsizes.size()-1] += datasizes[k];
 						}
 					}
-					else recvsizes.resize(1); //protect from dereferencing null
+					else recvsizes.resize(1,0); //protect from dereferencing null
 
 					ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator());
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
@@ -3269,7 +2974,7 @@ read_elem_num_link:
 
 
 					{
-						ierr = MPI_File_read_ordered(fh,&buffer[0],recvsize,MPI_CHAR,&stat);
+						ierr = MPI_File_read_ordered(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(recvsize),MPI_CHAR,&stat);
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 						in.write(&buffer[0],recvsize);
 					}
@@ -3286,7 +2991,7 @@ read_elem_num_link:
 					
 					INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber();
 					std::vector<INMOST_DATA_ENUM_TYPE> recvsizes(numprocs,0);
-					std::vector<int> sendcnts(numprocs), displs(numprocs);
+					std::vector<INMOST_MPI_SIZE> sendcnts(numprocs), displs(numprocs);
 					if( GetProcessorRank() == 0 ) //zero reads everything
 					{
 						std::fstream fin(File.c_str(),std::ios::in | std::ios::binary);
@@ -3326,10 +3031,10 @@ read_elem_num_link:
 						}
 
 						displs[0] = 0;
-						sendcnts[0] = recvsizes[0];
+						sendcnts[0] = static_cast<INMOST_MPI_SIZE>(recvsizes[0]);
 						for(k = 1; k < numprocs; k++)
 						{
-							sendcnts[k] = recvsizes[k];
+							sendcnts[k] = static_cast<INMOST_MPI_SIZE>(recvsizes[k]);
 							displs[k] = sendcnts[k-1]+displs[k-1];
 						}
 					}
@@ -3375,15 +3080,15 @@ read_elem_num_link:
 			//std::fstream in(File.c_str(),std::ios::in | std::ios::binary);
 			
 			std::vector<Tag> tags;
-			std::vector<Node *> old_nodes;
-			std::vector<Node *> new_nodes;
-			std::vector<Edge *> new_edges;
-			std::vector<Face *> new_faces;
-			std::vector<Cell *> new_cells;
-			std::vector<ElementSet *> new_sets;
-			INMOST_DATA_ENUM_TYPE size,i;
+			std::vector<HandleType> old_nodes;
+			std::vector<HandleType> new_nodes;
+			std::vector<HandleType> new_edges;
+			std::vector<HandleType> new_faces;
+			std::vector<HandleType> new_cells;
+			std::vector<HandleType> new_sets;
+			INMOST_DATA_ENUM_TYPE size,i,q;
 			TopologyCheck tmp;
-			
+			INMOST_DATA_ENUM_TYPE current_dim = GetDimensions();
 
 			bool start = false;
 			
@@ -3402,15 +3107,14 @@ read_elem_num_link:
 						//~ std::cout << "start read" << std::endl;
 						tags.clear();
 						old_nodes.clear();
-						new_nodes.clear();
-						new_edges.clear();
-						new_faces.clear();
-						new_cells.clear();
-						new_sets.clear();
-						old_nodes.reserve(NumberOfNodes());
-						for(nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++) if( *it != NULL )
-							old_nodes.push_back(*it);
-						if( !old_nodes.empty() )qsort(&old_nodes[0],old_nodes.size(),sizeof(Node *),CompareElementsCCentroid);
+						old_nodes.resize(NumberOfNodes());
+						{
+							unsigned qq = 0;
+							for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
+								old_nodes[qq++] = *it;
+						}
+						if( !old_nodes.empty() ) 
+							std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
 						if( old_nodes.empty() )
 						{
 							tmp = GetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE); //we expect not to have duplicates
@@ -3474,14 +3178,19 @@ read_elem_num_link:
 					}
 
 					
-
+					current_dim = header[0];
 					SetDimensions(header[0]);
-					new_nodes.reserve(header[1]);
-					new_edges.reserve(header[2]);
-					new_faces.reserve(header[3]);
-					new_cells.reserve(header[4]);
-					new_sets.reserve(header[5]);
-					tags.reserve(header[6]);
+					new_nodes.clear();
+					new_nodes.resize(header[1]);
+					new_edges.clear();
+					new_edges.resize(header[2]);
+					new_faces.clear();
+					new_faces.resize(header[3]);
+					new_cells.clear();
+					new_cells.resize(header[4]);
+					new_sets.clear();
+					new_sets.resize(header[5]);
+					tags.resize(header[6]);
 					//~ if( static_cast<Mesh::MeshState>(header[7]) == Mesh::Parallel && m_state != Mesh::Parallel)
 						//~ SetCommunicator(INMOST_MPI_COMM_WORLD);
 					myprocs.push_back(header[8]);
@@ -3491,46 +3200,194 @@ read_elem_num_link:
 					uconv.read_iValue(in,size);
 					REPORT_STR("TagsHeader");
 					REPORT_VAL("tag_size",size);
-					for(i = 0; i < size; i++) tags.push_back(ReadTag(in));
+					for(i = 0; i < size; i++) 
+					{
+						INMOST_DATA_ENUM_TYPE namesize;
+						char name[4096];
+						char datatype;
+						char sparsemask,definedmask;
+						INMOST_DATA_ENUM_TYPE datalength;
+						uconv.read_iValue(in,namesize);
+						in.read(name, namesize);
+						assert(namesize < 4096);
+						name[namesize] = '\0';
+						in.get(datatype);
+						in.get(sparsemask);
+						in.get(definedmask);
+						uconv.read_iValue(in,datalength);
+						tags[i] = CreateTag(std::string(name),static_cast<DataType>(datatype),
+						                    static_cast<ElementType>(definedmask),
+						                    static_cast<ElementType>(sparsemask),datalength);
+					}
 				}
 				else if (token == INMOST::NodeHeader)
 				{
 					uconv.read_iValue(in,size);
+					assert(size == new_nodes.size());
 					REPORT_STR("NodeHeader");
 					REPORT_VAL("node_size",size);
-					for(i = 0; i < size; i++) new_nodes.push_back(ReadNode(in,old_nodes));
+					Storage::real coords[3] = {0,0,0};
+					for(i = 0; i < size; i++) 
+					{
+						for(unsigned int k = 0; k < current_dim; k++) iconv.read_fValue(in,coords[k]);
+						int find = -1;
+						if( !old_nodes.empty() ) 
+						{
+							std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
+							if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+						}
+						if( find == -1 ) new_nodes[i] = CreateNode(coords)->GetHandle();
+						else  new_nodes[i] = old_nodes[find];
+					}
 				}
 				else if (token == INMOST::EdgeHeader)
 				{
 					uconv.read_iValue(in,size);
+					assert(size == new_edges.size());
 					REPORT_STR("EdgeHeader");
 					REPORT_VAL("edge_size",size);
-					for(i = 0; i < size; i++) new_edges.push_back(ReadEdge(in,new_nodes));
+					INMOST_DATA_ENUM_TYPE nlow, lid, i;
+					ElementArray<Node> sub_elements(this);
+					for(i = 0; i < size; i++) 
+					{
+						uconv.read_iValue(in,nlow);
+						for(q = 0; q < nlow; q++)
+						{
+							uconv.read_iValue(in,lid);
+							sub_elements.push_back(new_nodes[lid]);
+						}
+						new_edges[i] = CreateEdge(sub_elements).first->GetHandle();
+						sub_elements.clear();
+					}
 				}
 				else if (token == INMOST::FaceHeader)
 				{
 					uconv.read_iValue(in,size);
+					assert(size == new_faces.size());
 					REPORT_STR("FaceHeader");
 					REPORT_VAL("face_size",size);
-					for(i = 0; i < size; i++) new_faces.push_back(ReadFace(in,new_edges));
+					INMOST_DATA_ENUM_TYPE nlow,lid,i;
+					ElementArray<Edge> sub_elements(this);
+					for(i = 0; i < size; i++) 
+					{
+						uconv.read_iValue(in,nlow);
+						for(q = 0; q < nlow; q++)
+						{
+							uconv.read_iValue(in,lid);
+							sub_elements.push_back(new_edges[lid]);
+						}
+						new_faces[i] = CreateFace(sub_elements).first->GetHandle();
+						sub_elements.clear();
+					}
 				}
 				else if (token == INMOST::CellHeader)
 				{
 					uconv.read_iValue(in,size);
+					assert(size == new_cells.size());
 					REPORT_STR("CellHeader");
 					REPORT_VAL("cell_size",size);
-					for(unsigned i = 0; i < size; i++) new_cells.push_back(ReadCell(in,new_faces,new_nodes));
+					INMOST_DATA_ENUM_TYPE nlow, nhigh,lid;
+					ElementArray<Face> sub_elements(this);
+					ElementArray<Node> suggest_nodes(this);
+					for(unsigned i = 0; i < size; i++) 
+					{
+						uconv.read_iValue(in,nlow);
+						for(q = 0; q < nlow; q++)
+						{
+							uconv.read_iValue(in,lid);
+							sub_elements.push_back(new_faces[lid]);
+						}
+						uconv.read_iValue(in,nhigh);
+						for(q = 0; q < nhigh; q++)
+						{
+							uconv.read_iValue(in,lid);
+							suggest_nodes.push_back(new_nodes[lid]);
+						}
+						new_cells[i] = CreateCell(sub_elements, suggest_nodes).first->GetHandle();
+						sub_elements.clear();
+						suggest_nodes.clear();
+					}
 				}
 				else if (token == INMOST::ESetHeader)
 				{
 					uconv.read_iValue(in,size);
+					assert(size == new_sets.size());
 					REPORT_STR("EsetHeader");
 					REPORT_VAL("eset_size",size);
-					for(unsigned i = 0; i < size; i++) new_sets.push_back(ReadElementSet(in,new_nodes,new_edges,new_faces,new_cells));
+					INMOST_DATA_ENUM_TYPE set_size, name_size, lid,val;
+					char set_name[4096];
+					Storage ** elem_links[4] =
+					{
+						reinterpret_cast<Storage **>(new_nodes.data()),
+						reinterpret_cast<Storage **>(new_edges.data()),
+						reinterpret_cast<Storage **>(new_faces.data()),
+						reinterpret_cast<Storage **>(new_cells.data())
+					};
+					for(unsigned i = 0; i < size; i++) 
+					{
+						uconv.read_iValue(in,name_size);
+						in.read(set_name,name_size);
+						assert(name_size < 4096);
+						set_name[name_size] = '\0';
+						new_sets[i] = CreateSet(std::string(set_name)).first->GetHandle();
+						Element::adj_type & lc = LowConn(new_sets[i]);
+						uconv.read_iValue(in,set_size);
+						lc.resize(set_size);
+						for(q = 0; q < set_size; ++q)
+						{
+							char type;
+							in.get(type);
+							if( type != 0 )
+							{
+								uconv.read_iValue(in,lid);
+								lc[q] = ComposeHandle(static_cast<ElementType>(type),static_cast<integer>(lid));
+							}
+							else lc[q] = InvalidHandle();
+						}
+						Element::adj_type & hc = HighConn(new_sets[i]);
+						//write tree information
+						uconv.read_iValue(in,set_size);
+						hc.resize(set_size);
+						for(q = 0; q < ElementSet::high_conn_reserved-1; ++q)
+						{
+							char type;
+							in.get(type);
+							if( type != 0 )
+							{
+								uconv.read_iValue(in,lid);
+								hc[q] = ComposeHandle(static_cast<ElementType>(type),static_cast<integer>(lid));
+							}
+							else hc[q] = InvalidHandle();
+						}
+						for(q = ElementSet::high_conn_reserved-1; q < set_size; ++q)
+						{
+							uconv.read_iValue(in,val);
+							hc[q] = val;
+						}
+					}
 				}
 				else if (token == INMOST::MeshDataHeader)
 				{
 					REPORT_STR("MeshDataHeader");
+					HandleType m_storage = GetHandle();
+					INMOST_DATA_ENUM_TYPE elem_sizes[6] =
+					{
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_nodes.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_edges.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_faces.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_cells.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_sets.size()),
+						1
+					};
+					HandleType * elem_links[6] =
+					{
+						new_nodes.data(),
+						new_edges.data(),
+						new_faces.data(),
+						new_cells.data(),
+						new_sets.data(),
+						&m_storage
+					};
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < tags.size(); j++) 
 					{
 						REPORT_VAL("TagName",tags[j].GetTagName());
@@ -3539,52 +3396,56 @@ read_elem_num_link:
 						{
 							if( jt->isDefined(etype) )
 							{
-								INMOST_DATA_ENUM_TYPE q, cycle_end;
-								Storage * e;
-								switch(etype)
+								INMOST_DATA_ENUM_TYPE q, cycle_end, etypenum = ElementNum(etype);
+								cycle_end = elem_sizes[etypenum];
+								bool sparse = jt->isSparse(etype);
+								INMOST_DATA_ENUM_TYPE tagsize = jt->GetSize(), recsize = tagsize, lid;
+								INMOST_DATA_ENUM_TYPE k;
+								DataType data_type = jt->GetDataType();
+								if( sparse ) uconv.read_iValue(in,q); else q = 0;
+								while(q != cycle_end)
 								{
-								case NODE: cycle_end = new_nodes.size(); break;
-								case EDGE: cycle_end = new_edges.size(); break;
-								case FACE: cycle_end = new_faces.size(); break;
-								case CELL: cycle_end = new_cells.size(); break;
-								case ESET: cycle_end = new_sets.size(); break;
-								case MESH: cycle_end = 1; break;
-								}
-								if( jt->isSparse(etype) )
-								{
-									uconv.read_iValue(in,q);
-									//~ std::cout << jt->GetTagName() << std::endl;
-									while(q != cycle_end)
+									HandleType he = elem_links[etypenum][q];
+									if( tagsize == ENUMUNDEF ) 
 									{
-										switch(etype)
-										{
-										case NODE: e = new_nodes[q]; break;
-										case EDGE: e = new_edges[q]; break;
-										case FACE: e = new_faces[q]; break;
-										case CELL: e = new_cells[q]; break;
-										case ESET: e = new_sets[q]; break;
-										case MESH: e = this; break;
-										}
-										//~ std::cout << q << "/" << cycle_end << std::endl;
-										ReadData(in,*jt,e,new_nodes,new_edges,new_faces,new_cells);
-										uconv.read_iValue(in,q);
+										uconv.read_iValue(in,recsize); 
+										SetDataSize(he,*jt,recsize);
 									}
-								}
-								else
-								{
-									for(q = 0; q < cycle_end; q++)
+									switch(data_type)
 									{
-										switch(etype)
+									case DATA_REAL:
 										{
-										case NODE: e = new_nodes[q]; break;
-										case EDGE: e = new_edges[q]; break;
-										case FACE: e = new_faces[q]; break;
-										case CELL: e = new_cells[q]; break;
-										case ESET: e = new_sets[q]; break;
-										case MESH: e = this; break;
-										}
-										ReadData(in,*jt,e,new_nodes,new_edges,new_faces,new_cells);
+											Storage::real_array arr = RealArray(he,*jt);
+											for(k = 0; k < recsize; k++) 
+												iconv.read_fValue(in,arr[k]); 
+										} break;
+									case DATA_INTEGER:   
+										{
+											Storage::integer_array arr = IntegerArray(he,*jt); 
+											for(k = 0; k < recsize; k++) 
+												iconv.read_iValue(in,arr[k]); 
+										} break;
+									case DATA_BULK:      
+										{
+											in.read(reinterpret_cast<char *>(&Bulk(he,*jt)),recsize);
+										} break;
+									case DATA_REFERENCE: 
+										{
+											Storage::reference_array arr = ReferenceArray(he,*jt);
+											for(k = 0; k < recsize; k++)
+											{
+												char type;
+												in.get(type);
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													arr.at(k) = elem_links[ElementNum(type)][lid];
+												}
+												else arr.at(k) = InvalidHandle();
+											}
+										} break;
 									}
+									if( sparse ) uconv.read_iValue(in,q); else q++;
 								}
 							}
 						}
@@ -3600,30 +3461,30 @@ read_elem_num_link:
 #if defined(USE_MPI) 
 				
 				bool restore_state = false;
-				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), size = myprocs.size(),k, procs_sum = 0;
-				std::vector<INMOST_DATA_ENUM_TYPE> procs_sizes(numprocs), procs;
-				REPORT_MPI(MPI_Allgather(&size,1,INMOST_MPI_DATA_ENUM_TYPE,&procs_sizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
+				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), size = static_cast<INMOST_DATA_ENUM_TYPE>(myprocs.size()),k;
+				INMOST_DATA_ENUM_TYPE procs_sum = 0;
+				std::vector<INMOST_DATA_ENUM_TYPE> procs_sizes(numprocs);
+				REPORT_MPI(MPI_Allgather(&size,1,INMOST_MPI_DATA_ENUM_TYPE,procs_sizes.data(),1,INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
 				for(k = 0; k < numprocs; k++) if( procs_sizes[k] > 1 ) restore_state = true;
 				REPORT_VAL("restore_state",restore_state);
 				if( restore_state ) //we have to do something with parallel status data
 				{
 					int ierr;
-					std::vector<int> recvcnts(numprocs), displs(numprocs);
+					std::vector<INMOST_MPI_SIZE> recvcnts(numprocs), displs(numprocs);
 					Storage::integer myrank = GetProcessorRank();
 					std::sort(myprocs.begin(),myprocs.end());
 					//have to allgatherv myprocs from all processors to detect the ownership of elements
 					procs_sum = procs_sizes[0];
-					recvcnts[0] = procs_sizes[0];
+					recvcnts[0] = static_cast<INMOST_MPI_SIZE>(procs_sizes[0]);
 					displs[0] = 0;
 					for(k = 1; k < numprocs; k++) 
 					{
 						procs_sum += procs_sizes[k];
-						recvcnts[k] = procs_sizes[k];
+						recvcnts[k] = static_cast<INMOST_MPI_SIZE>(procs_sizes[k]);
 						displs[k] = displs[k-1]+recvcnts[k-1];
 					}
-					myprocs.resize(std::max(1u,static_cast<unsigned>(myprocs.size())));
-					procs.resize(procs_sum);
-					REPORT_MPI(ierr = MPI_Allgatherv(&myprocs[0],procs_sizes[myrank],INMOST_MPI_DATA_ENUM_TYPE,&procs[0],&recvcnts[0],&displs[0],INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
+					std::vector<INMOST_DATA_ENUM_TYPE> procs(procs_sum);
+					REPORT_MPI(ierr = MPI_Allgatherv(myprocs.data(),procs_sizes[myrank],INMOST_MPI_DATA_ENUM_TYPE,procs.data(),recvcnts.data(),displs.data(),INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					//we have to distinguish new elements and old elements
 					//all new elements with owner in myprocs belong to me
@@ -3645,8 +3506,8 @@ read_elem_num_link:
 											break;
 										}
 								}
-								Storage::integer_array v = it->IntegerArrayDV(tag_processors);
-								for(Storage::integer_array::iterator jt = v.begin(); jt != v.end(); ++jt)
+								integer_array v = it->IntegerArrayDV(tag_processors);
+								for(integer_array::iterator jt = v.begin(); jt != v.end(); ++jt)
 									if( std::binary_search(myprocs.begin(),myprocs.end(),static_cast<INMOST_DATA_ENUM_TYPE>(*jt)) )
 										*jt = myrank;
 									else
@@ -3659,7 +3520,7 @@ read_elem_num_link:
 											}
 									}
 								std::sort(v.begin(),v.end());
-								v.resize(std::unique(v.begin(),v.end())-v.begin());
+								v.resize(static_cast<integer_array::size_type>(std::unique(v.begin(),v.end())-v.begin()));
 								if( myrank == owner )
 								{
 									if( v.size() == 1 )
@@ -3677,8 +3538,8 @@ read_elem_num_link:
 				RecomputeParallelStorage(CELL | FACE | EDGE | NODE);
 				
 				//Share number of Layers
-				REPORT_MPI(MPI_Bcast(&Integer(tag_layers),1,INMOST_MPI_DATA_INTEGER_TYPE,0,GetCommunicator()));
-				REPORT_MPI(MPI_Bcast(&Integer(tag_bridge),1,INMOST_MPI_DATA_BULK_TYPE,0,GetCommunicator()));
+				REPORT_MPI(MPI_Bcast(&Integer(GetHandle(),tag_layers),1,INMOST_MPI_DATA_INTEGER_TYPE,0,GetCommunicator()));
+				REPORT_MPI(MPI_Bcast(&Integer(GetHandle(),tag_bridge),1,INMOST_MPI_DATA_BULK_TYPE,0,GetCommunicator()));
 #else // if there is no mpi, we don't care about statuses
 				tag_shared = DeleteTag(tag_shared);
 				tag_processors = DeleteTag(tag_processors);
@@ -3776,10 +3637,10 @@ read_elem_num_link:
 		if(LFile.find(".pvtk") != std::string::npos) //this is legacy parallel vtk
 		{
 			std::string name=File;
-			int pos=name.rfind(".pvtk");
+			std::string::size_type pos=name.rfind(".pvtk");
 			name.erase(pos); 
 
-			int l=name.find_last_of("/\\");
+			std::string::size_type l=name.find_last_of("/\\");
 			std::string fname=name.substr(l+1,name.length());
 			if(GetProcessorRank()==0)
 			{//create pvtk file
@@ -3812,7 +3673,7 @@ read_elem_num_link:
 		}
 		else if(LFile.find(".vtk") != std::string::npos) //this is legacy vtk
 		{
-			unsigned int dim = GetDimensions();
+			integer dim = GetDimensions();
 			if( dim > 3 )
 			{
 				printf("VTK file supports 3 dimensions max\n");
@@ -3825,24 +3686,24 @@ read_elem_num_link:
 			fprintf(f,"ASCII\n");
 			fprintf(f,"DATASET UNSTRUCTURED_GRID\n");
 			ReorderEmpty(CELL | NODE);
-			fprintf(f,"POINTS %u double\n",nodes.size());
-			for(Mesh::nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++)
+			fprintf(f,"POINTS %u double\n",NumberOfNodes());
+			for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 			{
-				Storage::real_array coords = (*it)->RealArray(CoordsTag());
-				for(unsigned int i = 0; i < dim; i++) 
+				Storage::real_array coords = it->RealArray(CoordsTag());
+				for(integer i = 0; i < dim; i++) 
 				{
 					double temp = coords[i];
 					fprintf(f,"%.10f ",temp);
 				}
-				for(unsigned int i = dim; i < 3; i++)
+				for(integer i = dim; i < 3; i++)
 					fprintf(f,"0 ");
 				fprintf(f,"\n");
 			}
 			{
-				std::vector<int> values;
-				for(Mesh::cells_container::iterator it = cells.begin(); it != cells.end(); it++)
+				dynarray<int,64> values;
+				for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 				{	
-					switch((*it)->GetGeometricType())
+					switch(it->GetGeometricType())
 					{
 						case Element::Tri:
 						case Element::Quad:
@@ -3850,17 +3711,17 @@ read_elem_num_link:
 						case Element::Polygon:
 						case Element::Tet:
 						{
-							adjacent<Node> nodes = (*it)->getNodes();
-							values.push_back(nodes.size());
-							for(adjacent<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
+							ElementArray<Node> nodes = it->getNodes();
+							values.push_back(static_cast<integer>(nodes.size()));
+							for(ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
 								values.push_back(jt->LocalID());
 							break;
 						}
 						case Element::Prism:
 						{
-							adjacent<Node> nodes = (*it)->getNodes();
+							ElementArray<Node> nodes = it->getNodes();
 							if( nodes.size() != 6 ) goto safe_output;
-							values.push_back(nodes.size());
+							values.push_back(static_cast<integer>(nodes.size()));
 							values.push_back(nodes[0].LocalID());
 							values.push_back(nodes[2].LocalID());
 							values.push_back(nodes[1].LocalID());
@@ -3871,9 +3732,9 @@ read_elem_num_link:
 						}
 						case Element::Hex:
 						{
-							adjacent<Node> nodes = (*it)->getNodes();
+							ElementArray<Node> nodes = it->getNodes();
 							if( nodes.size() != 8 ) goto safe_output;
-							values.push_back(nodes.size());
+							values.push_back(static_cast<integer>(nodes.size()));
 							values.push_back(nodes[0].LocalID());
 							values.push_back(nodes[3].LocalID());
 							values.push_back(nodes[2].LocalID());
@@ -3886,9 +3747,9 @@ read_elem_num_link:
 						}
 						case Element::Pyramid:
 						{
-							adjacent<Node> nodes = (*it)->getNodes();
+							ElementArray<Node> nodes = it->getNodes();
 							if( nodes.size() != 5 ) goto safe_output;
-							values.push_back(nodes.size());
+							values.push_back(static_cast<integer>(nodes.size()));
 							values.push_back(nodes[0].LocalID());
 							values.push_back(nodes[3].LocalID());
 							values.push_back(nodes[2].LocalID());
@@ -3901,46 +3762,43 @@ read_elem_num_link:
 						{
 safe_output:
 							//printf("polyhedron!!!\n");
-							adjacent<Face> faces = (*it)->getFaces();
-                            int totalNum = 1 + faces.size();
-                            for(adjacent<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
-                            {
-                                adjacent<Node> nodes = jt->getNodes();
-                                totalNum += nodes.size();
+							ElementArray<Face> faces = it->getFaces();
+                            integer totalNum = 1 + static_cast<integer>(faces.size());
+                            for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
+                                totalNum += jt->nbAdjElements(NODE);
 
-                            }
                             values.push_back(totalNum);
-							values.push_back(faces.size());
-							for(adjacent<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
+							values.push_back(static_cast<integer>(faces.size()));
+							for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
 							{
-								adjacent<Node> nodes = jt->getNodes();
-								values.push_back(nodes.size());
-								if( jt->FaceOrientedOutside(*it) )
-									for(adjacent<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
+								ElementArray<Node> nodes = jt->getNodes();
+								values.push_back(static_cast<integer>(nodes.size()));
+								if( jt->FaceOrientedOutside(it->self()) )
+									for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 										values.push_back(kt->LocalID());
 								else
-									for(adjacent<Node>::reverse_iterator kt = nodes.rbegin(); kt != nodes.rend(); kt++)
+									for(ElementArray<Node>::reverse_iterator kt = nodes.rbegin(); kt != nodes.rend(); kt++)
 										values.push_back(kt->LocalID());
 							}
 							break;
 						}
-						default: printf("This should not happen %s\n",Element::GeometricTypeName((*it)->GetGeometricType()));
+						default: printf("This should not happen %s\n",Element::GeometricTypeName(it->GetGeometricType()));
 					}
 				}
-				fprintf(f,"CELLS %u %ld\n",cells.size(),values.size());
-				for(unsigned int i = 0; i < values.size(); i++)
+				fprintf(f,"CELLS %u %ld\n",NumberOfCells(),values.size());
+				for(dynarray<Storage::integer,64>::size_type i = 0; i < values.size(); i++)
 				{
 					fprintf(f,"%d ",values[i]);
 					if( (i+1) % 20 == 0) fprintf(f,"\n");
 				}
 				fprintf(f,"\n");
 			}
-			fprintf(f,"CELL_TYPES %u\n",cells.size());
-			for(Mesh::cells_container::iterator it = cells.begin(); it != cells.end(); it++)
+			fprintf(f,"CELL_TYPES %u\n",NumberOfCells());
+			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 			{
-				INMOST_DATA_ENUM_TYPE nnodes =  VtkElementNodes((*it)->GetGeometricType());
-				if( nnodes == ENUMUNDEF || nnodes == (*it)->HighConn().size() ) //nodes match - output correct type
-					fprintf(f,"%d\n",VtkElementType((*it)->GetGeometricType()));
+				INMOST_DATA_ENUM_TYPE nnodes = VtkElementNodes(it->GetGeometricType());
+				if( nnodes == ENUMUNDEF || nnodes == it->nbAdjElements(NODE) ) //nodes match - output correct type
+					fprintf(f,"%d\n",VtkElementType(it->GetGeometricType()));
 				else //number of nodes mismatch with expected - some topology checks must be off
 					fprintf(f,"%d\n",VtkElementType(Element::MultiPolygon));
 			}
@@ -3961,7 +3819,7 @@ safe_output:
 					}
 				}
 				
-				if( !tags.empty() ) fprintf(f,"CELL_DATA %u\n",cells.size());
+				if( !tags.empty() ) fprintf(f,"CELL_DATA %u\n",NumberOfCells());
 				for(unsigned int i = 0; i < tags.size(); i++)
 				{
 					unsigned int comps = tags[i].GetSize();
@@ -3975,20 +3833,20 @@ safe_output:
 						{
 							fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),(tags[i].GetDataType() == DATA_REAL ? "double" : "int"),comps);
 							fprintf(f,"LOOKUP_TABLE default\n");
-							for(Mesh::cells_container::iterator it = cells.begin(); it != cells.end(); it++)
+							for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 							{
 								switch( tags[i].GetDataType() )
 								{
 									case DATA_REAL:
 									{
-										Storage::real_array arr = (*it)->RealArray(tags[i]);
+										Storage::real_array arr = it->RealArray(tags[i]);
 										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m]);
 										fprintf(f,"\n");
 									}
 									break;
 									case DATA_INTEGER:
 									{
-										Storage::integer_array arr = (*it)->IntegerArray(tags[i]);
+										Storage::integer_array arr = it->IntegerArray(tags[i]);
 										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%d ",arr[m]);
 										fprintf(f,"\n");
 									}
@@ -4012,7 +3870,7 @@ safe_output:
 						tags.push_back(t);
 				}
 				
-				if( !tags.empty() ) fprintf(f,"POINT_DATA %u\n",nodes.size());
+				if( !tags.empty() ) fprintf(f,"POINT_DATA %u\n",NumberOfNodes());
 				for(unsigned int i = 0; i < tags.size(); i++)
 				{
 					unsigned int comps = tags[i].GetSize();
@@ -4026,20 +3884,20 @@ safe_output:
 						{
 							fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),(tags[i].GetDataType() == DATA_REAL ? "double" : "int"),comps);
 							fprintf(f,"LOOKUP_TABLE default\n");
-							for(Mesh::nodes_container::iterator it = nodes.begin(); it != nodes.end(); it++)
+							for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 							{
 								switch( tags[i].GetDataType() )
 								{
 									case DATA_REAL:
 									{
-										Storage::real_array arr = (*it)->RealArray(tags[i]);
+										Storage::real_array arr = it->RealArray(tags[i]);
 										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m]);
 										fprintf(f,"\n");
 									}
 									break;
 									case DATA_INTEGER:
 									{
-										Storage::integer_array arr = (*it)->IntegerArray(tags[i]);
+										Storage::integer_array arr = it->IntegerArray(tags[i]);
 										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%d ",arr[m]);
 										fprintf(f,"\n");
 									}
@@ -4067,10 +3925,10 @@ safe_output:
 				sprintf(keyword,"ieeei%ldr%ld",sizeof(Storage::integer),sizeof(Storage::real));
 			fwrite(keyword,1,8,file);
 			sprintf(keyword,"nodev"); fwrite(keyword,1,8,file);
-			keynum = static_cast<Storage::integer>(nodes.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
-			for(Mesh::nodes_container::iterator n = nodes.begin(); n != nodes.end(); n++)
+			keynum = static_cast<Storage::integer>(NumberOfNodes()); fwrite(&keynum,sizeof(Storage::integer),1,file);
+			for(Mesh::iteratorNode n = BeginNode(); n != EndNode(); n++)
 			{
-				fwrite(&(*n)->Coords()[0],sizeof(Storage::real),GetDimensions(),file);
+				fwrite(n->Coords().data(),sizeof(Storage::real),GetDimensions(),file);
 				if( GetDimensions() < 3 )
 				{
 					Storage::real zero = 0.0;
@@ -4078,20 +3936,20 @@ safe_output:
 				}
 			}
 			sprintf(keyword,"faces"); fwrite(keyword,1,8,file);
-			keynum = static_cast<Storage::integer>(faces.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
-			keynum = static_cast<Storage::integer>(cells.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
-			for(Mesh::faces_container::iterator f = faces.begin(); f != faces.end(); f++)
+			keynum = static_cast<Storage::integer>(NumberOfFaces()); fwrite(&keynum,sizeof(Storage::integer),1,file);
+			keynum = static_cast<Storage::integer>(NumberOfCells()); fwrite(&keynum,sizeof(Storage::integer),1,file);
+			for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
 			{
-				adjacent<Node> fnodes = (*f)->getNodes();
+				ElementArray<Node> fnodes = f->getNodes();
 				//sprintf(keyword,"nverts"); fwrite(keyword,1,8,file);
 				keynum = static_cast<Storage::integer>(fnodes.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
 				//sprintf(keyword,"vertex_ids"); fwrite(keyword,1,8,file);
-				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+				for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 				{
 					keynum = fn->LocalID()+1;
 					fwrite(&keynum,sizeof(Storage::integer),1,file);
 				}
-				adjacent<Cell> fcells = (*f)->getCells();
+				ElementArray<Cell> fcells = f->getCells();
 				//sprintf(keyword,"cellno1"); fwrite(keyword,1,8,file);
 				keynum = fcells.size() > 0 ? fcells[0].LocalID()+1 : 0;
 				fwrite(&keynum,sizeof(Storage::integer),1,file);
@@ -4107,8 +3965,8 @@ safe_output:
 				if( t.isDefined(CELL) )
 				{
 					std::set<Storage::integer> mat;
-					for(Mesh::cells_container::iterator c = cells.begin(); c != cells.end(); c++)
-						mat.insert((*c)->Integer(t)+1);
+					for(Mesh::iteratorCell c = BeginCell(); c != EndCell(); c++)
+						mat.insert(c->Integer(t)+1);
 					sprintf(keyword,"material"); fwrite(keyword,1,8,file);
 					keynum = static_cast<Storage::integer>(mat.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
 					keynum = 0; fwrite(&keynum,sizeof(Storage::integer),1,file);
@@ -4116,9 +3974,9 @@ safe_output:
 					{
 						sprintf(keyword,"mat%d",*it); fwrite(keyword,1,8,file);
 					}
-					for(Mesh::cells_container::iterator c = cells.begin(); c != cells.end(); c++)
+					for(Mesh::iteratorCell c = BeginCell(); c != EndCell(); c++)
 					{
-						keynum = (*c)->Integer(t)+1; fwrite(&keynum,sizeof(Storage::integer),1,file);
+						keynum = c->Integer(t)+1; fwrite(&keynum,sizeof(Storage::integer),1,file);
 					}
 				}
 				
@@ -4206,15 +4064,16 @@ safe_output:
 			sprintf(keyword,"endsubv"); fwrite(keyword,1,8,file);
 			
 			sprintf(keyword,"groups"); fwrite(keyword,1,8,file);
-			for(Mesh::sets_container::iterator set = sets.begin(); set != sets.end(); set++)
+			for(Mesh::iteratorSet set = BeginSet(); set != EndSet(); set++)
 			{
 
 				for(ElementType etype = CELL; etype >= NODE; etype = etype >> 1)
 				{
 					if( etype == EDGE ) continue;
 					keynum = 0;
-					for(ElementSet::iterator it = (*set)->begin(); it != (*set)->end(); it++)
+					for(ElementSet::iterator it = set->Begin(); it != set->End(); it++)
 						if( it->GetElementType() == etype ) keynum++;
+						
 					if( keynum )
 					{
 						Storage::integer temp;
@@ -4225,11 +4084,12 @@ safe_output:
 							case CELL: temp = 0; break;
 							default: throw NotImplemented;
 						}
-						sprintf(keyword,"set%d_%s\n",(*set)->LocalID()+1,ElementTypeName(etype));
+						//sprintf(keyword,"set%d_%s\n",set->LocalID()+1,ElementTypeName(etype));
+						sprintf(keyword,"%s",set->GetName().c_str());
 						fwrite(keyword,1,8,file);
 						fwrite(&temp,sizeof(Storage::integer),1,file);						
 						fwrite(&keynum,sizeof(Storage::integer),1,file);
-						for(ElementSet::iterator it = (*set)->begin(); it != (*set)->end(); it++)
+						for(ElementSet::iterator it = set->Begin(); it != set->End(); it++)
 							if( it->GetElementType() == etype )
 							{
 								keynum = it->LocalID()+1;
@@ -4281,18 +4141,18 @@ safe_output:
 			sprintf(keyword,"endvect"); fwrite(keyword,1,8,file);
 			
 			sprintf(keyword,"polygons"); fwrite(keyword,1,8,file);
-			for(Mesh::faces_container::iterator f = faces.begin(); f != faces.end(); f++) if( (*f)->Boundary() )
+			for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++) if( f->Boundary() )
 			{
-				adjacent<Node> fnodes = (*f)->getNodes();
+				ElementArray<Node> fnodes = f->getNodes();
 				keynum = 1; fwrite(&keynum,sizeof(Storage::integer),1,file);
 				keynum = static_cast<Storage::integer>(fnodes.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
-				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+				for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 					fwrite(&fn->Coords()[0],sizeof(Storage::real),1,file);
-				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+				for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 					fwrite(&fn->Coords()[1],sizeof(Storage::real),1,file);
 				if( GetDimensions() > 2 )
 				{
-					for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+					for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 						fwrite(&fn->Coords()[2],sizeof(Storage::real),1,file);
 				}
 				else 
@@ -4307,6 +4167,8 @@ safe_output:
 		}
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
 		{
+			INMOST_DATA_ENUM_TYPE nlow,nhigh, lid;
+			char wetype;
 			//~ if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
 			std::stringstream out(std::ios::in | std::ios::out | std::ios::binary);
 			
@@ -4330,42 +4192,151 @@ safe_output:
 			uconv.write_iValue(out,header[6]);
 			REPORT_STR("TagsHeader");
 			REPORT_VAL("tag_size",header[6]);
-			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)  WriteTag(out,*it);
+			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)  
+			{
+				std::string name = it->GetTagName();
+				INMOST_DATA_ENUM_TYPE namesize = static_cast<INMOST_DATA_BULK_TYPE>(name.size());
+				INMOST_DATA_BULK_TYPE datatype = static_cast<INMOST_DATA_BULK_TYPE>(it->GetDataType());
+				ElementType sparsemask = NONE;
+				ElementType definedmask = NONE;
+				INMOST_DATA_ENUM_TYPE datalength = it->GetSize();
+				for(ElementType current_type = NODE; current_type <= MESH; current_type = current_type << 1)
+				{
+					if( it->isSparse (current_type) ) sparsemask  |= current_type;
+					if( it->isDefined(current_type) ) definedmask |= current_type;
+				}
+				uconv.write_iValue(out,namesize);
+				out.write(name.c_str(), name.size());
+				out.put(datatype);
+				out.put(sparsemask);
+				out.put(definedmask);
+				uconv.write_iValue(out,datalength);
+			}
 
 			// Nodes 
 			out << INMOST::NodeHeader;
 			uconv.write_iValue(out,header[1]);
 			REPORT_STR("NodeHeader");
 			REPORT_VAL("node_size",header[1]);
-			for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++) WriteNode(out,&*it);
+			for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++) 
+			{
+				Storage::real_array coords = it->Coords();
+				for(Storage::real_array::size_type it = 0; it < coords.size(); it++)
+					iconv.write_fValue(out,coords[it]);
+			}
 		
 			// Edges
 			out << INMOST::EdgeHeader;
 			uconv.write_iValue(out,header[2]);
 			REPORT_STR("EdgeHeader");
 			REPORT_VAL("edge_size",header[2]);
-			for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); it++) WriteEdge(out,&*it);
+			
+			for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); it++) 
+			{
+				Element::adj_type & lc = LowConn(*it);
+				nlow = static_cast<INMOST_DATA_ENUM_TYPE>(lc.size());
+				uconv.write_iValue(out,nlow);
+				for(Element::adj_type::size_type kt = 0; kt < lc.size(); ++kt)
+				{
+					lid = GetHandleID(lc[kt]);
+					uconv.write_iValue(out,lid);
+				}
+			}
 		
 			// Faces
 			out << INMOST::FaceHeader;
 			uconv.write_iValue(out,header[3]);
 			REPORT_STR("FaceHeader");
 			REPORT_VAL("face_size",header[3]);
-			for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++) WriteFace(out,&*it);
+			for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++) 
+			{
+				Element::adj_type & lc = LowConn(*it);
+				nlow = static_cast<INMOST_DATA_ENUM_TYPE>(lc.size());
+				uconv.write_iValue(out,nlow);
+				for(Element::adj_type::size_type kt = 0; kt < lc.size(); ++kt)
+				{
+					lid = GetHandleID(lc[kt]);
+					uconv.write_iValue(out,lid);
+				}
+			}
 		
 			// Cells
 			out << INMOST::CellHeader;
 			uconv.write_iValue(out,header[4]);
 			REPORT_STR("CellHeader");
 			REPORT_VAL("cell_size",header[4]);
-			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)  WriteCell(out,&*it);
+			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
+			{
+				Element::adj_type & lc = LowConn(*it);
+				nlow = static_cast<INMOST_DATA_ENUM_TYPE>(lc.size());
+				uconv.write_iValue(out,nlow);
+				for(Element::adj_type::size_type kt = 0; kt < lc.size(); ++kt)
+				{
+					lid = GetHandleID(lc[kt]);
+					uconv.write_iValue(out,lid);
+				}
+				Element::adj_type & hc = HighConn(*it);
+				nhigh = static_cast<INMOST_DATA_ENUM_TYPE>(hc.size());
+				uconv.write_iValue(out,nhigh);
+				for(Element::adj_type::size_type kt = 0; kt < hc.size(); ++kt)
+				{
+					lid = GetHandleID(hc[kt]);
+					uconv.write_iValue(out,lid);
+				}
+			}
 		
 			// Element Sets
 			out << INMOST::ESetHeader;
 			REPORT_STR("ESetHeader");
 			REPORT_VAL("eset_size",header[5]);
 			uconv.write_iValue(out,header[5]);
-			for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++) WriteElementSet(out,&*it);
+			for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+			{
+				std::string name = it->GetName();
+				INMOST_DATA_ENUM_TYPE name_size = static_cast<INMOST_DATA_ENUM_TYPE>(name.size());
+				assert(name_size < 4096);
+				uconv.write_iValue(out,name_size);
+				out.write(name.c_str(),name.size());
+				Element::adj_type & lc = LowConn(it->GetHandle());
+				uconv.write_iValue(out,static_cast<enumerator>(lc.size()));
+				for(Element::adj_type::iterator kt = lc.begin(); kt != lc.end(); ++kt)
+				{
+					if( *kt != InvalidHandle() )
+					{
+						wetype = GetHandleElementType(*kt);
+						out.put(wetype);
+						lid = GetHandleID(*kt);
+						uconv.write_iValue(out,lid);
+					}
+					else out.put(NONE);
+				}
+				Element::adj_type & hc = HighConn(it->GetHandle());
+				//write tree information
+				uconv.write_iValue(out,static_cast<enumerator>(hc.size()));
+				for(Element::adj_type::iterator kt = hc.begin(); kt != hc.begin()+ElementSet::high_conn_reserved-1; ++kt)
+				{
+					if( *kt != InvalidHandle() )
+					{
+						wetype = GetHandleElementType(*kt);
+						out.put(wetype);
+						lid = GetHandleID(*kt);
+						uconv.write_iValue(out,lid);
+					}
+					else out.put(NONE);
+				}
+				//write additional information
+				for(Element::adj_type::iterator kt = hc.begin()+ElementSet::high_conn_reserved-1; kt != hc.end(); ++kt)
+				{
+					if( *kt != InvalidHandle() )
+					{
+						wetype = GetHandleElementType(*kt);
+						out.put(wetype);
+						lid = GetHandleID(*kt);
+						uconv.write_iValue(out,lid);
+					}
+					else out.put(NONE);
+				}
+			}
 		
 			out << INMOST::MeshDataHeader;
 			REPORT_STR("MeshDataHeader");
@@ -4376,28 +4347,58 @@ safe_output:
 				for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 					if( jt->isDefined(etype) ) 
 					{
-						if( jt->isSparse(etype) )
+						INMOST_DATA_ENUM_TYPE q = 0;
+						INMOST_DATA_ENUM_TYPE tagsize = jt->GetSize(), recsize = tagsize, lid, k;
+						DataType data_type = jt->GetDataType();
+						bool sparse = jt->isSparse(etype);
+						for(Mesh::iteratorStorage it = Begin(etype); it != End(); it++) 
 						{
-							INMOST_DATA_ENUM_TYPE q = 0;
-							//~ std::cout << jt->GetTagName() << std::endl;
-							for(Mesh::base_iterator it = Begin(etype); it != End(); it++) 
+							if( !sparse || (sparse && it->HaveData(*jt)) )
 							{
-								if( it->HaveData(*jt) )
+								if( sparse ) uconv.write_iValue(out,q);
+								if( tagsize == ENUMUNDEF )
 								{
-									uconv.write_iValue(out,q);
-									//~ std::cout << q << std::endl;
-									WriteData(out,*jt,*it);
+									recsize = it->GetDataSize(*jt);
+									uconv.write_iValue(out,recsize);
 								}
-								q++;
+								switch(data_type)
+								{
+								case DATA_REAL:
+									{
+										Storage::real_array arr = it->RealArray(*jt);
+										for(k = 0; k < recsize; k++)
+											uconv.write_fValue(out,arr[k]);
+									} break;
+								case DATA_INTEGER:
+									{
+										Storage::integer_array arr = it->IntegerArray(*jt);
+										for(k = 0; k < recsize; k++)
+											uconv.write_iValue(out,arr[k]);
+									} break;
+								case DATA_BULK:
+									{
+										out.write(reinterpret_cast<char *>(&it->Bulk(*jt)),recsize);
+									} break;
+								case DATA_REFERENCE:
+									{
+										Storage::reference_array arr = it->ReferenceArray(*jt);
+										for(k = 0; k < recsize; k++)
+										{
+											if( arr[k].isValid() )
+											{
+												wetype = arr[k].GetElementType();
+												out.put(wetype);
+												lid = GetHandleID(arr[k].LocalID());
+												uconv.write_iValue(out,lid);
+											}
+											else out.put(NONE);
+										}
+									} break;
+								}
 							}
-							//~ std::cout << q << std::endl;
-							uconv.write_iValue(out,q);
+							q++;
 						}
-						else
-						{
-							for(Mesh::base_iterator it = Begin(etype); it != End(); it++)  
-								WriteData(out,*jt,*it);
-						}
+						if( sparse ) uconv.write_iValue(out,q);
 					}
 			}
 		
@@ -4430,12 +4431,12 @@ safe_output:
 						for(k = 0; k < numprocs; k++) uconv.write_iValue(header,datasizes[k]);
 
 						std::string header_data(header.str());
-						REPORT_MPI(ierr = MPI_File_write_shared(fh,&header_data[0],header_data.size(),MPI_CHAR,&stat));
+						REPORT_MPI(ierr = MPI_File_write_shared(fh,&header_data[0],static_cast<INMOST_MPI_SIZE>(header_data.size()),MPI_CHAR,&stat));
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					}
 					{
 						std::string local_data(out.str());
-						REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],local_data.size(),MPI_CHAR,&stat));
+						REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&stat));
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					}
 
@@ -4445,24 +4446,24 @@ safe_output:
 				else
 #endif
 				{
-					std::vector<int> displs(numprocs),recvcounts(numprocs);
+					std::vector<INMOST_MPI_SIZE> displs(numprocs),recvcounts(numprocs);
 					std::string file_contents;
 					std::string local_data(out.str());
 					if( GetProcessorRank() == 0 )
 					{
-						recvcounts[0] = datasizes[0];
+						recvcounts[0] = static_cast<INMOST_MPI_SIZE>(datasizes[0]);
 						displs[0] = 0;
 						int sizesum = recvcounts[0];
 						for(k = 1; k < numprocs; k++)
 						{
-							recvcounts[k] = datasizes[k];
+							recvcounts[k] = static_cast<INMOST_MPI_SIZE>(datasizes[k]);
 							displs[k] = displs[k-1]+recvcounts[k-1];
 							sizesum += recvcounts[k];
 						}
 						file_contents.resize(sizesum);
 					}
 					else file_contents.resize(1); //protect from accessing bad pointer
-					REPORT_MPI(ierr = MPI_Gatherv(&local_data[0],local_data.size(),MPI_CHAR,&file_contents[0],&recvcounts[0],&displs[0],MPI_CHAR,0,GetCommunicator()));
+					REPORT_MPI(ierr = MPI_Gatherv(&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&file_contents[0],&recvcounts[0],&displs[0],MPI_CHAR,0,GetCommunicator()));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					if( GetProcessorRank() == 0 )
 					{

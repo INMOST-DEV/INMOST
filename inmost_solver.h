@@ -263,7 +263,7 @@ namespace INMOST
 				//return data[i];
 				//for dynarray or array
 				
-				for(unsigned it = 0; it < data.size(); ++it)
+				for(Entries::size_type it = 0; it < data.size(); ++it)
 					if( data[it].first == i ) return data[it].second;
 				entry new_entry;
 				new_entry.first = i;
@@ -279,7 +279,7 @@ namespace INMOST
 				//for sparse data type
 				//return data[i];
 
-				for (unsigned it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
+				for (Entries::size_type it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
 
 				//you should not come here
 				assert(false);

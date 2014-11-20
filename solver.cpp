@@ -748,12 +748,14 @@ namespace INMOST
 
 	INMOST_DATA_REAL_TYPE Solver::Vector::ScalarProd(Vector const & other, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end) const
 	{
-		INMOST_DATA_REAL_TYPE ret = 0, temp;
+		INMOST_DATA_REAL_TYPE ret = 0;
 		for(INMOST_DATA_ENUM_TYPE i = index_begin; i < index_end; i++)
 			ret += data[i]*other[i];
 #if defined(USE_MPI)
+		INMOST_DATA_REAL_TYPE temp;
 		int ierr = 0;
 		GUARD_MPI(MPI_Allreduce(&ret,&temp,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
+		ret = temp;
 #endif
 		return ret;
 	}

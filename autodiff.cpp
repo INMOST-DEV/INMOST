@@ -109,7 +109,7 @@ namespace INMOST
 				else if (it->op >= AD_TABLE) 
 				{
 					lval = var.values[voffset+it->left.i];
-					var.values[doffset+it->left.i] += var.values[doffset+k] *  reg_tables[it->op]->get_derivative(lval);
+					var.values[doffset+it->left.i] += var.values[doffset+k] *  reg_tables[it->op-AD_TABLE]->get_derivative(lval);
 				}
 				else if (it->op >= AD_STNCL)
 				{
@@ -171,8 +171,8 @@ namespace INMOST
 			case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); m->GetGeometricData(static_cast<Element *>(e), MEASURE, &var.values[offset+k]); break;
 			case AD_VAL: var.values[offset+k] = var.values[offset+it->left.i]; break;
 			default:
-				if (it->op >= AD_FUNC) var.values[offset+k] = reg_funcs[it->op].func(e, user_data);
-				else if (it->op >= AD_TABLE) var.values[offset+k] = reg_tables[it->op]->get_value(var.values[offset+it->left.i]);
+				if (it->op >= AD_FUNC) var.values[offset+k] = reg_funcs[it->op-AD_FUNC].func(e, user_data);
+				else if (it->op >= AD_TABLE) var.values[offset+k] = reg_tables[it->op-AD_TABLE]->get_value(var.values[offset+it->left.i]);
 				else if (it->op >= AD_STNCL)
 				{
 					it->left.e->current_stencil.clear();
@@ -211,7 +211,7 @@ namespace INMOST
 	}
 #else
 
-	INMOST_DATA_REAL_TYPE Automatizator::DerivativePrecompute(const expr & var, Storage * e, precomp_values_t & values, void * user_data)
+	INMOST_DATA_REAL_TYPE Automatizator::DerivativePrecompute(const expr & var, const Storage & e, precomp_values_t & values, void * user_data)
 	{
 		assert(var.op != AD_NONE);
 		INMOST_DATA_REAL_TYPE lval, rval, ret = 0.0;
@@ -290,7 +290,7 @@ namespace INMOST
 			return var.coef;
 		case AD_MES:
 			assert(!(e->GetElementType() & (ESET | MESH)));
-			m->GetGeometricData(static_cast<Element *>(e), MEASURE, &ret);
+			m->GetGeometricData(e->GetHandle(), MEASURE, &ret);
 			return ret*var.coef;
 		case AD_VAL:
 			lval = DerivativePrecompute(*var.left, e, values, user_data);
@@ -300,26 +300,26 @@ namespace INMOST
 		}
 		if (var.op >= AD_FUNC)
 		{
-			ret = reg_funcs[var.op].func(e, user_data);
+			ret = reg_funcs[var.op-AD_FUNC].func(e, user_data);
 			return ret*var.coef;
 		}
 		else if (var.op >= AD_TABLE)
 		{
 			lval = DerivativePrecompute(*var.left, e, values, user_data);
 			values.push_back(lval);
-			ret = reg_tables[var.op]->get_value(lval);
+			ret = reg_tables[var.op-AD_TABLE]->get_value(lval);
 			return ret*var.coef;
 		}
 		else if (var.op >= AD_STNCL)
 		{
-			stencil_kind_domain & st = reg_stencils[var.op];
+			stencil_kind_domain & st = reg_stencils[var.op-AD_STNCL];
 			assert(st.domainmask == 0 || e->GetMarker(st.domainmask));
 			if (st.kind == 0)
 			{
 				Storage::reference_array elems = e->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
 				Storage::real_array coefs = e->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
 				assert(elems.size() == coefs.size());
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) if( elems[k] != NULL )
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) if( elems.at(k) != InvalidHandle() )
 				{
 					lval = DerivativePrecompute(*var.left, elems[k], values, user_data);
 					ret += lval * coefs[k];
@@ -331,7 +331,7 @@ namespace INMOST
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
 				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if( get_st[k].first != NULL )
 				{
-					lval = DerivativePrecompute(*var.left, get_st[k].first, values, user_data);
+					lval = DerivativePrecompute(*var.left, Storage(m,get_st[k].first), values, user_data);
 					ret += lval * get_st[k].second;
 				}
 			}
@@ -353,7 +353,7 @@ namespace INMOST
 		return 0.0;
 	}
 	//! returns offset from the end of precomputed values
-	void Automatizator::DerivativeFill(const expr & var, Storage * e, Solver::Row & entries, precomp_values_t & values, INMOST_DATA_REAL_TYPE multval, void * user_data)
+	void Automatizator::DerivativeFill(const expr & var, const Storage & e, Solver::Row & entries, precomp_values_t & values, INMOST_DATA_REAL_TYPE multval, void * user_data)
 	{
 		assert(var.op != AD_NONE);
 		INMOST_DATA_REAL_TYPE lval, rval, ret;
@@ -435,27 +435,27 @@ namespace INMOST
 		else if (var.op >= AD_TABLE)
 		{
 			lval = values.back(); values.pop_back();
-			DerivativeFill(*var.left, e, entries, values, multval * var.coef * reg_tables[var.op]->get_derivative(lval), user_data);
+			DerivativeFill(*var.left, e, entries, values, multval * var.coef * reg_tables[var.op-AD_TABLE]->get_derivative(lval), user_data);
 			return;
 		}
 		else if (var.op >= AD_STNCL)
 		{
-			stencil_kind_domain & st = reg_stencils[var.op];
+			stencil_kind_domain & st = reg_stencils[var.op-AD_STNCL];
 			assert(st.domainmask == 0 || e->GetMarker(st.domainmask));
 			if (st.kind == 0)
 			{
 				Storage::reference_array elems = e->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
 				Storage::real_array coefs = e->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
 				assert(elems.size() == coefs.size());
-				for (INMOST_DATA_ENUM_TYPE k = elems.size(); k > 0; --k) if( elems[k-1] != NULL )
+				for (INMOST_DATA_ENUM_TYPE k = elems.size(); k > 0; --k) if( elems.at(k-1) != InvalidHandle() )
 					DerivativeFill(*var.left, elems[k - 1], entries, values, var.coef * coefs[k - 1] * multval, user_data);
 			}
 			else if (st.kind == 1)
 			{
 				stencil_pairs get_st;
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
-				for (INMOST_DATA_ENUM_TYPE k = get_st.size(); k > 0; --k) if( get_st[k-1].first != NULL )
-					DerivativeFill(*var.left, get_st[k - 1].first, entries, values, var.coef * get_st[k - 1].second*multval, user_data);
+				for (INMOST_DATA_ENUM_TYPE k = static_cast<INMOST_DATA_ENUM_TYPE>(get_st.size()); k > 0; --k) if( get_st[k-1].first != NULL )
+					DerivativeFill(*var.left, Storage(m,get_st[k - 1].first), entries, values, var.coef * get_st[k - 1].second*multval, user_data);
 			}
 			return;
 		}
@@ -472,7 +472,7 @@ namespace INMOST
 		assert(false);
 		return;
 	}
-	INMOST_DATA_REAL_TYPE Automatizator::Evaluate(const expr & var, Storage * e, void * user_data)
+	INMOST_DATA_REAL_TYPE Automatizator::Evaluate(const expr & var, const Storage & e, void * user_data)
 	{
 		assert(var.op != AD_NONE);
 		switch (var.op)
@@ -493,22 +493,22 @@ namespace INMOST
 		case AD_SIN:   return ::sin(Evaluate(*var.left, e, user_data))*var.coef;
 		case AD_COS:   return ::cos(Evaluate(*var.left, e, user_data))*var.coef;
 		case AD_CONST: return var.coef;
-		case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); Storage::real ret; m->GetGeometricData(static_cast<Element *>(e), MEASURE, &ret); return ret*var.coef;
+		case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); Storage::real ret; m->GetGeometricData(e->GetHandle(), MEASURE, &ret); return ret*var.coef;
 		case AD_VAL:   return Evaluate(*var.left,e,user_data)*var.coef;
 		}
-		if (var.op >= AD_FUNC) return reg_funcs[var.op].func(e, user_data);
-		if (var.op >= AD_TABLE) return reg_tables[var.op]->get_value(Evaluate(*var.left, e, user_data))*var.coef;
+		if (var.op >= AD_FUNC) return reg_funcs[var.op-AD_FUNC].func(e, user_data);
+		if (var.op >= AD_TABLE) return reg_tables[var.op-AD_TABLE]->get_value(Evaluate(*var.left, e, user_data))*var.coef;
 		if (var.op >= AD_STNCL)
 		{
 			INMOST_DATA_REAL_TYPE ret = 0.0;
-			stencil_kind_domain & st = reg_stencils[var.op];
+			stencil_kind_domain & st = reg_stencils[var.op-AD_STNCL];
 			assert(st.domainmask == 0 || e->GetMarker(st.domainmask));
 			if (st.kind == 0)
 			{
 				Storage::reference_array elems = e->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
 				Storage::real_array coefs = e->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
 				assert(elems.size() == coefs.size());
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) if( elems[k] != NULL )
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) if( elems.at(k) != InvalidHandle() )
 					ret += var.coef * Evaluate(*var.left, elems[k], user_data) * coefs[k];
 			}
 			else if (st.kind == 1)
@@ -516,7 +516,7 @@ namespace INMOST
 				stencil_pairs get_st;
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
 				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if ( get_st[k].first != NULL )
-					ret += var.coef * Evaluate(*var.left, get_st[k].first, user_data) * get_st[k].second;
+					ret += var.coef * Evaluate(*var.left, Storage(m,get_st[k].first), user_data) * get_st[k].second;
 			}
 			return ret;
 		}
@@ -526,7 +526,7 @@ namespace INMOST
 		return 0.0;
 	}
 
-	INMOST_DATA_REAL_TYPE Automatizator::Derivative(const expr & var, Storage * e, Solver::Row & out, Storage::real multiply, void * user_data)
+	INMOST_DATA_REAL_TYPE Automatizator::Derivative(const expr & var, const Storage & e, Solver::Row & out, Storage::real multiply, void * user_data)
 	{
 		INMOST_DATA_REAL_TYPE ret;
 		precomp_values_t values;
@@ -542,27 +542,27 @@ namespace INMOST
 			index_tags[k].indices = m->DeleteTag(index_tags[k].indices);
 		for (table_type::iterator it = reg_tables.begin(); it != reg_tables.end(); ++it)
 		{
-			delete[] it->second->args;
-			delete[] it->second->vals;
-			delete it->second;
+			delete[] (*it)->args;
+			delete[] (*it)->vals;
+			delete (*it);
 		}
 		for (stencil_type::iterator it = reg_stencils.begin(); it != reg_stencils.end(); ++it)
-		if (it->second.kind == 0)
-			delete static_cast<stencil_tag *>(it->second.link);
+		if (it->kind == 0)
+			delete static_cast<stencil_tag *>(it->link);
 	}
 	INMOST_DATA_ENUM_TYPE Automatizator::RegisterFunc(std::string name, func_callback func)
 	{
-		INMOST_DATA_ENUM_TYPE ret = reg_funcs.size() + AD_FUNC;
+		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_funcs.size()) + AD_FUNC;
 		func_name_callback v;
 		v.name = name;
 		v.func = func;
-		reg_funcs[ret] = v;
+		reg_funcs.push_back(v);
 		return ret;
 	}
 	//register stencil that can be got from tags
 	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStencil(std::string name, Tag elements_tag, Tag coefs_tag, MarkerType domain_mask)
 	{
-		INMOST_DATA_ENUM_TYPE ret = reg_stencils.size() + AD_STNCL;
+		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_stencils.size()) + AD_STNCL;
 		stencil_kind_domain st;
 		stencil_tag * save = new stencil_tag;
 		st.name = name;
@@ -571,24 +571,24 @@ namespace INMOST
 		st.kind = 0;
 		st.link = static_cast<void *>(save);
 		st.domainmask = domain_mask;
-		reg_stencils[ret] = st;
+		reg_stencils.push_back(st);
 		return ret;
 	}
 	//register stencil that can be got from function
 	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStencil(std::string name, stencil_callback func, MarkerType domain_mask)
 	{
-		INMOST_DATA_ENUM_TYPE ret = reg_stencils.size() + AD_STNCL;
+		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_stencils.size()) + AD_STNCL;
 		stencil_kind_domain st;
 		st.name = name;
 		st.kind = 1;
 		st.link = reinterpret_cast<void *>(func);
 		st.domainmask = domain_mask;
-		reg_stencils[ret] = st;
+		reg_stencils.push_back(st);
 		return ret;
 	}
 	INMOST_DATA_ENUM_TYPE Automatizator::RegisterTable(std::string name, INMOST_DATA_REAL_TYPE * Arguments, INMOST_DATA_REAL_TYPE * Values, INMOST_DATA_ENUM_TYPE size)
 	{
-		INMOST_DATA_ENUM_TYPE ret = reg_tables.size() + AD_TABLE;
+		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_tables.size()) + AD_TABLE;
 		table_ptr t = new table;
 		t->name = name;
 		t->args = new INMOST_DATA_REAL_TYPE[size];
@@ -596,7 +596,7 @@ namespace INMOST
 		t->vals = new INMOST_DATA_REAL_TYPE[size];
 		memcpy(t->vals, Values, sizeof(INMOST_DATA_REAL_TYPE)*size);
 		t->size = size;
-		reg_tables[ret] = t;
+		reg_tables.push_back(t);
 		return ret;
 	}
 	/// set data of tag t defined on domain_mask to be dynamic data
@@ -613,8 +613,8 @@ namespace INMOST
 			if (t.isSparse(q)) sparse |= q;
 		}
 		p.indices = m->CreateTag(t.GetTagName() + "_index", DATA_INTEGER, def, sparse, t.GetSize());
-		INMOST_DATA_ENUM_TYPE ret = reg_tags.size() + AD_TAG;
-		reg_tags[ret] = p;
+		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_tags.size()) + AD_TAG;
+		reg_tags.push_back(p);
 		index_tags.push_back(p);
 		return ret;
 	}
@@ -628,7 +628,7 @@ namespace INMOST
 			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if (it->indices.isDefined(etype) && it->indices.isSparse(etype))
 				{
-					for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
+					for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 						jt->DelData(it->indices);
 				}
 		}
@@ -644,8 +644,8 @@ namespace INMOST
 					{
 						if (!it->indices.isSparse(etype))
 						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+							for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+							if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
 							{
 								Storage::integer_array indarr = jt->IntegerArray(it->indices);
 								indarr.resize(jt->RealArray(it->d.t).size());
@@ -655,8 +655,8 @@ namespace INMOST
 						}
 						else
 						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+							for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+							if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
 							{
 								Storage::integer_array indarr = jt->IntegerArray(it->indices);
 								indarr.resize(jt->RealArray(it->d.t).size());
@@ -669,8 +669,8 @@ namespace INMOST
 					{
 						if (!it->indices.isSparse(etype))
 						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+							for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+							if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
 							{
 								Storage::integer_array indarr = jt->IntegerArray(it->indices);
 								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -679,8 +679,8 @@ namespace INMOST
 						}
 						else
 						{
-							for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-							if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+							for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+							if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
 							{
 								Storage::integer_array indarr = jt->IntegerArray(it->indices);
 								for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -708,8 +708,8 @@ namespace INMOST
 						{
 							if (!it->indices.isSparse(etype))
 							{
-								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+								for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
 									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -718,8 +718,8 @@ namespace INMOST
 							}
 							else
 							{
-								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+								for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
 									indarr.resize(jt->RealArray(it->d.t).size());
@@ -732,8 +732,8 @@ namespace INMOST
 						{
 							if (!it->indices.isSparse(etype))
 							{
-								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+								for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
 									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -742,8 +742,8 @@ namespace INMOST
 							}
 							else
 							{
-								for (Mesh::base_iterator jt = m->Begin(etype); jt != m->End(); ++jt)
-								if (((etype & paralleltypes) && static_cast<Element *>(&*jt)->GetStatus() != Element::Ghost) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+								for (Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt)
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
 									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -758,7 +758,7 @@ namespace INMOST
 			{
 				std::vector<Tag> exch_tags;
 				for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it) exch_tags.push_back(it->indices);
-				m->ExchangeData(exch_tags, exch_mask);
+				m->ExchangeData(exch_tags, exch_mask,0);
 			}
 		}
 #endif
@@ -768,24 +768,25 @@ namespace INMOST
 	/// don't register tag twice
 	INMOST_DATA_ENUM_TYPE Automatizator::RegisterStaticTag(Tag t, MarkerType domain_mask)
 	{
-		INMOST_DATA_ENUM_TYPE ret = reg_ctags.size() + AD_CTAG;
+		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_ctags.size()) + AD_CTAG;
 		tagdomain d;
 		d.t = t;
 		d.domain_mask = domain_mask;
-		reg_ctags[ret] = d;
+		reg_ctags.push_back(d);
 		return ret;
 	}
 
-	INMOST_DATA_ENUM_TYPE Automatizator::GetStencil(INMOST_DATA_ENUM_TYPE stnclind, Storage * elem, void * user_data, stencil_pairs & ret)
+	INMOST_DATA_ENUM_TYPE Automatizator::GetStencil(INMOST_DATA_ENUM_TYPE stnclind, const Storage & elem, void * user_data, stencil_pairs & ret)
 	{
-		stencil_kind_domain & st = reg_stencils[stnclind];
+		stencil_kind_domain & st = reg_stencils[stnclind-AD_STNCL];
 		assert(st.domainmask == 0 || elem->GetMarker(st.domainmask));
 		if (st.kind == 0)
 		{
 			Storage::reference_array elems = elem->ReferenceArray(static_cast<stencil_tag *>(st.link)->elements);
 			Storage::real_array coefs = elem->RealArray(static_cast<stencil_tag *>(st.link)->coefs);
 			assert(elems.size() == coefs.size());
-			for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) ret.push_back(std::make_pair(elems[k], coefs[k]));
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k) 
+				ret.push_back(std::make_pair(elems.at(k), coefs[k]));
 		}
 		else if (st.kind == 1) reinterpret_cast<stencil_callback>(st.link)(elem, ret, user_data);
 		return static_cast<INMOST_DATA_ENUM_TYPE>(ret.size());

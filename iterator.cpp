@@ -3,328 +3,265 @@
 #if defined(USE_MESH)
 
 
-INMOST::ElementType GetNextType(INMOST::ElementType current, INMOST::ElementType types)
-{
-	INMOST::ElementType ret = INMOST::MESH << 1;
-	for(INMOST::ElementType i = current << 1; i <= INMOST::MESH; i = i << 1)
-		if( types & i )
-		{
-			ret = i;
-			break;
-		}
-	if( ret > INMOST::MESH ) ret = INMOST::NONE;
-	return ret;
-}
 
-INMOST::ElementType GetPrevType(INMOST::ElementType current, INMOST::ElementType types)
-{
-	INMOST::ElementType ret = INMOST::MESH << 1;
-	for(INMOST::ElementType i = current >> 1; i > INMOST::NONE; i = i >> 1)
-		if( types & i )
-		{
-			ret = i;
-			break;
-		}
-	if( ret > INMOST::MESH ) ret = INMOST::NONE;
-	return ret;
-}
 
 
 namespace INMOST
 {
-	int Mesh::GetTypeEnd(ElementType t)
+
+	ElementType GetNextType(ElementType current, ElementType types)
 	{
-		switch(t)
-		{
-			case NODE: return nodes.size()-1;
-			case EDGE: return edges.size()-1;
-			case FACE: return faces.size()-1;
-			case CELL: return cells.size()-1;
-			case ESET: return sets.size()-1;
-			case MESH: return 0;
-		}
-		return -1;
-	}	
-	INMOST_DATA_ENUM_TYPE Mesh::NumberOf(ElementType t)
-	{
-		INMOST_DATA_ENUM_TYPE ret = 0;
-		for(ElementType m = NODE; m <= MESH; m = m << 1)
-			if( m & t )
+		ElementType ret = MESH << 1;
+		for(ElementType i = current << 1; i <= MESH; i = i << 1)
+			if( types & i )
 			{
-				switch(m)
-				{
-					case NODE: ret += NumberOfNodes(); break;
-					case EDGE: ret += NumberOfEdges(); break;
-					case FACE: ret += NumberOfFaces(); break;
-					case CELL: ret += NumberOfCells(); break;
-					case ESET: ret += NumberOfSets(); break;
-					case MESH: ret += 1; break;
-				}
+				ret = i;
+				break;
 			}
+		if( ret > MESH ) ret = NONE;
+		return ret;
+	}
+
+	ElementType GetPrevType(ElementType current, ElementType types)
+	{
+		ElementType ret = MESH << 1;
+		for(ElementType i = current >> 1; i > NONE; i = i >> 1)
+			if( types & i )
+			{
+				ret = i;
+				break;
+			}
+		if( ret > MESH ) ret = NONE;
 		return ret;
 	}
 	
-	Mesh::base_iterator & Mesh::base_iterator::operator ++()
+	HandleType  Mesh::NextHandle(HandleType h) const 
 	{
-		if( CurrentType != NONE ) Number++;
-		switch(CurrentType)
+		integer num = GetHandleElementNum(h), id = GetHandleID(h);
+		++id;
+		while( num < 5 )
 		{
-			case NODE: 
+			while(id < static_cast<integer>(links[num].size()) && links[num][id] == -1) ++id;
+			if( id == links[num].size() ) 
 			{
-				while(Number < static_cast<itenum>(m->nodes.size()) && (m->nodes[Number] == NULL || m->nodes[Number]->GetMarker(m->HideMarker()))) Number++;
-				if( Number >= static_cast<itenum>(m->nodes.size()) )
+				id = 0;
+				++num;
+			}
+			else break;
+		}
+		if( num == 5 && id > 0 ) id = 1;
+		return ComposeHandle(num,id);
+	}
+
+	HandleType  Mesh::PrevHandle(HandleType h) const 
+	{
+		integer num = GetHandleElementNum(h), id = GetHandleID(h);
+		--id;
+		if( num == 5 ) 
+		{
+			if( id < 0 )
+				num = 4;
+			else return ComposeHandle(ElementNum(MESH),0);
+		}
+		while( num >= 0 )
+		{
+			while(id >= 0 && links[num][id] == -1) --id;
+			if( id == -1 ) 
+			{
+				--num;
+				if( num > 0 ) id = static_cast<integer>(links[num].size())-1;
+			}
+			else break;
+		}
+		if( num < 0 ) return InvalidHandle();
+		return ComposeHandle(num,id);
+	}
+
+	HandleType  Mesh::NextHandle(HandleType h, ElementType etype) const 
+	{
+		integer num = GetHandleElementNum(h), id = GetHandleID(h);
+		++id;
+		while( num < 5 )
+		{
+			while(id < static_cast<integer>(links[num].size()) && links[num][id] == -1) ++id;
+			if( id == links[num].size() ) 
+			{
+				bool stop = true;
+				for(integer q = num+1; q < 5; q++)
 				{
-					Number = 0;
-					CurrentType = GetNextType(CurrentType,types);
-					if( CurrentType == NONE )
+					if( etype & (1 << q) )
 					{
-						Number = -1;
+						id = 0;
+						num = q;
+						stop = false;
 						break;
 					}
 				}
-				else break;
+				if( stop ) break;
 			}
-			case EDGE: 
+			else break;
+		}
+		if( num == 5 && id > 0 ) id = 1;
+		return ComposeHandle(num,id);
+	}
+
+	HandleType  Mesh::PrevHandle(HandleType h, ElementType etype) const 
+	{
+		integer num = GetHandleElementNum(h), id = GetHandleID(h);
+		--id;
+		if( num == 5 ) 
+		{
+			if( id < 0 )
 			{
-				if( CurrentType == EDGE )
+				bool stop = true;
+				for(integer q = 4; q >= 0; q--)
 				{
-					while(Number < static_cast<itenum>(m->edges.size()) && (m->edges[Number] == NULL || m->edges[Number]->GetMarker(m->HideMarker()))) Number++;
-					if( Number >= static_cast<itenum>(m->edges.size()) )
+					if( etype & (1 << q) )
 					{
-						Number = 0;
-						CurrentType = GetNextType(CurrentType,types);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
+						
+						num = q;
+						id = static_cast<integer>(links[num].size())-1;
+						stop = false;
+						break;
 					}
-					else break;
+				}
+				if( stop ) return InvalidHandle();
+			}
+			else return ComposeHandle(ElementNum(MESH),0);
+		}
+		while( num >= 0 )
+		{
+			while(id >= 0 && links[num][id] == -1) --id;
+			if( id == -1 ) 
+			{
+				bool stop = true;
+				for(integer q = num-1; q >= 0; q--)
+				{
+					if( etype & (1 << q) )
+					{
+						num = q;
+						id = static_cast<integer>(links[num].size())-1;
+						stop = false;
+						break;
+					}
+				}
+				if( stop ) return InvalidHandle();
+			}
+			else break;
+		}
+		if( num < 0 ) return InvalidHandle();
+		return ComposeHandle(num,id);
+	}
+
+	Storage::integer  Mesh::FirstLocalID(ElementType etype) const 
+	{
+		assert(OneType(etype)); 
+		integer ret = 0, n = ElementNum(etype); 
+		if(n == 5) return 0; 
+		while(ret < static_cast<integer>(links[n].size()) && links[n][ret] == -1) ++ret; 
+		return ret;
+	}
+
+	Storage::integer Mesh::NumberOf(ElementType t) const
+	{
+		integer ret = 0;
+		for(int m = 0; m < 5; m++) if( (1 << m) & t )
+			ret += static_cast<integer>(links[m].size() - empty_links[m].size());
+		if( t & MESH ) ret++;
+		return ret;
+	}
+	
+	template<typename EType>
+	Mesh::base_iterator<EType> & Mesh::base_iterator<EType>::operator ++()
+	{
+		while( etype != NONE ) 
+		{
+			lid = m->NextLocalID(etype,lid);
+			if( lid == m->LastLocalID(etype) )
+			{
+				etype = GetNextType(etype,types);
+				if( etype ) 
+					lid = 0;
+				else
+				{
+					lid = -1;
+					break;
 				}
 			}
-			case FACE: 
-			{
-				if( CurrentType == FACE )
-				{
-					while(Number < static_cast<itenum>(m->faces.size()) && (m->faces[Number] == NULL || m->faces[Number]->GetMarker(m->HideMarker()))) Number++;
-					if( Number >= static_cast<itenum>(m->faces.size()) )
-					{
-						Number = 0;
-						CurrentType = GetNextType(CurrentType,types);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
-			case CELL:
-			{
-				if( CurrentType == CELL )
-				{
-					while(Number < static_cast<itenum>(m->cells.size()) && (m->cells[Number] == NULL || m->cells[Number]->GetMarker(m->HideMarker()))) Number++;
-					if( Number == static_cast<itenum>(m->cells.size()) )
-					{
-						Number = 0;
-						CurrentType = GetNextType(CurrentType,types);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
-			case ESET:
-			{
-				if( CurrentType == ESET )
-				{
-					while(Number < static_cast<itenum>(m->sets.size()) && (m->sets[Number] == NULL || m->sets[Number]->GetMarker(m->HideMarker()))) Number++;
-					if( Number == static_cast<itenum>(m->sets.size()) )
-					{
-						Number = 0;
-						CurrentType = GetNextType(CurrentType,types);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
-			case MESH:
-			{
-				if( CurrentType == MESH )
-				{
-					if( Number == 1 )
-					{
-						Number = 0;
-						CurrentType = GetNextType(CurrentType,types);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
+			else break;
 		}
 		return *this;
 	}
-	Mesh::base_iterator & Mesh::base_iterator::operator --()
+
+	template<typename EType>
+	Mesh::base_iterator<EType> & Mesh::base_iterator<EType>::operator --()
 	{
-		if( CurrentType != NONE ) Number--;
-		switch(CurrentType)
+		while( etype != NONE ) 
 		{
-			case MESH:
+			lid = m->PrevLocalID(etype,lid);
+			if( lid == -1 )
 			{
-				if( Number < 0 )
+				etype = GetPrevType(etype,types);
+				if( etype ) 
+					lid = m->LastLocalID(etype);
+				else
 				{
-					CurrentType = GetPrevType(CurrentType,types);
-					Number = m->GetTypeEnd(CurrentType);
-					if( CurrentType == NONE )
-					{
-						Number = -1;
-						break;
-					}
-				}
-				else break;
-			}
-			case ESET:
-			{
-				if( CurrentType == ESET )
-				{
-					while(Number >= 0 && (m->sets[Number] == NULL || m->sets[Number]->GetMarker(m->HideMarker())))	Number--;
-					if( Number < 0 )
-					{
-						CurrentType = GetPrevType(CurrentType,types);
-						Number = m->GetTypeEnd(CurrentType);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;	
+					lid = -1;
+					break;
 				}
 			}
-			case CELL:
-			{
-				if( CurrentType == CELL )
-				{
-					while(Number >= 0 && (m->cells[Number] == NULL || m->cells[Number]->GetMarker(m->HideMarker()))) Number--;
-					if( Number < 0 )
-					{
-						CurrentType = GetPrevType(CurrentType,types);
-						Number = m->GetTypeEnd(CurrentType);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
-			case FACE: 
-			{
-				if( CurrentType == FACE )
-				{
-					while(Number >= 0 && (m->faces[Number] == NULL || m->faces[Number]->GetMarker(m->HideMarker()))) Number--;
-					if( Number < 0 )
-					{
-						CurrentType = GetPrevType(CurrentType,types);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
-			case EDGE: 
-			{
-				if( CurrentType == EDGE )
-				{
-					while(Number >= 0 && (m->edges[Number] == NULL || m->edges[Number]->GetMarker(m->HideMarker()))) Number--;
-					if( Number < 0 )
-					{
-						CurrentType = GetPrevType(CurrentType,types);
-						Number = m->GetTypeEnd(CurrentType);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
-			case NODE: 
-			{
-				if( CurrentType == NODE )
-				{
-					while(Number >= 0 && (m->nodes[Number] == NULL || m->nodes[Number]->GetMarker(m->HideMarker()))) Number--;
-					if( Number < 0 )
-					{
-						CurrentType = GetPrevType(CurrentType,types);
-						Number = m->GetTypeEnd(CurrentType);
-						if( CurrentType == NONE )
-						{
-							Number = -1;
-							break;
-						}
-					}
-					else break;
-				}
-			}
+			else break;
 		}
 		return *this;
 	}
 	
-	
-	Mesh::base_iterator::base_iterator(ElementType T, Mesh * _m, bool last)
+	template<typename EType>
+	Mesh::base_iterator<EType>::base_iterator(ElementType T, Mesh * _m, bool last)
 	{
 		m = _m;
 		types = T;
-		CurrentType = NONE;
+		etype = NONE;
+		lid = -1;
 		if( last )
 		{
-			for(ElementType i = MESH; i >= NODE; i = i >> 1) if( types & i ) {CurrentType = i; break;}
-			Number = m->GetTypeEnd(CurrentType)+1;
+			for(ElementType i = MESH; i >= NODE; i = i >> 1) if( types & i ) {etype = i; break;}
+			lid = m->LastLocalID(etype);
 			operator--();
 		}
 		else
 		{
-			for(ElementType i = NODE; i <= MESH; i = i << 1) if( types & i ) {CurrentType = i; break;}
-			Number = -1;
+			for(ElementType i = NODE; i <= MESH; i = i << 1) if( types & i ) {etype = i; break;}
+			lid = -1;
 			operator++();
 		}
 	}
-	void Mesh::base_iterator::Print()
+	template<typename EType>
+	void Mesh::base_iterator<EType>::Print()
 	{
-		printf("Number: %10d CurrentType %x types %x\n",Number,CurrentType,types);
+		printf("Number: %10d CurrentType %x types %x\n",lid,etype,types);
 	}
 
-	Mesh::base_iterator   Mesh::Begin(ElementType Types)        {return base_iterator(Types,this,false);}
-	Mesh::base_iterator   Mesh::End()                           {return base_iterator(this);}
-	Mesh::iteratorElement Mesh::BeginElement(ElementType Types) {return static_cast<iteratorElement>(Begin(Types & (NODE | EDGE | FACE | CELL)));}
-	Mesh::iteratorElement Mesh::EndElement()                    {return static_cast<iteratorElement>(End());}
-	Mesh::iteratorSet     Mesh::BeginSet()                      {return static_cast<iteratorSet>(Begin(ESET));}
-	Mesh::iteratorSet     Mesh::EndSet()                        {return static_cast<iteratorSet>(End());}
-	Mesh::iteratorCell    Mesh::BeginCell()                     {return static_cast<iteratorCell>(Begin(CELL));}
-	Mesh::iteratorCell    Mesh::EndCell()                       {return static_cast<iteratorCell>(End());}
-	Mesh::iteratorFace    Mesh::BeginFace()                     {return static_cast<iteratorFace>(Begin(FACE));}
-	Mesh::iteratorFace    Mesh::EndFace()                       {return static_cast<iteratorFace>(End());}
-	Mesh::iteratorEdge    Mesh::BeginEdge()                     {return static_cast<iteratorEdge>(Begin(EDGE));}
-	Mesh::iteratorEdge    Mesh::EndEdge()                       {return static_cast<iteratorEdge>(End());}
-	Mesh::iteratorNode    Mesh::BeginNode()                     {return static_cast<iteratorNode>(Begin(NODE));}
-	Mesh::iteratorNode    Mesh::EndNode()                       {return static_cast<iteratorNode>(End());}	
+	Mesh::iteratorStorage Mesh::Begin(ElementType Types)        {return base_iterator<Storage>(Types,this,false);}
+	Mesh::iteratorStorage Mesh::End()                           {return base_iterator<Storage>(this);}
+	Mesh::iteratorElement Mesh::BeginElement(ElementType Types) {return base_iterator<Element>(Types & (NODE | EDGE | FACE | CELL),this,false);}
+	Mesh::iteratorElement Mesh::EndElement()                    {return base_iterator<Element>(this);}
+	Mesh::iteratorSet     Mesh::BeginSet()                      {return base_iterator<ElementSet>(ESET,this,false);}
+	Mesh::iteratorSet     Mesh::EndSet()                        {return base_iterator<ElementSet>(this);}
+	Mesh::iteratorCell    Mesh::BeginCell()                     {return base_iterator<Cell>(CELL,this,false);}
+	Mesh::iteratorCell    Mesh::EndCell()                       {return base_iterator<Cell>(this);}
+	Mesh::iteratorFace    Mesh::BeginFace()                     {return base_iterator<Face>(FACE,this,false);}
+	Mesh::iteratorFace    Mesh::EndFace()                       {return base_iterator<Face>(this);}
+	Mesh::iteratorEdge    Mesh::BeginEdge()                     {return base_iterator<Edge>(EDGE,this,false);}
+	Mesh::iteratorEdge    Mesh::EndEdge()                       {return base_iterator<Edge>(this);}
+	Mesh::iteratorNode    Mesh::BeginNode()                     {return base_iterator<Node>(NODE,this,false);}
+	Mesh::iteratorNode    Mesh::EndNode()                       {return base_iterator<Node>(this);}
+
+	//all possible templates
+	template class Mesh::base_iterator<Element>;
+	template class Mesh::base_iterator<Node>;
+	template class Mesh::base_iterator<Edge>;
+	template class Mesh::base_iterator<Face>;
+	template class Mesh::base_iterator<Cell>;
+	template class Mesh::base_iterator<Storage>;
 }
 #endif

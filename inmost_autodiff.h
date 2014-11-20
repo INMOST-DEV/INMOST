@@ -86,21 +86,21 @@ namespace INMOST
 	class Automatizator
 	{
 	public:
-		typedef INMOST_DATA_REAL_TYPE(*func_callback)(Storage * current_element, void * user_data);
-		typedef std::pair<Storage *, INMOST_DATA_REAL_TYPE> stencil_pair;
+		typedef INMOST_DATA_REAL_TYPE(*func_callback)(const Storage & current_element, void * user_data);
+		typedef std::pair<HandleType, INMOST_DATA_REAL_TYPE> stencil_pair;
 		typedef dynarray<stencil_pair, 64> stencil_pairs;
-		typedef void(*stencil_callback)(Storage * current_element, stencil_pairs & out_stencil, void * user_data);
+		typedef void(*stencil_callback)(const Storage & current_element, stencil_pairs & out_stencil, void * user_data);
 	private:
 		typedef struct{ Tag t; MarkerType domain_mask; } tagdomain;
-		typedef small_hash<INMOST_DATA_ENUM_TYPE, tagdomain, 128> const_tag_type;
+		typedef dynarray<tagdomain, 128> const_tag_type;
 		typedef struct{ tagdomain d; Tag indices; } tagpair;
-		typedef small_hash<INMOST_DATA_ENUM_TYPE, tagpair, 128> tagpairs_type;
+		typedef dynarray<tagpair, 128> tagpairs_type;
 		typedef std::vector<tagpair> index_enum;
 		typedef struct { Tag elements, coefs; } stencil_tag;
 		typedef struct { std::string name; INMOST_DATA_ENUM_TYPE kind; MarkerType domainmask; void * link; } stencil_kind_domain;
-		typedef small_hash<INMOST_DATA_ENUM_TYPE, stencil_kind_domain, 128> stencil_type;
+		typedef dynarray<stencil_kind_domain, 128> stencil_type;
 		typedef struct func_name_callback_t { std::string name; func_callback func; } func_name_callback;
-		typedef small_hash<INMOST_DATA_ENUM_TYPE, func_name_callback, 128> func_type;
+		typedef dynarray<func_name_callback, 128> func_type;
 	public:
 		typedef struct
 		{
@@ -116,63 +116,63 @@ namespace INMOST
 		typedef table * table_ptr;
 	private:
 		typedef dynarray<INMOST_DATA_REAL_TYPE, 128> values_container;
-		typedef small_hash<INMOST_DATA_ENUM_TYPE, table_ptr, 32> table_type;
-		const_tag_type reg_ctags;
-		index_enum index_tags;
-		tagpairs_type reg_tags;
-		table_type reg_tables;
-		stencil_type reg_stencils;
-		func_type reg_funcs;
+		typedef dynarray<table_ptr, 32>              table_type;
+		const_tag_type        reg_ctags;
+		index_enum            index_tags;
+		tagpairs_type         reg_tags;
+		table_type            reg_tables;
+		stencil_type          reg_stencils;
+		func_type             reg_funcs;
 		INMOST_DATA_ENUM_TYPE first_num;
 		INMOST_DATA_ENUM_TYPE last_num;
 		Mesh * m;
 #if defined(NEW_VERSION)
-		void DerivativeFill(expr & var, INMOST_DATA_ENUM_TYPE element, INMOST_DATA_ENUM_TYPE parent, Solver::Row & entries, INMOST_DATA_REAL_TYPE multval, void * user_data);
-		INMOST_DATA_REAL_TYPE EvaluateSub(expr & var,INMOST_DATA_ENUM_TYPE element,INMOST_DATA_ENUM_TYPE parent, void * user_data);
+		INMOST_DATA_REAL_TYPE                                            EvaluateSub(expr & var,INMOST_DATA_ENUM_TYPE element,INMOST_DATA_ENUM_TYPE parent, void * user_data);
+		void                                                             DerivativeFill(expr & var, INMOST_DATA_ENUM_TYPE element, INMOST_DATA_ENUM_TYPE parent, Solver::Row & entries, INMOST_DATA_REAL_TYPE multval, void * user_data);
 #else
-		INMOST_DATA_REAL_TYPE DerivativePrecompute(const expr & var, Storage * e, precomp_values_t & values, void * user_data);
-		void DerivativeFill(const expr & var, Storage * e, Solver::Row & entries, precomp_values_t & values, INMOST_DATA_REAL_TYPE multval, void * user_data);
+		INMOST_DATA_REAL_TYPE                                            DerivativePrecompute(const expr & var, const Storage & e, precomp_values_t & values, void * user_data);
+		void                                                             DerivativeFill(const expr & var, const Storage & e, Solver::Row & entries, precomp_values_t & values, INMOST_DATA_REAL_TYPE multval, void * user_data);
 #endif
 	public:
 		Automatizator(Mesh * m);
 		~Automatizator();
-		__INLINE INMOST_DATA_ENUM_TYPE GetFirstIndex() { return first_num; }
-		__INLINE INMOST_DATA_ENUM_TYPE GetLastIndex() { return last_num; }
-		INMOST_DATA_ENUM_TYPE RegisterFunc(std::string name, func_callback func);
-		INMOST_DATA_ENUM_TYPE RegisterStencil(std::string name, Tag elements_tag, Tag coefs_tag, MarkerType domain_mask = 0);
-		INMOST_DATA_ENUM_TYPE RegisterStencil(std::string name, stencil_callback func, MarkerType domain_mask = 0);
-		INMOST_DATA_ENUM_TYPE RegisterTable(std::string name, INMOST_DATA_REAL_TYPE * Arguments, INMOST_DATA_REAL_TYPE * Values, INMOST_DATA_ENUM_TYPE size);
-		INMOST_DATA_ENUM_TYPE RegisterDynamicTag(Tag t, ElementType typemask, MarkerType domain_mask = 0);
-		INMOST_DATA_ENUM_TYPE RegisterStaticTag(Tag t, MarkerType domain_mask = 0);
-		void EnumerateDynamicTags();
-		__INLINE Tag                 GetDynamicValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.t; }
-		__INLINE Tag                 GetDynamicIndexTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].indices; }
-		__INLINE MarkerType             GetDynamicMask(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.domain_mask; }
-		__INLINE Tag                 GetStaticValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_ctags[ind].t; }
-		__INLINE MarkerType             GetStaticMask(INMOST_DATA_ENUM_TYPE ind) { return reg_ctags[ind].domain_mask; }
-		__INLINE INMOST_DATA_REAL_TYPE GetDynamicValue(Storage * e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetDynamicValueTag(ind))[comp]; }
-		__INLINE INMOST_DATA_ENUM_TYPE GetDynamicIndex(Storage * e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetDynamicIndexTag(ind))[comp]; }
-		__INLINE bool                isDynamicValid(Storage * e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetDynamicMask(ind); return mask == 0 || e->GetMarker(mask); }
-		__INLINE INMOST_DATA_REAL_TYPE GetStaticValue(Storage * e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetStaticValueTag(ind))[comp]; }
-		__INLINE bool                isStaticValid(Storage * e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetStaticMask(ind); return mask == 0 || e->GetMarker(mask); }
+		__INLINE INMOST_DATA_ENUM_TYPE                                   GetFirstIndex() { return first_num; }
+		__INLINE INMOST_DATA_ENUM_TYPE                                   GetLastIndex() { return last_num; }
+		INMOST_DATA_ENUM_TYPE                                            RegisterFunc(std::string name, func_callback func);
+		INMOST_DATA_ENUM_TYPE                                            RegisterStencil(std::string name, Tag elements_tag, Tag coefs_tag, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE                                            RegisterStencil(std::string name, stencil_callback func, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE                                            RegisterTable(std::string name, INMOST_DATA_REAL_TYPE * Arguments, INMOST_DATA_REAL_TYPE * Values, INMOST_DATA_ENUM_TYPE size);
+		INMOST_DATA_ENUM_TYPE                                            RegisterDynamicTag(Tag t, ElementType typemask, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE                                            RegisterStaticTag(Tag t, MarkerType domain_mask = 0);
+		void                                                             EnumerateDynamicTags();
+		__INLINE Tag                                                     GetDynamicValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind-AD_TAG].d.t; }
+		__INLINE Tag                                                     GetDynamicIndexTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind-AD_TAG].indices; }
+		__INLINE MarkerType                                              GetDynamicMask(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind-AD_TAG].d.domain_mask; }
+		__INLINE Tag                                                     GetStaticValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_ctags[ind-AD_CTAG].t; }
+		__INLINE MarkerType                                              GetStaticMask(INMOST_DATA_ENUM_TYPE ind) { return reg_ctags[ind-AD_CTAG].domain_mask; }
+		__INLINE INMOST_DATA_REAL_TYPE                                   GetDynamicValue(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetDynamicValueTag(ind))[comp]; }
+		__INLINE INMOST_DATA_ENUM_TYPE                                   GetDynamicIndex(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetDynamicIndexTag(ind))[comp]; }
+		__INLINE bool                                                    isDynamicValid(const Storage & e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetDynamicMask(ind); return mask == 0 || e->GetMarker(mask); }
+		__INLINE INMOST_DATA_REAL_TYPE                                   GetStaticValue(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetStaticValueTag(ind))[comp]; }
+		__INLINE bool                                                    isStaticValid(const Storage & e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetStaticMask(ind); return mask == 0 || e->GetMarker(mask); }
 #if defined(NEW_VERSION)
-		INMOST_DATA_REAL_TYPE Evaluate(expr & var, Storage * e, void * user_data);
-		INMOST_DATA_REAL_TYPE Derivative(expr & var, Storage * e, Solver::Row & out, Storage::real multiply, void * user_data);
+		INMOST_DATA_REAL_TYPE                                            Evaluate(expr & var, const const Storage & e, void * user_data);
+		INMOST_DATA_REAL_TYPE                                            Derivative(expr & var, const Storage & e, Solver::Row & out, Storage::real multiply, void * user_data);
 #else
-		INMOST_DATA_REAL_TYPE Evaluate(const expr & var, Storage * e, void * user_data);
-		INMOST_DATA_REAL_TYPE Derivative(const expr & var, Storage * e, Solver::Row & out, Storage::real multiply,  void * user_data);
+		INMOST_DATA_REAL_TYPE                                            Evaluate(const expr & var, const Storage & e, void * user_data);
+		INMOST_DATA_REAL_TYPE                                            Derivative(const expr & var, const Storage & e, Solver::Row & out, Storage::real multiply,  void * user_data);
 #endif
-		__INLINE INMOST_DATA_REAL_TYPE                                   GetIndex(Storage * e, INMOST_DATA_ENUM_TYPE tagind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetDynamicIndexTag(tagind))[comp]; }
-		__INLINE INMOST_DATA_ENUM_TYPE                                   GetComponents(Storage *e, INMOST_DATA_ENUM_TYPE tagind) { return static_cast<INMOST_DATA_ENUM_TYPE>(e->IntegerArray(GetDynamicIndexTag(tagind)).size()); }
+		__INLINE INMOST_DATA_REAL_TYPE                                   GetIndex(const Storage & e, INMOST_DATA_ENUM_TYPE tagind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetDynamicIndexTag(tagind))[comp]; }
+		__INLINE INMOST_DATA_ENUM_TYPE                                   GetComponents(const Storage & e, INMOST_DATA_ENUM_TYPE tagind) { return static_cast<INMOST_DATA_ENUM_TYPE>(e->IntegerArray(GetDynamicIndexTag(tagind)).size()); }
 		__INLINE Mesh *                                                  GetMesh() { return m; }
-		__INLINE INMOST_DATA_REAL_TYPE *                                 GetTableArguments(INMOST_DATA_ENUM_TYPE tableind) {return reg_tables[tableind]->args;}
-		__INLINE INMOST_DATA_REAL_TYPE *                                 GetTableValues(INMOST_DATA_ENUM_TYPE tableind) {return reg_tables[tableind]->vals;}
-		__INLINE INMOST_DATA_ENUM_TYPE                                   GetTableSize(INMOST_DATA_ENUM_TYPE tableind) {return reg_tables[tableind]->size;}
-		__INLINE INMOST_DATA_REAL_TYPE                                   GetTableValue(INMOST_DATA_ENUM_TYPE tableind, INMOST_DATA_REAL_TYPE arg) { return reg_tables[tableind]->get_value(arg); }
-		__INLINE INMOST_DATA_REAL_TYPE                                   GetTableDerivative(INMOST_DATA_ENUM_TYPE tableind, INMOST_DATA_REAL_TYPE arg) { return reg_tables[tableind]->get_derivative(arg); }
-		__INLINE std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> GetTableBoth(INMOST_DATA_ENUM_TYPE tableind, INMOST_DATA_REAL_TYPE arg) { return reg_tables[tableind]->get_both(arg); }
-		INMOST_DATA_ENUM_TYPE                                            GetStencil(INMOST_DATA_ENUM_TYPE stnclind, Storage * elem, void * user_data, stencil_pairs & ret);
-		__INLINE INMOST_DATA_REAL_TYPE GetFunction(INMOST_DATA_ENUM_TYPE funcid, Storage * elem, void * user_data) { return reg_funcs[funcid].func(elem, user_data); }
+		__INLINE INMOST_DATA_REAL_TYPE *                                 GetTableArguments(INMOST_DATA_ENUM_TYPE tableind) {return reg_tables[tableind-AD_TABLE]->args;}
+		__INLINE INMOST_DATA_REAL_TYPE *                                 GetTableValues(INMOST_DATA_ENUM_TYPE tableind) {return reg_tables[tableind-AD_TABLE]->vals;}
+		__INLINE INMOST_DATA_ENUM_TYPE                                   GetTableSize(INMOST_DATA_ENUM_TYPE tableind) {return reg_tables[tableind-AD_TABLE]->size;}
+		__INLINE INMOST_DATA_REAL_TYPE                                   GetTableValue(INMOST_DATA_ENUM_TYPE tableind, INMOST_DATA_REAL_TYPE arg) { return reg_tables[tableind-AD_TABLE]->get_value(arg); }
+		__INLINE INMOST_DATA_REAL_TYPE                                   GetTableDerivative(INMOST_DATA_ENUM_TYPE tableind, INMOST_DATA_REAL_TYPE arg) { return reg_tables[tableind-AD_TABLE]->get_derivative(arg); }
+		__INLINE std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> GetTableBoth(INMOST_DATA_ENUM_TYPE tableind, INMOST_DATA_REAL_TYPE arg) { return reg_tables[tableind-AD_TABLE]->get_both(arg); }
+		INMOST_DATA_ENUM_TYPE                                            GetStencil(INMOST_DATA_ENUM_TYPE stnclind, const Storage & elem, void * user_data, stencil_pairs & ret);
+		__INLINE INMOST_DATA_REAL_TYPE                                   GetFunction(INMOST_DATA_ENUM_TYPE funcid, const Storage & elem, void * user_data) { return reg_funcs[funcid-AD_FUNC].func(elem, user_data); }
 	};
 
 #if defined(NEW_VERSION)

@@ -19,7 +19,7 @@
 //#define USE_SOLVER_ANI
 
 #define USE_AUTODIFF
-#define USE_AUTODIFF_ASMJIT
+//#define USE_AUTODIFF_ASMJIT
 //#define USE_AUTODIFF_OPENCL
 //#define USE_AUTODIFF_EXPRESSION_TEMPLATES
 
@@ -28,17 +28,22 @@
 #endif //INMOST_OPTIONS_CMAKE_INCLUDED
 
 
-
-#define USE_QSORT //use qsort instead of std::sort
+// a very expensive check for debug purposes, 
+// when you release marker checks all the elements
+// that no element is marked by released marker
+//#define CHECKS_MARKERS 
+// use additional sets to store elements for parallel
+// exchanges, otherwise it will recompute those elements
+// which is quite expensive
 #define USE_PARALLEL_STORAGE
+// output xml files for debugging of parallel algorithms
+// search for style.xsl within examples for comfortable
+// view of generated xml files
 #define USE_PARALLEL_WRITE_TIME
-
-
-#define USE_COMPARE CompareElementsPointer
-//#define USE_COMPARE CompareElementsCentroid
-//#define USE_COMPARE CompareElementsUnique
-//#define USE_COMPARE CompareElementsHybrid
-
+// this will revert Mesh::PrepareReceiveInner to always
+// use MPI-2 functionality disregarding problem type
+// read comments in Mesh::SetParallelStrategy for more info
+//#define PREFFER_MPI2
 
 #define __INLINE inline
 
@@ -88,7 +93,8 @@
 #define INMOST_MPI_Win         MPI_Win
 #endif
 
-	
+#define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warning
+
 #define INMOST_DATA_INTEGER_TYPE  int           
 #define INMOST_DATA_REAL_TYPE     double        
 #define INMOST_DATA_BULK_TYPE     unsigned char //this should be one byte long
@@ -111,8 +117,9 @@
 /// Cross-platform timer that return current time in seconds.
 /// The timer is similar to MPI_Wtime() and omp_get_wtime() but is independent on both flags USE_MPI and USE_OMP.
 ///
-/// double seconds = Timer(); @n
-/// ...some code... @n
+/// double seconds = Timer();
+/// ...some code...
+/// seconds = Timer() - seconds;
 /// std::cout << "Time spent is " << seconds << " seconds." << std::endl;
 long double Timer();
 

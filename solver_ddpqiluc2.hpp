@@ -306,7 +306,7 @@ public:
 		
 		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next, mi, mj;
 		INMOST_DATA_REAL_TYPE l,u,udiag, max_diag, min_diag, mean_diag;
-		INMOST_DATA_ENUM_TYPE nzA, nzS, nzA2, nzLU = 0, nzEF = 0, nzL, nzU;
+		INMOST_DATA_ENUM_TYPE nzA, nzLU = 0, nzEF = 0, nzL;
 		Solver::Vector DL, DR;
 		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
 		
@@ -589,8 +589,8 @@ public:
 			for (k = cbeg; k < cend; ++k)
 			{
 				LU_Diag[k] = 0;
-				F_Address[k].first = F_Entries.size();
-				B_Address[k].first = B_Entries.size();
+				F_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(F_Entries.size());
+				B_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
 				for (INMOST_DATA_ENUM_TYPE jt = A_Address[invP[k]].first; jt != A_Address[invP[k]].last; ++jt)
 				{
 					i = localQ[A_Entries[jt].first];
@@ -598,8 +598,8 @@ public:
 					if (i < cend) B_Entries.push_back(Solver::Row::entry(i, u));
 					else F_Entries.push_back(Solver::Row::entry(i,u)); //count nonzero in column of F
 				}
-				F_Address[k].last = F_Entries.size();
-				B_Address[k].last = B_Entries.size();
+				F_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(F_Entries.size());
+				B_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
 				std::sort(B_Entries.begin() + B_Address[k].first, B_Entries.end());
 				std::sort(F_Entries.begin() + F_Address[k].first, F_Entries.end());
 				nzEF += F_Address[k].Size();
@@ -628,8 +628,8 @@ public:
 			C_Entries.clear();
 			for (k = cend; k < wend; ++k)
 			{
-				E_Address.back()->at(k).first = E_Entries.size();
-				C_Address[k].first = C_Entries.size();
+				E_Address.back()->at(k).first = static_cast<INMOST_DATA_ENUM_TYPE>(E_Entries.size());
+				C_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(C_Entries.size());
 				for (INMOST_DATA_ENUM_TYPE jt = A_Address[invP[k]].first; jt != A_Address[invP[k]].last; ++jt)
 				{
 					i = localQ[A_Entries[jt].first];
@@ -637,8 +637,8 @@ public:
 					if (i < cend) E_Entries.push_back(Solver::Row::entry(i, u)); //put to row of E
 					else C_Entries.push_back(Solver::Row::entry(i, u)); //form new Schur complement
 				}
-				E_Address.back()->at(k).last = E_Entries.size();
-				C_Address[k].last = C_Entries.size();
+				E_Address.back()->at(k).last = static_cast<INMOST_DATA_ENUM_TYPE>(E_Entries.size());
+				C_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(C_Entries.size());
 				// sort entries added to E, because it will be very usefull later
 				std::sort(E_Entries.begin() + E_Address.back()->at(k).first, E_Entries.end());
 				nzEF += E_Address.back()->at(k).Size();
@@ -744,19 +744,19 @@ public:
 					LU_Diag[cbeg] = LU_Diag[cbeg] * (1.0 + DIAGONAL_PERTURBATION_REL) + (LU_Diag[cbeg] < 0.0 ? -1.0 : 1.0)*DIAGONAL_PERTURBATION_ABS;
 				}
 #endif
-				LU_Beg = LU_Entries.size();
+				LU_Beg = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 				U_Address[cbeg].first = LU_Beg;
 				for (INMOST_DATA_ENUM_TYPE r = B_Address[cbeg].first + (B_Entries[B_Address[cbeg].first].first == cbeg ? 1 : 0); r != B_Address[cbeg].last; ++r) 
 					LU_Entries.push_back(Solver::Row::entry(B_Entries[r].first, B_Entries[r].second / LU_Diag[cbeg]));
-				L_Address[cbeg].first = LU_Entries.size();
-				U_Address[cbeg].last = LU_Entries.size();
+				L_Address[cbeg].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
+				U_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 				Li = Bbeg[cbeg];
 				while (Li != EOL)
 				{
 					LU_Entries.push_back(Solver::Row::entry(Li, B_Entries[B_Address[Li].first].second / LU_Diag[cbeg]));
 					Li = Blist[Li];
 				}
-				L_Address[cbeg].last = LU_Entries.size();
+				L_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 				//update diagonal by factors
 				i = U_Address[cbeg].first;
 				j = L_Address[cbeg].first;
@@ -1109,7 +1109,7 @@ public:
 
 						i = L2list[i];
 					}
-					U2_Address[k].first = LU2_Entries.size();
+					U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
 					//std::cout << std::endl;
 					//define the diagonal value
@@ -1167,7 +1167,7 @@ public:
 						NuU = std::max(NuU_old,NuU);
 					}
 					//insert line to U part
-					U_Address[k].first = LU_Entries.size();
+					U_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					Ui = LineIndeces[k];
 					while (Ui != EOL)
 					{
@@ -1180,7 +1180,7 @@ public:
 #endif
 						Ui = LineIndeces[Ui];
 					}
-					U_Address[k].last = LU_Entries.size();
+					U_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 
 					//Clean after use
 					Ui = cbeg;
@@ -1199,7 +1199,7 @@ public:
 						Ubeg[i] = k;
 					}
 #if defined(ILUC2)
-					U2_Address[k].last = LU2_Entries.size();
+					U2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 					if (U2_Address[k].Size() != 0)
 					{
 						i = LU2_Entries[U2_Address[k].first].first;
@@ -1336,7 +1336,7 @@ public:
 						}
 						i = U2list[i];
 					}
-					L2_Address[k].first = LU2_Entries.size();
+					L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
 					//check that diagonal value is the same(must be!)
 					//assert(fabs(LineValues[k] / udiag - 1.0) < 1.0e-10);
@@ -1385,7 +1385,7 @@ public:
 					}
 					//insert column to L part
 					Li = LineIndeces[k];
-					L_Address[k].first = LU_Entries.size();
+					L_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					while (Li != EOL)
 					{
 						u = fabs(LineValues[Li]);
@@ -1397,7 +1397,7 @@ public:
 #endif
 						Li = LineIndeces[Li];
 					}
-					L_Address[k].last = LU_Entries.size();
+					L_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					Li = cbeg;
 					while (Li != EOL)
 					{
@@ -1414,7 +1414,7 @@ public:
 						Lbeg[i] = k;
 					}
 #if defined(ILUC2)
-					L2_Address[k].last = LU2_Entries.size();
+					L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 					if (L2_Address[k].Size() != 0)
 					{
 						i = LU2_Entries[L2_Address[k].first].first;
@@ -1817,14 +1817,14 @@ public:
 					
 					//Assemble column into matrix
 					Li = LineIndeces[cbeg];
-					LF_Address[i].first = LF_Entries.size();
+					LF_Address[i].first = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
 					while (Li != EOL)
 					{
 						if (fabs(LineValues[Li - 1]) > std::min(tau/NuU,tau2) )
 							LF_Entries.push_back(Solver::Row::entry(Li - 1, LineValues[Li - 1]));
 						Li = LineIndeces[Li];
 					}
-					LF_Address[i].last = LF_Entries.size();
+					LF_Address[i].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
 					//Clean after use
 					Li = LineIndeces[cbeg];
 					while (Li != EOL)
@@ -1898,10 +1898,10 @@ public:
 				{
 					if (E_Address.back()->at(i).Size() == 0) //iterate over rows of E
 					{
-						S_Address[i].first = S_Entries.size();
+						S_Address[i].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 						for (k = C_Address[i].first; k < C_Address[i].last; k++)
 							S_Entries.push_back(C_Entries[k]);
-						S_Address[i].last = S_Entries.size();
+						S_Address[i].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 						continue;
 					}
 					double tt0, tt1, tt2;
@@ -2041,7 +2041,7 @@ public:
 					Snorm = sqrt(Snorm/Snum);
 					//insert obtained row
 					Ui = Ubeg[cbeg];
-					S_Address[i].first = S_Entries.size();
+					S_Address[i].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 					while (Ui != EOL)
 					{
 						//drop values
@@ -2050,7 +2050,7 @@ public:
 							S_Entries.push_back(Solver::Row::entry(Ui, temp[Ui]));
 						Ui = Ulist[Ui];
 					}
-					S_Address[i].last = S_Entries.size();
+					S_Address[i].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 					//clean after use
 					Ui = Ubeg[cbeg];
 					while (Ui != EOL)
@@ -2287,7 +2287,7 @@ public:
 				for (i = 0; i < size; i++)
 				{
 					LU_Diag[wbeg + i] = entries[ADDR(i, i)];
-					U_Address[wbeg + i].first = LU_Entries.size();
+					U_Address[wbeg + i].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					for (j = i + 1; j < size; j++)
 					{
 						if (fabs(entries[ADDR(i, j)]) > tau / std::max(1.0, NuU))
@@ -2295,8 +2295,8 @@ public:
 							LU_Entries.push_back(Solver::Row::entry(j + wbeg, entries[ADDR(i, j)])); //Add to U
 						}
 					}
-					U_Address[wbeg + i].last = LU_Entries.size();
-					L_Address[wbeg + i].first = LU_Entries.size();
+					U_Address[wbeg + i].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
+					L_Address[wbeg + i].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					for (j = i + 1; j < size; j++)
 					{
 						if (fabs(entries[ADDR(j, i)]) > tau / std::max(1.0, NuL))
@@ -2304,7 +2304,7 @@ public:
 							LU_Entries.push_back(Solver::Row::entry(j + wbeg, entries[ADDR(j, i)])); //Add to L
 						}
 					}
-					L_Address[wbeg + i].last = LU_Entries.size();
+					L_Address[wbeg + i].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					nzLU += 1 + L_Address[wbeg + i].Size() + U_Address[wbeg + i].Size();
 				}
 				delete[] entries;
@@ -2398,15 +2398,6 @@ public:
 			for (m = B_Address[k].first; m < B_Address[k].last; ++m)
 				output[k] += input[B_Entries[m].first] * B_Entries[m].second;
 		}
-	}
-	void Precondition(int level, Solver::Vector & input, Solver::Vector & output)
-	{
-		INMOST_DATA_ENUM_TYPE k,cbeg,cend;
-		cbeg = level_interval[level].first;
-		cend = level_interval[level].last;
-		for (k = cbeg; k < cend; ++k) output[k] = input[k];
-		while (k < level_size.size()) k = Descend(k, output, output);
-		while (k > level) k = Ascend(k, output, output);
 	}
 	int Descend(int level, Solver::Vector & input, Solver::Vector & output)
 	{

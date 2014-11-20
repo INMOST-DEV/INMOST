@@ -246,10 +246,10 @@ namespace INMOST
 	
 	class functor_LessOrder
 	{
-	private: Tag order;
+	private: Tag order; Mesh * m;
 	public:
-		functor_LessOrder(Tag order):order(order){}
-		bool operator()(Element * a, Element * b){return a->Integer(order) < b->Integer(order);}
+		functor_LessOrder(Mesh * m, Tag order):m(m),order(order){}
+		bool operator()(HandleType a,HandleType b){return m->Integer(a,order) < m->Integer(b,order);}
 	};
 	
 	void Partitioner::Evaluate()
@@ -301,42 +301,56 @@ namespace INMOST
 			
 			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 			{
-				adjacent<Face> f = it->getFaces();
-				for(adjacent<Face>::iterator jt = f.begin(); jt != f.end(); ++jt)
+				ElementArray<Face> f = it->getFaces();
+				for(ElementArray<Face>::iterator jt = f.begin(); jt != f.end(); ++jt)
 					if( !jt->Boundary() ) it->Integer(order)++;
 			}
 			
 			Storage::integer visited = 1;
 			Storage::integer chunk = m->NumberOfCells() / mpisize + 1;
-			std::deque<Cell *> queue;
-			adjacent<Element> around;
-			Cell * select;
+			std::deque<HandleType> queue;
+			ElementArray<Element> around(m);
+			HandleType select;
 			while(visited != static_cast<Storage::integer>(m->NumberOfCells()+1) )
 			{
-				select = NULL;
+				select = InvalidHandle();
+				Mesh::iteratorCell halt_it;
 				for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 				{
 					if( it->Integer(index) == 0 )
 					{
-						if( select == NULL ) select = &*it;
-						if( it->Integer(order) < select->Integer(order) ) 
-							select = &*it;
+						select = *it;
+						halt_it = it;
+						break;
 					}
 				}
-				if( select == NULL ) break;
+				if( select == InvalidHandle() ) break;
+				Storage::integer sorder = m->Integer(select,order);
+				for(Mesh::iteratorCell it = halt_it; it != m->EndCell(); ++it)
+				{
+					if( it->Integer(index) == 0 )
+					{
+						Storage::integer norder = it->Integer(order);
+						if( norder < sorder ) 
+						{
+							select = *it;
+							sorder = norder;
+						}
+					}
+				}
 				queue.push_back(select);
-				queue.back()->Integer(index) = visited++;
+				m->Integer(queue.back(),index) = visited++;
 				while(!queue.empty())
 				{
-					around = queue.front()->BridgeAdjacencies(FACE,CELL);
+					around = Cell(m,queue.front())->BridgeAdjacencies(FACE,CELL);
 					queue.pop_front();
-					std::sort(around.data(),around.data()+around.size(),functor_LessOrder(order));
-					for(adjacent<Element>::iterator it = around.begin(); it != around.end(); ++it)
+					std::sort(around.data(),around.data()+around.size(),functor_LessOrder(m,order));
+					for(ElementArray<Element>::iterator it = around.begin(); it != around.end(); ++it)
 					{
 						if( it->Integer(index) == 0 )
 						{
-							queue.push_back(it->getAsCell());
-							queue.back()->Integer(index) = visited++;
+							queue.push_back(*it);
+							m->Integer(queue.back(),index) = visited++;
 						}
 					}
 					if( visited % chunk == 0 ) queue.clear();

@@ -3,199 +3,190 @@
 namespace INMOST
 {
 	
-	Face::Face(Mesh * m)
-	:Element(m,FACE)
-	{
-	}
-
-	Face::Face(Mesh * m,INMOST_DATA_ENUM_TYPE lid, const Face & other)
-	:Element(m,lid,other)
-	{
-	}
 	
-	Face::Face(const Face & other)
-	:Element(other)
-	{
-	}
 	
-	Face & Face::operator =(Face const & other)
+	Cell Face::BackCell() const
 	{
-		Element::operator =(other);
-		return *this;
-	}
-	
-	Face::~Face()
-	{
-	}
-	
-	Cell * Face::BackCell() const
-	{
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
 		if( !GetMeshLink()->HideMarker() )
 		{
-			adj_type const & hc = HighConn();
+			adj_type const & hc = m->HighConn(GetHandle());
 			if( hc.size() > 0 ) 
-				return hc[0]->getAsCell(); 
-			return NULL;
+				return Cell(m,hc[0]); 
+			return Cell(m,InvalidHandle());
 		}
 		else
 		{
-			adj_type const & hc = HighConn();
+			adj_type const & hc = m->HighConn(GetHandle());
 			if( !hc.empty() )
 			{
-				INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-				MarkerType hm = GetMeshLink()->HideMarker();
-				i = Mesh::getNext(hc.data(),hc.size(),i,hm);
-				if( i != hc.size() ) return hc[i]->getAsCell();
+				integer i = -1;
+				MarkerType hm = m->HideMarker();
+				i = m->getNext(hc.data(),static_cast<integer>(hc.size()),i,hm);
+				if( i != hc.size() ) return Cell(m,hc[i]);
 			}
-			return NULL;
+			return Cell(m,InvalidHandle());
 		}
 	}
-	Cell * Face::FrontCell() const
+	Cell Face::FrontCell() const
 	{
-		if( !GetMeshLink()->HideMarker() )
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
+		if( !m->HideMarker() )
 		{
-			adj_type const & hc = HighConn();
+			adj_type const & hc = m->HighConn(GetHandle());
 			if( hc.size() > 1 ) 
-				return hc[1]->getAsCell(); 
-			return NULL;
+				return Cell(m,hc[1]); 
+			return Cell(m,InvalidHandle());
 		}
 		else
 		{
-			adj_type const & hc = HighConn();
+			adj_type const & hc = m->HighConn(GetHandle());
 			if( !hc.empty() )
 			{
-				INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-				MarkerType hm = GetMeshLink()->HideMarker();
-				i = Mesh::getNext(&hc[0],hc.size(),i,hm); //found first
-				i = Mesh::getNext(&hc[0],hc.size(),i,hm); //found second
-				if( i != hc.size() ) return hc[i]->getAsCell();
+				integer i = -1;
+				MarkerType hm = m->HideMarker();
+				i = m->getNext(hc.data(),static_cast<integer>(hc.size()),i,hm); //found first
+				i = m->getNext(hc.data(),static_cast<integer>(hc.size()),i,hm); //found second
+				if( i != hc.size() ) return Cell(m,hc[i]);
 			}
-			return NULL;
+			return Cell(m,InvalidHandle());
 		}
 	}
 
-	Node * Face::getBeg() const 
+	Node Face::getBeg() const 
 	{
+		assert(GetHandleElementType(GetHandle())==FACE);
 		assert(GetElementDimension()==1);
-		if( !GetMeshLink()->HideMarker() )
+		Mesh * m = GetMeshLink();
+		if( !m->HideMarker() )
 		{
-			adj_type const & lc = LowConn();
+			adj_type const & lc = m->LowConn(GetHandle());
 			if( lc.empty() )
-				return NULL;
-			return lc.front()->LowConn().front()->getAsNode();
+				return Node(m,InvalidHandle());
+			return Node(m,m->LowConn(lc.front()).front());
 		}
 		else
 		{
-			adj_type const & lc = LowConn();
+			adj_type const & lc = m->LowConn(GetHandle());
 			if( !lc.empty() )
 			{
-				INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-				MarkerType hm = GetMeshLink()->HideMarker();
-				i = Mesh::getNext(lc.data(),lc.size(),i,hm);
+				integer i = -1;
+				MarkerType hm = m->HideMarker();
+				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
 				if( i != lc.size() ) 
 				{
-					adj_type const & llc = lc[i]->LowConn();
-					INMOST_DATA_ENUM_TYPE j = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-					j = Mesh::getNext(llc.data(),llc.size(),j,hm);
-					if( j != llc.size() ) return llc[j]->getAsNode();
+					adj_type const & llc = m->LowConn(lc[i]);
+					integer j = -1;
+					j = m->getNext(llc.data(),static_cast<integer>(llc.size()),j,hm);
+					if( j != llc.size() ) return Node(m,llc[j]);
 				}
 			}
-			return NULL;
+			return Node(m,InvalidHandle());
 		}
 	}
-	Node * Face::getEnd() const 
+	Node Face::getEnd() const 
 	{
+		assert(GetHandleElementType(GetHandle())==FACE);
 		assert(GetElementDimension()==1);
-		if( !GetMeshLink()->HideMarker() )
+		Mesh * m = GetMeshLink();
+		if( !m->HideMarker() )
 		{
-			adj_type const & lc = LowConn();
+			adj_type const & lc = m->LowConn(GetHandle());
 			if( lc.size() < 2 )
-				return NULL;
-			return lc.back()->LowConn().front()->getAsNode();
+				return Node(m,InvalidHandle());
+			return Node(m,m->LowConn(lc.back()).front());
 		}
 		else
 		{
-			adj_type const & lc = LowConn();
+			adj_type const & lc = m->LowConn(GetHandle());
 			if( !lc.empty() )
 			{
-				INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-				MarkerType hm = GetMeshLink()->HideMarker();
-				i = Mesh::getNext(lc.data(),lc.size(),i,hm);
-				i = Mesh::getNext(lc.data(),lc.size(),i,hm);
+				integer i = -1;
+				MarkerType hm = m->HideMarker();
+				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
 				if( i != lc.size() ) 
 				{
-					adj_type const & llc = lc[i]->LowConn();
-					INMOST_DATA_ENUM_TYPE j = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-					j = Mesh::getNext(llc.data(),llc.size(),j,hm);
-					if( j != llc.size() ) return llc[j]->getAsNode();
+					adj_type const & llc = m->LowConn(lc[i]);
+					integer j = -1;
+					j = m->getNext(llc.data(),static_cast<integer>(llc.size()),j,hm);
+					if( j != llc.size() ) return Node(m,llc[j]);
 				}
 			}
-			return NULL;
+			return Node(m,InvalidHandle());
 		}
 	}
 	
-	bool Face::FaceOrientedOutside(Cell * c) const
+	bool Face::FaceOrientedOutside(Cell c) const
 	{
+		assert(GetHandleElementType(GetHandle())==FACE);
 		if( BackCell() == c ) 
 			return true; 
 		return false;
 	}
 	
-	void Face::ReorderEdges()
+	void Face::ReorderEdges() const
 	{
-		adj_type & lc = LowConn();
-		for(unsigned int j = 0; j < lc.size()/2; j++) // reorder edges!
+		assert(GetHandleElementType(GetHandle())==FACE);
+		adj_type & lc = GetMeshLink()->LowConn(GetHandle());
+		for(adj_type::size_type j = 0; j < lc.size()/2; j++) // reorder edges!
 		{
-			Element * t = lc[j];
+			HandleType t = lc[j];
 			lc[j] = lc[lc.size()-1-j];
 			lc[lc.size()-1-j] = t;
 		}
 	}
 	
-	bool Face::CheckEdgeOrder()
+	bool Face::CheckEdgeOrder() const
 	{
+		assert(GetHandleElementType(GetHandle())==FACE);
 		return true;
 	}
 	
-	bool Face::FixEdgeOrder()
+	bool Face::FixEdgeOrder() const
 	{
+		assert(GetHandleElementType(GetHandle())==FACE);
 		return false;
 	}
 	
 	
-	adjacent<Node> Face::getNodes()
+	ElementArray<Node> Face::getNodes() const
 	{
-		adjacent<Node> aret;
-		if( !GetMeshLink()->HideMarker() )
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
+		ElementArray<Node> aret(m);
+		if( !m->HideMarker() )
 		{
-			if( GetElementDimension() == 1 ) // This face is 2d edge
+			if( Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 1 ) // This face is 2d edge
 			{
-				adj_type & lc = LowConn();
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				for(adj_type::enumerator it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
-					aret.push_back(lc[it]->LowConn().front());
+				for(adj_type::size_type it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
+					aret.push_back(m->LowConn(lc[it]).front());
 			}
 			else
 			{
-				adj_type & lc = LowConn();
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				Element * q = lc[0]; //edge 0
-				adj_type & qlc = q->LowConn();
+				HandleType q = lc[0]; //edge 0
+				adj_type const & qlc = m->LowConn(q);
 				aret.push_back(qlc[0]); //node 0
 				aret.push_back(qlc[1]); //node 1
-				Element * r = lc[1]; //edge 1
-				adj_type & rlc = r->LowConn();
+				HandleType r = lc[1]; //edge 1
+				adj_type & rlc = m->LowConn(r);
 				if( aret.data()[0] == rlc[0] || aret.data()[0] == rlc[1] )
 				{
-					Node * temp = aret.data()[0];
+					HandleType temp = aret.data()[0];
 					aret.data()[0] = aret.data()[1];
 					aret.data()[1] = temp;
 				}
-				adj_type::enumerator it = 1, iend = lc.size()-1;
+				adj_type::size_type it = 1, iend = lc.size()-1;
 				while(it < iend) //loop over edges
 				{
-					adj_type & ilc = lc[it]->LowConn();
-					if( &aret.back() == ilc[0] ) aret.push_back(ilc[1]);
+					adj_type const & ilc = m->LowConn(lc[it]);
+					if( aret.atback() == ilc[0] ) aret.push_back(ilc[1]);
 					else aret.push_back(ilc[0]);
 					++it;
 				}
@@ -203,54 +194,54 @@ namespace INMOST
 		}
 		else
 		{
-			MarkerType hm = GetMeshLink()->HideMarker();
-			if( GetElementDimension() == 1 ) // This face is 2d edge
+			MarkerType hm = m->HideMarker();
+			if( Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 1 ) // This face is 2d edge
 			{
-				adj_type & lc = LowConn();
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				for(adj_type::enumerator it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
-					if( !lc[it]->GetMarker(hm) ) 
+				for(adj_type::size_type it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
+					if( !m->GetMarker(lc[it],hm) ) 
 					{
-						adj_type & ilc = lc[it]->LowConn();
-						INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-						i = Mesh::getNext(ilc.data(),ilc.size(),i,hm);
-						if( i < ilc.size() ) aret.push_back(ilc[i]);
+						adj_type const & ilc = m->LowConn(lc[it]);
+						integer i = -1;
+						i = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),i,hm);
+						if( i < static_cast<integer>(ilc.size()) ) aret.push_back(ilc[i]);
 					}
 			}
 			else
 			{
-				INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1),
-					k = static_cast<INMOST_DATA_ENUM_TYPE>(-1), 
-					k1 = static_cast<INMOST_DATA_ENUM_TYPE>(-1), k2;
-				adj_type & lc = LowConn();
+				integer i = -1, k = -1, k1 = -1, k2;
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				i = Mesh::getNext(lc.data(),lc.size(),i,hm);
-				Element * q = lc[i]; //edge 0
-				adj_type & qlc = q->LowConn();
-				k = Mesh::getNext(qlc.data(),qlc.size(),k,hm);
+				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				HandleType q = lc[i]; //edge 0
+				adj_type const & qlc = m->LowConn(q);
+				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
 				aret.push_back(qlc[k]); //node 0
-				k = Mesh::getNext(qlc.data(),qlc.size(),k,hm);
+				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
 				aret.push_back(qlc[k]); //node 1
-				i = Mesh::getNext(lc.data(),lc.size(),i,hm);
-				Element * r = lc[i]; //edge 1
-				adj_type & rlc = r->LowConn();
-				k1 = Mesh::getNext(rlc.data(),rlc.size(),k1,hm);
-				k2 = Mesh::getNext(rlc.data(),rlc.size(),k1,hm);
+				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				HandleType r = lc[i]; //edge 1
+				adj_type const & rlc = m->LowConn(r);
+				k1 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
+				k2 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
 				if( aret.data()[0] == rlc[k1] || aret.data()[0] == rlc[k2] )
 				{
-					Node * temp = aret.data()[0];
+					HandleType temp = aret.data()[0];
 					aret.data()[0] = aret.data()[1];
 					aret.data()[1] = temp;
 				}
-				adj_type::enumerator it = 1, iend = lc.size()-1;
-				while(it != iend) if( !lc[it]->GetMarker(hm) ) //loop over edges
+				adj_type::size_type it = 1, iend = lc.size()-1;
+				while(it != iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
 				{
-					adj_type & ilc = lc[it]->LowConn();
-					k1 = static_cast<INMOST_DATA_ENUM_TYPE>(-1); 
-					k1 = Mesh::getNext(ilc.data(),ilc.size(),k1,hm);
-					k2 = Mesh::getNext(ilc.data(),ilc.size(),k1,hm);
-					if( &aret.back() == ilc[k1] ) aret.push_back(ilc[k2]);
-					else aret.push_back(ilc[k1]);
+					adj_type const & ilc = m->LowConn(lc[it]);
+					k1 = -1; 
+					k1 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
+					k2 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
+					if( aret.atback() == ilc[k1] ) 
+						aret.push_back(ilc[k2]);
+					else 
+						aret.push_back(ilc[k1]);
 					++it;
 				}
 			}
@@ -260,55 +251,57 @@ namespace INMOST
 	}
 
 
-	adjacent<Node> Face::getNodes(MarkerType mask, bool invert)
+	ElementArray<Node> Face::getNodes(MarkerType mask, bool invert) const
 	{
-		adjacent<Node> aret;
-		if( !GetMeshLink()->HideMarker() )
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
+		ElementArray<Node> aret(m);
+		if( !m->HideMarker() )
 		{
-			if( GetElementDimension() == 1 ) // This face is 2d edge
+			if(  Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 1 ) // This face is 2d edge
 			{
-				adj_type & lc = LowConn();
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				for(adj_type::enumerator it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
+				for(adj_type::size_type it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
 				{
-					Element * e = lc[it]->LowConn().front();
-					if( invert ^ e->GetMarker(mask) ) aret.push_back(e);
+					HandleType e = m->LowConn(lc[it]).front();
+					if( invert ^ m->GetMarker(e,mask) ) aret.push_back(e);
 				}
 			}
 			else
 			{
-				adj_type & lc = LowConn();
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				Element * q = lc[0];
-				adj_type & qlc = q->LowConn();
-				Element * first = qlc[0], * last = qlc[1]; //edge 0
-				if( invert ^ qlc[0]->GetMarker(mask) ) aret.push_back(qlc[0]); //node 0
-				if( invert ^ qlc[1]->GetMarker(mask) ) aret.push_back(qlc[1]); //node 1
-				Element * r = lc[1]; //edge 1
-				adj_type & rlc = r->LowConn();
+				HandleType q = lc[0];
+				adj_type const & qlc = m->LowConn(q);
+				HandleType first = qlc[0], last = qlc[1]; //edge 0
+				if( invert ^ m->GetMarker(qlc[0],mask) ) aret.push_back(qlc[0]); //node 0
+				if( invert ^ m->GetMarker(qlc[1],mask) ) aret.push_back(qlc[1]); //node 1
+				HandleType r = lc[1]; //edge 1
+				adj_type const & rlc = m->LowConn(r);
 				if( first == rlc[0] || first == rlc[1] ) 
 				{
 					last = first;
 					if( aret.size() > 1 )
 					{
-						Node * temp = aret.data()[0];
+						HandleType temp = aret.data()[0];
 						aret.data()[0] = aret.data()[1];
 						aret.data()[1] = temp;
 					}
 				}
-				adj_type::enumerator it = 1, iend = lc.size()-1;
+				adj_type::size_type it = 1, iend = lc.size()-1;
 				while(it < iend) //loop over edges
 				{
-					adj_type & ilc = lc[it]->LowConn();
+					adj_type const & ilc = m->LowConn(lc[it]);
 					if( last == ilc[0] ) 
 					{
-						if( invert ^ ilc[1]->GetMarker(mask) ) 
+						if( invert ^ m->GetMarker(ilc[1],mask) ) 
 							aret.push_back(ilc[1]);
 						last = ilc[1];
 					}
 					else 
 					{
-						if( invert ^ ilc[0]->GetMarker(mask) )
+						if( invert ^ m->GetMarker(ilc[0],mask) )
 							aret.push_back(ilc[0]);
 						last = ilc[0];
 					}
@@ -318,66 +311,67 @@ namespace INMOST
 		}
 		else
 		{
-			MarkerType hm = GetMeshLink()->HideMarker();
-			if( GetElementDimension() == 1 ) // This face is 2d edge
+			MarkerType hm = m->HideMarker();
+			if( Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 1 ) // This face is 2d edge
 			{
-				adj_type & lc = LowConn();
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				for(adj_type::enumerator it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
-					if( !lc[it]->GetMarker(hm) ) 
+				for(adj_type::size_type it = 0; it < lc.size(); it++) //iterate over edges that are of type Vertex
+					if( !m->GetMarker(lc[it],hm) ) 
 					{
-						adj_type & ilc = lc[it]->LowConn();
-						INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1);
-						i = Mesh::getNext(ilc.data(),ilc.size(),i,hm);
-						if( i < ilc.size() && (invert ^ ilc[i]->GetMarker(mask)) ) aret.push_back(ilc[i]);
+						adj_type const & ilc = m->LowConn(lc[it]);
+						integer i = -1;
+						i = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),i,hm);
+						if( i < static_cast<integer>(ilc.size()) && (invert ^ m->GetMarker(ilc[i],mask)) ) 
+							aret.push_back(ilc[i]);
 					}
 			}
 			else
 			{
-				INMOST_DATA_ENUM_TYPE i = static_cast<INMOST_DATA_ENUM_TYPE>(-1),
-					k = static_cast<INMOST_DATA_ENUM_TYPE>(-1), 
-					k1 = static_cast<INMOST_DATA_ENUM_TYPE>(-1), k2;
-				adj_type & lc = LowConn();
+				integer i = -1, k = -1, k1 = -1, k2;
+				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				i = Mesh::getNext(lc.data(),lc.size(),i,hm);
-				Element * q = lc[i], * first, * last; //edge 0
-				adj_type & qlc = q->LowConn();
-				k = Mesh::getNext(qlc.data(),qlc.size(),k,hm);
-				if( invert ^ qlc[k]->GetMarker(mask) ) aret.push_back(qlc[k]); //node 0
+				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				HandleType q = lc[i], first, last; //edge 0
+				adj_type const & qlc = m->LowConn(q);
+				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
+				if( invert ^ m->GetMarker(qlc[k],mask) ) aret.push_back(qlc[k]); //node 0
 				first = qlc[k];
-				k = Mesh::getNext(qlc.data(),qlc.size(),k,hm);
-				if( invert ^ qlc[k]->GetMarker(mask) ) aret.push_back(qlc[k]); //node 1
+				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
+				if( invert ^ m->GetMarker(qlc[k],mask) ) aret.push_back(qlc[k]); //node 1
 				last = qlc[k];
-				i = Mesh::getNext(lc.data(),lc.size(),i,hm);
-				Element * r = lc[i]; //edge 1
-				adj_type & rlc = r->LowConn();
-				k1 = Mesh::getNext(rlc.data(),rlc.size(),k1,hm);
-				k2 = Mesh::getNext(rlc.data(),rlc.size(),k1,hm);
+				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				HandleType r = lc[i]; //edge 1
+				adj_type const & rlc = m->LowConn(r);
+				k1 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
+				k2 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
 				if( first == rlc[k1] || first == rlc[k2] )
 				{
 					last = first;
 					if( aret.size() > 1 )
 					{
-						Node * temp = aret.data()[0];
+						HandleType temp = aret.data()[0];
 						aret.data()[0] = aret.data()[1];
 						aret.data()[1] = temp;
 					}
 				}
-				adj_type::enumerator it = 1, iend = lc.size()-1;
-				while(it < iend) if( !lc[it]->GetMarker(hm) ) //loop over edges
+				adj_type::size_type it = 1, iend = lc.size()-1;
+				while(it < iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
 				{
-					adj_type & ilc = lc[it]->LowConn();
-					k1 = static_cast<INMOST_DATA_ENUM_TYPE>(-1); 
-					k1 = Mesh::getNext(ilc.data(),ilc.size(),k1,hm);
-					k2 = Mesh::getNext(ilc.data(),ilc.size(),k1,hm);
+					adj_type const & ilc = m->LowConn(lc[it]);
+					k1 = -1; 
+					k1 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
+					k2 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
 					if( last == ilc[k1] ) 
 					{
-						if( invert ^ ilc[k2]->GetMarker(mask) ) aret.push_back(ilc[k2]);
+						if( invert ^ m->GetMarker(ilc[k2],mask) ) 
+							aret.push_back(ilc[k2]);
 						last = ilc[k2];
 					}
 					else 
 					{
-						if( invert ^ ilc[k1]->GetMarker(mask) ) aret.push_back(ilc[k1]);
+						if( invert ^ m->GetMarker(ilc[k1],mask) ) 
+							aret.push_back(ilc[k1]);
 						last = ilc[k1];
 					}
 					++it;
@@ -388,81 +382,94 @@ namespace INMOST
 		return aret;
 	}
 
-	adjacent<Edge> Face::getEdges()
+	ElementArray<Edge> Face::getEdges() const
 	{
-		if( !GetMeshLink()->HideMarker() )
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
+		if( !m->HideMarker() )
 		{
-			adj_type & lc = LowConn();
-			return adjacent<Edge>(lc.data(),lc.data()+lc.size());
+			adj_type const & lc = m->LowConn(GetHandle());
+			return ElementArray<Edge>(m,lc.data(),lc.data()+lc.size());
 		}
 		else
 		{
-			MarkerType hm = GetMeshLink()->HideMarker();
-			adjacent<Edge> aret;
-			adj_type & lc = LowConn();
-			for(adj_type::enumerator it = 0; it < lc.size(); ++it)
-				if( !lc[it]->GetMarker(hm) ) aret.push_back(lc[it]);
+			MarkerType hm = m->HideMarker();
+			ElementArray<Edge> aret(m);
+			adj_type const & lc = m->LowConn(GetHandle());
+			for(adj_type::size_type it = 0; it < lc.size(); ++it)
+				if( !m->GetMarker(lc[it],hm) ) 
+					aret.push_back(lc[it]);
 			return aret;
 		}
 	}
 
-	adjacent<Edge> Face::getEdges(MarkerType mask, bool invert)
+	ElementArray<Edge> Face::getEdges(MarkerType mask, bool invert) const
 	{
-		adjacent<Edge> aret;
-		if( !GetMeshLink()->HideMarker() )
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
+		ElementArray<Edge> aret(m);
+		if( !m->HideMarker() )
 		{
-			adj_type & lc = LowConn();
-			for(adj_type::enumerator it = 0; it < lc.size(); ++it)
-				if( invert ^ lc[it]->GetMarker(mask) ) aret.push_back(lc[it]);
+			adj_type const & lc = m->LowConn(GetHandle());
+			for(adj_type::size_type it = 0; it < lc.size(); ++it)
+				if( invert ^ m->GetMarker(lc[it],mask) ) 
+					aret.push_back(lc[it]);
 		}
 		else
 		{
-			MarkerType hm = GetMeshLink()->HideMarker();
-			adj_type & lc = LowConn();
-			for(adj_type::enumerator it = 0; it < lc.size(); ++it)
-				if( (invert ^ lc[it]->GetMarker(mask)) && !lc[it]->GetMarker(hm) ) aret.push_back(lc[it]);
+			MarkerType hm = m->HideMarker();
+			adj_type const & lc = m->LowConn(GetHandle());
+			for(adj_type::size_type it = 0; it < lc.size(); ++it)
+				if( (invert ^ m->GetMarker(lc[it],mask)) && !m->GetMarker(lc[it],hm) ) 
+					aret.push_back(lc[it]);
 		}
 		return aret;
 	}
 
-	adjacent<Cell> Face::getCells()
+	ElementArray<Cell> Face::getCells() const
 	{
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
 		if( !GetMeshLink()->HideMarker() )
 		{
-			adj_type & hc = HighConn();
-			return adjacent<Cell>(hc.data(),hc.data()+hc.size());
+			adj_type const & hc = m->HighConn(GetHandle());
+			return ElementArray<Cell>(m,hc.data(),hc.data()+hc.size());
 		}
 		else
 		{
-			MarkerType hm = GetMeshLink()->HideMarker();
-			adjacent<Cell> aret;
-			adj_type & hc = HighConn();
-			for(adj_type::enumerator it = 0; it < hc.size(); ++it)
-				if( !hc[it]->GetMarker(hm) ) aret.push_back(hc[it]);
+			MarkerType hm = m->HideMarker();
+			ElementArray<Cell> aret(m);
+			adj_type const & hc = m->HighConn(GetHandle());
+			for(adj_type::size_type it = 0; it < hc.size(); ++it)
+				if( !m->GetMarker(hc[it],hm) ) 
+					aret.push_back(hc[it]);
 			return aret;
 		}
 	}
 
-	adjacent<Cell> Face::getCells(MarkerType mask, bool invert)
+	ElementArray<Cell> Face::getCells(MarkerType mask, bool invert) const
 	{
-		adjacent<Cell> aret;
-		if( !GetMeshLink()->HideMarker() )
+		assert(GetHandleElementType(GetHandle())==FACE);
+		Mesh * m = GetMeshLink();
+		ElementArray<Cell> aret(m);
+		if( !m->HideMarker() )
 		{
-			adj_type & hc = HighConn();
-			for(adj_type::enumerator it = 0; it < hc.size(); ++it)
-				if( invert ^ hc[it]->GetMarker(mask)) aret.push_back(hc[it]);
+			adj_type const & hc = m->HighConn(GetHandle());
+			for(adj_type::size_type it = 0; it < hc.size(); ++it)
+				if( invert ^ m->GetMarker(hc[it],mask)) 
+					aret.push_back(hc[it]);
 		}
 		else
 		{
 			MarkerType hm = GetMeshLink()->HideMarker();
-			adj_type & hc = HighConn();
-			for(adj_type::enumerator it = 0; it < hc.size(); ++it)
-				if( (invert ^ hc[it]->GetMarker(mask)) && !hc[it]->GetMarker(hm) ) aret.push_back(hc[it]);
+			adj_type const & hc = m->HighConn(GetHandle());
+			for(adj_type::size_type it = 0; it < hc.size(); ++it)
+				if( (invert ^ m->GetMarker(hc[it],mask)) && !m->GetMarker(hc[it],hm) ) 
+					aret.push_back(hc[it]);
 		}
 		return aret;
 	}
 
-	Storage::real Face::Area() {Storage::real ret; m_link->GetGeometricData(this,MEASURE,&ret); return ret;}
-	void Face::Normal(Storage::real * nrm) {m_link->GetGeometricData(this,NORMAL,nrm);}
+	
 }
 #endif

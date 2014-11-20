@@ -20,6 +20,7 @@ Mesh * ParallelCubeGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 	m->SetCommunicator(comm); // Set the MPI communicator, usually MPI_COMM_WORLD
 
 #if defined(USE_MPI)
+	MPI_Comm_set_errhandler(comm,MPI_ERRORS_RETURN);
 	//MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
 #endif
 
@@ -125,6 +126,7 @@ Mesh * ParallelCubePrismGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 	m->SetCommunicator(comm); // Set the MPI communicator, usually MPI_COMM_WORLD
 
 #if defined(USE_MPI)
+	MPI_Comm_set_errhandler(comm,MPI_ERRORS_RETURN);
 	//MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
 #endif
 

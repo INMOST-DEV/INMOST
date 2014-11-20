@@ -20,7 +20,9 @@ set(SOURCE solver.cpp
            element.cpp
            mesh_parallel.cpp
            modify.cpp
-		   autodiff.cpp)
+           earray.cpp
+           comparator.cpp
+           autodiff.cpp)
 set(HEADER inmost.h
            inmost_options_cmake.h
            inmost_common.h

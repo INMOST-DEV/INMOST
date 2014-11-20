@@ -320,7 +320,7 @@ public:
 #endif
 			//nzl++;
 
-			iu[k] = luv.size(); //iu points to the first entry of current line of U matrix
+			iu[k] = static_cast<INMOST_DATA_ENUM_TYPE>(luv.size()); //iu points to the first entry of current line of U matrix
 			// END of L-part
 			if (fabs(RowValues[j]) > tol_modif)
 				udiag = 1.0 / RowValues[j];
@@ -374,9 +374,9 @@ public:
 				RowIndeces[j] = UNDEF;
 				j = jn;
 			}
-			ilu[k + 1] = luv.size(); //next first entry for L
+			ilu[k + 1] = static_cast<INMOST_DATA_ENUM_TYPE>(luv.size()); //next first entry for L
 
-			ir[k + 1] = rv.size(); //next first entry for U2
+			ir[k + 1] = static_cast<INMOST_DATA_ENUM_TYPE>(rv.size()); //next first entry for U2
 			//END U-part
 		}
 		//printf("\n");

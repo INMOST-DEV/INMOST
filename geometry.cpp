@@ -70,114 +70,123 @@ namespace INMOST
 	}
 	
 	
-	adjacent<Cell> Cell::NeighbouringCells()
+	ElementArray<Cell> Cell::NeighbouringCells() const
 	{
-		adjacent<Cell> ret;
-		adjacent<Face> faces = getFaces();
-		for(adjacent<Face>::iterator f = faces.begin(); f != faces.end(); f++)
+		ElementArray<Cell> ret(GetMeshLink());
+		ElementArray<Face> faces = getFaces();
+		for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
 		{
-			Cell * c = Neighbour(&*f);
-			if( c != NULL ) ret.push_back(c);
+			Cell c = Neighbour(f->self());
+			if( c.isValid() ) ret.push_back(c);
 		}
 		return ret;
 	}
 	
 	
-	Cell * Cell::Neighbour(Face * f)
+	Cell Cell::Neighbour(Face f) const
 	{
-		Cell * b = f->BackCell();
-		if( b == this )
+		Cell b = f->BackCell();
+		if( b == self() )
 			return f->FrontCell();
 		return b;
 	}
 	
-	bool Cell::Inside(Storage::real * point) //check for 2d case
+	bool Cell::Inside(Storage::real * point) const//check for 2d case
 	{
-		unsigned int dim = GetMeshLink()->GetDimensions();
-		unsigned int vp = 0, vm = 0, vz = 0;
-		Storage::real eps = GetMeshLink()->GetEpsilon();
+		Mesh * m = GetMeshLink();
+		integer dim = m->GetDimensions();
+		integer vp = 0;
+		integer vm = 0;
+		integer vz = 0;
+		real eps = m->GetEpsilon();
 		real c,d;
-		if( dim != 3 ) throw UndefinedBehaviorInGeometry; 
-		adjacent<Element> elements = getAdjElements(GetElementType()>>1);
-		for(adjacent<Element>::iterator f = elements.begin(); f != elements.end(); f++)
+		assert( dim == 3 );// throw UndefinedBehaviorInGeometry;
+		adj_type & elements = m->LowConn(GetHandle());
+		for(adj_type::size_type f = 0; f < elements.size(); f++)
 		{
+			Face ef = Face(m,elements[f]);
 			d = 0.0;
-			adjacent<Node> nodes = f->getNodes();
-			for (unsigned int i=1; i<nodes.size()-1; i++) 
+			ElementArray<Node> nodes = ef->getNodes();
+			for (ElementArray<Node>::size_type i=1; i<nodes.size()-1; i++) 
 				d += c = det4v(point, nodes[0].Coords().data(), nodes[i].Coords().data(), nodes[i+1].Coords().data());
-			if (f->getAsFace()->FaceOrientedOutside(this) == 0)  c = -1.0;  else c = 1.0;
-			if (c*d > eps)  vp++;  else if (c*d < eps)  vm++;  else  vz++;
+			if(ef->FaceOrientedOutside(self()) == 0)  
+				c = -1.0;  
+			else 
+				c = 1.0;
+			if(c*d > eps)  
+				vp++;  
+			else if(c*d < eps)  
+				vm++;  
+			else  
+				vz++;
 		}
-		if (vp*vm > 0)  return false;
+		if(vp*vm > 0) return false;
 		return true;
 	}
 	
 	
-	void Face::UnitNormal(Storage::real * nrm) 
+	void Face::UnitNormal(real * nrm) const
 	{
-		m_link->GetGeometricData(this,NORMAL,nrm); 
-		unsigned dim = GetMeshLink()->GetDimensions(); 
-		Storage::real l = sqrt(vec_dot_product(nrm,nrm,dim)); 
-		if( fabs(l) > GetMeshLink()->GetEpsilon()) 
-			for(unsigned i = 0; i < dim; i++) 
+		Mesh * m = GetMeshLink();
+		m->GetGeometricData(GetHandle(),NORMAL,nrm); 
+		integer dim = m->GetDimensions();
+		real    l   = sqrt(vec_dot_product(nrm,nrm,dim)); 
+		if(fabs(l) > m->GetEpsilon()) 
+		{
+			for(integer i = 0; i < dim; i++) 
 				nrm[i] /= l; 
+		}
 	}
 	
-	void Face::OrientedNormal(Cell * c, Storage::real * nrm) 
+	void Face::OrientedNormal(Cell c, Storage::real * nrm) const
 	{
 		Normal(nrm); 
-		if( !FaceOrientedOutside(c) ) 
-			for(unsigned i = 0; i < GetMeshLink()->GetDimensions(); i++) 
+		if( !FaceOrientedOutside(c) )
+		{
+			integer dim = GetMeshLink()->GetDimensions();
+			for(integer i = 0; i < dim; i++) 
 				nrm[i] = -nrm[i];
+		}
 	}
 	
 	
-	void Face::OrientedUnitNormal(Cell * c, Storage::real * nrm) 
+	void Face::OrientedUnitNormal(Cell c, Storage::real * nrm) const
 	{
 		UnitNormal(nrm); 
 		if( !FaceOrientedOutside(c) ) 
-			for(unsigned i = 0; i < GetMeshLink()->GetDimensions(); i++) 
+		{
+			integer dim = GetMeshLink()->GetDimensions();
+			for(integer i = 0; i < dim; i++) 
 				nrm[i] = -nrm[i];
-	}
-	
-	typedef dynarray< std::pair<Element *,int> ,64> find_and_add_type;
-	//~ typedef std::vector< std::pair<Element *,int> > find_and_add_type;
-	
-	
-	__INLINE void find_and_add(find_and_add_type & array, Element * e)
-	{
-		bool flag = false;
-		for(find_and_add_type::iterator it = array.begin(); it != array.end(); it++)
-			if( it->first == e ) 
-			{
-				flag = true;
-				it->second++;
-				break;
-			}
-		if( !flag ) array.push_back( std::pair<Element *,int>(e,1) );
+		}
 	}
 	
 	
 	
-	bool Mesh::TestClosure(Element ** elements, unsigned num)
+	bool Mesh::TestClosure(const HandleType * elements, integer num) const
 	{
-		unsigned int i;
-		find_and_add_type e_visit;
-		find_and_add_type::iterator it;
+		integer i;
+		tiny_map<HandleType,int,64> e_visit;
+		tiny_map<HandleType,int,64>::iterator it;
 		if( !HideMarker() )
 		{
 			for(i = 0; i < num; i++)
 			{
-				for(Element::adj_iterator jt = elements[i]->LowConn().begin(); jt!= elements[i]->LowConn().end()	; jt++)
-					find_and_add(e_visit,*jt);
+				Element::adj_type const & lc = LowConn(elements[i]);
+				for(Element::adj_type::size_type jt = 0; jt < lc.size(); jt++)
+					e_visit[lc[jt]]++;
 			}
 		}
 		else
 		{
-			for(i = 0; i < num; i++) if( !elements[i]->GetMarker(HideMarker()) )
+			for(i = 0; i < num; i++) if( !GetMarker(elements[i],HideMarker()) )
 			{
-				for(Element::adj_iterator jt = elements[i]->LowConn().begin(); jt!= elements[i]->LowConn().end()	; jt++) if( !(*jt)->GetMarker(HideMarker()) )
-					find_and_add(e_visit,*jt);
+				Element::adj_type const & lc = LowConn(elements[i]);
+				for(Element::adj_type::size_type jt = 0; jt < lc.size(); jt++) 
+				{
+					if( !GetMarker(lc[jt],HideMarker()) ) 
+						e_visit[lc[jt]]++;
+				}
 			}
 		}
 		for(it = e_visit.begin(); it != e_visit.end(); it++)
@@ -185,7 +194,7 @@ namespace INMOST
 		return true;
 	}
 	
-	Element::GeometricType Mesh::ComputeGeometricType(ElementType etype, Element ** lc, INMOST_DATA_ENUM_TYPE s)
+	Element::GeometricType Mesh::ComputeGeometricType(ElementType etype, const HandleType * lc, INMOST_DATA_ENUM_TYPE s) const
 	{
 		Element::GeometricType ret = Element::Unset;
 		if( s == 0 && etype != NODE) return ret;
@@ -199,7 +208,8 @@ namespace INMOST
 					ret = Element::Line;
 				break;
 			case FACE:
-				if( lc[0]->GetElementDimension() == 0 )
+
+				if( Element::GetGeometricDimension(GetGeometricType(lc[0])) == 0 )
 				{ 
 					ret = Element::Line;
 				}
@@ -218,7 +228,7 @@ namespace INMOST
 				}
 				break;
 			case CELL:
-				if( lc[0]->GetElementDimension() == 1 )
+				if(  Element::GetGeometricDimension(GetGeometricType(lc[0])) == 1 )
 				{
 					if( !GetTopologyCheck(NEED_TEST_CLOSURE) || TestClosure(lc,s) )
 					{
@@ -239,9 +249,9 @@ namespace INMOST
 						INMOST_DATA_ENUM_TYPE quads = 0,tris = 0,i;
 						for(i = 0; i < s; i++)
 						{
-							if( lc[i]->GetGeometricType() == Element::Tri )
+							if( GetGeometricType(lc[i]) == Element::Tri )
 								tris++;
-							else if( lc[i]->GetGeometricType() == Element::Quad )
+							else if( GetGeometricType(lc[i]) == Element::Quad )
 								quads++;
 						}
 						if( tris == 4 && s == 4 )
@@ -263,123 +273,79 @@ namespace INMOST
 		return ret;
 	}
 
-	void Element::ComputeGeometricType()
+	Storage::real Edge::Length() const 
 	{
-		SetGeometricType(Unset);
-		adjacent<Element> lc = getAdjElements(GetElementType() >> 1);
-		if( !lc.empty() )
-			SetGeometricType(GetMeshLink()->ComputeGeometricType(GetElementType(),lc.data(),lc.size()));
-		/*
-		if( lc.size() == 0 && etypenum != 0) return;
-		switch(etypenum)
-		{
-			case 0: m_type = Vertex; break;
-			case 1:
-				if( lc.size() == 1 )
-					m_type = Vertex;
-				else if( lc.size() == 2 )
-					m_type = Line;
-				break;
-			case 2:
-				if( lc[0].GetElementDimension() == 0 )
-				{ 
-					m_type = Line;
-				}
-				else
-				{
-					if( GetMeshLink()->TestClosure(lc.data(),lc.size()) )
-					{
-						if( lc.size() == 3 )
-							m_type = Tri;
-						else if( lc.size() == 4 )
-							m_type = Quad;
-						else
-							m_type = Polygon;
-					}
-					else m_type = MultiLine;
-				}
-				break;
-			case 3:
-				if( lc[0].GetElementDimension() == 1 )
-				{
-					if( GetMeshLink()->TestClosure(lc.data(),lc.size()) )
-					{
-						if( lc.size() == 3 )
-							m_type = Tri;
-						else if( lc.size() == 4 )
-							m_type = Quad;
-						else
-							m_type = Polygon;
-					}
-					else m_type = MultiLine;
-				}
-				else 
-				{
-					if( GetMeshLink()->TestClosure(lc.data(),lc.size()) )
-					{
-						//test c_faces closure, if no closure, set as MultiPolygon
-						unsigned int quads = 0,tris = 0;
-						for(unsigned i = 0; i < lc.size(); i++)
-						{
-							if( lc[i].GetGeometricType() == Tri )
-								tris++;
-							else if( lc[i].GetGeometricType() == Quad )
-								quads++;
-						}
-						if( tris == 4 && lc.size() == 4 )
-							m_type = Tet;
-						else if( quads == 6 && lc.size() == 6 )
-							m_type = Hex;
-						else if( tris == 4 && quads == 1 && lc.size() == tris+quads)
-							m_type = Pyramid;
-						else if( quads == 3 && tris == 2 && lc.size() == tris+quads)
-							m_type = Prism;
-						else
-							m_type = Polyhedron;
-					}
-					else m_type = MultiPolygon;
-				}
-				break;
-			case 4: m_type = Set; break;
-		}
-		*/
+		Storage::real ret; 
+		GetMeshLink()->GetGeometricData(GetHandle(),MEASURE,&ret); 
+		return ret;
+	}
+
+	Storage::real Face::Area() const 
+	{
+		real ret; 
+		GetMeshLink()->GetGeometricData(GetHandle(),MEASURE,&ret); 
+		return ret;
+	}
+	void Face::Normal(real * nrm) const 
+	{
+		GetMeshLink()->GetGeometricData(GetHandle(),NORMAL,nrm);
+	}
+
+	Storage::real Cell::Volume() const 
+	{
+		real ret; 
+		GetMeshLink()->GetGeometricData(GetHandle(),MEASURE,&ret); 
+		return ret;
+	}
+
+	void Element::ComputeGeometricType() const
+	{
+		GetMeshLink()->ComputeGeometricType(GetHandle());
 	}
 	
+	void Mesh::ComputeGeometricType(HandleType h) 
+	{
+		SetGeometricType(h,Element::Unset);
+		Element::adj_type const & lc = LowConn(h);
+		if( !lc.empty() )
+			SetGeometricType(h,ComputeGeometricType(GetHandleElementType(h),lc.data(),static_cast<integer>(lc.size())));
+	}
 	
-	void Mesh::RecomputeGeometricData(Element * e)
+	void Mesh::RecomputeGeometricData(HandleType e)
 	{
 		//static std::map<Element *, int> numfixes;
 		GeometricData d ;
 		for(d = CENTROID; d <= NORMAL; d++) // first compute centroids and normals 
 		{
-			if( HaveGeometricData(d,e->GetElementType()) ) //compute centroid first
+			if( HaveGeometricData(d,GetHandleElementType(e)) ) //compute centroid first
 			{
 				Tag t = GetGeometricTag(d);
-				Storage::real * a = &e->RealDF(t);
-				HideGeometricData(d,e->GetElementType());
+				Storage::real * a = static_cast<Storage::real *>(MGetDenseLink(e,t));
+				HideGeometricData(d,GetHandleElementType(e));
 				GetGeometricData(e,d,a);
-				ShowGeometricData(d,e->GetElementType());
+				ShowGeometricData(d,GetHandleElementType(e));
 			}
 		}
 
 
-		if( e->GetElementType() == CELL && HaveGeometricData(ORIENTATION,FACE)) //then correct the normal
+		if( GetHandleElementType(e) == CELL && HaveGeometricData(ORIENTATION,FACE)) //then correct the normal
 		{
-			for(Element::adj_iterator it = e->LowConn().begin(); it != e->LowConn().end(); ++it)
-				if( !(*it)->GetMarker(HideMarker()) && (*it)->HighConn().size() == 1 )
+			Element::adj_type & lc = LowConn(e);
+			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)
+				if( !GetMarker(*it,HideMarker()) && HighConn(*it).size() == 1 )
 				{
-					(*it)->getAsFace()->FixNormalOrientation();
+					Face(this,*it)->FixNormalOrientation();
 				}
 		}
 		for(d = MEASURE; d <= BARYCENTER; d++) // compute the rest
 		{
-			if( HaveGeometricData(d,e->GetElementType()) )
+			if( HaveGeometricData(d,GetHandleElementType(e)) )
 			{
 				Tag t = GetGeometricTag(d);
-				Storage::real * a = &e->RealDF(t);
-				HideGeometricData(d,e->GetElementType());
+				Storage::real * a = static_cast<Storage::real *>(MGetDenseLink(e,t));
+				HideGeometricData(d,GetHandleElementType(e));
 				GetGeometricData(e,d,a);
-				ShowGeometricData(d,e->GetElementType());
+				ShowGeometricData(d,GetHandleElementType(e));
 			}
 		}
 	}
@@ -448,19 +414,22 @@ namespace INMOST
 			if( types == ORIENTATION )
 			{
 				if( mask & FACE )
-					for(Mesh::iteratorFace e = BeginFace(); e != EndFace(); ++e) 
-						e->FixNormalOrientation();
+					for(integer e = 0; e < FaceLastLocalID(); ++e) if( isValidElement(FACE,e) )
+						Face(this,e)->FixNormalOrientation();
 				ShowGeometricData(ORIENTATION,FACE);
 			}
 			if( types == MEASURE )
 			{
-				for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
+				for(integer etype = EDGE; etype <= CELL; etype = etype << 1)
 				{
 					if( (mask & etype) && !HaveGeometricData(MEASURE,etype))
 					{
 						measure_tag = CreateTag("GEOM_UTIL_MEASURE",DATA_REAL,etype,NONE,1);
-						for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); ++e)
-							GetGeometricData(&*e,MEASURE,&e->RealDF(measure_tag));
+						for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+						{
+							HandleType h = ComposeHandle(etype,e);
+							GetGeometricData(h,MEASURE,static_cast<Storage::real *>(MGetDenseLink(h,measure_tag)));
+						}
 						ShowGeometricData(MEASURE,etype);
 					}
 				}
@@ -472,10 +441,10 @@ namespace INMOST
 					if( (mask & etype) && !HaveGeometricData(CENTROID,etype))
 					{
 						centroid_tag = CreateTag("GEOM_UTIL_CENTROID",DATA_REAL,etype,NONE,GetDimensions());
-						for(INMOST_DATA_INTEGER_TYPE k = 0; k < MaxLocalID(etype); ++k)
+						for(integer k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k) )
 						{
-							Element * e = ElementByLocalID(etype,k);
-							if( e != NULL ) GetGeometricData(e,CENTROID,&e->RealDF(centroid_tag));
+							HandleType h = ComposeHandle(etype,k);
+							GetGeometricData(h,CENTROID,static_cast<Storage::real *>(MGetDenseLink(h,centroid_tag)));
 						}
 						ShowGeometricData(CENTROID,etype);
 					}
@@ -488,8 +457,11 @@ namespace INMOST
 					if( (mask & etype) && !HaveGeometricData(BARYCENTER,etype))
 					{
 						barycenter_tag = CreateTag("GEOM_UTIL_BARYCENTER",DATA_REAL,etype,NONE,GetDimensions());
-						for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); ++e)
-							GetGeometricData(&*e,BARYCENTER,&e->RealDF(barycenter_tag));
+						for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+						{
+							HandleType h = ComposeHandle(etype,e);
+							GetGeometricData(h,BARYCENTER,static_cast<Storage::real *>(MGetDenseLink(h,barycenter_tag)));
+						}
 						ShowGeometricData(BARYCENTER,etype);
 					}
 				}	
@@ -497,28 +469,33 @@ namespace INMOST
 			if( types == NORMAL )
 			{
 				for(ElementType etype = FACE; etype <= CELL; etype = etype << 1)
+				{
 					if( (mask & etype) && !HaveGeometricData(NORMAL,etype))
 					{
 						normal_tag = CreateTag("GEOM_UTIL_NORMAL",DATA_REAL,etype,NONE,GetDimensions());
-						for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); ++e)
-							GetGeometricData(&*e,NORMAL,&e->RealDF(normal_tag));
+						for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+						{
+							HandleType h = ComposeHandle(etype,e);
+							GetGeometricData(h,NORMAL,static_cast<Storage::real *>(MGetDenseLink(h,normal_tag)));
+						}
 						ShowGeometricData(NORMAL,etype);
 					}
+				}
 			}
 		}
 	}
 	
-	void Mesh::GetGeometricData(Element * e, GeometricData type, Storage::real * ret)
+	void Mesh::GetGeometricData(HandleType e, GeometricData type, Storage::real * ret)
 	{
-		ElementType etype = e->GetElementType();
-		INMOST_DATA_ENUM_TYPE edim = e->GetElementDimension();
-		INMOST_DATA_ENUM_TYPE mdim = GetDimensions();
+		ElementType etype = GetHandleElementType(e);
+		integer edim = Element::GetGeometricDimension(GetGeometricType(e));
+		integer mdim = GetDimensions();
 		switch(type)
 		{
 			case MEASURE:
 			if( HaveGeometricData(MEASURE,etype) )
 			{
-				*ret = e->RealDF(measure_tag);
+				*ret = static_cast<Storage::real *>(MGetDenseLink(e,measure_tag))[0];
 				//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 			}
 			else
@@ -528,19 +505,19 @@ namespace INMOST
 					case 0: *ret = 0; break;
 					case 1: //length of edge
 					{
-						adjacent<Node> nodes = e->getNodes();
+						ElementArray<Node> nodes = Element(this,e)->getNodes(NODE);
 						Storage::real c[3];
-						vec_diff(nodes[0].Coords().data(),nodes[1].Coords().data(),c,mdim);
+						vec_diff(nodes[0]->Coords().data(),nodes[1]->Coords().data(),c,mdim);
 						*ret = vec_len(c,mdim);
 						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 						break;
 					}
 					case 2: //area of face
 					{
-						adjacent<Node> nodes = e->getNodes();
+						ElementArray<Node> nodes = Element(this,e)->getNodes(NODE);
 						real x[3] = {0,0,0};
 						Storage::real_array x0 = nodes[0].Coords();
-						for(unsigned i = 1; i < nodes.size()-1; i++)
+						for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
 						{
 							Storage::real_array v1 = nodes[i].Coords();
 							Storage::real_array v2 = nodes[i+1].Coords();
@@ -557,7 +534,8 @@ namespace INMOST
 					}
 					case 3: //volume of cell
 					{
-						adjacent<Face> faces = e->getFaces();
+						Cell me = Cell(this,e);
+						ElementArray<Face> faces = me->getFaces();
 						*ret = 0;
 						/*
 						Storage::real d;
@@ -577,10 +555,10 @@ namespace INMOST
 						*ret /= 6.0;
 						*/
 						Storage::real fcnt[3], fnrm[3];// , area;
-						for(unsigned i = 0; i < faces.size(); i++)
+						for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
 						{
-							faces[i].Centroid(fcnt);
-							faces[i].OrientedNormal(e->getAsCell(),fnrm);
+							faces[i]->Centroid(fcnt);
+							faces[i]->OrientedNormal(me,fnrm);
 							/*
 							area = sqrt(vec_dot_product(fnrm,fnrm,mdim));
 							if( area > 0 )
@@ -707,43 +685,44 @@ namespace INMOST
 			break;
 			case CENTROID:
 			if(etype == NODE )
-				memcpy(ret,e->getAsNode()->Coords().data(),sizeof(real)*mdim);
+				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
 			else if(HaveGeometricData(CENTROID,etype))
 			{
-				memcpy(ret,&e->RealDF(centroid_tag),sizeof(real)*mdim);
+				memcpy(ret,MGetDenseLink(e,centroid_tag),sizeof(real)*mdim);
 			}
 			else
 			{
-				adjacent<Node> nodes = e->getNodes();
+				ElementArray<Node> nodes = Element(this,e)->getNodes();
 				Storage::real div = 1.0/nodes.size();
 				memset(ret,0,sizeof(real)*mdim);
 				assert(nodes.size() != 0);
-				for(unsigned i = 0; i < nodes.size(); i++)
+				for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
 				{
 					Storage::real_array c =nodes[i].Coords();
-					for(unsigned j = 0; j < mdim; j++) ret[j] += c[j];
+					for(integer j = 0; j < mdim; j++) ret[j] += c[j];
 				}
-				for(unsigned j = 0; j < mdim; j++) ret[j] *= div;
+				for(integer j = 0; j < mdim; j++) ret[j] *= div;
 			}
 			break;
 			case BARYCENTER:
 			if( etype == NODE )
-				memcpy(ret,e->getAsNode()->Coords().data(),sizeof(real)*mdim);
+				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
 			else if(HaveGeometricData(BARYCENTER,etype))
-				memcpy(ret,&e->RealDF(barycenter_tag),sizeof(real)*mdim);
+				memcpy(ret,MGetDenseLink(e,barycenter_tag),sizeof(real)*mdim);
 			else
 			{
 				memset(ret,0,sizeof(real)*mdim);
 				if( edim == 1 )
 				{
-					adjacent<Node> n = e->getNodes();
+					ElementArray<Node> n = Element(this,e)->getNodes();
 					Storage::real_array a = n[0].Coords();
 					Storage::real_array b = n[1].Coords();
-					for(unsigned j = 0; j < dim; j++) ret[j] = (a[j] + b[j])*0.5;
+					for(integer j = 0; j < dim; j++) 
+						ret[j] = (a[j] + b[j])*0.5;
 				}
 				else if( edim == 2 )
 				{
-					adjacent<Node> nodes = e->getNodes();
+					ElementArray<Node> nodes = Element(this,e)->getNodes();
 					real s,d, x1[3] = {0,0,0},x2[3] = {0,0,0},x[3] = {0,0,0};
 					//here we compute area of polygon
 					//~ if( HaveGeometricData(MEASURE,etype) && HaveGeometricData(NORMAL,etype) )
@@ -753,47 +732,48 @@ namespace INMOST
 					//~ }
 					//~ else
 					//~ {
-						Storage::real_array x0 = nodes[0].Coords();
-						for(unsigned i = 1; i < nodes.size()-1; i++)
+					Storage::real_array x0 = nodes[0].Coords();
+					for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
+					{
+						Storage::real_array v1 = nodes[i].Coords();
+						Storage::real_array v2 = nodes[i+1].Coords();
+						if( mdim == 3 )
 						{
-							Storage::real_array v1 = nodes[i].Coords();
-							Storage::real_array v2 = nodes[i+1].Coords();
-							if( mdim == 3 )
-							{
-								x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
-								x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
-							}
-							x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
+							x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
+							x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
 						}
-						s = sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-						x[0] /= s; x[1] /= s; x[2] /= s; //here we obtain the unit normal
+						x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
+					}
+					s = sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
+					x[0] /= s; x[1] /= s; x[2] /= s; //here we obtain the unit normal
 					//~ }
 					//here we compute the center
 					Storage::real_array v0 = nodes[0].Coords();
-					for(unsigned j = 1; j < nodes.size()-1; j++)
+					for(ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
 					{
 						Storage::real_array v1 = nodes[j].Coords();
 						Storage::real_array v2 = nodes[j+1].Coords();
-						for(unsigned k = 0; k < mdim; k++)
+						for(integer k = 0; k < mdim; k++)
 						{
 							x1[k] = v0[k] - v1[k];
 							x2[k] = v0[k] - v2[k];
 						}
 						d = det3v(x1,x2,x); //here we use unit normal
-						for(unsigned k = 0; k < mdim; k++) ret[k] += d*(v0[k]+v1[k]+v2[k]);
+						for(integer k = 0; k < mdim; k++) 
+							ret[k] += d*(v0[k]+v1[k]+v2[k]);
 					}
-					for(unsigned k = 0; k < mdim; k++) ret[k] /= 3.0 * s;
+					for(integer k = 0; k < mdim; k++) ret[k] /= 3.0 * s;
 				}
 				else if( edim == 3 )
 				{
-					adjacent<Face> faces = e->getFaces();
+					ElementArray<Face> faces = Element(this,e)->getFaces();
 					real d,c,vol = 0, y[3];
-					for(unsigned i = 0; i < faces.size(); i++)
+					for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
 					{
 						d = y[0] = y[1] = y[2] = 0;
-						adjacent<Node> nodes = faces[i].getNodes();
+						ElementArray<Node> nodes = faces[i].getNodes();
 						Storage::real_array v0 = nodes[0].Coords();
-						for(unsigned j = 1; j < nodes.size()-1; j++)
+						for(ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
 						{
 							Storage::real_array v1 = nodes[j].Coords();
 							Storage::real_array v2 = nodes[j+1].Coords();
@@ -803,7 +783,7 @@ namespace INMOST
 							y[1] += c * (v0[1] + v1[1] + v2[1]);
 							y[2] += c * (v0[2] + v1[2] + v2[2]);
 						}
-						c = faces[i].FaceOrientedOutside(e->getAsCell()) ? 1 : -1;
+						c = faces[i].FaceOrientedOutside(Cell(this,e)) ? 1 : -1;
 						ret[0] += c * y[0];
 						ret[1] += c * y[1];
 						ret[2] += c * y[2];
@@ -817,16 +797,16 @@ namespace INMOST
 			break;
 			case NORMAL:
 			if( HaveGeometricData(NORMAL,etype) )
-				memcpy(ret,&e->RealDF(normal_tag),sizeof(real)*GetDimensions());
+				memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);
 			else
 			{
 				memset(ret,0,sizeof(real)*mdim);
 				if( edim == 2 )//&& mdim == 3)
 				{
-					adjacent<Node> nodes = e->getNodes();
+					ElementArray<Node> nodes = Element(this,e)->getNodes();
 					
 					Storage::real_array x0 = nodes[0].Coords();
-					for(unsigned i = 1; i < nodes.size()-1; i++)
+					for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
 					{
 						Storage::real_array a = nodes[i].Coords();
 						Storage::real_array b = nodes[i+1].Coords();
@@ -850,7 +830,7 @@ namespace INMOST
 				}
 				else if( edim == 1 )//&& mdim == 2 )
 				{
-					adjacent<Node> nodes = e->getNodes();
+					ElementArray<Node> nodes = Element(this,e)->getNodes();
 					Storage::real_array a = nodes[0].Coords();
 					Storage::real_array b = nodes[1].Coords();
 					ret[0] = b[1] - a[1];
@@ -876,14 +856,14 @@ namespace INMOST
 	
 
 
-	bool Element::Planarity()
+	bool Element::Planarity() const
 	{
 		Mesh * m = GetMeshLink();
-		unsigned int dim = m->GetDimensions();
+		integer dim = m->GetDimensions();
 		if( dim < 3 ) return true;
-		adjacent<Node> p = getNodes();
+		ElementArray<Node> p = getNodes();
 		if( p.size() <= 3 ) return true;
-		unsigned int i, s = p.size();
+		ElementArray<Node>::size_type i, s = p.size();
 		Storage::real v[2][3] = {{0,0,0},{0,0,0}};
 		vec_diff(p[1].Coords().data(),p[0].Coords().data(),v[0],3);
 		vec_diff(p[2].Coords().data(),p[0].Coords().data(),v[1],3);
@@ -897,14 +877,16 @@ namespace INMOST
 	}
 
 
-	bool Cell::Closure()
+	bool Cell::Closure() const
 	{
-		return LowConn().size() > 0 ? GetMeshLink()->TestClosure(LowConn().data(),LowConn().size()) : false;
+		adj_type & lc = GetMeshLink()->LowConn(GetHandle());
+		return lc.size() > 0 ? GetMeshLink()->TestClosure(lc.data(),static_cast<integer>(lc.size())) : false;
 	}
 
-	bool Face::Closure()
+	bool Face::Closure() const
 	{
-		return LowConn().size() > 0 ? GetMeshLink()->TestClosure(LowConn().data(),LowConn().size()) : false;
+		adj_type & lc = GetMeshLink()->LowConn(GetHandle());
+		return lc.size() > 0 ? GetMeshLink()->TestClosure(lc.data(),static_cast<integer>(lc.size())) : false;
 	}
 
 
@@ -913,11 +895,10 @@ namespace INMOST
 
 	
 
-	bool Element::Boundary()
+	bool Element::Boundary() const
 	{
 		switch(GetElementType())
 		{
-			case CELL: return false;
 			case FACE:
 				if( nbAdjElements(CELL) == 1 )
 				{
@@ -925,11 +906,12 @@ namespace INMOST
 						return true;
 				}
 				return false;
+			case CELL:
 			case EDGE:
 			case NODE:
 			{
-				adjacent<Element> faces = getAdjElements(FACE);
-				for(adjacent<Element>::iterator it = faces.begin(); it != faces.end(); it++)
+				ElementArray<Element> faces = getAdjElements(FACE);
+				for(ElementArray<Element>::iterator it = faces.begin(); it != faces.end(); it++)
 					if( it->Boundary() ) return true;
 				return false;
 			}
@@ -939,15 +921,15 @@ namespace INMOST
 	}
 	
 	
-	bool Face::CheckNormalOrientation()
+	bool Face::CheckNormalOrientation() const
 	{
 		Mesh * m = GetMeshLink();
-		unsigned dim = m->GetDimensions();
-		Cell * c1 = BackCell();
-		Cell * c2 = FrontCell();
-		if( c1 != NULL )
+		integer dim = m->GetDimensions();
+		Cell c1 = BackCell();
+		Cell c2 = FrontCell();
+		if( c1.isValid() )
 		{
-			Storage::real nf[3], cf[3],fc[3], cc[3], dot, dot2;
+			real nf[3], cf[3],fc[3], cc[3], dot, dot2;
 			UnitNormal(nf);
 			Centroid(fc);
 			c1->Centroid(cc);
@@ -956,7 +938,7 @@ namespace INMOST
 			vec_normalize(cf,dim);
 			dot = vec_dot_product(nf,cf,dim);
 			//~ c = FrontCell();
-			if( fabs(dot) < 0.25 && c2 != NULL )
+			if( fabs(dot) < 0.25 && c2.isValid() )
 			{
 				c2->Centroid(cc);
 				vec_diff(cc,fc,cf,dim);
@@ -971,22 +953,23 @@ namespace INMOST
 		return true;
 	}
 	
-	bool Face::FixNormalOrientation()
+	bool Face::FixNormalOrientation() const
 	{
 		if( !CheckNormalOrientation() )
 		{	
 			ReorderEdges();
 			if( GetMeshLink()->HaveGeometricData(NORMAL,FACE) )
 			{
-				Storage::real_array nrm = RealArray(GetMeshLink()->GetGeometricTag(NORMAL));
-				for(Storage::real_array::iterator it = nrm.begin(); it != nrm.end(); ++it) *it = -(*it);
+				real_array nrm = GetMeshLink()->RealArrayDF(GetHandle(),GetMeshLink()->GetGeometricTag(NORMAL));
+				for(real_array::size_type it = 0; it < nrm.size(); ++it) 
+					nrm[it] = -nrm[it];
 			}
 			return true;
 		}
 		return false;
 	}
 
-	Storage::real meantri(Storage::real * v0, Storage::real * v1, Storage::real * v2, unsigned dim, Storage::real (*func)(Storage::real* x,Storage::real), Storage::real time)
+	Storage::real meantri(Storage::real * v0, Storage::real * v1, Storage::real * v2, Storage::integer dim, Storage::real (*func)(Storage::real* x,Storage::real), Storage::real time)
 	{
 		Storage::real value = 0;
 		static const Storage::real w[4] =   { -0.149570044467670, 0.175615257433204, 0.053347235608839 , 0.077113760890257};
@@ -998,24 +981,24 @@ namespace INMOST
 			{0.638444188569809,0.312865496004875,0.048690315425316}
 		};
 		Storage::real XYG[13][3];
-		for (unsigned i = 0 ; i < dim; i++)
+		for (Storage::integer i = 0 ; i < dim; i++)
 			XYG[0][i] = 0.33333333333333333333*(v0[i]+v1[i]+v2[i]);
 		 value += w[0] * func(XYG[0],time);
 		for (int i = 0 ; i < 3 ; i++ )
 		{
-			for (unsigned j = 0 ; j < dim; j++)
+			for (Storage::integer j = 0 ; j < dim; j++)
 				XYG[1+i][j] = v0[j] + (v1[j] - v0[j]) * a[1][i] + (v2[j] - v0[j])*a[1][(i+1)%3];
 			value += w[1] * func(XYG[1+i],time);
 		}
 		for (int i = 0 ; i < 3 ; i++ )
 		{
-			for (unsigned j = 0 ; j < dim; j++)
+			for (Storage::integer j = 0 ; j < dim; j++)
 				XYG[4+i][j] = v0[j] + (v1[j] - v0[j]) * a[2][i] + (v2[j] - v0[j])*a[2][(i+1)%3];
 			value += w[2] * func(XYG[4+i],time);
 		}
 		for (int i = 0 ; i < 3 ; i++ )
 		{
-			for (unsigned j = 0 ; j < dim; j++)
+			for (Storage::integer j = 0 ; j < dim; j++)
 			{
 				XYG[7+2*i][j] = v0[j] + (v1[j] - v0[j]) * a[3][i] + (v2[j] - v0[j])*a[3][(i+1)%3];
 				XYG[8+2*i][j] = v0[j] + (v1[j] - v0[j]) * a[3][(i+1)%3] + (v2[j] - v0[j])*a[3][i];
@@ -1063,28 +1046,27 @@ namespace INMOST
 		return value;
 	}
 
-	Storage::real Element::Mean(Storage::real (*func)(Storage::real* x,Storage::real),Storage::real time)
+	Storage::real Element::Mean(Storage::real (*func)(Storage::real* x,Storage::real),Storage::real time) const
 	{
 		Mesh * m = GetMeshLink();
 		if( GetElementDimension() == 2 )
 		{
-			unsigned int dim = m->GetDimensions();
-			Storage::real val = 0, vol = 0, tvol,tval;
-			Storage::real normal[3];
-			Storage::real v1[3],v2[3],product[3];
-			m->GetGeometricData(this,NORMAL,normal);
-			adjacent<Node> nodes = getNodes();
-			Storage::real_array av0 = nodes.front().RealArray(m->CoordsTag());
-			for(adjacent<Node>::iterator it = ++nodes.begin(); it != nodes.end(); it++)
+			integer dim = m->GetDimensions();
+			real val = 0, vol = 0, tvol,tval;
+			real normal[3];
+			real v1[3] = {0,0,0},v2[3] = {0,0,0}, product[3] = {0,0,0};
+			m->GetGeometricData(GetHandle(),NORMAL,normal);
+			ElementArray<Node> nodes = getNodes();
+			real_array av0 = nodes.front().Coords();
+			for(ElementArray<Node>::iterator it = ++nodes.begin(); it != nodes.end(); it++)
 			{
-				adjacent<Node>::iterator jt = it++;
+				ElementArray<Node>::iterator jt = it++;
 				if( it == nodes.end() ) break;
-				Storage::real_array av1 = jt->getAsNode()->Coords();
-				Storage::real_array av2 = it->getAsNode()->Coords();
-				tval = meantri(av0.data(),av1.data(),av2.data(),m->GetDimensions(),func,time);
+				real_array av1 = jt->Coords();
+				real_array av2 = it->Coords();
+				tval = meantri(av0.data(),av1.data(),av2.data(),dim,func,time);
 				vec_diff(av1.data(),av0.data(),v1,dim);
 				vec_diff(av2.data(),av0.data(),v2,dim);
-				if( dim == 2 ) v1[2] = v2[2] = 0;
 				vec_cross_product(v1,v2,product);
 				tvol = vec_dot_product(product,normal,dim)*0.5;
 				val += tval*tvol;
@@ -1096,35 +1078,34 @@ namespace INMOST
 		else if( GetElementDimension() == 3 )
 		{
 			
-			adjacent<Element> rfaces = getAdjElements(FACE);
-			std::vector<int> n(rfaces.size());
-			std::vector<Storage::real> v;
+			ElementArray<Element> rfaces = getAdjElements(FACE);
+			array<int> n(static_cast<array<int>::size_type>(rfaces.size()));
+			array<real> v;
 			int k = 0;
-			for(adjacent<Element>::iterator f = rfaces.begin(); f != rfaces.end(); f++)
+			for(ElementArray<Element>::iterator f = rfaces.begin(); f != rfaces.end(); f++)
 			{
-				adjacent<Node> nodes = f->getNodes();
-				int nn = n[k] = nodes.size();
+				ElementArray<Node> nodes = f->getNodes();
+				int nn = n[k] = static_cast<int>(nodes.size());
 				for(int i = 0; i < nn; i++)
 				{
-					Storage::real_array a = nodes[i].Coords();
+					real_array a = nodes[i].Coords();
 					v.insert(v.end(),a.begin(),a.end());
 				}
 				k++;
 			}
 			int j = 0;
-			Storage::real x[3], y[3], d, vol = 0, c;
-			x[0] = x[1] = x[2] = 0;
-			for(unsigned i = 0; i < n.size(); i++)
+			real x[3] = {0,0,0}, y[3], d, vol = 0, c;
+			for(array<int>::size_type i = 0; i < n.size(); i++)
 			{
 				y[0] = y[1] = y[2] = d = 0;
-				for(int k = 1; k < n[i] - 1; k++)
+				for(array<int>::size_type k = 1; k < static_cast<array<int>::size_type>(n[i] - 1); k++)
 				{
 					d += c = det3v(&v[j*3],&v[(j+k)*3],&v[(j+k+1)*3]);
 					y[0] += c * (v[j*3+0] + v[(j+k)*3+0] + v[(j+k+1)*3+0]);
 					y[1] += c * (v[j*3+1] + v[(j+k)*3+1] + v[(j+k+1)*3+1]);
 					y[2] += c * (v[j*3+2] + v[(j+k)*3+2] + v[(j+k+1)*3+2]);
 				}
-				int orient = rfaces[i].getAsFace()->FaceOrientedOutside(getAsCell())?1:-1;
+				int orient = rfaces[static_cast<ElementArray<Element>::size_type>(i)]->getAsFace()->FaceOrientedOutside(getAsCell())?1:-1;
 				x[0] += orient*y[0];
 				x[1] += orient*y[1];
 				x[2] += orient*y[2];
@@ -1137,17 +1118,17 @@ namespace INMOST
 			vol /= 6;
 			j = 0;
 			vol = 0;
-			Storage::real tvol, tval, val = 0;
-			Storage::real vv0[3], vv1[3], vv2[3], prod[3];
-			for(unsigned i = 0; i < n.size(); i++)
+			real tvol, tval, val = 0;
+			real vv0[3], vv1[3], vv2[3], prod[3];
+			for(array<int>::size_type i = 0; i < n.size(); i++)
 			{
-				for(int k = 1; k < n[i] - 1; k++)
+				for(array<int>::size_type k = 1; k < static_cast<array<int>::size_type>(n[i] - 1); k++)
 				{
 					vec_diff(&v[j*3],x,vv0,3);
 					vec_diff(&v[(j+k)*3],x,vv1,3);
 					vec_diff(&v[(j+k+1)*3],x,vv2,3);
 					vec_cross_product(vv1,vv2,prod);
-					tvol = vec_dot_product(vv0,prod,3)/6.0 * (rfaces[i].getAsFace()->FaceOrientedOutside(getAsCell())?1:-1);
+					tvol = vec_dot_product(vv0,prod,3)/6.0 * (rfaces[static_cast<ElementArray<Element>::size_type>(i)]->getAsFace()->FaceOrientedOutside(getAsCell())?1:-1);
 					tval = meantet(x,&v[j*3],&v[(j+k)*3],&v[(j+k+1)*3],func,time);
 					val += tval * tvol;
 					vol += tvol;
@@ -1158,43 +1139,62 @@ namespace INMOST
 		}
 		else if ( GetElementDimension() == 1 ) //Mean value over line.
 		{
-			adjacent<Node> nodes = getNodes();
-			unsigned int dim = m->GetDimensions();
-			Storage::real_array x1 = nodes[0].Coords();
-			Storage::real_array x2 = nodes[1].Coords();
-			Storage::real middle[3];
-			for (unsigned int i = 0 ; i < dim ; i++) middle[i] = (x1[i]+x2[i])*0.5;
+			ElementArray<Node> nodes = getNodes();
+			integer dim = m->GetDimensions();
+			real_array x1 = nodes[0].Coords();
+			real_array x2 = nodes[1].Coords();
+			real middle[3];
+			for (integer i = 0 ; i < dim ; i++) middle[i] = (x1[i]+x2[i])*0.5;
 			//Simpson formula
-			return (func(x1.data(),time) + 4*func(middle,time) + func(x2.data(),time))/6e0;
+			return (func(x1.data(),time) + 4*func(middle,time) + func(x2.data(),time))/6.0;
 		}
 		return 0;
 	}
 	
-	
-	
-	std::vector<Face *> Mesh::GatherBoundaryFaces()
+	const Tag & Mesh::GetGeometricTag(GeometricData type) const
 	{
-		std::vector<Face *> ret;
-		for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
-			if( f->Boundary() ) ret.push_back(&*f);
+		switch(type) 
+		{
+		case    MEASURE: return    measure_tag; 
+		case   CENTROID: return   centroid_tag; 
+		case BARYCENTER: return barycenter_tag; 
+		case     NORMAL: return     normal_tag;
+		}
+		assert(false);
+		static const Tag t; //invalid tag
+		return t;
+	}
+	
+	ElementArray<Face> Mesh::GatherBoundaryFaces()
+	{
+		ElementArray<Face> ret(this);
+		for(integer f = 0; f < FaceLastLocalID(); f++) if( isValidElement(FACE,f) )
+		{
+			Face ef = Face(this,ComposeHandle(FACE,f));
+			if( ef->Boundary() ) ret.push_back(ef);
+		}
 		return ret;
 	}
 
-	std::vector<Face *> Mesh::GatherInteriorFaces()
+	ElementArray<Face> Mesh::GatherInteriorFaces()
 	{
-		std::vector<Face *> ret;
+		ElementArray<Face> ret(this);
 		if( GetMeshState() == Mesh::Serial )
 		{
-			for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
-				if( f->nbAdjElements(CELL) == 2 ) ret.push_back(&*f);
+			for(integer f = 0; f < FaceLastLocalID(); f++) if( isValidElement(FACE,f) )
+			{
+				Face ef = Face(this,ComposeHandle(FACE,f));
+				if( ef->nbAdjElements(CELL) == 2 ) ret.push_back(ef);
+			}
 		}
 		else
 		{
-			for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
+			for(integer f = 0; f < FaceLastLocalID(); f++) if( isValidElement(FACE,f) )
 			{
-				adjacent<Cell> cells = f->getCells();
+				Face ef = Face(this,ComposeHandle(FACE,f));
+				ElementArray<Cell> cells = ef->getCells();
 				if( cells.size() == 2 && cells[0].GetStatus() != Element::Ghost && cells[1].GetStatus() != Element::Ghost)
-					ret.push_back(&*f);
+					ret.push_back(ef);
 			}
 		}
 		return ret;
@@ -1202,25 +1202,32 @@ namespace INMOST
 
 	Storage::integer Mesh::CountBoundaryFaces()
 	{
-		Storage::integer ret = 0;
-		for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
-			if( f->Boundary() ) ret++;
+		integer ret = 0;
+		for(integer f = 0; f < FaceLastLocalID(); f++) if( isValidElement(FACE,f) )
+		{
+			Face ef = Face(this,ComposeHandle(FACE,f));
+			if( ef->Boundary() ) ret++;
+		}
 		return ret;
 	}
 
 	Storage::integer Mesh::CountInteriorFaces()
 	{
-		Storage::integer ret = 0;
+		integer ret = 0;
 		if( GetMeshState() == Mesh::Serial )
 		{
-			for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
-				if( f->nbAdjElements(CELL) == 2 ) ret++;
+			for(integer f = 0; f < FaceLastLocalID(); f++) if( isValidElement(FACE,f) )
+			{
+				Face ef = Face(this,ComposeHandle(FACE,f));
+				if( ef->nbAdjElements(CELL) == 2 ) ret++;
+			}
 		}
 		else
 		{
-			for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
+			for(integer f = 0; f < FaceLastLocalID(); f++) if( isValidElement(FACE,f) )
 			{
-				adjacent<Cell> cells = f->getCells();
+				Face ef = Face(this,ComposeHandle(FACE,f));
+				ElementArray<Cell> cells = ef->getCells();
 				if( cells.size() == 2 && cells[0].GetStatus() != Element::Ghost && cells[1].GetStatus() != Element::Ghost)
 					ret++;
 			}
@@ -1232,7 +1239,7 @@ namespace INMOST
 	
 
 	
-	void Element::CastRay(Storage::real * pos, Storage::real * dir, dynarray< std::pair<Element *, Storage::real> , 16 > & hits)
+	void Element::CastRay(real * pos, real * dir, dynarray< std::pair<Element, real> , 16 > & hits) const
 	{
 		Mesh * mm = GetMeshLink();
 		unsigned dim = mm->GetDimensions();
@@ -1251,7 +1258,7 @@ namespace INMOST
 				lvec = vec_normalize(vec,dim);
 				ldir = vec_normalize(ndir,dim);
 				if( vec_dot_product(vec,ndir,dim) >= 1.0 - eps )
-					hits.push_back(std::pair<Element *,Storage::real>(this,lvec/ldir));
+					hits.push_back(std::make_pair(Element(mm,GetHandle()),lvec/ldir));
 			}	 
 			break;
 			case EDGE:
@@ -1261,12 +1268,12 @@ namespace INMOST
 			break;
 			case FACE:
 			{
-				Element * shr_nodes[2];
+				HandleType shr_nodes[2];
 				Storage::real tri[3][3];
 				Centroid(tri[2]);
-				adjacent<Node> nodes = getNodes();
+				ElementArray<Node> nodes = getNodes();
 				memcpy(tri[0],nodes[nodes.size()-1].Coords().data(),sizeof(Storage::real)*dim);
-				for(unsigned q = 0; q < nodes.size(); q++)
+				for(ElementArray<Node>::size_type q = 0; q < nodes.size(); q++)
 				{
 					memcpy(tri[1],nodes[q].Coords().data(),sizeof(Storage::real)*dim);
 					Storage::real a[3],b[3],c[3],n[3], d, k, m;
@@ -1310,17 +1317,17 @@ namespace INMOST
 									{
 										if( 1.0-(uq+vq) <= eps )
 										{
-											shr_nodes[0] = &nodes[(q-1+nodes.size())%nodes.size()];
-											shr_nodes[1] = &nodes[q];
+											shr_nodes[0] = nodes.at((q-1+nodes.size())%nodes.size());
+											shr_nodes[1] = nodes.at(q);
 											if( uq <= eps && vq >= -eps )
-												hits.push_back(std::pair<Element *,Storage::real>(shr_nodes[0],k));
+												hits.push_back(std::make_pair(Element(mm,shr_nodes[0]),k));
 											else if ( vq >= -eps && vq <= eps )
-												hits.push_back(std::pair<Element *,Storage::real>(shr_nodes[1],k));
+												hits.push_back(std::make_pair(Element(mm,shr_nodes[1]),k));
 											else
-												hits.push_back(std::pair<Element *,Storage::real>(mm->FindSharedAdjacency(shr_nodes,2),k));
+												hits.push_back(std::make_pair(Element(mm,mm->FindSharedAdjacency(shr_nodes,2)),k));
 										} 
 										else
-											hits.push_back(std::pair<Element *,Storage::real>(this,k));
+											hits.push_back(std::pair<Element,Storage::real>(self(),k));
 										break; //we shouldn't have more then one intersection
 									}
 								}
@@ -1333,8 +1340,8 @@ namespace INMOST
 			break;
 			case CELL:
 			{
-				adjacent<Face> faces = getFaces();
-				for(adjacent<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
+				ElementArray<Face> faces = getFaces();
+				for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
 					it->CastRay(pos,dir,hits);
 			}
 			break;
