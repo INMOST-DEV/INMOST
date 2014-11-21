@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef INMOST_MESH_H_INCLUDED
 #define INMOST_MESH_H_INCLUDED
 
@@ -68,7 +68,7 @@ namespace INMOST
 	static const INMOST_DATA_ENUM_TYPE MarkerFields = 16;   // number of chars to hold all markers, total number (MarkerFields * bits_per_char)
 	static const INMOST_DATA_ENUM_TYPE MarkerMask   = static_cast<INMOST_DATA_BULK_TYPE>(-1); // bit mask to obtain marker mask within MarkerType
 	static const INMOST_DATA_ENUM_TYPE MarkerShift  = sizeof(INMOST_DATA_BULK_TYPE)*8;    // sizeof(char) * bits_per_char
-	static const MarkerType InvalidMarker() {return ENUMUNDEF;}
+	__INLINE static MarkerType InvalidMarker() {return ENUMUNDEF;}
 
 
 	static const INMOST_DATA_ENUM_TYPE chunk_bits_elems       = 13;
@@ -112,53 +112,16 @@ namespace INMOST
 	static const TopologyCheck DISABLE_2D             = 0x80000000; //done//don't allow 2d grids, where edges appear to be vertexes, faces are edges and cells are faces
 	static const TopologyCheck GRID_CONFORMITY        = NEED_TEST_CLOSURE | PROHIBIT_MULTILINE | PROHIBIT_MULTIPOLYGON  | INTERLEAVED_FACES | TRIPLE_SHARED_FACE;
 	static const TopologyCheck DEFAULT_CHECK          = THROW_EXCEPTION | DUPLICATE_EDGE | DUPLICATE_FACE | PRINT_NOTIFY;
-	
-	static const char * TopologyCheckNotifyString(TopologyCheck c)
-	{
-		switch(c)
-		{
-			case THROW_EXCEPTION:        return "exception thrown";
-			case PRINT_NOTIFY:           return "print notify";
-			case DELETE_ON_ERROR:        return "element should be deleted on error";
-			case MARK_ON_ERROR:          return "element is marked on error";
-			case DUPLICATE_EDGE:         return "search for duplicate edge";
-			case DUPLICATE_FACE:         return "search for duplicate face";
-			case DUPLICATE_CELL:         return "search for duplicate cell";
-			case DEGENERATE_EDGE:        return "TOPOLOGY ERROR: curvilinear edge found"; 
-			case DEGENERATE_FACE:        return "TOPOLOGY ERROR: degenerate face found";
-			case DEGENERATE_CELL:        return "TOPOLOGY ERROR: degenerate cell found";
-			case FACE_ORIENTATION:       return "TOPOLOGY ERROR: bad face orientation";
-			case FACE_PLANARITY:         return "TOPOLOGY ERROR: non-planar face found";
-			case INTERLEAVED_FACES:      return "TOPOLOGY ERROR: interleaving faces found";
-			case TRIPLE_SHARED_FACE:     return "TOPOLOGY ERROR: face have more then two neighbours"; 
-			case FLATTENED_CELL:         return "TOPOLOGY ERROR: flattened cell found"; 
-			case ADJACENT_DUPLICATE:     return "TOPOLOGY ERROR: duplicates in adjacent elements";
-			case ADJACENT_HIDDEN:        return "TOPOLOGY ERROR: hidden element is used as adjacent"; 
-			case ADJACENT_VALID:         return "TOPOLOGY ERROR: invalid handle is used as adjacent"; 
-			case ADJACENT_DIMENSION:     return "TOPOLOGY ERROR: wrong dimension of adjacent elements";
-			case PROHIBIT_MULTILINE:     return "TOPOLOGY ERROR: multiline is prohibited"; 
-			case PROHIBIT_POLYGON:       return "TOPOLOGY ERROR: polygon is prohibited"; 
-			case PROHIBIT_MULTIPOLYGON:  return "TOPOLOGY ERROR: multipolygon is prohibited"; 
-			case PROHIBIT_POLYHEDRON:    return "TOPOLOGY ERROR: polyhedron is prohibited"; 
-			case FACE_EDGES_ORDER:       return "TOPOLOGY ERROR: no order in face edges"; 
-			case PROHIBIT_CONCAVE_FACE:  return "TOPOLOGY ERROR: concave faces are prohibited"; 
-			case PROHIBIT_CONCAVE_CELL:  return "TOPOLOGY ERROR: concave cells are prohibited"; 
-			case PROHIBIT_NONSTAR_FACE:  return "TOPOLOGY ERROR: non star-shaped faces are prohibited"; 
-			case PROHIBIT_NONSTAR_CELL:  return "TOPOLOGY ERROR: non star-shpaed cells are prohibited"; 
-			case FACE_SELF_INTERSECTION: return "TOPOLOGY ERROR: self intersection of face edges detected"; 
-			case CELL_SELF_INTERSECTION: return "TOPOLOGY ERROR: self intersection of cell faces detected"; 
-			case DISABLE_2D:             return "TOPOLOGY ERROR: 2d mesh support is disabled"; 
-			default: return "unknown";
-		}
-	}
-	
-	const char *                             DataTypeName         (DataType t);
-	static bool                              OneType              (ElementType t) {return t > 0 && (t & (t-1)) == 0;}
-	static ElementType                       FirstElementType     () {return NODE;}
-	static ElementType                       LastElementType      () {return MESH << 1;}
-	static ElementType                       NextElementType      (ElementType etype) {return etype << 1;}
-	static ElementType                       PrevElementType      (ElementType etype) {return etype >> 1;}
-	__INLINE static INMOST_DATA_INTEGER_TYPE ElementNum           (ElementType t)
+	const char *                             TopologyCheckNotifyString(TopologyCheck c); //mesh.cpp
+	const char *                             DataTypeName         (DataType t); //tag.cpp
+	__INLINE bool                            OneType              (ElementType t) {return t > 0 && (t & (t-1)) == 0;}
+	__INLINE ElementType                     FirstElementType     () {return NODE;}
+	__INLINE ElementType                     LastElementType      () {return MESH << 1;}
+	__INLINE ElementType                     NextElementType      (ElementType etype) {return etype << 1;}
+	__INLINE ElementType                     PrevElementType      (ElementType etype) {return etype >> 1;}
+	__INLINE ElementType                     ElementTypeFromDim   (INMOST_DATA_INTEGER_TYPE dim) {return 1 << dim;}
+	const char *                             ElementTypeName      (ElementType t); //mesh.cpp
+	__INLINE INMOST_DATA_INTEGER_TYPE        ElementNum           (ElementType t)
 	{
 		unsigned int v = static_cast<unsigned int>(t);  // 32-bit value to find the log2 of 
 		//static const unsigned int b[] = {0xAAAAAAAA, 0xCCCCCCCC, 0xF0F0F0F0, 0xFF00FF00, 0xFFFF0000};
@@ -170,14 +133,13 @@ namespace INMOST
 		r |= ((v & b[1]) != 0) << 1;
 		return static_cast<INMOST_DATA_INTEGER_TYPE>(r);
 	}
-	__INLINE static HandleType               InvalidHandle        () {return 0;}
-	__INLINE static INMOST_DATA_INTEGER_TYPE GetHandleID          (HandleType h) {return (h & handle_id_mask)-1;}
-	__INLINE static INMOST_DATA_INTEGER_TYPE GetHandleElementNum  (HandleType h) {return h >> handle_etype_shift;}
-	__INLINE static ElementType              GetHandleElementType (HandleType h) {return 1 << GetHandleElementNum(h);}
-	__INLINE static HandleType               ComposeHandle        (ElementType etype, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(etype) << handle_etype_shift) + (1+ID));}
-	__INLINE static HandleType               ComposeHandle        (INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((etypenum << handle_etype_shift) + (1+ID));}
-	__INLINE static bool                     isValidHandle        (HandleType h) {return h != 0;}
-	const char *                             ElementTypeName      (ElementType t);
+	__INLINE HandleType                      InvalidHandle        () {return 0;}
+	__INLINE INMOST_DATA_INTEGER_TYPE        GetHandleID          (HandleType h) {return (h & handle_id_mask)-1;}
+	__INLINE INMOST_DATA_INTEGER_TYPE        GetHandleElementNum  (HandleType h) {return h >> handle_etype_shift;}
+	__INLINE ElementType                     GetHandleElementType (HandleType h) {return 1 << GetHandleElementNum(h);}
+	__INLINE HandleType                      ComposeHandle        (ElementType etype, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(etype) << handle_etype_shift) + (1+ID));}
+	__INLINE HandleType                      ComposeHandle        (INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((etypenum << handle_etype_shift) + (1+ID));}
+	__INLINE bool                            isValidHandle        (HandleType h) {return h != 0;}
 	
 
 	
@@ -312,8 +274,8 @@ namespace INMOST
 		{
 			Mesh * m;
 		public:
-			reference_array(Mesh * m, inner_reference_array & arr) : m(m), shell<reference>(arr) {} 
-			reference_array(Mesh * m, reference * arr, size_type size) : m(m), shell<reference>(arr,size) {}
+			reference_array(Mesh * m, inner_reference_array & arr) : shell<reference>(arr), m(m) {} 
+			reference_array(Mesh * m, reference * arr, size_type size) : shell<reference>(arr,size), m(m) {}
 			~reference_array() {}
 			void push_back(const Storage & elem);
 			Element operator[] (size_type n) const;
@@ -321,9 +283,9 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				iterator(Mesh * m, const shell<HandleType>::iterator & other) : m(m), shell<HandleType>::iterator(other) {}
-				iterator(const iterator & other) : m(other.m), shell<HandleType>::iterator(other) {}
-				iterator & operator =(iterator const & other) {m = other.m; shell<HandleType>::iterator::operator=(other);}
+				iterator(Mesh * m, const shell<HandleType>::iterator & other) : shell<HandleType>::iterator(other), m(m) {}
+				iterator(const iterator & other) : shell<HandleType>::iterator(other), m(other.m) {}
+				iterator & operator =(iterator const & other) {m = other.m; shell<HandleType>::iterator::operator=(other); return *this;}
 				iterator & operator ++() {shell<HandleType>::iterator::operator++(); return *this;}
 				iterator   operator ++(int) {iterator ret(*this); shell<HandleType>::iterator::operator++(); return ret;}
 				iterator & operator --() {shell<HandleType>::iterator::operator--(); return *this;}
@@ -334,9 +296,9 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				const_iterator(Mesh * m, const shell<HandleType>::const_iterator & other) : m(m), shell<HandleType>::const_iterator(other) {}
-				const_iterator(const const_iterator & other) : m(other.m), shell<HandleType>::const_iterator(other) {}
-				const_iterator & operator =(const_iterator const & other) {m = other.m; shell<HandleType>::const_iterator::operator=(other);}
+				const_iterator(Mesh * m, const shell<HandleType>::const_iterator & other) : shell<HandleType>::const_iterator(other) , m(m) {}
+				const_iterator(const const_iterator & other) : shell<HandleType>::const_iterator(other), m(other.m) {}
+				const_iterator & operator =(const_iterator const & other) {m = other.m; shell<HandleType>::const_iterator::operator=(other); return *this;}
 				const_iterator & operator ++() {shell<HandleType>::const_iterator::operator++(); return *this;}
 				const_iterator   operator ++(int) {const_iterator ret(*this); shell<HandleType>::const_iterator::operator++(); return ret;}
 				const_iterator & operator --() {shell<HandleType>::const_iterator::operator--(); return *this;}
@@ -347,9 +309,9 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				reverse_iterator(Mesh * m, const shell<HandleType>::reverse_iterator & other) : m(m), shell<HandleType>::reverse_iterator(other) {}
-				reverse_iterator(const reverse_iterator & other) : m(other.m), shell<HandleType>::reverse_iterator(other) {}
-				reverse_iterator & operator =(reverse_iterator const & other) {m = other.m; shell<HandleType>::reverse_iterator::operator=(other);}
+				reverse_iterator(Mesh * m, const shell<HandleType>::reverse_iterator & other) : shell<HandleType>::reverse_iterator(other), m(m) {}
+				reverse_iterator(const reverse_iterator & other) : shell<HandleType>::reverse_iterator(other), m(other.m)  {}
+				reverse_iterator & operator =(reverse_iterator const & other) {m = other.m; shell<HandleType>::reverse_iterator::operator=(other); return *this;}
 				reverse_iterator & operator ++() {shell<HandleType>::reverse_iterator::operator++(); return *this;}
 				reverse_iterator   operator ++(int) {reverse_iterator ret(*this); shell<HandleType>::reverse_iterator::operator++(); return ret;}
 				reverse_iterator & operator --() {shell<HandleType>::reverse_iterator::operator--(); return *this;}
@@ -360,9 +322,9 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				const_reverse_iterator(Mesh * m, const shell<HandleType>::const_reverse_iterator & other) : m(m), shell<HandleType>::const_reverse_iterator(other) {}
-				const_reverse_iterator(const const_reverse_iterator & other) : m(other.m), shell<HandleType>::const_reverse_iterator(other) {}
-				const_reverse_iterator & operator =(const_reverse_iterator const & other) {m = other.m; shell<HandleType>::const_reverse_iterator::operator=(other);}
+				const_reverse_iterator(Mesh * m, const shell<HandleType>::const_reverse_iterator & other) : shell<HandleType>::const_reverse_iterator(other), m(m) {}
+				const_reverse_iterator(const const_reverse_iterator & other) : shell<HandleType>::const_reverse_iterator(other), m(other.m) {}
+				const_reverse_iterator & operator =(const_reverse_iterator const & other) {m = other.m; shell<HandleType>::const_reverse_iterator::operator=(other); return *this;}
 				const_reverse_iterator & operator ++() {shell<HandleType>::const_reverse_iterator::operator++(); return *this;}
 				const_reverse_iterator   operator ++(int) {const_reverse_iterator ret(*this); shell<HandleType>::const_reverse_iterator::operator++(); return ret;}
 				const_reverse_iterator & operator --() {shell<HandleType>::const_reverse_iterator::operator--(); return *this;}
@@ -384,6 +346,7 @@ namespace INMOST
 		const Storage * operator->() const {return this;}
 		Storage & self() {return *this;}
 		const Storage & self() const {return *this;}
+		virtual ~Storage() {}
 	public:
 		/// Retrieve real value associated with Tag.
 		real      &              Real            (const Tag & tag) const;
@@ -489,8 +452,8 @@ namespace INMOST
 		{
 			Mesh * m_link;
 		public:
-			iterator(Mesh * m, const cont_t::iterator & other ) : m_link(m), cont_t::iterator(other) {assert(m_link);}
-			iterator(const iterator & other ) : m_link(other.m_link), cont_t::iterator(other) {assert(m_link);}
+			iterator(Mesh * m, const cont_t::iterator & other ) : cont_t::iterator(other) , m_link(m){assert(m_link);}
+			iterator(const iterator & other ) : cont_t::iterator(other), m_link(other.m_link) {assert(m_link);}
 			iterator &    operator ++() {cont_t::iterator::operator++(); return *this;}
 			iterator      operator ++(int) {iterator ret(*this); cont_t::iterator::operator++(); return ret;}
 			iterator &    operator --() {cont_t::iterator::operator--(); return *this;}
@@ -503,8 +466,8 @@ namespace INMOST
 		{
 			Mesh * m_link;
 		public:
-			reverse_iterator(Mesh * m, const cont_t::reverse_iterator & other ) : m_link(m),cont_t::reverse_iterator(other) {assert(m_link);}
-			reverse_iterator(const reverse_iterator & other ) : m_link(other.m_link), cont_t::reverse_iterator(other) {assert(m_link);}
+			reverse_iterator(Mesh * m, const cont_t::reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(m) {assert(m_link);}
+			reverse_iterator(const reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(other.m_link) {assert(m_link);}
 			reverse_iterator &    operator ++() {cont_t::reverse_iterator::operator++(); return *this;}
 			reverse_iterator      operator ++(int) {reverse_iterator ret(*this); cont_t::reverse_iterator::operator++(); return ret;}
 			reverse_iterator &    operator --() {cont_t::reverse_iterator::operator--(); return *this;}
@@ -517,8 +480,8 @@ namespace INMOST
 		{
 			Mesh * m_link;
 		public:
-			const_iterator(Mesh * m, const cont_t::const_iterator & other ) : m_link(m), cont_t::const_iterator(other) {assert(m_link);}
-			const_iterator(const const_iterator & other ) : m_link(other.m_link), cont_t::const_iterator(other) {assert(m_link);}
+			const_iterator(Mesh * m, const cont_t::const_iterator & other ) : cont_t::const_iterator(other), m_link(m) {assert(m_link);}
+			const_iterator(const const_iterator & other ) : cont_t::const_iterator(other), m_link(other.m_link) {assert(m_link);}
 			const_iterator &    operator ++() {cont_t::const_iterator::operator++(); return *this;}
 			const_iterator      operator ++(int) {const_iterator ret(*this); cont_t::const_iterator::operator++(); return ret;}
 			const_iterator &    operator --() {cont_t::const_iterator::operator--(); return *this;}
@@ -531,8 +494,8 @@ namespace INMOST
 		{
 			Mesh * m_link;
 		public:
-			const_reverse_iterator(Mesh * m, const cont_t::const_reverse_iterator & other) : cont_t::const_reverse_iterator(other) {assert(m_link);}
-			const_reverse_iterator(const const_reverse_iterator & other ) : cont_t::const_reverse_iterator(other) {assert(m_link);}
+			const_reverse_iterator(Mesh * m, const cont_t::const_reverse_iterator & other) : cont_t::const_reverse_iterator(other), m_link(m) {assert(m_link);}
+			const_reverse_iterator(const const_reverse_iterator & other ) : cont_t::const_reverse_iterator(other), m_link(other.m_link) {assert(m_link);}
 			const_reverse_iterator &    operator ++() {cont_t::const_reverse_iterator::operator++(); return *this;}
 			const_reverse_iterator      operator ++(int) {const_reverse_iterator ret(*this); cont_t::const_reverse_iterator::operator++(); return ret;}
 			const_reverse_iterator &    operator --() {cont_t::const_reverse_iterator::operator--(); return *this;}
@@ -641,6 +604,7 @@ namespace INMOST
 		const Element * operator ->() const {return this;}
 		Element & self() {return *this;}
 		const Element & self() const {return *this;}
+		virtual ~Element() {}
 	public:
 		/// Retrive number of adjacent elements.
 		/// As etype you can either pass one type as CELL,
@@ -1118,7 +1082,7 @@ namespace INMOST
 			iterator() : m(NULL), ptr(NULL), pos(0) {}
 			iterator(const iterator & other) : m(other.m), ptr(other.ptr), pos(other.pos) {}
 			iterator(Mesh * m, Element::adj_type const * ptr, Element::adj_type::size_type pos) : m(m), ptr(ptr), pos(pos) {}
-			iterator & operator = (iterator const & other) {m = other.m; ptr = other.ptr; pos = other.pos;}
+			iterator & operator = (iterator const & other) {m = other.m; ptr = other.ptr; pos = other.pos; return *this;}
 			iterator & operator ++();
 			iterator & operator ++(int) {iterator ret(*this); operator++(); return *this;}
 			bool       operator ==(const iterator & other) {assert(ptr == other.ptr); return pos == other.pos;}
@@ -1337,7 +1301,7 @@ namespace INMOST
 		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElement(GetHandleElementNum(h),GetHandleID(h));}
 		/// Retrive upper adjacent that is shared by multiple lower adjacencies
 		/// @return handle of found element or InvalidHandle()
-		HandleType                        FindSharedAdjacency(const HandleType * arr, integer num) const;
+		HandleType                        FindSharedAdjacency(const HandleType * arr, enumerator num) const;
 		void                              ReorderEmpty       (ElementType reordertypes);
 		//Bug inside: sort would not work on chunk_array, because it is not contiguous in memory
 		void                              ReorderApply       (Tag index, ElementType mask);
@@ -1887,7 +1851,7 @@ namespace INMOST
 		int                                 tab;
 		int                                 func_id;
 #endif
-#if defined(USE_MPI2)
+#if defined(USE_MPI_P2P)
 		INMOST_MPI_Win                      window;
 		unsigned *                          shared_space;
 #endif
@@ -1934,13 +1898,13 @@ namespace INMOST
 		///   1) Post asynchronous receive with MPI_Irecv of size of buffer to be sent
 		///   2) Post asynchronous send with MPI_Isend for required corresponding receive buffer size
 		///   3) Wait for all asynchronous operations by MPI_Waitall
-		/// With UnknownSource there are two options depending from the USE_MPI2 define
-		/// If USE_MPI2 is defined then MPI-2 api operations will be used
+		/// With UnknownSource there are two options depending from the USE_MPI_P2P define
+		/// If USE_MPI_P2P is defined then MPI-2 api operations will be used
 		///   1) MPI_Win_fence to start operations
 		///   2) MPI_Put from specially allocated memory location to remote processor 
 		///      of array size is performed
 		///   3) MPI_Win_fence to stop operations
-		/// if USE_MPI2 not set then MPI-1 api will be used
+		/// if USE_MPI_P2P not set then MPI-1 api will be used
 		///   1) MPI_Allgather for number of processors to which current processor wants to send data
 		///   2) MPI_Allgatherv for sizes and destinations for each processors
 		/// Initially it was intended to mainly use MPI-2 functionality for both scenarios but
@@ -1948,7 +1912,7 @@ namespace INMOST
 		/// performs match better then MPI-1 counterparts, especially in the case of UnknownSize.
 		/// Probably this happens due to lack of support of RDMA operations.
 		/// If you believe it will be better to use MPI-2 in both cases you are free to uncomment
-		/// definition of PREFFER_MPI2 in inmost_common.h then MPI-2 will be used in both scenaries.
+		/// definition of PREFFER_MPI_P2P in inmost_common.h then MPI-2 will be used in both scenaries.
 		/// These algorthms above are implemented in Mesh::ExchangeBufferInner.
 		/// After first problem was resolved following strategies are availible for main communication:
 		/// strategy = 0
@@ -2021,7 +1985,7 @@ namespace INMOST
 		///   3) MPI_Scatter to distribute block sizes among processors
 		///   4) MPI_File_read_ordered to obtain contents
 		///   5) MPI_File_close to close parallel file handle
-		///  Availible only when USE_MPI2 is set because it rely on MPI-2 api that begins with MPI_File_xxx
+		///  Availible only when USE_MPI_P2P is set because it rely on MPI-2 api that begins with MPI_File_xxx
 		///  some MPI-1 standards contain this api as extension.
 		/// The strategy 1 appeared to be considerably slower on INM cluster then strategy 0, this may
 		/// happen due to lack of read-write devices that able to work in parallel. On IBM Bluegene/p
@@ -2588,15 +2552,15 @@ namespace INMOST
 		/// May use ResolveShared function as basis but instead the whole mesh run the same algorithm for subset.
 		void                              ResolveModification(); //resolve parallel state of newly created elements, restore ghost layers; not implemented, resuse ResolveShared code
 		void                              EndModification    ();    //delete hidden elements
-		integer                           getNext            (const HandleType * arr, integer size, integer k, MarkerType marker) const;
-		integer                           Count              (const HandleType * arr, integer size, MarkerType marker) const;
+		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
+		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
 		//implemented in mesh.cpp
 	private:
 		Tag                   tag_topologyerror;
 		TopologyCheck         checkset;
 		TopologyCheck         errorset;
 	private:
-		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, integer num); //check provided elements
+		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, enumerator num); //check provided elements
 		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
 	public:
 		Tag                               TopologyErrorTag   () const {return tag_topologyerror;}

@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef _CONTAINER_HPP
 #define _CONTAINER_HPP
 
@@ -665,7 +665,7 @@ namespace INMOST
 		}
 		void push_back(const element & e)
 		{
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 #if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
 			//unoptimized variant
 			if( (*m_size)+1 > array<element>::growth_formula(*m_size) )
@@ -684,7 +684,7 @@ namespace INMOST
 		}
 		void pop_back()
 		{
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			assert((*m_arr) != NULL);
 			(*m_arr)[(*m_size)--].~element();
 			if( (*m_size) > 0 )
@@ -734,7 +734,7 @@ namespace INMOST
 		__INLINE bool empty() const { if( *m_size ) return false; return true; }
 		void resize(size_type n, element c = element() )
 		{
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			size_type oldsize = *m_size;
 			*m_size = n;
 			for(size_type i = *m_size; i < oldsize; i++) (*m_arr)[i].~element(); //delete elements, located over the size
@@ -754,7 +754,7 @@ namespace INMOST
 		__INLINE size_type size() const {return *m_size;}
 		void clear() 
 		{ 
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			for(size_type i = 0; i < *m_size; i++) (*m_arr)[i].~element();
 			*m_size = 0; 
 			if( *m_arr ) free(*m_arr); 
@@ -779,7 +779,7 @@ namespace INMOST
 		__INLINE const_reverse_iterator rend() const { return const_reverse_iterator(*m_arr-1); }
 		iterator erase(iterator pos) 
 		{ 
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			ptrdiff_t d = pos-begin();
 			ptrdiff_t s = iterator(*m_arr+(*m_size)-1)-pos;
 			(*pos).~element();
@@ -806,7 +806,7 @@ namespace INMOST
 		}
 		iterator erase(iterator b, iterator e)
 		{
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			ptrdiff_t d = b-begin();
 			ptrdiff_t s = end()-e;
 			ptrdiff_t n = e-b;
@@ -829,7 +829,7 @@ namespace INMOST
 		}
 		iterator insert(iterator pos, const element & x)
 		{
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			if( static_cast<void *>(pos) == NULL )
 			{
 				assert((*m_arr) == NULL);
@@ -859,7 +859,7 @@ namespace INMOST
 		}
 		void insert(iterator pos, size_type n, const element & x)
 		{
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			if( n > 0 )
 			{
 				if( static_cast<void *>(pos) == NULL)
@@ -883,7 +883,7 @@ namespace INMOST
 		template <class InputIterator>
 		void insert(iterator pos, InputIterator first, InputIterator last)
 		{
-			assert( !fixed && "array size is fixed");
+			assert( !fixed ); // array size is fixed
 			ptrdiff_t n = static_cast<ptrdiff_t>(std::distance(first,last));
 			if( n > 0 )
 			{
@@ -926,7 +926,7 @@ namespace INMOST
 			for(iterator it = m_first; it != m_last; it++) (*it).~element();
 			if( n-q != 0 )
 			{
-				assert( !fixed && "array size is fixed");
+				assert( !fixed ); // array size is fixed
 				size_type gf = array<element>::growth_formula((*m_size)+static_cast<size_type>(n-q));
 				if( gf != array<element>::growth_formula(*m_size) )
 					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*gf));

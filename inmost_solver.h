@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef INMOST_SOLVER_INCLUDED
 #define INMOST_SOLVER_INCLUDED
 
@@ -189,12 +189,19 @@ namespace INMOST
 			{
 				INMOST_DATA_ENUM_TYPE first;  ///< the column number of the row element.
 				INMOST_DATA_REAL_TYPE second; ///< the real value of the row element.
-				entry_s() :first(0), second(0.0) {}
-				entry_s(const entry_s & other) :first(other.first), second(other.second) {}//{std::cout << __FUNCTION__ << " " << first << " " << second << std::endl;}
-				entry_s(INMOST_DATA_ENUM_TYPE first, INMOST_DATA_REAL_TYPE second):first(first),second(second){}
-				entry_s & operator =(entry_s const & other) {first = other.first, second = other.second; return *this;}
+				//entry_s() :first(0), second(0.0) {}
+				//entry_s(const entry_s & other) :first(other.first), second(other.second) {}//{std::cout << __FUNCTION__ << " " << first << " " << second << std::endl;}
+				//entry_s(INMOST_DATA_ENUM_TYPE first, INMOST_DATA_REAL_TYPE second):first(first),second(second){}
+				//entry_s & operator =(entry_s const & other) {first = other.first, second = other.second; return *this;}
 				bool operator < (const entry_s & other) const { return first < other.first || (first == other.first && second < other.second); }
 			} entry;
+			__INLINE static entry make_entry(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
+			{
+				entry ret;
+				ret.first = ind;
+				ret.second = val;
+				return ret;
+			}
 			
 			typedef dynarray<entry,16> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
 			//typedef array<entry> Entries;
@@ -312,7 +319,7 @@ namespace INMOST
 			/// Push specified element into sparse row.
 			/// This function should be used only if the index is not repeated in the row
 			/// and all indexes are inserted in increasing order.
-			void                  Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(entry(ind,val));}
+			void                  Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
 		};
 		
 		/// Class to store the distributed sparse matrix by compressed rows.

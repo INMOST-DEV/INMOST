@@ -54,18 +54,21 @@ namespace INMOST
 		memcpy(temp,inout,sizeof(INMOST_DATA_REAL_TYPE)*num);
 		GUARD_MPI(MPI_Allreduce(temp,inout,num,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 		delete [] temp;
+#else
+		(void) inout;
+		(void) num;
 #endif
 	}
 
 	void Solver::OrderInfo::PrepareMatrix(Matrix & m, INMOST_DATA_ENUM_TYPE overlap)
 	{
 		have_matrix = true;
-		int ierr = 0;
 		m.isParallel() = true;
 		INMOST_DATA_ENUM_TYPE  two[2];
 		INMOST_DATA_ENUM_TYPE mbeg,mend;
 		int initial_rank;
 #if defined(USE_MPI)
+		int ierr = 0;
 		if( comm != INMOST_MPI_COMM_WORLD )
 		{
 			MPI_Comm_free(&comm);
@@ -77,6 +80,7 @@ namespace INMOST
 		MPI_Comm_rank(comm,&rank);
 		MPI_Comm_size(comm,&size);
 #else
+		(void) overlap;
 		rank = 0;
 		size = 1;
 #endif
@@ -535,7 +539,16 @@ namespace INMOST
 		}
 	}
 	
-	Solver::OrderInfo::OrderInfo() : global_to_proc(), global_overlap(),vector_exchange_recv(), vector_exchange_send(), extended_indexes(), send_storage(), recv_storage(), send_requests(), recv_requests()
+	Solver::OrderInfo::OrderInfo() : 
+	global_to_proc(), 
+	global_overlap(),
+	vector_exchange_recv(), 
+	vector_exchange_send(), 
+	send_storage(), 
+	recv_storage(), 
+	send_requests(), 
+	recv_requests(),
+	extended_indexes()
 	{
 		comm = INMOST_MPI_COMM_WORLD;
 		rank = 0;
@@ -696,6 +709,8 @@ namespace INMOST
 		{
 			GUARD_MPI(MPI_Waitall(static_cast<int>(send_requests.size()),&send_requests[0],MPI_STATUSES_IGNORE));
 		}
+#else
+		(void) x;
 #endif
 		//std::cout << __FUNCTION__ << " end" << std::endl;
 	}
@@ -742,6 +757,8 @@ namespace INMOST
 			//std::cout << GetRank() << " Waitall recv " << recv_requests.size() << std::endl;
 			GUARD_MPI(MPI_Waitall(static_cast<int>(recv_requests.size()),&recv_requests[0],MPI_STATUSES_IGNORE));
 		}
+#else
+		(void) x;
 #endif
 		//std::cout << __FUNCTION__ << " end" << std::endl;
 	}
@@ -785,7 +802,9 @@ namespace INMOST
 		GetInterval(mbeg,mend);
 		imbeg = mbeg;
 		imend = mend;
+#if defined(USE_OMP)
 #pragma omp for private(ind)
+#endif
 		for(ind = imbeg; ind < imend; ++ind) //iterate rows of matrix
 			out[ind] = beta * out[ind] + alpha * (*this)[ind].RowVec(x);
 		// outer procedure should update Sout vector, if needed
@@ -937,8 +956,8 @@ namespace INMOST
 		rhs << std::scientific;
 		rhs.precision(15);
 		for(iterator it = Begin(); it != End(); ++it) rhs << *it << std::endl;
-#if defined(USE_MPI)
-		{ // USE_MPI2?
+#if defined(USE_MPI) && defined(USE_MPI_FILE) // Use mpi files
+		{ 
 			int ierr;
 			MPI_File fh;
 			MPI_Status stat;
@@ -961,7 +980,31 @@ namespace INMOST
 			ierr = MPI_File_close(&fh);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 		}
-		//USE_MPI alternative
+#elif defined(USE_MPI) //USE_MPI alternative
+		std::string senddata = rhs.str(), recvdata;
+		int sendsize = static_cast<int>(senddata.size());
+		std::vector<int> recvsize(size), displ(size);
+		MPI_Gather(&sendsize,1,MPI_INT,&recvsize[0],1,MPI_INT,0,GetCommunicator());
+		if( rank == 0 )
+		{
+			int totsize = recvsize[0];
+			
+			displ[0] = 0;
+			for(int i = 1; i < size; i++) 
+			{
+				totsize += recvsize[i];
+				displ[i] = displ[i-1]+recvsize[i-1];
+			}
+			recvdata.resize(totsize);
+		}
+		else recvdata.resize(1); //protect from dereferencing null
+		MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_INT,0,GetCommunicator());
+		if( rank == 0 )
+		{
+			std::fstream output(file.c_str(),std::ios::out);
+			output << vecsize << std::endl;
+			output << recvdata;
+		}
 #else
 		std::fstream output(file.c_str(),std::ios::out);
 		//output << "% vector " << name << std::endl;
@@ -997,8 +1040,8 @@ namespace INMOST
 				mtx << row << " " << jt->first+1 << " " << jt->second << std::endl;
 			++row;
 		}
-#if defined(USE_MPI)
-		{ // USE_MPI2?
+#if defined(USE_MPI) && defined(USE_MPI_FILE) // USE_MPI2?
+		{
 			int ierr;
 			MPI_File fh;
 			MPI_Status stat;
@@ -1022,7 +1065,35 @@ namespace INMOST
 			ierr = MPI_File_close(&fh);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 		}
-		//USE_MPI alternative
+#elif defined(USE_MPI)//USE_MPI alternative
+		std::string senddata = mtx.str(), recvdata;
+		int sendsize = static_cast<int>(senddata.size());
+		std::vector<int> recvsize(size), displ(size);
+		MPI_Gather(&sendsize,1,MPI_INT,&recvsize[0],1,MPI_INT,0,GetCommunicator());
+		if( rank == 0 )
+		{
+			int totsize = recvsize[0];
+			
+			displ[0] = 0;
+			for(int i = 1; i < size; i++) 
+			{
+				totsize += recvsize[i];
+				displ[i] = displ[i-1]+recvsize[i-1];
+			}
+			recvdata.resize(totsize);
+		}
+		else recvdata.resize(1); //protect from dereferencing null
+		MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_INT,0,GetCommunicator());
+		if( rank == 0 )
+		{
+			std::fstream output(file.c_str(),std::ios::out);
+			output << "%%MatrixMarket matrix coordinate real general" << std::endl;
+			output << "% matrix " << name << std::endl;
+			output << "% is written by INMOST" << std::endl;
+			output << "% by MPI_Gather* api and sequential write" << std::endl;
+			output << matsize << " " << matsize << " " << nonzero << std::endl;
+			output << recvdata;
+		}
 #else
 		std::fstream output(file.c_str(),std::ios::out);
 		output << "%%MatrixMarket matrix coordinate real general" << std::endl;
@@ -1039,6 +1110,9 @@ namespace INMOST
 	////////////////////////////////////////////////////////////////////////
 	void Solver::Initialize(int * argc, char *** argv, const char * database)
 	{
+		(void)database;
+		(void)argc;
+		(void)argv;
 #if defined(USE_SOLVER_PETSC)
 		SolverInitializePetsc(argc,argv,database);
 #endif
@@ -1317,6 +1391,7 @@ namespace INMOST
 	
 	void Solver::SetMatrix(Matrix & A, bool OldPreconditioner)
 	{
+		(void) OldPreconditioner;
 		bool ok = false;
 #if defined(USE_SOLVER_PETSC)
 		if( _pack == PETSC )
@@ -1493,7 +1568,7 @@ namespace INMOST
 			if( SOL.Size() == 0 )
 			{
 				SOL.SetInterval(vbeg,vend);
-				std::fill(SOL.Begin(),SOL.End(),0);
+				for(Solver::Vector::iterator ri = SOL.Begin(); ri != SOL.End(); ++ri) *ri = 0.0;
 			}
 			else throw InconsistentSizesInSolver;
 		}

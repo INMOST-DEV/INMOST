@@ -218,10 +218,10 @@ namespace INMOST
 		switch (var.op)
 		{
 		case AD_COND_TYPE:
-			lval = (e->GetElementType() & reinterpret_cast<ElementType>(var.left))? 1.0 : -1.0;
+			lval = (e->GetElementType() & (*(ElementType*)&var.left))? 1.0 : -1.0;
 			return lval;
 		case AD_COND_MARK:
-			lval = e->GetMarker(reinterpret_cast<MarkerType>(var.left))? 1.0 : -1.0;
+			lval = e->GetMarker(*(MarkerType *)&var.left)? 1.0 : -1.0;
 			return lval;
 		case AD_COND:
 			lval = Evaluate(*var.left, e, user_data);
@@ -329,7 +329,7 @@ namespace INMOST
 			{
 				stencil_pairs get_st;
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if( get_st[k].first != NULL )
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if( get_st[k].first != InvalidHandle() )
 				{
 					lval = DerivativePrecompute(*var.left, Storage(m,get_st[k].first), values, user_data);
 					ret += lval * get_st[k].second;
@@ -454,7 +454,7 @@ namespace INMOST
 			{
 				stencil_pairs get_st;
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
-				for (INMOST_DATA_ENUM_TYPE k = static_cast<INMOST_DATA_ENUM_TYPE>(get_st.size()); k > 0; --k) if( get_st[k-1].first != NULL )
+				for (INMOST_DATA_ENUM_TYPE k = static_cast<INMOST_DATA_ENUM_TYPE>(get_st.size()); k > 0; --k) if( get_st[k-1].first != InvalidHandle() )
 					DerivativeFill(*var.left, Storage(m,get_st[k - 1].first), entries, values, var.coef * get_st[k - 1].second*multval, user_data);
 			}
 			return;
@@ -477,8 +477,8 @@ namespace INMOST
 		assert(var.op != AD_NONE);
 		switch (var.op)
 		{
-		case AD_COND_MARK: return e->GetMarker(reinterpret_cast<MarkerType>(var.left)) ? 1.0 : -1.0;
-		case AD_COND_TYPE: return (e->GetElementType() & reinterpret_cast<ElementType>(var.left)) ? 1.0 : -1.0;
+		case AD_COND_MARK: return e->GetMarker(*(MarkerType *)&var.left) ? 1.0 : -1.0;
+		case AD_COND_TYPE: return (e->GetElementType() & (*(ElementType *)&var.left)) ? 1.0 : -1.0;
 		case AD_COND:  return Evaluate(*(Evaluate(*var.left, e, user_data) > 0.0 ? var.right->left : var.right->right), e, user_data)*var.coef;
 		case AD_PLUS:  return (Evaluate(*var.left, e, user_data) + Evaluate(*var.right, e, user_data))*var.coef;
 		case AD_MINUS: return (Evaluate(*var.left, e, user_data) - Evaluate(*var.right, e, user_data))*var.coef;
@@ -515,7 +515,7 @@ namespace INMOST
 			{
 				stencil_pairs get_st;
 				reinterpret_cast<stencil_callback>(st.link)(e, get_st, user_data);
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if ( get_st[k].first != NULL )
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < get_st.size(); ++k) if ( get_st[k].first != InvalidHandle() )
 					ret += var.coef * Evaluate(*var.left, Storage(m,get_st[k].first), user_data) * get_st[k].second;
 			}
 			return ret;

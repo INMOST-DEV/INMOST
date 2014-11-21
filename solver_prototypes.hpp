@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef __SOLVER_PROTOTYPES__
 #define __SOLVER_PROTOTYPES__
 

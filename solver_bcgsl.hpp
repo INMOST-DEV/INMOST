@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef __SOLVER_BCGS__
 #define __SOLVER_BCGS__
 
@@ -116,7 +116,7 @@ namespace INMOST
 			}
 			if (b->init) Initialize();
 		}
-		BCGSL_solver(const BCGSL_solver & other)
+		BCGSL_solver(const BCGSL_solver & other) :IterativeMethod(other)
 		{
 			Copy(&other);
 		}
@@ -162,6 +162,7 @@ namespace INMOST
 				while( itr0 != endr0 ) *itr00++ = *itr0++;
 			}
 			//std::copy(r[0].Begin(),r[0].End(),r0.Begin());
+			//for(Solver::Vector::iterator it = u[0].Begin(); it != u[0].End(); ++it) *it = 0.0;
 			std::fill(u[0].Begin(),u[0].End(),0);
 			{
 				resid = 0;
@@ -362,8 +363,8 @@ exit:
 			return false;
 		}
 		bool ReplaceMAT(Solver::Matrix & A) { if (isInitialized()) Finalize(); if (prec != NULL) prec->ReplaceMAT(A);  Alink = &A; return true; }
-		bool ReplaceRHS(Solver::Vector & RHS) { return true; }
-		bool ReplaceSOL(Solver::Vector & SOL) { return true; }
+		bool ReplaceRHS(Solver::Vector & RHS) { (void) RHS; return true; }
+		bool ReplaceSOL(Solver::Vector & SOL) { (void) SOL; return true; }
 		Method * Duplicate() { return new BCGSL_solver(*this);}
 		std::string GetReason() {return reason;}
 	};
@@ -455,7 +456,7 @@ exit:
 			}
 			if (b->init) Initialize();
 		}
-		BCGS_solver(const BCGS_solver & other)
+		BCGS_solver(const BCGS_solver & other) : IterativeMethod(other)
 		{
 			Copy(&other);
 		}
@@ -502,8 +503,8 @@ exit:
 				while( itr != endr ) *itr00++ = *itr++;
 			}
 			//std::copy(r.Begin(),r.End(),r0.Begin());
-			std::fill(v.Begin(),v.End(),0);
-			std::fill(p.Begin(),p.End(),0);
+			std::fill(v.Begin(),v.End(),0.0);
+			std::fill(p.Begin(),p.End(),0.0);
 			{
 				resid = 0;
 				for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) 
@@ -526,7 +527,9 @@ exit:
 				fflush(stdout);
 			}
 #endif
+#if defined(USE_OMP)
 #pragma omp parallel
+#endif
 			{
 				long double tt, ts, tp, ttt;
 				INMOST_DATA_ENUM_TYPE i = 0;
@@ -547,18 +550,24 @@ exit:
 						}
 						beta = 1.0 /rho * alpha / omega;
 						rho = 0;
+#if defined(USE_OMP)
 #pragma omp for reduction(+:rho)
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
 							rho += r0[k]*r[k];
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Integrate(&rho,1);
 						}
 						beta *= rho;
 					}
 					{
+#if defined(USE_OMP)
 #pragma omp for
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
 							p[k] = r[k] + beta*(p[k] - omega*v[k]); //global indexes r, p, v
 					}
@@ -566,13 +575,17 @@ exit:
 						ttt = Timer();
 						if (prec != NULL)
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							prec->Solve(p, y);
 						}
 						tp += Timer() - ttt;
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Update(y);
 						}
 						ttt = Timer();
@@ -580,18 +593,24 @@ exit:
 						ts += Timer() - ttt;
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Update(v);
 						}
 					}
 					{
 						alpha = 0;
+#if defined(USE_OMP)
 #pragma omp for reduction(+:alpha)
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)  
 							alpha += r0[k]*v[k];
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Integrate(&alpha,1);
 						}
 						if( fabs(alpha) < 1.0e-31 )
@@ -603,7 +622,9 @@ exit:
 						alpha = rho / alpha; //local indexes, r0, v
 					}
 					{
+#if defined(USE_OMP)
 #pragma omp for
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
 							s[k] = r[k] - alpha * v[k]; //global indexes r, v
 					}
@@ -612,13 +633,17 @@ exit:
 						ttt = Timer();
 						if (prec != NULL)
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							prec->Solve(s, z);
 						}
 						tp += Timer() - ttt;
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Update(z);
 						}
 						ttt = Timer();
@@ -626,14 +651,18 @@ exit:
 						ts += Timer() - ttt;
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Update(t);
 						}
 					}
 					{
 						
 						temp[0] = temp[1] = 0;
+#if defined(USE_OMP)
 #pragma omp for reduction(+:tempa) reduction(+:tempb)
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)
 						{
 							tempa += t[k]*s[k];
@@ -643,7 +672,9 @@ exit:
 						temp[1] = tempb;
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Integrate(temp,2);
 						}
 						/*
@@ -658,24 +689,32 @@ exit:
 						omega = temp[0] / (temp[1]+1e-35); //local indexes t, s
 					}
 					{
+#if defined(USE_OMP)
 #pragma omp for
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
 							SOL[k] += alpha * y[k] + omega * z[k]; // global indexes SOL, y, z
 					}
 					{
+#if defined(USE_OMP)
 #pragma omp for
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
 							r[k] = s[k] - omega * t[k]; // global indexes r, s, t
 					}
 					last_it = i+1;
 					{
 						resid = 0;
+#if defined(USE_OMP)
 #pragma omp for reduction(+:resid)
+#endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
 							resid += r[k]*r[k];
 						if( is_parallel ) 
 						{
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 							info->Integrate(&resid,1);
 						}
 						resid = sqrt(resid);
@@ -687,7 +726,9 @@ exit:
 						//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5 << " precond " << tp*0.5 << std::endl;
 						//std::cout << "iter " << last_it << " resid " << resid << "\r";
 						//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
+#if defined(USE_OMP)
 #pragma omp single
+#endif
 						{
 							printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
 							fflush(stdout);
@@ -730,8 +771,8 @@ exit:
 			return false;
 		}
 		bool ReplaceMAT(Solver::Matrix & A) { if (isInitialized()) Finalize();  if (prec != NULL) prec->ReplaceMAT(A);  Alink = &A; return true; }
-		bool ReplaceRHS(Solver::Vector & RHS) { return true; }
-		bool ReplaceSOL(Solver::Vector & SOL) { return true; }
+		bool ReplaceRHS(Solver::Vector & RHS) {(void)RHS; return true; }
+		bool ReplaceSOL(Solver::Vector & SOL) {(void)SOL; return true; }
 		Method * Duplicate() { return new BCGS_solver(*this);}
 		std::string GetReason() {return reason;}
 	};

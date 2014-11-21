@@ -42,7 +42,7 @@ namespace INMOST
 		while( num < 5 )
 		{
 			while(id < static_cast<integer>(links[num].size()) && links[num][id] == -1) ++id;
-			if( id == links[num].size() ) 
+			if( id == static_cast<integer>(links[num].size()) ) 
 			{
 				id = 0;
 				++num;
@@ -84,7 +84,7 @@ namespace INMOST
 		while( num < 5 )
 		{
 			while(id < static_cast<integer>(links[num].size()) && links[num][id] == -1) ++id;
-			if( id == links[num].size() ) 
+			if( id == static_cast<integer>(links[num].size()) ) 
 			{
 				bool stop = true;
 				for(integer q = num+1; q < 5; q++)
@@ -258,6 +258,7 @@ namespace INMOST
 
 	//all possible templates
 	template class Mesh::base_iterator<Element>;
+	template class Mesh::base_iterator<ElementSet>;
 	template class Mesh::base_iterator<Node>;
 	template class Mesh::base_iterator<Edge>;
 	template class Mesh::base_iterator<Face>;

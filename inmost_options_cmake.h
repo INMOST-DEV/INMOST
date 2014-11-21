@@ -20,7 +20,9 @@
 
 
 #cmakedefine USE_MPI //include mpi for mpi functions
-#cmakedefine USE_MPI2 //use (probably) more effective mpi-2 algorithms
+#cmakedefine USE_MPI_P2P //use (probably) more effective point to point algorithms
+#cmakedefine USE_MPI_FILE //use functionality for parallel files
+#cmakedefine USE_MPI2 //use mpi-2 extensions
 
 
 #endif //INMOST_OPTIONS_CMAKE_INCLUDED

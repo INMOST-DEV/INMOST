@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef INMOST_AUTODIFF_H_INCLUDED
 #define INMOST_AUTODIFF_H_INCLUDED
 #include "inmost_common.h"
@@ -631,7 +631,10 @@ namespace INMOST
 		expr(INMOST_DATA_REAL_TYPE val) : op(AD_CONST), coef(val), left(NULL), right(NULL) {}
 		//expr(INMOST_DATA_ENUM_TYPE val) : op(AD_CONST), coef(val), left(NULL), right(NULL) {}
 		expr(INMOST_DATA_ENUM_TYPE new_op, expr * l, expr * r) : op(new_op), coef(1), left(l), right(r) {}
-		expr(INMOST_DATA_ENUM_TYPE tag_op, INMOST_DATA_ENUM_TYPE comp) :op(tag_op), coef(1), left(reinterpret_cast<expr *>(comp)), right(NULL) {}
+		expr(INMOST_DATA_ENUM_TYPE tag_op, INMOST_DATA_ENUM_TYPE comp) :op(tag_op), coef(1), right(NULL) 
+		{
+			*(INMOST_DATA_ENUM_TYPE *)(&left) = comp;
+		}
 		~expr()
 		{
 			if (op < AD_COS)

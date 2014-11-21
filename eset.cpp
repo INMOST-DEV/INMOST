@@ -76,6 +76,7 @@ namespace INMOST
 	void ElementSet::AddChild(const ElementSet & child) const
 	{
 		assert(GetElementType() == ESET);
+		assert(child->GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
 		Element::adj_type & parent_hc = m->HighConn(GetHandle());
 		assert(isValid());
@@ -93,6 +94,7 @@ namespace INMOST
 	void ElementSet::AddSibling(const ElementSet & sibling) const
 	{
 		assert(GetElementType() == ESET);
+		assert(sibling->GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
 		//perform checks
 		Element::adj_type & current_hc = m->HighConn(GetHandle());
@@ -279,13 +281,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -301,13 +303,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					++ret;
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					++ret;
 		}
 		return ret;
@@ -345,13 +347,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & NODE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & NODE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & NODE) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & NODE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -389,13 +391,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & EDGE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & EDGE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & EDGE) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & EDGE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -433,13 +435,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & FACE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & FACE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & FACE) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & FACE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -477,13 +479,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & CELL) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & CELL) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & CELL) && (invert ^ m->GetMarker(lc[it],invert)) )//check for type filters invalid handles
+				if( (GetHandleElementType(lc[it]) & CELL) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -913,7 +915,7 @@ namespace INMOST
 			}
 		}
 		Element::adj_type & other_lc = m->LowConn(other->GetHandle());
-		for(const HandleType * h = lc.data(); h != lc.data() + lc.size(); ++h)
+		for(const HandleType * h = other_lc.data(); h != other_lc.data() + other_lc.size(); ++h)
 		{
 			if( *h != InvalidHandle() && !m->GetMarker(*h,mrk) )
 			{
@@ -1498,7 +1500,7 @@ namespace INMOST
 	{
 		assert(GetElementType() == ESET);
 		Element::adj_type & lc = GetMeshLink()->LowConn(GetHandle());
-		return ++iterator(GetMeshLink(),&lc,-1);
+		return ++iterator(GetMeshLink(),&lc,static_cast<Element::adj_type::size_type>(-1));
 	}
 
 	ElementSet::iterator ElementSet::End() const
@@ -1560,11 +1562,11 @@ namespace INMOST
 		if( BulkDF(m->SetComparatorTag()) == UNSORTED_COMPARATOR  ) //just compact the set
 		{
 			// This should be O(m) where m is the number of deleted items
-			Element::adj_type::size_type cend = lc.size()-1;
-			while( cend >= 0 && cend < lc.size() && lc[cend] == InvalidHandle() ) --cend; //find first good handle
-			while( cend >= 0 && cend < lc.size() && hc.size() > high_conn_reserved )
+			integer cend = static_cast<integer>(lc.size()-1);
+			while( cend >= 0 && lc[cend] == InvalidHandle() ) --cend; //find first good handle
+			while( cend >= 0 && hc.size() > high_conn_reserved )
 			{
-				if( hc.back() >= cend )
+				if( static_cast<integer>(hc.back()) >= cend )
 					hc.pop_back();
 				else if( lc[cend] != InvalidHandle() )
 				{
@@ -1573,7 +1575,7 @@ namespace INMOST
 				}
 				else cend--;
 			}
-			while( cend >= 0 && cend < lc.size() && lc[cend] == InvalidHandle() ) --cend; //skip bad handles
+			while( cend >= 0 && lc[cend] == InvalidHandle() ) --cend; //skip bad handles
 			lc.resize(cend);
 			hc.resize(high_conn_reserved);
 		}

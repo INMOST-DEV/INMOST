@@ -5,12 +5,10 @@ namespace INMOST
 	template<typename StorageType>
 	void ElementArray<StorageType>::Unite(const HandleType * h, INMOST_DATA_ENUM_TYPE num)
 	{
-		assert(GetMeshLink() == other.GetMeshLink());
 		if( empty() ) container.insert(container.end(),h,h+num);
 		else
 		{
 			Mesh * m = GetMeshLink();
-			size_type s = size();
 			MarkerType mrk = m->CreateMarker();
 			SetMarker(mrk);
 			for(INMOST_DATA_ENUM_TYPE it = 0; it < num; it++) 
@@ -27,7 +25,6 @@ namespace INMOST
 	template<typename StorageType>
 	void ElementArray<StorageType>::Subtract(const HandleType * h, INMOST_DATA_ENUM_TYPE num)
 	{
-		assert(GetMeshLink() == other.GetMeshLink());
 		if( !empty() )
 		{
 			Mesh * mesh = GetMeshLink();

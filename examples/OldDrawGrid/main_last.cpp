@@ -1,7 +1,3 @@
-#ifdef _MSC_VER //kill some warnings
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 //g++ main.cpp rotate.cpp -L/usr/X11R6/lib -lX11 -lXi -lXmu -lGL -lglut -lGLU ../../INMOST.a -O5
 // press space - explode mesh to see connection 
 #include "../../inmost.h"
@@ -9,7 +5,6 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
-#include <stdarg.h>
 #include "my_glut.h"
 
 
@@ -21,9 +16,8 @@ int width = 800, height = 800;
 double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20, snear = 1e20;
 double shift[3] = {0,0,0};
 bool perspective = false;
-bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false;
-
-Mesh::GeomParam table;
+bool pick = false, boundary = true, planecontrol = false, clipupdate = false, clipboxupdate = false;
+std::map<GeometricData,ElementType> table;
 
 #define CLIP_NONE 0
 #define CLIP_NODE 1
@@ -36,24 +30,7 @@ Mesh::GeomParam table;
 #define CLIP_FACE_INTERSECT 3
 
 Storage::real p[3] = {0,0,0}, n[3] = {0,0,1};
-ElementArray<Element> boundary_faces;
-
-void printtext(const char * fmt, ... )
-{
-	
-	unsigned int i;
-	char stext[1024];
-	va_list ap;
-	if ( fmt == NULL ) return;
-	va_start(ap,fmt);
-	vsprintf(stext,fmt,ap);
-	va_end(ap);
-	for(i=0;i<strlen(stext);i++)
-	{
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, 
-							stext[i]);
-	}
-}
+std::vector<Element *> boundary_faces;
 
 
 class face2gl
@@ -98,18 +75,9 @@ public:
 		return *this;
 	}
 	~face2gl() {}
-	void draw_colour() const
-	{
-		glColor4dv(c); 
-		for(unsigned k = 0; k < verts.size(); k+=3) 
-		{
-			glVertex3dv(cnt);
-			glVertex3dv(&verts[k]);
-			glVertex3dv(&verts[(k+3)%verts.size()]);
-		}
-	}
 	void draw() const
 	{
+		glColor4dv(c); 
 		for(unsigned k = 0; k < verts.size(); k+=3) 
 		{
 			glVertex3dv(cnt);
@@ -127,33 +95,18 @@ public:
 	}
 	bool operator <(const face2gl & other) const {return dist < other.dist;}
 	void set_color(double r, double g, double b, double a) {c[0] = r; c[1] = g; c[2] = b; c[3] = a;}
-	void add_vert(double x, double y, double z) {unsigned s = (unsigned)verts.size(); verts.resize(s+3); verts[s] = x; verts[s+1] = y; verts[s+2] = z;}
+	void add_vert(double x, double y, double z) {unsigned s = verts.size(); verts.resize(s+3); verts[s] = x; verts[s+1] = y; verts[s+2] = z;}
 	void add_vert(double v[3]) {verts.insert(verts.end(),v,v+3);}
-	double * get_vert(int k) {return &verts[k*3];}
-	unsigned size() {return (unsigned)verts.size()/3;}
 	void set_center(double _cnt[3])
 	{
 		cnt[0] = _cnt[0];
 		cnt[1] = _cnt[1];
 		cnt[2] = _cnt[2];
 	}
-	void get_center(float _cnt[3])
-	{
-		_cnt[0] = cnt[0];
-		_cnt[1] = cnt[1];
-		_cnt[2] = cnt[2];
-	}
-	void get_center(double _cnt[3])
-	{
-		_cnt[0] = cnt[0];
-		_cnt[1] = cnt[1];
-		_cnt[2] = cnt[2];
-	}
-	double * get_center() {return cnt;}
 	void compute_center()
 	{
 		cnt[0] = cnt[1] = cnt[2] = 0;
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < verts.size(); k+=3)
+		for(size_t k = 0; k < verts.size(); k+=3)
 		{
 			cnt[0] += verts[k+0];
 			cnt[1] += verts[k+1];
@@ -170,52 +123,37 @@ public:
 	void set_flag(bool set) { flag = set;}
 	bool get_flag() {return flag;}
 	void set_elem(ElementType _etype, Storage::integer _id) {etype = _etype; id = _id;}
-	Element get_elem(Mesh * m) {return m->ElementByLocalID(etype,id);}
 };
 
 std::vector<face2gl> all_boundary;
 std::vector<face2gl> clip_boundary;
+std::vector<face2gl> clip_slice;
 
-void draw_faces(std::vector<face2gl> & set, int highlight = -1)
+void draw_faces(std::vector<face2gl> & set)
 {
 	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour();
+	for(size_t q = 0; q < set.size() ; q++) set[q].draw();
 	glEnd();
-	if( highlight != -1 )
-	{
-		glColor4f(1,0,0,1);
-		glBegin(GL_TRIANGLES);
-		set[highlight].draw();
-		glEnd();
-	}
 }
 
-void draw_edges(std::vector<face2gl> & set, int highlight = -1)
+void draw_edges(std::vector<face2gl> & set)
 {
 	glBegin(GL_LINES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].drawedges();
+	for(size_t q = 0; q < set.size() ; q++) set[q].drawedges();
 	glEnd();
-	if( highlight != -1 )
-	{
-		glColor4f(0,1,0,1);
-		glBegin(GL_LINES);
-		set[highlight].drawedges();
-		glEnd();
-	}
-	
 }
 
 void draw_faces_interactive(std::vector<face2gl> & set)
 {
 	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour();
+	for(size_t q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw();
 	glEnd();
 }
 
 void draw_edges_interactive(std::vector<face2gl> & set)
 {
 	glBegin(GL_LINES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].drawedges();
+	for(size_t q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].drawedges();
 	glEnd();
 }
 
@@ -250,7 +188,7 @@ class kdtree
 	int marked;
 	struct entry
 	{
-		HandleType e;
+		Element * e;
 		float xyz[3];
 		struct entry & operator =(const struct entry & other)
 		{
@@ -261,9 +199,8 @@ class kdtree
 			return *this;
 		}
 	} * set;
-	Mesh * m;
 	INMOST_DATA_ENUM_TYPE size;
-	float bbox[6];
+	Storage::real bbox[6];
 	kdtree * children;
 	static int cmpElements0(const void * a,const void * b) 
 	{
@@ -335,17 +272,11 @@ class kdtree
 			case 1: qsort(set,size,sizeof(entry),cmpElements1);break;
 			case 2: qsort(set,size,sizeof(entry),cmpElements2);break;
 			}
-			children = static_cast<kdtree *>(malloc(sizeof(kdtree)*2));//new kdtree[2];
-			children[0].marked = 0;
-			children[0].children = NULL;
+			children = new kdtree[2];
 			children[0].set = set;
 			children[0].size = size/2;
-			children[0].m = m;
-			children[1].marked = 0;
-			children[1].children = NULL;
 			children[1].set = set+size/2;
 			children[1].size = size - size/2;
-			children[1].m = m;
 			children[0].kdtree_build((dim+1)%3,done,total,temp);
 			children[1].kdtree_build((dim+1)%3,done,total,temp);
 			for(int k = 0; k < 3; k++)
@@ -357,10 +288,10 @@ class kdtree
 		else 
 		{
 			assert(size == 1);
-			if( GetHandleElementType(set[0].e) == EDGE )
+			if( set[0].e->GetElementType() == EDGE )
 			{
-				Storage::real_array n1 = Edge(m,set[0].e)->getBeg()->Coords();
-				Storage::real_array n2 = Edge(m,set[0].e)->getEnd()->Coords();
+				Storage::real_array n1 = set[0].e->getAsEdge()->getBeg()->Coords();
+				Storage::real_array n2 = set[0].e->getAsEdge()->getEnd()->Coords();
 				for(int k = 0; k < 3; k++)
 				{
 					bbox[0+2*k] = std::min(n1[k],n2[k]);
@@ -375,22 +306,22 @@ class kdtree
 			}
 			else
 			{
-				ElementArray<Node> nodes = Element(m,set[0].e)->getNodes();
+				adjacent<Node> nodes = set[0].e->getNodes();
 				bbox[0] = bbox[2] = bbox[4] = 1.0e20;
 				bbox[1] = bbox[3] = bbox[5] = -1.0e20;
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < nodes.size(); ++k)
+				for(size_t k = 0; k < nodes.size(); ++k)
 				{
 					Storage::real_array coords = nodes[k].Coords();
-					for(INMOST_DATA_ENUM_TYPE q = 0; q < 3; q++)
+					for(size_t q = 0; q < 3; q++)
 					{
-						bbox[q*2+0] = std::min<float>(bbox[q*2+0],coords[q]);
-						bbox[q*2+1] = std::max<float>(bbox[q*2+1],coords[q]);
+						bbox[q*2+0] = std::min(bbox[q*2+0],coords[q]);
+						bbox[q*2+1] = std::max(bbox[q*2+1],coords[q]);
 					}
 				}
 			}
 		}
 	}
-	kdtree() : marked(0), set(NULL), size(0), children(NULL) {}
+	kdtree() : set(NULL), size(0), children(NULL), marked(0) {}
 	inline int plane_bbox(double p[3], double n[3])
 	{
 		Storage::real pv[3], nv[3];
@@ -416,23 +347,22 @@ class kdtree
 			return 1;
 		else return 0;
 	}
-	bool sub_intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mrk, double p[3], double n[3])
+	bool sub_intersect_plane_edge(Tag clip_point, Tag clip_state, std::vector<Cell *> & cells, MIDType mrk, double p[3], double n[3])
 	{
 		if( size == 1 )
 		{
-			assert( GetHandleElementType(set[0].e) == EDGE );
-			Edge ee = Edge(m,set[0].e);
-			Storage::real_array sp0 = ee->getBeg()->Coords();
-			Storage::real_array sp1 = ee->getEnd()->Coords();
-			Storage::integer & clip = m->IntegerDF(set[0].e,clip_state);
-			clip = clip_plane_edge(&sp0[0],&sp1[0],p,n,&ee->RealArrayDF(clip_point)[0]);
+			assert( set[0].e->GetElementType() == EDGE );
+			Storage::real_array sp0 = set[0].e->getAsEdge()->getBeg()->Coords();
+			Storage::real_array sp1 = set[0].e->getAsEdge()->getEnd()->Coords();
+			Storage::integer & clip = set[0].e->IntegerDF(clip_state);
+			clip = clip_plane_edge(&sp0[0],&sp1[0],p,n,&set[0].e->RealArrayDF(clip_point)[0]);
 			if( clip )
 			{
-				ElementArray<Cell> ecells = ee->getCells();
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < ecells.size(); ++k) if( !ecells[k].GetMarker(mrk) )
+				adjacent<Cell> ecells = set[0].e->getCells();
+				for(size_t k = 0; k < ecells.size(); ++k) if( !ecells[k].GetMarker(mrk) )
 				{
 					ecells[k].SetMarker(mrk);
-					cells.push_back(ecells[k]);
+					cells.push_back(&ecells[k]);
 				}
 				marked = 1;
 			}
@@ -443,46 +373,76 @@ class kdtree
 			bool test2 = children[1].sub_intersect_plane_edge(clip_point,clip_state,cells,mrk,p,n);
 			if( test1 || test2 ) marked = 1;
 		}
-		return marked != 0;
+		return marked;
 	}
-	void sub_intersect_plane_faces(Tag clip_state, double p[3], double n[3])
+	void sub_intersect_plane_faces(std::vector<face2gl> & out, double p[3], double n[3])
 	{
 		if( size == 1 )
 		{
-			Storage::integer state;
-			Element ee(m,set[0].e);
-			assert( ee->GetElementDimension() == 2 );
-			ElementArray<Node> nodes = ee->getNodes();
+			int state;
+			assert( set[0].e->GetElementDimension() == 2 );
+			adjacent<Node> nodes = set[0].e->getNodes();
+			dynarray<bool,64> nodepos(nodes.size());
 			Storage::real_array coords = nodes[0].Coords();
 			Storage::real dot0 = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-			if( dot0 <= 0.0 ) state = CLIP_FACE_INSIDE; else state = CLIP_FACE_OUTSIDE;
-			for(INMOST_DATA_ENUM_TYPE k = 1; k < nodes.size(); k++)
+			if( dot0 < 0.0 ) state = CLIP_FACE_INSIDE; else state = CLIP_FACE_OUTSIDE;
+			nodepos[0] = dot0 < 1.0e-10;
+			for(size_t k = 0; k < nodes.size(); k++)
 			{
 				coords = nodes[k].Coords();
 				Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-				if( dot*dot0 <= 0.0 ) 
-				{
-					state = CLIP_FACE_INTERSECT;
-					break;
-				}
+				nodepos[k] = dot < 1.0e-10;
+				if( dot*dot0 < 0.0 ) state = CLIP_FACE_INTERSECT;
 			}
-			m->IntegerDF(set[0].e,clip_state) = state;
+			if( state == CLIP_FACE_INTERSECT )
+			{
+				face2gl f;
+				f.set_color(0.6,0.6,0.6,1);
+				for(size_t q = 0; q < nodes.size(); q++)
+				{
+					if( nodepos[q] ) f.add_vert(&nodes[q].Coords()[0]);
+					if( nodepos[q] != nodepos[(q+1)%nodes.size()] )
+					{
+						Storage::real_array sp0 = nodes[q].Coords();
+						Storage::real_array sp1 = nodes[(q+1)%nodes.size()].Coords();
+						Storage::real node[3];
+						if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE) f.add_vert(node);
+					}
+				}
+				f.compute_center();
+				f.set_elem(set[0].e->GetElementType(),set[0].e->LocalID());
+				out.push_back(f);
+			}
+			else if( state == CLIP_FACE_INSIDE )
+			{
+				face2gl f;
+				f.set_color(0.6,0.6,0.6,1);
+				for(size_t q = 0; q < nodes.size(); q++) f.add_vert(&nodes[q].Coords()[0]);
+				f.compute_center();
+				f.set_elem(set[0].e->GetElementType(),set[0].e->LocalID());
+				out.push_back(f);
+			}
 		}
 		else
 		{
 			marked = plane_bbox(p,n);
-			if( marked == 0 )
+			if( marked == 1 )
 			{
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) m->IntegerDF(set[k].e,clip_state) = CLIP_FACE_OUTSIDE;
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) 
+				{
+					adjacent<Node> nodes = set[k].e->getNodes();
+					face2gl f;
+					f.set_color(0.6,0.6,0.6,1);
+					for(size_t q = 0; q < nodes.size(); q++) f.add_vert(&nodes[q].Coords()[0]);
+					f.compute_center();
+					f.set_elem(set[0].e->GetElementType(),set[0].e->LocalID());
+					out.push_back(f);
+				}
 			}
-			else if( marked == 1 )
+			else if( marked == 2 )
 			{
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) m->IntegerDF(set[k].e,clip_state) = CLIP_FACE_INSIDE;
-			}
-			else
-			{
-				children[0].sub_intersect_plane_faces(clip_state,p,n);
-				children[1].sub_intersect_plane_faces(clip_state,p,n);
+				children[0].sub_intersect_plane_faces(out,p,n);
+				children[1].sub_intersect_plane_faces(out,p,n);
 			}
 		}
 	}
@@ -490,12 +450,12 @@ class kdtree
 	{
 		if( size == 1 )
 		{
-			assert(GetHandleElementType(set[0].e) == EDGE);
+			assert(set[0].e->GetElementType() == EDGE);
 			marked = 0;
-			if( GetHandleElementType(set[0].e) == EDGE )
-				m->IntegerDF(set[0].e,clip_state) = CLIP_NONE;
-			else if( GetHandleElementType(set[0].e) == FACE )
-				m->IntegerDF(set[0].e,clip_state) = CLIP_FACE_NONE;
+			if( set[0].e->GetElementType() == EDGE )
+				set[0].e->IntegerDF(clip_state) = CLIP_NONE;
+			else if( set[0].e->GetElementType() == FACE )
+				set[0].e->IntegerDF(clip_state) = CLIP_FACE_NONE;
 		}
 		else if( children )
 		{
@@ -503,9 +463,27 @@ class kdtree
 			if(children[1].marked) {children[1].unmark_old_edges(clip_state); marked = 0;}
 		}
 	}
-	void clear_children() { if( children ) {children[0].clear_children(); children[1].clear_children(); free(children);}}
+	void unmark_old_faces(Tag clip_points, Tag clip_state)
+	{
+		if( size == 1 )
+		{
+			assert(set[0].e->GetElementType() == FACE);
+			if( set[0].e->IntegerDF(clip_state) == CLIP_FACE_INTERSECT )
+				set[0].e->DelData(clip_points);
+			set[0].e->IntegerDF(clip_state) == CLIP_FACE_NONE;
+		}
+		else if( children )
+		{
+			if(children[0].marked == 2 ) children[0].unmark_old_faces(clip_points,clip_state);
+			else for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) set[k].e->IntegerDF(clip_state) = CLIP_FACE_NONE;
+
+			if(children[1].marked == 2 ) children[1].unmark_old_faces(clip_points,clip_state);
+			else for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) set[k].e->IntegerDF(clip_state) = CLIP_FACE_NONE;
+		}
+	}
+	void clear_children() { if( children ) {children[0].clear_children(); children[1].clear_children();}}
 public:
-	kdtree(Mesh * m) :  marked(0),m(m),children(NULL)
+	kdtree(Mesh * m) : children(NULL), marked(0)
 	{
 		double tt;
 		size = m->NumberOfEdges();
@@ -516,7 +494,7 @@ public:
 		printf("Prepearing edge set.\n");
 		for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it) 
 		{
-			set[k].e = *it;
+			set[k].e = &*it;
 			set[k].xyz[0] = (it->getBeg()->Coords()[0] + it->getEnd()->Coords()[0])*0.5;
 			set[k].xyz[1] = (it->getBeg()->Coords()[1] + it->getEnd()->Coords()[1])*0.5;
 			set[k].xyz[2] = (it->getBeg()->Coords()[2] + it->getEnd()->Coords()[2])*0.5;
@@ -527,21 +505,21 @@ public:
 				fflush(stdout);
 			}
 		}
-		printf("Done. Time %lg\n",Timer()-tt);
+		printf("Done. Time %g\n",Timer()-tt);
 		int done = 0, total = size;
 		printf("Building KD-tree.\n");
 		tt = Timer();
 		struct entry *  temp = new entry[size];
 		kdtree_build(0,done,total,temp);
 		delete [] temp;
-		printf("Done. Time %lg\n",Timer()-tt);
+		printf("Done. Time %g\n",Timer()-tt);
 		for(int k = 0; k < 3; k++)
 		{
 			bbox[0+2*k] = std::min(children[0].bbox[0+2*k],children[1].bbox[0+2*k]);
 			bbox[1+2*k] = std::max(children[0].bbox[1+2*k],children[1].bbox[1+2*k]);
 		}
 	}
-	kdtree(Mesh * m, HandleType * eset, INMOST_DATA_ENUM_TYPE size) : marked(0), m(m),size(size),children(NULL)
+	kdtree(Mesh * m, Element ** eset, INMOST_DATA_ENUM_TYPE size) : children(NULL), marked(0), size(size)
 	{
 		double tt;
 		assert(size > 1);
@@ -552,7 +530,7 @@ public:
 		{
 			set[k].e = eset[k];
 			Storage::real cnt[3];
-			m->GetGeometricData(set[k].e,CENTROID,cnt);
+			set[k].e->Centroid(cnt);
 			set[k].xyz[0] = cnt[0];
 			set[k].xyz[1] = cnt[1];
 			set[k].xyz[2] = cnt[2];
@@ -562,21 +540,21 @@ public:
 				fflush(stdout);
 			}
 		}
-		printf("Done. Time %lg\n",Timer()-tt);
+		printf("Done. Time %g\n",Timer()-tt);
 		int done = 0, total = size;
 		printf("Building KD-tree.\n");
 		tt = Timer();
 		struct entry *  temp = new entry[size];
 		kdtree_build(0,done,total,temp);
 		delete [] temp;
-		printf("Done. Time %lg\n",Timer()-tt);
+		printf("Done. Time %g\n",Timer()-tt);
 		for(int k = 0; k < 3; k++)
 		{
 			bbox[0+2*k] = std::min(children[0].bbox[0+2*k],children[1].bbox[0+2*k]);
 			bbox[1+2*k] = std::max(children[0].bbox[1+2*k],children[1].bbox[1+2*k]);
 		}
 	}
-	void intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mark_cells, double p[3], double n[3])
+	void intersect_plane_edge(Tag clip_point, Tag clip_state, std::vector<Cell*> & cells, MIDType mark_cells, double p[3], double n[3])
 	{
 		if( marked ) 
 		{
@@ -585,9 +563,12 @@ public:
 		}
 		sub_intersect_plane_edge(clip_point, clip_state, cells,mark_cells,p,n);
 	}
-	void intersect_plane_face(Tag clip_state, double p[3], double n[3])
+	void intersect_plane_face(std::vector<face2gl> & out, double p[3], double n[3])
 	{
-		sub_intersect_plane_faces(clip_state, p,n);
+		double t = Timer();
+		t = Timer();
+		sub_intersect_plane_faces(out, p,n);
+		printf("intersect %g\n",Timer()-t);
 	}
 	~kdtree()
 	{
@@ -622,14 +603,14 @@ class clipper
 	Tag clip_point, clip_state;
 	kdtree * tree;
 	Tag clips;
-	MarkerType marker;
-	ElementArray<Cell> cells;
+	MIDType marker;
+	std::vector<Cell *> cells;
 	Mesh * mm;
 public:
 	~clipper() 
 	{
 		delete tree; 
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) cells[k]->RemMarker(marker);
+		for(size_t k = 0; k < cells.size(); k++) cells[k]->RemMarker(marker);
 		mm->ReleaseMarker(marker); 
 		mm->DeleteTag(clips); 
 		mm->DeleteTag(clip_point); 
@@ -638,7 +619,6 @@ public:
 	clipper(Mesh * m)
 	{
 		mm = m;
-		cells.SetMeshLink(mm);
 		tree = new kdtree(m);
 		marker = m->CreateMarker();
 		clips = m->CreateTag("CLIPS",DATA_REAL,CELL,CELL);
@@ -648,32 +628,38 @@ public:
 	void clip_plane(Storage::real p[3], Storage::real n[3])
 	{
 		const bool print = false;
-
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); ++k) 
+		double t1,t2;
+		t1 = Timer();
+		for(size_t k = 0; k < cells.size(); ++k) 
 			if( cells[k]->GetMarker(marker) )
 			{
-				cells[k]->RealArray(clips).clear();
+				cells[k]->DelData(clips);
 				cells[k]->RemMarker(marker);
 			}
 		tree->intersect_plane_edge(clip_point,clip_state,cells,marker,p,n);
+		t1 = Timer() - t1;
+
+		t2 = Timer();
+		adjacent<Face> faces;
+		adjacent<Edge> edges;
 		dynarray<edge_point,128> clipcoords, loopcoords;
 		std::vector<bool> closed;
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); ++k)
+		for(size_t k = 0; k < cells.size(); ++k)
 		{
 			//assuming faces are convex we will have at most one clipping edge per polygon
 			//otherwise every pair of clipping nodes forming edge should appear consequently
 			//as long as we go through face's edges in ordered way
 			clipcoords.clear();
 			//we will gather all the pairs of nodes, then form closed loop
-			ElementArray<Face> faces = cells[k]->getFaces();
-			Face full_face;
+			faces = cells[k]->getFaces();
+			Face * full_face = NULL;
 			int ntotpoints = 0, ntotedges = 0;
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < faces.size(); ++q)
+			for(size_t q = 0; q < faces.size(); ++q)
 			{
 				int last_edge_type = CLIP_NONE;
 				int nfulledges = 0, npoints = 0, nstartedge = ntotedges;
-				ElementArray<Edge> edges = faces[q].getEdges();
-				for(INMOST_DATA_ENUM_TYPE r = 0; r < edges.size(); ++r)
+				edges = faces[q].getEdges();
+				for(size_t r = 0; r < edges.size(); ++r)
 				{
 					Storage::integer state = edges[r].IntegerDF(clip_state);
 					if( state == CLIP_FULL )
@@ -767,24 +753,24 @@ public:
 					//printf("%s:%d this should not happen!\n",__FILE__,__LINE__);
 				}
 				
-				if( nfulledges == static_cast<int>(edges.size()) )
+				if( nfulledges == edges.size() )
 				{
-					full_face = faces[q];
+					full_face = &faces[q];
 					break;
 				}
 				if( print )
 				{
 					printf("nodes on face %d\n",faces[q].LocalID());
-					for(int m = nstartedge*2; m < static_cast<int>(clipcoords.size()); m++) clipcoords[m].print();
+					for(int m = nstartedge*2; m < clipcoords.size(); m++) clipcoords[m].print();
 				}
 				ntotpoints += npoints;
 			}
-			if( full_face.isValid() )
+			if( full_face )
 			{
-				ElementArray<Node> nodes = full_face->getNodes();
+				adjacent<Node> nodes = full_face->getNodes();
 				Storage::real_array cl = cells[k]->RealArray(clips);
-				cl.resize(static_cast<Storage::real_array::size_type>(3*nodes.size()));
-				for(INMOST_DATA_ENUM_TYPE r = 0; r < nodes.size(); r++)
+				cl.resize(3*nodes.size());
+				for(size_t r = 0; r < nodes.size(); r++)
 				{
 					Storage::real_array p = nodes[r].Coords();
 					cl[0+3*r] = p[0];
@@ -798,7 +784,7 @@ public:
 				if( print )
 				{
 					printf("coords on cell %d\n",cells[k]->LocalID());
-					for(int m = 0; m < static_cast<int>(clipcoords.size()); m++) clipcoords[m].print();
+					for(int m = 0; m < clipcoords.size(); m++) clipcoords[m].print();
 				}
 				//Can make this faster using hash
 				closed.resize(ntotedges);
@@ -827,12 +813,12 @@ public:
 							break;
 						}
 					}
-					if( !hit ) printf("%s:%d cannot find end for edge! total edges %d current loop size %ld\n",
+					if( !hit ) printf("%s:%d cannot find end for edge! total edges %d current loop size %d\n",
 						__FILE__,__LINE__,ntotedges,loopcoords.size());
 				}
 				Storage::real_array cl = cells[k]->RealArray(clips);
-				cl.resize(static_cast<Storage::real_array::size_type>(3*loopcoords.size()));
-				for(INMOST_DATA_ENUM_TYPE r = 0; r < loopcoords.size(); ++r)
+				cl.resize(3*loopcoords.size());
+				for(size_t r = 0; r < loopcoords.size(); ++r)
 				{
 					cl[r*3+0] = loopcoords[r].xyz[0];
 					cl[r*3+1] = loopcoords[r].xyz[1];
@@ -845,422 +831,124 @@ public:
 				cells[k]->SetMarker(marker);
 			}
 		}
+		t2 = Timer() - t2;
+		//printf("intersect edges %20g compute faces %20g\n",t1,t2);
+		//printf("Total cells: %d marked: %d\n",cells.size(),numcells);
 	}
 	void gen_clip(std::vector<face2gl> & out)
 	{
-		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,size()/100));
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) if( cells[k]->GetMarker(marker))
+		size_t pace = std::max<size_t>(1,std::min<size_t>(15,size()/100));
+		for(size_t k = 0; k < cells.size(); k++) if( cells[k]->GetMarker(marker))
 		{
 			face2gl f;
 			f.set_color(0.6,0.6,0.6,1);
 			Storage::real_array cl = cells[k]->RealArray(clips);
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) f.add_vert(&cl[q]);
+			for(size_t q = 0; q < cl.size(); q+=3) f.add_vert(&cl[q]);
 			f.compute_center();
 			f.set_elem(cells[k]->GetElementType(),cells[k]->LocalID());
 			if( k%pace == 0 ) f.set_flag(true);
 			out.push_back(f);
 		}
 	}
-	void draw_clip(INMOST_DATA_ENUM_TYPE pace)
+	void draw_clip(size_t pace)
 	{
-		glBegin(GL_TRIANGLES);
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
+		for(size_t k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
 		{
 			Storage::real_array cl = cells[k]->RealArray(clips);
-			Storage::real cnt[3] = {0,0,0};
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3)
-			{
-				cnt[0] += cl[q+0];
-				cnt[1] += cl[q+1];
-				cnt[2] += cl[q+2];
-			}
-			cnt[0] /= (cl.size()/3);
-			cnt[1] /= (cl.size()/3);
-			cnt[2] /= (cl.size()/3);
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
-			{
-				glVertex3dv(cnt);
-				glVertex3dv(&cl[q]);
-				glVertex3dv(&cl[(q+3)%cl.size()]);
-			}
+			glBegin(GL_POLYGON);
+			for(size_t q = 0; q < cl.size(); q+=3) glVertex3dv(&cl[q]);
+			glEnd();
 		}
-		glEnd();
 	}
-	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace)
+	void draw_clip_edges(size_t pace)
 	{
-		glBegin(GL_LINES);
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
+		for(size_t k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
 		{
 			Storage::real_array cl = cells[k]->RealArray(clips);
-			
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
-			{
-				glVertex3dv(&cl[q]);
-				glVertex3dv(&cl[(q+3)%cl.size()]);
-			}
+			glBegin(GL_LINE_LOOP);
+			for(size_t q = 0; q < cl.size(); q+=3) glVertex3dv(&cl[q]);
+			glEnd();
 		}
-		glEnd();
 	}
-	INMOST_DATA_ENUM_TYPE size() {return (INMOST_DATA_ENUM_TYPE)cells.size();}
+	size_t size() {return cells.size();}
 } * oclipper = NULL;
 
 class bnd_clipper
 {
-	Tag clip_state;
+	Tag clip_points, clip_state;
 	kdtree * tree;
 	Mesh * mm;
-	HandleType * faces;
+	Element ** faces;
 	INMOST_DATA_ENUM_TYPE nfaces;
 public:
 	~bnd_clipper()
 	{
+		mm->DeleteTag(clip_points);
 		mm->DeleteTag(clip_state);
 		delete tree;
 		delete [ ]faces;
 	}
-	bnd_clipper(Mesh * m , HandleType * _faces, INMOST_DATA_ENUM_TYPE size)
+	bnd_clipper(Mesh * m , Element ** _faces, INMOST_DATA_ENUM_TYPE size)
 	{
 		mm = m;
+		clip_points = m->CreateTag("CLIP_FACE_POINTS",DATA_REAL,FACE,FACE);
 		clip_state = m->CreateTag("CLIP_FACE_STATE",DATA_INTEGER,FACE,NONE,1);
 		nfaces = size;
-		faces = new HandleType[nfaces];
+		faces = new Element *[nfaces];
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++) faces[k] = _faces[k];
 		tree = new kdtree(mm,faces,nfaces);
 	}
-	void clip_plane(Storage::real p[3], Storage::real n[3])
+	void clip_plane(std::vector<face2gl> & out, Storage::real p[3], Storage::real n[3])
 	{
-		tree->intersect_plane_face(clip_state,p,n);
+		out.clear();
+		tree->intersect_plane_face(out,p,n);
 	}
-	void gen_clip(std::vector<face2gl> & out )
+	/*
+	void draw_clip(size_t pace)
 	{
-		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,nfaces/100));
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k+=pace)
 		{
-			int state = mm->IntegerDF(faces[k],clip_state);
+			int state = faces[k]->IntegerDF(clip_state);
 			if( state == CLIP_FACE_INSIDE )
 			{
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-				face2gl f;
-				f.set_color(0.6,0.6,0.6,1);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) f.add_vert(&nodes[q].Coords()[0]);
-				f.compute_center();
-				f.set_elem(GetHandleElementType(faces[k]),GetHandleID(faces[k]));
-				if( k%pace == 0 ) f.set_flag(true);
-				out.push_back(f);
+				adjacent<Node> nodes = faces[k]->getNodes();
+				glBegin(GL_POLYGON);
+				for(size_t q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
+				glEnd();
 			}
 			else if( state == CLIP_FACE_INTERSECT )
 			{
-				face2gl f;
-				f.set_color(0.6,0.6,0.6,1);
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-				dynarray<bool,64> nodepos(nodes.size());
-				dynarray<Storage::real,64> faceverts;
-				Storage::real_array coords = nodes[0].Coords();
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++)
-				{
-					coords = nodes[q].Coords();
-					Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-					nodepos[q] = dot < 1.0e-10;
-				}
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++)
-				{
-					if( nodepos[q] )
-					{
-						coords = nodes[q].Coords();
-						f.add_vert(&coords[0]);
-					}
-					if( nodepos[q] != nodepos[(q+1)%nodes.size()] )
-					{
-						Storage::real_array sp0 = nodes[q].Coords();
-						Storage::real_array sp1 = nodes[(q+1)%nodes.size()].Coords();
-						Storage::real node[3];
-						if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE) f.add_vert(node);
-					}
-				}
-				f.compute_center();
-				f.set_elem(GetHandleElementType(faces[k]),GetHandleID(faces[k]));
-				if( k%pace == 0 ) f.set_flag(true);
-				out.push_back(f);
+				Storage::real_array arr = faces[k]->RealArray(clip_points);
+				glBegin(GL_POLYGON);
+				for(size_t q = 0; q < arr.size(); q+=3) glVertex3dv(&arr[q]);
+				glEnd();
 			}
 		}
 	}
-	void draw_clip(INMOST_DATA_ENUM_TYPE pace)
+	void draw_clip_edges(size_t pace)
 	{
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k+=pace)
 		{
-			int state = CLIP_FACE_NONE;
-			ElementArray<Node> nodes = boundary_faces[k]->getNodes();
-			Storage::real_array coords = nodes[0].Coords();
-			Storage::real dot0 = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-			if( dot0 <= 0.0 ) state = CLIP_FACE_INSIDE; else state = CLIP_FACE_OUTSIDE;
-			for(INMOST_DATA_ENUM_TYPE q = 1; q < nodes.size(); ++q)
-			{
-				coords = nodes[q].Coords();
-				Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-				if( dot*dot0 <= 0.0 ) 
-				{
-					state = CLIP_FACE_INTERSECT;
-					break;
-				}
-			}
+			int state = faces[k]->IntegerDF(clip_state);
 			if( state == CLIP_FACE_INSIDE )
 			{
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-				glBegin(GL_POLYGON);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
-				glEnd();
-			}
-			mm->IntegerDF(faces[k],clip_state) = state;
-		}
-	}
-	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace)
-	{
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k+=pace)
-		{
-			if( mm->IntegerDF(faces[k],clip_state) == CLIP_FACE_INSIDE )
-			{
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
+				adjacent<Node> nodes = faces[k]->getNodes();
 				glBegin(GL_LINE_LOOP);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
+				for(size_t q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
+				glEnd();
+			}
+			else if( state == CLIP_FACE_INTERSECT )
+			{
+				Storage::real_array arr = faces[k]->RealArray(clip_points);
+				glBegin(GL_LINE_LOOP);
+				for(size_t q = 0; q < arr.size(); q+=3) glVertex3dv(&arr[q]);
 				glEnd();
 			}
 		}
 	}
-	INMOST_DATA_ENUM_TYPE size() {return nfaces;}
+	*/
 } * bclipper = NULL;
 
-class kdtree_picker
-{
-	struct entry
-	{
-		int index;
-		float xyz[3];
-	} * set;
-	INMOST_DATA_ENUM_TYPE size;
-	Storage::real bbox[6];
-	kdtree_picker * children;
-	static int cmpElements0(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[0];
-		float bd = eb->xyz[0];
-		return (ad > bd) - (ad < bd);
-	}
-	static int cmpElements1(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[1];
-		float bd = eb->xyz[1];
-		return (ad > bd) - (ad < bd);
-	}
-	static int cmpElements2(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[2];
-		float bd = eb->xyz[2];
-		return (ad > bd) - (ad < bd);
-	}
-	inline static unsigned int flip(const unsigned int * fp)
-	{
-		unsigned int mask = -((int)(*fp >> 31)) | 0x80000000;
-		return *fp ^ mask;
-	}
-#define _0(x)	(x & 0x7FF)
-#define _1(x)	(x >> 11 & 0x7FF)
-#define _2(x)	(x >> 22 )
-	void radix_sort(int dim, struct entry * temp)
-	{
-		unsigned int i;
-		const unsigned int kHist = 2048;
-		unsigned int  b0[kHist * 3];
-		unsigned int *b1 = b0 + kHist;
-		unsigned int *b2 = b1 + kHist;
-		memset(b0,0,sizeof(unsigned int)*kHist*3);
-		for (i = 0; i < size; i++) 
-		{
-			unsigned int fi = flip((unsigned int *)&set[i].xyz[dim]);
-			++b0[_0(fi)]; ++b1[_1(fi)]; ++b2[_2(fi)];
-		}
-		{
-			unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
-			for (i = 0; i < kHist; i++) 
-			{
-				b0[kHist-1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist-1];
-				b1[kHist-1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist-1];
-				b2[kHist-1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist-1];
-			}
-		}
-		for (i = 0; i < size; i++) temp[++b0[_0(flip((unsigned int *)&set[i].xyz[dim]))]] = set[i];
-		for (i = 0; i < size; i++) set[++b1[_1(flip((unsigned int *)&temp[i].xyz[dim]))]] = temp[i];
-		for (i = 0; i < size; i++) temp[++b2[_2(flip((unsigned int *)&set[i].xyz[dim]))]] = set[i];
-		for (i = 0; i < size; i++) set[i] = temp[i];
-	}
-	void kdtree_build(int dim, std::vector<face2gl> & in, struct entry * temp)
-	{
-		if( size > 1 )
-		{
-			if( size > 128 ) radix_sort(dim,temp); else 
-			switch(dim)
-			{
-			case 0: qsort(set,size,sizeof(entry),cmpElements0);break;
-			case 1: qsort(set,size,sizeof(entry),cmpElements1);break;
-			case 2: qsort(set,size,sizeof(entry),cmpElements2);break;
-			}
-			children = static_cast<kdtree_picker *>(malloc(sizeof(kdtree_picker)*2));//new kdtree_picker[2];
-			children[0].children = NULL;
-			children[0].set = set;
-			children[0].size = size/2;
-			children[1].children = NULL;
-			children[1].set = set+size/2;
-			children[1].size = size - size/2;
-			children[0].kdtree_build((dim+1)%3,in,temp);
-			children[1].kdtree_build((dim+1)%3,in,temp);
-			for(int k = 0; k < 3; k++)
-			{
-				bbox[0+2*k] = std::min(children[0].bbox[0+2*k],children[1].bbox[0+2*k]);
-				bbox[1+2*k] = std::max(children[0].bbox[1+2*k],children[1].bbox[1+2*k]);
-			}
-		}
-		else 
-		{
-			assert(size == 1);
-			bbox[0] = bbox[2] = bbox[4] = 1.0e20;
-			bbox[1] = bbox[3] = bbox[5] = -1.0e20;
-			for(INMOST_DATA_ENUM_TYPE k = 0; k < in[set[0].index].size(); ++k)
-			{
-				double * coords = in[set[0].index].get_vert(k);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < 3; q++)
-				{
-					bbox[q*2+0] = std::min(bbox[q*2+0],coords[q]);
-					bbox[q*2+1] = std::max(bbox[q*2+1],coords[q]);
-				}
-			}
-		}
-	}
-	void clear_children() { if( children ) {children[0].clear_children(); children[1].clear_children(); free(children);}}
-	int raybox(double pos[3], double ray[3], double closest)
-	{
-		double tnear = -1.0e20, tfar = 1.0e20, t1,t2,c;
-		for(int i = 0; i < 3; i++)
-		{
-			if( fabs(ray[i]) < 1.0e-15 )
-			{
-				if( pos[i] < bbox[i*2] || pos[i] > bbox[i*2+1] )
-					return 0;
-			}
-			else
-			{
-				t1 = (bbox[i*2+0] - pos[i])/ray[i];
-				t2 = (bbox[i*2+1] - pos[i])/ray[i];
-				if( t1 > t2 ) {c = t1; t1 = t2; t2 = c;}
-				if( t1 > tnear ) tnear = t1;
-				if( t2 < tfar ) tfar = t2;
-				if( tnear > closest ) return 0;
-				if( tnear > tfar ) return 0;
-				if( tfar < 0 ) return 0;
-			}
-		}
-		return 1;
-	}
-	void sub_intersect_ray_faces(std::vector<face2gl> & in, double p[3], double dir[3], std::pair<double,int> & closest)
-	{
-		if( size == 1 )
-		{
-			face2gl & f = in[set[0].index];
-			double * tri[3], btri[3][3], dot[3], prod[3][3], norm[3], d, proj[3];
-			tri[0] = f.get_center();
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < f.size(); i++)
-			{
-				INMOST_DATA_ENUM_TYPE j = (i+1)%f.size();
-				tri[1] = f.get_vert(i);
-				tri[2] = f.get_vert(j);
-				norm[0] = (tri[2][1]-tri[0][1])*(tri[1][2]-tri[0][2]) - (tri[2][2]-tri[0][2])*(tri[1][1]-tri[0][1]);
-				norm[1] = (tri[2][2]-tri[0][2])*(tri[1][0]-tri[0][0]) - (tri[2][0]-tri[0][0])*(tri[1][2]-tri[0][2]);
-				norm[2] = (tri[2][0]-tri[0][0])*(tri[1][1]-tri[0][1]) - (tri[2][1]-tri[0][1])*(tri[1][0]-tri[0][0]);
-				d = norm[0]*(tri[0][0]-p[0])+norm[1]*(tri[0][1]-p[1])+norm[2]*(tri[0][2]-p[2]);
-				d /= norm[0]*dir[0] + norm[1]*dir[1] + norm[2]*dir[2];
-				proj[0] = p[0] + d*dir[0];
-				proj[1] = p[1] + d*dir[1];
-				proj[2] = p[2] + d*dir[2];
-
-				if( d > closest.first ) break;
-
-				for(int k = 0; k < 3; k++)
-				{
-					btri[k][0] = tri[k][0] - proj[0];
-					btri[k][1] = tri[k][1] - proj[1];
-					btri[k][2] = tri[k][2] - proj[2];
-				}
-				for(int k = 0; k < 3; k++)
-				{
-					int l = (k+1)%3;
-					prod[k][0] = btri[k][1]*btri[l][2] - btri[k][2]*btri[l][1];
-					prod[k][1] = btri[k][2]*btri[l][0] - btri[k][0]*btri[l][2];
-					prod[k][2] = btri[k][0]*btri[l][1] - btri[k][1]*btri[l][0];
-				}
-
-				for(int k = 0; k < 3; k++)
-				{
-					int l = (k+1)%3;
-					dot[k] = prod[k][0]*prod[l][0]+prod[k][1]*prod[l][1]+prod[k][2]*prod[l][2];
-				}
-				if( dot[0] >= 0 && dot[1] >= 0 && dot[2] >= 0 ) 
-				{
-					closest.first = d;
-					closest.second = set[0].index;
-					break; //don't expect anything better here
-				}
-			}
-		}
-		else
-		{
-			if( raybox(p,dir,closest.first) )
-			{
-				children[0].sub_intersect_ray_faces(in,p,dir,closest);
-				children[1].sub_intersect_ray_faces(in,p,dir,closest);
-			}
-		}
-	}
-public:
-	kdtree_picker() : set(NULL), size(0), children(NULL) {}
-	~kdtree_picker() { clear_children(); delete [] set;}
-	kdtree_picker(std::vector<face2gl> & in)
-	{
-		size = (unsigned)in.size();
-		set = new struct entry[size];
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < in.size(); ++k)
-		{
-			set[k].index = k;
-			in[k].get_center(set[k].xyz);
-		}
-		struct entry * temp = new struct entry[size];
-		kdtree_build(0,in,temp);
-		delete [] temp;
-	}
-	int ray_faces(std::vector<face2gl> & in, double p[3], double dir[3])
-	{
-		std::pair<double, int> closest(1.0e20,-1);
-		sub_intersect_ray_faces(in,p,dir,closest);
-		return closest.second;
-	}
-};
-
-class picker
-{
-	kdtree_picker * tree;
-	std::vector<face2gl> * faces;
-public:
-	~picker() {delete tree;}
-	picker(std::vector<face2gl> & _faces)
-	{
-		faces = &_faces;
-		tree = new kdtree_picker(*faces);
-	}
-	int select(double p[3], double ray[3]) {return tree->ray_faces(*faces,p,ray);};
-} * current_picker = NULL;
 
 
 void set_matrix3d()
@@ -1281,16 +969,8 @@ void set_matrix3d()
 				-sc*side*100,sc*side*100);
 	}
 	else
-	{
-		const double pi = 3.1415926535897932384626433832795;
-		const double znear = 0.01;
-		const double zfar  = 10000.0;
-		const double fH = znear * tan( 60.0 / 360.0 * pi);
-		double fW = fH * aspect;
-		glFrustum(-fW,fW,-fH,fH,znear,zfar);
-	}
+		gluPerspective(60.0, aspect, 0.00001, 1000.0);
 	glMatrixMode (GL_MODELVIEW);
-	glLoadIdentity();
 }
 
 void set_matrix2d()
@@ -1339,7 +1019,6 @@ void myclickmotion(int nmx, int nmy) // Mouse
 			shift[0] += shiftmod[0];
 			shift[1] += shiftmod[1];
 			shift[2] += shiftmod[2];
-			bndupdate = true;
 		}
 		glutPostRedisplay();
 		mymx = lmx;
@@ -1367,7 +1046,6 @@ void myclickmotion(int nmx, int nmy) // Mouse
 			shift[0] += shiftmod[0];
 			shift[1] += shiftmod[1];
 			shift[2] += shiftmod[2];
-			bndupdate = true;
 		}
 		glutPostRedisplay();
 		mymx = lmx;
@@ -1382,7 +1060,6 @@ void myclickmotion(int nmx, int nmy) // Mouse
 			clipupdate = true;
 			quatinit();
 		}
-		else bndupdate = true;
 	}
 }
 void mymotion(int nmx, int nmy) // Mouse
@@ -1390,7 +1067,6 @@ void mymotion(int nmx, int nmy) // Mouse
 	motion(nmx,nmy);
 	mymx = 2.*(nmx/(double)width - 0.5);
 	mymy = 2.*(0.5 - nmy/(double)height);
-	if( current_picker != NULL ) glutPostRedisplay();
 }
 
 void myclick(int b, int s, int nmx, int nmy) // Mouse
@@ -1444,16 +1120,19 @@ void myclick(int b, int s, int nmx, int nmy) // Mouse
 
 void keyboard(unsigned char key, int x, int y)
 {
-	(void) x;
-	(void) y;
 	if( key == 27 )
 	{
 		if( oclipper ) delete oclipper;
 		if( bclipper ) delete bclipper;
-		if( current_picker ) delete current_picker;
 		delete mesh;
 		exit(-1);
 	}
+	else if( key == 'p' )
+	{
+		pick = !pick;
+		glutPostRedisplay();
+	}
+	
 	else if( key == '=' || key == '+')
 	{
 		zoom /= 1.1;
@@ -1480,7 +1159,6 @@ void keyboard(unsigned char key, int x, int y)
 		shift[2] += shiftmod[2];
 		glutPostRedisplay();
 		interactive = true;
-		bndupdate = true;
 	}
 	else if( key == 's' )
 	{
@@ -1494,7 +1172,6 @@ void keyboard(unsigned char key, int x, int y)
 			shift[2] += shiftmod[2];
 			glutPostRedisplay();
 			interactive = true;
-			bndupdate = true;
 		}
 	}
 	else if( key == 'a' )
@@ -1509,7 +1186,6 @@ void keyboard(unsigned char key, int x, int y)
 			shift[2] += shiftmod[2];
 			glutPostRedisplay();
 			interactive = true;
-			bndupdate = true;
 		}
 	}
 	else if( key == 'd' )
@@ -1524,7 +1200,6 @@ void keyboard(unsigned char key, int x, int y)
 			shift[2] += shiftmod[2];
 			glutPostRedisplay();
 			interactive = true;
-			bndupdate = true;
 		}
 	}
 	else if( key == 'r' )
@@ -1547,7 +1222,6 @@ void keyboard(unsigned char key, int x, int y)
 			shift[2] = 0.0f;
 			zoom = 1;
 			quatinit();
-			bndupdate = true;
 		}
 		glutPostRedisplay();
 		interactive = true;
@@ -1568,11 +1242,9 @@ void keyboard(unsigned char key, int x, int y)
 		if( oclipper ) 
 		{
 			oclipper->clip_plane(p,n);
-			bclipper->clip_plane(p,n);
-			clipboxupdate = true;
+			if( bclipper ) bclipper->clip_plane(clip_boundary,p,n);
+			glutPostRedisplay();
 		}
-			
-		glutPostRedisplay();
 	}
 	else if( key == 'b' )
 	{
@@ -1593,8 +1265,6 @@ void keyboard(unsigned char key, int x, int y)
 
 void keyboard2(unsigned char key, int x, int y)
 {
-	(void) x;
-	(void) y;
 	if( key == '=' || key == '+' ||  key == '_' || key == '-' || key == 'w' || key == 's' || key == 'a' || key == 'd' || key == 'r' || key == 'p' || key == 'z')
 	{
 		interactive = false;
@@ -1603,18 +1273,20 @@ void keyboard2(unsigned char key, int x, int y)
 	
 }
 
-face2gl DrawFace(Element f)
+face2gl DrawFace(Element * f)
 {
+	double cnt[3];
 	face2gl ret;
-	ElementArray<Node> nodes = f->getNodes();
+	f->Centroid(cnt);
+	ret.set_center(cnt);
+	adjacent<Node> nodes = f->getNodes();
 
 	if( f->nbAdjElements(CELL) == 0 ) ret.set_color(1,0,0,0.1);
 	else ret.set_color(0,1,0,0.1);
 	
-	for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
+	for( adjacent<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 		ret.add_vert(&(kt->Coords()[0]));
 	ret.set_elem(f->GetElementType(),f->LocalID());
-	ret.compute_center();
 	return ret;
 }
 
@@ -1664,13 +1336,6 @@ void pick_mouse(double origin[3], double direction[3])
    direction[0] = outx - origin[0];
    direction[1] = outy - origin[1];
    direction[2] = outz - origin[2];
-   double l = sqrt(direction[0]*direction[0]+direction[1]*direction[1]+direction[2]*direction[2]);
-   if( l ) 
-   {
-	   direction[0] /= l;
-	   direction[1] /= l;
-	   direction[2] /= l;
-   }
 }
 
 void draw()
@@ -1730,193 +1395,210 @@ void draw()
 
 	
 
-	double campos[3] = {0.5,0.5,0}, pickp[3], pickd[3];
+	double campos[3] = {0.5,0.5,0};
 	whereami(campos[0],campos[1],campos[2]);
-	int picked = -1;
 
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
 
 	{
+		if( interactive && !bclipper)
+		{
+			std::vector<bool> nodepos;
+			std::vector<Storage::real> faceverts;
+			size_t pace = interactive ? std::max<size_t>(1,std::min<size_t>(25,boundary_faces.size()/100)) : 1;
+			for(size_t k = 0; k < boundary_faces.size(); k+=pace)
+			{
+				int state = 0; //0 - outside, 1 - inside, 2 - intersect
+				adjacent<Node> nodes = boundary_faces[k]->getNodes();
+				Storage::real_array coords = nodes[0].Coords();
+				Storage::real dot0 = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
+				if( dot0 < 0.0 ) state = 1; else state = 0;
+				nodepos.resize(nodes.size());
+				nodepos[0] = dot0 < 1.0e-10;
+				for(size_t q = 1; q < nodes.size(); ++q)
+				{
+					coords = nodes[q].Coords();
+					Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
+					nodepos[q] = dot < 1.0e-10;
+					if( dot*dot0 <= 0.0 ) state = 2;
+				}
+				if( state == 1 )
+				{
+					glColor3f(0.6,0.6,0.6);
+					glBegin(GL_POLYGON);
+					for(size_t q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
+					glEnd();
+					glColor3f(0.2,0.2,0.2);
+					glBegin(GL_LINE_LOOP);
+					for(size_t q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
+					glEnd();
+				}
+				else if( state == 2 )
+				{
+					for(size_t q = 0; q < nodes.size(); ++q)
+					{
+						if( nodepos[q] ) //current node is inside
+						{
+							coords = nodes[q].Coords();
+							faceverts.insert(faceverts.end(),coords.begin(),coords.end());
+						}
+						if( nodepos[q] != nodepos[(q+1)%nodes.size()] ) //edge is crossed by the plane, calculate crossing point
+						{
+							Storage::real_array sp0 = nodes[q].Coords(), sp1 = nodes[(q+1)%nodes.size()].Coords();
+							Storage::real node[3];
+							if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE)
+								faceverts.insert(faceverts.end(),node,node+3);
+						}
+					}
+					glColor3f(0.6,0.6,0.6);
+					glBegin(GL_POLYGON);
+					for(size_t q = 0; q < faceverts.size(); q+=3) glVertex3dv(&faceverts[q]);
+					glEnd();
+					glColor3f(0.2,0.2,0.2);
+					glBegin(GL_LINE_LOOP);
+					for(size_t q = 0; q < faceverts.size(); q+=3) glVertex3dv(&faceverts[q]);
+					glEnd();
+					faceverts.clear();
+				}
+			}
+		}
+		
 		
 		if( oclipper ) 
 		{
+			glDisable(GL_BLEND);
 			
 			if( clipupdate ) 
 			{
-				if( current_picker != NULL ) {delete current_picker; current_picker = NULL;}
 				oclipper->clip_plane(p,n);
+				clip_slice.clear();
+				oclipper->gen_clip(clip_slice);
+				if( bclipper ) bclipper->clip_plane(clip_boundary,p,n);
 				clipupdate = false;
 				clipboxupdate = true;
 			}
 		
-			if( !interactive && clipboxupdate )
+			if( !bclipper && !interactive && clipboxupdate )
 			{
+				double tt = Timer();
 				clip_boundary.clear();
-				oclipper->gen_clip(clip_boundary);
-				bclipper->clip_plane(p,n);
-				bclipper->gen_clip(clip_boundary);
+				std::vector<bool> nodepos;
+				std::vector<Storage::real> faceverts;
+				size_t pace = std::max<size_t>(1,std::min<size_t>(15,boundary_faces.size()/100));
+				for(size_t k = 0; k < boundary_faces.size(); k++)
+				{
+					int state = 0; //0 - outside, 1 - inside, 2 - intersect
+					adjacent<Node> nodes = boundary_faces[k]->getNodes();
+					Storage::real_array coords = nodes[0].Coords();
+					Storage::real dot0 = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
+					if( dot0 < 0.0 ) state = 1; else state = 0;
+					nodepos.resize(nodes.size());
+					nodepos[0] = dot0 < 1.0e-10;
+					for(size_t q = 1; q < nodes.size(); ++q)
+					{
+						coords = nodes[q].Coords();
+						Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
+						nodepos[q] = dot < 1.0e-10;
+						if( dot*dot0 <= 0.0 ) state = 2;
+					}
+					if( state == 1 )
+					{
+						face2gl f;
+						f.set_color(0.6,0.6,0.6,1);
+						for(size_t q = 0; q < nodes.size(); q++) f.add_vert(&nodes[q].Coords()[0]);
+						f.compute_center();
+						if( k%pace == 0 ) f.set_flag(true);
+						f.set_elem(boundary_faces[k]->GetElementType(),boundary_faces[k]->LocalID());
+						clip_boundary.push_back(f);
+					}
+					else if( state == 2 )
+					{
+						face2gl f;
+						f.set_color(0.6,0.6,0.6,1);
+						for(size_t q = 0; q < nodes.size(); ++q)
+						{
+							if( nodepos[q] ) //current node is inside
+							{
+								coords = nodes[q].Coords();
+								f.add_vert(&coords[0]);
+							}
+							if( nodepos[q] != nodepos[(q+1)%nodes.size()] ) //edge is crossed by the plane, calculate crossing point
+							{
+								Storage::real_array sp0 = nodes[q].Coords(), sp1 = nodes[(q+1)%nodes.size()].Coords();
+								Storage::real node[3];
+								if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE)
+									f.add_vert(node);
+							}
+						}
+						f.compute_center();
+						if( k%pace == 0 ) f.set_flag(true);
+						f.set_elem(boundary_faces[k]->GetElementType(),boundary_faces[k]->LocalID());
+						clip_boundary.push_back(f);
+						faceverts.clear();
+					}
+				}
 				clipboxupdate = false;
-
-				if( current_picker != NULL ) {delete current_picker; current_picker = NULL;}
-				current_picker = new picker(clip_boundary);
+				printf("time %g\n",Timer()-tt);
+			}
+			
+			double tt, to = 0, tb = 0;
+			size_t pace = interactive && !planecontrol ? std::max<size_t>(1,std::min<size_t>(15,oclipper->size()/100)) : 1;
+			/*
+			if( interactive )
+			{
+				glColor3f(0.6,0.6,0.6);
+				oclipper->draw_clip(pace);
+				if( bclipper ) bclipper->draw_clip(pace);
+				glColor3f(0.2,0.2,0.2);
+				oclipper->draw_clip_edges(pace);
+				if( bclipper ) bclipper->draw_clip_edges(pace);
+			}
+			else*/
+			{
+				if( interactive && !planecontrol ) draw_faces_interactive(clip_slice);
+				else draw_faces(clip_slice);
+				glColor4f(0,0,0,1); 
+				if( interactive && !planecontrol ) draw_edges_interactive(clip_slice);
+				else draw_edges(clip_slice);
 			}
 
-			
-
-			if( current_picker != NULL )
+			if( bclipper )
 			{
-				pick_mouse(pickp,pickd);
-				picked = current_picker->select(pickp,pickd);
+				double tt = Timer();
+				draw_faces(clip_boundary);
+				glColor4f(0,0,0,1); 
+				draw_edges(clip_boundary);
+				printf("draw %g\n",Timer()-tt);
 			}
 	
-			if( interactive && clipboxupdate )
+			if( !bclipper && !interactive )
 			{
-				//printf("draw1 %d %d\n",interactive, clipboxupdate);
-				INMOST_DATA_ENUM_TYPE opace = !planecontrol ? std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,oclipper->size()/100)) : 1;
-				INMOST_DATA_ENUM_TYPE bpace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,bclipper->size()/100));
-				glColor4f(0.6,0.6,0.6,1);
-				oclipper->draw_clip(opace);
-				bclipper->draw_clip(bpace);
+				draw_faces(clip_boundary);
 				glColor4f(0,0,0,1); 
-				oclipper->draw_clip_edges(opace);
-				bclipper->draw_clip_edges(bpace);
+				draw_edges(clip_boundary);
 			}
-			else
-			{
-				//printf("draw2 %d %d\n",interactive, clipboxupdate);
-				if( interactive )
-				{
-					draw_faces_interactive(clip_boundary);
-					glColor4f(0,0,0,1); 
-					draw_edges_interactive(clip_boundary);
-				}
-				else
-				{
-					draw_faces(clip_boundary,picked);
-					glColor4f(0,0,0,1); 
-					draw_edges(clip_boundary,picked);
-				}
-			}
+			
+			glEnable(GL_BLEND);
 		}
 		if( boundary )
 		{
-			glEnable(GL_BLEND);
-			if( !interactive && bndupdate)
+			if( !interactive )
 			{
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < all_boundary.size() ; q++) 
+				for(size_t q = 0; q < all_boundary.size() ; q++) 
 					all_boundary[q].compute_dist(campos);
 				std::sort(all_boundary.rbegin(),all_boundary.rend());
-				bndupdate = false;
 			}
+			if( interactive ) draw_faces_interactive(all_boundary);
+			else draw_faces(all_boundary);
 			glColor4f(0,0,0,0.25); 
+
 			if( interactive ) draw_edges_interactive(all_boundary);
 			else draw_edges(all_boundary);
 			
-
-			if( interactive ) draw_faces_interactive(all_boundary);
-			else draw_faces(all_boundary);
-			
-			glDisable(GL_BLEND);
 		}
 	}
 
-	if( picked != -1 )
-	{
-		glDisable(GL_DEPTH_TEST);
-		glLoadIdentity();
-		set_matrix2d();
-		
-
-		double top = 0.96, left = 0.11, interval = 0.04, bottom = top;
-		
-		Element e = clip_boundary[picked].get_elem(mesh);
-		for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
-			if( e->HaveData(*t) )
-				bottom -= interval;
-
-		glColor3f(1,1,1);
-		glBegin(GL_QUADS);
-		glVertex2f(left-0.01,bottom-0.01);
-		glVertex2f(left-0.01,0.99);
-		glVertex2f(0.99,0.99);
-		glVertex2f(0.99,bottom-0.01);
-		glEnd();
-		glColor3f(0,0,0);
-		glBegin(GL_LINE_LOOP);
-		glVertex2f(left-0.01,bottom-0.01);
-		glVertex2f(left-0.01,0.99);
-		glVertex2f(0.99,0.99);
-		glVertex2f(0.99,bottom-0.01);
-		glEnd();
-
-		
-		glColor3f(0.2,0.2,0.2);
-		glRasterPos2f(left,top);
-		printtext("%s %d",ElementTypeName(e->GetElementType()),e->LocalID());
-		top -= interval;
-		glColor3f(0.2,0.2,0.2);
-		for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
-		{
-			if( e->HaveData(*t) )
-			{
-				char str[4096];
-				char temp[4096];
-				str[0] = '\0';
-				switch(t->GetDataType())
-				{
-				case DATA_INTEGER:
-					{
-						Storage::integer_array arr = e->IntegerArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
-						{
-							sprintf(temp,"%d %s",arr[k],str);
-							strcpy(str,temp);
-						}
-						break;
-					}
-				case DATA_REAL:
-					{
-						Storage::real_array arr = e->RealArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-						{
-							sprintf(temp,"%lf %s",arr[k],str);
-							strcpy(str,temp);
-						}
-						break;
-					}
-				case DATA_BULK:
-					{
-						Storage::bulk_array arr = e->BulkArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
-						{
-							sprintf(temp,"%d %s",arr[k],str);
-							strcpy(str,temp);
-						}
-						break;
-					}
-				case DATA_REFERENCE:
-					{
-						Storage::reference_array arr = e->ReferenceArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
-						{
-							if(arr.at(k) == InvalidHandle()) sprintf(temp,"NULL %s",str);
-							else sprintf(temp,"%s:%d %s",ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID(),str);
-							strcpy(str,temp);
-						}
-						break;
-					}
-				}
-				sprintf(temp,"%s %s %s",t->GetTagName().c_str(),DataTypeName(t->GetDataType()),str);
-				strcpy(str,temp);
-				glRasterPos2f(left,top);
-				printtext(str);
-				top -= interval;
-			}
-		}
-
-
-		glEnable(GL_DEPTH_TEST);
-	}
+	
 	
 	
 	glutSwapBuffers();
@@ -1937,39 +1619,31 @@ int main(int argc, char ** argv)
 	mesh->SetFileOption("VERBOSITY","2");
 	if( argc < 2 )
 	{
-		printf("Usage: %s mesh_file [dims]\n",argv[0]);
+		printf("Usage: %s mesh_file\n",argv[0]);
 		return 0;
 	}
-	//try
+	try
 	{
-		if( argc > 2 )	mesh->SetFileOption("VTK_GRID_DIMS",argv[2]);
 		mesh->Load(argv[1]);
 	} 
-	/*
 	catch(...)
 	{
 		printf("Error during loading %s\n",argv[1]);
 		return -1;
 	}
-	*/
-	printf("Done. Time %lg\n",Timer()-tt);
-	//int fixed = 0;
-	//tt = Timer();
-	//delete mesh;
-	//printf("Delete %lg\n",Timer()-tt);
-	//return 0;
+	printf("Done. Time %g\n",Timer()-tt);
+	int fixed = 0;
 
 	for(ElementType mask = NODE; mask <= CELL; mask = mask << 1)	
 		std::cout << ElementTypeName(mask) << " " << mesh->NumberOf(mask) << std::endl;
 	
-	//return 0;
 	//for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); f++)
 	//	if( Geometry::FixNormaleOrientation(&*f) ) fixed++;
 	//printf("fixed: %d\n",fixed);
 	printf("Computing geometric quantities\n");
 	tt = Timer();
 	mesh->PrepareGeometricData(table);
-	printf("Done. %lg\n",Timer()-tt);
+	printf("Done. %g\n",Timer()-tt);
 	
 	printf("Calculating bounds.\n");
 	tt = Timer();
@@ -1983,28 +1657,24 @@ int main(int argc, char ** argv)
 		if( c[2] > sfar ) sfar = c[2];
 		if( c[2] < snear ) snear = c[2];
 	}
-	printf("Done. Time %lg\n",Timer()-tt);
+	printf("Done. Time %g\n",Timer()-tt);
 	printf("%g:%g %g:%g %g:%g\n",sleft,sright,sbottom,stop,snear,sfar);
 
 	printf("Gathering boundary faces.\n");
 	tt = Timer();
-	boundary_faces.SetMeshLink(mesh);
-	for(Mesh::iteratorCell f = mesh->BeginCell(); f != mesh->EndCell(); f++) 
-	{
-		if( f->GetElementDimension() == 2 )
-			boundary_faces.push_back(*f);
-	}
+	for(Mesh::iteratorCell f = mesh->BeginCell(); f != mesh->EndCell(); f++) if( f->GetElementDimension() == 2 )
+		boundary_faces.push_back(&*f);
 	for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); f++) if( f->GetElementDimension() == 2 )
 	{
 		if( f->Boundary() )
-			boundary_faces.push_back(*f);
+			boundary_faces.push_back(&*f);
 	}
-	printf("Done. Time %lg\n",Timer()-tt);
+	printf("Done. Time %g\n",Timer()-tt);
 
 	printf("Prepearing set of boundary faces for drawing.\n");
 	tt = Timer();
-	INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
-	for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++) 
+	size_t pace = std::max<size_t>(1,std::min<size_t>(15,boundary_faces.size()/100));
+	for(size_t k = 0; k < boundary_faces.size(); k++) 
 	{
 		all_boundary.push_back(DrawFace(boundary_faces[k]));
 		if( k%pace == 0 ) all_boundary.back().set_flag(true);
@@ -2014,7 +1684,7 @@ int main(int argc, char ** argv)
 	printf("Prepearing interactive mesh clipper.\n");
 	//tt = Timer();
 	oclipper = new clipper(mesh);
-	bclipper = new bnd_clipper(mesh,boundary_faces.data(),(unsigned)boundary_faces.size());
+	bclipper = new bnd_clipper(mesh,&boundary_faces[0],boundary_faces.size());
 	clipupdate = true;
 	//printf("Done. Time %g\n",Timer() - tt);
 
@@ -2039,6 +1709,7 @@ int main(int argc, char ** argv)
 	glDepthFunc(GL_LEQUAL);
 	glClearDepth(1.f);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	
 	//glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);

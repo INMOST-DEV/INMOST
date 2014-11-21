@@ -5,7 +5,44 @@
 
 namespace INMOST
 {
-	int CompareElementsCPointer(const void * pa, const void * pb);
+	const char * TopologyCheckNotifyString(TopologyCheck c)
+	{
+		switch(c)
+		{
+			case THROW_EXCEPTION:        return "exception thrown";
+			case PRINT_NOTIFY:           return "print notify";
+			case DELETE_ON_ERROR:        return "element should be deleted on error";
+			case MARK_ON_ERROR:          return "element is marked on error";
+			case DUPLICATE_EDGE:         return "search for duplicate edge";
+			case DUPLICATE_FACE:         return "search for duplicate face";
+			case DUPLICATE_CELL:         return "search for duplicate cell";
+			case DEGENERATE_EDGE:        return "TOPOLOGY ERROR: curvilinear edge found"; 
+			case DEGENERATE_FACE:        return "TOPOLOGY ERROR: degenerate face found";
+			case DEGENERATE_CELL:        return "TOPOLOGY ERROR: degenerate cell found";
+			case FACE_ORIENTATION:       return "TOPOLOGY ERROR: bad face orientation";
+			case FACE_PLANARITY:         return "TOPOLOGY ERROR: non-planar face found";
+			case INTERLEAVED_FACES:      return "TOPOLOGY ERROR: interleaving faces found";
+			case TRIPLE_SHARED_FACE:     return "TOPOLOGY ERROR: face have more then two neighbours"; 
+			case FLATTENED_CELL:         return "TOPOLOGY ERROR: flattened cell found"; 
+			case ADJACENT_DUPLICATE:     return "TOPOLOGY ERROR: duplicates in adjacent elements";
+			case ADJACENT_HIDDEN:        return "TOPOLOGY ERROR: hidden element is used as adjacent"; 
+			case ADJACENT_VALID:         return "TOPOLOGY ERROR: invalid handle is used as adjacent"; 
+			case ADJACENT_DIMENSION:     return "TOPOLOGY ERROR: wrong dimension of adjacent elements";
+			case PROHIBIT_MULTILINE:     return "TOPOLOGY ERROR: multiline is prohibited"; 
+			case PROHIBIT_POLYGON:       return "TOPOLOGY ERROR: polygon is prohibited"; 
+			case PROHIBIT_MULTIPOLYGON:  return "TOPOLOGY ERROR: multipolygon is prohibited"; 
+			case PROHIBIT_POLYHEDRON:    return "TOPOLOGY ERROR: polyhedron is prohibited"; 
+			case FACE_EDGES_ORDER:       return "TOPOLOGY ERROR: no order in face edges"; 
+			case PROHIBIT_CONCAVE_FACE:  return "TOPOLOGY ERROR: concave faces are prohibited"; 
+			case PROHIBIT_CONCAVE_CELL:  return "TOPOLOGY ERROR: concave cells are prohibited"; 
+			case PROHIBIT_NONSTAR_FACE:  return "TOPOLOGY ERROR: non star-shaped faces are prohibited"; 
+			case PROHIBIT_NONSTAR_CELL:  return "TOPOLOGY ERROR: non star-shpaed cells are prohibited"; 
+			case FACE_SELF_INTERSECTION: return "TOPOLOGY ERROR: self intersection of face edges detected"; 
+			case CELL_SELF_INTERSECTION: return "TOPOLOGY ERROR: self intersection of cell faces detected"; 
+			case DISABLE_2D:             return "TOPOLOGY ERROR: 2d mesh support is disabled"; 
+			default: return "unknown";
+		}
+	}
 
 	const char * ElementTypeName(ElementType t)
 	{
@@ -148,7 +185,7 @@ namespace INMOST
 		//first delete everything
 		//delete parallel vars
 #if defined(USE_MPI)
-#if defined(USE_MPI2)
+#if defined(USE_MPI_P2P)
 		if( m_state == Mesh::Parallel )
 		{
 			MPI_Free_mem(shared_space);
@@ -283,7 +320,7 @@ namespace INMOST
 			empty_space[i].clear();
 		}
 #if defined(USE_MPI)
-#if defined(USE_MPI2)
+#if defined(USE_MPI_P2P)
 		if( m_state == Mesh::Parallel )
 		{
 			MPI_Free_mem(shared_space);
@@ -333,13 +370,13 @@ namespace INMOST
 	
 	
 	
-	HandleType Mesh::FindSharedAdjacency(const HandleType * arr, integer s) const
+	HandleType Mesh::FindSharedAdjacency(const HandleType * arr, enumerator s) const
 	{
-		if( s == 0 ) return NULL;
+		if( s == 0 ) return InvalidHandle();
 		if( !HideMarker() )
 		{
 			{
-				integer flag0, flag1, i;
+				enumerator flag0, flag1, i;
 				dynarray<Element::adj_type const *, 64> hcarr(s);
 				hcarr[0] = &HighConn(arr[0]);
 				if( !hcarr[0]->empty() ) 
@@ -347,13 +384,13 @@ namespace INMOST
 					for(i = 1; i < s; i++) hcarr[i] = &HighConn(arr[i]);
 				}
 				else return InvalidHandle();
-				integer it, iend = static_cast<integer>(hcarr[0]->size()), jt, jend;
+				enumerator it, iend = static_cast<enumerator>(hcarr[0]->size()), jt, jend;
 				for(it = 0; it < iend; ++it)
 				{
 					flag0 = 0;
 					for(i = 1; i < s; ++i)
 					{
-						jend = static_cast<integer>(hcarr[i]->size());
+						jend = static_cast<enumerator>(hcarr[i]->size());
 						flag1 = 0;
 						for(jt = 0; jt < jend; ++jt)
 						{
@@ -375,7 +412,8 @@ namespace INMOST
 		}
 		else
 		{
-			integer ss = Count(arr,s,HideMarker()), k = -1, nextk, i;
+			enumerator ss = Count(arr,s,HideMarker()), nextk;
+			enumerator k = ENUMUNDEF, i;
 			k = getNext(arr,s,k,HideMarker());
 			nextk = getNext(arr,s,k,HideMarker());
 			Element::adj_type const & hc0 = HighConn(arr[k]);
@@ -408,9 +446,9 @@ namespace INMOST
 	}
 	
 	
-	TopologyCheck Mesh::BeginTopologyCheck(ElementType etype, const HandleType * adj, integer s)
+	TopologyCheck Mesh::BeginTopologyCheck(ElementType etype, const HandleType * adj, enumerator s)
 	{
-		integer i,j,d = ENUMUNDEF, etypenum = ElementNum(etype);
+		enumerator i,j,d = ENUMUNDEF;
 		TopologyCheck chk = 0;
 		if( GetTopologyCheck(ADJACENT_VALID) )
 		{
@@ -589,7 +627,7 @@ namespace INMOST
 				if( check )
 				{
 					bool happen = true;
-					if( (GetTopologyCheck(DUPLICATE_CELL)) && (FindSharedAdjacency(adj,s) != NULL) ) happen = false;
+					if( (GetTopologyCheck(DUPLICATE_CELL)) && (FindSharedAdjacency(adj,s) != InvalidHandle()) ) happen = false;
 					if( happen )
 					{
 						chk |= TRIPLE_SHARED_FACE;
@@ -605,8 +643,8 @@ namespace INMOST
 				ElementArray<Node> allnodes(this);
 				for(i = 0; i < s; i++) allnodes.Unite(ElementByHandle(adj[i])->getNodes());
 				ElementArray<Face> faces = allnodes[0].getFaces();
-				for(i = 1; i < static_cast<integer>(allnodes.size()) && !faces.empty(); i++) faces.Intersect(allnodes[i].getFaces());
-				for(i = 0; i < static_cast<integer>(faces.size()); i++)
+				for(i = 1; i < static_cast<enumerator>(allnodes.size()) && !faces.empty(); i++) faces.Intersect(allnodes[i].getFaces());
+				for(i = 0; i < static_cast<enumerator>(faces.size()); i++)
 				{
 					if( faces[i]->nbAdjElements(NODE) != allnodes.size() )
 					{
@@ -630,8 +668,8 @@ namespace INMOST
 			if( GetTopologyCheck(FLATTENED_CELL) )
 			{
 				ElementArray<Face> faces = e->getFaces();
-				integer num = e->nbAdjElements(NODE);
-				for(integer i = 0; i < static_cast<integer>(faces.size()); i++)
+				enumerator num = e->nbAdjElements(NODE);
+				for(enumerator i = 0; i < static_cast<enumerator>(faces.size()); i++)
 				{
 					if( faces[i].nbAdjElements(NODE) == num )
 					{
@@ -643,7 +681,7 @@ namespace INMOST
 			if( GetTopologyCheck(FACE_ORIENTATION) )
 			{
 				ElementArray<Face> faces = e->getFaces();
-				for(integer i = 0; i < static_cast<integer>(faces.size()); i++)
+				for(enumerator i = 0; i < static_cast<enumerator>(faces.size()); i++)
 				{
 					if( faces[i].nbAdjElements(CELL) == 1 && !faces[i].CheckNormalOrientation() )
 					{
@@ -751,14 +789,14 @@ namespace INMOST
 		if( !nodes.empty() )
 		{
 			TopologyCheck chk = 0;
-			chk |= BeginTopologyCheck(EDGE,nodes.data(),static_cast<integer>(nodes.size()));
+			chk |= BeginTopologyCheck(EDGE,nodes.data(),static_cast<enumerator>(nodes.size()));
 			if( chk != 0 )
 			{
 				if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
 			}
 			if( GetTopologyCheck() & DUPLICATE_EDGE )
 			{
-				HandleType test = FindSharedAdjacency(nodes.data(),static_cast<integer>(nodes.size()));
+				HandleType test = FindSharedAdjacency(nodes.data(),static_cast<enumerator>(nodes.size()));
 				if (test != InvalidHandle()) return std::make_pair(Edge(this,test),false);
 			}
 			integer id = TieElement(1);
@@ -843,14 +881,14 @@ namespace INMOST
 		if( !f_edges.empty() )
 		{
 			TopologyCheck chk = 0;
-			chk |= BeginTopologyCheck(FACE,f_edges.data(),static_cast<integer>(f_edges.size()));
+			chk |= BeginTopologyCheck(FACE,f_edges.data(),static_cast<enumerator>(f_edges.size()));
 			if( chk != 0 )
 			{
 				if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
 			}
 			if( GetTopologyCheck(DUPLICATE_FACE) )
 			{
-				HandleType test = FindSharedAdjacency(f_edges.data(),static_cast<integer>(f_edges.size()));
+				HandleType test = FindSharedAdjacency(f_edges.data(),static_cast<enumerator>(f_edges.size()));
 				if (test != InvalidHandle()) return std::make_pair(Face(this,test),false);
 			}
 			integer id = TieElement(2);
@@ -1213,14 +1251,14 @@ namespace INMOST
 		if( !c_faces.empty() )
 		{
 			TopologyCheck chk = 0;
-			chk |= BeginTopologyCheck(CELL,c_faces.data(),static_cast<integer>(c_faces.size()));
+			chk |= BeginTopologyCheck(CELL,c_faces.data(),static_cast<enumerator>(c_faces.size()));
 			if( chk != 0 )
 			{
 				if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
 			}
 			if( GetTopologyCheck(DUPLICATE_CELL) )
 			{
-				HandleType test = FindSharedAdjacency(c_faces.data(),static_cast<integer>(c_faces.size()));
+				HandleType test = FindSharedAdjacency(c_faces.data(),static_cast<enumerator>(c_faces.size()));
 				if (test != InvalidHandle()) return std::make_pair(Cell(this,test),false);
 			}
 			integer id = TieElement(3);
@@ -1451,12 +1489,14 @@ namespace INMOST
 	
 	void Mesh::ReorderApply(Tag index, ElementType mask)
 	{
+		(void) index;
+		(void) mask;
 		throw NotImplemented;
 	}
 	
 	void Mesh::ReorderEmpty(ElementType etype)
 	{
-		for(int etypenum = 0; etypenum < ElementNum(MESH); etypenum++)
+		for(int etypenum = 0; etypenum < ElementNum(MESH); etypenum++) if( ElementTypeFromDim(etypenum) & etype )
 		{
 			int cend = static_cast<int>(back_links[etypenum].size())-1;
 			//Very likely we have leading free space

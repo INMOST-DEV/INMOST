@@ -906,7 +906,7 @@ ecl_exit_loop:
 
 									if( t == DATA_INTEGER )
 									{
-										if( newcells[it] != NULL )
+										if( newcells[it] != InvalidHandle() )
 										{
 											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -915,7 +915,7 @@ ecl_exit_loop:
 									}
 									if( t == DATA_REAL )
 									{
-										if( newcells[it] != NULL )
+										if( newcells[it] != InvalidHandle() )
 										{
 											Storage::real_array attrdata = RealArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -968,7 +968,7 @@ ecl_exit_loop:
 								unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
-									if( newcells[it] != NULL )
+									if( newcells[it] != InvalidHandle() )
 									{
 										Storage::real_array attrdata = RealArray(newcells[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -1041,7 +1041,7 @@ ecl_exit_loop:
 								{
 									if( t == DATA_INTEGER )
 									{
-										if( newcells[it] != NULL )
+										if( newcells[it] != InvalidHandle() )
 										{
 											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -1050,7 +1050,7 @@ ecl_exit_loop:
 									}
 									if( t == DATA_REAL )
 									{
-										if( newcells[it] != NULL )
+										if( newcells[it] != InvalidHandle() )
 										{
 											Storage::real_array attrdata = RealArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -1118,7 +1118,7 @@ ecl_exit_loop:
 								{
 									if( t == DATA_INTEGER )
 									{
-										if( newcells[it] != NULL )
+										if( newcells[it] != InvalidHandle() )
 										{
 											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -1126,13 +1126,13 @@ ecl_exit_loop:
 									}
 									if( t == DATA_REAL )
 									{
-										if( newcells[it] != NULL )
+										if( newcells[it] != InvalidHandle() )
 										{
 											Storage::real_array attrdata = RealArray(newcells[it],attr);
 											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 										} else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									}
-									if( verbosity > 1 && it%100 == 0)
+									if( verbosity > 1 && it%report_pace == 0)
 									{
 										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
 										fflush(stdout);
@@ -1157,7 +1157,7 @@ ecl_exit_loop:
 										Storage::real_array attrdata = RealArray(newnodes[it],attr);
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
-									if( verbosity > 1 && it%100 == 0)
+									if( verbosity > 1 && it%report_pace == 0)
 									{
 										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
 										fflush(stdout);
@@ -1198,7 +1198,7 @@ ecl_exit_loop:
 									{
 										if( t == DATA_INTEGER )
 										{
-											if( newcells[it] != NULL )
+											if( newcells[it] != InvalidHandle() )
 											{
 												Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
 												for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -1206,7 +1206,7 @@ ecl_exit_loop:
 										}
 										if( t == DATA_REAL )
 										{
-											if( newcells[it] != NULL )
+											if( newcells[it] != InvalidHandle() )
 											{
 												Storage::real_array attrdata = RealArray(newcells[it],attr);
 												for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
@@ -2874,7 +2874,7 @@ read_elem_num_link:
 #if defined(USE_MPI)
 			if( m_state == Mesh::Parallel )
 			{
-#if defined(USE_MPI2)
+#if defined(USE_MPI_FILE)
 				if( parallel_file_strategy == 1 )
 				{
 					int ierr;
@@ -3316,13 +3316,15 @@ read_elem_num_link:
 					REPORT_VAL("eset_size",size);
 					INMOST_DATA_ENUM_TYPE set_size, name_size, lid,val;
 					char set_name[4096];
-					Storage ** elem_links[4] =
+					HandleType * elem_links[4] =
 					{
-						reinterpret_cast<Storage **>(new_nodes.data()),
-						reinterpret_cast<Storage **>(new_edges.data()),
-						reinterpret_cast<Storage **>(new_faces.data()),
-						reinterpret_cast<Storage **>(new_cells.data())
+						new_nodes.data(),
+						new_edges.data(),
+						new_faces.data(),
+						new_cells.data()
 					};
+					bool low_conn_have_sets = false;
+					bool high_conn_have_sets = false;
 					for(unsigned i = 0; i < size; i++) 
 					{
 						uconv.read_iValue(in,name_size);
@@ -3340,7 +3342,13 @@ read_elem_num_link:
 							if( type != 0 )
 							{
 								uconv.read_iValue(in,lid);
-								lc[q] = ComposeHandle(static_cast<ElementType>(type),static_cast<integer>(lid));
+								if( static_cast<ElementType>(type) != ESET )
+									lc[q] = elem_links[ElementNum(static_cast<ElementType>(type))][lid];
+								else
+								{
+									lc[q] = ComposeHandle(static_cast<ElementType>(type),lid);
+									low_conn_have_sets = true;
+								}
 							}
 							else lc[q] = InvalidHandle();
 						}
@@ -3356,6 +3364,7 @@ read_elem_num_link:
 							{
 								uconv.read_iValue(in,lid);
 								hc[q] = ComposeHandle(static_cast<ElementType>(type),static_cast<integer>(lid));
+								high_conn_have_sets = true;
 							}
 							else hc[q] = InvalidHandle();
 						}
@@ -3363,6 +3372,27 @@ read_elem_num_link:
 						{
 							uconv.read_iValue(in,val);
 							hc[q] = val;
+						}
+					}
+					//convert handles to sets into links to new_sets
+					if( high_conn_have_sets )
+					{
+						for(unsigned i = 0; i < size; i++) 
+						{
+							Element::adj_type & hc = HighConn(new_sets[i]);
+							for(enumerator j = 0; j < ElementSet::high_conn_reserved-1; ++j)
+								if( hc[j] != InvalidHandle() )
+									hc[j] = new_sets[GetHandleID(hc[j])];
+						}
+					}
+					if( low_conn_have_sets ) //this may be expensive and redundant in some cases
+					{
+						for(unsigned i = 0; i < size; i++) 
+						{
+							Element::adj_type & lc = LowConn(new_sets[i]);
+							for(Element::adj_type::size_type j = 0; j < lc.size(); ++j)
+									if( GetHandleElementType(lc[j]) == ESET )
+										lc[j] = new_sets[GetHandleID(lc[j])];
 						}
 					}
 				}
@@ -3606,6 +3636,7 @@ read_elem_num_link:
 			case Element::Polyhedron: return 42;
 			case Element::MultiPolygon: return 42;
 		}
+		assert(false);
 		return -1;
 	}
 	
@@ -3624,7 +3655,8 @@ read_elem_num_link:
 			case Element::Polyhedron: return ENUMUNDEF;
 			case Element::MultiPolygon: return ENUMUNDEF;
 		}
-		return -1;
+		assert(false);
+		return ENUMUNDEF;
 	}
 	
 	void Mesh::Save(std::string File)
@@ -4414,7 +4446,7 @@ safe_output:
 				REPORT_VAL("local_write_file_size",datasize);
 				REPORT_MPI(ierr = MPI_Gather(&datasize,1,INMOST_MPI_DATA_ENUM_TYPE,&datasizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
-#if defined(USE_MPI2) //We have access to MPI_File
+#if defined(USE_MPI_FILE) //We have access to MPI_File
 				if( parallel_file_strategy == 1 )
 				{
 					MPI_File fh;

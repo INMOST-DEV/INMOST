@@ -234,6 +234,8 @@ namespace INMOST
 	
 	void Partitioner::Initialize(int * argc, char *** argv)
 	{
+		(void) argc;
+		(void) argv;
 #if defined(USE_PARTITIONER_ZOLTAN)
 		float ver;
 		Zoltan_Initialize(*argc,*argv,&ver);
@@ -244,13 +246,6 @@ namespace INMOST
 	{
 	}
 	
-	class functor_LessOrder
-	{
-	private: Tag order; Mesh * m;
-	public:
-		functor_LessOrder(Mesh * m, Tag order):m(m),order(order){}
-		bool operator()(HandleType a,HandleType b){return m->Integer(a,order) < m->Integer(b,order);}
-	};
 	
 	void Partitioner::Evaluate()
 	{
@@ -344,7 +339,7 @@ namespace INMOST
 				{
 					around = Cell(m,queue.front())->BridgeAdjacencies(FACE,CELL);
 					queue.pop_front();
-					std::sort(around.data(),around.data()+around.size(),functor_LessOrder(m,order));
+					std::sort(around.data(),around.data()+around.size(),Mesh::IntegerComparator(m,order));
 					for(ElementArray<Element>::iterator it = around.begin(); it != around.end(); ++it)
 					{
 						if( it->Integer(index) == 0 )
@@ -1107,6 +1102,7 @@ namespace INMOST
 	
 	void Partitioner::SetWeight(Tag weight)
 	{
+		(void) weight;
 		int package = 0;
 		switch(pt)
 		{

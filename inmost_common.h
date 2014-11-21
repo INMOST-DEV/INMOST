@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef INMOST_COMMON_INCLUDED
 #define INMOST_COMMON_INCLUDED
 
@@ -24,7 +24,9 @@
 //#define USE_AUTODIFF_EXPRESSION_TEMPLATES
 
 //#define USE_MPI //include mpi for mpi functions
-//#define USE_MPI2 //use (probably) more effective mpi-2 algorithms
+//#define USE_MPI_P2P //use (probably) more effective mpi-2 algorithms
+//#define USE_MPI_FILE //use MPI_File_xxx functionality
+//#define USE_MPI2 //set of your version produce warnings
 #endif //INMOST_OPTIONS_CMAKE_INCLUDED
 
 
@@ -41,9 +43,12 @@
 // view of generated xml files
 #define USE_PARALLEL_WRITE_TIME
 // this will revert Mesh::PrepareReceiveInner to always
-// use MPI-2 functionality disregarding problem type
+// use MPI point to point functionality disregarding problem type
 // read comments in Mesh::SetParallelStrategy for more info
-//#define PREFFER_MPI2
+// USE_MPI_P2P must be enabled for feature to work
+//#define PREFFER_MPI_P2P
+// this will write out shared set of elements that lay between processors in GMV format
+//#define DEBUG_COMPUTE_SHARED_SKIN_SET
 
 #define __INLINE inline
 
@@ -52,6 +57,9 @@
 #endif
 #if defined(USE_MPI)
 #include <mpi.h>
+#if !defined(MSMPI_VER) && !defined(MPIO_INCLUDE)
+#include <mpio.h> //some versions of MPI doesn't include that
+#endif
 #endif
 
 #include <string>
@@ -121,7 +129,7 @@
 /// ...some code...
 /// seconds = Timer() - seconds;
 /// std::cout << "Time spent is " << seconds << " seconds." << std::endl;
-long double Timer();
+double Timer();
 
 namespace INMOST
 {

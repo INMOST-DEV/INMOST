@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef INMOST_PARTITIONER_H_INCLUDED
 #define INMOST_PARTITIONER_H_INCLUDED
 #include "inmost.h"

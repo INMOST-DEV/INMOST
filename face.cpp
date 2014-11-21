@@ -21,9 +21,9 @@ namespace INMOST
 			adj_type const & hc = m->HighConn(GetHandle());
 			if( !hc.empty() )
 			{
-				integer i = -1;
+				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
-				i = m->getNext(hc.data(),static_cast<integer>(hc.size()),i,hm);
+				i = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),i,hm);
 				if( i != hc.size() ) return Cell(m,hc[i]);
 			}
 			return Cell(m,InvalidHandle());
@@ -45,10 +45,10 @@ namespace INMOST
 			adj_type const & hc = m->HighConn(GetHandle());
 			if( !hc.empty() )
 			{
-				integer i = -1;
+				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
-				i = m->getNext(hc.data(),static_cast<integer>(hc.size()),i,hm); //found first
-				i = m->getNext(hc.data(),static_cast<integer>(hc.size()),i,hm); //found second
+				i = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),i,hm); //found first
+				i = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),i,hm); //found second
 				if( i != hc.size() ) return Cell(m,hc[i]);
 			}
 			return Cell(m,InvalidHandle());
@@ -72,14 +72,14 @@ namespace INMOST
 			adj_type const & lc = m->LowConn(GetHandle());
 			if( !lc.empty() )
 			{
-				integer i = -1;
+				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
-				if( i != lc.size() ) 
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
+				if( i != static_cast<enumerator>(lc.size()) ) 
 				{
 					adj_type const & llc = m->LowConn(lc[i]);
-					integer j = -1;
-					j = m->getNext(llc.data(),static_cast<integer>(llc.size()),j,hm);
+					enumerator j = ENUMUNDEF;
+					j = m->getNext(llc.data(),static_cast<enumerator>(llc.size()),j,hm);
 					if( j != llc.size() ) return Node(m,llc[j]);
 				}
 			}
@@ -103,16 +103,16 @@ namespace INMOST
 			adj_type const & lc = m->LowConn(GetHandle());
 			if( !lc.empty() )
 			{
-				integer i = -1;
+				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
-				if( i != lc.size() ) 
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
+				if( i != static_cast<enumerator>(lc.size()) ) 
 				{
 					adj_type const & llc = m->LowConn(lc[i]);
-					integer j = -1;
-					j = m->getNext(llc.data(),static_cast<integer>(llc.size()),j,hm);
-					if( j != llc.size() ) return Node(m,llc[j]);
+					enumerator j = ENUMUNDEF;
+					j = m->getNext(llc.data(),static_cast<enumerator>(llc.size()),j,hm);
+					if( j != static_cast<enumerator>(llc.size()) ) return Node(m,llc[j]);
 				}
 			}
 			return Node(m,InvalidHandle());
@@ -203,28 +203,28 @@ namespace INMOST
 					if( !m->GetMarker(lc[it],hm) ) 
 					{
 						adj_type const & ilc = m->LowConn(lc[it]);
-						integer i = -1;
-						i = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),i,hm);
-						if( i < static_cast<integer>(ilc.size()) ) aret.push_back(ilc[i]);
+						enumerator i = ENUMUNDEF;
+						i = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),i,hm);
+						if( i < static_cast<enumerator>(ilc.size()) ) aret.push_back(ilc[i]);
 					}
 			}
 			else
 			{
-				integer i = -1, k = -1, k1 = -1, k2;
+				enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
 				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
 				HandleType q = lc[i]; //edge 0
 				adj_type const & qlc = m->LowConn(q);
-				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
+				k = m->getNext(qlc.data(),static_cast<enumerator>(qlc.size()),k,hm);
 				aret.push_back(qlc[k]); //node 0
-				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
+				k = m->getNext(qlc.data(),static_cast<enumerator>(qlc.size()),k,hm);
 				aret.push_back(qlc[k]); //node 1
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
 				HandleType r = lc[i]; //edge 1
 				adj_type const & rlc = m->LowConn(r);
-				k1 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
-				k2 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
+				k1 = m->getNext(rlc.data(),static_cast<enumerator>(rlc.size()),k1,hm);
+				k2 = m->getNext(rlc.data(),static_cast<enumerator>(rlc.size()),k1,hm);
 				if( aret.data()[0] == rlc[k1] || aret.data()[0] == rlc[k2] )
 				{
 					HandleType temp = aret.data()[0];
@@ -235,9 +235,9 @@ namespace INMOST
 				while(it != iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
 				{
 					adj_type const & ilc = m->LowConn(lc[it]);
-					k1 = -1; 
-					k1 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
-					k2 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
+					k1 = ENUMUNDEF; 
+					k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+					k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
 					if( aret.atback() == ilc[k1] ) 
 						aret.push_back(ilc[k2]);
 					else 
@@ -320,31 +320,31 @@ namespace INMOST
 					if( !m->GetMarker(lc[it],hm) ) 
 					{
 						adj_type const & ilc = m->LowConn(lc[it]);
-						integer i = -1;
-						i = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),i,hm);
-						if( i < static_cast<integer>(ilc.size()) && (invert ^ m->GetMarker(ilc[i],mask)) ) 
+						enumerator i = ENUMUNDEF;
+						i = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),i,hm);
+						if( i < static_cast<enumerator>(ilc.size()) && (invert ^ m->GetMarker(ilc[i],mask)) ) 
 							aret.push_back(ilc[i]);
 					}
 			}
 			else
 			{
-				integer i = -1, k = -1, k1 = -1, k2;
+				enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
 				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
 				HandleType q = lc[i], first, last; //edge 0
 				adj_type const & qlc = m->LowConn(q);
-				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
+				k = m->getNext(qlc.data(),static_cast<enumerator>(qlc.size()),k,hm);
 				if( invert ^ m->GetMarker(qlc[k],mask) ) aret.push_back(qlc[k]); //node 0
 				first = qlc[k];
-				k = m->getNext(qlc.data(),static_cast<integer>(qlc.size()),k,hm);
+				k = m->getNext(qlc.data(),static_cast<enumerator>(qlc.size()),k,hm);
 				if( invert ^ m->GetMarker(qlc[k],mask) ) aret.push_back(qlc[k]); //node 1
 				last = qlc[k];
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
 				HandleType r = lc[i]; //edge 1
 				adj_type const & rlc = m->LowConn(r);
-				k1 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
-				k2 = m->getNext(rlc.data(),static_cast<integer>(rlc.size()),k1,hm);
+				k1 = m->getNext(rlc.data(),static_cast<enumerator>(rlc.size()),k1,hm);
+				k2 = m->getNext(rlc.data(),static_cast<enumerator>(rlc.size()),k1,hm);
 				if( first == rlc[k1] || first == rlc[k2] )
 				{
 					last = first;
@@ -359,9 +359,9 @@ namespace INMOST
 				while(it < iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
 				{
 					adj_type const & ilc = m->LowConn(lc[it]);
-					k1 = -1; 
-					k1 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
-					k2 = m->getNext(ilc.data(),static_cast<integer>(ilc.size()),k1,hm);
+					k1 = ENUMUNDEF; 
+					k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+					k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
 					if( last == ilc[k1] ) 
 					{
 						if( invert ^ m->GetMarker(ilc[k2],mask) ) 

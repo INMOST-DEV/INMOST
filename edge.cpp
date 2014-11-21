@@ -19,9 +19,9 @@ namespace INMOST
 			adj_type const & lc = m->LowConn(GetHandle());
 			if( !lc.empty() )
 			{
-				integer i = -1;
+				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
 				if( i != lc.size() ) return Node(m,lc[i]);
 			}
 			return Node(m,InvalidHandle());
@@ -43,10 +43,10 @@ namespace INMOST
 			adj_type const & lc = m->LowConn(GetHandle());
 			if( !lc.empty() )
 			{
-				integer i = -1;
+				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
-				i = m->getNext(lc.data(),static_cast<integer>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
+				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
 				if( i != lc.size() ) return Node(m,lc[i]);
 			}
 			return Node(m,InvalidHandle());

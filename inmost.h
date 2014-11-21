@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef INMOST_H_INCLUDED
 #define INMOST_H_INCLUDED
 

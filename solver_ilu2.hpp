@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef __SOLVER_ILU2__
 #define __SOLVER_ILU2__
 #include <iomanip>
@@ -45,7 +45,7 @@ public:
 		throw -1;
 	}
 	ILU2_preconditioner(Solver::OrderInfo & info)
-		:tau(DEFAULT_TAU), tau2(DEFAULT_TAU2), info(&info)
+		:info(&info),tau(DEFAULT_TAU), tau2(DEFAULT_TAU2)
 	{
 		Alink = NULL;
 		init = false;
@@ -103,30 +103,30 @@ public:
 		info->PrepareVector(DR);
 		for (k = mobeg; k < moend; k++)
 		{
-			for (Solver::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r) DL[k] += r->second*r->second;
+			for (Solver::Row::iterator rit = (*Alink)[k].Begin(); rit != (*Alink)[k].End(); ++rit) DL[k] += rit->second*rit->second;
 			if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 		}
 		for (iter = 0; iter < sciters; iter++)
 		{
-			std::fill(DR.Begin(), DR.End(), 0.0);
+			for(Solver::Vector::iterator rit = DR.Begin(); rit != DR.End(); ++rit) *rit = 0.0;
 			for (k = vlocbeg; k < vlocend; k++)
-				for (Solver::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r) DR[r->first] += DL[k] * r->second*r->second;
+				for (Solver::Row::iterator rit = (*Alink)[k].Begin(); rit != (*Alink)[k].End(); ++rit) DR[rit->first] += DL[k] * rit->second*rit->second;
 			info->Accumulate(DR);
 			info->Update(DR);
 			for (k = vlocbeg; k < vlocend; k++) if (DR[k] < eps) DR[k] = 1.0 / subst; else DR[k] = 1.0 / DR[k];
-			std::fill(DL.Begin(), DL.End(), 0.0);
+			for(Solver::Vector::iterator rit = DL.Begin(); rit != DL.End(); ++rit) *rit = 0.0;
 			for (k = mobeg; k < moend; k++)
-				for (Solver::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r) DL[k] += DR[r->first] * r->second*r->second;
+				for (Solver::Row::iterator rit = (*Alink)[k].Begin(); rit != (*Alink)[k].End(); ++rit) DL[k] += DR[rit->first] * rit->second*rit->second;
 			for (k = mobeg; k < moend; k++) if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 		}
 		for (k = mobeg; k < moend; k++) DL[k] = sqrt(DL[k]);
 		for (k =  vbeg; k <  vend; k++) DR[k] = sqrt(DR[k]);
 		for (k = mobeg; k < moend; k++)
-			for (Solver::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r)
-				r->second = DL[k] * r->second * DR[r->first];
+			for (Solver::Row::iterator rit = (*Alink)[k].Begin(); rit != (*Alink)[k].End(); ++rit)
+				rit->second = DL[k] * rit->second * DR[rit->first];
 
 		//timer = Timer();
-		std::fill(RowIndeces.begin(), RowIndeces.end(), UNDEF);
+		for(interval<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = RowIndeces.begin(); it != RowIndeces.end(); ++it) *it = UNDEF;
 		std::vector<INMOST_DATA_ENUM_TYPE> sort_indeces;
 		//INMOST_DATA_ENUM_TYPE nza = 0, nzl = 0, nzu = 0, nzu2 = 0;
 		//for(k = mobeg; k != moend; k++) nza += A[k].Size();
@@ -268,7 +268,8 @@ public:
 			ldiag = 0;
 			while (j != EOL)
 			{
-				ldiag = std::max(ldiag, fabs(RowValues[j]));
+				INMOST_DATA_REAL_TYPE temp = fabs(RowValues[j]);
+				ldiag = std::max(ldiag, temp);
 				j = RowIndeces[j];
 			}
 			if (ldiag < tau2)
@@ -411,8 +412,8 @@ public:
 		//Rescale matrix back
 		//matisc
 		for (k = mobeg; k < moend; k++)
-			for (Solver::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r)
-				r->second = r->second / DL[k] / DR[r->first];
+			for (Solver::Row::iterator rit = (*Alink)[k].Begin(); rit != (*Alink)[k].End(); ++rit)
+				rit->second = rit->second / DL[k] / DR[rit->first];
 		//std::cout << "matisc: " << Timer() - timer << std::endl;
 
 #if defined(REPORT_ILU)
@@ -475,6 +476,7 @@ public:
 		ilu = b->ilu;
 	}
 	ILU2_preconditioner(const ILU2_preconditioner & other)
+		:Method(other)
 	{
 		Copy(&other);
 	}
@@ -508,8 +510,8 @@ public:
 		return true;
 	}
 	bool ReplaceMAT(Solver::Matrix & A) { if (isInitialized()) Finalize();  Alink = &A; return true; };
-	bool ReplaceSOL(Solver::Vector & x) {return true;}
-	bool ReplaceRHS(Solver::Vector & b) {return true;}
+	bool ReplaceSOL(Solver::Vector & x) {(void)x;return true;}
+	bool ReplaceRHS(Solver::Vector & b) {(void)b;return true;}
 	Method * Duplicate() { return new ILU2_preconditioner(*this); }
 };
 

@@ -9,33 +9,33 @@
 namespace INMOST
 {
 
-	static void make_vec(const Storage::real p1[3], const Storage::real p2[3], Storage::real out[3])
+	__INLINE void make_vec(const Storage::real p1[3], const Storage::real p2[3], Storage::real out[3])
 	{
 		out[0] = p1[0] - p2[0];
 		out[1] = p1[1] - p2[1];
 		out[2] = p1[2] - p2[2];
 	}
 
-	static void cross_prod(const Storage::real v1[3],const Storage::real v2[3], Storage::real out[3])
+	__INLINE void cross_prod(const Storage::real v1[3],const Storage::real v2[3], Storage::real out[3])
 	{
 		out[0] = v1[1]*v2[2] - v1[2]*v2[1];
 		out[1] = v1[2]*v2[0] - v1[0]*v2[2];
 		out[2] = v1[0]*v2[1] - v1[1]*v2[0];
 	}
 
-	static Storage::real __det3d(Storage::real a, Storage::real b, Storage::real c,
+	__INLINE Storage::real __det3d(Storage::real a, Storage::real b, Storage::real c,
 	                             Storage::real d, Storage::real e, Storage::real f,
 	                             Storage::real g, Storage::real h, Storage::real i ) 
 	{
 		return a*e*i - c*e*g + b*f*g - a*f*h + c*d*h - b*d*i;
 	}
 	
-	static Storage::real __det3v(const Storage::real * x,const Storage::real * y,const Storage::real * z) 
+	__INLINE Storage::real __det3v(const Storage::real * x,const Storage::real * y,const Storage::real * z) 
 	{
 		return __det3d(x[0], x[1], x[2],  y[0], y[1], y[2],  z[0], z[1], z[2]);
 	}
 
-	static Storage::real dot_prod(const Storage::real v1[3],const Storage::real v2[3])
+	__INLINE Storage::real dot_prod(const Storage::real v1[3],const Storage::real v2[3])
 	{
 		return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
 	}
@@ -45,11 +45,11 @@ namespace INMOST
 		Mesh * m = GetMeshLink();
 		MarkerType hm = m->HideMarker();
 		adj_type & hc = m->HighConn(GetHandle());
-		if( m->Count(hc.data(),static_cast<integer>(hc.size()),hm) == 2 )
+		if( m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 )
 		{
-			integer k1 = -1, k2;
-			k1 = m->getNext(hc.data(),static_cast<integer>(hc.size()),k1,hm);
-			k2 = m->getNext(hc.data(),static_cast<integer>(hc.size()),k1,hm);
+			enumerator k1 = ENUMUNDEF, k2;
+			k1 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
+			k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
 			HandleType temp = hc[k1];
 			hc[k1] = hc[k2];
 			hc[k2] = temp;
@@ -72,13 +72,13 @@ namespace INMOST
 			for( adj_type::size_type it = 0; it < lc.size(); it++) //iterator over faces
 			{
 				adj_type & hc = m->HighConn(lc[it]);
-				if( !hc.empty() && m->Count(hc.data(),static_cast<integer>(hc.size()),hm) == 2 ) //there are two cells connected to face
+				if( !hc.empty() && m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 ) //there are two cells connected to face
 				{
-					integer k1 = -1, k2;
-					k1 = m->getNext(hc.data(),static_cast<integer>(hc.size()),k1,hm);
+					enumerator k1 = ENUMUNDEF, k2;
+					k1 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
 					if( hc[k1] == GetHandle() ) //the first cell is current
 					{
-						k2 = m->getNext(hc.data(),static_cast<integer>(hc.size()),k1,hm);
+						k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
 						hc[k1] = hc[k2];
 						//hc[k2] = GetHandle(); //cannot use the cell because virtualization table is already destroyed and FixNormalOrientation will do bad things
 						hc.resize(1); //just remove element, we will do this anyway later
@@ -466,10 +466,10 @@ namespace INMOST
 		int q = 0;
 		while( !done )
 		{
-			integer k1 = -1,k2;
+			enumerator k1 = ENUMUNDEF,k2;
 			adj_type const & lc = m->LowConn(edges.atback());
-			k1 = m->getNext(lc.data(),static_cast<integer>(lc.size()),k1,hm);
-			k2 = m->getNext(lc.data(),static_cast<integer>(lc.size()),k1,hm);
+			k1 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
+			k2 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
 			if( lc[k1] != prev ) 
 				prev = lc[k1]; 
 			else 
@@ -1525,7 +1525,7 @@ class incident_matrix
 				nodes.push_back(n1[0]);
 				nodes.push_back(n1[1]);
 			}
-			for(ElementArray<T>::size_type j = 1; j < data.size(); j++)
+			for(typename ElementArray<T>::size_type j = 1; j < data.size(); j++)
 			{
 				n1 = data[j]->getNodes();
 				if( nodes.back() == n1[0] )
@@ -1555,7 +1555,7 @@ class incident_matrix
 			Storage::real cnt[3] = {0,0,0}, div = 1.0/data.size(), v[3], d;
 			centroids.resize(data.size()*3);
 			normals.resize(data.size()*3);
-			for(ElementArray<T>::size_type j = 0; j < data.size(); j++)
+			for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
 			{
 				data[j]->Centroid(&centroids[j*3]);
 				data[j]->GetMeshLink()->GetGeometricData(data[j],NORMAL,&normals[j*3]);
@@ -1567,7 +1567,7 @@ class incident_matrix
 			cnt[1] *= div;
 			cnt[2] *= div;
 			Storage::real orientation;
-			for(ElementArray<T>::size_type j = 0; j < data.size(); j++)
+			for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
 			{
 				make_vec(&centroids[j*3],cnt,v);
 				if( dot_prod(v,&normals[j*3]) < 0 ) 
@@ -1576,12 +1576,15 @@ class incident_matrix
 					orientation = 1;
 				d = 0;
 				ElementArray<Node> nodes = data[j]->getNodes();
-				Storage::real_array a = nodes[0].Coords();
-				for(unsigned j = 1; j < nodes.size()-1; j++)
+				if( !nodes.empty() )
 				{
-					Storage::real_array b = nodes[j].Coords();
-					Storage::real_array c = nodes[j+1].Coords();
-					d += __det3v(&a[0],&b[0],&c[0]);
+					Storage::real_array a = nodes[0].Coords();
+					for(typename ElementArray<T>::size_type j = 1; j < nodes.size()-1; j++)
+					{
+						Storage::real_array b = nodes[j].Coords();
+						Storage::real_array c = nodes[j+1].Coords();
+						d += __det3v(&a[0],&b[0],&c[0]);
+					}
 				}
 				measure += orientation*d;
 			}
@@ -1710,10 +1713,10 @@ public:
 		Storage::real cnt[3];
 		for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
 		{
-			for(dynarray<HandleType,256> j = 0; j < head_row.size(); j++)
+			for(dynarray<HandleType,256>::size_type j = 0; j < head_row.size(); j++)
 				std::cout << static_cast<int>(matrix[k*head_row.size()+ j]);
 			std::cout << " " << (int)visits[k];
-			Element(m,head_column[k])->Centroid(cnt);
+			Element(mesh,head_column[k])->Centroid(cnt);
 			std::cout << " " << cnt[0] << " " << cnt[1] << " " << cnt[2];
 			std::cout << std::endl;
 		}
@@ -1820,10 +1823,10 @@ public:
 		if( !ret.empty() )
 		{
 			MarkerType hide_marker = mesh->CreateMarker();
-			for(ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetMarker(ret.at(k),hide_marker);
+			for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetMarker(ret.at(k),hide_marker);
 			for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
 				if( mesh->GetMarker(head_column[k],hide_marker) ) visits[k]--;
-			for(ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemMarker(ret.at(k),hide_marker);
+			for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemMarker(ret.at(k),hide_marker);
 			mesh->ReleaseMarker(hide_marker);
 			return true;
 		}
@@ -2137,16 +2140,16 @@ public:
 	}
 	
 	
-	Storage::integer Mesh::getNext(const HandleType * arr, integer size, integer k, MarkerType marker) const
+	Storage::enumerator Mesh::getNext(const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const
 	{
 		k++;
 		while(k < size && GetMarker(arr[k],marker)) k++;
 		return k;
 	}
 	
-	Storage::integer Mesh::Count(const HandleType * arr, integer size, MarkerType marker) const
+	Storage::enumerator Mesh::Count(const HandleType * arr, enumerator size, MarkerType marker) const
 	{
-		integer ret = 0, k = 0;
+		enumerator ret = 0, k = 0;
 		while(k < size) 
 		{
 			if( !GetMarker(arr[k],marker) ) ret++;
@@ -2182,13 +2185,13 @@ public:
 					if( GetElementType() == CELL ) //update some geometric data
 					{
 						MarkerType hm = m->HideMarker();
-						if( !hc.empty() && m->Count(hc.data(),static_cast<integer>(hc.size()),hm) == 2 )
+						if( !hc.empty() && m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 )
 						{
-							integer k1 = -1, k2;
-							k1 = m->getNext(hc.data(),static_cast<integer>(hc.size()),k1,hm);
+							enumerator k1 = ENUMUNDEF, k2;
+							k1 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
 							if( hc[k1] == GetHandle() ) //the first cell is current
 							{
-								k2 = m->getNext(hc.data(),static_cast<integer>(hc.size()),k1,hm);
+								k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
 								hc[k1] = hc[k2];
 								hc[k2] = GetHandle();
 								Face(m,*it)->FixNormalOrientation(); //restore orientation

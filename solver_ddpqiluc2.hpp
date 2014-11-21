@@ -1,4 +1,4 @@
-#pragma once
+
 #ifndef __SOLVER_DDPQILUC2__
 #define __SOLVER_DDPQILUC2__
 #include <iomanip>
@@ -149,8 +149,11 @@ class ILUC_preconditioner : public Method
 					interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 					interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ)
 	{
+		(void)cend;
 		INMOST_DATA_ENUM_TYPE i, k;
 		//Reorder E rows block by P
+		//for(interval<INMOST_DATA_ENUM_TYPE, bool>::iterator it = donePQ.begin() + cbeg - mobeg;
+		//	it != donePQ.begin() + wend - mobeg; ++it) *it = false;
 		std::fill(donePQ.begin() + cbeg - mobeg, donePQ.begin() + wend - mobeg, false);
 		i = cbeg;
 		while (i < wend)
@@ -262,7 +265,7 @@ public:
 		sciters = b->sciters;
 		eps = b->eps;
 	}
-	ILUC_preconditioner(const ILUC_preconditioner & other)
+	ILUC_preconditioner(const ILUC_preconditioner & other) :Method(other)
 	{
 		Copy(&other);
 	}
@@ -314,6 +317,8 @@ public:
 		//prepare temporal array
 		temp.set_interval_beg(mobeg);
 		temp.set_interval_end(moend);
+		//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE>::iterator rit = temp.begin();
+		//	rit != temp.end(); ++rit) *rit = 0.0;
 		std::fill(temp.begin(), temp.end(), 0.0);
 
 		
@@ -328,7 +333,7 @@ public:
 		//prepare rescaling vectors
 		DL.SetInterval(mobeg, moend);
 		DR.SetInterval(mobeg, moend);
-		std::fill(DL.Begin(), DL.End(), 0.0);
+		for(Solver::Vector::iterator ri = DL.Begin(); ri != DL.End(); ++ri) *ri = 0.0;
 
 		
 
@@ -418,7 +423,7 @@ public:
 			for (Solver::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r)
 			{
 				if (r->first >= mobeg && r->first < moend && fabs(r->second) > 0.0)
-					A_Entries[j++] = Solver::Row::entry(r->first, r->second);
+					A_Entries[j++] = Solver::Row::make_entry(r->first, r->second);
 			}
 			A_Address[k].last = j;
 			assert(A_Address[k].Size() != 0); //singular matrix
@@ -450,6 +455,10 @@ public:
 /////////// REORDERING                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			tt = Timer();
+			//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = localP.begin()+(wbeg-mobeg);
+			//	it != localP.begin() + (wend-mobeg); ++it) *it = ENUMUNDEF;
+			//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = localQ.begin()+(wbeg-mobeg);
+			//	it != localQ.begin() + (wend-mobeg); ++it) *it = ENUMUNDEF;
 			std::fill(localP.begin() + (wbeg - mobeg), localP.begin() + (wend - mobeg), ENUMUNDEF);
 			std::fill(localQ.begin() + (wbeg - mobeg), localQ.begin() + (wend - mobeg), ENUMUNDEF);
 
@@ -458,9 +467,17 @@ public:
 #if defined(REPORT_ILU)
 			std::cout << level_size.size() << " calculate weights" << std::endl;
 #endif
+			//for(Solver::Vector::iterator rit = DL.Begin()+wbeg-mobeg;
+			//	rit != DL.Begin()+wend-mobeg;++rit) *rit = 0.0;
 			std::fill(DL.Begin() + wbeg - mobeg, DL.Begin() + wend - mobeg, 0.0);
+			//for(Solver::Vector::iterator rit = DR.Begin()+wbeg-mobeg;
+			//	rit != DR.Begin()+wend-mobeg;++rit) *rit = 0.0;
 			std::fill(DR.Begin() + wbeg - mobeg, DR.Begin() + wend - mobeg, 0.0);
+			//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = Ulist.begin()+wbeg-mobeg;
+			//	it != Ulist.begin()+wend-mobeg; ++it) *it = 0;
 			std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, 0);
+			//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = Llist.begin()+wbeg-mobeg;
+			//	it != Llist.begin()+wend-mobeg; ++it) *it = 0;
 			std::fill(Llist.begin() + wbeg - mobeg, Llist.begin() + wend - mobeg, 0);
 			for (k = wbeg; k < wend; ++k)
 			{
@@ -595,8 +612,8 @@ public:
 				{
 					i = localQ[A_Entries[jt].first];
 					u = A_Entries[jt].second;
-					if (i < cend) B_Entries.push_back(Solver::Row::entry(i, u));
-					else F_Entries.push_back(Solver::Row::entry(i,u)); //count nonzero in column of F
+					if (i < cend) B_Entries.push_back(Solver::Row::make_entry(i, u));
+					else F_Entries.push_back(Solver::Row::make_entry(i,u)); //count nonzero in column of F
 				}
 				F_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(F_Entries.size());
 				B_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
@@ -634,8 +651,8 @@ public:
 				{
 					i = localQ[A_Entries[jt].first];
 					u = A_Entries[jt].second;
-					if (i < cend) E_Entries.push_back(Solver::Row::entry(i, u)); //put to row of E
-					else C_Entries.push_back(Solver::Row::entry(i, u)); //form new Schur complement
+					if (i < cend) E_Entries.push_back(Solver::Row::make_entry(i, u)); //put to row of E
+					else C_Entries.push_back(Solver::Row::make_entry(i, u)); //form new Schur complement
 				}
 				E_Address.back()->at(k).last = static_cast<INMOST_DATA_ENUM_TYPE>(E_Entries.size());
 				C_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(C_Entries.size());
@@ -662,6 +679,8 @@ public:
 #if defined(REPORT_ILU)
 			std::cout << level_size.size() << " rescaling block B " << std::endl;
 #endif
+			//for(Solver::Vector::iterator it = DL.Begin() + cbeg - mobeg;
+			//	it != DL.Begin() + cend - mobeg; ++it) *it = 0.0;
 			std::fill(DL.Begin() + cbeg - mobeg, DL.Begin() + cend - mobeg, 0.0);
 			for (k = cbeg; k < cend; k++)
 			{
@@ -671,6 +690,8 @@ public:
 			for (k = cbeg; k < cend; k++) if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 			for (INMOST_DATA_ENUM_TYPE iter = 0; iter < sciters; iter++)
 			{
+				//for(Solver::Vector::iterator it = DR.Begin()+cbeg-mobeg; 
+				//	it != DR.Begin()+cend-mobeg; ++it) *it = 0.0;
 				std::fill(DR.Begin()+cbeg-mobeg, DR.Begin()+cend-mobeg, 0.0);
 				for (k = cbeg; k < cend; k++)
 				{
@@ -678,6 +699,8 @@ public:
 						DR[B_Entries[r].first] += DL[k] * B_Entries[r].second*B_Entries[r].second;
 				}
 				for (k = cbeg; k < cend; k++) if (DR[k] < eps) DR[k] = 1.0 / subst; else DR[k] = 1.0 / DR[k];
+				//for(Solver::Vector::iterator it = DL.Begin()+cbeg-mobeg;
+				//	it != DL.Begin()+cend-mobeg; ++it) *it = 0.0;
 				std::fill(DL.Begin()+cbeg-mobeg, DL.Begin()+cend-mobeg, 0.0);
 				for (k = cbeg; k < cend; k++)
 				{
@@ -747,13 +770,13 @@ public:
 				LU_Beg = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 				U_Address[cbeg].first = LU_Beg;
 				for (INMOST_DATA_ENUM_TYPE r = B_Address[cbeg].first + (B_Entries[B_Address[cbeg].first].first == cbeg ? 1 : 0); r != B_Address[cbeg].last; ++r) 
-					LU_Entries.push_back(Solver::Row::entry(B_Entries[r].first, B_Entries[r].second / LU_Diag[cbeg]));
+					LU_Entries.push_back(Solver::Row::make_entry(B_Entries[r].first, B_Entries[r].second / LU_Diag[cbeg]));
 				L_Address[cbeg].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 				U_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 				Li = Bbeg[cbeg];
 				while (Li != EOL)
 				{
-					LU_Entries.push_back(Solver::Row::entry(Li, B_Entries[B_Address[Li].first].second / LU_Diag[cbeg]));
+					LU_Entries.push_back(Solver::Row::make_entry(Li, B_Entries[B_Address[Li].first].second / LU_Diag[cbeg]));
 					Li = Blist[Li];
 				}
 				L_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
@@ -1173,10 +1196,10 @@ public:
 					{
 						u = fabs(LineValues[Ui]);
 						if (u > tau/NuU) // apply dropping rule
-							LU_Entries.push_back(Solver::Row::entry(Ui, LineValues[Ui]));
+							LU_Entries.push_back(Solver::Row::make_entry(Ui, LineValues[Ui]));
 #if defined(ILUC2)
 						else if (u > tau2)
-							LU2_Entries.push_back(Solver::Row::entry(Ui, LineValues[Ui]));
+							LU2_Entries.push_back(Solver::Row::make_entry(Ui, LineValues[Ui]));
 #endif
 						Ui = LineIndeces[Ui];
 					}
@@ -1390,10 +1413,10 @@ public:
 					{
 						u = fabs(LineValues[Li]);
 						if (u > tau/NuL) //apply dropping 
-							LU_Entries.push_back(Solver::Row::entry(Li, LineValues[Li]));
+							LU_Entries.push_back(Solver::Row::make_entry(Li, LineValues[Li]));
 #if defined(ILUC2)
 						else if (u > tau2)
-							LU2_Entries.push_back(Solver::Row::entry(Li, LineValues[Li]));
+							LU2_Entries.push_back(Solver::Row::make_entry(Li, LineValues[Li]));
 #endif
 						Li = LineIndeces[Li];
 					}
@@ -1685,6 +1708,8 @@ public:
 			double t0, t1, t2;
 			t0 = Timer();
 			//Setup column addressing for F block
+			//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = Fbeg.begin() + cend - mobeg;
+			//	it != Fbeg.begin() + wend - mobeg; ++it) *it = EOL;
 			std::fill(Fbeg.begin() + cend - mobeg, Fbeg.begin() + wend - mobeg, EOL);
 			for (k = cend; k > cbeg; --k)
 			{
@@ -1821,7 +1846,7 @@ public:
 					while (Li != EOL)
 					{
 						if (fabs(LineValues[Li - 1]) > std::min(tau/NuU,tau2) )
-							LF_Entries.push_back(Solver::Row::entry(Li - 1, LineValues[Li - 1]));
+							LF_Entries.push_back(Solver::Row::make_entry(Li - 1, LineValues[Li - 1]));
 						Li = LineIndeces[Li];
 					}
 					LF_Address[i].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
@@ -1846,6 +1871,8 @@ public:
 				for (i = cbeg; i < cend; ++i)
 					F_Address[i].first = localP[i];
 				//setup row indeces for LF block
+				//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = Fbeg.begin() + cbeg - mobeg;
+				//	it != Fbeg.begin() + cend - mobeg; ++it ) *it = EOL;
 				std::fill(Fbeg.begin() + cbeg - mobeg, Fbeg.begin() + cend - mobeg, EOL);
 				for (k = wend; k > cend; --k)
 				{
@@ -1891,6 +1918,8 @@ public:
 /////////// EU and Schur blocks  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 				t2 = Timer();
+				//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = Ulist.begin() + cend - mobeg;
+				//	it != Ulist.begin() + wend - mobeg; ++it) *it = UNDEF;
 				std::fill(Ulist.begin() + cend - mobeg, Ulist.begin() + wend - mobeg, UNDEF);
 				S_Entries.clear();
 				
@@ -2047,7 +2076,7 @@ public:
 						//drop values
 						if( fabs(temp[Ui])/Smax > std::max(tau2,std::min(tau/NuU,tau/NuL)) * Smax / Snorm)
 						//if( fabs(temp[Ui]) > tau * Smax )// Snorm)
-							S_Entries.push_back(Solver::Row::entry(Ui, temp[Ui]));
+							S_Entries.push_back(Solver::Row::make_entry(Ui, temp[Ui]));
 						Ui = Ulist[Ui];
 					}
 					S_Address[i].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
@@ -2142,7 +2171,7 @@ public:
 					std::cout << __FILE__ << ":" << __LINE__ << " array of size " << size*size << " was not allocated " << std::endl;
 					throw -1;
 				}
-
+				//memset(entries,0,sizeof(INMOST_DATA_REAL_TYPE)*size*size);
 				std::fill(entries, entries + size*size, 0.0);
 				//Fill the matrix
 				for (k = wbeg; k < wend; ++k)
@@ -2292,7 +2321,7 @@ public:
 					{
 						if (fabs(entries[ADDR(i, j)]) > tau / std::max(1.0, NuU))
 						{
-							LU_Entries.push_back(Solver::Row::entry(j + wbeg, entries[ADDR(i, j)])); //Add to U
+							LU_Entries.push_back(Solver::Row::make_entry(j + wbeg, entries[ADDR(i, j)])); //Add to U
 						}
 					}
 					U_Address[wbeg + i].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
@@ -2301,7 +2330,7 @@ public:
 					{
 						if (fabs(entries[ADDR(j, i)]) > tau / std::max(1.0, NuL))
 						{
-							LU_Entries.push_back(Solver::Row::entry(j + wbeg, entries[ADDR(j, i)])); //Add to L
+							LU_Entries.push_back(Solver::Row::make_entry(j + wbeg, entries[ADDR(j, i)])); //Add to L
 						}
 					}
 					L_Address[wbeg + i].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
@@ -2522,8 +2551,8 @@ public:
 		return true;
 	}
 	bool ReplaceMAT(Solver::Matrix & A){ if (isInitialized()) Finalize(); Alink = &A; return true; }
-	bool ReplaceSOL(Solver::Vector & x) { return true; }
-	bool ReplaceRHS(Solver::Vector & b) { return true; }
+	bool ReplaceSOL(Solver::Vector & x) {(void)x; return true; }
+	bool ReplaceRHS(Solver::Vector & b) {(void)b; return true; }
 	Method * Duplicate() { return new ILUC_preconditioner(*this); }
 	~ILUC_preconditioner()
 	{
