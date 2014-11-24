@@ -797,7 +797,7 @@ namespace INMOST
 	
 	
 	
-	ElementArray<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MarkerType mask, bool invert)
+	ElementArray<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreateMarker();
@@ -822,7 +822,7 @@ namespace INMOST
 	}
 
 
-	ElementArray<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MarkerType mask, bool invert)
+	ElementArray<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreateMarker();
@@ -846,7 +846,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	ElementArray<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MarkerType mask, bool invert)
+	ElementArray<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreateMarker();
@@ -870,7 +870,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	ElementArray<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MarkerType mask, bool invert)
+	ElementArray<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreateMarker();
@@ -894,7 +894,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	ElementArray<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MarkerType mask, bool invert)
+	ElementArray<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreateMarker();

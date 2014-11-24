@@ -12,6 +12,7 @@
 #include <cmath>
 #include <assert.h>
 #include <limits>
+#include "inmost_common.h"
 
 //#define OUT_OF_RANGE
 
@@ -43,7 +44,9 @@ namespace INMOST
 	template<> struct make_unsigned<unsigned long long> {typedef unsigned long long type;};
 	
 #define USE_OPTIMIZED_ARRAY_ALLOCATION
-
+#if defined(PACK_ARRAY)
+#pragma pack(push,r1,4)
+#endif
 	// notice: array class would not properly support classes that contain self-references
 	//         like std::map
 	// notice: next class shell have to implement same algorithms as array
@@ -129,8 +132,10 @@ namespace INMOST
 		typedef _reverse_iterator<element> reverse_iterator;
 		typedef _reverse_iterator<const element> const_reverse_iterator;
 	private:
+
 		element * m_arr;
 		size_type m_size;
+
 		//notice: push_back, pop_back, insert, erase are optimized for current growth_formula
 		__INLINE static size_type growth_formula(size_type future_size)
 		{
@@ -503,7 +508,9 @@ namespace INMOST
 		}
 		template<class> friend class shell;
 	};	
-	
+#if defined(PACK_ARRAY)
+#pragma pack(pop,r1)
+#endif
 	template<typename element>
 	class shell
 	{
@@ -677,7 +684,7 @@ namespace INMOST
 				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(++(*m_size))));
 			else if( (((*m_size)+1) & ((*m_size)-1)) == 1 )
 				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*((*m_size)++ << 1)));
-			else ++m_size;
+			else ++(*m_size);
 #endif
 			assert((*m_arr) != NULL);
 			new ((*m_arr)+(*m_size)-1) element(e);

@@ -34,21 +34,35 @@
 // when you release marker checks all the elements
 // that no element is marked by released marker
 //#define CHECKS_MARKERS 
+
 // use additional sets to store elements for parallel
 // exchanges, otherwise it will recompute those elements
 // which is quite expensive
 #define USE_PARALLEL_STORAGE
+
 // output xml files for debugging of parallel algorithms
 // search for style.xsl within examples for comfortable
 // view of generated xml files
 #define USE_PARALLEL_WRITE_TIME
+
 // this will revert Mesh::PrepareReceiveInner to always
 // use MPI point to point functionality disregarding problem type
 // read comments in Mesh::SetParallelStrategy for more info
 // USE_MPI_P2P must be enabled for feature to work
 //#define PREFFER_MPI_P2P
+
 // this will write out shared set of elements that lay between processors in GMV format
 //#define DEBUG_COMPUTE_SHARED_SKIN_SET
+
+// this controls how sparse data will be allocated,
+// when difinition is not commented memory will be always consumed
+// by data structure needed to support sparse data,
+// otherwise data structure will be allocated only when
+// sparse data is presenet
+//#define LAZY_SPARSE_ALLOCATION
+
+// this will force array class to use 12 bytes instead of 16 bytes
+#define PACK_ARRAY
 
 #define __INLINE inline
 

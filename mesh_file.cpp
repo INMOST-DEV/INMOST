@@ -1945,7 +1945,7 @@ ecl_exit_loop:
 									fflush(stdout);
 								}
 							}
-							ReorderEmpty(FACE | EDGE);
+							//ReorderEmpty(FACE | EDGE);
 							state = R_ATTRIBUTES;
 						}
 						for(i = 0; i < ncells; i++)
@@ -3717,7 +3717,12 @@ read_elem_num_link:
 			fprintf(f,"file is written by INMOST\n");
 			fprintf(f,"ASCII\n");
 			fprintf(f,"DATASET UNSTRUCTURED_GRID\n");
-			ReorderEmpty(CELL | NODE);
+			//ReorderEmpty(CELL | NODE);
+			Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL | NODE,NONE,1);
+			Storage::integer cur_num = 0;
+			for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
+			cur_num = 0;
+			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) it->IntegerDF(set_id) = cur_num++;
 			fprintf(f,"POINTS %u double\n",NumberOfNodes());
 			for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 			{
@@ -3746,7 +3751,7 @@ read_elem_num_link:
 							ElementArray<Node> nodes = it->getNodes();
 							values.push_back(static_cast<integer>(nodes.size()));
 							for(ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
-								values.push_back(jt->LocalID());
+								values.push_back(jt->IntegerDF(set_id));
 							break;
 						}
 						case Element::Prism:
@@ -3754,12 +3759,12 @@ read_elem_num_link:
 							ElementArray<Node> nodes = it->getNodes();
 							if( nodes.size() != 6 ) goto safe_output;
 							values.push_back(static_cast<integer>(nodes.size()));
-							values.push_back(nodes[0].LocalID());
-							values.push_back(nodes[2].LocalID());
-							values.push_back(nodes[1].LocalID());
-							values.push_back(nodes[3].LocalID());
-							values.push_back(nodes[5].LocalID());
-							values.push_back(nodes[4].LocalID());
+							values.push_back(nodes[0].IntegerDF(set_id));
+							values.push_back(nodes[2].IntegerDF(set_id));
+							values.push_back(nodes[1].IntegerDF(set_id));
+							values.push_back(nodes[3].IntegerDF(set_id));
+							values.push_back(nodes[5].IntegerDF(set_id));
+							values.push_back(nodes[4].IntegerDF(set_id));
 							break;
 						}
 						case Element::Hex:
@@ -3767,14 +3772,14 @@ read_elem_num_link:
 							ElementArray<Node> nodes = it->getNodes();
 							if( nodes.size() != 8 ) goto safe_output;
 							values.push_back(static_cast<integer>(nodes.size()));
-							values.push_back(nodes[0].LocalID());
-							values.push_back(nodes[3].LocalID());
-							values.push_back(nodes[2].LocalID());
-							values.push_back(nodes[1].LocalID());
-							values.push_back(nodes[4].LocalID());
-							values.push_back(nodes[7].LocalID());
-							values.push_back(nodes[6].LocalID());
-							values.push_back(nodes[5].LocalID());
+							values.push_back(nodes[0].IntegerDF(set_id));
+							values.push_back(nodes[3].IntegerDF(set_id));
+							values.push_back(nodes[2].IntegerDF(set_id));
+							values.push_back(nodes[1].IntegerDF(set_id));
+							values.push_back(nodes[4].IntegerDF(set_id));
+							values.push_back(nodes[7].IntegerDF(set_id));
+							values.push_back(nodes[6].IntegerDF(set_id));
+							values.push_back(nodes[5].IntegerDF(set_id));
 							break;
 						}
 						case Element::Pyramid:
@@ -3782,11 +3787,11 @@ read_elem_num_link:
 							ElementArray<Node> nodes = it->getNodes();
 							if( nodes.size() != 5 ) goto safe_output;
 							values.push_back(static_cast<integer>(nodes.size()));
-							values.push_back(nodes[0].LocalID());
-							values.push_back(nodes[3].LocalID());
-							values.push_back(nodes[2].LocalID());
-							values.push_back(nodes[1].LocalID());
-							values.push_back(nodes[4].LocalID());
+							values.push_back(nodes[0].IntegerDF(set_id));
+							values.push_back(nodes[3].IntegerDF(set_id));
+							values.push_back(nodes[2].IntegerDF(set_id));
+							values.push_back(nodes[1].IntegerDF(set_id));
+							values.push_back(nodes[4].IntegerDF(set_id));
 							break;
 						}
 						case Element::Polyhedron:
@@ -3807,10 +3812,10 @@ safe_output:
 								values.push_back(static_cast<integer>(nodes.size()));
 								if( jt->FaceOrientedOutside(it->self()) )
 									for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
-										values.push_back(kt->LocalID());
+										values.push_back(kt->IntegerDF(set_id));
 								else
 									for(ElementArray<Node>::reverse_iterator kt = nodes.rbegin(); kt != nodes.rend(); kt++)
-										values.push_back(kt->LocalID());
+										values.push_back(kt->IntegerDF(set_id));
 							}
 							break;
 						}
@@ -3834,7 +3839,7 @@ safe_output:
 				else //number of nodes mismatch with expected - some topology checks must be off
 					fprintf(f,"%d\n",VtkElementType(Element::MultiPolygon));
 			}
-			
+			DeleteTag(set_id);
 			{
 				std::vector<std::string> tag_names;
 				std::vector<Tag> tags;
@@ -3948,7 +3953,7 @@ safe_output:
 		{
 			Storage::integer keynum;
 			Storage::real keyval;
-			ReorderEmpty(CELL | FACE | NODE | ESET);
+			//ReorderEmpty(CELL | FACE | NODE | ESET);
 			FILE * file = fopen(File.c_str(),"wb");
 			char keyword[2048];
 			sprintf(keyword,"gmvinput"); fwrite(keyword,1,8,file);
@@ -3970,6 +3975,13 @@ safe_output:
 			sprintf(keyword,"faces"); fwrite(keyword,1,8,file);
 			keynum = static_cast<Storage::integer>(NumberOfFaces()); fwrite(&keynum,sizeof(Storage::integer),1,file);
 			keynum = static_cast<Storage::integer>(NumberOfCells()); fwrite(&keynum,sizeof(Storage::integer),1,file);
+			Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL|FACE|NODE,NONE,1);
+			Storage::integer cur_num = 0;
+			for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
+			cur_num = 0;
+			for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) it->IntegerDF(set_id) = cur_num++;
+			cur_num = 0;
+			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) it->IntegerDF(set_id) = cur_num++;
 			for(Mesh::iteratorFace f = BeginFace(); f != EndFace(); f++)
 			{
 				ElementArray<Node> fnodes = f->getNodes();
@@ -3978,15 +3990,15 @@ safe_output:
 				//sprintf(keyword,"vertex_ids"); fwrite(keyword,1,8,file);
 				for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 				{
-					keynum = fn->LocalID()+1;
+					keynum = fn->IntegerDF(set_id)+1;
 					fwrite(&keynum,sizeof(Storage::integer),1,file);
 				}
 				ElementArray<Cell> fcells = f->getCells();
 				//sprintf(keyword,"cellno1"); fwrite(keyword,1,8,file);
-				keynum = fcells.size() > 0 ? fcells[0].LocalID()+1 : 0;
+				keynum = fcells.size() > 0 ? fcells[0].IntegerDF(set_id)+1 : 0;
 				fwrite(&keynum,sizeof(Storage::integer),1,file);
 				//sprintf(keyword,"cellno2"); fwrite(keyword,1,8,file);
-				keynum = fcells.size() > 1 ? fcells[1].LocalID()+1 : 0;
+				keynum = fcells.size() > 1 ? fcells[1].IntegerDF(set_id)+1 : 0;
 				fwrite(&keynum,sizeof(Storage::integer),1,file);
 			}
 			
@@ -4075,7 +4087,7 @@ safe_output:
 							for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); e++)
 								if( e->HaveData(*t) ) 
 								{
-									keynum = e->LocalID()+1;
+									keynum = e->IntegerDF(set_id)+1;
 									fwrite(&keynum,sizeof(Storage::integer),1,file);
 								}
 							for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); e++)
@@ -4116,7 +4128,7 @@ safe_output:
 							case CELL: temp = 0; break;
 							default: throw NotImplemented;
 						}
-						//sprintf(keyword,"set%d_%s\n",set->LocalID()+1,ElementTypeName(etype));
+						//sprintf(keyword,"set%d_%s\n",set->IntegerDF(set_id)+1,ElementTypeName(etype));
 						sprintf(keyword,"%s",set->GetName().c_str());
 						fwrite(keyword,1,8,file);
 						fwrite(&temp,sizeof(Storage::integer),1,file);						
@@ -4124,7 +4136,7 @@ safe_output:
 						for(ElementSet::iterator it = set->Begin(); it != set->End(); it++)
 							if( it->GetElementType() == etype )
 							{
-								keynum = it->LocalID()+1;
+								keynum = it->IntegerDF(set_id)+1;
 								fwrite(&keynum,sizeof(Storage::integer),1,file);
 							} 
 					}	
@@ -4215,10 +4227,25 @@ safe_output:
 			iconv.write_fByteOrder(out);
 			iconv.write_fByteSize(out);
 
-			INMOST_DATA_ENUM_TYPE header[9] = {GetDimensions(), NumberOfNodes(), NumberOfEdges(), NumberOfFaces(), NumberOfCells(), NumberOfSets(), NumberOfTags(), m_state, GetProcessorRank()},k;
+			INMOST_DATA_ENUM_TYPE header[9] = {GetDimensions(), NumberOfNodes(), NumberOfEdges(), NumberOfFaces(), NumberOfCells(), NumberOfSets(), NumberOfTags()-3, m_state, GetProcessorRank()},k;
 			for(k = 0; k < 9; k++) uconv.write_iValue(out,header[k]);
 			out.write(reinterpret_cast<char *>(remember),sizeof(remember));
 		
+
+			Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
+			{
+				Storage::integer cur_num = 0;
+				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) it->IntegerDF(set_id) = cur_num++;
+			}
+
 			// Tags
 			out << INMOST::TagsHeader;
 			uconv.write_iValue(out,header[6]);
@@ -4226,6 +4253,10 @@ safe_output:
 			REPORT_VAL("tag_size",header[6]);
 			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)  
 			{
+				if( *it == set_id ) continue;
+				if( *it == HighConnTag() ) continue;
+				if( *it == LowConnTag() ) continue;
+
 				std::string name = it->GetTagName();
 				INMOST_DATA_ENUM_TYPE namesize = static_cast<INMOST_DATA_BULK_TYPE>(name.size());
 				INMOST_DATA_BULK_TYPE datatype = static_cast<INMOST_DATA_BULK_TYPE>(it->GetDataType());
@@ -4270,7 +4301,7 @@ safe_output:
 				uconv.write_iValue(out,nlow);
 				for(Element::adj_type::size_type kt = 0; kt < lc.size(); ++kt)
 				{
-					lid = GetHandleID(lc[kt]);
+					lid = IntegerDF(lc[kt],set_id);
 					uconv.write_iValue(out,lid);
 				}
 			}
@@ -4287,7 +4318,7 @@ safe_output:
 				uconv.write_iValue(out,nlow);
 				for(Element::adj_type::size_type kt = 0; kt < lc.size(); ++kt)
 				{
-					lid = GetHandleID(lc[kt]);
+					lid = IntegerDF(lc[kt],set_id);
 					uconv.write_iValue(out,lid);
 				}
 			}
@@ -4304,7 +4335,7 @@ safe_output:
 				uconv.write_iValue(out,nlow);
 				for(Element::adj_type::size_type kt = 0; kt < lc.size(); ++kt)
 				{
-					lid = GetHandleID(lc[kt]);
+					lid = IntegerDF(lc[kt],set_id);
 					uconv.write_iValue(out,lid);
 				}
 				Element::adj_type & hc = HighConn(*it);
@@ -4312,7 +4343,7 @@ safe_output:
 				uconv.write_iValue(out,nhigh);
 				for(Element::adj_type::size_type kt = 0; kt < hc.size(); ++kt)
 				{
-					lid = GetHandleID(hc[kt]);
+					lid = IntegerDF(hc[kt],set_id);
 					uconv.write_iValue(out,lid);
 				}
 			}
@@ -4337,7 +4368,7 @@ safe_output:
 					{
 						wetype = GetHandleElementType(*kt);
 						out.put(wetype);
-						lid = GetHandleID(*kt);
+						lid = IntegerDF(*kt,set_id);
 						uconv.write_iValue(out,lid);
 					}
 					else out.put(NONE);
@@ -4351,7 +4382,7 @@ safe_output:
 					{
 						wetype = GetHandleElementType(*kt);
 						out.put(wetype);
-						lid = GetHandleID(*kt);
+						lid = IntegerDF(*kt,set_id);
 						uconv.write_iValue(out,lid);
 					}
 					else out.put(NONE);
@@ -4363,7 +4394,7 @@ safe_output:
 					{
 						wetype = GetHandleElementType(*kt);
 						out.put(wetype);
-						lid = GetHandleID(*kt);
+						lid = IntegerDF(*kt,set_id);
 						uconv.write_iValue(out,lid);
 					}
 					else out.put(NONE);
@@ -4373,8 +4404,12 @@ safe_output:
 			out << INMOST::MeshDataHeader;
 			REPORT_STR("MeshDataHeader");
 
-			for(Mesh::iteratorTag jt = BeginTag(); jt != EndTag(); jt++)
+			for(Mesh::iteratorTag jt = BeginTag(); jt != EndTag(); jt++) 
 			{
+				std::string tagname = jt->GetTagName();
+				if( *jt == set_id ) continue;
+				if( *jt == HighConnTag() ) continue;
+				if( *jt == LowConnTag() ) continue;
 				REPORT_VAL("TagName",jt->GetTagName());
 				for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 					if( jt->isDefined(etype) ) 
@@ -4420,7 +4455,7 @@ safe_output:
 											{
 												wetype = arr[k].GetElementType();
 												out.put(wetype);
-												lid = GetHandleID(arr[k].LocalID());
+												lid = IntegerDF(arr[k]->GetHandle(),set_id);
 												uconv.write_iValue(out,lid);
 											}
 											else out.put(NONE);
@@ -4433,7 +4468,7 @@ safe_output:
 						if( sparse ) uconv.write_iValue(out,q);
 					}
 			}
-		
+			DeleteTag(set_id);
 		
 			out << INMOST::EoMHeader;
 #if defined(USE_MPI)

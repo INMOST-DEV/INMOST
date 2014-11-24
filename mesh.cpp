@@ -73,7 +73,6 @@ namespace INMOST
 
 		memset(remember,0,sizeof(remember));
 		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
-		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
 		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
 		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
 		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
@@ -154,7 +153,6 @@ namespace INMOST
 		//setup system tags shortcuts
 		dim = other.dim;
 		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
-		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
 		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
 		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
 		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
@@ -262,7 +260,6 @@ namespace INMOST
 		//setup system tags shortcuts
 		dim = other.dim;
 		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
-		tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
 		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
 		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
 		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
@@ -1439,7 +1436,7 @@ namespace INMOST
 			}
 			else 
 			{
-				ADDR = static_cast<integer>(links[etypenum].size() - empty_links[etypenum].size());
+				ADDR = static_cast<integer>(links[etypenum].size());
 			}
 			if( !empty_links[etypenum].empty() )
 			{
@@ -1472,7 +1469,7 @@ namespace INMOST
 		back_links[etypenum][old_addr] = -1;
 		back_links[etypenum][new_addr] = ID;
 		links[etypenum][ID] = new_addr;
-		sparse_data[etypenum][new_addr].swap(sparse_data[etypenum][new_addr]);
+		sparse_data[etypenum][new_addr].swap(sparse_data[etypenum][old_addr]);
 		for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
 		{
 			if( !t->isSparseNum(etypenum) )
@@ -1498,24 +1495,25 @@ namespace INMOST
 	{
 		for(int etypenum = 0; etypenum < ElementNum(MESH); etypenum++) if( ElementTypeFromDim(etypenum) & etype )
 		{
-			int cend = static_cast<int>(back_links[etypenum].size())-1;
+			integer cend = static_cast<integer>(back_links[etypenum].size())-1;
 			//Very likely we have leading free space
 			while( cend >= 0 && back_links[etypenum][cend] == -1 ) 
 				cend--;
 			while( cend >= 0 && !empty_space[etypenum].empty() )
 			{
-				if( empty_space[etypenum].back() >= cend )
+				integer last = empty_space[etypenum].back();
+				if( last >= cend )
 					empty_space[etypenum].pop_back();
 				else if( back_links[etypenum][cend] != -1 )
 				{
-					MoveStorage(etypenum,cend,empty_space[etypenum].back());
+					MoveStorage(etypenum,cend,last);
 					empty_space[etypenum].pop_back();
 				}
 				else cend--;
 			}
 			while( cend >= 0 && back_links[etypenum][cend] == -1 ) 
 				cend--;
-			back_links[etypenum].resize(cend); //those should not be needed
+			//back_links[etypenum].resize(cend); //those should not be needed
 			empty_space[etypenum].clear();
 			ReallocateData(etypenum,GetArrayCapacity(etypenum));				
 		}
@@ -1786,7 +1784,7 @@ namespace INMOST
 	void Mesh::DelData(HandleType h,const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
-		if( tag.isSparse(GetElementType()) ) 
+		if( tag.isSparse(GetHandleElementType(h)) ) 
 			DelSparseData(h,tag);
 		else 
 			DelDenseData(h,tag);
@@ -1842,6 +1840,19 @@ namespace INMOST
 				ret.push_back(e->self());
 		}
 		return ret;
+	}
+
+	void Mesh::SetTopologyCheck   (TopologyCheck mask) 
+	{
+		checkset = checkset | mask;
+		if( mask & MARK_ON_ERROR ) 
+			tag_topologyerror = CreateTag("TOPOLOGY_ERROR_TAG",DATA_INTEGER,CELL | FACE | EDGE,CELL | FACE | EDGE,1);
+	}
+	void Mesh::RemTopologyCheck   (TopologyCheck mask) 
+	{
+		checkset = checkset & ~mask;
+		if( mask & MARK_ON_ERROR ) 
+			tag_topologyerror = DeleteTag(tag_topologyerror);
 	}
 }
 #endif

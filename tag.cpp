@@ -238,6 +238,9 @@ namespace INMOST
 	Tag TagManager::CreateTag(Mesh *m, std::string name, DataType dtype, ElementType etype,ElementType sparse, INMOST_DATA_ENUM_TYPE size)
 	{
 		Tag new_tag;
+#if !defined(LAZY_SPARSE_ALLOCATION)
+		bool need_sparse[6] = {false,false,false,false,false,false};
+#endif
 		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 			if( tags[i].GetTagName() == name )
 			{
@@ -262,6 +265,9 @@ namespace INMOST
 				{
 					new_tag.SetPosition(ENUMUNDEF-1,mask);
 					new_tag.SetSparse(mask);
+#if !defined(LAZY_SPARSE_ALLOCATION)
+					need_sparse[ElementNum(mask)] = true;
+#endif
 				}
 				else
 				{
@@ -276,13 +282,21 @@ namespace INMOST
 					new_tag.SetPosition(new_pos,mask);
 					INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(ElementNum(mask));
 					if( new_size < 1024 && mask != MESH ) new_size = 1024;
-					if( new_size < 1    && mask == MESH ) new_size = 1;
+					if( new_size != 1   && mask == MESH ) new_size = 1;
 					ReallocateData(new_tag,ElementNum(mask),new_size);
 				}
 			}
 		}
-		
-		
+#if !defined(LAZY_SPARSE_ALLOCATION)
+		for(int j = 0; j < 6; j++) 
+			if( need_sparse[j] && sparse_data[j].empty() )
+			{
+				INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(j);
+				if( new_size < 1024 && j != ElementNum(MESH) ) new_size = 1024;
+				if( new_size != 1   && j == ElementNum(MESH) ) new_size = 1;
+				sparse_data[j].resize(new_size);
+			}
+#endif
 		return new_tag;
 	}
 	Tag TagManager::GetTag(std::string name) const
@@ -303,6 +317,9 @@ namespace INMOST
 	Tag TagManager::DeleteTag(Tag tag, ElementType type_mask)
 	{
 		bool delete_entirely = true;
+#if !defined(LAZY_SPARSE_ALLOCATION)
+		bool was_sparse[6] = {false,false,false,false,false,false};
+#endif
 		INMOST_DATA_ENUM_TYPE tpos;//,ipos;
 		for(ElementType mask = NODE; mask <= MESH; mask = mask << 1 )
 		{
@@ -315,6 +332,9 @@ namespace INMOST
 					dense_data[tpos].clear(); //here all data should be deleted
 					empty_dense_data.push_back(tpos);
 				}
+#if !defined(LAZY_SPARSE_ALLOCATION)
+				else was_sparse[ElementNum(mask)] = true;
+#endif
 				tag.SetPosition(ENUMUNDEF,mask);
 			}
 			else delete_entirely = false;
@@ -322,16 +342,30 @@ namespace INMOST
 		if( delete_entirely )
 		{
 			bool flag = false;
+#if !defined(LAZY_SPARSE_ALLOCATION)
+			bool have_sparse[6] = {false,false,false,false,false,false};
+#endif
 			for(tag_array_type::size_type i = 0; i < tags.size(); i++)
+			{
+#if !defined(LAZY_SPARSE_ALLOCATION)
+				for(int j = 0; j < 6; j++) 
+					if( tags[i].isSparseNum(j) ) have_sparse[j] = true;
+#endif
 				if( tags[i] == tag )
 				{
 					tags.erase(tags.begin()+i);
 					flag = true;
 					break;
 				}
+			}
 			assert(flag);
 			delete tag.mem;
 			tag.mem = NULL;
+#if !defined(LAZY_SPARSE_ALLOCATION)
+			for(int j = 0; j < 6; j++) 
+				if( was_sparse[j] && !have_sparse[j] )
+					sparse_data[j].clear();
+#endif
 		}
 		return tag;
 	}
@@ -355,10 +389,37 @@ namespace INMOST
 	{
 		if( new_size < 1024 && etypenum != ElementNum(MESH) ) new_size = 1024;
 		if( new_size != 1   && etypenum == ElementNum(MESH) ) new_size = 1;
-		sparse_data[etypenum].resize(new_size);
-		back_links[etypenum].resize(new_size,ENUMUNDEF);
+		if( back_links [etypenum].size() != new_size ) 
+			back_links [etypenum].resize(new_size,-1);
+#if defined(LAZY_SPARSE_ALLOCATION)
+		if( sparse_data[etypenum].size() != new_size ) 
+			sparse_data[etypenum].resize(new_size);
+#else
+		bool need_sparse = false;
+#endif
 		for(iteratorTag t = tags.begin(); t != tags.end(); ++t)
-			if( t->isDefined(1 << etypenum) && !t->isSparse(1 << etypenum) ) ReallocateData(*t,etypenum,new_size);
+		{
+			if( t->isDefined(1 << etypenum) ) 
+			{
+				if( !t->isSparse(1 << etypenum) ) 
+					ReallocateData(*t,etypenum,new_size);
+#if !defined(LAZY_SPARSE_ALLOCATION)
+				else 
+					need_sparse = true;
+#endif
+			}
+		}
+#if !defined(LAZY_SPARSE_ALLOCATION)
+		if( need_sparse )
+		{
+			if( sparse_data[etypenum].size() != new_size ) 
+				sparse_data[etypenum].resize(new_size);
+		}
+		else if( !sparse_data[etypenum].empty() )
+		{
+			sparse_data[etypenum].clear();
+		}
+#endif
 	}
 	
 	void TagManager::ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size)

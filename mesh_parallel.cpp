@@ -31,25 +31,142 @@ static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 
 namespace INMOST
 {
+	//////////////////////////////
+	/// REDUCTION FUNCTIONS    ///
+	//////////////////////////////
+	void DefaultUnpack(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( size == 0 )
+		{
+			if( tag.isDefined(element->GetElementType()) ) 
+			{
+				if( tag.isSparse(element->GetElementType()) )
+				{
+					if( element->HaveData(tag) )
+						element->DelData(tag); 
+				}
+				else if( tag.GetSize() == ENUMUNDEF )
+					element->SetDataSize(tag,size);
+				else
+				{
+					std::cerr << "received zero size for dense nonzero tag" << std::endl;
+					assert(false);
+				}
+			}
+			return;
+		}
+		if( !element->HaveData(tag) )
+			element->SetDataSize(tag,size);
+		else if( size != element->GetDataSize(tag) )
+		{
+			if( tag.GetSize() == ENUMUNDEF )
+				element->SetDataSize(tag,size);
+			else
+			{
+				assert(false);
+			}
+		}
+		element->SetData(tag,0,size,data);
+	}
 
-	void UnpackSyncMarkerOR(const Tag & tag, const Storage & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+
+	void UnpackOnSkin(const Tag & tag, const Element & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( size )
+		{
+			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
+			Storage::integer_array arr = e->IntegerArray(tag);
+			arr.push_back(recv[0]);
+		}
+	}
+
+
+	void UnpackSkin(const Tag & tag, const Element & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( size )
+		{
+			bool flag = true;
+			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
+			Storage::integer_array arr = e->IntegerArray(tag);
+			for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it++)
+				if( *it == recv[0] )
+				{
+					flag = false;
+					break;
+				}
+			if( flag ) 
+			{
+				arr.push_back(recv[0]);
+				arr.push_back(recv[1]);
+			}
+		}
+	}
+	
+
+
+	void DeleteUnpack(const Tag & tag, const Element & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( size ) 
+		{
+			int old_size;
+			if( e->HaveData(tag) ) old_size = e->GetDataSize(tag);
+			else old_size = 0;
+			e->SetDataSize(tag,old_size+size);
+			e->SetData(tag,old_size,size,data);
+		}
+	}
+	
+	void RedistUnpack(const Tag & tag,const Element & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( size ) 
+		{
+			Storage::integer_array p1 = e->IntegerArray(tag);
+			const Storage::integer * p2 = static_cast<const Storage::integer *>(static_cast<const void *>(data));
+			dynarray<Storage::integer,64> result(p1.size()+size);
+			dynarray<Storage::integer,64>::iterator end;
+			end = std::set_union(p1.begin(),p1.end(),p2,p2+size,result.begin());
+			result.resize(end-result.begin());
+			p1.clear();
+			p1.insert(p1.end(),result.begin(),result.end());
+		}
+	}
+
+	void UnpackLayersMarker(const Tag & tag, const Element & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( size )
+		{
+			int old_size;
+			if( e->HaveData(tag) ) old_size = e->GetDataSize(tag);
+			else old_size = 0;
+			e->SetDataSize(tag,old_size+size);
+			e->SetData(tag,old_size,size,data);
+		}
+	}
+	
+
+	void UnpackSyncMarkerOR(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
 	{
 		(void) size;
 		element->Bulk(tag) |= *data;
 	}
 
-	void UnpackSyncMarkerXOR(const Tag & tag, const Storage & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	void UnpackSyncMarkerXOR(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
 	{
 		(void) size;
 		element->Bulk(tag) ^= *data;
 	}
 
 	
-	void UnpackSyncMarkerAND(const Tag & tag, const Storage & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	void UnpackSyncMarkerAND(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
 	{
 		(void) size;
 		element->Bulk(tag) &= *data;
 	}
+
+	//////////////////////////////
+	/// REDUCTION FUNCTIONS END///
+	//////////////////////////////
+
 
 	void Mesh::SynchronizeMarker(MarkerType marker, ElementType mask, SyncBitOp op)
 	{
@@ -291,45 +408,6 @@ namespace INMOST
 #endif //USE_MPI
 		return output;
 	}
-	
-	void DefaultUnpack(const Tag & tag, const Storage & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-	{
-		if( size == 0 )
-		{
-			if( tag.isDefined(element->GetElementType()) ) 
-			{
-				if( tag.isSparse(element->GetElementType()) )
-				{
-					if( element->HaveData(tag) )
-						element->DelData(tag); 
-				}
-				else if( tag.GetSize() == ENUMUNDEF )
-					element->SetDataSize(tag,size);
-				else
-				{
-					std::cerr << "received zero size for dense nonzero tag" << std::endl;
-					throw Impossible;
-				}
-			}
-			return;
-		}
-		if( !element->HaveData(tag) )
-			element->SetDataSize(tag,size);
-		else if( size != element->GetDataSize(tag) )
-		{
-			if( tag.GetSize() == ENUMUNDEF )
-				element->SetDataSize(tag,size);
-			else
-			{
-				throw Impossible;
-			}
-		}
-		element->SetData(tag,0,size,data);
-	}
-
-	
-
-	
 
 
 	INMOST_MPI_Comm Mesh::GetCommunicator()
@@ -1199,17 +1277,6 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 	
-	void DeleteUnpack(const Tag & tag, const Storage & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-	{
-		if( size ) 
-		{
-			int old_size;
-			if( e->HaveData(tag) ) old_size = e->GetDataSize(tag);
-			else old_size = 0;
-			e->SetDataSize(tag,old_size+size);
-			e->SetData(tag,old_size,size,data);
-		}
-	}
 	
 	void Mesh::RemoveGhost()
 	{
@@ -1603,36 +1670,8 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 	
-	void UnpackSkin(const Tag & tag, const Storage & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-	{
-		if( size )
-		{
-			bool flag = true;
-			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
-			Storage::integer_array arr = e->IntegerArray(tag);
-			for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it++)
-				if( *it == recv[0] )
-				{
-					flag = false;
-					break;
-				}
-			if( flag ) 
-			{
-				arr.push_back(recv[0]);
-				arr.push_back(recv[1]);
-			}
-		}
-	}
 	
-	void UnpackOnSkin(const Tag & tag, const Storage & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-	{
-		if( size )
-		{
-			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
-			Storage::integer_array arr = e->IntegerArray(tag);
-			arr.push_back(recv[0]);
-		}
-	}
+	
 	
 	Mesh::proc_elements Mesh::ComputeSharedSkinSet(ElementType bridge_type)
 	{
@@ -1911,7 +1950,7 @@ namespace INMOST
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
-							op(tag,Storage(this,*eit),&array_data_recv[pos],array_size_recv[k]);
+							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
 							pos += array_size_recv[k]*tag.GetBytesSize();
 							k++;
 						}
@@ -1922,7 +1961,7 @@ namespace INMOST
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
-							op(tag,Storage(this,*eit),&array_data_recv[pos],size);
+							op(tag,Element(this,*eit),&array_data_recv[pos],size);
 							pos += size*tag.GetBytesSize();
 						}
 					}
@@ -1933,7 +1972,7 @@ namespace INMOST
 					{
 						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 						{
-							op(tag,Storage(this,*eit),&array_data_recv[pos],array_size_recv[k]);
+							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
 							pos += array_size_recv[k]*tag.GetBytesSize();
 							k++;
 						}
@@ -1942,7 +1981,7 @@ namespace INMOST
 					{
 						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 						{
-							op(tag,Storage(this,*eit),&array_data_recv[pos],size);
+							op(tag,Element(this,*eit),&array_data_recv[pos],size);
 							pos += size*tag.GetBytesSize();
 						}
 					}
@@ -3505,17 +3544,6 @@ namespace INMOST
 	}
 
 	
-	void UnpackLayersMarker(const Tag & tag, const Storage & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-	{
-		if( size )
-		{
-			int old_size;
-			if( e->HaveData(tag) ) old_size = e->GetDataSize(tag);
-			else old_size = 0;
-			e->SetDataSize(tag,old_size+size);
-			e->SetData(tag,old_size,size,data);
-		}
-	}
 	
 	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge)
 	{
@@ -3672,21 +3700,6 @@ namespace INMOST
 	}
 	
 	
-	void RedistUnpack(const Tag & tag,const Storage & e, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-	{
-		if( size ) 
-		{
-			Storage::integer_array p1 = e->IntegerArray(tag);
-			const Storage::integer * p2 = static_cast<const Storage::integer *>(static_cast<const void *>(data));
-			dynarray<Storage::integer,64> result(p1.size()+size);
-			dynarray<Storage::integer,64>::iterator end;
-			end = std::set_union(p1.begin(),p1.end(),p2,p2+size,result.begin());
-			result.resize(end-result.begin());
-			p1.clear();
-			p1.insert(p1.end(),result.begin(),result.end());
-		}
-	}
-
 	
 	void Mesh::Redistribute()
 	{

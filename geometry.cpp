@@ -505,7 +505,7 @@ namespace INMOST
 					case 0: *ret = 0; break;
 					case 1: //length of edge
 					{
-						ElementArray<Node> nodes = Element(this,e)->getNodes(NODE);
+						ElementArray<Node> nodes = Element(this,e)->getNodes();
 						Storage::real c[3];
 						vec_diff(nodes[0]->Coords().data(),nodes[1]->Coords().data(),c,mdim);
 						*ret = vec_len(c,mdim);
@@ -514,7 +514,7 @@ namespace INMOST
 					}
 					case 2: //area of face
 					{
-						ElementArray<Node> nodes = Element(this,e)->getNodes(NODE);
+						ElementArray<Node> nodes = Element(this,e)->getNodes();
 						real x[3] = {0,0,0};
 						Storage::real_array x0 = nodes[0].Coords();
 						for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)

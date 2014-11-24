@@ -78,6 +78,7 @@ namespace INMOST
 
 	//Use topolgy checking for debug purposes
 	typedef INMOST_DATA_ENUM_TYPE TopologyCheck; 
+	static const TopologyCheck NO_ERROR               = 0x00000000;
 	static const TopologyCheck THROW_EXCEPTION        = 0x00000001; //done//throw TopologyError exception on error
 	static const TopologyCheck PRINT_NOTIFY           = 0x00000002; //done//print topology notify to std::cerr
 	static const TopologyCheck DELETE_ON_ERROR        = 0x00000004; //done//element should be deleted if there is an error in EndTopologyCheck
@@ -274,10 +275,13 @@ namespace INMOST
 		{
 			Mesh * m;
 		public:
+			reference_array() : m(NULL) {}
 			reference_array(Mesh * m, inner_reference_array & arr) : shell<reference>(arr), m(m) {} 
 			reference_array(Mesh * m, reference * arr, size_type size) : shell<reference>(arr,size), m(m) {}
 			~reference_array() {}
 			void push_back(const Storage & elem);
+			void push_back(HandleType h) {shell<reference>::push_back(h);} //is it needed?
+			Element operator[] (size_type n);
 			Element operator[] (size_type n) const;
 			class iterator : public shell<HandleType>::iterator
 			{
@@ -331,17 +335,31 @@ namespace INMOST
 				const_reverse_iterator   operator --(int) {const_reverse_iterator ret(*this); shell<HandleType>::const_reverse_iterator::operator--(); return ret;}
 				Element operator->();
 			};
+			iterator begin() {return iterator(m,shell<HandleType>::begin());}
+			const_iterator begin() const {return const_iterator(m,shell<HandleType>::begin());}
+			reverse_iterator rbegin() {return reverse_iterator(m,shell<HandleType>::rbegin());}
+			const_reverse_iterator rbegin() const {return const_reverse_iterator(m,shell<HandleType>::rbegin());}
+			iterator end() {return iterator(m,shell<HandleType>::end());}
+			const_iterator end() const {return const_iterator(m,shell<HandleType>::end());}
+			reverse_iterator rend() {return reverse_iterator(m,shell<HandleType>::rend());}
+			const_reverse_iterator rend() const {return const_reverse_iterator(m,shell<HandleType>::rend());}
 		};
 		//typedef shell<reference>          reference_array;
 	protected:
 		HandleType                        handle;
+		HandleType *                      handle_link;
 	private:
 		Mesh *                            m_link;
 	public:
-		Storage(const Storage & other) : handle(other.handle), m_link(other.m_link) {}
-		Storage(Mesh * mesh, HandleType handle) : handle(handle), m_link(mesh) {}
-		Storage & operator =(Storage const & other) {handle = other.handle; m_link = other.m_link; return *this;}
-		bool      operator ==(const Storage & other) {return handle == other.handle && m_link == other.m_link;}
+		Storage(const Storage & other) : handle(other.handle), handle_link(other.handle_link), m_link(other.m_link) {}
+		Storage(Mesh * mesh, HandleType handle) : handle(handle), handle_link(NULL), m_link(mesh) {}
+		/// This constructor allows for remote handle modification
+		Storage(Mesh * mesh, HandleType * handle) : handle(*handle), handle_link(handle), m_link(mesh) {}
+		/// If there is a link to handle provided (automatically by ElementArray and reference_array),
+		/// then remote handle value will be modified
+		Storage & operator =(Storage const & other); 
+		bool      operator ==(const Storage & other) {return handle == other.handle;} //m_link may be NULL if Invalidxxx is used
+		bool      operator !=(const Storage & other) {return handle != other.handle;} //m_link may be NULL if Invalidxxx is used
 		Storage * operator ->() {return this;}
 		const Storage * operator->() const {return this;}
 		Storage & self() {return *this;}
@@ -421,6 +439,9 @@ namespace INMOST
 		void                     GetMarkerSpace  (bulk copy[MarkerFields]) const;
 		void                     SetMarkerSpace  (bulk source[MarkerFields]) const;
 		__INLINE integer         LocalID         () const {return GetHandleID(handle);}
+		/// This number is guaranteed to be between 0 and Mesh::NumberOf(type of element)
+		/// after Mesh::ReorderEmpty
+		integer                  DataLocalID     () const;
 		bool                     isValid         () const;
 		__INLINE Mesh *          GetMeshLink     () const {return m_link;}
 		__INLINE HandleType      GetHandle       () const {return handle;}
@@ -460,7 +481,7 @@ namespace INMOST
 			iterator      operator --(int) {iterator ret(*this); cont_t::iterator::operator--(); return ret;}
 			iterator &    operator =(iterator const & other) {m_link = other.m_link; cont_t::iterator::operator=(static_cast<cont_t::iterator const &>(other)); return *this; }
 			HandleType &  operator *() { return cont_t::iterator::operator *(); }
-			StorageType   operator->() { return StorageType(m_link,cont_t::iterator::operator *()); }
+			StorageType   operator->() { return StorageType(m_link,&cont_t::iterator::operator *()); }
 		};
 		class reverse_iterator : public cont_t::reverse_iterator
 		{
@@ -474,7 +495,7 @@ namespace INMOST
 			reverse_iterator      operator --(int) {reverse_iterator ret(*this); cont_t::reverse_iterator::operator--(); return ret;}
 			reverse_iterator & operator =(reverse_iterator const & other) {m_link = other.m_link; cont_t::reverse_iterator::operator=(static_cast<cont_t::reverse_iterator const &>(other)); return *this; }
 			HandleType &       operator *() { return cont_t::reverse_iterator::operator *(); }
-			StorageType        operator->() { return StorageType(m_link,cont_t::reverse_iterator::operator *()); }
+			StorageType        operator->() { return StorageType(m_link,&cont_t::reverse_iterator::operator *()); }
 		};
 		class const_iterator : public cont_t::const_iterator
 		{
@@ -518,8 +539,11 @@ namespace INMOST
 		__INLINE const_reverse_iterator rbegin() const { return const_reverse_iterator(m_link,container.rbegin()); }
 		__INLINE const_reverse_iterator rend  () const { return const_reverse_iterator(m_link,container.rend()); }
 		
+		__INLINE StorageType      operator [] (size_type n) {assert(m_link); return StorageType(m_link,&container[n]);}
 		__INLINE StorageType      operator [] (size_type n) const {assert(m_link); return StorageType(m_link,container[n]);}
+		__INLINE StorageType      front       () {assert(m_link); return StorageType(m_link,&container.front()); }
 		__INLINE StorageType      front       () const {assert(m_link); return StorageType(m_link,container.front()); }
+		__INLINE StorageType      back        ()  {assert(m_link); return StorageType(m_link,&container.back()); }
 		__INLINE StorageType      back        () const {assert(m_link); return StorageType(m_link,container.back()); }
 		__INLINE HandleType       atfront     () const { return container.front(); }
 		__INLINE HandleType       atback      () const { return container.back(); }
@@ -530,7 +554,7 @@ namespace INMOST
 		__INLINE void             swap        (ElementArray<StorageType> & other) {Mesh * t = m_link; m_link = other.m_link; other.m_link = t; container.swap(other.container);}
 		__INLINE void             push_back   (const Storage & x) {assert(x.GetMeshLink() == m_link); container.push_back(x.GetHandle());}
 		//__INLINE void             push_back   (const StorageType & x) {container.push_back(x.GetHandle());}
-		__INLINE void             push_back   (HandleType x) {container.push_back(x);}
+		__INLINE void             push_back   (HandleType x) {assert(m_link != NULL); container.push_back(x);}
 		__INLINE void             resize      (size_type n) {container.resize(n);}
 		__INLINE bool             empty       () const {return container.empty();}
 		__INLINE void             clear       () {container.clear();}
@@ -598,6 +622,7 @@ namespace INMOST
 	public:
 		Element() : Storage(NULL,InvalidHandle()) {}
 		Element(Mesh * m, HandleType h) : Storage(m,h) {}
+		Element(Mesh * m, HandleType * h) : Storage(m,h) {}
 		Element(const Element & other) : Storage(other) {}
 		Element & operator =(Element const & other) {Storage::operator =(other); return *this;}
 		Element * operator ->() {return this;}
@@ -613,6 +638,9 @@ namespace INMOST
 		/// @return number of adjacent elements.
 		virtual enumerator                nbAdjElements           (ElementType etype) const;
 		/// Retrive unordered array of adjacent elements.
+		/// If you care about orderness of nodes for face you should you Face::getNodes() instead.
+		/// If you want faster access you may use direct access to handles stored in memory
+		/// through Mesh::HighConn for upper adjacencies and Mesh::LowConn for lower adjacencies.
 		/// @param etype bitwise mask of element types
 		/// @return array of elements
 		virtual ElementArray<Element>     getAdjElements          (ElementType etype) const;  //unordered
@@ -630,11 +658,11 @@ namespace INMOST
 		/// @param invert_mask if true then those are selected on wich marker is not set
 		/// @return array of elements
 		virtual ElementArray<Element>     getAdjElements          (ElementType etype, MarkerType mask, bool invert_mask = false) const;  //unordered
-		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType mask = 0, bool invert_mask = false);
-		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false);
-		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false);
-		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false);
-		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false);
+		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType mask = 0, bool invert_mask = false) const;
+		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
+		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
+		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
+		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
 		/// Получить все узлы данного элемента,
 		/// Для узла вернет сам узел
 		/// Для ребра вернет упорядоченную пару вершин
@@ -696,17 +724,19 @@ namespace INMOST
 		/// Disconnects nodes from this edge, edges from this face, faces from this cell, cannot disconnect cells from this node;
 		/// Disconnects edges from this node, faces from this edge, cells from this face, cannot disconnect nodes from this cell;
 		/// Updates geometric data and cell nodes automatically.
-		void                        Disconnect              (HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const;
+		void                        Disconnect              (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const;
 		/// Connects lower adjacencies to current element, 
 		/// geometric data and cell nodes are updated automatically.
 		/// TODO:
 		///		1. asserts in this function should be replaced by Topography checks;
 		///		2. this function should be used for creation of elements instead of current implementation.
 		///     3. should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)
-		void                        Connect                 (HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
+		void                        Connect                 (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
 		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
 		void                        UpdateGeometricData     () const; 
 	};
+	
+	__INLINE const Element & InvalidElement() {static Element ret(NULL,InvalidHandle()); return ret;}
 	
 	class Node : public Element //implemented in node.cpp
 	{
@@ -714,6 +744,7 @@ namespace INMOST
 		Node() : Element() {}
 		Node(const Node & other) : Element(other) {}
 		Node(Mesh * m, HandleType h) : Element(m,h) {}
+		Node(Mesh * m, HandleType * h) : Element(m,h) {}
 		Node & operator =(Node const & other) {Element::operator =(other); return *this;}
 		Node * operator ->() {return this;}
 		const Node * operator ->() const {return this;}
@@ -730,6 +761,8 @@ namespace INMOST
 
 		Storage::real_array         Coords                  () const; 
 	};
+
+	__INLINE const Node & InvalidNode() {static Node ret(NULL,InvalidHandle()); return ret;}
 	
 	class Edge : public Element //implemented in edge.cpp
 	{
@@ -737,6 +770,7 @@ namespace INMOST
 		Edge() : Element() {}
 		Edge(const Edge & other) : Element(other) {}
 		Edge(Mesh * m, HandleType h) : Element(m,h) {}
+		Edge(Mesh * m, HandleType * h) : Element(m,h) {}
 		Edge & operator =(Edge const & other) {Element::operator =(other); return *this;}
 		Edge * operator ->() {return this;}
 		const Edge * operator ->() const {return this;}
@@ -762,6 +796,8 @@ namespace INMOST
 		//implemented in geometry.cpp
 		Storage::real               Length                  () const;
 	};
+
+	__INLINE const Edge & InvalidEdge() {static Edge ret(NULL,InvalidHandle()); return ret;}
 	
 	class Face : public Element //implemented in face.cpp
 	{
@@ -769,6 +805,7 @@ namespace INMOST
 		Face() : Element() {}
 		Face(const Face & other) : Element(other) {}
 		Face(Mesh * m, HandleType h) : Element(m,h) {}
+		Face(Mesh * m, HandleType * h) : Element(m,h) {}
 		Face & operator =(Face const & other) {Element::operator =(other); return *this;}
 		Face * operator ->() {return this;}
 		const Face * operator ->() const {return this;}
@@ -813,12 +850,15 @@ namespace INMOST
 		bool                        CheckNormalOrientation  () const; //returns true if orientation is correct, otherwise returns false
 		bool                        Closure                 () const; // test integrity of polygon
 	};
+
+	__INLINE const Face & InvalidFace() {static Face ret(NULL,InvalidHandle()); return ret;}
 	
 	class Cell : public Element //implemented in cell.cpp
 	{
 	public:
 		Cell() : Element() {}
 		Cell(Mesh * m, HandleType h) : Element(m,h) {}
+		Cell(Mesh * m, HandleType * h) : Element(m,h) {}
 		Cell(const Cell & other) : Element(other) {}
 		Cell & operator =(Cell const & other) {Element::operator =(other); return *this;}
 		Cell * operator ->() {return this;}
@@ -857,6 +897,8 @@ namespace INMOST
 		bool                        Closure                 () const; // test integrity of cell
 	};
 
+	__INLINE const Cell & InvalidCell() {static Cell ret(NULL,InvalidHandle()); return ret;}
+
 	class ElementSet : public Element //implemented in eset.cpp
 	{
 	public:
@@ -869,6 +911,7 @@ namespace INMOST
 		static const ComparatorType   HANDLE_COMPARATOR = 4;
 		ElementSet() : Element() {}
 		ElementSet(Mesh * m, HandleType h) : Element(m,h) {}
+		ElementSet(Mesh * m, HandleType * h) : Element(m,h) {}
 		ElementSet(const Cell & other) : Element(other) {}
 		ElementSet & operator =(ElementSet const & other) {Element::operator =(other); return *this;}
 		ElementSet * operator ->() {return this;}
@@ -911,6 +954,7 @@ namespace INMOST
 		/// Modify at your own risk
 		HandleType *                getHandles() const;
 		/// Retrive number of stored handles, including invalid
+		/// if you want to get number of valid elements use ElementSet::Size
 		enumerator                  nbHandles() const;
 		/// Retrive position after last sorted element, this does not correctly
 		/// represent total number of sorted elements, since some of them may be deleted
@@ -942,6 +986,8 @@ namespace INMOST
 		void                        PutElement(const Storage & e) const {PutElement(e->GetHandle());}
 		/// Put multiple handles without checking of the existance of duplicate
 		void                        PutElements(const HandleType * handles, enumerator num) const;
+		/// Put multiple handles of the other set without checking of the existance of duplicate
+		void                        PutElements(const ElementSet & other) const {PutElements(other->getHandles(),other->nbHandles());}
 		/// Put multiple handles without checking
 		template<typename EType>
 		void                        PutElements(const ElementArray<EType> & elems) const {PushElements(elems.data(),static_cast<enumerator>(elems.size()));}
@@ -951,13 +997,15 @@ namespace INMOST
 		/// Put one element with checking of the existance of duplicate
 		/// preserves order for sorted set, thus may be expensive
 		void                        AddElement(const Storage & e) const {AddElement(e->GetHandle());}
-		/// Put multiple elements with checking of the existance of duplicate,
+		/// Add multiple elements with checking of the existance of duplicate,
 		/// preserves order for sorted set, thus may be expensive.
 		/// This will also remove any duplicates in unsorted part of the set.
 		/// If you inserted duplicated elements through PutElements into previously sorted array
 		/// then this operation does not guarantee that those duplications will be stored.
 		void                        AddElements(const HandleType * handles, enumerator num) const;
-		/// Put multiple elements with checking of the existance of duplicate
+		/// Add elements of other set
+		void                        AddElements(const ElementSet & other) {Unite(other);}
+		/// Add multiple elements with checking of the existance of duplicate
 		template<typename EType>
 		void                        AddElements(const ElementArray<EType> & elems) const {AddElements(elems.data(),static_cast<enumerator>(elems.size()));}
 
@@ -1085,14 +1133,14 @@ namespace INMOST
 			iterator & operator = (iterator const & other) {m = other.m; ptr = other.ptr; pos = other.pos; return *this;}
 			iterator & operator ++();
 			iterator & operator ++(int) {iterator ret(*this); operator++(); return *this;}
-			bool       operator ==(const iterator & other) {assert(ptr == other.ptr); return pos == other.pos;}
-			bool       operator !=(const iterator & other) {assert(ptr == other.ptr); return pos != other.pos;}
-			bool       operator < (const iterator & other) {assert(ptr == other.ptr); return pos < other.pos;}
-			bool       operator > (const iterator & other) {assert(ptr == other.ptr); return pos > other.pos;}
-			bool       operator <=(const iterator & other) {assert(ptr == other.ptr); return pos <= other.pos;}
-			bool       operator >=(const iterator & other) {assert(ptr == other.ptr); return pos >= other.pos;}
-			const HandleType & operator *() {return ptr->at(pos);}
-			Element operator->() {return Element(m,ptr->at(pos));}
+			bool       operator ==(const iterator & other) const {assert(ptr == other.ptr); return pos == other.pos;}
+			bool       operator !=(const iterator & other) const {assert(ptr == other.ptr); return pos != other.pos;}
+			bool       operator < (const iterator & other) const {assert(ptr == other.ptr); return pos < other.pos;}
+			bool       operator > (const iterator & other) const {assert(ptr == other.ptr); return pos > other.pos;}
+			bool       operator <=(const iterator & other) const {assert(ptr == other.ptr); return pos <= other.pos;}
+			bool       operator >=(const iterator & other) const {assert(ptr == other.ptr); return pos >= other.pos;}
+			const HandleType & operator *() const {return ptr->at(pos);}
+			Element operator->() const {return Element(m,ptr->at(pos));}
 			friend class ElementSet;
 		};
 		/// Provides forward iterator that skips deleted and hidden elements within set.
@@ -1122,9 +1170,13 @@ namespace INMOST
 		void ReorderEmpty() const;
 		/// Is there any elements in the set
 		bool Empty() const;
-
+		/// Get total number of elements
 		enumerator Size() const;
+		/// Remove all elements, clear all data, removes sorted marker
+		void Clear() const;
 	};
+
+	__INLINE const ElementSet & InvalidElementSet() {static ElementSet ret(NULL,InvalidHandle()); return ret;}
 	
 	class Mesh : public TagManager, public Storage //implemented in mesh.cpp
 	{
@@ -1723,6 +1775,11 @@ namespace INMOST
 		/// @return global id
 		/// @see Mesh::AssignGlobalID
 		integer                           GlobalID           (HandleType h) const {return static_cast<const integer *>(MGetDenseLink(h,GlobalIDTag()))[0];}
+		/// Retrive position of the data position of current element, after ReorderEmpty
+		/// this number is guaranteed to be between 0 and NumberOf(type of element)
+		/// @param h handle of the element
+		/// @return local id of data
+		integer                        DataLocalID           (HandleType h) const {return static_cast<integer>(links[GetHandleElementNum(h)][GetHandleID(h)]);}
 		/// Retrive parallel status of the element.
 		/// If mesh is in Serial state then call always returns Element::Owned.
 		/// otherwise it will return:
@@ -1806,7 +1863,7 @@ namespace INMOST
 		//implemented in mesh_parallel.cpp
 		enum Action  {AGhost, AMigrate};
 		enum Prepare {UnknownSize, UnknownSource};
-		typedef void (*ReduceOperation)(const Tag & tag, const Storage & element, const INMOST_DATA_BULK_TYPE * recv_data, INMOST_DATA_ENUM_TYPE recv_size);
+		typedef void (*ReduceOperation)(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * recv_data, INMOST_DATA_ENUM_TYPE recv_size);
 		typedef std::vector<Tag>                                             tag_set;
 		typedef std::vector<HandleType>                                  element_set;
 		typedef std::vector<INMOST_DATA_BULK_TYPE>                       buffer_type;
@@ -2559,17 +2616,33 @@ namespace INMOST
 		Tag                   tag_topologyerror;
 		TopologyCheck         checkset;
 		TopologyCheck         errorset;
-	private:
-		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, enumerator num); //check provided elements
-		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
 	public:
+		/// This function allows you to perform some topologycal checks before you create an element.
+		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions
+		/// If you perform topological checks on your own, you'd probably better turn off checks before calling CreateXXX
+		/// functions. Note that check for duplicates within mesh is performed by Mesh::FindSharedAdjacency.
+		/// TODO: list checks performed inside in description
+		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, enumerator num);
+		/// This function performs some topologycal checks after creation of element.
+		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions.
+		/// TODO: list checks performed inside in description.
+		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
+		/// This will return tag by which you can retrive error mark to any element on which topogy check failed.
+		/// As this is sparse tag you can check presence of error by Element::HaveData or Mesh::HaveData check.
+		/// This tag will be valid only if you pass MARK_ON_ERROR to Mesh::GetTopologyCheck
+		/// and will be deleted if you pass MARK_ON_ERROR to Mesh::RemTopologyCheck
 		Tag                               TopologyErrorTag   () const {return tag_topologyerror;}
+		/// Retrive currently set topology checks
 		TopologyCheck                     GetTopologyCheck   (TopologyCheck mask = ENUMUNDEF) const {return checkset & mask;}
-		void                              SetTopologyCheck   (TopologyCheck mask) {checkset = checkset | mask;}
-		void                              RemTopologyCheck   (TopologyCheck mask) {checkset = checkset & ~mask;}
-
+		/// Set topology checks
+		void                              SetTopologyCheck   (TopologyCheck mask);
+		/// Remove topology checks
+		void                              RemTopologyCheck   (TopologyCheck mask);
+		/// This will turn mesh into the state indicating that some topology error occured
 		void                              SetTopologyError   (TopologyCheck mask) {errorset = errorset | mask;}
+		/// Retrive topology error state, this indicates that some error have occured
 		TopologyCheck                     GetTopologyError   (TopologyCheck mask = ENUMUNDEF) const {return errorset & mask;}
+		/// Revert mesh to clean topology error state
 		void                              ClearTopologyError (TopologyCheck mask = ENUMUNDEF) {errorset = errorset & ~mask;}
 		//implemented in comparator.cpp
 	public:

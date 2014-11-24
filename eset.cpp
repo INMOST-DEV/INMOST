@@ -1627,6 +1627,16 @@ namespace INMOST
 		Element::adj_type & hc = m->HighConn(GetHandle());
 		return (lc.size() - (hc.size() - high_conn_reserved));
 	}
+
+	void ElementSet::Clear() const
+	{
+		Mesh * m = GetMeshLink();
+		Element::adj_type & lc = m->LowConn(GetHandle());
+		Element::adj_type & hc = m->HighConn(GetHandle());
+		hc.resize(ElementSet::high_conn_reserved);
+		lc.clear();
+		BulkDF(m->SetComparatorTag()) = UNSORTED_COMPARATOR;
+	}
 }
 
 #endif

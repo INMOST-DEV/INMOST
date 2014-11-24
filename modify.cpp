@@ -2163,7 +2163,7 @@ public:
 		GetMeshLink()->RecomputeGeometricData(GetHandle());
 	}
 
-	void Element::Disconnect(HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const
+	void Element::Disconnect(const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const
 	{
 		Mesh * m = GetMeshLink();
 		INMOST_DATA_ENUM_TYPE k = 0;
@@ -2325,7 +2325,7 @@ public:
 		m->ReleaseMarker(mrk);
 	}
 
-	void Element::Connect(HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const
+	void Element::Connect(const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const
 	{
 		assert( !(GetElementType() == EDGE && GetMeshLink()->LowConn(GetHandle()).size() > 2) ); // cannot add another node to edge
 		Mesh * m = GetMeshLink();

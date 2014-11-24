@@ -45,7 +45,7 @@ add_library(inmost STATIC ${SOURCE} ${HEADER})
 option(USE_MPI "Compile with MPI support" ON)
 option(USE_MPI_P2P "Use MPI point to point functionality, may be faster with hardware support" ON)
 option(USE_MPI_FILE "Use MPI extension to work with files, may save a lot of memory" ON)
-option(USE_MPI2 "Use MPI-2 extensions, useful if your MPI library produces warnings to use new functions" ON)
+option(USE_MPI2 "Use MPI-2 extensions, useful if your MPI library warns you to use new functions" ON)
 option(USE_OMP "Compile with OpenMP support (experimental)" OFF)
 
 option(USE_MESH "Compile mesh capabilities" ON)
