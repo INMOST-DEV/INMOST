@@ -99,6 +99,15 @@ mesh + !partitioner + !domain + solvers + +/-nonlinear solvers + autodiff + !sys
 53) проверить будет ли быстрее SortByGlobalID, если переписать globalid в массив
 54) проверить новые алгоритмы для множеств (создать unit tests)
 55) Для mpi_send/mpi_recv выбирать таг из булевого массива или из массива пустых тагов - более безопасно чем полагаться на произвольное число
+56) Enumerate with mask should accept MarkerType select to select elements
+57) GlobalID service class with different operation options to help pick new global ids when mesh is modified locally
+    options:
+     a) global id continuous among processors
+     b) global id may have gaps but local interval for each processor is bounded
+     c) global id is just a unique number
+
+58) записать множества в отдельные vtk-файлы по опции "VTK_WRITE_SETS_TO_FILES" = "YES"
+
 
 7.MSPP: (готово) множества: операции, иерархия, обмен
 8.MSPP: кластеризация
@@ -111,7 +120,7 @@ mesh + !partitioner + !domain + solvers + +/-nonlinear solvers + autodiff + !sys
 
 13. INMOST / MMTK = Mathematical Modelling ToolKit / NSTK
 
-last_created_element - завершить механизм
+(готово) last_created_element - завершить механизм
 
 
 Изменение автодиффиринцирования
@@ -151,6 +160,14 @@ last_created_element - завершить механизм
 10) факторизовать вначале ту часть, для которой требуется найти наименьшие собственные значения
 11) найти наименьшие собственные значения с помощью метода amls
 12) найти грубое подпространство по найденным собственным значениям
+
+13) Новый метод для классов Matrix и Row:
+Row::MergeRows(linked_list_storage, row b 
+Matrix::MergeRow(alpha, row & a, real beta, row &b)
+14) классы CSRMatrix, CSRRow
+15) конвертация Matrix -> CSRMatrix
+16) OrderInfo должен работать с CSRMatrix
+17) 
 
 
 solver:

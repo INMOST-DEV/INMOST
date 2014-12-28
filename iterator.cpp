@@ -180,13 +180,8 @@ namespace INMOST
 			if( lid == m->LastLocalID(etype) )
 			{
 				etype = GetNextType(etype,types);
-				if( etype ) 
-					lid = 0;
-				else
-				{
-					lid = -1;
-					break;
-				}
+				lid = -1;
+				if( !etype ) break;
 			}
 			else break;
 		}
@@ -243,7 +238,7 @@ namespace INMOST
 
 	Mesh::iteratorStorage Mesh::Begin(ElementType Types)        {return base_iterator<Storage>(Types,this,false);}
 	Mesh::iteratorStorage Mesh::End()                           {return base_iterator<Storage>(this);}
-	Mesh::iteratorElement Mesh::BeginElement(ElementType Types) {return base_iterator<Element>(Types & (NODE | EDGE | FACE | CELL),this,false);}
+	Mesh::iteratorElement Mesh::BeginElement(ElementType Types) {return base_iterator<Element>(Types & (NODE | EDGE | FACE | CELL | ESET),this,false);}
 	Mesh::iteratorElement Mesh::EndElement()                    {return base_iterator<Element>(this);}
 	Mesh::iteratorSet     Mesh::BeginSet()                      {return base_iterator<ElementSet>(ESET,this,false);}
 	Mesh::iteratorSet     Mesh::EndSet()                        {return base_iterator<ElementSet>(this);}

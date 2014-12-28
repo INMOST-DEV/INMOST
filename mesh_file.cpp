@@ -1510,7 +1510,7 @@ ecl_exit_loop:
 											{
 												e_nodes.at(0) = newnodes[cp[k]];
 												e_nodes.at(1) = newnodes[cp[k+1]];
-												//eset->Insert(CreateEdge(e_nodes).first);
+												eset->PutElement(CreateEdge(e_nodes).first);
 												RemMarker(newnodes[cp[k]],unused_marker);
 											}
 											RemMarker(newnodes[cp[j+cp[j]]],unused_marker);
@@ -1993,8 +1993,8 @@ ecl_exit_loop:
 				if( GetHandleElementType(newcells[i]) & ESET )
 				{
 					ElementSet set = ElementSet(this,newcells[i]);
-					/*
-					for(ElementSet::iterator it = set->begin(); it != set->end(); ++it)
+					
+					for(ElementSet::iterator it = set->Begin(); it != set->End(); ++it)
 					{
 						for(std::vector<Tag>::iterator jt = datatags.begin(); jt != datatags.end(); ++jt)
 						{
@@ -2009,14 +2009,14 @@ ecl_exit_loop:
 								{
 									Storage::integer_array arra = it->IntegerArray(*jt);
 									Storage::integer_array arrb = set->IntegerArray(*jt);
-									for(int k = 0; k < jt->GetSize(); k++) arra[k] = arrb[k];
+									for(enumerator k = 0; k < jt->GetSize(); k++) arra[k] = arrb[k];
 								}
 								break;
 							case DATA_REAL:
 								{
 									Storage::real_array arra = it->RealArray(*jt);
 									Storage::real_array arrb = set->RealArray(*jt);
-									for(int k = 0; k < jt->GetSize(); k++) arra[k] = arrb[k];
+									for(enumerator k = 0; k < jt->GetSize(); k++) arra[k] = arrb[k];
 								}
 								break;
 							default:
@@ -2025,7 +2025,7 @@ ecl_exit_loop:
 							}
 						}
 					}
-					*/
+					
 					Destroy(newcells[i]);
 				}
 			}
@@ -4253,6 +4253,8 @@ safe_output:
 			REPORT_VAL("tag_size",header[6]);
 			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)  
 			{
+				//don't forget to change header[6] if you skip more
+				//should match with content after MeshDataHeader
 				if( *it == set_id ) continue;
 				if( *it == HighConnTag() ) continue;
 				if( *it == LowConnTag() ) continue;
@@ -4407,10 +4409,12 @@ safe_output:
 			for(Mesh::iteratorTag jt = BeginTag(); jt != EndTag(); jt++) 
 			{
 				std::string tagname = jt->GetTagName();
+				//skipping should match with header[6] and content
+				// after TagsHeader
 				if( *jt == set_id ) continue;
 				if( *jt == HighConnTag() ) continue;
 				if( *jt == LowConnTag() ) continue;
-				REPORT_VAL("TagName",jt->GetTagName());
+				REPORT_VAL("TagName",tagname);
 				for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 					if( jt->isDefined(etype) ) 
 					{

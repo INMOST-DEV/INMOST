@@ -78,7 +78,6 @@ namespace INMOST
 
 	//Use topolgy checking for debug purposes
 	typedef INMOST_DATA_ENUM_TYPE TopologyCheck; 
-	static const TopologyCheck NO_ERROR               = 0x00000000;
 	static const TopologyCheck THROW_EXCEPTION        = 0x00000001; //done//throw TopologyError exception on error
 	static const TopologyCheck PRINT_NOTIFY           = 0x00000002; //done//print topology notify to std::cerr
 	static const TopologyCheck DELETE_ON_ERROR        = 0x00000004; //done//element should be deleted if there is an error in EndTopologyCheck
@@ -175,7 +174,7 @@ namespace INMOST
 		__INLINE void                   SetPosition(INMOST_DATA_ENUM_TYPE pos, ElementType type) {mem->pos[ElementNum(type)] = pos;}
 		__INLINE INMOST_DATA_ENUM_TYPE  GetPosition(ElementType type) const {assert(mem != NULL); return mem->pos[ElementNum(type)];}
 		__INLINE void                   SetSparse(ElementType type) {mem->sparse[ElementNum(type)] = true;}
-		__INLINE INMOST_DATA_ENUM_TYPE  GetPositionNum(INMOST_DATA_ENUM_TYPE typenum) const {return mem->pos[typenum];}
+		__INLINE INMOST_DATA_ENUM_TYPE  GetPositionByDim(INMOST_DATA_ENUM_TYPE typenum) const {return mem->pos[typenum];}
 	public:
 		~Tag() {mem = NULL;}
 		Tag() {mem = NULL;}
@@ -194,7 +193,8 @@ namespace INMOST
 		__INLINE bool                   isSparse(ElementType type) const {assert(mem!=NULL && OneType(type)); return mem->sparse[ElementNum(type)];}
 		__INLINE bool                   isValid() const {return mem != NULL;}
 		__INLINE Mesh *                 GetMeshLink() const {assert(mem!=NULL); return mem->m_link;}		
-		__INLINE bool                   isSparseNum(INMOST_DATA_ENUM_TYPE typenum) const {assert(mem!=NULL); return mem->sparse[typenum];}
+		__INLINE bool                   isSparseByDim(INMOST_DATA_INTEGER_TYPE typenum) const {assert(mem!=NULL); return mem->sparse[typenum];}
+		__INLINE bool                   isDefinedByDim(INMOST_DATA_INTEGER_TYPE typenum) const {assert(mem!=NULL); return GetPositionByDim(typenum) != ENUMUNDEF;}
 		__INLINE void                   SetBulkDataType(INMOST_MPI_Type type) {assert(mem!=NULL && mem->dtype == DATA_BULK ); mem->bulk_data_type = type;}
 		friend class TagManager;
 		friend class Storage;
@@ -552,9 +552,10 @@ namespace INMOST
 		__INLINE HandleType &     at          (size_type n) { return container.at(n); }
 		__INLINE HandleType       at          (size_type n) const { return container.at(n); }
 		__INLINE void             swap        (ElementArray<StorageType> & other) {Mesh * t = m_link; m_link = other.m_link; other.m_link = t; container.swap(other.container);}
-		__INLINE void             push_back   (const Storage & x) {assert(x.GetMeshLink() == m_link); container.push_back(x.GetHandle());}
+		__INLINE void             push_back   (const Storage & x) {if( m_link == NULL ) m_link = x.GetMeshLink(); assert(x.GetMeshLink() == m_link); container.push_back(x.GetHandle());}
 		//__INLINE void             push_back   (const StorageType & x) {container.push_back(x.GetHandle());}
 		__INLINE void             push_back   (HandleType x) {assert(m_link != NULL); container.push_back(x);}
+		__INLINE void             pop_back    () {container.pop_back();}
 		__INLINE void             resize      (size_type n) {container.resize(n);}
 		__INLINE bool             empty       () const {return container.empty();}
 		__INLINE void             clear       () {container.clear();}
@@ -990,7 +991,7 @@ namespace INMOST
 		void                        PutElements(const ElementSet & other) const {PutElements(other->getHandles(),other->nbHandles());}
 		/// Put multiple handles without checking
 		template<typename EType>
-		void                        PutElements(const ElementArray<EType> & elems) const {PushElements(elems.data(),static_cast<enumerator>(elems.size()));}
+		void                        PutElements(const ElementArray<EType> & elems) const {PutElements(elems.data(),static_cast<enumerator>(elems.size()));}
 		/// Put one element with checking of the existance of duplicate
 		/// preserves order for sorted set, thus may be expensive
 		void                        AddElement(HandleType e) const;
@@ -1224,12 +1225,12 @@ namespace INMOST
 		__INLINE sparse_type &            MGetSparseLink     (HandleType h) {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
 		__INLINE const void *             MGetSparseLink     (HandleType h, const Tag & t) const {sparse_type const & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; return NULL;}
 		__INLINE void * &                 MGetSparseLink     (HandleType h, const Tag & t) {sparse_type & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec;}
-		__INLINE const void *             MGetDenseLink      (integer n, integer id, const Tag & t) const {return &(GetDenseData(t.GetPositionNum(n))[links[n][id]]);}
-		__INLINE void *                   MGetDenseLink      (integer n, integer id, const Tag & t) {return &(GetDenseData(t.GetPositionNum(n))[links[n][id]]);}
+		__INLINE const void *             MGetDenseLink      (integer n, integer id, const Tag & t) const {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
+		__INLINE void *                   MGetDenseLink      (integer n, integer id, const Tag & t) {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
 		__INLINE const void *             MGetDenseLink      (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE void *                   MGetDenseLink      (HandleType h, const Tag & t) {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
-		__INLINE const void *             MGetLink           (HandleType h, const Tag & t) const {if( !t.isSparseNum(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
-		__INLINE void *                   MGetLink           (HandleType h, const Tag & t) {if( !t.isSparseNum(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
+		__INLINE const void *             MGetLink           (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
+		__INLINE void *                   MGetLink           (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
 	public:
 		Mesh();
 		Mesh(const Mesh & other);
@@ -2602,6 +2603,13 @@ namespace INMOST
 		MarkerType                        NewMarker          () const {return new_element;}
 		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
+		/// After this function any link to deleted element will be replaced by InvalidHandle()
+		/// TODO:
+		///      1) maybe instead of forming set of deleted elements and subtracting set from other sets it is better
+		///         to remove each modified element
+		///         (done, check and compare)
+		///      2) parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior
+		///         (done, check and compare)
 		void                              ApplyModification  ();  //modify DATA_REFERENCE tags so that links to hidden elements are converted to NULL and removed from sets
 		/// This function is not yet implemented. It should correctly resolve parallel state of 
 		/// newly created elements, provide them valid global identificators, resolve owners of

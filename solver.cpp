@@ -1550,7 +1550,12 @@ namespace INMOST
 			sol->ReplaceMAT(*mat);
 			if( matrix_data != NULL ) delete (Solver::Matrix *)matrix_data;
 			matrix_data = (void *)mat;
+			if (!sol->isInitialized()) 
+			{
+				sol->Initialize();
+			}
 			ok = true;
+
 		}
 		for(Matrix::iterator it = A.Begin(); it != A.End(); it++) it->modified_pattern = false;
 		if(!ok) throw NotImplemented;

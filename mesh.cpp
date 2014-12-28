@@ -1361,8 +1361,8 @@ namespace INMOST
 			if( e->GetName() == name )
 				return std::make_pair(e->self(),false);
 		}
-		HandleType he = TieElement(4);
-		bulk_array set_name = BulkArrayDF(he,SetNameTag());
+		HandleType he = ComposeHandle(4,TieElement(4));
+		bulk_array set_name = BulkArrayDV(he,SetNameTag());
 		set_name.resize(static_cast<bulk_array::size_type>(name.size()));
 		memcpy(set_name.data(),name.c_str(),name.size());
 		HighConn(he).resize(ElementSet::high_conn_reserved); //Allocate initial space for parent/sibling/child/unsorted info
@@ -1469,12 +1469,15 @@ namespace INMOST
 		back_links[etypenum][old_addr] = -1;
 		back_links[etypenum][new_addr] = ID;
 		links[etypenum][ID] = new_addr;
+#if !defined(LAZY_SPARSE_ALLOCATION)
+		if( !sparse_data[etypenum].empty() )
+#endif
 		sparse_data[etypenum][new_addr].swap(sparse_data[etypenum][old_addr]);
 		for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
 		{
-			if( !t->isSparseNum(etypenum) )
+			if( !t->isSparseByDim(etypenum) )
 			{
-				INMOST_DATA_ENUM_TYPE data_pos = t->GetPositionNum(etypenum);
+				INMOST_DATA_ENUM_TYPE data_pos = t->GetPositionByDim(etypenum);
 				if( data_pos == ENUMUNDEF ) continue;
 				TagManager::dense_sub_type & arr = GetDenseData(data_pos);
 				INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
@@ -1636,14 +1639,14 @@ namespace INMOST
 	{
 		Asserts(h,tag,expected);
 		assert(tag.GetSize() == ENUMUNDEF);              //data is of variable size
-		assert(!tag.isSparseNum(GetHandleElementNum(h)));//tag is not sparse
+		assert(!tag.isSparseByDim(GetHandleElementNum(h)));//tag is not sparse
 	}
 
 	void Mesh::AssertsDF(HandleType h, const Tag & tag, DataType expected) const
 	{
 		Asserts(h,tag,expected);
 		assert(tag.GetSize() != ENUMUNDEF);              //data is of variable size
-		assert(!tag.isSparseNum(GetHandleElementNum(h)));//tag is not sparse
+		assert(!tag.isSparseByDim(GetHandleElementNum(h)));//tag is not sparse
 	}
 
 	void Mesh::Asserts(HandleType h, const Tag & tag, DataType expected) const
@@ -1653,7 +1656,7 @@ namespace INMOST
 		assert(tag.isValid());                           //tag was allocated
 		assert(this == tag.GetMeshLink());               //tag is not mine
 		assert(tag.GetDataType() == expected);           //tag data type coinside with expected data type
-		assert(tag.isDefined(GetHandleElementType(h)));           //tag data type coinside with expected data type
+		assert(tag.isDefinedByDim(GetHandleElementNum(h)));           //tag data type coinside with expected data type
 	}
 	
 	void Mesh::ClearMarkerSpace(HandleType h) 
@@ -1754,7 +1757,7 @@ namespace INMOST
 	void Mesh::DelDenseData(HandleType h, const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
-		assert( !tag.isSparseNum(GetHandleElementNum(h)) );
+		assert( !tag.isSparseByDim(GetHandleElementNum(h)) );
 		void * data = MGetLink(h,tag);
 		if( data != NULL )
 		{
@@ -1769,7 +1772,7 @@ namespace INMOST
 	void Mesh::DelSparseData(HandleType h,const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
-		assert( tag.isSparseNum(GetHandleElementNum(h)) );
+		assert( tag.isSparseByDim(GetHandleElementNum(h)) );
 		sparse_type & s = MGetSparseLink(h);
 		for(sparse_type::size_type i = 0; i < s.size(); ++i) if( s[i].tag == tag.mem )
 		{
@@ -1793,7 +1796,7 @@ namespace INMOST
 	bool  Mesh::HaveData(HandleType h,const Tag & tag) const 
 	{
 		integer n = GetHandleElementNum(h);
-		if(tag.isSparseNum(n)) 
+		if(tag.isSparseByDim(n)) 
 		{ 
 			if( MGetSparseLink(h,tag) != NULL ) 
 				return true; 
@@ -1801,7 +1804,7 @@ namespace INMOST
 		} 
 		else 
 		{
-			if( tag.GetPositionNum(n) != ENUMUNDEF ) 
+			if( tag.GetPositionByDim(n) != ENUMUNDEF ) 
 				return true; 
 			return false;
 		}

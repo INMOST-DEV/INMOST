@@ -349,7 +349,7 @@ namespace INMOST
 			{
 #if !defined(LAZY_SPARSE_ALLOCATION)
 				for(int j = 0; j < 6; j++) 
-					if( tags[i].isSparseNum(j) ) have_sparse[j] = true;
+					if( tags[i].isSparseByDim(j) ) have_sparse[j] = true;
 #endif
 				if( tags[i] == tag )
 				{
@@ -399,9 +399,9 @@ namespace INMOST
 #endif
 		for(iteratorTag t = tags.begin(); t != tags.end(); ++t)
 		{
-			if( t->isDefined(1 << etypenum) ) 
+			if( t->isDefinedByDim(etypenum) ) 
 			{
-				if( !t->isSparse(1 << etypenum) ) 
+				if( !t->isSparseByDim(etypenum) ) 
 					ReallocateData(*t,etypenum,new_size);
 #if !defined(LAZY_SPARSE_ALLOCATION)
 				else 
@@ -424,7 +424,7 @@ namespace INMOST
 	
 	void TagManager::ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size)
 	{
-		INMOST_DATA_ENUM_TYPE        data_pos    = t.GetPositionNum(etypenum);
+		INMOST_DATA_ENUM_TYPE        data_pos    = t.GetPositionByDim(etypenum);
 		INMOST_DATA_ENUM_TYPE        data_size   = t.GetSize();
 		TagManager::dense_sub_type & arr         = GetDenseData(data_pos);
 		INMOST_DATA_ENUM_TYPE        old_size    = static_cast<INMOST_DATA_ENUM_TYPE>(arr.size());

@@ -163,7 +163,7 @@ namespace INMOST
 	{
 		assert(GetElementType() == ESET);
 		std::string ret;
-		bulk_array arr = BulkArrayDF(GetMeshLink()->SetNameTag());
+		bulk_array arr = BulkArrayDV(GetMeshLink()->SetNameTag());
 		ret.resize(arr.size());
 		for(bulk_array::size_type it = 0; it < arr.size(); ++it)
 			ret[it] = arr[it];

@@ -9,10 +9,7 @@ namespace INMOST
 	{
 		handle = other.handle; 
 		if( handle_link != NULL ) 
-		{
-			assert(m_link == other.m_link);
 			*handle_link = handle; 
-		}
 		else handle_link = other.handle_link; //if other have remote link this will copy this link and current will also be remote
 		m_link = other.m_link; 
 		return *this;

@@ -43,7 +43,7 @@
 // output xml files for debugging of parallel algorithms
 // search for style.xsl within examples for comfortable
 // view of generated xml files
-#define USE_PARALLEL_WRITE_TIME
+//#define USE_PARALLEL_WRITE_TIME
 
 // this will revert Mesh::PrepareReceiveInner to always
 // use MPI point to point functionality disregarding problem type

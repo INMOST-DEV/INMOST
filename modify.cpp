@@ -2006,6 +2006,7 @@ public:
 			}
 		}
 		//need to gather the set of deleted elements
+		/*//old approach
 		ElementSet erase = CreateSet("TEMPORARY_ERASE_SET").first;
 		for(ElementType etype = NODE; etype <= ESET; etype = etype << 1)
 		{
@@ -2017,9 +2018,25 @@ public:
 		//in case any algorithm further will use this fact (Subtract currently would not use this fact)
 		//but may use by retriving lower_bound/higher_bound O(log(n)) operations to narrow performed operations
 		erase->BulkDF(SetComparatorTag()) = ElementSet::HANDLE_COMPARATOR;
+		*/
 		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
-			it->Subtract(erase);
-		Destroy(erase);
+		{
+			if( it->HaveParent() && it->GetParent()->Hidden() )
+				it->GetParent()->RemChild(it->self());
+			while( it->HaveChild() && it->GetChild()->Hidden() )
+				it->RemChild(it->GetChild());
+			while( it->HaveSibling() && it->GetSibling()->Hidden() )
+				it->RemSibling(it->GetSibling());
+			ElementSet::iterator jt = it->Begin();
+			while(jt != it->End() )
+			{
+				if( jt->Hidden() ) 
+					jt = it->Erase(jt);
+				else ++jt;
+			}
+			//it->Subtract(erase); //old approach
+		}
+		//Destroy(erase);//old approach
 	}
 
 	void Mesh::ResolveModification()
@@ -2056,6 +2073,14 @@ public:
 		ElementType htype = GetHandleElementType(h);
 		if( htype & (NODE|EDGE|FACE|CELL) )
 			ElementByHandle(h).Disconnect(true);
+		else if( htype & ESET )
+		{
+			ElementSet eset(this,h);
+			if( eset->HaveParent() )
+				eset->GetParent()->RemChild(eset);
+			while( eset->HaveChild() )
+				eset->RemChild(eset->GetChild());
+		}
 		for(iteratorTag t = BeginTag(); t != EndTag(); ++t) 
 			if( t->isDefined(htype) ) DelData(h,*t);
 		UntieElement(GetHandleElementNum(h),GetHandleID(h));

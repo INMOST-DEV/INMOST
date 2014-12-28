@@ -414,13 +414,16 @@ namespace INMOST
 			if( types == ORIENTATION )
 			{
 				if( mask & FACE )
-					for(integer e = 0; e < FaceLastLocalID(); ++e) if( isValidElement(FACE,e) )
-						Face(this,e)->FixNormalOrientation();
+					for(integer e = 0; e < FaceLastLocalID(); ++e) 
+					{
+						if( isValidElement(FACE,e) )
+							Face(this,ComposeHandle(FACE,e))->FixNormalOrientation();
+					}
 				ShowGeometricData(ORIENTATION,FACE);
 			}
 			if( types == MEASURE )
 			{
-				for(integer etype = EDGE; etype <= CELL; etype = etype << 1)
+				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(MEASURE,etype))
 					{
@@ -436,7 +439,7 @@ namespace INMOST
 			}
 			if( types == CENTROID )
 			{
-				for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
+				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(CENTROID,etype))
 					{
@@ -452,7 +455,7 @@ namespace INMOST
 			}
 			if( types == BARYCENTER )
 			{
-				for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
+				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(BARYCENTER,etype))
 					{
@@ -468,7 +471,7 @@ namespace INMOST
 			}
 			if( types == NORMAL )
 			{
-				for(ElementType etype = FACE; etype <= CELL; etype = etype << 1)
+				for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(NORMAL,etype))
 					{
@@ -693,15 +696,17 @@ namespace INMOST
 			else
 			{
 				ElementArray<Node> nodes = Element(this,e)->getNodes();
-				Storage::real div = 1.0/nodes.size();
 				memset(ret,0,sizeof(real)*mdim);
-				assert(nodes.size() != 0);
-				for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
+				if(nodes.size() != 0)
 				{
-					Storage::real_array c =nodes[i].Coords();
-					for(integer j = 0; j < mdim; j++) ret[j] += c[j];
+					Storage::real div = 1.0/nodes.size();
+					for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
+					{
+						Storage::real_array c =nodes[i].Coords();
+						for(integer j = 0; j < mdim; j++) ret[j] += c[j];
+					}
+					for(integer j = 0; j < mdim; j++) ret[j] *= div;
 				}
-				for(integer j = 0; j < mdim; j++) ret[j] *= div;
 			}
 			break;
 			case BARYCENTER:
