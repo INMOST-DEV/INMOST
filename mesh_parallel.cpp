@@ -3239,7 +3239,7 @@ namespace INMOST
 			ret.clear();
 		else
 		{
-			ret.resize((recv_reqs.size(),-1));
+			ret.resize(recv_reqs.size(),-1);
 			if( !recv_reqs.empty() )
 			{
 				REPORT_MPI(MPI_Waitsome(static_cast<INMOST_MPI_SIZE>(recv_reqs.size()),&recv_reqs[0],&outcount,&ret[0],MPI_STATUSES_IGNORE));
