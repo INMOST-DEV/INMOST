@@ -40,7 +40,7 @@ int main(int argc, char ** argv)
 		Solver::Vector b("rhs"); // Declare the right-hand side vector
 		Solver::Vector x("sol"); // Declare the solution vector
 		//std::cout << rank << " load matrix from " << std::string(argv[2]) << " ..." << std::endl;
-		long double t = Timer(), tt = Timer();
+		double t = Timer(), tt = Timer();
 		mat.Load(std::string(argv[2])); //if interval parameters not set, matrix will be divided automatically
 		BARRIER
 		if( !rank ) std::cout << "load matrix: " << Timer() - t << std::endl;

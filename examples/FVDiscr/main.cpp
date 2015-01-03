@@ -128,7 +128,7 @@ int main(int argc,char ** argv)
 		Solver::Matrix A; // Declare the matrix of the linear system to be solved
 		Solver::Vector x,b; // Declare the solution and the right-hand side vectors
 		
-		std::map<GeometricData,ElementType> table;
+		tiny_map<GeometricData,ElementType,5> table;
 		
 		table[MEASURE] = CELL | FACE;
 		table[CENTROID] = CELL | FACE;
@@ -160,10 +160,10 @@ int main(int argc,char ** argv)
 		{
 			//~ std::cout << face->LocalID() << " / " << m->NumberOfFaces() << std::endl;
 			Element::Status s1,s2;
-			Cell * r1 = face->BackCell();
-			Cell * r2 = face->FrontCell();
-			if( ((r1 == NULL || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +
-			    ((r2 == NULL || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
+			Cell r1 = face->BackCell();
+			Cell r2 = face->FrontCell();
+			if( ((!r1->isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +
+			    ((!r2->isValid() || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
 			Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1[3], Coef;
 			Storage::real f_area = face->Area(); // Get the face area
 			Storage::real vol1 = r1->Volume(), vol2; // Get the cell volume
@@ -175,7 +175,7 @@ int main(int argc,char ** argv)
 			f_nrm[2] /= f_area;
 			r1->Barycenter(r1_cnt);  // Get the barycenter of the cell
 			face->Barycenter(f_cnt); // Get the barycenter of the face
-			if( r2 == NULL ) // boundary condition
+			if( !r2->isValid() ) // boundary condition
 			{
 				Storage::real bnd_pnt[3], dist;
 				make_vec(f_cnt,r1_cnt,d1);
@@ -266,7 +266,7 @@ int main(int argc,char ** argv)
 		if( m->GetProcessorRank() == 0 ) std::cout << "Retrive data: " << Timer()-ttt << std::endl;
 
 		ttt = Timer();
-		m->ExchangeData(phi,CELL); // Data exchange over processors
+		m->ExchangeData(phi,CELL,0); // Data exchange over processors
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange phi: " << Timer()-ttt << std::endl;
 

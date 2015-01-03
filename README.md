@@ -29,7 +29,7 @@ rm -f petsc-3.4.5.tar.gz
 cd petsc-3.4.5
 export PETSC_DIR="`pwd`"
 export PETSC_ARCH=linux-gnu-opt
-./configure --download-f-blas-lapack --download-metis --download-parmetis  --useThreads=0 --with-debugging=0 --with-mpi-dir=/usr --with-x=0 –with-shared-libraries=0
+./configure --download-f-blas-lapack --download-metis --download-parmetis  --useThreads=0 --with-debugging=0 --with-mpi-dir=/usr --with-x=0 --with-shared-libraries=0
 make all
 ```
 
@@ -39,20 +39,19 @@ Download and unpack INMOST source archive.
 ```
 cd "$INMOST_LIBS"
 wget https://github.com/INM-RAS/INMOST/archive/master.tar.gz
-tar zxf INMOST-master.tar.gz
+tar zxf master.tar.gz
 rm -f INMOST-master.tar.gz
 ```
 
 We will create separate directory for INMOST compilation.
-Depending on your version of gcc compiler you may need one of these flags for `CMAKE_CXX_FLAGS variable`: `"-std=c++11"` or `"-std=c++0x"`.
 ```
 mkdir -p INMOST-build
 cd INMOST-build
-cmake -DUSE_AUTODIFF=OFF -DUSE_SOLVER_PETSC=ON -DUSE_PARTITIONER_PARMETIS=ON  -DCMAKE_CXX_FLAGS="-std=c++11" -DCOMPILE_EXAMPLES=ON ../INMOST-master
+cmake -DUSE_AUTODIFF=OFF -DUSE_SOLVER_PETSC=ON -DUSE_PARTITIONER=OFF -DCOMPILE_EXAMPLES=ON ../INMOST-master
 make
 ```
 
-## Examples 
+## Examples
 
 Several representative examples are provided in source archive.
 Here we will try three parallel steps: grid generation, FVM discretization and linear matrix solution.
@@ -60,11 +59,11 @@ Each example may be executed in serial or parallel ways.
 
 ### Parallel Grid Generation
 
-This example creates simple cubic or prismatic mesh. You can use ParaView to 
+This example creates simple cubic or prismatic mesh. You can use ParaView to view the meshes.
 ```
 cd "$INMOST_LIBS/INMOST-build"
 cd examples/GridGen
-mpirun -np 4 GrdiGen 3 32 32 4
+mpirun -np 4 ./GridGen 4 32 32 32
 ```
 Generator parameters are: `ng nx ny nz`
 where `ng=3` stands for Prismatic generator and
@@ -83,11 +82,11 @@ and try the following tags in objects to display:
 This example uses simple two-point FVM scheme to solve Laplace's equation in unit cube domain.
 ```
 cd ../FVDiscr
-mpirun -np 4 FVDiscr ../GridGen/grid.pvtk A.mtx b.rhs
+mpirun -np 4 ./FVDiscr ../GridGen/grid.pvtk A.mtx b.rhs
 ```
 Files result.pvtk (as well as result_X.vtk with X=0,1,2,3) and A.mtx b.rhs will appear in the current directory.
 Run
-`paraview --data=grid.pvtk`
+`paraview --data=result.pvtk`
 and try the following tags in objects to display:
 - `Solution` – the solution to the problem
 - `K` – tensor K (constant equal to 1 in this example)
@@ -96,8 +95,8 @@ and try the following tags in objects to display:
 
 This example solves the linear system using different solvers.
 ```
-cd ../FVDiscr
-mpirun -np 4 MatSolve 0 ../FVDiscr/A.mtx ../FVDiscr/b.rhs
+cd ../MatSolve
+mpirun -np 4 ./MatSolve 0 ../FVDiscr/A.mtx ../FVDiscr/b.rhs
 ```
 Solution time and the true residual will output to the screen.
 The first parameter selects the solver:

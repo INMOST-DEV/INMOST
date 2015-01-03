@@ -71,7 +71,7 @@ Mesh * ParallelCubeGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 		localend[j] = localstart[j] + localsize[j];
 	}
 
-	std::vector<Node *> newverts;
+	ElementArray<Node> newverts(m);
 	newverts.reserve(localsize[0]*localsize[1]*localsize[2]);
 
 	for(int i = localstart[0]; i <= localend[0]; i++)
@@ -83,7 +83,7 @@ Mesh * ParallelCubeGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 				xyz[1] = j * 1.0 / (sizes[1]);
 				xyz[2] = k * 1.0 / (sizes[2]);
 				newverts.push_back(m->CreateNode(xyz)); // Create node in the mesh
-				if( ((int)newverts.size()-1) != V_ID(i,j,k))
+				if( newverts.size() != V_ID(i,j,k) + 1 )
 					printf("v_id = %ld, [%d,%d,%d] = %d\n", newverts.size()-1,i,j,k, V_ID(i, j, k));
 			}
 		
@@ -95,17 +95,17 @@ Mesh * ParallelCubeGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 		for(int j = localstart[1]+1; j <= localend[1]; j++)
 			for(int k = localstart[2]+1; k <= localend[2]; k++)
 			{
-				const INMOST_DATA_ENUM_TYPE nvf[24] = {0,4,6,2,1,3,7,5,0,1,5,4,2,6,7,3,0,2,3,1,4,5,7,6};
-				const INMOST_DATA_ENUM_TYPE numnodes[6] = { 4, 4, 4, 4, 4, 4 };
-				Node * verts[8];
-				verts[0] = newverts[V_ID(i - 1,j - 1, k - 1)];
-				verts[1] = newverts[V_ID(i - 0,j - 1, k - 1)];
-				verts[2] = newverts[V_ID(i - 1,j - 0, k - 1)];
-				verts[3] = newverts[V_ID(i - 0,j - 0, k - 1)];
-				verts[4] = newverts[V_ID(i - 1,j - 1, k - 0)];
-				verts[5] = newverts[V_ID(i - 0,j - 1, k - 0)];
-				verts[6] = newverts[V_ID(i - 1,j - 0, k - 0)];
-				verts[7] = newverts[V_ID(i - 0,j - 0, k - 0)];
+				const INMOST_DATA_INTEGER_TYPE nvf[24] = {0,4,6,2,1,3,7,5,0,1,5,4,2,6,7,3,0,2,3,1,4,5,7,6};
+				const INMOST_DATA_INTEGER_TYPE numnodes[6] = { 4, 4, 4, 4, 4, 4 };
+				ElementArray<Node> verts(m);
+				verts.push_back(newverts[V_ID(i - 1,j - 1, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 1, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 1,j - 0, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 0, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 1,j - 1, k - 0)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 1, k - 0)]);
+				verts.push_back(newverts[V_ID(i - 1,j - 0, k - 0)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 0, k - 0)]);
 
 				m->CreateCell(verts,nvf,numnodes,6).first; // Create the cubic cell in the mesh
 			}
@@ -176,7 +176,7 @@ Mesh * ParallelCubePrismGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 		localend[j] = localstart[j] + localsize[j];
 	}
 
-	std::vector<Node *> newverts;
+	ElementArray<Node> newverts(m);
 	newverts.reserve(localsize[0]*localsize[1]*localsize[2]);
 
 	for(int i = localstart[0]; i <= localend[0]; i++)
@@ -188,7 +188,7 @@ Mesh * ParallelCubePrismGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 				xyz[1] = j * 1.0 / (sizes[1]);
 				xyz[2] = k * 1.0 / (sizes[2]);
 				newverts.push_back(m->CreateNode(xyz)); // Create node in the mesh
-				if( ((int)newverts.size()-1) != V_ID(i,j,k))
+				if( newverts.size() != V_ID(i,j,k) + 1 )
 					printf("v_id = %ld, [%d,%d,%d] = %d\n", newverts.size()-1,i,j,k, V_ID(i, j, k));
 			}
 
@@ -202,23 +202,23 @@ Mesh * ParallelCubePrismGenerator(INMOST_MPI_Comm comm, int nx, int ny, int nz)
 		for(int j = localstart[1]+1; j <= localend[1]; j++)
 			for(int k = localstart[2]+1; k <= localend[2]; k++)
 			{
-				const INMOST_DATA_ENUM_TYPE NE_nvf1[18] = {0,4,6,2,0,3,7,4,2,6,7,3,0,2,3,4,7,6};
-				const INMOST_DATA_ENUM_TYPE NE_nvf2[18] = {0,4,7,3,1,3,7,5,0,1,5,4,0,3,1,4,5,7};
+				const INMOST_DATA_INTEGER_TYPE NE_nvf1[18] = {0,4,6,2,0,3,7,4,2,6,7,3,0,2,3,4,7,6};
+				const INMOST_DATA_INTEGER_TYPE NE_nvf2[18] = {0,4,7,3,1,3,7,5,0,1,5,4,0,3,1,4,5,7};
 
-				const INMOST_DATA_ENUM_TYPE NE_nvf3[18] = {0,4,6,2,2,6,5,1,1,5,4,0,0,2,1,4,5,6};
-				const INMOST_DATA_ENUM_TYPE NE_nvf4[18] = {1,5,6,2,1,3,7,5,7,3,2,6,1,2,3,6,5,7};
+				const INMOST_DATA_INTEGER_TYPE NE_nvf3[18] = {0,4,6,2,2,6,5,1,1,5,4,0,0,2,1,4,5,6};
+				const INMOST_DATA_INTEGER_TYPE NE_nvf4[18] = {1,5,6,2,1,3,7,5,7,3,2,6,1,2,3,6,5,7};
 
-				const INMOST_DATA_ENUM_TYPE numnodes[5] = {4,4,4,3,3};
+				const INMOST_DATA_INTEGER_TYPE numnodes[5] = {4,4,4,3,3};
 
-				Node * verts[8];
-				verts[0] = newverts[V_ID(i - 1,j - 1, k - 1)];
-				verts[1] = newverts[V_ID(i - 0,j - 1, k - 1)];
-				verts[2] = newverts[V_ID(i - 1,j - 0, k - 1)];
-				verts[3] = newverts[V_ID(i - 0,j - 0, k - 1)];
-				verts[4] = newverts[V_ID(i - 1,j - 1, k - 0)];
-				verts[5] = newverts[V_ID(i - 0,j - 1, k - 0)];
-				verts[6] = newverts[V_ID(i - 1,j - 0, k - 0)];
-				verts[7] = newverts[V_ID(i - 0,j - 0, k - 0)];
+				ElementArray<Node> verts(m);
+				verts.push_back(newverts[V_ID(i - 1,j - 1, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 1, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 1,j - 0, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 0, k - 1)]);
+				verts.push_back(newverts[V_ID(i - 1,j - 1, k - 0)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 1, k - 0)]);
+				verts.push_back(newverts[V_ID(i - 1,j - 0, k - 0)]);
+				verts.push_back(newverts[V_ID(i - 0,j - 0, k - 0)]);
 
 				// Create two prismatic cells in the mesh
 				if ((i + j) % 2 == 0)
@@ -280,10 +280,14 @@ int main(int argc, char *argv[])
 		filename += ".vtk";
 	else
 		filename += ".pvtk";
+#if defined(USE_MPI)
 	MPI_Barrier(mesh->GetCommunicator());
+#endif
 	tt = Timer();
 	mesh->Save(filename); // Save constructed mesh to the file
+#if defined(USE_MPI)
 	MPI_Barrier(mesh->GetCommunicator());
+#endif
 	tt = Timer() - tt;
 	if( mesh->GetProcessorRank() == 0 ) std::cout << "Save to file \"" << filename << "\" time: " << tt << std::endl;
 
