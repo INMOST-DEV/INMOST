@@ -998,7 +998,7 @@ namespace INMOST
 			recvdata.resize(totsize);
 		}
 		else recvdata.resize(1); //protect from dereferencing null
-		MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_INT,0,GetCommunicator());
+		MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_CHAR,0,GetCommunicator());
 		if( rank == 0 )
 		{
 			std::fstream output(file.c_str(),std::ios::out);
@@ -1083,7 +1083,7 @@ namespace INMOST
 			recvdata.resize(totsize);
 		}
 		else recvdata.resize(1); //protect from dereferencing null
-		MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_INT,0,GetCommunicator());
+		MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_CHAR,0,GetCommunicator());
 		if( rank == 0 )
 		{
 			std::fstream output(file.c_str(),std::ios::out);
