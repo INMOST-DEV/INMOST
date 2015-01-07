@@ -407,12 +407,14 @@ namespace INMOST
 	
 	void Mesh::PrepareGeometricData(GeomParam table)
 	{
+		std::sort(&*table.begin(),&*table.end());
 		for(GeomParam::iterator it = table.begin(); it != table.end(); ++it)
 		{
 			GeometricData types = it->first;
 			ElementType mask = it->second;
 			if( types == ORIENTATION )
 			{
+				//std::cout << "ORIENTATION" << std::endl;
 				if( mask & FACE )
 					for(integer e = 0; e < FaceLastLocalID(); ++e) 
 					{
@@ -423,6 +425,7 @@ namespace INMOST
 			}
 			if( types == MEASURE )
 			{
+				//std::cout << "MEASURE" << std::endl;
 				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(MEASURE,etype))
@@ -439,6 +442,7 @@ namespace INMOST
 			}
 			if( types == CENTROID )
 			{
+				//std::cout << "CENTROID" << std::endl;
 				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(CENTROID,etype))
@@ -455,6 +459,7 @@ namespace INMOST
 			}
 			if( types == BARYCENTER )
 			{
+				//std::cout << "BARYCENTER" << std::endl;
 				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(BARYCENTER,etype))
@@ -471,6 +476,7 @@ namespace INMOST
 			}
 			if( types == NORMAL )
 			{
+				//std::cout << "NORMAL" << std::endl;
 				for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 				{
 					if( (mask & etype) && !HaveGeometricData(NORMAL,etype))
