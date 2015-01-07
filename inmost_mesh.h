@@ -1233,8 +1233,10 @@ namespace INMOST
 		__INLINE void *                   MGetLink           (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
 	public:
 		/// For debug purposes
-		integer RetriveDataPositionForHandle(HandleType h) {return links[GetHandleElementNum(h)][GetHandleID(h)];}
-		
+		integer                           HandleDataPos      (HandleType h) {return links[GetHandleElementNum(h)][GetHandleID(h)];}
+		/// For parmetis
+		/// return total number in bytes of occupied memory by element and its data
+		enumerator                        MemoryUsage        (HandleType h);
 		Mesh();
 		Mesh(const Mesh & other);
 		Mesh & operator =(Mesh const & other);

@@ -126,6 +126,37 @@ namespace INMOST
 		allocated_meshes.push_back(this);
 #endif
 	}
+
+	Storage::enumerator Mesh::MemoryUsage(HandleType h)
+	{
+		if( isValidHandle(h) )
+		{
+			integer etypenum = GetHandleElementNum(h);
+			enumerator ret = 2*sizeof(integer); //link and address occupied
+			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); ++t)
+			{
+				if( t->isDefinedByDim(etypenum) )
+				{
+					bool have_data = true;
+					if( t->isSparseByDim(etypenum) )
+					{
+						have_data = HaveData(h,*t);
+						if( have_data ) 
+							ret += sizeof(sparse_sub_record); //size occupied for storage of data link
+					}
+					if( have_data )
+					{
+						ret += t->GetRecordSize(); //all utilized data for fixed data, size of support structure for variable data
+						if( t->GetSize() == ENUMUNDEF )
+							ret += GetDataSize(h,*t)*t->GetBytesSize(); //actually occupied size for sparse data
+					}
+				}
+				if( !sparse_data[etypenum].empty() ) ret += sizeof(sparse_sub_type); //size needed to support sparse data
+			}
+			//Any additional impact of supporting huge structures over all elements may be added later
+		}
+		else return 0;
+	}
 	
 	Mesh::Mesh(const Mesh & other)
 	:TagManager(other),Storage(NULL,ComposeHandle(MESH,0))

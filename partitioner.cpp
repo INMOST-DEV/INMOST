@@ -24,10 +24,10 @@
 #define EXIT_FUNC() m->WriteTab(m->GetStream()) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->GetStream()) << "</FUNCTION>" << std::endl;
 #else
 #define REPORT_MPI(x) x
-#define REPORT_STR(x) 
-#define REPORT_VAL(str,x)
-#define ENTER_FUNC()
-#define EXIT_FUNC() 
+#define REPORT_STR(x) {}
+#define REPORT_VAL(str,x) {}
+#define ENTER_FUNC() {}
+#define EXIT_FUNC() {}
 #endif
 
 namespace INMOST
@@ -494,7 +494,7 @@ namespace INMOST
 			
 			if( m->GetMeshState() != Mesh::Parallel )  
 				m->ResolveShared();
-			if( m->Integer(m->LayersTag()) == 0 ) 
+			if( m->Integer(m->GetHandle(),m->LayersTag()) == 0 ) 
 				m->ExchangeGhost(1,FACE);
 			//~ if( !m->GlobalIDTag().isValid() || !m->GlobalIDTag().isDefined(CELL) )
 				m->AssignGlobalID(CELL);
@@ -546,6 +546,11 @@ namespace INMOST
 			if( pa == Repartition ) 
 			{
 				vsize.resize(mysize,1);
+				int k = 0;
+				for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) if( it->GetStatus() != Element::Ghost )
+				{
+					vsize[k++] = m->MemoryUsage(*it);
+				}
 			}
 			
 			
@@ -565,11 +570,12 @@ namespace INMOST
 				if( have_adjwgt) adjwgt.reserve(mysize*ncon*nreserve);
 				if( !have_adjwgt && !have_vwgt ) ncon = 1;
 				//set constraint tolerances
-				ubvec.resize(ncon,1.05);
+				const real_t v = static_cast<real_t>(1.05);
+				ubvec.resize(ncon,v);
 				if( have_mwgt )
 				{
 					std::vector<real_t> l_tpwgts(ncon);
-					for(idx_t q = 0; q < ncon; q++) l_tpwgts[q] = m->RealArray(GetWeight())[q];
+					for(idx_t q = 0; q < ncon; q++) l_tpwgts[q] = static_cast<real_t>(m->RealArray(m->GetHandle(),GetWeight())[q]);
 					REPORT_MPI(MPI_Allgather(&l_tpwgts[0],ncon,IDX_T,&tpwgts[0],ncon,IDX_T,m->GetCommunicator()));
 					
 					for(idx_t j = 0; j < ncon; j++)
@@ -581,7 +587,7 @@ namespace INMOST
 				}
 				else
 				{
-					double c = 1.0/(double)nparts;
+					real_t c = static_cast<real_t>(1.0/static_cast<real_t>(nparts));
 					tpwgts.resize(nparts*ncon,c);
 				}
 			}			
@@ -611,25 +617,29 @@ namespace INMOST
 			
 			//make graph
 			int k = 0;
-			adjacent<Face> faces,cells;
 			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 			if( it->GetStatus() != Element::Ghost )
 			{
 				idx_t sum = 0;
 				if( pa == Partition )
-					it->Centroid(&xyz[k*dim]);
 				{
-					faces = it->getFaces();
-					for(adjacent<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
+					Storage::real xyz_temp[3] = {0.0,0.0,0.0};
+					it->Centroid(xyz_temp);
+					for(int q = 0; q < m->GetDimensions(); ++q)
+						xyz[k*dim+q] = static_cast<real_t>(xyz_temp[q]);
+				}
+				{
+					ElementArray<Face> faces = it->getFaces();
+					for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
 					{
-						Cell * n = it->Neighbour(&*jt);
-						if( n != NULL )
+						Cell n = it->Neighbour(jt->self());
+						if( n.isValid() )
 						{
 							adjncy.push_back(n->GlobalID());
 							if( have_adjwgt ) 
 							{
 								for(idx_t q = 0; q < ncon; q++) 
-									adjwgt.push_back(jt->RealArrayDF(GetWeight())[q]);
+									adjwgt.push_back(jt->RealArray(GetWeight())[q]); //why adjwgt is not real???
 							}
 							sum++;
 						}
@@ -641,7 +651,7 @@ namespace INMOST
 					if( have_vwgt )
 					{
 						for(idx_t q = 0; q < ncon; q++)
-							vwgt[k*ncon+q] = it->RealArrayDF(GetWeight())[q];
+							vwgt[k*ncon+q] = it->RealArrayDF(GetWeight())[q]; //why vwgt is not real???
 					}
 				}
 				k++;
@@ -889,8 +899,30 @@ namespace INMOST
 			
 			MPI_Comm comm = m->GetCommunicator();
 			
+			idx_t  * link_vtxdist = vtxdist.empty() ? NULL : &vtxdist[0];
+			idx_t  * link_xadj    = xadj.empty()    ? NULL : &xadj[0];
+			idx_t  * link_adjncy  = adjncy.empty()  ? NULL : &adjncy[0];
+			idx_t  * link_vwgt    = vwgt.empty()    ? NULL : &vwgt[0];
+			idx_t  * link_adjwgt  = adjwgt.empty()  ? NULL : &adjwgt[0];
+			real_t * link_tpwgts  = tpwgts.empty()  ? NULL : &tpwgts[0];
+			real_t * link_ubvec   = ubvec.empty()   ? NULL : &ubvec[0];
+			idx_t  * link_options = options.empty() ? NULL : &options[0];
+			idx_t  * link_part    = part.empty()    ? NULL : &part[0];
+			real_t * link_xyz     = xyz.empty()     ? NULL : &xyz[0];
+			idx_t  * link_vsize   = vsize.empty()   ? NULL : &vsize[0];
 			
-			
+			REPORT_VAL("vtxdist",link_vtxdist);
+			REPORT_VAL("xadj",link_xadj);
+			REPORT_VAL("adjncy",link_adjncy);
+			REPORT_VAL("vwgt",link_vwgt);
+			REPORT_VAL("adjwgt",link_adjwgt);
+			REPORT_VAL("tpwgts",link_tpwgts);
+			REPORT_VAL("ubvec",link_ubvec);
+			REPORT_VAL("options",link_options);
+			REPORT_VAL("part",link_part);
+			REPORT_VAL("xyz",link_xyz);
+			REPORT_VAL("vsize",link_vsize);
+
 			switch(pa)
 			{
 				//~ case Partition:
@@ -899,22 +931,25 @@ namespace INMOST
 											  //~ &ubvec[0],&options[0],&edgecut,&part[0],&comm);
 				//~ break;
 				case Refine:
-				result = ParMETIS_V3_RefineKway(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&adjwgt[0],
-												&wgtflag,&numflag,&ncon,&nparts,&tpwgts[0],
-												&ubvec[0],&options[0],&edgecut,&part[0],&comm);	
+				REPORT_STR("run refine");
+				result = ParMETIS_V3_RefineKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
+												&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
+												link_ubvec,link_options,&edgecut,link_part,&comm);	
 				break;
 				case Partition:
-				result = ParMETIS_V3_PartGeomKway(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&adjwgt[0],
-												  &wgtflag,&numflag,&ndims,&xyz[0],&ncon,&nparts,&tpwgts[0],
-												  &ubvec[0],&options[0],&edgecut,&part[0],&comm);
+				REPORT_STR("run partition");
+				result = ParMETIS_V3_PartGeomKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
+												  &wgtflag,&numflag,&ndims,link_xyz,&ncon,&nparts,link_tpwgts,
+												  link_ubvec,link_options,&edgecut,link_part,&comm);
 				break;
 				//~ case P_PartGeom:
 				//~ result = ParMETIS_V3_PartGeom(&vtxdist[0],&ndims,&xyz[0],&part[0],&comm);
 				//~ break;
 				case Repartition:
-				result = ParMETIS_V3_AdaptiveRepart(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&vsize[0],&adjwgt[0],
-													&wgtflag,&numflag,&ncon,&nparts,&tpwgts[0],
-													&ubvec[0],&itr,&options[0],&edgecut,&part[0],&comm);
+				REPORT_STR("run repartition");
+				result = ParMETIS_V3_AdaptiveRepart(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_vsize,
+													link_adjwgt,&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
+													link_ubvec,&itr,link_options,&edgecut,link_part,&comm);
 				break;
 			}
 			
