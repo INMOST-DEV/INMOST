@@ -88,21 +88,23 @@ int main(int argc,char ** argv)
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
 		
 #if defined(USE_PARTITIONER)
-		ttt = Timer();
-		Partitioner * p = new Partitioner(m);
-		p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition); // Specify the partitioner
-		p->Evaluate(); // Compute the partitioner and store new processor ID in the mesh
-		delete p;
-		BARRIER
-	
-		if( m->GetProcessorRank() == 0 ) std::cout << "Evaluate: " << Timer()-ttt << std::endl;
-		
-		ttt = Timer();
-		m->Redistribute(); // Redistribute the mesh data
-		m->ReorderEmpty(CELL|FACE|EDGE|NODE); // Clean the data after reordring
-		BARRIER
-	
-		if( m->GetProcessorRank() == 0 ) std::cout << "Redistribute: " << Timer()-ttt << std::endl;
+		if (!repartition) { // currently only non-distributed meshes are supported by Inner_RCM partitioner
+			ttt = Timer();
+			Partitioner * p = new Partitioner(m);
+			p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition); // Specify the partitioner
+			p->Evaluate(); // Compute the partitioner and store new processor ID in the mesh
+			delete p;
+			BARRIER
+
+			if( m->GetProcessorRank() == 0 ) std::cout << "Evaluate: " << Timer()-ttt << std::endl;
+
+			ttt = Timer();
+			m->Redistribute(); // Redistribute the mesh data
+			m->ReorderEmpty(CELL|FACE|EDGE|NODE); // Clean the data after reordring
+			BARRIER
+
+			if( m->GetProcessorRank() == 0 ) std::cout << "Redistribute: " << Timer()-ttt << std::endl;
+		}
 #endif
 		
 		ttt = Timer();
@@ -128,13 +130,13 @@ int main(int argc,char ** argv)
 		Solver::Matrix A; // Declare the matrix of the linear system to be solved
 		Solver::Vector x,b; // Declare the solution and the right-hand side vectors
 		
-		tiny_map<GeometricData,ElementType,5> table;
+		Mesh::GeomParam table;
 		
-		table[MEASURE] = CELL | FACE;
 		table[CENTROID] = CELL | FACE;
-		table[BARYCENTER] = CELL | FACE;
 		table[NORMAL] = FACE;
 		table[ORIENTATION] = FACE;
+		table[MEASURE] = CELL | FACE;
+		table[BARYCENTER] = CELL | FACE;
 		m->PrepareGeometricData(table);
 		//~ BARRIER
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
