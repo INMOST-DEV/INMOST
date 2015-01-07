@@ -8,10 +8,10 @@ namespace INMOST
 		for(integer i = 0; i < m->GetDimensions(); i++) 
 			if( fabs(a[i]-b[i]) > e ) 
 			{
-				if( a[i] < b[i] ) 
-					return -1;
-				else
+				if( a[i] > b[i] ) 
 					return 1;
+				else
+					return -1;
 			}
 		return 0;
 	}
@@ -21,8 +21,8 @@ namespace INMOST
 		if( a == InvalidHandle() || b == InvalidHandle() ) return a > b;
 		real ca[3] = {0,0,0}, cb[3] = {0,0,0};
 		m->GetGeometricData(a,CENTROID,ca);
-		m->GetGeometricData(b,CENTROID,ca);
-		return Compare(ca,cb) <= 0;
+		m->GetGeometricData(b,CENTROID,cb);
+		return Compare(ca,cb) < 0;
 	}
 
 	bool Mesh::CentroidComparator::operator () (HandleType a, const real * cb)
@@ -30,7 +30,7 @@ namespace INMOST
 		if( a == InvalidHandle() ) return true;
 		real ca[3] = {0,0,0}; 
 		m->GetGeometricData(a,CENTROID,ca);
-		return Compare(ca,cb) <= 0;
+		return Compare(ca,cb) < 0;
 	}
 
 	

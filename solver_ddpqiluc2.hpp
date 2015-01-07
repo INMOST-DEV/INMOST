@@ -7,7 +7,7 @@
 #include "solver_prototypes.hpp"
 //#define REPORT_ILU
 //#undef REPORT_ILU
-#define REPORT_ILU_PROGRESS
+//#define REPORT_ILU_PROGRESS
 //#undef REPORT_ILU_PROGRESS
 using namespace INMOST;
 

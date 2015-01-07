@@ -2065,7 +2065,11 @@ public:
 		if( have_global_id ) AssignGlobalID(have_global_id);
 	}
 
-	
+#if defined(USE_PARALLEL_WRITE_TIME)
+#define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
+#define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
+#endif
+
 	void Mesh::Destroy(HandleType h)
 	{
 		assert(isValidHandleRange(h));

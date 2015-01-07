@@ -1232,6 +1232,9 @@ namespace INMOST
 		__INLINE const void *             MGetLink           (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
 		__INLINE void *                   MGetLink           (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
 	public:
+		/// For debug purposes
+		integer RetriveDataPositionForHandle(HandleType h) {return links[GetHandleElementNum(h)][GetHandleID(h)];}
+		
 		Mesh();
 		Mesh(const Mesh & other);
 		Mesh & operator =(Mesh const & other);
@@ -1936,6 +1939,8 @@ namespace INMOST
 		int &                             GetFuncID          () {return func_id;}
 		std::fstream &                    GetStream          ();
 		std::fstream &                    WriteTab           (std::fstream & f);
+		void                              FinalizeFile       ();
+		static void                       AtExit             (void);
 #endif
 		/// Initial initialization, calls MPI_Initialize, if MPI was not initialized
 		/// it is necessery to invoke this function if you plan to use any parallel algorithms
@@ -2674,7 +2679,7 @@ namespace INMOST
 			GlobalIDComparator(const GlobalIDComparator & other) :m(other.m){}
 			GlobalIDComparator & operator = (GlobalIDComparator const & other) { m = other.m; return *this;}
 			bool operator() (HandleType a, HandleType b) {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->GlobalID(a) < m->GlobalID(b);}
-			bool operator() (HandleType a, integer gid) {if( a == InvalidHandle() ) return false; return m->GlobalID(a) > gid;}
+			bool operator() (HandleType a, integer gid) {if( a == InvalidHandle() ) return false; return m->GlobalID(a) < gid;}
 		};
 
 		class IerarhyComparator

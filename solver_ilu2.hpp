@@ -6,7 +6,7 @@
 #include "inmost_solver.h"
 #include "solver_prototypes.hpp"
 //#define REPORT_ILU
-#define REPORT_ILU_PROGRESS
+//#define REPORT_ILU_PROGRESS
 using namespace INMOST;
 
 #define DEFAULT_TAU 0.005

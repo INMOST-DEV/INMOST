@@ -5,6 +5,25 @@
 
 namespace INMOST
 {
+
+#if defined(USE_PARALLEL_WRITE_TIME)
+	static std::vector<Mesh *> allocated_meshes;
+
+
+	void Mesh::AtExit(void)
+	{
+		while(!allocated_meshes.empty())
+		{
+			if( allocated_meshes.back() != NULL )
+			{
+				allocated_meshes.back()->FinalizeFile();
+			}
+			allocated_meshes.pop_back();
+		}
+	}
+#endif //USE_PARALLEL_WRITE_TIME
+
+
 	const char * TopologyCheckNotifyString(TopologyCheck c)
 	{
 		switch(c)
@@ -72,13 +91,13 @@ namespace INMOST
 		new_element = hide_element = 0;
 
 		memset(remember,0,sizeof(remember));
-		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
-		tag_geom_type     = CreateTag("GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
-		tag_setname       = CreateTag("SET_NAME",DATA_BULK,ESET,NONE);
-		tag_setcomparator = CreateTag("SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
+		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
+		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
+		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
+		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
 		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 			ReallocateData(ElementNum(etype),GetArrayCapacity(ElementNum(etype)));
 
@@ -104,6 +123,7 @@ namespace INMOST
 		out_time << "<Debug>" << std::endl;
 		tab = 1;
 		func_id = 0;
+		allocated_meshes.push_back(this);
 #endif
 	}
 	
@@ -152,13 +172,13 @@ namespace INMOST
 		}
 		//setup system tags shortcuts
 		dim = other.dim;
-		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
-		tag_geom_type     = CreateTag("GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
-		tag_setname       = CreateTag("SET_NAME",DATA_BULK,ESET,NONE);
-		tag_setcomparator = CreateTag("SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
+		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
+		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
+		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
+		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
 		//copy supplimentary values
 		m_state = other.m_state;
 		checkset = other.checkset;
@@ -259,13 +279,13 @@ namespace INMOST
 		}
 		//setup system tags shortcuts
 		dim = other.dim;
-		tag_coords        = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_markers       = CreateTag("MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
-		tag_geom_type     = CreateTag("GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
-		tag_setname       = CreateTag("SET_NAME",DATA_BULK,ESET,NONE);
-		tag_setcomparator = CreateTag("SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
+		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
+		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
+		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
+		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
 		//copy supplimentary values
 		m_state = other.m_state;
 		checkset = other.checkset;
@@ -324,12 +344,15 @@ namespace INMOST
 			MPI_Win_free(&window);
 			//~ MPI_Comm_free(&comm);
 		}
-#endif
-#endif
+#endif //USE_MPI_P2P
+#endif //USE_MPI
 #if defined(USE_PARALLEL_WRITE_TIME)
-		out_time << "</Debug>" << std::endl;
+		FinalizeFile();
 		out_time.close();
-#endif
+		for(size_t q = 0; q < allocated_meshes.size(); ++q)
+			if (allocated_meshes[q] == this)
+				allocated_meshes[q] = NULL;
+#endif //USE_PARALLEL_WRITE_TIME
 		//arrays for data are deallocated inside ~TagManager()
 	}
 	
@@ -1405,7 +1428,11 @@ namespace INMOST
 		}
 	}
 	
-	
+#if defined(USE_PARALLEL_WRITE_TIME)
+#define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
+#define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
+#endif
+
 	void Mesh::UntieElement(integer etypenum, integer ID)
 	{
 #if defined(USE_OMP)
@@ -1417,10 +1444,13 @@ namespace INMOST
 			back_links[etypenum][ADDR] = -1;
 			empty_space[etypenum].push_back(ADDR);
 			empty_links[etypenum].push_back(ID);
+			//REPORT_VAL("destroyed",ComposeHandle(etypenum,ID) << " " << etypenum << " " << ADDR << " " << ID);
 		}
 	}
 	
-	
+
+
+
 	Storage::integer Mesh::TieElement(integer etypenum)
 	{
 		integer ID = -1, ADDR = -1;
@@ -1429,15 +1459,17 @@ namespace INMOST
 #endif
 		{
 			INMOST_DATA_ENUM_TYPE old_size = GetArrayCapacity(etypenum), new_size;
+			//ADDR points to gap in data
 			if( !empty_space[etypenum].empty() && !isMeshModified() )
 			{
 				ADDR = empty_space[etypenum].back();
 				empty_space[etypenum].pop_back();
 			}
-			else 
+			else  //no gaps in data space, number of data entries is equal to total number of links
 			{
-				ADDR = static_cast<integer>(links[etypenum].size());
+				ADDR = static_cast<integer>(links[etypenum].size()-empty_links[etypenum].size());
 			}
+			// ID points to gap in links
 			if( !empty_links[etypenum].empty() )
 			{
 				ID = empty_links[etypenum].back();
@@ -1453,6 +1485,7 @@ namespace INMOST
 			if( new_size != old_size ) ReallocateData(etypenum,new_size);
 			back_links[etypenum][ADDR] = ID;
 			last_created = ComposeHandle(etypenum,ID);
+			//REPORT_VAL("created",last_created << " " << etypenum << " " << ADDR << " " << ID);
 		}
 		return ID;
 	}
