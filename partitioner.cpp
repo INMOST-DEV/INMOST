@@ -58,7 +58,7 @@ namespace INMOST
 				globalID[i] = it->GlobalID();
 				localID[i] = i;
 				for(int j = 0; j < wgt_dim; j++)
-					 obj_wgts[i] = it->RealArray(p->GetWeight())[j];
+					 obj_wgts[i] = static_cast<float>(it->RealArray(p->GetWeight())[j]);
 				i++;
 			}
 	}
@@ -120,11 +120,11 @@ namespace INMOST
 			if( it->GetStatus() != Element::Ghost )
 			{
 				numEdges[i] = 0;
-				adjacent<Face> faces = it->getFaces();
-				for(adjacent<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
+				ElementArray<Face> faces = it->getFaces();
+				for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
 				{
-					Cell * n = it->Neighbour(&*jt);
-					if( n != NULL ) numEdges[i]++;
+					Cell n = it->Neighbour(jt->self());
+					if( n.isValid() ) numEdges[i]++;
 				}		
 				i++;
 			}
@@ -161,16 +161,16 @@ namespace INMOST
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); it++)
 			if( it->GetStatus() != Element::Ghost )
 			{
-				adjacent<Face> faces = it->getFaces();
-				for(adjacent<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
+				ElementArray<Face> faces = it->getFaces();
+				for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
 				{
-					Cell * n = it->Neighbour(&*jt);
-					if( n != NULL )
+					Cell n = it->Neighbour(jt->self());
+					if( n.isValid() )
 					{
 						*nextNbor++ = n->GlobalID();
 						*nextProc++ = n->Integer(m->OwnerTag());
 						for(int j = 0; j < wgt_dim; j++)
-							*nextWgt++ = jt->RealArray(p->GetWeight())[j];
+							*nextWgt++ = static_cast<float>(jt->RealArray(p->GetWeight())[j]);
 					}
 				}		
 				i++;
@@ -380,7 +380,7 @@ namespace INMOST
 			ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
 			int *importProcs, *importToPart, *exportProcs, *exportToPart;
 			int rc;
-			if( m->Integer(m->LayersTag()) == 0 ) m->ExchangeGhost(1,FACE);
+			if( m->Integer(m->GetHandle(),m->LayersTag()) == 0 ) m->ExchangeGhost(1,FACE);
 			
 			rc = Zoltan_LB_Partition(static_cast<struct Zoltan_Struct *>(pzz), /* input (all remaining fields are output) */
 									 &changes,        /* 1 if partitioning was changed, 0 otherwise */ 

@@ -154,6 +154,7 @@ namespace INMOST
 				if( !sparse_data[etypenum].empty() ) ret += sizeof(sparse_sub_type); //size needed to support sparse data
 			}
 			//Any additional impact of supporting huge structures over all elements may be added later
+			return ret;
 		}
 		else return 0;
 	}
