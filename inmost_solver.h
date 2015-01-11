@@ -441,7 +441,7 @@ namespace INMOST
 		INMOST_DATA_REAL_TYPE preconditioner_reuse_tolerance;
 		INMOST_DATA_REAL_TYPE preconditioner_ddpq_tolerance;
 		INMOST_DATA_ENUM_TYPE preconditioner_reorder_nonzero;
-		INMOST_DATA_ENUM_TYPE preconditioner_fill_level;
+		INMOST_DATA_REAL_TYPE preconditioner_fill_level;
 		INMOST_DATA_ENUM_TYPE preconditioner_rescale_iterations;
 		INMOST_DATA_ENUM_TYPE preconditioner_condition_estimation;
 		INMOST_DATA_ENUM_TYPE preconditioner_adapt_ddpq_tolerance;
@@ -473,10 +473,6 @@ namespace INMOST
 		/// "gmres_substeps"       - number of gmres steps performed after each bicgstab step
 		///                          works for:
 		///                          INNER_ILU2, INNER_MLILUC
-		/// "fill_level"           - level of fill for ILU-type preconditioners
-		///                          works for:
-		///                          INNER_ILU2 (if LFILL is defined in solver_ilu2.hpp)
-		///                          Trilinos_Ifpack
 		/// "reorder_nonzeros"     - place sparser rows at the beggining of matrix during reordering
 		///                          works for:
 		///                          INNER_MLILUC
@@ -504,7 +500,7 @@ namespace INMOST
 		/// "drop_tolerance"       - tolerance for dropping values during incomplete factorization
 		///                          works for:
 		///                          INNER_ILU2, INNER_MLILUC
-		///                          Trilinos_Aztec, Trilinos_ML, Trilinos_Ifpack
+		///                          Trilinos_Aztec, Trilinos_Ifpack
 		///                          PETSc
 		/// "reuse_tolerance"      - tolerance for reusing values during incomplete factorization
 		///                          these values are used only during calculation of L and U factors
@@ -521,6 +517,10 @@ namespace INMOST
 		///                          where on imax, jmax maximum is reached.
 		///                          works for:
 		///                          INNER_MLILUC
+		/// "fill_level"           - level of fill for ILU-type preconditioners
+		///                          works for:
+		///                          INNER_ILU2 (if LFILL is defined in solver_ilu2.hpp)
+		///                          Trilinos, Trilinos_Ifpack
 		void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value);
 		/// Get the used defined name of the Solver.
 		std::string          GetName() {return name;}

@@ -1202,12 +1202,10 @@ namespace INMOST
 			preconditioner_condition_estimation = val;
 		else if( name == "adapt_ddpq_tolerance" )
 			preconditioner_adapt_ddpq_tolerance = val;
-		else if( name == "scwartz_overlap" )
+		else if( name == "schwartz_overlap" )
 			additive_schwartz_overlap = val;
 		else if( name == "gmres_substeps" )
 			solver_gmres_substeps = val;
-		else if( name == "fill_level" )
-			preconditioner_fill_level = val;
 		else if( name == "reorder_nonzeros" )
 			preconditioner_reorder_nonzero = val;
 		else if( _pack == INNER_ILU2 || _pack == INNER_MLILUC )
@@ -1241,6 +1239,8 @@ namespace INMOST
 			preconditioner_reuse_tolerance = val;
 		else if( name == "ddpq_tolerance" )
 			preconditioner_ddpq_tolerance = val;
+		else if( name == "fill_level" )
+			preconditioner_fill_level = val;
 		else if( _pack == INNER_ILU2 || _pack == INNER_MLILUC )
 		{
 			try
@@ -1765,10 +1765,10 @@ namespace INMOST
 			sol->ReplaceMAT(*mat);
 			if( matrix_data != NULL ) delete (Solver::Matrix *)matrix_data;
 			matrix_data = (void *)mat;
-			if (!sol->isInitialized()) 
-			{
-				sol->Initialize();
-			}
+			//if (!sol->isInitialized()) 
+			//{
+			//	sol->Initialize();
+			//}
 			ok = true;
 
 		}
@@ -1884,16 +1884,16 @@ namespace INMOST
 			problem->SetRHS(&VectorRHS);
 			problem->SetLHS(&VectorSOL);
 			AztecOO AztecSolver(*problem);
-			//AztecSolver.SetAztecOption(AZ_diagnostics,AZ_none);
-			//AztecSolver.SetAztecOption(AZ_output,AZ_none);
+			AztecSolver.SetAztecOption(AZ_diagnostics,AZ_none);
+			AztecSolver.SetAztecOption(AZ_output,AZ_none);
 			AztecSolver.SetAztecOption(AZ_solver,AZ_bicgstab);
 			AztecSolver.SetAztecOption(AZ_overlap,additive_schwartz_overlap);
 			
 			void * precinfo = NULL;
 			if( _pack == Trilinos_Aztec )
 			{
-				AztecSolver.SetAztecParam(AZ_tol,preconditioner_drop_tolerance);
-				AztecSolver.SetAztecParam(AZ_drop,preconditioner_fill_level);
+				AztecSolver.SetAztecParam(AZ_drop,preconditioner_drop_tolerance);
+				AztecSolver.SetAztecParam(AZ_ilut_fill,preconditioner_fill_level);
 				//AztecSolver.SetAztecOption(AZ_solver,AZ_tfqmr);
 				//AztecSolver.SetAztecOption(AZ_precond,AZ_Neumann);
 				//AztecSolver.SetAztecOption(AZ_poly_ord,3);
@@ -2052,10 +2052,6 @@ namespace INMOST
 		if(_pack == INNER_ILU2 )
 		{
 			IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
-			if (!sol->isInitialized()) 
-			{
-				sol->Initialize();
-			}
 			sol->EnumParameter("maxits") = maximum_iterations;
 			sol->EnumParameter("levels") = solver_gmres_substeps;
 			sol->RealParameter("rtol") = relative_tolerance;
@@ -2065,6 +2061,11 @@ namespace INMOST
 			sol->RealParameter(":tau2") = preconditioner_reuse_tolerance;
 			sol->EnumParameter(":fill") = preconditioner_fill_level;
 			sol->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
+			
+			if (!sol->isInitialized()) 
+			{
+				sol->Initialize();
+			}
 			bool ret = sol->Solve(RHS,SOL);
 			last_it = sol->GetIterations();
 			last_resid = sol->GetResidual();
@@ -2074,10 +2075,6 @@ namespace INMOST
 		if(_pack == INNER_MLILUC )
 		{
 			IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
-			if (!sol->isInitialized()) 
-			{
-				sol->Initialize();
-			}
 			sol->EnumParameter("maxits") = maximum_iterations;
 			sol->EnumParameter("levels") = solver_gmres_substeps;
 			sol->RealParameter("rtol") = relative_tolerance;
@@ -2090,6 +2087,11 @@ namespace INMOST
 			sol->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
 			sol->EnumParameter(":estimator") = preconditioner_condition_estimation;
 			sol->EnumParameter(":ddpq_tau_adapt") = preconditioner_adapt_ddpq_tolerance;
+			
+			if (!sol->isInitialized()) 
+			{
+				sol->Initialize();
+			}
 			bool ret = sol->Solve(RHS,SOL);
 			last_it = sol->GetIterations();
 			last_resid = sol->GetResidual();
