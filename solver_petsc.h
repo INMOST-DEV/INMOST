@@ -34,5 +34,6 @@ void SolverSetMatrixPetsc(void * data, void * matrix_data, bool same_pattern, bo
 bool SolverSolvePetsc(void * data, void * rhs_data, void * sol_data);
 int SolverIterationNumberPetsc(void * data);
 double SolverResidualNormPetsc(void * data);
+const char * SolverConvergedReasonPetsc(void * data);
 
 #endif

@@ -1,6 +1,7 @@
 //g++ main.cpp rotate.cpp -L/usr/X11R6/lib -lX11 -lXi -lXmu -lGL -lglut -lGLU ../../inmost.a -O5
 // press space - explode mesh to see connection 
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "../../inmost.h"
 #include "my_glut.h"
 #include <iostream>
@@ -140,7 +141,7 @@ class Reorder_ARMS
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < neighbours[block_entries[j]].size(); ++k)
 				A[neighbours[block_entries[j]][k]].SetMarker();
 		}
-		sblock += block_entries.size();
+		sblock += static_cast<int>(block_entries.size());
 		block_ends.push_back(sblock);
 		nblocks++;
 		stack.clear();
@@ -168,7 +169,7 @@ class Reorder_ARMS
 	}
 	INMOST_DATA_ENUM_TYPE GetOrder(INMOST_DATA_ENUM_TYPE ind)
 	{
-		return neighbours[ind].size();
+		return static_cast<Storage::enumerator>(neighbours[ind].size());
 		INMOST_DATA_ENUM_TYPE ret = 0, k;
 		for (k = 0; k < neighbours[ind].size(); k++)
 		if (!A[neighbours[ind][k]].GetMarker())
@@ -306,11 +307,11 @@ public:
 				if (qi == qj && qi != block_ends.end())
 				{
 					p = qi - block_ends.begin();
-					if (p < nblocks)
+					if (p < static_cast<unsigned>(nblocks))
 						nnz[p] += 1.0;
 				}
 			}
-			for (INMOST_DATA_ENUM_TYPE k = 0; k < nblocks; ++k)
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < static_cast<unsigned>(nblocks); ++k)
 			{
 				nnz[k] /= static_cast<INMOST_DATA_REAL_TYPE>((block_ends[k + 1] - block_ends[k])*(block_ends[k + 1] - block_ends[k]));
 				nnzall += nnz[k];

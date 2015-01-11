@@ -85,8 +85,10 @@ public:
 		interval<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> RowValues(vbeg, vend);
 #if defined(LFILL)
 		interval<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_ENUM_TYPE> RowFill(vbeg, vend);
+		//std::fill(RowFill.begin(),RowFill.end(),ENUMUNDEF);
 #endif
 		interval<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_ENUM_TYPE> RowIndeces(vbeg - 1, vend);
+		
 		ilu.set_interval_beg(mobeg);
 		ilu.set_interval_end(moend + 1);
 		iu.set_interval_beg(mobeg);

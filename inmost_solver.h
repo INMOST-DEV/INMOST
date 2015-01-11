@@ -6,6 +6,21 @@
 #include "inmost_common.h"
 //#include "solver_prototypes.hpp"
 
+#define DEFAULT_ADDITIVE_SCHWARTZ_OVERLAP             2
+#define DEFAULT_ABSOLUTE_TOLERANCE                    1.0e-5
+#define DEFAULT_RELATIVE_TOLERANCE                    1.0e-12
+#define DEFAULT_DIVERGENCE_TOLERANCE                  1.0e+20
+#define DEFAULT_MAXIMUM_ITERATIONS                    2500
+#define DEFAULT_SOLVER_GMRES_SUBSTEPS                 2
+#define DEFAULT_PRECONDITIONER_DROP_TOLERANCE         0.001
+#define DEFAULT_PRECONDITIONER_REUSE_TOLERANCE        0.00001
+#define DEFAULT_PRECONDITIONER_FILL_LEVEL             3
+#define DEFAULT_PRECONDITIONER_DDPQ_TOLERANCE         0.75
+#define DEFAULT_PRECONDITIONER_REORDER_NONZEROS       0
+#define DEFAULT_PRECONDITIONER_RESCALE_ITERS          5
+#define DEFAULT_PRECONDITIONER_CONDITION_ESTIMATION   1
+#define DEFAULT_PRECONDITIONER_ADAPT_DDPQ_TOLERANCE   1
+
 #if defined(USE_SOLVER)
 namespace INMOST
 {
@@ -25,10 +40,14 @@ namespace INMOST
 		/// Type of the Solver can be currently used in this version of INMOST.
 		enum Type
 		{
-			INNER_ILU2,   ///< inner Solver based on second order ILU factorization.
-			INNER_MLILUC, ///< inner Solver based on Saad multilevel ILU with pivoting.
-			PETSC,        ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/.
-			ANI           ///< external Solver from ANI3D based on ILU2 (sequential Fortran version).
+			INNER_ILU2,     ///< inner Solver based on second order ILU factorization.
+			INNER_MLILUC,   ///< inner Solver based on Saad multilevel ILU with pivoting.
+			Trilinos_Aztec, ///< external Solver AztecOO from Trilinos package
+			Trilinos_Belos, ///< external Solver Belos from Trilinos package, currently without preconditioner
+			Trilinos_ML,    ///< external Solver AztecOO with ML preconditioner
+			Trilinos_Ifpack,///< external Solver AztecOO with Ifpack preconditioner
+			PETSC,          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/.
+			ANI             ///< external Solver from ANI3D based on ILU2 (sequential Fortran version).
 		};
 
 		static INMOST_MPI_Type & GetRowEntryType() {return RowEntryType;}
@@ -148,7 +167,7 @@ namespace INMOST
 			const_iterator       End() const {return data.end();}
 			bool                 Empty() const {return data.empty();}
 			/// Set the start and the end of the distributed vector interval.
-			void                 SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end)       {data.set_interval_beg(start); data.set_interval_end(end);}
+			void                 SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end)       {assert(start<=end); data.set_interval_beg(start); data.set_interval_end(end);}
 			/// Get the start and the end of the distributed vector interval.
 			void                 GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = data.get_interval_beg(); end = data.get_interval_end();}
 			void                 ShiftInterval(INMOST_DATA_ENUM_TYPE shift) {data.shift_interval(shift);}
@@ -410,7 +429,26 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE last_it;
 		INMOST_DATA_REAL_TYPE last_resid;
 		OrderInfo info;
-		INMOST_DATA_ENUM_TYPE overlap;
+
+		INMOST_DATA_ENUM_TYPE additive_schwartz_overlap;
+
+		INMOST_DATA_ENUM_TYPE maximum_iterations;
+		INMOST_DATA_REAL_TYPE absolute_tolerance;
+		INMOST_DATA_REAL_TYPE relative_tolerance;
+		INMOST_DATA_REAL_TYPE divergance_tolerance;
+
+		INMOST_DATA_REAL_TYPE preconditioner_drop_tolerance;
+		INMOST_DATA_REAL_TYPE preconditioner_reuse_tolerance;
+		INMOST_DATA_REAL_TYPE preconditioner_ddpq_tolerance;
+		INMOST_DATA_ENUM_TYPE preconditioner_reorder_nonzero;
+		INMOST_DATA_ENUM_TYPE preconditioner_fill_level;
+		INMOST_DATA_ENUM_TYPE preconditioner_rescale_iterations;
+		INMOST_DATA_ENUM_TYPE preconditioner_condition_estimation;
+		INMOST_DATA_ENUM_TYPE preconditioner_adapt_ddpq_tolerance;
+
+		INMOST_DATA_ENUM_TYPE solver_gmres_substeps;
+
+		std::string return_reason;
 		
 		void * solver_data;
 		void * matrix_data;
@@ -424,8 +462,65 @@ namespace INMOST
 		Solver & operator =(Solver const & other); //prohibit assignment
 	public:
 		/// Set the solver parameter of the integer type.
+		/// You can find defaults for parameters in the top of the file inmost_solver.h
+		/// Parameters:
+		/// "maximum_iterations"   - total number of iterations
+		/// "schwartz_overlap"     - number of overlapping levels for additive schwartz method
+		///                          works for: 
+		///                          INNER_ILU2, INNER_MLILUC
+		///                          Trilinos_Aztec, Trilinos_Belos, Trilinos_ML, Trilinos_Ifpack
+		///                          PETSc
+		/// "gmres_substeps"       - number of gmres steps performed after each bicgstab step
+		///                          works for:
+		///                          INNER_ILU2, INNER_MLILUC
+		/// "fill_level"           - level of fill for ILU-type preconditioners
+		///                          works for:
+		///                          INNER_ILU2 (if LFILL is defined in solver_ilu2.hpp)
+		///                          Trilinos_Ifpack
+		/// "reorder_nonzeros"     - place sparser rows at the beggining of matrix during reordering
+		///                          works for:
+		///                          INNER_MLILUC
+		/// "rescale_iterations"   - number of iterations for two-side matrix rescaling
+		///                          works for:
+		///                          INNER_ILU2, INNER_MLILUC
+		/// "condition_estimation" - exploit condition estimation of inversed factors to adapt 
+		///                          drop and reuse tolerances
+		///                          works for:
+		///                          INNER_MLILUC
+		/// "adapt_ddpq_tolerance" - adapt ddpq tolerance depending from the complexity 
+		//                           of calculation of Schur complement
+		///                          works for:
+		///                          INNER_MLILUC
 		void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
 		/// Set the solver parameter of the real type.
+		/// You can find defaults for parameters in the top of the file inmost_solver.h
+		/// Parameters:
+		/// "absolute_tolerance"   - iterative method will stop on i-th iteration 
+		///                          if ||A x(i)-b|| < absolute_tolerance
+		/// "relative_tolerance"   - iterative method will stop on i-th iteration
+		///                          if ||A x(i)-b||/||A x(0) - b||
+		/// "divergence_tolerance" - iterative method will fail if 
+		///                          ||A x(i) - b|| > divergence_tolerance
+		/// "drop_tolerance"       - tolerance for dropping values during incomplete factorization
+		///                          works for:
+		///                          INNER_ILU2, INNER_MLILUC
+		///                          Trilinos_Aztec, Trilinos_ML, Trilinos_Ifpack
+		///                          PETSc
+		/// "reuse_tolerance"      - tolerance for reusing values during incomplete factorization
+		///                          these values are used only during calculation of L and U factors
+		///                          and/or Schur complement and discarded once factorization is done
+		///                          value should be less then "drop_tolerance"
+		///                          typical value is drop_tolerance^2
+		///                          works for:
+		///                          INNER_ILU2, INNER_MLILUC
+		/// "ddpq_tolerance"       - by this tolerance most diagonnaly-dominant elements will be selected
+		///                          to form the next level of factorization, the closer the tolerance
+		///                          is to one the smaller will be the level. Actual rule is:
+		///                          A(i,j)/(sum(A(i,:))+sum(A(:,j))-A(i,j)) > ddpq_tolerance *
+		///                          A(imax,jmax)/(sum(A(imax,:))+sum(A(:,jmax))-A(imax,jmax))
+		///                          where on imax, jmax maximum is reached.
+		///                          works for:
+		///                          INNER_MLILUC
 		void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value);
 		/// Get the used defined name of the Solver.
 		std::string          GetName() {return name;}

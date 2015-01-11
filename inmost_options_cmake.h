@@ -16,6 +16,7 @@
 
 #cmakedefine USE_SOLVER
 #cmakedefine USE_SOLVER_PETSC
+#cmakedefine USE_SOLVER_TRILINOS
 #cmakedefine USE_SOLVER_ANI
 
 

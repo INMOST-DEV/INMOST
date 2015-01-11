@@ -316,5 +316,72 @@ double SolverResidualNormPetsc(void * data)
 	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
 	return norm;
 }
+
+const char * SolverConvergedReasonPetsc(void * data)
+{
+	static char reason[4096];
+	KSPConvergedReason reason;
+	KSP * ksp = static_cast<KSP *>(data);
+	PetscErrorCode ierr = KSPGetConvergedReason(*ksp,&reason);
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+	switch(reason)
+	{
+	case KSP_CONVERGED_RTOL:
+	case KSP_CONVERGED_RTOL_NORMAL:
+		strcpy(reason,"norm decreased by a factor of relative tolerance");
+		break;
+	case KSP_CONVERGED_ATOL:
+	case KSP_CONVERGED_ATOL_NORMAL:
+		strcpy(reason,"norm less then absolute tolerance");
+		break;
+	case  KSP_CONVERGED_ITS:
+		strcpy(reason,"converged by direct solver");
+		break;
+	case KSP_CONVERGED_CG_NEG_CURVE:
+	case KSP_CONVERGED_CG_CONSTRAINED:
+		strcpy(reason,"converged due to some condition in conjugate gradient method");
+		break;
+	case KSP_CONVERGED_STEP_LENGTH:
+		strcpy(reason,"converged due to step length");
+		break;
+	case KSP_CONVERGED_HAPPY_BREAKDOWN :
+		strcpy(reason,"converged due to happy breakdown");
+		break;
+	case  KSP_CONVERGED_ITERATING:
+		strcpy(reason,"converged");
+		break;
+	case KSP_DIVERGED_NULL:
+		strcpy(reason,"diverged due to null");
+		break;
+	case KSP_DIVERGED_ITS:
+		strcpy(reason,"diverged due to maximum iteration number");
+		break;
+	case KSP_DIVERGED_DTOL:
+		strcpy(reason,"diverged as divergence tolerance was reached");
+		break;
+	case KSP_DIVERGED_BREAKDOWN:
+		strcpy(reason,"diverged due to breakdown in method");
+		break;
+	case KSP_DIVERGED_BREAKDOWN_BICG:
+		strcpy(reason,"diverged due to breakdown in Biconjugate Gradients method");
+		break;
+	case KSP_DIVERGED_NONSYMMETRIC:
+		strcpy(reason,"diverged since matrix is nonsymmetric");
+		break;
+	case KSP_DIVERGED_INDEFINITE_PC:
+		strcpy(reason,"diverged since preconditioner is not defined");
+		break;
+	case KSP_DIVERGED_NANORINF:
+		strcpy(reason,"diverged since not a number or infinite was encountered");
+		break;
+	case KSP_DIVERGED_INDEFINITE_MAT:
+		strcpy(reason,"diverged due to matrix is not definite");
+		break;
+	default:
+		strcpy(reason,"reason code was not defined in manual");
+		break;
+	}
+	return reason;
+}
 #endif
 #endif

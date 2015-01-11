@@ -212,7 +212,7 @@ int main(int argc,char ** argv)
 		if( !repartition && m->HaveTag("CM_INDEX") )
 		{
 			id = m->GetTag("CM_INDEX");
-			m->ExchangeData(id,CELL);
+			m->ExchangeData(id,CELL,0);
 		}
 		else
 		{
@@ -263,7 +263,7 @@ int main(int argc,char ** argv)
 		Solver::Matrix A;
 		Solver::Vector x,b;
 		
-		std::map<GeometricData,ElementType> table;
+		Mesh::GeomParam table;
 		
 		table[MEASURE] = CELL | FACE;
 		table[CENTROID] = CELL | FACE;
@@ -293,10 +293,10 @@ int main(int argc,char ** argv)
 		{
 			//~ std::cout << face->LocalID() << " / " << m->NumberOfFaces() << std::endl;
 			Element::Status s1,s2;
-			Cell * r1 = face->BackCell();
-			Cell * r2 = face->FrontCell();
-			if( ((r1 == NULL || (s1 = r1->GetStatus()) == Element::Ghost)?0:1)+ 
-				((r2 == NULL || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
+			Cell r1 = face->BackCell();
+			Cell r2 = face->FrontCell();
+			if( ((!r1.isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1)+ 
+				((!r2.isValid() || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
 			Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1[3], d2[3], T1, T2, Coef;
 			Storage::real f_area = face->Area();
 			Storage::real vol1 = r1->Volume(), vol2;
@@ -308,7 +308,7 @@ int main(int argc,char ** argv)
 			f_nrm[2] /= f_area;
 			r1->Barycenter(r1_cnt);
 			face->Barycenter(f_cnt);
-			if( r2 == NULL ) //boundary condition
+			if( !r2.isValid() ) //boundary condition
 			{
 				if( r1->Integer(mat) == 2 ) //direchlet boundary for second material
 				{
@@ -433,7 +433,7 @@ int main(int argc,char ** argv)
 		if( m->GetProcessorRank() == 0 ) std::cout << "Retrive data: " << Timer()-ttt << std::endl;
 		
 		ttt = Timer();
-		m->ExchangeData(phi,CELL);
+		m->ExchangeData(phi,CELL,0);
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange phi: " << Timer()-ttt << std::endl;
 		
@@ -444,19 +444,19 @@ int main(int argc,char ** argv)
 			m->SetParallelStrategy(s);
 		
 			ttt = Timer();
-			m->ExchangeData(tensor_K,CELL);
+			m->ExchangeData(tensor_K,CELL,0);
 			BARRIER
 			if( m->GetProcessorRank() == 0 ) std::cout << "Exchange dense fixed data: " << Timer()-ttt << std::endl;
 			
 			
 			ttt = Timer();
-			m->ExchangeData(m->ProcessorsTag(),CELL);
+			m->ExchangeData(m->ProcessorsTag(),CELL,0);
 			BARRIER
 			if( m->GetProcessorRank() == 0 ) std::cout << "Exchange dense variable data: " << Timer()-ttt << std::endl;
 			
 			
 			ttt = Timer();
-			m->ExchangeData(test,CELL);
+			m->ExchangeData(test,CELL,0);
 			BARRIER
 			if( m->GetProcessorRank() == 0 ) std::cout << "Exchange sparse fixed data: " << Timer()-ttt << std::endl;
 		}
