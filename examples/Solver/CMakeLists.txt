@@ -38,3 +38,6 @@ if(USE_MPI)
     set_target_properties(Solver PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
+
+
+install(TARGETS Solver EXPORT inmost-targets RUNTIME DESTINATION bin)

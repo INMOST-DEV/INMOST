@@ -12,3 +12,6 @@ if(USE_MPI)
     set_target_properties(GridGen PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
+
+
+install(TARGETS GridGen EXPORT inmost-targets RUNTIME DESTINATION bin)

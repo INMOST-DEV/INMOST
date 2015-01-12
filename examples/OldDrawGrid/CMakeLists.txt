@@ -25,3 +25,6 @@ if(OPENGL_FOUND)
 else(OPENGL_FOUND)
   message("OpenGL not found, not building OldDrawGrid")
 endif(OPENGL_FOUND)
+
+
+install(TARGETS OldDrawGrid EXPORT inmost-targets RUNTIME DESTINATION bin)

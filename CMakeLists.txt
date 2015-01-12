@@ -37,7 +37,10 @@ set(HEADER inmost.h
            solver_bcgsl.hpp
            solver_prototypes.hpp)
 
-
+set(INMOST_MAJOR_VERSION 0)
+set(INMOST_MINOR_VERSION 1)
+set(INMOST_PATCH_VERSION 0)
+set(INMOST_VERSION "${INMOST_MAJOR_VERSION}.${INMOST_MINOR_VERSION}.${INMOST_PATCH_VERSION}")
 
 
 add_library(inmost STATIC ${SOURCE} ${HEADER})
@@ -121,7 +124,7 @@ if(USE_PARTITIONER_ZOLTAN)
 		set(USE_PARTITIONER_ZOLTAN OFF)
 		message("ZOLTAN NOT FOUND")
 	else()
-		include_directories(${ZOLTAN_INCLUDE_DIR})
+		#include_directories(${ZOLTAN_INCLUDE_DIR})
 		include_directories(${ZOLTAN_INCLUDE_DIRS})
 		set(USE_PARTITIONER_ZOLTAN ON)
 		message("ZOLTAN FOUND")
@@ -225,3 +228,46 @@ if(COMPILE_TESTS)
 add_subdirectory(tests)
 endif(COMPILE_TESTS)
 
+
+set(INMOST_INSTALL_HEADERS inmost.h
+                           inmost_options_cmake.h
+                           inmost_common.h
+                           inmost_mesh.h
+                           inmost_solver.h
+                           inmost_partitioner.h
+                           inmost_autodiff.h
+                           container.hpp)
+
+include(CPack)
+export(TARGETS inmost FILE inmost-targets.cmake)
+export(PACKAGE inmost)
+set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}/inmost-config.cmake" @ONLY)
+set(CONF_INCLUDE_DIRS "\${INMOST_DIR}/include")
+configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake" @ONLY)
+configure_file(inmost-config-version.cmake.in "${PROJECT_BINARY_DIR}/inmost-config-version.cmake" @ONLY)
+
+
+set_property(TARGET inmost PROPERTY PUBLIC_HEADER
+	"${PROJECT_BINARY_DIR}/inmost_options.h"
+	"${PROJECT_SOURCE_DIR}/inmost.h"
+	"${PROJECT_SOURCE_DIR}/inmost_common.h"
+	"${PROJECT_SOURCE_DIR}/inmost_mesh.h"
+	"${PROJECT_SOURCE_DIR}/inmost_solver.h"
+	"${PROJECT_SOURCE_DIR}/inmost_partitioner.h"
+	"${PROJECT_SOURCE_DIR}/inmost_autodiff.h"
+	"${PROJECT_SOURCE_DIR}/container.hpp")
+
+install(FILES
+  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake"
+  "${PROJECT_BINARY_DIR}/inmost-config-version.cmake"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}")
+
+install(TARGETS inmost EXPORT inmost-targets
+        ARCHIVE DESTINATION lib
+		LIBRARY DESTINATION lib
+		RUNTIME DESTINATION bin
+		PUBLIC_HEADER DESTINATION include)
+
+
+install(EXPORT inmost-targets DESTINATION "lib/CMake")

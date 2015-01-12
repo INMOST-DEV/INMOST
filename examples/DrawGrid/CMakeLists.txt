@@ -25,3 +25,4 @@ else(OPENGL_FOUND)
 	message("OpenGL not found")
 endif(OPENGL_FOUND)
 
+install(TARGETS DrawGrid EXPORT inmost-targets RUNTIME DESTINATION bin)

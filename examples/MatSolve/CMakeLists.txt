@@ -30,3 +30,5 @@ if(USE_SOLVER)
     target_link_libraries(MatSolve ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
   endif()
 endif()
+
+install(TARGETS MatSolve EXPORT inmost-targets RUNTIME DESTINATION bin)

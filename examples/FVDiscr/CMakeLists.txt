@@ -43,4 +43,4 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
-
+install(TARGETS FVDiscr EXPORT inmost-targets RUNTIME DESTINATION bin)

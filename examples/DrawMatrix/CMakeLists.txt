@@ -41,3 +41,4 @@ else(OPENGL_FOUND)
 endif(OPENGL_FOUND)
 
 
+install(TARGETS DrawMatrix EXPORT inmost-targets RUNTIME DESTINATION bin)

@@ -146,28 +146,16 @@ namespace INMOST
 			if( prec != NULL ) prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
 			info->GetVectorRegion(vbeg,vend);
-			{
-				Solver::Vector::iterator itr0 = r[0].Begin();
-				Solver::Vector::iterator itrhs = RHS.Begin(), endrhs = RHS.End();
-				while(itrhs != endrhs ) *itr0++ = *itrhs++;
-			}
-			//std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
+			std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
 			{
 				Alink->MatVec(-1,SOL,1,r[0]); //global multiplication, r probably needs an update
 				if( is_parallel ) info->Update(r[0]); // r is good
 			}
-			{
-				Solver::Vector::iterator itr00 = r0.Begin();
-				Solver::Vector::iterator itr0 = r[0].Begin(), endr0 = r[0].End();
-				while( itr0 != endr0 ) *itr00++ = *itr0++;
-			}
-			//std::copy(r[0].Begin(),r[0].End(),r0.Begin());
-			//for(Solver::Vector::iterator it = u[0].Begin(); it != u[0].End(); ++it) *it = 0.0;
+			std::copy(r[0].Begin(),r[0].End(),r0.Begin());
 			std::fill(u[0].Begin(),u[0].End(),0);
 			{
 				resid = 0;
-				for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) 
-					resid += r[0][k]*r[0][k];
+				for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) resid += r[0][k]*r[0][k];
 				if( is_parallel ) info->Integrate(&resid,1);
 			}
 			last_resid = resid = resid0 = sqrt(resid);
@@ -487,22 +475,12 @@ exit:
 			if (prec != NULL)prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
 			info->GetVectorRegion(vbeg,vend);
-			{
-				Solver::Vector::iterator itr = r.Begin();
-				Solver::Vector::iterator itrhs = RHS.Begin(), endrhs = RHS.End();
-				while(itrhs != endrhs ) *itr++ = *itrhs++;
-			}
-			//std::copy(RHS.Begin(),RHS.End(),r.Begin());
+			std::copy(RHS.Begin(),RHS.End(),r.Begin());
 			{
 				Alink->MatVec(-1,SOL,1,r); //global multiplication, r probably needs an update
 				info->Update(r); // r is good
 			}
-			{
-				Solver::Vector::iterator itr00 = r0.Begin();
-				Solver::Vector::iterator itr = r.Begin(), endr = r.End();
-				while( itr != endr ) *itr00++ = *itr++;
-			}
-			//std::copy(r.Begin(),r.End(),r0.Begin());
+			std::copy(r.Begin(),r.End(),r0.Begin());
 			std::fill(v.Begin(),v.End(),0.0);
 			std::fill(p.Begin(),p.End(),0.0);
 			{
