@@ -9,7 +9,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include "io.hpp"
 
 
 //vtk states
@@ -2867,6 +2867,8 @@ read_elem_num_link:
 		}
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
 		{
+			io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
+			io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
 			REPORT_STR("start load pmf");
 			dynarray<INMOST_DATA_ENUM_TYPE,128> myprocs;
 			std::stringstream in(std::ios::in | std::ios::out | std::ios::binary);
@@ -4211,6 +4213,8 @@ safe_output:
 		}
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
 		{
+			io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
+			io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
 			INMOST_DATA_ENUM_TYPE nlow,nhigh, lid;
 			char wetype;
 			//~ if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);

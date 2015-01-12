@@ -212,7 +212,7 @@ namespace INMOST
 }
 
 #include "container.hpp"
-#include "io.hpp"
+//#include "io.hpp"
 
 
 #endif //INMOST_COMMON_INCLUDED

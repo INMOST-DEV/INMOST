@@ -2529,9 +2529,6 @@ namespace INMOST
 		};
 	private:
 		std::vector< std::pair<std::string, std::string> > file_options;
-		//implemented in io.hpp
-		io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
-		io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
 	public:
 		/// Current availible file options:
 		/// "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids

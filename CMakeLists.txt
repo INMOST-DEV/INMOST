@@ -185,6 +185,7 @@ if(USE_AUTODIFF_OPENCL)
 	if(OPENCL_FOUND)
 		set(USE_AUTODIFF_OPENCL ON)
 		include_directories(${OPENCL_INCLUDE_DIRS})
+		link_directories(${PETSC_LIBRARY_DIRS})
 	else()
 		set(USE_AUTODIFF_OPENCL OFF)
 		message("OpenCL not found")
@@ -243,7 +244,7 @@ export(TARGETS inmost FILE inmost-targets.cmake)
 export(PACKAGE inmost)
 set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}/inmost-config.cmake" @ONLY)
-set(CONF_INCLUDE_DIRS "\${INMOST_DIR}/include")
+set(CONF_INCLUDE_DIRS "\${inmost_DIR}/include")
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake" @ONLY)
 configure_file(inmost-config-version.cmake.in "${PROJECT_BINARY_DIR}/inmost-config-version.cmake" @ONLY)
 
@@ -270,4 +271,4 @@ install(TARGETS inmost EXPORT inmost-targets
 		PUBLIC_HEADER DESTINATION include)
 
 
-install(EXPORT inmost-targets DESTINATION "lib/CMake")
+install(EXPORT inmost-targets DESTINATION ".")
