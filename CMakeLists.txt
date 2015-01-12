@@ -271,4 +271,4 @@ install(TARGETS inmost EXPORT inmost-targets
 		PUBLIC_HEADER DESTINATION include)
 
 
-install(EXPORT inmost-targets DESTINATION ".")
+install(EXPORT inmost-targets DESTINATION cmake)
