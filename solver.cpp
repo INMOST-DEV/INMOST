@@ -2059,7 +2059,7 @@ namespace INMOST
 			sol->RealParameter("divtol") = divergance_tolerance;
 			sol->RealParameter(":tau") = preconditioner_drop_tolerance;
 			sol->RealParameter(":tau2") = preconditioner_reuse_tolerance;
-			sol->EnumParameter(":fill") = preconditioner_fill_level;
+			sol->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
 			sol->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
 			
 			if (!sol->isInitialized()) 

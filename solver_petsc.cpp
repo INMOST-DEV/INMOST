@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #if defined(USE_SOLVER_PETSC)
@@ -11,7 +12,7 @@ bool SolverIsInitializedPetsc()
 	PetscBool isInitialized;
 	PetscErrorCode ierr = PetscInitialized(&isInitialized);
 	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
-	return isInitialized;
+	return (isInitialized == PETSC_TRUE);
 }
 
 void SolverInitializePetsc(int * argc,char *** argv, const char * file_options)
@@ -19,6 +20,9 @@ void SolverInitializePetsc(int * argc,char *** argv, const char * file_options)
 	if( !SolverIsInitializedPetsc() )
 	{
 		PetscErrorCode ierr = PetscInitialize(argc,argv,file_options,"solver");
+		//prevent petsc from catching signals, petsc error handling is misleading for 
+		//unexperienced user and results in the opinion that errors emerge from petsc
+		PetscPopSignalHandler(); 
 		if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
 	}
 }
@@ -28,7 +32,7 @@ bool SolverIsFinalizedPetsc()
 	PetscBool isFinalized;
 	PetscErrorCode ierr = PetscFinalized(&isFinalized);
 	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
-	return isFinalized;
+	return (isFinalized == PETSC_TRUE);
 }
 
 void SolverFinalizePetsc()
@@ -268,7 +272,12 @@ void SolverSetMatrixPetsc(void * data, void * matrix_data, bool same_pattern, bo
 {
 	KSP * m = static_cast<KSP *>(data);
 	Mat * mat = static_cast<Mat *>(matrix_data);
-	PetscErrorCode ierr = KSPSetOperators(*m,*mat,*mat,reuse_preconditioner? SAME_PRECONDITIONER : (same_pattern? SAME_NONZERO_PATTERN : DIFFERENT_NONZERO_PATTERN));
+	PetscErrorCode ierr;
+	if( reuse_preconditioner ) 
+		ierr = KSPSetReusePreconditioner(*m,PETSC_TRUE);
+	else 
+		ierr = KSPSetReusePreconditioner(*m,PETSC_FALSE);
+	ierr = KSPSetOperators(*m,*mat,*mat);//,reuse_preconditioner? SAME_PRECONDITIONER : (same_pattern? SAME_NONZERO_PATTERN : DIFFERENT_NONZERO_PATTERN));
 	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
 }
 
@@ -319,7 +328,7 @@ double SolverResidualNormPetsc(void * data)
 
 const char * SolverConvergedReasonPetsc(void * data)
 {
-	static char reason[4096];
+	static char reason_str[4096];
 	KSPConvergedReason reason;
 	KSP * ksp = static_cast<KSP *>(data);
 	PetscErrorCode ierr = KSPGetConvergedReason(*ksp,&reason);
@@ -328,60 +337,60 @@ const char * SolverConvergedReasonPetsc(void * data)
 	{
 	case KSP_CONVERGED_RTOL:
 	case KSP_CONVERGED_RTOL_NORMAL:
-		strcpy(reason,"norm decreased by a factor of relative tolerance");
+		strcpy(reason_str,"norm decreased by a factor of relative tolerance");
 		break;
 	case KSP_CONVERGED_ATOL:
 	case KSP_CONVERGED_ATOL_NORMAL:
-		strcpy(reason,"norm less then absolute tolerance");
+		strcpy(reason_str,"norm less then absolute tolerance");
 		break;
 	case  KSP_CONVERGED_ITS:
-		strcpy(reason,"converged by direct solver");
+		strcpy(reason_str,"converged by direct solver");
 		break;
 	case KSP_CONVERGED_CG_NEG_CURVE:
 	case KSP_CONVERGED_CG_CONSTRAINED:
-		strcpy(reason,"converged due to some condition in conjugate gradient method");
+		strcpy(reason_str,"converged due to some condition in conjugate gradient method");
 		break;
 	case KSP_CONVERGED_STEP_LENGTH:
-		strcpy(reason,"converged due to step length");
+		strcpy(reason_str,"converged due to step length");
 		break;
 	case KSP_CONVERGED_HAPPY_BREAKDOWN :
-		strcpy(reason,"converged due to happy breakdown");
+		strcpy(reason_str,"converged due to happy breakdown");
 		break;
 	case  KSP_CONVERGED_ITERATING:
-		strcpy(reason,"converged");
+		strcpy(reason_str,"converged");
 		break;
 	case KSP_DIVERGED_NULL:
-		strcpy(reason,"diverged due to null");
+		strcpy(reason_str,"diverged due to null");
 		break;
 	case KSP_DIVERGED_ITS:
-		strcpy(reason,"diverged due to maximum iteration number");
+		strcpy(reason_str,"diverged due to maximum iteration number");
 		break;
 	case KSP_DIVERGED_DTOL:
-		strcpy(reason,"diverged as divergence tolerance was reached");
+		strcpy(reason_str,"diverged as divergence tolerance was reached");
 		break;
 	case KSP_DIVERGED_BREAKDOWN:
-		strcpy(reason,"diverged due to breakdown in method");
+		strcpy(reason_str,"diverged due to breakdown in method");
 		break;
 	case KSP_DIVERGED_BREAKDOWN_BICG:
-		strcpy(reason,"diverged due to breakdown in Biconjugate Gradients method");
+		strcpy(reason_str,"diverged due to breakdown in Biconjugate Gradients method");
 		break;
 	case KSP_DIVERGED_NONSYMMETRIC:
-		strcpy(reason,"diverged since matrix is nonsymmetric");
+		strcpy(reason_str,"diverged since matrix is nonsymmetric");
 		break;
 	case KSP_DIVERGED_INDEFINITE_PC:
-		strcpy(reason,"diverged since preconditioner is not defined");
+		strcpy(reason_str,"diverged since preconditioner is not defined");
 		break;
 	case KSP_DIVERGED_NANORINF:
-		strcpy(reason,"diverged since not a number or infinite was encountered");
+		strcpy(reason_str,"diverged since not a number or infinite was encountered");
 		break;
 	case KSP_DIVERGED_INDEFINITE_MAT:
-		strcpy(reason,"diverged due to matrix is not definite");
+		strcpy(reason_str,"diverged due to matrix is not definite");
 		break;
 	default:
-		strcpy(reason,"reason code was not defined in manual");
+		strcpy(reason_str,"reason code was not defined in manual");
 		break;
 	}
-	return reason;
+	return reason_str;
 }
 #endif
 #endif

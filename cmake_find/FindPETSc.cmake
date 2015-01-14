@@ -80,6 +80,17 @@ find_path (PETSC_DIR include/petsc.h
 
 find_program (MAKE_EXECUTABLE NAMES make gmake)
 
+#oops, make not found
+if( NOT EXISTS MAKE_EXECUTABLE )
+  if( WIN32 )
+    find_program (MAKE_EXECUTABLE NAMES make gmake HINTS 
+	              "/usr/bin"
+	              "c:/cygwin/bin"
+				  "c:/cygwin64/bin"
+				  "${CYGWIN_INSTALL_PATH}/bin")
+  endif()
+endif()
+
 if (PETSC_DIR AND NOT PETSC_ARCH)
   set (_petsc_arches
     $ENV{PETSC_ARCH}                   # If set, use environment variable first
@@ -120,7 +131,8 @@ elseif (PETSC_DIR)
 endif ()
 
 if (petsc_conf_rules AND petsc_conf_variables )
-# AND NOT petsc_config_current)
+#RESTORE
+#AND NOT petsc_config_current)
   petsc_get_version()
 
   # Put variables into environment since they are needed to get
@@ -137,14 +149,22 @@ if (petsc_conf_rules AND petsc_conf_variables )
 include ${petsc_conf_rules}
 include ${petsc_conf_variables}
 show :
-	-@echo -n \${\${VARIABLE}}
+	\$(info \${\${VARIABLE}})
 ")
 
   macro (PETSC_GET_VARIABLE name var)
     set (${var} "NOTFOUND" CACHE INTERNAL "Cleared" FORCE)
-    execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} show VARIABLE=${name}
+#	message(STATUS "execute command with ${name} ${var}")
+#	message("${MAKE_EXECUTABLE} -s --no-print-directory -f ${petsc_config_makefile} show VARIABLE=${name}")
+    execute_process (COMMAND ${MAKE_EXECUTABLE} -s --no-print-directory -f ${petsc_config_makefile} show VARIABLE=${name}
       OUTPUT_VARIABLE ${var}
       RESULT_VARIABLE petsc_return)
+#	message(STATUS "returned")
+# protect backslashed spaces from disappearing
+	string(REGEX REPLACE "\\\\ " "?space?" ${var} ${${var}}) 
+#	foreach(D ${${var}})
+#	message("${D}")
+#	endforeach()
   endmacro (PETSC_GET_VARIABLE)
   petsc_get_variable (PETSC_LIB_DIR            petsc_lib_dir)
   petsc_get_variable (PETSC_EXTERNAL_LIB_BASIC petsc_libs_external)
@@ -158,7 +178,7 @@ show :
 
   include (ResolveCompilerPaths)
   # Extract include paths and libraries from compile command line
-  resolve_includes (petsc_includes_all "${petsc_cpp_line}")
+  resolve_includes (petsc_includes_all ${petsc_cpp_line})
 
   #on windows we need to make sure we're linking against the right
   #runtime library
@@ -183,7 +203,7 @@ show :
 
   include (CorrectWindowsPaths)
   convert_cygwin_path(petsc_lib_dir)
-  message (STATUS "petsc_lib_dir ${petsc_lib_dir}")
+  #message (STATUS "petsc_lib_dir ${petsc_lib_dir}")
 
   macro (PETSC_FIND_LIBRARY suffix name)
     set (PETSC_LIBRARY_${suffix} "NOTFOUND" CACHE INTERNAL "Cleared" FORCE) # Clear any stale value, if we got here, we need to find it again
@@ -270,6 +290,11 @@ int main(int argc,char *argv[]) {
   mark_as_advanced (PETSC_INCLUDE_DIR PETSC_INCLUDE_CONF)
   set (petsc_includes_minimal ${PETSC_INCLUDE_CONF} ${PETSC_INCLUDE_DIR})
 
+  #message(STATUS "petsc_includes_minimal")
+  #foreach(D ${petsc_includes_minimal})
+  #message(${D})
+  #endforeach()
+
   petsc_test_runs ("${petsc_includes_minimal}" "${PETSC_LIBRARIES_TS}" petsc_works_minimal)
   if (petsc_works_minimal)
     message (STATUS "Minimal PETSc includes and libraries work.  This probably means we are building with shared libs.")
@@ -322,3 +347,5 @@ include (FindPackageHandleStandardArgs)
 find_package_handle_standard_args (PETSc
   "PETSc could not be found.  Be sure to set PETSC_DIR and PETSC_ARCH."
   PETSC_INCLUDES PETSC_LIBRARIES PETSC_EXECUTABLE_RUNS)
+
+
