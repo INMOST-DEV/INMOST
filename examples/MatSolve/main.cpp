@@ -15,7 +15,7 @@ int main(int argc, char ** argv)
 	int rank,procs;
 	if( argc < 3 )
 	{
-		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_MLILUC,2:ANI,3:PETSC> matrix.mtx [right_hand_side.rhs] [solver_options.txt]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_MLILUC,2:ANI,3:PETSc,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_Ifpack,7:Trilinos_ML> matrix.mtx [right_hand_side.rhs] [solver_options.txt]" << std::endl;
 		return -1;
 	}
 	Solver::Type type;
@@ -24,7 +24,11 @@ int main(int argc, char ** argv)
 		case 0: type = Solver::INNER_ILU2; break;
 		case 1: type = Solver::INNER_MLILUC; break;
 		case 2: type = Solver::ANI; break;
-		case 3: type = Solver::PETSC; break;
+		case 3: type = Solver::PETSc; break;
+		case 4: type = Solver::Trilinos_Aztec; break;
+		case 5: type = Solver::Trilinos_Belos; break;
+		case 6: type = Solver::Trilinos_Ifpack; break;
+		case 7: type = Solver::Trilinos_ML; break;
 	}
 	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
 	{

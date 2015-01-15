@@ -46,7 +46,7 @@ namespace INMOST
 			Trilinos_Belos, ///< external Solver Belos from Trilinos package, currently without preconditioner
 			Trilinos_ML,    ///< external Solver AztecOO with ML preconditioner
 			Trilinos_Ifpack,///< external Solver AztecOO with Ifpack preconditioner
-			PETSC,          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/.
+			PETSc,          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/.
 			ANI             ///< external Solver from ANI3D based on ILU2 (sequential Fortran version).
 		};
 
@@ -535,11 +535,18 @@ namespace INMOST
 		/// @see Solver::Solve
 		INMOST_DATA_REAL_TYPE Residual();
 		/// Set the matrix and construct the preconditioner.
+		/// @param A Matrix A in linear problem Ax = b
 		/// @param OldPreconditioner If this parameter is set to true,
 		/// then the previous preconditioner will be used,
 		/// otherwise the new preconditioner will be constructed. 
+		/// Preconditioner will be constructed on call to this function
+		/// for INNER_*, PETSc and ANI packages
+		/// for Trilinos preconditioner will be constructed each time Solver::Solve is called
+		/// Any changes to preconditioner parameters should happen before that point
+		/// If you increase gmres_substep after this point, inner methods most likely will fail
 		void SetMatrix(Matrix & A, bool OldPreconditioner = false);
 		/// Solver the linear system: A*x = b.
+		/// Prior to this call you should call SetMatrix
 		/// @param RHS The right-hand side Vector b.
 		/// @param SOL The initial guess to the solution on input and the solution Vector x on return.
 		/// It is assumed that the coefficient matrix A have been set
@@ -551,6 +558,8 @@ namespace INMOST
 		std::string GetReason();
 
 		/// Main constructor of the solver.
+		/// Solver name provided here is used to extract options from database file
+		/// for PETSc and Trilinos packages.
 		/// @param pack The package Type to be used for solution.
 		/// @param _name The user specified name of the current solver.
 		/// @param _comm Communicator for parallel data exchanges, MPI_COMM_WORLD by default.
@@ -562,12 +571,23 @@ namespace INMOST
 		~Solver();
 		/// Initialize the stage of parallel solution.
 		/// If MPI is not initialized yet, then it will be initialized.
+		/// database file is used to pass parameters to PETSc and Trilinos packages.
+		/// if database file for is provided any changes through SetParameterEnum,
+		/// SetParameterReal would not be effective for PETSc and Trilinos packages.
+		/// Currently this database file provides directions for package-specific
+		/// files. In future it is supposed to set up parameters for internal solvers.
 		/// @param argc The number of arguments transmitted to the function main.
 		/// @param argv The pointer to arguments transmitted to the function main.
 		/// @param database Usually the name of the file with the Solver parameters.
 		/// The shortest call to this function with the default solver parameters is the following: Initialize(NULL,NULL,"");
 		/// @see Solver::Finalize
 		/// @see Solver::isInitialized
+		/// Example of contents of the database file:
+		/// PETSc: petsc_options.txt
+		/// Trilinos_Ifpack: trilinos_ifpack_options.xml
+		/// Trilinos_ML: trilinos_ml_options.xml
+		/// Trilinos_Aztec: trilinos_aztec_options.xml
+		/// Trilinos_Belos: trilinos_belos_options.xml
 		static void Initialize(int * argc, char *** argv, const char * database = "");
 		/// Finalize the stage of parallel solution.
 		/// If MPI was initialized in Solver::Initialize, then it will be finalized.

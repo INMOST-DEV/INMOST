@@ -48,7 +48,11 @@ namespace INMOST
 				if (prec != NULL) return prec->EnumParameter(name.substr(1, name.size() - 1));
 			}
 			if (name == "maxits") return maxits;
-			else if (name == "levels") return l;
+			else if (name == "levels") 
+			{
+				if( init ) throw - 1; //solver was already initialized, value should not be changed
+				return l;
+			}
 			else if (prec != NULL) return prec->EnumParameter(name);
 			throw - 1;
 		}

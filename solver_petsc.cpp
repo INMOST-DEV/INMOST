@@ -326,6 +326,57 @@ double SolverResidualNormPetsc(void * data)
 	return norm;
 }
 
+
+void SolverSetTolerancesPetsc(void * data, double rtol, double atol, double divtol, int maxits)
+{
+	KSP * ksp = static_cast<KSP *>(data);
+	PetscErrorCode ierr = KSPSetTolerances(*ksp,rtol,atol,divtol,maxits);
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+}
+
+
+void SolverSetOverlapPetsc(void * data, int levels)
+{
+	KSP * ksp = static_cast<KSP *>(data);
+	PetscErrorCode ierr;
+	PC pc; PCType pc_type;
+	ierr = KSPGetPC(*ksp,&pc);
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+	ierr = PCGetType(pc,&pc_type);
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+	if( !strcmp(pc_type,"asm") )
+	{
+		ierr = PCASMSetOverlap(pc,levels);
+	}
+	else if( !strcmp(pc_type,"gasm") )
+	{
+		ierr = PCGASMSetOverlap(pc,levels);
+	}
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+}
+
+void SolverSetDropTolerancePetsc(void * data, double dtol)
+{
+	KSP * ksp = static_cast<KSP *>(data);
+	PetscErrorCode ierr;
+	PC pc;
+	ierr = KSPGetPC(*ksp,&pc);
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+	ierr = PCFactorSetDropTolerance(pc,dtol,0.01,10000); //2 other parameters are set to extreme
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+}
+
+void SolverSetFillLevelPetsc(void * data, double lfill)
+{
+	KSP * ksp = static_cast<KSP *>(data);
+	PetscErrorCode ierr;
+	PC pc;
+	ierr = KSPGetPC(*ksp,&pc);
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+	ierr = PCFactorSetLevels(pc,static_cast<PetscInt>(lfill));
+	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+}
+
 const char * SolverConvergedReasonPetsc(void * data)
 {
 	static char reason_str[4096];

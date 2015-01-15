@@ -24,6 +24,12 @@
 #include "ml_include.h"
 #include "ml_MultiLevelPreconditioner.h"
 #include "BelosEpetraOperator.h"
+#include "Teuchos_Comm.hpp"
+#include "Teuchos_DefaultMpiComm.hpp"
+#include "Teuchos_OpaqueWrapper.hpp"
+#include "Teuchos_ParameterList.hpp"
+#include "Teuchos_TestForException.hpp"
+#include "Teuchos_XMLParameterListHelpers.hpp"
 #endif
 
 #define KSOLVER BCGSL_solver
@@ -32,6 +38,14 @@
 
 namespace INMOST
 {
+	static std::string petsc_database_file = "";
+	static std::string trilinos_aztec_database_file = "";
+	static std::string trilinos_ifpack_database_file = "";
+	static std::string trilinos_belos_database_file = "";
+	static std::string trilinos_ml_database_file = "";
+	static std::string ani_database_file = "";
+
+
 #if defined(USE_MPI)
 	INMOST_MPI_Type Solver::RowEntryType = MPI_DATATYPE_NULL;
 #else
@@ -1130,11 +1144,42 @@ namespace INMOST
 		(void)database;
 		(void)argc;
 		(void)argv;
+		if( database != NULL )
+		{
+			std::fstream file(database,std::ios::in);
+			char str[4096];
+			while( !file.eof() && file.getline(str,4096) )
+			{
+				int k = 0, l;
+				for(k = 0; k < strlen(str); ++k)
+				{
+					if( str[k] == ':' ) break;
+				}
+				if( k == strlen(str) ) continue; //invalid line
+				l = k+1;
+				while(l < strlen(str) && isspace(str[l]) ) ++l;
+				if( l == strlen(str) ) continue; //skip empty entry
+				if( !strncmp(str,"PETSc",k) )
+					petsc_database_file = std::string(str+l);
+				else if( !strncmp(str,"Trilinos_Ifpack",k) )
+					trilinos_ifpack_database_file = std::string(str+l);
+				else if( !strncmp(str,"Trilinos_Aztec",k) )
+					trilinos_aztec_database_file = std::string(str+l);
+				else if( !strncmp(str,"Trilinos_ML",k) )
+					trilinos_ml_database_file = std::string(str+l);
+				else if( !strncmp(str,"Trilinos_Belos",k) )
+					trilinos_belos_database_file = std::string(str+l);
+				else if( !strncmp(str,"ANI",k) )
+					ani_database_file = std::string(str+l);
+			}
+		}
+		//std::cout << "PETSc \"" << petsc_database_file << "\"" << std::endl;
+		//std::cout << "Trilinos_Ifpack \"" << trilinos_ifpack_database_file << "\"" << std::endl;
 #if defined(USE_SOLVER_PETSC)
-		SolverInitializePetsc(argc,argv,database);
+		SolverInitializePetsc(argc,argv,petsc_database_file.c_str());
 #endif
 #if defined(USE_SOLVER_ANI)
-		SolverInitializeAni(argc,argv,database);
+		SolverInitializeAni(argc,argv,ani_database_file.c_str());
 #endif
 #if defined(USE_MPI)
 		{
@@ -1281,7 +1326,7 @@ namespace INMOST
 		last_resid = 0;
 		matrix_data = rhs_data = solution_data = precond_data =  NULL;
 #if defined(USE_SOLVER_PETSC)
-		if( _pack == PETSC )
+		if( _pack == PETSc )
 		{
 			SolverInitDataPetsc(&solver_data,_comm,name.c_str());
 		}
@@ -1298,7 +1343,10 @@ namespace INMOST
 			_pack == Trilinos_ML ||
 			_pack == Trilinos_Ifpack)
 		{
-			solver_data = static_cast<void *>(new Epetra_LinearProblem);	
+			std::pair<std::string,Epetra_LinearProblem> * problem = 
+				new std::pair<std::string,Epetra_LinearProblem>;
+			problem->first = _name;
+			solver_data = static_cast<void *>(problem);
 		}
 #endif
 		if( _pack == INNER_ILU2 || _pack == INNER_MLILUC )
@@ -1329,7 +1377,7 @@ namespace INMOST
 	{
 		comm = other.comm;
 #if defined(USE_SOLVER_PETSC)
-		if( _pack == PETSC )
+		if( _pack == PETSc )
 		{
 			SolverCopyDataPetsc(&solver_data,other.solver_data,comm);
 			if( other.matrix_data != NULL ) 
@@ -1377,7 +1425,7 @@ namespace INMOST
 		local_size = global_size = 0;
 		info.Clear();
 #if defined(USE_SOLVER_PETSC)
-		if( _pack == PETSC )
+		if( _pack == PETSc )
 		{
 			if( matrix_data != NULL ) 
 				MatrixDestroyDataPetsc(&matrix_data);
@@ -1413,7 +1461,7 @@ namespace INMOST
 			}
 			if( solver_data != NULL )
 			{
-				delete static_cast<Epetra_LinearProblem *>(solver_data);
+				delete static_cast<std::pair<std::string,Epetra_LinearProblem> *>(solver_data);
 				solver_data = NULL;
 			}
 		}
@@ -1442,7 +1490,7 @@ namespace INMOST
 		{
 			comm = other.comm;
 #if defined(USE_SOLVER_PETSC)
-			if( _pack == PETSC )
+			if( _pack == PETSc )
 			{
 				SolverAssignDataPetsc(solver_data,other.solver_data);
 				if( other.matrix_data != NULL ) 
@@ -1519,7 +1567,7 @@ namespace INMOST
 		(void) OldPreconditioner;
 		bool ok = false;
 #if defined(USE_SOLVER_PETSC)
-		if( _pack == PETSC )
+		if( _pack == PETSc )
 		{
 			bool modified_pattern = false;
 			for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
@@ -1608,6 +1656,12 @@ namespace INMOST
 				delete [] col_values;
 			}
 			MatrixFinalizePetsc(matrix_data);
+			if( petsc_database_file == "" ) //set parameters if no file is set
+			{
+				SolverSetDropTolerancePetsc(solver_data,preconditioner_drop_tolerance);
+				SolverSetFillLevelPetsc(solver_data,preconditioner_fill_level);
+				SolverSetOverlapPetsc(solver_data,additive_schwartz_overlap);
+			}
 			SolverSetMatrixPetsc(solver_data,matrix_data,modified_pattern,OldPreconditioner);
 			ok = true;
 		}
@@ -1750,7 +1804,7 @@ namespace INMOST
 				//file << *Matrix;
 				//file.close();
 				assert(solver_data);
-				Epetra_LinearProblem * problem = static_cast<Epetra_LinearProblem *>(solver_data);
+				Epetra_LinearProblem * problem = &static_cast<std::pair<std::string,Epetra_LinearProblem> *>(solver_data)->second;
 				problem->SetOperator(Matrix);
 			}
 			ok = true;
@@ -1765,10 +1819,26 @@ namespace INMOST
 			sol->ReplaceMAT(*mat);
 			if( matrix_data != NULL ) delete (Solver::Matrix *)matrix_data;
 			matrix_data = (void *)mat;
-			//if (!sol->isInitialized()) 
-			//{
-			//	sol->Initialize();
-			//}
+
+			sol->RealParameter(":tau") = preconditioner_drop_tolerance;
+			sol->RealParameter(":tau2") = preconditioner_reuse_tolerance;
+			sol->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
+
+			if( _pack == INNER_MLILUC )
+			{
+				sol->RealParameter(":ddpq_tau") = preconditioner_ddpq_tolerance;
+				sol->EnumParameter(":reorder_nnz") = preconditioner_reorder_nonzero;
+				sol->EnumParameter(":estimator") = preconditioner_condition_estimation;
+				sol->EnumParameter(":ddpq_tau_adapt") = preconditioner_adapt_ddpq_tolerance;
+			}
+			else sol->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
+
+			sol->EnumParameter("levels") = solver_gmres_substeps;
+
+			if (!sol->isInitialized()) 
+			{
+				sol->Initialize();
+			}
 			ok = true;
 
 		}
@@ -1794,7 +1864,7 @@ namespace INMOST
 		}
 		//run the solver
 #if defined(USE_SOLVER_PETSC)
-		if( _pack == PETSC )
+		if( _pack == PETSc )
 		{
 			if( rhs_data == NULL )
 				VectorInitDataPetsc(&rhs_data,RHS.GetCommunicator(),RHS.GetName().c_str());
@@ -1826,6 +1896,10 @@ namespace INMOST
 				}
 				VectorFillPetsc(solution_data,local_size,positions,values);
 				VectorFinalizePetsc(solution_data);
+			}
+			if( petsc_database_file == "" ) //set parameters if no file is set
+			{
+				SolverSetTolerancesPetsc(solver_data,relative_tolerance,absolute_tolerance,divergance_tolerance,maximum_iterations);
 			}
 			bool result = SolverSolvePetsc(solver_data,rhs_data,solution_data);
 			if( result )
@@ -1877,35 +1951,99 @@ namespace INMOST
 		   _pack == Trilinos_Ifpack)
 		{
 			assert(matrix_data);
-			Epetra_LinearProblem * problem = static_cast<Epetra_LinearProblem *>(solver_data);
+			std::string name = static_cast<std::pair<std::string,Epetra_LinearProblem> *>(solver_data)->first;
+			Epetra_LinearProblem * problem = &static_cast<std::pair<std::string,Epetra_LinearProblem> *>(solver_data)->second;
 			Epetra_CrsMatrix * Matrix = static_cast<Epetra_CrsMatrix *>(matrix_data);
 			Epetra_Vector VectorRHS(View,Matrix->Map(),&*RHS.Begin());
 			Epetra_Vector VectorSOL(View,Matrix->Map(),&*SOL.Begin());
 			problem->SetRHS(&VectorRHS);
 			problem->SetLHS(&VectorSOL);
+			std::string specific_database_file = "";
+			if( _pack == Trilinos_Aztec )
+				specific_database_file = trilinos_aztec_database_file;
+			else if( _pack == Trilinos_ML )
+				specific_database_file = trilinos_ml_database_file;
+			else if( _pack == Trilinos_Ifpack )
+				specific_database_file = trilinos_ifpack_database_file;
+
+			bool have_params = specific_database_file != "";
+			const Teuchos::RCP<Teuchos::ParameterList> top_level_params = Teuchos::createParameterList();
+			Teuchos::ParameterList local_list;
+			if( have_params ) 
+			{
+				Teuchos::updateParametersFromXmlFileAndBroadcast(specific_database_file,top_level_params.ptr(),Teuchos::MpiComm<int>(Teuchos::opaqueWrapper(RHS.GetCommunicator())));
+				//top_level_params->print(std::cout,0,true,true);
+				if( !top_level_params->isSublist(name) )
+					have_params = false;
+				else
+				{
+					local_list = top_level_params->sublist(name);
+					//std::cout << "Got local list for " << name << std::endl;
+				}
+			}
+			
+
 			AztecOO AztecSolver(*problem);
-			AztecSolver.SetAztecOption(AZ_diagnostics,AZ_none);
-			AztecSolver.SetAztecOption(AZ_output,AZ_none);
-			AztecSolver.SetAztecOption(AZ_solver,AZ_bicgstab);
-			AztecSolver.SetAztecOption(AZ_overlap,additive_schwartz_overlap);
+			
+			
+			if( have_params && local_list.isSublist("AztecOO"))
+			{
+				Teuchos::ParameterList AztecOOParams = local_list.sublist("AztecOO");
+				if( AztecOOParams.isParameter("Max Iterations") )
+				{
+					maximum_iterations = AztecOOParams.get<int>("Max Iterations");
+					//std::cout << "Got maximum iterations " << maximum_iterations << std::endl;
+				}
+				if( AztecOOParams.isParameter("Tolerance") )
+				{
+					relative_tolerance = AztecOOParams.get<double>("Tolerance");
+					//std::cout << "Got tolerance " << relative_tolerance << std::endl;
+				}
+				if( AztecOOParams.isSublist("AztecOO Settings") )
+				{
+					AztecSolver.SetParameters(AztecOOParams.sublist("AztecOO Settings"));
+					//std::cout << "Submit Aztec settings" << std::endl;
+				}
+			}
+			else
+			{
+				AztecSolver.SetAztecOption(AZ_diagnostics,AZ_none);
+				AztecSolver.SetAztecOption(AZ_output,AZ_none);
+				AztecSolver.SetAztecOption(AZ_solver,AZ_bicgstab);
+				AztecSolver.SetAztecOption(AZ_overlap,additive_schwartz_overlap);
+			}
 			
 			void * precinfo = NULL;
 			if( _pack == Trilinos_Aztec )
 			{
-				AztecSolver.SetAztecParam(AZ_drop,preconditioner_drop_tolerance);
-				AztecSolver.SetAztecParam(AZ_ilut_fill,preconditioner_fill_level);
-				//AztecSolver.SetAztecOption(AZ_solver,AZ_tfqmr);
-				//AztecSolver.SetAztecOption(AZ_precond,AZ_Neumann);
-				//AztecSolver.SetAztecOption(AZ_poly_ord,3);
+				if( !have_params )
+				{
+					AztecSolver.SetAztecParam(AZ_drop,preconditioner_drop_tolerance);
+					AztecSolver.SetAztecParam(AZ_ilut_fill,preconditioner_fill_level);
+					//AztecSolver.SetAztecOption(AZ_solver,AZ_tfqmr);
+					//AztecSolver.SetAztecOption(AZ_precond,AZ_Neumann);
+					//AztecSolver.SetAztecOption(AZ_poly_ord,3);
+				}
+				else
+				{
+					//should be set automatically
+				}
 			}
 			else if( _pack == Trilinos_ML )
 			{
 				Teuchos::ParameterList List;
-				ML_Epetra::SetDefaults("SA",List);
-				List.set("max levels",6);
-				List.set("increasing or decreasing","decreasing");
-				//List.set("aggreagation: type", "MIS");
-				//List.set("coarse: type", "Amesos-KLU");
+				if( have_params && local_list.isSublist("ML") && local_list.sublist("ML").isSublist("ML Settings") )
+				{
+					List = local_list.sublist("ML").sublist("ML Settings");
+				}
+				else
+				{
+					ML_Epetra::SetDefaults("SA",List);
+					List.set("max levels",6);
+					List.set("increasing or decreasing","decreasing");
+					//List.set("aggreagation: type", "MIS");
+					//List.set("coarse: type", "Amesos-KLU");
+				}
 				ML_Epetra::MultiLevelPreconditioner * Prec = new ML_Epetra::MultiLevelPreconditioner(*Matrix,List,true);
 				AztecSolver.SetPrecOperator(Prec);
 				precinfo = Prec;
@@ -1915,9 +2053,29 @@ namespace INMOST
 				Ifpack * Factory = new Ifpack();
 				Ifpack_Preconditioner * Prec;
 				std::string PrecType = "ILU";
+				if( have_params && local_list.isSublist("Ifpack") )
+				{
+					Teuchos::ParameterList ifpacklist = local_list.sublist("Ifpack");
+					if( ifpacklist.isParameter("Prec Type") )
+					{
+						PrecType = ifpacklist.get<std::string>("Prec Type");
+						//std::cout << "Got preconditioner type " << PrecType << std::endl;
+					}
+					if( ifpacklist.isParameter("Overlap") )
+					{
+						additive_schwartz_overlap = ifpacklist.get<int>("Overlap");
+						//std::cout << "Got overlap " << additive_schwartz_overlap << std::endl;
+					}
+				}
 				Prec = Factory->Create(PrecType,Matrix,additive_schwartz_overlap);
 				Teuchos::ParameterList List;
-				List.set("fact: level-of-fill",preconditioner_fill_level);
+				if( have_params && local_list.isSublist("Ifpack") && local_list.sublist("Ifpack").isSublist("Ifpack Settings") )
+				{
+					List = local_list.sublist("Ifpack").sublist("Ifpack Settings");
+					//std::cout << "Submit settings to ifpack" << std::endl;
+				}
+				else
+					List.set("fact: level-of-fill",static_cast<int>(preconditioner_fill_level));
 				Prec->SetParameters(List);
 				Prec->Initialize();
 				Prec->Compute();
@@ -1980,19 +2138,30 @@ namespace INMOST
 		if(_pack == Trilinos_Belos )
 		{
 			assert(matrix_data);
-			Epetra_LinearProblem * problem = static_cast<Epetra_LinearProblem *>(solver_data);
+			std::string name = static_cast<std::pair<std::string,Epetra_LinearProblem> *>(solver_data)->first;
+			Epetra_LinearProblem * problem = &static_cast<std::pair<std::string,Epetra_LinearProblem> *>(solver_data)->second;
 			Epetra_CrsMatrix * Matrix = static_cast<Epetra_CrsMatrix *>(matrix_data);
 			Epetra_Vector VectorRHS(View,Matrix->Map(),&*RHS.Begin());
 			Epetra_Vector VectorSOL(View,Matrix->Map(),&*SOL.Begin());
 			problem->SetRHS(&VectorRHS);
 			problem->SetLHS(&VectorSOL);
+
+			bool have_params = trilinos_belos_database_file != "";
+			const Teuchos::RCP<Teuchos::ParameterList> top_level_params = Teuchos::createParameterList();
+			if( have_params ) Teuchos::updateParametersFromXmlFileAndBroadcast(trilinos_belos_database_file,top_level_params.ptr(),Teuchos::MpiComm<int>(Teuchos::opaqueWrapper(RHS.GetCommunicator())));
+			
 			Teuchos::RCP<Teuchos::ParameterList> List = Teuchos::rcp(new Teuchos::ParameterList);
 			
-			List->set("Num Blocks",100);
-			List->set("Block Size",1);
-			List->set("Maximum Iterations",maximum_iterations);
-			List->set("Maximum Restarts",20);
-			List->set("Convergence Tolerance",relative_tolerance);
+			if( have_params && top_level_params->isSublist(name) && top_level_params->sublist(name).isSublist("Belos") )
+				*List = top_level_params->sublist(name).sublist("Belos");
+			else
+			{
+				List->set("Num Blocks",100);
+				List->set("Block Size",1);
+				List->set("Maximum Iterations",maximum_iterations);
+				List->set("Maximum Restarts",20);
+				List->set("Convergence Tolerance",relative_tolerance);
+			}
 			//int verbosity = Belos::Warnings + Belos::Errors + Belos::StatusTestDetails + Belos::Debug + Belos::FinalSummary + Belos::TimingDetails;
 			//List->set("Verbosity",verbosity);
 			Teuchos::RCP<Belos::LinearProblem<double,Epetra_MultiVector,Epetra_Operator> > Problem = 
@@ -2049,49 +2218,15 @@ namespace INMOST
 			
 		}
 #endif
-		if(_pack == INNER_ILU2 )
+		if(_pack == INNER_ILU2 || _pack == INNER_MLILUC)
 		{
 			IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
+			
 			sol->EnumParameter("maxits") = maximum_iterations;
-			sol->EnumParameter("levels") = solver_gmres_substeps;
 			sol->RealParameter("rtol") = relative_tolerance;
 			sol->RealParameter("atol") = absolute_tolerance;
 			sol->RealParameter("divtol") = divergance_tolerance;
-			sol->RealParameter(":tau") = preconditioner_drop_tolerance;
-			sol->RealParameter(":tau2") = preconditioner_reuse_tolerance;
-			sol->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
-			sol->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
 			
-			if (!sol->isInitialized()) 
-			{
-				sol->Initialize();
-			}
-			bool ret = sol->Solve(RHS,SOL);
-			last_it = sol->GetIterations();
-			last_resid = sol->GetResidual();
-			return_reason = sol->GetReason();
-			return ret;
-		}
-		if(_pack == INNER_MLILUC )
-		{
-			IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
-			sol->EnumParameter("maxits") = maximum_iterations;
-			sol->EnumParameter("levels") = solver_gmres_substeps;
-			sol->RealParameter("rtol") = relative_tolerance;
-			sol->RealParameter("atol") = absolute_tolerance;
-			sol->RealParameter("divtol") = divergance_tolerance;
-			sol->RealParameter(":tau") = preconditioner_drop_tolerance;
-			sol->RealParameter(":tau2") = preconditioner_reuse_tolerance;
-			sol->RealParameter(":ddpq_tau") = preconditioner_ddpq_tolerance;
-			sol->EnumParameter(":reorder_nnz") = preconditioner_reorder_nonzero;
-			sol->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
-			sol->EnumParameter(":estimator") = preconditioner_condition_estimation;
-			sol->EnumParameter(":ddpq_tau_adapt") = preconditioner_adapt_ddpq_tolerance;
-			
-			if (!sol->isInitialized()) 
-			{
-				sol->Initialize();
-			}
 			bool ret = sol->Solve(RHS,SOL);
 			last_it = sol->GetIterations();
 			last_resid = sol->GetResidual();

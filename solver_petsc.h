@@ -36,4 +36,9 @@ int SolverIterationNumberPetsc(void * data);
 double SolverResidualNormPetsc(void * data);
 const char * SolverConvergedReasonPetsc(void * data);
 
+void SolverSetTolerancesPetsc(void * data, double rtol, double atol, double divtol, int maxits);
+void SolverSetOverlapPetsc(void * data, int levels);
+void SolverSetDropTolerancePetsc(void * data, double dtol);
+void SolverSetFillLevelPetsc(void * data, double lfill);
+
 #endif
