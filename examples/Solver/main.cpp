@@ -146,11 +146,23 @@ Storage::real tensor_K_mat_rotOxy(Storage::integer mat)
 
 int main(int argc,char ** argv)
 {
-	
+	Mesh::Initialize(&argc,&argv);
 	Solver::Initialize(&argc,&argv,"database.txt");
 #if defined(USE_PARTITIONER)
 	Partitioner::Initialize(&argc,&argv);
 #endif
+	{
+		Mesh m;
+		//m.SetFileOption("VERBOSITY","2");
+		m.Load(argv[1]);
+		m.Save("dump.pvtk");
+	}
+	Solver::Finalize();
+	Partitioner::Finalize();
+	Mesh::Finalize();
+	return 0;
+
+
 	if( argc > 1 )
 	{
 		Tag phi, tensor_K, id, mat;

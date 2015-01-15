@@ -581,7 +581,12 @@ ecl_exit_loop:
 							if( !old_nodes.empty() )
 							{
 								std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),node_xyz,CentroidComparator(this));
-								if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+								if( it != old_nodes.end() ) 
+								{
+									Storage::real_array c = RealArrayDF(*it,CoordsTag());
+									if( CentroidComparator(this).Compare(node_xyz,c.data()) == 0 )
+										find = static_cast<int>(it - old_nodes.begin());
+								}
 							}
 							if( find == -1 ) newnodes[numnode++] = CreateNode(node_xyz)->GetHandle();
 							else newnodes[numnode++] = old_nodes[find];
@@ -793,7 +798,14 @@ ecl_exit_loop:
 					old_nodes[qq++] = *it;
 			}
 			if( !old_nodes.empty() ) 
+			{
 				std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
+				//for(std::vector<HandleType>::iterator it = old_nodes.begin(); it != old_nodes.end(); ++it)
+				//{
+				//	Storage::real_array c = RealArrayDF(*it,CoordsTag());
+				//	REPORT_VAL("coord: ",c[0] << " " << c[1] << " " << c[2]);
+				//}
+			}
 
 			
 			FILE * f = fopen(File.c_str(),"r");
@@ -1335,7 +1347,12 @@ ecl_exit_loop:
 								if( !old_nodes.empty() )
 								{
 									std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
-									if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+									if( it != old_nodes.end() ) 
+									{
+										Storage::real_array c = RealArrayDF(*it,CoordsTag());
+										if( CentroidComparator(this).Compare(c.data(),coords) == 0 )
+											find = static_cast<int>(it - old_nodes.begin());
+									}
 								}
 								if( find == -1 ) 
 									newnodes[i] = CreateNode(coords)->GetHandle();
@@ -1365,7 +1382,12 @@ ecl_exit_loop:
 								if( !old_nodes.empty() )
 								{
 									std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
-									if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+									if( it != old_nodes.end() ) 
+									{
+										Storage::real_array c = RealArrayDF(*it,CoordsTag());
+										if( CentroidComparator(this).Compare(c.data(),coords) == 0 )
+											find = static_cast<int>(it - old_nodes.begin());
+									}
 								}
 								if( find == -1 ) newnodes[i] = CreateNode(coords)->GetHandle();
 								else newnodes[i] = old_nodes[find];
@@ -2105,7 +2127,12 @@ ecl_exit_loop:
 					if( !old_nodes.empty() )
 					{
 						std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),xyz,CentroidComparator(this));
-						if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+						if( it != old_nodes.end() ) 
+						{
+							Storage::real_array c = RealArrayDF(*it,CoordsTag());
+							if( CentroidComparator(this).Compare(xyz,c.data()) == 0 )
+								find = static_cast<int>(it - old_nodes.begin());
+						}
 					}
 					if( find == -1 ) newnodes[i] = CreateNode(xyz)->GetHandle();
 					else newnodes[i] = old_nodes[find];
@@ -2471,7 +2498,12 @@ read_node_num_link:
 						if( !old_nodes.empty() )
 						{
 							std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),xyz,CentroidComparator(this));
-							if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+							if( it != old_nodes.end() ) 
+							{
+								Storage::real_array c = RealArrayDF(*it,CoordsTag());
+								if( CentroidComparator(this).Compare(xyz,c.data()) == 0 )
+									find = static_cast<int>(it - old_nodes.begin());
+							}
 						}
 						if( find == -1 ) newnodes[nodenum] = CreateNode(xyz)->GetHandle();
 						else newnodes[nodenum] = old_nodes[find];
@@ -3236,7 +3268,12 @@ read_elem_num_link:
 						if( !old_nodes.empty() ) 
 						{
 							std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
-							if( it != old_nodes.end() ) find = static_cast<int>(it - old_nodes.begin());
+							if( it != old_nodes.end() ) 
+							{
+								Storage::real_array c = RealArrayDF(*it,CoordsTag());
+								if( CentroidComparator(this).Compare(coords,c.data()) == 0 )
+									find = static_cast<int>(it - old_nodes.begin());
+							}
 						}
 						if( find == -1 ) new_nodes[i] = CreateNode(coords)->GetHandle();
 						else  new_nodes[i] = old_nodes[find];
