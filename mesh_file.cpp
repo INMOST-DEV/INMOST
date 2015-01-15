@@ -686,7 +686,7 @@ ecl_exit_loop:
 			std::string str, tag, attrval, path = "";
 			std::vector<std::string> files;
 			std::fstream stream(File.c_str(),std::ios::in);
-			l = static_cast<INMOST_DATA_ENUM_TYPE>(File.find_last_of("/\\"));
+			l = File.find_last_of("/\\");
 			if( l != std::string::npos )
 				path = File.substr(0,l+1);
 			while(stream.good())
