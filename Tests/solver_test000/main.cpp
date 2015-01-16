@@ -62,7 +62,7 @@ int main(int argc,char ** argv)
 		{
 			A[i][i] = 10.0;
 			b[i] = i;
-			x[i] = 0.0;
+			x[i] = 0.1;
 		}
 		if (rank==0)  std::cout << "next call S.SetMatrix(A);" << std::endl;
 		S.SetMatrix(A); // Compute the preconditioner for the original matrix

@@ -171,7 +171,7 @@ namespace INMOST
 				// r[0] = r[0] - A x
 				Alink->MatVec(-1,SOL,1,r[0]); //global multiplication, r probably needs an update
 				info->Update(r[0]); // r is good
-				std::copy(x0.Begin(),x0.End(),SOL.Begin()); //x0 = x
+				std::copy(SOL.Begin(),SOL.End(),x0.Begin()); //x0 = x
 				std::fill(SOL.Begin(),SOL.End(),0.0); //x = 0
 			}
 			std::copy(r[0].Begin(),r[0].End(),r_tilde.Begin()); // r_tilde = r[0]

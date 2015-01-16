@@ -33,7 +33,7 @@ if(USE_SOLVER_PETSC)
 add_test(NAME solver_test000_serial_petsc                      COMMAND $<TARGET_FILE:solver_test000> 0 2)
 endif()
 
-if(USE_SOLVER_TIRLINOS)
+if(USE_SOLVER_TRILINOS)
 add_test(NAME solver_test000_serial_trilinos_aztec             COMMAND $<TARGET_FILE:solver_test000> 0 3)
 add_test(NAME solver_test000_serial_trilinos_ifpack            COMMAND $<TARGET_FILE:solver_test000> 0 4)
 add_test(NAME solver_test000_serial_trilinos_ml                COMMAND $<TARGET_FILE:solver_test000> 0 5)
