@@ -151,6 +151,7 @@ int main(int argc,char ** argv)
 #if defined(USE_PARTITIONER)
 	Partitioner::Initialize(&argc,&argv);
 #endif
+	/*
 	{
 		Mesh m;
 		//m.SetFileOption("VERBOSITY","2");
@@ -161,7 +162,7 @@ int main(int argc,char ** argv)
 	Partitioner::Finalize();
 	Mesh::Finalize();
 	return 0;
-
+	*/
 
 	if( argc > 1 )
 	{
@@ -520,5 +521,6 @@ int main(int argc,char ** argv)
 	Partitioner::Finalize();
 #endif
 	Solver::Finalize();
+	Mesh::Finalize();
 	return 0;
 }

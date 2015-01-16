@@ -77,14 +77,14 @@ namespace INMOST
 		}
 		return size;
 	}
-	void Solver::OrderInfo::Integrate(INMOST_DATA_REAL_TYPE * inout, INMOST_DATA_ENUM_TYPE num)
+	void Solver::OrderInfo::Integrate(INMOST_DATA_REAL_TYPE * inout, INMOST_DATA_ENUM_TYPE num) const
 	{
 #if defined(USE_MPI)
+		if( GetSize() == 1 ) return;
 		int ierr = 0;
-		INMOST_DATA_REAL_TYPE * temp = new INMOST_DATA_REAL_TYPE [num];
-		memcpy(temp,inout,sizeof(INMOST_DATA_REAL_TYPE)*num);
-		GUARD_MPI(MPI_Allreduce(temp,inout,num,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
-		delete [] temp;
+		dynarray<INMOST_DATA_REAL_TYPE,64> temp(num);
+		memcpy(temp.data(),inout,sizeof(INMOST_DATA_REAL_TYPE)*num);
+		GUARD_MPI(MPI_Allreduce(temp.data(),inout,num,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 #else
 		(void) inout;
 		(void) num;
@@ -147,7 +147,7 @@ namespace INMOST
 			{
 				storage_type temp(size*2);
 				//assemble array that includes rank
-				for(int k = 0; k < size; k++)
+				for(int k = 0; k < size; ++k)
 				{
 					temp[2*k+0] = global_overlap[2*k];
 					temp[2*k+1] = k;
@@ -158,6 +158,8 @@ namespace INMOST
 				MPI_Group oldg, newg;
 				MPI_Comm newcomm;
 				std::vector<int> ranks(size);
+				for(int k = 0; k < size; ++k)
+					ranks[k] = temp[2*k+1];
 				GUARD_MPI(MPI_Comm_group(comm,&oldg));
 				GUARD_MPI(MPI_Group_incl(oldg,size,&ranks[0],&newg));
 				GUARD_MPI(MPI_Comm_create(comm,newg,&newcomm));
@@ -553,14 +555,14 @@ namespace INMOST
 		have_matrix = false;
 	}
 	
-	void Solver::OrderInfo::PrepareVector(Vector & v)
+	void Solver::OrderInfo::PrepareVector(Vector & v) const
 	{
 		if( !have_matrix ) throw PrepareMatrixFirst;
 		v.SetInterval(local_vector_begin,local_vector_end);
 		v.isParallel() = true;
 	}
 	
-	void Solver::OrderInfo::RestoreVector(Vector & v)
+	void Solver::OrderInfo::RestoreVector(Vector & v) const
 	{
 		assert(have_matrix);
 		if( v.isParallel() )
@@ -703,6 +705,7 @@ namespace INMOST
 	{
 		//std::cout << __FUNCTION__ << " start" << std::endl;
 #if defined(USE_MPI)
+		if( GetSize() == 1 ) return;
 		//use MPI_Put/MPI_Get to update vector
 		assert(x.isParallel()); //the vector was prepared
 		INMOST_DATA_ENUM_TYPE i, j = 1, k, l = 0;
@@ -749,6 +752,7 @@ namespace INMOST
 	{
 		//std::cout << __FUNCTION__ << " start" << std::endl;
 #if defined(USE_MPI)
+		if( GetSize() == 1 ) return;
 		//use MPI_Put/MPI_Get to update vector
 		assert(x.isParallel()); //the vector was prepared
 		INMOST_DATA_ENUM_TYPE i, j = 1, k, l = 0;
@@ -794,17 +798,12 @@ namespace INMOST
 		//std::cout << __FUNCTION__ << " end" << std::endl;
 	}
 
-	INMOST_DATA_REAL_TYPE Solver::Vector::ScalarProd(Vector const & other, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end) const
+	INMOST_DATA_REAL_TYPE Solver::OrderInfo::ScalarProd(Vector const & left, Vector const & right, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end) const
 	{
 		INMOST_DATA_REAL_TYPE ret = 0;
-		for(INMOST_DATA_ENUM_TYPE i = index_begin; i < index_end; i++)
-			ret += data[i]*other[i];
-#if defined(USE_MPI)
-		INMOST_DATA_REAL_TYPE temp;
-		int ierr = 0;
-		GUARD_MPI(MPI_Allreduce(&ret,&temp,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
-		ret = temp;
-#endif
+		for(INMOST_DATA_ENUM_TYPE i = index_begin; i < index_end; ++i)
+			ret += left[i]*right[i];
+		Integrate(&ret,1);
 		return ret;
 	}
 
@@ -1833,7 +1832,8 @@ namespace INMOST
 			}
 			else sol->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
 
-			sol->EnumParameter("levels") = solver_gmres_substeps;
+			if( sizeof(KSOLVER) == sizeof(BCGSL_solver) )
+				sol->EnumParameter("levels") = solver_gmres_substeps;
 
 			if (!sol->isInitialized()) 
 			{
@@ -2158,9 +2158,9 @@ namespace INMOST
 			{
 				List->set("Num Blocks",100);
 				List->set("Block Size",1);
-				List->set("Maximum Iterations",maximum_iterations);
+				List->set("Maximum Iterations",static_cast<int>(maximum_iterations));
 				List->set("Maximum Restarts",20);
-				List->set("Convergence Tolerance",relative_tolerance);
+				List->set("Convergence Tolerance",static_cast<double>(relative_tolerance));
 			}
 			//int verbosity = Belos::Warnings + Belos::Errors + Belos::StatusTestDetails + Belos::Debug + Belos::FinalSummary + Belos::TimingDetails;
 			//List->set("Verbosity",verbosity);
@@ -2187,8 +2187,8 @@ namespace INMOST
 			
 			Teuchos::RCP< Belos::SolverManager<double,Epetra_MultiVector,Epetra_Operator> > BelosSolver =
 			//	Teuchos::rcp(new Belos::BlockCgSolMgr<double,Epetra_MultiVector,Epetra_Operator >);
-			//	Teuchos::rcp(new Belos::BlockGmresSolMgr<double,Epetra_MultiVector,Epetra_Operator >);
-				Teuchos::rcp(new Belos::PseudoBlockGmresSolMgr<double,Epetra_MultiVector,Epetra_Operator >);
+				Teuchos::rcp(new Belos::BlockGmresSolMgr<double,Epetra_MultiVector,Epetra_Operator >);
+			//	Teuchos::rcp(new Belos::PseudoBlockGmresSolMgr<double,Epetra_MultiVector,Epetra_Operator >);
 			BelosSolver->setParameters(List);
 			BelosSolver->setProblem(Problem);
 			Belos::ReturnType ret = BelosSolver->solve();

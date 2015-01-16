@@ -20,7 +20,7 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE iters, maxits, l, last_it;
 		INMOST_DATA_REAL_TYPE resid;
 		INMOST_DATA_REAL_TYPE * tau, * sigma, * gamma, *theta1, * theta2, * theta3;
-		Solver::Vector r0, t, * u, * r;
+		Solver::Vector r_tilde, x0, t, * u, * r;
 		Solver::Matrix * Alink;
 		Method * prec;
 		std::string reason;
@@ -66,7 +66,8 @@ namespace INMOST
 		{
 			if (isInitialized()) Finalize();
 			if (prec != NULL && !prec->isInitialized()) prec->Initialize();
-			info->PrepareVector(r0);
+			info->PrepareVector(r_tilde);
+			info->PrepareVector(x0);
 			info->PrepareVector(t);
 			tau = new INMOST_DATA_REAL_TYPE[l * 5 + l*l];
 			sigma = tau + l*l;
@@ -134,35 +135,51 @@ namespace INMOST
 			if (!isFinalized()) Finalize();
 			if (prec != NULL) delete prec;
 		}
+		void ApplyOperator(Solver::Vector & Input, Solver::Vector & Output)
+		{
+			if (prec != NULL) //right preconditioning here! for left preconditioner have to reverse order
+			{
+				prec->Solve(Input, t); 
+				info->Update(t);
+				Alink->MatVec(1.0,t,0,Output);
+				info->Update(Output);
+			}
+			else
+			{
+				Alink->MatVec(1.0,t,0,Output);
+				info->Update(Output);
+			}
+		}
 		bool Solve(Solver::Vector & RHS, Solver::Vector & SOL)
 		{
 			assert(isInitialized());
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
-			INMOST_DATA_REAL_TYPE rho0 = 1, rho1, alpha = 0, beta, omega = 1;
+			INMOST_DATA_REAL_TYPE rho0 = 1, rho1, alpha = 0, beta, omega = 1, eta;
 			INMOST_DATA_REAL_TYPE resid0, resid, temp[2];
-			bool is_parallel = info->GetSize() > 1;
 			iters = 0;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
-			if( is_parallel ) info->Update(SOL);
-			if( is_parallel ) info->Update(RHS);
+			info->Update(SOL);
+			info->Update(RHS);
 			if( prec != NULL ) prec->ReplaceSOL(SOL);
 			if( prec != NULL ) prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
 			info->GetVectorRegion(vbeg,vend);
+			//r[0] = b
 			std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
 			{
+				// r[0] = r[0] - A x
 				Alink->MatVec(-1,SOL,1,r[0]); //global multiplication, r probably needs an update
-				if( is_parallel ) info->Update(r[0]); // r is good
+				info->Update(r[0]); // r is good
+				std::copy(x0.Begin(),x0.End(),SOL.Begin()); //x0 = x
+				std::fill(SOL.Begin(),SOL.End(),0.0); //x = 0
 			}
-			std::copy(r[0].Begin(),r[0].End(),r0.Begin());
-			std::fill(u[0].Begin(),u[0].End(),0);
-			{
-				resid = 0;
-				for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) resid += r[0][k]*r[0][k];
-				if( is_parallel ) info->Integrate(&resid,1);
-			}
-			last_resid = resid = resid0 = sqrt(resid);
+			std::copy(r[0].Begin(),r[0].End(),r_tilde.Begin()); // r_tilde = r[0]
+			std::fill(u[0].Begin(),u[0].End(),0); // u[0] = 0
+			resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend); //resid = dot(r[0],r[0])
+			for(INMOST_DATA_ENUM_TYPE k = vbeg; k != vend; k++) // r_tilde = r[0] / dot(r[0],r[0])
+				r_tilde[k] /= resid;
+			last_resid = resid = resid0 = sqrt(resid); //resid = sqrt(dot(r[0],r[0])
 			last_it = 0;
 #if defined(REPORT_RESIDUAL)
 			if( info->GetRank() == 0 ) 
@@ -174,6 +191,13 @@ namespace INMOST
 				fflush(stdout);
 			}
 #endif
+
+			if( last_resid < atol || last_resid < rtol*resid0 ) 
+			{
+				reason = "initial solution satisfy tolerances";
+				goto exit;
+			}
+
 			long double tt, ts, tp, ttt;
 			INMOST_DATA_ENUM_TYPE i = 0;
 			while( true )
@@ -184,57 +208,49 @@ namespace INMOST
 				tt = Timer();
 				for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
 				{
-					rho1 = 0.0;
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
-						rho1 += r[j][k]*r0[k];
-					if( is_parallel ) info->Integrate(&rho1,1);
+					rho1 = info->ScalarProd(r[j],r_tilde,vlocbeg,vlocend); // rho1 = dot(r[j],r_tilde)
 					if( fabs(rho0) < 1.0e-54 ) 
 					{
 						reason = "denominator(1) is zero";
 						goto exit;
 					}
-					beta = alpha * rho1/rho0;
+					beta = alpha * (rho1/rho0);
 					rho0 = rho1;
 					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
 						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 							u[i][k] = r[i][k] - beta*u[i][k];
+
+					ApplyOperator(u[j],u[j+1]); // u[j+1] = A*R*u[j]
+					eta = info->ScalarProd(u[j+1],r_tilde,vlocbeg,vlocend); //eta = dot(u[j+1],r_tilde)
+					if( fabs(eta) < 1.0e-54 ) 
 					{
-						ttt = Timer();
-						if (prec != NULL) prec->Solve(u[j], t);
-						tp += Timer() - ttt;
-						if( is_parallel ) info->Update(t);
-						ttt = Timer();
-						Alink->MatVec(1.0,t,0,u[j+1]);
-						ts += Timer() - ttt;
-						if( is_parallel ) info->Update(u[j+1]);
+						reason = "denominator(2) is zero";
+						goto exit;
 					}
-					{
-						temp[0] = 0;
-						for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
-							temp[0] += u[j+1][k]*r0[k];
-						if( is_parallel ) info->Integrate(temp,1);
-						if( fabs(temp[0]) < 1.0e-54 ) 
-						{
-							reason = "denominator(2) is zero";
-							goto exit;
-						}
-						alpha = rho0 / temp[0];
-					}
-					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
-						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
-							r[i][k] -= alpha*u[i+1][k];
-					{
-						ttt = Timer();
-						if (prec != NULL) prec->Solve(r[j], t);
-						tp += Timer() - ttt;
-						if( is_parallel ) info->Update(t);
-						ttt = Timer();
-						Alink->MatVec(1.0,t,0,r[j+1]);
-						ts += Timer() - ttt;
-						if( is_parallel ) info->Update(r[j+1]);
-					}
+					alpha = rho0 / eta;
+
 					for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 						SOL[k] += alpha*u[0][k];
+
+					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
+						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k) //r[i] = r[i] - alpha * u[i+1]
+							r[i][k] -= alpha*u[i+1][k];
+
+					
+					resid = info->ScalarProd(r[j],r[j],vlocbeg,vlocend); // resid = dot(r[j],r[j])
+					resid = sqrt(resid); // resid = sqrt(dot(r[j],r[j]))
+
+					if( resid < atol || resid < rtol*resid0 ) 
+					{
+						reason = "early exit in bi-cg block";
+						last_resid = resid;
+						goto exit;
+					}
+					
+
+					ApplyOperator(r[j],r[j+1]); // r[j+1] = A*R*r[j]
+
+					
 				}
 
 				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; j++)
@@ -244,7 +260,7 @@ namespace INMOST
 						tau[i-1 + (j-1)*l] = 0;
 						for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
 							tau[i-1 + (j-1)*l] += r[j][k]*r[i][k];
-						if(is_parallel) info->Integrate(&tau[i-1 + (j-1)*l],1);
+						info->Integrate(&tau[i-1 + (j-1)*l],1);
 						tau[i-1 + (j-1)*l] /= sigma[i-1];
 						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 							r[j][k] -= tau[i-1 + (j-1)*l]*r[i][k];
@@ -256,24 +272,24 @@ namespace INMOST
 						temp[0] += r[j][k]*r[j][k];
 						temp[1] += r[0][k]*r[j][k];
 					}
-					if(is_parallel) info->Integrate(temp,2);
+					info->Integrate(temp,2);
 					sigma[j-1] = temp[0]+1.0e-35; //REVIEW
 					theta2[j-1] = temp[1]/sigma[j-1];
 				}
 				omega = theta1[l-1] = theta2[l-1];
 				for(INMOST_DATA_ENUM_TYPE j = l-1; j > 0; j--)
 				{
-					temp[0] = 0;
+					eta = 0;
 					for(INMOST_DATA_ENUM_TYPE i = j+1; i < l+1; i++)
-						temp[0] += tau[j-1 + (i-1)*l] * theta1[i-1];
-					theta1[j-1] = theta2[j-1] - temp[0];
+						eta += tau[j-1 + (i-1)*l] * theta1[i-1];
+					theta1[j-1] = theta2[j-1] - eta;
 				}
 				for(INMOST_DATA_ENUM_TYPE j = 1; j < l; j++)
 				{
-					temp[0] = 0;
+					eta = 0;
 					for(INMOST_DATA_ENUM_TYPE i = j+1; i < l; i++)
-						temp[0] += tau[j-1 + (i-1)*l] * theta1[i];
-					theta3[j-1] = theta1[j] + temp[0];
+						eta += tau[j-1 + (i-1)*l] * theta1[i];
+					theta3[j-1] = theta1[j] + eta;
 				}
 				for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 				{
@@ -292,10 +308,7 @@ namespace INMOST
 				}
 				last_it = i+1;
 				{
-					resid = 0;
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) 
-						resid += r[0][k]*r[0][k];
-					if( is_parallel ) info->Integrate(&resid,1);
+					resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend);
 					resid = sqrt(resid);
 				}
 				tt = Timer() - tt;
@@ -337,17 +350,14 @@ namespace INMOST
 				}
 				i++;
 			}
+exit:
 			if (prec != NULL)
 			{
-				prec->Solve(SOL, r0);
-				{
-					Solver::Vector::iterator itSOL = SOL.Begin();
-					Solver::Vector::iterator itr0 = r0.Begin(), endr0 = r0.End();
-					while(itr0 != endr0) *itSOL++ = *itr0++;
-				}
-				//std::copy(r0.Begin(), r0.End(), SOL.Begin());
+				prec->Solve(SOL, r_tilde); //undo right preconditioner
+				std::copy(r_tilde.Begin(), r_tilde.End(), SOL.Begin());
 			}
-exit:
+			for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k) //undo shift
+				SOL[k] += x0[k];
 			//info->RestoreMatrix(A);
 			info->RestoreVector(SOL);
 			info->RestoreVector(RHS);

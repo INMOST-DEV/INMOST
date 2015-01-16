@@ -94,9 +94,9 @@ namespace INMOST
 			/// Restore initial nonparallel state of the Matrix with no overlap.
 			void RestoreMatrix(Matrix & m);
 			/// Prepare parallel state of the Vector.
-			void PrepareVector(Vector & v);
+			void PrepareVector(Vector & v) const;
 			/// Restore initial nonparallel state of the Vector.
-			void RestoreVector(Vector & v); //Restore initial nonparallel state of the vector
+			void RestoreVector(Vector & v) const;
 			/// Retrieve the processor number by binary search for the specified global index.
 			INMOST_DATA_ENUM_TYPE GetProcessor(INMOST_DATA_ENUM_TYPE gind) const; //retrive processor by binary search in global_to_proc
 			void      GetOverlapRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE & mbeg, INMOST_DATA_ENUM_TYPE & mend) const;
@@ -113,9 +113,9 @@ namespace INMOST
 			/// Sum shared values in parallel vector.
 			void                  Accumulate(Vector & x); // sum shared values in parallel vector
 			/// Get the sum of num elements of real array on all processes.
-			void                  Integrate(INMOST_DATA_REAL_TYPE * inout, INMOST_DATA_ENUM_TYPE num);
+			void                  Integrate(INMOST_DATA_REAL_TYPE * inout, INMOST_DATA_ENUM_TYPE num) const;
 			/// Get the communicator which the solver is associated with.
-			INMOST_MPI_Comm         GetComm() {return comm;}
+			INMOST_MPI_Comm         GetComm() const {return comm;}
 			// Access to arrays below allows to organize manual exchange
 			INMOST_MPI_Request    * GetSendRequests() {assert(!send_requests.empty()); return &send_requests[0];}
 			INMOST_MPI_Request    * GetRecvRequests() {assert(!recv_requests.empty()); return &recv_requests[0];}
@@ -128,6 +128,9 @@ namespace INMOST
 			//for debug
 			//~ void                 BeginSequentialCode() {for(int i = 0; i < rank; i++) MPI_Barrier(comm);}
 			//~ void                   EndSequentialCode() {for(int i = rank; i < size; i++) MPI_Barrier(comm);}
+
+			/// Get the scalar product of the specified interval of the distributed vector.
+			INMOST_DATA_REAL_TYPE ScalarProd(Vector const & left, Vector const & right, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end) const;
 		};
 
 		/// Distributed vector class.
@@ -176,8 +179,7 @@ namespace INMOST
 			/// Get the communicator which the vector is associated with.
 			INMOST_MPI_Comm        GetCommunicator() const {return comm;}
 
-			/// Get the scalar product of the specified interval of the distributed vector.
-			INMOST_DATA_REAL_TYPE ScalarProd(Vector const & other, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end) const;
+			
 
 
 			/// Save the distributed vector to a single data file using parallel MPI I/O.

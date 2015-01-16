@@ -226,6 +226,8 @@ add_subdirectory(projects)
 endif(COMPILE_PROJECTS)
 
 if(COMPILE_TESTS)
+enable_testing()
+include(CTest)
 add_subdirectory(tests)
 endif(COMPILE_TESTS)
 
@@ -266,9 +268,9 @@ install(FILES
 
 install(TARGETS inmost EXPORT inmost-targets
         ARCHIVE DESTINATION lib
-		LIBRARY DESTINATION lib
-		RUNTIME DESTINATION bin
-		PUBLIC_HEADER DESTINATION include)
+	LIBRARY DESTINATION lib
+	RUNTIME DESTINATION bin
+	PUBLIC_HEADER DESTINATION include)
 
 
 install(EXPORT inmost-targets DESTINATION cmake)

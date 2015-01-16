@@ -1,0 +1,81 @@
+project(solver_test000)
+set(SOURCE main.cpp)
+
+add_executable(solver_test000 ${SOURCE})
+target_link_libraries(solver_test000 inmost)
+
+if(USE_MPI)
+  message("linking solver_test000 with MPI")
+  target_link_libraries(solver_test000 ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(solver_test000 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+
+
+if(USE_SOLVER_ANI)
+  message("linking solver_test000 with ani3d")
+  target_link_libraries(solver_test000 ani3d)
+endif()
+if(USE_SOLVER_PETSC)
+  message("linking solver_test000 with PETSc")
+  target_link_libraries(solver_test000 ${PETSC_LIBRARIES})
+endif()
+if(USE_SOLVER_TRILINOS)
+  message("linking solver_test000 with Trilinos")
+  target_link_libraries(solver_test000 ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+endif()
+
+
+add_test(NAME solver_test000_serial_inner_ilu2                 COMMAND $<TARGET_FILE:solver_test000> 0 0)
+add_test(NAME solver_test000_serial_inner_mliluc               COMMAND $<TARGET_FILE:solver_test000> 0 1)
+if(USE_SOLVER_PETSC)
+add_test(NAME solver_test000_serial_petsc                      COMMAND $<TARGET_FILE:solver_test000> 0 2)
+endif()
+
+if(USE_SOLVER_TIRLINOS)
+add_test(NAME solver_test000_serial_trilinos_aztec             COMMAND $<TARGET_FILE:solver_test000> 0 3)
+add_test(NAME solver_test000_serial_trilinos_ifpack            COMMAND $<TARGET_FILE:solver_test000> 0 4)
+add_test(NAME solver_test000_serial_trilinos_ml                COMMAND $<TARGET_FILE:solver_test000> 0 5)
+add_test(NAME solver_test000_serial_trilinos_belos             COMMAND $<TARGET_FILE:solver_test000> 0 6)
+endif()
+
+if(USE_SOLVER_ANI)
+add_test(NAME solver_test000_serial_ani COMMAND $<TARGET_FILE:solver_test000> 2 0 7)
+endif()
+
+if( USE_MPI )
+if( EXISTS ${MPIEXEC} )
+add_test(NAME solver_test000_parallel_normal_inner_ilu2        COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 0)
+add_test(NAME solver_test000_parallel_permute1_inner_ilu2      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 0)
+add_test(NAME solver_test000_parallel_permute2_inner_ilu2      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 0)
+
+add_test(NAME solver_test000_parallel_normal_inner_mliluc      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 1)
+add_test(NAME solver_test000_parallel_permute1_inner_mliluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 1)
+add_test(NAME solver_test000_parallel_permute2_inner_mliluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 1)
+
+if(USE_SOLVER_PETSC)
+add_test(NAME solver_test000_parallel_normal_petsc             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 2)
+#add_test(NAME solver_test000_parallel_permute1_petsc           COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 2)
+#add_test(NAME solver_test000_parallel_permute2_petsc           COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 2)
+endif()
+
+if(USE_SOLVER_TRILINOS)
+add_test(NAME solver_test000_parallel_normal_trilinos_aztec    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 3)
+add_test(NAME solver_test000_parallel_permute1_trilinos_aztec  COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 3)
+add_test(NAME solver_test000_parallel_permute2_trilinos_aztec  COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 3)
+
+add_test(NAME solver_test000_parallel_normal_trilinos_ifpack   COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 4)
+add_test(NAME solver_test000_parallel_permute1_trilinos_ifpack COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 4)
+add_test(NAME solver_test000_parallel_permute2_trilinos_ifpack COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 4)
+
+add_test(NAME solver_test000_parallel_normal_trilinos_ml       COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 5)
+add_test(NAME solver_test000_parallel_permute1_trilinos_ml     COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 5)
+add_test(NAME solver_test000_parallel_permute2_trilinos_ml     COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 5)
+
+#add_test(NAME solver_test000_parallel_normal_trilinos_belos    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 6)
+#add_test(NAME solver_test000_parallel_permute1_trilinos_belos  COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 6)
+#add_test(NAME solver_test000_parallel_permute2_trilinos_belos  COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 6)
+endif()
+endif()
+endif()
