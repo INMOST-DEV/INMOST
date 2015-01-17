@@ -191,6 +191,7 @@ namespace INMOST
 				fflush(stdout);
 			}
 #endif
+			INMOST_DATA_ENUM_TYPE i = 0;
 
 			if( last_resid < atol || last_resid < rtol*resid0 ) 
 			{
@@ -199,7 +200,6 @@ namespace INMOST
 			}
 
 			long double tt, ts, tp, ttt;
-			INMOST_DATA_ENUM_TYPE i = 0;
 			while( true )
 			{
 				ts = tp = 0;
