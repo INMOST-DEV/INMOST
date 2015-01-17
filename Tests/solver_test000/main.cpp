@@ -79,7 +79,7 @@ int main(int argc,char ** argv)
 		double err = 0;
 		for( INMOST_DATA_ENUM_TYPE i = mbeg; i !=  mend; i++ )
 		{
-			err += (x[i] - static_cast<double>(i)/10.0);
+			err += fabs(x[i] - static_cast<double>(i)/10.0);
 		}
 #if defined(USE_MPI)
 		double tmp;
@@ -92,7 +92,7 @@ int main(int argc,char ** argv)
 			std::cout << "done, error " << err << "\t\t\t" << std::endl;
 		}
 
-		if( fabs(err) > 1.0e-5 || err!=err) MPI_Abort(MPI_COMM_WORLD,-1);
+		if( err > 1.0e-5 || err!=err) MPI_Abort(MPI_COMM_WORLD,-1);
 
 		x.Save("output.rhs");
 		b.Save("b.rhs");
