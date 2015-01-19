@@ -40,8 +40,8 @@ namespace INMOST
 		/// Type of the Solver can be currently used in this version of INMOST.
 		enum Type
 		{
-			INNER_ILU2,     ///< inner Solver based on second order ILU factorization.
-			INNER_MLILUC,   ///< inner Solver based on Saad multilevel ILU with pivoting.
+			INNER_ILU2,     ///< inner Solver based on BiCGStab(L) solver with second order ILU factorization as preconditioner.
+			INNER_MLILUC,   ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner.
 			Trilinos_Aztec, ///< external Solver AztecOO from Trilinos package
 			Trilinos_Belos, ///< external Solver Belos from Trilinos package, currently without preconditioner
 			Trilinos_ML,    ///< external Solver AztecOO with ML preconditioner
