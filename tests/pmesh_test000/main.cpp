@@ -67,7 +67,7 @@ int main(int argc,char ** argv)
 
 	if( nproc == 2 )  // In case np=2 and simple box 3x3x3 these should cover the whole mesh, let's check that!
 	{
-		int mask[total];
+		int * mask = new int[total];
 		for (int i=0; i<total; i++)  mask[i] = 0;
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
@@ -78,6 +78,7 @@ int main(int argc,char ** argv)
 			std::cout << "Check: proc: " << rank << ", cell: " << i << ((mask[i])? " duplicated" : " missing") << std::endl;
 			errors++;
 		}
+		delete [] mask;
 	}
 
 	delete m;

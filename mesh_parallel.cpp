@@ -90,7 +90,7 @@ namespace INMOST
 			bool flag = true;
 			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
 			Storage::integer_array arr = e->IntegerArray(tag);
-			for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it++)
+			for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it+=2)
 				if( *it == recv[0] )
 				{
 					flag = false;
@@ -1800,18 +1800,18 @@ namespace INMOST
 			}
 			for(int i = 0; i < GetProcessorRank(); i++) MPI_Barrier(comm);
 			file = fopen("skin.gmv","ab");
-			for(std::map< int, std::vector<Element *> >::iterator it = skin_faces.begin(); it != skin_faces.end(); it++)
-			for(std::vector<Element *>::iterator f = it->second.begin(); f != it->second.end(); f++)
+			for(proc_elements::iterator it = skin_faces.begin(); it != skin_faces.end(); it++)
+			for(element_set::iterator f = it->second.begin(); f != it->second.end(); f++)
 			{
-				adjacent<Node> fnodes = (*f)->getNodes();
+				ElementArray<Node> fnodes = Element(this,*f)->getNodes();
 				keynum = GetProcessorRank()*GetProcessorsNumber()+(it->first+1); 
 				fwrite(&keynum,sizeof(Storage::integer),1,file);
 				keynum = static_cast<Storage::integer>(fnodes.size()); fwrite(&keynum,sizeof(Storage::integer),1,file);
-				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+				for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 					fwrite(&fn->Coords()[0],sizeof(Storage::real),1,file);
-				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+				for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 					fwrite(&fn->Coords()[1],sizeof(Storage::real),1,file);
-				for(adjacent<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
+				for(ElementArray<Node>::iterator fn = fnodes.begin(); fn != fnodes.end(); fn++)
 					fwrite(&fn->Coords()[2],sizeof(Storage::real),1,file);
 			}
 			fclose(file);

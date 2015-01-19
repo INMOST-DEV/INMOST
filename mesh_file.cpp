@@ -3130,7 +3130,7 @@ read_elem_num_link:
 			
 			BeginModification();
 		
-			while (!(in >> token).eof()) 
+			while (!(in >> token).eof() && !in.fail()) 
 			{
 				if( !start ) 
 				{
@@ -4268,35 +4268,33 @@ safe_output:
 			iconv.write_fByteOrder(out);
 			iconv.write_fByteSize(out);
 
-			INMOST_DATA_ENUM_TYPE header[9] = {GetDimensions(), NumberOfNodes(), NumberOfEdges(), NumberOfFaces(), NumberOfCells(), NumberOfSets(), NumberOfTags()-3, m_state, GetProcessorRank()},k;
+			INMOST_DATA_ENUM_TYPE header[9] = 
+			{
+				GetDimensions(), 
+				NumberOfNodes(), 
+				NumberOfEdges(), 
+				NumberOfFaces(), 
+				NumberOfCells(), 
+				NumberOfSets(), 
+				NumberOfTags()-2, 
+				m_state, 
+				GetProcessorRank()
+			},k;
 			for(k = 0; k < 9; k++) uconv.write_iValue(out,header[k]);
 			out.write(reinterpret_cast<char *>(remember),sizeof(remember));
 		
 
-			Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
-			{
-				Storage::integer cur_num = 0;
-				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
-				cur_num = 0;
-				for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); ++it) it->IntegerDF(set_id) = cur_num++;
-				cur_num = 0;
-				for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) it->IntegerDF(set_id) = cur_num++;
-				cur_num = 0;
-				for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) it->IntegerDF(set_id) = cur_num++;
-				cur_num = 0;
-				for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) it->IntegerDF(set_id) = cur_num++;
-			}
-
+			
 			// Tags
 			out << INMOST::TagsHeader;
 			uconv.write_iValue(out,header[6]);
 			REPORT_STR("TagsHeader");
 			REPORT_VAL("tag_size",header[6]);
+			int tags_written = 0;
 			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)  
 			{
 				//don't forget to change header[6] if you skip more
 				//should match with content after MeshDataHeader
-				if( *it == set_id ) continue;
 				if( *it == HighConnTag() ) continue;
 				if( *it == LowConnTag() ) continue;
 
@@ -4317,7 +4315,25 @@ safe_output:
 				out.put(sparsemask);
 				out.put(definedmask);
 				uconv.write_iValue(out,datalength);
+				++tags_written;
 			}
+			assert(tags_written == header[6]);
+
+
+			Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
+			{
+				Storage::integer cur_num = 0;
+				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) it->IntegerDF(set_id) = cur_num++;
+				cur_num = 0;
+				for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) it->IntegerDF(set_id) = cur_num++;
+			}
+
 
 			// Nodes 
 			out << INMOST::NodeHeader;
