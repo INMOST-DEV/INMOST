@@ -71,7 +71,11 @@ int main(int argc,char ** argv)
 		{
 			if( rank == 0 )
 				std::cout << S.GetReason() << std::endl;
+#if defined(USE_MPI)
 			MPI_Abort(MPI_COMM_WORLD,-1);
+#else
+			return -1;
+#endif
 
 		}
 		
@@ -92,7 +96,14 @@ int main(int argc,char ** argv)
 			std::cout << "done, error " << err << "\t\t\t" << std::endl;
 		}
 
-		if( err > 1.0e-5 || err!=err) MPI_Abort(MPI_COMM_WORLD,-1);
+		if( err > 1.0e-5 || err!=err)
+		{
+#if defined(USE_MPI)
+			MPI_Abort(MPI_COMM_WORLD,-1);
+#else
+			return -1;
+#endif
+		}
 
 		x.Save("output.rhs");
 		b.Save("b.rhs");
