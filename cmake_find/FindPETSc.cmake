@@ -158,8 +158,10 @@ show :
       OUTPUT_VARIABLE ${var}
       RESULT_VARIABLE petsc_return)
 #	message(STATUS "returned")
+#	remove trailing '\n'
+	string(STRIP "${${var}}" ${var})
 # protect backslashed spaces from disappearing
-	string(REGEX REPLACE "\\\\ " "?space?" ${var} ${${var}}) 
+	string(REGEX REPLACE "\\\\ " "?space?" ${var} "${${var}}")
 #	foreach(D ${${var}})
 #	message("${D}")
 #	endforeach()
