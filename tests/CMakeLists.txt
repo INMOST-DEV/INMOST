@@ -1,1 +1,2 @@
 add_subdirectory(solver_test000)
+add_subdirectory(pmesh_test000)
