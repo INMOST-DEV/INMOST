@@ -104,10 +104,10 @@ int main(int argc,char ** argv)
 			return -1;
 #endif
 		}
-
-		x.Save("output.rhs");
-		b.Save("b.rhs");
-		A.Save("A.mtx");
+		//no pollution with files
+		//x.Save("output.rhs");
+		//b.Save("b.rhs");
+		//A.Save("A.mtx");
 	}
 
 	Solver::Finalize(); // Finalize solver and close MPI activity
