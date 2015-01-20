@@ -3,53 +3,13 @@ INMOST
 
 A toolkit for distributed mathematical modeling
 
+## New address
+INMOST was moved to the new address: https://github.com/INMOST-DEV/INMOST
+
+Please update your bookmarks, if you used `git clone` before then refer to https://github.com/INMOST-DEV/INMOST/issues/7#issuecomment-70378751
+
 ## Install Guide
-
-First define the folder where you want to install INMOST and other optional libraries.
-```
-export INMOST_LIBS="/home/user/inmost-libs"
-```
-If it doesn't already exist, create this directory:
-```
-mkdir -p "$INMOST_LIBS"
-```
-
-### PETSc
-
-PETSc can install a lot of other dependencies as well.
-
-The following instructions assume that MPI is already installed and functional. You can use option --download-openmpi to install MPI with PETSc.
-
-These steps can take some time
-```
-cd "$INMOST_LIBS"
-wget http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.4.5.tar.gz
-tar zxf petsc-3.4.5.tar.gz
-rm -f petsc-3.4.5.tar.gz
-cd petsc-3.4.5
-export PETSC_DIR="`pwd`"
-export PETSC_ARCH=linux-gnu-opt
-./configure --download-f-blas-lapack --download-metis --download-parmetis  --useThreads=0 --with-debugging=0 --with-mpi-dir=/usr --with-x=0 --with-shared-libraries=0
-make all
-```
-
-### INMOST
-
-Download and unpack INMOST source archive.
-```
-cd "$INMOST_LIBS"
-wget https://github.com/INM-RAS/INMOST/archive/master.tar.gz
-tar zxf master.tar.gz
-rm -f INMOST-master.tar.gz
-```
-
-We will create separate directory for INMOST compilation.
-```
-mkdir -p INMOST-build
-cd INMOST-build
-cmake -DUSE_AUTODIFF=OFF -DUSE_SOLVER_PETSC=ON -DUSE_PARTITIONER=OFF -DCOMPILE_EXAMPLES=ON ../INMOST-master
-make
-```
+Refer to https://github.com/INMOST-DEV/INMOST/wiki/0100-Compilation
 
 ## Examples
 
@@ -61,7 +21,6 @@ Each example may be executed in serial or parallel ways.
 
 This example creates simple cubic or prismatic mesh. You can use ParaView to view the meshes.
 ```
-cd "$INMOST_LIBS/INMOST-build"
 cd examples/GridGen
 mpirun -np 4 ./GridGen 4 32 32 32
 ```
