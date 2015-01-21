@@ -3883,6 +3883,7 @@ namespace INMOST
 	
 	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge)
 	{
+		//printf("called exchange ghost with %d bridge %s\n",layers,ElementTypeName(bridge));
 		if( m_state == Serial ) return;
 		ENTER_FUNC();
 #if defined(USE_MPI)

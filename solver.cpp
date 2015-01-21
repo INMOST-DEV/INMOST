@@ -1252,10 +1252,12 @@ namespace INMOST
 			solver_gmres_substeps = val;
 		else if( name == "reorder_nonzeros" )
 			preconditioner_reorder_nonzero = val;
+		/* Block below leads to confusion - parameters would be reset by preset values during setup
 		else if( _pack == INNER_ILU2 || _pack == INNER_MLILUC )
 		{
 			try
 			{
+				//This leads to confusion - 
 				IterativeMethod * method = (IterativeMethod *)solver_data;
 				if (name[0] == ':')
 					 method->EnumParameter(name.substr(1, name.size() - 1)) = val;
@@ -1267,6 +1269,7 @@ namespace INMOST
 				std::cout << "Parameter " << name << " of intergral type is unknown" << std::endl;
 			}
 		}
+		*/
 		else std::cout << "Parameter " << name << " of integral type is unknown" << std::endl;
 	}
 	void Solver::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE val)
@@ -1285,6 +1288,7 @@ namespace INMOST
 			preconditioner_ddpq_tolerance = val;
 		else if( name == "fill_level" )
 			preconditioner_fill_level = val;
+		/* Block below leads to confusion - parameters would be reset by preset values during setup
 		else if( _pack == INNER_ILU2 || _pack == INNER_MLILUC )
 		{
 			try
@@ -1298,6 +1302,7 @@ namespace INMOST
 				std::cout << "Parameter " << name << " of real type is unknown" << std::endl;
 			}
 		}
+		*/
 		else std::cout << "Parameter " << name << " of real type is unknown" << std::endl;
 	}
 	Solver::Solver(Type pack, std::string _name, INMOST_MPI_Comm _comm)

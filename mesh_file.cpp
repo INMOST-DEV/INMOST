@@ -1355,10 +1355,13 @@ ecl_exit_loop:
 									}
 								}
 								if( find == -1 ) 
+								{
 									newnodes[i] = CreateNode(coords)->GetHandle();
+									SetMarker(newnodes[i],unused_marker);
+								}
 								else 
 									newnodes[i] = old_nodes[find];
-								SetMarker(newnodes[i],unused_marker);
+								
 								if( verbosity > 1 && i%report_pace == 0)
 								{
 									printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));
@@ -1381,17 +1384,26 @@ ecl_exit_loop:
 								int find = -1;
 								if( !old_nodes.empty() )
 								{
+									REPORT_VAL("look up",coords[0] << " " << coords[1] << " " << coords[2]);
 									std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
 									if( it != old_nodes.end() ) 
 									{
 										Storage::real_array c = RealArrayDF(*it,CoordsTag());
+										REPORT_VAL("found",c[0] << " " << c[1] << " " << c[2]);
 										if( CentroidComparator(this).Compare(c.data(),coords) == 0 )
+										{
 											find = static_cast<int>(it - old_nodes.begin());
+											REPORT_VAL("match",find << " " << old_nodes[find]);
+										}
 									}
 								}
-								if( find == -1 ) newnodes[i] = CreateNode(coords)->GetHandle();
+								if( find == -1 )
+								{
+									newnodes[i] = CreateNode(coords)->GetHandle();
+									SetMarker(newnodes[i],unused_marker);
+								}
 								else newnodes[i] = old_nodes[find];
-								SetMarker(newnodes[i],unused_marker);
+								
 								if( verbosity > 1 && i%report_pace == 0)
 								{
 									printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));

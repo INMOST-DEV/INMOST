@@ -111,7 +111,7 @@ namespace INMOST
 	static const TopologyCheck NEED_TEST_CLOSURE      = 0x40000000; //done//silent, test's for closure in ComputeGeometricType, needed to detect MultiLine and MultiPolygon
 	static const TopologyCheck DISABLE_2D             = 0x80000000; //done//don't allow 2d grids, where edges appear to be vertexes, faces are edges and cells are faces
 	static const TopologyCheck GRID_CONFORMITY        = NEED_TEST_CLOSURE | PROHIBIT_MULTILINE | PROHIBIT_MULTIPOLYGON  | INTERLEAVED_FACES | TRIPLE_SHARED_FACE;
-	static const TopologyCheck DEFAULT_CHECK          = THROW_EXCEPTION | DUPLICATE_EDGE | DUPLICATE_FACE | PRINT_NOTIFY;
+	static const TopologyCheck DEFAULT_CHECK          = THROW_EXCEPTION | DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL | PRINT_NOTIFY;
 	const char *                             TopologyCheckNotifyString(TopologyCheck c); //mesh.cpp
 	const char *                             DataTypeName         (DataType t); //tag.cpp
 	__INLINE bool                            OneType              (ElementType t) {return t > 0 && (t & (t-1)) == 0;}
