@@ -121,7 +121,8 @@ int main(int argc,char ** argv)
 				cell->Real(tensor_K) = 1.0; // Store the tensor K value into the tag
 		
 		ttt = Timer();
-		m->ExchangeGhost(1,FACE); // Exchange the date (phi and tensor_K) over processes
+		m->ExchangeGhost(1,FACE);
+		m->ExchangeData(tensor_K,CELL,0); // Exchange the tensor_K data over processors
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
 		
