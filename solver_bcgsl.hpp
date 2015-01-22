@@ -155,7 +155,7 @@ namespace INMOST
 			assert(isInitialized());
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
 			INMOST_DATA_REAL_TYPE rho0 = 1, rho1, alpha = 0, beta, omega = 1, eta;
-			INMOST_DATA_REAL_TYPE resid0, resid, temp[2];
+			INMOST_DATA_REAL_TYPE resid0, resid, rhs_norm, temp[2];
 			iters = 0;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
@@ -165,6 +165,8 @@ namespace INMOST
 			if( prec != NULL ) prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
 			info->GetVectorRegion(vbeg,vend);
+
+			rhs_norm = info->ScalarProd(RHS,RHS,vlocbeg,vlocend);
 			//r[0] = b
 			std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
 			{
@@ -179,7 +181,7 @@ namespace INMOST
 			resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend); //resid = dot(r[0],r[0])
 			for(INMOST_DATA_ENUM_TYPE k = vbeg; k != vend; k++) // r_tilde = r[0] / dot(r[0],r[0])
 				r_tilde[k] /= resid;
-			last_resid = resid = resid0 = sqrt(resid); //resid = sqrt(dot(r[0],r[0])
+			last_resid = resid = resid0 = sqrt(resid/rhs_norm); //resid = sqrt(dot(r[0],r[0])
 			last_it = 0;
 #if defined(REPORT_RESIDUAL)
 			if( info->GetRank() == 0 ) 
@@ -187,7 +189,7 @@ namespace INMOST
 				//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 				//std::cout << "iter " << last_it << " resid " << resid << "\r";
 				//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-				printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+				printf("iter %3d resid %12g | %g\n", last_it, resid, atol);
 				fflush(stdout);
 			}
 #endif
@@ -237,8 +239,8 @@ namespace INMOST
 							r[i][k] -= alpha*u[i+1][k];
 
 					
-					resid = info->ScalarProd(r[j],r[j],vlocbeg,vlocend); // resid = dot(r[j],r[j])
-					resid = sqrt(resid); // resid = sqrt(dot(r[j],r[j]))
+					resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend); // resid = dot(r[j],r[j])
+					resid = sqrt(resid/rhs_norm); // resid = sqrt(dot(r[j],r[j]))
 
 					if( resid < atol || resid < rtol*resid0 ) 
 					{
@@ -309,7 +311,7 @@ namespace INMOST
 				last_it = i+1;
 				{
 					resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend);
-					resid = sqrt(resid);
+					resid = sqrt(resid/rhs_norm);
 				}
 				tt = Timer() - tt;
 #if defined(REPORT_RESIDUAL)
@@ -318,7 +320,7 @@ namespace INMOST
 					//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
 					//std::cout << "iter " << last_it << " resid " << resid << "\r";
 					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+					printf("iter %3d resid %12g | %g\n", last_it, resid, atol);
 					fflush(stdout);
 				}
 #endif
