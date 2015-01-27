@@ -167,6 +167,7 @@ namespace INMOST
 			info->GetVectorRegion(vbeg,vend);
 
 			rhs_norm = info->ScalarProd(RHS,RHS,vlocbeg,vlocend);
+      //rhs_norm = 1;
 			//r[0] = b
 			std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
 			{
@@ -189,7 +190,7 @@ namespace INMOST
 				//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 				//std::cout << "iter " << last_it << " resid " << resid << "\r";
 				//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-				printf("iter %3d resid %12g | %g\n", last_it, resid, atol);
+				printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
 				fflush(stdout);
 			}
 #endif
@@ -320,7 +321,7 @@ namespace INMOST
 					//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
 					//std::cout << "iter " << last_it << " resid " << resid << "\r";
 					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-					printf("iter %3d resid %12g | %g\n", last_it, resid, atol);
+					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
 					fflush(stdout);
 				}
 #endif

@@ -2109,8 +2109,8 @@ namespace INMOST
 				break;
 			case AZ_loss:
 				return_reason = "Numerical loss precision occurred.";
+        ret = false;
 				break;
-				ret = false;
 			case AZ_ill_cond:
 				return_reason = "The Hessenberg matrix within GMRES is illconditioned."
 								"This could be caused by a number"
