@@ -5,7 +5,7 @@
 
 #include "inmost_solver.h"
 #include "solver_prototypes.hpp"
-#define REPORT_ILU
+//#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
 //#undef REPORT_ILU_PROGRESS

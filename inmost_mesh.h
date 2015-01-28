@@ -903,7 +903,12 @@ namespace INMOST
 	class ElementSet : public Element //implemented in eset.cpp
 	{
 	public:
-		static const enumerator high_conn_reserved = 4; //number of reserved positions in HighConn array
+		static const enumerator high_conn_reserved = 4; ///< number of reserved positions in HighConn array
+                                                    ///< first position is handle to parent set
+                                                    ///< second position is handle to sibling set
+                                                    ///< third position is handle to child set
+                                                    ///< fourth position is number of sorted elements in the set
+                                                    ///< all the rest are positions of deleted elements
 		typedef INMOST_DATA_BULK_TYPE ComparatorType;
 		static const ComparatorType UNSORTED_COMPARATOR = 0;
 		static const ComparatorType GLOBALID_COMPARATOR = 1;

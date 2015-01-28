@@ -4439,7 +4439,8 @@ safe_output:
 					{
 						wetype = GetHandleElementType(*kt);
 						out.put(wetype);
-						lid = IntegerDF(*kt,set_id);
+            assert(wetype != NONE);
+            lid = IntegerDF(*kt,set_id);
 						uconv.write_iValue(out,lid);
 					}
 					else out.put(NONE);
@@ -4453,6 +4454,7 @@ safe_output:
 					{
 						wetype = GetHandleElementType(*kt);
 						out.put(wetype);
+            assert(wetype != NONE);
 						lid = IntegerDF(*kt,set_id);
 						uconv.write_iValue(out,lid);
 					}
@@ -4461,14 +4463,7 @@ safe_output:
 				//write additional information
 				for(Element::adj_type::iterator kt = hc.begin()+ElementSet::high_conn_reserved-1; kt != hc.end(); ++kt)
 				{
-					if( *kt != InvalidHandle() )
-					{
-						wetype = GetHandleElementType(*kt);
-						out.put(wetype);
-						lid = IntegerDF(*kt,set_id);
-						uconv.write_iValue(out,lid);
-					}
-					else out.put(NONE);
+          uconv.write_iValue(out,*kt);
 				}
 			}
 		

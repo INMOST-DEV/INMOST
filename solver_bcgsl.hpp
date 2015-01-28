@@ -166,8 +166,8 @@ namespace INMOST
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
 			info->GetVectorRegion(vbeg,vend);
 
-			rhs_norm = info->ScalarProd(RHS,RHS,vlocbeg,vlocend);
-      //rhs_norm = 1;
+			//rhs_norm = info->ScalarProd(RHS,RHS,vlocbeg,vlocend);
+      rhs_norm = 1;
 			//r[0] = b
 			std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
 			{
