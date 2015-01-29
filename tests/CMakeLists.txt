@@ -5,4 +5,7 @@ endif(USE_SOLVER)
 
 if(USE_MESH AND USE_MPI)
 add_subdirectory(pmesh_test000)
+if(USE_PARTITIONER)
+add_subdirectory(pmesh_test001)
+endif()
 endif()
