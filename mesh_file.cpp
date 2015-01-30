@@ -303,7 +303,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = xyz.data();
+							read_arrayf = xyz.empty()? NULL : &xyz[0];
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -313,7 +313,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = xyz.data();
+							read_arrayf = xyz.empty() ? NULL : &xyz[0];
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -324,7 +324,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = xyz.data();
+							read_arrayf = xyz.empty() ? NULL : &xyz[0];
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -335,7 +335,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( xyz.empty() ) xyz.resize(2*(dims[0]+1)*(dims[1]+1));
-							read_arrayf = xyz.data();
+							read_arrayf = xyz.empty() ? NULL : &xyz[0];
 							numrecs = 1;
 							downread = totread = 2*(dims[0]+1)*(dims[1]+1);
 							argtype = ECL_VAR_REAL;
@@ -346,7 +346,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( zcorn.empty() ) zcorn.resize(dims[0]*dims[1]*dims[2]*8);
-							read_arrayf = zcorn.data();
+							read_arrayf = zcorn.empty() ? NULL : &zcorn[0];
 							numrecs = 1;
 							downread = totread = dims[0]*dims[1]*dims[2]*8;
 							argtype = ECL_VAR_REAL;
@@ -356,7 +356,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							tops.resize(dims[0]*dims[1]*dims[2]);
-							read_arrayf = tops.data();
+							read_arrayf = tops.empty() ? NULL : &tops[0];
 							numrecs = 1;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -367,7 +367,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = perm.data();
+							read_arrayf = perm.empty() ? NULL : &perm[0];
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -377,7 +377,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = perm.data();
+							read_arrayf = perm.empty() ? NULL : &perm[0];
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -388,7 +388,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							if( perm.empty() ) perm.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = perm.data();
+							read_arrayf = perm.empty() ? NULL : &perm[0];
 							numrecs = 3;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -399,7 +399,7 @@ namespace INMOST
 						{
 							assert(have_dimens);
 							poro.resize(3*dims[0]*dims[1]*dims[2]);
-							read_arrayf = poro.data();
+							read_arrayf = poro.empty() ? NULL : &poro[0];
 							numrecs = 1;
 							downread = totread = dims[0]*dims[1]*dims[2];
 							argtype = ECL_VAR_REAL;
@@ -3369,10 +3369,10 @@ read_elem_num_link:
 					char set_name[4096];
 					HandleType * elem_links[4] =
 					{
-						new_nodes.data(),
-						new_edges.data(),
-						new_faces.data(),
-						new_cells.data()
+						new_nodes.empty() ? NULL : &new_nodes[0],
+						new_edges.empty() ? NULL : &new_edges[0],
+						new_faces.empty() ? NULL : &new_faces[0],
+						new_cells.empty() ? NULL : &new_cells[0]
 					};
 					bool low_conn_have_sets = false;
 					bool high_conn_have_sets = false;
@@ -3462,11 +3462,11 @@ read_elem_num_link:
 					};
 					HandleType * elem_links[6] =
 					{
-						new_nodes.data(),
-						new_edges.data(),
-						new_faces.data(),
-						new_cells.data(),
-						new_sets.data(),
+						new_nodes.empty() ? NULL : &new_nodes[0],
+						new_edges.empty() ? NULL : &new_edges[0],
+						new_faces.empty() ? NULL : &new_faces[0],
+						new_cells.empty() ? NULL : &new_cells[0],
+						new_sets.empty() ? NULL : &new_sets[0],
 						&m_storage
 					};
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < tags.size(); j++) 
@@ -3545,7 +3545,7 @@ read_elem_num_link:
 				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), size = static_cast<INMOST_DATA_ENUM_TYPE>(myprocs.size()),k;
 				INMOST_DATA_ENUM_TYPE procs_sum = 0;
 				std::vector<INMOST_DATA_ENUM_TYPE> procs_sizes(numprocs);
-				REPORT_MPI(MPI_Allgather(&size,1,INMOST_MPI_DATA_ENUM_TYPE,procs_sizes.data(),1,INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
+				REPORT_MPI(MPI_Allgather(&size,1,INMOST_MPI_DATA_ENUM_TYPE,&procs_sizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
 				for(k = 0; k < numprocs; k++) if( procs_sizes[k] > 1 ) restore_state = true;
 				REPORT_VAL("restore_state",restore_state);
 				if( restore_state ) //we have to do something with parallel status data
@@ -3565,7 +3565,7 @@ read_elem_num_link:
 						displs[k] = displs[k-1]+recvcnts[k-1];
 					}
 					std::vector<INMOST_DATA_ENUM_TYPE> procs(procs_sum);
-					REPORT_MPI(ierr = MPI_Allgatherv(myprocs.data(),procs_sizes[myrank],INMOST_MPI_DATA_ENUM_TYPE,procs.data(),recvcnts.data(),displs.data(),INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
+					REPORT_MPI(ierr = MPI_Allgatherv(myprocs.data(),procs_sizes[myrank],INMOST_MPI_DATA_ENUM_TYPE,&procs[0],&recvcnts[0],&displs[0],INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					//we have to distinguish new elements and old elements
 					//all new elements with owner in myprocs belong to me

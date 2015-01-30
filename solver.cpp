@@ -1150,13 +1150,13 @@ namespace INMOST
 			while( !file.eof() && file.getline(str,4096) )
 			{
 				int k = 0, l;
-				for(k = 0; k < strlen(str); ++k)
+				for(k = 0; k < (int)strlen(str); ++k)
 				{
 					if( str[k] == ':' ) break;
 				}
 				if( k == strlen(str) ) continue; //invalid line
 				l = k+1;
-				while(l < strlen(str) && isspace(str[l]) ) ++l;
+				while(l < (int)strlen(str) && isspace(str[l]) ) ++l;
 				if( l == strlen(str) ) continue; //skip empty entry
 				if( !strncmp(str,"PETSc",k) )
 					petsc_database_file = std::string(str+l);

@@ -1852,7 +1852,7 @@ namespace INMOST
 					}
 				}
 			}
-			RemMarkerArray(all_visited.data(),static_cast<enumerator>(all_visited.size()),busy);
+			if( !all_visited.empty() ) RemMarkerArray(&all_visited[0],static_cast<enumerator>(all_visited.size()),busy);
 			//for(element_set::iterator it = all_visited.begin(); it != all_visited.end(); ++it) RemMarker(*it,busy);
 			ReleaseMarker(busy);
 			
@@ -2830,7 +2830,7 @@ namespace INMOST
 			}
 		}
 		for(integer i = ElementNum(NODE); i <= ElementNum(CELL); i++) 
-			RemMarkerArray(selems[i].data(),static_cast<enumerator>(selems[i].size()),pack_tags_mrk);
+			if( !selems[i].empty() ) RemMarkerArray(&selems[i][0],static_cast<enumerator>(selems[i].size()),pack_tags_mrk);
 		ReleaseMarker(pack_tags_mrk);
 #else
 		(void) all;
@@ -3004,13 +3004,13 @@ namespace INMOST
 			if( num > 0 )
 			{
 				low_conn_size.resize(num);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,low_conn_size.data(),static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
+				if( num != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
 				if( temp > 0 )
 				{
 					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,low_conn_nums.data(),static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 			}
 			selems[1].reserve(num);
@@ -3077,13 +3077,13 @@ namespace INMOST
 			if( num > 0 )
 			{
 				low_conn_size.resize(num);
-				if( !buffer.empty() && !low_conn_size.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,low_conn_size.data(),static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
+				if( !buffer.empty() && !low_conn_size.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
 				if( temp > 0 )
 				{
 					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,low_conn_nums.data(),static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 			}
 			selems[2].reserve(num);
@@ -3149,22 +3149,22 @@ namespace INMOST
 			if( num > 0 )
 			{
 				low_conn_size.resize(num);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,low_conn_size.data(),static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
+				if( num != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
 				if( temp > 0 )
 				{
 					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,low_conn_nums.data(),static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 				high_conn_size.resize(num);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,high_conn_size.data(),static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
+				if( num != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
 				temp = 0;
 				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += high_conn_size[i];
 				if( temp > 0 )
 				{
 					high_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,high_conn_nums.data(),static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
+					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
 				}
 			}
 			selems[3].reserve(num);
@@ -3270,7 +3270,7 @@ namespace INMOST
 			
 		}
 		for(integer k = ElementNum(NODE); k <= ElementNum(CELL); ++k)
-			RemMarkerArray(selems[k].data(),static_cast<enumerator>(selems[k].size()),unpack_tags_mrk);
+			if( !selems[k].empty() ) RemMarkerArray(&selems[k][0],static_cast<enumerator>(selems[k].size()),unpack_tags_mrk);
 		ReleaseMarker(unpack_tags_mrk);
 		time = Timer() - time;
 		REPORT_STR("unpack tag data");
@@ -3937,7 +3937,7 @@ namespace INMOST
 							all_visited.push_back(*jt);
 						}
 				}
-				RemMarkerArray(all_visited.data(),static_cast<enumerator>(all_visited.size()),busy);
+				if( !all_visited.empty() ) RemMarkerArray(&all_visited[0],static_cast<enumerator>(all_visited.size()),busy);
 				//for(element_set::iterator it = all_visited.begin(); it != all_visited.end(); ++it) RemMarker(*it,busy);
 				ReleaseMarker(busy);
 			}

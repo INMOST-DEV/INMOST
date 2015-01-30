@@ -2,7 +2,7 @@
 #if defined(USE_MESH)
 namespace INMOST
 {
-	int Mesh::CentroidComparator::Compare(const real * a, const real * b)
+	int Mesh::CentroidComparator::Compare(const real * a, const real * b) const
 	{
 		real e = m->GetEpsilon();
 		for(integer i = 0; i < m->GetDimensions(); i++) 
@@ -16,7 +16,7 @@ namespace INMOST
 		return 0;
 	}
 
-	bool Mesh::CentroidComparator::operator () (HandleType a, HandleType b)
+	bool Mesh::CentroidComparator::operator () (HandleType a, HandleType b) const
 	{
 		if( a == InvalidHandle() || b == InvalidHandle() ) return a > b;
 		real ca[3] = {0,0,0}, cb[3] = {0,0,0};
@@ -25,7 +25,7 @@ namespace INMOST
 		return Compare(ca,cb) < 0;
 	}
 
-	bool Mesh::CentroidComparator::operator () (HandleType a, const real * cb)
+	bool Mesh::CentroidComparator::operator () (HandleType a, const real * cb) const
 	{
 		if( a == InvalidHandle() ) return true;
 		real ca[3] = {0,0,0}; 
@@ -33,8 +33,16 @@ namespace INMOST
 		return Compare(ca,cb) < 0;
 	}
 
+	bool Mesh::CentroidComparator::operator () (const real * ca, HandleType b) const
+	{
+		if( b == InvalidHandle() ) return false;
+		real cb[3] = {0,0,0}; 
+		m->GetGeometricData(b,CENTROID,cb);
+		return Compare(ca,cb) < 0;
+	}
+
 	
-	int Mesh::IerarhyComparator::CompareNodes(HandleType a, HandleType b)
+	int Mesh::IerarhyComparator::CompareNodes(HandleType a, HandleType b) const
 	{
 		real_array ca = m->RealArrayDF(a,m->CoordsTag());
 		real_array cb = m->RealArrayDF(b,m->CoordsTag());
@@ -49,7 +57,7 @@ namespace INMOST
 			}
 		return 0;
 	}
-	int Mesh::IerarhyComparator::CompareElements(HandleType a, HandleType b)
+	int Mesh::IerarhyComparator::CompareElements(HandleType a, HandleType b) const
 	{
 		integer ia = GetHandleElementNum(a);
 		integer ib = GetHandleElementNum(b);

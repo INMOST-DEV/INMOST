@@ -1,3 +1,5 @@
+#define _HAS_ITERATOR_DEBUGGING 0
+
 #include "inmost.h"
 #if defined(USE_MESH)
 

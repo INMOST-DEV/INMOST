@@ -2687,9 +2687,10 @@ namespace INMOST
 			CentroidComparator(Mesh * m) :m(m) {}
 			CentroidComparator(const CentroidComparator & other) :m(other.m){}
 			CentroidComparator & operator = (CentroidComparator const & other) { m = other.m; return *this;}
-			int Compare(const real * a, const real * b);
-			bool operator() (HandleType a, HandleType b);
-			bool operator() (HandleType a, const real * b);
+			int Compare(const real * a, const real * b) const;
+			bool operator() (HandleType a, HandleType b) const;
+			bool operator() (HandleType a, const real * b) const;
+			bool operator() (const real * a, HandleType b) const;
 		};
 
 		class GlobalIDComparator
@@ -2699,8 +2700,8 @@ namespace INMOST
 			GlobalIDComparator(Mesh * m) :m(m) {}
 			GlobalIDComparator(const GlobalIDComparator & other) :m(other.m){}
 			GlobalIDComparator & operator = (GlobalIDComparator const & other) { m = other.m; return *this;}
-			bool operator() (HandleType a, HandleType b) {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->GlobalID(a) < m->GlobalID(b);}
-			bool operator() (HandleType a, integer gid) {if( a == InvalidHandle() ) return false; return m->GlobalID(a) < gid;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->GlobalID(a) < m->GlobalID(b);}
+			bool operator() (HandleType a, integer gid) const {if( a == InvalidHandle() ) return false; return m->GlobalID(a) < gid;}
 		};
 
 		class IerarhyComparator
@@ -2710,9 +2711,9 @@ namespace INMOST
 			IerarhyComparator(Mesh * m) :m(m) {}
 			IerarhyComparator(const IerarhyComparator & other) :m(other.m){}
 			IerarhyComparator & operator = (IerarhyComparator const & other) { m = other.m; return *this;}
-			int CompareNodes(HandleType a, HandleType b);
-			int CompareElements(HandleType a, HandleType b);
-			bool operator() (HandleType a, HandleType b) {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return CompareElements(a,b) < 0;}
+			int CompareNodes(HandleType a, HandleType b) const;
+			int CompareElements(HandleType a, HandleType b) const;
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return CompareElements(a,b) < 0;}
 		};
 
 		class RealComparator
@@ -2722,8 +2723,8 @@ namespace INMOST
 			RealComparator(Mesh * m, Tag t) :m(m), t(t) {}
 			RealComparator(const RealComparator & other) :m(other.m), t(other.t){}
 			RealComparator & operator = (RealComparator const & other) { m = other.m; t = other.t; return *this;}
-			bool operator() (HandleType a, HandleType b){if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->Real(a,t) < m->Real(b,t);}
-			bool operator() (HandleType a, real b) {if( a == InvalidHandle() ) return true; return m->Real(a,t) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->Real(a,t) < m->Real(b,t);}
+			bool operator() (HandleType a, real b) const {if( a == InvalidHandle() ) return true; return m->Real(a,t) < b;}
 		};
 
 		class IntegerComparator
@@ -2733,8 +2734,8 @@ namespace INMOST
 			IntegerComparator(Mesh * m, Tag t) :m(m), t(t) {}
 			IntegerComparator(const IntegerComparator & other) :m(other.m), t(other.t){}
 			IntegerComparator & operator = (IntegerComparator const & other) { m = other.m; t = other.t; return *this;}
-			bool operator() (HandleType a, HandleType b){if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->Integer(a,t) < m->Integer(b,t);}
-			bool operator() (HandleType a, integer b) {if( a == InvalidHandle() ) return true; return m->Integer(a,t) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->Integer(a,t) < m->Integer(b,t);}
+			bool operator() (HandleType a, integer b) const {if( a == InvalidHandle() ) return true; return m->Integer(a,t) < b;}
 		};
 
 		class BulkComparator
@@ -2744,8 +2745,8 @@ namespace INMOST
 			BulkComparator(Mesh * m, Tag t) :m(m), t(t) {}
 			BulkComparator(const BulkComparator & other) :m(other.m), t(other.t){}
 			BulkComparator & operator = (BulkComparator const & other) { m = other.m; t = other.t; return *this;}
-			bool operator() (HandleType a, HandleType b){if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->Bulk(a,t) < m->Bulk(b,t);}
-			bool operator() (HandleType a, bulk b) {if( a == InvalidHandle() ) return true; return m->Bulk(a,t) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->Bulk(a,t) < m->Bulk(b,t);}
+			bool operator() (HandleType a, bulk b) const {if( a == InvalidHandle() ) return true; return m->Bulk(a,t) < b;}
 		};
 		
 		class RealDFComparator
@@ -2755,8 +2756,8 @@ namespace INMOST
 			RealDFComparator(Mesh * m, Tag t) :m(m), t(t) {}
 			RealDFComparator(const RealDFComparator & other) :m(other.m), t(other.t){}
 			RealDFComparator & operator = (RealDFComparator const & other) { m = other.m; t = other.t; return *this;}
-			bool operator() (HandleType a, HandleType b){if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->RealDF(a,t) < m->RealDF(b,t);}
-			bool operator() (HandleType a, real b) {if( a == InvalidHandle() ) return true; return m->RealDF(a,t) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->RealDF(a,t) < m->RealDF(b,t);}
+			bool operator() (HandleType a, real b) const {if( a == InvalidHandle() ) return true; return m->RealDF(a,t) < b;}
 		};
 
 		class IntegerDFComparator
@@ -2766,8 +2767,8 @@ namespace INMOST
 			IntegerDFComparator(Mesh * m, Tag t) :m(m), t(t) {}
 			IntegerDFComparator(const IntegerDFComparator & other) :m(other.m), t(other.t){}
 			IntegerDFComparator & operator = (IntegerDFComparator const & other) { m = other.m; t = other.t; return *this;}
-			bool operator() (HandleType a, HandleType b){if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->IntegerDF(a,t) < m->IntegerDF(b,t);}
-			bool operator() (HandleType a, integer b) {if( a == InvalidHandle() ) return true; return m->IntegerDF(a,t) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->IntegerDF(a,t) < m->IntegerDF(b,t);}
+			bool operator() (HandleType a, integer b) const {if( a == InvalidHandle() ) return true; return m->IntegerDF(a,t) < b;}
 		};
 
 		class BulkDFComparator
@@ -2777,8 +2778,8 @@ namespace INMOST
 			BulkDFComparator(Mesh * m, Tag t) :m(m), t(t) {}
 			BulkDFComparator(const BulkDFComparator & other) :m(other.m), t(other.t){}
 			BulkDFComparator & operator = (BulkDFComparator const & other) { m = other.m; t = other.t; return *this;}
-			bool operator() (HandleType a, HandleType b){if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->BulkDF(a,t) < m->BulkDF(b,t);}
-			bool operator() (HandleType a, bulk b) {if( a == InvalidHandle() ) return true; return m->BulkDF(a,t) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->BulkDF(a,t) < m->BulkDF(b,t);}
+			bool operator() (HandleType a, bulk b) const {if( a == InvalidHandle() ) return true; return m->BulkDF(a,t) < b;}
 		};
 
 		void SortHandles(HandleType * h, enumerator num);
