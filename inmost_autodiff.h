@@ -605,7 +605,7 @@ namespace INMOST
 	__INLINE expr ad_sqrt(const expr & v) {return expr(AD_SQRT, v);}
 	__INLINE expr ad_val(const expr & v, const expr & multiplyer = expr(0.0)) {return expr(v, multiplyer);}
 	__INLINE expr measure() { return expr(AD_MES,ENUMUNDEF); }
-	__INLINE expr condition(const expr & cond, const expr & if_gt, const expr & if_le) { return expr(cond, if_gt, if_le); }
+	__INLINE expr condition(const expr & cond, const expr & if_gt_zero, const expr & if_le_zero) { return expr(cond, if_gt_zero, if_le_zero); }
 	__INLINE expr condition_etype(ElementType etypes, const expr & if_true, const expr & if_false) { return expr(expr(AD_COND_TYPE, etypes), if_true, if_false); }
 	__INLINE expr condition_marker(MarkerType marker, const expr & if_true, const expr & if_false) { return expr(expr(AD_COND_MARK, marker), if_true, if_false); }
 	__INLINE expr stencil(INMOST_DATA_ENUM_TYPE stncl, const expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return expr(stncl, &v); }
@@ -694,7 +694,7 @@ namespace INMOST
 	__INLINE expr measure() { return expr(AD_MES, NULL, NULL); }
 	__INLINE expr condition_etype(ElementType etype, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(AD_COND_TYPE,etype), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
 	__INLINE expr condition_marker(MarkerType marker, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(AD_COND_MARK,marker), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
-	__INLINE expr condition(const expr & cond, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(cond), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
+	__INLINE expr condition(const expr & cond, const expr & if_gt_zero, const expr & if_le_zero) { return expr(AD_COND, new expr(cond), new expr(AD_ALTR, new expr(if_gt_zero), new expr(if_le_zero))); }
 	__INLINE expr stencil(INMOST_DATA_ENUM_TYPE stncl, const expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return expr(stncl, new expr(v), NULL); }
 	__INLINE expr tabval(INMOST_DATA_ENUM_TYPE tabl, const expr & v) { assert(tabl >= AD_TABLE && tabl < AD_FUNC); return expr(tabl, new expr(v), NULL); }
 	__INLINE expr tagval(INMOST_DATA_ENUM_TYPE reg_tag, INMOST_DATA_ENUM_TYPE comp = 0) { assert(reg_tag >= AD_TAG && reg_tag < AD_STNCL); return expr(reg_tag, comp); }

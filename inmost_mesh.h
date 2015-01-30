@@ -633,8 +633,8 @@ namespace INMOST
 		virtual ~Element() {}
 	public:
 		/// Retrive number of adjacent elements.
-		/// As etype you can either pass one type as CELL,
-		/// or several types as bitwise mask: NODE | CELL
+		/// For etype you can either pass one type as CELL,
+		/// or several types as bitwise mask: NODE | CELL.
 		/// @param etype bitwise mask of element types
 		/// @return number of adjacent elements.
 		virtual enumerator                nbAdjElements           (ElementType etype) const;
@@ -664,31 +664,42 @@ namespace INMOST
 		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
 		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
 		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		/// Получить все узлы данного элемента,
-		/// Для узла вернет сам узел
-		/// Для ребра вернет упорядоченную пару вершин
-		/// Для грани вернет упорядоченный массив вершин
-		/// Для ячейки известного типа вернет упорядоченный массив вершин
+		/// Retrive all the nodes of the element.
+		/// For a node returns itself.
+		/// For an edge returns ordered pair of nodes. The order of nodes in the edge is preserved from the first creation.
+		/// For a face returns ordered set of nodes. In the case Face::CheckNormalOrientation returns true the
+		/// order of nodes will follow right hand side rule with respect to normal vector, otherwise it follows
+		/// left hand side rule with respect to normal vector.
+		/// For a cell returns the same order that was provided through suggest_nodes_oreder in Mesh::CreateCell.
+		/// In the case suggest_nodes_order was not provided, the order of nodes follows VTK format for known types
+		/// of elements such as Element::Tet, Element::Prism, Element::Hex, Element::Pyramid. For a general polyhedron
+		/// the order is unspecified.
+		/// @return array of elements
+		/// @see Face::CheckNormalOrientation
+		/// @see Face::FaceOrientedOutside
 		virtual ElementArray<Node>  getNodes                () const; //unordered
-		/// Получить все ребра данного элемента
-		/// Для узла вернет неупорядоченный массив ребер
-		/// Для ребра вернет само ребро
-		/// Для грани вернет упорядоченный массив ребер
-		/// Для ячейки вернет неупорядоченный массив ребер
+		/// Retrive all the edges of the element.
+		/// For a node returns unordered set of edges.
+		/// For an edge returns itself.
+		/// For a face returns ordered set of edges.
+		/// For a cell returns unordered set of edges.
+		/// @return array of elements
 		virtual ElementArray<Edge>  getEdges                () const; //unordered
-		/// Получить все грани данного элемента
-		/// Для узла вернет неупорядоченный массив граней
-		/// Для ребра вернет неупорядоченный массив граней
-		/// Для грани вернет саму грань
-		/// Для ячейки вернет массив граней в том порядке, в котором она была создана
+		/// Retrive all the faces of the element.
+		/// For a node returns unordered set of faces.
+		/// For an edge returns unordered set of faces.
+		/// For a face returns itself.
+		/// For a cell return ordered set of faces. The order of faces in the cell is preserved from the first creation.
+		/// @return array of elements
 		virtual ElementArray<Face>  getFaces                () const; //unordered
-		/// Получить все ячейки данного элемента
-		/// Для узла вернет неупорядоченный массив ячеек
-		/// Для ребра вернет неупорядоченный массив ячеек
-		/// Для грани вернет массив из двух ячеек, причем 
-		/// нормаль к грани направлена из первой ячейки во вторую,
-		/// если порядок ребер грани задан по правому буравчику
-		/// Для ячейки вернет саму ячейку
+		/// Return all the cells of the element.
+		/// For a node returns unordered set of cells.
+		/// For an edge returns unordered set of cells.
+		/// For a face returns a pair of cells. In the case Face::CheckNormalOrientation returns true
+		/// then the normal points from the first cell to the second and in oppisite direction otherwise.
+		/// For a cell returns itself.
+		/// @return array of elements
+		/// @see Face::FaceOrientedOutside
 		virtual ElementArray<Cell>  getCells                () const; //unordered
 		virtual ElementArray<Node>  getNodes                (MarkerType mask,bool invert_mask = false) const; //unordered
 		virtual ElementArray<Edge>  getEdges                (MarkerType mask,bool invert_mask = false) const; //unordered
@@ -722,16 +733,16 @@ namespace INMOST
 		bool                        Hidden                  () const;
 		bool                        New                     () const;
 		void                        Disconnect              (bool delete_upper_adjacent) const; //disconnect all elements, delete upper dependent
-		/// Disconnects nodes from this edge, edges from this face, faces from this cell, cannot disconnect cells from this node;
-		/// Disconnects edges from this node, faces from this edge, cells from this face, cannot disconnect nodes from this cell;
+		/// Disconnects nodes from this edge, edges from this face, faces from this cell, cannot disconnect cells from this node; \n
+		/// Disconnects edges from this node, faces from this edge, cells from this face, cannot disconnect nodes from this cell; \n
 		/// Updates geometric data and cell nodes automatically.
 		void                        Disconnect              (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const;
 		/// Connects lower adjacencies to current element, 
-		/// geometric data and cell nodes are updated automatically.
+		/// geometric data and cell nodes are updated automatically. \n
 		/// TODO:
-		///		1. asserts in this function should be replaced by Topography checks;
-		///		2. this function should be used for creation of elements instead of current implementation.
-		///     3. should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)
+		///		1. asserts in this function should be replaced by Topography checks; \n
+		///		2. this function should be used for creation of elements instead of current implementation. \n
+		///   3. should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)
 		void                        Connect                 (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
 		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
 		void                        UpdateGeometricData     () const; 
@@ -825,11 +836,17 @@ namespace INMOST
 		//this is for 2d case when the face is represented by segment
 		Node                        getBeg                  () const;
 		Node                        getEnd                  () const;
-		/// Получить ячейку за нормалью к грани
-		/// направление нормали зависит от последовательности создания сетки
+		/// Retrive the cell for which the normal points outwards.
+		/// Depending on the grid construction the normal may incorrectly point inwards.
+		/// You can resolve this situation by Face::FixNormalOrientation.
+		/// @return the cell for which normal points outwards.
+		/// @see Face::FixNormalOrientation
 		Cell                        BackCell                () const;
-		/// Получить ячейку перед нормалью к грани
-		/// направление нормали зависит от последовательности создания сетки
+		/// Retrive the cell for which the normal points inwards.
+		/// Depending on the grid construction the normal may incorrectly point outwards.
+		/// You can resolve this situation by Face::FixNormalOrientation.
+		/// @return the cell for which normal points inwards.
+		/// @see Face::FixNormalOrientation
 		Cell                        FrontCell               () const;
 		bool                        FaceOrientedOutside     (Cell c) const;
 		void                        ReorderEdges            () const;
@@ -903,12 +920,12 @@ namespace INMOST
 	class ElementSet : public Element //implemented in eset.cpp
 	{
 	public:
-		static const enumerator high_conn_reserved = 4; ///< number of reserved positions in HighConn array
-                                                    ///< first position is handle to parent set
-                                                    ///< second position is handle to sibling set
-                                                    ///< third position is handle to child set
-                                                    ///< fourth position is number of sorted elements in the set
-                                                    ///< all the rest are positions of deleted elements
+		static const enumerator high_conn_reserved = 4; ///< number of reserved positions in HighConn array.
+                                                    ///< The first position is the handle to parent set.
+                                                    ///< The second position is handle to sibling set.
+                                                    ///< The third position is handle to child set.
+                                                    ///< The fourth position is number of sorted elements in the set.
+                                                    ///< All the rest are positions of deleted elements.
 		typedef INMOST_DATA_BULK_TYPE ComparatorType;
 		static const ComparatorType UNSORTED_COMPARATOR = 0;
 		static const ComparatorType GLOBALID_COMPARATOR = 1;
@@ -957,7 +974,7 @@ namespace INMOST
 
 		/// Direct raw access to stored elements, no copy involved.
 		/// The actual pointer may change when you add new elements due to reallocation of memory.
-		/// Modify at your own risk
+		/// Modify at your own risk.
 		HandleType *                getHandles() const;
 		/// Retrive number of stored handles, including invalid
 		/// if you want to get number of valid elements use ElementSet::Size
@@ -1021,48 +1038,48 @@ namespace INMOST
 		template<typename EType>
 		void                        RemoveElements(const ElementArray<EType> & elems) const {RemoveElements(elems.data(),static_cast<enumerator>(elems.size()));}
 
-		/// Compute and return union with other set
+		/// Compute and return union with other set.
 		/// Result is unordered.
-		/// all elements will be unique
+		/// All elements will be unique.
 		ElementArray<Element> Union(const ElementSet & other) const;
-		/// Compute and return union with raw handles,
+		/// Compute and return union with raw handles.
 		/// Result is unordered.
-		/// all elements will be unique
+		/// All elements will be unique.
 		ElementArray<Element> Union(const HandleType * handles, enumerator num) const;
 		/// Compute and return union with elements
 		template<typename EType>
 		ElementArray<Element> Union(const ElementArray<EType> & elems) const {return Union(elems.data(),static_cast<enumerator>(elems.size()));}
 
 		ElementArray<Element> Difference(const ElementSet & other) const;
-		/// Compute and return difference with raw handles
-		/// If initial set was order, result will preserve the order.
-		/// all elements will be unique
+		/// Compute and return difference with raw handles.
+		/// If initial set was ordered, result will preserve the order.
+		/// All elements will be unique.
 		ElementArray<Element> Difference(const HandleType * handles, enumerator num) const;
 		/// Compute and return difference with elements
 		template<typename EType>
 		ElementArray<Element> Difference(const ElementArray<EType> & elems) const {return Difference(elems.data(),static_cast<enumerator>(elems.size()));}
 
 		ElementArray<Element> Intersection(const ElementSet & other) const;
-		/// Compute and return intersection with raw handles
-		/// If initial set was order, result will preserve the order.
-		/// all elements will be unique
+		/// Compute and return intersection with raw handles.
+		/// If initial set was ordered, result will preserve the order.
+		/// All elements will be unique.
 		ElementArray<Element> Intersection(const HandleType * handles, enumerator num) const;
-		/// Compute and return intersection with elements
+		/// Compute and return intersection with elements.
 		template<typename EType>
 		ElementArray<Element> Intersection(const ElementArray<EType> & elems) const {return Intersection(elems.data(),static_cast<enumerator>(elems.size()));}
 		
-		/// Compute and store union with raw handles
+		/// Compute and store union with raw handles.
 		void Unite(const ElementSet & other) const;
-		/// Compute and store union with raw handles
+		/// Compute and store union with raw handles.
 		void Unite(const HandleType * handles, enumerator num) const;
-		/// Compute and store union with elements
+		/// Compute and store union with elements.
 		template<typename EType>
 		void Unite(const ElementArray<EType> & elems) const {Unite(elems.data(),static_cast<enumerator>(elems.size()));}
 
 		/// TODO
-		///   if other and current sets are sorted in same way, may perform narrowing traversal by retriving
+		///   If other and current sets are sorted in same way, may perform narrowing traversal by retriving
 		///   mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets.
-		///   may work good when deleting handles by small chunks, ApplyModification may greatly benefit
+		///   May work good when deleting handles by small chunks, ApplyModification may greatly benefit.
 		void Subtract(const ElementSet & other) const;
 		/// Compute and store difference with raw handles
 		void Subtract(const HandleType * handles, enumerator num) const;

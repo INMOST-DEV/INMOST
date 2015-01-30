@@ -167,7 +167,7 @@ namespace INMOST
 			info->GetVectorRegion(vbeg,vend);
 
 			//rhs_norm = info->ScalarProd(RHS,RHS,vlocbeg,vlocend);
-      rhs_norm = 1;
+			rhs_norm = 1;
 			//r[0] = b
 			std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
 			{
@@ -202,7 +202,7 @@ namespace INMOST
 				goto exit;
 			}
 
-			long double tt, ts, tp, ttt;
+			long double tt, ts, tp;
 			while( true )
 			{
 				ts = tp = 0;

@@ -19,12 +19,10 @@ if(OPENGL_FOUND)
         set_target_properties(OldDrawGrid PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
       endif() 
     endif(USE_MPI)
+    install(TARGETS OldDrawGrid EXPORT inmost-targets RUNTIME DESTINATION bin)
   else(GLUT_FOUND)
     message("GLUT not found, not building OldDrawGrid")
   endif(GLUT_FOUND)
 else(OPENGL_FOUND)
   message("OpenGL not found, not building OldDrawGrid")
 endif(OPENGL_FOUND)
-
-
-install(TARGETS OldDrawGrid EXPORT inmost-targets RUNTIME DESTINATION bin)

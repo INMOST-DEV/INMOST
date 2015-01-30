@@ -31,12 +31,10 @@ if(OPENGL_FOUND)
         target_link_libraries(DrawMatrix ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
       endif()
     endif()
+    install(TARGETS DrawMatrix EXPORT inmost-targets RUNTIME DESTINATION bin)
   else(GLUT_FOUND)
     message("GLUT not found, not building DrawMatrix")
   endif(GLUT_FOUND)
 else(OPENGL_FOUND)
   message("OpenGL not found, not building DrawMatrix")
 endif(OPENGL_FOUND)
-
-
-install(TARGETS DrawMatrix EXPORT inmost-targets RUNTIME DESTINATION bin)

@@ -23,12 +23,12 @@ int main(int argc, char ** argv)
 	{
 		case 0: type = Solver::INNER_ILU2; break;
 		case 1: type = Solver::INNER_MLILUC; break;
-		case 2: type = Solver::ANI; break;
-		case 3: type = Solver::PETSc; break;
-		case 4: type = Solver::Trilinos_Aztec; break;
-		case 5: type = Solver::Trilinos_Belos; break;
-		case 6: type = Solver::Trilinos_Ifpack; break;
-		case 7: type = Solver::Trilinos_ML; break;
+		case 2: type = Solver::PETSc; break;
+		case 3: type = Solver::Trilinos_Aztec; break;
+		case 4: type = Solver::Trilinos_Belos; break;
+		case 5: type = Solver::Trilinos_Ifpack; break;
+		case 6: type = Solver::Trilinos_ML; break;
+    case 7: type = Solver::ANI; break;
 	}
 	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
 	{
@@ -67,9 +67,21 @@ int main(int argc, char ** argv)
 		bool success = false;
 		int iters;
 		double resid, realresid = 0;
-
+		std::string reason;
 		{
 			Solver s(type); // Declare the linear solver by specified type
+
+			s.SetParameterEnum("gmres_substeps",3);
+			
+			s.SetParameterEnum("reorder_nonzeros",0);
+			s.SetParameterEnum("rescale_iterations",8);
+			s.SetParameterEnum("adapt_ddpq_tolerance",0);
+			
+			s.SetParameterReal("drop_tolerance",0.001);
+			s.SetParameterReal("reuse_tolerance",0.00001);
+			s.SetParameterReal("ddpq_tolerance",0.7);
+			
+
 			t = Timer();
 			s.SetMatrix(mat); // Compute the preconditioner for the original matrix
 			BARRIER
@@ -80,6 +92,7 @@ int main(int argc, char ** argv)
 			if( !rank ) std::cout << "solver: " << Timer() - t << std::endl;
 			iters = s.Iterations(); // Get the number of iterations performed
 			resid = s.Residual();   // Get the final residual achieved
+			reason = s.GetReason();
 			//x.Save("output.rhs");
 		}
 		tt = Timer() - tt;
@@ -130,6 +143,7 @@ int main(int argc, char ** argv)
 				if( argc > 3 ) std::cout  << " vector \"" << argv[3] << "\"";
 				std::cout << " true residual ||Ax-b||/||b|| " << realresid;
 				std::cout << std::endl;
+				std::cout << "reason: " << reason << std::endl;
 			}
 		}
 	}
@@ -137,3 +151,4 @@ int main(int argc, char ** argv)
 	Solver::Finalize(); // Finalize solver and close MPI activity
 	return 0;
 }
+

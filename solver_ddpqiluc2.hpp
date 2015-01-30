@@ -309,7 +309,7 @@ public:
 		
 		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next, mi, mj;
 		INMOST_DATA_REAL_TYPE l,u,udiag, max_diag, min_diag, mean_diag, tol_schur;
-		INMOST_DATA_ENUM_TYPE nzA, nzLU = 0, nzEF = 0, nzL, nzS;
+		INMOST_DATA_ENUM_TYPE nzA, nzLU = 0, nzEF = 0, nzS;
 		Solver::Vector DL, DR;
 		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
 		
