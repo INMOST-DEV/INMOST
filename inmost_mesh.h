@@ -632,20 +632,20 @@ namespace INMOST
 		const Element & self() const {return *this;}
 		virtual ~Element() {}
 	public:
-		/// Retrive number of adjacent elements.
+		/// Retrieve number of adjacent elements.
 		/// For etype you can either pass one type as CELL,
 		/// or several types as bitwise mask: NODE | CELL.
 		/// @param etype bitwise mask of element types
 		/// @return number of adjacent elements.
 		virtual enumerator                nbAdjElements           (ElementType etype) const;
-		/// Retrive unordered array of adjacent elements.
+		/// Retrieve unordered array of adjacent elements.
 		/// If you care about orderness of nodes for face you should you Face::getNodes() instead.
 		/// If you want faster access you may use direct access to handles stored in memory
 		/// through Mesh::HighConn for upper adjacencies and Mesh::LowConn for lower adjacencies.
 		/// @param etype bitwise mask of element types
 		/// @return array of elements
 		virtual ElementArray<Element>     getAdjElements          (ElementType etype) const;  //unordered
-		/// Retrive number of adjacent elements with marker.
+		/// Retrieve number of adjacent elements with marker.
 		/// As etype you can either pass one type as CELL,
 		/// or several types as bitwise mask: NODE | CELL
 		/// @param etype bitwise mask of element types
@@ -653,7 +653,7 @@ namespace INMOST
 		/// @param invert_mask if true then those are selected on wich marker is not set
 		/// @return number of adjacent elements.
 		virtual enumerator                nbAdjElements           (ElementType etype, MarkerType mask, bool invert_mask = false) const;
-		/// Retrive unordered array of adjacent elements with marker.
+		/// Retrieve unordered array of adjacent elements with marker.
 		/// @param etype bitwise mask of element types
 		/// @param mask marker to be set 
 		/// @param invert_mask if true then those are selected on wich marker is not set
@@ -664,7 +664,7 @@ namespace INMOST
 		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
 		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
 		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		/// Retrive all the nodes of the element.
+		/// Retrieve all the nodes of the element.
 		/// For a node returns itself.
 		/// For an edge returns ordered pair of nodes. The order of nodes in the edge is preserved from the first creation.
 		/// For a face returns ordered set of nodes. In the case Face::CheckNormalOrientation returns true the
@@ -678,14 +678,14 @@ namespace INMOST
 		/// @see Face::CheckNormalOrientation
 		/// @see Face::FaceOrientedOutside
 		virtual ElementArray<Node>  getNodes                () const; //unordered
-		/// Retrive all the edges of the element.
+		/// Retrieve all the edges of the element.
 		/// For a node returns unordered set of edges.
 		/// For an edge returns itself.
 		/// For a face returns ordered set of edges.
 		/// For a cell returns unordered set of edges.
 		/// @return array of elements
 		virtual ElementArray<Edge>  getEdges                () const; //unordered
-		/// Retrive all the faces of the element.
+		/// Retrieve all the faces of the element.
 		/// For a node returns unordered set of faces.
 		/// For an edge returns unordered set of faces.
 		/// For a face returns itself.
@@ -836,13 +836,13 @@ namespace INMOST
 		//this is for 2d case when the face is represented by segment
 		Node                        getBeg                  () const;
 		Node                        getEnd                  () const;
-		/// Retrive the cell for which the normal points outwards.
+		/// Retrieve the cell for which the normal points outwards.
 		/// Depending on the grid construction the normal may incorrectly point inwards.
 		/// You can resolve this situation by Face::FixNormalOrientation.
 		/// @return the cell for which normal points outwards.
 		/// @see Face::FixNormalOrientation
 		Cell                        BackCell                () const;
-		/// Retrive the cell for which the normal points inwards.
+		/// Retrieve the cell for which the normal points inwards.
 		/// Depending on the grid construction the normal may incorrectly point outwards.
 		/// You can resolve this situation by Face::FixNormalOrientation.
 		/// @return the cell for which normal points inwards.
@@ -945,11 +945,11 @@ namespace INMOST
 
 		/// Get name of the set
 		std::string                 GetName() const;
-		/// Retrive parent of the set
+		/// Retrieve parent of the set
 		ElementSet                  GetParent() const;
-		/// Retrive sibling set of the set, this will be next child for the parent
+		/// Retrieve sibling set of the set, this will be next child for the parent
 		ElementSet                  GetSibling() const;
-		/// Retrive child set of the set
+		/// Retrieve child set of the set
 		/// Following example shows how to iterate through children of current set:
 		/// for(ElementSet it = set->GetChild(); it->isValid(); it = it->GetSibling()) ...
 		ElementSet                  GetChild() const;
@@ -976,29 +976,29 @@ namespace INMOST
 		/// The actual pointer may change when you add new elements due to reallocation of memory.
 		/// Modify at your own risk.
 		HandleType *                getHandles() const;
-		/// Retrive number of stored handles, including invalid
+		/// Retrieve number of stored handles, including invalid
 		/// if you want to get number of valid elements use ElementSet::Size
 		enumerator                  nbHandles() const;
-		/// Retrive position after last sorted element, this does not correctly
+		/// Retrieve position after last sorted element, this does not correctly
 		/// represent total number of sorted elements, since some of them may be deleted
 		enumerator                  nbSorted() const;
-		/// Retrive all elements by type
+		/// Retrieve all elements by type
 		enumerator                  nbAdjElements(ElementType etype) const;
 		enumerator                  nbAdjElements(ElementType etype, MarkerType select, bool invert = false) const;
-		/// Retrive all elements by type
+		/// Retrieve all elements by type
 		ElementArray<Element>       getAdjElements(ElementType etype) const;
 		ElementArray<Element>       getAdjElements(ElementType etype, MarkerType select, bool invert = false) const;
 		
-		/// Retrive only nodes
+		/// Retrieve only nodes
 		ElementArray<Node>          getNodes() const;
 		ElementArray<Node>          getNodes(MarkerType select, bool invert = false) const;
-		/// Retrive only edges
+		/// Retrieve only edges
 		ElementArray<Edge>          getEdges() const;
 		ElementArray<Edge>          getEdges(MarkerType select, bool invert = false) const;
-		/// Retrive only faces
+		/// Retrieve only faces
 		ElementArray<Face>          getFaces() const;
 		ElementArray<Face>          getFaces(MarkerType select, bool invert = false) const;
-		/// Retrive only cells
+		/// Retrieve only cells
 		ElementArray<Cell>          getCells() const;
 		ElementArray<Cell>          getCells(MarkerType select, bool invert = false) const;
 		/// Put one element without checking of the existance of duplicate
@@ -1187,7 +1187,7 @@ namespace INMOST
 		iterator Erase(iterator pos) const;
 		/// Erase set of elements pointed by iterators
 		void Erase(iterator beg, iterator end) const;
-		/// Retrive current set comparator
+		/// Retrieve current set comparator
 		ComparatorType GetComparator() const;
 		/// Compact holes in inner representation
 		void ReorderEmpty() const;
@@ -1283,7 +1283,7 @@ namespace INMOST
 		/// and in UnpackElementsData
 		/// @param e small real value
 		__INLINE void                     SetEpsilon         (real e) {epsilon = e;}
-		/// Retrive tolerance for coordinates comparison
+		/// Retrieve tolerance for coordinates comparison
 		/// @return real value
 		__INLINE real                     GetEpsilon         () const {return epsilon;}
 		/// Set number of dimensions for mesh, it sets the size for number of internally stored coordinates.
@@ -1343,7 +1343,7 @@ namespace INMOST
 		/// For safety while iterating through tags you should check for validity of the tag
 		/// @return first tag
 		__INLINE iteratorTag              BeginTag           () {return tags.begin(); }
-		/// Retrive the total number of valid tags
+		/// Retrieve the total number of valid tags
 		/// @return returns the number of valid tags
 		__INLINE enumerator               NumberOfTags       () const { return static_cast<INMOST_DATA_ENUM_TYPE>(tags.size()); }
 		/// Returns the indicator for loop to end iteration over tags
@@ -1367,11 +1367,11 @@ namespace INMOST
 		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer num_c_faces, 
 		                                                      const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
 		std::pair<ElementSet,bool>        CreateSet          (std::string name);
-		/// Retrive set by name.
+		/// Retrieve set by name.
 		/// @param name set name
 		/// @return set whose name match or InvalidHandle()
 		ElementSet                        GetSet             (std::string name);
-		/// Retrive all the sets whose names start with given prefix
+		/// Retrieve all the sets whose names start with given prefix
 		ElementArray<ElementSet>          GetSetsByPrefix    (std::string prefix);
 		HandleType                        LastCreated        () const {return last_created;}
 
@@ -1379,7 +1379,7 @@ namespace INMOST
 		bool                              isValidElement     (integer etypenum, integer lid) const {return links[etypenum][lid] != -1;}
 		bool                              isValidElement     (ElementType etype, integer lid) const {return links[ElementNum(etype)][lid] != -1;}
 		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElement(GetHandleElementNum(h),GetHandleID(h));}
-		/// Retrive upper adjacent that is shared by multiple lower adjacencies
+		/// Retrieve upper adjacent that is shared by multiple lower adjacencies
 		/// @return handle of found element or InvalidHandle()
 		HandleType                        FindSharedAdjacency(const HandleType * arr, enumerator num) const;
 		void                              ReorderEmpty       (ElementType reordertypes);
@@ -1475,7 +1475,7 @@ namespace INMOST
 		/// may become either invalid but not testable against InvalidHandle (situation may be tested 
 		/// by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element 
 		/// if you mix deletion and creation of elements and then is no way to resolve this situation,
-		/// except if you have created only one element the it may be retrived by Mesh::LastHandle.
+		/// except if you have created only one element the it may be retrieved by Mesh::LastHandle.
 		/// @param h element handle
 		/// @param tag tag that represents data
 		/// @see InvalidHandle
@@ -1789,26 +1789,26 @@ namespace INMOST
 		
 		Element::GeometricType            GetGeometricType   (HandleType h) const {return static_cast<const bulk *>(MGetDenseLink(h,GeomTypeTag()))[0];}
 		void                              SetGeometricType   (HandleType h, Element::GeometricType type) {static_cast<bulk *>(MGetDenseLink(h,GeomTypeTag()))[0] = type;}
-		/// Retrive global id of the element with right of modification (dangerous to modify).
+		/// Retrieve global id of the element with right of modification (dangerous to modify).
 		/// Run AssignGlobalID so that tag is automatically allocated and shortcut is set within mesh,
 		/// otherwise tag is not created and call will fail.
 		/// @param h handle of the element
 		/// @return global id
 		/// @see Mesh::AssignGlobalID
 		integer &                         GlobalID           (HandleType h) {return static_cast<integer *>(MGetDenseLink(h,GlobalIDTag()))[0];}
-		/// Retrive global id of the element without right of modification.
+		/// Retrieve global id of the element without right of modification.
 		/// Run AssignGlobalID so that tag is automatically allocated and shortcut is set within mesh,
 		/// otherwise tag is not created and call will fail.
 		/// @param h handle of the element
 		/// @return global id
 		/// @see Mesh::AssignGlobalID
 		integer                           GlobalID           (HandleType h) const {return static_cast<const integer *>(MGetDenseLink(h,GlobalIDTag()))[0];}
-		/// Retrive position of the data position of current element, after ReorderEmpty
+		/// Retrieve position of the data position of current element, after ReorderEmpty
 		/// this number is guaranteed to be between 0 and NumberOf(type of element)
 		/// @param h handle of the element
 		/// @return local id of data
 		integer                        DataLocalID           (HandleType h) const {return static_cast<integer>(links[GetHandleElementNum(h)][GetHandleID(h)]);}
-		/// Retrive parallel status of the element.
+		/// Retrieve parallel status of the element.
 		/// If mesh is in Serial state then call always returns Element::Owned.
 		/// otherwise it will return:
 		///    Element::Owned  if there is a single copy of the element on the current processor
@@ -2039,7 +2039,7 @@ namespace INMOST
 		/// @see Mesh::PrepareReceiveInner
 		/// @see Mesh::ExchangeBuffersInner
 		void                              SetParallelStrategy(int strategy){assert( !(strategy < 0 || strategy > 3) ); parallel_strategy = strategy;}
-		/// Retrive currently set parallel strategy
+		/// Retrieve currently set parallel strategy
 		/// @see Mesh::SetParallelStrategy
 		int                               GetParallelStrategy() {return parallel_strategy;}
 		/// This strategy correspond only to internal ".pmf" mesh format
@@ -2078,14 +2078,14 @@ namespace INMOST
 		/// happen due to lack of read-write devices that able to work in parallel. On IBM Bluegene/p
 		/// strategy 1 was not working due to same old problem with shared file pointers in their MPI realization
 		void                              SetParallelFileStrategy(int strategy){assert( !(strategy < 0 || strategy > 1) ); parallel_file_strategy = strategy;}
-		/// Retrive currently set parallel strategy for ".pmf" files
+		/// Retrieve currently set parallel strategy for ".pmf" files
 		/// @see Mesh::GetParallelStrategy
 		int                               GetParallelFileStrategy() {return parallel_file_strategy;}
 		/// Get rank of current processor
 		int                               GetProcessorRank   ();
 		/// Get number of processors
 		int                               GetProcessorsNumber();
-		/// Retrive MPI communicator
+		/// Retrieve MPI communicator
 		INMOST_MPI_Comm                   GetCommunicator    ();
 		/// Set MPI communicator
 		void                              SetCommunicator    (INMOST_MPI_Comm _comm);
@@ -2661,12 +2661,12 @@ namespace INMOST
 		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions.
 		/// TODO: list checks performed inside in description.
 		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
-		/// This will return tag by which you can retrive error mark to any element on which topogy check failed.
+		/// This will return tag by which you can retrieve error mark to any element on which topogy check failed.
 		/// As this is sparse tag you can check presence of error by Element::HaveData or Mesh::HaveData check.
 		/// This tag will be valid only if you pass MARK_ON_ERROR to Mesh::GetTopologyCheck
 		/// and will be deleted if you pass MARK_ON_ERROR to Mesh::RemTopologyCheck
 		Tag                               TopologyErrorTag   () const {return tag_topologyerror;}
-		/// Retrive currently set topology checks
+		/// Retrieve currently set topology checks
 		TopologyCheck                     GetTopologyCheck   (TopologyCheck mask = ENUMUNDEF) const {return checkset & mask;}
 		/// Set topology checks
 		void                              SetTopologyCheck   (TopologyCheck mask);
@@ -2674,7 +2674,7 @@ namespace INMOST
 		void                              RemTopologyCheck   (TopologyCheck mask);
 		/// This will turn mesh into the state indicating that some topology error occured
 		void                              SetTopologyError   (TopologyCheck mask) {errorset = errorset | mask;}
-		/// Retrive topology error state, this indicates that some error have occured
+		/// Retrieve topology error state, this indicates that some error have occured
 		TopologyCheck                     GetTopologyError   (TopologyCheck mask = ENUMUNDEF) const {return errorset & mask;}
 		/// Revert mesh to clean topology error state
 		void                              ClearTopologyError (TopologyCheck mask = ENUMUNDEF) {errorset = errorset & ~mask;}

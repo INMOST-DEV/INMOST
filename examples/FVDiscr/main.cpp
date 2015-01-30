@@ -266,7 +266,7 @@ int main(int argc,char ** argv)
 			if( cell->GetStatus() != Element::Ghost )
 				cell->Real(phi) = x[cell->Integer(id)];
 		BARRIER
-		if( m->GetProcessorRank() == 0 ) std::cout << "Retrive data: " << Timer()-ttt << std::endl;
+		if( m->GetProcessorRank() == 0 ) std::cout << "Retrieve data: " << Timer()-ttt << std::endl;
 
 		ttt = Timer();
 		m->ExchangeData(phi,CELL,0); // Data exchange over processors

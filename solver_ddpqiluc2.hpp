@@ -1270,7 +1270,7 @@ swap_algorithm:
 //					if (fabs(LU_Diag[k] - LineValues[k]) > 1e-6) std::cout << __LINE__ << " Diagonal value went wrong, good: " << LineValues[k] << " have " << LU_Diag[k] << " line " << k << std::endl;
 //#endif
 ///////////////////////////////////////////////////////////////////////////////////
-//                  Retrive diagonal value                                       //
+//                  Retrieve diagonal value                                      //
 ///////////////////////////////////////////////////////////////////////////////////
           
 #if defined(DIAGONAL_PIVOT) 

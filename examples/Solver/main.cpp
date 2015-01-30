@@ -443,7 +443,7 @@ int main(int argc,char ** argv)
 		
 		
 		BARRIER
-		if( m->GetProcessorRank() == 0 ) std::cout << "Retrive data: " << Timer()-ttt << std::endl;
+		if( m->GetProcessorRank() == 0 ) std::cout << "Retrieve data: " << Timer()-ttt << std::endl;
 		
 		ttt = Timer();
 		m->ExchangeData(phi,CELL,0);

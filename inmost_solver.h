@@ -98,7 +98,7 @@ namespace INMOST
 			/// Restore initial nonparallel state of the Vector.
 			void RestoreVector(Vector & v) const;
 			/// Retrieve the processor number by binary search for the specified global index.
-			INMOST_DATA_ENUM_TYPE GetProcessor(INMOST_DATA_ENUM_TYPE gind) const; //retrive processor by binary search in global_to_proc
+			INMOST_DATA_ENUM_TYPE GetProcessor(INMOST_DATA_ENUM_TYPE gind) const; //retrieve processor by binary search in global_to_proc
 			void      GetOverlapRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE & mbeg, INMOST_DATA_ENUM_TYPE & mend) const;
 			/// Get the local index region for the specified process.
 			void        GetLocalRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE & mbeg, INMOST_DATA_ENUM_TYPE & mend) const;

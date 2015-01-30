@@ -1519,7 +1519,7 @@ namespace INMOST
 		}
 		//! Return the solution for given tag index of given element
 		INMOST_DATA_REAL_TYPE GetIndex(Storage * e, INMOST_DATA_ENUM_TYPE tagind, INMOST_DATA_ENUM_TYPE comp = 0) {return e->IntegerArray(GetDynamicIndexTag(tagind))[comp];}
-		//! Retrive number of components on given element for given tag
+		//! Retrieve number of components on given element for given tag
 		INMOST_DATA_ENUM_TYPE GetComponents(Storage *e, INMOST_DATA_ENUM_TYPE tagind) {return e->IntegerArray(GetDynamicIndexTag(tagind)).size();}
 
 		enum Precision { Double, Single };
