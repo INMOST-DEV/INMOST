@@ -1,7 +1,16 @@
 INMOST
 ======
 
-A toolkit for distributed mathematical modeling
+INMOST is a software platform for development of parallel numerical models on general meshes
+
+The presented toolkit may be usefull in creation of parallel software
+MPI-platforms for developing parallel numerical models on general meshes.
+Technology complex INMOST (Integrated Numerical Modelling and Object-oriented
+Supercomputing Technologies) is a tool for supercomputer simulations
+characterized by a maximum generality of supported computational meshes,
+distributed data structure flexibility and cost-effectiveness, as well as cross
+platform portability.
+
 
 Install Guide
 =============
