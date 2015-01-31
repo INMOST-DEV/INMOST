@@ -1937,7 +1937,7 @@ namespace INMOST
 			VectorPreallocateAni(solution_data,local_size);
 			{
 				VectorFillAni(rhs_data,&RHS[vbeg]);
-				VectorFinalizeAni(rhs_data);s
+				VectorFinalizeAni(rhs_data);
 				
 				VectorFillAni(solution_data,&SOL[vbeg]);
 				VectorFinalizeAni(solution_data);

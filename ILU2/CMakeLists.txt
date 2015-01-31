@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.7)
 project(ani3d)
 set(SOURCE bcg.f
+           matvecCSR.f
            dsort.f
            ilu0.f
            iluoo.f)
