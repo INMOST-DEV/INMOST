@@ -12,7 +12,7 @@
 #else
 #include <sys/time.h>
 #include <stddef.h>
-	long double Timer()
+	double Timer()
 	{
 		double t1;
 		struct timeval time;
