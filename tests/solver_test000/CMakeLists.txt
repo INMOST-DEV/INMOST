@@ -14,8 +14,11 @@ endif(USE_MPI)
 
 
 if(USE_SOLVER_ANI)
-  message("linking solver_test000 with ani3d")
-  target_link_libraries(solver_test000 ani3d)
+  message("linking solver_test000 with ani3d and BLAS")
+  target_link_libraries(solver_test000 ani3d ${BLAS_LIBRARIES})
+  if(BLAS_LINKER_FLAGS)
+    set_target_properties(solver_test000 PROPERTIES LINK_FLAGS "${BLAS_LINKER_FLAGS}")
+  endif()
 endif()
 if(USE_SOLVER_PETSC)
   message("linking solver_test000 with PETSc")

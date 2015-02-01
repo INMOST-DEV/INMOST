@@ -72,12 +72,18 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_find/")
 
 
 if(TEST_FORTRAN_ANI3D)
-	add_subdirectory(ILU2)
-	if(ANI3D_AVAILIBLE)
+	include(CheckLanguage)
+	check_language(Fortran)
+	find_package(BLAS)
+	if(NOT CMAKE_Fortran_COMPILER OR NOT BLAS_FOUND)
+		message(STATUS "No Fortran or BLAS support")
 		option(USE_SOLVER_ANI "Compile with ANI3D sequential solvers" OFF)
 	else()
+		enable_language(Fortran)
+		add_subdirectory(ILU2)
 		option(USE_SOLVER_ANI "Compile with ANI3D sequential solvers" ON)
 	endif()
+
 endif()
 
 
