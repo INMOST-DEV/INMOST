@@ -114,17 +114,17 @@ static int newmatrixbcg(bcg *s, matrix *A, bool same_precond)
 		if (!ilu2) 
 		{
 			s->rW = (double*) realloc(s->rW, sizeof(double)*2*(s->nz + s->n*8    ));
-			memset(s->rW,0,sizeof(double)*2*(s->nz + s->n*8    ));
+//			memset(s->rW,0,sizeof(double)*2*(s->nz + s->n*8    ));
 			s->iW = (int*)    realloc(s->iW, sizeof(int)   *2*(s->nz + s->n*2 + 1));
-			memset(s->iW,0,sizeof(int)   *2*(s->nz + s->n*2 + 1));
+//			memset(s->iW,0,sizeof(int)   *2*(s->nz + s->n*2 + 1));
 			s->ipBCG = s->nz;
 		}
 		else 
 		{
 			s->rW = (double*) realloc(s->rW, sizeof(double)*2*(s->nz*20)); // ilu2
-			memset(s->rW,0,sizeof(double)*2*(s->nz*20));
+//			memset(s->rW,0,sizeof(double)*2*(s->nz*20));
 			s->iW = (int*)    realloc(s->iW, sizeof(int)   *2*(s->nz*25)); // ilu2
-			memset(s->iW,0,sizeof(int)   *2*(s->nz*25));
+//			memset(s->iW,0,sizeof(int)   *2*(s->nz*25));
 		}
 		s->ipjLU = s->n + 1;
 		s->ipiw  = s->ipjLU + s->nz;
@@ -161,7 +161,7 @@ int renewbcg(bcg *s, double *A)
     else 
     {
 		int verb=0, MaxWr=2*s->nz*20, MaxWi=2*s->nz*25, UsedWr, UsedWi;
-		double tau1=1e-3, tau2=1e-6, partlur=0.3, partlurout;
+		double tau1=1e-3, tau2=1e-6, partlur=0.5, partlurout;
 		ILUOO(&s->n, s->ia, s->ja, s->A, &tau1, &tau2, &verb, s->rW, s->iW,
 			   &MaxWr, &MaxWi, &partlur, &partlurout, &UsedWr, &UsedWi, &ierr);
 		s->ipBCG = UsedWr;
