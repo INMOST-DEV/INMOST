@@ -665,39 +665,59 @@ namespace INMOST
 		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
 		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
 		/// Retrieve all the nodes of the element.
+		///
 		/// For a node returns itself.
+		///
 		/// For an edge returns ordered pair of nodes. The order of nodes in the edge is preserved from the first creation.
+		///
 		/// For a face returns ordered set of nodes. In the case Face::CheckNormalOrientation returns true the
 		/// order of nodes will follow right hand side rule with respect to normal vector, otherwise it follows
 		/// left hand side rule with respect to normal vector.
+		///
 		/// For a cell returns the same order that was provided through suggest_nodes_oreder in Mesh::CreateCell.
 		/// In the case suggest_nodes_order was not provided, the order of nodes follows VTK format for known types
 		/// of elements such as Element::Tet, Element::Prism, Element::Hex, Element::Pyramid. For a general polyhedron
 		/// the order is unspecified.
+		///
 		/// @return array of elements
 		/// @see Face::CheckNormalOrientation
 		/// @see Face::FaceOrientedOutside
 		virtual ElementArray<Node>  getNodes                () const; //unordered
 		/// Retrieve all the edges of the element.
+		///
 		/// For a node returns unordered set of edges.
+		///
 		/// For an edge returns itself.
+		///
 		/// For a face returns ordered set of edges.
+		///
 		/// For a cell returns unordered set of edges.
+		///
 		/// @return array of elements
 		virtual ElementArray<Edge>  getEdges                () const; //unordered
 		/// Retrieve all the faces of the element.
+		///
 		/// For a node returns unordered set of faces.
+		///
 		/// For an edge returns unordered set of faces.
+		///
 		/// For a face returns itself.
+		///
 		/// For a cell return ordered set of faces. The order of faces in the cell is preserved from the first creation.
+		///
 		/// @return array of elements
 		virtual ElementArray<Face>  getFaces                () const; //unordered
 		/// Return all the cells of the element.
+		///
 		/// For a node returns unordered set of cells.
+		///
 		/// For an edge returns unordered set of cells.
+		///
 		/// For a face returns a pair of cells. In the case Face::CheckNormalOrientation returns true
 		/// then the normal points from the first cell to the second and in oppisite direction otherwise.
+		///
 		/// For a cell returns itself.
+		///
 		/// @return array of elements
 		/// @see Face::FaceOrientedOutside
 		virtual ElementArray<Cell>  getCells                () const; //unordered
@@ -733,6 +753,7 @@ namespace INMOST
 		bool                        Hidden                  () const;
 		bool                        New                     () const;
 		void                        Disconnect              (bool delete_upper_adjacent) const; //disconnect all elements, delete upper dependent
+		/// Disconnect element.
 		/// Disconnects nodes from this edge, edges from this face, faces from this cell, cannot disconnect cells from this node; \n
 		/// Disconnects edges from this node, faces from this edge, cells from this face, cannot disconnect nodes from this cell; \n
 		/// Updates geometric data and cell nodes automatically.
@@ -903,7 +924,7 @@ namespace INMOST
 		//implemented in geometry.cpp
 		Cell                        Neighbour               (Face f) const;
 		ElementArray<Cell>          NeighbouringCells       () const; // get all cells that share any face with current
-		/// This function can be used to determine, if points lies inside element.
+		/// Determine, if point lies inside element.
 		/// Now it works only for 3-dimensional elements, at future it will be
 		/// extended to support polygons and segments.
 		/// @param point coordinates of the point, it is assumed that number of the
@@ -949,7 +970,7 @@ namespace INMOST
 		ElementSet                  GetParent() const;
 		/// Retrieve sibling set of the set, this will be next child for the parent
 		ElementSet                  GetSibling() const;
-		/// Retrieve child set of the set
+		/// Retrieve child set of the set.
 		/// Following example shows how to iterate through children of current set:
 		/// for(ElementSet it = set->GetChild(); it->isValid(); it = it->GetSibling()) ...
 		ElementSet                  GetChild() const;
@@ -976,10 +997,10 @@ namespace INMOST
 		/// The actual pointer may change when you add new elements due to reallocation of memory.
 		/// Modify at your own risk.
 		HandleType *                getHandles() const;
-		/// Retrieve number of stored handles, including invalid
-		/// if you want to get number of valid elements use ElementSet::Size
+		/// Retrieve number of stored handles, including invalid.
+		/// If you want to get number of valid elements use ElementSet::Size
 		enumerator                  nbHandles() const;
-		/// Retrieve position after last sorted element, this does not correctly
+		/// Retrieve position after last sorted element. This does not correctly
 		/// represent total number of sorted elements, since some of them may be deleted
 		enumerator                  nbSorted() const;
 		/// Retrieve all elements by type
@@ -1001,10 +1022,10 @@ namespace INMOST
 		/// Retrieve only cells
 		ElementArray<Cell>          getCells() const;
 		ElementArray<Cell>          getCells(MarkerType select, bool invert = false) const;
-		/// Put one element without checking of the existance of duplicate
-		/// For sorted set new element will appear at unsorted part
+		/// Put one element without checking of the existance of duplicate.
+		/// For sorted set new element will appear at unsorted part.
 		void                        PutElement(HandleType e) const;
-		/// Put one element without checking of the existance of duplicate
+		/// Put one element without checking of the existance of duplicate.
 		/// For sorted set new element will appear at unsorted part
 		void                        PutElement(const Storage & e) const {PutElement(e->GetHandle());}
 		/// Put multiple handles without checking of the existance of duplicate
@@ -1014,14 +1035,14 @@ namespace INMOST
 		/// Put multiple handles without checking
 		template<typename EType>
 		void                        PutElements(const ElementArray<EType> & elems) const {PutElements(elems.data(),static_cast<enumerator>(elems.size()));}
-		/// Put one element with checking of the existance of duplicate
-		/// preserves order for sorted set, thus may be expensive
+		/// Put one element with checking of the existance of duplicate.
+		/// Preserves order for sorted set, thus may be expensive
 		void                        AddElement(HandleType e) const;
-		/// Put one element with checking of the existance of duplicate
-		/// preserves order for sorted set, thus may be expensive
+		/// Put one element with checking of the existance of duplicate.
+		/// Preserves order for sorted set, thus may be expensive
 		void                        AddElement(const Storage & e) const {AddElement(e->GetHandle());}
-		/// Add multiple elements with checking of the existance of duplicate,
-		/// preserves order for sorted set, thus may be expensive.
+		/// Add multiple elements with checking of the existance of duplicate.
+		/// Preserves order for sorted set, thus may be expensive.
 		/// This will also remove any duplicates in unsorted part of the set.
 		/// If you inserted duplicated elements through PutElements into previously sorted array
 		/// then this operation does not guarantee that those duplications will be stored.
@@ -1076,6 +1097,7 @@ namespace INMOST
 		template<typename EType>
 		void Unite(const ElementArray<EType> & elems) const {Unite(elems.data(),static_cast<enumerator>(elems.size()));}
 
+		/// Compute and store difference with raw handles.
 		/// TODO
 		///   If other and current sets are sorted in same way, may perform narrowing traversal by retriving
 		///   mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets.
@@ -1095,16 +1117,18 @@ namespace INMOST
 		/// Compute and store intersection with elements
 		template<typename EType>
 		void Intersect(const ElementArray<EType> & elems) const {Intersect(elems.data(),static_cast<enumerator>(elems.size()));}
-		/// Performs sort of the set of elements, if the set was previously sorted but
+		/// Performs sort of the set of elements. If the set was previously sorted but
 		/// have unsorted part, then unsorted part will be sorted and two parts will be merged.
 		/// If you need all the set to be resorted (for example in the case global ids were changed)
 		/// then invoke SortSet with UNSORTED_COMPARATOR first and then with needed comparator.
+		///
 		/// Internally it uses:
-		/// std::sort with Mesh::CentroidComparator for CENTROID_COMPARATOR
-		/// std::sort with Mesh::IerarhyComparator  for  IERARHY_COMPARATOR
-		/// radix sort starting from certain size for   GLOBALID_COMPARATOR
-		/// radix sort starting from certain size for     HANDLE_COMPARATOR
-		/// only changes state, no sort performed for   UNSORTED_COMPARATOR 
+		/// - std::sort with Mesh::CentroidComparator for CENTROID_COMPARATOR
+		/// - std::sort with Mesh::IerarhyComparator  for  IERARHY_COMPARATOR
+		/// - radix sort starting from certain size for   GLOBALID_COMPARATOR
+		/// - radix sort starting from certain size for     HANDLE_COMPARATOR
+		/// - only changes state, no sort performed for   UNSORTED_COMPARATOR 
+		///
 		/// After the set was sorted all the invalid handles should appear at the end of the set
 		/// and then removed from array, so it will implicitly work as ReorderEmpty function.
 		/// No checks that elements are hidden performed (Maybe this checks should be done in comparators)
@@ -1114,21 +1138,23 @@ namespace INMOST
 		/// without invoking SortSet, so that SortSet does not redundantly perform any work.
 		/// You are encouraged to do so even if you are not going to use this information -
 		/// some internal algorithms may benefit from it.
+		///
 		/// !TODO 52 - check radix sort on big endian computer
 		/// @param comp one of the comparators from description
 		/// @see Mesh::SetComparatorTag
 		void SortSet(ComparatorType comp) const;
-		/// Perform binary search by global id in set sorted with GLOBALID_COMPARATOR in O(log(n)) time
+		/// Perform binary search by global id. In set sorted with GLOBALID_COMPARATOR in O(log(n)) time
 		/// otherwise search needs O(n) comparisons
 		Element FindElementByGlobalID(integer global_id) const;
-		/// Perform binary search by centroid in set sorted with CENTROID_COMPARATOR in O(log(n)) time
+		/// Perform binary search by centroid. In set sorted with CENTROID_COMPARATOR in O(log(n)) time
 		/// otherwise search needs O(n) comparisons
 		Element FindElementByCentroid(real * centroid) const;
-		/// Performs linear search in unsorted set 
-		/// binary search by handle in set sorted with      HANDLE_COMPARATOR
-		/// binary search by centroid in set sorted with  CENTROID_COMPARATOR
-		/// binary search by global id in set sorted with GLOBALID_COMPARATOR
-		/// binary search by ierarhy in set sorted with    IERARHY_COMPARATOR (may be too expensive)
+		/// Performs linear search in unsorted set. 
+		/// - binary search by handle in set sorted with      HANDLE_COMPARATOR
+		/// - binary search by centroid in set sorted with  CENTROID_COMPARATOR
+		/// - binary search by global id in set sorted with GLOBALID_COMPARATOR
+		/// - binary search by ierarhy in set sorted with    IERARHY_COMPARATOR (may be too expensive)
+		///
 		/// If you have a lot of elements to test against set, then you'd better first put marker
 		/// on elements of the set by SetMarkerElements then test which of your elements have marker
 		/// and then remove markers by RemMarkerElements. This will consume only O(n+m) operations
@@ -1267,6 +1293,7 @@ namespace INMOST
 		/// Assert will fire in debug mode (NDEBUG not set) if you run out of space for markers, in this case you either
 		/// use too many markers, then you can just increase MarkerFields variable (increasing by 1 gives you 8 more markers)
 		/// or you forget to release markers after you use them.
+		///
 		/// In release mode (NDEBUG is set) if you run out of space for markers function will return InvalidMarker()
 		/// @return new marker or InvalidMarker(), see description
 		MarkerType                        CreateMarker       ();
@@ -1274,19 +1301,20 @@ namespace INMOST
 		/// This function will only notice mesh that the marker is free to be reused, this will not clear markers
 		/// from elements. Before releasing the marker you should ensure that all the marker is removed from all the elements.
 		/// Since many inner algorithms use markers, not properly clearing markers from elements may lead to undefined behavior.
+		///
 		/// Since it is expensive to check asserts will fire in debug mode (NDEBUG not set) only if you define CHECKS_MARKERS in inmost_common.h,
 		/// no checks will be performed in release mode(NDEBUG is set).
 		/// @param n byte position and byte bit mask
 		void                              ReleaseMarker      (MarkerType n);
-		/// Set tolerance for coordinates comparison, this tolerance is used in comparators 
+		/// Set tolerance for coordinates comparison. This tolerance is used in comparators 
 		/// when two meshes are merged during loading, in ResolveShared to check that nodes on different processors match 
 		/// and in UnpackElementsData
 		/// @param e small real value
 		__INLINE void                     SetEpsilon         (real e) {epsilon = e;}
-		/// Retrieve tolerance for coordinates comparison
+		/// Retrieve tolerance for coordinates comparison.
 		/// @return real value
 		__INLINE real                     GetEpsilon         () const {return epsilon;}
-		/// Set number of dimensions for mesh, it sets the size for number of internally stored coordinates.
+		/// Set number of dimensions for mesh. It sets the size for number of internally stored coordinates.
 		/// Size of the array returned by Node::Coords will match this number.
 		/// When you change number of dimensions and there are nodes with bigger number of dimensions then
 		/// first dim coordinates are copied and the rest are dropped.
@@ -1318,13 +1346,16 @@ namespace INMOST
 		__INLINE Tag                      RedistributeTag    () {return CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,CELL,NONE,1);}
 		/// Create the tag by name, type and size.
 		/// You cannot create the tag with the same name and different type or size.
+		///
 		/// You may make subsequent calls to the function with the same name, same type and same size 
 		/// (or undefined size, then it will be deduced) but different selection of element.
+		///
 		/// The following recomendation is for future:
 		///   When you create data of variable size, every array of data for every element will be empty at first, so
 		///   before accessing it through mechanism for single-valued data (Real, Integer, Bulk, Reference) 
 		///   you should first resize arrays otherwise your program very likely to be halted by segmentation fault. 
 		///   For this case arrays are not allocated automatically from performance considerations.
+		///
 		/// @param name name of the tag
 		/// @param dtype type of the tag
 		/// @param etype the selection of elements on which the data of the tag is defined, you may use bitwise or operations 
@@ -1333,20 +1364,20 @@ namespace INMOST
 		/// on all cells and only on boundary faces, then you may should set etype = CELL | FACE and sparse = FACE
 		/// @return returns the tag that represents the data
 		Tag                               CreateTag          (std::string name, DataType dtype, ElementType etype,ElementType sparse, INMOST_DATA_ENUM_TYPE size = ENUMUNDEF);
-		/// Remove the data that is represented by the tag from elements of selected type
+		/// Remove the data that is represented by the tag from elements of selected type.
 		/// @param tag tag that indicates the data
 		/// @param mask the selection of the elements on which the data should be removed, may be set by bitwise or operation
 		/// @return returns tag that returns false on isValid() request if all the data was removed and the tag is no more occupied, otherwise returns the tag
 		/// @see Tag::isValid
 		Tag                               DeleteTag          (Tag tag, ElementType mask = NODE | EDGE | FACE | CELL | ESET | MESH);
-		/// Returns the first tag defined on the mesh
+		/// Returns the first tag defined on the mesh.
 		/// For safety while iterating through tags you should check for validity of the tag
 		/// @return first tag
 		__INLINE iteratorTag              BeginTag           () {return tags.begin(); }
-		/// Retrieve the total number of valid tags
+		/// Retrieve the total number of valid tags.
 		/// @return returns the number of valid tags
 		__INLINE enumerator               NumberOfTags       () const { return static_cast<INMOST_DATA_ENUM_TYPE>(tags.size()); }
-		/// Returns the indicator for loop to end iteration over tags
+		/// Returns the indicator for loop to end iteration over tags.
 		/// @return the inexistant tag that is located the one position after the last tag
 		__INLINE iteratorTag              EndTag             () {return tags.end(); }
 		/// Create node by given coordinates.
@@ -1379,7 +1410,7 @@ namespace INMOST
 		bool                              isValidElement     (integer etypenum, integer lid) const {return links[etypenum][lid] != -1;}
 		bool                              isValidElement     (ElementType etype, integer lid) const {return links[ElementNum(etype)][lid] != -1;}
 		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElement(GetHandleElementNum(h),GetHandleID(h));}
-		/// Retrieve upper adjacent that is shared by multiple lower adjacencies
+		/// Retrieve upper adjacent that is shared by multiple lower adjacencies.
 		/// @return handle of found element or InvalidHandle()
 		HandleType                        FindSharedAdjacency(const HandleType * arr, enumerator num) const;
 		void                              ReorderEmpty       (ElementType reordertypes);
@@ -1395,9 +1426,12 @@ namespace INMOST
 		/// Returns a reference to inner memory location of the first element of the array of real values.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you know that data is certanly dense and fixed or variable on elements you access then it is
 		/// faster to use specialized variants of this function.
+		///
 		/// Reference to the data is guaranteed to be valid during mesh modification.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		/// @see Mesh::RealDF
@@ -1406,37 +1440,49 @@ namespace INMOST
 		/// Returns a reference to inner memory location of the first element of the array of integer values.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you know that data is certanly dense and fixed or variable on elements you access then it is
 		/// faster to use specialized variants of this function.
+		///
 		/// Reference to the data is guaranteed to be valid during mesh modification.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		integer   &                       Integer            (HandleType h, const Tag & tag);
 		/// Returns a reference in inner representation to the first element of array of bytes.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you know that data is certanly dense and fixed or variable on elements you access then it is
 		/// faster to use specialized variants of this function.
+		///
 		/// Reference to the data is guaranteed to be valid during mesh modification.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		bulk      &                       Bulk               (HandleType h, const Tag & tag);
 		/// Returns a reference in inner representation to the first element of array of element handles.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you know that data is certanly dense and fixed or variable on elements you access then it is
 		/// faster to use specialized variants of this function.
+		///
 		/// Reference to the data is guaranteed to be valid during mesh modification.
+		///
 		/// Using handle you can construct objects of type Storage, Element, Node, Edge,
 		/// Face, Cell, ElementSet by calling their constructor with pointer to mesh and handle
 		/// as arguments.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		reference &                       Reference          (HandleType h, const Tag & tag);
 		/// Returns an array of real values.
 		/// If you know that data is certanly dense on elements you access then it is faster to use
 		/// variants of this function with hint data structure.
+		///
 		/// Array data structure is guaranteed to be valid during mesh modification.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		real_array                        RealArray          (HandleType h, const Tag & tag);
@@ -1444,22 +1490,29 @@ namespace INMOST
 		/// If you know that data is certanly dense and fixed or variable on elements you access then it is
 		/// faster to use specialized variants of this function.
 		/// variants of this function with hint data structure.
+		///
 		/// Array data structure is guaranteed to be valid during mesh modification.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		integer_array                     IntegerArray       (HandleType h, const Tag & tag);
 		/// Returns an array of bytes.
 		/// If variable size array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you know that data is certanly sparse or dense on elements you access then it is faster to use
 		/// variants of this function with hint data structure.
+		///
 		/// Array data structure is guaranteed to be valid during mesh modification.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		bulk_array                        BulkArray          (HandleType h, const Tag & tag);
 		/// Returns an array of element handles.
 		/// If variable size array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you know that data is certanly sparse or dense on elements you access then it is faster to use
 		/// variants of this function with hint data structure.
+		///
 		/// The class reference_array that is used to represent array of elements stores handles inside but
 		/// accessing them through square scopes [] or by arrow -> in iterator will automatically
 		/// form object of type Element. If you are not sure that stored handles are valid, you
@@ -1468,6 +1521,7 @@ namespace INMOST
 		/// dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
 		/// or ElementSet you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace,
 		/// Element::getAsCell and Element::getAsSet functions.
+		///
 		/// Array data structure is guaranteed to be valid during mesh modification. If you delete
 		/// elements by Mesh::Delete or Element::Delete all the references are also will be valid
 		/// and reverted to InvalidHandle on Mesh::ApplyModification. If you use Mesh::Destroy to
@@ -1476,6 +1530,7 @@ namespace INMOST
 		/// by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element 
 		/// if you mix deletion and creation of elements and then is no way to resolve this situation,
 		/// except if you have created only one element the it may be retrieved by Mesh::LastHandle.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		/// @see InvalidHandle
@@ -1488,72 +1543,93 @@ namespace INMOST
 		reference_array                   ReferenceArray     (HandleType h, const Tag & tag);
 		/// Returns a reference to inner memory location of the first element of the array of real values.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		real      &                       RealDF             (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REAL     ); return static_cast<real     *>(MGetDenseLink(h,tag))[0];}
 		/// Returns a reference to inner memory location of the first element of the array of integer values.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		integer   &                       IntegerDF          (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_INTEGER  ); return static_cast<integer  *>(MGetDenseLink(h,tag))[0];}
 		/// Returns a reference in dense array to the first element of constant size array of bytes.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		bulk      &                       BulkDF             (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_BULK     ); return static_cast<bulk     *>(MGetDenseLink(h,tag))[0];}
 		/// Returns a reference in dense array to the first element of constant size array of element handles.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// Using handle you can construct objects of type Storage, Element, Node, Edge,
 		/// Face, Cell, ElementSet by calling their constructor with pointer to mesh and handle
 		/// as arguments.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		reference &                       ReferenceDF        (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REFERENCE); return static_cast<reference*>(MGetDenseLink(h,tag))[0];}
 		/// Returns an array of real values in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// Note that as array is fixed you shouldn't use any functions that alter size of the array
 		/// as resize, erase, insert, you may use replace if initial and final size will match,
 		/// in debug mode assert will fire if you try to do this in release (NDEBUG is set) it will lead to segfault.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		real_array                        RealArrayDF        (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REAL     ); return real_array     (static_cast<real     *>(MGetDenseLink(h,tag)),tag.GetSize());}
 		/// Returns an array of integer values in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set), likely to result in segfault.
+		///
 		/// Note that as array is fixed you shouldn't use any functions that alter size of the array
 		/// as resize, erase, insert, you may use replace if initial and final size will match,
 		/// in debug mode assert will fire if you try to do this in release (NDEBUG is set) it will lead to segfault.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		integer_array                     IntegerArrayDF     (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_INTEGER  ); return integer_array  (static_cast<integer  *>(MGetDenseLink(h,tag)),tag.GetSize());}
 		/// Returns an array of bytes in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set), likely to result in segfault.
+		///
 		/// Note that as array is fixed you shouldn't use any functions that alter size of the array
 		/// as resize, erase, insert, you may use replace if initial and final size will match,
 		/// in debug mode assert will fire if you try to do this in release (NDEBUG is set) it will lead to segfault.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		bulk_array                        BulkArrayDF        (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_BULK     ); return bulk_array     (static_cast<bulk     *>(MGetDenseLink(h,tag)),tag.GetSize());}
 		/// Returns an array of element handles in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
 		/// no checks performed in release mode (NDEBUG is set), likely to result in segfault.
+		///
 		/// Note that as array is fixed you shouldn't use any functions that alter size of the array
 		/// as resize, erase, insert, you may use replace if initial and final size will match,
 		/// in debug mode assert will fire if you try to do this in release (NDEBUG is set) it will lead to segfault.
+		///
 		/// The class reference_array that is used to represent array of elements stores handles inside but
 		/// accessing them through square scopes [] or by arrow -> in iterator will automatically
 		/// form object of type Element. If you are not sure that stored handles are valid, you
@@ -1562,6 +1638,7 @@ namespace INMOST
 		/// dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
 		/// or ElementSet you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace,
 		/// Element::getAsCell and Element::getAsSet functions.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		/// @see InvalidHandle
@@ -1575,27 +1652,36 @@ namespace INMOST
 		/// Returns a reference in dense array to the first element of variable size array of real values.
 		/// Future recomendation:
 		///    If array was not allocated (resized) then this function will generate segmentation fault.
+		///
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		real      &                       RealDV             (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REAL     ); return static_cast<inner_real_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
 		/// Returns a reference in dense array to the first element of variable size array of integer values.
 		/// Future recomendation:
 		///    If array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		integer   &                       IntegerDV          (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_INTEGER  ); return static_cast<inner_integer_array  *>(MGetDenseLink(h,tag))->at_safe(0);}
 		/// Returns a reference in dense array to the first element of variable size array of bytes.
 		/// Future recomendation:
 		///    If array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		/// @see TagDenseVariable
@@ -1603,40 +1689,52 @@ namespace INMOST
 		/// Returns a reference in dense array to the first element of variable size array of element handles.
 		/// Future recomendation:
 		///    If array was not allocated then this function will generate segmentation fault.
+		///
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// Using handle you can construct objects of type Storage, Element, Node, Edge,
 		/// Face, Cell, ElementSet by calling their constructor with pointer to mesh and handle
 		/// as arguments.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		reference &                       ReferenceDV        (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return static_cast<inner_reference_array*>(MGetDenseLink(h,tag))->at_safe(0);}
 		/// Returns an array of real values in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		real_array                        RealArrayDV        (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REAL     ); return real_array     (*static_cast<inner_real_array     *>(MGetDenseLink(h,tag)));}
 		/// Returns an array of integer values in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		integer_array                     IntegerArrayDV     (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_INTEGER  ); return integer_array  (*static_cast<inner_integer_array  *>(MGetDenseLink(h,tag)));}
 		/// Returns an array of bytes in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		bulk_array                        BulkArrayDV        (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_BULK     ); return bulk_array     (*static_cast<inner_bulk_array     *>(MGetDenseLink(h,tag)));}
 		/// Returns an array of element handles in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
+		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
 		/// no checks performed in release mode (NDEBUG is set).
+		///
 		/// The class reference_array that is used to represent array of elements stores handles inside but
 		/// accessing them through square scopes [] or by arrow -> in iterator will automatically
 		/// form object of type Element. If you are not sure that stored handles are valid, you
@@ -1645,6 +1743,7 @@ namespace INMOST
 		/// dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
 		/// or ElementSet you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace,
 		/// Element::getAsCell and Element::getAsSet functions.
+		///
 		/// @param h element handle
 		/// @param tag tag that represents data
 		/// @see InvalidHandle
@@ -1655,25 +1754,25 @@ namespace INMOST
 		/// @see Element::getAsCell
 		/// @see Element::getAsSet
 		reference_array                   ReferenceArrayDV   (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return reference_array(this,*static_cast<inner_reference_array*>(MGetDenseLink(h,tag)));}
-		/// Set a marker on the element represented by handle
+		/// Set a marker on the element represented by handle.
 		/// @param h element handle
 		/// @param mask stores byte number and byte bit mask that represent marker
 		void                              SetMarker          (HandleType h,MarkerType n) {static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);}
-		/// Set a marker on the set of handles
+		/// Set a marker on the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles
 		/// @param m stores byte number and byte bit mask that represent marker
 		/// @see Mesh::SetMarker
 		void                              SetMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetMarker(h[i],m);}
-		/// Check weather the marker is set one the element
+		/// Check weather the marker is set one the element.
 		/// @param h element handle
 		/// @param mask stores byte number and byte bit mask that represent marker
 		bool                              GetMarker          (HandleType h,MarkerType n) const {return (static_cast<const bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;}
-		/// Remove the marker from the element
+		/// Remove the marker from the element.
 		/// @param h element handle
 		/// @param mask stores byte number and byte bit mask that represent marker
 		void                              RemMarker          (HandleType h,MarkerType n) {static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);}
-		/// Remove the marker from the set of handles
+		/// Remove the marker from the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles
 		/// @param m stores byte number and byte bit mask that represent marker
@@ -1681,11 +1780,11 @@ namespace INMOST
 		void                              RemMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() ) RemMarker(h[i],m);}
 		/// Remove all the markers from the element
 		void                              ClearMarkerSpace   (HandleType h);
-		/// Get a copy of the bytes that store markers on the element
+		/// Get a copy of the bytes that store markers on the element.
 		/// @param h element handle
 		/// @param copy storage to put data to
 		void                              GetMarkerSpace     (HandleType h,bulk copy  [MarkerFields]) const;
-		/// Overwrite the bytes that store markers on the element
+		/// Overwrite the bytes that store markers on the element.
 		/// @param h element handle
 		/// @param source storage to get data from
 		void                              SetMarkerSpace     (HandleType h,bulk source[MarkerFields]);
@@ -1703,11 +1802,12 @@ namespace INMOST
 		/// Face::getNodes and Element::getNodes for FACE in 3 dimensions or
 		/// Cell::getNodes and Element::getNodes for CELL in 2 dimensions will return garbage
 		///
-		/// For NODE this returns edges that are connected to this node;
-		/// For EDGE this returns faces that are connected to this edge;
-		/// For FACE this returns cells that are connected to this face
-		/// For CELL this returns nodes of the cell
-		/// For ESET first three entries are parent, sibling, child then records represent empty positions in LowConn
+		/// - For NODE this returns edges that are connected to this node;
+		/// - For EDGE this returns faces that are connected to this edge;
+		/// - For FACE this returns cells that are connected to this face
+		/// - For CELL this returns nodes of the cell
+		/// - For ESET first three entries are parent, sibling, child then records represent empty positions in LowConn
+		///
 		/// @param h handle of the element
 		/// @return see description
 		/// @see Element::CheckElementConnectivity
@@ -1725,11 +1825,11 @@ namespace INMOST
 		/// Access directly lower order adjacencies of current element with right of modification.
 		/// This function gives direct access to elements and allows you to overwrite handles.
 		/// If you are going to overwrite them then read recomendations in description for HighConn function.
-		/// For NODE this returns cells that are connected to this node;
-		/// For EDGE this returns nodes of the edge
-		/// For FACE this returns edges of the face
-		/// For CELL this returns faces of the cell
-		/// For ESET handles of the elements that this set contain
+		/// - For NODE this returns cells that are connected to this node;
+		/// - For EDGE this returns nodes of the edge
+		/// - For FACE this returns edges of the face
+		/// - For CELL this returns faces of the cell
+		/// - For ESET handles of the elements that this set contain
 		/// @param h handle of the element
 		/// @return see description
 		/// @see Mesh::HighConn
@@ -1803,7 +1903,7 @@ namespace INMOST
 		/// @return global id
 		/// @see Mesh::AssignGlobalID
 		integer                           GlobalID           (HandleType h) const {return static_cast<const integer *>(MGetDenseLink(h,GlobalIDTag()))[0];}
-		/// Retrieve position of the data position of current element, after ReorderEmpty
+		/// Retrieve position of the data position of current element. After ReorderEmpty
 		/// this number is guaranteed to be between 0 and NumberOf(type of element)
 		/// @param h handle of the element
 		/// @return local id of data
@@ -1811,14 +1911,15 @@ namespace INMOST
 		/// Retrieve parallel status of the element.
 		/// If mesh is in Serial state then call always returns Element::Owned.
 		/// otherwise it will return:
-		///    Element::Owned  if there is a single copy of the element on the current processor
-		///    Element::Shared if the main copy of the element is located on the current processor
-		///    Element::Ghost  if current processor stores dependent copy of the element
+		/// -  Element::Owned  if there is a single copy of the element on the current processor
+		/// -  Element::Shared if the main copy of the element is located on the current processor
+		/// -  Element::Ghost  if current processor stores dependent copy of the element
 		/// @param h handle of the element
 		/// @return Element::Status, see function description
 		Element::Status                   GetStatus          (HandleType h) const { if( SharedTag().isValid() ) return static_cast<const bulk *>(MGetDenseLink(h,SharedTag()))[0]; return Element::Owned;}
 		/// Set parallel status of the element.
 		/// If mesh is in Serial state then call will fire asserts in debug mode and segfault in relese mode.
+		///
 		/// Parallel status controls how exchange of data between elements will be performed,
 		/// it is expected that number of elements and copies of elements do match between processors.
 		/// This kind of check is never performed and if you fail to setup statuses correctly,
@@ -1848,13 +1949,13 @@ namespace INMOST
 		/// @see Mesh::BeginModification
 		/// @see Mesh::EndModification
 		bool                              Hide               (HandleType h); 
-		/// Show element from mesh
+		/// Show element from mesh.
 		/// @param h handle of the element
 		/// @return true then element was recovered
 		/// @see Mesh::Hide
 		bool                              Show               (HandleType h);
 		/// This function will hide element in modification state (between BeginModification and EndModification)
-		/// or call Destroy in non-modification state
+		/// or call Destroy in non-modification state.
 		/// @param h handle of the element
 		/// @return  if true then element was deleted, otherwise it was hidden
 		/// @see Mesh::Hide
@@ -1862,7 +1963,7 @@ namespace INMOST
 		/// @see Mesh::EndModification
 		/// @see Mesh::Destroy
 		bool                              Delete             (HandleType h);
-		/// Check whether element is hidden
+		/// Check whether element is hidden.
 		/// @return true if hidden
 		/// @see Mesh::Hide
 		bool                              Hidden             (HandleType h) const;
@@ -1966,7 +2067,7 @@ namespace INMOST
 		void                              FinalizeFile       ();
 		static void                       AtExit             (void);
 #endif
-		/// Initial initialization, calls MPI_Initialize, if MPI was not initialized
+		/// Initial initialization. Calls MPI_Initialize, if MPI was not initialized
 		/// it is necessery to invoke this function if you plan to use any parallel algorithms
 		/// Accepts arguments passed to console aplication or NULL
 		/// @param argc number of arguments for command line
@@ -1974,26 +2075,30 @@ namespace INMOST
 		static void                       Initialize         (int * argc, char *** argv);
 		/// Finalizes operation with MPI, recomended to call, otherwise MPI may produce warnings
 		static void                       Finalize           ();
-		/// Set parallel strategy for inner communications
+		/// Set parallel strategy for inner communications.
 		/// There are three possible scenaries in parallel communication associated in
 		/// accordance to enum Prepare structre:
-		///   1) The communicating processors and sizes of the messages are known apriori
-		///   2) UnknownSize: Communicating processors are known but sizes are unknown
-		///   3) unknownSource: Communicationg processors are unknown
+		///   1. The communicating processors and sizes of the messages are known apriori
+		///   2. UnknownSize: Communicating processors are known but sizes are unknown
+		///   3. unknownSource: Communicationg processors are unknown
+		///
 		/// Currently with UnknownSize it will run following algorithm
 		/// none for strategy 0, following for strategies 1 and 2:
-		///   1) Post asynchronous receive with MPI_Irecv of size of buffer to be sent
-		///   2) Post asynchronous send with MPI_Isend for required corresponding receive buffer size
-		///   3) Wait for all asynchronous operations by MPI_Waitall
-		/// With UnknownSource there are two options depending from the USE_MPI_P2P define
+		///   1. Post asynchronous receive with MPI_Irecv of size of buffer to be sent
+		///   2. Post asynchronous send with MPI_Isend for required corresponding receive buffer size
+		///   3. Wait for all asynchronous operations by MPI_Waitall
+		///
+		/// With UnknownSource there are two options depending from the USE_MPI_P2P define.
 		/// If USE_MPI_P2P is defined then MPI-2 api operations will be used
-		///   1) MPI_Win_fence to start operations
-		///   2) MPI_Put from specially allocated memory location to remote processor 
+		///   1. MPI_Win_fence to start operations
+		///   2. MPI_Put from specially allocated memory location to remote processor 
 		///      of array size is performed
-		///   3) MPI_Win_fence to stop operations
+		///   3. MPI_Win_fence to stop operations
+		///
 		/// if USE_MPI_P2P not set then MPI-1 api will be used
-		///   1) MPI_Allgather for number of processors to which current processor wants to send data
-		///   2) MPI_Allgatherv for sizes and destinations for each processors
+		///   1. MPI_Allgather for number of processors to which current processor wants to send data
+		///   2. MPI_Allgatherv for sizes and destinations for each processors
+		///
 		/// Initially it was intended to mainly use MPI-2 functionality for both scenarios but
 		/// it was realized that there is no availible hardware on which MPI-2 functionalty
 		/// performs match better then MPI-1 counterparts, especially in the case of UnknownSize.
@@ -2001,14 +2106,16 @@ namespace INMOST
 		/// If you believe it will be better to use MPI-2 in both cases you are free to uncomment
 		/// definition of PREFFER_MPI_P2P in inmost_common.h then MPI-2 will be used in both scenaries.
 		/// These algorthms above are implemented in Mesh::ExchangeBufferInner.
+		///
 		/// After first problem was resolved following strategies are availible for main communication:
 		/// strategy = 0
-		///   1) Asyncronous send of data by MPI_Isend;
-		///   2) Check incoming messages by MPI_Probe;
-		///   3) Check incoming message size by MPI_Get_size;
-		///   4) Allocation of buffers of required size;
-		///   5) Asynchronous receive of data
-		///   6) MPI_Waitsome to copy received results to buffers
+		///   1. Asyncronous send of data by MPI_Isend;
+		///   2. Check incoming messages by MPI_Probe;
+		///   3. Check incoming message size by MPI_Get_size;
+		///   4. Allocation of buffers of required size;
+		///   5. Asynchronous receive of data
+		///   6. MPI_Waitsome to copy received results to buffers
+		///
 		/// This strategy shows to be the fastest on mac with intel core 2 duo
 		/// it appears to be independend on apriori knowledge of sizes of incoming
 		/// messages and skips the step of determining sizes in all the cases but still
@@ -2021,59 +2128,67 @@ namespace INMOST
 		/// As a result non-asynchronous communication is realized with this stategy breaking
 		/// steps 1-5) and 6) when you as for asynchronous communication
 		/// startegy = 1
-		///   1) Post asynchronous receive of data by MPI_Irecv
-		///   2) Post asynchronous send of data by MPI_Isend
-		///   3) MPI_Waitsome for any received data
+		///   1. Post asynchronous receive of data by MPI_Irecv
+		///   2. Post asynchronous send of data by MPI_Isend
+		///   3. MPI_Waitsome for any received data
+		///
 		/// True asynchronous behavior is reproduced by breaking 1-2) and 3)
 		/// strategy = 2
-		///   1) Post asynchronous receive of data by MPI_Irecv
-		///   2) Set MPI_Barrier to ensure that all the receives were properly set by the time
-		///   2) Perform direct send of data by MPI_Irsend
-		///   3) MPI_Waitsome for any received data
+		///   1. Post asynchronous receive of data by MPI_Irecv
+		///   2. Set MPI_Barrier to ensure that all the receives were properly set by the time
+		///   2. Perform direct send of data by MPI_Irsend
+		///   3. MPI_Waitsome for any received data
+		///
 		/// For asynchronous communication algorithm is broken into 1-3) and 4) which is fairly
 		/// asynchronous. The only provisional benefit it may have on machines with small memory 
 		/// since it should bypass any allocation of buffers for sent and received data by MPI and 
 		/// probably not perform any randezvous communication to ensure data allocation.
 		/// But MPI_Barrier looks like elephant here.
+		///
 		/// Algorithms above are implemented in Mesh::ExchangeBuffersInner
 		/// @see Mesh::PrepareReceiveInner
 		/// @see Mesh::ExchangeBuffersInner
 		void                              SetParallelStrategy(int strategy){assert( !(strategy < 0 || strategy > 3) ); parallel_strategy = strategy;}
-		/// Retrieve currently set parallel strategy
+		/// Retrieve currently set parallel strategy.
 		/// @see Mesh::SetParallelStrategy
 		int                               GetParallelStrategy() {return parallel_strategy;}
-		/// This strategy correspond only to internal ".pmf" mesh format
-		/// there are two availible strategies for ".pmf" files loading and saving:
+		/// This strategy correspond only to internal ".pmf" mesh format.
+		/// There are two availible strategies for ".pmf" files loading and saving:
+		///
 		/// strategy = 0
-		///  on save 
-		///   1) every processor gather local data to some buffer
-		///   2) MPI_Gather to obtain sizes of data among processors
-		///   3) MPI_Gatherv to obtain the whole data on zeros processor
-		///   4) the first processor writes all the data to disk by std::fstream
-		///  on load
-		///   1) first processors reads the whole file by std::fstream
-		///   2) MPI_Scatter distributes block sizes among processors
-		///   3) MPI_Scatterv distributes blocks among processors
-		///   4) Each processor parses it's block
+		/// - on save 
+		///   1. every processor gather local data to some buffer
+		///   2. MPI_Gather to obtain sizes of data among processors
+		///   3. MPI_Gatherv to obtain the whole data on zeros processor
+		///   4. the first processor writes all the data to disk by std::fstream
+		/// - on load
+		///   1. first processors reads the whole file by std::fstream
+		///   2. MPI_Scatter distributes block sizes among processors
+		///   3. MPI_Scatterv distributes blocks among processors
+		///   4. Each processor parses it's block
+		///
 		/// This strategy requires one processor to hold all the data, which
 		/// is quite bad for large files. New strategy may be created from this one in future
 		/// when each processors consequently obtain access to the file using std::fstream and
 		/// writes the data.
+		///
 		/// strategy = 1
-		///  on save it will perform:
-		///   1) MPI_Gather to obtain sizes of data among processors on zeroth processor
-		///   2) MPI_File_open to get parallel handle for the file
-		///   3) MPI_File_write_shared called by processor with zeroth rank to write header
-		///   4) MPI_File_write_ordered to write contents of individual data
-		///   5) MPI_File_close to close parallel file handle
-		///  on load it will perform
-		///   1) MPI_File_open to open the file in parallel
-		///   2) MPI_File_read_shared to get contents of header on zeroth processor
-		///   3) MPI_Scatter to distribute block sizes among processors
-		///   4) MPI_File_read_ordered to obtain contents
-		///   5) MPI_File_close to close parallel file handle
+		/// - on save it will perform:
+		///   1. MPI_Gather to obtain sizes of data among processors on zeroth processor
+		///   2. MPI_File_open to get parallel handle for the file
+		///   3. MPI_File_write_shared called by processor with zeroth rank to write header
+		///   4. MPI_File_write_ordered to write contents of individual data
+		///   5. MPI_File_close to close parallel file handle
+		/// - on load it will perform
+		///   1. MPI_File_open to open the file in parallel
+		///   2. MPI_File_read_shared to get contents of header on zeroth processor
+		///   3. MPI_Scatter to distribute block sizes among processors
+		///   4. MPI_File_read_ordered to obtain contents
+		///   5. MPI_File_close to close parallel file handle
+		///
 		///  Availible only when USE_MPI_P2P is set because it rely on MPI-2 api that begins with MPI_File_xxx
 		///  some MPI-1 standards contain this api as extension.
+		///
 		/// The strategy 1 appeared to be considerably slower on INM cluster then strategy 0, this may
 		/// happen due to lack of read-write devices that able to work in parallel. On IBM Bluegene/p
 		/// strategy 1 was not working due to same old problem with shared file pointers in their MPI realization
@@ -2094,13 +2209,16 @@ namespace INMOST
 		void                              RemoveGhost        ();
 		/// Delete some ghost cells provided in array.
 		/// Non-ghost elements will also be deleted.
+		///
 		/// This algorithm will properly communicate between processors so that 
 		/// parallel states of deleted elements properly updated on remote processors.
 		/// Internally function invokes Destroy function, not Delete, which hides elements during modification state,
 		/// currently it is not expected that any parallel algorithms will be performed between BeginModification and EndModification
 		/// since modification may break parallel state though it is never checked whether the mesh is in the modification state,
 		/// so you are free to experiment. This behavior may change in future.
+		///
 		/// Collective point-2-point.
+		///
 		/// @param ghost array of handles
 		/// @param num number of handles
 		/// TODO
@@ -2111,11 +2229,12 @@ namespace INMOST
 		template<typename EType>
 		void                              RemoveGhostElements(const ElementArray<EType> & ghost) {RemoveGhostElements(ghost.data(),static_cast<enumerator>(ghost.size()));}
 		void                              RemoveGhostElements(const ElementSet & ghost) {RemoveGhostElements(ghost.getHandles(),ghost.nbHandles());}
-		/// Assign unique numbers to elements, internally this will create Mesh::GlobalIDTag and 
+		/// Assign unique numbers to elements. Internally this will create Mesh::GlobalIDTag and 
 		/// make call to Element::GlobalID and Mesh::GlobalID functions valid. Internally this 
 		/// will also set have_global_id variable that will indicate that all the comparisons 
 		/// in parallel algorithms should be performed using global identificators instead 
 		/// of centroids which is faster.
+		///
 		/// TODO
 		///     1) invoking function before loading mesh will not renew global identificators after load
 		///        but would not unset have_global_id either. There are probably too many places when
@@ -2123,13 +2242,16 @@ namespace INMOST
 		///        such flags along with updating geometrical data which seems to be maintained fairly well
 		///        during mesh modification
 		void                              AssignGlobalID     (ElementType mask);
-		/// Update data from Shared elements to Ghost elements, for backward direction please see Mesh::ReduceData
+		/// Update data from Shared elements to Ghost elements. For backward direction please see Mesh::ReduceData.
 		/// If you have a tag of DATA_BULK type and you store your own custom data structure in it, it is highly
 		/// recomended that you provide MPI information about your structure through Tag::SetBulkDataType,
 		/// this would not do any difference on homogeneous architecture, but it may help you save a lot of 
 		/// time and nerves in heterogeneous parallel environment.
+		///
 		/// TODO: see TODO in Mesh::ReduceData
+		///
 		/// Blocking, Collective point-2-point
+		///
 		/// @param tag tag that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
@@ -2141,10 +2263,13 @@ namespace INMOST
 		/// exchange_data object. After matching Mesh::ExchangeDataEnd the exchange_data object may be reused
 		/// If you will go out of the scope where exchange_data object was defined it will be deallocated
 		/// and may result in segmentation fault.
+		///
 		/// You should also never put the same exchange_data object to any other Mesh::ExchangeDataBegin or
 		/// Mesh::ReduceDataBegin, until matching Mesh::ExchangeDataEnd because it may override or reallocate 
 		/// buffers, internally used by MPI and remote processor will receive garbage instead of data.
+		///
 		/// Nonblocking, Collective point-2-point
+		///
 		/// @param tag tag that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
@@ -2152,7 +2277,9 @@ namespace INMOST
 		/// @see Mesh::ExchangeDataEnd
 		void                              ExchangeDataBegin  (const Tag & tag, ElementType mask, MarkerType select, exchange_data & storage);
 		/// Complete asynchronous synchronization of data.
+		///
 		/// Blocking
+		///
 		/// @param tag tag that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
@@ -2160,51 +2287,62 @@ namespace INMOST
 		/// @see Mesh::ExchangeDataBegin
 		void                              ExchangeDataEnd    (const Tag & tag, ElementType mask, MarkerType select, exchange_data & storage);
 		/// This function will perform exchange of multiple data tags.
+		///
 		/// Blocking, Collective point-2-point
+		///
 		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		void                              ExchangeData       (const tag_set & tags, ElementType mask, MarkerType select);
-		/// This function will initialize exchange of multiple data tags, 
-		/// using this function may lead to good overlapping between communication and computation.
+		/// This function will initialize exchange of multiple data tags.
+		/// Using this function may lead to good overlapping between communication and computation.
+		///
 		/// Nonblocking, Collective point-2-point
+		///
 		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param storage buffer that will temporary hold sended data
 		void                              ExchangeDataBegin  (const tag_set & tags, ElementType mask, MarkerType select, exchange_data & storage);
 		/// This function will finalize exchange of multiple data tags.
+		///
 		/// Blocking
+		///
 		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param storage buffer that will temporary hold sended data
 		void                              ExchangeDataEnd    (const tag_set & tags, ElementType mask, MarkerType select, exchange_data & storage);
-		/// Accumulation of data from ghost elements to shared elements, accumulation is performed 
+		/// Accumulation of data from ghost elements to shared elements. Accumulation is performed 
 		/// based on user-provided function. When processor - owner of the element receives data addressed
 		/// to this element then it calls user-defined op function. Since there may be multiple ghost
 		/// elements per one shared element, function may be called multiple times.
+		///
 		/// Several examples of reduction functions may be found within the mesh_parallel.cpp source.
+		///
 		/// Remember that the result will be up to date only on the owner of the processor. You will have
 		/// to run Mesh::ExchangeData to make the data up to date among all of the processors.
 		/// If you have a tag of DATA_BULK type and you store your own custom data structure in it, it is highly
 		/// recomended that you provide MPI information about your structure through Tag::SetBulkDataType,
 		/// this would not do any difference on homogeneous architecture, but it may help you save a lot of 
 		/// time and nerves in heterogeneous parallel environment.
+		///
 		/// Exchanging tags of DATA_REFERNCE is not implemented, TODO 14.
 		/// TODO:
-		///    1) Exchanging DATA_REFERENCE tags not implemented, this is due to the absence of any conclusion
-		///       on how it should behave:
+		///    1. Exchanging DATA_REFERENCE tags not implemented, this is due to the absence of any conclusion
+		///    -  on how it should behave:
 		///         either only search within elements owned by the other processor and
 		///         establish references and set InvalidHandle() to elements that are not found (fairly easy,
 		///         will involve search operations to check against owned elements for similar entry, efficient
 		///         implementation will require bounding search trees (see TODO 49);
-		///       or:
+		///    -  or:
 		///         send all the referenced elements through PackElementsData and establish all the links within
 		///         elements reproduced by UnpackElementsData (UnpackElementsData calls UnpackTagData with set
 		///         of unpacked elements using which it will be vary comfortable to establish references on
 		///         remote processor)
+		///
 		/// Blocking, Collective point-2-point
+		///
 		/// @param tag tag that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
@@ -2213,7 +2351,9 @@ namespace INMOST
 		void                              ReduceData         (const Tag & tag, ElementType mask, MarkerType select, ReduceOperation op );
 		/// This function intializes data reduction.
 		/// Read recomendations about exchange_storage object in Mesh::ExchangeDataBegin
+		///
 		/// Nonblocking, Collective point-2-point
+		///
 		/// @param tag tag that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
@@ -2221,9 +2361,11 @@ namespace INMOST
 		/// @see Mesh::ReduceData
 		/// @see Mesh::ExchangeDataBegin
 		void                              ReduceDataBegin    (const Tag & tag, ElementType mask, MarkerType select, exchange_data & storage);
-		/// This function completes data reduction/
+		/// This function completes data reduction.
 		/// Read Mesh::ReduceData for information about op function
+		///
 		/// Blocking
+		///
 		/// @param tag tag that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
@@ -2234,46 +2376,61 @@ namespace INMOST
 		/// This function will perform reduction of multiple data tags.
 		/// Note that function will be the same for all tags, you can differentiate behavior of function
 		/// depending on tag name (may be expensive).
+		///
 		/// Blocking, collective point-2-point
+		///
 		/// @param tag multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param op user-defined operation on received data
 		void                              ReduceData         (const tag_set & tags, ElementType mask, MarkerType select, ReduceOperation op );
 		/// This function will initialize reduction of multiple data tags.
+		///
 		/// Nonblocking, collective point-2-point
+		///
 		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param storage buffer that will temporary hold sended data
 		void                              ReduceDataBegin    (const tag_set & tags, ElementType mask, MarkerType select, exchange_data & storage);
 		/// This function will finalize exchange of multiple data tags.
+		///
 		/// Blocking
+		///
 		/// @param tag multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param storage buffer that will temporary hold sended data
 		/// @param op user-defined operation on received data
 		void                              ReduceDataEnd      (const tag_set & tags, ElementType mask, MarkerType select, ReduceOperation op, exchange_data & storage );
-		/// This function realizes two algorithms: ghosting of elements and migration of elements
+		/// This function realizes two algorithms: ghosting of elements and migration of elements.
 		/// ghosting:
+		///
 		///  Creates ghosted elements at other processors prescribed in SendtoTag() performs
 		///  sending and receiving of elements and all operations to keep parallel state of the mesh.
+		///
 		///   Given that all the data was up to date among processors all the data at the end of the
 		///   algorithm will be also up to data
+		///
 		/// migration:
+		///
 		///  To correctly perform migration of elements it is necessery to set up tags besides SendToTag(),
 		///  which indicates to where every element should be sent:
-		/// tag "TEMPORARY_NEW_PROCESSORS", of type DATA_INTEGER with variable size, tells which processors will have copy of the element after migration;
-		/// tag "TEMPORARY_NEW_OWNER", of type DATA_INTEGER of size 1, tells which processor will have main copy of the element.
+		/// - tag "TEMPORARY_NEW_PROCESSORS", of type DATA_INTEGER with variable size, tells which processors will have copy of the element after migration;
+		/// - tag "TEMPORARY_NEW_OWNER", of type DATA_INTEGER of size 1, tells which processor will have main copy of the element.
+		///
 		/// if there is no current processor in "TEMPORARY_NEW_PROCESSORS", then current processor will remove copy of the element.
 		/// All this actions are performed automatically by Mesh::Redistribute based on information provided in Mesh::RedistributeTag
 		/// which effectively contains new owner.
+		///
 		///   Given that all the data was up to date among processors all the data at the end of the algorithm will be also up to data
+		///
 		/// TODO 
 		///     1) test halo exchange algorithm (if used then change collective point-2-point to collective)
 		///     2) see TODO 2 in Mesh::Redistribute
+		///
 		/// Collective point-2-point.
+		///
 		/// @param action
 		/// @see Mesh::SendtoTag
 		/// @see Mesh::Redistribute
@@ -2281,6 +2438,7 @@ namespace INMOST
 		/// Form several layers of ghosted cells that are adjacent through bridge elements to current cells.
 		/// This function acceptes any mesh topology, failure on some mesh should be considered a bug and
 		/// sample example should be provided for testing purposes.
+		///
 		/// This function internally calculates layer by layer and invokes ExchangeMarked for each layer,
 		/// you can either reproduce the algorithm on your own if you want to bypass the function and
 		/// call Mesh::ExchangeMarked directly, but then you will lose optimization in Mesh::Redistribute,
@@ -2288,9 +2446,12 @@ namespace INMOST
 		/// Internally it sets up LayersTag and BridgeTag for the mesh with provided values, which
 		/// are used by Mesh::Redistribute but you are discouraged to override these tags since using
 		/// non-matching algorithms is not tested and should be considered dangerous.
+		///
 		/// Nevertheless you can use this function first for layers then request any additional ghosted elements
 		/// by ExchangeMarked.
+		///
 		/// Collective point-2-point.
+		///
 		/// @param layers number of required layers of ghosted elements
 		/// @param bridge bitwise mask of elements for which neighbouring cells should be considered a layer
 		/// @see Mesh::ExchangeMarked
@@ -2301,9 +2462,10 @@ namespace INMOST
 		/// on remote elements and correctly resolve parallel state of the mesh. If you have priviously
 		/// prescribed number of layers through ExchangeGhost, then minimal number of actions will be performed
 		/// to reproduce layers of ghosted elements whithout involving removal of all ghosted elements.
+		///
 		/// Internally function sets up following data on elements using provided information:
-		/// "TEMPORARY_NEW_PROCESSORS" - new set processors that contain copy of the element
-		/// "TEMPORARY_NEW_OWNER"      - new owner for each processor (effectively RedistributeTag)
+		/// - "TEMPORARY_NEW_PROCESSORS" - new set processors that contain copy of the element
+		/// - "TEMPORARY_NEW_OWNER"      - new owner for each processor (effectively RedistributeTag)
 		///
 		/// Action of this function regarding restoration of layers of ghosted elements in the case you have 
 		/// modified mesh without involving Mesh::ResolveModification is yet to be tested and should be
@@ -2321,20 +2483,26 @@ namespace INMOST
 		///         check that SendtoTag is properly merged with "TEMPORARY_NEW_PROCESSORS" before call to ExchangeMarked
 		///         and received elements are not deleted by accident.
 		///       2)let user provide any integer tag as input without involving RedistributeTag
+		///
 		/// Collective point-2-point.
+		///
 		/// @see Mesh::RedistributeTag
 		/// @see Mesh::ExchangeGhost
 		void                              Redistribute       ();
-		/// Enumerate all elements begining with start and put numeration to data associated with num_tag for all elements with given type mask
+		/// Enumerate all elements begining with start and put numeration to data associated with num_tag for all elements with given type mask.
+		///
 		/// Collective operation.
+		///
 		/// @param mask bitwise or of types of elements
 		/// @param num_tag a tag that is associated with the data
 		/// @param start starting value for enumeration
 		/// @param define_sparse if true then function will define sparse data on elements that don't have it, otherwise it will skip those elements
 		/// @return last value on all the processors
 		integer                           Enumerate          (ElementType mask, Tag num_tag, integer start = 0, bool define_sparse = false);
-		/// Enumerate all elements begining with start and put numeration to data associated with num_tag 
+		/// Enumerate all elements begining with start and put numeration to data associated with num_tag.
+		///
 		/// Collective operation.
+		///
 		/// @param h array of handles
 		/// @param num number of handles
 		/// @param num_tag a tag that is associated with the data
@@ -2342,8 +2510,10 @@ namespace INMOST
 		/// @param define_sparse if true then function will define sparse data on elements that don't have it, otherwise it will skip those elements
 		/// @return last value on all the processors
 		integer                           Enumerate          (const HandleType * h, enumerator num, const Tag & num_tag, integer start = 0, bool define_sparse = true);
-		/// Enumerate all elements begining with start and put numeration to data associated with num_tag 
+		/// Enumerate all elements begining with start and put numeration to data associated with num_tag.
+		///
 		/// Collective operation.
+		///
 		/// @param elements array of elements
 		/// @param num_tag a tag that is associated with the data
 		/// @param start starting value for enumeration
@@ -2351,8 +2521,10 @@ namespace INMOST
 		/// @return last value on all the processors
 		template<typename EType>
 		integer                           Enumerate          (const ElementArray<EType> & elements, const Tag & num_tag, integer start = 0, bool define_sparse = true) {return Enumerate(elements.data(),static_cast<enumerator>(elements.size()),num_tag,start,define_sparse);}
-		/// Enumerate all elements in the set
+		/// Enumerate all elements in the set.
+		///
 		/// Collective operation.
+		///
 		/// @param set handle of the set
 		/// @param num_tag a tag that is associated with the data
 		/// @param start starting value for enumeration
@@ -2361,60 +2533,75 @@ namespace INMOST
 		integer                           EnumerateSet       (const ElementSet & set, const Tag & num_tag, integer start = 0, bool define_sparse = true);
 		/// Sum of all physical elements, it excludes ghosted copies.
 		/// To compute total number including ghosted copies run Integrate(NumberOf(mask))
+		///
 		/// Collective operation.
+		///
 		/// @param mask bitwise mask of element types, example: NODE | CELL
 		/// @return sum of elements
 		/// @see Mesh::NumberOf
 		integer                           TotalNumberOf      (ElementType mask);
-		/// Integrate real value over all processors
+		/// Integrate real value over all processors.
+		///
 		/// Collective operation.
+		///
 		/// @param input value on current processor
 		/// @return sum over all processors
 		real                              Integrate          (real input);
 		/// Integrate integer value over all processors.
+		///
 		/// Collective operation.
+		///
 		/// @param value on current processor
 		/// @return sum over all processors
 		integer                           Integrate          (integer input);
 		/// Integrate data corresponding to tag between all processors.
 		/// Elements without the data defined on them or when entry not present will be skipped.
+		///
 		/// Collective operation.
+		///
 		/// @param t tag that correspond to data to be integrated
 		/// @param entry in the array of data
 		/// @param mask bitwise or of types of elements on which to integrate
 		/// @return sum between all processors
 		real                              Integrate          (const Tag & t, enumerator entry, ElementType mask);
-		/// Compute sum of integer values for all processors with rank lower then current, excluding current processor
+		/// Compute sum of integer values for all processors with rank lower then current, excluding current processor.
+		///
 		/// Collective operation.
+		///
 		/// @param input value on current processor
 		/// @return described sum
 		integer                           ExclusiveSum       (integer input);
 		real                              AggregateMax       (real input);
 		integer                           AggregateMax       (integer input);
-		/// Regather ghosted and shared element sets for data exchange, 
-		/// this function will be quite useful if you change statuses of elements
+		/// Regather ghosted and shared element sets for data exchange.
+		/// This function will be quite useful if you change statuses of elements
 		/// or modify mesh on your own bypassing internal algorithms.
+		///
 		/// No action will be performed if USE_PARALLEL_STORAGE is not set in inmost_common.h,
 		/// since all the elements are computed during exchange phase.
+		///
 		/// Generally this is not needed if you use high-level algorithms for mesh modification
 		/// or mesh redistribution.
+		///
 		/// @param bitwise type mask
 		/// @see Mesh::BeginModification
 		/// @see Mesh::EndModification
 		/// @see Mesh::ExchangeMarked
 		/// @see Mesh::RemoveGhostElements
 		void                              RecomputeParallelStorage(ElementType mask);
-		/// Synchronize bitwise mask of element types between processors
+		/// Synchronize bitwise mask of element types between processors.
+		///
 		/// Collective operation
+		///
 		/// @param bitwise type mask
 		/// @return bitwise result among processors
 		ElementType                       SynchronizeElementType(ElementType etype);
-		/// Syncronize marker on elements between processors using provided operation
+		/// Syncronize marker on elements between processors using provided operation.
 		/// Depending on requested operation following action is performed:
-		/// SYNC_BIT_SET - value on ghost elements is set by value on corresponding shared processors;
-		/// SYNC_BIT_OR  - bitwise OR between values in ghosted and shared elements;
-		/// SYNC_BIT_AND - bitwise AND between values in ghosted and shared elements;
-		/// SYNC_BIT_XOR - bitwise XOR between values in ghosted and shared elements.
+		/// - SYNC_BIT_SET - value on ghost elements is set by value on corresponding shared processors;
+		/// - SYNC_BIT_OR  - bitwise OR between values in ghosted and shared elements;
+		/// - SYNC_BIT_AND - bitwise AND between values in ghosted and shared elements;
+		/// - SYNC_BIT_XOR - bitwise XOR between values in ghosted and shared elements.
 		/// @param marker marker to be synchronized
 		/// @param mask bitwise or type mask
 		/// @param op operation, one of SYNC_BIT_SET, SYNC_BIT_OR, SYNC_BIT_XOR, SYNC_BIT_AND
@@ -2552,34 +2739,39 @@ namespace INMOST
 	private:
 		std::vector< std::pair<std::string, std::string> > file_options;
 	public:
+		/// Set file option.
 		/// Current availible file options:
-		/// "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
-		/// "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
+		/// - "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
+		/// - "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
+		///
 		/// TODO:
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write
 		///      or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip
 		void         SetFileOption(std::string,std::string);
-		/// Get current option corresponding to key
+		/// Get current option corresponding to key.
 		/// @param key options for which options should be retrieven
 		std::string  GetFileOption(std::string key);
 		/// Acceptable file formats for reading
-		/// ".vtk"    - legacy vtk format for unstructured grid
-		/// ".pvtk"   - legacy parallel vtk format
-		/// ".gmv"    - format acceptable by general mesh viewer
-		/// ".msh"    - gmsh generator format
-		/// ".grdecl" - eclipse format (under construction)
-		/// ".grid"   - mesh format by Mohammad Karimi-Fard
-		/// ".pmf"    - internal parallel portable binary format, saves all features
+		/// - ".vtk"    - legacy vtk format for unstructured grid
+		/// - ".pvtk"   - legacy parallel vtk format
+		/// - ".gmv"    - format acceptable by general mesh viewer
+		/// - ".msh"    - gmsh generator format
+		/// - ".grdecl" - eclipse format (under construction)
+		/// - ".grid"   - mesh format by Mohammad Karimi-Fard
+		/// - ".pmf"    - internal parallel portable binary format, saves all features
+		///
 		/// @param File path to the file
 		void         Load(std::string File); 
 		/// Acceptable file formats for writing
-		/// ".vtk"  - legacy vtk format for unstructured grid
-		/// ".pvtk" - legacy parallel vtk format
-		/// ".gmv"  - format acceptable by general mesh viewer
-		/// ".pmf"  - internal parallel portable binary format, saves all features
+		/// - ".vtk"  - legacy vtk format for unstructured grid
+		/// - ".pvtk" - legacy parallel vtk format
+		/// - ".gmv"  - format acceptable by general mesh viewer
+		/// - ".pmf"  - internal parallel portable binary format, saves all features
+		///
 		/// Remeber: .pmf stores all references to elements. If reference are broken due to mesh modification,
 		///          saving or loading such a mesh may lead to seagfault. To automatically maintain correct
 		///          references modify mesh using BeginModification, ApplyModification, EndModification
+		///
 		/// @param File path to the file
 		void         Save(std::string File);
 		bool         isParallelFileFormat(std::string File);
@@ -2620,7 +2812,7 @@ namespace INMOST
 	private:
 		MarkerType hide_element, new_element;
 	public:
-		/// Check weather code runs between Mesh::BeginModification, Mesh::EndModification scope
+		/// Check weather code runs between Mesh::BeginModification, Mesh::EndModification scope.
 		/// In case mesh is modified, on element creation Mesh::TieElements will always place elements 
 		/// to the end of the array as a result all the newly created elements will be iterated after current
 		/// or hidden elements.
@@ -2629,7 +2821,7 @@ namespace INMOST
 		MarkerType                        NewMarker          () const {return new_element;}
 		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
-		/// After this function any link to deleted element will be replaced by InvalidHandle()
+		/// After this function any link to deleted element will be replaced by InvalidHandle().
 		/// TODO:
 		///      1) maybe instead of forming set of deleted elements and subtracting set from other sets it is better
 		///         to remove each modified element
@@ -2655,10 +2847,12 @@ namespace INMOST
 		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions
 		/// If you perform topological checks on your own, you'd probably better turn off checks before calling CreateXXX
 		/// functions. Note that check for duplicates within mesh is performed by Mesh::FindSharedAdjacency.
+		///
 		/// TODO: list checks performed inside in description
 		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, enumerator num);
 		/// This function performs some topologycal checks after creation of element.
 		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions.
+		///
 		/// TODO: list checks performed inside in description.
 		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
 		/// This will return tag by which you can retrieve error mark to any element on which topogy check failed.
