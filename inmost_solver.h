@@ -28,6 +28,7 @@ namespace INMOST
 	/// Solver class is used to set the coefficient Matrix, the right-hand side Vector
 	/// and the initial guess Vector, construct the preconditioner and Solve
 	/// the linear system.
+	///
 	/// Formally, Solver class is independent of INMOST::Mesh class.
 	/// @see Solver::Matrix
 	/// @see Solver::Vector
@@ -464,54 +465,56 @@ namespace INMOST
 		Solver & operator =(Solver const & other); //prohibit assignment
 	public:
 		/// Set the solver parameter of the integer type.
-		/// You can find defaults for parameters in the top of the file inmost_solver.h
+		/// You can find defaults for parameters in the top of the file inmost_solver.h.
+		///
 		/// Parameters:
-		/// "maximum_iterations"   - total number of iterations
-		/// "schwartz_overlap"     - number of overlapping levels for additive schwartz method
+		/// - "maximum_iterations" - total number of iterations
+		/// - "schwartz_overlap"   - number of overlapping levels for additive schwartz method,
 		///                          works for: 
 		///                          INNER_ILU2, INNER_MLILUC
 		///                          Trilinos_Aztec, Trilinos_Belos, Trilinos_ML, Trilinos_Ifpack
 		///                          PETSc
-		/// "gmres_substeps"       - number of gmres steps performed after each bicgstab step
+		/// - "gmres_substeps"     - number of gmres steps performed after each bicgstab step,
 		///                          works for:
 		///                          INNER_ILU2, INNER_MLILUC
-		/// "reorder_nonzeros"     - place sparser rows at the beggining of matrix during reordering
+		/// - "reorder_nonzeros"   - place sparser rows at the beggining of matrix during reordering,
 		///                          works for:
 		///                          INNER_MLILUC
-		/// "rescale_iterations"   - number of iterations for two-side matrix rescaling
+		/// - "rescale_iterations" - number of iterations for two-side matrix rescaling,
 		///                          works for:
 		///                          INNER_ILU2, INNER_MLILUC
-		/// "condition_estimation" - exploit condition estimation of inversed factors to adapt 
-		///                          drop and reuse tolerances
+		/// - "condition_estimation" - exploit condition estimation of inversed factors to adapt
+		///                          drop and reuse tolerances,
 		///                          works for:
 		///                          INNER_MLILUC
-		/// "adapt_ddpq_tolerance" - adapt ddpq tolerance depending from the complexity 
-		//                           of calculation of Schur complement
+		/// - "adapt_ddpq_tolerance" - adapt ddpq tolerance depending from the complexity 
+		//                           of calculation of Schur complement,
 		///                          works for:
 		///                          INNER_MLILUC
 		void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
 		/// Set the solver parameter of the real type.
-		/// You can find defaults for parameters in the top of the file inmost_solver.h
+		/// You can find defaults for parameters in the top of the file inmost_solver.h.
+		///
 		/// Parameters:
-		/// "absolute_tolerance"   - iterative method will stop on i-th iteration 
+		/// - "absolute_tolerance" - iterative method will stop on i-th iteration
 		///                          if ||A x(i)-b|| < absolute_tolerance
-		/// "relative_tolerance"   - iterative method will stop on i-th iteration
+		/// - "relative_tolerance" - iterative method will stop on i-th iteration
 		///                          if ||A x(i)-b||/||A x(0) - b||
-		/// "divergence_tolerance" - iterative method will fail if 
+		/// - "divergence_tolerance" - iterative method will fail if
 		///                          ||A x(i) - b|| > divergence_tolerance
-		/// "drop_tolerance"       - tolerance for dropping values during incomplete factorization
+		/// - "drop_tolerance"     - tolerance for dropping values during incomplete factorization,
 		///                          works for:
 		///                          INNER_ILU2, INNER_MLILUC
 		///                          Trilinos_Aztec, Trilinos_Ifpack
 		///                          PETSc
-		/// "reuse_tolerance"      - tolerance for reusing values during incomplete factorization
+		/// - "reuse_tolerance"    - tolerance for reusing values during incomplete factorization,
 		///                          these values are used only during calculation of L and U factors
-		///                          and/or Schur complement and discarded once factorization is done
-		///                          value should be less then "drop_tolerance"
-		///                          typical value is drop_tolerance^2
+		///                          and/or Schur complement and discarded once factorization is done,
+		///                          value should be less then "drop_tolerance",
+		///                          typical value is drop_tolerance^2,
 		///                          works for:
 		///                          INNER_ILU2, INNER_MLILUC
-		/// "ddpq_tolerance"       - by this tolerance most diagonnaly-dominant elements will be selected
+		/// - "ddpq_tolerance"     - by this tolerance most diagonnaly-dominant elements will be selected
 		///                          to form the next level of factorization, the closer the tolerance
 		///                          is to one the smaller will be the level. Actual rule is:
 		///                          A(i,j)/(sum(A(i,:))+sum(A(:,j))-A(i,j)) > ddpq_tolerance *
@@ -519,7 +522,7 @@ namespace INMOST
 		///                          where on imax, jmax maximum is reached.
 		///                          works for:
 		///                          INNER_MLILUC
-		/// "fill_level"           - level of fill for ILU-type preconditioners
+		/// - "fill_level"         - level of fill for ILU-type preconditioners,
 		///                          works for:
 		///                          INNER_ILU2 (if LFILL is defined in solver_ilu2.hpp)
 		///                          Trilinos, Trilinos_Ifpack
@@ -541,18 +544,23 @@ namespace INMOST
 		/// @param OldPreconditioner If this parameter is set to true,
 		/// then the previous preconditioner will be used,
 		/// otherwise the new preconditioner will be constructed. 
+		///
 		/// Preconditioner will be constructed on call to this function
-		/// for INNER_*, PETSc and ANI packages
-		/// for Trilinos preconditioner will be constructed each time Solver::Solve is called
-		/// Any changes to preconditioner parameters should happen before that point
+		/// - for INNER_*, PETSc and ANI packages
+		/// - for Trilinos preconditioner will be constructed each time Solver::Solve is called
+		///
+		/// Any changes to preconditioner parameters should happen before that point.
 		/// If you increase gmres_substep after this point, inner methods most likely will fail
 		void SetMatrix(Matrix & A, bool OldPreconditioner = false);
 		/// Solver the linear system: A*x = b.
 		/// Prior to this call you should call SetMatrix
+		///
 		/// @param RHS The right-hand side Vector b.
 		/// @param SOL The initial guess to the solution on input and the solution Vector x on return.
+		///
 		/// It is assumed that the coefficient matrix A have been set
 		/// and the preconditioner have been already constructed.
+		///
 		/// @see Solver::SetMatrix
 		bool Solve(Vector & RHS, Vector & SOL);
 		/// Get the reason of convergence or divergence of the last solution.
@@ -573,6 +581,7 @@ namespace INMOST
 		~Solver();
 		/// Initialize the stage of parallel solution.
 		/// If MPI is not initialized yet, then it will be initialized.
+		///
 		/// database file is used to pass parameters to PETSc and Trilinos packages.
 		/// if database file for is provided any changes through SetParameterEnum,
 		/// SetParameterReal would not be effective for PETSc and Trilinos packages.
@@ -581,15 +590,18 @@ namespace INMOST
 		/// @param argc The number of arguments transmitted to the function main.
 		/// @param argv The pointer to arguments transmitted to the function main.
 		/// @param database Usually the name of the file with the Solver parameters.
+		///
 		/// The shortest call to this function with the default solver parameters is the following: Initialize(NULL,NULL,"");
 		/// @see Solver::Finalize
 		/// @see Solver::isInitialized
+		///
 		/// Example of contents of the database file:
-		/// PETSc: petsc_options.txt
-		/// Trilinos_Ifpack: trilinos_ifpack_options.xml
-		/// Trilinos_ML: trilinos_ml_options.xml
-		/// Trilinos_Aztec: trilinos_aztec_options.xml
-		/// Trilinos_Belos: trilinos_belos_options.xml
+		///
+		/// 	PETSc: petsc_options.txt
+		/// 	Trilinos_Ifpack: trilinos_ifpack_options.xml
+		/// 	Trilinos_ML: trilinos_ml_options.xml
+		/// 	Trilinos_Aztec: trilinos_aztec_options.xml
+		/// 	Trilinos_Belos: trilinos_belos_options.xml
 		static void Initialize(int * argc, char *** argv, const char * database = "");
 		/// Finalize the stage of parallel solution.
 		/// If MPI was initialized in Solver::Initialize, then it will be finalized.
