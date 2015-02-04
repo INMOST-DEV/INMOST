@@ -438,7 +438,7 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE maximum_iterations;
 		INMOST_DATA_REAL_TYPE absolute_tolerance;
 		INMOST_DATA_REAL_TYPE relative_tolerance;
-		INMOST_DATA_REAL_TYPE divergance_tolerance;
+		INMOST_DATA_REAL_TYPE divergence_tolerance;
 
 		INMOST_DATA_REAL_TYPE preconditioner_drop_tolerance;
 		INMOST_DATA_REAL_TYPE preconditioner_reuse_tolerance;
