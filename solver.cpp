@@ -1278,8 +1278,8 @@ namespace INMOST
 			absolute_tolerance = val;
 		else if( name == "relative_tolerance" )
 			relative_tolerance = val;
-		else if( name == "divergance_tolerance" )
-			divergance_tolerance = val;
+		else if( name == "divergence_tolerance" )
+			divergence_tolerance = val;
 		else if( name == "drop_tolerance" )
 			preconditioner_drop_tolerance = val;
 		else if( name == "reuse_tolerance" )
@@ -1311,7 +1311,7 @@ namespace INMOST
 		maximum_iterations = DEFAULT_MAXIMUM_ITERATIONS;
 		absolute_tolerance = DEFAULT_ABSOLUTE_TOLERANCE;
 		relative_tolerance = DEFAULT_RELATIVE_TOLERANCE;
-		divergance_tolerance = DEFAULT_DIVERGENCE_TOLERANCE;
+		divergence_tolerance = DEFAULT_DIVERGENCE_TOLERANCE;
 		preconditioner_ddpq_tolerance = DEFAULT_PRECONDITIONER_DDPQ_TOLERANCE;
 		preconditioner_drop_tolerance = DEFAULT_PRECONDITIONER_DROP_TOLERANCE;
 		preconditioner_reuse_tolerance = DEFAULT_PRECONDITIONER_REUSE_TOLERANCE;
@@ -1904,7 +1904,7 @@ namespace INMOST
 			}
 			if( petsc_database_file == "" ) //set parameters if no file is set
 			{
-				SolverSetTolerancesPetsc(solver_data,relative_tolerance,absolute_tolerance,divergance_tolerance,maximum_iterations);
+				SolverSetTolerancesPetsc(solver_data,relative_tolerance,absolute_tolerance,divergence_tolerance,maximum_iterations);
 			}
 			bool result = SolverSolvePetsc(solver_data,rhs_data,solution_data);
 			if( result )
@@ -2230,7 +2230,7 @@ namespace INMOST
 			sol->EnumParameter("maxits") = maximum_iterations;
 			sol->RealParameter("rtol") = relative_tolerance;
 			sol->RealParameter("atol") = absolute_tolerance;
-			sol->RealParameter("divtol") = divergance_tolerance;
+			sol->RealParameter("divtol") = divergence_tolerance;
 			
 			bool ret = sol->Solve(RHS,SOL);
 			last_it = sol->GetIterations();

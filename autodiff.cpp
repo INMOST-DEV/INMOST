@@ -20,7 +20,7 @@ namespace INMOST
 	{
 		INMOST_DATA_ENUM_TYPE voffset = var.values_offset(element), doffset = var.derivatives_offset(element);
 		INMOST_DATA_ENUM_TYPE k = var.data.size()-1;
-		Storage * e = var.current_stencil[element].first;
+		Storage e = Storage(m,var.current_stencil[element].first);
 		INMOST_DATA_REAL_TYPE lval, rval, ret;
 		var.values[doffset+k] = multval;
 		expr::expr_data * arr = &var.data[0], *it;
@@ -99,7 +99,7 @@ namespace INMOST
 				{
 					expr & next = *it->right.e;
 					next.current_stencil.resize(1);
-					next.current_stencil[0] = stencil_pair(e,1.0);
+					next.current_stencil[0] = stencil_pair(e->GetHandle(),1.0);
 					next.resize_for_stencil();
 					var.values[doffset+it->left.i] += var.values[doffset+k] * EvaluateSub(next,0,element,user_data); 
 					break;
@@ -133,7 +133,7 @@ namespace INMOST
 	INMOST_DATA_REAL_TYPE Automatizator::EvaluateSub(expr & var, INMOST_DATA_ENUM_TYPE element, INMOST_DATA_ENUM_TYPE parent, void * user_data)
 	{
 		INMOST_DATA_ENUM_TYPE k = 0, offset = var.values_offset(element);
-		Storage * e = var.current_stencil[element].first;
+		Storage e = Storage(m,var.current_stencil[element].first);
 		expr::expr_data * arr = &var.data[0], *it;
 		//for (expr::data_type::iterator it = var.data.begin(); it != var.data.end(); ++it)
 		do
@@ -149,7 +149,7 @@ namespace INMOST
 				{
 					expr & next = var.values[offset+it->left.i] > 0.0 ? *it->right.q->left.e : *it->right.q->right.e;
 					next.current_stencil.resize(1);
-					next.current_stencil[0] = stencil_pair(e,1.0);
+					next.current_stencil[0] = stencil_pair(e->GetHandle(),1.0);
 					next.resize_for_stencil();
 					var.values[offset+k] = EvaluateSub(next, 0,element, user_data);
 				}
@@ -168,7 +168,7 @@ namespace INMOST
 			case AD_CONST: var.values[offset+k] = it->left.r; break;
 			case AD_COND_TYPE: var.values[offset+k] = ((e->GetElementType() & it->left.i)? 1.0 : -1.0); break;
 			case AD_COND_MARK: var.values[offset+k] = e->GetMarker(it->left.i) ? 1.0 : -1.0; break;
-			case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); m->GetGeometricData(static_cast<Element *>(e), MEASURE, &var.values[offset+k]); break;
+			case AD_MES: assert(!(e->GetElementType() & (ESET | MESH))); m->GetGeometricData(e->GetHandle(), MEASURE, &var.values[offset+k]); break;
 			case AD_VAL: var.values[offset+k] = var.values[offset+it->left.i]; break;
 			default:
 				if (it->op >= AD_FUNC) var.values[offset+k] = reg_funcs[it->op-AD_FUNC].func(e, user_data);
@@ -191,19 +191,19 @@ namespace INMOST
 		return var.values[offset+var.data.size()-1];
 	}
 
-	INMOST_DATA_REAL_TYPE Automatizator::Evaluate(expr & var, Storage * e, void * user_data)
+	INMOST_DATA_REAL_TYPE Automatizator::Evaluate(expr & var, const Storage & e, void * user_data)
 	{
 		var.current_stencil.resize(1);
-		var.current_stencil[0] = stencil_pair(e,1.0);
+		var.current_stencil[0] = stencil_pair(e->GetHandle(),1.0);
 		var.resize_for_stencil();
 		return EvaluateSub(var,0,ENUMUNDEF,user_data);
 	}
 	
-	INMOST_DATA_REAL_TYPE Automatizator::Derivative(expr & var, Storage * e, Solver::Row & out, Storage::real multiply, void * user_data)
+	INMOST_DATA_REAL_TYPE Automatizator::Derivative(expr & var, const Storage & e, Solver::Row & out, Storage::real multiply, void * user_data)
 	{
 		INMOST_DATA_REAL_TYPE ret;
 		var.current_stencil.resize(1);
-		var.current_stencil[0] = stencil_pair(e,1.0);
+		var.current_stencil[0] = stencil_pair(e->GetHandle(),1.0);
 		var.resize_for_stencil();
 		ret = EvaluateSub(var,0,ENUMUNDEF,user_data);
 		DerivativeFill(var, 0, ENUMUNDEF, out, multiply, user_data);
