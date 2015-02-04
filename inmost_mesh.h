@@ -760,10 +760,11 @@ namespace INMOST
 		void                        Disconnect              (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const;
 		/// Connects lower adjacencies to current element, 
 		/// geometric data and cell nodes are updated automatically. \n
+		/// \todo
 		/// TODO:
-		///		1. asserts in this function should be replaced by Topography checks; \n
-		///		2. this function should be used for creation of elements instead of current implementation. \n
-		///   3. should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)
+		///	1. asserts in this function should be replaced by Topography checks; \n
+		///	2. this function should be used for creation of elements instead of current implementation. \n
+		///	3. should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)
 		void                        Connect                 (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
 		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
 		void                        UpdateGeometricData     () const; 
@@ -1098,6 +1099,7 @@ namespace INMOST
 		void Unite(const ElementArray<EType> & elems) const {Unite(elems.data(),static_cast<enumerator>(elems.size()));}
 
 		/// Compute and store difference with raw handles.
+		/// \todo
 		/// TODO
 		///   If other and current sets are sorted in same way, may perform narrowing traversal by retriving
 		///   mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets.
@@ -1139,6 +1141,7 @@ namespace INMOST
 		/// You are encouraged to do so even if you are not going to use this information -
 		/// some internal algorithms may benefit from it.
 		///
+		/// \todo
 		/// !TODO 52 - check radix sort on big endian computer
 		/// @param comp one of the comparators from description
 		/// @see Mesh::SetComparatorTag
@@ -2221,8 +2224,9 @@ namespace INMOST
 		///
 		/// @param ghost array of handles
 		/// @param num number of handles
+		/// \todo
 		/// TODO
-		///  1) Currently request for deletion of elements of lower level then cell will be simply ignored, ensure
+		///  1. Currently request for deletion of elements of lower level then cell will be simply ignored, ensure
 		///     in future that algorithm will properly rise deletion data from lower to upper adjacencies 
 		///     to delete all the upper adjacencies that depend on deleted lower adjacencies
 		void                              RemoveGhostElements(const HandleType * ghost, enumerator num);
@@ -2235,8 +2239,9 @@ namespace INMOST
 		/// in parallel algorithms should be performed using global identificators instead 
 		/// of centroids which is faster.
 		///
+		/// \todo
 		/// TODO
-		///     1) invoking function before loading mesh will not renew global identificators after load
+		///     1. invoking function before loading mesh will not renew global identificators after load
 		///        but would not unset have_global_id either. There are probably too many places when
 		///        global ids may become invalid but no flag will be set. It may be benefitial to set
 		///        such flags along with updating geometrical data which seems to be maintained fairly well
@@ -2248,6 +2253,7 @@ namespace INMOST
 		/// this would not do any difference on homogeneous architecture, but it may help you save a lot of 
 		/// time and nerves in heterogeneous parallel environment.
 		///
+		/// \todo
 		/// TODO: see TODO in Mesh::ReduceData
 		///
 		/// Blocking, Collective point-2-point
@@ -2328,6 +2334,7 @@ namespace INMOST
 		/// time and nerves in heterogeneous parallel environment.
 		///
 		/// Exchanging tags of DATA_REFERNCE is not implemented, TODO 14.
+		/// \todo
 		/// TODO:
 		///    1. Exchanging DATA_REFERENCE tags not implemented, this is due to the absence of any conclusion
 		///    -  on how it should behave:
@@ -2425,9 +2432,10 @@ namespace INMOST
 		///
 		///   Given that all the data was up to date among processors all the data at the end of the algorithm will be also up to data
 		///
+		/// \todo
 		/// TODO 
-		///     1) test halo exchange algorithm (if used then change collective point-2-point to collective)
-		///     2) see TODO 2 in Mesh::Redistribute
+		///     1. test halo exchange algorithm (if used then change collective point-2-point to collective)
+		///     2. see TODO 2 in Mesh::Redistribute
 		///
 		/// Collective point-2-point.
 		///
@@ -2474,7 +2482,9 @@ namespace INMOST
 		/// If you have output from Zoltan or ParMetis  for cells of the mesh
 		/// then just write this output to RedistributeTag and call Mesh::Redistribute.
 		///
-		/// TODO: 1)introduce "TEMPORARY_KEEP_GHOSTED" tag that will store processors on which copy of element
+		/// \todo
+		/// TODO:
+		///      1. introduce "TEMPORARY_KEEP_GHOSTED" tag that will store processors on which copy of element
 		///         should be kept, internally just merge it with "TEMPORARY_NEW_PROCESSORS" tag
 		///         this will allow user to control ghosting of certain elements and not to invoke ExchangeMarked
 		///         every time after Redistribute.
@@ -2482,7 +2492,7 @@ namespace INMOST
 		///         clearing and ExchangeMarked performs initial action based on SendtoTag, it is due to
 		///         check that SendtoTag is properly merged with "TEMPORARY_NEW_PROCESSORS" before call to ExchangeMarked
 		///         and received elements are not deleted by accident.
-		///       2)let user provide any integer tag as input without involving RedistributeTag
+		///      2. let user provide any integer tag as input without involving RedistributeTag
 		///
 		/// Collective point-2-point.
 		///
@@ -2744,6 +2754,7 @@ namespace INMOST
 		/// - "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
 		/// - "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
 		///
+		/// \todo
 		/// TODO:
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write
 		///      or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip
@@ -2822,11 +2833,12 @@ namespace INMOST
 		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
+		/// \todo
 		/// TODO:
-		///      1) maybe instead of forming set of deleted elements and subtracting set from other sets it is better
+		///      1. maybe instead of forming set of deleted elements and subtracting set from other sets it is better
 		///         to remove each modified element
 		///         (done, check and compare)
-		///      2) parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior
+		///      2. parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior
 		///         (done, check and compare)
 		void                              ApplyModification  ();  //modify DATA_REFERENCE tags so that links to hidden elements are converted to NULL and removed from sets
 		/// This function is not yet implemented. It should correctly resolve parallel state of 
@@ -2848,11 +2860,13 @@ namespace INMOST
 		/// If you perform topological checks on your own, you'd probably better turn off checks before calling CreateXXX
 		/// functions. Note that check for duplicates within mesh is performed by Mesh::FindSharedAdjacency.
 		///
+		/// \todo
 		/// TODO: list checks performed inside in description
 		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, enumerator num);
 		/// This function performs some topologycal checks after creation of element.
 		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions.
 		///
+		/// \todo
 		/// TODO: list checks performed inside in description.
 		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
 		/// This will return tag by which you can retrieve error mark to any element on which topogy check failed.
@@ -2977,6 +2991,7 @@ namespace INMOST
 		};
 
 		void SortHandles(HandleType * h, enumerator num);
+		/// \todo
 		/// TODO 53 check that putting global ids to array will be faster
 		void SortByGlobalID(HandleType * h, enumerator num);
 	};
