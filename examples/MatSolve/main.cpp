@@ -15,7 +15,7 @@ int main(int argc, char ** argv)
 	int rank,procs;
 	if( argc < 3 )
 	{
-		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_MLILUC,2:ANI,3:PETSc,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_Ifpack,7:Trilinos_ML> matrix.mtx [right_hand_side.rhs] [solver_options.txt]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_MLILUC,2:PETSc,3:Trilinos_Aztec,4:Trilinos_Belos,5:Trilinos_Ifpack,6:Trilinos_ML,7:ANI> matrix.mtx [right_hand_side.rhs] [solver_options.txt]" << std::endl;
 		return -1;
 	}
 	Solver::Type type;
