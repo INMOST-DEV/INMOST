@@ -1365,6 +1365,7 @@ namespace INMOST
 		/// to define tag on multiple types of elements, example CELL | FACE
 		/// @param sparse the selection of elements from etype on which the tag is sparse, for example, if you know that the data is used 
 		/// on all cells and only on boundary faces, then you may should set etype = CELL | FACE and sparse = FACE
+		/// @param size size of associated data
 		/// @return returns the tag that represents the data
 		Tag                               CreateTag          (std::string name, DataType dtype, ElementType etype,ElementType sparse, INMOST_DATA_ENUM_TYPE size = ENUMUNDEF);
 		/// Remove the data that is represented by the tag from elements of selected type.
@@ -1759,7 +1760,7 @@ namespace INMOST
 		reference_array                   ReferenceArrayDV   (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return reference_array(this,*static_cast<inner_reference_array*>(MGetDenseLink(h,tag)));}
 		/// Set a marker on the element represented by handle.
 		/// @param h element handle
-		/// @param mask stores byte number and byte bit mask that represent marker
+		/// @param n stores byte number and byte bit mask that represent marker
 		void                              SetMarker          (HandleType h,MarkerType n) {static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);}
 		/// Set a marker on the set of handles.
 		/// @param h set of handles
@@ -1769,11 +1770,11 @@ namespace INMOST
 		void                              SetMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetMarker(h[i],m);}
 		/// Check weather the marker is set one the element.
 		/// @param h element handle
-		/// @param mask stores byte number and byte bit mask that represent marker
+		/// @param n stores byte number and byte bit mask that represent marker
 		bool                              GetMarker          (HandleType h,MarkerType n) const {return (static_cast<const bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;}
 		/// Remove the marker from the element.
 		/// @param h element handle
-		/// @param mask stores byte number and byte bit mask that represent marker
+		/// @param n stores byte number and byte bit mask that represent marker
 		void                              RemMarker          (HandleType h,MarkerType n) {static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);}
 		/// Remove the marker from the set of handles.
 		/// @param h set of handles
@@ -2386,7 +2387,7 @@ namespace INMOST
 		///
 		/// Blocking, collective point-2-point
 		///
-		/// @param tag multiple tags that represents data
+		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param op user-defined operation on received data
@@ -2404,7 +2405,7 @@ namespace INMOST
 		///
 		/// Blocking
 		///
-		/// @param tag multiple tags that represents data
+		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param storage buffer that will temporary hold sended data
@@ -2561,7 +2562,7 @@ namespace INMOST
 		///
 		/// Collective operation.
 		///
-		/// @param value on current processor
+		/// @param input on current processor
 		/// @return sum over all processors
 		integer                           Integrate          (integer input);
 		/// Integrate data corresponding to tag between all processors.
@@ -2593,7 +2594,7 @@ namespace INMOST
 		/// Generally this is not needed if you use high-level algorithms for mesh modification
 		/// or mesh redistribution.
 		///
-		/// @param bitwise type mask
+		/// @param mask bitwise type mask
 		/// @see Mesh::BeginModification
 		/// @see Mesh::EndModification
 		/// @see Mesh::ExchangeMarked
@@ -2603,7 +2604,7 @@ namespace INMOST
 		///
 		/// Collective operation
 		///
-		/// @param bitwise type mask
+		/// @param etype bitwise type mask
 		/// @return bitwise result among processors
 		ElementType                       SynchronizeElementType(ElementType etype);
 		/// Syncronize marker on elements between processors using provided operation.

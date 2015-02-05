@@ -572,7 +572,7 @@ namespace INMOST
 		/// for PETSc and Trilinos packages.
 		/// @param pack The package Type to be used for solution.
 		/// @param _name The user specified name of the current solver.
-		/// @param _comm Communicator for parallel data exchanges, MPI_COMM_WORLD by default.
+		/// @param comm Communicator for parallel data exchanges, MPI_COMM_WORLD by default.
 		/// @see Solver::Initialize
 		/// @see Solver::SetMatrix
 		/// @see Solver::Solve
