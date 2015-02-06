@@ -4,6 +4,7 @@
 #  INMOST_LIBRARY_DIRS  - library directories for INMOST and dependencies
 #  INMOST_LIBRARIES     - libraries to link against
 #  INMOST_COMPILE_FLAGS - flags to set to compiler (generally inherited from MPI)
+#  INMOST_LINK_FLAGS - flags to set to linker (generally inherited from MPI)
  
 # Compute paths
 get_filename_component(inmost_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
@@ -32,6 +33,8 @@ set(USE_SOLVER_PETSC @USE_SOLVER_PETSC@)
 if( USE_MPI )
 	list(APPEND INMOST_INCLUDE_DIRS "@MPI_INCLUDE_PATH@")
 	list(APPEND INMOST_COMPILE_FLAGS "@MPI_COMPILE_FLAGS@")
+	list(APPEND INMOST_LIBRARIES "@MPI_LIBRARIES@")
+	list(APPEND INMOST_LINK_FLAGS "@MPI_LINK_FLAGS@")
 endif( USE_MPI )
 
 if( USE_PARTITIONER_ZOLTAN )
