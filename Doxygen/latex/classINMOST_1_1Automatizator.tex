@@ -1,0 +1,136 @@
+\hypertarget{classINMOST_1_1Automatizator}{\section{I\-N\-M\-O\-S\-T\-:\-:Automatizator Class Reference}
+\label{classINMOST_1_1Automatizator}\index{I\-N\-M\-O\-S\-T\-::\-Automatizator@{I\-N\-M\-O\-S\-T\-::\-Automatizator}}
+}
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structINMOST_1_1Automatizator_1_1table}{table}
+\end{DoxyCompactItemize}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a0f03e8ab9f71de728a1faf11fbd88601}{typedef I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E($\ast$ {\bfseries func\-\_\-callback} )(const \hyperlink{classINMOST_1_1Storage}{Storage} \&current\-\_\-element, void $\ast$user\-\_\-data)}\label{classINMOST_1_1Automatizator_a0f03e8ab9f71de728a1faf11fbd88601}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a9d453cded108f8d7e75697e3cd8adb35}{typedef std\-::pair$<$ Handle\-Type, \\*
+I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E $>$ {\bfseries stencil\-\_\-pair}}\label{classINMOST_1_1Automatizator_a9d453cded108f8d7e75697e3cd8adb35}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_ade53cb1323f26ba72c3c374a412b8389}{typedef dynarray$<$ stencil\-\_\-pair, 64 $>$ {\bfseries stencil\-\_\-pairs}}\label{classINMOST_1_1Automatizator_ade53cb1323f26ba72c3c374a412b8389}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a2623b5a8a2b68c7aaebfbcf7744050d9}{typedef void($\ast$ {\bfseries stencil\-\_\-callback} )(const \hyperlink{classINMOST_1_1Storage}{Storage} \&current\-\_\-element, stencil\-\_\-pairs \&out\-\_\-stencil, void $\ast$user\-\_\-data)}\label{classINMOST_1_1Automatizator_a2623b5a8a2b68c7aaebfbcf7744050d9}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a2179b2fc110400e492a0d4167ff27491}{typedef \hyperlink{structINMOST_1_1Automatizator_1_1table}{table} $\ast$ {\bfseries table\-\_\-ptr}}\label{classINMOST_1_1Automatizator_a2179b2fc110400e492a0d4167ff27491}
+
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Automatizator_af7d1f8ab7fdfaeef7c7b09a1e699b743}{{\bfseries Automatizator} (\hyperlink{classINMOST_1_1Mesh}{Mesh} $\ast$m)}\label{classINMOST_1_1Automatizator_af7d1f8ab7fdfaeef7c7b09a1e699b743}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a205365a6d28b27703e6262158706f730}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-First\-Index} ()}\label{classINMOST_1_1Automatizator_a205365a6d28b27703e6262158706f730}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_ab2efc0e101bf2ca4543e19265e06b822}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Last\-Index} ()}\label{classINMOST_1_1Automatizator_ab2efc0e101bf2ca4543e19265e06b822}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a0128d1f5d5f89927eef74eb40ed84709}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Register\-Func} (std\-::string name, func\-\_\-callback func)}\label{classINMOST_1_1Automatizator_a0128d1f5d5f89927eef74eb40ed84709}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a5b1b877a70e6692e4462df8fb96b8ef3}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Register\-Stencil} (std\-::string name, \hyperlink{classINMOST_1_1Tag}{Tag} elements\-\_\-tag, \hyperlink{classINMOST_1_1Tag}{Tag} coefs\-\_\-tag, Marker\-Type domain\-\_\-mask=0)}\label{classINMOST_1_1Automatizator_a5b1b877a70e6692e4462df8fb96b8ef3}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_aef8dd6329870287bbc5abb194322afb0}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Register\-Stencil} (std\-::string name, stencil\-\_\-callback func, Marker\-Type domain\-\_\-mask=0)}\label{classINMOST_1_1Automatizator_aef8dd6329870287bbc5abb194322afb0}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a8421c743a56202b07b5ec567cddd7a27}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Register\-Table} (std\-::string name, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E $\ast$Arguments, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E $\ast$Values, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E size)}\label{classINMOST_1_1Automatizator_a8421c743a56202b07b5ec567cddd7a27}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a55d0b03edcbba30b953cb31a8f83cd1b}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Register\-Dynamic\-Tag} (\hyperlink{classINMOST_1_1Tag}{Tag} t, Element\-Type typemask, Marker\-Type domain\-\_\-mask=0)}\label{classINMOST_1_1Automatizator_a55d0b03edcbba30b953cb31a8f83cd1b}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a5436e1091d87f9afe737299833fda99e}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Register\-Static\-Tag} (\hyperlink{classINMOST_1_1Tag}{Tag} t, Marker\-Type domain\-\_\-mask=0)}\label{classINMOST_1_1Automatizator_a5436e1091d87f9afe737299833fda99e}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a664b648b1d36633a208fa777e97fba62}{void {\bfseries Enumerate\-Dynamic\-Tags} ()}\label{classINMOST_1_1Automatizator_a664b648b1d36633a208fa777e97fba62}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a7fc404b01b46043c1721319df44935c1}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E \hyperlink{classINMOST_1_1Tag}{Tag} {\bfseries Get\-Dynamic\-Value\-Tag} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind)}\label{classINMOST_1_1Automatizator_a7fc404b01b46043c1721319df44935c1}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a29ee1b26035909f21fbc8e9142f8c66e}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E \hyperlink{classINMOST_1_1Tag}{Tag} {\bfseries Get\-Dynamic\-Index\-Tag} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind)}\label{classINMOST_1_1Automatizator_a29ee1b26035909f21fbc8e9142f8c66e}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_aa345acdac952457bdfcd5364d5e1561f}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E Marker\-Type {\bfseries Get\-Dynamic\-Mask} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind)}\label{classINMOST_1_1Automatizator_aa345acdac952457bdfcd5364d5e1561f}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a598fce631c693d1350b79b3da59a2303}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E \hyperlink{classINMOST_1_1Tag}{Tag} {\bfseries Get\-Static\-Value\-Tag} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind)}\label{classINMOST_1_1Automatizator_a598fce631c693d1350b79b3da59a2303}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a06a1bb3d3a85545bc2d896500967c446}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E Marker\-Type {\bfseries Get\-Static\-Mask} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind)}\label{classINMOST_1_1Automatizator_a06a1bb3d3a85545bc2d896500967c446}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_ab41dc204fbb52720b8dbb365f40ee0f3}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Dynamic\-Value} (const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E comp=0)}\label{classINMOST_1_1Automatizator_ab41dc204fbb52720b8dbb365f40ee0f3}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a3b9418a007184a35890a508d92fdb61c}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Dynamic\-Index} (const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E comp=0)}\label{classINMOST_1_1Automatizator_a3b9418a007184a35890a508d92fdb61c}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a3da0c47982b82640337e87375abe7314}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E bool {\bfseries is\-Dynamic\-Valid} (const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind)}\label{classINMOST_1_1Automatizator_a3da0c47982b82640337e87375abe7314}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a8d32c48035f0a83bd0ef783132d5da7a}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Static\-Value} (const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E comp=0)}\label{classINMOST_1_1Automatizator_a8d32c48035f0a83bd0ef783132d5da7a}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a6ae69d02eb607b39c5000c39882c484d}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E bool {\bfseries is\-Static\-Valid} (const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind)}\label{classINMOST_1_1Automatizator_a6ae69d02eb607b39c5000c39882c484d}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a817df1c8880db2abfa5a75745b81814a}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Evaluate} (const \hyperlink{classINMOST_1_1expr}{expr} \&var, const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, void $\ast$user\-\_\-data)}\label{classINMOST_1_1Automatizator_a817df1c8880db2abfa5a75745b81814a}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a43ef39e195bffdfb7615ff01e66f7867}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Derivative} (const \hyperlink{classINMOST_1_1expr}{expr} \&var, const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, \hyperlink{classINMOST_1_1Solver_1_1Row}{Solver\-::\-Row} \&out, \hyperlink{classINMOST_1_1Storage_a853346784b4a5822a7fac54d8f10f805}{Storage\-::real} multiply, void $\ast$user\-\_\-data)}\label{classINMOST_1_1Automatizator_a43ef39e195bffdfb7615ff01e66f7867}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a55fa3c6b0c26f26037954f87a86854a3}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Index} (const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tagind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E comp=0)}\label{classINMOST_1_1Automatizator_a55fa3c6b0c26f26037954f87a86854a3}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a571b357aebd31b957e1fdc328e270e58}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Components} (const \hyperlink{classINMOST_1_1Storage}{Storage} \&e, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tagind)}\label{classINMOST_1_1Automatizator_a571b357aebd31b957e1fdc328e270e58}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a40637bfaa6d8bc507fa6f49afc4472f7}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E \hyperlink{classINMOST_1_1Mesh}{Mesh} $\ast$ {\bfseries Get\-Mesh} ()}\label{classINMOST_1_1Automatizator_a40637bfaa6d8bc507fa6f49afc4472f7}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a386334d1ee55031c7a6aa056ce1b0a51}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E $\ast$ {\bfseries Get\-Table\-Arguments} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tableind)}\label{classINMOST_1_1Automatizator_a386334d1ee55031c7a6aa056ce1b0a51}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a510d6bc0f5c0f6a7b4b77e89c69581d8}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E $\ast$ {\bfseries Get\-Table\-Values} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tableind)}\label{classINMOST_1_1Automatizator_a510d6bc0f5c0f6a7b4b77e89c69581d8}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a3ae68e40f3f6ca6eb1b19adfcecb29a2}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Table\-Size} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tableind)}\label{classINMOST_1_1Automatizator_a3ae68e40f3f6ca6eb1b19adfcecb29a2}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a1073064332cb980550e7f70c27651e12}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Table\-Value} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tableind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E arg)}\label{classINMOST_1_1Automatizator_a1073064332cb980550e7f70c27651e12}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_ab53aea7d5721a212a790f84b610b1896}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Table\-Derivative} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tableind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E arg)}\label{classINMOST_1_1Automatizator_ab53aea7d5721a212a790f84b610b1896}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_af3abf3ea1a304abff11cc3612b8cf3ba}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E std\-::pair\\*
+$<$ I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E, \\*
+I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E $>$ {\bfseries Get\-Table\-Both} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E tableind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E arg)}\label{classINMOST_1_1Automatizator_af3abf3ea1a304abff11cc3612b8cf3ba}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a0873f51c2f40480337ff3de86cb0ac01}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Stencil} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E stnclind, const \hyperlink{classINMOST_1_1Storage}{Storage} \&elem, void $\ast$user\-\_\-data, stencil\-\_\-pairs \&ret)}\label{classINMOST_1_1Automatizator_a0873f51c2f40480337ff3de86cb0ac01}
+
+\item 
+\hypertarget{classINMOST_1_1Automatizator_a4b6096d66053b8fb1cc35924dad84874}{\-\_\-\-\_\-\-I\-N\-L\-I\-N\-E I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Function} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E funcid, const \hyperlink{classINMOST_1_1Storage}{Storage} \&elem, void $\ast$user\-\_\-data)}\label{classINMOST_1_1Automatizator_a4b6096d66053b8fb1cc35924dad84874}
+
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+inmost\-\_\-autodiff.\-h\end{DoxyCompactItemize}

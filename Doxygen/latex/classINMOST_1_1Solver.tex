@@ -1,0 +1,361 @@
+\hypertarget{classINMOST_1_1Solver}{\section{I\-N\-M\-O\-S\-T\-:\-:Solver Class Reference}
+\label{classINMOST_1_1Solver}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+}
+
+
+Main class to set and solve linear system.  
+
+
+
+
+{\ttfamily \#include $<$inmost\-\_\-solver.\-h$>$}
+
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix}
+\begin{DoxyCompactList}\small\item\em Class to store the distributed sparse matrix by compressed rows. \end{DoxyCompactList}\item 
+class \hyperlink{classINMOST_1_1Solver_1_1OrderInfo}{Order\-Info}
+\begin{DoxyCompactList}\small\item\em Base class for low level operations with objects of \hyperlink{classINMOST_1_1Solver}{Solver} class. \end{DoxyCompactList}\item 
+class \hyperlink{classINMOST_1_1Solver_1_1Row}{Row}
+\begin{DoxyCompactList}\small\item\em Class to store the sparse matrix row. \end{DoxyCompactList}\item 
+class \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector}
+\begin{DoxyCompactList}\small\item\em Distributed vector class. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309b}{Type} \{ \\*
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309baf63e1ad7b5ae2acdd4ae0a0f5638721b}{I\-N\-N\-E\-R\-\_\-\-I\-L\-U2}, 
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309badee0e7d52b15257e3da8f03c386ff4fb}{I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C}, 
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309bad44d0870437e0d0feb62902415ab70c6}{Trilinos\-\_\-\-Aztec}, 
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309bab0bdd8110a229561e0beafaa87ec39ba}{Trilinos\-\_\-\-Belos}, 
+\\*
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba3dd85459b7a587d7f73c5c6b8f48e442}{Trilinos\-\_\-\-M\-L}, 
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba8045d698296fd9b11ad749400be138ad}{Trilinos\-\_\-\-Ifpack}, 
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba4836875066e4576bfa281cea50739107}{P\-E\-T\-Sc}, 
+\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba5392887dbb97c84546fc3eeb010729c9}{A\-N\-I}
+ \}
+\begin{DoxyCompactList}\small\item\em Type of the \hyperlink{classINMOST_1_1Solver}{Solver} can be currently used in this version of I\-N\-M\-O\-S\-T. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classINMOST_1_1Solver_a099f1bc2e5f530a30ff37f5fc3033d8a}{Set\-Parameter\-Enum} (std\-::string name, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E value)
+\begin{DoxyCompactList}\small\item\em Set the solver parameter of the integer type. \end{DoxyCompactList}\item 
+void \hyperlink{classINMOST_1_1Solver_a7997f1ad3cce898632e582de27f08a42}{Set\-Parameter\-Real} (std\-::string name, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E value)
+\begin{DoxyCompactList}\small\item\em Set the solver parameter of the real type. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_a19a57bde95128504e8c9cecde896ae53}{std\-::string \hyperlink{classINMOST_1_1Solver_a19a57bde95128504e8c9cecde896ae53}{Get\-Name} ()}\label{classINMOST_1_1Solver_a19a57bde95128504e8c9cecde896ae53}
+
+\begin{DoxyCompactList}\small\item\em Get the used defined name of the \hyperlink{classINMOST_1_1Solver}{Solver}. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_a76ba3fc72df7ccf55bab47251265c576}{\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309b}{Type} \hyperlink{classINMOST_1_1Solver_a76ba3fc72df7ccf55bab47251265c576}{Get\-Package} () const }\label{classINMOST_1_1Solver_a76ba3fc72df7ccf55bab47251265c576}
+
+\begin{DoxyCompactList}\small\item\em Get the package Type. \end{DoxyCompactList}\item 
+I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_ad943889a4b31789185eee09af14a5d45}{Iterations} ()
+\begin{DoxyCompactList}\small\item\em Return the number of iterations performed by the last solution. \end{DoxyCompactList}\item 
+I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_ad10f8b22ba2d3c4ecbb4c22abfc62266}{Residual} ()
+\begin{DoxyCompactList}\small\item\em Return the final residual achieved by the last solution. \end{DoxyCompactList}\item 
+void \hyperlink{classINMOST_1_1Solver_a8e70ae0ef4eaa220d1db45089b4df1ff}{Set\-Matrix} (\hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} \&A, bool Old\-Preconditioner=false)
+\begin{DoxyCompactList}\small\item\em Set the matrix and construct the preconditioner. \end{DoxyCompactList}\item 
+bool \hyperlink{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{Solve} (\hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} \&R\-H\-S, \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} \&S\-O\-L)
+\begin{DoxyCompactList}\small\item\em \hyperlink{classINMOST_1_1Solver}{Solver} the linear system\-: A$\ast$x = b. \end{DoxyCompactList}\item 
+std\-::string \hyperlink{classINMOST_1_1Solver_afc0502769ba027228e7bda966498ebb5}{Get\-Reason} ()
+\begin{DoxyCompactList}\small\item\em Get the reason of convergence or divergence of the last solution. \end{DoxyCompactList}\item 
+\hyperlink{classINMOST_1_1Solver_a5951d4dcc90693cb8d02de403a382c69}{Solver} (\hyperlink{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309b}{Type} pack, std\-::string \-\_\-name=\char`\"{}\char`\"{}, I\-N\-M\-O\-S\-T\-\_\-\-M\-P\-I\-\_\-\-Comm comm=I\-N\-M\-O\-S\-T\-\_\-\-M\-P\-I\-\_\-\-C\-O\-M\-M\-\_\-\-W\-O\-R\-L\-D)
+\begin{DoxyCompactList}\small\item\em Main constructor of the solver. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_a5650d814c472b39bc82861b16f6e7075}{void \hyperlink{classINMOST_1_1Solver_a5650d814c472b39bc82861b16f6e7075}{Clear} ()}\label{classINMOST_1_1Solver_a5650d814c472b39bc82861b16f6e7075}
+
+\begin{DoxyCompactList}\small\item\em Clear all internal data of the current solver including matrix, preconditioner etc. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Solver_a763ed109b1c461463b15e782483488ba}{static I\-N\-M\-O\-S\-T\-\_\-\-M\-P\-I\-\_\-\-Type \& {\bfseries Get\-Row\-Entry\-Type} ()}\label{classINMOST_1_1Solver_a763ed109b1c461463b15e782483488ba}
+
+\item 
+static void \hyperlink{classINMOST_1_1Solver_ad769ba1a647e89fcefa79951cb41b30d}{Initialize} (int $\ast$argc, char $\ast$$\ast$$\ast$argv, const char $\ast$database=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em Initialize the stage of parallel solution. \end{DoxyCompactList}\item 
+static void \hyperlink{classINMOST_1_1Solver_a2175540aafc3443eee863734eb5dd63c}{Finalize} ()
+\begin{DoxyCompactList}\small\item\em Finalize the stage of parallel solution. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_a6b867dd84aa2d19e703712061be24830}{static bool {\bfseries is\-Initialized} ()}\label{classINMOST_1_1Solver_a6b867dd84aa2d19e703712061be24830}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_a1f824e4ce1d3dcf4cfd3cc5bd64c721a}{static bool {\bfseries is\-Finalized} ()}\label{classINMOST_1_1Solver_a1f824e4ce1d3dcf4cfd3cc5bd64c721a}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Main class to set and solve linear system. 
+
+\hyperlink{classINMOST_1_1Solver}{Solver} class is used to set the coefficient \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix}, the right-\/hand side \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} and the initial guess \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector}, construct the preconditioner and Solve the linear system.
+
+Formally, \hyperlink{classINMOST_1_1Solver}{Solver} class is independent of \hyperlink{classINMOST_1_1Mesh}{I\-N\-M\-O\-S\-T\-::\-Mesh} class. \begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_1_1Matrix}{Solver\-::\-Matrix} 
+
+\hyperlink{classINMOST_1_1Solver_1_1Vector}{Solver\-::\-Vector} 
+
+\hyperlink{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{Solver\-::\-Solve} 
+\end{DoxySeeAlso}
+
+
+\subsection{Member Enumeration Documentation}
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309b}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Type@{Type}}
+\index{Type@{Type}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Type}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Type}}}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309b}
+
+
+Type of the \hyperlink{classINMOST_1_1Solver}{Solver} can be currently used in this version of I\-N\-M\-O\-S\-T. 
+
+\begin{Desc}
+\item[Enumerator]\par
+\begin{description}
+\index{I\-N\-N\-E\-R\-\_\-\-I\-L\-U2@{I\-N\-N\-E\-R\-\_\-\-I\-L\-U2}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!I\-N\-N\-E\-R\-\_\-\-I\-L\-U2@{I\-N\-N\-E\-R\-\_\-\-I\-L\-U2}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309baf63e1ad7b5ae2acdd4ae0a0f5638721b}{I\-N\-N\-E\-R\-\_\-\-I\-L\-U2}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309baf63e1ad7b5ae2acdd4ae0a0f5638721b}
+}]inner \hyperlink{classINMOST_1_1Solver}{Solver} based on Bi\-C\-G\-Stab(\-L) solver with second order I\-L\-U factorization as preconditioner. \index{I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C@{I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C@{I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309badee0e7d52b15257e3da8f03c386ff4fb}{I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309badee0e7d52b15257e3da8f03c386ff4fb}
+}]inner \hyperlink{classINMOST_1_1Solver}{Solver} based on Bi\-C\-G\-Stab(\-L) solver with second order Crout-\/\-I\-L\-U with inversed-\/based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner. \index{Trilinos\-\_\-\-Aztec@{Trilinos\-\_\-\-Aztec}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Trilinos\-\_\-\-Aztec@{Trilinos\-\_\-\-Aztec}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309bad44d0870437e0d0feb62902415ab70c6}{Trilinos\-\_\-\-Aztec}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309bad44d0870437e0d0feb62902415ab70c6}
+}]external \hyperlink{classINMOST_1_1Solver}{Solver} Aztec\-O\-O from Trilinos package \index{Trilinos\-\_\-\-Belos@{Trilinos\-\_\-\-Belos}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Trilinos\-\_\-\-Belos@{Trilinos\-\_\-\-Belos}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309bab0bdd8110a229561e0beafaa87ec39ba}{Trilinos\-\_\-\-Belos}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309bab0bdd8110a229561e0beafaa87ec39ba}
+}]external \hyperlink{classINMOST_1_1Solver}{Solver} Belos from Trilinos package, currently without preconditioner \index{Trilinos\-\_\-\-M\-L@{Trilinos\-\_\-\-M\-L}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Trilinos\-\_\-\-M\-L@{Trilinos\-\_\-\-M\-L}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba3dd85459b7a587d7f73c5c6b8f48e442}{Trilinos\-\_\-\-M\-L}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba3dd85459b7a587d7f73c5c6b8f48e442}
+}]external \hyperlink{classINMOST_1_1Solver}{Solver} Aztec\-O\-O with M\-L preconditioner \index{Trilinos\-\_\-\-Ifpack@{Trilinos\-\_\-\-Ifpack}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Trilinos\-\_\-\-Ifpack@{Trilinos\-\_\-\-Ifpack}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba8045d698296fd9b11ad749400be138ad}{Trilinos\-\_\-\-Ifpack}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba8045d698296fd9b11ad749400be138ad}
+}]external \hyperlink{classINMOST_1_1Solver}{Solver} Aztec\-O\-O with Ifpack preconditioner \index{P\-E\-T\-Sc@{P\-E\-T\-Sc}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!P\-E\-T\-Sc@{P\-E\-T\-Sc}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba4836875066e4576bfa281cea50739107}{P\-E\-T\-Sc}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba4836875066e4576bfa281cea50739107}
+}]external \hyperlink{classINMOST_1_1Solver}{Solver} P\-E\-T\-Sc, \begin{DoxySeeAlso}{See Also}
+\href{http://www.mcs.anl.gov/petsc/}{\tt http\-://www.\-mcs.\-anl.\-gov/petsc/}. 
+\end{DoxySeeAlso}
+\index{A\-N\-I@{A\-N\-I}!I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!A\-N\-I@{A\-N\-I}}\item[{\em 
+\hypertarget{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba5392887dbb97c84546fc3eeb010729c9}{A\-N\-I}\label{classINMOST_1_1Solver_ad21ba852fdfe10116b40aac266c0309ba5392887dbb97c84546fc3eeb010729c9}
+}]external \hyperlink{classINMOST_1_1Solver}{Solver} from A\-N\-I3\-D based on I\-L\-U2 (sequential Fortran version). \end{description}
+\end{Desc}
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classINMOST_1_1Solver_a5951d4dcc90693cb8d02de403a382c69}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Solver@{Solver}}
+\index{Solver@{Solver}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Solver}]{\setlength{\rightskip}{0pt plus 5cm}I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Solver (
+\begin{DoxyParamCaption}
+\item[{{\bf Type}}]{pack, }
+\item[{std\-::string}]{\-\_\-name = {\ttfamily \char`\"{}\char`\"{}}, }
+\item[{I\-N\-M\-O\-S\-T\-\_\-\-M\-P\-I\-\_\-\-Comm}]{comm = {\ttfamily INMOST\-\_\-MPI\-\_\-COMM\-\_\-WORLD}}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_a5951d4dcc90693cb8d02de403a382c69}
+
+
+Main constructor of the solver. 
+
+\hyperlink{classINMOST_1_1Solver}{Solver} name provided here is used to extract options from database file for P\-E\-T\-Sc and Trilinos packages. 
+\begin{DoxyParams}{Parameters}
+{\em pack} & The package Type to be used for solution. \\
+\hline
+{\em \-\_\-name} & The user specified name of the current solver. \\
+\hline
+{\em comm} & Communicator for parallel data exchanges, M\-P\-I\-\_\-\-C\-O\-M\-M\-\_\-\-W\-O\-R\-L\-D by default. \\
+\hline
+\end{DoxyParams}
+\begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_ad769ba1a647e89fcefa79951cb41b30d}{Solver\-::\-Initialize} 
+
+\hyperlink{classINMOST_1_1Solver_a8e70ae0ef4eaa220d1db45089b4df1ff}{Solver\-::\-Set\-Matrix} 
+
+\hyperlink{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{Solver\-::\-Solve} 
+
+\hyperlink{classINMOST_1_1Solver_a2175540aafc3443eee863734eb5dd63c}{Solver\-::\-Finalize} 
+\end{DoxySeeAlso}
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classINMOST_1_1Solver_a2175540aafc3443eee863734eb5dd63c}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Finalize@{Finalize}}
+\index{Finalize@{Finalize}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Finalize}]{\setlength{\rightskip}{0pt plus 5cm}static void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Finalize (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [static]}}}\label{classINMOST_1_1Solver_a2175540aafc3443eee863734eb5dd63c}
+
+
+Finalize the stage of parallel solution. 
+
+If M\-P\-I was initialized in \hyperlink{classINMOST_1_1Solver_ad769ba1a647e89fcefa79951cb41b30d}{Solver\-::\-Initialize}, then it will be finalized. By this reason, do not use any M\-P\-I function after call to this function. \begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_ad769ba1a647e89fcefa79951cb41b30d}{Solver\-::\-Initialize} 
+
+Solver\-::is\-Finalized 
+\end{DoxySeeAlso}
+\hypertarget{classINMOST_1_1Solver_afc0502769ba027228e7bda966498ebb5}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Get\-Reason@{Get\-Reason}}
+\index{Get\-Reason@{Get\-Reason}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Get\-Reason}]{\setlength{\rightskip}{0pt plus 5cm}std\-::string I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Get\-Reason (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_afc0502769ba027228e7bda966498ebb5}
+
+
+Get the reason of convergence or divergence of the last solution. 
+
+\begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{Solver\-::\-Solve} 
+\end{DoxySeeAlso}
+\hypertarget{classINMOST_1_1Solver_ad769ba1a647e89fcefa79951cb41b30d}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Initialize@{Initialize}}
+\index{Initialize@{Initialize}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Initialize}]{\setlength{\rightskip}{0pt plus 5cm}static void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Initialize (
+\begin{DoxyParamCaption}
+\item[{int $\ast$}]{argc, }
+\item[{char $\ast$$\ast$$\ast$}]{argv, }
+\item[{const char $\ast$}]{database = {\ttfamily \char`\"{}\char`\"{}}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [static]}}}\label{classINMOST_1_1Solver_ad769ba1a647e89fcefa79951cb41b30d}
+
+
+Initialize the stage of parallel solution. 
+
+If M\-P\-I is not initialized yet, then it will be initialized.
+
+database file is used to pass parameters to P\-E\-T\-Sc and Trilinos packages. if database file for is provided any changes through Set\-Parameter\-Enum, Set\-Parameter\-Real would not be effective for P\-E\-T\-Sc and Trilinos packages. Currently this database file provides directions for package-\/specific files. In future it is supposed to set up parameters for internal solvers. 
+\begin{DoxyParams}{Parameters}
+{\em argc} & The number of arguments transmitted to the function main. \\
+\hline
+{\em argv} & The pointer to arguments transmitted to the function main. \\
+\hline
+{\em database} & Usually the name of the file with the \hyperlink{classINMOST_1_1Solver}{Solver} parameters.\\
+\hline
+\end{DoxyParams}
+The shortest call to this function with the default solver parameters is the following\-: Initialize(N\-U\-L\-L,N\-U\-L\-L,\char`\"{}\char`\"{}); \begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_a2175540aafc3443eee863734eb5dd63c}{Solver\-::\-Finalize} 
+
+Solver\-::is\-Initialized
+\end{DoxySeeAlso}
+Example of contents of the database file\-: \begin{DoxyVerb}PETSc: petsc_options.txt
+Trilinos_Ifpack: trilinos_ifpack_options.xml
+Trilinos_ML: trilinos_ml_options.xml
+Trilinos_Aztec: trilinos_aztec_options.xml
+Trilinos_Belos: trilinos_belos_options.xml  \end{DoxyVerb}
+ \hypertarget{classINMOST_1_1Solver_ad943889a4b31789185eee09af14a5d45}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Iterations@{Iterations}}
+\index{Iterations@{Iterations}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Iterations}]{\setlength{\rightskip}{0pt plus 5cm}I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Iterations (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_ad943889a4b31789185eee09af14a5d45}
+
+
+Return the number of iterations performed by the last solution. 
+
+\begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{Solver\-::\-Solve} 
+\end{DoxySeeAlso}
+\hypertarget{classINMOST_1_1Solver_ad10f8b22ba2d3c4ecbb4c22abfc62266}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Residual@{Residual}}
+\index{Residual@{Residual}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Residual}]{\setlength{\rightskip}{0pt plus 5cm}I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Residual (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_ad10f8b22ba2d3c4ecbb4c22abfc62266}
+
+
+Return the final residual achieved by the last solution. 
+
+\begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{Solver\-::\-Solve} 
+\end{DoxySeeAlso}
+\hypertarget{classINMOST_1_1Solver_a8e70ae0ef4eaa220d1db45089b4df1ff}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Set\-Matrix@{Set\-Matrix}}
+\index{Set\-Matrix@{Set\-Matrix}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Set\-Matrix}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Set\-Matrix (
+\begin{DoxyParamCaption}
+\item[{{\bf Matrix} \&}]{A, }
+\item[{bool}]{Old\-Preconditioner = {\ttfamily false}}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_a8e70ae0ef4eaa220d1db45089b4df1ff}
+
+
+Set the matrix and construct the preconditioner. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em A} & \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} A in linear problem Ax = b \\
+\hline
+{\em Old\-Preconditioner} & If this parameter is set to true, then the previous preconditioner will be used, otherwise the new preconditioner will be constructed.\\
+\hline
+\end{DoxyParams}
+Preconditioner will be constructed on call to this function
+\begin{DoxyItemize}
+\item for I\-N\-N\-E\-R\-\_\-$\ast$, P\-E\-T\-Sc and A\-N\-I packages
+\item for Trilinos preconditioner will be constructed each time \hyperlink{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{Solver\-::\-Solve} is called
+\end{DoxyItemize}
+
+Any changes to preconditioner parameters should happen before that point. If you increase gmres\-\_\-substep after this point, inner methods most likely will fail \hypertarget{classINMOST_1_1Solver_a099f1bc2e5f530a30ff37f5fc3033d8a}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Set\-Parameter\-Enum@{Set\-Parameter\-Enum}}
+\index{Set\-Parameter\-Enum@{Set\-Parameter\-Enum}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Set\-Parameter\-Enum}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Set\-Parameter\-Enum (
+\begin{DoxyParamCaption}
+\item[{std\-::string}]{name, }
+\item[{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E}]{value}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_a099f1bc2e5f530a30ff37f5fc3033d8a}
+
+
+Set the solver parameter of the integer type. 
+
+You can find defaults for parameters in the top of the file \hyperlink{inmost__solver_8h_source}{inmost\-\_\-solver.\-h}.
+
+Parameters\-:
+\begin{DoxyItemize}
+\item \char`\"{}maximum\-\_\-iterations\char`\"{} -\/ total number of iterations
+\item \char`\"{}schwartz\-\_\-overlap\char`\"{} -\/ number of overlapping levels for additive schwartz method, works for\-: I\-N\-N\-E\-R\-\_\-\-I\-L\-U2, I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C Trilinos\-\_\-\-Aztec, Trilinos\-\_\-\-Belos, Trilinos\-\_\-\-M\-L, Trilinos\-\_\-\-Ifpack P\-E\-T\-Sc
+\item \char`\"{}gmres\-\_\-substeps\char`\"{} -\/ number of gmres steps performed after each bicgstab step, works for\-: I\-N\-N\-E\-R\-\_\-\-I\-L\-U2, I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C
+\item \char`\"{}reorder\-\_\-nonzeros\char`\"{} -\/ place sparser rows at the beggining of matrix during reordering, works for\-: I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C
+\item \char`\"{}rescale\-\_\-iterations\char`\"{} -\/ number of iterations for two-\/side matrix rescaling, works for\-: I\-N\-N\-E\-R\-\_\-\-I\-L\-U2, I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C
+\item \char`\"{}condition\-\_\-estimation\char`\"{} -\/ exploit condition estimation of inversed factors to adapt drop and reuse tolerances, works for\-: I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C
+\item \char`\"{}adapt\-\_\-ddpq\-\_\-tolerance\char`\"{} -\/ adapt ddpq tolerance depending from the complexity works for\-: I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C 
+\end{DoxyItemize}\hypertarget{classINMOST_1_1Solver_a7997f1ad3cce898632e582de27f08a42}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Set\-Parameter\-Real@{Set\-Parameter\-Real}}
+\index{Set\-Parameter\-Real@{Set\-Parameter\-Real}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Set\-Parameter\-Real}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Set\-Parameter\-Real (
+\begin{DoxyParamCaption}
+\item[{std\-::string}]{name, }
+\item[{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E}]{value}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_a7997f1ad3cce898632e582de27f08a42}
+
+
+Set the solver parameter of the real type. 
+
+You can find defaults for parameters in the top of the file \hyperlink{inmost__solver_8h_source}{inmost\-\_\-solver.\-h}.
+
+Parameters\-:
+\begin{DoxyItemize}
+\item \char`\"{}absolute\-\_\-tolerance\char`\"{} -\/ iterative method will stop on i-\/th iteration if $|$$|$\-A x(i)-\/b$|$$|$ $<$ absolute\-\_\-tolerance
+\item \char`\"{}relative\-\_\-tolerance\char`\"{} -\/ iterative method will stop on i-\/th iteration if $|$$|$\-A x(i)-\/b$|$$|$/$|$$|$\-A x(0) -\/ b$|$$|$
+\item \char`\"{}divergence\-\_\-tolerance\char`\"{} -\/ iterative method will fail if $|$$|$\-A x(i) -\/ b$|$$|$ $>$ divergence\-\_\-tolerance
+\item \char`\"{}drop\-\_\-tolerance\char`\"{} -\/ tolerance for dropping values during incomplete factorization, works for\-: I\-N\-N\-E\-R\-\_\-\-I\-L\-U2, I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C Trilinos\-\_\-\-Aztec, Trilinos\-\_\-\-Ifpack P\-E\-T\-Sc
+\item \char`\"{}reuse\-\_\-tolerance\char`\"{} -\/ tolerance for reusing values during incomplete factorization, these values are used only during calculation of L and U factors and/or Schur complement and discarded once factorization is done, value should be less then \char`\"{}drop\-\_\-tolerance\char`\"{}, typical value is drop\-\_\-tolerance$^\wedge$2, works for\-: I\-N\-N\-E\-R\-\_\-\-I\-L\-U2, I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C
+\item \char`\"{}ddpq\-\_\-tolerance\char`\"{} -\/ by this tolerance most diagonnaly-\/dominant elements will be selected to form the next level of factorization, the closer the tolerance is to one the smaller will be the level. Actual rule is\-: A(i,j)/(sum(A(i,\-:))+sum(A(\-:,j))-\/\-A(i,j)) $>$ ddpq\-\_\-tolerance $\ast$ A(imax,jmax)/(sum(A(imax,\-:))+sum(A(\-:,jmax))-\/\-A(imax,jmax)) where on imax, jmax maximum is reached. works for\-: I\-N\-N\-E\-R\-\_\-\-M\-L\-I\-L\-U\-C
+\item \char`\"{}fill\-\_\-level\char`\"{} -\/ level of fill for I\-L\-U-\/type preconditioners, works for\-: I\-N\-N\-E\-R\-\_\-\-I\-L\-U2 (if L\-F\-I\-L\-L is defined in solver\-\_\-ilu2.\-hpp) Trilinos, Trilinos\-\_\-\-Ifpack 
+\end{DoxyItemize}\hypertarget{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}{\index{I\-N\-M\-O\-S\-T\-::\-Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}!Solve@{Solve}}
+\index{Solve@{Solve}!INMOST::Solver@{I\-N\-M\-O\-S\-T\-::\-Solver}}
+\subsubsection[{Solve}]{\setlength{\rightskip}{0pt plus 5cm}bool I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Solve (
+\begin{DoxyParamCaption}
+\item[{{\bf Vector} \&}]{R\-H\-S, }
+\item[{{\bf Vector} \&}]{S\-O\-L}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_ab31891d2c65c0ac93c06b91222b5cbfd}
+
+
+\hyperlink{classINMOST_1_1Solver}{Solver} the linear system\-: A$\ast$x = b. 
+
+Prior to this call you should call Set\-Matrix
+
+
+\begin{DoxyParams}{Parameters}
+{\em R\-H\-S} & The right-\/hand side \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} b. \\
+\hline
+{\em S\-O\-L} & The initial guess to the solution on input and the solution \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} x on return.\\
+\hline
+\end{DoxyParams}
+It is assumed that the coefficient matrix A have been set and the preconditioner have been already constructed.
+
+\begin{DoxySeeAlso}{See Also}
+\hyperlink{classINMOST_1_1Solver_a8e70ae0ef4eaa220d1db45089b4df1ff}{Solver\-::\-Set\-Matrix} 
+\end{DoxySeeAlso}
+
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+inmost\-\_\-solver.\-h\end{DoxyCompactItemize}

@@ -1,0 +1,125 @@
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo}{\section{I\-N\-M\-O\-S\-T\-:\-:Solver\-:\-:Order\-Info Class Reference}
+\label{classINMOST_1_1Solver_1_1OrderInfo}\index{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Order\-Info@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Order\-Info}}
+}
+
+
+Base class for low level operations with objects of \hyperlink{classINMOST_1_1Solver}{Solver} class.  
+
+
+
+
+{\ttfamily \#include $<$inmost\-\_\-solver.\-h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a39cb3da0f477eebc9742377ab0e451cc}{void {\bfseries Clear} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_a39cb3da0f477eebc9742377ab0e451cc}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a7a2e4998859c13bd156d40ab02c4d099}{bool \& \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a7a2e4998859c13bd156d40ab02c4d099}{Have\-Matrix} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_a7a2e4998859c13bd156d40ab02c4d099}
+
+\begin{DoxyCompactList}\small\item\em Return true if \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} data have already been specified. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a85ac0fe0f430301dab083aff8e241873}{{\bfseries Order\-Info} (const \hyperlink{classINMOST_1_1Solver_1_1OrderInfo}{Order\-Info} \&other)}\label{classINMOST_1_1Solver_1_1OrderInfo_a85ac0fe0f430301dab083aff8e241873}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a3d57307d3179f786d8a6fdc4948bc03b}{\hyperlink{classINMOST_1_1Solver_1_1OrderInfo}{Order\-Info} \& {\bfseries operator=} (\hyperlink{classINMOST_1_1Solver_1_1OrderInfo}{Order\-Info} const \&other)}\label{classINMOST_1_1Solver_1_1OrderInfo_a3d57307d3179f786d8a6fdc4948bc03b}
+
+\item 
+void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a24d9af6294ae5f25d3eec4b7833108b6}{Prepare\-Matrix} (\hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} \&m, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E overlap)
+\begin{DoxyCompactList}\small\item\em Prepare parallel state of the \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} with specified overlap size. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_ac56c713ddc7621e7125ef4ffe50ae281}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_ac56c713ddc7621e7125ef4ffe50ae281}{Restore\-Matrix} (\hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} \&m)}\label{classINMOST_1_1Solver_1_1OrderInfo_ac56c713ddc7621e7125ef4ffe50ae281}
+
+\begin{DoxyCompactList}\small\item\em Restore initial nonparallel state of the \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} with no overlap. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_ac5e96200d538f423e778f72fdde35501}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_ac5e96200d538f423e778f72fdde35501}{Prepare\-Vector} (\hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} \&v) const }\label{classINMOST_1_1Solver_1_1OrderInfo_ac5e96200d538f423e778f72fdde35501}
+
+\begin{DoxyCompactList}\small\item\em Prepare parallel state of the \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector}. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_ac01e678d820b3461f6efedbc2adff276}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_ac01e678d820b3461f6efedbc2adff276}{Restore\-Vector} (\hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} \&v) const }\label{classINMOST_1_1Solver_1_1OrderInfo_ac01e678d820b3461f6efedbc2adff276}
+
+\begin{DoxyCompactList}\small\item\em Restore initial nonparallel state of the \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector}. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a620b59195a4bfa6a742e63d926b887a6}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a620b59195a4bfa6a742e63d926b887a6}{Get\-Processor} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E gind) const }\label{classINMOST_1_1Solver_1_1OrderInfo_a620b59195a4bfa6a742e63d926b887a6}
+
+\begin{DoxyCompactList}\small\item\em Retrieve the processor number by binary search for the specified global index. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a4ce42a0cb98cef16a89ad959009f6abd}{void {\bfseries Get\-Overlap\-Region} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E proc, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \&mbeg, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \&mend) const }\label{classINMOST_1_1Solver_1_1OrderInfo_a4ce42a0cb98cef16a89ad959009f6abd}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a22fe66e8bb6198d67bdd7e97eee4fe23}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a22fe66e8bb6198d67bdd7e97eee4fe23}{Get\-Local\-Region} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E proc, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \&mbeg, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \&mend) const }\label{classINMOST_1_1Solver_1_1OrderInfo_a22fe66e8bb6198d67bdd7e97eee4fe23}
+
+\begin{DoxyCompactList}\small\item\em Get the local index region for the specified process. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a03437ef8f15cef652ada3a6c401bdfcd}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a03437ef8f15cef652ada3a6c401bdfcd}{Get\-Vector\-Region} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \&mbeg, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \&mend) const }\label{classINMOST_1_1Solver_1_1OrderInfo_a03437ef8f15cef652ada3a6c401bdfcd}
+
+\begin{DoxyCompactList}\small\item\em Get the local index region for the current process. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a63c69e2e7e85de999627eb12a547a0c6}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a63c69e2e7e85de999627eb12a547a0c6}{Get\-Rank} () const }\label{classINMOST_1_1Solver_1_1OrderInfo_a63c69e2e7e85de999627eb12a547a0c6}
+
+\begin{DoxyCompactList}\small\item\em Get the rank of the current communicator, i.\-e. the current process index. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_abb1a4ca671c5d5e731926c300d597825}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_abb1a4ca671c5d5e731926c300d597825}{Get\-Size} () const }\label{classINMOST_1_1Solver_1_1OrderInfo_abb1a4ca671c5d5e731926c300d597825}
+
+\begin{DoxyCompactList}\small\item\em Get the size of the current communicator, i.\-e. the total number of processes used. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a76c34bb3769aa0f8b29d0a9bb4f05d0c}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a76c34bb3769aa0f8b29d0a9bb4f05d0c}{Update} (\hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} \&x)}\label{classINMOST_1_1Solver_1_1OrderInfo_a76c34bb3769aa0f8b29d0a9bb4f05d0c}
+
+\begin{DoxyCompactList}\small\item\em Update the shared data in parallel vector. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a4576eab65fafa6986f46161444e47850}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a4576eab65fafa6986f46161444e47850}{Accumulate} (\hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} \&x)}\label{classINMOST_1_1Solver_1_1OrderInfo_a4576eab65fafa6986f46161444e47850}
+
+\begin{DoxyCompactList}\small\item\em Sum shared values in parallel vector. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_af82028af97d514f9811d21a5b58ae9e9}{void \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_af82028af97d514f9811d21a5b58ae9e9}{Integrate} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E $\ast$inout, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E num) const }\label{classINMOST_1_1Solver_1_1OrderInfo_af82028af97d514f9811d21a5b58ae9e9}
+
+\begin{DoxyCompactList}\small\item\em Get the sum of num elements of real array on all processes. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a95d7134a518336c36025e18171eafb05}{I\-N\-M\-O\-S\-T\-\_\-\-M\-P\-I\-\_\-\-Comm \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a95d7134a518336c36025e18171eafb05}{Get\-Comm} () const }\label{classINMOST_1_1Solver_1_1OrderInfo_a95d7134a518336c36025e18171eafb05}
+
+\begin{DoxyCompactList}\small\item\em Get the communicator which the solver is associated with. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a0e4e243c601d87a4be072c2fc8c1a3c9}{I\-N\-M\-O\-S\-T\-\_\-\-M\-P\-I\-\_\-\-Request $\ast$ {\bfseries Get\-Send\-Requests} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_a0e4e243c601d87a4be072c2fc8c1a3c9}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a9fb17df8429be00a1a9489d44a04645e}{I\-N\-M\-O\-S\-T\-\_\-\-M\-P\-I\-\_\-\-Request $\ast$ {\bfseries Get\-Recv\-Requests} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_a9fb17df8429be00a1a9489d44a04645e}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a3f0bac5fba6d238cb22a76c2094a5f48}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Send\-Requests\-Size} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_a3f0bac5fba6d238cb22a76c2094a5f48}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_ae766d3d64dc46603feb600e1f19105c5}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Recv\-Requests\-Size} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_ae766d3d64dc46603feb600e1f19105c5}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_ad3df60e1a4c9e016aef33a800e048dce}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E $\ast$ {\bfseries Get\-Send\-Exchange\-Array} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_ad3df60e1a4c9e016aef33a800e048dce}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_acb8c8c157fbdb8609047cad5a18407ea}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Send\-Exchange\-Size} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_acb8c8c157fbdb8609047cad5a18407ea}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a90ba99d91a554c149d20f1cbbcb9afee}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E $\ast$ {\bfseries Get\-Recv\-Exchange\-Array} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_a90ba99d91a554c149d20f1cbbcb9afee}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a786492332f92c61da93e69864e173f4a}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Recv\-Exchange\-Size} ()}\label{classINMOST_1_1Solver_1_1OrderInfo_a786492332f92c61da93e69864e173f4a}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a9dd49ffce6b6008212c97f9c93ce8d4e}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_1_1OrderInfo_a9dd49ffce6b6008212c97f9c93ce8d4e}{Scalar\-Prod} (\hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} const \&left, \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} const \&right, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E index\-\_\-begin, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E index\-\_\-end) const }\label{classINMOST_1_1Solver_1_1OrderInfo_a9dd49ffce6b6008212c97f9c93ce8d4e}
+
+\begin{DoxyCompactList}\small\item\em Get the scalar product of the specified interval of the distributed vector. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Base class for low level operations with objects of \hyperlink{classINMOST_1_1Solver}{Solver} class. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classINMOST_1_1Solver_1_1OrderInfo_a24d9af6294ae5f25d3eec4b7833108b6}{\index{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Order\-Info@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Order\-Info}!Prepare\-Matrix@{Prepare\-Matrix}}
+\index{Prepare\-Matrix@{Prepare\-Matrix}!INMOST::Solver::OrderInfo@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Order\-Info}}
+\subsubsection[{Prepare\-Matrix}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Order\-Info\-::\-Prepare\-Matrix (
+\begin{DoxyParamCaption}
+\item[{{\bf Matrix} \&}]{m, }
+\item[{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E}]{overlap}
+\end{DoxyParamCaption}
+)}}\label{classINMOST_1_1Solver_1_1OrderInfo_a24d9af6294ae5f25d3eec4b7833108b6}
+
+
+Prepare parallel state of the \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} with specified overlap size. 
+
+This state of the matrix can be used, for instance, to construct the preconditioner for Additive Swartz method. 
+\begin{DoxyParams}{Parameters}
+{\em m} & \hyperlink{classINMOST_1_1Solver_1_1Matrix}{Matrix} to be expanded. \\
+\hline
+{\em overlap} & Overlap size, viz. the number of overlap layers. \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+inmost\-\_\-solver.\-h\end{DoxyCompactItemize}

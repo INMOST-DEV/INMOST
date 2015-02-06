@@ -1,0 +1,167 @@
+\hypertarget{classINMOST_1_1Solver_1_1Row}{\section{I\-N\-M\-O\-S\-T\-:\-:Solver\-:\-:Row Class Reference}
+\label{classINMOST_1_1Solver_1_1Row}\index{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row}}
+}
+
+
+Class to store the sparse matrix row.  
+
+
+
+
+{\ttfamily \#include $<$inmost\-\_\-solver.\-h$>$}
+
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structINMOST_1_1Solver_1_1Row_1_1entry__s}{entry\-\_\-s}
+\begin{DoxyCompactList}\small\item\em Entry of the sparse matrix row. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a83f9b826189f21abd7ad395608901825}{typedef struct \\*
+\hyperlink{structINMOST_1_1Solver_1_1Row_1_1entry__s}{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row\-::entry\-\_\-s} \hyperlink{classINMOST_1_1Solver_1_1Row_a83f9b826189f21abd7ad395608901825}{entry}}\label{classINMOST_1_1Solver_1_1Row_a83f9b826189f21abd7ad395608901825}
+
+\begin{DoxyCompactList}\small\item\em Entry of the sparse matrix row. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_afbcd3de717631f8d5d2dd53ebaf3855b}{typedef dynarray$<$ \hyperlink{classINMOST_1_1Solver_1_1Row_a83f9b826189f21abd7ad395608901825}{entry}, 16 $>$ {\bfseries Entries}}\label{classINMOST_1_1Solver_1_1Row_afbcd3de717631f8d5d2dd53ebaf3855b}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ab8acd9e8e471bcc8e0ef5acf4974e3e3}{typedef Entries\-::iterator {\bfseries iterator}}\label{classINMOST_1_1Solver_1_1Row_ab8acd9e8e471bcc8e0ef5acf4974e3e3}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a20fda02b31081d59482d9bbe1d2219be}{typedef Entries\-::const\-\_\-iterator {\bfseries const\-\_\-iterator}}\label{classINMOST_1_1Solver_1_1Row_a20fda02b31081d59482d9bbe1d2219be}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a5b9530cb6fce446eea45ce9128b8feef}{typedef Entries\-::reverse\-\_\-iterator {\bfseries reverse\-\_\-iterator}}\label{classINMOST_1_1Solver_1_1Row_a5b9530cb6fce446eea45ce9128b8feef}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a8917a1291254817a0ed93c9b62c53f58}{typedef \\*
+Entries\-::const\-\_\-reverse\-\_\-iterator {\bfseries const\-\_\-reverse\-\_\-iterator}}\label{classINMOST_1_1Solver_1_1Row_a8917a1291254817a0ed93c9b62c53f58}
+
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a0118f755b9f625a86daec89fb0fd3b10}{void {\bfseries Report} ()}\label{classINMOST_1_1Solver_1_1Row_a0118f755b9f625a86daec89fb0fd3b10}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a636ac5a6d862b93a81706022ba3656bb}{void {\bfseries Set\-Marker} ()}\label{classINMOST_1_1Solver_1_1Row_a636ac5a6d862b93a81706022ba3656bb}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a21da67468799355d250d8b9a1203303a}{void {\bfseries Rem\-Marker} ()}\label{classINMOST_1_1Solver_1_1Row_a21da67468799355d250d8b9a1203303a}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_affe6afd6d1360741bbda3da9ece864ca}{bool {\bfseries Get\-Marker} ()}\label{classINMOST_1_1Solver_1_1Row_affe6afd6d1360741bbda3da9ece864ca}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_aab8578ccd5366204ee4db2bd0350dbf4}{{\bfseries Row} (const \hyperlink{classINMOST_1_1Solver_1_1Row}{Row} \&other)}\label{classINMOST_1_1Solver_1_1Row_aab8578ccd5366204ee4db2bd0350dbf4}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ada200daf944fd240ec23d41c8dd9b0c1}{{\bfseries Row} (\hyperlink{classINMOST_1_1Solver_1_1Row_a83f9b826189f21abd7ad395608901825}{entry} $\ast$pbegin, \hyperlink{classINMOST_1_1Solver_1_1Row_a83f9b826189f21abd7ad395608901825}{entry} $\ast$pend)}\label{classINMOST_1_1Solver_1_1Row_ada200daf944fd240ec23d41c8dd9b0c1}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_aefcfbbcf45bb6ac91990c3814d87ef6d}{void {\bfseries Lock} ()}\label{classINMOST_1_1Solver_1_1Row_aefcfbbcf45bb6ac91990c3814d87ef6d}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ac2945647b3ab8a2e6fcbcf148175056d}{void {\bfseries Unlock} ()}\label{classINMOST_1_1Solver_1_1Row_ac2945647b3ab8a2e6fcbcf148175056d}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a88fbacc12cd00bc3e9508e4180cb3d72}{\hyperlink{classINMOST_1_1Solver_1_1Row}{Row} \& {\bfseries operator=} (\hyperlink{classINMOST_1_1Solver_1_1Row}{Row} const \&other)}\label{classINMOST_1_1Solver_1_1Row_a88fbacc12cd00bc3e9508e4180cb3d72}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_afaef4cd8aebf4d290f4503de194f7910}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E \& \hyperlink{classINMOST_1_1Solver_1_1Row_afaef4cd8aebf4d290f4503de194f7910}{operator\mbox{[}$\,$\mbox{]}} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E i)}\label{classINMOST_1_1Solver_1_1Row_afaef4cd8aebf4d290f4503de194f7910}
+
+\begin{DoxyCompactList}\small\item\em The operator \mbox{[}\mbox{]} used to fill the sparse matrix row, but not to access individual elements of the row. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ae65332e42ee2fdf2755d6200a7750eaf}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_1_1Row_ae65332e42ee2fdf2755d6200a7750eaf}{operator\mbox{[}$\,$\mbox{]}} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E i) const }\label{classINMOST_1_1Solver_1_1Row_ae65332e42ee2fdf2755d6200a7750eaf}
+
+\begin{DoxyCompactList}\small\item\em The operator \mbox{[}\mbox{]} used to access individual elements of the row. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ac86e436d943e530c3f0dd3d9f22b8fdf}{void \hyperlink{classINMOST_1_1Solver_1_1Row_ac86e436d943e530c3f0dd3d9f22b8fdf}{Clear} ()}\label{classINMOST_1_1Solver_1_1Row_ac86e436d943e530c3f0dd3d9f22b8fdf}
+
+\begin{DoxyCompactList}\small\item\em Clear all data of the current row. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_aab38e0f7e84952a0bb62d23338445580}{void {\bfseries Swap} (\hyperlink{classINMOST_1_1Solver_1_1Row}{Solver\-::\-Row} \&other)}\label{classINMOST_1_1Solver_1_1Row_aab38e0f7e84952a0bb62d23338445580}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_aa1e5f7bccac23fee20de403374b5cc65}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_1_1Row_aa1e5f7bccac23fee20de403374b5cc65}{Size} () const }\label{classINMOST_1_1Solver_1_1Row_aa1e5f7bccac23fee20de403374b5cc65}
+
+\begin{DoxyCompactList}\small\item\em The size of the sparse row, i.\-e. the total number of nonzero elements. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_aeeaec59f6d6f5e8eb96cd2f4dfbf1f45}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E \& {\bfseries Get\-Index} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E k)}\label{classINMOST_1_1Solver_1_1Row_aeeaec59f6d6f5e8eb96cd2f4dfbf1f45}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_aa55f0df7ce1445b8a3141c45b78839c1}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E \& {\bfseries Get\-Value} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E k)}\label{classINMOST_1_1Solver_1_1Row_aa55f0df7ce1445b8a3141c45b78839c1}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_aadebc4bfba05b2f5cb274dc904c5ca2a}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Index} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E k) const }\label{classINMOST_1_1Solver_1_1Row_aadebc4bfba05b2f5cb274dc904c5ca2a}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a8078b3435a0d2fef8ee285ed045a6cd2}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E {\bfseries Get\-Value} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E k) const }\label{classINMOST_1_1Solver_1_1Row_a8078b3435a0d2fef8ee285ed045a6cd2}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a04f7f359a9ec0a3ae0c4b74586e25398}{iterator {\bfseries Begin} ()}\label{classINMOST_1_1Solver_1_1Row_a04f7f359a9ec0a3ae0c4b74586e25398}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ace5b0538e549c621956412c3f6edce16}{iterator {\bfseries End} ()}\label{classINMOST_1_1Solver_1_1Row_ace5b0538e549c621956412c3f6edce16}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a8944846feb4a1d33df5ac39d0d84929f}{const\-\_\-iterator {\bfseries Begin} () const }\label{classINMOST_1_1Solver_1_1Row_a8944846feb4a1d33df5ac39d0d84929f}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a8ad80117dea23ed625e13d88fff017c0}{const\-\_\-iterator {\bfseries End} () const }\label{classINMOST_1_1Solver_1_1Row_a8ad80117dea23ed625e13d88fff017c0}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a144833591962eda366d902a1bbc5859c}{reverse\-\_\-iterator {\bfseries r\-Begin} ()}\label{classINMOST_1_1Solver_1_1Row_a144833591962eda366d902a1bbc5859c}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ae6029686b9d4203f940fbc25105abda2}{reverse\-\_\-iterator {\bfseries r\-End} ()}\label{classINMOST_1_1Solver_1_1Row_ae6029686b9d4203f940fbc25105abda2}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a5d3967eb389061b8efed504154814f36}{const\-\_\-reverse\-\_\-iterator {\bfseries r\-Begin} () const }\label{classINMOST_1_1Solver_1_1Row_a5d3967eb389061b8efed504154814f36}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a10a4f2916edf251ee04cea7c1f6502b7}{const\-\_\-reverse\-\_\-iterator {\bfseries r\-End} () const }\label{classINMOST_1_1Solver_1_1Row_a10a4f2916edf251ee04cea7c1f6502b7}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_ac9cbd7928544cfffe5e8ad8ccea269cb}{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E \hyperlink{classINMOST_1_1Solver_1_1Row_ac9cbd7928544cfffe5e8ad8ccea269cb}{Row\-Vec} (\hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector} \&x) const }\label{classINMOST_1_1Solver_1_1Row_ac9cbd7928544cfffe5e8ad8ccea269cb}
+
+\begin{DoxyCompactList}\small\item\em Return the scalar product of the current sparse row by a dense \hyperlink{classINMOST_1_1Solver_1_1Vector}{Vector}. \end{DoxyCompactList}\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a67f9cbe973e71fa8b9ba1dc92256b75a}{void {\bfseries Move\-Row} (\hyperlink{classINMOST_1_1Solver_1_1Row}{Row} \&new\-\_\-pos)}\label{classINMOST_1_1Solver_1_1Row_a67f9cbe973e71fa8b9ba1dc92256b75a}
+
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_af7022d7b2c223927e07b22f43584c93b}{void \hyperlink{classINMOST_1_1Solver_1_1Row_af7022d7b2c223927e07b22f43584c93b}{Zero} ()}\label{classINMOST_1_1Solver_1_1Row_af7022d7b2c223927e07b22f43584c93b}
+
+\begin{DoxyCompactList}\small\item\em Set the vector entries by zeroes. \end{DoxyCompactList}\item 
+void \hyperlink{classINMOST_1_1Solver_1_1Row_af5a53ab2f8e8febc9ce3196ff054cb01}{Push} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E val)
+\begin{DoxyCompactList}\small\item\em Push specified element into sparse row. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a709889bdf720d73e7aa874b5b6a0d231}{static \-\_\-\-\_\-\-I\-N\-L\-I\-N\-E \hyperlink{classINMOST_1_1Solver_1_1Row_a83f9b826189f21abd7ad395608901825}{entry} {\bfseries make\-\_\-entry} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E val)}\label{classINMOST_1_1Solver_1_1Row_a709889bdf720d73e7aa874b5b6a0d231}
+
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classINMOST_1_1Solver_1_1Row_a417f7f35421de05227023d03a1c9c095}{bool {\bfseries modified\-\_\-pattern}}\label{classINMOST_1_1Solver_1_1Row_a417f7f35421de05227023d03a1c9c095}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Class to store the sparse matrix row. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classINMOST_1_1Solver_1_1Row_af5a53ab2f8e8febc9ce3196ff054cb01}{\index{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row}!Push@{Push}}
+\index{Push@{Push}!INMOST::Solver::Row@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row}}
+\subsubsection[{Push}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row\-::\-Push (
+\begin{DoxyParamCaption}
+\item[{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E}]{ind, }
+\item[{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E}]{val}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classINMOST_1_1Solver_1_1Row_af5a53ab2f8e8febc9ce3196ff054cb01}
+
+
+Push specified element into sparse row. 
+
+This function should be used only if the index is not repeated in the row and all indexes are inserted in increasing order. 
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+inmost\-\_\-solver.\-h\end{DoxyCompactItemize}
