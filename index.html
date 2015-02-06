@@ -62,18 +62,29 @@ INMOST.lib
 
 
 	<h3>
-		 Setup this site repository on your computer
+		 Setup the repository of this site on your computer
 	</h3>
-	      <pre><code>
+	<pre><code>
 $ mkdir INMOST.pages
 $ git clone https://github.com/INMOST-DEV/INMOST.git INMOST.pages
 $ cd INMOST.pages
 $ git fetch origin
 $ git checkout gh-pages
-	      </code></pre>
+	</code></pre>
+
+	<p> After you make changes to the site you may add them by </p>
+
+	<pre><code>
+$ git pull
+$ git add .
+$ git commit -m "site update"
+$ git push
+	</code></pre>
+
+	<p> check online that changes are effective </p>
 
 	<h3>
-		Visit INMOST Wiki pages for User Guides
+		Visit INMOST Wiki resources for User Guides
 	</h3>
 
 	<a href="https://github.com/INMOST-DEV/INMOST/wiki">https://github.com/INMOST-DEV/INMOST/wiki</a>
@@ -91,6 +102,7 @@ $ cd INMOST.wiki
 	<p>Now you can edit INMOST wiki pages in Markdown notation and publish them by:</p>
 
 	<pre><code>
+$ git pull
 $ git add .
 $ git commit -m "wiki publish"
 $ git push
@@ -122,12 +134,16 @@ $ doxygen Doxyfile_pages
 	</code></pre>
 
 	<p> Then to update the site do the following: </p>
+
 	<pre><code>
 $ cd ../../INMOST.pages
+$ git pull
 $ git add Doxygen/.
 $ git commit -m "update Doxygen documentation"
 $ git push
 	</code></pre>
+
+	<p> Check online that changes are effective. </p>
 
 
 	<h3>
