@@ -48,7 +48,7 @@
 
 
         <h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to INMOST project page.</h3>
 
 	<h3>
 		 Setup this site repository on your computer
@@ -72,9 +72,9 @@ $ git checkout gh-pages
 	</h3>
 
 	<pre><code>
-$mkdir INMOST.wiki
-$git clone https://github.com/INMOST-DEV/INMOST.wiki.git INMOST.wiki
-$cd INMOST.wiki
+$ mkdir INMOST.wiki
+$ git clone https://github.com/INMOST-DEV/INMOST.wiki.git INMOST.wiki
+$ cd INMOST.wiki
 	</code></pre>
 
 	<p>Now you can edit INMOST wiki pages in Markdown notation and commit them by <code>git commit</code>.</p>
@@ -89,11 +89,26 @@ $cd INMOST.wiki
 		Generate local copy of Doxygen documentation
 	</h3>
 	<pre><code>
-$mkdir INMOST.lib
-$git clone https://github.com/INMOST-DEV/INMOST.git
-$cd INMOST.lib/Documentation
-$.\doxygen
+$ mkdir INMOST.lib
+$ git clone https://github.com/INMOST-DEV/INMOST.git
+$ cd INMOST.lib/Documentation
+$ doxygen Doxyfile
 	</code></pre>
+
+	<p> If you have a folder of this site alongside with the source of your INMOST folder, then you can regenerate doxygen documentation for the site:</p>
+
+	<pre><code>
+$ doxygen Doxygile_pages
+	</code></pre>
+
+	<p> Then to update the site do the following: </p>
+	<pre><code>
+$ cd ../../INMOST.pages
+$ git add Doxygen/.
+$ git commit -m "update Doxygen documentation"
+$ git push
+	</code></pre>
+
 
 	<h3>
 		Something automatically generated below...
