@@ -20,5 +20,5 @@ Refer to https://github.com/INMOST-DEV/INMOST/wiki for general guides.
 ## Doxygen documentation
 Doxygen-generated documentation is available online at http://dodo.inm.ras.ru/inmost/docs/latest/html/
 
-[![Analytics](https://ga-beacon.appspot.com/UA-59408561-4/INMOST/README.md)](https://github.com/igrigorik/ga-beacon)
+[![Analytics](https://ga-beacon.appspot.com/UA-59408561-4/INMOST/README.md?pixel)](https://github.com/igrigorik/ga-beacon)
 
