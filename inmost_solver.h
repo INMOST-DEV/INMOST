@@ -316,8 +316,8 @@ namespace INMOST
 			}
 			//void           Reserve(INMOST_DATA_ENUM_TYPE num) { data.reserve(num);}
 			/// Clear all data of the current row.
-			void                  Clear() { data.clear(); }
-			void                  Swap(Solver::Row & other) { data.swap(other.data); bool tmp = marker; marker = other.marker; other.marker = tmp; }
+			void                    Clear() { data.clear(); }
+			void                    Swap(Solver::Row & other) { data.swap(other.data); bool tmp = marker; marker = other.marker; other.marker = tmp; }
 			/// The size of the sparse row, i.e. the total number of nonzero elements.
 			INMOST_DATA_ENUM_TYPE   Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
 			INMOST_DATA_ENUM_TYPE & GetIndex(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->first;}
@@ -325,23 +325,27 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE   GetIndex(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->first;}
 			INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
 			
-			iterator              Begin() {return data.begin();}
-			iterator              End() {return data.end();}
-			const_iterator        Begin() const {return data.begin();}
-			const_iterator        End() const {return data.end();}
-			reverse_iterator      rBegin() { return data.rbegin(); }
-			reverse_iterator      rEnd() { return data.rend(); }
-			const_reverse_iterator rBegin() const { return data.rbegin(); }
-			const_reverse_iterator rEnd() const { return data.rend(); }
+			iterator                Begin() {return data.begin();}
+			iterator                End() {return data.end();}
+			const_iterator          Begin() const {return data.begin();}
+			const_iterator          End() const {return data.end();}
+			reverse_iterator        rBegin() { return data.rbegin(); }
+			reverse_iterator        rEnd() { return data.rend(); }
+			const_reverse_iterator  rBegin() const { return data.rbegin(); }
+			const_reverse_iterator  rEnd() const { return data.rend(); }
 			/// Return the scalar product of the current sparse row by a dense Vector.
 			INMOST_DATA_REAL_TYPE   RowVec(Vector & x) const; // returns A(row) * x
-			void                  MoveRow(Row & new_pos) {data = new_pos.data;} //here move constructor and std::move may be used in future
+			void                    MoveRow(Row & new_pos) {data = new_pos.data;} //here move constructor and std::move may be used in future
 			/// Set the vector entries by zeroes.
-			void                  Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
+			void                    Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
 			/// Push specified element into sparse row.
-			/// This function should be used only if the index is not repeated in the row
-			/// and all indexes are inserted in increasing order.
-			void                  Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
+			/// This function should be used only if the index is not repeated in the row.
+			void                    Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
+			/// Resize row to specified size. 
+			/// It is intended to be used together with non-const Row::GetIndex and Row::GetValue
+			/// that allow for the modification of individual entries.
+			/// @param size New size of the row.
+			void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
 		};
 		
 		/// Class to store the distributed sparse matrix by compressed rows.

@@ -1155,20 +1155,21 @@ namespace INMOST
 					if( str[k] == ':' ) break;
 				}
 				if( k == strlen(str) ) continue; //invalid line
+				for(l = 0; l < k; ++l) str[l] = tolower(str[l]);
 				l = k+1;
 				while(l < (int)strlen(str) && isspace(str[l]) ) ++l;
 				if( l == strlen(str) ) continue; //skip empty entry
-				if( !strncmp(str,"PETSc",k) )
+				if( !strncmp(str,"petsc",k) )
 					petsc_database_file = std::string(str+l);
-				else if( !strncmp(str,"Trilinos_Ifpack",k) )
+				else if( !strncmp(str,"trilinos_ifpack",k) )
 					trilinos_ifpack_database_file = std::string(str+l);
-				else if( !strncmp(str,"Trilinos_Aztec",k) )
+				else if( !strncmp(str,"trilinos_aztec",k) )
 					trilinos_aztec_database_file = std::string(str+l);
-				else if( !strncmp(str,"Trilinos_ML",k) )
+				else if( !strncmp(str,"trilinos_ml",k) )
 					trilinos_ml_database_file = std::string(str+l);
-				else if( !strncmp(str,"Trilinos_Belos",k) )
+				else if( !strncmp(str,"trilinos_belos",k) )
 					trilinos_belos_database_file = std::string(str+l);
-				else if( !strncmp(str,"ANI",k) )
+				else if( !strncmp(str,"ani",k) )
 					ani_database_file = std::string(str+l);
 			}
 		}
@@ -2112,15 +2113,15 @@ namespace INMOST
         ret = false;
 				break;
 			case AZ_ill_cond:
-				return_reason = "The Hessenberg matrix within GMRES is illconditioned."
-								"This could be caused by a number"
-								"of reasons. For example, the preconditioning"
-								"matrix could be nearly singular due to an unstable"
-								"factorization (note: pivoting is not implemented"
-								"in any of the incomplete factorizations)."
-								"Ill-conditioned Hessenberg matrices could also"
-								"arise from a singular application matrix. In this"
-								"case, GMRES tries to compute a least-squares"
+				return_reason = "The Hessenberg matrix within GMRES is illconditioned. "
+								"This could be caused by a number "
+								"of reasons. For example, the preconditioning "
+								"matrix could be nearly singular due to an unstable "
+								"factorization (note: pivoting is not implemented "
+								"in any of the incomplete factorizations). "
+								"Ill-conditioned Hessenberg matrices could also "
+								"arise from a singular application matrix. In this "
+								"case, GMRES tries to compute a least-squares "
 								"solution.";
 				ret = false;
 				break;

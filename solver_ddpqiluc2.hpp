@@ -53,10 +53,28 @@ class ILUC_preconditioner : public Method
 	typedef dynarray<INMOST_DATA_ENUM_TYPE,256> sort_inds;
 	typedef dynarray<INMOST_DATA_ENUM_TYPE,256> levels_t;
 	//result of multilevel preconditioner
-	//        |LU   F |
+	//        |LDU  F |
 	//  A  =  |       |
 	//        | E   C |
 	// LU decomposition is stored in skyline format with reversed direction
+	//
+	// For the next step of multilevel factorization we have to compute
+	// S = C - (E U) D (L F)
+	//
+	// U is stored by rows
+	// L is stored by columns
+	// F is stored by rows
+	// E is stored by rows
+	// C is stored by rows
+	//
+	// During LF calculation F is traversed transposed (by columns) and
+	// each column is solved with L. 
+	// LF is obtained by columns.
+	//
+	// During EU calculating E is traversed by rows and
+	// each row is solved with U. Then re
+	//
+	// For the faster multiplication of 
 	std::vector<Solver::Row::entry> LU_Entries, B_Entries;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LU_Diag;
 	interval<INMOST_DATA_ENUM_TYPE, Interval> U_Address, L_Address, B_Address;
@@ -431,7 +449,7 @@ public:
 
 #if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0;
-		INMOST_DATA_REAL_TYPE tau2 = iluc2_tau;
+		INMOST_DATA_REAL_TYPE tau2 = iluc2_tau, Anorm;
 		std::vector<Solver::Row::entry> LU2_Entries;
 		interval<INMOST_DATA_ENUM_TYPE, Interval> L2_Address(mobeg, moend+1), U2_Address(mobeg, moend+1);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> U2list(mobeg, moend, UNDEF), L2list(mobeg, moend, UNDEF);
@@ -603,6 +621,8 @@ public:
 			//  A = |       |
 			//      | E   C |
 			//compute B,F
+			Anorm = 0;
+			nzA = 0;
 			for (k = cbeg; k < cend; ++k)
 			{
 				F_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(F_Entries.size());
@@ -613,12 +633,14 @@ public:
 					u = A_Entries[jt].second;
 					if (i < cend) B_Entries.push_back(Solver::Row::make_entry(i, u));
 					else F_Entries.push_back(Solver::Row::make_entry(i,u)); //count nonzero in column of F
+					Anorm += u*u;
 				}
 				F_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(F_Entries.size());
 				B_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
 				std::sort(B_Entries.begin() + B_Address[k].first, B_Entries.end());
 				std::sort(F_Entries.begin() + F_Address[k].first, F_Entries.end());
 				nzEF += F_Address[k].Size();
+				nzA += A_Address[k].Size();
 			}
 			//Setup column addressing for B,F, in descending order to keep list ordered
 			for (k = cend; k > cbeg; --k)
@@ -652,13 +674,16 @@ public:
 					u = A_Entries[jt].second;
 					if (i < cend) E_Entries.push_back(Solver::Row::make_entry(i, u)); //put to row of E
 					else C_Entries.push_back(Solver::Row::make_entry(i, u)); //form new Schur complement
+					Anorm += u*u;
 				}
 				E_Address.back()->at(k).last = static_cast<INMOST_DATA_ENUM_TYPE>(E_Entries.size());
 				C_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(C_Entries.size());
 				// sort entries added to E, because it will be very usefull later
 				std::sort(E_Entries.begin() + E_Address.back()->at(k).first, E_Entries.end());
 				nzEF += E_Address.back()->at(k).Size();
+				nzA += A_Address[k].Size();
 			}
+			Anorm = sqrt(Anorm/static_cast<INMOST_DATA_REAL_TYPE>(nzA));
 			tt3 = Timer() - tt3;
 			ttt = Timer();
 			applyPQ(wbeg, wend, localP, localQ, invP, invQ);
@@ -1943,9 +1968,9 @@ swap_algorithm:
 					{
 						
 						std::cout << std::fixed << std::setprecision(2) << std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg) << "%";
-						std::cout << " nnz U " << std::setprecision(10) << std::setw(10) << nzLU;
+						std::cout << " nnz LU " << std::setprecision(10) << std::setw(10) << nzLU;
 #if defined(ILUC2)
-						std::cout << " U2 " << std::setw(10) << nzLU2;
+						std::cout << " LU2 " << std::setw(10) << nzLU2;
 #endif
 						std::cout << std::scientific << std::setprecision(5) << " condition L " << NuL << " D " << NuD << " U " << NuU;
             std::cout << " pivot swaps " << swaps;
@@ -2328,7 +2353,7 @@ swap_algorithm:
 					Li = LineIndeces[cbeg];
 					while (Li != EOL)
 					{
-            if (fabs(LineValues[Li - 1])*NuL > tau2)
+            if (fabs(LineValues[Li - 1])*NuL > tau2*LU_Diag[Li-1])
 						{
 						  curr = Li;
 						  for (INMOST_DATA_ENUM_TYPE ru = U_Address[Li - 1].first; ru != U_Address[Li - 1].last; ++ru)
@@ -2337,7 +2362,7 @@ swap_algorithm:
 							  j = LU_Entries[ru].first;
 							  if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 								  LineValues[j] -= u;
-							  else if (fabs(u)*NuL > tau2)
+							  else if (fabs(u)*NuL > tau2*LU_Diag[Li-1])
 							  {
 								  next = curr;
 								  while (next < j + 1)
@@ -2357,7 +2382,7 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 //         perform solve with second-order U part                                //
 ///////////////////////////////////////////////////////////////////////////////////
-						if (fabs(LineValues[Li - 1])*NuL > tau)
+						if (fabs(LineValues[Li - 1])*NuL > tau*LU_Diag[Li-1])
 						{
 							curr = Li;
 							for (INMOST_DATA_ENUM_TYPE ru = U2_Address[Li - 1].first; ru != U2_Address[Li - 1].last; ++ru)
@@ -2366,7 +2391,7 @@ swap_algorithm:
 								j = LU2_Entries[ru].first;
 								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 									LineValues[j] -= u;
-								else if (fabs(u)*NuL  > tau2 )
+								else if (fabs(u)*NuL  > tau2*LU_Diag[Li-1] )
 								{
 									next = curr;
 									while (next < j + 1)
@@ -2398,7 +2423,7 @@ swap_algorithm:
 					while (Li != EOL)
 					{
 						j = LineIndeces[Li];
-						if (fabs(LineValues[Li - 1])*NuL < tau2 )//tau2)
+						if (fabs(LineValues[Li - 1])*NuL < tau2*LU_Diag[Li-1] )//tau2)
 						{
 							LineIndeces[Ui] = j;
 							LineIndeces[Li] = UNDEF;
@@ -2439,16 +2464,18 @@ swap_algorithm:
 					while (Li != EOL)
 					{
 						//iterate over corresponding row of LF, add multiplication to list
+						l = LineValues[Li - 1];
 						for (INMOST_DATA_ENUM_TYPE r = LFt_Address[Li - 1].first; r < LFt_Address[Li - 1].last; ++r)
 						{
 							j = LFt_Entries[r].first;
 							u = LFt_Entries[r].second;
-							l = LineValues[Li - 1];
+							v = -l*u;
 							if (Ulist[j] != UNDEF)
-								temp[j] -= u*l;
-							else if( fabs(u)*NuU > tau || fabs(l)*NuL > tau )
+								temp[j] += v;
+							//else if( fabs(u)*NuU > tau || fabs(l)*NuL > tau )
+							else if( fabs(v) > tau2 )
 							{
-								temp[j] = -u*l;
+								temp[j] = v;
 								Ulist[j] = Ubeg[cbeg];
 								Ubeg[cbeg] = j;
 							}
@@ -2477,7 +2504,7 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 //         put calculated row to Schur complement                                //
 ///////////////////////////////////////////////////////////////////////////////////
-          tol_schur = tau2 * Smax / std::max(NuU,NuL);//tau2 * Smax / std::max(NuU,NuL);
+          tol_schur = tau2 * Smax * (Smax / Snorm );//tau2 * Smax / std::max(NuU,NuL);
 					Ui = Ubeg[cbeg];
 					S_Address[i].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 					while (Ui != EOL)
@@ -2518,7 +2545,7 @@ swap_algorithm:
 					if (i % 10 == 0)
 					{
             //carrige return
-						printf("%6.2f%%  nzS %d Smax %g Snorm %g tol %g\r",
+						printf("%6.2f%%  nzS %8d Smax %20g Snorm %20g tol %20g\r",
               100.f*(i - cend) / (1.f*(wend - cend)), nzS,Smax,Snorm,tol_schur);
             fflush(stdout);
 					}
@@ -2901,6 +2928,43 @@ swap_algorithm:
 			output[k] = 0.0;
 			for (m = B_Address[k].first; m < B_Address[k].last; ++m)
 				output[k] += input[B_Entries[m].first] * B_Entries[m].second;
+		}
+	}
+	void ApplyLU(int level, Solver::Vector & input,Solver::Vector & output)
+	{
+		INMOST_DATA_ENUM_TYPE k, m, cbeg, cend;
+		//current B block interval
+		cbeg = level_interval[level].first;
+		cend = level_interval[level].last;
+
+		for (k = cbeg; k < cend; ++k) output[k] = input[k];
+		//Solve with L first
+		for (k = cbeg; k < cend; ++k) //iterator over columns of L
+		{
+			for (INMOST_DATA_ENUM_TYPE r = L_Address[k].first; r != L_Address[k].last; ++r)
+				output[LU_Entries[r].first] -= output[k] * LU_Entries[r].second;
+		}
+		//Solve with diagonal
+		for (k = cbeg; k < cend; ++k) temp[k] /= LU_Diag[k];
+		//Solve with U
+		for (k = cend; k > cbeg; --k) //iterator over rows of U
+		{
+			for (INMOST_DATA_ENUM_TYPE r = U_Address[k - 1].first; r != U_Address[k - 1].last; ++r)
+				output[k - 1] -= output[LU_Entries[r].first] * LU_Entries[r].second;
+		}
+	}
+	void ApplyB(int level, double alpha, Solver::Vector & x, double beta, Solver::Vector & y) // y = alpha A x + beta y
+	{
+		INMOST_DATA_ENUM_TYPE k, m, cbeg, cend;
+		INMOST_DATA_REAL_TYPE temp;
+		for(k = cbeg; k < cend; ++k)
+		{
+			temp = 0.0;
+			for(m = B_Address[k].first; m != B_Address[k].last; ++m)
+			{
+				temp += B_Entries[m].second*x[B_Entries[m].first];
+			}
+			y[k] = beta*y[k] + alpha * temp;
 		}
 	}
 	int Descend(int level, Solver::Vector & input, Solver::Vector & output)
