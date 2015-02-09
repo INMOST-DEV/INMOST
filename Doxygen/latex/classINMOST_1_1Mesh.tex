@@ -3,8 +3,7 @@
 }
 
 
-Inheritance diagram for I\-N\-M\-O\-S\-T\-:\-:Mesh\-:
-\nopagebreak
+Inheritance diagram for I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -13,8 +12,7 @@ Inheritance diagram for I\-N\-M\-O\-S\-T\-:\-:Mesh\-:
 \end{figure}
 
 
-Collaboration diagram for I\-N\-M\-O\-S\-T\-:\-:Mesh\-:
-\nopagebreak
+Collaboration diagram for I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -319,7 +317,7 @@ void \hyperlink{classINMOST_1_1Mesh_ab0eb79ff655477197ce21dedae4712d4}{Set\-Mark
 void \hyperlink{classINMOST_1_1Mesh_a84ff5329978e77876ca6b1b3ed9b5c39}{Set\-Marker\-Array} (const Handle\-Type $\ast$h, \hyperlink{classINMOST_1_1Storage_ae333dfced6fa9cfde0c8e7dcf1b0cc2b}{enumerator} n, Marker\-Type m)
 \begin{DoxyCompactList}\small\item\em Set a marker on the set of handles. \end{DoxyCompactList}\item 
 bool \hyperlink{classINMOST_1_1Mesh_a2c8a00522e2b06a0b59e25cae119a237}{Get\-Marker} (Handle\-Type h, Marker\-Type n) const 
-\begin{DoxyCompactList}\small\item\em Check weather the marker is set one the element. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em Check whether the marker is set one the element. \end{DoxyCompactList}\item 
 void \hyperlink{classINMOST_1_1Mesh_aa758ff129bf79eff3c446946e276006c}{Rem\-Marker} (Handle\-Type h, Marker\-Type n)
 \begin{DoxyCompactList}\small\item\em Remove the marker from the element. \end{DoxyCompactList}\item 
 void \hyperlink{classINMOST_1_1Mesh_a14f8614996be1f7dd81825a447e9f4e8}{Rem\-Marker\-Array} (const Handle\-Type $\ast$h, \hyperlink{classINMOST_1_1Storage_ae333dfced6fa9cfde0c8e7dcf1b0cc2b}{enumerator} n, Marker\-Type m)
@@ -717,7 +715,7 @@ void \hyperlink{classINMOST_1_1Mesh_ac12ba58210b79c61e64a74c389cd11f6}{Save} (st
 
 \item 
 bool \hyperlink{classINMOST_1_1Mesh_a870a18031c98f36972e6df4c21859a28}{is\-Mesh\-Modified} () const 
-\begin{DoxyCompactList}\small\item\em Check weather code runs between Mesh\-::\-Begin\-Modification, Mesh\-::\-End\-Modification scope. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em Check whether code runs between Mesh\-::\-Begin\-Modification, Mesh\-::\-End\-Modification scope. \end{DoxyCompactList}\item 
 \hypertarget{classINMOST_1_1Mesh_ad113bb7fdc195cda837274fd9cdda4a2}{Marker\-Type {\bfseries Hide\-Marker} () const }\label{classINMOST_1_1Mesh_ad113bb7fdc195cda837274fd9cdda4a2}
 
 \item 
@@ -796,7 +794,7 @@ static void \hyperlink{classINMOST_1_1Mesh_a8f9d7e81c502fc9e03c6cfa60452a28d}{In
 After this function any link to deleted element will be replaced by Invalid\-Handle(). 
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000011}{Todo}]T\-O\-D\-O\-:
+\item[\hyperlink{todo__todo000017}{Todo}]
 \begin{DoxyEnumerate}
 \item maybe instead of forming set of deleted elements and subtracting set from other sets it is better to remove each modified element (done, check and compare)
 \item parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior (done, check and compare) 
@@ -815,7 +813,7 @@ Assign unique numbers to elements.
 Internally this will create Mesh\-::\-Global\-I\-D\-Tag and make call to Element\-::\-Global\-I\-D and \hyperlink{classINMOST_1_1Mesh_ab9f84a185381a0096fc358e7e2ff5db7}{Mesh\-::\-Global\-I\-D} functions valid. Internally this will also set have\-\_\-global\-\_\-id variable that will indicate that all the comparisons in parallel algorithms should be performed using global identificators instead of centroids which is faster.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000005}{Todo}]T\-O\-D\-O
+\item[\hyperlink{todo__todo000011}{Todo}]
 \begin{DoxyEnumerate}
 \item invoking function before loading mesh will not renew global identificators after load but would not unset have\-\_\-global\-\_\-id either. There are probably too many places when global ids may become invalid but no flag will be set. It may be benefitial to set such flags along with updating geometrical data which seems to be maintained fairly well during mesh modification 
 \end{DoxyEnumerate}\end{DoxyRefDesc}
@@ -849,7 +847,7 @@ This function allows you to perform some topologycal checks before you create an
 Function is used internally by Create\-Edge, Create\-Face, Create\-Cell functions If you perform topological checks on your own, you'd probably better turn off checks before calling Create\-X\-X\-X functions. Note that check for duplicates within mesh is performed by \hyperlink{classINMOST_1_1Mesh_a116f510afe89689b615fa73b29bc6f59}{Mesh\-::\-Find\-Shared\-Adjacency}.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000012}{Todo}]T\-O\-D\-O\-: list checks performed inside in description \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000018}{Todo}]list checks performed inside in description \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_a9df5a8793e5cd8e38182de107d381d9e}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Bulk@{Bulk}}
 \index{Bulk@{Bulk}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Bulk}]{\setlength{\rightskip}{0pt plus 5cm}{\bf bulk}\& I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Bulk (
@@ -1267,7 +1265,7 @@ This function performs some topologycal checks after creation of element.
 Function is used internally by Create\-Edge, Create\-Face, Create\-Cell functions.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000013}{Todo}]T\-O\-D\-O\-: list checks performed inside in description. \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000019}{Todo}]list checks performed inside in description. \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_a9787ba8c75b41b76b89aeeae2e8aefad}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Enumerate@{Enumerate}}
 \index{Enumerate@{Enumerate}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Enumerate}]{\setlength{\rightskip}{0pt plus 5cm}{\bf integer} I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Enumerate (
@@ -1407,7 +1405,7 @@ Update data from Shared elements to Ghost elements.
 For backward direction please see \hyperlink{classINMOST_1_1Mesh_a2d488479041917c975b1e662d642c4a5}{Mesh\-::\-Reduce\-Data}. If you have a tag of D\-A\-T\-A\-\_\-\-B\-U\-L\-K type and you store your own custom data structure in it, it is highly recomended that you provide M\-P\-I information about your structure through Tag\-::\-Set\-Bulk\-Data\-Type, this would not do any difference on homogeneous architecture, but it may help you save a lot of time and nerves in heterogeneous parallel environment.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000006}{Todo}]T\-O\-D\-O\-: see T\-O\-D\-O in \hyperlink{classINMOST_1_1Mesh_a2d488479041917c975b1e662d642c4a5}{Mesh\-::\-Reduce\-Data}\end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000012}{Todo}]see T\-O\-D\-O in \hyperlink{classINMOST_1_1Mesh_a2d488479041917c975b1e662d642c4a5}{Mesh\-::\-Reduce\-Data}\end{DoxyRefDesc}
 
 
 Blocking, Collective point-\/2-\/point
@@ -1630,7 +1628,7 @@ if there is no current processor in \char`\"{}\-T\-E\-M\-P\-O\-R\-A\-R\-Y\-\_\-\
 Given that all the data was up to date among processors all the data at the end of the algorithm will be also up to data
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000008}{Todo}]T\-O\-D\-O
+\item[\hyperlink{todo__todo000014}{Todo}]
 \begin{DoxyEnumerate}
 \item test halo exchange algorithm (if used then change collective point-\/2-\/point to collective)
 \item see T\-O\-D\-O 2 in \hyperlink{classINMOST_1_1Mesh_ade20ec7c8563e82bf8057bc47a3314b7}{Mesh\-::\-Redistribute}
@@ -1789,7 +1787,7 @@ Get current option corresponding to key.
 ) const\hspace{0.3cm}{\ttfamily [inline]}}}\label{classINMOST_1_1Mesh_a2c8a00522e2b06a0b59e25cae119a237}
 
 
-Check weather the marker is set one the element. 
+Check whether the marker is set one the element. 
 
 
 \begin{DoxyParams}{Parameters}
@@ -2301,7 +2299,7 @@ sum between all processors
 ) const\hspace{0.3cm}{\ttfamily [inline]}}}\label{classINMOST_1_1Mesh_a870a18031c98f36972e6df4c21859a28}
 
 
-Check weather code runs between Mesh\-::\-Begin\-Modification, Mesh\-::\-End\-Modification scope. 
+Check whether code runs between Mesh\-::\-Begin\-Modification, Mesh\-::\-End\-Modification scope. 
 
 In case mesh is modified, on element creation Mesh\-::\-Tie\-Elements will always place elements to the end of the array as a result all the newly created elements will be iterated after current or hidden elements. \hypertarget{classINMOST_1_1Mesh_a5dfd481d638b2d2d72193b4b8fa159a4}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Load@{Load}}
 \index{Load@{Load}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
@@ -2596,7 +2594,7 @@ Action of this function regarding restoration of layers of ghosted elements in t
 If you have output from Zoltan or Par\-Metis for cells of the mesh then just write this output to Redistribute\-Tag and call \hyperlink{classINMOST_1_1Mesh_ade20ec7c8563e82bf8057bc47a3314b7}{Mesh\-::\-Redistribute}.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000009}{Todo}]T\-O\-D\-O\-:
+\item[\hyperlink{todo__todo000015}{Todo}]
 \begin{DoxyEnumerate}
 \item introduce \char`\"{}\-T\-E\-M\-P\-O\-R\-A\-R\-Y\-\_\-\-K\-E\-E\-P\-\_\-\-G\-H\-O\-S\-T\-E\-D\char`\"{} tag that will store processors on which copy of element should be kept, internally just merge it with \char`\"{}\-T\-E\-M\-P\-O\-R\-A\-R\-Y\-\_\-\-N\-E\-W\-\_\-\-P\-R\-O\-C\-E\-S\-S\-O\-R\-S\char`\"{} tag this will allow user to control ghosting of certain elements and not to invoke Exchange\-Marked every time after Redistribute. This is probably already done using Mesh\-::\-Sendto\-Tag, because function fills it without clearing and Exchange\-Marked performs initial action based on Sendto\-Tag, it is due to check that Sendto\-Tag is properly merged with \char`\"{}\-T\-E\-M\-P\-O\-R\-A\-R\-Y\-\_\-\-N\-E\-W\-\_\-\-P\-R\-O\-C\-E\-S\-S\-O\-R\-S\char`\"{} before call to Exchange\-Marked and received elements are not deleted by accident.
 \item let user provide any integer tag as input without involving Redistribute\-Tag
@@ -2639,16 +2637,18 @@ Accumulation is performed based on user-\/provided function. When processor -\/ 
 
 Several examples of reduction functions may be found within the mesh\-\_\-parallel.\-cpp source.
 
-Remember that the result will be up to date only on the owner of the processor. You will have to run \hyperlink{classINMOST_1_1Mesh_aa3e1067bc3139bb0216f7ce3c1936734}{Mesh\-::\-Exchange\-Data} to make the data up to date among all of the processors. If you have a tag of D\-A\-T\-A\-\_\-\-B\-U\-L\-K type and you store your own custom data structure in it, it is highly recomended that you provide M\-P\-I information about your structure through Tag\-::\-Set\-Bulk\-Data\-Type, this would not do any difference on homogeneous architecture, but it may help you save a lot of time and nerves in heterogeneous parallel environment.
+Remember that the result will be up to date only on the owner processor of the element. You will have to run \hyperlink{classINMOST_1_1Mesh_aa3e1067bc3139bb0216f7ce3c1936734}{Mesh\-::\-Exchange\-Data} to make the data up to date among all of the processors.
+
+If you have a tag of D\-A\-T\-A\-\_\-\-B\-U\-L\-K type and you store your own custom data structure in it, it is highly recomended that you provide M\-P\-I information about your structure through Tag\-::\-Set\-Bulk\-Data\-Type, this would not do any difference on homogeneous architecture, but it may help you save a lot of time and nerves in heterogeneous parallel environment.
 
 Exchanging tags of D\-A\-T\-A\-\_\-\-R\-E\-F\-E\-R\-N\-C\-E is not implemented, T\-O\-D\-O 14. \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000007}{Todo}]T\-O\-D\-O\-:
+\item[\hyperlink{todo__todo000013}{Todo}]
 \begin{DoxyEnumerate}
 \item Exchanging D\-A\-T\-A\-\_\-\-R\-E\-F\-E\-R\-E\-N\-C\-E tags not implemented, this is due to the absence of any conclusion
 \end{DoxyEnumerate}
 \begin{DoxyItemize}
 \item on how it should behave\-: either only search within elements owned by the other processor and establish references and set Invalid\-Handle() to elements that are not found (fairly easy, will involve search operations to check against owned elements for similar entry, efficient implementation will require bounding search trees (see T\-O\-D\-O 49);
-\item or\-: send all the referenced elements through Pack\-Elements\-Data and establish all the links within elements reproduced by Unpack\-Elements\-Data (Unpack\-Elements\-Data calls Unpack\-Tag\-Data with set of unpacked elements using which it will be vary comfortable to establish references on remote processor)
+\item or\-: send all the referenced elements through Pack\-Elements\-Data and establish all the links within elements reproduced by Unpack\-Elements\-Data (Unpack\-Elements\-Data calls Unpack\-Tag\-Data with set of unpacked elements using which it will be very comfortable to establish references on remote processor). Drawback is that exchanging laplacian operator in such a manner should result in the whole grid being shared among all the processors.
 \end{DoxyItemize}\end{DoxyRefDesc}
 
 
@@ -3114,7 +3114,7 @@ Collective point-\/2-\/point.
 \hline
 \end{DoxyParams}
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000004}{Todo}]T\-O\-D\-O
+\item[\hyperlink{todo__todo000010}{Todo}]
 \begin{DoxyEnumerate}
 \item Currently request for deletion of elements of lower level then cell will be simply ignored, ensure in future that algorithm will properly rise deletion data from lower to upper adjacencies to delete all the upper adjacencies that depend on deleted lower adjacencies 
 \end{DoxyEnumerate}\end{DoxyRefDesc}
@@ -3254,7 +3254,7 @@ Current availible file options\-:
 \end{DoxyItemize}
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000010}{Todo}]T\-O\-D\-O\-: introduce \char`\"{}\-S\-E\-T\-\_\-\-T\-A\-G\-S\-\_\-\-L\-O\-A\-D\char`\"{}, \char`\"{}\-S\-E\-T\-\_\-\-T\-A\-G\-S\-\_\-\-S\-A\-V\-E\char`\"{} to explicitly provide set of tags to write or \char`\"{}\-S\-K\-I\-P\-\_\-\-T\-A\-G\-S\-\_\-\-L\-O\-A\-D\char`\"{}, \char`\"{}\-S\-K\-I\-P\-\_\-\-T\-A\-G\-S\-\_\-\-S\-A\-V\-E\char`\"{} tags to skip \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000016}{Todo}]introduce \char`\"{}\-S\-E\-T\-\_\-\-T\-A\-G\-S\-\_\-\-L\-O\-A\-D\char`\"{}, \char`\"{}\-S\-E\-T\-\_\-\-T\-A\-G\-S\-\_\-\-S\-A\-V\-E\char`\"{} to explicitly provide set of tags to write or \char`\"{}\-S\-K\-I\-P\-\_\-\-T\-A\-G\-S\-\_\-\-L\-O\-A\-D\char`\"{}, \char`\"{}\-S\-K\-I\-P\-\_\-\-T\-A\-G\-S\-\_\-\-S\-A\-V\-E\char`\"{} tags to skip \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_ab0eb79ff655477197ce21dedae4712d4}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Set\-Marker@{Set\-Marker}}
 \index{Set\-Marker@{Set\-Marker}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Set\-Marker}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Set\-Marker (
@@ -3499,7 +3499,7 @@ true then element was recovered
 \end{DoxyParamCaption}
 )}}\label{classINMOST_1_1Mesh_a9f8cfa72de874bd9a17fb0067ac8d515}
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000014}{Todo}]T\-O\-D\-O 53 check that putting global ids to array will be faster \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000020}{Todo}]T\-O\-D\-O 53 check that putting global ids to array will be faster \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_a9c3acf2a90e25699a64e1f7b4125eaf7}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Synchronize\-Element\-Type@{Synchronize\-Element\-Type}}
 \index{Synchronize\-Element\-Type@{Synchronize\-Element\-Type}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Synchronize\-Element\-Type}]{\setlength{\rightskip}{0pt plus 5cm}Element\-Type I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Synchronize\-Element\-Type (

@@ -7,5 +7,6 @@ var searchData=
   ['findhandle',['FindHandle',['../classINMOST_1_1ElementSet.html#acb23b3c8a46fe1b04d486cf4a173365a',1,'INMOST::ElementSet']]],
   ['findsharedadjacency',['FindSharedAdjacency',['../classINMOST_1_1Mesh.html#a116f510afe89689b615fa73b29bc6f59',1,'INMOST::Mesh']]],
   ['first',['first',['../structINMOST_1_1Solver_1_1Row_1_1entry__s.html#a803fc52ee731fd9eedaf3cf538fc260b',1,'INMOST::Solver::Row::entry_s']]],
+  ['fixedgeorder',['FixEdgeOrder',['../classINMOST_1_1Cell.html#a84eaa268f8c3886e1164ea14715f2419',1,'INMOST::Cell']]],
   ['frontcell',['FrontCell',['../classINMOST_1_1Face.html#a31695655cabb60aef6e7048d175cd0de',1,'INMOST::Face']]]
 ];

@@ -1418,7 +1418,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 <li>only changes state, no sort performed for UNSORTED_COMPARATOR</li>
 </ul>
 <p>After the set was sorted all the invalid handles should appear at the end of the set and then removed from array, so it will implicitly work as ReorderEmpty function. No checks that elements are hidden performed (Maybe this checks should be done in comparators) In the case you formed the set by running over all mesh elements from NODE to ESET in increasing order then your set will be automatically sorted by handles, in this case you are encouraged to override Mesh::SetComparatorTag with HANDLE_COMPARATOR on the set without invoking SortSet, so that SortSet does not redundantly perform any work. You are encouraged to do so even if you are not going to use this information - some internal algorithms may benefit from it.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000003">Todo:</a></b></dt><dd>!TODO 52 - check radix sort on big endian computer </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000009">Todo:</a></b></dt><dd>!TODO 52 - check radix sort on big endian computer </dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">comp</td><td>one of the comparators from description </td></tr>
@@ -1444,7 +1444,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 </div><div class="memdoc">
 
 <p>Compute and store difference with raw handles. </p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000002">Todo:</a></b></dt><dd>TODO If other and current sets are sorted in same way, may perform narrowing traversal by retriving mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets. May work good when deleting handles by small chunks, ApplyModification may greatly benefit. </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000008">Todo:</a></b></dt><dd>If other and current sets are sorted in same way, may perform narrowing traversal by retriving mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets. May work good when deleting handles by small chunks, ApplyModification may greatly benefit. </dd></dl>
 
 </div>
 </div>
@@ -1526,7 +1526,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Feb 6 2015 10:40:46 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Mon Feb 9 2015 02:21:41 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>

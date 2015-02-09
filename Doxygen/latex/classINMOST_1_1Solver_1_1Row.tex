@@ -129,7 +129,9 @@ Entries\-::const\-\_\-reverse\-\_\-iterator {\bfseries const\-\_\-reverse\-\_\-i
 
 \begin{DoxyCompactList}\small\item\em Set the vector entries by zeroes. \end{DoxyCompactList}\item 
 void \hyperlink{classINMOST_1_1Solver_1_1Row_af5a53ab2f8e8febc9ce3196ff054cb01}{Push} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E ind, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-R\-E\-A\-L\-\_\-\-T\-Y\-P\-E val)
-\begin{DoxyCompactList}\small\item\em Push specified element into sparse row. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Push specified element into sparse row. \end{DoxyCompactList}\item 
+void \hyperlink{classINMOST_1_1Solver_1_1Row_a5465388e8b93e0f2fe32fe62e29640ad}{Resize} (I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E size)
+\begin{DoxyCompactList}\small\item\em Resize row to specified size. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \subsection*{Static Public Member Functions}
 \begin{DoxyCompactItemize}
 \item 
@@ -160,7 +162,23 @@ Class to store the sparse matrix row.
 
 Push specified element into sparse row. 
 
-This function should be used only if the index is not repeated in the row and all indexes are inserted in increasing order. 
+This function should be used only if the index is not repeated in the row. \hypertarget{classINMOST_1_1Solver_1_1Row_a5465388e8b93e0f2fe32fe62e29640ad}{\index{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row}!Resize@{Resize}}
+\index{Resize@{Resize}!INMOST::Solver::Row@{I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row}}
+\subsubsection[{Resize}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Solver\-::\-Row\-::\-Resize (
+\begin{DoxyParamCaption}
+\item[{I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E}]{size}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}}\label{classINMOST_1_1Solver_1_1Row_a5465388e8b93e0f2fe32fe62e29640ad}
+
+
+Resize row to specified size. 
+
+It is intended to be used together with non-\/const Row\-::\-Get\-Index and Row\-::\-Get\-Value that allow for the modification of individual entries. 
+\begin{DoxyParams}{Parameters}
+{\em size} & New size of the row. \\
+\hline
+\end{DoxyParams}
+
 
 The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
 \item 

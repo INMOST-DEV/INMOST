@@ -232,6 +232,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="clas
 <tr class="memitem:af5a53ab2f8e8febc9ce3196ff054cb01"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classINMOST_1_1Solver_1_1Row.html#af5a53ab2f8e8febc9ce3196ff054cb01">Push</a> (INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)</td></tr>
 <tr class="memdesc:af5a53ab2f8e8febc9ce3196ff054cb01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Push specified element into sparse row.  <a href="#af5a53ab2f8e8febc9ce3196ff054cb01">More...</a><br/></td></tr>
 <tr class="separator:af5a53ab2f8e8febc9ce3196ff054cb01"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5465388e8b93e0f2fe32fe62e29640ad"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classINMOST_1_1Solver_1_1Row.html#a5465388e8b93e0f2fe32fe62e29640ad">Resize</a> (INMOST_DATA_ENUM_TYPE size)</td></tr>
+<tr class="memdesc:a5465388e8b93e0f2fe32fe62e29640ad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resize row to specified size.  <a href="#a5465388e8b93e0f2fe32fe62e29640ad">More...</a><br/></td></tr>
+<tr class="separator:a5465388e8b93e0f2fe32fe62e29640ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -281,7 +284,40 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>modified_pattern</b><
 </div><div class="memdoc">
 
 <p>Push specified element into sparse row. </p>
-<p>This function should be used only if the index is not repeated in the row and all indexes are inserted in increasing order. </p>
+<p>This function should be used only if the index is not repeated in the row. </p>
+
+</div>
+</div>
+<a class="anchor" id="a5465388e8b93e0f2fe32fe62e29640ad"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void INMOST::Solver::Row::Resize </td>
+          <td>(</td>
+          <td class="paramtype">INMOST_DATA_ENUM_TYPE&#160;</td>
+          <td class="paramname"><em>size</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Resize row to specified size. </p>
+<p>It is intended to be used together with non-const Row::GetIndex and Row::GetValue that allow for the modification of individual entries. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">size</td><td>New size of the row. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -291,7 +327,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>modified_pattern</b><
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Feb 6 2015 10:40:47 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Mon Feb 9 2015 02:21:42 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>

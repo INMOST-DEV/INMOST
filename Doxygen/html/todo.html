@@ -80,8 +80,45 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><dl class="reflist">
+<dt><a class="anchor" id="_todo000003"></a>Member <a class="el" href="classINMOST_1_1Cell.html#afc84112c4d1f84b15799ffb91615cd30">INMOST::Cell::CheckEdgeOrder</a>  () const </dt>
+<dd><ol type="1">
+<li>Implement.</li>
+<li>Use in topology check algorithms.</li>
+<li>Use in Element::Connect.  </li>
+</ol>
+</dd>
+<dt><a class="anchor" id="_todo000004"></a>Member <a class="el" href="classINMOST_1_1Cell.html#a84eaa268f8c3886e1164ea14715f2419">INMOST::Cell::FixEdgeOrder</a>  () const </dt>
+<dd><ol type="1">
+<li>Implement.</li>
+<li>Use in topology check algorithms.</li>
+<li>Use in Element::Connect.  </li>
+</ol>
+</dd>
+<dt><a class="anchor" id="_todo000002"></a>Member <a class="el" href="classINMOST_1_1Cell.html#ab0f9c4743826338a4df1b61b69b37c40">INMOST::Cell::getEdges</a>  () const </dt>
+<dd>One should thoroughly check three scenarios of function execution in shared parallel environment for different types of cells (simple tet/hex cells as well as complex polyhedral cells) and draw a conclusion on the best scenario for each condition. One of the development versions contains all the algorithms, ask for the files.<ol type="1">
+<li>Use of markers (current wariant).</li>
+<li>Put all elements into array with duplications, then run std::sort and std::unique.</li>
+<li>Put all elements into array, check for duplication by running through array.  </li>
+</ol>
+</dd>
+<dt><a class="anchor" id="_todo000006"></a>Member <a class="el" href="classINMOST_1_1Cell.html#a91562ae41d48c2fb99b824b7407659f5">INMOST::Cell::Inside</a>  (const real *point) const </dt>
+<dd><ol type="1">
+<li>Should be checked or extended for 2d cells. (done, testing)  </li>
+</ol>
+</dd>
+<dt><a class="anchor" id="_todo000005"></a>Member <a class="el" href="classINMOST_1_1Cell.html#afd127d2e41a4b4362dc3399d9ac96a59">INMOST::Cell::SplitCell</a>  (Cell cell, const ElementArray&lt; Face &gt; &amp;faces, MarkerType del_protect)</dt>
+<dd><ol type="1">
+<li>The algorithm inside is minimizing the size of the adjacency graph for each new cell. The correct behavior is to calculate volume of the cell for each adjacency graph and choose the graph with minimal volume. This requires calculation of volume for non-convex cells. For correct calculation of volume on non-convex cells one should find one face for which normal orientation can be clearly determined and then orient all edges of the cell with respect to the orientation of edges of this face and establish normals for all faces. Once the algorithm is implemented here it should be implemented in geometrical services or vice verse.</li>
+<li>Probably the algorithm should minimize the volume and adjacency graph size altogether. Between the cells with smallest volume within some tolerance select those that have smallest adjacency graph.  </li>
+</ol>
+</dd>
+<dt><a class="anchor" id="_todo000007"></a>Member <a class="el" href="classINMOST_1_1Cell.html#ae0caec87803ddd108c4fb06decf69e18">INMOST::Cell::Volume</a>  () const </dt>
+<dd><ol type="1">
+<li>Geometric services should correctly resolve volume for non-convex cells.  </li>
+</ol>
+</dd>
 <dt><a class="anchor" id="_todo000001"></a>Member <a class="el" href="classINMOST_1_1Element.html#a96bd136b0f249c958fc8632553aa3b58">INMOST::Element::Connect</a>  (const HandleType *adjacent, INMOST_DATA_ENUM_TYPE num) const </dt>
-<dd>TODO:<ol type="1">
+<dd><ol type="1">
 <li>asserts in this function should be replaced by Topography checks; <br/>
 </li>
 <li>this function should be used for creation of elements instead of current implementation. <br/>
@@ -89,62 +126,62 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <li>should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)  </li>
 </ol>
 </dd>
-<dt><a class="anchor" id="_todo000003"></a>Member <a class="el" href="classINMOST_1_1ElementSet.html#a96676712005ce12f0c1f9a92c6ac095d">INMOST::ElementSet::SortSet</a>  (ComparatorType comp) const </dt>
+<dt><a class="anchor" id="_todo000009"></a>Member <a class="el" href="classINMOST_1_1ElementSet.html#a96676712005ce12f0c1f9a92c6ac095d">INMOST::ElementSet::SortSet</a>  (ComparatorType comp) const </dt>
 <dd>!TODO 52 - check radix sort on big endian computer  </dd>
-<dt><a class="anchor" id="_todo000002"></a>Member <a class="el" href="classINMOST_1_1ElementSet.html#a1aafea0ac742bcc3ec1873621ca41ccd">INMOST::ElementSet::Subtract</a>  (const ElementSet &amp;other) const </dt>
-<dd>TODO If other and current sets are sorted in same way, may perform narrowing traversal by retriving mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets. May work good when deleting handles by small chunks, ApplyModification may greatly benefit.  </dd>
-<dt><a class="anchor" id="_todo000011"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a1f53070855f3503b2f4cefc16cedd6a0">INMOST::Mesh::ApplyModification</a>  ()</dt>
-<dd>TODO:<ol type="1">
+<dt><a class="anchor" id="_todo000008"></a>Member <a class="el" href="classINMOST_1_1ElementSet.html#a1aafea0ac742bcc3ec1873621ca41ccd">INMOST::ElementSet::Subtract</a>  (const ElementSet &amp;other) const </dt>
+<dd>If other and current sets are sorted in same way, may perform narrowing traversal by retriving mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets. May work good when deleting handles by small chunks, ApplyModification may greatly benefit.  </dd>
+<dt><a class="anchor" id="_todo000017"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a1f53070855f3503b2f4cefc16cedd6a0">INMOST::Mesh::ApplyModification</a>  ()</dt>
+<dd><ol type="1">
 <li>maybe instead of forming set of deleted elements and subtracting set from other sets it is better to remove each modified element (done, check and compare)</li>
 <li>parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior (done, check and compare)  </li>
 </ol>
 </dd>
-<dt><a class="anchor" id="_todo000005"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#ae39e30b11f35de81d2a9b8451ef87391">INMOST::Mesh::AssignGlobalID</a>  (ElementType mask)</dt>
-<dd>TODO<ol type="1">
+<dt><a class="anchor" id="_todo000011"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#ae39e30b11f35de81d2a9b8451ef87391">INMOST::Mesh::AssignGlobalID</a>  (ElementType mask)</dt>
+<dd><ol type="1">
 <li>invoking function before loading mesh will not renew global identificators after load but would not unset have_global_id either. There are probably too many places when global ids may become invalid but no flag will be set. It may be benefitial to set such flags along with updating geometrical data which seems to be maintained fairly well during mesh modification  </li>
 </ol>
 </dd>
-<dt><a class="anchor" id="_todo000012"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a55549e9d46cd92e2f3122e1516f3c9fd">INMOST::Mesh::BeginTopologyCheck</a>  (ElementType etype, const HandleType *adj, enumerator num)</dt>
-<dd>TODO: list checks performed inside in description  </dd>
-<dt><a class="anchor" id="_todo000013"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a1c6c26bcbe6e7a0cba093c0b8312ba04">INMOST::Mesh::EndTopologyCheck</a>  (HandleType e)</dt>
-<dd>TODO: list checks performed inside in description.  </dd>
-<dt><a class="anchor" id="_todo000006"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#aa3e1067bc3139bb0216f7ce3c1936734">INMOST::Mesh::ExchangeData</a>  (const Tag &amp;tag, ElementType mask, MarkerType select)</dt>
-<dd>TODO: see TODO in Mesh::ReduceData </dd>
-<dt><a class="anchor" id="_todo000008"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#ae44b9cfcb8964acbd710562df331a51a">INMOST::Mesh::ExchangeMarked</a>  (enum Action action=AGhost)</dt>
-<dd>TODO<ol type="1">
+<dt><a class="anchor" id="_todo000018"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a55549e9d46cd92e2f3122e1516f3c9fd">INMOST::Mesh::BeginTopologyCheck</a>  (ElementType etype, const HandleType *adj, enumerator num)</dt>
+<dd>list checks performed inside in description  </dd>
+<dt><a class="anchor" id="_todo000019"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a1c6c26bcbe6e7a0cba093c0b8312ba04">INMOST::Mesh::EndTopologyCheck</a>  (HandleType e)</dt>
+<dd>list checks performed inside in description.  </dd>
+<dt><a class="anchor" id="_todo000012"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#aa3e1067bc3139bb0216f7ce3c1936734">INMOST::Mesh::ExchangeData</a>  (const Tag &amp;tag, ElementType mask, MarkerType select)</dt>
+<dd>see TODO in Mesh::ReduceData </dd>
+<dt><a class="anchor" id="_todo000014"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#ae44b9cfcb8964acbd710562df331a51a">INMOST::Mesh::ExchangeMarked</a>  (enum Action action=AGhost)</dt>
+<dd><ol type="1">
 <li>test halo exchange algorithm (if used then change collective point-2-point to collective)</li>
 <li>see TODO 2 in Mesh::Redistribute </li>
 </ol>
 </dd>
-<dt><a class="anchor" id="_todo000009"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#ade20ec7c8563e82bf8057bc47a3314b7">INMOST::Mesh::Redistribute</a>  ()</dt>
-<dd>TODO:<ol type="1">
+<dt><a class="anchor" id="_todo000015"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#ade20ec7c8563e82bf8057bc47a3314b7">INMOST::Mesh::Redistribute</a>  ()</dt>
+<dd><ol type="1">
 <li>introduce "TEMPORARY_KEEP_GHOSTED" tag that will store processors on which copy of element should be kept, internally just merge it with "TEMPORARY_NEW_PROCESSORS" tag this will allow user to control ghosting of certain elements and not to invoke ExchangeMarked every time after Redistribute. This is probably already done using Mesh::SendtoTag, because function fills it without clearing and ExchangeMarked performs initial action based on SendtoTag, it is due to check that SendtoTag is properly merged with "TEMPORARY_NEW_PROCESSORS" before call to ExchangeMarked and received elements are not deleted by accident.</li>
 <li>let user provide any integer tag as input without involving RedistributeTag </li>
 </ol>
 </dd>
-<dt><a class="anchor" id="_todo000007"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a2d488479041917c975b1e662d642c4a5">INMOST::Mesh::ReduceData</a>  (const Tag &amp;tag, ElementType mask, MarkerType select, ReduceOperation op)</dt>
-<dd>TODO:<ol type="1">
+<dt><a class="anchor" id="_todo000013"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a2d488479041917c975b1e662d642c4a5">INMOST::Mesh::ReduceData</a>  (const Tag &amp;tag, ElementType mask, MarkerType select, ReduceOperation op)</dt>
+<dd><ol type="1">
 <li>Exchanging DATA_REFERENCE tags not implemented, this is due to the absence of any conclusion</li>
 </ol>
 <ul>
 <li>on how it should behave: either only search within elements owned by the other processor and establish references and set InvalidHandle() to elements that are not found (fairly easy, will involve search operations to check against owned elements for similar entry, efficient implementation will require bounding search trees (see TODO 49);</li>
-<li>or: send all the referenced elements through PackElementsData and establish all the links within elements reproduced by UnpackElementsData (UnpackElementsData calls UnpackTagData with set of unpacked elements using which it will be vary comfortable to establish references on remote processor) </li>
+<li>or: send all the referenced elements through PackElementsData and establish all the links within elements reproduced by UnpackElementsData (UnpackElementsData calls UnpackTagData with set of unpacked elements using which it will be very comfortable to establish references on remote processor). Drawback is that exchanging laplacian operator in such a manner should result in the whole grid being shared among all the processors. </li>
 </ul>
 </dd>
-<dt><a class="anchor" id="_todo000004"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a5cb95f1e8d6b7987496fc8276c86cf3a">INMOST::Mesh::RemoveGhostElements</a>  (const HandleType *ghost, enumerator num)</dt>
-<dd>TODO<ol type="1">
+<dt><a class="anchor" id="_todo000010"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a5cb95f1e8d6b7987496fc8276c86cf3a">INMOST::Mesh::RemoveGhostElements</a>  (const HandleType *ghost, enumerator num)</dt>
+<dd><ol type="1">
 <li>Currently request for deletion of elements of lower level then cell will be simply ignored, ensure in future that algorithm will properly rise deletion data from lower to upper adjacencies to delete all the upper adjacencies that depend on deleted lower adjacencies  </li>
 </ol>
 </dd>
-<dt><a class="anchor" id="_todo000010"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a07c75e9dee2c400225a6095e45489ac1">INMOST::Mesh::SetFileOption</a>  (std::string, std::string)</dt>
-<dd>TODO: introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip  </dd>
-<dt><a class="anchor" id="_todo000014"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a9f8cfa72de874bd9a17fb0067ac8d515">INMOST::Mesh::SortByGlobalID</a>  (HandleType *h, enumerator num)</dt>
+<dt><a class="anchor" id="_todo000016"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a07c75e9dee2c400225a6095e45489ac1">INMOST::Mesh::SetFileOption</a>  (std::string, std::string)</dt>
+<dd>introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip  </dd>
+<dt><a class="anchor" id="_todo000020"></a>Member <a class="el" href="classINMOST_1_1Mesh.html#a9f8cfa72de874bd9a17fb0067ac8d515">INMOST::Mesh::SortByGlobalID</a>  (HandleType *h, enumerator num)</dt>
 <dd>TODO 53 check that putting global ids to array will be faster </dd>
 </dl>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Feb 6 2015 10:40:43 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Mon Feb 9 2015 02:21:37 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>

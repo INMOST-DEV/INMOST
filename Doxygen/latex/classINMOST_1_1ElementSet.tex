@@ -3,8 +3,7 @@
 }
 
 
-Inheritance diagram for I\-N\-M\-O\-S\-T\-:\-:Element\-Set\-:
-\nopagebreak
+Inheritance diagram for I\-N\-M\-O\-S\-T\-:\-:Element\-Set\-:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -13,8 +12,7 @@ Inheritance diagram for I\-N\-M\-O\-S\-T\-:\-:Element\-Set\-:
 \end{figure}
 
 
-Collaboration diagram for I\-N\-M\-O\-S\-T\-:\-:Element\-Set\-:
-\nopagebreak
+Collaboration diagram for I\-N\-M\-O\-S\-T\-:\-:Element\-Set\-:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -591,7 +589,7 @@ Internally it uses\-:
 After the set was sorted all the invalid handles should appear at the end of the set and then removed from array, so it will implicitly work as Reorder\-Empty function. No checks that elements are hidden performed (Maybe this checks should be done in comparators) In the case you formed the set by running over all mesh elements from N\-O\-D\-E to E\-S\-E\-T in increasing order then your set will be automatically sorted by handles, in this case you are encouraged to override Mesh\-::\-Set\-Comparator\-Tag with H\-A\-N\-D\-L\-E\-\_\-\-C\-O\-M\-P\-A\-R\-A\-T\-O\-R on the set without invoking Sort\-Set, so that Sort\-Set does not redundantly perform any work. You are encouraged to do so even if you are not going to use this information -\/ some internal algorithms may benefit from it.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000003}{Todo}]!\-T\-O\-D\-O 52 -\/ check radix sort on big endian computer \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000009}{Todo}]!\-T\-O\-D\-O 52 -\/ check radix sort on big endian computer \end{DoxyRefDesc}
 
 \begin{DoxyParams}{Parameters}
 {\em comp} & one of the comparators from description \\
@@ -612,7 +610,7 @@ Mesh\-::\-Set\-Comparator\-Tag
 Compute and store difference with raw handles. 
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000002}{Todo}]T\-O\-D\-O If other and current sets are sorted in same way, may perform narrowing traversal by retriving mutual lower\-\_\-bound/higher\-\_\-bound O(log(n)) operations for detecting common subsets in sorted sets. May work good when deleting handles by small chunks, Apply\-Modification may greatly benefit. \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000008}{Todo}]If other and current sets are sorted in same way, may perform narrowing traversal by retriving mutual lower\-\_\-bound/higher\-\_\-bound O(log(n)) operations for detecting common subsets in sorted sets. May work good when deleting handles by small chunks, Apply\-Modification may greatly benefit. \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1ElementSet_a9d91f6c5139e8c0a0f31bf8543729bf4}{\index{I\-N\-M\-O\-S\-T\-::\-Element\-Set@{I\-N\-M\-O\-S\-T\-::\-Element\-Set}!Union@{Union}}
 \index{Union@{Union}!INMOST::ElementSet@{I\-N\-M\-O\-S\-T\-::\-Element\-Set}}
 \subsubsection[{Union}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Element\-Array}$<${\bf Element}$>$ I\-N\-M\-O\-S\-T\-::\-Element\-Set\-::\-Union (

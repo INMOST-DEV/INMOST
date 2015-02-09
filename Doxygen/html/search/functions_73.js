@@ -2,6 +2,7 @@ var searchData=
 [
   ['save',['Save',['../classINMOST_1_1Mesh.html#ac12ba58210b79c61e64a74c389cd11f6',1,'INMOST::Mesh::Save()'],['../classINMOST_1_1Solver_1_1Vector.html#ac9b2f06b5abcb7025172c9cda28336fd',1,'INMOST::Solver::Vector::Save()'],['../classINMOST_1_1Solver_1_1Matrix.html#ac1998465907651dd88cdb1e45dd8080e',1,'INMOST::Solver::Matrix::Save()']]],
   ['scalarprod',['ScalarProd',['../classINMOST_1_1Solver_1_1OrderInfo.html#a9dd49ffce6b6008212c97f9c93ce8d4e',1,'INMOST::Solver::OrderInfo']]],
+  ['self',['self',['../classINMOST_1_1Cell.html#ae7b259720c92912e8d267220f79e1ab5',1,'INMOST::Cell::self()'],['../classINMOST_1_1Cell.html#ac283b04a07fdacfba61054cfc054f7bf',1,'INMOST::Cell::self() const ']]],
   ['setcommunicator',['SetCommunicator',['../classINMOST_1_1Mesh.html#ab60495d087cbd5c893c5322ba0fa2c69',1,'INMOST::Mesh']]],
   ['setdata',['SetData',['../classINMOST_1_1Mesh.html#a2e40d1712147e6dc39113d855882743e',1,'INMOST::Mesh']]],
   ['setdatasize',['SetDataSize',['../classINMOST_1_1Storage.html#af834468fb65cd43e272502985c050820',1,'INMOST::Storage::SetDataSize()'],['../classINMOST_1_1Mesh.html#a8ade9beb68c97be47897b50ce6e4dcb6',1,'INMOST::Mesh::SetDataSize()']]],
@@ -29,6 +30,7 @@ var searchData=
   ['solver',['Solver',['../classINMOST_1_1Solver.html#a5951d4dcc90693cb8d02de403a382c69',1,'INMOST::Solver']]],
   ['sortbyglobalid',['SortByGlobalID',['../classINMOST_1_1Mesh.html#a9f8cfa72de874bd9a17fb0067ac8d515',1,'INMOST::Mesh']]],
   ['sortset',['SortSet',['../classINMOST_1_1ElementSet.html#a96676712005ce12f0c1f9a92c6ac095d',1,'INMOST::ElementSet']]],
+  ['splitcell',['SplitCell',['../classINMOST_1_1Cell.html#afd127d2e41a4b4362dc3399d9ac96a59',1,'INMOST::Cell']]],
   ['storage',['Storage',['../classINMOST_1_1Storage.html#a9fd7d01b2f05bf061ba8439fd1d25599',1,'INMOST::Storage']]],
   ['subtract',['Subtract',['../classINMOST_1_1ElementSet.html#a1aafea0ac742bcc3ec1873621ca41ccd',1,'INMOST::ElementSet::Subtract(const ElementSet &amp;other) const '],['../classINMOST_1_1ElementSet.html#aa61d299bbf8d4fd4c67a983c2139fbe5',1,'INMOST::ElementSet::Subtract(const HandleType *handles, enumerator num) const '],['../classINMOST_1_1ElementSet.html#aa4a51ad66c30dbc1d55618a25901599e',1,'INMOST::ElementSet::Subtract(const ElementArray&lt; EType &gt; &amp;elems) const ']]],
   ['synchronizeelementtype',['SynchronizeElementType',['../classINMOST_1_1Mesh.html#a9c3acf2a90e25699a64e1f7b4125eaf7',1,'INMOST::Mesh']]],

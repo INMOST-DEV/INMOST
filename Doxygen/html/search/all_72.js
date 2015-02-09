@@ -37,6 +37,7 @@ var searchData=
   ['repartition',['Repartition',['../classINMOST_1_1Partitioner.html#a0a4053a79855f16dbb53c13b39bc75c3ae667d6f0560495262c0010866080eff8',1,'INMOST::Partitioner']]],
   ['resetweight',['ResetWeight',['../classINMOST_1_1Partitioner.html#ae3a9cc78be5b685316e1eabb2cd00a79',1,'INMOST::Partitioner']]],
   ['residual',['Residual',['../classINMOST_1_1Solver.html#ad10f8b22ba2d3c4ecbb4c22abfc62266',1,'INMOST::Solver']]],
+  ['resize',['Resize',['../classINMOST_1_1Solver_1_1Row.html#a5465388e8b93e0f2fe32fe62e29640ad',1,'INMOST::Solver::Row']]],
   ['resolvemodification',['ResolveModification',['../classINMOST_1_1Mesh.html#a60274817b98e76ec5a411f0c3df2a76b',1,'INMOST::Mesh']]],
   ['restorematrix',['RestoreMatrix',['../classINMOST_1_1Solver_1_1OrderInfo.html#ac56c713ddc7621e7125ef4ffe50ae281',1,'INMOST::Solver::OrderInfo']]],
   ['restorevector',['RestoreVector',['../classINMOST_1_1Solver_1_1OrderInfo.html#ac01e678d820b3461f6efedbc2adff276',1,'INMOST::Solver::OrderInfo']]],

@@ -491,7 +491,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>RestoreCellNodes</b> 
 <tr class="memdesc:a84ff5329978e77876ca6b1b3ed9b5c39"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set a marker on the set of handles.  <a href="#a84ff5329978e77876ca6b1b3ed9b5c39">More...</a><br/></td></tr>
 <tr class="separator:a84ff5329978e77876ca6b1b3ed9b5c39"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2c8a00522e2b06a0b59e25cae119a237"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classINMOST_1_1Mesh.html#a2c8a00522e2b06a0b59e25cae119a237">GetMarker</a> (HandleType h, MarkerType n) const </td></tr>
-<tr class="memdesc:a2c8a00522e2b06a0b59e25cae119a237"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check weather the marker is set one the element.  <a href="#a2c8a00522e2b06a0b59e25cae119a237">More...</a><br/></td></tr>
+<tr class="memdesc:a2c8a00522e2b06a0b59e25cae119a237"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check whether the marker is set one the element.  <a href="#a2c8a00522e2b06a0b59e25cae119a237">More...</a><br/></td></tr>
 <tr class="separator:a2c8a00522e2b06a0b59e25cae119a237"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa758ff129bf79eff3c446946e276006c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classINMOST_1_1Mesh.html#aa758ff129bf79eff3c446946e276006c">RemMarker</a> (HandleType h, MarkerType n)</td></tr>
 <tr class="memdesc:aa758ff129bf79eff3c446946e276006c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Remove the marker from the element.  <a href="#aa758ff129bf79eff3c446946e276006c">More...</a><br/></td></tr>
@@ -966,7 +966,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>RecomputeGeometricDat
 Element::GeometricType&#160;</td><td class="memItemRight" valign="bottom"><b>ComputeGeometricType</b> (ElementType element_type, const HandleType *lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size) const </td></tr>
 <tr class="separator:a3e7891840e8ed563be5b88da0f8b7f95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a870a18031c98f36972e6df4c21859a28"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classINMOST_1_1Mesh.html#a870a18031c98f36972e6df4c21859a28">isMeshModified</a> () const </td></tr>
-<tr class="memdesc:a870a18031c98f36972e6df4c21859a28"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check weather code runs between Mesh::BeginModification, Mesh::EndModification scope.  <a href="#a870a18031c98f36972e6df4c21859a28">More...</a><br/></td></tr>
+<tr class="memdesc:a870a18031c98f36972e6df4c21859a28"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope.  <a href="#a870a18031c98f36972e6df4c21859a28">More...</a><br/></td></tr>
 <tr class="separator:a870a18031c98f36972e6df4c21859a28"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad113bb7fdc195cda837274fd9cdda4a2"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad113bb7fdc195cda837274fd9cdda4a2"></a>
 MarkerType&#160;</td><td class="memItemRight" valign="bottom"><b>HideMarker</b> () const </td></tr>
@@ -1352,7 +1352,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 </div><div class="memdoc">
 
 <p>After this function any link to deleted element will be replaced by InvalidHandle(). </p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000011">Todo:</a></b></dt><dd>TODO:<ol type="1">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000017">Todo:</a></b></dt><dd><ol type="1">
 <li>maybe instead of forming set of deleted elements and subtracting set from other sets it is better to remove each modified element (done, check and compare)</li>
 <li>parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior (done, check and compare) </li>
 </ol>
@@ -1376,7 +1376,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 
 <p>Assign unique numbers to elements. </p>
 <p>Internally this will create Mesh::GlobalIDTag and make call to Element::GlobalID and <a class="el" href="classINMOST_1_1Mesh.html#ab9f84a185381a0096fc358e7e2ff5db7" title="Retrieve global id of the element with right of modification (dangerous to modify). ">Mesh::GlobalID</a> functions valid. Internally this will also set have_global_id variable that will indicate that all the comparisons in parallel algorithms should be performed using global identificators instead of centroids which is faster.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000005">Todo:</a></b></dt><dd>TODO<ol type="1">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000011">Todo:</a></b></dt><dd><ol type="1">
 <li>invoking function before loading mesh will not renew global identificators after load but would not unset have_global_id either. There are probably too many places when global ids may become invalid but no flag will be set. It may be benefitial to set such flags along with updating geometrical data which seems to be maintained fairly well during mesh modification </li>
 </ol>
 </dd></dl>
@@ -1442,7 +1442,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 
 <p>This function allows you to perform some topologycal checks before you create an element. </p>
 <p>Function is used internally by CreateEdge, CreateFace, CreateCell functions If you perform topological checks on your own, you'd probably better turn off checks before calling CreateXXX functions. Note that check for duplicates within mesh is performed by <a class="el" href="classINMOST_1_1Mesh.html#a116f510afe89689b615fa73b29bc6f59" title="Retrieve upper adjacent that is shared by multiple lower adjacencies. ">Mesh::FindSharedAdjacency</a>.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000012">Todo:</a></b></dt><dd>TODO: list checks performed inside in description </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000018">Todo:</a></b></dt><dd>list checks performed inside in description </dd></dl>
 
 </div>
 </div>
@@ -2122,7 +2122,7 @@ Mesh::EndModification </dd>
 
 <p>This function performs some topologycal checks after creation of element. </p>
 <p>Function is used internally by CreateEdge, CreateFace, CreateCell functions.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000013">Todo:</a></b></dt><dd>TODO: list checks performed inside in description. </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000019">Todo:</a></b></dt><dd>list checks performed inside in description. </dd></dl>
 
 </div>
 </div>
@@ -2379,7 +2379,7 @@ template&lt;typename EType &gt; </div>
 
 <p>Update data from Shared elements to Ghost elements. </p>
 <p>For backward direction please see <a class="el" href="classINMOST_1_1Mesh.html#a2d488479041917c975b1e662d642c4a5" title="Accumulation of data from ghost elements to shared elements. ">Mesh::ReduceData</a>. If you have a tag of DATA_BULK type and you store your own custom data structure in it, it is highly recomended that you provide MPI information about your structure through Tag::SetBulkDataType, this would not do any difference on homogeneous architecture, but it may help you save a lot of time and nerves in heterogeneous parallel environment.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000006">Todo:</a></b></dt><dd>TODO: see TODO in <a class="el" href="classINMOST_1_1Mesh.html#a2d488479041917c975b1e662d642c4a5" title="Accumulation of data from ghost elements to shared elements. ">Mesh::ReduceData</a></dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000012">Todo:</a></b></dt><dd>see TODO in <a class="el" href="classINMOST_1_1Mesh.html#a2d488479041917c975b1e662d642c4a5" title="Accumulation of data from ghost elements to shared elements. ">Mesh::ReduceData</a></dd></dl>
 <p>Blocking, Collective point-2-point</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -2709,7 +2709,7 @@ template&lt;typename EType &gt; </div>
 </ul>
 <p>if there is no current processor in "TEMPORARY_NEW_PROCESSORS", then current processor will remove copy of the element. All this actions are performed automatically by <a class="el" href="classINMOST_1_1Mesh.html#ade20ec7c8563e82bf8057bc47a3314b7" title="Migrate all the elements to the new owners prescribed in data corresponding to RedistributeTag. ">Mesh::Redistribute</a> based on information provided in <a class="el" href="classINMOST_1_1Mesh.html#a1cd4e1b35b122a5cfc24d6d74229b81b" title="Don&#39;t put this shortcut to any function directly, as it creates tag inside assign to other object of ...">Mesh::RedistributeTag</a> which effectively contains new owner.</p>
 <p>Given that all the data was up to date among processors all the data at the end of the algorithm will be also up to data</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000008">Todo:</a></b></dt><dd>TODO<ol type="1">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000014">Todo:</a></b></dt><dd><ol type="1">
 <li>test halo exchange algorithm (if used then change collective point-2-point to collective)</li>
 <li>see TODO 2 in <a class="el" href="classINMOST_1_1Mesh.html#ade20ec7c8563e82bf8057bc47a3314b7" title="Migrate all the elements to the new owners prescribed in data corresponding to RedistributeTag. ">Mesh::Redistribute</a></li>
 </ol>
@@ -2985,7 +2985,7 @@ template&lt;typename EType &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p>Check weather the marker is set one the element. </p>
+<p>Check whether the marker is set one the element. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">h</td><td>element handle </td></tr>
@@ -3352,7 +3352,7 @@ Mesh::EndModification </dd></dl>
 </div><div class="memdoc">
 
 <p>Access directly higher order adjacencies of current element with right of modification. </p>
-<p>This function gives direct access to elements and allows you to overwrite handles which is not recomended. You bypass topology checks, correct connectivity estableshment and geometric data updates. If you do so then check connectivity afterwards by Element::CheckElementConnectivity for debugging purposes. Then for correct function of geometrical algorithms in order from lower modified adjacenices to upper modified adjacencies (if some element have lower adjacencies updated then it should be updated otherwise it shouldn't) call ComputeGeometricType to deduce geometric representation or force it by SetGeometricType, then for element of type CELL call RestoreCellNodes, clear current mutual connection to the nodes and establish new mutual connections from nodes returned by RestoreCellNodes; then for all elements call RecomputeGeometricData to automatically recompute all geometric quantities. Don't forget that edges of the face should be ordered for correct retrival of nodes, otherwise <a class="el" href="classINMOST_1_1Face.html#a102ef5504795e2b3607093071259397e" title="Retrieve all the nodes of the element. ">Face::getNodes</a> and <a class="el" href="classINMOST_1_1Element.html#a00696ff8cd77491e1c4307cae166e92d" title="Retrieve all the nodes of the element. ">Element::getNodes</a> for FACE in 3 dimensions or <a class="el" href="classINMOST_1_1Cell.html#acc265095375df199a083a344d56e4645" title="Retrieve all the nodes of the element. ">Cell::getNodes</a> and <a class="el" href="classINMOST_1_1Element.html#a00696ff8cd77491e1c4307cae166e92d" title="Retrieve all the nodes of the element. ">Element::getNodes</a> for CELL in 2 dimensions will return garbage</p>
+<p>This function gives direct access to elements and allows you to overwrite handles which is not recomended. You bypass topology checks, correct connectivity estableshment and geometric data updates. If you do so then check connectivity afterwards by Element::CheckElementConnectivity for debugging purposes. Then for correct function of geometrical algorithms in order from lower modified adjacenices to upper modified adjacencies (if some element have lower adjacencies updated then it should be updated otherwise it shouldn't) call ComputeGeometricType to deduce geometric representation or force it by SetGeometricType, then for element of type CELL call RestoreCellNodes, clear current mutual connection to the nodes and establish new mutual connections from nodes returned by RestoreCellNodes; then for all elements call RecomputeGeometricData to automatically recompute all geometric quantities. Don't forget that edges of the face should be ordered for correct retrival of nodes, otherwise <a class="el" href="classINMOST_1_1Face.html#a102ef5504795e2b3607093071259397e" title="Retrieve all the nodes of the element. ">Face::getNodes</a> and <a class="el" href="classINMOST_1_1Element.html#a00696ff8cd77491e1c4307cae166e92d" title="Retrieve all the nodes of the element. ">Element::getNodes</a> for FACE in 3 dimensions or <a class="el" href="classINMOST_1_1Cell.html#acc265095375df199a083a344d56e4645" title="Get all the nodes of the current cell. ">Cell::getNodes</a> and <a class="el" href="classINMOST_1_1Element.html#a00696ff8cd77491e1c4307cae166e92d" title="Retrieve all the nodes of the element. ">Element::getNodes</a> for CELL in 2 dimensions will return garbage</p>
 <ul>
 <li>For NODE this returns edges that are connected to this node;</li>
 <li>For EDGE this returns faces that are connected to this edge;</li>
@@ -3806,7 +3806,7 @@ Face::FixNormalOrientation </dd>
 </table>
 </div><div class="memdoc">
 
-<p>Check weather code runs between Mesh::BeginModification, Mesh::EndModification scope. </p>
+<p>Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope. </p>
 <p>In case mesh is modified, on element creation Mesh::TieElements will always place elements to the end of the array as a result all the newly created elements will be iterated after current or hidden elements. </p>
 
 </div>
@@ -4251,7 +4251,7 @@ Mesh::EndModification </dd>
 </ul>
 <p>Action of this function regarding restoration of layers of ghosted elements in the case you have modified mesh without involving <a class="el" href="classINMOST_1_1Mesh.html#a60274817b98e76ec5a411f0c3df2a76b" title="This function is not yet implemented. ">Mesh::ResolveModification</a> is yet to be tested and should be considered dangerous.</p>
 <p>If you have output from Zoltan or ParMetis for cells of the mesh then just write this output to RedistributeTag and call <a class="el" href="classINMOST_1_1Mesh.html#ade20ec7c8563e82bf8057bc47a3314b7" title="Migrate all the elements to the new owners prescribed in data corresponding to RedistributeTag. ">Mesh::Redistribute</a>.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000009">Todo:</a></b></dt><dd>TODO:<ol type="1">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000015">Todo:</a></b></dt><dd><ol type="1">
 <li>introduce "TEMPORARY_KEEP_GHOSTED" tag that will store processors on which copy of element should be kept, internally just merge it with "TEMPORARY_NEW_PROCESSORS" tag this will allow user to control ghosting of certain elements and not to invoke ExchangeMarked every time after Redistribute. This is probably already done using Mesh::SendtoTag, because function fills it without clearing and ExchangeMarked performs initial action based on SendtoTag, it is due to check that SendtoTag is properly merged with "TEMPORARY_NEW_PROCESSORS" before call to ExchangeMarked and received elements are not deleted by accident.</li>
 <li>let user provide any integer tag as input without involving RedistributeTag</li>
 </ol>
@@ -4327,14 +4327,15 @@ Mesh::EndModification </dd>
 <p>Accumulation of data from ghost elements to shared elements. </p>
 <p>Accumulation is performed based on user-provided function. When processor - owner of the element receives data addressed to this element then it calls user-defined op function. Since there may be multiple ghost elements per one shared element, function may be called multiple times.</p>
 <p>Several examples of reduction functions may be found within the mesh_parallel.cpp source.</p>
-<p>Remember that the result will be up to date only on the owner of the processor. You will have to run <a class="el" href="classINMOST_1_1Mesh.html#aa3e1067bc3139bb0216f7ce3c1936734" title="Update data from Shared elements to Ghost elements. ">Mesh::ExchangeData</a> to make the data up to date among all of the processors. If you have a tag of DATA_BULK type and you store your own custom data structure in it, it is highly recomended that you provide MPI information about your structure through Tag::SetBulkDataType, this would not do any difference on homogeneous architecture, but it may help you save a lot of time and nerves in heterogeneous parallel environment.</p>
+<p>Remember that the result will be up to date only on the owner processor of the element. You will have to run <a class="el" href="classINMOST_1_1Mesh.html#aa3e1067bc3139bb0216f7ce3c1936734" title="Update data from Shared elements to Ghost elements. ">Mesh::ExchangeData</a> to make the data up to date among all of the processors.</p>
+<p>If you have a tag of DATA_BULK type and you store your own custom data structure in it, it is highly recomended that you provide MPI information about your structure through Tag::SetBulkDataType, this would not do any difference on homogeneous architecture, but it may help you save a lot of time and nerves in heterogeneous parallel environment.</p>
 <p>Exchanging tags of DATA_REFERNCE is not implemented, TODO 14. </p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000007">Todo:</a></b></dt><dd>TODO:<ol type="1">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000013">Todo:</a></b></dt><dd><ol type="1">
 <li>Exchanging DATA_REFERENCE tags not implemented, this is due to the absence of any conclusion</li>
 </ol>
 <ul>
 <li>on how it should behave: either only search within elements owned by the other processor and establish references and set InvalidHandle() to elements that are not found (fairly easy, will involve search operations to check against owned elements for similar entry, efficient implementation will require bounding search trees (see TODO 49);</li>
-<li>or: send all the referenced elements through PackElementsData and establish all the links within elements reproduced by UnpackElementsData (UnpackElementsData calls UnpackTagData with set of unpacked elements using which it will be vary comfortable to establish references on remote processor)</li>
+<li>or: send all the referenced elements through PackElementsData and establish all the links within elements reproduced by UnpackElementsData (UnpackElementsData calls UnpackTagData with set of unpacked elements using which it will be very comfortable to establish references on remote processor). Drawback is that exchanging laplacian operator in such a manner should result in the whole grid being shared among all the processors.</li>
 </ul>
 </dd></dl>
 <p>Blocking, Collective point-2-point</p>
@@ -4650,7 +4651,7 @@ Mesh::EndModification </dd>
 <p>Future recomendation: If variable size array was not allocated then this function will generate segmentation fault.</p>
 <p>If you know that data is certanly dense and fixed or variable on elements you access then it is faster to use specialized variants of this function.</p>
 <p>Reference to the data is guaranteed to be valid during mesh modification.</p>
-<p>Using handle you can construct objects of type <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>, <a class="el" href="classINMOST_1_1Element.html">Element</a>, <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html">Cell</a>, <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> by calling their constructor with pointer to mesh and handle as arguments.</p>
+<p>Using handle you can construct objects of type <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>, <a class="el" href="classINMOST_1_1Element.html">Element</a>, <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a>, <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> by calling their constructor with pointer to mesh and handle as arguments.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">h</td><td>element handle </td></tr>
@@ -4688,7 +4689,7 @@ Mesh::EndModification </dd>
 <p>Returns an array of element handles. </p>
 <p>If variable size array was not allocated then this function will generate segmentation fault.</p>
 <p>If you know that data is certanly sparse or dense on elements you access then it is faster to use variants of this function with hint data structure.</p>
-<p>The class reference_array that is used to represent array of elements stores handles inside but accessing them through square scopes [] or by arrow -&gt; in iterator will automatically form object of type <a class="el" href="classINMOST_1_1Element.html">Element</a>. If you are not sure that stored handles are valid, you should either check that by Element::isValid (involves deep check) or test handle against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or dereference * operator for iterator. If you need custom object like <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html">Cell</a> or <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace, Element::getAsCell and Element::getAsSet functions.</p>
+<p>The class reference_array that is used to represent array of elements stores handles inside but accessing them through square scopes [] or by arrow -&gt; in iterator will automatically form object of type <a class="el" href="classINMOST_1_1Element.html">Element</a>. If you are not sure that stored handles are valid, you should either check that by Element::isValid (involves deep check) or test handle against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or dereference * operator for iterator. If you need custom object like <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> or <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace, Element::getAsCell and Element::getAsSet functions.</p>
 <p>Array data structure is guaranteed to be valid during mesh modification. If you delete elements by <a class="el" href="classINMOST_1_1Mesh.html#a569c516120df121980d0585deadd3634" title="This function will hide element in modification state (between BeginModification and EndModification)...">Mesh::Delete</a> or Element::Delete all the references are also will be valid and reverted to InvalidHandle on <a class="el" href="classINMOST_1_1Mesh.html#a1f53070855f3503b2f4cefc16cedd6a0" title="After this function any link to deleted element will be replaced by InvalidHandle(). ">Mesh::ApplyModification</a>. If you use <a class="el" href="classINMOST_1_1Mesh.html#a0e2c090ee95e802c4f486a5d98fc6cb0" title="Completely destroy element from mesh. ">Mesh::Destroy</a> to delete mesh elements or delete elements not within modification state then references may become either invalid but not testable against InvalidHandle (situation may be tested by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element if you mix deletion and creation of elements and then is no way to resolve this situation, except if you have created only one element the it may be retrieved by Mesh::LastHandle.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -4749,7 +4750,7 @@ Element::getAsSet </dd></dl>
 <p>If you don't know any hint information about tag data you should not use this function.</p>
 <p>Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect, no checks performed in release mode (NDEBUG is set), likely to result in segfault.</p>
 <p>Note that as array is fixed you shouldn't use any functions that alter size of the array as resize, erase, insert, you may use replace if initial and final size will match, in debug mode assert will fire if you try to do this in release (NDEBUG is set) it will lead to segfault.</p>
-<p>The class reference_array that is used to represent array of elements stores handles inside but accessing them through square scopes [] or by arrow -&gt; in iterator will automatically form object of type <a class="el" href="classINMOST_1_1Element.html">Element</a>. If you are not sure that stored handles are valid, you should either check that by Element::isValid (involves deep check) or test handle against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or dereference * operator for iterator. If you need custom object like <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html">Cell</a> or <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace, Element::getAsCell and Element::getAsSet functions.</p>
+<p>The class reference_array that is used to represent array of elements stores handles inside but accessing them through square scopes [] or by arrow -&gt; in iterator will automatically form object of type <a class="el" href="classINMOST_1_1Element.html">Element</a>. If you are not sure that stored handles are valid, you should either check that by Element::isValid (involves deep check) or test handle against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or dereference * operator for iterator. If you need custom object like <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> or <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace, Element::getAsCell and Element::getAsSet functions.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">h</td><td>element handle </td></tr>
@@ -4808,7 +4809,7 @@ Element::getAsSet </dd></dl>
 <p>Returns an array of element handles in dense array of variable size. </p>
 <p>If you don't know any hint information about tag data you should not use this function.</p>
 <p>Asserts will fire in debug mode if assumption that data is dense and variable is incorrect, no checks performed in release mode (NDEBUG is set).</p>
-<p>The class reference_array that is used to represent array of elements stores handles inside but accessing them through square scopes [] or by arrow -&gt; in iterator will automatically form object of type <a class="el" href="classINMOST_1_1Element.html">Element</a>. If you are not sure that stored handles are valid, you should either check that by Element::isValid (involves deep check) or test handle against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or dereference * operator for iterator. If you need custom object like <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html">Cell</a> or <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace, Element::getAsCell and Element::getAsSet functions.</p>
+<p>The class reference_array that is used to represent array of elements stores handles inside but accessing them through square scopes [] or by arrow -&gt; in iterator will automatically form object of type <a class="el" href="classINMOST_1_1Element.html">Element</a>. If you are not sure that stored handles are valid, you should either check that by Element::isValid (involves deep check) or test handle against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or dereference * operator for iterator. If you need custom object like <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> or <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace, Element::getAsCell and Element::getAsSet functions.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">h</td><td>element handle </td></tr>
@@ -4867,7 +4868,7 @@ Element::getAsSet </dd></dl>
 <p>Returns a reference in dense array to the first element of constant size array of element handles. </p>
 <p>If you don't know any hint information about tag data you should not use this function.</p>
 <p>Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect, no checks performed in release mode (NDEBUG is set).</p>
-<p>Using handle you can construct objects of type <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>, <a class="el" href="classINMOST_1_1Element.html">Element</a>, <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html">Cell</a>, <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> by calling their constructor with pointer to mesh and handle as arguments.</p>
+<p>Using handle you can construct objects of type <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>, <a class="el" href="classINMOST_1_1Element.html">Element</a>, <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a>, <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> by calling their constructor with pointer to mesh and handle as arguments.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">h</td><td>element handle </td></tr>
@@ -4914,7 +4915,7 @@ Element::getAsSet </dd></dl>
 <p>Future recomendation: If array was not allocated then this function will generate segmentation fault.</p>
 <p>If you don't know any hint information about tag data you should not use this function.</p>
 <p>Asserts will fire in debug mode if assumption that data is dense and variable is incorrect, no checks performed in release mode (NDEBUG is set).</p>
-<p>Using handle you can construct objects of type <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>, <a class="el" href="classINMOST_1_1Element.html">Element</a>, <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html">Cell</a>, <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> by calling their constructor with pointer to mesh and handle as arguments.</p>
+<p>Using handle you can construct objects of type <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>, <a class="el" href="classINMOST_1_1Element.html">Element</a>, <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a>, <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> by calling their constructor with pointer to mesh and handle as arguments.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">h</td><td>element handle </td></tr>
@@ -5080,7 +5081,7 @@ Element::getAsSet </dd></dl>
   </table>
   </dd>
 </dl>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000004">Todo:</a></b></dt><dd>TODO<ol type="1">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000010">Todo:</a></b></dt><dd><ol type="1">
 <li>Currently request for deletion of elements of lower level then cell will be simply ignored, ensure in future that algorithm will properly rise deletion data from lower to upper adjacencies to delete all the upper adjacencies that depend on deleted lower adjacencies </li>
 </ol>
 </dd></dl>
@@ -5318,7 +5319,7 @@ Element::getAsSet </dd></dl>
 <li>"VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids</li>
 <li>"VERBOSITY" - set "2" for progress messages, "1" for reports, "0" for silence</li>
 </ul>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000010">Todo:</a></b></dt><dd>TODO: introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000016">Todo:</a></b></dt><dd>introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip </dd></dl>
 
 </div>
 </div>
@@ -5691,7 +5692,7 @@ Mesh::ExchangeBuffersInner </dd></dl>
         </tr>
       </table>
 </div><div class="memdoc">
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000014">Todo:</a></b></dt><dd>TODO 53 check that putting global ids to array will be faster </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000020">Todo:</a></b></dt><dd>TODO 53 check that putting global ids to array will be faster </dd></dl>
 
 </div>
 </div>
@@ -5830,7 +5831,7 @@ Mesh::ExchangeBuffersInner </dd></dl>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Feb 6 2015 10:40:46 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Mon Feb 9 2015 02:21:41 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>
