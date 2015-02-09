@@ -15,10 +15,10 @@ platform portability.
 Refer to https://github.com/INMOST-DEV/INMOST/wiki/0100-Compilation
 
 ## User's guide
-Refer to https://github.com/INMOST-DEV/INMOST/wiki for general guides.
+Refer to https://wiki.inmost.org for general guides.
 
 ## Doxygen documentation
-Doxygen-generated documentation is available online at http://dodo.inm.ras.ru/inmost/docs/latest/html/
+Doxygen-generated documentation is available online at http://doxy.inmost.org
 
 [![Analytics](https://ga-beacon.appspot.com/UA-59408561-4/INMOST/README.md?pixel)](https://github.com/igrigorik/ga-beacon)
 
