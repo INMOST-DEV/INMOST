@@ -91,37 +91,70 @@ namespace INMOST
 		return b;
 	}
 	
-	bool Cell::Inside(Storage::real * point) const//check for 2d case
+	bool Cell::Inside(const Storage::real * point) const//check for 2d case
 	{
 		Mesh * m = GetMeshLink();
-		integer dim = m->GetDimensions();
-		integer vp = 0;
-		integer vm = 0;
-		integer vz = 0;
-		real eps = m->GetEpsilon();
-		real c,d;
-		assert( dim == 3 );// throw UndefinedBehaviorInGeometry;
-		adj_type & elements = m->LowConn(GetHandle());
-		for(adj_type::size_type f = 0; f < elements.size(); f++)
+		integer dim = GetElementDimension();
+		if( dim == 3 )
 		{
-			Face ef = Face(m,elements[f]);
-			d = 0.0;
-			ElementArray<Node> nodes = ef->getNodes();
-			for (ElementArray<Node>::size_type i=1; i<nodes.size()-1; i++) 
-				d += c = det4v(point, nodes[0].Coords().data(), nodes[i].Coords().data(), nodes[i+1].Coords().data());
-			if(ef->FaceOrientedOutside(self()) == 0)  
-				c = -1.0;  
-			else 
-				c = 1.0;
-			if(c*d > eps)  
-				vp++;  
-			else if(c*d < eps)  
-				vm++;  
-			else  
-				vz++;
+			assert(m->GetDimensions() == 3);
+			integer vp = 0;
+			integer vm = 0;
+			integer vz = 0;
+			real eps = m->GetEpsilon();
+			real c,d;
+			adj_type & elements = m->LowConn(GetHandle());
+			for(adj_type::size_type f = 0; f < elements.size(); f++)
+			{
+				Face ef = Face(m,elements[f]);
+				d = 0.0;
+				ElementArray<Node> nodes = ef->getNodes();
+				for (ElementArray<Node>::size_type i=1; i<nodes.size()-1; i++) 
+					d += c = det4v(point, nodes[0].Coords().data(), nodes[i].Coords().data(), nodes[i+1].Coords().data());
+				if(ef->FaceOrientedOutside(self()) == 0)  
+					c = -1.0;  
+				else 
+					c = 1.0;
+				if(c*d > eps)  
+					vp++;  
+				else if(c*d < eps)  
+					vm++;  
+				else  
+					vz++;
+			}
+			if(vp*vm > 0) return false;
+			return false;
 		}
-		if(vp*vm > 0) return false;
-		return true;
+		else
+		{
+			int mdim = m->GetDimensions();
+			assert(mdim <= 3);
+			Storage::real data[9][3];
+			if( mdim < 3 )
+			{
+				memset(data,0,sizeof(Storage::real)*9*3);
+			}
+			Centroid(data[0]);
+			ElementArray<Node> nodes = getNodes();
+			for(int i = 0; i < nodes.size(); i++)
+			{
+				int j = (i+1)%nodes.size();
+				nodes[i].Centroid(data[1]);
+				nodes[j].Centroid(data[2]);
+				vec_diff(point,data[0],data[3],mdim);
+				vec_diff(point,data[1],data[4],mdim);
+				vec_diff(point,data[2],data[5],mdim);
+				vec_cross_product(data[3],data[4],data[6]);
+				vec_cross_product(data[4],data[5],data[7]);
+				vec_cross_product(data[5],data[3],data[8]);
+
+				if( vec_dot_product(data[6],data[7],mdim) >= 0 &&
+				    vec_dot_product(data[7],data[8],mdim) >= 0 &&
+				    vec_dot_product(data[6],data[8],mdim) >= 0 )
+					return true; //inside one of the triangles
+			}
+			return false;
+		}
 	}
 	
 	

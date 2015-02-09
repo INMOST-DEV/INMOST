@@ -343,6 +343,7 @@ namespace INMOST
 			const_iterator end() const {return const_iterator(m,shell<HandleType>::end());}
 			reverse_iterator rend() {return reverse_iterator(m,shell<HandleType>::rend());}
 			const_reverse_iterator rend() const {return const_reverse_iterator(m,shell<HandleType>::rend());}
+			void SetMeshLink(Mesh * new_m) {m = new_m;}
 		};
 		//typedef shell<reference>          reference_array;
 	protected:
@@ -761,7 +762,6 @@ namespace INMOST
 		/// Connects lower adjacencies to current element, 
 		/// geometric data and cell nodes are updated automatically. \n
 		/// \todo
-		/// TODO:
 		///	1. asserts in this function should be replaced by Topography checks; \n
 		///	2. this function should be used for creation of elements instead of current implementation. \n
 		///	3. should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)
@@ -858,13 +858,15 @@ namespace INMOST
 		//this is for 2d case when the face is represented by segment
 		Node                        getBeg                  () const;
 		Node                        getEnd                  () const;
-		/// Retrieve the cell for which the normal points outwards.
+		/// \brief Retrieve the cell for which the normal points outwards.
+		///
 		/// Depending on the grid construction the normal may incorrectly point inwards.
 		/// You can resolve this situation by Face::FixNormalOrientation.
 		/// @return the cell for which normal points outwards.
 		/// @see Face::FixNormalOrientation
 		Cell                        BackCell                () const;
-		/// Retrieve the cell for which the normal points inwards.
+		/// \brief Retrieve the cell for which the normal points inwards.
+		///
 		/// Depending on the grid construction the normal may incorrectly point outwards.
 		/// You can resolve this situation by Face::FixNormalOrientation.
 		/// @return the cell for which normal points inwards.
@@ -893,47 +895,291 @@ namespace INMOST
 
 	__INLINE const Face & InvalidFace() {static Face ret(NULL,InvalidHandle()); return ret;}
 	
-	class Cell : public Element //implemented in cell.cpp
+	//implemented in cell.cpp
+	/// \brief An interface for elements of type CELL.
+	///
+	/// This interface carry the link to the mesh and the element's handle that
+	/// represents position of the element's data in the mesh. 
+	///
+	/// Interface provides some operations that can be done uniquely on the element
+	/// of type CELL.
+	///
+	/// For the basic set of operations on all of the elements check class Element.
+	///
+	/// For the basic set of operations on the data of the element check class Storage.
+	///
+	/// You can obtain object of class Cell from Mesh::iteratorCell,
+	/// in this case obtained object is always valid.
+	/// Also you can get it through Mesh::CellByLocalID, check with Element::isValid to see whether you
+	/// have obtained valid object.
+	/// You can convert object of class Element into object of class Cell by Element::getAsCell. In debug
+	/// mode it will internally check that element is of type CELL.
+	/// You may compose object of class Cell by using constructor and specifing pointer to the mesh
+	/// and providing element's handle. You can make handle with ComposeHandle(CELL,local_id) function.
+	class Cell : public Element
 	{
 	public:
-		Cell() : Element() {}
+		/// \brief Basic constructor.
+		///
+		/// Constructs invalid cell.
+		Cell() : Element() {} 
+		/// \brief Basic constructor with fixed handle.
+		///
+		/// When constructed this way, only handle within object may change.
+		///
+		/// @param m Pointer to the mesh to which the element belongs.
+		/// @param h Unique handle that describes position of the element within the mesh.
 		Cell(Mesh * m, HandleType h) : Element(m,h) {}
+		/// \brief Basic constructor with an assignable handle.
+		///
+		/// When constructed this way, the provided memory location for handle
+		/// will be modified on assignment.
+		///
+		/// The purpose of this function is to be used in varios non-constant iterators
+		/// of containers that allow underlaying contents to be changed.
+		///
+		/// @param m Pointer to the mesh to which the element belongs.
+		/// @param h Pointer to the handle that describes position of the element within mesh.
 		Cell(Mesh * m, HandleType * h) : Element(m,h) {}
+		/// \brief Copy constructor.
+		///
+		/// New object will inherit the assignment behavior of the initial object.
+		///
+		/// @param other Object of type Cell to be duplicated.
 		Cell(const Cell & other) : Element(other) {}
-		Cell & operator =(Cell const & other) {Element::operator =(other); return *this;}
-		Cell * operator ->() {return this;}
+		/// \brief Assignment operator
+		///
+		/// Assigned object will inherit the asignment behavior of the initial object only
+		/// in case it was constructed without pointer to a handle. Otherwise it will
+		/// only modify the memory location to which it points.
+		///
+		/// @param other Object of type Cell to be duplicated.
+		/// @return Reference to the current object.
+		Cell & operator =(Cell const & other) {Element::operator =(other); return *this;} ///< Assignment Operator.
+		/// \brief Operator of dereference to pointer.
+		///
+		/// This is needed for iterators to work properly.
+		///
+		/// @return Pointer to the current object.
+		Cell * operator ->() {return this;} 
+		/// \brief Operator of dereference to constant pointer. 
+		///
+		/// This is needed for const_iterators to work properly.
+		///
+		/// @return Constant pointer to the current object.
 		const Cell * operator ->() const {return this;}
-		Cell & self() {return *this;}
+		/// \brief Get self-reference.
+		///
+		/// Main purpose is to convert iterators into elements and to pass them as arguments of functions.
+		///
+		/// @return Constant reference to the current object.
+		Cell & self() {return *this;} 
+		/// \brief Get constant self-reference.
+		///
+		/// Main purpose is to convert iterators into elements and to pass them as arguments of functions.
+		///
+		/// @return Reference to the current object.
 		const Cell & self() const {return *this;}
 	public:
-		ElementArray<Node>          getNodes                () const; //ordered (for known geometric types only)
-		ElementArray<Edge>          getEdges                () const; //unordered
-		ElementArray<Face>          getFaces                () const; //ordered (keeps order it was created in)
-
-		ElementArray<Node>          getNodes                (MarkerType mask,bool invert_mask = false) const; //ordered (for known geometric types only)
-		ElementArray<Edge>          getEdges                (MarkerType mask,bool invert_mask = false) const; //unordered
-		ElementArray<Face>          getFaces                (MarkerType mask,bool invert_mask = false) const; //ordered (keeps order it was created in)
-		
-		
+		/// \brief Get all the nodes of the current cell.
+		///
+		/// This function traverses up the adjacency graph by one level.
+		///
+		/// The order of nodes will be preserved from the moment of the creation of the cell.
+		/// When suggest_nodes array is not supplied into the Mesh::CreateCell functions, then
+		/// for known types the order of nodes follows VTK convention. For polyhedral cells
+		/// the order is unspecified. When suggest_nodes_order was provided into Mesh::CreateCell
+		/// then the order follows provided order.
+		///
+		/// @return Set of nodes that compose current cell.
+		ElementArray<Node>          getNodes                () const;
+		/// \brief Get all the edges of the current cell.
+		///
+		/// This function traverses down the adjacency graph by two levels.
+		///
+		/// The order of the edges is unspecified.
+		///
+		/// WARNING: Note that this function uses markers to check for duplication of edges
+		/// in output array. This allows for faster algorithm, but will lead to penalties
+		/// in shared parallel execution, since operations on markers are declared atomic.
+		/// For atomic declaration to work you have to define USE_OMP during CMake configuration
+		/// or in inmost_common.h. If you attempt to use this function in shared parallel execution
+		/// without USE_OMP you may expect side effects.
+		///
+		/// @return Set of edges that compose current cell.
+		///
+		/// \todo
+		/// One should thoroughly check three scenarios of function execution in shared parallel environment
+		/// for different types of cells (simple tet/hex cells as well as complex polyhedral cells) and
+		/// draw a conclusion on the best scenario for each condition. One of the development versions
+		/// contains all the algorithms, ask for the files.
+		///  1. Use of markers (current wariant).
+		///  2. Put all elements into array with duplications, then run std::sort and std::unique.
+		///  3. Put all elements into array, check for duplication by running through array.
+		ElementArray<Edge>          getEdges                () const;
+		/// \brief Get all the faces of the current cell.
+		///
+		/// This function traverses down the adjacency graph by one level.
+		///
+		/// The order of the faces returned by this function is preserved from 
+		/// the moment of the creation of the cell.
+		///
+		/// @return Set of faces that compose current cell.
+		ElementArray<Face>          getFaces                () const;
+		/// \brief Get the subset of the nodes of the current cell that are (not) marked by provided marker.
+		///
+		/// This function traverses up the adjacency graph by one level.
+		///
+		/// The order of nodes will be preserved from the moment of the creation of the cell.
+		/// When suggest_nodes array is not supplied into the Mesh::CreateCell functions, then
+		/// for known types the order of nodes follows VTK convention. For polyhedral cells
+		/// the order is unspecified. When suggest_nodes_order was provided into Mesh::CreateCell
+		/// then the order follows provided order.
+		///
+		/// WARNING: To work correctly in shared parallel environment this function requires
+		/// USE_OMP to be defined in CMake or in inmost_common.h.
+		///
+		/// @param mask Marker that should be used to filter elements.
+		/// @param invert_mask If false then those elements that are marked will be taken, otherwise
+		///                    elements that are not marked will be taken.
+		/// @return Set of the nodes that compose current cell and (not) marked by marker.
+		ElementArray<Node>          getNodes                (MarkerType mask,bool invert_mask = false) const;
+		/// \brief Get the subset of the edges of the current cell that are (not) marked by provided marker.
+		///
+		/// This function traverses down the adjacency graph by two levels.
+		///
+		/// The order of the edges is unspecified.
+		///
+		/// WARNING: To work correctly in shared parallel environment this function requires
+		/// USE_OMP to be defined in CMake or in inmost_common.h.
+		///
+		/// @param mask Marker that should be used to filter elements.
+		/// @param invert_mask If false then those elements that are marked will be taken, otherwise
+		///                    elements that are not marked will be taken.
+		/// @return Set of the edges that compose current cell and (not) marked by marker.
+		ElementArray<Edge>          getEdges                (MarkerType mask,bool invert_mask = false) const;
+		/// \brief Get the subset of the faces of the current cell that are (not) marked by provided marker.
+		///
+		/// This function traverses down the adjacency graph by one level.
+		///
+		/// The order of the faces returned by this function is preserved from 
+		/// the moment of the creation of the cell.
+		///
+		/// WARNING: To work correctly in shared parallel environment this function requires
+		/// USE_OMP to be defined in CMake or in inmost_common.h.
+		///
+		/// @param mask Marker that should be used to filter elements.
+		/// @param invert_mask If false then those elements that are marked will be taken, otherwise
+		///                    elements that are not marked will be taken.
+		/// @return Set of the faces that compose current cell and (not) marked by marker.
+		ElementArray<Face>          getFaces                (MarkerType mask,bool invert_mask = false) const;
+		/// \brief Check that sequence of edges form a closed loop and each edge have a node that matches one of the nodes at the next edge.
+		///
+		/// This function works for cells for which Element::GetGeometricDimension returns 2.
+		///
+		/// @return True if edges form the correct closed loop.
+		///
+		/// \todo
+		///   1. Implement.
+		///   2. Use in topology check algorithms.
+		///   3. Use in Element::Connect.
 		bool                        CheckEdgeOrder          () const; //not implemented//2D only, returns true if edges of face form an ordered closed loop
+		/// \brief Repair the sequence of edges so that each edge have node that matches one of the nodes at the next edge.
+		///
+		/// This function works for cells for which Element::GetGeometricDimension returns 2.
+		///
+		/// This function may fail if all the edges does not form a closed loop.
+		///
+		/// @return True if edges were successfully reordered to form a closed loop.
+		///
+		/// \todo
+		///   1. Implement.
+		///   2. Use in topology check algorithms.
+		///   3. Use in Element::Connect.
 		bool                        FixEdgeOrder            () const; //not implemented//2D only, returns true if edges were successfully reordered to form a closed loop
 		//implemented in modify.cpp
+		/// \brief Unite a set of given cells into one cell.
+		///
+		/// This will create a cell whose faces are formed by symmetric difference
+		/// of faces of given cells.
+		/// If you specify a nonzero marker then the procedure will fail 
+		/// if any marked element have to be deleted during union.
+		/// @param cells A set of cells to be united.
+		/// @param del_protect A marker that protects elements from deletion. Zero means no check.
+		/// @return A new cell.
 		static Cell                 UniteCells              (ElementArray<Cell> & cells, MarkerType del_protect);
+		/// \brief Test that no marked element will be deleted during union of given cells.
+		/// @param cells A set of cells to be united.
+		/// @param del_protect A marker that protects elements from deletion. Zero means no check.
+		/// @return True if no element deleted, false otherwise.
 		static bool                 TestUniteCells          (const ElementArray<Cell> & cells, MarkerType del_protect);
+		/// \brief Separate a cell according to the set of provided faces.
+		///
+		/// You should first separate all edges with new nodes by Edge::SplitEdge, then faces with new edges by Face::SplitFace
+		/// and then create faces using new edges from faces of initial cell and optionally edges from inside of the cell. 
+		/// All faces are supposed to be internal with respect to the current cell. 
+		/// Internally this function will resolve geometry of new cells inside of the 
+		/// current cell by running through adjacency graph.
+		///
+		/// @param cell A cell to be split.
+		/// @param faces A set of faces, internal for current cell, that will be used for construction of new cells.
+		/// @param del_protect Marker that may be used to protect some elements from deletion by algorithm. 
+		///        Zero means no check.
+		/// @return A set of new cells.
+		/// @see Edge::SplitEdge
+		/// @see Face::SplitFace
+		///
+		/// \todo
+		///   1. The algorithm inside is minimizing the size of the adjacency graph for each new cell.
+		///      The correct behavior is to calculate volume of the cell for each adjacency graph and choose the graph with minimal volume.
+		///      This requires calculation of volume for non-convex cells. For correct calculation of volume on non-convex cells one should 
+		///      find one face for which normal orientation can be clearly determined and then orient all edges of the cell with respect to
+		///      the orientation of edges of this face and establish normals for all faces. Once the algorithm is implemented here it should 
+		///      be implemented in geometrical services or vice verse.
+		///   2. Probably the algorithm should minimize the volume and adjacency graph size altogether. Between the cells with smallest volume
+		///      within some tolerance select those that have smallest adjacency graph.
 		static ElementArray<Cell>   SplitCell               (Cell cell, const ElementArray<Face> & faces, MarkerType del_protect); //provide all faces, that lay inside cell
+		/// \brief This functions checks is it possible to split the cell by the given set of faces without deleting marked elements.
+		///
+		/// @param cell A cell to be split.
+		/// @param faces Set of faces, internal for current cell, that will be used for new cells.
+		/// @param del_protect Marker that may be used to protect some elements from deletion by algorithm. Zero means no check.
+		/// @return True if possible, otherwise false.
 		static bool                 TestSplitCell           (Cell cell, const ElementArray<Face> & faces, MarkerType del_protect);
 		//implemented in geometry.cpp
-		Cell                        Neighbour               (Face f) const;
+		/// \brief Get a cell that share a face with the current cell.
+		///
+		/// Don't forget to check that the returned cell is valid.
+		/// It would return invalid cell for boundary face.
+		///
+		/// @param face A face of current cell for which neighbouring cell is determined.
+		/// @return A cell that shares a given face with the current cell.
+		Cell                        Neighbour               (Face face) const;
+		/// \brief Get all cells that share the face with the current cell.
+		/// @return Set of cells that share a face with the current cell.
 		ElementArray<Cell>          NeighbouringCells       () const; // get all cells that share any face with current
-		/// Determine, if point lies inside element.
+		/// \brief Determine, if point lies inside element.
+		///
 		/// Now it works only for 3-dimensional elements, at future it will be
 		/// extended to support polygons and segments.
 		/// @param point coordinates of the point, it is assumed that number of the
 		/// coordinates is the same as the number of dimensions in the mesh.
 		/// @return returns true if points inside element, false otherwise
 		/// @see Mesh::GetDimensions
-		bool                        Inside                  (real * point) const; //is point inside cell, check for 2d case
+		///
+		/// \todo
+		///   1. Should be checked or extended for 2d cells. (done, testing)
+		bool                        Inside                  (const real * point) const; //is point inside cell, check for 2d case
+		/// \brief Return volume of the cell.
+		///
+		/// Note that currently the volume for non-convex cells may be calculated incorrectly.
+		/// \todo
+		///   1. Geometric services should correctly resolve volume for non-convex cells.
 		real                        Volume                  () const;
+		/// \brief Test that faces of the cell form the closed set.
+		///
+		/// This is automatically checked for if you activate NEED_TEST_CLOSURE
+		/// in Mesh::SetTopologyCheck.
 		bool                        Closure                 () const; // test integrity of cell
 	};
 
@@ -1100,7 +1346,6 @@ namespace INMOST
 
 		/// Compute and store difference with raw handles.
 		/// \todo
-		/// TODO
 		///   If other and current sets are sorted in same way, may perform narrowing traversal by retriving
 		///   mutual lower_bound/higher_bound O(log(n)) operations for detecting common subsets in sorted sets.
 		///   May work good when deleting handles by small chunks, ApplyModification may greatly benefit.
@@ -1768,7 +2013,7 @@ namespace INMOST
 		/// @param m stores byte number and byte bit mask that represent marker
 		/// @see Mesh::SetMarker
 		void                              SetMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetMarker(h[i],m);}
-		/// Check weather the marker is set one the element.
+		/// Check whether the marker is set one the element.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
 		bool                              GetMarker          (HandleType h,MarkerType n) const {return (static_cast<const bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;}
@@ -2226,7 +2471,6 @@ namespace INMOST
 		/// @param ghost array of handles
 		/// @param num number of handles
 		/// \todo
-		/// TODO
 		///  1. Currently request for deletion of elements of lower level then cell will be simply ignored, ensure
 		///     in future that algorithm will properly rise deletion data from lower to upper adjacencies 
 		///     to delete all the upper adjacencies that depend on deleted lower adjacencies
@@ -2241,7 +2485,6 @@ namespace INMOST
 		/// of centroids which is faster.
 		///
 		/// \todo
-		/// TODO
 		///     1. invoking function before loading mesh will not renew global identificators after load
 		///        but would not unset have_global_id either. There are probably too many places when
 		///        global ids may become invalid but no flag will be set. It may be benefitial to set
@@ -2255,7 +2498,7 @@ namespace INMOST
 		/// time and nerves in heterogeneous parallel environment.
 		///
 		/// \todo
-		/// TODO: see TODO in Mesh::ReduceData
+		/// see TODO in Mesh::ReduceData
 		///
 		/// Blocking, Collective point-2-point
 		///
@@ -2320,15 +2563,18 @@ namespace INMOST
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @param storage buffer that will temporary hold sended data
 		void                              ExchangeDataEnd    (const tag_set & tags, ElementType mask, MarkerType select, exchange_data & storage);
-		/// Accumulation of data from ghost elements to shared elements. Accumulation is performed 
-		/// based on user-provided function. When processor - owner of the element receives data addressed
+		/// \brief Accumulation of data from ghost elements to shared elements.
+		///
+		/// Accumulation is performed based on user-provided function. 
+		/// When processor - owner of the element receives data addressed
 		/// to this element then it calls user-defined op function. Since there may be multiple ghost
 		/// elements per one shared element, function may be called multiple times.
 		///
 		/// Several examples of reduction functions may be found within the mesh_parallel.cpp source.
 		///
-		/// Remember that the result will be up to date only on the owner of the processor. You will have
+		/// Remember that the result will be up to date only on the owner processor of the element. You will have
 		/// to run Mesh::ExchangeData to make the data up to date among all of the processors.
+		///
 		/// If you have a tag of DATA_BULK type and you store your own custom data structure in it, it is highly
 		/// recomended that you provide MPI information about your structure through Tag::SetBulkDataType,
 		/// this would not do any difference on homogeneous architecture, but it may help you save a lot of 
@@ -2336,7 +2582,6 @@ namespace INMOST
 		///
 		/// Exchanging tags of DATA_REFERNCE is not implemented, TODO 14.
 		/// \todo
-		/// TODO:
 		///    1. Exchanging DATA_REFERENCE tags not implemented, this is due to the absence of any conclusion
 		///    -  on how it should behave:
 		///         either only search within elements owned by the other processor and
@@ -2346,8 +2591,9 @@ namespace INMOST
 		///    -  or:
 		///         send all the referenced elements through PackElementsData and establish all the links within
 		///         elements reproduced by UnpackElementsData (UnpackElementsData calls UnpackTagData with set
-		///         of unpacked elements using which it will be vary comfortable to establish references on
-		///         remote processor)
+		///         of unpacked elements using which it will be very comfortable to establish references on
+		///         remote processor). Drawback is that exchanging laplacian operator in such a manner should
+		///         result in the whole grid being shared among all the processors.
 		///
 		/// Blocking, Collective point-2-point
 		///
@@ -2434,7 +2680,6 @@ namespace INMOST
 		///   Given that all the data was up to date among processors all the data at the end of the algorithm will be also up to data
 		///
 		/// \todo
-		/// TODO 
 		///     1. test halo exchange algorithm (if used then change collective point-2-point to collective)
 		///     2. see TODO 2 in Mesh::Redistribute
 		///
@@ -2484,7 +2729,6 @@ namespace INMOST
 		/// then just write this output to RedistributeTag and call Mesh::Redistribute.
 		///
 		/// \todo
-		/// TODO:
 		///      1. introduce "TEMPORARY_KEEP_GHOSTED" tag that will store processors on which copy of element
 		///         should be kept, internally just merge it with "TEMPORARY_NEW_PROCESSORS" tag
 		///         this will allow user to control ghosting of certain elements and not to invoke ExchangeMarked
@@ -2756,7 +3000,6 @@ namespace INMOST
 		/// - "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
 		///
 		/// \todo
-		/// TODO:
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write
 		///      or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip
 		void         SetFileOption(std::string,std::string);
@@ -2824,7 +3067,7 @@ namespace INMOST
 	private:
 		MarkerType hide_element, new_element;
 	public:
-		/// Check weather code runs between Mesh::BeginModification, Mesh::EndModification scope.
+		/// Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope.
 		/// In case mesh is modified, on element creation Mesh::TieElements will always place elements 
 		/// to the end of the array as a result all the newly created elements will be iterated after current
 		/// or hidden elements.
@@ -2835,7 +3078,6 @@ namespace INMOST
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
 		/// \todo
-		/// TODO:
 		///      1. maybe instead of forming set of deleted elements and subtracting set from other sets it is better
 		///         to remove each modified element
 		///         (done, check and compare)
@@ -2862,13 +3104,13 @@ namespace INMOST
 		/// functions. Note that check for duplicates within mesh is performed by Mesh::FindSharedAdjacency.
 		///
 		/// \todo
-		/// TODO: list checks performed inside in description
+		/// list checks performed inside in description
 		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, enumerator num);
 		/// This function performs some topologycal checks after creation of element.
 		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions.
 		///
 		/// \todo
-		/// TODO: list checks performed inside in description.
+		/// list checks performed inside in description.
 		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
 		/// This will return tag by which you can retrieve error mark to any element on which topogy check failed.
 		/// As this is sparse tag you can check presence of error by Element::HaveData or Mesh::HaveData check.
