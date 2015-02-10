@@ -93,7 +93,7 @@ namespace INMOST
 	static const TopologyCheck INTERLEAVED_FACES      = 0x00001000; //done//produce error if there is another face that already uses same nodes
 	static const TopologyCheck TRIPLE_SHARED_FACE     = 0x00002000; //done//check that every face have exectly two neighbours, if DUPLICATE_CELL is activated, then checks for cell duplication
 	static const TopologyCheck FLATTENED_CELL         = 0x00004000; //done//produce error if one of the faces of the cell contains all the nodes of the cell
-	static const TopologyCheck ADJACENT_DUPLICATE     = 0x00008000; //done//produce error if provided array of elements for creation contain duplications
+	static const TopologyCheck ADJACENT_DUPLICATE     = 0x00008000; //done//produce error if provided array of elements for construction contain duplications
 	static const TopologyCheck ADJACENT_HIDDEN        = 0x00010000; //done//hidden elements should not be used when new elements are created
 	static const TopologyCheck ADJACENT_VALID         = 0x00020000; //done//check that all handles are valid
 	static const TopologyCheck ADJACENT_DIMENSION     = 0x00040000; //done//produce error if provided array of elements have wrong geometric dimension
@@ -669,7 +669,7 @@ namespace INMOST
 		///
 		/// For a node returns itself.
 		///
-		/// For an edge returns ordered pair of nodes. The order of nodes in the edge is preserved from the first creation.
+		/// For an edge returns ordered pair of nodes. The order of nodes in the edge is preserved from the first construction.
 		///
 		/// For a face returns ordered set of nodes. In the case Face::CheckNormalOrientation returns true the
 		/// order of nodes will follow right hand side rule with respect to normal vector, otherwise it follows
@@ -704,7 +704,7 @@ namespace INMOST
 		///
 		/// For a face returns itself.
 		///
-		/// For a cell return ordered set of faces. The order of faces in the cell is preserved from the first creation.
+		/// For a cell return ordered set of faces. The order of faces in the cell is preserved from the first construction.
 		///
 		/// @return array of elements
 		virtual ElementArray<Face>  getFaces                () const; //unordered
@@ -759,12 +759,13 @@ namespace INMOST
 		/// Disconnects edges from this node, faces from this edge, cells from this face, cannot disconnect nodes from this cell; \n
 		/// Updates geometric data and cell nodes automatically.
 		void                        Disconnect              (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const;
-		/// Connects lower adjacencies to current element, 
-		/// geometric data and cell nodes are updated automatically. \n
+		/// \brief Connects lower adjacencies to current element.
+		/// Geometric data and cell nodes are updated automatically.
+		///
 		/// \todo
-		///	1. asserts in this function should be replaced by Topography checks; \n
-		///	2. this function should be used for creation of elements instead of current implementation. \n
-		///	3. should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder)
+		///	  1. Asserts in this function should be replaced by Topography checks.
+		///	  2. This function should be used for construction of elements instead of current implementation.
+		///	  3. Should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder).
 		void                        Connect                 (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
 		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
 		void                        UpdateGeometricData     () const; 
@@ -935,7 +936,7 @@ namespace INMOST
 		/// When constructed this way, the provided memory location for handle
 		/// will be modified on assignment.
 		///
-		/// The purpose of this function is to be used in varios non-constant iterators
+		/// The purpose of this function is to be used in various non-constant iterators
 		/// of containers that allow underlaying contents to be changed.
 		///
 		/// @param m Pointer to the mesh to which the element belongs.
@@ -985,7 +986,7 @@ namespace INMOST
 		///
 		/// This function traverses up the adjacency graph by one level.
 		///
-		/// The order of nodes will be preserved from the moment of the creation of the cell.
+		/// The order of nodes will be preserved from the moment of the construction of the cell.
 		/// When suggest_nodes array is not supplied into the Mesh::CreateCell functions, then
 		/// for known types the order of nodes follows VTK convention. For polyhedral cells
 		/// the order is unspecified. When suggest_nodes_order was provided into Mesh::CreateCell
@@ -1022,7 +1023,7 @@ namespace INMOST
 		/// This function traverses down the adjacency graph by one level.
 		///
 		/// The order of the faces returned by this function is preserved from 
-		/// the moment of the creation of the cell.
+		/// the moment of the construction of the cell.
 		///
 		/// @return Set of faces that compose current cell.
 		ElementArray<Face>          getFaces                () const;
@@ -1030,7 +1031,7 @@ namespace INMOST
 		///
 		/// This function traverses up the adjacency graph by one level.
 		///
-		/// The order of nodes will be preserved from the moment of the creation of the cell.
+		/// The order of nodes will be preserved from the moment of the construction of the cell.
 		/// When suggest_nodes array is not supplied into the Mesh::CreateCell functions, then
 		/// for known types the order of nodes follows VTK convention. For polyhedral cells
 		/// the order is unspecified. When suggest_nodes_order was provided into Mesh::CreateCell
@@ -1063,7 +1064,7 @@ namespace INMOST
 		/// This function traverses down the adjacency graph by one level.
 		///
 		/// The order of the faces returned by this function is preserved from 
-		/// the moment of the creation of the cell.
+		/// the moment of the construction of the cell.
 		///
 		/// WARNING: To work correctly in shared parallel environment this function requires
 		/// USE_OMP to be defined in CMake or in inmost_common.h.
@@ -1075,7 +1076,7 @@ namespace INMOST
 		ElementArray<Face>          getFaces                (MarkerType mask,bool invert_mask = false) const;
 		/// \brief Check that sequence of edges form a closed loop and each edge have a node that matches one of the nodes at the next edge.
 		///
-		/// This function works for cells for which Element::GetGeometricDimension returns 2.
+		/// This function works for cells for which Element::GetElementDimension returns 2.
 		///
 		/// @return True if edges form the correct closed loop.
 		///
@@ -1180,6 +1181,7 @@ namespace INMOST
 		///
 		/// This is automatically checked for if you activate NEED_TEST_CLOSURE
 		/// in Mesh::SetTopologyCheck.
+		/// @return True if faces of the cell form the closed set, false otherwise.
 		bool                        Closure                 () const; // test integrity of cell
 	};
 
@@ -1774,11 +1776,11 @@ namespace INMOST
 		/// Array data structure is guaranteed to be valid during mesh modification. If you delete
 		/// elements by Mesh::Delete or Element::Delete all the references are also will be valid
 		/// and reverted to InvalidHandle on Mesh::ApplyModification. If you use Mesh::Destroy to
-		/// delete mesh elements or delete elements not within modification state then references 
+		/// delete mesh elements or you delete elements not within modification state then references 
 		/// may become either invalid but not testable against InvalidHandle (situation may be tested 
-		/// by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element 
-		/// if you mix deletion and creation of elements and then is no way to resolve this situation,
-		/// except if you have created only one element the it may be retrieved by Mesh::LastHandle.
+		/// by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element. 
+		/// If you mix deletion and construction of elements then there is no way to resolve this situation,
+		/// except if you have created only one element, then it may be retrieved by Mesh::LastHandle.
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
@@ -3061,14 +3063,14 @@ namespace INMOST
 		ElementArray<Face>                GatherInteriorFaces();
 		integer                           CountBoundaryFaces ();
 		integer                           CountInteriorFaces ();
-		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element creation
+		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size) const;
 		//implemented in modify.cpp
 	private:
 		MarkerType hide_element, new_element;
 	public:
 		/// Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope.
-		/// In case mesh is modified, on element creation Mesh::TieElements will always place elements 
+		/// In case mesh is modified, on element construction Mesh::TieElements will always place elements 
 		/// to the end of the array as a result all the newly created elements will be iterated after current
 		/// or hidden elements.
 		bool                              isMeshModified     () const {return new_element != 0;} 
@@ -3106,7 +3108,7 @@ namespace INMOST
 		/// \todo
 		/// list checks performed inside in description
 		TopologyCheck                     BeginTopologyCheck (ElementType etype, const HandleType * adj, enumerator num);
-		/// This function performs some topologycal checks after creation of element.
+		/// This function performs some topologycal checks after construction of element.
 		/// Function is used internally by CreateEdge, CreateFace, CreateCell functions.
 		///
 		/// \todo
