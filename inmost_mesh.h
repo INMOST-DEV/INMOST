@@ -3018,6 +3018,11 @@ namespace INMOST
 		/// - ".pmf"    - internal parallel portable binary format, saves all features
 		///
 		/// @param File path to the file
+		/// \todo
+		/// 1. When loading mesh with the same tag name but different type or size, load will fail.
+		/// 2. When loading tags in internal format should remember definition and sparsity masks
+		///    for subsequent data loading. This will cure the case when tags were already priviously defined
+		///    on mesh with different masks and data will be red incorrectly.
 		void         Load(std::string File); 
 		/// Acceptable file formats for writing
 		/// - ".vtk"  - legacy vtk format for unstructured grid
@@ -3030,6 +3035,8 @@ namespace INMOST
 		///          references modify mesh using BeginModification, ApplyModification, EndModification
 		///
 		/// @param File path to the file
+		/// \todo
+		/// 1. Markers are not saved in internal format due to possible conflict during load.
 		void         Save(std::string File);
 		bool         isParallelFileFormat(std::string File);
 	public:

@@ -3142,7 +3142,7 @@ read_elem_num_link:
 			
 			BeginModification();
 		
-			while (!(in >> token).eof() && !in.fail()) 
+			while (in >> token) 
 			{
 				if( !start ) 
 				{
@@ -3472,6 +3472,7 @@ read_elem_num_link:
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < tags.size(); j++) 
 					{
 						REPORT_VAL("TagName",tags[j].GetTagName());
+						if( verbosity > 0 ) std::cout << "Reading " << tags[j].GetTagName() << std::endl;
 						Tag * jt = &tags[j];
 						for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 						{
@@ -3483,13 +3484,19 @@ read_elem_num_link:
 								INMOST_DATA_ENUM_TYPE tagsize = jt->GetSize(), recsize = tagsize, lid;
 								INMOST_DATA_ENUM_TYPE k;
 								DataType data_type = jt->GetDataType();
-								if( sparse ) uconv.read_iValue(in,q); else q = 0;
+								if( sparse ) 
+								{
+									uconv.read_iValue(in,q); 
+									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+								}
+								else q = 0;
 								while(q != cycle_end)
 								{
 									HandleType he = elem_links[etypenum][q];
 									if( tagsize == ENUMUNDEF ) 
 									{
 										uconv.read_iValue(in,recsize); 
+										if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 										SetDataSize(he,*jt,recsize);
 									}
 									switch(data_type)
@@ -3498,17 +3505,24 @@ read_elem_num_link:
 										{
 											Storage::real_array arr = RealArray(he,*jt);
 											for(k = 0; k < recsize; k++) 
+											{
 												iconv.read_fValue(in,arr[k]); 
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											}
 										} break;
 									case DATA_INTEGER:   
 										{
 											Storage::integer_array arr = IntegerArray(he,*jt); 
 											for(k = 0; k < recsize; k++) 
+											{
 												iconv.read_iValue(in,arr[k]); 
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											}
 										} break;
 									case DATA_BULK:      
 										{
 											in.read(reinterpret_cast<char *>(&Bulk(he,*jt)),recsize);
+											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 										} break;
 									case DATA_REFERENCE: 
 										{
@@ -3517,22 +3531,35 @@ read_elem_num_link:
 											{
 												char type;
 												in.get(type);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 												if (type != NONE)
 												{
 													uconv.read_iValue(in, lid);
+													if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 													arr.at(k) = elem_links[ElementNum(type)][lid];
 												}
 												else arr.at(k) = InvalidHandle();
 											}
 										} break;
 									}
-									if( sparse ) uconv.read_iValue(in,q); else q++;
+									if( sparse ) 
+									{
+										uconv.read_iValue(in,q); 
+										if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+									}
+									else q++;
 								}
 							}
 						}
 					}
+					if( verbosity > 0 ) std::cout << "Finished reading data" << std::endl;
+					REPORT_STR("EndOfData");
 				}
-				else throw BadFile;
+				else 
+				{
+					std::cout << "Unknown token on input" << std::endl;
+					throw BadFile;
+				}
 			}
 			
 			
@@ -4288,7 +4315,7 @@ safe_output:
 				NumberOfFaces(), 
 				NumberOfCells(), 
 				NumberOfSets(), 
-				NumberOfTags()-2, 
+				NumberOfTags()-5, //add counter to skip unwanted tags here SKIPHERE, search by SKIPHERE for additional instructions
 				m_state, 
 				GetProcessorRank()
 			},k;
@@ -4305,10 +4332,14 @@ safe_output:
 			int tags_written = 0;
 			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)  
 			{
+				//SKIPHERE
 				//don't forget to change header[6] if you skip more
 				//should match with content after MeshDataHeader
+				if( *it == MarkersTag() ) continue; //temporary fix to protect markers being loaded into hide_marker and then marked elements being destroyed by EndModification
 				if( *it == HighConnTag() ) continue;
 				if( *it == LowConnTag() ) continue;
+				if( *it == CoordsTag() ) continue;
+				if( *it == SetNameTag() ) continue;
 
 				std::string name = it->GetTagName();
 				INMOST_DATA_ENUM_TYPE namesize = static_cast<INMOST_DATA_BULK_TYPE>(name.size());
@@ -4332,7 +4363,7 @@ safe_output:
 			assert(tags_written == header[6]);
 
 
-			Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
+			Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID_PMF_WRITER",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
 			{
 				Storage::integer cur_num = 0;
 				for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
@@ -4475,9 +4506,13 @@ safe_output:
 				std::string tagname = jt->GetTagName();
 				//skipping should match with header[6] and content
 				// after TagsHeader
+				//SKIPHERE
 				if( *jt == set_id ) continue;
 				if( *jt == HighConnTag() ) continue;
 				if( *jt == LowConnTag() ) continue;
+				if( *jt == MarkersTag() ) continue;
+				if( *jt == CoordsTag() ) continue;
+				if( *jt == SetNameTag() ) continue;
 				REPORT_VAL("TagName",tagname);
 				for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 					if( jt->isDefined(etype) ) 

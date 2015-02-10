@@ -2054,9 +2054,9 @@ public:
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 			{
 				HandleType h = ComposeHandle(etype,it);
+				RemMarker(h,new_element);
 				if( GetMarker(h,temp) ) 
 					Destroy(h);
-				RemMarker(h,new_element);
 			}
 		}
 		ReleaseMarker(temp);

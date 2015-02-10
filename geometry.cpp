@@ -136,7 +136,7 @@ namespace INMOST
 			}
 			Centroid(data[0]);
 			ElementArray<Node> nodes = getNodes();
-			for(int i = 0; i < nodes.size(); i++)
+			for(int i = 0; i < static_cast<int>(nodes.size()); i++)
 			{
 				int j = (i+1)%nodes.size();
 				nodes[i].Centroid(data[1]);
