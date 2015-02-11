@@ -744,7 +744,7 @@ void \hyperlink{classINMOST_1_1Mesh_a60274817b98e76ec5a411f0c3df2a76b}{Resolve\-
 Topology\-Check \hyperlink{classINMOST_1_1Mesh_a55549e9d46cd92e2f3122e1516f3c9fd}{Begin\-Topology\-Check} (Element\-Type etype, const Handle\-Type $\ast$adj, \hyperlink{classINMOST_1_1Storage_ae333dfced6fa9cfde0c8e7dcf1b0cc2b}{enumerator} num)
 \begin{DoxyCompactList}\small\item\em This function allows you to perform some topologycal checks before you create an element. \end{DoxyCompactList}\item 
 Topology\-Check \hyperlink{classINMOST_1_1Mesh_a1c6c26bcbe6e7a0cba093c0b8312ba04}{End\-Topology\-Check} (Handle\-Type e)
-\begin{DoxyCompactList}\small\item\em This function performs some topologycal checks after creation of element. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em This function performs some topologycal checks after construction of element. \end{DoxyCompactList}\item 
 \hyperlink{classINMOST_1_1Tag}{Tag} \hyperlink{classINMOST_1_1Mesh_a72ee27b1b485c40e272f8018aa5ca0a1}{Topology\-Error\-Tag} () const 
 \begin{DoxyCompactList}\small\item\em This will return tag by which you can retrieve error mark to any element on which topogy check failed. \end{DoxyCompactList}\item 
 \hypertarget{classINMOST_1_1Mesh_afad6ccd8132d0aed639ef18772def9ab}{Topology\-Check \hyperlink{classINMOST_1_1Mesh_afad6ccd8132d0aed639ef18772def9ab}{Get\-Topology\-Check} (Topology\-Check mask=E\-N\-U\-M\-U\-N\-D\-E\-F) const }\label{classINMOST_1_1Mesh_afad6ccd8132d0aed639ef18772def9ab}
@@ -794,7 +794,7 @@ static void \hyperlink{classINMOST_1_1Mesh_a8f9d7e81c502fc9e03c6cfa60452a28d}{In
 After this function any link to deleted element will be replaced by Invalid\-Handle(). 
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000017}{Todo}]
+\item[\hyperlink{todo__todo000019}{Todo}]
 \begin{DoxyEnumerate}
 \item maybe instead of forming set of deleted elements and subtracting set from other sets it is better to remove each modified element (done, check and compare)
 \item parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior (done, check and compare) 
@@ -847,7 +847,7 @@ This function allows you to perform some topologycal checks before you create an
 Function is used internally by Create\-Edge, Create\-Face, Create\-Cell functions If you perform topological checks on your own, you'd probably better turn off checks before calling Create\-X\-X\-X functions. Note that check for duplicates within mesh is performed by \hyperlink{classINMOST_1_1Mesh_a116f510afe89689b615fa73b29bc6f59}{Mesh\-::\-Find\-Shared\-Adjacency}.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000018}{Todo}]list checks performed inside in description \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000020}{Todo}]list checks performed inside in description \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_a9df5a8793e5cd8e38182de107d381d9e}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Bulk@{Bulk}}
 \index{Bulk@{Bulk}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Bulk}]{\setlength{\rightskip}{0pt plus 5cm}{\bf bulk}\& I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Bulk (
@@ -1260,12 +1260,12 @@ the inexistant tag that is located the one position after the last tag
 )}}\label{classINMOST_1_1Mesh_a1c6c26bcbe6e7a0cba093c0b8312ba04}
 
 
-This function performs some topologycal checks after creation of element. 
+This function performs some topologycal checks after construction of element. 
 
 Function is used internally by Create\-Edge, Create\-Face, Create\-Cell functions.
 
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000019}{Todo}]list checks performed inside in description. \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000021}{Todo}]list checks performed inside in description. \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_a9787ba8c75b41b76b89aeeae2e8aefad}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Enumerate@{Enumerate}}
 \index{Enumerate@{Enumerate}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Enumerate}]{\setlength{\rightskip}{0pt plus 5cm}{\bf integer} I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Enumerate (
@@ -2301,7 +2301,7 @@ sum between all processors
 
 Check whether code runs between Mesh\-::\-Begin\-Modification, Mesh\-::\-End\-Modification scope. 
 
-In case mesh is modified, on element creation Mesh\-::\-Tie\-Elements will always place elements to the end of the array as a result all the newly created elements will be iterated after current or hidden elements. \hypertarget{classINMOST_1_1Mesh_a5dfd481d638b2d2d72193b4b8fa159a4}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Load@{Load}}
+In case mesh is modified, on element construction Mesh\-::\-Tie\-Elements will always place elements to the end of the array as a result all the newly created elements will be iterated after current or hidden elements. \hypertarget{classINMOST_1_1Mesh_a5dfd481d638b2d2d72193b4b8fa159a4}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Load@{Load}}
 \index{Load@{Load}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Load}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Load (
 \begin{DoxyParamCaption}
@@ -2328,6 +2328,12 @@ Acceptable file formats for reading.
 {\em File} & path to the file \\
 \hline
 \end{DoxyParams}
+\begin{DoxyRefDesc}{Todo}
+\item[\hyperlink{todo__todo000017}{Todo}]
+\begin{DoxyEnumerate}
+\item When loading mesh with the same tag name but different type or size, load will fail.
+\item When loading tags in internal format should remember definition and sparsity masks for subsequent data loading. This will cure the case when tags were already priviously defined on mesh with different masks and data will be red incorrectly. 
+\end{DoxyEnumerate}\end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_ad20f64a301adf9c3fafe28a8f921a791}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Low\-Conn@{Low\-Conn}}
 \index{Low\-Conn@{Low\-Conn}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Low\-Conn}]{\setlength{\rightskip}{0pt plus 5cm}Element\-::adj\-\_\-type\& I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Low\-Conn (
@@ -2868,7 +2874,7 @@ If you know that data is certanly sparse or dense on elements you access then it
 
 The class reference\-\_\-array that is used to represent array of elements stores handles inside but accessing them through square scopes \mbox{[}\mbox{]} or by arrow -\/$>$ in iterator will automatically form object of type \hyperlink{classINMOST_1_1Element}{Element}. If you are not sure that stored handles are valid, you should either check that by Element\-::is\-Valid (involves deep check) or test handle against Invalid\-Handle (simple check). To obtain handle you may use reference\-\_\-array\-::at function or dereference $\ast$ operator for iterator. If you need custom object like \hyperlink{classINMOST_1_1Node}{Node}, \hyperlink{classINMOST_1_1Edge}{Edge}, \hyperlink{classINMOST_1_1Face}{Face}, \hyperlink{classINMOST_1_1Cell}{Cell} or \hyperlink{classINMOST_1_1ElementSet}{Element\-Set} you may use Element\-::get\-As\-Node, Element\-::get\-As\-Edge, Element\-::get\-As\-Face, Element\-::get\-As\-Cell and Element\-::get\-As\-Set functions.
 
-Array data structure is guaranteed to be valid during mesh modification. If you delete elements by \hyperlink{classINMOST_1_1Mesh_a569c516120df121980d0585deadd3634}{Mesh\-::\-Delete} or Element\-::\-Delete all the references are also will be valid and reverted to Invalid\-Handle on \hyperlink{classINMOST_1_1Mesh_a1f53070855f3503b2f4cefc16cedd6a0}{Mesh\-::\-Apply\-Modification}. If you use \hyperlink{classINMOST_1_1Mesh_a0e2c090ee95e802c4f486a5d98fc6cb0}{Mesh\-::\-Destroy} to delete mesh elements or delete elements not within modification state then references may become either invalid but not testable against Invalid\-Handle (situation may be tested by Element\-::is\-Valid or Mesh\-::is\-Valid\-Handle) or reference may be reused by another element if you mix deletion and creation of elements and then is no way to resolve this situation, except if you have created only one element the it may be retrieved by Mesh\-::\-Last\-Handle.
+Array data structure is guaranteed to be valid during mesh modification. If you delete elements by \hyperlink{classINMOST_1_1Mesh_a569c516120df121980d0585deadd3634}{Mesh\-::\-Delete} or Element\-::\-Delete all the references are also will be valid and reverted to Invalid\-Handle on \hyperlink{classINMOST_1_1Mesh_a1f53070855f3503b2f4cefc16cedd6a0}{Mesh\-::\-Apply\-Modification}. If you use \hyperlink{classINMOST_1_1Mesh_a0e2c090ee95e802c4f486a5d98fc6cb0}{Mesh\-::\-Destroy} to delete mesh elements or you delete elements not within modification state then references may become either invalid but not testable against Invalid\-Handle (situation may be tested by Element\-::is\-Valid or Mesh\-::is\-Valid\-Handle) or reference may be reused by another element. If you mix deletion and construction of elements then there is no way to resolve this situation, except if you have created only one element, then it may be retrieved by Mesh\-::\-Last\-Handle.
 
 
 \begin{DoxyParams}{Parameters}
@@ -3155,6 +3161,11 @@ Remeber\-: .pmf stores all references to elements. If reference are broken due t
 {\em File} & path to the file \\
 \hline
 \end{DoxyParams}
+\begin{DoxyRefDesc}{Todo}
+\item[\hyperlink{todo__todo000018}{Todo}]
+\begin{DoxyEnumerate}
+\item Markers are not saved in internal format due to possible conflict during load. 
+\end{DoxyEnumerate}\end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_a2e40d1712147e6dc39113d855882743e}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Set\-Data@{Set\-Data}}
 \index{Set\-Data@{Set\-Data}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Set\-Data}]{\setlength{\rightskip}{0pt plus 5cm}void I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Set\-Data (
@@ -3499,7 +3510,7 @@ true then element was recovered
 \end{DoxyParamCaption}
 )}}\label{classINMOST_1_1Mesh_a9f8cfa72de874bd9a17fb0067ac8d515}
 \begin{DoxyRefDesc}{Todo}
-\item[\hyperlink{todo__todo000020}{Todo}]T\-O\-D\-O 53 check that putting global ids to array will be faster \end{DoxyRefDesc}
+\item[\hyperlink{todo__todo000022}{Todo}]T\-O\-D\-O 53 check that putting global ids to array will be faster \end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Mesh_a9c3acf2a90e25699a64e1f7b4125eaf7}{\index{I\-N\-M\-O\-S\-T\-::\-Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}!Synchronize\-Element\-Type@{Synchronize\-Element\-Type}}
 \index{Synchronize\-Element\-Type@{Synchronize\-Element\-Type}!INMOST::Mesh@{I\-N\-M\-O\-S\-T\-::\-Mesh}}
 \subsubsection[{Synchronize\-Element\-Type}]{\setlength{\rightskip}{0pt plus 5cm}Element\-Type I\-N\-M\-O\-S\-T\-::\-Mesh\-::\-Synchronize\-Element\-Type (

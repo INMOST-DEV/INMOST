@@ -47,11 +47,9 @@ Member \hyperlink{classINMOST_1_1Cell_ae0caec87803ddd108c4fb06decf69e18}{I\-N\-M
 \hypertarget{todo__todo000001}{}%
 Member \hyperlink{classINMOST_1_1Element_a96bd136b0f249c958fc8632553aa3b58}{I\-N\-M\-O\-S\-T\-:\-:Element\-:\-:Connect} (const Handle\-Type $\ast$adjacent, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E num) const ]
 \begin{DoxyEnumerate}
-\item asserts in this function should be replaced by Topography checks; \par
-
-\item this function should be used for creation of elements instead of current implementation. \par
-
-\item should correctly account for order of edges (may be implemented through Check\-Edge\-Order, Fix\-Edge\-Order)  
+\item Asserts in this function should be replaced by Topography checks.
+\item This function should be used for construction of elements instead of current implementation.
+\item Should correctly account for order of edges (may be implemented through Check\-Edge\-Order, Fix\-Edge\-Order).  
 \end{DoxyEnumerate}
 \item[\label{todo__todo000009}%
 \hypertarget{todo__todo000009}{}%
@@ -59,8 +57,8 @@ Member \hyperlink{classINMOST_1_1ElementSet_a96676712005ce12f0c1f9a92c6ac095d}{I
 \item[\label{todo__todo000008}%
 \hypertarget{todo__todo000008}{}%
 Member \hyperlink{classINMOST_1_1ElementSet_a1aafea0ac742bcc3ec1873621ca41ccd}{I\-N\-M\-O\-S\-T\-:\-:Element\-Set\-:\-:Subtract} (const Element\-Set \&other) const ]If other and current sets are sorted in same way, may perform narrowing traversal by retriving mutual lower\-\_\-bound/higher\-\_\-bound O(log(n)) operations for detecting common subsets in sorted sets. May work good when deleting handles by small chunks, Apply\-Modification may greatly benefit.  
-\item[\label{todo__todo000017}%
-\hypertarget{todo__todo000017}{}%
+\item[\label{todo__todo000019}%
+\hypertarget{todo__todo000019}{}%
 Member \hyperlink{classINMOST_1_1Mesh_a1f53070855f3503b2f4cefc16cedd6a0}{I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\-:Apply\-Modification} ()]
 \begin{DoxyEnumerate}
 \item maybe instead of forming set of deleted elements and subtracting set from other sets it is better to remove each modified element (done, check and compare)
@@ -72,11 +70,11 @@ Member \hyperlink{classINMOST_1_1Mesh_ae39e30b11f35de81d2a9b8451ef87391}{I\-N\-M
 \begin{DoxyEnumerate}
 \item invoking function before loading mesh will not renew global identificators after load but would not unset have\-\_\-global\-\_\-id either. There are probably too many places when global ids may become invalid but no flag will be set. It may be benefitial to set such flags along with updating geometrical data which seems to be maintained fairly well during mesh modification  
 \end{DoxyEnumerate}
-\item[\label{todo__todo000018}%
-\hypertarget{todo__todo000018}{}%
+\item[\label{todo__todo000020}%
+\hypertarget{todo__todo000020}{}%
 Member \hyperlink{classINMOST_1_1Mesh_a55549e9d46cd92e2f3122e1516f3c9fd}{I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\-:Begin\-Topology\-Check} (Element\-Type etype, const Handle\-Type $\ast$adj, enumerator num)]list checks performed inside in description  
-\item[\label{todo__todo000019}%
-\hypertarget{todo__todo000019}{}%
+\item[\label{todo__todo000021}%
+\hypertarget{todo__todo000021}{}%
 Member \hyperlink{classINMOST_1_1Mesh_a1c6c26bcbe6e7a0cba093c0b8312ba04}{I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\-:End\-Topology\-Check} (Handle\-Type e)]list checks performed inside in description.  
 \item[\label{todo__todo000012}%
 \hypertarget{todo__todo000012}{}%
@@ -87,6 +85,13 @@ Member \hyperlink{classINMOST_1_1Mesh_ae44b9cfcb8964acbd710562df331a51a}{I\-N\-M
 \begin{DoxyEnumerate}
 \item test halo exchange algorithm (if used then change collective point-\/2-\/point to collective)
 \item see T\-O\-D\-O 2 in Mesh\-::\-Redistribute 
+\end{DoxyEnumerate}
+\item[\label{todo__todo000017}%
+\hypertarget{todo__todo000017}{}%
+Member \hyperlink{classINMOST_1_1Mesh_a5dfd481d638b2d2d72193b4b8fa159a4}{I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\-:Load} (std\-::string File)]
+\begin{DoxyEnumerate}
+\item When loading mesh with the same tag name but different type or size, load will fail.
+\item When loading tags in internal format should remember definition and sparsity masks for subsequent data loading. This will cure the case when tags were already priviously defined on mesh with different masks and data will be red incorrectly.  
 \end{DoxyEnumerate}
 \item[\label{todo__todo000015}%
 \hypertarget{todo__todo000015}{}%
@@ -111,10 +116,16 @@ Member \hyperlink{classINMOST_1_1Mesh_a5cb95f1e8d6b7987496fc8276c86cf3a}{I\-N\-M
 \begin{DoxyEnumerate}
 \item Currently request for deletion of elements of lower level then cell will be simply ignored, ensure in future that algorithm will properly rise deletion data from lower to upper adjacencies to delete all the upper adjacencies that depend on deleted lower adjacencies  
 \end{DoxyEnumerate}
+\item[\label{todo__todo000018}%
+\hypertarget{todo__todo000018}{}%
+Member \hyperlink{classINMOST_1_1Mesh_ac12ba58210b79c61e64a74c389cd11f6}{I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\-:Save} (std\-::string File)]
+\begin{DoxyEnumerate}
+\item Markers are not saved in internal format due to possible conflict during load.  
+\end{DoxyEnumerate}
 \item[\label{todo__todo000016}%
 \hypertarget{todo__todo000016}{}%
 Member \hyperlink{classINMOST_1_1Mesh_a07c75e9dee2c400225a6095e45489ac1}{I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\-:Set\-File\-Option} (std\-::string, std\-::string)]introduce \char`\"{}\-S\-E\-T\-\_\-\-T\-A\-G\-S\-\_\-\-L\-O\-A\-D\char`\"{}, \char`\"{}\-S\-E\-T\-\_\-\-T\-A\-G\-S\-\_\-\-S\-A\-V\-E\char`\"{} to explicitly provide set of tags to write or \char`\"{}\-S\-K\-I\-P\-\_\-\-T\-A\-G\-S\-\_\-\-L\-O\-A\-D\char`\"{}, \char`\"{}\-S\-K\-I\-P\-\_\-\-T\-A\-G\-S\-\_\-\-S\-A\-V\-E\char`\"{} tags to skip  
-\item[\label{todo__todo000020}%
-\hypertarget{todo__todo000020}{}%
+\item[\label{todo__todo000022}%
+\hypertarget{todo__todo000022}{}%
 Member \hyperlink{classINMOST_1_1Mesh_a9f8cfa72de874bd9a17fb0067ac8d515}{I\-N\-M\-O\-S\-T\-:\-:Mesh\-:\-:Sort\-By\-Global\-I\-D} (Handle\-Type $\ast$h, enumerator num)]T\-O\-D\-O 53 check that putting global ids to array will be faster 
 \end{DoxyRefList}

@@ -149,7 +149,7 @@ Basic constructor with an assignable handle.
 
 When constructed this way, the provided memory location for handle will be modified on assignment.
 
-The purpose of this function is to be used in varios non-\/constant iterators of containers that allow underlaying contents to be changed.
+The purpose of this function is to be used in various non-\/constant iterators of containers that allow underlaying contents to be changed.
 
 
 \begin{DoxyParams}{Parameters}
@@ -190,7 +190,7 @@ New object will inherit the assignment behavior of the initial object.
 
 Check that sequence of edges form a closed loop and each edge have a node that matches one of the nodes at the next edge. 
 
-This function works for cells for which Element\-::\-Get\-Geometric\-Dimension returns 2.
+This function works for cells for which Element\-::\-Get\-Element\-Dimension returns 2.
 
 \begin{DoxyReturn}{Returns}
 True if edges form the correct closed loop.
@@ -213,7 +213,10 @@ True if edges form the correct closed loop.
 
 Test that faces of the cell form the closed set. 
 
-This is automatically checked for if you activate N\-E\-E\-D\-\_\-\-T\-E\-S\-T\-\_\-\-C\-L\-O\-S\-U\-R\-E in \hyperlink{classINMOST_1_1Mesh_af9f578239d7b369ad4b1edb69eea24d2}{Mesh\-::\-Set\-Topology\-Check}. \hypertarget{classINMOST_1_1Cell_a84eaa268f8c3886e1164ea14715f2419}{\index{I\-N\-M\-O\-S\-T\-::\-Cell@{I\-N\-M\-O\-S\-T\-::\-Cell}!Fix\-Edge\-Order@{Fix\-Edge\-Order}}
+This is automatically checked for if you activate N\-E\-E\-D\-\_\-\-T\-E\-S\-T\-\_\-\-C\-L\-O\-S\-U\-R\-E in \hyperlink{classINMOST_1_1Mesh_af9f578239d7b369ad4b1edb69eea24d2}{Mesh\-::\-Set\-Topology\-Check}. \begin{DoxyReturn}{Returns}
+True if faces of the cell form the closed set, false otherwise. 
+\end{DoxyReturn}
+\hypertarget{classINMOST_1_1Cell_a84eaa268f8c3886e1164ea14715f2419}{\index{I\-N\-M\-O\-S\-T\-::\-Cell@{I\-N\-M\-O\-S\-T\-::\-Cell}!Fix\-Edge\-Order@{Fix\-Edge\-Order}}
 \index{Fix\-Edge\-Order@{Fix\-Edge\-Order}!INMOST::Cell@{I\-N\-M\-O\-S\-T\-::\-Cell}}
 \subsubsection[{Fix\-Edge\-Order}]{\setlength{\rightskip}{0pt plus 5cm}bool I\-N\-M\-O\-S\-T\-::\-Cell\-::\-Fix\-Edge\-Order (
 \begin{DoxyParamCaption}
@@ -314,7 +317,7 @@ Get all the faces of the current cell.
 
 This function traverses down the adjacency graph by one level.
 
-The order of the faces returned by this function is preserved from the moment of the creation of the cell.
+The order of the faces returned by this function is preserved from the moment of the construction of the cell.
 
 \begin{DoxyReturn}{Returns}
 Set of faces that compose current cell. 
@@ -337,7 +340,7 @@ Get the subset of the faces of the current cell that are (not) marked by provide
 
 This function traverses down the adjacency graph by one level.
 
-The order of the faces returned by this function is preserved from the moment of the creation of the cell.
+The order of the faces returned by this function is preserved from the moment of the construction of the cell.
 
 W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}.
 
@@ -368,7 +371,7 @@ Get all the nodes of the current cell.
 
 This function traverses up the adjacency graph by one level.
 
-The order of nodes will be preserved from the moment of the creation of the cell. When suggest\-\_\-nodes array is not supplied into the Mesh\-::\-Create\-Cell functions, then for known types the order of nodes follows V\-T\-K convention. For polyhedral cells the order is unspecified. When suggest\-\_\-nodes\-\_\-order was provided into Mesh\-::\-Create\-Cell then the order follows provided order.
+The order of nodes will be preserved from the moment of the construction of the cell. When suggest\-\_\-nodes array is not supplied into the Mesh\-::\-Create\-Cell functions, then for known types the order of nodes follows V\-T\-K convention. For polyhedral cells the order is unspecified. When suggest\-\_\-nodes\-\_\-order was provided into Mesh\-::\-Create\-Cell then the order follows provided order.
 
 \begin{DoxyReturn}{Returns}
 Set of nodes that compose current cell. 
@@ -391,7 +394,7 @@ Get the subset of the nodes of the current cell that are (not) marked by provide
 
 This function traverses up the adjacency graph by one level.
 
-The order of nodes will be preserved from the moment of the creation of the cell. When suggest\-\_\-nodes array is not supplied into the Mesh\-::\-Create\-Cell functions, then for known types the order of nodes follows V\-T\-K convention. For polyhedral cells the order is unspecified. When suggest\-\_\-nodes\-\_\-order was provided into Mesh\-::\-Create\-Cell then the order follows provided order.
+The order of nodes will be preserved from the moment of the construction of the cell. When suggest\-\_\-nodes array is not supplied into the Mesh\-::\-Create\-Cell functions, then for known types the order of nodes follows V\-T\-K convention. For polyhedral cells the order is unspecified. When suggest\-\_\-nodes\-\_\-order was provided into Mesh\-::\-Create\-Cell then the order follows provided order.
 
 W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}.
 

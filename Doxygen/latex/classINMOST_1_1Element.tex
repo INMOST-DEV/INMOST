@@ -192,7 +192,7 @@ virtual \hyperlink{classINMOST_1_1ElementArray}{Element\-Array}$<$ \hyperlink{cl
 void \hyperlink{classINMOST_1_1Element_a1fdc3e5b00005d5831bb62222823a737}{Disconnect} (const Handle\-Type $\ast$adjacent, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E num) const 
 \begin{DoxyCompactList}\small\item\em Disconnect element. \end{DoxyCompactList}\item 
 void \hyperlink{classINMOST_1_1Element_a96bd136b0f249c958fc8632553aa3b58}{Connect} (const Handle\-Type $\ast$adjacent, I\-N\-M\-O\-S\-T\-\_\-\-D\-A\-T\-A\-\_\-\-E\-N\-U\-M\-\_\-\-T\-Y\-P\-E num) const 
-\begin{DoxyCompactList}\small\item\em Connects lower adjacencies to current element, geometric data and cell nodes are updated automatically. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em Connects lower adjacencies to current element. \end{DoxyCompactList}\item 
 \hypertarget{classINMOST_1_1Element_ad226d6f51de0ee33111fa2d9ee77e2ce}{void \hyperlink{classINMOST_1_1Element_ad226d6f51de0ee33111fa2d9ee77e2ce}{Update\-Geometric\-Data} () const }\label{classINMOST_1_1Element_ad226d6f51de0ee33111fa2d9ee77e2ce}
 
 \begin{DoxyCompactList}\small\item\em Update geometric data for element, calls Recompute\-Geometric\-Data from \hyperlink{classINMOST_1_1Mesh}{Mesh}. \end{DoxyCompactList}\end{DoxyCompactItemize}
@@ -294,17 +294,16 @@ void \hyperlink{classINMOST_1_1Element_a96bd136b0f249c958fc8632553aa3b58}{Connec
 ) const}}\label{classINMOST_1_1Element_a96bd136b0f249c958fc8632553aa3b58}
 
 
-Connects lower adjacencies to current element, geometric data and cell nodes are updated automatically. 
+Connects lower adjacencies to current element. 
 
-\par
+Geometric data and cell nodes are updated automatically.
+
 \begin{DoxyRefDesc}{Todo}
 \item[\hyperlink{todo__todo000001}{Todo}]
 \begin{DoxyEnumerate}
-\item asserts in this function should be replaced by Topography checks; \par
-
-\item this function should be used for creation of elements instead of current implementation. \par
-
-\item should correctly account for order of edges (may be implemented through Check\-Edge\-Order, Fix\-Edge\-Order) 
+\item Asserts in this function should be replaced by Topography checks.
+\item This function should be used for construction of elements instead of current implementation.
+\item Should correctly account for order of edges (may be implemented through Check\-Edge\-Order, Fix\-Edge\-Order). 
 \end{DoxyEnumerate}\end{DoxyRefDesc}
 \hypertarget{classINMOST_1_1Element_a1fdc3e5b00005d5831bb62222823a737}{\index{I\-N\-M\-O\-S\-T\-::\-Element@{I\-N\-M\-O\-S\-T\-::\-Element}!Disconnect@{Disconnect}}
 \index{Disconnect@{Disconnect}!INMOST::Element@{I\-N\-M\-O\-S\-T\-::\-Element}}
@@ -444,7 +443,7 @@ For an edge returns unordered set of faces.
 
 For a face returns itself.
 
-For a cell return ordered set of faces. The order of faces in the cell is preserved from the first creation.
+For a cell return ordered set of faces. The order of faces in the cell is preserved from the first construction.
 
 \begin{DoxyReturn}{Returns}
 array of elements 
@@ -466,7 +465,7 @@ Retrieve all the nodes of the element.
 
 For a node returns itself.
 
-For an edge returns ordered pair of nodes. The order of nodes in the edge is preserved from the first creation.
+For an edge returns ordered pair of nodes. The order of nodes in the edge is preserved from the first construction.
 
 For a face returns ordered set of nodes. In the case Face\-::\-Check\-Normal\-Orientation returns true the order of nodes will follow right hand side rule with respect to normal vector, otherwise it follows left hand side rule with respect to normal vector.
 

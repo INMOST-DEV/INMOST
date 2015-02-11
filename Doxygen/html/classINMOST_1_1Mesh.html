@@ -1,6 +1,15 @@
+<!-- HTML header for doxygen 1.8.5-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-59408561-3', 'auto');
+  ga('send', 'pageview');
+</script> 
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.5"/>
@@ -999,7 +1008,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>EndModification</b> (
 <tr class="memdesc:a55549e9d46cd92e2f3122e1516f3c9fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">This function allows you to perform some topologycal checks before you create an element.  <a href="#a55549e9d46cd92e2f3122e1516f3c9fd">More...</a><br/></td></tr>
 <tr class="separator:a55549e9d46cd92e2f3122e1516f3c9fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1c6c26bcbe6e7a0cba093c0b8312ba04"><td class="memItemLeft" align="right" valign="top">TopologyCheck&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classINMOST_1_1Mesh.html#a1c6c26bcbe6e7a0cba093c0b8312ba04">EndTopologyCheck</a> (HandleType e)</td></tr>
-<tr class="memdesc:a1c6c26bcbe6e7a0cba093c0b8312ba04"><td class="mdescLeft">&#160;</td><td class="mdescRight">This function performs some topologycal checks after creation of element.  <a href="#a1c6c26bcbe6e7a0cba093c0b8312ba04">More...</a><br/></td></tr>
+<tr class="memdesc:a1c6c26bcbe6e7a0cba093c0b8312ba04"><td class="mdescLeft">&#160;</td><td class="mdescRight">This function performs some topologycal checks after construction of element.  <a href="#a1c6c26bcbe6e7a0cba093c0b8312ba04">More...</a><br/></td></tr>
 <tr class="separator:a1c6c26bcbe6e7a0cba093c0b8312ba04"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a72ee27b1b485c40e272f8018aa5ca0a1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classINMOST_1_1Tag.html">Tag</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classINMOST_1_1Mesh.html#a72ee27b1b485c40e272f8018aa5ca0a1">TopologyErrorTag</a> () const </td></tr>
 <tr class="memdesc:a72ee27b1b485c40e272f8018aa5ca0a1"><td class="mdescLeft">&#160;</td><td class="mdescRight">This will return tag by which you can retrieve error mark to any element on which topogy check failed.  <a href="#a72ee27b1b485c40e272f8018aa5ca0a1">More...</a><br/></td></tr>
@@ -1352,7 +1361,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 </div><div class="memdoc">
 
 <p>After this function any link to deleted element will be replaced by InvalidHandle(). </p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000017">Todo:</a></b></dt><dd><ol type="1">
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000019">Todo:</a></b></dt><dd><ol type="1">
 <li>maybe instead of forming set of deleted elements and subtracting set from other sets it is better to remove each modified element (done, check and compare)</li>
 <li>parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior (done, check and compare) </li>
 </ol>
@@ -1442,7 +1451,7 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 
 <p>This function allows you to perform some topologycal checks before you create an element. </p>
 <p>Function is used internally by CreateEdge, CreateFace, CreateCell functions If you perform topological checks on your own, you'd probably better turn off checks before calling CreateXXX functions. Note that check for duplicates within mesh is performed by <a class="el" href="classINMOST_1_1Mesh.html#a116f510afe89689b615fa73b29bc6f59" title="Retrieve upper adjacent that is shared by multiple lower adjacencies. ">Mesh::FindSharedAdjacency</a>.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000018">Todo:</a></b></dt><dd>list checks performed inside in description </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000020">Todo:</a></b></dt><dd>list checks performed inside in description </dd></dl>
 
 </div>
 </div>
@@ -2120,9 +2129,9 @@ Mesh::EndModification </dd>
       </table>
 </div><div class="memdoc">
 
-<p>This function performs some topologycal checks after creation of element. </p>
+<p>This function performs some topologycal checks after construction of element. </p>
 <p>Function is used internally by CreateEdge, CreateFace, CreateCell functions.</p>
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000019">Todo:</a></b></dt><dd>list checks performed inside in description. </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000021">Todo:</a></b></dt><dd>list checks performed inside in description. </dd></dl>
 
 </div>
 </div>
@@ -3369,7 +3378,7 @@ Mesh::EndModification </dd></dl>
 <dl class="section return"><dt>Returns</dt><dd>see description </dd></dl>
 <dl class="section see"><dt>See Also</dt><dd>Element::CheckElementConnectivity </dd>
 <dd>
-<a class="el" href="classINMOST_1_1Element.html#a96bd136b0f249c958fc8632553aa3b58" title="Connects lower adjacencies to current element, geometric data and cell nodes are updated automaticall...">Element::Connect</a> </dd>
+<a class="el" href="classINMOST_1_1Element.html#a96bd136b0f249c958fc8632553aa3b58" title="Connects lower adjacencies to current element. ">Element::Connect</a> </dd>
 <dd>
 Element::Disconnect </dd>
 <dd>
@@ -3807,7 +3816,7 @@ Face::FixNormalOrientation </dd>
 </div><div class="memdoc">
 
 <p>Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope. </p>
-<p>In case mesh is modified, on element creation Mesh::TieElements will always place elements to the end of the array as a result all the newly created elements will be iterated after current or hidden elements. </p>
+<p>In case mesh is modified, on element construction Mesh::TieElements will always place elements to the end of the array as a result all the newly created elements will be iterated after current or hidden elements. </p>
 
 </div>
 </div>
@@ -3841,6 +3850,11 @@ Face::FixNormalOrientation </dd>
   </table>
   </dd>
 </dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000017">Todo:</a></b></dt><dd><ol type="1">
+<li>When loading mesh with the same tag name but different type or size, load will fail.</li>
+<li>When loading tags in internal format should remember definition and sparsity masks for subsequent data loading. This will cure the case when tags were already priviously defined on mesh with different masks and data will be red incorrectly. </li>
+</ol>
+</dd></dl>
 
 </div>
 </div>
@@ -4690,7 +4704,7 @@ Mesh::EndModification </dd>
 <p>If variable size array was not allocated then this function will generate segmentation fault.</p>
 <p>If you know that data is certanly sparse or dense on elements you access then it is faster to use variants of this function with hint data structure.</p>
 <p>The class reference_array that is used to represent array of elements stores handles inside but accessing them through square scopes [] or by arrow -&gt; in iterator will automatically form object of type <a class="el" href="classINMOST_1_1Element.html">Element</a>. If you are not sure that stored handles are valid, you should either check that by Element::isValid (involves deep check) or test handle against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or dereference * operator for iterator. If you need custom object like <a class="el" href="classINMOST_1_1Node.html">Node</a>, <a class="el" href="classINMOST_1_1Edge.html">Edge</a>, <a class="el" href="classINMOST_1_1Face.html">Face</a>, <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> or <a class="el" href="classINMOST_1_1ElementSet.html">ElementSet</a> you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace, Element::getAsCell and Element::getAsSet functions.</p>
-<p>Array data structure is guaranteed to be valid during mesh modification. If you delete elements by <a class="el" href="classINMOST_1_1Mesh.html#a569c516120df121980d0585deadd3634" title="This function will hide element in modification state (between BeginModification and EndModification)...">Mesh::Delete</a> or Element::Delete all the references are also will be valid and reverted to InvalidHandle on <a class="el" href="classINMOST_1_1Mesh.html#a1f53070855f3503b2f4cefc16cedd6a0" title="After this function any link to deleted element will be replaced by InvalidHandle(). ">Mesh::ApplyModification</a>. If you use <a class="el" href="classINMOST_1_1Mesh.html#a0e2c090ee95e802c4f486a5d98fc6cb0" title="Completely destroy element from mesh. ">Mesh::Destroy</a> to delete mesh elements or delete elements not within modification state then references may become either invalid but not testable against InvalidHandle (situation may be tested by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element if you mix deletion and creation of elements and then is no way to resolve this situation, except if you have created only one element the it may be retrieved by Mesh::LastHandle.</p>
+<p>Array data structure is guaranteed to be valid during mesh modification. If you delete elements by <a class="el" href="classINMOST_1_1Mesh.html#a569c516120df121980d0585deadd3634" title="This function will hide element in modification state (between BeginModification and EndModification)...">Mesh::Delete</a> or Element::Delete all the references are also will be valid and reverted to InvalidHandle on <a class="el" href="classINMOST_1_1Mesh.html#a1f53070855f3503b2f4cefc16cedd6a0" title="After this function any link to deleted element will be replaced by InvalidHandle(). ">Mesh::ApplyModification</a>. If you use <a class="el" href="classINMOST_1_1Mesh.html#a0e2c090ee95e802c4f486a5d98fc6cb0" title="Completely destroy element from mesh. ">Mesh::Destroy</a> to delete mesh elements or you delete elements not within modification state then references may become either invalid but not testable against InvalidHandle (situation may be tested by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element. If you mix deletion and construction of elements then there is no way to resolve this situation, except if you have created only one element, then it may be retrieved by Mesh::LastHandle.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">h</td><td>element handle </td></tr>
@@ -5134,6 +5148,10 @@ Element::getAsSet </dd></dl>
   </table>
   </dd>
 </dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000018">Todo:</a></b></dt><dd><ol type="1">
+<li>Markers are not saved in internal format due to possible conflict during load. </li>
+</ol>
+</dd></dl>
 
 </div>
 </div>
@@ -5692,7 +5710,7 @@ Mesh::ExchangeBuffersInner </dd></dl>
         </tr>
       </table>
 </div><div class="memdoc">
-<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000020">Todo:</a></b></dt><dd>TODO 53 check that putting global ids to array will be faster </dd></dl>
+<dl class="todo"><dt><b><a class="el" href="todo.html#_todo000022">Todo:</a></b></dt><dd>TODO 53 check that putting global ids to array will be faster </dd></dl>
 
 </div>
 </div>
@@ -5829,9 +5847,10 @@ Mesh::ExchangeBuffersInner </dd></dl>
 <li><a class="el" href="inmost__mesh_8h_source.html">inmost_mesh.h</a></li>
 </ul>
 </div><!-- contents -->
+<!-- HTML footer for doxygen 1.8.5-->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Feb 9 2015 02:21:41 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Wed Feb 11 2015 12:11:28 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>
