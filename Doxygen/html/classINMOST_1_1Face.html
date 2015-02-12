@@ -104,6 +104,11 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="title">INMOST::Face Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>An interface for elements of type FACE.  
+ <a href="classINMOST_1_1Face.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="inmost__mesh_8h_source.html">inmost_mesh.h</a>&gt;</code></p>
 <div class="dynheader">
 Inheritance diagram for INMOST::Face:</div>
 <div class="dyncontent">
@@ -697,7 +702,14 @@ HandleType&#160;</td><td class="memItemRight" valign="bottom"><b>handle</b></td>
 HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</b></td></tr>
 <tr class="separator:a14f2ee75267f3c967db30b79558360a5 inherit pro_attribs_classINMOST_1_1Storage"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>An interface for elements of type FACE. </p>
+<p>This interface carry the link to the mesh and the element's handle that represents position of the element's data in the mesh.</p>
+<p>Interface provides some operations that can be done uniquely on the object of class <a class="el" href="classINMOST_1_1Element.html">Element</a> for which Element::GetElementType retruns FACE.</p>
+<p>For the basic set of operations on all of the elements check class <a class="el" href="classINMOST_1_1Element.html">Element</a>.</p>
+<p>For the basic set of operations on the data of the element check class <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>.</p>
+<p>You can obtain object of class <a class="el" href="classINMOST_1_1Face.html" title="An interface for elements of type FACE. ">Face</a> from Mesh::iteratorFace, in this case obtained object is always valid. Also you can get it through Mesh::FaceByLocalID, check with Element::isValid to see whether you have obtained a valid object. You can convert an object of class <a class="el" href="classINMOST_1_1Element.html">Element</a> into an object of class <a class="el" href="classINMOST_1_1Face.html" title="An interface for elements of type FACE. ">Face</a> by Element::getAsFace. In debug mode it will internally check that the element is of type FACE. You may compose an object of class <a class="el" href="classINMOST_1_1Face.html" title="An interface for elements of type FACE. ">Face</a> by using constructor and specifing pointer to the mesh and providing element's handle. You can make a handle with ComposeHandle(FACE,local_id) function. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
 <a class="anchor" id="a343f374489d97e5cc41e392f1fd29eea"></a>
 <div class="memitem">
 <div class="memproto">
@@ -845,7 +857,7 @@ Face::FaceOrientedOutside </dd></dl>
 <!-- HTML footer for doxygen 1.8.5-->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Feb 11 2015 12:11:27 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Wed Feb 11 2015 22:20:48 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>

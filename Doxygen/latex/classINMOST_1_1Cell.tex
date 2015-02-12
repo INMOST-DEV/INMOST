@@ -94,13 +94,13 @@ An interface for elements of type C\-E\-L\-L.
 
 This interface carry the link to the mesh and the element's handle that represents position of the element's data in the mesh.
 
-Interface provides some operations that can be done uniquely on the element of type C\-E\-L\-L.
+Interface provides some operations that can be done uniquely on the object of class \hyperlink{classINMOST_1_1Element}{Element} for which Element\-::\-Get\-Element\-Type retruns C\-E\-L\-L.
 
 For the basic set of operations on all of the elements check class \hyperlink{classINMOST_1_1Element}{Element}.
 
 For the basic set of operations on the data of the element check class \hyperlink{classINMOST_1_1Storage}{Storage}.
 
-You can obtain object of class \hyperlink{classINMOST_1_1Cell}{Cell} from Mesh\-::iterator\-Cell, in this case obtained object is always valid. Also you can get it through Mesh\-::\-Cell\-By\-Local\-I\-D, check with Element\-::is\-Valid to see whether you have obtained valid object. You can convert object of class \hyperlink{classINMOST_1_1Element}{Element} into object of class \hyperlink{classINMOST_1_1Cell}{Cell} by Element\-::get\-As\-Cell. In debug mode it will internally check that element is of type C\-E\-L\-L. You may compose object of class \hyperlink{classINMOST_1_1Cell}{Cell} by using constructor and specifing pointer to the mesh and providing element's handle. You can make handle with Compose\-Handle(\-C\-E\-L\-L,local\-\_\-id) function. 
+You can obtain object of class \hyperlink{classINMOST_1_1Cell}{Cell} from Mesh\-::iterator\-Cell, in this case obtained object is always valid. Also you can get it through Mesh\-::\-Cell\-By\-Local\-I\-D, check with Element\-::is\-Valid to see whether you have obtained valid object. You can convert an object of class \hyperlink{classINMOST_1_1Element}{Element} into an object of class \hyperlink{classINMOST_1_1Cell}{Cell} by Element\-::get\-As\-Cell. In debug mode it will internally check that the element is of type C\-E\-L\-L. You may compose an object of class \hyperlink{classINMOST_1_1Cell}{Cell} by using constructor and specifing pointer to the mesh and providing element's handle. You can make a handle with Compose\-Handle(\-C\-E\-L\-L,local\-\_\-id) function. 
 
 \subsection{Constructor \& Destructor Documentation}
 \hypertarget{classINMOST_1_1Cell_a5014e2a8bdc5c5e63d8f56203c446ff2}{\index{I\-N\-M\-O\-S\-T\-::\-Cell@{I\-N\-M\-O\-S\-T\-::\-Cell}!Cell@{Cell}}
@@ -256,8 +256,6 @@ This function traverses down the adjacency graph by two levels.
 
 The order of the edges is unspecified.
 
-W\-A\-R\-N\-I\-N\-G\-: Note that this function uses markers to check for duplication of edges in output array. This allows for faster algorithm, but will lead to penalties in shared parallel execution, since operations on markers are declared atomic. For atomic declaration to work you have to define U\-S\-E\-\_\-\-O\-M\-P during C\-Make configuration or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}. If you attempt to use this function in shared parallel execution without U\-S\-E\-\_\-\-O\-M\-P you may expect side effects.
-
 \begin{DoxyReturn}{Returns}
 Set of edges that compose current cell.
 \end{DoxyReturn}
@@ -266,8 +264,13 @@ Set of edges that compose current cell.
 \begin{DoxyEnumerate}
 \item Use of markers (current wariant).
 \item Put all elements into array with duplications, then run std\-::sort and std\-::unique.
-\item Put all elements into array, check for duplication by running through array. 
+\item Put all elements into array, check for duplication by running through array.
 \end{DoxyEnumerate}\end{DoxyRefDesc}
+
+
+\begin{DoxyWarning}{Warning}
+Note that this function uses markers to check for duplication of edges in output array. This allows for faster algorithm, but will lead to penalties in shared parallel execution, since operations on markers are declared atomic. For atomic declaration to work you have to define U\-S\-E\-\_\-\-O\-M\-P during C\-Make configuration or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}. If you attempt to use this function in shared parallel execution without U\-S\-E\-\_\-\-O\-M\-P you may expect side effects. 
+\end{DoxyWarning}
 
 
 Reimplemented from \hyperlink{classINMOST_1_1Element_a3ba56a19eeeb283864a006b0744fac4e}{I\-N\-M\-O\-S\-T\-::\-Element}.
@@ -288,8 +291,6 @@ This function traverses down the adjacency graph by two levels.
 
 The order of the edges is unspecified.
 
-W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}.
-
 
 \begin{DoxyParams}{Parameters}
 {\em mask} & Marker that should be used to filter elements. \\
@@ -298,8 +299,11 @@ W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this fun
 \hline
 \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
-Set of the edges that compose current cell and (not) marked by marker. 
+Set of the edges that compose current cell and (not) marked by marker.
 \end{DoxyReturn}
+\begin{DoxyWarning}{Warning}
+To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}. 
+\end{DoxyWarning}
 
 
 Reimplemented from \hyperlink{classINMOST_1_1Element}{I\-N\-M\-O\-S\-T\-::\-Element}.
@@ -342,8 +346,6 @@ This function traverses down the adjacency graph by one level.
 
 The order of the faces returned by this function is preserved from the moment of the construction of the cell.
 
-W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}.
-
 
 \begin{DoxyParams}{Parameters}
 {\em mask} & Marker that should be used to filter elements. \\
@@ -352,8 +354,11 @@ W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this fun
 \hline
 \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
-Set of the faces that compose current cell and (not) marked by marker. 
+Set of the faces that compose current cell and (not) marked by marker.
 \end{DoxyReturn}
+\begin{DoxyWarning}{Warning}
+To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}. 
+\end{DoxyWarning}
 
 
 Reimplemented from \hyperlink{classINMOST_1_1Element}{I\-N\-M\-O\-S\-T\-::\-Element}.
@@ -396,8 +401,6 @@ This function traverses up the adjacency graph by one level.
 
 The order of nodes will be preserved from the moment of the construction of the cell. When suggest\-\_\-nodes array is not supplied into the Mesh\-::\-Create\-Cell functions, then for known types the order of nodes follows V\-T\-K convention. For polyhedral cells the order is unspecified. When suggest\-\_\-nodes\-\_\-order was provided into Mesh\-::\-Create\-Cell then the order follows provided order.
 
-W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}.
-
 
 \begin{DoxyParams}{Parameters}
 {\em mask} & Marker that should be used to filter elements. \\
@@ -406,8 +409,11 @@ W\-A\-R\-N\-I\-N\-G\-: To work correctly in shared parallel environment this fun
 \hline
 \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
-Set of the nodes that compose current cell and (not) marked by marker. 
+Set of the nodes that compose current cell and (not) marked by marker.
 \end{DoxyReturn}
+\begin{DoxyWarning}{Warning}
+To work correctly in shared parallel environment this function requires U\-S\-E\-\_\-\-O\-M\-P to be defined in C\-Make or in \hyperlink{inmost__common_8h_source}{inmost\-\_\-common.\-h}. 
+\end{DoxyWarning}
 
 
 Reimplemented from \hyperlink{classINMOST_1_1Element}{I\-N\-M\-O\-S\-T\-::\-Element}.

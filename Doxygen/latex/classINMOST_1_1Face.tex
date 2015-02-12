@@ -3,6 +3,15 @@
 }
 
 
+An interface for elements of type F\-A\-C\-E.  
+
+
+
+
+{\ttfamily \#include $<$inmost\-\_\-mesh.\-h$>$}
+
+
+
 Inheritance diagram for I\-N\-M\-O\-S\-T\-:\-:Face\-:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -127,6 +136,19 @@ Collaboration diagram for I\-N\-M\-O\-S\-T\-:\-:Face\-:\nopagebreak
 \end{DoxyCompactItemize}
 \subsection*{Additional Inherited Members}
 
+
+\subsection{Detailed Description}
+An interface for elements of type F\-A\-C\-E. 
+
+This interface carry the link to the mesh and the element's handle that represents position of the element's data in the mesh.
+
+Interface provides some operations that can be done uniquely on the object of class \hyperlink{classINMOST_1_1Element}{Element} for which Element\-::\-Get\-Element\-Type retruns F\-A\-C\-E.
+
+For the basic set of operations on all of the elements check class \hyperlink{classINMOST_1_1Element}{Element}.
+
+For the basic set of operations on the data of the element check class \hyperlink{classINMOST_1_1Storage}{Storage}.
+
+You can obtain object of class \hyperlink{classINMOST_1_1Face}{Face} from Mesh\-::iterator\-Face, in this case obtained object is always valid. Also you can get it through Mesh\-::\-Face\-By\-Local\-I\-D, check with Element\-::is\-Valid to see whether you have obtained a valid object. You can convert an object of class \hyperlink{classINMOST_1_1Element}{Element} into an object of class \hyperlink{classINMOST_1_1Face}{Face} by Element\-::get\-As\-Face. In debug mode it will internally check that the element is of type F\-A\-C\-E. You may compose an object of class \hyperlink{classINMOST_1_1Face}{Face} by using constructor and specifing pointer to the mesh and providing element's handle. You can make a handle with Compose\-Handle(\-F\-A\-C\-E,local\-\_\-id) function. 
 
 \subsection{Member Function Documentation}
 \hypertarget{classINMOST_1_1Face_a343f374489d97e5cc41e392f1fd29eea}{\index{I\-N\-M\-O\-S\-T\-::\-Face@{I\-N\-M\-O\-S\-T\-::\-Face}!Back\-Cell@{Back\-Cell}}

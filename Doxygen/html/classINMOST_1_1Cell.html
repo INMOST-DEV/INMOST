@@ -678,10 +678,10 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>An interface for elements of type CELL. </p>
 <p>This interface carry the link to the mesh and the element's handle that represents position of the element's data in the mesh.</p>
-<p>Interface provides some operations that can be done uniquely on the element of type CELL.</p>
+<p>Interface provides some operations that can be done uniquely on the object of class <a class="el" href="classINMOST_1_1Element.html">Element</a> for which Element::GetElementType retruns CELL.</p>
 <p>For the basic set of operations on all of the elements check class <a class="el" href="classINMOST_1_1Element.html">Element</a>.</p>
 <p>For the basic set of operations on the data of the element check class <a class="el" href="classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. ">Storage</a>.</p>
-<p>You can obtain object of class <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> from Mesh::iteratorCell, in this case obtained object is always valid. Also you can get it through Mesh::CellByLocalID, check with Element::isValid to see whether you have obtained valid object. You can convert object of class <a class="el" href="classINMOST_1_1Element.html">Element</a> into object of class <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> by Element::getAsCell. In debug mode it will internally check that element is of type CELL. You may compose object of class <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> by using constructor and specifing pointer to the mesh and providing element's handle. You can make handle with ComposeHandle(CELL,local_id) function. </p>
+<p>You can obtain object of class <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> from Mesh::iteratorCell, in this case obtained object is always valid. Also you can get it through Mesh::CellByLocalID, check with Element::isValid to see whether you have obtained valid object. You can convert an object of class <a class="el" href="classINMOST_1_1Element.html">Element</a> into an object of class <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> by Element::getAsCell. In debug mode it will internally check that the element is of type CELL. You may compose an object of class <a class="el" href="classINMOST_1_1Cell.html" title="An interface for elements of type CELL. ">Cell</a> by using constructor and specifing pointer to the mesh and providing element's handle. You can make a handle with ComposeHandle(CELL,local_id) function. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a class="anchor" id="a5014e2a8bdc5c5e63d8f56203c446ff2"></a>
 <div class="memitem">
@@ -926,14 +926,14 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 <p>Get all the edges of the current cell. </p>
 <p>This function traverses down the adjacency graph by two levels.</p>
 <p>The order of the edges is unspecified.</p>
-<p>WARNING: Note that this function uses markers to check for duplication of edges in output array. This allows for faster algorithm, but will lead to penalties in shared parallel execution, since operations on markers are declared atomic. For atomic declaration to work you have to define USE_OMP during CMake configuration or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>. If you attempt to use this function in shared parallel execution without USE_OMP you may expect side effects.</p>
 <dl class="section return"><dt>Returns</dt><dd>Set of edges that compose current cell.</dd></dl>
 <dl class="todo"><dt><b><a class="el" href="todo.html#_todo000002">Todo:</a></b></dt><dd>One should thoroughly check three scenarios of function execution in shared parallel environment for different types of cells (simple tet/hex cells as well as complex polyhedral cells) and draw a conclusion on the best scenario for each condition. One of the development versions contains all the algorithms, ask for the files.<ol type="1">
 <li>Use of markers (current wariant).</li>
 <li>Put all elements into array with duplications, then run std::sort and std::unique.</li>
-<li>Put all elements into array, check for duplication by running through array. </li>
+<li>Put all elements into array, check for duplication by running through array.</li>
 </ol>
 </dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>Note that this function uses markers to check for duplication of edges in output array. This allows for faster algorithm, but will lead to penalties in shared parallel execution, since operations on markers are declared atomic. For atomic declaration to work you have to define USE_OMP during CMake configuration or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>. If you attempt to use this function in shared parallel execution without USE_OMP you may expect side effects. </dd></dl>
 
 <p>Reimplemented from <a class="el" href="classINMOST_1_1Element.html#a3ba56a19eeeb283864a006b0744fac4e">INMOST::Element</a>.</p>
 
@@ -974,7 +974,6 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 <p>Get the subset of the edges of the current cell that are (not) marked by provided marker. </p>
 <p>This function traverses down the adjacency graph by two levels.</p>
 <p>The order of the edges is unspecified.</p>
-<p>WARNING: To work correctly in shared parallel environment this function requires USE_OMP to be defined in CMake or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">mask</td><td>Marker that should be used to filter elements. </td></tr>
@@ -982,7 +981,8 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Set of the edges that compose current cell and (not) marked by marker. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Set of the edges that compose current cell and (not) marked by marker.</dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>To work correctly in shared parallel environment this function requires USE_OMP to be defined in CMake or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>. </dd></dl>
 
 <p>Reimplemented from <a class="el" href="classINMOST_1_1Element.html">INMOST::Element</a>.</p>
 
@@ -1053,7 +1053,6 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 <p>Get the subset of the faces of the current cell that are (not) marked by provided marker. </p>
 <p>This function traverses down the adjacency graph by one level.</p>
 <p>The order of the faces returned by this function is preserved from the moment of the construction of the cell.</p>
-<p>WARNING: To work correctly in shared parallel environment this function requires USE_OMP to be defined in CMake or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">mask</td><td>Marker that should be used to filter elements. </td></tr>
@@ -1061,7 +1060,8 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Set of the faces that compose current cell and (not) marked by marker. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Set of the faces that compose current cell and (not) marked by marker.</dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>To work correctly in shared parallel environment this function requires USE_OMP to be defined in CMake or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>. </dd></dl>
 
 <p>Reimplemented from <a class="el" href="classINMOST_1_1Element.html">INMOST::Element</a>.</p>
 
@@ -1132,7 +1132,6 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
 <p>Get the subset of the nodes of the current cell that are (not) marked by provided marker. </p>
 <p>This function traverses up the adjacency graph by one level.</p>
 <p>The order of nodes will be preserved from the moment of the construction of the cell. When suggest_nodes array is not supplied into the Mesh::CreateCell functions, then for known types the order of nodes follows VTK convention. For polyhedral cells the order is unspecified. When suggest_nodes_order was provided into Mesh::CreateCell then the order follows provided order.</p>
-<p>WARNING: To work correctly in shared parallel environment this function requires USE_OMP to be defined in CMake or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">mask</td><td>Marker that should be used to filter elements. </td></tr>
@@ -1140,7 +1139,8 @@ HandleType *&#160;</td><td class="memItemRight" valign="bottom"><b>handle_link</
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Set of the nodes that compose current cell and (not) marked by marker. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Set of the nodes that compose current cell and (not) marked by marker.</dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>To work correctly in shared parallel environment this function requires USE_OMP to be defined in CMake or in <a class="el" href="inmost__common_8h_source.html">inmost_common.h</a>. </dd></dl>
 
 <p>Reimplemented from <a class="el" href="classINMOST_1_1Element.html">INMOST::Element</a>.</p>
 
@@ -1592,7 +1592,7 @@ Face::SplitFace</dd></dl>
 <!-- HTML footer for doxygen 1.8.5-->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Feb 11 2015 12:11:28 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Wed Feb 11 2015 22:20:48 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>
