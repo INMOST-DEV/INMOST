@@ -1,6 +1,7 @@
 if(USE_SOLVER)
 add_subdirectory(solver_test000)
 #add_subdirectory(solver_test001)
+add_subdirectory(solver_test002)
 endif(USE_SOLVER)
 
 if(USE_MESH AND USE_MPI)
