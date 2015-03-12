@@ -94,13 +94,14 @@ int main(int argc, char ** argv)
 	switch(atoi(argv[1]))
 	{
 		case 0: type = Solver::INNER_ILU2; break;
-		case 1: type = Solver::INNER_MLILUC; break;
+		case 1: type = Solver::INNER_DDPQILUC; break;
 		case 2: type = Solver::PETSc; break;
 		case 3: type = Solver::Trilinos_Aztec; break;
 		case 4: type = Solver::Trilinos_Belos; break;
 		case 5: type = Solver::Trilinos_Ifpack; break;
 		case 6: type = Solver::Trilinos_ML; break;
 		case 7: type = Solver::ANI; break;
+		case 8: type = Solver::INNER_MPTILUC; break;
 	}
 	int n = atoi(argv[2]);
 	Solver::Initialize(&argc,&argv,argc > 3 ? argv[3] : NULL); // Initialize the linear solver in accordance with args
