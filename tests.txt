@@ -1,0 +1,342 @@
+1>------ Build started: Project: RUN_TESTS, Configuration: Release x64 ------
+1>Build started 12.03.2015 14:43:37.
+1>InitializeBuildStatus:
+1>  Touching "x64\Release\RUN_TESTS\RUN_TESTS.unsuccessfulbuild".
+1>PostBuildEvent:
+1>  Test project C:/Users/KIRILL/Documents/Code/INMOST/builds/build64_2010_INMOST
+1>          Start   1: solver_test000_serial_inner_ilu2
+1>    1/149 Test   #1: solver_test000_serial_inner_ilu2 ...................   Passed    0.02 sec
+1>          Start   2: solver_test000_serial_inner_ddpqiluc
+1>    2/149 Test   #2: solver_test000_serial_inner_ddpqiluc ...............   Passed    0.02 sec
+1>          Start   3: solver_test000_serial_inner_mptiluc
+1>    3/149 Test   #3: solver_test000_serial_inner_mptiluc ................   Passed    0.02 sec
+1>          Start   4: solver_test000_serial_petsc
+1>    4/149 Test   #4: solver_test000_serial_petsc ........................   Passed    0.02 sec
+1>          Start   5: solver_test000_serial_trilinos_aztec
+1>    5/149 Test   #5: solver_test000_serial_trilinos_aztec ...............   Passed    0.02 sec
+1>          Start   6: solver_test000_serial_trilinos_ifpack
+1>    6/149 Test   #6: solver_test000_serial_trilinos_ifpack ..............   Passed    0.02 sec
+1>          Start   7: solver_test000_serial_trilinos_ml
+1>    7/149 Test   #7: solver_test000_serial_trilinos_ml ..................   Passed    0.02 sec
+1>          Start   8: solver_test000_serial_trilinos_belos
+1>    8/149 Test   #8: solver_test000_serial_trilinos_belos ...............   Passed    0.02 sec
+1>          Start   9: solver_test000_parallel_normal_inner_ilu2
+1>    9/149 Test   #9: solver_test000_parallel_normal_inner_ilu2 ..........   Passed    0.06 sec
+1>          Start  10: solver_test000_parallel_permute1_inner_ilu2
+1>   10/149 Test  #10: solver_test000_parallel_permute1_inner_ilu2 ........   Passed    0.05 sec
+1>          Start  11: solver_test000_parallel_permute2_inner_ilu2
+1>   11/149 Test  #11: solver_test000_parallel_permute2_inner_ilu2 ........   Passed    0.05 sec
+1>          Start  12: solver_test000_parallel_normal_inner_ddpqiluc
+1>   12/149 Test  #12: solver_test000_parallel_normal_inner_ddpqiluc ......   Passed    0.06 sec
+1>          Start  13: solver_test000_parallel_permute1_inner_ddpqiluc
+1>   13/149 Test  #13: solver_test000_parallel_permute1_inner_ddpqiluc ....   Passed    0.05 sec
+1>          Start  14: solver_test000_parallel_permute2_inner_ddpqiluc
+1>   14/149 Test  #14: solver_test000_parallel_permute2_inner_ddpqiluc ....   Passed    0.05 sec
+1>          Start  15: solver_test000_parallel_normal_inner_mptiluc
+1>   15/149 Test  #15: solver_test000_parallel_normal_inner_mptiluc .......   Passed    0.06 sec
+1>          Start  16: solver_test000_parallel_permute1_inner_mptiluc
+1>   16/149 Test  #16: solver_test000_parallel_permute1_inner_mptiluc .....   Passed    0.06 sec
+1>          Start  17: solver_test000_parallel_permute2_inner_mptiluc
+1>   17/149 Test  #17: solver_test000_parallel_permute2_inner_mptiluc .....   Passed    0.06 sec
+1>          Start  18: solver_test000_parallel_normal_petsc
+1>   18/149 Test  #18: solver_test000_parallel_normal_petsc ...............   Passed    0.06 sec
+1>          Start  19: solver_test000_parallel_normal_trilinos_aztec
+1>   19/149 Test  #19: solver_test000_parallel_normal_trilinos_aztec ......   Passed    0.05 sec
+1>          Start  20: solver_test000_parallel_permute1_trilinos_aztec
+1>   20/149 Test  #20: solver_test000_parallel_permute1_trilinos_aztec ....   Passed    0.06 sec
+1>          Start  21: solver_test000_parallel_permute2_trilinos_aztec
+1>   21/149 Test  #21: solver_test000_parallel_permute2_trilinos_aztec ....   Passed    0.06 sec
+1>          Start  22: solver_test000_parallel_normal_trilinos_ifpack
+1>   22/149 Test  #22: solver_test000_parallel_normal_trilinos_ifpack .....   Passed    0.06 sec
+1>          Start  23: solver_test000_parallel_permute1_trilinos_ifpack
+1>   23/149 Test  #23: solver_test000_parallel_permute1_trilinos_ifpack ...   Passed    0.06 sec
+1>          Start  24: solver_test000_parallel_permute2_trilinos_ifpack
+1>   24/149 Test  #24: solver_test000_parallel_permute2_trilinos_ifpack ...   Passed    0.06 sec
+1>          Start  25: solver_test000_parallel_normal_trilinos_ml
+1>   25/149 Test  #25: solver_test000_parallel_normal_trilinos_ml .........   Passed    0.07 sec
+1>          Start  26: solver_test000_parallel_permute1_trilinos_ml
+1>   26/149 Test  #26: solver_test000_parallel_permute1_trilinos_ml .......   Passed    0.07 sec
+1>          Start  27: solver_test000_parallel_permute2_trilinos_ml
+1>   27/149 Test  #27: solver_test000_parallel_permute2_trilinos_ml .......   Passed    0.07 sec
+1>          Start  28: solver_test001_sparsekit_tokamak_utm300
+1>   28/149 Test  #28: solver_test001_sparsekit_tokamak_utm300 ............   Passed    0.04 sec
+1>          Start  29: solver_test001_sparsekit_tokamak_utm1700a
+1>   29/149 Test  #29: solver_test001_sparsekit_tokamak_utm1700a ..........   Passed    0.21 sec
+1>          Start  30: solver_test001_sparsekit_tokamak_utm1700b
+1>   30/149 Test  #30: solver_test001_sparsekit_tokamak_utm1700b ..........   Passed    0.18 sec
+1>          Start  31: solver_test001_sparsekit_tokamak_utm3060
+1>   31/149 Test  #31: solver_test001_sparsekit_tokamak_utm3060 ...........   Passed    0.42 sec
+1>          Start  32: solver_test001_sparsekit_tokamak_utm5940
+1>   32/149 Test  #32: solver_test001_sparsekit_tokamak_utm5940 ...........   Passed    1.51 sec
+1>          Start  33: solver_test001_sparsekit_drivcav_old_cavity01
+1>   33/149 Test  #33: solver_test001_sparsekit_drivcav_old_cavity01 ......   Passed    0.06 sec
+1>          Start  34: solver_test001_sparsekit_drivcav_old_cavity02
+1>   34/149 Test  #34: solver_test001_sparsekit_drivcav_old_cavity02 ......   Passed    0.06 sec
+1>          Start  35: solver_test001_sparsekit_drivcav_old_cavity03
+1>   35/149 Test  #35: solver_test001_sparsekit_drivcav_old_cavity03 ......   Passed    0.06 sec
+1>          Start  36: solver_test001_sparsekit_drivcav_old_cavity04
+1>   36/149 Test  #36: solver_test001_sparsekit_drivcav_old_cavity04 ......   Passed    0.05 sec
+1>          Start  37: solver_test001_sparsekit_drivcav_old_cavity05
+1>   37/149 Test  #37: solver_test001_sparsekit_drivcav_old_cavity05 ......   Passed    0.18 sec
+1>          Start  38: solver_test001_sparsekit_drivcav_old_cavity06
+1>   38/149 Test  #38: solver_test001_sparsekit_drivcav_old_cavity06 ......   Passed    0.18 sec
+1>          Start  39: solver_test001_sparsekit_drivcav_old_cavity07
+1>   39/149 Test  #39: solver_test001_sparsekit_drivcav_old_cavity07 ......   Passed    0.20 sec
+1>          Start  40: solver_test001_sparsekit_drivcav_old_cavity08
+1>   40/149 Test  #40: solver_test001_sparsekit_drivcav_old_cavity08 ......   Passed    0.20 sec
+1>          Start  41: solver_test001_sparsekit_drivcav_old_cavity09
+1>   41/149 Test  #41: solver_test001_sparsekit_drivcav_old_cavity09 ......   Passed    0.19 sec
+1>          Start  42: solver_test001_sparsekit_drivcav_old_cavity10
+1>   42/149 Test  #42: solver_test001_sparsekit_drivcav_old_cavity10 ......   Passed    0.50 sec
+1>          Start  43: solver_test001_sparsekit_drivcav_old_cavity11
+1>   43/149 Test  #43: solver_test001_sparsekit_drivcav_old_cavity11 ......   Passed    0.49 sec
+1>          Start  44: solver_test001_sparsekit_drivcav_old_cavity12
+1>   44/149 Test  #44: solver_test001_sparsekit_drivcav_old_cavity12 ......   Passed    0.53 sec
+1>          Start  45: solver_test001_sparsekit_drivcav_old_cavity13
+1>   45/149 Test  #45: solver_test001_sparsekit_drivcav_old_cavity13 ......   Passed    0.49 sec
+1>          Start  46: solver_test001_sparsekit_drivcav_old_cavity14
+1>   46/149 Test  #46: solver_test001_sparsekit_drivcav_old_cavity14 ......   Passed    0.54 sec
+1>          Start  47: solver_test001_sparsekit_drivcav_old_cavity15
+1>   47/149 Test  #47: solver_test001_sparsekit_drivcav_old_cavity15 ......   Passed    0.61 sec
+1>          Start  48: solver_test001_sparsekit_drivcav_old_cavity16
+1>   48/149 Test  #48: solver_test001_sparsekit_drivcav_old_cavity16 ......   Passed    1.21 sec
+1>          Start  49: solver_test001_sparsekit_drivcav_old_cavity17
+1>   49/149 Test  #49: solver_test001_sparsekit_drivcav_old_cavity17 ......   Passed    1.09 sec
+1>          Start  50: solver_test001_sparsekit_drivcav_old_cavity18
+1>   50/149 Test  #50: solver_test001_sparsekit_drivcav_old_cavity18 ......   Passed    1.16 sec
+1>          Start  51: solver_test001_sparsekit_drivcav_old_cavity19
+1>   51/149 Test  #51: solver_test001_sparsekit_drivcav_old_cavity19 ......   Passed    1.20 sec
+1>          Start  52: solver_test001_sparsekit_drivcav_old_cavity20
+1>   52/149 Test  #52: solver_test001_sparsekit_drivcav_old_cavity20 ......   Passed    1.19 sec
+1>          Start  53: solver_test001_sparsekit_drivcav_old_cavity21
+1>   53/149 Test  #53: solver_test001_sparsekit_drivcav_old_cavity21 ......   Passed    1.22 sec
+1>          Start  54: solver_test001_sparsekit_drivcav_old_cavity22
+1>   54/149 Test  #54: solver_test001_sparsekit_drivcav_old_cavity22 ......   Passed    1.14 sec
+1>          Start  55: solver_test001_sparsekit_drivcav_old_cavity23
+1>   55/149 Test  #55: solver_test001_sparsekit_drivcav_old_cavity23 ......   Passed    1.19 sec
+1>          Start  56: solver_test001_sparsekit_drivcav_old_cavity24
+1>   56/149 Test  #56: solver_test001_sparsekit_drivcav_old_cavity24 ......   Passed    1.21 sec
+1>          Start  57: solver_test001_sparsekit_drivcav_old_cavity25
+1>   57/149 Test  #57: solver_test001_sparsekit_drivcav_old_cavity25 ......   Passed    1.12 sec
+1>          Start  58: solver_test001_sparsekit_drivcav_old_cavity26
+1>   58/149 Test  #58: solver_test001_sparsekit_drivcav_old_cavity26 ......   Passed    1.23 sec
+1>          Start  59: solver_test001_sparsekit_drivcav_e05r0000
+1>   59/149 Test  #59: solver_test001_sparsekit_drivcav_e05r0000 ..........   Passed    0.05 sec
+1>          Start  60: solver_test001_sparsekit_drivcav_e05r0100
+1>   60/149 Test  #60: solver_test001_sparsekit_drivcav_e05r0100 ..........   Passed    0.07 sec
+1>          Start  61: solver_test001_sparsekit_drivcav_e05r0200
+1>   61/149 Test  #61: solver_test001_sparsekit_drivcav_e05r0200 ..........   Passed    0.06 sec
+1>          Start  62: solver_test001_sparsekit_drivcav_e05r0300
+1>   62/149 Test  #62: solver_test001_sparsekit_drivcav_e05r0300 ..........   Passed    0.05 sec
+1>          Start  63: solver_test001_sparsekit_drivcav_e05r0400
+1>   63/149 Test  #63: solver_test001_sparsekit_drivcav_e05r0400 ..........   Passed    0.06 sec
+1>          Start  64: solver_test001_sparsekit_drivcav_e05r0500
+1>   64/149 Test  #64: solver_test001_sparsekit_drivcav_e05r0500 ..........   Passed    0.07 sec
+1>          Start  65: solver_test001_sparsekit_drivcav_e20r0000
+1>   65/149 Test  #65: solver_test001_sparsekit_drivcav_e20r0000 ..........   Passed    1.08 sec
+1>          Start  66: solver_test001_sparsekit_drivcav_e20r0100
+1>   66/149 Test  #66: solver_test001_sparsekit_drivcav_e20r0100 ..........   Passed    1.11 sec
+1>          Start  67: solver_test001_sparsekit_drivcav_e20r0500
+1>   67/149 Test  #67: solver_test001_sparsekit_drivcav_e20r0500 ..........   Passed    1.16 sec
+1>          Start  68: solver_test001_sparsekit_drivcav_e20r1000
+1>   68/149 Test  #68: solver_test001_sparsekit_drivcav_e20r1000 ..........   Passed    1.12 sec
+1>          Start  69: solver_test001_sparsekit_drivcav_e20r2000
+1>   69/149 Test  #69: solver_test001_sparsekit_drivcav_e20r2000 ..........   Passed    1.15 sec
+1>          Start  70: solver_test001_sparsekit_drivcav_e20r3000
+1>   70/149 Test  #70: solver_test001_sparsekit_drivcav_e20r3000 ..........   Passed    1.15 sec
+1>          Start  71: solver_test001_sparsekit_drivcav_e20r4000
+1>   71/149 Test  #71: solver_test001_sparsekit_drivcav_e20r4000 ..........   Passed    1.25 sec
+1>          Start  72: solver_test001_sparsekit_drivcav_e20r5000
+1>   72/149 Test  #72: solver_test001_sparsekit_drivcav_e20r5000 ..........   Passed    1.15 sec
+1>          Start  73: solver_test001_sparsekit_drivcav_e30r0000
+1>   73/149 Test  #73: solver_test001_sparsekit_drivcav_e30r0000 ..........   Passed    3.94 sec
+1>          Start  74: solver_test001_sparsekit_drivcav_e30r0100
+1>   74/149 Test  #74: solver_test001_sparsekit_drivcav_e30r0100 ..........   Passed    4.04 sec
+1>          Start  75: solver_test001_sparsekit_drivcav_e30r0500
+1>   75/149 Test  #75: solver_test001_sparsekit_drivcav_e30r0500 ..........   Passed    4.29 sec
+1>          Start  76: solver_test001_sparsekit_drivcav_e30r1000
+1>   76/149 Test  #76: solver_test001_sparsekit_drivcav_e30r1000 ..........   Passed    4.21 sec
+1>          Start  77: solver_test001_sparsekit_drivcav_e30r2000
+1>   77/149 Test  #77: solver_test001_sparsekit_drivcav_e30r2000 ..........   Passed    4.14 sec
+1>          Start  78: solver_test001_sparsekit_drivcav_e30r3000
+1>   78/149 Test  #78: solver_test001_sparsekit_drivcav_e30r3000 ..........   Passed    4.25 sec
+1>          Start  79: solver_test001_sparsekit_drivcav_e30r4000
+1>   79/149 Test  #79: solver_test001_sparsekit_drivcav_e30r4000 ..........   Passed    4.09 sec
+1>          Start  80: solver_test001_sparsekit_drivcav_e30r5000
+1>   80/149 Test  #80: solver_test001_sparsekit_drivcav_e30r5000 ..........   Passed    4.11 sec
+1>          Start  81: solver_test001_sparsekit_drivcav_e40r0000
+1>   81/149 Test  #81: solver_test001_sparsekit_drivcav_e40r0000 ..........   Passed   10.96 sec
+1>          Start  82: solver_test001_sparsekit_drivcav_e40r0100
+1>   82/149 Test  #82: solver_test001_sparsekit_drivcav_e40r0100 ..........   Passed   14.09 sec
+1>          Start  83: solver_test001_sparsekit_drivcav_e40r0500
+1>   83/149 Test  #83: solver_test001_sparsekit_drivcav_e40r0500 ..........   Passed   12.85 sec
+1>          Start  84: solver_test001_sparsekit_drivcav_e40r1000
+1>   84/149 Test  #84: solver_test001_sparsekit_drivcav_e40r1000 ..........   Passed   12.58 sec
+1>          Start  85: solver_test001_sparsekit_drivcav_e40r2000
+1>   85/149 Test  #85: solver_test001_sparsekit_drivcav_e40r2000 ..........   Passed   11.16 sec
+1>          Start  86: solver_test001_sparsekit_drivcav_e40r3000
+1>   86/149 Test  #86: solver_test001_sparsekit_drivcav_e40r3000 ..........   Passed   12.40 sec
+1>          Start  87: solver_test001_sparsekit_drivcav_e40r4000
+1>   87/149 Test  #87: solver_test001_sparsekit_drivcav_e40r4000 ..........   Passed   13.21 sec
+1>          Start  88: solver_test001_sparsekit_drivcav_e40r5000
+1>   88/149 Test  #88: solver_test001_sparsekit_drivcav_e40r5000 ..........   Passed   13.30 sec
+1>          Start  89: solver_test001_sparsekit_fidap_fidap001
+1>   89/149 Test  #89: solver_test001_sparsekit_fidap_fidap001 ............   Passed    0.05 sec
+1>          Start  90: solver_test001_sparsekit_fidap_fidap002
+1>   90/149 Test  #90: solver_test001_sparsekit_fidap_fidap002 ............   Passed    0.12 sec
+1>          Start  91: solver_test001_sparsekit_fidap_fidap003
+1>   91/149 Test  #91: solver_test001_sparsekit_fidap_fidap003 ............   Passed    0.33 sec
+1>          Start  92: solver_test001_sparsekit_fidap_fidap004
+1>   92/149 Test  #92: solver_test001_sparsekit_fidap_fidap004 ............   Passed    0.23 sec
+1>          Start  93: solver_test001_sparsekit_fidap_fidap005
+1>   93/149 Test  #93: solver_test001_sparsekit_fidap_fidap005 ............   Passed    0.02 sec
+1>          Start  94: solver_test001_sparsekit_fidap_fidap006
+1>   94/149 Test  #94: solver_test001_sparsekit_fidap_fidap006 ............***Failed    1.14 sec
+1>          Start  95: solver_test001_sparsekit_fidap_fidap007
+1>   95/149 Test  #95: solver_test001_sparsekit_fidap_fidap007 ............   Passed    0.29 sec
+1>          Start  96: solver_test001_sparsekit_fidap_fidap008
+1>   96/149 Test  #96: solver_test001_sparsekit_fidap_fidap008 ............***Failed    0.55 sec
+1>          Start  97: solver_test001_sparsekit_fidap_fidap009
+1>   97/149 Test  #97: solver_test001_sparsekit_fidap_fidap009 ............   Passed    0.50 sec
+1>          Start  98: solver_test001_sparsekit_fidap_fidap010
+1>   98/149 Test  #98: solver_test001_sparsekit_fidap_fidap010 ............   Passed    0.26 sec
+1>          Start  99: solver_test001_sparsekit_fidap_fidap011
+1>   99/149 Test  #99: solver_test001_sparsekit_fidap_fidap011 ............   Passed   16.25 sec
+1>          Start 100: solver_test001_sparsekit_fidap_fidap012
+1>  100/149 Test #100: solver_test001_sparsekit_fidap_fidap012 ............   Passed    0.42 sec
+1>          Start 101: solver_test001_sparsekit_fidap_fidap013
+1>  101/149 Test #101: solver_test001_sparsekit_fidap_fidap013 ............***Failed   23.33 sec
+1>          Start 102: solver_test001_sparsekit_fidap_fidap014
+1>  102/149 Test #102: solver_test001_sparsekit_fidap_fidap014 ............***Failed    2.75 sec
+1>          Start 103: solver_test001_sparsekit_fidap_fidap015
+1>  103/149 Test #103: solver_test001_sparsekit_fidap_fidap015 ............***Failed    0.46 sec
+1>          Start 104: solver_test001_sparsekit_fidap_fidap018
+1>  104/149 Test #104: solver_test001_sparsekit_fidap_fidap018 ............   Passed    0.37 sec
+1>          Start 105: solver_test001_sparsekit_fidap_fidap019
+1>  105/149 Test #105: solver_test001_sparsekit_fidap_fidap019 ............   Passed    1.17 sec
+1>          Start 106: solver_test001_sparsekit_fidap_fidap020
+1>  106/149 Test #106: solver_test001_sparsekit_fidap_fidap020 ............   Passed    0.35 sec
+1>          Start 107: solver_test001_sparsekit_fidap_fidap021
+1>  107/149 Test #107: solver_test001_sparsekit_fidap_fidap021 ............***Failed    0.14 sec
+1>          Start 108: solver_test001_sparsekit_fidap_fidap022
+1>  108/149 Test #108: solver_test001_sparsekit_fidap_fidap022 ............***Failed    0.41 sec
+1>          Start 109: solver_test001_sparsekit_fidap_fidap023
+1>  109/149 Test #109: solver_test001_sparsekit_fidap_fidap023 ............***Failed    0.39 sec
+1>          Start 110: solver_test001_sparsekit_fidap_fidap024
+1>  110/149 Test #110: solver_test001_sparsekit_fidap_fidap024 ............   Passed    0.30 sec
+1>          Start 111: solver_test001_sparsekit_fidap_fidap025
+1>  111/149 Test #111: solver_test001_sparsekit_fidap_fidap025 ............   Passed    0.11 sec
+1>          Start 112: solver_test001_sparsekit_fidap_fidap026
+1>  112/149 Test #112: solver_test001_sparsekit_fidap_fidap026 ............***Failed   12.02 sec
+1>          Start 113: solver_test001_sparsekit_fidap_fidap027
+1>  113/149 Test #113: solver_test001_sparsekit_fidap_fidap027 ............   Passed    0.19 sec
+1>          Start 114: solver_test001_sparsekit_fidap_fidap028
+1>  114/149 Test #114: solver_test001_sparsekit_fidap_fidap028 ............***Failed   21.58 sec
+1>          Start 115: solver_test001_sparsekit_fidap_fidap029
+1>  115/149 Test #115: solver_test001_sparsekit_fidap_fidap029 ............   Passed    0.13 sec
+1>          Start 116: solver_test001_sparsekit_fidap_fidap031
+1>  116/149 Test #116: solver_test001_sparsekit_fidap_fidap031 ............***Failed    7.68 sec
+1>          Start 117: solver_test001_sparsekit_fidap_fidap032
+1>  117/149 Test #117: solver_test001_sparsekit_fidap_fidap032 ............   Passed    0.08 sec
+1>          Start 118: solver_test001_sparsekit_fidap_fidap033
+1>  118/149 Test #118: solver_test001_sparsekit_fidap_fidap033 ............   Passed    0.10 sec
+1>          Start 119: solver_test001_sparsekit_fidap_fidap035
+1>  119/149 Test #119: solver_test001_sparsekit_fidap_fidap035 ............   Passed    1.06 sec
+1>          Start 120: solver_test001_sparsekit_fidap_fidap036
+1>  120/149 Test #120: solver_test001_sparsekit_fidap_fidap036 ............***Failed    0.24 sec
+1>          Start 121: solver_test001_sparsekit_fidap_fidap037
+1>  121/149 Test #121: solver_test001_sparsekit_fidap_fidap037 ............   Passed    0.32 sec
+1>          Start 122: solver_test001_sparsekit_fidap_fidapm02
+1>  122/149 Test #122: solver_test001_sparsekit_fidap_fidapm02 ............   Passed    0.12 sec
+1>          Start 123: solver_test001_sparsekit_fidap_fidapm03
+1>  123/149 Test #123: solver_test001_sparsekit_fidap_fidapm03 ............   Passed    0.29 sec
+1>          Start 124: solver_test001_sparsekit_fidap_fidapm05
+1>  124/149 Test #124: solver_test001_sparsekit_fidap_fidapm05 ............***Failed    0.02 sec
+1>          Start 125: solver_test001_sparsekit_fidap_fidapm07
+1>  125/149 Test #125: solver_test001_sparsekit_fidap_fidapm07 ............***Failed    0.36 sec
+1>          Start 126: solver_test001_sparsekit_fidap_fidapm08
+1>  126/149 Test #126: solver_test001_sparsekit_fidap_fidapm08 ............   Passed    0.61 sec
+1>          Start 127: solver_test001_sparsekit_fidap_fidapm09
+1>  127/149 Test #127: solver_test001_sparsekit_fidap_fidapm09 ............   Passed    0.66 sec
+1>          Start 128: solver_test001_sparsekit_fidap_fidapm10
+1>  128/149 Test #128: solver_test001_sparsekit_fidap_fidapm10 ............   Passed    0.27 sec
+1>          Start 129: solver_test001_sparsekit_fidap_fidapm11
+1>  129/149 Test #129: solver_test001_sparsekit_fidap_fidapm11 ............***Failed   22.16 sec
+1>          Start 130: solver_test001_sparsekit_fidap_fidapm13
+1>  130/149 Test #130: solver_test001_sparsekit_fidap_fidapm13 ............   Passed    0.42 sec
+1>          Start 131: solver_test001_sparsekit_fidap_fidapm15
+1>  131/149 Test #131: solver_test001_sparsekit_fidap_fidapm15 ............***Failed    0.62 sec
+1>          Start 132: solver_test001_sparsekit_fidap_fidapm29
+1>  132/149 Test #132: solver_test001_sparsekit_fidap_fidapm29 ............   Passed    1.36 sec
+1>          Start 133: solver_test001_sparsekit_fidap_fidapm33
+1>  133/149 Test #133: solver_test001_sparsekit_fidap_fidapm33 ............   Passed    0.15 sec
+1>          Start 134: solver_test001_sparsekit_fidap_fidapm37
+1>  134/149 Test #134: solver_test001_sparsekit_fidap_fidapm37 ............   Passed    5.32 sec
+1>          Start 135: pmesh_test000_parallel_np_2
+1>  135/149 Test #135: pmesh_test000_parallel_np_2 ........................   Passed    0.06 sec
+1>          Start 136: pmesh_test000_parallel_np_3
+1>  136/149 Test #136: pmesh_test000_parallel_np_3 ........................   Passed    0.06 sec
+1>          Start 137: pmesh_test000_parallel_np_4
+1>  137/149 Test #137: pmesh_test000_parallel_np_4 ........................   Passed    0.06 sec
+1>          Start 138: pmesh_test001_internal_np_2
+1>  138/149 Test #138: pmesh_test001_internal_np_2 ........................   Passed    0.09 sec
+1>          Start 139: pmesh_test001_internal_np_4
+1>  139/149 Test #139: pmesh_test001_internal_np_4 ........................   Passed    0.08 sec
+1>          Start 140: pmesh_test001_parmetis_partition_np_2
+1>  140/149 Test #140: pmesh_test001_parmetis_partition_np_2 ..............   Passed    0.06 sec
+1>          Start 141: pmesh_test001_parmetis_partition_np_4
+1>  141/149 Test #141: pmesh_test001_parmetis_partition_np_4 ..............   Passed    0.08 sec
+1>          Start 142: pmesh_test001_zoltan_hsfc_np_2
+1>  142/149 Test #142: pmesh_test001_zoltan_hsfc_np_2 .....................   Passed    0.06 sec
+1>          Start 143: pmesh_test001_zoltan_hsfc_np_4
+1>  143/149 Test #143: pmesh_test001_zoltan_hsfc_np_4 .....................   Passed    0.07 sec
+1>          Start 144: pmesh_test001_zoltan_rib_np_2
+1>  144/149 Test #144: pmesh_test001_zoltan_rib_np_2 ......................   Passed    0.06 sec
+1>          Start 145: pmesh_test001_zoltan_rib_np_4
+1>  145/149 Test #145: pmesh_test001_zoltan_rib_np_4 ......................   Passed    0.07 sec
+1>          Start 146: pmesh_test001_zoltan_rcb_np_2
+1>  146/149 Test #146: pmesh_test001_zoltan_rcb_np_2 ......................   Passed    0.06 sec
+1>          Start 147: pmesh_test001_zoltan_rcb_np_4
+1>  147/149 Test #147: pmesh_test001_zoltan_rcb_np_4 ......................   Passed    0.08 sec
+1>          Start 148: pmesh_test001_zoltan_phg_np_2
+1>  148/149 Test #148: pmesh_test001_zoltan_phg_np_2 ......................   Passed    0.06 sec
+1>          Start 149: pmesh_test001_zoltan_phg_np_4
+1>  149/149 Test #149: pmesh_test001_zoltan_phg_np_4 ......................   Passed    0.09 sec
+1>  
+1>  89% tests passed, 16 tests failed out of 149
+1>  
+1>  Total Test time (real) = 291.35 sec
+1>  
+1>  The following tests FAILED:
+1>  	 94 - solver_test001_sparsekit_fidap_fidap006 (Failed)
+1>  	 96 - solver_test001_sparsekit_fidap_fidap008 (Failed)
+1>  	101 - solver_test001_sparsekit_fidap_fidap013 (Failed)
+1>  	102 - solver_test001_sparsekit_fidap_fidap014 (Failed)
+1>  	103 - solver_test001_sparsekit_fidap_fidap015 (Failed)
+1>  	107 - solver_test001_sparsekit_fidap_fidap021 (Failed)
+1>  	108 - solver_test001_sparsekit_fidap_fidap022 (Failed)
+1>  	109 - solver_test001_sparsekit_fidap_fidap023 (Failed)
+1>  	112 - solver_test001_sparsekit_fidap_fidap026 (Failed)
+1>  	114 - solver_test001_sparsekit_fidap_fidap028 (Failed)
+1>  	116 - solver_test001_sparsekit_fidap_fidap031 (Failed)
+1>  	120 - solver_test001_sparsekit_fidap_fidap036 (Failed)
+1>  	124 - solver_test001_sparsekit_fidap_fidapm05 (Failed)
+1>  	125 - solver_test001_sparsekit_fidap_fidapm07 (Failed)
+1>  	129 - solver_test001_sparsekit_fidap_fidapm11 (Failed)
+1>  	131 - solver_test001_sparsekit_fidap_fidapm15 (Failed)
+1>  Errors while running CTest
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: The command "setlocal
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: "C:\Program Files (x86)\CMake 2.8\bin\ctest.exe" --force-new-ctest-process -C Release
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: if %errorlevel% neq 0 goto :cmEnd
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: :cmEnd
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: :cmErrorLevel
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: exit /b %1
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: :cmDone
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: if %errorlevel% neq 0 goto :VCEnd
+1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppCommon.targets(113,5): error MSB3073: :VCEnd" exited with code 8.
+1>
+1>Build FAILED.
+1>
+1>Time Elapsed 00:04:51.52
+========== Build: 0 succeeded, 1 failed, 0 up-to-date, 0 skipped ==========

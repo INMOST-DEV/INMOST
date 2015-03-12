@@ -29,6 +29,23 @@ if(USE_SOLVER)
     message("linking MatSolve with Trilinos")
     target_link_libraries(MatSolve ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
   endif()
+  if(USE_SOLVER_METIS)
+    message("linking MatSolve with Metis")
+    target_link_libraries(MatSolve ${METIS_LIBRARIES})
+  endif()
 endif()
+
+
+if(USE_PARTITIONER)
+  if(USE_PARTITIONER_ZOLTAN)
+    message("linking MatSolve with Zoltan")
+    target_link_libraries(MatSolve ${ZOLTAN_LIBRARIES})
+  endif()
+  if(USE_PARTITIONER_PARMETIS)
+    message("linking MatSolve with ParMETIS")
+    target_link_libraries(MatSolve ${PARMETIS_LIBRARIES})
+  endif()
+endif()
+
 
 install(TARGETS MatSolve EXPORT inmost-targets RUNTIME DESTINATION bin)

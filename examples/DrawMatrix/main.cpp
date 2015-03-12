@@ -387,10 +387,10 @@ void keyboard(unsigned char key, int x, int y)
 void DrawEntry(int i, int j)//, Storage::real r)
 {
 	//~ glColor3f(r,0.0,1.0-r);
-	glVertex2i(i-(zoom-1),j-(zoom-1));
-	glVertex2i(i+zoom,j-(zoom-1));
-	glVertex2i(i+zoom,j+zoom);
-	glVertex2i(i-(zoom-1),j+zoom);
+	glVertex2i(i-(zoom-1),j-(zoom-1)-1);
+	glVertex2i(i+zoom,j-(zoom-1)-1);
+	glVertex2i(i+zoom,j+zoom-1);
+	glVertex2i(i-(zoom-1),j+zoom-1);
 }
 
 

@@ -1,8 +1,4 @@
 
-mesh + !partitioner + !domain + solvers + +/-nonlinear solvers + autodiff + !system handler
-
-
-
 Изменение сетки:
 0) (готово) избавиться от получения ссылок на первый элемент массивов, заменить на data()
 1) (отменено) заменить erase из array сдвигом элементов, затем resize'ом

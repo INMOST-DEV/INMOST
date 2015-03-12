@@ -336,6 +336,49 @@ namespace INMOST
 		//AssignGlobalID(other.have_global_id);
 		return *this;
 	}
+
+	void Mesh::Clear()
+	{
+		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+		{
+			for(tag_array_type::size_type i = 0; i < tags.size(); ++i)
+			{
+				if( tags[i].isDefined(etype) )
+				{
+					if( tags[i].isSparse(etype) )
+					{
+						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
+							if( isValidElement(etype,lid) )
+								DelSparseData(ComposeHandle(etype,lid),tags[i]);
+					}
+					else if( tags[i].GetSize() == ENUMUNDEF )
+					{
+						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
+							if( isValidElement(etype,lid) )
+								DelDenseData(ComposeHandle(etype,lid),tags[i]);
+					}
+				}
+			}
+		}
+		memset(remember,0,sizeof(bool)*15);
+		tags.clear();
+		//clear links
+		dense_data.clear();
+		for(int i = 0; i < 5; i++)
+		{
+			links[i].clear();
+			empty_links[i].clear();
+			empty_space[i].clear();
+		}
+		for(int i = 0; i < 6; i++)
+		{
+			sparse_data[i].clear();
+			back_links[i].clear();
+		}
+		RemTopologyCheck(ENUMUNDEF);
+		SetTopologyCheck(DEFAULT_CHECK);
+
+	}
 	
 	Mesh::~Mesh()
 	{

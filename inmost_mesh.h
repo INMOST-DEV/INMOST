@@ -834,6 +834,27 @@ namespace INMOST
 
 	__INLINE const Edge & InvalidEdge() {static Edge ret(NULL,InvalidHandle()); return ret;}
 	
+
+	/// \brief An interface for elements of type FACE.
+	///
+	/// This interface carry the link to the mesh and the element's handle that
+	/// represents position of the element's data in the mesh. 
+	///
+	/// Interface provides some operations that can be done uniquely on the object of class 
+	/// Element for which Element::GetElementType retruns FACE.
+	///
+	/// For the basic set of operations on all of the elements check class Element.
+	///
+	/// For the basic set of operations on the data of the element check class Storage.
+	///
+	/// You can obtain object of class Face from Mesh::iteratorFace,
+	/// in this case obtained object is always valid.
+	/// Also you can get it through Mesh::FaceByLocalID, check with Element::isValid to see whether you
+	/// have obtained a valid object.
+	/// You can convert an object of class Element into an object of class Face by Element::getAsFace. In debug
+	/// mode it will internally check that the element is of type FACE.
+	/// You may compose an object of class Face by using constructor and specifing pointer to the mesh
+	/// and providing element's handle. You can make a handle with ComposeHandle(FACE,local_id) function.
 	class Face : public Element //implemented in face.cpp
 	{
 	public:
@@ -861,15 +882,17 @@ namespace INMOST
 		Node                        getEnd                  () const;
 		/// \brief Retrieve the cell for which the normal points outwards.
 		///
-		/// Depending on the grid construction the normal may incorrectly point inwards.
+		/// \warning Depending on the grid construction the normal may incorrectly point inwards.
 		/// You can resolve this situation by Face::FixNormalOrientation.
+		///
 		/// @return the cell for which normal points outwards.
 		/// @see Face::FixNormalOrientation
 		Cell                        BackCell                () const;
 		/// \brief Retrieve the cell for which the normal points inwards.
 		///
-		/// Depending on the grid construction the normal may incorrectly point outwards.
+		/// \warning Depending on the grid construction the normal may incorrectly point outwards.
 		/// You can resolve this situation by Face::FixNormalOrientation.
+		///
 		/// @return the cell for which normal points inwards.
 		/// @see Face::FixNormalOrientation
 		Cell                        FrontCell               () const;
@@ -902,8 +925,8 @@ namespace INMOST
 	/// This interface carry the link to the mesh and the element's handle that
 	/// represents position of the element's data in the mesh. 
 	///
-	/// Interface provides some operations that can be done uniquely on the element
-	/// of type CELL.
+	/// Interface provides some operations that can be done uniquely on the object of class 
+	/// Element for which Element::GetElementType retruns CELL.
 	///
 	/// For the basic set of operations on all of the elements check class Element.
 	///
@@ -913,10 +936,10 @@ namespace INMOST
 	/// in this case obtained object is always valid.
 	/// Also you can get it through Mesh::CellByLocalID, check with Element::isValid to see whether you
 	/// have obtained valid object.
-	/// You can convert object of class Element into object of class Cell by Element::getAsCell. In debug
-	/// mode it will internally check that element is of type CELL.
-	/// You may compose object of class Cell by using constructor and specifing pointer to the mesh
-	/// and providing element's handle. You can make handle with ComposeHandle(CELL,local_id) function.
+	/// You can convert an object of class Element into an object of class Cell by Element::getAsCell. In debug
+	/// mode it will internally check that the element is of type CELL.
+	/// You may compose an object of class Cell by using constructor and specifing pointer to the mesh
+	/// and providing element's handle. You can make a handle with ComposeHandle(CELL,local_id) function.
 	class Cell : public Element
 	{
 	public:
@@ -1000,13 +1023,6 @@ namespace INMOST
 		///
 		/// The order of the edges is unspecified.
 		///
-		/// WARNING: Note that this function uses markers to check for duplication of edges
-		/// in output array. This allows for faster algorithm, but will lead to penalties
-		/// in shared parallel execution, since operations on markers are declared atomic.
-		/// For atomic declaration to work you have to define USE_OMP during CMake configuration
-		/// or in inmost_common.h. If you attempt to use this function in shared parallel execution
-		/// without USE_OMP you may expect side effects.
-		///
 		/// @return Set of edges that compose current cell.
 		///
 		/// \todo
@@ -1017,6 +1033,13 @@ namespace INMOST
 		///  1. Use of markers (current wariant).
 		///  2. Put all elements into array with duplications, then run std::sort and std::unique.
 		///  3. Put all elements into array, check for duplication by running through array.
+		///
+		/// \warning Note that this function uses markers to check for duplication of edges
+		/// in output array. This allows for faster algorithm, but will lead to penalties
+		/// in shared parallel execution, since operations on markers are declared atomic.
+		/// For atomic declaration to work you have to define USE_OMP during CMake configuration
+		/// or in inmost_common.h. If you attempt to use this function in shared parallel execution
+		/// without USE_OMP you may expect side effects.
 		ElementArray<Edge>          getEdges                () const;
 		/// \brief Get all the faces of the current cell.
 		///
@@ -1037,13 +1060,13 @@ namespace INMOST
 		/// the order is unspecified. When suggest_nodes_order was provided into Mesh::CreateCell
 		/// then the order follows provided order.
 		///
-		/// WARNING: To work correctly in shared parallel environment this function requires
-		/// USE_OMP to be defined in CMake or in inmost_common.h.
-		///
 		/// @param mask Marker that should be used to filter elements.
 		/// @param invert_mask If false then those elements that are marked will be taken, otherwise
 		///                    elements that are not marked will be taken.
 		/// @return Set of the nodes that compose current cell and (not) marked by marker.
+		///
+		/// \warning To work correctly in shared parallel environment this function requires
+		/// USE_OMP to be defined in CMake or in inmost_common.h.
 		ElementArray<Node>          getNodes                (MarkerType mask,bool invert_mask = false) const;
 		/// \brief Get the subset of the edges of the current cell that are (not) marked by provided marker.
 		///
@@ -1051,13 +1074,13 @@ namespace INMOST
 		///
 		/// The order of the edges is unspecified.
 		///
-		/// WARNING: To work correctly in shared parallel environment this function requires
-		/// USE_OMP to be defined in CMake or in inmost_common.h.
-		///
 		/// @param mask Marker that should be used to filter elements.
 		/// @param invert_mask If false then those elements that are marked will be taken, otherwise
 		///                    elements that are not marked will be taken.
 		/// @return Set of the edges that compose current cell and (not) marked by marker.
+		///
+		/// \warning To work correctly in shared parallel environment this function requires
+		/// USE_OMP to be defined in CMake or in inmost_common.h.
 		ElementArray<Edge>          getEdges                (MarkerType mask,bool invert_mask = false) const;
 		/// \brief Get the subset of the faces of the current cell that are (not) marked by provided marker.
 		///
@@ -1066,13 +1089,13 @@ namespace INMOST
 		/// The order of the faces returned by this function is preserved from 
 		/// the moment of the construction of the cell.
 		///
-		/// WARNING: To work correctly in shared parallel environment this function requires
-		/// USE_OMP to be defined in CMake or in inmost_common.h.
-		///
 		/// @param mask Marker that should be used to filter elements.
 		/// @param invert_mask If false then those elements that are marked will be taken, otherwise
 		///                    elements that are not marked will be taken.
 		/// @return Set of the faces that compose current cell and (not) marked by marker.
+		///
+		/// \warning To work correctly in shared parallel environment this function requires
+		/// USE_OMP to be defined in CMake or in inmost_common.h.
 		ElementArray<Face>          getFaces                (MarkerType mask,bool invert_mask = false) const;
 		/// \brief Check that sequence of edges form a closed loop and each edge have a node that matches one of the nodes at the next edge.
 		///
@@ -1185,6 +1208,7 @@ namespace INMOST
 		bool                        Closure                 () const; // test integrity of cell
 	};
 
+	///
 	__INLINE const Cell & InvalidCell() {static Cell ret(NULL,InvalidHandle()); return ret;}
 
 	class ElementSet : public Element //implemented in eset.cpp
@@ -1530,6 +1554,9 @@ namespace INMOST
 		__INLINE const void *             MGetLink           (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
 		__INLINE void *                   MGetLink           (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
 	public:
+		/// Remove all data and all elements from the mesh
+		/// Reset geometry service and topology check flags
+		void                              Clear();
 		/// For debug purposes
 		integer                           HandleDataPos      (HandleType h) {return links[GetHandleElementNum(h)][GetHandleID(h)];}
 		/// For parmetis

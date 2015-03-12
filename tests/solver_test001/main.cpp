@@ -18,7 +18,7 @@ int main(int argc, char ** argv)
 		std::cout << "Usage: " << argv[0] << " matrix.mtx [right_hand_side.rhs]" << std::endl;
 		return -1;
 	}
-	Solver::Type type = Solver::INNER_MLILUC;
+	Solver::Type type = Solver::INNER_MPTILUC;
 	Solver::Initialize(&argc,&argv,NULL); // Initialize the linear solver in accordance with args
 	{
 #if defined(USE_MPI)
@@ -60,6 +60,22 @@ int main(int argc, char ** argv)
 
 		{
 			Solver s(type); // Declare the linear solver by specified type
+
+			s.SetParameterEnum("gmres_substeps",4);
+			s.SetParameterEnum("condition_estimation",1);
+			s.SetParameterReal("relative_tolerance",1.0e-9);
+			s.SetParameterReal("absolute_tolerance",1.0e-16);
+			s.SetParameterEnum("rescale_iterations",8);
+			s.SetParameterReal("drop_tolerance",1.0e-4);
+			s.SetParameterReal("reuse_tolerance",1.0e-8);
+
+			/*
+			
+			s.SetParameterEnum("reorder_nonzeros",0);
+			s.SetParameterEnum("adapt_ddpq_tolerance",0);
+			s.SetParameterReal("ddpq_tolerance",0.0);
+			*/
+
 			t = Timer();
 			s.SetMatrix(mat); // Compute the preconditioner for the original matrix
 			BARRIER

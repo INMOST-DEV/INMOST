@@ -14,6 +14,92 @@
 
 namespace INMOST
 {
+	
+int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_REAL_TYPE * b, int n, int * order)
+{
+	INMOST_DATA_REAL_TYPE temp, max;
+	int temp2;
+	for(int i = 0; i < n; i++) order[i] = i;
+	for(int i = 0; i < n; i++)
+	{
+		int maxk = i, maxq = i;
+		max = fabs(A[maxk*n+maxq]);
+		//Find best pivot
+		for(int q = i; q < n; q++) // over columns
+		{
+			for(int k = i; k < n; k++) // over rows
+			{
+				if( fabs(A[k*n+q]) > max )
+				{
+					max = fabs(A[k*n+q]);
+					maxk = k;
+					maxq = q;
+				}
+			}
+		}
+		//Exchange rows
+		if( maxk != i ) 
+		{
+			for(int q = 0; q < n; q++)
+			{
+				temp = A[maxk*n+q];
+				A[maxk*n+q] = A[i*n+q];
+				A[i*n+q] = temp;
+			}
+			//exchange rhs
+			{
+				temp = b[maxk];
+				b[maxk] = b[i];
+				b[i] = temp;
+			}
+		}
+		//Exchange columns
+		if( maxq != i ) 
+		{
+			for(int k = 0; k < n; k++)
+			{
+				temp = A[k*n+maxq];
+				A[k*n+maxq] = A[k*n+i];
+				A[k*n+i] = temp;
+			}
+			//remember order in sol
+			{
+				temp2 = order[maxq];
+				order[maxq] = order[i];
+				order[i] = temp2;
+			}
+		}
+		if( fabs(b[i]/A[i*n+i]) > 1.0e+100 )
+			return i+1;
+		
+		for(int k = i+1; k < n; k++)
+		{
+			A[i*n+k] /= A[i*n+i];
+			A[k*n+i] /= A[i*n+i];
+		}
+		for(int k = i+1; k < n; k++)
+		for(int q = i+1; q < n; q++)
+		{
+			A[k*n+q] -= A[k*n+i] * A[i*n+i] * A[i*n+q];
+		}
+		for(int j = i+1; j < n; j++) //iterate over columns of L
+		{
+			b[j] -= b[i] * A[j*n+i];
+		}
+		b[i] /= A[i*n+i];
+	}
+
+	for(int i = n-1; i >= 0; i--) //iterate over rows of U
+		for(int j = i+1; j < n; j++) 
+		{
+			b[i] -= b[j] * A[i*n+j];
+		}
+	for(int i = 0; i < n; i++)
+		x[order[i]] = b[i];
+	
+	return 0;
+}
+
 	class BCGSL_solver : public IterativeMethod
 	{
 		INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
@@ -155,7 +241,7 @@ namespace INMOST
 			assert(isInitialized());
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
 			INMOST_DATA_REAL_TYPE rho0 = 1, rho1, alpha = 0, beta, omega = 1, eta;
-			INMOST_DATA_REAL_TYPE resid0, resid, rhs_norm, temp[2];
+			INMOST_DATA_REAL_TYPE resid0, resid, rhs_norm;//, temp[2];
 			iters = 0;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
@@ -196,11 +282,11 @@ namespace INMOST
 #endif
 			INMOST_DATA_ENUM_TYPE i = 0;
 
-			if( last_resid < atol || last_resid < rtol*resid0 ) 
-			{
-				reason = "initial solution satisfy tolerances";
-				goto exit;
-			}
+			//if( last_resid < atol || last_resid < rtol*resid0 ) 
+			//{
+			//	reason = "initial solution satisfy tolerances";
+			//	goto exit;
+			//}
 
 			long double tt, ts, tp;
 			while( true )
@@ -212,12 +298,15 @@ namespace INMOST
 				for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
 				{
 					rho1 = info->ScalarProd(r[j],r_tilde,vlocbeg,vlocend); // rho1 = dot(r[j],r_tilde)
-					if( fabs(rho0) < 1.0e-54 ) 
+					beta = alpha * (rho1/rho0);
+
+					if( fabs(beta) > 1.0e+35 ) 
 					{
-						reason = "denominator(1) is zero";
+						std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
+						reason = "multiplier(1) is too large";
 						goto exit;
 					}
-					beta = alpha * (rho1/rho0);
+
 					rho0 = rho1;
 					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
 						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
@@ -225,12 +314,14 @@ namespace INMOST
 
 					ApplyOperator(u[j],u[j+1]); // u[j+1] = A*R*u[j]
 					eta = info->ScalarProd(u[j+1],r_tilde,vlocbeg,vlocend); //eta = dot(u[j+1],r_tilde)
-					if( fabs(eta) < 1.0e-54 ) 
+					
+					alpha = rho0 / eta;
+
+					if( fabs(alpha) > 1.0e+35 ) 
 					{
-						reason = "denominator(2) is zero";
+						reason = "multiplier(2) is too large";
 						goto exit;
 					}
-					alpha = rho0 / eta;
 
 					for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 						SOL[k] += alpha*u[0][k];
@@ -243,6 +334,7 @@ namespace INMOST
 					resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend); // resid = dot(r[j],r[j])
 					resid = sqrt(resid/rhs_norm); // resid = sqrt(dot(r[j],r[j]))
 
+					
 					if( resid < atol || resid < rtol*resid0 ) 
 					{
 						reason = "early exit in bi-cg block";
@@ -255,7 +347,42 @@ namespace INMOST
 
 					
 				}
-
+				
+				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; j++)
+				{
+					for(INMOST_DATA_ENUM_TYPE m = 1; m < j+1; m++)
+					{
+						tau[(m-1) + (j-1)*l] = 0;
+						for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
+							tau[(m-1) + (j-1)*l] += r[j][k]*r[m][k];
+						tau[(j-1) + (m-1)*l] = tau[(m-1) + (j-1)*l];
+					}
+					sigma[j-1] = 0;
+					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
+						sigma[j-1] += r[0][k]*r[j][k];
+				}
+				info->Integrate(tau,l*l+l); //sigma is updated with tau
+				int order[128];
+				int row = solvenxn(tau,gamma,sigma,l,order);
+				if( row != 0 )
+				{
+					std::cout << "breakdown on row " << row << std::endl;
+					reason = "breakdown in matrix inversion in polynomial part";
+					break;
+				}
+				omega = gamma[l-1];
+				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; ++j)
+				{
+					for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
+					{
+						u[0][k] -= gamma[j-1]*u[j][k];
+						SOL[k]  += gamma[j-1]*r[j-1][k];
+						r[0][k] -= gamma[j-1]*r[j][k];
+					}
+				}
+				
+				
+				/*
 				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; j++)
 				{
 					for(INMOST_DATA_ENUM_TYPE i = 1; i < j; i++)
@@ -268,15 +395,14 @@ namespace INMOST
 						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 							r[j][k] -= tau[i-1 + (j-1)*l]*r[i][k];
 					}
-					temp[0] = 0;
-					temp[1] = 0;
+					INMOST_DATA_REAL_TYPE temp[2] = {0,0};
 					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
 					{
 						temp[0] += r[j][k]*r[j][k];
 						temp[1] += r[0][k]*r[j][k];
 					}
 					info->Integrate(temp,2);
-					sigma[j-1] = temp[0]+1.0e-35; //REVIEW
+					sigma[j-1] = temp[0];//+1.0e-35; //REVIEW
 					theta2[j-1] = temp[1]/sigma[j-1];
 				}
 				omega = theta1[l-1] = theta2[l-1];
@@ -309,6 +435,7 @@ namespace INMOST
 						r[0][k] -= theta2[j-1]*r[j][k];
 					}
 				}
+				*/
 				last_it = i+1;
 				{
 					resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend);
@@ -533,16 +660,21 @@ exit:
 					ts = tp = 0;
 					tt = Timer();
 					{
+						/*
 						if( fabs(rho) < 1.0e-31 )
 						{
+							std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
 							reason = "denominator(1) is zero";
 							break;
 						}
 						if( fabs(omega) < 1.0e-31 )
 						{
+							std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
 							reason = "denominator(2) is zero";
 							break;
 						}
+						*/
+						//std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
 						beta = 1.0 /rho * alpha / omega;
 						rho = 0;
 #if defined(USE_OMP)
@@ -558,6 +690,13 @@ exit:
 							info->Integrate(&rho,1);
 						}
 						beta *= rho;
+
+						if( fabs(beta) > 1.0e+35 )
+						{
+							//std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
+							reason = "multiplier(1) is too large";
+							break;
+						}
 					}
 					{
 #if defined(USE_OMP)
@@ -608,13 +747,17 @@ exit:
 #endif
 							info->Integrate(&alpha,1);
 						}
-						if( fabs(alpha) < 1.0e-31 )
+
+						alpha = rho / alpha; //local indexes, r0, v
+
+						if( fabs(alpha) > 1.0e+35 )
 						{
-							reason = "denominator(3) is zero";
+							reason = "multiplier(2) is too large";
+							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
 							break;
 						}
 
-						alpha = rho / alpha; //local indexes, r0, v
+						
 					}
 					{
 #if defined(USE_OMP)
@@ -673,15 +816,13 @@ exit:
 							info->Integrate(temp,2);
 						}
 						/*
-						if (fabs(temp[0]) < 1.0e-35)
+						if (fabs(temp[1]) < 1.0e-35)
 						{
-							if (fabs(temp[1]) > 1.0e-35)
-								break; //breakdown
-							else omega = 0.0;
+							std::cout << "a " << temp[0] << " b " << temp[1] << " omega " << temp[0]/temp[1] << std::endl;
 						}
-						else 
 						*/
-						omega = temp[0] / (temp[1]+1e-35); //local indexes t, s
+						//omega = temp[0] / (temp[1] + (temp[1] < 0.0 ? -1.0e-10 : 1.0e-10)); //local indexes t, s
+						omega = temp[0] / temp[1];
 					}
 					{
 #if defined(USE_OMP)

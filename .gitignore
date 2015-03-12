@@ -1,1 +1,4 @@
 .svn
+tests/solver_test001/matrices
+solver_mtiluc2.cpp
+solver_mtiluc2.hpp

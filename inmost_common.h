@@ -15,6 +15,7 @@
 //#define USE_PARTITIONER_PARMETIS
 
 #define USE_SOLVER
+//#define USE_SOLVER_METIS
 //#define USE_SOLVER_PETSC
 //#define USE_SOLVER_TRILINOS
 //#define USE_SOLVER_ANI

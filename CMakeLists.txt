@@ -22,7 +22,8 @@ set(SOURCE solver.cpp
            modify.cpp
            earray.cpp
            comparator.cpp
-           autodiff.cpp)
+           autodiff.cpp
+           solver_ddpqiluc2.cpp)
 set(HEADER inmost.h
            inmost_options_cmake.h
            inmost_common.h
@@ -41,6 +42,15 @@ set(INMOST_MAJOR_VERSION 0)
 set(INMOST_MINOR_VERSION 1)
 set(INMOST_PATCH_VERSION 0)
 set(INMOST_VERSION "${INMOST_MAJOR_VERSION}.${INMOST_MINOR_VERSION}.${INMOST_PATCH_VERSION}")
+
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.hpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.cpp" )
+  add_definitions(-DHAVE_SOLVER_MPTILUC2)
+  set(HAVE_SOLVER_MPTILUC2 TRUE)
+  list(APPEND HEADER solver_mtiluc2.hpp)
+  list(APPEND SOURCE solver_mtiluc2.cpp)
+else()
+  set(HAVE_SOLVER_MPTILUC2 FALSE)
+endif()
 
 
 add_library(inmost STATIC ${SOURCE} ${HEADER})
@@ -62,6 +72,7 @@ option(COMPILE_TESTS "Compile some tests" OFF)
 
 option(USE_PARTITIONER_PARMETIS "Use ParMetis partitioner" OFF)
 option(USE_PARTITIONER_ZOLTAN "Use Zoltan partitioner" OFF)
+option(USE_SOLVER_METIS "Use METIS for matrix reordering" OFF)
 option(USE_SOLVER_PETSC "Use PETSc solvers" OFF)
 option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 #option(USE_AUTODIFF_OPENCL "Use OpenCL for automatic differentiation (under work)" OFF)
@@ -123,6 +134,17 @@ if(USE_PARTITIONER_PARMETIS)
 	endif()
 endif()
 
+if(USE_SOLVER_METIS)
+	find_package(METIS)
+	if(NOT METIS_FOUND)
+		set(USE_SOLVER_METIS OFF)
+		message("METIS NOT FOUND")
+	else()
+		include_directories(${METIS_INCLUDE_DIR})
+		set(USE_SOLVER_METIS ON)
+		message("METIS FOUND")
+	endif()
+endif()
 
 if(USE_PARTITIONER_ZOLTAN)
 	find_package(ZOLTAN)

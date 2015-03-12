@@ -4,6 +4,9 @@
 #include "solver_ani.h"
 #include "solver_ilu2.hpp"
 #include "solver_ddpqiluc2.hpp"
+#if defined(HAVE_SOLVER_MPTILUC2)
+#include "solver_mtiluc2.hpp"
+#endif
 #include "solver_bcgsl.hpp"
 #include <fstream>
 #include <sstream>
@@ -1354,7 +1357,7 @@ namespace INMOST
 			solver_data = static_cast<void *>(problem);
 		}
 #endif
-		if( _pack == INNER_ILU2 || _pack == INNER_MLILUC )
+		if( _pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
 		{
 			Method * prec;
 			if (_pack == INNER_ILU2)
@@ -1366,12 +1369,21 @@ namespace INMOST
 				prec = NULL;
 #endif
 			}
-			else
+			else if( _pack == INNER_DDPQILUC )
 			{
 #if defined(__SOLVER_DDPQILUC2__)
 				prec = new ILUC_preconditioner(info);
 #else
 				std::cout << "Sorry, multilevel condition estimation crout-ilu preconditioner with reordering for diagonal dominance is not included in this release" << std::endl;
+				prec = NULL;
+#endif
+			}
+			else if( _pack == INNER_MPTILUC )
+			{
+#if defined(__SOLVER_MTILUC2__)
+				prec = new MTILUC_preconditioner(info);
+#else
+				std::cout << "Sorry, maximum product transverse condition estimation crout-ilu preconditioner is not included in this release" << std::endl;
 				prec = NULL;
 #endif
 			}
@@ -1420,7 +1432,7 @@ namespace INMOST
 			throw - 1; //You should not really want to copy solver's information
 		}
 #endif
-		if (_pack == INNER_ILU2 || _pack == INNER_MLILUC)
+		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
 		{
 			throw - 1; //You should not really want to copy solver's information
 		}
@@ -1471,7 +1483,7 @@ namespace INMOST
 			}
 		}
 #endif
-		if (_pack == INNER_ILU2 || _pack == INNER_MLILUC)
+		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
 		{
 			if( matrix_data != NULL )
 			{
@@ -1559,7 +1571,7 @@ namespace INMOST
 				throw - 1; //You should not really want to copy solver's information
 			}
 #endif
-			if (_pack == INNER_ILU2 || _pack == INNER_MLILUC)
+			if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
 			{
 				throw - 1; //You should not really want to copy solver's information
 			}
@@ -1815,7 +1827,7 @@ namespace INMOST
 			ok = true;
 		}
 #endif
-		if (_pack == INNER_ILU2 || _pack == INNER_MLILUC)
+		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
 		{
 			
 			Solver::Matrix * mat = new Solver::Matrix(A);
@@ -1829,12 +1841,16 @@ namespace INMOST
 			sol->RealParameter(":tau2") = preconditioner_reuse_tolerance;
 			sol->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
 
-			if( _pack == INNER_MLILUC )
+			if( _pack == INNER_DDPQILUC )
 			{
 				sol->RealParameter(":ddpq_tau") = preconditioner_ddpq_tolerance;
 				sol->EnumParameter(":reorder_nnz") = preconditioner_reorder_nonzero;
 				sol->EnumParameter(":estimator") = preconditioner_condition_estimation;
 				sol->EnumParameter(":ddpq_tau_adapt") = preconditioner_adapt_ddpq_tolerance;
+			}
+			else if( _pack == INNER_MPTILUC )
+			{
+				sol->EnumParameter(":estimator") = preconditioner_condition_estimation;
 			}
 			else sol->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
 
@@ -2224,7 +2240,7 @@ namespace INMOST
 			
 		}
 #endif
-		if(_pack == INNER_ILU2 || _pack == INNER_MLILUC)
+		if(_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
 		{
 			IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
 			

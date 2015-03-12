@@ -8,9 +8,8 @@ namespace INMOST
 	Storage & Storage::operator =(Storage const & other) 
 	{
 		handle = other.handle; 
-		if( handle_link != NULL ) 
-			*handle_link = handle; 
-		else handle_link = other.handle_link; //if other have remote link this will copy this link and current will also be remote
+		if( handle_link != NULL ) *handle_link = handle; 
+		//else handle_link = other.handle_link; //if other have remote link this will copy this link and current will also be remote
 		m_link = other.m_link; 
 		return *this;
 	}

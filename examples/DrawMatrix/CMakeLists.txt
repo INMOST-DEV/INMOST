@@ -30,7 +30,13 @@ if(OPENGL_FOUND)
         message("linking DrawMatrix with Trilinos")
         target_link_libraries(DrawMatrix ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
       endif()
+      if(USE_SOLVER_METIS)
+        message("linking DrawMatrix with Metis")
+        target_link_libraries(DrawMatrix ${METIS_LIBRARIES})
+      endif()
     endif()
+
+
     install(TARGETS DrawMatrix EXPORT inmost-targets RUNTIME DESTINATION bin)
   else(GLUT_FOUND)
     message("GLUT not found, not building DrawMatrix")

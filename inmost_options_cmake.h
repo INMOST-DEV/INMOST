@@ -15,6 +15,7 @@
 #cmakedefine USE_PARTITIONER_PARMETIS
 
 #cmakedefine USE_SOLVER
+#cmakedefine USE_SOLVER_METIS
 #cmakedefine USE_SOLVER_PETSC
 #cmakedefine USE_SOLVER_TRILINOS
 #cmakedefine USE_SOLVER_ANI

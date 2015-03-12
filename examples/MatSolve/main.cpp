@@ -22,13 +22,14 @@ int main(int argc, char ** argv)
 	switch(atoi(argv[1]))
 	{
 		case 0: type = Solver::INNER_ILU2; break;
-		case 1: type = Solver::INNER_MLILUC; break;
+		case 1: type = Solver::INNER_DDPQILUC; break;
 		case 2: type = Solver::PETSc; break;
 		case 3: type = Solver::Trilinos_Aztec; break;
 		case 4: type = Solver::Trilinos_Belos; break;
 		case 5: type = Solver::Trilinos_Ifpack; break;
 		case 6: type = Solver::Trilinos_ML; break;
     case 7: type = Solver::ANI; break;
+		case 8: type = Solver::INNER_MPTILUC; break;
 	}
 	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
 	{
@@ -71,15 +72,19 @@ int main(int argc, char ** argv)
 		{
 			Solver s(type); // Declare the linear solver by specified type
 
-			s.SetParameterEnum("gmres_substeps",3);
-			
+			s.SetParameterEnum("gmres_substeps",4);
+			s.SetParameterReal("relative_tolerance",1.0e-9);
+			s.SetParameterReal("absolute_tolerance",1.0e-16);
+
 			s.SetParameterEnum("reorder_nonzeros",0);
 			s.SetParameterEnum("rescale_iterations",8);
 			s.SetParameterEnum("adapt_ddpq_tolerance",0);
 			
-			s.SetParameterReal("drop_tolerance",0.001);
-			s.SetParameterReal("reuse_tolerance",0.00001);
-			s.SetParameterReal("ddpq_tolerance",0.7);
+			s.SetParameterReal("drop_tolerance",1.0e-4);
+			s.SetParameterReal("reuse_tolerance",1.0e-8);
+			s.SetParameterReal("ddpq_tolerance",0.8);
+
+			s.SetParameterEnum("condition_estimation",1);
 			
 
 			t = Timer();

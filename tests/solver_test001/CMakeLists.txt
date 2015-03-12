@@ -13,6 +13,7 @@ if(USE_MPI)
 endif(USE_MPI)
 
 
+
 if(USE_SOLVER_ANI)
   message("linking solver_test001 with ani3d")
   target_link_libraries(solver_test001 ani3d)
@@ -24,6 +25,10 @@ endif()
 if(USE_SOLVER_TRILINOS)
   message("linking solver_test001 with Trilinos")
   target_link_libraries(solver_test001 ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+endif()
+if(USE_SOLVER_METIS)
+  message("linking solver_test001 with Metis")
+  target_link_libraries(solver_test001 ${METIS_LIBRARIES})
 endif()
 
 
@@ -67,6 +72,44 @@ set(DRIVCAV_OLD_TESTS cavity01
 
 foreach(test ${DRIVCAV_OLD_TESTS})
   add_test(NAME solver_test001_sparsekit_drivcav_old_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav_old/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav_old/${test}_rhs1.mtx)
+endforeach()
+
+
+
+set(DRIVCAV_TESTS e05r0000
+                  e05r0100
+                  e05r0200
+                  e05r0300
+                  e05r0400
+                  e05r0500
+                  e20r0000
+                  e20r0100
+                  e20r0500
+                  e20r1000
+                  e20r2000
+                  e20r3000
+                  e20r4000
+                  e20r5000
+                  e30r0000
+                  e30r0100
+                  e30r0500
+                  e30r1000
+                  e30r2000
+                  e30r3000
+                  e30r4000
+                  e30r5000
+                  e40r0000
+                  e40r0100
+                  e40r0500
+                  e40r1000
+                  e40r2000
+                  e40r3000
+                  e40r4000
+                  e40r5000)
+
+
+foreach(test ${DRIVCAV_TESTS})
+  add_test(NAME solver_test001_sparsekit_drivcav_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}_rhs1.mtx)
 endforeach()
 
 
@@ -123,39 +166,3 @@ foreach(test ${FIDAP_TESTS})
   add_test(NAME solver_test001_sparsekit_fidap_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/fidap/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/fidap/${test}_rhs1.mtx)
 endforeach()
 
-
-set(DRIVCAV_TESTS e05r0000
-                  e05r0100
-                  e05r0200
-                  e05r0300
-                  e05r0400
-                  e05r0500
-                  e20r0000
-                  e20r0100
-                  e20r0500
-                  e20r1000
-                  e20r2000
-                  e20r3000
-                  e20r4000
-                  e20r5000
-                  e30r0000
-                  e30r0100
-                  e30r0500
-                  e30r1000
-                  e30r2000
-                  e30r3000
-                  e30r4000
-                  e30r5000
-                  e40r0000
-                  e40r0100
-                  e40r0500
-                  e40r1000
-                  e40r2000
-                  e40r3000
-                  e40r4000
-                  e40r5000)
-
-
-foreach(test ${DRIVCAV_TESTS})
- # add_test(NAME solver_test001_sparsekit_drivcav_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}_rhs1.mtx)
-endforeach()
