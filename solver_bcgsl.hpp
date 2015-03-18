@@ -2,11 +2,15 @@
 #ifndef __SOLVER_BCGS__
 #define __SOLVER_BCGS__
 
-//TODO:
-// comply solvers with Method prototype, after TODO in solver_prototypes.hpp is done
-
+//\todo
+// 1. comply solvers with Method prototype, after TODO in solver_prototypes.hpp is done
+// 2. Implement tricks from Read/solver/bcgsl/download.pdf with convex update and true residual correction
+// 3. Detect numerical accuracy breakdown - when preconditioned residual is too far from true residual (probably 2 will fix).
 
 #include "inmost_solver.h"
+
+#define PSEUDOINVERSE  // same trick as in petsc with pseudoinverse
+//#define USE_LAPACK_SVD // use lapack's dgesvd routine instead of built-in svdnxn
 
 //#if !defined(NDEBUG)
 #define REPORT_RESIDUAL
@@ -14,91 +18,293 @@
 
 namespace INMOST
 {
-	
-int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_REAL_TYPE * b, int n, int * order)
-{
-	INMOST_DATA_REAL_TYPE temp, max;
-	int temp2;
-	for(int i = 0; i < n; i++) order[i] = i;
-	for(int i = 0; i < n; i++)
+	//lapack svd
+#if defined(PSEUDOINVERSE)
+#if defined(USE_LAPACK_SVD)
+	extern "C"
 	{
-		int maxk = i, maxq = i;
-		max = fabs(A[maxk*n+maxq]);
-		//Find best pivot
-		for(int q = i; q < n; q++) // over columns
+		void dgesvd_(char*,char*,int*,int*,double*,int*,double*,double*,int*,double*,int*,double*,int*,int*);
+	}
+#else // SVD adopted from http://stackoverflow.com/questions/3856072/svd-implementation-c answer by Dhairya Malhotra
+	void GivensL(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+	{
+		INMOST_DATA_REAL_TYPE r = sqrt(a*a+b*b);
+		INMOST_DATA_REAL_TYPE c = a/r;
+		INMOST_DATA_REAL_TYPE s = -b/r;
+		for(int i=0;i<N;i++)
 		{
-			for(int k = i; k < n; k++) // over rows
+			INMOST_DATA_REAL_TYPE S0 = S[(m+0)*N+i];
+			INMOST_DATA_REAL_TYPE S1 = S[(m+1)*N+i];
+			S[(m+0)*N + i] += S0*(c-1);
+			S[(m+0)*N + i] += S1*( -s);
+			S[(m+1)*N + i] += S0*(s  );
+			S[(m+1)*N + i] += S1*(c-1);
+		}
+	}
+
+	void GivensR(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+	{
+		INMOST_DATA_REAL_TYPE r = sqrt(a*a+b*b);
+		INMOST_DATA_REAL_TYPE c = a/r;
+		INMOST_DATA_REAL_TYPE s = -b/r;
+		for(int i=0;i<N;i++)
+		{
+			INMOST_DATA_REAL_TYPE S0 = S[i*N+(m+0)];
+			INMOST_DATA_REAL_TYPE S1 = S[i*N+(m+1)];
+			S[i*N+(m+0)] += S0*(c-1);
+			S[i*N+(m+0)] += S1*( -s);
+			S[i*N+(m+1)] += S0*(s  );
+			S[i*N+(m+1)] += S1*(c-1);
+		}
+	}
+
+	void svdnxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * U, INMOST_DATA_REAL_TYPE * S,  INMOST_DATA_REAL_TYPE * V, const int N)
+	{
+		memset(S,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
+		memset(U,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
+		memset(V,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
+		for(int i=0;i<N;i++)
+		{
+			for(int j=0;j<N;j++)
+				S[i*N+j]=A[i*N+j];
+			U[i*N+i] = 1;
+			V[i*N+i] = 1;
+		}
+		INMOST_DATA_REAL_TYPE eps = -1;
+		{ // Bi-diagonalization
+			std::vector<INMOST_DATA_REAL_TYPE> house_vec(N);
+			for(int i=0;i<N;i++)
 			{
-				if( fabs(A[k*n+q]) > max )
+				// Column Householder
 				{
-					max = fabs(A[k*n+q]);
-					maxk = k;
-					maxq = q;
+					INMOST_DATA_REAL_TYPE x1= S[i*N+i];
+					if(x1<0) x1=-x1;
+
+					INMOST_DATA_REAL_TYPE x_inv_norm=0;
+					for(int j=i;j<N;j++) x_inv_norm+= S[j*N+i]*S[j*N+i];
+					x_inv_norm=1/sqrt(x_inv_norm);
+
+					INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
+					INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
+
+					house_vec[i]=-alpha;
+					for(int j=i+1;j<N;j++) house_vec[j]=-beta*S[j*N+i];
+					if(S[i*N+i]<0) for(int j=i+1;j<N;j++) house_vec[j]=-house_vec[j];
+				}
+				
+				for(int k=i;k<N;k++)
+				{
+					INMOST_DATA_REAL_TYPE dot_prod=0;
+					for(int j=i;j<N;j++) dot_prod+=S[j*N+k]*house_vec[j];
+					
+					for(int j=i;j<N;j++) S[j*N+k]-=dot_prod*house_vec[j];
+				}
+				
+				for(int k=0;k<N;k++)
+				{
+					INMOST_DATA_REAL_TYPE dot_prod=0;
+					for(int j=i;j<N;j++) dot_prod+=U[k*N+j]*house_vec[j];
+					for(int j=i;j<N;j++) U[k*N+j]-=dot_prod*house_vec[j];
+				}
+
+				// Row Householder
+				if(i>=N-1) continue;
+
+				{
+					INMOST_DATA_REAL_TYPE x1=S[i*N+(i+1)];
+					if(x1<0) x1=-x1;
+
+					INMOST_DATA_REAL_TYPE x_inv_norm=0;
+					for(int j=i+1;j<N;j++) x_inv_norm+=S[i*N+j]*S[i*N+j];
+					x_inv_norm=1/sqrt(x_inv_norm);
+
+					INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
+					INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
+
+					house_vec[i+1]=-alpha;
+					for(int j=i+2;j<N;j++) house_vec[j]=-beta*S[i*N+j];
+					if(S[i*N+(i+1)]<0) for(int j=i+2;j<N;j++) house_vec[j]=-house_vec[j];
+				}
+				
+				for(int k=i;k<N;k++)
+				{
+					INMOST_DATA_REAL_TYPE dot_prod=0;
+					for(int j=i+1;j<N;j++) dot_prod+=S[k*N+j]*house_vec[j];
+					for(int j=i+1;j<N;j++) S[k*N+j] -= dot_prod*house_vec[j];
+				}
+				
+				for(int k=0;k<N;k++)
+				{
+					INMOST_DATA_REAL_TYPE dot_prod=0;
+					for(int j=i+1;j<N;j++) dot_prod+=V[j*N+k]*house_vec[j];
+					for(int j=i+1;j<N;j++) V[j*N+k]-=dot_prod*house_vec[j];
 				}
 			}
 		}
-		//Exchange rows
-		if( maxk != i ) 
-		{
-			for(int q = 0; q < n; q++)
-			{
-				temp = A[maxk*n+q];
-				A[maxk*n+q] = A[i*n+q];
-				A[i*n+q] = temp;
-			}
-			//exchange rhs
-			{
-				temp = b[maxk];
-				b[maxk] = b[i];
-				b[i] = temp;
-			}
-		}
-		//Exchange columns
-		if( maxq != i ) 
-		{
-			for(int k = 0; k < n; k++)
-			{
-				temp = A[k*n+maxq];
-				A[k*n+maxq] = A[k*n+i];
-				A[k*n+i] = temp;
-			}
-			//remember order in sol
-			{
-				temp2 = order[maxq];
-				order[maxq] = order[i];
-				order[i] = temp2;
-			}
-		}
-		if( fabs(b[i]/A[i*n+i]) > 1.0e+100 )
-			return i+1;
-		
-		for(int k = i+1; k < n; k++)
-		{
-			A[i*n+k] /= A[i*n+i];
-			A[k*n+i] /= A[i*n+i];
-		}
-		for(int k = i+1; k < n; k++)
-		for(int q = i+1; q < n; q++)
-		{
-			A[k*n+q] -= A[k*n+i] * A[i*n+i] * A[i*n+q];
-		}
-		for(int j = i+1; j < n; j++) //iterate over columns of L
-		{
-			b[j] -= b[i] * A[j*n+i];
-		}
-		b[i] /= A[i*n+i];
-	}
 
-	for(int i = n-1; i >= 0; i--) //iterate over rows of U
-		for(int j = i+1; j < n; j++) 
+		int k0=0;
+		if(eps<0)
 		{
-			b[i] -= b[j] * A[i*n+j];
+			eps=1.0;
+			while(eps+(INMOST_DATA_REAL_TYPE)1.0>1.0) eps*=0.5;
+			eps*=64.0;
 		}
-	for(int i = 0; i < n; i++)
-		x[order[i]] = b[i];
+		while(k0<N-1)
+		{ // Diagonalization
+			INMOST_DATA_REAL_TYPE S_max=0.0;
+			for(int i=0;i<N;i++) S_max=(S_max > S[i*N+i] ? S_max : S[i*N+i]);
+			while(k0<N-1 && fabs(S[k0*N+(k0+1)])<=eps*S_max) k0++;
+			int k=k0;
+			int n=k0+1;
+			while(n<N && fabs(S[(n-1)*N+n])>eps*S_max) n++;
+
+			INMOST_DATA_REAL_TYPE mu=0;
+			{ // Compute mu
+				INMOST_DATA_REAL_TYPE C[2][2];
+				C[0][0]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-2)]+S[(n-3)*N+(n-2)]*S[(n-3)*N+(n-2)]; 
+				C[0][1]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-1)];
+				C[1][0]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-1)]; 
+				C[1][1]=S[(n-1)*N+(n-1)]*S[(n-1)*N+(n-1)]+S[(n-2)*N+(n-1)]*S[(n-2)*N+(n-1)];
+				INMOST_DATA_REAL_TYPE b =-(C[0][0]+C[1][1])/2;
+				INMOST_DATA_REAL_TYPE c =  C[0][0]*C[1][1] - C[0][1]*C[1][0];
+				INMOST_DATA_REAL_TYPE d = sqrt(b*b-c);
+				INMOST_DATA_REAL_TYPE lambda1 = -b+d;
+				INMOST_DATA_REAL_TYPE lambda2 = -b-d;
+				INMOST_DATA_REAL_TYPE d1 = lambda1-C[1][1]; d1 = (d1<0?-d1:d1);
+				INMOST_DATA_REAL_TYPE d2 = lambda2-C[1][1]; d2 = (d2<0?-d2:d2);
+				mu = (d1<d2?lambda1:lambda2);
+			}
+
+			INMOST_DATA_REAL_TYPE alpha = S[k*N+k] * S[k*N+k] - mu;
+			INMOST_DATA_REAL_TYPE beta  = S[k*N+k] * S[k*N+(k+1)];
+
+			for(;k<N-1;k++)
+			{
+				GivensR(S,N,k,alpha,beta);
+				GivensL(V,N,k,alpha,beta);
+
+				alpha = S[k*N+k];
+				beta  = S[(k+1)*N+k];
+				GivensL(S,N,k,alpha,beta);
+				GivensR(U,N,k,alpha,beta);
+
+				alpha = S[k*N+(k+1)];
+				beta  = S[k*N+(k+2)];
+			}
+		}
+		
+		for(int i=0;i<N;i++)
+		{
+			INMOST_DATA_REAL_TYPE temp;
+			for(int j=i+1;j<N;j++)
+			{
+				temp = U[i+N*j];
+				U[i+N*j] = U[j+N*i];
+				U[j+N*i] = temp;
+
+				temp = V[i+N*j];
+				V[i+N*j] = V[j+N*i];
+				V[j+N*i] = temp;
+			}
+		}
+		
+
+		for(int i=0;i<N;i++) if( S[i*N+i] < 0.0 )
+		{
+			for(int j=0;j<N;j++)
+			{
+				U[j+N*i] *= -1;
+			}
+			S[i*N+i] *= -1;
+		}
+		
+	}
+#endif //USE_LAPACK_SVD
+#endif //PSEUDOINVERSE
+	int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_REAL_TYPE * b, int n, int * order)
+	{
+		INMOST_DATA_REAL_TYPE temp, max;
+		int temp2;
+		for(int i = 0; i < n; i++) order[i] = i;
+		for(int i = 0; i < n; i++)
+		{
+			int maxk = i, maxq = i;
+			max = fabs(A[maxk*n+maxq]);
+			//Find best pivot
+			for(int q = i; q < n; q++) // over columns
+			{
+				for(int k = i; k < n; k++) // over rows
+				{
+					if( fabs(A[k*n+q]) > max )
+					{
+						max = fabs(A[k*n+q]);
+						maxk = k;
+						maxq = q;
+					}
+				}
+			}
+			//Exchange rows
+			if( maxk != i ) 
+			{
+				for(int q = 0; q < n; q++)
+				{
+					temp = A[maxk*n+q];
+					A[maxk*n+q] = A[i*n+q];
+					A[i*n+q] = temp;
+				}
+				//exchange rhs
+				{
+					temp = b[maxk];
+					b[maxk] = b[i];
+					b[i] = temp;
+				}
+			}
+			//Exchange columns
+			if( maxq != i ) 
+			{
+				for(int k = 0; k < n; k++)
+				{
+					temp = A[k*n+maxq];
+					A[k*n+maxq] = A[k*n+i];
+					A[k*n+i] = temp;
+				}
+				//remember order in sol
+				{
+					temp2 = order[maxq];
+					order[maxq] = order[i];
+					order[i] = temp2;
+				}
+			}
+			if( fabs(b[i]/A[i*n+i]) > 1.0e+100 )
+				return i+1;
+		
+			for(int k = i+1; k < n; k++)
+			{
+				A[i*n+k] /= A[i*n+i];
+				A[k*n+i] /= A[i*n+i];
+			}
+			for(int k = i+1; k < n; k++)
+			for(int q = i+1; q < n; q++)
+			{
+				A[k*n+q] -= A[k*n+i] * A[i*n+i] * A[i*n+q];
+			}
+			for(int j = i+1; j < n; j++) //iterate over columns of L
+			{
+				b[j] -= b[i] * A[j*n+i];
+			}
+			b[i] /= A[i*n+i];
+		}
+
+		for(int i = n-1; i >= 0; i--) //iterate over rows of U
+			for(int j = i+1; j < n; j++) 
+			{
+				b[i] -= b[j] * A[i*n+j];
+			}
+		for(int i = 0; i < n; i++)
+			x[order[i]] = b[i];
 	
-	return 0;
-}
+		return 0;
+	}
 
 	class BCGSL_solver : public IterativeMethod
 	{
@@ -282,11 +488,11 @@ int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_R
 #endif
 			INMOST_DATA_ENUM_TYPE i = 0;
 
-			//if( last_resid < atol || last_resid < rtol*resid0 ) 
-			//{
-			//	reason = "initial solution satisfy tolerances";
-			//	goto exit;
-			//}
+			if( last_resid < atol || last_resid < rtol*resid0 ) 
+			{
+				reason = "initial solution satisfy tolerances";
+				goto exit;
+			}
 
 			long double tt, ts, tp;
 			while( true )
@@ -300,10 +506,16 @@ int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_R
 					rho1 = info->ScalarProd(r[j],r_tilde,vlocbeg,vlocend); // rho1 = dot(r[j],r_tilde)
 					beta = alpha * (rho1/rho0);
 
-					if( fabs(beta) > 1.0e+35 ) 
+					if( fabs(beta) > 1.0e+100 ) 
 					{
-						std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
+						//std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
 						reason = "multiplier(1) is too large";
+						goto exit;
+					}
+
+					if( beta != beta )
+					{
+						reason = "multiplier(1) is NaN";
 						goto exit;
 					}
 
@@ -317,9 +529,14 @@ int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_R
 					
 					alpha = rho0 / eta;
 
-					if( fabs(alpha) > 1.0e+35 ) 
+					if( fabs(alpha) > 1.0e+100 ) 
 					{
 						reason = "multiplier(2) is too large";
+						goto exit;
+					}
+					if( alpha != alpha )
+					{
+						reason = "multiplier(2) is NaN";
 						goto exit;
 					}
 
@@ -362,6 +579,74 @@ int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_R
 						sigma[j-1] += r[0][k]*r[j][k];
 				}
 				info->Integrate(tau,l*l+l); //sigma is updated with tau
+
+#if defined(PSEUDOINVERSE)
+				{
+					int dgesvd_info = 0;
+
+
+#if defined(USE_LAPACK_SVD)
+					char c = 'A';
+					INMOST_DATA_REAL_TYPE U[128*128], V[128*128], w[128];
+					INMOST_DATA_REAL_TYPE work[5*128];
+					int lwork = 5*128;
+					int n = l;
+					dgesvd_(&c,&c,&n,&n,tau,&n,w,U,&n,V,&n,work,&lwork,&dgesvd_info);
+#else
+					
+					INMOST_DATA_REAL_TYPE U[128*128], V[128*128], S[128*128], w[128];
+					svdnxn(tau,U,S,V,l);
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) w[j] = S[j*l+j];
+#endif		
+					/*
+					printf("w ");
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) printf("%20g ",w[j]);
+					printf("\n");
+
+					printf("U\n");
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++) 
+					{
+						printf("%20g ",U[j]);
+						if( (j+1) % l == 0 ) printf("\n");
+					}
+					printf("\n");
+
+					printf("VT\n");
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++) 
+					{
+						printf("%20g ",V[j]);
+						if( (j+1) % l == 0 ) printf("\n");
+					}
+					printf("\n");
+					*/
+					if( dgesvd_info != 0 )
+					{
+						printf("(%s:%d) dgesvd %d\n",__FILE__,__LINE__,dgesvd_info);
+						exit(-1);
+					}
+					
+					INMOST_DATA_REAL_TYPE maxw = w[0], tol;
+					for(INMOST_DATA_ENUM_TYPE j = 1; j < l; j++) if(w[j]>maxw) maxw = w[j];
+					tol = l*maxw*1.0e-14;
+					memset(gamma,0,sizeof(INMOST_DATA_REAL_TYPE)*l);
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
+					{
+						if( w[j] > tol )
+						{
+							INMOST_DATA_REAL_TYPE sum = 0;
+							for(INMOST_DATA_ENUM_TYPE k = 0; k < l; ++k)
+								sum += sigma[k]*U[j*l+k];
+							for(INMOST_DATA_ENUM_TYPE k = 0; k < l; ++k)
+								gamma[k] += sum/w[j]*V[k*l+j];
+						}
+					}
+				}
+
+				//svdnxn(tau,U,S,V,l);
+				//INMOST_DATA_REAL_TYPE inv_tau[64];
+				//pseudoinverse(tau,inv_tau,l);
+				//matmul(inv_tau,sigma,gamma,l,l,1);
+#else
 				int order[128];
 				int row = solvenxn(tau,gamma,sigma,l,order);
 				if( row != 0 )
@@ -370,7 +655,18 @@ int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_R
 					reason = "breakdown in matrix inversion in polynomial part";
 					break;
 				}
+#endif
 				omega = gamma[l-1];
+				if( fabs(omega) > 1.0e+100 )
+				{
+					reason = "multiplier(3) is too large";
+					goto exit;
+				}
+				if( omega != omega )
+				{
+					reason = "multiplier(3) is NaN";
+					goto exit;
+				}
 				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; ++j)
 				{
 					for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
@@ -691,10 +987,15 @@ exit:
 						}
 						beta *= rho;
 
-						if( fabs(beta) > 1.0e+35 )
+						if( fabs(beta) > 1.0e+100 )
 						{
 							//std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
 							reason = "multiplier(1) is too large";
+							break;
+						}
+						if( beta != beta )
+						{
+							reason = "multiplier(1) is NaN";
 							break;
 						}
 					}
@@ -748,15 +1049,23 @@ exit:
 							info->Integrate(&alpha,1);
 						}
 
-						alpha = rho / alpha; //local indexes, r0, v
+						if( alpha == 0 && rho == 0 ) 
+							alpha = 0;
+						else
+							alpha = rho / alpha; //local indexes, r0, v
 
-						if( fabs(alpha) > 1.0e+35 )
+						if( fabs(alpha) > 1.0e+100 )
 						{
 							reason = "multiplier(2) is too large";
 							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
 							break;
 						}
-
+						if( alpha != alpha )
+						{
+							reason = "multiplier(2) is NaN";
+							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
+							break;
+						}
 						
 					}
 					{
@@ -822,7 +1131,23 @@ exit:
 						}
 						*/
 						//omega = temp[0] / (temp[1] + (temp[1] < 0.0 ? -1.0e-10 : 1.0e-10)); //local indexes t, s
-						omega = temp[0] / temp[1];
+						if( temp[0] == 0 && temp[1] == 0 )
+							omega = 0;
+						else
+							omega = temp[0] / temp[1];
+
+						if( fabs(omega) > 1.0e+100 )
+						{
+							reason = "multiplier(3) is too large";
+							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
+							break;
+						}
+						if( omega != omega )
+						{
+							reason = "multiplier(3) is NaN";
+							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
+							break;
+						}
 					}
 					{
 #if defined(USE_OMP)

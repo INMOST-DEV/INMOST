@@ -493,9 +493,9 @@ public:
 		INMOST_DATA_ENUM_TYPE mobeg, moend, r, k, vbeg,vend; //, end;
 		info->GetOverlapRegion(info->GetRank(),mobeg,moend);
 		info->GetVectorRegion(vbeg,vend);
-		for(k = vbeg; k < mobeg; k++) output[k] = 0;
+		for(k = vbeg; k < mobeg; k++) output[k] = 0; //Restrict additive schwartz (maybe do it outside?)
 		for(k = mobeg; k < moend; k++) output[k] = input[k];
-		for(k = moend; k < vend; k++) output[k] = 0;
+		for(k = moend; k < vend; k++) output[k] = 0; //Restrict additive schwartz (maybe do it outside?)
 		for(k = mobeg; k < moend; k++) //iterate over L part
 		{
 			for(r = iu[k]-1; r > ilu[k]; r--) 
@@ -508,6 +508,8 @@ public:
 				output[k-1] -= luv[r]*output[lui[r]];
 			output[k-1] *= luv[iu[k-1]];
 		}
+		//May assemble partition of unity instead of restriction before accumulation
+		//assembly should be done instead of initialization
 		info->Accumulate(output);
 		return true;
 	}

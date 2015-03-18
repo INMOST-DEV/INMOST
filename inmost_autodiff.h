@@ -156,7 +156,7 @@ namespace INMOST
 		__INLINE INMOST_DATA_REAL_TYPE                                   GetStaticValue(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetStaticValueTag(ind))[comp]; }
 		__INLINE bool                                                    isStaticValid(const Storage & e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetStaticMask(ind); return mask == 0 || e->GetMarker(mask); }
 #if defined(NEW_VERSION)
-		INMOST_DATA_REAL_TYPE                                            Evaluate(expr & var, const const Storage & e, void * user_data);
+		INMOST_DATA_REAL_TYPE                                            Evaluate(expr & var, const Storage & e, void * user_data);
 		INMOST_DATA_REAL_TYPE                                            Derivative(expr & var, const Storage & e, Solver::Row & out, Storage::real multiply, void * user_data);
 #else
 		INMOST_DATA_REAL_TYPE                                            Evaluate(const expr & var, const Storage & e, void * user_data);
@@ -547,17 +547,17 @@ namespace INMOST
 		expr(const expr * l, const expr * r) :data() { data.push_back(expr_data(l,r)); }
 		expr(INMOST_DATA_REAL_TYPE val) : data() { data.push_back(expr_data(val)); }
 		expr(INMOST_DATA_ENUM_TYPE op, INMOST_DATA_ENUM_TYPE comp) : data() { data.push_back(expr_data(op, comp, ENUMUNDEF)); }
-		expr(INMOST_DATA_ENUM_TYPE op, const expr & operand) : data(operand.data) { relink_data();  data.push_back(expr_data(op, data.size() - 1, ENUMUNDEF)); }
-		expr(const expr & operand, const expr & multiplyer) : data(operand.data) { relink_data();  data.push_back(expr_data(AD_VAL, data.size() - 1, multiplyer)); }
+		expr(INMOST_DATA_ENUM_TYPE op, const expr & operand) : data(operand.data) { relink_data();  data.push_back(expr_data(op, static_cast<INMOST_DATA_ENUM_TYPE>(data.size() - 1), ENUMUNDEF)); }
+		expr(const expr & operand, const expr & multiplyer) : data(operand.data) { relink_data();  data.push_back(expr_data(AD_VAL, static_cast<INMOST_DATA_ENUM_TYPE>(data.size() - 1), multiplyer)); }
 		expr(const expr & cond, const expr & if_true, const expr & if_false) :data(cond.data)
 		{ 
 			relink_data();  
-			data.push_back(expr_data(data.size() - 1, expr_data(&if_true, &if_false))); 
+			data.push_back(expr_data(static_cast<INMOST_DATA_ENUM_TYPE>(data.size() - 1), expr_data(&if_true, &if_false))); 
 		}
 		expr(INMOST_DATA_ENUM_TYPE op, const expr & l, const expr & r) :data(l.data) 
 		{
 			relink_data();
-			INMOST_DATA_ENUM_TYPE lp = data.size() - 1;
+			INMOST_DATA_ENUM_TYPE lp = static_cast<INMOST_DATA_ENUM_TYPE>(data.size() - 1);
 			INMOST_DATA_ENUM_TYPE rp = merge_data(r.data); 
 			data.push_back(expr_data(op, lp, rp));
 		}

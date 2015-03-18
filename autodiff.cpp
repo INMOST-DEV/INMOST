@@ -19,7 +19,7 @@ namespace INMOST
 	void Automatizator::DerivativeFill(expr & var, INMOST_DATA_ENUM_TYPE element, INMOST_DATA_ENUM_TYPE parent, Solver::Row & entries, INMOST_DATA_REAL_TYPE multval, void * user_data)
 	{
 		INMOST_DATA_ENUM_TYPE voffset = var.values_offset(element), doffset = var.derivatives_offset(element);
-		INMOST_DATA_ENUM_TYPE k = var.data.size()-1;
+		INMOST_DATA_ENUM_TYPE k = static_cast<INMOST_DATA_ENUM_TYPE>(var.data.size()-1);
 		Storage e = Storage(m,var.current_stencil[element].first);
 		INMOST_DATA_REAL_TYPE lval, rval, ret;
 		var.values[doffset+k] = multval;

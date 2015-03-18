@@ -3258,15 +3258,17 @@ swap_algorithm:
 		// 4) u = ~f - B^{-1} F y
 		//first reorder input as prescribed by P
 		// ~y = Pt y
-		for (k = vbeg; k < mobeg; k++) output[k] = 0;
+		for (k = vbeg; k < mobeg; k++) output[k] = 0;//Restrict additive schwartz (maybe do it outside?)
 		for (k = mobeg; k < moend; ++k) output[k] = temp[ddP[k]];
-		for (k = moend; k < vend; k++) output[k] = 0;
+		for (k = moend; k < vend; k++) output[k] = 0;//Restrict additive schwartz (maybe do it outside?)
 
 		level = 0;
 		//perform recursively first two steps of solve phase
+		// outer V-cycle
+
 		while(level < level_size.size()) level = Descend(level, output, output);
 		
-
+		// W-cycle, should do ApplyB between moves
 		//level = Ascend(level, output);
 		//level = Ascend(level, output);
 		//level = Descend(level, output);
@@ -3286,6 +3288,8 @@ swap_algorithm:
 		//reorder output by Q
 		for (k = mobeg; k < moend; ++k) temp[ddQ[k]] = output[k];
 		for (k = mobeg; k < moend; ++k) output[k] = temp[k];
+		//May assemble partition of unity instead of restriction before accumulation
+		//assembly should be done instead of initialization
 		info->Accumulate(output);
 		return true;
 	}

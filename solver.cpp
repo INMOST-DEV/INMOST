@@ -94,6 +94,126 @@ namespace INMOST
 #endif
 	}
 
+	Solver::RowMerger::RowMerger() : Sorted(true), Nonzeros(0) {}
+
+	Solver::RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted) 
+				: Sorted(Sorted), Nonzeros(0), LinkedList(interval_begin,interval_end+1,Row::make_entry(UNDEF,0.0)) 
+	{
+		LinkedList.begin()->first = EOL;
+	}
+
+	void Solver::RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool _Sorted) 
+	{
+		LinkedList.set_interval_beg(interval_begin);
+		LinkedList.set_interval_end(interval_end+1);
+		std::fill(LinkedList.begin(),LinkedList.end(),Row::make_entry(UNDEF,0.0));
+		LinkedList.begin()->first = EOL;
+		Nonzeros = 0;
+		Sorted = _Sorted;
+	}
+
+	void Solver::RowMerger::Resize(Matrix & A, bool _Sorted)
+	{
+		INMOST_DATA_ENUM_TYPE mbeg, mend;
+		A.GetInterval(mbeg,mend);
+		Resize(mbeg,mend,_Sorted);
+	}
+
+	Solver::RowMerger::RowMerger(Matrix & A, bool Sorted) : Sorted(Sorted), Nonzeros(0)
+	{
+		INMOST_DATA_ENUM_TYPE mbeg, mend;
+		A.GetInterval(mbeg,mend);
+		LinkedList.set_interval_beg(mbeg);
+		LinkedList.set_interval_end(mend+1);
+		std::fill(LinkedList.begin(),LinkedList.end(),Row::make_entry(UNDEF,0.0));
+		LinkedList.begin()->first = EOL;
+	}
+
+	Solver::RowMerger::~RowMerger() {}
+
+	void Solver::RowMerger::Clear()
+	{
+		INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, j;
+		LinkedList.begin()->first = EOL;
+		while( i != EOL )
+		{
+			j = LinkedList[i].first;
+			LinkedList[i].first = UNDEF; 
+			i = j;
+		}
+		Nonzeros = 0;
+	}
+
+	void Solver::RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow)
+	{
+		if( Sorted && PreSortRow ) std::sort(r.Begin(),r.End());
+		assert(Nonzeros == 0); //Linked list should be empty
+		assert(LinkedList.begin()->first == EOL); //again check that list is empty
+		INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
+		Row::iterator it = r.Begin(), jt;
+		while( it != r.End() )
+		{
+			LinkedList[index].first = it->first+1;
+			LinkedList[it->first+1].first = EOL;
+			LinkedList[it->first+1].second = it->second*coef;
+			index = it->first+1;
+			++Nonzeros;
+			jt = it;
+			++it;
+			assert(!Sorted || it == r.End() || jt->first < it->first);
+		}
+	}
+
+	void Solver::RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow)
+	{
+		if( Sorted && PreSortRow ) std::sort(r.Begin(),r.End());
+		INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
+		Row::iterator it = r.Begin(), jt;
+		while( it != r.End() )
+		{
+			if( LinkedList[it->first+1].first != UNDEF )
+				LinkedList[it->first+1].second += coef*it->second;
+			else if( Sorted )
+			{
+				next = index;
+				while(next < it->first+1)
+				{
+					index = next;
+					next = LinkedList[index].first;
+				}
+				assert(index < it->first+1);
+				assert(it->first+1 < next);
+				LinkedList[index].first = it->first+1;
+				LinkedList[it->first+1].first = next;
+				LinkedList[it->first+1].second = coef*it->second;
+				++Nonzeros;
+			}
+			else
+			{
+				LinkedList[it->first+1].first = LinkedList[index].first;
+				LinkedList[it->first+1].second = coef*it->second;
+				LinkedList[index].first = it->first+1;
+				++Nonzeros;
+			}
+			jt = it;
+			++it;
+			assert(!Sorted || it == r.End() || jt->first < it->first);
+		}
+	}
+
+	void Solver::RowMerger::RetriveRow(Row & r)
+	{
+		r.Resize(Nonzeros);
+		INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, k = 0;
+		while( i != EOL )
+		{
+			r.GetIndex(k) = i-1;
+			r.GetValue(k) = LinkedList[i].second;
+			i = LinkedList[i].first;
+			++k;
+		}
+	}
+
 	void Solver::OrderInfo::PrepareMatrix(Matrix & m, INMOST_DATA_ENUM_TYPE overlap)
 	{
 		have_matrix = true;

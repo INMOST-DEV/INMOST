@@ -94,7 +94,7 @@ int main(int argc, char ** argv)
 			t = Timer();
 			success = s.Solve(b,x); // Solve the linear system with the previously computted preconditioner
 			BARRIER
-			if( !rank ) std::cout << "solver: " << Timer() - t << std::endl;
+			if( !rank ) std::cout << "solver: " << Timer() - t << "\t\t\t" << std::endl;
 			iters = s.Iterations(); // Get the number of iterations performed
 			resid = s.Residual();   // Get the final residual achieved
 			reason = s.GetReason();
@@ -125,9 +125,9 @@ int main(int argc, char ** argv)
 			double temp[2] = {aresid,bresid}, recv[2] = {aresid,bresid};
 #if defined(USE_MPI)
 			MPI_Reduce(temp,recv,2,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-			if( info.GetRank() == 0 ) std::cout << "||Ax-b|| " << sqrt(recv[0]) << " ||b|| " << sqrt(recv[1]) << " ||Ax-b||/||b|| " << sqrt(recv[0]/recv[1]) << std::endl;
+			if( info.GetRank() == 0 ) std::cout << "||Ax-b|| " << sqrt(recv[0]) << " ||b|| " << sqrt(recv[1]) << " ||Ax-b||/||b|| " << sqrt(recv[0]/(recv[1]+1.0e-100)) << std::endl;
 #endif
-			realresid = sqrt(recv[0]/recv[1]);
+			realresid = sqrt(recv[0]/(recv[1]+1.0e-100));
 			//realresid = sqrt(realresid);
 
 			info.RestoreVector(x);

@@ -225,12 +225,15 @@ namespace INMOST
 				ret.second = val;
 				return ret;
 			}
-			
+
+		private:
 			typedef dynarray<entry,16> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
 			//typedef array<entry> Entries;
 			//typedef std::vector<entry> Entries;
 			//typedef sparse_data<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> Entries;
 			//typedef Entries::pair entry; //for sparse_data
+			
+		public:
 			typedef Entries::iterator iterator;
 			typedef Entries::const_iterator const_iterator;
 			typedef Entries::reverse_iterator reverse_iterator;
@@ -348,6 +351,9 @@ namespace INMOST
 			/// @param size New size of the row.
 			void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
 		};
+
+
+		
 		
 		/// Class to store the distributed sparse matrix by compressed rows.
 		/// The format used to store sparse matrix is analogous to Compressed Row Storage format (CRS).
@@ -427,6 +433,86 @@ namespace INMOST
 			/// Get the matrix name specified in the main constructor.
 			std::string          GetName() {return name;}
 			//~ friend class Solver;
+		};
+
+		/// This class may be used to sum multiple sparse rows.
+		/// \warning
+		/// In parallel column indices of the matrix may span wider then 
+		/// local row indices, to prevent any problem you are currently
+		/// advised to set total size of the matrix as interval of the
+		/// RowMerger. In future this may change, see todo 2 below.
+		/// \todo
+		/// 1. Add iterators over entries.
+		/// 2. Implement multiple intervals for distributed computation,
+		///    then in parallel the user may specify additional range of indexes
+		///    for elements that lay on the borders between each pair of processors.
+		class RowMerger
+		{
+		public:
+			static const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
+			static const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
+		private:
+			bool Sorted; ///< Contents of linked list should be sorted.
+			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
+			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
+		public:
+			/// Default constructor without size specfied.
+			RowMerger();
+			/// Constructor with size specified.
+			/// @param interval_begin First index in linked list.
+			/// @param interval_end Last index in linked list.
+			/// @param Sorted Result should be sorted.
+			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
+			/// Constructor that gets sizes from matrix
+			/// @param A Matrix to get sizes from.
+			/// @param Sorted Result should be sorted.
+			RowMerger(Matrix & A, bool Sorted = true);
+			/// Destructor.
+			~RowMerger();
+			/// Resize linked list for new interval.
+			/// \warning
+			/// All contents of linked list will be lost after resize.
+			/// This behavior may be changed in future.
+			/// @param interval_begin First index in linked list.
+			/// @param interval_end Last index in linked list.
+			/// @param Sorted Result should be sorted.
+			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
+			/// Resize linked list for new matrix.
+			/// \warning
+			/// All contents of linked list will be lost after resize.
+			/// This behavior may be changed in future.
+			/// @param A Matrix to get sizes from.
+			/// @param Sorted Result should be sorted.
+			void Resize(Matrix & A, bool Sorted = true);
+			/// Clear linked list.
+			void Clear();
+			/// Add a row with a coefficient into empty linked list.
+			/// This routing should be a bit faster then Solver::RowMerger::AddRow
+			/// for empty linked list. It may result in an unexpected behavior
+			/// for non-empty linked list, asserts will fire in debug mode.
+			/// @param coef Coefficient to multiply row values.
+			/// @param r A row to be added.
+			/// @param PreSortRow Sort values of the row before adding. Will be activated only for sorted linked lists.
+			void PushRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow = false);
+			/// Add a row with a coefficient into non-empty linked list.
+			/// Use Solver::RowMerger::PushRow for empty linked list.
+			/// @param coef Coefficient to multiply row values.
+			/// @param r A row to be added.
+			/// @param PreSortRow Sort values of the row before adding. Will be activated only for sorted linked lists.
+			void AddRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow = false);
+			/// Multiply all entries of linked list by a coefficient.
+			/// @param coef A coefficient for multiplication.
+			void Multiply(INMOST_DATA_REAL_TYPE coef);
+			/// Place entries from linked list into row.
+			/// \warning
+			/// All contents of the row will be overwritten.
+			/// If you want contents of the row to be added
+			/// use AddRow with this row in advance.
+			/// @param r A row to be filled.
+			void RetriveRow(Row & r);
+			//INMOST_DATA_REAL_TYPE ScalarProd(RowMerger & other);
+			/// Get current number of nonzeros from linked list.
+			INMOST_DATA_ENUM_TYPE Size() {return Nonzeros;}
 		};
 		
 	private:
