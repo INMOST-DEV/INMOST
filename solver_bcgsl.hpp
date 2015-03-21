@@ -25,40 +25,49 @@ namespace INMOST
 	{
 		void dgesvd_(char*,char*,int*,int*,double*,int*,double*,double*,int*,double*,int*,double*,int*,int*);
 	}
-#else // SVD adopted from http://stackoverflow.com/questions/3856072/svd-implementation-c answer by Dhairya Malhotra
-	void GivensL(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+#else 
+	// SVD adopted from http://stackoverflow.com/questions/3856072/svd-implementation-c answer by Dhairya Malhotra
+	// corrected later to prevent divisions by zero
+
+	static void GivensL(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
 	{
 		INMOST_DATA_REAL_TYPE r = sqrt(a*a+b*b);
-		INMOST_DATA_REAL_TYPE c = a/r;
-		INMOST_DATA_REAL_TYPE s = -b/r;
-		for(int i=0;i<N;i++)
+		if( r )
 		{
-			INMOST_DATA_REAL_TYPE S0 = S[(m+0)*N+i];
-			INMOST_DATA_REAL_TYPE S1 = S[(m+1)*N+i];
-			S[(m+0)*N + i] += S0*(c-1);
-			S[(m+0)*N + i] += S1*( -s);
-			S[(m+1)*N + i] += S0*(s  );
-			S[(m+1)*N + i] += S1*(c-1);
+			INMOST_DATA_REAL_TYPE c = a/r;
+			INMOST_DATA_REAL_TYPE s = -b/r;
+			for(int i=0;i<N;i++)
+			{
+				INMOST_DATA_REAL_TYPE S0 = S[(m+0)*N+i];
+				INMOST_DATA_REAL_TYPE S1 = S[(m+1)*N+i];
+				S[(m+0)*N + i] += S0*(c-1);
+				S[(m+0)*N + i] += S1*( -s);
+				S[(m+1)*N + i] += S0*(s  );
+				S[(m+1)*N + i] += S1*(c-1);
+			}
 		}
 	}
 
-	void GivensR(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+	static void GivensR(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
 	{
 		INMOST_DATA_REAL_TYPE r = sqrt(a*a+b*b);
-		INMOST_DATA_REAL_TYPE c = a/r;
-		INMOST_DATA_REAL_TYPE s = -b/r;
-		for(int i=0;i<N;i++)
+		if( r )
 		{
-			INMOST_DATA_REAL_TYPE S0 = S[i*N+(m+0)];
-			INMOST_DATA_REAL_TYPE S1 = S[i*N+(m+1)];
-			S[i*N+(m+0)] += S0*(c-1);
-			S[i*N+(m+0)] += S1*( -s);
-			S[i*N+(m+1)] += S0*(s  );
-			S[i*N+(m+1)] += S1*(c-1);
+			INMOST_DATA_REAL_TYPE c = a/r;
+			INMOST_DATA_REAL_TYPE s = -b/r;
+			for(int i=0;i<N;i++)
+			{
+				INMOST_DATA_REAL_TYPE S0 = S[i*N+(m+0)];
+				INMOST_DATA_REAL_TYPE S1 = S[i*N+(m+1)];
+				S[i*N+(m+0)] += S0*(c-1);
+				S[i*N+(m+0)] += S1*( -s);
+				S[i*N+(m+1)] += S0*(s  );
+				S[i*N+(m+1)] += S1*(c-1);
+			}
 		}
 	}
 
-	void svdnxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * U, INMOST_DATA_REAL_TYPE * S,  INMOST_DATA_REAL_TYPE * V, const int N)
+	static void svdnxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * U, INMOST_DATA_REAL_TYPE * S,  INMOST_DATA_REAL_TYPE * V, const int N)
 	{
 		memset(S,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
 		memset(U,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
@@ -82,13 +91,21 @@ namespace INMOST
 
 					INMOST_DATA_REAL_TYPE x_inv_norm=0;
 					for(int j=i;j<N;j++) x_inv_norm+= S[j*N+i]*S[j*N+i];
-					x_inv_norm=1/sqrt(x_inv_norm);
+					if( x_inv_norm ) 
+					{
+						x_inv_norm=1/sqrt(x_inv_norm);
 
-					INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
-					INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
+						INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
+						INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
 
-					house_vec[i]=-alpha;
-					for(int j=i+1;j<N;j++) house_vec[j]=-beta*S[j*N+i];
+						house_vec[i]=-alpha;
+						for(int j=i+1;j<N;j++) house_vec[j]=-beta*S[j*N+i];
+					}
+					else
+					{
+						for(int j=i;j<N;j++) house_vec[j]=0;
+					}
+
 					if(S[i*N+i]<0) for(int j=i+1;j<N;j++) house_vec[j]=-house_vec[j];
 				}
 				
@@ -116,13 +133,18 @@ namespace INMOST
 
 					INMOST_DATA_REAL_TYPE x_inv_norm=0;
 					for(int j=i+1;j<N;j++) x_inv_norm+=S[i*N+j]*S[i*N+j];
-					x_inv_norm=1/sqrt(x_inv_norm);
+					if( x_inv_norm ) 
+					{
+						x_inv_norm=1/sqrt(x_inv_norm);
 
-					INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
-					INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
+						INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
+						INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
 
-					house_vec[i+1]=-alpha;
-					for(int j=i+2;j<N;j++) house_vec[j]=-beta*S[i*N+j];
+						house_vec[i+1]=-alpha;
+						for(int j=i+2;j<N;j++) house_vec[j]=-beta*S[i*N+j];
+					}
+					else for(int j=i+1;j<N;j++) house_vec[j] = 0;
+					
 					if(S[i*N+(i+1)]<0) for(int j=i+2;j<N;j++) house_vec[j]=-house_vec[j];
 				}
 				
@@ -161,13 +183,22 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE mu=0;
 			{ // Compute mu
 				INMOST_DATA_REAL_TYPE C[2][2];
-				C[0][0]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-2)]+S[(n-3)*N+(n-2)]*S[(n-3)*N+(n-2)]; 
+				C[0][0]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-2)];
+				if( n-k0 > 2 ) C[0][0] += S[(n-3)*N+(n-2)]*S[(n-3)*N+(n-2)]; 
 				C[0][1]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-1)];
 				C[1][0]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-1)]; 
 				C[1][1]=S[(n-1)*N+(n-1)]*S[(n-1)*N+(n-1)]+S[(n-2)*N+(n-1)]*S[(n-2)*N+(n-1)];
 				INMOST_DATA_REAL_TYPE b =-(C[0][0]+C[1][1])/2;
 				INMOST_DATA_REAL_TYPE c =  C[0][0]*C[1][1] - C[0][1]*C[1][0];
-				INMOST_DATA_REAL_TYPE d = sqrt(b*b-c);
+				INMOST_DATA_REAL_TYPE d = 0;
+				if( b*b-c > 0 )
+					d= sqrt(b*b-c); //may there be any roundoff problem?
+				else
+				{
+					b =(C[0][0]-C[1][1])/2;
+					c =-C[0][1]*C[1][0];
+					if( b*b-c > 0 ) d = sqrt(b*b-c);
+				}
 				INMOST_DATA_REAL_TYPE lambda1 = -b+d;
 				INMOST_DATA_REAL_TYPE lambda2 = -b-d;
 				INMOST_DATA_REAL_TYPE d1 = lambda1-C[1][1]; d1 = (d1<0?-d1:d1);
@@ -192,7 +223,6 @@ namespace INMOST
 				beta  = S[k*N+(k+2)];
 			}
 		}
-		
 		for(int i=0;i<N;i++)
 		{
 			INMOST_DATA_REAL_TYPE temp;
@@ -207,8 +237,6 @@ namespace INMOST
 				V[j+N*i] = temp;
 			}
 		}
-		
-
 		for(int i=0;i<N;i++) if( S[i*N+i] < 0.0 )
 		{
 			for(int j=0;j<N;j++)
@@ -217,11 +245,10 @@ namespace INMOST
 			}
 			S[i*N+i] *= -1;
 		}
-		
 	}
 #endif //USE_LAPACK_SVD
 #endif //PSEUDOINVERSE
-	int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_REAL_TYPE * b, int n, int * order)
+	static int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_REAL_TYPE * b, int n, int * order)
 	{
 		INMOST_DATA_REAL_TYPE temp, max;
 		int temp2;

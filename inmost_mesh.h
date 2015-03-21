@@ -2828,16 +2828,32 @@ namespace INMOST
 		///
 		/// Collective operation.
 		///
-		/// @param input value on current processor
-		/// @return sum over all processors
+		/// @param input Value on current processor
+		/// @return Sum over all processors
 		real                              Integrate          (real input);
 		/// Integrate integer value over all processors.
 		///
 		/// Collective operation.
 		///
-		/// @param input on current processor
-		/// @return sum over all processors
+		/// @param input Value on current processor
+		/// @return Sum over all processors
 		integer                           Integrate          (integer input);
+		/// Integrate an array of real values over all processors.
+		///
+		/// Collective operation.
+		///
+		/// @param input An array of values on current processor.
+		/// @param size Size of the array.
+		/// @return sum over all processors.
+		void                              Integrate          (real * input, integer size);
+		/// Integrate an array of integer values over all processors.
+		///
+		/// Collective operation.
+		///
+		/// @param input An array of values on current processor.
+		/// @param size Size of the array.
+		/// @return Sum over all processors.
+		void                              Integrate          (integer * input, integer size);
 		/// Integrate data corresponding to tag between all processors.
 		/// Elements without the data defined on them or when entry not present will be skipped.
 		///
@@ -2857,6 +2873,13 @@ namespace INMOST
 		integer                           ExclusiveSum       (integer input);
 		real                              AggregateMax       (real input);
 		integer                           AggregateMax       (integer input);
+		void                              AggregateMax       (real * input, integer size);
+		void                              AggregateMax       (integer * input, integer size);
+
+		real                              AggregateMin       (real input);
+		integer                           AggregateMin       (integer input);
+		void                              AggregateMin       (real * input, integer size);
+		void                              AggregateMin       (integer * input, integer size);
 		/// Regather ghosted and shared element sets for data exchange.
 		/// This function will be quite useful if you change statuses of elements
 		/// or modify mesh on your own bypassing internal algorithms.

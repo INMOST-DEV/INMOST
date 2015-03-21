@@ -415,8 +415,8 @@ namespace INMOST
 			
 			/// Matrix-vector product of the form: y = alpha*A*x + beta * y.
 			/// @param y Input/output vector.
-			/// @see Solver::Vector::Zero
 			void MatVec(INMOST_DATA_REAL_TYPE alpha, Solver::Vector & x, INMOST_DATA_REAL_TYPE beta, Solver::Vector & y) const; //y = alpha*A*x + beta * y
+			void MatVecTranspose(INMOST_DATA_REAL_TYPE alpha, Solver::Vector & x, INMOST_DATA_REAL_TYPE beta, Solver::Vector & y) const; //y = alpha*At*x + beta * y
 
 			/// Clear all data of the matrix.
 			void Clear() {for(Matrix::iterator it = Begin(); it != End(); ++it) it->Clear(); data.clear();}

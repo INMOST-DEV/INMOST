@@ -3,6 +3,11 @@
 #include "inmost_solver.h"
 #include "solver_ddpqiluc2.hpp"
 
+
+/// \todo
+/// 1. Correct estimator (as in MPTILUC)
+/// 2. Remove premature dropping.
+
 //#define PRINT_DDPQ
 //#define PRINT_HISTOGRAM
 //#define REPORT_ILU

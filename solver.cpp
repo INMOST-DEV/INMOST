@@ -960,7 +960,35 @@ namespace INMOST
 #endif
 		for(ind = imbeg; ind < imend; ++ind) //iterate rows of matrix
 			out[ind] = beta * out[ind] + alpha * (*this)[ind].RowVec(x);
-		// outer procedure should update Sout vector, if needed
+		// outer procedure should update out vector, if needed
+	}
+
+	void Solver::Matrix::MatVecTranspose(INMOST_DATA_REAL_TYPE alpha, Solver::Vector & x, INMOST_DATA_REAL_TYPE beta, Solver::Vector & out) const //y = alpha*A*x + beta * y
+	{
+		INMOST_DATA_ENUM_TYPE mbeg, mend;
+		INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
+		if( out.Empty() )
+		{
+			INMOST_DATA_ENUM_TYPE vbeg,vend;
+			GetInterval(vbeg,vend);
+			out.SetInterval(vbeg,vend);
+		}
+		//CHECK SOMEHOW FOR DEBUG THAT PROVIDED VECTORS ARE OK
+		//~ assert(GetFirstIndex() == out.GetFirstIndex());
+		//~ assert(Size() == out.Size());
+		GetInterval(mbeg,mend);
+		imbeg = mbeg;
+		imend = mend;
+		if( beta ) for(Vector::iterator it = out.Begin(); it != out.End(); ++it) (*it) *= beta;
+#if defined(USE_OMP)
+#pragma omp for private(ind)
+#endif
+		for(ind = imbeg; ind < imend; ++ind)
+		{
+			for(Row::const_iterator it = (*this)[ind].Begin(); it != (*this)[ind].End(); ++it)
+				out[it->first] += alpha * x[ind] * it->second;
+		}
+		// outer procedure should update out vector, if needed
 	}
 	
 	Solver::Matrix::Matrix(std::string _name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm) 
