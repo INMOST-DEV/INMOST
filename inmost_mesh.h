@@ -359,8 +359,12 @@ namespace INMOST
 		/// If there is a link to handle provided (automatically by ElementArray and reference_array),
 		/// then remote handle value will be modified
 		Storage & operator =(Storage const & other); 
-		bool      operator ==(const Storage & other) {return handle == other.handle;} //m_link may be NULL if Invalidxxx is used
-		bool      operator !=(const Storage & other) {return handle != other.handle;} //m_link may be NULL if Invalidxxx is used
+		bool      operator <(const Storage & other) const {return handle < other.handle;}
+		bool      operator >(const Storage & other) const {return handle > other.handle;}
+		bool      operator <=(const Storage & other) const {return handle <= other.handle;}
+		bool      operator >=(const Storage & other) const {return handle >= other.handle;}
+		bool      operator ==(const Storage & other) const {return handle == other.handle;} //m_link may be NULL if Invalidxxx is used
+		bool      operator !=(const Storage & other) const {return handle != other.handle;} //m_link may be NULL if Invalidxxx is used
 		Storage * operator ->() {return this;}
 		const Storage * operator->() const {return this;}
 		Storage & self() {return *this;}
@@ -3124,7 +3128,7 @@ namespace INMOST
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size) const;
 		//implemented in modify.cpp
 	private:
-		MarkerType hide_element, new_element;
+		MarkerType hide_element, new_element, temp_hide_element;
 	public:
 		/// Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope.
 		/// In case mesh is modified, on element construction Mesh::TieElements will always place elements 

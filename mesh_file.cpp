@@ -779,18 +779,29 @@ ecl_exit_loop:
 		else if(LFile.find(".vtk") != std::string::npos) //this is legacy vtk
 		{
 			MarkerType unused_marker = CreateMarker();
-			bool grid_is_2d = false;
+			int grid_is_2d = 2;
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 			{
 				if( file_options[k].first == "VTK_GRID_DIMS" )
 				{
+					if( file_options[k].second == "AUTO" )
+						grid_is_2d = 2;
 					if( atoi(file_options[k].second.c_str()) == 2 )
-					{
-						grid_is_2d = true;
-						break;
-					}
+						grid_is_2d = 1;
+					else if( atoi(file_options[k].second.c_str()) == 3 )
+						grid_is_2d = 0;
 				}
 			}
+
+			//Determine whether there are already 3d elements so that the grid is 3d
+			if( grid_is_2d == 2 && NumberOfCells() )
+			{
+				for(Mesh::iteratorCell it = BeginCell(); it != EndCell() && grid_is_2d == 2; ++it)
+					if( it->GetElementDimension() == 3 )
+						grid_is_2d = 0;
+			}
+
+
 			std::vector<HandleType> old_nodes(NumberOfNodes());
 			{
 				unsigned qq = 0;
@@ -1450,6 +1461,25 @@ ecl_exit_loop:
 							}
 							filled = fscanf(f,"\n");
 						}
+
+						if( grid_is_2d == 2 )
+						{
+							for(i = 0; i < ncells && grid_is_2d == 2; i++)
+								if( ct[i] > 9 ) grid_is_2d = 0;
+
+							grid_is_2d = 1;
+						}
+
+						if( verbosity > 0 )
+						{
+							switch( grid_is_2d )
+							{
+							case 0: std::cout << "Grid has three dimensions" << std::endl; break;
+							case 1: std::cout << "Grid has two dimensions" << std::endl; break;
+							case 2: std::cout << "Grid has undetermined dimension" << std::endl; break;
+							}
+						}
+
 						{
 							if( verbosity > 0 ) printf("Reading %d cells.\n",ncells);
 							int j = 0;
@@ -1563,7 +1593,7 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 3 ) throw BadFile;
-										if( grid_is_2d )
+										if( grid_is_2d == 1 )
 										{
 											e_nodes.resize(1);
 											f_edges.resize(2);
@@ -1613,7 +1643,7 @@ ecl_exit_loop:
 									}
 									case 7: //VTK_POLYGON
 									{
-										if( grid_is_2d )
+										if( grid_is_2d == 1 )
 										{
 											for(int k = j+1; k < j+1+cp[j]; k++)
 											{
@@ -1658,7 +1688,7 @@ ecl_exit_loop:
 										HandleType temp = c_nodes.at(2);
 										c_nodes.at(2) = c_nodes.at(3);
 										c_nodes.at(3) = temp;
-										if( grid_is_2d )
+										if( grid_is_2d == 1 )
 										{
 											e_nodes.resize(1);
 											f_edges.resize(2);
@@ -1685,7 +1715,7 @@ ecl_exit_loop:
 										}
 										j = j + 1 + cp[j];
 										if( c_nodes.size() != 4 ) throw BadFile;
-										if( grid_is_2d )
+										if( grid_is_2d == 1 )
 										{
 											e_nodes.resize(1);
 											f_edges.resize(2);
@@ -2249,6 +2279,7 @@ ecl_exit_loop:
 					printf("cells %3.1f%%\r",(i*100.0)/(1.0*nbpolyhedra));
 					fflush(stdout);
 				}
+
 			}
 			report_pace = std::max<int>(nbzones/250,1);
 			if( verbosity > 0 ) printf("Reading %d zones data.\n",nbzones);
@@ -2316,6 +2347,10 @@ ecl_exit_loop:
 					fflush(stdout);
 				}
 			}
+
+			//TEMPORARY
+			//for(int i = 0; i < nbzones; i++) newsets[i]->Delete();
+
 			fclose(f);
 		}
 		else if(LFile.find(".msh") != std::string::npos ) // GMSH file format
@@ -4206,6 +4241,7 @@ safe_output:
 							case CELL: temp = 0; break;
 							default: throw NotImplemented;
 						}
+						//std::cout << "set name: " << set->GetName() << " size " << set->Size() << " id " << set->LocalID() << std::endl;
 						//sprintf(keyword,"set%d_%s\n",set->IntegerDF(set_id)+1,ElementTypeName(etype));
 						sprintf(keyword,"%s",set->GetName().c_str());
 						fwrite(keyword,1,8,file);
@@ -4214,6 +4250,7 @@ safe_output:
 						for(ElementSet::iterator it = set->Begin(); it != set->End(); it++)
 							if( it->GetElementType() == etype )
 							{
+								//std::cout << "Write element " << ElementTypeName(it->GetElementType()) << " num " << it->LocalID() << " handle " << it->GetHandle() << std::endl;
 								keynum = it->IntegerDF(set_id)+1;
 								fwrite(&keynum,sizeof(Storage::integer),1,file);
 							} 

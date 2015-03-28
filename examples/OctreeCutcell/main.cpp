@@ -137,12 +137,12 @@ void cell_init_data(struct grid * g, int cell)
 		
 		for(int i = 0; i < g->cells[cell].mr->size(); i++)
 		{
-			Storage::real vol = (*g->cells[cell].mr)[i]->Volume();
-			Storage::integer mat = (*g->cells[cell].mr)[i]->Integer(g->cell_material);
+			Storage::real vol = Cell(g->mesh,(*g->cells[cell].mr)[i])->Volume();
+			Storage::integer mat = Cell(g->mesh,(*g->cells[cell].mr)[i])->Integer(g->cell_material);
 			vol_and_data_by_mat & current_mat = (*g->cells[cell].data)[mat];
 			for(int j = 0; j < ntags; j++)
 			{
-				Storage::real val = (*g->cells[cell].mr)[i]->Real(tags[j]);
+				Storage::real val = Cell(g->mesh,(*g->cells[cell].mr)[i])->Real(tags[j]);
 				current_mat.second[tags[j]] += vol*val;
 				//~ if( isnan(current_mat.second[tags[j]]) ) throw -1;
 			}
@@ -279,7 +279,7 @@ void fill_K(Storage::real * center, Storage::real * Kvec, Storage::real * K)
 				K[i*3+j] += qmat[i*3+k]*qrmat[k*3+j];
 }
 
-void cell_to_INMOST(struct grid * g, int cell, Cell * r)
+void cell_to_INMOST(struct grid * g, int cell, Cell r)
 {
 	Storage::integer mat = r->Integer(g->cell_material);
 	Storage::real center[3];
@@ -344,7 +344,7 @@ void init_mesh(struct grid * g)
 	
 }
 
-std::map<Tag,Storage::real> cell_small_unite(dynarray<Cell *,32> & unite)
+std::map<Tag,Storage::real> cell_small_unite(ElementArray<Cell> & unite)
 {
 	std::map<Tag,Storage::real> ret;
 	Storage::real vol = 0;
@@ -439,13 +439,13 @@ public:
 
 
 
-face2gl DrawFace(Element * f, int mmat, double campos[3])
+face2gl DrawFace(Element f, int mmat, double campos[3])
 {
 	double cnt[3];
 	face2gl ret;
 	f->Centroid(cnt);
 	ret.set_center(cnt,campos);
-	adjacent<Node> nodes = f->getNodes();
+	ElementArray<Node> nodes = f->getNodes();
 
 	if( f->nbAdjElements(CELL) == 0 )
 		ret.set_color(1,0,0,0.25);
@@ -459,7 +459,7 @@ face2gl DrawFace(Element * f, int mmat, double campos[3])
 		ret.set_color(r,1-r,0.5,0.25);
 	}
 	
-	for( adjacent<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
+	for( ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 		ret.add_vert(&(kt->Coords()[0]));
 	
 
@@ -511,8 +511,8 @@ void draw()
 		{
 			if( it->nbAdjElements(CELL) <= 1  )
 			{
-				int mmat = (it->BackCell() == NULL ? -1 : it->BackCell()->Integer(thegrid.cell_material));
-				polygons.push_back(DrawFace(&*it,mmat,campos));
+				int mmat = (!it->BackCell().isValid() ? -1 : it->BackCell()->Integer(thegrid.cell_material));
+				polygons.push_back(DrawFace(it->self(),mmat,campos));
 			}
 		}
 		std::sort(polygons.begin(),polygons.end());
@@ -591,12 +591,12 @@ void draw2()
 				//if( m == show_region )
 				{
 					int i = 0;
-					adjacent<Face> faces = it->getFaces();
-					for(adjacent<Face>::iterator f = faces.begin(); f != faces.end(); f++) if( f->Boundary() )
+					ElementArray<Face> faces = it->getFaces();
+					for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++) if( f->Boundary() )
 					{
-						adjacent<Node> nodes = f->getNodes();
+						ElementArray<Node> nodes = f->getNodes();
 						glBegin(GL_POLYGON);
-						for(adjacent<Node>::iterator n = nodes.begin(); n != nodes.end(); n++)
+						for(ElementArray<Node>::iterator n = nodes.begin(); n != nodes.end(); n++)
 							glVertex3dv(&n->RealArray(thegrid.mesh->CoordsTag())[0]);
 						glEnd();
 					}
@@ -614,7 +614,7 @@ void draw2()
 				glBegin(GL_LINES);
 				for(Mesh::iteratorEdge f = thegrid.mesh->BeginEdge(); f != thegrid.mesh->EndEdge(); f++)
 				{
-					adjacent<Node> nodes = f->getNodes();
+					ElementArray<Node> nodes = f->getNodes();
 					glVertex3dv(&nodes[0].RealArray(thegrid.mesh->CoordsTag())[0]);
 					glVertex3dv(&nodes[1].RealArray(thegrid.mesh->CoordsTag())[0]);
 				}
@@ -627,10 +627,10 @@ void draw2()
 		{
 			for(Mesh::iteratorFace f = thegrid.mesh->BeginFace(); f != thegrid.mesh->EndFace(); f++)
 			{
-				adjacent<Node> nodes = f->getNodes();
+				ElementArray<Node> nodes = f->getNodes();
 				glColor3f(0.0f,0.5f,0.0f);	
 				glBegin(GL_POLYGON);
-				for(adjacent<Node>::iterator n = nodes.begin(); n != nodes.end(); n++)
+				for(ElementArray<Node>::iterator n = nodes.begin(); n != nodes.end(); n++)
 					glVertex3dv(&n->RealArray(thegrid.mesh->CoordsTag())[0]);
 				glEnd();
 			}
@@ -812,7 +812,7 @@ void idle(void)
 
 
 
-void vert_to_INMOST(struct grid * g, int vert, Node * v) 
+void vert_to_INMOST(struct grid * g, int vert, Node v) 
 {
 	(void) g; (void) vert;
 	Storage::real_array c = v->Coords();

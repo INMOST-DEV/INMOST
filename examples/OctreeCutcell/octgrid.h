@@ -38,7 +38,7 @@ using namespace INMOST;
 #define C_LAST_ARR(c,x) (c->x[(c->n##x)-1])
 #define C_PUT_ARR(c,x) (c->x),(c->n##x)
 
-typedef std::vector<Cell *> cell_vector;
+typedef std::vector<HandleType> cell_vector;
 typedef std::map<Tag, Storage::real > data_by_mat;
 typedef std::pair< Storage::real, std::map<Tag, Storage::real> > vol_and_data_by_mat;
 typedef std::map<Storage::integer, vol_and_data_by_mat > data_storage;
@@ -65,9 +65,7 @@ struct vert
 {
 	int busy;
 	int env[1<<DIM];
-	Node * mv;
-
-	
+	Node mv;
 };
 
 struct grid
@@ -93,13 +91,13 @@ struct grid
 	void (*cell_split_data)(struct grid * g, int cell);
 	void (*cell_init_data)(struct grid * g, int cell);
 	void (*cell_destroy_data)(struct grid * g, int cell);
-	void (*cell_to_INMOST)(struct grid * g, int cell,Cell * r);
+	void (*cell_to_INMOST)(struct grid * g, int cell,Cell r);
 	void (*vert_interpolate_data)(struct grid * g, int big_cell, int nvert, int * verts, int * isnew);
 	void (*vert_init_data)(struct grid * g, int vert);
 	void (*vert_destroy_data)(struct grid * g, int vert);
-	void (*vert_to_INMOST)(struct grid * g, int vert,Node * v);
+	void (*vert_to_INMOST)(struct grid * g, int vert,Node v);
 	void (*init_mesh)(struct grid *g);
-	std::map<Tag,Storage::real> (*cell_small_unite)(dynarray<Cell *,32> & unite);
+	std::map<Tag,Storage::real> (*cell_small_unite)(ElementArray<Cell> & unite);
 	mat_ret_type (*get_material_types)(double xyz[3]);
 };
 
@@ -152,7 +150,7 @@ void default_vert_init_data(struct grid * g, int vert);
 void default_cell_init_data(struct grid * g, int cell);
 void default_vert_destroy_data(struct grid * g, int vert);
 void default_cell_destroy_data(struct grid * g, int cell);
-void default_vert_to_INMOST(struct grid * g, int vert, Node * v);
-void default_cell_to_INMOST(struct grid * g, int cell, Cell * r);
+void default_vert_to_INMOST(struct grid * g, int vert, Node v);
+void default_cell_to_INMOST(struct grid * g, int cell, Cell r);
 
 #endif

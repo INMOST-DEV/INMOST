@@ -113,12 +113,12 @@ namespace INMOST
 				if( Hidden() ) 
 				{
 					for(dynarray<adj_type::size_type,64>::iterator it = del.begin(); it != del.end(); it++)
-						if( m->GetMarker(hc[*it],m->HideMarker()) ) m->Destroy(hc[*it]);
+						if( m->GetMarker(hc[*it],m->HideMarker()) ) m->Delete(hc[*it]);
 				}
 				else 
 				{
 					for(dynarray<adj_type::size_type,64>::iterator it = del.begin(); it != del.end(); it++)
-						m->Destroy(hc[*it]);
+						m->Delete(hc[*it]);
 				}
 			}
 		}
@@ -1976,6 +1976,7 @@ public:
 		{
 			if( it->GetDataType() == DATA_REFERENCE )
 			{
+				if( *it == HighConnTag() || *it  == LowConnTag() ) continue;
 				for(ElementType etype = NODE; etype <= CELL; etype = etype << 1)
 					if( it->isDefined(etype) )
 					{
@@ -1988,7 +1989,7 @@ public:
 								{
 									reference_array arr = ReferenceArray(h,*it);
 									for(reference_array::size_type qt = 0; qt < arr.size(); ++qt)
-										if( Hidden(arr.at(qt)) ) arr.at(qt) = InvalidHandle();
+										if( arr.at(qt) != InvalidHandle() && Hidden(arr.at(qt)) ) arr.at(qt) = InvalidHandle();
 								}
 							}
 						}
@@ -1999,7 +2000,7 @@ public:
 								HandleType h = ComposeHandle(etype,jt);
 								reference_array arr = ReferenceArray(h,*it);
 								for(reference_array::size_type qt = 0; qt < arr.size(); ++qt)
-									if( Hidden(arr.at(qt)) ) arr.at(qt) = InvalidHandle();
+									if( arr.at(qt) != InvalidHandle() && Hidden(arr.at(qt)) ) arr.at(qt) = InvalidHandle();
 							}
 						}
 					}
@@ -2021,19 +2022,30 @@ public:
 		*/
 		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
 		{
+			std::cout << "set name: " << it->GetName() << " size " << it->Size() << " id " << it->LocalID() << std::endl;
 			if( it->HaveParent() && it->GetParent()->Hidden() )
 				it->GetParent()->RemChild(it->self());
 			while( it->HaveChild() && it->GetChild()->Hidden() )
 				it->RemChild(it->GetChild());
 			while( it->HaveSibling() && it->GetSibling()->Hidden() )
 				it->RemSibling(it->GetSibling());
+			temp_hide_element = hide_element;
+			hide_element = 0;
 			ElementSet::iterator jt = it->Begin();
+			//int q = 0;
 			while(jt != it->End() )
 			{
-				if( jt->Hidden() ) 
+				//++q;
+				//std::cout << "check element " << ElementTypeName(jt->GetElementType()) << " num " << jt->LocalID() << " handle " << jt->GetHandle() << std::endl;
+				if( jt->GetMarker(temp_hide_element) ) 
+				{
+					//std::cout << "erase element " << ElementTypeName(jt->GetElementType()) << " num " << jt->LocalID() << " handle " << jt->GetHandle() << std::endl;
 					jt = it->Erase(jt);
+				}
 				else ++jt;
 			}
+			//std::cout << "size " << it->Size() << " traversed " << q << std::endl;
+			hide_element = temp_hide_element;
 			//it->Subtract(erase); //old approach
 		}
 		//Destroy(erase);//old approach
@@ -2047,7 +2059,7 @@ public:
 	void Mesh::EndModification()
 	{
 		//ApplyModification();
-		MarkerType temp = hide_element;
+		temp_hide_element = hide_element;
 		hide_element = 0;
 		for(ElementType etype = CELL; etype >= NODE; etype = etype >> 1)
 		{
@@ -2055,11 +2067,11 @@ public:
 			{
 				HandleType h = ComposeHandle(etype,it);
 				RemMarker(h,new_element);
-				if( GetMarker(h,temp) ) 
+				if( GetMarker(h,temp_hide_element) ) 
 					Destroy(h);
 			}
 		}
-		ReleaseMarker(temp);
+		ReleaseMarker(temp_hide_element);
 		ReleaseMarker(new_element);
 		new_element = 0;
 		if( have_global_id ) AssignGlobalID(have_global_id);
@@ -2072,6 +2084,7 @@ public:
 
 	void Mesh::Destroy(HandleType h)
 	{
+		//std::cout << "destroy " << ElementTypeName(GetHandleElementType(h)) << " id " << GetHandleID(h) << " handle " << h << (GetMarker(h,temp_hide_element) ? " hidden " : " not hidden ") << std::endl;
 		assert(isValidHandleRange(h));
 		assert(isValidHandle(h));
 		ElementType htype = GetHandleElementType(h);
@@ -2133,11 +2146,13 @@ public:
 	
 	bool Mesh::Hidden(HandleType h) const
 	{
+		assert(h != InvalidHandle());
 		return GetMarker(h,HideMarker());
 	}
 	
 	bool Mesh::New(HandleType h) const
 	{
+		assert(h != InvalidHandle());
 		return GetMarker(h,NewMarker());
 	}
 	
@@ -2371,6 +2386,18 @@ public:
 		//TODO:
 		//for face have to find positions where to attach edges
 		lc.insert(lc.end(),adjacent,adjacent+num);
+		if( Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2 )
+		{
+			if( GetElementType() == CELL ) 
+			{
+				getAsCell()->FixEdgeOrder();
+			}
+			else if( GetElementType() == FACE ) 
+			{
+				if( getAsFace()->FixEdgeOrder() )
+					getAsFace()->FixNormalOrientation();
+			}
+		}
 		if( GetElementType() == CELL ) //update cell nodes
 		{
 			//remove me from old nodes

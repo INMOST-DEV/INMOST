@@ -80,9 +80,9 @@ int main(int argc, char ** argv)
 			s.SetParameterEnum("rescale_iterations",8);
 			s.SetParameterEnum("adapt_ddpq_tolerance",0);
 			
-			s.SetParameterReal("drop_tolerance",1.0e-4);
-			s.SetParameterReal("reuse_tolerance",1.0e-8);
-			s.SetParameterReal("ddpq_tolerance",0.8);
+			s.SetParameterReal("drop_tolerance",1.0e-2);
+			s.SetParameterReal("reuse_tolerance",1.0e-3);
+			s.SetParameterReal("ddpq_tolerance",0.4);
 
 			s.SetParameterEnum("condition_estimation",1);
 			

@@ -13,8 +13,8 @@
 //#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
+#define REPORT_ILU_END
+#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 //#define REPORT_SCHUR
 using namespace INMOST;
@@ -31,10 +31,10 @@ using namespace INMOST;
 #define ESTIMATOR
 #define RESCALE_B
 #define PIVOT_THRESHOLD
-//#define DIAGONAL_PERTURBATION
+#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-6
 #define DIAGONAL_PERTURBATION_ABS 1.0e-15
-#define DIAGONAL_PIVOT //probably there is some bug
+//#define DIAGONAL_PIVOT //probably there is some bug
 #define DIAGONAL_PIVOT_TAU 0.01
 //#define DIAGONAL_PIVOT_COND 5.0
 #define ILUC2
@@ -330,7 +330,7 @@ using namespace INMOST;
 		INMOST_DATA_ENUM_TYPE wbeg, wend; //working interval
 		INMOST_DATA_ENUM_TYPE mobeg, moend; // total interval
 		
-		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next, mi, mj;
+		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next, mi, mj, Sbeg;
 		INMOST_DATA_REAL_TYPE l,u,udiag, abs_udiag, max_diag, min_diag, mean_diag, tol_schur;
 		INMOST_DATA_ENUM_TYPE nzA, nzLU = 0, nzEF = 0, nzS;
 		Solver::Vector DL, DR;
@@ -404,17 +404,24 @@ using namespace INMOST;
 
 
 		//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
-		INMOST_DATA_REAL_TYPE mup, mum, NuU = 1, NuL = 1, NuD, NuU_old = 1, NuL_old = 1, NuU_new, NuL_new, vp, vm, v;
+#if defined(ESTIMATOR)
+		INMOST_DATA_REAL_TYPE mup, mum, smup, smum, NuU = 1, NuL = 1, NuD, NuL1 = 1, NuL2 = 1, NuU1 = 1, NuU2 = 1;
+		INMOST_DATA_REAL_TYPE NuU1_old = 1, NuL1_old = 1, NuU2_old = 1, NuL2_old = 1;
+		INMOST_DATA_REAL_TYPE NuU1_new, NuU2_new, NuL1_new, NuL2_new, vp, vm, v;
 		INMOST_DATA_ENUM_TYPE np, nm;
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL(mobeg, moend,0.0), EstU(mobeg, moend,0.0);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL1(mobeg, moend,0.0), EstU1(mobeg, moend,0.0), CondU(mobeg,moend,1.0);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL2(mobeg, moend,0.0), EstU2(mobeg, moend,0.0), CondL(mobeg,moend,1.0);
+#endif
 		//supplimentary data structures for returning values of dropped elements
 		//INMOST_DATA_REAL_TYPE DropLk, DropUk;
 		//interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> DropU(mobeg,moend,0.0), DropL(mobeg,moend,0.0);
 		//data structure for linked list
 
 		
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValues(mobeg, moend,0.0);
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndeces(mobeg, moend+1,UNDEF);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesL(mobeg, moend,0.0);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesL(mobeg, moend+1,UNDEF);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF);
 		double tfactor = 0.0, trescale = 0.0, tschur = 0.0, treorder = 0.0, treassamble = 0.0, ttotal, tt;
 		double tlfactor, tlrescale, tlschur, tlreorder, tlreassamble, ratio = 1.0, ratio2 = 1.0;
 		ttotal = Timer();
@@ -805,7 +812,7 @@ using namespace INMOST;
 			for (k = cbeg; k < cend; k++)
 			{
 				for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r) 
-					DL[k] += B_Entries[r].second*B_Entries[r].second;
+					DL[k] += fabs(B_Entries[r].second);
 			}
 			for (k = cbeg; k < cend; k++) if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 			for (INMOST_DATA_ENUM_TYPE iter = 0; iter < sciters; iter++)
@@ -816,7 +823,7 @@ using namespace INMOST;
 				for (k = cbeg; k < cend; k++)
 				{
 					for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r) 
-						DR[B_Entries[r].first] += DL[k] * B_Entries[r].second*B_Entries[r].second;
+						DR[B_Entries[r].first] += DL[k] * fabs(B_Entries[r].second);
 				}
 				for (k = cbeg; k < cend; k++) if (DR[k] < eps) DR[k] = 1.0 / subst; else DR[k] = 1.0 / DR[k];
 				//for(Solver::Vector::iterator it = DL.Begin()+cbeg-mobeg;
@@ -825,12 +832,12 @@ using namespace INMOST;
 				for (k = cbeg; k < cend; k++)
 				{
 					for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r) 
-						DL[k] += DR[B_Entries[r].first] * B_Entries[r].second*B_Entries[r].second;
+						DL[k] += DR[B_Entries[r].first] * fabs(B_Entries[r].second);
 				}
 				for (k = cbeg; k < cend; k++) if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 			}
-			for (k = cbeg; k < cend; k++) DL[k] = sqrt(DL[k]);
-			for (k = cbeg; k < cend; k++) DR[k] = sqrt(DR[k]);
+			//for (k = cbeg; k < cend; k++) DL[k] = sqrt(DL[k]);
+			//for (k = cbeg; k < cend; k++) DR[k] = sqrt(DR[k]);
 			for (k = cbeg; k < cend; k++)
 			{
 				for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
@@ -1028,16 +1035,27 @@ using namespace INMOST;
 ///////////////////////////////////////////////////////////////////////////////////
 //              initialize condition estimator                                   //
 ///////////////////////////////////////////////////////////////////////////////////
+#if defined(ESTIMATOR)
         if( estimator )
         {
 				  NuU = NuL = 1.0;
 				  if( estimator )
 				  {
-					  EstU[cbeg] = EstL[cbeg] = 0.0;
-					  for (INMOST_DATA_ENUM_TYPE it = U_Address[cbeg].first; it != U_Address[cbeg].last; ++it) EstU[LU_Entries[it].first] = LU_Entries[it].second;
-					  for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it != L_Address[cbeg].last; ++it) EstL[LU_Entries[it].first] = LU_Entries[it].second;
+					  EstU1[cbeg] = EstL1[cbeg] = 0.0;
+						EstU2[cbeg] = EstL2[cbeg] = 0.0;
+					  for (INMOST_DATA_ENUM_TYPE it = U_Address[cbeg].first; it != U_Address[cbeg].last; ++it) 
+						{
+							EstU1[LU_Entries[it].first] = LU_Entries[it].second;
+							EstU2[LU_Entries[it].first] = LU_Entries[it].second;
+						}
+					  for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it != L_Address[cbeg].last; ++it) 
+						{
+							EstL1[LU_Entries[it].first] = LU_Entries[it].second;
+							EstL2[LU_Entries[it].first] = LU_Entries[it].second;
+						}
 				  }
         }
+#endif
 				nzLU += L_Address[cbeg].Size() + U_Address[cbeg].Size() + 1;
 				max_diag = min_diag = fabs(LU_Diag[cbeg]);
 				NuD = 1.0;
@@ -1174,13 +1192,23 @@ swap_algorithm:
 							LU_Diag[k] = LU_Diag[j];
 							LU_Diag[j] = u;
 							//swap values in estimator
-							u = EstL[k];
-							EstL[k] = EstL[j];
-							EstL[j] = u;
-							u = EstU[k];
-							EstU[k] = EstU[j];
-							EstU[j] = u;
-
+#if defined(ESTIMATOR)
+							if( estimator )
+							{
+								u = EstL1[k];
+								EstL1[k] = EstL1[j];
+								EstL1[j] = u;
+								u = EstL2[k];
+								EstL2[k] = EstL2[j];
+								EstL2[j] = u;
+								u = EstU1[k];
+								EstU1[k] = EstU1[j];
+								EstU1[j] = u;
+								u = EstU2[k];
+								EstU2[k] = EstU2[j];
+								EstU2[j] = u;
+							}
+#endif
 							//swap rescaling vectors
 							u = DL[k];
 							DL[k] = DL[j];
@@ -1244,22 +1272,22 @@ swap_algorithm:
 					//uncompress k-th row
 					// add diagonal value first, there shouldn't be values on left from diagonal
 					assert(B_Entries[B_Address[k].first].first == k);
-					LineIndeces[cbeg] = k;
+					LineIndecesU[cbeg] = k;
 					if (B_Entries[B_Address[k].first].first == k)
-						LineValues[k] = B_Entries[B_Address[k].first].second;
+						LineValuesU[k] = B_Entries[B_Address[k].first].second;
 					else
 					{
 						std::cout << __LINE__ << " No diagonal value! " << k << " " << B_Entries[B_Address[k].first].first << std::endl;
-						LineValues[k] = 0.0;
+						LineValuesU[k] = 0.0;
 					}
 
 					Ui = k;
 					for (INMOST_DATA_ENUM_TYPE it = B_Address[k].first + (B_Entries[B_Address[k].first].first == k ? 1 : 0); it != B_Address[k].last; ++it)
 					{
-						LineValues[B_Entries[it].first] = B_Entries[it].second;
-						Ui = LineIndeces[Ui] = B_Entries[it].first;
+						LineValuesU[B_Entries[it].first] = B_Entries[it].second;
+						Ui = LineIndecesU[Ui] = B_Entries[it].first;
 					}
-					LineIndeces[Ui] = EOL;
+					LineIndecesU[Ui] = EOL;
 ///////////////////////////////////////////////////////////////////////////////////
 //                    U-part elimination with L                                  //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1270,7 +1298,7 @@ swap_algorithm:
 						assert(i != UNDEF);
 						assert(LU_Entries[L_Address[i].first].first == k);
 						l = LU_Entries[L_Address[i].first].second*LU_Diag[i];
-            if( fabs(l)*NuU*NuL_old > tau2*abs_udiag )//global check
+            //if( fabs(l)*NuU*NuL_old > tau2*abs_udiag )//global check
             {
 						  curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = U_Address[i].first; it < U_Address[i].last; ++it)
@@ -1278,21 +1306,21 @@ swap_algorithm:
 							  j = LU_Entries[it].first;
 							  u = LU_Entries[it].second;
 							  //eliminate values
-							  if (LineIndeces[j] != UNDEF) //there is an entry in the list
-								  LineValues[j] -= l*u;
-							  else if (fabs(u)*NuU*NuL_old > tau2*abs_udiag )//add new entry
+							  if (LineIndecesU[j] != UNDEF) //there is an entry in the list
+								  LineValuesU[j] -= l*u;
+							  else //if (fabs(u)*NuU*NuL_old > tau2*abs_udiag )//add new entry
 							  {
 								  next = curr;
 								  while (next < j)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesU[curr];
 								  }
 								  assert(curr < j);
 								  assert(j < next);
-								  LineIndeces[curr] = j;
-								  LineIndeces[j] = next;
-								  LineValues[j] = -l*u;
+								  LineIndecesU[curr] = j;
+								  LineIndecesU[j] = next;
+								  LineValuesU[j] = -l*u;
 							  }
 						  }
             }
@@ -1300,7 +1328,7 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 //                 second order U-part elimination with L                        //
 ///////////////////////////////////////////////////////////////////////////////////
-						if( fabs(l)*NuU*NuL_old > tau*abs_udiag )//global check
+						//if( fabs(l)*NuU*NuL_old > tau*abs_udiag )//global check
 						{
 							curr = cbeg;
 							for (INMOST_DATA_ENUM_TYPE it = U2_Address[i].first; it < U2_Address[i].last; ++it)
@@ -1308,21 +1336,21 @@ swap_algorithm:
 								j = LU2_Entries[it].first;
 								u = l*LU2_Entries[it].second;
 								//eliminate values
-								if (LineIndeces[j] != UNDEF) //there is an entry in the list
-									LineValues[j] -= u;
-								else if (fabs(u)*NuU*NuL_old > tau2*abs_udiag)//add new entry
+								if (LineIndecesU[j] != UNDEF) //there is an entry in the list
+									LineValuesU[j] -= u;
+								else //if (fabs(u)*NuU*NuL_old > tau2*abs_udiag)//add new entry
 								{
 									next = curr;
 									while (next < j)
 									{
 										curr = next;
-										next = LineIndeces[curr];
+										next = LineIndecesU[curr];
 									}
 									assert(curr < j);
 									assert(j < next);
-									LineIndeces[curr] = j;
-									LineIndeces[j] = next;
-									LineValues[j] = -u;
+									LineIndecesU[curr] = j;
+									LineIndecesU[j] = next;
+									LineValuesU[j] = -u;
 								}
 							}
 						}
@@ -1339,7 +1367,7 @@ swap_algorithm:
 						assert(i != UNDEF);
 						assert(LU2_Entries[L2_Address[i].first].first == k);
 						l = LU2_Entries[L2_Address[i].first].second*LU_Diag[i];
-            if( fabs(l)*NuU*NuL_old > tau2*abs_udiag )//global check
+            //if( fabs(l)*NuU*NuL_old > tau2*abs_udiag )//global check
             {
 						  curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = U_Address[i].first; it < U_Address[i].last; ++it)
@@ -1347,28 +1375,28 @@ swap_algorithm:
 							  j = LU_Entries[it].first;
 							  u = l*LU_Entries[it].second;
 							  //eliminate values
-							  if (LineIndeces[j] != UNDEF) //there is an entry in the list
-								  LineValues[j] -= u;
-							  else if (fabs(u)*NuU*NuL_old > tau2*abs_udiag)//add new entry
+							  if (LineIndecesU[j] != UNDEF) //there is an entry in the list
+								  LineValuesU[j] -= u;
+							  else //if (fabs(u)*NuU*NuL_old > tau2*abs_udiag)//add new entry
 							  {
 								  next = curr;
 								  while (next < j)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesU[curr];
 								  }
 								  assert(curr < j);
 								  assert(j < next);
-								  LineIndeces[curr] = j;
-								  LineIndeces[j] = next;
-								  LineValues[j] = -u;
+								  LineIndecesU[curr] = j;
+								  LineIndecesU[j] = next;
+								  LineValuesU[j] = -u;
 							  }
 						  }
             }
 ///////////////////////////////////////////////////////////////////////////////////
 //                 second order U-part elimination with second-order L           //
 ///////////////////////////////////////////////////////////////////////////////////
-            if( fabs(l)*NuU*NuL_old > tau*abs_udiag ) //global check
+            //if( fabs(l)*NuU*NuL_old > tau*abs_udiag ) //global check
             {
               curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = U2_Address[i].first; it < U2_Address[i].last; ++it)
@@ -1376,21 +1404,21 @@ swap_algorithm:
                 j = LU2_Entries[it].first;
 							  u = l*LU2_Entries[it].second;
 							  //eliminate values
-							  if (LineIndeces[j] != UNDEF) //there is an entry in the list
-								  LineValues[j] -= u;
-                else if (fabs(u)*NuU*NuL_old > tau2*abs_udiag)//add new entry
+							  if (LineIndecesU[j] != UNDEF) //there is an entry in the list
+								  LineValuesU[j] -= u;
+                else //if (fabs(u)*NuU*NuL_old > tau2*abs_udiag)//add new entry
 							  {
 								  next = curr;
 								  while (next < j)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesU[curr];
 								  }
 								  assert(curr < j);
 								  assert(j < next);
-								  LineIndeces[curr] = j;
-								  LineIndeces[j] = next;
-								  LineValues[j] = -u;
+								  LineIndecesU[curr] = j;
+								  LineIndecesU[j] = next;
+								  LineValuesU[j] = -u;
 							  }
 						  }
             }
@@ -1437,123 +1465,24 @@ swap_algorithm:
 //                    Rescale with diagonal                                     //
 ///////////////////////////////////////////////////////////////////////////////////
           //rescale elements next after diagonal position
-					Ui = LineIndeces[k];
+					Ui = LineIndecesU[k];
 					while (Ui != EOL)
 					{
-						LineValues[Ui] /= udiag;
-						Ui = LineIndeces[Ui];
+						LineValuesU[Ui] /= udiag;
+						Ui = LineIndecesU[Ui];
 					}
-///////////////////////////////////////////////////////////////////////////////////
-//                    Condition estimator for U part                             //
-///////////////////////////////////////////////////////////////////////////////////
-					//estimate condition for U^{-1}
-					if( estimator )
-					{
-						mup = 1.0 - EstU[k];
-						mum = -1.0 - EstU[k];
-						np = nm = 0;
-						//start from the element next after diagonal position
-						Ui = LineIndeces[k];
-						while (Ui != EOL)
-						{
-							v = EstU[Ui];
-							vp = fabs(v + LineValues[Ui] * mup);
-							vm = fabs(v + LineValues[Ui] * mum);
-							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
-							Ui = LineIndeces[Ui];
-						}
-						NuU_old = NuU;
-						if (np > nm) NuU = mup; else NuU = mum;
-						NuU_new = std::max(fabs(mup), fabs(mum));
-///////////////////////////////////////////////////////////////////////////////////
-//         discarding current iteration based on condition numbers               //
-///////////////////////////////////////////////////////////////////////////////////
-            //discard line if condition number is too large
-#if defined(DIAGONAL_PIVOT) && defined(DIAGONAL_PIVOT_COND)
-            if( k != cend-1 && !no_swap_algorithm && NuU_new > DIAGONAL_PIVOT_COND)
-            {
-#if defined(REPORT_ILU)
-              //std::cout << "Requested pivoting from U condition estimator (" << NuU_new << ")! row " << k << "/" << cend << std::endl;
-#endif
-              //restore condition number
-              NuU = NuU_old;
-              //clean up values
-              Li = cbeg;
-					    while (Li != EOL)
-					    {
-						    i = LineIndeces[Li];
-						    LineValues[Li] = 0.0; //clean values after use
-						    LineIndeces[Li] = UNDEF; //clean indeces after use
-						    Li = i;
-					    }
-              goto swap_algorithm;
-            }
-            else
-#endif
-            {
-              //update estimator vector
-              Ui = LineIndeces[k];
-						  while (Ui != EOL)
-						  {
-							  EstU[Ui] += LineValues[Ui] * NuU;
-							  Ui = LineIndeces[Ui];
-						  }
-              //choose new condition number
-              NuU = std::max(NuU_new,NuU_old);
-            }
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//                 reconstruct U-part from linked list                           //
-///////////////////////////////////////////////////////////////////////////////////
-          //insert line to U part
-					U_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
-#if defined(ILUC2)
-          U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
-#endif
-					Ui = LineIndeces[k];
-					while (Ui != EOL)
-					{
-						u = fabs(LineValues[Ui]);
-						if (u*NuU*NuL_old > tau) // apply dropping rule
-							LU_Entries.push_back(Solver::Row::make_entry(Ui, LineValues[Ui]));
-#if defined(ILUC2)
-						else if (u*NuU*NuL_old > tau2)
-							LU2_Entries.push_back(Solver::Row::make_entry(Ui, LineValues[Ui]));
-#endif
-						Ui = LineIndeces[Ui];
-					}
-					U_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
-#if defined(ILUC2)
-					U2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
-#endif
-///////////////////////////////////////////////////////////////////////////////////
-//                 Cleaning data structures                                      //
-///////////////////////////////////////////////////////////////////////////////////
-					//Clean after use
-					Ui = cbeg;
-					while (Ui != EOL)
-					{
-						i = LineIndeces[Ui];
-						LineValues[Ui] = 0.0; // clean values after use
-						LineIndeces[Ui] = UNDEF; //clean indeces after use
-						Ui = i;
-          }
 ///////////////////////////////////////////////////////////////////////////////////
 //                 prepearing linked list for L-part                             //
 ///////////////////////////////////////////////////////////////////////////////////
 					//uncompress column
 					//insert diagonal value first
-					LineIndeces[cbeg] = k;
+					LineIndecesL[cbeg] = k;
 					if (B_Entries[B_Address[k].first].first == k)
-						LineValues[k] = B_Entries[B_Address[k].first].second;
+						LineValuesL[k] = B_Entries[B_Address[k].first].second;
 					else
 					{
 						std::cout << __LINE__ << " No diagonal value! " << k << std::endl;
-						LineValues[k] = 0.0;
+						LineValuesL[k] = 0.0;
 					}
 					//start from diagonal
 					//sort_indeces.clear();
@@ -1563,8 +1492,8 @@ swap_algorithm:
 					{
 						assert(B_Entries[B_Address[Li].first].first == k);
 						//sort_indeces.push_back(Li);
-						LineValues[Li] = B_Entries[B_Address[Li].first].second;
-						Ui = LineIndeces[Ui] = Li;
+						LineValuesL[Li] = B_Entries[B_Address[Li].first].second;
+						Ui = LineIndecesL[Ui] = Li;
 						Li = Blist[Li];
 					}
 					/*
@@ -1572,7 +1501,7 @@ swap_algorithm:
 					for (Li = 0; Li < sort_indeces.size(); Li++)
 					Ui = LineIndeces[Ui] = sort_indeces[Li];
 					*/
-					LineIndeces[Ui] = EOL;
+					LineIndecesL[Ui] = EOL;
 ///////////////////////////////////////////////////////////////////////////////////
 //                 L-part elimination with U                                     //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1583,7 +1512,7 @@ swap_algorithm:
 						assert(i != UNDEF);
 						assert(LU_Entries[U_Address[i].first].first == k);
 						u = LU_Entries[U_Address[i].first].second*LU_Diag[i];
-            if( fabs(u)*NuL*NuU_old > tau2*abs_udiag )//global check
+            //if( fabs(u)*NuL*NuU_old > tau2*abs_udiag )//global check
             {
 						  curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = L_Address[i].first; it < L_Address[i].last; ++it)
@@ -1591,21 +1520,21 @@ swap_algorithm:
 							  j = LU_Entries[it].first;
 							  l = LU_Entries[it].second;
 							  //eliminate values
-							  if (LineIndeces[j] != UNDEF) //there is an entry in the list
-								  LineValues[j] -= l*u;
-							  else if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
+							  if (LineIndecesL[j] != UNDEF) //there is an entry in the list
+								  LineValuesL[j] -= l*u;
+							  else //if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
 							  {
 								  next = curr;
 								  while (next < j)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesL[curr];
 								  }
 								  assert(curr < j);
 								  assert(j < next);
-								  LineIndeces[curr] = j;
-								  LineIndeces[j] = next;
-								  LineValues[j] = -l*u;
+								  LineIndecesL[curr] = j;
+								  LineIndecesL[j] = next;
+								  LineValuesL[j] = -l*u;
 							  }
 						  }
             }
@@ -1613,28 +1542,28 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 //                 second-order L-part elimination with U                        //
 ///////////////////////////////////////////////////////////////////////////////////
-						if( fabs(u)*NuL*NuU_old > tau*abs_udiag )//global check
+						//if( fabs(u)*NuL*NuU_old > tau*abs_udiag )//global check
 						{
 							curr = cbeg;
 							for (INMOST_DATA_ENUM_TYPE it = L2_Address[i].first; it < L2_Address[i].last; ++it)
 							{
 								j = LU2_Entries[it].first;
 								l = u*LU2_Entries[it].second;
-								if (LineIndeces[j] != UNDEF) //there is an entry in the list
-									LineValues[j] -= l;
-								else if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
+								if (LineIndecesL[j] != UNDEF) //there is an entry in the list
+									LineValuesL[j] -= l;
+								else //if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
 								{
 									next = curr;
 									while (next < j)
 									{
 										curr = next;
-										next = LineIndeces[curr];
+										next = LineIndecesL[curr];
 									}
 									assert(curr < j);
 									assert(j < next);
-									LineIndeces[curr] = j;
-									LineIndeces[j] = next;
-									LineValues[j] = -l;
+									LineIndecesL[curr] = j;
+									LineIndecesL[j] = next;
+									LineValuesL[j] = -l;
 								}
 							}
 						}
@@ -1651,7 +1580,7 @@ swap_algorithm:
 						assert(i != UNDEF);
 						assert(LU2_Entries[U2_Address[i].first].first == k);
 						u = LU2_Entries[U2_Address[i].first].second*LU_Diag[i];
-            if( fabs(u)*NuL*NuU_old > tau2*abs_udiag )//global check
+            //if( fabs(u)*NuL*NuU_old > tau2*abs_udiag )//global check
             {
 						  curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = L_Address[i].first; it != L_Address[i].last; ++it)
@@ -1659,28 +1588,28 @@ swap_algorithm:
 							  j = LU_Entries[it].first;
 							  l = u*LU_Entries[it].second;
 							  //eliminate values
-							  if (LineIndeces[j] != UNDEF) //there is an entry in the list
-								  LineValues[j] -= l;
-							  else if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
+							  if (LineIndecesL[j] != UNDEF) //there is an entry in the list
+								  LineValuesL[j] -= l;
+							  else //if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
 							  {
 								  next = curr;
 								  while (next < j)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesL[curr];
 								  }
 								  assert(curr < j);
 								  assert(j < next);
-								  LineIndeces[curr] = j;
-								  LineIndeces[j] = next;
-								  LineValues[j] = -l;
+								  LineIndecesL[curr] = j;
+								  LineIndecesL[j] = next;
+								  LineValuesL[j] = -l;
                 }
 						  }
             }
 ///////////////////////////////////////////////////////////////////////////////////
 //           second-order L-part elimination with second-order U                 //
 ///////////////////////////////////////////////////////////////////////////////////
-            if( fabs(u)*NuL*NuU_old > tau*abs_udiag )//global check
+            //if( fabs(u)*NuL*NuU_old > tau*abs_udiag )//global check
             {
               curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = L2_Address[i].first; it != L2_Address[i].last; ++it)
@@ -1688,21 +1617,21 @@ swap_algorithm:
 							  j = LU2_Entries[it].first;
 							  l = u*LU2_Entries[it].second;
 							  //eliminate values
-							  if (LineIndeces[j] != UNDEF) //there is an entry in the list
-								  LineValues[j] -= l;
-                else if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
+							  if (LineIndecesL[j] != UNDEF) //there is an entry in the list
+								  LineValuesL[j] -= l;
+                else //if (fabs(l)*NuL*NuU_old > tau2*abs_udiag)//add new entry
 							  {
 								  next = curr;
 								  while (next < j)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesL[curr];
 								  }
 								  assert(curr < j);
 								  assert(j < next);
-								  LineIndeces[curr] = j;
-								  LineIndeces[j] = next;
-								  LineValues[j] = -l;
+								  LineIndecesL[curr] = j;
+								  LineIndecesL[j] = next;
+								  LineValuesL[j] = -l;
                 }
 						  }
             }
@@ -1719,104 +1648,240 @@ swap_algorithm:
 //                    Rescale with diagonal                                      //
 ///////////////////////////////////////////////////////////////////////////////////
 					//rescale line by diagonal
-					Li = LineIndeces[k];
+					Li = LineIndecesL[k];
 					while (Li != EOL)
 					{
-						LineValues[Li] /= udiag;
-						Li = LineIndeces[Li];
+						LineValuesL[Li] /= udiag;
+						Li = LineIndecesL[Li];
 					}
 ///////////////////////////////////////////////////////////////////////////////////
-//                 condition estimation for L part                               //
+//                    Condition estimator for U part                             //
 ///////////////////////////////////////////////////////////////////////////////////
-					//estimate condition for L^{-1}
+					//estimate condition for U^{-1}
+#if defined(ESTIMATOR)
 					if( estimator )
 					{
-						mup = 1.0 - EstL[k];
-						mum = -1.0 - EstL[k];
+						NuU1_old = NuU1;
+						mup = 1.0 - EstU1[k];
+						mum = -1.0 - EstU1[k];
+						smup = smum = 0;
+						Ui = LineIndecesU[k];
+						while (Ui != EOL)
+						{
+							v = EstU1[Ui];
+							vp = fabs(v + LineValuesU[Ui] * mup);
+							vm = fabs(v + LineValuesU[Ui] * mum);
+							smup += vp;
+							smum += vm;
+							Ui = LineIndecesU[Ui];
+						}
+						if (smup > smum) NuU1 = mup; else NuU1 = mum;
+						NuU1_new = std::max(fabs(mup),fabs(mum));
+
+						mup = 1.0 - EstU2[k];
+						mum = -1.0 - EstU2[k];
 						np = nm = 0;
 						//start from the element next after diagonal position
-						Li = LineIndeces[k];
-						while (Li != EOL)
+						Ui = LineIndecesU[k];
+						while (Ui != EOL)
 						{
-							v = EstL[Li];
-							vp = fabs(v + LineValues[Li] * mup);
-							vm = fabs(v + LineValues[Li] * mum);
+							v = EstU2[Ui];
+							vp = fabs(v + LineValuesU[Ui] * mup);
+							vm = fabs(v + LineValuesU[Ui] * mum);
 							v = fabs(v);
 							if (vp > std::max(2 * v, 0.5)) np++;
 							if (std::max(2 * vp, 0.5) < v) np--;
 							if (vm > std::max(2 * v, 0.5)) nm++;
 							if (std::max(2 * vm, 0.5) < v) nm--;
-							Li = LineIndeces[Li];
+							Ui = LineIndecesU[Ui];
 						}
-						NuL_old = NuL;
-						if (np > nm) NuL = mup; else NuL = mum;
-						NuL_new = std::max(fabs(mup), fabs(mum));
+						NuU2_old = NuU2;
+						if (np > nm) NuU2 = mup; else NuU2 = mum;
+						NuU2_new = std::max(fabs(mup), fabs(mum));
+					} //if( estimator )
+#endif //ESTIMATOR
+///////////////////////////////////////////////////////////////////////////////////
+//                 condition estimation for L part                               //
+///////////////////////////////////////////////////////////////////////////////////
+					//estimate condition for L^{-1}
+#if defined(ESTIMATOR)
+					if( estimator )
+					{
+						NuL1_old = NuL1;
+						mup = 1.0 - EstL1[k];
+						mum = -1.0 - EstL1[k];
+						smup = smum = 0;
+						Li = LineIndecesL[k];
+						while (Li != EOL)
+						{
+							v = EstL1[Li];
+							vp = fabs(v + LineValuesL[Li] * mup);
+							vm = fabs(v + LineValuesL[Li] * mum);
+							smup += vp;
+							smum += vm;
+							Li = LineIndecesL[Li];
+						}
+						if (smup > smum) NuL1 = mup; else NuL1 = mum;
+						NuL1_new = std::max(fabs(mup),fabs(mum));
+
+						NuL2_old = NuL2;
+						mup = 1.0 - EstL2[k];
+						mum = -1.0 - EstL2[k];
+						np = nm = 0;
+						//start from the element next after diagonal position
+						Li = LineIndecesL[k];
+						while (Li != EOL)
+						{
+							v = EstL2[Li];
+							vp = fabs(v + LineValuesL[Li] * mup);
+							vm = fabs(v + LineValuesL[Li] * mum);
+							v = fabs(v);
+							if (vp > std::max(2 * v, 0.5)) np++;
+							if (std::max(2 * vp, 0.5) < v) np--;
+							if (vm > std::max(2 * v, 0.5)) nm++;
+							if (std::max(2 * vm, 0.5) < v) nm--;
+							Li = LineIndecesL[Li];
+						}
+						if (np > nm) NuL2 = mup; else NuL2 = mum;
+						NuL2_new = std::max(fabs(mup), fabs(mum));
+					}
+#endif //ESTIMATOR
+
 ///////////////////////////////////////////////////////////////////////////////////
 //         discarding current iteration based on condition numbers               //
 ///////////////////////////////////////////////////////////////////////////////////
           //discard line if condition number is too large
 #if defined(DIAGONAL_PIVOT) && defined(DIAGONAL_PIVOT_COND)
-            if(  k != cend-1 && !no_swap_algorithm && NuL_new > DIAGONAL_PIVOT_COND )
-            {
+          if( k != cend-1 && no_swap_algorithm && 
+						(std::max(NuU1_new,NuU2_new) > DIAGONAL_PIVOT_COND || std::max(NuL1_new,NuL2_new) > DIAGONAL_PIVOT_COND) )
+          {
 #if defined(REPORT_ILU)
-              //std::cout << "Requested pivoting from L condition estimator (" << NuL_new << ")! row " << k << "/" << cend << std::endl;
+            std::cout << "Requested pivoting based on condition estimator (L" << NuL1_new << " " << NuL2_new << " U " << NuU1_new << " " << NuU2_new << ")! row " << k << "/" << cend << std::endl;
+#endif //REPORT_ILU
+            //restore condition number
+						NuL1 = NuU1_old;
+            NuL2 = NuU2_old;
+						NuU1 = NuU1_old;
+            NuU2 = NuU2_old;
+            //clean up values
+            Li = cbeg;
+						while (Li != EOL)
+						{
+							i = LineIndecesL[Li];
+							LineValuesL[Li] = 0.0; //clean values after use
+							LineIndecesL[Li] = UNDEF; //clean indeces after use
+							Li = i;
+						}
+						Ui = cbeg;
+						while (Ui != EOL)
+						{
+							i = LineIndecesU[Ui];
+							LineValuesU[Ui] = 0.0; // clean values after use
+							LineIndecesU[Ui] = UNDEF; //clean indeces after use
+							Ui = i;
+						}
+            goto swap_algorithm;
+          }
+          else
+#endif //DIAGONAL_PIVOT / DIAGONAL_PIVOT_COND
+          {
+						NuL = std::max(NuL1_new,NuL2_new);
+						NuU = std::max(NuU1_new,NuU2_new);
+          }
+///////////////////////////////////////////////////////////////////////////////////
+//                 reconstruct U-part from linked list                           //
+///////////////////////////////////////////////////////////////////////////////////
+          //insert line to U part
+					U_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
+#if defined(ILUC2)
+          U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
-              //restore condition number
-              NuL = NuL_old;
-              //clean up values
-              Li = cbeg;
-					    while (Li != EOL)
-					    {
-						    i = LineIndeces[Li];
-						    LineValues[Li] = 0.0; //clean values after use
-						    LineIndeces[Li] = UNDEF; //clean indeces after use
-						    Li = i;
-					    }
-              //discard U part from factors
-              LU_Entries.resize(LU_Entries.size() - (U_Address[k].last-U_Address[k].first));
- #if defined(ILUC2)
-              //discard second-order U part from factors
-              LU2_Entries.resize(LU2_Entries.size() - (U2_Address[k].last-U2_Address[k].first));
- #endif
-              goto swap_algorithm;
-            }
-            else
+					Ui = LineIndecesU[k];
+					while (Ui != EOL)
+					{
+						u = fabs(LineValuesU[Ui]);
+						if (u*NuU > tau) // apply dropping rule
+							LU_Entries.push_back(Solver::Row::make_entry(Ui, LineValuesU[Ui]));
+#if defined(ILUC2)
+						else if (u*NuU > tau2)
+							LU2_Entries.push_back(Solver::Row::make_entry(Ui, LineValuesU[Ui]));
 #endif
-            {
-              //update estimator vector
-              Li = LineIndeces[k];
-						  while (Li != EOL)
-						  {
-							  EstL[Li] += LineValues[Li] * NuL;
-							  Li = LineIndeces[Li];
-						  }
-              //choose new condition number
-              NuL = std::max(NuL_new,NuL_old);
-            }
+						Ui = LineIndecesU[Ui];
 					}
+					U_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
+#if defined(ILUC2)
+					U2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
+#endif
 ///////////////////////////////////////////////////////////////////////////////////
 //                 reconstruct L-part from linked list                           //
 ///////////////////////////////////////////////////////////////////////////////////
 					//insert column to L part
-					Li = LineIndeces[k];
+					Li = LineIndecesL[k];
 					L_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
           L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
 					while (Li != EOL)
 					{
-						u = fabs(LineValues[Li]);
-						if (u*NuL*NuU_old > tau) //apply dropping 
-							LU_Entries.push_back(Solver::Row::make_entry(Li, LineValues[Li]));
+						u = fabs(LineValuesL[Li]);
+						if (u*NuL > tau) //apply dropping 
+							LU_Entries.push_back(Solver::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						else if (u*NuL*NuU_old > tau2)
-							LU2_Entries.push_back(Solver::Row::make_entry(Li, LineValues[Li]));
+						else if (u*NuL > tau2)
+							LU2_Entries.push_back(Solver::Row::make_entry(Li, LineValuesL[Li]));
 #endif
-						Li = LineIndeces[Li];
+						Li = LineIndecesL[Li];
 					}
 					L_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
           L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
+#endif
+///////////////////////////////////////////////////////////////////////////////////
+//                 Update estimator vectors                                      //
+///////////////////////////////////////////////////////////////////////////////////
+#if defined(ESTIMATOR)
+					if( estimator )
+					{
+						{ //U-estimator
+							Ui = LineIndecesU[k];
+							while (Ui != EOL)
+							{
+								EstU1[Ui] += LineValuesU[Ui] * NuU1;
+								Ui = LineIndecesU[Ui];
+							}
+							//choose new condition number
+							NuU1 = NuU1_new;//std::max(NuU_new,NuU_old);
+							//update estimator vector
+							Ui = LineIndecesU[k];
+							while (Ui != EOL)
+							{
+								EstU2[Ui] += LineValuesU[Ui] * NuU2;
+								Ui = LineIndecesU[Ui];
+							}
+							//choose new condition number
+							NuU2 = NuU2_new;//std::max(NuU_new,NuU_old);
+						}
+						{ //L-estimator
+							Li = LineIndecesL[k];
+						  while (Li != EOL)
+						  {
+							  EstL1[Li] += LineValuesL[Li] * NuL1;
+							  Li = LineIndecesL[Li];
+						  }
+							NuL1 = NuL1_new;
+              //update estimator vector
+              Li = LineIndecesL[k];
+						  while (Li != EOL)
+						  {
+							  EstL2[Li] += LineValuesL[Li] * NuL2;
+							  Li = LineIndecesL[Li];
+						  }
+              //choose new condition number
+              NuL2 = NuL2_new;//std::max(NuL_new,NuL_old);
+						}
+						CondU[k] = NuU;
+						CondL[k] = NuL;
+					}
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //                 Cleaning data structures                                      //
@@ -1824,11 +1889,19 @@ swap_algorithm:
 					Li = cbeg;
 					while (Li != EOL)
 					{
-						i = LineIndeces[Li];
-						LineValues[Li] = 0.0; //clean values after use
-						LineIndeces[Li] = UNDEF; //clean indeces after use
+						i = LineIndecesL[Li];
+						LineValuesL[Li] = 0.0; //clean values after use
+						LineIndecesL[Li] = UNDEF; //clean indeces after use
 						Li = i;
 					}
+					Ui = cbeg;
+					while (Ui != EOL)
+					{
+						i = LineIndecesU[Ui];
+						LineValuesU[Ui] = 0.0; // clean values after use
+						LineIndecesU[Ui] = UNDEF; //clean indeces after use
+						Ui = i;
+          }
 ///////////////////////////////////////////////////////////////////////////////////
 //     Update diagonal                                                           //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2127,12 +2200,17 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 				}
 #if defined(REPORT_ILU_END)
-        //std::cout << std::endl;
-				std::cout << "new level " << cend - cbeg << " total nonzeros in LU " << nzLU;
 #if defined(ILUC2)
-				std::cout << " in LU2 " << nzLU2;
+				printf("%05.2f%% new level %6d nnz LU %10d LU2 %10d EF %10d cond L %8e D %8e U %8e pivot %6d\n",(cend-mobeg)/(1.0*(moend-mobeg))*100.0,cend-cbeg,nzLU,nzLU2,nzEF,NuL,NuD,NuU,swaps);
+#else
+				printf("%05.2f%% new level %6d nnz LU %10d EF %10d cond L %8e D %8e U %8e pivot %6d\n",(wend-mobeg)/(1.0*(cend-mobeg))*100.0,wend-wbeg,nzLU,nzEF,NuL,NuD,NuU,swaps);
 #endif
-				std::cout << " in EF " << nzEF << " conditions L " << NuL << " D " << NuD << " U " << NuU << " pivot swaps " << swaps << std::endl;
+        //std::cout << std::endl;
+				//std::cout << "new level " << cend - cbeg << " total nonzeros in LU " << nzLU;
+//#if defined(ILUC2)
+//				std::cout << " in LU2 " << nzLU2;
+//#endif
+//				std::cout << " in EF " << nzEF << " conditions L " << NuL << " D " << NuD << " U " << NuU << " pivot swaps " << swaps << std::endl;
 #endif
 			}
 			tlfactor = Timer() - tt;
@@ -2240,14 +2318,14 @@ swap_algorithm:
 					while (Ui != EOL)  //iterate over values of i-th column of F
 					{
 						assert(F_Entries[F_Address[Ui].first].first == i);
-						LineValues[Ui] = F_Entries[F_Address[Ui].first].second;
+						LineValuesU[Ui] = F_Entries[F_Address[Ui].first].second;
 						Fnorm += fabs(F_Entries[F_Address[Ui].first].second);
 						//if( Fnorm < fabs(F_Entries[F_Address[Ui].first].second) ) Fnorm = fabs(F_Entries[F_Address[Ui].first].second);
 						++nzF;
-						Li = LineIndeces[Li] = Ui + 1;
+						Li = LineIndecesU[Li] = Ui + 1;
 						Ui = Flist[Ui];
 					}
-					LineIndeces[Li] = EOL;
+					LineIndecesU[Li] = EOL;
 ///////////////////////////////////////////////////////////////////////////////////
 //         shift indices for transposed traversal                                //
 ///////////////////////////////////////////////////////////////////////////////////					
@@ -2287,7 +2365,7 @@ swap_algorithm:
 //         perform solve with L part                                            //
 ///////////////////////////////////////////////////////////////////////////////////
 					//compute ~F_i = L^{-1} F_i
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
 						//if(fabs(LineValues[Li - 1])*NuU*NuL > tau2*Fnorm )
@@ -2295,23 +2373,23 @@ swap_algorithm:
               curr = Li;
 						  for (INMOST_DATA_ENUM_TYPE ru = L_Address[Li - 1].first; ru < L_Address[Li - 1].last; ++ru)
 						  {
-							  u = LineValues[Li - 1] * LU_Entries[ru].second;
+							  u = LineValuesU[Li - 1] * LU_Entries[ru].second;
 							  j = LU_Entries[ru].first;
-							  if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-								  LineValues[j] -= u;
-							  else if( fabs(u)*NuU*NuL > tau2*Fnorm )
+							  if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+								  LineValuesU[j] -= u;
+							  else //if( fabs(u)*NuU*NuL > tau2*Fnorm )
 							  {
 								  next = curr;
 								  while (next < j + 1)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesU[curr];
 								  }
 								  assert(curr < j + 1);
 								  assert(j + 1 < next);
-								  LineIndeces[curr] = j + 1;
-								  LineIndeces[j + 1] = next;
-								  LineValues[j] = -u;
+								  LineIndecesU[curr] = j + 1;
+								  LineIndecesU[j + 1] = next;
+								  LineValuesU[j] = -u;
 							  }
 						  }
             }
@@ -2324,28 +2402,28 @@ swap_algorithm:
 							curr = Li;
 							for (INMOST_DATA_ENUM_TYPE ru = L2_Address[Li - 1].first; ru < L2_Address[Li - 1].last; ++ru)
 							{
-								u = LineValues[Li - 1] * LU2_Entries[ru].second;
+								u = LineValuesU[Li - 1] * LU2_Entries[ru].second;
 								j = LU2_Entries[ru].first;
-								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-									LineValues[j] -= u;
-								else if( fabs(u)*NuU*NuL > tau2*Fnorm)
+								if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+									LineValuesU[j] -= u;
+								else //if( fabs(u)*NuU*NuL > tau2*Fnorm)
 								{
 									next = curr;
 									while (next < j + 1)
 									{
 										curr = next;
-										next = LineIndeces[curr];
+										next = LineIndecesU[curr];
 									}
 									assert(curr < j + 1);
 									assert(j + 1 < next);
-									LineIndeces[curr] = j + 1;
-									LineIndeces[j + 1] = next;
-									LineValues[j] = -u;
+									LineIndecesU[curr] = j + 1;
+									LineIndecesU[j + 1] = next;
+									LineValuesU[j] = -u;
 								}
 							}
 						}
 #endif
-						Li = LineIndeces[Li];
+						Li = LineIndecesU[Li];
 ///////////////////////////////////////////////////////////////////////////////////
 //             solve iteration done                                              //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2354,25 +2432,25 @@ swap_algorithm:
 //        assemble line of LF from linked list                                  //
 ///////////////////////////////////////////////////////////////////////////////////
 					//Assemble column into matrix
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					LF_Address[i].first = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
 					while (Li != EOL)
 					{
-						if (fabs(LineValues[Li - 1])*NuU*NuL > tau2*Fnorm)
-							LF_Entries.push_back(Solver::Row::make_entry(Li - 1, LineValues[Li - 1]));
-						Li = LineIndeces[Li];
+						if (fabs(LineValuesU[Li - 1]) > tau2*Fnorm)
+							LF_Entries.push_back(Solver::Row::make_entry(Li - 1, LineValuesU[Li - 1]));
+						Li = LineIndecesU[Li];
 					}
 					LF_Address[i].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
 ///////////////////////////////////////////////////////////////////////////////////
 //              clean linked list                                                //
 ///////////////////////////////////////////////////////////////////////////////////
 					//Clean after use
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
-						j = LineIndeces[Li];
-						LineIndeces[Li] = UNDEF;
-						LineValues[Li - 1] = 0.0;
+						j = LineIndecesU[Li];
+						LineIndecesU[Li] = UNDEF;
+						LineValuesU[Li - 1] = 0.0;
 						Li = j;
 					}
 #if defined(REPORT_ILU_PROGRESS)
@@ -2459,7 +2537,7 @@ swap_algorithm:
         nzS = 0;
 				//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator it = Ulist.begin() + cend - mobeg;
 				//	it != Ulist.begin() + wend - mobeg; ++it) *it = UNDEF;
-				std::fill(Ulist.begin() + cend - mobeg, Ulist.begin() + wend - mobeg, UNDEF);
+				
 				S_Entries.clear();
 				///
 #if defined(REPORT_SCHUR)
@@ -2496,18 +2574,18 @@ swap_algorithm:
 					Li = cbeg;
 					for (j = E_Address.back()->at(i).first; j < E_Address.back()->at(i).last; ++j) //iterate over values of i-th row of E
 					{
-						LineValues[E_Entries[j].first] = E_Entries[j].second;
+						LineValuesU[E_Entries[j].first] = E_Entries[j].second;
 						Enorm += fabs(E_Entries[j].second);
 						//if( Enorm < fabs(E_Entries[j].second) ) Enorm = fabs(E_Entries[j].second);
 						++nzE;
-						Li = LineIndeces[Li] = E_Entries[j].first + 1;
+						Li = LineIndecesU[Li] = E_Entries[j].first + 1;
 					}
-					LineIndeces[Li] = EOL;
+					LineIndecesU[Li] = EOL;
 ///////////////////////////////////////////////////////////////////////////////////
 //         perform solve with U part               //
 ///////////////////////////////////////////////////////////////////////////////////
 					// compute ~E_i = E_i U^{-1}
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
             //if (fabs(LineValues[Li - 1])*NuL*NuU > tau2*Enorm*fabs(LU_Diag[Li-1]))
@@ -2515,23 +2593,23 @@ swap_algorithm:
 						  curr = Li;
 						  for (INMOST_DATA_ENUM_TYPE ru = U_Address[Li - 1].first; ru != U_Address[Li - 1].last; ++ru)
 						  {
-							  u = LineValues[Li - 1] * LU_Entries[ru].second;
+							  u = LineValuesU[Li - 1] * LU_Entries[ru].second;
 							  j = LU_Entries[ru].first;
-							  if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-								  LineValues[j] -= u;
-							  else if (fabs(u)*NuL*NuU > tau2*Enorm*fabs(LU_Diag[Li-1]))
+							  if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+								  LineValuesU[j] -= u;
+							  else //if (fabs(u)*NuL*NuU > tau2*Enorm*fabs(LU_Diag[Li-1]))
 							  {
 								  next = curr;
 								  while (next < j + 1)
 								  {
 									  curr = next;
-									  next = LineIndeces[curr];
+									  next = LineIndecesU[curr];
 								  }
 								  assert(curr < j + 1);
 								  assert(j + 1 < next);
-								  LineIndeces[curr] = j + 1;
-								  LineIndeces[j + 1] = next;
-								  LineValues[j] = -u;
+								  LineIndecesU[curr] = j + 1;
+								  LineIndecesU[j + 1] = next;
+								  LineValuesU[j] = -u;
 							  }
 						  }
             }
@@ -2544,28 +2622,28 @@ swap_algorithm:
 							curr = Li;
 							for (INMOST_DATA_ENUM_TYPE ru = U2_Address[Li - 1].first; ru != U2_Address[Li - 1].last; ++ru)
 							{
-								u = LineValues[Li - 1] * LU2_Entries[ru].second;
+								u = LineValuesU[Li - 1] * LU2_Entries[ru].second;
 								j = LU2_Entries[ru].first;
-								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-									LineValues[j] -= u;
-								else if (fabs(u)*NuL*NuU  > tau2*Enorm*fabs(LU_Diag[Li-1]) )
+								if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+									LineValuesU[j] -= u;
+								else //if (fabs(u)*NuL*NuU  > tau2*Enorm*fabs(LU_Diag[Li-1]) )
 								{
 									next = curr;
 									while (next < j + 1)
 									{
 										curr = next;
-										next = LineIndeces[curr];
+										next = LineIndecesU[curr];
 									}
 									assert(curr < j + 1);
 									assert(j + 1 < next);
-									LineIndeces[curr] = j + 1;
-									LineIndeces[j + 1] = next;
-									LineValues[j] = -u;
+									LineIndecesU[curr] = j + 1;
+									LineIndecesU[j + 1] = next;
+									LineValuesU[j] = -u;
 								}
 							}
 						}
 #endif
-						Li = LineIndeces[Li];
+						Li = LineIndecesU[Li];
 ///////////////////////////////////////////////////////////////////////////////////
 //         solve iteration done                                                  //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2575,16 +2653,17 @@ swap_algorithm:
 //drop values that do not satisfy tolerances from linked list of line of EU block//
 ///////////////////////////////////////////////////////////////////////////////////
 					//drop values
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					Ui = cbeg;
 					while (Li != EOL)
 					{
-						j = LineIndeces[Li];
-						if (fabs(LineValues[Li - 1])*NuL*NuU < tau2*Enorm*fabs(LU_Diag[Li-1]) )//tau2)
+						j = LineIndecesU[Li];
+						//if (fabs(LineValuesU[Li - 1])*NuL*NuU < tau2*Enorm*fabs(LU_Diag[Li-1]) )//tau2)
+						if (fabs(LineValuesU[Li - 1]) < tau2*Enorm*fabs(LU_Diag[Li-1]) )
 						{
-							LineIndeces[Ui] = j;
-							LineIndeces[Li] = UNDEF;
-							LineValues[Li - 1] = 0.0;
+							LineIndecesU[Ui] = j;
+							LineIndecesU[Li] = UNDEF;
+							LineValuesU[Li - 1] = 0.0;
 						}
 						else Ui = Li;
 						Li = j;
@@ -2593,11 +2672,11 @@ swap_algorithm:
 //         rescale by diagonal                                                   //
 ///////////////////////////////////////////////////////////////////////////////////
 					//rescale vector by diagonal *E = ~E_i D^{-1} = E_i U^{-1} D^{-1}
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
-						LineValues[Li - 1] /= LU_Diag[Li - 1];
-						Li = LineIndeces[Li];
+						LineValuesU[Li - 1] /= LU_Diag[Li - 1];
+						Li = LineIndecesU[Li];
 					}
 					//unpack row of C
 					tt0 = Timer() - tt0;
@@ -2606,38 +2685,38 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 //         unpack line of C matrix to temporary linked list                      //
 ///////////////////////////////////////////////////////////////////////////////////
-					Ubeg[cbeg] = EOL;
+					Sbeg = EOL;
 					for (INMOST_DATA_ENUM_TYPE r = C_Address[i].first; r != C_Address[i].last; ++r)
 					{
-						temp[C_Entries[r].first] = C_Entries[r].second;
-						Ulist[C_Entries[r].first] = Ubeg[cbeg];
-						Ubeg[cbeg] = C_Entries[r].first;
+						LineValuesL[C_Entries[r].first] = C_Entries[r].second;
+						LineIndecesL[C_Entries[r].first] = Sbeg;
+						Sbeg = C_Entries[r].first;
 					}
 					//multiply current row of EU by LF and add to list
 ///////////////////////////////////////////////////////////////////////////////////
 //        multiply EU and LF blocks and add to temporary linked list             //
 ///////////////////////////////////////////////////////////////////////////////////
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
 						//iterate over corresponding row of LF, add multiplication to list
-						l = LineValues[Li - 1];
+						l = LineValuesU[Li - 1];
 						for (INMOST_DATA_ENUM_TYPE r = LFt_Address[Li - 1].first; r < LFt_Address[Li - 1].last; ++r)
 						{
 							j = LFt_Entries[r].first;
 							u = LFt_Entries[r].second;
 							v = -l*u;
-							if (Ulist[j] != UNDEF)
-								temp[j] += v;
+							if (LineIndecesL[j] != UNDEF)
+								LineValuesL[j] += v;
 							//else if( fabs(u)*NuU > tau || fabs(l)*NuL > tau )
-							else if( fabs(v) > 1.0e-54 )//if( fabs(v)*std::max(NuU,NuL) > tau2*std::max(Enorm,Fnorms[Li-1]) )//*Enorm*Fnorms[Li-1] )
+							else //if( fabs(v) > 1.0e-54 )//if( fabs(v)*std::max(NuU,NuL) > tau2*std::max(Enorm,Fnorms[Li-1]) )//*Enorm*Fnorms[Li-1] )
 							{
-								temp[j] = v;
-								Ulist[j] = Ubeg[cbeg];
-								Ubeg[cbeg] = j;
+								LineValuesL[j] = v;
+								LineIndecesL[j] = Sbeg;
+								Sbeg = j;
 							}
 						}
-						Li = LineIndeces[Li];
+						Li = LineIndecesU[Li];
 					}
 					tt1 = Timer() - tt1;
 
@@ -2647,15 +2726,15 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 					INMOST_DATA_REAL_TYPE Smax = 1.0e-54;
 					INMOST_DATA_REAL_TYPE Snorm = 0.0, Snum = 0.0, Smin = 1.0e+54, Smean;
-					Ui = Ubeg[cbeg];
+					Ui = Sbeg;
 					while (Ui != EOL)
 					{
-						u = fabs(temp[Ui]);
+						u = fabs(LineValuesL[Ui]);
 						if( u > Smax ) Smax = u;
 						if( u < Smin ) Smin = u;
 						Snorm += u;
 						Snum++;
-						Ui = Ulist[Ui];
+						Ui = LineIndecesL[Ui];
 					}
 					Smean = Snorm/Snum;
 					//insert obtained row
@@ -2666,61 +2745,62 @@ swap_algorithm:
 					//tol_schur = tau2 * Snorm * Snorm / Smax * NuU * NuL;
 					
           //tol_schur = exp(log(tau2)*0.6+log(tau)*0.4) * Snorm * Snorm / Smax;// * sqrt(Smax*Snum/Snorm);//tau2 * Smax / std::max(NuU,NuL);
-					//tol_schur = (Smax-Smin)*(std::min(tau2*sqrt(Smax/Smean),tau)) + Smin;
-					//tol_schur = (Smax-Smin)*tau2 + Smin;
-					tol_schur = tau2*Smax*Smax/Snorm;
+					//tol_schur = (Smax-Smin)*(std::min(tau2*sqrt(Smax/Smean),tau)) + Smin*0.999 ;
+					//tol_schur = tau2;//*Snorm* sqrt(Smax/Smean);
+					tol_schur = (Smax-Smin)*tau2 + Smin*0.99;
+					//tol_schur = tau2*Smax*Smax/Snorm;
 					//tol_schur = (Smax-Smin)*exp(log(tau2)*0.6+log(tau)*0.4) + Smin;
 					//tol_schur = exp(log(tau2)*0.8+log(tau)*0.2)*Smax*Smax/Smean;
 					//tol_schur = (Smax-Smin)*exp((log(tau2)*Smax+log(tau)*Snorm)/(Snorm+Smax)) + Smin;
-					Ui = Ubeg[cbeg];
+					Ui = Sbeg;
 					S_Address[i].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 					while (Ui != EOL)
 					{
 #if defined(PRINT_HISTOGRAM)
-						//printf("val %g logval %g intlogval %d\n",(fabs(temp[Ui])-Smin)/(Smax-Smin), log((fabs(temp[Ui])-Smin)/(Smax-Smin)), (int)ceil(-log((fabs(temp[Ui])-Smin)/(Smax-Smin))));
-						int pos = std::min((int)ceil(-log((fabs(temp[Ui])-Smin)/(Smax-Smin))),31);
+						//printf("val %g logval %g intlogval %d\n",(fabs(LineValuesL[Ui])-Smin)/(Smax-Smin), log((fabs(LineValuesL[Ui])-Smin)/(Smax-Smin)), (int)ceil(-log((fabs(LineValuesL[Ui])-Smin)/(Smax-Smin))));
+						int pos = std::min((int)ceil(-log((fabs(LineValuesL[Ui])-Smin)/(Smax-Smin))),31);
 						if( pos < 0 ) pos = 31;
 						++histogram[ pos ];
-						//++histogram[31- (int)floor((fabs(temp[Ui])-Smin)/(Smax-Smin)*31) ];
+						//++histogram[31- (int)floor((fabs(LineValuesL[Ui])-Smin)/(Smax-Smin)*31) ];
 #endif
 						//drop values
-						if( fabs(temp[Ui]) >= tol_schur )
+						if( fabs(LineValuesL[Ui]) >= tol_schur )
 						{
-						//if( fabs(temp[Ui]) > tau * Smax )// Snorm)
-							S_Entries.push_back(Solver::Row::make_entry(Ui, temp[Ui]));
-							//fprintf(fschur, "%4d %20g accepted\n",Ui,temp[Ui]);
+						//if( fabs(LineValuesL[Ui]) > tau * Smax )// Snorm)
+							S_Entries.push_back(Solver::Row::make_entry(Ui, LineValuesL[Ui]));
+							//fprintf(fschur, "%4d %20g accepted\n",Ui,LineValuesL[Ui]);
 						}
-						//else fprintf(fschur, "%4d %20g dropped\n",Ui,temp[Ui]);
-						Ui = Ulist[Ui];
+						//else fprintf(fschur, "%4d %20g dropped\n",Ui,LineValuesL[Ui]);
+						Ui = LineIndecesL[Ui];
 					}
 					S_Address[i].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
           nzS += S_Address[i].Size();
 
 #if defined(REPORT_SCHUR)
 					fprintf(fschur,"%e; %e; %e; %e; %e; %e; %d; %e; %e; %e; %e; %e\n",
-						temp[i],Smin,Smax,Snorm,Smean,Snum,S_Address[i].Size(), NuU,NuL,NuD, tol_schur,Smax / (Snorm/sqrt(Snum)));
+						LineValuesL[i],Smin,Smax,Snorm,Smean,Snum,S_Address[i].Size(), NuU,NuL,NuD, tol_schur,Smax / (Snorm/sqrt(Snum)));
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //         clean up temporary linked list                                        //
 ///////////////////////////////////////////////////////////////////////////////////
 					//clean after use
-					Ui = Ubeg[cbeg];
+					Ui = Sbeg;
 					while (Ui != EOL)
 					{
-						j = Ulist[Ui];
-						Ulist[Ui] = UNDEF;
-            temp[Ui] = 0.0;
+						j = LineIndecesL[Ui];
+						LineIndecesL[Ui] = UNDEF;
+            LineValuesL[Ui] = 0.0;
 						Ui = j;
 					}
 ///////////////////////////////////////////////////////////////////////////////////
 //         clean up linked list                                                 //
 ///////////////////////////////////////////////////////////////////////////////////
-					Li = LineIndeces[cbeg];
+					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
-						j = LineIndeces[Li];
-						LineIndeces[Li] = UNDEF;
-						LineValues[Li - 1] = 0.0;
+						j = LineIndecesU[Li];
+						LineIndecesU[Li] = UNDEF;
+						LineValuesU[Li - 1] = 0.0;
 						Li = j;
 					}
 					tt2 = Timer() - tt2;
@@ -2911,15 +2991,34 @@ swap_algorithm:
 					//TODO
 					//can it be done better on dense factors?
 					//estimate condition for U^{-1}
+#if defined(ESTIMATOR)
 					if( estimator )
 					{
-						mup = 1.0 - EstU[wbeg + i];
-						mum = -1.0 - EstU[wbeg + i];
+						//estimate condition for U^{-1}
+						NuU1_old = NuU1;
+						mup = 1.0 - EstU1[wbeg+i];
+						mum = -1.0 - EstU1[wbeg+i];
+						smup = smum = 0;
+						for (Ui = i + 1; Ui < size; Ui++)
+						{
+							v = EstU1[Ui];
+							vp = fabs(v + entries[ADDR(i,Ui)] * mup);
+							vm = fabs(v + entries[ADDR(i,Ui)] * mum);
+							smup += vp;
+							smum += vm;
+						}
+						if (smup > smum) NuU1 = mup; else NuU1 = mum;
+						for (Ui = i + 1; Ui < size; Ui++) EstU1[wbeg + Ui] += entries[ADDR(i,Ui)] * NuU1;
+						NuU1_new = std::max(fabs(mup),fabs(mum));
+
+						NuU2_old = NuU2;
+						mup = 1.0 - EstU2[wbeg + i];
+						mum = -1.0 - EstU2[wbeg + i];
 						np = nm = 0;
 						//start from the element next after diagonal position
 						for (Ui = i + 1; Ui < size; Ui++)
 						{
-							v = EstU[wbeg + Ui];
+							v = EstU2[wbeg + Ui];
 							vp = fabs(v + entries[ADDR(i,Ui)] * mup);
 							vm = fabs(v + entries[ADDR(i,Ui)] * mum);
 							v = fabs(v);
@@ -2928,19 +3027,37 @@ swap_algorithm:
 							if (vm > std::max(2 * v, 0.5)) nm++;
 							if (std::max(2 * vm, 0.5) < v) nm--;
 						}
-						NuU_old = NuU;
-						if (np > nm) NuU = mup; else NuU = mum;
-						for (Ui = i + 1; Ui < size; Ui++) EstU[wbeg + Ui] += entries[ADDR(i,Ui)] * NuU;
-						NuU = std::max(fabs(mup), fabs(mum));
-						NuU = std::max(NuU,NuU_old);
+						if (np > nm) NuU2 = mup; else NuU2 = mum;
+						NuU2_new = std::max(fabs(mup), fabs(mum));
+						for (Ui = i + 1; Ui < size; Ui++) EstU2[wbeg + Ui] += entries[ADDR(i,Ui)] * NuU2;
+
+						NuU = std::max(NuU1_new,NuU2_new);
+
 						//estimate condition for L^{-1}
-						mup = 1.0 - EstL[wbeg+i];
-						mum = -1.0 - EstL[wbeg+i];
+						NuL1_old = NuL1;
+						mup = 1.0 - EstL1[wbeg+i];
+						mum = -1.0 - EstL1[wbeg+i];
+						smup = smum = 0;
+						for (Li = i + 1; Li < size; Li++)
+						{
+							v = EstL1[Li];
+							vp = fabs(v + entries[ADDR(Li,i)] * mup);
+							vm = fabs(v + entries[ADDR(Li,i)] * mum);
+							smup += vp;
+							smum += vm;
+						}
+						if (smup > smum) NuL1 = mup; else NuL1 = mum;
+						for (Li = i + 1; Li < size; Li++) EstL1[wbeg+Li] += entries[ADDR(Li,i)] * NuL1;
+						NuL1_new = std::max(fabs(mup),fabs(mum));
+
+						NuL2_old = NuL2;
+						mup = 1.0 - EstL2[wbeg+i];
+						mum = -1.0 - EstL2[wbeg+i];
 						np = nm = 0;
 						//start from the element next after diagonal position
 						for (Li = i + 1; Li < size; Li++)
 						{
-							v = EstL[wbeg+Li];
+							v = EstL2[wbeg+Li];
 							vp = fabs(v + entries[ADDR(Li,i)] * mup);
 							vm = fabs(v + entries[ADDR(Li,i)] * mum);
 							v = fabs(v);
@@ -2949,12 +3066,17 @@ swap_algorithm:
 							if (vm > std::max(2 * v, 0.5)) nm++;
 							if (std::max(2 * vm, 0.5) < v) nm--;
 						}
-						NuL_old = NuL;
-						if (np > nm) NuL = mup; else NuL = mum;
-						for (Li = i + 1; Li < size; Li++) EstL[wbeg+Li] += entries[ADDR(Li,i)] * NuL;
-						NuL = std::max(fabs(mup), fabs(mum));
-						NuL = std::max(NuL,NuL_old);
+						
+						if (np > nm) NuL2 = mup; else NuL2 = mum;
+						for (Li = i + 1; Li < size; Li++) EstL2[wbeg+Li] += entries[ADDR(Li,i)] * NuL2;
+						NuL2 = std::max(fabs(mup), fabs(mum));
+
+						NuL = std::max(NuL1_new,NuL2_new);
+
+						CondU[i+wbeg] = NuU;
+						CondL[i+wbeg] = NuL;
 					}
+#endif //ESTIMATOR
 #if defined(REPORT_ILU)
 					//if (k % 100 == 0)
 					{
@@ -3015,7 +3137,7 @@ swap_algorithm:
 					U_Address[wbeg + i].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					for (j = i + 1; j < size; j++)
 					{
-						if (fabs(entries[ADDR(i, j)])*NuU*NuL > tau*LU_Diag[wbeg+i])
+						if (fabs(entries[ADDR(i, j)])*CondU[i] > tau2)
 						{
 							LU_Entries.push_back(Solver::Row::make_entry(j + wbeg, entries[ADDR(i, j)])); //Add to U
 						}
@@ -3024,7 +3146,7 @@ swap_algorithm:
 					L_Address[wbeg + i].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 					for (j = i + 1; j < size; j++)
 					{
-						if (fabs(entries[ADDR(j, i)])*NuL*NuU > tau*LU_Diag[wbeg+i] )
+						if (fabs(entries[ADDR(j, i)])*CondL[i] > tau2)
 						{
 							LU_Entries.push_back(Solver::Row::make_entry(j + wbeg, entries[ADDR(j, i)])); //Add to L
 						}
@@ -3036,7 +3158,8 @@ swap_algorithm:
 				//Remember the size of the block
 				level_size.push_back(wend - wbeg);
 #if defined(REPORT_ILU_END)
-				std::cout << "new level " << wend - wbeg << " total nonzeros in LU " << nzLU << " in EF " << nzEF << " conditions L " << NuL << " D " << NuD << " U " << NuU << std::endl;
+				printf("%05.2f%% new level %6d nnz LU %10d EF %10d cond L %8e D %8e U %8e pivot %6d\n",100,wend-wbeg,nzLU,nzEF,NuL,NuD,NuU,swaps);
+				//std::cout << "new level " << wend - wbeg << " total nonzeros in LU " << nzLU << " in EF " << nzEF << " conditions L " << NuL << " D " << NuD << " U " << NuU << std::endl;
 #endif
 				//FINISH!!!
 				tfactor += Timer() - tt;

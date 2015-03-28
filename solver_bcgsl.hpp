@@ -9,7 +9,7 @@
 
 #include "inmost_solver.h"
 
-#define PSEUDOINVERSE  // same trick as in petsc with pseudoinverse
+//#define PSEUDOINVERSE  // same trick as in petsc with pseudoinverse
 //#define USE_LAPACK_SVD // use lapack's dgesvd routine instead of built-in svdnxn
 
 //#if !defined(NDEBUG)
@@ -25,229 +25,317 @@ namespace INMOST
 	{
 		void dgesvd_(char*,char*,int*,int*,double*,int*,double*,double*,int*,double*,int*,double*,int*,int*);
 	}
-#else 
-	// SVD adopted from http://stackoverflow.com/questions/3856072/svd-implementation-c answer by Dhairya Malhotra
-	// corrected later to prevent divisions by zero
-
-	static void GivensL(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+#else
+	//SVD adopted from http://www.public.iastate.edu/~dicook/JSS/paper/code/svd.c
+	static INMOST_DATA_REAL_TYPE SIGNFUNC(INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b) { return b >= 0.0 ? fabs(a) : -fabs(a); }
+	static INMOST_DATA_REAL_TYPE MAXFUNC(INMOST_DATA_REAL_TYPE x,INMOST_DATA_REAL_TYPE y) { return x > y? x : y; }
+	static INMOST_DATA_REAL_TYPE PYTHAG(INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
 	{
-		INMOST_DATA_REAL_TYPE r = sqrt(a*a+b*b);
-		if( r )
-		{
-			INMOST_DATA_REAL_TYPE c = a/r;
-			INMOST_DATA_REAL_TYPE s = -b/r;
-			for(int i=0;i<N;i++)
-			{
-				INMOST_DATA_REAL_TYPE S0 = S[(m+0)*N+i];
-				INMOST_DATA_REAL_TYPE S1 = S[(m+1)*N+i];
-				S[(m+0)*N + i] += S0*(c-1);
-				S[(m+0)*N + i] += S1*( -s);
-				S[(m+1)*N + i] += S0*(s  );
-				S[(m+1)*N + i] += S1*(c-1);
-			}
-		}
+		INMOST_DATA_REAL_TYPE at = fabs(a), bt = fabs(b), ct, result;
+		if (at > bt)       { ct = bt / at; result = sqrt(at) * sqrt(at + ct * bt); }
+		else if (bt > 0.0) { ct = at / bt; result = sqrt(bt) * sqrt(bt + ct * at); }
+		else result = 0.0;
+		return(result);
 	}
-
-	static void GivensR(INMOST_DATA_REAL_TYPE * S, const int N, int m, INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+	int svdnxn(INMOST_DATA_REAL_TYPE * a,INMOST_DATA_REAL_TYPE * u, INMOST_DATA_REAL_TYPE *w, INMOST_DATA_REAL_TYPE * v, const int n)
 	{
-		INMOST_DATA_REAL_TYPE r = sqrt(a*a+b*b);
-		if( r )
+		memcpy(u,a,sizeof(INMOST_DATA_REAL_TYPE)*n*n);
+		int flag, i, its, j, jj, k, l, nm;
+		INMOST_DATA_REAL_TYPE c, f, h, s, x, y, z;
+		INMOST_DATA_REAL_TYPE anorm = 0.0, g = 0.0, scale = 0.0;
+		static std::vector<INMOST_DATA_REAL_TYPE> rv1(n);
+		// Householder reduction to bidiagonal form
+		for (i = 0; i < n; i++) 
 		{
-			INMOST_DATA_REAL_TYPE c = a/r;
-			INMOST_DATA_REAL_TYPE s = -b/r;
-			for(int i=0;i<N;i++)
+			// left-hand reduction
+			l = i + 1;
+			rv1[i] = scale * g;
+			g = s = scale = 0.0;
+			if (i < n) 
 			{
-				INMOST_DATA_REAL_TYPE S0 = S[i*N+(m+0)];
-				INMOST_DATA_REAL_TYPE S1 = S[i*N+(m+1)];
-				S[i*N+(m+0)] += S0*(c-1);
-				S[i*N+(m+0)] += S1*( -s);
-				S[i*N+(m+1)] += S0*(s  );
-				S[i*N+(m+1)] += S1*(c-1);
+				for (k = i; k < n; k++) 
+					scale += fabs(u[k*n+i]);
+				if (scale) 
+				{
+					for (k = i; k < n; k++) 
+					{
+						u[k*n+i] = u[k*n+i]/scale;
+						s += (u[k*n+i] * u[k*n+i]);
+					}
+					f = u[i*n+i];
+					g = -SIGNFUNC(sqrt(s), f);
+					h = f * g - s;
+					u[i*n+i] = (f - g);
+					if (i != n - 1) 
+					{
+						for (j = l; j < n; j++) 
+						{
+							for (s = 0.0, k = i; k < n; k++) 
+								s += (u[k*n+i] * u[k*n+j]);
+							f = s / h;
+							for (k = i; k < n; k++) 
+								u[k*n+j] += (f * u[k*n+i]);
+						}
+					}
+					for (k = i; k < n; k++) 
+						u[k*n+i] = (u[k*n+i]*scale);
+				}
 			}
-		}
-	}
+			w[i] = (scale * g);
 
-	static void svdnxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * U, INMOST_DATA_REAL_TYPE * S,  INMOST_DATA_REAL_TYPE * V, const int N)
-	{
-		memset(S,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
-		memset(U,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
-		memset(V,0,sizeof(INMOST_DATA_REAL_TYPE)*N*N);
-		for(int i=0;i<N;i++)
+			// right-hand reduction 
+			g = s = scale = 0.0;
+			if (i < n && i != n - 1) 
+			{
+				for (k = l; k < n; k++) 
+					scale += fabs(u[i*n+k]);
+				if (scale) 
+				{
+					for (k = l; k < n; k++) 
+					{
+						u[i*n+k] = (u[i*n+k]/scale);
+						s += (u[i*n+k] * u[i*n+k]);
+					}
+					f = u[i*n+l];
+					g = -SIGNFUNC(sqrt(s), f);
+					h = f * g - s;
+					u[i*n+l] = (f - g);
+					for (k = l; k < n; k++) 
+						rv1[k] = u[i*n+k] / h;
+					if (i != n - 1) 
+					{
+						for (j = l; j < n; j++) 
+						{
+							for (s = 0.0, k = l; k < n; k++) 
+								s += (u[j*n+k] * u[i*n+k]);
+							for (k = l; k < n; k++) 
+								u[j*n+k] += (s * rv1[k]);
+						}
+					}
+					for (k = l; k < n; k++) 
+						u[i*n+k] = (u[i*n+k]*scale);
+				}
+			}
+			anorm = MAXFUNC(anorm, (fabs(w[i]) + fabs(rv1[i])));
+		}
+
+		// accumulate the right-hand transformation 
+		for (i = n - 1; i >= 0; i--) 
 		{
-			for(int j=0;j<N;j++)
-				S[i*N+j]=A[i*N+j];
-			U[i*N+i] = 1;
-			V[i*N+i] = 1;
-		}
-		INMOST_DATA_REAL_TYPE eps = -1;
-		{ // Bi-diagonalization
-			std::vector<INMOST_DATA_REAL_TYPE> house_vec(N);
-			for(int i=0;i<N;i++)
+			if (i < n - 1) 
 			{
-				// Column Householder
+				if (g) 
 				{
-					INMOST_DATA_REAL_TYPE x1= S[i*N+i];
-					if(x1<0) x1=-x1;
-
-					INMOST_DATA_REAL_TYPE x_inv_norm=0;
-					for(int j=i;j<N;j++) x_inv_norm+= S[j*N+i]*S[j*N+i];
-					if( x_inv_norm ) 
+					for (j = l; j < n; j++)
+						v[j*n+i] = ((u[i*n+j] / u[i*n+l]) / g);
+					// double division to avoid underflow 
+					for (j = l; j < n; j++) 
 					{
-						x_inv_norm=1/sqrt(x_inv_norm);
-
-						INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
-						INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
-
-						house_vec[i]=-alpha;
-						for(int j=i+1;j<N;j++) house_vec[j]=-beta*S[j*N+i];
+						for (s = 0.0, k = l; k < n; k++) 
+							s += (u[i*n+k] * v[k*n+j]);
+						for (k = l; k < n; k++) 
+							v[k*n+j] += (s * v[k*n+i]);
 					}
-					else
-					{
-						for(int j=i;j<N;j++) house_vec[j]=0;
-					}
-
-					if(S[i*N+i]<0) for(int j=i+1;j<N;j++) house_vec[j]=-house_vec[j];
 				}
-				
-				for(int k=i;k<N;k++)
-				{
-					INMOST_DATA_REAL_TYPE dot_prod=0;
-					for(int j=i;j<N;j++) dot_prod+=S[j*N+k]*house_vec[j];
-					
-					for(int j=i;j<N;j++) S[j*N+k]-=dot_prod*house_vec[j];
-				}
-				
-				for(int k=0;k<N;k++)
-				{
-					INMOST_DATA_REAL_TYPE dot_prod=0;
-					for(int j=i;j<N;j++) dot_prod+=U[k*N+j]*house_vec[j];
-					for(int j=i;j<N;j++) U[k*N+j]-=dot_prod*house_vec[j];
-				}
-
-				// Row Householder
-				if(i>=N-1) continue;
-
-				{
-					INMOST_DATA_REAL_TYPE x1=S[i*N+(i+1)];
-					if(x1<0) x1=-x1;
-
-					INMOST_DATA_REAL_TYPE x_inv_norm=0;
-					for(int j=i+1;j<N;j++) x_inv_norm+=S[i*N+j]*S[i*N+j];
-					if( x_inv_norm ) 
-					{
-						x_inv_norm=1/sqrt(x_inv_norm);
-
-						INMOST_DATA_REAL_TYPE alpha=sqrt(1+x1*x_inv_norm);
-						INMOST_DATA_REAL_TYPE beta=x_inv_norm/alpha;
-
-						house_vec[i+1]=-alpha;
-						for(int j=i+2;j<N;j++) house_vec[j]=-beta*S[i*N+j];
-					}
-					else for(int j=i+1;j<N;j++) house_vec[j] = 0;
-					
-					if(S[i*N+(i+1)]<0) for(int j=i+2;j<N;j++) house_vec[j]=-house_vec[j];
-				}
-				
-				for(int k=i;k<N;k++)
-				{
-					INMOST_DATA_REAL_TYPE dot_prod=0;
-					for(int j=i+1;j<N;j++) dot_prod+=S[k*N+j]*house_vec[j];
-					for(int j=i+1;j<N;j++) S[k*N+j] -= dot_prod*house_vec[j];
-				}
-				
-				for(int k=0;k<N;k++)
-				{
-					INMOST_DATA_REAL_TYPE dot_prod=0;
-					for(int j=i+1;j<N;j++) dot_prod+=V[j*N+k]*house_vec[j];
-					for(int j=i+1;j<N;j++) V[j*N+k]-=dot_prod*house_vec[j];
-				}
+				for (j = l; j < n; j++) 
+					v[i*n+j] = v[j*n+i] = 0.0;
 			}
+			v[i*n+i] = 1.0;
+			g = rv1[i];
+			l = i;
 		}
 
-		int k0=0;
-		if(eps<0)
+		// accumulate the left-hand transformation
+		for (i = n - 1; i >= 0; i--) 
 		{
-			eps=1.0;
-			while(eps+(INMOST_DATA_REAL_TYPE)1.0>1.0) eps*=0.5;
-			eps*=64.0;
-		}
-		while(k0<N-1)
-		{ // Diagonalization
-			INMOST_DATA_REAL_TYPE S_max=0.0;
-			for(int i=0;i<N;i++) S_max=(S_max > S[i*N+i] ? S_max : S[i*N+i]);
-			while(k0<N-1 && fabs(S[k0*N+(k0+1)])<=eps*S_max) k0++;
-			int k=k0;
-			int n=k0+1;
-			while(n<N && fabs(S[(n-1)*N+n])>eps*S_max) n++;
-
-			INMOST_DATA_REAL_TYPE mu=0;
-			{ // Compute mu
-				INMOST_DATA_REAL_TYPE C[2][2];
-				C[0][0]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-2)];
-				if( n-k0 > 2 ) C[0][0] += S[(n-3)*N+(n-2)]*S[(n-3)*N+(n-2)]; 
-				C[0][1]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-1)];
-				C[1][0]=S[(n-2)*N+(n-2)]*S[(n-2)*N+(n-1)]; 
-				C[1][1]=S[(n-1)*N+(n-1)]*S[(n-1)*N+(n-1)]+S[(n-2)*N+(n-1)]*S[(n-2)*N+(n-1)];
-				INMOST_DATA_REAL_TYPE b =-(C[0][0]+C[1][1])/2;
-				INMOST_DATA_REAL_TYPE c =  C[0][0]*C[1][1] - C[0][1]*C[1][0];
-				INMOST_DATA_REAL_TYPE d = 0;
-				if( b*b-c > 0 )
-					d= sqrt(b*b-c); //may there be any roundoff problem?
-				else
-				{
-					b =(C[0][0]-C[1][1])/2;
-					c =-C[0][1]*C[1][0];
-					if( b*b-c > 0 ) d = sqrt(b*b-c);
-				}
-				INMOST_DATA_REAL_TYPE lambda1 = -b+d;
-				INMOST_DATA_REAL_TYPE lambda2 = -b-d;
-				INMOST_DATA_REAL_TYPE d1 = lambda1-C[1][1]; d1 = (d1<0?-d1:d1);
-				INMOST_DATA_REAL_TYPE d2 = lambda2-C[1][1]; d2 = (d2<0?-d2:d2);
-				mu = (d1<d2?lambda1:lambda2);
-			}
-
-			INMOST_DATA_REAL_TYPE alpha = S[k*N+k] * S[k*N+k] - mu;
-			INMOST_DATA_REAL_TYPE beta  = S[k*N+k] * S[k*N+(k+1)];
-
-			for(;k<N-1;k++)
+			l = i + 1;
+			g = w[i];
+			if (i < n - 1) 
+				for (j = l; j < n; j++) 
+					u[i*n+j] = 0.0;
+			if (g) 
 			{
-				GivensR(S,N,k,alpha,beta);
-				GivensL(V,N,k,alpha,beta);
+				g = 1.0 / g;
+				if (i != n - 1) 
+				{
+					for (j = l; j < n; j++) 
+					{
+						for (s = 0.0, k = l; k < n; k++) 
+							s += (u[k*n+i] * u[k*n+j]);
+						f = (s / u[i*n+i]) * g;
+						for (k = i; k < n; k++) 
+							u[k*n+j] += (f * u[k*n+i]);
+					}
+				}
+				for (j = i; j < n; j++) 
+					u[j*n+i] = (u[j*n+i]*g);
+			}
+			else 
+			{
+				for (j = i; j < n; j++) 
+					u[j*n+i] = 0.0;
+			}
+			++u[i*n+i];
+		}
 
-				alpha = S[k*N+k];
-				beta  = S[(k+1)*N+k];
-				GivensL(S,N,k,alpha,beta);
-				GivensR(U,N,k,alpha,beta);
+		// diagonalize the bidiagonal form
+		for (k = n - 1; k >= 0; k--) 
+		{                             
+			// loop over singular values 
+			for (its = 0; its < 30; its++) 
+			{                         
+				// loop over allowed iterations
+				flag = 1;
+				for (l = k; l >= 0; l--) 
+				{                     
+					// test for splitting 
+					nm = l - 1;
+					if (fabs(rv1[l]) + anorm == anorm) 
+					{
+						flag = 0;
+						break;
+					}
+					if (fabs(w[nm]) + anorm == anorm) 
+						break;
+				}
+				if (flag) 
+				{
+					c = 0.0;
+					s = 1.0;
+					for (i = l; i <= k; i++) 
+					{
+						f = s * rv1[i];
+						if (fabs(f) + anorm != anorm) 
+						{
+							g = w[i];
+							h = PYTHAG(f, g);
+							w[i] = h; 
+							h = 1.0 / h;
+							c = g * h;
+							s = (- f * h);
+							for (j = 0; j < n; j++) 
+							{
+								y = u[j*n+nm];
+								z = u[j*n+i];
+								u[j*n+nm] = (y * c + z * s);
+								u[j*n+i] = (z * c - y * s);
+							}
+						}
+					}
+				}
+				z = w[k];
+				if (l == k) 
+				{                  
+					// convergence
+					if (z < 0.0) 
+					{              
+						// make singular value nonnegative
+						w[k] = (-z);
+						for (j = 0; j < n; j++) 
+							v[j*n+k] = (-v[j*n+k]);
+					}
+					break;
+				}
+				if (its >= 30) 
+				{
+					fprintf(stderr, "No convergence after 30,000! iterations \n");
+					return 1;
+				}
 
-				alpha = S[k*N+(k+1)];
-				beta  = S[k*N+(k+2)];
+				// shift from bottom 2 x 2 minor
+				x = w[l];
+				nm = k - 1;
+				y = w[nm];
+				g = rv1[nm];
+				h = rv1[k];
+				f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
+				g = PYTHAG(f, 1.0);
+				f = ((x - z) * (x + z) + h * ((y / (f + SIGNFUNC(g, f))) - h)) / x;
+
+				// next QR transformation
+				c = s = 1.0;
+				for (j = l; j <= nm; j++) 
+				{
+					i = j + 1;
+					g = rv1[i];
+					y = w[i];
+					h = s * g;
+					g = c * g;
+					z = PYTHAG(f, h);
+					rv1[j] = z;
+					c = f / z;
+					s = h / z;
+					f = x * c + g * s;
+					g = g * c - x * s;
+					h = y * s;
+					y = y * c;
+					for (jj = 0; jj < n; jj++) 
+					{
+						x = v[jj*n+j];
+						z = v[jj*n+i];
+						v[jj*n+j] = (x * c + z * s);
+						v[jj*n+i] = (z * c - x * s);
+					}
+					z = PYTHAG(f, h);
+					w[j] = z;
+					if (z) 
+					{
+						z = 1.0 / z;
+						c = f * z;
+						s = h * z;
+					}
+					f = (c * g) + (s * y);
+					x = (c * y) - (s * g);
+					for (jj = 0; jj < n; jj++) 
+					{
+						y = u[jj*n+j];
+						z = u[jj*n+i];
+						u[jj*n+j] = (y * c + z * s);
+						u[jj*n+i] = (z * c - y * s);
+					}
+				}
+				rv1[l] = 0.0;
+				rv1[k] = f;
+				w[k] = x;
 			}
 		}
-		for(int i=0;i<N;i++)
+
+		for(int i = 0; i < n; i++)
 		{
 			INMOST_DATA_REAL_TYPE temp;
-			for(int j=i+1;j<N;j++)
+			for(int j = i + 1; j < n; j++)
 			{
-				temp = U[i+N*j];
-				U[i+N*j] = U[j+N*i];
-				U[j+N*i] = temp;
-
-				temp = V[i+N*j];
-				V[i+N*j] = V[j+N*i];
-				V[j+N*i] = temp;
+				temp = u[i+n*j];
+				u[i+n*j] = u[j+n*i];
+				u[j+n*i] = temp;
 			}
 		}
-		for(int i=0;i<N;i++) if( S[i*N+i] < 0.0 )
+		for(i = 0; i < n; i++)
 		{
-			for(int j=0;j<N;j++)
+			k = i;
+			for(j = i+1; j < n; ++j)
+				if( w[k] < w[j] ) k = j;
+			INMOST_DATA_REAL_TYPE temp;
+			if( w[k] > w[i] )
 			{
-				U[j+N*i] *= -1;
+				temp = w[k];
+				w[k] = w[i];
+				w[i] = temp;
+				for(int j = 0; j < n; ++j)
+				{
+					temp = u[k*n+j];
+					u[k*n+j] = u[i*n+j];
+					u[i*n+j] = temp;
+					temp = v[j*n+k];
+					v[j*n+k] = v[j*n+i];
+					v[j*n+i] = temp;
+				}
 			}
-			S[i*N+i] *= -1;
 		}
+		return 0;
 	}
 #endif //USE_LAPACK_SVD
-#endif //PSEUDOINVERSE
+#else //PSEUDOINVERSE
 	static int solvenxn(INMOST_DATA_REAL_TYPE * A, INMOST_DATA_REAL_TYPE * x, INMOST_DATA_REAL_TYPE * b, int n, int * order)
 	{
 		INMOST_DATA_REAL_TYPE temp, max;
@@ -332,7 +420,7 @@ namespace INMOST
 	
 		return 0;
 	}
-
+#endif //PSEUDOINVERSE
 	class BCGSL_solver : public IterativeMethod
 	{
 		INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
@@ -620,10 +708,50 @@ namespace INMOST
 					int n = l;
 					dgesvd_(&c,&c,&n,&n,tau,&n,w,U,&n,V,&n,work,&lwork,&dgesvd_info);
 #else
-					
-					INMOST_DATA_REAL_TYPE U[128*128], V[128*128], S[128*128], w[128];
-					svdnxn(tau,U,S,V,l);
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) w[j] = S[j*l+j];
+					/*
+					char c = 'A';
+					INMOST_DATA_REAL_TYPE U2[128*128], V2[128*128], w2[128], tau2[128*128];
+					INMOST_DATA_REAL_TYPE work[5*128];
+					int lwork = 5*128;
+					int n = l;
+					memcpy(tau2,tau,sizeof(INMOST_DATA_REAL_TYPE)*l*l);
+					dgesvd_(&c,&c,&n,&n,tau2,&n,w2,U2,&n,V2,&n,work,&lwork,&dgesvd_info);
+					printf("dgesvd\n");
+					printf("w\n");
+					for(int q = 0; q < l; ++q) printf("%g ",w2[q]);
+					printf("\nU\n");
+					for(int q = 0; q < l*l; ++q) 
+					{
+						printf("%g ",U2[q]);
+						if( (q+1)%l == 0 ) printf("\n");
+					}
+					printf("V\n");
+					for(int q = 0; q < l*l; ++q) 
+					{
+						printf("%g ",V2[q]);
+						if( (q+1)%l == 0 ) printf("\n");
+					}
+					*/
+					INMOST_DATA_REAL_TYPE U[128*128], V[128*128], w[128];
+					dgesvd_info = svdnxn(tau,U,w,V,l);
+					//for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) w[j] = S[j*l+j];
+					/*
+					printf("svdnxn\n");
+					printf("w\n");
+					for(int q = 0; q < l; ++q) printf("%g ",w[q]);
+					printf("\nU\n");
+					for(int q = 0; q < l*l; ++q) 
+					{
+						printf("%g ",U[q]);
+						if( (q+1)%l == 0 ) printf("\n");
+					}
+					printf("V\n");
+					for(int q = 0; q < l*l; ++q) 
+					{
+						printf("%g ",V[q]);
+						if( (q+1)%l == 0 ) printf("\n");
+					}
+					*/
 #endif		
 					/*
 					printf("w ");

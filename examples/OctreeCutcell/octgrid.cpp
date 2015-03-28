@@ -23,8 +23,8 @@ void default_vert_init_data(struct grid * g, int vert) {(void) g; (void) vert;};
 void default_cell_init_data(struct grid * g, int cell) {(void) g; (void) cell;};
 void default_vert_destroy_data(struct grid * g, int vert) {(void) g; (void) vert;};
 void default_cell_destroy_data(struct grid * g, int cell) {(void) g; (void) cell;};
-void default_vert_to_INMOST(struct grid * g, int vert, Node * v) {(void) g; (void) vert; (void) v;};
-void default_cell_to_INMOST(struct grid * g, int cell, Cell * r) {(void) g; (void) cell; (void) r;};
+void default_vert_to_INMOST(struct grid * g, int vert, Node v) {(void) g; (void) vert; (void) v;};
+void default_cell_to_INMOST(struct grid * g, int cell, Cell r) {(void) g; (void) cell; (void) r;};
 void default_init_mesh(struct grid * g) {(void ) g;} ;
 
 
@@ -156,17 +156,16 @@ int cellAround(struct grid * g, int m, int side, int neighbours[1<<(DIM-1)])
 void vertDestroyINMOST(struct grid *g, int m)
 {
 	//printf("%s\n",__FUNCTION__);
-	if( g->verts[m].mv != NULL )
+	if( g->verts[m].mv.isValid() && !g->verts[m].mv.Hidden() )
 	{
-		delete g->verts[m].mv;
-		g->verts[m].mv = NULL;
+		g->verts[m].mv->Delete();
 	}
 }
 
 void vertCreateINMOST(struct grid * g, int m)
 {
 	Storage::real xyz[3];
-	if( g->verts[m].mv != NULL ) return;
+	if( g->verts[m].mv.isValid() ) return;
 	vertGetCoord(g,m,xyz);
 	g->transformation(xyz);
 	g->verts[m].mv = g->mesh->CreateNode(xyz);
@@ -183,7 +182,8 @@ void cellDestroyINMOST(struct grid * g, int m)
 		std::vector<Storage::integer> other_del;
 		for(int k = 0; k < g->cells[m].mr->size(); k++)
 		{
-			Storage::integer_array p = (*g->cells[m].mr)[k]->IntegerArray(g->parent);
+			Cell ck = Cell(g->mesh,(*g->cells[m].mr)[k]);
+			Storage::integer_array p = ck->IntegerArray(g->parent);
 			for(int j = 0; j < p.size(); j++) if( p[j] != m )
 			{
 				other_del.push_back(p[j]); //this cell is united, should delete it's other parents
@@ -194,24 +194,24 @@ void cellDestroyINMOST(struct grid * g, int m)
 						break;
 					}
 			}
-			adjacent<Face> faces = (*g->cells[m].mr)[k]->getFaces();
-			adjacent<Edge> edges = (*g->cells[m].mr)[k]->getEdges();
-			adjacent<Node> nodes = (*g->cells[m].mr)[k]->getNodes();
-			delete (*g->cells[m].mr)[k];
-			for(adjacent<Face>::iterator f = faces.begin(); f != faces.end(); f++)
+			ElementArray<Face> faces = ck->getFaces();
+			ElementArray<Edge> edges = ck->getEdges();
+			ElementArray<Node> nodes = ck->getNodes();
+			ck->Delete();
+			for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
 			{
 				if( f->nbAdjElements(CELL) == 0 ) 
-					delete &*f;
+					f->Delete();
 			}
-			for(adjacent<Edge>::iterator e = edges.begin(); e != edges.end(); e++)
+			for(ElementArray<Edge>::iterator e = edges.begin(); e != edges.end(); e++)
 			{
 				if( e->nbAdjElements(FACE) == 0 ) 
-					delete &*e;
+					e->Delete();
 			}
-			for(adjacent<Node>::iterator e = nodes.begin(); e != nodes.end(); e++)
+			for(ElementArray<Node>::iterator e = nodes.begin(); e != nodes.end(); e++)
 			{
 				if( !e->GetMarker(g->octree_node) && e->nbAdjElements(EDGE) == 0)
-					delete &*e;
+					e->Delete();
 			}
 		}
 		g->cells[m].mr->clear();
@@ -290,7 +290,7 @@ int vertGetMiddle(struct grid * g, int m, int side, int edge)
 	return -1;
 }
 
-void cellGetFaceVerts(struct grid * g, int m, int side, int * nverts, Node * verts[54], bool * mid,int * faces,  int reverse)
+void cellGetFaceVerts(struct grid * g, int m, int side, int * nverts, Node verts[54], bool * mid,int * faces,  int reverse)
 {
 	int i,middle;
 	const int nvf[6][4] = {{0,4,6,2},{1,3,7,5},{0,1,5,4},{2,6,7,3},{0,2,3,1},{4,5,7,6}};
@@ -319,32 +319,32 @@ void cellGetFaceVerts(struct grid * g, int m, int side, int * nverts, Node * ver
 
 
 
-std::vector<Edge *> traverse_edges_sub(Edge * start, Edge * current, MarkerType edgeset, MarkerType visited_bridge, MarkerType visited_edge)
+std::vector<Edge> traverse_edges_sub(Edge start, Edge current, MarkerType edgeset, MarkerType visited_bridge, MarkerType visited_edge)
 {
 	//~ if( current == start ) return std::vector<Edge *> (1,start);
-	std::vector< std::vector<Edge *> > paths;
-	adjacent<Node> n = current->getNodes();
+	std::vector< std::vector<Edge> > paths;
+	ElementArray<Node> n = current->getNodes();
 	for(int j = 0; j < n.size(); j++)
 	{
 		if( !n[j].GetMarker(visited_bridge) )
 		{
 			n[j].SetMarker(visited_bridge);
-			adjacent<Edge> e = n[j].getEdges();
+			ElementArray<Edge> e = n[j].getEdges();
 			for(int i = 0; i < e.size(); i++) 
 			{
-				if( &e[i] == start ) 
+				if( e[i] == start ) 
 				{
 					n[j].RemMarker(visited_bridge);
-					return std::vector<Edge *> (1,start);
+					return std::vector<Edge> (1,start);
 				}
 				if( e[i].GetMarker(edgeset) && !e[i].GetMarker(visited_edge) )
 				{
 					e[i].SetMarker(visited_edge);
-					std::vector<Edge *> ret = traverse_edges_sub(start,&e[i],edgeset,visited_bridge,visited_edge);
+					std::vector<Edge> ret = traverse_edges_sub(start,e[i],edgeset,visited_bridge,visited_edge);
 					e[i].RemMarker(visited_edge);
 					if( !ret.empty() )  
 					{
-						ret.push_back(&e[i]);
+						ret.push_back(e[i]);
 						paths.push_back(ret);
 					}
 				}
@@ -362,14 +362,14 @@ std::vector<Edge *> traverse_edges_sub(Edge * start, Edge * current, MarkerType 
 		}
 		return paths[min];
 	}
-	return std::vector<Edge *>();
+	return std::vector<Edge>();
 }
 //This function may be slow, because we collect all the arrays
 //should detect shortest path here, then collect one array with shortest path
-std::vector<Edge *> traverse_edges(Edge * start, MarkerType edgeset, MarkerType visited_bridge, MarkerType visited_edge)
+std::vector<Edge> traverse_edges(Edge start, MarkerType edgeset, MarkerType visited_bridge, MarkerType visited_edge)
 {
-	std::vector< std::vector<Edge *> > paths;
-	adjacent<Node> n = start->getNodes();
+	std::vector< std::vector<Edge> > paths;
+	ElementArray<Node> n = start->getNodes();
 	start->SetMarker(visited_edge);
 	//~ std::cout << "start edge " << start << std::endl;
 	for(int j = 0; j < n.size(); j++)
@@ -378,16 +378,16 @@ std::vector<Edge *> traverse_edges(Edge * start, MarkerType edgeset, MarkerType 
 		{
 			//~ std::cout  << "enter to the bridge " << &n[j] << " " << n[j].Coords()[0] << "," << n[j].Coords()[1] << "," << n[j].Coords()[2] << std::endl;
 			n[j].SetMarker(visited_bridge);
-			adjacent<Edge> e = n[j].getEdges();
+			ElementArray<Edge> e = n[j].getEdges();
 			for(int i = 0; i < e.size(); i++) 
 				if( e[i].GetMarker(edgeset) && !e[i].GetMarker(visited_edge) )
 				{
 					e[i].SetMarker(visited_edge);
-					std::vector<Edge *> ret = traverse_edges_sub(start,&e[i],edgeset,visited_bridge,visited_edge);
+					std::vector<Edge> ret = traverse_edges_sub(start,e[i],edgeset,visited_bridge,visited_edge);
 					e[i].RemMarker(visited_edge);
 					if( !ret.empty() )  
 					{
-						ret.push_back(&e[i]);
+						ret.push_back(e[i]);
 						paths.push_back(ret);
 					}
 				}
@@ -405,7 +405,7 @@ std::vector<Edge *> traverse_edges(Edge * start, MarkerType edgeset, MarkerType 
 		}
 		return paths[min];
 	}
-	return std::vector<Edge *>();
+	return std::vector<Edge>();
 }
 
 class matcenter
@@ -474,7 +474,7 @@ class incident_matrix
 	dynarray< unsigned char, 4096 > matrix;
 	dynarray< char ,256 > visits;
 	dynarray< T , 256> head_column;
-	dynarray<Element *, 256> head_row;
+	dynarray<Element, 256> head_row;
 	dynarray<unsigned char ,256> head_row_count;
 	dynarray<unsigned, 256> insert_order;
 	bool exit_recurse;
@@ -764,20 +764,20 @@ public:
 			{
 				unsigned k = it-head_column.begin();
 				visits[k] = k < num_inner ? 2 : 1;
-				adjacent<Element> sub = (*it)->getAdjElements((*it)->GetElementType() >> 1);
-				for(adjacent<Element>::iterator jt = sub.begin(); jt != sub.end(); ++jt)
+				ElementArray<Element> sub = (*it)->getAdjElements((*it)->GetElementType() >> 1);
+				for(ElementArray<Element>::iterator jt = sub.begin(); jt != sub.end(); ++jt)
 					if( !jt->GetMarker(hide_marker) )
 					{
-						head_row.push_back(&*jt);
+						head_row.push_back(jt->self());
 						jt->SetMarker(hide_marker);
 					}
 			}
 			
 			
 			
-			tiny_map<Element *,int,256> mat_num;
+			tiny_map<Element,int,256> mat_num;
 			
-			for(dynarray<Element *,256>::iterator it = head_row.begin(); it != head_row.end(); ++it)
+			for(dynarray<Element,256>::iterator it = head_row.begin(); it != head_row.end(); ++it)
 			{
 				(*it)->RemMarker(hide_marker);
 				mat_num[*it] = it-head_row.begin();
@@ -791,10 +791,10 @@ public:
 			
 			for(typename dynarray<T,256>::iterator it = head_column.begin(); it != head_column.end(); ++it)
 			{
-				adjacent<Element> sub = (*it)->getAdjElements((*it)->GetElementType() >> 1);
-				for(adjacent<Element>::iterator jt = sub.begin(); jt != sub.end(); ++jt)
+				ElementArray<Element> sub = (*it)->getAdjElements((*it)->GetElementType() >> 1);
+				for(ElementArray<Element>::iterator jt = sub.begin(); jt != sub.end(); ++jt)
 				{
-					matrix[(it-head_column.begin())*head_row.size()+mat_num[&*jt]] = 1;
+					matrix[(it-head_column.begin())*head_row.size()+mat_num[jt->self()]] = 1;
 				}
 			}
 			
@@ -829,7 +829,7 @@ public:
 	~incident_matrix()
 	{
 	}
-	bool find_shortest_loop(dynarray<T,32> & ret)
+	bool find_shortest_loop(ElementArray<T> & ret)
 	{
 		ret.clear();
 		exit_recurse = false;
@@ -851,7 +851,9 @@ public:
 			}
 		} while( min_loop.empty() && first != UINT_MAX );
 		
-		ret.insert(ret.end(),min_loop.begin(),min_loop.end());
+		for(dynarray<T,64>::iterator it = min_loop.begin(); it != min_loop.end(); ++it)
+			ret.push_back(it->self());
+		//ret.insert(ret.end(),min_loop.begin(),min_loop.end());
 		min_loop.clear();
 		
 		if( !ret.empty() )
@@ -878,7 +880,7 @@ class edge_Comparator
 	private: MarkerType medge;
 	public:
 		edge_Comparator(MarkerType medge):medge(medge){}
-		bool operator()(Edge * a, Edge * b){return a->GetMarker(medge) < b->GetMarker(medge);}
+		bool operator()(Edge a, Edge b){return a->GetMarker(medge) < b->GetMarker(medge);}
 	};
 
 
@@ -905,7 +907,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 		//~ print = true;
 		//~ trigger_problem = 100;
 	//~ }
-	Node * edge_nodes[2];
+	ElementArray<Node> edge_nodes(g->mesh,2);
 	const bool check = false;
 	const int nvf[6][4] = {{0,4,6,2},{1,3,7,5},{0,1,5,4},{2,6,7,3},{0,2,3,1},{4,5,7,6}};
 	int i,j,k,l,nn, neighbours[1<<(DIM-1)];
@@ -913,7 +915,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 	bool mid[24][9];
 	int sides[24];
 	int dirs[24];
-	Node * verts[216];
+	Node verts[216];
 	if( !g->cells[m].mr->empty() ) return;
 	k = l = 0;
 	for(j = 0; j < 6; j++)
@@ -1017,31 +1019,32 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 	
 	if( !cutcell )
 	{
-		dynarray<Face *,24> c_faces;
-		Edge * f_edges[8];
+		ElementArray<Face> c_faces;
+		ElementArray<Edge> f_edges(g->mesh);
 		for(i = 0; i < l; i++)
 		{
+			f_edges.resize(faces[i][0]);
 			for(j = 0; j < faces[i][0]; j++)
 			{
 				
 				edge_nodes[0] = verts[faces[i][1+j]];
 				edge_nodes[1] = verts[faces[i][1+(j+1)%faces[i][0]]];
-				f_edges[j] = g->mesh->CreateEdge(edge_nodes, 2).first;
+				f_edges[j] = g->mesh->CreateEdge(edge_nodes).first;
 			}
-			Face * new_face = g->mesh->CreateFace(f_edges, faces[i][0]).first;
+			Face new_face = g->mesh->CreateFace(f_edges).first;
 			c_faces.push_back(new_face);
 		}
-		Cell * c = g->mesh->CreateCell(&c_faces[0], c_faces.size()).first;
+		Cell c = g->mesh->CreateCell(c_faces).first;
 		if( print ) 
 		{
-			std::cout << __FILE__ << ":" << __LINE__ << " new cell " << c << " id " << c->LocalID() << " type " << Element::GeometricTypeName(c->GetGeometricType()) << " nodes " << c->nbAdjElements(NODE) << std::endl;
-			adjacent<Element> nodes = c->getAdjElements(NODE);
+			std::cout << __FILE__ << ":" << __LINE__ << " new cell " << c->GetHandle() << " id " << c->LocalID() << " type " << Element::GeometricTypeName(c->GetGeometricType()) << " nodes " << c->nbAdjElements(NODE) << std::endl;
+			ElementArray<Element> nodes = c->getAdjElements(NODE);
 			for(j = 0; j < nodes.size(); j++)
 				std::cout << "node[" << j << "]: " << nodes[j].LocalID() << std::endl;
 		}
 		c->Integer(g->parent) = m;
-		g->cells[m].mr->push_back(c);
-		g->cells[m].mr->back()->Integer(g->cell_material) = mat[0];
+		g->cells[m].mr->push_back(c->GetHandle());
+		c->Integer(g->cell_material) = mat[0];
 	}
 	
 	else
@@ -1051,23 +1054,23 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 		MarkerType edge_on_edge = g->mesh->CreateMarker();
 		MarkerType multi_edge   = g->mesh->CreateMarker();
 		
-		dynarray<Element *,16> en1;
+		dynarray<Element,16> en1;
 		tiny_map<int,int, 64> edges_mat;
-		dynarray<Edge *,128> face_edges;
-		dynarray<Edge *,128> potential_edges;
-		dynarray<Edge *,128> skipped_edges;
-		dynarray<dynarray<Node *,128> ,24> edge_cut_nodes(l);
-		dynarray<dynarray<Node *,128> ,24> edge_cut_nodes2(l);
-		dynarray<Element *,128> face_elements; // collect nodes and edges here in good order (normal outside)
+		dynarray<Edge,128> face_edges;
+		dynarray<Edge,128> potential_edges;
+		dynarray<Edge,128> skipped_edges;
+		dynarray<dynarray<Node,128> ,24> edge_cut_nodes(l);
+		dynarray<dynarray<Node,128> ,24> edge_cut_nodes2(l);
+		dynarray<Element,128> face_elements; // collect nodes and edges here in good order (normal outside)
 		dynarray<Storage::integer,64> mat_intersection, mat_union, matse0,matse1;
 		mat_ret_type mat0d,mat2d;
-		dynarray<Node *,24> node_in_face(l,static_cast<Node*>(NULL));
-		dynarray<Face *,128> faces_on_face;
-		dynarray<Face *,128> inner_faces;
+		dynarray<Node,24> node_in_face(l,InvalidNode());
+		dynarray<HandleType,128> faces_on_face;
+		dynarray<Face,128> inner_faces;
 		dynarray<int,64> can_skip, cannot_skip, skip_mats;
 		tiny_map<int,int,64> mat_cuts_on_edge[4];
-		tiny_map<int, dynarray<Edge *,128> ,64> edges_by_material; // edges that lay inside inital octree face
-		Node * split_node[1];
+		tiny_map<int, dynarray<Edge,128> ,64> edges_by_material; // edges that lay inside inital octree face
+		ElementArray<Node> split_node(g->mesh,1);
 		if( print ) std::cout << "calculate cutcell" << std::endl;
 
 	
@@ -1094,9 +1097,9 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 				bool cut_edge = false;
 				if( !mid[i][1+j] ) edge_side++;
 				if( edge_side > 3 ) throw -1;
-				Node * n0 = verts[faces[i][1+j]];
-				Node * n1 = NULL;
-				Node * n2 = verts[faces[i][1+(j+1)%faces[i][0]]];
+				Node n0 = verts[faces[i][1+j]];
+				Node n1 = InvalidNode();
+				Node n2 = verts[faces[i][1+(j+1)%faces[i][0]]];
 				Storage::integer_array mat0 = n0->IntegerArray( g->materials );
 				Storage::integer_array mat2 = n2->IntegerArray( g->materials );
 				
@@ -1142,14 +1145,14 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 				{
 					if( print ) std::cout << "edge " << j << " is cut!" << std::endl;
 					en1.clear();
-					adjacent<Element> nodesn0 = n0->BridgeAdjacencies(EDGE,NODE);
-					adjacent<Element> nodesn2 = n2->BridgeAdjacencies(EDGE,NODE);
+					ElementArray<Element> nodesn0 = n0->BridgeAdjacencies(EDGE,NODE);
+					ElementArray<Element> nodesn2 = n2->BridgeAdjacencies(EDGE,NODE);
 					MarkerType inter = g->mesh->CreateMarker();
 					
 					if( inter == 0 ) throw -1;
 					
 					for(k = 0; k < nodesn0.size(); k++) nodesn0[k].SetMarker(inter);
-					for(k = 0; k < nodesn2.size(); k++) if( nodesn2[k].GetMarker(inter) )	en1.push_back(&nodesn2[k]);
+					for(k = 0; k < nodesn2.size(); k++) if( nodesn2[k].GetMarker(inter) )	en1.push_back(nodesn2[k]);
 					for(k = 0; k < nodesn0.size(); k++)	nodesn0[k].RemMarker(inter);
 					g->mesh->ReleaseMarker(inter);
 					
@@ -1157,7 +1160,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 					if( print ) std::cout << "candidates: " << en1.size() << std::endl;
 
 					{
-						n1 = NULL;
+						n1 = InvalidNode();
 						double v1[3], v2[3];
 						make_vec(&n0->Coords()[0],&n2->Coords()[0],v1);
 						double l1 = sqrt(dot_prod(v1,v1)), l2;
@@ -1193,7 +1196,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 						}	
 					}
 					
-					if( n1 == NULL ) // node not found, create
+					if( n1 == InvalidNode() ) // node not found, create
 					{
 						if( print ) std::cout << "node not found - create one" << std::endl;
 						Storage::real coord[3], coord2[3];
@@ -1288,14 +1291,14 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 					{
 					
 						Storage::integer_array mat1 = n1->IntegerArray(g->materials);
-						Edge * e0, * e2;
+						Edge e0, e2;
 						
 						edge_cut_nodes[i].push_back(n1);
 						num_good_cuts++;
 						
 						edge_nodes[0] = n0;
 						edge_nodes[1] = n1;
-						e0 = g->mesh->CreateEdge(edge_nodes, 2).first;
+						e0 = g->mesh->CreateEdge(edge_nodes).first;
 						Storage::integer_array emat0 = e0->IntegerArray(g->materials);
 
 						if( print ) std::cout << "new edge " << e0->LocalID() << std::endl;
@@ -1329,7 +1332,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 						
 						edge_nodes[0] = n1;
 						edge_nodes[1] = n2;
-						e2 = g->mesh->CreateEdge(edge_nodes, 2).first;
+						e2 = g->mesh->CreateEdge(edge_nodes).first;
 						Storage::integer_array emat2 = e2->IntegerArray(g->materials);
 
 						if( print ) std::cout << "new edge " << e2->LocalID() << std::endl;
@@ -1366,10 +1369,10 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 				if( !cut_edge ) // regular edge
 				{
 					if( print ) std::cout << "edge " << j << " have no cut" << std::endl;
-					Edge * e0;
+					Edge e0;
 					edge_nodes[0] = n0;
 					edge_nodes[1] = n2;
-					e0 = g->mesh->CreateEdge(edge_nodes, 2).first;
+					e0 = g->mesh->CreateEdge(edge_nodes).first;
 					Storage::integer_array emat0 = e0->IntegerArray(g->materials);
 					
 					if( emat0.empty() )
@@ -1412,7 +1415,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 				cannot_skip.clear();
 				can_skip.clear();
 				
-				for(dynarray<Element *, 128>::iterator it = face_elements.begin(); it != face_elements.end(); ++it)
+				for(dynarray<Element, 128>::iterator it = face_elements.begin(); it != face_elements.end(); ++it)
 					if( (*it)->GetElementType() == EDGE )
 					{
 						Storage::integer_array a = (*it)->IntegerArray(g->materials);
@@ -1650,14 +1653,14 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 							{
 								std::cout << "restored " << found << "," << last_q  << std::endl;
 							}
-							Edge * new_edge = NULL;
+							Edge new_edge = InvalidEdge();
 							if( q != found )
 							{
-								edge_nodes[0] = static_cast<Node*>(face_elements[found]);
-								edge_nodes[1] = static_cast<Node*>(face_elements[q]);
+								edge_nodes[0] = face_elements[found]->getAsNode();
+								edge_nodes[1] = face_elements[q]->getAsNode();
 								if( face_elements.size()/2-numedges == 2 ) //check that we don't connect the edge over some node
 								{
-									Element * middle_node = face_elements[(q+2)%face_elements.size()];
+									Element middle_node = face_elements[(q+2)%face_elements.size()];
 									Storage::real cnt0[3], cnt1[3], cntm[3], v1[3], v2[3], l1,l2;
 									edge_nodes[0]->Centroid(cnt0);
 									edge_nodes[1]->Centroid(cnt1);
@@ -1686,7 +1689,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 									}
 									//check that they are not on one line
 								}
-								new_edge = g->mesh->CreateEdge(edge_nodes, 2).first;
+								new_edge = g->mesh->CreateEdge(edge_nodes).first;
 								//~ if( new_edge->LocalID() == 11801 ) std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 								if( print ) std::cout << "connected! " << new_edge->LocalID() << std::endl;
 								if( !new_edge->GetMarker(edge_on_edge) )
@@ -1698,7 +1701,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 									
 									
 									face_edges.push_back(new_edge);
-									if( print ) std::cout << __FILE__ << ":" << __LINE__ << " put " << new_edge << " to face_edges " << face_edges.size() << std::endl;
+									if( print ) std::cout << __FILE__ << ":" << __LINE__ << " put " << new_edge->GetHandle() << " to face_edges " << face_edges.size() << std::endl;
 									
 									
 									Storage::integer_array mat = new_edge->IntegerArray(g->materials);
@@ -1726,7 +1729,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 									if( print ) std::cout << "found existed edge on edge!" << std::endl;
 									
 									face_edges.push_back(new_edge); //the only variant this happen - we have found entire face, thus we need to add this edge, or it will be skipped
-									if( print ) std::cout << __FILE__ << ":" << __LINE__ << " put " << new_edge << " to face_edges " << face_edges.size() << std::endl;
+									if( print ) std::cout << __FILE__ << ":" << __LINE__ << " put " << new_edge->GetHandle() << " to face_edges " << face_edges.size() << std::endl;
 								}
 							}
 							
@@ -1796,7 +1799,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 								}
 								
 								{ //find new face_elements array
-									dynarray<Element *,128> replace;
+									dynarray<Element,128> replace;
 									int started_good = 0, pushed = 0;
 									for(unsigned jj = 0; jj < face_elements.size(); jj++)
 									{
@@ -1807,7 +1810,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 												pushed++;
 												found = replace.size()-1;
 												replace.push_back(new_edge);
-												if( print ) std::cout << "pushed new: " << (new_edge == NULL ? -1 : new_edge->LocalID()) << std::endl;
+												if( print ) std::cout << "pushed new: " << (!new_edge.isValid() ? -1 : new_edge->LocalID()) << std::endl;
 											}
 											
 											if( print ) std::cout << "skipped: " << face_elements[jj]->LocalID() << std::endl;
@@ -1885,7 +1888,7 @@ exit_work:				if( !success )
 				std::cout << "array: " << std::endl;
 				for(unsigned kk = 0; kk < face_elements.size(); kk++)
 				{
-					std::cout << kk << " " << face_elements[kk] << " " << ElementTypeName(face_elements[kk]->GetElementType()) << " " << face_elements[kk]->LocalID() << " materials: ";
+					std::cout << kk << " " << face_elements[kk]->GetHandle() << " " << ElementTypeName(face_elements[kk]->GetElementType()) << " " << face_elements[kk]->LocalID() << " materials: ";
 					Storage::integer_array mats = face_elements[kk]->IntegerArray(g->materials);
 					for(unsigned kkk = 0; kkk < mats.size(); kkk++) std::cout << mats[kkk] << " "; std::cout << std::endl;
 				}
@@ -1912,9 +1915,9 @@ exit_work:				if( !success )
 				if( is_create_center_node )
 				{
 					//try to find the node
-					adjacent<Element> result = face_elements[0]->BridgeAdjacencies(EDGE,NODE);
+					ElementArray<Element> result = face_elements[0]->BridgeAdjacencies(EDGE,NODE);
 					for(k = 2; k < face_elements.size(); k+=2) //all edges
-						result.intersect(face_elements[k]->BridgeAdjacencies(EDGE,NODE));
+						result.Intersect(face_elements[k]->BridgeAdjacencies(EDGE,NODE));
 					
 					
 					if( !result.empty() ) 
@@ -1923,7 +1926,7 @@ exit_work:				if( !success )
 							if( result[k].Integer(g->face_center_node) == 1 ) //(sides[i]/3+1) )
 								node_in_face[i] = result[k].getAsNode();
 					}
-					if( node_in_face[i] == NULL )
+					if( !node_in_face[i].isValid() )
 					{
 						
 						Storage::real coord[3],coord2[3];
@@ -2002,18 +2005,18 @@ exit_work:				if( !success )
 					MarkerType del = g->mesh->CreateMarker();
 					for(j = 1; j < face_elements.size(); j+=2) if( !face_elements[j]->GetMarker(edge_on_edge) ) face_elements[j]->SetMarker(del);
 
-					dynarray<Edge*,128>::iterator it = face_edges.begin();
+					dynarray<Edge,128>::iterator it = face_edges.begin();
 					while(it != face_edges.end())
 						if((*it)->GetMarker(del) ) 
 						{
-							if( print ) std::cout << __FILE__ << ":" << __LINE__ << " erase " << *it;
+							if( print ) std::cout << __FILE__ << ":" << __LINE__ << " erase " << it->GetHandle();
 							it = face_edges.erase(it); 
 							if( print ) std::cout << " to face_edges " << face_edges.size() << std::endl;
 						}
 						else it++;
 						
 					
-					for(tiny_map<int, dynarray<Edge *,128> ,64>::iterator jt = edges_by_material.begin();
+					for(tiny_map<int, dynarray<Edge,128> ,64>::iterator jt = edges_by_material.begin();
 						jt != edges_by_material.end(); ++jt)
 					{
 						it = jt->second.begin();
@@ -2034,7 +2037,7 @@ exit_work:				if( !success )
 						if( !face_elements[j]->GetMarker(edge_on_edge) )
 						{
 							if( print ) std::cout << "EDGE " << face_elements[j]->LocalID() << " is edge on edge, split" << std::endl;
-							dynarray<Edge *,32> result = Edge::SplitEdge(face_elements[j]->getAsEdge(),split_node,1,0);
+							ElementArray<Edge> result = Edge::SplitEdge(face_elements[j]->getAsEdge(),split_node,0);
 
 							for(k = 0; k < result.size(); k++)
 							{
@@ -2050,7 +2053,7 @@ exit_work:				if( !success )
 						
 								if( mat.empty() )
 								{
-									adjacent<Node> nodes = result[k]->getNodes();
+									ElementArray<Node> nodes = result[k]->getNodes();
 									Storage::integer_array mat0 = nodes[0].IntegerArray(g->materials);
 									Storage::integer_array mat1 = nodes[1].IntegerArray(g->materials);
 									mat.resize(std::min(mat0.size(),mat1.size()));
@@ -2067,7 +2070,7 @@ exit_work:				if( !success )
 							for(k = 0; k < 2; k++)
 							{
 								edge_nodes[1] = face_elements[(j-1+k*2)%face_elements.size()]->getAsNode();
-								Edge * new_edge = g->mesh->CreateEdge(edge_nodes, 2).first;
+								Edge new_edge = g->mesh->CreateEdge(edge_nodes).first;
 								new_edge->SetMarker(edge_on_face);
 								new_edge->Integer(g->edge_face_number) = sides[i];
 								
@@ -2117,7 +2120,7 @@ exit_work:				if( !success )
 				std::cout << "array: " << std::endl;
 				for(unsigned kk = 0; kk < face_elements.size(); kk++)
 				{
-					std::cout << kk << " " << face_elements[kk] << " " << ElementTypeName(face_elements[kk]->GetElementType()) << " " << face_elements[kk]->LocalID() << " materials: ";
+					std::cout << kk << " " << face_elements[kk]->GetHandle() << " " << ElementTypeName(face_elements[kk]->GetElementType()) << " " << face_elements[kk]->LocalID() << " materials: ";
 					Storage::integer_array mats = face_elements[kk]->IntegerArray(g->materials);
 					for(unsigned kkk = 0; kkk < mats.size(); kkk++) std::cout << mats[kkk] << " "; std::cout << std::endl;
 				}
@@ -2129,7 +2132,7 @@ exit_work:				if( !success )
 				{
 					
 					face_edges.push_back(face_elements[j]->getAsEdge());
-					if( print ) std::cout << __FILE__ << ":" << __LINE__ << " put " << face_elements[j] << " to face_edges " << face_edges.size() << std::endl;
+					if( print ) std::cout << __FILE__ << ":" << __LINE__ << " put " << face_elements[j]->GetHandle() << " to face_edges " << face_edges.size() << std::endl;
 				}
 			}
 
@@ -2179,10 +2182,10 @@ exit_work:				if( !success )
 				}
 			}
 				
-			incident_matrix<Edge *> matrix(face_edges.begin(),face_edges.end(),num_inner);
+			incident_matrix<Edge> matrix(face_edges.begin(),face_edges.end(),num_inner);
 			
 			
-			dynarray<Edge *,32> loop;
+			ElementArray<Edge> loop(g->mesh);
 			while(matrix.find_shortest_loop(loop))
 			{ 
 				if( print ) std::cout << "found loop " << loop.size() << std::endl;
@@ -2203,7 +2206,7 @@ exit_work:				if( !success )
 							std::cout << std::endl;
 						}
 
-						Face * new_face = g->mesh->CreateFace(&loop[0], loop.size()).first;
+						Face new_face = g->mesh->CreateFace(loop).first;
 					
 					
 					
@@ -2237,13 +2240,13 @@ exit_work:				if( !success )
 						{
 							std::cout << __FILE__ << ":" << __LINE__ << " "  << mat[q] << " added face " << new_face->LocalID() << " neighbours " << new_face->nbAdjElements(CELL) << " ";
 							if( new_face->nbAdjElements(CELL) == 2 )
-								std::cout << new_face->BackCell() << " " <<  new_face->BackCell()->LocalID() << " " << new_face->FrontCell() << " " << new_face->FrontCell()->LocalID() << std::endl;
+								std::cout << new_face->BackCell()->GetHandle() << " " <<  new_face->BackCell()->LocalID() << " " << new_face->FrontCell()->GetHandle() << " " << new_face->FrontCell()->LocalID() << std::endl;
 							else std::cout << std::endl;
 						}
 						//~ faces_by_material[mat[q]].push_back(new_face);
 						
 					}
-					faces_on_face.push_back(new_face);
+					faces_on_face.push_back(new_face->GetHandle());
 				}
 				else if( !loop.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << loop.size() << std::endl;
 			}
@@ -2254,27 +2257,29 @@ exit_work:				if( !success )
 		
 		if( false )
 		{
-			std::vector<Face *> c_faces(faces_on_face.begin(),faces_on_face.end());
+			dynarray<HandleType,128> faces_on_face_copy(faces_on_face);
+			std::sort(faces_on_face_copy.begin(),faces_on_face_copy.end());
+			int old_size = faces_on_face_copy.size();
+			faces_on_face_copy.resize(std::unique(faces_on_face_copy.begin(),faces_on_face_copy.end())-faces_on_face_copy.begin());
+
+			ElementArray<Face> c_faces(g->mesh,faces_on_face.size());
+			for(i = 0; i < faces_on_face.size(); ++i) c_faces.at(i) = faces_on_face[i];
 			//for(std::map<int,std::vector<Face *> >::iterator it = faces_by_material.begin(); it != faces_by_material.end(); ++it)
 			//	c_faces.insert(c_faces.end(),it->second.begin(),it->second.end());
-			
-			std::sort(c_faces.begin(),c_faces.end());
-			int old_size = c_faces.size();
-			c_faces.resize(std::unique(c_faces.begin(),c_faces.end())-c_faces.begin());
-			Cell * c = g->mesh->CreateCell(&c_faces[0], c_faces.size()).first;
-			if( print ) std::cout << __FILE__ << ":" << __LINE__ << " new cell " << c << " id " << c->LocalID() << std::endl;
-			(*g->cells[m].mr).push_back(c);
+			Cell c = g->mesh->CreateCell(c_faces).first;
+			if( print ) std::cout << __FILE__ << ":" << __LINE__ << " new cell " << c->GetHandle() << " id " << c->LocalID() << std::endl;
+			(*g->cells[m].mr).push_back(c->GetHandle());
 			if( c->GetGeometricType() == Element::MultiPolygon ) 
 			{
 				
 				std::cout << "Problem" << std::endl;
 				std::cout << "faces " << l << std::endl;
-				std::map<Edge *, int> edge_visit;
+				std::map<HandleType, int> edge_visit;
 				for(i = 0; i < c_faces.size(); i++)
 				{
-					adjacent<Edge> edges = c_faces[i]->getEdges();
-					for(adjacent<Edge>::iterator it = edges.begin(); it != edges.end(); it++)
-						edge_visit[&*it]++;
+					ElementArray<Edge> edges = c_faces[i]->getEdges();
+					for(ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); it++)
+						edge_visit[it->GetHandle()]++;
 				}
 				for(i = 0; i < l; i++)
 				{
@@ -2296,7 +2301,7 @@ exit_work:				if( !success )
 					for(j = 0; j < edge_cut_nodes[i].size(); j++)
 					{
 						Storage::real_array c = edge_cut_nodes[i][j]->Coords();
-						std::cout << j << " " << edge_cut_nodes[i][j] << " ( " << c[0] << "," << c[1] << "," << c[2] << ") ";
+						std::cout << j << " " << edge_cut_nodes[i][j]->GetHandle() << " ( " << c[0] << "," << c[1] << "," << c[2] << ") ";
 						std::cout << std::endl;
 					}
 					
@@ -2307,7 +2312,7 @@ exit_work:				if( !success )
 
 				//~ throw -1;
 			}
-			(*g->cells[m].mr).back()->Integer(g->cell_material) = c_faces[0]->Integer(g->materials);
+			Cell(g->mesh,(*g->cells[m].mr).back())->Integer(g->cell_material) = c_faces[0]->Integer(g->materials);
 		}
 		else
 		
@@ -2315,11 +2320,11 @@ exit_work:				if( !success )
 			
 			// create a node inside cell if there are more then two nodes on faces
 			
-			Node * cell_center_node = NULL;
+			Node cell_center_node = InvalidNode();
 			
 			int num_face_center_nodes = 0;
 			for(j = 0; j < l; j++)
-				if( node_in_face[j] != NULL )
+				if( node_in_face[j].isValid() )
 					num_face_center_nodes++;
 			
 			//if( m == 2106 ) print = 1;		
@@ -2349,7 +2354,7 @@ exit_work:				if( !success )
 				
 				Storage::real coord[3],coord2[3];
 				dynarray<matcenter,24> centers;
-				for(j = 0; j < l; j++) if( node_in_face[j] != NULL )
+				for(j = 0; j < l; j++) if( node_in_face[j].isValid() )
 					centers.push_back(matcenter(node_in_face[j]->IntegerArray(g->materials),&node_in_face[j]->Coords()[0]));
 				//make iterations to find correct position of the node
 				int max = 4;
@@ -2408,7 +2413,7 @@ exit_work:				if( !success )
 				mat_union.clear();
 				for(j = 0; j < l; j++)
 				{
-					if( node_in_face[j] != NULL )
+					if( node_in_face[j].isValid() )
 					{
 						Storage::integer_array matj = node_in_face[j]->IntegerArray(g->materials);
 						mat_intersection.resize(mat_union.size()+matj.size());
@@ -2421,7 +2426,7 @@ exit_work:				if( !success )
 						
 						edge_nodes[0] = node_in_face[j];
 						edge_nodes[1] = cell_center_node;
-						Edge * new_edge = g->mesh->CreateEdge(edge_nodes, 2).first;
+						Edge new_edge = g->mesh->CreateEdge(edge_nodes).first;
 						//~ if( new_edge->LocalID() == 11801 ) std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 						//~ new_edge->SetMarker(hyper_edge);
 						Storage::integer_array mate = new_edge->IntegerArray(g->materials);
@@ -2431,7 +2436,7 @@ exit_work:				if( !success )
 						for(k = 0; k < mate.size(); k++)
 						{
 							edges_by_material[mate[k]].push_back(new_edge);
-							if( print ) std::cout << __FILE__ << ":" << __LINE__ << " " << mate[k] << " added edge " << new_edge << std::endl;
+							if( print ) std::cout << __FILE__ << ":" << __LINE__ << " " << mate[k] << " added edge " << new_edge->GetHandle() << std::endl;
 						}
 					}
 				}
@@ -2448,7 +2453,7 @@ exit_work:				if( !success )
 						edge_nodes[0] = cell_center_node;
 						edge_nodes[1] = edge_cut_nodes[j][k];
 						
-						Edge * new_edge = g->mesh->CreateEdge(edge_nodes, 2).first;
+						Edge new_edge = g->mesh->CreateEdge(edge_nodes).first;
 						//~ if( new_edge->LocalID() == 11801 ) std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 						//~ new_edge->SetMarker(hyper_edge);
 						Storage::integer_array matjk = edge_cut_nodes[j][k]->IntegerArray(g->materials);
@@ -2463,7 +2468,7 @@ exit_work:				if( !success )
 							for(int q = 0; q < mate.size(); q++)
 							{
 								edges_by_material[mate[q]].push_back(new_edge);
-								if( print ) std::cout << __FILE__ << ":" << __LINE__ << " " << mate[q] << " added edge " << new_edge << std::endl;
+								if( print ) std::cout << __FILE__ << ":" << __LINE__ << " " << mate[q] << " added edge " << new_edge->GetHandle() << std::endl;
 							}
 						}
 						edge_cut_nodes[j][k]->SetMarker(mrk);
@@ -2486,7 +2491,7 @@ exit_work:				if( !success )
 				//just connect them
 				k = 0;
 				for(j = 0; j < l; j++)
-					if( node_in_face[j] != NULL )
+					if( node_in_face[j].isValid() )
 					{
 						eside[k] = sides[j];
 						c1[k] = node_in_face[j]->Coords()[eside[k]/2];
@@ -2499,7 +2504,7 @@ exit_work:				if( !success )
 				
 				
 				
-				Edge * new_edge = g->mesh->CreateEdge(edge_nodes, 2).first;
+				Edge new_edge = g->mesh->CreateEdge(edge_nodes).first;
 				//~ if( new_edge->LocalID() == 11801 ) std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 				//~ new_edge->SetMarker(hyper_edge);
 				Storage::integer_array mate = new_edge->IntegerArray(g->materials);
@@ -2586,7 +2591,7 @@ exit_work:				if( !success )
 				Storage::integer_array mat1,mat2;
 				k = 0;
 				for(j = 0; j < l; j++)
-					if( node_in_face[j] != NULL )
+					if( node_in_face[j].isValid() )
 					{
 						edge_nodes[k++] = node_in_face[j];
 						side = sides[j];
@@ -2622,7 +2627,7 @@ exit_work:				if( !success )
 								
 								edge_nodes[1] = edge_cut_nodes[j][k];
 								
-								Edge * new_edge = g->mesh->CreateEdge(edge_nodes, 2).first;
+								Edge new_edge = g->mesh->CreateEdge(edge_nodes).first;
 								new_edge->SetMarker(multi_edge);
 								//~ if( new_edge->LocalID() == 11801 ) std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 								Storage::integer_array mate = new_edge->IntegerArray(g->materials);
@@ -2757,7 +2762,7 @@ exit_work:				if( !success )
 											{
 												
 												edge_nodes[1] = edge_cut_nodes[k][q2];
-												Edge * new_edge = g->mesh->CreateEdge(edge_nodes, 2).first;
+												Edge new_edge = g->mesh->CreateEdge(edge_nodes).first;
 												if( print ) std::cout << "connect! " << new_edge->LocalID() << std::endl;
 												
 												//~ new_edge->SetMarker(hyper_edge);
@@ -2795,12 +2800,12 @@ exit_work:				if( !success )
 			if( print ) std::cout << "adding potential edges candidates " << potential_edges.size() << std::endl;
 			for(j = 0; j < potential_edges.size(); j++)
 			{
-				adjacent<Face> f = potential_edges[j]->getFaces();
+				ElementArray<Face> f = potential_edges[j]->getFaces();
 				if( print ) std::cout << "potential edge " << potential_edges[j]->LocalID() << " faces ";
 				int num_faces = 0;
 				bool meet_first = false;
 				mat_intersection.clear();
-				for(adjacent<Face>::iterator it = f.begin(); it != f.end(); ++it)
+				for(ElementArray<Face>::iterator it = f.begin(); it != f.end(); ++it)
 				{
 					if( it->GetMarker(face_on_face) )
 					{
@@ -2842,7 +2847,7 @@ exit_work:				if( !success )
 			//Now create all the faces that lay inside the cell
 			
 			if( print ) std::cout << "create inner faces " << m << std::endl;
-			for(tiny_map<int, dynarray<Edge *,128>, 64 >::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
+			for(tiny_map<int, dynarray<Edge,128>, 64 >::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
 			{
 				std::sort(it->second.begin(),it->second.end());
 				it->second.resize(std::unique(it->second.begin(),it->second.end())-it->second.begin());
@@ -2853,7 +2858,7 @@ exit_work:				if( !success )
 					std::cout << "material " << it->first << " total edges " << it->second.size() << std::endl;
 					for(k = 0; k < it->second.size(); k++)
 					{
-						adjacent<Node> n = it->second[k]->getNodes();
+						ElementArray<Node> n = it->second[k]->getNodes();
 						std::cout << k << " " << it->second[k]->LocalID();
 						std::cout << " don't start " << !it->second[k]->GetMarker(edge_on_face);
 						{
@@ -2871,7 +2876,7 @@ exit_work:				if( !success )
 
 				
 				unsigned num_inner_edges = 0, num = 0;
-				dynarray<Edge *,128> edges(it->second.size());
+				dynarray<Edge,128> edges(it->second.size());
 				for(k = 0; k < it->second.size(); k++)
 					if( !it->second[k]->GetMarker(edge_on_face) )
 					{
@@ -2884,7 +2889,7 @@ exit_work:				if( !success )
 				
 				//std::vector<Edge *> & edges = it->second;
 				
-				incident_matrix<Edge *> matrix(edges.begin(),edges.end(),num_inner_edges);
+				incident_matrix<Edge> matrix(edges.begin(),edges.end(),num_inner_edges);
 				
 				
 				/*
@@ -2923,7 +2928,7 @@ exit_work:				if( !success )
 				MarkerType mrk = g->mesh->CreateMarker();
 				int num_loops = 0;
 				
-				dynarray<Edge *,32> loop;
+				ElementArray<Edge> loop(g->mesh);
 				while(matrix.find_shortest_loop(loop))
 				{ 
 					
@@ -2957,7 +2962,7 @@ exit_work:				if( !success )
 						if( print )
 							for(k = 0; k < loop.size(); k++)
 							{
-								std::cout << k << " " << loop[k] << " material";
+								std::cout << k << " " << loop[k]->GetHandle() << " material";
 								Storage::integer_array mat = loop[k]->IntegerArray(g->materials);
 								for(j = 0; j < mat.size(); j++) std::cout << " " << mat[j];
 								for(j = 0; j < edges.size(); j++)
@@ -2973,7 +2978,7 @@ exit_work:				if( !success )
 								std::cout << std::endl;
 							}
 
-							Face * new_face = g->mesh->CreateFace(&loop[0], loop.size()).first;
+							Face new_face = g->mesh->CreateFace(loop).first;
 
 						if( !new_face->GetMarker(face_on_face) )
 						{
@@ -3001,9 +3006,9 @@ exit_work:				if( !success )
 							{
 								if( print ) 
 								{
-									std::cout << __FILE__ << ":" << __LINE__ << " "  << mat[q] << " added face " << new_face << " neighbours " << new_face->nbAdjElements(CELL) << " ";
+									std::cout << __FILE__ << ":" << __LINE__ << " "  << mat[q] << " added face " << new_face->GetHandle() << " neighbours " << new_face->nbAdjElements(CELL) << " ";
 									if( new_face->nbAdjElements(CELL) == 2 )
-										std::cout << new_face->BackCell() << " " <<  new_face->BackCell()->LocalID() << " " << new_face->FrontCell() << " " << new_face->FrontCell()->LocalID() << std::endl;
+										std::cout << new_face->BackCell()->GetHandle() << " " <<  new_face->BackCell()->LocalID() << " " << new_face->FrontCell()->GetHandle() << " " << new_face->FrontCell()->LocalID() << std::endl;
 									else std::cout << std::endl;
 								}
 								//faces_by_material[mat[q]].push_back(new_face);
@@ -3042,14 +3047,16 @@ exit_work:				if( !success )
 			std::sort(faces_on_face.begin(),faces_on_face.end());
 			faces_on_face.resize(std::unique(faces_on_face.begin(),faces_on_face.end())-faces_on_face.begin());
 			unsigned num_inner_faces = inner_faces.size();
-			inner_faces.insert(inner_faces.end(),faces_on_face.begin(),faces_on_face.end());
+
+			for(dynarray<HandleType,128>::iterator it = faces_on_face.begin(); it != faces_on_face.end(); ++it)
+				inner_faces.push_back(Face(g->mesh,*it));
 			
-			incident_matrix<Face *> matrix(inner_faces.begin(),inner_faces.end(),num_inner_faces);
+			incident_matrix<Face> matrix(inner_faces.begin(),inner_faces.end(),num_inner_faces);
 				
 			if( print ) matrix.print_matrix();
 			
 			int loops_found = 0;
-			dynarray<Face *,32> loop;
+			ElementArray<Face> loop;
 			while(matrix.find_shortest_loop(loop))
 			{ 
 				
@@ -3081,8 +3088,8 @@ exit_work:				if( !success )
 					loops_found++;
 					//try
 					{
-						Cell * new_cell = g->mesh->CreateCell(&loop[0], loop.size()).first;
-						if( print ) std::cout << __FILE__ << ":" << __LINE__ << " new cell " << new_cell << " id " << new_cell->LocalID() << std::endl;
+						Cell new_cell = g->mesh->CreateCell(loop).first;
+						if( print ) std::cout << __FILE__ << ":" << __LINE__ << " new cell " << new_cell->GetHandle() << " id " << new_cell->LocalID() << std::endl;
 						
 						
 						//~ if( new_cell->HaveData(g->mesh->TopologyErrorTag() ) )
@@ -3213,7 +3220,7 @@ exit_work:				if( !success )
 								break;
 							}
 						
-						g->cells[m].mr->push_back(new_cell);
+						g->cells[m].mr->push_back(new_cell->GetHandle());
 					}
 					//catch(...) 
 //					{
@@ -3247,8 +3254,8 @@ exit_work:				if( !success )
 		
 		
 		
-		for(tiny_map<int, dynarray<Edge *,128> ,64>::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
-			for(dynarray<Edge *,128>::iterator jt = it->second.begin(); jt != it->second.end(); jt++)
+		for(tiny_map<int, dynarray<Edge,128> ,64>::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
+			for(dynarray<Edge,128>::iterator jt = it->second.begin(); jt != it->second.end(); jt++)
 			{
 				(*jt)->RemMarker(edge_on_face);
 				(*jt)->RemMarker(edge_on_edge);
@@ -3263,8 +3270,8 @@ exit_work:				if( !success )
 		g->mesh->ReleaseMarker(edge_on_face);
 		g->mesh->ReleaseMarker(multi_edge);
 		
-		for(dynarray<Face *,128>::iterator it = faces_on_face.begin(); it != faces_on_face.end(); ++it) // iterate over materials
-			(*it)->RemMarker(face_on_face);
+		for(dynarray<HandleType,128>::iterator it = faces_on_face.begin(); it != faces_on_face.end(); ++it) // iterate over materials
+			Face(g->mesh,*it)->RemMarker(face_on_face);
 		
 		//~ for(std::map<int, std::vector<Face *> >::iterator it = faces_by_material.begin(); it != faces_by_material.end(); ++it) // iterate over materials
 			//~ for(std::vector<Face *>::iterator jt = it->second.begin(); jt != it->second.end(); jt++)
@@ -3273,34 +3280,35 @@ exit_work:				if( !success )
 		
 		for(k = 0; k < g->cells[m].mr->size(); k++)
 		{
-			if( (*g->cells[m].mr)[k]->Integer(g->problem) == 10 )
+			if( Cell(g->mesh,(*g->cells[m].mr)[k])->Integer(g->problem) == 10 )
 			{
-				unsigned nv = (*g->cells[m].mr)[k]->nbAdjElements(NODE);
-				adjacent<Face> faces = (*g->cells[m].mr)[k]->getFaces();
+				Cell ck = Cell(g->mesh,(*g->cells[m].mr)[k]);
+				unsigned nv = ck->nbAdjElements(NODE);
+				ElementArray<Face> faces = ck->getFaces();
 				for(j = 0; j < faces.size(); j++)
 				{
 					if( faces[j].nbAdjElements(NODE) == nv )
 					{
-						Cell * n = (*g->cells[m].mr)[k]->Neighbour(&faces[j]);
-						if( n != NULL )
+						Cell n = ck->Neighbour(faces[j]);
+						if( n.isValid() )
 						{
 							Storage::integer mat = n->Integer(g->cell_material);
-							Cell * unite[2];
-							unite[0] = (*g->cells[m].mr)[k];
+							ElementArray<Cell> unite(g->mesh,2);
+							unite[0] = ck;
 							unite[1] = n;
 							
 							{
 								unsigned q = 0;
 								while(q < g->cells[m].mr->size())
 								{
-									if( (*g->cells[m].mr)[q] == unite[0] || (*g->cells[m].mr)[q] == unite[1] )
+									if( (*g->cells[m].mr)[q] == unite[0]->GetHandle() || (*g->cells[m].mr)[q] == unite[1]->GetHandle() )
 										g->cells[m].mr->erase(g->cells[m].mr->begin()+q);
 									else q++;
 								}
 							}
-							Cell * out = Cell::UniteCells(unite,2,g->octree_node);
+							Cell out = Cell::UniteCells(unite,g->octree_node);
 							//~ std::cout << "cells united! " << out << " id " << out->LocalID() << " parent " << m <<  std::endl;
-							if( out != NULL )
+							if( out.isValid() )
 							{
 								out->Integer(g->cell_material) = mat;
 								out->Integer(g->parent) = m;
@@ -3309,13 +3317,13 @@ exit_work:				if( !success )
 									trigger_problem = 3;
 									throw -1;
 								}
-								g->cells[m].mr->push_back(out);
+								g->cells[m].mr->push_back(out->GetHandle());
 							}
 							else
 							{
 								std::cout << "unite failed" << std::endl;
-								g->cells[m].mr->push_back(unite[0]);
-								g->cells[m].mr->push_back(unite[1]);
+								g->cells[m].mr->push_back(unite[0]->GetHandle());
+								g->cells[m].mr->push_back(unite[1]->GetHandle());
 							}
 						}
 					}
@@ -3329,9 +3337,10 @@ exit_work:				if( !success )
 	Storage::real vsum = 0;
 	for(int k = 0; k < g->cells[m].mr->size(); k++)
 	{
-		g->cell_to_INMOST(g,m,(*g->cells[m].mr)[k]);
-		vsum += (*g->cells[m].mr)[k]->Volume();
-		if( (*g->cells[m].mr)[k]->Volume() <= 0 ) trigger_problem = 1;
+		Cell ck = Cell(g->mesh,(*g->cells[m].mr)[k]);
+		g->cell_to_INMOST(g,m,ck);
+		vsum += ck->Volume();
+		if( ck->Volume() <= 0 ) trigger_problem = 1;
 	}
 	if( vsum < 0 ) trigger_problem = 1;
 	if( fabs(g->cells[m].vol - vsum) > 1e-3 ) 
@@ -3341,7 +3350,7 @@ exit_work:				if( !success )
 	}
 	if( trigger_problem )
 		for(int k = 0; k < g->cells[m].mr->size(); k++)
-			(*g->cells[m].mr)[k]->Integer(g->problem) = trigger_problem;
+			Cell(g->mesh,(*g->cells[m].mr)[k])->Integer(g->problem) = trigger_problem;
 	g->cell_init_data(g,m);
 }
 
@@ -3476,7 +3485,7 @@ void cellInit(struct grid * g, int cell, int parent)
 void vertInit(struct grid * g, int vert)
 {
 	int i;
-	g->verts[vert].mv = NULL;
+	g->verts[vert].mv = InvalidNode();
 	for(i = 0; i < 1<<DIM; i++)
 		g->verts[vert].env[i] = -1;
 }
@@ -3521,10 +3530,10 @@ void gridRecreateINMOST(struct grid * g)
 	if( remove_orphan_elements )
 	{
 	for(Mesh::iteratorFace f = g->mesh->BeginFace(); f != g->mesh->EndFace(); f++)
-		if( f->nbAdjElements(CELL) == 0 ) delete &*f;
+		if( f->nbAdjElements(CELL) == 0 ) f->Delete();
 		
 	for(Mesh::iteratorEdge f = g->mesh->BeginEdge(); f != g->mesh->EndEdge(); f++)
-		if( f->nbAdjElements(CELL) == 0 ) delete &*f;
+		if( f->nbAdjElements(CELL) == 0 ) f->Delete();
 	}
 }
 
@@ -3872,7 +3881,7 @@ void gridInit(struct grid * g, int n[3])
 	g->octree_node = g->mesh->CreateMarker();
 
 	
-	std::map<GeometricData,ElementType> table;
+	Mesh::GeomParam table;
 	table[CENTROID] = FACE | CELL;
 	table[NORMAL] = FACE;
 	table[MEASURE] = FACE | CELL;
@@ -3960,10 +3969,10 @@ void gridInit(struct grid * g, int n[3])
 	if( remove_orphan_elements )
 	{
 		for(Mesh::iteratorFace f = g->mesh->BeginFace(); f != g->mesh->EndFace(); f++)
-			if( f->nbAdjElements(CELL) == 0 ) delete &*f;
+			if( f->nbAdjElements(CELL) == 0 ) f->Delete();
 			
 		for(Mesh::iteratorEdge f = g->mesh->BeginEdge(); f != g->mesh->EndEdge(); f++)
-			if( f->nbAdjElements(CELL) == 0 ) delete &*f;
+			if( f->nbAdjElements(CELL) == 0 ) f->Delete();
 	}
 	
 	
@@ -4130,10 +4139,11 @@ void cellUniteSmallElements(struct grid * g, int m)
 	{
 		restart = false;
 		
-		for(int i = 0; i < g->cells[m].mr->size(); i++) if( !(*g->cells[m].mr)[i]->GetMarker(cell_visited) )
+		for(int i = 0; i < g->cells[m].mr->size(); i++) if( !Cell(g->mesh,(*g->cells[m].mr)[i])->GetMarker(cell_visited) )
 		{
-			(*g->cells[m].mr)[i]->SetMarker(cell_visited);
-			Storage::real cv = (*g->cells[m].mr)[i]->Volume();
+			Cell ci = Cell(g->mesh,(*g->cells[m].mr)[i]);
+			ci->SetMarker(cell_visited);
+			Storage::real cv = ci->Volume();
 			/*
 			if( cv <= 0 || cv > cell_vol*1.5 ) 
 			{
@@ -4150,16 +4160,16 @@ void cellUniteSmallElements(struct grid * g, int m)
 			{
 				//std::cout << "unite cell! " << cv << " " << cell_vol << std::endl;
 				double tttt = Timer();
-				dynarray<Cell *,32> unite;
-				unite.push_back((*g->cells[m].mr)[i]);
+				ElementArray<Cell> unite(g->mesh);
+				unite.push_back(ci);
 				Storage::real unite_vol = cv < 0 ? 0 : cv;
-				Storage::integer mat = (*g->cells[m].mr)[i]->Integer(g->cell_material);
-				adjacent<Face> around = (*g->cells[m].mr)[i]->getFaces();
-				std::map<Cell *, Storage::real> around_cell;
+				Storage::integer mat = ci->Integer(g->cell_material);
+				ElementArray<Face> around = ci->getFaces();
+				std::map<Cell, Storage::real> around_cell;
 				for(int j = 0; j < around.size(); j++)
 				{
-					Cell * c = (*g->cells[m].mr)[i]->Neighbour(&around[j]);
-					if( c != NULL )
+					Cell c = ci->Neighbour(around[j]);
+					if( c.isValid() )
 					{
 						Storage::integer_array pp = c->IntegerArray(g->parent);
 						//if( abs(g->cells[m].level - g->cells[pp[0]].level) > 1 ) continue;
@@ -4173,9 +4183,9 @@ void cellUniteSmallElements(struct grid * g, int m)
 				MarkerType visited = g->mesh->CreateMarker();
 				while(unite_vol/cell_vol < MINVOLFRAC )
 				{
-					std::map<Cell *, Storage::real>::iterator k = around_cell.end();
+					std::map<Cell, Storage::real>::iterator k = around_cell.end();
 					double vol = 0;///*cv < 0? 0 :*/ 1e20;
-					for(std::map<Cell *, Storage::real>::iterator j = around_cell.begin(); j != around_cell.end(); ++j)
+					for(std::map<Cell, Storage::real>::iterator j = around_cell.begin(); j != around_cell.end(); ++j)
 						if( !j->first->GetMarker(visited) && !j->first->GetMarker(skip_current) )
 						{
 							//if( /*cv < 0 ? j->second >= vol :*/ j->second <= vol )
@@ -4190,7 +4200,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 					else
 					{
 						unite.push_back(k->first);
-						if( Cell::TestUniteCells(&unite[0],unite.size(),g->octree_node) )
+						if( Cell::TestUniteCells(unite,g->octree_node) )
 						{
 							unite_vol += k->first->Volume();
 							k->first->SetMarker(visited);
@@ -4202,7 +4212,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 						}
 					}
 				}
-				for(std::map<Cell *, Storage::real>::iterator j = around_cell.begin(); j != around_cell.end(); ++j) 
+				for(std::map<Cell, Storage::real>::iterator j = around_cell.begin(); j != around_cell.end(); ++j) 
 				{
 					j->first->RemMarker(visited);
 					j->first->RemMarker(skip_current);
@@ -4219,8 +4229,11 @@ void cellUniteSmallElements(struct grid * g, int m)
 					MarkerType rem = g->mesh->CreateMarker();
 					for(int j = 0; j < unite.size(); j++) unite[j]->SetMarker(rem);
 					for(int j = 0; j < g->cells[m].mr->size(); j++)
-						if( (*g->cells[m].mr)[j]->GetMarker(rem) )
-							(*g->cells[m].mr)[j]->SetMarker(cell_visited);
+					{
+						Cell cj = Cell(g->mesh,(*g->cells[m].mr)[j]);
+						if( cj->GetMarker(rem) )
+							cj->SetMarker(cell_visited);
+					}
 					//get all the parents that link to united cells
 					std::vector<int> parents;
 					for(int j = 0; j < unite.size(); j++)
@@ -4232,10 +4245,10 @@ void cellUniteSmallElements(struct grid * g, int m)
 					parents.resize(std::unique(parents.begin(),parents.end())-parents.begin());
 					for(int j =0 ; j < parents.size(); j++)
 					{
-						std::vector<Cell *>::iterator it = g->cells[parents[j]].mr->begin();
+						cell_vector::iterator it = g->cells[parents[j]].mr->begin();
 						while(it != g->cells[parents[j]].mr->end())
 						{
-							if( (*it)->GetMarker(rem) )
+							if( g->mesh->GetMarker(*it,rem) )
 								it = g->cells[parents[j]].mr->erase(it);
 							else it++;
 						} 
@@ -4247,12 +4260,12 @@ void cellUniteSmallElements(struct grid * g, int m)
 					
 					//for(int j = 0; j < unite.size(); j++) std::cout << "(" << unite[j]->LocalID() << ", " << unite[j]->Volume() << ") ";
 					//reconstruct cell by outer faces
-					Cell * new_cell = Cell::UniteCells(&unite[0],unite.size(),g->octree_node);
+					Cell new_cell = Cell::UniteCells(unite,g->octree_node);
 
 					//std::cout << "-> (" << new_cell->LocalID() << ", " << new_cell->Volume() << ") " << std::endl;
 					//~ std::cout << "cells united! " << new_cell << " id " << new_cell->LocalID() << " parent " << m <<  std::endl;
 					//~ std::cout << "United cell: " << new_cell << " " << Element::GeometricTypeName(new_cell->GetGeometricType()) << std::endl;
-					if( new_cell != NULL )
+					if( new_cell.isValid() )
 					{
 						/*
 						if( new_cell->GetGeometricType() == Element::MultiPolygon )
@@ -4267,14 +4280,14 @@ void cellUniteSmallElements(struct grid * g, int m)
 						//unite faces
 						if( unite_faces )
 						{
-							std::map<Cell *, std::vector<Face *> > face_list;
-							adjacent<Face> faces = new_cell->getFaces();
-							for(adjacent<Face>::iterator it = faces.begin(); it != faces.end(); it++)
+							std::map<Cell, std::vector<Face> > face_list;
+							ElementArray<Face> faces = new_cell->getFaces();
+							for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); it++)
 							{
-								Cell * c = new_cell->Neighbour(&*it);
-								face_list[c].push_back(&*it);
+								Cell c = new_cell->Neighbour(it->self());
+								face_list[c].push_back(it->self());
 							}
-							for(std::map<Cell *, std::vector<Face *> >::iterator it = face_list.begin(); it != face_list.end(); it++)
+							for(std::map<Cell, std::vector<Face> >::iterator it = face_list.begin(); it != face_list.end(); it++)
 								if( it->second.size() > 1 )
 								{
 									//~ if( it->first == NULL ) //boundary faces, compare normals
@@ -4285,7 +4298,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 										do
 										{
 											Storage::real nrm[3];
-											dynarray<Face *,32> unite;
+											ElementArray<Face> unite(g->mesh);
 											found = false;
 											for(unsigned i = 0; i < it->second.size(); i++)
 												if( !it->second[i]->GetMarker(fv) )
@@ -4307,7 +4320,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 														if( fabs(scal) > 0.99 ) 
 														{
 															unite.push_back(it->second[i]);
-															if( Face::TestUniteFaces(&unite[0],unite.size(),g->octree_node) )
+															if( Face::TestUniteFaces(unite,g->octree_node) )
 																it->second[i]->SetMarker(fv);
 															else 
 															{
@@ -4329,14 +4342,14 @@ void cellUniteSmallElements(struct grid * g, int m)
 														unite[i]->RemMarker(fv);
 													}
 													//std::cout << "unite " << unite.size() << " faces " << std::endl;
-													std::vector<Face *>::iterator qt = it->second.begin();
+													std::vector<Face>::iterator qt = it->second.begin();
 													while(qt != it->second.end())
 														if( (*qt)->GetMarker(rem) )
 															qt = it->second.erase(qt);
 														else ++qt;
 													for(unsigned i = 0; i < unite.size(); i++) unite[i]->RemMarker(rem);
 													g->mesh->ReleaseMarker(rem);
-													Face * ret = Face::UniteFaces(&unite[0],unite.size(),g->octree_node);
+													Face ret = Face::UniteFaces(unite,g->octree_node);
 													
 												}
 												//else std::cout << " no unite faces " << std::endl;
@@ -4354,7 +4367,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 						Storage::integer_array pp = new_cell->IntegerArray(g->parent);
 						for(int j = 0; j < parents.size(); j++)
 						{
-							g->cells[parents[j]].mr->push_back(new_cell);
+							g->cells[parents[j]].mr->push_back(new_cell->GetHandle());
 							pp.push_back(parents[j]);
 						}
 					}
@@ -4362,7 +4375,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 				}
 				else 
 				{
-					(*g->cells[m].mr)[i]->SetMarker(cell_visited);
+					Cell(g->mesh,(*g->cells[m].mr)[i])->SetMarker(cell_visited);
 				}
 				restart = true;
 				break;
@@ -4372,7 +4385,7 @@ void cellUniteSmallElements(struct grid * g, int m)
 		}
 		
 	} while( restart );
-	for(int i = 0; i < g->cells[m].mr->size(); i++) (*g->cells[m].mr)[i]->RemMarker(cell_visited);
+	for(int i = 0; i < g->cells[m].mr->size(); i++) Cell(g->mesh,(*g->cells[m].mr)[i])->RemMarker(cell_visited);
 	g->mesh->ReleaseMarker(cell_visited);
 }
 
