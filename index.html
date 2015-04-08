@@ -48,139 +48,52 @@
 
 
         <h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to INMOST project page.</h3>
+<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to INMOST project page</h3>
 
-	<p> You are advised to have the following directory structure of INMOST resources for further instructions to work: </p>
-	
-	<pre><code>
-INMOST.pages
-INMOST.wiki
-INMOST.lib
-</pre></code>
-	
-	<p><code>INMOST.pages</code> will be used for the site, <code>INMOST.wiki</code> will be used for Wiki resource and <code>INMOST.lib</code> for the library itself.</p>
-
+	<p> INMOST (Integrated Numerical Modelling and Object-oriented Supercomputing Technologies) is a tool for supercomputer simulations characterized by a maximum generality of supported computational meshes, distributed data structure flexibility and cost-effectiveness, as well as cross platform portability. </p>
 
 	<h3>
-		 Setup the repository of this site on your computer
+		Features
 	</h3>
-	<pre><code>
-$ mkdir INMOST.pages
-$ git clone https://github.com/INMOST-DEV/INMOST.git INMOST.pages
-$ cd INMOST.pages
-$ git fetch origin
-$ git checkout gh-pages
-	</code></pre>
 
-	<p> After you make changes to the site you may add them by: </p>
+	<p> INMOST library supports unstructured grids with uniform and mixed topology with arbitrary polyhedral elements. The following mesh formats are supported: </p>
 
-	<pre><code>
-$ git pull
-$ git add .
-$ git commit -m "site update"
-$ git push
-	</code></pre>
+	<ul>
+	    <li> INMOST platform mesh format (.pmf) – import/export </li>
+	    <li> Legacy VTK (.vtk) – import/export </li>
+	    <li> Legacy parallel VTK (.pvtk) – import/export </li>
+	    <li> Gmsh's MSH ASCII format (.msh) – import only </li>
+	    <li> ECLIPSE Grid ASCII format (.grdecl) – import only </li>
+	    <li> General Mesh Viewer format (.gmv) – export only </li>
+	</ul>
 
-	<p> Check <a href="http://www.inmost.org">www.inmost.org</a> online that changes are effective. </p>
+	<p> INMOST library provides internal linear system solvers and supports third party solvers: </p>
+
+	<ul>
+	    <li> Internal solver based on BiCGStab(L) solver with second order ILU factorization as preconditioner </li>
+	    <li> internal solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner </li>
+	    <li> <a href="http://www.mcs.anl.gov/petsc/">PETSc</a> </li>
+	    <li> <a href="http://trilinos.org/">Trilinos</a> (Belos and AztecOO with ML and Ifpack preconditioners) </li>
+	    <li> <a href="http://sorceforge.net/projects/ani3d">Ani3D</a> BiCGStab with ILU2 preconditioner (serial version only)</li>
+	</ul>
+
+	<p> INMOST library provides internal mesh partitioners and supports third party partitioners: </p>
+
+	<ul>
+	    <li> Internal serial only partitioner based on the Reverse Cuthill–McKee algorithm ordering </li>
+	    <li> <a href="http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview">ParMETIS</a> </li>
+	    <li> <a href="http://www.cs.sandia.gov/Zoltan/">Zoltan</a> (Partitioning of HyperGraph, Recursive Coordinate Bisection, Recursive Inertial Bisection, Hilbert Space-Filling Curve partitioning) </li>
+	</ul>
 
 	<h3>
-		Visit INMOST Wiki resources for User Guides
+		Resources
 	</h3>
 
-	Go to <a href="http://wiki.inmost.org">wiki.inmost.org</a> for Wiki resources of the project.
+	<p> User guides are available at <a href="http://wiki.inmost.org">wiki.inmost.org</a>. </p>
+	<p> INMOST library sources are available at <a href="http://lib.inmost.org">lib.inmost.org</a>. </p>
+	<p> Online documentation is available at <a href="http://doxygen.inmost.org">doxygen.inmost.org</a>. </p>
+	<p> Look at <a href="contributors.html">additional information for contributors</a> if you are intereseted in INMOST development. </p>
 
-	<h3>
-		Setup Wiki on your computer to make contributions
-	</h3>
-
-	<pre><code>
-$ mkdir INMOST.wiki
-$ git clone https://github.com/INMOST-DEV/INMOST.wiki.git INMOST.wiki
-$ cd INMOST.wiki
-	</code></pre>
-
-	<p>Now you can edit INMOST wiki pages in Markdown notation and publish them by:</p>
-
-	<pre><code>
-$ git pull
-$ git add .
-$ git commit -m "wiki publish"
-$ git push
-	</code></pre>
-
-	<p> Proceed to wiki pages to check that everything you add looks clean and pretty. </p>
-
-	<h3>
-		Visit INMOST Doxygen documentation
-	</h3>
-
-	Check <a href="http://doxygen.inmost.org">doxygen.inmost.org</a> for Doxygen documentation.
-
-	<h3>
-		Generate local copy of Doxygen documentation
-	</h3>
-	<pre><code>
-$ mkdir INMOST.lib
-$ git clone https://github.com/INMOST-DEV/INMOST.git INMOST.lib
-$ cd INMOST.lib/Documentation
-$ doxygen Doxyfile
-	</code></pre>
-
-
-	<p> Now you can proceed to your <code>INMOST.lib/Documentation/html</code> directory and double click index.html to open Doxygen documentation in browser.</p>
-
-	<p> If you have a folder of this site alongside with the source of your INMOST folder, then you can regenerate doxygen documentation for the site:</p>
-
-	<pre><code>
-$ doxygen Doxyfile_pages
-	</code></pre>
-
-	<p> Then to update the site do the following: </p>
-
-	<pre><code>
-$ cd ../../INMOST.pages
-$ git pull
-$ git add Doxygen/.
-$ git commit -m "update Doxygen documentation"
-$ git push
-	</code></pre>
-
-	<p> Check online that changes are effective. </p>
-
-
-	<h3>
-		Something automatically generated below...
-	</h3>
-
-
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
-
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
-</code></pre>
-
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
-
-<h3>
-<a id="designer-templates" class="anchor" href="#designer-templates" aria-hidden="true"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
-
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
-
-<h3>
-<a id="rather-drive-stick" class="anchor" href="#rather-drive-stick" aria-hidden="true"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
-
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
-
-<h3>
-<a id="authors-and-contributors" class="anchor" href="#authors-and-contributors" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
-
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
-
-<h3>
-<a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
-
-<p>Having trouble with Pages? Check out the documentation at <a href="https://help.github.com/pages">https://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
       </section>
     </div>
 
