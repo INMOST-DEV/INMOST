@@ -47,4 +47,4 @@ else(OPENGL_FOUND)
 endif(OPENGL_FOUND)
 
 install(TARGETS OctreeCutcell EXPORT inmost-targets RUNTIME DESTINATION bin/OctreeCutcell)
-install(DIRECTORY Obj EXPORT inmost-targets DESTINATION bin/OctreeCutcell)
+install(DIRECTORY Obj oil_obj2 DESTINATION bin/OctreeCutcell)
