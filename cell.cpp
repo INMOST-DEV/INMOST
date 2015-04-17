@@ -341,17 +341,22 @@ namespace INMOST
 			{
 				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
+				if( lc.size() < 1 ) return aret;
 				HandleType q = lc[0]; //edge 0
 				adj_type const & qlc = m->LowConn(q);
-				aret.push_back(qlc[0]); //node 0
-				aret.push_back(qlc[1]); //node 1
+				if( qlc.size() > 0 ) aret.push_back(qlc[0]); //node 0
+				if( qlc.size() > 1 ) aret.push_back(qlc[1]); //node 1
+				if( lc.size() < 2 ) return aret;
 				HandleType r = lc[1]; //edge 1
 				adj_type const & rlc = m->LowConn(r);
-				if( aret.data()[0] == rlc[0] || aret.data()[0] == rlc[1] )
+				if( aret.size() == 2 && rlc.size() == 2 )
 				{
-					HandleType temp = aret.data()[0];
-					aret.data()[0] = aret.data()[1];
-					aret.data()[1] = temp;
+					if( aret.data()[0] == rlc[0] || aret.data()[0] == rlc[1] )
+					{
+						HandleType temp = aret.data()[0];
+						aret.data()[0] = aret.data()[1];
+						aret.data()[1] = temp;
+					}
 				}
 				adj_type::size_type it = 1, iend = lc.size()-1;
 				while(it < iend) //loop over edges
@@ -392,22 +397,27 @@ namespace INMOST
 				adj_type const & lc = m->LowConn(GetHandle());
 				aret.reserve(lc.size());
 				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
+				if( i == lc.size() ) return aret;
 				HandleType q = lc[i]; //edge 0
 				adj_type const & qlc = m->LowConn(q);
 				k = m->getNext(qlc.data(),static_cast<enumerator>(qlc.size()),k,hm);
-				aret.push_back(qlc[k]); //node 0
+				if( k != qlc.size() ) aret.push_back(qlc[k]); //node 0
 				k = m->getNext(qlc.data(),static_cast<enumerator>(qlc.size()),k,hm);
-				aret.push_back(qlc[k]); //node 1
+				if( k != qlc.size() ) aret.push_back(qlc[k]); //node 1
 				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
+				if( i == lc.size() ) return aret;
 				HandleType r = lc[i]; //edge 1
 				adj_type const & rlc = m->LowConn(r);
 				k1 = m->getNext(rlc.data(),static_cast<enumerator>(rlc.size()),k1,hm);
 				k2 = m->getNext(rlc.data(),static_cast<enumerator>(rlc.size()),k1,hm);
-				if( aret.data()[0] == rlc[k1] || aret.data()[0] == rlc[k2] )
+				if( k1 != rlc.size() && k2 != rlc.size() && aret.size() == 2 )
 				{
-					HandleType temp = aret.data()[0];
-					aret.data()[0] = aret.data()[1];
-					aret.data()[1] = temp;
+					if( aret.data()[0] == rlc[k1] || aret.data()[0] == rlc[k2] )
+					{
+						HandleType temp = aret.data()[0];
+						aret.data()[0] = aret.data()[1];
+						aret.data()[1] = temp;
+					}
 				}
 				adj_type::size_type it = 1, iend = lc.size()-1;
 				while(it < iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges

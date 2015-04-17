@@ -41,6 +41,11 @@ if( HAVE_SOLVER_MPTILUC2 )
 add_test(NAME solver_test000_serial_inner_mptiluc             COMMAND $<TARGET_FILE:solver_test000> 0 8)
 endif()
 
+if( HAVE_SOLVER_MPTILU2 )
+add_test(NAME solver_test000_serial_inner_mptilu2             COMMAND $<TARGET_FILE:solver_test000> 0 9)
+endif()
+
+
 if(USE_SOLVER_PETSC)
 add_test(NAME solver_test000_serial_petsc                      COMMAND $<TARGET_FILE:solver_test000> 0 2)
 endif()
@@ -70,6 +75,12 @@ if( HAVE_SOLVER_MPTILUC2 )
 add_test(NAME solver_test000_parallel_normal_inner_mptiluc      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 1)
 add_test(NAME solver_test000_parallel_permute1_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 1)
 add_test(NAME solver_test000_parallel_permute2_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 1)
+endif()
+
+if( HAVE_SOLVER_MPTILU2 )
+add_test(NAME solver_test000_parallel_normal_inner_mptilu2      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 9)
+add_test(NAME solver_test000_parallel_permute1_inner_mptilu2    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 9)
+add_test(NAME solver_test000_parallel_permute2_inner_mptilu2    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 9)
 endif()
 
 if(USE_SOLVER_PETSC)

@@ -548,29 +548,36 @@ namespace INMOST
 					case 1: //length of edge
 					{
 						ElementArray<Node> nodes = Element(this,e)->getNodes();
-						Storage::real c[3];
-						vec_diff(nodes[0]->Coords().data(),nodes[1]->Coords().data(),c,mdim);
-						*ret = vec_len(c,mdim);
+						if( nodes.size() > 1 )
+						{
+							Storage::real c[3];
+							vec_diff(nodes[0]->Coords().data(),nodes[1]->Coords().data(),c,mdim);
+							*ret = vec_len(c,mdim);
+						}
+						else *ret = 0;
 						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 						break;
 					}
 					case 2: //area of face
 					{
 						ElementArray<Node> nodes = Element(this,e)->getNodes();
-						real x[3] = {0,0,0};
-						Storage::real_array x0 = nodes[0].Coords();
-						for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
+						if( nodes.size() > 2 )
 						{
-							Storage::real_array v1 = nodes[i].Coords();
-							Storage::real_array v2 = nodes[i+1].Coords();
-							if( mdim == 3 )
+							real x[3] = {0,0,0};
+							Storage::real_array x0 = nodes[0].Coords();
+							for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
 							{
-								x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
-								x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
+								Storage::real_array v1 = nodes[i].Coords();
+								Storage::real_array v2 = nodes[i+1].Coords();
+								if( mdim == 3 )
+								{
+									x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
+									x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
+								}
+								x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
 							}
-							x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
-						}
-						*ret = sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2])*0.5;
+							*ret = sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2])*0.5;
+						} else *ret = 0;
 						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 						break;
 					}
@@ -596,24 +603,27 @@ namespace INMOST
 						}
 						*ret /= 6.0;
 						*/
-						Storage::real fcnt[3], fnrm[3];// , area;
-						for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
+						if( faces.size() > 3 )
 						{
-							faces[i]->Centroid(fcnt);
-							faces[i]->OrientedNormal(me,fnrm);
-							/*
-							area = sqrt(vec_dot_product(fnrm,fnrm,mdim));
-							if( area > 0 )
+							Storage::real fcnt[3], fnrm[3];// , area;
+							for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
 							{
-								fnrm[0] /= area;
-								fnrm[1] /= area;
-								fnrm[2] /= area;
-								*ret += vec_dot_product(fcnt,fnrm,mdim) * area;
+								faces[i]->Centroid(fcnt);
+								faces[i]->OrientedNormal(me,fnrm);
+								/*
+								area = sqrt(vec_dot_product(fnrm,fnrm,mdim));
+								if( area > 0 )
+								{
+									fnrm[0] /= area;
+									fnrm[1] /= area;
+									fnrm[2] /= area;
+									*ret += vec_dot_product(fcnt,fnrm,mdim) * area;
+								}
+								*/
+								*ret += vec_dot_product(fcnt,fnrm,mdim);
 							}
-							*/
-							*ret += vec_dot_product(fcnt,fnrm,mdim);
+							*ret /= 3.0;
 						}
-						*ret /= 3.0;
 						/*
 						if( *ret < 0  || (*ret) != (*ret) )
 						{
@@ -759,10 +769,18 @@ namespace INMOST
 				if( edim == 1 )
 				{
 					ElementArray<Node> n = Element(this,e)->getNodes();
-					Storage::real_array a = n[0].Coords();
-					Storage::real_array b = n[1].Coords();
-					for(integer j = 0; j < dim; j++) 
-						ret[j] = (a[j] + b[j])*0.5;
+					if( n.size() == 2 )
+					{
+						Storage::real_array a = n[0].Coords();
+						Storage::real_array b = n[1].Coords();
+						for(integer j = 0; j < dim; j++) 
+							ret[j] = (a[j] + b[j])*0.5;
+					}
+					else if( n.size() == 1 )
+					{
+						Storage::real_array a = n[0].Coords();
+						for(integer j = 0; j < dim; j++) ret[j] = a[j];
+					}
 				}
 				else if( edim == 2 )
 				{
@@ -776,37 +794,49 @@ namespace INMOST
 					//~ }
 					//~ else
 					//~ {
-					Storage::real_array x0 = nodes[0].Coords();
-					for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
+					if( nodes.size() > 2 )
 					{
-						Storage::real_array v1 = nodes[i].Coords();
-						Storage::real_array v2 = nodes[i+1].Coords();
-						if( mdim == 3 )
+						Storage::real_array x0 = nodes[0].Coords();
+						for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
 						{
-							x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
-							x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
+							Storage::real_array v1 = nodes[i].Coords();
+							Storage::real_array v2 = nodes[i+1].Coords();
+							if( mdim == 3 )
+							{
+								x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
+								x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
+							}
+							x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
 						}
-						x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
+						s = sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
+						x[0] /= s; x[1] /= s; x[2] /= s; //here we obtain the unit normal
+						//~ }
+						//here we compute the center
+						Storage::real_array v0 = nodes[0].Coords();
+						for(ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
+						{
+							Storage::real_array v1 = nodes[j].Coords();
+							Storage::real_array v2 = nodes[j+1].Coords();
+							for(integer k = 0; k < mdim; k++)
+							{
+								x1[k] = v0[k] - v1[k];
+								x2[k] = v0[k] - v2[k];
+							}
+							d = det3v(x1,x2,x); //here we use unit normal
+							for(integer k = 0; k < mdim; k++) 
+								ret[k] += d*(v0[k]+v1[k]+v2[k]);
+						}
+						for(integer k = 0; k < mdim; k++) ret[k] /= 3.0 * s;
 					}
-					s = sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-					x[0] /= s; x[1] /= s; x[2] /= s; //here we obtain the unit normal
-					//~ }
-					//here we compute the center
-					Storage::real_array v0 = nodes[0].Coords();
-					for(ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
+					else
 					{
-						Storage::real_array v1 = nodes[j].Coords();
-						Storage::real_array v2 = nodes[j+1].Coords();
-						for(integer k = 0; k < mdim; k++)
+						for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
 						{
-							x1[k] = v0[k] - v1[k];
-							x2[k] = v0[k] - v2[k];
+							Storage::real_array c = nodes[i].Coords();
+							for(integer k = 0; k < mdim; k++) ret[k] += c[k];
 						}
-						d = det3v(x1,x2,x); //here we use unit normal
-						for(integer k = 0; k < mdim; k++) 
-							ret[k] += d*(v0[k]+v1[k]+v2[k]);
+						for(integer k = 0; k < mdim; k++) ret[k] /= static_cast<Storage::real>(nodes.size());
 					}
-					for(integer k = 0; k < mdim; k++) ret[k] /= 3.0 * s;
 				}
 				else if( edim == 3 )
 				{
@@ -875,19 +905,22 @@ namespace INMOST
 				else if( edim == 1 )//&& mdim == 2 )
 				{
 					ElementArray<Node> nodes = Element(this,e)->getNodes();
-					Storage::real_array a = nodes[0].Coords();
-					Storage::real_array b = nodes[1].Coords();
-					ret[0] = b[1] - a[1];
-					ret[1] = a[0] - b[0];
-					Storage::real l = sqrt(ret[0]*ret[0]+ret[1]*ret[1]);
-					if( l )
+					if( nodes.size() > 1 )
 					{
-						ret[0] /= l;
-						ret[1] /= l;
+						Storage::real_array a = nodes[0].Coords();
+						Storage::real_array b = nodes[1].Coords();
+						ret[0] = b[1] - a[1];
+						ret[1] = a[0] - b[0];
+						Storage::real l = sqrt(ret[0]*ret[0]+ret[1]*ret[1]);
+						if( l )
+						{
+							ret[0] /= l;
+							ret[1] /= l;
+						}
+						l = sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]));
+						ret[0] *= l;
+						ret[1] *= l;
 					}
-					l = sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]));
-					ret[0] *= l;
-					ret[1] *= l;
 				}
 			}
 			break;

@@ -7,6 +7,9 @@
 #if defined(HAVE_SOLVER_MPTILUC2)
 #include "solver_mtiluc2.hpp"
 #endif
+#if defined(HAVE_SOLVER_MPTILU2)
+#include "solver_mtilu2.hpp"
+#endif
 #include "solver_bcgsl.hpp"
 #include <fstream>
 #include <sstream>
@@ -34,6 +37,8 @@
 #include "Teuchos_TestForException.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"
 #endif
+
+//#define USE_OMP
 
 #define KSOLVER BCGSL_solver
 //#define KSOLVER BCGS_solver
@@ -84,10 +89,15 @@ namespace INMOST
 	{
 #if defined(USE_MPI)
 		if( GetSize() == 1 ) return;
-		int ierr = 0;
-		dynarray<INMOST_DATA_REAL_TYPE,64> temp(num);
-		memcpy(temp.data(),inout,sizeof(INMOST_DATA_REAL_TYPE)*num);
-		GUARD_MPI(MPI_Allreduce(temp.data(),inout,num,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+		{
+			int ierr = 0;
+			dynarray<INMOST_DATA_REAL_TYPE,1024> temp(num);
+			memcpy(temp.data(),inout,sizeof(INMOST_DATA_REAL_TYPE)*num);
+			GUARD_MPI(MPI_Allreduce(temp.data(),inout,num,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
+		}
 #else
 		(void) inout;
 		(void) num;
@@ -207,11 +217,15 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, k = 0;
 		while( i != EOL )
 		{
-			r.GetIndex(k) = i-1;
-			r.GetValue(k) = LinkedList[i].second;
+			if( LinkedList[i].second )
+			{
+				r.GetIndex(k) = i-1;
+				r.GetValue(k) = LinkedList[i].second;
+				++k;
+			}
 			i = LinkedList[i].first;
-			++k;
 		}
+		r.Resize(k);
 	}
 
 	void Solver::OrderInfo::PrepareMatrix(Matrix & m, INMOST_DATA_ENUM_TYPE overlap)
@@ -829,42 +843,47 @@ namespace INMOST
 		//std::cout << __FUNCTION__ << " start" << std::endl;
 #if defined(USE_MPI)
 		if( GetSize() == 1 ) return;
-		//use MPI_Put/MPI_Get to update vector
-		assert(x.isParallel()); //the vector was prepared
-		INMOST_DATA_ENUM_TYPE i, j = 1, k, l = 0;
-		int ierr;
-		for(i = 0; i < vector_exchange_recv[0]; i++)
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 		{
-			//std::cout << GetRank() << " MPI_Irecv size " << vector_exchange_recv[j+1] << " dest " << vector_exchange_recv[j] << " tag " << vector_exchange_recv[j]*size+rank << std::endl;
-			GUARD_MPI(MPI_Irecv(&recv_storage[l],vector_exchange_recv[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_recv[j],vector_exchange_recv[j]*size+rank,comm,&recv_requests[i]));
-			l += vector_exchange_recv[j+1];
-			j += vector_exchange_recv[j+1] + 2;
-		}
-		j = 1, l = 0;
-		for(i = 0; i < vector_exchange_send[0]; i++)
-		{
-			//std::cout << GetRank() << " MPI_Isend size " << vector_exchange_send[j+1] << " dest " << vector_exchange_send[j] << " tag " << rank*size+vector_exchange_send[j] << std::endl;
-			for(k = 0; k < vector_exchange_send[j+1]; k++)
-				send_storage[l+k] = x[vector_exchange_send[k+j+2]];
-			GUARD_MPI(MPI_Isend(&send_storage[l],vector_exchange_send[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_send[j],rank*size+vector_exchange_send[j],comm,&send_requests[i]));
-			l += vector_exchange_send[j+1];
-			j += vector_exchange_send[j+1] + 2;
-		}
-		if( vector_exchange_recv[0] > 0 )
-		{
-			GUARD_MPI(MPI_Waitall(static_cast<int>(recv_requests.size()),&recv_requests[0],MPI_STATUSES_IGNORE));
-			j = 1, l = 0;
+			//use MPI_Put/MPI_Get to update vector
+			assert(x.isParallel()); //the vector was prepared
+			INMOST_DATA_ENUM_TYPE i, j = 1, k, l = 0;
+			int ierr;
 			for(i = 0; i < vector_exchange_recv[0]; i++)
 			{
-				for(k = 0; k < vector_exchange_recv[j+1]; k++)
-					x[vector_exchange_recv[k+j+2]] = recv_storage[l+k];
+				//std::cout << GetRank() << " MPI_Irecv size " << vector_exchange_recv[j+1] << " dest " << vector_exchange_recv[j] << " tag " << vector_exchange_recv[j]*size+rank << std::endl;
+				GUARD_MPI(MPI_Irecv(&recv_storage[l],vector_exchange_recv[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_recv[j],vector_exchange_recv[j]*size+rank,comm,&recv_requests[i]));
 				l += vector_exchange_recv[j+1];
 				j += vector_exchange_recv[j+1] + 2;
 			}
-		}
-		if( vector_exchange_send[0] > 0 ) 
-		{
-			GUARD_MPI(MPI_Waitall(static_cast<int>(send_requests.size()),&send_requests[0],MPI_STATUSES_IGNORE));
+			j = 1, l = 0;
+			for(i = 0; i < vector_exchange_send[0]; i++)
+			{
+				//std::cout << GetRank() << " MPI_Isend size " << vector_exchange_send[j+1] << " dest " << vector_exchange_send[j] << " tag " << rank*size+vector_exchange_send[j] << std::endl;
+				for(k = 0; k < vector_exchange_send[j+1]; k++)
+					send_storage[l+k] = x[vector_exchange_send[k+j+2]];
+				GUARD_MPI(MPI_Isend(&send_storage[l],vector_exchange_send[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_send[j],rank*size+vector_exchange_send[j],comm,&send_requests[i]));
+				l += vector_exchange_send[j+1];
+				j += vector_exchange_send[j+1] + 2;
+			}
+			if( vector_exchange_recv[0] > 0 )
+			{
+				GUARD_MPI(MPI_Waitall(static_cast<int>(recv_requests.size()),&recv_requests[0],MPI_STATUSES_IGNORE));
+				j = 1, l = 0;
+				for(i = 0; i < vector_exchange_recv[0]; i++)
+				{
+					for(k = 0; k < vector_exchange_recv[j+1]; k++)
+						x[vector_exchange_recv[k+j+2]] = recv_storage[l+k];
+					l += vector_exchange_recv[j+1];
+					j += vector_exchange_recv[j+1] + 2;
+				}
+			}
+			if( vector_exchange_send[0] > 0 ) 
+			{
+				GUARD_MPI(MPI_Waitall(static_cast<int>(send_requests.size()),&send_requests[0],MPI_STATUSES_IGNORE));
+			}
 		}
 #else
 		(void) x;
@@ -876,66 +895,75 @@ namespace INMOST
 		//std::cout << __FUNCTION__ << " start" << std::endl;
 #if defined(USE_MPI)
 		if( GetSize() == 1 ) return;
-		//use MPI_Put/MPI_Get to update vector
-		assert(x.isParallel()); //the vector was prepared
-		INMOST_DATA_ENUM_TYPE i, j = 1, k, l = 0;
-		int ierr;
-		for(i = 0; i < vector_exchange_send[0]; i++)
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 		{
-			//std::cout << GetRank() << " MPI_Irecv size " << vector_exchange_send[j+1] << " dest " << vector_exchange_send[j] << " tag " << vector_exchange_send[j]*size+rank << std::endl;
-			GUARD_MPI(MPI_Irecv(&send_storage[l],vector_exchange_send[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_send[j],vector_exchange_send[j]*size+rank,comm,&send_requests[i]));
-			l += vector_exchange_send[j+1];
-			j += vector_exchange_send[j+1] + 2;
-		}
-		j = 1, l = 0;
-		for(i = 0; i < vector_exchange_recv[0]; i++)
-		{
-			for(k = 0; k < vector_exchange_recv[j+1]; k++)
-				recv_storage[l+k] = x[vector_exchange_recv[k+j+2]];
-			//std::cout << GetRank() << " MPI_Isend size " << vector_exchange_recv[j+1] << " dest " << vector_exchange_recv[j] << " tag " << rank*size+vector_exchange_recv[j] << std::endl;
-			GUARD_MPI(MPI_Isend(&recv_storage[l],vector_exchange_recv[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_recv[j],rank*size+vector_exchange_recv[j],comm,&recv_requests[i]));
-			l += vector_exchange_recv[j+1];
-			j += vector_exchange_recv[j+1] + 2;
-		}
-		if( vector_exchange_send[0] > 0 )
-		{
-			//std::cout << GetRank() << " Waitall send " << send_requests.size() << std::endl;
-			GUARD_MPI(MPI_Waitall(static_cast<int>(send_requests.size()),&send_requests[0],MPI_STATUSES_IGNORE));
-			j = 1, l = 0;
+			//use MPI_Put/MPI_Get to update vector
+			assert(x.isParallel()); //the vector was prepared
+			INMOST_DATA_ENUM_TYPE i, j = 1, k, l = 0;
+			int ierr;
 			for(i = 0; i < vector_exchange_send[0]; i++)
 			{
-				for(k = 0; k < vector_exchange_send[j+1]; k++)
-					x[vector_exchange_send[k+j+2]] += send_storage[l+k];
+				//std::cout << GetRank() << " MPI_Irecv size " << vector_exchange_send[j+1] << " dest " << vector_exchange_send[j] << " tag " << vector_exchange_send[j]*size+rank << std::endl;
+				GUARD_MPI(MPI_Irecv(&send_storage[l],vector_exchange_send[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_send[j],vector_exchange_send[j]*size+rank,comm,&send_requests[i]));
 				l += vector_exchange_send[j+1];
 				j += vector_exchange_send[j+1] + 2;
 			}
-		}
-		if( vector_exchange_recv[0] > 0 ) 
-		{
-			//std::cout << GetRank() << " Waitall recv " << recv_requests.size() << std::endl;
-			GUARD_MPI(MPI_Waitall(static_cast<int>(recv_requests.size()),&recv_requests[0],MPI_STATUSES_IGNORE));
+			j = 1, l = 0;
+			for(i = 0; i < vector_exchange_recv[0]; i++)
+			{
+				for(k = 0; k < vector_exchange_recv[j+1]; k++)
+					recv_storage[l+k] = x[vector_exchange_recv[k+j+2]];
+				//std::cout << GetRank() << " MPI_Isend size " << vector_exchange_recv[j+1] << " dest " << vector_exchange_recv[j] << " tag " << rank*size+vector_exchange_recv[j] << std::endl;
+				GUARD_MPI(MPI_Isend(&recv_storage[l],vector_exchange_recv[j+1],INMOST_MPI_DATA_REAL_TYPE,vector_exchange_recv[j],rank*size+vector_exchange_recv[j],comm,&recv_requests[i]));
+				l += vector_exchange_recv[j+1];
+				j += vector_exchange_recv[j+1] + 2;
+			}
+			if( vector_exchange_send[0] > 0 )
+			{
+				//std::cout << GetRank() << " Waitall send " << send_requests.size() << std::endl;
+				GUARD_MPI(MPI_Waitall(static_cast<int>(send_requests.size()),&send_requests[0],MPI_STATUSES_IGNORE));
+				j = 1, l = 0;
+				for(i = 0; i < vector_exchange_send[0]; i++)
+				{
+					for(k = 0; k < vector_exchange_send[j+1]; k++)
+						x[vector_exchange_send[k+j+2]] += send_storage[l+k];
+					l += vector_exchange_send[j+1];
+					j += vector_exchange_send[j+1] + 2;
+				}
+			}
+			if( vector_exchange_recv[0] > 0 ) 
+			{
+				//std::cout << GetRank() << " Waitall recv " << recv_requests.size() << std::endl;
+				GUARD_MPI(MPI_Waitall(static_cast<int>(recv_requests.size()),&recv_requests[0],MPI_STATUSES_IGNORE));
+			}
 		}
 #else
 		(void) x;
 #endif
 		//std::cout << __FUNCTION__ << " end" << std::endl;
 	}
-
-	INMOST_DATA_REAL_TYPE Solver::OrderInfo::ScalarProd(Vector const & left, Vector const & right, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end) const
+	/*
+	void Solver::OrderInfo::ScalarProd(Vector const & left, Vector const & right, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end, INMOST_DATA_REAL_TYPE & sum) const
 	{
-		INMOST_DATA_REAL_TYPE ret = 0;
-		for(INMOST_DATA_ENUM_TYPE i = index_begin; i < index_end; ++i)
-			ret += left[i]*right[i];
-		Integrate(&ret,1);
-		return ret;
+		INMOST_DATA_INTEGER_TYPE ibeg = index_begin, iend = index_end;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:sum)
+#endif
+		for(INMOST_DATA_INTEGER_TYPE i = ibeg; i < iend; ++i)
+		{
+			sum += left[i]*right[i];
+		}
+		Integrate(&sum,1);
 	}
-
+	*/
 	
 	INMOST_DATA_REAL_TYPE   Solver::Row::RowVec(Solver::Vector & x) const
 	{
 		INMOST_DATA_REAL_TYPE ret = 0;
-		INMOST_DATA_ENUM_TYPE end = Size(),i;
-		for(i = 0; i < end; i++) ret = ret + x[GetIndex(i)]*GetValue(i);
+		INMOST_DATA_ENUM_TYPE end = Size();
+		for(INMOST_DATA_ENUM_TYPE i = 0; i < end; i++) ret = ret + x[GetIndex(i)]*GetValue(i);
 		return ret;
 	}
 	
@@ -1142,6 +1170,10 @@ namespace INMOST
 			int ierr;
 			MPI_File fh;
 			MPI_Status stat;
+			ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+      if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			ierr = MPI_File_close(&fh);
+			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()),MPI_MODE_WRONLY | MPI_MODE_CREATE,MPI_INFO_NULL,&fh);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			if( rank == 0 )
@@ -1151,12 +1183,10 @@ namespace INMOST
 				//header << "% is written by INMOST" << std::endl;
 				//header << "% by MPI_File_* api" << std::endl;
 				header << vecsize << std::endl;
-				std::string header_data(header.str());
-				ierr = MPI_File_write_shared(fh,&header_data[0],static_cast<int>(header_data.size()),MPI_CHAR,&stat);
+				ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			}
-			std::string local_data(rhs.str());
-			ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<int>(local_data.size()),MPI_CHAR,&stat);
+			ierr = MPI_File_write_ordered(fh,const_cast<char *>(rhs.str().c_str()),static_cast<int>(rhs.str().size()),MPI_CHAR,&stat);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			ierr = MPI_File_close(&fh);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
@@ -1226,6 +1256,10 @@ namespace INMOST
 			int ierr;
 			MPI_File fh;
 			MPI_Status stat;
+			ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+      if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			ierr = MPI_File_close(&fh);
+			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()),MPI_MODE_WRONLY | MPI_MODE_CREATE,MPI_INFO_NULL,&fh);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			if( rank == 0 )
@@ -1236,12 +1270,11 @@ namespace INMOST
 				header << "% is written by INMOST" << std::endl;
 				header << "% by MPI_File_* api" << std::endl;
 				header << matsize << " " << matsize << " " << nonzero << std::endl;
-				std::string header_data(header.str());
-				ierr = MPI_File_write_shared(fh,&header_data[0],static_cast<int>(header_data.size()),MPI_CHAR,&stat);
+				//std::string header_data(header.str());
+				ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			}
-			std::string local_data(mtx.str());
-			ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<int>(local_data.size()),MPI_CHAR,&stat);
+			ierr = MPI_File_write_ordered(fh,const_cast<char *>(mtx.str().c_str()),static_cast<int>(mtx.str().size()),MPI_CHAR,&stat);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 			ierr = MPI_File_close(&fh);
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
@@ -1505,7 +1538,7 @@ namespace INMOST
 			solver_data = static_cast<void *>(problem);
 		}
 #endif
-		if( _pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
+		if( _pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)
 		{
 			Method * prec;
 			if (_pack == INNER_ILU2)
@@ -1532,6 +1565,15 @@ namespace INMOST
 				prec = new MTILUC_preconditioner(info);
 #else
 				std::cout << "Sorry, maximum product transverse condition estimation crout-ilu preconditioner is not included in this release" << std::endl;
+				prec = NULL;
+#endif
+			}
+			else if( _pack == INNER_MPTILU2 )
+			{
+#if defined(__SOLVER_MTILU2__)
+				prec = new MTILU2_preconditioner(info);
+#else
+				std::cout << "Sorry, maximum product transverse ilu2 preconditioner is not included in this release" << std::endl;
 				prec = NULL;
 #endif
 			}
@@ -1580,7 +1622,7 @@ namespace INMOST
 			throw - 1; //You should not really want to copy solver's information
 		}
 #endif
-		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
+		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)
 		{
 			throw - 1; //You should not really want to copy solver's information
 		}
@@ -1631,7 +1673,7 @@ namespace INMOST
 			}
 		}
 #endif
-		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
+		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)
 		{
 			if( matrix_data != NULL )
 			{
@@ -1719,7 +1761,7 @@ namespace INMOST
 				throw - 1; //You should not really want to copy solver's information
 			}
 #endif
-			if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
+			if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)
 			{
 				throw - 1; //You should not really want to copy solver's information
 			}
@@ -1975,7 +2017,7 @@ namespace INMOST
 			ok = true;
 		}
 #endif
-		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
+		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)
 		{
 			
 			Solver::Matrix * mat = new Solver::Matrix(A);
@@ -2000,7 +2042,7 @@ namespace INMOST
 			{
 				sol->EnumParameter(":estimator") = preconditioner_condition_estimation;
 			}
-			else sol->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
+			else if( _pack == INNER_ILU2 ) sol->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
 
 			if( sizeof(KSOLVER) == sizeof(BCGSL_solver) )
 				sol->EnumParameter("levels") = solver_gmres_substeps;
@@ -2388,7 +2430,7 @@ namespace INMOST
 			
 		}
 #endif
-		if(_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC)
+		if(_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)
 		{
 			IterativeMethod * sol = static_cast<IterativeMethod *>(solver_data);
 			

@@ -1,0 +1,1 @@
+This folder contains helper instructions to facilitate representation of custom classes in debuggers.

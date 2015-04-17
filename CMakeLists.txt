@@ -52,6 +52,13 @@ else()
   set(HAVE_SOLVER_MPTILUC2 FALSE)
 endif()
 
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtilu2.hpp" )
+  add_definitions(-DHAVE_SOLVER_MPTILU2)
+  set(HAVE_SOLVER_MPTILU2 TRUE)
+  list(APPEND SOURCE solver_mtilu2.hpp)
+else()
+  set(HAVE_SOLVER_MPTILU2 FALSE)
+endif()
 
 add_library(inmost STATIC ${SOURCE} ${HEADER})
 

@@ -4626,6 +4626,10 @@ safe_output:
 				{
 					MPI_File fh;
 					MPI_Status stat;
+					REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh));
+					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+					REPORT_MPI(ierr = MPI_File_close(&fh));
+					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 					if( GetProcessorRank() == 0 )

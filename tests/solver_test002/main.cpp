@@ -102,6 +102,7 @@ int main(int argc, char ** argv)
 		case 6: type = Solver::Trilinos_ML; break;
 		case 7: type = Solver::ANI; break;
 		case 8: type = Solver::INNER_MPTILUC; break;
+		case 9: type = Solver::INNER_MPTILU2; break;
 	}
 	int n = atoi(argv[2]);
 	Solver::Initialize(&argc,&argv,argc > 3 ? argv[3] : NULL); // Initialize the linear solver in accordance with args

@@ -2128,7 +2128,7 @@ public:
 	
 	bool Mesh::Delete(HandleType h) 
 	{
-		if(Hide(h))
+		if(!New(h) && Hide(h))
 		{
 			if( GetElementType() != CELL ) //mark all elements that rely on this that they should be deleted
 			{

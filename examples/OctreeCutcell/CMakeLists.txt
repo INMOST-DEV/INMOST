@@ -46,5 +46,5 @@ else(OPENGL_FOUND)
   message("OpenGL not found")
 endif(OPENGL_FOUND)
 
-install(TARGETS OctreeCutcell EXPORT inmost-targets RUNTIME DESTINATION bin)
-
+install(TARGETS OctreeCutcell EXPORT inmost-targets RUNTIME DESTINATION bin/OctreeCutcell)
+install(DIRECTORY Obj EXPORT inmost-targets DESTINATION bin/OctreeCutcell)

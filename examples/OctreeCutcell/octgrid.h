@@ -65,7 +65,7 @@ struct vert
 {
 	int busy;
 	int env[1<<DIM];
-	Node mv;
+	HandleType mv;
 };
 
 struct grid

@@ -66,8 +66,8 @@ int main(int argc, char ** argv)
 			s.SetParameterReal("relative_tolerance",1.0e-9);
 			s.SetParameterReal("absolute_tolerance",1.0e-16);
 			s.SetParameterEnum("rescale_iterations",8);
-			s.SetParameterReal("drop_tolerance",1.0e-4);
-			s.SetParameterReal("reuse_tolerance",1.0e-8);
+			s.SetParameterReal("drop_tolerance",1.0e-2);
+			s.SetParameterReal("reuse_tolerance",1.0e-4);
 
 			/*
 			

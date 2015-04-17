@@ -368,7 +368,8 @@ namespace INMOST
 	void Mesh::Integrate(Storage::real * input, Storage::integer size)
 	{
 #if defined(USE_MPI)
-		static dynarray<Storage::real,64> temp(size);
+		static dynarray<Storage::real,64> temp;
+		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
 #else//USE_MPI
@@ -379,7 +380,8 @@ namespace INMOST
 	void Mesh::Integrate(Storage::integer * input, Storage::integer size)
 	{
 #if defined(USE_MPI)
-		static dynarray<Storage::integer,64> temp(size);
+		static dynarray<Storage::integer,64> temp;
+		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
 #else//USE_MPI
@@ -440,7 +442,8 @@ namespace INMOST
 	void Mesh::AggregateMax(Storage::real * input, Storage::integer size)
 	{
 #if defined(USE_MPI)
-		static dynarray<Storage::real,64> temp(size);
+		static dynarray<Storage::real,64> temp;
+		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm);
 #else//USE_MPI
@@ -451,7 +454,8 @@ namespace INMOST
 	void Mesh::AggregateMax(Storage::integer * input, Storage::integer size)
 	{
 #if defined(USE_MPI)
-		static dynarray<Storage::integer,64> temp(size);
+		static dynarray<Storage::integer,64> temp;
+		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #else//USE_MPI
@@ -484,7 +488,8 @@ namespace INMOST
 	void Mesh::AggregateMin(Storage::real * input, Storage::integer size)
 	{
 #if defined(USE_MPI)
-		static dynarray<Storage::real,64> temp(size);
+		static dynarray<Storage::real,64> temp;
+		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm);
 #else//USE_MPI
@@ -495,7 +500,8 @@ namespace INMOST
 	void Mesh::AggregateMin(Storage::integer * input, Storage::integer size)
 	{
 #if defined(USE_MPI)
-		static dynarray<Storage::integer,64> temp(size);
+		static dynarray<Storage::integer,64> temp;
+		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm);
 #else//USE_MPI

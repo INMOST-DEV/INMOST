@@ -41,6 +41,7 @@ int main(int argc,char ** argv)
 	case 6: type = Solver::Trilinos_Belos; break;
 	case 7: type = Solver::ANI; break;
 	case 8: type = Solver::INNER_MPTILUC; break;
+	case 9: type = Solver::INNER_MPTILU2; break;
 	}
 
 	{

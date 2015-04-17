@@ -294,7 +294,7 @@ namespace INMOST
 			return ret*var.coef;
 		case AD_VAL:
 			lval = DerivativePrecompute(*var.left, e, values, user_data);
-			rval = Evaluate(*var.left,e,user_data);
+			rval = Evaluate(*var.right,e,user_data);
 			values.push_back(rval);
 			return lval*var.coef;
 		}

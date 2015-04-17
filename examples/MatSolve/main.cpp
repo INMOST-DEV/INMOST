@@ -30,6 +30,7 @@ int main(int argc, char ** argv)
 		case 6: type = Solver::Trilinos_ML; break;
     case 7: type = Solver::ANI; break;
 		case 8: type = Solver::INNER_MPTILUC; break;
+		case 9: type = Solver::INNER_MPTILU2; break;
 	}
 	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
 	{
@@ -81,8 +82,8 @@ int main(int argc, char ** argv)
 			s.SetParameterEnum("adapt_ddpq_tolerance",0);
 			
 			s.SetParameterReal("drop_tolerance",1.0e-2);
-			s.SetParameterReal("reuse_tolerance",1.0e-3);
-			s.SetParameterReal("ddpq_tolerance",0.4);
+			s.SetParameterReal("reuse_tolerance",1.0e-4);
+			s.SetParameterReal("ddpq_tolerance",0.0);
 
 			s.SetParameterEnum("condition_estimation",1);
 			

@@ -9,12 +9,15 @@
 
 #include "inmost_solver.h"
 
-//#define PSEUDOINVERSE  // same trick as in petsc with pseudoinverse
+//#define CONVEX_COMBINATION
+#define PSEUDOINVERSE  // same trick as in petsc with pseudoinverse
 //#define USE_LAPACK_SVD // use lapack's dgesvd routine instead of built-in svdnxn
 
 //#if !defined(NDEBUG)
 #define REPORT_RESIDUAL
 //#endif
+//#define USE_OMP
+
 
 namespace INMOST
 {
@@ -37,9 +40,14 @@ namespace INMOST
 		else result = 0.0;
 		return(result);
 	}
-	int svdnxn(INMOST_DATA_REAL_TYPE * a,INMOST_DATA_REAL_TYPE * u, INMOST_DATA_REAL_TYPE *w, INMOST_DATA_REAL_TYPE * v, const int n)
+	int svdnxn(INMOST_DATA_REAL_TYPE * pa,INMOST_DATA_REAL_TYPE * pu, INMOST_DATA_REAL_TYPE *pw, INMOST_DATA_REAL_TYPE * pv, const int n)
 	{
-		memcpy(u,a,sizeof(INMOST_DATA_REAL_TYPE)*n*n);
+		shell<INMOST_DATA_REAL_TYPE> a(pa,n*n);
+		shell<INMOST_DATA_REAL_TYPE> u(pu,n*n);
+		shell<INMOST_DATA_REAL_TYPE> v(pv,n*n);
+		shell<INMOST_DATA_REAL_TYPE> w(pw,n);
+		std::copy(a.begin(),a.end(),u.begin());
+		//memcpy(u,a,sizeof(INMOST_DATA_REAL_TYPE)*n*n);
 		int flag, i, its, j, jj, k, l, nm;
 		INMOST_DATA_REAL_TYPE c, f, h, s, x, y, z;
 		INMOST_DATA_REAL_TYPE anorm = 0.0, g = 0.0, scale = 0.0;
@@ -476,10 +484,10 @@ namespace INMOST
 			info->PrepareVector(r_tilde);
 			info->PrepareVector(x0);
 			info->PrepareVector(t);
-			tau = new INMOST_DATA_REAL_TYPE[l * 5 + l*l];
-			sigma = tau + l*l;
-			gamma = sigma + l;
-			theta1 = gamma + l;
+			tau = new INMOST_DATA_REAL_TYPE[l * 3 + (l+1)*(l+1) + (l+1)*2];
+			sigma = tau + (l+1)*(l+1);
+			gamma = sigma + l+1;
+			theta1 = gamma + l+1;
 			theta2 = theta1 + l;
 			theta3 = theta2 + l;
 			u = new Solver::Vector[l * 2 + 2];
@@ -553,7 +561,7 @@ namespace INMOST
 			}
 			else
 			{
-				Alink->MatVec(1.0,t,0,Output);
+				Alink->MatVec(1.0,Input,0,Output);
 				info->Update(Output);
 			}
 		}
@@ -561,8 +569,9 @@ namespace INMOST
 		{
 			assert(isInitialized());
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
+			INMOST_DATA_INTEGER_TYPE ivbeg, ivend, ivlocbeg, ivlocend;
 			INMOST_DATA_REAL_TYPE rho0 = 1, rho1, alpha = 0, beta, omega = 1, eta;
-			INMOST_DATA_REAL_TYPE resid0, resid, rhs_norm;//, temp[2];
+			INMOST_DATA_REAL_TYPE resid0, resid, rhs_norm, tau_sum, sigma_sum;//, temp[2];
 			iters = 0;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
@@ -572,8 +581,11 @@ namespace INMOST
 			if( prec != NULL ) prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
 			info->GetVectorRegion(vbeg,vend);
-
-			//rhs_norm = info->ScalarProd(RHS,RHS,vlocbeg,vlocend);
+			ivbeg = vbeg;
+			ivend = vend;
+			ivlocbeg = vlocbeg;
+			ivlocend = vlocend;
+			//info->ScalarProd(RHS,RHS,vlocbeg,vlocend,rhs_norm);
 			rhs_norm = 1;
 			//r[0] = b
 			std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
@@ -586,8 +598,18 @@ namespace INMOST
 			}
 			std::copy(r[0].Begin(),r[0].End(),r_tilde.Begin()); // r_tilde = r[0]
 			std::fill(u[0].Begin(),u[0].End(),0); // u[0] = 0
-			resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend); //resid = dot(r[0],r[0])
-			for(INMOST_DATA_ENUM_TYPE k = vbeg; k != vend; k++) // r_tilde = r[0] / dot(r[0],r[0])
+			resid = 0;
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:resid)
+#endif
+			for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+				resid += r[0][k]*r[0][k];
+			info->Integrate(&resid,1);
+			//info->ScalarProd(r[0],r[0],vlocbeg,vlocend,resid); //resid = dot(r[0],r[0])
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) // r_tilde = r[0] / dot(r[0],r[0])
 				r_tilde[k] /= resid;
 			last_resid = resid = resid0 = sqrt(resid/rhs_norm); //resid = sqrt(dot(r[0],r[0])
 			last_it = 0;
@@ -608,328 +630,511 @@ namespace INMOST
 				reason = "initial solution satisfy tolerances";
 				goto exit;
 			}
-
-			long double tt, ts, tp;
-			while( true )
+			bool halt = false;
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 			{
-				ts = tp = 0;
-				rho0 = -omega*rho0;
+				long double tt, ts, tp;
+				while( !halt )
+				{
+					ts = tp = 0;
+
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+					{
+						rho0 = -omega*rho0;
+					}
 				
-				tt = Timer();
-				for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
-				{
-					rho1 = info->ScalarProd(r[j],r_tilde,vlocbeg,vlocend); // rho1 = dot(r[j],r_tilde)
-					beta = alpha * (rho1/rho0);
-
-					if( fabs(beta) > 1.0e+100 ) 
-					{
-						//std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
-						reason = "multiplier(1) is too large";
-						goto exit;
-					}
-
-					if( beta != beta )
-					{
-						reason = "multiplier(1) is NaN";
-						goto exit;
-					}
-
-					rho0 = rho1;
-					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
-						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
-							u[i][k] = r[i][k] - beta*u[i][k];
-
-					ApplyOperator(u[j],u[j+1]); // u[j+1] = A*R*u[j]
-					eta = info->ScalarProd(u[j+1],r_tilde,vlocbeg,vlocend); //eta = dot(u[j+1],r_tilde)
-					
-					alpha = rho0 / eta;
-
-					if( fabs(alpha) > 1.0e+100 ) 
-					{
-						reason = "multiplier(2) is too large";
-						goto exit;
-					}
-					if( alpha != alpha )
-					{
-						reason = "multiplier(2) is NaN";
-						goto exit;
-					}
-
-					for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
-						SOL[k] += alpha*u[0][k];
-
-					for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
-						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k) //r[i] = r[i] - alpha * u[i+1]
-							r[i][k] -= alpha*u[i+1][k];
-
-					
-					resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend); // resid = dot(r[j],r[j])
-					resid = sqrt(resid/rhs_norm); // resid = sqrt(dot(r[j],r[j]))
-
-					
-					if( resid < atol || resid < rtol*resid0 ) 
-					{
-						reason = "early exit in bi-cg block";
-						last_resid = resid;
-						goto exit;
-					}
-					
-
-					ApplyOperator(r[j],r[j+1]); // r[j+1] = A*R*r[j]
-
-					
-				}
-				
-				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; j++)
-				{
-					for(INMOST_DATA_ENUM_TYPE m = 1; m < j+1; m++)
-					{
-						tau[(m-1) + (j-1)*l] = 0;
-						for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
-							tau[(m-1) + (j-1)*l] += r[j][k]*r[m][k];
-						tau[(j-1) + (m-1)*l] = tau[(m-1) + (j-1)*l];
-					}
-					sigma[j-1] = 0;
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
-						sigma[j-1] += r[0][k]*r[j][k];
-				}
-				info->Integrate(tau,l*l+l); //sigma is updated with tau
-
-#if defined(PSEUDOINVERSE)
-				{
-					int dgesvd_info = 0;
-
-
-#if defined(USE_LAPACK_SVD)
-					char c = 'A';
-					INMOST_DATA_REAL_TYPE U[128*128], V[128*128], w[128];
-					INMOST_DATA_REAL_TYPE work[5*128];
-					int lwork = 5*128;
-					int n = l;
-					dgesvd_(&c,&c,&n,&n,tau,&n,w,U,&n,V,&n,work,&lwork,&dgesvd_info);
-#else
-					/*
-					char c = 'A';
-					INMOST_DATA_REAL_TYPE U2[128*128], V2[128*128], w2[128], tau2[128*128];
-					INMOST_DATA_REAL_TYPE work[5*128];
-					int lwork = 5*128;
-					int n = l;
-					memcpy(tau2,tau,sizeof(INMOST_DATA_REAL_TYPE)*l*l);
-					dgesvd_(&c,&c,&n,&n,tau2,&n,w2,U2,&n,V2,&n,work,&lwork,&dgesvd_info);
-					printf("dgesvd\n");
-					printf("w\n");
-					for(int q = 0; q < l; ++q) printf("%g ",w2[q]);
-					printf("\nU\n");
-					for(int q = 0; q < l*l; ++q) 
-					{
-						printf("%g ",U2[q]);
-						if( (q+1)%l == 0 ) printf("\n");
-					}
-					printf("V\n");
-					for(int q = 0; q < l*l; ++q) 
-					{
-						printf("%g ",V2[q]);
-						if( (q+1)%l == 0 ) printf("\n");
-					}
-					*/
-					INMOST_DATA_REAL_TYPE U[128*128], V[128*128], w[128];
-					dgesvd_info = svdnxn(tau,U,w,V,l);
-					//for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) w[j] = S[j*l+j];
-					/*
-					printf("svdnxn\n");
-					printf("w\n");
-					for(int q = 0; q < l; ++q) printf("%g ",w[q]);
-					printf("\nU\n");
-					for(int q = 0; q < l*l; ++q) 
-					{
-						printf("%g ",U[q]);
-						if( (q+1)%l == 0 ) printf("\n");
-					}
-					printf("V\n");
-					for(int q = 0; q < l*l; ++q) 
-					{
-						printf("%g ",V[q]);
-						if( (q+1)%l == 0 ) printf("\n");
-					}
-					*/
-#endif		
-					/*
-					printf("w ");
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) printf("%20g ",w[j]);
-					printf("\n");
-
-					printf("U\n");
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++) 
-					{
-						printf("%20g ",U[j]);
-						if( (j+1) % l == 0 ) printf("\n");
-					}
-					printf("\n");
-
-					printf("VT\n");
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++) 
-					{
-						printf("%20g ",V[j]);
-						if( (j+1) % l == 0 ) printf("\n");
-					}
-					printf("\n");
-					*/
-					if( dgesvd_info != 0 )
-					{
-						printf("(%s:%d) dgesvd %d\n",__FILE__,__LINE__,dgesvd_info);
-						exit(-1);
-					}
-					
-					INMOST_DATA_REAL_TYPE maxw = w[0], tol;
-					for(INMOST_DATA_ENUM_TYPE j = 1; j < l; j++) if(w[j]>maxw) maxw = w[j];
-					tol = l*maxw*1.0e-14;
-					memset(gamma,0,sizeof(INMOST_DATA_REAL_TYPE)*l);
+					tt = Timer();
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
 					{
-						if( w[j] > tol )
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						rho1 = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:rho1)
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+							rho1+= r[j][k]*r_tilde[k];
+						info->Integrate(&rho1,1);
+						//info->ScalarProd(r[j],r_tilde,vlocbeg,vlocend,rho1); // rho1 = dot(r[j],r_tilde)
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 						{
-							INMOST_DATA_REAL_TYPE sum = 0;
-							for(INMOST_DATA_ENUM_TYPE k = 0; k < l; ++k)
-								sum += sigma[k]*U[j*l+k];
-							for(INMOST_DATA_ENUM_TYPE k = 0; k < l; ++k)
-								gamma[k] += sum/w[j]*V[k*l+j];
+							beta = alpha * (rho1/rho0);
+						}
+
+						if( fabs(beta) > 1.0e+100 ) 
+						{
+							//std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							reason = "multiplier(1) is too large";
+							halt = true;
+							break;
+						}
+
+						if( beta != beta )
+						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							reason = "multiplier(1) is NaN";
+							halt = true;
+							break;
+						}
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						{
+							rho0 = rho1;
+						}
+						for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
+						{
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+							for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+								u[i][k] = r[i][k] - beta*u[i][k];
+						}
+
+
+						ApplyOperator(u[j],u[j+1]); // u[j+1] = A*R*u[j]
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						eta = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:eta)
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+							eta += u[j+1][k]*r_tilde[k];
+						info->Integrate(&eta,1);
+						//info->ScalarProd(u[j+1],r_tilde,vlocbeg,vlocend,eta); //eta = dot(u[j+1],r_tilde)
+
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						alpha = rho0 / eta;
+
+						if( fabs(alpha) > 1.0e+100 ) 
+						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							reason = "multiplier(2) is too large";
+							halt = true;
+							break;
+						}
+						if( alpha != alpha )
+						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							reason = "multiplier(2) is NaN";
+							halt = true;
+							break;
+						}
+
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+							SOL[k] += alpha*u[0][k];
+
+						for(INMOST_DATA_ENUM_TYPE i = 0; i < j+1; i++)
+						{
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+							for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) //r[i] = r[i] - alpha * u[i+1]
+								r[i][k] -= alpha*u[i+1][k];
+						}
+
+					
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						resid = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:resid)
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+							resid += r[0][k]*r[0][k];
+						info->Integrate(&resid,1);
+						//info->ScalarProd(r[0],r[0],vlocbeg,vlocend,resid); // resid = dot(r[j],r[j])
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						resid = sqrt(resid/rhs_norm); // resid = sqrt(dot(r[j],r[j]))
+
+					
+						if( resid < atol || resid < rtol*resid0 ) 
+						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							reason = "early exit in bi-cg block";
+							last_resid = resid;
+							halt = true;
+							break;
+						}
+						ApplyOperator(r[j],r[j+1]); // r[j+1] = A*R*r[j]		
+					}
+
+					if( halt ) break;
+					INMOST_DATA_ENUM_TYPE size = l;
+#if defined(CONVEX_COMBINATION)
+					size = l+1;
+#endif
+					// Penalization for convex combination for update below
+					for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; j++)
+					{
+						for(INMOST_DATA_ENUM_TYPE m = 1; m < j+1; m++)
+						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							tau_sum = 0.0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:tau_sum)
+#endif
+							for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+								tau_sum += r[j][k]*r[m][k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							tau[(j-1) + (m-1)*size] = tau[(m-1) + (j-1)*size] = tau_sum;
+						}
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						sigma_sum = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:sigma_sum)
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+							sigma_sum += r[0][k]*r[j][k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						sigma[j-1] = sigma_sum;
+					}
+#if defined(CONVEX_COMBINATION)
+					INMOST_DATA_REAL_TYPE lagrangian = 0.0;
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) lagrangian += tau[j+size*j];
+					sigma[l] = lagrangian;
+					tau[(l+1)*(l+1)-1] = 0.0;
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
+					{
+						tau[l + j*(l+1)] = -lagrangian;
+						tau[l*(l+1)+j] = lagrangian;
+					}
+#endif
+					info->Integrate(tau,size*size+size); //sigma is updated with tau
+
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+#if defined(PSEUDOINVERSE)
+					{
+						int dgesvd_info = 0;
+#if defined(USE_LAPACK_SVD)
+						char c = 'A';
+						INMOST_DATA_REAL_TYPE U[128*128], V[128*128], w[128];
+						INMOST_DATA_REAL_TYPE work[5*128];
+						int lwork = 5*128;
+						int n = static_cast<int>(size);
+						dgesvd_(&c,&c,&n,&n,tau,&n,w,U,&n,V,&n,work,&lwork,&dgesvd_info);
+#else
+						/*
+						char c = 'A';
+						INMOST_DATA_REAL_TYPE U2[128*128], V2[128*128], w2[128], tau2[128*128];
+						INMOST_DATA_REAL_TYPE work[5*128];
+						int lwork = 5*128;
+						int n = l;
+						memcpy(tau2,tau,sizeof(INMOST_DATA_REAL_TYPE)*l*l);
+						dgesvd_(&c,&c,&n,&n,tau2,&n,w2,U2,&n,V2,&n,work,&lwork,&dgesvd_info);
+						printf("dgesvd\n");
+						printf("w\n");
+						for(int q = 0; q < l; ++q) printf("%g ",w2[q]);
+						printf("\nU\n");
+						for(int q = 0; q < l*l; ++q) 
+						{
+							printf("%g ",U2[q]);
+							if( (q+1)%l == 0 ) printf("\n");
+						}
+						printf("V\n");
+						for(int q = 0; q < l*l; ++q) 
+						{
+							printf("%g ",V2[q]);
+							if( (q+1)%l == 0 ) printf("\n");
+						}
+						*/
+						INMOST_DATA_REAL_TYPE U[128*128], V[128*128], w[128];
+						dgesvd_info = svdnxn(tau,U,w,V,size);
+						//for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) w[j] = S[j*l+j];
+						/*
+						printf("svdnxn\n");
+						printf("w\n");
+						for(int q = 0; q < l; ++q) printf("%g ",w[q]);
+						printf("\nU\n");
+						for(int q = 0; q < l*l; ++q) 
+						{
+							printf("%g ",U[q]);
+							if( (q+1)%l == 0 ) printf("\n");
+						}
+						printf("V\n");
+						for(int q = 0; q < l*l; ++q) 
+						{
+							printf("%g ",V[q]);
+							if( (q+1)%l == 0 ) printf("\n");
+						}
+						*/
+#endif		
+						/*
+						printf("w ");
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) printf("%20g ",w[j]);
+						printf("\n");
+
+						printf("U\n");
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++) 
+						{
+							printf("%20g ",U[j]);
+							if( (j+1) % l == 0 ) printf("\n");
+						}
+						printf("\n");
+
+						printf("VT\n");
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++) 
+						{
+							printf("%20g ",V[j]);
+							if( (j+1) % l == 0 ) printf("\n");
+						}
+						printf("\n");
+						*/
+						if( dgesvd_info != 0 )
+						{
+							printf("(%s:%d) dgesvd %d\n",__FILE__,__LINE__,dgesvd_info);
+							exit(-1);
+						}
+					
+						INMOST_DATA_REAL_TYPE maxw = w[0], tol;
+						for(INMOST_DATA_ENUM_TYPE j = 1; j < size; j++) if(w[j]>maxw) maxw = w[j];
+						tol = size*maxw*1.0e-14;
+						memset(gamma,0,sizeof(INMOST_DATA_REAL_TYPE)*size);
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < size; j++)
+						{
+							if( w[j] > tol )
+							{
+								INMOST_DATA_REAL_TYPE sum = 0;
+								for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
+									sum += sigma[k]*U[j*size+k];
+								for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
+									gamma[k] += sum/w[j]*V[k*size+j];
+							}
 						}
 					}
-				}
 
-				//svdnxn(tau,U,S,V,l);
-				//INMOST_DATA_REAL_TYPE inv_tau[64];
-				//pseudoinverse(tau,inv_tau,l);
-				//matmul(inv_tau,sigma,gamma,l,l,1);
+					//svdnxn(tau,U,S,V,l);
+					//INMOST_DATA_REAL_TYPE inv_tau[64];
+					//pseudoinverse(tau,inv_tau,l);
+					//matmul(inv_tau,sigma,gamma,l,l,1);
 #else
-				int order[128];
-				int row = solvenxn(tau,gamma,sigma,l,order);
-				if( row != 0 )
-				{
-					std::cout << "breakdown on row " << row << std::endl;
-					reason = "breakdown in matrix inversion in polynomial part";
-					break;
-				}
-#endif
-				omega = gamma[l-1];
-				if( fabs(omega) > 1.0e+100 )
-				{
-					reason = "multiplier(3) is too large";
-					goto exit;
-				}
-				if( omega != omega )
-				{
-					reason = "multiplier(3) is NaN";
-					goto exit;
-				}
-				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; ++j)
-				{
-					for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 					{
-						u[0][k] -= gamma[j-1]*u[j][k];
-						SOL[k]  += gamma[j-1]*r[j-1][k];
-						r[0][k] -= gamma[j-1]*r[j][k];
+						int order[128];
+						int row = solvenxn(tau,gamma,sigma,size,order);
+						/*
+						double sum = 0.0;
+						for(int j = 0; j < l; ++j) 
+						{
+							sum += gamma[j];
+							std::cout << gamma[j] << " ";
+						}
+						std::cout << "sum: " << sum;
+						//std::cout << " lagrangian: " << gamma[l];
+						std::cout << std::endl;
+						*/
+						if( row != 0 )
+						{
+							std::cout << "breakdown on row " << row << std::endl;
+							reason = "breakdown in matrix inversion in polynomial part";
+							break;
+						}
 					}
-				}
-				
-				
-				/*
-				for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; j++)
-				{
-					for(INMOST_DATA_ENUM_TYPE i = 1; i < j; i++)
+#endif
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+					omega = gamma[l-1];
+					if( fabs(omega) > 1.0e+100 )
 					{
-						tau[i-1 + (j-1)*l] = 0;
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						reason = "multiplier(3) is too large";
+						halt = true;
+						break;
+					}
+					if( omega != omega )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						reason = "multiplier(3) is NaN";
+						halt = true;
+						break;
+					}
+					for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; ++j)
+					{
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+						{
+							u[0][k] -= gamma[j-1]*u[j][k];
+							SOL[k]  += gamma[j-1]*r[j-1][k];
+							r[0][k] -= gamma[j-1]*r[j][k];
+						}
+					}
+				
+				
+					/*
+					for(INMOST_DATA_ENUM_TYPE j = 1; j < l+1; j++)
+					{
+						for(INMOST_DATA_ENUM_TYPE i = 1; i < j; i++)
+						{
+							tau[i-1 + (j-1)*l] = 0;
+							for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
+								tau[i-1 + (j-1)*l] += r[j][k]*r[i][k];
+							info->Integrate(&tau[i-1 + (j-1)*l],1);
+							tau[i-1 + (j-1)*l] /= sigma[i-1];
+							for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
+								r[j][k] -= tau[i-1 + (j-1)*l]*r[i][k];
+						}
+						INMOST_DATA_REAL_TYPE temp[2] = {0,0};
 						for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
-							tau[i-1 + (j-1)*l] += r[j][k]*r[i][k];
-						info->Integrate(&tau[i-1 + (j-1)*l],1);
-						tau[i-1 + (j-1)*l] /= sigma[i-1];
-						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
-							r[j][k] -= tau[i-1 + (j-1)*l]*r[i][k];
+						{
+							temp[0] += r[j][k]*r[j][k];
+							temp[1] += r[0][k]*r[j][k];
+						}
+						info->Integrate(temp,2);
+						sigma[j-1] = temp[0];//+1.0e-35; //REVIEW
+						theta2[j-1] = temp[1]/sigma[j-1];
 					}
-					INMOST_DATA_REAL_TYPE temp[2] = {0,0};
-					for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k)
+					omega = theta1[l-1] = theta2[l-1];
+					for(INMOST_DATA_ENUM_TYPE j = l-1; j > 0; j--)
 					{
-						temp[0] += r[j][k]*r[j][k];
-						temp[1] += r[0][k]*r[j][k];
+						eta = 0;
+						for(INMOST_DATA_ENUM_TYPE i = j+1; i < l+1; i++)
+							eta += tau[j-1 + (i-1)*l] * theta1[i-1];
+						theta1[j-1] = theta2[j-1] - eta;
 					}
-					info->Integrate(temp,2);
-					sigma[j-1] = temp[0];//+1.0e-35; //REVIEW
-					theta2[j-1] = temp[1]/sigma[j-1];
-				}
-				omega = theta1[l-1] = theta2[l-1];
-				for(INMOST_DATA_ENUM_TYPE j = l-1; j > 0; j--)
-				{
-					eta = 0;
-					for(INMOST_DATA_ENUM_TYPE i = j+1; i < l+1; i++)
-						eta += tau[j-1 + (i-1)*l] * theta1[i-1];
-					theta1[j-1] = theta2[j-1] - eta;
-				}
-				for(INMOST_DATA_ENUM_TYPE j = 1; j < l; j++)
-				{
-					eta = 0;
-					for(INMOST_DATA_ENUM_TYPE i = j+1; i < l; i++)
-						eta += tau[j-1 + (i-1)*l] * theta1[i];
-					theta3[j-1] = theta1[j] + eta;
-				}
-				for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
-				{
-					SOL[k] += theta1[0]*r[0][k];
-					r[0][k] -= theta2[l-1]*r[l][k];
-					u[0][k] -= theta1[l-1]*u[l][k];
-				}
-				for(INMOST_DATA_ENUM_TYPE j = 1; j < l; j++)
-				{
+					for(INMOST_DATA_ENUM_TYPE j = 1; j < l; j++)
+					{
+						eta = 0;
+						for(INMOST_DATA_ENUM_TYPE i = j+1; i < l; i++)
+							eta += tau[j-1 + (i-1)*l] * theta1[i];
+						theta3[j-1] = theta1[j] + eta;
+					}
 					for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
 					{
-						u[0][k] -= theta1[j-1]*u[j][k];
-						SOL[k] += theta3[j-1]*r[j][k];
-						r[0][k] -= theta2[j-1]*r[j][k];
+						SOL[k] += theta1[0]*r[0][k];
+						r[0][k] -= theta2[l-1]*r[l][k];
+						u[0][k] -= theta1[l-1]*u[l][k];
 					}
-				}
-				*/
-				last_it = i+1;
-				{
-					resid = info->ScalarProd(r[0],r[0],vlocbeg,vlocend);
-					resid = sqrt(resid/rhs_norm);
-				}
-				tt = Timer() - tt;
-#if defined(REPORT_RESIDUAL)
-				if( info->GetRank() == 0 ) 
-				{
-					//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
-					//std::cout << "iter " << last_it << " resid " << resid << "\r";
-					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
-					fflush(stdout);
-				}
+					for(INMOST_DATA_ENUM_TYPE j = 1; j < l; j++)
+					{
+						for(INMOST_DATA_ENUM_TYPE k = vbeg; k < vend; ++k)
+						{
+							u[0][k] -= theta1[j-1]*u[j][k];
+							SOL[k] += theta3[j-1]*r[j][k];
+							r[0][k] -= theta2[j-1]*r[j][k];
+						}
+					}
+					*/
+					last_it = i+1;
+					{
+#if defined(USE_OMP)
+#pragma omp single
 #endif
-				last_resid = resid;
-				if( resid != resid )
-				{
-					reason = "residual is NAN";
-					break;
+						resid = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:resid)
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+							resid += r[0][k]*r[0][k];
+						info->Integrate(&resid,1);
+						//info->ScalarProd(r[0],r[0],vlocbeg,vlocend,resid);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						resid = sqrt(resid/rhs_norm);
+					}
+					tt = Timer() - tt;
+#if defined(REPORT_RESIDUAL)
+					if( info->GetRank() == 0 ) 
+					{
+						//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
+						//std::cout << "iter " << last_it << " resid " << resid << "\r";
+						//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						{
+							printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+							fflush(stdout);
+						}
+					}
+#endif
+					last_resid = resid;
+					if( resid != resid )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						reason = "residual is NAN";
+						break;
+					}
+					if( resid < atol )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						reason = "converged due to absolute tolerance";
+						break;
+					}
+					if( resid < rtol*resid0 )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						reason = "converged due to relative tolerance";
+						break;
+					}
+					if( resid > divtol )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						reason = "diverged due to divergence tolerance";
+						break;
+					}
+					if( i == maxits )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						reason = "reached maximum iteration number";
+						break;
+					}
+					i++;
 				}
-				if( resid < atol )
-				{
-					reason = "converged due to absolute tolerance";
-					break;
-				}
-				if( resid < rtol*resid0 )
-				{
-					reason = "converged due to relative tolerance";
-					break;
-				}
-				if( resid > divtol )
-				{
-					reason = "diverged due to divergence tolerance";
-					break;
-				}
-				if( i == maxits )
-				{
-					reason = "reached maximum iteration number";
-					break;
-				}
-				i++;
 			}
 exit:
 			if (prec != NULL)
@@ -937,7 +1142,10 @@ exit:
 				prec->Solve(SOL, r_tilde); //undo right preconditioner
 				std::copy(r_tilde.Begin(), r_tilde.End(), SOL.Begin());
 			}
-			for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k < vlocend; ++k) //undo shift
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) //undo shift
 				SOL[k] += x0[k];
 			//info->RestoreMatrix(A);
 			info->RestoreVector(SOL);
@@ -1061,11 +1269,10 @@ exit:
 			INMOST_DATA_INTEGER_TYPE ivbeg,ivend, ivlocbeg, ivlocend;
 			INMOST_DATA_REAL_TYPE rho = 1, alpha = 1, beta, omega = 1;
 			INMOST_DATA_REAL_TYPE resid0, resid, temp[2];
-			bool is_parallel = info->GetSize() > 1;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
-			if( is_parallel ) info->Update(SOL);
-			if( is_parallel ) info->Update(RHS);
+			info->Update(SOL);
+			info->Update(RHS);
 			if (prec != NULL)prec->ReplaceSOL(SOL);
 			if (prec != NULL)prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
@@ -1080,9 +1287,12 @@ exit:
 			std::fill(p.Begin(),p.End(),0.0);
 			{
 				resid = 0;
-				for(INMOST_DATA_ENUM_TYPE k = vlocbeg; k != vlocend; k++) 
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
 					resid += r[k]*r[k];
-				if( is_parallel ) info->Integrate(&resid,1);
+				info->Integrate(&resid,1);
 			}
 			last_resid = resid = resid0 = sqrt(resid);
 			last_it = 0;
@@ -1104,12 +1314,9 @@ exit:
 #pragma omp parallel
 #endif
 			{
-				long double tt, ts, tp, ttt;
 				INMOST_DATA_ENUM_TYPE i = 0;
 				while(true)
 				{
-					ts = tp = 0;
-					tt = Timer();
 					{
 						/*
 						if( fabs(rho) < 1.0e-31 )
@@ -1126,30 +1333,41 @@ exit:
 						}
 						*/
 						//std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
-						beta = 1.0 /rho * alpha / omega;
-						rho = 0;
-#if defined(USE_OMP)
-#pragma omp for reduction(+:rho)
-#endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
-							rho += r0[k]*r[k];
-						if( is_parallel ) 
-						{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-							info->Integrate(&rho,1);
+						{
+							beta = 1.0 /rho * alpha / omega;
+							rho = 0;
 						}
-						beta *= rho;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:rho)
+#endif
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+							rho += r0[k]*r[k];
+						info->Integrate(&rho,1);
+						//info->ScalarProd(r0,r,ivlocbeg,ivlocend,rho);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						{
+							beta *= rho;
+						}
 
 						if( fabs(beta) > 1.0e+100 )
 						{
 							//std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 							reason = "multiplier(1) is too large";
 							break;
 						}
 						if( beta != beta )
 						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 							reason = "multiplier(1) is NaN";
 							break;
 						}
@@ -1161,62 +1379,57 @@ exit:
 						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
 							p[k] = r[k] + beta*(p[k] - omega*v[k]); //global indexes r, p, v
 					}
+
 					{
-						ttt = Timer();
-						if (prec != NULL)
+						if (prec != NULL) 
 						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
 							prec->Solve(p, y);
-						}
-						tp += Timer() - ttt;
-						if( is_parallel ) 
-						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
 							info->Update(y);
+							Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
+							info->Update(v);
 						}
-						ttt = Timer();
-						Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
-						ts += Timer() - ttt;
-						if( is_parallel ) 
+						else
 						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
+							Alink->MatVec(1,p,0,v); // global multiplication, y should be updated, v probably needs an update
 							info->Update(v);
 						}
 					}
 					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 						alpha = 0;
 #if defined(USE_OMP)
 #pragma omp for reduction(+:alpha)
 #endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)  
+						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
 							alpha += r0[k]*v[k];
-						if( is_parallel ) 
+						info->Integrate(&alpha,1);
+						//info->ScalarProd(r0,v,ivlocbeg,ivlocend,alpha);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						{
+							if( alpha == 0 && rho == 0 ) 
+								alpha = 0;
+							else
+								alpha = rho / alpha; //local indexes, r0, v
+						}
+
+						if( fabs(alpha) > 1.0e+100 )
 						{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-							info->Integrate(&alpha,1);
-						}
-
-						if( alpha == 0 && rho == 0 ) 
-							alpha = 0;
-						else
-							alpha = rho / alpha; //local indexes, r0, v
-
-						if( fabs(alpha) > 1.0e+100 )
-						{
 							reason = "multiplier(2) is too large";
 							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
 							break;
 						}
 						if( alpha != alpha )
 						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 							reason = "multiplier(2) is NaN";
 							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
 							break;
@@ -1232,35 +1445,21 @@ exit:
 					}
 				
 					{
-						ttt = Timer();
-						if (prec != NULL)
+						if (prec != NULL) 
 						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
 							prec->Solve(s, z);
-						}
-						tp += Timer() - ttt;
-						if( is_parallel ) 
-						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
 							info->Update(z);
+							Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
+							info->Update(t);
 						}
-						ttt = Timer();
-						Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
-						ts += Timer() - ttt;
-						if( is_parallel ) 
+						else
 						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
+							Alink->MatVec(1.0,s,0,t); // global multiplication, z should be updated, t probably needs an update
 							info->Update(t);
 						}
 					}
+
 					{
-						
 						temp[0] = temp[1] = 0;
 #if defined(USE_OMP)
 #pragma omp for reduction(+:tempa) reduction(+:tempb)
@@ -1272,13 +1471,7 @@ exit:
 						}
 						temp[0] = tempa;
 						temp[1] = tempb;
-						if( is_parallel ) 
-						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-							info->Integrate(temp,2);
-						}
+						info->Integrate(temp,2);
 						/*
 						if (fabs(temp[1]) < 1.0e-35)
 						{
@@ -1286,19 +1479,30 @@ exit:
 						}
 						*/
 						//omega = temp[0] / (temp[1] + (temp[1] < 0.0 ? -1.0e-10 : 1.0e-10)); //local indexes t, s
-						if( temp[0] == 0 && temp[1] == 0 )
-							omega = 0;
-						else
-							omega = temp[0] / temp[1];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+						{
+							if( temp[0] == 0 && temp[1] == 0 )
+								omega = 0;
+							else
+								omega = temp[0] / temp[1];
+						}
 
 						if( fabs(omega) > 1.0e+100 )
 						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 							reason = "multiplier(3) is too large";
 							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
 							break;
 						}
 						if( omega != omega )
 						{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 							reason = "multiplier(3) is NaN";
 							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
 							break;
@@ -1319,23 +1523,23 @@ exit:
 							r[k] = s[k] - omega * t[k]; // global indexes r, s, t
 					}
 					last_it = i+1;
-					{
-						resid = 0;
-#if defined(USE_OMP)
-#pragma omp for reduction(+:resid)
-#endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
-							resid += r[k]*r[k];
-						if( is_parallel ) 
-						{
+					//info->ScalarProd(r,r,ivlocbeg,ivlocend,resid);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-							info->Integrate(&resid,1);
-						}
+					resid = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:resid)
+#endif
+					for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+						resid += r[k]*r[k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+					{
+						info->Integrate(&resid,1);
 						resid = sqrt(resid);
 					}
-					tt = Timer() - tt;
 #if defined(REPORT_RESIDUAL)
 					if( info->GetRank() == 0 ) 
 					{
@@ -1354,26 +1558,41 @@ exit:
 					last_resid = resid;
 					if( resid != resid )
 					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 						reason = "residual is NAN";
 						break;
 					}
 					if( resid > divtol )
 					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 						reason = "diverged due to divergence tolerance";
 						break;
 					}
 					if( resid < atol )
 					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 						reason = "converged due to absolute tolerance";
 						break;
 					}
 					if( resid < rtol*resid0 )
 					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 						reason = "converged due to relative tolerance";
 						break;
 					}
 					if( i == maxits )
 					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 						reason = "reached maximum iteration number";
 						break;
 					}
@@ -1391,6 +1610,7 @@ exit:
 		bool ReplaceSOL(Solver::Vector & SOL) {(void)SOL; return true; }
 		Method * Duplicate() { return new BCGS_solver(*this);}
 		std::string GetReason() {return reason;}
+
 	};
 }
 

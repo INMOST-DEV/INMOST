@@ -156,22 +156,22 @@ int cellAround(struct grid * g, int m, int side, int neighbours[1<<(DIM-1)])
 void vertDestroyINMOST(struct grid *g, int m)
 {
 	//printf("%s\n",__FUNCTION__);
-	if( g->verts[m].mv.isValid() && !g->verts[m].mv.Hidden() )
+	if( g->verts[m].mv != InvalidHandle() )
 	{
-		g->verts[m].mv->Delete();
+		g->mesh->Delete(g->verts[m].mv);
 	}
 }
 
 void vertCreateINMOST(struct grid * g, int m)
 {
 	Storage::real xyz[3];
-	if( g->verts[m].mv.isValid() ) return;
+	if( g->verts[m].mv != InvalidHandle() ) return;
 	vertGetCoord(g,m,xyz);
 	g->transformation(xyz);
-	g->verts[m].mv = g->mesh->CreateNode(xyz);
-	g->verts[m].mv->SetMarker(g->octree_node);
+	g->verts[m].mv = g->mesh->CreateNode(xyz)->GetHandle();
+	g->mesh->SetMarker(g->verts[m].mv,g->octree_node);
 	//g->verts[m].mv->Integer(g->new_marker) = 1;
-	g->vert_to_INMOST(g,m,g->verts[m].mv);
+	g->vert_to_INMOST(g,m,Node(g->mesh,g->verts[m].mv));
 }
 
 void cellDestroyINMOST(struct grid * g, int m)
@@ -299,13 +299,13 @@ void cellGetFaceVerts(struct grid * g, int m, int side, int * nverts, Node verts
 	for(i = 0; i < 4; i++)
 	{
 		mid[1+faces[0]] = false;
-		verts[(faces[1+faces[0]] = (*nverts))] = g->verts[g->cells[m].vertexes[nvf[side][i]]].mv;
+		verts[(faces[1+faces[0]] = (*nverts))] = Node(g->mesh,g->verts[g->cells[m].vertexes[nvf[side][i]]].mv);
 		faces[0]++;
 		(*nverts)++;
 		if( (middle = vertGetMiddle(g,m,side,i)) != -1)
 		{
 			mid[1+faces[0]] = true;
-			verts[(faces[1+faces[0]] = (*nverts))] = g->verts[middle].mv;
+			verts[(faces[1+faces[0]] = (*nverts))] = Node(g->mesh,g->verts[middle].mv);
 			faces[0]++;
 			(*nverts)++;
 			
@@ -1204,7 +1204,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 						centers[0] = matcenter(mat0d,&n0->Coords()[0],0);
 						centers[1] = matcenter(mat2d,&n2->Coords()[0],0);
 						//make iterations to find correct position of the node
-						int max = 8;
+						int max = 16;
 						int found = 0;
 						for(int q = 0; q < max; q++)
 						{
@@ -2357,7 +2357,7 @@ exit_work:				if( !success )
 				for(j = 0; j < l; j++) if( node_in_face[j].isValid() )
 					centers.push_back(matcenter(node_in_face[j]->IntegerArray(g->materials),&node_in_face[j]->Coords()[0]));
 				//make iterations to find correct position of the node
-				int max = 4;
+				int max = 8;
 				Storage::real div = 1.0/centers.size();
 				for(int q = 0; q < max; q++)
 				{
@@ -3485,7 +3485,7 @@ void cellInit(struct grid * g, int cell, int parent)
 void vertInit(struct grid * g, int vert)
 {
 	int i;
-	g->verts[vert].mv = InvalidNode();
+	g->verts[vert].mv = InvalidHandle();
 	for(i = 0; i < 1<<DIM; i++)
 		g->verts[vert].env[i] = -1;
 }

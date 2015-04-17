@@ -843,22 +843,33 @@ int main(int argc, char ** argv)
 	InitObj();
 	{
 		std::vector<std::string> layers;
-        for(int i = 0; i < 3; i++)
+        for(int i = 1; i <= 3; i++)
 		{
 				 std::stringstream name;
-				name << "Obj/bound" << i+1 << ".obj";
+				//name << "Obj/bound" << i+1 << ".obj";
+				 name << "oil_obj2/proj/layer" << i << ".obj";
 				layers.push_back(name.str());
 		}
 		make_proj.ReadLayers(layers);
 	}
 	{
 		std::vector<std::string> layers;
-		for(int i = 0; i < 6; i++)
+		for(int i = 1; i <= 19; i++)
 		{
-				 std::stringstream name;
-				name << "Obj/rt" << i+1 << ".obj";
+			 std::stringstream name;
+				//name << "Obj/rt" << i+1 << ".obj";
+				 name << "oil_obj2/mat/layer" << i << ".obj";
 				layers.push_back(name.str());
 		}
+		/*
+		for(int i = 1; i <= 3; i++)
+		{
+				 std::stringstream name;
+				//name << "Obj/rt" << i+1 << ".obj";
+				 name << "oil_obj2/proj/layer" << i << ".obj";
+				layers.push_back(name.str());
+		}
+		*/
 		get_type.ReadLayers(layers);
 	}
 	

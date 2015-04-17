@@ -9,7 +9,6 @@
 #define __NDT 3
 #define __NET 6
 
-
 namespace INMOST
 {
 
@@ -101,7 +100,7 @@ namespace INMOST
 	static const TopologyCheck PROHIBIT_POLYGON       = 0x00100000; //done//allow only known types of elements: Tet,Quad, Line
 	static const TopologyCheck PROHIBIT_MULTIPOLYGON  = 0x00200000; //done//(needs NEED_TEST_CLOSURE) produce error if faces of cell are not closed, or cell is folded
 	static const TopologyCheck PROHIBIT_POLYHEDRON    = 0x00400000; //done//allow only known types of elements: Tet,Hex,Prism,Pyramid
-	static const TopologyCheck FACE_EDGES_ORDER       = 0x00800000; //not implemented(implement CheckEdgeOrder,FixEdgeOrder, class Cell,Face)//edges of the face should form one closed loop
+	static const TopologyCheck FACE_EDGES_ORDER       = 0x00800000; //done//edges of the face should form one closed loop
 	static const TopologyCheck PROHIBIT_CONCAVE_FACE  = 0x01000000; //not implemented//don't allow concave face
 	static const TopologyCheck PROHIBIT_CONCAVE_CELL  = 0x02000000; //not implemented//don't allow concave cell
 	static const TopologyCheck PROHIBIT_NONSTAR_FACE  = 0x04000000; //not implemented//don't allow non-star shaped face
@@ -2039,7 +2038,13 @@ namespace INMOST
 		/// Set a marker on the element represented by handle.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
-		void                              SetMarker          (HandleType h,MarkerType n) {static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);}
+		void                              SetMarker          (HandleType h,MarkerType n) 
+		{
+#if defined(USE_OMP)
+#pragma omp atomic
+#endif
+			static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);
+		}
 		/// Set a marker on the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles
@@ -2053,7 +2058,13 @@ namespace INMOST
 		/// Remove the marker from the element.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
-		void                              RemMarker          (HandleType h,MarkerType n) {static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);}
+		void                              RemMarker          (HandleType h,MarkerType n) 
+		{
+#if defined(USE_OMP)
+#pragma omp atomic
+#endif
+			static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);
+		}
 		/// Remove the marker from the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles

@@ -22,7 +22,7 @@ char * nowarn2 = NULL;
 
 //~ extern Projection make_proj;
 
-bool swapyz = false;
+bool swapyz = true;
 
 
 struct ObjVertex
@@ -544,6 +544,7 @@ int ReadObj(char * file)
 	}
 	n = objs + cur;
 	strcpy(n->filename,file);
+	printf("Reading %s\n",file);
 //	nowarn2 = getcwd(n->filedir,1024);
 	FILE * f = fopen(file,"r");
 	if( f == NULL )
@@ -805,6 +806,14 @@ int ReadObj(char * file)
 							   &n->verts[n->nverts].v[0],
 							   &n->verts[n->nverts].v[1],
 							   &n->verts[n->nverts].v[2]);
+
+						n->verts[n->nverts].v[0] /= 99.5;
+						n->verts[n->nverts].v[1] /= 32;
+						n->verts[n->nverts].v[2] /= 99.5;
+						n->verts[n->nverts].v[0] -= 0.001;
+						n->verts[n->nverts].v[1] -= 0.001;
+						n->verts[n->nverts].v[2] += 0.001;
+						n->verts[n->nverts].v[2] *= -1;
 						if( swapyz )
 						{
 							double temp = n->verts[n->nverts].v[1];
@@ -955,6 +964,7 @@ int ReadObj(char * file)
 		if( n->minz > n->pols[i].minz )
 			n->minz = n->pols[i].minz;
 	}
+	printf("bounds: %g:%g %g:%g %g:%g\n",n->minx,n->maxx,n->miny,n->maxy,n->minz,n->maxz);
 	kdtree_build(n->t,n->p,n->npols,0);
 	/*
 	double  center[3];

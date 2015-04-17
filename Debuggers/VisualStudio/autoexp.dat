@@ -1,0 +1,87 @@
+
+;------------------------------------------------------------------------------
+;  INMOST::interval
+;------------------------------------------------------------------------------
+
+INMOST::interval<*,*>{
+	preview	(
+		#(
+			"[",
+			$e.end_index-$e.beg_index,
+			"](",
+			#array(
+				expr: $e.array[$i+$e.beg_index],
+				size: $e.end_index-$e.beg_index
+			),
+			")"
+		)
+	)
+	children (
+		#(
+			#([size] : $e.end_index-$e.beg_index),
+			#([first] : $e.beg_index),
+			#([last] : $e.end_index),
+			#array(
+				expr: $e.array[$i+$e.beg_index],
+				size: $e.end_index-$e.beg_index
+			)
+		)
+	)
+}
+
+;------------------------------------------------------------------------------
+;  INMOST::dynarray
+;------------------------------------------------------------------------------
+
+INMOST::dynarray<*,*>{
+	preview (
+		#(
+			"[",
+			$e.pend-$e.pbegin,
+			"](",
+			#array(
+				expr: $e.pbegin[$i],
+				size: $e.pend-$e.pbegin
+			),
+			")"
+		)
+	)
+	children (
+		#(
+			#([size] : $e.pend-$e.pbegin),
+			#([capacity] : $e.preserved-$e.pbegin),
+			#array(
+				expr: $e.pbegin[$i],
+				size: $e.pend-$e.pbegin
+			)
+		)
+	)
+}
+
+;------------------------------------------------------------------------------
+;  INMOST::shell
+;------------------------------------------------------------------------------
+
+INMOST::shell<*>{
+	preview (
+		#(
+			"[",
+			*$e.m_size,
+			"](",
+			#array(
+				expr: (*$e.m_arr)[$i],
+				size: *$e.m_size
+			),
+			")"
+		)
+	)
+	children (
+		#(
+			#([size] : *$e.m_size),
+			#array(
+				expr: (*$e.m_arr)[$i],
+				size: *$e.m_size
+			)
+		)
+	)
+}

@@ -1528,7 +1528,7 @@ namespace INMOST
 	void Mesh::UntieElement(integer etypenum, integer ID)
 	{
 #if defined(USE_OMP)
-#pragma omp critical [links_interraction]
+#pragma omp critical (links_interraction)
 #endif
 		{
 			integer ADDR = links[etypenum][ID];
@@ -1547,7 +1547,7 @@ namespace INMOST
 	{
 		integer ID = -1, ADDR = -1;
 #if defined(USE_OMP)
-#pragma omp critical [links_interraction]
+#pragma omp critical (links_interraction)
 #endif
 		{
 			INMOST_DATA_ENUM_TYPE old_size = GetArrayCapacity(etypenum), new_size;

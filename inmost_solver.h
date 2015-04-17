@@ -44,6 +44,7 @@ namespace INMOST
 			INNER_ILU2,     ///< inner Solver based on BiCGStab(L) solver with second order ILU factorization as preconditioner.
 			INNER_DDPQILUC,   ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner.
 			INNER_MPTILUC,   ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner.
+			INNER_MPTILU2,   ///< inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditioner.
 			Trilinos_Aztec, ///< external Solver AztecOO from Trilinos package
 			Trilinos_Belos, ///< external Solver Belos from Trilinos package, currently without preconditioner
 			Trilinos_ML,    ///< external Solver AztecOO with ML preconditioner
@@ -131,8 +132,9 @@ namespace INMOST
 			//~ void                 BeginSequentialCode() {for(int i = 0; i < rank; i++) MPI_Barrier(comm);}
 			//~ void                   EndSequentialCode() {for(int i = rank; i < size; i++) MPI_Barrier(comm);}
 
-			/// Get the scalar product of the specified interval of the distributed vector.
-			INMOST_DATA_REAL_TYPE ScalarProd(Vector const & left, Vector const & right, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end) const;
+			// Get the scalar product of the specified interval of the distributed vector.
+			// Conflicts with OpenMP, should not be used in future
+			//void ScalarProd(Vector const & left, Vector const & right, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end, INMOST_DATA_REAL_TYPE & sum) const;
 		};
 
 		/// Distributed vector class.
@@ -181,7 +183,7 @@ namespace INMOST
 			/// Get the communicator which the vector is associated with.
 			INMOST_MPI_Comm        GetCommunicator() const {return comm;}
 
-			
+			void Swap(Solver::Vector & other) {data.swap(other.data); name.swap(other.name); std::swap(is_parallel,other.is_parallel); std::swap(comm,other.comm);}
 
 
 			/// Save the distributed vector to a single data file using parallel MPI I/O.
@@ -350,6 +352,12 @@ namespace INMOST
 			/// that allow for the modification of individual entries.
 			/// @param size New size of the row.
 			void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
+
+			void                    Print() 
+			{
+				for(iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first << "," << it->second << ") ";
+				std::cout << std::endl;
+			}
 		};
 
 

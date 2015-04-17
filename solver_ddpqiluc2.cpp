@@ -13,8 +13,8 @@
 //#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
-#define REPORT_ILU_END
-#define REPORT_ILU_SUMMARY
+//#define REPORT_ILU_END
+//#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 //#define REPORT_SCHUR
 using namespace INMOST;
@@ -456,7 +456,7 @@ using namespace INMOST;
 					A_Entries[j++] = Solver::Row::make_entry(r->first, r->second);
 			}
 			A_Address[k].last = j;
-			assert(A_Address[k].Size() != 0); //singular matrix
+			//assert(A_Address[k].Size() != 0); //singular matrix
 		}
 		INMOST_DATA_REAL_TYPE  Anorm, Enorm, Fnorm;
 		INMOST_DATA_ENUM_TYPE nzE,nzF;
@@ -3362,60 +3362,65 @@ swap_algorithm:
 	{
 		assert(&input != &output);
 		//
-		INMOST_DATA_ENUM_TYPE k, level, mobeg, moend, vbeg, vend;
-		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
-		info->GetVectorRegion(vbeg, vend);
-		for (k = mobeg; k < moend; k++) temp[k] = input[k];
-		//the original matrix A was separated by multilevel algorithm to the following form
-		//     | B  F |
-		// A = |      |
-		//     | E  C |
-		// In order to apply solve phase on this matrix, we consider the matrix in following sense:
-		//     | I         0 | | B   0 | | I    B^{-1} F |
-		// A = |             | |       | |               | = L D U
-		//     | E B^{-1}  I | | 0   S | | 0           I |
-		// where S = C - E B^{-1} F
-		// consider the system 
-		//  | B  F | | u |   | f |
-		//  |      | |   | = |   |
-		//  | E  C | | y |   | g |
-		// then solution is obtained by steps:
-		// 1) ~f = B^{-1} f
-		// 2) ~g = g - E ~f
-		// 3) y = S^{-1} ~g
-		// 4) u = ~f - B^{-1} F y
-		//first reorder input as prescribed by P
-		// ~y = Pt y
-		for (k = vbeg; k < mobeg; k++) output[k] = 0;//Restrict additive schwartz (maybe do it outside?)
-		for (k = mobeg; k < moend; ++k) output[k] = temp[ddP[k]];
-		for (k = moend; k < vend; k++) output[k] = 0;//Restrict additive schwartz (maybe do it outside?)
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+		{
+			INMOST_DATA_ENUM_TYPE k, level, mobeg, moend, vbeg, vend;
+			info->GetOverlapRegion(info->GetRank(), mobeg, moend);
+			info->GetVectorRegion(vbeg, vend);
+			for (k = mobeg; k < moend; k++) temp[k] = input[k];
+			//the original matrix A was separated by multilevel algorithm to the following form
+			//     | B  F |
+			// A = |      |
+			//     | E  C |
+			// In order to apply solve phase on this matrix, we consider the matrix in following sense:
+			//     | I         0 | | B   0 | | I    B^{-1} F |
+			// A = |             | |       | |               | = L D U
+			//     | E B^{-1}  I | | 0   S | | 0           I |
+			// where S = C - E B^{-1} F
+			// consider the system 
+			//  | B  F | | u |   | f |
+			//  |      | |   | = |   |
+			//  | E  C | | y |   | g |
+			// then solution is obtained by steps:
+			// 1) ~f = B^{-1} f
+			// 2) ~g = g - E ~f
+			// 3) y = S^{-1} ~g
+			// 4) u = ~f - B^{-1} F y
+			//first reorder input as prescribed by P
+			// ~y = Pt y
+			for (k = vbeg; k < mobeg; k++) output[k] = 0;//Restrict additive schwartz (maybe do it outside?)
+			for (k = mobeg; k < moend; ++k) output[k] = temp[ddP[k]];
+			for (k = moend; k < vend; k++) output[k] = 0;//Restrict additive schwartz (maybe do it outside?)
 
-		level = 0;
-		//perform recursively first two steps of solve phase
-		// outer V-cycle
+			level = 0;
+			//perform recursively first two steps of solve phase
+			// outer V-cycle
 
-		while(level < level_size.size()) level = Descend(level, output, output);
+			while(level < level_size.size()) level = Descend(level, output, output);
 		
-		// W-cycle, should do ApplyB between moves
-		//level = Ascend(level, output);
-		//level = Ascend(level, output);
-		//level = Descend(level, output);
-		//level = Descend(level, output);
+			// W-cycle, should do ApplyB between moves
+			//level = Ascend(level, output);
+			//level = Ascend(level, output);
+			//level = Descend(level, output);
+			//level = Descend(level, output);
 
-		//on the last recursion level third step was accomplished
-		//finish last step in unwinding recursion
+			//on the last recursion level third step was accomplished
+			//finish last step in unwinding recursion
 		
-		while (level > 0) level = Ascend(level, output, output);
+			while (level > 0) level = Ascend(level, output, output);
 
 		
-		//System was solved with reordered matrix
-		// PAQ x = y
-		// AQ x = Pt y
-		// Q x = A^{-1} Pt y <- we have now
-		// x = Qt A^{-1} Pt y
-		//reorder output by Q
-		for (k = mobeg; k < moend; ++k) temp[ddQ[k]] = output[k];
-		for (k = mobeg; k < moend; ++k) output[k] = temp[k];
+			//System was solved with reordered matrix
+			// PAQ x = y
+			// AQ x = Pt y
+			// Q x = A^{-1} Pt y <- we have now
+			// x = Qt A^{-1} Pt y
+			//reorder output by Q
+			for (k = mobeg; k < moend; ++k) temp[ddQ[k]] = output[k];
+			for (k = mobeg; k < moend; ++k) output[k] = temp[k];
+		}
 		//May assemble partition of unity instead of restriction before accumulation
 		//assembly should be done instead of initialization
 		info->Accumulate(output);

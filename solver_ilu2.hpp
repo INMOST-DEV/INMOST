@@ -490,23 +490,28 @@ public:
 	bool Solve(Solver::Vector & input, Solver::Vector & output)
 	{
 		assert(isInitialized());
-		INMOST_DATA_ENUM_TYPE mobeg, moend, r, k, vbeg,vend; //, end;
-		info->GetOverlapRegion(info->GetRank(),mobeg,moend);
-		info->GetVectorRegion(vbeg,vend);
-		for(k = vbeg; k < mobeg; k++) output[k] = 0; //Restrict additive schwartz (maybe do it outside?)
-		for(k = mobeg; k < moend; k++) output[k] = input[k];
-		for(k = moend; k < vend; k++) output[k] = 0; //Restrict additive schwartz (maybe do it outside?)
-		for(k = mobeg; k < moend; k++) //iterate over L part
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 		{
-			for(r = iu[k]-1; r > ilu[k]; r--) 
-				output[k] -= luv[r-1]*output[lui[r-1]];
-			output[k] *= luv[iu[k]-1];
-		}
-		for(k = moend; k > mobeg; k--) //iterate over U part
-		{
-			for(r = iu[k-1]+1; r < ilu[k]; r++)
-				output[k-1] -= luv[r]*output[lui[r]];
-			output[k-1] *= luv[iu[k-1]];
+			INMOST_DATA_ENUM_TYPE mobeg, moend, r, k, vbeg,vend; //, end;
+			info->GetOverlapRegion(info->GetRank(),mobeg,moend);
+			info->GetVectorRegion(vbeg,vend);
+			for(k = vbeg; k < mobeg; k++) output[k] = 0; //Restrict additive schwartz (maybe do it outside?)
+			for(k = mobeg; k < moend; k++) output[k] = input[k];
+			for(k = moend; k < vend; k++) output[k] = 0; //Restrict additive schwartz (maybe do it outside?)
+			for(k = mobeg; k < moend; k++) //iterate over L part
+			{
+				for(r = iu[k]-1; r > ilu[k]; r--) 
+					output[k] -= luv[r-1]*output[lui[r-1]];
+				output[k] *= luv[iu[k]-1];
+			}
+			for(k = moend; k > mobeg; k--) //iterate over U part
+			{
+				for(r = iu[k-1]+1; r < ilu[k]; r++)
+					output[k-1] -= luv[r]*output[lui[r]];
+				output[k-1] *= luv[iu[k-1]];
+			}
 		}
 		//May assemble partition of unity instead of restriction before accumulation
 		//assembly should be done instead of initialization
