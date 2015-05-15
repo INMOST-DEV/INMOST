@@ -625,12 +625,12 @@ namespace INMOST
 #endif
 			INMOST_DATA_ENUM_TYPE i = 0;
 
+			bool halt = false;
 			if( last_resid < atol || last_resid < rtol*resid0 ) 
 			{
 				reason = "initial solution satisfy tolerances";
 				goto exit;
 			}
-			bool halt = false;
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
