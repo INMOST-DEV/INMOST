@@ -1005,7 +1005,7 @@ namespace INMOST
 //~ #else
 					std::vector<unsigned> sendsizeall(mpisize*2);
 					int pack_size2 = 0;
-					unsigned long usend[2] = {static_cast<unsigned>(sendsize),static_cast<unsigned>(pack_real.size())};
+					unsigned usend[2] = {static_cast<unsigned>(sendsize),static_cast<unsigned>(pack_real.size())};
 					MPI_Pack_size(2,MPI_UNSIGNED,comm,&pack_size2);
 					for(dynarray<integer,64>::size_type k = 0; k < procs.size(); k++)
 					{
