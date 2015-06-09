@@ -632,7 +632,7 @@ namespace INMOST
 				reason = "initial solution satisfy tolerances";
 				halt = true;
 			}
-			
+
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
