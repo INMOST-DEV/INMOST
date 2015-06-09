@@ -25,6 +25,10 @@ if(USE_SOLVER)
     message("linking FVDiscr with Metis")
     target_link_libraries(FVDiscr ${METIS_LIBRARIES})
   endif()
+  if(USE_SOLVER_MONDRIAAN)
+    message("linking FVDiscr with Mondriaan")
+    target_link_libraries(FVDiscr ${MONDRIAAN_LIBRARIES})
+  endif()
 endif()
 
 

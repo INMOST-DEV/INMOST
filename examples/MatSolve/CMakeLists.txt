@@ -33,6 +33,10 @@ if(USE_SOLVER)
     message("linking MatSolve with Metis")
     target_link_libraries(MatSolve ${METIS_LIBRARIES})
   endif()
+  if(USE_SOLVER_MONDRIAAN)
+    message("linking MatSolve with Mondriaan")
+    target_link_libraries(MatSolve ${MONDRIAAN_LIBRARIES})
+  endif()
 endif()
 
 

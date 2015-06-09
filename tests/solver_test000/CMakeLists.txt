@@ -32,6 +32,10 @@ if(USE_SOLVER_METIS)
   message("linking solver_test000 with Metis")
   target_link_libraries(solver_test000 ${METIS_LIBRARIES})
 endif()
+if(USE_SOLVER_MONDRIAAN)
+  message("linking solver_test000 with Mondriaan")
+  target_link_libraries(solver_test000 ${MONDRIAAN_LIBRARIES})
+endif()
 
 
 add_test(NAME solver_test000_serial_inner_ilu2                 COMMAND $<TARGET_FILE:solver_test000> 0 0)

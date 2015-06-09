@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #include "solver_petsc.h"
@@ -1329,33 +1330,40 @@ namespace INMOST
 		(void)argv;
 		if( database != NULL )
 		{
-			std::fstream file(database,std::ios::in);
-			char str[4096];
-			while( !file.eof() && file.getline(str,4096) )
-			{
-				int k = 0, l;
-				for(k = 0; k < (int)strlen(str); ++k)
-				{
-					if( str[k] == ':' ) break;
-				}
-				if( k == strlen(str) ) continue; //invalid line
-				for(l = 0; l < k; ++l) str[l] = tolower(str[l]);
-				l = k+1;
-				while(l < (int)strlen(str) && isspace(str[l]) ) ++l;
-				if( l == strlen(str) ) continue; //skip empty entry
-				if( !strncmp(str,"petsc",k) )
-					petsc_database_file = std::string(str+l);
-				else if( !strncmp(str,"trilinos_ifpack",k) )
-					trilinos_ifpack_database_file = std::string(str+l);
-				else if( !strncmp(str,"trilinos_aztec",k) )
-					trilinos_aztec_database_file = std::string(str+l);
-				else if( !strncmp(str,"trilinos_ml",k) )
-					trilinos_ml_database_file = std::string(str+l);
-				else if( !strncmp(str,"trilinos_belos",k) )
-					trilinos_belos_database_file = std::string(str+l);
-				else if( !strncmp(str,"ani",k) )
-					ani_database_file = std::string(str+l);
-			}
+      FILE * f = fopen(database,"r");
+      if( f )
+      {
+			  //std::fstream file(database,std::ios::in);
+			  char str[4096];
+			  //while( !file.eof() && file.getline(str,4096) )
+        while( !feof(f) && fgets(str,4096,f) )
+			  {
+				  int k = 0, l;
+				  for(k = 0; k < (int)strlen(str); ++k)
+				  {
+					  if( str[k] == ':' ) break;
+				  }
+				  if( k == strlen(str) ) continue; //invalid line
+				  for(l = 0; l < k; ++l) str[l] = tolower(str[l]);
+				  l = k+1;
+				  while(l < (int)strlen(str) && isspace(str[l]) ) ++l;
+				  if( l == strlen(str) ) continue; //skip empty entry
+				  if( !strncmp(str,"petsc",k) )
+					  petsc_database_file = std::string(str+l);
+				  else if( !strncmp(str,"trilinos_ifpack",k) )
+					  trilinos_ifpack_database_file = std::string(str+l);
+				  else if( !strncmp(str,"trilinos_aztec",k) )
+					  trilinos_aztec_database_file = std::string(str+l);
+				  else if( !strncmp(str,"trilinos_ml",k) )
+					  trilinos_ml_database_file = std::string(str+l);
+				  else if( !strncmp(str,"trilinos_belos",k) )
+					  trilinos_belos_database_file = std::string(str+l);
+				  else if( !strncmp(str,"ani",k) )
+					  ani_database_file = std::string(str+l);
+			  }
+			  //file.close();
+        fclose(f);
+      }
 		}
 		//std::cout << "PETSc \"" << petsc_database_file << "\"" << std::endl;
 		//std::cout << "Trilinos_Ifpack \"" << trilinos_ifpack_database_file << "\"" << std::endl;

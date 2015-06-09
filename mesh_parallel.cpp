@@ -76,7 +76,7 @@ namespace INMOST
 	{
 		if( size )
 		{
-			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
+      const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
 			Storage::integer_array arr = e->IntegerArray(tag);
 			arr.push_back(recv[0]);
 		}
@@ -87,20 +87,26 @@ namespace INMOST
 	{
 		if( size )
 		{
-			bool flag = true;
-			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
-			Storage::integer_array arr = e->IntegerArray(tag);
-			for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it+=2)
-				if( *it == recv[0] )
-				{
-					flag = false;
-					break;
-				}
-			if( flag ) 
-			{
-				arr.push_back(recv[0]);
-				arr.push_back(recv[1]);
-			}
+      for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k+=2 )
+      {
+			  bool flag = true;
+			  const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data))+k;
+			  Storage::integer_array arr = e->IntegerArray(tag);
+      
+        for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it+=2)
+        {
+          if( *it == recv[0] )
+				  {
+					  flag = false;
+					  break;
+				  }
+        }
+			  if( flag ) 
+			  {
+				  arr.push_back(recv[0]);
+				  arr.push_back(recv[1]);
+			  }
+      }
 		}
 	}
 	
@@ -1005,7 +1011,7 @@ namespace INMOST
 //~ #else
 					std::vector<unsigned> sendsizeall(mpisize*2);
 					int pack_size2 = 0;
-					unsigned long usend[2] = {static_cast<unsigned>(sendsize),static_cast<unsigned>(pack_real.size())};
+					unsigned usend[2] = {static_cast<unsigned>(sendsize),static_cast<unsigned>(pack_real.size())};
 					MPI_Pack_size(2,MPI_UNSIGNED,comm,&pack_size2);
 					for(dynarray<integer,64>::size_type k = 0; k < procs.size(); k++)
 					{
@@ -1160,6 +1166,8 @@ namespace INMOST
 						REPORT_VAL("type",ElementTypeName(current_mask));
 						
 						
+            //int owned_elems = 0;
+            //int shared_elems = 0;
 						int owner;
 						Element::Status estat;
 						
@@ -1173,10 +1181,19 @@ namespace INMOST
 							{
 								p.clear();
 								p.push_back(mpirank);
+                //++owned_elems;
 							}
-							else p.replace(p.begin(),p.end(),result.begin(),result.end());
+							else 
+              {
+                p.replace(p.begin(),p.end(),result.begin(),result.end());
+                //if( result.size() == 1 && result[0] == mpirank ) 
+                //  ++owned_elems;
+                //else ++shared_elems;
+              }
 						}
 						time = Timer() - time;
+            //REPORT_VAL("predicted owned elements",owned_elems);
+            //REPORT_VAL("predicted shared elements",shared_elems);
 						REPORT_STR("Predict processors for elements");
 						REPORT_VAL("time",time);
 						
@@ -1184,6 +1201,7 @@ namespace INMOST
 						time = Timer();
 						//Initialize mapping that helps get local id by global id
 						std::vector<std::pair<int,int> > mapping;
+            REPORT_VAL("mapping type",ElementTypeName(current_mask >> 1));
 						for(Mesh::iteratorElement it = BeginElement(current_mask >> 1); it != EndElement(); it++)
 						{
 							mapping.push_back(std::make_pair(it->GlobalID(),it->LocalID()));
@@ -1191,6 +1209,7 @@ namespace INMOST
 						if( !mapping.empty() ) 
 							std::sort(mapping.begin(),mapping.end(),MappingComparator());
 						time = Timer() - time;
+            REPORT_VAL("mapping size",mapping.size())
 						REPORT_STR("Compute global to local indexes mapping");
 						REPORT_VAL("time",time);
 						//Initialize arrays
@@ -1227,6 +1246,8 @@ namespace INMOST
 										elements[m].push_back(*it);
 									}
 								}
+                REPORT_VAL("for processor",*p);
+                REPORT_VAL("gathered elements",elements[m].size());
 								message_send[0] = static_cast<int>(message_send.size());
 								MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(message_send.size()),MPI_INT,comm,&sendsize);
 								send_buffs[m].first = *p;
@@ -1264,6 +1285,7 @@ namespace INMOST
 									}
 								if( pos == -1 ) throw Impossible;
 								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&size,1,MPI_INT,comm);
+                REPORT_VAL("unpacked message size",size-1);
 								message_recv[pos].resize(size-1);
 								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&message_recv[pos][0],static_cast<INMOST_MPI_SIZE>(message_recv[pos].size()),MPI_INT,comm);
 							}
@@ -1301,7 +1323,7 @@ namespace INMOST
 										break;
 									}
 									int find_local_id = mapping[find].second;
-									sub_elements.push_back(ComposeHandle(current_mask >> 1, find_local_id));
+									sub_elements.push_back(ComposeHandle(PrevElementType(current_mask), find_local_id));
 									
 								}
 								if( flag )
@@ -1311,14 +1333,32 @@ namespace INMOST
 									remote_elements.push_back(e);
 								}
 							}
+              REPORT_VAL("number of unpacked remote elements",remote_elements.size());
+              if( !remote_elements.empty() )
+              {
+                REPORT_VAL("first",remote_elements.front());
+                REPORT_VAL("first type",ElementTypeName(GetHandleElementType(remote_elements.front())));
+                REPORT_VAL("last",remote_elements.back());
+                REPORT_VAL("last type",ElementTypeName(GetHandleElementType(remote_elements.back())));
+              }
 							std::sort(remote_elements.begin(),remote_elements.end());
+              REPORT_VAL("original elements size",elements[m].size());
+              if( !elements[m].empty() )
+              {
+                REPORT_VAL("first",elements[m].front());
+                REPORT_VAL("first type",ElementTypeName(GetHandleElementType(elements[m].front())));
+                REPORT_VAL("last",elements[m].back());
+                REPORT_VAL("last type",ElementTypeName(GetHandleElementType(elements[m].back())));
+              }
 							std::sort(elements[m].begin(),elements[m].end());
 							element_set result;
 							element_set::iterator set_end;
 							
 							result.resize(elements[m].size());
 							set_end = std::set_difference(elements[m].begin(),elements[m].end(),remote_elements.begin(),remote_elements.end(), result.begin());
-							result.resize(set_end-result.begin());				
+							result.resize(set_end-result.begin());
+
+              REPORT_VAL("set difference size",result.size());
 							
 							//elements in result are wrongly marked as ghost
 							for(element_set::iterator qt = result.begin(); qt != result.end(); qt++)
@@ -1799,6 +1839,9 @@ namespace INMOST
 		Tag tag_skin = CreateTag("TEMPORARY_COMPUTE_SHARED_SKIN_SET",DATA_INTEGER,FACE,FACE);
 
 		REPORT_STR("filling neighbouring cell's global identificators for faces")
+#if defined(USE_PARALLEL_WRITE_TIME)
+		std::map<int,int> numfacesperproc;
+#endif
 
 		for(iteratorFace it = BeginFace(); it != EndFace(); it++)
 		{
@@ -1807,30 +1850,68 @@ namespace INMOST
 			{
 				Storage::integer_array arr = it->IntegerArray(tag_skin);
 				ElementArray<Element> adj = it->getAdjElements(CELL);
+        //REPORT_STR("face " << it->LocalID() << " global " << it->GlobalID() << " type " << Element::StatusName(estat));
 				for(ElementArray<Element>::iterator jt = adj.begin(); jt != adj.end(); jt++)
 				{
 					arr.push_back(jt->GlobalID()); //identificator of the cell
 					arr.push_back(jt->IntegerDF(tag_owner)); //owner of the cell
+          //REPORT_STR("id " << jt->GlobalID() << " owner " << jt->IntegerDF(tag_owner));
 				}
 			}
+#if defined(USE_PARALLEL_WRITE_TIME)
+        ++numfacesperproc[it->IntegerDF(tag_owner)];
+#endif
 		}
+		REPORT_STR("number of ghosted or shared faces");
+#if defined(USE_PARALLEL_WRITE_TIME)
+		for(std::map<int,int>::iterator it = numfacesperproc.begin(); it != numfacesperproc.end(); ++it)
+		{
+			REPORT_VAL("processor",it->first);
+			REPORT_VAL("skin faces",it->second);
+		}
+#endif
 
-		REPORT_STR("exchanging cell's global identificators information")
+		REPORT_STR("reducing cell's global identificators information")
 
 		ReduceData(tag_skin,FACE,0,UnpackSkin);
+
+
+    REPORT_STR("exchanging cell's global identificators information")
+
+#if defined(USE_PARALLEL_WRITE_TIME)
+    //for(iteratorFace it = BeginFace(); it != EndFace(); it++)
+		//{
+		//	Element::Status estat1 = GetStatus(*it), estat2;
+		//	if( estat1 == Element::Owned ) continue;
+    //  Storage::integer_array skin_data = it->IntegerArray(tag_skin);
+    //  REPORT_STR("face " << it->LocalID() << " global " << it->GlobalID() << " type " << Element::StatusName(estat1));
+    //  for(Storage::integer_array::iterator kt = skin_data.begin(); kt != skin_data.end(); kt+=2)
+    //  {
+    //    REPORT_STR("id " << *kt << " owner " << *(kt+1));
+    //  }
+    //}
+#endif
+
 		ExchangeData(tag_skin,FACE,0);
 
-		REPORT_STR("exchanging cell's global identificators information")
+
+		REPORT_STR("synchornization done")
 
 		proc_elements skin_faces;
 #if defined(USE_PARALLEL_WRITE_TIME)
-		std::map<int,int> numfacesperproc;
+    numfacesperproc.clear();
 #endif
 		for(iteratorFace it = BeginFace(); it != EndFace(); it++)
 		{
 			bool flag = false;
 			Element::Status estat1 = GetStatus(*it), estat2;
 			if( estat1 == Element::Owned ) continue;
+      //Storage::integer_array skin_data = it->IntegerArray(tag_skin);
+      //REPORT_STR("face " << it->LocalID() << " global " << it->GlobalID() << " type " << Element::StatusName(estat1));
+      //for(Storage::integer_array::iterator kt = skin_data.begin(); kt != skin_data.end(); kt+=2)
+      //{
+      //  REPORT_STR("id " << *kt << " owner " << *(kt+1));
+      //}
 			Cell c1 = it->BackCell();
 			Cell c2 = it->FrontCell();
 			if( !c1.isValid() && !c2.isValid() ) continue; //no cells per face - skip hanging face
@@ -1856,6 +1937,7 @@ namespace INMOST
 			
 			if( flag )
 			{
+        //printf("hello!\n");
 				for(int i = 0; i < 2; i++) //assert checks that there are two cells
 				{
 					Storage::integer owner = skin_data[i*2+1]; //cell owner
@@ -1963,7 +2045,7 @@ namespace INMOST
 			for(element_set::iterator it = all_visited.begin(); it != all_visited.end(); it++)
 			{
 				Storage::integer_array os = IntegerArray(*it,on_skin);
-				for(Storage::integer_array::iterator p = os.begin(); p != os.end(); p++)
+        for(Storage::integer_array::iterator p = os.begin(); p != os.end(); p++)
 				{
 					if( *p != mpirank )
 					{
@@ -2019,12 +2101,18 @@ namespace INMOST
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++)
 					if( (!select || GetMarker(*eit,select)) && HaveData(*eit,tag) )
 					{
+            //REPORT_STR("element type " << ElementTypeName(GetHandleElementType(*eit)) << " global id " << Integer(*eit,GlobalIDTag()));
 						array_size_send.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send[count]++;
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 						INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 						array_data_send.resize(had_s+s*tag.GetBytesSize());
 						GetData(*eit,tag,0,s,&array_data_send[had_s]);
+            //REPORT_VAL("size",s);
+            //for(int qq = 0; qq < s; ++qq)
+            //{
+            //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_send[had_s+qq*tag.GetBytesSize()]));
+            //}
 						if( size == ENUMUNDEF ) array_size_send.push_back(s);
 						++total_packed;
 					}
@@ -2033,11 +2121,12 @@ namespace INMOST
 			{
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 				{
+         // REPORT_STR("element type " << ElementTypeName(*eit) << " global id " << Integer(*eit,GlobalIDTag()));
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 					INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 					array_data_send.resize(had_s+s*tag.GetBytesSize());
 					GetData(*eit,tag,0,s,&array_data_send[had_s]);
-					if( size == ENUMUNDEF ) array_size_send.push_back(s);
+          if( size == ENUMUNDEF ) array_size_send.push_back(s);
 					++total_packed;
 				}
 			}
@@ -2112,7 +2201,13 @@ namespace INMOST
 						for(unsigned j = 0; j < count; j++)
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
+              //REPORT_STR("element type " << ElementTypeName(GetHandleElementType(*eit)) << " global id " << Integer(*eit,GlobalIDTag()));
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
+              //REPORT_VAL("size",array_size_recv[k]);
+              //for(int qq = 0; qq < array_size_recv[k]; ++qq)
+              //{
+              //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_recv[pos+qq*tag.GetBytesSize()]));
+              //}
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
 							pos += array_size_recv[k]*tag.GetBytesSize();
 							++k;
@@ -3980,7 +4075,7 @@ namespace INMOST
 	
 	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge)
 	{
-		//printf("called exchange ghost with %d bridge %s\n",layers,ElementTypeName(bridge));
+    //printf("%d called exchange ghost with layers %d bridge %s\n",GetProcessorRank(), layers,ElementTypeName(bridge));
 		if( m_state == Serial ) return;
 		ENTER_FUNC();
 #if defined(USE_MPI)
@@ -4007,6 +4102,7 @@ namespace INMOST
 		{
 			
 			proc_elements shared_skin = ComputeSharedSkinSet(bridge);
+      //printf("%d shared skin size %d\n",GetProcessorRank(),shared_skin.size());
 			time = Timer();
 			for(Storage::integer_array::iterator p = procs.begin(); p != procs.end(); p++)
 			{

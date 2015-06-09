@@ -127,7 +127,7 @@ int main(int argc,char ** argv)
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
 		
 		ttt = Timer();
-		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
+    Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		Solver::Matrix A; // Declare the matrix of the linear system to be solved
 		Solver::Vector x,b; // Declare the solution and the right-hand side vectors
 		
@@ -242,6 +242,8 @@ int main(int argc,char ** argv)
 
 		ttt = Timer();
 
+    Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
+
 		Storage::real err_C = 0.0, err_L2 = 0.0;
 		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
 			if( cell->GetStatus() != Element::Ghost )
@@ -251,6 +253,7 @@ int main(int argc,char ** argv)
 				if (err > err_C)
 					err_C = err;
 				err_L2 += err * err * cell->Volume();
+        cell->Real(error) = err;
 // 				x[cell->Integer(id)] = err;
 			}
 		err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error

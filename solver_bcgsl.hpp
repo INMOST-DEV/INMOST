@@ -46,13 +46,15 @@ namespace INMOST
 		shell<INMOST_DATA_REAL_TYPE> u(pu,n*n);
 		shell<INMOST_DATA_REAL_TYPE> v(pv,n*n);
 		shell<INMOST_DATA_REAL_TYPE> w(pw,n);
-		std::copy(a.begin(),a.end(),u.begin());
+		//std::copy(a.begin(),a.end(),u.begin());
 		//memcpy(u,a,sizeof(INMOST_DATA_REAL_TYPE)*n*n);
 		int flag, i, its, j, jj, k, l, nm;
 		INMOST_DATA_REAL_TYPE c, f, h, s, x, y, z;
 		INMOST_DATA_REAL_TYPE anorm = 0.0, g = 0.0, scale = 0.0;
-		static std::vector<INMOST_DATA_REAL_TYPE> rv1(n);
+		dynarray<INMOST_DATA_REAL_TYPE,64> rv1;
+    rv1.resize(n);
 		// Householder reduction to bidiagonal form
+		for (i = 0; i < n*n; ++i) u[i] = a[i];
 		for (i = 0; i < n; i++) 
 		{
 			// left-hand reduction
@@ -624,13 +626,13 @@ namespace INMOST
 			}
 #endif
 			INMOST_DATA_ENUM_TYPE i = 0;
-
+			bool halt = false;
 			if( last_resid < atol || last_resid < rtol*resid0 ) 
 			{
 				reason = "initial solution satisfy tolerances";
-				goto exit;
+				halt = true;
 			}
-			bool halt = false;
+			
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
@@ -826,17 +828,24 @@ namespace INMOST
 						sigma[j-1] = sigma_sum;
 					}
 #if defined(CONVEX_COMBINATION)
-					INMOST_DATA_REAL_TYPE lagrangian = 0.0;
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) lagrangian += tau[j+size*j];
-					sigma[l] = lagrangian;
-					tau[(l+1)*(l+1)-1] = 0.0;
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
+#if defined(USE_OMP)
+#pragma omp single
+#endif
 					{
-						tau[l + j*(l+1)] = -lagrangian;
-						tau[l*(l+1)+j] = lagrangian;
+						INMOST_DATA_REAL_TYPE lagrangian = 0.0;
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) lagrangian += tau[j+size*j];
+						sigma[l] = lagrangian;
+						tau[(l+1)*(l+1)-1] = 0.0;
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
+						{
+							tau[l + j*(l+1)] = -lagrangian;
+							tau[l*(l+1)+j] = lagrangian;
+						}
 					}
 #endif
-					info->Integrate(tau,size*size+size); //sigma is updated with tau
+					info->Integrate(tau,(l+2)*(l+1)); //sigma is updated with tau
+          //info->Integrate(tau,size*size);
+          //info->Integrate(sigma,size);
 
 #if defined(USE_OMP)
 #pragma omp single
@@ -1136,7 +1145,6 @@ namespace INMOST
 					i++;
 				}
 			}
-exit:
 			if (prec != NULL)
 			{
 				prec->Solve(SOL, r_tilde); //undo right preconditioner
@@ -1277,6 +1285,10 @@ exit:
 			if (prec != NULL)prec->ReplaceRHS(RHS);
 			info->GetLocalRegion(info->GetRank(),vlocbeg,vlocend);
 			info->GetVectorRegion(vbeg,vend);
+			ivbeg = vbeg;
+			ivend = vend;
+			ivlocbeg = vlocbeg;
+			ivlocend = vlocend;
 			std::copy(RHS.Begin(),RHS.End(),r.Begin());
 			{
 				Alink->MatVec(-1,SOL,1,r); //global multiplication, r probably needs an update
@@ -1296,10 +1308,6 @@ exit:
 			}
 			last_resid = resid = resid0 = sqrt(resid);
 			last_it = 0;
-			ivbeg = vbeg;
-			ivend = vend;
-			ivlocbeg = vlocbeg;
-			ivlocend = vlocend;
 #if defined(REPORT_RESIDUAL)
 			if( info->GetRank() == 0 ) 
 			{

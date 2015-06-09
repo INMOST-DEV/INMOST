@@ -11,6 +11,17 @@
 #include <algorithm>
 #include <stdarg.h>
 #include "my_glut.h"
+#include <iomanip>
+
+inline static unsigned int flip(const unsigned int * fp)
+{
+	unsigned int mask = -((int)(*fp >> 31)) | 0x80000000;
+	return *fp ^ mask;
+}
+#define _0(x)	(x & 0x7FF)
+#define _1(x)	(x >> 11 & 0x7FF)
+#define _2(x)	(x >> 22 )
+
 
 
 using namespace INMOST;
@@ -21,7 +32,7 @@ int width = 800, height = 800;
 double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20, snear = 1e20;
 double shift[3] = {0,0,0};
 bool perspective = false;
-bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false;
+bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false;
 
 Mesh::GeomParam table;
 
@@ -37,6 +48,13 @@ Mesh::GeomParam table;
 
 Storage::real p[3] = {0,0,0}, n[3] = {0,0,1};
 ElementArray<Element> boundary_faces;
+
+double amplitude = 10;
+double radius = 25;
+char visualization_prompt[8192];
+bool visualization_prompt_active = false;
+Tag visualization_tag;
+ElementType visualization_type;
 
 void printtext(const char * fmt, ... )
 {
@@ -55,18 +73,216 @@ void printtext(const char * fmt, ... )
 	}
 }
 
+const int name_width = 32;
+const int type_width = 14;
+const int elems_width = 10;
+const int sparse_width = 10;
+const int length_width = 10;
+
+void PrintTag(Tag t)
+{
+	std::cout << std::setw(name_width) << t.GetTagName() << std::setw(type_width) << DataTypeName(t.GetDataType());
+	int num = 0;
+	char elems[7] = "NEFCSM";
+	std::string print = "";
+	for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+	{
+		if( t.isDefined(etype) )
+		{
+			print = print + elems[ElementNum(etype)];
+			num++;
+		}
+	}
+	std::cout << std::setw(elems_width) << print;
+	print = "";
+	for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+	{
+		if( t.isSparse(etype) )
+		{
+			print = print + elems[ElementNum(etype)];
+			num++;
+		}
+	}
+	std::cout << std::setw(sparse_width) << print;
+	if( t.GetSize() == ENUMUNDEF )
+		std::cout << std::setw(length_width) << "VAR" << std::endl;
+	else
+		std::cout << std::setw(length_width) << t.GetSize() << std::endl;
+}
+
+void PrintTags(Mesh * m, ElementType etypes)
+{
+	std::cout << std::setw(name_width) << "Name" << std::setw(type_width) << "Type" << std::setw(elems_width) << "Element" << std::setw(sparse_width) << "Sparse" << std::setw(length_width) << "Length" << std::endl;
+	for(Mesh::iteratorTag t = m->BeginTag(); t != m->EndTag(); ++t )
+	{
+		bool print = false;
+		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1) if( (etype&etypes) && t->isDefined(etype) ) {print = true; break;}
+		if( print ) PrintTag(*t);
+	}
+}
+
+struct color_t
+{
+	float c[4];
+	color_t() {memset(c,0,sizeof(float)*4);}
+	color_t(float r, float g, float b)
+	{
+		c[0] = r;
+		c[1] = g;
+		c[2] = b;
+		c[3] = 1.0;
+	}
+	color_t(float r, float g, float b, float a)
+	{
+		c[0] = r;
+		c[1] = g;
+		c[2] = b;
+		c[3] = a;
+	}
+	color_t(const color_t & other) {memcpy(c,other.c,sizeof(float)*4);}
+	color_t & operator =(color_t const & other)
+	{
+		memmove(c,other.c,sizeof(float)*4);
+		return *this;
+	}
+	void set_color() const {glColor4fv(c);}
+	float & r() {return c[0];}
+	float & g() {return c[1];}
+	float & b() {return c[2];}
+	float & a() {return c[3];}
+	float r() const {return c[0];}
+	float g() const {return c[1];}
+	float b() const {return c[2];}
+	float a() const {return c[3];}
+	color_t operator *(float mult){return color_t(c[0]*mult,c[1]*mult,c[2]*mult,c[3]*mult);}
+	color_t operator +(color_t other){return color_t(c[0]+other.c[0],c[1]+other.c[1],c[2]+other.c[2],c[3]+other.c[3]);}
+};
+
+class color_bar
+{
+	float min, max;
+	std::vector<float> ticks; //ticks from 0 to 1 for each color
+	std::vector<color_t> colors; //4 floats for each tick
+	std::string comment;
+public:
+	color_bar()
+	{
+		min = 0;
+		max = 1;
+		comment = "";
+		ticks.push_back(0.f);
+		ticks.push_back(0.2f);
+		ticks.push_back(0.4f);
+		ticks.push_back(0.6f);
+		ticks.push_back(0.8f);
+		ticks.push_back(1.f);
+		colors.push_back(color_t(1,0,0));
+		colors.push_back(color_t(1,1,0));
+		colors.push_back(color_t(0,1,0));
+		colors.push_back(color_t(0,1,1));
+		colors.push_back(color_t(0,0,1));
+		colors.push_back(color_t(1,0,1));
+		
+		
+		
+		
+		//colors.push_back(color_t(1,0,0));
+	}
+	void set_comment(std::string text) {comment = text;}
+	void set_min(float newmin) { min = newmin;}
+	void set_max(float newmax) { max = newmax;}
+	color_t pick_color(float value) 
+	{
+		float t = (value-min)/(max-min);
+		std::vector<float>::iterator it = std::lower_bound(ticks.begin(),ticks.end(),t);
+		size_t pos = it-ticks.begin();
+		if( it == ticks.end() || pos >= ticks.size() ) 
+		{
+			return colors.back();
+		}
+		if( pos == 0 ) 
+		{
+			return colors[0];
+		}
+		float interp = (t-ticks[pos-1])/(ticks[pos]-ticks[pos-1]);
+		return (colors[pos]*interp+colors[pos-1]*(1-interp));
+	}
+	void Draw()
+	{
+		float text_pos = -0.89;
+		float left = -0.95;
+		float right = -0.9;
+		float bottom = -0.75;
+		float top = 0.75;
+		glBegin(GL_QUADS);
+		for(int i = 0; i < ticks.size()-1; ++i)
+		{
+			colors[i].set_color();
+			glVertex2f(left,bottom+ticks[i]*(top-bottom));
+			glVertex2f(right,bottom+ticks[i]*(top-bottom));
+			colors[i+1].set_color();
+			glVertex2f(right,bottom+ticks[(i+1)]*(top-bottom));
+			glVertex2f(left,bottom+ticks[(i+1)]*(top-bottom));
+		}
+		glEnd();
+		
+		glColor4f(0,0,0,1);
+		for(int i = 0; i < ticks.size(); ++i)
+		{
+			glRasterPos2f(text_pos,bottom+ticks[i]*(top-bottom));
+			printtext("%f",min+ticks[i]*(max-min));
+		}
+		if( comment != "")
+		{
+			glRasterPos2f(left,bottom-0.04);
+			printtext("%s",comment.c_str());
+		}
+	}
+} CommonColorBar;
+
 
 class face2gl
 {
-	double dist;
+	float dist;
 	double c[4];
 	double cnt[3];
 	bool flag;
 	ElementType etype;
 	Storage::integer id;
 	std::vector<double> verts;
+	std::vector<color_t> colors;
+	color_t cntcolor;
 public:
-	face2gl():verts() {etype = NONE; id = 0; dist = 0; flag = false; memset(c,0,sizeof(double)*4);}
+	static void radix_sort_dist(std::vector<face2gl> & set)
+	{
+		static std::vector<face2gl> tmp;
+		tmp.resize(set.size());
+		unsigned int i;
+		const unsigned int kHist = 2048;
+		unsigned int  b0[kHist * 3];
+		unsigned int *b1 = b0 + kHist;
+		unsigned int *b2 = b1 + kHist;
+		memset(b0,0,sizeof(unsigned int)*kHist*3);
+		for (i = 0; i < set.size(); i++) 
+		{
+			unsigned int fi = flip((unsigned int *)&set[i].dist);
+			++b0[_0(fi)]; ++b1[_1(fi)]; ++b2[_2(fi)];
+		}
+		{
+			unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
+			for (i = 0; i < kHist; i++) 
+			{
+				b0[kHist-1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist-1];
+				b1[kHist-1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist-1];
+				b2[kHist-1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist-1];
+			}
+		}
+		for (i = 0; i < set.size(); i++) tmp[++b0[_0(flip((unsigned int *)&set[i].dist))]] = set[i];
+		for (i = 0; i < set.size(); i++) set[++b1[_1(flip((unsigned int *)&tmp[i].dist))]] = tmp[i];
+		for (i = 0; i < set.size(); i++) tmp[++b2[_2(flip((unsigned int *)&set[i].dist))]] = set[i];
+		for (i = 0; i < set.size(); i++) set[i] = tmp[set.size()-1-i];
+	}
+	face2gl():verts(),colors() {etype = NONE; id = 0; dist = 0; flag = false; memset(c,0,sizeof(double)*4);}
 	face2gl(const face2gl & other) :verts(other.verts) 
 	{
 		etype = other.etype;
@@ -80,6 +296,8 @@ public:
 		c[2] = other.c[2];
 		c[3] = other.c[3];
 		flag = other.flag;
+		colors = other.colors;
+		cntcolor = other.cntcolor;
 	}
 	face2gl & operator =(face2gl const & other) 
 	{ 
@@ -95,17 +313,66 @@ public:
 		c[2] = other.c[2];
 		c[3] = other.c[3];
 		flag = other.flag;
+		colors = other.colors;
+		cntcolor = other.cntcolor;
 		return *this;
 	}
 	~face2gl() {}
 	void draw_colour() const
 	{
-		glColor4dv(c); 
-		for(unsigned k = 0; k < verts.size(); k+=3) 
+		if( colors.empty() )
 		{
-			glVertex3dv(cnt);
-			glVertex3dv(&verts[k]);
-			glVertex3dv(&verts[(k+3)%verts.size()]);
+			glColor4dv(c); 
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				glVertex3dv(cnt);
+				glVertex3dv(&verts[k]);
+				glVertex3dv(&verts[(k+3)%verts.size()]);
+			}
+		}
+		else
+		{
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				cntcolor.set_color();
+				glVertex3dv(cnt);
+				colors[k/3].set_color();
+				glVertex3dv(&verts[k]);
+				colors[(k/3+1)%colors.size()].set_color();
+				glVertex3dv(&verts[(k+3)%verts.size()]);
+			}
+		}
+	}
+	void draw_colour_alpha(double alpha) const
+	{
+		if( colors.empty() )
+		{
+			double cc[4] = {c[0],c[1],c[2],alpha};
+			glColor4dv(c); 
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				glVertex3dv(cnt);
+				glVertex3dv(&verts[k]);
+				glVertex3dv(&verts[(k+3)%verts.size()]);
+			}
+		}
+		else
+		{
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				color_t t = cntcolor;
+				t.a() = alpha;
+				t.set_color();
+				glVertex3dv(cnt);
+				t = colors[k/3];
+				t.a() = alpha;
+				t.set_color();
+				glVertex3dv(&verts[k]);
+				t = colors[(k/3+1)%colors.size()];
+				t.a() = alpha;
+				t.set_color();
+				glVertex3dv(&verts[(k+3)%verts.size()]);
+			}
 		}
 	}
 	void draw() const
@@ -129,13 +396,15 @@ public:
 	void set_color(double r, double g, double b, double a) {c[0] = r; c[1] = g; c[2] = b; c[3] = a;}
 	void add_vert(double x, double y, double z) {unsigned s = (unsigned)verts.size(); verts.resize(s+3); verts[s] = x; verts[s+1] = y; verts[s+2] = z;}
 	void add_vert(double v[3]) {verts.insert(verts.end(),v,v+3);}
+	void add_color(color_t c) {colors.push_back(c);}
 	double * get_vert(int k) {return &verts[k*3];}
 	unsigned size() {return (unsigned)verts.size()/3;}
-	void set_center(double _cnt[3])
+	void set_center(double _cnt[3], color_t c = color_t(0,0,0,0))
 	{
 		cnt[0] = _cnt[0];
 		cnt[1] = _cnt[1];
 		cnt[2] = _cnt[2];
+		cntcolor = c;
 	}
 	void get_center(float _cnt[3])
 	{
@@ -162,6 +431,17 @@ public:
 		cnt[0] /= (verts.size()/3)*1.0;
 		cnt[1] /= (verts.size()/3)*1.0;
 		cnt[2] /= (verts.size()/3)*1.0;
+		if( !colors.empty() ) compute_center_color();
+	}
+	void compute_center_color()
+	{
+		cntcolor.r() = 0;
+		cntcolor.g() = 0;
+		cntcolor.b() = 0;
+		cntcolor.a() = 0;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < colors.size(); k++)
+			cntcolor = cntcolor + colors[k];
+		cntcolor =  cntcolor*(1.0f/static_cast<float>(colors.size()));
 	}
 	void compute_dist(double cam[3])
 	{
@@ -172,9 +452,25 @@ public:
 	void set_elem(ElementType _etype, Storage::integer _id) {etype = _etype; id = _id;}
 	Element get_elem(Mesh * m) {return m->ElementByLocalID(etype,id);}
 };
+face2gl DrawFace(Element f);
 
 std::vector<face2gl> all_boundary;
 std::vector<face2gl> clip_boundary;
+
+void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
+{
+	glColor4f(0,1,0,0.1);
+	glBegin(GL_TRIANGLES);
+	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw();
+	glEnd();
+	if( highlight != -1 )
+	{
+		glColor4f(1,0,0,1);
+		glBegin(GL_TRIANGLES);
+		set[highlight].draw();
+		glEnd();
+	}
+}
 
 void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 {
@@ -188,6 +484,13 @@ void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 		set[highlight].draw();
 		glEnd();
 	}
+}
+
+void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
+{
+	glBegin(GL_TRIANGLES);
+	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour_alpha(alpha);
+	glEnd();
 }
 
 void draw_edges(std::vector<face2gl> & set, int highlight = -1)
@@ -205,10 +508,25 @@ void draw_edges(std::vector<face2gl> & set, int highlight = -1)
 	
 }
 
+void draw_faces_interactive_nc(std::vector<face2gl> & set)
+{
+	glColor4f(0,1,0,0.1);
+	glBegin(GL_TRIANGLES);
+	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw();
+	glEnd();
+}
+
 void draw_faces_interactive(std::vector<face2gl> & set)
 {
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour();
+	glEnd();
+}
+
+void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
+{
+	glBegin(GL_TRIANGLES);
+	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour_alpha(alpha);
 	glEnd();
 }
 
@@ -245,6 +563,326 @@ Storage::integer clip_plane_edge(double sp0[3], double sp1[3], double p[3], doub
 	}
 }
 
+typedef struct point
+{
+	float coords[3];
+	float diam;
+	float dist;
+	int id;
+	/*
+	point & operator = (point const & b)
+	{
+		coords[0] = b.coords[0];
+		coords[1] = b.coords[1];
+		coords[2] = b.coords[2];
+		diam = b.diam;
+		dist = b.dist;
+		id = b.id;
+	}
+
+	point(const point & b)
+	{
+		coords[0] = b.coords[0];
+		coords[1] = b.coords[1];
+		coords[2] = b.coords[2];
+		diam = b.diam;
+		dist = b.dist;
+		id = b.id;
+	}
+	*/
+} point_t;
+
+bool operator <(point_t & a, point_t & b) {return a.dist < b.dist;}
+
+
+
+
+class volumetric
+{
+	std::vector<point_t> points;
+	Mesh * m;
+
+	void radix_sort_dist(std::vector<point_t> & set)
+	{
+		static std::vector<point_t> tmp;
+		tmp.resize(set.size());
+		unsigned int i;
+		const unsigned int kHist = 2048;
+		unsigned int  b0[kHist * 3];
+		unsigned int *b1 = b0 + kHist;
+		unsigned int *b2 = b1 + kHist;
+		memset(b0,0,sizeof(unsigned int)*kHist*3);
+		for (i = 0; i < set.size(); i++) 
+		{
+			unsigned int fi = flip((unsigned int *)&set[i].dist);
+			++b0[_0(fi)]; ++b1[_1(fi)]; ++b2[_2(fi)];
+		}
+		{
+			unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
+			for (i = 0; i < kHist; i++) 
+			{
+				b0[kHist-1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist-1];
+				b1[kHist-1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist-1];
+				b2[kHist-1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist-1];
+			}
+		}
+		for (i = 0; i < set.size(); i++) tmp[++b0[_0(flip((unsigned int *)&set[i].dist))]] = set[i];
+		for (i = 0; i < set.size(); i++) set[++b1[_1(flip((unsigned int *)&tmp[i].dist))]] = tmp[i];
+		for (i = 0; i < set.size(); i++) tmp[++b2[_2(flip((unsigned int *)&set[i].dist))]] = set[i];
+		for (i = 0; i < set.size(); i++) set[i] = tmp[set.size()-1-i];
+	}
+public:
+	
+	volumetric(Mesh * _m)
+	{
+		m = _m;
+		
+		points.resize(m->NumberOfCells());
+		int q = 0;
+		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+		{
+			Storage::real cnt[3], cntf[3];
+			it->Centroid(cnt);
+			points[q].coords[0] = cnt[0];
+			points[q].coords[1] = cnt[1];
+			points[q].coords[2] = cnt[2];
+			points[q].id = it->LocalID();
+			points[q].diam = 0.f;
+			ElementArray<Face> faces = it->getFaces();
+			for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); ++f)
+			{
+				f->Centroid(cntf);
+				Storage::real d = sqrt((cnt[0]-cntf[0])*(cnt[0]-cntf[0])+(cnt[1]-cntf[1])*(cnt[1]-cntf[1])+(cnt[2]-cntf[2])*(cnt[2]-cntf[2]));
+				if( points[q].diam < d ) points[q].diam = d;
+			}
+			++q;
+		}
+		/*
+		points.reserve(m->NumberOfNodes()*20);
+		int q = 0;
+		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it)
+		{
+			point_t pnt;
+			Storage::real_array cnt = it->Coords();
+			pnt.coords[0] = cnt[0];
+			pnt.coords[1] = cnt[1];
+			pnt.coords[2] = cnt[2];
+			pnt.id = it->LocalID();
+			points.push_back(pnt);
+			
+			ElementArray<Element> adj = it->getAdjElements(CELL);
+			for(ElementArray<Element>::iterator jt = adj.begin(); jt != adj.end(); ++jt)
+			{
+				Storage::real cnt2[3];
+				jt->Centroid(cnt2);
+				const int ncoefs = 1;
+				const Storage::real coefs[ncoefs] = {0.82};
+				for(int j = 0; j < ncoefs; ++j)
+				{
+					pnt.coords[0] = cnt[0]*(1-coefs[j]) + cnt2[0]*coefs[j];
+					pnt.coords[1] = cnt[1]*(1-coefs[j]) + cnt2[1]*coefs[j];
+					pnt.coords[2] = cnt[2]*(1-coefs[j]) + cnt2[2]*coefs[j];
+					pnt.id = it->LocalID();
+					points.push_back(pnt);
+				}
+			}
+			
+		}
+		*/
+		printf("number of points %d\n",points.size());
+	}
+	void camera(double pos[3], int interactive)
+	{
+		if( interactive ) return;
+		float posf[3];
+		posf[0] = pos[0];
+		posf[1] = pos[1];
+		posf[2] = pos[2];
+		for(int k = 0; k < points.size(); ++k)
+		{
+			points[k].dist = sqrtf(
+				(posf[0]-points[k].coords[0])*(posf[0]-points[k].coords[0])+
+				(posf[1]-points[k].coords[1])*(posf[1]-points[k].coords[1])+
+				(posf[2]-points[k].coords[2])*(posf[2]-points[k].coords[2]));
+		}
+		double t = Timer();
+		radix_sort_dist(points);
+		//std::sort(points.rbegin(),points.rend());
+		printf("Time to sort %lf\n",Timer()-t);
+	}
+	void draw(int interactive)
+	{
+		double origin[3], right[3], up[3];
+		GLdouble modelview[16],projection[16];
+		GLint viewport[4] = {0,0,1,1};
+		glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+		glGetDoublev(GL_PROJECTION_MATRIX, projection);
+		GLdouble outx, outy, outz;  // Var's to save the answer in
+		gluUnProject(0.5, 0.5, 0.,
+               modelview, projection, viewport,
+               &outx, &outy, &outz);
+		origin[0] = outx;
+		origin[1] = outy;
+		origin[2] = outz;
+		gluUnProject(1.0, 0.5, 0.,
+               modelview, projection, viewport,
+               &outx, &outy, &outz);
+		right[0] = outx;
+		right[1] = outy;
+		right[2] = outz;
+		gluUnProject(0.5, 1.0, 0.,
+               modelview, projection, viewport,
+               &outx, &outy, &outz);
+		up[0] = outx;
+		up[1] = outy;
+		up[2] = outz;
+		right[0] -= origin[0];
+		right[1] -= origin[1];
+		right[2] -= origin[2];
+		up[0] -= origin[0];
+		up[1] -= origin[1];
+		up[2] -= origin[2];
+		double l = sqrt(right[0]*right[0]+right[1]*right[1]+right[2]*right[2]);
+		if( l )
+		{
+			right[0] /= l;
+			right[1] /= l;
+			right[2] /= l;
+		}
+		l = sqrt(up[0]*up[0]+up[1]*up[1]+up[2]*up[2]);
+		if( l )
+		{
+			up[0] /= l;
+			up[1] /= l;
+			up[2] /= l;
+		}
+		const float alpha = 0.0075f;
+		const float mult = 2.5f;
+		const float rmult = 0.7f;
+		//glPointSize(5.0);
+		glColor4f(0.5f,0.5f,0.5f,alpha);
+		glEnable(GL_BLEND);
+		//glBegin(GL_TRIANGLES);
+		//glBegin(GL_QUADS);
+		if( interactive )
+		{
+			for(int k = 0; k < points.size(); ++k) if( k % 100 == 0 )
+			{
+				if( visualization_tag.isValid() )
+				{
+					color_t c = CommonColorBar.pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
+					c.a() = alpha;
+					c.set_color();
+				}
+				
+				glBegin(GL_TRIANGLE_FAN);
+				glVertex3f(points[k].coords[0],points[k].coords[1],points[k].coords[2]);
+				glVertex3f(points[k].coords[0]+(right[0]*rmult+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult+up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(right[0]*rmult*2)*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult*2)*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult*2)*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(right[0]*rmult-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult-up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(-right[0]*rmult-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]*rmult-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]*rmult-up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(-right[0]*rmult*2)*points[k].diam*mult,points[k].coords[1]+(-right[1]*rmult*2)*points[k].diam*mult,points[k].coords[2]+(-right[2]*rmult*2)*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(-right[0]*rmult+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]*rmult+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]*rmult+up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(right[0]*rmult+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult+up[2])*points[k].diam*mult);
+				glEnd();
+				
+				/*
+				glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(-up[0]*2)*points[k].diam*mult,points[k].coords[1]+(-up[1]*2)*points[k].diam*mult,points[k].coords[2]+(-up[2]*2)*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
+				*/
+				/*
+				glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]-up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(-right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]-up[2])*points[k].diam*mult);
+				glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
+				*/
+				//glVertex3f(points[k].coords[0]+right[0]*points[k].diam*mult,points[k].coords[1]+right[1]*points[k].diam*mult,points[k].coords[2]+right[2]*points[k].diam*mult);
+				//glVertex3f(points[k].coords[0]+up[0]*points[k].diam*mult,points[k].coords[1]+up[1]*points[k].diam*mult,points[k].coords[2]+up[2]*points[k].diam*mult);
+				//glVertex3f(points[k].coords[0]-right[0]*points[k].diam*mult,points[k].coords[1]-right[1]*points[k].diam*mult,points[k].coords[2]-right[2]*points[k].diam*mult);
+				//glVertex3f(points[k].coords[0]-up[0]*points[k].diam*mult,points[k].coords[1]-up[1]*points[k].diam*mult,points[k].coords[2]-up[2]*points[k].diam*mult);
+			}
+		}
+		else
+		for(int k = 0; k < points.size(); ++k)
+		{
+			if( visualization_tag.isValid() )
+			{
+				color_t c = CommonColorBar.pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
+				c.a() = alpha;
+				c.set_color();
+			}
+			
+			glBegin(GL_TRIANGLE_FAN);
+			glVertex3f(points[k].coords[0],points[k].coords[1],points[k].coords[2]);
+			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(right[0]*2)*points[k].diam*mult,points[k].coords[1]+(right[1]*2)*points[k].diam*mult,points[k].coords[2]+(right[2]*2)*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]-up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(-right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]-up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(-right[0]*2)*points[k].diam*mult,points[k].coords[1]+(-right[1]*2)*points[k].diam*mult,points[k].coords[2]+(-right[2]*2)*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
+			glEnd();	
+			
+			/*
+			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(-up[0]*2)*points[k].diam*mult,points[k].coords[1]+(-up[1]*2)*points[k].diam*mult,points[k].coords[2]+(-up[2]*2)*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
+			*/
+			/*
+			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]-up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(-right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]-up[2])*points[k].diam*mult);
+			glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
+			*/
+			//glVertex3f(points[k].coords[0]+right[0]*points[k].diam*mult,points[k].coords[1]+right[1]*points[k].diam*mult,points[k].coords[2]+right[2]*points[k].diam*mult);
+			//glVertex3f(points[k].coords[0]+up[0]*points[k].diam*mult,points[k].coords[1]+up[1]*points[k].diam*mult,points[k].coords[2]+up[2]*points[k].diam*mult);
+			//glVertex3f(points[k].coords[0]-right[0]*points[k].diam*mult,points[k].coords[1]-right[1]*points[k].diam*mult,points[k].coords[2]-right[2]*points[k].diam*mult);
+			//glVertex3f(points[k].coords[0]-up[0]*points[k].diam*mult,points[k].coords[1]-up[1]*points[k].diam*mult,points[k].coords[2]-up[2]*points[k].diam*mult);
+		}
+		//glEnd();
+		glDisable(GL_BLEND);
+		//glPointSize(1.0);
+	}
+} * CommonVolumetricView;
+
+
+/*
+class volumetric2
+{
+	std::vector<face2gl> faces;
+	Mesh * m;
+public:
+	volumetric2(Mesh * _m)
+	{
+		m = _m;
+		
+		faces.reserve(m->NumberOfFaces());
+		int q = 0;
+		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)m->NumberOfFaces()/100));
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it)
+		{
+			faces.push_back(DrawFace(it->self()));
+			if( q%pace == 0 ) faces.back().set_flag(true);
+			q++;
+		}
+		printf("number of faces %d\n",faces.size());
+	}
+	void camera(double pos[3], int interactive)
+	{
+		if( interactive ) return;
+		for(int k = 0; k < faces.size(); ++k)
+			faces[k].compute_dist(pos);
+		//face2gl::radix_sort_dist(faces);
+		std::sort(faces.rbegin(),faces.rend());
+	}
+	void draw(int interactive)
+	{
+		if( interactive ) draw_faces_interactive_alpha(faces,0.05);
+		else draw_faces_alpha(faces,0.05);
+	}
+}* CommonVolumetricView;
+*/
 class kdtree
 {
 	int marked;
@@ -289,14 +927,6 @@ class kdtree
 		float bd = eb->xyz[2];
 		return (ad > bd) - (ad < bd);
 	}
-	inline static unsigned int flip(const unsigned int * fp)
-	{
-		unsigned int mask = -((int)(*fp >> 31)) | 0x80000000;
-		return *fp ^ mask;
-	}
-#define _0(x)	(x & 0x7FF)
-#define _1(x)	(x >> 11 & 0x7FF)
-#define _2(x)	(x >> 22 )
 	void radix_sort(int dim, struct entry * temp)
 	{
 		unsigned int i;
@@ -600,15 +1230,17 @@ class clipper
 {
 	struct edge_point
 	{
+		double val;
 		Storage::real xyz[3];
 		Storage::integer edge;
 		edge_point(){}
-		edge_point(Storage::real _xyz[3], Storage::integer n)
+		edge_point(Storage::real _xyz[3], Storage::integer n, float v)
 		{
 			xyz[0] = _xyz[0];
 			xyz[1] = _xyz[1];
 			xyz[2] = _xyz[2];
 			edge = n;
+			val = v;
 		}
 		bool operator ==(const edge_point& b) const
 		{
@@ -621,7 +1253,7 @@ class clipper
 	};
 	Tag clip_point, clip_state;
 	kdtree * tree;
-	Tag clips;
+	Tag clips, clipsv;
 	MarkerType marker;
 	ElementArray<Cell> cells;
 	Mesh * mm;
@@ -632,6 +1264,7 @@ public:
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) cells[k]->RemMarker(marker);
 		mm->ReleaseMarker(marker); 
 		mm->DeleteTag(clips); 
+		mm->DeleteTag(clipsv); 
 		mm->DeleteTag(clip_point); 
 		mm->DeleteTag(clip_state);
 	}
@@ -642,8 +1275,23 @@ public:
 		tree = new kdtree(m);
 		marker = m->CreateMarker();
 		clips = m->CreateTag("CLIPS",DATA_REAL,CELL,CELL);
+		clipsv = m->CreateTag("CLIPS_VAL",DATA_REAL,CELL,CELL);
 		clip_point = m->CreateTag("CLIP_POINT",DATA_REAL,EDGE,NONE,3);
 		clip_state = m->CreateTag("CLIP_STATE",DATA_INTEGER,EDGE,NONE,1);
+	}
+	double compute_value(Edge e, Storage::real * pnt)
+	{
+		if( visualization_tag.isValid() )
+		{
+			Storage::real_array c1 = e->getBeg()->Coords();
+			Storage::real_array c2 = e->getEnd()->Coords();
+			Storage::real d1,d2,t;
+			d1 = sqrt((pnt[0]-c1[0])*(pnt[0]-c1[0])+(pnt[1]-c1[1])*(pnt[1]-c1[1])+(pnt[2]-c1[2])*(pnt[2]-c1[2]));
+			d2 = sqrt((c2[0]-c1[0])*(c2[0]-c1[0])+(c2[1]-c1[1])*(c2[1]-c1[1])+(c2[2]-c1[2])*(c2[2]-c1[2]));
+			t = d1/d2; //(pnt == c2, t = 1 : pnt == c1, t = 0)
+			return e->getBeg()->RealDF(visualization_tag)*(1-t)+e->getEnd()->RealDF(visualization_tag)*t;
+		}
+		else return 0.f;
 	}
 	void clip_plane(Storage::real p[3], Storage::real n[3])
 	{
@@ -653,6 +1301,7 @@ public:
 			if( cells[k]->GetMarker(marker) )
 			{
 				cells[k]->RealArray(clips).clear();
+				cells[k]->RealArray(clipsv).clear();
 				cells[k]->RemMarker(marker);
 			}
 		tree->intersect_plane_edge(clip_point,clip_state,cells,marker,p,n);
@@ -679,8 +1328,8 @@ public:
 					if( state == CLIP_FULL )
 					{
 						nfulledges++;
-						edge_point n1 = edge_point(&edges[r].getBeg()->Coords()[0],ntotedges);
-						edge_point n2 = edge_point(&edges[r].getEnd()->Coords()[0],ntotedges);
+						edge_point n1 = edge_point(&edges[r].getBeg()->Coords()[0],ntotedges,visualization_tag.isValid() ? edges[r].getBeg()->RealDF(visualization_tag) : 0.f);
+						edge_point n2 = edge_point(&edges[r].getEnd()->Coords()[0],ntotedges,visualization_tag.isValid() ? edges[r].getEnd()->RealDF(visualization_tag) : 0.f);
 						if( npoints % 2 == 0 ) //all privious edges are closed, just add this one
 						{
 							clipcoords.push_back(n1);
@@ -707,7 +1356,7 @@ public:
 					}
 					else if( state == CLIP_ENDP )
 					{
-						edge_point n = edge_point(&edges[r].RealArrayDF(clip_point)[0],ntotedges);
+						edge_point n = edge_point(&edges[r].RealArrayDF(clip_point)[0],ntotedges,compute_value(edges[r],&edges[r].RealArrayDF(clip_point)[0]));
 						bool add = true;
 						if( last_edge_type == CLIP_ENDP )
 						{
@@ -743,7 +1392,7 @@ public:
 					}
 					else if( state == CLIP_NODE )
 					{
-						edge_point n = edge_point(&edges[r].RealArrayDF(clip_point)[0],ntotedges);
+						edge_point n = edge_point(&edges[r].RealArrayDF(clip_point)[0],ntotedges,compute_value(edges[r],&edges[r].RealArrayDF(clip_point)[0]));
 						if( print )
 						{
 							printf("added: ");
@@ -783,13 +1432,16 @@ public:
 			{
 				ElementArray<Node> nodes = full_face->getNodes();
 				Storage::real_array cl = cells[k]->RealArray(clips);
+				Storage::real_array clv = cells[k]->RealArray(clipsv);
 				cl.resize(static_cast<Storage::real_array::size_type>(3*nodes.size()));
+				clv.resize(static_cast<Storage::real_array::size_type>(nodes.size()));
 				for(INMOST_DATA_ENUM_TYPE r = 0; r < nodes.size(); r++)
 				{
 					Storage::real_array p = nodes[r].Coords();
 					cl[0+3*r] = p[0];
 					cl[1+3*r] = p[1];
 					cl[2+3*r] = p[2];
+					clv[r] = visualization_tag.isValid() ? nodes[r].RealDF(visualization_tag) : 0.0;
 				}
 				cells[k]->SetMarker(marker);
 			}
@@ -831,12 +1483,15 @@ public:
 						__FILE__,__LINE__,ntotedges,loopcoords.size());
 				}
 				Storage::real_array cl = cells[k]->RealArray(clips);
+				Storage::real_array clv = cells[k]->RealArray(clipsv);
 				cl.resize(static_cast<Storage::real_array::size_type>(3*loopcoords.size()));
+				clv.resize(static_cast<Storage::real_array::size_type>(loopcoords.size()));
 				for(INMOST_DATA_ENUM_TYPE r = 0; r < loopcoords.size(); ++r)
 				{
 					cl[r*3+0] = loopcoords[r].xyz[0];
 					cl[r*3+1] = loopcoords[r].xyz[1];
 					cl[r*3+2] = loopcoords[r].xyz[2];
+					clv[r] = loopcoords[r].val;
 				}
 
 				loopcoords.clear();
@@ -854,7 +1509,12 @@ public:
 			face2gl f;
 			f.set_color(0.6,0.6,0.6,1);
 			Storage::real_array cl = cells[k]->RealArray(clips);
+			Storage::real_array clv = cells[k]->RealArray(clipsv);
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) f.add_vert(&cl[q]);
+			if( visualization_tag.isValid() )
+			{
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < clv.size(); q++) f.add_color(CommonColorBar.pick_color(clv[q]));
+			}
 			f.compute_center();
 			f.set_elem(cells[k]->GetElementType(),cells[k]->LocalID());
 			if( k%pace == 0 ) f.set_flag(true);
@@ -867,20 +1527,27 @@ public:
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
 		{
 			Storage::real_array cl = cells[k]->RealArray(clips);
+			Storage::real_array clv = cells[k]->RealArray(clipsv);
 			Storage::real cnt[3] = {0,0,0};
+			Storage::real cntv = 0.0;
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3)
 			{
 				cnt[0] += cl[q+0];
 				cnt[1] += cl[q+1];
 				cnt[2] += cl[q+2];
+				cntv += clv[q/3];
 			}
-			cnt[0] /= (cl.size()/3);
-			cnt[1] /= (cl.size()/3);
-			cnt[2] /= (cl.size()/3);
+			cnt[0] /= static_cast<Storage::real>(cl.size()/3);
+			cnt[1] /= static_cast<Storage::real>(cl.size()/3);
+			cnt[2] /= static_cast<Storage::real>(cl.size()/3);
+			cntv /= static_cast<Storage::real>(cl.size()/3);
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
 			{
+				if( visualization_tag.isValid() ) CommonColorBar.pick_color(cntv).set_color();
 				glVertex3dv(cnt);
+				if( visualization_tag.isValid() ) CommonColorBar.pick_color(clv[q/3]).set_color();
 				glVertex3dv(&cl[q]);
+				if( visualization_tag.isValid() ) CommonColorBar.pick_color(clv[(q/3+1)%clv.size()]).set_color();
 				glVertex3dv(&cl[(q+3)%cl.size()]);
 			}
 		}
@@ -927,6 +1594,18 @@ public:
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++) faces[k] = _faces[k];
 		tree = new kdtree(mm,faces,nfaces);
 	}
+	double compute_value(Node n1, Node n2, Storage::real * c1, Storage::real * c2, Storage::real * pnt)
+	{
+		if( visualization_tag.isValid() )
+		{
+			Storage::real d1,d2,t;
+			d1 = sqrt((pnt[0]-c1[0])*(pnt[0]-c1[0])+(pnt[1]-c1[1])*(pnt[1]-c1[1])+(pnt[2]-c1[2])*(pnt[2]-c1[2]));
+			d2 = sqrt((c2[0]-c1[0])*(c2[0]-c1[0])+(c2[1]-c1[1])*(c2[1]-c1[1])+(c2[2]-c1[2])*(c2[2]-c1[2]));
+			t = d1/d2; //(pnt == c2, t = 1 : pnt == c1, t = 0)
+			return n1->RealDF(visualization_tag)*(1-t)+n2->RealDF(visualization_tag)*t;
+		}
+		else return 0.f;
+	}
 	void clip_plane(Storage::real p[3], Storage::real n[3])
 	{
 		tree->intersect_plane_face(clip_state,p,n);
@@ -942,7 +1621,11 @@ public:
 				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
 				face2gl f;
 				f.set_color(0.6,0.6,0.6,1);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) f.add_vert(&nodes[q].Coords()[0]);
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
+				{
+					f.add_vert(&nodes[q].Coords()[0]);
+					if( visualization_tag.isValid() ) f.add_color(CommonColorBar.pick_color(nodes[q].RealDF(visualization_tag)));
+				}
 				f.compute_center();
 				f.set_elem(GetHandleElementType(faces[k]),GetHandleID(faces[k]));
 				if( k%pace == 0 ) f.set_flag(true);
@@ -968,13 +1651,18 @@ public:
 					{
 						coords = nodes[q].Coords();
 						f.add_vert(&coords[0]);
+						if( visualization_tag.isValid() ) f.add_color(CommonColorBar.pick_color(nodes[q].RealDF(visualization_tag)));
 					}
 					if( nodepos[q] != nodepos[(q+1)%nodes.size()] )
 					{
 						Storage::real_array sp0 = nodes[q].Coords();
 						Storage::real_array sp1 = nodes[(q+1)%nodes.size()].Coords();
 						Storage::real node[3];
-						if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE) f.add_vert(node);
+						if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE) 
+						{
+							f.add_vert(node);
+							if( visualization_tag.isValid() ) f.add_color(CommonColorBar.pick_color(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
+						}
 					}
 				}
 				f.compute_center();
@@ -1007,7 +1695,12 @@ public:
 			{
 				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
 				glBegin(GL_POLYGON);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
+				{
+					if( visualization_tag.isValid() ) CommonColorBar.pick_color(nodes[q].RealDF(visualization_tag)).set_color();
+					glVertex3dv(&nodes[q].Coords()[0]);
+					
+				}
 				glEnd();
 			}
 			mm->IntegerDF(faces[k],clip_state) = state;
@@ -1283,8 +1976,8 @@ void set_matrix3d()
 	else
 	{
 		const double pi = 3.1415926535897932384626433832795;
-		const double znear = 0.01;
-		const double zfar  = 10000.0;
+		const double znear = 1;
+		const double zfar  = 1000000.0;
 		const double fH = znear * tan( 60.0 / 360.0 * pi);
 		double fW = fH * aspect;
 		glFrustum(-fW,fW,-fH,fH,znear,zfar);
@@ -1378,7 +2071,10 @@ void myclickmotion(int nmx, int nmy) // Mouse
 		clickmotion(nmx,nmy);
 		if( planecontrol )
 		{
-			rotatevector((double *)n);
+			//quatget(n);
+			reverse_rotatevector_from_stack((double *)n);
+			reverse_rotatevector((double *)n);
+			rotatevector_from_stack((double *)n);
 			clipupdate = true;
 			quatinit();
 		}
@@ -1441,11 +2137,97 @@ void myclick(int b, int s, int nmx, int nmy) // Mouse
 }
 
 
+class Input
+{
+public:
+	enum InputType {Double,Integer,String};
+private:
+	std::string str;
+	std::string comment;
+	void * input_link;
+	InputType type;
+	bool done;
+	bool canceled;
+	
+public:
+	Input(int * val, std::string comment) : comment(comment) {input_link = val; type = Integer; canceled = false; done = false; str = "";}
+	Input(double * val, std::string comment) : comment(comment) {input_link = val; type = Double; canceled = false; done = false; str = "";}
+	Input(char * val, std::string comment) : comment(comment) {input_link = val; type = String; canceled = false; done = false; str = "";}
+	Input(void * link, InputType type, std::string comment) : comment(comment), input_link(link), type(type) {canceled = false; done = false; str = "";}
+	Input(const Input & other):comment(comment), input_link(other.input_link), str(other.str), type(other.type), canceled(other.canceled), done(other.done) {}
+	Input & operator =(Input const & other) {comment = other.comment; input_link = other.input_link; str = other.str; type = other.type; canceled = other.canceled; done = other.done; return *this;}
+	~Input() {}
+	void KeyPress(char c) 
+	{
+		if( c == 13 )
+		{
+			
+			done = true;
+			if( type == Double ) *((double *)input_link) = atof(str.c_str());
+			else if( type == Integer ) *((int *)input_link) = atoi(str.c_str());
+			else if( type == String ) strcpy((char *)input_link,str.c_str());
+			glutPostRedisplay();
+		}
+		else if( c == 8 )
+		{
+			if( !str.empty() ) str.erase(str.size()-1);
+			glutPostRedisplay();
+		}
+		else if( c == 27 )
+		{
+			canceled = true;
+			done = true;
+			glutPostRedisplay();
+		}
+		else if( type == String || ( (c >= '0' && c <= '9') || ((str.empty() || tolower(str.back()) == 'e') && c=='+' || c=='-') || (type == Double && (c=='.' || c=='e' || c == 'E'))) ) 
+		{
+			str += c;
+			glutPostRedisplay();
+		}
+	}
+	bool Done() {return done;}
+	bool Canceled() {return canceled;}
+	void Draw()
+	{
+		float h = 24.0f/(float)height;
+		
+		glColor3f(1,1,1);
+		glBegin(GL_QUADS);
+		glVertex3f(-0.99,-0.99,1);
+		glVertex3f(-0.99,-0.99+h,1);
+		glVertex3f(0.99,-0.99+h,1);
+		glVertex3f(0.99,-0.99,1);
+		glEnd();
+		glColor3f(0,0,0);
+		glBegin(GL_LINE_LOOP);
+		glVertex3f(-0.99,-0.99,1);
+		glVertex3f(-0.99,-0.99+h,1);
+		glVertex3f(0.99,-0.99+h,1);
+		glVertex3f(0.99,-0.99,1);
+		glEnd();
+		
+		glColor4f(0,0,0,1);
+		glRasterPos2d(-0.985,-0.985);
+		//printtext(str.c_str());
+		char oldval[4096];
+		if( type == Double ) sprintf(oldval,"%g",*(double*)input_link);
+		else if( type == Integer ) sprintf(oldval,"%g",*(int*)input_link);
+		else if( type == String ) sprintf(oldval,"%s",(char *)input_link);
+		printtext("input number (%s[%s]:%s): %s",comment.c_str(),oldval,type == Integer ? "integer": (type == Double ? "double" : "string"), str.c_str());
+	}
+} * CommonInput = NULL;
+
+
 
 void keyboard(unsigned char key, int x, int y)
 {
 	(void) x;
 	(void) y;
+	if( CommonInput != NULL )
+	{
+		CommonInput->KeyPress(key);
+		return;
+	}
 	if( key == 27 )
 	{
 		if( oclipper ) delete oclipper;
@@ -1574,6 +2356,11 @@ void keyboard(unsigned char key, int x, int y)
 			
 		glutPostRedisplay();
 	}
+	else if( key == 'c' )
+	{
+		draw_volumetric = !draw_volumetric;
+		glutPostRedisplay();
+	}
 	else if( key == 'b' )
 	{
 		boundary = !boundary;
@@ -1589,6 +2376,107 @@ void keyboard(unsigned char key, int x, int y)
 		}
 		else quatpop();
 	}
+	else if( key == 'n' )
+	{
+		if( CommonInput == NULL ) CommonInput = new Input(&amplitude, "Amplitude");
+		glutPostRedisplay();
+	}
+	else if( key == 'm' )
+	{
+		if( CommonInput == NULL ) CommonInput = new Input(&radius, "Radius");
+		glutPostRedisplay();
+	}
+	else if( key == ',' || key == '<' )
+	{
+		std::cout << "positive shift" << std::endl;
+		Storage::real radius2 = radius*radius;
+		for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
+		{
+			Storage::real_array coords = it->Coords();
+			Storage::real proj[3] = {0,0,0};
+			Storage::real d = -(n[0]*(coords[0]-p[0]) + n[1]*(coords[1]-p[1]) + n[2]*(coords[2]-p[2]));
+			proj[0] = coords[0] + d*n[0];
+			proj[1] = coords[1] + d*n[1];
+			proj[2] = coords[2] + d*n[2];
+			d = (n[0]*(proj[0]-p[0]) + n[1]*(proj[1]-p[1]) + n[2]*(proj[2]-p[2]));
+			assert(fabs(d) < 1.0e-7); // check that it is indeed a projection
+			Storage::real dist = sqrt((p[0]-proj[0])*(p[0]-proj[0])+(p[1]-proj[1])*(p[1]-proj[1])+(p[2]-proj[2])*(p[2]-proj[2]));
+			Storage::real delta = exp(-dist*dist/radius2);
+			coords[0] += n[0]*delta*amplitude;
+			coords[1] += n[1]*delta*amplitude;
+			coords[2] += n[2]*delta*amplitude;
+		}
+		all_boundary.clear();
+		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++) 
+		{
+			all_boundary.push_back(DrawFace(boundary_faces[k]));
+			if( k%pace == 0 ) all_boundary.back().set_flag(true);
+		}
+		if( oclipper ) delete oclipper;
+		if( bclipper ) delete bclipper;
+		bclipper = new bnd_clipper(mesh,boundary_faces.data(),(int)boundary_faces.size());
+		oclipper = new clipper(mesh);
+		clipupdate = true;
+		glutPostRedisplay();
+	}
+	else if( key == '.' || key == '>' )
+	{
+		std::cout << "negative shift" << std::endl;
+		Storage::real radius2 = radius*radius;
+		for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
+		{
+			Storage::real_array coords = it->Coords();
+			Storage::real proj[3] = {0,0,0};
+			Storage::real d = -(n[0]*(coords[0]-p[0]) + n[1]*(coords[1]-p[1]) + n[2]*(coords[2]-p[2]));
+			proj[0] = coords[0] + d*n[0];
+			proj[1] = coords[1] + d*n[1];
+			proj[2] = coords[2] + d*n[2];
+			d = (n[0]*(proj[0]-p[0]) + n[1]*(proj[1]-p[1]) + n[2]*(proj[2]-p[2]));
+			assert(fabs(d) < 1.0e-7); // check that it is indeed a projection
+			Storage::real dist = sqrt((p[0]-proj[0])*(p[0]-proj[0])+(p[1]-proj[1])*(p[1]-proj[1])+(p[2]-proj[2])*(p[2]-proj[2]));
+			Storage::real delta = exp(-dist*dist/radius2);
+			coords[0] -= n[0]*delta*amplitude;
+			coords[1] -= n[1]*delta*amplitude;
+			coords[2] -= n[2]*delta*amplitude;
+		}
+		all_boundary.clear();
+		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++) 
+		{
+			all_boundary.push_back(DrawFace(boundary_faces[k]));
+			if( k%pace == 0 ) all_boundary.back().set_flag(true);
+		}
+		if( oclipper ) delete oclipper;
+		if( bclipper ) delete bclipper;
+		bclipper = new bnd_clipper(mesh,boundary_faces.data(),(unsigned)boundary_faces.size());
+		oclipper = new clipper(mesh);
+		clipupdate = true;
+		glutPostRedisplay();
+	}
+	else if( key == 'p' )
+	{
+		perspective = !perspective;
+		glutPostRedisplay();
+	}
+	else if( key == 'v' )
+	{
+		if( CommonInput == NULL ) 
+		{
+			PrintTags(mesh,CELL|FACE|EDGE|NODE);
+
+			CommonInput = new Input(visualization_prompt, "Enter data for visualization as Element:Name:Component");
+			visualization_prompt_active = true;
+			clipupdate = true;
+			if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
+		}
+		glutPostRedisplay();
+	}
+	else if( key == 'q' )
+	{
+		mesh->Save("mesh.vtk");
+		mesh->Save("mesh.pmf");
+	}
 }
 
 void keyboard2(unsigned char key, int x, int y)
@@ -1597,6 +2485,7 @@ void keyboard2(unsigned char key, int x, int y)
 	(void) y;
 	if( key == '=' || key == '+' ||  key == '_' || key == '-' || key == 'w' || key == 's' || key == 'a' || key == 'd' || key == 'r' || key == 'p' || key == 'z')
 	{
+		//printf("depressed\n");
 		interactive = false;
 		glutPostRedisplay();
 	}
@@ -1734,6 +2623,7 @@ void draw()
 	whereami(campos[0],campos[1],campos[2]);
 	int picked = -1;
 
+	
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
 
 	{
@@ -1758,7 +2648,7 @@ void draw()
 				clipboxupdate = false;
 
 				if( current_picker != NULL ) {delete current_picker; current_picker = NULL;}
-				current_picker = new picker(clip_boundary);
+				if( !clip_boundary.empty() ) current_picker = new picker(clip_boundary);
 			}
 
 			
@@ -1798,6 +2688,15 @@ void draw()
 				}
 			}
 		}
+
+
+		if( draw_volumetric )
+		{
+			if( bndupdate ) CommonVolumetricView->camera(campos,interactive);
+			CommonVolumetricView->draw(interactive);
+		}
+
+
 		if( boundary )
 		{
 			glEnable(GL_BLEND);
@@ -1805,19 +2704,21 @@ void draw()
 			{
 				for(INMOST_DATA_ENUM_TYPE q = 0; q < all_boundary.size() ; q++) 
 					all_boundary[q].compute_dist(campos);
-				std::sort(all_boundary.rbegin(),all_boundary.rend());
-				bndupdate = false;
+				//std::sort(all_boundary.rbegin(),all_boundary.rend());
+				face2gl::radix_sort_dist(all_boundary);
 			}
 			glColor4f(0,0,0,0.25); 
 			if( interactive ) draw_edges_interactive(all_boundary);
 			else draw_edges(all_boundary);
 			
 
-			if( interactive ) draw_faces_interactive(all_boundary);
-			else draw_faces(all_boundary);
+			if( interactive ) draw_faces_interactive_nc(all_boundary);
+			else draw_faces_nc(all_boundary);
 			
 			glDisable(GL_BLEND);
 		}
+
+		if( !interactive && bndupdate) bndupdate = false;
 	}
 
 	if( picked != -1 )
@@ -1827,7 +2728,7 @@ void draw()
 		set_matrix2d();
 		
 
-		double top = 0.96, left = 0.11, interval = 0.04, bottom = top;
+		double top = 0.96, left = 0.25, interval = 0.04, bottom = top;
 		
 		Element e = clip_boundary[picked].get_elem(mesh);
 		for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
@@ -1869,7 +2770,7 @@ void draw()
 						Storage::integer_array arr = e->IntegerArray(*t);
 						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
 						{
-							sprintf(temp,"%d %s",arr[k],str);
+							sprintf(temp,"%s %d",str,arr[k]);
 							strcpy(str,temp);
 						}
 						break;
@@ -1879,7 +2780,7 @@ void draw()
 						Storage::real_array arr = e->RealArray(*t);
 						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 						{
-							sprintf(temp,"%lf %s",arr[k],str);
+							sprintf(temp,"%s %lf",str,arr[k]);
 							strcpy(str,temp);
 						}
 						break;
@@ -1889,7 +2790,7 @@ void draw()
 						Storage::bulk_array arr = e->BulkArray(*t);
 						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
 						{
-							sprintf(temp,"%d %s",arr[k],str);
+							sprintf(temp,"%s %d",str,arr[k]);
 							strcpy(str,temp);
 						}
 						break;
@@ -1899,8 +2800,8 @@ void draw()
 						Storage::reference_array arr = e->ReferenceArray(*t);
 						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
 						{
-							if(arr.at(k) == InvalidHandle()) sprintf(temp,"NULL %s",str);
-							else sprintf(temp,"%s:%d %s",ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID(),str);
+							if(arr.at(k) == InvalidHandle()) sprintf(temp,"%s NULL",str);
+							else sprintf(temp,"%s %s:%d",str,ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
 							strcpy(str,temp);
 						}
 						break;
@@ -1913,11 +2814,166 @@ void draw()
 				top -= interval;
 			}
 		}
-
-
 		glEnable(GL_DEPTH_TEST);
 	}
-	
+
+	if( CommonInput != NULL )
+	{
+		glDisable(GL_DEPTH_TEST);
+		glLoadIdentity();
+		set_matrix2d();
+		CommonInput->Draw();
+		if( CommonInput->Done() )
+		{
+			if( ! CommonInput->Canceled() )
+			{
+				if( visualization_prompt_active )
+				{
+					char typen[1024],name[1024];
+					unsigned comp;
+					int k = 0,l, slen = (int)strlen(visualization_prompt);
+					for(k = 0; k < slen; ++k) 
+					{
+						if( visualization_prompt[k] == ':' )
+						{
+							visualization_prompt[k] = '\0';
+							break;
+						}
+					}
+					for(l = k+1; l < slen; ++l) 
+					{
+						if( visualization_prompt[l] == ':' )
+						{
+							visualization_prompt[l] = '\0';
+							break;
+						}
+					}
+				
+					if( k < slen && l < slen && l+1 < slen )
+					{
+					
+						strcpy(typen,visualization_prompt);
+						strcpy(name,visualization_prompt+k+1);
+						comp = atoi(visualization_prompt+l+1);
+						visualization_prompt[k] = ':';
+						visualization_prompt[l] = ':';
+						printf("type %s name %s comp %d\n",typen,name,comp);
+						std::string stype(typen), sname(name);
+						if( mesh->HaveTag(sname) )
+						{
+							Tag source_tag = mesh->GetTag(sname);
+							if( source_tag.GetDataType() == DATA_REAL || source_tag.GetDataType() == DATA_INTEGER )
+							{
+								if( comp >= 0 && comp < source_tag.GetSize() )
+								{
+									visualization_type = NONE;
+									for(size_t q = 0; q < stype.size(); ++q) 
+									{
+										stype[q] = tolower(stype[q]);
+										typen[q] = tolower(typen[q]);
+									}
+									if( stype == "node" ) visualization_type = NODE;
+									else if ( stype == "edge" ) visualization_type = EDGE;
+									else if ( stype == "face" ) visualization_type = FACE;
+									else if ( stype == "cell" ) visualization_type = CELL;
+
+									if( visualization_type != NONE )
+									{
+										if( source_tag.isDefined(visualization_type) )
+										{
+											float min = 1.0e20, max = -1.0e20;
+											printf("prepearing data for visualization\n");
+											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG",DATA_REAL,NODE,NONE,1);
+											
+											for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
+											{
+												ElementArray<Element> elems = it->getAdjElements(visualization_type);
+												Storage::real_array coords = it->Coords();
+												Storage::real cnt[3], dist, wgt;
+												Storage::real val = 0.0, vol = 0.0, res;
+												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && jt->GetDataSize(source_tag) > comp )
+												{
+													jt->Centroid(cnt);
+													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
+													wgt = 1.0/(dist+1.0e-8);
+													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : jt->IntegerArray(source_tag)[comp] );
+													vol += wgt;
+												}
+												res = val/vol;
+												if( res < min ) min = res;
+												if( res > max ) max = res;
+												it->RealDF(visualization_tag) = res;
+											}
+											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG",DATA_REAL,CELL,NONE,1);
+											for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+											{
+												ElementArray<Element> elems = it->getAdjElements(visualization_type);
+												Storage::real coords[3];
+												it->Centroid(coords);
+												Storage::real cnt[3], dist, wgt;
+												Storage::real val = 0.0, vol = 0.0, res;
+												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && jt->GetDataSize(source_tag) > comp )
+												{
+													jt->Centroid(cnt);
+													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
+													wgt = 1.0/(dist+1.0e-8);
+													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : jt->IntegerArray(source_tag)[comp] );
+													vol += wgt;
+												}
+												res = val/vol;
+												if( res < min ) min = res;
+												if( res > max ) max = res;
+												it->RealDF(visualization_tag) = res;
+											}
+
+											CommonColorBar.set_min(min);
+											CommonColorBar.set_max(max);
+											char comment[1024];
+											sprintf(comment,"%s[%d] on %s",name,comp,typen);
+											CommonColorBar.set_comment(comment);
+											clipupdate = true;
+											/*
+											all_boundary.clear();
+											INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
+											for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++) 
+											{
+												all_boundary.push_back(DrawFace(boundary_faces[k]));
+												if( k%pace == 0 ) all_boundary.back().set_flag(true);
+											}
+											*/
+										}
+										else printf("tag %s is not defined on element type %s\n",name, typen);
+									}
+									else printf("do not understand element type %s, should be: node, edge, face, cell\n",typen);
+								}
+								else printf("component is out of range for tag %s of size %u\n",name,source_tag.GetSize());
+							}
+							else printf("tag %s is not real or integer\n",name);
+						}
+						else printf("mesh do not have tag with name %s\n",name);
+					}
+					else printf("malformed string %s for visualization\n",visualization_prompt);
+					visualization_prompt_active = false;
+					//visualization_prompt[0] = '\0';
+				
+				}
+
+				glutPostRedisplay();
+			}
+			delete CommonInput;
+			CommonInput = NULL;
+		}
+		glEnable(GL_DEPTH_TEST);
+	}
+
+	if( visualization_tag.isValid() )
+	{
+		glDisable(GL_DEPTH_TEST);
+		glLoadIdentity();
+		set_matrix2d();
+		CommonColorBar.Draw();
+		glEnable(GL_DEPTH_TEST);
+	}
 	
 	glutSwapBuffers();
 }
@@ -1958,6 +3014,15 @@ int main(int argc, char ** argv)
 	//delete mesh;
 	//printf("Delete %lg\n",Timer()-tt);
 	//return 0;
+
+	std::map<Element::GeometricType,int> elems;
+
+	for(Mesh::iteratorElement it = mesh->BeginElement(CELL|FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
+		elems[it->GetGeometricType()]++;
+
+	for(std::map<Element::GeometricType,int>::iterator it = elems.begin(); it != elems.end(); ++it )
+		std::cout << Element::GeometricTypeName(it->first) << ": " << it->second << std::endl;
+
 
 	for(ElementType mask = NODE; mask <= CELL; mask = mask << 1)	
 		std::cout << ElementTypeName(mask) << " " << mesh->NumberOf(mask) << std::endl;
@@ -2001,6 +3066,12 @@ int main(int argc, char ** argv)
 	}
 	printf("Done. Time %lg\n",Timer()-tt);
 
+	if( boundary_faces.empty() )
+	{
+		printf("Haven't found any boundary elements of the mesh. Nothing to display.\n");
+		return -1;
+	}
+
 	printf("Prepearing set of boundary faces for drawing.\n");
 	tt = Timer();
 	INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
@@ -2011,6 +3082,7 @@ int main(int argc, char ** argv)
 	}
 	printf("Done. Time %g\n",Timer() - tt);
 
+
 	printf("Prepearing interactive mesh clipper.\n");
 	//tt = Timer();
 	oclipper = new clipper(mesh);
@@ -2018,7 +3090,8 @@ int main(int argc, char ** argv)
 	clipupdate = true;
 	//printf("Done. Time %g\n",Timer() - tt);
 
-	
+	CommonVolumetricView = new volumetric(mesh);
+	//CommonVolumetricView = new volumetric2(mesh);
 	
 	shift[0] = -(sleft+sright)*0.5;
 	shift[1] = -(sbottom+stop)*0.5;
@@ -2051,6 +3124,7 @@ int main(int argc, char ** argv)
 	glutReshapeFunc(reshape);
 	
 	glutKeyboardFunc(keyboard);
+	glutKeyboardUpFunc(keyboard2);
 	glutMouseFunc(myclick);
 	glutMotionFunc(myclickmotion);
 	glutPassiveMotionFunc(mymotion);

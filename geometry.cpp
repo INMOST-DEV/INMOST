@@ -529,6 +529,9 @@ namespace INMOST
 	
 	void Mesh::GetGeometricData(HandleType e, GeometricData type, Storage::real * ret)
 	{
+		assert(e != InvalidHandle());
+		assert(ret != NULL);
+		assert(type == MEASURE || type == CENTROID || type == BARYCENTER || type == NORMAL);
 		ElementType etype = GetHandleElementType(e);
 		integer edim = Element::GetGeometricDimension(GetGeometricType(e));
 		integer mdim = GetDimensions();
