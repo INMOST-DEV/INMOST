@@ -50,7 +50,7 @@ namespace INMOST
 			else break;
 		}
 		if( num == 5 && id > 0 ) id = 1;
-		return ComposeHandle(num,id);
+		return ComposeHandleNum(num,id);
 	}
 
 	HandleType  Mesh::PrevHandle(HandleType h) const 
@@ -61,7 +61,7 @@ namespace INMOST
 		{
 			if( id < 0 )
 				num = 4;
-			else return ComposeHandle(ElementNum(MESH),0);
+			else return ComposeHandleNum(ElementNum(MESH),0);
 		}
 		while( num >= 0 )
 		{
@@ -74,7 +74,7 @@ namespace INMOST
 			else break;
 		}
 		if( num < 0 ) return InvalidHandle();
-		return ComposeHandle(num,id);
+		return ComposeHandleNum(num,id);
 	}
 
 	HandleType  Mesh::NextHandle(HandleType h, ElementType etype) const 
@@ -102,7 +102,7 @@ namespace INMOST
 			else break;
 		}
 		if( num == 5 && id > 0 ) id = 1;
-		return ComposeHandle(num,id);
+		return ComposeHandleNum(num,id);
 	}
 
 	HandleType  Mesh::PrevHandle(HandleType h, ElementType etype) const 
@@ -127,7 +127,7 @@ namespace INMOST
 				}
 				if( stop ) return InvalidHandle();
 			}
-			else return ComposeHandle(ElementNum(MESH),0);
+			else return ComposeHandleNum(ElementNum(MESH),0);
 		}
 		while( num >= 0 )
 		{
@@ -150,7 +150,7 @@ namespace INMOST
 			else break;
 		}
 		if( num < 0 ) return InvalidHandle();
-		return ComposeHandle(num,id);
+		return ComposeHandleNum(num,id);
 	}
 
 	Storage::integer  Mesh::FirstLocalID(ElementType etype) const 
