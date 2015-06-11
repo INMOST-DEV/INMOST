@@ -127,7 +127,8 @@ int main(int argc,char ** argv)
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
 		
 		ttt = Timer();
-    Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
+		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
+		S.SetParameterReal("absolute_tolerance",1e-8);
 		Solver::Matrix A; // Declare the matrix of the linear system to be solved
 		Solver::Vector x,b; // Declare the solution and the right-hand side vectors
 		
