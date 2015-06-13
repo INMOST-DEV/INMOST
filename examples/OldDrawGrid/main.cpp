@@ -2179,7 +2179,7 @@ public:
 			done = true;
 			glutPostRedisplay();
 		}
-		else if( type == String || ( (c >= '0' && c <= '9') || ((str.empty() || tolower(str.back()) == 'e') && c=='+' || c=='-') || (type == Double && (c=='.' || c=='e' || c == 'E'))) ) 
+		else if( type == String || ( (c >= '0' && c <= '9') || ((str.empty() || tolower(*str.rbegin()) == 'e') && c=='+' || c=='-') || (type == Double && (c=='.' || c=='e' || c == 'E'))) ) 
 		{
 			str += c;
 			glutPostRedisplay();
