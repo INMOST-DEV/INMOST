@@ -742,6 +742,7 @@ public:
 		up[0] -= origin[0];
 		up[1] -= origin[1];
 		up[2] -= origin[2];
+    
 		double l = sqrt(right[0]*right[0]+right[1]*right[1]+right[2]*right[2]);
 		if( l )
 		{
@@ -756,8 +757,9 @@ public:
 			up[1] /= l;
 			up[2] /= l;
 		}
+    
 		const float alpha = 0.0075f;
-		const float mult = 2.5f;
+		const float mult = 1.0f;
 		const float rmult = 0.7f;
 		//glPointSize(5.0);
 		glColor4f(0.5f,0.5f,0.5f,alpha);
@@ -766,7 +768,7 @@ public:
 		//glBegin(GL_QUADS);
 		if( interactive )
 		{
-			for(int k = 0; k < points.size(); ++k) if( k % 100 == 0 )
+      for(int k = 0; k < points.size(); ++k) if( k % 100 == 0 )
 			{
 				if( visualization_tag.isValid() )
 				{
@@ -2990,6 +2992,9 @@ int main(int argc, char ** argv)
 	mesh = new Mesh();
 	printf("Started loading mesh.\n");
 	tt = Timer();
+  mesh->SetCommunicator(INMOST_MPI_COMM_WORLD);
+  mesh->SetParallelFileStrategy(0);
+  mesh->SetParallelStrategy(1);
 	mesh->SetFileOption("VERBOSITY","2");
 	if( argc < 2 )
 	{

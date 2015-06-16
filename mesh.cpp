@@ -440,7 +440,7 @@ namespace INMOST
 #endif //USE_MPI
 #if defined(USE_PARALLEL_WRITE_TIME)
 		FinalizeFile();
-		out_time.close();
+		
 		for(size_t q = 0; q < allocated_meshes.size(); ++q)
 			if (allocated_meshes[q] == this)
 				allocated_meshes[q] = NULL;

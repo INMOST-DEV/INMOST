@@ -631,7 +631,7 @@ namespace INMOST
 #if defined(USE_PARALLEL_WRITE_TIME)
 	void Mesh::Enter() { tab++; }
 	void Mesh::Exit() {tab--; }
-	std::fstream & Mesh::WriteTab(std::fstream & f)
+	std::ostream & Mesh::WriteTab(std::ostream & f)
 	{
 		for(int i = 0; i < tab; i++)
 			f << "   ";
@@ -643,15 +643,20 @@ namespace INMOST
 	}
 	void Mesh::FinalizeFile()
 	{
-		if( tab > 1 )
+    //std::stringstream str;
+    if( tab > 1 )
 		{
-			REPORT_STR("Finalizing file with nonempty function stack - probably due to error.");
+      out_time << "<TEXT><![CDATA[Died!]]></TEXT>\n";// << std::endl;
 		}
-		while(tab > 1)
+    while(tab > 1)
 		{
-			EXIT_FUNC_DIE();
+      out_time << "<TIME>-1</TIME>\n</FUNCTION>\n";// << std::endl; 
+      Exit(); 
 		}
 		out_time << "</Debug>" << std::endl;
+    //out_time << str;
+    //out_time.flush();
+    out_time.close();
 	}
 #endif //USE_PARALLEL_WRITE_TIME
 	

@@ -2946,6 +2946,7 @@ read_elem_num_link:
 		}
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
 		{
+      //std::cout << "parallel strategy " << parallel_strategy << " file strategy " << parallel_file_strategy << std::endl;
 			io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
 			io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
 			REPORT_STR("start load pmf");
@@ -2958,13 +2959,16 @@ read_elem_num_link:
 #if defined(USE_MPI_FILE)
 				if( parallel_file_strategy == 1 )
 				{
+          REPORT_STR("strategy 1");
 					int ierr;
-					std::string buffer;
+					std::vector<char> buffer;
 					MPI_File fh;
 					MPI_Status stat;
-					ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_RDONLY,MPI_INFO_NULL,&fh);
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+					REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_RDONLY,MPI_INFO_NULL,&fh));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
 					INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), recvsize = 0, mpirank = GetProcessorRank();
+          REPORT_VAL("number of processors",numprocs);
+          REPORT_VAL("rank of processor", mpirank);
 					std::vector<INMOST_DATA_ENUM_TYPE> recvsizes;
 					if( mpirank == 0 ) //the alternative is to read alltogether
 					{
@@ -2973,32 +2977,44 @@ read_elem_num_link:
 						
 						buffer.resize(3);
 						//ierr = MPI_File_read_all(fh,&buffer[0],3,MPI_CHAR,&stat);
-						ierr = MPI_File_read_shared(fh,&buffer[0],3,MPI_CHAR,&stat);
-						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+						REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],3,MPI_CHAR,&stat));
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
 
 						if( static_cast<HeaderType>(buffer[0]) != INMOST::INMOSTFile ) throw BadFile;
 
-						header << buffer.c_str()+1;
+						header << &buffer[1];
 						uconv.read_iByteOrder(header);
 						uconv.read_iByteSize(header);
 
+            REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
+            REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+        
+
 						buffer.resize(uconv.get_source_iByteSize());
 						//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
-						ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat);
+						REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
 
-						header << buffer;
+            header.write(&buffer[0],buffer.size());
 						uconv.read_iValue(header,datanum);
+
+            REPORT_VAL("number of data entries",datanum);
 
 						buffer.resize(datanum*uconv.get_source_iByteSize());
 						std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
 						//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
-						ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat);
-						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+						REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
 
-						header << buffer;
-						for(k = 0; k < datanum; k++) uconv.read_iValue(header,datasizes[k]);
-
+            INMOST_DATA_ENUM_TYPE datasum = 0;
+						header.write(&buffer[0],buffer.size());
+						for(k = 0; k < datanum; k++) 
+            {
+              uconv.read_iValue(header,datasizes[k]);
+              REPORT_VAL("size of data entry " << k,datasizes[k]);
+              datasum += datasizes[k];
+            }
+            REPORT_VAL("total size",datasum);
 
 						// use this commented code when all processors read the file alltogether through MPI_File_read_all
 						//{
@@ -3031,92 +3047,134 @@ read_elem_num_link:
 						recvsizes.resize(numprocs,0);
 						if( datanum <= recvsizes.size() )
 						{
+              REPORT_STR("number of processors is greater or equal then number of data entries");
 							for(k = 0; k < datanum; k++)
 								recvsizes[k] = datasizes[k];
 						}
 						else
 						{
+              REPORT_STR("number of processors is less then number of data entries - accumulating data");
 							chunk = static_cast<INMOST_DATA_ENUM_TYPE>(floor(static_cast<double>(datanum)/static_cast<double>(recvsizes.size())));
+              REPORT_VAL("chunk size" ,chunk);
 							pos = 0;
 							for(k = 0; k < recvsizes.size()-1; k++)
+              {
 								for(q = 0; q < chunk; q++)
 									recvsizes[k] += datasizes[pos++];
+
+                REPORT_VAL("recv on " << k, recvsizes[k]);
+              }
 							for(k = pos; k < datanum; k++)
 								recvsizes[recvsizes.size()-1] += datasizes[k];
+              REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
 						}
 					}
 					else recvsizes.resize(1,0); //protect from dereferencing null
 
-					ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator());
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+					REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
 
+          REPORT_VAL("read on current processor",recvsize);
 
 					buffer.resize(std::max(1u,recvsize)); //protect from dereferencing null
 
 
 					{
-						ierr = MPI_File_read_ordered(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(recvsize),MPI_CHAR,&stat);
-						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+						REPORT_MPI(ierr = MPI_File_read_ordered(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(recvsize),MPI_CHAR,&stat));
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
 						in.write(&buffer[0],recvsize);
 					}
 
-					ierr = MPI_File_close(&fh);
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+					REPORT_MPI(ierr = MPI_File_close(&fh));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
 				}
 				else
 #endif
 				{
+
+          REPORT_STR("strategy 0");
 					int ierr;
-					std::string buffer, local_buffer;
+					std::vector<char> buffer, local_buffer;
 					INMOST_DATA_ENUM_TYPE recvsize;
 					
-					INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber();
+					INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(),mpirank = GetProcessorRank();
 					std::vector<INMOST_DATA_ENUM_TYPE> recvsizes(numprocs,0);
 					std::vector<INMOST_MPI_SIZE> sendcnts(numprocs), displs(numprocs);
-					if( GetProcessorRank() == 0 ) //zero reads everything
+          REPORT_VAL("number of processors",numprocs);
+          REPORT_VAL("rank of processor", mpirank);
+					if( mpirank == 0 ) //zero reads everything
 					{
 						std::fstream fin(File.c_str(),std::ios::in | std::ios::binary);
 						fin.get(token);
 						if( token != INMOST::INMOSTFile ) throw BadFile;
 						uconv.read_iByteOrder(fin);
 						uconv.read_iByteSize(fin);
+
+            REPORT_VAL("file position",fin.tellg());
+
+            REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
+            REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+        
+
 						INMOST_DATA_ENUM_TYPE datanum,k,q,datasum = 0,chunk,pos;
 						uconv.read_iValue(fin,datanum);
+
+            REPORT_VAL("number of data entries",datanum);
+            REPORT_VAL("file position",fin.tellg());
+
 						std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
 						for(k = 0; k < datanum; k++) 
 						{
 							uconv.read_iValue(fin,datasizes[k]);
+              REPORT_VAL("size of data entry " << k,datasizes[k]);
 							datasum += datasizes[k];
 						}
+
+            REPORT_VAL("file position",fin.tellg());
+
 						{
 							buffer.resize(datasum);
 							fin.read(&buffer[0],buffer.size());
+              
 						}
+            REPORT_VAL("file position",fin.tellg());
+            REPORT_VAL("total size",datasum);
 						fin.close();
 
 
 						if( datanum <= recvsizes.size() )
 						{
+              REPORT_STR("number of processors is greater or equal then number of data entries");
 							for(k = 0; k < datanum; k++)
 								recvsizes[k] = datasizes[k];
 						}
 						else
 						{
+              REPORT_STR("number of processors is less then number of data entries - accumulating data");
 							chunk = static_cast<INMOST_DATA_ENUM_TYPE>(floor(static_cast<double>(datanum)/static_cast<double>(recvsizes.size())));
+              REPORT_VAL("chunk size" ,chunk);
 							pos = 0;
 							for(k = 0; k < recvsizes.size()-1; k++)
+              {
 								for(q = 0; q < chunk; q++)
 									recvsizes[k] += datasizes[pos++];
+                REPORT_VAL("recv on " << k, recvsizes[k]);
+              }
 							for(k = pos; k < datanum; k++)
 								recvsizes[recvsizes.size()-1] += datasizes[k];
+              REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
 						}
 
 						displs[0] = 0;
 						sendcnts[0] = static_cast<INMOST_MPI_SIZE>(recvsizes[0]);
+            REPORT_VAL("disp on "<<0,displs[0]);
+            REPORT_VAL("send on "<<0,sendcnts[0]);
 						for(k = 1; k < numprocs; k++)
 						{
 							sendcnts[k] = static_cast<INMOST_MPI_SIZE>(recvsizes[k]);
 							displs[k] = sendcnts[k-1]+displs[k-1];
+              REPORT_VAL("disp on "<<k,displs[k]);
+              REPORT_VAL("send on "<<k,sendcnts[k]);
 						}
 					}
 					else 
@@ -3124,12 +3182,17 @@ read_elem_num_link:
 						//protect from dereferencing null
 						buffer.resize(1);
 					}
-					ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator());
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
-					local_buffer.resize(recvsize);
-					ierr = MPI_Scatterv(&buffer[0],&sendcnts[0],&displs[0],MPI_CHAR,&local_buffer[0],recvsize,MPI_CHAR,0,GetCommunicator());
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+					REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
+					local_buffer.resize(std::max(1u,recvsize));
+
+          REPORT_VAL("read on current processor",recvsize);
+
+
+					REPORT_MPI(ierr = MPI_Scatterv(&buffer[0],&sendcnts[0],&displs[0],MPI_CHAR,&local_buffer[0],recvsize,MPI_CHAR,0,GetCommunicator()));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),-1));
 					in.write(&local_buffer[0],local_buffer.size());
+          REPORT_VAL("output position",in.tellg());
 				}
 
 			}
@@ -3141,26 +3204,48 @@ read_elem_num_link:
 				if( token != INMOST::INMOSTFile ) throw BadFile;
 				uconv.read_iByteOrder(fin);
 				uconv.read_iByteSize(fin);
+
+        REPORT_VAL("file position",fin.tellg());
+
+        REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
+        REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+        
 				INMOST_DATA_ENUM_TYPE datanum,k,datasum = 0;
 				uconv.read_iValue(fin,datanum);
+
+        REPORT_VAL("file position",fin.tellg());
+
+        REPORT_VAL("number of data entries",datanum);
+
 				std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
 				for(k = 0; k < datanum; k++) 
 				{
 					uconv.read_iValue(fin,datasizes[k]);
+          REPORT_VAL("size of data entry " << k,datasizes[k]);
 					datasum += datasizes[k];
 				}
+
+        REPORT_VAL("file position",fin.tellg());
+
+        REPORT_VAL("total size",datasum);
 				{
-					std::string buffer;
+					std::vector<char> buffer;
 					buffer.resize(datasum);
 					fin.read(&buffer[0],buffer.size());
 					in.write(&buffer[0],buffer.size());
+          REPORT_VAL("output position",in.tellg());
 				}
+
+        REPORT_VAL("file position",fin.tellg());
+
 				fin.close();
 			}
 			
 			//std::fstream in(File.c_str(),std::ios::in | std::ios::binary);
 			
 			std::vector<Tag> tags;
+      std::vector<ElementType> tags_defined;
+      std::vector<ElementType> tags_sparse;
 			std::vector<HandleType> old_nodes;
 			std::vector<HandleType> new_nodes;
 			std::vector<HandleType> new_edges;
@@ -3179,6 +3264,7 @@ read_elem_num_link:
 		
 			while (in >> token) 
 			{
+        REPORT_VAL("output position, loop",in.tellg());
 				if( !start ) 
 				{
 					if( token != INMOST::INMOSTFile ) throw BadFile; //check that this is valid file
@@ -3187,6 +3273,8 @@ read_elem_num_link:
 						REPORT_STR("File chunk start read");
 						//~ std::cout << "start read" << std::endl;
 						tags.clear();
+            tags_sparse.clear();
+            tags_defined.clear();
 						old_nodes.clear();
 						old_nodes.resize(NumberOfNodes());
 						{
@@ -3272,6 +3360,8 @@ read_elem_num_link:
 					new_sets.clear();
 					new_sets.resize(header[5]);
 					tags.resize(header[6]);
+          tags_sparse.resize(header[6]);
+          tags_defined.resize(header[6]);
 					//~ if( static_cast<Mesh::MeshState>(header[7]) == Mesh::Parallel && m_state != Mesh::Parallel)
 						//~ SetCommunicator(INMOST_MPI_COMM_WORLD);
 					myprocs.push_back(header[8]);
@@ -3292,13 +3382,25 @@ read_elem_num_link:
 						in.read(name, namesize);
 						assert(namesize < 4096);
 						name[namesize] = '\0';
+            REPORT_VAL("tag name",name);
 						in.get(datatype);
+            REPORT_VAL("tag data type",DataTypeName(static_cast<DataType>(datatype)));
 						in.get(sparsemask);
 						in.get(definedmask);
+            //for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
+            //{
+            //  if( etype & definedmask ) REPORT_VAL("defined on",ElementTypeName(etype));
+            //  if( etype & sparsemask ) REPORT_VAL("sparse on",ElementTypeName(etype));
+            //}
 						uconv.read_iValue(in,datalength);
+            REPORT_VAL("length",datalength);
 						tags[i] = CreateTag(std::string(name),static_cast<DataType>(datatype),
 						                    static_cast<ElementType>(definedmask),
 						                    static_cast<ElementType>(sparsemask),datalength);
+            tags_defined[i] = static_cast<ElementType>(definedmask);
+            tags_sparse[i] = static_cast<ElementType>(sparsemask);
+
+            REPORT_VAL("output position, tag " << i,in.tellg());
 					}
 				}
 				else if (token == INMOST::NodeHeader)
@@ -3325,6 +3427,8 @@ read_elem_num_link:
 						if( find == -1 ) new_nodes[i] = CreateNode(coords)->GetHandle();
 						else  new_nodes[i] = old_nodes[find];
 					}
+
+          REPORT_VAL("output position, nodes",in.tellg());
 				}
 				else if (token == INMOST::EdgeHeader)
 				{
@@ -3345,6 +3449,8 @@ read_elem_num_link:
 						new_edges[i] = CreateEdge(sub_elements).first->GetHandle();
 						sub_elements.clear();
 					}
+
+          REPORT_VAL("output position, edges",in.tellg());
 				}
 				else if (token == INMOST::FaceHeader)
 				{
@@ -3365,6 +3471,8 @@ read_elem_num_link:
 						new_faces[i] = CreateFace(sub_elements).first->GetHandle();
 						sub_elements.clear();
 					}
+
+          REPORT_VAL("output position, faces",in.tellg());
 				}
 				else if (token == INMOST::CellHeader)
 				{
@@ -3393,6 +3501,8 @@ read_elem_num_link:
 						sub_elements.clear();
 						suggest_nodes.clear();
 					}
+
+          REPORT_VAL("output position, cells",in.tellg());
 				}
 				else if (token == INMOST::ESetHeader)
 				{
@@ -3481,6 +3591,8 @@ read_elem_num_link:
 										lc[j] = new_sets[GetHandleID(lc[j])];
 						}
 					}
+
+          REPORT_VAL("output position, sets",in.tellg());
 				}
 				else if (token == INMOST::MeshDataHeader)
 				{
@@ -3511,20 +3623,28 @@ read_elem_num_link:
 						Tag * jt = &tags[j];
 						for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 						{
-							if( jt->isDefined(etype) )
+							if( etype & tags_defined[j] )
 							{
+                REPORT_VAL("defined on",ElementTypeName(etype));
 								INMOST_DATA_ENUM_TYPE q, cycle_end, etypenum = ElementNum(etype);
 								cycle_end = elem_sizes[etypenum];
-								bool sparse = jt->isSparse(etype);
+                REPORT_VAL("cycle end",cycle_end);
+								bool sparse = false;
+                if( etype & tags_sparse[j] ) sparse = true;
 								INMOST_DATA_ENUM_TYPE tagsize = jt->GetSize(), recsize = tagsize, lid;
 								INMOST_DATA_ENUM_TYPE k;
 								DataType data_type = jt->GetDataType();
 								if( sparse ) 
 								{
+                  REPORT_VAL("sparse on",ElementTypeName(etype));
 									uconv.read_iValue(in,q); 
 									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 								}
 								else q = 0;
+
+                REPORT_VAL("data type",DataTypeName(data_type));
+                REPORT_VAL("tag size",tagsize);
+
 								while(q != cycle_end)
 								{
 									HandleType he = elem_links[etypenum][q];
@@ -3586,7 +3706,11 @@ read_elem_num_link:
 								}
 							}
 						}
+
+            REPORT_VAL("output position, tag data " << j,in.tellg());
 					}
+
+          REPORT_VAL("output position, tag data",in.tellg());
 					if( verbosity > 0 ) std::cout << "Finished reading data" << std::endl;
 					REPORT_STR("EndOfData");
 				}

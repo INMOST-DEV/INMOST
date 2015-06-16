@@ -2356,7 +2356,7 @@ namespace INMOST
 		void                              Exit               ();
 		int &                             GetFuncID          () {return func_id;}
 		std::fstream &                    GetStream          ();
-		std::fstream &                    WriteTab           (std::fstream & f);
+		std::ostream &                    WriteTab           (std::ostream & f);
 		void                              FinalizeFile       ();
 		static void                       AtExit             (void);
 #endif
