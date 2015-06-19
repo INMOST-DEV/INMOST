@@ -2982,7 +2982,7 @@ read_elem_num_link:
 
 						if( static_cast<HeaderType>(buffer[0]) != INMOST::INMOSTFile ) throw BadFile;
 
-						header << &buffer[1];
+						header.write(&buffer[1],2);
 						uconv.read_iByteOrder(header);
 						uconv.read_iByteSize(header);
 
