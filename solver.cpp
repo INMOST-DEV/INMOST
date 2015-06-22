@@ -1345,6 +1345,9 @@ namespace INMOST
 				  }
 				  if( k == strlen(str) ) continue; //invalid line
 				  for(l = 0; l < k; ++l) str[l] = tolower(str[l]);
+				  l = (int)strlen(str)-1; // Right-trim string
+				  while(l > 0 && isspace(str[l]) ) --l;
+				  str[l+1] = 0;
 				  l = k+1;
 				  while(l < (int)strlen(str) && isspace(str[l]) ) ++l;
 				  if( l == strlen(str) ) continue; //skip empty entry
