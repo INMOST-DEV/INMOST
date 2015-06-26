@@ -34,6 +34,10 @@ if(OPENGL_FOUND)
         message("linking DrawMatrix with Metis")
         target_link_libraries(DrawMatrix ${METIS_LIBRARIES})
       endif()
+      if(USE_SOLVER_MONDRIAAN)
+        message("linking DrawMatrix with Mondriaan")
+        target_link_libraries(DrawMatrix ${MONDRIAAN_LIBRARIES})
+      endif()
     endif()
 
 

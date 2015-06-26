@@ -168,6 +168,46 @@ void rotatevector(double * vec)
 	vec[2] = ret[2]/ret[3];
 }
 
+void reverse_rotatevector(double * vec)
+{
+	int i;
+	double rot[16];
+	double temp[4] = {vec[0],vec[1],vec[2],1.0};
+	double ret[4];
+	q.x = -q.x;
+	q.y = -q.y;
+	q.z = -q.z;
+	rot[ 0] = (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
+	rot[ 1] = 2.*(q.x*q.y - q.w*q.z);
+	rot[ 2] = 2.*(q.x*q.z + q.w*q.y);
+	rot[ 3] = 0.0;
+	rot[ 4] = 2.*(q.x*q.y + q.w*q.z);
+	rot[ 5] = (q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z);
+	rot[ 6] = 2.*(q.y*q.z - q.w*q.x);
+	rot[ 7] = 0.0;
+	rot[ 8] = 2.*(q.x*q.z - q.w*q.y);
+	rot[ 9] = 2.*(q.y*q.z + q.w*q.x);
+	rot[10] = (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+	rot[11] = 0.0;
+	rot[12] = 0.0;
+	rot[13] = 0.0;
+	rot[14] = 0.0;
+	rot[15] = (q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+	for(i=0; i < 4; i++)
+	{
+		ret[i]  = temp[0] * rot[i*4];
+		ret[i] += temp[1] * rot[i*4+1];
+		ret[i] += temp[2] * rot[i*4+2];
+		ret[i] += temp[3] * rot[i*4+3];
+	}
+	vec[0] = ret[0]/ret[3];
+	vec[1] = ret[1]/ret[3];
+	vec[2] = ret[2]/ret[3];
+	q.x = -q.x;
+	q.y = -q.y;
+	q.z = -q.z;
+}
+
 void revrotatevector(double * vec)
 {
 	int i;
@@ -209,6 +249,51 @@ void rotatevector_from_stack(double * vec)
 {
 	int i;
 	struct quaternion q = storage.back();
+	double rot[16];
+	double temp[4] = {vec[0],vec[1],vec[2],1.0};
+	double ret[4];
+	rot[ 0] = (q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
+	rot[ 1] = 2.*(q.x*q.y - q.w*q.z);
+	rot[ 2] = 2.*(q.x*q.z + q.w*q.y);
+	rot[ 3] = 0.0;
+	rot[ 4] = 2.*(q.x*q.y + q.w*q.z);
+	rot[ 5] = (q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z);
+	rot[ 6] = 2.*(q.y*q.z - q.w*q.x);
+	rot[ 7] = 0.0;
+	rot[ 8] = 2.*(q.x*q.z - q.w*q.y);
+	rot[ 9] = 2.*(q.y*q.z + q.w*q.x);
+	rot[10] = (q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+	rot[11] = 0.0;
+	rot[12] = 0.0;
+	rot[13] = 0.0;
+	rot[14] = 0.0;
+	rot[15] = (q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+	for(i=0; i < 4; i++)
+	{
+		ret[i]  = temp[0] * rot[i*4];
+		ret[i] += temp[1] * rot[i*4+1];
+		ret[i] += temp[2] * rot[i*4+2];
+		ret[i] += temp[3] * rot[i*4+3];
+	}
+	vec[0] = ret[0]/ret[3];
+	vec[1] = ret[1]/ret[3];
+	vec[2] = ret[2]/ret[3];
+}
+
+void quatget(double *vec)
+{
+	vec[0] = q.x / q.w;
+	vec[1] = q.y / q.w;
+	vec[2] = q.z / q.w;
+}
+
+void reverse_rotatevector_from_stack(double * vec)
+{
+	int i;
+	struct quaternion q = storage.back();
+	q.x = -q.x;
+	q.y = -q.y;
+	q.z = -q.z;
 	double rot[16];
 	double temp[4] = {vec[0],vec[1],vec[2],1.0};
 	double ret[4];

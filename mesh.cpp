@@ -440,7 +440,7 @@ namespace INMOST
 #endif //USE_MPI
 #if defined(USE_PARALLEL_WRITE_TIME)
 		FinalizeFile();
-		out_time.close();
+		
 		for(size_t q = 0; q < allocated_meshes.size(); ++q)
 			if (allocated_meshes[q] == this)
 				allocated_meshes[q] = NULL;
@@ -862,7 +862,7 @@ namespace INMOST
 	Node Mesh::CreateNode(const real * coords)
 	{
 		integer id = TieElement(0);
-		HandleType h = ComposeHandle(0,id);
+		HandleType h = ComposeHandleNum(0,id);
 		SetGeometricType(h,Element::Vertex);
 		real * v = static_cast<Storage::real *>(MGetDenseLink(h,CoordsTag()));
 		for(integer i = 0; i < dim; i++) v[i] = coords[i];
@@ -912,7 +912,7 @@ namespace INMOST
 				if (test != InvalidHandle()) return std::make_pair(Edge(this,test),false);
 			}
 			integer id = TieElement(1);
-			he = ComposeHandle(1,id);
+			he = ComposeHandleNum(1,id);
 			for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
 			{
 				Element::adj_type & hc = HighConn(nodes.at(i));
@@ -1004,7 +1004,7 @@ namespace INMOST
 				if (test != InvalidHandle()) return std::make_pair(Face(this,test),false);
 			}
 			integer id = TieElement(2);
-			he = ComposeHandle(2,id);
+			he = ComposeHandleNum(2,id);
 			for(ElementArray<Edge>::size_type i = 0; i < f_edges.size(); i++)
 			{
 				Element::adj_type & hc = HighConn(f_edges.at(i));
@@ -1374,7 +1374,7 @@ namespace INMOST
 				if (test != InvalidHandle()) return std::make_pair(Cell(this,test),false);
 			}
 			integer id = TieElement(3);
-			he = ComposeHandle(3,id);
+			he = ComposeHandleNum(3,id);
 			for(ElementArray<Face>::size_type i = 0; i < c_faces.size(); i++)
 			{
 				Element::adj_type & hc = HighConn(c_faces.at(i));
@@ -1476,7 +1476,7 @@ namespace INMOST
 			if( e->GetName() == name )
 				return std::make_pair(e->self(),false);
 		}
-		HandleType he = ComposeHandle(4,TieElement(4));
+		HandleType he = ComposeHandleNum(4,TieElement(4));
 		bulk_array set_name = BulkArrayDV(he,SetNameTag());
 		set_name.resize(static_cast<bulk_array::size_type>(name.size()));
 		memcpy(set_name.data(),name.c_str(),name.size());
@@ -1498,7 +1498,7 @@ namespace INMOST
 			Storage::integer j = 0;
 			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElement(0,k) )
 			{
-				memcpy(temp.data()+j,MGetDenseLink(ComposeHandle(0,k),CoordsTag()),sizeof(Storage::real)*dims);
+				memcpy(temp.data()+j,MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),sizeof(Storage::real)*dims);
 				j+=dims;
 			}
 			
@@ -1507,7 +1507,7 @@ namespace INMOST
 			j = 0;
 			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElement(0,k) )
 			{
-				memcpy(MGetDenseLink(ComposeHandle(0,k),CoordsTag()),temp.data()+j,sizeof(Storage::real)*dims);
+				memcpy(MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),temp.data()+j,sizeof(Storage::real)*dims);
 				j+=dims;
 			}
 			dim = dims;
@@ -1536,7 +1536,7 @@ namespace INMOST
 			back_links[etypenum][ADDR] = -1;
 			empty_space[etypenum].push_back(ADDR);
 			empty_links[etypenum].push_back(ID);
-			//REPORT_VAL("destroyed",ComposeHandle(etypenum,ID) << " " << etypenum << " " << ADDR << " " << ID);
+			//REPORT_VAL("destroyed",ComposeHandleNum(etypenum,ID) << " " << etypenum << " " << ADDR << " " << ID);
 		}
 	}
 	
@@ -1576,7 +1576,7 @@ namespace INMOST
 			new_size = GetArrayCapacity(etypenum);
 			if( new_size != old_size ) ReallocateData(etypenum,new_size);
 			back_links[etypenum][ADDR] = ID;
-			last_created = ComposeHandle(etypenum,ID);
+			last_created = ComposeHandleNum(etypenum,ID);
 			//REPORT_VAL("created",last_created << " " << etypenum << " " << ADDR << " " << ID);
 		}
 		return ID;

@@ -346,9 +346,17 @@ namespace INMOST
 						{
 							queue.push_back(*it);
 							m->Integer(queue.back(),index) = visited++;
+
+							if( visited % chunk == 0 ) 
+							{
+								queue.clear();
+								break;
+							}
+
 						}
 					}
-					if( visited % chunk == 0 ) queue.clear();
+					//this may not fire properly
+					//if( visited % chunk == 0 ) queue.clear();
 				}
 			}
 			m->DeleteTag(order);

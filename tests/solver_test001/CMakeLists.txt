@@ -30,6 +30,10 @@ if(USE_SOLVER_METIS)
   message("linking solver_test001 with Metis")
   target_link_libraries(solver_test001 ${METIS_LIBRARIES})
 endif()
+if(USE_SOLVER_MONDRIAAN)
+  message("linking solver_test001 with Mondriaan")
+  target_link_libraries(solver_test001 ${MONDRIAAN_LIBRARIES})
+endif()
 
 
 set(TOKAMAK_TESTS utm300

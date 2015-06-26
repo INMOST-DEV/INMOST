@@ -137,7 +137,7 @@ namespace INMOST
 	__INLINE INMOST_DATA_INTEGER_TYPE        GetHandleElementNum  (HandleType h) {return h >> handle_etype_shift;}
 	__INLINE ElementType                     GetHandleElementType (HandleType h) {return 1 << GetHandleElementNum(h);}
 	__INLINE HandleType                      ComposeHandle        (ElementType etype, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(etype) << handle_etype_shift) + (1+ID));}
-	__INLINE HandleType                      ComposeHandle        (INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((etypenum << handle_etype_shift) + (1+ID));}
+	__INLINE HandleType                      ComposeHandleNum     (INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((etypenum << handle_etype_shift) + (1+ID));}
 	__INLINE bool                            isValidHandle        (HandleType h) {return h != 0;}
 	
 
@@ -2356,7 +2356,7 @@ namespace INMOST
 		void                              Exit               ();
 		int &                             GetFuncID          () {return func_id;}
 		std::fstream &                    GetStream          ();
-		std::fstream &                    WriteTab           (std::fstream & f);
+		std::ostream &                    WriteTab           (std::ostream & f);
 		void                              FinalizeFile       ();
 		static void                       AtExit             (void);
 #endif
@@ -2933,7 +2933,7 @@ namespace INMOST
 		void                              EndSequentialCode  ();
 		//iterator.cpp::::::::::::::::::::::::::::::::::::::::::::::::::
 	public:
-		Element                           ElementByLocalID   (integer etypenum, integer lid) {assert(etypenum < 5 && (lid >= 0 && lid < static_cast<integer>(links[etypenum].size())) || (etypenum == 5 && lid == 0)); return Element(this,ComposeHandle(etypenum,lid));}
+		Element                           ElementByLocalID   (integer etypenum, integer lid) {assert(etypenum < 5 && (lid >= 0 && lid < static_cast<integer>(links[etypenum].size())) || (etypenum == 5 && lid == 0)); return Element(this,ComposeHandleNum(etypenum,lid));}
 		Element                           ElementByLocalID   (ElementType etype, integer lid) {return ElementByLocalID(ElementNum(etype),lid);}
 		Element                           ElementByHandle    (HandleType h) {return Element(this,h);}
 		
@@ -2941,16 +2941,16 @@ namespace INMOST
 		HandleType                        PrevHandle         (HandleType h) const; //returns InvalidHandle() when go beyond first element
 		HandleType                        NextHandle         (HandleType h, ElementType mask) const;
 		HandleType                        PrevHandle         (HandleType h, ElementType mask) const; //returns InvalidHandle() when go beyond first element
-		HandleType                        FirstHandle        () const {return ComposeHandle(ElementNum(NODE),0);}
-		HandleType                        LastHandle         () const {return ComposeHandle(ElementNum(MESH),1);} 
-		HandleType                        FirstHandle        (ElementType etype) const {return ComposeHandle(ElementNum(etype),0);}
-		HandleType                        LastHandle         (ElementType etype) const  {integer num = ElementNum(etype); return ComposeHandle(num,static_cast<integer>(links[num].size()));}
+		HandleType                        FirstHandle        () const {return ComposeHandleNum(ElementNum(NODE),0);}
+		HandleType                        LastHandle         () const {return ComposeHandleNum(ElementNum(MESH),1);} 
+		HandleType                        FirstHandle        (ElementType etype) const {return ComposeHandleNum(ElementNum(etype),0);}
+		HandleType                        LastHandle         (ElementType etype) const  {integer num = ElementNum(etype); return ComposeHandleNum(num,static_cast<integer>(links[num].size()));}
 
-		Node                              NodeByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[0].size())); return Node(this,ComposeHandle(0,lid)); }
-		Edge                              EdgeByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[1].size())); return Edge(this,ComposeHandle(1,lid)); }
-		Face                              FaceByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[2].size())); return Face(this,ComposeHandle(2,lid));}
-		Cell                              CellByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[3].size())); return Cell(this,ComposeHandle(3,lid)); }
-		ElementSet                        EsetByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[4].size())); return ElementSet(this,ComposeHandle(4,lid)); }
+		Node                              NodeByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[0].size())); return Node(this,ComposeHandleNum(0,lid)); }
+		Edge                              EdgeByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[1].size())); return Edge(this,ComposeHandleNum(1,lid)); }
+		Face                              FaceByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[2].size())); return Face(this,ComposeHandleNum(2,lid));}
+		Cell                              CellByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[3].size())); return Cell(this,ComposeHandleNum(3,lid)); }
+		ElementSet                        EsetByLocalID      (integer lid) { assert(lid >= 0 && lid < static_cast<integer>(links[4].size())); return ElementSet(this,ComposeHandleNum(4,lid)); }
 		
 		integer                           NodeNextLocalID    (integer lid) const {++lid; while(lid < static_cast<integer>(links[0].size()) && links[0][lid] == -1) ++lid; return lid;}
 		integer                           EdgeNextLocalID    (integer lid) const {++lid; while(lid < static_cast<integer>(links[1].size()) && links[1][lid] == -1) ++lid; return lid;}

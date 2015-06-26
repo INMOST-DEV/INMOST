@@ -538,6 +538,7 @@ class incident_matrix
 		}
 		return success;
 	}
+/*
 	Storage::real compute_measure(dynarray<T,64> & data)
 	{
 		Storage::real measure = 0;
@@ -622,6 +623,7 @@ class incident_matrix
 		}
 		return measure;
 	}
+*/
 	void recursive_find(unsigned node, unsigned length)
 	{
 		if( !min_loop.empty() && length > min_loop.size() ) return;
@@ -851,7 +853,7 @@ public:
 			}
 		} while( min_loop.empty() && first != UINT_MAX );
 		
-		for(dynarray<T,64>::iterator it = min_loop.begin(); it != min_loop.end(); ++it)
+		for(typename dynarray<T,64>::iterator it = min_loop.begin(); it != min_loop.end(); ++it)
 			ret.push_back(it->self());
 		//ret.insert(ret.end(),min_loop.begin(),min_loop.end());
 		min_loop.clear();
