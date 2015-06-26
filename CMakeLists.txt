@@ -60,6 +60,27 @@ else()
   set(HAVE_SOLVER_MPTILU2 FALSE)
 endif()
 
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.h" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.cpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fcbiilu2.cpp" )
+  add_definitions(-DHAVE_SOLVER_FCBIILU2)
+  set(HAVE_SOLVER_FCBIILU2 TRUE)
+  list(APPEND HEADER solver_fcbiilu2.h)
+  list(APPEND SOURCE solver_fcbiilu2.cpp fcbiilu2.cpp)
+else()
+  set(HAVE_SOLVER_FCBIILU2 FALSE)
+endif()
+
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.h" AND EXISTS
+		"${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.cpp" AND EXISTS
+		"${CMAKE_CURRENT_SOURCE_DIR}/k3d.h" AND EXISTS
+		"${CMAKE_CURRENT_SOURCE_DIR}/k3d.cpp" )
+  add_definitions(-DHAVE_SOLVER_K3BIILU2)
+  set(HAVE_SOLVER_K3BIILU2 TRUE)
+  list(APPEND HEADER solver_k3biilu2.h k3d.h)
+  list(APPEND SOURCE solver_k3biilu2.cpp k3d.cpp)
+else()
+  set(HAVE_SOLVER_K3BIILU2 FALSE)
+endif()
+
 add_library(inmost STATIC ${SOURCE} ${HEADER})
 
 option(USE_MPI "Compile with MPI support" ON)

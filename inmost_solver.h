@@ -42,15 +42,17 @@ namespace INMOST
 		enum Type
 		{
 			INNER_ILU2,     ///< inner Solver based on BiCGStab(L) solver with second order ILU factorization as preconditioner.
-			INNER_DDPQILUC,   ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner.
-			INNER_MPTILUC,   ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner.
-			INNER_MPTILU2,   ///< inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditioner.
-			Trilinos_Aztec, ///< external Solver AztecOO from Trilinos package
-			Trilinos_Belos, ///< external Solver Belos from Trilinos package, currently without preconditioner
-			Trilinos_ML,    ///< external Solver AztecOO with ML preconditioner
-			Trilinos_Ifpack,///< external Solver AztecOO with Ifpack preconditioner
-			PETSc,          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/.
-			ANI             ///< external Solver from ANI3D based on ILU2 (sequential Fortran version).
+			INNER_DDPQILUC, ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner.
+			INNER_MPTILUC,  ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner.
+			INNER_MPTILU2,  ///< inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditioner.
+			Trilinos_Aztec, ///< external Solver AztecOO from Trilinos package.
+			Trilinos_Belos, ///< external Solver Belos from Trilinos package, currently without preconditioner.
+			Trilinos_ML,    ///< external Solver AztecOO with ML preconditioner.
+			Trilinos_Ifpack,///< external Solver AztecOO with Ifpack preconditioner.
+			PETSc,          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/
+			ANI,            ///< external Solver from ANI3D based on ILU2 (sequential Fortran version), @see http://ani3d.sourceforge.net/
+			FCBIILU2,       //   external FCBIILU2 Solver (BIILU2 parallel F2C version).
+			K3BIILU2        //   inner    K3BIILU2 Solver (BIILU2 parallel version).
 		};
 
 		static INMOST_MPI_Type & GetRowEntryType() {return RowEntryType;}
@@ -464,14 +466,14 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
 		public:
-			/// Default constructor without size specfied.
+			/// Default constructor without size specified.
 			RowMerger();
 			/// Constructor with size specified.
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
-			/// @param Sorted Result should be sorted.
+			/// @param Sorted Result should be sorted or not.
 			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
-			/// Constructor that gets sizes from matrix
+			/// Constructor that gets sizes from the matrix.
 			/// @param A Matrix to get sizes from.
 			/// @param Sorted Result should be sorted.
 			RowMerger(Matrix & A, bool Sorted = true);
@@ -483,14 +485,14 @@ namespace INMOST
 			/// This behavior may be changed in future.
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
-			/// @param Sorted Result should be sorted.
+			/// @param Sorted Result should be sorted or not.
 			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
 			/// Resize linked list for new matrix.
 			/// \warning
 			/// All contents of linked list will be lost after resize.
 			/// This behavior may be changed in future.
 			/// @param A Matrix to get sizes from.
-			/// @param Sorted Result should be sorted.
+			/// @param Sorted Result should be sorted or not.
 			void Resize(Matrix & A, bool Sorted = true);
 			/// Clear linked list.
 			void Clear();
@@ -587,7 +589,7 @@ namespace INMOST
 		///                          works for:
 		///                          INNER_MLILUC
 		/// - "adapt_ddpq_tolerance" - adapt ddpq tolerance depending from the complexity 
-		//                           of calculation of Schur complement,
+		///                          of calculation of Schur complement,
 		///                          works for:
 		///                          INNER_MLILUC
 		void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
@@ -632,12 +634,6 @@ namespace INMOST
 		/// Get the package Type.
 		Type GetPackage() const {return _pack;}
 		
-		/// Return the number of iterations performed by the last solution.
-		/// @see Solver::Solve
-		INMOST_DATA_ENUM_TYPE Iterations();
-		/// Return the final residual achieved by the last solution.
-		/// @see Solver::Solve
-		INMOST_DATA_REAL_TYPE Residual();
 		/// Set the matrix and construct the preconditioner.
 		/// @param A Matrix A in linear problem Ax = b
 		/// @param OldPreconditioner If this parameter is set to true,
@@ -662,6 +658,12 @@ namespace INMOST
 		///
 		/// @see Solver::SetMatrix
 		bool Solve(Vector & RHS, Vector & SOL);
+		/// Return the number of iterations performed by the last solution.
+		/// @see Solver::Solve
+		INMOST_DATA_ENUM_TYPE Iterations();
+		/// Return the final residual achieved by the last solution.
+		/// @see Solver::Solve
+		INMOST_DATA_REAL_TYPE Residual();
 		/// Get the reason of convergence or divergence of the last solution.
 		/// @see Solver::Solve
 		std::string GetReason();

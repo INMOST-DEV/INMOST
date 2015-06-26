@@ -10,6 +10,12 @@
 #if defined(HAVE_SOLVER_MPTILU2)
 #include "solver_mtilu2.hpp"
 #endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+#include "solver_fcbiilu2.h"
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+#include "solver_k3biilu2.h"
+#endif
 #include "solver_bcgsl.hpp"
 #include <fstream>
 #include <sstream>
@@ -52,6 +58,8 @@ namespace INMOST
 	static std::string trilinos_belos_database_file = "";
 	static std::string trilinos_ml_database_file = "";
 	static std::string ani_database_file = "";
+	static std::string fcbiilu2_database_file = "";
+	static std::string k3biilu2_database_file = "";
 
 
 #if defined(USE_MPI)
@@ -1319,9 +1327,9 @@ namespace INMOST
 #endif
 	}
 
-	////////////////////////////////////////////////////////////////////////
+	//======================================================================
 	//SOLVER SOURCE CODE
-	////////////////////////////////////////////////////////////////////////
+	//======================================================================
 	void Solver::Initialize(int * argc, char *** argv, const char * database)
 	{
 		(void)database;
@@ -1355,6 +1363,10 @@ namespace INMOST
 					trilinos_belos_database_file = std::string(str+l);
 				else if( !strncmp(str,"ani",k) )
 					ani_database_file = std::string(str+l);
+				else if( !strncmp(str,"fcbiilu2",k) )
+					fcbiilu2_database_file = std::string(str+l);
+				else if( !strncmp(str,"k3biilu2",k) )
+					k3biilu2_database_file = std::string(str+l);
 			}
 		}
 		//std::cout << "PETSc \"" << petsc_database_file << "\"" << std::endl;
@@ -1364,6 +1376,12 @@ namespace INMOST
 #endif
 #if defined(USE_SOLVER_ANI)
 		SolverInitializeAni(argc,argv,ani_database_file.c_str());
+#endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+		SolverInitializeFcbiilu2(argc,argv,fcbiilu2_database_file.c_str());
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+		SolverInitializeK3biilu2(argc,argv,k3biilu2_database_file.c_str());
 #endif
 #if defined(USE_MPI)
 		{
@@ -1409,6 +1427,12 @@ namespace INMOST
 #endif
 #if defined(USE_SOLVER_ANI)
 		SolverFinalizeAni();
+#endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+		SolverFinalizeFcbiilu2();
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+		SolverFinalizeK3biilu2();
 #endif
 #if defined(USE_MPI)
 		{
@@ -1526,6 +1550,18 @@ namespace INMOST
 			SolverInitDataAni(&solver_data,_comm,name.c_str());
 		}
 #endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+		if( _pack == FCBIILU2 )
+		{
+			SolverInitDataFcbiilu2(&solver_data,_comm,name.c_str());
+		}
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+		if( _pack == K3BIILU2 )
+		{
+			SolverInitDataK3biilu2(&solver_data,_comm,name.c_str());
+		}
+#endif
 #if defined(USE_SOLVER_TRILINOS)
 		if( _pack == Trilinos_Aztec || 
 			_pack == Trilinos_Belos ||
@@ -1613,6 +1649,36 @@ namespace INMOST
 				VectorCopyDataAni(&solution_data,other.solution_data);
 		}
 #endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+		if( _pack == FCBIILU2 )
+		{
+			SolverCopyDataFcbiilu2(&solver_data,other.solver_data,comm);
+			if( other.matrix_data != NULL ) 
+			{
+				MatrixCopyDataFcbiilu2(&matrix_data,other.matrix_data);
+				SolverSetMatrixFcbiilu2(solver_data,matrix_data,false,false);
+			}
+			if( other.rhs_data != NULL ) 
+				VectorCopyDataFcbiilu2(&rhs_data,other.rhs_data);
+			if( other.solution_data != NULL ) 
+				VectorCopyDataFcbiilu2(&solution_data,other.solution_data);
+		}
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+		if( _pack == K3BIILU2 )
+		{
+			SolverCopyDataK3biilu2(&solver_data,other.solver_data,comm);
+			if( other.matrix_data != NULL ) 
+			{
+				MatrixCopyDataK3biilu2(&matrix_data,other.matrix_data);
+				SolverSetMatrixK3biilu2(solver_data,matrix_data,false,false);
+			}
+			if( other.rhs_data != NULL ) 
+				VectorCopyDataK3biilu2(&rhs_data,other.rhs_data);
+			if( other.solution_data != NULL ) 
+				VectorCopyDataK3biilu2(&solution_data,other.solution_data);
+		}
+#endif
 #if defined(USE_SOLVER_TRILINOS)
 		if( _pack == Trilinos_Aztec || 
 			_pack == Trilinos_Belos ||
@@ -1653,6 +1719,30 @@ namespace INMOST
 			if( solution_data != NULL )
 				VectorDestroyDataAni(&solution_data);
 			SolverDestroyDataAni(&solver_data);
+		}
+#endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+		if( _pack == FCBIILU2 )
+		{
+			if( matrix_data != NULL ) 
+				MatrixDestroyDataFcbiilu2(&matrix_data);
+			if( rhs_data != NULL )
+				VectorDestroyDataFcbiilu2(&rhs_data);
+			if( solution_data != NULL )
+				VectorDestroyDataFcbiilu2(&solution_data);
+			SolverDestroyDataFcbiilu2(&solver_data);
+		}
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+		if( _pack == K3BIILU2 )
+		{
+			if( matrix_data != NULL ) 
+				MatrixDestroyDataK3biilu2(&matrix_data);
+			if( rhs_data != NULL )
+				VectorDestroyDataK3biilu2(&rhs_data);
+			if( solution_data != NULL )
+				VectorDestroyDataK3biilu2(&solution_data);
+			SolverDestroyDataK3biilu2(&solver_data);
 		}
 #endif
 #if defined(USE_SOLVER_TRILINOS)
@@ -1752,6 +1842,62 @@ namespace INMOST
 				}
 			}
 #endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+			if( _pack == FCBIILU2 )
+			{
+				SolverAssignDataFcbiilu2(solver_data,other.solver_data);
+				if( other.matrix_data != NULL ) 
+				{
+					if( matrix_data != NULL )
+						MatrixAssignDataFcbiilu2(matrix_data,other.matrix_data);
+					else
+						MatrixCopyDataFcbiilu2(&matrix_data,other.matrix_data); 
+					SolverSetMatrixFcbiilu2(solver_data,matrix_data,false,false);
+				}
+				if( other.rhs_data != NULL ) 
+				{
+					if( rhs_data != NULL )
+						VectorAssignDataFcbiilu2(rhs_data,other.rhs_data);
+					else
+						VectorCopyDataFcbiilu2(&rhs_data,other.rhs_data);
+				}
+				if( other.solution_data != NULL ) 
+				{
+					if( solution_data != NULL )
+						VectorAssignDataFcbiilu2(solution_data,other.solution_data);
+					else
+						VectorCopyDataFcbiilu2(&solution_data,other.solution_data);
+				}
+			}
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+			if( _pack == K3BIILU2 )
+			{
+				SolverAssignDataK3biilu2(solver_data,other.solver_data);
+				if( other.matrix_data != NULL ) 
+				{
+					if( matrix_data != NULL )
+						MatrixAssignDataK3biilu2(matrix_data,other.matrix_data);
+					else
+						MatrixCopyDataK3biilu2(&matrix_data,other.matrix_data); 
+					SolverSetMatrixK3biilu2(solver_data,matrix_data,false,false);
+				}
+				if( other.rhs_data != NULL ) 
+				{
+					if( rhs_data != NULL )
+						VectorAssignDataK3biilu2(rhs_data,other.rhs_data);
+					else
+						VectorCopyDataK3biilu2(&rhs_data,other.rhs_data);
+				}
+				if( other.solution_data != NULL ) 
+				{
+					if( solution_data != NULL )
+						VectorAssignDataK3biilu2(solution_data,other.solution_data);
+					else
+						VectorCopyDataK3biilu2(&solution_data,other.solution_data);
+				}
+			}
+#endif
 #if defined(USE_SOLVER_TRILINOS)
 			if( _pack == Trilinos_Aztec || 
 				_pack == Trilinos_Belos ||
@@ -1772,7 +1918,14 @@ namespace INMOST
 	void Solver::SetMatrix(Matrix & A, bool OldPreconditioner)
 	{
 		(void) OldPreconditioner;
+	        std::cout<<"##### SetMatrix: bef.: the very-very beginning... _pack="<<_pack<<std::endl;//db!
 		bool ok = false;
+#if defined(HAVE_SOLVER_FCBIILU2)
+	        std::cout<<"##### SetMatrix: HAVE_SOLVER_FCBIILU2 is set, OK!!!!!!!!!!!!! _pack="<<_pack<<std::endl;//db!
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+	        std::cout<<"##### SetMatrix: HAVE_SOLVER_K3BIILU2 is set, OK!!!!!!!!!!!!! _pack="<<_pack<<std::endl;//db!
+#endif
 #if defined(USE_SOLVER_PETSC)
 		if( _pack == PETSc )
 		{
@@ -1927,6 +2080,164 @@ namespace INMOST
 			ok = true;
 		}
 #endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+		if( _pack == FCBIILU2 )
+		{
+	                std::cout<<"##### bef. FCBIILU2: bool modified_pattern = ... "<<std::endl;//db!
+			bool modified_pattern = false;
+			for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
+				modified_pattern |= it->modified_pattern;
+			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
+			if( matrix_data == NULL )
+			{ 
+				MatrixInitDataFcbiilu2(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
+				modified_pattern = true;
+			}
+	                std::cout<<"##### bef. if( modified_pattern )... "<<modified_pattern<<std::endl;//db!
+			if( modified_pattern )
+			{
+				global_size = local_size = A.Size();
+				
+				MatrixDestroyDataFcbiilu2(&matrix_data);
+				MatrixInitDataFcbiilu2(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
+				INMOST_DATA_ENUM_TYPE nnz = 0, k = 0, q = 1, shift = 1;
+				int nproc, myid;
+#if defined(USE_MPI)
+				MPI_Comm_size(A.GetCommunicator(),&nproc);
+				MPI_Comm_rank(A.GetCommunicator(),&myid);
+#else
+				nproc = 1;
+				myid = 0;
+#endif
+				int * ibl = (int *)malloc(sizeof(int)*(nproc+1));
+				ibl[0] = 0;
+				int n = A.Size();
+#if defined(USE_MPI)
+				INMOST_DATA_ENUM_TYPE mbeg,mend;
+				A.GetInterval(mbeg,mend);
+				n = mend - mbeg;
+				int block_end = mend;
+				MPI_Allgather(&block_end,1,MPI_INT,&ibl[1],1,MPI_INT,A.GetCommunicator());
+#else
+				ibl[1] = n;
+#endif
+				int * ia = (int *)malloc(sizeof(int)*(n+1));
+		                std::cout<<"##### bef. for(...) myid="<<myid<<" A.Size()="<<A.Size()<<" n="<<n<<" nproc="<<nproc<<" ibl: "<<ibl[0]<<" "<<ibl[1]<<" ... "<<ibl[nproc]<<std::endl;//db!
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++) nnz += it->Size();
+				int * ja = (int *)malloc(sizeof(int)*nnz);
+				double * values = (double *) malloc(sizeof(double)*nnz);
+				ia[0] = shift;
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++)
+				{
+					for(Row::iterator jt = it->Begin(); jt != it->End(); jt++)
+					{
+						ja[k] = jt->first + 1;
+						values[k] = jt->second;
+		                                //std::cout<<"# q="<<q<<" k="<<k<<" ja="<<ja[k]<<" a="<<values[k]<<std::endl;//db!
+						k++;
+					}
+					shift += it->Size();
+					ia[q++] = shift;
+				}
+		                std::cout<<"##### bef. MatrixFillFcbiilu2 myid="<<myid<<" n="<<n<<" nnz="<<nnz<<" shift="<<shift<<" ia: "<<ia[0]<<" "<<ia[1]<<" "<<ia[2]<<" ... "<<ia[n]<<"  ja: "<<ja[0]<<" "<<ja[1]<<" "<<ja[2]<<" ... "<<ja[nnz-1]<<"  a: "<<values[0]<<" "<<values[1]<<" "<<values[2]<<" ... "<<values[nnz-1]<<std::endl;//db!
+				MatrixFillFcbiilu2(matrix_data,n,nproc,ibl,ia,ja,values);
+			}
+			else
+			{
+				INMOST_DATA_ENUM_TYPE nnz = 0, k = 0;
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++) nnz += it->Size();
+				double * values = (double *)malloc(sizeof(double)*nnz);
+				k = 0;
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++)
+					for(Row::iterator jt = it->Begin(); jt != it->End(); jt++)
+						values[k++] = jt->second;
+				MatrixFillValuesFcbiilu2(matrix_data,values);
+			}
+			MatrixFinalizeFcbiilu2(matrix_data);
+			SolverSetMatrixFcbiilu2(solver_data,matrix_data,modified_pattern,OldPreconditioner);
+		                std::cout<<"##### bef. ok=true"<<std::endl;//db!
+			ok = true;
+		}
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+		if( _pack == K3BIILU2 )
+		{
+	                std::cout<<"##### bef. K3BIILU2: bool modified_pattern = ... "<<std::endl;//db!
+			bool modified_pattern = false;
+			for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
+				modified_pattern |= it->modified_pattern;
+			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
+			if( matrix_data == NULL )
+			{ 
+				MatrixInitDataK3biilu2(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
+				modified_pattern = true;
+			}
+	                std::cout<<"##### bef. if( modified_pattern )... "<<modified_pattern<<std::endl;//db!
+			if( modified_pattern )
+			{
+				global_size = local_size = A.Size();
+				
+				MatrixDestroyDataK3biilu2(&matrix_data);
+				MatrixInitDataK3biilu2(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
+				INMOST_DATA_ENUM_TYPE nnz = 0, k = 0, q = 1, shift = 1;
+				int nproc, myid;
+#if defined(USE_MPI)
+				MPI_Comm_size(A.GetCommunicator(),&nproc);
+				MPI_Comm_rank(A.GetCommunicator(),&myid);
+#else
+				nproc = 1;
+				myid = 0;
+#endif
+				int * ibl = (int *)malloc(sizeof(int)*(nproc+1));
+				ibl[0] = 0;
+				int n = A.Size();
+#if defined(USE_MPI)
+				INMOST_DATA_ENUM_TYPE mbeg,mend;
+				A.GetInterval(mbeg,mend);
+				n = mend - mbeg;
+				int block_end = mend;
+				MPI_Allgather(&block_end,1,MPI_INT,&ibl[1],1,MPI_INT,A.GetCommunicator());
+#else
+				ibl[1] = n;
+#endif
+				int * ia = (int *)malloc(sizeof(int)*(n+1));
+		                std::cout<<"##### bef. for(...) myid="<<myid<<" A.Size()="<<A.Size()<<" n="<<n<<" nproc="<<nproc<<" ibl: "<<ibl[0]<<" "<<ibl[1]<<" ... "<<ibl[nproc]<<std::endl;//db!
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++) nnz += it->Size();
+				int * ja = (int *)malloc(sizeof(int)*nnz);
+				double * values = (double *) malloc(sizeof(double)*nnz);
+				ia[0] = shift;
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++)
+				{
+					for(Row::iterator jt = it->Begin(); jt != it->End(); jt++)
+					{
+						ja[k] = jt->first + 1;
+						values[k] = jt->second;
+		                                //std::cout<<"# q="<<q<<" k="<<k<<" ja="<<ja[k]<<" a="<<values[k]<<std::endl;//db!
+						k++;
+					}
+					shift += it->Size();
+					ia[q++] = shift;
+				}
+		                std::cout<<"##### bef. MatrixFillK3biilu2 myid="<<myid<<" n="<<n<<" nnz="<<nnz<<" shift="<<shift<<" ia: "<<ia[0]<<" "<<ia[1]<<" "<<ia[2]<<" ... "<<ia[n]<<"  ja: "<<ja[0]<<" "<<ja[1]<<" "<<ja[2]<<" ... "<<ja[nnz-1]<<"  a: "<<values[0]<<" "<<values[1]<<" "<<values[2]<<" ... "<<values[nnz-1]<<std::endl;//db!
+				MatrixFillK3biilu2(matrix_data,n,nproc,ibl,ia,ja,values);
+			}
+			else
+			{
+				INMOST_DATA_ENUM_TYPE nnz = 0, k = 0;
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++) nnz += it->Size();
+				double * values = (double *)malloc(sizeof(double)*nnz);
+				k = 0;
+				for(Matrix::iterator it = A.Begin(); it != A.End(); it++)
+					for(Row::iterator jt = it->Begin(); jt != it->End(); jt++)
+						values[k++] = jt->second;
+				MatrixFillValuesK3biilu2(matrix_data,values);
+			}
+			MatrixFinalizeK3biilu2(matrix_data);
+			SolverSetMatrixK3biilu2(solver_data,matrix_data,modified_pattern,OldPreconditioner);
+		                std::cout<<"##### bef. ok=true"<<std::endl;//db!
+			ok = true;
+		}
+#endif
 #if defined(USE_SOLVER_TRILINOS)
 		if( _pack == Trilinos_Aztec || 
 			_pack == Trilinos_Belos ||
@@ -2055,9 +2366,10 @@ namespace INMOST
 
 		}
 		for(Matrix::iterator it = A.Begin(); it != A.End(); it++) it->modified_pattern = false;
+	        std::cout<<"##### SetMatrix: bef.: the very-very end... "<<std::endl;//db!
 		if(!ok) throw NotImplemented;
 	}
-	
+
 	bool Solver::Solve(Vector & RHS, Vector & SOL)
 	{
 		//check the data
@@ -2154,6 +2466,58 @@ namespace INMOST
 			last_resid = SolverResidualNormAni(solver_data);
 			last_it = SolverIterationNumberAni(solver_data);
 			return_reason = "Unspecified for ANI";
+			return result;
+		}
+#endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+		if( _pack == FCBIILU2 )
+		{
+			if( rhs_data == NULL )
+				VectorInitDataFcbiilu2(&rhs_data,RHS.GetCommunicator(),RHS.GetName().c_str());
+			VectorPreallocateFcbiilu2(rhs_data,local_size);
+			
+			if( solution_data == NULL )
+				VectorInitDataFcbiilu2(&solution_data,SOL.GetCommunicator(),SOL.GetName().c_str());
+			VectorPreallocateFcbiilu2(solution_data,local_size);
+			{
+				VectorFillFcbiilu2(rhs_data,&RHS[vbeg]);
+				VectorFinalizeFcbiilu2(rhs_data);
+				
+				VectorFillFcbiilu2(solution_data,&SOL[vbeg]);
+				VectorFinalizeFcbiilu2(solution_data);
+			}
+			bool result = SolverSolveFcbiilu2(solver_data,rhs_data,solution_data);
+			if( result ) VectorLoadFcbiilu2(solution_data,&SOL[vbeg]);
+			last_resid = SolverResidualNormFcbiilu2(solver_data);
+			last_it = SolverIterationNumberFcbiilu2(solver_data);
+			//return_reason = std::string(SolverConvergedReasonFcbiilu2(solver_data));
+			return_reason = "Unspecified for FCBIILU2";
+			return result;
+		}
+#endif
+#if defined(HAVE_SOLVER_K3BIILU2)
+		if( _pack == K3BIILU2 )
+		{
+			if( rhs_data == NULL )
+				VectorInitDataK3biilu2(&rhs_data,RHS.GetCommunicator(),RHS.GetName().c_str());
+			VectorPreallocateK3biilu2(rhs_data,local_size);
+			
+			if( solution_data == NULL )
+				VectorInitDataK3biilu2(&solution_data,SOL.GetCommunicator(),SOL.GetName().c_str());
+			VectorPreallocateK3biilu2(solution_data,local_size);
+			{
+				VectorFillK3biilu2(rhs_data,&RHS[vbeg]);
+				VectorFinalizeK3biilu2(rhs_data);
+				
+				VectorFillK3biilu2(solution_data,&SOL[vbeg]);
+				VectorFinalizeK3biilu2(solution_data);
+			}
+			bool result = SolverSolveK3biilu2(solver_data,rhs_data,solution_data);
+			if( result ) VectorLoadK3biilu2(solution_data,&SOL[vbeg]);
+			last_resid = SolverResidualNormK3biilu2(solver_data);
+			last_it = SolverIterationNumberK3biilu2(solver_data);
+			//return_reason = std::string(SolverConvergedReasonK3biilu2(solver_data));
+			return_reason = "Unspecified for K3BIILU2";
 			return result;
 		}
 #endif
