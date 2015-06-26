@@ -1929,14 +1929,7 @@ namespace INMOST
 	void Solver::SetMatrix(Matrix & A, bool OldPreconditioner)
 	{
 		(void) OldPreconditioner;
-	        std::cout<<"##### SetMatrix: bef.: the very-very beginning... _pack="<<_pack<<std::endl;//db!
 		bool ok = false;
-#if defined(HAVE_SOLVER_FCBIILU2)
-	        std::cout<<"##### SetMatrix: HAVE_SOLVER_FCBIILU2 is set, OK!!!!!!!!!!!!! _pack="<<_pack<<std::endl;//db!
-#endif
-#if defined(HAVE_SOLVER_K3BIILU2)
-	        std::cout<<"##### SetMatrix: HAVE_SOLVER_K3BIILU2 is set, OK!!!!!!!!!!!!! _pack="<<_pack<<std::endl;//db!
-#endif
 #if defined(USE_SOLVER_PETSC)
 		if( _pack == PETSc )
 		{
@@ -2094,7 +2087,6 @@ namespace INMOST
 #if defined(HAVE_SOLVER_FCBIILU2)
 		if( _pack == FCBIILU2 )
 		{
-	                std::cout<<"##### bef. FCBIILU2: bool modified_pattern = ... "<<std::endl;//db!
 			bool modified_pattern = false;
 			for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
 				modified_pattern |= it->modified_pattern;
@@ -2104,7 +2096,6 @@ namespace INMOST
 				MatrixInitDataFcbiilu2(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
 				modified_pattern = true;
 			}
-	                std::cout<<"##### bef. if( modified_pattern )... "<<modified_pattern<<std::endl;//db!
 			if( modified_pattern )
 			{
 				global_size = local_size = A.Size();
@@ -2133,7 +2124,6 @@ namespace INMOST
 				ibl[1] = n;
 #endif
 				int * ia = (int *)malloc(sizeof(int)*(n+1));
-		                std::cout<<"##### bef. for(...) myid="<<myid<<" A.Size()="<<A.Size()<<" n="<<n<<" nproc="<<nproc<<" ibl: "<<ibl[0]<<" "<<ibl[1]<<" ... "<<ibl[nproc]<<std::endl;//db!
 				for(Matrix::iterator it = A.Begin(); it != A.End(); it++) nnz += it->Size();
 				int * ja = (int *)malloc(sizeof(int)*nnz);
 				double * values = (double *) malloc(sizeof(double)*nnz);
@@ -2150,7 +2140,6 @@ namespace INMOST
 					shift += it->Size();
 					ia[q++] = shift;
 				}
-		                std::cout<<"##### bef. MatrixFillFcbiilu2 myid="<<myid<<" n="<<n<<" nnz="<<nnz<<" shift="<<shift<<" ia: "<<ia[0]<<" "<<ia[1]<<" "<<ia[2]<<" ... "<<ia[n]<<"  ja: "<<ja[0]<<" "<<ja[1]<<" "<<ja[2]<<" ... "<<ja[nnz-1]<<"  a: "<<values[0]<<" "<<values[1]<<" "<<values[2]<<" ... "<<values[nnz-1]<<std::endl;//db!
 				MatrixFillFcbiilu2(matrix_data,n,nproc,ibl,ia,ja,values);
 			}
 			else
@@ -2166,14 +2155,12 @@ namespace INMOST
 			}
 			MatrixFinalizeFcbiilu2(matrix_data);
 			SolverSetMatrixFcbiilu2(solver_data,matrix_data,modified_pattern,OldPreconditioner);
-		                std::cout<<"##### bef. ok=true"<<std::endl;//db!
 			ok = true;
 		}
 #endif
 #if defined(HAVE_SOLVER_K3BIILU2)
 		if( _pack == K3BIILU2 )
 		{
-	                std::cout<<"##### bef. K3BIILU2: bool modified_pattern = ... "<<std::endl;//db!
 			bool modified_pattern = false;
 			for(Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
 				modified_pattern |= it->modified_pattern;
@@ -2183,14 +2170,13 @@ namespace INMOST
 				MatrixInitDataK3biilu2(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
 				modified_pattern = true;
 			}
-	                std::cout<<"##### bef. if( modified_pattern )... "<<modified_pattern<<std::endl;//db!
 			if( modified_pattern )
 			{
 				global_size = local_size = A.Size();
 				
 				MatrixDestroyDataK3biilu2(&matrix_data);
 				MatrixInitDataK3biilu2(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
-				INMOST_DATA_ENUM_TYPE nnz = 0, k = 0, q = 1, shift = 1;
+				INMOST_DATA_ENUM_TYPE nnz = 0, k = 0, q = 1, shift = 0;
 				int nproc, myid;
 #if defined(USE_MPI)
 				MPI_Comm_size(A.GetCommunicator(),&nproc);
@@ -2212,7 +2198,6 @@ namespace INMOST
 				ibl[1] = n;
 #endif
 				int * ia = (int *)malloc(sizeof(int)*(n+1));
-		                std::cout<<"##### bef. for(...) myid="<<myid<<" A.Size()="<<A.Size()<<" n="<<n<<" nproc="<<nproc<<" ibl: "<<ibl[0]<<" "<<ibl[1]<<" ... "<<ibl[nproc]<<std::endl;//db!
 				for(Matrix::iterator it = A.Begin(); it != A.End(); it++) nnz += it->Size();
 				int * ja = (int *)malloc(sizeof(int)*nnz);
 				double * values = (double *) malloc(sizeof(double)*nnz);
@@ -2221,7 +2206,7 @@ namespace INMOST
 				{
 					for(Row::iterator jt = it->Begin(); jt != it->End(); jt++)
 					{
-						ja[k] = jt->first + 1;
+						ja[k] = jt->first + 0;
 						values[k] = jt->second;
 		                                //std::cout<<"# q="<<q<<" k="<<k<<" ja="<<ja[k]<<" a="<<values[k]<<std::endl;//db!
 						k++;
@@ -2229,7 +2214,6 @@ namespace INMOST
 					shift += it->Size();
 					ia[q++] = shift;
 				}
-		                std::cout<<"##### bef. MatrixFillK3biilu2 myid="<<myid<<" n="<<n<<" nnz="<<nnz<<" shift="<<shift<<" ia: "<<ia[0]<<" "<<ia[1]<<" "<<ia[2]<<" ... "<<ia[n]<<"  ja: "<<ja[0]<<" "<<ja[1]<<" "<<ja[2]<<" ... "<<ja[nnz-1]<<"  a: "<<values[0]<<" "<<values[1]<<" "<<values[2]<<" ... "<<values[nnz-1]<<std::endl;//db!
 				MatrixFillK3biilu2(matrix_data,n,nproc,ibl,ia,ja,values);
 			}
 			else
@@ -2245,7 +2229,6 @@ namespace INMOST
 			}
 			MatrixFinalizeK3biilu2(matrix_data);
 			SolverSetMatrixK3biilu2(solver_data,matrix_data,modified_pattern,OldPreconditioner);
-		                std::cout<<"##### bef. ok=true"<<std::endl;//db!
 			ok = true;
 		}
 #endif
@@ -2377,7 +2360,6 @@ namespace INMOST
 
 		}
 		for(Matrix::iterator it = A.Begin(); it != A.End(); it++) it->modified_pattern = false;
-	        std::cout<<"##### SetMatrix: bef.: the very-very end... "<<std::endl;//db!
 		if(!ok) throw NotImplemented;
 	}
 

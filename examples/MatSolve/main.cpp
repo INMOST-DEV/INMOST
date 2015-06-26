@@ -15,22 +15,24 @@ int main(int argc, char ** argv)
 	int rank,procs;
 	if( argc < 3 )
 	{
-		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_MLILUC,2:PETSc,3:Trilinos_Aztec,4:Trilinos_Belos,5:Trilinos_Ifpack,6:Trilinos_ML,7:ANI> matrix.mtx [right_hand_side.rhs] [solver_options.txt]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_DDPQILUC,2:INNER_MPTILUC,3:INNER_MPTILU2,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_ML,7:Trilinos_Ifpack,8:PETSc,9:ANI,10:FCBIILU2,11:K3BIILU2> matrix.mtx [right_hand_side.rhs] [solver_options.txt]" << std::endl;
 		return -1;
 	}
 	Solver::Type type;
 	switch(atoi(argv[1]))
 	{
-		case 0: type = Solver::INNER_ILU2; break;
-		case 1: type = Solver::INNER_DDPQILUC; break;
-		case 2: type = Solver::PETSc; break;
-		case 3: type = Solver::Trilinos_Aztec; break;
-		case 4: type = Solver::Trilinos_Belos; break;
-		case 5: type = Solver::Trilinos_Ifpack; break;
-		case 6: type = Solver::Trilinos_ML; break;
-    case 7: type = Solver::ANI; break;
-		case 8: type = Solver::INNER_MPTILUC; break;
-		case 9: type = Solver::INNER_MPTILU2; break;
+		case  0: type = Solver::INNER_ILU2;      break;
+		case  1: type = Solver::INNER_DDPQILUC;  break;
+		case  2: type = Solver::INNER_MPTILUC;   break;
+		case  3: type = Solver::INNER_MPTILU2;   break;
+		case  4: type = Solver::Trilinos_Aztec;  break;
+		case  5: type = Solver::Trilinos_Belos;  break;
+		case  6: type = Solver::Trilinos_ML;     break;
+		case  7: type = Solver::Trilinos_Ifpack; break;
+		case  8: type = Solver::PETSc;           break;
+		case  9: type = Solver::ANI;             break;
+		case 10: type = Solver::FCBIILU2;        break;
+		case 11: type = Solver::K3BIILU2;        break;
 	}
 	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
 	{

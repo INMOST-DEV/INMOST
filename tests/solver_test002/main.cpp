@@ -36,24 +36,24 @@ memory requirements.
 
 (*) Arguments
 
-Usage: ./solver_test002 method_number<0:INNER_ILU2,1:INNER_MLILUC,2:PETSc,3:Trilinos_Aztec,4:Trilinos_Belos,5:Trilinos_Ifpack,6:Trilinos_ML,7:ANI> N<for NxNxN problem> [solver_options.txt]
+Usage: ./solver_test002 method_number<0:INNER_ILU2,1:INNER_DDPQILUC,2:INNER_MPTILUC,3:INNER_MPTILU2,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_ML,7:Trilinos_Ifpack,8:PETSc,9:ANI,10:FCBIILU2,11:K3BIILU2> N<for NxNxN problem> [solver_options.txt]
 
 
     * First parameter is the Solver type:
         0 – INNER_ILU2, inner Solver based on BiCGStab(L) solver with second
-order ILU factorization as preconditioner;
-        1 – INNER_MLILUC, inner Solver based on BiCGStab(L) solver with second
-order Crout-ILU with inversed-based condition estimation and unsymmetric
-reordering for diagonal dominance as preconditioner;
-        2 – PETSc, external Solver AztecOO from Trilinos package;
-        3 – Trilinos_Aztec, external Solver Belos from Trilinos package,
-currently without preconditioner;
-        4 – Trilinos_Belos, external Solver AztecOO with ML preconditioner;
-        5 – Trilinos_Ifpack, external Solver AztecOO with Ifpack
-preconditioner;
-        6 – Trilinos_ML, external Solver PETSc;
-        7 – ANI, external Solver from ANI3D based on ILU2 (sequential Fortran
-version).
+order IIU factorization as preconditioner;
+        1 - INNER_DDPQILUC, inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner;
+        2 - INNER_MPTILUC, inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner;
+        3 - INNER_MPTILU2, inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditione;
+        4 – Trilinos_Aztec, external Solver AztecOO from Trilinos package;
+currentty without preconditioner;
+        5 – Trilinos_Belos, external Solver Belos from Trilinos package, currently without preconditioner;
+        6 – Trilinos_ML, external Solver AztecOO with ML preconditioner;
+        7 – Trilinos_Ifpack, external Solver AztecOO with Ifpack preconditioner;
+        8 - PETSc, external Solver PETSc;
+        9 – ANI, external Solver from ANI3D based on ILU2 (sequential Fortran version);
+       10 – FCBIILU2, external FCBIILU2 Solver (BIILU2 parallel F2C version);
+       11 – K3BIILU2, internal K3BIILU2 Solver (BIILU2 parallel version).
     * Second parameter is the dimension N of the 3D Poisson problem for NxNxN
 mesh.
     * Third optional parameter is the file with solver parameters, see
@@ -87,22 +87,24 @@ int main(int argc, char ** argv)
 	int rank,procs;
 	if( argc < 3 )
 	{
-		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_MLILUC,2:PETSc,3:Trilinos_Aztec,4:Trilinos_Belos,5:Trilinos_Ifpack,6:Trilinos_ML,7:ANI> N<for NxNxN problem> [solver_options.txt]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_DDPQILUC,2:INNER_MPTILUC,3:INNER_MPTILU2,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_ML,7:Trilinos_Ifpack,8:PETSc,9:ANI,10:FCBIILU2,11:K3BIILU2> N<for NxNxN problem> [solver_options.txt]" << std::endl;
 		return -1;
 	}
 	Solver::Type type;
 	switch(atoi(argv[1]))
 	{
-		case 0: type = Solver::INNER_ILU2; break;
-		case 1: type = Solver::INNER_DDPQILUC; break;
-		case 2: type = Solver::PETSc; break;
-		case 3: type = Solver::Trilinos_Aztec; break;
-		case 4: type = Solver::Trilinos_Belos; break;
-		case 5: type = Solver::Trilinos_Ifpack; break;
-		case 6: type = Solver::Trilinos_ML; break;
-		case 7: type = Solver::ANI; break;
-		case 8: type = Solver::INNER_MPTILUC; break;
-		case 9: type = Solver::INNER_MPTILU2; break;
+		case  0: type = Solver::INNER_ILU2;      break;
+		case  1: type = Solver::INNER_DDPQILUC;  break;
+		case  2: type = Solver::INNER_MPTILUC;   break;
+		case  3: type = Solver::INNER_MPTILU2;   break;
+		case  4: type = Solver::Trilinos_Aztec;  break;
+		case  5: type = Solver::Trilinos_Belos;  break;
+		case  6: type = Solver::Trilinos_ML;     break;
+		case  7: type = Solver::Trilinos_Ifpack; break;
+		case  8: type = Solver::PETSc;           break;
+		case  9: type = Solver::ANI;             break;
+		case 10: type = Solver::FCBIILU2;        break;
+		case 11: type = Solver::K3BIILU2;        break;
 	}
 	int n = atoi(argv[2]);
 	Solver::Initialize(&argc,&argv,argc > 3 ? argv[3] : NULL); // Initialize the linear solver in accordance with args
@@ -261,5 +263,4 @@ void Poisson3D(int n1, int n2, int n3, Solver::Matrix & A)
             }
         }
     }
-
 }

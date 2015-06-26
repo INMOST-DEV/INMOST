@@ -51,8 +51,8 @@ namespace INMOST
 			Trilinos_Ifpack,///< external Solver AztecOO with Ifpack preconditioner.
 			PETSc,          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/
 			ANI,            ///< external Solver from ANI3D based on ILU2 (sequential Fortran version), @see http://ani3d.sourceforge.net/
-			FCBIILU2,       //   external FCBIILU2 Solver (BIILU2 parallel F2C version).
-			K3BIILU2        //   inner    K3BIILU2 Solver (BIILU2 parallel version).
+			FCBIILU2,       ///< external FCBIILU2 Solver (BIILU2 parallel F2C version).
+			K3BIILU2        ///< inner    K3BIILU2 Solver (BIILU2 parallel version).
 		};
 
 		static INMOST_MPI_Type & GetRowEntryType() {return RowEntryType;}
