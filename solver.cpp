@@ -115,6 +115,44 @@ namespace INMOST
 
 	Solver::RowMerger::RowMerger() : Sorted(true), Nonzeros(0) {}
 
+  INMOST_DATA_REAL_TYPE & Solver::RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos)
+  {
+    if( LinkedList[pos+1].first != UNDEF ) return LinkedList[pos+1].second;
+    else 
+    {
+      INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
+      if( Sorted )
+      {
+        next = index;
+        while(next < pos+1)
+        {
+          index = next;
+          next = LinkedList[index].first;
+        }
+        assert(index < pos+1);
+        assert(pos+1 < next);
+        ++Nonzeros;
+        LinkedList[index].first = pos+1;
+        LinkedList[pos+1].first = next;
+        return LinkedList[pos+1].second;
+      }
+      else
+      {
+        INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
+        ++Nonzeros;
+        LinkedList[pos+1].first = LinkedList[index].first;
+        LinkedList[index].first = pos+1;
+        return LinkedList[pos+1].second;
+      }
+    }
+  }
+
+  INMOST_DATA_REAL_TYPE Solver::RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos) const
+  {
+    if( LinkedList[pos+1].first != UNDEF ) return LinkedList[pos+1].second;
+    else throw -1;
+  }
+
 	Solver::RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted) 
 				: Sorted(Sorted), Nonzeros(0), LinkedList(interval_begin,interval_end+1,Row::make_entry(UNDEF,0.0)) 
 	{
@@ -157,7 +195,8 @@ namespace INMOST
 		while( i != EOL )
 		{
 			j = LinkedList[i].first;
-			LinkedList[i].first = UNDEF; 
+			LinkedList[i].first = UNDEF;
+      LinkedList[i].second = 0.0;
 			i = j;
 		}
 		Nonzeros = 0;
@@ -2818,6 +2857,23 @@ namespace INMOST
 	{
 		return last_resid;
 	}
+
+  INMOST_DATA_REAL_TYPE Solver::GetConditionNumberL()
+  {
+    if(_pack == INNER_MPTILUC )
+    {
+      return static_cast<IterativeMethod *>(solver_data)->RealParameter(":condition_number_L");
+    }
+    else return 0.0;
+  }
+  INMOST_DATA_REAL_TYPE Solver::GetConditionNumberU()
+  {
+    if(_pack == INNER_MPTILUC )
+    {
+      return static_cast<IterativeMethod *>(solver_data)->RealParameter(":condition_number_U");
+    }
+    else return 0.0;
+  }
 }
 #endif
 

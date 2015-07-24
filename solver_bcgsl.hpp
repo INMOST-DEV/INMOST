@@ -223,7 +223,7 @@ namespace INMOST
 							h = 1.0 / h;
 							c = g * h;
 							s = (- f * h);
-							for (j = 0; j < n; j++) 
+							for (j = nm < 0 ? 1 : 0; j < n; j++) 
 							{
 								y = u[j*n+nm];
 								z = u[j*n+i];
@@ -775,6 +775,7 @@ namespace INMOST
 #endif
 						resid = sqrt(resid/rhs_norm); // resid = sqrt(dot(r[j],r[j]))
 
+            last_it++;
 					
 						if( resid < atol || resid < rtol*resid0 ) 
 						{
@@ -787,6 +788,8 @@ namespace INMOST
 							break;
 						}
 						ApplyOperator(r[j],r[j+1]); // r[j+1] = A*R*r[j]		
+
+            
 					}
 
 					if( halt ) break;
@@ -808,10 +811,29 @@ namespace INMOST
 #endif
 							for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
 								tau_sum += r[j][k]*r[m][k];
+
+              if( fabs(tau_sum) > 1.0e+100 )
+              {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-							tau[(j-1) + (m-1)*size] = tau[(m-1) + (j-1)*size] = tau_sum;
+							  reason = "multiplier(tau) is too large";
+                halt = true;
+              }
+              if( tau_sum != tau_sum )
+              {
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							  reason = "multiplier(tau) is NaN";
+                halt = true;
+              }
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+              {
+							  tau[(j-1) + (m-1)*size] = tau[(m-1) + (j-1)*size] = tau_sum;
+              }
 						}
 #if defined(USE_OMP)
 #pragma omp single
@@ -822,11 +844,33 @@ namespace INMOST
 #endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
 							sigma_sum += r[0][k]*r[j][k];
+
+            if( fabs(sigma_sum) > 1.0e+100 )
+            {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						sigma[j-1] = sigma_sum;
+							reason = "multiplier(sigma) is too large";
+              halt = true;
+            }
+            if( sigma_sum != sigma_sum )
+            {
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+							reason = "multiplier(sigma) is NaN";
+              halt = true;
+            }
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+            {
+						  sigma[j-1] = sigma_sum;
+            }
 					}
+
+          if( halt ) break;
+
 #if defined(CONVEX_COMBINATION)
 #if defined(USE_OMP)
 #pragma omp single
@@ -1067,7 +1111,7 @@ namespace INMOST
 						}
 					}
 					*/
-					last_it = i+1;
+					//last_it = l+1;
 					{
 #if defined(USE_OMP)
 #pragma omp single

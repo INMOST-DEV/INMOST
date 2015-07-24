@@ -449,6 +449,12 @@ namespace INMOST
 		bool                     isValid         () const;
 		__INLINE Mesh *          GetMeshLink     () const {return m_link;}
 		__INLINE HandleType      GetHandle       () const {return handle;}
+    Element                   getAsElement() const;
+    Node                      getAsNode   () const;
+		Edge                      getAsEdge   () const;
+		Face                      getAsFace   () const;
+		Cell                      getAsCell   () const;
+		ElementSet                getAsSet    () const;
 		friend class Mesh;
 	};
 	
@@ -729,11 +735,6 @@ namespace INMOST
 		virtual ElementArray<Edge>  getEdges                (MarkerType mask,bool invert_mask = false) const; //unordered
 		virtual ElementArray<Face>  getFaces                (MarkerType mask,bool invert_mask = false) const; //unordered
 		virtual ElementArray<Cell>  getCells                (MarkerType mask,bool invert_mask = false) const; //unordered
-		Node                        getAsNode               () const;
-		Edge                        getAsEdge               () const;
-		Face                        getAsFace               () const;
-		Cell                        getAsCell               () const;
-		ElementSet                  getAsSet                () const;
 		GeometricType               GetGeometricType        () const;
 		unsigned int                GetElementDimension     () const {return GetGeometricDimension(GetGeometricType());}
 		Status                      GetStatus               () const;

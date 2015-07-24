@@ -973,11 +973,7 @@ namespace INMOST
 		GetMeshLink()->SetGeometricType(GetHandle(),t); 
 	}
 
-	Node Element::getAsNode() const {assert(GetElementType() == NODE); return Node(GetMeshLink(),GetHandle());}
-	Edge Element::getAsEdge() const {assert(GetElementType() == EDGE); return Edge(GetMeshLink(),GetHandle());}
-	Face Element::getAsFace() const {assert(GetElementType() == FACE); return Face(GetMeshLink(),GetHandle());} 
-	Cell Element::getAsCell() const {assert(GetElementType() == CELL); return Cell(GetMeshLink(),GetHandle());}
-	ElementSet Element::getAsSet() const {assert(GetElementType() == ESET); return ElementSet(GetMeshLink(),GetHandle());}
+	
 
 }
 #endif

@@ -231,6 +231,12 @@ namespace INMOST
 	{
 		return GetMeshLink()->DataLocalID(GetHandle());
 	}
+  Element Storage::getAsElement() const {assert(GetElementType() & (NODE | EDGE | FACE | CELL | ESET) ); return Element(GetMeshLink(), GetHandle());}
+  Node Storage::getAsNode() const {assert(GetElementType() == NODE); return Node(GetMeshLink(),GetHandle());}
+	Edge Storage::getAsEdge() const {assert(GetElementType() == EDGE); return Edge(GetMeshLink(),GetHandle());}
+	Face Storage::getAsFace() const {assert(GetElementType() == FACE); return Face(GetMeshLink(),GetHandle());} 
+	Cell Storage::getAsCell() const {assert(GetElementType() == CELL); return Cell(GetMeshLink(),GetHandle());}
+	ElementSet Storage::getAsSet() const {assert(GetElementType() == ESET); return ElementSet(GetMeshLink(),GetHandle());}
 }
 
 #endif

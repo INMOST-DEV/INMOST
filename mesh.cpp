@@ -1661,7 +1661,7 @@ namespace INMOST
 				return ret;
 			}
 		}
-		assert(false); //if you reached here then you either don't release markers (it's a bug) or you should increase MarkerFields const in inmost_mesh.h
+		assert(false); //if you reached here then you either don't release markers (it's your bug) or you should increase MarkerFields const in inmost_mesh.h
 		return InvalidMarker();
 	}
 	void Mesh::ReleaseMarker(MarkerType n)

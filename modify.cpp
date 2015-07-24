@@ -1726,6 +1726,8 @@ public:
 	incident_matrix(Mesh * mesh, InputIterator beg, InputIterator end, typename ElementArray<T>::size_type num_inner)
 	: mesh(mesh), head_column(beg,end), min_loop()
 	{
+    min_loop.SetMeshLink(mesh);
+    temp_loop.SetMeshLink(mesh);
 		//isInputForwardIterators<T,InputIterator>();
 		if( !head_column.empty() )
 		{
@@ -1852,7 +1854,7 @@ public:
 		for(adj_type::size_type it = 0; it < hc.size(); ++it) if( !m->GetMarker(hc[it],hm) )
 			cells.push_back(hc[it]);
 
-		assert(cells.size() == 2);
+		//assert(cells.size() == 2);
 
 		temp.insert(temp.end(),edges.begin(),edges.end());
 
@@ -2130,7 +2132,7 @@ public:
 	{
 		if(!New(h) && Hide(h))
 		{
-			if( GetElementType() != CELL ) //mark all elements that rely on this that they should be deleted
+			if( GetHandleElementType(h) != CELL ) //mark all elements that rely on this that they should be deleted
 			{
 				Element::adj_type & hc = HighConn(h);
 				for(Element::adj_type::size_type it = 0; it < hc.size(); ++it) Delete(hc[it]);

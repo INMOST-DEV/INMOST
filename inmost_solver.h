@@ -452,7 +452,7 @@ namespace INMOST
 		/// advised to set total size of the matrix as interval of the
 		/// RowMerger. In future this may change, see todo 2 below.
 		/// \todo
-		/// 1. Add iterators over entries.
+		/// 1. (testing!) Add iterators over entries.
 		/// 2. Implement multiple intervals for distributed computation,
 		///    then in parallel the user may specify additional range of indexes
 		///    for elements that lay on the borders between each pair of processors.
@@ -461,6 +461,30 @@ namespace INMOST
 		public:
 			static const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
 			static const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
+      class iterator
+      {
+      private:
+        INMOST_DATA_ENUM_TYPE pos;
+        interval< INMOST_DATA_ENUM_TYPE, Row::entry > * LinkedList; ///< Link to associated storage for linked list.
+        iterator(interval< INMOST_DATA_ENUM_TYPE, Row::entry > * pLinkedList) : pos(pLinkedList->get_interval_beg()), LinkedList(pLinkedList) {}
+      public:
+        iterator(const iterator & other) : pos(other.pos), LinkedList(other.LinkedList) {}
+        ~iterator() {}
+        INMOST_DATA_REAL_TYPE & operator *() {return (*LinkedList)[pos].second;}
+        INMOST_DATA_REAL_TYPE operator *() const {return (*LinkedList)[pos].second;}
+        INMOST_DATA_REAL_TYPE * operator ->() {return &(*LinkedList)[pos].second;}
+        const INMOST_DATA_REAL_TYPE * operator ->() const {return &(*LinkedList)[pos].second;}
+        iterator & operator ++(){ pos = (*LinkedList)[pos].first; return *this;}
+        iterator operator ++(int){ iterator ret(LinkedList); ret.pos = (*LinkedList)[pos].first; return ret; }
+        iterator & operator = (const iterator & other) {LinkedList = other.LinkedList; pos = other.pos;}
+        bool operator ==(const iterator & other) const {return LinkedList == other.LinkedList && pos == other.pos;}
+        bool operator !=(const iterator & other) const {return LinkedList != other.LinkedList || pos != other.pos;}
+        bool operator < (const iterator & other) const {return LinkedList == other.LinkedList && pos < other.pos;}
+        bool operator <=(const iterator & other) const {return LinkedList == other.LinkedList && pos <= other.pos;}
+        bool operator > (const iterator & other) const {return LinkedList == other.LinkedList && pos > other.pos;}
+        bool operator >=(const iterator & other) const {return LinkedList == other.LinkedList && pos >= other.pos;}
+        friend class RowMerger;
+      };
 		private:
 			bool Sorted; ///< Contents of linked list should be sorted.
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
@@ -497,7 +521,7 @@ namespace INMOST
 			/// Clear linked list.
 			void Clear();
 			/// Add a row with a coefficient into empty linked list.
-			/// This routing should be a bit faster then Solver::RowMerger::AddRow
+			/// This routine should be a bit faster then Solver::RowMerger::AddRow
 			/// for empty linked list. It may result in an unexpected behavior
 			/// for non-empty linked list, asserts will fire in debug mode.
 			/// @param coef Coefficient to multiply row values.
@@ -523,6 +547,17 @@ namespace INMOST
 			//INMOST_DATA_REAL_TYPE ScalarProd(RowMerger & other);
 			/// Get current number of nonzeros from linked list.
 			INMOST_DATA_ENUM_TYPE Size() {return Nonzeros;}
+      /// Retrive/add an entry from/to linked list.
+      /// @param pos Position in the list.
+      INMOST_DATA_REAL_TYPE & operator [] (INMOST_DATA_ENUM_TYPE pos);
+      /// Retrive an entry from linked list.
+      /// \warning
+      /// Will fire an exception if there is no entry.
+      /// @param pos Position in the list.
+      INMOST_DATA_REAL_TYPE operator [] (INMOST_DATA_ENUM_TYPE pos) const;
+
+      iterator Begin() {return iterator(&LinkedList);}
+      iterator End() {iterator ret(&LinkedList); ret.pos = EOL; return ret;}
 		};
 		
 	private:
@@ -565,6 +600,12 @@ namespace INMOST
 		Solver(const Solver & other);// prohibit copy
 		Solver & operator =(Solver const & other); //prohibit assignment
 	public:
+    /// Retrive approximate condition number produced by INNER_MPTILUC.
+    /// The number is cond(L^-1).
+    INMOST_DATA_REAL_TYPE GetConditionNumberL();
+    /// Retrive approximate condition number produced by INNER_MPTILUC.
+    /// The number is cond(U^-1).
+    INMOST_DATA_REAL_TYPE GetConditionNumberU();
 		/// Set the solver parameter of the integer type.
 		/// You can find defaults for parameters in the top of the file inmost_solver.h.
 		///
