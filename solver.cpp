@@ -1295,8 +1295,13 @@ namespace INMOST
 		mtx.precision(15);
 		for(iterator it = Begin(); it != End(); ++it)
 		{
+#if defined(MTX_ALLOW_ANNOTATION)
+      if( it->GetAnnotation() != "" ) mtx << "% " << it->GetAnnotation() << "\n";
+#endif
 			for(Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
-				mtx << row << " " << jt->first+1 << " " << jt->second << std::endl;
+      {
+				mtx << row << " " << jt->first+1 << " " << jt->second << "\n";
+      }
 			++row;
 		}
 #if defined(USE_MPI) && defined(USE_MPI_FILE) // USE_MPI2?
@@ -2873,6 +2878,76 @@ namespace INMOST
       return static_cast<IterativeMethod *>(solver_data)->RealParameter(":condition_number_U");
     }
     else return 0.0;
+  }
+
+  std::string Solver::Row::GetAnnotation() 
+  {
+#if defined(MTX_ALLOW_ANNOTATION)
+    return annotation;
+#else
+    return "";
+#endif
+  }
+  void Solver::Row::SetAnnotation(std::string input) 
+  {
+#if defined(MTX_ALLOW_ANNOTATION)
+    annotation = input;
+#endif
+  }
+  Solver::Row::Row() :data() 
+	{
+#if defined(MTX_ALLOW_ANNOTATION)
+    annotation = "";
+#endif
+#if defined(USE_OMP)
+		omp_init_lock(&lock);
+#endif
+		modified_pattern = marker = false;
+	}
+  Solver::Row::Row(const Row & other) :marker(other.marker),data(other.data) 
+	{ 
+#if defined(MTX_ALLOW_ANNOTATION)
+    annotation = other.annotation;
+#endif
+#if defined(USE_OMP)
+		omp_init_lock(&lock);
+#endif
+		modified_pattern = other.modified_pattern; 
+	}
+  Solver::Row::Row(entry * pbegin, entry * pend) :data(pbegin, pend) 
+	{ 
+#if defined(MTX_ALLOW_ANNOTATION)
+    annotation = "";
+#endif
+#if defined(USE_OMP)
+		omp_init_lock(&lock);
+#endif
+		modified_pattern = true; marker = false; 
+	}
+  Solver::Row & Solver::Row::operator = (Row const & other) 
+  { 
+    data = other.data; 
+    marker = other.marker; 
+#if defined(MTX_ALLOW_ANNOTATION)
+    annotation = other.annotation;
+#endif
+    return *this; 
+  }
+  Solver::Row::~Row()
+  {
+  }
+  void  Solver::Row::Swap(Solver::Row & other) 
+  { 
+    data.swap(other.data); 
+    bool tmp = marker; 
+    marker = other.marker; 
+    other.marker = tmp; 
+#if defined(MTX_ALLOW_ANNOTATION)
+    annotation.swap(other.annotation);
+#endif
+#if defined(USE_OMP)
+    //swap locks?
+#endif
   }
 }
 #endif

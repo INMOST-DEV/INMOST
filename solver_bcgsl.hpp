@@ -433,6 +433,7 @@ namespace INMOST
 #endif //PSEUDOINVERSE
 	class BCGSL_solver : public IterativeMethod
 	{
+    INMOST_DATA_REAL_TYPE length, r_tilde_norm;
 		INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
 		INMOST_DATA_ENUM_TYPE iters, maxits, l, last_it;
 		INMOST_DATA_REAL_TYPE resid;
@@ -608,12 +609,12 @@ namespace INMOST
 				resid += r[0][k]*r[0][k];
 			info->Integrate(&resid,1);
 			//info->ScalarProd(r[0],r[0],vlocbeg,vlocend,resid); //resid = dot(r[0],r[0])
+      last_resid = resid = resid0 = sqrt(resid/rhs_norm); //resid = sqrt(dot(r[0],r[0])
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 			for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) // r_tilde = r[0] / dot(r[0],r[0])
 				r_tilde[k] /= resid;
-			last_resid = resid = resid0 = sqrt(resid/rhs_norm); //resid = sqrt(dot(r[0],r[0])
 			last_it = 0;
 #if defined(REPORT_RESIDUAL)
 			if( info->GetRank() == 0 ) 
@@ -652,6 +653,56 @@ namespace INMOST
 					tt = Timer();
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
 					{
+            if( false )
+            {
+perturbate:
+              //std::cout << "Rescue solver by perturbing orthogonal direction!" << std::endl;
+              //Compute length of the vector
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+              {
+                length = static_cast<INMOST_DATA_REAL_TYPE>(ivlocend-ivlocbeg);
+                r_tilde_norm = 0.0;
+              }
+              info->Integrate(&length,1);
+              //perform perturbation (note that rand() with openmp may give identical sequences of random values
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+              for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+              {
+                INMOST_DATA_REAL_TYPE unit = 2*static_cast<INMOST_DATA_REAL_TYPE>(rand())/static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX)-1.0;
+                r_tilde[k] += unit/length;
+              }
+              //compute norm for orthogonal vector
+#if defined(USE_OMP)
+#pragma omp for reduction(+:r_tilde_norm)
+#endif
+              for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+                r_tilde_norm += r_tilde[k]*r_tilde[k];
+              r_tilde_norm = sqrt(r_tilde_norm);
+              info->Integrate(&r_tilde_norm,1);
+              //normalize orthogonal vector to unity
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+              for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+                r_tilde[k] /= r_tilde_norm;
+              //Recompute rho1
+              /*
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+	  					rho1 = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:rho1)
+#endif
+						  for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+							  rho1+= r[j][k]*r_tilde[k];
+						  info->Integrate(&rho1,1);
+              */
+            }
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -662,6 +713,11 @@ namespace INMOST
 						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
 							rho1+= r[j][k]*r_tilde[k];
 						info->Integrate(&rho1,1);
+            if( fabs(rho1) < 1.0e-50 )
+            {
+              //std::cout << "Asking to perturbate r_tilde since rho1 is too small " << rho1 << std::endl;
+              goto perturbate;
+            }
 						//info->ScalarProd(r[j],r_tilde,vlocbeg,vlocend,rho1); // rho1 = dot(r[j],r_tilde)
 #if defined(USE_OMP)
 #pragma omp single
@@ -683,6 +739,7 @@ namespace INMOST
 
 						if( beta != beta )
 						{
+              //std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -718,6 +775,12 @@ namespace INMOST
 							eta += u[j+1][k]*r_tilde[k];
 						info->Integrate(&eta,1);
 						//info->ScalarProd(u[j+1],r_tilde,vlocbeg,vlocend,eta); //eta = dot(u[j+1],r_tilde)
+
+            if( fabs(eta) < 1.0e-50 )
+            {
+              //std::cout << "Asking to perturbate r_tilde since eta is too small " << eta << std::endl;
+              goto perturbate;
+            }
 
 #if defined(USE_OMP)
 #pragma omp single

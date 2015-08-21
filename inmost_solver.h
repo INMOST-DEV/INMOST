@@ -6,6 +6,7 @@
 #include "inmost_common.h"
 //#include "solver_prototypes.hpp"
 
+#define MTX_ALLOW_ANNOTATION
 #define DEFAULT_ADDITIVE_SCHWARTZ_OVERLAP             1
 #define DEFAULT_ABSOLUTE_TOLERANCE                    1.0e-5
 #define DEFAULT_RELATIVE_TOLERANCE                    1.0e-12
@@ -210,7 +211,9 @@ namespace INMOST
 		class Row 
 		{
 		public:
-			
+#if defined(MTX_ALLOW_ANNOTATION)
+			std::string annotation;
+#endif
 			/// Entry of the sparse matrix row.
 			typedef struct entry_s 
 			{
@@ -251,35 +254,25 @@ namespace INMOST
 			bool marker;
 			Entries data;
 		public:
+
+      std::string GetAnnotation();
+      void SetAnnotation(std::string input);
 			void Report() {data.report_addr();}
 			void SetMarker() { marker = true; }
 			void RemMarker() { marker = false; }
 			bool GetMarker() { return marker; }
-			Row() :data() 
-			{
+			Row();
+			Row(const Row & other);
+			Row(entry * pbegin, entry * pend);
+      bool HaveLock()
+      {
 #if defined(USE_OMP)
-				omp_init_lock(&lock);
+				return true;
+#else
+        return false;
 #endif
-				modified_pattern = marker = false;
-			}
-			Row(const Row & other) :marker(other.marker),data(other.data) 
-			{ 
-				//std::cout << __FUNCTION__ << " ";
-				//for(iterator it = Begin(); it != End(); ++it) std::cout << it->first << "," << it->second << " ";
-				//std::cout << std::endl;
-#if defined(USE_OMP)
-				omp_init_lock(&lock);
-#endif
-				modified_pattern = other.modified_pattern; 
-			}
-			Row(entry * pbegin, entry * pend) :data(pbegin, pend) 
-			{ 
-#if defined(USE_OMP)
-				omp_init_lock(&lock);
-#endif
-				modified_pattern = true; marker = false; 
-			}
-			void Lock() 
+      }
+			void Lock()
 			{
 #if defined(USE_OMP)
 				omp_set_lock(&lock); 
@@ -291,8 +284,8 @@ namespace INMOST
 				omp_unset_lock(&lock); 
 #endif
 			}
-			~Row() {}
-			Row & operator = (Row const & other) { data = other.data; marker = other.marker; return *this; }
+			~Row();
+			Row & operator = (Row const & other);
 			/// The operator [] used to fill the sparse matrix row, but not to access individual elements of the row.
 			INMOST_DATA_REAL_TYPE & operator [](INMOST_DATA_ENUM_TYPE i) // use to fill matrix, not to access individual elements
 			{
@@ -325,7 +318,7 @@ namespace INMOST
 			//void           Reserve(INMOST_DATA_ENUM_TYPE num) { data.reserve(num);}
 			/// Clear all data of the current row.
 			void                    Clear() { data.clear(); }
-			void                    Swap(Solver::Row & other) { data.swap(other.data); bool tmp = marker; marker = other.marker; other.marker = tmp; }
+			void                    Swap(Solver::Row & other);
 			/// The size of the sparse row, i.e. the total number of nonzero elements.
 			INMOST_DATA_ENUM_TYPE   Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
 			INMOST_DATA_ENUM_TYPE & GetIndex(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->first;}
