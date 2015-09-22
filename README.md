@@ -13,7 +13,7 @@ platform portability.
 Refer to https://github.com/INMOST-DEV/INMOST/wiki/0100-Compilation
 
 ## User's guide
-Refer to https://wiki.inmost.org for general guides.
+Refer to http://wiki.inmost.org for general guides.
 
 ## Doxygen documentation
 Doxygen-generated documentation is available online at http://doxy.inmost.org
