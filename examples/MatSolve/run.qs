@@ -1,18 +1,23 @@
 #!/bin/bash
-#PBS -q regular
-#PBS -l nodes=8:ppn=8
-#PBS -l walltime=24:00:00
-cd ~/MSPP_new/examples/MatSolve/
-OPTIONS=petsc_options_parasails.txt
-OUTFILE=~/public_html/parasails.txt
-for nproc in 64 32 16 8 4 2 1
-do
-	mpiexec -np $nproc ./main $OPTIONS matrices/A-002.mtx matrices/B-002.rhs | tee -a $OUTFILE
-	mpiexec -np $nproc ./main $OPTIONS matrices/A-010.mtx matrices/B-010.rhs | tee -a $OUTFILE
-	mpiexec -np $nproc ./main $OPTIONS matrices/A-050.mtx matrices/B-050.rhs | tee -a $OUTFILE
-	mpiexec -np $nproc ./main $OPTIONS matrices/2P_320K_3layers_A.mtx matrices/2P_320K_3layers_B.rhs | tee -a $OUTFILE
-	mpiexec -np $nproc ./main $OPTIONS matrices/O_320K_3layers_A.mtx matrices/O_320K_3layers_B.rhs | tee -a $OUTFILE
-	mpiexec -np $nproc ./main $OPTIONS matrices/2P_GHK_300K_A.mtx matrices/2P_GHK_300K_B.rhs | tee -a $OUTFILE
-	mpiexec -np $nproc ./main $OPTIONS matrices/O_GHK_300K_A.mtx matrices/O_GHK_300K_B.rhs | tee -a $OUTFILE
-done
-#mpiexec gdb ./program -batch -readnow -x commands.gdb
+#PBS -N MatSol
+#PBS -q x12core
+#PBS -l nodes=1:ppn=12
+#PBS -l walltime=0:30:00
+cd $PBS_O_WORKDIR
+dir=`basename $PBS_O_WORKDIR`
+rm -f res
+
+#mat="z32k.mtx z32k.rhs - database.txt"
+#mat="z32k.mtx - 1 database.txt"
+mat="n142-2.mtx n142-2.rhs - database.txt"
+
+for p in 4 ; do ### 1 2 3 4 5 6 7 8 9 10 11 12  12 24 36 72 144
+#for s in 8 0 ; do ### 8-PE 10-FC 11-K3 0-II
+for s in 8 10 11 0 ; do ### 8-PE 10-FC 11-K3 0-II
+
+if [ $p -le 12 ] ; then npernode=$p ; else npernode=12 ; fi
+
+echo ::: dir=$dir p=$p npernode=$npernode s=$s mat=$mat ::: >> res
+mpiexec -np $p -npernode $npernode ./MatSolve $s $mat >> res
+
+done; done

@@ -479,17 +479,19 @@ void SolverInitializeK3biilu2(int * argc, char *** argv, const char * file_optio
         getline(is, s);                                      //3 skip rhs filename
         getline(is, s); sscanf(s.c_str(), "%lg", &set_eps);  //4 eps
         getline(is, s); sscanf(s.c_str(), "%d",  &set_nit);  //5 nit
+        getline(is, s); //sscanf(s.c_str(), "%d",  &set_kgmr); //6- skip kgmr
+        getline(is, s); //sscanf(s.c_str(), "%d",  &set_kdeg); //7- skip kdeg
         getline(is, s); sscanf(s.c_str(), "%d",  &set_kovl); //6 kovl
         getline(is, s); sscanf(s.c_str(), "%lg", &set_tau);  //7 tau
         //? msglev
-    } else {
-        getline(is, s); sscanf(s.c_str(), "%d",  &set_kovl);   //2 kovl
-        getline(is, s); sscanf(s.c_str(), "%lg", &set_tau);    //3 tau
-        getline(is, s); sscanf(s.c_str(), "%lg", &set_eps);    //4 eps
-        getline(is, s); sscanf(s.c_str(), "%d",  &set_nit);    //5 nit
-        getline(is, s); sscanf(s.c_str(), "%d",  &set_msglev); //6 msglev
+    } else { // file: "biilu2_options.txt"
+        getline(is, s); sscanf(s.c_str(), "%d",  &set_kovl);   //1 kovl
+        getline(is, s); sscanf(s.c_str(), "%lg", &set_tau);    //2 tau
+        getline(is, s); sscanf(s.c_str(), "%lg", &set_eps);    //3 eps
+        getline(is, s); sscanf(s.c_str(), "%d",  &set_nit);    //4 nit
+        getline(is, s); sscanf(s.c_str(), "%d",  &set_msglev); //5 msglev
     }
-    //std::cout<<"##### ins. SolverInitializeK3biilu2:  kovl="<<set_kovl<<" tau="<<set_tau<<" eps="<<set_eps<<" nit="<<set_nit<<" msglev="<<set_msglev<<" \n";//db!
+    //std::cout<<"##### ins. SolverInitializeK3biilu2:  kovl="<<set_kovl<<" tau="<<set_tau<<" eps="<<set_eps<<" nit="<<set_nit<<" msglev="<<set_msglev<<" from: "<<file_options<<" \n";//db!
 	(void) argc;
 	(void) argv;
 }
