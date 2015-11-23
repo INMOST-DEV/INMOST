@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cmath>
 
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 int main(int argc,char ** argv)
@@ -80,8 +80,7 @@ int main(int argc,char ** argv)
 		}
 		delete [] mask;
 	}
-
-	delete m;
-	Mesh::Finalize();
-	return (errors)? -1 : 0;
+  delete m;
+  Mesh::Finalize();
+  return (errors)? -1 : 0;
 }

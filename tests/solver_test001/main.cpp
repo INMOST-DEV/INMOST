@@ -18,7 +18,7 @@ int main(int argc, char ** argv)
 		std::cout << "Usage: " << argv[0] << " matrix.mtx [right_hand_side.rhs]" << std::endl;
 		return -1;
 	}
-	Solver::Type type = Solver::INNER_MPTILUC;
+	Solver::Type type = Solver::INNER_MPTILU2;
 	Solver::Initialize(&argc,&argv,NULL); // Initialize the linear solver in accordance with args
 	{
 #if defined(USE_MPI)
@@ -29,9 +29,9 @@ int main(int argc, char ** argv)
 		procs = 1;
 #endif
 		//std::cout << rank << "/" << procs << " " << argv[0] << std::endl;
-		Solver::Matrix mat("A"); // Declare the matrix of the linear system to be solved
-		Solver::Vector b("rhs"); // Declare the right-hand side vector
-		Solver::Vector x("sol"); // Declare the solution vector
+		Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
+		Sparse::Vector b("rhs"); // Declare the right-hand side vector
+		Sparse::Vector x("sol"); // Declare the solution vector
 		//std::cout << rank << " load matrix from " << std::string(argv[2]) << " ..." << std::endl;
 		double t = Timer(), tt = Timer();
 		mat.Load(std::string(argv[1])); //if interval parameters not set, matrix will be divided automatically
@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
 
 		{ // Compute the true residual
 			double aresid = 0, bresid = 0;
-			Solver::Vector test;
+			Sparse::Vector test;
 			t = Timer();
 			Solver::OrderInfo info;
 			info.PrepareMatrix(mat,0);

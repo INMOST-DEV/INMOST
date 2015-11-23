@@ -76,9 +76,9 @@ add_test(NAME solver_test000_parallel_permute1_inner_ddpqiluc    COMMAND ${MPIEX
 add_test(NAME solver_test000_parallel_permute2_inner_ddpqiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 1)
 
 if( HAVE_SOLVER_MPTILUC2 )
-add_test(NAME solver_test000_parallel_normal_inner_mptiluc      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 1)
-add_test(NAME solver_test000_parallel_permute1_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 1)
-add_test(NAME solver_test000_parallel_permute2_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 1)
+add_test(NAME solver_test000_parallel_normal_inner_mptiluc      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 8)
+add_test(NAME solver_test000_parallel_permute1_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 8)
+add_test(NAME solver_test000_parallel_permute2_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 8)
 endif()
 
 if( HAVE_SOLVER_MPTILU2 )

@@ -16,7 +16,7 @@ if(NOT TARGET inmost AND NOT INMOST_BINARY_DIR)
   elseif( EXISTS "${inmost_DIR}/inmost-targets.cmake" )
     include("${inmost_DIR}/inmost-targets.cmake")
   elseif( EXISTS "${inmost_DIR}/CMakeFiles/Exports/cmake/inmost-targets.cmake")
-    include("${inmost_DIR}/CMakeFiles/Export/cmake/inmost-targets.cmake")
+    include("${inmost_DIR}/CMakeFiles/Exports/cmake/inmost-targets.cmake")
   endif()
 endif()
  

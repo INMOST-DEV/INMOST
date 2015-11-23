@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string.h>
 
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 #ifndef M_PI
@@ -88,7 +88,8 @@ int main(int argc,char ** argv)
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
 		
 #if defined(USE_PARTITIONER)
-		if (!repartition) { // currently only non-distributed meshes are supported by Inner_RCM partitioner
+		if (m->GetProcessorsNumber() > 1 && !repartition) 
+    { // currently only non-distributed meshes are supported by Inner_RCM partitioner
 			ttt = Timer();
 			Partitioner * p = new Partitioner(m);
 			p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition); // Specify the partitioner
@@ -129,8 +130,8 @@ int main(int argc,char ** argv)
 		ttt = Timer();
 		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		S.SetParameterReal("absolute_tolerance",1e-8);
-		Solver::Matrix A; // Declare the matrix of the linear system to be solved
-		Solver::Vector x,b; // Declare the solution and the right-hand side vectors
+		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
+		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors
 		
 		Mesh::GeomParam table;
 		
@@ -160,8 +161,11 @@ int main(int argc,char ** argv)
 		//~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
 		
 		// Solve \nabla \cdot \nabla phi = f equation
-		for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
+#pragma omp parallel for
+		//for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
+    for(Storage::integer fi = 0; fi < m->FaceLastLocalID(); ++fi) if( m->isValidElement(FACE,fi) )
 		{
+      Face face(m,ComposeHandle(FACE,fi));
 			//~ std::cout << face->LocalID() << " / " << m->NumberOfFaces() << std::endl;
 			Element::Status s1,s2;
 			Cell r1 = face->BackCell();
@@ -189,8 +193,10 @@ int main(int argc,char ** argv)
 				bnd_pnt[1] = r1_cnt[1] + dist * f_nrm[1];
 				bnd_pnt[2] = r1_cnt[2] + dist * f_nrm[2];
 				Coef = K1 * f_area / dist;
+        A[id1].Lock();
 				A[id1][id1] += -Coef;
 				b[id1] += -Coef * func(bnd_pnt, 0);
+        A[id1].Unlock();
 			}
 			else
 			{
@@ -205,19 +211,30 @@ int main(int argc,char ** argv)
 
 				if( s1 != Element::Ghost )
 				{
+          A[id1].Lock();
 					A[id1][id1] += -Coef;
 					A[id1][id2] += Coef;
+          A[id1].Unlock();
 				}
 				if( s2 != Element::Ghost )
 				{
+          A[id2].Lock();
 					A[id2][id1] += Coef;
 					A[id2][id2] += -Coef;
+          A[id2].Unlock();
 				}
 			}
 		}
-		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+
+
+		//for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+#pragma omp parallel for
+    for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
+    {
+      Cell cell(m,ComposeHandle(CELL,ci));
 			if( cell->GetStatus() != Element::Ghost )
 				b[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
+    }
 
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
@@ -239,14 +256,18 @@ int main(int argc,char ** argv)
 		S.Solve(b,x);   // Solve the linear system with the previously computted preconditioner
 		
 		BARRIER
-		if( m->GetProcessorRank() == 0 ) std::cout << "Solve system: " << Timer()-ttt << std::endl;
+		if( m->GetProcessorRank() == 0 ) std::cout << "\nSolve system: " << Timer()-ttt << std::endl;
 
 		ttt = Timer();
 
     Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
 
 		Storage::real err_C = 0.0, err_L2 = 0.0;
-		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+		//for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+#pragma omp parallel for
+    for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
+    {
+      Cell cell(m,ComposeHandle(CELL,ci));
 			if( cell->GetStatus() != Element::Ghost )
 			{
 				Storage::real exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
@@ -257,6 +278,7 @@ int main(int argc,char ** argv)
         cell->Real(error) = err;
 // 				x[cell->Integer(id)] = err;
 			}
+    }
 		err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
 		err_L2 = sqrt(m->Integrate(err_L2)); // Compute the global L2 norm for the error
 		if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;

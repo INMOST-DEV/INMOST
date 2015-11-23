@@ -1,85 +1,15 @@
 cmake_minimum_required (VERSION 2.6)
 project (INMOST)
-set(SOURCE solver.cpp 
-           solver_ani.cpp 
-           solver_petsc.cpp 
-           partitioner.cpp 
-           algorithm.cpp 
-           geometry.cpp 
-           iterator.cpp
-           storage.cpp
-           eset.cpp
-           mesh_file.cpp
-           timer.cpp
-           face.cpp
-           edge.cpp
-           mesh.cpp
-           node.cpp
-           cell.cpp
-           tag.cpp
-           element.cpp
-           mesh_parallel.cpp
-           modify.cpp
-           earray.cpp
-           comparator.cpp
-           autodiff.cpp
-           solver_ddpqiluc2.cpp)
-set(HEADER inmost.h
-           inmost_options_cmake.h
-           inmost_common.h
-           inmost_mesh.h
-           inmost_solver.h
-           inmost_partitioner.h
-           inmost_autodiff.h
-           container.hpp
-           io.hpp
-           solver_ilu2.hpp
-           solver_ddpqiluc2.hpp
-           solver_bcgsl.hpp
-           solver_prototypes.hpp)
+
+add_subdirectory(Source)
+add_definitions(${SOLVER_DEFINITIONS})
+include_directories("Source/Headers")
 
 set(INMOST_MAJOR_VERSION 0)
 set(INMOST_MINOR_VERSION 1)
 set(INMOST_PATCH_VERSION 0)
 set(INMOST_VERSION "${INMOST_MAJOR_VERSION}.${INMOST_MINOR_VERSION}.${INMOST_PATCH_VERSION}")
 
-if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.hpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.cpp" )
-  add_definitions(-DHAVE_SOLVER_MPTILUC2)
-  set(HAVE_SOLVER_MPTILUC2 TRUE)
-  list(APPEND HEADER solver_mtiluc2.hpp)
-  list(APPEND SOURCE solver_mtiluc2.cpp)
-else()
-  set(HAVE_SOLVER_MPTILUC2 FALSE)
-endif()
-
-if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtilu2.hpp" )
-  add_definitions(-DHAVE_SOLVER_MPTILU2)
-  set(HAVE_SOLVER_MPTILU2 TRUE)
-  list(APPEND SOURCE solver_mtilu2.hpp)
-else()
-  set(HAVE_SOLVER_MPTILU2 FALSE)
-endif()
-
-if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.h" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.cpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fcbiilu2.cpp" )
-  add_definitions(-DHAVE_SOLVER_FCBIILU2)
-  set(HAVE_SOLVER_FCBIILU2 TRUE)
-  list(APPEND HEADER solver_fcbiilu2.h)
-  list(APPEND SOURCE solver_fcbiilu2.cpp fcbiilu2.cpp)
-else()
-  set(HAVE_SOLVER_FCBIILU2 FALSE)
-endif()
-
-if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.h" AND EXISTS
-		"${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.cpp" AND EXISTS
-		"${CMAKE_CURRENT_SOURCE_DIR}/k3d.h" AND EXISTS
-		"${CMAKE_CURRENT_SOURCE_DIR}/k3d.cpp" )
-  add_definitions(-DHAVE_SOLVER_K3BIILU2)
-  set(HAVE_SOLVER_K3BIILU2 TRUE)
-  list(APPEND HEADER solver_k3biilu2.h k3d.h)
-  list(APPEND SOURCE solver_k3biilu2.cpp k3d.cpp)
-else()
-  set(HAVE_SOLVER_K3BIILU2 FALSE)
-endif()
 
 add_library(inmost STATIC ${SOURCE} ${HEADER})
 
@@ -93,9 +23,9 @@ option(USE_MESH "Compile mesh capabilities" ON)
 option(USE_SOLVER "Compile solver capabilities" ON)
 option(USE_PARTITIONER "Compile partitioner capabilities" ON)
 option(USE_AUTODIFF "Compile automatic differentiation capabilities" ON)
+option(USE_NONLINEAR "Compile nonlinear solver capabilities" ON)
 option(TEST_FORTRAN_ANI3D "Test for fortran availibility to compile ANI3D lib" OFF)
 option(COMPILE_EXAMPLES "Compile examples" OFF)
-#option(COMPILE_PROJECTS "Compile projects" OFF)
 option(COMPILE_TESTS "Compile some tests" OFF)
 
 option(USE_PARTITIONER_PARMETIS "Use ParMetis partitioner" OFF)
@@ -145,8 +75,10 @@ if(USE_OMP)
 	if (OPENMP_FOUND)
 		set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+		message("OpenMP FOUND")
 	else()
 		set(USE_OMP OFF)
+		message("OpenMP NOT FOUND")
 	endif()
 endif()
 
@@ -285,52 +217,65 @@ if(MSVC)
   endif()
 endif()
 
-configure_file("inmost_options_cmake.h" "${PROJECT_BINARY_DIR}/inmost_options.h")
+configure_file("Source/Headers/inmost_options_cmake.h" "${PROJECT_BINARY_DIR}/inmost_options.h")
 include_directories("${PROJECT_BINARY_DIR}")
 
+target_include_directories(inmost PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+target_include_directories(inmost PUBLIC $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>)
+target_include_directories(inmost PUBLIC $<INSTALL_INTERFACE:include>)
+
 if(COMPILE_EXAMPLES)
-add_subdirectory(examples)
+add_subdirectory(Examples)
 endif(COMPILE_EXAMPLES)
 
-#if(COMPILE_PROJECTS)
-#add_subdirectory(projects)
-#endif(COMPILE_PROJECTS)
 
 if(COMPILE_TESTS)
 enable_testing()
 include(CTest)
-add_subdirectory(tests)
+add_subdirectory(Tests)
 endif(COMPILE_TESTS)
 
 
-set(INMOST_INSTALL_HEADERS inmost.h
-                           inmost_options_cmake.h
-                           inmost_common.h
-                           inmost_mesh.h
-                           inmost_solver.h
-                           inmost_partitioner.h
-                           inmost_autodiff.h
-                           container.hpp)
+set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
+                           Source/Headers/inmost_autodiff.h
+                           Source/Headers/inmost_common.h
+                           Source/Headers/inmost_data.h
+                           Source/Headers/inmost_expression.h
+                           Source/Headers/inmost_mesh.h
+                           Source/Headers/inmost_nonlinear.h
+                           Source/Headers/inmost_partitioner.h
+                           Source/Headers/inmost_solver.h
+                           Source/Headers/inmost_sparse.h
+                           Source/Headers/inmost_variable.h
+                           Source/Headers/container.hpp)
+
+
 
 include(CPack)
 export(TARGETS inmost FILE inmost-targets.cmake)
 export(PACKAGE inmost)
-set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/Source/Headers" "${PROJECT_BINARY_DIR}")
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}/inmost-config.cmake" @ONLY)
 set(CONF_INCLUDE_DIRS "\${inmost_DIR}/include")
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake" @ONLY)
 configure_file(inmost-config-version.cmake.in "${PROJECT_BINARY_DIR}/inmost-config-version.cmake" @ONLY)
 
 
+
 set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_BINARY_DIR}/inmost_options.h"
-	"${PROJECT_SOURCE_DIR}/inmost.h"
-	"${PROJECT_SOURCE_DIR}/inmost_common.h"
-	"${PROJECT_SOURCE_DIR}/inmost_mesh.h"
-	"${PROJECT_SOURCE_DIR}/inmost_solver.h"
-	"${PROJECT_SOURCE_DIR}/inmost_partitioner.h"
-	"${PROJECT_SOURCE_DIR}/inmost_autodiff.h"
-	"${PROJECT_SOURCE_DIR}/container.hpp")
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_autodiff.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_common.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_data.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_expression.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_mesh.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_nonlinear.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_partitioner.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_solver.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_sparse.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_variable.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp")
 
 install(FILES
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake"

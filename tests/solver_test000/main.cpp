@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cmath>
 
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 int main(int argc,char ** argv)
@@ -48,8 +48,8 @@ int main(int argc,char ** argv)
 		Solver S(type); // Specify the linear solver
 
 
-		Solver::Matrix A; // Declare the matrix of the linear system to be solved
-		Solver::Vector x,b; // Declare the solution and the right-hand side vectors
+		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
+		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors
 
 
 		INMOST_DATA_ENUM_TYPE mbeg, mend;

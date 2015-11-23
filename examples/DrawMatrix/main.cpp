@@ -2,7 +2,7 @@
 // press space - explode mesh to see connection 
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "../../inmost.h"
+#include "inmost.h"
 #include "my_glut.h"
 #include <iostream>
 #include <sstream>
@@ -13,7 +13,7 @@
 
 using namespace INMOST;
 int width = 1000, height = 1000;
-Solver::Matrix * m = NULL;
+Sparse::Matrix * m = NULL;
 
 int zoom = 200;
 int block_size = 0;
@@ -126,7 +126,7 @@ class Reorder_ARMS
 	std::deque<INMOST_DATA_ENUM_TYPE> stack;
 	int nblocks, maxblock, sblock;
 	INMOST_DATA_ENUM_TYPE mbeg, mend, visited, select;
-	Solver::Matrix & A;
+	Sparse::Matrix & A;
 	void add_block_entry(INMOST_DATA_ENUM_TYPE ind)
 	{
 		A[ind].SetMarker();
@@ -192,7 +192,7 @@ public:
 		sblock = 0;
 		nblocks = 0;
 	}
-	Reorder_ARMS(Solver::Matrix * m, INMOST_DATA_ENUM_TYPE _mbeg, INMOST_DATA_ENUM_TYPE _mend) : A(*m)
+	Reorder_ARMS(Sparse::Matrix * m, INMOST_DATA_ENUM_TYPE _mbeg, INMOST_DATA_ENUM_TYPE _mend) : A(*m)
 	{
 		nblocks = 0;
 		maxblock = 120;
@@ -207,13 +207,13 @@ public:
 
 		for (INMOST_DATA_ENUM_TYPE k = mbeg; k < mend; ++k)
 		{
-			for (Solver::Row::iterator it = A[k].Begin(); it != A[k].End(); ++it)
+			for (Sparse::Row::iterator it = A[k].Begin(); it != A[k].End(); ++it)
 			if ( it->first >= mbeg && it->first < mend)
 				neighbours[it->first].push_back(k);
 		}
 		for (INMOST_DATA_ENUM_TYPE k = mbeg; k < mend; ++k)
 		{
-			for (Solver::Row::iterator it = A[k].Begin(); it != A[k].End(); ++it)
+			for (Sparse::Row::iterator it = A[k].Begin(); it != A[k].End(); ++it)
 			if (it->first >= mbeg && it->first < mend)
 				neighbours[k].push_back(it->first);
 
@@ -299,7 +299,7 @@ public:
 			INMOST_DATA_REAL_TYPE nnzall = 0.0;
 			std::vector<INMOST_DATA_REAL_TYPE> nnz(nblocks,0.0);
 			for (INMOST_DATA_ENUM_TYPE i = mbeg; i < mend; i++)
-			for (Solver::Row::iterator r = A[i].Begin(); r != A[i].End(); ++r)
+			for (Sparse::Row::iterator r = A[i].Begin(); r != A[i].End(); ++r)
 			{
 				INMOST_DATA_ENUM_TYPE ki = position(i), kj = position(r->first), p;
 				std::vector<INMOST_DATA_ENUM_TYPE>::iterator qi = std::lower_bound(block_ends.begin(), block_ends.end(), ki);
@@ -415,8 +415,8 @@ void draw()
 
 	glColor3f(0,0,0);
 	glBegin(GL_QUADS);
-	for(Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
-		for(Solver::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+	for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+		for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
 			if( jt->first != it - m->Begin() )
 			//DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
 			DrawEntry((it - m->Begin()), m->Size() - jt->first);//, sqrt((jt->second-min)/(max-min)));
@@ -426,7 +426,7 @@ void draw()
 	/*
 	glColor3f(0.0, 1.0, 0);
 	glBegin(GL_QUADS);
-	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 	{
 		int ind = it - m->Begin();
 		if (fabs((*it)[ind]) > row_sum[it-m->Begin()]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
@@ -437,7 +437,7 @@ void draw()
 
 	
 	glBegin(GL_QUADS);
-	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 	{
 		
 		int ind = it - m->Begin();
@@ -451,7 +451,7 @@ void draw()
 	zoom += 1;
 	glColor3f(1.0, 0, 0);
 	glBegin(GL_QUADS);
-	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 	{
 		int ind = it - m->Begin();
 		if (fabs((*it)[ind]) < 1e-9) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
@@ -488,8 +488,7 @@ int main(int argc, char ** argv)
 		std::cout << "usage: " << argv[0] << " matrix.mtx " << std::endl;
 		return -1;
 	}
-	Solver::Initialize(&argc,&argv,NULL);
-	m = new Solver::Matrix();
+	m = new Sparse::Matrix();
 	m->Load(argv[1]);
 	//ord = new Reorder_ARMS(m,0,m->Size());
 	std::cout << "Matrix size: " << m->Size() << std::endl;
@@ -499,12 +498,12 @@ int main(int argc, char ** argv)
 	row_sum.set_interval_end(m->Size());
 	std::fill(row_sum.begin(),row_sum.end(),0.0);
 
-	for (Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 	{
 		nnz += it->Size();
 
 		nnzrow = 0;
-		for(Solver::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+		for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
 		{
 			nnzrow++;
 			row_sum[it-m->Begin()] += fabs(jt->second);
@@ -518,8 +517,8 @@ int main(int argc, char ** argv)
 	
 	zoom = m->Size() / 1000;
 	
-	//~ for(Solver::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
-		//~ for(Solver::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+	//~ for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+		//~ for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
 		//~ {
 			//~ if(jt->second < min ) 
 			//~ {
@@ -533,7 +532,6 @@ int main(int argc, char ** argv)
 			//~ }
 		//~ }
 	//~ std::cout << "max: " << max << " min: " << min << std::endl;
-	Solver::Finalize();
 	glutInit(&argc,argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(width, height);

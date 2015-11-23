@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 #if defined(USE_MPI)
@@ -34,6 +34,7 @@ int main(int argc, char ** argv)
 		case 10: type = Solver::FCBIILU2;        break;
 		case 11: type = Solver::K3BIILU2;        break;
 	}
+  
 	Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
 	{
 #if defined(USE_MPI)
@@ -43,12 +44,14 @@ int main(int argc, char ** argv)
 		rank = 0;
 		procs = 1;
 #endif
+    if( rank == 0 )
+      std::cout << "Solving with " << Solver::TypeName(type) << std::endl;
 		//std::cout << rank << "/" << procs << " " << argv[0] << std::endl;
-		Solver::Matrix mat("A"); // Declare the matrix of the linear system to be solved
-		Solver::Vector b("rhs"); // Declare the right-hand side vector
-		Solver::Vector x("sol"); // Declare the solution vector
+		Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
+		Sparse::Vector b("rhs"); // Declare the right-hand side vector
+		Sparse::Vector x("sol"); // Declare the solution vector
 		//std::cout << rank << " load matrix from " << std::string(argv[2]) << " ..." << std::endl;
-		double t = Timer(), tt = Timer();
+		double t = Timer(), tt = Timer(), tsol = 0;
 		mat.Load(std::string(argv[2])); //if interval parameters not set, matrix will be divided automatically
 		BARRIER
 		if( !rank ) std::cout << "load matrix: " << Timer() - t << std::endl;
@@ -83,20 +86,23 @@ int main(int argc, char ** argv)
 			s.SetParameterEnum("rescale_iterations",8);
 			s.SetParameterEnum("adapt_ddpq_tolerance",0);
 			
-			s.SetParameterReal("drop_tolerance",1.0e-2);
+			s.SetParameterReal("drop_tolerance",1.0e-3);
 			s.SetParameterReal("reuse_tolerance",1.0e-4);
 			s.SetParameterReal("ddpq_tolerance",0.0);
 
 			s.SetParameterEnum("condition_estimation",1);
+      s.SetParameterEnum("schwartz_overlap",3);
 			
 
 			t = Timer();
 			s.SetMatrix(mat); // Compute the preconditioner for the original matrix
 			BARRIER
+      tsol += Timer()-t;
 			if( !rank ) std::cout << "preconditioner: " << Timer() - t << std::endl;
 			t = Timer();
 			success = s.Solve(b,x); // Solve the linear system with the previously computted preconditioner
 			BARRIER
+      tsol += Timer()-t;
 			if( !rank ) std::cout << "solver: " << Timer() - t << "\t\t\t" << std::endl;
 			iters = s.Iterations(); // Get the number of iterations performed
 			resid = s.Residual();   // Get the final residual achieved
@@ -107,7 +113,7 @@ int main(int argc, char ** argv)
 
 		{ // Compute the true residual
 			double aresid = 0, bresid = 0;
-			Solver::Vector test;
+			Sparse::Vector test;
 			t = Timer();
 			Solver::OrderInfo info;
 			info.PrepareMatrix(mat,0);
@@ -143,7 +149,7 @@ int main(int argc, char ** argv)
 				std::cout << procs << " processors";
 				if( success )
 				{
-					std::cout << " solved in " << tt << " secs";
+					std::cout << " solved in " << tt << " secs (without reading " << tsol << " secs)";
 					std::cout << " with " << iters << " iterations to " << resid << " norm";
 				}
 				else std::cout << " failed to solve";

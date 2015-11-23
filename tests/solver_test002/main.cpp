@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 /***********************************************************************
@@ -80,7 +80,7 @@ $ mpirun -np 4 ./solver_test002 0 100
 #define BARRIER
 #endif
 
-void Poisson3D(int n1, int n2, int n3, Solver::Matrix & mat); // Generate 3D Poisson matrix
+void Poisson3D(int n1, int n2, int n3, Sparse::Matrix & mat); // Generate 3D Poisson matrix
 
 int main(int argc, char ** argv)
 {
@@ -106,6 +106,7 @@ int main(int argc, char ** argv)
 		case 10: type = Solver::FCBIILU2;        break;
 		case 11: type = Solver::K3BIILU2;        break;
 	}
+  
 	int n = atoi(argv[2]);
 	Solver::Initialize(&argc,&argv,argc > 3 ? argv[3] : NULL); // Initialize the linear solver in accordance with args
 	{
@@ -116,10 +117,12 @@ int main(int argc, char ** argv)
 		rank = 0;
 		procs = 1;
 #endif
+    if( rank == 0 )
+      std::cout << "Testing " << Solver::TypeName(type) << std::endl;
 		//std::cout << rank << "/" << procs << " " << argv[0] << std::endl;
-		Solver::Matrix mat("A"); // Declare the matrix of the linear system to be solved
-		Solver::Vector b("rhs"); // Declare the right-hand side vector
-		Solver::Vector x("sol"); // Declare the solution vector
+		Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
+		Sparse::Vector b("rhs"); // Declare the right-hand side vector
+		Sparse::Vector x("sol"); // Declare the solution vector
 		int n1=n, n2=n, n3=n;
 		if( !rank ) std::cout << "Poisson equation: " << n1 << " x " << n2 << " x " << n3 << std::endl;
 		BARRIER
@@ -168,7 +171,7 @@ int main(int argc, char ** argv)
 
 		{ // Compute the true residual
 			double aresid = 0, bresid = 0;
-			Solver::Vector test;
+			Sparse::Vector test;
 			t = Timer();
 			Solver::OrderInfo info;
 			info.PrepareMatrix(mat,0);
@@ -222,7 +225,7 @@ int main(int argc, char ** argv)
 }
 
 // Generate 3D Poisson matrix
-void Poisson3D(int n1, int n2, int n3, Solver::Matrix & A)
+void Poisson3D(int n1, int n2, int n3, Sparse::Matrix & A)
 {
     int myid=0, nproc=1;
 #if defined(USE_MPI)

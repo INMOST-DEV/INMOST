@@ -4,7 +4,7 @@
 
 //g++ main.cpp rotate.cpp -L/usr/X11R6/lib -lX11 -lXi -lXmu -lGL -lglut -lGLU ../../INMOST.a -O5
 // press space - explode mesh to see connection 
-#include "../../inmost.h"
+#include "inmost.h"
 #include "rotate.h"
 #include <iostream>
 #include <sstream>
@@ -22,7 +22,7 @@ inline static unsigned int flip(const unsigned int * fp)
 #define _1(x)	(x >> 11 & 0x7FF)
 #define _2(x)	(x >> 22 )
 
-
+void draw_screen();
 
 using namespace INMOST;
 Mesh * mesh;
@@ -32,6 +32,7 @@ int width = 800, height = 800;
 double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20, snear = 1e20;
 double shift[3] = {0,0,0};
 bool perspective = false;
+int drawedges = 0;
 bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false;
 
 Mesh::GeomParam table;
@@ -48,11 +49,43 @@ Mesh::GeomParam table;
 
 Storage::real p[3] = {0,0,0}, n[3] = {0,0,1};
 ElementArray<Element> boundary_faces;
+ElementArray<Edge> added_edges;
+std::vector<double> harmonic_points, dual_harmonic_points, conormals;
+
+
+static void GetBox(Element e, Storage::real min[3], Storage::real max[3])
+{
+  min[0] = min[1] = min[2] = 1.0e20;
+  max[0] = max[1] = max[2] = -1.0e20;
+	ElementArray<Node> nodes = e->getNodes();
+	for (ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); it++)
+	{
+		Storage::real_array c = it->Coords();
+		for (int i = 0; i < (int)c.size(); i++) 
+    {
+			if (max[i] < c[i]) max[i] = c[i]; //max
+			if (min[i] > c[i]) min[i] = c[i]; //min
+		}
+	}
+  for(int i = 0; i < 3; ++i)
+  {
+    if( max[i] < min[i] )
+    {
+      max[i] = 0.0001;
+      min[i] = -0.0001;
+    }
+    else if( max[i] == min[i] )
+    {
+      max[i] += 0.0001;
+      min[i] += -0.0001;
+    }
+  }
+}
 
 double amplitude = 10;
 double radius = 25;
 char visualization_prompt[8192];
-bool visualization_prompt_active = false;
+int visualization_prompt_active = 0;
 Tag visualization_tag;
 ElementType visualization_type;
 
@@ -60,7 +93,7 @@ void printtext(const char * fmt, ... )
 {
 	
 	unsigned int i;
-	char stext[1024];
+	char stext[4096];
 	va_list ap;
 	if ( fmt == NULL ) return;
 	va_start(ap,fmt);
@@ -72,6 +105,468 @@ void printtext(const char * fmt, ... )
 							stext[i]);
 	}
 }
+
+
+class coord
+{
+	double p[3];
+public:
+	coord() { p[0] = p[1] = p[2] = 0; }
+  coord(double xyz[3]) {p[0] = xyz[0]; p[1] = xyz[1]; p[2] = xyz[2];}
+	coord(double x, double y, double z) {p[0] = x; p[1] = y; p[2] = z;}
+	coord(const coord & other) {p[0] = other.p[0]; p[1] = other.p[1]; p[2] = other.p[2];}
+	coord & operator = (coord const & other) {p[0] = other.p[0]; p[1] = other.p[1]; p[2] = other.p[2]; return *this;}
+  coord & operator +=(const coord & other) {p[0] += other.p[0]; p[1] += other.p[1]; p[2] += other.p[2]; return *this;}
+  coord & operator -=(const coord & other) {p[0] -= other.p[0]; p[1] -= other.p[1]; p[2] -= other.p[2]; return *this;}
+  coord & operator *=(const coord & other) 
+  {
+    double tmp[3] = {p[1]*other.p[2] - p[2]*other.p[1], p[2]*other.p[0] - p[0]*other.p[2], p[0]*other.p[1] - p[1]*other.p[0]};
+    p[0] = tmp[0]; p[1] = tmp[1]; p[2] = tmp[2];
+    return *this;
+  }
+  coord & operator *=(double other) { p[0] *= other; p[1] *= other; p[2] *= other; return *this;}
+  coord & operator /=(double other) { p[0] /= other; p[1] /= other; p[2] /= other; return *this;}
+	coord operator -(const coord & other) const {return coord(p[0]-other.p[0],p[1]-other.p[1],p[2]-other.p[2]);}
+	coord operator +(const coord & other) const {return coord(p[0]+other.p[0],p[1]+other.p[1],p[2]+other.p[2]);}
+	coord operator *(const coord & other) const {return coord(p[1]*other.p[2] - p[2]*other.p[1],p[2]*other.p[0] - p[0]*other.p[2],p[0]*other.p[1] - p[1]*other.p[0]);}
+	coord operator /(double other) const {return coord(p[0]/other,p[1]/other,p[2]/other);}
+  coord operator *(double other) const {return coord(p[0]*other,p[1]*other,p[2]*other);}
+	double operator ^(const coord & other) const {return p[0]*other.p[0]+p[1]*other.p[1]+p[2]*other.p[2];}
+	~coord() {}
+  double length() const {return sqrt((*this)^(*this));}
+	double & operator [](int i) {return p[i];}
+  double * data() {return p;}
+};
+
+double abs(const coord & p)
+{
+  return sqrt(p^p);
+}
+
+
+void get_matrix(const coord & a, const coord & b, double matrix[16])
+{
+	double d;
+	coord z = (b-a)/sqrt((b-a)^(b-a));
+	coord y;
+	coord x;
+	y = coord(z[1],-z[2],0);
+	d = sqrt(y^y);
+	if( d < 1e-5 )
+	{
+		y = coord(-z[2],0,z[0]);
+		d = sqrt(y^y);
+	}
+	y = y / d;
+	x = y*z;
+	x = x / sqrt(x^x);
+	y = x*z;
+	matrix[0] = x[0];
+	matrix[1] = x[1];
+	matrix[2] = x[2];
+	matrix[3] = 0;
+	matrix[4] = y[0];
+	matrix[5] = y[1];
+	matrix[6] = y[2];
+	matrix[7] = 0;
+	matrix[8] = z[0];
+	matrix[9] = z[1];
+	matrix[10] = z[2];
+	matrix[11] = 0;
+	matrix[12] = 0;
+	matrix[13] = 0;
+	matrix[14] = 0;
+	matrix[15] = 1;
+}
+
+GLUquadric * cylqs = NULL;
+void drawcylinder(coord a,coord b, double width)
+{
+	double matrix[16];
+	if( cylqs == NULL )
+	{
+		cylqs = gluNewQuadric();
+		gluQuadricNormals(cylqs, GLU_SMOOTH);
+		gluQuadricOrientation(cylqs, GLU_OUTSIDE);
+		gluQuadricDrawStyle(cylqs,GLU_FILL);//GLU_SILHOUETTE
+	}
+	glPushMatrix();
+	glTranslated(a[0],a[1],a[2]);
+	get_matrix(a,b,matrix);
+	glMultMatrixd(matrix);
+	gluCylinder(cylqs, width,width,sqrt((b-a)^(b-a)), 4, 2);
+	glPopMatrix();
+}
+
+class Octree : public ElementSet
+{
+  Tag save_center_tag;
+  bool save_quad_tree;
+  void SubConstruct(const Tag & child_tag, const Tag & center_tag, HandleType * cells, HandleType * temp, int size, bool quad_tree)
+  {
+    Storage::real_array center = RealArray(center_tag);
+    //create 8 nodes
+    Storage::real cell_center[3];
+    int offsets[8], sizes[8];
+    int dims = 3 - (quad_tree ? 1 : 0);
+    int numchildren = (1 << dims);
+    for(int k = 0; k < numchildren; ++k)
+    {
+      offsets[k] = 0;
+      sizes[k] = 0;
+    }
+    for(int r = 0; r < size; ++r)
+    {
+      Element c = Element(GetMeshLink(),cells[r]);
+      c->Centroid(cell_center);
+      int child_num = 0;
+      for(int k = 0; k < dims; ++k)
+      {
+        if( cell_center[k] > center[k] )
+        {
+          int m = 1<<k;
+          child_num += m;
+        }
+      }
+      c->IntegerDF(child_tag) = child_num;
+      sizes[child_num]++;
+    }
+    for(int k = 1; k < numchildren; ++k)
+    {
+      offsets[k] = offsets[k-1]+sizes[k-1];
+    }
+    for(int k = 0; k < numchildren; ++k)
+    {
+      std::stringstream name;
+      name << GetName() << "chld" << k;
+      ElementSet child = GetMeshLink()->CreateSetUnique(name.str()).first;
+      Storage::real_array child_center = child->RealArray(center_tag);
+      for(int r = 0; r < dims; ++r)
+      {
+        int l = 1 << r;
+        int m = k & l;
+        child_center[r] = center[r] + ((m ? 1.0 : -1.0) * center[r+3] * 0.25);
+        child_center[r+3] = center[r+3]*0.5;
+      }
+      int m = 0;
+      for(int r = 0; r < size; ++r)
+      {
+        Element c = Element(GetMeshLink(),cells[r]);
+        int q = c->IntegerDF(child_tag);
+        if( q == k ) (temp+offsets[k])[m++] = cells[r];
+      }
+      AddChild(child);
+      if( sizes[k] <= 16 && sizes[k] > 0 )
+        child->PutElements(temp+offsets[k],sizes[k]);
+    }
+    // cells array is not needed anymore
+    ElementSet child = GetChild();
+    for(int k = 0; k < numchildren; ++k)
+    {
+      if( sizes[k] > 16 )
+        Octree(child).SubConstruct(child_tag,center_tag,temp+offsets[k],cells+offsets[k],sizes[k], quad_tree);
+      child = child->GetSibling();
+    }
+  }
+  Cell SubFindCell(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
+  {
+    if( HaveChild() )
+    {
+      Storage::real_array center = RealArray(center_tag);
+      int child_num = 0, q;
+      int dims = 3 - (quad_tree ? 1 : 0);
+      for(int k = 0; k < dims; ++k)
+      {
+        if( pnt[k] > center[k] )
+          child_num += (1 << k);
+      }
+      q = 0;
+      ElementSet set = GetChild();
+      while(q != child_num) {set = set->GetSibling(); q++;}
+      return Octree(set).SubFindCell(center_tag,pnt,quad_tree);
+    }
+    else
+    {
+      HandleType * cells = getHandles();
+      int ncells = (int)nbHandles();
+      Node closest = InvalidNode();
+      Storage::real mindist = 1.0e20, dist;
+      for(int k = 0; k < ncells; ++k)
+      {
+        Node c = Node(GetMeshLink(),cells[k]);
+        Storage::real_array cnt = c->Coords();
+        dist = sqrt((cnt[0]-pnt[0])*(cnt[0]-pnt[0])+(cnt[1]-pnt[1])*(cnt[1]-pnt[1])+(cnt[2]-pnt[2])*(cnt[2]-pnt[2]));
+        if( mindist > dist )
+        {
+          mindist = dist;
+          closest = c;
+        }
+      }
+      if( closest.isValid() )
+      {
+        ElementArray<Cell> cells = closest->getCells();
+        for(ElementArray<Cell>::iterator c = cells.begin(); c != cells.end(); ++c)
+          if( c->Inside(pnt) ) return c->self();
+      }
+      return InvalidCell();
+    }
+  }
+  bool Inside(const Storage::real_array & center, Storage::real pnt[3], bool quad_tree) const
+  {
+    bool inside = true;
+    int dims = 3 - (quad_tree ? 1 : 0);
+    for(int i = 0; i < dims; ++i) 
+      inside &= (pnt[i] >= center[i] - center[3+i]*0.5 && pnt[i] <= center[i] + center[3+i]*0.5);
+    return inside;
+  }
+  Node SubFindNode(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
+  {
+    if( HaveChild() )
+    {
+      Storage::real_array center = RealArray(center_tag);
+      if( !Inside(center,pnt,quad_tree) ) return InvalidNode();
+      int child_num = 0, q;
+      int dims = 3 - (quad_tree ? 1 : 0);
+      for(int k = 0; k < dims; ++k)
+      {
+        if( pnt[k] > center[k] )
+          child_num += (1 << k);
+      }
+      q = 0;
+      ElementSet set = GetChild();
+      while(q != child_num) {set = set->GetSibling(); q++;}
+      return Octree(set).SubFindNode(center_tag,pnt,quad_tree);
+    }
+    else
+    {
+      HandleType * cells = getHandles();
+      int ncells = (int)nbHandles();
+      Node closest = InvalidNode();
+      Storage::real mindist = 1.0e20, dist;
+      for(int k = 0; k < ncells; ++k)
+      {
+        Node c = Node(GetMeshLink(),cells[k]);
+        Storage::real_array cnt = c->Coords();
+        dist = sqrt((cnt[0]-pnt[0])*(cnt[0]-pnt[0])+(cnt[1]-pnt[1])*(cnt[1]-pnt[1])+(cnt[2]-pnt[2])*(cnt[2]-pnt[2]));
+        if( mindist > dist )
+        {
+          mindist = dist;
+          closest = c;
+        }
+      }
+      return closest;
+    }
+  }
+  void SubDestroy()
+  {
+    if( HaveChild() )
+    {
+      ElementSet set = GetChild(), next;
+      while(set->isValid())
+      {
+        next = set->GetSibling();
+        Octree(set).SubDestroy();
+        set = next;
+      }
+    }
+    DeleteSet();
+    handle = InvalidHandle();
+    handle_link = NULL;
+  }
+public:
+  Octree() : ElementSet(InvalidElementSet()) {}
+  Octree(const Octree & other) : ElementSet(other) {}
+  Octree(const ElementSet & eset) : ElementSet(eset) {}
+  void Construct(ElementType elem, bool quad_tree = false)
+  {
+    save_quad_tree = quad_tree;
+    int dims = 3 - (quad_tree ? 1 : 0);
+    Tag child_tag = GetMeshLink()->CreateTag("OCTREE_CHILD_NUM_"+GetName(),DATA_INTEGER,elem,NONE,1);
+    save_center_tag = GetMeshLink()->CreateTag("OCTREE_CENTER_"+GetName(),DATA_REAL,ESET,ESET,6);
+    Storage::real bounds[3][2];
+    for(int k = 0; k < dims; ++k)
+    {
+      bounds[k][0] = 1.0e20;
+      bounds[k][1] =-1.0e20;
+    }
+    //calculate bounds
+    for(Mesh::iteratorNode node = GetMeshLink()->BeginNode(); node != GetMeshLink()->EndNode(); ++node)
+    {
+      Storage::real_array coord = node->Coords();
+      for(int k = 0; k < dims; ++k)
+      {
+        if( coord[k] < bounds[k][0] ) bounds[k][0] = coord[k];
+        if( coord[k] > bounds[k][1] ) bounds[k][1] = coord[k];
+      }
+    }
+    Storage::real_array center_data = RealArray(save_center_tag);
+    for(int k = 0; k < dims; ++k)
+    {
+      center_data[k] = (bounds[k][0]+bounds[k][1])*0.5; //central position
+      center_data[k+3] = bounds[k][1]-bounds[k][0]; //length
+    }
+    //copy cells
+    int size = GetMeshLink()->NumberOf(elem), k = 0;
+    HandleType * cells = new HandleType[size*2];
+    HandleType * temp = cells+size;
+    for(Mesh::iteratorElement cell = GetMeshLink()->BeginElement(elem); cell != GetMeshLink()->EndElement(); ++cell)
+      cells[k++] = *cell;
+    SubConstruct(child_tag,save_center_tag,cells,temp,size,quad_tree);
+    GetMeshLink()->DeleteTag(child_tag);
+  }
+  Cell FindCell(Storage::real pnt[3]) const
+  {
+    return SubFindCell(save_center_tag,pnt,save_quad_tree);
+  }
+  Node FindNode(Storage::real pnt[3]) const
+  {
+    return SubFindNode(save_center_tag,pnt,save_quad_tree);
+  }
+  void Destroy()
+  {
+    if( save_center_tag.isValid() )
+      GetMeshLink()->DeleteTag(save_center_tag);
+    SubDestroy();
+  }
+  ~Octree() { }
+};
+
+
+
+void GetVelocity(Cell c, const Tag & velocity_tag, coord pnt, coord & ret)
+{
+  ElementArray<Cell> adj = c->NeighbouringCells();
+  adj.push_back(c);
+  coord cnt;
+  const Storage::real eps = 1.0e-8;
+  Storage::real dist = 0;
+  ret[0] = ret[1] = ret[2] = 0;
+  for(ElementArray<Cell>::iterator it = adj.begin(); it != adj.end(); ++it)
+  {
+    it->Centroid(cnt.data());
+    coord vel = coord(it->RealArray(velocity_tag).data());
+    Storage::real l = (cnt-pnt).length() + eps;
+    Storage::real omega = 1.0/(l*l);
+    ret += vel*omega;
+    dist += omega;
+  }
+  ret /= dist;
+}
+
+void GetVelocity(Node c, const Tag & velocity_tag, coord pnt, coord & ret)
+{
+  ElementArray<Cell> adj = c->getCells();
+  coord cnt;
+  const Storage::real eps = 1.0e-8;
+  Storage::real dist = 0;
+  ret[0] = ret[1] = ret[2] = 0;
+  for(ElementArray<Cell>::iterator it = adj.begin(); it != adj.end(); ++it)
+  {
+    it->Centroid(cnt.data());
+    coord vel = coord(it->RealArray(velocity_tag).data());
+    Storage::real l = (cnt-pnt).length() + eps;
+    Storage::real omega = 1.0/(l*l);
+    ret += vel*omega;
+    dist += omega;
+  }
+  ret /= dist;
+}
+
+
+Storage::real GetSize(Cell c)
+{
+  Storage::real bounds[3][2] = {{1.0e20,-1.0e20},{1.0e20,-1.0e20},{1.0e20,-1.0e20}};
+  ElementArray<Node> nodes = c->getNodes();
+  for(ElementArray<Node>::iterator n = nodes.begin(); n != nodes.end(); ++n)
+  {
+    Storage::real_array cnt = n->Coords();
+    for(int k = 0; k < 3; ++k)
+    {
+      if( bounds[k][0] > cnt[k] ) bounds[k][0] = cnt[k];
+      if( bounds[k][1] < cnt[k] ) bounds[k][1] = cnt[k];
+    }
+  }
+  Storage::real ret = bounds[0][1]-bounds[0][0];
+  ret = std::min(ret,bounds[1][1]-bounds[1][0]);
+  ret = std::min(ret,bounds[2][1]-bounds[2][0]);
+  return ret;
+}
+
+
+Storage::real GetSize(Node n, const Tag & size_tag)
+{
+  ElementArray<Cell> cells = n->getCells();
+  Storage::real minsize = 1.0e+20, size;
+  for(ElementArray<Cell>::iterator c = cells.begin(); c != cells.end(); ++c)
+  {
+    size = c->RealDF(size_tag);
+    if( minsize > size ) minsize = size;
+  }
+  if( minsize > 1.0e+19 ) std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+  return minsize;
+}
+
+
+class Streamline
+{
+private:
+	std::vector<coord> points;
+	std::vector<double> velarr;
+public:
+  Streamline() {}
+	Streamline(const Octree & octsearch, coord pos, Tag velocity_tag, Tag cell_size, Storage::real velocity_min, Storage::real velocity_max, Storage::real sign, MarkerType visited)
+	{
+		Storage::real coef, len, size;
+    coord next = pos, vel;
+    Node c;
+    const int maxsteps = 4000;
+    points.reserve(maxsteps/2);
+    velarr.reserve(maxsteps/2);
+		points.push_back(pos);
+		velarr.push_back(0);
+	  while( points.size() < maxsteps )
+		{
+      c = octsearch.FindNode(next.data());
+      if( !c.isValid() ) break;
+      //c.SetMarker(visited);
+      GetVelocity(c,velocity_tag,next,vel);
+      len = vel.length();
+      if( len < 1.0e-4 ) break;
+      size = GetSize(c,cell_size);// c->RealDF(cell_size);
+      coef = 0.35*size/len;
+      next += vel*coef*sign;
+      points.push_back(next);
+      velarr.push_back((log(len+1.0e-25)-velocity_min)/(velocity_max-velocity_min));
+		}
+		//printf("%ld %ld\n",points.size(),velarr.size());
+	}
+	Streamline(const Streamline & other) { points = other.points; velarr = other.velarr; }
+	Streamline & operator =(Streamline const & other) {points = other.points; velarr = other.velarr; return *this;}
+	~Streamline() { points.clear(); velarr.clear(); }
+	void Draw(int reduced)
+	{
+		
+		if( reduced )
+		{
+			glBegin(GL_LINE_STRIP);
+			for(unsigned int i = 0; i < points.size()-1; i++)
+			{
+				glColor3f(velarr[i+1]*0.65,0.65*(velarr[i+1] < 0.5 ? velarr[i] : 1.0-velarr[i]),0.65*(1-velarr[i+1]));
+				glVertex3d(points[i][0],points[i][1],points[i][2]);
+			}
+			glEnd();
+		}
+		else for(unsigned int i = 0; i < points.size()-1; i++)
+		{
+			glColor3f(velarr[i+1]*0.65,0.65*(velarr[i+1] < 0.5 ? velarr[i] : 1.0-velarr[i]),0.65*(1-velarr[i+1]));
+			drawcylinder(points[i],points[i+1],0.25*abs(points[i+1]-points[i]));
+		}
+		
+	}
+};
+
+std::vector<Streamline> streamlines;
+
 
 const int name_width = 32;
 const int type_width = 14;
@@ -119,6 +614,87 @@ void PrintTags(Mesh * m, ElementType etypes)
 		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1) if( (etype&etypes) && t->isDefined(etype) ) {print = true; break;}
 		if( print ) PrintTag(*t);
 	}
+}
+
+bool write_tga( const char *filename, int w, int h, char *buffer ) 
+{ 
+  FILE *f = fopen( filename, "wb" ); 
+  if ( !f ) 
+    return false;
+  putc(0,f);
+  putc(0,f);
+  putc(2,f);
+  putc(0,f);putc(0,f);
+  putc(0,f);putc(0,f);
+  putc(0,f);
+  putc(0,f);putc(0,f);
+  putc(0,f);putc(0,f);
+  putc((w & 0x00ff),f);
+  putc((w & 0xff00)/256,f);
+  putc((h & 0x00ff),f);
+  putc((h & 0xff00)/256,f);
+  putc(24,f);
+  putc(0,f);
+  size_t buflen = w * h * 3; 
+  fwrite( buffer, 1, buflen, f ); 
+  fclose(f); 
+  return true; 
+}
+
+void screenshot()
+{
+  const int tiles = 8;
+  int oldwidth = width;
+  int oldheight = height;
+  width *= tiles;
+  height *= tiles;
+  
+  char * pixelbuffer = new char[width*height*3+oldwidth*oldheight*3];
+  char * tempbuffer = pixelbuffer + width*height*3;
+
+  
+  
+  
+  for(int i = 0; i < tiles; ++i)
+  {
+    for(int j = 0; j < tiles; ++j )
+    {
+      glViewport(-oldwidth*i,-oldheight*j,width,height);
+      draw_screen();
+      glReadBuffer(GL_BACK);
+      glReadPixels(0,0,oldwidth,oldheight,GL_BGR_EXT,GL_UNSIGNED_BYTE,tempbuffer);
+
+      int koff = oldwidth*(i);
+      int loff = oldheight*(j);
+      
+      for(int l = 0; l < oldheight; ++l)
+      for(int k = 0; k < oldwidth; ++k)
+      for(int m = 0; m < 3; ++m)
+        pixelbuffer[((koff+k) + (loff+l)*width)*3+m] = tempbuffer[(k + l*oldwidth)*3+m];
+
+      //filename[0] += i;
+      //filename[1] += j;
+      //write_tga(filename,width,height,pixelbuffer);
+      //filename[0] = filename[1] = '0';
+    }
+  }
+  
+  /*
+  glViewport(-oldwidth*3,-oldheight*3,width,height);
+  draw_screen();
+  glReadBuffer(GL_BACK);
+  glReadPixels(0,0,width,height,GL_BGR_EXT,GL_UNSIGNED_BYTE,pixelbuffer);
+  */
+
+
+  
+  
+  
+  write_tga("screenshot.tga",width,height,pixelbuffer);
+  delete [] pixelbuffer;
+  width = oldwidth;
+  height = oldheight;
+  glViewport(0,0,width,height);
 }
 
 struct color_t
@@ -176,14 +752,21 @@ public:
 		ticks.push_back(0.6f);
 		ticks.push_back(0.8f);
 		ticks.push_back(1.f);
+
+    /* 
 		colors.push_back(color_t(1,0,0));
 		colors.push_back(color_t(1,1,0));
 		colors.push_back(color_t(0,1,0));
 		colors.push_back(color_t(0,1,1));
 		colors.push_back(color_t(0,0,1));
 		colors.push_back(color_t(1,0,1));
-		
-		
+		*/
+    colors.push_back(color_t(1,0,1));
+    colors.push_back(color_t(0,0,1));
+    colors.push_back(color_t(0,1,1));
+		colors.push_back(color_t(0,1,0));
+    colors.push_back(color_t(1,1,0));
+    colors.push_back(color_t(1,0,0));
 		
 		
 		//colors.push_back(color_t(1,0,0));
@@ -431,17 +1014,20 @@ public:
 		cnt[0] /= (verts.size()/3)*1.0;
 		cnt[1] /= (verts.size()/3)*1.0;
 		cnt[2] /= (verts.size()/3)*1.0;
-		if( !colors.empty() ) compute_center_color();
+		compute_center_color();
 	}
 	void compute_center_color()
 	{
-		cntcolor.r() = 0;
-		cntcolor.g() = 0;
-		cntcolor.b() = 0;
-		cntcolor.a() = 0;
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < colors.size(); k++)
-			cntcolor = cntcolor + colors[k];
-		cntcolor =  cntcolor*(1.0f/static_cast<float>(colors.size()));
+    if( !colors.empty() )
+    {
+		  cntcolor.r() = 0;
+		  cntcolor.g() = 0;
+		  cntcolor.b() = 0;
+		  cntcolor.a() = 0;
+		  for(INMOST_DATA_ENUM_TYPE k = 0; k < colors.size(); k++)
+			  cntcolor = cntcolor + colors[k];
+		  cntcolor =  cntcolor*(1.0f/static_cast<float>(colors.size()));
+    }
 	}
 	void compute_dist(double cam[3])
 	{
@@ -455,10 +1041,12 @@ public:
 face2gl DrawFace(Element f);
 
 std::vector<face2gl> all_boundary;
+std::vector<face2gl> added_faces;
 std::vector<face2gl> clip_boundary;
 
 void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 {
+  if( drawedges == 2 ) return;
 	glColor4f(0,1,0,0.1);
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw();
@@ -474,6 +1062,7 @@ void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 {
+  if( drawedges == 2 ) return;
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour();
 	glEnd();
@@ -488,6 +1077,7 @@ void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
 {
+  if( drawedges == 2 ) return;
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour_alpha(alpha);
 	glEnd();
@@ -495,21 +1085,24 @@ void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
 
 void draw_edges(std::vector<face2gl> & set, int highlight = -1)
 {
-	glBegin(GL_LINES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].drawedges();
-	glEnd();
-	if( highlight != -1 )
-	{
-		glColor4f(0,1,0,1);
-		glBegin(GL_LINES);
-		set[highlight].drawedges();
-		glEnd();
-	}
-	
+  if( drawedges && drawedges != 2 )
+  {
+	  glBegin(GL_LINES);
+	  for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].drawedges();
+	  glEnd();
+	  if( highlight != -1 )
+	  {
+		  glColor4f(0,1,0,1);
+		  glBegin(GL_LINES);
+		  set[highlight].drawedges();
+		  glEnd();
+	  }
+  }
 }
 
 void draw_faces_interactive_nc(std::vector<face2gl> & set)
 {
+  if( drawedges == 2 ) return;
 	glColor4f(0,1,0,0.1);
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw();
@@ -518,6 +1111,7 @@ void draw_faces_interactive_nc(std::vector<face2gl> & set)
 
 void draw_faces_interactive(std::vector<face2gl> & set)
 {
+  if( drawedges == 2 ) return;
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour();
 	glEnd();
@@ -525,6 +1119,7 @@ void draw_faces_interactive(std::vector<face2gl> & set)
 
 void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
 {
+  if( drawedges == 2 ) return;
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour_alpha(alpha);
 	glEnd();
@@ -532,9 +1127,12 @@ void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
 
 void draw_edges_interactive(std::vector<face2gl> & set)
 {
-	glBegin(GL_LINES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].drawedges();
-	glEnd();
+  if( drawedges && drawedges != 2 )
+  {
+	  glBegin(GL_LINES);
+	  for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].drawedges();
+	  glEnd();
+  }
 }
 
 Storage::integer clip_plane_edge(double sp0[3], double sp1[3], double p[3], double n[3], double node[3])
@@ -1557,18 +2155,21 @@ public:
 	}
 	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace)
 	{
-		glBegin(GL_LINES);
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
-		{
-			Storage::real_array cl = cells[k]->RealArray(clips);
+    if( drawedges )
+    {
+		  glBegin(GL_LINES);
+		  for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
+		  {
+			  Storage::real_array cl = cells[k]->RealArray(clips);
 			
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
-			{
-				glVertex3dv(&cl[q]);
-				glVertex3dv(&cl[(q+3)%cl.size()]);
-			}
-		}
-		glEnd();
+			  for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+			  {
+				  glVertex3dv(&cl[q]);
+				  glVertex3dv(&cl[(q+3)%cl.size()]);
+			  }
+		  }
+		  glEnd();
+    }
 	}
 	INMOST_DATA_ENUM_TYPE size() {return (INMOST_DATA_ENUM_TYPE)cells.size();}
 } * oclipper = NULL;
@@ -2254,6 +2855,11 @@ void keyboard(unsigned char key, int x, int y)
 		interactive = true;
 		//reset_timer = Timer();
 	}
+  else if( key == 'e' )
+  {
+    drawedges = (drawedges+1)%3;
+    glutPostRedisplay();
+  }
 	else if( key == 'w' )
 	{
 		double shiftmod[3] = {0,0,0};
@@ -2358,7 +2964,7 @@ void keyboard(unsigned char key, int x, int y)
 			
 		glutPostRedisplay();
 	}
-	else if( key == 'c' )
+	else if( key == 'x' )
 	{
 		draw_volumetric = !draw_volumetric;
 		glutPostRedisplay();
@@ -2468,17 +3074,29 @@ void keyboard(unsigned char key, int x, int y)
 			PrintTags(mesh,CELL|FACE|EDGE|NODE);
 
 			CommonInput = new Input(visualization_prompt, "Enter data for visualization as Element:Name:Component");
-			visualization_prompt_active = true;
+			visualization_prompt_active = 1;
 			clipupdate = true;
 			if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
 		}
 		glutPostRedisplay();
 	}
+  else if( key == 'c' )
+  {
+    if( CommonInput == NULL ) 
+		{
+			CommonInput = new Input(visualization_prompt, "Enter data for color bounds as min:max");
+			visualization_prompt_active = 2;
+		}
+    glutPostRedisplay();
+  }
 	else if( key == 'q' )
 	{
 		mesh->Save("mesh.vtk");
 		mesh->Save("mesh.pmf");
+    mesh->Save("mesh.xml");
 	}
+  else if( key == 't' )
+    screenshot();
 }
 
 void keyboard2(unsigned char key, int x, int y)
@@ -2494,6 +3112,8 @@ void keyboard2(unsigned char key, int x, int y)
 	
 }
 
+Tag face_center;
+
 face2gl DrawFace(Element f)
 {
 	face2gl ret;
@@ -2505,7 +3125,7 @@ face2gl DrawFace(Element f)
 	for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 		ret.add_vert(&(kt->Coords()[0]));
 	ret.set_elem(f->GetElementType(),f->LocalID());
-	ret.compute_center();
+  ret.compute_center();
 	return ret;
 }
 
@@ -2564,7 +3184,7 @@ void pick_mouse(double origin[3], double direction[3])
    }
 }
 
-void draw()
+void draw_screen()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
@@ -2699,6 +3319,9 @@ void draw()
 		}
 
 
+    for(int k = 0; k < streamlines.size(); ++k)
+      streamlines[k].Draw(true);//interactive);
+
 		if( boundary )
 		{
 			glEnable(GL_BLEND);
@@ -2708,6 +3331,12 @@ void draw()
 					all_boundary[q].compute_dist(campos);
 				//std::sort(all_boundary.rbegin(),all_boundary.rend());
 				face2gl::radix_sort_dist(all_boundary);
+
+
+        for(INMOST_DATA_ENUM_TYPE q = 0; q < added_faces.size() ; q++) 
+					added_faces[q].compute_dist(campos);
+				//std::sort(all_boundary.rbegin(),all_boundary.rend());
+				face2gl::radix_sort_dist(added_faces);
 			}
 			glColor4f(0,0,0,0.25); 
 			if( interactive ) draw_edges_interactive(all_boundary);
@@ -2722,6 +3351,70 @@ void draw()
 
 		if( !interactive && bndupdate) bndupdate = false;
 	}
+
+
+
+
+
+  glEnable(GL_BLEND);
+  glColor4f(0,0,0,0.25); 
+  draw_edges(added_faces);
+  draw_faces_nc(added_faces);
+  glDisable(GL_BLEND);
+
+  
+  if( !added_edges.empty() )
+  {
+    glColor3f(0,0,0);
+    glBegin(GL_LINES);
+    for(ElementArray<Edge>::iterator it = added_edges.begin(); it != added_edges.end(); ++it)
+    {
+      glVertex3dv(it->getBeg()->Coords().data());
+      glVertex3dv(it->getEnd()->Coords().data());
+    }
+    glEnd();
+  }
+
+  glLineWidth(2.0);
+
+  glBegin(GL_LINES);
+  for(int k = 0; k < conormals.size(); k+=3)
+  {
+    glVertex3dv(&conormals[k]);
+  }
+  glEnd();
+
+  glLineWidth(1.0);
+
+  glPointSize(5.0);
+
+  glColor3f(0,0,1);
+  glBegin(GL_POINTS);
+  for(int k = 0; k < harmonic_points.size(); k+=3)
+    glVertex3dv(&harmonic_points[k]);
+  glEnd();
+
+  glColor3f(1,0,0);
+  glBegin(GL_POINTS);
+  for(int k = 0; k < dual_harmonic_points.size(); k+=9)
+    glVertex3dv(&dual_harmonic_points[k+3]);
+  glEnd();
+
+  glPointSize(1.0);
+
+  glColor3f(0.5,0.5,0.5);
+  glBegin(GL_LINES);
+  for(int k = 0; k < dual_harmonic_points.size(); k+=9)
+  {
+    glVertex3dv(&dual_harmonic_points[k+0]);
+    glVertex3dv(&dual_harmonic_points[k+3]);
+    glVertex3dv(&dual_harmonic_points[k+3]);
+    glVertex3dv(&dual_harmonic_points[k+6]);
+  }
+  glEnd();
+
+
+
 
 	if( picked != -1 )
 	{
@@ -2829,7 +3522,31 @@ void draw()
 		{
 			if( ! CommonInput->Canceled() )
 			{
-				if( visualization_prompt_active )
+        if( visualization_prompt_active == 2 )
+        {
+					int k = 0, slen = (int)strlen(visualization_prompt);
+					for(k = 0; k < slen; ++k) 
+					{
+						if( visualization_prompt[k] == ':' )
+						{
+							visualization_prompt[k] = '\0';
+							break;
+						}
+					}
+          if( k < slen && k+1 < slen )
+          {
+            double minv, maxv;
+            visualization_prompt[k] = ':';
+            minv = atof(visualization_prompt);
+            maxv = atof(visualization_prompt+k+1);
+            CommonColorBar.set_min(minv);
+            CommonColorBar.set_max(maxv);
+            clipupdate = true;
+          }
+          else printf("malformed string %s for color map bounds\n",visualization_prompt);
+					visualization_prompt_active = 0;
+        }
+        else if( visualization_prompt_active == 1 )
 				{
 					char typen[1024],name[1024];
 					unsigned comp;
@@ -2898,7 +3615,7 @@ void draw()
 													jt->Centroid(cnt);
 													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
 													wgt = 1.0/(dist+1.0e-8);
-													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : jt->IntegerArray(source_tag)[comp] );
+													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : static_cast<Storage::real>(jt->IntegerArray(source_tag)[comp]) );
 													vol += wgt;
 												}
 												res = val/vol;
@@ -2919,7 +3636,7 @@ void draw()
 													jt->Centroid(cnt);
 													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
 													wgt = 1.0/(dist+1.0e-8);
-													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : jt->IntegerArray(source_tag)[comp] );
+													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : static_cast<Storage::real>(jt->IntegerArray(source_tag)[comp]) );
 													vol += wgt;
 												}
 												res = val/vol;
@@ -2931,7 +3648,7 @@ void draw()
 											CommonColorBar.set_min(min);
 											CommonColorBar.set_max(max);
 											char comment[1024];
-											sprintf(comment,"%s[%d] on %s",name,comp,typen);
+											sprintf(comment,"%s[%d] on %s, [%g:%g]",name,comp,typen,min,max);
 											CommonColorBar.set_comment(comment);
 											clipupdate = true;
 											/*
@@ -2955,7 +3672,7 @@ void draw()
 						else printf("mesh do not have tag with name %s\n",name);
 					}
 					else printf("malformed string %s for visualization\n",visualization_prompt);
-					visualization_prompt_active = false;
+					visualization_prompt_active = 0;
 					//visualization_prompt[0] = '\0';
 				
 				}
@@ -2976,7 +3693,11 @@ void draw()
 		CommonColorBar.Draw();
 		glEnable(GL_DEPTH_TEST);
 	}
-	
+}
+
+void draw()
+{
+  draw_screen();
 	glutSwapBuffers();
 }
 
@@ -2992,7 +3713,7 @@ int main(int argc, char ** argv)
 	mesh = new Mesh();
 	printf("Started loading mesh.\n");
 	tt = Timer();
-  mesh->SetCommunicator(INMOST_MPI_COMM_WORLD);
+  //mesh->SetCommunicator(INMOST_MPI_COMM_WORLD);
   mesh->SetParallelFileStrategy(0);
   mesh->SetParallelStrategy(1);
 	mesh->SetFileOption("VERBOSITY","2");
@@ -3087,6 +3808,68 @@ int main(int argc, char ** argv)
 	}
 	printf("Done. Time %g\n",Timer() - tt);
 
+  if(mesh->HaveTag("ADDED_ELEMENTS") )
+  {
+    Tag add = mesh->GetTag("ADDED_ELEMENTS");
+    for(Mesh::iteratorEdge it = mesh->BeginEdge(); it != mesh->EndEdge(); ++it) if( it->Integer(add) ) added_edges.push_back(it->self());
+    for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it) if( it->Integer(add) && !it->Boundary() ) added_faces.push_back(DrawFace(it->self()));
+  }
+  if(mesh->HaveTag("CONORMALS"))
+  {
+    Tag cnrmls = mesh->GetTag("CONORMALS");
+    conormals.reserve(mesh->NumberOfFaces()*2*3);
+    Storage::real side = 1.0e20;
+    for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+    {
+      Storage::real max[3],min[3];
+      GetBox(it->self(),min,max);
+      side = std::min(side,max[0]-min[0]);
+      side = std::min(side,max[1]-min[1]);
+      side = std::min(side,max[2]-min[2]);
+    }
+    side *=0.25;
+    for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it)
+    {
+      Storage::real_array fconormals = it->RealArray(cnrmls);
+      Storage::real cnt[3];
+      it->Centroid(cnt);
+      conormals.push_back(cnt[0]);
+      conormals.push_back(cnt[1]);
+      conormals.push_back(cnt[2]);
+      conormals.push_back(cnt[0]+side*fconormals[0]);
+      conormals.push_back(cnt[1]+side*fconormals[1]);
+      conormals.push_back(cnt[2]+side*fconormals[2]);
+      conormals.push_back(cnt[0]);
+      conormals.push_back(cnt[1]);
+      conormals.push_back(cnt[2]);
+      conormals.push_back(cnt[0]+side*fconormals[3]);
+      conormals.push_back(cnt[1]+side*fconormals[4]);
+      conormals.push_back(cnt[2]+side*fconormals[5]);
+    }
+  }
+  if(mesh->HaveTag("HARMONIC_POINT"))
+  {
+    Tag h1 = mesh->GetTag("HARMONIC_POINT");
+    harmonic_points.reserve(mesh->NumberOfFaces()*3);
+    for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it)
+    {
+      Storage::real_array h1a = it->RealArray(h1);
+      harmonic_points.insert(harmonic_points.end(),h1a.begin(),h1a.end());
+    }
+  }
+  std::cout << "Harmonic points array size: " << harmonic_points.size()/3 << std::endl;
+
+  if(mesh->HaveTag("DUAL_HARMONIC_POINT"))
+  {
+    Tag h2 = mesh->GetTag("DUAL_HARMONIC_POINT");
+    for(Mesh::iteratorElement it = mesh->BeginElement(CELL|FACE); it != mesh->EndElement(); ++it) if( it->HaveData(h2) )
+    {
+      Storage::real_array h2a = it->RealArray(h2);
+      dual_harmonic_points.insert(dual_harmonic_points.end(),h2a.begin(),h2a.end());
+    }
+  }
+
+  std::cout << "Boundary harmonic points array size: " << dual_harmonic_points.size()/9 << std::endl;
 
 	printf("Prepearing interactive mesh clipper.\n");
 	//tt = Timer();
@@ -3106,6 +3889,122 @@ int main(int argc, char ** argv)
 	p[0] = (sleft+sright)*0.5;
 	p[1] = (sbottom+stop)*0.5;
 	p[2] = (sfar+snear)*0.5;
+
+  if( mesh->HaveTag("FACE_CENTER") && mesh->GetTag("FACE_CENTER").isDefined(FACE) && mesh->GetTag("FACE_CENTER").GetSize() == 3 )
+  {
+    std::cout << "Have face centers!" << std::endl;
+    face_center = mesh->GetTag("FACE_CENTER");
+  }
+
+
+  if( false )
+  //if( mesh->HaveTag("VELOCITY") && mesh->GetTag("VELOCITY").isDefined(CELL) )
+  {
+    printf("preparing octree around mesh, was sets %d\n",mesh->NumberOfSets());
+    Octree octsearch = Octree(mesh->CreateSet("octsearch").first);
+    octsearch.Construct(NODE,true);
+    printf("done, sets %d\n",mesh->NumberOfSets());
+    printf("building streamlines\n");
+    Tag cell_size = mesh->CreateTag("CELL_SIZES",DATA_REAL,CELL,NONE,1);
+    Tag vel = mesh->GetTag("VELOCITY");
+    Storage::real velmax = 0, velmin = 1.0e20, l;
+    for(Mesh::iteratorCell c = mesh->BeginCell(); c != mesh->EndCell(); ++c)
+    {
+      coord velv(c->RealArray(vel).data());
+      l = velv.length();
+      if( l > velmax ) velmax = l;
+      if( l < velmin ) velmin = l;
+      c->RealDF(cell_size) = GetSize(c->self());
+    }
+    velmax = log(velmax+1.0e-25);
+    velmin = log(velmin+1.0e-25);
+    Tag flux = mesh->GetTag("FACE_FLUX");
+    /*
+    MarkerType visited = mesh->CreateMarker();
+    if( false )
+    for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); ++f) if( f->Boundary() )
+    {
+      if( f->Real(flux) > 1.0e-5 )
+      {
+        coord cntf;
+        f->Centroid(cntf.data());
+        streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,1.0,visited));
+
+        ElementArray<Edge> edges = f->getEdges();
+        for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
+        {
+          coord cntn;
+          n->Centroid(cntn.data());
+          if( cntn[2] == cntf[2] )
+          {
+            const Storage::real coef[4] = {0.4,0.8};
+            for(int q = 0; q < 2; ++q)
+              streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,1.0,visited));
+          }
+        }
+      }
+      else if( f->Real(flux) < -1.0e-5 )
+      {
+        coord cntf;
+        f->Centroid(cntf.data());
+        streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,-1.0,visited));
+
+        ElementArray<Edge> edges = f->getEdges();
+        for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
+        {
+          coord cntn;
+          n->Centroid(cntn.data());
+          if( cntn[2] == cntf[2] )
+          {
+            const Storage::real coef[4] = {0.4,0.8};
+            for(int q = 0; q < 2; ++q)
+              streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,-1.0,visited));
+          }
+        }
+      }
+    }
+    
+    printf("done from boundary faces, total streamlines = %d\n",streamlines.size());
+    
+    for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+    {
+      if( !it->GetMarker(visited) )
+      {
+        coord cntc;
+        it->Centroid(cntc.data());
+        if( coord(it->RealArray(vel).data()).length() > 1.0e-4 )
+        {
+          streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,1.0,0));
+          streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,-1.0,0));
+        }
+      }
+    }
+    printf("done from unvisited cells, total streamlines = %d\n",streamlines.size());
+    for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+      it->RemMarker(visited);
+    mesh->ReleaseMarker(visited);
+    */
+    int numlines = 16;
+    for(int i = 0; i < numlines; ++i)
+    {
+      for(int j = 0; j < numlines; ++j)
+      {
+        coord xyz;
+        double div = static_cast<double>(numlines);
+        xyz[0] = i/div + 0.5/div;
+        xyz[1] = j/div + 0.5/div;
+        xyz[2] = 0.5;
+        streamlines.push_back(Streamline(octsearch,xyz,vel,cell_size,velmin,velmax,1.0,0));
+        streamlines.push_back(Streamline(octsearch,xyz,vel,cell_size,velmin,velmax,-1.0,0));
+      }
+    }
+    printf("done from %d by %d grid, total streamlines = %d\n",numlines,numlines,streamlines.size());
+    mesh->DeleteTag(cell_size);
+    printf("done, total streamlines = %d\n",streamlines.size());
+    printf("killing octree, was sets %d\n",mesh->NumberOfSets());
+    octsearch.Destroy();
+    printf("done, sets %d\n",mesh->NumberOfSets());
+  }
 
 	quatinit();
 	glutInit(&argc,argv);

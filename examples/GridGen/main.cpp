@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string.h>
 
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 #define MESH_SIZE 32
@@ -197,6 +197,7 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 
 int main(int argc, char *argv[])
 {
+  std::string mesh_name;
 	Mesh * mesh;
 	Mesh::Initialize(&argc,&argv);
 
@@ -221,8 +222,20 @@ int main(int argc, char *argv[])
 	{
 		if( args == 0 ) std::cout << "Usage: " << argv[0] << " ng nx ny nz [output.[p]vtk]" << std::endl << "ng - 3 for prismatic mesh, 4 for cubic mesh" << std::endl;
 		if( args == 0 ) std::cout << "Default ";
-		if( ng == 4 )   std::cout << "Cubic ";
-		else            std::cout << "Prismatic ";
+		if( ng == 4 )   
+    {
+      std::cout << "Cubic ";
+      std::stringstream str;
+      str << "CUBIC_" << nx << "x" << ny << "x" << nz;
+      mesh_name = str.str();
+    }
+		else            
+    {
+      std::cout << "Prismatic ";
+      std::stringstream str;
+      str << "PRISMATIC_" << nx << "x" << ny << "x" << nz;
+      mesh_name = str.str();
+    }
 		std::cout << "Grid: " << nx << " x " << ny << " x " << nz << std::endl;
 		std::cout << "Processors: " <<mesh->GetProcessorsNumber() << std::endl;	
 		std::cout << "Mesh generator time: " << tt << std::endl;
@@ -241,6 +254,10 @@ int main(int argc, char *argv[])
 		else
 			filename += ".pvtk";
 	}
+
+  Storage::bulk_array name = mesh->self()->BulkArray(mesh->CreateTag("GRIDNAME",DATA_BULK,MESH,NONE));
+  name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
+
 #if defined(USE_MPI)
 	MPI_Barrier(mesh->GetCommunicator());
 #endif

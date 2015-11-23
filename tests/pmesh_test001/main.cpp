@@ -1,4 +1,4 @@
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 

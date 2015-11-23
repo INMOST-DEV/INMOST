@@ -2,7 +2,7 @@
 //mpicxx main.cpp -lpetsc -L/usr/X11R6/lib -lX11 -ldmumps -lmumps_common -lmpi_f77 -lscalapack -lpord -lblacs -lparmetis -lmetis -lmpi -lHYPRE -lgfortran -lblas -llapack ../../INMOST.a -lzoltan -lparmetis -lmetis
 // run ./a.out grids/rezultMesh.vtk MATERIALS -ksp_monitor -ksp_view -mat_type aij -vec_type standard
 
-#include "../../inmost.h"
+#include "inmost.h"
 #include <stdio.h>
 #ifndef M_PI
 #define M_PI 3.141592653589
@@ -273,8 +273,8 @@ int main(int argc,char ** argv)
 		
 		ttt = Timer();
 		Solver S(Solver::INNER_ILU2);
-		Solver::Matrix A;
-		Solver::Vector x,b;
+		Sparse::Matrix A;
+		Sparse::Vector x,b;
 		
 		Mesh::GeomParam table;
 		

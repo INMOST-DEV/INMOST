@@ -1,0 +1,11 @@
+set(SOURCE
+    ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/storage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tag.cpp
+    PARENT_SCOPE
+)
+
+set(HEADER
+    ${HEADER}
+    PARENT_SCOPE
+)
