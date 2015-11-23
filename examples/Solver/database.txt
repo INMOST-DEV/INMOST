@@ -1,6 +1,0 @@
-PETSc: petsc_options.txt
-Trilinos_Ifpack: trilinos_ifpack_options.xml
-Trilinos_ML: 
-Trilinos_Aztec: 
-Trilinos_Belos: 
-
