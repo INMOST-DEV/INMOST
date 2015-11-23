@@ -1,0 +1,12 @@
+if(USE_SOLVER)
+add_subdirectory(solver_test000)
+#add_subdirectory(solver_test001)
+add_subdirectory(solver_test002)
+endif(USE_SOLVER)
+
+if(USE_MESH AND USE_MPI)
+add_subdirectory(pmesh_test000)
+if(USE_PARTITIONER)
+add_subdirectory(pmesh_test001)
+endif()
+endif()

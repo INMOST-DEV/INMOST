@@ -1,0 +1,29 @@
+#-info
+#-mat_view
+#-mat_no_inode
+ -ksp_monitor
+#-ksp_monitor_true_residual
+ -ksp_view
+
+ -ksp_atol 1e-13
+ -ksp_rtol 1e-6
+ -ksp_divtol 1e+200
+ -ksp_max_it 1000
+ -ksp_type bcgs
+#-ksp_type dgmres 
+ -ksp_pc_side right
+
+#-pc_type ilu
+#-pc_type hypre
+#-pc_hypre_type boomeramg
+#-pc_asm_pc_type hypre
+#-pc_asm_pc_hypre_type boomeramg
+#-pc_factor_levels 1
+#-pc_factor_fill 9
+
+ -pc_type asm
+ -pc_asm_overlap 3
+ -sub_pc_view
+ -sub_pc_type ilu
+ -sub_pc_factor_levels 1
+ -sub_pc_factor_diagonal_fill
