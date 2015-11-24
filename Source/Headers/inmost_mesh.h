@@ -2958,13 +2958,13 @@ namespace INMOST
 			bool operator() (HandleType a, integer gid) const {if( a == InvalidHandle() ) return false; return m->GlobalID(a) < gid;}
 		};
 
-		class IerarhyComparator
+		class HierarchyComparator
 		{
 			Mesh * m;
 		public:
-			IerarhyComparator(Mesh * m) :m(m) {}
-			IerarhyComparator(const IerarhyComparator & other) :m(other.m){}
-			IerarhyComparator & operator = (IerarhyComparator const & other) { m = other.m; return *this;}
+			HierarchyComparator(Mesh * m) :m(m) {}
+			HierarchyComparator(const HierarchyComparator & other) :m(other.m){}
+			HierarchyComparator & operator = (HierarchyComparator const & other) { m = other.m; return *this;}
 			int CompareNodes(HandleType a, HandleType b) const;
 			int CompareElements(HandleType a, HandleType b) const;
 			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return CompareElements(a,b) < 0;}

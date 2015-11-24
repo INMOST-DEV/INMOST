@@ -609,7 +609,7 @@ namespace INMOST
 			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e);
 			break;
 		case  HIERARCHY_COMPARATOR:
-			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e,Mesh::IerarhyComparator(m));
+			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e,Mesh::HierarchyComparator(m));
 			break;
 		case GLOBALID_COMPARATOR:
 			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e,Mesh::GlobalIDComparator(m));
@@ -785,7 +785,7 @@ namespace INMOST
 			{
 				// sort 
 				array<HandleType> sorted(h,h+num);
-				std::sort(sorted.begin(),sorted.end(),Mesh::IerarhyComparator(m));
+				std::sort(sorted.begin(),sorted.end(),Mesh::HierarchyComparator(m));
 				//now merge with sorted part
 				Element::adj_type merge(lc.size()+sorted.size());
 				Element::adj_type::iterator it = lc.begin(), iend = lc.begin()+hSorted(hc);
@@ -797,7 +797,7 @@ namespace INMOST
 				{
 					if( *it == InvalidHandle() || m->GetPrivateMarker(*it,mrk) ) ++it;
 					else if( *jt == InvalidHandle() || m->GetPrivateMarker(*jt,mrk) ) ++jt;
-					else if( Mesh::IerarhyComparator(m)(*it,*jt) ) 
+					else if( Mesh::HierarchyComparator(m)(*it,*jt) ) 
           {
             *mit = *it; 
             m->SetPrivateMarker(*mit,mrk);
@@ -929,7 +929,7 @@ namespace INMOST
 			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e->GetHandle());
 			break;
 		case  HIERARCHY_COMPARATOR:
-			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e->GetHandle(),Mesh::IerarhyComparator(m));
+			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e->GetHandle(),Mesh::HierarchyComparator(m));
 			break;
 		case GLOBALID_COMPARATOR:
 			find = std::lower_bound(lc.begin(),lc.begin()+sorted,e->GetHandle(),Mesh::GlobalIDComparator(m));
@@ -1152,7 +1152,7 @@ namespace INMOST
 					switch(cmp)
 					{
 					case HANDLE_COMPARATOR: cmp_res = *it < *jt; break;
-					case HIERARCHY_COMPARATOR: cmp_res = Mesh::IerarhyComparator(m)(*it,*jt); break;
+					case HIERARCHY_COMPARATOR: cmp_res = Mesh::HierarchyComparator(m)(*it,*jt); break;
 					case CENTROID_COMPARATOR: cmp_res = Mesh::CentroidComparator(m)(*it,*jt); break;
 					case GLOBALID_COMPARATOR: cmp_res = Mesh::GlobalIDComparator(m)(*it,*jt); break;
 					default: assert(false);
@@ -1380,7 +1380,7 @@ namespace INMOST
 		case  HIERARCHY_COMPARATOR:
 			{
 				Element::adj_type::size_type start = hSorted(hc);
-				std::sort(lc->begin()+start,lc->end(),Mesh::IerarhyComparator(m));
+				std::sort(lc->begin()+start,lc->end(),Mesh::HierarchyComparator(m));
 				if( start > 0 ) //need to merge two parts
 				{
 					Element::adj_type temp(lc->size());
@@ -1391,7 +1391,7 @@ namespace INMOST
 					{
 						if( *it == InvalidHandle() ) ++it;
 						else if( *jt == InvalidHandle() ) ++jt;
-						else if( Mesh::IerarhyComparator(m)(*it,*jt) ) *t++ = *it++;
+						else if( Mesh::HierarchyComparator(m)(*it,*jt) ) *t++ = *it++;
 						else *t++ = *jt++;
 					}
 					assert(it == iend || jt == jend);
@@ -1564,7 +1564,7 @@ namespace INMOST
 		else if( cmp == HIERARCHY_COMPARATOR && use_cmp )
 		{
 			Element::adj_type::size_type sorted = static_cast<Element::adj_type::size_type>(hSorted(m->HighConn(GetHandle())));
-			Element::adj_type::iterator find = std::lower_bound(lc.begin(),lc.end(),h,Mesh::IerarhyComparator(m));
+			Element::adj_type::iterator find = std::lower_bound(lc.begin(),lc.end(),h,Mesh::HierarchyComparator(m));
 			if( find != lc.end() )
 			{
 				if( *find == h )

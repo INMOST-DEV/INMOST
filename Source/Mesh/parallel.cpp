@@ -797,7 +797,7 @@ namespace INMOST
 	__INLINE bool compare_coord(Storage::real * a, Storage::real * b, INMOST_DATA_ENUM_TYPE dim, Storage::real eps)
 	{
 		for(INMOST_DATA_ENUM_TYPE i = 0; i <  dim; i++)
-			if( fabs(a[i]-b[i]) > eps ) return a[i] <= b[i];
+			if( ::fabs(a[i]-b[i]) > eps ) return a[i] <= b[i];
 		return true;
 	}
 
@@ -874,7 +874,7 @@ namespace INMOST
 			{
 				same_box = true;
 				for(integer j = 0; j < dim*2; j++)
-					same_box &= fabs(bbox[j] - bboxs[k*dim*2+j]) < epsilon;
+					same_box &= ::fabs(bbox[j] - bboxs[k*dim*2+j]) < epsilon;
 				same_boxes &= same_box;
 			}
 			
@@ -1075,7 +1075,7 @@ namespace INMOST
 								{
 									int res = 0;
 									for(integer k = 0; k < dim; k++)
-										if( fabs((*(it1+k))-(*(it2+k))) > epsilon )
+										if( ::fabs((*(it1+k))-(*(it2+k))) > epsilon )
 										{
 											if( (*(it1+k)) < (*(it2+k)) ) res = -1;
 											else res = 1;
