@@ -65,12 +65,12 @@ int main(int argc, char ** argv)
 		             && std::string(argv[4]) == std::string("1") )
 		{
 			if( !rank ) std::cout << "[" << rank << "]: set RHS = A * [1]" << std::endl;
-			Solver::Vector ex("exact");  // Declare the temporary exact solution vector
+			Sparse::Vector ex("exact");  // Declare the temporary exact solution vector
 			INMOST_DATA_ENUM_TYPE mbeg,mend,k;
 			mat.GetInterval(mbeg,mend);
 			ex.SetInterval(mbeg,mend);
 			for( k = mbeg; k < mend; ++k ) ex[k] = 1.0;
-			Solver::Matrix a = mat; // Declare a temporary copy of the original matrix 
+			Sparse::Matrix a = mat; // Declare a temporary copy of the original matrix 
 			Solver::OrderInfo info;
 			info.PrepareMatrix(a,0);
 			info.PrepareVector(ex);
@@ -186,8 +186,8 @@ int main(int argc, char ** argv)
 		{ // Compare solution with exact one if available
 			if( argc > 4 )
 			{
-				Solver::Vector ex("exact");  // Declare the exact solution vector
-				Solver::Vector err("error"); // Declare the solution error vector
+				Sparse::Vector ex("exact");  // Declare the exact solution vector
+				Sparse::Vector err("error"); // Declare the solution error vector
 				INMOST_DATA_ENUM_TYPE mbeg,mend,k;
 				mat.GetInterval(mbeg,mend);
 				err.SetInterval(mbeg,mend);
