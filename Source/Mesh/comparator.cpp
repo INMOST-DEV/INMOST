@@ -42,7 +42,7 @@ namespace INMOST
 	}
 
 	
-	int Mesh::IerarhyComparator::CompareNodes(HandleType a, HandleType b) const
+	int Mesh::HierarchyComparator::CompareNodes(HandleType a, HandleType b) const
 	{
 		real_array ca = m->RealArrayDF(a,m->CoordsTag());
 		real_array cb = m->RealArrayDF(b,m->CoordsTag());
@@ -57,7 +57,7 @@ namespace INMOST
 			}
 		return 0;
 	}
-	int Mesh::IerarhyComparator::CompareElements(HandleType a, HandleType b) const
+	int Mesh::HierarchyComparator::CompareElements(HandleType a, HandleType b) const
 	{
 		integer ia = GetHandleElementNum(a);
 		integer ib = GetHandleElementNum(b);

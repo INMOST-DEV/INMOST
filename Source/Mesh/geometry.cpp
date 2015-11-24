@@ -167,7 +167,7 @@ namespace INMOST
 		m->GetGeometricData(GetHandle(),NORMAL,nrm); 
 		integer dim = m->GetDimensions();
 		real    l   = ::sqrt(vec_dot_product(nrm,nrm,dim)); 
-		if(fabs(l) > m->GetEpsilon()) 
+		if(::fabs(l) > m->GetEpsilon()) 
 		{
 			for(integer i = 0; i < dim; i++) 
 				nrm[i] /= l; 
@@ -971,7 +971,7 @@ namespace INMOST
 		for(i = 3; i < s; i++)
 		{
 			vec_diff(p[i].Coords().data(),p[0].Coords().data(),v[0],3);
-			if( fabs(vec_dot_product(v[0],v[1],3)) > m->GetEpsilon() ) return false;
+			if( ::fabs(vec_dot_product(v[0],v[1],3)) > m->GetEpsilon() ) return false;
 		}
 		return true;
 	}
@@ -1038,13 +1038,13 @@ namespace INMOST
 			vec_normalize(cf,dim);
 			dot = vec_dot_product(nf,cf,dim);
 			//~ c = FrontCell();
-			if( fabs(dot) < 0.25 && c2.isValid() )
+			if( ::fabs(dot) < 0.25 && c2.isValid() )
 			{
 				c2->Centroid(cc);
 				vec_diff(cc,fc,cf,dim);
 				vec_normalize(cf,dim);
 				dot2 = vec_dot_product(nf,cf,dim);
-				if( fabs(dot2) > fabs(dot) )
+				if( ::fabs(dot2) > ::fabs(dot) )
 					dot = -dot2;
 			}
 			if( dot > 0 )
@@ -1391,7 +1391,7 @@ namespace INMOST
 					vec_cross_product(a,b,n);
 					d = -vec_dot_product(n,tri[0],dim);
 					m =  vec_dot_product(n,dir,dim);
-					if( !(fabs(m) < 1.0e-25) )
+					if( !(::fabs(m) < 1.0e-25) )
 					{
 						k = -(d + vec_dot_product(n,pos,dim))/m;
 						if( k >= 0 )
@@ -1407,7 +1407,7 @@ namespace INMOST
 							invdenom = (dot00*dot11 - dot01*dot01);
 							uq = (dot11*dot02-dot01*dot12);
 							vq = (dot00*dot12-dot01*dot02);
-							if( !(fabs(invdenom) < 1.0e-25  && fabs(uq) >= 0.0 && fabs(vq) >= 0.0) )
+							if( !(::fabs(invdenom) < 1.0e-25  && ::fabs(uq) >= 0.0 && ::fabs(vq) >= 0.0) )
 							{
 								uq = uq/invdenom;
 								vq = vq/invdenom;
