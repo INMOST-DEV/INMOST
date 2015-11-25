@@ -59,6 +59,207 @@ std::string VariableToString(INMOST::Storage::var v)
 
 class XMLReader
 {
+  class Interpreter
+  {
+    bool error_state;
+    std::map<char,int> priority;
+    std::vector<std::string> Expand(std::string & input)
+    {
+      std::vector<std::string> ret;
+      std::string put;
+      for(int k = 0; k < (int)input.length(); ++k)
+      {
+        if( get_priority(input[k]) != -1 )
+        {
+          if( !put.empty() ) 
+          {
+            ret.push_back(put);
+            put.clear();
+          }
+          ret.push_back(std::string(1,input[k]));
+        }
+        else put.push_back(input[k]);
+      }
+      if( !put.empty() ) ret.push_back(put);
+      return ret;
+    }
+    int get_priority(char c)
+    {
+      std::map<char,int>::iterator it = priority.find(c);
+      if( it == priority.end() ) return -1;
+      return it->second;
+    }
+    std::vector<std::string> MakePolish(std::vector<std::string> & input)
+    {
+      std::vector<std::string> stack, ret;
+      int priority;
+      for(int k = 0; k < (int)input.size(); ++k)
+      {
+        if( input[k].size() == 1 && (priority = get_priority(input[k][0])) != -1 )
+        {
+          char op = input[k][0];
+          if( op != '(' )
+          {
+            while(!stack.empty() && priority <= get_priority(stack.back()[0]) )
+            {
+              ret.push_back(stack.back());
+              stack.pop_back();
+            }
+          }
+          if( op == ')' )
+          {
+            if( stack.empty() )
+            {
+              std::cout << "Warning: parentheses unbalanced" << std::endl;
+              error_state = true;
+              break;
+            }
+            else if( stack.back()[0] == '(' )
+              stack.pop_back();
+            else 
+            {
+              std::cout << "Warning: expected left bracket" << std::endl;
+              error_state = true;
+              break;
+            }
+          }
+          else if( op == '-' && (k == 0 || (input[k-1].size() == 1 && get_priority(input[k-1][0]) != -1)) ) //unary minus
+            stack.push_back("~");
+          else
+            stack.push_back(input[k]);
+        }
+        else ret.push_back(input[k]);
+      }
+      while(!stack.empty())
+      {
+        ret.push_back(stack.back());
+        stack.pop_back();
+      }
+      return ret;
+    }
+    void Print(std::vector<std::string> & polish)
+    {
+      for(int k = 0; k < (int)polish.size(); ++k)
+        std::cout << polish[k] << " ";
+      std::cout << std::endl;
+    }
+    double Run(std::vector<std::string> & polish)
+    {
+      std::vector<double> stack;
+      for(int k = 0; k < (int)polish.size(); ++k)
+      {
+        if( polish[k].size() == 1 && get_priority(polish[k][0]) != -1 )
+        {
+          double larg, rarg;
+          char op = polish[k][0];
+          switch(op)
+          {
+          case '+':
+            if( stack.size() < 2 )
+            {
+              std::cout << "Less then two arguments in stack for + operand" << std::endl;
+              error_state = true;
+              return 1.0e+20;
+            }
+            rarg = stack.back();
+            stack.pop_back();
+            larg = stack.back();
+            stack.pop_back();
+            stack.push_back(larg+rarg);
+            break;
+          case '-':
+            if( stack.size() < 2 )
+            {
+              std::cout << "Less then two arguments in stack for - operand" << std::endl;
+              error_state = true;
+              return 1.0e+20;
+            }
+            rarg = stack.back();
+            stack.pop_back();
+            larg = stack.back();
+            stack.pop_back();
+            stack.push_back(larg-rarg);
+            break;
+          case '*':
+            if( stack.size() < 2 ) 
+            {
+              std::cout << "Less then two arguments in stack for * operand" << std::endl;
+              error_state = true;
+              return 1.0e+20;
+            }
+            rarg = stack.back();
+            stack.pop_back();
+            larg = stack.back();
+            stack.pop_back();
+            stack.push_back(larg*rarg);
+            break;
+          case '/':
+            if( stack.size() < 2 ) 
+            {
+              std::cout << "Less then two arguments in stack for / operand" << std::endl;
+              error_state = true;
+              return 1.0e+20;
+            }
+            rarg = stack.back();
+            stack.pop_back();
+            larg = stack.back();
+            stack.pop_back();
+            stack.push_back(larg/rarg);
+            break;
+          case '~':
+            if( stack.size() < 1 ) 
+            {
+              std::cout << "No arguments in stack for unary minus operand" << std::endl;
+              error_state = true;
+              return 1.0e+20;
+            }
+            larg = stack.back();
+            stack.pop_back();
+            stack.push_back(-larg);
+            break;
+          }
+        }
+        else stack.push_back(atof(polish[k].c_str()));
+      }
+      if( stack.size() != 1 )
+      {
+        std::cout << "There are more operands on stack, but no operators" << std::endl;
+        error_state = true;
+        return 1.0e+20;
+      }
+      return stack.back();
+    }
+  public:
+    Interpreter()
+    {
+      priority['('] = 0;
+      priority[')'] = 1;
+      priority['-'] = priority['+'] = 8;
+      priority['*'] = priority['/'] = 9;
+      priority['~'] = 10;
+      error_state = false;
+    }
+    Interpreter(const Interpreter & b)
+      : priority(b.priority), error_state(b.error_state)
+    {}
+    Interpreter & operator = (Interpreter const & b)
+    {
+      priority = b.priority;
+      error_state = b.error_state;
+      return * this;
+    }
+    double Evaluate(std::string & str)
+    {
+      const char * debug_str = str.c_str();
+      std::vector<std::string> decompose = Expand(str);
+      std::vector<std::string> polish = MakePolish(decompose);
+      Print(polish);
+      return Run(polish);
+    }
+    bool isError() {return error_state;}
+    void ClearError() {error_state = false;}
+  };
+  Interpreter intrp;
   std::string src;
   std::istream & inp;
   int linebreak, linechar;
@@ -95,7 +296,7 @@ class XMLReader
     Failure //unexpected error
   } _state;
   //should not share the reference to the stream with another reader
-  XMLReader(const XMLReader & other) :inp(other.inp) {}
+  XMLReader(const XMLReader & other) :src(other.src), inp(other.inp) {}
   XMLReader & operator =(XMLReader & other) {return *this;}
   char GetChar()
   {
@@ -216,7 +417,7 @@ public:
     }
     std::cout << std::endl;
   }
-  XMLReader(std::string sourcename, std::istream & input) :src(sourcename),inp(input),linebreak(0),linechar(0),_state(Intro){verbose = 1;}
+  XMLReader(std::string sourcename, std::istream & input) :intrp(),src(sourcename),inp(input),linebreak(0),linechar(0),_state(Intro){verbose = 0;}
   //read in <TagName returns TagName
   std::string ReadOpenTag()
   {
@@ -838,9 +1039,9 @@ public:
 #endif
   int EvaluateExpression(std::string expression)
   {
-    //stupid version for now
     //port short RPN version later from DiscretizationToolkit/GPRS/interpreter.cpp
-    return atoi(expression.c_str());
+    return (int)intrp.Evaluate(expression);
+    return atoi(expression.c_str()); //stupid version for now
   }
   char * sstrip(char * str)
   {
