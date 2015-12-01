@@ -201,15 +201,16 @@ namespace INMOST
 	
 	INMOST_DATA_REAL_TYPE Automatizator::Derivative(expr & var, const Storage & e, Sparse::Row & out, Storage::real multiply, void * user_data)
 	{
+    Sparse::RowMerger & m = GetMerger();
 		INMOST_DATA_REAL_TYPE ret;
 		var.current_stencil.resize(1);
 		var.current_stencil[0] = stencil_pair(e->GetHandle(),1.0);
 		var.resize_for_stencil();
 		ret = EvaluateSub(var,0,ENUMUNDEF,user_data);
-    merger.PushRow(1.0,out);
-		DerivativeFill(var, 0, ENUMUNDEF, merger, multiply, user_data);
-    merger.RetriveRow(out);
-    merger.Clear();
+    m.PushRow(1.0,out);
+		DerivativeFill(var, 0, ENUMUNDEF, m, multiply, user_data);
+    m.RetriveRow(out);
+    m.Clear();
 		return ret*multiply;
 	}
 #else

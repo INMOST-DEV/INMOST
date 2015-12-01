@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "inmost.h"
-#include "matrix.hpp"
 using namespace INMOST;
 
 #ifndef M_PI
@@ -184,8 +183,8 @@ int main(int argc,char ** argv)
         rMatrix nKL(3,1); //normal to face
         rMatrix lKs(3,1); //reminder of the co-normal vector Kn in cell K when projection to normal is substracted, i.e. (Kn - n n.Kn)
         rMatrix lLs(3,1); //reminder of the co-normal vector Kn in cell L when projection to normal is substracted, i.e. (Kn - n n.Kn)
-        rMatrix KK = FromTensor(cK->RealArray(tag_K)).Transpose(); //diffusion tensor in cell K
-        rMatrix KL = FromTensor(cL->RealArray(tag_K)).Transpose(); //diffusion tensor in cell L
+        rMatrix KK = rMatrix::FromTensor(cK->RealArray(tag_K).data(),cK->RealArray(tag_K).size()).Transpose(); //diffusion tensor in cell K
+        rMatrix KL = rMatrix::FromTensor(cL->RealArray(tag_K).data(),cL->RealArray(tag_K).size()).Transpose(); //diffusion tensor in cell L
 
         cK->Centroid(xK.data()); //retrive center of cell K
         cL->Centroid(xL.data()); //retrive center of cell L
@@ -237,7 +236,7 @@ int main(int argc,char ** argv)
         real aF, vP = cell->Volume(); //area of the face
         cell->Centroid(xP); //obtain cell center
         ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-        enumerator NF = faces.size(), k; //number of faces;
+        enumerator NF = (enumerator)faces.size(), k; //number of faces;
 
         rMatrix IP(NF,NF), N(NF,3), R(NF,3); //matrices for inner product
 
@@ -261,8 +260,8 @@ int main(int argc,char ** argv)
         } //end of loop over faces
 
         //inner product definition from Corollary 4.2,  "Mimetic scalar products of differential forms" by Brezzi et al
-        IP = R*(R.Transpose()*N).Invert()*R.Transpose(); // Consistency part
-        IP += (rMatrix::Unit(NF) - N*(N.Transpose()*N).Invert()*N.Transpose())*(2.0/static_cast<real>(NF)*IP.Trace()); //Stability part
+        IP = R*(R.Transpose()*N).Invert().first*R.Transpose(); // Consistency part
+        IP += (rMatrix::Unit(NF) - N*(N.Transpose()*N).Invert().first*N.Transpose())*(2.0/static_cast<real>(NF)*IP.Trace()); //Stability part
         
         //assert(IP.isSymmetric()); //test positive definitiness as well!
         /*
@@ -288,9 +287,9 @@ int main(int argc,char ** argv)
         real nF[3]; //normal to the face
         cell->Centroid(xP);
         ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-        enumerator NF = faces.size(), k; //number of faces;
+        enumerator NF = (enumerator)faces.size(), k; //number of faces;
         dynarray<real,64> NG(NF,0), G(NF,0); // count how many times gradient was calculated for face
-        rMatrix K = FromTensor(cell->RealArrayDF(tag_K)); //get permeability for the cell
+        rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
         rMatrix GRAD(NF,NF), NK(NF,3), R(NF,3); //big gradient matrix, co-normals, directions
         rMatrix GRADF(NF,NF), NKF(NF,3), RF(NF,3); //corresponding matrices with masked negative values when multiplied by individual co-normals
         rMatrix GRADFstab(NF,NF);
@@ -305,18 +304,18 @@ int main(int argc,char ** argv)
           R(k,1) = (yF[1]-xP[1]);
           R(k,2) = (yF[2]-xP[2]);
           // assemble matrix of co-normals 
-          rMatrix nK = FromVector(nF).Transpose()*K;
+          rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
           NK(k,0) = nK(0,0);
           NK(k,1) = nK(0,1);
           NK(k,2) = nK(0,2);
           k++;
         } //end of loop over faces
 
-        GRAD = NK*(NK.Transpose()*R).Invert()*NK.Transpose(); //stability part
+        GRAD = NK*(NK.Transpose()*R).Invert().first*NK.Transpose(); //stability part
         //std::cout << "consistency" << std::endl;
         //GRADF.Print();
 
-        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert()*R.Transpose())*(2.0/NF*GRADF.Trace());
+        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/NF*GRADF.Trace());
         
         /*
         std::cout << "stability" << std::endl;
@@ -400,7 +399,7 @@ int main(int argc,char ** argv)
         for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
         {
           ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-          enumerator NF = faces.size(), k = 0;
+          enumerator NF = (enumerator)faces.size(), k = 0;
           Cell cK = cell->self();
           real gK = cK->Real(tag_F0), gL; //force on current cell and on adjacent cell
           rMatrix M(cK->RealArrayDF(tag_M).data(),NF,NF); //inner product matrix
@@ -475,7 +474,7 @@ int main(int argc,char ** argv)
         for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell) //loop over cells
         {
           ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-          enumerator NF = faces.size(), k = 0;
+          enumerator NF = (enumerator)faces.size(), k = 0;
           Cell cK = cell->self();
           variable pK = P(cK), pL; //pressure for back and front cells
           rMatrix GRAD(cK->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
@@ -509,7 +508,7 @@ int main(int argc,char ** argv)
         for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell) //loop over cells
         {
           ElementArray<Face> facesK = cell->getFaces(), facesL; //obtain faces of the cell
-          enumerator NF = facesK.size(), k, l;
+          enumerator NF = (enumerator)facesK.size(), k, l;
           Cell cK = cell->self();
           variable pK = P(cK), pL; //pressure for back and front cells
           rMatrix GRAD(cK->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient

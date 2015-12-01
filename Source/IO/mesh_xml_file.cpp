@@ -261,7 +261,7 @@ class XMLReader
   };
   Interpreter intrp;
   std::string src;
-  std::istream & inp;
+  std::vector<std::istream *> inp;
   int linebreak, linechar;
   int hadlinebreak, hadlinechar;
   int verbose;
@@ -295,13 +295,14 @@ class XMLReader
     EndOfFile, // end of file reached
     Failure //unexpected error
   } _state;
+  std::istream & get_stream() {return *inp.back();}
   //should not share the reference to the stream with another reader
-  XMLReader(const XMLReader & other) :src(other.src), inp(other.inp) {}
+  XMLReader(const XMLReader & other) {}
   XMLReader & operator =(XMLReader & other) {return *this;}
   char GetChar()
   {
     char c = '\0';
-    inp.get(c);
+    get_stream().get(c);
     hadlinebreak = linebreak;
     hadlinechar = linechar;
     if( c == '\n' ) 
@@ -318,8 +319,8 @@ class XMLReader
   {
     linebreak = hadlinebreak;
     linechar = hadlinechar;
-    inp.unget();
-    if( inp.fail() ) 
+    get_stream().unget();
+    if( get_stream().fail() ) 
     {
       Report("Stream failed while ungetting the char");
       _state = Failure;
@@ -417,7 +418,14 @@ public:
     }
     std::cout << std::endl;
   }
-  XMLReader(std::string sourcename, std::istream & input) :intrp(),src(sourcename),inp(input),linebreak(0),linechar(0),_state(Intro){verbose = 0;}
+  XMLReader(std::string sourcename, std::istream & input) :intrp(),src(sourcename),linebreak(0),linechar(0),_state(Intro){inp.push_back(&input); verbose = 0;}
+  void PushStream(std::istream & stream) {inp.push_back(&stream);}
+  void PopStream() 
+  {
+    inp.pop_back();
+    if( _state == EndOfFile && !inp.empty() )
+      _state = Intro;
+  }
   //read in <TagName returns TagName
   std::string ReadOpenTag()
   {
@@ -499,7 +507,7 @@ public:
     return ret;
   }
   //read > or /> skipping for attributes
-  bool ReadCloseTag()
+  int ReadCloseTag()
   {
     char tmp[2];
     tmp[0] = GetChar();
@@ -507,7 +515,7 @@ public:
     {
       _state = Intro;
       if( verbose ) Report("info: closed tag");
-      return true;
+      return 1; //tag was finished with >
     }
     else if( tmp[0] == '/' ) //close single stage tag
     {
@@ -516,13 +524,13 @@ public:
       {
         _state = Intro;
         if( verbose ) Report("info: closed tag");
-        return true;
+        return 2; //tag was halted with />
       }
       Report("Encountered '%c%c' while expecting '/>' for tag closing",tmp[0],tmp[1]);
     }
     Report("Encountered '%c' while expecting '>' for tag closing",tmp[0]);
     _state = Failure;
-    return false;
+    return 0;
   }
   bool isTagFinish() {return _state == ReadCloseTagSlash;}
   //read </TagName> or fail
@@ -839,8 +847,7 @@ public:
       {
         if( ret[ret.size()-2] == ']' && ret[ret.size()-1] == ']' )
         {
-          ret.pop_back();
-          ret.pop_back();
+          ret.resize(ret.size()-2);
           RetChar(); //return '>'
           _state = EndContents;
           break;
@@ -896,13 +903,13 @@ public:
       case ReadContentsMultiplier:
         if( isspace(c) )
         {
-          if( ret.back() != '*' ) //maybe user have put a space after the multiplier
+          if( ret[ret.size()-1] != '*' ) //maybe user have put a space after the multiplier
           {
             done = true;
             _state = WaitContents;
           }
         }
-        else if( c == '(' && ret.back() == '*' ) //expression for the skope
+        else if( c == '(' && ret[ret.size()-1] == '*' ) //expression for the skope
         {
           ret.push_back(c);
           _state = ReadContentsMultiplierSkopes;
@@ -921,9 +928,9 @@ public:
       case ReadContentsQuotes:
         if( c == '"' )
         {
-          if( ret.back() == '\\' ) //this was a guarded quote
+          if( ret[ret.size()-1] == '\\' ) //this was a guarded quote
           {
-            ret.pop_back(); //remove guard
+            ret.resize(ret.size()-1); //remove guard
             ret.push_back(c); //put skope
           }
           else //may have a multiplier after the closing quote
@@ -1249,8 +1256,8 @@ namespace INMOST
     std::vector<Tag> tags;
     std::vector<HandleType> new_nodes, new_edges, new_faces, new_cells, new_sets;
     std::vector<ElementSet::ComparatorType> set_comparators;
-    std::string tag, attr, val, save;
-    int nmeshes = 1;
+    std::string tag, attr, val, save, incl;
+    int nmeshes = 1, fintag;
     tag = reader.ReadOpenTag(); //ParallelMesh
     if( tag != "ParallelMesh" )
     {
@@ -1374,6 +1381,7 @@ namespace INMOST
       }
 
       { //Nodes
+        incl = "";
         int nnodes = 0, ndims = 3;
         tag = reader.ReadOpenTag();
         if( tag != "Nodes" )
@@ -1391,45 +1399,59 @@ namespace INMOST
             ndims = atoi(val.c_str());
             if( ndims != 3 || GetDimensions() != ndims ) SetDimensions(ndims);
           }
+          else if( attr == "IncludeContents" )
+            incl = attr;
           else reader.Report("Unused attribute for Tags %s='%s'",attr.c_str(),val.c_str());
           attr = reader.AttributeName();
         }
-        reader.ReadCloseTag();
+        fintag = reader.ReadCloseTag();
 
         new_nodes.reserve(nnodes);
 
-        if( reader.ReadOpenContents() )
         {
-          std::vector<double> Vector;
-          int Repeat;
-          dynarray<Storage::real,3> xyz;
-          val = reader.GetContentsWord();
-          while(!reader.isContentsEnded() )
+          std::fstream incl_stream;
+          if( !incl.empty() )
           {
-            bool vector = false;
-            reader.ParseReal(val,Vector,Repeat,nnodes);
-            for(int l = 0; l < Repeat; ++l)
+            incl_stream.open(incl.c_str(),std::ios::in);
+            reader.PushStream(incl_stream);
+          }
+
+          if( reader.ReadOpenContents() )
+          {
+            std::vector<double> Vector;
+            int Repeat;
+            dynarray<Storage::real,3> xyz;
+            val = reader.GetContentsWord();
+            while(!reader.isContentsEnded() )
             {
-              for(int q = 0; q < (int)Vector.size(); ++q)
+              bool vector = false;
+              reader.ParseReal(val,Vector,Repeat,nnodes);
+              for(int l = 0; l < Repeat; ++l)
               {
-                xyz.push_back(Vector[q]);
-                if( xyz.size() == ndims )
+                for(int q = 0; q < (int)Vector.size(); ++q)
                 {
-                  new_nodes.push_back(CreateNode(xyz.data())->GetHandle());
-                  xyz.clear();
+                  xyz.push_back(Vector[q]);
+                  if( xyz.size() == ndims )
+                  {
+                    new_nodes.push_back(CreateNode(xyz.data())->GetHandle());
+                    xyz.clear();
+                  }
                 }
               }
+              val = reader.GetContentsWord();
             }
-            val = reader.GetContentsWord();
+            reader.ReadCloseContents();
           }
-          reader.ReadCloseContents();
+          else 
+          {
+            reader.Report("Cannot find contents of XML tag");
+            throw BadFile;
+          }
+
+          if( !incl.empty() ) reader.PopStream();
+
+          if( fintag != 2 ) reader.ReadFinishTag("Nodes");
         }
-        else 
-        {
-          reader.Report("Cannot find contents of XML tag");
-          throw BadFile;
-        }
-        reader.ReadFinishTag("Nodes");
 
         if( new_nodes.size() != nnodes )
         {
@@ -2048,6 +2070,8 @@ namespace INMOST
 
       reader.ReadFinishTag("Mesh");
 
+      RepairGeometricTags();
+
       if( repair_orientation )
       {
         int numfixed = 0;
@@ -2088,8 +2112,8 @@ namespace INMOST
         if( tags[k].isDefined(etype) ) definition += names[ElementNum(etype)] + ",";
         if( tags[k].isSparse(etype) ) sparse += names[ElementNum(etype)] + ",";
       }
-      if( !definition.empty() ) definition.pop_back(); //remove trailing comma
-      if( !sparse.empty() ) sparse.pop_back(); //remove trailing comma
+      if( !definition.empty() ) definition.resize(definition.size()-1); //remove trailing comma
+      if( !sparse.empty() ) sparse.resize(sparse.size()-1); //remove trailing comma
       if( sparse == "" ) sparse = "None";
       fout << "\t\t\t<Tag Name  =\"" << tags[k].GetTagName() << "\"\n";
       if( tags[k].GetSize() !=ENUMUNDEF )

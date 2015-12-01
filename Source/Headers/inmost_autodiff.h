@@ -602,32 +602,42 @@ namespace INMOST
 		
 		friend class Automatizator;
 	};
-	
+}
 
-	__INLINE expr operator +(INMOST_DATA_REAL_TYPE left, const expr & right) { return expr(left) + right; }
-	__INLINE expr operator -(INMOST_DATA_REAL_TYPE left, const expr & right) { return expr(left) - right; }
-	__INLINE expr operator *(INMOST_DATA_REAL_TYPE left, const expr & right) { return expr(left) * right; }
-	__INLINE expr operator /(INMOST_DATA_REAL_TYPE left, const expr & right) { return expr(left) / right; }
-	__INLINE expr ad_pow(const expr & v, const expr & n) { return expr(AD_POW, v, n); }
-	//__INLINE expr ad_pow(const expr & v, INMOST_DATA_REAL_TYPE n) { return expr(AD_POW, v, expr(n)); }
-	//__INLINE expr ad_pow(const expr & v, INMOST_DATA_ENUM_TYPE n) { return expr(AD_POW, v, expr(static_cast<INMOST_DATA_REAL_TYPE>(n))); }
-	__INLINE expr ad_abs(const expr & v) { return expr(AD_ABS, v); }
-	__INLINE expr ad_exp(const expr & v) { return expr(AD_EXP, v); }
-	__INLINE expr ad_log(const expr & v) { return expr(AD_LOG, v); }
-	__INLINE expr ad_sin(const expr & v) { return expr(AD_SIN, v); }
-	__INLINE expr ad_cos(const expr & v) { return expr(AD_COS, v); }
-	__INLINE expr ad_sqrt(const expr & v) {return expr(AD_SQRT, v);}
-	__INLINE expr ad_val(const expr & v, const expr & multiplyer = expr(0.0)) {return expr(v, multiplyer);}
-	__INLINE expr measure() { return expr(AD_MES,ENUMUNDEF); }
-	__INLINE expr condition(const expr & cond, const expr & if_gt_zero, const expr & if_le_zero) { return expr(cond, if_gt_zero, if_le_zero); }
-	__INLINE expr condition_etype(ElementType etypes, const expr & if_true, const expr & if_false) { return expr(expr(AD_COND_TYPE, etypes), if_true, if_false); }
-	__INLINE expr condition_marker(MarkerType marker, const expr & if_true, const expr & if_false) { return expr(expr(AD_COND_MARK, marker), if_true, if_false); }
-	__INLINE expr stencil(INMOST_DATA_ENUM_TYPE stncl, const expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return expr(stncl, &v); }
-	__INLINE expr tabval(INMOST_DATA_ENUM_TYPE tabl, const expr & v) { assert(tabl >= AD_TABLE && tabl < AD_FUNC); return expr(tabl, v); }
-	__INLINE expr tagval(INMOST_DATA_ENUM_TYPE reg_tag, INMOST_DATA_ENUM_TYPE comp = 0) { assert(reg_tag >= AD_TAG && reg_tag < AD_STNCL); return expr(reg_tag, comp); }
-	__INLINE expr funcval(INMOST_DATA_ENUM_TYPE reg_func) { assert(reg_func >= AD_FUNC); return expr(reg_func, ENUMUNDEF); }
+__INLINE INMOST::expr operator +(INMOST_DATA_REAL_TYPE left, const INMOST::expr & right) { return INMOST::expr(left) + right; }
+__INLINE INMOST::expr operator -(INMOST_DATA_REAL_TYPE left, const INMOST::expr & right) { return INMOST::expr(left) - right; }
+__INLINE INMOST::expr operator *(INMOST_DATA_REAL_TYPE left, const INMOST::expr & right) { return INMOST::expr(left) * right; }
+__INLINE INMOST::expr operator /(INMOST_DATA_REAL_TYPE left, const INMOST::expr & right) { return INMOST::expr(left) / right; }
+__INLINE INMOST::expr ad_pow(const INMOST::expr & v, const INMOST::expr & n) { return INMOST::expr(AD_POW, v, n); }
+//__INLINE INMOST::expr ad_pow(const INMOST::expr & v, INMOST_DATA_REAL_TYPE n) { return INMOST::expr(AD_POW, v, INMOST::expr(n)); }
+//__INLINE INMOST::expr ad_pow(const INMOST::expr & v, INMOST_DATA_ENUM_TYPE n) { return INMOST::expr(AD_POW, v, INMOST::expr(static_cast<INMOST_DATA_REAL_TYPE>(n))); }
+__INLINE INMOST::expr ad_abs(const INMOST::expr & v) { return INMOST::expr(AD_ABS, v); }
+__INLINE INMOST::expr ad_exp(const INMOST::expr & v) { return INMOST::expr(AD_EXP, v); }
+__INLINE INMOST::expr ad_log(const INMOST::expr & v) { return INMOST::expr(AD_LOG, v); }
+__INLINE INMOST::expr ad_sin(const INMOST::expr & v) { return INMOST::expr(AD_SIN, v); }
+__INLINE INMOST::expr ad_cos(const INMOST::expr & v) { return INMOST::expr(AD_COS, v); }
+__INLINE INMOST::expr ad_sqrt(const INMOST::expr & v) {return INMOST::expr(AD_SQRT, v);}
+__INLINE INMOST::expr ad_val(const INMOST::expr & v, const INMOST::expr & multiplyer = INMOST::expr(0.0)) {return INMOST::expr(v, multiplyer);}
+__INLINE INMOST::expr measure() { return INMOST::expr(AD_MES,ENUMUNDEF); }
+__INLINE INMOST::expr condition(const INMOST::expr & cond, const INMOST::expr & if_gt_zero, const INMOST::expr & if_le_zero) { return INMOST::expr(cond, if_gt_zero, if_le_zero); }
+__INLINE INMOST::expr condition_etype(INMOST::ElementType etypes, const INMOST::expr & if_true, const INMOST::expr & if_false) { return INMOST::expr(INMOST::expr(AD_COND_TYPE, etypes), if_true, if_false); }
+__INLINE INMOST::expr condition_marker(INMOST::MarkerType marker, const INMOST::expr & if_true, const INMOST::expr & if_false) { return INMOST::expr(INMOST::expr(AD_COND_MARK, marker), if_true, if_false); }
+__INLINE INMOST::expr stencil(INMOST_DATA_ENUM_TYPE stncl, const INMOST::expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return INMOST::expr(stncl, &v); }
+__INLINE INMOST::expr tabval(INMOST_DATA_ENUM_TYPE tabl, const INMOST::expr & v) { assert(tabl >= AD_TABLE && tabl < AD_FUNC); return INMOST::expr(tabl, v); }
+__INLINE INMOST::expr tagval(INMOST_DATA_ENUM_TYPE reg_tag, INMOST_DATA_ENUM_TYPE comp = 0) { assert(reg_tag >= AD_TAG && reg_tag < AD_STNCL); return INMOST::expr(reg_tag, comp); }
+__INLINE INMOST::expr funcval(INMOST_DATA_ENUM_TYPE reg_func) { assert(reg_func >= AD_FUNC); return INMOST::expr(reg_func, ENUMUNDEF); }
+namespace INMOST
+{
 #else
+}
 
+__INLINE INMOST::expr operator +(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right);
+__INLINE INMOST::expr operator -(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right);
+__INLINE INMOST::expr operator *(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right);
+__INLINE INMOST::expr operator /(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right);
+  
+namespace INMOST
+{
 	class expr
 	{
 		INMOST_DATA_ENUM_TYPE op;
@@ -683,36 +693,39 @@ namespace INMOST
 		expr operator -(const INMOST_DATA_REAL_TYPE & other) const { return expr(AD_MINUS, new expr(*this), new expr(other)); }
 		expr operator *(const INMOST_DATA_REAL_TYPE & other) const { expr var(*this); var.coef *= other; return var; }
 		expr operator /(const INMOST_DATA_REAL_TYPE & other) const { expr var(*this); var.coef /= other; return var; }
-		__INLINE friend expr operator +(const INMOST_DATA_REAL_TYPE & left, const expr & right);
-		__INLINE friend expr operator -(const INMOST_DATA_REAL_TYPE & left, const expr & right);
-		__INLINE friend expr operator *(const INMOST_DATA_REAL_TYPE & left, const expr & right);
-		__INLINE friend expr operator /(const INMOST_DATA_REAL_TYPE & left, const expr & right);
+		__INLINE friend expr (::operator +)(const INMOST_DATA_REAL_TYPE & left, const expr & right);
+		__INLINE friend expr (::operator -)(const INMOST_DATA_REAL_TYPE & left, const expr & right);
+		__INLINE friend expr (::operator *)(const INMOST_DATA_REAL_TYPE & left, const expr & right);
+		__INLINE friend expr (::operator /)(const INMOST_DATA_REAL_TYPE & left, const expr & right);
 		bool operator ==(const expr & other) {return this == &other || (op == other.op && left == other.left && right == other.right);}
 		bool is_endpoint() { return op >= AD_TAG && op < AD_STNCL; }
 		friend class Automatizator;
 	};
 	
+}
 
-	__INLINE expr operator +(const INMOST_DATA_REAL_TYPE & left, const expr & right) { return expr(AD_PLUS, new expr(left), new expr(right)); }
-	__INLINE expr operator -(const INMOST_DATA_REAL_TYPE & left, const expr & right) { return expr(AD_MINUS, new expr(left), new expr(right)); }
-	__INLINE expr operator *(const INMOST_DATA_REAL_TYPE & left, const expr & right) { expr var(right); var.coef *= left; return var; }
-	__INLINE expr operator /(const INMOST_DATA_REAL_TYPE & left, const expr & right) { expr var; var.op = AD_INV; var.coef = left; var.left = new expr(right); var.right = NULL; return var; }
-	__INLINE expr ad_pow(const expr & v, const expr n) { return expr(AD_POW, new expr(v), new expr(n)); }
-	__INLINE expr ad_abs(const expr & v) { return expr(AD_ABS, new expr(v), NULL); }
-	__INLINE expr ad_exp(const expr & v) { return expr(AD_EXP, new expr(v), NULL); }
-	__INLINE expr ad_log(const expr & v) { return expr(AD_LOG, new expr(v), NULL); }
-	__INLINE expr ad_sin(const expr & v) { return expr(AD_SIN, new expr(v), NULL); }
-	__INLINE expr ad_cos(const expr & v) { return expr(AD_COS, new expr(v), NULL); }
-	__INLINE expr ad_sqrt(const expr & v) {return expr(AD_SQRT, new expr(v), NULL);}
-	__INLINE expr ad_val(const expr & v, const expr & multiplyer = expr(0.0)) {return expr(AD_VAL,new expr(v), new expr(multiplyer));}
-	__INLINE expr measure() { return expr(AD_MES, NULL, NULL); }
-	__INLINE expr condition_etype(ElementType etype, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(AD_COND_TYPE,etype), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
-	__INLINE expr condition_marker(MarkerType marker, const expr & if_true, const expr & if_false) { return expr(AD_COND, new expr(AD_COND_MARK,marker), new expr(AD_ALTR, new expr(if_true), new expr(if_false))); }
-	__INLINE expr condition(const expr & cond, const expr & if_gt_zero, const expr & if_le_zero) { return expr(AD_COND, new expr(cond), new expr(AD_ALTR, new expr(if_gt_zero), new expr(if_le_zero))); }
-	__INLINE expr stencil(INMOST_DATA_ENUM_TYPE stncl, const expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return expr(stncl, new expr(v), NULL); }
-	__INLINE expr tabval(INMOST_DATA_ENUM_TYPE tabl, const expr & v) { assert(tabl >= AD_TABLE && tabl < AD_FUNC); return expr(tabl, new expr(v), NULL); }
-	__INLINE expr tagval(INMOST_DATA_ENUM_TYPE reg_tag, INMOST_DATA_ENUM_TYPE comp = 0) { assert(reg_tag >= AD_TAG && reg_tag < AD_STNCL); return expr(reg_tag, comp); }
-	__INLINE expr funcval(INMOST_DATA_ENUM_TYPE reg_func) { assert(reg_func >= AD_FUNC); return expr(reg_func, NULL, NULL); }
+__INLINE INMOST::expr operator +(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right) { return INMOST::expr(AD_PLUS, new INMOST::expr(left), new INMOST::expr(right)); }
+__INLINE INMOST::expr operator -(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right) { return INMOST::expr(AD_MINUS, new INMOST::expr(left), new INMOST::expr(right)); }
+__INLINE INMOST::expr operator *(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right) { INMOST::expr var(right); var.coef *= left; return var; }
+__INLINE INMOST::expr operator /(const INMOST_DATA_REAL_TYPE & left, const INMOST::expr & right) { INMOST::expr var; var.op = AD_INV; var.coef = left; var.left = new INMOST::expr(right); var.right = NULL; return var; }
+__INLINE INMOST::expr ad_pow(const INMOST::expr & v, const INMOST::expr n) { return INMOST::expr(AD_POW, new INMOST::expr(v), new INMOST::expr(n)); }
+__INLINE INMOST::expr ad_abs(const INMOST::expr & v) { return INMOST::expr(AD_ABS, new INMOST::expr(v), NULL); }
+__INLINE INMOST::expr ad_exp(const INMOST::expr & v) { return INMOST::expr(AD_EXP, new INMOST::expr(v), NULL); }
+__INLINE INMOST::expr ad_log(const INMOST::expr & v) { return INMOST::expr(AD_LOG, new INMOST::expr(v), NULL); }
+__INLINE INMOST::expr ad_sin(const INMOST::expr & v) { return INMOST::expr(AD_SIN, new INMOST::expr(v), NULL); }
+__INLINE INMOST::expr ad_cos(const INMOST::expr & v) { return INMOST::expr(AD_COS, new INMOST::expr(v), NULL); }
+__INLINE INMOST::expr ad_sqrt(const INMOST::expr & v) {return INMOST::expr(AD_SQRT, new INMOST::expr(v), NULL);}
+__INLINE INMOST::expr ad_val(const INMOST::expr & v, const INMOST::expr & multiplyer = INMOST::expr(0.0)) {return INMOST::expr(AD_VAL,new INMOST::expr(v), new INMOST::expr(multiplyer));}
+__INLINE INMOST::expr measure() { return INMOST::expr(AD_MES, NULL, NULL); }
+__INLINE INMOST::expr condition_etype(INMOST::ElementType etype, const INMOST::expr & if_true, const INMOST::expr & if_false) { return INMOST::expr(AD_COND, new INMOST::expr(AD_COND_TYPE,etype), new INMOST::expr(AD_ALTR, new INMOST::expr(if_true), new INMOST::expr(if_false))); }
+__INLINE INMOST::expr condition_marker(INMOST::MarkerType marker, const INMOST::expr & if_true, const INMOST::expr & if_false) { return INMOST::expr(AD_COND, new INMOST::expr(AD_COND_MARK,marker), new INMOST::expr(AD_ALTR, new INMOST::expr(if_true), new INMOST::expr(if_false))); }
+__INLINE INMOST::expr condition(const INMOST::expr & cond, const INMOST::expr & if_gt_zero, const INMOST::expr & if_le_zero) { return INMOST::expr(AD_COND, new INMOST::expr(cond), new INMOST::expr(AD_ALTR, new INMOST::expr(if_gt_zero), new INMOST::expr(if_le_zero))); }
+__INLINE INMOST::expr stencil(INMOST_DATA_ENUM_TYPE stncl, const INMOST::expr & v) { assert(stncl >= AD_STNCL && stncl < AD_TABLE); return INMOST::expr(stncl, new INMOST::expr(v), NULL); }
+__INLINE INMOST::expr tabval(INMOST_DATA_ENUM_TYPE tabl, const INMOST::expr & v) { assert(tabl >= AD_TABLE && tabl < AD_FUNC); return INMOST::expr(tabl, new INMOST::expr(v), NULL); }
+__INLINE INMOST::expr tagval(INMOST_DATA_ENUM_TYPE reg_tag, INMOST_DATA_ENUM_TYPE comp = 0) { assert(reg_tag >= AD_TAG && reg_tag < AD_STNCL); return INMOST::expr(reg_tag, comp); }
+__INLINE INMOST::expr funcval(INMOST_DATA_ENUM_TYPE reg_func) { assert(reg_func >= AD_FUNC); return INMOST::expr(reg_func, NULL, NULL); }
+namespace INMOST
+{
 #endif
 }
 

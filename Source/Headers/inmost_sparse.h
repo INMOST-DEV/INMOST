@@ -14,6 +14,11 @@ namespace INMOST
 {
     namespace Sparse
     {
+      INMOST_MPI_Type GetRowEntryType();
+      void CreateRowEntryType();
+      void DestroyRowEntryType();
+      bool HaveRowEntryType();
+
       /// Distributed vector class.
 		  /// This class can be used to store both local and distributed dense data of real type.
 		  /// For example, to form the right-hand side or initial guess to the solution.

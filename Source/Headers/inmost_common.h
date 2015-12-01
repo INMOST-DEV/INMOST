@@ -99,7 +99,9 @@
 #if defined(USE_OMP)
 #include <omp.h>
 #endif
-
+#if defined(USE_MPI)
+#include <mpi.h>
+#endif
 
 #if !defined(USE_MPI)
 #define INMOST_MPI_Request     int
@@ -111,6 +113,7 @@
 #define INMOST_MPI_DOUBLE      0
 #define INMOST_MPI_UNSIGNED    0
 #define INMOST_MPI_Win         int
+#define INMOST_MPI_DATATYPE_NULL 0
 #else
 #define INMOST_MPI_Request     MPI_Request
 #define INMOST_MPI_Type        MPI_Datatype
@@ -121,7 +124,9 @@
 #define INMOST_MPI_DOUBLE      MPI_DOUBLE
 #define INMOST_MPI_UNSIGNED    MPI_UNSIGNED
 #define INMOST_MPI_Win         MPI_Win
+#define INMOST_MPI_DATATYPE_NULL MPI_DATATYPE_NULL
 #endif
+
 
 #define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warning
 

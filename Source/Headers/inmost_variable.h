@@ -184,17 +184,7 @@ namespace INMOST
 
   __INLINE bool check_nans(enhanced_multivar_expression const & e) {return e.check_nans();}
 
-  /*
-  template<>
-  class get_value<enhanced_multivar_expression>
-  {
-    INMOST_DATA_REAL_TYPE val;
-  public:
-    get_value(const enhanced_multivar_expression & v) :val(v.GetValue()) {}
-    operator INMOST_DATA_REAL_TYPE() {return val;}
-  };
-  */
-
+  
   template<typename T> class enhance
   {
   public:
@@ -519,7 +509,7 @@ namespace INMOST
     {
       dynarray<std::pair<INMOST_DATA_REAL_TYPE, typename A::Var>, 64> tmp;
       Automatizator::stencil_pairs stncl;
-			aut.GetStencil(stnclind, e, puser_data, stncl);
+			aut.GetStencil(stnclind, e, user_data, stncl);
       tmp.resize(stncl.size());
       for(INMOST_DATA_ENUM_TYPE k = 0; k < stncl.size(); ++k)
         tmp[k] = std::make_pair(stncl[k].first, Arg(stncl[k].second));
@@ -553,7 +543,7 @@ namespace INMOST
     }
     unary_pool_expression<Expr, typename A::Var > operator [](const Storage & e) const 
     {
-      binary_pool<Expr,typename A::Var> pool(Arg(e));
+      unary_pool<Expr,typename A::Var> pool(Arg(e));
       return unary_pool_expression<Expr, typename A::Var >(pool);
     }
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivative(1.0,r); }
@@ -657,42 +647,39 @@ namespace INMOST
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivative(1.0,r); }
     void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetDerivative(1.0,r); }
   };
-
-  template<class A, class B, class C> __INLINE ternary_custom_variable<condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C> condition(shell_dynamic_variable<typename A::Var, A> const & control, shell_dynamic_variable<typename B::Var, B> const & if_ge_zero, shell_dynamic_variable<typename C::Var, C> const & if_lt_zero) { return ternary_custom_variable<condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C>(control,if_ge_zero,if_lt_zero); }
-  template<class A>          __INLINE                                 unary_custom_variable<unary_minus_expression<typename A::Var>,A> operator-(shell_dynamic_variable<typename A::Var, A> const & Arg) { return unary_custom_variable<unary_minus_expression<typename A::Var>,A>(Arg); }
-	template<class A>          __INLINE                                         unary_custom_variable<abs_expression<typename A::Var>,A>      fabs(shell_dynamic_variable<typename A::Var, A> const & Arg) { return unary_custom_variable<abs_expression<typename A::Var>,A>(Arg); }
-	template<class A>          __INLINE                                         unary_custom_variable<exp_expression<typename A::Var>,A>       exp(shell_dynamic_variable<typename A::Var, A> const & Arg) { return unary_custom_variable<exp_expression<typename A::Var>,A>(Arg); }
-	template<class A>          __INLINE                                         unary_custom_variable<log_expression<typename A::Var>,A>       log(shell_dynamic_variable<typename A::Var, A> const & Arg) { return unary_custom_variable<log_expression<typename A::Var>,A>(Arg); }
-	template<class A>          __INLINE                                         unary_custom_variable<sin_expression<typename A::Var>,A>       sin(shell_dynamic_variable<typename A::Var, A> const & Arg) { return unary_custom_variable<sin_expression<typename A::Var>,A>(Arg ); }
-	template<class A>          __INLINE                                         unary_custom_variable<cos_expression<typename A::Var>,A>       cos(shell_dynamic_variable<typename A::Var, A> const & Arg) { return unary_custom_variable<cos_expression<typename A::Var>,A>(Arg); }
-  template<class A>          __INLINE                                        unary_custom_variable<sqrt_expression<typename A::Var>,A>      sqrt(shell_dynamic_variable<typename A::Var, A> const & Arg) { return unary_custom_variable<sqrt_expression<typename A::Var>,A>(Arg); }
-  template<class A>          __INLINE              unary_const_custom_variable<variation_multiplication_expression<typename A::Var>,A> variation(shell_dynamic_variable<typename A::Var, A> const & Arg, INMOST_DATA_REAL_TYPE Mult) {return unary_const_custom_variable<variation_multiplication_expression<typename A::Var>,A>(Arg,Mult);}
-  
-
-
-  template<class A, class B> __INLINE       binary_custom_variable<addition_expression<typename A::Var,typename B::Var>,A, B> operator+(shell_dynamic_variable<typename A::Var,A> const & Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return binary_custom_variable<addition_expression<typename A::Var,typename B::Var>,A, B> (Left, Right); }
-  template<class A, class B> __INLINE    binary_custom_variable<subtraction_expression<typename A::Var,typename B::Var>,A, B> operator-(shell_dynamic_variable<typename A::Var,A> const & Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return binary_custom_variable<subtraction_expression<typename A::Var,typename B::Var>, A, B> (Left, Right); }
-  template<class A, class B> __INLINE binary_custom_variable<multiplication_expression<typename A::Var,typename B::Var>,A, B> operator*(shell_dynamic_variable<typename A::Var,A> const & Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return binary_custom_variable<multiplication_expression<typename A::Var,typename B::Var>, A, B> (Left, Right); }
-  template<class A, class B> __INLINE       binary_custom_variable<division_expression<typename A::Var,typename B::Var>,A, B> operator/(shell_dynamic_variable<typename A::Var,A> const & Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return binary_custom_variable<division_expression<typename A::Var,typename B::Var>, A, B> (Left, Right); }
-  template<class A, class B> __INLINE            binary_custom_variable<pow_expression<typename A::Var,typename B::Var>,A, B>       pow(shell_dynamic_variable<typename A::Var,A> const & Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return binary_custom_variable<pow_expression<typename A::Var,typename B::Var>,A, B>(Left, Right); }
-
-  template<class B>          __INLINE                    unary_const_custom_variable<const_pow_expression<typename B::Var>,B>       pow(INMOST_DATA_REAL_TYPE Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return unary_const_custom_variable<const_pow_expression<typename B::Var>,B>(Left, Right); }
-  template<class A>          __INLINE                    unary_const_custom_variable<pow_const_expression<typename A::Var>,A>       pow(shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return unary_const_custom_variable<pow_const_expression<typename A::Var>,A>(Left, Right); }
-  template<class B>          __INLINE         unary_const_custom_variable<const_multiplication_expression<typename B::Var>,B> operator*(INMOST_DATA_REAL_TYPE Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return unary_const_custom_variable<const_multiplication_expression<typename B::Var>,B>(Right,Left); }
-	template<class A>          __INLINE         unary_const_custom_variable<const_multiplication_expression<typename A::Var>,A> operator*(shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return unary_const_custom_variable<const_multiplication_expression<typename A::Var>,A>(Left,Right); }
-	template<class B>          __INLINE                   unary_const_custom_variable<reciprocal_expression<typename B::Var>,B> operator/(INMOST_DATA_REAL_TYPE Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return unary_const_custom_variable<reciprocal_expression<typename B::Var>,B>(Right,Left); }
-	template<class A>          __INLINE               unary_const_custom_variable<const_division_expression<typename A::Var>,A> operator/(shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return unary_const_custom_variable<const_division_expression<typename A::Var>,A>(Left, Right); }
-	template<class B>          __INLINE               unary_const_custom_variable<const_addition_expression<typename B::Var>,B> operator+(INMOST_DATA_REAL_TYPE Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return unary_const_custom_variable<const_addition_expression<typename B::Var>,B>(Right,Left); }
-	template<class A>          __INLINE               unary_const_custom_variable<const_addition_expression<typename A::Var>,A> operator+(shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return unary_const_custom_variable<const_addition_expression<typename A::Var>,A>(Left,Right); }
-	template<class B>          __INLINE            unary_const_custom_variable<const_subtraction_expression<typename B::Var>,B> operator-(INMOST_DATA_REAL_TYPE Left, shell_dynamic_variable<typename B::Var,B> const & Right) { return unary_const_custom_variable<const_subtraction_expression<typename B::Var>,B>(Right, Left); }
-	template<class A>          __INLINE               unary_const_custom_variable<const_addition_expression<typename A::Var>,A> operator-(shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return unary_const_custom_variable<const_addition_expression<typename A::Var>,A>(Left, -Right); }
-
-  template<class A>          __INLINE  stencil_variable<A> stencil(Automatizator & aut, INMOST_DATA_ENUM_TYPE stncl, shell_dynamic_variable<typename A::Var,A> const & Arg, void * user_data = NULL) { return stencil_variable<A>(aut,stncl,Arg,user_data); }
-
   typedef abstract_dynamic_variable abstract_variable;
   typedef enhanced_multivar_expression enhanced_variable;
+}
+
+template<class A, class B, class C> __INLINE INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C> condition(INMOST::shell_dynamic_variable<typename A::Var, A> const & control, INMOST::shell_dynamic_variable<typename B::Var, B> const & if_ge_zero, INMOST::shell_dynamic_variable<typename C::Var, C> const & if_lt_zero) { return INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C>(control,if_ge_zero,if_lt_zero); }
+template<class A>          __INLINE                                 INMOST::unary_custom_variable<INMOST::unary_minus_expression<typename A::Var>,A> operator-(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::unary_minus_expression<typename A::Var>,A>(Arg); }
+template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::abs_expression<typename A::Var>,A>      fabs(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::abs_expression<typename A::Var>,A>(Arg); }
+template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::exp_expression<typename A::Var>,A>       exp(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::exp_expression<typename A::Var>,A>(Arg); }
+template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::log_expression<typename A::Var>,A>       log(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::log_expression<typename A::Var>,A>(Arg); }
+template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::sin_expression<typename A::Var>,A>       sin(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::sin_expression<typename A::Var>,A>(Arg ); }
+template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::cos_expression<typename A::Var>,A>       cos(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::cos_expression<typename A::Var>,A>(Arg); }
+template<class A>          __INLINE                                        INMOST::unary_custom_variable<INMOST::sqrt_expression<typename A::Var>,A>      sqrt(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::sqrt_expression<typename A::Var>,A>(Arg); }
+template<class A>          __INLINE              INMOST::unary_const_custom_variable<INMOST::variation_multiplication_expression<typename A::Var>,A> variation(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg, INMOST_DATA_REAL_TYPE Mult) {return INMOST::unary_const_custom_variable<INMOST::variation_multiplication_expression<typename A::Var>,A>(Arg,Mult);}
+template<class A, class B> __INLINE                INMOST::binary_custom_variable<INMOST::addition_expression<typename A::Var,typename B::Var>,A, B> operator+(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::binary_custom_variable<INMOST::addition_expression<typename A::Var,typename B::Var>,A, B> (Left, Right); }
+template<class A, class B> __INLINE             INMOST::binary_custom_variable<INMOST::subtraction_expression<typename A::Var,typename B::Var>,A, B> operator-(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::binary_custom_variable<INMOST::subtraction_expression<typename A::Var,typename B::Var>, A, B> (Left, Right); }
+template<class A, class B> __INLINE          INMOST::binary_custom_variable<INMOST::multiplication_expression<typename A::Var,typename B::Var>,A, B> operator*(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::binary_custom_variable<INMOST::multiplication_expression<typename A::Var,typename B::Var>, A, B> (Left, Right); }
+template<class A, class B> __INLINE                INMOST::binary_custom_variable<INMOST::division_expression<typename A::Var,typename B::Var>,A, B> operator/(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::binary_custom_variable<INMOST::division_expression<typename A::Var,typename B::Var>, A, B> (Left, Right); }
+template<class A, class B> __INLINE                     INMOST::binary_custom_variable<INMOST::pow_expression<typename A::Var,typename B::Var>,A, B>       pow(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::binary_custom_variable<INMOST::pow_expression<typename A::Var,typename B::Var>,A, B>(Left, Right); }
+template<class B>          __INLINE                             INMOST::unary_const_custom_variable<INMOST::const_pow_expression<typename B::Var>,B>       pow(INMOST_DATA_REAL_TYPE Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::unary_const_custom_variable<INMOST::const_pow_expression<typename B::Var>,B>(Left, Right); }
+template<class A>          __INLINE                             INMOST::unary_const_custom_variable<INMOST::pow_const_expression<typename A::Var>,A>       pow(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::pow_const_expression<typename A::Var>,A>(Left, Right); }
+template<class B>          __INLINE                  INMOST::unary_const_custom_variable<INMOST::const_multiplication_expression<typename B::Var>,B> operator*(INMOST_DATA_REAL_TYPE Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::unary_const_custom_variable<INMOST::const_multiplication_expression<typename B::Var>,B>(Right,Left); }
+template<class A>          __INLINE                  INMOST::unary_const_custom_variable<INMOST::const_multiplication_expression<typename A::Var>,A> operator*(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::const_multiplication_expression<typename A::Var>,A>(Left,Right); }
+template<class B>          __INLINE                            INMOST::unary_const_custom_variable<INMOST::reciprocal_expression<typename B::Var>,B> operator/(INMOST_DATA_REAL_TYPE Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::unary_const_custom_variable<INMOST::reciprocal_expression<typename B::Var>,B>(Right,Left); }
+template<class A>          __INLINE                        INMOST::unary_const_custom_variable<INMOST::const_division_expression<typename A::Var>,A> operator/(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::const_division_expression<typename A::Var>,A>(Left, Right); }
+template<class B>          __INLINE                        INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename B::Var>,B> operator+(INMOST_DATA_REAL_TYPE Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename B::Var>,B>(Right,Left); }
+template<class A>          __INLINE                        INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A> operator+(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A>(Left,Right); }
+template<class B>          __INLINE                     INMOST::unary_const_custom_variable<INMOST::const_subtraction_expression<typename B::Var>,B> operator-(INMOST_DATA_REAL_TYPE Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::unary_const_custom_variable<INMOST::const_subtraction_expression<typename B::Var>,B>(Right, Left); }
+template<class A>          __INLINE                        INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A> operator-(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A>(Left, -Right); }
+template<class A>          __INLINE                                                                                        INMOST::stencil_variable<A> stencil(INMOST::Automatizator & aut, INMOST_DATA_ENUM_TYPE stncl, INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg, void * user_data = NULL) { return INMOST::stencil_variable<A>(aut,stncl,Arg,user_data); }
+
   
-};
+  
+
 
 #endif
 #endif

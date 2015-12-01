@@ -698,18 +698,6 @@ perturbate:
               for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
                 r_tilde[k] /= r_tilde_norm;
               //Recompute rho1
-              /*
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-	  					rho1 = 0;
-#if defined(USE_OMP)
-#pragma omp for reduction(+:rho1)
-#endif
-						  for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
-							  rho1+= r[j][k]*r_tilde[k];
-						  info->Integrate(&rho1,1);
-              */
 #else
               reason = "r_tilde perturbation algorithm is disabled";
               halt = true;
@@ -1411,10 +1399,10 @@ perturbate:
 		bool Solve(Sparse::Vector & RHS, Sparse::Vector & SOL)
 		{
 			assert(isInitialized());
-			INMOST_DATA_REAL_TYPE tempa = 0.0, tempb=0.0;
+			INMOST_DATA_REAL_TYPE tempa = 0.0, tempb=0.0, r0_norm, length;
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
 			INMOST_DATA_INTEGER_TYPE ivbeg,ivend, ivlocbeg, ivlocend;
-			INMOST_DATA_REAL_TYPE rho = 1, alpha = 1, beta, omega = 1;
+			INMOST_DATA_REAL_TYPE rho = 1, rho1 = 0, alpha = 1, beta, omega = 1;
 			INMOST_DATA_REAL_TYPE resid0, resid, temp[2];
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
@@ -1470,6 +1458,54 @@ perturbate:
 				while(true)
 				{
 					{
+            if( false )
+            {
+perturbate:
+#if defined(PERTURBATE_RTILDE)
+              //std::cout << "Rescue solver by perturbing orthogonal direction!" << std::endl;
+              //Compute length of the vector
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+              {
+                length = static_cast<INMOST_DATA_REAL_TYPE>(ivlocend-ivlocbeg);
+                r0_norm = 0.0;
+              }
+              info->Integrate(&length,1);
+              //perform perturbation (note that rand() with openmp may give identical sequences of random values
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+              for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+              {
+                INMOST_DATA_REAL_TYPE unit = 2*static_cast<INMOST_DATA_REAL_TYPE>(rand())/static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX)-1.0;
+                r0[k] += unit/length;
+              }
+              //compute norm for orthogonal vector
+#if defined(USE_OMP)
+#pragma omp for reduction(+:r0_norm)
+#endif
+              for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+                r0_norm += r0[k]*r0[k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+              {
+                r0_norm = sqrt(r0_norm);
+              }
+              info->Integrate(&r0_norm,1);
+              //normalize orthogonal vector to unity
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+              for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+                r0[k] /= r0_norm;
+              //Recompute rho1
+#else
+              reason = "r_tilde perturbation algorithm is disabled";
+              break;
+#endif
+            }
 						/*
 						if( fabs(rho) < 1.0e-31 )
 						{
@@ -1490,20 +1526,26 @@ perturbate:
 #endif
 						{
 							beta = 1.0 /rho * alpha / omega;
-							rho = 0;
+							rho1 = 0;
 						}
 #if defined(USE_OMP)
 #pragma omp for reduction(+:rho)
 #endif
 						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
-							rho += r0[k]*r[k];
-						info->Integrate(&rho,1);
+							rho1 += r0[k]*r[k];
+						info->Integrate(&rho1,1);
+            if( fabs(rho1) < 1.0e-50 )
+            {
+              //std::cout << "Asking to perturbate r_tilde since rho1 is too small " << rho1 << std::endl;
+              goto perturbate;
+            }
 						//info->ScalarProd(r0,r,ivlocbeg,ivlocend,rho);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
 						{
-							beta *= rho;
+							beta *= rho1;
+              rho = rho1;
 						}
 
 						if( fabs(beta) > 1.0e+100 )

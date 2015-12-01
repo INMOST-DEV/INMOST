@@ -240,6 +240,7 @@ set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
                            Source/Headers/inmost_autodiff.h
                            Source/Headers/inmost_common.h
                            Source/Headers/inmost_data.h
+                           Source/Headers/inmost_dense.h
                            Source/Headers/inmost_expression.h
                            Source/Headers/inmost_mesh.h
                            Source/Headers/inmost_nonlinear.h
@@ -268,6 +269,7 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_autodiff.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_common.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_data.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_dense.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_expression.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_mesh.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_nonlinear.h"

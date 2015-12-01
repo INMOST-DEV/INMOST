@@ -1851,8 +1851,14 @@ namespace INMOST
 		/// For constant size array returns the same value that may be obtained through GetSize. 
 		/// @param h handle of element
 		/// @param tag tag that represents the data
-		/// @see Mesh::GetSize
+		/// @see Tag::GetSize
 		INMOST_DATA_ENUM_TYPE             GetDataSize        (HandleType h,const Tag & tag) const; //For DATA_BULK return number of bytes, otherwise return the length of array
+    /// Return the size of the structure required to represent the data on current element.
+    /// This is equal to GetDataSize times Tag::GetBytesSize for all the data types,
+    /// except for DATA_VARIABLE, that requires a larger structure to accomodate derivatives.
+    /// @param h handle of element
+    /// @param tag tag that represents the data
+    INMOST_DATA_ENUM_TYPE             GetDataCapacity    (HandleType h,const Tag & tag) const;
 		/// Sets the size of the array for data of variable size.
 		/// If you try to change size of data of constant size then if size is
 		/// different from current then in debug mode (NDEBUG not set) assertion will fail,
@@ -2845,6 +2851,7 @@ namespace INMOST
 		bool         remember[5][3];
 	private:
 		void                              RestoreGeometricTags();
+    void                              RepairGeometricTags();
 		bool                              HideGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
 		bool                              ShowGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
 	public:
@@ -3216,6 +3223,10 @@ namespace INMOST
   __INLINE INMOST_DATA_ENUM_TYPE Storage::GetDataSize(const Tag & tag) const
 	{
 		return GetMeshLink()->GetDataSize(GetHandle(),tag);
+	}
+  __INLINE INMOST_DATA_ENUM_TYPE Storage::GetDataCapacity(const Tag & tag) const
+	{
+		return GetMeshLink()->GetDataCapacity(GetHandle(),tag);
 	}
 	__INLINE void Storage::SetDataSize(const Tag & tag,INMOST_DATA_ENUM_TYPE new_size) const
 	{

@@ -46,8 +46,8 @@
 
 //#define USE_OMP
 
-#define KSOLVER BCGSL_solver
-//#define KSOLVER BCGS_solver
+//#define KSOLVER BCGSL_solver
+#define KSOLVER BCGS_solver
 //#define ACCELERATED_CONDEST
 //#define PRINT_CONDEST
 
@@ -63,11 +63,6 @@ namespace INMOST
 	static std::string k3biilu2_database_file = "";
 
 
-#if defined(USE_MPI)
-	INMOST_MPI_Type Solver::RowEntryType = MPI_DATATYPE_NULL;
-#else
-	INMOST_MPI_Type Solver::RowEntryType = 0;
-#endif
 
 #define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {std::cout << #x << " not successfull " << std::endl; MPI_Abort(comm,-1000);}}
 #define HASH_TABLE_SIZE 2048
@@ -502,7 +497,7 @@ namespace INMOST
 					INMOST_DATA_ENUM_TYPE local_size = 0;
 					for(INMOST_DATA_ENUM_TYPE r = 0; r < vector_exchange_recv[j+1]; r++)
 						local_size += recv_row_sizes[q+r];
-					GUARD_MPI(MPI_Irecv(&recv_row_data[f],local_size,Solver::GetRowEntryType(),vector_exchange_recv[j],4*size+vector_exchange_recv[j],comm,&requests[k]));
+					GUARD_MPI(MPI_Irecv(&recv_row_data[f],local_size,Sparse::GetRowEntryType(),vector_exchange_recv[j],4*size+vector_exchange_recv[j],comm,&requests[k]));
 					q += vector_exchange_recv[j+1];
 					j += vector_exchange_recv[j+1]+2;
 					f += local_size;
@@ -517,7 +512,7 @@ namespace INMOST
 					INMOST_DATA_ENUM_TYPE local_size = 0;
 					for(INMOST_DATA_ENUM_TYPE r = 0; r < vector_exchange_send[j+1]; r++)
 						local_size += send_row_sizes[q+r];
-					GUARD_MPI(MPI_Isend(&send_row_data[f],local_size,Solver::GetRowEntryType(),vector_exchange_send[j],4*size+rank,comm,&requests[k+vector_exchange_recv[0]]));
+					GUARD_MPI(MPI_Isend(&send_row_data[f],local_size,Sparse::GetRowEntryType(),vector_exchange_send[j],4*size+rank,comm,&requests[k+vector_exchange_recv[0]]));
 					q += vector_exchange_send[j+1];
 					j += vector_exchange_send[j+1]+2;
 					f += local_size;
@@ -913,45 +908,13 @@ namespace INMOST
 #if defined(HAVE_SOLVER_K3BIILU2)
 		SolverInitializeK3biilu2(argc,argv,k3biilu2_database_file.c_str());
 #endif
-#if defined(USE_MPI)
-		{
-			int flag = 0;
-			int ierr = 0;
-			MPI_Initialized(&flag);
-			if( !flag ) 
-			{
-				ierr = MPI_Init(argc,argv);
-				if( ierr != MPI_SUCCESS )
-				{
-					std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Init" << std::endl;
-				}
-			}
-			MPI_Datatype type[3] = { INMOST_MPI_DATA_ENUM_TYPE, INMOST_MPI_DATA_REAL_TYPE, MPI_UB};
-			int blocklen[3] = { 1, 1, 1 };
-			MPI_Aint disp[3];
-			disp[0] = offsetof(Sparse::Row::entry,first);
-			disp[1] = offsetof(Sparse::Row::entry,second);
-			disp[2] = sizeof(Sparse::Row::entry);
-			ierr = MPI_Type_create_struct(3, blocklen, disp, type, &RowEntryType);
-			if( ierr != MPI_SUCCESS )
-			{
-				std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_create_struct" << std::endl;
-			}
-			ierr = MPI_Type_commit(&RowEntryType);
-			if( ierr != MPI_SUCCESS )
-			{
-				std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_commit" << std::endl;
-			}
-			is_initialized = true;
-		}
-#endif
+		Sparse::CreateRowEntryType();
+    is_initialized = true;
 	}
 	
 	void Solver::Finalize()
 	{
-#if defined(USE_MPI)
-		MPI_Type_free(&RowEntryType);
-#endif
+    Sparse::DestroyRowEntryType();
 #if defined(USE_SOLVER_PETSC)
 		SolverFinalizePetsc();
 #endif
@@ -970,10 +933,10 @@ namespace INMOST
 			MPI_Finalized(&flag);
 			if( !flag ) 
 				MPI_Finalize();
-			is_initialized = false;
-			is_finalized = true;
 		}
 #endif
+    is_initialized = false;
+	  is_finalized = true;
 	}
 	void Solver::SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE val)
 	{

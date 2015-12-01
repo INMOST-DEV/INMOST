@@ -435,12 +435,21 @@ namespace INMOST
 		
 		/// Return the data length associated with Tag.
 		/// For abstract data return the number of bytes, otherwise return the length of associated array. 
+    /// @param tag tag that represents the data
 		/// @see Storage::SetDataSize
+    /// @see Mesh::GetDataSize
 		__INLINE INMOST_DATA_ENUM_TYPE      GetDataSize         (const Tag & tag) const;
+    /// Return the size of the structure required to represent the data on current element.
+    /// This is equal to GetDataSize times Tag::GetBytesSize for all the data types,
+    /// except for DATA_VARIABLE, that requires a larger structure to accomodate derivatives.
+    /// @param tag tag that represents the data
+    /// @see Mesh::GetDataCapacity
+    __INLINE INMOST_DATA_ENUM_TYPE      GetDataCapacity     (const Tag & tag) const;
 		/// Set the length of  data associated with Tag.
 		/// @param tag Identifying Tag.
 		/// @param new_size The number of bytes for abstract data, otherwise the length of the array.
 		/// @see Storage::GetDataSize
+    /// @see Mesh::SetDataSize
 		__INLINE void                       SetDataSize         (const Tag & tag,
                                                              INMOST_DATA_ENUM_TYPE new_size) const;
 		/// Extract part of the data associated with Tag.

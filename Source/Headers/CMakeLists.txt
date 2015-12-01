@@ -9,6 +9,7 @@ set(HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_options_cmake.h
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_common.h
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_data.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/inmost_dense.h
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_mesh.h
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_partitioner.h

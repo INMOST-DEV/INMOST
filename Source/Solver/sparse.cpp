@@ -7,6 +7,54 @@ namespace INMOST
 {
   namespace Sparse
   {
+
+    bool _hasRowEntryType = false;
+    INMOST_MPI_Type RowEntryType = INMOST_MPI_DATATYPE_NULL;
+
+
+    INMOST_MPI_Type GetRowEntryType() {return RowEntryType;}
+
+    bool HaveRowEntryType() {return _hasRowEntryType;}
+
+    void CreateRowEntryType()
+    {
+#if defined(USE_MPI)
+      if( HaveRowEntryType() )
+      {
+        int ierr;
+        MPI_Datatype type[3] = { INMOST_MPI_DATA_ENUM_TYPE, INMOST_MPI_DATA_REAL_TYPE, MPI_UB};
+		    int blocklen[3] = { 1, 1, 1 };
+		    MPI_Aint disp[3];
+		    disp[0] = offsetof(Sparse::Row::entry,first);
+		    disp[1] = offsetof(Sparse::Row::entry,second);
+		    disp[2] = sizeof(Sparse::Row::entry);
+		    ierr = MPI_Type_create_struct(3, blocklen, disp, type, &RowEntryType);
+		    if( ierr != MPI_SUCCESS )
+		    {
+			    std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_create_struct" << std::endl;
+		    }
+		    ierr = MPI_Type_commit(&RowEntryType);
+		    if( ierr != MPI_SUCCESS )
+		    {
+			    std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_commit" << std::endl;
+		    }
+      }
+#endif
+      _hasRowEntryType = true;
+    }
+
+    void DestroyRowEntryType()
+    {
+#if defined(USE_MPI)
+      if( HaveRowEntryType() )
+      {
+		    MPI_Type_free(&RowEntryType);
+        RowEntryType = INMOST_MPI_DATATYPE_NULL;
+      }
+#endif
+      _hasRowEntryType = false;
+    }
+
     RowMerger::RowMerger() : Sorted(true), Nonzeros(0) {}
 
     INMOST_DATA_REAL_TYPE & RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos)

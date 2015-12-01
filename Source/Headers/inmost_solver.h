@@ -58,7 +58,7 @@ namespace INMOST
 		};
 
     static std::string TypeName(Type t);
-		static INMOST_MPI_Type & GetRowEntryType() {return RowEntryType;}
+		
 		
 		//solver.cpp::::::::::::::::::::::::::::::::::::::::::::::::::::
 	public:
@@ -347,7 +347,6 @@ namespace INMOST
 		static void Finalize();
 		static bool isInitialized() {return is_initialized;}
 		static bool isFinalized() {return is_finalized;}
-
 		/// Clear all internal data of the current solver including matrix, preconditioner etc.
 		void Clear();
 	};

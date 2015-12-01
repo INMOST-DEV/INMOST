@@ -1,5 +1,5 @@
 project(ADMFD)
-set(SOURCE main.cpp matrix.hpp)
+set(SOURCE main.cpp)
 
 add_executable(ADMFD ${SOURCE})
 

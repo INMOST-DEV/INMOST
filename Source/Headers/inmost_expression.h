@@ -34,9 +34,9 @@ namespace INMOST
 	public:
     basic_expression() {}//std::cout << this << " Created" << std::endl;}
     basic_expression(const basic_expression & other) {};//std::cout << this << " Created from " << &other << std::endl;}
-		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
-		__INLINE virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
-    __INLINE virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
+		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
+		virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
+    virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
     //virtual ~basic_expression() {std::cout << this << " Destroied" << std::endl;}
 	};
 
@@ -393,7 +393,7 @@ namespace INMOST
       value = arg.GetValue();
       value = ::exp(value);
     }
-		exp_expression(const exp_expression & b) : unary_expression(b) {}
+		exp_expression(const exp_expression & b) : arg(b.arg), value(b.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
     {
@@ -797,8 +797,8 @@ namespace INMOST
     {
       INMOST_DATA_REAL_TYPE rval = right.GetValue();
       value = ::pow(pleft,rval);
-      if( lval != 0 )
-        rdmult = value * ::log(lval);
+      if( pleft != 0 )
+        rdmult = value * ::log(pleft);
       else
         rdmult = 0;
     }
@@ -857,131 +857,87 @@ namespace INMOST
     stencil_expression(const dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 > & parg) : arg(parg) 
     {
       value = 0.0;
-      for(dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+      for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
         value += it->first * it->second.GetValue();
     }
     stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
     {
-      for(dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+      for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
         it->second.GetDerivative(it->first*mult,r);
     }
     __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
-      for(dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+      for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
         it->second.GetDerivative(it->first*mult,r);
     }
   };
-
-
-  
-
-  template<class A, class B, class C> __INLINE   condition_expression<A,B,C> condition(shell_expression<A> const & control, shell_expression<B> const & if_ge_zero, shell_expression<C> const & if_lt_zero) { return condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
-                             __INLINE                  INMOST_DATA_REAL_TYPE condition(INMOST_DATA_REAL_TYPE control, INMOST_DATA_REAL_TYPE if_ge_zero, INMOST_DATA_REAL_TYPE if_lt_zero) {return control >= 0.0 ? if_ge_zero : if_lt_zero;}
-  template<class A>          __INLINE              unary_minus_expression<A> operator-(shell_expression<A> const & Arg) { return unary_minus_expression<A>(Arg); }
-	template<class A>          __INLINE                      abs_expression<A>       abs(shell_expression<A> const & Arg) { return abs_expression<A>(Arg); }
-	template<class A>          __INLINE                      exp_expression<A>       exp(shell_expression<A> const & Arg) { return exp_expression<A> (Arg); }
-	template<class A>          __INLINE                      log_expression<A>       log(shell_expression<A> const & Arg) { return log_expression<A> (Arg); }
-	template<class A>          __INLINE                      sin_expression<A>       sin(shell_expression<A> const & Arg) { return sin_expression<A> (Arg ); }
-	template<class A>          __INLINE                      cos_expression<A>       cos(shell_expression<A> const & Arg) { return cos_expression<A> (Arg); }
-  template<class A>          __INLINE                     sqrt_expression<A>      sqrt(shell_expression<A> const & Arg) { return sqrt_expression<A> (Arg); }
-  template<class A>          __INLINE variation_multiplication_expression<A> variation(shell_expression<A> const & Arg,INMOST_DATA_REAL_TYPE Mult) {return variation_multiplication_expression<A>(Arg,Mult);}
-                             __INLINE                  INMOST_DATA_REAL_TYPE variation(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE) {return Arg;}
-  template<class A>          __INLINE                  INMOST_DATA_REAL_TYPE get_value(shell_expression<A> const & Arg) { return Arg.GetValue(); }
-                             __INLINE                  INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
-  template<class A>          __INLINE                 soft_abs_expression<A>  soft_abs(shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return soft_abs_expression<A>(Arg,tol); }
-                             __INLINE                  INMOST_DATA_REAL_TYPE  soft_abs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
-  template<class A>          __INLINE                soft_sign_expression<A> soft_sign(shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return soft_sign_expression<A>(Arg,tol); }
-                             __INLINE                  INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return Arg/::sqrt(Arg*Arg+tol*tol);}
-	
-  template<class A, class B> __INLINE        multiplication_expression<A, B> operator*(shell_expression<A> const & Left, shell_expression<B> const & Right) { return multiplication_expression<A, B> (Left, Right); }
-	template<class A, class B> __INLINE              division_expression<A, B> operator/(shell_expression<A> const & Left, shell_expression<B> const & Right) { return division_expression<A, B> (Left, Right); }
-	template<class A, class B> __INLINE              addition_expression<A, B> operator+(shell_expression<A> const & Left, shell_expression<B> const & Right) { return addition_expression<A, B> (Left, Right); }
-	template<class A, class B> __INLINE           subtraction_expression<A, B> operator-(shell_expression<A> const & Left, shell_expression<B> const & Right) { return subtraction_expression<A, B> (Left, Right); }
-	template<class A, class B> __INLINE                   pow_expression<A, B>       pow(shell_expression<A> const & Left, shell_expression<B> const & Right) { return pow_expression<A, B> (Left, Right); }
-  template<class A, class B> __INLINE              soft_max_expression<A, B>  soft_max(shell_expression<A> const & Left, shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return soft_max_expression<A, B> (Left, Right,tol); }
-                             __INLINE                  INMOST_DATA_REAL_TYPE  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right+::sqrt((Left-Right)*(Left-Right)+tol*tol));}
-  template<class A, class B> __INLINE              soft_min_expression<A, B>  soft_min(shell_expression<A> const & Left, shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return soft_min_expression<A, B> (Left, Right,tol); }
-                             __INLINE                  INMOST_DATA_REAL_TYPE  soft_min(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right-::sqrt((Left-Right)*(Left-Right)+tol*tol));}
-
-  template<class B>          __INLINE                const_pow_expression<B>       pow(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) { return const_pow_expression<B> (Left, Right); }
-  template<class A>          __INLINE                pow_const_expression<A>       pow(shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return pow_const_expression<A> (Left, Right); }
-  template<class B>          __INLINE     const_multiplication_expression<B> operator*(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) { return const_multiplication_expression<B>(Right,Left); }
-	template<class A>          __INLINE     const_multiplication_expression<A> operator*(shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return const_multiplication_expression<A>(Left,Right); }
-	template<class B>          __INLINE               reciprocal_expression<B> operator/(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) { return reciprocal_expression<B>(Right,Left); }
-	template<class A>          __INLINE           const_division_expression<A> operator/(shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return const_division_expression<A>(Left, Right); }
-	template<class B>          __INLINE           const_addition_expression<B> operator+(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) { return const_addition_expression<B>(Right,Left); }
-	template<class A>          __INLINE           const_addition_expression<A> operator+(shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return const_addition_expression<A>(Left,Right); }
-	template<class B>          __INLINE        const_subtraction_expression<B> operator-(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) { return const_subtraction_expression<B>(Right, Left); }
-	template<class A>          __INLINE           const_addition_expression<A> operator-(shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return const_addition_expression<A>(Left, -Right); }
-
-
-  template<class A, class B> __INLINE bool operator == (shell_expression<A> const & Left, shell_expression<B> const & Right) {return Left.GetValue() == Right.GetValue();}
-  template<class A, class B> __INLINE bool operator != (shell_expression<A> const & Left, shell_expression<B> const & Right) {return Left.GetValue() != Right.GetValue();}
-  template<class A, class B> __INLINE bool operator <  (shell_expression<A> const & Left, shell_expression<B> const & Right) {return Left.GetValue() <  Right.GetValue();}
-  template<class A, class B> __INLINE bool operator >  (shell_expression<A> const & Left, shell_expression<B> const & Right) {return Left.GetValue() >  Right.GetValue();}
-  template<class A, class B> __INLINE bool operator <= (shell_expression<A> const & Left, shell_expression<B> const & Right) {return Left.GetValue() <= Right.GetValue();}
-  template<class A, class B> __INLINE bool operator >= (shell_expression<A> const & Left, shell_expression<B> const & Right) {return Left.GetValue() >= Right.GetValue();}
-
-  template<class A>          __INLINE bool operator == (shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() == Right;}
-  template<class A>          __INLINE bool operator != (shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() != Right;}
-  template<class A>          __INLINE bool operator <  (shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() <  Right;}
-  template<class A>          __INLINE bool operator >  (shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() >  Right;}
-  template<class A>          __INLINE bool operator <= (shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() <= Right;}
-  template<class A>          __INLINE bool operator >= (shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() >= Right;}
-
-
-  template<class B>          __INLINE bool operator == (INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) {return Left == Right.GetValue();}
-  template<class B>          __INLINE bool operator != (INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) {return Left != Right.GetValue();}
-  template<class B>          __INLINE bool operator <  (INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) {return Left <  Right.GetValue();}
-  template<class B>          __INLINE bool operator >  (INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) {return Left >  Right.GetValue();}
-  template<class B>          __INLINE bool operator <= (INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) {return Left <= Right.GetValue();}
-  template<class B>          __INLINE bool operator >= (INMOST_DATA_REAL_TYPE Left, shell_expression<B> const & Right) {return Left >= Right.GetValue();}
-
-  /*
-  template<typename T>
-  class get_value
-  {
-    operator INMOST_DATA_REAL_TYPE() = 0;
-  };
-
-  template<>
-  class get_value<INMOST_DATA_REAL_TYPE>
-  {
-    INMOST_DATA_REAL_TYPE val;
-  public:
-    get_value(const INMOST_DATA_REAL_TYPE & v) :val(v) {}
-    operator INMOST_DATA_REAL_TYPE() {return val;}
-  };
-
-  template<>
-  class get_value<var_expression>
-  {
-    INMOST_DATA_REAL_TYPE val;
-  public:
-    get_value(const var_expression & v) :val(v.GetValue()) {}
-    operator INMOST_DATA_REAL_TYPE() {return val;}
-  };
-
-  template<>
-  class get_value<multivar_expression>
-  {
-    INMOST_DATA_REAL_TYPE val;
-  public:
-    get_value(const multivar_expression & v) :val(v.GetValue()) {}
-    operator INMOST_DATA_REAL_TYPE() {return val;}
-  };
-  */
 
   __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
   __INLINE bool check_nans(var_expression const & e) {return e.check_nans();}
   __INLINE bool check_nans(multivar_expression const & e) {return e.check_nans();}
 
-
   typedef multivar_expression variable;
-  typedef var_expression unknown;  
-};
+  typedef var_expression unknown;
+}
+
+template<class A, class B, class C> __INLINE   INMOST::condition_expression<A,B,C> condition(INMOST::shell_expression<A> const & control, INMOST::shell_expression<B> const & if_ge_zero, INMOST::shell_expression<C> const & if_lt_zero) { return INMOST::condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
+                                    __INLINE                 INMOST_DATA_REAL_TYPE condition(INMOST_DATA_REAL_TYPE control, INMOST_DATA_REAL_TYPE if_ge_zero, INMOST_DATA_REAL_TYPE if_lt_zero) {return control >= 0.0 ? if_ge_zero : if_lt_zero;}
+template<class A>          __INLINE              INMOST::unary_minus_expression<A> operator-(INMOST::shell_expression<A> const & Arg) { return INMOST::unary_minus_expression<A>(Arg); }
+template<class A>          __INLINE                      INMOST::abs_expression<A>       abs(INMOST::shell_expression<A> const & Arg) { return INMOST::abs_expression<A>(Arg); }
+template<class A>          __INLINE                      INMOST::exp_expression<A>       exp(INMOST::shell_expression<A> const & Arg) { return INMOST::exp_expression<A> (Arg); }
+template<class A>          __INLINE                      INMOST::log_expression<A>       log(INMOST::shell_expression<A> const & Arg) { return INMOST::log_expression<A> (Arg); }
+template<class A>          __INLINE                      INMOST::sin_expression<A>       sin(INMOST::shell_expression<A> const & Arg) { return INMOST::sin_expression<A> (Arg ); }
+template<class A>          __INLINE                      INMOST::cos_expression<A>       cos(INMOST::shell_expression<A> const & Arg) { return INMOST::cos_expression<A> (Arg); }
+template<class A>          __INLINE                     INMOST::sqrt_expression<A>      sqrt(INMOST::shell_expression<A> const & Arg) { return INMOST::sqrt_expression<A> (Arg); }
+template<class A>          __INLINE INMOST::variation_multiplication_expression<A> variation(INMOST::shell_expression<A> const & Arg,INMOST_DATA_REAL_TYPE Mult) {return INMOST::variation_multiplication_expression<A>(Arg,Mult);}
+                           __INLINE                          INMOST_DATA_REAL_TYPE variation(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE) {return Arg;}
+template<class A>          __INLINE                          INMOST_DATA_REAL_TYPE get_value(INMOST::shell_expression<A> const & Arg) { return Arg.GetValue(); }
+                           __INLINE                          INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
+template<class A>          __INLINE                 INMOST::soft_abs_expression<A>  soft_abs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_abs_expression<A>(Arg,tol); }
+                           __INLINE                          INMOST_DATA_REAL_TYPE  soft_abs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
+template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_sign_expression<A>(Arg,tol); }
+                           __INLINE                          INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return Arg/::sqrt(Arg*Arg+tol*tol);}
+template<class A, class B> __INLINE        INMOST::multiplication_expression<A, B> operator*(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::multiplication_expression<A, B> (Left, Right); }
+template<class A, class B> __INLINE              INMOST::division_expression<A, B> operator/(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::division_expression<A, B> (Left, Right); }
+template<class A, class B> __INLINE              INMOST::addition_expression<A, B> operator+(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::addition_expression<A, B> (Left, Right); }
+template<class A, class B> __INLINE           INMOST::subtraction_expression<A, B> operator-(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::subtraction_expression<A, B> (Left, Right); }
+template<class A, class B> __INLINE                   INMOST::pow_expression<A, B>       pow(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::pow_expression<A, B> (Left, Right); }
+template<class A, class B> __INLINE              INMOST::soft_max_expression<A, B>  soft_max(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_max_expression<A, B> (Left, Right,tol); }
+                           __INLINE                          INMOST_DATA_REAL_TYPE  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right+::sqrt((Left-Right)*(Left-Right)+tol*tol));}
+template<class A, class B> __INLINE              INMOST::soft_min_expression<A, B>  soft_min(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_min_expression<A, B> (Left, Right,tol); }
+                           __INLINE                          INMOST_DATA_REAL_TYPE  soft_min(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right-::sqrt((Left-Right)*(Left-Right)+tol*tol));}
+template<class B>          __INLINE                INMOST::const_pow_expression<B>       pow(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) { return INMOST::const_pow_expression<B> (Left, Right); }
+template<class A>          __INLINE                INMOST::pow_const_expression<A>       pow(INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::pow_const_expression<A> (Left, Right); }
+template<class B>          __INLINE     INMOST::const_multiplication_expression<B> operator*(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) { return INMOST::const_multiplication_expression<B>(Right,Left); }
+template<class A>          __INLINE     INMOST::const_multiplication_expression<A> operator*(INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::const_multiplication_expression<A>(Left,Right); }
+template<class B>          __INLINE               INMOST::reciprocal_expression<B> operator/(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) { return INMOST::reciprocal_expression<B>(Right,Left); }
+template<class A>          __INLINE           INMOST::const_division_expression<A> operator/(INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::const_division_expression<A>(Left, Right); }
+template<class B>          __INLINE           INMOST::const_addition_expression<B> operator+(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) { return INMOST::const_addition_expression<B>(Right,Left); }
+template<class A>          __INLINE           INMOST::const_addition_expression<A> operator+(INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::const_addition_expression<A>(Left,Right); }
+template<class B>          __INLINE        INMOST::const_subtraction_expression<B> operator-(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) { return INMOST::const_subtraction_expression<B>(Right, Left); }
+template<class A>          __INLINE           INMOST::const_addition_expression<A> operator-(INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::const_addition_expression<A>(Left, -Right); }
+template<class A, class B> __INLINE                                        bool operator == (INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) {return Left.GetValue() == Right.GetValue();}
+template<class A, class B> __INLINE                                        bool operator != (INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) {return Left.GetValue() != Right.GetValue();}
+template<class A, class B> __INLINE                                        bool operator <  (INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) {return Left.GetValue() <  Right.GetValue();}
+template<class A, class B> __INLINE                                        bool operator >  (INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) {return Left.GetValue() >  Right.GetValue();}
+template<class A, class B> __INLINE                                        bool operator <= (INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) {return Left.GetValue() <= Right.GetValue();}
+template<class A, class B> __INLINE                                        bool operator >= (INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) {return Left.GetValue() >= Right.GetValue();}
+template<class A>          __INLINE                                        bool operator == (INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() == Right;}
+template<class A>          __INLINE                                        bool operator != (INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() != Right;}
+template<class A>          __INLINE                                        bool operator <  (INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() <  Right;}
+template<class A>          __INLINE                                        bool operator >  (INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() >  Right;}
+template<class A>          __INLINE                                        bool operator <= (INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() <= Right;}
+template<class A>          __INLINE                                        bool operator >= (INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) {return Left.GetValue() >= Right;}
+template<class B>          __INLINE                                        bool operator == (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left == Right.GetValue();}
+template<class B>          __INLINE                                        bool operator != (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left != Right.GetValue();}
+template<class B>          __INLINE                                        bool operator <  (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left <  Right.GetValue();}
+template<class B>          __INLINE                                        bool operator >  (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left >  Right.GetValue();}
+template<class B>          __INLINE                                        bool operator <= (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left <= Right.GetValue();}
+template<class B>          __INLINE                                        bool operator >= (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left >= Right.GetValue();}
+
+
 
 #endif
 #endif

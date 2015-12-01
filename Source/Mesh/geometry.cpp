@@ -425,7 +425,7 @@ namespace INMOST
 		for(GeometricData gtype = MEASURE; gtype <= NORMAL; gtype++)
 		{
 			bool restore = false;
-			for(ElementType etype = EDGE; etype <= CELL && !restore; etype = etype << 1)
+			for(ElementType etype = EDGE; etype <= CELL && !restore; etype = NextElementType(etype))
 				if( HaveGeometricData(gtype,etype) )
 					restore = true;
 			if( restore )
@@ -440,6 +440,38 @@ namespace INMOST
 			}
 		}
 	}
+
+  void Mesh::RepairGeometricTags()
+  {
+    if( HaveTag("GEOM_UTIL_MEASURE") ) 
+    {
+      measure_tag = GetTag("GEOM_UTIL_MEASURE");
+      for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
+        if( measure_tag.isDefined(etype) && !HaveGeometricData(MEASURE,etype) )
+          ShowGeometricData(MEASURE,etype);
+    }
+    if( HaveTag("GEOM_UTIL_CENTROID") )
+    {
+      centroid_tag = GetTag("GEOM_UTIL_CENTROID");
+      for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
+        if( centroid_tag.isDefined(etype) && !HaveGeometricData(CENTROID,etype) )
+          ShowGeometricData(CENTROID,etype);
+    }
+    if( HaveTag("GEOM_UTIL_BARYCENTER") )
+    {
+      barycenter_tag = GetTag("GEOM_UTIL_BARYCENTER");
+      for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
+        if( barycenter_tag.isDefined(etype) && !HaveGeometricData(BARYCENTER,etype) )
+          ShowGeometricData(BARYCENTER,etype);
+    }
+    if( HaveTag("GEOM_UTIL_NORMAL") )
+    {
+      normal_tag = GetTag("GEOM_UTIL_NORMAL");
+      for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
+        if( normal_tag.isDefined(etype) && !HaveGeometricData(NORMAL,etype) )
+          ShowGeometricData(NORMAL,etype);
+    }
+  }
 	
 	void Mesh::PrepareGeometricData(GeomParam table)
 	{

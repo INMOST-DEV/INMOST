@@ -2111,7 +2111,8 @@ namespace INMOST
 						array_size_send[count]++;
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 						INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
-						array_data_send.resize(had_s+s*tag.GetBytesSize());
+						//array_data_send.resize(had_s+s*tag.GetBytesSize());
+            array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
 						GetData(*eit,tag,0,s,&array_data_send[had_s]);
             //REPORT_VAL("size",s);
             //for(int qq = 0; qq < s; ++qq)
@@ -2129,7 +2130,8 @@ namespace INMOST
          // REPORT_STR("element type " << ElementTypeName(*eit) << " global id " << Integer(*eit,GlobalIDTag()));
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 					INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
-					array_data_send.resize(had_s+s*tag.GetBytesSize());
+					//array_data_send.resize(had_s+s*tag.GetBytesSize());
+          array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
 					GetData(*eit,tag,0,s,&array_data_send[had_s]);
           if( size == ENUMUNDEF ) array_size_send.push_back(s);
 					++total_packed;
@@ -2214,7 +2216,7 @@ namespace INMOST
               //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_recv[pos+qq*tag.GetBytesSize()]));
               //}
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
-							pos += array_size_recv[k]*tag.GetBytesSize();
+							pos += GetDataCapacity(*eit,tag);// array_size_recv[k]*tag.GetBytesSize();
 							++k;
 							++total_unpacked;
 						}
@@ -2226,7 +2228,7 @@ namespace INMOST
 							eit = elements[i].begin() + array_size_recv[k++];
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
 							op(tag,Element(this,*eit),&array_data_recv[pos],size);
-							pos += size*tag.GetBytesSize();
+							pos += GetDataCapacity(*eit,tag);//size*tag.GetBytesSize();
 							++total_unpacked;
 						}
 					}
@@ -2238,7 +2240,7 @@ namespace INMOST
 						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 						{
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
-							pos += array_size_recv[k]*tag.GetBytesSize();
+							pos += GetDataCapacity(*eit,tag);//array_size_recv[k]*tag.GetBytesSize();
 							++k;
 							++total_unpacked;
 						}
@@ -2248,7 +2250,7 @@ namespace INMOST
 						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 						{
 							op(tag,Element(this,*eit),&array_data_recv[pos],size);
-							pos += size*tag.GetBytesSize();
+							pos += GetDataCapacity(*eit,tag);//size*tag.GetBytesSize();
 							++total_unpacked;
 						}
 					}
@@ -2284,7 +2286,12 @@ namespace INMOST
 		std::vector<INMOST_DATA_ENUM_TYPE> send_size(procs.size(),0), recv_size(procs.size(),0);
 		
 		bool unknown_size = false;
-		for(unsigned int k = 0; k < tags.size(); k++) if( tags[k].GetSize() == ENUMUNDEF ) unknown_size = true;
+		for(unsigned int k = 0; k < tags.size(); k++) 
+      if( tags[k].GetSize() == ENUMUNDEF 
+#if defined(USE_AUTODIFF)
+        || tags[k].GetDataType() == DATA_VARIABLE 
+#endif
+        ) unknown_size = true;
 		
 		//precompute sizes
 		for(p = procs.begin(); p != procs.end(); p++ )
