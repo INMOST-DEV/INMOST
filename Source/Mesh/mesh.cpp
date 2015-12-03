@@ -5,11 +5,10 @@
 
 namespace INMOST
 {
+  static std::vector<Mesh *> allocated_meshes;
+
 
 #if defined(USE_PARALLEL_WRITE_TIME)
-	static std::vector<Mesh *> allocated_meshes;
-
-
 	void Mesh::AtExit(void)
 	{
 		while(!allocated_meshes.empty())
@@ -23,6 +22,21 @@ namespace INMOST
 	}
 #endif //USE_PARALLEL_WRITE_TIME
 
+  std::string Mesh::GetMeshName()
+  {
+    return name;
+  }
+  void Mesh::SetMeshName(std::string new_name)
+  {
+    name = new_name;
+  }
+  Mesh * Mesh::GetMesh(std::string name)
+  {
+    for(int q = 0; q < (int)allocated_meshes.size(); ++q)
+      if( allocated_meshes[q]->GetMeshName() == name )
+        return allocated_meshes[q];
+    return NULL;
+  }
 
 	const char * TopologyCheckNotifyString(TopologyCheck c)
 	{
@@ -77,11 +91,10 @@ namespace INMOST
 		}
 		return "UNKNOWN";
 	}
-		
-	Mesh::Mesh()
-	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
-	{
-		m_link = this;
+
+  void Mesh::Init(std::string name)
+  {
+    m_link = this;
 		integer selfid = TieElement(5);
 		assert(selfid == 0);
 		dim = 3;
@@ -123,8 +136,23 @@ namespace INMOST
 		out_time << "<Debug>" << std::endl;
 		tab = 1;
 		func_id = 0;
-		allocated_meshes.push_back(this);
 #endif
+    allocated_meshes.push_back(this);
+  }
+		
+	Mesh::Mesh()
+	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
+	{
+    std::stringstream tmp;
+    tmp << "Mesh" << allocated_meshes.size();
+    name = tmp.str();
+    Init(name);
+	}
+
+  Mesh::Mesh(std::string name)
+	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
+	{
+    Init(name);
 	}
 
   bool Mesh::GetPrivateMarker(HandleType h, MarkerType n) const
@@ -243,7 +271,11 @@ namespace INMOST
 	Mesh::Mesh(const Mesh & other)
 	:TagManager(other),Storage(NULL,ComposeHandle(MESH,0))
 	{
-		
+    {
+      std::stringstream tmp;
+      tmp << other.name << "_copy";
+      name = tmp.str();
+    }
 		m_link = this;
 		integer selfid = TieElement(5);
 		assert(selfid == 0);
@@ -309,11 +341,17 @@ namespace INMOST
 		//this is not needed as it was copied with all the other data
 		//recompute global ids
 		//AssignGlobalID(other.have_global_id);
+    allocated_meshes.push_back(this);
 	}
 	
 	Mesh & Mesh::operator =(Mesh const & other)
 	{
 		if( this == &other ) return *this; //don't do anything
+    {
+      std::stringstream tmp;
+      tmp << other.name << "_copy";
+      name = tmp.str();
+    }
 		//first delete everything
 		//delete parallel vars
 #if defined(USE_MPI)
@@ -526,11 +564,14 @@ namespace INMOST
 #endif //USE_MPI
 #if defined(USE_PARALLEL_WRITE_TIME)
 		FinalizeFile();
-		
-		for(size_t q = 0; q < allocated_meshes.size(); ++q)
-			if (allocated_meshes[q] == this)
-				allocated_meshes[q] = NULL;
 #endif //USE_PARALLEL_WRITE_TIME
+    {
+      for(size_t q = 0; q < allocated_meshes.size(); ++q)
+			  if (allocated_meshes[q] == this)
+				  allocated_meshes[q] = NULL;
+      std::sort(allocated_meshes.rbegin(), allocated_meshes.rend());
+      while(allocated_meshes.back() == NULL) allocated_meshes.pop_back();
+    }
 		//arrays for data are deallocated inside ~TagManager()
 	}
 	
@@ -1882,6 +1923,15 @@ namespace INMOST
 		else 
 			return static_cast<inner_reference_array*>(p)->at_safe(0);
 	}
+  Storage::remote_reference & Mesh::RemoteReference(HandleType h, const Tag & tag) 
+	{
+		Asserts(h,tag,DATA_REMOTE_REFERENCE);
+		void * p = MGetLink(h,tag); 
+		if( tag.GetSize() != ENUMUNDEF ) 
+			return static_cast<remote_reference*>(p)[0]; 
+		else 
+			return static_cast<inner_remote_reference_array*>(p)->at_safe(0);
+	}
 	Storage::real_array Mesh::RealArray(HandleType h, const Tag & tag) 
 	{
 		Asserts(h,tag,DATA_REAL);
@@ -1908,7 +1958,8 @@ namespace INMOST
 		if( tag.GetSize() == ENUMUNDEF ) 
 			return bulk_array(*static_cast<inner_bulk_array     *>(p)); 
 		else 
-			return bulk_array(static_cast<bulk*>(p),tag.GetSize());}
+			return bulk_array(static_cast<bulk*>(p),tag.GetSize());
+  }
 	Storage::reference_array Mesh::ReferenceArray(HandleType h, const Tag & tag) 
 	{
 		Asserts(h,tag,DATA_REFERENCE);
@@ -1917,6 +1968,15 @@ namespace INMOST
 			return reference_array(this,*static_cast<inner_reference_array*>(p)); 
 		else 
 			return reference_array(this,static_cast<reference *>(p),tag.GetSize());
+	}
+  Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
+	{
+		Asserts(h,tag,DATA_REMOTE_REFERENCE);
+		void * p = MGetLink(h,tag); 
+		if( tag.GetSize() == ENUMUNDEF ) 
+			return remote_reference_array(*static_cast<inner_remote_reference_array*>(p)); 
+		else 
+			return remote_reference_array(static_cast<remote_reference *>(p),tag.GetSize());
 	}
 	
 	void Mesh::AssertsDV(HandleType h, const Tag & tag, DataType expected) const
@@ -1972,6 +2032,8 @@ namespace INMOST
 				case DATA_INTEGER:  return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_integer_array  *>(adata)->size());
 				case DATA_BULK:     return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_bulk_array     *>(adata)->size());
 				case DATA_REFERENCE:return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_reference_array*>(adata)->size());
+        case DATA_REMOTE_REFERENCE:
+                            return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_remote_reference_array*>(adata)->size());
 #if defined(USE_AUTODIFF)
         case DATA_VARIABLE: return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_variable_array *>(adata)->size());
 #endif
@@ -1993,6 +2055,8 @@ namespace INMOST
 				case DATA_INTEGER:  return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_integer_array  *>(adata)->size())*tag.GetBytesSize();
 				case DATA_BULK:     return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_bulk_array     *>(adata)->size())*tag.GetBytesSize();
 				case DATA_REFERENCE:return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_reference_array*>(adata)->size())*tag.GetBytesSize();
+        case DATA_REMOTE_REFERENCE:
+                            return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_remote_reference_array*>(adata)->size())*tag.GetBytesSize();
 #if defined(USE_AUTODIFF)
         case DATA_VARIABLE: 
           {
@@ -2030,6 +2094,8 @@ namespace INMOST
 				case DATA_INTEGER:  static_cast<inner_integer_array   *>(adata)->resize(new_size); break;
 				case DATA_BULK:     static_cast<inner_bulk_array      *>(adata)->resize(new_size); break;
 				case DATA_REFERENCE:static_cast<inner_reference_array *>(adata)->resize(new_size); break;
+        case DATA_REMOTE_REFERENCE:
+                            static_cast<inner_remote_reference_array *>(adata)->resize(new_size); break;
 #if defined(USE_AUTODIFF)
         case DATA_VARIABLE: static_cast<inner_variable_array  *>(adata)->resize(new_size); break;
 #endif
@@ -2055,6 +2121,8 @@ namespace INMOST
 				case DATA_INTEGER:  memcpy(data_out,&(*static_cast<const inner_integer_array   *>(adata))[shift],bytes*size); break;
 				case DATA_BULK:     memcpy(data_out,&(*static_cast<const inner_bulk_array      *>(adata))[shift],bytes*size); break;
 				case DATA_REFERENCE:memcpy(data_out,&(*static_cast<const inner_reference_array *>(adata))[shift],bytes*size); break;
+        case DATA_REMOTE_REFERENCE:
+                            memcpy(data_out,&(*static_cast<const inner_remote_reference_array *>(adata))[shift],bytes*size); break;
 #if defined(USE_AUTODIFF)
         case DATA_VARIABLE:
           {
@@ -2118,6 +2186,8 @@ namespace INMOST
 				case DATA_INTEGER:  memcpy(&(*static_cast<inner_integer_array  *>(adata))[shift],data_in,bytes*size); break;
 				case DATA_BULK:     memcpy(&(*static_cast<inner_bulk_array     *>(adata))[shift],data_in,bytes*size); break;
 				case DATA_REFERENCE:memcpy(&(*static_cast<inner_reference_array*>(adata))[shift],data_in,bytes*size); break;
+        case DATA_REMOTE_REFERENCE:
+                            memcpy(&(*static_cast<inner_reference_array*>(adata))[shift],data_in,bytes*size); break;
 #if defined(USE_AUTODIFF)
         case DATA_VARIABLE:
           {

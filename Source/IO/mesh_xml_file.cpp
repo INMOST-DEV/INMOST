@@ -33,6 +33,9 @@ std::string ReferenceToString(INMOST::HandleType h, int pos)
   ret << pos;//INMOST::GetHandleID(h);
   return ret.str();
 }
+
+
+
 #if defined(USE_AUTODIFF)
 std::string VariableToString(INMOST::Storage::var v)
 {
@@ -62,7 +65,6 @@ class XMLReader
   class Interpreter
   {
     bool error_state;
-    std::map<char,int> priority;
     std::vector<std::string> Expand(std::string & input)
     {
       std::vector<std::string> ret;
@@ -85,9 +87,17 @@ class XMLReader
     }
     int get_priority(char c)
     {
-      std::map<char,int>::iterator it = priority.find(c);
-      if( it == priority.end() ) return -1;
-      return it->second;
+      switch(c)
+      {
+      case '(': return 0;
+      case ')': return 1;
+      case '+':
+      case '-': return 8;
+      case '*':
+      case '/': return 9;
+      case '~': return 10;
+      default: return -1;
+      }
     }
     std::vector<std::string> MakePolish(std::vector<std::string> & input)
     {
@@ -230,21 +240,12 @@ class XMLReader
       return stack.back();
     }
   public:
-    Interpreter()
-    {
-      priority['('] = 0;
-      priority[')'] = 1;
-      priority['-'] = priority['+'] = 8;
-      priority['*'] = priority['/'] = 9;
-      priority['~'] = 10;
-      error_state = false;
-    }
+    Interpreter() :error_state(false) {}
     Interpreter(const Interpreter & b)
-      : priority(b.priority), error_state(b.error_state)
+      : error_state(b.error_state)
     {}
     Interpreter & operator = (Interpreter const & b)
     {
-      priority = b.priority;
       error_state = b.error_state;
       return * this;
     }
@@ -253,17 +254,21 @@ class XMLReader
       const char * debug_str = str.c_str();
       std::vector<std::string> decompose = Expand(str);
       std::vector<std::string> polish = MakePolish(decompose);
-      Print(polish);
+      //Print(polish);
       return Run(polish);
     }
     bool isError() {return error_state;}
     void ClearError() {error_state = false;}
   };
   Interpreter intrp;
-  std::string src;
-  std::vector<std::istream *> inp;
-  int linebreak, linechar;
-  int hadlinebreak, hadlinechar;
+  struct Stream
+  {
+    std::string src;
+    std::istream * s;
+    int linebreak, linechar;
+    int hadlinebreak, hadlinechar;
+  };
+  std::vector<Stream> inp;
   int verbose;
   enum State
   {
@@ -295,32 +300,47 @@ class XMLReader
     EndOfFile, // end of file reached
     Failure //unexpected error
   } _state;
-  std::istream & get_stream() {return *inp.back();}
+  Stream & get_Stream() {return inp.back();}
+  std::istream & get_iStream() {return *inp.back().s;}
   //should not share the reference to the stream with another reader
   XMLReader(const XMLReader & other) {}
   XMLReader & operator =(XMLReader & other) {return *this;}
   char GetChar()
   {
     char c = '\0';
-    get_stream().get(c);
-    hadlinebreak = linebreak;
-    hadlinechar = linechar;
+    get_iStream().get(c);
+    get_Stream().hadlinebreak = get_Stream().linebreak;
+    get_Stream().hadlinechar = get_Stream().linechar;
     if( c == '\n' ) 
     {
-      ++linebreak;
-      linechar = 0;
+      ++get_Stream().linebreak;
+      get_Stream().linechar = 0;
     }
-    else ++linechar;
-    if( c == EOF ) _state = EndOfFile;
+    else ++get_Stream().linechar;
+    if( get_iStream().eof() ) 
+    {
+      if( inp.size() > 1 )
+      {
+        PopStream();
+        c = GetChar();
+      }
+      else
+        _state = EndOfFile;
+    }
+    if( get_iStream().fail() )
+    {
+      Report("Stream failed while getting the char");
+      _state = Failure;
+    }
     return c;
   }
   //return one character back to the stream
   void RetChar()
   {
-    linebreak = hadlinebreak;
-    linechar = hadlinechar;
-    get_stream().unget();
-    if( get_stream().fail() ) 
+    get_Stream().linebreak = get_Stream().hadlinebreak;
+    get_Stream().linechar = get_Stream().hadlinechar;
+    get_iStream().unget();
+    if( get_iStream().fail() ) 
     {
       Report("Stream failed while ungetting the char");
       _state = Failure;
@@ -406,7 +426,7 @@ public:
   
   void Report(const char * fmt, ...) 
   { 
-    std::cout << src << ":row:" << linebreak << ":col:" << linechar << " ";
+    std::cout << get_Stream().src << ":row:" << get_Stream().linebreak << ":col:" << get_Stream().linechar << " ";
     {
       char stext[16384];
 	    va_list ap;
@@ -418,10 +438,40 @@ public:
     }
     std::cout << std::endl;
   }
-  XMLReader(std::string sourcename, std::istream & input) :intrp(),src(sourcename),linebreak(0),linechar(0),_state(Intro){inp.push_back(&input); verbose = 0;}
-  void PushStream(std::istream & stream) {inp.push_back(&stream);}
+  XMLReader(std::string sourcename, std::istream & input) :intrp(),_state(Intro)
+  {
+    Stream add;
+    add.src = sourcename;
+    add.linebreak = 0;
+    add.linechar = 0;
+    add.hadlinebreak = 0;
+    add.hadlinechar = 0;
+    add.s = &input;
+    inp.push_back(add); verbose = 0;
+    if( get_iStream().fail() )
+    {
+      Report("Got a bad stream on input in %s",__FUNCTION__);
+    }
+  }
+  void PushStream(std::string file) 
+  {
+    Stream add;
+    add.linebreak = 0;
+    add.linechar = 0;
+    add.hadlinebreak = 0;
+    add.hadlinechar = 0;
+    add.src = file;
+    add.s = new std::fstream(file.c_str(),std::ios::in);
+    inp.push_back(add);
+    if( get_iStream().fail() )
+    {
+      Report("Got a bad stream on input in %s",__FUNCTION__);
+    }
+  }
   void PopStream() 
   {
+    if( inp.size() > 1 )
+      delete static_cast<std::fstream *>(inp.back().s);
     inp.pop_back();
     if( _state == EndOfFile && !inp.empty() )
       _state = Intro;
@@ -1013,6 +1063,7 @@ public:
   std::pair<INMOST::ElementType,int> atoh(const char * _str)
   {
     std::string str(_str);
+    if( str == "None" ) return std::make_pair(INMOST::NONE,0);
     if( str == "None:0" ) return std::make_pair(INMOST::NONE,0);
     size_t dots = str.find(':');
     if( dots == std::string::npos ) return std::make_pair(INMOST::NONE,1);
@@ -1022,6 +1073,22 @@ public:
     int ioffset = atoi(offset.c_str());
     if( type == INMOST::NONE ) Report("Cannot understand element type %s",stype.c_str());
     return std::make_pair(type,ioffset);
+  }
+  std::pair<std::string,std::pair<INMOST::ElementType,int> > atorh(const char * _str)
+  {
+    std::string str(_str);
+    if( str == "None" ) return std::make_pair("",std::make_pair(INMOST::NONE,0));
+    if( str == ":None:0" ) return std::make_pair("",std::make_pair(INMOST::NONE,0));
+    size_t dots1 = str.find(':');
+    if( dots1 == std::string::npos ) return std::make_pair("",std::make_pair(INMOST::NONE,1));
+    size_t dots2 = str.find(':',dots1+1);
+    std::string meshname = str.substr(0,dots1);
+    std::string stype = str.substr(dots1+1,dots2-dots1);
+    std::string offset = str.substr(dots2+1,std::string::npos);
+    INMOST::ElementType type = atoe(stype.c_str());
+    int ioffset = atoi(offset.c_str());
+    if( type == INMOST::NONE ) Report("Cannot understand element type %s",stype.c_str());
+    return std::make_pair(meshname,std::make_pair(type,ioffset));
   }
 #if defined(USE_AUTODIFF)
   INMOST::Storage::var atov(const char * _str)
@@ -1098,6 +1165,14 @@ public:
       value = expression;
       multiplier = "";
     }
+  }
+  bool ParseBool(std::string word)
+  {
+    bool ret = false;
+    if( word == "False" || word == "false" || word == "0" || word == "no" || word == "N" || word == "No" || word == "NO" ) ret = false;
+    else if( word == "True" || word == "true" || word == "1" || word == "yes" || word == "Y" || word == "Yes" || word == "YES" ) ret = true;
+    else Report("Cannot understand boolean value %s",word.c_str());
+    return ret;
   }
   void ParseCommaSeparated(std::string word, std::vector<std::string> & parsed, char symbol = ',')
   {
@@ -1245,6 +1320,100 @@ public:
 
     Repeat = ConvertMultiplier(multiplier,SetSize);
   }
+
+  void ParseRemoteReference(std::string word, std::vector< std::pair<std::string,std::pair<INMOST::ElementType,int> > > & Vector, int & Repeat, int SetSize)
+  {
+    std::string value, multiplier;
+    SplitValueMultiplier(word,value,multiplier);
+    Vector.clear();
+    if( value[0] == '{' )
+    {
+      size_t comma_prev = 1, comma;
+      std::string substr;
+      do
+      {
+        comma = value.find(',',comma_prev);
+        if( comma == std::string::npos ) comma = value.find('}',comma_prev);
+        substr = value.substr(comma_prev,comma-comma_prev);
+        Vector.push_back(atorh(substr.c_str()));
+        if( Vector.back().first == "" )
+          Report("Cannot extract mesh name, %s",substr.c_str());
+        if( Vector.back().second.first == INMOST::NONE && Vector.back().second.second == 1 )
+          Report("Cannot convert handle to the element, %s",substr.c_str());
+        comma_prev = comma+1;
+      } while( value[comma] != '}' );
+    }
+    else 
+    {
+      Vector.push_back(atorh(value.c_str())); 
+      if( Vector.back().first == "" )
+          Report("Cannot extract mesh name, %s",value.c_str());
+      if( Vector.back().second.first == INMOST::NONE && Vector.back().second.second == 1 )
+        Report("Cannot convert handle to the element, %s",value.c_str());
+    }
+
+    Repeat = ConvertMultiplier(multiplier,SetSize);
+  }
+
+  struct XMLAttrib
+  {
+    std::string name;
+    std::string value;
+  };
+
+  struct XMLTag
+  {
+    std::string name; //<Name of the XML tag
+    std::vector<XMLAttrib> attributes; //<List of attributes
+    int finish; //<Whether to close the tag
+    ///Was not able to read the tag
+    bool Failure() {return finish == 0;}
+    ///Tag was red, can process the contents
+    bool Process() {return finish == 1 || finish == 2;}
+    ///Tag was not red, finish of enclosing tag was encountered
+    bool Finalize() {return finish == 3;}
+    XMLAttrib & GetAttib(int n) {return attributes[n];}
+    int NumAttrib() {return (int)attributes.size();}
+  };
+
+  XMLTag OpenTag()
+  {
+    std::string include = "";
+    XMLTag ret;
+    XMLAttrib attr;
+    ret.name = ReadOpenTag();
+    if( !isTagFinish() )
+    {
+      attr.name = AttributeName();
+      while(!isTagEnded())
+      {
+        attr.value = AttributeValue();
+        if( attr.name == "Include" )
+          include = attr.value;
+        else ret.attributes.push_back(attr);
+        attr.name = AttributeName();
+      }
+      ret.finish = ReadCloseTag();
+      if( !include.empty() ) PushStream(include.c_str());
+    }
+    else
+    {
+      ret.name = "";
+      ret.finish = 3;
+    }
+    return ret;
+  }
+  bool CloseTag(XMLTag & tag)
+  {
+    if( tag.finish == 3 ) 
+    {
+      Report("%s:%d Trying to close the tag that is beyond the last tag",__FILE__,__LINE__);
+      return false;
+    }
+    else if( tag.finish == 2 ) return true; //no need to read anything
+    else if( tag.finish == 0 ) return false; //there was a Failure
+    else return ReadFinishTag(tag.name);
+  }
 };
 
 namespace INMOST
@@ -1256,70 +1425,62 @@ namespace INMOST
     std::vector<Tag> tags;
     std::vector<HandleType> new_nodes, new_edges, new_faces, new_cells, new_sets;
     std::vector<ElementSet::ComparatorType> set_comparators;
-    std::string tag, attr, val, save, incl;
-    int nmeshes = 1, fintag;
-    tag = reader.ReadOpenTag(); //ParallelMesh
-    if( tag != "ParallelMesh" )
+    XMLReader::XMLTag PassTag;
+    bool pass_tag = false;
+    int nmeshes = 1;
+
+    XMLReader::XMLTag TagParallelMesh = reader.OpenTag();
+    if( TagParallelMesh.name != "ParallelMesh" )
     {
-      reader.Report("Incorrect XML tag %s expected ParallelMesh",tag.c_str());
+      reader.Report("Incorrect XML tag %s expected ParallelMesh",TagParallelMesh.name.c_str());
       throw BadFile;
     }
-    attr = reader.AttributeName();
-    while( !reader.isTagEnded() )
+
+    for(int q = 0; q < TagParallelMesh.NumAttrib(); ++q)
     {
-      val = reader.AttributeValue();
-      if( attr == "Number" ) nmeshes = atoi(val.c_str());
-      else reader.Report("Unused attribute for ParallelMesh %s='%s'",attr.c_str(),val.c_str());
-      attr = reader.AttributeName();
+      XMLReader::XMLAttrib & attr = TagParallelMesh.GetAttib(q);
+      if( attr.name == "Number" ) nmeshes = atoi(attr.value.c_str());
+      else reader.Report("Unused attribute for ParallelMesh %s='%s'",attr.name.c_str(),attr.value.c_str());
     }
-    reader.ReadCloseTag();
-    tag = reader.ReadOpenTag(); // <Mesh>
-    //for(int i = 0; i < nmeshes; ++i)
-    while( !reader.isTagFinish() )
+    
+    for(XMLReader::XMLTag TagMesh = reader.OpenTag(); !TagMesh.Finalize() && TagMesh.name == "Mesh"; reader.CloseTag(TagMesh), TagMesh = reader.OpenTag())
     {
       bool repair_orientation = false;
-        
-      attr = reader.AttributeName();
-      while(!reader.isTagEnded())
+      for(int q = 0; q < TagMesh.NumAttrib(); ++q)
       {
-        val = reader.AttributeValue();
-        if( attr == "RepairOrientation" )
-        {
-          if( val == "True" || val == "true" ) repair_orientation = true;
-          else if( val == "False" || val == "false" ) repair_orientation = false;
-          else reader.Report("Cannot understand value %s for attribute RepairOrientation",val.c_str());
-        }
-        else reader.Report("Unused attribute for Tags %s='%s'",attr.c_str(),val.c_str());
-        attr = reader.AttributeName();
+        XMLReader::XMLAttrib & attr = TagMesh.GetAttib(q);
+        if( attr.name == "RepairOrientation" ) repair_orientation = reader.ParseBool(attr.value);
+        else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
       }
-      reader.ReadCloseTag();
+
       { //Tags
-        tag = reader.ReadOpenTag();
-        if( tag != "Tags" )
+
+        XMLReader::XMLTag TagTags = reader.OpenTag();
+        
+        if( TagTags.name != "Tags" )
         {
-          reader.Report("Incorrect XML tag %s expected Tags",tag.c_str());
+          reader.Report("Incorrect XML tag %s expected Tags",TagTags.name.c_str());
           throw BadFile;
         }
+
         int ntags = 0;
         bool matchntags = false;
-        attr = reader.AttributeName();
-        while(!reader.isTagEnded())
+        for(int q = 0; q < TagTags.NumAttrib(); ++q)
         {
-          val = reader.AttributeValue();
-          if( attr == "Number" ) 
+          XMLReader::XMLAttrib & attr = TagTags.GetAttib(q);
+          if( attr.name == "Number" ) 
           {
-            ntags = atoi(val.c_str());
+            ntags = atoi(attr.value.c_str());
             matchntags = true;
           }
-          else reader.Report("Unused attribute for Tags %s='%s'",attr.c_str(),val.c_str());
-          attr = reader.AttributeName();
+          else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
         }
+
         tags.reserve(ntags);
-        reader.ReadCloseTag();
 
-        tag = reader.ReadOpenTag();
 
-        while(!reader.isTagFinish())//for(int k = 0; k < ntags; ++k)
+        XMLReader::XMLTag TagTag;
+        for(TagTag = reader.OpenTag(); !TagTag.Finalize() && TagTag.name == "Tag"; reader.CloseTag(TagTag), TagTag = reader.OpenTag())
         {
           std::vector<std::string> parsed;
           std::string tagname = "";
@@ -1327,104 +1488,95 @@ namespace INMOST
           DataType type = DATA_REAL;
           ElementType sparse = NONE;
           ElementType defined = NONE;
-            
-          if( tag != "Tag" )
+          for(int q = 0; q < TagTag.NumAttrib(); ++q)
           {
-            reader.Report("Incorrect XML tag %s expected Tag",tag.c_str());
-            throw BadFile;
-          }
-          attr = reader.AttributeName();
-          while(!reader.isTagEnded())
-          {
-            val = reader.AttributeValue();
-            if( attr == "Name" ) tagname = val;
-            else if( attr == "Size" ) 
+            XMLReader::XMLAttrib & attr = TagTag.GetAttib(q);
+            if( attr.name == "Name" ) tagname = attr.value;
+            else if( attr.name == "Size" ) 
             {
-              if( val == "Variable" )
+              if( attr.value == "Variable" )
                 size = ENUMUNDEF;
-              else size = atoi(val.c_str());
+              else size = atoi(attr.value.c_str());
             }
-            else if( attr == "Type" )
+            else if( attr.name == "Type" )
             {
-              if( val == "Real" ) type = DATA_REAL;
-              else if( val == "Integer" ) type = DATA_INTEGER;
-              else if( val == "Reference" ) type = DATA_REFERENCE;
-              else if( val == "Bulk" ) type = DATA_BULK;
-              else if( val == "Variable" ) type = DATA_VARIABLE;
+              if( attr.value == "Real" ) type = DATA_REAL;
+              else if( attr.value == "Integer" ) type = DATA_INTEGER;
+              else if( attr.value == "Reference" ) type = DATA_REFERENCE;
+              else if( attr.value == "RemoteReference" ) type = DATA_REMOTE_REFERENCE;
+              else if( attr.value == "Bulk" ) type = DATA_BULK;
+#if defined(USE_AUTODIFF)
+              else if( attr.value == "Variable" ) type = DATA_VARIABLE;
+#endif
             }
-            else if( attr == "Sparse" )
+            else if( attr.name == "Sparse" )
             { 
-              reader.ParseCommaSeparated(val,parsed);
+              reader.ParseCommaSeparated(attr.value,parsed);
               for(int q = 0; q < (int)parsed.size(); ++q) sparse |= reader.atoes(parsed[q].c_str());
             }
-            else if( attr == "Definition" )
+            else if( attr.name == "Definition" )
             {
-              reader.ParseCommaSeparated(val,parsed);
-              for(int q = 0; q < (int)parsed.size(); ++q)
-                defined |= reader.atoes(parsed[q].c_str());
+              reader.ParseCommaSeparated(attr.value,parsed);
+              for(int q = 0; q < (int)parsed.size(); ++q) defined |= reader.atoes(parsed[q].c_str());
             }
-            else reader.Report("Unused attribute for Tags %s='%s'",attr.c_str(),val.c_str());
-            attr = reader.AttributeName();
+            else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
           }
           if( tagname == "" )
             reader.Report("Tag name was not specified");
           else if( defined == NONE )
             reader.Report("Domain of definition for the tag was not specified");
           tags.push_back(CreateTag(tagname,type,defined,sparse,size));
-          reader.ReadCloseTag();
-
-          tag = reader.ReadOpenTag();
         }
-        reader.ReadFinishTag("Tags");
+        reader.CloseTag(TagTags);
+
+        if( !TagTag.Finalize() )
+        {
+          PassTag = TagTag;
+          pass_tag = true;
+        }
 
         if( matchntags && ntags != tags.size() ) reader.Report("Number %d of XML tags Tag red do not match to the specified number %d",tags.size(),ntags);
       }
 
       { //Nodes
-        incl = "";
         int nnodes = 0, ndims = 3;
-        tag = reader.ReadOpenTag();
-        if( tag != "Nodes" )
+        XMLReader::XMLTag TagNodes;
+        if( pass_tag )
         {
-          reader.Report("Incorrect XML tag %s expected Nodes",tag.c_str());
+          TagNodes = PassTag;
+          pass_tag = false;
+        }
+        else
+          TagNodes = reader.OpenTag();
+
+        if( TagNodes.name != "Nodes" )
+        {
+          reader.Report("Incorrect XML tag %s expected Nodes",TagNodes.name.c_str());
           throw BadFile;
         }
-        attr = reader.AttributeName();
-        while(!reader.isTagEnded())
+
+        for(int q = 0; q < TagNodes.NumAttrib(); ++q)
         {
-          val = reader.AttributeValue();
-          if( attr == "Number" ) nnodes = atoi(val.c_str());
-          else if( attr == "Dimensions" ) 
+          XMLReader::XMLAttrib & attr = TagNodes.GetAttib(q);
+          if( attr.name == "Number" ) nnodes = atoi(attr.value.c_str());
+          else if( attr.name == "Dimensions" )
           {
-            ndims = atoi(val.c_str());
-            if( ndims != 3 || GetDimensions() != ndims ) SetDimensions(ndims);
+            ndims = atoi(attr.value.c_str());
+            if( GetDimensions() != ndims ) SetDimensions(ndims);
           }
-          else if( attr == "IncludeContents" )
-            incl = attr;
-          else reader.Report("Unused attribute for Tags %s='%s'",attr.c_str(),val.c_str());
-          attr = reader.AttributeName();
+          else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
         }
-        fintag = reader.ReadCloseTag();
 
         new_nodes.reserve(nnodes);
 
         {
-          std::fstream incl_stream;
-          if( !incl.empty() )
-          {
-            incl_stream.open(incl.c_str(),std::ios::in);
-            reader.PushStream(incl_stream);
-          }
-
           if( reader.ReadOpenContents() )
           {
             std::vector<double> Vector;
             int Repeat;
             dynarray<Storage::real,3> xyz;
-            val = reader.GetContentsWord();
-            while(!reader.isContentsEnded() )
+            for(std::string val = reader.GetContentsWord(); !reader.isContentsEnded(); val = reader.GetContentsWord() )
             {
-              bool vector = false;
               reader.ParseReal(val,Vector,Repeat,nnodes);
               for(int l = 0; l < Repeat; ++l)
               {
@@ -1438,7 +1590,6 @@ namespace INMOST
                   }
                 }
               }
-              val = reader.GetContentsWord();
             }
             reader.ReadCloseContents();
           }
@@ -1448,9 +1599,7 @@ namespace INMOST
             throw BadFile;
           }
 
-          if( !incl.empty() ) reader.PopStream();
-
-          if( fintag != 2 ) reader.ReadFinishTag("Nodes");
+          reader.CloseTag(TagNodes);
         }
 
         if( new_nodes.size() != nnodes )
@@ -1468,42 +1617,49 @@ namespace INMOST
           bool matchelems = false;
           std::vector<HandleType> * elems;
           ElementType curtype;
-          tag = reader.ReadOpenTag();
-          if( !(tag == "Cells" || tag == "Faces" || tag == "Edges" ) )
+
+
+          XMLReader::XMLTag TagElems;
+          
+          if( pass_tag )
           {
-            reader.Report("Unexpected tag %s while waiting for either Cells or Faces or Edges",tag.c_str());
+            TagElems = PassTag;
+            pass_tag = false;
+          }
+          else
+            TagElems = reader.OpenTag();
+
+          if( !(TagElems.name == "Cells" || TagElems.name == "Faces" || TagElems.name == "Edges" ) )
+          {
+            reader.Report("Unexpected tag %s while waiting for either Cells or Faces or Edges",TagElems.name.c_str());
             throw BadFile;
           }
-          if( tag != "Cells" ) repeat = true;
-          else repeat = false;
-          if( tag == "Cells" ) 
+          if( TagElems.name != "Cells" ) repeat = true; else repeat = false;
+          if( TagElems.name == "Cells" ) 
           {
             elems = &new_cells;
             curtype = CELL;
           }
-          else if( tag == "Faces" ) 
+          else if( TagElems.name == "Faces" ) 
           {
             elems = &new_faces;
             curtype = FACE;
           }
-          else if( tag == "Edges" ) 
+          else if( TagElems.name == "Edges" ) 
           {
             elems = &new_edges;
             curtype = EDGE;
           }
-          attr = reader.AttributeName();
-          while(!reader.isTagEnded())
+
+          for(int q = 0; q < TagElems.NumAttrib(); ++q)
           {
-            val = reader.AttributeValue();
-            if( attr == "Number" ) nelems = atoi(val.c_str());
-            //else if( attr == "ConnectionType" ) subtype = reader.atoes(val.c_str());
-            else reader.Report("Unused attribute for %ss %s='%s'",tag.c_str(),attr.c_str(),val.c_str());
-            attr = reader.AttributeName();
+            XMLReader::XMLAttrib & attr = TagElems.GetAttib(q);
+            if( attr.name == "Number" ) nelems = atoi(attr.value.c_str());
+            else reader.Report("Unused attribute for %ss %s='%s'",TagElems.name.c_str(),attr.name.c_str(),attr.value.c_str());
           } 
-          reader.ReadCloseTag();
+          
           elems->reserve(nelems);
 
-          save = tag;
             
           HandleType * links[3] =
           {
@@ -1512,34 +1668,26 @@ namespace INMOST
             new_faces.empty() ? NULL : &new_faces[0]
           };
 
-          tag = reader.ReadOpenTag();
-          while( !reader.isTagFinish() )
+          
+          XMLReader::XMLTag TagConns;
+          for(TagConns = reader.OpenTag(); !TagConns.Finalize() && TagConns.name == "Connections"; reader.CloseTag(TagConns), TagConns = reader.OpenTag())
           {
             int nconns = 0;
             int offset = 0;
             ElementType subtype = NODE;
-              
-            if( tag != "Connections" ) 
+            for(int q = 0; q < TagConns.NumAttrib(); ++q)
             {
-              reader.Report("Expected XML tag Connections, encountered %s",tag.c_str());
-              throw BadFile;
-            }
-            nconns = 0;
-            attr = reader.AttributeName();
-            while(!reader.isTagEnded())
-            {
-              val = reader.AttributeValue();
-              if( attr == "Number" ) 
+              XMLReader::XMLAttrib & attr = TagConns.GetAttib(q);
+              if( attr.name == "Number" ) 
               {
-                nconns = atoi(val.c_str());
+                nconns = atoi(attr.value.c_str());
                 matchelems = true;
               }
-              else if( attr == "Type" ) subtype = reader.atoes(val.c_str());
-              else if( attr == "Offset" ) offset = atoi(val.c_str());
-              else reader.Report("Unused attribute for %ss %s='%s'",tag.c_str(),attr.c_str(),val.c_str());
-              attr = reader.AttributeName();
+              else if( attr.name == "Type" ) subtype = reader.atoes(attr.value.c_str());
+              else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
+              else reader.Report("Unused attribute for %ss %s='%s'",TagConns.name.c_str(),attr.name.c_str(),attr.value.c_str());
             }
-            reader.ReadCloseTag();
+            
             ntotconns += nconns;
             if( subtype >= curtype )
             {
@@ -1548,8 +1696,7 @@ namespace INMOST
             }
             reader.ReadOpenContents();
             ElementArray<Element> subarr(this);
-            val = reader.GetContentsWord();
-            while(!reader.isContentsEnded())
+            for(std::string val = reader.GetContentsWord(); !reader.isContentsEnded(); val = reader.GetContentsWord())
             {
               int num = atoi(val.c_str()), elem;
               subarr.clear();
@@ -1620,16 +1767,20 @@ namespace INMOST
                   elems->push_back(CreateCell(subarr.Convert<Face>()).first.GetHandle());
                 break;
               }
-              val = reader.GetContentsWord();
             }
             reader.ReadCloseContents();
-            reader.ReadFinishTag("Connections");
-            tag = reader.ReadOpenTag();
-          } //while( nelems != ntotconns );
+          } 
 
           if( matchelems && nelems != ntotconns) reader.Report("Number %d of elements encountered do not match to the specified number %d",ntotconns,nelems);
 
-          reader.ReadFinishTag(save.c_str());
+          reader.CloseTag(TagElems);
+
+          if( !TagConns.Finalize() )
+          {
+            PassTag = TagConns;
+            pass_tag = true;
+          }
+
         } while(repeat);
       }
 
@@ -1637,8 +1788,15 @@ namespace INMOST
         bool repeat = false;
         do
         {
-          tag = reader.ReadOpenTag();
-          if( tag == "Sets" )
+          XMLReader::XMLTag TagSetsData;
+          if( pass_tag )
+          {
+            TagSetsData = PassTag;
+            pass_tag = false;
+          }
+          else TagSetsData = reader.OpenTag();
+          
+          if( TagSetsData.name == "Sets" )
           {
             repeat = true;
             HandleType * links[4] =
@@ -1651,71 +1809,59 @@ namespace INMOST
             int nsets = 0, sets_offset = 0;
             int nsets_read = 0;
             bool matchsets = false;
-            attr = reader.AttributeName();
-            while(!reader.isTagEnded())
+            for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
             {
-              val = reader.AttributeValue();
-              if( attr == "Number" ) 
+              XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
+              if( attr.name == "Number" ) 
               {
-                nsets = atoi(val.c_str());
+                nsets = atoi(attr.value.c_str());
                 matchsets = true;
               }
-              else if( attr == "Offset" ) sets_offset = atoi(val.c_str());
-              else reader.Report("Unused attribute for %ss %s='%s'",tag.c_str(),attr.c_str(),val.c_str());
-              attr = reader.AttributeName();
+              else if( attr.name == "Offset" ) sets_offset = atoi(attr.value.c_str());
+              else reader.Report("Unused attribute for %ss %s='%s'",TagSetsData.name.c_str(),attr.name.c_str(),attr.value.c_str());
             }
-            reader.ReadCloseTag();
             new_sets.reserve(nsets);
-            tag = reader.ReadOpenTag();
-            //for(int q = 0; q < nsets; ++q)
-            while(!reader.isTagFinish())
+            
+            XMLReader::XMLTag Set;
+            for(Set = reader.OpenTag(); !Set.Finalize() && Set.name == "Set"; reader.CloseTag(Set), Set = reader.OpenTag() )
             {
               int size = 0, offset = 0;
               std::string name;
               HandleType parent = InvalidHandle(), child = InvalidHandle(), sibling = InvalidHandle();
               ElementSet::ComparatorType comparator = ElementSet::UNSORTED_COMPARATOR;
-                
-              if( tag != "Set" )
-              {
-                reader.Report("Unexpected XML tag %s expected Set",tag.c_str());
-                throw BadFile;
-              }
               nsets_read++;
-              attr = reader.AttributeName();
-              while(!reader.isTagEnded())
+              for(int q = 0; q < Set.NumAttrib(); ++q)
               {
-                val = reader.AttributeValue();
-                if( attr == "Size" ) size = atoi(val.c_str());
-                else if( attr == "Offset" ) offset = atoi(val.c_str());
-                else if( attr == "Name" ) name = val;
-                else if( attr == "Parent" ) 
+                XMLReader::XMLAttrib & attr = Set.GetAttib(q);
+                if( attr.name == "Size" ) size = atoi(attr.value.c_str());
+                else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
+                else if( attr.name == "Name" ) name = attr.value;
+                else if( attr.name == "Parent" ) 
                 {
-                  if( val != "Unset" )
-                    parent = ComposeHandle(ESET,atoi(val.c_str()));
+                  if( attr.value != "Unset" )
+                    parent = ComposeHandle(ESET,atoi(attr.value.c_str()));
                 }
-                else if( attr == "Sibling" ) 
+                else if( attr.name == "Sibling" ) 
                 {
-                  if( val != "Unset" )
-                    sibling = ComposeHandle(ESET,atoi(val.c_str()));
+                  if( attr.value != "Unset" )
+                    sibling = ComposeHandle(ESET,atoi(attr.value.c_str()));
                 }
-                else if( attr == "Child" ) 
+                else if( attr.name == "Child" ) 
                 {
-                  if( val != "Unset" )
-                    child = ComposeHandle(ESET,atoi(val.c_str()));
+                  if( attr.value != "Unset" )
+                    child = ComposeHandle(ESET,atoi(attr.value.c_str()));
                 }
-                else if( attr == "Comparator" )
+                else if( attr.name == "Comparator" )
                 {
-                  if( val == "Unsorted" ) comparator = ElementSet::UNSORTED_COMPARATOR;
-                  else if( val == "Identificator" ) comparator = ElementSet::GLOBALID_COMPARATOR;
-                  else if( val == "Centroid" ) comparator = ElementSet::CENTROID_COMPARATOR;
-                  else if( val == "Hierarchy" ) comparator = ElementSet::HIERARCHY_COMPARATOR;
-                  else if( val == "Handle" ) comparator = ElementSet::HANDLE_COMPARATOR;
-                  else reader.Report("Unexpected comparator type %s for attribute Comparator, expected Unsorted,Identificator,Centroid,Hierarchy,Handle",val.c_str());
+                  if( attr.value == "Unsorted" ) comparator = ElementSet::UNSORTED_COMPARATOR;
+                  else if( attr.value == "Identificator" ) comparator = ElementSet::GLOBALID_COMPARATOR;
+                  else if( attr.value == "Centroid" ) comparator = ElementSet::CENTROID_COMPARATOR;
+                  else if( attr.value == "Hierarchy" ) comparator = ElementSet::HIERARCHY_COMPARATOR;
+                  else if( attr.value == "Handle" ) comparator = ElementSet::HANDLE_COMPARATOR;
+                  else reader.Report("Unexpected comparator type %s for attribute Comparator, expected Unsorted,Identificator,Centroid,Hierarchy,Handle",attr.value.c_str());
                 }
-                else reader.Report("Unused attribute for %ss %s='%s'",tag.c_str(),attr.c_str(),val.c_str());
-                attr = reader.AttributeName();
+                else reader.Report("Unused attribute for %ss %s='%s'",Set.name.c_str(),attr.name.c_str(),attr.value.c_str());
               } 
-              reader.ReadCloseTag();
               ElementSet s = CreateSet(name).first;
               new_sets.push_back(s.GetHandle());
               set_comparators.push_back(comparator);
@@ -1728,8 +1874,7 @@ namespace INMOST
               if( sibling != InvalidHandle() ) ElementSet::hSibling(hc) = sibling;
               //s.SortSet(comparator);
               reader.ReadOpenContents();
-              val = reader.GetContentsWord();
-              while(!reader.isContentsEnded())
+              for(std::string val = reader.GetContentsWord(); !reader.isContentsEnded(); val = reader.GetContentsWord())
               {
                 std::vector<std::pair<ElementType,int> > Vector;
                 int Repeat;
@@ -1748,14 +1893,17 @@ namespace INMOST
                     //s.PutElement(links[ElementNum(Vector[q].first)][Vector[q].second-offset]);
                   //s.PutElements(Vector[0],(enumerator)Vector.size());
                 }
-                val = reader.GetContentsWord();
               }
               reader.ReadCloseContents();
-              reader.ReadFinishTag("Set");
-              tag = reader.ReadOpenTag();
             }
-            reader.ReadFinishTag("Sets");
-
+            
+            reader.CloseTag(TagSetsData);
+            if( !Set.Finalize() )
+            {
+              PassTag = Set;
+              pass_tag = true;
+            }
+            
             if( matchsets && nsets != nsets_read ) reader.Report("Number %d of XML tags Set read do not match to the number %d specified",nsets_read,nsets);
 
             //correct links between sets
@@ -1774,7 +1922,7 @@ namespace INMOST
               if( set_comparators[q] != ElementSet::UNSORTED_COMPARATOR ) ElementSet(this,new_sets[q]).SortSet(set_comparators[q]);
             }
           }
-          else if( tag == "Data" )
+          else if( TagSetsData.name == "Data" )
           {
             repeat = false;
             HandleType * links[5] =
@@ -1787,60 +1935,47 @@ namespace INMOST
             };
             int ndata = 0, ndatapass = 0;
             bool matchndata = false;
-            attr = reader.AttributeName();
-            while(!reader.isTagEnded())
+
+            for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
             {
-              val = reader.AttributeValue();
-              if( attr == "Number" ) 
+              XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
+              if( attr.name == "Number" ) 
               {
-                ndata = atoi(val.c_str());
+                ndata = atoi(attr.value.c_str());
                 matchndata = true;
               }
-              else reader.Report("Unused attribute for %ss %s='%s'",tag.c_str(),attr.c_str(),val.c_str());
-              attr = reader.AttributeName();
+              else reader.Report("Unused attribute for %ss %s='%s'",TagSetsData.name.c_str(),attr.name.c_str(),attr.value.c_str());
             }
-            reader.ReadCloseTag();
 
-            tag = reader.ReadOpenTag();
-            while( !reader.isTagFinish() )
+            XMLReader::XMLTag TagDataSet;
+            for(TagDataSet = reader.OpenTag(); !TagDataSet.Finalize() && TagDataSet.name == "DataSet"; reader.CloseTag(TagDataSet), TagDataSet = reader.OpenTag())
             {
-              if( tag != "DataSet" )
-              {
-                reader.Report("Expected XML tag DataSet but got %s",tag.c_str());
-                throw BadFile;
-              }
               ++ndatapass;
               int sparse_read = 2, offset = 0;
-              std::string tagname = "", setname = "";
+              std::string tagname = "", setname = "", meshname = "";
+              Mesh * remote_mesh = NULL;
               ElementType etype = NONE;
-              attr = reader.AttributeName();
-              while(!reader.isTagEnded())
+              for(int q = 0; q < TagDataSet.NumAttrib(); ++q)
               {
-                val = reader.AttributeValue();
-                if( attr == "SetType" ) 
+                XMLReader::XMLAttrib & attr = TagDataSet.GetAttib(q);
+                if( attr.name == "SetType" ) 
                 {
-                  if( val == "Cells" ) etype = CELL;
-                  else if( val == "Faces" ) etype = FACE;
-                  else if( val == "Edges" ) etype = EDGE;
-                  else if( val == "Nodes" ) etype = NODE;
-                  else if( val == "Sets" ) etype = ESET;
-                  else if( val == "Mesh" ) etype = MESH;
-                  else if( val == "SetData" ) etype = NONE;
+                  if( attr.value == "Cells" ) etype = CELL;
+                  else if( attr.value == "Faces" ) etype = FACE;
+                  else if( attr.value == "Edges" ) etype = EDGE;
+                  else if( attr.value == "Nodes" ) etype = NODE;
+                  else if( attr.value == "Sets" ) etype = ESET;
+                  else if( attr.value == "Mesh" ) etype = MESH;
+                  else if( attr.value == "SetData" ) etype = NONE;
                 }
-                else if( attr == "TagName" ) tagname = val;
-                else if( attr == "SetName" ) setname = val;
-                else if( attr == "Sparse" )
-                {
-                  if( val == "False" || val == "false" ) sparse_read = 0;
-                  else if( val == "True" || val == "true" ) sparse_read = 1;
-                  else reader.Report("Cannot understand value %s for attribute Sparse",val.c_str());
-                }
-                else if( attr == "Offset" ) offset = atoi(val.c_str());
-                else reader.Report("Unused attribute for %ss %s='%s'",tag.c_str(),attr.c_str(),val.c_str());
-                attr = reader.AttributeName();
+                else if( attr.name == "TagName" ) tagname = attr.value;
+                else if( attr.name == "SetName" ) setname = attr.value;
+                else if( attr.name == "MeshName" ) meshname = attr.value;
+                else if( attr.name == "Sparse" ) sparse_read = reader.ParseBool(attr.value);
+                else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
+                else reader.Report("Unused attribute for %ss %s='%s'",TagDataSet.name.c_str(),attr.name.c_str(),attr.value.c_str());
               }
-              reader.ReadCloseTag();
-
+              
               if( tagname == "" )
               {
                 reader.Report("DataSet had no attribute TagName");
@@ -1850,6 +1985,12 @@ namespace INMOST
               {
                 reader.Report("Tag %s do not exist",tagname.c_str());
                 throw BadFile;
+              }
+              if( meshname != "" )
+              {
+                remote_mesh = Mesh::GetMesh(meshname);
+                if( !remote_mesh )
+                  reader.Report("Remote mesh %s do not exist, you should create it first inside of your application",meshname.c_str());
               }
 
               Tag t = GetTag(tagname);
@@ -1901,13 +2042,9 @@ namespace INMOST
                 case MESH: set_elems = &handle; set_size = 1; break;
                 }
               }
-              reader.ReadOpenContents();
-
-                
               it = set_elems;
-              val = reader.GetContentsWord();
-              const char * debug_val = val.c_str();
-              while(!reader.isContentsEnded())
+              reader.ReadOpenContents();
+              for(std::string val = reader.GetContentsWord(); !reader.isContentsEnded(); val = reader.GetContentsWord())
               {
                 if( sparse_read )
                 {
@@ -1949,7 +2086,7 @@ namespace INMOST
                     std::vector<Storage::integer> Vector; int Repeat;
                     reader.ParseInteger(val,Vector,Repeat,set_size);
                     if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat )
+                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read)
                     {
                       reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
                       throw BadFile;
@@ -1974,7 +2111,7 @@ namespace INMOST
                     std::string Vector; int Repeat;
                     reader.ParseBulk(val,Vector,Repeat,set_size);
                     if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat )
+                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read)
                     {
                       reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
                       throw BadFile;
@@ -1999,7 +2136,7 @@ namespace INMOST
                     std::vector<std::pair<ElementType,int> > Vector; int Repeat;
                     reader.ParseReference(val,Vector,Repeat,set_size);
                     if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat )
+                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read)
                     {
                       reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
                       throw BadFile;
@@ -2018,6 +2155,61 @@ namespace INMOST
                     }
                   }
                   break;
+                case DATA_REMOTE_REFERENCE:
+                  {
+                    Storage::remote_reference_array data = RemoteReferenceArray(*it,t);
+                    if( remote_mesh != NULL )
+                    {
+                      std::vector<std::pair<ElementType,int> > Vector; int Repeat;
+                      reader.ParseReference(val,Vector,Repeat,set_size);
+                      if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+                      else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
+                      {
+                        reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
+                        throw BadFile;
+                      }
+                      for(int l = 0; l < Repeat; ++l)
+                      {
+                        for(int q = 0; q < (int)Vector.size(); ++q)
+                        {
+                          data.at((q + l*((int)Vector.size()))%data.size()).first  = remote_mesh;
+                          data.at((q + l*((int)Vector.size()))%data.size()).second = ComposeHandle(Vector[q].first,Vector[q].second-offset);
+                          if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
+                          {
+                            ++it;
+                            if( it-set_elems < set_size ) data = RemoteReferenceArray(*it,t);
+                          }
+                        }
+                      }
+                    }
+                    else
+                    {
+                      std::vector<std::pair<std::string,std::pair<ElementType,int> > > Vector; int Repeat;
+                      reader.ParseRemoteReference(val,Vector,Repeat,set_size);
+                      if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+                      else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
+                      {
+                        reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
+                        throw BadFile;
+                      }
+                      for(int l = 0; l < Repeat; ++l)
+                      {
+                        for(int q = 0; q < (int)Vector.size(); ++q)
+                        {
+                          Mesh * m = GetMesh(Vector[q].first);
+                          if( m == NULL ) reader.Report("Cannot find remote mesh %s, you should create it first inside of your application",Vector[q].first);
+                          data.at((q + l*((int)Vector.size()))%data.size()).first = m;
+                          data.at((q + l*((int)Vector.size()))%data.size()).second = ComposeHandle(Vector[q].second.first,Vector[q].second.second-offset);
+                          if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
+                          {
+                            ++it;
+                            if( it-set_elems < set_size ) data = RemoteReferenceArray(*it,t);
+                          }
+                        }
+                      }
+                    }
+                  }
+                  break;
 #if defined(USE_AUTODIFF)
                 case DATA_VARIABLE:
                   {
@@ -2025,7 +2217,7 @@ namespace INMOST
                     std::vector<Storage::var> Vector; int Repeat;
                     reader.ParseVariable(val,Vector,Repeat,set_size);
                     if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat )
+                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
                     {
                       reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
                       throw BadFile;
@@ -2046,30 +2238,27 @@ namespace INMOST
                   break;
 #endif
                 }
-                val = reader.GetContentsWord();
               } 
-                
               reader.ReadCloseContents();
-              reader.ReadFinishTag("DataSet");
-
-              tag = reader.ReadOpenTag();
             }
 
             if( matchndata && ndata != ndatapass ) reader.Report("warning: Number %d of DataSet tags encountered do not match to the specified %d",ndatapass,ndata);
 
+            reader.CloseTag(TagSetsData);
 
-            reader.ReadFinishTag("Data");
+            if( !TagDataSet.Finalize() )
+            {
+              PassTag = TagDataSet;
+              pass_tag = true;
+            }
           }
           else
           {
-            reader.Report("Unexpected tag %s, expected Sets or Data",tag.c_str());
+            reader.Report("Unexpected tag %s, expected Sets or Data",TagSetsData.name.c_str());
             throw BadFile;
           }
         } while(repeat);
       }
-
-      reader.ReadFinishTag("Mesh");
-
       RepairGeometricTags();
 
       if( repair_orientation )
@@ -2079,10 +2268,8 @@ namespace INMOST
           if( Face(this,new_faces[q]).FixNormalOrientation() ) numfixed++;
         if( numfixed ) std::cout << "Fixed orientation of " << numfixed << " faces" << std::endl;
       }
-
-      tag = reader.ReadOpenTag(); // <Mesh>
     }
-    reader.ReadFinishTag("ParallelMesh");
+    reader.CloseTag(TagParallelMesh);
     infile.close();
   }
 
@@ -2103,6 +2290,7 @@ namespace INMOST
       case DATA_INTEGER: type = "Integer"; break;
       case DATA_BULK: type = "Bulk"; break;
       case DATA_REFERENCE: type = "Reference"; break;
+      case DATA_REMOTE_REFERENCE: type = "RemoteReference"; break;
 #if defined(USE_AUTODIFF)
       case DATA_VARIABLE: type = "Variable"; break;
 #endif
@@ -2387,6 +2575,51 @@ namespace INMOST
                   fout << ReferenceToString(data.at(data.size()-1),data[data.size()-1].Integer(idx));
                 else
                   fout << "None:0";
+                fout << "}";
+              }
+              endl_count+=data.size();
+              if( endl_count > 8 )
+              {
+                fout << "\n\t\t\t";
+                endl_count = 0;
+              }
+              else fout << " ";
+              //fout << std::endl;
+            }
+          }
+          break;
+        case DATA_REMOTE_REFERENCE:
+          for(iteratorStorage jt = Begin(etype); jt != End(); ++jt) if( jt->HaveData(*t) )
+          {
+            Storage::remote_reference_array data = jt->RemoteReferenceArray(*t);
+            if( !data.empty() )
+            {
+              if( t->isSparse(etype) ) 
+              {
+                fout << jt->Integer(idx) << " ";
+                endl_count++;
+              }
+              if( data.size() == 1 ) 
+              {
+                if( data[0].isValid() )
+                  fout << data.at(0).first->GetMeshName() << ":" << ReferenceToString(data.at(0).second,data[0].Integer(idx));
+                else
+                  fout << ":None:0";
+              }
+              else
+              {
+                fout << "{";
+                for(int q = 0; q < (int)data.size()-1; ++q)
+                {
+                  if( data[q].isValid() )
+                    fout << data.at(q).first->GetMeshName() << ":" << ReferenceToString(data.at(q).second,data[q].Integer(idx)) << ",";
+                  else
+                    fout << ":None:0,";
+                }
+                if( data[data.size()-1].isValid() )
+                  fout << data.at(data.size()-1).first->GetMeshName() << ":" << ReferenceToString(data.at(data.size()-1).second,data[data.size()-1].Integer(idx));
+                else
+                  fout << ":None:0";
                 fout << "}";
               }
               endl_count+=data.size();

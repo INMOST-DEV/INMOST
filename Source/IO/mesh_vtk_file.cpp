@@ -231,8 +231,18 @@ safe_output:
 			{
 				Tag t = GetTag(tag_names[i]);
 				//printf("%s %d %d %d\n",tag_names[i].c_str(),t.isDefined(CELL),!t.isSparse(CELL),t.GetDataType() != DATA_BULK);
-				if( t.isDefined(CELL) && !t.isSparse(CELL) && t.GetDataType() != DATA_BULK && t.GetDataType() != DATA_REFERENCE &&
-					  t != CoordsTag() && t != SharedTag() && t != SendtoTag() && t != ProcessorsTag())
+				if( t.isDefined(CELL) && 
+            !t.isSparse(CELL) && 
+            t.GetDataType() != DATA_BULK && 
+            t.GetDataType() != DATA_REFERENCE &&
+            t.GetDataType() != DATA_REMOTE_REFERENCE &&
+#if defined(USE_AUTODIFF)
+            t.GetDataType() != DATA_VARIABLE &&
+#endif
+					  t != CoordsTag() && 
+            t != SharedTag() && 
+            t != SendtoTag() && 
+            t != ProcessorsTag())
 				{
 					//printf("added!\n");
 					tags.push_back(t);
@@ -285,8 +295,18 @@ safe_output:
 			for(unsigned int i = 0; i < tag_names.size(); i++)
 			{
 				Tag t = GetTag(tag_names[i]);
-				if( t.isDefined(NODE) && !t.isSparse(NODE) && t.GetDataType() != DATA_BULK && t.GetDataType() != DATA_REFERENCE &&
-					  t != CoordsTag() && t != SharedTag() && t != SendtoTag() && t != ProcessorsTag())
+				if( t.isDefined(NODE) && 
+            !t.isSparse(NODE) && 
+            t.GetDataType() != DATA_BULK && 
+            t.GetDataType() != DATA_REFERENCE &&
+            t.GetDataType() != DATA_REMOTE_REFERENCE &&
+#if defined(USE_AUTODIFF)
+            t.GetDataType() != DATA_VARIABLE &&
+#endif
+					  t != CoordsTag() && 
+            t != SharedTag() && 
+            t != SendtoTag() && 
+            t != ProcessorsTag())
 					tags.push_back(t);
 			}
 				

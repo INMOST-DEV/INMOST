@@ -324,6 +324,23 @@ namespace INMOST
 										else out.put(NONE);
 									}
 								} break;
+              case DATA_REMOTE_REFERENCE:
+								{
+									Storage::remote_reference_array arr = it->RemoteReferenceArray(*jt);
+									for(k = 0; k < recsize; k++)
+									{
+										if( arr[k].isValid() )
+										{
+                      uconv.write_iValue(out,arr[k].GetMeshLink()->GetMeshName().size());
+                      out.write(arr[k].GetMeshLink()->GetMeshName().c_str(),arr[k].GetMeshLink()->GetMeshName().size());
+											wetype = arr[k].GetElementType();
+											out.put(wetype);
+											lid = IntegerDF(arr[k]->GetHandle(),set_id);
+											uconv.write_iValue(out,lid);
+										}
+										else out.put(NONE);
+									}
+								} break;
 #if defined(USE_AUTODIFF)
               case DATA_VARIABLE:
 								{
@@ -1211,6 +1228,32 @@ namespace INMOST
 												arr.at(k) = elem_links[ElementNum(type)][lid];
 											}
 											else arr.at(k) = InvalidHandle();
+										}
+									} break;
+                case DATA_REMOTE_REFERENCE: 
+									{
+										Storage::remote_reference_array arr = RemoteReferenceArray(he,*jt);
+										for(k = 0; k < recsize; k++)
+										{
+                      INMOST_DATA_ENUM_TYPE size;
+                      std::vector<char> name;
+                      uconv.read_iValue(in,size);
+                      name.resize(size);
+                      if( !name.empty() ) in.read(&name[0],size);
+                      else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
+                      arr.at(k).first = GetMesh(std::string(name.begin(),name.end()));
+                      if( arr.at(k).first == NULL )
+                        std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(),name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;
+											char type;
+											in.get(type);
+											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											if (type != NONE)
+											{
+												uconv.read_iValue(in, lid);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+                        arr.at(k).second = ComposeHandle(type,lid);
+											}
+                      else arr.at(k).second = InvalidHandle();
 										}
 									} break;
 #if defined(USE_AUTODIFF)

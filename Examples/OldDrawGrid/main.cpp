@@ -3501,6 +3501,17 @@ void draw_screen()
 						}
 						break;
 					}
+        case DATA_REMOTE_REFERENCE:
+					{
+						Storage::remote_reference_array arr = e->RemoteReferenceArray(*t);
+						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
+						{
+              if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sprintf(temp,"%s NULL",str);
+              else sprintf(temp,"%s %p:%s:%d",str,arr[k]->GetMeshLink(),ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
+							strcpy(str,temp);
+						}
+						break;
+					}
 				}
 				sprintf(temp,"%s %s %s",t->GetTagName().c_str(),DataTypeName(t->GetDataType()),str);
 				strcpy(str,temp);

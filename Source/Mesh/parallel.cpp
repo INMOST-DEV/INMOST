@@ -2082,7 +2082,7 @@ namespace INMOST
 	
 	void Mesh::PackTagData(const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer)
 	{
-		if( tag.GetDataType() == DATA_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
+    if( tag.GetDataType() == DATA_REFERENCE || tag.GetDataType() == DATA_REMOTE_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		ElementType pack_types[2] = {NONE,NONE};
@@ -2168,7 +2168,7 @@ namespace INMOST
 	void Mesh::UnpackTagData(const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op)
 	{
 		(void) mask;
-		if( tag.GetDataType() == DATA_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
+		if( tag.GetDataType() == DATA_REFERENCE || tag.GetDataType() == DATA_REMOTE_REFERENCE) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 		REPORT_VAL("TagName",tag.GetTagName());
 		

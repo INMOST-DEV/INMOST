@@ -11,6 +11,7 @@ namespace INMOST
 			case DATA_INTEGER:   return "INTEGER";
 			case DATA_BULK:      return "BULK";
 			case DATA_REFERENCE: return "REFERENCE";
+      case DATA_REMOTE_REFERENCE: return "REMOTE_REFERENCE";
 #if defined(USE_AUTODIFF)
       case DATA_VARIABLE:  return "VARIABLE";
 #endif
@@ -26,6 +27,7 @@ namespace INMOST
 			case DATA_BULK:      return sizeof(INMOST_DATA_BULK_TYPE);
 			case DATA_INTEGER:   return sizeof(INMOST_DATA_INTEGER_TYPE);
 			case DATA_REAL:      return sizeof(INMOST_DATA_REAL_TYPE);
+      case DATA_REMOTE_REFERENCE:      return sizeof(RemoteHandleType);
 			case DATA_REFERENCE: return sizeof(HandleType);
 #if defined(USE_AUTODIFF)
       case DATA_VARIABLE:  return sizeof(variable);
@@ -43,6 +45,7 @@ namespace INMOST
 			case DATA_INTEGER:   return sizeof(inner_integer_array);
 			case DATA_BULK:      return sizeof(inner_bulk_array);
 			case DATA_REFERENCE: return sizeof(inner_reference_array);
+      case DATA_REMOTE_REFERENCE: return sizeof(inner_remote_reference_array);
 #if defined(USE_AUTODIFF)
       case DATA_VARIABLE:  return sizeof(inner_variable_array);
 #endif
@@ -79,6 +82,8 @@ namespace INMOST
 			else if( type == DATA_INTEGER )   new (adata) inner_integer_array  (*static_cast<const inner_integer_array   * >(bdata));
 			else if( type == DATA_BULK )      new (adata) inner_bulk_array     (*static_cast<const inner_bulk_array      * >(bdata));
 			else if( type == DATA_REFERENCE ) new (adata) inner_reference_array(*static_cast<const inner_reference_array * >(bdata));
+      else if( type == DATA_REMOTE_REFERENCE ) 
+                                        new (adata) inner_remote_reference_array(*static_cast<const inner_remote_reference_array * >(bdata));
 #if defined(USE_AUTODIFF)
       else if( type == DATA_VARIABLE )  new (adata) inner_variable_array (*static_cast<const inner_variable_array  * >(bdata));
 #endif
@@ -118,6 +123,11 @@ namespace INMOST
 			{
 				(*static_cast<inner_reference_array *> (adata)).~inner_reference_array();
 				new (adata) inner_reference_array();
+			}
+      else if( type == DATA_REMOTE_REFERENCE ) 
+			{
+				(*static_cast<inner_remote_reference_array *> (adata)).~inner_remote_reference_array();
+				new (adata) inner_remote_reference_array();
 			}
 #if defined(USE_AUTODIFF)
       else if( type == DATA_VARIABLE ) 
@@ -189,6 +199,7 @@ namespace INMOST
 			case DATA_REAL:      mem->bulk_data_type = INMOST_MPI_DATA_REAL_TYPE;    break;
 			case DATA_INTEGER:   mem->bulk_data_type = INMOST_MPI_DATA_INTEGER_TYPE; break;
 			case DATA_REFERENCE: mem->bulk_data_type = INMOST_MPI_DATA_ENUM_TYPE;    break;
+      case DATA_REMOTE_REFERENCE: mem->bulk_data_type = INMOST_MPI_DATATYPE_NULL;    break; //should never send this
 #if defined(USE_AUTODIFF)
       case DATA_VARIABLE:
         if( !Sparse::HaveRowEntryType() ) Sparse::CreateRowEntryType();
@@ -498,6 +509,8 @@ namespace INMOST
 					case DATA_INTEGER:   for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_integer_array   *>( p )).~inner_integer_array();  } break;
 					case DATA_BULK:      for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_bulk_array      *>( p )).~inner_bulk_array();     } break;
 					case DATA_REFERENCE: for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_reference_array *>( p )).~inner_reference_array();} break;
+          case DATA_REMOTE_REFERENCE: 
+                               for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_remote_reference_array *>( p )).~inner_remote_reference_array();} break;
 #if defined(USE_AUTODIFF)
           case DATA_VARIABLE:  for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_variable_array  *>( p )).~inner_variable_array(); } break;
 #endif
@@ -518,6 +531,8 @@ namespace INMOST
 				case DATA_INTEGER:   for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_integer_array();   break;
 				case DATA_BULK:      for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_bulk_array();      break;
 				case DATA_REFERENCE: for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_reference_array(); break;
+        case DATA_REMOTE_REFERENCE: 
+                             for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_remote_reference_array(); break;
 #if defined(USE_AUTODIFF)
         case DATA_VARIABLE:  for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_variable_array();  break;
 #endif

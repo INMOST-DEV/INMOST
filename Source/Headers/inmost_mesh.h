@@ -1219,6 +1219,7 @@ namespace INMOST
 		typedef sparse_type::size_type                              
                                         senum;
 	private:
+    std::string                         name;
 		Storage::real                       epsilon;
 		empty_container                     empty_space[6];
 		empty_container                     empty_links[6];
@@ -1249,19 +1250,20 @@ namespace INMOST
 	private:
     void AllocatePrivateMarkers();
     void DeallocatePrivateMarkers();
-		__INLINE static sparse_rec        mkrec              (const Tag & t) {sparse_rec ret; ret.tag = t.mem; ret.rec = NULL; return ret;}
-		__INLINE sparse_type const &      MGetSparseLink     (integer etypenum, integer ID) const {return GetSparseData(etypenum,links[etypenum][ID]);}
-		__INLINE sparse_type &            MGetSparseLink     (integer etypenum, integer ID) {return GetSparseData(etypenum,links[etypenum][ID]);}
-		__INLINE sparse_type const &      MGetSparseLink     (HandleType h) const {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
-		__INLINE sparse_type &            MGetSparseLink     (HandleType h) {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
-		__INLINE const void *             MGetSparseLink     (HandleType h, const Tag & t) const {sparse_type const & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; return NULL;}
-		__INLINE void * &                 MGetSparseLink     (HandleType h, const Tag & t) {sparse_type & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec;}
-		__INLINE const void *             MGetDenseLink      (integer n, integer id, const Tag & t) const {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
-		__INLINE void *                   MGetDenseLink      (integer n, integer id, const Tag & t) {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
-		__INLINE const void *             MGetDenseLink      (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
-		__INLINE void *                   MGetDenseLink      (HandleType h, const Tag & t) {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
-		__INLINE const void *             MGetLink           (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
-		__INLINE void *                   MGetLink           (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
+		__INLINE static sparse_rec          mkrec               (const Tag & t) {sparse_rec ret; ret.tag = t.mem; ret.rec = NULL; return ret;}
+		__INLINE sparse_type const &        MGetSparseLink      (integer etypenum, integer ID) const {return GetSparseData(etypenum,links[etypenum][ID]);}
+		__INLINE sparse_type &              MGetSparseLink      (integer etypenum, integer ID) {return GetSparseData(etypenum,links[etypenum][ID]);}
+		__INLINE sparse_type const &        MGetSparseLink      (HandleType h) const {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
+		__INLINE sparse_type &              MGetSparseLink      (HandleType h) {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
+		__INLINE const void *               MGetSparseLink      (HandleType h, const Tag & t) const {sparse_type const & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; return NULL;}
+		__INLINE void * &                   MGetSparseLink      (HandleType h, const Tag & t) {sparse_type & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec;}
+		__INLINE const void *               MGetDenseLink       (integer n, integer id, const Tag & t) const {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
+		__INLINE void *                     MGetDenseLink       (integer n, integer id, const Tag & t) {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
+		__INLINE const void *               MGetDenseLink       (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
+		__INLINE void *                     MGetDenseLink       (HandleType h, const Tag & t) {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
+		__INLINE const void *               MGetLink            (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
+		__INLINE void *                     MGetLink            (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
+    void                                Init                (std::string name);
 	public:
 		/// Remove all data and all elements from the mesh
 		/// Reset geometry service and topology check flags
@@ -1272,6 +1274,7 @@ namespace INMOST
 		/// return total number in bytes of occupied memory by element and its data
 		enumerator                          MemoryUsage         (HandleType h);
 		                                    Mesh                ();
+                                        Mesh                (std::string name);
 		                                    Mesh                (const Mesh & other);
 		Mesh &                              operator =          (Mesh const & other);
 		                                    ~Mesh               ();
@@ -1432,7 +1435,7 @@ namespace INMOST
 		/// @param tag tag that represents data
 		/// @see Mesh::RealDF
 		/// @see Mesh::RealDV
-		real      &                       Real               (HandleType h, const Tag & tag);
+		real      &                         Real                (HandleType h, const Tag & tag);
 		/// Returns a reference to inner memory location of the first element of the array of integer values.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
@@ -1444,7 +1447,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		integer   &                       Integer            (HandleType h, const Tag & tag);
+		integer   &                         Integer             (HandleType h, const Tag & tag);
 		/// Returns a reference in inner representation to the first element of array of bytes.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
@@ -1456,8 +1459,8 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		bulk      &                       Bulk               (HandleType h, const Tag & tag);
-		/// Returns a reference in inner representation to the first element of array of element handles.
+		bulk      &                         Bulk                (HandleType h, const Tag & tag);
+		/// Returns a reference in an inner representation to the first element of array of element handles.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
 		///
@@ -1472,7 +1475,24 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		reference &                       Reference          (HandleType h, const Tag & tag);
+		reference &                         Reference           (HandleType h, const Tag & tag);
+    /// Returns a reference in an inner representation to the first element of array of element remote handles.
+		/// Future recomendation:
+		///   If variable size array was not allocated then this function will generate segmentation fault.
+		///
+		/// If you know that data is certanly dense and fixed or variable on elements you access then it is
+		/// faster to use specialized variants of this function.
+		///
+		/// Reference to the data is guaranteed to be valid during mesh modification.
+		///
+		/// Using remote handle you can construct objects of type Element with the function
+		/// MakeElement or MakeElementRef.
+		///
+		/// @param h element handle
+		/// @param tag tag that represents data
+    /// @see MakeElement
+    /// @see MakeElementRef
+		remote_reference &                  RemoteReference     (HandleType h, const Tag & tag);
 		/// Returns an array of real values.
 		/// If you know that data is certanly dense on elements you access then it is faster to use
 		/// variants of this function with hint data structure.
@@ -1481,7 +1501,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		real_array                        RealArray          (HandleType h, const Tag & tag);
+		real_array                          RealArray           (HandleType h, const Tag & tag);
 		/// Returns an array of integer values.
 		/// If you know that data is certanly dense and fixed or variable on elements you access then it is
 		/// faster to use specialized variants of this function.
@@ -1491,9 +1511,8 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		integer_array                     IntegerArray       (HandleType h, const Tag & tag);
+		integer_array                       IntegerArray        (HandleType h, const Tag & tag);
 		/// Returns an array of bytes.
-		/// If variable size array was not allocated then this function will generate segmentation fault.
 		///
 		/// If you know that data is certanly sparse or dense on elements you access then it is faster to use
 		/// variants of this function with hint data structure.
@@ -1502,9 +1521,8 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		bulk_array                        BulkArray          (HandleType h, const Tag & tag);
+		bulk_array                          BulkArray           (HandleType h, const Tag & tag);
 		/// Returns an array of element handles.
-		/// If variable size array was not allocated then this function will generate segmentation fault.
 		///
 		/// If you know that data is certanly sparse or dense on elements you access then it is faster to use
 		/// variants of this function with hint data structure.
@@ -1536,7 +1554,40 @@ namespace INMOST
 		/// @see Element::getAsFace
 		/// @see Element::getAsCell
 		/// @see Element::getAsSet
-		reference_array                   ReferenceArray     (HandleType h, const Tag & tag);
+		reference_array                     ReferenceArray      (HandleType h, const Tag & tag);
+    /// Returns an array of element remote handles.
+		///
+		/// If you know that data is certanly sparse or dense on elements you access then it is faster to use
+		/// variants of this function with hint data structure.
+		///
+		/// The class reference_array that is used to represent array of elements stores remote handles 
+    /// inside but accessing them through square scopes [] or by arrow -> in iterator will 
+		/// automatically form an object of type Element. If you are not sure that stored handles are valid, you
+		/// should either check that by Element::isValid (involves deep check) or test handle
+		/// against InvalidHandle (simple check). To obtain remote handle you may use remote_reference_array::at 
+    /// function or dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
+		/// or ElementSet you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace,
+		/// Element::getAsCell and Element::getAsSet functions.
+		///
+		/// Array data structure is guaranteed to be valid during mesh modification. If you delete
+		/// elements by Mesh::Delete or Element::Delete all the references are also will be valid
+		/// and reverted to InvalidHandle on Mesh::ApplyModification. If you use Mesh::Destroy to
+		/// delete mesh elements or you delete elements not within modification state then references 
+		/// may become either invalid but not testable against InvalidHandle (situation may be tested 
+		/// by Element::isValid or Mesh::isValidHandle) or reference may be reused by another element. 
+		/// If you mix deletion and construction of elements then there is no way to resolve this situation,
+		/// except if you have created only one element, then it may be retrieved by Mesh::LastHandle.
+		///
+		/// @param h element handle
+		/// @param tag tag that represents data
+		/// @see InvalidHandle
+		/// @see Element::isValid
+		/// @see Element::getAsNode
+		/// @see Element::getAsEdge
+		/// @see Element::getAsFace
+		/// @see Element::getAsCell
+		/// @see Element::getAsSet
+		remote_reference_array              RemoteReferenceArray(HandleType h, const Tag & tag);
 		/// Returns a reference to inner memory location of the first element of the array of real values.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1545,7 +1596,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		real      &                       RealDF             (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REAL     ); return static_cast<real     *>(MGetDenseLink(h,tag))[0];}
+		real      &                         RealDF              (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REAL     ); return static_cast<real     *>(MGetDenseLink(h,tag))[0];}
 		/// Returns a reference to inner memory location of the first element of the array of integer values.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1554,7 +1605,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
-		integer   &                       IntegerDF          (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_INTEGER  ); return static_cast<integer  *>(MGetDenseLink(h,tag))[0];}
+		integer   &                         IntegerDF           (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_INTEGER  ); return static_cast<integer  *>(MGetDenseLink(h,tag))[0];}
 		/// Returns a reference in dense array to the first element of constant size array of bytes.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1563,7 +1614,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
-		bulk      &                       BulkDF             (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_BULK     ); return static_cast<bulk     *>(MGetDenseLink(h,tag))[0];}
+		bulk      &                         BulkDF              (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_BULK     ); return static_cast<bulk     *>(MGetDenseLink(h,tag))[0];}
 		/// Returns a reference in dense array to the first element of constant size array of element handles.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1576,7 +1627,20 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
-		reference &                       ReferenceDF        (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REFERENCE); return static_cast<reference*>(MGetDenseLink(h,tag))[0];}
+		reference &                         ReferenceDF         (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REFERENCE); return static_cast<reference*>(MGetDenseLink(h,tag))[0];}
+    /// Returns a reference in dense array to the first element of constant size array of element remote handles.
+		/// If you don't know any hint information about tag data you should not use this function.
+		///
+		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
+		/// no checks performed in release mode (NDEBUG is set).
+		///
+		/// Using handle you can construct objects of type Storage, Element, Node, Edge,
+		/// Face, Cell, ElementSet by calling their constructor with pointer to mesh and handle
+		/// as arguments.
+		///
+		/// @param h element handle
+		/// @param tag tag that represents dense data of fixed size on given handle
+		remote_reference &                  RemoteReferenceDF   (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REMOTE_REFERENCE); return static_cast<remote_reference*>(MGetDenseLink(h,tag))[0];}
 		/// Returns an array of real values in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1589,7 +1653,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
-		real_array                        RealArrayDF        (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REAL     ); return real_array     (static_cast<real     *>(MGetDenseLink(h,tag)),tag.GetSize());}
+		real_array                          RealArrayDF         (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REAL     ); return real_array     (static_cast<real     *>(MGetDenseLink(h,tag)),tag.GetSize());}
 		/// Returns an array of integer values in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1602,7 +1666,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
-		integer_array                     IntegerArrayDF     (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_INTEGER  ); return integer_array  (static_cast<integer  *>(MGetDenseLink(h,tag)),tag.GetSize());}
+		integer_array                       IntegerArrayDF      (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_INTEGER  ); return integer_array  (static_cast<integer  *>(MGetDenseLink(h,tag)),tag.GetSize());}
 		/// Returns an array of bytes in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1615,7 +1679,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
-		bulk_array                        BulkArrayDF        (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_BULK     ); return bulk_array     (static_cast<bulk     *>(MGetDenseLink(h,tag)),tag.GetSize());}
+		bulk_array                          BulkArrayDF         (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_BULK     ); return bulk_array     (static_cast<bulk     *>(MGetDenseLink(h,tag)),tag.GetSize());}
 		/// Returns an array of element handles in dense array.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1644,7 +1708,36 @@ namespace INMOST
 		/// @see Element::getAsFace
 		/// @see Element::getAsCell
 		/// @see Element::getAsSet
-		reference_array                   ReferenceArrayDF   (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REFERENCE); return reference_array(this,static_cast<reference*>(MGetDenseLink(h,tag)),tag.GetSize());}
+		reference_array                     ReferenceArrayDF    (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REFERENCE); return reference_array(this,static_cast<reference*>(MGetDenseLink(h,tag)),tag.GetSize());}
+    /// Returns an array of element remote handles in dense array.
+		/// If you don't know any hint information about tag data you should not use this function.
+		///
+		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
+		/// no checks performed in release mode (NDEBUG is set), likely to result in segfault.
+		///
+		/// Note that as array is fixed you shouldn't use any functions that alter size of the array
+		/// as resize, erase, insert, you may use replace if initial and final size will match,
+		/// in debug mode assert will fire if you try to do this in release (NDEBUG is set) it will lead to segfault.
+		///
+		/// The class remote_reference_array that is used to represent array of elements stores handles inside but
+		/// accessing them through square scopes [] or by arrow -> in iterator will automatically
+		/// form object of type Element. If you are not sure that stored handles are valid, you
+		/// should either check that by Element::isValid (involves deep check) or test handle
+		/// against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or
+		/// dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
+		/// or ElementSet you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace,
+		/// Element::getAsCell and Element::getAsSet functions.
+		///
+		/// @param h element handle
+		/// @param tag tag that represents dense data of fixed size on given handle
+		/// @see InvalidHandle
+		/// @see Element::isValid
+		/// @see Element::getAsNode
+		/// @see Element::getAsEdge
+		/// @see Element::getAsFace
+		/// @see Element::getAsCell
+		/// @see Element::getAsSet
+		remote_reference_array              RemoteReferenceArrayDF(HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REMOTE_REFERENCE); return remote_reference_array(static_cast<remote_reference*>(MGetDenseLink(h,tag)),tag.GetSize());}
 		/// Returns a reference in dense array to the first element of variable size array of real values.
 		/// Future recomendation:
 		///    If array was not allocated (resized) then this function will generate segmentation fault.
@@ -1656,7 +1749,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		real      &                       RealDV             (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REAL     ); return static_cast<inner_real_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
+		real      &                         RealDV              (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REAL     ); return static_cast<inner_real_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
 		/// Returns a reference in dense array to the first element of variable size array of integer values.
 		/// Future recomendation:
 		///    If array was not allocated then this function will generate segmentation fault.
@@ -1668,7 +1761,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		integer   &                       IntegerDV          (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_INTEGER  ); return static_cast<inner_integer_array  *>(MGetDenseLink(h,tag))->at_safe(0);}
+		integer   &                         IntegerDV           (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_INTEGER  ); return static_cast<inner_integer_array  *>(MGetDenseLink(h,tag))->at_safe(0);}
 		/// Returns a reference in dense array to the first element of variable size array of bytes.
 		/// Future recomendation:
 		///    If array was not allocated then this function will generate segmentation fault.
@@ -1681,7 +1774,7 @@ namespace INMOST
 		/// @param h element handle
 		/// @param tag tag that represents data
 		/// @see TagDenseVariable
-		bulk      &                       BulkDV             (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_BULK     ); return static_cast<inner_bulk_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
+		bulk      &                         BulkDV              (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_BULK     ); return static_cast<inner_bulk_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
 		/// Returns a reference in dense array to the first element of variable size array of element handles.
 		/// Future recomendation:
 		///    If array was not allocated then this function will generate segmentation fault.
@@ -1697,7 +1790,23 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		reference &                       ReferenceDV        (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return static_cast<inner_reference_array*>(MGetDenseLink(h,tag))->at_safe(0);}
+		reference &                         ReferenceDV         (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return static_cast<inner_reference_array*>(MGetDenseLink(h,tag))->at_safe(0);}
+    /// Returns a reference in dense array to the first element of variable size array of element remote handles.
+		/// Future recomendation:
+		///    If array was not allocated then this function will generate segmentation fault.
+		///
+		/// If you don't know any hint information about tag data you should not use this function.
+		///
+		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
+		/// no checks performed in release mode (NDEBUG is set).
+		///
+		/// Using handle you can construct objects of type Storage, Element, Node, Edge,
+		/// Face, Cell, ElementSet by calling their constructor with pointer to mesh and handle
+		/// as arguments.
+		///
+		/// @param h element handle
+		/// @param tag tag that represents data
+		remote_reference &                  RemoteReferenceDV   (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REMOTE_REFERENCE); return static_cast<inner_remote_reference_array*>(MGetDenseLink(h,tag))->at_safe(0);}
 		/// Returns an array of real values in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1706,7 +1815,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		real_array                        RealArrayDV        (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REAL     ); return real_array     (*static_cast<inner_real_array     *>(MGetDenseLink(h,tag)));}
+		real_array                          RealArrayDV         (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REAL     ); return real_array     (*static_cast<inner_real_array     *>(MGetDenseLink(h,tag)));}
 		/// Returns an array of integer values in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1715,7 +1824,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		integer_array                     IntegerArrayDV     (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_INTEGER  ); return integer_array  (*static_cast<inner_integer_array  *>(MGetDenseLink(h,tag)));}
+		integer_array                       IntegerArrayDV      (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_INTEGER  ); return integer_array  (*static_cast<inner_integer_array  *>(MGetDenseLink(h,tag)));}
 		/// Returns an array of bytes in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1724,7 +1833,7 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-		bulk_array                        BulkArrayDV        (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_BULK     ); return bulk_array     (*static_cast<inner_bulk_array     *>(MGetDenseLink(h,tag)));}
+		bulk_array                          BulkArrayDV         (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_BULK     ); return bulk_array     (*static_cast<inner_bulk_array     *>(MGetDenseLink(h,tag)));}
 		/// Returns an array of element handles in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
@@ -1749,15 +1858,40 @@ namespace INMOST
 		/// @see Element::getAsFace
 		/// @see Element::getAsCell
 		/// @see Element::getAsSet
-		reference_array                   ReferenceArrayDV   (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return reference_array(this,*static_cast<inner_reference_array*>(MGetDenseLink(h,tag)));}
+		reference_array                     ReferenceArrayDV    (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return reference_array(this,*static_cast<inner_reference_array*>(MGetDenseLink(h,tag)));}
+    /// Returns an array of element remote handles in dense array of variable size.
+		/// If you don't know any hint information about tag data you should not use this function.
+		///
+		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
+		/// no checks performed in release mode (NDEBUG is set).
+		///
+		/// The class remote_reference_array that is used to represent array of elements stores remote handles inside but
+		/// accessing them through square scopes [] or by arrow -> in iterator will automatically
+		/// form object of type Element. If you are not sure that stored handles are valid, you
+		/// should either check that by Element::isValid (involves deep check) or test handle
+		/// against InvalidHandle (simple check). To obtain handle you may use reference_array::at function or
+		/// dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
+		/// or ElementSet you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace,
+		/// Element::getAsCell and Element::getAsSet functions.
+		///
+		/// @param h element handle
+		/// @param tag tag that represents data
+		/// @see InvalidHandle
+		/// @see Element::isValid
+		/// @see Element::getAsNode
+		/// @see Element::getAsEdge
+		/// @see Element::getAsFace
+		/// @see Element::getAsCell
+		/// @see Element::getAsSet
+		remote_reference_array              RemoteReferenceArrayDV(HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REMOTE_REFERENCE); return remote_reference_array(*static_cast<inner_remote_reference_array*>(MGetDenseLink(h,tag)));}
 
 #if defined(USE_AUTODIFF)
-    var      &                        Variable           (HandleType h, const Tag & tag);
-    var      &                        VariableDF         (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return static_cast<var     *>(MGetDenseLink(h,tag))[0];}
-    var      &                        VariableDV         (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return static_cast<inner_variable_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
-    var_array                         VariableArray      (HandleType h, const Tag & tag);
-    var_array                         VariableArrayDF    (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return var_array(static_cast<var *>(MGetDenseLink(h,tag)),tag.GetSize());}
-    var_array                         VariableArrayDV    (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return var_array(*static_cast<inner_variable_array*>(MGetDenseLink(h,tag)));}
+    var      &                          Variable            (HandleType h, const Tag & tag);
+    var      &                          VariableDF          (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return static_cast<var     *>(MGetDenseLink(h,tag))[0];}
+    var      &                          VariableDV          (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return static_cast<inner_variable_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
+    var_array                           VariableArray       (HandleType h, const Tag & tag);
+    var_array                           VariableArrayDF     (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return var_array(static_cast<var *>(MGetDenseLink(h,tag)),tag.GetSize());}
+    var_array                           VariableArrayDV     (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return var_array(*static_cast<inner_variable_array*>(MGetDenseLink(h,tag)));}
 #endif
 		/// Set a marker on the element represented by handle.
 		/// @param h element handle
@@ -2349,7 +2483,7 @@ namespace INMOST
 		///
 		/// Exchanging tags of DATA_REFERNCE is not implemented, TODO 14.
 		/// \todo
-		///    1. Exchanging DATA_REFERENCE tags not implemented, this is due to the absence of any conclusion
+		///    1. Exchanging DATA_REFERENCE,DATA_REMOTE_REFERENCE tags not implemented, this is due to the absence of any conclusion
 		///    -  on how it should behave:
 		///         either only search within elements owned by the other processor and
 		///         establish references and set InvalidHandle() to elements that are not found (fairly easy,
@@ -2887,13 +3021,18 @@ namespace INMOST
 		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
+    /// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
+    /// If you have any tags of type DATA_REMOTE_REFERENCE on current mesh linking to the elements of the current mesh
+    /// or there are other meshes that posses tags of type DATA_REMOTE_REFERENCE and link elements on the current mesh,
+    /// you should check that there are no links to deleted elements manually with Element::Old().
 		/// \todo
 		///      1. maybe instead of forming set of deleted elements and subtracting set from other sets it is better
 		///         to remove each modified element
 		///         (done, check and compare)
 		///      2. parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior
 		///         (done, check and compare)
-		void                              ApplyModification  ();  //modify DATA_REFERENCE tags so that links to hidden elements are converted to NULL and removed from sets
+    /// @see Element::Old
+		void                              ApplyModification  ();  //modify DATA_REFERENCE, tags so that links to hidden elements are converted to NULL and removed from sets
 		/// This function is not yet implemented. It should correctly resolve parallel state of 
 		/// newly created elements, provide them valid global identificators, resolve owners of
 		/// the elements potentially optimized using information from BridgeTag and LayersTag
@@ -3047,6 +3186,13 @@ namespace INMOST
 		/// \todo
 		/// TODO 53 check that putting global ids to array will be faster
 		void SortByGlobalID(HandleType * h, enumerator num);
+
+    /// Retrive the name of the current mesh.
+    std::string GetMeshName();
+    /// Be careful changing mesh name if you have already established remote links.
+    void SetMeshName(std::string new_name);
+    /// Find mesh by name.
+    static Mesh * GetMesh(std::string name);
 	};
 
 
@@ -3109,6 +3255,10 @@ namespace INMOST
   {
     return GetMeshLink()->Reference(GetHandle(),tag);
   }
+  __INLINE Storage::remote_reference & Storage::RemoteReference(const Tag & tag)  const
+  {
+    return GetMeshLink()->RemoteReference(GetHandle(),tag);
+  }
   __INLINE Storage::real_array Storage::RealArray(const Tag & tag)  const
   {
     return GetMeshLink()->RealArray(GetHandle(),tag);
@@ -3124,6 +3274,10 @@ namespace INMOST
   __INLINE Storage::reference_array Storage::ReferenceArray(const Tag & tag)  const
   {
     return GetMeshLink()->ReferenceArray(GetHandle(),tag);
+  }
+  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArray(const Tag & tag)  const
+  {
+    return GetMeshLink()->RemoteReferenceArray(GetHandle(),tag);
   }
   __INLINE Storage::real_array Storage::RealArrayDF(const Tag & tag)  const
   {
@@ -3141,6 +3295,10 @@ namespace INMOST
   {
     return GetMeshLink()->ReferenceArrayDF(GetHandle(),tag);
   }
+  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDF(const Tag & tag)  const
+  {
+    return GetMeshLink()->RemoteReferenceArrayDF(GetHandle(),tag);
+  }
   __INLINE Storage::real & Storage::RealDF(const Tag & tag)  const
   {
     return GetMeshLink()->RealDF(GetHandle(),tag);
@@ -3156,6 +3314,10 @@ namespace INMOST
   __INLINE Storage::reference & Storage::ReferenceDF(const Tag & tag)  const
   {
     return GetMeshLink()->ReferenceDF(GetHandle(),tag);
+  }
+  __INLINE Storage::remote_reference & Storage::RemoteReferenceDF(const Tag & tag)  const
+  {
+    return GetMeshLink()->RemoteReferenceDF(GetHandle(),tag);
   }
   __INLINE Storage::real_array Storage::RealArrayDV(const Tag & tag)  const
   {
@@ -3173,6 +3335,10 @@ namespace INMOST
   {
     return GetMeshLink()->ReferenceArrayDV(GetHandle(),tag);
   }
+  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDV(const Tag & tag)  const
+  {
+    return GetMeshLink()->RemoteReferenceArrayDV(GetHandle(),tag);
+  }
   __INLINE Storage::real & Storage::RealDV(const Tag & tag)  const
   {
     return GetMeshLink()->RealDV(GetHandle(),tag);
@@ -3188,6 +3354,10 @@ namespace INMOST
   __INLINE Storage::reference & Storage::ReferenceDV(const Tag & tag)  const
   {
     return GetMeshLink()->ReferenceDV(GetHandle(),tag);
+  }
+  __INLINE Storage::remote_reference & Storage::RemoteReferenceDV(const Tag & tag)  const
+  {
+    return GetMeshLink()->RemoteReferenceDV(GetHandle(),tag);
   }
 #if defined(USE_AUTODIFF)
   __INLINE Storage::var & Storage::Variable(const Tag & tag) const
@@ -3304,7 +3474,7 @@ namespace INMOST
 	}
 	__INLINE bool Storage::isValid() const 
 	{
-		return handle != InvalidHandle() && GetMeshLink()->isValidElement(handle);
+		return handle != InvalidHandle() && GetMeshLink() != NULL && GetMeshLink()->isValidElement(handle);
 	}
 	__INLINE Storage::integer Storage::LocalID() const 
   {

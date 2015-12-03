@@ -91,7 +91,15 @@ namespace INMOST
 		{
 			if( etype == EDGE ) continue;
 			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
-				if( t->isDefined(etype) && t->GetSize() == 1 && !t->isSparse(etype) && t->GetTagName().substr(0,9) != "PROTECTED" && t->GetDataType() != DATA_REFERENCE )
+				if( t->isDefined(etype) && 
+            t->GetSize() == 1 && 
+            !t->isSparse(etype) && 
+            t->GetTagName().substr(0,9) != "PROTECTED" && 
+            t->GetDataType() != DATA_REFERENCE &&
+#if defined(USE_AUTODIFF)
+            t->GetDataType() != DATA_VARIABLE &&
+#endif
+            t->GetDataType() != DATA_REMOTE_REFERENCE)
 				{
 					sprintf(keyword,"%s",t->GetTagName().substr(0,8).c_str());
 					fwrite(keyword,1,8,file);
@@ -124,7 +132,14 @@ namespace INMOST
 		{
 			if( etype == EDGE ) continue;
 			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
-				if( t->isDefined(etype) && t->GetSize() == 1 && t->isSparse(etype) && t->GetDataType() != DATA_REFERENCE && t->GetDataType() != DATA_REFERENCE)
+				if( t->isDefined(etype) && 
+            t->GetSize() == 1 && 
+            t->isSparse(etype) && 
+            t->GetDataType() != DATA_REFERENCE && 
+#if defined(USE_AUTODIFF)
+            t->GetDataType() != DATA_VARIABLE &&
+#endif
+            t->GetDataType() != DATA_REMOTE_REFERENCE)
 				{
 					Storage::integer temp;
 					keynum = 0;
@@ -211,7 +226,16 @@ namespace INMOST
 		{
 			if( etype == EDGE ) continue;
 			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
-				if( t->isDefined(etype) && t->GetSize() != 1 && t->GetSize() != ENUMUNDEF && !t->isSparse(etype) && t->GetDataType() != DATA_REFERENCE)
+				if( t->isDefined(etype) && 
+            t->GetSize() != 1 && 
+            t->GetSize() != ENUMUNDEF && 
+            !t->isSparse(etype) && 
+            t->GetDataType() != DATA_REFERENCE &&
+#if defined(USE_AUTODIFF)
+            t->GetDataType() != DATA_VARIABLE &&
+#endif
+            t->GetDataType() != DATA_REMOTE_REFERENCE
+            )
 				{
 					sprintf(keyword,"%s",t->GetTagName().substr(0,8).c_str());
 					fwrite(keyword,1,8,file);
