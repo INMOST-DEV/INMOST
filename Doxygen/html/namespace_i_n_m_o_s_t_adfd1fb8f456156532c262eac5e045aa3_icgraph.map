@@ -1,0 +1,10 @@
+<map id="INMOST::ComposeHandleNum" name="INMOST::ComposeHandleNum">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh.html#aedac2611fffd95b7cd20ed9540c743fa" title="INMOST::Mesh::ElementByLocalID" alt="" coords="255,5,481,32"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_mesh.html#a4f26f7a8fbf7bf0a104b79f2433334a2" title="INMOST::Mesh::FirstHandle" alt="" coords="275,56,461,83"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_mesh.html#a863be497f888170153331f74fae93e06" title="INMOST::Mesh::LastHandle" alt="" coords="276,107,460,133"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_mesh.html#a83562665b8922806e475fa75f79a9b69" title="INMOST::Mesh::NodeByLocalID" alt="" coords="264,157,472,184"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_mesh.html#a318f86a5b9807fa73d7e1ffe493fb1d0" title="INMOST::Mesh::EdgeByLocalID" alt="" coords="264,208,472,235"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_mesh.html#aec7e83bc5a26c47443dd5ae701747ccf" title="INMOST::Mesh::FaceByLocalID" alt="" coords="265,259,471,285"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_mesh.html#a0d502f77d8d56014a67e1715f8628c0f" title="INMOST::Mesh::CellByLocalID" alt="" coords="268,309,468,336"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1_mesh.html#af2af21e0963cd29ae7f809e6e2939719" title="INMOST::Mesh::EsetByLocalID" alt="" coords="265,360,471,387"/>
+</map>

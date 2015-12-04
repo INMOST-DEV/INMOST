@@ -1,3 +1,4 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$structINMOST_1_1Solver_1_1Row_1_1entry__s.html" title="Entry of the sparse matrix row. " alt="" coords="5,5,152,47"/>
+<area shape="rect" id="node1" href="$class_i_n_m_o_s_t_1_1dynarray_1_1__iterator.html" title="INMOST::dynarray\&lt; element,\l stacked \&gt;::_iterator\&lt;\l dtype \&gt;" alt="" coords="5,5,196,61"/>
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1tiny__map_1_1const__iterator.html" title="INMOST::tiny_map\&lt; key,\l value, stacked \&gt;::const\l_iterator" alt="" coords="244,5,413,61"/>
 </map>

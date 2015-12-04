@@ -1,0 +1,80 @@
+<map id="INMOST::Storage::GetHandle" name="INMOST::Storage::GetHandle">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_element_array.html#a12e39ff84d7862daff58db1536fc47b9" title="INMOST::ElementArray\l::push_back" alt="" coords="294,5,453,47"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_element_set.html#af35d9f82faa96fba32e0a4022ffe38fe" title="INMOST::ElementSet\l::PutElement" alt="" coords="300,95,447,136"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_element_set.html#a346401d86638322c22cbe6aa2b4ce5e0" title="INMOST::ElementSet\l::AddElement" alt="" coords="300,184,447,225"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_mesh.html#a656d48f7478afdc5240295ad97929dab" title="Shortcut for typed elements. " alt="" coords="291,274,455,301"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_storage.html#ac2b245b3c0e50e23a0eb0b2332ca4ae4" title="INMOST::Storage::Real" alt="" coords="294,325,453,351"/>
+<area shape="rect" id="node10" href="$class_i_n_m_o_s_t_1_1_storage.html#a494c65f9a4fab2831e47ad2f8fe44f5b" title="INMOST::Storage::Integer" alt="" coords="288,375,459,402"/>
+<area shape="rect" id="node12" href="$class_i_n_m_o_s_t_1_1_storage.html#a99e421a8211ffeac45dfb84f05b42bcf" title="INMOST::Storage::Bulk" alt="" coords="294,601,453,627"/>
+<area shape="rect" id="node13" href="$class_i_n_m_o_s_t_1_1_storage.html#a801ad40ce379185f8705be789e7a01df" title="INMOST::Storage::Reference" alt="" coords="278,651,469,678"/>
+<area shape="rect" id="node14" href="$class_i_n_m_o_s_t_1_1_storage.html#a519df9396e41d365cf346cdd53261da8" title="INMOST::Storage::RemoteReference" alt="" coords="256,702,491,729"/>
+<area shape="rect" id="node15" href="$class_i_n_m_o_s_t_1_1_storage.html#a01988cd89c450bc589b9a49b37b4c71c" title="INMOST::Storage::RealArray" alt="" coords="279,483,468,510"/>
+<area shape="rect" id="node19" href="$class_i_n_m_o_s_t_1_1_storage.html#a11d99c05260909c93df802f94f52d48f" title="INMOST::Storage::Integer\lArray" alt="" coords="288,535,459,576"/>
+<area shape="rect" id="node23" href="$class_i_n_m_o_s_t_1_1_storage.html#a8ba21120688c963fae0df85cd299793c" title="INMOST::Storage::BulkArray" alt="" coords="279,753,468,779"/>
+<area shape="rect" id="node24" href="$class_i_n_m_o_s_t_1_1_storage.html#ae20390298f9514e7ed506ddc51136087" title="INMOST::Storage::Reference\lArray" alt="" coords="278,804,469,845"/>
+<area shape="rect" id="node25" href="$class_i_n_m_o_s_t_1_1_storage.html#aca53e3156e1ea4bdc20d7a019e83a69b" title="INMOST::Storage::RemoteReference\lArray" alt="" coords="256,869,491,911"/>
+<area shape="rect" id="node26" href="$class_i_n_m_o_s_t_1_1_storage.html#aa36fe77acb2e5f25ffb2c5d8ffe62f00" title="INMOST::Storage::RealArrayDF" alt="" coords="270,935,477,962"/>
+<area shape="rect" id="node27" href="$class_i_n_m_o_s_t_1_1_storage.html#a80b2983a2708257ca9ed5c1536bcd973" title="INMOST::Storage::Integer\lArrayDF" alt="" coords="288,987,459,1028"/>
+<area shape="rect" id="node28" href="$class_i_n_m_o_s_t_1_1_storage.html#a49114bf0e458263b1cc5e4ffeb54f070" title="INMOST::Storage::BulkArrayDF" alt="" coords="270,1053,477,1079"/>
+<area shape="rect" id="node29" href="$class_i_n_m_o_s_t_1_1_storage.html#afe7084f05e2a97ea2c618a66ca700eb7" title="INMOST::Storage::Reference\lArrayDF" alt="" coords="278,1104,469,1145"/>
+<area shape="rect" id="node30" href="$class_i_n_m_o_s_t_1_1_storage.html#a3cd1655d88dce33bd65e477dbfb44299" title="INMOST::Storage::RemoteReference\lArrayDF" alt="" coords="256,1169,491,1211"/>
+<area shape="rect" id="node31" href="$class_i_n_m_o_s_t_1_1_storage.html#ae7df0ed4c26520dd0858b138fd3fb24a" title="INMOST::Storage::RealDF" alt="" coords="286,1235,461,1262"/>
+<area shape="rect" id="node32" href="$class_i_n_m_o_s_t_1_1_storage.html#aaab24e29a2a39ed14050f15ec0e555c2" title="INMOST::Storage::IntegerDF" alt="" coords="279,1286,467,1313"/>
+<area shape="rect" id="node33" href="$class_i_n_m_o_s_t_1_1_storage.html#a0a6cfb0f778bd8d0cd65e6d699c2f62d" title="INMOST::Storage::BulkDF" alt="" coords="286,1337,461,1363"/>
+<area shape="rect" id="node34" href="$class_i_n_m_o_s_t_1_1_storage.html#a93b66f6f5c1a83316b3998fc8b341a30" title="INMOST::Storage::ReferenceDF" alt="" coords="270,1387,477,1414"/>
+<area shape="rect" id="node35" href="$class_i_n_m_o_s_t_1_1_storage.html#aaa5b522a521c1e0fe9012a68905e98e2" title="INMOST::Storage::RemoteReferenceDF" alt="" coords="247,1438,499,1465"/>
+<area shape="rect" id="node36" href="$class_i_n_m_o_s_t_1_1_storage.html#ae0176541f18bf2cbd76a9006e6e7a238" title="INMOST::Storage::RealArrayDV" alt="" coords="270,1489,477,1515"/>
+<area shape="rect" id="node37" href="$class_i_n_m_o_s_t_1_1_storage.html#a58432859eedc410ae8a3f66136e9820c" title="INMOST::Storage::Integer\lArrayDV" alt="" coords="288,1540,459,1581"/>
+<area shape="rect" id="node38" href="$class_i_n_m_o_s_t_1_1_storage.html#a3af8592c2fc5cc1e9148d644d2440471" title="INMOST::Storage::BulkArrayDV" alt="" coords="270,1606,477,1633"/>
+<area shape="rect" id="node39" href="$class_i_n_m_o_s_t_1_1_storage.html#a2803bf63e8c121e7810a66ad559a1415" title="INMOST::Storage::Reference\lArrayDV" alt="" coords="278,1657,469,1699"/>
+<area shape="rect" id="node40" href="$class_i_n_m_o_s_t_1_1_storage.html#ace16a6998221a9733a227cab6af66217" title="INMOST::Storage::RemoteReference\lArrayDV" alt="" coords="256,1723,491,1764"/>
+<area shape="rect" id="node41" href="$class_i_n_m_o_s_t_1_1_storage.html#a2b111b6d869a2eda22eba7a6362aba10" title="INMOST::Storage::RealDV" alt="" coords="285,1789,461,1815"/>
+<area shape="rect" id="node42" href="$class_i_n_m_o_s_t_1_1_storage.html#a59a92eaf0834f03c9bba77c482309ea9" title="INMOST::Storage::IntegerDV" alt="" coords="279,1839,468,1866"/>
+<area shape="rect" id="node43" href="$class_i_n_m_o_s_t_1_1_storage.html#a833b413cbe8d18fd32cf819acc2360ca" title="INMOST::Storage::BulkDV" alt="" coords="285,1890,461,1917"/>
+<area shape="rect" id="node44" href="$class_i_n_m_o_s_t_1_1_storage.html#a1d87e1187aac1b74679a45994d85afcd" title="INMOST::Storage::ReferenceDV" alt="" coords="269,1941,477,1967"/>
+<area shape="rect" id="node45" href="$class_i_n_m_o_s_t_1_1_storage.html#aedb646f9c1519c99322011a9b863cee3" title="INMOST::Storage::RemoteReferenceDV" alt="" coords="247,1991,500,2018"/>
+<area shape="rect" id="node46" href="$class_i_n_m_o_s_t_1_1_storage.html#a433a8e8c0043c8b55e2e7105ebb5bc6a" title="Retrieve variable reference associated with Tag. " alt="" coords="284,2042,463,2069"/>
+<area shape="rect" id="node47" href="$class_i_n_m_o_s_t_1_1_storage.html#aed0244f953591108240156f2b8410e03" title="INMOST::Storage::VariableDF" alt="" coords="275,2093,471,2119"/>
+<area shape="rect" id="node48" href="$class_i_n_m_o_s_t_1_1_storage.html#a627dd4a4a7eead9f3b343abf2106a813" title="INMOST::Storage::VariableDV" alt="" coords="275,2143,472,2170"/>
+<area shape="rect" id="node49" href="$class_i_n_m_o_s_t_1_1_storage.html#a9b6e3239197b6c28bbaaf96ae9dbc9a6" title="Retrieve array of variables associated with Tag. " alt="" coords="284,2195,463,2236"/>
+<area shape="rect" id="node50" href="$class_i_n_m_o_s_t_1_1_storage.html#a432185af25c8a147b4ad646b6d92268c" title="INMOST::Storage::Variable\lArrayDF" alt="" coords="284,2260,463,2301"/>
+<area shape="rect" id="node51" href="$class_i_n_m_o_s_t_1_1_storage.html#a614747844cbc2b45f079c9c313e94ff6" title="INMOST::Storage::Variable\lArrayDV" alt="" coords="284,2325,463,2367"/>
+<area shape="rect" id="node52" href="$class_i_n_m_o_s_t_1_1_storage.html#a04201e9bd362d98f568664168cba71be" title="Check if any data is associated with Tag. " alt="" coords="280,2391,467,2418"/>
+<area shape="rect" id="node53" href="$class_i_n_m_o_s_t_1_1_storage.html#acdda3f2a160776ec388d255ee90d73de" title="INMOST::Storage::GetDataSize" alt="" coords="270,2442,477,2469"/>
+<area shape="rect" id="node54" href="$class_i_n_m_o_s_t_1_1_storage.html#a1194d7cdffda867c0320eae4c2bd0397" title="INMOST::Storage::GetData\lCapacity" alt="" coords="283,2493,463,2535"/>
+<area shape="rect" id="node55" href="$class_i_n_m_o_s_t_1_1_storage.html#a4f8d5c695fc912acf352a958e7e57676" title="INMOST::Storage::SetDataSize" alt="" coords="271,2559,476,2586"/>
+<area shape="rect" id="node56" href="$class_i_n_m_o_s_t_1_1_storage.html#a91c6c5f65f6c17821fbe6b9fd5053a91" title="INMOST::Storage::GetData" alt="" coords="283,2610,463,2637"/>
+<area shape="rect" id="node57" href="$class_i_n_m_o_s_t_1_1_storage.html#a180dab0c78f82156cb1fb02a5f708842" title="INMOST::Storage::SetData" alt="" coords="284,2661,463,2687"/>
+<area shape="rect" id="node58" href="$class_i_n_m_o_s_t_1_1_storage.html#a4df618f5c130dd7d0fe9d6ef01f6567e" title="INMOST::Storage::DelData" alt="" coords="284,2711,463,2738"/>
+<area shape="rect" id="node59" href="$class_i_n_m_o_s_t_1_1_storage.html#a75e1265ce622575292224b5c6d3ef07d" title="Frees variable array or fills field with zeroes. " alt="" coords="266,2762,481,2789"/>
+<area shape="rect" id="node60" href="$class_i_n_m_o_s_t_1_1_storage.html#a34b1083bec869b0cc5fc6e652f440f16" title="Deallocates space allocated for sparse data, frees variable array if necessary. " alt="" coords="264,2813,483,2839"/>
+<area shape="rect" id="node61" href="$class_i_n_m_o_s_t_1_1_storage.html#a66b86d9ae28d429ff830735a63ecef4d" title="INMOST::Storage::SetMarker" alt="" coords="277,2863,469,2890"/>
+<area shape="rect" id="node62" href="$class_i_n_m_o_s_t_1_1_storage.html#ad256a6f5101df9f507e359cdddef3a66" title="INMOST::Storage::GetMarker" alt="" coords="277,433,470,459"/>
+<area shape="rect" id="node66" href="$class_i_n_m_o_s_t_1_1_storage.html#aeae593e88e3269f8590742a9e95d1813" title="INMOST::Storage::RemMarker" alt="" coords="274,2914,473,2941"/>
+<area shape="rect" id="node67" href="$class_i_n_m_o_s_t_1_1_storage.html#a0e061a35dc4196b9bb88bef49c882c08" title="INMOST::Storage::SetPrivate\lMarker" alt="" coords="278,2965,469,3007"/>
+<area shape="rect" id="node68" href="$class_i_n_m_o_s_t_1_1_storage.html#ae55c21c60460d82e202669890cbb05ce" title="INMOST::Storage::GetPrivate\lMarker" alt="" coords="277,3031,469,3072"/>
+<area shape="rect" id="node69" href="$class_i_n_m_o_s_t_1_1_storage.html#a7eb821d11fb14f7c7c86c93c57587666" title="INMOST::Storage::RemPrivate\lMarker" alt="" coords="274,3096,473,3137"/>
+<area shape="rect" id="node70" href="$class_i_n_m_o_s_t_1_1_storage.html#a88b7f5ade45b4a44b3750fe7bf96932c" title="INMOST::Storage::ClearMarker\lSpace" alt="" coords="272,3161,475,3203"/>
+<area shape="rect" id="node71" href="$class_i_n_m_o_s_t_1_1_storage.html#ad081f8af6f922751b63428a843fa7cda" title="INMOST::Storage::GetMarker\lSpace" alt="" coords="277,3227,470,3268"/>
+<area shape="rect" id="node72" href="$class_i_n_m_o_s_t_1_1_storage.html#a6294bd8c26607a7829fb500cb9b441b3" title="INMOST::Storage::SetMarker\lSpace" alt="" coords="277,3292,469,3333"/>
+<area shape="rect" id="node73" href="$class_i_n_m_o_s_t_1_1_storage.html#a4112611429fe0c871f97392b22b8a86b" title="INMOST::Storage::DataLocalID" alt="" coords="272,3358,475,3385"/>
+<area shape="rect" id="node74" href="$class_i_n_m_o_s_t_1_1_storage.html#a1120f87c2cb4eaf015db837f0f7cce3f" title="INMOST::Storage::getAsElement" alt="" coords="266,3409,481,3435"/>
+<area shape="rect" id="node75" href="$class_i_n_m_o_s_t_1_1_storage.html#aac94c3afac6383b988c7992a72fc353c" title="INMOST::Storage::getAsNode" alt="" coords="275,3459,471,3486"/>
+<area shape="rect" id="node76" href="$class_i_n_m_o_s_t_1_1_storage.html#aae2639c86f7e1ed99341800a6350beaf" title="INMOST::Storage::getAsEdge" alt="" coords="275,3510,471,3537"/>
+<area shape="rect" id="node77" href="$class_i_n_m_o_s_t_1_1_storage.html#a3bb9ba79f8c0f6be46abeb505ae6522a" title="INMOST::Storage::getAsFace" alt="" coords="276,3561,471,3587"/>
+<area shape="rect" id="node78" href="$class_i_n_m_o_s_t_1_1_storage.html#a273dc6c3f277ad2cda0f37df30a8f534" title="INMOST::Storage::getAsCell" alt="" coords="279,3611,467,3638"/>
+<area shape="rect" id="node79" href="$class_i_n_m_o_s_t_1_1_storage.html#a20b4ae741200cfea234a9989b36f4c11" title="INMOST::Storage::getAsSet" alt="" coords="280,3662,467,3689"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a443190921b29f4282bae8eec1164f8e1" title="INMOST::dynamic_variable\l::Value" alt="" coords="548,168,727,209"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a432e3db3a15b60eebc084cfd8dcfb28e" title="INMOST::dynamic_variable\l::Variable" alt="" coords="548,299,727,340"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#af98d84e841029239fe4b098025ef0801" title="INMOST::dynamic_variable\l::operator[]" alt="" coords="548,233,727,275"/>
+<area shape="rect" id="node11" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a41483a4546777613637e523f4f57ec81" title="INMOST::dynamic_variable\l::Index" alt="" coords="548,364,727,405"/>
+<area shape="rect" id="node16" href="$class_i_n_m_o_s_t_1_1_automatizator.html#ab41dc204fbb52720b8dbb365f40ee0f3" title="INMOST::Automatizator\l::GetDynamicValue" alt="" coords="557,677,717,719"/>
+<area shape="rect" id="node18" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a8d32c48035f0a83bd0ef783132d5da7a" title="INMOST::Automatizator\l::GetStaticValue" alt="" coords="557,743,717,784"/>
+<area shape="rect" id="node17" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#aa7a9b5c6c18e890d941c0abaf36fc9ac" title="INMOST::enhanced_multivar\l_expression::enhanced_multivar\l_expression" alt="" coords="775,703,981,759"/>
+<area shape="rect" id="node20" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a3b9418a007184a35890a508d92fdb61c" title="INMOST::Automatizator\l::GetDynamicIndex" alt="" coords="557,939,717,980"/>
+<area shape="rect" id="node21" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a55fa3c6b0c26f26037954f87a86854a3" title="INMOST::Automatizator\l::GetIndex" alt="" coords="557,873,717,915"/>
+<area shape="rect" id="node22" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a571b357aebd31b957e1fdc328e270e58" title="INMOST::Automatizator\l::GetComponents" alt="" coords="557,808,717,849"/>
+<area shape="rect" id="node63" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a3da0c47982b82640337e87375abe7314" title="INMOST::Automatizator\l::isDynamicValid" alt="" coords="557,495,717,536"/>
+<area shape="rect" id="node64" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a6ae69d02eb607b39c5000c39882c484d" title="INMOST::Automatizator\l::isStaticValid" alt="" coords="557,560,717,601"/>
+<area shape="rect" id="node65" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a144f4624248335fd4b690f3416720007" title="INMOST::dynamic_variable\l::isUnknown" alt="" coords="548,429,727,471"/>
+</map>

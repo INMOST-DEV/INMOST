@@ -1,0 +1,6 @@
+<map id="INMOST::dynarray::back" name="INMOST::dynarray::back">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1tiny__map.html#a37e9010b0f4a05d6f24016fa4eed4cad" title="INMOST::tiny_map::operator[]" alt="" coords="219,5,413,32"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_element_array.html#aed750c66768bf759bbae15266ab2c2bd" title="INMOST::ElementArray\l::back" alt="" coords="237,57,395,98"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_element_array.html#afb508658d2215aa9f9168a65f491d4b8" title="INMOST::ElementArray\l::atback" alt="" coords="237,122,395,163"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_sparse_1_1_row.html#a83a6d4d1d39d80fa77ab3d588937eea9" title="The operator [] used to fill the sparse matrix row, but not to access individual elements of the row..." alt="" coords="239,187,393,229"/>
+</map>

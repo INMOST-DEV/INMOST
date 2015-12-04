@@ -1,0 +1,5 @@
+<map id="INMOST::multivar_expression" name="INMOST::multivar_expression">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; multivar_expression \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator multivar_expression &amp;()\l+ operator const multivar\l_expression &amp;()\l}" alt="" coords="5,433,225,628"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1basic__expression.html" title="{INMOST::basic_expression\n||+ basic_expression()\l+ basic_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l}" alt="" coords="44,5,224,141"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; Derived \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator Derived &amp;()\l+ operator const Derived &amp;()\l}" alt="" coords="131,191,315,371"/>
+</map>

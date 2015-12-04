@@ -1,0 +1,3 @@
+<map id="INMOST::Mesh::DelSparseData" name="INMOST::Mesh::DelSparseData">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_storage.html#a34b1083bec869b0cc5fc6e652f440f16" title="Deallocates space allocated for sparse data, frees variable array if necessary. " alt="" coords="260,5,479,32"/>
+</map>

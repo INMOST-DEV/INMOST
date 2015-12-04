@@ -1,0 +1,7 @@
+<map id="INMOST::GetHandleID" name="INMOST::GetHandleID">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh.html#a99d2f7410acff5bc75b0184890d7decd" title="For debug purposes. " alt="" coords="205,5,415,32"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_mesh.html#aefe80cb31b7763f7124d013050c21e3e" title="INMOST::Mesh::isValidElement" alt="" coords="207,80,413,107"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_mesh.html#a2078f4c2589dc14fe6291416ac21050f" title="INMOST::Mesh::DataLocalID" alt="" coords="215,131,405,157"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_storage.html#a5ab98a55b99c3e9bcfcd4f8623e2f3fd" title="INMOST::Storage::LocalID" alt="" coords="223,181,397,208"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_storage.html#a4112611429fe0c871f97392b22b8a86b" title="INMOST::Storage::DataLocalID" alt="" coords="463,131,665,157"/>
+</map>

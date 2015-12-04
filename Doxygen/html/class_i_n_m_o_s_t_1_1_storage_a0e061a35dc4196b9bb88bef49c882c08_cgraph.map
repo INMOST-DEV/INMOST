@@ -1,0 +1,8 @@
+<map id="INMOST::Storage::SetPrivateMarker" name="INMOST::Storage::SetPrivateMarker">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_storage.html#a59da31b96c2b4e09e260f0deb4dae4d9" title="INMOST::Storage::isValid" alt="" coords="255,56,426,83"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_storage.html#a20d218fc89f75ca8534707b4f697173e" title="INMOST::Storage::GetMeshLink" alt="" coords="485,107,695,133"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_mesh.html#a3be4fb19b5b9511a2b9d6c5c595997b4" title="INMOST::Mesh::SetPrivate\lMarker" alt="" coords="251,158,430,199"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_storage.html#ac79e3f3664b2ff21892f37bce0caa0e0" title="INMOST::Storage::GetHandle" alt="" coords="244,224,437,251"/>
+<area shape="rect" id="node3" href="$namespace_i_n_m_o_s_t.html#a115b3e54c3b7be04ffec9b69c058df18" title="INMOST::InvalidHandle" alt="" coords="513,5,667,32"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_mesh.html#a05701da4bd3ed8ca69bbcca256c2b0e2" title="INMOST::Mesh::isValidElement" alt="" coords="487,56,693,83"/>
+</map>

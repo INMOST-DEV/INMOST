@@ -1,0 +1,5 @@
+<map id="INMOST::cos_expression&lt; A &gt;" name="INMOST::cos_expression&lt; A &gt;">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; cos_expression\&lt; A \&gt; \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator cos_expression\l\&lt; A \&gt; &amp;()\l+ operator const cos\l_expression\&lt; A \&gt; &amp;()\l}" alt="" coords="19,433,195,643"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1basic__expression.html" title="{INMOST::basic_expression\n||+ basic_expression()\l+ basic_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l}" alt="" coords="35,5,215,141"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; Derived \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator Derived &amp;()\l+ operator const Derived &amp;()\l}" alt="" coords="123,191,307,371"/>
+</map>

@@ -1,0 +1,10 @@
+<map id="fabs" name="fabs">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_matrix.html#a577c235684527839a256c397dbc64536" title="INMOST::Matrix::sign_func" alt="" coords="109,5,287,32"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_matrix.html#adf8bb731b7c0899039b99f2399d938c6" title="INMOST::Matrix::SVD" alt="" coords="356,56,507,83"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_matrix.html#a1bf63fc308656d1066e9149911d762d2" title="INMOST::Matrix::pythag" alt="" coords="117,107,279,133"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_matrix.html#ab621083d1f37df018feec6163618c1cd" title="INMOST::Matrix::Invert" alt="" coords="121,157,275,184"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_matrix.html#a86a44a488a56fb838c25d333baf1964b" title="INMOST::Matrix::Print" alt="" coords="123,208,273,235"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_matrix.html#af2e3465f55d9b01b86400e4813650ceb" title="INMOST::Matrix::isSymmetric" alt="" coords="100,259,296,285"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1abs__expression.html#ad4ad11758a2ac4b31c9f2b8288021e4b" title="INMOST::abs_expression\l::abs_expression" alt="" coords="113,310,283,351"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_matrix.html#a308fc7a550c7de8c21b9ef17eecba603" title="INMOST::Matrix::operator/" alt="" coords="344,157,519,184"/>
+</map>

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['orderinfo',['OrderInfo',['../classINMOST_1_1Solver_1_1OrderInfo.html',1,'INMOST::Solver']]]
+  ['orderinfo',['OrderInfo',['../class_i_n_m_o_s_t_1_1_solver_1_1_order_info.html',1,'INMOST::Solver']]]
 ];

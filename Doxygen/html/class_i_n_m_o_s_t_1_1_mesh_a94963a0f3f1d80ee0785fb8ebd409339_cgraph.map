@@ -1,0 +1,7 @@
+<map id="INMOST::Mesh::GetStatus" name="INMOST::Mesh::GetStatus">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh.html#a12f64ee311bb980ea6ec98a62d8c107c" title="INMOST::Mesh::SharedTag" alt="" coords="232,5,413,32"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_storage.html#a59da31b96c2b4e09e260f0deb4dae4d9" title="INMOST::Storage::isValid" alt="" coords="237,56,408,83"/>
+<area shape="rect" id="node4" href="$namespace_i_n_m_o_s_t.html#a115b3e54c3b7be04ffec9b69c058df18" title="INMOST::InvalidHandle" alt="" coords="489,5,643,32"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_storage.html#a20d218fc89f75ca8534707b4f697173e" title="INMOST::Storage::GetMeshLink" alt="" coords="461,56,671,83"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_mesh.html#a05701da4bd3ed8ca69bbcca256c2b0e2" title="INMOST::Mesh::isValidElement" alt="" coords="463,107,669,133"/>
+</map>

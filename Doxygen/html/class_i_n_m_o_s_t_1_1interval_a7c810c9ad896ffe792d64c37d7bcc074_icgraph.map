@@ -1,0 +1,4 @@
+<map id="INMOST::interval::get_interval_end" name="INMOST::interval::get_interval_end">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_sparse_1_1_vector.html#ab9d6836898e3185a2089d9aa569ed1dd" title="Get the start and the end of the distributed vector interval. " alt="" coords="199,5,365,47"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_sparse_1_1_matrix.html#a8c5b4a6c9b7a6ca617486ce103f47370" title="Get the start and the end row numbers of the distributed matrix interval. " alt="" coords="200,71,364,112"/>
+</map>

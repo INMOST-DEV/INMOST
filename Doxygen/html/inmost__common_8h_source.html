@@ -1,19 +1,10 @@
-<!-- HTML header for doxygen 1.8.5-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-  ga('create', 'UA-59408561-3', 'auto');
-  ga('send', 'pageview');
-</script> 
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.5"/>
-<title>INMOST: inmost_common.h Source File</title>
+<title>INMOST: INMOST.lib/Source/Headers/inmost_common.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -30,10 +21,11 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="3d-greek-letter-iota-3d-isolated-in-1905162.jpg"/></td>
   <td style="padding-left: 0.5em;">
    <div id="projectname">INMOST
    </div>
-   <div id="projectbrief">A toolkit for distributed mathematical modeling</div>
+   <div id="projectbrief">Mathematical Modelling Toolkit</div>
   </td>
  </tr>
  </tbody>
@@ -48,6 +40,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
     <ul class="tablist">
       <li><a href="index.html"><span>Main&#160;Page</span></a></li>
       <li><a href="pages.html"><span>Related&#160;Pages</span></a></li>
+      <li><a href="namespaces.html"><span>Namespaces</span></a></li>
       <li><a href="annotated.html"><span>Classes</span></a></li>
       <li class="current"><a href="files.html"><span>Files</span></a></li>
       <li>
@@ -71,15 +64,15 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div id="navrow2" class="tabs2">
     <ul class="tablist">
       <li><a href="files.html"><span>File&#160;List</span></a></li>
+      <li><a href="globals.html"><span>File&#160;Members</span></a></li>
     </ul>
   </div>
-</div><!-- top -->
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Typedefs</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Enumerations</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(6)"><span class="SelectionMark">&#160;</span>Enumerator</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(7)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(6)"><span class="SelectionMark">&#160;</span>Typedefs</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(7)"><span class="SelectionMark">&#160;</span>Enumerations</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(8)"><span class="SelectionMark">&#160;</span>Enumerator</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(9)"><span class="SelectionMark">&#160;</span>Friends</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(10)"><span class="SelectionMark">&#160;</span>Macros</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(11)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -88,12 +81,17 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </iframe>
 </div>
 
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><a class="el" href="dir_c4a52175c3ee9b021d8f931c072f730b.html">INMOST.lib</a></li><li class="navelem"><a class="el" href="dir_69fe0f6e94cb138f924ded0ce7e52653.html">Source</a></li><li class="navelem"><a class="el" href="dir_d4e3aab9eb43b9a24b127ee3e44499dd.html">Headers</a></li>  </ul>
+</div>
+</div><!-- top -->
 <div class="header">
   <div class="headertitle">
 <div class="title">inmost_common.h</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;</div>
+<a href="inmost__common_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="preprocessor">#ifndef INMOST_COMMON_INCLUDED</span></div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_COMMON_INCLUDED</span></div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="preprocessor"></span></div>
@@ -103,202 +101,260 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="preprocessor"></span><span class="comment">//no options from cmake -- define minimum</span></div>
 <div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="comment">//#define USE_OMP</span></div>
 <div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;</div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="preprocessor">#define USE_MESH</span></div>
+<div class="line"><a name="l00011"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#ab73e313e2280cda435e54f4d7503ccdd">   11</a></span>&#160;<span class="preprocessor">#define USE_MESH</span></div>
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="preprocessor">#define USE_PARTITIONER</span></div>
+<div class="line"><a name="l00013"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a3d74695c9f029840473e9809d8165b70">   13</a></span>&#160;<span class="preprocessor">#define USE_PARTITIONER</span></div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor"></span><span class="comment">//#define USE_PARTITIONER_ZOLTAN</span></div>
 <div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="comment">//#define USE_PARTITIONER_PARMETIS</span></div>
 <div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;</div>
-<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="preprocessor">#define USE_SOLVER</span></div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="preprocessor"></span><span class="comment">//#define USE_SOLVER_PETSC</span></div>
-<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="comment">//#define USE_SOLVER_TRILINOS</span></div>
-<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="comment">//#define USE_SOLVER_ANI</span></div>
-<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="preprocessor">#define USE_AUTODIFF</span></div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="preprocessor"></span><span class="comment">//#define USE_AUTODIFF_ASMJIT</span></div>
-<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="comment">//#define USE_AUTODIFF_OPENCL</span></div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="comment">//#define USE_AUTODIFF_EXPRESSION_TEMPLATES</span></div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="comment">//#define USE_MPI //include mpi for mpi functions</span></div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="comment">//#define USE_MPI_P2P //use (probably) more effective mpi-2 algorithms</span></div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;<span class="comment">//#define USE_MPI_FILE //use MPI_File_xxx functionality</span></div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;<span class="comment">//#define USE_MPI2 //set of your version produce warnings</span></div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="preprocessor">#endif //INMOST_OPTIONS_CMAKE_INCLUDED</span></div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00017"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#aad7d26ca0980c019d19fb5ef1dffe95b">   17</a></span>&#160;<span class="preprocessor">#define USE_SOLVER</span></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="preprocessor"></span><span class="comment">//#define USE_SOLVER_METIS</span></div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="comment">//#define USE_SOLVER_PETSC</span></div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="comment">//#define USE_SOLVER_TRILINOS</span></div>
+<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="comment">//#define USE_SOLVER_ANI</span></div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;</div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;</div>
+<div class="line"><a name="l00024"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a8ca1a489673bbc83e32f69b3f5b36c68">   24</a></span>&#160;<span class="preprocessor">#define USE_NONLINEAR</span></div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="preprocessor"></span><span class="comment">//#define USE_NONLINEAR_PETSC</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="comment">//#define USE_NONLINEAR_TRILINOS</span></div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="comment">//#define USE_NONLINEAR_SUNDIALS</span></div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;</div>
+<div class="line"><a name="l00029"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a28b042f617f117bf3e4fc2bf3dba238b">   29</a></span>&#160;<span class="preprocessor">#define USE_AUTODIFF</span></div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;<span class="preprocessor"></span><span class="comment">//#define USE_AUTODIFF_ASMJIT</span></div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="comment">//#define USE_AUTODIFF_OPENCL</span></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="comment">//#define USE_AUTODIFF_EXPRESSION_TEMPLATES</span></div>
 <div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;</div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="comment">// a very expensive check for debug purposes, </span></div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="comment">// when you release marker checks all the elements</span></div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="comment">// that no element is marked by released marker</span></div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;<span class="comment">//#define CHECKS_MARKERS </span></div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;<span class="comment">// use additional sets to store elements for parallel</span></div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;<span class="comment">// exchanges, otherwise it will recompute those elements</span></div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;<span class="comment">// which is quite expensive</span></div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="preprocessor">#define USE_PARALLEL_STORAGE</span></div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="comment">// output xml files for debugging of parallel algorithms</span></div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;<span class="comment">// search for style.xsl within examples for comfortable</span></div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;<span class="comment">// view of generated xml files</span></div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<span class="comment">//#define USE_PARALLEL_WRITE_TIME</span></div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;<span class="comment">// this will revert Mesh::PrepareReceiveInner to always</span></div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="comment">// use MPI point to point functionality disregarding problem type</span></div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;<span class="comment">// read comments in Mesh::SetParallelStrategy for more info</span></div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="comment">// USE_MPI_P2P must be enabled for feature to work</span></div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="comment">//#define PREFFER_MPI_P2P</span></div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;<span class="comment">// this will write out shared set of elements that lay between processors in GMV format</span></div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="comment">//#define DEBUG_COMPUTE_SHARED_SKIN_SET</span></div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;<span class="comment">// this controls how sparse data will be allocated,</span></div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="comment">// when difinition is not commented memory will be always consumed</span></div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="comment">// by data structure needed to support sparse data,</span></div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="comment">// otherwise data structure will be allocated only when</span></div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="comment">// sparse data is presenet</span></div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;<span class="comment">//#define LAZY_SPARSE_ALLOCATION</span></div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="comment">//#define USE_MPI //include mpi for mpi functions</span></div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="comment">//#define USE_MPI_P2P //use (probably) more effective mpi-2 algorithms</span></div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="comment">//#define USE_MPI_FILE //use MPI_File_xxx functionality</span></div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;<span class="comment">//#define USE_MPI2 //set of your version produce warnings</span></div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;<span class="preprocessor">#endif //INMOST_OPTIONS_CMAKE_INCLUDED</span></div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;<span class="comment">// a very expensive check for debug purposes, </span></div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="comment">// when you release marker checks all the elements</span></div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;<span class="comment">// that no element is marked by released marker</span></div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="comment">//#define CHECKS_MARKERS </span></div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;<span class="comment">// use additional sets to store elements for parallel</span></div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<span class="comment">// exchanges, otherwise it will recompute those elements</span></div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;<span class="comment">// which is quite expensive</span></div>
+<div class="line"><a name="l00049"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a8392e0176a0338fb887389d5f6703810">   49</a></span>&#160;<span class="preprocessor">#define USE_PARALLEL_STORAGE</span></div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;<span class="comment">// output xml files for debugging of parallel algorithms</span></div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="comment">// search for style.xsl within examples for comfortable</span></div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="comment">// view of generated xml files</span></div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;<span class="comment">//#define USE_PARALLEL_WRITE_TIME</span></div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="comment">// this will revert Mesh::PrepareReceiveInner to always</span></div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;<span class="comment">// use MPI point to point functionality disregarding problem type</span></div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;<span class="comment">// read comments in Mesh::SetParallelStrategy for more info</span></div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="comment">// USE_MPI_P2P must be enabled for feature to work</span></div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="comment">//#define PREFFER_MPI_P2P</span></div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="comment">// this will write out shared set of elements that lay between processors in GMV format</span></div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;<span class="comment">//#define DEBUG_COMPUTE_SHARED_SKIN_SET</span></div>
 <div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;<span class="comment">// this will force array class to use 12 bytes instead of 16 bytes</span></div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;<span class="preprocessor">#define PACK_ARRAY</span></div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="preprocessor">#define __INLINE inline</span></div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;<span class="preprocessor">#if defined(USE_OMP)</span></div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;omp.h&gt;</span></div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#if defined(USE_MPI)</span></div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;mpi.h&gt;</span></div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="preprocessor">#if !defined(MSMPI_VER) &amp;&amp; !defined(MPIO_INCLUDE) &amp;&amp; defined(USE_MPI_FILE) &amp;&amp; !defined(OMPI_PROVIDE_MPI_FILE_INTERFACE)</span></div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;mpio.h&gt;</span> <span class="comment">//some versions of MPI doesn&#39;t include that</span></div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;<span class="preprocessor">#include &lt;string&gt;</span></div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;<span class="preprocessor">#include &lt;vector&gt;</span></div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;<span class="preprocessor">#include &lt;set&gt;</span></div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;<span class="preprocessor">#include &lt;map&gt;</span></div>
-<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;<span class="preprocessor">#include &lt;list&gt;</span></div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;<span class="preprocessor">#include &lt;algorithm&gt;</span></div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;<span class="preprocessor">#include &lt;cmath&gt;</span></div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;<span class="preprocessor">#include &lt;iostream&gt;</span></div>
-<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;<span class="preprocessor">#include &lt;fstream&gt;</span></div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;<span class="preprocessor">#include &lt;stdlib.h&gt;</span></div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;<span class="preprocessor">#include &lt;stdio.h&gt;</span></div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;<span class="preprocessor">#include &lt;limits.h&gt;</span></div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<span class="preprocessor">#if defined(USE_OMP)</span></div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;omp.h&gt;</span></div>
-<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;</div>
-<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="preprocessor">#if !defined(USE_MPI)</span></div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Request     int</span></div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Type        int</span></div>
-<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Comm        int</span></div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_COMM_WORLD  0</span></div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_BYTE        0</span></div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_INT         0</span></div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DOUBLE      0</span></div>
-<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_UNSIGNED    0</span></div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Win         int</span></div>
-<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#else</span></div>
-<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Request     MPI_Request</span></div>
-<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Type        MPI_Datatype</span></div>
-<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Comm        MPI_Comm</span></div>
-<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_COMM_WORLD  MPI_COMM_WORLD</span></div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_BYTE        MPI_BYTE</span></div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_INT         MPI_INT</span></div>
-<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DOUBLE      MPI_DOUBLE</span></div>
-<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_UNSIGNED    MPI_UNSIGNED</span></div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Win         MPI_Win</span></div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;<span class="preprocessor">#define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warning</span></div>
-<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;<span class="preprocessor">#define INMOST_DATA_INTEGER_TYPE  int           </span></div>
-<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_DATA_REAL_TYPE     double        </span></div>
-<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_DATA_BULK_TYPE     unsigned char //this should be one byte long</span></div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;<span class="preprocessor">#define INMOST_MPI_DATA_INTEGER_TYPE  INMOST_MPI_INT</span></div>
-<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATA_REAL_TYPE     INMOST_MPI_DOUBLE</span></div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATA_BULK_TYPE     INMOST_MPI_BYTE</span></div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;<span class="comment">// this controls how sparse data will be allocated,</span></div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;<span class="comment">// when difinition is not commented memory will be always consumed</span></div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;<span class="comment">// by data structure needed to support sparse data,</span></div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="comment">// otherwise data structure will be allocated only when</span></div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="comment">// sparse data is presenet</span></div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;<span class="comment">//#define LAZY_SPARSE_ALLOCATION</span></div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;</div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="comment">// this will force array class to use 12 bytes instead of 16 bytes</span></div>
+<div class="line"><a name="l00073"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a58cc9f256201c7ec20588ae55490e30f">   73</a></span>&#160;<span class="preprocessor">#define PACK_ARRAY</span></div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00075"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#ade2d8d7118f8ff49547f60aa0c3382bb">   75</a></span>&#160;<span class="preprocessor">#define __INLINE inline</span></div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;<span class="preprocessor">#if defined(USE_OMP)</span></div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;omp.h&gt;</span></div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#if defined(USE_MPI)</span></div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;mpi.h&gt;</span></div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;<span class="preprocessor">#if !defined(MSMPI_VER) &amp;&amp; !defined(MPIO_INCLUDE) &amp;&amp; defined(USE_MPI_FILE) &amp;&amp; !defined(OMPI_PROVIDE_MPI_FILE_INTERFACE)</span></div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;mpio.h&gt;</span> <span class="comment">//some versions of MPI doesn&#39;t include that</span></div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;<span class="preprocessor">#include &lt;string&gt;</span></div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;<span class="preprocessor">#include &lt;vector&gt;</span></div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;<span class="preprocessor">#include &lt;set&gt;</span></div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;<span class="preprocessor">#include &lt;map&gt;</span></div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;<span class="preprocessor">#include &lt;list&gt;</span></div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<span class="preprocessor">#include &lt;algorithm&gt;</span></div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;<span class="preprocessor">#include &lt;cmath&gt;</span></div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;<span class="preprocessor">#include &lt;iostream&gt;</span></div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;<span class="preprocessor">#include &lt;fstream&gt;</span></div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="preprocessor">#include &lt;stdlib.h&gt;</span></div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="preprocessor">#include &lt;stdio.h&gt;</span></div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;<span class="preprocessor">#include &lt;limits.h&gt;</span></div>
+<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;<span class="preprocessor">#if defined(USE_OMP)</span></div>
+<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;omp.h&gt;</span></div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#if defined(USE_MPI)</span></div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#include &lt;mpi.h&gt;</span></div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;<span class="preprocessor">#if !defined(USE_MPI)</span></div>
+<div class="line"><a name="l00107"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a01f3be3dfd8b3a534ed89316f231337e">  107</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Request     int</span></div>
+<div class="line"><a name="l00108"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#acd1b606627f99f2a1f47e630afef9876">  108</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Type        int</span></div>
+<div class="line"><a name="l00109"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#af52a410b85e5699f096b407e7ce3d917">  109</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Comm        int</span></div>
+<div class="line"><a name="l00110"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#af47f7d048f41ca1ee66651b748118596">  110</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_COMM_WORLD  0</span></div>
+<div class="line"><a name="l00111"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a50b8281f00a780e7b17bf98dd0b88ddb">  111</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_BYTE        0</span></div>
+<div class="line"><a name="l00112"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a88d1503940210cce6fc39ec407a3c30c">  112</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_INT         0</span></div>
+<div class="line"><a name="l00113"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#aae354ac03d95173319df8e73b8b77069">  113</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DOUBLE      0</span></div>
+<div class="line"><a name="l00114"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#acaccc2b9dcedbceb87b4eb4ef8dcd148">  114</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_UNSIGNED    0</span></div>
+<div class="line"><a name="l00115"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a67184bb98e801a840cdc327f77328ac3">  115</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Win         int</span></div>
+<div class="line"><a name="l00116"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a09954102529000966f3d827bb967dbf1">  116</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATATYPE_NULL 0</span></div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#else</span></div>
+<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Request     MPI_Request</span></div>
+<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Type        MPI_Datatype</span></div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Comm        MPI_Comm</span></div>
+<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_COMM_WORLD  MPI_COMM_WORLD</span></div>
+<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_BYTE        MPI_BYTE</span></div>
+<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_INT         MPI_INT</span></div>
+<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DOUBLE      MPI_DOUBLE</span></div>
+<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_UNSIGNED    MPI_UNSIGNED</span></div>
+<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_Win         MPI_Win</span></div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATATYPE_NULL MPI_DATATYPE_NULL</span></div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;<span class="preprocessor"></span></div>
 <div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;</div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;<span class="preprocessor">#define INMOST_DATA_ENUM_TYPE       unsigned int</span></div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define ENUMUNDEF                 UINT_MAX</span></div>
-<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_DATA_BIG_ENUM_TYPE   unsigned int</span></div>
-<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define BIGENUMUNDEF              UINT_MAX</span></div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;<span class="preprocessor">#define INMOST_MPI_DATA_ENUM_TYPE      INMOST_MPI_UNSIGNED</span></div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UNSIGNED</span></div>
-<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;<span class="preprocessor"></span></div>
-<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;</div>
-<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;<span class="keywordtype">double</span> Timer();</div>
-<div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;</div>
-<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;<span class="keyword">namespace </span>INMOST</div>
-<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;{</div>
-<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;    <span class="keyword">enum</span> ErrorType </div>
-<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;    {</div>
-<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;        Failure=100,</div>
-<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;        NoTagPosition,</div>
-<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;        WrongDataType,</div>
-<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;        WrongElementType,</div>
-<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;        BadTag,</div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;        BadBulkType,</div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;        NoData,</div>
-<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;        TagNotInitialized,</div>
-<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;        TagNotFound, </div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;        TagExists, </div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;        TagForOtherMesh,</div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;        ElementForOtherMesh,</div>
-<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;        ImpossibleConn,</div>
-<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;        NoElementType,</div>
-<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;        NoMultiElement,</div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;        NoMeshElement,</div>
-<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;        NoEsetElement,</div>
-<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;        DimensionIsFixed,</div>
-<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;        NullInElementSet,       </div>
-<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;        NoSpaceForMarker,</div>
-<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;        ElementBelongsToNobody,</div>
-<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;</div>
-<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;        BadFileName,</div>
-<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;        BadFile,        </div>
-<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;        CorruptedIerarchy,</div>
-<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;        CorruptedOrdering,</div>
-<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;        IterForOtherMesh,</div>
-<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;        UndefinedBehaviorInGeometry,</div>
-<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;        DimensionIsNotSupportedByGeometry,</div>
-<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;        NoParallelMode,</div>
-<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;        BadParameter,</div>
-<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;        TopologyCheckError,</div>
-<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;        </div>
-<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;        ErrorInSolver = 400,</div>
-<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;        DataCorruptedInSolver,</div>
-<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;        DifferentCommunicatorInSolver,</div>
-<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;        MatrixNotSetInSolver,</div>
-<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;        InconsistentSizesInSolver,</div>
-<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160;        IndexesAreDifferentInSolver,</div>
-<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;        PrepareMatrixFirst,</div>
-<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;        CannotReusePreconditionerOfDifferentSize,</div>
-<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;        </div>
-<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;        ErrorInPartitioner = 500,</div>
-<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160;        UnknownWeightSize,</div>
-<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;        DistributionTagWasNotFilled,</div>
-<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;        </div>
-<div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160;        NotImplemented = 1000,</div>
-<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;        Impossible</div>
-<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160;    };</div>
-<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;}</div>
-<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;</div>
-<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;<span class="preprocessor">#include &quot;container.hpp&quot;</span></div>
-<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;<span class="comment">//#include &quot;io.hpp&quot;</span></div>
-<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;</div>
-<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;</div>
-<div class="line"><a name="l00218"></a><span class="lineno">  218</span>&#160;<span class="preprocessor">#endif //INMOST_COMMON_INCLUDED</span></div>
+<div class="line"><a name="l00131"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#acd51c4c6003c526c37ea714d07db2d3a">  131</a></span>&#160;<span class="preprocessor">#define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warning</span></div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00133"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a31c8a89249ae2649f1fe6d56f6cb8ebf">  133</a></span>&#160;<span class="preprocessor">#define INMOST_DATA_INTEGER_TYPE  int           </span></div>
+<div class="line"><a name="l00134"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#aa820be5d5a93b991aa84a1ab3a287013">  134</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_DATA_REAL_TYPE     double        </span></div>
+<div class="line"><a name="l00135"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a96613c61df40ddcb1f72fa80c9c23728">  135</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_DATA_BULK_TYPE     unsigned char //this should be one byte long</span></div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00137"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a0cdd49d9e7ac49ecd979add0e2ae155a">  137</a></span>&#160;<span class="preprocessor">#define INMOST_MPI_DATA_INTEGER_TYPE  INMOST_MPI_INT</span></div>
+<div class="line"><a name="l00138"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a5cfcb5913ed7db930a7bec7ea684a86c">  138</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATA_REAL_TYPE     INMOST_MPI_DOUBLE</span></div>
+<div class="line"><a name="l00139"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#ae5707a7c032bdfde22d63d964fdf3472">  139</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATA_BULK_TYPE     INMOST_MPI_BYTE</span></div>
+<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;</div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;</div>
+<div class="line"><a name="l00143"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a66077b56eddcf0878c52701f90497884">  143</a></span>&#160;<span class="preprocessor">#define INMOST_DATA_ENUM_TYPE       unsigned int</span></div>
+<div class="line"><a name="l00144"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#acddb9f263fb44cd8857b269a2725266b">  144</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define ENUMUNDEF                 UINT_MAX</span></div>
+<div class="line"><a name="l00145"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a4ed3f6a978e75d85a0294b1fc9d7ac53">  145</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_DATA_BIG_ENUM_TYPE   unsigned int</span></div>
+<div class="line"><a name="l00146"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#a736f9eaf0437b3bb0317608cc7672e87">  146</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define BIGENUMUNDEF              UINT_MAX</span></div>
+<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00148"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#ad0fa342256ff5be3452f6d329311c56d">  148</a></span>&#160;<span class="preprocessor">#define INMOST_MPI_DATA_ENUM_TYPE      INMOST_MPI_UNSIGNED</span></div>
+<div class="line"><a name="l00149"></a><span class="lineno"><a class="line" href="inmost__common_8h.html#af5381a772a297ea94c9b0596c5fddebc">  149</a></span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UNSIGNED</span></div>
+<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;<span class="preprocessor"></span></div>
+<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;</div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;<span class="keywordtype">double</span> <a class="code" href="inmost__common_8h.html#ae50d89ff53478f5f90f03c0f0f825cf1">Timer</a>();</div>
+<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;</div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;<span class="keyword">namespace </span>INMOST</div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;{</div>
+<div class="line"><a name="l00168"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5">  168</a></span>&#160;    <span class="keyword">enum</span> <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5">ErrorType</a> </div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;    {</div>
+<div class="line"><a name="l00171"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5acf22cbd8393cd3b7ecfa9a88a7059b1d">  171</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5acf22cbd8393cd3b7ecfa9a88a7059b1d">Failure</a>=100,</div>
+<div class="line"><a name="l00172"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9963bdd63b1d69764ba2bd03db6dfb7e">  172</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9963bdd63b1d69764ba2bd03db6dfb7e">NoTagPosition</a>,</div>
+<div class="line"><a name="l00173"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a64be76565210527374ee016058e943c3">  173</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a64be76565210527374ee016058e943c3">WrongDataType</a>,</div>
+<div class="line"><a name="l00174"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a016fd5935017c3ddbdeb31aa4f114d6c">  174</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a016fd5935017c3ddbdeb31aa4f114d6c">WrongElementType</a>,</div>
+<div class="line"><a name="l00175"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a05a6739d0a82d6b9d54bbf2a6abc7242">  175</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a05a6739d0a82d6b9d54bbf2a6abc7242">BadTag</a>,</div>
+<div class="line"><a name="l00176"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a8aff9a1d63f165acd0792b3139002bb9">  176</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a8aff9a1d63f165acd0792b3139002bb9">BadBulkType</a>,</div>
+<div class="line"><a name="l00177"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab9f81fa407f739567a4e950241fd6b28">  177</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab9f81fa407f739567a4e950241fd6b28">NoData</a>,</div>
+<div class="line"><a name="l00178"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5080777f26b9ca39aad7f7bd53abf237">  178</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5080777f26b9ca39aad7f7bd53abf237">TagNotInitialized</a>,</div>
+<div class="line"><a name="l00179"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a7d271f857df703754c6184894b340492">  179</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a7d271f857df703754c6184894b340492">TagNotFound</a>, </div>
+<div class="line"><a name="l00180"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9add3730979190bf70653a7856089d87">  180</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9add3730979190bf70653a7856089d87">TagExists</a>, </div>
+<div class="line"><a name="l00181"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3625e98205826ded25db9908d691f487">  181</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3625e98205826ded25db9908d691f487">TagForOtherMesh</a>,</div>
+<div class="line"><a name="l00182"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a03822397a52719f6a1e893c6619a94a3">  182</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a03822397a52719f6a1e893c6619a94a3">ElementForOtherMesh</a>,</div>
+<div class="line"><a name="l00183"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9933d2e65cc2ae01c1a9fb760540ab53">  183</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9933d2e65cc2ae01c1a9fb760540ab53">ImpossibleConn</a>,</div>
+<div class="line"><a name="l00184"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a13e1d43b86b890d78db12ca882cf1d06">  184</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a13e1d43b86b890d78db12ca882cf1d06">NoElementType</a>,</div>
+<div class="line"><a name="l00185"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a73cc2f47f413beffa41a80f53d57b95c">  185</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a73cc2f47f413beffa41a80f53d57b95c">NoMultiElement</a>,</div>
+<div class="line"><a name="l00186"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9c5b8ac6b7ec8521161e7a3db0c0ae21">  186</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9c5b8ac6b7ec8521161e7a3db0c0ae21">NoMeshElement</a>,</div>
+<div class="line"><a name="l00187"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3d83de307378d3fb3c4c3b1ae23c5e1c">  187</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3d83de307378d3fb3c4c3b1ae23c5e1c">NoEsetElement</a>,</div>
+<div class="line"><a name="l00188"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a54245e6cd91d1c7bdff396d5d44ec0a3">  188</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a54245e6cd91d1c7bdff396d5d44ec0a3">DimensionIsFixed</a>,</div>
+<div class="line"><a name="l00189"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a0d6b8d0a16a8951536db5435a5b4efeb">  189</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a0d6b8d0a16a8951536db5435a5b4efeb">NullInElementSet</a>,       </div>
+<div class="line"><a name="l00190"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a4253c9480bb7ff5db2ea81ec0b78db35">  190</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a4253c9480bb7ff5db2ea81ec0b78db35">NoSpaceForMarker</a>,</div>
+<div class="line"><a name="l00191"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab5d2d133b55a3a4b33b4970c59e2d8c9">  191</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab5d2d133b55a3a4b33b4970c59e2d8c9">ElementBelongsToNobody</a>,</div>
+<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;</div>
+<div class="line"><a name="l00194"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ad77ba27e7a19fd94d0048da811b4bc5e">  194</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ad77ba27e7a19fd94d0048da811b4bc5e">BadFileName</a>,</div>
+<div class="line"><a name="l00195"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5de4025221248a073d870910013897df">  195</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5de4025221248a073d870910013897df">BadFile</a>,        </div>
+<div class="line"><a name="l00196"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab8b2de8d90fd2d6b99c15b91863cf282">  196</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab8b2de8d90fd2d6b99c15b91863cf282">CorruptedIerarchy</a>,</div>
+<div class="line"><a name="l00197"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a43f4acefb13d26d7678390c721803132">  197</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a43f4acefb13d26d7678390c721803132">CorruptedOrdering</a>,</div>
+<div class="line"><a name="l00198"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5acd128a3a9ebb4907728c134e27e27726">  198</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5acd128a3a9ebb4907728c134e27e27726">IterForOtherMesh</a>,</div>
+<div class="line"><a name="l00199"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a1c3c415babfe24f161e9fbc98d24de4c">  199</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a1c3c415babfe24f161e9fbc98d24de4c">UndefinedBehaviorInGeometry</a>,</div>
+<div class="line"><a name="l00200"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5307bd848bf8758295a089530a8a3757">  200</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5307bd848bf8758295a089530a8a3757">DimensionIsNotSupportedByGeometry</a>,</div>
+<div class="line"><a name="l00201"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3cfe01795d40de9d13a94a05cdd3f977">  201</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3cfe01795d40de9d13a94a05cdd3f977">NoParallelMode</a>,</div>
+<div class="line"><a name="l00202"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a52ae3cfef65b83b684f0d8f5a14f6ad9">  202</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a52ae3cfef65b83b684f0d8f5a14f6ad9">BadParameter</a>,</div>
+<div class="line"><a name="l00203"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a1fd113272e01b7a1c77a3f2b41d61d99">  203</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a1fd113272e01b7a1c77a3f2b41d61d99">TopologyCheckError</a>,</div>
+<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;        </div>
+<div class="line"><a name="l00206"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ad017b1212c7220252fe48afa66b74c89">  206</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ad017b1212c7220252fe48afa66b74c89">ErrorInSolver</a> = 400,</div>
+<div class="line"><a name="l00207"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5af9cd3245138e85a9f2a7be3421f9824e">  207</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5af9cd3245138e85a9f2a7be3421f9824e">DataCorruptedInSolver</a>,</div>
+<div class="line"><a name="l00208"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a56de558f51a301a92267975262ddae9e">  208</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a56de558f51a301a92267975262ddae9e">DifferentCommunicatorInSolver</a>,</div>
+<div class="line"><a name="l00209"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a2009a39e6a15f97d817d016c8224425f">  209</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a2009a39e6a15f97d817d016c8224425f">MatrixNotSetInSolver</a>,</div>
+<div class="line"><a name="l00210"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9495ba8164c4f436a0ea4a62e55706bb">  210</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9495ba8164c4f436a0ea4a62e55706bb">InconsistentSizesInSolver</a>,</div>
+<div class="line"><a name="l00211"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5aaa3320e671f76bed9d2c01b60e208ba1">  211</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5aaa3320e671f76bed9d2c01b60e208ba1">IndexesAreDifferentInSolver</a>,</div>
+<div class="line"><a name="l00212"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a561f7a85bc767b7c8a925ee7da8af753">  212</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a561f7a85bc767b7c8a925ee7da8af753">PrepareMatrixFirst</a>,</div>
+<div class="line"><a name="l00213"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a44e01599aef3f3f75eb4755dafa90867">  213</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a44e01599aef3f3f75eb4755dafa90867">CannotReusePreconditionerOfDifferentSize</a>,</div>
+<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;        </div>
+<div class="line"><a name="l00216"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a90c86ebae0f91de60925b042fad25542">  216</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a90c86ebae0f91de60925b042fad25542">ErrorInPartitioner</a> = 500,</div>
+<div class="line"><a name="l00217"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ae4b36f3abc4eb04b80507fb22efdb6df">  217</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ae4b36f3abc4eb04b80507fb22efdb6df">UnknownWeightSize</a>,</div>
+<div class="line"><a name="l00218"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a50bbd66fb5124906749c061907fce1e7">  218</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a50bbd66fb5124906749c061907fce1e7">DistributionTagWasNotFilled</a>,</div>
+<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;        </div>
+<div class="line"><a name="l00221"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3728240a0f209f727e731ccb357d6110">  221</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3728240a0f209f727e731ccb357d6110">NotImplemented</a> = 1000,</div>
+<div class="line"><a name="l00222"></a><span class="lineno"><a class="line" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a16f1e75def9b67f038fb64a808dbace5">  222</a></span>&#160;        <a class="code" href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a16f1e75def9b67f038fb64a808dbace5">Impossible</a></div>
+<div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;    };</div>
+<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;}</div>
+<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160;</div>
+<div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;<span class="preprocessor">#include &quot;<a class="code" href="container_8hpp.html">container.hpp</a>&quot;</span></div>
+<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;<span class="comment">//#include &quot;io.hpp&quot;</span></div>
+<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;</div>
+<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;</div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;<span class="preprocessor">#endif //INMOST_COMMON_INCLUDED</span></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a52ae3cfef65b83b684f0d8f5a14f6ad9"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a52ae3cfef65b83b684f0d8f5a14f6ad9">INMOST::BadParameter</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00202">inmost_common.h:202</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a5080777f26b9ca39aad7f7bd53abf237"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5080777f26b9ca39aad7f7bd53abf237">INMOST::TagNotInitialized</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00178">inmost_common.h:178</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a54245e6cd91d1c7bdff396d5d44ec0a3"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a54245e6cd91d1c7bdff396d5d44ec0a3">INMOST::DimensionIsFixed</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00188">inmost_common.h:188</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a7d271f857df703754c6184894b340492"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a7d271f857df703754c6184894b340492">INMOST::TagNotFound</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00179">inmost_common.h:179</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a8aff9a1d63f165acd0792b3139002bb9"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a8aff9a1d63f165acd0792b3139002bb9">INMOST::BadBulkType</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00176">inmost_common.h:176</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5aaa3320e671f76bed9d2c01b60e208ba1"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5aaa3320e671f76bed9d2c01b60e208ba1">INMOST::IndexesAreDifferentInSolver</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00211">inmost_common.h:211</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a44e01599aef3f3f75eb4755dafa90867"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a44e01599aef3f3f75eb4755dafa90867">INMOST::CannotReusePreconditionerOfDifferentSize</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00213">inmost_common.h:213</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a1fd113272e01b7a1c77a3f2b41d61d99"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a1fd113272e01b7a1c77a3f2b41d61d99">INMOST::TopologyCheckError</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00203">inmost_common.h:203</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a3cfe01795d40de9d13a94a05cdd3f977"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3cfe01795d40de9d13a94a05cdd3f977">INMOST::NoParallelMode</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00201">inmost_common.h:201</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5ab8b2de8d90fd2d6b99c15b91863cf282"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab8b2de8d90fd2d6b99c15b91863cf282">INMOST::CorruptedIerarchy</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00196">inmost_common.h:196</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a9933d2e65cc2ae01c1a9fb760540ab53"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9933d2e65cc2ae01c1a9fb760540ab53">INMOST::ImpossibleConn</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00183">inmost_common.h:183</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a561f7a85bc767b7c8a925ee7da8af753"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a561f7a85bc767b7c8a925ee7da8af753">INMOST::PrepareMatrixFirst</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00212">inmost_common.h:212</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a43f4acefb13d26d7678390c721803132"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a43f4acefb13d26d7678390c721803132">INMOST::CorruptedOrdering</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00197">inmost_common.h:197</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a3728240a0f209f727e731ccb357d6110"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3728240a0f209f727e731ccb357d6110">INMOST::NotImplemented</a></div><div class="ttdoc">The very tail of the errors list. </div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00221">inmost_common.h:221</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5acf22cbd8393cd3b7ecfa9a88a7059b1d"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5acf22cbd8393cd3b7ecfa9a88a7059b1d">INMOST::Failure</a></div><div class="ttdoc">The list of errors connected to mesh consistency. </div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00171">inmost_common.h:171</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5acd128a3a9ebb4907728c134e27e27726"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5acd128a3a9ebb4907728c134e27e27726">INMOST::IterForOtherMesh</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00198">inmost_common.h:198</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a50bbd66fb5124906749c061907fce1e7"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a50bbd66fb5124906749c061907fce1e7">INMOST::DistributionTagWasNotFilled</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00218">inmost_common.h:218</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a5307bd848bf8758295a089530a8a3757"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5307bd848bf8758295a089530a8a3757">INMOST::DimensionIsNotSupportedByGeometry</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00200">inmost_common.h:200</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5ad017b1212c7220252fe48afa66b74c89"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ad017b1212c7220252fe48afa66b74c89">INMOST::ErrorInSolver</a></div><div class="ttdoc">The list of errors may occur in the Linear Solver. </div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00206">inmost_common.h:206</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a13e1d43b86b890d78db12ca882cf1d06"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a13e1d43b86b890d78db12ca882cf1d06">INMOST::NoElementType</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00184">inmost_common.h:184</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a5de4025221248a073d870910013897df"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a5de4025221248a073d870910013897df">INMOST::BadFile</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00195">inmost_common.h:195</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a0d6b8d0a16a8951536db5435a5b4efeb"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a0d6b8d0a16a8951536db5435a5b4efeb">INMOST::NullInElementSet</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00189">inmost_common.h:189</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5ae4b36f3abc4eb04b80507fb22efdb6df"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ae4b36f3abc4eb04b80507fb22efdb6df">INMOST::UnknownWeightSize</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00217">inmost_common.h:217</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a90c86ebae0f91de60925b042fad25542"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a90c86ebae0f91de60925b042fad25542">INMOST::ErrorInPartitioner</a></div><div class="ttdoc">The list of errors may occur in the Partitioner. </div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00216">inmost_common.h:216</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a4253c9480bb7ff5db2ea81ec0b78db35"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a4253c9480bb7ff5db2ea81ec0b78db35">INMOST::NoSpaceForMarker</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00190">inmost_common.h:190</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a16f1e75def9b67f038fb64a808dbace5"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a16f1e75def9b67f038fb64a808dbace5">INMOST::Impossible</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00222">inmost_common.h:222</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a2009a39e6a15f97d817d016c8224425f"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a2009a39e6a15f97d817d016c8224425f">INMOST::MatrixNotSetInSolver</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00209">inmost_common.h:209</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a9c5b8ac6b7ec8521161e7a3db0c0ae21"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9c5b8ac6b7ec8521161e7a3db0c0ae21">INMOST::NoMeshElement</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00186">inmost_common.h:186</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5">INMOST::ErrorType</a></div><div class="ttdeci">ErrorType</div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00168">inmost_common.h:168</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5ab9f81fa407f739567a4e950241fd6b28"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab9f81fa407f739567a4e950241fd6b28">INMOST::NoData</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00177">inmost_common.h:177</a></div></div>
+<div class="ttc" id="inmost__common_8h_html_ae50d89ff53478f5f90f03c0f0f825cf1"><div class="ttname"><a href="inmost__common_8h.html#ae50d89ff53478f5f90f03c0f0f825cf1">Timer</a></div><div class="ttdeci">double Timer()</div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a016fd5935017c3ddbdeb31aa4f114d6c"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a016fd5935017c3ddbdeb31aa4f114d6c">INMOST::WrongElementType</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00174">inmost_common.h:174</a></div></div>
+<div class="ttc" id="container_8hpp_html"><div class="ttname"><a href="container_8hpp.html">container.hpp</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a56de558f51a301a92267975262ddae9e"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a56de558f51a301a92267975262ddae9e">INMOST::DifferentCommunicatorInSolver</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00208">inmost_common.h:208</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a9495ba8164c4f436a0ea4a62e55706bb"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9495ba8164c4f436a0ea4a62e55706bb">INMOST::InconsistentSizesInSolver</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00210">inmost_common.h:210</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a1c3c415babfe24f161e9fbc98d24de4c"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a1c3c415babfe24f161e9fbc98d24de4c">INMOST::UndefinedBehaviorInGeometry</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00199">inmost_common.h:199</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a05a6739d0a82d6b9d54bbf2a6abc7242"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a05a6739d0a82d6b9d54bbf2a6abc7242">INMOST::BadTag</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00175">inmost_common.h:175</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a9add3730979190bf70653a7856089d87"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9add3730979190bf70653a7856089d87">INMOST::TagExists</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00180">inmost_common.h:180</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5af9cd3245138e85a9f2a7be3421f9824e"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5af9cd3245138e85a9f2a7be3421f9824e">INMOST::DataCorruptedInSolver</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00207">inmost_common.h:207</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a3d83de307378d3fb3c4c3b1ae23c5e1c"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3d83de307378d3fb3c4c3b1ae23c5e1c">INMOST::NoEsetElement</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00187">inmost_common.h:187</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a64be76565210527374ee016058e943c3"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a64be76565210527374ee016058e943c3">INMOST::WrongDataType</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00173">inmost_common.h:173</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5ab5d2d133b55a3a4b33b4970c59e2d8c9"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ab5d2d133b55a3a4b33b4970c59e2d8c9">INMOST::ElementBelongsToNobody</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00191">inmost_common.h:191</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a9963bdd63b1d69764ba2bd03db6dfb7e"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a9963bdd63b1d69764ba2bd03db6dfb7e">INMOST::NoTagPosition</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00172">inmost_common.h:172</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a03822397a52719f6a1e893c6619a94a3"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a03822397a52719f6a1e893c6619a94a3">INMOST::ElementForOtherMesh</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00182">inmost_common.h:182</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a3625e98205826ded25db9908d691f487"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a3625e98205826ded25db9908d691f487">INMOST::TagForOtherMesh</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00181">inmost_common.h:181</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5a73cc2f47f413beffa41a80f53d57b95c"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5a73cc2f47f413beffa41a80f53d57b95c">INMOST::NoMultiElement</a></div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00185">inmost_common.h:185</a></div></div>
+<div class="ttc" id="namespace_i_n_m_o_s_t_html_a18c2931c6cf26343ac1e5733fb960af5ad77ba27e7a19fd94d0048da811b4bc5e"><div class="ttname"><a href="namespace_i_n_m_o_s_t.html#a18c2931c6cf26343ac1e5733fb960af5ad77ba27e7a19fd94d0048da811b4bc5e">INMOST::BadFileName</a></div><div class="ttdoc">The list of general type errors. </div><div class="ttdef"><b>Definition:</b> <a href="inmost__common_8h_source.html#l00194">inmost_common.h:194</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
-<!-- HTML footer for doxygen 1.8.5-->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Feb 11 2015 22:20:46 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Fri Dec 4 2015 11:40:27 for INMOST by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.5
 </small></address>

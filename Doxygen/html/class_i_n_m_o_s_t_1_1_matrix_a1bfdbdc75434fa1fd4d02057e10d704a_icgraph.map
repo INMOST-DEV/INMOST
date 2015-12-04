@@ -1,0 +1,9 @@
+<map id="INMOST::Matrix::Zero" name="INMOST::Matrix::Zero">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_matrix.html#adf8bb731b7c0899039b99f2399d938c6" title="INMOST::Matrix::SVD" alt="" coords="227,29,378,56"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_matrix.html#a8ab6869d8a6ccd6ab67522912078ec06" title="INMOST::Matrix::FromTensor" alt="" coords="207,80,399,107"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_matrix.html#a69609050a28dba406501b358260afece" title="INMOST::Matrix::FromDiagonal" alt="" coords="201,131,404,157"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_matrix.html#a6621ea7517cde9cd2bdadd42e472bda5" title="INMOST::Matrix::FromDiagonal\lInverse" alt="" coords="201,182,404,223"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_matrix.html#abca452418b15fa0b7c74f3299c59e9e1" title="INMOST::Matrix::Unit" alt="" coords="229,248,376,275"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_matrix.html#ab621083d1f37df018feec6163618c1cd" title="INMOST::Matrix::Invert" alt="" coords="452,248,605,275"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_matrix.html#a308fc7a550c7de8c21b9ef17eecba603" title="INMOST::Matrix::operator/" alt="" coords="653,248,828,275"/>
+</map>

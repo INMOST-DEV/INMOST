@@ -1,0 +1,4 @@
+<map id="INMOST::interval::set_interval_beg" name="INMOST::interval::set_interval_beg">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_sparse_1_1_vector.html#a1bb225147aca45462001a65b0a88da6b" title="Set the start and the end of the distributed vector interval. " alt="" coords="199,5,365,47"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_sparse_1_1_matrix.html#aad2dd0a2f0e4c7ce9f2a063aeb8e8533" title="Set the start and the end row numbers of the distributed matrix interval. " alt="" coords="200,71,364,112"/>
+</map>

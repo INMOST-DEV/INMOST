@@ -1,0 +1,7 @@
+<map id="INMOST::Mesh::Integer" name="INMOST::Mesh::Integer">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh_1_1_integer_comparator.html#a521ea8d9df71795f037272d6a45523de" title="INMOST::Mesh::IntegerComparator\l::operator()" alt="" coords="212,12,437,53"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_storage.html#a494c65f9a4fab2831e47ad2f8fe44f5b" title="INMOST::Storage::Integer" alt="" coords="239,78,410,105"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a41483a4546777613637e523f4f57ec81" title="INMOST::dynamic_variable\l::Index" alt="" coords="485,5,664,47"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a432e3db3a15b60eebc084cfd8dcfb28e" title="INMOST::dynamic_variable\l::Variable" alt="" coords="485,71,664,112"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#af98d84e841029239fe4b098025ef0801" title="INMOST::dynamic_variable\l::operator[]" alt="" coords="485,136,664,177"/>
+</map>

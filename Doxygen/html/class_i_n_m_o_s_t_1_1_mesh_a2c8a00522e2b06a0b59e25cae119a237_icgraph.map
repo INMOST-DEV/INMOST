@@ -1,0 +1,10 @@
+<map id="INMOST::Mesh::GetMarker" name="INMOST::Mesh::GetMarker">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_storage.html#ad256a6f5101df9f507e359cdddef3a66" title="INMOST::Storage::GetMarker" alt="" coords="233,225,427,251"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a3da0c47982b82640337e87375abe7314" title="INMOST::Automatizator\l::isDynamicValid" alt="" coords="498,5,658,47"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a6ae69d02eb607b39c5000c39882c484d" title="INMOST::Automatizator\l::isStaticValid" alt="" coords="498,71,658,112"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#aa7a9b5c6c18e890d941c0abaf36fc9ac" title="INMOST::enhanced_multivar\l_expression::enhanced_multivar\l_expression" alt="" coords="475,137,681,193"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a41483a4546777613637e523f4f57ec81" title="INMOST::dynamic_variable\l::Index" alt="" coords="489,217,667,259"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a432e3db3a15b60eebc084cfd8dcfb28e" title="INMOST::dynamic_variable\l::Variable" alt="" coords="489,283,667,324"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#af98d84e841029239fe4b098025ef0801" title="INMOST::dynamic_variable\l::operator[]" alt="" coords="489,348,667,389"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a144f4624248335fd4b690f3416720007" title="INMOST::dynamic_variable\l::isUnknown" alt="" coords="489,413,667,455"/>
+</map>

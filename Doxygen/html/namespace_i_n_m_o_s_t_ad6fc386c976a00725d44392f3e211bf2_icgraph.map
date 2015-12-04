@@ -1,0 +1,9 @@
+<map id="INMOST::GetHandleElementType" name="INMOST::GetHandleElementType">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_storage.html#ae6928532b6665a12831d13293c4c7b31" title="INMOST::Storage::GetElementType" alt="" coords="269,132,499,159"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_storage.html#a1120f87c2cb4eaf015db837f0f7cce3f" title="INMOST::Storage::getAsElement" alt="" coords="547,5,761,32"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_storage.html#aac94c3afac6383b988c7992a72fc353c" title="INMOST::Storage::getAsNode" alt="" coords="556,56,752,83"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_storage.html#aae2639c86f7e1ed99341800a6350beaf" title="INMOST::Storage::getAsEdge" alt="" coords="556,107,752,133"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_storage.html#a3bb9ba79f8c0f6be46abeb505ae6522a" title="INMOST::Storage::getAsFace" alt="" coords="557,157,751,184"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_storage.html#a273dc6c3f277ad2cda0f37df30a8f534" title="INMOST::Storage::getAsCell" alt="" coords="560,208,748,235"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_storage.html#a20b4ae741200cfea234a9989b36f4c11" title="INMOST::Storage::getAsSet" alt="" coords="561,259,747,285"/>
+</map>

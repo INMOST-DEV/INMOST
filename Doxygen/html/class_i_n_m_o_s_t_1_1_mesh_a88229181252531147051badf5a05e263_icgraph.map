@@ -1,0 +1,5 @@
+<map id="INMOST::Mesh::BulkDF" name="INMOST::Mesh::BulkDF">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh.html#a666201ee66a5a0f871d17781055b06ac" title="INMOST::Mesh::SetStatus" alt="" coords="242,5,419,32"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_mesh_1_1_bulk_d_f_comparator.html#a714397aff2fb2191ad02921b22fca995" title="INMOST::Mesh::BulkDFComparator\l::operator()" alt="" coords="216,57,445,98"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_storage.html#a0a6cfb0f778bd8d0cd65e6d699c2f62d" title="INMOST::Storage::BulkDF" alt="" coords="243,123,418,149"/>
+</map>

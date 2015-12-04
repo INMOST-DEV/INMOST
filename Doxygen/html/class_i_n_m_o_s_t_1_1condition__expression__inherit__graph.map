@@ -1,0 +1,5 @@
+<map id="INMOST::condition_expression&lt; A, B, C &gt;" name="INMOST::condition_expression&lt; A, B, C &gt;">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; condition_expression\l\&lt; A, B, C \&gt; \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator condition\l_expression\&lt; A, B, C \&gt; &amp;()\l+ operator const condition\l_expression\&lt; A, B, C \&gt; &amp;()\l}" alt="" coords="16,448,196,672"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1basic__expression.html" title="{INMOST::basic_expression\n||+ basic_expression()\l+ basic_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l}" alt="" coords="35,5,215,141"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; Derived \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator Derived &amp;()\l+ operator const Derived &amp;()\l}" alt="" coords="122,191,306,371"/>
+</map>

@@ -1,0 +1,24 @@
+<map id="INMOST::ElementNum" name="INMOST::ElementNum">
+<area shape="rect" id="node2" href="$namespace_i_n_m_o_s_t.html#a0a1e057f5c33c6194342ac1f5535e66b" title="INMOST::ComposeHandle" alt="" coords="238,45,413,71"/>
+<area shape="rect" id="node5" href="$namespace_i_n_m_o_s_t.html#a363b19b1172290392eaf268cbf964e20" title="INMOST::ComposeCellHandle" alt="" coords="227,95,423,122"/>
+<area shape="rect" id="node6" href="$namespace_i_n_m_o_s_t.html#a8e9471554dd1216f5d402a9cee363a1d" title="INMOST::ComposeFaceHandle" alt="" coords="224,146,427,173"/>
+<area shape="rect" id="node7" href="$namespace_i_n_m_o_s_t.html#a14ac6d11fedfa106eddc0a0259e36157" title="INMOST::ComposeEdgeHandle" alt="" coords="223,197,427,223"/>
+<area shape="rect" id="node8" href="$namespace_i_n_m_o_s_t.html#ab122aaedaadc72ef10cac8868e55bd27" title="INMOST::ComposeNodeHandle" alt="" coords="223,247,427,274"/>
+<area shape="rect" id="node9" href="$namespace_i_n_m_o_s_t.html#a3f3e030bc504c1992f6061e65fe8659d" title="INMOST::ComposeSetHandle" alt="" coords="228,298,423,325"/>
+<area shape="rect" id="node10" href="$class_i_n_m_o_s_t_1_1_tag.html#a0151597a4ccd7f9ad8ffe3b4774c2040" title="INMOST::Tag::isSparse" alt="" coords="246,349,405,375"/>
+<area shape="rect" id="node11" href="$class_i_n_m_o_s_t_1_1_mesh.html#aed6fa04f985b48852a2fd6305364983e" title="INMOST::Mesh::isValidElement" alt="" coords="222,399,429,426"/>
+<area shape="rect" id="node12" href="$class_i_n_m_o_s_t_1_1_mesh.html#aef3f8578b266f8b13db2416e2f3f26f3" title="INMOST::Mesh::isValidCell" alt="" coords="235,450,415,477"/>
+<area shape="rect" id="node13" href="$class_i_n_m_o_s_t_1_1_mesh.html#a4a31c106d1127dd51d2b867b02cc85cc" title="INMOST::Mesh::isValidFace" alt="" coords="232,501,419,527"/>
+<area shape="rect" id="node14" href="$class_i_n_m_o_s_t_1_1_mesh.html#aa731c6b5de55cde2cbea42ab17e52419" title="INMOST::Mesh::isValidEdge" alt="" coords="231,551,419,578"/>
+<area shape="rect" id="node15" href="$class_i_n_m_o_s_t_1_1_mesh.html#aca88fce5b216e77e10a1de9222c71d97" title="INMOST::Mesh::isValidNode" alt="" coords="231,602,419,629"/>
+<area shape="rect" id="node16" href="$class_i_n_m_o_s_t_1_1_mesh.html#a673ab2bc496d16124c5b3bffc7e04cb8" title="INMOST::Mesh::isValidElementSet" alt="" coords="212,653,439,679"/>
+<area shape="rect" id="node17" href="$class_i_n_m_o_s_t_1_1_mesh.html#aa9d09a55b27ac2f0f500400648ca38ee" title="INMOST::Mesh::ElementByLocalID" alt="" coords="212,727,439,754"/>
+<area shape="rect" id="node18" href="$class_i_n_m_o_s_t_1_1_mesh.html#a4f26f7a8fbf7bf0a104b79f2433334a2" title="INMOST::Mesh::FirstHandle" alt="" coords="233,778,418,805"/>
+<area shape="rect" id="node19" href="$class_i_n_m_o_s_t_1_1_mesh.html#a863be497f888170153331f74fae93e06" title="INMOST::Mesh::LastHandle" alt="" coords="233,829,417,855"/>
+<area shape="rect" id="node20" href="$class_i_n_m_o_s_t_1_1_mesh.html#a692fbbc2f3ccaf3b8951c20ec0b14a19" title="INMOST::Mesh::NextLocalID" alt="" coords="231,879,420,906"/>
+<area shape="rect" id="node21" href="$class_i_n_m_o_s_t_1_1_mesh.html#a751a12b5299610c2ecbfd935fc3efcfe" title="INMOST::Mesh::PrevLocalID" alt="" coords="232,930,419,957"/>
+<area shape="rect" id="node22" href="$class_i_n_m_o_s_t_1_1_mesh.html#a34c34383e2eefea680d1217af76a381f" title="INMOST::Mesh::LastLocalID" alt="" coords="232,1005,419,1031"/>
+<area shape="rect" id="node23" href="$class_i_n_m_o_s_t_1_1_mesh.html#a10797f897575540e8f44e4ca9482dbc0" title="INMOST::Mesh::HaveGeometricData" alt="" coords="208,1055,443,1082"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_mesh_1_1base__iterator.html#a8b0cef4064c2eef72fcabf2c01fd7fd4" title="INMOST::Mesh::base\l_iterator::operator*" alt="" coords="491,5,637,47"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_mesh_1_1base__iterator.html#a1b5d24fd44090fbe7d644d27551f2c31" title="INMOST::Mesh::base\l_iterator::operator&#45;\&gt;" alt="" coords="491,71,637,112"/>
+</map>

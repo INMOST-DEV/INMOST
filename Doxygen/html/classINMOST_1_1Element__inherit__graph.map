@@ -1,8 +1,0 @@
-<map id="INMOST::Element" name="INMOST::Element">
-<area shape="rect" id="node3" href="$classINMOST_1_1Cell.html" title="An interface for elements of type CELL. " alt="" coords="5,155,107,181"/>
-<area shape="rect" id="node4" href="$classINMOST_1_1Edge.html" title="INMOST::Edge" alt="" coords="131,155,240,181"/>
-<area shape="rect" id="node5" href="$classINMOST_1_1ElementSet.html" title="INMOST::ElementSet" alt="" coords="264,155,411,181"/>
-<area shape="rect" id="node6" href="$classINMOST_1_1Face.html" title="An interface for elements of type FACE. " alt="" coords="435,155,543,181"/>
-<area shape="rect" id="node7" href="$classINMOST_1_1Node.html" title="INMOST::Node" alt="" coords="568,155,677,181"/>
-<area shape="rect" id="node2" href="$classINMOST_1_1Storage.html" title="Base class for Mesh, Element, and ElementSet classes. " alt="" coords="275,5,399,32"/>
-</map>

@@ -1,0 +1,9 @@
+<map id="INMOST::Mesh::NumberOfAll" name="INMOST::Mesh::NumberOfAll">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh.html#abeeaa462c78ce8a82e0e3e87c55e4455" title="INMOST::Mesh::NumberOfSets" alt="" coords="259,13,463,39"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_mesh.html#a7aee6d7f5b7432dc34bc7319a9e1e8f4" title="INMOST::Mesh::NumberOfElements" alt="" coords="245,89,477,115"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1chunk__array.html#a3133c45f74d39c2271889033147567c9" title="INMOST::chunk_array\l::size" alt="" coords="788,81,939,123"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_mesh.html#a245f0558fa7181cf6789db69c4005b33" title="INMOST::Mesh::NumberOfCells" alt="" coords="529,38,736,65"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_mesh.html#a67db1a1d141e8d7cb93ca1284777bb08" title="INMOST::Mesh::NumberOfFaces" alt="" coords="526,89,739,115"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_mesh.html#a404c19f0ddf24cd968de766cf130b371" title="INMOST::Mesh::NumberOfEdges" alt="" coords="525,139,740,166"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_mesh.html#a4562c5fd5341705ed706b3c4cfda80fe" title="INMOST::Mesh::NumberOfNodes" alt="" coords="525,190,740,217"/>
+</map>

@@ -1,3 +1,70 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$classINMOST_1_1Mesh_1_1BulkComparator.html" title="INMOST::Mesh::BulkComparator" alt="" coords="5,5,217,32"/>
+<area shape="rect" id="node1" href="$class_i_n_m_o_s_t_1_1basic__expression.html" title="INMOST::basic_expression" alt="" coords="5,1185,185,1211"/>
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; Derived \&gt;" alt="" coords="271,5,447,47"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; abs_expression\&lt; A \&gt; \&gt;" alt="" coords="271,71,447,112"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; addition_expression\&lt;\l A, B \&gt; \&gt;" alt="" coords="271,137,447,193"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; binary_pool_expression\l\&lt; A, ArgA, ArgB \&gt; \&gt;" alt="" coords="271,217,447,273"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; condition_expression\l\&lt; A, B, C \&gt; \&gt;" alt="" coords="271,297,447,353"/>
+<area shape="rect" id="node11" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; const_addition_expression\&lt; A \&gt; \&gt;" alt="" coords="243,377,476,419"/>
+<area shape="rect" id="node13" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; const_division_expression\&lt; A \&gt; \&gt;" alt="" coords="244,443,475,484"/>
+<area shape="rect" id="node15" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; const_multiplication\l_expression\&lt; A \&gt; \&gt;" alt="" coords="271,509,447,565"/>
+<area shape="rect" id="node17" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; const_pow_expression\&lt; A \&gt; \&gt;" alt="" coords="254,589,465,631"/>
+<area shape="rect" id="node19" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; const_subtraction_expression\&lt; A \&gt; \&gt;" alt="" coords="233,655,485,696"/>
+<area shape="rect" id="node21" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; cos_expression\&lt; A \&gt; \&gt;" alt="" coords="271,720,447,761"/>
+<area shape="rect" id="node23" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; division_expression\&lt;\l A, B \&gt; \&gt;" alt="" coords="271,786,447,842"/>
+<area shape="rect" id="node25" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; enhanced_multivar_expression \&gt;" alt="" coords="248,867,471,908"/>
+<area shape="rect" id="node27" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; exp_expression\&lt; A \&gt; \&gt;" alt="" coords="271,932,447,973"/>
+<area shape="rect" id="node29" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; log_expression\&lt; A \&gt; \&gt;" alt="" coords="271,997,447,1039"/>
+<area shape="rect" id="node31" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; multiplication_expression\l\&lt; A, B \&gt; \&gt;" alt="" coords="269,1063,449,1119"/>
+<area shape="rect" id="node33" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; multivar_expression \&gt;" alt="" coords="271,1144,447,1185"/>
+<area shape="rect" id="node35" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; pow_const_expression\&lt; A \&gt; \&gt;" alt="" coords="254,1209,465,1251"/>
+<area shape="rect" id="node37" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; pow_expression\&lt; A, B \&gt; \&gt;" alt="" coords="265,1275,454,1316"/>
+<area shape="rect" id="node39" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; reciprocal_expression\&lt; A \&gt; \&gt;" alt="" coords="257,1340,462,1381"/>
+<area shape="rect" id="node41" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; sin_expression\&lt; A \&gt; \&gt;" alt="" coords="271,1405,447,1447"/>
+<area shape="rect" id="node43" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; soft_abs_expression\&lt; A \&gt; \&gt;" alt="" coords="260,1471,459,1512"/>
+<area shape="rect" id="node45" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; soft_max_expression\&lt;\l A, B \&gt; \&gt;" alt="" coords="271,1537,447,1593"/>
+<area shape="rect" id="node47" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; soft_min_expression\&lt;\l A, B \&gt; \&gt;" alt="" coords="271,1617,447,1673"/>
+<area shape="rect" id="node49" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; soft_sign_expression\&lt; A \&gt; \&gt;" alt="" coords="259,1697,460,1739"/>
+<area shape="rect" id="node51" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; sqrt_expression\&lt; A \&gt; \&gt;" alt="" coords="271,1763,447,1804"/>
+<area shape="rect" id="node53" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; stencil_expression\&lt; A \&gt; \&gt;" alt="" coords="266,1828,453,1869"/>
+<area shape="rect" id="node55" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; subtraction_expression\l\&lt; A, B \&gt; \&gt;" alt="" coords="271,1894,447,1950"/>
+<area shape="rect" id="node57" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; ternary_pool_expression\l\&lt; A, ArgA, ArgB, ArgC \&gt; \&gt;" alt="" coords="270,1974,449,2030"/>
+<area shape="rect" id="node59" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; unary_const_pool_expression\l\&lt; A, ArgA \&gt; \&gt;" alt="" coords="256,2054,463,2110"/>
+<area shape="rect" id="node61" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; unary_minus_expression\&lt; A \&gt; \&gt;" alt="" coords="248,2135,471,2176"/>
+<area shape="rect" id="node63" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; unary_pool_expression\l\&lt; A, ArgA \&gt; \&gt;" alt="" coords="271,2201,447,2257"/>
+<area shape="rect" id="node65" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; var_expression \&gt;" alt="" coords="271,2281,447,2323"/>
+<area shape="rect" id="node67" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="INMOST::shell_expression\l\&lt; variation_multiplication\l_expression\&lt; A \&gt; \&gt;" alt="" coords="271,2347,447,2403"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1abs__expression.html" title="INMOST::abs_expression\&lt; A \&gt;" alt="" coords="554,78,757,105"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1addition__expression.html" title="INMOST::addition_expression\l\&lt; A, B \&gt;" alt="" coords="558,144,753,185"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1binary__pool__expression.html" title="INMOST::binary_pool\l_expression\&lt; A, ArgA,\l ArgB \&gt;" alt="" coords="578,217,733,273"/>
+<area shape="rect" id="node10" href="$class_i_n_m_o_s_t_1_1condition__expression.html" title="INMOST::condition_expression\l\&lt; A, B, C \&gt;" alt="" coords="555,304,756,345"/>
+<area shape="rect" id="node12" href="$class_i_n_m_o_s_t_1_1const__addition__expression.html" title="INMOST::const_addition\l_expression\&lt; A \&gt;" alt="" coords="574,377,737,419"/>
+<area shape="rect" id="node14" href="$class_i_n_m_o_s_t_1_1const__division__expression.html" title="INMOST::const_division\l_expression\&lt; A \&gt;" alt="" coords="575,443,735,484"/>
+<area shape="rect" id="node16" href="$class_i_n_m_o_s_t_1_1const__multiplication__expression.html" title="INMOST::const_multiplication\l_expression\&lt; A \&gt;" alt="" coords="558,516,753,557"/>
+<area shape="rect" id="node18" href="$class_i_n_m_o_s_t_1_1const__pow__expression.html" title="INMOST::const_pow_expression\&lt; A \&gt;" alt="" coords="533,597,777,623"/>
+<area shape="rect" id="node20" href="$class_i_n_m_o_s_t_1_1const__subtraction__expression.html" title="INMOST::const_subtraction\l_expression\&lt; A \&gt;" alt="" coords="564,655,747,696"/>
+<area shape="rect" id="node22" href="$class_i_n_m_o_s_t_1_1cos__expression.html" title="INMOST::cos_expression\&lt; A \&gt;" alt="" coords="554,727,757,754"/>
+<area shape="rect" id="node24" href="$class_i_n_m_o_s_t_1_1division__expression.html" title="INMOST::division_expression\l\&lt; A, B \&gt;" alt="" coords="560,793,751,835"/>
+<area shape="rect" id="node26" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html" title="INMOST::enhanced_multivar\l_expression" alt="" coords="562,867,749,908"/>
+<area shape="rect" id="node28" href="$class_i_n_m_o_s_t_1_1exp__expression.html" title="INMOST::exp_expression\&lt; A \&gt;" alt="" coords="554,939,757,966"/>
+<area shape="rect" id="node30" href="$class_i_n_m_o_s_t_1_1log__expression.html" title="INMOST::log_expression\&lt; A \&gt;" alt="" coords="556,1005,755,1031"/>
+<area shape="rect" id="node32" href="$class_i_n_m_o_s_t_1_1multiplication__expression.html" title="INMOST::multiplication\l_expression\&lt; A, B \&gt;" alt="" coords="578,1071,733,1112"/>
+<area shape="rect" id="node34" href="$class_i_n_m_o_s_t_1_1multivar__expression.html" title="INMOST::multivar_expression" alt="" coords="559,1151,752,1178"/>
+<area shape="rect" id="node36" href="$class_i_n_m_o_s_t_1_1pow__const__expression.html" title="INMOST::pow_const_expression\&lt; A \&gt;" alt="" coords="533,1217,777,1243"/>
+<area shape="rect" id="node38" href="$class_i_n_m_o_s_t_1_1pow__expression.html" title="INMOST::pow_expression\l\&lt; A, B \&gt;" alt="" coords="569,1275,741,1316"/>
+<area shape="rect" id="node40" href="$class_i_n_m_o_s_t_1_1reciprocal__expression.html" title="INMOST::reciprocal\l_expression\&lt; A \&gt;" alt="" coords="588,1340,723,1381"/>
+<area shape="rect" id="node42" href="$class_i_n_m_o_s_t_1_1sin__expression.html" title="INMOST::sin_expression\&lt; A \&gt;" alt="" coords="556,1413,755,1439"/>
+<area shape="rect" id="node44" href="$class_i_n_m_o_s_t_1_1soft__abs__expression.html" title="INMOST::soft_abs_expression\&lt; A \&gt;" alt="" coords="540,1478,771,1505"/>
+<area shape="rect" id="node46" href="$class_i_n_m_o_s_t_1_1soft__max__expression.html" title="INMOST::soft_max_expression\l\&lt; A, B \&gt;" alt="" coords="554,1544,757,1585"/>
+<area shape="rect" id="node48" href="$class_i_n_m_o_s_t_1_1soft__min__expression.html" title="INMOST::soft_min_expression\l\&lt; A, B \&gt;" alt="" coords="556,1624,755,1665"/>
+<area shape="rect" id="node50" href="$class_i_n_m_o_s_t_1_1soft__sign__expression.html" title="INMOST::soft_sign_expression\&lt; A \&gt;" alt="" coords="538,1705,773,1731"/>
+<area shape="rect" id="node52" href="$class_i_n_m_o_s_t_1_1sqrt__expression.html" title="INMOST::sqrt_expression\&lt; A \&gt;" alt="" coords="553,1770,757,1797"/>
+<area shape="rect" id="node54" href="$class_i_n_m_o_s_t_1_1stencil__expression.html" title="INMOST::stencil_expression\&lt; A \&gt;" alt="" coords="545,1835,765,1862"/>
+<area shape="rect" id="node56" href="$class_i_n_m_o_s_t_1_1subtraction__expression.html" title="INMOST::subtraction\l_expression\&lt; A, B \&gt;" alt="" coords="584,1901,727,1943"/>
+<area shape="rect" id="node58" href="$class_i_n_m_o_s_t_1_1ternary__pool__expression.html" title="INMOST::ternary_pool\l_expression\&lt; A, ArgA,\l ArgB, ArgC \&gt;" alt="" coords="578,1974,733,2030"/>
+<area shape="rect" id="node60" href="$class_i_n_m_o_s_t_1_1unary__const__pool__expression.html" title="INMOST::unary_const\l_pool_expression\&lt; A,\l ArgA \&gt;" alt="" coords="580,2054,731,2110"/>
+<area shape="rect" id="node62" href="$class_i_n_m_o_s_t_1_1unary__minus__expression.html" title="INMOST::unary_minus\l_expression\&lt; A \&gt;" alt="" coords="579,2135,732,2176"/>
+<area shape="rect" id="node64" href="$class_i_n_m_o_s_t_1_1unary__pool__expression.html" title="INMOST::unary_pool\l_expression\&lt; A, ArgA \&gt;" alt="" coords="574,2208,737,2249"/>
+<area shape="rect" id="node66" href="$class_i_n_m_o_s_t_1_1var__expression.html" title="INMOST::var_expression" alt="" coords="573,2289,738,2315"/>
+<area shape="rect" id="node68" href="$class_i_n_m_o_s_t_1_1variation__multiplication__expression.html" title="INMOST::variation_multiplication\l_expression\&lt; A \&gt;" alt="" coords="551,2355,760,2396"/>
 </map>

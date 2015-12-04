@@ -1,0 +1,14 @@
+<map id="INMOST::Tag::GetSize" name="INMOST::Tag::GetSize">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh.html#a8527fa3c2f6ece108b5abce389566365" title="INMOST::Mesh::RealArrayDF" alt="" coords="224,12,417,39"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_mesh.html#a9d5351b2b6e7f7824598cb46b3c35118" title="INMOST::Mesh::IntegerArrayDF" alt="" coords="217,69,424,96"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_mesh.html#a53d63f6a251db48695306180f22ff67e" title="INMOST::Mesh::BulkArrayDF" alt="" coords="224,125,417,152"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_mesh.html#a92ba4c935940111e2c9584a9cc96fe6f" title="INMOST::Mesh::ReferenceArrayDF" alt="" coords="208,180,433,207"/>
+<area shape="rect" id="node10" href="$class_i_n_m_o_s_t_1_1_mesh.html#aa9375f7cdff4c060bb765028c95a9e73" title="INMOST::Mesh::RemoteReference\lArrayDF" alt="" coords="209,234,432,275"/>
+<area shape="rect" id="node12" href="$class_i_n_m_o_s_t_1_1_mesh.html#ab2229cce6dd3256af03af46a30f951b0" title="INMOST::Mesh::VariableArrayDF" alt="" coords="213,307,428,333"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_storage.html#aa36fe77acb2e5f25ffb2c5d8ffe62f00" title="INMOST::Storage::RealArrayDF" alt="" coords="495,5,702,32"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_storage.html#a80b2983a2708257ca9ed5c1536bcd973" title="INMOST::Storage::Integer\lArrayDF" alt="" coords="513,57,684,98"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_storage.html#a49114bf0e458263b1cc5e4ffeb54f070" title="INMOST::Storage::BulkArrayDF" alt="" coords="495,123,702,149"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1_storage.html#afe7084f05e2a97ea2c618a66ca700eb7" title="INMOST::Storage::Reference\lArrayDF" alt="" coords="503,174,694,215"/>
+<area shape="rect" id="node11" href="$class_i_n_m_o_s_t_1_1_storage.html#a3cd1655d88dce33bd65e477dbfb44299" title="INMOST::Storage::RemoteReference\lArrayDF" alt="" coords="481,239,716,281"/>
+<area shape="rect" id="node13" href="$class_i_n_m_o_s_t_1_1_storage.html#a432185af25c8a147b4ad646b6d92268c" title="INMOST::Storage::Variable\lArrayDF" alt="" coords="509,305,688,346"/>
+</map>

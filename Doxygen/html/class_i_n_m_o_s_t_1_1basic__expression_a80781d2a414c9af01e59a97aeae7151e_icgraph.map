@@ -1,0 +1,14 @@
+<map id="INMOST::basic_expression::GetValue" name="INMOST::basic_expression::GetValue">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1multivar__expression.html#a4d5add92ea9fcf358fd6292a1fbcfe4f" title="INMOST::multivar_expression\l::multivar_expression" alt="" coords="240,5,433,47"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1multivar__expression.html#a8e12c7a16e7720e6524444ba9d938be2" title="INMOST::multivar_expression\l::operator=" alt="" coords="240,71,433,112"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1multivar__expression.html#a4097d4feec354889aeb3306ed223f485" title="INMOST::multivar_expression\l::operator+=" alt="" coords="240,136,433,177"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1multivar__expression.html#aaace2e2ac91e4fb73183a1901a3e1ea1" title="INMOST::multivar_expression\l::operator&#45;=" alt="" coords="240,201,433,243"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1multivar__expression.html#aa8201a6a63329890bde0e8ddc37dc780" title="INMOST::multivar_expression\l::operator*=" alt="" coords="240,267,433,308"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1multivar__expression.html#ad1e7513f547145312c4da1ae5aff2c62" title="INMOST::multivar_expression\l::operator/=" alt="" coords="240,332,433,373"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#a45c809d9a3421981e9243a54262ca9fb" title="INMOST::enhanced_multivar\l_expression::enhanced_multivar\l_expression" alt="" coords="233,398,440,454"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#ac5919c2f1fe2d724401bd2df073cfbb6" title="INMOST::enhanced_multivar\l_expression::operator=" alt="" coords="243,479,430,520"/>
+<area shape="rect" id="node10" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#a41816d1b5eb3737263f2c6e93f6eb5a3" title="INMOST::enhanced_multivar\l_expression::operator+=" alt="" coords="243,544,430,585"/>
+<area shape="rect" id="node11" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#ac8e90e11bf754d4cc9c200711aeea4f7" title="INMOST::enhanced_multivar\l_expression::operator&#45;=" alt="" coords="243,609,430,651"/>
+<area shape="rect" id="node12" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#a97c2fa6cfb8896e0b16d71db17c22d81" title="INMOST::enhanced_multivar\l_expression::operator*=" alt="" coords="243,675,430,716"/>
+<area shape="rect" id="node13" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#a17b17b1df743295e60b688d2cf0c8382" title="INMOST::enhanced_multivar\l_expression::operator/=" alt="" coords="243,740,430,781"/>
+</map>

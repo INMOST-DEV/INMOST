@@ -1,0 +1,14 @@
+<map id="INMOST::Mesh::MarkersTag" name="INMOST::Mesh::MarkersTag">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_mesh.html#a2c8a00522e2b06a0b59e25cae119a237" title="INMOST::Mesh::GetMarker" alt="" coords="243,225,423,251"/>
+<area shape="rect" id="node11" href="$class_i_n_m_o_s_t_1_1_mesh.html#aa758ff129bf79eff3c446946e276006c" title="INMOST::Mesh::RemMarker" alt="" coords="240,275,427,302"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_storage.html#ad256a6f5101df9f507e359cdddef3a66" title="INMOST::Storage::GetMarker" alt="" coords="487,225,680,251"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a3da0c47982b82640337e87375abe7314" title="INMOST::Automatizator\l::isDynamicValid" alt="" coords="763,5,923,47"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a6ae69d02eb607b39c5000c39882c484d" title="INMOST::Automatizator\l::isStaticValid" alt="" coords="763,71,923,112"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1enhanced__multivar__expression.html#aa7a9b5c6c18e890d941c0abaf36fc9ac" title="INMOST::enhanced_multivar\l_expression::enhanced_multivar\l_expression" alt="" coords="740,137,947,193"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a41483a4546777613637e523f4f57ec81" title="INMOST::dynamic_variable\l::Index" alt="" coords="754,217,933,259"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a432e3db3a15b60eebc084cfd8dcfb28e" title="INMOST::dynamic_variable\l::Variable" alt="" coords="754,283,933,324"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#af98d84e841029239fe4b098025ef0801" title="INMOST::dynamic_variable\l::operator[]" alt="" coords="754,348,933,389"/>
+<area shape="rect" id="node10" href="$class_i_n_m_o_s_t_1_1dynamic__variable.html#a144f4624248335fd4b690f3416720007" title="INMOST::dynamic_variable\l::isUnknown" alt="" coords="754,413,933,455"/>
+<area shape="rect" id="node12" href="$class_i_n_m_o_s_t_1_1_mesh.html#a14f8614996be1f7dd81825a447e9f4e8" title="INMOST::Mesh::RemMarkerArray" alt="" coords="475,275,692,302"/>
+<area shape="rect" id="node13" href="$class_i_n_m_o_s_t_1_1_storage.html#aeae593e88e3269f8590742a9e95d1813" title="INMOST::Storage::RemMarker" alt="" coords="484,326,683,353"/>
+</map>

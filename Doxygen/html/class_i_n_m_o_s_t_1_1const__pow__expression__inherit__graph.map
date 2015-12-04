@@ -1,0 +1,5 @@
+<map id="INMOST::const_pow_expression&lt; A &gt;" name="INMOST::const_pow_expression&lt; A &gt;">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; const_pow_expression\&lt; A \&gt; \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator const_pow\l_expression\&lt; A \&gt; &amp;()\l+ operator const const\l_pow_expression\&lt; A \&gt; &amp;()\l}" alt="" coords="22,448,233,657"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1basic__expression.html" title="{INMOST::basic_expression\n||+ basic_expression()\l+ basic_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l}" alt="" coords="56,5,236,141"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; Derived \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator Derived &amp;()\l+ operator const Derived &amp;()\l}" alt="" coords="143,191,327,371"/>
+</map>

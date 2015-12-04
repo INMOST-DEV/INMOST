@@ -1,0 +1,11 @@
+<map id="INMOST::Automatizator::isStaticValid" name="INMOST::Automatizator::isStaticValid">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_automatizator.html#a06a1bb3d3a85545bc2d896500967c446" title="INMOST::Automatizator\l::GetStaticMask" alt="" coords="230,66,390,107"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_storage.html#ad256a6f5101df9f507e359cdddef3a66" title="INMOST::Storage::GetMarker" alt="" coords="213,132,407,159"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_storage.html#a59da31b96c2b4e09e260f0deb4dae4d9" title="INMOST::Storage::isValid" alt="" coords="466,56,637,83"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_storage.html#a20d218fc89f75ca8534707b4f697173e" title="INMOST::Storage::GetMeshLink" alt="" coords="696,107,905,133"/>
+<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_mesh.html#a2c8a00522e2b06a0b59e25cae119a237" title="INMOST::Mesh::GetMarker" alt="" coords="461,157,641,184"/>
+<area shape="rect" id="node10" href="$class_i_n_m_o_s_t_1_1_storage.html#ac79e3f3664b2ff21892f37bce0caa0e0" title="INMOST::Storage::GetHandle" alt="" coords="455,208,648,235"/>
+<area shape="rect" id="node5" href="$namespace_i_n_m_o_s_t.html#a115b3e54c3b7be04ffec9b69c058df18" title="INMOST::InvalidHandle" alt="" coords="723,5,878,32"/>
+<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_mesh.html#a05701da4bd3ed8ca69bbcca256c2b0e2" title="INMOST::Mesh::isValidElement" alt="" coords="697,56,904,83"/>
+<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1_mesh.html#ad7d9049c7e0f028e334d3fac70acdc6c" title="INMOST::Mesh::MarkersTag" alt="" coords="707,157,894,184"/>
+</map>

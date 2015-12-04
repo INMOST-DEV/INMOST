@@ -1,0 +1,7 @@
+<map id="INMOST::dynamic_variable" name="INMOST::dynamic_variable">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__dynamic__variable.html" title="{INMOST::shell_dynamic\l_variable\&lt; var_expression,\l dynamic_variable \&gt;\n||+ Value()\l+ operator()()\l+ operator()()\l+ operator[]()\l+ GetVariation()\l+ GetVariation()\l}" alt="" coords="69,691,244,871"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1basic__dynamic__variable.html" title="{INMOST::basic_dynamic\l_variable\&lt; var_expression \&gt;\n||+ Value()\l+ Variable()\l+ Variable()\l+ operator[]()\l+ GetVariation()\l+ GetVariation()\l}" alt="" coords="5,441,188,606"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1abstract__dynamic__variable.html" title="{INMOST::abstract_dynamic\l_variable\n||+ Value()\l+ Variable()\l+ Variable()\l+ GetVariation()\l+ GetVariation()\l}" alt="" coords="44,5,227,156"/>
+<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1basic__dynamic__variable.html" title="{INMOST::basic_dynamic\l_variable\&lt; VariableType \&gt;\n||+ Value()\l+ Variable()\l+ Variable()\l+ operator[]()\l+ GetVariation()\l+ GetVariation()\l}" alt="" coords="134,205,305,371"/>
+<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1shell__dynamic__variable.html" title="{INMOST::shell_dynamic\l_variable\&lt; VariableType,\l Derived \&gt;\n||+ Value()\l+ operator()()\l+ operator()()\l+ operator[]()\l+ GetVariation()\l+ GetVariation()\l}" alt="" coords="213,433,375,613"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="INMOST::soft_sign_expression&lt; A &gt;" name="INMOST::soft_sign_expression&lt; A &gt;">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; soft_sign_expression\&lt; A \&gt; \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator soft_sign\l_expression\&lt; A \&gt; &amp;()\l+ operator const soft\l_sign_expression\&lt; A \&gt; &amp;()\l}" alt="" coords="22,448,223,657"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1basic__expression.html" title="{INMOST::basic_expression\n||+ basic_expression()\l+ basic_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l}" alt="" coords="51,5,231,141"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; Derived \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator Derived &amp;()\l+ operator const Derived &amp;()\l}" alt="" coords="139,191,323,371"/>
+</map>

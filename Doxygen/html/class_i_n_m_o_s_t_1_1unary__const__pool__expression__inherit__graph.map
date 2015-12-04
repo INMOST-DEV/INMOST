@@ -1,0 +1,5 @@
+<map id="INMOST::unary_const_pool_expression&lt; A, ArgA &gt;" name="INMOST::unary_const_pool_expression&lt; A, ArgA &gt;">
+<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; unary_const_pool_expression\l\&lt; A, ArgA \&gt; \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator unary_const\l_pool_expression\&lt; A,\l ArgA \&gt; &amp;()\l+ operator const unary\l_const_pool_expression\l\&lt; A, ArgA \&gt; &amp;()\l}" alt="" coords="9,448,216,701"/>
+<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1basic__expression.html" title="{INMOST::basic_expression\n||+ basic_expression()\l+ basic_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l}" alt="" coords="41,5,221,141"/>
+<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1shell__expression.html" title="{INMOST::shell_expression\l\&lt; Derived \&gt;\n||+ shell_expression()\l+ shell_expression()\l+ GetValue()\l+ GetDerivative()\l+ GetDerivative()\l+ operator Derived &amp;()\l+ operator const Derived &amp;()\l}" alt="" coords="129,191,313,371"/>
+</map>

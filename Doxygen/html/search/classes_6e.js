@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['node',['Node',['../classINMOST_1_1Node.html',1,'INMOST']]]
+  ['node',['Node',['../class_i_n_m_o_s_t_1_1_node.html',1,'INMOST']]],
+  ['nonlinearsolver',['NonlinearSolver',['../class_i_n_m_o_s_t_1_1_nonlinear_solver.html',1,'INMOST']]]
 ];
