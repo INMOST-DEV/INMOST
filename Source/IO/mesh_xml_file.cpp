@@ -2197,7 +2197,7 @@ namespace INMOST
                         for(int q = 0; q < (int)Vector.size(); ++q)
                         {
                           Mesh * m = GetMesh(Vector[q].first);
-                          if( m == NULL ) reader.Report("Cannot find remote mesh %s, you should create it first inside of your application",Vector[q].first);
+                          if( m == NULL ) reader.Report("Cannot find remote mesh %s, you should create it first inside of your application",Vector[q].first.c_str());
                           data.at((q + l*((int)Vector.size()))%data.size()).first = m;
                           data.at((q + l*((int)Vector.size()))%data.size()).second = ComposeHandle(Vector[q].second.first,Vector[q].second.second-offset);
                           if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
