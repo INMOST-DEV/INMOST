@@ -908,6 +908,21 @@ namespace INMOST
 #if defined(HAVE_SOLVER_K3BIILU2)
 		SolverInitializeK3biilu2(argc,argv,k3biilu2_database_file.c_str());
 #endif
+#if defined(USE_MPI)
+		{
+			int flag = 0;
+			int ierr = 0;
+			MPI_Initialized(&flag);
+			if( !flag )
+			{
+				ierr = MPI_Init(argc,argv);
+				if( ierr != MPI_SUCCESS )
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Init" << std::endl;
+				}
+			}
+		}
+#endif
 		Sparse::CreateRowEntryType();
     is_initialized = true;
 	}

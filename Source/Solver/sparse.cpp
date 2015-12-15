@@ -19,7 +19,7 @@ namespace INMOST
     void CreateRowEntryType()
     {
 #if defined(USE_MPI)
-      if( HaveRowEntryType() )
+      if( !HaveRowEntryType() )
       {
         int ierr;
         MPI_Datatype type[3] = { INMOST_MPI_DATA_ENUM_TYPE, INMOST_MPI_DATA_REAL_TYPE, MPI_UB};
