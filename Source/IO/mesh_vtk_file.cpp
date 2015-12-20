@@ -236,9 +236,6 @@ safe_output:
             t.GetDataType() != DATA_BULK && 
             t.GetDataType() != DATA_REFERENCE &&
             t.GetDataType() != DATA_REMOTE_REFERENCE &&
-#if defined(USE_AUTODIFF)
-            t.GetDataType() != DATA_VARIABLE &&
-#endif
 					  t != CoordsTag() && 
             t != SharedTag() && 
             t != SendtoTag() && 
@@ -261,7 +258,13 @@ safe_output:
 				else
 				{
 					{
-						fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),(tags[i].GetDataType() == DATA_REAL ? "double" : "int"),comps);
+            std::string type_str = "int";
+            if(  tags[i].GetDataType() == DATA_REAL
+#if defined(USE_AUTODIFF)
+              || tags[i].GetDataType() == DATA_VARIABLE
+#endif
+              ) type_str = "double";
+						fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
 						for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 						{
@@ -281,6 +284,15 @@ safe_output:
 									fprintf(f,"\n");
 								}
 								break;
+#if defined(USE_AUTODIFF)
+                case DATA_VARIABLE:
+								{
+									Storage::var_array arr = it->VariableArray(tags[i]);
+                  for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m].GetValue());
+									fprintf(f,"\n");
+								}
+                break;
+#endif
 								default: continue;
 							}
 						}
@@ -300,9 +312,6 @@ safe_output:
             t.GetDataType() != DATA_BULK && 
             t.GetDataType() != DATA_REFERENCE &&
             t.GetDataType() != DATA_REMOTE_REFERENCE &&
-#if defined(USE_AUTODIFF)
-            t.GetDataType() != DATA_VARIABLE &&
-#endif
 					  t != CoordsTag() && 
             t != SharedTag() && 
             t != SendtoTag() && 
@@ -322,7 +331,13 @@ safe_output:
 				else
 				{
 					{
-						fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),(tags[i].GetDataType() == DATA_REAL ? "double" : "int"),comps);
+            std::string type_str = "int";
+            if(  tags[i].GetDataType() == DATA_REAL
+#if defined(USE_AUTODIFF)
+              || tags[i].GetDataType() == DATA_VARIABLE
+#endif
+              ) type_str = "double";
+            fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
 						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 						{
@@ -342,6 +357,15 @@ safe_output:
 									fprintf(f,"\n");
 								}
 								break;
+#if defined(USE_AUTODIFF)
+                case DATA_VARIABLE:
+								{
+									Storage::var_array arr = it->VariableArray(tags[i]);
+                  for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m].GetValue());
+									fprintf(f,"\n");
+								}
+								break;
+#endif
 								default: continue;
 							}
 						}

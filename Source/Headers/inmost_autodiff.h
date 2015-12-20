@@ -92,6 +92,7 @@ namespace INMOST
 		typedef dynarray<stencil_pair, 64> stencil_pairs;
 		typedef void(*stencil_callback)(const Storage & current_element, stencil_pairs & out_stencil, void * user_data);
 	private:
+    static Automatizator * CurrentAutomatizator;
 #if defined(USE_OMP)
     std::vector<Sparse::RowMerger> merger;
 #else
@@ -187,6 +188,14 @@ namespace INMOST
       return merger;
 #endif
     }
+    /// Remove global current automatizator.
+    static void RemoveCurrent() {CurrentAutomatizator = NULL;}
+    /// Set current global automatizator, so that variable will be optimized with row merger.
+    static void MakeCurrent(Automatizator * aut) {CurrentAutomatizator = aut;}
+    /// Check that there is an automatizator.
+    static bool HaveCurrent() {return CurrentAutomatizator != NULL;}
+    /// Retrive the automatizator.
+    static Automatizator * GetCurrent() {return CurrentAutomatizator;}
 	};
 
 #if defined(NEW_VERSION)

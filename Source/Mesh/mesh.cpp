@@ -257,7 +257,7 @@ namespace INMOST
 					{
 						ret += t->GetRecordSize(); //all utilized data for fixed data, size of support structure for variable data
 						if( t->GetSize() == ENUMUNDEF )
-							ret += GetDataSize(h,*t)*t->GetBytesSize(); //actually occupied size for sparse data
+							ret += GetDataCapacity(h,*t); //actually occupied size for sparse data
 					}
 				}
 				if( !sparse_data[etypenum].empty() ) ret += sizeof(sparse_sub_type); //size needed to support sparse data
@@ -2042,6 +2042,24 @@ namespace INMOST
 		}
 		return tag.GetSize();
 	}
+  INMOST_DATA_ENUM_TYPE Mesh::GetDataCapacity(const INMOST_DATA_BULK_TYPE * adata, INMOST_DATA_ENUM_TYPE size, const Tag & tag) const
+  {
+    assert( tag.GetMeshLink() == this );
+    if( tag.GetDataType() != DATA_VARIABLE )
+      return size*tag.GetBytesSize();
+#if defined(USE_AUTODIFF)
+    else
+    {
+      INMOST_DATA_ENUM_TYPE ret = 0;
+      const Sparse::Row::entry * arr = static_cast<const Sparse::Row::entry *>(static_cast<const void *>(adata));
+      for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
+        ret += variable::RetriveSize(arr+ret);
+      return ret*sizeof(Sparse::Row::entry);
+    }
+#endif
+    assert(false);
+    return 0;
+  }
   INMOST_DATA_ENUM_TYPE Mesh::GetDataCapacity(HandleType h,const Tag & tag) const
 	{
 		assert( tag.GetMeshLink() == this );
@@ -2062,9 +2080,8 @@ namespace INMOST
           {
             INMOST_DATA_ENUM_TYPE ret = 0;
             const inner_variable_array * arr = static_cast<const inner_variable_array *>(adata);
-            ret += arr->size();
             for(inner_variable_array::size_type k = 0; k < arr->size(); ++k)
-              ret += (*arr)[k].GetRow().Size();
+              ret += (*arr)[k].RecordSize();//(*arr)[k].GetRow().Size();
             return ret*sizeof(Sparse::Row::entry_s);
           }
 #endif
@@ -2073,11 +2090,7 @@ namespace INMOST
 		}
 #if defined(USE_AUTODIFF)
     if( tag.GetDataType() == DATA_VARIABLE )
-    {
-      INMOST_DATA_ENUM_TYPE ret = 0;
-      const var * v = static_cast<const var *>(MGetLink(h,tag));
-      return (1+v->GetRow().Size())*sizeof(Sparse::Row::entry_s);
-    }
+      return static_cast<const var *>(MGetLink(h,tag))->RecordSize()*sizeof(Sparse::Row::entry_s);
 #endif
 		return tag.GetSize()*tag.GetBytesSize();
 	}
@@ -2130,18 +2143,7 @@ namespace INMOST
             Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
             int k = 0;
             for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-            {
-              const Sparse::Row & row = (*arr)[r+shift].GetRow();
-              data[k].first  = row.Size();
-              data[k].second = (*arr)[r+shift].GetValue();
-              ++k;
-              for(INMOST_DATA_ENUM_TYPE q = 0; q < row.Size(); ++q)
-              {
-                data[k].first = row.GetIndex(q);
-                data[k].second = row.GetValue(q);
-                ++k;
-              }
-            }
+              k += (*arr)[r+shift].Record(data+k);
           }
           break;
 #endif
@@ -2154,18 +2156,7 @@ namespace INMOST
       const var * v = static_cast<const var *>(MGetLink(h,tag));
       int k = 0;
       for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-      {
-        const Sparse::Row & row = v[shift+r].GetRow();
-        data[k].first = row.Size();
-        data[k].second = v[shift+r].GetValue();
-        ++k;
-        for(INMOST_DATA_ENUM_TYPE r = 0; r < row.Size(); ++r)
-        {
-          data[k].first = row.GetIndex(r);
-          data[k].second = row.GetValue(r);
-          ++k;
-        }
-      }
+        k += v[r+shift].Record(data+k);
     }
 #endif
 		else memcpy(data_out,static_cast<const INMOST_DATA_BULK_TYPE *>(adata)+shift*bytes,size*bytes);
@@ -2195,18 +2186,7 @@ namespace INMOST
             const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
             int k = 0;
             for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-            {
-              Sparse::Row & row = (*arr)[r+shift].GetRow();
-              row.Resize(data[k].first);
-              (*arr)[r+shift].SetValue(data[k].second);
-              ++k;
-              for(INMOST_DATA_ENUM_TYPE q = 0; q < row.Size(); ++q)
-              {
-                row.GetIndex(q) = data[k].first;
-                row.GetValue(q) = data[k].second;
-                ++k;
-              }
-            }
+              k += (*arr)[r+shift].Retrive(data+k);
           }
           break;
 #endif
@@ -2219,18 +2199,7 @@ namespace INMOST
       var * v = static_cast<var *>(MGetLink(h,tag));
       int k = 0;
       for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-      {
-        Sparse::Row & row = v[shift+r].GetRow();
-        row.Resize(data[k].first);
-        v[shift+r].SetValue(data[k].second);
-        ++k;
-        for(INMOST_DATA_ENUM_TYPE r = 0; r < row.Size(); ++r)
-        {
-          row.GetIndex(r) = data[k].first;
-          row.GetValue(r) = data[k].second;
-          ++k;
-        }
-      }
+        k += v[r+shift].Retrive(data+k);
     }
 #endif
 		else memcpy(static_cast<INMOST_DATA_BULK_TYPE *>(adata)+shift*bytes,data_in,size*bytes);
@@ -2246,6 +2215,13 @@ namespace INMOST
 		{
 			if( tag.GetSize() == ENUMUNDEF )
 				TagManager::DestroyVariableData(tag,data);
+#if defined(USE_AUTODIFF)
+      else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
+      {
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
+          (static_cast<variable *>(data)[k]).~variable();
+      }
+#endif
 			//else if( tag.GetDataType() == DATA_REFERENCE )
 			//	 memset(data,0xff,tag.GetRecordSize());
 			else memset(data,0,tag.GetRecordSize());
@@ -2261,6 +2237,13 @@ namespace INMOST
 		{
 			if( tag.GetSize() == ENUMUNDEF ) 
 				TagManager::DestroyVariableData(tag,s[i].rec);
+#if defined(USE_AUTODIFF)
+      else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
+      {
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
+          (static_cast<variable *>(s[i].rec)[k]).~variable();
+      }
+#endif
 			free(s[i].rec);
 			s.erase(s.begin()+i);
 			break;

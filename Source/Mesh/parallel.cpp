@@ -2216,7 +2216,8 @@ namespace INMOST
               //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_recv[pos+qq*tag.GetBytesSize()]));
               //}
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
-							pos += GetDataCapacity(*eit,tag);// array_size_recv[k]*tag.GetBytesSize();
+							pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
+              //pos += array_size_recv[k]*tag.GetBytesSize();
 							++k;
 							++total_unpacked;
 						}
@@ -2228,7 +2229,8 @@ namespace INMOST
 							eit = elements[i].begin() + array_size_recv[k++];
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
 							op(tag,Element(this,*eit),&array_data_recv[pos],size);
-							pos += GetDataCapacity(*eit,tag);//size*tag.GetBytesSize();
+							pos += GetDataCapacity(&array_data_recv[pos],size,tag);
+              //pos += size*tag.GetBytesSize();
 							++total_unpacked;
 						}
 					}
@@ -2240,7 +2242,8 @@ namespace INMOST
 						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 						{
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
-							pos += GetDataCapacity(*eit,tag);//array_size_recv[k]*tag.GetBytesSize();
+							pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
+              //pos += array_size_recv[k]*tag.GetBytesSize();
 							++k;
 							++total_unpacked;
 						}
@@ -2250,7 +2253,8 @@ namespace INMOST
 						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 						{
 							op(tag,Element(this,*eit),&array_data_recv[pos],size);
-							pos += GetDataCapacity(*eit,tag);//size*tag.GetBytesSize();
+							pos += GetDataCapacity(&array_data_recv[pos],size,tag);
+              //pos += size*tag.GetBytesSize();
 							++total_unpacked;
 						}
 					}

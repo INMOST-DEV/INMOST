@@ -240,24 +240,38 @@ namespace INMOST
 		typedef tag_array_type::iterator iteratorTag;
 	public:
 		virtual ~TagManager();
+    /// Check existance of a data tag by it's name.
 		bool HaveTag(std::string name) const;
+    /// Retrive a data tag by it's name.
 		Tag GetTag(std::string name) const;
+    /// Retrive names for all the tags present on the mesh.
 		void ListTagNames(std::vector<std::string> & list) const;
+    /// Create tag with prescribed attributes.
 		Tag CreateTag(Mesh * m, std::string name, DataType dtype, ElementType etype, ElementType sparse, INMOST_DATA_ENUM_TYPE size = ENUMUNDEF); 
+    /// Delete tag from certain elements.
 		virtual Tag DeleteTag(Tag tag, ElementType mask); 
+    /// Check that the tag was defined on certain elements.
 		bool ElementDefined(Tag const & tag, ElementType etype) const;
 	protected:
+    /// Shrink or enlarge arrays for a dense data.
 		void ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum,INMOST_DATA_ENUM_TYPE new_size);
+    /// Reallocate all the data for all the tags.
 		void ReallocateData(INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size);
+    ///Retrive substructure for representation of the sparse data without permission for modification.
 		__INLINE sparse_sub_type const & GetSparseData(int etypenum, int local_id) const {return sparse_data[etypenum][local_id];}
+    ///Retrive substructure for representation of the sparse data.
 		__INLINE sparse_sub_type & GetSparseData(int etypenum, int local_id) {return sparse_data[etypenum][local_id];}
+    ///Retrive substructure for representation of the dense data without permission for modification.
 		__INLINE dense_sub_type const & GetDenseData(int pos) const {return dense_data[pos];}
+    ///Retrive substructure for representation of the dense data.
 		__INLINE dense_sub_type & GetDenseData(int pos) {return dense_data[pos];}
+    ///Copy data from one element to another.
 		static void CopyData(const Tag & t, void * adata, const void * bdata);
+    ///Destroy data that represents array of variable size.
 		static void DestroyVariableData(const Tag & t, void * adata);
 	protected:
-		typedef tag_array_type::iterator       tag_iterator;
-		typedef tag_array_type::const_iterator tag_const_iterator;
+		typedef tag_array_type::iterator       tag_iterator; //< Use this type to iterate over tags of the mesh.
+		typedef tag_array_type::const_iterator tag_const_iterator; //< Use this type to iterate over tags of the mesh without right for modification.
 	protected:
 		tag_array_type         tags;
 		empty_data             empty_dense_data;
@@ -432,16 +446,16 @@ namespace INMOST
 		/// If there is a link to handle provided (automatically by ElementArray and reference_array),
 		/// then remote handle value will be modified
 		Storage &                           operator =          (Storage const & other); 
-		__INLINE bool                       operator <          (const Storage & other) const;
-		__INLINE bool                       operator >          (const Storage & other) const;
-		__INLINE bool                       operator <=         (const Storage & other) const;
-		__INLINE bool                       operator >=         (const Storage & other) const;
-		__INLINE bool                       operator ==         (const Storage & other) const;
-		__INLINE bool                       operator !=         (const Storage & other) const;
-		__INLINE Storage *                  operator->          ();
-		__INLINE const Storage *            operator->          () const;
-		__INLINE Storage &                  self                ();
-		__INLINE const Storage &            self                () const;
+    __INLINE bool                       operator <          (const Storage & other) const {return handle < other.handle;}
+    __INLINE bool                       operator >          (const Storage & other) const {return handle > other.handle;}
+    __INLINE bool                       operator <=         (const Storage & other) const {return handle <= other.handle;}
+    __INLINE bool                       operator >=         (const Storage & other) const {return handle >= other.handle;}
+    __INLINE bool                       operator ==         (const Storage & other) const {return handle == other.handle;}
+    __INLINE bool                       operator !=         (const Storage & other) const {return handle != other.handle;}
+    __INLINE Storage *                  operator->          () {return this;}
+    __INLINE const Storage *            operator->          () const {return this;}
+    __INLINE Storage &                  self                () {return *this;}
+    __INLINE const Storage &            self                () const {return *this;}
 		virtual ~Storage() {}
 	public:
 		/// Retrieve real value associated with Tag. Implemented in inmost_mesh.h.

@@ -13,9 +13,40 @@
 
 namespace INMOST
 {
+  Automatizator * Automatizator::CurrentAutomatizator = NULL;
+  bool print_ad_ctor = false;
+  bool GetAutodiffPrint() {return print_ad_ctor;}
+  void SetAutodiffPrint(bool set) {print_ad_ctor = set;}
+  bool CheckCurrentAutomatizator() {return Automatizator::HaveCurrent();}
+
+  void multivar_expression::FromBasicExpression(const basic_expression & expr)
+  {
+    Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
+    expr.GetDerivative(1.0,merger);
+    merger.RetriveRow(entries);
+    merger.Clear();
+  }
+
+  void multivar_expression::AddBasicExpression(INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr)
+  {
+    Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
+    merger.PushRow(multme,entries);
+    expr.GetDerivative(multit,merger);
+    merger.RetriveRow(entries);
+    merger.Clear();
+  }
+
+  void multivar_expression::FromGetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+  {
+    Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
+    GetDerivative(mult,merger);
+    merger.AddRow(1.0,r);
+    merger.RetriveRow(r);
+    merger.Clear();
+  }
+
 #if defined(NEW_VERSION)
-	
-	//! returns offset from the end of precomputed z
+  //! returns offset from the end of precomputed z
 	void Automatizator::DerivativeFill(expr & var, INMOST_DATA_ENUM_TYPE element, INMOST_DATA_ENUM_TYPE parent, Sparse::RowMerger & entries, INMOST_DATA_REAL_TYPE multval, void * user_data)
 	{
 		INMOST_DATA_ENUM_TYPE voffset = var.values_offset(element), doffset = var.derivatives_offset(element);

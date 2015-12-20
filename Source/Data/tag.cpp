@@ -400,6 +400,8 @@ namespace INMOST
 			{
 				if( !tag.isSparse(mask) ) 
 				{
+          //this was already done in Mesh::DeleteTag()
+          //ReallocateData(tag,ElementNum(mask),0); //this should clean up the structures
           dense_data[tpos].clear(); //here all data should be deleted
 				  empty_dense_data.push_back(tpos);
 				}
@@ -517,6 +519,17 @@ namespace INMOST
 				}
 			}
 		}
+#if defined(USE_AUTODIFF)
+    else if( data_type == DATA_VARIABLE ) //Have to perform in-memory deallocation to correctly remove class inheritance
+    {
+      for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) 
+      {
+        variable * p = static_cast<variable *>(static_cast<void *>(&arr[it]));
+        for(INMOST_DATA_ENUM_TYPE jt = 0; jt < data_size; ++jt)
+          p[jt].~variable();
+      }
+    }
+#endif
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
@@ -538,6 +551,17 @@ namespace INMOST
 #endif
 			}
 		}
+#if defined(USE_AUTODIFF)
+    else if( data_type == DATA_VARIABLE ) //Have to perform in-memory allocation to correctly setup class inheritance
+    {
+      for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) 
+      {
+        variable * p = static_cast<variable *>(static_cast<void *>(&arr[it]));
+        for(INMOST_DATA_ENUM_TYPE jt = 0; jt < data_size; ++jt)
+          new (p+jt) variable();
+      }
+    }
+#endif
 	}
 	
 }

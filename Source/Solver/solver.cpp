@@ -46,8 +46,8 @@
 
 //#define USE_OMP
 
-//#define KSOLVER BCGSL_solver
-#define KSOLVER BCGS_solver
+#define KSOLVER BCGSL_solver
+//#define KSOLVER BCGS_solver
 //#define ACCELERATED_CONDEST
 //#define PRINT_CONDEST
 
@@ -64,7 +64,7 @@ namespace INMOST
 
 
 
-#define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {std::cout << #x << " not successfull " << std::endl; MPI_Abort(comm,-1000);}}
+#define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {char str[4096]; int len; MPI_Error_string(ierr,str,&len); std::cout << #x << " not successfull: " << str << std::endl; MPI_Abort(comm,-1000);}}
 #define HASH_TABLE_SIZE 2048
 
 	bool Solver::is_initialized = false;

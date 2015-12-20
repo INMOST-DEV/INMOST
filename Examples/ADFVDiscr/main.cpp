@@ -149,6 +149,7 @@ int main(int argc,char ** argv)
 		
     {
 		  Automatizator aut(m);
+      Automatizator::MakeCurrent(&aut);
       INMOST_DATA_ENUM_TYPE iphi = aut.RegisterDynamicTag(phi,CELL);
       aut.EnumerateDynamicTags();
 
@@ -164,7 +165,7 @@ int main(int argc,char ** argv)
 #pragma omp parallel
 #endif
       {
-        enhanced_variable flux(aut); //should be more efficient to define here to avoid multiple memory allocations if storage for variations should be expanded
+        variable flux; //should be more efficient to define here to avoid multiple memory allocations if storage for variations should be expanded
 #if defined(USE_OMP)
 #pragma omp for
 #endif

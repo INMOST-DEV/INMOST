@@ -331,7 +331,7 @@ namespace INMOST
 									{
 										if( arr[k].isValid() )
 										{
-                      uconv.write_iValue(out,arr[k].GetMeshLink()->GetMeshName().size());
+                      uconv.write_iValue(out,static_cast<INMOST_DATA_ENUM_TYPE>(arr[k].GetMeshLink()->GetMeshName().size()));
                       out.write(arr[k].GetMeshLink()->GetMeshName().c_str(),arr[k].GetMeshLink()->GetMeshName().size());
 											wetype = arr[k].GetElementType();
 											out.put(wetype);

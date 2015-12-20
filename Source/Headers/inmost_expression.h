@@ -24,40 +24,53 @@
 #if defined(USE_AUTODIFF)
 namespace INMOST
 {
-
-
-
-
+  bool CheckCurrentAutomatizator();
+  //bool GetAutodiffPrint();
+  //void SetAutodiffPrint(bool set);
 
 	class basic_expression
 	{
 	public:
-    basic_expression() {}//std::cout << this << " Created" << std::endl;}
+    basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Created" << std::endl;}
     basic_expression(const basic_expression & other) {};//std::cout << this << " Created from " << &other << std::endl;}
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
 		virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
     virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
-    //virtual ~basic_expression() {std::cout << this << " Destroied" << std::endl;}
+    virtual ~basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Destroied" << std::endl;}
 	};
 
 	template<class Derived>
 	class shell_expression : virtual public basic_expression
 	{
 	public:
-		shell_expression() {}//std::cout << this << " Shell Created for " << dynamic_cast<basic_expression *>(this) << std::endl;}
+    shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Created for " << dynamic_cast<basic_expression *>(this) << std::endl;}
 		shell_expression(const shell_expression & other) {}//std::cout << this << " Shell Created from " << &other << std::endl;}
 		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const {return static_cast<const Derived *>(this)->GetValue(); }
     __INLINE virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { return static_cast<const Derived *>(this)->GetDerivative(mult,r); }
     __INLINE virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { return static_cast<const Derived *>(this)->GetDerivative(mult,r); }
     operator Derived & () {return *static_cast<Derived *>(this);}
     operator const Derived & () const {return *static_cast<const Derived *>(this);}
-    //~shell_expression() {std::cout << this << " Shell Destroied for " << dynamic_cast<basic_expression *>(this) << std::endl;}
+    ~shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Destroied for " << dynamic_cast<basic_expression *>(this) << std::endl;}
     //Derived * GetDerived() { return dynamic_cast<Derived *>(this); }
 	};
 
   
  
-  
+  class const_expression : public shell_expression<const_expression>
+  {
+    INMOST_DATA_REAL_TYPE value;
+  public:
+    const_expression(const const_expression & other) :value(other.value) {}
+    const_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
+    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+    __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {}
+    __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {}
+    __INLINE const_expression & operator =(const_expression const & other)
+    {
+      value = other.value;
+      return *this;
+    }
+  };
   
 
   class var_expression : public shell_expression<var_expression>
@@ -82,11 +95,13 @@ namespace INMOST
     }
   };
 
-
   class multivar_expression : public shell_expression<multivar_expression>
   {
     INMOST_DATA_REAL_TYPE value;
     Sparse::Row entries;
+    void FromBasicExpression(const basic_expression & expr);
+    void AddBasicExpression(INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr);
+    void FromGetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const;
   public:
     multivar_expression() :value(0) {}
     multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
@@ -100,8 +115,10 @@ namespace INMOST
     }
     multivar_expression(const basic_expression & expr)
     {
-      expr.GetDerivative(1.0,entries);
       value = expr.GetValue();
+      if( CheckCurrentAutomatizator() )
+        FromBasicExpression(expr); //Optimized version
+      else expr.GetDerivative(1.0,entries);
     }
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
@@ -112,8 +129,13 @@ namespace INMOST
     }
     __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
     {
-      for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-        r[it->first] += it->second*mult;
+      if( CheckCurrentAutomatizator() )
+        FromGetDerivative(mult,r);
+      else
+      {
+        for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+          r[it->first] += it->second*mult;
+      }
     }
     __INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
     {
@@ -124,9 +146,14 @@ namespace INMOST
     __INLINE multivar_expression & operator = (basic_expression const & expr)
     {
       value = expr.GetValue();
-      Sparse::Row tmp;
-      expr.GetDerivative(1.0,tmp);
-      entries.Swap(tmp);
+      if( CheckCurrentAutomatizator() )
+        FromBasicExpression(expr);
+      else
+      {
+        Sparse::Row tmp;
+        expr.GetDerivative(1.0,tmp);
+        entries.Swap(tmp);
+      }
       return *this;
     }
     __INLINE multivar_expression & operator = (multivar_expression const & other)
@@ -140,26 +167,41 @@ namespace INMOST
     __INLINE multivar_expression & operator +=(basic_expression const & expr)
     {
       value += expr.GetValue();
-      Sparse::Row tmp(entries);
-      expr.GetDerivative(1.0,tmp);
-      entries.Swap(tmp);
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(1.0,1.0,expr);
+      else
+      { 
+        Sparse::Row tmp(entries);
+        expr.GetDerivative(1.0,tmp);
+        entries.Swap(tmp);
+      }
       return *this;
     }
     __INLINE multivar_expression & operator -=(basic_expression const & expr)
     {
       value -= expr.GetValue();
-      Sparse::Row tmp(entries);
-      expr.GetDerivative(-1.0,tmp);
-      entries.Swap(tmp);
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(1.0,-1.0,expr);
+      else
+      {
+        Sparse::Row tmp(entries);
+        expr.GetDerivative(-1.0,tmp);
+        entries.Swap(tmp);
+      }
       return *this;
     }
     __INLINE multivar_expression & operator *=(basic_expression const & expr)
     {
       INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
-      Sparse::Row tmp(entries);
-      for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
-      expr.GetDerivative(lval,tmp);
-      entries.Swap(tmp);
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(rval,lval,expr);
+      else
+      {
+        Sparse::Row tmp(entries);
+        for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
+        expr.GetDerivative(lval,tmp);
+        entries.Swap(tmp);
+      }
       value *= rval;
       return *this;
     }
@@ -168,10 +210,15 @@ namespace INMOST
       INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
       INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
       value *= reciprocial_rval;
-      Sparse::Row tmp(entries);
-      for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
-      expr.GetDerivative(-value*reciprocial_rval,tmp); 
-      entries.Swap(tmp);
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(reciprocial_rval,-value*reciprocial_rval,expr);
+      else
+      {
+        Sparse::Row tmp(entries);
+        for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
+        expr.GetDerivative(-value*reciprocial_rval,tmp); 
+        entries.Swap(tmp);
+      }
       return *this;
     }
     __INLINE multivar_expression & operator +=(INMOST_DATA_REAL_TYPE right)
@@ -202,6 +249,53 @@ namespace INMOST
       for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
         if( it->second != it->second ) return true;
       return false;
+    }
+    /// Write variable into array of entries.
+    /// Size of array can be determined via RecordSize.
+    /// Used internally by Mesh::GetData.
+    /// @param v Array of entries that will store data of the variable.
+    /// @return Number of entries used.
+    INMOST_DATA_ENUM_TYPE Record(Sparse::Row::entry * v) const
+    {
+      INMOST_DATA_ENUM_TYPE k = 0;
+      v[k].first = entries.Size();
+      v[k].second = value;
+      k++;
+      for(INMOST_DATA_ENUM_TYPE r = 0; r < entries.Size(); ++r)
+      {
+        v[k].first = entries.GetIndex(r);
+        v[k].second = entries.GetValue(r);
+        k++;
+      }
+      return k;
+    }
+    /// Number of entries required to record the variable.
+    INMOST_DATA_ENUM_TYPE RecordSize() const
+    {
+      return 1 + entries.Size();
+    }
+    /// Retrive variable from array of entries.
+    /// Size of array without retrival can be determined via RetriveSize.
+    /// @param v Array of entries that will store data of the variable.
+    /// @return Number of entries red.
+    INMOST_DATA_ENUM_TYPE Retrive(const Sparse::Row::entry * v)
+    {
+      int k = 0;
+      value = v[k].second;
+      entries.Resize(v[k].first);
+      k++;
+      for(int r = 0; r < (int)entries.Size(); ++r)
+      {
+        entries.GetIndex(r) = v[k].first;
+        entries.GetValue(r) = v[k].second;
+        k++;
+      }
+      return k;
+    }
+    /// Number of entries used.
+    static INMOST_DATA_ENUM_TYPE RetriveSize(const Sparse::Row::entry * v)
+    {
+      return 1 + v[0].first;
     }
   };
 
@@ -317,25 +411,28 @@ namespace INMOST
     }
   };
 
+  /// c/x = -c dx / (x*x)
   template<class A>
   class reciprocal_expression : public shell_expression<reciprocal_expression<A> >
   {
     const A & arg;
-    INMOST_DATA_REAL_TYPE value, dmult;
+    INMOST_DATA_REAL_TYPE value, reciprocial_val;
   public:
-    reciprocal_expression(const shell_expression<A> & parg,INMOST_DATA_REAL_TYPE pdmult) : arg(parg), dmult(pdmult)
+    reciprocal_expression(const shell_expression<A> & parg,INMOST_DATA_REAL_TYPE coef) : arg(parg)
     {
-      value = dmult/arg.GetValue();
+      reciprocial_val = 1.0/arg.GetValue();
+      value = coef*reciprocial_val;
     }
-    reciprocal_expression(const reciprocal_expression & other) : arg(other.arg), value(other.value) {}
+    reciprocal_expression(const reciprocal_expression & other) 
+      : arg(other.arg), value(other.value), reciprocial_val(other.reciprocial_val) {}
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
     {
-      arg.GetDerivative(-mult*dmult*value*value,r);
+      arg.GetDerivative(-mult*value*reciprocial_val,r);
     }
     __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
-      arg.GetDerivative(-mult*dmult*value*value,r);
+      arg.GetDerivative(-mult*value*reciprocial_val,r);
     }
   };
 
@@ -874,6 +971,126 @@ namespace INMOST
     }
   };
 
+
+  template<class A>
+  class function_expression : public shell_expression< function_expression<A> >
+  {
+    const A & arg;
+    INMOST_DATA_REAL_TYPE value, dmult;
+  public:
+    function_expression(const shell_expression<A> & _arg)
+      :arg(_arg), value(1), dmult(0) {}
+    function_expression(const shell_expression<A> & _arg, INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_REAL_TYPE pdmult)
+      :arg(_arg), value(pvalue), dmult(pdmult) {}
+    function_expression(const function_expression & other) 
+      : arg(other.arg), value(other.value), dmult(other.dmult) {}
+    __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
+    __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
+    {
+      arg.GetDerivative(mult*dmult,r);
+    }
+    __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+    {
+      arg.GetDerivative(mult*dmult,r);
+    }
+    void SetFunctionValue(INMOST_DATA_REAL_TYPE val) {value = val;}
+    void SetFunctionDerivative(INMOST_DATA_REAL_TYPE val) {value = val;}
+  };
+
+  
+  class keyval_table
+  {
+    std::string name;
+    INMOST_DATA_REAL_TYPE * vals;
+    INMOST_DATA_REAL_TYPE * args;
+    INMOST_DATA_ENUM_TYPE size;
+    INMOST_DATA_ENUM_TYPE binary_search(INMOST_DATA_REAL_TYPE arg) const
+	  {
+		  int l = 0, r = static_cast<int>(size)-1, mid = 0;
+		  while (r >= l)
+		  {
+			  mid = (l + r) / 2;
+			  if (args[mid] > arg) r = mid - 1;
+			  else if (args[mid] < arg) l = mid + 1;
+			  else return mid;
+		  }
+		  mid = (l + r) / 2;
+		  if (mid > static_cast<int>(size - 2)) mid = static_cast<int>(size - 2);
+		  return static_cast<INMOST_DATA_ENUM_TYPE>(mid);
+	  }
+  public:
+    INMOST_DATA_REAL_TYPE GetValue(INMOST_DATA_REAL_TYPE arg) const
+	  {
+		  if (arg < args[0]) return vals[0];
+		  INMOST_DATA_ENUM_TYPE i = binary_search(arg);
+		  return vals[i] + (vals[i + 1] - vals[i]) * (arg - args[i]) / (args[i + 1] - args[i]);
+	  }
+    INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_REAL_TYPE arg) const
+	  {
+		  if (arg < args[0]) return 0.0;
+		  INMOST_DATA_ENUM_TYPE i = binary_search(arg);
+		  return (vals[i + 1] - vals[i]) / (args[i + 1] - args[i]);
+	  }
+    std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> GetBoth(INMOST_DATA_REAL_TYPE arg) const
+	  {
+		  if (arg < args[0]) return std::make_pair(vals[0], 0.0);
+		  INMOST_DATA_ENUM_TYPE i = binary_search(arg);
+		  INMOST_DATA_REAL_TYPE der = (vals[i + 1] - vals[i]) / (args[i + 1] - args[i]);
+		  return std::make_pair(vals[i] + der * (arg - args[i]), der);
+	  }
+    keyval_table() :name(""), vals(NULL), args(NULL), size(0) {}
+    keyval_table(std::string _name, INMOST_DATA_REAL_TYPE * _args, INMOST_DATA_REAL_TYPE * _vals, INMOST_DATA_ENUM_TYPE _size)
+    {
+      name = _name;
+      size = _size;
+      vals = new INMOST_DATA_REAL_TYPE[size];
+      std::copy(_vals,_vals+size,vals);
+      args = new INMOST_DATA_REAL_TYPE[size];
+      std::copy(_args,_args+size,args);
+    }
+    keyval_table(const keyval_table & other)
+    {
+      name = other.name;
+      size = other.size;
+      vals = new INMOST_DATA_REAL_TYPE[size];
+      std::copy(other.vals,other.vals+size,vals);
+      args = new INMOST_DATA_REAL_TYPE[size];
+      std::copy(other.args,other.args+size,args);
+    }
+    keyval_table & operator = (keyval_table const & other)
+    {
+      Clear();
+      name = other.name;
+      size = other.size;
+      vals = new INMOST_DATA_REAL_TYPE[size];
+      std::copy(other.vals,other.vals+size,vals);
+      args = new INMOST_DATA_REAL_TYPE[size];
+      std::copy(other.args,other.args+size,args);
+      return * this;
+    }
+    ~keyval_table()
+    {
+      Clear();
+    }
+    void Clear()
+    {
+      name = "";
+      if( args ) {delete [] args; args = NULL;}
+      if( vals ) {delete [] vals; vals = NULL;}
+      size = 0;
+    }
+    bool Empty() const
+    {
+      return size == 0;
+    }
+    const INMOST_DATA_REAL_TYPE * GetTableArguments() const {return args;}
+    const INMOST_DATA_REAL_TYPE * GetTableValues() const {return vals;}
+    INMOST_DATA_REAL_TYPE * GetTableArguments() {return args;}
+    INMOST_DATA_REAL_TYPE * GetTableValues() {return vals;}
+    INMOST_DATA_ENUM_TYPE GetSize() const {return size;}
+  };
+
+
   __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
   __INLINE bool check_nans(var_expression const & e) {return e.check_nans();}
   __INLINE bool check_nans(multivar_expression const & e) {return e.check_nans();}
@@ -881,6 +1098,9 @@ namespace INMOST
   typedef multivar_expression variable;
   typedef var_expression unknown;
 }
+
+
+
 
 template<class A, class B, class C> __INLINE   INMOST::condition_expression<A,B,C> condition(INMOST::shell_expression<A> const & control, INMOST::shell_expression<B> const & if_ge_zero, INMOST::shell_expression<C> const & if_lt_zero) { return INMOST::condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
                                     __INLINE                 INMOST_DATA_REAL_TYPE condition(INMOST_DATA_REAL_TYPE control, INMOST_DATA_REAL_TYPE if_ge_zero, INMOST_DATA_REAL_TYPE if_lt_zero) {return control >= 0.0 ? if_ge_zero : if_lt_zero;}
@@ -936,7 +1156,12 @@ template<class B>          __INLINE                                        bool 
 template<class B>          __INLINE                                        bool operator >  (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left >  Right.GetValue();}
 template<class B>          __INLINE                                        bool operator <= (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left <= Right.GetValue();}
 template<class B>          __INLINE                                        bool operator >= (INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) {return Left >= Right.GetValue();}
-
+template<class A>          __INLINE                 INMOST::function_expression<A> get_table(INMOST::shell_expression<A> const & Arg, const INMOST::keyval_table & Table)
+{
+  std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> both = Table.GetBoth(Arg.GetValue());
+  return INMOST::function_expression<A>(Arg,both.first,both.second);
+}
+                           __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_REAL_TYPE Arg, const INMOST::keyval_table & Table) {return Table.GetValue(Arg);}
 
 
 #endif

@@ -96,9 +96,6 @@ namespace INMOST
             !t->isSparse(etype) && 
             t->GetTagName().substr(0,9) != "PROTECTED" && 
             t->GetDataType() != DATA_REFERENCE &&
-#if defined(USE_AUTODIFF)
-            t->GetDataType() != DATA_VARIABLE &&
-#endif
             t->GetDataType() != DATA_REMOTE_REFERENCE)
 				{
 					sprintf(keyword,"%s",t->GetTagName().substr(0,8).c_str());
@@ -119,6 +116,9 @@ namespace INMOST
 							case DATA_INTEGER: keyval = static_cast<Storage::real>(e->Integer(*t)); break;
 							case DATA_REAL: keyval = e->Real(*t); break;
 							case DATA_BULK: keyval = static_cast<Storage::real>(e->Bulk(*t)); break;
+#if defined(USE_AUTODIFF)
+              case DATA_VARIABLE: keyval = e->Variable(*t).GetValue(); break;
+#endif
 							default: throw NotImplemented;
 						}
 						fwrite(&keyval,sizeof(Storage::real),1,file);
@@ -136,9 +136,6 @@ namespace INMOST
             t->GetSize() == 1 && 
             t->isSparse(etype) && 
             t->GetDataType() != DATA_REFERENCE && 
-#if defined(USE_AUTODIFF)
-            t->GetDataType() != DATA_VARIABLE &&
-#endif
             t->GetDataType() != DATA_REMOTE_REFERENCE)
 				{
 					Storage::integer temp;
@@ -173,6 +170,9 @@ namespace INMOST
 									case DATA_INTEGER: keyval = static_cast<Storage::real>(e->Integer(*t)); break;
 									case DATA_REAL: keyval = e->Real(*t); break;
 									case DATA_BULK: keyval = static_cast<Storage::real>(e->Bulk(*t)); break;
+#if defined(USE_AUTODIFF)
+                  case DATA_VARIABLE: keyval = e->Variable(*t).GetValue(); break;
+#endif
 									default: throw NotImplemented;
 								}
 								fwrite(&keyval,sizeof(Storage::real),1,file);
@@ -230,10 +230,8 @@ namespace INMOST
             t->GetSize() != 1 && 
             t->GetSize() != ENUMUNDEF && 
             !t->isSparse(etype) && 
+            t->GetTagName().substr(0,9) != "PROTECTED" && 
             t->GetDataType() != DATA_REFERENCE &&
-#if defined(USE_AUTODIFF)
-            t->GetDataType() != DATA_VARIABLE &&
-#endif
             t->GetDataType() != DATA_REMOTE_REFERENCE
             )
 				{
@@ -261,6 +259,9 @@ namespace INMOST
 								case DATA_INTEGER: keyval = static_cast<Storage::real>(e->IntegerArray(*t)[q]); break;
 								case DATA_REAL: keyval = e->RealArray(*t)[q]; break;
 								case DATA_BULK: keyval = static_cast<Storage::real>(e->BulkArray(*t)[q]); break;
+#if defined(USE_AUTODIFF)
+                case DATA_VARIABLE: keyval = e->VariableArray(*t)[q].GetValue(); break;
+#endif
 								default: throw NotImplemented;
 							}
 							fwrite(&keyval,sizeof(Storage::real),1,file);

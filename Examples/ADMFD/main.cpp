@@ -454,9 +454,10 @@ int main(int argc,char ** argv)
 
     { //Main loop for problem solution
       Automatizator aut(m); // declare class to help manage unknowns
+      Automatizator::MakeCurrent(&aut);
       Sparse::RowMerger & merger = aut.GetMerger(); //get structure that helps matrix assembly
       dynamic_variable P(aut,aut.RegisterDynamicTag(tag_P,CELL|FACE)); //register pressure as primary unknown
-      enhanced_variable calc(aut); //declare variable that helps calculating the value with variations
+      variable calc; //declare variable that helps calculating the value with variations
       aut.EnumerateDynamicTags(); //enumerate all primary variables
 
      

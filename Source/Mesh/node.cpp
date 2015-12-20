@@ -154,7 +154,11 @@ namespace INMOST
 		{
 			adj_type const & lc = m->LowConn(GetHandle());
 			for(adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( invert ^ m->GetMarker(lc[it],mask) ) aret.push_back(lc[it]);
+      {
+        bool mrk = m->GetMarker(lc[it],mask);
+        bool test = invert ^ mrk;
+				if( test  ) aret.push_back(lc[it]);
+      }
 		}
 		else
 		{

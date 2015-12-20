@@ -574,7 +574,7 @@ namespace INMOST
 			assert(isInitialized());
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
 			INMOST_DATA_INTEGER_TYPE ivbeg, ivend, ivlocbeg, ivlocend;
-			INMOST_DATA_REAL_TYPE rho0 = 1, rho1 = 1, alpha = 0, beta, omega = 1, eta = 0;
+			INMOST_DATA_REAL_TYPE rho0 = 1, rho1 = 1, alpha = 0, beta = 0, omega = 1, eta = 0;
 			INMOST_DATA_REAL_TYPE resid0, resid, rhs_norm, tau_sum = 0, sigma_sum = 0,r_tilde_norm = 0;//, temp[2];
 			iters = 0;
 			info->PrepareVector(SOL);
@@ -639,12 +639,10 @@ namespace INMOST
 #pragma omp parallel
 #endif
 			{
-				long double tt, ts, tp;
-        INMOST_DATA_ENUM_TYPE i = 0;
+				INMOST_DATA_ENUM_TYPE i = 0;
 				while( !halt )
 				{
-					ts = tp = 0;
-
+					
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -652,7 +650,7 @@ namespace INMOST
 						rho0 = -omega*rho0;
 					}
 				
-					tt = Timer();
+					
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
 					{
             if( false )
@@ -1212,7 +1210,7 @@ perturbate:
 #endif
 						resid = sqrt(resid/rhs_norm);
 					}
-					tt = Timer() - tt;
+					
 #if defined(REPORT_RESIDUAL)
 					if( info->GetRank() == 0 ) 
 					{
@@ -1227,6 +1225,9 @@ perturbate:
 							fflush(stdout);
 						}
 					}
+#endif
+#if defined(USE_OMP)
+#pragma omp single
 #endif
 					last_resid = resid;
 					if( resid != resid )
@@ -1399,11 +1400,12 @@ perturbate:
 		bool Solve(Sparse::Vector & RHS, Sparse::Vector & SOL)
 		{
 			assert(isInitialized());
-			INMOST_DATA_REAL_TYPE tempa = 0.0, tempb=0.0, r0_norm, length;
+			INMOST_DATA_REAL_TYPE tempa = 0.0, tempb=0.0, r0_norm = 0, length;
 			INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
 			INMOST_DATA_INTEGER_TYPE ivbeg,ivend, ivlocbeg, ivlocend;
-			INMOST_DATA_REAL_TYPE rho = 1, rho1 = 0, alpha = 1, beta, omega = 1;
-			INMOST_DATA_REAL_TYPE resid0, resid, temp[2];
+			INMOST_DATA_REAL_TYPE rho = 1, rho1 = 0, alpha = 1, beta = 0, omega = 1;
+      INMOST_DATA_REAL_TYPE resid0, resid, temp[2] = {0,0};
+      iters = 0;
 			info->PrepareVector(SOL);
 			info->PrepareVector(RHS);
 			info->Update(SOL);
@@ -1416,6 +1418,7 @@ perturbate:
 			ivend = vend;
 			ivlocbeg = vlocbeg;
 			ivlocend = vlocend;
+      
 			std::copy(RHS.Begin(),RHS.End(),r.Begin());
 			{
 				Alink->MatVec(-1,SOL,1,r); //global multiplication, r probably needs an update
@@ -1430,7 +1433,7 @@ perturbate:
 #pragma omp parallel for reduction(+:resid)
 #endif
 				for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) 
-					resid += r[k]*r[k];
+					resid += r0[k]*r0[k];
 				info->Integrate(&resid,1);
 			}
 			last_resid = resid = resid0 = sqrt(resid);
@@ -1450,14 +1453,22 @@ perturbate:
 				fflush(stdout);
 			}
 #endif
+
+      bool halt = false;
+			if( last_resid < atol || last_resid < rtol*resid0 ) 
+			{
+				reason = "initial solution satisfy tolerances";
+				halt = true;
+			}
+
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 			{
 				INMOST_DATA_ENUM_TYPE i = 0;
-				while(true)
+				while( !halt )
 				{
-					{
+					
             if( false )
             {
 perturbate:
@@ -1503,9 +1514,11 @@ perturbate:
               //Recompute rho1
 #else
               reason = "r_tilde perturbation algorithm is disabled";
+              halt = true;
               break;
 #endif
             }
+
 						/*
 						if( fabs(rho) < 1.0e-31 )
 						{
@@ -1520,214 +1533,232 @@ perturbate:
 							break;
 						}
 						*/
-						//std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
+
 #if defined(USE_OMP)
 #pragma omp single
 #endif
 						{
-							beta = 1.0 /rho * alpha / omega;
-							rho1 = 0;
-						}
-#if defined(USE_OMP)
-#pragma omp for reduction(+:rho)
-#endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
-							rho1 += r0[k]*r[k];
-						info->Integrate(&rho1,1);
-            if( fabs(rho1) < 1.0e-50 )
-            {
-              //std::cout << "Asking to perturbate r_tilde since rho1 is too small " << rho1 << std::endl;
-              goto perturbate;
-            }
-						//info->ScalarProd(r0,r,ivlocbeg,ivlocend,rho);
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-						{
-							beta *= rho1;
-              rho = rho1;
+							beta = 1.0 / rho * alpha / omega;
+              rho1 = 0;
 						}
 
-						if( fabs(beta) > 1.0e+100 )
-						{
-							//std::cout << "rho " << rho << " alpha " << alpha << " omega " << omega << " beta " << 1.0 /rho * alpha / omega << std::endl;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:rho1)
+#endif
+					for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+						rho1 += r0[k]*r[k];
+					
+          info->Integrate(&rho1,1);
+          
+          if( fabs(rho1) < 1.0e-50 )
+          {
+            //std::cout << "Asking to perturbate r_tilde since rho1 is too small " << rho1 << std::endl;
+            goto perturbate;
+          }
+						
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-							reason = "multiplier(1) is too large";
-							break;
-						}
-						if( beta != beta )
-						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-							reason = "multiplier(1) is NaN";
-							break;
-						}
-					}
 					{
+						beta *= rho1;
+            rho = rho1;
+					}
+
+					if( fabs(beta) > 1.0e+100 )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+            {
+							reason = "multiplier(1) is too large";
+              halt = true;
+            }
+						continue;
+					}
+
+					if( beta != beta )
+					{
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+            {
+							reason = "multiplier(1) is NaN";
+              halt = true;
+            }
+						continue;
+					}
+					
+					
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
-							p[k] = r[k] + beta*(p[k] - omega*v[k]); //global indexes r, p, v
-					}
+					for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+						p[k] = r[k] + beta*(p[k] - omega*v[k]); //global indexes r, p, v
+					
 
+					
+					if (prec != NULL) 
 					{
-						if (prec != NULL) 
-						{
-							prec->Solve(p, y);
-							info->Update(y);
-							Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
-							info->Update(v);
-						}
-						else
-						{
-							Alink->MatVec(1,p,0,v); // global multiplication, y should be updated, v probably needs an update
-							info->Update(v);
-						}
+						prec->Solve(p, y);
+						info->Update(y);
+						Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
+						info->Update(v);
 					}
+					else
 					{
+						Alink->MatVec(1,p,0,v); // global multiplication, y should be updated, v probably needs an update
+						info->Update(v);
+					}
+					
+					
 #if defined(USE_OMP)
 #pragma omp single
 #endif
+          {
 						alpha = 0;
+          }
 #if defined(USE_OMP)
 #pragma omp for reduction(+:alpha)
 #endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
-							alpha += r0[k]*v[k];
-						info->Integrate(&alpha,1);
-						//info->ScalarProd(r0,v,ivlocbeg,ivlocend,alpha);
+					for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) 
+						alpha += r0[k]*v[k];
+					info->Integrate(&alpha,1);
+				  //info->ScalarProd(r0,v,ivlocbeg,ivlocend,alpha);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						{
-							if( alpha == 0 && rho == 0 ) 
-								alpha = 0;
-							else
-								alpha = rho / alpha; //local indexes, r0, v
-						}
-
-						if( fabs(alpha) > 1.0e+100 )
-						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-							reason = "multiplier(2) is too large";
-							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
-							break;
-						}
-						if( alpha != alpha )
-						{
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-							reason = "multiplier(2) is NaN";
-							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
-							break;
-						}
-						
-					}
 					{
-#if defined(USE_OMP)
-#pragma omp for
-#endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
-							s[k] = r[k] - alpha * v[k]; //global indexes r, v
-					}
-				
-					{
-						if (prec != NULL) 
-						{
-							prec->Solve(s, z);
-							info->Update(z);
-							Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
-							info->Update(t);
-						}
-						else
-						{
-							Alink->MatVec(1.0,s,0,t); // global multiplication, z should be updated, t probably needs an update
-							info->Update(t);
-						}
+						//if( alpha == 0 && rho == 0 ) 
+						//	alpha = 0;
+						//else
+							alpha = rho / alpha; //local indexes, r0, v
 					}
 
+					if( fabs(alpha) > 1.0e+100 )
 					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
             {
-						  temp[0] = temp[1] = 0;
-              tempa = tempb = 0;
+						  reason = "multiplier(2) is too large";
+						  halt = true;
             }
+						continue;
+					}
+
+					if( alpha != alpha )
+					{
 #if defined(USE_OMP)
-#pragma omp for reduction(+:tempa) reduction(+:tempb)
+#pragma omp single
 #endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)
-						{
-							tempa += t[k]*s[k];
-							tempb += t[k]*t[k];
-						}
+            {
+						  reason = "multiplier(2) is NaN";
+						  halt = true;
+            }
+						continue;
+					}
+					
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+					for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+						s[k] = r[k] - alpha * v[k]; //global indexes r, v
+					
+				
+					
+					if (prec != NULL) 
+					{
+						prec->Solve(s, z);
+						info->Update(z);
+						Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
+						info->Update(t);
+					}
+					else
+					{
+						Alink->MatVec(1.0,s,0,t); // global multiplication, z should be updated, t probably needs an update
+						info->Update(t);
+					}
+					
+
+					
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+          {
+					  tempa = tempb = 0;
+          }
+#if defined(USE_OMP)
+#pragma omp for reduction(+:tempa,tempb)
+#endif
+					for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)
+					{
+						tempa += t[k]*s[k];
+						tempb += t[k]*t[k];
+					}
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+          {
 						temp[0] = tempa;
 						temp[1] = tempb;
-						info->Integrate(temp,2);
-						/*
-						if (fabs(temp[1]) < 1.0e-35)
-						{
-							std::cout << "a " << temp[0] << " b " << temp[1] << " omega " << temp[0]/temp[1] << std::endl;
-						}
-						*/
-						//omega = temp[0] / (temp[1] + (temp[1] < 0.0 ? -1.0e-10 : 1.0e-10)); //local indexes t, s
+          }
+					info->Integrate(temp,2);
+				
+          //omega = temp[0] / (temp[1] + (temp[1] < 0.0 ? -1.0e-10 : 1.0e-10)); //local indexes t, s
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						{
-							if( temp[0] == 0 && temp[1] == 0 )
-								omega = 0;
-							else
-								omega = temp[0] / temp[1];
-						}
+					{
+						//if( temp[0] == 0 && temp[1] == 0 )
+						//	omega = 0;
+						//else
+							omega = temp[0] / temp[1];
+					}
 
-						if( fabs(omega) > 1.0e+100 )
-						{
+					if( fabs(omega) > 1.0e+100 )
+					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-							reason = "multiplier(3) is too large";
-							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
-							break;
-						}
-						if( omega != omega )
-						{
+            {
+						  reason = "multiplier(3) is too large";
+						  halt = true;
+            }
+						continue;
+					}
+
+					if( omega != omega )
+					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-							reason = "multiplier(3) is NaN";
-							//std::cout << "alpha " << alpha << " rho " << rho << std::endl;
-							break;
-						}
+            {
+						  reason = "multiplier(3) is NaN";
+              halt = true;
+            }
+						continue;
 					}
-					{
+          
+					
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
-							SOL[k] += alpha * y[k] + omega * z[k]; // global indexes SOL, y, z
-					}
-					{
+					for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+						SOL[k] += alpha * y[k] + omega * z[k]; // global indexes SOL, y, z
+					
+					
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-						for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
-							r[k] = s[k] - omega * t[k]; // global indexes r, s, t
-					}
+					for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) 
+						r[k] = s[k] - omega * t[k]; // global indexes r, s, t
+					
 					//info->ScalarProd(r,r,ivlocbeg,ivlocend,resid);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
           {
-            last_it = i+1;
+            last_it++;
 					  resid = 0;
           }
 #if defined(USE_OMP)
@@ -1735,13 +1766,13 @@ perturbate:
 #endif
 					for(INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
 						resid += r[k]*r[k];
+          info->Integrate(&resid,1);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-					{
-						info->Integrate(&resid,1);
-						resid = sqrt(resid);
-					}
+          {
+					  resid = sqrt(resid);
+          }
 #if defined(REPORT_RESIDUAL)
 					if( info->GetRank() == 0 ) 
 					{
@@ -1753,6 +1784,7 @@ perturbate:
 #endif
 						{
 							printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+              //printf("iter %3d resid %12g | %g rho %e beta %e alpha %e omega %e\n", last_it, resid, atol,rho,beta,alpha,omega);
 							fflush(stdout);
 						}
 					}
@@ -1760,46 +1792,58 @@ perturbate:
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-					last_resid = resid;
+          {
+					  last_resid = resid;
+          }
 					if( resid != resid )
 					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						reason = "residual is NAN";
-						break;
+            {
+						  reason = "residual is NAN";
+              halt = true;
+            }
 					}
 					if( resid > divtol )
 					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						reason = "diverged due to divergence tolerance";
-						break;
+            {
+						  reason = "diverged due to divergence tolerance";
+              halt = true;
+            }
 					}
 					if( resid < atol )
 					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						reason = "converged due to absolute tolerance";
-						break;
+            {
+						  reason = "converged due to absolute tolerance";
+              halt = true;
+            }
 					}
 					if( resid < rtol*resid0 )
 					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						reason = "converged due to relative tolerance";
-						break;
+            {
+						  reason = "converged due to relative tolerance";
+              halt = true;
+            }
 					}
 					if( i == maxits )
 					{
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						reason = "reached maximum iteration number";
-						break;
+            {
+						  reason = "reached maximum iteration number";
+              halt = true;
+            }
 					}
 				  i++;
 				}

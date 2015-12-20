@@ -18,18 +18,19 @@
 
 //TODO
 // 1. change to uniform size_type instead of size_t, make it INMOST_DATA_ENUM_TYPE
-
+/*
 template<class element, class T1> struct isInputRandomIterators
 {
-	static void constraints(T1 a, T1 b) { /*element x = static_cast<element>(*a); (void)x;*/ ++a; (void)a++; a==a; a!=a; a-b; }
+	static void constraints(T1 a, T1 b) { ++a; (void)a++; a==a; a!=a; a-b; }
 	isInputRandomIterators() { void(*p)(T1,T1) = constraints; (void)p; }
 };
 
 template<class element, class T1> struct isInputForwardIterators
 {
-	static void constraints(T1 a) { /*element x = static_cast<element>(*a); (void)x;*/ ++a; (void)a++; }
+	static void constraints(T1 a) {++a; (void)a++; }
 	isInputForwardIterators() { void(*p)(T1) = constraints; (void)p; }
 };
+*/
 
 namespace INMOST
 {
