@@ -546,7 +546,6 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 #else
 			for (k = mobeg; k < moend; ++k)
 			{
-        INMOST_DATA_ENUM_TYPE qt = 0;
         for(INMOST_DATA_ENUM_TYPE qt = 0; qt < A[k].Size(); ++qt)
 				{
           if( A[k].GetIndex(qt) >= mobeg && A[k].GetIndex(qt) < moend )

@@ -207,7 +207,7 @@ namespace INMOST
     }
     __INLINE multivar_expression & operator /=(basic_expression const & expr)
     {
-      INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
+      INMOST_DATA_REAL_TYPE rval = expr.GetValue();
       INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
       value *= reciprocial_rval;
       if( CheckCurrentAutomatizator() )
@@ -1044,18 +1044,22 @@ namespace INMOST
       name = _name;
       size = _size;
       vals = new INMOST_DATA_REAL_TYPE[size];
-      std::copy(_vals,_vals+size,vals);
+      memcpy(vals,_vals,sizeof(INMOST_DATA_REAL_TYPE)*size);
+      //std::copy(_vals,_vals+size,vals);
       args = new INMOST_DATA_REAL_TYPE[size];
-      std::copy(_args,_args+size,args);
+      memcpy(args,_args,sizeof(INMOST_DATA_REAL_TYPE)*size);
+      //std::copy(_args,_args+size,args);
     }
     keyval_table(const keyval_table & other)
     {
       name = other.name;
       size = other.size;
       vals = new INMOST_DATA_REAL_TYPE[size];
-      std::copy(other.vals,other.vals+size,vals);
+      memcpy(vals,other.vals,sizeof(INMOST_DATA_REAL_TYPE)*size);
+      //std::copy(other.vals,other.vals+size,vals);
       args = new INMOST_DATA_REAL_TYPE[size];
-      std::copy(other.args,other.args+size,args);
+      memcpy(args,other.args,sizeof(INMOST_DATA_REAL_TYPE)*size);
+      //std::copy(other.args,other.args+size,args);
     }
     keyval_table & operator = (keyval_table const & other)
     {
@@ -1063,9 +1067,11 @@ namespace INMOST
       name = other.name;
       size = other.size;
       vals = new INMOST_DATA_REAL_TYPE[size];
-      std::copy(other.vals,other.vals+size,vals);
+      memcpy(vals,other.vals,sizeof(INMOST_DATA_REAL_TYPE)*size);
+      //std::copy(other.vals,other.vals+size,vals);
       args = new INMOST_DATA_REAL_TYPE[size];
-      std::copy(other.args,other.args+size,args);
+      memcpy(args,other.args,sizeof(INMOST_DATA_REAL_TYPE)*size);
+      //std::copy(other.args,other.args+size,args);
       return * this;
     }
     ~keyval_table()

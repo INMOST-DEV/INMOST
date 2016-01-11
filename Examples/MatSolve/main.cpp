@@ -15,7 +15,7 @@ using namespace INMOST;
 
 int main(int argc, char ** argv)
 {
-	if( argc < 3 || argc > 1 && ( atoi(argv[1]) < 0 || atoi(argv[1]) > 11 ) )
+	if( (argc < 3 || argc > 1) && ( atoi(argv[1]) < 0 || atoi(argv[1]) > 11 ) )
 	{
 		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_DDPQILUC,2:INNER_MPTILUC,3:INNER_MPTILU2,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_ML,7:Trilinos_Ifpack,8:PETSc,9:ANI,10:FCBIILU2,11:K3BIILU2> matrix.mtx [right_hand_side.rhs] [exact_solution] [solver_options.txt]" << std::endl;
 		std::cout << "Example: " << argv[0] << "  0 a.mtx b.rhs" << std::endl;

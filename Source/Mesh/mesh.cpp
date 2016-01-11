@@ -570,7 +570,7 @@ namespace INMOST
 			  if (allocated_meshes[q] == this)
 				  allocated_meshes[q] = NULL;
       std::sort(allocated_meshes.rbegin(), allocated_meshes.rend());
-      while(allocated_meshes.back() == NULL) allocated_meshes.pop_back();
+      while(!allocated_meshes.empty() && allocated_meshes.back() == NULL) allocated_meshes.pop_back();
     }
 		//arrays for data are deallocated inside ~TagManager()
 	}

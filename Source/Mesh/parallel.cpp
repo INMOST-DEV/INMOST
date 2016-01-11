@@ -571,7 +571,14 @@ namespace INMOST
 #endif //USE_MPI
 	}
 	
-	
+    INMOST_MPI_Group Mesh::GetGroup()
+    {
+        INMOST_MPI_Group ret = INMOST_MPI_GROUP_EMPTY;
+#if defined(USE_MPI)
+        MPI_Comm_group(GetCommunicator(), &ret);
+#endif
+        return ret;
+    }
 	
 	void Mesh::SetCommunicator(INMOST_MPI_Comm _comm)
 	{
@@ -1009,10 +1016,10 @@ namespace INMOST
 //~ #if defined(USE_MPI_P2P)
 					//~ unsigned * sendsizeall = shared_space;
 					//~ unsigned usend[2] = {sendsize,pack_real.size()};
-					//~ REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
+					//~ REPORT_MPI(MPI_Win_fence(0,window)); //start exchange session
 					//~ for(unsigned k = 0; k < procs.size(); k++)
 						//~ REPORT_MPI(MPI_Put(usend,2,MPI_UNSIGNED,procs[k],mpirank*2,2,MPI_UNSIGNED,window));
-					//~ REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSUCCEED,window)); //end exchange session
+					//~ REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
 //~ #else
 					std::vector<unsigned> sendsizeall(mpisize*2);
 					int pack_size2 = 0;
@@ -3101,6 +3108,7 @@ namespace INMOST
 			std::vector<Storage::integer> global_ids;
 			integer dim = GetDimensions();
 			REPORT_STR("unpack number of nodes");
+            num = 0;
 			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
 			REPORT_VAL("number of nodes",num);
 			REPORT_STR("unpack nodes coordinates");
@@ -3580,11 +3588,12 @@ namespace INMOST
 #if defined(USE_MPI_P2P) && defined(PREFFER_MPI_P2P)
 		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
 		unsigned i, end = send_bufs.size();
+        REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 		memset(shared_space,0,sizeof(unsigned)*mpisize); //zero bits where we receive data
-		REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
+		REPORT_MPI(MPI_Win_fence(0,window)); //wait memset finish
 		for(i = 0; i < end; i++) shared_space[mpisize+i] = send_bufs[i].second.size()+1; //put data to special part of the memory
 		for(i = 0; i < end; i++) REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,MPI_UNSIGNED,send_bufs[i].first,mpirank,1,MPI_UNSIGNED,window)); //request rdma
-		REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSUCCEED,window)); //end exchange session
+		REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
 		if( parallel_strategy == 0 )
 		{
 			unsigned num = 0;
@@ -3656,14 +3665,19 @@ namespace INMOST
 #if defined(USE_MPI_P2P)
 			int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
 			unsigned i, end = static_cast<unsigned>(send_bufs.size());
+            REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 			memset(shared_space,0,sizeof(unsigned)*mpisize); //zero bits where we receive data
-			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
+			//REPORT_MPI(MPI_Win_fence( MPI_MODE_NOPRECEDE,window)); //start exchange session
+            REPORT_MPI(MPI_Win_fence( 0,window)); //wait memset finish
 			for(i = 0; i < end; i++) shared_space[mpisize+i] = static_cast<unsigned>(send_bufs[i].second.size()+1); //put data to special part of the memory
 			for(i = 0; i < end; i++) 
 			{
+                REPORT_VAL("put value", shared_space[mpisize+i]);
+                REPORT_VAL("destination", send_bufs[i].first);
+                REPORT_VAL("displacement", mpirank);
 				REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,MPI_UNSIGNED,send_bufs[i].first,mpirank,1,MPI_UNSIGNED,window)); //request rdma to target processors for each value
 			}
-			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSUCCEED,window)); //end exchange session
+			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
 			if( parallel_strategy == 0 )
 			{
 				unsigned num = 0;
@@ -3681,7 +3695,12 @@ namespace INMOST
 				recv_bufs.clear();
 				for(int ii = 0; ii < mpisize; ii++)
 					if( shared_space[ii] > 0 )
+                    {
+                        REPORT_VAL("position", ii);
+                        REPORT_VAL("value", shared_space[ii]);
 						recv_bufs.push_back(proc_buffer_type(ii,std::vector<INMOST_DATA_BULK_TYPE>(shared_space[ii]-1))); // this call would be optimized by compiler
+                    }
+                REPORT_VAL("recvs",recv_bufs.size());
 			}
 #else //USE_MPI_P2P
 			int mpisize = GetProcessorsNumber(),mpirank = GetProcessorRank();

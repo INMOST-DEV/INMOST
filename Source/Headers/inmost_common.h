@@ -51,7 +51,7 @@
 // output xml files for debugging of parallel algorithms
 // search for style.xsl within examples for comfortable
 // view of generated xml files
-//#define USE_PARALLEL_WRITE_TIME
+#define USE_PARALLEL_WRITE_TIME
 
 // this will revert Mesh::PrepareReceiveInner to always
 // use MPI point to point functionality disregarding problem type
@@ -107,6 +107,7 @@
 #define INMOST_MPI_Request     int
 #define INMOST_MPI_Type        int
 #define INMOST_MPI_Comm        int
+#define INMOST_MPI_Group       int
 #define INMOST_MPI_COMM_WORLD  0
 #define INMOST_MPI_BYTE        0
 #define INMOST_MPI_INT         0
@@ -114,10 +115,12 @@
 #define INMOST_MPI_UNSIGNED    0
 #define INMOST_MPI_Win         int
 #define INMOST_MPI_DATATYPE_NULL 0
+#define INMOST_MPI_GROUP_EMPTY 0
 #else
 #define INMOST_MPI_Request     MPI_Request
 #define INMOST_MPI_Type        MPI_Datatype
 #define INMOST_MPI_Comm        MPI_Comm
+#define INMOST_MPI_Group       MPI_Group
 #define INMOST_MPI_COMM_WORLD  MPI_COMM_WORLD
 #define INMOST_MPI_BYTE        MPI_BYTE
 #define INMOST_MPI_INT         MPI_INT
@@ -125,10 +128,11 @@
 #define INMOST_MPI_UNSIGNED    MPI_UNSIGNED
 #define INMOST_MPI_Win         MPI_Win
 #define INMOST_MPI_DATATYPE_NULL MPI_DATATYPE_NULL
+#define INMOST_MPI_GROUP_EMPTY MPI_GROUP_EMPTY
 #endif
 
 
-#define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warning
+#define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warnings
 
 #define INMOST_DATA_INTEGER_TYPE  int           
 #define INMOST_DATA_REAL_TYPE     double        

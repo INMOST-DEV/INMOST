@@ -149,7 +149,7 @@ int main(int argc,char ** argv)
 			if( cell->GetStatus() != Element::Ghost )
 			{
 				unsigned pid = cell->Integer(id);
-				unsigned pid2 = cell->GlobalID();
+				//unsigned pid2 = cell->GlobalID();
 				if( pid < idmin ) idmin = pid;
 				if( pid+1 > idmax ) idmax = pid+1;
 			}
@@ -174,7 +174,6 @@ int main(int argc,char ** argv)
 			    ((!r2->isValid() || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
 			Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1[3], Coef;
 			Storage::real f_area = face->Area(); // Get the face area
-			Storage::real vol1 = r1->Volume(), vol2; // Get the cell volume
 			Storage::integer id1 = r1->Integer(id), id2;
 			Storage::real K1 = r1->Real(tensor_K), K2, Kav;
 			face->Normal(f_nrm); // Get the face normal
@@ -200,7 +199,6 @@ int main(int argc,char ** argv)
 			}
 			else
 			{
-				vol2 = r2->Volume();
 				K2 = r2->Real(tensor_K);
 				id2 = r2->Integer(id);
 				r2->Barycenter(r2_cnt);

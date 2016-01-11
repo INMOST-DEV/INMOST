@@ -349,7 +349,7 @@ namespace INMOST
           const INMOST_DATA_REAL_TYPE * operator ->() const {return &(*LinkedList)[pos].second;}
           iterator & operator ++(){ pos = (*LinkedList)[pos].first; return *this;}
           iterator operator ++(int){ iterator ret(LinkedList); ret.pos = (*LinkedList)[pos].first; return ret; }
-          iterator & operator = (const iterator & other) {LinkedList = other.LinkedList; pos = other.pos;}
+            iterator & operator = (const iterator & other) {LinkedList = other.LinkedList; pos = other.pos; return *this;}
           bool operator ==(const iterator & other) const {return LinkedList == other.LinkedList && pos == other.pos;}
           bool operator !=(const iterator & other) const {return LinkedList != other.LinkedList || pos != other.pos;}
           bool operator < (const iterator & other) const {return LinkedList == other.LinkedList && pos < other.pos;}

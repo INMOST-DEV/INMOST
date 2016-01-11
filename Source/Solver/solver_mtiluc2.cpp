@@ -502,8 +502,10 @@ public:
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
 		double tfactor = 0.0, trescale = 0.0, treorder = 0.0, treassamble = 0.0, ttotal, tt;
+#if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
-		double tlfactor, tlrescale, tlreorder, tlreassamble, ratio = 1.0, ratio2 = 1.0;
+#endif
+        double tlfactor, tlrescale, tlreorder, tlreassamble;
 		ttotal = Timer();
 
 		
@@ -641,7 +643,7 @@ public:
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Cmax(wbeg,wend,0.0);
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & Perm = localQ;
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & IPerm = localP;
-				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & UpdateStack = Ulist;
+				//interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & UpdateStack = Ulist;
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & ColumnList = Llist;//(wbeg,wend,ENUMUNDEF);
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & Parent = Blist;
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> AugmentPosition(wbeg,wend,ENUMUNDEF);
@@ -1490,8 +1492,10 @@ public:
 /////////// FACTORIZATION BEGIN ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
-        int discarded = 0;
+        //int discarded = 0;
+#if defined(REPORT_ILU)
         int swaps = 0;
+#endif
 #if defined(ILUC2)
 				nzLU2 = 0;
 				LU2_Entries.clear();

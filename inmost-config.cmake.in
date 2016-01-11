@@ -20,7 +20,7 @@ if(NOT TARGET inmost AND NOT INMOST_BINARY_DIR)
   endif()
 endif()
  
-set(INMOST_LIBRARY_DIRS "${inmost_DIR}/lib")
+set(INMOST_LIBRARY_DIRS "${inmost_DIR}")
 set(INMOST_LIBRARIES inmost)
 
 

@@ -26,7 +26,7 @@ private:
 	std::vector<INMOST_DATA_REAL_TYPE> luv;
 	std::vector<INMOST_DATA_ENUM_TYPE> lui;
 	interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> ilu,iu;
-	INMOST_DATA_ENUM_TYPE nnzA, Lfill;
+	INMOST_DATA_ENUM_TYPE Lfill;
 	INMOST_DATA_REAL_TYPE tau, tau2;
 	Sparse::Vector DL, DR;
 	INMOST_DATA_ENUM_TYPE nnz, sciters;

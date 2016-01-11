@@ -134,7 +134,7 @@ namespace INMOST
 		template<typename float_type>
 		fType convert_bytes_to_float(unsigned char * fbytes, unsigned char size,   fByteOrder forder)
 		{
-			float_type ret;
+			float_type ret = 0;
 			if( size == 4 )
 			{
 				unsigned char S; int E; unsigned long F;
@@ -187,7 +187,7 @@ namespace INMOST
 					if ( S == 0 ) F1 = 1.0;
 					else F1 = -1.0;
 					if ( 0 < E ) ret = F1 * ( C + M ) * ::pow ( A, E - B ) ;	
-    					else if ( E == 0 && S == 0 ) ret = 0; 
+                    else if ( E == 0 && S == 0 ) ret = 0;
 					else if ( E == 0 && S == 1 ) ret = 0; // reserved
 					break;
 				default: throw "not implemented";
@@ -241,9 +241,14 @@ namespace INMOST
 					if ( S == 0 && E == 0 && M == 0 ) ret = 0;
 					else ret = F1 * M * ::pow ( A, E - B );
 					break;
-				default: throw "not implemented";
+				default: throw NotImplemented;
 				}
 			}
+            else
+            {
+                std::cout << "Converter for float of size " << size << " do not exist" << std::endl;
+                throw NotImplemented;
+            }
 			return static_cast<fType>(ret);
 		}
 		fType load_fp_test_bytes(const char * bytes, unsigned char size)

@@ -251,7 +251,7 @@ class XMLReader
     }
     double Evaluate(std::string & str)
     {
-      const char * debug_str = str.c_str();
+      //const char * debug_str = str.c_str();
       std::vector<std::string> decompose = Expand(str);
       std::vector<std::string> polish = MakePolish(decompose);
       //Print(polish);
@@ -551,6 +551,7 @@ public:
         break;
       case EndOfFile: Report("Unexpected end of file while reading XML tag name"); done = true; break;
       case Failure: Report("Unrecoverable error while reading XML tag name"); done = true; break;
+      default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
       }
     }
     if( verbose ) Report("info: opened tag %s",ret.c_str());
@@ -589,7 +590,6 @@ public:
     std::string name;
     bool done = false;
     char c;
-    int inner_state = 0;
     if( !(_state == Intro || _state == ReadCloseTagSlash) )
     {
       Report("Cannot read finish tag from state %s",StateName(_state).c_str());
@@ -644,6 +644,8 @@ public:
       case Failure:
         Report("Unexpected failure while searching for </%s>",TagName.c_str());
         return false;
+      default: Report("Unexpected state %s",StateName(_state).c_str()); return false;
+              
       }
     }
     if( verbose ) Report("info: finished tag %s",name.c_str());
@@ -725,6 +727,7 @@ public:
         Report("Unexpected failure while reading attribute name");
         done = true;
         break;
+      default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
       }
     }
     if( verbose ) Report("info: attribute name %s",ret.c_str());
@@ -799,6 +802,7 @@ public:
         Report("Unexpected failure while reading attribute name");
         done = true;
         break;
+      default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
       }
     }
     if( verbose ) Report("info: attribute value %s",ret.c_str());
@@ -869,9 +873,6 @@ public:
     std::string ret;
     char c;
     bool done = false;
-    bool vector = false;
-    bool multpart = false;
-    bool quotes = false;
     int testend = 0;
     if( _state == EndContents ) return "";
     if( _state != WaitContents )
@@ -999,6 +1000,7 @@ public:
         Report("Unexpected failure while reading attribute name");
         done = true;
         break;
+      default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
       }
     }
     return ret;
@@ -1907,7 +1909,7 @@ namespace INMOST
             if( matchsets && nsets != nsets_read ) reader.Report("Number %d of XML tags Set read do not match to the number %d specified",nsets_read,nsets);
 
             //correct links between sets
-            for(int q = 0; q < new_sets.size(); ++q)
+            for(int q = 0; q < (int)new_sets.size(); ++q)
             {
               Element::adj_type & lc = HighConn(new_sets[q]);
               for(Element::adj_type::iterator jt = lc.begin(); jt != lc.end(); ++jt)
@@ -1997,10 +1999,6 @@ namespace INMOST
               HandleType * set_elems = NULL, *it = NULL;
               enumerator set_size = 0;
 
-              const char * debug_setname = setname.c_str();
-              const char * debug_tagname = tagname.c_str();
-               
-
               if( setname != "" )
               {
                 if( etype != NONE ) reader.Report("Warning: SetType should be SetData for data specified for set.");
@@ -2051,7 +2049,6 @@ namespace INMOST
                   it = set_elems + atoi(val.c_str());
                   val = reader.GetContentsWord();
                 }
-                const char * debug_val2 = val.c_str();
                 switch(t.GetDataType())
                 {
                 case DATA_REAL:
@@ -2074,7 +2071,7 @@ namespace INMOST
                         if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
                         {
                           ++it;
-                          if( it-set_elems < set_size ) data = RealArray(*it,t);
+                          if( ((int)(it-set_elems)) < (int)set_size ) data = RealArray(*it,t);
                         }
                       }
                     }
@@ -2099,7 +2096,7 @@ namespace INMOST
                         if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
                         {
                           ++it;
-                          if( it-set_elems < set_size ) data = IntegerArray(*it,t);
+                          if( ((int)(it-set_elems)) < (int)set_size ) data = IntegerArray(*it,t);
                         }
                       }
                     }
@@ -2124,7 +2121,7 @@ namespace INMOST
                         if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
                         {
                           ++it;
-                          if( it-set_elems < set_size ) data = BulkArray(*it,t);
+                          if( ((int)(it-set_elems)) < (int)set_size ) data = BulkArray(*it,t);
                         }
                       }
                     }
@@ -2149,7 +2146,7 @@ namespace INMOST
                         if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
                         {
                           ++it;
-                          if( it-set_elems < set_size ) data = ReferenceArray(*it,t);
+                          if( ((int)(it-set_elems)) < (int)set_size ) data = ReferenceArray(*it,t);
                         }
                       }
                     }
@@ -2177,7 +2174,7 @@ namespace INMOST
                           if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
                           {
                             ++it;
-                            if( it-set_elems < set_size ) data = RemoteReferenceArray(*it,t);
+                            if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
                           }
                         }
                       }
@@ -2203,7 +2200,7 @@ namespace INMOST
                           if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
                           {
                             ++it;
-                            if( it-set_elems < set_size ) data = RemoteReferenceArray(*it,t);
+                            if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
                           }
                         }
                       }
@@ -2230,7 +2227,7 @@ namespace INMOST
                         if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
                         {
                           ++it;
-                          if( it-set_elems < set_size ) data = VariableArray(*it,t);
+                          if( ((int)(it-set_elems)) < (int)set_size ) data = VariableArray(*it,t);
                         }
                       }
                     }

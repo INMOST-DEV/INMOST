@@ -46,8 +46,8 @@
 
 //#define USE_OMP
 
-#define KSOLVER BCGSL_solver
-//#define KSOLVER BCGS_solver
+//#define KSOLVER BCGSL_solver
+#define KSOLVER BCGS_solver
 //#define ACCELERATED_CONDEST
 //#define PRINT_CONDEST
 
@@ -1121,6 +1121,7 @@ namespace INMOST
 				prec = NULL;
 #endif
 			}
+            else prec = NULL;
 			solver_data = new KSOLVER(prec, info);
 		}
 	}
@@ -1867,7 +1868,7 @@ namespace INMOST
     if( _pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILU2 || _pack == INNER_MPTILUC )
     {
       Sparse::Matrix & A = *(Sparse::Matrix *)matrix_data;
-      IterativeMethod & sol = *(IterativeMethod *)solver_data;
+      //IterativeMethod & sol = *(IterativeMethod *)solver_data;
       INMOST_DATA_ENUM_TYPE lbeg, lend, l, iter;
       INMOST_DATA_REAL_TYPE norm, sum[2], norm_prev, lambda_min, lambda_max;
       bool diverged_max = false, diverged_min = false;
@@ -1979,7 +1980,7 @@ namespace INMOST
     if( _pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILU2 || _pack == INNER_MPTILUC )
     {
       Sparse::Matrix & A = *(Sparse::Matrix *)matrix_data;
-      IterativeMethod & sol = *(IterativeMethod *)solver_data;
+      //IterativeMethod & sol = *(IterativeMethod *)solver_data;
       INMOST_DATA_ENUM_TYPE lbeg, lend, l, iter;
       INMOST_DATA_REAL_TYPE norm, norm_prev, lambda_min, lambda_max;
       bool diverged_max = false, diverged_min = false;

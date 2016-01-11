@@ -22,7 +22,7 @@
 namespace INMOST
 {
   typedef char HeaderType;
-	const HeaderType EndOfData  = 0x01;
+	//const HeaderType EndOfData  = 0x01;
 	const HeaderType NodeHeader = 0x02;
 	const HeaderType EdgeHeader = 0x03;
 	const HeaderType FaceHeader = 0x04;

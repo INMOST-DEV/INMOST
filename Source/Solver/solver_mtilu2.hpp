@@ -25,7 +25,7 @@ private:
 	interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> ilu,iu;
 	interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE > Perm;
 	interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE > temporary; //used for reordering
-	INMOST_DATA_ENUM_TYPE nnzA, Lfill;
+	INMOST_DATA_ENUM_TYPE Lfill;
 	INMOST_DATA_REAL_TYPE tau, tau2;
 	INMOST_DATA_ENUM_TYPE nnz, sciters;
 	bool init;

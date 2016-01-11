@@ -1235,7 +1235,7 @@ namespace INMOST
 #if defined(USE_PARTITIONER_PARMETIS)
 #endif
 		}
-		weight_tag == Tag();
+		weight_tag = Tag();
 	}
 	Mesh * Partitioner::GetMesh()
 	{

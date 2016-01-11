@@ -120,7 +120,7 @@ namespace INMOST
 						{
 							HandleType temp = lc[1];
 							lc[1] = lc[jt];
-							lc[jt] = lc[1];
+							lc[jt] = temp;
 							temp = first;
 							first = last;
 							last = temp;
@@ -130,7 +130,7 @@ namespace INMOST
 						{
 							HandleType temp = lc[1];
 							lc[1] = lc[jt];
-							lc[jt] = lc[1];
+							lc[jt] = temp;
 							break;
 						}
 						++jt;
@@ -173,7 +173,7 @@ namespace INMOST
 				//check that the loop is closed
 				adj_type const & ilc = m->LowConn(lc[iend]);
 				if( ilc.size() != 2 ) return false;
-				if( !( ilc[0] == last && ilc[1] == first || ilc[0] == first && ilc[1] == last ) )
+				if( !( (ilc[0] == last && ilc[1] == first) || (ilc[0] == first && ilc[1] == last) ) )
 					return false;
 			}
 			else
@@ -217,7 +217,7 @@ namespace INMOST
 						{
 							HandleType temp = lc[i];
 							lc[i] = lc[jt];
-							lc[jt] = lc[i];
+							lc[jt] = temp;
 							temp = first;
 							first = last;
 							last = temp;
@@ -227,7 +227,7 @@ namespace INMOST
 						{
 							HandleType temp = lc[i];
 							lc[i] = lc[jt];
-							lc[jt] = lc[i];
+							lc[jt] = temp;
 							break;
 						}
 						++jt;
@@ -279,7 +279,7 @@ namespace INMOST
 				k1 = ENUMUNDEF; 
 				k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
 				k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-				if( !( ilc[k1] == last && ilc[k2] == first || ilc[k1] == first && ilc[k2] == last ) )
+				if( !( (ilc[k1] == last && ilc[k2] == first) || (ilc[k1] == first && ilc[k2] == last) ) )
 					return false;
 			}
 		}

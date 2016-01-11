@@ -930,7 +930,7 @@ public:
 	{
 		if( colors.empty() )
 		{
-			double cc[4] = {c[0],c[1],c[2],alpha};
+			//double cc[4] = {c[0],c[1],c[2],alpha};
 			glColor4dv(c); 
 			for(unsigned k = 0; k < verts.size(); k+=3) 
 			{
@@ -1287,7 +1287,7 @@ public:
 			
 		}
 		*/
-		printf("number of points %d\n",points.size());
+		printf("number of points %d\n",(int)points.size());
 	}
 	void camera(double pos[3], int interactive)
 	{
@@ -2757,7 +2757,7 @@ public:
 	Input(double * val, std::string comment) : comment(comment) {input_link = val; type = Double; canceled = false; done = false; str = "";}
 	Input(char * val, std::string comment) : comment(comment) {input_link = val; type = String; canceled = false; done = false; str = "";}
 	Input(void * link, InputType type, std::string comment) : comment(comment), input_link(link), type(type) {canceled = false; done = false; str = "";}
-	Input(const Input & other):comment(comment), input_link(other.input_link), str(other.str), type(other.type), canceled(other.canceled), done(other.done) {}
+	Input(const Input & other):str(other.str),comment(other.comment), input_link(other.input_link),  type(other.type), done(other.done), canceled(other.canceled) {}
 	Input & operator =(Input const & other) {comment = other.comment; input_link = other.input_link; str = other.str; type = other.type; canceled = other.canceled; done = other.done; return *this;}
 	~Input() {}
 	void KeyPress(char c) 
@@ -2782,7 +2782,7 @@ public:
 			done = true;
 			glutPostRedisplay();
 		}
-		else if( type == String || ( (c >= '0' && c <= '9') || ((str.empty() || tolower(*str.rbegin()) == 'e') && c=='+' || c=='-') || (type == Double && (c=='.' || c=='e' || c == 'E'))) ) 
+		else if( type == String || ( (c >= '0' && c <= '9') || ((str.empty() || tolower(*str.rbegin()) == 'e') && (c=='+' || c=='-')) || (type == Double && (c=='.' || c=='e' || c == 'E'))) )
 		{
 			str += c;
 			glutPostRedisplay();
@@ -2814,7 +2814,7 @@ public:
 		//printtext(str.c_str());
 		char oldval[4096];
 		if( type == Double ) sprintf(oldval,"%g",*(double*)input_link);
-		else if( type == Integer ) sprintf(oldval,"%g",*(int*)input_link);
+		else if( type == Integer ) sprintf(oldval,"%d",*(int*)input_link);
 		else if( type == String ) sprintf(oldval,"%s",(char *)input_link);
 		printtext("input number (%s[%s]:%s): %s",comment.c_str(),oldval,type == Integer ? "integer": (type == Double ? "double" : "string"), str.c_str());
 	}
@@ -3512,6 +3512,23 @@ void draw_screen()
 						}
 						break;
 					}
+                    case DATA_VARIABLE:
+                    {
+                        Storage::var_array arr = e->VariableArray(*t);
+                        for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+                        {
+                            std::stringstream stream;
+                            stream << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
+                            for(INMOST_DATA_ENUM_TYPE q = 0; q < arr[k].GetRow().Size(); ++q)
+                            {
+                                stream << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
+                            }
+                            stream << "}";
+                            sprintf(temp,"%s %s",str,stream.str().c_str());
+                            strcpy(str,temp);
+                        }
+                        break;
+                    }
 				}
 				sprintf(temp,"%s %s %s",t->GetTagName().c_str(),DataTypeName(t->GetDataType()),str);
 				strcpy(str,temp);
@@ -4009,7 +4026,7 @@ int main(int argc, char ** argv)
         streamlines.push_back(Streamline(octsearch,xyz,vel,cell_size,velmin,velmax,-1.0,0));
       }
     }
-    printf("done from %d by %d grid, total streamlines = %d\n",numlines,numlines,streamlines.size());
+    printf("done from %d by %d grid, total streamlines = %d\n",numlines,numlines,(int)streamlines.size());
     mesh->DeleteTag(cell_size);
     printf("done, total streamlines = %d\n",streamlines.size());
     printf("killing octree, was sets %d\n",mesh->NumberOfSets());

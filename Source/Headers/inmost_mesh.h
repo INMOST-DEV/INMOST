@@ -1240,6 +1240,7 @@ namespace INMOST
 		ElementType                         have_global_id;
 		INMOST_DATA_BIG_ENUM_TYPE           parallel_mesh_unique_id;
 		INMOST_MPI_Comm                     comm;
+        //INMOST_MPI_Group                    group;
 		Tag                                 tag_shared;
 		Tag                                 tag_owner;
 		Tag                                 tag_processors;
@@ -2355,6 +2356,8 @@ namespace INMOST
 		int                               GetProcessorsNumber();
 		/// Retrieve MPI communicator
 		INMOST_MPI_Comm                   GetCommunicator    ();
+        /// Retrieve MPI group corresponding to the communicator
+        INMOST_MPI_Group                  GetGroup           ();
 		/// Set MPI communicator
 		void                              SetCommunicator    (INMOST_MPI_Comm _comm);
 		void                              ResolveShared      ();

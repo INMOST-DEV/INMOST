@@ -156,6 +156,7 @@ namespace INMOST
     virtual void GetVariation(const Storage & e, Sparse::Row & r) const = 0;
     virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const = 0;
     virtual abstract_dynamic_variable * Copy() const = 0;
+    virtual ~abstract_dynamic_variable() {}
   };
 
   template<typename RetType>
@@ -210,6 +211,7 @@ namespace INMOST
     virtual void GetVariation(const Storage & e, Sparse::Row & r) const = 0;
     virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const = 0;
     virtual abstract_dynamic_variable * Copy() const = 0;
+    virtual ~basic_dynamic_variable() {}
   };
 
   template<class VariableType, class Derived>
