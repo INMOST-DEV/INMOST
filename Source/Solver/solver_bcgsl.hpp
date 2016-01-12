@@ -1685,7 +1685,8 @@ perturbate:
 #pragma omp single
 #endif
           {
-					  tempa = tempb = 0;
+					  tempa = 0.0; //can be negative
+            tempb = 1.0e-100; //tempb is positive since squared
           }
 #if defined(USE_OMP)
 #pragma omp for reduction(+:tempa,tempb)
