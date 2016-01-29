@@ -18,6 +18,7 @@ set(HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_variable.h
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_sparse.h
     ${CMAKE_CURRENT_SOURCE_DIR}/inmost_nonlinear.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/inmost_xml.h
     ${CMAKE_CURRENT_SOURCE_DIR}/container.hpp
     PARENT_SCOPE
 )
