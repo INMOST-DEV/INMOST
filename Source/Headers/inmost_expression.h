@@ -24,9 +24,7 @@
 #if defined(USE_AUTODIFF)
 namespace INMOST
 {
-  bool CheckCurrentAutomatizator();
-  //bool GetAutodiffPrint();
-  //void SetAutodiffPrint(bool set);
+  
 
 	class basic_expression
 	{
@@ -38,6 +36,13 @@ namespace INMOST
     virtual void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
     virtual ~basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Destroied" << std::endl;}
 	};
+
+  bool CheckCurrentAutomatizator();
+  void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr);
+  void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr);
+  void FromGetDerivative(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r);
+  //bool GetAutodiffPrint();
+  //void SetAutodiffPrint(bool set);
 
 	template<class Derived>
 	class shell_expression : virtual public basic_expression
@@ -95,13 +100,11 @@ namespace INMOST
     }
   };
 
+
   class multivar_expression : public shell_expression<multivar_expression>
   {
     INMOST_DATA_REAL_TYPE value;
     Sparse::Row entries;
-    void FromBasicExpression(const basic_expression & expr);
-    void AddBasicExpression(INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr);
-    void FromGetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const;
   public:
     multivar_expression() :value(0) {}
     multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
@@ -117,7 +120,7 @@ namespace INMOST
     {
       value = expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        FromBasicExpression(expr); //Optimized version
+        FromBasicExpression(entries,expr); //Optimized version
       else expr.GetDerivative(1.0,entries);
     }
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
@@ -130,7 +133,7 @@ namespace INMOST
     __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
     {
       if( CheckCurrentAutomatizator() )
-        FromGetDerivative(mult,r);
+        FromGetDerivative(*this,mult,r);
       else
       {
         for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
@@ -147,7 +150,7 @@ namespace INMOST
     {
       value = expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        FromBasicExpression(expr);
+        FromBasicExpression(entries,expr);
       else
       {
         Sparse::Row tmp;
@@ -168,7 +171,7 @@ namespace INMOST
     {
       value += expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(1.0,1.0,expr);
+        AddBasicExpression(entries,1.0,1.0,expr);
       else
       { 
         Sparse::Row tmp(entries);
@@ -181,7 +184,7 @@ namespace INMOST
     {
       value -= expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(1.0,-1.0,expr);
+        AddBasicExpression(entries,1.0,-1.0,expr);
       else
       {
         Sparse::Row tmp(entries);
@@ -194,7 +197,7 @@ namespace INMOST
     {
       INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(rval,lval,expr);
+        AddBasicExpression(entries,rval,lval,expr);
       else
       {
         Sparse::Row tmp(entries);
@@ -211,7 +214,7 @@ namespace INMOST
       INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
       value *= reciprocial_rval;
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(reciprocial_rval,-value*reciprocial_rval,expr);
+        AddBasicExpression(entries,reciprocial_rval,-value*reciprocial_rval,expr);
       else
       {
         Sparse::Row tmp(entries);
@@ -298,6 +301,161 @@ namespace INMOST
       return 1 + v[0].first;
     }
   };
+
+  
+  class multivar_expression_reference : public shell_expression<multivar_expression_reference>
+  {
+    INMOST_DATA_REAL_TYPE & value;
+    Sparse::Row & entries;
+  public:
+    /// Constructor, set links to the provided value and entries
+    multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row & _entries) 
+      : value(_value), entries(_entries) {}
+    /// Copy constructor, sets links to the same reference of value and entries
+    multivar_expression_reference(const multivar_expression_reference & other) 
+      : value(other.value), entries(other.entries) {}
+    /// Retrive value
+    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+    /// Set value without changing derivatives
+    __INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
+    /// Retrive derivatives with multiplier into Sparse::RowMerger structure.
+    __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
+    {
+      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+        r[it->first] += it->second*mult;
+    }
+    /// Retrive derivatives with multiplier into Sparse::Row structure.
+    __INLINE void GetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
+    {
+      if( CheckCurrentAutomatizator() )
+        FromGetDerivative(*this,mult,r);
+      else
+      {
+        for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+          r[it->first] += it->second*mult;
+      }
+    }
+    __INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
+    {
+      value = pvalue;
+      entries.Clear();
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator = (basic_expression const & expr)
+    {
+      value = expr.GetValue();
+      if( CheckCurrentAutomatizator() )
+        FromBasicExpression(entries,expr);
+      else
+      {
+        Sparse::Row tmp;
+        expr.GetDerivative(1.0,tmp);
+        entries.Swap(tmp);
+      }
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator = (multivar_expression_reference const & other)
+    {
+      value = other.GetValue();
+      entries = other.GetRow();
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator = (multivar_expression const & other)
+    {
+      value = other.GetValue();
+      entries = other.GetRow();
+      return *this;
+    }
+    __INLINE Sparse::Row & GetRow() {return entries;}
+    __INLINE const Sparse::Row & GetRow() const {return entries;}
+    __INLINE multivar_expression_reference & operator +=(basic_expression const & expr)
+    {
+      value += expr.GetValue();
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(entries,1.0,1.0,expr);
+      else
+      { 
+        Sparse::Row tmp(entries);
+        expr.GetDerivative(1.0,tmp);
+        entries.Swap(tmp);
+      }
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator -=(basic_expression const & expr)
+    {
+      value -= expr.GetValue();
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(entries,1.0,-1.0,expr);
+      else
+      {
+        Sparse::Row tmp(entries);
+        expr.GetDerivative(-1.0,tmp);
+        entries.Swap(tmp);
+      }
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator *=(basic_expression const & expr)
+    {
+      INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(entries,rval,lval,expr);
+      else
+      {
+        Sparse::Row tmp(entries);
+        for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
+        expr.GetDerivative(lval,tmp);
+        entries.Swap(tmp);
+      }
+      value *= rval;
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator /=(basic_expression const & expr)
+    {
+      INMOST_DATA_REAL_TYPE rval = expr.GetValue();
+      INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
+      value *= reciprocial_rval;
+      if( CheckCurrentAutomatizator() )
+        AddBasicExpression(entries,reciprocial_rval,-value*reciprocial_rval,expr);
+      else
+      {
+        Sparse::Row tmp(entries);
+        for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
+        expr.GetDerivative(-value*reciprocial_rval,tmp); 
+        entries.Swap(tmp);
+      }
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator +=(INMOST_DATA_REAL_TYPE right)
+    {
+      value += right;
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator -=(INMOST_DATA_REAL_TYPE right)
+    {
+      value -= right;
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator *=(INMOST_DATA_REAL_TYPE right)
+    {
+      value *= right;
+      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second *= right;
+      return *this;
+    }
+    __INLINE multivar_expression_reference & operator /=(INMOST_DATA_REAL_TYPE right)
+    {
+      value /= right;
+      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second /= right;
+      return *this;
+    }
+    bool check_nans() const
+    {
+      if( value != value ) return true;
+      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+        if( it->second != it->second ) return true;
+      return false;
+    }
+  };
+  
 
   template<class A>
   class const_multiplication_expression : public shell_expression<const_multiplication_expression<A> >
@@ -1103,6 +1261,65 @@ namespace INMOST
 
   typedef multivar_expression variable;
   typedef var_expression unknown;
+
+
+  class Residual
+  {
+    Sparse::Matrix jacobian;
+    Sparse::Vector residual;
+  public:
+    Residual(std::string name = "", INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0, INMOST_MPI_Comm _comm = INMOST_MPI_COMM_WORLD)
+      : jacobian(name,start,end,_comm),residual(name,start,end,_comm) {}
+    Residual(const Residual & other)
+      : jacobian(other.jacobian), residual(other.residual)
+    {}
+    Residual & operator =(Residual const & other)
+    {
+      jacobian = other.jacobian;
+      residual = other.residual;
+      return *this;
+    }
+    Sparse::Matrix & GetJacobian() {return jacobian;}
+    const Sparse::Matrix & GetJacobian() const {return jacobian;}
+    Sparse::Vector & GetResidual() {return residual;}
+    const Sparse::Vector & GetResidual() const {return residual;}
+    INMOST_DATA_ENUM_TYPE GetFirstIndex() const {return residual.GetFirstIndex();}
+    INMOST_DATA_ENUM_TYPE GetLastIndex() const {return residual.GetLastIndex();}
+    void GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const 
+    {
+      start = residual.GetFirstIndex(); 
+      end = residual.GetLastIndex();
+    }
+    void SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+    {
+      jacobian.SetInterval(beg,end);
+      residual.SetInterval(beg,end);
+    }
+    multivar_expression_reference operator [](INMOST_DATA_ENUM_TYPE row)
+    {
+      return multivar_expression_reference(residual[row],jacobian[row]);
+    }
+    void ClearResidual()
+    {
+      for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) (*it) = 0.0;
+    }
+    void ClearJacobian()
+    {
+      for(Sparse::Matrix::iterator it = jacobian.Begin(); it != jacobian.End(); ++it)
+        it->Clear();
+    }
+    void Clear()
+    {
+      ClearResidual();
+      ClearJacobian();
+    }
+    INMOST_DATA_REAL_TYPE Norm()
+    {
+      INMOST_DATA_REAL_TYPE ret = 0;
+      for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) ret += (*it)*(*it);
+      return sqrt(ret);
+    }
+  };
 }
 
 

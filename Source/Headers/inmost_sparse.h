@@ -7,8 +7,6 @@
 
 #if defined(USE_SOLVER)
 
-#define MTX_ALLOW_ANNOTATION
-#define MTX_ANNOTATION_SIZE 1024
 
 namespace INMOST
 {
@@ -59,9 +57,12 @@ namespace INMOST
 			  void                 SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end)       {assert(start<=end); data.set_interval_beg(start); data.set_interval_end(end);}
 			  /// Get the start and the end of the distributed vector interval.
 			  void                 GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = data.get_interval_beg(); end = data.get_interval_end();}
+        /// Move starting position of local indexes
 			  void                 ShiftInterval(INMOST_DATA_ENUM_TYPE shift) {data.shift_interval(shift);}
 			  /// Get the first index of the distributed vector interval.
 			  INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return data.get_interval_beg();}
+        /// Get the last index of the distributed vector interval.
+        INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return data.get_interval_end();}
 			  /// Get the communicator which the vector is associated with.
 			  INMOST_MPI_Comm        GetCommunicator() const {return comm;}
 
@@ -90,10 +91,7 @@ namespace INMOST
 		  class Row 
 		  {
 		  public:
-  #if defined(MTX_ALLOW_ANNOTATION)
-			  char annotation[MTX_ANNOTATION_SIZE];
-  #endif
-			  /// Entry of the sparse matrix row.
+  		  /// Entry of the sparse matrix row.
 			  typedef struct entry_s 
 			  {
 				  INMOST_DATA_ENUM_TYPE first;  ///< the column number of the row element.
@@ -133,10 +131,7 @@ namespace INMOST
 			  bool marker;
 			  Entries data;
 		  public:
-
-        std::string GetAnnotation();
-        void SetAnnotation(std::string input);
-			  void Report() {data.report_addr();}
+        void Report() {data.report_addr();}
 			  void SetMarker() { marker = true; }
 			  void RemMarker() { marker = false; }
 			  bool GetMarker() { return marker; }
@@ -244,12 +239,14 @@ namespace INMOST
 		  class Matrix
 		  {
 		  public:
+        typedef interval<INMOST_DATA_ENUM_TYPE,std::string> Text;
 			  typedef interval<INMOST_DATA_ENUM_TYPE,Row> Rows;
 			  typedef Rows::iterator iterator;
 			  typedef Rows::const_iterator const_iterator;
 		  private:
 			  INMOST_MPI_Comm comm;
 			  Rows data;
+        Text text;
 			  std::string name;
 			  bool is_parallel;
 		  public:
@@ -274,18 +271,21 @@ namespace INMOST
 			  const_iterator       Begin() const {return data.begin();}
 			  const_iterator       End() const   {return data.end();}
 			  /// Set the start and the end row numbers of the distributed matrix interval.
-			  void                 SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end)       {data.set_interval_beg(start); data.set_interval_end(end);}
+			  void                 SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end);
 			  /// Get the start and the end row numbers of the distributed matrix interval.
 			  void                 GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = data.get_interval_beg(); end = data.get_interval_end();}
-			  void                 ShiftInterval(INMOST_DATA_ENUM_TYPE shift) {data.shift_interval(shift);}
+			  void                 ShiftInterval(INMOST_DATA_ENUM_TYPE shift);
 			  /// Get the first row index of the distributed matrix interval.
 			  INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return data.get_interval_beg();}
+        /// Get the last row index of the distributed matrix interval.
+			  INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return data.get_interval_end();}
 			  /// Get the communicator which the matrix is associated with.
 			  INMOST_MPI_Comm        GetCommunicator() const {return comm;}
 			  void                 MoveRows(INMOST_DATA_ENUM_TYPE from, INMOST_DATA_ENUM_TYPE to, INMOST_DATA_ENUM_TYPE size); //for parallel
 			  void                 Swap(Matrix & other) 
 			  {
 				  data.swap(other.data);
+          text.swap(other.text);
 				  name.swap(other.name);
 				  INMOST_MPI_Comm ctmp = comm;
 				  comm = other.comm;
@@ -311,8 +311,12 @@ namespace INMOST
 			  void                 Save(std::string file);
         /// Check that matrix is in parallel state.
 			  bool &               isParallel() { return is_parallel; }
+        const bool &         isParallel() const { return is_parallel; }
 			  /// Get the matrix name specified in the main constructor.
-			  std::string          GetName() {return name;}
+			  std::string          GetName() const {return name;}
+
+        std::string &        Annotation(INMOST_DATA_ENUM_TYPE row);
+        const std::string &  Annotation(INMOST_DATA_ENUM_TYPE row) const; 
 		  };
 
 		  /// This class may be used to sum multiple sparse rows.

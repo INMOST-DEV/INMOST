@@ -660,7 +660,7 @@ namespace INMOST
         for(enumerator l = 0; l < m; ++l) 
         {
           if( fabs(get_value((*this)(k,l))) > threshold )
-            std::cout << std::setw(10) << (*this)(k,l);
+            std::cout << std::setw(10) << get_value((*this)(k,l));
           else 
             std::cout << std::setw(10) << 0;
           std::cout << " ";

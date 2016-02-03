@@ -19,7 +19,7 @@ namespace INMOST
   void SetAutodiffPrint(bool set) {print_ad_ctor = set;}
   bool CheckCurrentAutomatizator() {return Automatizator::HaveCurrent();}
 
-  void multivar_expression::FromBasicExpression(const basic_expression & expr)
+  void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr)
   {
     Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
     expr.GetDerivative(1.0,merger);
@@ -27,7 +27,7 @@ namespace INMOST
     merger.Clear();
   }
 
-  void multivar_expression::AddBasicExpression(INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr)
+  void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr)
   {
     Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
     merger.PushRow(multme,entries);
@@ -36,10 +36,10 @@ namespace INMOST
     merger.Clear();
   }
 
-  void multivar_expression::FromGetDerivative(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+  void FromGetDerivative(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r)
   {
     Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
-    GetDerivative(mult,merger);
+    expr.GetDerivative(mult,merger);
     merger.AddRow(1.0,r);
     merger.RetriveRow(r);
     merger.Clear();

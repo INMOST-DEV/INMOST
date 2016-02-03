@@ -96,16 +96,14 @@ int main(int argc,char ** argv)
     Tag tag_F;  // Forcing term
     Tag tag_BC; // Boundary conditions
     Tag tag_M;  // Stiffness matrix
-    Tag tag_I;  // Temporary local indexation
-    Tag tag_H;  // Harmonic points
     Tag tag_W;  // Gradient matrix acting on harmonic points on faces and returning gradient on faces
     Tag tag_D;  // Entries for scaling matrix D
+    Tag tag_LF; // Coefficients of linearly computed fluxes on faces, 2 of them per internal face
 
     if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
     { // Exchange ghost cells
 		  ttt = Timer();
 		  m->ExchangeGhost(1,FACE); // Produce layer of ghost cells
-      m->ExchangeData(tag_H,FACE,0); //Synchronize harmonic points
 		  BARRIER
 		  if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
     }
@@ -117,8 +115,9 @@ int main(int argc,char ** argv)
       if( !tag_K.isValid() || !tag_K.isDefined(CELL) ) // diffusion tensor was not initialized or was not defined on cells.
       {
         tag_K = m->CreateTag("PERM",DATA_REAL,CELL,NONE,6); // create a new tag for symmetric diffusion tensor K
-		    for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // loop over mesh cells
+        for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) ) // loop over mesh cells
         {
+          Cell cell = m->CellByLocalID(q);
           real_array K = cell->RealArray(tag_K);
           // assign a symmetric positive definite tensor K
 				  K[0] = 1.0; //XX
@@ -138,10 +137,18 @@ int main(int argc,char ** argv)
       if( !tag_P.isValid() || !tag_P.isDefined(CELL) ) // Pressure was not initialized or was not defined on nodes
       {
         srand(1); // Randomization
-        tag_P = m->CreateTag("PRESSURE",DATA_REAL,CELL|FACE,FACE,1); // Create a new tag for the pressure
-        for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell) //Loop over mesh cells
-          cell->Real(tag_P) = (rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+        tag_P = m->CreateTag("PRESSURE",DATA_REAL,CELL|FACE,NONE,1); // Create a new tag for the pressure
+        for(Mesh::iteratorElement e = m->BeginElement(CELL|FACE); e != m->EndElement(); ++e) //Loop over mesh cells
+          e->Real(tag_P) = (rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
       }
+
+      if( !tag_P.isDefined(FACE) )
+      {
+        tag_P = m->CreateTag("PRESSURE",DATA_REAL,FACE,NONE,1);
+        for(Mesh::iteratorElement e = m->BeginElement(FACE); e != m->EndElement(); ++e) //Loop over mesh cells
+          e->Real(tag_P) = (rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+      }
+
 
       
       if( m->HaveTag("BOUNDARY_CONDITION") ) //Is there boundary condition on the mesh?
@@ -150,103 +157,28 @@ int main(int argc,char ** argv)
         
         //initialize unknowns at boundary
       }
-
       m->ExchangeData(tag_P,CELL|FACE,0); //Synchronize initial solution with boundary unknowns
-      
-
       //run in a loop to identify boundary pressures so that they enter as primary variables
-
-      //3 entries are coordinates and last entry is the coefficient for FrontCell
-      tag_H = m->CreateTag("HARMONIC_POINT",DATA_REAL,FACE,NONE,4);
-      // Assemble coefficients for harmonic averaging matrix H
-      for(Mesh::iteratorFace fKL = m->BeginFace(); fKL != m->EndFace(); ++fKL) //go over faces
-      {
-        real_array H = fKL->RealArrayDF(tag_H); //access data structure
-        Cell cK = fKL->BackCell(); //get cell K from the back of the normal
-        Cell cL = fKL->FrontCell(); //get cell L to the front of the normal
-        if( !cL.isValid() ) //this is boundary face
-        {
-          fKL->Centroid(H.data()); //set center of face as harmonic point
-          H[3] = 0.0; //set coefficient 
-          continue;
-        }
-
-        real dK, dL, lK, lL, D;
-        real coefK, coefL, coefQ, coefDiv;
-        
-        rMatrix y(3,1); //harmonic point
-        rMatrix yK(3,1); //projection of the center of cell K onto surface
-        rMatrix yL(3,1); //projection of the center of cell L onto surface
-        rMatrix xK(3,1); //center of cell K
-        rMatrix xL(3,1); //center of cell L
-        rMatrix xKL(3,1); //point on face
-        rMatrix nKL(3,1); //normal to face
-        rMatrix lKs(3,1); //reminder of the co-normal vector Kn in cell K when projection to normal is substracted, i.e. (Kn - n n.Kn)
-        rMatrix lLs(3,1); //reminder of the co-normal vector Kn in cell L when projection to normal is substracted, i.e. (Kn - n n.Kn)
-        rMatrix KK = rMatrix::FromTensor(cK->RealArray(tag_K).data(),cK->RealArray(tag_K).size()).Transpose(); //diffusion tensor in cell K
-        rMatrix KL = rMatrix::FromTensor(cL->RealArray(tag_K).data(),cL->RealArray(tag_K).size()).Transpose(); //diffusion tensor in cell L
-
-        cK->Centroid(xK.data()); //retrive center of cell K
-        cL->Centroid(xL.data()); //retrive center of cell L
-        fKL->Centroid(xKL.data()); //retrive center of face
-        fKL->OrientedUnitNormal(cK,nKL.data()); //retrive unit normal to face
-
-        lKs = KK*nKL; //get conormal in cell K
-        lLs = KL*nKL; //get conormal in cell L
-        lK = nKL.DotProduct(lKs); //find projection of conormal onto normal in cell K
-        lL = nKL.DotProduct(lLs); //find projection of conormal onto normal in cell L
-        lKs -= nKL*lK; //obtain reminder in cell K
-        lLs -= nKL*lL; //obtain reminder in cell L
-
-        D = -nKL.DotProduct(xKL); // Compute constant in equation for plane (nx,ny,nz,D)
-        dK = nKL.DotProduct(xK)+D; //compute distance to the center of cell K
-        dL = nKL.DotProduct(xL)+D; //compute distance to the center of cell L
-
-        if( dK*dL > 0 ) //check consistency of geometry
-        {
-          std::cout << "Cell centers are on the same side from the face" << std::endl;
-        }
-
-        dK = fabs(dK); //signs should be encorporated automatically
-        dL = fabs(dL);
-
-        if( dK < 1.0e-9 || dL < 1.0e-9 ) std::cout << "Cell center is located on the face" << std::endl;
-
-        yK = xK + nKL*dK; //compute projection of the center of cell K onto face
-        yL = xL - nKL*dL; //compute projection of the center of cell L onto face
-
-        //compute coefficients for harmonic point
-        coefDiv = (lL*dK+lK*dL);
-        coefL = lL*dK/coefDiv;
-        coefK = lK*dL/coefDiv;
-        coefQ = dK*dL/coefDiv;
-
-        y = yK*coefK + yL*coefL + (lKs - lLs)*coefQ; //calculate position of harmonic point
-
-        std::copy(y.data(),y.data()+3,H.data()); //store position of harmonic point
-        H[3] = coefL; //store multiplier for pressure in FrontCell, the other is coefK = 1 - coefL
-      } //end of loop over faces
-
       tag_M = m->CreateTag("INNER_PRODUCT",DATA_REAL,CELL,NONE);
       //assemble inner product matrix M acting on faces for each cell
-      for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
+      for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
       {
+        Cell cell = m->CellByLocalID(q);
         real xP[3]; //center of the cell
         real nF[3]; //normal to the face
-        real aF, vP = cell->Volume(); //area of the face
+        real yF[3]; //center of the face
+        real aF; //area of the face
+        real vP = cell->Volume(); //volume of the cell
         cell->Centroid(xP); //obtain cell center
         ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-        enumerator NF = (enumerator)faces.size(), k; //number of faces;
-
+        int NF = (int)faces.size(); //number of faces;
         rMatrix IP(NF,NF), N(NF,3), R(NF,3); //matrices for inner product
-
         //assemble matrices R and N
-        k = 0;
-        for(ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); ++face)
+        for(int k = 0; k < NF; ++k)
         {
-          aF = face->Area();
-          real_array yF = face->RealArrayDF(tag_H); //point on face is harmonic point
-          face->OrientedUnitNormal(cell->self(),nF);
+          aF = faces[k]->Area();
+          faces[k]->Centroid(yF); //point on face
+          faces[k]->OrientedUnitNormal(cell->self(),nF);
           // assemble R matrix, follows chapter 3.4.3 in the book "Mimetic Finite Difference Method for Elliptic Problems" by Lourenco et al
           R(k,0) = (yF[0]-xP[0])*vP;
           R(k,1) = (yF[1]-xP[1])*vP;
@@ -256,13 +188,11 @@ int main(int argc,char ** argv)
           N(k,0) = nF[0]*aF;
           N(k,1) = nF[1]*aF;
           N(k,2) = nF[2]*aF;
-          k++;
         } //end of loop over faces
 
         //inner product definition from Corollary 4.2,  "Mimetic scalar products of differential forms" by Brezzi et al
         IP = R*(R.Transpose()*N).Invert().first*R.Transpose(); // Consistency part
         IP += (rMatrix::Unit(NF) - N*(N.Transpose()*N).Invert().first*N.Transpose())*(2.0/static_cast<real>(NF)*IP.Trace()); //Stability part
-        
         //assert(IP.isSymmetric()); //test positive definitiness as well!
         /*
         if( !IP.isSymmetric() ) 
@@ -280,25 +210,27 @@ int main(int argc,char ** argv)
 
       tag_W = m->CreateTag("GRAD",DATA_REAL,CELL,NONE);
       tag_D = m->CreateTag("DIAG",DATA_VARIABLE,CELL,NONE);
-      //Assemble all-positive gradient matrix W on cells
-      for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
+      //Assemble gradient matrix W on cells
+      for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
       {
+        Cell cell = m->CellByLocalID(q);
         real xP[3]; //center of the cell
+        real yF[3]; //center of the face
         real nF[3]; //normal to the face
         cell->Centroid(xP);
         ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-        enumerator NF = (enumerator)faces.size(), k; //number of faces;
-        dynarray<real,64> NG(NF,0), G(NF,0); // count how many times gradient was calculated for face
+        int NF = (int)faces.size(); //number of faces;
         rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
+        //rMatrix U,S,V;
+        //K0.SVD(U,S,V);
+        //for(int k = 0; k < 3; ++k) S(k,k) = sqrt(S(k,k));
+        //rMatrix K = U*S*V;
         rMatrix GRAD(NF,NF), NK(NF,3), R(NF,3); //big gradient matrix, co-normals, directions
-        rMatrix GRADF(NF,NF), NKF(NF,3), RF(NF,3); //corresponding matrices with masked negative values when multiplied by individual co-normals
-        rMatrix GRADFstab(NF,NF);
         GRAD.Zero();
-        k = 0;
-        for(ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); ++face) //loop over faces
+        for(int k = 0; k < NF; ++k) //loop over faces
         {
-          real_array yF = face->RealArrayDF(tag_H); //point on face is harmonic point
-          face->OrientedUnitNormal(cell->self(),nF);
+          faces[k]->Centroid(yF);
+          faces[k]->OrientedUnitNormal(cell->self(),nF);
           // assemble matrix of directions
           R(k,0) = (yF[0]-xP[0]);
           R(k,1) = (yF[1]-xP[1]);
@@ -310,142 +242,21 @@ int main(int argc,char ** argv)
           NK(k,2) = nK(0,2);
           k++;
         } //end of loop over faces
-
         GRAD = NK*(NK.Transpose()*R).Invert().first*NK.Transpose(); //stability part
-        //std::cout << "consistency" << std::endl;
-        //GRADF.Print();
-
-        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/NF*GRADF.Trace());
-        
-        /*
-        std::cout << "stability" << std::endl;
-        GRADFstab.Print();
-        GRADF += GRADFstab;
-        std::cout << "consistency+stability" << std::endl;
-        GRADF.Print();
-
-        k = 0;
-        for(ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); ++face) //loop over faces
-        {
-          real nK[3] = {NK(k,0),NK(k,1),NK(k,2)};
-          real N = 0.0;
-          for(enumerator l = 0; l < NF; ++l) //run through faces
-          {
-            if( nK[0]*NK(l,0) + nK[1]*NK(l,1) + nK[2]*NK(l,2) > 0.0 && nK[0]*R(l,0) + nK[1]*R(l,1) + nK[2]*R(l,2) > 0.0 ) //all entries are positive
-            {
-              NKF(l,0) = NK(l,0);
-              NKF(l,1) = NK(l,1);
-              NKF(l,2) = NK(l,2);
-              RF(l,0) = R(l,0);
-              RF(l,1) = R(l,1);
-              RF(l,2) = R(l,2);
-              G[l] = 1; //mask active rows
-              NG[l]++; //count number of equations
-              N++; //count number of active rows
-            }
-            else
-            {
-              NKF(l,0) = NKF(l,1) = NKF(l,2) = 0.0;
-              RF(l,0) = RF(l,1) = RF(l,2) = 0.0;
-              G[l] = 0; //mask active rows
-            }
-          }
-          //NKF.Print();
-          //RF.Print();
-          GRADF.Zero();
-          GRADF = NKF*(NKF.Transpose()*RF).Invert()*NKF.Transpose(); //stability part
-          std::cout << "consistency" << std::endl;
-          GRADF.Print();
-          GRADFstab.Zero();
-          GRADFstab = (FromDiagonal(G.data(),NF) - RF*(RF.Transpose()*RF).Invert()*RF.Transpose())*(2.0/N*GRADF.Trace());
-          real alpha = 1.0;
-          for(enumerator i = 0; i < NF; ++i)
-          {
-            for(enumerator j = 0; j < NF; ++j)
-              if( GRADF(i,j) + alpha*GRADFstab(i,j) < 0.0 )
-              {
-                alpha = std::min(alpha,-GRADF(i,j)/GRADFstab(i,j));
-              }
-          }
-          std::cout << "stability" << std::endl;
-          GRADFstab.Print();
-          std::cout << "alpha " << alpha << std::endl;
-          GRADF += GRADFstab*alpha; //consistency part
-          std::cout << "consistency+stability" << std::endl;
-          GRADF.Print();
-          GRAD += GRADF;
-
-          //GRAD.Print();
-          k++;
-        } //end of loop over faces
-        GRAD = GRAD*FromDiagonalInverse(NG.data(),NF); //normalize gradients if we computed them multiple times
-
-        //std::cout << "Gradient matrix: " << std::endl;
-        //GRAD.Print();
-        */
+        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/NF*GRAD.Trace());
         real_array W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
         W.resize(NF*NF); //resize the structure
         std::copy(GRAD.data(),GRAD.data()+NF*NF,W.data()); //write down the gradient matrix
-
         cell->VariableArrayDV(tag_D).resize(NF); //resize scaling matrix D for the future use
       } //end of loop over cells
 
       if( m->HaveTag("FORCE") ) //Is there force on the mesh?
       {
-        Tag tag_F0 = m->GetTag("FORCE"); //initial force
-        assert(tag_F0.isDefined(CELL)); //assuming it was defined on cells
-        tag_F = m->CreateTag("RECOMPUTED_FORCE",DATA_REAL,CELL,NONE,1); //recomputed force on face
-        // compute expression H^T M H f, where H is harmonic averaging and M is inner product over faces
-        for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
-        {
-          ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-          enumerator NF = (enumerator)faces.size(), k = 0;
-          Cell cK = cell->self();
-          real gK = cK->Real(tag_F0), gL; //force on current cell and on adjacent cell
-          rMatrix M(cK->RealArrayDF(tag_M).data(),NF,NF); //inner product matrix
-          rMatrix gF(NF,1); //vector of forces on faces
-          rMatrix MgF(NF,1); //vector of forces multiplied by inner product matrix
-          //first average force onto faces with harmonic mean
-          k = 0;
-          for(ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); ++face) //go over faces
-          {
-            real_array H = face->RealArrayDF(tag_H); //access structure for harmonic averaging
-            if( !face->Boundary() ) //internal face
-            {
-              Cell cL = cK->Neighbour(face->self());
-              real aL = (cK == face->BackCell()) ? H[3] : 1-H[3]; //harmonic coefficient for neighbour cell 
-              real aK = 1 - aL; //harmonic coefficient for current cell
-              gL = cL->Real(tag_F0); //retrive force on adjacent cell
-              gF(k,0) = gK*aK + gL*aL; //harmonic averaging
-            }
-            else gF(k,0) = gK;
-            k++;
-          } //end of loop over faces
-          MgF = M*gF; //multiply by inner product matrix
-          //now apply H^T for current cell only
-          real & rgK = cell->Real(tag_F); //access force in current cell
-          rgK = 0.0;
-          k = 0;
-          for(ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); ++face) //go over faces
-          {
-            real_array H = face->RealArrayDF(tag_H); //access structure for harmonic averaging
-            if( !face->Boundary() ) //internal face
-            {
-              Cell cL = cell->Neighbour(face->self());
-              real aL = (cK == face->BackCell()) ? H[3] : 1-H[3]; //harmonic coefficient for neighbour cell
-              real aK = 1 - aL; //harmonic coefficient for current cell
-              real & rgL = face->FrontCell()->RealDF(tag_F); // access force in adjacent cell
-              //harmonic distribution
-              rgK += MgF(k,0)*aK; // application of H^T with inner product in current cell
-              rgL += MgF(k,0)*aL; // application of H^T with inner product in current cell
-            }
-            else rgK += MgF(k,0);
-            k++;
-          } //end of loop over faces
-        } //end of loop over cells
-        m->ExchangeData(tag_F,CELL,0); //synchronize force
+        tag_F = m->GetTag("FORCE"); //initial force
+        assert(tag_F.isDefined(CELL)); //assuming it was defined on cells
       } // end of force
 
+      tag_LF = m->CreateTag("LINEAR_FLUX",DATA_VARIABLE,FACE,NONE,2);
     } //end of initialize data
 
    
@@ -461,175 +272,190 @@ int main(int argc,char ** argv)
       aut.EnumerateDynamicTags(); //enumerate all primary variables
 
      
-      
-      Sparse::Matrix Jacobian("",aut.GetFirstIndex(),aut.GetLastIndex()); //matrix for jacobian
-      Sparse::Vector Update("",aut.GetFirstIndex(),aut.GetLastIndex()); //vector for update
-      Sparse::Vector Residual("",aut.GetFirstIndex(),aut.GetLastIndex()); //vector for residual
+      Residual R("",aut.GetFirstIndex(),aut.GetLastIndex());
+      Sparse::Vector Update  ("",aut.GetFirstIndex(),aut.GetLastIndex()); //vector for update
       real Residual_norm = 0.0;
+      
+      {//Annotate matrix
+        for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+        {
+          Cell cell = m->CellByLocalID(q);
+          R.GetJacobian().Annotation(P.Index(cell)) = "Cell-centered pressure value";
+        }
+        for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
+        {
+          Face face = m->FaceByLocalID(q);
+          if( tag_BC.isValid() && face.HaveData(tag_BC) )
+            R.GetJacobian().Annotation(P.Index(face)) = "Pressure guided by boundary condition";
+          else
+            R.GetJacobian().Annotation(P.Index(face)) = "Interface pressure";
+        }
+      }
 
       do
       {
-        std::fill(Residual.Begin(),Residual.End(),0.0); //clean up the residual
-
+        R.Clear(); //clean up the residual
         //First we need to evaluate the gradient at each cell for scaling matrix D
-        for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell) //loop over cells
+        for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) ) //loop over cells
         {
+          Cell cell = m->CellByLocalID(q);
           ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-          enumerator NF = (enumerator)faces.size(), k = 0;
+          int NF = (int)faces.size();
           Cell cK = cell->self();
-          variable pK = P(cK), pL; //pressure for back and front cells
           rMatrix GRAD(cK->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
-          vMatrix pF(NF,1); //vector of pressures on faces
+          vMatrix pF(NF,1); //vector of pressure differences on faces
           vMatrix FLUX(NF,1); //computed flux on faces
-          for(ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); ++face)
-          {
-            real_array H = face->RealArrayDF(tag_H); //access structure for harmonic averaging
-            if( !face->Boundary() ) //internal face
-            {
-              Cell cL = cK->Neighbour(face->self()); //
-              real aL = (cK == face->BackCell()) ? H[3] : 1-H[3]; //harmonic coefficient for neighbour cell
-              real aK = 1 - aL; //harmonic coefficient for current cell
-              pL = P(face->FrontCell()); //retrive force on adjacent cell
-              pF(k,0) = pK*aK + pL*aL;
-            }
-            else if( face->HaveData(tag_P) ) //boundary condition
-              pF(k,0) = P(face->self()); //get pressure on boundary
-            else
-              pF(k,0) = pK; //get pressure in current cell
-
-            pF(k,0) -= pK; //substract pressure in the center to get differences
-            k++;
-          }
+          for(int k = 0; k < NF; ++k)
+            pF(k,0) = P(faces[k]) - P(cK);
           FLUX = GRAD*pF; //fluxes on faces
-          var_array D = cell->VariableArrayDV(tag_D); //access data structure on mesh for variations
-          for(enumerator l = 0; l < NF; ++l) D[l] = FLUX(l,0); //copy the computed flux with variations into mesh
+          for(int k = 0; k < NF; ++k) //copy the computed flux value with variations into mesh
+            faces[k]->VariableArray(tag_LF)[(faces[k]->BackCell() == cell)? 0 : 1] = FLUX(k,0);
         } //end of loop over cells
 
         //Now we need to assemble and transpose nonlinear gradient matrix
-        for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell) //loop over cells
+        for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) ) //loop over cells
         {
-          ElementArray<Face> facesK = cell->getFaces(), facesL; //obtain faces of the cell
-          enumerator NF = (enumerator)facesK.size(), k, l;
-          Cell cK = cell->self();
-          variable pK = P(cK), pL; //pressure for back and front cells
-          rMatrix GRAD(cK->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
+          const real eps1 = 1.0e-7;
+          const real eps2 = 1.0e-9;
+          Cell cell = m->CellByLocalID(q);
+          ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
+          int NF = (int)faces.size();
+          rMatrix GRAD(cell->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
+          rMatrix M(cell->RealArrayDV(tag_M).data(),NF,NF); //inner product matrix
           vMatrix D(NF,NF); //Matrix for diagonal
-          vMatrix pF(NF,1); //vector of pressures on faces
+          vMatrix FLUX(NF,1); //computed flux on faces
           D.Zero();
           //assemble diagonal matrix, loop through faces and access corresponding entries
-          k = 0;
-          for(ElementArray<Face>::iterator faceK = facesK.begin(); faceK != facesK.end(); ++faceK) //loop over faces of current cell
+          for(int k = 0; k < NF; ++k) //loop over faces of current cell
           {
-            if( !faceK->Boundary() ) //face is on boundary
+            var_array LF = faces[k]->VariableArray(tag_LF);
+            variable & u = LF[(faces[k]->BackCell() == cell) ? 0 : 1]; //my flux value
+            if( faces[k].Boundary() ) 
             {
-              variable DK(cK->VariableArrayDV(tag_D)[k]);
-              Cell cL = cK->Neighbour(faceK->self()); //retrive neighbour
-              facesL = cL->getFaces(); //retrive faces of other cells
-              l = 0; //count face number 
-              for(ElementArray<Face>::iterator faceL = facesL.begin(); faceL != facesL.end(); ++faceL) //loop over faces of other cell
-              {
-                if( faceK->self() == faceL->self() ) //faces match - get flux entry
-                {
-                  variable DL(cL->VariableArrayDV(tag_D)[l]); //retrive flux entry as variable
-                  variable absDK = sqrt(DK*DK+reg_abs) + reg_div;
-                  variable absDL = sqrt(DL*DL+reg_abs) + reg_div;
-                  D(k,k) = absDL/(absDK+absDL); // compute absolute value and write to D matrix
-                  break;
-                }
-                l++; //advance the face number
-              }
+              D(k,k) = 1.0; // no flux balancing on the boundary
+              FLUX(k,0) = u; //restore matrix of fluxes
             }
             else
             {
-              D(k,k) = 1; //should somehow use the gradient defined on boundary
+              variable & v = LF[(faces[k]->BackCell() == cell) ? 1 : 0]; //neighbour flux value
+              //single flux definition
+              FLUX(k,0) = u;//(soft_abs(u,eps1)+eps2)*(soft_abs(v,eps1)+eps2)/(soft_abs(u,eps1)+soft_abs(v,eps1)+2*eps2)*(soft_sign(u,eps1) + soft_sign(v,eps1)); //restore matrix of fluxes
+              D(k,k) = 1.0;//FLUX(k,0) / u;
+              //dual flux definition
+              //FLUX(k,0) = u*D(k,k);
             }
-
-            real_array H = faceK->RealArrayDF(tag_H); //access structure for harmonic averaging
-            if( !faceK->Boundary() ) //internal face
-            {
-              Cell cL = cK->Neighbour(faceK->self()); //
-              real aL = (cK == faceK->BackCell()) ? H[3] : 1-H[3]; //harmonic coefficient for neighbour cell
-              real aK = 1 - aL; //harmonic coefficient for current cell
-              pL = P(faceK->FrontCell()); //retrive force on adjacent cell
-              pF(k,0) = pK*aK + pL*aL;
-            }
-            else if( faceK->HaveData(tag_P) ) //boundary condition
-              pF(k,0) = P(faceK->self()); //get pressure on boundary
-            else
-              pF(k,0) = pK; //get pressure in current cell
-
-            pF(k,0) -= pK; //substract pressure in the center to get differences
-
-            k++;
           }
-          vMatrix DGRAD = D*GRAD; //multiply the matrix with diagonal
-          rMatrix M(cK->RealArrayDV(tag_M).data(),NF,NF); //inner product matrix
-          vMatrix DIVGRADHp = DGRAD.Transpose()*M*DGRAD*pF; //cell-wise divgradp
-          //redistribute divgradp onto cells by applying H^T
-          enumerator indK = P.Index(cK->self()),indL;
-          Storage::real & ResidK = Residual[indK];
-          Sparse::Row & JacK = Jacobian[indK]; //access force in current cell
-          k = 0;
-          for(ElementArray<Face>::iterator face = facesK.begin(); face != facesK.end(); ++face) //go over faces
+          vMatrix DIV = -(D*GRAD).Transpose()*M; //cell-wise div
+
+          /*
+          std::cout << "D" << std::endl;
+          D.Print();
+          std::cout << "GRAD" << std::endl;
+          GRAD.Print();
+          std::cout << "M" << std::endl;
+          M.Print();
+          std::cout << "DIV" << std::endl;
+          DIV.Print();
+          */
+          vMatrix DIVKGRAD = DIV*FLUX;
+
+          //std::cout << "DIVKGRADp" << std::endl;
+          //DIVKGRAD.Print();
+
+          for(int k = 0; k < NF; ++k) //loop over faces of current cell
+            R[P.Index(cell)] -= DIVKGRAD(k,0);
+          for(int k = 0; k < NF; ++k) //loop over faces of current cell
           {
-            real_array H = face->RealArrayDF(tag_H); //access structure for harmonic averaging
-            if( !face->Boundary() ) //internal face
+            int index = P.Index(faces[k]);
+            if( tag_BC.isValid() && faces[k].HaveData(tag_BC) )
             {
-              Cell cL = cell->Neighbour(face->self());
-              real aL = (cK == face->BackCell()) ? H[3] : 1-H[3]; //harmonic coefficient for neighbour cell
-              real aK = 1 - aL; //harmonic coefficient for current cell
-              indL = P.Index(face->FrontCell());
-              Storage::real & ResidL = Residual[indL];
-              Sparse::Row & JacL = Jacobian[indL]; // access force in adjacent cell
-              //harmonic distribution
-              merger.Merge(JacK,1.0,JacK,-aK,DIVGRADHp(k,0).GetRow());// application of H^T with inner product in current cell
-              ResidK += DIVGRADHp(k,0).GetValue()*aK;
-              merger.Merge(JacL,1.0,JacL,-aL,DIVGRADHp(k,0).GetRow());// application of H^T with inner product in current cell
-              ResidL += DIVGRADHp(k,0).GetValue()*aL;
+              real_array BC = faces[k].RealArray(tag_BC);
+              R[index] += BC[0]*P(faces[k]) + BC[1]*FLUX(k,0) - BC[2];
             }
-            else 
-            {
-              indL = P.Index(face->self());
-              Storage::real & ResidL = Residual[indL];
-              Sparse::Row & JacL = Jacobian[indL]; // access force in adjacent cell
-              merger.Merge(JacK,1.0,JacK,-1.0,DIVGRADHp(k,0).GetRow());
-              ResidK += DIVGRADHp(k,0).GetValue();
-              merger.Merge(JacL,1.0,JacL,-1.0,DIVGRADHp(k,0).GetRow());
-              ResidL += DIVGRADHp(k,0).GetValue();
-            }
-            k++;
-          } //end of loop over faces
+            else
+              R[index] += DIVKGRAD(k,0);
+          }
         }
 
         if( tag_F.isValid() )
         {
-          for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
-            Residual[P.Index(cell->self())] += cell->RealDF(tag_F);
+          for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+          {
+            Cell cell = m->CellByLocalID(q);
+            if( cell->HaveData(tag_F) ) R[P.Index(cell)] -= cell->Real(tag_F)*cell->Volume();
+          }
         }
         
+        R.GetJacobian().Save("jacobian.mtx");
+        R.GetResidual().Save("residual.mtx");
 
-        Residual_norm = 0.0;
-        for(Sparse::Vector::iterator it = Residual.Begin(); it != Residual.End(); ++it) Residual_norm += (*it)*(*it); //compute residual norm on current iteration
 
-        std::cout << "Nonlinear residual: " << Residual_norm << std::endl;
+        std::cout << "Nonlinear residual: " << R.Norm() << std::endl;
 
         Solver S(Solver::INNER_MPTILUC);
-        S.SetMatrix(Jacobian);
-        S.SetParameterReal("drop_tolerance",1.0e-3);
-        S.SetParameterReal("reuse_tolerance",1.0e-6);
-        S.SetParameterEnum("gmres_substeps",4);
-        if( S.Solve(Residual,Update) )
+        S.SetMatrix(R.GetJacobian());
+        if( S.Solve(R.GetResidual(),Update) )
         {
-          for(Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell)
-            cell->Real(tag_P) += Update[P.Index(cell->self())];
+          for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+          {
+            Cell cell = m->CellByLocalID(q);
+            cell->Real(tag_P) -= Update[P.Index(cell)];
+          }
+          for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
+          {
+            Face face = m->FaceByLocalID(q);
+            face->Real(tag_P) -= Update[P.Index(face)];
+          }
+          m->Save("iter.vtk");
         }
         else
         {
           std::cout << "Unable to solve: " << S.GetReason() << std::endl;
         }
       
-      } while( Residual_norm > 1.0e-4 ); //check the residual norm
+      } while( R.Norm() > 1.0e-4 ); //check the residual norm
     } 
+    
+    if( m->HaveTag("REFERENCE_SOLUTION") )
+    {
+      Tag tag_E = m->CreateTag("ERRROR",DATA_REAL,CELL,NONE,1);
+      Tag tag_R = m->GetTag("REFERENCE_SOLUTION");
+      real C, L2, volume;
+      C = L2 = volume = 0.0;
+      for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+      {
+        Cell cell = m->CellByLocalID(q);
+        real err = cell->Real(tag_P) - cell->Real(tag_R);
+        real vol = cell->Volume();
+        if( C < err ) C = err;
+        L2 += err*err*vol;
+        volume += vol;
+        cell->Real(tag_E) = err;
+      }
+      L2 = sqrt(L2/volume);
+      std::cout << "Error on cells, C-norm " << C << " L2-norm " << L2 << std::endl;
+      C = L2 = volume = 0.0;
+      if( tag_R.isDefined(FACE) )
+      {
+        tag_E = m->CreateTag("ERRROR",DATA_REAL,FACE,NONE,1);
+        for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
+        {
+          Face face = m->FaceByLocalID(q);
+          real err = face->Real(tag_P) - face->Real(tag_R);
+          real vol = (face->BackCell()->Volume() + (face->FrontCell().isValid() ? face->FrontCell()->Volume() : 0))*0.5;
+          if( C < err ) C = err;
+          L2 += err*err*vol;
+          volume += vol;
+          face->Real(tag_E) = err;
+        }
+        L2 = sqrt(L2/volume);
+        std::cout << "Error on faces, C-norm " << C << " L2-norm " << L2 << std::endl;
+      }
+      else std::cout << "Reference solution was not defined on faces" << std::endl;
+    }
+
+    m->Save("out.gmv");
+    m->Save("out.vtk");
 
 		delete m; //clean up the mesh
 	}

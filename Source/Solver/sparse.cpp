@@ -7,6 +7,7 @@ namespace INMOST
 {
   namespace Sparse
   {
+    const std::string stubstring = "";
 
     bool _hasRowEntryType = false;
     INMOST_MPI_Type RowEntryType = INMOST_MPI_DATATYPE_NULL;
@@ -347,6 +348,13 @@ namespace INMOST
 		  INMOST_DATA_ENUM_TYPE i = to + size, j = from + size;
 		  if( size > 0 && to != from )
 			  while( j != from ) data[--j].MoveRow(data[--i]);
+      if( !text.empty() )
+      {
+        i = to + size;
+        j = from + size;
+        if( size > 0 && to != from )
+			    while( j != from ) text[--j] = text[--i];
+      }
 	  }
 
     
@@ -360,7 +368,9 @@ namespace INMOST
 		  INMOST_DATA_REAL_TYPE val;
 		  int size = 1, rank = 0;
   #if defined(USE_MPI)
-		  if( mend == ENUMUNDEF && mbeg == ENUMUNDEF )
+      int flag = 0;
+      MPI_Initialized(&flag);
+		  if( flag && mend == ENUMUNDEF && mbeg == ENUMUNDEF )
 		  {
 			  MPI_Comm_rank(GetCommunicator(),&rank);
 			  MPI_Comm_size(GetCommunicator(),&size);
@@ -410,7 +420,9 @@ namespace INMOST
 		  INMOST_DATA_REAL_TYPE val;
 		  int size = 1, rank = 0;
   #if defined(USE_MPI)
-		  if( mend == ENUMUNDEF && mbeg == ENUMUNDEF )
+      int flag = 0;
+      MPI_Initialized(&flag);
+		  if( flag && mend == ENUMUNDEF && mbeg == ENUMUNDEF )
 		  {
 			  MPI_Comm_rank(GetCommunicator(),&rank);
 			  MPI_Comm_size(GetCommunicator(),&size);
@@ -545,9 +557,7 @@ namespace INMOST
 		  mtx.precision(15);
 		  for(iterator it = Begin(); it != End(); ++it)
 		  {
-#if defined(MTX_ALLOW_ANNOTATION)
-        if( it->GetAnnotation() != "" ) mtx << "% " << it->GetAnnotation() << "\n";
-#endif
+        if( !text.empty() ) mtx << "% " << Annotation(it-Begin()).c_str() << "\n";
 			  for(Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
         {
 				  mtx << row << " " << jt->first+1 << " " << jt->second << "\n";
@@ -621,25 +631,22 @@ namespace INMOST
 		  output << mtx.rdbuf();
 #endif
 	  }
-    std::string Row::GetAnnotation() 
+    std::string & Matrix::Annotation(INMOST_DATA_ENUM_TYPE row) 
     {
-#if defined(MTX_ALLOW_ANNOTATION)
-      return std::string(annotation,strnlen(annotation,MTX_ANNOTATION_SIZE));
-#else
-      return "";
-#endif
+      if( text.empty() ) 
+      {
+        text.set_interval_beg(GetFirstIndex());
+        text.set_interval_end(GetLastIndex());
+      }
+      return text[row];
     }
-    void Row::SetAnnotation(std::string input) 
+    const std::string & Matrix::Annotation(INMOST_DATA_ENUM_TYPE row) const
     {
-#if defined(MTX_ALLOW_ANNOTATION)
-      strncpy(annotation,input.c_str(),MTX_ANNOTATION_SIZE);
-#endif
+      if( text.empty() ) return stubstring;
+      return text[row];
     }
     Row::Row() :data() 
     {
-#if defined(MTX_ALLOW_ANNOTATION)
-      annotation[0] = '\0';
-#endif
 #if defined(USE_OMP)
       omp_init_lock(&lock);
 #endif
@@ -647,9 +654,6 @@ namespace INMOST
     }
     Row::Row(const Row & other) :marker(other.marker),data(other.data) 
     { 
-#if defined(MTX_ALLOW_ANNOTATION)
-      strncpy(annotation,other.annotation,MTX_ANNOTATION_SIZE);
-#endif
 #if defined(USE_OMP)
       omp_init_lock(&lock);
 #endif
@@ -657,9 +661,6 @@ namespace INMOST
     }
     Row::Row(entry * pbegin, entry * pend) :data(pbegin, pend) 
     { 
-#if defined(MTX_ALLOW_ANNOTATION)
-      annotation[0] = '\0';
-#endif
 #if defined(USE_OMP)
       omp_init_lock(&lock);
 #endif
@@ -669,9 +670,6 @@ namespace INMOST
     { 
       data = other.data; 
       marker = other.marker; 
-#if defined(MTX_ALLOW_ANNOTATION)
-      strncpy(annotation,other.annotation,MTX_ANNOTATION_SIZE);
-#endif
       return *this; 
     }
     Row::~Row()
@@ -686,15 +684,26 @@ namespace INMOST
       bool tmp = marker; 
       marker = other.marker; 
       other.marker = tmp; 
-#if defined(MTX_ALLOW_ANNOTATION)
-      char tmpstr[MTX_ANNOTATION_SIZE];
-      strncpy(tmpstr,annotation,MTX_ANNOTATION_SIZE);
-      strncpy(annotation,other.annotation,MTX_ANNOTATION_SIZE);
-      strncpy(other.annotation,tmpstr,MTX_ANNOTATION_SIZE);
-#endif
 #if defined(USE_OMP)
       //swap locks?
 #endif
     }
+    void Matrix::SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end)
+    {
+      data.set_interval_beg(start); 
+      data.set_interval_end(end);
+      if( !text.empty() )
+      {
+        text.set_interval_beg(start);
+        text.set_interval_end(end);
+      }
+    }
+    void Matrix::ShiftInterval(INMOST_DATA_ENUM_TYPE shift) 
+    {
+      data.shift_interval(shift);
+      if( !text.empty() ) text.shift_interval(shift);
+    }
+
+
   }
 }
