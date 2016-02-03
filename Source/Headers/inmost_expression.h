@@ -1319,6 +1319,14 @@ namespace INMOST
       for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) ret += (*it)*(*it);
       return sqrt(ret);
     }
+    void Lock(INMOST_DATA_ENUM_TYPE row)
+    {
+      jacobian[row].Lock();
+    }
+    void Unlock(INMOST_DATA_ENUM_TYPE row)
+    {
+      jacobian[row].Unlock();
+    }
   };
 }
 

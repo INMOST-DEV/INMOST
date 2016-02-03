@@ -173,28 +173,35 @@ int main(int argc,char ** argv)
         ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
         int NF = (int)faces.size(); //number of faces;
         rMatrix IP(NF,NF), N(NF,3), R(NF,3); //matrices for inner product
+        rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
         //assemble matrices R and N
+        //follows chapter 5.1.4
+        //in the book "Mimetic Finite Difference Method for Elliptic Problems" 
+        //by Lourenco et al
         for(int k = 0; k < NF; ++k)
         {
           aF = faces[k]->Area();
           faces[k]->Centroid(yF); //point on face
           faces[k]->OrientedUnitNormal(cell->self(),nF);
-          // assemble R matrix, follows chapter 3.4.3 in the book "Mimetic Finite Difference Method for Elliptic Problems" by Lourenco et al
-          R(k,0) = (yF[0]-xP[0])*vP;
-          R(k,1) = (yF[1]-xP[1])*vP;
-          R(k,2) = (yF[2]-xP[2])*vP;
-          // assemble N matrix, follow chapter 3.4. in the book and projection operator definition from
-          // chapter 2.3.1 in "Mimetic scalar products of differential forms" by Brezzi et al
-          N(k,0) = nF[0]*aF;
-          N(k,1) = nF[1]*aF;
-          N(k,2) = nF[2]*aF;
+          // assemble R matrix, formula (5.29)
+          R(k,0) = (yF[0]-xP[0])*aF;
+          R(k,1) = (yF[1]-xP[1])*aF;
+          R(k,2) = (yF[2]-xP[2])*aF;
+          // assemble N marix, formula (5.25)
+          //N(k,0) = nF[0]*aF;
+          //N(k,1) = nF[1]*aF;
+          //N(k,2) = nF[2]*aF;
+          rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
+          N(k,0) = nK(0,0);
+          N(k,1) = nK(0,1);
+          N(k,2) = nK(0,2);
         } //end of loop over faces
-
-        //inner product definition from Corollary 4.2,  "Mimetic scalar products of differential forms" by Brezzi et al
+        // formula (5.31)
         IP = R*(R.Transpose()*N).Invert().first*R.Transpose(); // Consistency part
-        IP += (rMatrix::Unit(NF) - N*(N.Transpose()*N).Invert().first*N.Transpose())*(2.0/static_cast<real>(NF)*IP.Trace()); //Stability part
+        // formula (5.32)
+        IP += (rMatrix::Unit(NF) - N*(N.Transpose()*N).Invert().first*N.Transpose())*(1.0/(static_cast<real>(NF)*vP)*(R*K.Invert().first*R.Transpose()).Trace()); //Stability part
         //assert(IP.isSymmetric()); //test positive definitiness as well!
-        /*
+        
         if( !IP.isSymmetric() ) 
         {
           std::cout << "unsymmetric" << std::endl;
@@ -202,7 +209,7 @@ int main(int argc,char ** argv)
           std::cout << "check" << std::endl;
           (IP-IP.Transpose()).Print();
         }
-        */
+        
         real_array M = cell->RealArrayDV(tag_M); //access data structure for inner product matrix in mesh
         M.resize(NF*NF); //resize variable array
         std::copy(IP.data(),IP.data()+NF*NF,M.data()); //write down the inner product matrix
@@ -217,6 +224,8 @@ int main(int argc,char ** argv)
         real xP[3]; //center of the cell
         real yF[3]; //center of the face
         real nF[3]; //normal to the face
+        real aF; //area of the face
+        real vP = cell->Volume(); //volume of the cell
         cell->Centroid(xP);
         ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
         int NF = (int)faces.size(); //number of faces;
@@ -229,21 +238,22 @@ int main(int argc,char ** argv)
         GRAD.Zero();
         for(int k = 0; k < NF; ++k) //loop over faces
         {
+          aF = faces[k]->Area();
           faces[k]->Centroid(yF);
           faces[k]->OrientedUnitNormal(cell->self(),nF);
           // assemble matrix of directions
-          R(k,0) = (yF[0]-xP[0]);
-          R(k,1) = (yF[1]-xP[1]);
-          R(k,2) = (yF[2]-xP[2]);
+          R(k,0) = (yF[0]-xP[0])*aF;
+          R(k,1) = (yF[1]-xP[1])*aF;
+          R(k,2) = (yF[2]-xP[2])*aF;
           // assemble matrix of co-normals 
           rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
           NK(k,0) = nK(0,0);
           NK(k,1) = nK(0,1);
           NK(k,2) = nK(0,2);
-          k++;
         } //end of loop over faces
         GRAD = NK*(NK.Transpose()*R).Invert().first*NK.Transpose(); //stability part
-        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/NF*GRAD.Trace());
+        //GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(1.0/(static_cast<real>(NF)*vP)*(NK*K.Invert().first*NK.Transpose()).Trace());
+        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/(static_cast<real>(NF))*GRAD.Trace());
         real_array W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
         W.resize(NF*NF); //resize the structure
         std::copy(GRAD.data(),GRAD.data()+NF*NF,W.data()); //write down the gradient matrix
@@ -274,7 +284,6 @@ int main(int argc,char ** argv)
      
       Residual R("",aut.GetFirstIndex(),aut.GetLastIndex());
       Sparse::Vector Update  ("",aut.GetFirstIndex(),aut.GetLastIndex()); //vector for update
-      real Residual_norm = 0.0;
       
       {//Annotate matrix
         for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
@@ -370,7 +379,7 @@ int main(int argc,char ** argv)
             if( tag_BC.isValid() && faces[k].HaveData(tag_BC) )
             {
               real_array BC = faces[k].RealArray(tag_BC);
-              R[index] += BC[0]*P(faces[k]) + BC[1]*FLUX(k,0) - BC[2];
+              R[index] += BC[0]*P(faces[k]) + BC[1]*DIVKGRAD(k,0) - BC[2];
             }
             else
               R[index] += DIVKGRAD(k,0);
@@ -394,6 +403,7 @@ int main(int argc,char ** argv)
 
         Solver S(Solver::INNER_MPTILUC);
         S.SetMatrix(R.GetJacobian());
+        //std::fill(Update.Begin(),Update.End(),0.0);
         if( S.Solve(R.GetResidual(),Update) )
         {
           for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
