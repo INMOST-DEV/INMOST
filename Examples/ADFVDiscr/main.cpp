@@ -133,8 +133,8 @@ int main(int argc,char ** argv)
 		ttt = Timer();
 		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		S.SetParameterReal("absolute_tolerance",1e-8);
-		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
-		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors
+    Residual R; // Residual vector
+		Sparse::Vector Update; // Declare the solution and the right-hand side vectors
 		
 		Mesh::GeomParam table;
 		
@@ -154,10 +154,9 @@ int main(int argc,char ** argv)
       aut.EnumerateDynamicTags();
 
 		  // Set the indeces intervals for the matrix and vectors
-      A.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
-      x.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
-      b.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
-		  //~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
+      R.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
+      Update.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
+      //~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
       dynamic_variable Phi(aut,iphi);
 		  // Solve \nabla \cdot \nabla phi = f equation
 		  //for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
@@ -195,14 +194,9 @@ int main(int argc,char ** argv)
 				    bnd_pnt[2] = r1_cnt[2] + dist * f_nrm[2];
             T = r1->Real(tensor_K) * f_area / dist;
             //flux =  T * (func(bnd_pnt,0) - variable(aut,r1,iphi));
-            flux = T * (func(bnd_pnt,0) - Phi(r1));
-            A[i1].Lock();
-            r.PushRow(1.0,A[i1]);
-            r.AddRow(-1.0,flux.GetRow());
-            r.RetriveRow(A[i1]);
-            r.Clear();
-            b[i1] -= flux.GetValue();
-            A[i1].Unlock();
+            R[i1].Lock();
+            R[i1] -=  T * (func(bnd_pnt,0) - Phi(r1));
+            R[i1].Unlock();
 			    }
 			    else
 			    {
@@ -216,26 +210,17 @@ int main(int argc,char ** argv)
             flux = T * (Phi(r2) - Phi(r1));
 				    if( s1 != Element::Ghost )
 				    {
-              A[i1].Lock();
-              r.PushRow(1.0,A[i1]);
-              r.AddRow(-1.0,flux.GetRow());
-              r.RetriveRow(A[i1]);
-              r.Clear();
-              b[i1] -= flux.GetValue();
-              A[i1].Unlock();
+              R[i1].Lock();
+              R[i1] -= flux;
+              R[i1].Unlock();
 				    }
 				    if( s2 != Element::Ghost )
 				    {
-              A[i2].Lock();
-              r.PushRow(1.0,A[i2]);
-              r.AddRow(1.0,flux.GetRow());
-              r.RetriveRow(A[i2]);
-              r.Clear();
-              b[i2] += flux.GetValue();
-              A[i2].Unlock();
+              R[i2].Lock();
+              R[i2] += flux;
+              R[i2].Unlock();
 				    }
 			    }
-      
 		    }
       }
 #if defined(USE_OMP)
@@ -245,7 +230,7 @@ int main(int argc,char ** argv)
       {
         Cell cell = Cell(m,ComposeCellHandle(icell));
 			  if( cell->GetStatus() != Element::Ghost )
-				  b[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
+				  R[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
       }
 		  BARRIER
 		  if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
@@ -255,16 +240,16 @@ int main(int argc,char ** argv)
 		  if( argc > 3 ) // Save the matrix and RHS if required
 		  {
 			  ttt = Timer();
-			  A.Save(std::string(argv[2])); // "A.mtx"
-			  b.Save(std::string(argv[3])); // "b.rhs"
+        R.GetJacobian().Save(std::string(argv[2])); // "A.mtx"
+        R.GetResidual().Save(std::string(argv[3])); // "b.rhs"
 			  BARRIER
 			  if( m->GetProcessorRank() == 0 ) std::cout << "Save matrix \"" << argv[2] << "\" and RHS \"" << argv[3] << "\": " << Timer()-ttt << std::endl;
 		  }
 		
 		  ttt = Timer();
 		
-		  S.SetMatrix(A); // Compute the preconditioner for the original matrix
-		  S.Solve(b,x);   // Solve the linear system with the previously computted preconditioner
+      S.SetMatrix(R.GetJacobian()); // Compute the preconditioner for the original matrix
+      S.Solve(R.GetResidual(),Update);   // Solve the linear system with the previously computted preconditioner
 		
 		  BARRIER
 		  if( m->GetProcessorRank() == 0 ) 
@@ -293,7 +278,7 @@ int main(int argc,char ** argv)
 			    {
             Storage::real old = cell->Real(phi);
 				    Storage::real exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
-            Storage::real res = x[aut.GetDynamicIndex(cell->self(),iphi)];
+            Storage::real res = Update[aut.GetDynamicIndex(cell->self(),iphi)];
             Storage::real sol = old-res;
             Storage::real err = fabs (sol - exact);
   		      if (err > local_err_C) local_err_C = err;

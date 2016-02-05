@@ -527,7 +527,7 @@ namespace INMOST
       }
       return ret;
     }
-    std::pair<Matrix,bool> Invert() const
+    std::pair<Matrix,bool> Invert(bool print_fail = false) const
     {
       std::pair<Matrix,bool> ret = std::make_pair(Matrix(m,n),true);
       Matrix At = Transpose(); //m by n matrix
@@ -601,6 +601,7 @@ namespace INMOST
 			    if( ok ) AtA(i,i) = AtA(i,i) < 0.0 ? - 1.0e-12 : 1.0e-12;
 			    else
           {
+            if( print_fail ) std::cout << "Failed to invert matrix" << std::endl;
             ret.second = false;
             return ret;
           }
@@ -679,12 +680,15 @@ namespace INMOST
       }
       return true;
     }
-    Var DotProduct(const Matrix & other) const
+    template<typename typeB>
+    typename Promote<Var,typeB>::type DotProduct(const Matrix<typeB> & other) const
     {
       assert(n == other.n);
       assert(m == other.m);
-      Var ret = 0.0;
-      for(enumerator i = 0; i < n*m; ++i) ret += space[i]*other.space[i];
+      typename Promote<Var,typeB>::type ret = 0.0;
+      for(enumerator i = 0; i < n; ++i)
+        for(enumerator j = 0; j < m; ++j)
+          ret += ((*this)(i,j))*other(i,j);
       return ret;
     }
     Var FrobeniusNorm()

@@ -308,6 +308,8 @@ namespace INMOST
     INMOST_DATA_REAL_TYPE & value;
     Sparse::Row & entries;
   public:
+    void Lock() {entries.Lock();}
+    void Unlock() {entries.Unlock();}
     /// Constructor, set links to the provided value and entries
     multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row & _entries) 
       : value(_value), entries(_entries) {}
@@ -1318,14 +1320,6 @@ namespace INMOST
       INMOST_DATA_REAL_TYPE ret = 0;
       for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) ret += (*it)*(*it);
       return sqrt(ret);
-    }
-    void Lock(INMOST_DATA_ENUM_TYPE row)
-    {
-      jacobian[row].Lock();
-    }
-    void Unlock(INMOST_DATA_ENUM_TYPE row)
-    {
-      jacobian[row].Unlock();
     }
   };
 }

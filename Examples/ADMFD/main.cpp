@@ -99,6 +99,9 @@ int main(int argc,char ** argv)
     Tag tag_W;  // Gradient matrix acting on harmonic points on faces and returning gradient on faces
     Tag tag_D;  // Entries for scaling matrix D
     Tag tag_LF; // Coefficients of linearly computed fluxes on faces, 2 of them per internal face
+    Tag tag_MF; // Fluxes after inner product
+
+    tag_MF = m->CreateTag("IPFLUX",DATA_VARIABLE,FACE,NONE,1);
 
     if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
     { // Exchange ghost cells
@@ -139,14 +142,14 @@ int main(int argc,char ** argv)
         srand(1); // Randomization
         tag_P = m->CreateTag("PRESSURE",DATA_REAL,CELL|FACE,NONE,1); // Create a new tag for the pressure
         for(Mesh::iteratorElement e = m->BeginElement(CELL|FACE); e != m->EndElement(); ++e) //Loop over mesh cells
-          e->Real(tag_P) = (rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+            e->Real(tag_P) = 0;//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
       }
 
       if( !tag_P.isDefined(FACE) )
       {
         tag_P = m->CreateTag("PRESSURE",DATA_REAL,FACE,NONE,1);
         for(Mesh::iteratorElement e = m->BeginElement(FACE); e != m->EndElement(); ++e) //Loop over mesh cells
-          e->Real(tag_P) = (rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+            e->Real(tag_P) = 0;//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
       }
 
 
@@ -197,11 +200,11 @@ int main(int argc,char ** argv)
           N(k,2) = nK(0,2);
         } //end of loop over faces
         // formula (5.31)
-        IP = R*(R.Transpose()*N).Invert().first*R.Transpose(); // Consistency part
+        IP = R*(R.Transpose()*N).Invert(true).first*R.Transpose(); // Consistency part
         // formula (5.32)
-        IP += (rMatrix::Unit(NF) - N*(N.Transpose()*N).Invert().first*N.Transpose())*(1.0/(static_cast<real>(NF)*vP)*(R*K.Invert().first*R.Transpose()).Trace()); //Stability part
+        IP += (rMatrix::Unit(NF) - N*(N.Transpose()*N).Invert(true).first*N.Transpose())*(2.0/(static_cast<real>(NF)*vP)*(R*K.Invert(true).first*R.Transpose()).Trace()); //Stability part
         //assert(IP.isSymmetric()); //test positive definitiness as well!
-        
+        /*
         if( !IP.isSymmetric() ) 
         {
           std::cout << "unsymmetric" << std::endl;
@@ -209,7 +212,7 @@ int main(int argc,char ** argv)
           std::cout << "check" << std::endl;
           (IP-IP.Transpose()).Print();
         }
-        
+        */
         real_array M = cell->RealArrayDV(tag_M); //access data structure for inner product matrix in mesh
         M.resize(NF*NF); //resize variable array
         std::copy(IP.data(),IP.data()+NF*NF,M.data()); //write down the inner product matrix
@@ -235,25 +238,24 @@ int main(int argc,char ** argv)
         //for(int k = 0; k < 3; ++k) S(k,k) = sqrt(S(k,k));
         //rMatrix K = U*S*V;
         rMatrix GRAD(NF,NF), NK(NF,3), R(NF,3); //big gradient matrix, co-normals, directions
-        GRAD.Zero();
         for(int k = 0; k < NF; ++k) //loop over faces
         {
           aF = faces[k]->Area();
           faces[k]->Centroid(yF);
           faces[k]->OrientedUnitNormal(cell->self(),nF);
           // assemble matrix of directions
-          R(k,0) = (yF[0]-xP[0])*aF;
-          R(k,1) = (yF[1]-xP[1])*aF;
-          R(k,2) = (yF[2]-xP[2])*aF;
+            R(k,0) = (yF[0]-xP[0]);//*aF;
+            R(k,1) = (yF[1]-xP[1]);//*aF;
+            R(k,2) = (yF[2]-xP[2]);//*aF;
           // assemble matrix of co-normals 
           rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
           NK(k,0) = nK(0,0);
           NK(k,1) = nK(0,1);
           NK(k,2) = nK(0,2);
         } //end of loop over faces
-        GRAD = NK*(NK.Transpose()*R).Invert().first*NK.Transpose(); //stability part
-        //GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(1.0/(static_cast<real>(NF)*vP)*(NK*K.Invert().first*NK.Transpose()).Trace());
-        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/(static_cast<real>(NF))*GRAD.Trace());
+        GRAD = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //stability part
+        GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
+        //GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/(static_cast<real>(NF))*GRAD.Trace());
         real_array W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
         W.resize(NF*NF); //resize the structure
         std::copy(GRAD.data(),GRAD.data()+NF*NF,W.data()); //write down the gradient matrix
@@ -276,7 +278,6 @@ int main(int argc,char ** argv)
     { //Main loop for problem solution
       Automatizator aut(m); // declare class to help manage unknowns
       Automatizator::MakeCurrent(&aut);
-      Sparse::RowMerger & merger = aut.GetMerger(); //get structure that helps matrix assembly
       dynamic_variable P(aut,aut.RegisterDynamicTag(tag_P,CELL|FACE)); //register pressure as primary unknown
       variable calc; //declare variable that helps calculating the value with variations
       aut.EnumerateDynamicTags(); //enumerate all primary variables
@@ -304,6 +305,8 @@ int main(int argc,char ** argv)
       do
       {
         R.Clear(); //clean up the residual
+        for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
+          m->FaceByLocalID(q)->Variable(tag_MF) = 0.0;
         //First we need to evaluate the gradient at each cell for scaling matrix D
         for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) ) //loop over cells
         {
@@ -314,17 +317,22 @@ int main(int argc,char ** argv)
           rMatrix GRAD(cK->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
           vMatrix pF(NF,1); //vector of pressure differences on faces
           vMatrix FLUX(NF,1); //computed flux on faces
+          vMatrix MFLUX(NF,1);
+          rMatrix M(cell->RealArrayDV(tag_M).data(),NF,NF); //inner product matrix
           for(int k = 0; k < NF; ++k)
             pF(k,0) = P(faces[k]) - P(cK);
           FLUX = GRAD*pF; //fluxes on faces
           for(int k = 0; k < NF; ++k) //copy the computed flux value with variations into mesh
             faces[k]->VariableArray(tag_LF)[(faces[k]->BackCell() == cell)? 0 : 1] = FLUX(k,0);
+          MFLUX = M*FLUX;
+          for(int k = 0; k < NF; ++k)
+            faces[k]->Variable(tag_MF) += MFLUX(k,0)*(faces[k].FaceOrientedOutside(cell) ? 1 : -1);
         } //end of loop over cells
 
         //Now we need to assemble and transpose nonlinear gradient matrix
         for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) ) //loop over cells
         {
-          const real eps1 = 1.0e-7;
+          const real eps1 = 1.0e-3;
           const real eps2 = 1.0e-9;
           Cell cell = m->CellByLocalID(q);
           ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
@@ -348,11 +356,27 @@ int main(int argc,char ** argv)
             {
               variable & v = LF[(faces[k]->BackCell() == cell) ? 1 : 0]; //neighbour flux value
               //single flux definition
-              FLUX(k,0) = u;//(soft_abs(u,eps1)+eps2)*(soft_abs(v,eps1)+eps2)/(soft_abs(u,eps1)+soft_abs(v,eps1)+2*eps2)*(soft_sign(u,eps1) + soft_sign(v,eps1)); //restore matrix of fluxes
-              D(k,k) = 1.0;//FLUX(k,0) / u;
+              /*
+              FLUX(k,0) = (soft_abs(u,eps1)+eps2)*(soft_abs(v,eps1)+eps2)/(soft_abs(u,eps1)+soft_abs(v,eps1)+2*eps2)*(soft_sign(u,eps1) + soft_sign(v,eps1)); //restore matrix of fluxes
+              if( u*v > 0 )
+                  D(k,k) = 2.0*(soft_abs(v,eps1)+eps2)/(soft_abs(u,eps1)+soft_abs(v,eps1)+2*eps2);
+              else
+                  D(k,k) = 0;
+              */
+              //D(k,k) = FLUX(k,0) / u;
               //dual flux definition
               //FLUX(k,0) = u*D(k,k);
+              //  FLUX(k,0) = ((u*u+eps2)*v+(v*v+eps2)*u)/(u*u+v*v + 2*eps2);
+              
+                //D(k,k) = 1;//(v*v+eps2)/(u*u+v*v+2*eps2);
+                if( u*v < 0 )
+                  D(k,k) = (2*(soft_abs(v,eps1)+eps2)/(soft_abs(u,eps1)+soft_abs(v,eps1)+2*eps2));
+                else
+                  D(k,k) = eps2;
+                D(k,k) = 1;
+                FLUX(k,0) = u*D(k,k);
             }
+            //FLUX(k,0) = faces[k]->Variable(tag_MF)*(faces[k].FaceOrientedOutside(cell) ? 1 : -1);
           }
           vMatrix DIV = -(D*GRAD).Transpose()*M; //cell-wise div
 
@@ -379,10 +403,10 @@ int main(int argc,char ** argv)
             if( tag_BC.isValid() && faces[k].HaveData(tag_BC) )
             {
               real_array BC = faces[k].RealArray(tag_BC);
-              R[index] += BC[0]*P(faces[k]) + BC[1]*DIVKGRAD(k,0) - BC[2];
+              R[index] -= BC[0]*P(faces[k]) + BC[1]*DIVKGRAD(k,0) - BC[2];
             }
             else
-              R[index] += DIVKGRAD(k,0);
+              R[index] -= DIVKGRAD(k,0);
           }
         }
 
@@ -391,7 +415,7 @@ int main(int argc,char ** argv)
           for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
           {
             Cell cell = m->CellByLocalID(q);
-            if( cell->HaveData(tag_F) ) R[P.Index(cell)] -= cell->Real(tag_F)*cell->Volume();
+            if( cell->HaveData(tag_F) ) R[P.Index(cell)] += cell->Real(tag_F)*cell->Volume();
           }
         }
         
@@ -403,6 +427,8 @@ int main(int argc,char ** argv)
 
         Solver S(Solver::INNER_MPTILUC);
         S.SetMatrix(R.GetJacobian());
+          S.SetParameterReal("drop_tolerance", 1.0e-4);
+          S.SetParameterReal("reuse_tolerance", 1.0e-6);
         //std::fill(Update.Begin(),Update.End(),0.0);
         if( S.Solve(R.GetResidual(),Update) )
         {
@@ -421,6 +447,7 @@ int main(int argc,char ** argv)
         else
         {
           std::cout << "Unable to solve: " << S.GetReason() << std::endl;
+            break;
         }
       
       } while( R.Norm() > 1.0e-4 ); //check the residual norm
@@ -437,7 +464,7 @@ int main(int argc,char ** argv)
         Cell cell = m->CellByLocalID(q);
         real err = cell->Real(tag_P) - cell->Real(tag_R);
         real vol = cell->Volume();
-        if( C < err ) C = err;
+        if( C < fabs(err) ) C = fabs(err);
         L2 += err*err*vol;
         volume += vol;
         cell->Real(tag_E) = err;
@@ -453,7 +480,7 @@ int main(int argc,char ** argv)
           Face face = m->FaceByLocalID(q);
           real err = face->Real(tag_P) - face->Real(tag_R);
           real vol = (face->BackCell()->Volume() + (face->FrontCell().isValid() ? face->FrontCell()->Volume() : 0))*0.5;
-          if( C < err ) C = err;
+          if( C < fabs(err) ) C = fabs(err);
           L2 += err*err*vol;
           volume += vol;
           face->Real(tag_E) = err;
