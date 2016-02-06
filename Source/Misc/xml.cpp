@@ -7,7 +7,7 @@
 namespace INMOST
 {
 
-  int get_priority(char c)
+  static int get_priority(char c)
   {
     switch(c)
     {
@@ -22,14 +22,14 @@ namespace INMOST
     }
   }
 
-  int ConvertHex(char in)
+  static int ConvertHex(char in)
   {
     int ret = tolower(in) - 48;
     if( ret > 10 ) ret -= 7;
     if( ret > 15 ) ret -= 32;
     return ret;
   }
-  char atoc(const char * str)
+  static char atoc(const char * str)
   {
     return (char)(ConvertHex(str[0])*16 + ConvertHex(str[1]));
   }
@@ -62,7 +62,7 @@ namespace INMOST
   }
 #endif
 
-  char * sstrip(char * str)
+  static char * sstrip(char * str)
   {
 	  int text_start = 0, text_end = (int)strlen(str);
 	  for(text_start = 0; isspace(str[text_start]) && text_start < text_end; text_start++);
@@ -72,7 +72,7 @@ namespace INMOST
 	  return str+text_start;
   }
 
-  std::string sstrip(const std::string & input)
+  static std::string sstrip(const std::string & input)
   {
 
 	  char temp[2048];

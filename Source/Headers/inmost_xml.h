@@ -12,10 +12,7 @@ namespace INMOST
 #if defined(USE_AUTODIFF)
   std::string VariableToString(INMOST::Storage::var v);
 #endif
-  char * sstrip(char * str);
-  std::string sstrip(const std::string & input);
-  int ConvertHex(char in);
-  char atoc(const char * str);
+  
     
 
   class XMLReader

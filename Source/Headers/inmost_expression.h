@@ -1312,14 +1312,45 @@ namespace INMOST
     }
     void Clear()
     {
-      ClearResidual();
-      ClearJacobian();
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+      {
+        residual[k] = 0.0;
+        jacobian[k].Clear();
+      }
     }
     INMOST_DATA_REAL_TYPE Norm()
     {
       INMOST_DATA_REAL_TYPE ret = 0;
-      for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) ret += (*it)*(*it);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+        ret += residual[k]*residual[k];
       return sqrt(ret);
+    }
+    /// Normalize entries in jacobian and right hand side
+    void Rescale()
+    {
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
+      {
+        INMOST_DATA_REAL_TYPE norm = 0.0;
+        for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+          norm += jacobian[k].GetValue(q)*jacobian[k].GetValue(q);
+        norm = sqrt(norm);
+        if( norm )
+        {
+          norm = 1.0/norm;
+          residual[k] *= norm;
+          for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+            jacobian[k].GetValue(q) *= norm;
+        }
+      }
     }
   };
 }

@@ -182,7 +182,6 @@ int main(int argc,char ** argv)
 			    face->UnitNormal(f_nrm); // Get the face normal
 			    r1->Centroid(r1_cnt);  // Get the barycenter of the cell
 			    face->Centroid(f_cnt); // Get the barycenter of the face
-          Sparse::RowMerger & r = aut.GetMerger();
 			    if( !r2->isValid() ) // boundary condition
 			    {
 				    Storage::real bnd_pnt[3], dist;
