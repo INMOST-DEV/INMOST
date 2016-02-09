@@ -29,6 +29,16 @@
 #include <istream>
 #include <vector>
 #include <stdint.h>
+#if _MSC_VER == 1800
+#if !defined(UINT64_MAX)
+#define UINT64_MAX 0xffffffffffffffffU
+typedef unsigned long long uint64_t;
+#endif // UINT64_MAX
+#if !defined(UINT32_MAX)
+#define UINT32_MAX 0xffffffff
+typedef unsigned int uint32_t;
+#endif // UINT32_MAX
+#endif
 namespace INMOST
 {
 	

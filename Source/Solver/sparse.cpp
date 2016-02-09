@@ -557,7 +557,7 @@ namespace INMOST
 		  mtx.precision(15);
 		  for(iterator it = Begin(); it != End(); ++it)
 		  {
-        if( !text.empty() ) mtx << "% " << Annotation(it-Begin()).c_str() << "\n";
+        if( !text.empty() ) mtx << "% " << Annotation((INMOST_DATA_ENUM_TYPE)(it-Begin())).c_str() << "\n";
 			  for(Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
         {
 				  mtx << row << " " << jt->first+1 << " " << jt->second << "\n";

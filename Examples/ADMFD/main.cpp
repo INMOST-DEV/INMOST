@@ -270,9 +270,9 @@ int main(int argc,char ** argv)
                       for(int j = 0; j < NF; ++j) if( i != j )
                       {
                           s += vW(i,j)*faces[j].Area();
-                          phi += (vW(i,j)+abs(vW(i,j)))*(vW(i,j)+abs(vW(i,j)));
+                          phi += (vW(i,j)+fabs(vW(i,j)))*(vW(i,j)+fabs(vW(i,j)));
                       }
-                      phi += (s - abs(s))*(s - abs(s));
+                      phi += (s - fabs(s))*(s - fabs(s));
                   }
                   //std::cout << "[" << iter << "] phi: " << get_value(phi) << "\r" << std::endl;
                   Sparse::Row & der = phi.GetRow(); //row of derivatives
