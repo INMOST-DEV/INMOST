@@ -22,7 +22,7 @@ namespace INMOST
   void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr)
   {
     Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
-    expr.GetDerivative(1.0,merger);
+    expr.GetJacobian(1.0,merger);
     merger.RetriveRow(entries);
     merger.Clear();
   }
@@ -31,15 +31,15 @@ namespace INMOST
   {
     Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
     merger.PushRow(multme,entries);
-    expr.GetDerivative(multit,merger);
+    expr.GetJacobian(multit,merger);
     merger.RetriveRow(entries);
     merger.Clear();
   }
 
-  void FromGetDerivative(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r)
+  void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r)
   {
     Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
-    expr.GetDerivative(mult,merger);
+    expr.GetJacobian(mult,merger);
     merger.AddRow(1.0,r);
     merger.RetriveRow(r);
     merger.Clear();
