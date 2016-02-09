@@ -177,12 +177,12 @@ int main(int argc,char ** argv)
         //K0.SVD(U,S,V);
         //for(int k = 0; k < 3; ++k) S(k,k) = sqrt(S(k,k));
         //rMatrix K = U*S*V;
-        rMatrix nKGRAD(NF,NF), NK(NF,3), R(NF,3); //big gradient matrix, co-normals, directions
+        rMatrix nKGRAD(NF,NF), NK(NF,3), R(NF,3), D(NF,NF), U(NF,NF), Areas(NF,1); //big gradient matrix, co-normals, directions
         for(int k = 0; k < NF; ++k) //loop over faces
         {
-          aF = faces[k]->Area();
-          faces[k]->Centroid(yF);
-          faces[k]->OrientedUnitNormal(cell->self(),nF);
+          aF = faces[k].Area();
+          faces[k].Centroid(yF);
+          faces[k].OrientedUnitNormal(cell->self(),nF);
           // assemble matrix of directions
           R(k,0) = (yF[0]-xP[0])*aF;
           R(k,1) = (yF[1]-xP[1])*aF;
@@ -193,10 +193,125 @@ int main(int argc,char ** argv)
           NK(k,1) = nK(0,1);
           NK(k,2) = nK(0,2);
         } //end of loop over faces
+          rMatrix SU,SS,SV;
         nKGRAD = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //stability part
-        nKGRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
-        //nKGRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/(static_cast<real>(NF))*nKGRAD.Trace());
-        real_array W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
+        /*
+          std::cout << "W" << std::endl;
+          nKGRAD.Print();
+          nKGRAD.SVD(SU,SS,SV);
+          std::cout << "U" << std::endl;
+          SU.Print();
+          std::cout << "S" << std::endl;
+          SS.Print();
+          std::cout << "V" << std::endl;
+          SV.Print();
+          std::cout << "Check " << (nKGRAD - SU*SS*SV.Transpose()).FrobeniusNorm() << std::endl;
+        */
+          
+          int rank = 0; //size of matrix U
+          
+          { //Retrive orthogonal to R matrix D
+              //Symmetric orthogonal matrix
+              rMatrix DUD = (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose());
+              //perfrom singular value decomposition
+              //S should be unity matrix with rank NF-3
+              rMatrix DUD_U,DUD_S,DUD_V;
+              DUD.SVD(DUD_U,DUD_S,DUD_V);
+              //compute the rank
+              for(int q = 0; q < NF; ++q)
+                  if( DUD_S(q,q) > 1.0e-2 )
+                      rank++;
+              rank = NF-3;
+              if( rank != NF-3)
+              {
+                  std::cout << "rank: " << rank << " expected " << NF-3 << std::endl;
+                  DUD_S.Print();
+              }
+              //chop matrix to the full rank
+              DUD_S.RemoveSubset(rank,NF,rank,NF);
+              DUD_V.RemoveColumns(rank,NF);
+              //assign the matrix
+              D = DUD_V;
+              U = DUD_S;
+          }
+          //std::cout << "D" << std::endl;
+          //D.Print();
+          //std::cout << "U" << std::endl;
+          //U.Print();
+          //std::cout << "DtR" << std::endl;
+          //(D.Transpose()*R).Print();
+          
+          U *=(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
+          
+          { //Make W a Z-matrix
+              vMatrix vU(rank,rank), vW(NF,NF);
+              int unk = 0;
+              for(int i = 0; i < rank; ++i)
+                  vU(i,i) = unknown(U(i,i),unk++);
+              for(int i = 0; i < rank; ++i)
+                  for(int j = i+1; j < rank; ++j)
+                  {
+                      vU(i,j) = unknown(0.0,unk);
+                      vU(j,i) = unknown(0.0,unk);
+                      unk++;
+                  }
+              //std::cout << "unknowns: " << unk << std::endl;
+              variable phi,s;
+              int iter = 0;
+              do
+              { //Optimize U matrix
+                  vW = nKGRAD + D*vU*D.Transpose();
+                  //construct minimization functional phi(W)
+                  phi = 0.0;
+                  for(int i = 0; i < NF; ++i)
+                  {
+                      phi += 1.0 / (vW(i,i)*vW(i,i));
+                      s = vW(i,i)*faces[i].Area();
+                      for(int j = 0; j < NF; ++j) if( i != j )
+                      {
+                          s += vW(i,j)*faces[j].Area();
+                          phi += (vW(i,j)+abs(vW(i,j)))*(vW(i,j)+abs(vW(i,j)));
+                      }
+                      phi += (s - abs(s))*(s - abs(s));
+                  }
+                  //std::cout << "[" << iter << "] phi: " << get_value(phi) << "\r" << std::endl;
+                  Sparse::Row & der = phi.GetRow(); //row of derivatives
+                  //std::sort(der.Begin(),der.End());
+                  //for(int i = 0; i < der.Size(); ++i)
+                  //    std::cout << "(" << der.GetIndex(i) << "," << der.GetValue(i) << ") ";
+                  //std::cout<<std::endl;
+                  int q = 0;
+                  real a = 0.05;
+                  for(int i = 0; i < rank; ++i)
+                      vU(i,i) -= a*der[q++];
+                  for(int i = 0; i < rank; ++i)
+                      for(int j = i+1; j < rank; ++j)
+                      {
+                          real d = a*der[q++];
+                          vU(i,j) -= d;
+                          vU(j,i) -= d;
+                      }
+                  iter++;
+              }
+              while(iter < 6 && phi > 1.0e-3);
+              for(int i = 0; i < rank; ++i)
+                  for(int j = 0; j < rank; ++j)
+                      U(i,j) = get_value(vU(i,j));
+              //std::cout << "U: " << std::endl;
+              //U.Print();
+              
+              
+          }
+          
+          //std::cout << "UDtR" << std::endl;
+          //(U*D.Transpose()*R).Print();
+
+        nKGRAD += D*U*D.Transpose();
+          
+          //std::cout << "W: " << std::endl;
+          //nKGRAD.Print();
+
+          real_array W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
         W.resize(NF*NF); //resize the structure
         std::copy(nKGRAD.data(),nKGRAD.data()+NF*NF,W.data()); //write down the gradient matrix
       } //end of loop over cells
@@ -301,11 +416,11 @@ int main(int argc,char ** argv)
 
         if( R.Norm() < 1.0e-4 ) break;
 
-        Solver S(Solver::INNER_MPTILUC);
+        Solver S(Solver::INNER_ILU2);
         S.SetMatrix(R.GetJacobian());
         S.SetParameterReal("relative_tolerance", 1.0e-14);
         S.SetParameterReal("absolute_tolerance", 1.0e-12);
-        S.SetParameterReal("drop_tolerance", 1.0e-2);
+        S.SetParameterReal("drop_tolerance", 1.0e-3);
         S.SetParameterReal("reuse_tolerance", 1.0e-4);
         //std::fill(Update.Begin(),Update.End(),0.0);
         if( S.Solve(R.GetResidual(),Update) )

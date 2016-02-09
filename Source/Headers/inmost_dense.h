@@ -63,17 +63,63 @@ namespace INMOST
       space.resize((n-1)*m);
       --n;
     }
+    void RemoveRows(enumerator first, enumerator last)
+    {
+      enumerator shift = last-first;
+      for(enumerator k = last+1; k < n; ++k)
+      {
+        for(enumerator l = 0; l < m; ++l)
+        (*this)(k-shift-1,l) = (*this)(k,l);
+      }
+      space.resize((n-shift)*m);
+      n-=shift;
+    }
     void RemoveColumn(enumerator col)
     {
-      array<Var> tmp(n*(m-1));
+      Matrix<Var> tmp(n,m-1);
       for(enumerator k = 0; k < n; ++k)
       {
+        for(enumerator l = 0; l < col; ++l)
+            tmp(k,l) = (*this)(k,l);
         for(enumerator l = col+1; l < m; ++l)
-          (*this)(k,l-1) = (*this)(k,l);
+          tmp(k,l-1) = (*this)(k,l);
       }
-      space.swap(tmp);
-      --m;
+      this->Swap(tmp);
     }
+      void RemoveColumns(enumerator first, enumerator last)
+      {
+          enumerator shift = last-first;
+          Matrix<Var> tmp(n,m-shift);
+          for(enumerator k = 0; k < n; ++k)
+          {
+              for(enumerator l = 0; l < first; ++l)
+                  tmp(k,l) = (*this)(k,l);
+              for(enumerator l = last+1; l < m; ++l)
+                  tmp(k,l-shift-1) = (*this)(k,l);
+          }
+          this->Swap(tmp);
+      }
+      void RemoveSubset(enumerator firstrow, enumerator lastrow, enumerator firstcol, enumerator lastcol)
+      {
+          enumerator shiftrow = lastrow-firstrow;
+          enumerator shiftcol = lastcol-firstcol;
+          Matrix<Var> tmp(n-shiftrow, m-shiftcol);
+          for(enumerator k = 0; k < firstrow; ++k)
+          {
+              for(enumerator l = 0; l < firstcol; ++l)
+                  tmp(k,l) = (*this)(k,l);
+              for(enumerator l = lastcol+1; l < m; ++l)
+                  tmp(k,l-shiftcol-1) = (*this)(k,l);
+          }
+          for(enumerator k = lastrow+1; k < n; ++k)
+          {
+              for(enumerator l = 0; l < firstcol; ++l)
+                  tmp(k-shiftrow-1,l) = (*this)(k,l);
+              for(enumerator l = lastcol+1; l < m; ++l)
+                  tmp(k-shiftrow-1,l-shiftcol-1) = (*this)(k,l);
+          }
+          this->Swap(tmp);
+      }
     void Swap(Matrix & b)
     {
       space.swap(b.space);
@@ -392,7 +438,7 @@ namespace INMOST
     }
     Matrix & operator =(Matrix const & other)
     {
-      space.resize(other.n*other.m);
+      if( n*m != other.n*other.m ) space.resize(other.n*other.m);
       for(enumerator i = 0; i < other.n*other.m; ++i)
         space[i] = other.space[i];
       n = other.n;
@@ -427,7 +473,9 @@ namespace INMOST
       assert(Rows() == other.Rows());
       assert(Cols() == other.Cols());
       Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
-      for(enumerator k = 0; k < n*m; ++k) ret.space[k] = space[k]-other.space[k];
+        for(enumerator i = 0; i < Rows(); ++i)
+            for(enumerator j = 0; j < Cols(); ++j)
+                ret(i,j) = (*this)(i,j)-other(i,j);
       return ret;
     }
     Matrix & operator-=(const Matrix & other)
@@ -443,7 +491,9 @@ namespace INMOST
       assert(Rows() == other.Rows());
       assert(Cols() == other.Cols());
       Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
-      for(enumerator k = 0; k < n*m; ++k) ret.space[k] = space[k]+other.space[k];
+      for(enumerator i = 0; i < Rows(); ++i)
+          for(enumerator j = 0; j < Cols(); ++j)
+              ret(i,j) = (*this)(i,j)+other(i,j);
       return ret;
     }
     Matrix & operator+=(const Matrix & other)
@@ -457,7 +507,8 @@ namespace INMOST
     Matrix<typename Promote<Var,typeB>::type> operator*(typeB coef) const
     {
       Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
-      for(enumerator k = 0; k < n*m; ++k) ret.space[k] = space[k]*coef;
+      for(enumerator i = 0; i < Rows(); ++i)
+        for(enumerator j = 0; j < Cols(); ++j) ret(i,j) = (*this)(i,j)*coef;
       return ret;
     }
     Matrix & operator*=(Var coef)
@@ -469,7 +520,8 @@ namespace INMOST
     Matrix<typename Promote<Var,typeB>::type> operator/(typeB coef) const
     {
       Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
-      for(enumerator k = 0; k < n*m; ++k) ret.space[k] = space[k]/coef;
+        for(enumerator i = 0; i < Rows(); ++i)
+            for(enumerator j = 0; j < Cols(); ++j) ret(i,j) = (*this)(i,j)/coef;
       return ret;
     }
     Matrix & operator/=(Var coef)
@@ -661,8 +713,12 @@ namespace INMOST
         for(enumerator l = 0; l < m; ++l) 
         {
           if( fabs(get_value((*this)(k,l))) > threshold )
+#if defined(USE_AUTODIFF)
             std::cout << std::setw(10) << get_value((*this)(k,l));
-          else 
+#else
+            std::cout << std::setw(10) << (*this)(k,l);
+#endif
+          else
             std::cout << std::setw(10) << 0;
           std::cout << " ";
         }
