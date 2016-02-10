@@ -27,7 +27,7 @@ const real reg_abs = 1.0e-12; //regularize abs(x) as sqrt(x*x+reg_abs)
 const real reg_div = 1.0e-15; //regularize (|x|+reg_div)/(|x|+|y|+2*reg_div) to reduce to 1/2 when |x| ~= |y| ~= 0
 
 
-
+#define OPTIMIZATION
 
 int main(int argc,char ** argv)
 {
@@ -159,7 +159,7 @@ int main(int argc,char ** argv)
       ttt = Timer();
       //Assemble gradient matrix W on cells
 #if defined(USE_OMP)
-#pragma omp parallel for
+//#pragma omp parallel for
 #endif
       for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
       {
@@ -242,30 +242,44 @@ int main(int argc,char ** argv)
           //(D.Transpose()*R).Print();
           
           U *=(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
-          
+#if defined(OPTIMIZATION)
           { //Make W a Z-matrix
-              vMatrix vU(rank,rank), vW(NF,NF);
+              vMatrix vL(rank,rank), vD(rank,rank), vW(NF,NF);
               int unk = 0;
+              // U = L*D*L^T
+              vD.Zero();
+              //diagonal D
               for(int i = 0; i < rank; ++i)
-                  vU(i,i) = unknown(U(i,i),unk++);
-              for(int i = 0; i < rank; ++i)
-                  for(int j = i+1; j < rank; ++j)
+              {
+                  vD(i,i) = unknown(U(i,i),unk);
+                  unk++;
+              }
+              //off-diagonal 
+              vL.Zero();
+              for(int i = 0; i < rank; ++i) 
+                vL(i,i) = 1.0;
+              for(int i = 1; i < rank; ++i)
+                  for(int j = 0; j < i; ++j)
                   {
-                      vU(i,j) = unknown(0.0,unk);
-                      vU(j,i) = unknown(0.0,unk);
+                      vL(i,j) = unknown(0.0,unk);
                       unk++;
                   }
               //std::cout << "unknowns: " << unk << std::endl;
               variable phi,s;
+              //std::cout << "vD" << std::endl;
+              //vD.Print();
+              //std::cout << "vL" << std::endl;
+              //vL.Print();
+
               int iter = 0;
               do
               { //Optimize U matrix
-                  vW = nKGRAD + D*vU*D.Transpose();
+                  vW = nKGRAD + D*vL*vD*vL.Transpose()*D.Transpose();
                   //construct minimization functional phi(W)
                   phi = 0.0;
                   for(int i = 0; i < NF; ++i)
                   {
-                      phi += 1.0 / (vW(i,i)*vW(i,i));
+                      //phi += 1.0 / (vW(i,i)*vW(i,i));
                       s = vW(i,i)*faces[i].Area();
                       for(int j = 0; j < NF; ++j) if( i != j )
                       {
@@ -274,35 +288,48 @@ int main(int argc,char ** argv)
                       }
                       phi += (s - fabs(s))*(s - fabs(s));
                   }
-                  //std::cout << "[" << iter << "] phi: " << get_value(phi) << "\r" << std::endl;
                   Sparse::Row & der = phi.GetRow(); //row of derivatives
                   //std::sort(der.Begin(),der.End());
                   //for(int i = 0; i < der.Size(); ++i)
                   //    std::cout << "(" << der.GetIndex(i) << "," << der.GetValue(i) << ") ";
                   //std::cout<<std::endl;
                   int q = 0;
-                  real a = 0.05;
+                  real a = 0.00005;
+                  real minvD = 1.0e20;
+                  //diagonal
                   for(int i = 0; i < rank; ++i)
-                      vU(i,i) -= a*der[q++];
-                  for(int i = 0; i < rank; ++i)
-                      for(int j = i+1; j < rank; ++j)
+                  {
+                    real d = a*der[q++];
+                    //if( vD(i,i)-d > 0.0 ) 
+                      vD(i,i) -= d;
+                    if( vD(i,i) < minvD ) minvD = get_value(vD(i,i));
+                  }
+                  std::cout << "[" << iter << "] phi: " << get_value(phi) << " minD " << minvD << std::endl;
+                  //off-diagonal
+                  for(int i = 1; i < rank; ++i)
+                      for(int j = 0; j < i; ++j)
                       {
                           real d = a*der[q++];
-                          vU(i,j) -= d;
-                          vU(j,i) -= d;
+                          vL(i,j) -= d;
                       }
                   iter++;
+                  //std::cout << "vD" << std::endl;
+                  //vD.Print();
+                  //std::cout << "vL" << std::endl;
+                  //vL.Print();
+              } while(iter < 100 && phi > 1.0e-3);
+              {
+                vMatrix vU = vL*vD*vL.Transpose();
+                for(int i = 0; i < rank; ++i)
+                    for(int j = 0; j < rank; ++j)
+                        U(i,j) = get_value(vU(i,j));
               }
-              while(iter < 6 && phi > 1.0e-3);
-              for(int i = 0; i < rank; ++i)
-                  for(int j = 0; j < rank; ++j)
-                      U(i,j) = get_value(vU(i,j));
               //std::cout << "U: " << std::endl;
               //U.Print();
               
               
           }
-          
+#endif
           //std::cout << "UDtR" << std::endl;
           //(U*D.Transpose()*R).Print();
 
