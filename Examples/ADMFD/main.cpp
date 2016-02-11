@@ -27,7 +27,7 @@ const real reg_abs = 1.0e-12; //regularize abs(x) as sqrt(x*x+reg_abs)
 const real reg_div = 1.0e-15; //regularize (|x|+reg_div)/(|x|+|y|+2*reg_div) to reduce to 1/2 when |x| ~= |y| ~= 0
 
 
-#define OPTIMIZATION
+//#define OPTIMIZATION
 
 int main(int argc,char ** argv)
 {
@@ -388,7 +388,6 @@ int main(int argc,char ** argv)
       do
       {
         R.Clear(); //clean up the residual
-        //First we need to evaluate the gradient at each cell for scaling matrix D
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -443,7 +442,7 @@ int main(int argc,char ** argv)
 
         if( R.Norm() < 1.0e-4 ) break;
 
-        Solver S(Solver::INNER_ILU2);
+        Solver S(Solver::INNER_MPTILUC);
         S.SetMatrix(R.GetJacobian());
         S.SetParameterReal("relative_tolerance", 1.0e-14);
         S.SetParameterReal("absolute_tolerance", 1.0e-12);

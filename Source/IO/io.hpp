@@ -29,16 +29,28 @@
 #include <istream>
 #include <vector>
 #include <stdint.h>
-#if _MSC_VER == 1800
+
+#define ct_assert(e) extern char (*ct_assert(void)) [sizeof(char[1 - 2*!(e)])]
+
+/////////////////////////////////////////
+// The code below is a workaround for 
+// Visual Studio 2013. In some cases
+// it may not define uint32_t and uint64_t
+// types in stdint.h header.
+#if _MSC_VER == 1800 //Visual Studio 2013
 #if !defined(UINT64_MAX)
 #define UINT64_MAX 0xffffffffffffffffU
+ct_assert(sizeof(unsigned long long) == 8); //this will fail during compilation if the type is not 64-bit
 typedef unsigned long long uint64_t;
 #endif // UINT64_MAX
 #if !defined(UINT32_MAX)
 #define UINT32_MAX 0xffffffff
+ct_assert(sizeof(unsigned int) == 4); //this will fail during compilation if the type is not 32-bit
 typedef unsigned int uint32_t;
 #endif // UINT32_MAX
-#endif
+#endif //_MSC_VER == 1800
+//////////////////////////////////////////
+
 namespace INMOST
 {
 	

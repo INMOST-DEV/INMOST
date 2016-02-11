@@ -23,6 +23,11 @@
 // 5. Consider optimization by checking zero variation multipliers, check that assembly do not degrade.
 // 6. Document everything
 
+//This should stop Visual Studio from complaining of very long auto-generated class types
+#ifdef _MSC_VER
+#pragma warning(disable : 4503)
+#endif
+
 
 
 #if defined(USE_AUTODIFF)
@@ -186,17 +191,7 @@ namespace INMOST
     INMOST_DATA_REAL_TYPE operator()(const Storage & e) const {return var.Value(e);}
   };
 
-  class store_variable
-  {
-    abstract_dynamic_variable * var;
-  public:
-    store_variable(const abstract_dynamic_variable & var) : var(var.Copy()) {}
-    ~store_variable() {delete var;}
-    template<typename T>
-    get_variable<T> get_variable() {return get_variable<T>(*var);}
-    abstract_dynamic_variable & retrive() {return *var;}
-    const abstract_dynamic_variable & retrive() const {return *var;}
-  };
+  
 
 
 
@@ -227,6 +222,28 @@ namespace INMOST
     operator Derived & () {return *static_cast<Derived *>(this);}
     operator const Derived & () const {return *static_cast<const Derived *>(this);}
     virtual abstract_dynamic_variable * Copy() const { return static_cast<const Derived *>(this)->Copy(); }
+  };
+
+  class stored_variable_expression : public shell_dynamic_variable<multivar_expression,stored_variable_expression>
+  {
+    abstract_dynamic_variable * var;
+  public:
+    stored_variable_expression() : var(NULL) {}
+    stored_variable_expression(const abstract_dynamic_variable & pvar) : var(pvar.Copy()) {}
+    stored_variable_expression(const stored_variable_expression & other) : var(other.var->Copy()) {}
+    ~stored_variable_expression() {delete var; var = NULL;}
+    stored_variable_expression operator =(stored_variable_expression const & other) {var = other.var->Copy(); return *this;}
+    stored_variable_expression operator =(const abstract_dynamic_variable & pvar) {var = pvar.Copy(); return *this;}
+    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return var->Value(e);}
+    multivar_expression Variable(const Storage & e) const {return var->Variable(e);}
+    multivar_expression operator [](const Storage & e) const {return var->Variable(e);}
+    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+
+    template<typename T>
+    get_variable<T> get_variable() {return get_variable<T>(*var);}
+    abstract_dynamic_variable & retrive_expression() {return *var;}
+    const abstract_dynamic_variable & retrive_expression() const {return *var;}
   };
 	
   
@@ -378,7 +395,7 @@ namespace INMOST
     const keyval_table & Table;
   public:
     table_variable(const shell_dynamic_variable<typename A::Var,A> & parg, const keyval_table & ptable) : Arg(parg), Table(ptable) {}
-    table_variable(const table_variable & other) : Arg(other.Arg), Table(other.table) {}
+    table_variable(const table_variable & other) : Arg(other.Arg), Table(other.Table) {}
     table_variable & operator = (table_variable const & other) {Arg = other.Arg; Table = other.Table; return * this;}
     multivar_expression Variable(const Storage & e) const
     {
@@ -534,7 +551,7 @@ template<class A>          __INLINE                        INMOST::unary_const_c
 template<class B>          __INLINE                     INMOST::unary_const_custom_variable<INMOST::const_subtraction_expression<typename B::Var>,B> operator-(INMOST_DATA_REAL_TYPE Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::unary_const_custom_variable<INMOST::const_subtraction_expression<typename B::Var>,B>(Right, Left); }
 template<class A>          __INLINE                        INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A> operator-(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A>(Left, -Right); }
 template<class A>          __INLINE                                                                                      INMOST::stencil_variable<A>   stencil(INMOST::Automatizator & aut, INMOST_DATA_ENUM_TYPE stncl, INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg, void * user_data = NULL) { return INMOST::stencil_variable<A>(aut,stncl,Arg,user_data); }
-template<class A>          __INLINE                                                                                        INMOST::table_variable<A> get_table(INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg, const INMOST::keyval_table & Table) {return INMOST::table_variable<A>(Table,Arg);}
+template<class A>          __INLINE                                                                                        INMOST::table_variable<A> get_table(INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg, const INMOST::keyval_table & Table) {return INMOST::table_variable<A>(Arg,Table);}
 
   
   
