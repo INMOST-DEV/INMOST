@@ -269,7 +269,7 @@ namespace INMOST
       for(INMOST_DATA_ENUM_TYPE i = 0; i < end; i++) rJ.GetValue(i) *= beta;
 		  for(INMOST_DATA_ENUM_TYPE i = 0; i < end; i++) 
       {
-        index & ind = GetIndex(i);
+        const index & ind = GetIndex(i);
         if( ind.first == ind.second )
           rJ[ind.first] += alpha*rU.get_safe(ind.first)*GetValue(i);
         else
@@ -875,34 +875,40 @@ namespace INMOST
     }
     bool LockService::Lock(INMOST_DATA_ENUM_TYPE row)
     {
+        assert( !locks.empty() );
 #if defined(USE_OMP)
-      if( locks.empty() ) return false;
-      omp_set_lock(&locks[row]);
-      return true;
+        omp_set_lock(&locks[row]);
+#else
+        locks[row] = 1;
 #endif
+        return true;
     }
     bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row)
     {
 #if defined(USE_OMP)
-      if( locks.empty() ) 
-      {
-        std::cout << "You have to call to LockService::SetInterval to use locks" << std::endl;
-        return false;
-      }
       if( omp_test_lock(&locks[row]) )
         return true;
       else
         return false;
+#else
+        if( locks[row] == 1 )
+            return false;
+        else
+        {
+            locks[row] = 1;
+            return true;
+        }
 #endif
-      return true; //Say that the lock has locked
     }
     bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row)
     {
+     assert( !locks.empty() );
 #if defined(USE_OMP)
-      if( locks.empty() ) return false;
       omp_unset_lock(&locks[row]);
-      return true;
+#else
+      locks[row] = 0;
 #endif
+      return true;
     }
     void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
     {
@@ -910,15 +916,23 @@ namespace INMOST
       locks.set_interval_beg(beg);
       locks.set_interval_end(end);
       for(INMOST_DATA_ENUM_TYPE k = beg; k < end; ++k)
+      {
+#if defined(USE_OMP)
         omp_init_lock(&locks[k]);
+#else
+        locks[k] = 0;
+#endif
+      }
     }
     void LockService::DestroyLocks()
     {
+#if defined(USE_OMP)
       INMOST_DATA_ENUM_TYPE kbeg,kend;
       kbeg = locks.get_interval_beg();
       kend = locks.get_interval_end();
       for(INMOST_DATA_ENUM_TYPE k = kbeg; k < kend; ++k)
         omp_destroy_lock(&locks[k]);
+#endif
     }
     void HessianMatrix::MatVec(INMOST_DATA_REAL_TYPE alpha, const Sparse::Matrix & U, INMOST_DATA_REAL_TYPE beta, Sparse::Matrix & J) const //y = alpha*A*x + beta * y
 	  {

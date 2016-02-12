@@ -131,6 +131,12 @@
 #define INMOST_MPI_GROUP_EMPTY MPI_GROUP_EMPTY
 #endif
 
+#if !defined(USE_OMP)
+#define INMOST_OMP_LOCK_T      int
+#else
+#define INMOST_OMP_LOCK_T      omp_lock_t
+#endif
+
 
 #define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warnings
 

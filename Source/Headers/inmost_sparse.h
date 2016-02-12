@@ -294,9 +294,7 @@ namespace INMOST
       /// This class can be used for shared access to matrix with OpenMP.
       class LockService
       {
-#if defined(USE_OMP)
-        interval<INMOST_DATA_ENUM_TYPE,omp_lock_t> locks;
-#endif
+        interval<INMOST_DATA_ENUM_TYPE,INMOST_OMP_LOCK_T> locks;
         void DestroyLocks();
       public:
         LockService(INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0) { if( end != start ) SetInterval(start,end); }
