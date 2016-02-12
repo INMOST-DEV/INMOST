@@ -144,10 +144,14 @@ namespace INMOST
     {
       INMOST_DATA_REAL_TYPE ret = 0;
 #if defined(USE_OMP)
-#pragma omp for
+#pragma omp for reduction(+:ret)
 #endif
       for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
         ret += residual[k]*residual[k];
+#if defined(USE_MPI)
+        INMOST_DATA_REAL_TYPE tmp = ret;
+        MPI_Allreduce(&tmp, &ret, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, jacobian.GetCommunicator());
+#endif
       return sqrt(ret);
     }
     /// Normalize entries in jacobian and right hand side

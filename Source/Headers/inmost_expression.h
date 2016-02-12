@@ -900,6 +900,30 @@ namespace INMOST
       left.GetJacobian(mult*ldmult,r);
       right.GetJacobian(mult*rdmult,r);
     }
+    /*
+    __INLINE void GetHessian(Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        Sparse::Row JL, JR;
+        Sparse::HessianRow HL, HR;
+        left.GetHessian(JL,HL);
+        right.GetHessian(JR,HR);
+        //preallocate J to JL.Size+JR.Size
+        //perform merging of two sorted arrays
+        //resize to correct size
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < JL.Size(); ++k) J[JL.GetIndex(k)] += right.GetValue()*JL.GetValue(k);
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < JR.Size(); ++k) J[JR.GetIndex(k)] += left.GetValue()*JR.GetValue(k);
+        //preallocate H to HL.Size+HR.Size+JL.Size*JR.Size
+        //merge sorted
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < HL.Size(); ++k) H[HL.GetIndex(k)] += right.GetValue()*HL.GetValue(k);
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < HR.Size(); ++k) H[HR.GetIndex(k)] += left.GetValue()*HR.GetValue(k);
+        
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < JL.Size(); ++k)
+        {
+            for(INMOST_DATA_ENUM_TYPE m = 0; m < JR.Size(); ++m)
+                H[Sparse::HessianRow::make_index(JL.GetIndex(k), JR.GetIndex(m))] += 2*JL.GetValue(k)*JR.GetValue(m);
+        }
+    }
+     */
   };
 
   template<class A, class B>

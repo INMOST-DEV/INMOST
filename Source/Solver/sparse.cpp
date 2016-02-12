@@ -849,113 +849,103 @@ namespace INMOST
 	  }
 
     
-    void Matrix::Swap(Matrix & other) 
-		{
-			data.swap(other.data);
-			name.swap(other.name);
-      std::swap(comm,other.comm);
-      std::swap(is_parallel,other.is_parallel);
-		}
-
-    void HessianMatrix::Swap(HessianMatrix & other) 
-		{
-			data.swap(other.data);
-			name.swap(other.name);
-      std::swap(comm,other.comm);
-      std::swap(is_parallel,other.is_parallel);
-		}
-
-    bool LockService::HaveLocks() const
-    {
-#if defined(USE_OMP)
-      return !locks.empty();
-#else
-      return false;
-#endif
-    }
-    bool LockService::Lock(INMOST_DATA_ENUM_TYPE row)
-    {
-        assert( !locks.empty() );
-#if defined(USE_OMP)
-        omp_set_lock(&locks[row]);
-#else
-        locks[row] = 1;
-#endif
-        return true;
-    }
-    bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row)
-    {
-#if defined(USE_OMP)
-      if( omp_test_lock(&locks[row]) )
-        return true;
-      else
-        return false;
-#else
-        if( locks[row] == 1 )
-            return false;
-        else
-        {
-            locks[row] = 1;
-            return true;
-        }
-#endif
-    }
-    bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row)
-    {
-     assert( !locks.empty() );
-#if defined(USE_OMP)
-      omp_unset_lock(&locks[row]);
-#else
-      locks[row] = 0;
-#endif
-      return true;
-    }
-    void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
-    {
-      if( !locks.empty() ) DestroyLocks();
-      locks.set_interval_beg(beg);
-      locks.set_interval_end(end);
-      for(INMOST_DATA_ENUM_TYPE k = beg; k < end; ++k)
+      void Matrix::Swap(Matrix & other)
       {
-#if defined(USE_OMP)
-        omp_init_lock(&locks[k]);
-#else
-        locks[k] = 0;
-#endif
+          data.swap(other.data);
+          name.swap(other.name);
+          std::swap(comm,other.comm);
+          std::swap(is_parallel,other.is_parallel);
       }
-    }
-    void LockService::DestroyLocks()
-    {
+      
+      void HessianMatrix::Swap(HessianMatrix & other)
+      {
+          data.swap(other.data);
+          name.swap(other.name);
+          std::swap(comm,other.comm);
+          std::swap(is_parallel,other.is_parallel);
+      }
 #if defined(USE_OMP)
-      INMOST_DATA_ENUM_TYPE kbeg,kend;
-      kbeg = locks.get_interval_beg();
-      kend = locks.get_interval_end();
-      for(INMOST_DATA_ENUM_TYPE k = kbeg; k < kend; ++k)
-        omp_destroy_lock(&locks[k]);
+      bool LockService::HaveLocks() const
+      {
+          return !locks.empty();
+      }
+      bool LockService::Lock(INMOST_DATA_ENUM_TYPE row)
+      {
+          assert( !locks.empty() );
+          omp_set_lock(&locks[row]);
+          return true;
+      }
+      bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row)
+      {
+          assert( !locks.empty() );
+          if( omp_test_lock(&locks[row]) )
+              return true;
+          else
+              return false;
+      }
+      bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row)
+      {
+          assert( !locks.empty() );
+          omp_unset_lock(&locks[row]);
+          return true;
+      }
+      void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+      {
+          if( !locks.empty() ) DestroyLocks();
+          if( end != beg )
+          {
+              locks.set_interval_beg(beg);
+              locks.set_interval_end(end);
+              for(INMOST_DATA_ENUM_TYPE k = beg; k < end; ++k)
+                  omp_init_lock(&locks[k]);
+          }
+      }
+      void LockService::DestroyLocks()
+      {
+          INMOST_DATA_ENUM_TYPE kbeg,kend;
+          kbeg = locks.get_interval_beg();
+          kend = locks.get_interval_end();
+          for(INMOST_DATA_ENUM_TYPE k = kbeg; k < kend; ++k)
+              omp_destroy_lock(&locks[k]);
+      }
+      INMOST_DATA_ENUM_TYPE  LockService::GetFirstIndex() const {return locks.get_interval_beg();}
+      INMOST_DATA_ENUM_TYPE  LockService::GetLastIndex() const {return locks.get_interval_end();}
+      bool LockService::Empty() const {return locks.empty();}
+      void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = locks.get_interval_beg(); end = locks.get_interval_end();}
+#else
+      bool LockService::HaveLocks() const {return false;}
+      bool LockService::Lock(INMOST_DATA_ENUM_TYPE row) {return true;}
+      bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row) {return true;}
+      bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row) {return true;}
+      void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) {}
+      void LockService::DestroyLocks() {}
+      INMOST_DATA_ENUM_TYPE  LockService::GetFirstIndex() const {return 0;}
+      INMOST_DATA_ENUM_TYPE  LockService::GetLastIndex() const {return 0;}
+      bool LockService::Empty() const {return true;}
+      void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = 0; end = 0;}
 #endif
-    }
-    void HessianMatrix::MatVec(INMOST_DATA_REAL_TYPE alpha, const Sparse::Matrix & U, INMOST_DATA_REAL_TYPE beta, Sparse::Matrix & J) const //y = alpha*A*x + beta * y
-	  {
-		  INMOST_DATA_ENUM_TYPE mbeg, mend;
-		  INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
-		  if( J.Empty() )
-		  {
-			  INMOST_DATA_ENUM_TYPE vbeg,vend;
-			  GetInterval(vbeg,vend);
-			  J.SetInterval(vbeg,vend);
-		  }
-		  //CHECK SOMEHOW FOR DEBUG THAT PROVIDED VECTORS ARE OK
-		  //~ assert(GetFirstIndex() == out.GetFirstIndex());
-		  //~ assert(Size() == out.Size());
-		  GetInterval(mbeg,mend);
-		  imbeg = mbeg;
-		  imend = mend;
+      void HessianMatrix::MatVec(INMOST_DATA_REAL_TYPE alpha, const Sparse::Matrix & U, INMOST_DATA_REAL_TYPE beta, Sparse::Matrix & J) const //y = alpha*A*x + beta * y
+      {
+          INMOST_DATA_ENUM_TYPE mbeg, mend;
+          INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
+          if( J.Empty() )
+          {
+              INMOST_DATA_ENUM_TYPE vbeg,vend;
+              GetInterval(vbeg,vend);
+              J.SetInterval(vbeg,vend);
+          }
+          //CHECK SOMEHOW FOR DEBUG THAT PROVIDED VECTORS ARE OK
+          //~ assert(GetFirstIndex() == out.GetFirstIndex());
+          //~ assert(Size() == out.Size());
+          GetInterval(mbeg,mend);
+          imbeg = mbeg;
+          imend = mend;
 #if defined(USE_OMP)
 #pragma omp for private(ind)
 #endif
-		  for(ind = imbeg; ind < imend; ++ind) //iterate rows of matrix
-        (*this)[ind].RowVec(alpha,U[ind],beta,J[ind]);
-		  // outer procedure should update J Matrix, if needed
-	  }
+          for(ind = imbeg; ind < imend; ++ind) //iterate rows of matrix
+              (*this)[ind].RowVec(alpha,U[ind],beta,J[ind]);
+          // outer procedure should update J Matrix, if needed
+      }
   }
 }
