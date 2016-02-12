@@ -37,6 +37,11 @@ int main(int argc,char ** argv)
 #endif
 	if( argc > 1 )
 	{
+    std::cout << "Row: " << sizeof(Sparse::Row) << std::endl;
+    std::cout << "HessianRow: " << sizeof(Sparse::HessianRow) << std::endl;
+    std::cout << "Matrix: " << sizeof(Sparse::Matrix) << std::endl;
+    std::cout << "HessianMatrix: " << sizeof(Sparse::HessianMatrix) << std::endl;
+    std::cout << "variable: " << sizeof(multivar_expression) << std::endl;
     double ttt; // Variable used to measure timing
     bool repartition = false; // Is it required to redistribute the mesh?
 		Mesh * m = new Mesh(); // Create an empty mesh
@@ -365,21 +370,22 @@ int main(int argc,char ** argv)
 
      
       Residual R("",aut.GetFirstIndex(),aut.GetLastIndex());
+      Sparse::LockService Locks(aut.GetFirstIndex(),aut.GetLastIndex());
+      Sparse::AnnotationService Text(aut.GetFirstIndex(),aut.GetLastIndex());
       Sparse::Vector Update  ("",aut.GetFirstIndex(),aut.GetLastIndex()); //vector for update
-      
       {//Annotate matrix
         for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
         {
           Cell cell = m->CellByLocalID(q);
-          R.GetJacobian().Annotation(P.Index(cell)) = "Cell-centered pressure value";
+          Text.SetAnnotation(P.Index(cell),"Cell-centered pressure value");
         }
         for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
         {
           Face face = m->FaceByLocalID(q);
           if( tag_BC.isValid() && face.HaveData(tag_BC) )
-            R.GetJacobian().Annotation(P.Index(face)) = "Pressure guided by boundary condition";
+            Text.SetAnnotation(P.Index(face),"Pressure guided by boundary condition");
           else
-            R.GetJacobian().Annotation(P.Index(face)) = "Interface pressure";
+            Text.SetAnnotation(P.Index(face),"Interface pressure");
         }
       }
 
@@ -388,6 +394,7 @@ int main(int argc,char ** argv)
       do
       {
         R.Clear(); //clean up the residual
+        double tttt = Timer();
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -407,7 +414,7 @@ int main(int argc,char ** argv)
           for(int k = 0; k < NF; ++k) //loop over faces of current cell
           {
             int index = P.Index(faces[k]);
-            R[index].Lock();
+            Locks.Lock(index);
             if( tag_BC.isValid() && faces[k].HaveData(tag_BC) )
             {
               real_array BC = faces[k].RealArray(tag_BC);
@@ -415,7 +422,7 @@ int main(int argc,char ** argv)
             }
             else
               R[index] -= FLUX(k,0);
-            R[index].Unlock();
+            Locks.UnLock(index);
           }
         } //end of loop over cells
 
@@ -432,9 +439,11 @@ int main(int argc,char ** argv)
           }
         }
 
+        std::cout << "assembled in " << Timer() - tttt << "\t\t\t" << std::endl;
+
 
         R.Rescale();
-        R.GetJacobian().Save("jacobian.mtx");
+        R.GetJacobian().Save("jacobian.mtx",&Text);
         R.GetResidual().Save("residual.mtx");
 
 

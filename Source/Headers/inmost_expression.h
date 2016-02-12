@@ -110,6 +110,7 @@ namespace INMOST
   {
     INMOST_DATA_REAL_TYPE value;
     Sparse::Row entries;
+    Sparse::HessianRow hessian_entries;
   public:
     multivar_expression() :value(0) {}
     multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
@@ -311,12 +312,11 @@ namespace INMOST
   class multivar_expression_reference : public shell_expression<multivar_expression_reference>
   {
     INMOST_DATA_REAL_TYPE & value;
-    Sparse::Row & entries;
+    Sparse::Row * entries;
+    Sparse::HessianRow * hessian_entries;
   public:
-    void Lock() {entries.Lock();}
-    void Unlock() {entries.Unlock();}
     /// Constructor, set links to the provided value and entries
-    multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row & _entries) 
+    multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row * _entries) 
       : value(_value), entries(_entries) {}
     /// Copy constructor, sets links to the same reference of value and entries
     multivar_expression_reference(const multivar_expression_reference & other) 
@@ -328,7 +328,7 @@ namespace INMOST
     /// Retrive derivatives with multiplier into Sparse::RowMerger structure.
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
     {
-      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+      for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
         r[it->first] += it->second*mult;
     }
     /// Retrive derivatives with multiplier into Sparse::Row structure.
@@ -338,53 +338,53 @@ namespace INMOST
         FromGetJacobian(*this,mult,r);
       else
       {
-        for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+        for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
           r[it->first] += it->second*mult;
       }
     }
     __INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
     {
       value = pvalue;
-      entries.Clear();
+      entries->Clear();
       return *this;
     }
     __INLINE multivar_expression_reference & operator = (basic_expression const & expr)
     {
       value = expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        FromBasicExpression(entries,expr);
+        FromBasicExpression(*entries,expr);
       else
       {
         Sparse::Row tmp;
         expr.GetJacobian(1.0,tmp);
-        entries.Swap(tmp);
+        entries->Swap(tmp);
       }
       return *this;
     }
     __INLINE multivar_expression_reference & operator = (multivar_expression_reference const & other)
     {
       value = other.GetValue();
-      entries = other.GetRow();
+      *entries = other.GetRow();
       return *this;
     }
     __INLINE multivar_expression_reference & operator = (multivar_expression const & other)
     {
       value = other.GetValue();
-      entries = other.GetRow();
+      *entries = other.GetRow();
       return *this;
     }
-    __INLINE Sparse::Row & GetRow() {return entries;}
-    __INLINE const Sparse::Row & GetRow() const {return entries;}
+    __INLINE Sparse::Row & GetRow() {return *entries;}
+    __INLINE const Sparse::Row & GetRow() const {return *entries;}
     __INLINE multivar_expression_reference & operator +=(basic_expression const & expr)
     {
       value += expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,1.0,1.0,expr);
+        AddBasicExpression(*entries,1.0,1.0,expr);
       else
       { 
-        Sparse::Row tmp(entries);
+        Sparse::Row tmp(*entries);
         expr.GetJacobian(1.0,tmp);
-        entries.Swap(tmp);
+        entries->Swap(tmp);
       }
       return *this;
     }
@@ -392,12 +392,12 @@ namespace INMOST
     {
       value -= expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,1.0,-1.0,expr);
+        AddBasicExpression(*entries,1.0,-1.0,expr);
       else
       {
-        Sparse::Row tmp(entries);
+        Sparse::Row tmp(*entries);
         expr.GetJacobian(-1.0,tmp);
-        entries.Swap(tmp);
+        entries->Swap(tmp);
       }
       return *this;
     }
@@ -405,13 +405,13 @@ namespace INMOST
     {
       INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,rval,lval,expr);
+        AddBasicExpression(*entries,rval,lval,expr);
       else
       {
-        Sparse::Row tmp(entries);
+        Sparse::Row tmp(*entries);
         for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
         expr.GetJacobian(lval,tmp);
-        entries.Swap(tmp);
+        entries->Swap(tmp);
       }
       value *= rval;
       return *this;
@@ -422,13 +422,13 @@ namespace INMOST
       INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
       value *= reciprocial_rval;
       if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,reciprocial_rval,-value*reciprocial_rval,expr);
+        AddBasicExpression(*entries,reciprocial_rval,-value*reciprocial_rval,expr);
       else
       {
-        Sparse::Row tmp(entries);
+        Sparse::Row tmp(*entries);
         for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
         expr.GetJacobian(-value*reciprocial_rval,tmp); 
-        entries.Swap(tmp);
+        entries->Swap(tmp);
       }
       return *this;
     }
@@ -445,19 +445,19 @@ namespace INMOST
     __INLINE multivar_expression_reference & operator *=(INMOST_DATA_REAL_TYPE right)
     {
       value *= right;
-      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second *= right;
+      for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it) it->second *= right;
       return *this;
     }
     __INLINE multivar_expression_reference & operator /=(INMOST_DATA_REAL_TYPE right)
     {
       value /= right;
-      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second /= right;
+      for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it) it->second /= right;
       return *this;
     }
     bool check_nans() const
     {
       if( value != value ) return true;
-      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+      for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
         if( it->second != it->second ) return true;
       return false;
     }
@@ -1269,95 +1269,6 @@ namespace INMOST
 
   typedef multivar_expression variable;
   typedef var_expression unknown;
-
-  class Residual
-  {
-    Sparse::Matrix jacobian;
-    Sparse::Vector residual;
-  public:
-    Residual(std::string name = "", INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0, INMOST_MPI_Comm _comm = INMOST_MPI_COMM_WORLD)
-      : jacobian(name,start,end,_comm),residual(name,start,end,_comm) {}
-    Residual(const Residual & other)
-      : jacobian(other.jacobian), residual(other.residual)
-    {}
-    Residual & operator =(Residual const & other)
-    {
-      jacobian = other.jacobian;
-      residual = other.residual;
-      return *this;
-    }
-    Sparse::Matrix & GetJacobian() {return jacobian;}
-    const Sparse::Matrix & GetJacobian() const {return jacobian;}
-    Sparse::Vector & GetResidual() {return residual;}
-    const Sparse::Vector & GetResidual() const {return residual;}
-    INMOST_DATA_ENUM_TYPE GetFirstIndex() const {return residual.GetFirstIndex();}
-    INMOST_DATA_ENUM_TYPE GetLastIndex() const {return residual.GetLastIndex();}
-    void GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const 
-    {
-      start = residual.GetFirstIndex(); 
-      end = residual.GetLastIndex();
-    }
-    void SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
-    {
-      jacobian.SetInterval(beg,end);
-      residual.SetInterval(beg,end);
-    }
-    multivar_expression_reference operator [](INMOST_DATA_ENUM_TYPE row)
-    {
-      return multivar_expression_reference(residual[row],jacobian[row]);
-    }
-    void ClearResidual()
-    {
-      for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) (*it) = 0.0;
-    }
-    void ClearJacobian()
-    {
-      for(Sparse::Matrix::iterator it = jacobian.Begin(); it != jacobian.End(); ++it)
-        it->Clear();
-    }
-    void Clear()
-    {
-#if defined(USE_OMP)
-#pragma omp for
-#endif
-      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
-      {
-        residual[k] = 0.0;
-        jacobian[k].Clear();
-      }
-    }
-    INMOST_DATA_REAL_TYPE Norm()
-    {
-      INMOST_DATA_REAL_TYPE ret = 0;
-#if defined(USE_OMP)
-#pragma omp for
-#endif
-      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
-        ret += residual[k]*residual[k];
-      return sqrt(ret);
-    }
-    /// Normalize entries in jacobian and right hand side
-    void Rescale()
-    {
-#if defined(USE_OMP)
-#pragma omp for
-#endif
-      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
-      {
-        INMOST_DATA_REAL_TYPE norm = 0.0;
-        for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
-          norm += jacobian[k].GetValue(q)*jacobian[k].GetValue(q);
-        norm = sqrt(norm);
-        if( norm )
-        {
-          norm = 1.0/norm;
-          residual[k] *= norm;
-          for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
-            jacobian[k].GetValue(q) *= norm;
-        }
-      }
-    }
-  };
 }
 
 

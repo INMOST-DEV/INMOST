@@ -4,6 +4,7 @@
 #include "inmost_common.h"
 #include "inmost_mesh.h"
 #include "inmost_solver.h"
+#include "inmost_variable.h"
 #include <sstream> //for debug
 
 //#define NEW_VERSION
@@ -83,6 +84,94 @@ namespace INMOST
 	class expr;
 	
 	
+  class Residual
+  {
+    Sparse::Matrix jacobian;
+    Sparse::Vector residual;
+  public:
+    Residual(std::string name = "", INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0, INMOST_MPI_Comm _comm = INMOST_MPI_COMM_WORLD)
+      : jacobian(name,start,end,_comm),residual(name,start,end,_comm) {}
+    Residual(const Residual & other)
+      : jacobian(other.jacobian), residual(other.residual)
+    {}
+    Residual & operator =(Residual const & other)
+    {
+      jacobian = other.jacobian;
+      residual = other.residual;
+      return *this;
+    }
+    Sparse::Matrix & GetJacobian() {return jacobian;}
+    const Sparse::Matrix & GetJacobian() const {return jacobian;}
+    Sparse::Vector & GetResidual() {return residual;}
+    const Sparse::Vector & GetResidual() const {return residual;}
+    INMOST_DATA_ENUM_TYPE GetFirstIndex() const {return residual.GetFirstIndex();}
+    INMOST_DATA_ENUM_TYPE GetLastIndex() const {return residual.GetLastIndex();}
+    void GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const 
+    {
+      start = residual.GetFirstIndex(); 
+      end = residual.GetLastIndex();
+    }
+    void SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+    {
+      jacobian.SetInterval(beg,end);
+      residual.SetInterval(beg,end);
+    }
+    multivar_expression_reference operator [](INMOST_DATA_ENUM_TYPE row)
+    {
+      return multivar_expression_reference(residual[row],&jacobian[row]);
+    }
+    void ClearResidual()
+    {
+      for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) (*it) = 0.0;
+    }
+    void ClearJacobian()
+    {
+      for(Sparse::Matrix::iterator it = jacobian.Begin(); it != jacobian.End(); ++it)
+        it->Clear();
+    }
+    void Clear()
+    {
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+      {
+        residual[k] = 0.0;
+        jacobian[k].Clear();
+      }
+    }
+    INMOST_DATA_REAL_TYPE Norm()
+    {
+      INMOST_DATA_REAL_TYPE ret = 0;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+        ret += residual[k]*residual[k];
+      return sqrt(ret);
+    }
+    /// Normalize entries in jacobian and right hand side
+    void Rescale()
+    {
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+      for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
+      {
+        INMOST_DATA_REAL_TYPE norm = 0.0;
+        for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+          norm += jacobian[k].GetValue(q)*jacobian[k].GetValue(q);
+        norm = sqrt(norm);
+        if( norm )
+        {
+          norm = 1.0/norm;
+          residual[k] *= norm;
+          for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+            jacobian[k].GetValue(q) *= norm;
+        }
+      }
+    }
+  };
 
 	class Automatizator
 	{

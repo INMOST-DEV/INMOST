@@ -1424,16 +1424,14 @@ namespace INMOST
 		return *this;
 	}
 	
-	void Solver::SetMatrix(Sparse::Matrix & A, bool OldPreconditioner)
+	void Solver::SetMatrix(Sparse::Matrix & A, bool ModifiedPattern, bool OldPreconditioner)
 	{
 		(void) OldPreconditioner;
 		bool ok = false;
 #if defined(USE_SOLVER_PETSC)
 		if( _pack == PETSc )
 		{
-			bool modified_pattern = false;
-			for(Sparse::Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
-				modified_pattern |= it->modified_pattern;
+			bool modified_pattern = ModifiedPattern;
 			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
 			if( matrix_data == NULL ) 
 			{
@@ -1531,10 +1529,7 @@ namespace INMOST
 #if defined(USE_SOLVER_ANI)
 		if( _pack == ANI )
 		{
-			bool modified_pattern = false;
-			for(Sparse::Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
-				modified_pattern |= it->modified_pattern;
-			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
+			bool modified_pattern = ModifiedPattern;
 			if( matrix_data == NULL )
 			{ 
 				MatrixInitDataAni(&matrix_data,A.GetCommunicator(),A.GetName().c_str());
@@ -1585,9 +1580,7 @@ namespace INMOST
 #if defined(HAVE_SOLVER_FCBIILU2)
 		if( _pack == FCBIILU2 )
 		{
-			bool modified_pattern = false;
-			for(Sparse::Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
-				modified_pattern |= it->modified_pattern;
+			bool modified_pattern = ModifiedPattern;
 			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
 			if( matrix_data == NULL )
 			{ 
@@ -1659,9 +1652,7 @@ namespace INMOST
 #if defined(HAVE_SOLVER_K3BIILU2)
 		if( _pack == K3BIILU2 )
 		{
-			bool modified_pattern = false;
-			for(Sparse::Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
-				modified_pattern |= it->modified_pattern;
+			bool modified_pattern = ModifiedPattern;
 			//~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
 			if( matrix_data == NULL )
 			{ 
@@ -1743,9 +1734,7 @@ namespace INMOST
 #endif
 			//std::cout << Comm.MyPID() << " " << __FUNCTION__ << ":" << __LINE__ << std::endl;
 			//std::cout << Comm.MyPID() << " " << "Check modified pattern" << std::endl;
-			bool modified_pattern = false;
-			for(Sparse::Matrix::iterator it = A.Begin(); it != A.End() && !modified_pattern; ++it)
-				modified_pattern |= it->modified_pattern;
+			bool modified_pattern = ModifiedPattern;
 			INMOST_DATA_ENUM_TYPE mbeg,mend;
 			A.GetInterval(mbeg,mend);
 			//std::cout << Comm.MyPID() << " " << "Get interval " << mbeg << ":" << mend << std::endl;
@@ -1857,7 +1846,6 @@ namespace INMOST
 			ok = true;
 
 		}
-		for(Sparse::Matrix::iterator it = A.Begin(); it != A.End(); it++) it->modified_pattern = false;
 		if(!ok) throw NotImplemented;
 	}
 

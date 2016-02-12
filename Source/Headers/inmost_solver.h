@@ -253,12 +253,12 @@ namespace INMOST
 		void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value);
 		/// Get the used defined name of the Solver.
 		std::string          GetName() {return name;}
-	
 		/// Get the package Type.
 		Type GetPackage() const {return _pack;}
-		
 		/// Set the matrix and construct the preconditioner.
 		/// @param A Matrix A in linear problem Ax = b
+    /// @param ModifiedPattern Indicates whether the structure of the matrix have 
+    /// changed since last call to Solver::SetMatrix.
 		/// @param OldPreconditioner If this parameter is set to true,
 		/// then the previous preconditioner will be used,
 		/// otherwise the new preconditioner will be constructed. 
@@ -269,7 +269,7 @@ namespace INMOST
 		///
 		/// Any changes to preconditioner parameters should happen before that point.
 		/// If you increase gmres_substep after this point, inner methods most likely will fail
-		void SetMatrix(Sparse::Matrix & A, bool OldPreconditioner = false);
+		void SetMatrix(Sparse::Matrix & A, bool ModifiedPattern = true, bool OldPreconditioner = false);
 		/// Solver the linear system: A*x = b.
 		/// Prior to this call you should call SetMatrix
 		///

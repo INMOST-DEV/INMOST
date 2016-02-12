@@ -118,6 +118,7 @@ public:
 
 class Reorder_ARMS
 {
+  interval<INMOST_DATA_ENUM_TYPE, bool> markers;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> reorder;
 	interval<INMOST_DATA_ENUM_TYPE, std::vector< INMOST_DATA_ENUM_TYPE> > neighbours;
 	std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > node_neighbours;
@@ -129,7 +130,7 @@ class Reorder_ARMS
 	Sparse::Matrix & A;
 	void add_block_entry(INMOST_DATA_ENUM_TYPE ind)
 	{
-		A[ind].SetMarker();
+		markers[ind] = true;
 		block_entries.push_back(ind);
 		reorder[ind] = visited++;
 		stack.push_back(ind);
@@ -139,7 +140,7 @@ class Reorder_ARMS
 		for (INMOST_DATA_ENUM_TYPE j = 0; j < block_entries.size(); j++)
 		{
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < neighbours[block_entries[j]].size(); ++k)
-				A[neighbours[block_entries[j]][k]].SetMarker();
+				markers[neighbours[block_entries[j]][k]] = true;
 		}
 		sblock += static_cast<int>(block_entries.size());
 		block_ends.push_back(sblock);
@@ -172,7 +173,7 @@ class Reorder_ARMS
 		return static_cast<Storage::enumerator>(neighbours[ind].size());
 		INMOST_DATA_ENUM_TYPE ret = 0, k;
 		for (k = 0; k < neighbours[ind].size(); k++)
-		if (!A[neighbours[ind][k]].GetMarker())
+		if (!markers[neighbours[ind][k]])
 			ret++;
 		return ret;
 	}
@@ -204,6 +205,8 @@ public:
 		reorder.set_interval_end(mend);
 		neighbours.set_interval_beg(mbeg);
 		neighbours.set_interval_end(mend);
+    markers.set_interval_beg(mbeg);
+    markers.set_interval_end(mend);
 
 		for (INMOST_DATA_ENUM_TYPE k = mbeg; k < mend; ++k)
 		{
@@ -243,7 +246,7 @@ public:
 			select = ENUMUNDEF;
 			for (INMOST_DATA_ENUM_TYPE k = mbeg; k < mend; ++k)
 			{
-				if (!A[k].GetMarker())
+				if (!markers[k])
 				{
 					if (select == ENUMUNDEF || GetOrder(k) < GetOrder(select))
 						select = k;
@@ -266,7 +269,7 @@ public:
 				for (INMOST_DATA_ENUM_TYPE k = 0; k != neighbours[select].size(); ++k)
 				{
 					INMOST_DATA_ENUM_TYPE j = neighbours[select][k];
-					if (!A[j].GetMarker())
+					if (!markers[j])
 					{
 						node_neighbours.push_back(std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>(GetOrder(j), j));
 						//A[j].SetMarker();
@@ -289,7 +292,7 @@ public:
 		std::cout << "Left untouched: " << mend - mbeg - visited << std::endl;
 		for (INMOST_DATA_ENUM_TYPE k = mbeg; k < mend; ++k)
 		{
-			A[k].RemMarker();
+			markers[k] = false;
 			if (reorder[k] == ENUMUNDEF)
 				reorder[k] = visited++;
 		}

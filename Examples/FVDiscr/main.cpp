@@ -130,6 +130,7 @@ int main(int argc,char ** argv)
 		ttt = Timer();
 		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		S.SetParameterReal("absolute_tolerance",1e-8);
+    Sparse::LockService L;
 		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
 		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors
 		
@@ -155,6 +156,7 @@ int main(int argc,char ** argv)
 			}
 
 		// Set the indeces intervals for the matrix and vectors
+    L.SetInterval(idmin,idmax);
 		A.SetInterval(idmin,idmax);
 		x.SetInterval(idmin,idmax);
 		b.SetInterval(idmin,idmax);
@@ -192,10 +194,10 @@ int main(int argc,char ** argv)
 				bnd_pnt[1] = r1_cnt[1] + dist * f_nrm[1];
 				bnd_pnt[2] = r1_cnt[2] + dist * f_nrm[2];
 				Coef = K1 * f_area / dist;
-        A[id1].Lock();
+        L.Lock(id1);
 				A[id1][id1] += -Coef;
 				b[id1] += -Coef * func(bnd_pnt, 0);
-        A[id1].Unlock();
+        L.UnLock(id1);
 			}
 			else
 			{
@@ -209,17 +211,17 @@ int main(int argc,char ** argv)
 
 				if( s1 != Element::Ghost )
 				{
-          A[id1].Lock();
+          L.Lock(id1);
 					A[id1][id1] += -Coef;
 					A[id1][id2] += Coef;
-          A[id1].Unlock();
+          L.UnLock(id2);
 				}
 				if( s2 != Element::Ghost )
 				{
-          A[id2].Lock();
+          L.Lock(id2);
 					A[id2][id1] += Coef;
 					A[id2][id2] += -Coef;
-          A[id2].Unlock();
+          L.UnLock(id2);
 				}
 			}
 		}

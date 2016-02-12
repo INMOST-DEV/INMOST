@@ -262,6 +262,23 @@ namespace INMOST
 		  for(INMOST_DATA_ENUM_TYPE i = 0; i < end; i++) ret = ret + x[GetIndex(i)]*GetValue(i);
 		  return ret;
 	  }
+
+    void   HessianRow::RowVec(INMOST_DATA_REAL_TYPE alpha, const Row & rU, INMOST_DATA_REAL_TYPE beta, Row & rJ) const
+	  {
+		  INMOST_DATA_ENUM_TYPE end = rU.Size();
+      for(INMOST_DATA_ENUM_TYPE i = 0; i < end; i++) rJ.GetValue(i) *= beta;
+		  for(INMOST_DATA_ENUM_TYPE i = 0; i < end; i++) 
+      {
+        index & ind = GetIndex(i);
+        if( ind.first == ind.second )
+          rJ[ind.first] += alpha*rU.get_safe(ind.first)*GetValue(i);
+        else
+        {
+          rJ[ind.first ] += alpha*rU.get_safe(ind.second)*GetValue(i);
+          rJ[ind.second] += alpha*rU.get_safe(ind.first )*GetValue(i);
+        }
+      }
+	  }
 	
 	  void Matrix::MatVec(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y
 	  {
@@ -325,8 +342,24 @@ namespace INMOST
 		  SetInterval(start,end);
 		  name = _name;
 	  }
+
+    HessianMatrix::HessianMatrix(std::string _name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm) 
+	  :data(start,end) 
+	  {
+		  is_parallel = false;
+		  comm = _comm;
+		  SetInterval(start,end);
+		  name = _name;
+	  }
 	
-	  Matrix::Matrix(const Matrix & other) :data(other.data) 
+	
+	  Matrix::Matrix(const Matrix & other) :data(other.data)
+	  {
+		  comm = other.comm;
+		  name = other.name;
+	  }
+
+    HessianMatrix::HessianMatrix(const HessianMatrix & other) :data(other.data)
 	  {
 		  comm = other.comm;
 		  name = other.name;
@@ -336,25 +369,34 @@ namespace INMOST
 	  {
 		  comm = other.comm;
 		  data = other.data; 
-		  name = other.name; return *this;
+      name = other.name; 
+      return *this;
+	  }
+
+    HessianMatrix & HessianMatrix::operator =(HessianMatrix const & other) 
+	  {
+		  comm = other.comm;
+		  data = other.data; 
+      name = other.name; 
+      return *this;
 	  }
 	
-	  Matrix::~Matrix() 
-	  {
-	  }
+	  Matrix::~Matrix() {}
+
+    HessianMatrix::~HessianMatrix() {}
 	
     void      Matrix::MoveRows(INMOST_DATA_ENUM_TYPE from, INMOST_DATA_ENUM_TYPE to, INMOST_DATA_ENUM_TYPE size)
 	  {
 		  INMOST_DATA_ENUM_TYPE i = to + size, j = from + size;
 		  if( size > 0 && to != from )
 			  while( j != from ) data[--j].MoveRow(data[--i]);
-      if( !text.empty() )
-      {
-        i = to + size;
-        j = from + size;
-        if( size > 0 && to != from )
-			    while( j != from ) text[--j] = text[--i];
-      }
+	  }
+
+    void      HessianMatrix::MoveRows(INMOST_DATA_ENUM_TYPE from, INMOST_DATA_ENUM_TYPE to, INMOST_DATA_ENUM_TYPE size)
+	  {
+		  INMOST_DATA_ENUM_TYPE i = to + size, j = from + size;
+		  if( size > 0 && to != from )
+			  while( j != from ) data[--j].MoveRow(data[--i]);
 	  }
 
     
@@ -401,6 +443,58 @@ namespace INMOST
 				  istr >> row >> col >> val;
 				  row--; col--;
 				  if( row >= mbeg && row < mend ) data[row][col] = val; 
+			  break;
+			  }
+		  }
+		  int nonzero = 0;
+		  for(iterator it = Begin(); it != End(); ++it) nonzero += it->Size();
+		  //~ std::cout << rank << " total nonzero " << max_lines << " my nonzero " << nonzero << std::endl;
+		  input.close();
+	  }
+
+    void     HessianMatrix::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend)
+	  {
+		  char str[16384];
+		  std::ifstream input(file.c_str());
+		  if( input.fail() ) throw -1;
+		  int state = 0, k;
+		  INMOST_DATA_ENUM_TYPE mat_size, max_lines, row, coli, colj, mat_block;
+		  INMOST_DATA_REAL_TYPE val;
+		  int size = 1, rank = 0;
+  #if defined(USE_MPI)
+      int flag = 0;
+      MPI_Initialized(&flag);
+		  if( flag && mend == ENUMUNDEF && mbeg == ENUMUNDEF )
+		  {
+			  MPI_Comm_rank(GetCommunicator(),&rank);
+			  MPI_Comm_size(GetCommunicator(),&size);
+		  }
+  #endif
+		  int line = 0;
+		  while( !input.getline(str,16384).eof() )
+		  {
+			  line++;
+			  k = 0; while( isspace(str[k]) ) k++;
+			  if( str[k] == '%' || str[k] == '\0' ) continue;
+			  std::istringstream istr(str+k);
+			  switch(state)
+			  {
+			  case 0: 
+				  istr >> mat_size >> mat_size >> max_lines; state = 1; 
+				  mat_block = mat_size/size;
+				  if( mbeg == ENUMUNDEF ) mbeg = rank*mat_block;
+				  if( mend == ENUMUNDEF ) 
+				  {
+					  if( rank == size-1 ) mend = mat_size;
+					  else mend = mbeg+mat_block;
+				  }
+				  SetInterval(mbeg,mend);
+				  //~ std::cout << rank << " my interval " << mbeg << ":" << mend << std::endl;
+			  break;
+			  case 1: 
+				  istr >> row >> coli >> colj >> val;
+				  row--; coli--; colj--;
+				  if( row >= mbeg && row < mend ) data[row][HessianRow::make_index(coli,colj)] = val; 
 			  break;
 			  }
 		  }
@@ -536,10 +630,21 @@ namespace INMOST
 	  }
 
 
-    void     Matrix::Save(std::string file)
+    void     Matrix::Save(std::string file, const AnnotationService * text)
 	  {
 		  INMOST_DATA_ENUM_TYPE matsize = Size(), nonzero = 0, row = GetFirstIndex()+1;
-		
+		  bool have_annotation = false;
+      if( text && !text->Empty() )
+      {
+        if( text->GetFirstIndex() == GetFirstIndex() &&
+            text->GetLastIndex() == GetLastIndex())
+            have_annotation = true;
+        else
+        {
+          std::cout << "Size of provided annotation (" << text->GetFirstIndex() << "," << text->GetLastIndex() << ")" << std::endl;
+          std::cout << "differs from the size of the matrix (" << GetFirstIndex() << "," << GetLastIndex() << ")" << std::endl;
+        }
+      }
 		  for(iterator it = Begin(); it != End(); ++it) nonzero += it->Size();
 #if defined(USE_MPI)
 		  int rank = 0, size = 1;
@@ -555,14 +660,16 @@ namespace INMOST
 		  std::stringstream mtx(std::ios::in | std::ios::out);
 		  mtx << std::scientific;
 		  mtx.precision(15);
-		  for(iterator it = Begin(); it != End(); ++it)
+		  for(INMOST_DATA_ENUM_TYPE k = GetFirstIndex(); k < GetLastIndex(); ++k)
 		  {
-        if( !text.empty() ) mtx << "% " << Annotation((INMOST_DATA_ENUM_TYPE)(it-Begin())).c_str() << "\n";
-			  for(Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+        if( have_annotation ) 
         {
-				  mtx << row << " " << jt->first+1 << " " << jt->second << "\n";
+          const std::string & str = text->GetAnnotation(k);
+          if( !str.empty() ) mtx << "% " << str << "\n";
         }
-			  ++row;
+			  for(Row::iterator jt = (*this)[k].Begin(); jt != (*this)[k].End(); ++jt)
+          mtx << row << " " << jt->first+1 << " " << jt->second << "\n";
+        ++row;
 		  }
 #if defined(USE_MPI) && defined(USE_MPI_FILE) // USE_MPI2?
 		  {
@@ -631,79 +738,210 @@ namespace INMOST
 		  output << mtx.rdbuf();
 #endif
 	  }
-    std::string & Matrix::Annotation(INMOST_DATA_ENUM_TYPE row) 
-    {
-      if( text.empty() ) 
-      {
-        text.set_interval_beg(GetFirstIndex());
-        text.set_interval_end(GetLastIndex());
-      }
-      return text[row];
-    }
-    const std::string & Matrix::Annotation(INMOST_DATA_ENUM_TYPE row) const
-    {
-      if( text.empty() ) return stubstring;
-      return text[row];
-    }
-    Row::Row() :data() 
-    {
-#if defined(USE_OMP)
-      omp_init_lock(&lock);
-#endif
-      modified_pattern = marker = false;
-    }
-    Row::Row(const Row & other) :marker(other.marker),data(other.data) 
-    { 
-#if defined(USE_OMP)
-      omp_init_lock(&lock);
-#endif
-      modified_pattern = other.modified_pattern; 
-    }
-    Row::Row(entry * pbegin, entry * pend) :data(pbegin, pend) 
-    { 
-#if defined(USE_OMP)
-      omp_init_lock(&lock);
-#endif
-      modified_pattern = true; marker = false; 
-    }
-    Row & Row::operator = (Row const & other) 
-    { 
-      data = other.data; 
-      marker = other.marker; 
-      return *this; 
-    }
-    Row::~Row()
-    {
-#if defined(USE_OMP)
-      omp_destroy_lock(&lock);
-#endif
-    }
-    void  Row::Swap(Row & other) 
-    { 
-      data.swap(other.data); 
-      bool tmp = marker; 
-      marker = other.marker; 
-      other.marker = tmp; 
-#if defined(USE_OMP)
-      //swap locks?
-#endif
-    }
-    void Matrix::SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end)
-    {
-      data.set_interval_beg(start); 
-      data.set_interval_end(end);
-      if( !text.empty() )
-      {
-        text.set_interval_beg(start);
-        text.set_interval_end(end);
-      }
-    }
-    void Matrix::ShiftInterval(INMOST_DATA_ENUM_TYPE shift) 
-    {
-      data.shift_interval(shift);
-      if( !text.empty() ) text.shift_interval(shift);
-    }
 
+    void     HessianMatrix::Save(std::string file, const AnnotationService * text)
+	  {
+		  INMOST_DATA_ENUM_TYPE matsize = Size(), nonzero = 0, row = GetFirstIndex()+1;
+		  bool have_annotation = false;
+      if( text && !text->Empty() )
+      {
+        if( text->GetFirstIndex() == GetFirstIndex() &&
+            text->GetLastIndex() == GetLastIndex())
+            have_annotation = true;
+        else
+        {
+          std::cout << "Size of provided annotation (" << text->GetFirstIndex() << "," << text->GetLastIndex() << ")" << std::endl;
+          std::cout << "differs from the size of the matrix (" << GetFirstIndex() << "," << GetLastIndex() << ")" << std::endl;
+        }
+      }
+		  for(iterator it = Begin(); it != End(); ++it) nonzero += it->Size();
+#if defined(USE_MPI)
+		  int rank = 0, size = 1;
+		  {
+			  MPI_Comm_rank(GetCommunicator(),&rank);
+			  MPI_Comm_size(GetCommunicator(),&size);
+			  INMOST_DATA_ENUM_TYPE temp_two[2] = {matsize,nonzero}, two[2];
+			  MPI_Allreduce(temp_two,two,2,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,GetCommunicator());
+			  matsize = two[0];
+			  nonzero = two[1];
+		  }
+#endif
+		  std::stringstream mtx(std::ios::in | std::ios::out);
+		  mtx << std::scientific;
+		  mtx.precision(15);
+		  for(INMOST_DATA_ENUM_TYPE k = GetFirstIndex(); k < GetLastIndex(); ++k)
+		  {
+        if( have_annotation ) 
+        {
+          const std::string & str = text->GetAnnotation(k);
+          if( !str.empty() ) mtx << "% " << str << "\n";
+        }
+			  for(HessianRow::iterator jt = (*this)[k].Begin(); jt != (*this)[k].End(); ++jt)
+          mtx << row << " " << jt->first.first+1 << " " << jt->first.second+1 << " " << jt->second << "\n";
+        ++row;
+		  }
+#if defined(USE_MPI) && defined(USE_MPI_FILE) // USE_MPI2?
+		  {
+			  int ierr;
+			  MPI_File fh;
+			  MPI_Status stat;
+			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+        if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  ierr = MPI_File_close(&fh);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()),MPI_MODE_WRONLY | MPI_MODE_CREATE,MPI_INFO_NULL,&fh);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( rank == 0 )
+			  {
+				  std::stringstream header;
+				  header << "%%MatrixMarket matrix coordinate real general" << std::endl;
+				  header << "% matrix " << name << std::endl;
+				  header << "% is written by INMOST" << std::endl;
+				  header << "% by MPI_File_* api" << std::endl;
+				  header << matsize << " " << matsize << " " << nonzero << std::endl;
+				  //std::string header_data(header.str());
+				  ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
+				  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  }
+			  ierr = MPI_File_write_ordered(fh,const_cast<char *>(mtx.str().c_str()),static_cast<int>(mtx.str().size()),MPI_CHAR,&stat);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  ierr = MPI_File_close(&fh);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+		  }
+#elif defined(USE_MPI)//USE_MPI alternative
+		  std::string senddata = mtx.str(), recvdata;
+		  int sendsize = static_cast<int>(senddata.size());
+		  std::vector<int> recvsize(size), displ(size);
+		  MPI_Gather(&sendsize,1,MPI_INT,&recvsize[0],1,MPI_INT,0,GetCommunicator());
+		  if( rank == 0 )
+		  {
+			  int totsize = recvsize[0];
+			
+			  displ[0] = 0;
+			  for(int i = 1; i < size; i++) 
+			  {
+				  totsize += recvsize[i];
+				  displ[i] = displ[i-1]+recvsize[i-1];
+			  }
+			  recvdata.resize(totsize);
+		  }
+		  else recvdata.resize(1); //protect from dereferencing null
+		  MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_CHAR,0,GetCommunicator());
+		  if( rank == 0 )
+		  {
+			  std::fstream output(file.c_str(),std::ios::out);
+			  output << "%%MatrixMarket matrix coordinate real general" << std::endl;
+			  output << "% matrix " << name << std::endl;
+			  output << "% is written by INMOST" << std::endl;
+			  output << "% by MPI_Gather* api and sequential write" << std::endl;
+			  output << matsize << " " << matsize << " " << nonzero << std::endl;
+			  output << recvdata;
+		  }
+#else
+		  std::fstream output(file.c_str(),std::ios::out);
+		  output << "%%MatrixMarket matrix coordinate real general" << std::endl;
+		  output << "% matrix " << name << std::endl;
+		  output << "% is written by INMOST" << std::endl;
+		  output << "% by sequential write " << std::endl;
+		  output << matsize << " " << matsize << " " << nonzero << std::endl;
+		  output << mtx.rdbuf();
+#endif
+	  }
 
+    
+    void Matrix::Swap(Matrix & other) 
+		{
+			data.swap(other.data);
+			name.swap(other.name);
+      std::swap(comm,other.comm);
+      std::swap(is_parallel,other.is_parallel);
+		}
+
+    void HessianMatrix::Swap(HessianMatrix & other) 
+		{
+			data.swap(other.data);
+			name.swap(other.name);
+      std::swap(comm,other.comm);
+      std::swap(is_parallel,other.is_parallel);
+		}
+
+    bool LockService::HaveLocks() const
+    {
+#if defined(USE_OMP)
+      return !locks.empty();
+#else
+      return false;
+#endif
+    }
+    bool LockService::Lock(INMOST_DATA_ENUM_TYPE row)
+    {
+#if defined(USE_OMP)
+      if( locks.empty() ) return false;
+      omp_set_lock(&locks[row]);
+      return true;
+#endif
+    }
+    bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row)
+    {
+#if defined(USE_OMP)
+      if( locks.empty() ) 
+      {
+        std::cout << "You have to call to LockService::SetInterval to use locks" << std::endl;
+        return false;
+      }
+      if( omp_test_lock(&locks[row]) )
+        return true;
+      else
+        return false;
+#endif
+      return true; //Say that the lock has locked
+    }
+    bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row)
+    {
+#if defined(USE_OMP)
+      if( locks.empty() ) return false;
+      omp_unset_lock(&locks[row]);
+      return true;
+#endif
+    }
+    void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+    {
+      if( !locks.empty() ) DestroyLocks();
+      locks.set_interval_beg(beg);
+      locks.set_interval_end(end);
+      for(INMOST_DATA_ENUM_TYPE k = beg; k < end; ++k)
+        omp_init_lock(&locks[k]);
+    }
+    void LockService::DestroyLocks()
+    {
+      INMOST_DATA_ENUM_TYPE kbeg,kend;
+      kbeg = locks.get_interval_beg();
+      kend = locks.get_interval_end();
+      for(INMOST_DATA_ENUM_TYPE k = kbeg; k < kend; ++k)
+        omp_destroy_lock(&locks[k]);
+    }
+    void HessianMatrix::MatVec(INMOST_DATA_REAL_TYPE alpha, const Sparse::Matrix & U, INMOST_DATA_REAL_TYPE beta, Sparse::Matrix & J) const //y = alpha*A*x + beta * y
+	  {
+		  INMOST_DATA_ENUM_TYPE mbeg, mend;
+		  INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
+		  if( J.Empty() )
+		  {
+			  INMOST_DATA_ENUM_TYPE vbeg,vend;
+			  GetInterval(vbeg,vend);
+			  J.SetInterval(vbeg,vend);
+		  }
+		  //CHECK SOMEHOW FOR DEBUG THAT PROVIDED VECTORS ARE OK
+		  //~ assert(GetFirstIndex() == out.GetFirstIndex());
+		  //~ assert(Size() == out.Size());
+		  GetInterval(mbeg,mend);
+		  imbeg = mbeg;
+		  imend = mend;
+#if defined(USE_OMP)
+#pragma omp for private(ind)
+#endif
+		  for(ind = imbeg; ind < imend; ++ind) //iterate rows of matrix
+        (*this)[ind].RowVec(alpha,U[ind],beta,J[ind]);
+		  // outer procedure should update J Matrix, if needed
+	  }
   }
 }

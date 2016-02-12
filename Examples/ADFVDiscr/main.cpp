@@ -134,6 +134,7 @@ int main(int argc,char ** argv)
 		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		S.SetParameterReal("absolute_tolerance",1e-8);
     Residual R; // Residual vector
+    Sparse::LockService Locks;
 		Sparse::Vector Update; // Declare the solution and the right-hand side vectors
 		
 		Mesh::GeomParam table;
@@ -155,6 +156,7 @@ int main(int argc,char ** argv)
 
 		  // Set the indeces intervals for the matrix and vectors
       R.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
+      Locks.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
       Update.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
       //~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
       dynamic_variable Phi(aut,iphi);
@@ -193,9 +195,9 @@ int main(int argc,char ** argv)
 				    bnd_pnt[2] = r1_cnt[2] + dist * f_nrm[2];
             T = r1->Real(tensor_K) * f_area / dist;
             //flux =  T * (func(bnd_pnt,0) - variable(aut,r1,iphi));
-            R[i1].Lock();
+            Locks.Lock(i1);
             R[i1] -=  T * (func(bnd_pnt,0) - Phi(r1));
-            R[i1].Unlock();
+            Locks.UnLock(i1);
 			    }
 			    else
 			    {
@@ -209,15 +211,15 @@ int main(int argc,char ** argv)
             flux = T * (Phi(r2) - Phi(r1));
 				    if( s1 != Element::Ghost )
 				    {
-              R[i1].Lock();
+              Locks.Lock(i1);
               R[i1] -= flux;
-              R[i1].Unlock();
+              Locks.UnLock(i1);
 				    }
 				    if( s2 != Element::Ghost )
 				    {
-              R[i2].Lock();
+              Locks.Lock(i2);
               R[i2] += flux;
-              R[i2].Unlock();
+              Locks.UnLock(i2);
 				    }
 			    }
 		    }

@@ -96,10 +96,6 @@ namespace INMOST
 			  {
 				  INMOST_DATA_ENUM_TYPE first;  ///< the column number of the row element.
 				  INMOST_DATA_REAL_TYPE second; ///< the real value of the row element.
-				  //entry_s() :first(0), second(0.0) {}
-				  //entry_s(const entry_s & other) :first(other.first), second(other.second) {}//{std::cout << __FUNCTION__ << " " << first << " " << second << std::endl;}
-				  //entry_s(INMOST_DATA_ENUM_TYPE first, INMOST_DATA_REAL_TYPE second):first(first),second(second){}
-				  //entry_s & operator =(entry_s const & other) {first = other.first, second = other.second; return *this;}
 				  bool operator < (const entry_s & other) const { return first < other.first || (first == other.first && second < other.second); }
 			  } entry;
 			  __INLINE static entry make_entry(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
@@ -109,90 +105,48 @@ namespace INMOST
 				  ret.second = val;
 				  return ret;
 			  }
-
 		  private:
-			  typedef dynarray<entry,16> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
-			  //typedef array<entry> Entries;
-			  //typedef std::vector<entry> Entries;
-			  //typedef sparse_data<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> Entries;
-			  //typedef Entries::pair entry; //for sparse_data
-			
+			  //typedef dynarray<entry,16> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
+			  typedef array<entry> Entries;
 		  public:
 			  typedef Entries::iterator iterator;
 			  typedef Entries::const_iterator const_iterator;
 			  typedef Entries::reverse_iterator reverse_iterator;
 			  typedef Entries::const_reverse_iterator const_reverse_iterator;
-
-			  bool modified_pattern; //remove this in future
 		  private:
-  #if defined(USE_OMP)
-			  omp_lock_t lock;
-  #endif
-			  bool marker;
 			  Entries data;
 		  public:
-        void Report() {data.report_addr();}
-			  void SetMarker() { marker = true; }
-			  void RemMarker() { marker = false; }
-			  bool GetMarker() { return marker; }
-			  Row();
-			  Row(const Row & other);
-			  Row(entry * pbegin, entry * pend);
-        bool HaveLock()
-        {
-  #if defined(USE_OMP)
-				  return true;
-  #else
-          return false;
-  #endif
-        }
-			  void Lock()
-			  {
-  #if defined(USE_OMP)
-				  omp_set_lock(&lock); 
-  #endif
-			  }
-			  void Unlock() 
-			  { 
-  #if defined(USE_OMP)
-				  omp_unset_lock(&lock); 
-  #endif
-			  }
-			  ~Row();
-			  Row & operator = (Row const & other);
+        Row() : data() {}
+        Row(const Row & other) : data(other.data) {}
+        Row(entry * pbegin, entry * pend)  :data(pbegin, pend) {}
+        ~Row() {}
+        Row & operator = (Row const & other) { data = other.data; return *this; }
 			  /// The operator [] used to fill the sparse matrix row, but not to access individual elements of the row.
 			  INMOST_DATA_REAL_TYPE & operator [](INMOST_DATA_ENUM_TYPE i) // use to fill matrix, not to access individual elements
 			  {
-				  //for sparse_data type
-				  //return data[i];
-				  //for dynarray or array
-				
 				  for(Entries::size_type it = 0; it < data.size(); ++it)
 					  if( data[it].first == i ) return data[it].second;
-				  entry new_entry;
-				  new_entry.first = i;
-				  new_entry.second = 0;
-				  data.push_back(new_entry);
-				  modified_pattern = true;
+				  data.push_back(make_entry(i,0));
 				  return data.back().second;
-				
 			  }
 			  /// The operator [] used to access individual elements of the row.
 			  INMOST_DATA_REAL_TYPE operator[](INMOST_DATA_ENUM_TYPE i) const
 			  {
-				  //for sparse data type
-				  //return data[i];
-
 				  for (Entries::size_type it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
-
-				  //you should not come here
+          //you should not come here
 				  assert(false);
 				  return 1.0e20;
+			  }
+        /// Returns zero if no entry was found.
+        INMOST_DATA_REAL_TYPE get_safe(INMOST_DATA_ENUM_TYPE i) const
+			  {
+				  for (Entries::size_type it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
+				  return 0.0;
 			  }
 			  //void           Reserve(INMOST_DATA_ENUM_TYPE num) { data.reserve(num);}
 			  /// Clear all data of the current row.
 			  void                    Clear() { data.clear(); }
-			  void                    Swap(Row & other);
+        void                    Swap(Row & other) { data.swap(other.data); }
 			  /// The size of the sparse row, i.e. the total number of nonzero elements.
 			  INMOST_DATA_ENUM_TYPE   Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
         bool                    Empty() const { return data.empty(); }
@@ -200,7 +154,6 @@ namespace INMOST
 			  INMOST_DATA_REAL_TYPE & GetValue(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->second;}
 			  INMOST_DATA_ENUM_TYPE   GetIndex(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->first;}
 			  INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
-			
 			  iterator                Begin() {return data.begin();}
 			  iterator                End() {return data.end();}
 			  const_iterator          Begin() const {return data.begin();}
@@ -222,7 +175,6 @@ namespace INMOST
 			  /// that allow for the modification of individual entries.
 			  /// @param size New size of the row.
 			  void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
-
 			  void                    Print() 
 			  {
 				  for(iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first << "," << it->second << ") ";
@@ -231,6 +183,160 @@ namespace INMOST
 		  };
 
 
+      /// Class to store the compressed symmetric matrix of a hessian row.
+		  class HessianRow 
+		  {
+		  public:
+  		  /// Entry of the sparse matrix row.
+        typedef struct hessian_index_s
+        {
+          INMOST_DATA_ENUM_TYPE first;
+          INMOST_DATA_ENUM_TYPE second;
+          bool operator < (const hessian_index_s & other) const {return first < other.first || (first == other.first && second < other.second); }
+          bool operator ==(const hessian_index_s & other) const {return first == other.first && second == other.second;}
+        } index;
+        __INLINE static index make_index(INMOST_DATA_ENUM_TYPE _first, INMOST_DATA_ENUM_TYPE _second)
+        {
+          index ret;
+          ret.first = std::min(_first,_second);
+          ret.second = std::max(_first,_second);
+          return ret;
+        }
+			  typedef struct hessian_entry_s 
+			  {
+				  index first;  ///< the column number of the row element.
+				  INMOST_DATA_REAL_TYPE second; ///< the real value of the row element.
+				  bool operator < (const hessian_entry_s & other) const { return first < other.first || (first == other.first && second < other.second); }
+			  } entry;
+			  __INLINE static entry make_entry(index ind, INMOST_DATA_REAL_TYPE val)
+			  {
+				  entry ret;
+				  ret.first = ind;
+				  ret.second = val;
+				  return ret;
+			  }
+		  private:
+			  typedef array<entry> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
+			  //typedef dynarray<entry,8> Entries;
+		  public:
+			  typedef Entries::iterator iterator;
+			  typedef Entries::const_iterator const_iterator;
+			  typedef Entries::reverse_iterator reverse_iterator;
+			  typedef Entries::const_reverse_iterator const_reverse_iterator;
+		  private:
+			  Entries data;
+		  public:
+        HessianRow() : data() {}
+        HessianRow(const HessianRow & other) : data(other.data) {}
+        HessianRow(entry * pbegin, entry * pend) : data(pbegin,pend) {}
+        ~HessianRow() {}
+        HessianRow & operator = (HessianRow const & other) {data = other.data; return *this;}
+			  /// The operator [] used to fill the sparse matrix row, but not to access individual elements of the row.
+			  INMOST_DATA_REAL_TYPE & operator [](index i) // use to fill matrix, not to access individual elements
+			  {
+				  for(Entries::size_type it = 0; it < data.size(); ++it)
+					  if( data[it].first == i ) return data[it].second;
+				  data.push_back(make_entry(i,0));
+				  return data.back().second;				
+			  }
+			  /// The operator [] used to access individual elements of the row.
+			  INMOST_DATA_REAL_TYPE operator[](index i) const
+			  {
+				  for (Entries::size_type it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
+				  //you should not come here
+				  assert(false);
+				  return 1.0e20;
+			  }
+        INMOST_DATA_REAL_TYPE get_safe(index i) const
+			  {
+				  for (Entries::size_type it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
+				  return 0.0;
+			  }
+			  //void           Reserve(INMOST_DATA_ENUM_TYPE num) { data.reserve(num);}
+			  /// Clear all data of the current row.
+			  void                    Clear() { data.clear(); }
+        void                    Swap(HessianRow & other) { data.swap(other.data); }
+			  /// The size of the sparse row, i.e. the total number of nonzero elements.
+			  INMOST_DATA_ENUM_TYPE   Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
+        bool                    Empty() const { return data.empty(); }
+			  index                 & GetIndex(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->first;}
+			  INMOST_DATA_REAL_TYPE & GetValue(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->second;}
+			  index                   GetIndex(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->first;}
+			  INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
+			  iterator                Begin() {return data.begin();}
+			  iterator                End() {return data.end();}
+			  const_iterator          Begin() const {return data.begin();}
+			  const_iterator          End() const {return data.end();}
+			  reverse_iterator        rBegin() { return data.rbegin(); }
+			  reverse_iterator        rEnd() { return data.rend(); }
+			  const_reverse_iterator  rBegin() const { return data.rbegin(); }
+			  const_reverse_iterator  rEnd() const { return data.rend(); }
+			  /// Return the scalar product of the current sparse row by a dense Vector.
+			  void                    RowVec(INMOST_DATA_REAL_TYPE alpha, const Row & rU, INMOST_DATA_REAL_TYPE beta, Row & rJ) const; // returns A(row) * x
+			  void                    MoveRow(HessianRow & new_pos) {data = new_pos.data;} //here move constructor and std::move may be used in future
+			  /// Set the vector entries by zeroes.
+			  void                    Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
+			  /// Push specified element into sparse row.
+			  /// This function should be used only if the index is not repeated in the row.
+			  void                    Push(index ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
+			  /// Resize row to specified size. 
+			  /// It is intended to be used together with non-const Row::GetIndex and Row::GetValue
+			  /// that allow for the modification of individual entries.
+			  /// @param size New size of the row.
+			  void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
+			  void                    Print() 
+			  {
+          for(iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first.first << "," << it->first.second << "," << it->second << ") ";
+				  std::cout << std::endl;
+			  }
+		  };
+
+      /// This class can be used for shared access to matrix with OpenMP.
+      class LockService
+      {
+#if defined(USE_OMP)
+        interval<INMOST_DATA_ENUM_TYPE,omp_lock_t> locks;
+#endif
+        void DestroyLocks();
+      public:
+        LockService(INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0) { if( end != start ) SetInterval(start,end); }
+        LockService(const LockService & other) { if(!other.locks.empty()) SetInterval(other.GetFirstIndex(),other.GetLastIndex()); }
+        LockService & operator = (LockService const & other) {if(!other.locks.empty()) SetInterval(other.GetFirstIndex(),other.GetLastIndex()); return *this;}
+        ~LockService() {DestroyLocks();}
+        /// Get the first row index of the distributed matrix interval.
+			  INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return locks.get_interval_beg();}
+        /// Get the last row index of the distributed matrix interval.
+			  INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return locks.get_interval_end();}
+        bool Empty() {return locks.empty();}
+        void SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end);
+        void GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = locks.get_interval_beg(); end = locks.get_interval_end();}
+        bool HaveLocks() const;
+        bool Lock(INMOST_DATA_ENUM_TYPE row);
+        bool TestLock(INMOST_DATA_ENUM_TYPE row);
+        bool UnLock(INMOST_DATA_ENUM_TYPE row);
+      };
+
+      /// This class can be used to annotate the matrix
+      class AnnotationService
+      {
+        interval<INMOST_DATA_ENUM_TYPE,std::string> text;
+      public:
+        AnnotationService(INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0) { if( end != start ) SetInterval(start,end); }
+        AnnotationService(const AnnotationService & other) : text(other.text) { }
+        AnnotationService & operator = (AnnotationService const & other) {text = other.text; return *this;}
+        ~AnnotationService() {}
+        /// Get the first row index of the distributed matrix interval.
+			  INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return text.get_interval_beg();}
+        /// Get the last row index of the distributed matrix interval.
+			  INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return text.get_interval_end();}
+        bool                   Empty() const {return text.empty();}
+        void                   SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) { text.set_interval_beg(beg); text.set_interval_end(end); }
+        void                   GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = text.get_interval_beg(); end = text.get_interval_end();}
+        std::string &          GetAnnotation(INMOST_DATA_ENUM_TYPE row) {assert(!text.empty()); return text[row];}
+        const std::string &    GetAnnotation(INMOST_DATA_ENUM_TYPE row) const {assert(!text.empty()); return text[row];}
+        void                   SetAnnotation(INMOST_DATA_ENUM_TYPE row, std::string str) {assert(!text.empty()); text[row] = str;}
+      };
+
 		
 		
 		  /// Class to store the distributed sparse matrix by compressed rows.
@@ -238,15 +344,13 @@ namespace INMOST
 		  /// @see http://netlib.org/linalg/html_templates/node91.html
 		  class Matrix
 		  {
-		  public:
-        typedef interval<INMOST_DATA_ENUM_TYPE,std::string> Text;
 			  typedef interval<INMOST_DATA_ENUM_TYPE,Row> Rows;
+      public:
 			  typedef Rows::iterator iterator;
 			  typedef Rows::const_iterator const_iterator;
 		  private:
 			  INMOST_MPI_Comm comm;
 			  Rows data;
-        Text text;
 			  std::string name;
 			  bool is_parallel;
 		  public:
@@ -265,35 +369,24 @@ namespace INMOST
 			  const Row & operator [](INMOST_DATA_ENUM_TYPE i) const {return data[i];}
 			  /// Return the total number of rows in the matrix.
 			  INMOST_DATA_ENUM_TYPE  Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
-			  bool                 Empty() const {return data.empty();}
-			  iterator             Begin() {return data.begin();}
-			  iterator             End()   {return data.end();}
-			  const_iterator       Begin() const {return data.begin();}
-			  const_iterator       End() const   {return data.end();}
+			  bool                   Empty() const {return data.empty();}
+			  iterator               Begin() {return data.begin();}
+			  iterator               End()   {return data.end();}
+			  const_iterator         Begin() const {return data.begin();}
+			  const_iterator         End() const   {return data.end();}
 			  /// Set the start and the end row numbers of the distributed matrix interval.
-			  void                 SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end);
+        void                   SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end) {data.set_interval_beg(start); data.set_interval_end(end);}
 			  /// Get the start and the end row numbers of the distributed matrix interval.
-			  void                 GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = data.get_interval_beg(); end = data.get_interval_end();}
-			  void                 ShiftInterval(INMOST_DATA_ENUM_TYPE shift);
+			  void                   GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = data.get_interval_beg(); end = data.get_interval_end();}
+        void                   ShiftInterval(INMOST_DATA_ENUM_TYPE shift) {data.shift_interval(shift);}
 			  /// Get the first row index of the distributed matrix interval.
 			  INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return data.get_interval_beg();}
         /// Get the last row index of the distributed matrix interval.
 			  INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return data.get_interval_end();}
 			  /// Get the communicator which the matrix is associated with.
 			  INMOST_MPI_Comm        GetCommunicator() const {return comm;}
-			  void                 MoveRows(INMOST_DATA_ENUM_TYPE from, INMOST_DATA_ENUM_TYPE to, INMOST_DATA_ENUM_TYPE size); //for parallel
-			  void                 Swap(Matrix & other) 
-			  {
-				  data.swap(other.data);
-          text.swap(other.text);
-				  name.swap(other.name);
-				  INMOST_MPI_Comm ctmp = comm;
-				  comm = other.comm;
-				  other.comm = ctmp;
-				  bool ptmp = is_parallel;
-				  is_parallel = other.is_parallel;
-				  other.is_parallel = ptmp;
-			  }
+			  void                   MoveRows(INMOST_DATA_ENUM_TYPE from, INMOST_DATA_ENUM_TYPE to, INMOST_DATA_ENUM_TYPE size); //for parallel
+			  void                   Swap(Matrix & other);
 			  /// Matrix-vector product of the form: y = alpha*A*x + beta * y.
 			  /// @param y Input/output vector.
 			  void MatVec(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & y) const;
@@ -308,15 +401,80 @@ namespace INMOST
 			  void				 Load(std::string file, INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, INMOST_DATA_ENUM_TYPE end = ENUMUNDEF);
 			  /// Save the distributed matrix to a single data file in MTX format using parallel MPI I/O.
 			  /// @see http://math.nist.gov/MatrixMarket/formats.html
-			  void                 Save(std::string file);
+			  void                 Save(std::string file, const AnnotationService * annotation = NULL);
         /// Check that matrix is in parallel state.
 			  bool &               isParallel() { return is_parallel; }
         const bool &         isParallel() const { return is_parallel; }
 			  /// Get the matrix name specified in the main constructor.
 			  std::string          GetName() const {return name;}
+		  };
 
-        std::string &        Annotation(INMOST_DATA_ENUM_TYPE row);
-        const std::string &  Annotation(INMOST_DATA_ENUM_TYPE row) const; 
+      /// Class to store the distributed sparse hessian hyper matrix by compressed symmetric matrices.
+		  class HessianMatrix
+		  {
+		  public:
+        typedef interval<INMOST_DATA_ENUM_TYPE,HessianRow> HessianRows;
+			  typedef HessianRows::iterator iterator;
+			  typedef HessianRows::const_iterator const_iterator;
+		  private:
+			  INMOST_MPI_Comm comm;
+			  HessianRows data;
+        std::string name;
+			  bool is_parallel;
+		  public:
+			  /// Main constructor of the Matrix class.
+			  /// @param _name Name of the matrix, empty string by default.
+			  /// @param start Start of the local data interval.
+			  /// @param end End of the local data interval.
+			  /// @param _comm Communicator for parallel data exchanges, MPI_COMM_WORLD by default.
+			  HessianMatrix(std::string _name = "", INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0, INMOST_MPI_Comm _comm = INMOST_MPI_COMM_WORLD);
+			  HessianMatrix(const HessianMatrix & other);
+			  HessianMatrix & operator =(HessianMatrix const & other);
+			  ~HessianMatrix();
+			  /// Return reference to i-th Row of the matrix.
+			  HessianRow & operator [](INMOST_DATA_ENUM_TYPE i) {return data[i];}
+			  /// Return reference to i-th Row of the matrix.
+			  const HessianRow & operator [](INMOST_DATA_ENUM_TYPE i) const {return data[i];}
+			  /// Return the total number of rows in the matrix.
+			  INMOST_DATA_ENUM_TYPE  Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
+			  bool                   Empty() const {return data.empty();}
+			  iterator               Begin() {return data.begin();}
+			  iterator               End()   {return data.end();}
+			  const_iterator         Begin() const {return data.begin();}
+			  const_iterator         End() const   {return data.end();}
+			  /// Set the start and the end row numbers of the distributed matrix interval.
+        void                   SetInterval(INMOST_DATA_ENUM_TYPE   start, INMOST_DATA_ENUM_TYPE   end) {data.set_interval_beg(start); data.set_interval_end(end);}
+			  /// Get the start and the end row numbers of the distributed matrix interval.
+			  void                   GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = data.get_interval_beg(); end = data.get_interval_end();}
+        void                   ShiftInterval(INMOST_DATA_ENUM_TYPE shift) {data.shift_interval(shift);}
+			  /// Get the first row index of the distributed matrix interval.
+			  INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return data.get_interval_beg();}
+        /// Get the last row index of the distributed matrix interval.
+			  INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return data.get_interval_end();}
+			  /// Get the communicator which the matrix is associated with.
+			  INMOST_MPI_Comm        GetCommunicator() const {return comm;}
+			  void                   MoveRows(INMOST_DATA_ENUM_TYPE from, INMOST_DATA_ENUM_TYPE to, INMOST_DATA_ENUM_TYPE size); //for parallel
+			  void                   Swap(HessianMatrix & other);
+			  /// HyperMatrix-Matrix product of the form: J = alpha*H*U + beta * J.
+        /// J - jacobian sparse matrix
+        /// H - hessian symmetric sparse hypermatrix
+        /// U - update sparse matrix
+			  /// @param J Input/output Matrix.
+			  void MatVec(INMOST_DATA_REAL_TYPE alpha, const Matrix & U, INMOST_DATA_REAL_TYPE beta, Matrix & J) const;
+        /// Clear all data of the matrix.
+			  void Clear() {for(HessianMatrix::iterator it = Begin(); it != End(); ++it) it->Clear(); data.clear();}
+        /// Load the matrix from a single data file in MTX format using the specified interval.
+			  /// If interval is not specified, then it will be automatically constructed,
+			  /// with the about equal block size (the last block may has larger dimension).
+			  void				 Load(std::string file, INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, INMOST_DATA_ENUM_TYPE end = ENUMUNDEF);
+			  /// Save the distributed matrix to a single data file in MTX format using parallel MPI I/O.
+			  /// @see http://math.nist.gov/MatrixMarket/formats.html
+			  void                 Save(std::string file, const AnnotationService * annotation = NULL);
+        /// Check that matrix is in parallel state.
+			  bool &               isParallel() { return is_parallel; }
+        const bool &         isParallel() const { return is_parallel; }
+			  /// Get the matrix name specified in the main constructor.
+			  std::string          GetName() const {return name;}
 		  };
 
 		  /// This class may be used to sum multiple sparse rows.
