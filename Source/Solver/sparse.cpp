@@ -924,7 +924,7 @@ namespace INMOST
       bool LockService::Empty() const {return true;}
       void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = 0; end = 0;}
 #endif
-      void HessianMatrix::MatVec(INMOST_DATA_REAL_TYPE alpha, const Sparse::Matrix & U, INMOST_DATA_REAL_TYPE beta, Sparse::Matrix & J) const //y = alpha*A*x + beta * y
+      void HessianMatrix::MatVec(INMOST_DATA_REAL_TYPE alpha, const Matrix & U, INMOST_DATA_REAL_TYPE beta, Matrix & J) const //y = alpha*A*x + beta * y
       {
           INMOST_DATA_ENUM_TYPE mbeg, mend;
           INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
@@ -946,6 +946,192 @@ namespace INMOST
           for(ind = imbeg; ind < imend; ++ind) //iterate rows of matrix
               (*this)[ind].RowVec(alpha,U[ind],beta,J[ind]);
           // outer procedure should update J Matrix, if needed
+      }
+
+      bool Row::isSorted() const
+      {
+          for(INMOST_DATA_ENUM_TYPE k = 1; k < Size(); ++k)
+              if( GetIndex(k) < GetIndex(k-1) ) return false;
+          return true;
+      }
+      void Row::MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row & left, INMOST_DATA_REAL_TYPE beta, const Row & right, Row & output)
+      {
+          assert(left.isSorted());
+          assert(right.isSorted());
+          output.Resize(left.Size()+right.Size());
+          INMOST_DATA_ENUM_TYPE i = 0, j = 0, q = 0;
+          while( i < left.Size() && j < right.Size() )
+          {
+              if( left.GetIndex(i) < right.GetIndex(j) )
+              {
+                  output.GetIndex(q) = left.GetIndex(i);
+                  output.GetValue(q) = alpha*left.GetValue(i);
+                  ++q;
+                  ++i;
+              }
+              else if( left.GetIndex(i) == right.GetIndex(j) )
+              {
+                  output.GetIndex(q) = left.GetIndex(i);
+                  output.GetValue(q) = alpha*left.GetValue(i) + beta*right.GetValue(j);
+                  ++q;
+                  ++i;
+                  ++j;
+              }
+              else //right is smaller
+              {
+                  output.GetIndex(q) = right.GetIndex(j);
+                  output.GetValue(q) = beta*right.GetValue(j);
+                  ++q;
+                  ++j;
+              }
+          }
+          while( i < left.Size() )
+          {
+              output.GetIndex(q) = left.GetIndex(i);
+              output.GetValue(q) = alpha*left.GetValue(i);
+              ++q;
+              ++i;
+          }
+          while( j < right.Size() )
+          {
+              output.GetIndex(q) = right.GetIndex(i);
+              output.GetValue(q) = beta*right.GetValue(i);
+              ++q;
+              ++j;
+          }
+          output.Resize(q);
+      }
+
+      bool HessianRow::isSorted() const
+      {
+        for(INMOST_DATA_ENUM_TYPE k = 1; k < Size(); ++k)
+          if( GetIndex(k) < GetIndex(k-1) ) return false;
+        return true;
+      }
+      void HessianRow::MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const HessianRow & left, INMOST_DATA_REAL_TYPE beta, const HessianRow & right, HessianRow & output)
+      {
+          assert(left.isSorted());
+          assert(right.isSorted());
+          output.Resize(left.Size()+right.Size());
+          INMOST_DATA_ENUM_TYPE i = 0, j = 0, q = 0;
+          while( i < left.Size() && j < right.Size() )
+          {
+              if( left.GetIndex(i) < right.GetIndex(j) )
+              {
+                  output.GetIndex(q) = left.GetIndex(i);
+                  output.GetValue(q) = alpha*left.GetValue(i);
+                  ++q;
+                  ++i;
+              }
+              else if( left.GetIndex(i) == right.GetIndex(j) )
+              {
+                  output.GetIndex(q) = left.GetIndex(i);
+                  output.GetValue(q) = alpha*left.GetValue(i) + beta*right.GetValue(j);
+                  ++q;
+                  ++i;
+                  ++j;
+              }
+              else //right is smaller
+              {
+                  output.GetIndex(q) = right.GetIndex(j);
+                  output.GetValue(q) = beta*right.GetValue(j);
+                  ++q;
+                  ++j;
+              }
+          }
+          while( i < left.Size() )
+          {
+              output.GetIndex(q) = left.GetIndex(i);
+              output.GetValue(q) = alpha*left.GetValue(i);
+              ++q;
+              ++i;
+          }
+          while( j < right.Size() )
+          {
+              output.GetIndex(q) = right.GetIndex(i);
+              output.GetValue(q) = beta*right.GetValue(i);
+              ++q;
+              ++j;
+          }
+          output.Resize(q);
+      }
+      void HessianRow::MergeJacobianHessian(const Row & JL, const Row & JR, INMOST_DATA_REAL_TYPE a, const HessianRow & HL, INMOST_DATA_REAL_TYPE b, const HessianRow & HR, HessianRow & output)
+      {
+          // merge three sorted arrays at once
+          // one of the array is synthesized from JL and JR on the go
+          static const entry stub_entry = make_entry(make_index(ENUMUNDEF,ENUMUNDEF),0.0);
+          assert(JL.isSorted());
+          assert(JR.isSorted());
+          assert(HL.isSorted());
+          assert(HR.isSorted());
+          output.Resize(HL.Size()+HR.Size()+JL.Size()*JR.Size());
+          INMOST_DATA_ENUM_TYPE i = 0, j = 0, k = 0, l = 0, q = 0, kk = 0, ll = 0, r;
+          entry candidate[3] = {stub_entry,stub_entry,stub_entry};
+          if( i < HL.Size() ) 
+              candidate[0] = make_entry(HL.GetIndex(i),HL.GetValue(i));
+          if( j < HR.Size() ) 
+              candidate[1] = make_entry(HR.GetIndex(j),HR.GetValue(j));
+          if( k < JL.Size() && l < JR.Size() ) 
+              candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),2*JL.GetValue(kk)*JR.GetValue(ll));
+          do
+          {
+              //pick smallest
+              r = 0;
+              if( candidate[1].first < candidate[r].first ) r = 1;
+              if( candidate[2].first < candidate[r].first ) r = 2;
+              //all candidates are stub - exit
+              if( candidate[r].first == stub_entry.first ) break;
+              //record selected entry
+              output.GetIndex(q) = candidate[r].first;
+              output.GetValue(q) = candidate[r].second;
+              ++q;
+              if( r == 0 ) //update left hessian index
+              {
+                  if( ++i < HL.Size() )
+                      candidate[0] = make_entry(HL.GetIndex(i),HL.GetValue(i));
+                  else candidate[0] = stub_entry;
+              }
+              else if( r == 1 ) //update right hessian index
+              {
+                  if( ++j < HR.Size() )
+                      candidate[1] = make_entry(HR.GetIndex(j),HR.GetValue(j));
+                  else candidate[1] = stub_entry;
+              }
+              else //update jacobians indexes
+              {
+                  if( JR.GetIndex(k) < JL.GetIndex(l) ) 
+                  {
+                      if( ++kk == JL.Size() )
+                      {
+                          ++l;
+                          kk = k;
+                          ll = l;
+                      }
+                  }
+                  else if( JL.GetIndex(k) < JR.GetIndex(l) )
+                  {
+                      if( ++ll == JR.Size() )
+                      {
+                          ++k;
+                          kk = k;
+                          ll = l;
+                      }
+                  }
+                  else //values are equal
+                  {
+                      if( JR.Size() - l < JL.Size() - k ) ++l;
+                      else ++k;
+                      kk = k;
+                      ll = l;
+                  }
+                  if( kk < JL.Size() && ll < JR.Size() )
+                      candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),JL.GetValue(kk)*JR.GetValue(ll));
+                  else
+                      candidate[2] = stub_entry;
+              }
+          }
+          while(true);
+          output.Resize(q);
       }
   }
 }

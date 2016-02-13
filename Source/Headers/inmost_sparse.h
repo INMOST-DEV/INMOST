@@ -180,6 +180,9 @@ namespace INMOST
                 for(iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first << "," << it->second << ") ";
                 std::cout << std::endl;
             }
+            bool                    isSorted() const;
+            /// output = alpha * left + beta *right
+            static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row & left, INMOST_DATA_REAL_TYPE beta, const Row & right, Row & output);
         };
         
         
@@ -289,6 +292,10 @@ namespace INMOST
                 for(iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first.first << "," << it->first.second << "," << it->second << ") ";
                 std::cout << std::endl;
             }
+            bool                    isSorted() const;
+            /// output = alpha * left + beta *right
+            static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const HessianRow & left, INMOST_DATA_REAL_TYPE beta, const HessianRow & right, HessianRow & output);
+            static void             MergeJacobianHessian(const Row & JL, const Row & JR, INMOST_DATA_REAL_TYPE a, const HessianRow & HL, INMOST_DATA_REAL_TYPE b, const HessianRow & HR, HessianRow & output);
         };
         
         /// This class can be used for shared access to matrix with OpenMP.

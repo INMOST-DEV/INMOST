@@ -144,7 +144,7 @@ namespace INMOST
     {
       INMOST_DATA_REAL_TYPE ret = 0;
 #if defined(USE_OMP)
-#pragma omp for reduction(+:ret)
+#pragma omp parallel for reduction(+:ret)
 #endif
       for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
         ret += residual[k]*residual[k];
@@ -158,7 +158,7 @@ namespace INMOST
     void Rescale()
     {
 #if defined(USE_OMP)
-#pragma omp for
+#pragma omp parallel for
 #endif
       for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
       {

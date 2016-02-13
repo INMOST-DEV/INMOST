@@ -33,8 +33,7 @@ namespace INMOST
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
     virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
-    //virtual void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
-    //virtual void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
+    virtual void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const = 0;
     virtual ~basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Destroied" << std::endl;}
 	};
 
@@ -54,8 +53,7 @@ namespace INMOST
 		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const {return static_cast<const Derived *>(this)->GetValue(); }
     __INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
     __INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
-    //__INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {return static_cast<const Derived *>(this)->GetHessian(mult,r); }
-    //__INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {return static_cast<const Derived *>(this)->GetHessian(mult,r); }
+    __INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const {return static_cast<const Derived *>(this)->GetHessian(mult,J,H); }
     operator Derived & () {return *static_cast<Derived *>(this);}
     operator const Derived & () const {return *static_cast<const Derived *>(this);}
     ~shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Destroied for " << dynamic_cast<basic_expression *>(this) << std::endl;}
@@ -73,8 +71,7 @@ namespace INMOST
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {}
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {}
-    //__INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {}
-    //__INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {}
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const {}
     __INLINE const_expression & operator =(const_expression const & other)
     {
       value = other.value;
@@ -93,6 +90,7 @@ namespace INMOST
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,mult);}
     __INLINE var_expression & operator =(var_expression const & other)
     {
       value = other.value;
@@ -146,10 +144,19 @@ namespace INMOST
           r[it->first] += it->second*mult;
       }
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+    {
+        J = entries;
+        if( !J.isSorted() ) std::sort(J.Begin(),J.End());
+        for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= mult;
+        H = hessian_entries;
+        for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= mult;
+    }
     __INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
     {
       value = pvalue;
       entries.Clear();
+      hessian_entries.Clear();
       return *this;
     }
     __INLINE multivar_expression & operator = (basic_expression const & expr)
@@ -169,10 +176,13 @@ namespace INMOST
     {
       value = other.value;
       entries = other.entries;
+      hessian_entries = other.hessian_entries;
       return *this;
     }
     __INLINE Sparse::Row & GetRow() {return entries;}
+    __INLINE Sparse::HessianRow & GetHessianRow() {return hessian_entries;}
     __INLINE const Sparse::Row & GetRow() const {return entries;}
+    __INLINE const Sparse::HessianRow & GetHessianRow() const {return hessian_entries;}
     __INLINE multivar_expression & operator +=(basic_expression const & expr)
     {
       value += expr.GetValue();
@@ -316,8 +326,8 @@ namespace INMOST
     Sparse::HessianRow * hessian_entries;
   public:
     /// Constructor, set links to the provided value and entries
-    multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row * _entries) 
-      : value(_value), entries(_entries) {}
+    multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row * _entries, Sparse::HessianRow * _hentries = NULL) 
+      : value(_value), entries(_entries), hessian_entries(_hentries) {}
     /// Copy constructor, sets links to the same reference of value and entries
     multivar_expression_reference(const multivar_expression_reference & other) 
       : value(other.value), entries(other.entries) {}
@@ -341,6 +351,14 @@ namespace INMOST
         for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
           r[it->first] += it->second*mult;
       }
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+    {
+        J = *entries;
+        if( !J.isSorted() ) std::sort(J.Begin(),J.End());
+        for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= mult;
+        H = *hessian_entries;
+        for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= mult;
     }
     __INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
     {
@@ -375,6 +393,8 @@ namespace INMOST
     }
     __INLINE Sparse::Row & GetRow() {return *entries;}
     __INLINE const Sparse::Row & GetRow() const {return *entries;}
+    __INLINE Sparse::HessianRow & GetHessianRow() {return *hessian_entries;}
+    __INLINE const Sparse::HessianRow & GetHessianRow() const {return *hessian_entries;}
     __INLINE multivar_expression_reference & operator +=(basic_expression const & expr)
     {
       value += expr.GetValue();
@@ -484,6 +504,10 @@ namespace INMOST
     {
       arg.GetJacobian(mult*dmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+    {
+        arg.GetHessian(mult*dmult,J,H);
+    }
   };
 
   template<class A>
@@ -505,6 +529,10 @@ namespace INMOST
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
       arg.GetJacobian(mult*dmult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+    {
+      arg.GetHessian(mult*dmult,J,H);
     }
   };
 
@@ -530,6 +558,10 @@ namespace INMOST
     {
       arg.GetJacobian(mult*dmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+    {
+        arg.GetHessian(mult*dmult,J,H);
+    }
   };
   
   template<class A>
@@ -552,6 +584,10 @@ namespace INMOST
     {
       arg.GetJacobian(mult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+    {
+        arg.GetHessian(mult,J,H);
+    }
   };
 
   template<class A>
@@ -573,6 +609,10 @@ namespace INMOST
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
       arg.GetJacobian(-mult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+    {
+        arg.GetHessian(-mult,J,H);
     }
   };
 
@@ -599,97 +639,118 @@ namespace INMOST
     {
       arg.GetJacobian(-mult*value*reciprocial_val,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
   };
 
   template<class A>
-	class unary_minus_expression : public shell_expression<unary_minus_expression<A> >
-	{
-    const A & arg;
-    INMOST_DATA_REAL_TYPE value;
-	public:
-    unary_minus_expression(const shell_expression<A> & parg) : arg(parg) {value = -arg.GetValue();}
-    unary_minus_expression(const unary_minus_expression & b) : arg(b.arg) {}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
-    {
-      arg.GetJacobian(-mult,r);
-    }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
-    {
-      arg.GetJacobian(-mult,r);
-    }
-	};
+  class unary_minus_expression : public shell_expression<unary_minus_expression<A> >
+  {
+      const A & arg;
+      INMOST_DATA_REAL_TYPE value;
+  public:
+      unary_minus_expression(const shell_expression<A> & parg) : arg(parg) {value = -arg.GetValue();}
+      unary_minus_expression(const unary_minus_expression & b) : arg(b.arg) {}
+      __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
+      {
+          arg.GetJacobian(-mult,r);
+      }
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
+      {
+          arg.GetJacobian(-mult,r);
+      }
+      __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const 
+      {
+          arg.GetHessian(-mult,J,H);
+      }
+  };
 
   template<class A>
   class abs_expression : public shell_expression<abs_expression<A> >
-	{
-    const A & arg;
-    INMOST_DATA_REAL_TYPE value, dmult;
-	public:
-    abs_expression(const shell_expression<A> & parg) : arg(parg) 
-    {
-      value = arg.GetValue();
-      dmult = value < 0.0 ? -1.0 : 1.0;
-      value = ::fabs(value);
-    }
-    abs_expression(const abs_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
-    {
-      arg.GetJacobian( mult * dmult, r);
-    }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
-    {
-      arg.GetJacobian( mult * dmult, r);
-    }
-	};
-
-  template<class A>
-	class exp_expression : public shell_expression<exp_expression<A> >
-	{
-    const A & arg;
-    INMOST_DATA_REAL_TYPE value;
-	public:
-    exp_expression(const shell_expression<A> & parg) : arg(parg) 
-    {
-      value = arg.GetValue();
-      value = ::exp(value);
-    }
-		exp_expression(const exp_expression & b) : arg(b.arg), value(b.value) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
-    {
-      arg.GetJacobian( mult * value, r);
-    }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
-    {
-      arg.GetJacobian( mult * value, r);
-    }
+  {
+      const A & arg;
+      INMOST_DATA_REAL_TYPE value, dmult;
+  public:
+      abs_expression(const shell_expression<A> & parg) : arg(parg) 
+      {
+          value = arg.GetValue();
+          dmult = value < 0.0 ? -1.0 : 1.0;
+          value = ::fabs(value);
+      }
+      abs_expression(const abs_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
+      __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
+      {
+          arg.GetJacobian( mult * dmult, r);
+      }
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
+      {
+          arg.GetJacobian( mult * dmult, r);
+      }
+      __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult,Sparse::Row & J, Sparse::HessianRow & H) const
+      {
+          throw NotImplemented;
+      }
   };
 
   template<class A>
-	class log_expression : public shell_expression<log_expression<A> >
-	{
-    const A & arg;
-    INMOST_DATA_REAL_TYPE value, dmult;
-	public:
-    log_expression(const shell_expression<A> & parg) : arg(parg) 
-    {
-      value = arg.GetValue();
-      dmult = 1.0/value;
-      value = ::log(value);
-    }
-    log_expression(const log_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
-    {
-      arg.GetJacobian(mult*dmult,r);
-    }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
-    {
-      arg.GetJacobian(mult*dmult,r);
-    }
-	};
+  class exp_expression : public shell_expression<exp_expression<A> >
+  {
+      const A & arg;
+      INMOST_DATA_REAL_TYPE value;
+  public:
+      exp_expression(const shell_expression<A> & parg) : arg(parg) 
+      {
+          value = arg.GetValue();
+          value = ::exp(value);
+      }
+      exp_expression(const exp_expression & b) : arg(b.arg), value(b.value) {}
+      __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
+      {
+          arg.GetJacobian( mult * value, r);
+      }
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
+      {
+          arg.GetJacobian( mult * value, r);
+      }
+      __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+      {
+          arg.GetHessian(mult*value, J,H);
+          for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= value; //check!!
+      }
+  };
+
+  template<class A>
+  class log_expression : public shell_expression<log_expression<A> >
+  {
+      const A & arg;
+      INMOST_DATA_REAL_TYPE value, dmult;
+  public:
+      log_expression(const shell_expression<A> & parg) : arg(parg) 
+      {
+          value = arg.GetValue();
+          dmult = 1.0/value;
+          value = ::log(value);
+      }
+      log_expression(const log_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
+      __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
+      {
+          arg.GetJacobian(mult*dmult,r);
+      }
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
+      {
+          arg.GetJacobian(mult*dmult,r);
+      }
+      __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+      {
+          throw NotImplemented;
+      }
+  };
 
 
   template<class A>
@@ -713,6 +774,10 @@ namespace INMOST
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
     {
       arg.GetJacobian(mult*dmult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
     }
 	};
 
@@ -738,6 +803,10 @@ namespace INMOST
     {
       arg.GetJacobian(mult*dmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
 	};
 
   template<class A>
@@ -759,6 +828,10 @@ namespace INMOST
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
     {
       arg.GetJacobian(0.5*mult/value,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
     }
 	};
 
@@ -785,6 +858,10 @@ namespace INMOST
     {
       arg.GetJacobian(mult*dmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
 	};
 
   template<class A>
@@ -810,6 +887,10 @@ namespace INMOST
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
     {
       arg.GetJacobian(mult*dmult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
     }
 	};
 
@@ -841,6 +922,10 @@ namespace INMOST
       left.GetJacobian(mult*ldmult,r);
       right.GetJacobian(mult*rdmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
   };
 
   template<class A, class B>
@@ -871,6 +956,10 @@ namespace INMOST
       left.GetJacobian(mult*ldmult,r);
       right.GetJacobian(mult*rdmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
   };
 
 
@@ -879,51 +968,40 @@ namespace INMOST
   {
     const A & left;
     const B & right;
-    INMOST_DATA_REAL_TYPE value, ldmult, rdmult;
+    INMOST_DATA_REAL_TYPE value;
   public:
     multiplication_expression(const shell_expression<A> & pleft, const shell_expression<B> & pright) : left(pleft), right(pright)
     {
-      rdmult = left.GetValue();
-      ldmult = right.GetValue();
-      value = rdmult*ldmult;
+      value = left.GetValue()*right.GetValue();
     }
     multiplication_expression(const multiplication_expression & other) 
-      : left(other.left), right(other.right), value(other.value), ldmult(other.ldmult), rdmult(other.rdmult) {}
+      : left(other.left), right(other.right), value(other.value) {}
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
     {
-      left.GetJacobian(mult*ldmult,r);
-      right.GetJacobian(mult*rdmult,r);
+      left.GetJacobian(mult*right.GetValue(),r);
+      right.GetJacobian(mult*left.GetValue(),r);
     }
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
-      left.GetJacobian(mult*ldmult,r);
-      right.GetJacobian(mult*rdmult,r);
+      left.GetJacobian(mult*right.GetValue(),r);
+      right.GetJacobian(mult*left.GetValue(),r);
     }
-    /*
-    __INLINE void GetHessian(Sparse::Row & J, Sparse::HessianRow & H) const
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
     {
-        Sparse::Row JL, JR;
-        Sparse::HessianRow HL, HR;
-        left.GetHessian(JL,HL);
-        right.GetHessian(JR,HR);
+        Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
+        Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
+        left.GetHessian(mult,JL,HL); //retrive jacobian row and hessian matrix of the left expression
+        right.GetHessian(mult,JR,HR); //retrive jacobian row and hessian matrix of the right expression
+        //assume rows are sorted (this is to be ensured by corresponding GetHessian functions)
         //preallocate J to JL.Size+JR.Size
         //perform merging of two sorted arrays
         //resize to correct size
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < JL.Size(); ++k) J[JL.GetIndex(k)] += right.GetValue()*JL.GetValue(k);
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < JR.Size(); ++k) J[JR.GetIndex(k)] += left.GetValue()*JR.GetValue(k);
+        Sparse::Row::MergeSortedRows(right.GetValue(),JL,left.GetValue(),JR,J);
         //preallocate H to HL.Size+HR.Size+JL.Size*JR.Size
         //merge sorted
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < HL.Size(); ++k) H[HL.GetIndex(k)] += right.GetValue()*HL.GetValue(k);
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < HR.Size(); ++k) H[HR.GetIndex(k)] += left.GetValue()*HR.GetValue(k);
-        
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < JL.Size(); ++k)
-        {
-            for(INMOST_DATA_ENUM_TYPE m = 0; m < JR.Size(); ++m)
-                H[Sparse::HessianRow::make_index(JL.GetIndex(k), JR.GetIndex(m))] += 2*JL.GetValue(k)*JR.GetValue(m);
-        }
+        Sparse::HessianRow::MergeJacobianHessian(JL,JR,right.GetValue(),HL,left.GetValue(),HR,H);
     }
-     */
   };
 
   template<class A, class B>
@@ -952,6 +1030,10 @@ namespace INMOST
       left.GetJacobian(mult * reciprocal_rval,r);
       right.GetJacobian(- mult * value * reciprocal_rval,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
   };
 
   template<class A, class B>
@@ -978,6 +1060,15 @@ namespace INMOST
       left.GetJacobian(mult,r);
       right.GetJacobian(mult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
+        Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
+        left.GetHessian(mult,JL,HL); //retrive jacobian row and hessian matrix of the left expression
+        right.GetHessian(mult,JR,HR); //retrive jacobian row and hessian matrix of the right expression
+        Sparse::Row::MergeSortedRows(1.0,JL,1.0,JR,J);
+        Sparse::HessianRow::MergeSortedRows(1.0,HL,1.0,HR,H);
+    }
   };
 
   template<class A, class B>
@@ -1003,6 +1094,15 @@ namespace INMOST
     {
       left.GetJacobian(mult,r);
       right.GetJacobian(-mult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
+        Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
+        left.GetHessian(mult,JL,HL); //retrive jacobian row and hessian matrix of the left expression
+        right.GetHessian(mult,JR,HR); //retrive jacobian row and hessian matrix of the right expression
+        Sparse::Row::MergeSortedRows(1.0,JL,-1.0,JR,J);
+        Sparse::HessianRow::MergeSortedRows(1.0,HL,-1.0,HR,H);
     }
   };
 
@@ -1043,6 +1143,10 @@ namespace INMOST
       left.GetJacobian(mult*ldmult,r);
       right.GetJacobian(mult*rdmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
   };
 
   template<class A>
@@ -1071,6 +1175,10 @@ namespace INMOST
     {
       left.GetJacobian(mult*ldmult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
+    }
   };
 
   template<class A>
@@ -1098,6 +1206,10 @@ namespace INMOST
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
       right.GetJacobian(mult*rdmult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
     }
   };
 
@@ -1132,6 +1244,13 @@ namespace INMOST
       else
         right.GetJacobian(mult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+      if( cond_value >= 0.0 )
+        left.GetHessian(mult,J,H);
+      else
+        right.GetHessian(mult,J,H);
+    }
   };
 
   template<class A> 
@@ -1158,6 +1277,20 @@ namespace INMOST
       for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
         it->second.GetJacobian(it->first*mult,r);
     }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        Sparse::Row & tmpJ, tmpH, curJ, curH;
+        for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+        {
+            curJ.Clear();
+            curH.Clear();
+            it->second.GetHessian(it->first*mult,curJ,curH);
+            Sparse::Row::MergeSortedRows(1.0,curJ,1.0,J,tmpJ);
+            Sparse::HessianRow::MergeSortedRows(1.0,curH,1.0,H,tmpH);
+            J.Swap(tmpJ);
+            H.Swap(tmpH);
+        }
+    }
   };
 
 
@@ -1181,6 +1314,10 @@ namespace INMOST
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
       arg.GetJacobian(mult*dmult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & J, Sparse::HessianRow & H) const
+    {
+        throw NotImplemented;
     }
     void SetFunctionValue(INMOST_DATA_REAL_TYPE val) {value = val;}
     void SetFunctionDerivative(INMOST_DATA_REAL_TYPE val) {value = val;}
