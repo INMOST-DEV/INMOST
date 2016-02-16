@@ -987,16 +987,26 @@ namespace INMOST
           }
           while( i < left.Size() )
           {
-              output.GetIndex(q) = left.GetIndex(i);
-              output.GetValue(q) = alpha*left.GetValue(i);
-              ++q;
+              if( q > 0 && (output.GetIndex(q-1) == left.GetIndex(i)) )
+                  output.GetValue(q-1) += alpha*left.GetValue(i);
+              else
+              {
+                  output.GetIndex(q) = left.GetIndex(i);
+                  output.GetValue(q) = alpha*left.GetValue(i);
+                  ++q;
+              }
               ++i;
           }
           while( j < right.Size() )
           {
-              output.GetIndex(q) = right.GetIndex(i);
-              output.GetValue(q) = beta*right.GetValue(i);
-              ++q;
+              if( q > 0 && (output.GetIndex(q-1) == right.GetIndex(j)) )
+                  output.GetValue(q-1) += beta*right.GetValue(j);
+              else
+              {
+                  output.GetIndex(q) = right.GetIndex(j);
+                  output.GetValue(q) = beta*right.GetValue(j);
+                  ++q;
+              }
               ++j;
           }
           output.Resize(q);
@@ -1041,21 +1051,31 @@ namespace INMOST
           }
           while( i < left.Size() )
           {
-              output.GetIndex(q) = left.GetIndex(i);
-              output.GetValue(q) = alpha*left.GetValue(i);
-              ++q;
+              if( q > 0 && (output.GetIndex(q-1) == left.GetIndex(i)) )
+                  output.GetValue(q-1) += alpha*left.GetValue(i);
+              else
+              {
+                  output.GetIndex(q) = left.GetIndex(i);
+                  output.GetValue(q) = alpha*left.GetValue(i);
+                  ++q;
+              }
               ++i;
           }
           while( j < right.Size() )
           {
-              output.GetIndex(q) = right.GetIndex(i);
-              output.GetValue(q) = beta*right.GetValue(i);
-              ++q;
+              if( q > 0 && (output.GetIndex(q-1) == right.GetIndex(j)) )
+                  output.GetValue(q-1) += beta*right.GetValue(j);
+              else
+              {
+                  output.GetIndex(q) = right.GetIndex(j);
+                  output.GetValue(q) = beta*right.GetValue(j);
+                  ++q;
+              }
               ++j;
           }
           output.Resize(q);
       }
-      void HessianRow::MergeJacobianHessian(const Row & JL, const Row & JR, INMOST_DATA_REAL_TYPE a, const HessianRow & HL, INMOST_DATA_REAL_TYPE b, const HessianRow & HR, HessianRow & output)
+      void HessianRow::MergeJacobianHessian(INMOST_DATA_REAL_TYPE a, const Row & JL, const Row & JR, INMOST_DATA_REAL_TYPE b, const HessianRow & HL, INMOST_DATA_REAL_TYPE c, const HessianRow & HR, HessianRow & output)
       {
           // merge three sorted arrays at once
           // one of the array is synthesized from JL and JR on the go
@@ -1068,11 +1088,11 @@ namespace INMOST
           INMOST_DATA_ENUM_TYPE i = 0, j = 0, k = 0, l = 0, q = 0, kk = 0, ll = 0, r;
           entry candidate[3] = {stub_entry,stub_entry,stub_entry};
           if( i < HL.Size() ) 
-              candidate[0] = make_entry(HL.GetIndex(i),HL.GetValue(i));
+              candidate[0] = make_entry(HL.GetIndex(i),b*HL.GetValue(i));
           if( j < HR.Size() ) 
-              candidate[1] = make_entry(HR.GetIndex(j),HR.GetValue(j));
+              candidate[1] = make_entry(HR.GetIndex(j),c*HR.GetValue(j));
           if( k < JL.Size() && l < JR.Size() ) 
-              candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),2*JL.GetValue(kk)*JR.GetValue(ll));
+              candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),2*a*JL.GetValue(kk)*JR.GetValue(ll));
           do
           {
               //pick smallest
@@ -1082,24 +1102,29 @@ namespace INMOST
               //all candidates are stub - exit
               if( candidate[r].first == stub_entry.first ) break;
               //record selected entry
-              output.GetIndex(q) = candidate[r].first;
-              output.GetValue(q) = candidate[r].second;
-              ++q;
+              if( q > 0 && (output.GetIndex(q-1) == candidate[r].first) )
+                  output.GetValue(q-1) += candidate[r].second;
+              else
+              {
+                  output.GetIndex(q) = candidate[r].first;
+                  output.GetValue(q) = candidate[r].second;
+                  ++q;
+              }
               if( r == 0 ) //update left hessian index
               {
                   if( ++i < HL.Size() )
-                      candidate[0] = make_entry(HL.GetIndex(i),HL.GetValue(i));
+                      candidate[0] = make_entry(HL.GetIndex(i),b*HL.GetValue(i));
                   else candidate[0] = stub_entry;
               }
               else if( r == 1 ) //update right hessian index
               {
                   if( ++j < HR.Size() )
-                      candidate[1] = make_entry(HR.GetIndex(j),HR.GetValue(j));
+                      candidate[1] = make_entry(HR.GetIndex(j),c*HR.GetValue(j));
                   else candidate[1] = stub_entry;
               }
               else //update jacobians indexes
               {
-                  if( JR.GetIndex(k) < JL.GetIndex(l) ) 
+                  if( JR.GetIndex(l) < JL.GetIndex(k) )
                   {
                       if( ++kk == JL.Size() )
                       {
@@ -1119,13 +1144,15 @@ namespace INMOST
                   }
                   else //values are equal
                   {
-                      if( JR.Size() - l < JL.Size() - k ) ++l;
-                      else ++k;
-                      kk = k;
-                      ll = l;
+                      if( ++ll == JR.Size() )
+                      {
+                          ++k;
+                          kk = k;
+                          ll = l;
+                      }
                   }
                   if( kk < JL.Size() && ll < JR.Size() )
-                      candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),JL.GetValue(kk)*JR.GetValue(ll));
+                      candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),2*a*JL.GetValue(kk)*JR.GetValue(ll));
                   else
                       candidate[2] = stub_entry;
               }
