@@ -22,6 +22,7 @@
 // 4. (???) copying of basic_dynamic_variable
 // 5. Consider optimization by checking zero variation multipliers, check that assembly do not degrade.
 // 6. Document everything
+// 7. change stencil_variable with foreach_variable and introduce function foreach(iterator beg, iterator end, arg)
 
 //This should stop Visual Studio from complaining of very long auto-generated class types
 #ifdef _MSC_VER
