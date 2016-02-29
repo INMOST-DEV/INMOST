@@ -428,6 +428,13 @@ namespace INMOST
       for(enumerator i = 0; i < n*m; ++i)
         space[i] = other.space[i];
     }
+      template<typename typeB>
+      Matrix(const Matrix<typeB> & other) : space(other.Cols()*other.Rows()), n(other.Rows()), m(other.Cols())
+      {
+          for(enumerator i = 0; i < n; ++i)
+              for(enumerator j = 0; j < m; ++j)
+                  (*this)(i,j) = get_value(other(i,j));
+      }
     ~Matrix() {}
     void Resize(enumerator nrows, enumerator mcols)
     {
@@ -445,6 +452,16 @@ namespace INMOST
       m = other.m;
       return *this;
     }
+      template<typename typeB>
+      Matrix & operator =(Matrix<typeB> const & other)
+      {
+          if( n*m != other.n*other.m ) space.resize(other.n*other.m);
+          for(enumerator i = 0; i < other.n*other.m; ++i)
+              space[i] = get_value(other.space[i]);
+          n = other.n;
+          m = other.m;
+          return *this;
+      }
     // i is in [0,n] - row index
     // j is in [0,m] - column index
     Var & operator()(enumerator i, enumerator j)

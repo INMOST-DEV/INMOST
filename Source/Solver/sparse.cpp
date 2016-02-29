@@ -1092,7 +1092,7 @@ namespace INMOST
           if( j < HR.Size() ) 
               candidate[1] = make_entry(HR.GetIndex(j),c*HR.GetValue(j));
           if( k < JL.Size() && l < JR.Size() ) 
-              candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),2*a*JL.GetValue(kk)*JR.GetValue(ll));
+              candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
           do
           {
               //pick smallest
@@ -1152,7 +1152,7 @@ namespace INMOST
                       }
                   }
                   if( kk < JL.Size() && ll < JR.Size() )
-                      candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),2*a*JL.GetValue(kk)*JR.GetValue(ll));
+                      candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
                   else
                       candidate[2] = stub_entry;
               }
@@ -1160,5 +1160,81 @@ namespace INMOST
           while(true);
           output.Resize(q);
       }
+      void HessianRow::MergeJacobianHessian(INMOST_DATA_REAL_TYPE a, const Row & JL, const Row & JR, INMOST_DATA_REAL_TYPE b, const HessianRow & H, HessianRow & output)
+      {
+          // merge three sorted arrays at once
+          // one of the array is synthesized from JL and JR on the go
+          static const entry stub_entry = make_entry(make_index(ENUMUNDEF,ENUMUNDEF),0.0);
+          assert(JL.isSorted());
+          assert(JR.isSorted());
+          assert(H.isSorted());
+          output.Resize(H.Size()+JL.Size()*JR.Size());
+          INMOST_DATA_ENUM_TYPE i = 0, j = 0, k = 0, l = 0, q = 0, kk = 0, ll = 0, r;
+          entry candidate[2] = {stub_entry,stub_entry};
+          if( i < H.Size() )
+              candidate[0] = make_entry(H.GetIndex(i),b*H.GetValue(i));
+          if( k < JL.Size() && l < JR.Size() )
+              candidate[1] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
+          do
+          {
+              //pick smallest
+              r = 0;
+              if( candidate[1].first < candidate[r].first ) r = 1;
+              //all candidates are stub - exit
+              if( candidate[r].first == stub_entry.first ) break;
+              //record selected entry
+              if( q > 0 && (output.GetIndex(q-1) == candidate[r].first) )
+                  output.GetValue(q-1) += candidate[r].second;
+              else
+              {
+                  output.GetIndex(q) = candidate[r].first;
+                  output.GetValue(q) = candidate[r].second;
+                  ++q;
+              }
+              if( r == 0 ) //update left hessian index
+              {
+                  if( ++i < H.Size() )
+                      candidate[0] = make_entry(H.GetIndex(i),b*H.GetValue(i));
+                  else candidate[0] = stub_entry;
+              }
+              else //update jacobians indexes
+              {
+                  if( JR.GetIndex(l) < JL.GetIndex(k) )
+                  {
+                      if( ++kk == JL.Size() )
+                      {
+                          ++l;
+                          kk = k;
+                          ll = l;
+                      }
+                  }
+                  else if( JL.GetIndex(k) < JR.GetIndex(l) )
+                  {
+                      if( ++ll == JR.Size() )
+                      {
+                          ++k;
+                          kk = k;
+                          ll = l;
+                      }
+                  }
+                  else //values are equal
+                  {
+                      if( ++ll == JR.Size() )
+                      {
+                          ++k;
+                          kk = k;
+                          ll = l;
+                      }
+                  }
+                  if( kk < JL.Size() && ll < JR.Size() )
+                      candidate[1] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
+                  else
+                      candidate[1] = stub_entry;
+              }
+          }
+          while(true);
+          output.Resize(q);
+      }
   }
 }
+

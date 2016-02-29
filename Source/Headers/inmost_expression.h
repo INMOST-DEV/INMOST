@@ -619,7 +619,8 @@ namespace INMOST
     }
   };
 
-  /// c/x = -c dx / (x*x)
+  /// (c/x)' = -c dx / (x*x)
+  /// (c/x)'' = 2 c dx dx / (x*x*x)
   template<class A>
   class reciprocal_expression : public shell_expression<reciprocal_expression<A> >
   {
@@ -644,7 +645,12 @@ namespace INMOST
     }
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
-        arg.GetHessian(-multJ*value*reciprocial_val,J,2*multH*value*reciprocial_val*reciprocial_val,H);
+        Sparse::HessianRow ArgH;
+        double coefJ = -multJ*value*reciprocial_val;
+        double signJ = coefJ < 0 ? -1 : 1;
+        arg.GetHessian(signJ,J,-2*multH*value*reciprocial_val,ArgH);
+        Sparse::HessianRow::MergeJacobianHessian(2*value*reciprocial_val*reciprocial_val*signJ,J,J,1.0,ArgH,H);
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
     }
   };
 
@@ -687,18 +693,21 @@ namespace INMOST
       __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
       __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
       {
-          arg.GetJacobian( mult * dmult, r);
+          arg.GetJacobian( (value == 0 ? (mult < 0.0 ? -1 : 1) : 1) * mult * dmult, r);
       }
       __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
       {
-          arg.GetJacobian( mult * dmult, r);
+          arg.GetJacobian( (value == 0 ? (mult < 0.0 ? -1 : 1) : 1) * mult * dmult, r);
       }
       __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ,Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
       {
-          throw NotImplemented;
+          double a = (value == 0 ? (multJ < 0.0 ? -1 : 1) : 1);
+          double b = (value == 0 ? (multH < 0.0 ? -1 : 1) : 1);
+          arg.GetHessian( a * multJ * dmult,J, b*multH * dmult,H);
       }
   };
 
+  // ex
   template<class A>
   class exp_expression : public shell_expression<exp_expression<A> >
   {
@@ -722,7 +731,12 @@ namespace INMOST
       }
       __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
       {
-          arg.GetHessian(multJ*value, J, multH*value, H); //check
+          Sparse::HessianRow ArgH;
+          double coefJ = multJ*value;
+          double signJ = coefJ < 0.0 ? -1 : 1;
+          arg.GetHessian(signJ, J, multH*value, ArgH); //check
+          Sparse::HessianRow::MergeJacobianHessian(coefJ*signJ,J,J,1.0,ArgH,H);
+          for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
       }
   };
 
@@ -750,7 +764,12 @@ namespace INMOST
       }
       __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
       {
-          arg.GetJacobian(multJ*dmult,J,-multH*dmult*dmult,H);
+          Sparse::HessianRow ArgH;
+          double coefJ = multJ*dmult;
+          double signJ = coefJ < 0.0 ? -1 : 1;
+          arg.GetHessian(signJ, J, 2*multH*dmult, ArgH); //check
+          Sparse::HessianRow::MergeJacobianHessian(-coefJ*signJ*dmult,J,J,1.0,ArgH,H);
+          for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
       }
   };
 
@@ -1002,7 +1021,7 @@ namespace INMOST
         Sparse::Row::MergeSortedRows(right.GetValue(),JL,left.GetValue(),JR,J);
         //preallocate H to HL.Size+HR.Size+JL.Size*JR.Size
         //merge sorted
-        Sparse::HessianRow::MergeJacobianHessian(1.0,JL,JR,right.GetValue(),HL,left.GetValue(),HR,H);
+        Sparse::HessianRow::MergeJacobianHessian(2.0,JL,JR,right.GetValue(),HL,left.GetValue(),HR,H);
     }
   };
 
@@ -1046,7 +1065,7 @@ namespace INMOST
         Sparse::Row::MergeSortedRows(reciprocal_rval,JL,-value * reciprocal_rval,JR,J);
         //preallocate H to HL.Size+HR.Size+JL.Size*JR.Size
         //merge sorted
-        Sparse::HessianRow::MergeJacobianHessian(1.0,JL,JR,reciprocal_rval,HL,2*left.GetValue()*multH,HR,H);
+        Sparse::HessianRow::MergeJacobianHessian(2.0,JL,JR,reciprocal_rval,HL,2*left.GetValue()*multH,HR,H);
     }
   };
 
