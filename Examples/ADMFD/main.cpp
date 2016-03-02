@@ -456,10 +456,12 @@ int main(int argc,char ** argv)
                         vMatrix vnKGRAD = nKGRAD;
                         vMatrix card(NF,1);
                         vMatrix dpF(NF,1);
+                        variable div = 0;
                         //denominators of corrections
                         //this is sum of absolute values of differences
                         for(int k = 0; k < NF; ++k)
                         {
+                            div += FLUX(k,0)*faces[k].Area();;
                             for(int j = 0; j < NF; ++j)
                             {
                                 dpF(k,0) += soft_fabs(pF(j,0) - pF(k,0),1.0e-9);
@@ -473,7 +475,9 @@ int main(int argc,char ** argv)
                             for(int j = k+1; j < NF; ++j) //if( nKGRAD(k,j) > 0.0 )
                             {
                                 //beta = soft_fabs(FLUX(k,0),1.0e-9)/(dpF(k,0)) + soft_fabs(FLUX(j,0),1.0e-9)/(dpF(j,0));
-                                beta = soft_max(soft_fabs(FLUX(k,0),1.0e-9)/card(k,0),soft_fabs(FLUX(j,0),1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
+                                beta = soft_max(soft_fabs(FLUX(k,0)-FLUX(j,0),1.0e-9)/card(k,0),soft_fabs(FLUX(j,0)-FLUX(k,0),1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
+                                //beta = soft_max(soft_fabs(FLUX(k,0),1.0e-9)/card(k,0),soft_fabs(FLUX(j,0),1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
+                                //beta = soft_max(soft_fabs(div,1.0e-9)/card(k,0),soft_fabs(div,1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
                                 beta = variation(beta,var);
                                 vnKGRAD(k,j) -= (beta);
                                 vnKGRAD(j,k) -= (beta);
