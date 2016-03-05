@@ -19,7 +19,9 @@
 // 5. Consider optimization by checking zero variation multipliers, check that assembly do not degrade.
 // 6. floor, ceil, atan, acos, asin, max, min functions
 // 7. choice of directional derivatives at discontinuities for abs, pow, max, min (see ADOL-C)
-
+#ifdef _MSC_VER
+#pragma warning(disable : 4503)
+#endif
 
 #if defined(USE_AUTODIFF)
 namespace INMOST

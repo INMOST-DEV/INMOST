@@ -806,12 +806,12 @@ namespace INMOST
       }
       return Kc;
     }
-    //retrive vector in matrix form from array
+    ///Retrive vector in matrix form from array
     static Matrix<Var> FromVector(Var * n, enumerator size)
     {
       return Matrix(n,size,1);
     }
-    //create diagonal matrix from array
+    ///Create diagonal matrix from array
     static Matrix<Var> FromDiagonal(Var * r, enumerator size)
     {
       Matrix ret(size,size);
@@ -819,7 +819,7 @@ namespace INMOST
       for(enumerator k = 0; k < size; ++k) ret(k,k) = r[k];
       return ret;
     }
-    //create diagonal matrix from array of inversed values
+    ///Create diagonal matrix from array of inversed values
     static Matrix<Var> FromDiagonalInverse(Var * r, enumerator size)
     {
       Matrix ret(size,size);
@@ -827,7 +827,7 @@ namespace INMOST
       for(enumerator k = 0; k < size; ++k) ret(k,k) = 1.0/r[k];
       return ret;
     }
-    //Unit matrix
+    ///Unit matrix
     static Matrix Unit(enumerator pn)
     {
       Matrix ret(pn,pn);
@@ -835,6 +835,113 @@ namespace INMOST
       for(enumerator i = 0; i < pn; ++i) ret(i,i) = 1.0;
       return ret;
     }
+    /// Concatenate B matrix as columns of current matrix.
+    /// Assumes that number of rows of current matrix is
+    /// equal to number of rows of B matrix.
+    Matrix ConcatCols(Matrix B)
+    {
+        assert(Rows() == B.Rows());
+        Matrix ret(Rows(),Cols()+B.Cols());
+        Matrix & A = *this;
+        for(enumerator i = 0; i < Rows(); ++i)
+        {
+            for(enumerator j = 0; j < Cols(); ++j)
+                ret(i,j) = A(i,j);
+            for(enumerator j = 0; j < B.Cols(); ++j)
+                ret(i,j+Cols()) = B(i,j);
+        }
+        return ret;
+    }
+    /// Concatenate B matrix as rows of current matrix.
+    /// Assumes that number of colums of current matrix is
+    /// equal to number of columns of B matrix.
+    Matrix ConcatRows(Matrix B)
+    {
+        assert(Cols() == B.Cols());
+        Matrix ret(Rows()+B.Rows(),Cols());
+        Matrix & A = *this;
+        for(enumerator i = 0; i < Rows(); ++i)
+        {
+            for(enumerator j = 0; j < Cols(); ++j)
+                ret(i,j) = A(i,j);
+        }
+        for(enumerator i = 0; i < B.Rows(); ++i)
+        {
+            for(enumerator j = 0; j < Cols(); ++j)
+                ret(i+Rows(),j) = B(i,j);
+        }
+        return ret;
+    }
+
+    /// Joint diagonalization algorithm by Cardoso
+    /// http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
+    /// Current matrix should have size n by n*m
+    /// And represent concatination of m n by n matrices
+    Matrix JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-4)
+    {
+        enumerator n = Rows();
+        enumerator m = Cols()/Rows();
+        Matrix V = Matrix::Unit(m);
+        Matrix R(2,m);
+        Matrix G(2,2);
+        Matrix & A = *this;
+        Var ton, toff, theta, c, s, Ap, Aq, Vp, Vq;
+        bool repeat;
+        do
+        {
+            repeat = false;
+            for(enumerator p = 0; p < n-1; ++n)
+            {
+                for(enumerator q = p+1; q < n; ++q)
+                {
+                    for(enumerator k = 0; k < m; ++k)
+                    {
+                        R(0,k) = A(p,p + k*m) - A(q,q + k*m);
+                        R(1,k) = A(p,q + k*m) + A(q,p + k*m);
+                    }
+                    G = R*R.Transpose();
+                    Var ton  = G(0,0) - G(1,1);
+                    Var toff = G(0,1) + G(1,0);
+                    Var theta = 0.5 * atan2( toff, ton + sqrt(ton*ton + toff*toff) );
+                    Var c = cos(theta);
+                    Var s = sin(theta);
+                    repeat = repeat | (fabs(s) > threshold);
+                    if( fabs(s) > threshold )
+                    {
+                        for(enumerator k = 0; k < m; ++k)
+                        {
+                            for(enumerator i = 0; i < n; ++i)
+                            {
+                                Ap = A(i,p + k*n);
+                                Aq = A(i,q + k*n);
+                                A(i,p + k*m) = Ap*c + Aq*s;
+                                A(i,q + k*m) = Aq*c - Ap*s;
+                            }
+                        }
+                        for(enumerator k = 0; k < m; ++k)
+                        {
+                            for(enumerator j = 0; j < n; ++i)
+                            {
+                                Ap = A(p,j + k*n);
+                                Aq = A(q,j + k*n);
+                                A(p,j + k*n) = Ap*c + Aq*s;
+                                A(q,j + k*n) = Aq*c - Ap*s;
+                            }
+                        }
+                        for(enumerator i = 0; i < n; ++i)
+                        {
+                            Vp = V(i,p);
+                            Vq = V(i,q);
+                            V(i,p) = Vp*c + Vq*s;
+                            V(i,q) = Vq*s - Vp*s;
+                        }
+                    }
+                }
+            }
+        } while( repeat );
+        return V;
+    }
+
   };
 
 
