@@ -18,6 +18,8 @@ using namespace INMOST;
 #define DEFAULT_TAU 0.01
 #endif
 
+
+//#define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
 #define REORDER_METIS_ND
@@ -1163,11 +1165,11 @@ public:
 
 			sort_wgts.clear();
 			for (k = wbeg; k < wend; ++k)
-				//sort_wgts.push_back(wgt_coord(Ulist[k]+Llist[Blist[k]]-1, coord(k, Blist[k])));
+                sort_wgts.push_back(wgt_coord(Ulist[k]+Llist[Blist[k]]-1, coord(k, Blist[k])));
 				//sort_wgts.push_back(wgt_coord((Ulist[k]+Llist[Blist[k]]-1)*(U[k]+V[Blist[k]]), coord(k, Blist[k])));
 				//sort_wgts.push_back(wgt_coord((Ulist[k]+Llist[Blist[k]]-1)*(U[k]+V[Blist[k]]-temp[k])/temp[k], coord(k, Blist[k])));
 				//sort_wgts.push_back(wgt_coord(1.0/temp[k], coord(k, Blist[k])));
-				sort_wgts.push_back(wgt_coord((U[k]+V[Blist[k]]-temp[k])/temp[k], coord(k, Blist[k])));
+				//sort_wgts.push_back(wgt_coord((U[k]+V[Blist[k]])*(U[k]+V[Blist[k]])/(temp[k]), coord(k, Blist[k])));
 			std::sort(sort_wgts.begin(), sort_wgts.end());
 
 			i = wbeg;
@@ -1178,6 +1180,28 @@ public:
 				++i;
 			}
 			cend = i;
+#elif defined(REORDER_RCM)
+            //compute order of each entry
+            std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, 0);
+            std::fill(Llist.begin() + wbeg - mobeg, Llist.begin() + wend - mobeg, 0);
+            for (k = wbeg; k < wend; ++k)
+            {
+                for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it != A_Address[k].last; ++it)
+                {
+                    i = A_Entries[it].first;
+                    //nonzeros
+                    Ulist[k]++; //row nnz
+                    Llist[i]++; //col nnz
+                }
+            }
+            //find node with the lowest order
+            INMOST_DATA_ENUM_TYPE start = wbeg;
+            INMOST_DATA_ENUM_TYPE index = wbeg;
+            for(k = wbeg; k < wend; ++k)
+                if( Ulist[k] + Llist[Blist[k]] < Ulist[start] + Llist[Blist[start]] )
+                    start = k;
+            localP[start] = localQ[Blist[start]] = index++;
+            
 #else
 			cend = wend;
 			i = wbeg;

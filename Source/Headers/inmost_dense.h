@@ -764,6 +764,11 @@ namespace INMOST
           ret += ((*this)(i,j))*other(i,j);
       return ret;
     }
+      template<typename typeB>
+      typename Promote<Var,typeB>::type operator ^(const Matrix<typeB> & other) const
+      {
+          return DotProduct(other);
+      }
     Var FrobeniusNorm()
     {
       Var ret = 0;
@@ -838,7 +843,7 @@ namespace INMOST
     /// Concatenate B matrix as columns of current matrix.
     /// Assumes that number of rows of current matrix is
     /// equal to number of rows of B matrix.
-    Matrix ConcatCols(Matrix B)
+    Matrix ConcatCols(const Matrix & B)
     {
         assert(Rows() == B.Rows());
         Matrix ret(Rows(),Cols()+B.Cols());
@@ -855,7 +860,7 @@ namespace INMOST
     /// Concatenate B matrix as rows of current matrix.
     /// Assumes that number of colums of current matrix is
     /// equal to number of columns of B matrix.
-    Matrix ConcatRows(Matrix B)
+    Matrix ConcatRows(const Matrix & B)
     {
         assert(Cols() == B.Cols());
         Matrix ret(Rows()+B.Rows(),Cols());
@@ -877,12 +882,12 @@ namespace INMOST
     /// http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
     /// Current matrix should have size n by n*m
     /// And represent concatination of m n by n matrices
-    Matrix JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-4)
+    Matrix JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-7)
     {
-        enumerator n = Rows();
-        enumerator m = Cols()/Rows();
+        enumerator N = Rows();
+        enumerator M = Cols() / Rows();
         Matrix V = Matrix::Unit(m);
-        Matrix R(2,m);
+        Matrix R(2,M);
         Matrix G(2,2);
         Matrix & A = *this;
         Var ton, toff, theta, c, s, Ap, Aq, Vp, Vq;
@@ -890,14 +895,14 @@ namespace INMOST
         do
         {
             repeat = false;
-            for(enumerator p = 0; p < n-1; ++n)
+            for(enumerator p = 0; p < N-1; ++p)
             {
-                for(enumerator q = p+1; q < n; ++q)
+                for(enumerator q = p+1; q < N; ++q)
                 {
-                    for(enumerator k = 0; k < m; ++k)
+                    for(enumerator k = 0; k < M; ++k)
                     {
-                        R(0,k) = A(p,p + k*m) - A(q,q + k*m);
-                        R(1,k) = A(p,q + k*m) + A(q,p + k*m);
+                        R(0,k) = A(p,p + k*N) - A(q,q + k*N);
+                        R(1,k) = A(p,q + k*N) + A(q,p + k*N);
                     }
                     G = R*R.Transpose();
                     Var ton  = G(0,0) - G(1,1);
@@ -905,44 +910,52 @@ namespace INMOST
                     Var theta = 0.5 * atan2( toff, ton + sqrt(ton*ton + toff*toff) );
                     Var c = cos(theta);
                     Var s = sin(theta);
-                    repeat = repeat | (fabs(s) > threshold);
                     if( fabs(s) > threshold )
                     {
-                        for(enumerator k = 0; k < m; ++k)
+                        //std::cout << "p,q: " << p << "," << q << " c,s: " << c << "," << s << std::endl;
+                        repeat = true;
+                        for(enumerator k = 0; k < M; ++k)
                         {
-                            for(enumerator i = 0; i < n; ++i)
+                            for(enumerator i = 0; i < N; ++i)
                             {
-                                Ap = A(i,p + k*n);
-                                Aq = A(i,q + k*n);
-                                A(i,p + k*m) = Ap*c + Aq*s;
-                                A(i,q + k*m) = Aq*c - Ap*s;
+                                Ap = A(i,p + k*N);
+                                Aq = A(i,q + k*N);
+                                A(i,p + k*N) = Ap*c + Aq*s;
+                                A(i,q + k*N) = Aq*c - Ap*s;
                             }
                         }
-                        for(enumerator k = 0; k < m; ++k)
+                        for(enumerator k = 0; k < M; ++k)
                         {
-                            for(enumerator j = 0; j < n; ++i)
+                            for(enumerator j = 0; j < N; ++j)
                             {
-                                Ap = A(p,j + k*n);
-                                Aq = A(q,j + k*n);
-                                A(p,j + k*n) = Ap*c + Aq*s;
-                                A(q,j + k*n) = Aq*c - Ap*s;
+                                Ap = A(p,j + k*N);
+                                Aq = A(q,j + k*N);
+                                A(p,j + k*N) = Ap*c + Aq*s;
+                                A(q,j + k*N) = Aq*c - Ap*s;
                             }
                         }
-                        for(enumerator i = 0; i < n; ++i)
+                        for(enumerator i = 0; i < N; ++i)
                         {
                             Vp = V(i,p);
                             Vq = V(i,q);
                             V(i,p) = Vp*c + Vq*s;
-                            V(i,q) = Vq*s - Vp*s;
+                            V(i,q) = Vq*c - Vp*s;
                         }
                     }
                 }
             }
+            //Print();
         } while( repeat );
         return V;
     }
 
   };
+    
+    template<typename typeA, typename typeB>
+    Matrix<typename Promote<typeA,typeB>::type> operator *(const typeA & coef, const Matrix<typeB> & other)
+    {
+        return other*coef;
+    }
 
 
   typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
