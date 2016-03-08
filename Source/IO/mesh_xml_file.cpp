@@ -237,11 +237,17 @@ namespace INMOST
             elems = &new_edges;
             curtype = EDGE;
           }
+          
 
           for(int q = 0; q < TagElems.NumAttrib(); ++q)
           {
             XMLReader::XMLAttrib & attr = TagElems.GetAttib(q);
-            if( attr.name == "Number" ) nelems = atoi(attr.value.c_str());
+            if( attr.name == "Number" ) 
+            {
+                nelems = atoi(attr.value.c_str());
+                matchelems = true;
+                //std::cout << "nelems: " << nelems << " text " << attr.value.c_str() << std::endl;
+            }
             else reader.Report("Unused attribute for %ss %s='%s'",TagElems.name.c_str(),attr.name.c_str(),attr.value.c_str());
           } 
           
@@ -265,11 +271,7 @@ namespace INMOST
             for(int q = 0; q < TagConns.NumAttrib(); ++q)
             {
               XMLReader::XMLAttrib & attr = TagConns.GetAttib(q);
-              if( attr.name == "Number" ) 
-              {
-                nconns = atoi(attr.value.c_str());
-                matchelems = true;
-              }
+              if( attr.name == "Number" ) nconns = atoi(attr.value.c_str());
               else if( attr.name == "Type" ) subtype = reader.atoes(attr.value.c_str());
               else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
               else reader.Report("Unused attribute for %ss %s='%s'",TagConns.name.c_str(),attr.name.c_str(),attr.value.c_str());

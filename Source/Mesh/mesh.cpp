@@ -1652,7 +1652,7 @@ namespace INMOST
 		{
 			dim = dims;
 			DeleteTag(tag_coords);
-			tag_coords = CreateTag("COORD",DATA_REAL, NODE,NONE,dim);
+			tag_coords = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
 		}
 	}
 	

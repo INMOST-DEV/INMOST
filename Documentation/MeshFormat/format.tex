@@ -41,7 +41,7 @@
 
 
 \begin{document}
-\title{Mesh format}
+\title{XML Mesh format}
 \author{Kirill Terekhov}
 
 \maketitle
@@ -324,7 +324,7 @@ Each xml tag contains attributes that describe the way the data is stored on the
 The "GLOBAL\_ID" tag in the example defines a single integer entry on all the nodes, faces and cells, and on some sets. The "WHATEVER" tag defines a binary data of arbitrary size only to some sets. When one would like to have just a handful of entries unrelated to the mesh elements one can prescribe them to the mesh, i.e. write Definition="Mesh".
 
 \section{Nodes}
-This is a mandatory XML tag for the file that describes all the nodes of the mesh. The "Number" attribute describes the total number of nodes. Optional attribute "Dimension" tells the number of space dimensions, that is the number of coordinates in each entry, defaults to 3. The contents of the XML tag inside of "$<![CDATA[]]>$" can be entered in any format suitable to represent vectors as per \S~\ref{parsing}. Nodes are mesh elements of dimension 0.
+This is a mandatory XML tag for the file that describes all the nodes of the mesh. The "Number" attribute describes the total number of nodes. Optional attribute "Dimension" tells the number of space dimensions, that is the number of coordinates in each entry, defaults to 3. The contents of the XML tag inside of "$<![CDATA[]]>$" can be entered in any format suitable to represent vectors as described in \S~\ref{data_format}. Nodes are mesh elements of dimension 0.
 \section{Faces, Edges, Cells}
 XML Tags Faces and Edges are optional and could be used to define only some of the elements of the mesh. For example one may introduce only boundary faces in XML tag Faces. The XML Tag Cells is mandatory and it represents cells of the mesh. One can optionally provide an optional attribute "Number" that will be used to check that the number of elements red is correct. Edges, faces and cells are mesh elements of dimension 1, 2 and 3 respectively.
 \subsubsection{Connections}

@@ -951,11 +951,9 @@ namespace INMOST
 
   };
     
-    template<typename typeA, typename typeB>
-    Matrix<typename Promote<typeA,typeB>::type> operator *(const typeA & coef, const Matrix<typeB> & other)
-    {
-        return other*coef;
-    }
+    //template<typename typeA, typename typeB>
+    //Matrix<typename Promote<typeA,typeB>::type> operator *(const typeA & coef, const Matrix<typeB> & other)
+    //{return other*coef;}
 
 
   typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
