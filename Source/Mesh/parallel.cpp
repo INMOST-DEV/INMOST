@@ -1781,7 +1781,7 @@ namespace INMOST
 			{
 				int ierr;
 				REPORT_MPI(ierr = MPI_Scan(shift,shift_recv,4,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_SUM,GetCommunicator()));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			}
 			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = currenttype << 1 )
 			{

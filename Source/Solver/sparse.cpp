@@ -574,11 +574,11 @@ namespace INMOST
 			  MPI_File fh;
 			  MPI_Status stat;
 			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
-        if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+        if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_close(&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()),MPI_MODE_WRONLY | MPI_MODE_CREATE,MPI_INFO_NULL,&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  if( rank == 0 )
 			  {
 				  std::stringstream header;
@@ -587,12 +587,12 @@ namespace INMOST
 				  //header << "% by MPI_File_* api" << std::endl;
 				  header << vecsize << std::endl;
 				  ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
-				  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+				  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  }
 			  ierr = MPI_File_write_ordered(fh,const_cast<char *>(rhs.str().c_str()),static_cast<int>(rhs.str().size()),MPI_CHAR,&stat);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_close(&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 		  }
 #elif defined(USE_MPI) //USE_MPI alternative
 		  std::string senddata = rhs.str(), recvdata;
@@ -673,15 +673,23 @@ namespace INMOST
 		  }
 #if defined(USE_MPI) && defined(USE_MPI_FILE) // USE_MPI2?
 		  {
-			  int ierr;
+              char estring[MPI_MAX_ERROR_STRING];
+			  int ierr, len;
 			  MPI_File fh;
 			  MPI_Status stat;
 			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
-        if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+        if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_close(&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+              ierr = MPI_Barrier(GetCommunicator());
+              if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()),MPI_MODE_WRONLY | MPI_MODE_CREATE,MPI_INFO_NULL,&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) 
+              {
+                  MPI_Error_string(ierr,estring,&len);
+                  std::cout << estring << std::endl;
+                  MPI_Abort(GetCommunicator(),__LINE__);
+              }
 			  if( rank == 0 )
 			  {
 				  std::stringstream header;
@@ -692,12 +700,12 @@ namespace INMOST
 				  header << matsize << " " << matsize << " " << nonzero << std::endl;
 				  //std::string header_data(header.str());
 				  ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
-				  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+				  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  }
 			  ierr = MPI_File_write_ordered(fh,const_cast<char *>(mtx.str().c_str()),static_cast<int>(mtx.str().size()),MPI_CHAR,&stat);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_close(&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 		  }
 #elif defined(USE_MPI)//USE_MPI alternative
 		  std::string senddata = mtx.str(), recvdata;
@@ -786,11 +794,11 @@ namespace INMOST
 			  MPI_File fh;
 			  MPI_Status stat;
 			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
-        if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+        if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_close(&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()),MPI_MODE_WRONLY | MPI_MODE_CREATE,MPI_INFO_NULL,&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  if( rank == 0 )
 			  {
 				  std::stringstream header;
@@ -801,12 +809,12 @@ namespace INMOST
 				  header << matsize << " " << matsize << " " << nonzero << std::endl;
 				  //std::string header_data(header.str());
 				  ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
-				  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+				  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  }
 			  ierr = MPI_File_write_ordered(fh,const_cast<char *>(mtx.str().c_str()),static_cast<int>(mtx.str().size()),MPI_CHAR,&stat);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			  ierr = MPI_File_close(&fh);
-			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),-1);
+			  if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 		  }
 #elif defined(USE_MPI)//USE_MPI alternative
 		  std::string senddata = mtx.str(), recvdata;
