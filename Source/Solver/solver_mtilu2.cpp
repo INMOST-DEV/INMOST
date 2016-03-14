@@ -515,44 +515,65 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 
 			//for(k = mobeg; k != moend; ++k)
 			//if( Perm[k] != k ) std::cout << "Column " << k << " go to " << Perm[k] << " inverse " << IPerm[k] << std::endl;
+            
+            { //fill gaps in perm
+                std::fill(IPerm.begin(), IPerm.end(), ENUMUNDEF);
+                for(k = mobeg; k < moend; ++k)
+                {
+                    if( Perm[k] != ENUMUNDEF )
+                        IPerm[Perm[k]] = 0;
+                }
+                std::vector<INMOST_DATA_ENUM_TYPE> gaps;
+                for(k = mobeg; k < moend; ++k)
+                    if( IPerm[k] == ENUMUNDEF )
+                        gaps.push_back(k);
+                
+                for(k = mobeg; k < moend; ++k)
+                    if( Perm[k] == ENUMUNDEF )
+                    {
+                        Perm[k] = gaps.back();
+                        gaps.pop_back();
+                    }
+            }
+            
 			
 
 			cnt = 0;
 #if defined(RESCALE_MAXIMUM_TRANSVERSAL)
-			trescale = Timer();
-			for (k = mobeg; k < moend; ++k)
-			{
-				bool flip_sign = false;	
-        for(INMOST_DATA_ENUM_TYPE qt = 0; qt < A[k].Size(); ++qt)
-				{
-					INMOST_DATA_ENUM_TYPE i = A[k].GetIndex(qt), j = Perm[i];
-					INMOST_DATA_REAL_TYPE l = exp(V[k]), u = exp(U[i])/Cmax[i];
-					DL[k] = l;
-					DR[i] = u;						
-					B_Entries[cnt++] = 	Sparse::Row::make_entry(j, l*u*A[k].GetValue(qt));
-					if( j == k && (B_Entries[cnt-1].second) < 0.0 ) flip_sign = true;
-				}
-				if( flip_sign )
-				{
-					DL[k] *= -1;
-					for(INMOST_DATA_ENUM_TYPE Li = B_Address[k]; Li < B_Address[k+1]; ++Li) B_Entries[Li].second *= -1;
-				}
-				//std::sort(B_Entries.begin()+C_Address[k],B_Entries.begin()+C_Address[k+1]);
-			}
-			for (k = mobeg; k < moend; ++k) U[Perm[k]] = DR[k];
-			for (k = mobeg; k < moend; ++k) DR[k] = U[k];
-
-			trescale = Timer() - trescale;
+            trescale = Timer();
+            for (k = mobeg; k < moend; ++k)
+            {
+                bool flip_sign = false;
+                for(INMOST_DATA_ENUM_TYPE qt = 0; qt < A[k].Size(); ++qt)
+                {
+                    INMOST_DATA_ENUM_TYPE i = A[k].GetIndex(qt), j = Perm[i];
+                    INMOST_DATA_REAL_TYPE l = exp(V[k]), u = exp(U[i])/Cmax[i];
+                    DL[k] = l;
+                    DR[i] = u;
+                    B_Entries[cnt++] = 	Sparse::Row::make_entry(j, l*u*A[k].GetValue(qt));
+                    if( j == k && (B_Entries[cnt-1].second) < 0.0 ) flip_sign = true;
+                }
+                if( flip_sign )
+                {
+                    DL[k] *= -1;
+                    for(INMOST_DATA_ENUM_TYPE Li = B_Address[k]; Li < B_Address[k+1]; ++Li) B_Entries[Li].second *= -1;
+                }
+                //std::sort(B_Entries.begin()+C_Address[k],B_Entries.begin()+C_Address[k+1]);
+            }
+            for (k = mobeg; k < moend; ++k) U[Perm[k]] = DR[k];
+            for (k = mobeg; k < moend; ++k) DR[k] = U[k];
+            
+            trescale = Timer() - trescale;
 #else
-			for (k = mobeg; k < moend; ++k)
-			{
-        for(INMOST_DATA_ENUM_TYPE qt = 0; qt < A[k].Size(); ++qt)
-				{
-          if( A[k].GetIndex(qt) >= mobeg && A[k].GetIndex(qt) < moend )
-           B_Entries[cnt++] = 	Sparse::Row::make_entry(Perm[A[k].GetIndex(qt)], A[k].GetValue(qt));
-				}
-				//std::sort(B_Entries.begin()+C_Address[k],B_Entries.begin()+C_Address[k+1]);
-			}
+            for (k = mobeg; k < moend; ++k)
+            {
+                for(INMOST_DATA_ENUM_TYPE qt = 0; qt < A[k].Size(); ++qt)
+                {
+                    if( A[k].GetIndex(qt) >= mobeg && A[k].GetIndex(qt) < moend )
+                        B_Entries[cnt++] = 	Sparse::Row::make_entry(Perm[A[k].GetIndex(qt)], A[k].GetValue(qt));
+                }
+                //std::sort(B_Entries.begin()+C_Address[k],B_Entries.begin()+C_Address[k+1]);
+            }
 #endif
 
 			//for (k = mobeg; k < moend; ++k) IPerm[Perm[k]] = k; //inversePQ
@@ -563,21 +584,21 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 		}
 #else
 		{
-			treorder = Timer();
-			INMOST_DATA_ENUM_TYPE cnt = 0;
-			B_Address[mobeg] = 0;
-			for(k = mobeg; k < moend; ++k)
-			{
-				Perm[k] = k;
-				for (Sparse::Row::iterator it = A[k].Begin(); it != A[k].End(); ++it)
-        {
-          if( it->first >= mobeg && it->first < moend )
-					  B_Entries[cnt++] = Sparse::Row::make_entry(it->first,it->second);
-        }
-				B_Address[k+1] = cnt;
-			}
-			//DumpMatrix(B_Address,B_Entries,mobeg,moend,"NOMC64.mtx");
-			treorder = Timer() - treorder;
+            treorder = Timer();
+            INMOST_DATA_ENUM_TYPE cnt = 0;
+            B_Address[mobeg] = 0;
+            for(k = mobeg; k < moend; ++k)
+            {
+                Perm[k] = k;
+                for (Sparse::Row::iterator it = A[k].Begin(); it != A[k].End(); ++it)
+                {
+                    if( it->first >= mobeg && it->first < moend )
+                        B_Entries[cnt++] = Sparse::Row::make_entry(it->first,it->second);
+                }
+                B_Address[k+1] = cnt;
+            }
+            //DumpMatrix(B_Address,B_Entries,mobeg,moend,"NOMC64.mtx");
+            treorder = Timer() - treorder;
 		}
 #endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

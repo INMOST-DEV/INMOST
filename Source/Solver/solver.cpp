@@ -46,8 +46,8 @@
 
 //#define USE_OMP
 
-#define KSOLVER BCGSL_solver
-//#define KSOLVER BCGS_solver
+//#define KSOLVER BCGSL_solver
+#define KSOLVER BCGS_solver
 //#define ACCELERATED_CONDEST
 //#define PRINT_CONDEST
 

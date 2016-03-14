@@ -905,6 +905,26 @@ public:
 				//DumpMatrix(B_Address,B_Entries,wbeg,wend,"MC64.mtx");
 
 				std::fill(localP.begin() + (wbeg - mobeg), localP.begin() + (wend - mobeg), ENUMUNDEF);
+                
+                { //check that there are no gaps in Perm
+                    for(k = cbeg; k < cend; ++k)
+                    {
+                        if( Perm[k] != ENUMUNDEF )
+                            localP[Perm[k]] = 0;
+                    }
+                    std::vector<INMOST_DATA_ENUM_TYPE> gaps;
+                    for(k = cbeg; k < cend; ++k)
+                        if( localP[k] == ENUMUNDEF )
+                            gaps.push_back(k);
+                    
+                    for(k = cbeg; k < cend; ++k)
+                        if( Perm[k] == ENUMUNDEF )
+                        {
+                            Perm[k] = gaps.back();
+                            gaps.pop_back();
+                        }
+                    std::fill(localP.begin() + (wbeg - mobeg), localP.begin() + (wend - mobeg), ENUMUNDEF);
+                }
 				
 				//exit(-1);
 
@@ -1973,7 +1993,7 @@ swap_algorithm:
 						LineValuesU[k] = B_Entries[B_Address[k].first].second;
 					else
 					{
-						std::cout << __LINE__ << " No diagonal value! " << k << " " << B_Entries[B_Address[k].first].first << std::endl;
+						//std::cout << __LINE__ << " No diagonal value! " << k << " " << B_Entries[B_Address[k].first].first << std::endl;
 						LineValuesU[k] = 0.0;
 					}
 
@@ -2179,7 +2199,7 @@ swap_algorithm:
 						LineValuesL[k] = B_Entries[B_Address[k].first].second;
 					else
 					{
-						std::cout << __LINE__ << " No diagonal value! " << k << std::endl;
+						//std::cout << __LINE__ << " No diagonal value! " << k << std::endl;
 						LineValuesL[k] = 0.0;
 					}
 					//start from diagonal
