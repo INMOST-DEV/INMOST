@@ -600,7 +600,7 @@ namespace INMOST
     {
       std::pair<Matrix,bool> ret = std::make_pair(Matrix(m,n),true);
       Matrix At = Transpose(); //m by n matrix
-      Matrix AtB = At*Unit(n); //m by n matrix
+      Matrix AtB = At; //m by n matrix
       Matrix AtA = At*(*this); //m by m matrix
       enumerator * order = new enumerator [m];
       for(enumerator i = 0; i < m; ++i) order[i] = i;
@@ -832,6 +832,23 @@ namespace INMOST
       for(enumerator k = 0; k < size; ++k) ret(k,k) = 1.0/r[k];
       return ret;
     }
+	static Matrix CrossProduct(Var vec[3])
+	{
+		// |  0  -z   y |
+		// |  z   0  -x |
+		// | -y   x   0 |
+		Matrix ret(3,3);
+		ret(0,0) = 0.0;
+		ret(0,1) = -vec[2]; //-z
+		ret(0,2) = vec[1]; //y
+		ret(1,0) = vec[2]; //z
+		ret(1,1) = 0;
+		ret(1,2) = -vec[0]; //-x
+		ret(2,0) = -vec[1]; //-y
+		ret(2,1) = vec[0]; //x
+		ret(2,2) = 0;
+		return ret;
+	}
     ///Unit matrix
     static Matrix Unit(enumerator pn)
     {
@@ -951,9 +968,15 @@ namespace INMOST
 
   };
     
-    //template<typename typeA, typename typeB>
-    //Matrix<typename Promote<typeA,typeB>::type> operator *(const typeA & coef, const Matrix<typeB> & other)
-    //{return other*coef;}
+    template<typename typeB>
+    Matrix<typename Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const Matrix<typeB> & other)
+    {return other*coef;}
+	
+#if defined(USE_AUTODIFF)
+	template<typename typeB>
+	Matrix<typename Promote<variable,typeB>::type> operator *(const variable & coef, const Matrix<typeB> & other)
+	{return other*coef;}
+#endif
 
 
   typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix

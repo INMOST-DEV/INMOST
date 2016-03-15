@@ -89,7 +89,7 @@ int main(int argc,char ** argv)
 
 	Mesh * m = new Mesh(); // Create an empty mesh
 	m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
-	int rank = m->GetProcessorRank(),  nproc = m->GetProcessorsNumber();
+	int rank = m->GetProcessorRank();//,  nproc = m->GetProcessorsNumber();
 
 	if( rank == 0 || m->isParallelFileFormat(argv[1]) )  m->Load(argv[1]); // Load input mesh
 

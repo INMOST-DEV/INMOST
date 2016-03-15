@@ -94,8 +94,9 @@ namespace INMOST
 
   void Mesh::Init(std::string name)
   {
-    m_link = this;
-		integer selfid = TieElement(5);
+		m_link = this;
+		integer selfid = 1;
+		selfid = TieElement(5);
 		assert(selfid == 0);
 		dim = 3;
 		have_global_id = NONE;
@@ -111,7 +112,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
-    AllocatePrivateMarkers();
+		AllocatePrivateMarkers();
 		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 			ReallocateData(ElementNum(etype),GetArrayCapacity(ElementNum(etype)));
 		epsilon = 1.0e-8;
@@ -277,7 +278,8 @@ namespace INMOST
       name = tmp.str();
     }
 		m_link = this;
-		integer selfid = TieElement(5);
+		integer selfid = 1;
+		selfid = TieElement(5);
 		assert(selfid == 0);
 		//TagManager constuctor copied only tags
 		//copy links:

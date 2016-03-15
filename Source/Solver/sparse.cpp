@@ -1177,7 +1177,7 @@ namespace INMOST
           assert(JR.isSorted());
           assert(H.isSorted());
           output.Resize(H.Size()+JL.Size()*JR.Size());
-          INMOST_DATA_ENUM_TYPE i = 0, j = 0, k = 0, l = 0, q = 0, kk = 0, ll = 0, r;
+          INMOST_DATA_ENUM_TYPE i = 0, k = 0, l = 0, q = 0, kk = 0, ll = 0, r;
           entry candidate[2] = {stub_entry,stub_entry};
           if( i < H.Size() )
               candidate[0] = make_entry(H.GetIndex(i),b*H.GetValue(i));
