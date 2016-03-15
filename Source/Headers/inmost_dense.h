@@ -669,11 +669,12 @@ namespace INMOST
 			    }
 			    if( ok ) AtA(i,i) = AtA(i,i) < 0.0 ? - 1.0e-12 : 1.0e-12;
 			    else
-          {
-            if( print_fail ) std::cout << "Failed to invert matrix" << std::endl;
-            ret.second = false;
-            return ret;
-          }
+				{
+					if( print_fail ) std::cout << "Failed to invert matrix" << std::endl;
+					ret.second = false;
+					delete [] order;
+					return ret;
+				}
 		    }
 		    for(enumerator k = i+1; k < m; k++)
 		    {
@@ -968,22 +969,22 @@ namespace INMOST
 
   };
     
-    template<typename typeB>
-    Matrix<typename Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const Matrix<typeB> & other)
-    {return other*coef;}
+	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
+#if defined(USE_AUTODIFF)
+	typedef Matrix<variable> vMatrix; //shortcut for matrix with variations
+#endif
+    
+}
+
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::Matrix<typeB> & other)
+{return other*coef;}
 	
 #if defined(USE_AUTODIFF)
-	template<typename typeB>
-	Matrix<typename Promote<variable,typeB>::type> operator *(const variable & coef, const Matrix<typeB> & other)
-	{return other*coef;}
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator *(const INMOST::variable & coef, const INMOST::Matrix<typeB> & other)
+{return other*coef;}
 #endif
-
-
-  typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
-#if defined(USE_AUTODIFF)
-  typedef Matrix<variable> vMatrix; //shortcut for matrix with variations
-#endif
-}
 
 
 #endif //INMOST_DENSE_INCLUDED
