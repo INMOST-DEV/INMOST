@@ -36,8 +36,8 @@ using namespace INMOST;
 
 #define PREMATURE_DROPPING
 
-#define EQUALIZE_1NORM
-//#define EQUALIZE_2NORM
+//#define EQUALIZE_1NORM
+#define EQUALIZE_2NORM
 //#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
