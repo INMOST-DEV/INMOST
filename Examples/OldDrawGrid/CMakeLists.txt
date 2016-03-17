@@ -1,8 +1,10 @@
 project(OldDrawGrid)
 set(SOURCE main.cpp
            rotate.cpp
+           clipboard.cpp
            rotate.h
-           my_glut.h)
+           my_glut.h
+           clipboard.h)
 find_package(OpenGL)
 find_package(GLUT)
 
