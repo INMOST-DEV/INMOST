@@ -52,6 +52,125 @@ ElementArray<Element> boundary_faces;
 ElementArray<Edge> added_edges;
 std::vector<double> harmonic_points, dual_harmonic_points, conormals;
 
+#if defined(_WIN32)
+#include <windows.h>
+static bool  setTextToPasteboard(std::string as)
+{
+    
+    size_t reqLength = ::MultiByteToWideChar( CP_UTF8, 0, as.c_str(), (int)as.length(), 0, 0 );
+    
+    std::wstring text( reqLength, L'\0' );
+    
+    ::MultiByteToWideChar( CP_UTF8, 0, as.c_str(), (int)as.length(), &text[0], (int)text.length() );
+    
+    bool ok = false;
+    if (OpenClipboard(NULL))
+	{
+        EmptyClipboard();
+        HGLOBAL hClipboardData;
+        size_t bytes = text.length()+1 * sizeof(wchar_t);
+        
+        hClipboardData = GlobalAlloc(GMEM_DDESHARE, bytes*2);
+        wchar_t * pchData = (wchar_t*)GlobalLock(hClipboardData);
+        
+        wcscpy(pchData, text.c_str());
+        
+        GlobalUnlock(hClipboardData);
+        SetClipboardData(CF_UNICODETEXT,hClipboardData);
+        CloseClipboard();
+        ok = true;
+    }
+    return ok;
+}
+static std::string getTextFromPasteboard()
+{
+    std::string clipBoardText="";
+    if (OpenClipboard(NULL))
+	{
+        HANDLE hClipboardData = GetClipboardData(CF_UNICODETEXT);
+        if(IsClipboardFormatAvailable(CF_UNICODETEXT))
+		{
+            wchar_t * pszText =NULL;
+            pszText = (wchar_t *)GlobalLock(hClipboardData);
+            if (pszText == NULL)
+			{
+                
+            }
+			else
+			{
+                std::wstring  pchData = pszText;
+                char * mbstr2 = new char[pchData.size()*4];
+                size_t bytes = pchData.length()+1 * sizeof(wchar_t);
+                WideCharToMultiByte(CP_UTF8,0,pchData.c_str(),bytes*2,mbstr2,bytes*2,NULL,NULL);
+                clipBoardText.append(mbstr2);
+				delete [] mbstr2;
+            }
+            GlobalUnlock(hClipboardData);
+            CloseClipboard();
+        }
+    }
+    return clipBoardText;
+}
+#elif defined(__APPLE__)
+
+static bool setTextToPasteboard(char* byteArrayIndex) {
+    
+    OSStatus err = noErr;
+    static PasteboardRef	pasteboard = NULL;
+    PasteboardCreate( kPasteboardClipboard, &pasteboard );
+    
+    err = PasteboardClear( pasteboard );
+    require_noerr( err, PasteboardClear_FAILED );
+    
+    CFDataRef data;
+    
+    data =   CFDataCreate(kCFAllocatorDefault, (UInt8*)byteArrayIndex, strlen(byteArrayIndex)+1);
+    
+    err = PasteboardPutItemFlavor( pasteboard, (PasteboardItemID)1, kUTTypeUTF8PlainText, data, 0);
+    require_noerr( err, PasteboardPutItemFlavor_FAILED );
+    
+PasteboardPutItemFlavor_FAILED:
+PasteboardClear_FAILED:
+    return err == noErr;
+}
+static std::string getTextFromPasteboard() 
+{
+    
+    std::string clipBoard = "";
+    OSStatus err = noErr;
+    ItemCount  itemCount;
+    PasteboardSyncFlags  syncFlags;
+    static PasteboardRef inPasteboard = NULL;
+    PasteboardCreate( kPasteboardClipboard, &inPasteboard );
+    char* data = NULL;
+    
+    syncFlags = PasteboardSynchronize( inPasteboard );
+    err = badPasteboardSyncErr;
+    
+    err = PasteboardGetItemCount( inPasteboard, &itemCount );
+    require_noerr( err, CantGetPasteboardItemCount );
+    
+    for( int itemIndex = 1; itemIndex <= itemCount; itemIndex++ ) 
+	{
+        PasteboardItemID itemID;
+        CFDataRef flavorData;
+        err = PasteboardGetItemIdentifier( inPasteboard, itemIndex, &itemID );
+        require_noerr( err, CantGetPasteboardItemIdentifier );
+        err = PasteboardCopyItemFlavorData( inPasteboard, itemID, CFSTR("public.utf8-plain-text"), &flavorData );
+        if(err==noErr)data = (char*)CFDataGetBytePtr(flavorData);
+        if( data!=NULL && err==noErr )
+			clipBoard.append(data);
+		else 
+			return "Error Pasting";
+CantGetPasteboardItemIdentifier:
+        ;
+    }
+CantGetPasteboardItemCount:
+    return clipBoard;
+    
+}
+#endif
+
 
 static void GetBox(Element e, Storage::real min[3], Storage::real max[3])
 {
@@ -732,6 +851,7 @@ struct color_t
 	float a() const {return c[3];}
 	color_t operator *(float mult){return color_t(c[0]*mult,c[1]*mult,c[2]*mult,c[3]*mult);}
 	color_t operator +(color_t other){return color_t(c[0]+other.c[0],c[1]+other.c[1],c[2]+other.c[2],c[3]+other.c[3]);}
+	color_t operator -(color_t other){return color_t(c[0]-other.c[0],c[1]-other.c[1],c[2]-other.c[2],other.c[3]);}
 };
 
 class color_bar
@@ -740,12 +860,15 @@ class color_bar
 	std::vector<float> ticks; //ticks from 0 to 1 for each color
 	std::vector<color_t> colors; //4 floats for each tick
 	std::string comment;
+	unsigned texture;
 public:
 	color_bar()
 	{
 		min = 0;
 		max = 1;
 		comment = "";
+
+		/*
 		ticks.push_back(0.f);
 		ticks.push_back(0.2f);
 		ticks.push_back(0.4f);
@@ -753,22 +876,82 @@ public:
 		ticks.push_back(0.8f);
 		ticks.push_back(1.f);
 
-    /* 
-		colors.push_back(color_t(1,0,0));
-		colors.push_back(color_t(1,1,0));
-		colors.push_back(color_t(0,1,0));
-		colors.push_back(color_t(0,1,1));
-		colors.push_back(color_t(0,0,1));
+		 
+		//colors.push_back(color_t(1,0,0));
+		//colors.push_back(color_t(1,1,0));
+		//colors.push_back(color_t(0,1,0));
+		//colors.push_back(color_t(0,1,1));
+		//colors.push_back(color_t(0,0,1));
+		//colors.push_back(color_t(1,0,1));
+		
 		colors.push_back(color_t(1,0,1));
-		*/
-    colors.push_back(color_t(1,0,1));
-    colors.push_back(color_t(0,0,1));
-    colors.push_back(color_t(0,1,1));
+		colors.push_back(color_t(0,0,1));
+		colors.push_back(color_t(0,1,1));
 		colors.push_back(color_t(0,1,0));
-    colors.push_back(color_t(1,1,0));
-    colors.push_back(color_t(1,0,0));
+		colors.push_back(color_t(1,1,0));
+		colors.push_back(color_t(1,0,0));
+		*/
+
+		//inversed gnuplot color scheme
+		ticks.push_back(0.f);
+		ticks.push_back(0.05f);
+		ticks.push_back(0.5f);
+		ticks.push_back(0.75f);
+		ticks.push_back(0.95f);
+		ticks.push_back(1.f);
+
+		colors.push_back(color_t(1,1,1));
+		colors.push_back(color_t(1,1,0));
+		colors.push_back(color_t(0.85,0,0));
+		colors.push_back(color_t(0.65,0.25,0.85));
+		colors.push_back(color_t(0.45,0,0.55));
+		colors.push_back(color_t(0,0,0));
+
+		float * pixel_array = new float[1026*4];
+
 		
 		
+		for(int q = 0; q < 1026; ++q)
+		{
+			float t = 1.0f*q/1025.f;
+			color_t c = pick_color(t);
+			pixel_array[(q)*4+0] = c.r();
+			pixel_array[(q)*4+1] = c.g();
+			pixel_array[(q)*4+2] = c.b();
+			pixel_array[(q)*4+3] = c.a();
+		}
+
+		pixel_array[0] = 0;
+		pixel_array[1] = 1;
+		pixel_array[2] = 0;
+		pixel_array[3] = 1;
+
+		pixel_array[1025*4+0] = 0;
+		pixel_array[1025*4+1] = 1;
+		pixel_array[1025*4+2] = 0;
+		pixel_array[1025*4+3] = 1;
+
+		
+		
+		glEnable(GL_TEXTURE);
+		glEnable(GL_TEXTURE_1D);
+		glGenTextures(1,&texture);
+		glBindTexture(GL_TEXTURE_1D,texture);
+		glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+		
+		glTexImage1D(GL_TEXTURE_1D,0,4,1026,1,GL_RGBA,GL_FLOAT,pixel_array);
+
+		std::cout << "Created texture " << texture << std::endl;
+		
+		glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_WRAP_S,GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+
+		UnbindTexture();
+
+		delete [] pixel_array;
 		//colors.push_back(color_t(1,0,0));
 	}
 	void set_comment(std::string text) {comment = text;}
@@ -790,6 +973,23 @@ public:
 		float interp = (t-ticks[pos-1])/(ticks[pos]-ticks[pos-1]);
 		return (colors[pos]*interp+colors[pos-1]*(1-interp));
 	}
+	void BindTexture()
+	{
+		//glDisable( GL_TEXTURE_GEN_S ); 
+		glDisable(GL_TEXTURE_2D);
+		glEnable( GL_TEXTURE_1D );
+		glBindTexture(GL_TEXTURE_1D, texture);
+	}
+	void UnbindTexture()
+	{
+		glDisable( GL_TEXTURE_1D );
+	}
+	double pick_texture(double value)
+	{
+		const double eps = 1.0/1024.0;
+		return (value-min)/(max-min)*(1-2*eps) + eps;
+		//return std::max(std::min((value-min)/(max-min),0.99),0.01);
+	}
 	void Draw()
 	{
 		float text_pos = -0.89;
@@ -797,7 +997,16 @@ public:
 		float right = -0.9;
 		float bottom = -0.75;
 		float top = 0.75;
+		BindTexture();
 		glBegin(GL_QUADS);
+
+		glTexCoord1d(1.0/1024.0);
+		glVertex2f(left,bottom);
+		glVertex2f(right,bottom);
+		glTexCoord1d(1.0);
+		glVertex2f(right,top);
+		glVertex2f(left,top);
+		/*
 		for(int i = 0; i < ticks.size()-1; ++i)
 		{
 			colors[i].set_color();
@@ -807,7 +1016,9 @@ public:
 			glVertex2f(right,bottom+ticks[(i+1)]*(top-bottom));
 			glVertex2f(left,bottom+ticks[(i+1)]*(top-bottom));
 		}
+		*/
 		glEnd();
+		UnbindTexture();
 		
 		glColor4f(0,0,0,1);
 		for(int i = 0; i < ticks.size(); ++i)
@@ -820,8 +1031,27 @@ public:
 			glRasterPos2f(left,bottom-0.04);
 			printtext("%s",comment.c_str());
 		}
+
+		glBegin(GL_LINE_LOOP);
+		glVertex2f(left,bottom);
+		glVertex2f(right,bottom);
+		glVertex2f(right,top);
+		glVertex2f(left,top);
+		glEnd();
+
+		glBegin(GL_LINES);
+		for(int i = 0; i < ticks.size(); ++i)
+		{
+			float pos = bottom+ticks[i]*(top-bottom);
+			glVertex2f(left,pos);
+			glVertex2f(left+(right-left)*0.2,pos);
+
+			glVertex2f(right+(left-right)*0.25,pos);
+			glVertex2f(right,pos);
+		}
+		glEnd();
 	}
-} CommonColorBar;
+} * CommonColorBar;
 
 
 class face2gl
@@ -833,8 +1063,10 @@ class face2gl
 	ElementType etype;
 	Storage::integer id;
 	std::vector<double> verts;
+	std::vector<double> texcoords;
 	std::vector<color_t> colors;
 	color_t cntcolor;
+	double cnttexcoord;
 public:
 	static void radix_sort_dist(std::vector<face2gl> & set)
 	{
@@ -865,7 +1097,7 @@ public:
 		for (i = 0; i < set.size(); i++) tmp[++b2[_2(flip((unsigned int *)&set[i].dist))]] = set[i];
 		for (i = 0; i < set.size(); i++) set[i] = tmp[set.size()-1-i];
 	}
-	face2gl():verts(),colors() {etype = NONE; id = 0; dist = 0; flag = false; memset(c,0,sizeof(double)*4);}
+	face2gl():verts(),colors(),texcoords() {etype = NONE; id = 0; dist = 0; flag = false; memset(c,0,sizeof(double)*4);}
 	face2gl(const face2gl & other) :verts(other.verts) 
 	{
 		etype = other.etype;
@@ -880,7 +1112,9 @@ public:
 		c[3] = other.c[3];
 		flag = other.flag;
 		colors = other.colors;
+		texcoords = other.texcoords;
 		cntcolor = other.cntcolor;
+		cnttexcoord = other.cnttexcoord;
 	}
 	face2gl & operator =(face2gl const & other) 
 	{ 
@@ -898,62 +1132,94 @@ public:
 		flag = other.flag;
 		colors = other.colors;
 		cntcolor = other.cntcolor;
+		texcoords = other.texcoords;
+		cnttexcoord = other.cnttexcoord;
 		return *this;
 	}
 	~face2gl() {}
 	void draw_colour() const
 	{
-		if( colors.empty() )
+		if( texcoords.empty() )
 		{
-			glColor4dv(c); 
-			for(unsigned k = 0; k < verts.size(); k+=3) 
+			if( colors.empty() )
 			{
-				glVertex3dv(cnt);
-				glVertex3dv(&verts[k]);
-				glVertex3dv(&verts[(k+3)%verts.size()]);
+				glColor4dv(c); 
+				for(unsigned k = 0; k < verts.size(); k+=3) 
+				{
+					glVertex3dv(cnt);
+					glVertex3dv(&verts[k]);
+					glVertex3dv(&verts[(k+3)%verts.size()]);
+				}
+			}
+			else
+			{
+				for(unsigned k = 0; k < verts.size(); k+=3) 
+				{
+					cntcolor.set_color();
+					glVertex3dv(cnt);
+					colors[k/3].set_color();
+					glVertex3dv(&verts[k]);
+					colors[(k/3+1)%colors.size()].set_color();
+					glVertex3dv(&verts[(k+3)%verts.size()]);
+				}
 			}
 		}
 		else
 		{
 			for(unsigned k = 0; k < verts.size(); k+=3) 
 			{
-				cntcolor.set_color();
+				glTexCoord1d(cnttexcoord);
 				glVertex3dv(cnt);
-				colors[k/3].set_color();
+				glTexCoord1d(texcoords[k/3]);
 				glVertex3dv(&verts[k]);
-				colors[(k/3+1)%colors.size()].set_color();
+				glTexCoord1d(texcoords[(k/3+1)%texcoords.size()]);
 				glVertex3dv(&verts[(k+3)%verts.size()]);
 			}
 		}
 	}
 	void draw_colour_alpha(double alpha) const
 	{
-		if( colors.empty() )
+		if( texcoords.empty() )
 		{
-			//double cc[4] = {c[0],c[1],c[2],alpha};
-			glColor4dv(c); 
-			for(unsigned k = 0; k < verts.size(); k+=3) 
+			if( colors.empty() )
 			{
-				glVertex3dv(cnt);
-				glVertex3dv(&verts[k]);
-				glVertex3dv(&verts[(k+3)%verts.size()]);
+				//double cc[4] = {c[0],c[1],c[2],alpha};
+				glColor4dv(c); 
+				for(unsigned k = 0; k < verts.size(); k+=3) 
+				{
+					glVertex3dv(cnt);
+					glVertex3dv(&verts[k]);
+					glVertex3dv(&verts[(k+3)%verts.size()]);
+				}
+			}
+			else
+			{
+				for(unsigned k = 0; k < verts.size(); k+=3) 
+				{
+					color_t t = cntcolor;
+					t.a() = alpha;
+					t.set_color();
+					glVertex3dv(cnt);
+					t = colors[k/3];
+					t.a() = alpha;
+					t.set_color();
+					glVertex3dv(&verts[k]);
+					t = colors[(k/3+1)%colors.size()];
+					t.a() = alpha;
+					t.set_color();
+					glVertex3dv(&verts[(k+3)%verts.size()]);
+				}
 			}
 		}
 		else
 		{
 			for(unsigned k = 0; k < verts.size(); k+=3) 
 			{
-				color_t t = cntcolor;
-				t.a() = alpha;
-				t.set_color();
+				glTexCoord1d(cnttexcoord);
 				glVertex3dv(cnt);
-				t = colors[k/3];
-				t.a() = alpha;
-				t.set_color();
+				glTexCoord1d(texcoords[k/3]);
 				glVertex3dv(&verts[k]);
-				t = colors[(k/3+1)%colors.size()];
-				t.a() = alpha;
-				t.set_color();
+				glTexCoord1d(texcoords[(k/3+1)%texcoords.size()]);
 				glVertex3dv(&verts[(k+3)%verts.size()]);
 			}
 		}
@@ -980,6 +1246,7 @@ public:
 	void add_vert(double x, double y, double z) {unsigned s = (unsigned)verts.size(); verts.resize(s+3); verts[s] = x; verts[s+1] = y; verts[s+2] = z;}
 	void add_vert(double v[3]) {verts.insert(verts.end(),v,v+3);}
 	void add_color(color_t c) {colors.push_back(c);}
+	void add_texcoord(double val) {texcoords.push_back(val);}
 	double * get_vert(int k) {return &verts[k*3];}
 	unsigned size() {return (unsigned)verts.size()/3;}
 	void set_center(double _cnt[3], color_t c = color_t(0,0,0,0))
@@ -1015,19 +1282,30 @@ public:
 		cnt[1] /= (verts.size()/3)*1.0;
 		cnt[2] /= (verts.size()/3)*1.0;
 		compute_center_color();
+		compute_center_texcoord();
 	}
 	void compute_center_color()
 	{
-    if( !colors.empty() )
-    {
-		  cntcolor.r() = 0;
-		  cntcolor.g() = 0;
-		  cntcolor.b() = 0;
-		  cntcolor.a() = 0;
-		  for(INMOST_DATA_ENUM_TYPE k = 0; k < colors.size(); k++)
-			  cntcolor = cntcolor + colors[k];
-		  cntcolor =  cntcolor*(1.0f/static_cast<float>(colors.size()));
-    }
+		if( !colors.empty() )
+		{
+			cntcolor.r() = 0;
+			cntcolor.g() = 0;
+			cntcolor.b() = 0;
+			cntcolor.a() = 0;
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < colors.size(); k++)
+				cntcolor = cntcolor + colors[k];
+			cntcolor =  cntcolor*(1.0f/static_cast<float>(colors.size()));
+		}
+	}
+	void compute_center_texcoord()
+	{
+		if( !texcoords.empty() )
+		{
+			cnttexcoord = 0.0;
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < texcoords.size(); k++)
+				cnttexcoord += texcoords[k];
+			cnttexcoord /= static_cast<double>(texcoords.size());
+		}
 	}
 	void compute_dist(double cam[3])
 	{
@@ -1062,10 +1340,12 @@ void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 {
-  if( drawedges == 2 ) return;
+	if( drawedges == 2 ) return;
+	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour();
 	glEnd();
+	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 	if( highlight != -1 )
 	{
 		glColor4f(1,0,0,1);
@@ -1077,10 +1357,12 @@ void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
 {
-  if( drawedges == 2 ) return;
+	if( drawedges == 2 ) return;
+	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour_alpha(alpha);
 	glEnd();
+	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 }
 
 void draw_edges(std::vector<face2gl> & set, int highlight = -1)
@@ -1112,17 +1394,21 @@ void draw_faces_interactive_nc(std::vector<face2gl> & set)
 void draw_faces_interactive(std::vector<face2gl> & set)
 {
   if( drawedges == 2 ) return;
+  if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour();
 	glEnd();
+	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 }
 
 void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
 {
   if( drawedges == 2 ) return;
+  if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour_alpha(alpha);
 	glEnd();
+	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 }
 
 void draw_edges_interactive(std::vector<face2gl> & set)
@@ -1370,7 +1656,7 @@ public:
 			{
 				if( visualization_tag.isValid() )
 				{
-					color_t c = CommonColorBar.pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
+					color_t c = CommonColorBar->pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
 					c.a() = alpha;
 					c.set_color();
 				}
@@ -1408,7 +1694,7 @@ public:
 		{
 			if( visualization_tag.isValid() )
 			{
-				color_t c = CommonColorBar.pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
+				color_t c = CommonColorBar->pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
 				c.a() = alpha;
 				c.set_color();
 			}
@@ -2113,7 +2399,11 @@ public:
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) f.add_vert(&cl[q]);
 			if( visualization_tag.isValid() )
 			{
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < clv.size(); q++) f.add_color(CommonColorBar.pick_color(clv[q]));
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < clv.size(); q++) 
+				{
+					//f.add_color(CommonColorBar->pick_color(clv[q]));
+					f.add_texcoord(CommonColorBar->pick_texture(clv[q]));
+				}
 			}
 			f.compute_center();
 			f.set_elem(cells[k]->GetElementType(),cells[k]->LocalID());
@@ -2123,6 +2413,7 @@ public:
 	}
 	void draw_clip(INMOST_DATA_ENUM_TYPE pace)
 	{
+		if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 		glBegin(GL_TRIANGLES);
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
 		{
@@ -2143,15 +2434,28 @@ public:
 			cntv /= static_cast<Storage::real>(cl.size()/3);
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
 			{
-				if( visualization_tag.isValid() ) CommonColorBar.pick_color(cntv).set_color();
+				if( visualization_tag.isValid() ) 
+				{
+					//CommonColorBar->pick_color(cntv).set_color();
+					glTexCoord1d(CommonColorBar->pick_texture(cntv));
+				}
 				glVertex3dv(cnt);
-				if( visualization_tag.isValid() ) CommonColorBar.pick_color(clv[q/3]).set_color();
+				if( visualization_tag.isValid() ) 
+				{
+					//CommonColorBar->pick_color(clv[q/3]).set_color();
+					glTexCoord1d(CommonColorBar->pick_texture(clv[q/3]));
+				}
 				glVertex3dv(&cl[q]);
-				if( visualization_tag.isValid() ) CommonColorBar.pick_color(clv[(q/3+1)%clv.size()]).set_color();
+				if( visualization_tag.isValid() )
+				{
+					//CommonColorBar.pick_color(clv[(q/3+1)%clv.size()]).set_color();
+					glTexCoord1d(CommonColorBar->pick_texture(clv[(q/3+1)%clv.size()]));
+				}
 				glVertex3dv(&cl[(q+3)%cl.size()]);
 			}
 		}
 		glEnd();
+		if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 	}
 	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace)
 	{
@@ -2227,7 +2531,11 @@ public:
 				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
 				{
 					f.add_vert(&nodes[q].Coords()[0]);
-					if( visualization_tag.isValid() ) f.add_color(CommonColorBar.pick_color(nodes[q].RealDF(visualization_tag)));
+					if( visualization_tag.isValid() ) 
+					{
+						//f.add_color(CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)));
+						f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
+					}
 				}
 				f.compute_center();
 				f.set_elem(GetHandleElementType(faces[k]),GetHandleID(faces[k]));
@@ -2254,7 +2562,11 @@ public:
 					{
 						coords = nodes[q].Coords();
 						f.add_vert(&coords[0]);
-						if( visualization_tag.isValid() ) f.add_color(CommonColorBar.pick_color(nodes[q].RealDF(visualization_tag)));
+						if( visualization_tag.isValid() ) 
+						{
+							//f.add_color(CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)));
+							f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
+						}
 					}
 					if( nodepos[q] != nodepos[(q+1)%nodes.size()] )
 					{
@@ -2264,7 +2576,11 @@ public:
 						if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE) 
 						{
 							f.add_vert(node);
-							if( visualization_tag.isValid() ) f.add_color(CommonColorBar.pick_color(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
+							if( visualization_tag.isValid() ) 
+							{
+								//f.add_color(CommonColorBar->pick_color(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
+								f.add_texcoord(CommonColorBar->pick_texture(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
+							}
 						}
 					}
 				}
@@ -2300,7 +2616,11 @@ public:
 				glBegin(GL_POLYGON);
 				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
 				{
-					if( visualization_tag.isValid() ) CommonColorBar.pick_color(nodes[q].RealDF(visualization_tag)).set_color();
+					if( visualization_tag.isValid() ) 
+					{
+						//CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)).set_color();
+						glTexCoord1f(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
+					}
 					glVertex3dv(&nodes[q].Coords()[0]);
 					
 				}
@@ -2736,6 +3056,8 @@ void myclick(int b, int s, int nmx, int nmy) // Mouse
 		mymx = 2.*(nmx/(double)width - 0.5);
 		mymy = 2.*(0.5 - nmy/(double)height);
 	}
+	
+	
 	glutPostRedisplay();
 }
 
@@ -2818,6 +3140,7 @@ public:
 		else if( type == String ) sprintf(oldval,"%s",(char *)input_link);
 		printtext("input number (%s[%s]:%s): %s",comment.c_str(),oldval,type == Integer ? "integer": (type == Double ? "double" : "string"), str.c_str());
 	}
+	std::string GetString() {return str;}
 } * CommonInput = NULL;
 
 
@@ -2826,9 +3149,27 @@ void keyboard(unsigned char key, int x, int y)
 {
 	(void) x;
 	(void) y;
+	if( glutGetModifiers() & (GLUT_ACTIVE_CTRL) )
+		std::cout << "pressed " << ((char)(key)) << " int " << ((int)key) << " ctrl " << (glutGetModifiers() & GLUT_ACTIVE_CTRL ? "yes" : "no") << " shift " << (glutGetModifiers() & GLUT_ACTIVE_SHIFT ? "yes" : "no") << " alt " << (glutGetModifiers() & GLUT_ACTIVE_ALT ? "yes" : "no") << std::endl;
 	if( CommonInput != NULL )
 	{
-		CommonInput->KeyPress(key);
+		if( (key == 'v' || key == 'V' || key == 22) && (glutGetModifiers() & GLUT_ACTIVE_CTRL) ) //paste
+		{
+			std::string paste = getTextFromPasteboard();
+			std::cout << "paste: " << paste << std::endl;
+			if( !paste.empty() )
+			{
+				for(int k = 0; k < paste.length(); ++k)
+					CommonInput->KeyPress(paste[k]);
+			}
+		}
+		else if( (key == 'c' || key == 'C' || key == 3) && (glutGetModifiers() & GLUT_ACTIVE_CTRL) ) //copy
+		{
+			std::string copy = CommonInput->GetString();
+			std::cout << "copy: " << copy << std::endl;
+			setTextToPasteboard(copy);
+		}
+		else CommonInput->KeyPress(key);
 		return;
 	}
 	if( key == 27 )
@@ -3080,23 +3421,23 @@ void keyboard(unsigned char key, int x, int y)
 		}
 		glutPostRedisplay();
 	}
-  else if( key == 'c' )
-  {
-    if( CommonInput == NULL ) 
+	else if( key == 'c' )
+	{
+		if( CommonInput == NULL ) 
 		{
 			CommonInput = new Input(visualization_prompt, "Enter data for color bounds as min:max");
 			visualization_prompt_active = 2;
 		}
-    glutPostRedisplay();
-  }
+		glutPostRedisplay();
+	}
 	else if( key == 'q' )
 	{
 		mesh->Save("mesh.vtk");
 		mesh->Save("mesh.pmf");
-    mesh->Save("mesh.xml");
+		mesh->Save("mesh.xml");
 	}
-  else if( key == 't' )
-    screenshot();
+	else if( key == 't' )
+		screenshot();
 }
 
 void keyboard2(unsigned char key, int x, int y)
@@ -3567,8 +3908,8 @@ void draw_screen()
             visualization_prompt[k] = ':';
             minv = atof(visualization_prompt);
             maxv = atof(visualization_prompt+k+1);
-            CommonColorBar.set_min(minv);
-            CommonColorBar.set_max(maxv);
+            CommonColorBar->set_min(minv);
+            CommonColorBar->set_max(maxv);
             clipupdate = true;
           }
           else printf("malformed string %s for color map bounds\n",visualization_prompt);
@@ -3673,11 +4014,11 @@ void draw_screen()
 												it->RealDF(visualization_tag) = res;
 											}
 
-											CommonColorBar.set_min(min);
-											CommonColorBar.set_max(max);
+											CommonColorBar->set_min(min);
+											CommonColorBar->set_max(max);
 											char comment[1024];
 											sprintf(comment,"%s[%d] on %s, [%g:%g]",name,comp,typen,min,max);
-											CommonColorBar.set_comment(comment);
+											CommonColorBar->set_comment(comment);
 											clipupdate = true;
 											/*
 											all_boundary.clear();
@@ -3718,7 +4059,7 @@ void draw_screen()
 		glDisable(GL_DEPTH_TEST);
 		glLoadIdentity();
 		set_matrix2d();
-		CommonColorBar.Draw();
+		CommonColorBar->Draw();
 		glEnable(GL_DEPTH_TEST);
 	}
 }
@@ -4045,6 +4386,9 @@ int main(int argc, char ** argv)
 	glClearDepth(1.f);
 	glEnable(GL_DEPTH_TEST);
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
+
+	CommonColorBar = new color_bar;
 	
 	//glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
 	//glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);
@@ -4060,6 +4404,7 @@ int main(int argc, char ** argv)
 	glutMouseFunc(myclick);
 	glutMotionFunc(myclickmotion);
 	glutPassiveMotionFunc(mymotion);
+	
 	//glutIdleFunc(idle);
 	
 	glutPostRedisplay();
