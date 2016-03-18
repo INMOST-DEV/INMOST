@@ -91,6 +91,7 @@ char visualization_prompt[8192];
 int visualization_prompt_active = 0;
 Tag visualization_tag;
 ElementType visualization_type;
+bool visualization_smooth = false;
 
 void printtext(const char * fmt, ... )
 {
@@ -745,6 +746,7 @@ class color_bar
 	std::vector<color_t> colors; //4 floats for each tick
 	std::string comment;
 	unsigned texture;
+	int samples;
 public:
 	color_bar()
 	{
@@ -791,14 +793,20 @@ public:
 		colors.push_back(color_t(0.45,0,0.55));
 		colors.push_back(color_t(0,0,0));
 
-		float * pixel_array = new float[1026*4];
+		samples = 2048;
+
+		float * pixel_array = new float[(samples+2)*4];
 
 		
 		
-		for(int q = 0; q < 1026; ++q)
+		for(int q = 0; q < samples+2; ++q)
 		{
-			float t = 1.0f*q/1025.f;
+			float t = 1.0f*q/static_cast<float>(samples+1);
 			color_t c = pick_color(t);
+			//countour lines
+			//if( ((q+1) % 64 == 0 || (q+1) % 64 == 63) && (q+1) < samples ) 
+			//	c = pick_color(1-t) + color_t(0,2*t*(1-t),0); 
+
 			pixel_array[(q)*4+0] = c.r();
 			pixel_array[(q)*4+1] = c.g();
 			pixel_array[(q)*4+2] = c.b();
@@ -810,10 +818,10 @@ public:
 		pixel_array[2] = 0;
 		pixel_array[3] = 1;
 
-		pixel_array[1025*4+0] = 0;
-		pixel_array[1025*4+1] = 1;
-		pixel_array[1025*4+2] = 0;
-		pixel_array[1025*4+3] = 1;
+		pixel_array[(samples+1)*4+0] = 0;
+		pixel_array[(samples+1)*4+1] = 1;
+		pixel_array[(samples+1)*4+2] = 0;
+		pixel_array[(samples+1)*4+3] = 1;
 
 		
 		
@@ -823,7 +831,7 @@ public:
 		glBindTexture(GL_TEXTURE_1D,texture);
 		glPixelStorei(GL_UNPACK_ALIGNMENT,1);
 		
-		glTexImage1D(GL_TEXTURE_1D,0,4,1026,1,GL_RGBA,GL_FLOAT,pixel_array);
+		glTexImage1D(GL_TEXTURE_1D,0,4,samples+2,1,GL_RGBA,GL_FLOAT,pixel_array);
 
 		std::cout << "Created texture " << texture << std::endl;
 		
@@ -870,7 +878,7 @@ public:
 	}
 	double pick_texture(double value)
 	{
-		const double eps = 1.0/1024.0;
+		double eps = 1.0/static_cast<double>(samples);
 		return (value-min)/(max-min)*(1-2*eps) + eps;
 		//return std::max(std::min((value-min)/(max-min),0.99),0.01);
 	}
@@ -903,12 +911,15 @@ public:
 		*/
 		glEnd();
 		UnbindTexture();
+
+		int tickmarks = 11;
 		
 		glColor4f(0,0,0,1);
-		for(int i = 0; i < ticks.size(); ++i)
+		for(int i = 0; i < tickmarks; ++i)
 		{
-			glRasterPos2f(text_pos,bottom+ticks[i]*(top-bottom));
-			printtext("%f",min+ticks[i]*(max-min));
+			float t = 1.0f*i/static_cast<float>(tickmarks-1);
+			glRasterPos2f(text_pos,bottom+t*(top-bottom));
+			printtext("%g",min+t*(max-min));
 		}
 		if( comment != "")
 		{
@@ -924,9 +935,10 @@ public:
 		glEnd();
 
 		glBegin(GL_LINES);
-		for(int i = 0; i < ticks.size(); ++i)
+		for(int i = 0; i < tickmarks; ++i)
 		{
-			float pos = bottom+ticks[i]*(top-bottom);
+			float t = 1.0f*i/static_cast<float>(tickmarks-1);
+			float pos = bottom+t*(top-bottom);
 			glVertex2f(left,pos);
 			glVertex2f(left+(right-left)*0.2,pos);
 
@@ -2286,7 +2298,10 @@ public:
 				for(INMOST_DATA_ENUM_TYPE q = 0; q < clv.size(); q++) 
 				{
 					//f.add_color(CommonColorBar->pick_color(clv[q]));
-					f.add_texcoord(CommonColorBar->pick_texture(clv[q]));
+					if( visualization_type == CELL && !visualization_smooth )
+						f.add_texcoord(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
+					else
+						f.add_texcoord(CommonColorBar->pick_texture(clv[q]));
 				}
 			}
 			f.compute_center();
@@ -2316,26 +2331,26 @@ public:
 			cnt[1] /= static_cast<Storage::real>(cl.size()/3);
 			cnt[2] /= static_cast<Storage::real>(cl.size()/3);
 			cntv /= static_cast<Storage::real>(cl.size()/3);
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+			if( !visualization_tag.isValid() )
 			{
-				if( visualization_tag.isValid() ) 
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
 				{
-					//CommonColorBar->pick_color(cntv).set_color();
+					glVertex3dv(cnt);
+					glVertex3dv(&cl[q]);
+					glVertex3dv(&cl[(q+3)%cl.size()]);
+				}
+			}
+			else
+			{
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+				{				
 					glTexCoord1d(CommonColorBar->pick_texture(cntv));
-				}
-				glVertex3dv(cnt);
-				if( visualization_tag.isValid() ) 
-				{
-					//CommonColorBar->pick_color(clv[q/3]).set_color();
+					glVertex3dv(cnt);
 					glTexCoord1d(CommonColorBar->pick_texture(clv[q/3]));
-				}
-				glVertex3dv(&cl[q]);
-				if( visualization_tag.isValid() )
-				{
-					//CommonColorBar.pick_color(clv[(q/3+1)%clv.size()]).set_color();
+					glVertex3dv(&cl[q]);
 					glTexCoord1d(CommonColorBar->pick_texture(clv[(q/3+1)%clv.size()]));
+					glVertex3dv(&cl[(q+3)%cl.size()]);
 				}
-				glVertex3dv(&cl[(q+3)%cl.size()]);
 			}
 		}
 		glEnd();
@@ -2418,7 +2433,10 @@ public:
 					if( visualization_tag.isValid() ) 
 					{
 						//f.add_color(CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)));
-						f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
+						if( visualization_type == CELL && !visualization_smooth )
+							f.add_texcoord(CommonColorBar->pick_texture(Face(mm,faces[k]).BackCell().RealDF(visualization_tag)));
+						else
+							f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
 					}
 				}
 				f.compute_center();
@@ -2449,7 +2467,10 @@ public:
 						if( visualization_tag.isValid() ) 
 						{
 							//f.add_color(CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)));
-							f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
+							if( visualization_type == CELL && !visualization_smooth )
+								f.add_texcoord(CommonColorBar->pick_texture(Face(mm,faces[k]).BackCell().RealDF(visualization_tag)));
+							else 
+								f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
 						}
 					}
 					if( nodepos[q] != nodepos[(q+1)%nodes.size()] )
@@ -2464,6 +2485,7 @@ public:
 							{
 								//f.add_color(CommonColorBar->pick_color(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
 								f.add_texcoord(CommonColorBar->pick_texture(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
+								//f.add_texcoord(CommonColorBar->pick_texture(Face(mm,faces[k]).BackCell().RealDF(visualization_tag)));
 							}
 						}
 					}
@@ -2484,31 +2506,38 @@ public:
 			Storage::real_array coords = nodes[0].Coords();
 			Storage::real dot0 = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
 			if( dot0 <= 0.0 ) state = CLIP_FACE_INSIDE; else state = CLIP_FACE_OUTSIDE;
-			for(INMOST_DATA_ENUM_TYPE q = 1; q < nodes.size(); ++q)
-			{
-				coords = nodes[q].Coords();
-				Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-				if( dot*dot0 <= 0.0 ) 
-				{
-					state = CLIP_FACE_INTERSECT;
-					break;
-				}
-			}
 			if( state == CLIP_FACE_INSIDE )
 			{
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-				glBegin(GL_POLYGON);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
+				for(INMOST_DATA_ENUM_TYPE q = 1; q < nodes.size(); ++q)
 				{
-					if( visualization_tag.isValid() ) 
+					coords = nodes[q].Coords();
+					Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
+					if( dot*dot0 <= 0.0 ) 
 					{
-						//CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)).set_color();
-						glTexCoord1f(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
+						state = CLIP_FACE_INTERSECT;
+						break;
 					}
-					glVertex3dv(&nodes[q].Coords()[0]);
-					
 				}
-				glEnd();
+				if( state == CLIP_FACE_INSIDE )
+				{
+					ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
+					glBegin(GL_POLYGON);
+					if( visualization_tag.isValid() )
+					{
+						for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
+						{
+							CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)).set_color();
+							glTexCoord1f(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
+							glVertex3dv(&nodes[q].Coords()[0]);
+						}
+					}
+					else
+					{
+						for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
+							glVertex3dv(&nodes[q].Coords()[0]);
+					}
+					glEnd();
+				}
 			}
 			mm->IntegerDF(faces[k],clip_state) = state;
 		}
@@ -3512,11 +3541,14 @@ void draw_screen()
 				INMOST_DATA_ENUM_TYPE opace = !planecontrol ? std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,oclipper->size()/100)) : 1;
 				INMOST_DATA_ENUM_TYPE bpace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,bclipper->size()/100));
 				glColor4f(0.6,0.6,0.6,1);
+				if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 				oclipper->draw_clip(opace);
 				bclipper->draw_clip(bpace);
+				if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 				glColor4f(0,0,0,1); 
 				oclipper->draw_clip_edges(opace);
 				bclipper->draw_clip_edges(bpace);
+				
 			}
 			else
 			{
@@ -3847,7 +3879,16 @@ void draw_screen()
 									if( stype == "node" ) visualization_type = NODE;
 									else if ( stype == "edge" ) visualization_type = EDGE;
 									else if ( stype == "face" ) visualization_type = FACE;
-									else if ( stype == "cell" ) visualization_type = CELL;
+									else if ( stype == "cell" ) 
+									{
+										visualization_type = CELL;
+										visualization_smooth = false;
+									}
+									else if ( stype == "smooth_cell" ) 
+									{
+										visualization_type = CELL;
+										visualization_smooth = true;
+									}
 
 									if( visualization_type != NONE )
 									{
@@ -3916,7 +3957,7 @@ void draw_screen()
 										}
 										else printf("tag %s is not defined on element type %s\n",name, typen);
 									}
-									else printf("do not understand element type %s, should be: node, edge, face, cell\n",typen);
+									else printf("do not understand element type %s, should be: node, edge, face, cell, smooth_cell\n",typen);
 								}
 								else printf("component is out of range for tag %s of size %u\n",name,source_tag.GetSize());
 							}
