@@ -37,6 +37,10 @@ if(USE_SOLVER)
     message("linking MatSolve with Mondriaan")
     target_link_libraries(MatSolve ${MONDRIAAN_LIBRARIES})
   endif()
+  if(USE_SOLVER_SUPERLU)
+    message("linking MatSolve with SuperLU")
+    target_link_libraries(MatSolve ${SUPERLU_LIBRARIES})
+  endif()
 endif()
 
 

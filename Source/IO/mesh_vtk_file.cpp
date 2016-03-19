@@ -273,7 +273,11 @@ safe_output:
 								case DATA_REAL:
 								{
 									Storage::real_array arr = it->RealArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m]);
+									for(unsigned int m = 0; m < comps; m++) 
+									{
+										double val = static_cast<double>(arr[m]);
+										fprintf(f,"%14e ",val != val ? -0.9999E30 : val);
+									}
 									fprintf(f,"\n");
 								}
 								break;
@@ -288,7 +292,11 @@ safe_output:
                 case DATA_VARIABLE:
 								{
 									Storage::var_array arr = it->VariableArray(tags[i]);
-                  for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m].GetValue());
+									for(unsigned int m = 0; m < comps; m++) 
+									{
+										double val = static_cast<double>(arr[m].GetValue());
+										fprintf(f,"%14e ",val != val ? -0.9999E30 : val);
+									}
 									fprintf(f,"\n");
 								}
                 break;
@@ -346,7 +354,11 @@ safe_output:
 								case DATA_REAL:
 								{
 									Storage::real_array arr = it->RealArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m]);
+									for(unsigned int m = 0; m < comps; m++) 
+									{
+										double val = static_cast<double>(arr[m]);
+										fprintf(f,"%14e ",(val != val ? -0.9999E30 : val));
+									}
 									fprintf(f,"\n");
 								}
 								break;
@@ -361,7 +373,11 @@ safe_output:
                 case DATA_VARIABLE:
 								{
 									Storage::var_array arr = it->VariableArray(tags[i]);
-                  for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",arr[m].GetValue());
+									for(unsigned int m = 0; m < comps; m++) 
+									{
+										double val = static_cast<double>(arr[m].GetValue());
+										fprintf(f,"%14e ",(val != val ? -0.9999E30 : val));
+									}
 									fprintf(f,"\n");
 								}
 								break;

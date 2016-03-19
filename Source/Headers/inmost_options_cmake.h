@@ -20,6 +20,7 @@
 #cmakedefine USE_SOLVER_PETSC
 #cmakedefine USE_SOLVER_TRILINOS
 #cmakedefine USE_SOLVER_ANI
+#cmakedefine USE_SOLVER_SUPERLU
 
 #cmakedefine USE_NONLINEAR
 #cmakedefine USE_NONLINEAR_TRILINOS

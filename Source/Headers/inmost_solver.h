@@ -54,7 +54,8 @@ namespace INMOST
 			PETSc,          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/
 			ANI,            ///< external Solver from ANI3D based on ILU2 (sequential Fortran version), @see http://ani3d.sourceforge.net/
 			FCBIILU2,       ///< external FCBIILU2 Solver (BIILU2 parallel F2C version).
-			K3BIILU2        ///< inner    K3BIILU2 Solver (BIILU2 parallel version).
+			K3BIILU2,       ///< inner    K3BIILU2 Solver (BIILU2 parallel version).
+			SUPERLU         ///< external Solver SuperLU @see https://github.com/starseeker/SuperLU
 		};
 
     static std::string TypeName(Type t);

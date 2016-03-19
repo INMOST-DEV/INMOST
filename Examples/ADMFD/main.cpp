@@ -449,8 +449,8 @@ int main(int argc,char ** argv)
                     //Change matrix by nonlinear correction for DMP
                     ++total;
                     
-                    if( !isDMP )
-                    //if( false )
+                    //if( !isDMP )
+                    if( false )
                     {
                         const real var = 0;//0.25;
                         vMatrix vnKGRAD = nKGRAD;
@@ -557,11 +557,12 @@ int main(int argc,char ** argv)
                 if( R.Norm() < 1.0e-4 ) break;
                 
                 Solver S(Solver::INNER_MPTILUC);
-                S.SetMatrix(R.GetJacobian());
-                S.SetParameterReal("relative_tolerance", 1.0e-14);
+				//Solver S(Solver::SUPERLU);
+				S.SetParameterReal("relative_tolerance", 1.0e-14);
                 S.SetParameterReal("absolute_tolerance", 1.0e-12);
                 S.SetParameterReal("drop_tolerance", 1.0e-2);
                 S.SetParameterReal("reuse_tolerance", 1.0e-4);
+                S.SetMatrix(R.GetJacobian());
                 //std::fill(Update.Begin(),Update.End(),0.0);
                 if( S.Solve(R.GetResidual(),Update) )
                 {

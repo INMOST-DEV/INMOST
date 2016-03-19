@@ -36,6 +36,10 @@ if(USE_SOLVER_MONDRIAAN)
   message("linking solver_test000 with Mondriaan")
   target_link_libraries(solver_test000 ${MONDRIAAN_LIBRARIES})
 endif()
+if(USE_SOLVER_SUPERLU)
+  message("linking solver_test000 with SuperLU")
+  target_link_libraries(solver_test000 ${SUPERLU_LIBRARIES})
+endif()
 
 
 add_test(NAME solver_test000_serial_inner_ilu2                 COMMAND $<TARGET_FILE:solver_test000> 0 0)
