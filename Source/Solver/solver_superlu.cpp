@@ -10,6 +10,7 @@ struct SuperLU_data
 	SuperMatrix A, L, U;
 	int * perm_r;
 	int * perm_c;
+	int * remap;
 	int size, info;
 	superlu_options_t options;
 	SuperLUStat_t stat;
@@ -21,15 +22,26 @@ void SolverInitializeSuperLU(int * argc,char *** argv, const char * file_options
 }
 
 
-void MatrixFillSuperLU(void * data, int size, int nnz, int * col_ranges, int * col_positions, double * col_values)
+void MatrixFillSuperLU(void * data, int size, int nnz, int * col_ranges, int * col_positions, double * col_values, int * remap)
 {
 	SuperLU_data * m = static_cast<SuperLU_data *>(data);
 	dCreate_CompCol_Matrix(&m->A,size,size,nnz,col_values,col_positions,col_ranges,SLU_NR,SLU_D,SLU_GE);
+	//dPrint_CompCol_Matrix("A", &m->A);
 	m->size = size;
+	m->remap = remap;
 	m->perm_c = new int [size];
 	m->perm_r = new int [size];
 }
 
+int * MatrixRemapArraySuperLU(void * data)
+{
+	return static_cast<SuperLU_data *>(data)->remap;
+}
+
+int MatrixSizeSuperLU(void * data)
+{
+	return static_cast<SuperLU_data *>(data)->size;
+}
 
 void SolverDestroyDataSuperLU(void ** data)
 {
@@ -40,6 +52,7 @@ void SolverDestroyDataSuperLU(void ** data)
 	StatFree(&m->stat);
 	if( m->perm_c != NULL ) delete [] m->perm_c;
 	if( m->perm_r != NULL ) delete [] m->perm_r;
+	if( m->remap != NULL ) delete [] m->remap; //allocated outside
 	delete m;
 	*data = NULL;
 }
@@ -59,13 +72,12 @@ void SolverInitDataSuperLU(void ** data)
 }
 
 
-bool SolverSolveSuperLU(void * data, void * rhs_data, void * sol_data)
+bool SolverSolveSuperLU(void * data, void * rhs_in_sol_out_data)
 {
 	SuperLU_data * m = static_cast<SuperLU_data *>(data);
 	assert(m->size != 0);
 	SuperMatrix B;
-	memcpy(sol_data,rhs_data,sizeof(double)*m->size);
-	dCreate_Dense_Matrix(&B,m->size,1,(double *)sol_data,m->size,SLU_DN,SLU_D,SLU_GE);
+	dCreate_Dense_Matrix(&B,m->size,1,(double *)rhs_in_sol_out_data,m->size,SLU_DN,SLU_D,SLU_GE);
 	dgssv(&m->options,&m->A,m->perm_c,m->perm_r,&m->L,&m->U,&B,&m->stat,&m->info);
 	Destroy_SuperMatrix_Store(&B);
 	return m->info == 0;

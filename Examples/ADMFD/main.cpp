@@ -556,8 +556,8 @@ int main(int argc,char ** argv)
                 
                 if( R.Norm() < 1.0e-4 ) break;
                 
-                Solver S(Solver::INNER_MPTILUC);
-				//Solver S(Solver::SUPERLU);
+                //Solver S(Solver::INNER_MPTILUC);
+				Solver S(Solver::SUPERLU);
 				S.SetParameterReal("relative_tolerance", 1.0e-14);
                 S.SetParameterReal("absolute_tolerance", 1.0e-12);
                 S.SetParameterReal("drop_tolerance", 1.0e-2);

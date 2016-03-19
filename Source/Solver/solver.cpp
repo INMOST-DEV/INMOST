@@ -1752,24 +1752,50 @@ namespace INMOST
 			double * a;
 			int mbeg = A.GetFirstIndex();
 			int mend = A.GetLastIndex();
-			for(int k = 0; k < mend-mbeg; ++k) nnz += A[k].Size();
-			ia = (int *)malloc(sizeof(int)*(A.Size()+1));
+			int size = 0;
+			int * remap = new int[mend-mbeg];
+			for(int k = 0; k < mend-mbeg; ++k) 
+			{
+				Sparse::Row & r = A[k+mbeg];
+				if( r.Size() )
+				{
+					double nrm = 0;
+					for(int l = 0; l < r.Size(); ++l)
+						nrm += r.GetValue(l)*r.GetValue(l);
+					if( nrm )
+					{
+						std::sort(r.Begin(),r.End());
+						nnz += r.Size();
+						remap[k] = size;
+						size++;
+					}
+					else remap[k] = -1;
+				}
+				else remap[k] = -1;
+			}
+			ia = (int *)malloc(sizeof(int)*(size+1));
 			ja = (int *)malloc(sizeof(int)*nnz);
 			a = (double *)malloc(sizeof(double)*nnz);
-			int q = 0;
+			int q = 0, f = 0;
 			ia[0] = 0;
-			for(int k = 0; k < mend-mbeg; ++k)
+			for(int k = 0; k < mend-mbeg; ++k) if( remap[k] != -1 )
 			{
 				Sparse::Row & r = A[k+mbeg];
 				for(int l = 0; l < r.Size(); ++l)
 				{
-					ja[q] = r.GetIndex(l)-mbeg;
-					a[q] = r.GetValue(l);
-					++q;
+					if( remap[r.GetIndex(l)-mbeg] != -1 )
+					{
+						ja[q] = remap[r.GetIndex(l)-mbeg];
+						a[q] = r.GetValue(l);
+						++q;
+					}
+					else //if( fabs(a[q]) > 1.0e-9 )
+						std::cout << "Matrix has connections to singular rows" << std::endl;
 				}
-				ia[k+1] = q;
+				ia[f+1] = q;
+				f++;
 			}
-			MatrixFillSuperLU(solver_data,mend-mbeg,nnz,ia,ja,a);
+			MatrixFillSuperLU(solver_data,size,nnz,ia,ja,a,remap);
 			//arrays are freed inside SuperLU
 			//delete [] ia;
 			//delete [] ja;
@@ -2554,7 +2580,14 @@ namespace INMOST
 #if defined(USE_SOLVER_SUPERLU)
 		if(_pack == SUPERLU )
 		{
-			bool ret = SolverSolveSuperLU(solver_data,&*RHS.Begin(),&*SOL.Begin());
+			int size = MatrixSizeSuperLU(solver_data);
+			double * inout = new double[size];
+			int * remap = MatrixRemapArraySuperLU(solver_data);
+			int mbeg = RHS.GetFirstIndex(), mend = RHS.GetLastIndex();
+			for(int k = 0; k < mend - mbeg; ++k) if( remap[k] != -1 ) inout[remap[k]] = RHS[k+mbeg];
+			bool ret = SolverSolveSuperLU(solver_data,inout);
+			for(int k = 0; k < mend - mbeg; ++k) if( remap[k] != -1 ) SOL[k+mbeg] = inout[remap[k]];
+			delete [] inout;
 			last_it = 1;
 			last_resid = 0;
 			return_reason = SolverConvergedReasonSuperLU(solver_data);
