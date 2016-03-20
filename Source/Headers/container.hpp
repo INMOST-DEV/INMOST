@@ -231,6 +231,7 @@ namespace INMOST
 				{
 					free(m_arr);
 					m_arr = NULL;
+					m_size = 0;
 				}
 				if( other.m_arr != NULL )
 				{
