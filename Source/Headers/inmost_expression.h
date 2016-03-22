@@ -89,6 +89,7 @@ namespace INMOST
   public:
     var_expression(const var_expression & other) :value(other.value), index(other.index) {}
     var_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex) : value(pvalue), index(pindex) {}
+	__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
@@ -1484,6 +1485,10 @@ template<class A>          __INLINE INMOST::variation_multiplication_expression<
                            __INLINE                          INMOST_DATA_REAL_TYPE variation(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE) {return Arg;}
 template<class A>          __INLINE                          INMOST_DATA_REAL_TYPE get_value(INMOST::shell_expression<A> const & Arg) { return Arg.GetValue(); }
                            __INLINE                          INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
+                           __INLINE                                           void set_value(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
+                           __INLINE                                           void set_value(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
+                           __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
+                           __INLINE                                           void set_value(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
 template<class A>          __INLINE                 INMOST::soft_abs_expression<A> soft_fabs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_abs_expression<A>(Arg,tol); }
                            __INLINE                          INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
 template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_sign_expression<A>(Arg,tol); }
