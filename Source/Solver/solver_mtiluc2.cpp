@@ -601,7 +601,7 @@ public:
 					A_Entries[j++] = Sparse::Row::make_entry(r->first, r->second);
 			}
 			A_Address[k].last = j;
-			assert(A_Address[k].Size() != 0); //singular matrix
+			//assert(A_Address[k].Size() != 0); //singular matrix
 		}
 #endif
 
@@ -1571,7 +1571,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////
 //       get diagonal value                                                      //
 ///////////////////////////////////////////////////////////////////////////////////
-				assert(B_Entries[B_Address[cbeg].first].first == cbeg);
+				//assert(B_Entries[B_Address[cbeg].first].first == cbeg);
 				if (B_Entries[B_Address[cbeg].first].first == cbeg)
 					LU_Diag[cbeg] = B_Entries[B_Address[cbeg].first].second;
 				else
@@ -1987,7 +1987,7 @@ swap_algorithm:
 					//DropLk = DropUk = 0.0;
 					//uncompress k-th row
 					// add diagonal value first, there shouldn't be values on left from diagonal
-					assert(B_Entries[B_Address[k].first].first == k);
+					//assert(B_Entries[B_Address[k].first].first == k);
 					LineIndecesU[cbeg] = k;
 					if (B_Entries[B_Address[k].first].first == k)
 						LineValuesU[k] = B_Entries[B_Address[k].first].second;

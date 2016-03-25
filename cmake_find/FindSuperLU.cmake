@@ -17,6 +17,17 @@ find_path(SUPERLU_INCLUDES
 )
 
 find_library(SUPERLU_LIBRARIES superlu PATHS $ENV{SUPERLUDIR}/lib ${SUPERLUDIR}/lib ${LIB_INSTALL_DIR})
+
+find_package(BLAS)
+if(BLAS_FOUND)
+	message("BLAS FOUND")
+	message(${BLAS_LIBRARIES})
+	if(SUPERLU_LIBRARIES)
+		set(SUPERLU_LIBRARIES ${SUPERLU_LIBRARIES} ${BLAS_LIBRARIES})
+	endif(SUPERLU_LIBRARIES)
+else()
+	message("BLAS NOT FOUND")
+endif()
   
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(SUPERLU DEFAULT_MSG
