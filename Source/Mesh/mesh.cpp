@@ -104,6 +104,9 @@ namespace INMOST
 		errorset = 0;
 		new_element = hide_element = 0;
 
+		memset(hidden_count,0,sizeof(integer)*6);
+		memset(hidden_count_zero,0,sizeof(integer)*6);
+
 		memset(remember,0,sizeof(remember));
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
 		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
@@ -1832,7 +1835,7 @@ namespace INMOST
 #ifndef NDEBUG
 		for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
 		{
-			integer end = LastLocalID(etypenum);
+			integer end = LastLocalIDNum(etypenum);
 			for(integer id = 0; id < end; ++id) 
 				if( isValidElement(etypenum,id) )
 					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");
@@ -1853,7 +1856,7 @@ namespace INMOST
 #endif
 		for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
 		{
-			integer end = LastLocalID(etypenum);
+			integer end = LastLocalIDNum(etypenum);
 			for(integer id = 0; id < end; ++id) 
 				if( isValidElement(etypenum,id) )
 					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,tag_private_marker[thread]))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");

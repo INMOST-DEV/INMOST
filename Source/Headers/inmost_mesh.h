@@ -1220,7 +1220,7 @@ namespace INMOST
                                         senum;
 	private:
     std::string                         name;
-		Storage::real                       epsilon;
+		real                                epsilon;
 		empty_container                     empty_space[6];
 		empty_container                     empty_links[6];
 		links_container                     links[6];
@@ -1229,13 +1229,15 @@ namespace INMOST
 		Tag                                 tag_low_conn;
 		Tag                                 tag_high_conn;
 		Tag                                 tag_markers;
-    Tag *                               tag_private_markers;
+		Tag *                               tag_private_markers;
 		Tag                                 tag_geom_type;
 		Tag                                 tag_setname;
 		Tag                                 tag_setcomparator;
 		MeshState                           m_state;
 		integer                             dim;
 		HandleType                          last_created;
+		integer								hidden_count[6];
+		integer								hidden_count_zero[6];
 	private:
 		ElementType                         have_global_id;
 		INMOST_DATA_BIG_ENUM_TYPE           parallel_mesh_unique_id;
@@ -2832,18 +2834,24 @@ namespace INMOST
 		__INLINE integer                  FaceLastLocalID    () const {return static_cast<integer>(links[2].size());}
 		__INLINE integer                  CellLastLocalID    () const {return static_cast<integer>(links[3].size());}
 		__INLINE integer                  EsetLastLocalID    () const {return static_cast<integer>(links[4].size());}
+
+		integer                           LastLocalIDNum     (integer n) const {assert(n >= 0 && n < 6); return n == 5 ? 1 : static_cast<integer>(links[n].size());}
+
 		integer                           NextLocalID        (ElementType etype, integer lid) const {integer q = ElementNum(etype); ++lid; while(lid < static_cast<integer>(links[q].size()) && links[q][lid] == -1) ++lid; return lid;}
 		integer                           PrevLocalID        (ElementType etype, integer lid) const {integer q = ElementNum(etype); --lid; while(lid > 0 && links[q][lid] == -1) --lid; return lid;}
 		integer                           FirstLocalID       (ElementType etype) const;
-		integer                           LastLocalID        (integer n) const {assert(n >= 0 && n < 6); return n == 5 ? 1 : static_cast<integer>(links[n].size());}
-		integer                           LastLocalID        (ElementType etype) const {assert(OneType(etype)); return LastLocalID(ElementNum(etype));}
+		integer                           LastLocalID        (ElementType etype) const {assert(OneType(etype)); return LastLocalIDNum(ElementNum(etype));}
 
+		integer                           NextLocalIDIter    (ElementType etype, integer lid) const;
+		integer                           PrevLocalIDIter    (ElementType etype, integer lid) const;
+		integer                           FirstLocalIDIter   (ElementType etype) const;
+		integer                           LastLocalIDIter    (ElementType etype) const;
 
-		__INLINE integer                  NumberOfSets       () const { return static_cast<integer>(links[4].size() - empty_links[4].size()); }
-		__INLINE integer                  NumberOfCells      () const { return static_cast<integer>(links[3].size() - empty_links[3].size());}
-		__INLINE integer                  NumberOfFaces      () const { return static_cast<integer>(links[2].size() - empty_links[2].size()); }
-		__INLINE integer                  NumberOfEdges      () const { return static_cast<integer>(links[1].size() - empty_links[1].size()); }
-		__INLINE integer                  NumberOfNodes      () const { return static_cast<integer>(links[0].size() - empty_links[0].size()); }
+		__INLINE integer                  NumberOfSets       () const { return static_cast<integer>(links[4].size() - empty_links[4].size()) - hidden_count[4]; }
+		__INLINE integer                  NumberOfCells      () const { return static_cast<integer>(links[3].size() - empty_links[3].size()) - hidden_count[3];}
+		__INLINE integer                  NumberOfFaces      () const { return static_cast<integer>(links[2].size() - empty_links[2].size()) - hidden_count[2]; }
+		__INLINE integer                  NumberOfEdges      () const { return static_cast<integer>(links[1].size() - empty_links[1].size()) - hidden_count[1]; }
+		__INLINE integer                  NumberOfNodes      () const { return static_cast<integer>(links[0].size() - empty_links[0].size()) - hidden_count[0]; }
 		__INLINE integer                  NumberOfElements   () const { return NumberOfCells() + NumberOfFaces() + NumberOfEdges() + NumberOfNodes(); }
 		__INLINE integer                  NumberOfAll        () const { return NumberOfSets() + NumberOfElements(); }
 		integer                           NumberOf           (ElementType t) const;

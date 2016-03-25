@@ -26,6 +26,10 @@
 
 #define R_QUIT		  100
 
+int isnan(double x) { return x != x; }
+//int isinf(double x) { return !isnan(x) && isnan(x - x); }
+int isinf(double x) { return fabs(x) > DBL_MAX; }
+int isbad(double x) { return isnan(x) || isinf(x); }
 
 template<typename T>
 void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
@@ -276,7 +280,7 @@ safe_output:
 									for(unsigned int m = 0; m < comps; m++) 
 									{
 										double val = static_cast<double>(arr[m]);
-										fprintf(f,"%14e ",val != val ? -0.9999E30 : val);
+										fprintf(f,"%14e ",isbad(val) ? -0.9999E30 : val);
 									}
 									fprintf(f,"\n");
 								}
@@ -295,7 +299,7 @@ safe_output:
 									for(unsigned int m = 0; m < comps; m++) 
 									{
 										double val = static_cast<double>(arr[m].GetValue());
-										fprintf(f,"%14e ",val != val ? -0.9999E30 : val);
+										fprintf(f,"%14e ",isbad(val) ? -0.9999E30 : val);
 									}
 									fprintf(f,"\n");
 								}
@@ -345,7 +349,7 @@ safe_output:
               || tags[i].GetDataType() == DATA_VARIABLE
 #endif
               ) type_str = "double";
-            fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),type_str.c_str(),comps);
+						fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
 						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 						{
@@ -357,7 +361,7 @@ safe_output:
 									for(unsigned int m = 0; m < comps; m++) 
 									{
 										double val = static_cast<double>(arr[m]);
-										fprintf(f,"%14e ",(val != val ? -0.9999E30 : val));
+										fprintf(f,"%14e ",(isbad(val) ? -0.9999E30 : val));
 									}
 									fprintf(f,"\n");
 								}
@@ -376,7 +380,7 @@ safe_output:
 									for(unsigned int m = 0; m < comps; m++) 
 									{
 										double val = static_cast<double>(arr[m].GetValue());
-										fprintf(f,"%14e ",(val != val ? -0.9999E30 : val));
+										fprintf(f,"%14e ",(isbad(val) ? -0.9999E30 : val));
 									}
 									fprintf(f,"\n");
 								}

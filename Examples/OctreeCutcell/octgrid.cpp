@@ -755,7 +755,7 @@ public:
 	incident_matrix(InputIterator beg, InputIterator end, unsigned num_inner)
 	: head_column(beg,end), min_loop()
 	{
-		isInputForwardIterators<T,InputIterator>();
+		//isInputForwardIterators<T,InputIterator>();
 		if( !head_column.empty() )
 		{
 			Mesh * m = head_column[0]->GetMeshLink();
