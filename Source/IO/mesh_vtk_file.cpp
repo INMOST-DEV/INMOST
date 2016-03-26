@@ -4,6 +4,7 @@
 
 
 #include "inmost.h"
+#include <cfloat>
 
 #if defined(USE_MESH)
 
