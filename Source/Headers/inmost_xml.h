@@ -85,11 +85,17 @@ namespace INMOST
     void SkipComments(State RetState);
     std::string StateName(State s) const;
   public:
-  
+	/// 2 - lot's of output
+	/// 1 - output key steps, currently in ReadXML
+	void SetVerbosity(int verbosity) {verbose =  verbosity;}
     void Report(const char * fmt, ...) const;
     XMLReader(std::string sourcename, std::istream & input);
     void PushStream(std::string file);
     void PopStream();
+	//wait for '<' on input,
+	//returns true and changes state to WaitTag if '<' encountered,
+	//otherwise returns false
+	bool ExpectOpenTag();
     //read in <TagName returns TagName
     std::string ReadOpenTag();
     //read > or /> skipping for attributes
@@ -151,19 +157,49 @@ namespace INMOST
       std::string name; //<Name of the XML tag
       std::vector<XMLAttrib> attributes; //<List of attributes
       int finish; //<Whether to close the tag
+
+
+	  ///This is data without ![CDATA[ wrap
+	  bool RawData() const {return finish == 5;}
+	  ///This is data within ![CDATA[ wrap
+	  bool BlockData() const {return finish == 4;}
       ///Was not able to read the tag
-      bool Failure() const;
+      bool Failure() const {return finish == 0;}
       ///Tag was red, can process the contents
-      bool Process() const;
+      bool Process() const {return finish == 1 || finish == 2;}
       ///Tag was not red, finish of enclosing tag was encountered
-      bool Finalize() const;
-      const XMLAttrib & GetAttib(int n) const;
-      XMLAttrib & GetAttib(int n);
-      int NumAttrib() const;
+      bool Finalize() const {return finish == 3;}
+      const XMLAttrib & GetAttib(int n) const {return attributes[n];}
+      XMLAttrib & GetAttib(int n) {return attributes[n];}
+      int NumAttrib() const {return (int)attributes.size();}
+	  std::string GetName() const {return name;}
     };
 
     XMLTag OpenTag();
     bool CloseTag(XMLTag & tag);
+
+	struct XMLTree
+	{
+		XMLTag tag;
+		std::vector<XMLTree> children;
+		std::string contents;
+
+		const XMLTree & GetChild(int n) const {return children[n];}
+		int NumChildren() const {return (int)children.size();}
+		const XMLAttrib & GetAttrib(int n) const {return tag.GetAttib(n);}
+		int NumAttrib() const {return (int)tag.NumAttrib();}
+		std::string GetName() const {return tag.GetName();}
+		const std::string & GetContents() const {return contents;}
+	};
+
+
+private:
+	std::string ReadUntil(std::string stop);
+	int ReadXMLSub(XMLTree & root);
+public:
+	/// Read entire XML file into structure,
+	/// it may be more efficient to read the file partially
+	XMLTree ReadXML();
   };
 }
 

@@ -4035,6 +4035,12 @@ int main(int argc, char ** argv)
 	//printf("Delete %lg\n",Timer()-tt);
 	//return 0;
 
+	//Mesh::GeomParam param;
+	//param[MEASURE] = CELL;
+	//param[ORIENTATION] = FACE;
+	//mesh->RemoveGeometricData(param);
+	//mesh->PrepareGeometricData(param);
+
 	std::map<Element::GeometricType,int> elems;
 
 	for(Mesh::iteratorElement it = mesh->BeginElement(CELL|FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
