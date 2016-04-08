@@ -165,8 +165,10 @@ namespace INMOST
 	  bool BlockData() const {return finish == 4;}
       ///Was not able to read the tag
       bool Failure() const {return finish == 0;}
-      ///Tag was red, can process the contents
-      bool Process() const {return finish == 1 || finish == 2;}
+      ///Tag was red and have internal contents, can process the contents
+      bool Process() const {return finish == 1;}
+	  ///Tag was red but do not have internal contents
+	  bool Stub() const {return finish == 2;}
       ///Tag was not red, finish of enclosing tag was encountered
       bool Finalize() const {return finish == 3;}
       const XMLAttrib & GetAttib(int n) const {return attributes[n];}
@@ -200,6 +202,9 @@ public:
 	/// Read entire XML file into structure,
 	/// it may be more efficient to read the file partially
 	XMLTree ReadXML();
+	  
+	  
+	  void WriteXML(const XMLTree & t, std::ostream & output, int offset = 0);
   };
 }
 
