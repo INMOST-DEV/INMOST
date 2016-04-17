@@ -2351,15 +2351,19 @@ namespace INMOST
 		void                              SetParallelFileStrategy(int strategy){assert( !(strategy < 0 || strategy > 1) ); parallel_file_strategy = strategy;}
 		/// Retrieve currently set parallel strategy for ".pmf" files
 		/// @see Mesh::GetParallelStrategy
-		int                               GetParallelFileStrategy() {return parallel_file_strategy;}
+		int                               GetParallelFileStrategy() const {return parallel_file_strategy;}
 		/// Get rank of current processor
-		int                               GetProcessorRank   ();
+		int                               GetProcessorRank   () const;
 		/// Get number of processors
-		int                               GetProcessorsNumber();
+		int                               GetProcessorsNumber() const;
+		/// Get rank of current processor in shared environment (OpenMP)
+		int                               GetLocalProcessorRank() const;
+		/// Get number of processors in shared environment (OpenMP)
+		int                               GetLocalProcessorNumber() const;
 		/// Retrieve MPI communicator
-		INMOST_MPI_Comm                   GetCommunicator    ();
+		INMOST_MPI_Comm                   GetCommunicator    () const;
         /// Retrieve MPI group corresponding to the communicator
-        INMOST_MPI_Group                  GetGroup           ();
+        INMOST_MPI_Group                  GetGroup           () const;
 		/// Set MPI communicator
 		void                              SetCommunicator    (INMOST_MPI_Comm _comm);
 		void                              ResolveShared      ();

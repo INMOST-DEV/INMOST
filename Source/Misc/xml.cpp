@@ -1594,14 +1594,23 @@ namespace INMOST
 		while(num > 0) {output.put('\t'); --num;}
 		return output;
 	}
+
+
+	int XMLReader::XMLTree::FindChild(std::string name, int offset) const
+	{
+		for(int k = offset+1; k < NumChildren(); ++k)
+			if( GetChild(k).GetName() == name )
+				return k;
+		return NumChildren();
+	}
 	
 	
-	void XMLReader::WriteXML(const XMLTree & t, std::ostream & output, int offset)
+	void WriteXML(const XMLReader::XMLTree & t, std::ostream & output, int offset)
 	{
 		Tabs(output,offset) << "<" << t.GetName();
 		for(int k = 0; k < t.NumAttrib(); ++k)
 		{
-			const XMLAttrib & attr = t.GetAttrib(k);
+			const XMLReader::XMLAttrib & attr = t.GetAttrib(k);
 			output << std::endl;;
 			Tabs(output,offset+1) << attr.name << "=\"" << attr.value << "\"";
 		}

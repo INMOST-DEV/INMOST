@@ -79,6 +79,7 @@ namespace INMOST
       value = other.value;
       return *this;
     }
+	operator INMOST_DATA_REAL_TYPE () {return value;}
   };
   
 

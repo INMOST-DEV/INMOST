@@ -146,51 +146,67 @@ namespace INMOST
     void ParseReference(std::string word, std::vector<std::pair<INMOST::ElementType,int> > & Vector, int & Repeat, int SetSize);
     void ParseRemoteReference(std::string word, std::vector< std::pair<std::string,std::pair<INMOST::ElementType,int> > > & Vector, int & Repeat, int SetSize);
     
+	/// Structure for xml attribute.
     struct XMLAttrib
     {
-      std::string name;
-      std::string value;
+      std::string name; //< Name of the attribute.
+      std::string value; //< Value of the attribute.
     };
 
+	/// Structure for xml tag with attributes.
     struct XMLTag
     {
-      std::string name; //<Name of the XML tag
-      std::vector<XMLAttrib> attributes; //<List of attributes
-      int finish; //<Whether to close the tag
+      std::string name; //<Name of the XML tag.
+      std::vector<XMLAttrib> attributes; //<List of attributes.
+      int finish; //<Whether to close the ta.g
 
 
-	  ///This is data without ![CDATA[ wrap
+	  ///This is data without ![CDATA[ wrap.
 	  bool RawData() const {return finish == 5;}
-	  ///This is data within ![CDATA[ wrap
+	  ///This is data within ![CDATA[ wrap.
 	  bool BlockData() const {return finish == 4;}
-      ///Was not able to read the tag
+      ///Was not able to read the tag.
       bool Failure() const {return finish == 0;}
-      ///Tag was red and have internal contents, can process the contents
+      ///Tag was red and have internal contents, can process the contents.
       bool Process() const {return finish == 1;}
-	  ///Tag was red but do not have internal contents
+	  ///Tag was red but do not have internal contents.
 	  bool Stub() const {return finish == 2;}
-      ///Tag was not red, finish of enclosing tag was encountered
+      ///Tag was not red, finish of enclosing tag was encountered.
       bool Finalize() const {return finish == 3;}
+	  ///Retrive attribute number n.
       const XMLAttrib & GetAttib(int n) const {return attributes[n];}
+	  ///Retrive attribute number n.
       XMLAttrib & GetAttib(int n) {return attributes[n];}
+	  ///Retrive number of attributes.
       int NumAttrib() const {return (int)attributes.size();}
+	  ///Retrive the name of the tag.
 	  std::string GetName() const {return name;}
     };
 
     XMLTag OpenTag();
     bool CloseTag(XMLTag & tag);
 
+	/// Structure defining entire XML file.
 	struct XMLTree
 	{
-		XMLTag tag;
-		std::vector<XMLTree> children;
-		std::string contents;
+		XMLTag tag; //< tag information, such as name and attributes.
+		std::vector<XMLTree> children; //< Children inside XML tag.
+		std::string contents; //< Text inside of the tag.
 
+		///Return next occurance of XML tag with the specified
+		///name. Returns NumChildren() if not found.
+		int FindChild(std::string name, int offset = -1) const;
+		///Retrive a child of current XML tag with number n.
 		const XMLTree & GetChild(int n) const {return children[n];}
+		///Retrive number of children.
 		int NumChildren() const {return (int)children.size();}
+		///Retrive attribute of current XML tag with number n.
 		const XMLAttrib & GetAttrib(int n) const {return tag.GetAttib(n);}
+		///Retrive number of attributes.
 		int NumAttrib() const {return (int)tag.NumAttrib();}
+		///Retrive the name of the tag.
 		std::string GetName() const {return tag.GetName();}
+		///Retrive contents of the tag.
 		const std::string & GetContents() const {return contents;}
 	};
 
@@ -200,12 +216,12 @@ private:
 	int ReadXMLSub(XMLTree & root);
 public:
 	/// Read entire XML file into structure,
-	/// it may be more efficient to read the file partially
+	/// it may be more efficient to read the file incrementially, depending on the size.
+	/// See mesh_xml_file.cpp for incremential read.
 	XMLTree ReadXML();
-	  
-	  
-	  void WriteXML(const XMLTree & t, std::ostream & output, int offset = 0);
   };
+
+  void WriteXML(const XMLReader::XMLTree & t, std::ostream & output, int offset = 0);
 }
 
 
