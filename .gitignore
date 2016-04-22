@@ -1,3 +1,7 @@
 .svn
 Tests/solver_test001/matrices
 SyncToy*
+*.iml
+.idea/*
+build/
+.idea/vcs.xml
