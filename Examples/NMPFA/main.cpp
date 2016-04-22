@@ -36,24 +36,6 @@ int main(int argc,char ** argv)
 #endif
     if( argc > 1 )
     {
-        /*
-        std::cout << "Row: " << sizeof(Sparse::Row) << std::endl;
-        std::cout << "HessianRow: " << sizeof(Sparse::HessianRow) << std::endl;
-        std::cout << "Matrix: " << sizeof(Sparse::Matrix) << std::endl;
-        std::cout << "HessianMatrix: " << sizeof(Sparse::HessianMatrix) << std::endl;
-        std::cout << "variable: " << sizeof(multivar_expression) << std::endl;
-        Sparse::Row J;
-        Sparse::HessianRow H;
-        unknown a = unknown(0.5,1);
-        unknown b = unknown(0.1,2);
-        (a*a*b*(a+b)).GetHessian(1.0,J,1.0,H);
-        std::cout << "J: "; J.Print();
-        std::cout << "H: "; H.Print();
-        J.Clear();
-        (a*a*b*(a+b)).GetJacobian(1.0,J);
-        std::cout << "J: "; J.Print();
-        return 0;
-         */
         double ttt; // Variable used to measure timing
         bool repartition = false; // Is it required to redistribute the mesh?
         Mesh * m = new Mesh(); // Create an empty mesh
@@ -112,8 +94,7 @@ int main(int argc,char ** argv)
         Tag tag_K;  // Diffusion tensor
         Tag tag_F;  // Forcing term
         Tag tag_BC; // Boundary conditions
-        Tag tag_W;  // Gradient matrix acting on harmonic points on faces and returning gradient on faces
-        Tag tag_DMP; // Indicates weather local W matrix satisfy DMP condition
+        Tag tag_W;  // Cell-wise gradient matrix
         
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
@@ -149,23 +130,6 @@ int main(int argc,char ** argv)
             if( m->HaveTag("PRESSURE") ) //Is there a pressure on the mesh?
                 tag_P = m->GetTag("PRESSURE"); //Get the pressure
             
-            if( !tag_P.isValid() || !tag_P.isDefined(CELL) ) // Pressure was not initialized or was not defined on nodes
-            {
-                srand(1); // Randomization
-                tag_P = m->CreateTag("PRESSURE",DATA_REAL,CELL|FACE,NONE,1); // Create a new tag for the pressure
-                for(Mesh::iteratorElement e = m->BeginElement(CELL|FACE); e != m->EndElement(); ++e) //Loop over mesh cells
-                    e->Real(tag_P) = 0;//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
-            }
-            
-            if( !tag_P.isDefined(FACE) )
-            {
-                tag_P = m->CreateTag("PRESSURE",DATA_REAL,FACE,NONE,1);
-                for(Mesh::iteratorElement e = m->BeginElement(FACE); e != m->EndElement(); ++e) //Loop over mesh cells
-                    e->Real(tag_P) = 0;//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
-            }
-            
-            
-            
             if( m->HaveTag("BOUNDARY_CONDITION") ) //Is there boundary condition on the mesh?
             {
                 tag_BC = m->GetTag("BOUNDARY_CONDITION");
@@ -173,210 +137,80 @@ int main(int argc,char ** argv)
             }
             m->ExchangeData(tag_P,CELL|FACE,0); //Synchronize initial solution with boundary unknowns
             tag_W = m->CreateTag("nKGRAD",DATA_REAL,CELL,NONE);
-            tag_DMP = m->CreateTag("isDMP",DATA_BULK,CELL,NONE);
             ttt = Timer();
             //Assemble gradient matrix W on cells
-            int total = 0, dmp = 0;
 #if defined(USE_OMP)
-#pragma omp parallel for reduction(+:total) reduction(+:dmp)
+#pragma omp parallel
 #endif
-            for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
-            {
-                Cell cell = m->CellByLocalID(q);
-                real xP[3]; //center of the cell
-                real yF[3]; //center of the face
-                real nF[3]; //normal to the face
-                real aF; //area of the face
-                real vP = cell->Volume(); //volume of the cell
-                cell->Centroid(xP);
-                ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-                int NF = (int)faces.size(); //number of faces;
-                rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
-                //rMatrix U,S,V;
-                //K0.SVD(U,S,V);
-                //for(int k = 0; k < 3; ++k) S(k,k) = sqrt(S(k,k));
-                //rMatrix K = U*S*V;
-                rMatrix nKGRAD(NF,NF), NK(NF,3), R(NF,3), D(NF,NF), U(NF,NF), Areas(NF,1); //big gradient matrix, co-normals, directions
-                for(int k = 0; k < NF; ++k) //loop over faces
-                {
-                    aF = faces[k].Area();
-                    faces[k].Centroid(yF);
-                    faces[k].OrientedUnitNormal(cell->self(),nF);
-                    // assemble matrix of directions
-                    R(k,0) = (yF[0]-xP[0])*aF;
-                    R(k,1) = (yF[1]-xP[1])*aF;
-                    R(k,2) = (yF[2]-xP[2])*aF;
-                    // assemble matrix of co-normals
-                    rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
-                    NK(k,0) = nK(0,0);
-                    NK(k,1) = nK(0,1);
-                    NK(k,2) = nK(0,2);
-                } //end of loop over faces
-                rMatrix SU,SS,SV;
-                nKGRAD = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //stability part
-                /*
-                 std::cout << "W" << std::endl;
-                 nKGRAD.Print();
-                 nKGRAD.SVD(SU,SS,SV);
-                 std::cout << "U" << std::endl;
-                 SU.Print();
-                 std::cout << "S" << std::endl;
-                 SS.Print();
-                 std::cout << "V" << std::endl;
-                 SV.Print();
-                 std::cout << "Check " << (nKGRAD - SU*SS*SV.Transpose()).FrobeniusNorm() << std::endl;
-                 */
-                
-                int rank = 0; //size of matrix U
-                
-                { //Retrive orthogonal to R matrix D
-                    //Symmetric orthogonal matrix
-                    rMatrix DUD = (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose());
-                    //perfrom singular value decomposition
-                    //S should be unity matrix with rank NF-3
-                    rMatrix DUD_U,DUD_S,DUD_V;
-                    DUD.SVD(DUD_U,DUD_S,DUD_V);
-                    //compute the rank
-                    for(int q = 0; q < NF; ++q)
-                        if( DUD_S(q,q) > 1.0e-2 )
-                            rank++;
-                    rank = NF-3;
-                    if( rank != NF-3)
-                    {
-                        std::cout << "rank: " << rank << " expected " << NF-3 << std::endl;
-                        DUD_S.Print();
-                    }
-                    //chop matrix to the full rank
-                    DUD_S.RemoveSubset(rank,NF,rank,NF);
-                    DUD_V.RemoveColumns(rank,NF);
-                    //assign the matrix
-                    D = DUD_V;
-                    U = DUD_S;
-                }
-                //std::cout << "D" << std::endl;
-                //D.Print();
-                //std::cout << "U" << std::endl;
-                //U.Print();
-                //std::cout << "DtR" << std::endl;
-                //(D.Transpose()*R).Print();
-                
-                U *=(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
-#if defined(OPTIMIZATION)
-                { //Make W a Z-matrix
-                    vMatrix vL(rank,rank), vD(rank,rank), vW(NF,NF);
-                    int unk = 0;
-                    // U = L*D*L^T
-                    vD.Zero();
-                    //diagonal D
-                    for(int i = 0; i < rank; ++i)
-                    {
-                        vD(i,i) = unknown(U(i,i),unk);
-                        unk++;
-                    }
-                    //off-diagonal
-                    vL.Zero();
-                    for(int i = 0; i < rank; ++i)
-                        vL(i,i) = 1.0;
-                    for(int i = 1; i < rank; ++i)
-                        for(int j = 0; j < i; ++j)
-                        {
-                            vL(i,j) = unknown(0.0,unk);
-                            unk++;
-                        }
-                    //std::cout << "unknowns: " << unk << std::endl;
-                    variable phi,s;
-                    //std::cout << "vD" << std::endl;
-                    //vD.Print();
-                    //std::cout << "vL" << std::endl;
-                    //vL.Print();
-                    
-                    int iter = 0;
-                    do
-                    { //Optimize U matrix
-                        vW = nKGRAD + D*vL*vD*vL.Transpose()*D.Transpose();
-                        //construct minimization functional phi(W)
-                        phi = 0.0;
-                        for(int i = 0; i < NF; ++i)
-                        {
-                            //phi += 1.0 / (vW(i,i)*vW(i,i));
-                            s = vW(i,i)*faces[i].Area();
-                            for(int j = 0; j < NF; ++j) if( i != j )
-                            {
-                                s += vW(i,j)*faces[j].Area();
-                                phi += (vW(i,j)+fabs(vW(i,j)))*(vW(i,j)+fabs(vW(i,j)));
-                            }
-                            phi += (s - fabs(s))*(s - fabs(s));
-                        }
-                        Sparse::Row & der = phi.GetRow(); //row of derivatives
-                        //std::sort(der.Begin(),der.End());
-                        //for(int i = 0; i < der.Size(); ++i)
-                        //    std::cout << "(" << der.GetIndex(i) << "," << der.GetValue(i) << ") ";
-                        //std::cout<<std::endl;
-                        int q = 0;
-                        real a = 0.00005;
-                        real minvD = 1.0e20;
-                        //diagonal
-                        for(int i = 0; i < rank; ++i)
-                        {
-                            real d = a*der[q++];
-                            //if( vD(i,i)-d > 0.0 )
-                            vD(i,i) -= d;
-                            if( vD(i,i) < minvD ) minvD = get_value(vD(i,i));
-                        }
-                        std::cout << "[" << iter << "] phi: " << get_value(phi) << " minD " << minvD << std::endl;
-                        //off-diagonal
-                        for(int i = 1; i < rank; ++i)
-                            for(int j = 0; j < i; ++j)
-                            {
-                                real d = a*der[q++];
-                                vL(i,j) -= d;
-                            }
-                        iter++;
-                        //std::cout << "vD" << std::endl;
-                        //vD.Print();
-                        //std::cout << "vL" << std::endl;
-                        //vL.Print();
-                    } while(iter < 100 && phi > 1.0e-3);
-                    {
-                        vMatrix vU = vL*vD*vL.Transpose();
-                        for(int i = 0; i < rank; ++i)
-                            for(int j = 0; j < rank; ++j)
-                                U(i,j) = get_value(vU(i,j));
-                    }
-                    //std::cout << "U: " << std::endl;
-                    //U.Print();
-                    
-                    
-                }
+			{
+				//private memory
+				rMatrix y(3,1), //harmonic point
+					    yK(3,1), //projection of center of K onto common face
+						yL(3,1), //projection of center of L onto common face
+						xK(3,1), //center of cell K
+						xL(3,1), //center of cell L
+						xKL(3,1), //center of faces common to K and L
+						nKL(3,1), //normal pointing out of K to L
+						lKs(3,1), //co-normal direction in current cell
+						lLs(3,1), //co-normal direction in adjacent cell
+						KK(3,3), //permeability of current cell
+						KL(3,3); //permeability of adjacent cell
+				real aKL; //area of the face
+				ElementArray<Face> faces; //array of faces of each cell
+				int NF; //number of faces
+				Cell cK, cL;
+#if defined(USE_OMP)
+#pragma omp for
 #endif
-                //std::cout << "UDtR" << std::endl;
-                //(U*D.Transpose()*R).Print();
-                
-                nKGRAD += D*U*D.Transpose();
-                
-                //std::cout << "W: " << std::endl;
-                //nKGRAD.Print();
-                bulk & isDMP = cell->Bulk(tag_DMP);
-                isDMP = 1;
-                for(int k = 0; k < NF; ++k)
-                {
-                    real row_sum = 0;
-                    if( nKGRAD(k,k) < 0.0 ) isDMP = 0;
-                    for(int j = 0; j < NF; ++j)
-                        row_sum += nKGRAD(k,j);
-                    if( row_sum < 0.0 ) isDMP = 0;
-                    for(int j = k+1; j < NF; ++j)
-                        if( nKGRAD(k,j) > 0.0 )
-                            isDMP = 0;
-                }
-                ++total;
-                if( isDMP ) ++dmp;
-                real_array W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
-                W.resize(NF*NF); //resize the structure
-                std::copy(nKGRAD.data(),nKGRAD.data()+NF*NF,W.data()); //write down the gradient matrix
-            } //end of loop over cells
+				for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+				{
+					cK = m->CellByLocalID(q);
+					cK->Centroid(xK.data()); //retrive cell centroid
+					faces = cK->getFaces(); //obtain faces of the cell
+					NF = (int)faces.size(); //number of faces;
+					KK = rMatrix::FromTensor(cK->RealArrayDF(tag_K).data(),cK->RealArrayDF(tag_K).size()); //get permeability for the cell
+					rMatrix W(NF,NF), //big cell-wise gradient matrix,
+						    NK(NF,3), //co-normals,
+							R(NF,3),  //directions to unknowns,
+							D(NF,NF), //orthogonal part of the gradient,
+							U(NF,NF); //optimized matrix of orthogonal part.
+					for(int k = 0; k < NF; ++k) //loop over faces
+					{
+						aKL = faces[k].Area(); //get area of the face
+						faces[k].Centroid(xKL.data()); //get center of the face
+						faces[k].OrientedUnitNormal(cK->self(),nKL.data()); //get unit normal pointing out of K into L
+						if( !faces[k].Boundary() )
+						{
+							KL = rMatrix::FromTensor(cL->RealArrayDF(tag_K).data(),cL->RealArrayDF(tag_K).size()); //get permeability for the cell
+						}
+					} //end of loop over faces
+					W = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //consistency part
+					//Retrive orthogonal to R matrix D
+					{ 
+						//Symmetric orthogonal matrix
+						rMatrix DUD = (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose());
+						//perfrom singular value decomposition
+						//S should be unity matrix with rank NF-3
+						rMatrix DUD_U,DUD_S,DUD_V;
+						DUD.SVD(DUD_U,DUD_S,DUD_V);
+						//compute the rank
+						int rank = NF-3;
+						//chop matrix to the full rank
+						DUD_V.RemoveColumns(rank,NF);
+						//assign the matrix
+						D = DUD_V;
+					}
+					//Optimize U matrix
+					{
+					}
+					//Add stability part
+					W += U*D.Transpose();
+					real_array store_W = cK->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
+					store_W.resize(NF*NF); //resize the structure
+					std::copy(W.data(),W.data()+NF*NF,store_W.data()); //write down the gradient matrix
+				} //end of loop over cells
+			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
-            std::cout << "Satisfy DMP: " << dmp << " out of " << total << std::endl;
             
             if( m->HaveTag("FORCE") ) //Is there force on the mesh?
             {
@@ -384,7 +218,7 @@ int main(int argc,char ** argv)
                 assert(tag_F.isDefined(CELL)); //assuming it was defined on cells
             } // end of force
         } //end of initialize data
-        
+		
         std::cout << "Initialization done" << std::endl;
         
         
@@ -430,9 +264,8 @@ int main(int argc,char ** argv)
             {
                 R.Clear(); //clean up the residual
                 double tttt = Timer();
-                int total = 0, dmp = 0;
 #if defined(USE_OMP)
-#pragma omp parallel for reduction(+:total) reduction(+:dmp)
+#pragma omp parallel for
 #endif
                 for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) ) //loop over cells
                 {
@@ -440,72 +273,13 @@ int main(int argc,char ** argv)
                     ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
                     int NF = (int)faces.size();
                     rMatrix nKGRAD(cell->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
-                    bulk & isDMP = cell->Bulk(tag_DMP);
                     vMatrix pF(NF,1); //vector of pressure differences on faces
                     vMatrix FLUX(NF,1); //computed flux on faces
                     for(int k = 0; k < NF; ++k)
                         pF(k,0) = (P(faces[k]) - P(cell))*faces[k].Area();
                     FLUX = nKGRAD*pF; //fluxes on faces
                     //Change matrix by nonlinear correction for DMP
-                    ++total;
-                    
-                    //if( !isDMP )
-                    if( false )
-                    {
-                        const real var = 0;//0.25;
-                        vMatrix vnKGRAD = nKGRAD;
-                        vMatrix card(NF,1);
-                        vMatrix dpF(NF,1);
-                        variable div = 0;
-                        //denominators of corrections
-                        //this is sum of absolute values of differences
-                        for(int k = 0; k < NF; ++k)
-                        {
-                            div += FLUX(k,0)*faces[k].Area();;
-                            for(int j = 0; j < NF; ++j)
-                            {
-                                dpF(k,0) += soft_fabs(pF(j,0) - pF(k,0),1.0e-9);
-                                card(k,0) += (soft_fabs(pF(j,0) - pF(k,0),1.0e-9)) / (soft_fabs(pF(j,0) - pF(k,0),1.0e-9)+1.0e-9);
-                            }
-                        }
-                        //actual corrections
-                        variable beta;
-                        for(int k = 0; k < NF; ++k)
-                        {
-                            for(int j = k+1; j < NF; ++j) //if( nKGRAD(k,j) > 0.0 )
-                            {
-                                //beta = soft_fabs(FLUX(k,0),1.0e-9)/(dpF(k,0)) + soft_fabs(FLUX(j,0),1.0e-9)/(dpF(j,0));
-                                beta = soft_max(soft_fabs(FLUX(k,0)-FLUX(j,0),1.0e-9)/card(k,0),soft_fabs(FLUX(j,0)-FLUX(k,0),1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
-                                //beta = soft_max(soft_fabs(FLUX(k,0),1.0e-9)/card(k,0),soft_fabs(FLUX(j,0),1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
-                                //beta = soft_max(soft_fabs(div,1.0e-9)/card(k,0),soft_fabs(div,1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
-                                beta = variation(beta,var);
-                                vnKGRAD(k,j) -= (beta);
-                                vnKGRAD(j,k) -= (beta);
-                                vnKGRAD(k,k) += (beta);
-                                vnKGRAD(j,j) += (beta);
-                            }
-                        }
-                        FLUX = vnKGRAD*pF;
-                        bool haveDMP = true;
-                        for(int k = 0; k < NF; ++k)
-                        {
-                            real row_sum = 0;
-                            if( vnKGRAD(k,k) < 0.0 ) haveDMP = false;
-                            for(int j = 0; j < NF; ++j)
-                                row_sum += get_value(vnKGRAD(k,j));
-                            if( row_sum < 0.0 ) haveDMP = false;
-                            for(int j = k+1; j < NF; ++j)
-                                if( vnKGRAD(k,j) > 0.0 )
-                                    haveDMP = false;
-                        }
-                        if( !haveDMP )
-                        {
-                            //std::cout << "Failed to correct, matrix:" << std::endl;
-                            //nKGRAD.Print();
-                        }
-                        else ++dmp;
-                    }
-                    else ++dmp;
+
                     
                     if( cell.GetStatus() != Element::Ghost )
                     {
@@ -527,8 +301,6 @@ int main(int argc,char ** argv)
                         Locks.UnLock(index);
                     }
                 } //end of loop over cells
-                
-                std::cout << "Satisfy DMP: " << dmp << " out of " << total << std::endl;
                 
                 
                 if( tag_F.isValid() )

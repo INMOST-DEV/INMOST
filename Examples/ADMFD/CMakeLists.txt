@@ -29,6 +29,10 @@ if(USE_SOLVER)
     message("linking ADMFD with Mondriaan")
     target_link_libraries(ADMFD ${MONDRIAAN_LIBRARIES})
   endif()
+  if(USE_SOLVER_SUPERLU)
+    message("linking ADMFD with SuperLU")
+    target_link_libraries(ADMFD ${SUPERLU_LIBRARIES})
+  endif()
 endif()
 
 

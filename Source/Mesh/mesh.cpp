@@ -104,6 +104,9 @@ namespace INMOST
 		errorset = 0;
 		new_element = hide_element = 0;
 
+		memset(hidden_count,0,sizeof(integer)*6);
+		memset(hidden_count_zero,0,sizeof(integer)*6);
+
 		memset(remember,0,sizeof(remember));
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
 		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
@@ -160,10 +163,7 @@ namespace INMOST
   {
     assert(isPrivate(n));
     n &= ~MarkerPrivateBit;
-    int thread = 0;
-#if defined(USE_OMP)
-    thread = omp_get_thread_num();
-#endif
+    int thread = GetLocalProcessorRank();
     const bulk * mem = static_cast<const bulk *>(MGetDenseLink(h,tag_private_markers[thread]));
     return (mem[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;
   }
@@ -172,10 +172,7 @@ namespace INMOST
   {
     assert(isPrivate(n));
     n &= ~MarkerPrivateBit;
-    int thread = 0;
-#if defined(USE_OMP)
-    thread = omp_get_thread_num();
-#endif
+    int thread = GetLocalProcessorRank();
     bulk * mem = static_cast<bulk *>(MGetDenseLink(h,tag_private_markers[thread]));
     mem[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);
   }
@@ -184,10 +181,7 @@ namespace INMOST
   {
     assert(isPrivate(n));
     n &= ~MarkerPrivateBit;
-    int thread = 0;
-#if defined(USE_OMP)
-    thread = omp_get_thread_num();
-#endif
+    int thread = GetLocalProcessorRank();
     bulk * mem = static_cast<bulk *>(MGetDenseLink(h,tag_private_markers[thread]));
     mem[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);
   }
@@ -199,13 +193,13 @@ namespace INMOST
     {
 #pragma omp single
       {
-        tag_private_markers = new Tag[omp_get_num_threads()];
+		  tag_private_markers = new Tag[GetLocalProcessorNumber()];
       }
 //#pragma omp ordered
       {
         std::stringstream name;
-        name << "PROTECTED_PRIVATE_MARKERS_" << omp_get_thread_num();
-        tag_private_markers[omp_get_thread_num()] = CreateTag(name.str(),DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFieldsPrivate);
+		name << "PROTECTED_PRIVATE_MARKERS_" << GetLocalProcessorRank();
+        tag_private_markers[GetLocalProcessorRank()] = CreateTag(name.str(),DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFieldsPrivate);
       }
     }
 #else
@@ -214,22 +208,40 @@ namespace INMOST
 #endif
   }
 
+  int Mesh::GetLocalProcessorNumber() const
+  {
+#if defined(USE_OMP)
+	  return omp_get_num_threads();
+#else
+	  return 1;
+#endif
+  }
+
+  int Mesh::GetLocalProcessorRank() const
+  {
+#if defined(USE_OMP)
+	  return omp_get_thread_num();
+#else
+	  return 0;
+#endif
+  }
+
   void Mesh::DeallocatePrivateMarkers()
   {
 #if defined(USE_OMP)
 #pragma omp parallel
     {
-      //retrive tag before it was erased
-      Tag del = tag_private_markers[omp_get_thread_num()];
+		//retrive tag before it was erased
+		Tag del = tag_private_markers[GetLocalProcessorRank()];
 #pragma omp barrier
-      //delete tag, it will erase the tag
-      DeleteTag(del);
+		//delete tag, it will erase the tag
+		DeleteTag(del);
 #pragma omp barrier
-      //deallocate space
+		//deallocate space
 #pragma omp single
-      {
-        delete [] tag_private_markers;
-      }
+		{
+			delete [] tag_private_markers;
+		}
     }
 #else
     DeleteTag(tag_private_markers[0]);
@@ -1802,12 +1814,9 @@ namespace INMOST
 		assert(false); //if you reached here then you either don't release markers (it's your bug) or you should increase MarkerFields const in inmost_mesh.h
 		return InvalidMarker();
 	}
-  MarkerType Mesh::CreatePrivateMarker()
-  {
-    int thread = 0;
-#if defined(USE_OMP)
-    thread = omp_get_thread_num();
-#endif
+	MarkerType Mesh::CreatePrivateMarker()
+	{
+		int thread = GetLocalProcessorRank();
 		Storage::bulk * marker_space = static_cast<Storage::bulk * >(MGetDenseLink(GetHandle(),tag_private_markers[thread]));
 		INMOST_DATA_ENUM_TYPE ret;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k)
@@ -1817,7 +1826,7 @@ namespace INMOST
 			{
 				ret = (k << MarkerShift) | mask;
 				marker_space[k] |= mask;
-        ret |= MarkerPrivateBit;
+				ret |= MarkerPrivateBit;
 				return ret;
 			}
 		}
@@ -1832,7 +1841,7 @@ namespace INMOST
 #ifndef NDEBUG
 		for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
 		{
-			integer end = LastLocalID(etypenum);
+			integer end = LastLocalIDNum(etypenum);
 			for(integer id = 0; id < end; ++id) 
 				if( isValidElement(etypenum,id) )
 					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");
@@ -1842,18 +1851,15 @@ namespace INMOST
 		Storage::RemMarker(n);
 	}
 
-  void Mesh::ReleasePrivateMarker(MarkerType n)
+	void Mesh::ReleasePrivateMarker(MarkerType n)
 	{
-    assert(isPrivate(n));
+		assert(isPrivate(n));
 #if defined(CHECKS_MARKERS)
 #ifndef NDEBUG
-    int thread = 0;
-#if defined(USE_OMP)
-    thread = omp_get_thread_num();
-#endif
+		int thread = GetLocalProcessorRank();
 		for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
 		{
-			integer end = LastLocalID(etypenum);
+			integer end = LastLocalIDNum(etypenum);
 			for(integer id = 0; id < end; ++id) 
 				if( isValidElement(etypenum,id) )
 					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,tag_private_marker[thread]))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");

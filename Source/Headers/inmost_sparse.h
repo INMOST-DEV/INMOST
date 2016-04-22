@@ -175,9 +175,9 @@ namespace INMOST
             /// that allow for the modification of individual entries.
             /// @param size New size of the row.
             void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
-            void                    Print()
+            void                    Print() const
             {
-                for(iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first << "," << it->second << ") ";
+                for(const_iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first << "," << it->second << ") ";
                 std::cout << std::endl;
             }
             bool                    isSorted() const;

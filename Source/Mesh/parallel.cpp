@@ -516,7 +516,7 @@ namespace INMOST
 	}
 
 
-	INMOST_MPI_Comm Mesh::GetCommunicator()
+	INMOST_MPI_Comm Mesh::GetCommunicator() const
 	{
 #if defined(USE_MPI)
 		return comm;
@@ -525,7 +525,7 @@ namespace INMOST
 #endif //USE_MPI
 	}
 	
-	int Mesh::GetProcessorRank()
+	int Mesh::GetProcessorRank() const
 	{
 #if defined(USE_MPI)
 		int rank;
@@ -536,7 +536,7 @@ namespace INMOST
 #endif //USE_MPI
 	}
 	
-	int Mesh::GetProcessorsNumber()
+	int Mesh::GetProcessorsNumber() const
 	{
 #if defined(USE_MPI)
 		int size;
@@ -571,7 +571,7 @@ namespace INMOST
 #endif //USE_MPI
 	}
 	
-    INMOST_MPI_Group Mesh::GetGroup()
+    INMOST_MPI_Group Mesh::GetGroup() const
     {
         INMOST_MPI_Group ret = INMOST_MPI_GROUP_EMPTY;
 #if defined(USE_MPI)

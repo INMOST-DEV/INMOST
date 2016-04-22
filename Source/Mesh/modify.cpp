@@ -1958,6 +1958,11 @@ public:
 		hide_element = new_element;
 		new_element = temp;
 
+		integer tmp[6];
+		memcpy(tmp,hidden_count,sizeof(integer)*6);
+		memcpy(hidden_count,hidden_count_zero,sizeof(integer)*6);
+		memcpy(hidden_count_zero,tmp,sizeof(integer)*6);
+
 		for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
@@ -2022,8 +2027,11 @@ public:
 		//but may use by retriving lower_bound/higher_bound O(log(n)) operations to narrow performed operations
 		erase->BulkDF(SetComparatorTag()) = ElementSet::HANDLE_COMPARATOR;
 		*/
+
+		//for(integer jt = 0; jt < LastLocalID(ESET); ++jt) if( isValidElementSet(jt) )
 		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
 		{
+			//ElementSet it = EsetByLocalID(jt);
 			std::cout << "set name: " << it->GetName() << " size " << it->Size() << " id " << it->LocalID() << std::endl;
 			if( it->HaveParent() && it->GetParent()->Hidden() )
 				it->GetParent()->RemChild(it->self());
@@ -2073,6 +2081,8 @@ public:
 					Destroy(h);
 			}
 		}
+		memset(hidden_count,0,sizeof(integer)*6);
+		memset(hidden_count_zero,0,sizeof(integer)*6);
 		ReleaseMarker(temp_hide_element);
 		ReleaseMarker(new_element);
 		new_element = 0;
@@ -2090,6 +2100,7 @@ public:
 		assert(isValidHandleRange(h));
 		assert(isValidHandle(h));
 		ElementType htype = GetHandleElementType(h);
+		if( Hidden(h) ) Show(h);
 		if( htype & (NODE|EDGE|FACE|CELL) )
 			ElementByHandle(h).Disconnect(true);
 		else if( htype & ESET )
@@ -2109,7 +2120,11 @@ public:
 	{
 		if(HideMarker()) 
 		{
-			SetMarker(h,HideMarker()); 
+			if( !Hidden(h) )
+			{
+				hidden_count[GetHandleElementNum(h)]++;
+				SetMarker(h,HideMarker()); 
+			}
 			return true;
 		} 
 		return false;
@@ -2119,11 +2134,12 @@ public:
 	{
 		if(HideMarker()) 
 		{
-			if( GetMarker(h,HideMarker()) )
+			if( Hidden(h) )
 			{
+				hidden_count[GetHandleElementNum(h)]--;
 				RemMarker(h,HideMarker()); 
-				return true;
 			}
+			return true;
 		} 
 		return false;
 	}
@@ -2135,7 +2151,7 @@ public:
 			if( GetHandleElementType(h) != CELL ) //mark all elements that rely on this that they should be deleted
 			{
 				Element::adj_type & hc = HighConn(h);
-				for(Element::adj_type::size_type it = 0; it < hc.size(); ++it) Delete(hc[it]);
+				for(Element::adj_type::size_type it = 0; it < hc.size(); ++it) if( !Hidden(hc[it]) ) Hide(hc[it]);
 			}
 			return false;
 		}

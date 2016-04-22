@@ -88,6 +88,7 @@ namespace INMOST
   {
     Sparse::Matrix jacobian;
     Sparse::Vector residual;
+	Sparse::LockService locks;
   public:
     Residual(std::string name = "", INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0, INMOST_MPI_Comm _comm = INMOST_MPI_COMM_WORLD)
       : jacobian(name,start,end,_comm),residual(name,start,end,_comm) {}
@@ -175,6 +176,10 @@ namespace INMOST
         }
       }
     }
+	void InitLocks() {locks.SetInterval(GetFirstIndex(),GetLastIndex());}
+	void Lock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) locks.Lock(pos);}
+	void UnLock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) locks.UnLock(pos);}
+	void TestLock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) locks.TestLock(pos);}
   };
 
 	class Automatizator

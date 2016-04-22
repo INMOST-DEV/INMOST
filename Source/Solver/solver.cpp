@@ -2,6 +2,7 @@
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #include "solver_petsc.h"
+#include "solver_superlu.h"
 #include "solver_ani.h"
 #include "solver_ilu2.hpp"
 #include "solver_ddpqiluc2.hpp"
@@ -43,7 +44,6 @@
 #include "Teuchos_TestForException.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"
 #endif
-
 //#define USE_OMP
 
 //#define KSOLVER BCGSL_solver
@@ -61,6 +61,7 @@ namespace INMOST
 	static std::string ani_database_file = "";
 	static std::string fcbiilu2_database_file = "";
 	static std::string k3biilu2_database_file = "";
+	static std::string superlu_database_file = "";
 
 
 
@@ -86,6 +87,7 @@ namespace INMOST
     case ANI: return "ANI";
     case FCBIILU2: return "FCBIILU2";
     case K3BIILU2: return "K3BIILU2";
+	case SUPERLU: return "SUPERLU";
     }
     return "Unknown";
   }
@@ -852,52 +854,57 @@ namespace INMOST
 		(void)argv;
 		if( database != NULL )
 		{
-      FILE * f = fopen(database,"r");
-      if( f )
-      {
-			  //std::fstream file(database,std::ios::in);
-			  char str[4096];
-			  //while( !file.eof() && file.getline(str,4096) )
-        while( !feof(f) && fgets(str,4096,f) )
-			  {
-				  int k = 0, l;
-				  for(k = 0; k < (int)strlen(str); ++k)
-				  {
-					  if( str[k] == ':' ) break;
-				  }
-				  if( k == strlen(str) ) continue; //invalid line
-				  for(l = 0; l < k; ++l) str[l] = tolower(str[l]);
-				  l = (int)strlen(str)-1; // Right-trim string
-				  while(l > 0 && isspace(str[l]) ) --l;
-				  str[l+1] = 0;
-				  l = k+1;
-				  while(l < (int)strlen(str) && isspace(str[l]) ) ++l;
-				  if( l == strlen(str) ) continue; //skip empty entry
-				  if( !strncmp(str,"petsc",k) )
-					  petsc_database_file = std::string(str+l);
-				  else if( !strncmp(str,"trilinos_ifpack",k) )
-					  trilinos_ifpack_database_file = std::string(str+l);
-				  else if( !strncmp(str,"trilinos_aztec",k) )
-					  trilinos_aztec_database_file = std::string(str+l);
-				  else if( !strncmp(str,"trilinos_ml",k) )
-					  trilinos_ml_database_file = std::string(str+l);
-				  else if( !strncmp(str,"trilinos_belos",k) )
-					  trilinos_belos_database_file = std::string(str+l);
-				  else if( !strncmp(str,"ani",k) )
-					  ani_database_file = std::string(str+l);
-				  else if( !strncmp(str,"fcbiilu2",k) )
-				 	  fcbiilu2_database_file = std::string(str+l);
-				  else if( !strncmp(str,"k3biilu2",k) )
-					  k3biilu2_database_file = std::string(str+l);
-			  }
-			  //file.close();
-        fclose(f);
-      }
+			FILE * f = fopen(database,"r");
+			if( f )
+			{
+				//std::fstream file(database,std::ios::in);
+				char str[4096];
+				//while( !file.eof() && file.getline(str,4096) )
+				while( !feof(f) && fgets(str,4096,f) )
+				{
+					int k = 0, l;
+					for(k = 0; k < (int)strlen(str); ++k)
+					{
+						if( str[k] == ':' ) break;
+					}
+					if( k == strlen(str) ) continue; //invalid line
+					for(l = 0; l < k; ++l) str[l] = tolower(str[l]);
+					l = (int)strlen(str)-1; // Right-trim string
+					while(l > 0 && isspace(str[l]) ) --l;
+					str[l+1] = 0;
+					l = k+1;
+					while(l < (int)strlen(str) && isspace(str[l]) ) ++l;
+					if( l == strlen(str) ) continue; //skip empty entry
+					if( !strncmp(str,"petsc",k) )
+						petsc_database_file = std::string(str+l);
+					else if( !strncmp(str,"trilinos_ifpack",k) )
+						trilinos_ifpack_database_file = std::string(str+l);
+					else if( !strncmp(str,"trilinos_aztec",k) )
+						trilinos_aztec_database_file = std::string(str+l);
+					else if( !strncmp(str,"trilinos_ml",k) )
+						trilinos_ml_database_file = std::string(str+l);
+					else if( !strncmp(str,"trilinos_belos",k) )
+						trilinos_belos_database_file = std::string(str+l);
+					else if( !strncmp(str,"ani",k) )
+						ani_database_file = std::string(str+l);
+					else if( !strncmp(str,"fcbiilu2",k) )
+						fcbiilu2_database_file = std::string(str+l);
+					else if( !strncmp(str,"k3biilu2",k) )
+						k3biilu2_database_file = std::string(str+l);
+					else if( !strncmp(str,"superlu",k) )
+						superlu_database_file = std::string(str+l);
+				}
+				//file.close();
+				fclose(f);
+			}
 		}
 		//std::cout << "PETSc \"" << petsc_database_file << "\"" << std::endl;
 		//std::cout << "Trilinos_Ifpack \"" << trilinos_ifpack_database_file << "\"" << std::endl;
 #if defined(USE_SOLVER_PETSC)
 		SolverInitializePetsc(argc,argv,petsc_database_file.c_str());
+#endif
+#if defined(USE_SOLVER_SUPERLU)
+		SolverInitializeSuperLU(argc,argv,superlu_database_file.c_str());
 #endif
 #if defined(USE_SOLVER_ANI)
 		SolverInitializeAni(argc,argv,ani_database_file.c_str());
@@ -923,8 +930,11 @@ namespace INMOST
 			}
 		}
 #endif
+#if defined(USE_SOLVER_SUPERLU)
+		
+#endif
 		Sparse::CreateRowEntryType();
-    is_initialized = true;
+		is_initialized = true;
 	}
 	
 	void Solver::Finalize()
@@ -1068,6 +1078,12 @@ namespace INMOST
 		if( _pack == K3BIILU2 )
 		{
 			SolverInitDataK3biilu2(&solver_data,_comm,name.c_str());
+		}
+#endif
+#if defined(USE_SOLVER_SUPERLU)
+		if( _pack == SUPERLU )
+		{
+			SolverInitDataSuperLU(&solver_data);
 		}
 #endif
 #if defined(USE_SOLVER_TRILINOS)
@@ -1270,6 +1286,13 @@ namespace INMOST
 				delete static_cast<std::pair<std::string,Epetra_LinearProblem> *>(solver_data);
 				solver_data = NULL;
 			}
+		}
+#endif
+#if defined(USE_SOLVER_SUPERLU)
+		if(_pack == SUPERLU )
+		{
+			SolverDestroyDataSuperLU(&solver_data);
+			matrix_data = NULL;
 		}
 #endif
 		if (_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)
@@ -1718,6 +1741,66 @@ namespace INMOST
 			}
 			MatrixFinalizeK3biilu2(matrix_data);
 			SolverSetMatrixK3biilu2(solver_data,matrix_data,modified_pattern,OldPreconditioner);
+			ok = true;
+		}
+#endif
+#if defined(USE_SOLVER_SUPERLU)
+		if( _pack == SUPERLU ) //just serial SuperLU
+		{
+			//check that the run is serial!
+			int * ia, * ja, nnz = 0;
+			double * a;
+			int mbeg = A.GetFirstIndex();
+			int mend = A.GetLastIndex();
+			int size = 0;
+			int * remap = new int[mend-mbeg];
+			for(int k = 0; k < mend-mbeg; ++k) 
+			{
+				Sparse::Row & r = A[k+mbeg];
+				if( r.Size() )
+				{
+					double nrm = 0;
+					for(int l = 0; l < r.Size(); ++l)
+						nrm += r.GetValue(l)*r.GetValue(l);
+					if( nrm )
+					{
+						std::sort(r.Begin(),r.End());
+						nnz += r.Size();
+						remap[k] = size;
+						size++;
+					}
+					else remap[k] = -1;
+				}
+				else remap[k] = -1;
+			}
+			ia = (int *)malloc(sizeof(int)*(size+1));
+			ja = (int *)malloc(sizeof(int)*nnz);
+			a = (double *)malloc(sizeof(double)*nnz);
+			int q = 0, f = 0;
+			ia[0] = 0;
+			for(int k = 0; k < mend-mbeg; ++k) if( remap[k] != -1 )
+			{
+				Sparse::Row & r = A[k+mbeg];
+				for(int l = 0; l < r.Size(); ++l)
+				{
+					if( remap[r.GetIndex(l)-mbeg] != -1 )
+					{
+						ja[q] = remap[r.GetIndex(l)-mbeg];
+						a[q] = r.GetValue(l);
+						++q;
+					}
+					else //if( fabs(a[q]) > 1.0e-9 )
+						std::cout << "Matrix has connections to singular rows" << std::endl;
+				}
+				ia[f+1] = q;
+				f++;
+			}
+			MatrixFillSuperLU(solver_data,size,nnz,ia,ja,a,remap);
+			//arrays are freed inside SuperLU
+			//delete [] ia;
+			//delete [] ja;
+			//delete [] a;
+			matrix_data = solver_data; //to avoid exception in Solve()
 			ok = true;
 		}
 #endif
@@ -2492,6 +2575,23 @@ namespace INMOST
 				return false;
 			}
 			
+		}
+#endif
+#if defined(USE_SOLVER_SUPERLU)
+		if(_pack == SUPERLU )
+		{
+			int size = MatrixSizeSuperLU(solver_data);
+			double * inout = new double[size];
+			int * remap = MatrixRemapArraySuperLU(solver_data);
+			int mbeg = RHS.GetFirstIndex(), mend = RHS.GetLastIndex();
+			for(int k = 0; k < mend - mbeg; ++k) if( remap[k] != -1 ) inout[remap[k]] = RHS[k+mbeg];
+			bool ret = SolverSolveSuperLU(solver_data,inout);
+			for(int k = 0; k < mend - mbeg; ++k) if( remap[k] != -1 ) SOL[k+mbeg] = inout[remap[k]];
+			delete [] inout;
+			last_it = 1;
+			last_resid = 0;
+			return_reason = SolverConvergedReasonSuperLU(solver_data);
+			return ret;
 		}
 #endif
 		if(_pack == INNER_ILU2 || _pack == INNER_DDPQILUC || _pack == INNER_MPTILUC || _pack == INNER_MPTILU2)

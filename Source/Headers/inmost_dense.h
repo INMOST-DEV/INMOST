@@ -471,7 +471,7 @@ namespace INMOST
       assert(i*m+j < n*m); //overflow check?
       return space[i*m+j];
     }
-    Var operator()(enumerator i, enumerator j) const
+    const Var & operator()(enumerator i, enumerator j) const
     {
       assert(i >= 0 && i < n);
       assert(j >= 0 && j < m);

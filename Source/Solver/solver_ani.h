@@ -2,8 +2,6 @@
 #define SOLVER_ANI_H_INCLUDED
 #include "inmost_solver.h"
 
-
-#if defined(USE_SOLVER_ANI)
 void MatrixCopyDataAni(void ** ppA, void * pB);
 void MatrixAssignDataAni(void * pA, void * pB);
 void MatrixInitDataAni(void ** ppA, INMOST_MPI_Comm comm, const char * name);
@@ -32,7 +30,6 @@ void SolverSetMatrixAni(void * data, void * matrix_data, bool same_pattern, bool
 bool SolverSolveAni(void * data, void * rhs_data, void * sol_data);
 int SolverIterationNumberAni(void * data);
 double SolverResidualNormAni(void * data);
-#endif //USE_SOLVER_ANI
 
 
 #endif //SOLVER_ANI_H_INCLUDED

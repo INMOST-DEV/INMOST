@@ -6,7 +6,7 @@
 
 // in obj.cpp z coordinate is not normalized from 0 to 1!
 // may be a problem, lines 791-794 
-#include "../../inmost.h"
+#include "inmost.h"
 #include "octgrid.h"
 #include "my_glut.h"
 #include "rotate.h"
@@ -42,9 +42,27 @@ double last_time;
 double gleft, gright, gbottom, gtop, gnear, gfar, zoom = 1;
 bool transparent = false;
 
+//#define MASAHIKO_MESH
+//#define SPHERE_MESH
+#define OBJ_READERS
+#define INIT_PERM
+
 
 void transformation(double xyz[3]) 
 {
+#if defined(SPHERE_MESH)
+	return;
+#elif defined(MASAHIKO_MESH)
+	if( xyz[2] < 11.0/36.0 )
+		xyz[2] = (xyz[2]-0)*11.9/11.0;
+	else if( xyz[2] < 12.0/36.0 )
+		xyz[2] = (xyz[2]-11.0/36.0)*0.1 + 11.9/36.0;
+	else if( xyz[2] < 23.0/36.0 )
+		xyz[2] = (xyz[2]-12.0/36.0)*11.9/11.0 + 12.0/36.0;
+	else if( xyz[2] < 24.0/36.0 )
+		xyz[2] = (xyz[2]-23.0/36.0)*0.1 + 23.9/36.0;
+	return;
+#endif
 	make_proj.Project(xyz);
 	/*
     double tmp[3];
@@ -64,11 +82,31 @@ void transformation(double xyz[3])
 
 mat_ret_type get_material_types(double xyz[3])
 {
+#if defined(MASAHIKO_MESH)
+	mat_ret_type ret;
+	//ret.push_back(1);
+	
+	const double eps = 1.0e-5;
+	double test = xyz[2] - (2*xyz[0]-0.5);
+	if( test < eps )  ret.push_back(1);
+	if( test > -eps ) ret.push_back(2);
+	
+	return ret;
+#elif defined(SPHERE_MESH)
+	mat_ret_type ret;
+	const double eps = 1.0e-5;
+	double sphere = 0.5 - sqrt((xyz[0]-0.5)*(xyz[0]-0.5) + (xyz[1]-0.5)*(xyz[1]-0.5) + (xyz[2]-0.5)*(xyz[2]-0.5));
+	//double sphere = 1.0 - sqrt((xyz[0])*(xyz[0]) + (xyz[1])*(xyz[1]) + (xyz[2])*(xyz[2]));
+	if( sphere < eps ) ret.push_back(-1);
+	if( sphere > -eps ) ret.push_back(1);
+	return ret;
+#else
 	mat_ret_type ret(get_type.Size());
 	ret.resize(get_type.Layers(xyz,&ret[0]));
 	std::sort(ret.begin(),ret.end());
 	ret.resize(std::unique(ret.begin(),ret.end())-ret.begin());
 	return ret;
+#endif
 }
 
 
@@ -76,6 +114,18 @@ mat_ret_type get_material_types(double xyz[3])
 
 int cell_should_unite(struct grid * g, int cell)
 {
+#if defined(MASAHIKO_MESH)
+	return 0;
+	//refinement along well
+	double x,y,z;
+	x = g->cells[cell].center[0];
+	y = g->cells[cell].center[1];
+	z = g->cells[cell].center[2];
+	double plane = fabs(z - (1.25-2*x));
+	double mid = fabs(y-0.5);
+	return plane > 0.06 && mid > 0.06;
+
+#endif
 	const double r = 0.03;
 	//const double r = 0.001;
 	double r2 = (1.0/(double)g->n[0]*1.0/(double)g->n[0]+1.0/(double)g->n[1]*1.0/(double)g->n[1])/2.0;
@@ -90,7 +140,18 @@ int cell_should_unite(struct grid * g, int cell)
 }
 int cell_should_split(struct grid * g, int cell)
 {
-	
+#if defined(MASAHIKO_MESH)
+	return 0;
+	//refinement along well
+	double x,y,z;
+	x = g->cells[cell].center[0];
+	y = g->cells[cell].center[1];
+	z = g->cells[cell].center[2];
+	double plane = fabs(z - (1.25-2*x));
+	double mid = fabs(y-0.5);
+	return plane < 0.05 && mid < 0.05 && g->cells[cell].level < level_max;
+
+#endif	
 	const double r = 0.03;
 	//const double r = 0.001;
 	double r2 = (1.0/(double)g->n[0]*1.0/(double)g->n[0]+1.0/(double)g->n[1]*1.0/(double)g->n[1])/2.0;
@@ -333,7 +394,9 @@ void cell_to_INMOST(struct grid * g, int cell, Cell r)
 		else throw -1;
 		*/
 	}
+#if defined(INIT_PERM)
 	fill_K(center,&r->RealArrayDF(g->Kvec)[0],&r->RealArrayDF(g->K)[0]);
+#endif
 }
 
 void init_mesh(struct grid * g)
@@ -367,6 +430,13 @@ std::map<Tag,Storage::real> cell_small_unite(ElementArray<Cell> & unite)
 		it->second /= vol;
 	return ret;
 }
+
+void onclose()
+{
+	gridDelete(&thegrid);
+	DestroyObj();
+}
+
 
 #if defined( __GRAPHICS__)
 int show_region = 0;
@@ -701,11 +771,6 @@ void reshape(int w, int h)
 
 int s = 0;
 
-void onclose()
-{
-	gridDelete(&thegrid);
-	DestroyObj();
-}
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -828,7 +893,11 @@ int global_test_number = -1;
 int main(int argc, char ** argv)
 {
 	int i;
-	int n[3] = {8,8,10};
+#if defined(MASAHIKO_MESH)
+	int n[3] = {36,36,36};
+#else
+	int n[3] = {8,8,8};
+#endif
 	last_time = Timer();
 	
 	if( argc > 3 )
@@ -838,6 +907,7 @@ int main(int argc, char ** argv)
 		n[2] = atoi(argv[3]);
 	}
 	
+#if defined(OBJ_READERS)
 	make_proj.SetGridStep(n[2]);
 	
 	InitObj();
@@ -872,7 +942,7 @@ int main(int argc, char ** argv)
 		*/
 		get_type.ReadLayers(layers);
 	}
-	
+#endif
 	
 	
 	thegrid.transformation = transformation;
@@ -947,15 +1017,124 @@ int main(int argc, char ** argv)
 	DestroyObj();
 	return 0;
 	*/
+#if defined(INIT_PERM)
 	for(Mesh::iteratorFace it = thegrid.mesh->BeginFace(); it != thegrid.mesh->EndFace(); ++it)
 	{
 		Storage::real cnt[3];
 		it->Centroid(cnt);
 		fill_K(cnt,&it->RealArrayDF(thegrid.Kvec)[0],&it->RealArrayDF(thegrid.K)[0]);
 	}
+#endif
 	
-	
-	
+#if defined(SPHERE_MESH)
+	thegrid.mesh->BeginModification();
+	int cnt = 0;
+	for(Mesh::iteratorCell it = thegrid.mesh->BeginCell(); it != thegrid.mesh->EndCell(); ++it)
+		if( it->Integer(thegrid.cell_material) < 0 )
+		{
+			it->Delete();
+			cnt++;
+		}
+
+	std::cout << "deleted CELL " << cnt << std::endl;
+	{
+		ElementType etype = CELL;
+		do
+		{
+			cnt = 0;
+			etype = PrevElementType(etype);
+			for(Mesh::iteratorElement it = thegrid.mesh->BeginElement(etype); it != thegrid.mesh->EndElement(); ++it)
+				if( it->nbAdjElements(NextElementType(etype)) == 0 )
+				{
+					it->Delete();
+					cnt++;
+				}
+
+			std::cout << "deleted " << ElementTypeName(etype) << " " << cnt << std::endl;
+		}
+		while(etype != NODE);
+	}
+	thegrid.mesh->Save("sphere.vtk");
+	thegrid.mesh->SwapModification();
+	thegrid.mesh->EndModification();
+	onclose();
+	return 0;
+#endif
+
+
+#if defined(MASAHIKO_MESH)
+
+	gridAMR(&thegrid,recreate);
+	//gridRefine(&thegrid);
+	gridRecreateINMOST(&thegrid);
+	{
+		Storage::real x[3];
+		Tag tensor_K = thegrid.mesh->CreateTag("PERM",DATA_REAL,CELL | FACE, FACE, 3);
+		Tag poro = thegrid.mesh->CreateTag("PORO",DATA_REAL,CELL | FACE, FACE, 1);
+		Tag aperture = thegrid.mesh->CreateTag("APERTURE",DATA_REAL,FACE,FACE,1);
+		Tag mats = thegrid.mesh->GetTag("MATERIALS"); //face,edge,node
+		Tag mat = thegrid.mesh->GetTag("MATERIAL");
+		int fault_faces = 0;
+		for(Mesh::iteratorFace f = thegrid.mesh->BeginFace(); f != thegrid.mesh->EndFace(); ++f)
+		{
+			Storage::real_array fmats = f->RealArray(mats);
+			if( fmats.size() == 2 ) //fault
+			{
+				Storage::real_array K = f->RealArray(tensor_K);
+				K[0] = K[1] = K[2] = 10000; // 10D perm
+				f->Real(aperture) = 0.01;
+				f->Real(poro) = 0.6;
+				fault_faces++;
+			}
+		}
+		std::cout << "fault faces: " << fault_faces << std::endl;
+		for(Mesh::iteratorCell c = thegrid.mesh->BeginCell(); c != thegrid.mesh->EndCell(); ++c)
+		{
+			c->Centroid(x);
+			Storage::real_array K = c->RealArray(tensor_K);
+			if( x[2] <= 11.9/36.0 ) // bottom reservoir
+			{
+				c->Integer(mat) = 0;
+				K[0] = (rand()*1.0)/static_cast<double>(RAND_MAX)*90+10;
+				K[1] = (rand()*1.0)/static_cast<double>(RAND_MAX)*90+10;
+				K[2] = (rand()*1.0)/static_cast<double>(RAND_MAX)*9+1;
+				c->Real(poro) = sqrt((K[0]*K[0] + K[1]*K[1] + K[2]*K[2])/(100*100+100*100+10*10))*0.6;
+			}
+			else if( x[2] <= 12.0/36.0 ) //empty part between bottom and middle reservoir
+			{
+				c->Integer(mat) = 1;
+				K[0] = K[1] = K[2] = 0.1;
+				c->Real(poro) = 0.01;
+			}
+			else if( x[2] <= 23.9/36.0 ) //middle reservoir
+			{
+				c->Integer(mat) = 2;
+				K[0] = (rand()*1.0)/static_cast<double>(RAND_MAX)*120+30;
+				K[1] = (rand()*1.0)/static_cast<double>(RAND_MAX)*170+30;
+				K[2] = (rand()*1.0)/static_cast<double>(RAND_MAX)*10+5;
+				c->Real(poro) = sqrt((K[0]*K[0] + K[1]*K[1] + K[2]*K[2])/(150*150+200*200+15*15))*0.6;
+			}
+			else if( x[2] <= 24.0/36.0 ) //empty part between middle and top reservoir
+			{
+				c->Integer(mat) = 3;
+				K[0] = K[1] = K[2] = 0.1;
+				c->Real(poro) = 0.01;
+			}
+			else //top reservoir
+			{
+				c->Integer(mat) = 4;
+				K[0] = (rand()*1.0)/static_cast<double>(RAND_MAX)*60+20;
+				K[1] = (rand()*1.0)/static_cast<double>(RAND_MAX)*40+20;
+				K[2] = (rand()*1.0)/static_cast<double>(RAND_MAX)*6+3;
+				c->Real(poro) = sqrt((K[0]*K[0] + K[1]*K[1] + K[2]*K[2])/(80*80+60*60+9*9))*0.6;
+			}
+		}
+		thegrid.mesh->Save("masahiko.xml");
+		thegrid.mesh->Save("masahiko.vtk");
+		onclose();
+		return 0;
+	}
+#endif
 
 
 
@@ -1014,4 +1193,5 @@ int main(int argc, char ** argv)
 	glutMainLoop();
 #endif
 	//~ std::cout << "Hello!" << std::endl;
+	onclose();
 }

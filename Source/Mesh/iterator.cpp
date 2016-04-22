@@ -41,7 +41,7 @@ namespace INMOST
 		++id;
 		while( num < 5 )
 		{
-			while(id < static_cast<integer>(links[num].size()) && links[num][id] == -1) ++id;
+			while(id < static_cast<integer>(links[num].size()) && (links[num][id] == -1)) ++id;
 			if( id == static_cast<integer>(links[num].size()) ) 
 			{
 				id = 0;
@@ -65,7 +65,7 @@ namespace INMOST
 		}
 		while( num >= 0 )
 		{
-			while(id >= 0 && links[num][id] == -1) --id;
+			while(id >= 0 && (links[num][id] == -1)) --id;
 			if( id == -1 ) 
 			{
 				--num;
@@ -83,7 +83,7 @@ namespace INMOST
 		++id;
 		while( num < 5 )
 		{
-			while(id < static_cast<integer>(links[num].size()) && links[num][id] == -1) ++id;
+			while(id < static_cast<integer>(links[num].size()) && (links[num][id] == -1)) ++id;
 			if( id == static_cast<integer>(links[num].size()) ) 
 			{
 				bool stop = true;
@@ -131,7 +131,7 @@ namespace INMOST
 		}
 		while( num >= 0 )
 		{
-			while(id >= 0 && links[num][id] == -1) --id;
+			while(id >= 0 && (links[num][id] == -1)) --id;
 			if( id == -1 ) 
 			{
 				bool stop = true;
@@ -158,7 +158,7 @@ namespace INMOST
 		assert(OneType(etype)); 
 		integer ret = 0, n = ElementNum(etype); 
 		if(n == 5) return 0; 
-		while(ret < static_cast<integer>(links[n].size()) && links[n][ret] == -1) ++ret; 
+		while(ret < static_cast<integer>(links[n].size()) && (links[n][ret] == -1)) ++ret; 
 		return ret;
 	}
 
@@ -166,7 +166,7 @@ namespace INMOST
 	{
 		integer ret = 0;
 		for(int m = 0; m < 5; m++) if( (1 << m) & t )
-			ret += static_cast<integer>(links[m].size() - empty_links[m].size());
+			ret += static_cast<integer>(links[m].size() - empty_links[m].size()) - hidden_count[m];
 		if( t & MESH ) ret++;
 		return ret;
 	}
@@ -176,7 +176,7 @@ namespace INMOST
 	{
 		while( etype != NONE ) 
 		{
-			lid = m->NextLocalID(etype,lid);
+			lid = m->NextLocalIDIter(etype,lid);
 			if( lid == m->LastLocalID(etype) )
 			{
 				etype = GetNextType(etype,types);
@@ -193,12 +193,12 @@ namespace INMOST
 	{
 		while( etype != NONE ) 
 		{
-			lid = m->PrevLocalID(etype,lid);
+			lid = m->PrevLocalIDIter(etype,lid);
 			if( lid == -1 )
 			{
 				etype = GetPrevType(etype,types);
 				if( etype ) 
-					lid = m->LastLocalID(etype);
+					lid = m->LastLocalIDIter(etype);
 				else
 				{
 					lid = -1;
@@ -234,6 +234,36 @@ namespace INMOST
 	void Mesh::base_iterator<EType>::Print()
 	{
 		printf("Number: %10d CurrentType %x types %x\n",lid,etype,types);
+	}
+
+	Storage::integer Mesh::NextLocalIDIter(ElementType etype, integer lid) const 
+	{
+		integer q = ElementNum(etype); 
+		++lid; 
+		while(lid < static_cast<integer>(links[q].size()) && (links[q][lid] == -1|| Hidden(ComposeHandleNum(q,lid)))) ++lid; 
+		return lid;
+	}
+
+	Storage::integer Mesh::PrevLocalIDIter(ElementType etype, integer lid) const 
+	{
+		integer q = ElementNum(etype); 
+		--lid; 
+		while(lid > 0 && (links[q][lid] == -1 || Hidden(ComposeHandleNum(q,lid)))) --lid; 
+		return lid;
+	}
+	Storage::integer Mesh::FirstLocalIDIter(ElementType etype) const
+	{
+		assert(OneType(etype)); 
+		integer ret = 0, n = ElementNum(etype); 
+		if(n == 5) return 0; 
+		while(ret < static_cast<integer>(links[n].size()) && (links[n][ret] == -1|| Hidden(ComposeHandleNum(n,ret)))) ++ret; 
+		return ret;
+	}
+	Storage::integer Mesh::LastLocalIDIter(ElementType etype) const 
+	{
+		assert(OneType(etype)); 
+		int ret = LastLocalIDNum(ElementNum(etype));
+		return PrevLocalIDIter(etype,ret);
 	}
 
 	Mesh::iteratorStorage Mesh::Begin(ElementType Types)        {return base_iterator<Storage>(Types,this,false);}

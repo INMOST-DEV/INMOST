@@ -30,6 +30,10 @@ if(USE_SOLVER)
     message("linking ADFVDiscr with Mondriaan")
     target_link_libraries(ADFVDiscr ${MONDRIAAN_LIBRARIES})
   endif()
+  if(USE_SOLVER_SUPERLU)
+    message("linking ADFVDiscr with SuperLU")
+    target_link_libraries(ADFVDiscr ${SUPERLU_LIBRARIES})
+  endif()
 endif()
 
 

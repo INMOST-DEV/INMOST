@@ -3,9 +3,12 @@
 #endif
 #include "inmost.h"
 #include <stdarg.h> //for va_list
+//#define WAITNL {printf("Press enter..."); scanf("%*c");}
+#define WAITNL {}
 
 namespace INMOST
 {
+	
 
   static int get_priority(char c)
   {
@@ -320,8 +323,9 @@ namespace INMOST
     }
     if( get_iStream().fail() )
     {
-      Report("Stream failed while getting the char");
-      _state = Failure;
+		Report("Stream failed while getting the char");
+		WAITNL;
+		_state = Failure;
     }
     return c;
   }
@@ -333,8 +337,9 @@ namespace INMOST
     get_iStream().unget();
     if( get_iStream().fail() ) 
     {
-      Report("Stream failed while ungetting the char");
-      _state = Failure;
+		Report("Stream failed while ungetting the char");
+		WAITNL;
+		_state = Failure;
     }
   }
   void XMLReader::SkipComments(State RetState)
@@ -470,12 +475,49 @@ namespace INMOST
       _state = Intro;
   }
 
+  bool XMLReader::ExpectOpenTag()
+  {
+	char c;
+	bool done = false;
+    if( !(_state == Intro) )
+    {
+      Report("Cannot expect open tag from state %s",StateName(_state).c_str());
+      _state = Failure;
+      return "";
+    }
+	while(!done)
+    {
+		c = GetChar(); 
+		switch(_state)
+		{
+		case Intro:
+			if( c == '<' )
+			{
+				if( verbose > 1 ) Report("info: encountered expected '<' symbol");
+				_state = WaitTag;
+				return true;
+			}
+			else if(!isspace(c))
+			{
+				if( verbose > 1 ) Report("info: encountered %c instead of expected '<' symbol",c);
+				RetChar();
+				return false;
+			}
+			break;
+		case EndOfFile: Report("Unexpected end of file while reading XML tag name"); done = true; break;
+		case Failure: Report("Unrecoverable error while reading XML tag name"); done = true; break;
+		default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
+		}
+	}
+	return false;
+  }
+
   std::string XMLReader::ReadOpenTag()
   {
     std::string ret;
     char c;
     bool done = false;
-    if( !(_state == Intro) )
+    if( !(_state == Intro || _state == WaitTag) )
     {
       Report("Cannot open tag from state %s",StateName(_state).c_str());
       _state = Failure;
@@ -489,7 +531,7 @@ namespace INMOST
       case Intro:
         if( c == '<' ) 
         {
-          if( verbose ) Report("info: waiting tag name");
+          if( verbose > 1 ) Report("info: waiting tag name");
           _state = WaitTag;
         }
         else if( !isspace(c) ) //do not expect anything except for spacing
@@ -502,25 +544,43 @@ namespace INMOST
       case WaitTag:
         if( c == '?' ) 
         {
-          if( verbose ) Report("info: skipping comments");
+          if( verbose > 1 ) Report("info: skipping comments");
           _state = ReadCommentQuestion;
           SkipComments(WaitTag);
         }
-        else if( c == '!' ) 
+        else if( c == '!' ) //can be ![CDATA[
         {
-          if( verbose ) Report("info: skipping comments");
-          _state = ReadCommentExclamation;
-          SkipComments(WaitTag);
+			c = GetChar(); //check next character
+			if( c == '-' ) //this is going to be comment
+			{
+				c = GetChar(); //check next character
+				if( c == '-' )
+				{
+				  if( verbose > 1 ) Report("info: skipping comments");
+				  _state = ReadCommentExclamation;
+				  SkipComments(WaitTag);
+				}
+				else Report("unexpected character %c while reading comment",c);
+			}
+			else if( c == '[' ) // this is ![CDATA[
+			{
+				if( verbose > 1 ) Report("info: reading ![CDATA[");
+				ret.push_back('!');
+				ret.push_back(c);
+				_state = ReadTag;
+			}
+			else Report("unexpected character %c while reading comment or ![CDATA[ block",c);
         }
         else if( c == '/' )
         {
+          if( verbose > 1 ) Report("info: encountered closing slash");
           RetChar();
           _state = ReadCloseTagSlash;
           done = true;
         }
         else if( isalpha(c) )
         {
-          if( verbose ) Report("info: reading tag name");
+          if( verbose > 1 ) Report("info: reading tag name");
           ret.push_back(c);
           _state = ReadTag;
         }
@@ -528,18 +588,26 @@ namespace INMOST
       case ReadTag:
         if( isspace(c) ) 
         {
-          if( verbose ) Report("info: waiting attribute name");
+          if( verbose > 1 ) Report("info: waiting attribute name");
           done = true;
           _state = WaitAttribute;
         }
         else if( c == '/' || c == '>' )
         {
-          if( verbose ) Report("info: tag ended");
+          if( verbose > 1 ) Report("info: tag ended");
           RetChar(); //push character back to the stream
           done = true;
           _state = EndTag;
         }
-        else if( isalpha(c) ) ret.push_back(c);
+        else if( isalpha(c) || (!ret.empty() && isprint(c)) )
+		{
+			ret.push_back(c);
+			if( ret == "![CDATA[" )
+			{
+				done = true;
+				_state = EndTag;
+			}
+		}
         else Report("unexpected character %c in XML tag name",c);
         break;
       case EndOfFile: Report("Unexpected end of file while reading XML tag name"); done = true; break;
@@ -547,7 +615,7 @@ namespace INMOST
       default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
       }
     }
-    if( verbose ) Report("info: opened tag %s",ret.c_str());
+    if( verbose > 1 ) Report("info: opened tag %s",ret.c_str());
     return ret;
   }
   int XMLReader::ReadCloseTag()
@@ -557,7 +625,7 @@ namespace INMOST
     if( tmp[0] == '>' )
     {
       _state = Intro;
-      if( verbose ) Report("info: closed tag");
+      if( verbose > 1 ) Report("info: closed tag");
       return 1; //tag was finished with >
     }
     else if( tmp[0] == '/' ) //close single stage tag
@@ -566,7 +634,7 @@ namespace INMOST
       if( tmp[1] == '>' )
       {
         _state = Intro;
-        if( verbose ) Report("info: closed tag");
+        if( verbose > 1 ) Report("info: closed tag");
         return 2; //tag was halted with />
       }
       Report("Encountered '%c%c' while expecting '/>' for tag closing",tmp[0],tmp[1]);
@@ -607,13 +675,13 @@ namespace INMOST
       case ReadCloseTagSlash:
         if( c == '?' )
         {
-          if( verbose ) Report("info: skipping comments");
+          if( verbose > 1 ) Report("info: skipping comments");
           _state = ReadCommentQuestion;
           SkipComments(WaitCloseTag);
         }
         else if( c == '!' )
         {
-          if( verbose ) Report("info: skipping comments");
+          if( verbose > 1 ) Report("info: skipping comments");
           _state = ReadCommentExclamation;
           SkipComments(WaitCloseTag);
         }
@@ -626,8 +694,8 @@ namespace INMOST
         else _state = ReadCloseTagName;
         break;
       case ReadCloseTagName:
-        if( isalpha(c) ) name.push_back(c);
-        else if( c == '>' ) done = true;
+		if( c == '>' ) done = true;
+        else if( isalpha(c) || (!name.empty() && isprint(c)) ) name.push_back(c);
         else Report("Unexpected symbol %c in tag name",c);
         break;
       case EndOfFile:
@@ -640,7 +708,7 @@ namespace INMOST
               
       }
     }
-    if( verbose ) Report("info: finished tag %s",name.c_str());
+    if( verbose > 1 ) Report("info: finished tag %s",name.c_str());
     _state = Intro;
     return name == TagName;
   }
@@ -665,13 +733,13 @@ namespace INMOST
           c = GetChar();
           if( c == '?' )
           {
-            if( verbose ) Report("info: skipping comments");
+            if( verbose > 1 ) Report("info: skipping comments");
             _state = ReadCommentQuestion;
             SkipComments(WaitAttribute);
           }
           else if( c == '!' )
           {
-            if( verbose ) Report("info: skipping comments");
+            if( verbose > 1 ) Report("info: skipping comments");
             _state = ReadCommentExclamation;
             SkipComments(WaitAttribute);
           }
@@ -684,13 +752,13 @@ namespace INMOST
         }
         else if( isalpha(c) ) 
         {
-          if( verbose ) Report("info: reading attribute name");
+          if( verbose > 1 ) Report("info: reading attribute name");
           ret.push_back(c);
           _state = ReadAttribute;
         }
         else if( c == '>' || c == '/' )
         {
-          if( verbose ) Report("info: tag ended");
+          if( verbose > 1 ) Report("info: tag ended");
           RetChar();
           done = true;
           _state = EndTag;
@@ -722,7 +790,7 @@ namespace INMOST
       default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
       }
     }
-    if( verbose ) Report("info: attribute name %s",ret.c_str());
+    if( verbose > 1 ) Report("info: attribute name %s",ret.c_str());
     return ret;
   }
 
@@ -743,7 +811,7 @@ namespace INMOST
         if( isspace(c) ) continue;
         else if( c == '=' )
         {
-          if( verbose ) Report("info: reading attribute value");
+          if( verbose > 1 ) Report("info: reading attribute value");
           _state = ReadAttributeValue;
         }
         else if( c == '>' || c == '/' )
@@ -753,19 +821,19 @@ namespace INMOST
       case ReadAttributeValue:
         if( c == '"' && ret.empty() ) 
         {
-          if( verbose ) Report("info: reading attribute value in quotes");
+          if( verbose > 1 ) Report("info: reading attribute value in quotes");
           _state = ReadAttributeValueQuote;
         }
         else if( c == '>' || c =='/' )
         {
-          if( verbose ) Report("info: end of tag");
+          if( verbose > 1 ) Report("info: end of tag");
           _state = EndTag;
           done = true;
         }
         else if( !isspace(c) ) ret.push_back(c);
         else if( isspace(c) )
         {
-          if( verbose ) Report("info: end reading attribute value");
+          if( verbose > 1 ) Report("info: end reading attribute value");
           _state = WaitAttribute;
           done = true;
         }
@@ -774,7 +842,7 @@ namespace INMOST
       case ReadAttributeValueQuote:
         if( c == '"' )
         {
-          if( verbose ) Report("info: end reading attribute value");
+          if( verbose > 1 ) Report("info: end reading attribute value");
           _state = WaitAttribute;
           done = true;
         }
@@ -797,7 +865,7 @@ namespace INMOST
       default: Report("Unexpected state %s",StateName(_state).c_str()); done = true; break;
       }
     }
-    if( verbose ) Report("info: attribute value %s",ret.c_str());
+    if( verbose > 1 ) Report("info: attribute value %s",ret.c_str());
     return ret;
   }
 
@@ -825,14 +893,14 @@ namespace INMOST
       if( tmp.size() == 2 && tmp == "<?" )
       {
         tmp.clear();
-        if( verbose ) Report("info: skipping comments");
+        if( verbose > 1 ) Report("info: skipping comments");
         _state = ReadCommentQuestion;
         SkipComments(WaitContentsOpen);
       }
       else if( tmp.size() == 4 && tmp == "<!--" )
       {
         tmp.clear();
-        if( verbose ) Report("info: skipping comments");
+        if( verbose > 1 ) Report("info: skipping comments");
         _state = ReadCommentExclamation;
         SkipComments(WaitContentsOpen);
       }
@@ -840,7 +908,7 @@ namespace INMOST
       {
         if( tmp == "<![CDATA[" ) 
         {
-          if( verbose ) Report("info: contents intro was read");
+          if( verbose > 1 ) Report("info: contents intro was read");
           _state = WaitContents;
           done = true;
         }
@@ -1329,38 +1397,59 @@ namespace INMOST
     Repeat = ConvertMultiplier(multiplier,SetSize);
   }
 
-  bool XMLReader::XMLTag::Failure() const {return finish == 0;}
-  bool XMLReader::XMLTag::Process() const {return finish == 1 || finish == 2;}
-  bool XMLReader::XMLTag::Finalize() const {return finish == 3;}
-  const XMLReader::XMLAttrib & XMLReader::XMLTag::GetAttib(int n) const {return attributes[n];}
-  XMLReader::XMLAttrib & XMLReader::XMLTag::GetAttib(int n) {return attributes[n];}
-  int XMLReader::XMLTag::NumAttrib() const {return (int)attributes.size();}
+  
+  
+  
+  
+
 
   XMLReader::XMLTag XMLReader::OpenTag()
   {
     std::string include = "";
     XMLTag ret;
     XMLAttrib attr;
-    ret.name = ReadOpenTag();
-    if( !isTagFinish() )
-    {
-      attr.name = AttributeName();
-      while(!isTagEnded())
-      {
-        attr.value = AttributeValue();
-        if( attr.name == "Include" )
-          include = attr.value;
-        else ret.attributes.push_back(attr);
-        attr.name = AttributeName();
-      }
-      ret.finish = ReadCloseTag();
-      if( !include.empty() ) PushStream(include.c_str());
-    }
-    else
-    {
-      ret.name = "";
-      ret.finish = 3;
-    }
+	bool istag = ExpectOpenTag();
+	if( !istag )
+		ret.finish = 5; //there is no tag opening, probably pure text
+	else
+	{
+		ret.name = ReadOpenTag();
+		if( ret.name == "![CDATA[" )
+		{
+			if( verbose > 1 ) Report("info: opened data block");
+			ret.finish = 4; //report that there is a data block
+		}
+		else
+		{
+			if( !isTagFinish() ) //have not encountered '</' of the root tag
+			{
+			  if( verbose > 1 ) Report("info: reading tag attributes");
+			  attr.name = AttributeName();
+			  while(!isTagEnded())
+			  {
+				attr.value = AttributeValue();
+				if( attr.name == "Include" ) //some file was included
+				  include = attr.value;
+				else ret.attributes.push_back(attr);
+				attr.name = AttributeName();
+			  }
+			  if( verbose > 1 ) Report("info: finalized tag reading");
+			  ret.finish = ReadCloseTag(); //retrive '>'
+			  if( !include.empty() )
+			  {
+				  if( verbose > 1 ) Report("info: switching to stream %s",include.c_str());
+				  PushStream(include.c_str()); //switch to the included file
+			  }
+			}
+			else //encountered '</' of the root tag, no tag was red
+			{
+			  if( verbose > 1 ) Report("info: encountered finalization of tag '</'");
+			  ret.name = "";
+			  ret.finish = 3;
+			}
+		}
+	}
+	if( verbose > 1 ) Report("info: return tag %s flag %d",ret.name.c_str(),ret.finish);
     return ret;
   }
 
@@ -1373,6 +1462,165 @@ namespace INMOST
     }
     else if( tag.finish == 2 ) return true; //no need to read anything
     else if( tag.finish == 0 ) return false; //there was a Failure
-    else return ReadFinishTag(tag.name);
+    else
+	{
+		if( verbose > 1 ) Report("info: going to finish tag %s",tag.name.c_str());
+		return ReadFinishTag(tag.name);
+	}
   }
+
+  std::string XMLReader::ReadUntil(std::string stop)
+  {
+	  char c;
+	  std::string ret;
+	  do
+	  {
+		  c = GetChar();
+		  ret.push_back(c);
+	  }
+	  while( ret.size() < stop.size() || ret.substr(ret.size()-stop.size()) != stop );
+
+	  return ret;
+  }
+
+
+
+  int XMLReader::ReadXMLSub(XMLTree & root)
+  {
+	  if( verbose )
+	  {
+		  Report("info: processing children of %s",root.GetName().c_str());
+		  WAITNL;
+	  }
+	  for(XMLTag t = OpenTag(); !t.Finalize(); t = OpenTag())
+	  {
+		  if( verbose )
+		  {
+			  Report("info: processing child %s of tag %s, flag %d",t.GetName().c_str(),root.GetName().c_str(),t.finish);
+			  WAITNL;
+		  }
+		  if( t.Finalize() )
+		  {
+			  if( verbose )
+			  {
+				  Report("info: finalize tag");
+				  WAITNL;
+			  }
+			  break;
+		  }
+		  else if( t.RawData() )
+		  {
+			  std::string data = ReadUntil("<"); //read until next tag opening
+			  data.pop_back(); //drop '<'
+			  //remove trailing spaces
+			  while( !data.empty() && isspace(data.back()) ) data.pop_back();
+			  if( verbose )
+			  {
+				  Report("info: encountered raw data, %s",data.c_str());
+				  WAITNL;
+			  }
+			  root.contents += data;
+			  RetChar(); //return '<' back into stream
+			  _state = Intro; //change state to read next tag
+		  }
+		  else if( t.BlockData() )
+		  {
+			  std::string data = ReadUntil("]]>");
+			  data.pop_back(); //drop '>'
+			  data.pop_back(); //drop ']'
+			  data.pop_back(); //drop ']'
+			  if( verbose )
+			  {
+				  Report("info: encountered block data, %s",data.c_str());
+				  WAITNL;
+			  }
+			  root.contents += data; //read until end of block data
+			  _state = Intro; //change state to read next tag
+		  }
+		  else if( t.Failure() ) 
+		  {
+			  Report("Failed opening XML tag");
+			  WAITNL;
+			  return -1;
+		  }
+		  else
+		  {
+			  if( verbose )
+			  {
+				  Report("info: attached new child %s to %s",t.GetName().c_str(),root.GetName().c_str());
+				  WAITNL;
+			  }
+			  root.children.push_back(XMLTree());
+			  root.children.back().tag = t;
+			  if( root.children.back().tag.Process() )
+			  {
+				  if( verbose > 1 ) Report("info: calling ReadXMLSub for tree node");
+				  if( ReadXMLSub(root.children.back()) == -1 )
+					  return -1;
+			  }
+			  else if( verbose > 1 ) Report("info: no ReadXMLSub, child is tree leaf");
+			  
+			  if( verbose > 1 ) Report("info: closing xml tag %s",root.children.back().tag.GetName().c_str());
+			  
+			  if( !CloseTag(root.children.back().tag) )
+			  {
+				  Report("Failed closing XML tag");
+				  WAITNL;
+				  return -1;
+			  }
+		  }
+	  }
+	  if( verbose )
+	  {
+		  Report("info: end processing children of %s",root.GetName().c_str());
+		  WAITNL;
+	  }
+	  return 0;
+  }
+
+  XMLReader::XMLTree XMLReader::ReadXML()
+  {
+	  XMLTree root;
+	  root.tag = OpenTag();
+	  if( verbose ) Report("info: root tag name %s",root.GetName().c_str());
+	  if( ReadXMLSub(root) == -1 )
+		  Report("Failed reading XML file");
+	  CloseTag(root.tag);
+	  return root;
+  }
+	
+	std::ostream & Tabs(std::ostream & output, int num)
+	{
+		while(num > 0) {output.put('\t'); --num;}
+		return output;
+	}
+
+
+	int XMLReader::XMLTree::FindChild(std::string name, int offset) const
+	{
+		for(int k = offset+1; k < NumChildren(); ++k)
+			if( GetChild(k).GetName() == name )
+				return k;
+		return NumChildren();
+	}
+	
+	
+	void WriteXML(const XMLReader::XMLTree & t, std::ostream & output, int offset)
+	{
+		Tabs(output,offset) << "<" << t.GetName();
+		for(int k = 0; k < t.NumAttrib(); ++k)
+		{
+			const XMLReader::XMLAttrib & attr = t.GetAttrib(k);
+			output << std::endl;;
+			Tabs(output,offset+1) << attr.name << "=\"" << attr.value << "\"";
+		}
+		if( t.tag.Stub() ) output << "/";
+		output << ">" << std::endl;
+		if( t.tag.Stub() ) return;
+		for(int k = 0; k < t.NumChildren(); ++k)
+			WriteXML(t.GetChild(k),output,offset+1);
+		if( !t.GetContents().empty() )
+			Tabs(output,offset+1) << "<![CDATA[" << t.GetContents() << "]]>" << std::endl;
+		Tabs(output,offset) << "</" << t.GetName() << ">" << std::endl;
+	}
 }

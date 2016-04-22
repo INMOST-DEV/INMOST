@@ -34,7 +34,10 @@ if(USE_SOLVER_MONDRIAAN)
   message("linking solver_test001 with Mondriaan")
   target_link_libraries(solver_test001 ${MONDRIAAN_LIBRARIES})
 endif()
-
+if(USE_SOLVER_SUPERLU)
+  message("linking solver_test001 with SuperLU")
+  target_link_libraries(solver_test001 ${SUPERLU_LIBRARIES})
+endif()
 
 set(TOKAMAK_TESTS utm300
                   utm1700a

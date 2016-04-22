@@ -5,12 +5,14 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_ani.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_ddpqiluc2.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/solver_superlu.cpp
 )
 
 set(HEADER
     ${HEADER}
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_prototypes.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/solver_superlu.h
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_ilu2.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_ddpqiluc2.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/solver_bcgsl.hpp
