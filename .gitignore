@@ -5,3 +5,5 @@ SyncToy*
 .idea/*
 build/
 .idea/vcs.xml
+*.swo
+*.swp

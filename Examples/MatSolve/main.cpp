@@ -288,6 +288,7 @@ int main(int argc, char ** argv) {
             case 11:
                 type = Solver::K3BIILU2;
                 break;
+                
             default:
                 if (processRank == 0) {
                     std::cout << "Invalid solver type index: " << solverType << " , using INNER_ILU2 instead." <<
