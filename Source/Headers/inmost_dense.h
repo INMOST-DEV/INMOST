@@ -16,7 +16,9 @@
 // 1. expression templates for operations
 //    (???) how to for multiplication?
 // 2. (ok) template matrix type for AD variables
-
+// 3. template container type for data storage.
+// 4. option for wrapper container around provided data storage. (to perform matrix operations with existing data)
+// 5. class Subset for fortran-like access to matrix.
 
 namespace INMOST
 {

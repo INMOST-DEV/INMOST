@@ -97,7 +97,7 @@ namespace INMOST
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
-					MarkerType mrk = mesh->CreateMarker();
+					MarkerType mrk = mesh->CreatePrivateMarker();
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
@@ -105,10 +105,10 @@ namespace INMOST
 						{
 							adj_type const & ihc = mesh->HighConn(hc[it]);
 							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-								if( !mesh->GetMarker(ihc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
 								{
 									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
+									mesh->SetPrivateMarker(ihc[jt],mrk);
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
@@ -124,18 +124,18 @@ namespace INMOST
 						{
 							adj_type const & ilc = mesh->LowConn(lc[it]);
 							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-								if( !mesh->GetMarker(ilc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
 								{
 									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
+									mesh->SetPrivateMarker(ilc[jt],mrk);
 								}
 						}		
 						ret += static_cast<enumerator>(result.size());
 					}
 					for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result[it],mrk);
+						mesh->RemPrivateMarker(result[it],mrk);
 					result.clear();
-					mesh->ReleaseMarker(mrk);
+					mesh->ReleasePrivateMarker(mrk);
 				}
 			}
 		}
@@ -162,7 +162,7 @@ namespace INMOST
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
-					MarkerType mrk = mesh->CreateMarker();
+					MarkerType mrk = mesh->CreatePrivateMarker();
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
@@ -171,10 +171,10 @@ namespace INMOST
 							adj_type const & ihc = mesh->HighConn(hc[it]);
 							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
 							{
-								if( !mesh->GetMarker(ihc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
 								{
 									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
+									mesh->SetPrivateMarker(ihc[jt],mrk);
 								}
 							}
 						}
@@ -187,18 +187,18 @@ namespace INMOST
 						{
 							adj_type const & ilc = mesh->LowConn(lc[it]);
 							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
-								if( !mesh->GetMarker(ilc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
 								{
 									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
+									mesh->SetPrivateMarker(ilc[jt],mrk);
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
 					}
 					for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result[it],mrk);
+						mesh->RemPrivateMarker(result[it],mrk);
 					result.clear();
-					mesh->ReleaseMarker(mrk);
+					mesh->ReleasePrivateMarker(mrk);
 				}
 			}
 		}
@@ -222,124 +222,251 @@ namespace INMOST
 			if( _etype & e ) conn[i] = 1;
 			if( GetElementType() & e ) myconn = i;
 		}
-		if( !mesh->HideMarker() )
+		if( isPrivate(mask) )
 		{
-			for(i = 0; i < 4; i++) if( conn[i] )
+			if( !mesh->HideMarker() )
 			{
-				if( i == myconn )
+				for(i = 0; i < 4; i++) if( conn[i] )
 				{
-					if( invert ^ GetMarker(mask) ) ret += 1;
-				}
-				else if( i == (myconn + 1 + 4)%4 )
-				{
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); ++it) 
-						if( invert ^ mesh->GetMarker(hc[it],mask) ) ret++;
-				}
-				else if( i == (myconn - 1 + 4)%4 )
-				{
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); ++it) 
-						if( invert ^ mesh->GetMarker(lc[it],mask) ) ret++;
-				}
-				else if( i == (myconn - 2 + 4)%4 )
-				{
-					MarkerType mrk = mesh->CreateMarker();
-					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					if( i == myconn )
+					{
+						if( invert ^ GetPrivateMarker(mask) ) ret += 1;
+					}
+					else if( i == (myconn + 1 + 4)%4 )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++)
-						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-								if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetMarker(ihc[jt],mrk) )
-								{
-									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
-								}
-						}
-						ret += static_cast<enumerator>(result.size());
+						for(adj_type::size_type it = 0; it < hc.size(); ++it) 
+							if( invert ^ mesh->GetPrivateMarker(hc[it],mask) ) ret++;
 					}
-					else
+					else if( i == (myconn - 1 + 4)%4 )
 					{
 						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++)
-						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-								if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetMarker(ilc[jt],mrk) )
-								{
-									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
-								}
-						}
-						ret += static_cast<enumerator>(result.size());
+						for(adj_type::size_type it = 0; it < lc.size(); ++it) 
+							if( invert ^ mesh->GetPrivateMarker(lc[it],mask) ) ret++;
 					}
-					for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result[it],mrk);
-					result.clear();
-					mesh->ReleaseMarker(mrk);
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++)
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+									if( (invert ^ mesh->GetPrivateMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+							ret += static_cast<enumerator>(result.size());
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++)
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+									if( (invert ^ mesh->GetPrivateMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}
+							ret += static_cast<enumerator>(result.size());
+						}
+						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result[it],mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
+					}
+				}
+			}
+			else
+			{
+				MarkerType hm = mesh->HideMarker();
+				for(i = 0; i < 4; i++) if( conn[i] )
+				{
+					if( i == myconn )
+					{
+						if( !GetMarker(hm) && (invert ^ GetPrivateMarker(mask)) ) ret ++;
+					}
+					else if( i == (myconn + 1 + 4)%4 )
+					{
+						adj_type const & hc = mesh->HighConn(GetHandle());
+						for(adj_type::size_type it = 0; it < hc.size(); ++it)
+							if( !mesh->GetMarker(hc[it],hm) && (invert ^ mesh->GetPrivateMarker(hc[it],mask)) ) ret++;
+					}
+					else if( i == (myconn - 1 + 4)%4 )
+					{
+						adj_type const & lc = mesh->LowConn(GetHandle());
+						for(adj_type::size_type it = 0; it < lc.size(); ++it)
+							if( !mesh->GetMarker(lc[it],hm) && (invert ^ mesh->GetPrivateMarker(lc[it],mask)) ) ret++;
+					}
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
+									if( (invert ^ mesh->GetPrivateMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+							ret += static_cast<enumerator>(result.size());
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+									if( (invert ^ mesh->GetPrivateMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}		
+							ret += static_cast<enumerator>(result.size());
+						}
+						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result[it],mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
+					}
 				}
 			}
 		}
 		else
 		{
-			MarkerType hm = mesh->HideMarker();
-			for(i = 0; i < 4; i++) if( conn[i] )
+			if( !mesh->HideMarker() )
 			{
-				if( i == myconn )
+				for(i = 0; i < 4; i++) if( conn[i] )
 				{
-					if( !GetMarker(hm) && (invert ^ GetMarker(mask)) ) ret ++;
-				}
-				else if( i == (myconn + 1 + 4)%4 )
-				{
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); ++it)
-						if( !mesh->GetMarker(hc[it],hm) && (invert ^ mesh->GetMarker(hc[it],mask)) ) ret++;
-				}
-				else if( i == (myconn - 1 + 4)%4 )
-				{
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); ++it)
-						if( !mesh->GetMarker(lc[it],hm) && (invert ^ mesh->GetMarker(lc[it],mask)) ) ret++;
-				}
-				else if( i == (myconn - 2 + 4)%4 )
-				{
-					MarkerType mrk = mesh->CreateMarker();
-					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					if( i == myconn )
+					{
+						if( invert ^ GetMarker(mask) ) ret += 1;
+					}
+					else if( i == (myconn + 1 + 4)%4 )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
-						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
-								if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetMarker(ihc[jt],mrk) )
-								{
-									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
-								}
-						}
-						ret += static_cast<enumerator>(result.size());
+						for(adj_type::size_type it = 0; it < hc.size(); ++it) 
+							if( invert ^ mesh->GetMarker(hc[it],mask) ) ret++;
 					}
-					else
+					else if( i == (myconn - 1 + 4)%4 )
 					{
 						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
-						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
-								if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetMarker(ilc[jt],mrk) )
-								{
-									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
-								}
-						}		
-						ret += static_cast<enumerator>(result.size());
+						for(adj_type::size_type it = 0; it < lc.size(); ++it) 
+							if( invert ^ mesh->GetMarker(lc[it],mask) ) ret++;
 					}
-					for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result[it],mrk);
-					result.clear();
-					mesh->ReleaseMarker(mrk);
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++)
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+									if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+							ret += static_cast<enumerator>(result.size());
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++)
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+									if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}
+							ret += static_cast<enumerator>(result.size());
+						}
+						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result[it],mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
+					}
+				}
+			}
+			else
+			{
+				MarkerType hm = mesh->HideMarker();
+				for(i = 0; i < 4; i++) if( conn[i] )
+				{
+					if( i == myconn )
+					{
+						if( !GetMarker(hm) && (invert ^ GetMarker(mask)) ) ret ++;
+					}
+					else if( i == (myconn + 1 + 4)%4 )
+					{
+						adj_type const & hc = mesh->HighConn(GetHandle());
+						for(adj_type::size_type it = 0; it < hc.size(); ++it)
+							if( !mesh->GetMarker(hc[it],hm) && (invert ^ mesh->GetMarker(hc[it],mask)) ) ret++;
+					}
+					else if( i == (myconn - 1 + 4)%4 )
+					{
+						adj_type const & lc = mesh->LowConn(GetHandle());
+						for(adj_type::size_type it = 0; it < lc.size(); ++it)
+							if( !mesh->GetMarker(lc[it],hm) && (invert ^ mesh->GetMarker(lc[it],mask)) ) ret++;
+					}
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
+									if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+							ret += static_cast<enumerator>(result.size());
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+									if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}		
+							ret += static_cast<enumerator>(result.size());
+						}
+						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result[it],mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
+					}
 				}
 			}
 		}
@@ -382,7 +509,7 @@ namespace INMOST
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
-					MarkerType mrk = mesh->CreateMarker();
+					MarkerType mrk = mesh->CreatePrivateMarker();
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
@@ -390,10 +517,10 @@ namespace INMOST
 						{
 							adj_type const & ihc = mesh->HighConn(hc[it]);
 							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-								if( !mesh->GetMarker(ihc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
 								{
 									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
+									mesh->SetPrivateMarker(ihc[jt],mrk);
 								}
 						}
 					}
@@ -404,16 +531,16 @@ namespace INMOST
 						{
 							adj_type const & ilc = mesh->LowConn(lc[it]);
 							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-								if( !mesh->GetMarker(ilc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
 								{
 									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
+									mesh->SetPrivateMarker(ilc[jt],mrk);
 								}
 						}
 					}
 					for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result.at(it),mrk);
-					mesh->ReleaseMarker(mrk);
+						mesh->RemPrivateMarker(result.at(it),mrk);
+					mesh->ReleasePrivateMarker(mrk);
 				}
 			}
 		}
@@ -442,7 +569,7 @@ namespace INMOST
 				}
 				else if( i == (myconn - 2 + 4)%4 )
 				{
-					MarkerType mrk = mesh->CreateMarker();
+					MarkerType mrk = mesh->CreatePrivateMarker();
 					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
@@ -450,10 +577,10 @@ namespace INMOST
 						{
 							adj_type const & ihc = mesh->HighConn(hc[it]);
 							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
-								if( !mesh->GetMarker(ihc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
 								{
 									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
+									mesh->SetPrivateMarker(ihc[jt],mrk);
 								}
 						}
 					}
@@ -464,16 +591,16 @@ namespace INMOST
 						{
 							adj_type const & ilc = mesh->LowConn(lc[it]);
 							for(adj_type::size_type jt = 0; jt != ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
-								if( !mesh->GetMarker(ilc[jt],mrk) )
+								if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
 								{
 									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
+									mesh->SetPrivateMarker(ilc[jt],mrk);
 								}
 						}
 					}
 					for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result.at(it),mrk);
-					mesh->ReleaseMarker(mrk);
+						mesh->RemPrivateMarker(result.at(it),mrk);
+					mesh->ReleasePrivateMarker(mrk);
 				}
 			}
 		}
@@ -496,121 +623,245 @@ namespace INMOST
 			if( GetElementType() & e ) myconn = i;
 			i++;
 		}
-		if( !mesh->HideMarker() )
+		if( isPrivate(mask) )
 		{
-			for(i = 0; i < 4; i++) if( conn[i] )
+			if( !mesh->HideMarker() )
 			{
-				if( i == myconn )
+				for(i = 0; i < 4; i++) if( conn[i] )
 				{
-					if( invert ^ GetMarker(mask) ) result.push_back(GetHandle());
-				}
-				else if( i == (myconn + 1 + 4)%4 )
-				{
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); ++it)
-						if( invert ^ mesh->GetMarker(hc[it],mask) ) result.push_back(hc[it]);
-					
-				}
-				else if( i == (myconn - 1 + 4)%4 )
-				{
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); ++it)
-						if( invert ^ mesh->GetMarker(lc[it],mask) ) result.push_back(lc[it]);
-				}
-				else if( i == (myconn - 2 + 4)%4 )
-				{
-					MarkerType mrk = mesh->CreateMarker();
-					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					if( i == myconn )
+					{
+						if( invert ^ GetPrivateMarker(mask) ) result.push_back(GetHandle());
+					}
+					else if( i == (myconn + 1 + 4)%4 )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++)
-						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-								if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetMarker(ihc[jt],mrk) )
-								{
-									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
-								}
-						}
+						for(adj_type::size_type it = 0; it < hc.size(); ++it)
+							if( invert ^ mesh->GetPrivateMarker(hc[it],mask) ) result.push_back(hc[it]);
+					
 					}
-					else
+					else if( i == (myconn - 1 + 4)%4 )
 					{
 						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++)
-						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-								if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetMarker(ilc[jt],mrk) )
-								{
-									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
-								}
-						}
+						for(adj_type::size_type it = 0; it < lc.size(); ++it)
+							if( invert ^ mesh->GetPrivateMarker(lc[it],mask) ) result.push_back(lc[it]);
 					}
-					for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result.at(it),mrk);
-					mesh->ReleaseMarker(mrk);
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++)
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+									if( (invert ^ mesh->GetPrivateMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++)
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+									if( (invert ^ mesh->GetPrivateMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}
+						}
+						for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result.at(it),mrk);
+						mesh->ReleasePrivateMarker(mrk);
+					}
+				}
+			}
+			else
+			{
+				MarkerType hm = mesh->HideMarker();
+				for(i = 0; i < 4; i++) if( conn[i] )
+				{
+					if( i == myconn )
+					{
+						if( !GetMarker(hm) && (invert ^ GetPrivateMarker(mask)) )
+							result.push_back(GetHandle());
+					}
+					else if( i == (myconn + 1 + 4)%4 )
+					{
+						adj_type const & hc = mesh->HighConn(GetHandle());
+						for(adj_type::size_type it = 0; it < hc.size(); ++it)
+							if( (invert ^ mesh->GetPrivateMarker(hc[it],mask)) && !mesh->GetMarker(hc[it],hm) ) result.push_back(hc[it]);
+					
+					}
+					else if( i == (myconn - 1 + 4)%4 )
+					{
+						adj_type const & lc = mesh->LowConn(GetHandle());
+						for(adj_type::size_type it = 0; it < lc.size(); ++it)
+							if( (invert ^ mesh->GetPrivateMarker(lc[it],mask)) && !mesh->GetMarker(lc[it],hm) ) result.push_back(lc[it]);
+					}
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
+									if( (invert ^ mesh->GetPrivateMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+									if( (invert ^ mesh->GetPrivateMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}
+						}
+						for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result.at(it),mrk);
+						mesh->ReleasePrivateMarker(mrk);
+					}
 				}
 			}
 		}
 		else
 		{
-			MarkerType hm = mesh->HideMarker();
-			for(i = 0; i < 4; i++) if( conn[i] )
+			if( !mesh->HideMarker() )
 			{
-				if( i == myconn )
+				for(i = 0; i < 4; i++) if( conn[i] )
 				{
-					if( !GetMarker(hm) && (invert ^ GetMarker(mask)) )
-						result.push_back(GetHandle());
-				}
-				else if( i == (myconn + 1 + 4)%4 )
-				{
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); ++it)
-						if( (invert ^ mesh->GetMarker(hc[it],mask)) && !mesh->GetMarker(hc[it],hm) ) result.push_back(hc[it]);
-					
-				}
-				else if( i == (myconn - 1 + 4)%4 )
-				{
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); ++it)
-						if( (invert ^ mesh->GetMarker(lc[it],mask)) && !mesh->GetMarker(lc[it],hm) ) result.push_back(lc[it]);
-				}
-				else if( i == (myconn - 2 + 4)%4 )
-				{
-					MarkerType mrk = mesh->CreateMarker();
-					if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+					if( i == myconn )
+					{
+						if( invert ^ GetMarker(mask) ) result.push_back(GetHandle());
+					}
+					else if( i == (myconn + 1 + 4)%4 )
 					{
 						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
-						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
-								if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetMarker(ihc[jt],mrk) )
-								{
-									result.push_back(ihc[jt]);
-									mesh->SetMarker(ihc[jt],mrk);
-								}
-						}
+						for(adj_type::size_type it = 0; it < hc.size(); ++it)
+							if( invert ^ mesh->GetMarker(hc[it],mask) ) result.push_back(hc[it]);
+					
 					}
-					else
+					else if( i == (myconn - 1 + 4)%4 )
 					{
 						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
-						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
-								if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetMarker(ilc[jt],mrk) )
-								{
-									result.push_back(ilc[jt]);
-									mesh->SetMarker(ilc[jt],mrk);
-								}
-						}
+						for(adj_type::size_type it = 0; it < lc.size(); ++it)
+							if( invert ^ mesh->GetMarker(lc[it],mask) ) result.push_back(lc[it]);
 					}
-					for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
-						mesh->RemMarker(result.at(it),mrk);
-					mesh->ReleaseMarker(mrk);
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++)
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+									if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++)
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+									if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}
+						}
+						for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result.at(it),mrk);
+						mesh->ReleasePrivateMarker(mrk);
+					}
+				}
+			}
+			else
+			{
+				MarkerType hm = mesh->HideMarker();
+				for(i = 0; i < 4; i++) if( conn[i] )
+				{
+					if( i == myconn )
+					{
+						if( !GetMarker(hm) && (invert ^ GetMarker(mask)) )
+							result.push_back(GetHandle());
+					}
+					else if( i == (myconn + 1 + 4)%4 )
+					{
+						adj_type const & hc = mesh->HighConn(GetHandle());
+						for(adj_type::size_type it = 0; it < hc.size(); ++it)
+							if( (invert ^ mesh->GetMarker(hc[it],mask)) && !mesh->GetMarker(hc[it],hm) ) result.push_back(hc[it]);
+					
+					}
+					else if( i == (myconn - 1 + 4)%4 )
+					{
+						adj_type const & lc = mesh->LowConn(GetHandle());
+						for(adj_type::size_type it = 0; it < lc.size(); ++it)
+							if( (invert ^ mesh->GetMarker(lc[it],mask)) && !mesh->GetMarker(lc[it],hm) ) result.push_back(lc[it]);
+					}
+					else if( i == (myconn - 2 + 4)%4 )
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						if( (GetElementType() & NODE) || (GetElementType() & EDGE) )
+						{
+							adj_type const & hc = mesh->HighConn(GetHandle());
+							for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+							{
+								adj_type const & ihc = mesh->HighConn(hc[it]);
+								for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
+									if( (invert ^ mesh->GetMarker(ihc[jt],mask)) && !mesh->GetPrivateMarker(ihc[jt],mrk) )
+									{
+										result.push_back(ihc[jt]);
+										mesh->SetPrivateMarker(ihc[jt],mrk);
+									}
+							}
+						}
+						else
+						{
+							adj_type const & lc = mesh->LowConn(GetHandle());
+							for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+							{
+								adj_type const & ilc = mesh->LowConn(lc[it]);
+								for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+									if( (invert ^ mesh->GetMarker(ilc[jt],mask)) && !mesh->GetPrivateMarker(ilc[jt],mrk) )
+									{
+										result.push_back(ilc[jt]);
+										mesh->SetPrivateMarker(ilc[jt],mrk);
+									}
+							}
+						}
+						for(ElementArray<Element>::size_type it = 0; it < result.size(); it++)
+							mesh->RemPrivateMarker(result.at(it),mrk);
+						mesh->ReleasePrivateMarker(mrk);
+					}
 				}
 			}
 		}
@@ -670,7 +921,7 @@ namespace INMOST
 	{
 		switch(GetElementType())
 		{
-		case NODE: return ElementArray<Node>(GetMeshLink(),invert ^ GetMarker(mask) ? 1 : 0,GetHandle());
+		case NODE: return ElementArray<Node>(GetMeshLink(),(invert ^ (isPrivate(mask) ? GetPrivateMarker(mask) : GetMarker(mask)) ? 1 : 0),GetHandle());
 		case EDGE: return getAsEdge()->getNodes(mask,invert);
 		case FACE: return getAsFace()->getNodes(mask,invert);
 		case CELL: return getAsCell()->getNodes(mask,invert);
@@ -683,7 +934,7 @@ namespace INMOST
 		switch(GetElementType())
 		{
 		case NODE: return getAsNode()->getEdges(mask,invert);
-		case EDGE: return ElementArray<Edge>(GetMeshLink(),invert ^ GetMarker(mask) ? 1 : 0,GetHandle());
+		case EDGE: return ElementArray<Edge>(GetMeshLink(),(invert ^ (isPrivate(mask) ? GetPrivateMarker(mask) : GetMarker(mask)) ? 1 : 0),GetHandle());
 		case FACE: return getAsFace()->getEdges(mask,invert);
 		case CELL: return getAsCell()->getEdges(mask,invert);
 		case ESET: return getAsSet()->getEdges(mask,invert);
@@ -696,7 +947,7 @@ namespace INMOST
 		{
 		case NODE: return getAsNode()->getFaces(mask,invert);
 		case EDGE: return getAsEdge()->getFaces(mask,invert);
-		case FACE: return ElementArray<Face>(GetMeshLink(),invert ^ GetMarker(mask) ? 1 : 0,GetHandle());
+		case FACE: return ElementArray<Face>(GetMeshLink(),(invert ^ (isPrivate(mask) ? GetPrivateMarker(mask) : GetMarker(mask)) ? 1 : 0),GetHandle());
 		case CELL: return getAsCell()->getFaces(mask,invert);
 		case ESET: return getAsSet()->getFaces(mask,invert);
 		}
@@ -709,7 +960,7 @@ namespace INMOST
 		case NODE: return getAsNode()->getCells(mask,invert);
 		case EDGE: return getAsEdge()->getCells(mask,invert);
 		case FACE: return getAsFace()->getCells(mask,invert);
-		case CELL: return ElementArray<Cell>(GetMeshLink(),invert ^ GetMarker(mask) ? 1 : 0,GetHandle());
+		case CELL: return ElementArray<Cell>(GetMeshLink(),(invert ^ (isPrivate(mask) ? GetPrivateMarker(mask) : GetMarker(mask)) ? 1 : 0),GetHandle());
 		case ESET: return getAsSet()->getCells(mask,invert);
 		}
 		return ElementArray<Cell>(NULL);
@@ -800,24 +1051,24 @@ namespace INMOST
 	ElementArray<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		ElementArray<Element> adjcells(m);
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(Dest);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
 		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
 		{
 			ElementArray<Element> sub = it->getAdjElements(Dest);
 			for(ElementArray<Element>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
+				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
 				{
 					adjcells.push_back(*jt);
-					jt->SetMarker(mrk);
+					jt->SetPrivateMarker(mrk);
 				}
 		}
-		for(ElementArray<Element>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
-		m->ReleaseMarker(mrk);
+		for(ElementArray<Element>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemPrivateMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 		return adjcells;
 	}
 
@@ -825,96 +1076,96 @@ namespace INMOST
 	ElementArray<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		ElementArray<Node> adjcells(m);
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(NODE);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
 		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
 		{
 			ElementArray<Node> sub = it->getNodes();
 			for(ElementArray<Node>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
+				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
 				{
 					adjcells.push_back(*jt);
-					jt->SetMarker(mrk);
+					jt->SetPrivateMarker(mrk);
 				}
 		}
-		for(ElementArray<Node>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
-		m->ReleaseMarker(mrk);
+		for(ElementArray<Node>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemPrivateMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 		return adjcells;
 	}
 
 	ElementArray<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		ElementArray<Edge> adjcells(m);
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(EDGE);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
 		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
 		{
 			ElementArray<Edge> sub = it->getEdges();
 			for(ElementArray<Edge>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
+				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
 				{
 					adjcells.push_back(*jt);
-					jt->SetMarker(mrk);
+					jt->SetPrivateMarker(mrk);
 				}
 		}
-		for(ElementArray<Edge>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
-		m->ReleaseMarker(mrk);
+		for(ElementArray<Edge>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemPrivateMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 		return adjcells;
 	}
 
 	ElementArray<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		ElementArray<Face> adjcells(m);
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(FACE);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
 		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
 		{
 			ElementArray<Face> sub = it->getFaces();
 			for(ElementArray<Face>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
+				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
 				{
 					adjcells.push_back(*jt);
-					jt->SetMarker(mrk);
+					jt->SetPrivateMarker(mrk);
 				}
 		}
-		for(ElementArray<Face>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
-		m->ReleaseMarker(mrk);
+		for(ElementArray<Face>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemPrivateMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 		return adjcells;
 	}
 
 	ElementArray<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MarkerType mask, bool invert) const
 	{
 		Mesh * m = GetMeshLink();
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		ElementArray<Cell> adjcells(m);
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(CELL);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
 		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
 		{
 			ElementArray<Cell> sub = it->getCells();
 			for(ElementArray<Cell>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetMarker(mrk) && (mask == 0 || (invert ^ jt->GetMarker(mask))) )
+				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
 				{
 					adjcells.push_back(*jt);
-					jt->SetMarker(mrk);
+					jt->SetPrivateMarker(mrk);
 				}
 		}
-		for(ElementArray<Cell>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemMarker(mrk);
-		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemMarker(mrk);
-		m->ReleaseMarker(mrk);
+		for(ElementArray<Cell>::iterator it = adjcells.begin(); it != adjcells.end(); it++) it->RemPrivateMarker(mrk);
+		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 		return adjcells;
 	}
 

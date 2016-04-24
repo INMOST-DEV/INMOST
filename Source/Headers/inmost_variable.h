@@ -23,6 +23,7 @@
 // 5. Consider optimization by checking zero variation multipliers, check that assembly do not degrade.
 // 6. Document everything
 // 7. change stencil_variable with foreach_variable and introduce function foreach(iterator beg, iterator end, arg)
+// 8. enclose in namespace
 
 //This should stop Visual Studio from complaining of very long auto-generated class types
 #ifdef _MSC_VER
@@ -360,14 +361,13 @@ namespace INMOST
   class stencil_variable : public shell_dynamic_variable< stencil_expression<typename A::Var>, stencil_variable<A> >
   {
   private:
-    Automatizator & aut;
-    INMOST_DATA_ENUM_TYPE stnclind;
+    Tag tag_elems;
+	Tag tag_coefs;
     const A & Arg;
-    void * user_data;
   public:
-    stencil_variable(Automatizator & paut, INMOST_DATA_ENUM_TYPE pstnclind, const shell_dynamic_variable<typename A::Var,A> & parg, void * puser_data = NULL) : aut(paut), stnclind(pstnclind), Arg(parg), user_data(puser_data) {}
-    stencil_variable(const stencil_variable & other) : aut(other.aut), stnclind(other.stnclind), Arg(other.Arg), user_data(other.user_data) {}
-    stencil_variable & operator =(const stencil_variable & other) {aut = other.aut; stnclind = other.stnclind; Arg = other.Arg; user_data = other.user_data; return * this;}
+    stencil_variable(Tag tag_elems, Tag tag_coefs, const shell_dynamic_variable<typename A::Var,A> & parg) : tag_elems(tag_elems), tag_coefs(tag_coefs), Arg(parg) {}
+    stencil_variable(const stencil_variable & other) : tag_elems(other.tag_elems), tag_coefs(other.tag_coefs), Arg(other.Arg) {}
+    stencil_variable & operator =(const stencil_variable & other) {tag_elems = other.tag_elems; tag_coefs = other.tag_coefs; Arg = other.Arg; return * this;}
     INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
     multivar_expression Variable(const Storage & e) const
     {
@@ -376,12 +376,13 @@ namespace INMOST
     }
     stencil_expression<typename A::Var> operator [](const Storage & e) const
     {
-      dynarray<std::pair<INMOST_DATA_REAL_TYPE, typename A::Var>, 64> tmp;
-      Automatizator::stencil_pairs stncl;
-			aut.GetStencil(stnclind, e, user_data, stncl);
-      tmp.resize(stncl.size());
-      for(INMOST_DATA_ENUM_TYPE k = 0; k < stncl.size(); ++k)
-        tmp[k] = std::make_pair(stncl[k].first, Arg[stncl[k].second]);
+      dynarray< const_multiplication_expression<typename A::Var>, 64> tmp;
+	  Storage::real_array      coefs = e.RealArray(tag_coefs);
+	  Storage::reference_array elems = e.RealArray(tag_elems);
+	  assert(coefs.size() == elems.size());
+      tmp.resize(elems.size());
+      for(INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k)
+		  tmp[k] = const_multiplication_expression<A>(Arg[elems[k]],coefs[k]);
       return stencil_expression<typename A::Var>(tmp);
     }
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
@@ -527,7 +528,9 @@ namespace INMOST
   typedef abstract_dynamic_variable abstract_variable;
 }
 
-template<class A, class B, class C> __INLINE INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C> condition(INMOST::shell_dynamic_variable<typename A::Var, A> const & control, INMOST::shell_dynamic_variable<typename B::Var, B> const & if_ge_zero, INMOST::shell_dynamic_variable<typename C::Var, C> const & if_lt_zero) { return INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C>(control,if_ge_zero,if_lt_zero); }
+template<class A, class B, class C> 
+                           __INLINE 
+							  INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C> condition(INMOST::shell_dynamic_variable<typename A::Var, A> const & control, INMOST::shell_dynamic_variable<typename B::Var, B> const & if_ge_zero, INMOST::shell_dynamic_variable<typename C::Var, C> const & if_lt_zero) { return INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C>(control,if_ge_zero,if_lt_zero); }
 template<class A>          __INLINE                                 INMOST::unary_custom_variable<INMOST::unary_minus_expression<typename A::Var>,A> operator-(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::unary_minus_expression<typename A::Var>,A>(Arg); }
 template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::abs_expression<typename A::Var>,A>      fabs(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::abs_expression<typename A::Var>,A>(Arg); }
 template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::exp_expression<typename A::Var>,A>       exp(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::exp_expression<typename A::Var>,A>(Arg); }
@@ -551,10 +554,17 @@ template<class B>          __INLINE                        INMOST::unary_const_c
 template<class A>          __INLINE                        INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A> operator+(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A>(Left,Right); }
 template<class B>          __INLINE                     INMOST::unary_const_custom_variable<INMOST::const_subtraction_expression<typename B::Var>,B> operator-(INMOST_DATA_REAL_TYPE Left, INMOST::shell_dynamic_variable<typename B::Var,B> const & Right) { return INMOST::unary_const_custom_variable<INMOST::const_subtraction_expression<typename B::Var>,B>(Right, Left); }
 template<class A>          __INLINE                        INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A> operator-(INMOST::shell_dynamic_variable<typename A::Var,A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::unary_const_custom_variable<INMOST::const_addition_expression<typename A::Var>,A>(Left, -Right); }
-template<class A>          __INLINE                                                                                      INMOST::stencil_variable<A>   stencil(INMOST::Automatizator & aut, INMOST_DATA_ENUM_TYPE stncl, INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg, void * user_data = NULL) { return INMOST::stencil_variable<A>(aut,stncl,Arg,user_data); }
+template<class A>          __INLINE                                                                                      INMOST::stencil_variable<A>   stencil(INMOST::Tag tag_elems, INMOST::Tag tag_coefs, INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg) { return INMOST::stencil_variable<A>(tag_elems,tag_coefs,Arg); }
 template<class A>          __INLINE                                                                                        INMOST::table_variable<A> get_table(INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg, const INMOST::keyval_table & Table) {return INMOST::table_variable<A>(Arg,Table);}
+template<class A>          __INLINE                                                                                    INMOST::stencil_expression<A>   stencil(INMOST::HandleType * elems, INMOST_DATA_REAL_TYPE * coefs, INMOST_DATA_ENUM_TYPE num, INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg)
+{
+	INMOST::dynarray< INMOST::const_multiplication_expression<typename A::Var>, 64> tmp;
+	for( INMOST_DATA_ENUM_TYPE k = 0; k < num; ++k) if( elems[k] != 0 )
+		tmp.push_back(INMOST::const_multiplication_expression<typename A::Var>(Arg[elems[k]],coefs[k]));
+	return INMOST::stencil_expression<typename A::Var>(tmp);
+}
 
-  
+
   
 
 

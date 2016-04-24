@@ -19,6 +19,9 @@
 // 5. Consider optimization by checking zero variation multipliers, check that assembly do not degrade.
 // 6. floor, ceil, atan, acos, asin, max, min functions
 // 7. choice of directional derivatives at discontinuities for abs, pow, max, min (see ADOL-C)
+// 8. replace stencil with foreach for provided iterators
+// 9. enclose in namespace
+
 #ifdef _MSC_VER
 #pragma warning(disable : 4503)
 #endif
@@ -1293,36 +1296,36 @@ namespace INMOST
   template<class A> 
   class stencil_expression : public shell_expression<stencil_expression<A> >
   {
-    dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 > arg;
+    dynarray< const_multiplication_expression<A>, 64 > arg;
     INMOST_DATA_REAL_TYPE value;
   public:
-    stencil_expression(const dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 > & parg) : arg(parg) 
+    stencil_expression(const dynarray< const_multiplication_expression<A>, 64 > & parg) : arg(parg) 
     {
       value = 0.0;
-      for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-        value += it->first * it->second.GetValue();
+      for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+        value += it->GetValue();
     }
     stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
     {
-      for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-        it->second.GetJacobian(it->first*mult,r);
+      for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+        it->GetJacobian(mult,r);
     }
     __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
     {
-      for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-        it->second.GetJacobian(it->first*mult,r);
+      for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+        it->GetJacobian(mult,r);
     }
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
         Sparse::Row tmpJ, curJ;
         Sparse::HessianRow tmpH, curH;
-        for(typename dynarray< std::pair<INMOST_DATA_REAL_TYPE, A >, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+        for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
         {
             curJ.Clear();
             curH.Clear();
-            it->second.GetHessian(it->first*multJ,curJ,it->first*multH,curH);
+            it->GetHessian(multJ,curJ,multH,curH);
             Sparse::Row::MergeSortedRows(1.0,curJ,1.0,J,tmpJ);
             Sparse::HessianRow::MergeSortedRows(1.0,curH,1.0,H,tmpH);
             J.Swap(tmpJ);
@@ -1537,6 +1540,7 @@ template<class A>          __INLINE                 INMOST::function_expression<
   return INMOST::function_expression<A>(Arg,both.first,both.second);
 }
                            __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_REAL_TYPE Arg, const INMOST::keyval_table & Table) {return Table.GetValue(Arg);}
+
 
 
 #endif

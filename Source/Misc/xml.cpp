@@ -1511,9 +1511,9 @@ namespace INMOST
 		  else if( t.RawData() )
 		  {
 			  std::string data = ReadUntil("<"); //read until next tag opening
-			  data.pop_back(); //drop '<'
+			  data.resize(data.size()-1); //drop '<'
 			  //remove trailing spaces
-			  while( !data.empty() && isspace(data.back()) ) data.pop_back();
+			  while( !data.empty() && isspace(data[data.size()-1]) ) data.resize(data.size()-1);
 			  if( verbose )
 			  {
 				  Report("info: encountered raw data, %s",data.c_str());
@@ -1526,9 +1526,7 @@ namespace INMOST
 		  else if( t.BlockData() )
 		  {
 			  std::string data = ReadUntil("]]>");
-			  data.pop_back(); //drop '>'
-			  data.pop_back(); //drop ']'
-			  data.pop_back(); //drop ']'
+			  data.resize(data.size()-3); //drop ]]>
 			  if( verbose )
 			  {
 				  Report("info: encountered block data, %s",data.c_str());
