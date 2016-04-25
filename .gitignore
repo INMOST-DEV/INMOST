@@ -3,7 +3,7 @@ Tests/solver_test001/matrices
 SyncToy*
 *.iml
 .idea/*
-build/
+build*/
 .idea/vcs.xml
 *.swo
 *.swp

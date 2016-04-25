@@ -165,7 +165,8 @@ int main(int argc, char ** argv) {
                     std::cout << "    8: PETSc " << std::endl;
                     std::cout << "    9: ANI " << std::endl;
                     std::cout << "    10: FCBIILU2 " << std::endl;
-                    std::cout << "    11: K3BIILU2 " << std::endl << std::endl;
+                    std::cout << "    11: K3BIILU2 " << std::endl;
+                    std::cout << "    12: SUPERLU " << std::endl << std::endl;
                     std::cout << "-h, --help - print this message." << std::endl;
                 }
                 #if defined(USE_MPI)
@@ -288,7 +289,9 @@ int main(int argc, char ** argv) {
             case 11:
                 type = Solver::K3BIILU2;
                 break;
-                
+            case 12:
+                type = Solver::SUPERLU;
+                break;
             default:
                 if (processRank == 0) {
                     std::cout << "Invalid solver type index: " << solverType << " , using INNER_ILU2 instead." <<
