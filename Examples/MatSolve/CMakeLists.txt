@@ -1,20 +1,15 @@
 project(MatSolve)
-set(SOURCE main.cpp)
+set(SOURCE main.cpp inner_parser.cpp)
 
 add_executable(MatSolve ${SOURCE})
 
 target_link_libraries(MatSolve inmost)
 
 if(USE_MPI)
-  find_package(MPI)
-  if(NOT MPI_FOUND)
-    message("MPI NOT FOUND")
-  else()
-    message("linking MatSolve with MPI")
-    target_link_libraries(MatSolve ${MPI_LIBRARIES})
-    if(MPI_LINK_FLAGS)
-      set_target_properties(MatSolve PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
-    endif()
+  message("linking MatSolve with MPI")
+  target_link_libraries(MatSolve ${MPI_LIBRARIES})
+  if(MPI_LINK_FLAGS)
+    set_target_properties(MatSolve PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
 
