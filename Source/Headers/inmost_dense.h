@@ -786,6 +786,7 @@ namespace INMOST
       case 1: //scalar permeability tensor
         Kc.Zero();
         Kc(0,0) = Kc(1,1) = Kc(2,2) = K[0];
+		break;
       case 3:
         Kc.Zero(); //diagonal permeability tensor 
         Kc(0,0) = K[0]; //KXX
