@@ -34,7 +34,7 @@ double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20,
 double shift[3] = {0,0,0};
 bool perspective = false;
 int drawedges = 0;
-bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false;
+bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false, elevation = false;
 
 Mesh::GeomParam table;
 
@@ -849,6 +849,8 @@ public:
 	void set_comment(std::string text) {comment = text;}
 	void set_min(float newmin) { min = newmin;}
 	void set_max(float newmax) { max = newmax;}
+	float get_min() { return min;}
+	float get_max() { return max;}
 	color_t pick_color(float value) 
 	{
 		float t = (value-min)/(max-min);
@@ -2283,7 +2285,7 @@ public:
 			}
 		}
 	}
-	void gen_clip(std::vector<face2gl> & out)
+	void gen_clip(std::vector<face2gl> & out, Storage::real n[3])
 	{
 		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,size()/100));
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) if( cells[k]->GetMarker(marker))
@@ -2292,7 +2294,20 @@ public:
 			f.set_color(0.6,0.6,0.6,1);
 			Storage::real_array cl = cells[k]->RealArray(clips);
 			Storage::real_array clv = cells[k]->RealArray(clipsv);
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) f.add_vert(&cl[q]);
+			if( elevation && visualization_tag.isValid() )
+			{
+				Storage::real pos[3], t;
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+				{
+					t = (clv[q/3] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+					pos[0] = cl[q+0] + t*n[0];
+					pos[1] = cl[q+1] + t*n[1];
+					pos[2] = cl[q+2] + t*n[2];
+					f.add_vert(pos);
+				}
+			}
+			else
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) f.add_vert(&cl[q]);
 			if( visualization_tag.isValid() )
 			{
 				for(INMOST_DATA_ENUM_TYPE q = 0; q < clv.size(); q++) 
@@ -2310,7 +2325,7 @@ public:
 			out.push_back(f);
 		}
 	}
-	void draw_clip(INMOST_DATA_ENUM_TYPE pace)
+	void draw_clip(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3])
 	{
 		if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 		glBegin(GL_TRIANGLES);
@@ -2340,15 +2355,50 @@ public:
 					glVertex3dv(&cl[(q+3)%cl.size()]);
 				}
 			}
+			else if( elevation )
+			{
+				Storage::real pos[3], t;
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+				{
+					if( visualization_type == CELL && !visualization_smooth )
+						glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
+					else
+						glTexCoord1d(CommonColorBar->pick_texture(cntv));
+					t = (cntv - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+					pos[0] = cnt[0] + n[0]*t;
+					pos[1] = cnt[1] + n[1]*t;
+					pos[2] = cnt[2] + n[2]*t;
+					glVertex3dv(pos);
+					if( !(visualization_type == CELL && !visualization_smooth) )
+						glTexCoord1d(CommonColorBar->pick_texture(clv[q/3]));
+					t = (clv[q/3] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+					pos[0] = cl[q+0] + n[0]*t;
+					pos[1] = cl[q+1] + n[1]*t;
+					pos[2] = cl[q+2] + n[2]*t;
+					glVertex3dv(pos);
+					if( !(visualization_type == CELL && !visualization_smooth) )
+						glTexCoord1d(CommonColorBar->pick_texture(clv[(q/3+1)%clv.size()]));
+					t = (clv[(q/3+1)%clv.size()] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+					pos[0] = cl[(q+3)%cl.size()+0] + n[0]*t;
+					pos[1] = cl[(q+3)%cl.size()+1] + n[1]*t;
+					pos[2] = cl[(q+3)%cl.size()+2] + n[2]*t;
+					glVertex3dv(pos);
+				}
+			}
 			else
 			{
 				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
-				{				
-					glTexCoord1d(CommonColorBar->pick_texture(cntv));
+				{
+					if( visualization_type == CELL && !visualization_smooth )
+						glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
+					else
+						glTexCoord1d(CommonColorBar->pick_texture(cntv));
 					glVertex3dv(cnt);
-					glTexCoord1d(CommonColorBar->pick_texture(clv[q/3]));
+					if( !(visualization_type == CELL && !visualization_smooth) )
+						glTexCoord1d(CommonColorBar->pick_texture(clv[q/3]));
 					glVertex3dv(&cl[q]);
-					glTexCoord1d(CommonColorBar->pick_texture(clv[(q/3+1)%clv.size()]));
+					if( !(visualization_type == CELL && !visualization_smooth) )
+						glTexCoord1d(CommonColorBar->pick_texture(clv[(q/3+1)%clv.size()]));
 					glVertex3dv(&cl[(q+3)%cl.size()]);
 				}
 			}
@@ -2356,23 +2406,47 @@ public:
 		glEnd();
 		if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 	}
-	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace)
+	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3])
 	{
-    if( drawedges )
-    {
-		  glBegin(GL_LINES);
-		  for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
-		  {
-			  Storage::real_array cl = cells[k]->RealArray(clips);
-			
-			  for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
-			  {
-				  glVertex3dv(&cl[q]);
-				  glVertex3dv(&cl[(q+3)%cl.size()]);
-			  }
-		  }
-		  glEnd();
-    }
+		if( drawedges )
+		{
+			glBegin(GL_LINES);
+			if( visualization_tag.isValid() && elevation )
+			{
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
+				{
+					Storage::real_array cl = cells[k]->RealArray(clips);
+					Storage::real_array clv = cells[k]->RealArray(clipsv);
+					Storage::real pos[3], t;
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+					{
+						t = (clv[q/3] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+						pos[0] = cl[q+0] + t*n[0];
+						pos[1] = cl[q+1] + t*n[1];
+						pos[2] = cl[q+2] + t*n[2];
+						glVertex3dv(pos);
+						t = (clv[(q/3+1)%clv.size()] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+						pos[0] = cl[(q+3)%cl.size()+0] + t*n[0];
+						pos[1] = cl[(q+3)%cl.size()+1] + t*n[1];
+						pos[2] = cl[(q+3)%cl.size()+2] + t*n[2];
+						glVertex3dv(pos);
+					}
+				}
+			}
+			else
+			{
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
+				{
+					Storage::real_array cl = cells[k]->RealArray(clips);
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+					{
+						glVertex3dv(&cl[q]);
+						glVertex3dv(&cl[(q+3)%cl.size()]);
+					}
+				}
+			}
+			glEnd();
+		}
 	}
 	INMOST_DATA_ENUM_TYPE size() {return (INMOST_DATA_ENUM_TYPE)cells.size();}
 } * oclipper = NULL;
@@ -2416,7 +2490,7 @@ public:
 	{
 		tree->intersect_plane_face(clip_state,p,n);
 	}
-	void gen_clip(std::vector<face2gl> & out )
+	void gen_clip(std::vector<face2gl> & out, Storage::real n[3] )
 	{
 		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,nfaces/100));
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++)
@@ -2477,16 +2551,28 @@ public:
 					{
 						Storage::real_array sp0 = nodes[q].Coords();
 						Storage::real_array sp1 = nodes[(q+1)%nodes.size()].Coords();
-						Storage::real node[3];
+						Storage::real node[3], t, c = 0;
 						if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE) 
 						{
-							f.add_vert(node);
 							if( visualization_tag.isValid() ) 
 							{
 								//f.add_color(CommonColorBar->pick_color(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
-								f.add_texcoord(CommonColorBar->pick_texture(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
+								if( visualization_type == CELL && !visualization_smooth )
+									c = Face(mm,faces[k]).BackCell().RealDF(visualization_tag);
+								else
+									c = compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node);
 								//f.add_texcoord(CommonColorBar->pick_texture(Face(mm,faces[k]).BackCell().RealDF(visualization_tag)));
+								f.add_texcoord(CommonColorBar->pick_texture(c));
+								if( elevation )
+								{
+									c = compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node);
+									t = (c - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+									node[0] += t*n[0];
+									node[1] += t*n[1];
+									node[2] += t*n[2];
+								}
 							}
+							f.add_vert(node);
 						}
 					}
 				}
@@ -2544,7 +2630,7 @@ public:
 	}
 	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace)
 	{
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k+=pace)
+		if( drawedges ) for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k+=pace)
 		{
 			if( mm->IntegerDF(faces[k],clip_state) == CLIP_FACE_INSIDE )
 			{
@@ -3321,6 +3407,12 @@ void keyboard(unsigned char key, int x, int y)
 		perspective = !perspective;
 		glutPostRedisplay();
 	}
+	else if( key == 'o' )
+	{
+		elevation = !elevation;
+		clipupdate = true;
+		glutPostRedisplay();
+	}
 	else if( key == 'v' )
 	{
 		if( CommonInput == NULL ) 
@@ -3518,9 +3610,9 @@ void draw_screen()
 			if( !interactive && clipboxupdate )
 			{
 				clip_boundary.clear();
-				oclipper->gen_clip(clip_boundary);
+				oclipper->gen_clip(clip_boundary,n);
 				bclipper->clip_plane(p,n);
-				bclipper->gen_clip(clip_boundary);
+				bclipper->gen_clip(clip_boundary,n);
 				clipboxupdate = false;
 
 				if( current_picker != NULL ) {delete current_picker; current_picker = NULL;}
@@ -3542,11 +3634,11 @@ void draw_screen()
 				INMOST_DATA_ENUM_TYPE bpace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,bclipper->size()/100));
 				glColor4f(0.6,0.6,0.6,1);
 				if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
-				oclipper->draw_clip(opace);
+				oclipper->draw_clip(opace,n);
 				bclipper->draw_clip(bpace);
 				if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 				glColor4f(0,0,0,1); 
-				oclipper->draw_clip_edges(opace);
+				oclipper->draw_clip_edges(opace,n);
 				bclipper->draw_clip_edges(bpace);
 				
 			}
@@ -4218,8 +4310,8 @@ int main(int argc, char ** argv)
     }
     velmax = log(velmax+1.0e-25);
     velmin = log(velmin+1.0e-25);
+	/*
     Tag flux = mesh->GetTag("FACE_FLUX");
-    /*
     MarkerType visited = mesh->CreateMarker();
     if( false )
     for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); ++f) if( f->Boundary() )
