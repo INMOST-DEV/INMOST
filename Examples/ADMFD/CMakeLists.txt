@@ -49,10 +49,10 @@ endif()
 
 if(USE_MPI)
   message("linking ADMFD with MPI")
-  target_link_libraries(ADMFD ${MPI_LIBRARIES}) 
+  target_link_libraries(ADMFD ${MPI_LIBRARIES})
   if(MPI_LINK_FLAGS)
     set_target_properties(ADMFD PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
-  endif() 
+  endif()
 endif(USE_MPI)
 
 install(TARGETS ADMFD EXPORT inmost-targets RUNTIME DESTINATION bin)

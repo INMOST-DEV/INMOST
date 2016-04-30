@@ -48,10 +48,10 @@ endif(USE_PARTITIONER)
 
 if(USE_MPI)
   message("linking Solver with MPI")
-  target_link_libraries(Solver ${MPI_LIBRARIES}) 
+  target_link_libraries(Solver ${MPI_LIBRARIES})
   if(MPI_LINK_FLAGS)
     set_target_properties(Solver PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
-  endif() 
+  endif()
 endif(USE_MPI)
 
 
