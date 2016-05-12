@@ -1,5 +1,5 @@
 project(MatSolve)
-set(SOURCE main.cpp)
+set(SOURCE main.cpp inner_parser.cpp)
 
 add_executable(MatSolve ${SOURCE})
 
@@ -7,10 +7,10 @@ target_link_libraries(MatSolve inmost)
 
 if(USE_MPI)
   message("linking MatSolve with MPI")
-  target_link_libraries(MatSolve ${MPI_LIBRARIES}) 
+  target_link_libraries(MatSolve ${MPI_LIBRARIES})
   if(MPI_LINK_FLAGS)
     set_target_properties(MatSolve PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
-  endif() 
+  endif()
 endif(USE_MPI)
 
 if(USE_SOLVER)
