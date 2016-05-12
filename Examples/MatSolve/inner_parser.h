@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <stdlib.h>
+#include <string.h>
 
 enum OptionType {
     REAL,
