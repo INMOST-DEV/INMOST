@@ -1,3 +1,4 @@
 .svn
 Tests/solver_test001/matrices
 SyncToy*
+build*/

@@ -1644,7 +1644,7 @@ namespace INMOST
 				ia[0] = shift;
 				for(Sparse::Matrix::iterator it = A.Begin(); it != A.End(); it++)
 				{
-					for(Row::iterator jt = it->Begin(); jt != it->End(); jt++)
+					for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); jt++)
 					{
 						ja[k] = jt->first + 1;
 						values[k] = jt->second;
