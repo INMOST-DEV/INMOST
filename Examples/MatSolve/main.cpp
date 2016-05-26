@@ -218,8 +218,8 @@ int main(int argc, char ** argv) {
             char *fileName = findInnerOptions(parametersFileName.c_str());
             if (fileName != NULL) {
                 InnerOptions *options = parseInnerDatabaseOptions(fileName);
-                if (options != nullptr) {
-                    for (int ii = 0; ii < options->options.size(); ii++) {
+                if (options != NULL) {
+                    for (unsigned ii = 0; ii < options->options.size(); ii++) {
                         InnerOption *option = options->options[ii];
                         if (option->type == ENUM) {
                             s.SetParameterEnum(option->name, (unsigned int) atoi(option->value.c_str()));

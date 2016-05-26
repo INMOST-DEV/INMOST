@@ -16,7 +16,7 @@ InnerOptions *parseInnerDatabaseOptions(char *optionsFile) {
     FILE *databaseFile = fopen(optionsFile, "r");
     if (!databaseFile) {
         std::cout << "Inner options file not found" << std::endl;
-        return nullptr;
+        return NULL;
     }
     InnerOptions *options = new InnerOptions();
     char *tmp = (char *) calloc(256, sizeof(char));
