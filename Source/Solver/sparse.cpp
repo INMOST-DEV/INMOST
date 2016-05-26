@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "inmost_sparse.h"
+#if defined(USE_SOLVER)
 #include <fstream>
 #include <sstream>
 
@@ -1245,4 +1246,5 @@ namespace INMOST
       }
   }
 }
+#endif
 

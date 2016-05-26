@@ -1,3 +1,5 @@
+#include "inmost_solver.h"
+#if defined(USE_SOLVER)
 #include "solver_mtilu2.hpp"
 
 #define DEFAULT_TAU 0.005
@@ -1088,3 +1090,4 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 		info->Accumulate(output);
 		return true;
 	}
+#endif

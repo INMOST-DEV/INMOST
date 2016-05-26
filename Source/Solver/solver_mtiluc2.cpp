@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <iomanip>
 #include "inmost_solver.h"
+#if defined(USE_SOLVER)
 #include "solver_mtiluc2.hpp"
 #include <sstream>
 //#define REPORT_ILU
@@ -3133,4 +3134,5 @@ swap_algorithm:
 	{
 		if (!isFinalized()) Finalize();
 	}
+#endif
 
