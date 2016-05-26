@@ -3861,6 +3861,7 @@ void draw_screen()
 						}
 						break;
 					}
+#if defined(USE_AUTODIFF)
                     case DATA_VARIABLE:
                     {
                         Storage::var_array arr = e->VariableArray(*t);
@@ -3878,6 +3879,7 @@ void draw_screen()
                         }
                         break;
                     }
+#endif
 				}
 				sprintf(temp,"%s %s %s",t->GetTagName().c_str(),DataTypeName(t->GetDataType()),str);
 				strcpy(str,temp);

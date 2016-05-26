@@ -31,7 +31,7 @@ namespace INMOST
   template<> struct Promote<variable, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
   template<> struct Promote<variable, variable> {typedef variable type;};
 #else
-  INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE x) {return x;}
+  __INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE x) {return x;}
 #endif
 
   template<typename Var>

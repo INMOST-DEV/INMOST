@@ -2053,10 +2053,8 @@ namespace INMOST
   INMOST_DATA_ENUM_TYPE Mesh::GetDataCapacity(const INMOST_DATA_BULK_TYPE * adata, INMOST_DATA_ENUM_TYPE size, const Tag & tag) const
   {
     assert( tag.GetMeshLink() == this );
-    if( tag.GetDataType() != DATA_VARIABLE )
-      return size*tag.GetBytesSize();
 #if defined(USE_AUTODIFF)
-    else
+    if( tag.GetDataType() == DATA_VARIABLE )
     {
       INMOST_DATA_ENUM_TYPE ret = 0;
       const Sparse::Row::entry * arr = static_cast<const Sparse::Row::entry *>(static_cast<const void *>(adata));
@@ -2064,7 +2062,9 @@ namespace INMOST
         ret += variable::RetriveSize(arr+ret);
       return ret*sizeof(Sparse::Row::entry);
     }
+    else
 #endif
+      return size*tag.GetBytesSize();
     assert(false);
     return 0;
   }

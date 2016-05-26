@@ -1255,6 +1255,7 @@ namespace INMOST
     Repeat = ConvertMultiplier(multiplier,SetSize);    
   }
 
+#if defined(USE_AUTODIFF)
   void XMLReader::ParseVariable(std::string word, std::vector<INMOST::Storage::var> & Vector, int & Repeat, int SetSize)
   {
     std::string value, multiplier;
@@ -1277,6 +1278,7 @@ namespace INMOST
 
     Repeat = ConvertMultiplier(multiplier,SetSize);    
   }
+#endif
   void XMLReader::ParseInteger(std::string word, std::vector<INMOST::Storage::integer> & Vector, int & Repeat, int SetSize)
   {
     std::string value, multiplier;
