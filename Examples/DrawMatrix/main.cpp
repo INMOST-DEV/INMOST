@@ -170,7 +170,7 @@ class Reorder_ARMS
 	}
 	INMOST_DATA_ENUM_TYPE GetOrder(INMOST_DATA_ENUM_TYPE ind)
 	{
-		return static_cast<Storage::enumerator>(neighbours[ind].size());
+		return static_cast<INMOST_DATA_ENUM_TYPE>(neighbours[ind].size());
 		INMOST_DATA_ENUM_TYPE ret = 0, k;
 		for (k = 0; k < neighbours[ind].size(); k++)
 		if (!markers[neighbours[ind][k]])

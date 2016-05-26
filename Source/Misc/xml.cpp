@@ -1228,6 +1228,7 @@ namespace INMOST
     } while( comma != std::string::npos );
   }
 
+#if defined(USE_MESH)
   void XMLReader::ParseReal(std::string word, std::vector<INMOST::Storage::real> & Vector, int & Repeat, int SetSize)
   {
     //const char * debug = word.c_str();
@@ -1301,6 +1302,7 @@ namespace INMOST
 
     Repeat = ConvertMultiplier(multiplier,SetSize);    
   }
+#endif
 
   void XMLReader::ParseBulk(std::string word, std::string & Vector, int & Repeat, int SetSize)
   {
@@ -1335,6 +1337,7 @@ namespace INMOST
     Repeat = ConvertMultiplier(multiplier,SetSize);
   }
 
+#if defined(USE_MESH)
   void XMLReader::ParseReference(std::string word, std::vector<std::pair<INMOST::ElementType,int> > & Vector, int & Repeat, int SetSize)
   {
     std::string value, multiplier;
@@ -1398,6 +1401,7 @@ namespace INMOST
 
     Repeat = ConvertMultiplier(multiplier,SetSize);
   }
+#endif
 
   
   

@@ -137,14 +137,18 @@ namespace INMOST
     void SplitValueMultiplier(std::string expression, std::string & value, std::string & multiplier);
     bool ParseBool(std::string word);
     void ParseCommaSeparated(std::string word, std::vector<std::string> & parsed, char symbol = ',');
+#if defined(USE_MESH)
     void ParseReal(std::string word, std::vector<INMOST::Storage::real> & Vector, int & Repeat, int SetSize);
 #if defined(USE_AUTODIFF)
     void ParseVariable(std::string word, std::vector<INMOST::Storage::var> & Vector, int & Repeat, int SetSize);
 #endif
     void ParseInteger(std::string word, std::vector<INMOST::Storage::integer> & Vector, int & Repeat, int SetSize);
+#endif
     void ParseBulk(std::string word, std::string & Vector, int & Repeat, int SetSize);
+#if defined(USE_MESH)
     void ParseReference(std::string word, std::vector<std::pair<INMOST::ElementType,int> > & Vector, int & Repeat, int SetSize);
     void ParseRemoteReference(std::string word, std::vector< std::pair<std::string,std::pair<INMOST::ElementType,int> > > & Vector, int & Repeat, int SetSize);
+#endif
     
 	/// Structure for xml attribute.
     struct XMLAttrib
