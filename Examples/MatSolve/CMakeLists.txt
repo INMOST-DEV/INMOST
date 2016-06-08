@@ -1,5 +1,5 @@
 project(MatSolve)
-set(SOURCE main.cpp inner_parser.cpp)
+set(SOURCE main.cpp inner_parser.cpp inner_parser.h)
 
 add_executable(MatSolve ${SOURCE})
 

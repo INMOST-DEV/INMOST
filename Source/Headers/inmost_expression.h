@@ -110,6 +110,10 @@ namespace INMOST
     }
   };
 
+#if defined(PACK_ARRAY)
+#pragma pack(push,r1,4)
+#endif
+
 
   class multivar_expression : public shell_expression<multivar_expression>
   {
@@ -324,6 +328,11 @@ namespace INMOST
       return 1 + v[0].first;
     }
   };
+
+#if defined(PACK_ARRAY)
+#pragma pack(pop,r1)
+#endif
+
 
   
   class multivar_expression_reference : public shell_expression<multivar_expression_reference>
