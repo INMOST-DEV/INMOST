@@ -1439,7 +1439,7 @@ namespace INMOST
 		}
 		//RemoveGhost();
 		
-#else //USE_PARALLEL_STORAGE
+#else //USE_MPI
 		AssignGlobalID(CELL | FACE | EDGE | NODE);
 #endif //USE_MPI
 		EXIT_FUNC();
