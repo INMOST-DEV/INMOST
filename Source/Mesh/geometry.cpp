@@ -1487,5 +1487,71 @@ namespace INMOST
 			*/
 		}
 	}
+
+
+	
+	void UnpackBoundary(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( size )
+		{
+			bool flag = true;
+			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
+			Storage::integer_array arr = element->IntegerArray(tag);
+			for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it++)
+				if( *it == recv[0] )
+				{
+					flag = false;
+					break;
+				}
+				if( flag ) 
+					arr.push_back(recv[0]);
+		}
+	}
+
+	void Mesh::MarkBoundaryFaces(MarkerType boundary_marker) 
+	{
+		if( GetProcessorsNumber() > 1 )
+		{
+			Tag tag_bnd = CreateTag("CALC_BOUNDARY",DATA_INTEGER,FACE,NONE);
+			//we need shared unique numbers on cells
+			if( !(have_global_id & CELL) ) AssignGlobalID(CELL);
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
+			{
+				Face face = FaceByLocalID(it);
+				integer_array arr = face->IntegerArray(tag_bnd);
+				ElementArray<Cell> adj = face->getCells();
+				for(ElementArray<Cell>::iterator jt = adj.begin(); jt != adj.end(); jt++)
+					arr.push_back(jt->GlobalID());
+			}
+			ReduceData(tag_bnd,FACE,0,UnpackBoundary);
+			ExchangeData(tag_bnd,FACE,0);
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
+			{
+				Face face = FaceByLocalID(it);
+				if( face->IntegerArray(tag_bnd).size() == 1 )
+					face->SetMarker(boundary_marker);
+			}
+			DeleteTag(tag_bnd);
+		}
+		else //nothing to worry about
+		{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for(integer it = 0; it < FaceLastLocalID(); ++it)
+			{
+				Face face = FaceByLocalID(it);
+				if( face->Boundary() ) face->SetMarker(boundary_marker);
+			}
+
+		}
+	}
+
 }
 #endif

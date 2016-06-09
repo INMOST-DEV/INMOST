@@ -1626,7 +1626,7 @@ namespace INMOST
 	
 	std::pair<ElementSet,bool> Mesh::CreateSet(std::string name)
 	{
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ElementNum(ESET),it) )
+		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
 		{
 			ElementSet e = EsetByLocalID(it);
 			if( e->GetName() == name )
@@ -1646,7 +1646,7 @@ namespace INMOST
 		{
 			array<Storage::real> temp(dims*NumberOfNodes());
 			Storage::integer j = 0;
-			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElement(0,k) )
+			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElementNum(0,k) )
 			{
 				memcpy(temp.data()+j,MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),sizeof(Storage::real)*dims);
 				j+=dims;
@@ -1655,7 +1655,7 @@ namespace INMOST
 			DeleteTag(tag_coords);
 			tag_coords = CreateTag("COORD",DATA_REAL,NODE,NONE,dims);
 			j = 0;
-			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElement(0,k) )
+			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElementNum(0,k) )
 			{
 				memcpy(MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),temp.data()+j,sizeof(Storage::real)*dims);
 				j+=dims;
@@ -1834,16 +1834,29 @@ namespace INMOST
 		return InvalidMarker();
 	}
   
-	void Mesh::ReleaseMarker(MarkerType n)
+	void Mesh::ReleaseMarker(MarkerType n, ElementType cleanup)
 	{
-    assert(!isPrivate(n));
+		assert(!isPrivate(n));
+		if( cleanup )
+		{
+			for(ElementType etype = NODE; etype < MESH; etype = NextElementType(etype)) if( cleanup & etype )
+			{
+				integer end = LastLocalID(etype);
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for(integer id = 0; id < end; ++id) 
+					if( isValidElement(etype,id) )
+						RemMarker(ComposeHandle(etype,id),n);
+			}
+		}
 #if defined(CHECKS_MARKERS)
 #ifndef NDEBUG
 		for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
 		{
 			integer end = LastLocalIDNum(etypenum);
 			for(integer id = 0; id < end; ++id) 
-				if( isValidElement(etypenum,id) )
+				if( isValidElementNum(etypenum,id) )
 					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");
 		}
 #endif
@@ -1861,7 +1874,7 @@ namespace INMOST
 		{
 			integer end = LastLocalIDNum(etypenum);
 			for(integer id = 0; id < end; ++id) 
-				if( isValidElement(etypenum,id) )
+				if( isValidElementNum(etypenum,id) )
 					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,tag_private_marker[thread]))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");
 		}
 #endif
@@ -2298,7 +2311,7 @@ namespace INMOST
 
 	ElementSet Mesh::GetSet(std::string name)
 	{
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ElementNum(ESET),it) )
+		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
 		{
 			ElementSet e = EsetByLocalID(it);
 			if( e->GetName() == name )
@@ -2310,7 +2323,7 @@ namespace INMOST
 	ElementArray<ElementSet> Mesh::GetSetsByPrefix(std::string name)
 	{
 		ElementArray<ElementSet> ret(this);
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ElementNum(ESET),it) )
+		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
 		{
 			ElementSet e = EsetByLocalID(it);
 			if( e->GetName().substr(0,name.size()) == name )

@@ -906,17 +906,17 @@ namespace INMOST
 	class ElementSet : public Element //implemented in eset.cpp
 	{
 	public:
-    ///Number of reserved positions in HighConn array.
-    ///The first position is the handle to parent set.
-    ///The second position is handle to sibling set.
-    ///The third position is handle to child set.
-    ///The fourth position is number of sorted elements in the set.
-    ///All the rest are positions of deleted elements.
+		///Number of reserved positions in HighConn array.
+		///The first position is the handle to parent set.
+		///The second position is handle to sibling set.
+		///The third position is handle to child set.
+		///The fourth position is number of sorted elements in the set.
+		///All the rest are positions of deleted elements.
 		static const enumerator             high_conn_reserved  = 4;
-    __INLINE static HandleType &        hParent             (Element::adj_type & arr) {return arr[0];}
-	  __INLINE static HandleType &        hSibling            (Element::adj_type & arr) {return arr[1];}
-	  __INLINE static HandleType &        hChild              (Element::adj_type & arr) {return arr[2];}
-	  __INLINE static HandleType &        hSorted             (Element::adj_type & arr) {return arr[3];}
+		__INLINE static HandleType &        hParent             (Element::adj_type & arr) {return arr[0];}
+		__INLINE static HandleType &        hSibling            (Element::adj_type & arr) {return arr[1];}
+		__INLINE static HandleType &        hChild              (Element::adj_type & arr) {return arr[2];}
+		__INLINE static HandleType &        hSorted             (Element::adj_type & arr) {return arr[3];}
 		typedef INMOST_DATA_BULK_TYPE       ComparatorType;
 		static const ComparatorType         UNSORTED_COMPARATOR = 0;
 		static const ComparatorType         GLOBALID_COMPARATOR = 1;
@@ -1015,7 +1015,7 @@ namespace INMOST
 		/// This will also remove any duplicates in unsorted part of the set.
 		/// If you inserted duplicated elements through PutElements into previously sorted array
 		/// then this operation does not guarantee that those duplications will be stored.
-    /// \todo Recheck usage of markers.
+		/// \todo Recheck usage of markers.
 		void                        AddElements(const HandleType * handles, enumerator num) const;
 		/// Add elements of other set
 		void                        AddElements(const ElementSet & other) {Unite(other);}
@@ -1138,7 +1138,7 @@ namespace INMOST
 		bool FindHandle(HandleType h, bool use_comparator) const;
 		/// Set markers on all the elements of given type
 		void SetMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
-    void SetPrivateMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
+		void SetPrivateMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
 		/// Remove markers from all the elements of given type
 		void RemMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
     void RemPrivateMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
@@ -1207,19 +1207,19 @@ namespace INMOST
 	public:
 		enum MeshState {Serial, Parallel};
 		typedef chunk_array<integer,chunk_bits_empty>               
-                                        empty_container;
+											empty_container;
 		typedef chunk_array<integer,chunk_bits_elems>               
-                                        links_container;
+											links_container;
 		//typedef std::vector<integer>                                empty_container;
 		//typedef std::vector<integer>                                links_container;
 		typedef TagManager::sparse_sub_type                         
-                                        sparse_type;
+											sparse_type;
 		typedef TagManager::sparse_sub_record                       
-                                        sparse_rec;
+											sparse_rec;
 		typedef sparse_type::size_type                              
-                                        senum;
+											senum;
 	private:
-    std::string                         name;
+		std::string                         name;
 		real                                epsilon;
 		empty_container                     empty_space[6];
 		empty_container                     empty_links[6];
@@ -1277,7 +1277,7 @@ namespace INMOST
 		/// return total number in bytes of occupied memory by element and its data
 		enumerator                          MemoryUsage         (HandleType h);
 		                                    Mesh                ();
-                                        Mesh                (std::string name);
+											Mesh                (std::string name);
 		                                    Mesh                (const Mesh & other);
 		Mesh &                              operator =          (Mesh const & other);
 		                                    ~Mesh               ();
@@ -1287,9 +1287,9 @@ namespace INMOST
 		/// or you forget to release markers after you use them.
 		///
 		/// In release mode (NDEBUG is set) if you run out of space for markers function will return InvalidMarker()
-		/// @return new marker or InvalidMarker(), see description
+		/// @return New marker or InvalidMarker(), see description.
 		MarkerType                          CreateMarker         ();
-    MarkerType                          CreatePrivateMarker  ();
+		MarkerType                          CreatePrivateMarker  ();
 		/// Release marker back for reuse.
 		/// This function will only notice mesh that the marker is free to be reused, this will not clear markers
 		/// from elements. Before releasing the marker you should ensure that all the marker is removed from all the elements.
@@ -1297,9 +1297,10 @@ namespace INMOST
 		///
 		/// Since it is expensive to check asserts will fire in debug mode (NDEBUG not set) only if you define CHECKS_MARKERS in inmost_common.h,
 		/// no checks will be performed in release mode(NDEBUG is set).
-		/// @param n byte position and byte bit mask
-		void                                ReleaseMarker       (MarkerType n);
-    void                                ReleasePrivateMarker(MarkerType n);
+		/// @param n Byte position and byte bit mask.
+		/// @param cleanup Elements on which marker should be removed.
+		void                                ReleaseMarker       (MarkerType n, ElementType cleanup = NONE);
+		void                                ReleasePrivateMarker(MarkerType n);
 		/// Set tolerance for coordinates comparison. This tolerance is used in comparators 
 		/// when two meshes are merged during loading, in ResolveShared to check that nodes on different processors match 
 		/// and in UnpackElementsData
@@ -1392,9 +1393,9 @@ namespace INMOST
 		                                                      const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
 		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer num_c_faces, 
 		                                                      const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
-    std::pair<ElementSet,bool>        CreateSet          (std::string name);
-    /// Same as Mesh::CreateSet without checking existance of the set  
-    std::pair<ElementSet,bool>        CreateSetUnique    (std::string name);
+		std::pair<ElementSet,bool>        CreateSet          (std::string name);
+		/// Same as Mesh::CreateSet without checking existance of the set  
+		std::pair<ElementSet,bool>        CreateSetUnique    (std::string name);
 		/// Retrieve set by name.
 		/// @param name set name
 		/// @return set whose name match or InvalidHandle()
@@ -1404,14 +1405,14 @@ namespace INMOST
 		HandleType                        LastCreated        () const {return last_created;}
 
 		bool                              isValidHandleRange (HandleType h) const; //for asserts
-		bool                              isValidElement     (integer etypenum, integer lid) const {return links[etypenum][lid] != -1;}
+		bool                              isValidElementNum  (integer etypenum, integer lid) const {return links[etypenum][lid] != -1;}
 		bool                              isValidElement     (ElementType etype, integer lid) const {return links[ElementNum(etype)][lid] != -1;}
-    bool                              isValidCell        (integer lid) const {return links[ElementNum(CELL)][lid] != -1;}
-    bool                              isValidFace        (integer lid) const {return links[ElementNum(FACE)][lid] != -1;}
-    bool                              isValidEdge        (integer lid) const {return links[ElementNum(EDGE)][lid] != -1;}
-    bool                              isValidNode        (integer lid) const {return links[ElementNum(NODE)][lid] != -1;}
-    bool                              isValidElementSet  (integer lid) const {return links[ElementNum(ESET)][lid] != -1;}
-    bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElement(GetHandleElementNum(h),GetHandleID(h));}
+		bool                              isValidCell        (integer lid) const {return links[ElementNum(CELL)][lid] != -1;}
+		bool                              isValidFace        (integer lid) const {return links[ElementNum(FACE)][lid] != -1;}
+		bool                              isValidEdge        (integer lid) const {return links[ElementNum(EDGE)][lid] != -1;}
+		bool                              isValidNode        (integer lid) const {return links[ElementNum(NODE)][lid] != -1;}
+		bool                              isValidElementSet  (integer lid) const {return links[ElementNum(ESET)][lid] != -1;}
+		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElementNum(GetHandleElementNum(h),GetHandleID(h));}
 		/// Retrieve upper adjacent that is shared by multiple lower adjacencies.
 		/// @return handle of found element or InvalidHandle()
 		HandleType                        FindSharedAdjacency(const HandleType * arr, enumerator num) const;
@@ -2964,13 +2965,13 @@ namespace INMOST
 		///    for subsequent data loading. This will cure the case when tags were already priviously defined
 		///    on mesh with different masks and data will be red incorrectly.
 		void         Load(std::string File);
-    void         LoadMSH(std::string File);
-    void         LoadECL(std::string File);
-    void         LoadXML(std::string File);
-    void         LoadPMF(std::string File); 
-    void         LoadVTK(std::string File); 
-    void         LoadPVTK(std::string File); 
-    void         LoadMKF(std::string File);
+		void         LoadMSH(std::string File);
+		void         LoadECL(std::string File);
+		void         LoadXML(std::string File);
+		void         LoadPMF(std::string File); 
+		void         LoadVTK(std::string File); 
+		void         LoadPVTK(std::string File); 
+		void         LoadMKF(std::string File);
 		/// Acceptable file formats for writing
 		/// - ".vtk"  - legacy vtk format for unstructured grid
 		/// - ".pvtk" - legacy parallel vtk format
@@ -2985,11 +2986,11 @@ namespace INMOST
 		/// \todo
 		/// 1. Markers are not saved in internal format due to possible conflict during load.
 		void         Save(std::string File);
-    void         SaveXML(std::string File);
-    void         SavePMF(std::string File);
-    void         SaveVTK(std::string File);
-    void         SavePVTK(std::string File);
-    void         SaveGMV(std::string File);
+		void         SaveXML(std::string File);
+		void         SavePMF(std::string File);
+		void         SaveVTK(std::string File);
+		void         SavePVTK(std::string File);
+		void         SaveGMV(std::string File);
 		bool         isParallelFileFormat(std::string File);
 	public:
 		
@@ -3025,6 +3026,9 @@ namespace INMOST
 		integer                           CountInteriorFaces ();
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size) const;
+		/// Sets marker for all the faces that have only one neighbouring cell, works correctly in parallel environment.
+		/// @param boundary_marker Non-private marker that will indicate boundary faces.
+		void                              MarkBoundaryFaces(MarkerType boundary_marker);
 		//implemented in modify.cpp
 	private:
 		MarkerType hide_element, new_element, temp_hide_element;
@@ -3039,10 +3043,10 @@ namespace INMOST
 		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
-    /// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
-    /// If you have any tags of type DATA_REMOTE_REFERENCE on current mesh linking to the elements of the current mesh
-    /// or there are other meshes that posses tags of type DATA_REMOTE_REFERENCE and link elements on the current mesh,
-    /// you should check that there are no links to deleted elements manually with Element::Old().
+		/// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
+		/// If you have any tags of type DATA_REMOTE_REFERENCE on current mesh linking to the elements of the current mesh
+		/// or there are other meshes that posses tags of type DATA_REMOTE_REFERENCE and link elements on the current mesh,
+		/// you should check that there are no links to deleted elements manually with Element::Old().
 		/// \todo
 		///      1. maybe instead of forming set of deleted elements and subtracting set from other sets it is better
 		///         to remove each modified element
@@ -3205,163 +3209,163 @@ namespace INMOST
 		/// TODO 53 check that putting global ids to array will be faster
 		void SortByGlobalID(HandleType * h, enumerator num);
 
-    /// Retrive the name of the current mesh.
-    std::string GetMeshName();
-    /// Be careful changing mesh name if you have already established remote links.
-    void SetMeshName(std::string new_name);
-    /// Find mesh by name.
-    static Mesh * GetMesh(std::string name);
+		/// Retrive the name of the current mesh.
+		std::string GetMeshName();
+		/// Be careful changing mesh name if you have already established remote links.
+		void SetMeshName(std::string new_name);
+		/// Find mesh by name.
+		static Mesh * GetMesh(std::string name);
 	};
 
 
-  //////////////////////////////////////////////////////////////////////
-  /// Inline functions for class Storage                              //
-  //////////////////////////////////////////////////////////////////////
-  __INLINE Storage::real & Storage::Real(const Tag & tag) const
-  {
-    return GetMeshLink()->Real(GetHandle(),tag);
-  }
-  __INLINE Storage::integer & Storage::Integer(const Tag & tag)  const
-  {
-    return GetMeshLink()->Integer(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk & Storage::Bulk(const Tag & tag)  const
-  {
-    return GetMeshLink()->Bulk(GetHandle(),tag);
-  }
-  __INLINE Storage::reference & Storage::Reference(const Tag & tag)  const
-  {
-    return GetMeshLink()->Reference(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference & Storage::RemoteReference(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReference(GetHandle(),tag);
-  }
-  __INLINE Storage::real_array Storage::RealArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealArray(GetHandle(),tag);
-  }
-  __INLINE Storage::integer_array Storage::IntegerArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerArray(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk_array Storage::BulkArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkArray(GetHandle(),tag);
-  }
-  __INLINE Storage::reference_array Storage::ReferenceArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceArray(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceArray(GetHandle(),tag);
-  }
-  __INLINE Storage::real_array Storage::RealArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::integer_array Storage::IntegerArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk_array Storage::BulkArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::reference_array Storage::ReferenceArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::real & Storage::RealDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealDF(GetHandle(),tag);
-  }
-  __INLINE Storage::integer & Storage::IntegerDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerDF(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk & Storage::BulkDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkDF(GetHandle(),tag);
-  }
-  __INLINE Storage::reference & Storage::ReferenceDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceDF(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference & Storage::RemoteReferenceDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceDF(GetHandle(),tag);
-  }
-  __INLINE Storage::real_array Storage::RealArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::integer_array Storage::IntegerArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerArrayDV(GetHandle(),tag);	
-  }
-  __INLINE Storage::bulk_array Storage::BulkArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::reference_array Storage::ReferenceArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::real & Storage::RealDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealDV(GetHandle(),tag);
-  }
-  __INLINE Storage::integer & Storage::IntegerDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerDV(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk & Storage::BulkDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkDV(GetHandle(),tag);
-  }
-  __INLINE Storage::reference & Storage::ReferenceDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceDV(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference & Storage::RemoteReferenceDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceDV(GetHandle(),tag);
-  }
+	//////////////////////////////////////////////////////////////////////
+	/// Inline functions for class Storage                              //
+	//////////////////////////////////////////////////////////////////////
+	__INLINE Storage::real & Storage::Real(const Tag & tag) const
+	{
+		return GetMeshLink()->Real(GetHandle(),tag);
+	}
+	__INLINE Storage::integer & Storage::Integer(const Tag & tag)  const
+	{
+		return GetMeshLink()->Integer(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk & Storage::Bulk(const Tag & tag)  const
+	{
+		return GetMeshLink()->Bulk(GetHandle(),tag);
+	}
+	__INLINE Storage::reference & Storage::Reference(const Tag & tag)  const
+	{
+		return GetMeshLink()->Reference(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference & Storage::RemoteReference(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReference(GetHandle(),tag);
+	}
+	__INLINE Storage::real_array Storage::RealArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealArray(GetHandle(),tag);
+	}
+	__INLINE Storage::integer_array Storage::IntegerArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerArray(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk_array Storage::BulkArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkArray(GetHandle(),tag);
+	}
+	__INLINE Storage::reference_array Storage::ReferenceArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceArray(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference_array Storage::RemoteReferenceArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceArray(GetHandle(),tag);
+	}
+	__INLINE Storage::real_array Storage::RealArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::integer_array Storage::IntegerArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk_array Storage::BulkArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::reference_array Storage::ReferenceArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::real & Storage::RealDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealDF(GetHandle(),tag);
+	}
+	__INLINE Storage::integer & Storage::IntegerDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerDF(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk & Storage::BulkDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkDF(GetHandle(),tag);
+	}
+	__INLINE Storage::reference & Storage::ReferenceDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceDF(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference & Storage::RemoteReferenceDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceDF(GetHandle(),tag);
+	}
+	__INLINE Storage::real_array Storage::RealArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::integer_array Storage::IntegerArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerArrayDV(GetHandle(),tag);	
+	}
+	__INLINE Storage::bulk_array Storage::BulkArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::reference_array Storage::ReferenceArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::real & Storage::RealDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealDV(GetHandle(),tag);
+	}
+	__INLINE Storage::integer & Storage::IntegerDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerDV(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk & Storage::BulkDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkDV(GetHandle(),tag);
+	}
+	__INLINE Storage::reference & Storage::ReferenceDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceDV(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference & Storage::RemoteReferenceDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceDV(GetHandle(),tag);
+	}
 #if defined(USE_AUTODIFF)
-  __INLINE Storage::var & Storage::Variable(const Tag & tag) const
-  {
-    return GetMeshLink()->Variable(GetHandle(),tag);
-  }
-  __INLINE Storage::var & Storage::VariableDF(const Tag & tag) const
-  {
-    return GetMeshLink()->VariableDF(GetHandle(),tag);
-  }
-  __INLINE Storage::var & Storage::VariableDV(const Tag & tag) const
-  {
-    return GetMeshLink()->VariableDV(GetHandle(),tag);
-  }
-  __INLINE Storage::var_array Storage::VariableArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->VariableArray(GetHandle(),tag);
-  }
-  __INLINE Storage::var_array Storage::VariableArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->VariableArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::var_array Storage::VariableArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->VariableArrayDV(GetHandle(),tag);
-  }
+	__INLINE Storage::var & Storage::Variable(const Tag & tag) const
+	{
+		return GetMeshLink()->Variable(GetHandle(),tag);
+	}
+	__INLINE Storage::var & Storage::VariableDF(const Tag & tag) const
+	{
+		return GetMeshLink()->VariableDF(GetHandle(),tag);
+	}
+	__INLINE Storage::var & Storage::VariableDV(const Tag & tag) const
+	{
+		return GetMeshLink()->VariableDV(GetHandle(),tag);
+	}
+	__INLINE Storage::var_array Storage::VariableArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->VariableArray(GetHandle(),tag);
+	}
+	__INLINE Storage::var_array Storage::VariableArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->VariableArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::var_array Storage::VariableArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->VariableArrayDV(GetHandle(),tag);
+	}
 #endif
 	__INLINE bool Storage::HaveData(const Tag & tag) const
 	{
