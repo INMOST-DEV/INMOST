@@ -14,15 +14,15 @@ namespace INMOST
 		return *this;
 	}
 	
-  Element MakeElement(const RemoteHandleType & rh)
-  {
-    return Element(rh.first,rh.second);
-  }
+	Element MakeElement(const RemoteHandleType & rh)
+	{
+		return Element(rh.first,rh.second);
+	}
 
-  Element MakeElementRef(RemoteHandleType & rh)
-  {
-    return Element(rh.first,&rh.second);
-  }
+	Element MakeElementRef(RemoteHandleType & rh)
+	{
+		return Element(rh.first,&rh.second);
+	}
 	
 	Element Storage::reference_array::operator [](size_type n)  
 	{
@@ -54,20 +54,56 @@ namespace INMOST
 		return Element(m,shell<HandleType>::const_reverse_iterator::operator *());
 	}
 
-  void Storage::reference_array::push_back(const Storage & ref) 
-  {
-    shell<reference>::push_back(ref->GetHandle());
-  }
-
-  Element Storage::remote_reference_array::operator [](size_type n)  
+	void Storage::reference_array::push_back(const Storage & ref) 
 	{
-    
+		shell<reference>::push_back(ref->GetHandle());
+	}
+
+	Element Storage::reference_array::back() 
+	{
+		return Element(m,&shell<HandleType>::back());
+	}
+	Element Storage::reference_array::back() const 
+	{
+		return Element(m,shell<HandleType>::back());
+	}
+	Element Storage::reference_array::front() 
+	{
+		return Element(m,&shell<HandleType>::front());
+	}
+	Element Storage::reference_array::front() const 
+	{
+		return Element(m,shell<HandleType>::front());
+	}
+
+	Element Storage::remote_reference_array::operator [](size_type n)  
+	{
 		return MakeElementRef(shell<remote_reference>::operator[](n));
 	}
 
 	Element Storage::remote_reference_array::operator [](size_type n) const 
 	{
 		return MakeElement(shell<remote_reference>::operator[](n));
+	}
+
+	Element Storage::remote_reference_array::back() const 
+	{
+		return MakeElement(shell<remote_reference>::back());
+	}
+
+	Element Storage::remote_reference_array::back() 
+	{
+		return MakeElementRef(shell<remote_reference>::back());
+	}
+
+	Element Storage::remote_reference_array::front() const 
+	{
+		return MakeElement(shell<remote_reference>::front());
+	}
+
+	Element Storage::remote_reference_array::front() 
+	{
+		return MakeElementRef(shell<remote_reference>::front());
 	}
 
 	Element Storage::remote_reference_array::iterator::operator->()
