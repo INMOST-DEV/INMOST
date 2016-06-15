@@ -40,97 +40,97 @@ namespace INMOST
 
 
 	///Definition for data type of topology error or event. This type may be extended later to 64 bits
-  /// to accomodate more topological errors or events.
-	typedef INMOST_DATA_ENUM_TYPE         TopologyCheck; 
-  ///Throw TopologyError exception on error.
-	static const TopologyCheck            THROW_EXCEPTION        = 0x00000001; 
-  ///Print topology notify to std::cerr.
-	static const TopologyCheck            PRINT_NOTIFY           = 0x00000002; 
-  ///Element should be deleted if there is an error in EndTopologyCheck.
-	static const TopologyCheck            DELETE_ON_ERROR        = 0x00000004; 
-  ///Bitwise OR of errors is recorded to sparse integer tag of element (if not deleted), availible 
-  /// by TopologyErrorTag().
-	static const TopologyCheck            MARK_ON_ERROR          = 0x00000008; 
-  ///Check that edge already exists, on occurance CreateEdge silently returns existant edge.
-	static const TopologyCheck            DUPLICATE_EDGE         = 0x00000010; 
-  ///Check that face already exists, on occurance CreateFace silently returns existant face.
-	static const TopologyCheck            DUPLICATE_FACE         = 0x00000020; 
-  ///Check that cell already exists, on occurance CreateCell silently returns existant cell.
-	static const TopologyCheck            DUPLICATE_CELL         = 0x00000040; 
-  ///Check that edge have more then two nodes (no support for this kind of object).
-	static const TopologyCheck            DEGENERATE_EDGE        = 0x00000080; 
-  ///Produce error if face consists of less then 3 edges.
-	static const TopologyCheck            DEGENERATE_FACE        = 0x00000100; 
-  ///Produce error if cell consists of less then 4 faces.
-	static const TopologyCheck            DEGENERATE_CELL        = 0x00000200; 
-  ///Produce error if face have wrong orientation of edges, for star-shaped elements only.
-	static const TopologyCheck            FACE_ORIENTATION       = 0x00000400; 
-  ///Produce error if face is non planar.
-	static const TopologyCheck            FACE_PLANARITY         = 0x00000800; 
-  ///Produce error if there is another face that already uses same nodes.
-	static const TopologyCheck            INTERLEAVED_FACES      = 0x00001000; 
-  ///Check that every face have exectly two neighbours, if DUPLICATE_CELL is activated, then checks 
-  /// for cell duplication.
+	/// to accomodate more topological errors or events.
+	typedef INMOST_DATA_ENUM_TYPE         TopologyCheck;
+	///Throw TopologyError exception on error.
+	static const TopologyCheck            THROW_EXCEPTION        = 0x00000001;
+	///Print topology notify to std::cerr.
+	static const TopologyCheck            PRINT_NOTIFY           = 0x00000002;
+	///Element should be deleted if there is an error in EndTopologyCheck.
+	static const TopologyCheck            DELETE_ON_ERROR        = 0x00000004;
+	///Bitwise OR of errors is recorded to sparse integer tag of element (if not deleted), availible
+	/// by TopologyErrorTag().
+	static const TopologyCheck            MARK_ON_ERROR          = 0x00000008;
+	///Check that edge already exists, on occurance CreateEdge silently returns existant edge.
+	static const TopologyCheck            DUPLICATE_EDGE         = 0x00000010;
+	///Check that face already exists, on occurance CreateFace silently returns existant face.
+	static const TopologyCheck            DUPLICATE_FACE         = 0x00000020;
+	///Check that cell already exists, on occurance CreateCell silently returns existant cell.
+	static const TopologyCheck            DUPLICATE_CELL         = 0x00000040;
+	///Check that edge have more then two nodes (no support for this kind of object).
+	static const TopologyCheck            DEGENERATE_EDGE        = 0x00000080;
+	///Produce error if face consists of less then 3 edges.
+	static const TopologyCheck            DEGENERATE_FACE        = 0x00000100;
+	///Produce error if cell consists of less then 4 faces.
+	static const TopologyCheck            DEGENERATE_CELL        = 0x00000200;
+	///Produce error if face have wrong orientation of edges, for star-shaped elements only.
+	static const TopologyCheck            FACE_ORIENTATION       = 0x00000400;
+	///Produce error if face is non planar.
+	static const TopologyCheck            FACE_PLANARITY         = 0x00000800;
+	///Produce error if there is another face that already uses same nodes.
+	static const TopologyCheck            INTERLEAVED_FACES      = 0x00001000;
+	///Check that every face have exectly two neighbours, if DUPLICATE_CELL is activated, then checks
+	/// for cell duplication.
 	static const TopologyCheck            TRIPLE_SHARED_FACE     = 0x00002000;
-  ///Produce error if one of the faces of the cell contains all the nodes of the cell.
+	///Produce error if one of the faces of the cell contains all the nodes of the cell.
 	static const TopologyCheck            FLATTENED_CELL         = 0x00004000;
-  ///Produce error if provided array of elements for construction contain duplications.
+	///Produce error if provided array of elements for construction contain duplications.
 	static const TopologyCheck            ADJACENT_DUPLICATE     = 0x00008000;
-  ///Hidden elements should not be used when new elements are created.
-	static const TopologyCheck            ADJACENT_HIDDEN        = 0x00010000; 
-  ///Check that all handles are valid.
-	static const TopologyCheck            ADJACENT_VALID         = 0x00020000; 
-  ///Produce error if provided array of elements have wrong geometric dimension.
-	static const TopologyCheck            ADJACENT_DIMENSION     = 0x00040000; 
-  ///Produce error if edges of faces are not closed, or face is folded.
-  /// \warning This check needs NEED_TEST_CLOSURE to be activated.
+	///Hidden elements should not be used when new elements are created.
+	static const TopologyCheck            ADJACENT_HIDDEN        = 0x00010000;
+	///Check that all handles are valid.
+	static const TopologyCheck            ADJACENT_VALID         = 0x00020000;
+	///Produce error if provided array of elements have wrong geometric dimension.
+	static const TopologyCheck            ADJACENT_DIMENSION     = 0x00040000;
+	///Produce error if edges of faces are not closed, or face is folded.
+	/// \warning This check needs NEED_TEST_CLOSURE to be activated.
 	static const TopologyCheck            PROHIBIT_MULTILINE     = 0x00080000;
-  /// Allow only known types of elements: Tet, Quad, Line.
+	/// Allow only known types of elements: Tet, Quad, Line.
 	static const TopologyCheck            PROHIBIT_POLYGON       = 0x00100000;
-  ///Produce error if faces of cell are not closed, or cell is folded.
-  /// \warning This check needs NEED_TEST_CLOSURE to be activated.
-	static const TopologyCheck            PROHIBIT_MULTIPOLYGON  = 0x00200000; 
-  ///Allow only known types of elements: Tet,Hex,Prism,Pyramid.
-	static const TopologyCheck            PROHIBIT_POLYHEDRON    = 0x00400000; 
-  ///Edges of the face should form one closed loop.
-	static const TopologyCheck            FACE_EDGES_ORDER       = 0x00800000; 
-  ///Don't allow concave face.
-  /// \warning Not implemented.
-	static const TopologyCheck            PROHIBIT_CONCAVE_FACE  = 0x01000000; 
-  ///Don't allow concave cell.
-  /// \warning Not implemented.
+	///Produce error if faces of cell are not closed, or cell is folded.
+	/// \warning This check needs NEED_TEST_CLOSURE to be activated.
+	static const TopologyCheck            PROHIBIT_MULTIPOLYGON  = 0x00200000;
+	///Allow only known types of elements: Tet,Hex,Prism,Pyramid.
+	static const TopologyCheck            PROHIBIT_POLYHEDRON    = 0x00400000;
+	///Edges of the face should form one closed loop.
+	static const TopologyCheck            FACE_EDGES_ORDER       = 0x00800000;
+	///Don't allow concave face.
+	/// \warning Not implemented.
+	static const TopologyCheck            PROHIBIT_CONCAVE_FACE  = 0x01000000;
+	///Don't allow concave cell.
+	/// \warning Not implemented.
 	static const TopologyCheck            PROHIBIT_CONCAVE_CELL  = 0x02000000;
-  ///Don't allow non-star shaped face.
-  /// \warning Not implemented.
+	///Don't allow non-star shaped face.
+	/// \warning Not implemented.
 	static const TopologyCheck            PROHIBIT_NONSTAR_FACE  = 0x04000000;
-  ///Don't allow non-star shaped concave cell.
-  /// \warning Not implemented.
+	///Don't allow non-star shaped concave cell.
+	/// \warning Not implemented.
 	static const TopologyCheck            PROHIBIT_NONSTAR_CELL  = 0x08000000;
-  ///Edges of the face don't cross each other.
-  /// \warning Not implemented.
+	///Edges of the face don't cross each other.
+	/// \warning Not implemented.
 	static const TopologyCheck            FACE_SELF_INTERSECTION = 0x10000000;
-  ///Faces of the cell don't cross each other.
-  /// \warning Not implemented.
-	static const TopologyCheck            CELL_SELF_INTERSECTION = 0x20000000; 
-  ///Silent, test's for closure in ComputeGeometricType, needed to detect MultiLine and 
-  /// MultiPolygon.
-	static const TopologyCheck            NEED_TEST_CLOSURE      = 0x40000000; 
-  ///Don't allow 2d grids, where edges appear to be vertexes, faces are edges and cells are faces
+	///Faces of the cell don't cross each other.
+	/// \warning Not implemented.
+	static const TopologyCheck            CELL_SELF_INTERSECTION = 0x20000000;
+	///Silent, test's for closure in ComputeGeometricType, needed to detect MultiLine and
+	/// MultiPolygon.
+	static const TopologyCheck            NEED_TEST_CLOSURE      = 0x40000000;
+	///Don't allow 2d grids, where edges appear to be vertexes, faces are edges and cells are faces
 	static const TopologyCheck            DISABLE_2D             = 0x80000000;
-  ///A shortcut to test for grid conformity.
+	///A shortcut to test for grid conformity.
 	static const TopologyCheck            GRID_CONFORMITY        = NEED_TEST_CLOSURE 
                                                                | PROHIBIT_MULTILINE 
                                                                | PROHIBIT_MULTIPOLYGON  
                                                                | INTERLEAVED_FACES 
                                                                | TRIPLE_SHARED_FACE;
-  ///Default set of options.
+	///Default set of options.
 	static const TopologyCheck            DEFAULT_CHECK          = THROW_EXCEPTION 
                                                                | DUPLICATE_EDGE 
                                                                | DUPLICATE_FACE 
                                                                | DUPLICATE_CELL 
                                                                | PRINT_NOTIFY;
-  ///Returns a string explaining each topology check. Implemented in mesh.cpp.
-  /// @param c Single topology check.
+	///Returns a string explaining each topology check. Implemented in mesh.cpp.
+	/// @param c Single topology check.
 	const char * TopologyCheckNotifyString(TopologyCheck c);
   
  
@@ -162,9 +162,9 @@ namespace INMOST
 		public:
 			iterator(Mesh * m, const cont_t::iterator & other ) : cont_t::iterator(other) , m_link(m){assert(m_link);}
 			iterator(const iterator & other ) : cont_t::iterator(other), m_link(other.m_link) {assert(m_link);}
-      ptrdiff_t     operator -(const iterator & other) const {return static_cast<const cont_t::iterator>(*this)-static_cast<const cont_t::iterator>(other);}
-      iterator      operator +(size_t n){iterator ret(*this); ret.cont_t::iterator::operator+(n); return ret;}
-      iterator      operator -(size_t n){iterator ret(*this); ret.cont_t::iterator::operator-(n); return ret;}
+			ptrdiff_t     operator -(const iterator & other) const {return static_cast<const cont_t::iterator>(*this)-static_cast<const cont_t::iterator>(other);}
+			iterator      operator +(size_t n){iterator ret(*this); ret.cont_t::iterator::operator+(n); return ret;}
+			iterator      operator -(size_t n){iterator ret(*this); ret.cont_t::iterator::operator-(n); return ret;}
 			iterator &    operator ++() {cont_t::iterator::operator++(); return *this;}
 			iterator      operator ++(int) {iterator ret(*this); cont_t::iterator::operator++(); return ret;}
 			iterator &    operator --() {cont_t::iterator::operator--(); return *this;}
@@ -179,9 +179,9 @@ namespace INMOST
 		public:
 			reverse_iterator(Mesh * m, const cont_t::reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(m) {assert(m_link);}
 			reverse_iterator(const reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(other.m_link) {assert(m_link);}
-      ptrdiff_t             operator -(const reverse_iterator & other) const {return static_cast<const cont_t::reverse_iterator>(other)-static_cast<const cont_t::reverse_iterator>(*this);}
-      reverse_iterator      operator +(size_t n){reverse_iterator ret(*this); ret.cont_t::reverse_iterator::operator+(n); return ret;}
-      reverse_iterator      operator -(size_t n){reverse_iterator ret(*this); ret.cont_t::reverse_iterator::operator-(n); return ret;}
+			ptrdiff_t             operator -(const reverse_iterator & other) const {return static_cast<const cont_t::reverse_iterator>(other)-static_cast<const cont_t::reverse_iterator>(*this);}
+			reverse_iterator      operator +(size_t n){reverse_iterator ret(*this); ret.cont_t::reverse_iterator::operator+(n); return ret;}
+			reverse_iterator      operator -(size_t n){reverse_iterator ret(*this); ret.cont_t::reverse_iterator::operator-(n); return ret;}
 			reverse_iterator &    operator ++() {cont_t::reverse_iterator::operator++(); return *this;}
 			reverse_iterator      operator ++(int) {reverse_iterator ret(*this); cont_t::reverse_iterator::operator++(); return ret;}
 			reverse_iterator &    operator --() {cont_t::reverse_iterator::operator--(); return *this;}
@@ -270,10 +270,10 @@ namespace INMOST
 		void                      Intersect   (const ElementArray<EType> & other) {Intersect(other.data(),static_cast<INMOST_DATA_ENUM_TYPE>(other.size()));}
 		void                      SetMarker   (MarkerType n) const;
 		void                      RemMarker   (MarkerType n) const;
-    void                      SetPrivateMarker   (MarkerType n) const;
+		void                      SetPrivateMarker   (MarkerType n) const;
 		void                      RemPrivateMarker   (MarkerType n) const;
-    template<typename Etype>
-    ElementArray<Etype>       Convert() {return ElementArray<Etype>(m_link,container);}
+		template<typename Etype>
+		ElementArray<Etype>       Convert() {return ElementArray<Etype>(m_link,container);}
 	};
 	
 			
@@ -906,14 +906,14 @@ namespace INMOST
 	class ElementSet : public Element //implemented in eset.cpp
 	{
 	public:
-    ///Number of reserved positions in HighConn array.
-    ///The first position is the handle to parent set.
-    ///The second position is handle to sibling set.
-    ///The third position is handle to child set.
-    ///The fourth position is number of sorted elements in the set.
-    ///All the rest are positions of deleted elements.
+		///Number of reserved positions in HighConn array.
+		///The first position is the handle to parent set.
+		///The second position is handle to sibling set.
+		///The third position is handle to child set.
+		///The fourth position is number of sorted elements in the set.
+		///All the rest are positions of deleted elements.
 		static const enumerator             high_conn_reserved  = 4;
-    __INLINE static HandleType &        hParent             (Element::adj_type & arr) {return arr[0];}
+		__INLINE static HandleType &        hParent             (Element::adj_type & arr) {return arr[0];}
 	  __INLINE static HandleType &        hSibling            (Element::adj_type & arr) {return arr[1];}
 	  __INLINE static HandleType &        hChild              (Element::adj_type & arr) {return arr[2];}
 	  __INLINE static HandleType &        hSorted             (Element::adj_type & arr) {return arr[3];}
@@ -1015,7 +1015,7 @@ namespace INMOST
 		/// This will also remove any duplicates in unsorted part of the set.
 		/// If you inserted duplicated elements through PutElements into previously sorted array
 		/// then this operation does not guarantee that those duplications will be stored.
-    /// \todo Recheck usage of markers.
+		/// \todo Recheck usage of markers.
 		void                        AddElements(const HandleType * handles, enumerator num) const;
 		/// Add elements of other set
 		void                        AddElements(const ElementSet & other) {Unite(other);}
@@ -1138,10 +1138,10 @@ namespace INMOST
 		bool FindHandle(HandleType h, bool use_comparator) const;
 		/// Set markers on all the elements of given type
 		void SetMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
-    void SetPrivateMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
+		void SetPrivateMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
 		/// Remove markers from all the elements of given type
 		void RemMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
-    void RemPrivateMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
+		void RemPrivateMarkerElements(MarkerType m, ElementType etype = ESET|CELL|FACE|EDGE|NODE) const;
 		class iterator
 		{
 			Mesh * m;
@@ -1392,9 +1392,9 @@ namespace INMOST
 		                                                      const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
 		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer num_c_faces, 
 		                                                      const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
-    std::pair<ElementSet,bool>        CreateSet          (std::string name);
-    /// Same as Mesh::CreateSet without checking existance of the set  
-    std::pair<ElementSet,bool>        CreateSetUnique    (std::string name);
+		std::pair<ElementSet,bool>        CreateSet          (std::string name);
+		/// Same as Mesh::CreateSet without checking existance of the set
+		std::pair<ElementSet,bool>        CreateSetUnique    (std::string name);
 		/// Retrieve set by name.
 		/// @param name set name
 		/// @return set whose name match or InvalidHandle()
@@ -1406,12 +1406,12 @@ namespace INMOST
 		bool                              isValidHandleRange (HandleType h) const; //for asserts
 		bool                              isValidElement     (integer etypenum, integer lid) const {return links[etypenum][lid] != -1;}
 		bool                              isValidElement     (ElementType etype, integer lid) const {return links[ElementNum(etype)][lid] != -1;}
-    bool                              isValidCell        (integer lid) const {return links[ElementNum(CELL)][lid] != -1;}
-    bool                              isValidFace        (integer lid) const {return links[ElementNum(FACE)][lid] != -1;}
-    bool                              isValidEdge        (integer lid) const {return links[ElementNum(EDGE)][lid] != -1;}
-    bool                              isValidNode        (integer lid) const {return links[ElementNum(NODE)][lid] != -1;}
-    bool                              isValidElementSet  (integer lid) const {return links[ElementNum(ESET)][lid] != -1;}
-    bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElement(GetHandleElementNum(h),GetHandleID(h));}
+		bool                              isValidCell        (integer lid) const {return links[ElementNum(CELL)][lid] != -1;}
+		bool                              isValidFace        (integer lid) const {return links[ElementNum(FACE)][lid] != -1;}
+		bool                              isValidEdge        (integer lid) const {return links[ElementNum(EDGE)][lid] != -1;}
+		bool                              isValidNode        (integer lid) const {return links[ElementNum(NODE)][lid] != -1;}
+		bool                              isValidElementSet  (integer lid) const {return links[ElementNum(ESET)][lid] != -1;}
+		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElement(GetHandleElementNum(h),GetHandleID(h));}
 		/// Retrieve upper adjacent that is shared by multiple lower adjacencies.
 		/// @return handle of found element or InvalidHandle()
 		HandleType                        FindSharedAdjacency(const HandleType * arr, enumerator num) const;
@@ -2366,6 +2366,7 @@ namespace INMOST
         INMOST_MPI_Group                  GetGroup           () const;
 		/// Set MPI communicator
 		void                              SetCommunicator    (INMOST_MPI_Comm _comm);
+		/// Find elements that are common between processors.
 		void                              ResolveShared      ();
 		/// Delete all the ghost cells.
 		void                              RemoveGhost        ();
@@ -2802,8 +2803,8 @@ namespace INMOST
 		void                              EndSequentialCode  ();
 		//iterator.cpp::::::::::::::::::::::::::::::::::::::::::::::::::
 	public:
-		Element                           ElementByLocalID   (integer etypenum, integer lid) {assert(etypenum < 5 && (lid >= 0 && lid < static_cast<integer>(links[etypenum].size())) || (etypenum == 5 && lid == 0)); return Element(this,ComposeHandleNum(etypenum,lid));}
-		Element                           ElementByLocalID   (ElementType etype, integer lid) {return ElementByLocalID(ElementNum(etype),lid);}
+		Element                           ElementByLocalIDNum(integer etypenum, integer lid) {assert(etypenum < 5 && (lid >= 0 && lid < static_cast<integer>(links[etypenum].size())) || (etypenum == 5 && lid == 0)); return Element(this,ComposeHandleNum(etypenum,lid));}
+		Element                           ElementByLocalID   (ElementType etype, integer lid) {return ElementByLocalIDNum(ElementNum(etype),lid);}
 		Element                           ElementByHandle    (HandleType h) {return Element(this,h);}
 		
 		HandleType                        NextHandle         (HandleType h) const;
@@ -3039,17 +3040,17 @@ namespace INMOST
 		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
-    /// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
-    /// If you have any tags of type DATA_REMOTE_REFERENCE on current mesh linking to the elements of the current mesh
-    /// or there are other meshes that posses tags of type DATA_REMOTE_REFERENCE and link elements on the current mesh,
-    /// you should check that there are no links to deleted elements manually with Element::Old().
+		/// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
+		/// If you have any tags of type DATA_REMOTE_REFERENCE on current mesh linking to the elements of the current mesh
+		/// or there are other meshes that posses tags of type DATA_REMOTE_REFERENCE and link elements on the current mesh,
+		/// you should check that there are no links to deleted elements manually with Element::Old().
 		/// \todo
 		///      1. maybe instead of forming set of deleted elements and subtracting set from other sets it is better
 		///         to remove each modified element
 		///         (done, check and compare)
 		///      2. parent/child elements in set would not be replaced or reconnected, this may lead to wrong behavior
 		///         (done, check and compare)
-    /// @see Element::Old
+		/// @see Element::Old
 		void                              ApplyModification  ();  //modify DATA_REFERENCE, tags so that links to hidden elements are converted to NULL and removed from sets
 		/// This function is not yet implemented. It should correctly resolve parallel state of 
 		/// newly created elements, provide them valid global identificators, resolve owners of
@@ -3205,163 +3206,163 @@ namespace INMOST
 		/// TODO 53 check that putting global ids to array will be faster
 		void SortByGlobalID(HandleType * h, enumerator num);
 
-    /// Retrive the name of the current mesh.
-    std::string GetMeshName();
-    /// Be careful changing mesh name if you have already established remote links.
-    void SetMeshName(std::string new_name);
-    /// Find mesh by name.
-    static Mesh * GetMesh(std::string name);
+		/// Retrive the name of the current mesh.
+		std::string GetMeshName();
+		/// Be careful changing mesh name if you have already established remote links.
+		void SetMeshName(std::string new_name);
+		/// Find mesh by name.
+		static Mesh * GetMesh(std::string name);
 	};
 
 
-  //////////////////////////////////////////////////////////////////////
-  /// Inline functions for class Storage                              //
-  //////////////////////////////////////////////////////////////////////
-  __INLINE Storage::real & Storage::Real(const Tag & tag) const
-  {
-    return GetMeshLink()->Real(GetHandle(),tag);
-  }
-  __INLINE Storage::integer & Storage::Integer(const Tag & tag)  const
-  {
-    return GetMeshLink()->Integer(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk & Storage::Bulk(const Tag & tag)  const
-  {
-    return GetMeshLink()->Bulk(GetHandle(),tag);
-  }
-  __INLINE Storage::reference & Storage::Reference(const Tag & tag)  const
-  {
-    return GetMeshLink()->Reference(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference & Storage::RemoteReference(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReference(GetHandle(),tag);
-  }
-  __INLINE Storage::real_array Storage::RealArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealArray(GetHandle(),tag);
-  }
-  __INLINE Storage::integer_array Storage::IntegerArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerArray(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk_array Storage::BulkArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkArray(GetHandle(),tag);
-  }
-  __INLINE Storage::reference_array Storage::ReferenceArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceArray(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceArray(GetHandle(),tag);
-  }
-  __INLINE Storage::real_array Storage::RealArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::integer_array Storage::IntegerArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk_array Storage::BulkArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::reference_array Storage::ReferenceArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::real & Storage::RealDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealDF(GetHandle(),tag);
-  }
-  __INLINE Storage::integer & Storage::IntegerDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerDF(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk & Storage::BulkDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkDF(GetHandle(),tag);
-  }
-  __INLINE Storage::reference & Storage::ReferenceDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceDF(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference & Storage::RemoteReferenceDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceDF(GetHandle(),tag);
-  }
-  __INLINE Storage::real_array Storage::RealArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::integer_array Storage::IntegerArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerArrayDV(GetHandle(),tag);	
-  }
-  __INLINE Storage::bulk_array Storage::BulkArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::reference_array Storage::ReferenceArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceArrayDV(GetHandle(),tag);
-  }
-  __INLINE Storage::real & Storage::RealDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RealDV(GetHandle(),tag);
-  }
-  __INLINE Storage::integer & Storage::IntegerDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->IntegerDV(GetHandle(),tag);
-  }
-  __INLINE Storage::bulk & Storage::BulkDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->BulkDV(GetHandle(),tag);
-  }
-  __INLINE Storage::reference & Storage::ReferenceDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->ReferenceDV(GetHandle(),tag);
-  }
-  __INLINE Storage::remote_reference & Storage::RemoteReferenceDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->RemoteReferenceDV(GetHandle(),tag);
-  }
+	//////////////////////////////////////////////////////////////////////
+	/// Inline functions for class Storage                              //
+	//////////////////////////////////////////////////////////////////////
+	__INLINE Storage::real & Storage::Real(const Tag & tag) const
+	{
+		return GetMeshLink()->Real(GetHandle(),tag);
+	}
+	__INLINE Storage::integer & Storage::Integer(const Tag & tag)  const
+	{
+		return GetMeshLink()->Integer(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk & Storage::Bulk(const Tag & tag)  const
+	{
+		return GetMeshLink()->Bulk(GetHandle(),tag);
+	}
+	__INLINE Storage::reference & Storage::Reference(const Tag & tag)  const
+	{
+		return GetMeshLink()->Reference(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference & Storage::RemoteReference(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReference(GetHandle(),tag);
+	}
+	__INLINE Storage::real_array Storage::RealArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealArray(GetHandle(),tag);
+	}
+	__INLINE Storage::integer_array Storage::IntegerArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerArray(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk_array Storage::BulkArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkArray(GetHandle(),tag);
+	}
+	__INLINE Storage::reference_array Storage::ReferenceArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceArray(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference_array Storage::RemoteReferenceArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceArray(GetHandle(),tag);
+	}
+	__INLINE Storage::real_array Storage::RealArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::integer_array Storage::IntegerArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk_array Storage::BulkArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::reference_array Storage::ReferenceArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::real & Storage::RealDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealDF(GetHandle(),tag);
+	}
+	__INLINE Storage::integer & Storage::IntegerDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerDF(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk & Storage::BulkDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkDF(GetHandle(),tag);
+	}
+	__INLINE Storage::reference & Storage::ReferenceDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceDF(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference & Storage::RemoteReferenceDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceDF(GetHandle(),tag);
+	}
+	__INLINE Storage::real_array Storage::RealArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::integer_array Storage::IntegerArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk_array Storage::BulkArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::reference_array Storage::ReferenceArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference_array Storage::RemoteReferenceArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceArrayDV(GetHandle(),tag);
+	}
+	__INLINE Storage::real & Storage::RealDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RealDV(GetHandle(),tag);
+	}
+	__INLINE Storage::integer & Storage::IntegerDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->IntegerDV(GetHandle(),tag);
+	}
+	__INLINE Storage::bulk & Storage::BulkDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->BulkDV(GetHandle(),tag);
+	}
+	__INLINE Storage::reference & Storage::ReferenceDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->ReferenceDV(GetHandle(),tag);
+	}
+	__INLINE Storage::remote_reference & Storage::RemoteReferenceDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->RemoteReferenceDV(GetHandle(),tag);
+	}
 #if defined(USE_AUTODIFF)
-  __INLINE Storage::var & Storage::Variable(const Tag & tag) const
-  {
-    return GetMeshLink()->Variable(GetHandle(),tag);
-  }
-  __INLINE Storage::var & Storage::VariableDF(const Tag & tag) const
-  {
-    return GetMeshLink()->VariableDF(GetHandle(),tag);
-  }
-  __INLINE Storage::var & Storage::VariableDV(const Tag & tag) const
-  {
-    return GetMeshLink()->VariableDV(GetHandle(),tag);
-  }
-  __INLINE Storage::var_array Storage::VariableArray(const Tag & tag)  const
-  {
-    return GetMeshLink()->VariableArray(GetHandle(),tag);
-  }
-  __INLINE Storage::var_array Storage::VariableArrayDF(const Tag & tag)  const
-  {
-    return GetMeshLink()->VariableArrayDF(GetHandle(),tag);
-  }
-  __INLINE Storage::var_array Storage::VariableArrayDV(const Tag & tag)  const
-  {
-    return GetMeshLink()->VariableArrayDV(GetHandle(),tag);
-  }
+	__INLINE Storage::var & Storage::Variable(const Tag & tag) const
+	{
+		return GetMeshLink()->Variable(GetHandle(),tag);
+	}
+	__INLINE Storage::var & Storage::VariableDF(const Tag & tag) const
+	{
+		return GetMeshLink()->VariableDF(GetHandle(),tag);
+	}
+	__INLINE Storage::var & Storage::VariableDV(const Tag & tag) const
+	{
+		return GetMeshLink()->VariableDV(GetHandle(),tag);
+	}
+	__INLINE Storage::var_array Storage::VariableArray(const Tag & tag)  const
+	{
+		return GetMeshLink()->VariableArray(GetHandle(),tag);
+	}
+	__INLINE Storage::var_array Storage::VariableArrayDF(const Tag & tag)  const
+	{
+		return GetMeshLink()->VariableArrayDF(GetHandle(),tag);
+	}
+	__INLINE Storage::var_array Storage::VariableArrayDV(const Tag & tag)  const
+	{
+		return GetMeshLink()->VariableArrayDV(GetHandle(),tag);
+	}
 #endif
 	__INLINE bool Storage::HaveData(const Tag & tag) const
 	{

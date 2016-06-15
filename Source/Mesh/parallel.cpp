@@ -827,30 +827,59 @@ namespace INMOST
 #endif //USE_PARALLEL_STORAGE
 		//determine which bboxes i intersect
 		dynarray<int,64> procs;
-		Storage::real bbox[6];
-		dynarray<Storage::real,384> bboxs(mpisize*6);
-		
+		Storage::real bbox[6]; //local bounding box
+		std::vector<Storage::real> bboxs(mpisize*6);
+		//Compute local bounding box containing nodes.
+		//Will be more convinient to compute (or store)
+		//and communicate local octree over all the nodes.
 		for(integer k = 0; k < dim; k++)
 		{
 			bbox[k] = 1e20;
 			bbox[k+dim] = -1e20;
 		}
-		
-		for(iteratorNode it = BeginNode(); it != EndNode(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 		{
-			Storage::real_array arr = it->Coords();
+			real bbox0[6];
 			for(integer k = 0; k < dim; k++)
 			{
-				if( arr[k] < bbox[k] ) bbox[k] = arr[k];
-				if( arr[k] > bbox[k+dim] ) bbox[k+dim] = arr[k];
+				bbox0[k] = 1e20;
+				bbox0[k+dim] = -1e20;
+			}
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+			for(integer nit = 0; nit < NodeLastLocalID(); ++nit) if( isValidNode(nit) )
+			{
+				Node it = NodeByLocalID(nit);
+				Storage::real_array arr = it->Coords();
+				for(integer k = 0; k < dim; k++)
+				{
+					if( arr[k] < bbox0[k] ) bbox0[k] = arr[k];
+					if( arr[k] > bbox0[k+dim] ) bbox0[k+dim] = arr[k];
+				}
+			}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+			{
+				for(integer k = 0; k < dim; k++)
+				{
+					if( bbox0[k] < bbox[k] ) bbox[k] = bbox0[k];
+					if( bbox0[k] > bbox[k+dim] ) bbox[k+dim] = bbox0[k];
+				}
 			}
 		}
+		// write down bounding boxes
 		for(integer k = 0; k < dim; k++)
 		{
 			REPORT_VAL("min",bbox[k]);
 			REPORT_VAL("max",bbox[dim+k]);
 		}
+		// communicate bounding boxes
 		REPORT_MPI(MPI_Allgather(&bbox[0],dim*2,INMOST_MPI_DATA_REAL_TYPE,&bboxs[0],dim*2,INMOST_MPI_DATA_REAL_TYPE,comm));
+		// find all processors that i communicate with
 		for(int k = 0; k < mpisize; k++)
 			if( k != mpirank )
 			{
@@ -888,14 +917,25 @@ namespace INMOST
 			if( same_boxes )
 			{
 				REPORT_STR("All bounding boxes are the same - assuming that mesh is replicated over all nodes");
-				for(Mesh::iteratorElement it = BeginElement(CELL | EDGE | FACE | NODE); it != EndElement(); it++)
+				//for(Mesh::iteratorElement it = BeginElement(CELL | EDGE | FACE | NODE); it != EndElement(); it++)
+				for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype) )
 				{
-					Storage::integer_array arr = it->IntegerArrayDV(tag_processors);
-					arr.resize(mpisize);
-					for(int k = 0; k < mpisize; k++) arr[k] = k;
-					it->IntegerDF(tag_owner) = 0;
-					if( mpirank == 0 ) SetStatus(*it,Element::Shared);
-					else SetStatus(*it,Element::Ghost);
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+					for(integer eit = 0; eit < LastLocalID(etype); ++eit) if( isValidElement(etype,eit) )
+					{
+						Element it = ElementByLocalID(etype,eit);
+						integer_array arr = it->IntegerArrayDV(tag_processors);
+						arr.resize(mpisize);
+						for(int k = 0; k < mpisize; k++)
+							arr[k] = k;
+						it->IntegerDF(tag_owner) = 0;
+						if( mpirank == 0 )
+							SetStatus(it->GetHandle(),Element::Shared);
+						else
+							SetStatus(it->GetHandle(),Element::Ghost);
+					}
 				}
 				ComputeSharedProcs();
 				RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
@@ -908,7 +948,7 @@ namespace INMOST
 							std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
 							//qsort(&it->second[i][0],it->second[i].size(),sizeof(Element *),CompareElementsCGID);
 					}
-				for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); it++)			
+				for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); it++)
 					for(int i = 0; i < 4; i++)
 					{
 						if( !it->second[i].empty() )
@@ -934,9 +974,14 @@ namespace INMOST
 				REPORT_VAL("time",time);
 			
 				
-			
-				for(iteratorNode it = BeginNode(); it != EndNode(); it++)
+				
+				//for(iteratorNode it = BeginNode(); it != EndNode(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for(integer nit = 0; nit < NodeLastLocalID(); ++nit) if( isValidNode(nit) )
 				{
+					Node it = NodeByLocalID(nit);
 					Storage::integer_array arr = it->IntegerArrayDV(tag_processors);
 					arr.resize(1);
 					arr[0] = mpirank;
@@ -1178,34 +1223,41 @@ namespace INMOST
 						REPORT_VAL("type",ElementTypeName(current_mask));
 						
 						
-            //int owned_elems = 0;
-            //int shared_elems = 0;
+						//int owned_elems = 0;
+						//int shared_elems = 0;
 						int owner;
 						Element::Status estat;
 						
 						time = Timer();
 						//Determine what processors potentially share the element
-						for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+						for(integer eit = 0; eit < LastLocalID(current_mask); ++eit)
 						{
-							determine_my_procs_low(this,*it, result, intersection);
-							Storage::integer_array p = it->IntegerArrayDV(tag_processors);
-							if( result.empty() ) 
+							if( isValidElement(current_mask,eit) )
 							{
-								p.clear();
-								p.push_back(mpirank);
-                //++owned_elems;
+								Element it = ElementByLocalID(current_mask,eit);
+								determine_my_procs_low(this,it->GetHandle(), result, intersection);
+								Storage::integer_array p = it->IntegerArrayDV(tag_processors);
+								if( result.empty() )
+								{
+									p.clear();
+									p.push_back(mpirank);
+									//++owned_elems;
+								}
+								else
+								{
+									p.replace(p.begin(),p.end(),result.begin(),result.end());
+									//if( result.size() == 1 && result[0] == mpirank )
+									//  ++owned_elems;
+									//else ++shared_elems;
+								}
 							}
-							else 
-              {
-                p.replace(p.begin(),p.end(),result.begin(),result.end());
-                //if( result.size() == 1 && result[0] == mpirank ) 
-                //  ++owned_elems;
-                //else ++shared_elems;
-              }
 						}
 						time = Timer() - time;
-            //REPORT_VAL("predicted owned elements",owned_elems);
-            //REPORT_VAL("predicted shared elements",shared_elems);
+						//REPORT_VAL("predicted owned elements",owned_elems);
+						//REPORT_VAL("predicted shared elements",shared_elems);
 						REPORT_STR("Predict processors for elements");
 						REPORT_VAL("time",time);
 						
@@ -1213,7 +1265,7 @@ namespace INMOST
 						time = Timer();
 						//Initialize mapping that helps get local id by global id
 						std::vector<std::pair<int,int> > mapping;
-            REPORT_VAL("mapping type",ElementTypeName(current_mask >> 1));
+						REPORT_VAL("mapping type",ElementTypeName(current_mask >> 1));
 						for(Mesh::iteratorElement it = BeginElement(current_mask >> 1); it != EndElement(); it++)
 						{
 							mapping.push_back(std::make_pair(it->GlobalID(),it->LocalID()));
@@ -1822,10 +1874,27 @@ namespace INMOST
 #if defined(USE_MPI)
 		std::set<int> shared_procs;
 		int mpirank = GetProcessorRank();
-		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 		{
-			Storage::integer_array p = it->IntegerArrayDV(tag_processors);
-			for(Storage::integer_array::iterator kt = p.begin(); kt != p.end(); kt++) shared_procs.insert(*kt);
+			std::set<int> shared_procs_local;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+			for(integer nit = 0; nit < NodeLastLocalID(); nit++) if( isValidNode(nit) )
+			{
+				Node it = NodeByLocalID(nit);
+				integer_array p = it->IntegerArrayDV(tag_processors);
+				for(integer_array::iterator kt = p.begin(); kt != p.end(); kt++)
+					shared_procs_local.insert(*kt);
+			}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+			{
+				shared_procs.insert(shared_procs_local.begin(),shared_procs_local.end());
+			}
 		}
 		std::set<int>::iterator ir = shared_procs.find(mpirank);
 		if( ir != shared_procs.end() ) shared_procs.erase(ir);

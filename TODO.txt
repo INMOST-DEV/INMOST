@@ -56,7 +56,8 @@
 46) (нужна проверка) не создавать доп.массивы для данных при отправке и приеме элементов, использовать маркер
 
 
-
+=====================================================================================
+0) обновить список исходя из того, что сделано
 
 14) уметь пересылать ReferenceArray?
 
@@ -104,6 +105,140 @@
 
 58) записать множества в отдельные vtk-файлы по опции "VTK_WRITE_SETS_TO_FILES" = "YES"
 
+59) Openmp для параллельных алгоритмов
+60) ResolveShared должен принимать MarkerType, для того чтобы работать с подмножеством элементов (нужно для ResolveModification)
+61) ResolveModification может использовать биекцию между старыми и новыми элементами для определения принадлежности элемента процессору.
+
+62) Добавить тип данных DATA_UNKNOWN по классу unknown из автодифф
+
+63) Почистить автодифференцирования от старого класса expr
+
+64) Automatizator должен принимать несколько сеток
+
+65) Добавить возможность гибко деактивировать переменные в векторах в автодифференцировании с помощью Bulk данных вместо MarkerType.
+
+66) Закончить вычисления Гессиана
+
+65) Дополнительные типы данных для Гессиана (???)
+
+66) Добавить класс Map для RowMerger, чтобы менять индексы элементов в конец массива для неизвестных не принадлежащих данному процессору (алгоритмы можно взять из класса OrderInfo и использовать там новый класс)
+
+67) Добавить класс Graph, который можно использовать как в Partitioner так и в Solver
+
+68) Redistribute должен получать tag извне
+
+69) Алгоритм который не меняет структуру ghost-ячеек в Partitioner::Evaluate, использовать ReduceData.
+
+
+
+
+====================================================================================
+
+
+INMOST Mesh
+0) TagDenseFixed, TagSparseFixed, TagDenseVariable, TagSparseVariable
+	dynamic_variable, static_variable may be templatized with respect to type of the Tag
+	
+1) rewrite parallel_storage
+	(?) RecomputeParallelStorage detect element types in ExchangeMarked
+	Either organise separation per element type in ElementSet, or store 4 element sets.
+	
+2) volume for nonconvex elements
+	implement in incedence_matrix in modify.cpp
+3) (ok) New mesh format reader, XML
+	search tag positions in file
+	parallel reader
+4) octree structure for intersection of remote nodes
+	in ResolveShared
+	in UnpackElementsData
+	in file reading procedures
+5) algorithm for dynamic mesh adaptation in parallel
+	ResolveShared should depend on marker
+	Algorithm of shortest path to close the gap in shared skin
+	OR remap processors numbers from old cells onto new ones using bijection of cell centers
+7) Introduce INMOST DataBase, that should be outside
+	(?) ElementSet should have data for it's elements, Mesh should become ElementSet
+	Move MGetLink and all the mechanism to access data into TagManager
+	Move inline functions for Storage from inmost_mesh to inmost_data
+9) (test) add DATA_REMOTE_REFERENCE, RemoteHandleType data type and structure that will allow to link another mesh
+	(ok) static Mesh::GetMesh(std::string name), structure to collect meshes by name.
+        Save multiple meshes to file
+10) (test,ok) algorithm in PackTagData for DATA_VARIABLE
+	(ok) GetData,SetData,SetDataSize - add DATA_VARIABLE
+	(ok) GetDataSize - returns number of entries in array
+	(ok) GetDataCapacity - returns space capacity occupied by all the data (specific for DATA_VARIABLE)
+	(ok) GetData - puts all the data into allocated array of size GetDataSpace
+	(ok) SetData - given the number of entries is known, knows how to fill the internal data 
+	(ok) MPI type for DATA_VARIABLE
+	Destroy type on Finalize
+	Test!
+	(ok) Should get capacity of unpacked data, provide function ComputeCapacity
+		See next
+		(ok) Organize GetDataCapacity with parameter that represents storage and size information
+	(ok) Provide tools to retrive data from bytes arrays in Unpack functions
+		(ok) variable::RecordEntry - write into array of Row::entry
+		(ok) variable::RetriveEntry - get out of array of pairs
+		(ok) variable::RetriveSizeEntry - how many entries used to store
+		(ok) variable::RequiredSizeEntry - how many entries are needed to store
+11) DATA_REFERENCE, DATA_REMOTE_REFERENCE can use PackElements in PackTagData
+	Have to make rounds of communication as in ExchangeMarked
+	Presence of Tag of type DATA_REFERENCE and DATA_REMOTE_REFERENCE should internally mark the elements, invoke ExhchangeMarked
+12) Orientation of edges as directed, order faces with right hand side rule, each face's normal should follow right hand side rule
+	Insertion of faces into edge
+	Orientation of faces
+	Optimized algorithms:
+		all cells of the edge (traverse faces, get back cell)
+		all nodes of the face (traverse edges, always get first node)
+		all faces of the node (traverse only edges that are directed outside or inside, get their faces)
+		
+
+INMOST Solvers:
+	-1) (ok) Move annotation into matrix as outstanding structure that can be allocated on demand
+	0) (no) BasicRow class for autodiff or above
+	1) Rewrite BCGS as with Anderson Acceleration
+	3) Internal CSRMatrix format
+		3.1) Reorderings for CSRMatrix with PQ (RCM,ColAMD,MetisND)
+		3.2) Reorderings with execution tree (Mondriaan)
+		3.3) CSRMatrix functions - transpose, swap row/column, compute schur with LU, multiply vector, additive schwartz...
+		3.4) types for CSRMatrix
+		3.5) fast row/col exchange for MPTILUC
+	4) Fast laplacian matrix factorization graphs: Horst Simon, C:\Users\KIRILL\Documents\Read\solver\laplacian_graph
+	5) condition estimation for ilu2
+	6) Purely algebraic CPR (see galerkin principle)
+	7) PrepareMatrix should be able to merge rows in parallel, just sum the row on lowest-rank processor, have to return the solution on every processor.
+
+INMOST Autodiff
+	0) Gateaux derivatives
+	1) Clean old staff
+	2) Superproblem definition??
+	3) Read about Fenics
+	4) (ok) Automatizator::MakeCurrent, Automatizator::GetCurrent, Automatizator::HasCurrent
+		(ok) variable should detect presence of current automatizator and access it's structures
+	5) Abstraction of KeyValueTable, 
+		add cubic spline, 
+		add bc treatment
+	6) condition_etype_variable, condition_marker_variable - needed in THREEPHASE in interpolation
+	7) support std::swap
+	8) expression foreach that will iterate over elements or elements handles
+	
+
+
+INMOST Nonlinear
+	1. Newton
+	2. Line search
+	3. Anderson
+	4. http://fenicsproject.org/documentation/tutorial/nonlinear.html
+	nonlinear solvers: Hans De Sterck
+
+	Nonlinear solvers for INMOST L-BFGS 
+		1) Rewrite onephase into class with ComputeFunction, ComputeGradient, ComputeHessian(?)
+		2) Create abstract problem class for nonlinear solvers within INMOST
+		3) reimplement Newton/LS/AA into INMOST
+		4) implement L-BFGS https://github.com/PatWie/CppNumericalSolvers/blob/master/src/LbfgsSolver.cpp
+		5) hessian https://en.wikipedia.org/wiki/Hessian_automatic_differentiation
+
+
+====================================================================================
 
 7.MSPP: (готово) множества: операции, иерархия, обмен
 8.MSPP: кластеризация
