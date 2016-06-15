@@ -33,297 +33,312 @@ namespace INMOST
 	class basic_expression
 	{
 	public:
-    basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Created" << std::endl;}
-    basic_expression(const basic_expression & other) {};//std::cout << this << " Created from " << &other << std::endl;}
+		basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Created" << std::endl;}
+		basic_expression(const basic_expression & other) {};//std::cout << this << " Created from " << &other << std::endl;}
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
-    virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
-    virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const = 0;
-    virtual ~basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Destroied" << std::endl;}
+		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
+		virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const = 0;
+		virtual ~basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Destroied" << std::endl;}
 	};
 
-  bool CheckCurrentAutomatizator();
-  void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr);
-  void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr);
-  void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r);
-  //bool GetAutodiffPrint();
-  //void SetAutodiffPrint(bool set);
+	bool CheckCurrentAutomatizator();
+	void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr);
+	void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr);
+	void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r);
+	//bool GetAutodiffPrint();
+	//void SetAutodiffPrint(bool set);
 
 	template<class Derived>
 	class shell_expression : virtual public basic_expression
 	{
 	public:
-    shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Created for " << dynamic_cast<basic_expression *>(this) << std::endl;}
+		shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Created for " << dynamic_cast<basic_expression *>(this) << std::endl;}
 		shell_expression(const shell_expression & other) {}//std::cout << this << " Shell Created from " << &other << std::endl;}
 		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const {return static_cast<const Derived *>(this)->GetValue(); }
-    __INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
-    __INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
-    __INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {return static_cast<const Derived *>(this)->GetHessian(multJ,J,multH,H); }
-    operator Derived & () {return *static_cast<Derived *>(this);}
-    operator const Derived & () const {return *static_cast<const Derived *>(this);}
-    ~shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Destroied for " << dynamic_cast<basic_expression *>(this) << std::endl;}
-    //Derived * GetDerived() { return dynamic_cast<Derived *>(this); }
+		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
+		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
+		__INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {return static_cast<const Derived *>(this)->GetHessian(multJ,J,multH,H); }
+		operator Derived & () {return *static_cast<Derived *>(this);}
+		operator const Derived & () const {return *static_cast<const Derived *>(this);}
+		~shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Destroied for " << dynamic_cast<basic_expression *>(this) << std::endl;}
+		//Derived * GetDerived() { return dynamic_cast<Derived *>(this); }
 	};
 
   
  
-  class const_expression : public shell_expression<const_expression>
-  {
-    INMOST_DATA_REAL_TYPE value;
-  public:
-    const_expression(const const_expression & other) :value(other.value) {}
-    const_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {}
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {}
-    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {}
-    __INLINE const_expression & operator =(const_expression const & other)
-    {
-      value = other.value;
-      return *this;
-    }
-	operator INMOST_DATA_REAL_TYPE () {return value;}
-  };
+	class const_expression : public shell_expression<const_expression>
+	{
+		INMOST_DATA_REAL_TYPE value;
+	public:
+		const_expression(const const_expression & other) :value(other.value) {}
+		const_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {}
+		__INLINE const_expression & operator =(const_expression const & other)
+		{
+			value = other.value;
+			return *this;
+		}
+		operator INMOST_DATA_REAL_TYPE () {return value;}
+	};
   
 
-  class var_expression : public shell_expression<var_expression>
-  {
-    INMOST_DATA_REAL_TYPE value;
-    INMOST_DATA_ENUM_TYPE index;
-  public:
-    var_expression(const var_expression & other) :value(other.value), index(other.index) {}
-    var_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex) : value(pvalue), index(pindex) {}
-	__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
-    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);}
-    __INLINE var_expression & operator =(var_expression const & other)
-    {
-      value = other.value;
-      index = other.index;
-      return *this;
-    }
-    bool check_nans() const
-    {
-      return value != value;
-    }
-  };
+	class var_expression : public shell_expression<var_expression>
+	{
+		INMOST_DATA_REAL_TYPE value;
+		INMOST_DATA_ENUM_TYPE index;
+	public:
+		var_expression(const var_expression & other) :value(other.value), index(other.index) {}
+		var_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex) : value(pvalue), index(pindex) {}
+		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);}
+		__INLINE var_expression & operator =(var_expression const & other)
+		{
+			value = other.value;
+			index = other.index;
+			return *this;
+		}
+		__INLINE var_expression & operator =(INMOST_DATA_REAL_TYPE other)
+		{
+			value = other;
+			index = ENUMUNDEF;
+			return *this;
+		}
+		bool check_nans() const
+		{
+			return value != value;
+		}
+	};
+
+#if defined(PACK_ARRAY)
+#pragma pack(push,r1,4)
+#endif
 
 
-  class multivar_expression : public shell_expression<multivar_expression>
-  {
-    INMOST_DATA_REAL_TYPE value;
-    Sparse::Row entries;
-    Sparse::HessianRow hessian_entries;
-  public:
-    multivar_expression() :value(0) {}
-    multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
-    multivar_expression(const multivar_expression & other) : value(other.value), entries(other.entries) {}
-    multivar_expression(INMOST_DATA_REAL_TYPE pvalue, Sparse::Row & pentries)
-     : value(pvalue), entries(pentries) {}
-    multivar_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex, INMOST_DATA_REAL_TYPE pdmult = 1.0)
-     : value(pvalue)
-    {
-      entries.Push(pindex,pdmult);
-    }
-    multivar_expression(const basic_expression & expr)
-    {
-      value = expr.GetValue();
-      if( CheckCurrentAutomatizator() )
-        FromBasicExpression(entries,expr); //Optimized version
-      else expr.GetJacobian(1.0,entries);
-    }
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-    __INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
-    {
-      for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-        r[it->first] += it->second*mult;
-    }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
-    {
-      if( CheckCurrentAutomatizator() )
-        FromGetJacobian(*this,mult,r);
-      else
-      {
-        for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-          r[it->first] += it->second*mult;
-      }
-    }
-    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
-    {
-        J = entries;
-        if( !J.isSorted() ) std::sort(J.Begin(),J.End());
-        for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
-        H = hessian_entries;
-        for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
-    }
-    __INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
-    {
-      value = pvalue;
-      entries.Clear();
-      hessian_entries.Clear();
-      return *this;
-    }
-    __INLINE multivar_expression & operator = (basic_expression const & expr)
-    {
-      value = expr.GetValue();
-      if( CheckCurrentAutomatizator() )
-        FromBasicExpression(entries,expr);
-      else
-      {
-        Sparse::Row tmp;
-        expr.GetJacobian(1.0,tmp);
-        entries.Swap(tmp);
-      }
-      return *this;
-    }
-    __INLINE multivar_expression & operator = (multivar_expression const & other)
-    {
-      value = other.value;
-      entries = other.entries;
-      hessian_entries = other.hessian_entries;
-      return *this;
-    }
-    __INLINE Sparse::Row & GetRow() {return entries;}
-    __INLINE Sparse::HessianRow & GetHessianRow() {return hessian_entries;}
-    __INLINE const Sparse::Row & GetRow() const {return entries;}
-    __INLINE const Sparse::HessianRow & GetHessianRow() const {return hessian_entries;}
-    __INLINE multivar_expression & operator +=(basic_expression const & expr)
-    {
-      value += expr.GetValue();
-      if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,1.0,1.0,expr);
-      else
-      { 
-        Sparse::Row tmp(entries);
-        expr.GetJacobian(1.0,tmp);
-        entries.Swap(tmp);
-      }
-      return *this;
-    }
-    __INLINE multivar_expression & operator -=(basic_expression const & expr)
-    {
-      value -= expr.GetValue();
-      if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,1.0,-1.0,expr);
-      else
-      {
-        Sparse::Row tmp(entries);
-        expr.GetJacobian(-1.0,tmp);
-        entries.Swap(tmp);
-      }
-      return *this;
-    }
-    __INLINE multivar_expression & operator *=(basic_expression const & expr)
-    {
-      INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
-      if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,rval,lval,expr);
-      else
-      {
-        Sparse::Row tmp(entries);
-        for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
-        expr.GetJacobian(lval,tmp);
-        entries.Swap(tmp);
-      }
-      value *= rval;
-      return *this;
-    }
-    __INLINE multivar_expression & operator /=(basic_expression const & expr)
-    {
-      INMOST_DATA_REAL_TYPE rval = expr.GetValue();
-      INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
-      value *= reciprocial_rval;
-      if( CheckCurrentAutomatizator() )
-        AddBasicExpression(entries,reciprocial_rval,-value*reciprocial_rval,expr);
-      else
-      {
-        Sparse::Row tmp(entries);
-        for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
-        expr.GetJacobian(-value*reciprocial_rval,tmp); 
-        entries.Swap(tmp);
-      }
-      return *this;
-    }
-    __INLINE multivar_expression & operator +=(INMOST_DATA_REAL_TYPE right)
-    {
-      value += right;
-      return *this;
-    }
-    __INLINE multivar_expression & operator -=(INMOST_DATA_REAL_TYPE right)
-    {
-      value -= right;
-      return *this;
-    }
-    __INLINE multivar_expression & operator *=(INMOST_DATA_REAL_TYPE right)
-    {
-      value *= right;
-      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second *= right;
-      return *this;
-    }
-    __INLINE multivar_expression & operator /=(INMOST_DATA_REAL_TYPE right)
-    {
-      value /= right;
-      for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second /= right;
-      return *this;
-    }
-    bool check_nans() const
-    {
-      if( value != value ) return true;
-      for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-        if( it->second != it->second ) return true;
-      return false;
-    }
-    /// Write variable into array of entries.
-    /// Size of array can be determined via RecordSize.
-    /// Used internally by Mesh::GetData.
-    /// @param v Array of entries that will store data of the variable.
-    /// @return Number of entries used.
-    INMOST_DATA_ENUM_TYPE Record(Sparse::Row::entry * v) const
-    {
-      INMOST_DATA_ENUM_TYPE k = 0;
-      v[k].first = entries.Size();
-      v[k].second = value;
-      k++;
-      for(INMOST_DATA_ENUM_TYPE r = 0; r < entries.Size(); ++r)
-      {
-        v[k].first = entries.GetIndex(r);
-        v[k].second = entries.GetValue(r);
-        k++;
-      }
-      return k;
-    }
-    /// Number of entries required to record the variable.
-    INMOST_DATA_ENUM_TYPE RecordSize() const
-    {
-      return 1 + entries.Size();
-    }
-    /// Retrive variable from array of entries.
-    /// Size of array without retrival can be determined via RetriveSize.
-    /// @param v Array of entries that will store data of the variable.
-    /// @return Number of entries red.
-    INMOST_DATA_ENUM_TYPE Retrive(const Sparse::Row::entry * v)
-    {
-      int k = 0;
-      value = v[k].second;
-      entries.Resize(v[k].first);
-      k++;
-      for(int r = 0; r < (int)entries.Size(); ++r)
-      {
-        entries.GetIndex(r) = v[k].first;
-        entries.GetValue(r) = v[k].second;
-        k++;
-      }
-      return k;
-    }
-    /// Number of entries used.
-    static INMOST_DATA_ENUM_TYPE RetriveSize(const Sparse::Row::entry * v)
-    {
-      return 1 + v[0].first;
-    }
-  };
+	class multivar_expression : public shell_expression<multivar_expression>
+	{
+		INMOST_DATA_REAL_TYPE value;
+		Sparse::Row entries;
+		Sparse::HessianRow hessian_entries;
+	public:
+		multivar_expression() :value(0) {}
+		multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
+		multivar_expression(const multivar_expression & other) : value(other.value), entries(other.entries) {}
+		multivar_expression(INMOST_DATA_REAL_TYPE pvalue, Sparse::Row & pentries)
+			: value(pvalue), entries(pentries) {}
+		multivar_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex, INMOST_DATA_REAL_TYPE pdmult = 1.0)
+			: value(pvalue)
+		{
+			entries.Push(pindex,pdmult);
+		}
+		multivar_expression(const basic_expression & expr)
+		{
+			value = expr.GetValue();
+			if( CheckCurrentAutomatizator() )
+				FromBasicExpression(entries,expr); //Optimized version
+			else expr.GetJacobian(1.0,entries);
+		}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
+		{
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				r[it->first] += it->second*mult;
+		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
+		{
+			if( CheckCurrentAutomatizator() )
+				FromGetJacobian(*this,mult,r);
+			else
+			{
+				for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+					r[it->first] += it->second*mult;
+			}
+		}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
+		{
+			J = entries;
+			if( !J.isSorted() ) std::sort(J.Begin(),J.End());
+			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
+			H = hessian_entries;
+			for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
+		}
+		__INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
+		{
+			value = pvalue;
+			entries.Clear();
+			hessian_entries.Clear();
+			return *this;
+		}
+		__INLINE multivar_expression & operator = (basic_expression const & expr)
+		{
+			value = expr.GetValue();
+			if( CheckCurrentAutomatizator() )
+				FromBasicExpression(entries,expr);
+			else
+			{
+				Sparse::Row tmp;
+				expr.GetJacobian(1.0,tmp);
+				entries.Swap(tmp);
+			}
+			return *this;
+		}
+		__INLINE multivar_expression & operator = (multivar_expression const & other)
+		{
+			value = other.value;
+			entries = other.entries;
+			hessian_entries = other.hessian_entries;
+			return *this;
+		}
+		__INLINE Sparse::Row & GetRow() {return entries;}
+		__INLINE Sparse::HessianRow & GetHessianRow() {return hessian_entries;}
+		__INLINE const Sparse::Row & GetRow() const {return entries;}
+		__INLINE const Sparse::HessianRow & GetHessianRow() const {return hessian_entries;}
+		__INLINE multivar_expression & operator +=(basic_expression const & expr)
+		{
+			value += expr.GetValue();
+			if( CheckCurrentAutomatizator() )
+				AddBasicExpression(entries,1.0,1.0,expr);
+			else
+			{ 
+				Sparse::Row tmp(entries);
+				expr.GetJacobian(1.0,tmp);
+				entries.Swap(tmp);
+			}
+			return *this;
+		}
+		__INLINE multivar_expression & operator -=(basic_expression const & expr)
+		{
+			value -= expr.GetValue();
+			if( CheckCurrentAutomatizator() )
+				AddBasicExpression(entries,1.0,-1.0,expr);
+			else
+			{
+				Sparse::Row tmp(entries);
+				expr.GetJacobian(-1.0,tmp);
+				entries.Swap(tmp);
+			}
+			return *this;
+		}
+		__INLINE multivar_expression & operator *=(basic_expression const & expr)
+		{
+			INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
+			if( CheckCurrentAutomatizator() )
+				AddBasicExpression(entries,rval,lval,expr);
+			else
+			{
+				Sparse::Row tmp(entries);
+				for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
+				expr.GetJacobian(lval,tmp);
+				entries.Swap(tmp);
+			}
+			value *= rval;
+			return *this;
+		}
+		__INLINE multivar_expression & operator /=(basic_expression const & expr)
+		{
+			INMOST_DATA_REAL_TYPE rval = expr.GetValue();
+			INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
+			value *= reciprocial_rval;
+			if( CheckCurrentAutomatizator() )
+				AddBasicExpression(entries,reciprocial_rval,-value*reciprocial_rval,expr);
+			else
+			{
+				Sparse::Row tmp(entries);
+				for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
+				expr.GetJacobian(-value*reciprocial_rval,tmp); 
+				entries.Swap(tmp);
+			}
+			return *this;
+		}
+		__INLINE multivar_expression & operator +=(INMOST_DATA_REAL_TYPE right)
+		{
+			value += right;
+			return *this;
+		}
+		__INLINE multivar_expression & operator -=(INMOST_DATA_REAL_TYPE right)
+		{
+			value -= right;
+			return *this;
+		}
+		__INLINE multivar_expression & operator *=(INMOST_DATA_REAL_TYPE right)
+		{
+			value *= right;
+			for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second *= right;
+			return *this;
+		}
+		__INLINE multivar_expression & operator /=(INMOST_DATA_REAL_TYPE right)
+		{
+			value /= right;
+			for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second /= right;
+			return *this;
+		}
+		bool check_nans() const
+		{
+			if( value != value ) return true;
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				if( it->second != it->second ) return true;
+			return false;
+		}
+		/// Write variable into array of entries.
+		/// Size of array can be determined via RecordSize.
+		/// Used internally by Mesh::GetData.
+		/// @param v Array of entries that will store data of the variable.
+		/// @return Number of entries used.
+		INMOST_DATA_ENUM_TYPE Record(Sparse::Row::entry * v) const
+		{
+			INMOST_DATA_ENUM_TYPE k = 0;
+			v[k].first = entries.Size();
+			v[k].second = value;
+			k++;
+			for(INMOST_DATA_ENUM_TYPE r = 0; r < entries.Size(); ++r)
+			{
+				v[k].first = entries.GetIndex(r);
+				v[k].second = entries.GetValue(r);
+				k++;
+			}
+			return k;
+		}
+		/// Number of entries required to record the variable.
+		INMOST_DATA_ENUM_TYPE RecordSize() const
+		{
+			return 1 + entries.Size();
+		}
+		/// Retrive variable from array of entries.
+		/// Size of array without retrival can be determined via RetriveSize.
+		/// @param v Array of entries that will store data of the variable.
+		/// @return Number of entries red.
+		INMOST_DATA_ENUM_TYPE Retrive(const Sparse::Row::entry * v)
+		{
+			int k = 0;
+			value = v[k].second;
+			entries.Resize(v[k].first);
+			k++;
+			for(int r = 0; r < (int)entries.Size(); ++r)
+			{
+				entries.GetIndex(r) = v[k].first;
+				entries.GetValue(r) = v[k].second;
+				k++;
+			}
+			return k;
+		}
+		/// Number of entries used.
+		static INMOST_DATA_ENUM_TYPE RetriveSize(const Sparse::Row::entry * v)
+		{
+			return 1 + v[0].first;
+		}
+	};
+
+#if defined(PACK_ARRAY)
+#pragma pack(pop,r1)
+#endif
+
 
   
   class multivar_expression_reference : public shell_expression<multivar_expression_reference>
@@ -1493,6 +1508,28 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
                            __INLINE                                           void set_value(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
                            __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
                            __INLINE                                           void set_value(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+						   __INLINE                                           void set_value(INMOST_DATA_REAL_TYPE & Arg, const INMOST::var_expression & Val) {Arg = Val.GetValue();}
+						   __INLINE                                           void set_value(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = Val.GetValue();}
+						   __INLINE                                           void set_value(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}
+                           __INLINE                                           void set_value(INMOST::multivar_expression & Arg, const INMOST::var_expression & Val) {Arg.SetValue(Val.GetValue()); }
+						   __INLINE                                           void set_value(INMOST::multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg.SetValue(Val.GetValue()); }
+						   __INLINE                                           void set_value(INMOST::multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg.SetValue(Val.GetValue()); }
+						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::var_expression & Val) {Arg.SetValue(Val.GetValue()); }
+						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg.SetValue(Val.GetValue()); }
+						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg.SetValue(Val.GetValue()); }
+                           __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::var_expression & Val) {Arg = Val.GetValue();}
+						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = Val.GetValue();}
+						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}
+                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::var_expression & Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
 template<class A>          __INLINE                 INMOST::soft_abs_expression<A> soft_fabs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_abs_expression<A>(Arg,tol); }
                            __INLINE                          INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
 template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_sign_expression<A>(Arg,tol); }

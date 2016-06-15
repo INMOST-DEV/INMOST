@@ -1,3 +1,4 @@
+//this is not finished
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -245,6 +246,11 @@ int main(int argc,char ** argv)
 					coefL = lL*dK/coefDiv;
 					coefK = lK*dL/coefDiv;
 					coefQ = dK*dL/coefDiv;
+
+					assert(coefDiv >= 0.0);
+					assert(coefL >= 0.0);
+					assert(coefK >= 0.0);
+					assert(coefQ >= 0.0);
 				
 					T = lL*lK/coefDiv*aF;
 				
@@ -273,39 +279,40 @@ int main(int argc,char ** argv)
 				int NF = (int)faces.size(); //number of faces;
 				rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
 				rMatrix GRAD(NF,NF), NK(NF,3), R(NF,3); //big gradient matrix, co-normals, directions
-				rMatrix H(NF,NF);//,T(NF,NF);
+				rMatrix H(NF,NF),T(NF,NF);
 				GRAD.Zero();
 				H.Zero();
-				//T.Zero();
+				T.Zero();
 				for(int k = 0; k < NF; ++k) //loop over faces
 				{
 					real aF = faces[k].Area();
+					real sign = faces[k].BackCell() == cell->self() ? 1.0 : -1.0;
 					real_array yF = faces[k]->RealArrayDF(tag_H); //point on face is harmonic point
 					real_array gammaF = faces[k]->RealArrayDF(tag_Y);
-					faces[k]->OrientedUnitNormal(cell->self(),nF);
+					//faces[k]->OrientedUnitNormal(cell->self(),nF);
+					//rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
 					// assemble matrix of directions
 					R(k,0) = (yF[0]-xP[0])*aF;
 					R(k,1) = (yF[1]-xP[1])*aF;
 					R(k,2) = (yF[2]-xP[2])*aF;
 					// assemble matrix of co-normals
-					rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
-					//NK(k,0) = gammaF[0];
-					//NK(k,1) = gammaF[1];
-					//NK(k,2) = gammaF[2];
-					NK(k,0) = nK(0,0);
-					NK(k,1) = nK(0,1);
-					NK(k,2) = nK(0,2);
-					
-					H(k,k) = aF * (faces[k].BackCell() == cell->self() ? 1.0-yF[3] : yF[3]);
-					//T(k,k) = faces[k]->RealDF(tag_T);
+					NK(k,0) = gammaF[0]*sign;
+					NK(k,1) = gammaF[1]*sign;
+					NK(k,2) = gammaF[2]*sign;
+					//NK(k,0) = nK(0,0);
+					//NK(k,1) = nK(0,1);
+					//NK(k,2) = nK(0,2);
+					H(k,k) = aF * (0.5*(sign+1) - sign*yF[3]);
+					T(k,k) = faces[k]->RealDF(tag_T);
 				} //end of loop over faces
 				GRAD = NK*(NK.Transpose()*R).Invert().first*NK.Transpose(); //stability part
-				//std::cout << "consistency" << std::endl;
 				GRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert().first*R.Transpose())*(2.0/(vP*NF)*GRAD.Trace());
-				GRAD = H*GRAD*H;// + T;
+				GRAD = H*GRAD*H + T;
 
 				W.resize(NF*NF); //resize the structure
 				std::copy(GRAD.data(),GRAD.data()+NF*NF,W.data()); //write down the gradient matrix
+				//std::cout << "Grad matrix:" << std::endl;
+				//GRAD.Print();
 			} //end of loop over cells
 		} //end of initialize data
 		

@@ -12,7 +12,7 @@
 
 namespace INMOST
 {
-  class Mesh;
+	class Mesh;
 	class Storage;
 	class Element;
 	class TagManager;
@@ -22,8 +22,8 @@ namespace INMOST
 	class Cell;
 	class ElementSet;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // ElementType
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	// ElementType
   
 	typedef INMOST_DATA_BULK_TYPE ElementType;
 	static const ElementType NONE = 0x00;
@@ -33,9 +33,9 @@ namespace INMOST
 	static const ElementType CELL = 0x08;
 	static const ElementType ESET = 0x10;
 	static const ElementType MESH = 0x20;
-  #define NUM_ELEMENT_TYPS 6
+#define NUM_ELEMENT_TYPS 6
 
-  __INLINE bool                         OneType             (ElementType t) {return t > 0 && (t & (t-1)) == 0;}
+	__INLINE bool                         OneType             (ElementType t) {return t > 0 && (t & (t-1)) == 0;}
 	__INLINE ElementType                  FirstElementType    () {return NODE;}
 	__INLINE ElementType                  LastElementType     () {return MESH << 1;}
 	__INLINE ElementType                  NextElementType     (ElementType etype) {return etype << 1;}
@@ -55,71 +55,71 @@ namespace INMOST
 		return static_cast<INMOST_DATA_INTEGER_TYPE>(r);
 	}
 	
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // MarkerType
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	// MarkerType
   
-  /// Low 8 bits - marker mask, rest high bits - position of marker.
+	/// Low 8 bits - marker mask, rest high bits - position of marker.
 	typedef INMOST_DATA_ENUM_TYPE         MarkerType; 
-  /// Number of chars to hold all markers, total number (MarkerFields * bits_per_char).
+	/// Number of chars to hold all markers, total number (MarkerFields * bits_per_char).
 	static const INMOST_DATA_ENUM_TYPE    MarkerFields        = 16;   
-  /// Number of chars to hold all private markers, total number (MarkerFields * bits_per_char).
-  static const INMOST_DATA_ENUM_TYPE    MarkerFieldsPrivate = 4;
-  /// Last bit indicate whether the marker is private.
-  static const INMOST_DATA_ENUM_TYPE    MarkerPrivateBit    = 1 << (sizeof(INMOST_DATA_ENUM_TYPE)*8-1); 
-  /// Bit mask to obtain marker mask within MarkerType.
+	/// Number of chars to hold all private markers, total number (MarkerFields * bits_per_char).
+	static const INMOST_DATA_ENUM_TYPE    MarkerFieldsPrivate = 4;
+	/// Last bit indicate whether the marker is private.
+	static const INMOST_DATA_ENUM_TYPE    MarkerPrivateBit    = 1 << (sizeof(INMOST_DATA_ENUM_TYPE)*8-1); 
+	/// Bit mask to obtain marker mask within MarkerType.
 	static const INMOST_DATA_ENUM_TYPE    MarkerMask          = static_cast<INMOST_DATA_BULK_TYPE>(-1); 
-  /// sizeof(char) * bits_per_char.
+	/// sizeof(char) * bits_per_char.
 	static const INMOST_DATA_ENUM_TYPE    MarkerShift         = sizeof(INMOST_DATA_BULK_TYPE)*8;    
-  __INLINE static bool                  isPrivate           (MarkerType n) {return (n & MarkerPrivateBit) == MarkerPrivateBit;}
+	__INLINE static bool                  isPrivate           (MarkerType n) {return (n & MarkerPrivateBit) == MarkerPrivateBit;}
 	__INLINE static MarkerType            InvalidMarker       (){return ENUMUNDEF;}
 
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // HandleType
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	// HandleType
 
-  typedef INMOST_DATA_ENUM_TYPE         HandleType;
+	typedef INMOST_DATA_ENUM_TYPE         HandleType;
 	static const INMOST_DATA_ENUM_TYPE    handle_etype_bits   = 3;
 	static const INMOST_DATA_ENUM_TYPE    handle_etype_shift  = sizeof(HandleType)*8-handle_etype_bits;
 	static const INMOST_DATA_ENUM_TYPE    handle_id_mask      = (1 << handle_etype_shift)-1;
 
-  static const INMOST_DATA_ENUM_TYPE    chunk_bits_elems    = 13;
+	static const INMOST_DATA_ENUM_TYPE    chunk_bits_elems    = 13;
 	static const INMOST_DATA_ENUM_TYPE    chunk_bits_empty    = 8;
 	static const INMOST_DATA_ENUM_TYPE    chunk_bits_tags     = 6;
 	static const INMOST_DATA_ENUM_TYPE    chunk_bits_dense    = 6;
 
-  __INLINE HandleType                   InvalidHandle       () {return 0;}
+	__INLINE HandleType                   InvalidHandle       () {return 0;}
 	__INLINE INMOST_DATA_INTEGER_TYPE     GetHandleID         (HandleType h) {return (h & handle_id_mask)-1;}
 	__INLINE INMOST_DATA_INTEGER_TYPE     GetHandleElementNum (HandleType h) {return h >> handle_etype_shift;}
 	__INLINE ElementType                  GetHandleElementType(HandleType h) {return 1 << GetHandleElementNum(h);}
 	__INLINE HandleType                   ComposeHandle       (ElementType etype, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(etype) << handle_etype_shift) + (1+ID));}
-  __INLINE HandleType                   ComposeCellHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(CELL) << handle_etype_shift) + (1+ID));}
-  __INLINE HandleType                   ComposeFaceHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(FACE) << handle_etype_shift) + (1+ID));}
-  __INLINE HandleType                   ComposeEdgeHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(EDGE) << handle_etype_shift) + (1+ID));}
-  __INLINE HandleType                   ComposeNodeHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(NODE) << handle_etype_shift) + (1+ID));}
-  __INLINE HandleType                   ComposeSetHandle    (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(ESET) << handle_etype_shift) + (1+ID));}
+	__INLINE HandleType                   ComposeCellHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(CELL) << handle_etype_shift) + (1+ID));}
+	__INLINE HandleType                   ComposeFaceHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(FACE) << handle_etype_shift) + (1+ID));}
+	__INLINE HandleType                   ComposeEdgeHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(EDGE) << handle_etype_shift) + (1+ID));}
+	__INLINE HandleType                   ComposeNodeHandle   (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(NODE) << handle_etype_shift) + (1+ID));}
+	__INLINE HandleType                   ComposeSetHandle    (INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((ElementNum(ESET) << handle_etype_shift) + (1+ID));}
 	__INLINE HandleType                   ComposeHandleNum    (INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_INTEGER_TYPE ID) {return ID == -1 ? InvalidHandle() : ((etypenum << handle_etype_shift) + (1+ID));}
 	__INLINE bool                         isValidHandle       (HandleType h) {return h != 0;}
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // RemoteElementType
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	// RemoteElementType
 
-  typedef std::pair<Mesh*,HandleType>   RemoteHandleType;
-  /// Construct an object of type Element, hande cannot be modified.
-  Element                               MakeElement         (const RemoteHandleType & rh); //storage.cpp
-  /// Construct an object of type Element, hande can be modified.
-  Element                               MakeElementRef      (RemoteHandleType & rh); //storage.cpp
+	typedef std::pair<Mesh*,HandleType>   RemoteHandleType;
+	/// Construct an object of type Element, hande cannot be modified.
+	Element                               MakeElement         (const RemoteHandleType & rh); //storage.cpp
+	/// Construct an object of type Element, hande can be modified.
+	Element                               MakeElementRef      (RemoteHandleType & rh); //storage.cpp
 	
 
-  
+
 #if defined(USE_AUTODIFF)
-  typedef array<variable>               inner_variable_array;
+	typedef array<variable>               inner_variable_array;
 #endif
 	typedef array<INMOST_DATA_REAL_TYPE>  inner_real_array;
 	typedef array<INMOST_DATA_INTEGER_TYPE> 
-                                        inner_integer_array;
+		                                  inner_integer_array;
 	typedef array<INMOST_DATA_BULK_TYPE>  inner_bulk_array;
 	typedef array<HandleType>             inner_reference_array;
-  typedef array<RemoteHandleType>       inner_remote_reference_array;
+	typedef array<RemoteHandleType>       inner_remote_reference_array;
 
 	enum DataType
 	{
@@ -127,56 +127,56 @@ namespace INMOST
 		DATA_INTEGER                        = 1, 
 		DATA_BULK                           = 2,
 		DATA_REFERENCE                      = 3,
-    DATA_REMOTE_REFERENCE               = 4,
+		DATA_REMOTE_REFERENCE               = 4,
 #if defined(USE_AUTODIFF)
-    DATA_VARIABLE                       = 5
+		DATA_VARIABLE                       = 5
 #endif
 	};
 
-  ///Returns a name of the data type as a string.
+	///Returns a name of the data type as a string.
 	const char *                          DataTypeName        (DataType t);
-	
 
-  ///This class is a data container for class Tag, contains all the necessery information to access
-  /// mesh data in class TagManager. It is never exposed to the user directly, should be accessed 
-  /// through interface class Tag. Functions are implemented in tag.cpp.
+
+	///This class is a data container for class Tag, contains all the necessery information to access
+	/// mesh data in class TagManager. It is never exposed to the user directly, should be accessed 
+	/// through interface class Tag. Functions are implemented in tag.cpp.
 	class TagMemory 
 	{
 	public:
-    ///Destructor should not do anything.
-    ~TagMemory() {}
-    ///Copy constructor, copies all the data except for m_link. Main purpose is to create an exact 
-    /// copy for different mesh, whenever another mesh is created.
+		///Destructor should not do anything.
+		~TagMemory() {}
+		///Copy constructor, copies all the data except for m_link. Main purpose is to create an exact 
+		/// copy for different mesh, whenever another mesh is created.
 		TagMemory(Mesh * m, const TagMemory & other);
-    ///Assignment operator should not be ever used, but is here for convinience.
+		///Assignment operator should not be ever used, but is here for convinience.
 		TagMemory & operator =(TagMemory const & other);
 	private:
-    ///Common constructor shouldn't be called from outside.
+		///Common constructor shouldn't be called from outside.
 		TagMemory();
-    ///Position of data in memory for each type of element.
+		///Position of data in memory for each type of element.
 		INMOST_DATA_ENUM_TYPE pos[NUM_ELEMENT_TYPS]; 
-    ///Type of represented data.
+		///Type of represented data.
 		DataType dtype; 
-    ///Specified name for the data.
+		///Specified name for the data.
 		std::string tagname; 
-    ///Associated MPI-type for communication.
+		///Associated MPI-type for communication.
 		INMOST_MPI_Type bulk_data_type; 
-    ///Number of entries in each record of the type.
-    ///May be set to ENUMUNDEF to represent variable-sized arrays.
+		///Number of entries in each record of the type.
+		///May be set to ENUMUNDEF to represent variable-sized arrays.
 		INMOST_DATA_ENUM_TYPE size;
-    ///Number of bytes used to represent data type in memory.
-    INMOST_DATA_ENUM_TYPE bytes_size;
-    ///Indicates whether the data is represented as sparse
-    /// on certain elements of the mesh.
+		///Number of bytes used to represent data type in memory.
+		INMOST_DATA_ENUM_TYPE bytes_size;
+		///Indicates whether the data is represented as sparse
+		/// on certain elements of the mesh.
 		bool sparse[NUM_ELEMENT_TYPS];
-    ///Number of bytes used to store data for one element. It is size times bytes_size for data of 
-    // fixed size or number of bytes for the structure used to represent data of variable size.
+		///Number of bytes used to store data for one element. It is size times bytes_size for data of 
+		// fixed size or number of bytes for the structure used to represent data of variable size.
 		INMOST_DATA_ENUM_TYPE record_size;
-    ///Link to the mesh.
+		///Link to the mesh.
 		Mesh * m_link;
-    /// Provide access to interface.
+		/// Provide access to interface.
 		friend class Tag;
-    /// For debug purposes only.
+		/// For debug purposes only.
 		friend class Storage;
 	};
 
@@ -185,9 +185,9 @@ namespace INMOST
 	class Tag //implemented in tag.cpp
 	{
 	private:
-    ///A link to the data for the current instance of the class Tag.
+		///A link to the data for the current instance of the class Tag.
 		TagMemory * mem;
-    ///The use of this privite constructor is reserved for TagManager::CreateTag function.
+		///The use of this privite constructor is reserved for TagManager::CreateTag function.
 		Tag (Mesh * m,std::string name, DataType _dtype, INMOST_DATA_ENUM_TYPE size); 
 		__INLINE INMOST_DATA_ENUM_TYPE GetRecordSize() const;
 		__INLINE void SetSize(INMOST_DATA_ENUM_TYPE size);
@@ -196,9 +196,9 @@ namespace INMOST
 		__INLINE void SetSparse(ElementType type);
 		__INLINE INMOST_DATA_ENUM_TYPE GetPositionByDim(INMOST_DATA_ENUM_TYPE typenum) const;
 	public:
-    ~Tag();
-    Tag();
-    Tag(const Tag & other);
+		~Tag();
+		Tag();
+		Tag(const Tag & other);
 		__INLINE bool operator <(const Tag & other) const;
 		__INLINE bool operator >(const Tag & other) const;
 		__INLINE bool operator ==(const Tag & other) const;
@@ -224,7 +224,7 @@ namespace INMOST
   class TagManager //implemented in tag.cpp
 	{
 	protected:
-    TagManager();
+		TagManager();
 		TagManager(const TagManager & other);
 		TagManager & operator = (TagManager const & other);
 		typedef chunk_array<INMOST_DATA_ENUM_TYPE,chunk_bits_empty>    empty_data;
@@ -240,34 +240,34 @@ namespace INMOST
 		typedef tag_array_type::iterator iteratorTag;
 	public:
 		virtual ~TagManager();
-    /// Check existance of a data tag by it's name.
+		/// Check existance of a data tag by it's name.
 		bool HaveTag(std::string name) const;
-    /// Retrive a data tag by it's name.
+		/// Retrive a data tag by it's name.
 		Tag GetTag(std::string name) const;
-    /// Retrive names for all the tags present on the mesh.
+		/// Retrive names for all the tags present on the mesh.
 		void ListTagNames(std::vector<std::string> & list) const;
-    /// Create tag with prescribed attributes.
+		/// Create tag with prescribed attributes.
 		Tag CreateTag(Mesh * m, std::string name, DataType dtype, ElementType etype, ElementType sparse, INMOST_DATA_ENUM_TYPE size = ENUMUNDEF); 
-    /// Delete tag from certain elements.
+		/// Delete tag from certain elements.
 		virtual Tag DeleteTag(Tag tag, ElementType mask); 
-    /// Check that the tag was defined on certain elements.
+		/// Check that the tag was defined on certain elements.
 		bool ElementDefined(Tag const & tag, ElementType etype) const;
 	protected:
-    /// Shrink or enlarge arrays for a dense data.
+		/// Shrink or enlarge arrays for a dense data.
 		void ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum,INMOST_DATA_ENUM_TYPE new_size);
-    /// Reallocate all the data for all the tags.
+		/// Reallocate all the data for all the tags.
 		void ReallocateData(INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size);
-    ///Retrive substructure for representation of the sparse data without permission for modification.
+		///Retrive substructure for representation of the sparse data without permission for modification.
 		__INLINE sparse_sub_type const & GetSparseData(int etypenum, int local_id) const {return sparse_data[etypenum][local_id];}
-    ///Retrive substructure for representation of the sparse data.
+		///Retrive substructure for representation of the sparse data.
 		__INLINE sparse_sub_type & GetSparseData(int etypenum, int local_id) {return sparse_data[etypenum][local_id];}
-    ///Retrive substructure for representation of the dense data without permission for modification.
+		///Retrive substructure for representation of the dense data without permission for modification.
 		__INLINE dense_sub_type const & GetDenseData(int pos) const {return dense_data[pos];}
-    ///Retrive substructure for representation of the dense data.
+		///Retrive substructure for representation of the dense data.
 		__INLINE dense_sub_type & GetDenseData(int pos) {return dense_data[pos];}
-    ///Copy data from one element to another.
+		///Copy data from one element to another.
 		static void CopyData(const Tag & t, void * adata, const void * bdata);
-    ///Destroy data that represents array of variable size.
+		///Destroy data that represents array of variable size.
 		static void DestroyVariableData(const Tag & t, void * adata);
 	protected:
 		typedef tag_array_type::iterator       tag_iterator; //< Use this type to iterate over tags of the mesh.
@@ -280,7 +280,7 @@ namespace INMOST
 		back_links_type        back_links[NUM_ELEMENT_TYPS];
 	};
 
-  /// Base class for Mesh, Element, and ElementSet classes.
+	/// Base class for Mesh, Element, and ElementSet classes.
 	/// This base class is used for the Mesh class, as well as Element classes, and ElementSet class.
 	/// 
 	/// Storage class is used for representing different data objects in memory.
@@ -298,8 +298,8 @@ namespace INMOST
 		typedef INMOST_DATA_ENUM_TYPE       enumerator;
 		/// Storage type for representing references to Element.
 		typedef HandleType                  reference;
-    /// Storage type for representing references to Element in another Mesh.
-    typedef RemoteHandleType            remote_reference;
+		/// Storage type for representing references to Element in another Mesh.
+		typedef RemoteHandleType            remote_reference;
 		/// Storage type for representing arrays of real values.
 		typedef shell<real>                 real_array;
 		/// Storage type for representing arrays of integer values.
@@ -307,10 +307,10 @@ namespace INMOST
 		/// Storage type for representing abstact data as a series of bytes.
 		typedef shell<bulk>                 bulk_array;
 #if defined(USE_AUTODIFF)
-    /// Storage type for representing real value with vector of variations
-    typedef variable                    var;
-    /// Storage type for representing array of values with vectors of variations
-    typedef shell<variable>             var_array;
+		/// Storage type for representing real value with vector of variations
+		typedef variable                    var;
+		/// Storage type for representing array of values with vectors of variations
+		typedef shell<variable>             var_array;
 #endif
 		/// Storage type for representing arrays of Element references.
 		class reference_array : public shell<reference>
@@ -329,7 +329,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-        iterator() :shell<HandleType>::iterator() {}
+				iterator() :shell<HandleType>::iterator() {}
 				iterator(Mesh * m, const shell<HandleType>::iterator & other) : shell<HandleType>::iterator(other), m(m) {}
 				iterator(const iterator & other) : shell<HandleType>::iterator(other), m(other.m) {}
 				iterator & operator =(iterator const & other) {m = other.m; shell<HandleType>::iterator::operator=(other); return *this;}
@@ -343,7 +343,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-        const_iterator() :shell<HandleType>::const_iterator() {}
+				const_iterator() :shell<HandleType>::const_iterator() {}
 				const_iterator(Mesh * m, const shell<HandleType>::const_iterator & other) : shell<HandleType>::const_iterator(other) , m(m) {}
 				const_iterator(const const_iterator & other) : shell<HandleType>::const_iterator(other), m(other.m) {}
 				const_iterator & operator =(const_iterator const & other) {m = other.m; shell<HandleType>::const_iterator::operator=(other); return *this;}
@@ -357,7 +357,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-        reverse_iterator() :shell<HandleType>::reverse_iterator() {}
+				reverse_iterator() :shell<HandleType>::reverse_iterator() {}
 				reverse_iterator(Mesh * m, const shell<HandleType>::reverse_iterator & other) : shell<HandleType>::reverse_iterator(other), m(m) {}
 				reverse_iterator(const reverse_iterator & other) : shell<HandleType>::reverse_iterator(other), m(other.m)  {}
 				reverse_iterator & operator =(reverse_iterator const & other) {m = other.m; shell<HandleType>::reverse_iterator::operator=(other); return *this;}
@@ -371,7 +371,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-        const_reverse_iterator() :shell<HandleType>::const_reverse_iterator() {}
+				const_reverse_iterator() :shell<HandleType>::const_reverse_iterator() {}
 				const_reverse_iterator(Mesh * m, const shell<HandleType>::const_reverse_iterator & other) : shell<HandleType>::const_reverse_iterator(other), m(m) {}
 				const_reverse_iterator(const const_reverse_iterator & other) : shell<HandleType>::const_reverse_iterator(other), m(other.m) {}
 				const_reverse_iterator & operator =(const_reverse_iterator const & other) {m = other.m; shell<HandleType>::const_reverse_iterator::operator=(other); return *this;}
@@ -390,47 +390,55 @@ namespace INMOST
 			reverse_iterator rend() {return reverse_iterator(m,shell<HandleType>::rend());}
 			const_reverse_iterator rend() const {return const_reverse_iterator(m,shell<HandleType>::rend());}
 			void SetMeshLink(Mesh * new_m) {m = new_m;}
+			Element back();
+			Element back() const;
+			Element front();
+			Element front() const;
 		};
-    /// Storage type for representing arrays of Element references on another Mesh.
+		/// Storage type for representing arrays of Element references on another Mesh.
 		class remote_reference_array : public shell<remote_reference>
 		{
 		public:
-      remote_reference_array() :shell<remote_reference>() {}
-      remote_reference_array(const shell<remote_reference> & other) :shell<remote_reference>(other) {}
-      remote_reference_array(const remote_reference_array & other) :shell<remote_reference>(other) {}
-      remote_reference_array(remote_reference * pntr, shell<remote_reference>::size_type psize) : shell<remote_reference>(pntr,psize) {}
+			remote_reference_array() :shell<remote_reference>() {}
+			remote_reference_array(const shell<remote_reference> & other) :shell<remote_reference>(other) {}
+			remote_reference_array(const remote_reference_array & other) :shell<remote_reference>(other) {}
+			remote_reference_array(remote_reference * pntr, shell<remote_reference>::size_type psize) : shell<remote_reference>(pntr,psize) {}
 			void push_back(const Storage & elem);
 			void push_back(Mesh * m, HandleType h) {shell<remote_reference>::push_back(RemoteHandleType(m,h));} //is it needed?
 			Element operator[] (size_type n);
 			Element operator[] (size_type n) const;
 			class iterator : public shell<remote_reference>::iterator 
-      {
-        iterator() :shell<remote_reference>::iterator() {}
-        iterator(const shell<remote_reference>::iterator & other) : shell<remote_reference>::iterator(other) {}
+			{
+				iterator() :shell<remote_reference>::iterator() {}
+				iterator(const shell<remote_reference>::iterator & other) : shell<remote_reference>::iterator(other) {}
 				iterator(const iterator & other) : shell<remote_reference>::iterator(other) {}
-        Element operator->();
-      };
+				Element operator->();
+			};
 			class const_iterator : public shell<remote_reference>::const_iterator 
-      {
-        const_iterator() :shell<remote_reference>::const_iterator() {}
-        const_iterator(const shell<remote_reference>::const_iterator & other) : shell<remote_reference>::const_iterator(other) {}
+			{
+				const_iterator() :shell<remote_reference>::const_iterator() {}
+				const_iterator(const shell<remote_reference>::const_iterator & other) : shell<remote_reference>::const_iterator(other) {}
 				const_iterator(const const_iterator & other) : shell<remote_reference>::const_iterator(other) {}
-        Element operator->();
-      };
+				Element operator->();
+			};
 			class reverse_iterator : public shell<remote_reference>::reverse_iterator 
-      {
-        reverse_iterator() :shell<remote_reference>::reverse_iterator() {}
-        reverse_iterator(const shell<remote_reference>::reverse_iterator & other) : shell<remote_reference>::reverse_iterator(other) {}
+			{
+				reverse_iterator() :shell<remote_reference>::reverse_iterator() {}
+				reverse_iterator(const shell<remote_reference>::reverse_iterator & other) : shell<remote_reference>::reverse_iterator(other) {}
 				reverse_iterator(const reverse_iterator & other) : shell<remote_reference>::reverse_iterator(other) {}
-        Element operator->();
-      };
+				Element operator->();
+			};
 			class const_reverse_iterator : public shell<remote_reference>::const_reverse_iterator 
-      {
-        const_reverse_iterator() :shell<remote_reference>::const_reverse_iterator() {}
-        const_reverse_iterator(const shell<remote_reference>::const_reverse_iterator & other) : shell<remote_reference>::const_reverse_iterator(other) {}
+			{
+				const_reverse_iterator() :shell<remote_reference>::const_reverse_iterator() {}
+				const_reverse_iterator(const shell<remote_reference>::const_reverse_iterator & other) : shell<remote_reference>::const_reverse_iterator(other) {}
 				const_reverse_iterator(const const_reverse_iterator & other) : shell<remote_reference>::const_reverse_iterator(other) {}
-        Element operator->();
-      };
+				Element operator->();
+			};
+			Element back();
+			Element back() const;
+			Element front();
+			Element front() const;
 		};
 		//typedef shell<reference>          reference_array;
 	protected:
@@ -446,16 +454,16 @@ namespace INMOST
 		/// If there is a link to handle provided (automatically by ElementArray and reference_array),
 		/// then remote handle value will be modified
 		Storage &                           operator =          (Storage const & other); 
-    __INLINE bool                       operator <          (const Storage & other) const {return handle < other.handle;}
-    __INLINE bool                       operator >          (const Storage & other) const {return handle > other.handle;}
-    __INLINE bool                       operator <=         (const Storage & other) const {return handle <= other.handle;}
-    __INLINE bool                       operator >=         (const Storage & other) const {return handle >= other.handle;}
-    __INLINE bool                       operator ==         (const Storage & other) const {return handle == other.handle;}
-    __INLINE bool                       operator !=         (const Storage & other) const {return handle != other.handle;}
-    __INLINE Storage *                  operator->          () {return this;}
-    __INLINE const Storage *            operator->          () const {return this;}
-    __INLINE Storage &                  self                () {return *this;}
-    __INLINE const Storage &            self                () const {return *this;}
+		__INLINE bool                       operator <          (const Storage & other) const {return handle < other.handle;}
+		__INLINE bool                       operator >          (const Storage & other) const {return handle > other.handle;}
+		__INLINE bool                       operator <=         (const Storage & other) const {return handle <= other.handle;}
+		__INLINE bool                       operator >=         (const Storage & other) const {return handle >= other.handle;}
+		__INLINE bool                       operator ==         (const Storage & other) const {return handle == other.handle;}
+		__INLINE bool                       operator !=         (const Storage & other) const {return handle != other.handle;}
+		__INLINE Storage *                  operator->          () {return this;}
+		__INLINE const Storage *            operator->          () const {return this;}
+		__INLINE Storage &                  self                () {return *this;}
+		__INLINE const Storage &            self                () const {return *this;}
 		virtual ~Storage() {}
 	public:
 		/// Retrieve real value associated with Tag. Implemented in inmost_mesh.h.

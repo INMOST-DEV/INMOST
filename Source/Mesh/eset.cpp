@@ -1714,10 +1714,10 @@ namespace INMOST
 		return (lc.size() - (hc.size() - high_conn_reserved));
 	}
 
-	void ElementSet::Clear() const
+	void ElementSet::Clear()
 	{
 		Mesh * m = GetMeshLink();
-    if( HaveParent() ) GetParent()->RemChild(self());
+		if( HaveParent() ) GetParent()->RemChild(self());
 		Element::adj_type & lc = m->LowConn(GetHandle());
 		Element::adj_type & hc = m->HighConn(GetHandle());
 		hc.resize(ElementSet::high_conn_reserved);
@@ -1725,11 +1725,30 @@ namespace INMOST
 		BulkDF(m->SetComparatorTag()) = UNSORTED_COMPARATOR;
 	}
 
-  bool ElementSet::DeleteSet()
-  {
-    Clear();
-    return Delete();
-  }
+	bool ElementSet::DeleteSet()
+	{
+		Clear();
+		return Delete();
+	}
+
+	bool ElementSet::DeleteSetTree()
+	{
+		Mesh * m = GetMeshLink();
+		if( HaveParent() ) GetParent()->RemChild(self());
+		Element::adj_type & lc = m->LowConn(GetHandle());
+		Element::adj_type & hc = m->HighConn(GetHandle());
+		for(enumerator k = 0; k < lc.size(); ++k)
+			if( lc[k] != InvalidHandle() ) 
+			{
+				ElementSet child = ElementSet(m,lc[k]);
+				hParent(m->HighConn(child->GetHandle())) = InvalidHandle();
+				child->DeleteSetTree();
+			}
+		hc.resize(ElementSet::high_conn_reserved);
+		lc.clear();
+		BulkDF(m->SetComparatorTag()) = UNSORTED_COMPARATOR;
+		return Delete();
+	}
 }
 
 #endif

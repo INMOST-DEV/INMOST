@@ -1760,7 +1760,7 @@ namespace INMOST
 				if( r.Size() )
 				{
 					double nrm = 0;
-					for(int l = 0; l < r.Size(); ++l)
+					for(INMOST_DATA_ENUM_TYPE l = 0; l < r.Size(); ++l)
 						nrm += r.GetValue(l)*r.GetValue(l);
 					if( nrm )
 					{
@@ -1781,7 +1781,7 @@ namespace INMOST
 			for(int k = 0; k < mend-mbeg; ++k) if( remap[k] != -1 )
 			{
 				Sparse::Row & r = A[k+mbeg];
-				for(int l = 0; l < r.Size(); ++l)
+				for(INMOST_DATA_ENUM_TYPE l = 0; l < r.Size(); ++l)
 				{
 					if( remap[r.GetIndex(l)-mbeg] != -1 )
 					{

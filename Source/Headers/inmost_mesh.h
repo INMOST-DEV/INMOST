@@ -441,7 +441,13 @@ namespace INMOST
 		//implemented in modify.cpp
 		bool                        Hide                    () const; // if true then element was hidden, works only inside BeginModification and EndModification, on EndModification all Hidden elements are deleted
 		bool                        Show                    () const; // if true then element was recovered
-    /// \warning This function will not resolve an ierarchical strucutre of ElementSet, use ElemnetSet::DeleteSet instead
+		/// Remove element from mesh.
+		/// If you call this function inside modification phase, see Mesh::BeginModification and Mesh::EndModification,
+		/// and the element was not created during modification phase (not marked as Element::New),
+		/// then the element will not be actually destroyed but hidden. 
+		/// You can restore all the hidden elements by using Mesh::ToggleModification.
+		/// \warning This function will not resolve an ierarchical strucutre of ElementSet, use ElemnetSet::DeleteSet instead.
+		/// @return Returns true if the element was actually destroyed. Returns false if the element was hidden.
 		bool                        Delete                  (); // if true then element was deleted, otherwise it was hidden
 		bool                        Hidden                  () const;
 		bool                        New                     () const;
@@ -914,9 +920,9 @@ namespace INMOST
 		///All the rest are positions of deleted elements.
 		static const enumerator             high_conn_reserved  = 4;
 		__INLINE static HandleType &        hParent             (Element::adj_type & arr) {return arr[0];}
-	  __INLINE static HandleType &        hSibling            (Element::adj_type & arr) {return arr[1];}
-	  __INLINE static HandleType &        hChild              (Element::adj_type & arr) {return arr[2];}
-	  __INLINE static HandleType &        hSorted             (Element::adj_type & arr) {return arr[3];}
+		__INLINE static HandleType &        hSibling            (Element::adj_type & arr) {return arr[1];}
+		__INLINE static HandleType &        hChild              (Element::adj_type & arr) {return arr[2];}
+		__INLINE static HandleType &        hSorted             (Element::adj_type & arr) {return arr[3];}
 		typedef INMOST_DATA_BULK_TYPE       ComparatorType;
 		static const ComparatorType         UNSORTED_COMPARATOR = 0;
 		static const ComparatorType         GLOBALID_COMPARATOR = 1;
@@ -1005,10 +1011,10 @@ namespace INMOST
 		template<typename EType>
 		void                        PutElements(const ElementArray<EType> & elems) const {PutElements(elems.data(),static_cast<enumerator>(elems.size()));}
 		/// Put one element with checking of the existance of duplicate.
-		/// Preserves order for sorted set, thus may be expensive
+		/// Preserves order for sorted set, thus may be expensive.
 		void                        AddElement(HandleType e) const;
 		/// Put one element with checking of the existance of duplicate.
-		/// Preserves order for sorted set, thus may be expensive
+		/// Preserves order for sorted set, thus may be expensive.
 		void                        AddElement(const Storage & e) const {AddElement(e->GetHandle());}
 		/// Add multiple elements with checking of the existance of duplicate.
 		/// Preserves order for sorted set, thus may be expensive.
@@ -1195,9 +1201,15 @@ namespace INMOST
 		/// Get total number of elements
 		enumerator Size() const;
 		/// Remove all elements, clear all data, removes sorted marker
-		void Clear() const;
-    /// Remove the set and resolve it's ierarchical structure
-    bool DeleteSet();
+		void Clear();
+		/// Remove the set and resolve it's ierarchical structure.
+		/// This will not remove childrens of the tree.
+		/// To remove set as a tree, see ElementSet::DeleteSetTree.
+		/// @return Same as Element::Delete.
+		bool DeleteSet();
+		/// Remove the set and all it's children.
+		/// @return Same as Element::Delete.
+		bool DeleteSetTree();
 	};
 
 	__INLINE const ElementSet & InvalidElementSet() {static ElementSet ret(NULL,InvalidHandle()); return ret;}
@@ -1207,19 +1219,19 @@ namespace INMOST
 	public:
 		enum MeshState {Serial, Parallel};
 		typedef chunk_array<integer,chunk_bits_empty>               
-                                        empty_container;
+											empty_container;
 		typedef chunk_array<integer,chunk_bits_elems>               
-                                        links_container;
+											links_container;
 		//typedef std::vector<integer>                                empty_container;
 		//typedef std::vector<integer>                                links_container;
 		typedef TagManager::sparse_sub_type                         
-                                        sparse_type;
+											sparse_type;
 		typedef TagManager::sparse_sub_record                       
-                                        sparse_rec;
+											sparse_rec;
 		typedef sparse_type::size_type                              
-                                        senum;
+											senum;
 	private:
-    std::string                         name;
+		std::string                         name;
 		real                                epsilon;
 		empty_container                     empty_space[6];
 		empty_container                     empty_links[6];
@@ -1277,7 +1289,7 @@ namespace INMOST
 		/// return total number in bytes of occupied memory by element and its data
 		enumerator                          MemoryUsage         (HandleType h);
 		                                    Mesh                ();
-                                        Mesh                (std::string name);
+											Mesh                (std::string name);
 		                                    Mesh                (const Mesh & other);
 		Mesh &                              operator =          (Mesh const & other);
 		                                    ~Mesh               ();
@@ -1287,9 +1299,9 @@ namespace INMOST
 		/// or you forget to release markers after you use them.
 		///
 		/// In release mode (NDEBUG is set) if you run out of space for markers function will return InvalidMarker()
-		/// @return new marker or InvalidMarker(), see description
+		/// @return New marker or InvalidMarker(), see description.
 		MarkerType                          CreateMarker         ();
-    MarkerType                          CreatePrivateMarker  ();
+		MarkerType                          CreatePrivateMarker  ();
 		/// Release marker back for reuse.
 		/// This function will only notice mesh that the marker is free to be reused, this will not clear markers
 		/// from elements. Before releasing the marker you should ensure that all the marker is removed from all the elements.
@@ -1297,9 +1309,10 @@ namespace INMOST
 		///
 		/// Since it is expensive to check asserts will fire in debug mode (NDEBUG not set) only if you define CHECKS_MARKERS in inmost_common.h,
 		/// no checks will be performed in release mode(NDEBUG is set).
-		/// @param n byte position and byte bit mask
-		void                                ReleaseMarker       (MarkerType n);
-    void                                ReleasePrivateMarker(MarkerType n);
+		/// @param n Byte position and byte bit mask.
+		/// @param cleanup Elements on which marker should be removed.
+		void                                ReleaseMarker       (MarkerType n, ElementType cleanup = NONE);
+		void                                ReleasePrivateMarker(MarkerType n);
 		/// Set tolerance for coordinates comparison. This tolerance is used in comparators 
 		/// when two meshes are merged during loading, in ResolveShared to check that nodes on different processors match 
 		/// and in UnpackElementsData
@@ -1404,14 +1417,14 @@ namespace INMOST
 		HandleType                        LastCreated        () const {return last_created;}
 
 		bool                              isValidHandleRange (HandleType h) const; //for asserts
-		bool                              isValidElement     (integer etypenum, integer lid) const {return links[etypenum][lid] != -1;}
+		bool                              isValidElementNum  (integer etypenum, integer lid) const {return links[etypenum][lid] != -1;}
 		bool                              isValidElement     (ElementType etype, integer lid) const {return links[ElementNum(etype)][lid] != -1;}
 		bool                              isValidCell        (integer lid) const {return links[ElementNum(CELL)][lid] != -1;}
 		bool                              isValidFace        (integer lid) const {return links[ElementNum(FACE)][lid] != -1;}
 		bool                              isValidEdge        (integer lid) const {return links[ElementNum(EDGE)][lid] != -1;}
 		bool                              isValidNode        (integer lid) const {return links[ElementNum(NODE)][lid] != -1;}
 		bool                              isValidElementSet  (integer lid) const {return links[ElementNum(ESET)][lid] != -1;}
-		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElement(GetHandleElementNum(h),GetHandleID(h));}
+		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElementNum(GetHandleElementNum(h),GetHandleID(h));}
 		/// Retrieve upper adjacent that is shared by multiple lower adjacencies.
 		/// @return handle of found element or InvalidHandle()
 		HandleType                        FindSharedAdjacency(const HandleType * arr, enumerator num) const;
@@ -1862,7 +1875,7 @@ namespace INMOST
 		/// @see Element::getAsCell
 		/// @see Element::getAsSet
 		reference_array                     ReferenceArrayDV    (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REFERENCE); return reference_array(this,*static_cast<inner_reference_array*>(MGetDenseLink(h,tag)));}
-    /// Returns an array of element remote handles in dense array of variable size.
+		/// Returns an array of element remote handles in dense array of variable size.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
 		/// Asserts will fire in debug mode if assumption that data is dense and variable is incorrect,
@@ -1889,42 +1902,42 @@ namespace INMOST
 		remote_reference_array              RemoteReferenceArrayDV(HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_REMOTE_REFERENCE); return remote_reference_array(*static_cast<inner_remote_reference_array*>(MGetDenseLink(h,tag)));}
 
 #if defined(USE_AUTODIFF)
-    var      &                          Variable            (HandleType h, const Tag & tag);
-    var      &                          VariableDF          (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return static_cast<var     *>(MGetDenseLink(h,tag))[0];}
-    var      &                          VariableDV          (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return static_cast<inner_variable_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
-    var_array                           VariableArray       (HandleType h, const Tag & tag);
-    var_array                           VariableArrayDF     (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return var_array(static_cast<var *>(MGetDenseLink(h,tag)),tag.GetSize());}
-    var_array                           VariableArrayDV     (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return var_array(*static_cast<inner_variable_array*>(MGetDenseLink(h,tag)));}
+		var      &                          Variable            (HandleType h, const Tag & tag);
+		var      &                          VariableDF          (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return static_cast<var     *>(MGetDenseLink(h,tag))[0];}
+		var      &                          VariableDV          (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return static_cast<inner_variable_array     *>(MGetDenseLink(h,tag))->at_safe(0);}
+		var_array                           VariableArray       (HandleType h, const Tag & tag);
+		var_array                           VariableArrayDF     (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_VARIABLE); return var_array(static_cast<var *>(MGetDenseLink(h,tag)),tag.GetSize());}
+		var_array                           VariableArrayDV     (HandleType h, const Tag & tag) {AssertsDV(h,tag,DATA_VARIABLE); return var_array(*static_cast<inner_variable_array*>(MGetDenseLink(h,tag)));}
 #endif
 		/// Set a marker on the element represented by handle.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
 		void                              SetMarker          (HandleType h,MarkerType n)  {assert(!isPrivate(n)); static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);}
-    void                              SetPrivateMarker   (HandleType h,MarkerType n);
+		void                              SetPrivateMarker   (HandleType h,MarkerType n);
 		/// Set a marker on the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles
 		/// @param m stores byte number and byte bit mask that represent marker
 		/// @see Mesh::SetMarker
 		void                              SetMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetMarker(h[i],m);}
-    void                              SetPrivateMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetPrivateMarker(h[i],m);}
+		void                              SetPrivateMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetPrivateMarker(h[i],m);}
 		/// Check whether the marker is set one the element.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
 		bool                              GetMarker          (HandleType h,MarkerType n) const {assert(!isPrivate(n)); return (static_cast<const bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;}
-    bool                              GetPrivateMarker   (HandleType h,MarkerType n) const;
+		bool                              GetPrivateMarker   (HandleType h,MarkerType n) const;
 		/// Remove the marker from the element.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
 		void                              RemMarker          (HandleType h,MarkerType n) {assert(!isPrivate(n)); static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);}
-    void                              RemPrivateMarker   (HandleType h,MarkerType n);
+		void                              RemPrivateMarker   (HandleType h,MarkerType n);
 		/// Remove the marker from the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles
 		/// @param m stores byte number and byte bit mask that represent marker
 		/// @see Mesh::RemMarker
 		void                              RemMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() ) RemMarker(h[i],m);}
-    void                              RemPrivateMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() ) RemPrivateMarker(h[i],m);}
+		void                              RemPrivateMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() ) RemPrivateMarker(h[i],m);}
 		/// Remove all the markers from the element
 		void                              ClearMarkerSpace   (HandleType h);
 		/// Get a copy of the bytes that store markers on the element.
@@ -2965,13 +2978,13 @@ namespace INMOST
 		///    for subsequent data loading. This will cure the case when tags were already priviously defined
 		///    on mesh with different masks and data will be red incorrectly.
 		void         Load(std::string File);
-    void         LoadMSH(std::string File);
-    void         LoadECL(std::string File);
-    void         LoadXML(std::string File);
-    void         LoadPMF(std::string File); 
-    void         LoadVTK(std::string File); 
-    void         LoadPVTK(std::string File); 
-    void         LoadMKF(std::string File);
+		void         LoadMSH(std::string File);
+		void         LoadECL(std::string File);
+		void         LoadXML(std::string File);
+		void         LoadPMF(std::string File); 
+		void         LoadVTK(std::string File); 
+		void         LoadPVTK(std::string File); 
+		void         LoadMKF(std::string File);
 		/// Acceptable file formats for writing
 		/// - ".vtk"  - legacy vtk format for unstructured grid
 		/// - ".pvtk" - legacy parallel vtk format
@@ -2986,11 +2999,11 @@ namespace INMOST
 		/// \todo
 		/// 1. Markers are not saved in internal format due to possible conflict during load.
 		void         Save(std::string File);
-    void         SaveXML(std::string File);
-    void         SavePMF(std::string File);
-    void         SaveVTK(std::string File);
-    void         SavePVTK(std::string File);
-    void         SaveGMV(std::string File);
+		void         SaveXML(std::string File);
+		void         SavePMF(std::string File);
+		void         SaveVTK(std::string File);
+		void         SavePVTK(std::string File);
+		void         SaveGMV(std::string File);
 		bool         isParallelFileFormat(std::string File);
 	public:
 		
@@ -3004,7 +3017,7 @@ namespace INMOST
 		bool         remember[5][3];
 	private:
 		void                              RestoreGeometricTags();
-    void                              RepairGeometricTags();
+		void                              RepairGeometricTags();
 		bool                              HideGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
 		bool                              ShowGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
 	public:
@@ -3026,6 +3039,9 @@ namespace INMOST
 		integer                           CountInteriorFaces ();
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size) const;
+		/// Sets marker for all the faces that have only one neighbouring cell, works correctly in parallel environment.
+		/// @param boundary_marker Non-private marker that will indicate boundary faces.
+		void                              MarkBoundaryFaces(MarkerType boundary_marker);
 		//implemented in modify.cpp
 	private:
 		MarkerType hide_element, new_element, temp_hide_element;

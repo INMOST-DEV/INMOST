@@ -1491,7 +1491,7 @@ namespace INMOST
 		}
 		//RemoveGhost();
 		
-#else //USE_PARALLEL_STORAGE
+#else //USE_MPI
 		AssignGlobalID(CELL | FACE | EDGE | NODE);
 #endif //USE_MPI
 		EXIT_FUNC();
@@ -2284,16 +2284,16 @@ namespace INMOST
 						for(unsigned j = 0; j < count; j++)
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
-              //REPORT_STR("element type " << ElementTypeName(GetHandleElementType(*eit)) << " global id " << Integer(*eit,GlobalIDTag()));
+							//REPORT_STR("element type " << ElementTypeName(GetHandleElementType(*eit)) << " global id " << Integer(*eit,GlobalIDTag()));
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
-              //REPORT_VAL("size",array_size_recv[k]);
-              //for(int qq = 0; qq < array_size_recv[k]; ++qq)
-              //{
-              //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_recv[pos+qq*tag.GetBytesSize()]));
-              //}
+							//REPORT_VAL("size",array_size_recv[k]);
+							//for(int qq = 0; qq < array_size_recv[k]; ++qq)
+							//{
+							//  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_recv[pos+qq*tag.GetBytesSize()]));
+							//}
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
 							pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
-              //pos += array_size_recv[k]*tag.GetBytesSize();
+							//pos += array_size_recv[k]*tag.GetBytesSize();
 							++k;
 							++total_unpacked;
 						}
@@ -2306,7 +2306,7 @@ namespace INMOST
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
 							op(tag,Element(this,*eit),&array_data_recv[pos],size);
 							pos += GetDataCapacity(&array_data_recv[pos],size,tag);
-              //pos += size*tag.GetBytesSize();
+							//pos += size*tag.GetBytesSize();
 							++total_unpacked;
 						}
 					}
@@ -2319,7 +2319,7 @@ namespace INMOST
 						{
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
 							pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
-              //pos += array_size_recv[k]*tag.GetBytesSize();
+							//pos += array_size_recv[k]*tag.GetBytesSize();
 							++k;
 							++total_unpacked;
 						}
@@ -2330,7 +2330,7 @@ namespace INMOST
 						{
 							op(tag,Element(this,*eit),&array_data_recv[pos],size);
 							pos += GetDataCapacity(&array_data_recv[pos],size,tag);
-              //pos += size*tag.GetBytesSize();
+							//pos += size*tag.GetBytesSize();
 							++total_unpacked;
 						}
 					}
