@@ -55,6 +55,12 @@ namespace INMOST
 		  return result;
 	  }
   public:
+	bool CheckNans()
+	{
+		for(enumerator k = 0; k < n*m; ++k)
+			if( check_nans(space[k]) ) return true;
+		return false;
+	}
     void RemoveRow(enumerator row)
     {
       for(enumerator k = row+1; k < n; ++k)

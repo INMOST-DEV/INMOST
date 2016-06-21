@@ -700,6 +700,29 @@ namespace INMOST
   };
 
   template<class A>
+  class unary_plus_expression : public shell_expression<unary_plus_expression<A> >
+  {
+      const A & arg;
+      INMOST_DATA_REAL_TYPE value;
+  public:
+      unary_plus_expression(const shell_expression<A> & parg) : arg(parg) {value = arg.GetValue();}
+      unary_plus_expression(const unary_plus_expression & b) : arg(b.arg) {}
+      __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const 
+      {
+          arg.GetJacobian(mult,r);
+      }
+      __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const 
+      {
+          arg.GetJacobian(mult,r);
+      }
+      __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
+      {
+          arg.GetHessian(multJ,J,multH,H);
+      }
+  };
+
+  template<class A>
   class abs_expression : public shell_expression<abs_expression<A> >
   {
       const A & arg;
@@ -1478,22 +1501,20 @@ namespace INMOST
     INMOST_DATA_ENUM_TYPE GetSize() const {return size;}
   };
 
-
-  __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
-  __INLINE bool check_nans(var_expression const & e) {return e.check_nans();}
-  __INLINE bool check_nans(multivar_expression const & e) {return e.check_nans();}
-  __INLINE bool check_nans(multivar_expression_reference const & e) {return e.check_nans();}
-
   typedef multivar_expression variable;
   typedef var_expression unknown;
 }
 
 
-
+__INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
+__INLINE bool check_nans(INMOST::var_expression const & e) {return e.check_nans();}
+__INLINE bool check_nans(INMOST::multivar_expression const & e) {return e.check_nans();}
+__INLINE bool check_nans(INMOST::multivar_expression_reference const & e) {return e.check_nans();}
 
 template<class A, class B, class C> __INLINE   INMOST::condition_expression<A,B,C> condition(INMOST::shell_expression<A> const & control, INMOST::shell_expression<B> const & if_ge_zero, INMOST::shell_expression<C> const & if_lt_zero) { return INMOST::condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
                                     __INLINE                 INMOST_DATA_REAL_TYPE condition(INMOST_DATA_REAL_TYPE control, INMOST_DATA_REAL_TYPE if_ge_zero, INMOST_DATA_REAL_TYPE if_lt_zero) {return control >= 0.0 ? if_ge_zero : if_lt_zero;}
 template<class A>          __INLINE              INMOST::unary_minus_expression<A> operator-(INMOST::shell_expression<A> const & Arg) { return INMOST::unary_minus_expression<A>(Arg); }
+template<class A>          __INLINE               INMOST::unary_plus_expression<A> operator+(INMOST::shell_expression<A> const & Arg) { return INMOST::unary_plus_expression<A>(Arg); }
 template<class A>          __INLINE                      INMOST::abs_expression<A>      fabs(INMOST::shell_expression<A> const & Arg) { return INMOST::abs_expression<A>(Arg); }
 template<class A>          __INLINE                      INMOST::exp_expression<A>       exp(INMOST::shell_expression<A> const & Arg) { return INMOST::exp_expression<A> (Arg); }
 template<class A>          __INLINE                      INMOST::log_expression<A>       log(INMOST::shell_expression<A> const & Arg) { return INMOST::log_expression<A> (Arg); }
