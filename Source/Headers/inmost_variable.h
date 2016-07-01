@@ -266,16 +266,8 @@ namespace INMOST
       if( pregval != ENUMUNDEF )
       {
         mask = aut.GetDynamicMask(pregval);
-        if( pregval < AD_CTAG )
-        {
-          value_tag = aut.GetDynamicValueTag(pregval);
-          index_tag = aut.GetDynamicIndexTag(pregval);
-        }
-        else
-        {
-          value_tag = aut.GetStaticValueTag(pregval);
-          index_tag = Tag();
-        }
+        value_tag = aut.GetDynamicValueTag(pregval);
+        index_tag = aut.GetDynamicIndexTag(pregval);
       }
     }
     dynamic_variable(const dynamic_variable & other) : aut(other.aut), index_tag(other.index_tag), value_tag(other.value_tag), mask(other.mask), comp(other.comp) {}
@@ -340,7 +332,10 @@ namespace INMOST
     Tag variable_tag;
     INMOST_DATA_ENUM_TYPE comp;
   public:
-    stored_variable(Tag t, INMOST_DATA_ENUM_TYPE pcomp = 0) : variable_tag(t), comp(pcomp)  {}
+    stored_variable(Tag t, INMOST_DATA_ENUM_TYPE pcomp = 0) : variable_tag(t), comp(pcomp)  
+	{
+		assert(t.GetDataType() == DATA_REAL || t.GetDataType() == DATA_VARIABLE);
+	}
     stored_variable(const stored_variable & other) : variable_tag(other.variable_tag), comp(other.comp) {}
     stored_variable & operator =(const stored_variable & other) 
     {
@@ -348,12 +343,27 @@ namespace INMOST
       comp = other.comp;
       return * this;
     }
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return e->VariableArray(variable_tag)[comp].GetValue();}
+    INMOST_DATA_REAL_TYPE Value(const Storage & e) const 
+	{
+		if( variable_tag.GetDataType() == DATA_VARIABLE )
+			return e->VariableArray(variable_tag)[comp].GetValue();
+		else if( variable_tag.GetDataType() == DATA_REAL )
+			return e->RealArray(variable_tag)[comp];
+	}
     multivar_expression Variable(const Storage & e) const 
     {
-      return e->VariableArray(variable_tag)[comp];
+		if( variable_tag.GetDataType() == DATA_VARIABLE )
+			return e->VariableArray(variable_tag)[comp];
+		else if( variable_tag.GetDataType() == DATA_REAL )
+			return variable(e->RealArray(variable_tag)[comp]);
     }
-    multivar_expression operator [](const Storage & e) const {return e->VariableArray(variable_tag)[comp];}
+    multivar_expression operator [](const Storage & e) const 
+	{
+		if( variable_tag.GetDataType() == DATA_VARIABLE )
+			return e->VariableArray(variable_tag)[comp];
+		else if( variable_tag.GetDataType() == DATA_REAL )
+			return variable(e->RealArray(variable_tag)[comp]);
+	}
     Tag VariableTag() {return variable_tag;}
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
     void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
