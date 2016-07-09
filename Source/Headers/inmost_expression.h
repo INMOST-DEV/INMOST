@@ -29,6 +29,7 @@
 #if defined(USE_AUTODIFF)
 namespace INMOST
 {
+	
 
 	class basic_expression
 	{
@@ -115,6 +116,7 @@ namespace INMOST
 			return value != value;
 		}
 	};
+	
 
 #if defined(PACK_ARRAY)
 #pragma pack(push,r1,4)
@@ -333,6 +335,8 @@ namespace INMOST
 		{
 			return 1 + v[0].first;
 		}
+		
+		friend class multivar_expression_reference;
 	};
 
 #if defined(PACK_ARRAY)
@@ -353,6 +357,9 @@ namespace INMOST
     /// Copy constructor, sets links to the same reference of value and entries
     multivar_expression_reference(const multivar_expression_reference & other) 
       : value(other.value), entries(other.entries) {}
+	  /// Copy constructor from multivar_expression, sets links to the same reference of value and entries
+	  multivar_expression_reference(multivar_expression & other)
+	  : value(other.value), entries(&other.entries) {}
     /// Retrive value
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
     /// Set value without changing derivatives
@@ -507,7 +514,7 @@ namespace INMOST
       return false;
     }
   };
-  
+	
 
   template<class A>
   class const_multiplication_expression : public shell_expression<const_multiplication_expression<A> >

@@ -18,5 +18,6 @@ set(SOURCE
 
 set(HEADER
     ${HEADER}
+    ${CMAKE_CURRENT_SOURCE_DIR}/incident_matrix.hpp
     PARENT_SCOPE
 )

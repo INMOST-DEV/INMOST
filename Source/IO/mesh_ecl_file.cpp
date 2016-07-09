@@ -3,8 +3,18 @@
 #endif
 
 #include "inmost.h"
-
+#include "../Mesh/incident_matrix.hpp"
 #if defined(USE_MESH)
+
+// coords/zcorn algorithm
+// 1) put all block nodes into pillars, sort each pillar nodes by actual depth
+// 2) create edges down along pillars and mark them according to blocks
+// 3) consider all pairs of pillars in Oxz and Oyz planes and create uncut block edges, mark them in block numbers
+// 4) use line-sweep algorithm to intersect and cut all the edges between each pair of pillars, mark them in block numbers
+// 5) mark all the nodes with block numbers that they belong by considering union of block numbers on adjacent edges
+// 5) use incident_matrix algorithm to create all the faces between pair of pillars from pillar edges and inter-pillar edges
+// 6) from intersection of block numbers on nodes figure out which blocks the face belongs
+// 7) add top and bottom interface
 
 //eclipse states
 #define ECLSTRCMP(x,y) strncmp(x,y,8)
@@ -88,7 +98,7 @@ namespace INMOST
 	class position_less
 	{
 	public:
-		bool operator()(const position & a, const position & b)
+		bool operator()(const position & a, const position & b) const
 		{
 			for(int k = 0; k < 3; ++k)
 			{
@@ -104,7 +114,7 @@ namespace INMOST
 	class event_less
 	{
 	public:
-		bool operator()(const std::pair<double, int> & a, const std::pair<double, int> & b)
+		bool operator()(const std::pair<double, int> & a, const std::pair<double, int> & b) const
 		{
 			if (a.first < b.first - 1.0e-9)
 				return true;

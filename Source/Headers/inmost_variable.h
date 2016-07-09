@@ -326,7 +326,7 @@ namespace INMOST
     abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new static_variable(*this));}
   };
 
-  class stored_variable : public shell_dynamic_variable<multivar_expression,stored_variable>
+  class stored_variable : public shell_dynamic_variable<multivar_expression_reference,stored_variable>
   {
   private:
     Tag variable_tag;
@@ -349,6 +349,7 @@ namespace INMOST
 			return e->VariableArray(variable_tag)[comp].GetValue();
 		else if( variable_tag.GetDataType() == DATA_REAL )
 			return e->RealArray(variable_tag)[comp];
+		else throw NotImplemented;
 	}
     multivar_expression Variable(const Storage & e) const 
     {
@@ -356,13 +357,15 @@ namespace INMOST
 			return e->VariableArray(variable_tag)[comp];
 		else if( variable_tag.GetDataType() == DATA_REAL )
 			return variable(e->RealArray(variable_tag)[comp]);
+		else throw NotImplemented;
     }
-    multivar_expression operator [](const Storage & e) const 
+    multivar_expression_reference operator [](const Storage & e) const
 	{
 		if( variable_tag.GetDataType() == DATA_VARIABLE )
 			return e->VariableArray(variable_tag)[comp];
 		else if( variable_tag.GetDataType() == DATA_REAL )
-			return variable(e->RealArray(variable_tag)[comp]);
+			return multivar_expression_reference(e->RealArray(variable_tag)[comp],NULL);
+		else throw NotImplemented;
 	}
     Tag VariableTag() {return variable_tag;}
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
