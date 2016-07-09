@@ -528,6 +528,8 @@ namespace INMOST
 		static bool                 TestSplitEdge           (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect);
 		//implemented in geometry.cpp
 		Storage::real               Length                  () const;
+		///Swap positions of first node and last node
+		void                        SwapEnds                ();
 	};
 
 	__INLINE const Edge & InvalidEdge() {static Edge ret(NULL,InvalidHandle()); return ret;}
