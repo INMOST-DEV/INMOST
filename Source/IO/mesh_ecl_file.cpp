@@ -125,7 +125,7 @@ namespace INMOST
 			return false;
 		}
 	};
-
+	
 	//intersect a pair of segments
 	std::pair<bool,Node> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::map<position,Node,position_less> & intersections, int comp, bool print)
 	{
@@ -181,7 +181,7 @@ namespace INMOST
 	}
 
 	//account for intersection event
-	void intersect_event(Mesh * m, int a, int b, Node I, std::vector<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<double,int>, int,event_less> & events, std::vector<Tag> & transfer, bool print)
+	void intersect_event(Mesh * m, int a, int b, Node I, ElementArray<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<double,int>, int,event_less> & events, std::vector<Tag> & transfer, bool print)
 	{
 		//remove event of ending of old segment
 		{
@@ -230,7 +230,7 @@ namespace INMOST
 			for(int q = 0; q < 2;++q) //segments
 				for(int k = 0; k < transfer.size();++k)
 				{
-					int size = copy[k + q*transfer.size()].size() / transfer[k].GetBytesSize();
+					int size = (int)copy[k + q*transfer.size()].size() / transfer[k].GetBytesSize();
 					if( size ) for(int l = 0; l < 2; ++l) //two parts
 					{
 						splitted[q][l].SetDataSize(transfer[k],size);
@@ -270,7 +270,7 @@ namespace INMOST
 	}
 
 	//intersect many segments
-	void intersect(Mesh * m, std::vector<Edge> & segments, int comp, std::vector<Tag> & transfer, bool print)
+	void intersect(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, int comp, std::vector<Tag> & transfer, bool print)
 	{
 		std::map<position,Node,position_less> intersections;
 		std::multimap<std::pair<double,int>,int,event_less> events;
@@ -279,7 +279,7 @@ namespace INMOST
 		if( print )
 		{
 			std::cout << "Input segments[" << segments.size() << "]: " << std::endl;
-			for (std::vector<Edge>::iterator it = segments.begin(); it != segments.end(); ++it)
+			for (ElementArray<Edge>::iterator it = segments.begin(); it != segments.end(); ++it)
 				std::cout << "[ (" << (comp ? "y " : "x ") <<  it->getBeg()->Coords()[comp] << ",z" << it->getBeg()->Coords()[2] << "), ("<< (comp ? "y " : "x ") << it->getEnd()->Coords()[comp] << ",z" << it->getEnd()->Coords()[2] << ") ] " << std::endl;
 			std::cout << "Create events based on segments." << std::endl;
 		}
@@ -387,7 +387,39 @@ namespace INMOST
 				}
 			}
 		}
+		//copy intersections
+		nodes.clear();
+		for(std::map<position,Node,position_less>::iterator it = intersections.begin(); it != intersections.end(); ++it)
+			nodes.push_back(it->second);
+	}
 	
+	void block_number_intersection(Element n, ElementArray<Element> & adj, Tag block)
+	{
+		Storage::integer_array be = adj[0]->IntegerArray(block);
+		std::vector<int> inter(be.begin(),be.end()), tmp(inter.size());
+		for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
+		{
+			be = adj[k]->IntegerArray(block);
+			tmp.resize(std::set_intersection(inter.begin(),inter.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
+			inter.swap(tmp);
+		}
+		Storage::integer_array bn = n->IntegerArray(block);
+		bn.replace(bn.begin(),bn.end(),inter.begin(),inter.end());
+	}
+
+	void block_number_union(Element n, ElementArray<Element> & adj, Tag block)
+	{
+		Storage::integer_array be = adj[0]->IntegerArray(block);
+		std::vector<int> uni(be.begin(),be.end()), tmp(uni.size());
+		for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
+		{
+			be = adj[k]->IntegerArray(block);
+			tmp.resize(uni.size()+be.size());
+			tmp.resize(std::set_union(uni.begin(),uni.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
+			uni.swap(tmp);
+		}
+		Storage::integer_array bn = n->IntegerArray(block);
+		bn.replace(bn.begin(),bn.end(),uni.begin(),uni.end());
 	}
 
 
@@ -499,10 +531,10 @@ namespace INMOST
 					else if( !ECLSTRCMP(p,"COORD") )
 					{
 						assert(have_dimens);
-						if( xyz.empty() ) xyz.resize(2*(dims[0]+1)*(dims[1]+1));
+						if( xyz.empty() ) xyz.resize(3*2*(dims[0]+1)*(dims[1]+1));
 						read_arrayf = xyz.empty() ? NULL : &xyz[0];
 						numrecs = 1;
-						downread = totread = 2*(dims[0]+1)*(dims[1]+1);
+						downread = totread = 3*2*(dims[0]+1)*(dims[1]+1);
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_COORDS;
 						gtype = ECL_GTYPE_ZCORN;
@@ -686,7 +718,7 @@ namespace INMOST
 							}
 						}
 					}
-					if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
+					if( *(pend-1) == '/' || *p == '/' ) state = ECL_NONE; else if( downread == 0 ) state = ECL_SKIP_SECTION;
 					break;
 				case ECL_INRAD:
 					if( 1 == sscanf(p,"%lf%n",&inrad,&nchars) )
@@ -889,9 +921,9 @@ ecl_exit_loop:
 			}
 			//assemble pillars
 			{
-				Tag node_number = CreateTag("NODE_NUMBER",DATA_INTEGER,NODE,NONE);
-				Tag edge_number = CreateTag("EDGE_NUMBER",DATA_INTEGER,NODE,NONE);
-				Tag block_number = CreateTag("BLOCK_NUMBER",DATA_INTEGER,EDGE|NODE,NONE);
+				//Tag node_number = CreateTag("NODE_NUMBER",DATA_INTEGER,NODE,NONE);
+				Tag edge_number = CreateTag("EDGE_NUMBER",DATA_INTEGER,EDGE,NONE);
+				Tag block_number = CreateTag("BLOCK_NUMBER",DATA_INTEGER,FACE|EDGE|NODE,NONE);
 				typedef std::map<Storage::real,Node> pillar;
 				std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
 				for(int i = 0; i < dims[0]; i++)
@@ -928,48 +960,48 @@ ecl_exit_loop:
 									n = find == -1 ? CreateNode(node_xyz) : Node(this,old_nodes[find]);
 									p.insert(std::make_pair(zcorn_array[i][j][k][l],n));
 								} else n = search->second; //if
-								n->IntegerArray(node_number).push_back(l);
+								//n->IntegerArray(node_number).push_back(l);
 								n->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
 							} //l
 						} //k
 					} //j
 				} //i
-				/*      (6)*--------[3]--------*(7)
+				/*      (6)*<<------[3]--------*(7)
 						  /|                  /|
 						[6]                 [7]|
 						/  |                /  |
-					(4)*--------[2]--------*(5)|
+					(4)*--------[2]------>>*(5)|
 					   |  [10]             |  [11]
 					   |                   |   |
 					   |   |               |   |
 					   |                   |   |
 					  [8]  |              [9]  |
-					   |(2)*- - - - [1]- - |- -*(3)
+					   |(2)*- - - - [1]- - |->>*(3)
 					   |  /                |  /
 					   |[4]                |[5]
 					   |/                  |/
-					(0)*--------[0]--------*(1)
+					(0)*<<------[0]--------*(1)
 				*/
 				//structure to create an edge from pair of nodes
 				ElementArray<Node> edge_nodes(this,2);
 				//all edges along pillars
-				//std::vector< std::vector<Edge> > pillar_edges((dims[0]+1)*(dims[1]+1));
+				std::vector< ElementArray<Edge> > pillar_edges((dims[0]+1)*(dims[1]+1),ElementArray<Edge>(this));
 				//all edges of each block
-				std::vector< std::vector<Edge> > block_edges(dims[0]*dims[1]*dims[2]);
+				//std::vector< std::vector<Edge> > block_edges(dims[0]*dims[1]*dims[2]);
 				//create edges along pillars
 				for(int i = 0; i < dims[0]+1; ++i)
 				{
 					for(int j = 0; j < dims[1]+1; ++j)
 					{
 						pillar & p = pillars[i*(dims[1]+1)+j];
-						//std::vector<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
+						ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
 						pillar::iterator it = p.begin();
 						pillar::iterator pre_it = it++;
 						while(it != p.end())
 						{
 							edge_nodes[0] = it->second;
 							edge_nodes[1] = pre_it->second;
-							//p_edges.push_back(CreateEdge(edge_nodes).first);
+							p_edges.push_back(CreateEdge(edge_nodes).first);
 							pre_it = it++;
 						}
 					} //j
@@ -995,9 +1027,12 @@ ecl_exit_loop:
 								pillar & p = pillars[i2*(dims[1]+1) + j2];
 								pillar::iterator b,t, it, jt; 
 								//find nodes in pillar that belong to current block
-								assert(zcorn_array[i][j][k][edge_nodes[l][0]] < zcorn_array[i][j][k][edge_nodes[l][1]]); //otherwise run iterator in different direction
-								b = p.find(zcorn_array[i][j][k][edge_nodes[l][0]]); //bottom
-								t = p.find(zcorn_array[i][j][k][edge_nodes[l][1]]); //top
+								std::vector<double> & debug = zcorn_array[i][j][k];
+								double pa = zcorn_array[i][j][k][edge_nodes[l][0]];
+								double pb = zcorn_array[i][j][k][edge_nodes[l][1]];
+								assert(pa > pb); //otherwise run iterator in different direction
+								b = p.find(pb); //bottom
+								t = p.find(pa); //top
 								//go over edges
 								it = b;
 								while(it != t)
@@ -1008,18 +1043,22 @@ ecl_exit_loop:
 									Edge e(this,FindSharedAdjacency(find,2)); //find edge
 									e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
 									e->IntegerArray(edge_number).push_back(8+l);
-									block_edges[(i + (j+k*dims[1])*dims[0])].push_back(e);
+									//block_edges[(i + (j+k*dims[1])*dims[0])].push_back(e);
 								}
 							}
 						}
 					}
 				}
 				//set of lines to be intersected
-				std::vector<Edge> edges;
+				ElementArray<Edge> edges(this);
+				ElementArray<Node> intersections(this);
 				//tags to be transfered
 				std::vector<Tag> transfer(2);
 				transfer[0] = edge_number;
 				transfer[1] = block_number;
+				//store faces for each block
+				std::vector< ElementArray<Face> > block_faces(dims[0]*dims[1]*dims[2],ElementArray<Face>(this));
+				std::vector< ElementArray<Edge> > block_edges(dims[0]*dims[1]*dims[2],ElementArray<Edge>(this));
 				//go over nx pairs of pillars, then ny pairs of pillars
 				for(int q = 0; q < 2; ++q)
 				{
@@ -1033,6 +1072,8 @@ ecl_exit_loop:
 							pillar & p1 = pillars[(i+!q)*(dims[1]+1)+j+q];
 							//preallocate array for edges
 							edges.reserve(2*std::max(p0.size(),p1.size()));
+							//remember visited edges
+							MarkerType visited = CreateMarker();
 							//add far faces of j-1 block
 							if( (1-q)*j + q*i > 0 ) //test j when q = 0 and i when q = 1
 							{
@@ -1045,8 +1086,12 @@ ecl_exit_loop:
 										edge_nodes[0] = p0[zcorn_array[i-q][j-!q][k][2 - q + 4*l]];
 										edge_nodes[1] = p1[zcorn_array[i-q][j-!q][k][3 - 0 + 4*l]];
 										Edge e = CreateEdge(edge_nodes).first;
-										edges.push_back(e);
-										e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
+										if( !e->GetMarker(visited) )
+										{
+											edges.push_back(e);
+											e->SetMarker(visited);
+										}
+										e->IntegerArray(block_number).push_back((i-q + (j-!q+k*dims[1])*dims[0]));
 										e->IntegerArray(edge_number).push_back(1 + 2*l + 4*q);
 									}
 								}
@@ -1063,26 +1108,161 @@ ecl_exit_loop:
 										edge_nodes[0] = p0[zcorn_array[i][j][k][0 + 0 + 4*l]];
 										edge_nodes[1] = p1[zcorn_array[i][j][k][1 + q + 4*l]];
 										Edge e = CreateEdge(edge_nodes).first;
-										edges.push_back(e);
+										if( !e->GetMarker(visited) )
+										{
+											edges.push_back(e);
+											e->SetMarker(visited);
+										}
 										e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
 										e->IntegerArray(edge_number).push_back(0 + 2*l + 4*q);
 									}
 								}
 							}
+							edges.RemMarker(visited);
+							ReleaseMarker(visited);
 							//produce intersected edges
-							intersect(this,edges,!q,transfer,false);
-							//add edges to block
-							for(int r = 0; r < (int)edges.size(); ++r)
+							intersect(this,edges,intersections,!q,transfer,false);
+							//number of internal edges
+							int num_inner = edges.size();
+							//add intersected edges into blocks, so that we can reconstruct top and bottom faces of each block
+							for(int k = 0; k < (int)edges.size(); ++k)
 							{
-								Storage::integer_array blocks = edges[r].IntegerArray(block_number);
-								for(int t = 0; t < blocks.size(); ++t)
-									block_edges[blocks[t]].push_back(edges[r]);
-							} //q
+								Storage::integer_array b = edges[k].IntegerArray(block_number);
+								for(int r = 0; r < (int)b.size(); ++r)
+									block_edges[b[r]].push_back(edges[k]);
+							}
+							//collect edges from pillars
+							ElementArray<Edge> & p0_edges = pillar_edges[(i+ 0)*(dims[1]+1)+j+0];
+							ElementArray<Edge> & p1_edges = pillar_edges[(i+!q)*(dims[1]+1)+j+q];
+							edges.insert(edges.end(),p0_edges.begin(),p0_edges.end());
+							edges.insert(edges.end(),p1_edges.begin(),p1_edges.end());
+							//sort block numbers on edges
+							for(int k = 0; k < (int)edges.size(); ++k)
+							{
+								Storage::integer_array b = edges[k].IntegerArray(block_number);
+								std::sort(b.begin(),b.end());
+							}
+							//put block numbers to all nodes involved in pillars, so that we can figure out block numbers for constructed faces
+							MarkerType mrk = CreateMarker();
+							edges.SetMarker(mrk);
+							for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)
+							{
+								ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
+								block_number_union(it->second.getAsElement(),nedges,block_number);
+							}
+							for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)
+							{
+								ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
+								block_number_union(it->second.getAsElement(),nedges,block_number);
+							}
+							for(int k = 0; k < (int)intersections.size(); ++k)
+							{
+								ElementArray<Element> nedges = intersections[k]->getAdjElements(EDGE,mrk);
+								block_number_union(intersections[k].getAsElement(),nedges,block_number);
+							}
+
+							edges.RemMarker(mrk);
+							ReleaseMarker(mrk);
+							//form faces out of edges
+							incident_matrix<Edge> matrix(this,edges.data(),edges.data()+edges.size(),num_inner);
+							//collect all faces
+							ElementArray<Edge> loop(this);
+							while(matrix.find_shortest_loop(loop))
+							{
+								if( loop.size() > 2 )
+								{
+									Face f = CreateFace(loop).first;
+									ElementArray<Element> nodes = f->getAdjElements(NODE);
+									block_number_intersection(f,nodes,block_number);
+									Storage::integer_array b = f->IntegerArray(block_number);
+									for(int r = 0; r < (int)b.size(); ++r)
+										block_faces[b[r]].push_back(f);
+								}
+								else if( !loop.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << loop.size() << std::endl;
+							}
+							//add top and bottom edges to block
+							//for(int r = 0; r < (int)edges.size(); ++r)
+							//{
+							//	Storage::integer_array blocks = edges[r].IntegerArray(block_number);
+							//	for(int t = 0; t < (int)blocks.size(); ++t)
+							//		block_edges[blocks[t]].push_back(edges[r]);
+							//} //q
+							//clean-up structures
+							edges.clear();
+							intersections.clear();
 						} //j
 					} //i
 				} //q
-
-
+				//do not need this tag on faces and nodes
+				DeleteTag(block_number,FACE | NODE);
+				//now construct top and bottom interfaces
+				for(int i = 0; i < dims[0]; ++i)
+				{
+					for(int j = 0; j < dims[1]; ++j)
+					{
+						for(int k = 0; k < dims[2]; ++k)
+						{
+							//current block number
+							int cur = (i + (j+k*dims[1])*dims[0]);
+							//bottom face -> 0,4,1,5
+							//top face -> 2,7,3,6
+							const int map[8][2] =
+							{
+								{0,0}, //edge 0 -> first position, bottom face
+								{2,0}, //edge 1 -> third position, bottom face
+								{0,1}, //edge 2 -> first position, top face
+								{2,1}, //edge 3 -> third position, top face
+								{1,0}, //edge 4 -> second position, bottom face
+								{3,0}, //edge 5 -> fourth position, bottom face
+								{3,1}, //edge 6 -> fourth position, top face
+								{1,1} //edge 7 -> second position, top face
+							};
+							//which edges should be considered in reverse order
+							const bool rev[2][4] = 
+							{
+								{true,false,false,true},
+								{false,false,true,true}
+							};
+							//array of ordered edges, first dimension - top or bottom, second dimension - edge number
+							std::vector<HandleType> edges[2][4];
+							//retrive set of edges of the block
+							ElementArray<Edge> & cbe = block_edges[cur];
+							for(int q = 0; q < cbe.size(); ++q)
+							{
+								Storage::integer_array bn = cbe[q].IntegerArray(block_number);
+								Storage::integer_array en = cbe[q].IntegerArray(edge_number);
+								assert(bn.size() == en.size());
+								for(int r = 0; r < (int)bn.size(); ++r) if( bn[r] == cur ) //how the edge is represented on current block
+									edges[map[en[r]][1]][map[en[r]][0]].push_back(cbe[q].GetHandle());
+							}
+							ElementArray<Edge> face_edges(this);
+							//collect edges and create face
+							for(int q = 0; q < 2; ++q) //top and bottom
+							{
+								for(int r = 0; r < 4; ++r) //all sides
+								{
+									if( rev[q][r] )
+										face_edges.insert(face_edges.end(),edges[q][r].rbegin(),edges[q][r].rend());
+									else
+										face_edges.insert(face_edges.end(),edges[q][r].begin(),edges[q][r].end());
+								}
+								if( face_edges.size() > 2 )
+								{
+									Face f = CreateFace(face_edges).first;
+									block_faces[cur].push_back(f);
+								}
+								else if( !face_edges.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << face_edges.size() << std::endl;
+								face_edges.clear();
+							}
+							if( block_faces[cur].size() > 3 )
+								CreateCell(block_faces[cur]);
+							else if( !block_faces[cur].empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate cell " << block_faces[cur].size() << std::endl;
+						} //k
+					} //j
+				} //i
+				//cleanup data
+				DeleteTag(edge_number);
+				DeleteTag(block_number);
 
 			}
 		}

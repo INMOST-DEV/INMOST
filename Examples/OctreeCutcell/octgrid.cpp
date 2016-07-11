@@ -604,7 +604,7 @@ class incident_matrix
 			MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
 			for(int k = 1; k < data.size(); ++k)
 				data[k]->SetPrivateMarker(mrk); //0-th face orientation is default
-			Node n1,n2; //to retrive edge
+			Node n1,n2, v1,v2; //to retrive edge
 			bool reverse = false; //reverse orientation in considered face
 			std::deque< orient_face > stack; //edge and first node and face for visiting
 			//todo: can do faster by retriving edges and going over their nodes
@@ -614,7 +614,7 @@ class incident_matrix
 			{
 				//figure out starting node order
 				if( edges[0]->getBeg() == edges[1]->getBeg() ||
-				   edges[0]->getBeg() == edges[1]->getEnd() )
+					edges[0]->getBeg() == edges[1]->getEnd() )
 				{
 					n1 = edges[0]->getEnd();
 					n2 = edges[0]->getBeg();
@@ -638,10 +638,10 @@ class incident_matrix
 					//update edge nodes
 					n1 = n2; //current end is new begin
 					//find new end
-					if( n2 == edges[(j+1)%edges.size()]->getBeg() )
-						n2 = edges[(j+1)%edges.size()]->getEnd();
-					else
-						n2 = edges[(j+1)%edges.size()]->getBeg();
+					v1 = edges[(j+1)%edges.size()]->getBeg();
+					v2 = edges[(j+1)%edges.size()]->getEnd();
+					if( n2 == v1 ) n2 = v2;
+					else n2 = v1;
 				}
 				if( stack.empty() ) break;
 				//get entry from stack
@@ -679,57 +679,34 @@ class incident_matrix
 					//update edge nodes
 					n1 = n2; //current end is new begin
 					//find new end
-					if( n2 == edges[(j+1)%edges.size()]->getBeg() )
-						n2 = edges[(j+1)%edges.size()]->getEnd();
-					else
-						n2 = edges[(j+1)%edges.size()]->getBeg();
+					v1 = edges[(j+1)%edges.size()]->getBeg();
+					v2 = edges[(j+1)%edges.size()]->getEnd();
+					if( n2 == v1 ) n2 = v2;
+					else n2 = v1;
 				}
 			} while(true);
 			for(int k = 0; k < data.size(); ++k)
 				data[k].RemPrivateMarker(mrk);
 			mesh->ReleasePrivateMarker(mrk);
-			Storage::real d;
+			Storage::real cnt[3], nrm[3];
 			for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
 			{
-				d = 0;
-				ElementArray<Node> nodes = data[j]->getNodes();
-				if( !nodes.empty() )
-				{
-					if( data[j]->GetPrivateMarker(rev) )
-					{
-						Storage::real_array a = nodes.back().Coords();
-						for(typename ElementArray<Node>::size_type j = nodes.size()-2; j > 1; j--)
-						{
-							Storage::real_array b = nodes[j].Coords();
-							Storage::real_array c = nodes[j-1].Coords();
-							d += __det3v(&a[0],&b[0],&c[0]);
-						}
-					}
-					else
-					{
-						Storage::real_array a = nodes[0].Coords();
-						for(typename ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
-						{
-							Storage::real_array b = nodes[j].Coords();
-							Storage::real_array c = nodes[j+1].Coords();
-							d += __det3v(&a[0],&b[0],&c[0]);
-						}
-					}
-				}
-				//measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*d;
-				measure += d;
+				data[j]->Centroid(cnt);
+				data[j]->getAsFace()->Normal(nrm);
+				measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*dot_prod(cnt,nrm);
+				//measure += d;
 			}
 			for(int k = 0; k < data.size(); ++k)
 				data[k].RemPrivateMarker(rev);
 			mesh->ReleasePrivateMarker(rev);
-			measure /= 6.0;
+			measure /= 3.0;
 			measure = fabs(measure);
 		}
 		return measure;
 	}
 	void recursive_find(unsigned node, unsigned length)
 	{
-		if( !min_loop.empty() && length > min_loop.size() ) return;
+		//if( !min_loop.empty() && length > min_loop.size() ) return;
 		bool success = false;
 		if( do_show_row(node) )
 		{
@@ -737,20 +714,20 @@ class incident_matrix
 			
 			if( success )
 			{
-				if( min_loop.empty() || min_loop.size() >= length )
+				//if( min_loop.empty() || min_loop.size() >= length )
 				{
 					
 					
 					temp_loop.resize(length);
 					for(unsigned j = 0; j < insert_order.size(); j++)
 						temp_loop[j] = head_column[insert_order[j]];
-					//Storage::real measure = compute_measure(temp_loop);
+					Storage::real measure = compute_measure(temp_loop);
 					
 					
-					//if( min_loop.empty() || min_loop_measure >= measure )
+					if( min_loop.empty() || min_loop_measure >= measure )
 					{
 						min_loop.swap(temp_loop);
-						//min_loop_measure = measure;
+						min_loop_measure = measure;
 						//~ if( min_loop.size() == head_column.size() ) // all elements were visited
 						//~ {
 							//~ unsigned num = 0; 
@@ -920,7 +897,6 @@ public:
 	{
 		ret.clear();
 		exit_recurse = false;
-		min_loop_measure = 1.0e20;
 		unsigned first = UINT_MAX;
 		do
 		{
@@ -933,6 +909,7 @@ public:
 				}
 			if( first != UINT_MAX )
 			{
+				min_loop_measure = 1.0e20;
 				recursive_find(first,1);
 				if( min_loop.empty() )
 					visits[first]--; //don't start again from this element

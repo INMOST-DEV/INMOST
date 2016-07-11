@@ -641,152 +641,22 @@ namespace INMOST
 						Cell me = Cell(this,e);
 						ElementArray<Face> faces = me->getFaces();
 						*ret = 0;
-						/*
-						Storage::real d;
-						for(unsigned i = 0; i < faces.size(); i++)
-						{
-							d = 0;
-							adjacent<Node> nodes = faces[i].getNodes();
-							Storage::real_array a = nodes[0].Coords();
-							for(unsigned j = 1; j < nodes.size()-1; j++)
-							{
-								Storage::real_array b = nodes[j].Coords();
-								Storage::real_array c = nodes[j+1].Coords();
-								d += det3v(&a[0],&b[0],&c[0]);
-							}
-							*ret += (2*faces[i].FaceOrientedOutside(e->getAsCell())-1)*d;
-						}
-						*ret /= 6.0;
-						*/
 						if( faces.size() > 3 )
 						{
-							Storage::real fcnt[3], fnrm[3];// , area;
+							//can copy orientation-independent algorithm from
+							//incident_matrix.hpp: incident_matrix::compute_measure
+							Storage::real fcnt[3], fnrm[3];
 							for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
 							{
 								faces[i]->Centroid(fcnt);
 								faces[i]->OrientedNormal(me,fnrm);
-								/*
-								area = ::sqrt(vec_dot_product(fnrm,fnrm,mdim));
-								if( area > 0 )
-								{
-									fnrm[0] /= area;
-									fnrm[1] /= area;
-									fnrm[2] /= area;
-									*ret += vec_dot_product(fcnt,fnrm,mdim) * area;
-								}
-								*/
 								*ret += vec_dot_product(fcnt,fnrm,mdim);
 							}
 							*ret /= 3.0;
 						}
-						/*
-						if( *ret < 0  || (*ret) != (*ret) )
-						{
-							Storage::real test = 0;
-							
-							
-							//~ Storage::real fcnt[3], fnrm[3], area;
-							for(unsigned i = 0; i < faces.size(); i++)
-							{
-								if( faces[i].FixNormalOrientation() ) std::cout << faces[i].LocalID() << " normal refixed " << faces[i].nbAdjElements(CELL) << std::endl;
-								//~ faces[i].Centroid(fcnt);
-								//~ faces[i].OrientedNormal(e->getAsCell(),fnrm);
-								//~ area = ::sqrt(vec_dot_product(fnrm,fnrm,mdim));
-								//~ fnrm[0] /= area;
-								//~ fnrm[1] /= area;
-								//~ fnrm[2] /= area;
-								//~ test += vec_dot_product(fcnt,fnrm,mdim) * area / 3.0;
-							}
-							
-							//~ e->Centroid(fcnt);
-							
-							Storage::real d;
-							for(unsigned i = 0; i < faces.size(); i++)
-							{
-								d = 0;
-								adjacent<Node> nodes = faces[i].getNodes();
-								Storage::real_array a = nodes[0].Coords();
-								for(unsigned j = 1; j < nodes.size()-1; j++)
-								{
-									Storage::real_array b = nodes[j].Coords();
-									Storage::real_array c = nodes[j+1].Coords();
-									d += det3v(&a[0],&b[0],&c[0]);
-								}
-								test += (2*faces[i].FaceOrientedOutside(e->getAsCell())-1)*d;
-							}
-							test /= 6.0;
-						
-						
-							std::cout << "alg1 " << *ret << " alg2 " << test << " on " << Element::GeometricTypeName(e->GetGeometricType()) << " " << e->GlobalID() << " " << e->LocalID() << std::endl;
-							//e->Integer(tag_topologyerror) = 1;
-						}
-						*/
-						//~ if( *ret < 0 )
-						//~ {
-							//~ std::cout << "negative volume! " << *ret << std::endl;
-							//~ std::cout << "element " << Element::GeometricTypeName(e->GetGeometricType()) << " faces " << faces.size() << std::endl;
-							//~ *ret = 0;
-							//~ for(unsigned i = 0; i < faces.size(); i++)
-							//~ {
-								//~ std::cout << "face " << i << "/" << faces.size() << std::endl;
-								//~ d = 0;
-								//~ adjacent<Node> nodes = faces[i].getNodes();
-								//~ Storage::real_array a = nodes[0].Coords();
-								//~ std::cout << "node 0 " << a[0] << " " << a[1] << " " << a[2] << " id " << nodes[0].LocalID() << std::endl; 
-								//~ for(unsigned j = 1; j < nodes.size()-1; j++)
-								//~ {
-									//~ Storage::real_array b = nodes[j].Coords();
-									//~ std::cout << "node " << j << " " << b[0] << " " << b[1] << " " << b[2] << " id " << nodes[j].LocalID() << std::endl;
-									//~ Storage::real_array c = nodes[j+1].Coords();
-									//~ d += det3v(&a[0],&b[0],&c[0]);
-								//~ }
-								//~ a = nodes[nodes.size()-1].Coords();
-								//~ std::cout << "node " << nodes.size()-1 << " " << a[0] << " " << a[1] << " " << a[2] << " id " << nodes[nodes.size()-1].LocalID() << std::endl; 
-								//~ std::cout << "d = " << d << std::endl;
-								//~ std::cout << "orientation = " << (2*faces[i].FaceOrientedOutside(e->getAsCell())-1) << std::endl;
-								//~ Storage::real old = *ret, add = (2*faces[i].FaceOrientedOutside(e->getAsCell())-1)*d;
-								//~ *ret = old + add;
-								//~ std::cout << old << " + " << add << " = " << *ret << std::endl;
-							//~ }
-							//~ std::cout << "result " << *ret/6.0 << std::endl;
-							//~ std::cout << "trying with fix " << std::endl;
-							//~ *ret = 0;
-							//~ for(unsigned i = 0; i < faces.size(); i++)
-							//~ {
-								//~ std::cout << "face " << i << "/" << faces.size() << " fixed " << faces[i].FixNormalOrientation() << " cells " << faces[i].nbAdjElements(CELL) << std::endl;
-								//~ d = 0;
-								//~ adjacent<Node> nodes = faces[i].getNodes();
-								//~ Storage::real_array a = nodes[0].Coords();
-								//~ std::cout << "node 0 " << a[0] << " " << a[1] << " " << a[2] << " id " << nodes[0].LocalID() << std::endl; 
-								//~ for(unsigned j = 1; j < nodes.size()-1; j++)
-								//~ {
-									//~ Storage::real_array b = nodes[j].Coords();
-									//~ std::cout << "node " << j << " " << b[0] << " " << b[1] << " " << b[2] << " id " << nodes[j].LocalID() << std::endl;
-									//~ Storage::real_array c = nodes[j+1].Coords();
-									//~ d += det3v(&a[0],&b[0],&c[0]);
-								//~ }
-								//~ a = nodes[nodes.size()-1].Coords();
-								//~ std::cout << "node " << nodes.size()-1 << " " << a[0] << " " << a[1] << " " << a[2] << " id " << nodes[nodes.size()-1].LocalID() << std::endl; 
-								//~ std::cout << "d = " << d << std::endl;
-								//~ std::cout << "orientation = " << (2*faces[i].FaceOrientedOutside(e->getAsCell())-1) << std::endl;
-								//~ Storage::real old = *ret, add = (2*faces[i].FaceOrientedOutside(e->getAsCell())-1)*d;
-								//~ *ret = old + add;
-								//~ std::cout << old << " + " << add << " = " << *ret << std::endl;
-							//~ }
-							//~ std::cout << "result " << *ret/6.0 << std::endl;
-						//~ }
-						
-						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 						break;
 					}
 				}
-				//~ throw -1;
-				//~ if( (*ret) != (*ret) || *ret < 0  ) 
-				//~ {
-					//~ std::cout << "bad measure: " << *ret << " for " << ElementTypeName(e->GetElementType()) << " " << Element::GeometricTypeName(e->GetGeometricType()) << " edim " << edim << std::endl;
-					//~ 
-				//~ }
-				
 			}
 			//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 			break;

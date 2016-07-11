@@ -2005,15 +2005,15 @@ namespace INMOST
 		/// @param tag tag that represents the data
 		/// @see Tag::GetSize
 		INMOST_DATA_ENUM_TYPE             GetDataSize        (HandleType h,const Tag & tag) const; //For DATA_BULK return number of bytes, otherwise return the length of array
-    /// Return the size of the structure in bytes required to represent the data on current element.
-    /// This is equal to GetDataSize times Tag::GetBytesSize for all the data types,
-    /// except for DATA_VARIABLE, that requires a larger structure to accomodate derivatives.
-    /// @param h handle of element
-    /// @param tag tag that represents the data
-    INMOST_DATA_ENUM_TYPE             GetDataCapacity    (HandleType h,const Tag & tag) const;
-    /// Returns the number of bytes in data used for given type of tag.
-    /// Trivial for all the types except DATA_VARIABLE.
-    INMOST_DATA_ENUM_TYPE             GetDataCapacity    (const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size, const Tag & tag) const;
+		/// Return the size of the structure in bytes required to represent the data on current element.
+		/// This is equal to GetDataSize times Tag::GetBytesSize for all the data types,
+		/// except for DATA_VARIABLE, that requires a larger structure to accomodate derivatives.
+		/// @param h handle of element
+		/// @param tag tag that represents the data
+		INMOST_DATA_ENUM_TYPE             GetDataCapacity    (HandleType h,const Tag & tag) const;
+		/// Returns the number of bytes in data used for given type of tag.
+		/// Trivial for all the types except DATA_VARIABLE.
+		INMOST_DATA_ENUM_TYPE             GetDataCapacity    (const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size, const Tag & tag) const;
 		/// Sets the size of the array for data of variable size.
 		/// If you try to change size of data of constant size then if size is
 		/// different from current then in debug mode (NDEBUG not set) assertion will fail,

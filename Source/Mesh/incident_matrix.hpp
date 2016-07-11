@@ -173,8 +173,8 @@ namespace INMOST
 				//mark all faces, so that we can perform adjacency retrival
 				MarkerType mrk = mesh->CreatePrivateMarker();
 				MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
-				data.SetPrivateMarker(mrk);
-				data[0]->RemPrivateMarker(mrk); //0-th face orientation is default
+				for(int k = 1; k < data.size(); ++k)
+					data[k]->SetPrivateMarker(mrk); //0-th face orientation is default
 				Node n1,n2; //to retrive edge
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
@@ -258,45 +258,23 @@ namespace INMOST
 				} while(true);
 				data.RemPrivateMarker(mrk);
 				mesh->ReleasePrivateMarker(mrk);
-				Storage::real v[3], d;
+				Storage::real cnt[3], nrm[3];
 				for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
 				{
-					d = 0;
-					ElementArray<Node> nodes = data[j]->getNodes();
-					if( !nodes.empty() )
-					{
-						Storage::real_array a = nodes[0].Coords();
-						if( data[j]->GetPrivateMarker(rev) )
-						{
-							for(typename ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
-							{
-								Storage::real_array b = nodes[j].Coords();
-								Storage::real_array c = nodes[j+1].Coords();
-								d += __det3v(&a[0],&b[0],&c[0]);
-							}
-						}
-						else
-						{
-							for(typename ElementArray<Node>::size_type j = nodes.size()-2; j > 1; j--)
-							{
-								Storage::real_array b = nodes[j].Coords();
-								Storage::real_array c = nodes[j-1].Coords();
-								d += __det3v(&a[0],&b[0],&c[0]);
-							}
-						}
-					}
-					measure += d;
+					data[j]->Centroid(cnt);
+					data[j]->getAsFace()->Normal(nrm);
+					measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*dot_prod(cnt,nrm);
 				}
 				data.RemPrivateMarker(rev);
 				mesh->ReleasePrivateMarker(rev);
-				measure /= 6.0;
+				measure /= 3.0;
 				measure = fabs(measure);
 			}
 			return measure;
 		}
 		void recursive_find(unsigned node, unsigned length)
 		{
-			if( !min_loop.empty() && length > min_loop.size() ) return;
+			//if( !min_loop.empty() && length > min_loop.size() ) return;
 			bool success = false;
 			if( do_show_row(node) )
 			{
@@ -304,43 +282,19 @@ namespace INMOST
 				
 				if( success )
 				{
-					if( min_loop.empty() || min_loop.size() >= length )
+					//if( min_loop.empty() || min_loop.size() >= length )
 					{
 						
 						
 						temp_loop.resize(length);
 						for(unsigned j = 0; j < insert_order.size(); j++)
 							temp_loop.at(j) = head_column[insert_order[j]];
-						/*
-						 // TODO:
-						 // MUST CORRECTLY COMPUTE VOLUMES HERE FOR CONCAVE POLYGONS/POLYHEDRONS!
-						 // this should work instead of min_loop
-						 bool ok = false;
-						 if( temp_loop.size() <= min_loop.size() )
-						 {
-						 Storage::real measure = compute_measure(temp_loop);
-						 
-						 if( measure > 0 && measure < min_loop_measure )
-						 {
-							ok = true;
-							min_loop_measure = measure;
-						 }
-						 }
-						 else
-						 {
-						 Storage::real measure = compute_measure(temp_loop);
-						 if( measure > 0 )
-						 {
-							ok = true;
-							min_loop_measure = measure;
-						 }
-						 }
-						 
-						 if( ok )
-						 */
+						Storage::real measure = compute_measure(temp_loop);
+						
+						if( min_loop.empty() || min_loop_measure >= measure )
 						{
 							min_loop.swap(temp_loop);
-							
+							min_loop_measure = measure;
 							//~ if( min_loop.size() == head_column.size() ) // all elements were visited
 							//~ {
 							//~ unsigned num = 0;
@@ -515,6 +469,7 @@ namespace INMOST
 					}
 				if( first != UINT_MAX )
 				{
+					min_loop_measure = 1.0e+20;
 					recursive_find(first,1);
 					if( min_loop.empty() )
 						visits[first]--; //don't start again from this element
