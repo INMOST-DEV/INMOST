@@ -209,10 +209,10 @@ namespace INMOST
 						//update edge nodes
 						n1 = n2; //current end is new begin
 						//find new end
-						if( n2 == data[(j+1)%edges.size()]->getBeg() )
-							n2 = data[(j+1)%edges.size()]->getEnd();
+						if( n2 == edges[(j+1)%edges.size()]->getBeg() )
+							n2 = edges[(j+1)%edges.size()]->getEnd();
 						else
-							n2 = data[(j+1)%edges.size()]->getBeg();
+							n2 = edges[(j+1)%edges.size()]->getBeg();
 					}
 					if( stack.empty() ) break;
 					//get entry from stack
@@ -250,10 +250,10 @@ namespace INMOST
 						//update edge nodes
 						n1 = n2; //current end is new begin
 						//find new end
-						if( n2 == data[(j+1)%edges.size()]->getBeg() )
-							n2 = data[(j+1)%edges.size()]->getEnd();
+						if( n2 == edges[(j+1)%edges.size()]->getBeg() )
+							n2 = edges[(j+1)%edges.size()]->getEnd();
 						else
-							n2 = data[(j+1)%edges.size()]->getBeg();
+							n2 = edges[(j+1)%edges.size()]->getBeg();
 					}
 				} while(true);
 				data.RemPrivateMarker(mrk);
@@ -266,14 +266,26 @@ namespace INMOST
 					if( !nodes.empty() )
 					{
 						Storage::real_array a = nodes[0].Coords();
-						for(typename ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
+						if( data[j]->GetPrivateMarker(rev) )
 						{
-							Storage::real_array b = nodes[j].Coords();
-							Storage::real_array c = nodes[j+1].Coords();
-							d += __det3v(&a[0],&b[0],&c[0]);
+							for(typename ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
+							{
+								Storage::real_array b = nodes[j].Coords();
+								Storage::real_array c = nodes[j+1].Coords();
+								d += __det3v(&a[0],&b[0],&c[0]);
+							}
+						}
+						else
+						{
+							for(typename ElementArray<Node>::size_type j = nodes.size()-2; j > 1; j--)
+							{
+								Storage::real_array b = nodes[j].Coords();
+								Storage::real_array c = nodes[j-1].Coords();
+								d += __det3v(&a[0],&b[0],&c[0]);
+							}
 						}
 					}
-					measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*d;
+					measure += d;
 				}
 				data.RemPrivateMarker(rev);
 				mesh->ReleasePrivateMarker(rev);

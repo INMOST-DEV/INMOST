@@ -2,7 +2,7 @@
 #include "octgrid.h"
 #include <math.h>
 #include <new>
-
+#include <deque>
 extern bool allow_coarse;
 extern bool allow_refine;
 
@@ -467,6 +467,18 @@ public:
 	}
 };
 
+typedef struct orient_face_t
+{
+	Edge bridge;
+	Node first;
+	Face face;
+	orient_face_t(Edge _bridge, Node _first, Face _face)
+	:bridge(_bridge),first(_first),face(_face)
+	{
+	}
+} orient_face;
+
+
 
 template<class T>
 class incident_matrix
@@ -484,6 +496,7 @@ class incident_matrix
 	dynarray< char , 256 > stub_row;
 	dynarray< double, 192 > centroids, normals;
 	double min_loop_measure;
+	Mesh * mesh;
 	
 	bool do_hide_row(unsigned k)
 	{
@@ -538,7 +551,6 @@ class incident_matrix
 		}
 		return success;
 	}
-/*
 	Storage::real compute_measure(dynarray<T,64> & data)
 	{
 		Storage::real measure = 0;
@@ -546,28 +558,28 @@ class incident_matrix
 		{
 			//calculate area
 			int mdim = data[0]->GetMeshLink()->GetDimensions();
-			adjacent<Node> nodes,n1,n2;
+			ElementArray<Node> nodes,n1,n2;
 			n1 = data[0]->getNodes();
 			n2 = data[1]->getNodes();
-			if( &n1[0] == &n2[0] || &n1[0] == &n2[1])
+			if( n1[0] == n2[0] || n1[0] == n2[1])
 			{
 				nodes.push_back(n1[1]);
 				nodes.push_back(n1[0]);
 			}
 			else
-			{ 
+			{
 				nodes.push_back(n1[0]);
 				nodes.push_back(n1[1]);
 			}
-			for(unsigned j = 1; j < data.size(); j++)
+			for(typename ElementArray<T>::size_type j = 1; j < data.size(); j++)
 			{
 				n1 = data[j]->getNodes();
-				if( &nodes.back() == &n1[0] )
+				if( nodes.back() == n1[0] )
 					nodes.push_back(n1[1]);
 				else
 					nodes.push_back(n1[0]);
 			}
-					
+			
 			Storage::real x[3] = {0,0,0};
 			Storage::real_array x0 = nodes[0].Coords();
 			for(unsigned i = 1; i < nodes.size()-1; i++)
@@ -586,44 +598,135 @@ class incident_matrix
 		}
 		else //this is 3d face
 		{
-			Storage::real cnt[3] = {0,0,0}, div = 1.0/data.size(), v[3], d;
-			centroids.resize(data.size()*3);
-			normals.resize(data.size()*3);
-			for(unsigned j = 0; j < data.size(); j++)
+			//firstly, have to figure out orientation of each face
+			//mark all faces, so that we can perform adjacency retrival
+			MarkerType mrk = mesh->CreatePrivateMarker();
+			MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
+			for(int k = 1; k < data.size(); ++k)
+				data[k]->SetPrivateMarker(mrk); //0-th face orientation is default
+			Node n1,n2; //to retrive edge
+			bool reverse = false; //reverse orientation in considered face
+			std::deque< orient_face > stack; //edge and first node and face for visiting
+			//todo: can do faster by retriving edges and going over their nodes
+			//should not use FindSharedAdjacency
+			ElementArray<Edge> edges = data[0]->getEdges();
+			do
 			{
-				data[j]->Centroid(&centroids[j*3]);
-				data[j]->GetMeshLink()->GetGeometricData(data[j],NORMAL,&normals[j*3]);
-				cnt[0] += centroids[j*3+0];
-				cnt[1] += centroids[j*3+1];
-				cnt[2] += centroids[j*3+2];
-			}
-			cnt[0] *= div;
-			cnt[1] *= div;
-			cnt[2] *= div;
-			Storage::real orientation;
-			for(unsigned j = 0; j < data.size(); j++)
-			{
-				make_vec(&centroids[j*3],cnt,v);
-				if( dot_prod(v,&normals[j*3]) < 0 ) 
-					orientation = -1;
-				else
-					orientation = 1;
-				d = 0;
-				adjacent<Node> nodes = data[j]->getNodes();
-				Storage::real_array a = nodes[0].Coords();
-				for(unsigned j = 1; j < nodes.size()-1; j++)
+				//figure out starting node order
+				if( edges[0]->getBeg() == edges[1]->getBeg() ||
+				   edges[0]->getBeg() == edges[1]->getEnd() )
 				{
-					Storage::real_array b = nodes[j].Coords();
-					Storage::real_array c = nodes[j+1].Coords();
-					d += __det3v(&a[0],&b[0],&c[0]);
+					n1 = edges[0]->getEnd();
+					n2 = edges[0]->getBeg();
 				}
-				measure += orientation*d;
+				else
+				{
+					n1 = edges[0]->getBeg();
+					n2 = edges[0]->getEnd();
+				}
+				//schedule unvisited adjacent faces
+				for(typename ElementArray<Edge>::size_type j = 0; j < edges.size(); j++)
+				{
+					//schedule face adjacent to considered edge
+					ElementArray<Face> adjacent = edges[j]->getFaces(mrk);
+					assert(adjacent.size() <= 1);
+					if( !adjacent.empty() && adjacent[0].GetPrivateMarker(mrk))
+					{
+						adjacent[0].RemPrivateMarker(mrk);
+						stack.push_back(orient_face(edges[j],reverse ? n2 : n1,adjacent[0]));
+					}
+					//update edge nodes
+					n1 = n2; //current end is new begin
+					//find new end
+					if( n2 == edges[(j+1)%edges.size()]->getBeg() )
+						n2 = edges[(j+1)%edges.size()]->getEnd();
+					else
+						n2 = edges[(j+1)%edges.size()]->getBeg();
+				}
+				if( stack.empty() ) break;
+				//get entry from stack
+				orient_face r = stack.front();
+				//remove face from stack
+				stack.pop_front();
+				//retrive edges for new face
+				edges = r.face->getEdges();
+				reverse = false;
+				//figure out starting node order
+				if( edges[0]->getBeg() == edges[1]->getBeg() ||
+				   edges[0]->getBeg() == edges[1]->getEnd() )
+				{
+					n1 = edges[0]->getEnd();
+					n2 = edges[0]->getBeg();
+				}
+				else
+				{
+					n1 = edges[0]->getBeg();
+					n2 = edges[0]->getEnd();
+				}
+				//find out common edge orientation
+				for(typename ElementArray<Node>::size_type j = 0; j < edges.size(); j++)
+				{
+					if( edges[j] == r.bridge ) //found the edge
+					{
+						//reverse ordering on this face
+						if( r.first == n1 )
+						{
+							r.face->SetPrivateMarker(rev);
+							reverse = true;
+						}
+						break;
+					}
+					//update edge nodes
+					n1 = n2; //current end is new begin
+					//find new end
+					if( n2 == edges[(j+1)%edges.size()]->getBeg() )
+						n2 = edges[(j+1)%edges.size()]->getEnd();
+					else
+						n2 = edges[(j+1)%edges.size()]->getBeg();
+				}
+			} while(true);
+			for(int k = 0; k < data.size(); ++k)
+				data[k].RemPrivateMarker(mrk);
+			mesh->ReleasePrivateMarker(mrk);
+			Storage::real d;
+			for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
+			{
+				d = 0;
+				ElementArray<Node> nodes = data[j]->getNodes();
+				if( !nodes.empty() )
+				{
+					if( data[j]->GetPrivateMarker(rev) )
+					{
+						Storage::real_array a = nodes.back().Coords();
+						for(typename ElementArray<Node>::size_type j = nodes.size()-2; j > 1; j--)
+						{
+							Storage::real_array b = nodes[j].Coords();
+							Storage::real_array c = nodes[j-1].Coords();
+							d += __det3v(&a[0],&b[0],&c[0]);
+						}
+					}
+					else
+					{
+						Storage::real_array a = nodes[0].Coords();
+						for(typename ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
+						{
+							Storage::real_array b = nodes[j].Coords();
+							Storage::real_array c = nodes[j+1].Coords();
+							d += __det3v(&a[0],&b[0],&c[0]);
+						}
+					}
+				}
+				//measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*d;
+				measure += d;
 			}
+			for(int k = 0; k < data.size(); ++k)
+				data[k].RemPrivateMarker(rev);
+			mesh->ReleasePrivateMarker(rev);
 			measure /= 6.0;
+			measure = fabs(measure);
 		}
 		return measure;
 	}
-*/
 	void recursive_find(unsigned node, unsigned length)
 	{
 		if( !min_loop.empty() && length > min_loop.size() ) return;
@@ -634,40 +737,20 @@ class incident_matrix
 			
 			if( success )
 			{
-				if( min_loop.empty() || min_loop.size() >= length ) 
+				if( min_loop.empty() || min_loop.size() >= length )
 				{
 					
 					
 					temp_loop.resize(length);
 					for(unsigned j = 0; j < insert_order.size(); j++)
 						temp_loop[j] = head_column[insert_order[j]];
-					/*
-					bool ok = false;
-					if( temp_loop.size() <= min_loop.size() )
-					{
-						Storage::real measure = compute_measure(temp_loop);
-						
-						if( measure > 0 && measure < min_loop_measure )
-						{
-							ok = true;
-							min_loop_measure = measure;
-						}
-					}
-					else
-					{
-						Storage::real measure = compute_measure(temp_loop);
-						if( measure > 0 )
-						{
-							ok = true;
-							min_loop_measure = measure;
-						}
-					}
+					//Storage::real measure = compute_measure(temp_loop);
 					
-					if( ok )
-					*/
+					
+					//if( min_loop.empty() || min_loop_measure >= measure )
 					{
 						min_loop.swap(temp_loop);
-					
+						//min_loop_measure = measure;
 						//~ if( min_loop.size() == head_column.size() ) // all elements were visited
 						//~ {
 							//~ unsigned num = 0; 
@@ -755,10 +838,12 @@ public:
 	incident_matrix(InputIterator beg, InputIterator end, unsigned num_inner)
 	: head_column(beg,end), min_loop()
 	{
+		min_loop_measure = 1.0e20;
 		//isInputForwardIterators<T,InputIterator>();
 		if( !head_column.empty() )
 		{
 			Mesh * m = head_column[0]->GetMeshLink();
+			mesh = m;
 			MarkerType hide_marker = m->CreateMarker();
 
 			visits.resize(head_column.size());
@@ -835,6 +920,7 @@ public:
 	{
 		ret.clear();
 		exit_recurse = false;
+		min_loop_measure = 1.0e20;
 		unsigned first = UINT_MAX;
 		do
 		{
