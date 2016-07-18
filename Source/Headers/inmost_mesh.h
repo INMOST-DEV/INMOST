@@ -3226,8 +3226,8 @@ namespace INMOST
 			MarkerComparator(Mesh * m, MarkerType mrk, bool inverse = false) :m(m), mrk(mrk), inverse(inverse) {assert(!isPrivate(mrk));}
 			MarkerComparator(const MarkerComparator & other) :m(other.m), mrk(other.mrk), inverse(other.inverse){}
 			MarkerComparator & operator = (MarkerComparator const & other) { m = other.m; mrk = other.mrk; inverse = other.inverse; return *this;}
-			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return (inverse ^ m->GetMarker(a,mrk)) < (inverse ^ m->GetMarker(b,mrk));}
-			bool operator() (HandleType a, bool b) const {if( a == InvalidHandle() ) return true; return (inverse ^ m->GetMarker(a,mrk)) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return ((inverse ^ m->GetMarker(a,mrk))? 1 : 0) < ((inverse ^ m->GetMarker(b,mrk)) ? 1 : 0);}
+			bool operator() (HandleType a, bool b) const {if( a == InvalidHandle() ) return true; return ((inverse ^ m->GetMarker(a,mrk))? 1 : 0) < (b ? 1 : 0);}
 		};
 		
 		class PrivateMarkerComparator
@@ -3237,8 +3237,8 @@ namespace INMOST
 			PrivateMarkerComparator(Mesh * m, MarkerType mrk, bool inverse = false) :m(m), mrk(mrk), inverse(inverse) {assert(isPrivate(mrk));}
 			PrivateMarkerComparator(const PrivateMarkerComparator & other) :m(other.m), mrk(other.mrk), inverse(other.inverse){}
 			PrivateMarkerComparator & operator = (PrivateMarkerComparator const & other) { m = other.m; mrk = other.mrk; inverse = other.inverse; return *this;}
-			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return (inverse ^ m->GetPrivateMarker(a,mrk)) < (inverse ^ m->GetPrivateMarker(b,mrk));}
-			bool operator() (HandleType a, bool b) const {if( a == InvalidHandle() ) return true; return (inverse ^ m->GetPrivateMarker(a,mrk)) < b;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return ((inverse ^ m->GetPrivateMarker(a,mrk))? 1 : 0) < ((inverse ^ m->GetPrivateMarker(b,mrk))? 1 : 0);}
+			bool operator() (HandleType a, bool b) const {if( a == InvalidHandle() ) return true; return ((inverse ^ m->GetPrivateMarker(a,mrk))? 1 : 0) < (b ? 1 : 0);}
 		};
 
 

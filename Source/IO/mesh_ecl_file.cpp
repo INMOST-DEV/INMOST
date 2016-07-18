@@ -279,8 +279,8 @@ namespace INMOST
 		v0[0] = p0end[0] + alpha*(p0beg[0]-p0end[0]);
 		v0[1] = p0end[1] + alpha*(p0beg[1]-p0end[1]);
 		v0[2] = pos[2];
-		v1[0] = p1end[0] + alpha*(p1beg[0]-p1end[0]);
-		v1[1] = p1end[1] + alpha*(p1beg[1]-p1end[1]);
+		v1[0] = p1end[0] + beta*(p1beg[0]-p1end[0]);
+		v1[1] = p1end[1] + beta*(p1beg[1]-p1end[1]);
 		v1[2] = pos[2];
 		//get vector connecting pillars
 		make_vec(v1,v0,v);
@@ -379,6 +379,82 @@ namespace INMOST
 			}
 		}
 	}
+
+	void split_edges(Mesh * m, Node & I, Edge & a, Edge & b, ElementArray<Edge> & splitted_a, ElementArray<Edge> & splitted_b,std::vector<Tag> & transfer)
+	{
+		//storage for data
+		std::vector< std::vector<char> > copy(transfer.size()*2);
+		//memorize data
+		{
+			const Edge * s[2] = {&a,&b};
+			for(int q = 0; q < 2; ++q) //segments
+				for(int k = 0; k < transfer.size(); ++k) //tags
+				{
+					int size = s[q]->GetDataSize(transfer[k]);
+					copy[k + q*transfer.size()].resize(transfer[k].GetBytesSize()*size);
+					if( !copy.empty() ) s[q]->GetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
+				}
+		}
+		splitted_a = Edge::SplitEdge(a,ElementArray<Node>(m,1,I->GetHandle()),0);
+		splitted_b = Edge::SplitEdge(b,ElementArray<Node>(m,1,I->GetHandle()),0);
+		//duplicate data
+		{
+			const Edge splitted[2][2] =
+			{
+				{splitted_a[0],splitted_a[1]},
+				{splitted_b[0],splitted_b[1]}
+			};
+			for(int q = 0; q < 2;++q) //segments
+				for(int k = 0; k < transfer.size();++k)
+				{
+					int size = (int)copy[k + q*transfer.size()].size() / transfer[k].GetBytesSize();
+					if( size ) for(int l = 0; l < 2; ++l) //two parts
+					{
+						splitted[q][l].SetDataSize(transfer[k],size);
+						splitted[q][l].SetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
+					}
+				}
+		}
+	}
+
+	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, const Storage::real p0beg[3], const Storage::real  p0end[3], const Storage::real p1beg[3], const Storage::real p1end[3], bool print)
+	{
+		std::map<position,Node,position_less> intersections;
+		MarkerType initial = m->CreateMarker();
+		for (int k = 0; k < (int)segments.size(); ++k)
+		{
+			segments[k]->getBeg()->SetMarker(initial);
+			segments[k]->getEnd()->SetMarker(initial);
+			intersections.insert(std::make_pair(position(segments[k]->getBeg()->Coords().data()),segments[k]->getBeg()));
+			intersections.insert(std::make_pair(position(segments[k]->getEnd()->Coords().data()),segments[k]->getEnd()));
+		}
+		for(int i = 0; i < (int)segments.size(); ++i)
+		{
+			for(int j = i+1; j < (int)segments.size(); ++j)
+			{
+				double t1,t2;
+				std::pair<bool,Node> I = intersect_segments(m,segments[i],segments[j],intersections,t1,t2,p0beg,p0end,p1beg,p1end,print);
+				if( I.first )
+				{
+					ElementArray<Edge> splitted_a, splitted_b;
+					split_edges(m,I.second,segments[i],segments[j],splitted_a,splitted_b,transfer);
+					segments[i] = splitted_a[0];
+					segments[j] = splitted_b[0];
+					segments.push_back(splitted_a[1]);
+					segments.push_back(splitted_b[1]);
+				}
+			}
+		}
+		nodes.clear();
+		for(std::map<position,Node,position_less>::iterator it = intersections.begin(); it != intersections.end(); ++it)
+		{
+			if( !it->second->GetMarker(initial) )
+				nodes.push_back(it->second);
+			else it->second->RemMarker(initial);
+		}
+		m->ReleaseMarker(initial);
+	}
+
 	//account for intersection event
 	void intersect_event(Mesh * m, int a, int b, Node I, ElementArray<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<double,int>, int,event_less> & events, std::vector<Tag> & transfer, bool print)
 	{
@@ -417,39 +493,8 @@ namespace INMOST
 				assert(flag);
 			}
 		}
-		//storage for data
-		std::vector< std::vector<char> > copy(transfer.size()*2);
-		//memorize data
-		{
-			const int s[2] = {a,b};
-			for(int q = 0; q < 2; ++q) //segments
-				for(int k = 0; k < transfer.size(); ++k) //tags
-				{
-					int size = segments[s[q]].GetDataSize(transfer[k]);
-					copy[k + q*transfer.size()].resize(transfer[k].GetBytesSize()*size);
-					if( !copy.empty() ) segments[s[q]].GetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
-				}
-		}
-		ElementArray<Edge> splitted_a = Edge::SplitEdge(segments[a],ElementArray<Node>(m,1,I->GetHandle()),0);
-		ElementArray<Edge> splitted_b = Edge::SplitEdge(segments[b],ElementArray<Node>(m,1,I->GetHandle()),0);
-		//duplicate data
-		{
-			const Edge splitted[2][2] =
-			{
-				{splitted_a[0],splitted_a[1]},
-				{splitted_b[0],splitted_b[1]},
-			};
-			for(int q = 0; q < 2;++q) //segments
-				for(int k = 0; k < transfer.size();++k)
-				{
-					int size = (int)copy[k + q*transfer.size()].size() / transfer[k].GetBytesSize();
-					if( size ) for(int l = 0; l < 2; ++l) //two parts
-					{
-						splitted[q][l].SetDataSize(transfer[k],size);
-						splitted[q][l].SetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
-					}
-				}
-		}
+		ElementArray<Edge> splitted_a, splitted_b;
+		split_edges(m,I,segments[a],segments[b],splitted_a,splitted_b,transfer);
 		//replace segment a by new one
 		segments[a] = splitted_a[0];
 		//add event of ending of old segment
@@ -1469,9 +1514,6 @@ ecl_exit_loop:
 							edges.RemMarker(visited);
 							ReleaseMarker(visited);
 							
-							if( i == 43 && j == 41 && q == 1)
-								print_inter = true;
-							
 							//produce intersected edges
 							if( print_inter )
 							{
@@ -1481,13 +1523,14 @@ ecl_exit_loop:
 									Storage::integer_array bn = edges[k]->IntegerArray(block_number);
 									Storage::integer_array en = edges[k]->IntegerArray(edge_number);
 									std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << " blocks: ";
-									for(int l = 0; l < bn.size(); ++l)
+									for(int l = 0; l < (int)bn.size(); ++l)
 										std::cout << bn[l] << ":" << en[l] << " ";
 									std::cout << std::endl;
 								}
 							}
 							assert(count_duplicates(edges) == 0);
 							//i << "," << j << " and " << i+!q << "," << j+q <<
+							//intersect(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
 							intersect(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
 							assert(count_duplicates(edges) == 0);
 							if(!intersections.empty()) std::cout << "intersections: " << intersections.size() << std::endl;
@@ -1500,9 +1543,6 @@ ecl_exit_loop:
 									std::cout << "edge " << k << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << std::endl;
 								}
 							}
-							
-							if( i == 43 && j == 41 && q == 1)
-								print_inter = false;
 							
 							//distribute all the edges among blocks
 							//add intersected edges into blocks, so that we can reconstruct top and bottom faces of each block
@@ -1540,11 +1580,11 @@ ecl_exit_loop:
 								//arrange data in b and e arrays according to indices_sort
 								temporary.resize(b.size());
 								//first b array
-								for(int l = 0; l < b.size(); ++l) temporary[l] = b[l];
-								for(int l = 0; l < b.size(); ++l) b[l] = temporary[indices_sort[l]];
+								for(int l = 0; l < (int)b.size(); ++l) temporary[l] = b[l];
+								for(int l = 0; l < (int)b.size(); ++l) b[l] = temporary[indices_sort[l]];
 								//then e array
-								for(int l = 0; l < e.size(); ++l) temporary[l] = e[l];
-								for(int l = 0; l < e.size(); ++l) e[l] = temporary[indices_sort[l]];
+								for(int l = 0; l < (int)e.size(); ++l) temporary[l] = e[l];
+								for(int l = 0; l < (int)e.size(); ++l) e[l] = temporary[indices_sort[l]];
 							}
 							//put block numbers to all nodes involved in pillars, so that we can figure out block numbers for constructed faces
 							edges.SetMarker(mrk);
@@ -1684,7 +1724,7 @@ ecl_exit_loop:
 												Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
 												std::cout << "edge " << l << " " << bedges[l]->GetHandle() << " " << (bedges[l]->GetMarker(outer) ? "outer":"inner");
 												std::cout << " blocks ";
-												for(int r = 0; r < bn.size(); ++r)
+												for(int r = 0; r < (int)bn.size(); ++r)
 													std::cout << bn[r] << ":" << en[r] << " ";
 												std::cout << std::endl;
 												
@@ -1693,60 +1733,65 @@ ecl_exit_loop:
 										}
 										//remove marker
 										bedges.RemMarker(outer);
-										//form faces out of edges
-										incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer);
-										//collect all faces
-										ElementArray<Edge> loop(this);
-										while(matrix.find_shortest_loop(loop))
+										//there is enough edges to handle triangle
+										if( bedges.size() > 2 )
 										{
-											if( loop.size() > 2 ) //at least triangle
+											//form faces out of edges
+											incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer);
+											//collect all faces
+											ElementArray<Edge> loop(this);
+											while(matrix.find_shortest_loop(loop))
 											{
-												if( print_bedges )
+												if( loop.size() > 2 ) //at least triangle
 												{
-													std::cout << "Found loop of " << loop.size() << " edges:" <<std::endl;
-													for(int g = 0; g < loop.size(); ++g)
+													if( print_bedges )
 													{
-														std::cout << "edge " << g << " " << loop[g]->GetHandle() << " ";
-														Storage::integer_array bn = loop[g]->IntegerArray(block_number);
-														Storage::integer_array en = loop[g]->IntegerArray(edge_number);
-														std::cout << " blocks ";
-														for(int r = 0; r < bn.size(); ++r)
-															std::cout << bn[r] << ":" << en[r] << " ";
-														std::cout << std::endl;
-													}
+														std::cout << "Found loop of " << loop.size() << " edges:" <<std::endl;
+														for(int g = 0; g < loop.size(); ++g)
+														{
+															std::cout << "edge " << g << " " << loop[g]->GetHandle() << " ";
+															Storage::integer_array bn = loop[g]->IntegerArray(block_number);
+															Storage::integer_array en = loop[g]->IntegerArray(edge_number);
+															std::cout << " blocks ";
+															for(int r = 0; r < (int)bn.size(); ++r)
+																std::cout << bn[r] << ":" << en[r] << " ";
+															std::cout << std::endl;
+														}
 													
-												}
-												//make face
-												Face f = CreateFace(loop).first;
-												if(!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
-												//detect block number
-												ElementArray<Element> nodes = f->getAdjElements(NODE);
-												if( print_bedges )
-												{
-													std::cout << "nodes of the face " << f->GetHandle() << ": " << std::endl;
-													for(int g = 0; g < nodes.size(); ++g)
-													{
-														std::cout << "node " << g << " " << nodes[g]->GetHandle() << " ";
-														Storage::integer_array bn = nodes[g]->IntegerArray(block_number);
-														std::cout << " blocks ";
-														for(int r = 0; r < bn.size(); ++r)
-															std::cout << bn[r] << " ";
-														std::cout << std::endl;
-
 													}
-													std::cout << "intersection: ";
+													//make face
+													Face f = CreateFace(loop).first;
+													if(!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
+													//detect block number
+													ElementArray<Element> nodes = f->getAdjElements(NODE);
+													if( print_bedges )
+													{
+														std::cout << "nodes of the face " << f->GetHandle() << ": " << std::endl;
+														for(int g = 0; g < nodes.size(); ++g)
+														{
+															std::cout << "node " << g << " " << nodes[g]->GetHandle() << " ";
+															Storage::integer_array bn = nodes[g]->IntegerArray(block_number);
+															std::cout << " blocks ";
+															for(int r = 0; r < (int)bn.size(); ++r)
+																std::cout << bn[r] << " ";
+															std::cout << std::endl;
+
+														}
+														std::cout << "intersection: ";
+													}
+													block_number_intersection(nodes,block_number,block_number_inter);
+													for(int r = 0; r < (int)block_number_inter.size(); ++r)
+													{
+														if( print_bedges ) std::cout << block_number_inter[r] << " (" << block_number_inter[r]%dims[0] << "," << block_number_inter[r]/dims[0] % dims[1] << "," << block_number_inter[r]/dims[0]/dims[1] <<") ";
+														block_faces[block_number_inter[r]].push_back(f);
+													}
+													if( print_bedges ) std::cout << std::endl;
 												}
-												block_number_intersection(nodes,block_number,block_number_inter);
-												for(int r = 0; r < (int)block_number_inter.size(); ++r)
-												{
-													if( print_bedges ) std::cout << block_number_inter[r] << " (" << block_number_inter[r]%dims[0] << "," << block_number_inter[r]/dims[0] % dims[1] << "," << block_number_inter[r]/dims[0]/dims[1] <<") ";
-													block_faces[block_number_inter[r]].push_back(f);
-												}
-												if( print_bedges ) std::cout << std::endl;
+												else if( !loop.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << loop.size() << std::endl;
 											}
-											else if( !loop.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << loop.size() << std::endl;
+											if( !matrix.all_visited() ) 
+												matrix.print_matrix();
 										}
-										//if( !matrix.all_visited() ) matrix.print_matrix();
 									}
 									//cleanup structure for reuse
 									bedges.clear();

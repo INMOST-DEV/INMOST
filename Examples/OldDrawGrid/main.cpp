@@ -33,10 +33,11 @@ int width = 800, height = 800;
 double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20, snear = 1e20;
 double shift[3] = {0,0,0};
 bool perspective = false;
-int drawedges = 0;
+int drawedges = 0, draw_orphan = true;
 bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false, elevation = false;
 Element disp_e;
 Mesh::GeomParam table;
+ElementArray<Element> orphans;
 
 #define CLIP_NONE 0
 #define CLIP_NODE 1
@@ -3368,6 +3369,11 @@ void keyboard(unsigned char key, int x, int y)
 		if( CommonInput == NULL ) CommonInput = new Input(&radius, "Radius");
 		glutPostRedisplay();
 	}
+	else if( key == 'h' )
+	{
+		draw_orphan = !draw_orphan;
+		glutPostRedisplay();
+	}
 	else if( key == ',' || key == '<' )
 	{
 		std::cout << "positive shift" << std::endl;
@@ -3506,8 +3512,83 @@ face2gl DrawFace(Element f)
 	for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 		ret.add_vert(&(kt->Coords()[0]));
 	ret.set_elem(f->GetElementType(),f->LocalID());
-  ret.compute_center();
+	ret.compute_center();
 	return ret;
+}
+
+void DrawElement(Element e, color_t face, color_t edge, color_t node)
+{
+	if( e.GetElementType() == NODE )
+	{
+		node.set_color();
+		glPointSize(4);
+		glColor3f(1,1,0);
+		glBegin(GL_POINTS);
+		glVertex3dv(e->getAsNode()->Coords().data());
+		glEnd();
+		glPointSize(1);
+	}
+	else if( e.GetElementType() == EDGE )
+	{
+		edge.set_color();
+		glLineWidth(4);
+		glBegin(GL_LINES);
+		glVertex3dv(e->getAsEdge()->getBeg()->Coords().data());
+		glVertex3dv(e->getAsEdge()->getEnd()->Coords().data());
+		glEnd();
+		node.set_color();
+		glBegin(GL_POINTS);
+		glVertex3dv(e->getAsEdge()->getBeg()->Coords().data());
+		glVertex3dv(e->getAsEdge()->getEnd()->Coords().data());
+		glEnd();
+		glLineWidth(1);
+	}
+	else if( e.GetElementType() == FACE )
+	{
+		face2gl f = DrawFace(e);
+		face.set_color();
+		glBegin(GL_TRIANGLES);
+		f.draw();
+		glEnd();
+		edge.set_color();
+		glBegin(GL_LINES);
+		f.drawedges();
+		glEnd();
+		node.set_color();
+		ElementArray<Node> nodes = e->getNodes();
+		glBegin(GL_POINTS);
+		for(ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); ++it)
+			glVertex3dv(it->Coords().data());
+		glEnd();
+	}
+	else if( e.GetElementType() == CELL )
+	{
+		ElementArray<Face> dfaces = e.getFaces();
+		face.set_color();
+		glBegin(GL_TRIANGLES);
+		for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end
+			(); ++it)
+		{
+			face2gl f = DrawFace(it->self());
+			f.draw();
+		}
+		glEnd();
+		edge.set_color();
+		glBegin(GL_LINES);
+		for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end
+			(); ++it)
+		{
+			face2gl f = DrawFace(it->self());
+			f.drawedges();
+		}
+		glEnd();
+		node.set_color();
+		ElementArray<Node> nodes = e->getNodes();
+		glBegin(GL_POINTS);
+		for(ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); ++it)
+			glVertex3dv(it->Coords().data());
+		glEnd();
+	}
 }
 
 void whereami(double & cx, double & cy, double & cz)
@@ -3928,58 +4009,11 @@ void draw_screen()
   glEnd();
 
 	if( disp_e.isValid() )
-	{
-		if( disp_e.GetElementType() == NODE )
-		{
-			glPointSize(4);
-			glColor3f(1,1,0);
-			glBegin(GL_POINTS);
-			glVertex3dv(disp_e->getAsNode()->Coords().data());
-			glEnd();
-			glPointSize(1);
-		}
-		else if( disp_e.GetElementType() == EDGE )
-		{
-			glLineWidth(4);
-			glColor3f(1,1,0);
-			glBegin(GL_LINES);
-			glVertex3dv(disp_e->getAsEdge()->getBeg()->Coords().data());
-			glVertex3dv(disp_e->getAsEdge()->getEnd()->Coords().data());
-			glEnd();
-			glLineWidth(1);
-		}
-		else if( disp_e.GetElementType() == FACE )
-		{
-			face2gl f = DrawFace(disp_e);
-			glColor3f(1,1,0);
-			glBegin(GL_TRIANGLES);
-			f.draw();
-			glEnd();
-			glColor3f(1,0,0);
-			glBegin(GL_LINES);
-			f.drawedges();
-			glEnd();
-		}
-		else if( disp_e.GetElementType() == CELL )
-		{
-			ElementArray<Face> dfaces = disp_e.getFaces();
-			for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end
-				(); ++it)
-			{
-				face2gl f = DrawFace(it->self());
-				glColor3f(1,1,0);
-				glBegin(GL_TRIANGLES);
-				f.draw();
-				glEnd();
-				glColor3f(1,0,0);
-				glBegin(GL_LINES);
-				f.drawedges();
-				glEnd();
-
-			}
-		}
-	}
-
+		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1));
+	
+	if( draw_orphan )
+		for(int k = 0; k < (int)orphans.size(); ++k)
+			DrawElement(orphans[k],color_t(1,0,0),color_t(0,1,0),color_t(0,0,1));
 
 	double top = 0.96;
 	if( picked != -1 )
@@ -4531,6 +4565,11 @@ int main(int argc, char ** argv)
     octsearch.Destroy();
     printf("done, sets %d\n",mesh->NumberOfSets());
   }
+
+  for(Mesh::iteratorElement it = mesh->BeginElement(FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
+	  if( it->nbAdjElements(CELL) == 0 ) orphans.push_back(it->self());
+
+  printf("number of orphan elements: %d\n",orphans.size());
 
 	quatinit();
 	glutInit(&argc,argv);
