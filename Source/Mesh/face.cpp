@@ -316,6 +316,7 @@ namespace INMOST
 								lc[jt] = temp;
 								break;
 							}
+							++jt;
 						}
 						if( jt == jend ) return false; //no matching edge
 					}

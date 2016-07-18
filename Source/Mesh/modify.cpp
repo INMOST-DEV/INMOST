@@ -31,15 +31,18 @@ namespace INMOST
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType hm = m->HideMarker();
-		adj_type & hc = m->HighConn(GetHandle());
-		if( m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 )
+		adj_type & lc = m->LowConn(GetHandle());
+		if( m->Count(lc.data(),static_cast<enumerator>(lc.size()),hm) == 2 )
 		{
 			enumerator k1 = ENUMUNDEF, k2;
-			k1 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
-			k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
-			HandleType temp = hc[k1];
-			hc[k1] = hc[k2];
-			hc[k2] = temp;
+			k1 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
+			k2 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
+			//std::cout << "k " << k1 << " " << k2 << std::endl;
+			//std::cout << "was " << lc[k1] << " " << lc[k2] << std::endl;
+			HandleType temp = lc[k1];
+			lc[k1] = lc[k2];
+			lc[k2] = temp;
+			//std::cout << "now " << lc[k1] << " " << lc[k2] << std::endl;
 		}
 	}
 	

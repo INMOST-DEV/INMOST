@@ -35,7 +35,7 @@ double shift[3] = {0,0,0};
 bool perspective = false;
 int drawedges = 0;
 bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false, elevation = false;
-
+Element disp_e;
 Mesh::GeomParam table;
 
 #define CLIP_NONE 0
@@ -1222,7 +1222,7 @@ std::vector<face2gl> clip_boundary;
 
 void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 {
-  if( drawedges == 2 ) return;
+  if( drawedges == 2 || drawedges == 3 ) return;
 	glColor4f(0,1,0,0.1);
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw();
@@ -1238,7 +1238,7 @@ void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 {
-	if( drawedges == 2 ) return;
+	if( drawedges == 2 || drawedges == 3) return;
 	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour();
@@ -1255,7 +1255,7 @@ void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
 {
-	if( drawedges == 2 ) return;
+	if( drawedges == 2 || drawedges==3) return;
 	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour_alpha(alpha);
@@ -1282,7 +1282,7 @@ void draw_edges(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces_interactive_nc(std::vector<face2gl> & set)
 {
-  if( drawedges == 2 ) return;
+  if( drawedges == 2 || drawedges==3 ) return;
 	glColor4f(0,1,0,0.1);
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw();
@@ -1291,7 +1291,7 @@ void draw_faces_interactive_nc(std::vector<face2gl> & set)
 
 void draw_faces_interactive(std::vector<face2gl> & set)
 {
-  if( drawedges == 2 ) return;
+  if( drawedges == 2 || drawedges==3 ) return;
   if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour();
@@ -1301,7 +1301,7 @@ void draw_faces_interactive(std::vector<face2gl> & set)
 
 void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
 {
-  if( drawedges == 2 ) return;
+  if( drawedges == 2 || drawedges==3 ) return;
   if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour_alpha(alpha);
@@ -3197,65 +3197,99 @@ void keyboard(unsigned char key, int x, int y)
 	}
   else if( key == 'e' )
   {
-    drawedges = (drawedges+1)%3;
+    drawedges = (drawedges+1)%4;
     glutPostRedisplay();
   }
 	else if( key == 'w' )
 	{
 		double shiftmod[3] = {0,0,0};
 		shiftmod[1] -= 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
-		rotatevector((double*)shiftmod);
-		shift[0] += shiftmod[0];
-		shift[1] += shiftmod[1];
-		shift[2] += shiftmod[2];
+		if( !planecontrol )
+		{
+			rotatevector((double*)shiftmod);
+			shift[0] += shiftmod[0];
+			shift[1] += shiftmod[1];
+			shift[2] += shiftmod[2];
+			interactive = true;
+			bndupdate = true;
+		}
+		else
+		{
+			rotatevector_from_stack((double*)shiftmod);
+			p[0] -= shiftmod[0];
+			p[1] -= shiftmod[1];
+			p[2] -= shiftmod[2];
+			clipupdate = true;
+		}
 		glutPostRedisplay();
-		interactive = true;
-		bndupdate = true;
 	}
 	else if( key == 's' )
 	{
+		double shiftmod[3] = {0,0,0};
+		shiftmod[1] += 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
 		if( !planecontrol )
 		{
-			double shiftmod[3] = {0,0,0};
-			shiftmod[1] += 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
 			rotatevector((double*)shiftmod);
 			shift[0] += shiftmod[0];
 			shift[1] += shiftmod[1];
 			shift[2] += shiftmod[2];
-			glutPostRedisplay();
 			interactive = true;
 			bndupdate = true;
 		}
+		else
+		{
+			rotatevector_from_stack((double*)shiftmod);
+			p[0] -= shiftmod[0];
+			p[1] -= shiftmod[1];
+			p[2] -= shiftmod[2];
+			clipupdate = true;
+		}
+		glutPostRedisplay();
 	}
 	else if( key == 'a' )
 	{
+		double shiftmod[3] = {0,0,0};
+		shiftmod[0] += 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
 		if( !planecontrol )
 		{
-			double shiftmod[3] = {0,0,0};
-			shiftmod[0] += 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
 			rotatevector((double*)shiftmod);
 			shift[0] += shiftmod[0];
 			shift[1] += shiftmod[1];
 			shift[2] += shiftmod[2];
-			glutPostRedisplay();
 			interactive = true;
 			bndupdate = true;
 		}
+		else
+		{
+			rotatevector_from_stack((double*)shiftmod);
+			p[0] -= shiftmod[0];
+			p[1] -= shiftmod[1];
+			p[2] -= shiftmod[2];
+			clipupdate = true;
+		}
+		glutPostRedisplay();
 	}
 	else if( key == 'd' )
 	{
-		if( !planecontrol )
+		double shiftmod[3] = {0,0,0};
+		shiftmod[0] -= 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
+		if(!planecontrol)
 		{
-			double shiftmod[3] = {0,0,0};
-			shiftmod[0] -= 0.03f*expf(zoom-1)*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
 			rotatevector((double*)shiftmod);
 			shift[0] += shiftmod[0];
 			shift[1] += shiftmod[1];
 			shift[2] += shiftmod[2];
-			glutPostRedisplay();
 			interactive = true;
 			bndupdate = true;
 		}
+		else
+		{	rotatevector_from_stack((double*)shiftmod);
+			p[0] -= shiftmod[0];
+			p[1] -= shiftmod[1];
+			p[2] -= shiftmod[2];
+			clipupdate = true;
+		}
+		glutPostRedisplay();
 	}
 	else if( key == 'r' )
 	{
@@ -3419,10 +3453,11 @@ void keyboard(unsigned char key, int x, int y)
 		{
 			PrintTags(mesh,CELL|FACE|EDGE|NODE);
 
-			CommonInput = new Input(visualization_prompt, "Enter data for visualization as Element:Name:Component");
+			CommonInput = new Input(visualization_prompt, "Enter data for visualization as Element:Name:Component or ElementType:Number");
 			visualization_prompt_active = 1;
 			clipupdate = true;
 			if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
+			//if( disp_e.isValid() ) disp_e = InvalidElement();
 		}
 		glutPostRedisplay();
 	}
@@ -3530,6 +3565,133 @@ void pick_mouse(double origin[3], double direction[3])
    }
 }
 
+//returns position of bottom
+double display_elem_info(Element e, double top, double left, double interval)
+{
+	double bottom = top-interval;
+	for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
+		if( e->HaveData(*t) )
+			bottom -= interval;
+	
+	glDisable(GL_DEPTH_TEST);
+	glLoadIdentity();
+	set_matrix2d();
+	
+	
+	glColor3f(1,1,1);
+	glBegin(GL_QUADS);
+	glVertex2f(left-0.01,bottom-0.01);
+	glVertex2f(left-0.01,top-0.01);
+	glVertex2f(0.99,top-0.01);
+	glVertex2f(0.99,bottom-0.01);
+	glEnd();
+	glColor3f(0,0,0);
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(left-0.01,bottom-0.01);
+	glVertex2f(left-0.01,top-0.01);
+	glVertex2f(0.99,top-0.01);
+	glVertex2f(0.99,bottom-0.01);
+	glEnd();
+	
+	
+	glColor3f(0.2,0.2,0.2);
+	top -= interval;
+	glRasterPos2f(left,top);
+	printtext("%s %d",ElementTypeName(e->GetElementType()),e->LocalID());
+	glColor3f(0.2,0.2,0.2);
+	for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
+	{
+		if( e->HaveData(*t) )
+		{
+			char str[4096];
+			char temp[4096];
+			str[0] = '\0';
+			switch(t->GetDataType())
+			{
+				case DATA_INTEGER:
+				{
+					Storage::integer_array arr = e->IntegerArray(*t);
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						sprintf(temp,"%s %d",str,arr[k]);
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_REAL:
+				{
+					Storage::real_array arr = e->RealArray(*t);
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						sprintf(temp,"%s %lf",str,arr[k]);
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_BULK:
+				{
+					Storage::bulk_array arr = e->BulkArray(*t);
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						sprintf(temp,"%s %d",str,arr[k]);
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_REFERENCE:
+				{
+					Storage::reference_array arr = e->ReferenceArray(*t);
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						if(arr.at(k) == InvalidHandle()) sprintf(temp,"%s NULL",str);
+						else sprintf(temp,"%s %s:%d",str,ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_REMOTE_REFERENCE:
+				{
+					Storage::remote_reference_array arr = e->RemoteReferenceArray(*t);
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sprintf(temp,"%s NULL",str);
+						else sprintf(temp,"%s %p:%s:%d",str,arr[k]->GetMeshLink(),ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
+						strcpy(str,temp);
+					}
+					break;
+				}
+#if defined(USE_AUTODIFF)
+				case DATA_VARIABLE:
+				{
+					Storage::var_array arr = e->VariableArray(*t);
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						std::stringstream stream;
+						stream << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
+						for(INMOST_DATA_ENUM_TYPE q = 0; q < arr[k].GetRow().Size(); ++q)
+						{
+							stream << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
+						}
+						stream << "}";
+						sprintf(temp,"%s %s",str,stream.str().c_str());
+						strcpy(str,temp);
+					}
+					break;
+				}
+#endif
+			}
+			sprintf(temp,"%s %s %s",t->GetTagName().c_str(),DataTypeName(t->GetDataType()),str);
+			strcpy(str,temp);
+			top -= interval;
+			glRasterPos2f(left,top);
+			printtext(str);
+			
+		}
+	}
+	glEnable(GL_DEPTH_TEST);
+	return top;
+}
+
 void draw_screen()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -3539,9 +3701,9 @@ void draw_screen()
 	Storage::real mult = zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5*0.1;
 	if( perspective )
 		glTranslated(0,0,-zoom*2*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5);
-	if( planecontrol ) 
-		rotate_from_stack(); 
-	else 
+	if( planecontrol )
+		rotate_from_stack();
+	else
 		rotate();
 
 	//axis
@@ -3626,6 +3788,7 @@ void draw_screen()
 				pick_mouse(pickp,pickd);
 				picked = current_picker->select(pickp,pickd);
 			}
+			
 	
 			if( interactive && clipboxupdate )
 			{
@@ -3659,6 +3822,8 @@ void draw_screen()
 				}
 			}
 		}
+		
+		
 
 
 		if( draw_volumetric )
@@ -3762,134 +3927,70 @@ void draw_screen()
   }
   glEnd();
 
-
-
-
-	if( picked != -1 )
+	if( disp_e.isValid() )
 	{
-		glDisable(GL_DEPTH_TEST);
-		glLoadIdentity();
-		set_matrix2d();
-		
-
-		double top = 0.96, left = 0.25, interval = 0.04, bottom = top;
-		
-		Element e = clip_boundary[picked].get_elem(mesh);
-		for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
-			if( e->HaveData(*t) )
-				bottom -= interval;
-
-		glColor3f(1,1,1);
-		glBegin(GL_QUADS);
-		glVertex2f(left-0.01,bottom-0.01);
-		glVertex2f(left-0.01,0.99);
-		glVertex2f(0.99,0.99);
-		glVertex2f(0.99,bottom-0.01);
-		glEnd();
-		glColor3f(0,0,0);
-		glBegin(GL_LINE_LOOP);
-		glVertex2f(left-0.01,bottom-0.01);
-		glVertex2f(left-0.01,0.99);
-		glVertex2f(0.99,0.99);
-		glVertex2f(0.99,bottom-0.01);
-		glEnd();
-
-		
-		glColor3f(0.2,0.2,0.2);
-		glRasterPos2f(left,top);
-		printtext("%s %d",ElementTypeName(e->GetElementType()),e->LocalID());
-		top -= interval;
-		glColor3f(0.2,0.2,0.2);
-		for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
+		if( disp_e.GetElementType() == NODE )
 		{
-			if( e->HaveData(*t) )
+			glPointSize(4);
+			glColor3f(1,1,0);
+			glBegin(GL_POINTS);
+			glVertex3dv(disp_e->getAsNode()->Coords().data());
+			glEnd();
+			glPointSize(1);
+		}
+		else if( disp_e.GetElementType() == EDGE )
+		{
+			glLineWidth(4);
+			glColor3f(1,1,0);
+			glBegin(GL_LINES);
+			glVertex3dv(disp_e->getAsEdge()->getBeg()->Coords().data());
+			glVertex3dv(disp_e->getAsEdge()->getEnd()->Coords().data());
+			glEnd();
+			glLineWidth(1);
+		}
+		else if( disp_e.GetElementType() == FACE )
+		{
+			face2gl f = DrawFace(disp_e);
+			glColor3f(1,1,0);
+			glBegin(GL_TRIANGLES);
+			f.draw();
+			glEnd();
+			glColor3f(1,0,0);
+			glBegin(GL_LINES);
+			f.drawedges();
+			glEnd();
+		}
+		else if( disp_e.GetElementType() == CELL )
+		{
+			ElementArray<Face> dfaces = disp_e.getFaces();
+			for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end
+				(); ++it)
 			{
-				char str[4096];
-				char temp[4096];
-				str[0] = '\0';
-				switch(t->GetDataType())
-				{
-				case DATA_INTEGER:
-					{
-						Storage::integer_array arr = e->IntegerArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
-						{
-							sprintf(temp,"%s %d",str,arr[k]);
-							strcpy(str,temp);
-						}
-						break;
-					}
-				case DATA_REAL:
-					{
-						Storage::real_array arr = e->RealArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-						{
-							sprintf(temp,"%s %lf",str,arr[k]);
-							strcpy(str,temp);
-						}
-						break;
-					}
-				case DATA_BULK:
-					{
-						Storage::bulk_array arr = e->BulkArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
-						{
-							sprintf(temp,"%s %d",str,arr[k]);
-							strcpy(str,temp);
-						}
-						break;
-					}
-				case DATA_REFERENCE:
-					{
-						Storage::reference_array arr = e->ReferenceArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
-						{
-							if(arr.at(k) == InvalidHandle()) sprintf(temp,"%s NULL",str);
-							else sprintf(temp,"%s %s:%d",str,ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
-							strcpy(str,temp);
-						}
-						break;
-					}
-        case DATA_REMOTE_REFERENCE:
-					{
-						Storage::remote_reference_array arr = e->RemoteReferenceArray(*t);
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++) 
-						{
-              if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sprintf(temp,"%s NULL",str);
-              else sprintf(temp,"%s %p:%s:%d",str,arr[k]->GetMeshLink(),ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
-							strcpy(str,temp);
-						}
-						break;
-					}
-#if defined(USE_AUTODIFF)
-                    case DATA_VARIABLE:
-                    {
-                        Storage::var_array arr = e->VariableArray(*t);
-                        for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-                        {
-                            std::stringstream stream;
-                            stream << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
-                            for(INMOST_DATA_ENUM_TYPE q = 0; q < arr[k].GetRow().Size(); ++q)
-                            {
-                                stream << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
-                            }
-                            stream << "}";
-                            sprintf(temp,"%s %s",str,stream.str().c_str());
-                            strcpy(str,temp);
-                        }
-                        break;
-                    }
-#endif
-				}
-				sprintf(temp,"%s %s %s",t->GetTagName().c_str(),DataTypeName(t->GetDataType()),str);
-				strcpy(str,temp);
-				glRasterPos2f(left,top);
-				printtext(str);
-				top -= interval;
+				face2gl f = DrawFace(it->self());
+				glColor3f(1,1,0);
+				glBegin(GL_TRIANGLES);
+				f.draw();
+				glEnd();
+				glColor3f(1,0,0);
+				glBegin(GL_LINES);
+				f.drawedges();
+				glEnd();
+
 			}
 		}
-		glEnable(GL_DEPTH_TEST);
 	}
+
+
+	double top = 0.96;
+	if( picked != -1 )
+	{
+		
+		Element e = clip_boundary[picked].get_elem(mesh);
+		top = display_elem_info(e,0.96,0.0,0.04);
+	}
+	
+	if( disp_e.isValid() )
+		top = display_elem_info(disp_e,top+0.04,0.0,0.04);
 
 	if( CommonInput != NULL )
 	{
@@ -3929,6 +4030,7 @@ void draw_screen()
 				{
 					char typen[1024],name[1024];
 					unsigned comp;
+					bool correct_elem = false;
 					int k = 0,l, slen = (int)strlen(visualization_prompt);
 					for(k = 0; k < slen; ++k) 
 					{
@@ -3945,6 +4047,36 @@ void draw_screen()
 							visualization_prompt[l] = '\0';
 							break;
 						}
+					}
+					
+					if( k < slen && l == slen ) //ElementType:Number format
+					{
+						bool is_number = true;
+						for(l = k+1; l < slen; ++l)
+							if( !isdigit(visualization_prompt[l]) )
+								is_number = false;
+						if( is_number )
+						{
+							strcpy(typen,visualization_prompt);
+							comp = atoi(visualization_prompt+k+1);
+							visualization_prompt[k] = ':';
+							printf("Display data for %s:%d\n",typen,comp);
+							std::string stype(typen);
+							visualization_type = NONE;
+							for(size_t q = 0; q < stype.size(); ++q)
+								stype[q] = tolower(stype[q]);
+							if( stype == "node" ) visualization_type = NODE;
+							else if ( stype == "edge" ) visualization_type = EDGE;
+							else if ( stype == "face" ) visualization_type = FACE;
+							else if ( stype == "cell" ) visualization_type = CELL;
+							if( visualization_type )
+								printf("unknown element type %s\n",typen);
+							if( !mesh->isValidElement(visualization_type,comp) )
+								printf("provided element %s:%d is not valid\n",typen,comp);
+							correct_elem = true;
+							disp_e = mesh->ElementByLocalID(visualization_type,comp);
+						}
+						
 					}
 				
 					if( k < slen && l < slen && l+1 < slen )
@@ -4059,7 +4191,7 @@ void draw_screen()
 						}
 						else printf("mesh do not have tag with name %s\n",name);
 					}
-					else printf("malformed string %s for visualization\n",visualization_prompt);
+					else if(!correct_elem) printf("malformed string %s for visualization\n",visualization_prompt);
 					visualization_prompt_active = 0;
 					//visualization_prompt[0] = '\0';
 				

@@ -3218,6 +3218,29 @@ namespace INMOST
 			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return m->BulkDF(a,t) < m->BulkDF(b,t);}
 			bool operator() (HandleType a, bulk b) const {if( a == InvalidHandle() ) return true; return m->BulkDF(a,t) < b;}
 		};
+		
+		class MarkerComparator
+		{
+			Mesh * m; MarkerType mrk; bool inverse;
+		public:
+			MarkerComparator(Mesh * m, MarkerType mrk, bool inverse = false) :m(m), mrk(mrk), inverse(inverse) {assert(!isPrivate(mrk));}
+			MarkerComparator(const MarkerComparator & other) :m(other.m), mrk(other.mrk), inverse(other.inverse){}
+			MarkerComparator & operator = (MarkerComparator const & other) { m = other.m; mrk = other.mrk; inverse = other.inverse; return *this;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return (inverse ^ m->GetMarker(a,mrk)) < (inverse ^ m->GetMarker(b,mrk));}
+			bool operator() (HandleType a, bool b) const {if( a == InvalidHandle() ) return true; return (inverse ^ m->GetMarker(a,mrk)) < b;}
+		};
+		
+		class PrivateMarkerComparator
+		{
+			Mesh * m; MarkerType mrk; bool inverse;
+		public:
+			PrivateMarkerComparator(Mesh * m, MarkerType mrk, bool inverse = false) :m(m), mrk(mrk), inverse(inverse) {assert(isPrivate(mrk));}
+			PrivateMarkerComparator(const PrivateMarkerComparator & other) :m(other.m), mrk(other.mrk), inverse(other.inverse){}
+			PrivateMarkerComparator & operator = (PrivateMarkerComparator const & other) { m = other.m; mrk = other.mrk; inverse = other.inverse; return *this;}
+			bool operator() (HandleType a, HandleType b) const {if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; return (inverse ^ m->GetPrivateMarker(a,mrk)) < (inverse ^ m->GetPrivateMarker(b,mrk));}
+			bool operator() (HandleType a, bool b) const {if( a == InvalidHandle() ) return true; return (inverse ^ m->GetPrivateMarker(a,mrk)) < b;}
+		};
+
 
 		void SortHandles(HandleType * h, enumerator num);
 		/// \todo

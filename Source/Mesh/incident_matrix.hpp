@@ -66,7 +66,6 @@ namespace INMOST
 		dynarray< char , 256 > hide_column;
 		dynarray< char , 256 > hide_row;
 		dynarray< char , 256 > stub_row;
-		dynarray< double, 192 > centroids, normals;
 		double min_loop_measure;
 		
 		bool do_hide_row(unsigned k)
