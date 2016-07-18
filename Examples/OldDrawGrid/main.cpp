@@ -4103,7 +4103,7 @@ void draw_screen()
 							else if ( stype == "edge" ) visualization_type = EDGE;
 							else if ( stype == "face" ) visualization_type = FACE;
 							else if ( stype == "cell" ) visualization_type = CELL;
-							if( visualization_type )
+							if( visualization_type == NONE )
 								printf("unknown element type %s\n",typen);
 							if( !mesh->isValidElement(visualization_type,comp) )
 								printf("provided element %s:%d is not valid\n",typen,comp);
@@ -4586,8 +4586,8 @@ int main(int argc, char ** argv)
 
 	CommonColorBar = new color_bar;
 	
-	//glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
-	//glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);
+	glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
+	glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);
 	
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	
