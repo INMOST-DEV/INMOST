@@ -386,12 +386,18 @@ namespace INMOST
 				{
 					if( tags[i].isSparse(etype) )
 					{
-						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+						for(integer lid = 0; lid < LastLocalID(etype); ++lid)
 							if( isValidElement(etype,lid) )
 								DelSparseData(ComposeHandle(etype,lid),tags[i]);
 					}
 					else if( tags[i].GetSize() == ENUMUNDEF )
 					{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 							if( isValidElement(etype,lid) )
 								DelDenseData(ComposeHandle(etype,lid),tags[i]);
@@ -406,7 +412,7 @@ namespace INMOST
 			empty_links[i].clear();
 			empty_space[i].clear();
 		}
-    DeallocatePrivateMarkers();
+		DeallocatePrivateMarkers();
 		//this should copy tags, clear sparse data, set up dense links
 		TagManager::operator =(other);
 		//set up new links
@@ -483,12 +489,18 @@ namespace INMOST
 				{
 					if( tags[i].isSparse(etype) )
 					{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 							if( isValidElement(etype,lid) )
 								DelSparseData(ComposeHandle(etype,lid),tags[i]);
 					}
 					else if( tags[i].GetSize() == ENUMUNDEF )
 					{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 							if( isValidElement(etype,lid) )
 								DelDenseData(ComposeHandle(etype,lid),tags[i]);
@@ -496,7 +508,7 @@ namespace INMOST
 				}
 			}
 		}
-    DeallocatePrivateMarkers();
+		DeallocatePrivateMarkers();
 		memset(remember,0,sizeof(bool)*15);
 		tags.clear();
 		//clear links
@@ -528,12 +540,18 @@ namespace INMOST
 				{
 					if( tags[i].isSparse(etype) )
 					{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 							if( isValidElement(etype,lid) )
 								DelSparseData(ComposeHandle(etype,lid),tags[i]);
 					}
 					else if( tags[i].GetSize() == ENUMUNDEF )
 					{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 						for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 							if( isValidElement(etype,lid) )
 								DelDenseData(ComposeHandle(etype,lid),tags[i]);
@@ -541,7 +559,7 @@ namespace INMOST
 				}
 			}
 		}
-    DeallocatePrivateMarkers();
+		DeallocatePrivateMarkers();
 		//clear links
 		for(int i = 0; i < 5; i++)
 		{
@@ -579,13 +597,13 @@ namespace INMOST
 #if defined(USE_PARALLEL_WRITE_TIME)
 		FinalizeFile();
 #endif //USE_PARALLEL_WRITE_TIME
-    {
-      for(size_t q = 0; q < allocated_meshes.size(); ++q)
-			  if (allocated_meshes[q] == this)
-				  allocated_meshes[q] = NULL;
-      std::sort(allocated_meshes.rbegin(), allocated_meshes.rend());
-      while(!allocated_meshes.empty() && allocated_meshes.back() == NULL) allocated_meshes.pop_back();
-    }
+		{
+			for(size_t q = 0; q < allocated_meshes.size(); ++q)
+				if (allocated_meshes[q] == this)
+					allocated_meshes[q] = NULL;
+			std::sort(allocated_meshes.rbegin(), allocated_meshes.rend());
+			while(!allocated_meshes.empty() && allocated_meshes.back() == NULL) allocated_meshes.pop_back();
+		}
 		//arrays for data are deallocated inside ~TagManager()
 	}
 	
@@ -605,12 +623,18 @@ namespace INMOST
 			{
 				if( tag.isSparse(etype) )
 				{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 					for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 						if( isValidElement(etype,lid) )
 							DelSparseData(ComposeHandle(etype,lid),tag);
 				}
 				else if( tag.GetSize() == ENUMUNDEF )
 				{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 					for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 						if( isValidElement(etype,lid) )
 							DelDenseData(ComposeHandle(etype,lid),tag);
@@ -620,9 +644,9 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-    {
-		  tag = TagManager::DeleteTag(tag,type_mask);
-    }
+		{
+			tag = TagManager::DeleteTag(tag,type_mask);
+		}
 		return tag;
 	}
 	
@@ -729,18 +753,18 @@ namespace INMOST
 		if( GetTopologyCheck(ADJACENT_DUPLICATE) )
 		{
 			bool have_dup = false;
-			MarkerType dup = CreateMarker();
+			MarkerType dup = CreatePrivateMarker();
 			for(i = 0; i < s; i++)
 			{
-				if( GetMarker(adj[i],dup) ) 
+				if( GetPrivateMarker(adj[i],dup) )
 				{
 					have_dup = true; // duplication of element
 					break;
 				}
-				else SetMarker(adj[i],dup);
+				else SetPrivateMarker(adj[i],dup);
 			}
-			for(i = 0; i < s; i++) RemMarker(adj[i],dup);
-			ReleaseMarker(dup);	
+			for(i = 0; i < s; i++) RemPrivateMarker(adj[i],dup);
+			ReleasePrivateMarker(dup);
 			
 			if( have_dup )
 			{
@@ -1064,8 +1088,12 @@ namespace INMOST
 				Element::adj_type & hc = HighConn(nodes.at(i));
 
 				//PrintHandle(nodes.at(i)); std::cout << " current: "; PrintAdjElem(hc); 
-
-				hc.push_back(he);
+#if defined(USE_OMP)
+#pragma omp critical (node_high_conn)
+#endif
+				{
+					hc.push_back(he);
+				}
 
 				//std::cout << "add "; PrintHandle(he); std::cout << " result: "; PrintAdjElem(hc);
 			}
@@ -1156,7 +1184,9 @@ namespace INMOST
 				Element::adj_type & hc = HighConn(f_edges.at(i));
 
 				//PrintHandle(f_edges.at(i)); std::cout << " current: "; PrintAdjElem(hc); 
-
+#if defined(USE_OMP)
+#pragma omp critical (edge_high_conn)
+#endif
 				hc.push_back(he);
 
 				//std::cout << "add "; PrintHandle(he); std::cout << " result: "; PrintAdjElem(hc);
@@ -1268,9 +1298,9 @@ namespace INMOST
 				 */
 			case Element::Hex:
 			{
-				MarkerType mrk = CreateMarker();
-				MarkerType cemrk = CreateMarker();
-				MarkerType femrk = CreateMarker();
+				MarkerType mrk = CreatePrivateMarker();
+				MarkerType cemrk = CreatePrivateMarker();
+				MarkerType femrk = CreatePrivateMarker();
 				//printf("%lx %lx %lx\n",mrk,cemrk,femrk);
 				ElementArray<Face> faces = c->getFaces();
 				Face face = faces[0];
@@ -1280,42 +1310,42 @@ namespace INMOST
 					for(ElementArray<Node>::iterator it = verts.begin(); it != verts.end(); it++)
 					{
 						ret.push_back(*it);
-						it->SetMarker(mrk);
+						it->SetPrivateMarker(mrk);
 					}
 				else
 					for(ElementArray<Node>::reverse_iterator it = verts.rbegin(); it != verts.rend(); it++)
 					{
 						ret.push_back(*it);
-						it->SetMarker(mrk);
+						it->SetPrivateMarker(mrk);
 					}
 				ElementArray<Edge> c_edges = c->getEdges();
 				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++)
-					it->SetMarker(cemrk);
+					it->SetPrivateMarker(cemrk);
 				ElementArray<Edge> f_edges = face->getEdges();
 				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++)
-					it->SetMarker(femrk);
+					it->SetPrivateMarker(femrk);
 				for(unsigned int k = 0; k < 4; k++)
 				{
 					ElementArray<Edge> v_edges = ret[k]->getEdges();
 					for(ElementArray<Edge>::iterator it = v_edges.begin(); it != v_edges.end(); it++)
 					{
-						if( it->GetMarker(cemrk) && !it->GetMarker(femrk) )
+						if( it->GetPrivateMarker(cemrk) && !it->GetPrivateMarker(femrk) )
 						{
 							ElementArray<Node> nn = it->getNodes();
-							if( nn[0].GetMarker(mrk) )
+							if( nn[0].GetPrivateMarker(mrk) )
 								ret.push_back(nn[1]);
 							else
 								ret.push_back(nn[0]);
 							break;
 						}
 					}
-					ret[k]->RemMarker(mrk);
+					ret[k]->RemPrivateMarker(mrk);
 				}
-				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->RemMarker(cemrk);
-				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->RemMarker(femrk);
-				ReleaseMarker(mrk);
-				ReleaseMarker(cemrk);
-				ReleaseMarker(femrk);
+				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->RemPrivateMarker(cemrk);
+				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->RemPrivateMarker(femrk);
+				ReleasePrivateMarker(mrk);
+				ReleasePrivateMarker(cemrk);
+				ReleasePrivateMarker(femrk);
 				break;
 			}
 				/*
@@ -1326,9 +1356,9 @@ namespace INMOST
 				 */
 			case Element::Prism:
 			{
-				MarkerType mrk = CreateMarker();
-				MarkerType cemrk = CreateMarker();
-				MarkerType femrk = CreateMarker();
+				MarkerType mrk = CreatePrivateMarker();
+				MarkerType cemrk = CreatePrivateMarker();
+				MarkerType femrk = CreatePrivateMarker();
 				ret.reserve(6);
 				Face face;
 				ElementArray<Face> faces = c->getFaces();
@@ -1343,38 +1373,38 @@ namespace INMOST
 					for(ElementArray<Node>::iterator it = verts.begin(); it != verts.end(); it++)
 					{
 						ret.push_back(*it);
-						it->SetMarker(mrk);
+						it->SetPrivateMarker(mrk);
 					}
 				else
 					for(ElementArray<Node>::reverse_iterator it = verts.rbegin(); it != verts.rend(); it++)
 					{
 						ret.push_back(*it);
-						it->SetMarker(mrk);
+						it->SetPrivateMarker(mrk);
 					}
 				ElementArray<Edge> c_edges = c->getEdges();
-				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->SetMarker(cemrk);
+				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->SetPrivateMarker(cemrk);
 				ElementArray<Edge> f_edges = face->getEdges();
-				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->SetMarker(femrk);
+				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->SetPrivateMarker(femrk);
 				for(ElementArray<Cell>::size_type k = 0; k < 3; k++)
 				{
 					ElementArray<Edge> v_edges = ret[k]->getEdges();
 					for(ElementArray<Edge>::iterator it = v_edges.begin(); it != v_edges.end(); it++)
-						if( it->GetMarker(cemrk) && !it->GetMarker(femrk) )
+						if( it->GetPrivateMarker(cemrk) && !it->GetPrivateMarker(femrk) )
 						{
 							ElementArray<Node> nn = it->getNodes();
-							if( nn[0].GetMarker(mrk) )
+							if( nn[0].GetPrivateMarker(mrk) )
 								ret.push_back(nn[1]);
 							else
 								ret.push_back(nn[0]);
 							break;
 						}
-					ret[k]->RemMarker(mrk);
+					ret[k]->RemPrivateMarker(mrk);
 				}
-				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->RemMarker(cemrk);
-				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->RemMarker(femrk);
-				ReleaseMarker(mrk);
-				ReleaseMarker(cemrk);
-				ReleaseMarker(femrk);
+				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->RemPrivateMarker(cemrk);
+				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->RemPrivateMarker(femrk);
+				ReleasePrivateMarker(mrk);
+				ReleasePrivateMarker(cemrk);
+				ReleasePrivateMarker(femrk);
 				break;
 			}
 				/*
@@ -1386,7 +1416,7 @@ namespace INMOST
 			{
 				ret.reserve(5);
 				Face quad, triangle;
-				MarkerType mrk = CreateMarker();
+				MarkerType mrk = CreatePrivateMarker();
 				ElementArray<Face> faces = c->getFaces();
 				for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++) //go over faces
 				{
@@ -1409,31 +1439,31 @@ namespace INMOST
 					for(ElementArray<Node>::iterator it = base_nodes.begin(); it != base_nodes.end(); it++)
 					{
 						ret.push_back(*it);
-						it->SetMarker(mrk);
+						it->SetPrivateMarker(mrk);
 					}
 				else
 					for(ElementArray<Node>::reverse_iterator it = base_nodes.rbegin(); it != base_nodes.rend(); it++)
 					{
 						ret.push_back(*it);
-						it->SetMarker(mrk);
+						it->SetPrivateMarker(mrk);
 					}
 				ElementArray<Node> tri_nodes = triangle->getNodes();
 				for(ElementArray<Node>::iterator it = tri_nodes.begin(); it != tri_nodes.end(); it++)
 				{
-					if( !it->GetMarker(mrk) )
+					if( !it->GetPrivateMarker(mrk) )
 					{
 						ret.push_back(*it);
 						break;
 					}
 				}
 				for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); it++)
-					it->RemMarker(mrk);
-				ReleaseMarker(mrk);
+					it->RemPrivateMarker(mrk);
+				ReleasePrivateMarker(mrk);
 				break;
 			}
 			default: //Tet, MultiPolygon, Polyhedron
 			{
-				MarkerType mrk = CreateMarker();
+				MarkerType mrk = CreatePrivateMarker();
 				if( !HideMarker() )
 				{
 					Element::adj_type & lc = LowConn(hc);
@@ -1442,18 +1472,18 @@ namespace INMOST
 						Element::adj_type & ilc = LowConn(lc[i]);
 						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
 						{
-							if( !GetMarker(ilc[j],mrk) )
+							if( !GetPrivateMarker(ilc[j],mrk) )
 							{
 								Element::adj_type & jlc = LowConn(ilc[j]);
 								for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
 								{
-									if( !GetMarker(jlc[k],mrk) )
+									if( !GetPrivateMarker(jlc[k],mrk) )
 									{
-										SetMarker(jlc[k],mrk);
+										SetPrivateMarker(jlc[k],mrk);
 										ret.push_back(jlc[k]);
 									}
 								}
-								SetMarker(ilc[j],mrk);
+								SetPrivateMarker(ilc[j],mrk);
 							}
 						}
 					}
@@ -1461,7 +1491,7 @@ namespace INMOST
 					{
 						Element::adj_type & ilc = LowConn(lc[i]);
 						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
-							RemMarker(ilc[j],mrk);
+							RemPrivateMarker(ilc[j],mrk);
 					}
 				}
 				else
@@ -1472,18 +1502,18 @@ namespace INMOST
 						Element::adj_type & ilc = LowConn(lc[i]);
 						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !Hidden(ilc[j]) ) //iterate over face edges
 						{
-							if( !GetMarker(ilc[j],mrk) )
+							if( !GetPrivateMarker(ilc[j],mrk) )
 							{
 								Element::adj_type & jlc = LowConn(ilc[j]);
 								for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !Hidden(jlc[k]) ) //iterator over edge nodes
 								{
-									if( !GetMarker(jlc[k], mrk) )
+									if( !GetPrivateMarker(jlc[k], mrk) )
 									{
-										SetMarker(jlc[k],mrk);
+										SetPrivateMarker(jlc[k],mrk);
 										ret.push_back(jlc[k]);
 									}
 								}
-								SetMarker(ilc[j],mrk);
+								SetPrivateMarker(ilc[j],mrk);
 							}
 						}
 
@@ -1491,12 +1521,12 @@ namespace INMOST
 						{
 							Element::adj_type & ilc = LowConn(lc[i]);
 							for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !Hidden(ilc[j]) ) //iterate over face edges
-								RemMarker(ilc[j],mrk);
+								RemPrivateMarker(ilc[j],mrk);
 						}
 					}
 				}
-				for(ElementArray<Node>::size_type it = 0; it < ret.size(); it++) ret[it]->RemMarker(mrk);
-				ReleaseMarker(mrk);
+				for(ElementArray<Node>::size_type it = 0; it < ret.size(); it++) ret[it]->RemPrivateMarker(mrk);
+				ReleasePrivateMarker(mrk);
 				break;
 			}
 		}
@@ -1524,6 +1554,9 @@ namespace INMOST
 			for(ElementArray<Face>::size_type i = 0; i < c_faces.size(); i++)
 			{
 				Element::adj_type & hc = HighConn(c_faces.at(i));
+#if defined(USE_OMP)
+#pragma omp critical (face_high_conn)
+#endif
 				hc.push_back(he);
 			}
 			Element::adj_type & lc = LowConn(he);
@@ -1538,6 +1571,9 @@ namespace INMOST
 					for(ElementArray<Node>::size_type k = 0; k < nodes.size(); k++)
 					{
 						Element::adj_type & lc = LowConn(nodes.at(k));
+#if defined(USE_OMP)
+#pragma omp critical (node_low_conn)
+#endif
 						lc.push_back(he);
 					}
 					Element::adj_type & hc = HighConn(he);
@@ -1561,6 +1597,9 @@ namespace INMOST
 					for(ElementArray<Node>::size_type k = 0; k < c_nodes.size(); k++)
 					{
 						Element::adj_type & lc = LowConn(c_nodes.at(k));
+#if defined(USE_OMP)
+#pragma omp critical (node_low_conn)
+#endif
 						lc.push_back(he);
 					}
 					Element::adj_type & hc = HighConn(he);
@@ -1644,22 +1683,19 @@ namespace INMOST
 
 		if( NumberOfNodes() > 0)
 		{
-			array<Storage::real> temp(dims*NumberOfNodes());
-			Storage::integer j = 0;
+			std::vector<Storage::real> temp(dims*NodeLastLocalID());
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElementNum(0,k) )
-			{
-				memcpy(temp.data()+j,MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),sizeof(Storage::real)*dims);
-				j+=dims;
-			}
-			
+				memcpy(temp.data()+k*dims,MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),sizeof(Storage::real)*dims);
 			DeleteTag(tag_coords);
 			tag_coords = CreateTag("COORD",DATA_REAL,NODE,NONE,dims);
-			j = 0;
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElementNum(0,k) )
-			{
-				memcpy(MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),temp.data()+j,sizeof(Storage::real)*dims);
-				j+=dims;
-			}
+				memcpy(MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),temp.data()+k*dims,sizeof(Storage::real)*dims);
 			dim = dims;
 		}
 		else

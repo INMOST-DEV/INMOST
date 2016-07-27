@@ -75,9 +75,9 @@ namespace INMOST
 			_iterator(etype * i):e(i){}
 			_iterator(const _iterator & other){e = other.e;}
 			~_iterator() {};
-			_iterator operator -(size_t n) { return _iterator(e-n); }
+			_iterator operator -(size_t n) const { return _iterator(e-n); }
 			_iterator & operator -=(size_t n) { e-=n; return *this; }
-			_iterator operator +(size_t n) { return _iterator(e+n); }
+			_iterator operator +(size_t n) const { return _iterator(e+n); }
 			_iterator & operator +=(size_t n) { e+=n; return *this; }
 			_iterator & operator ++(){ ++e; return *this;}
 			_iterator operator ++(int){ return _iterator(e++); }
@@ -94,7 +94,7 @@ namespace INMOST
 			bool operator <=(const _iterator & other) const { return e <= other.e;}
 			bool operator >=(const _iterator & other) const { return e >= other.e;}
 			operator void *() {return static_cast<void *> (e);}
-			operator const void *() {return const_cast<const void *> (e);}
+			operator const void *() const {return const_cast<const void *> (e);}
 		};
 		typedef _iterator<element> iterator;
 		typedef _iterator<const element> const_iterator;
@@ -113,9 +113,9 @@ namespace INMOST
 			_reverse_iterator(etype * i):e(i){}
 			_reverse_iterator(const _reverse_iterator & other){e = other.e;}
 			~_reverse_iterator() {};
-			_reverse_iterator operator -(size_t n) { return _reverse_iterator(e+n); }
+			_reverse_iterator operator -(size_t n) const { return _reverse_iterator(e+n); }
 			_reverse_iterator & operator -=(size_t n) { e+=n; return *this; }
-			_reverse_iterator operator +(size_t n) {return _reverse_iterator(e-n); }
+			_reverse_iterator operator +(size_t n) const {return _reverse_iterator(e-n); }
 			_reverse_iterator & operator +=(size_t n) { e-=n; return *this; }
 			_reverse_iterator & operator ++(){ --e; return *this;}
 			_reverse_iterator operator ++(int){ return _reverse_iterator(e--); }
@@ -132,6 +132,7 @@ namespace INMOST
 			bool operator <=(const _reverse_iterator & other) const { return e <= other.e;}
 			bool operator >=(const _reverse_iterator & other) const { return e >= other.e;}
 			operator void *() {return static_cast<void *> (e);}
+			operator const void *() const {return static_cast<const void *> (e);}
 		};
 		typedef _reverse_iterator<element> reverse_iterator;
 		typedef _reverse_iterator<const element> const_reverse_iterator;
@@ -536,9 +537,9 @@ namespace INMOST
 			_iterator(dtype * i):e(i){}
 			_iterator(const _iterator & other){e = other.e;}
 			~_iterator() {};
-			_iterator operator -(size_t n) { return _iterator(e-n); }
+			_iterator operator -(size_t n) const { return _iterator(e-n); }
 			_iterator & operator -=(size_t n) { e-=n; return *this; }
-			_iterator operator +(size_t n) { return _iterator(e+n); }
+			_iterator operator +(size_t n) const { return _iterator(e+n); }
 			_iterator & operator +=(size_t n) { e+=n; return *this; }
 			_iterator & operator ++(){ ++e; return *this;}
 			_iterator operator ++(int){ return _iterator(e++); }
@@ -573,9 +574,9 @@ namespace INMOST
 			_reverse_iterator(dtype * i):e(i){}
 			_reverse_iterator(const _reverse_iterator & other){e = other.e;}
 			~_reverse_iterator() {};
-			_reverse_iterator operator -(size_t n) { return _reverse_iterator(e+n); }
+			_reverse_iterator operator -(size_t n) const { return _reverse_iterator(e+n); }
 			_reverse_iterator & operator -=(size_t n) { e+=n; return *this; }
-			_reverse_iterator operator +(size_t n) {return _reverse_iterator(e-n); }
+			_reverse_iterator operator +(size_t n) const {return _reverse_iterator(e-n); }
 			_reverse_iterator & operator +=(size_t n) { e-=n; return *this; }
 			_reverse_iterator & operator ++(){ --e; return *this;}
 			_reverse_iterator operator ++(int){ return _reverse_iterator(e--); }
@@ -1547,9 +1548,9 @@ namespace INMOST
 			_iterator(dtype * i):e(i){}
 			_iterator(const _iterator & other){e = other.e;}
 			~_iterator() {};
-			_iterator operator -(size_type n) { return _iterator(e-n); }
+			_iterator operator -(size_type n) const { return _iterator(e-n); }
 			_iterator & operator -=(size_type n) { e-=n; return *this; }
-			_iterator operator +(size_type n) { return _iterator(e+n); }
+			_iterator operator +(size_type n) const { return _iterator(e+n); }
 			_iterator & operator +=(size_type n) { e+=n; return *this; }
 			_iterator & operator ++(){ ++e; return *this;}
 			_iterator operator ++(int){ return _iterator(e++); }
@@ -1559,14 +1560,14 @@ namespace INMOST
 			dtype & operator *() { return *e; }
 			dtype * operator ->() { return e; }
 			_iterator & operator =(_iterator const & other) { e = other.e; return *this; }
-			bool operator ==(const _iterator & other) { return e == other.e;}
-			bool operator !=(const _iterator & other) { return e != other.e;}
-			bool operator <(const _iterator & other) { return e < other.e;}
-			bool operator >(const _iterator & other) { return e > other.e;}
-			bool operator <=(const _iterator & other) { return e <= other.e;}
-			bool operator >=(const _iterator & other) { return e >= other.e;}
+			bool operator ==(const _iterator & other) const { return e == other.e;}
+			bool operator !=(const _iterator & other) const { return e != other.e;}
+			bool operator <(const _iterator & other) const { return e < other.e;}
+			bool operator >(const _iterator & other) const { return e > other.e;}
+			bool operator <=(const _iterator & other) const { return e <= other.e;}
+			bool operator >=(const _iterator & other) const { return e >= other.e;}
 			operator void *() {return static_cast<void *> (e);}
-			void * cast_to_void(){return static_cast<void *>(e);}
+			operator const void *() const {return static_cast<const void *> (e);}
 		};
 		typedef _iterator<element> iterator;
 		typedef _iterator<const element> const_iterator;
@@ -1585,9 +1586,9 @@ namespace INMOST
 			_reverse_iterator(dtype * i):e(i){}
 			_reverse_iterator(const _reverse_iterator & other){e = other.e;}
 			~_reverse_iterator() {};
-			_reverse_iterator operator -(size_type n) { return _reverse_iterator(e+n); }
+			_reverse_iterator operator -(size_type n) const { return _reverse_iterator(e+n); }
 			_reverse_iterator & operator -=(size_type n) { e+=n; return *this; }
-			_reverse_iterator operator +(size_type n) {return _reverse_iterator(e-n); }
+			_reverse_iterator operator +(size_type n) const {return _reverse_iterator(e-n); }
 			_reverse_iterator & operator +=(size_type n) { e-=n; return *this; }
 			_reverse_iterator & operator ++(){ --e; return *this;}
 			_reverse_iterator operator ++(int){ return _reverse_iterator(e--); }
@@ -1597,14 +1598,14 @@ namespace INMOST
 			dtype & operator *() { return *e; }
 			dtype * operator ->() { return e; }
 			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
-			bool operator ==(const _reverse_iterator & other) { return e == other.e;}
-			bool operator !=(const _reverse_iterator & other) { return e != other.e;}
-			bool operator <(const _reverse_iterator & other) { return e < other.e;}
-			bool operator >(const _reverse_iterator & other) { return e > other.e;}
-			bool operator <=(const _reverse_iterator & other) { return e <= other.e;}
-			bool operator >=(const _reverse_iterator & other) { return e >= other.e;}
+			bool operator ==(const _reverse_iterator & other) const { return e == other.e;}
+			bool operator !=(const _reverse_iterator & other) const { return e != other.e;}
+			bool operator <(const _reverse_iterator & other) const { return e < other.e;}
+			bool operator >(const _reverse_iterator & other) const { return e > other.e;}
+			bool operator <=(const _reverse_iterator & other) const { return e <= other.e;}
+			bool operator >=(const _reverse_iterator & other) const { return e >= other.e;}
 			operator void *() {return static_cast<void *> (e);}
-			void * cast_to_void(){return static_cast<void *>(e);}
+			operator const void *() const {return static_cast<const void *> (e);}
 		};
 		typedef _reverse_iterator<element> reverse_iterator;
 		typedef _reverse_iterator<const element> const_reverse_iterator;
@@ -2037,12 +2038,12 @@ namespace INMOST
 			dtype & operator *() { return *it; }
 			dtype * operator ->() { return &*it; }
 			_iterator & operator =(_iterator const & other) {it = other.it; cur_list = other.cur_list; lists = other.lists; return *this; }
-			bool operator ==(const _iterator & other) { return it == other.it;}
-			bool operator !=(const _iterator & other) { return it != other.it;}
-			bool operator <(const _iterator & other) { return it < other.it;}
-			bool operator >(const _iterator & other) { return it > other.it;}
-			bool operator <=(const _iterator & other) { return it <= other.it;}
-			bool operator >=(const _iterator & other) { return it >= other.it;}
+			bool operator ==(const _iterator & other) const { return it == other.it;}
+			bool operator !=(const _iterator & other) const { return it != other.it;}
+			bool operator <(const _iterator & other) const { return it < other.it;}
+			bool operator >(const _iterator & other) const { return it > other.it;}
+			bool operator <=(const _iterator & other) const { return it <= other.it;}
+			bool operator >=(const _iterator & other) const { return it >= other.it;}
 		};
 		typedef _iterator<inner_type> iterator;
 		typedef _iterator<const inner_type> const_iterator;
@@ -2189,9 +2190,9 @@ namespace INMOST
 			iterator(chunk_array<element,block_bits> * c, size_type pos):link(c),pos(pos){}
 			iterator(const iterator & other){link = other.link; pos = other.pos;}
 			~iterator() {};
-			iterator operator -(size_type n) { return iterator(link,pos-n); }
+			iterator operator -(size_type n) const { return iterator(link,pos-n); }
 			iterator & operator -=(size_type n) { pos-=n; return *this; }
-			iterator operator +(size_type n) { return iterator(link,pos+n); }
+			iterator operator +(size_type n) const { return iterator(link,pos+n); }
 			iterator & operator +=(size_type n) { pos+=n; return *this; }
 			iterator & operator ++(){ ++pos; return *this;}
 			iterator operator ++(int){ return iterator(link,pos++); }
@@ -2201,12 +2202,12 @@ namespace INMOST
 			element & operator *() { return link->at(pos); }
 			element * operator ->() { return &link->at(pos); }
 			iterator & operator =(iterator const & other) { link = other.link; pos = other.pos; return *this; }
-			bool operator ==(const iterator & other) { assert(link == other.link); return pos == other.pos;}
-			bool operator !=(const iterator & other) { assert(link == other.link); return pos != other.pos;}
-			bool operator <(const iterator & other) { assert(link == other.link); return pos < other.pos;}
-			bool operator >(const iterator & other) { assert(link == other.link); return pos > other.pos;}
-			bool operator <=(const iterator & other) { assert(link == other.link); return pos <= other.pos;}
-			bool operator >=(const iterator & other) { assert(link == other.link); return pos >= other.pos;}
+			bool operator ==(const iterator & other) const { assert(link == other.link); return pos == other.pos;}
+			bool operator !=(const iterator & other) const { assert(link == other.link); return pos != other.pos;}
+			bool operator <(const iterator & other) const { assert(link == other.link); return pos < other.pos;}
+			bool operator >(const iterator & other) const { assert(link == other.link); return pos > other.pos;}
+			bool operator <=(const iterator & other) const { assert(link == other.link); return pos <= other.pos;}
+			bool operator >=(const iterator & other) const { assert(link == other.link); return pos >= other.pos;}
 		};
 		
 		class const_iterator
@@ -2224,9 +2225,9 @@ namespace INMOST
 			const_iterator(const chunk_array<element,block_bits> * c, size_type pos):link(c),pos(pos){}
 			const_iterator(const const_iterator & other) :link(other.link) {pos = other.pos;}
 			~const_iterator() {};
-			const_iterator operator -(size_type n) { return const_iterator(link,pos-n); }
+			const_iterator operator -(size_type n) const { return const_iterator(link,pos-n); }
 			const_iterator & operator -=(size_type n) { pos-=n; return *this; }
-			const_iterator operator +(size_type n) { return const_iterator(link,pos+n); }
+			const_iterator operator +(size_type n) const { return const_iterator(link,pos+n); }
 			const_iterator & operator +=(size_type n) { pos+=n; return *this; }
 			const_iterator & operator ++(){ ++pos; return *this;}
 			const_iterator operator ++(int){ return const_iterator(link,pos++); }
@@ -2236,12 +2237,12 @@ namespace INMOST
 			const element & operator *() { return link->at(pos); }
 			const element * operator ->() { return &link->at(pos); }
 			const_iterator & operator =(const_iterator const & other) { link = other.link; pos = other.pos; return *this; }
-			bool operator ==(const const_iterator & other) { assert(link == other.link); return pos == other.pos;}
-			bool operator !=(const const_iterator & other) { assert(link == other.link); return pos != other.pos;}
-			bool operator <(const const_iterator & other) { assert(link == other.link); return pos < other.pos;}
-			bool operator >(const const_iterator & other) { assert(link == other.link); return pos > other.pos;}
-			bool operator <=(const const_iterator & other) { assert(link == other.link); return pos <= other.pos;}
-			bool operator >=(const const_iterator & other) { assert(link == other.link); return pos >= other.pos;}
+			bool operator ==(const const_iterator & other) const { assert(link == other.link); return pos == other.pos;}
+			bool operator !=(const const_iterator & other) const { assert(link == other.link); return pos != other.pos;}
+			bool operator <(const const_iterator & other) const { assert(link == other.link); return pos < other.pos;}
+			bool operator >(const const_iterator & other) const { assert(link == other.link); return pos > other.pos;}
+			bool operator <=(const const_iterator & other) const { assert(link == other.link); return pos <= other.pos;}
+			bool operator >=(const const_iterator & other) const { assert(link == other.link); return pos >= other.pos;}
 		};
 		
 		void inner_resize(size_type new_size)

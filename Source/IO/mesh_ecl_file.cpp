@@ -17,9 +17,18 @@
 // 7) add top and bottom interface
 
 //todo
-// 1. remove edges on pillars that do not get any associated block
+// 1. (ok) remove edges on pillars that do not get any associated block
+// 2. (ok) do not create cells with actnum = 0
 // 2. fix fast intersect() algorithm, check against intersect_naive()
-// 3. FixEdgeOrder cannot fix order of edges for certain interfaces - investigate
+// 3. CheckEdgeOrder reports bad order of edges for certain interfaces - investigate
+// 4. when encounter cells with one face with actnum = 1 should disconnect adjacent cells
+// 5. (ok) populate keywords data, poro, perm, actnum, satnum, etc...
+// 5.1 add saturation, pressure
+// 6. local grid refinement
+// 7. omp-parallel loading
+// 8. mpi-parallel loading
+// 9. do not convert arrays xyz and zcorn
+//10. read wells into sets
 
 //eclipse states
 #define ECLSTRCMP(x,y) strncmp(x,y,8)
@@ -42,6 +51,7 @@
 #define ECL_COORDS 14
 #define ECL_ZCORN 15
 #define ECL_ACTNUM 16
+#define ECL_SATNUM 17
 
 #define ECL_GTYPE_NONE 0
 #define ECL_GTYPE_TOPS 1
@@ -86,18 +96,18 @@ namespace INMOST
 		Point(double _x, double _y) : x(_x), y(_y) {}
 		bool operator <(const Point & b) const
 		{
-			if (y < b.y - 1.0e-9) return true;
-			else if (y > b.y + 1.0e-9) return false;
-			else if (x < b.x - 1.0e-9) return true;
+			if (y < b.y - 1.0e-5) return true;
+			else if (y > b.y + 1.0e-5) return false;
+			else if (x < b.x - 1.0e-5) return true;
 			else return false;
 		}
 		bool operator ==(const Point & b) const
 		{
-			return fabs(y - b.y) < 1.0e-9 && fabs(x - b.x) < 1.0e-9;
+			return fabs(y - b.y) < 1.0e-5 && fabs(x - b.x) < 1.0e-5;
 		}
 		bool operator !=(const Point & b) const
 		{
-			return fabs(y - b.y) > 1.0e-9 || fabs(x - b.x) > 1.0e-9;
+			return fabs(y - b.y) > 1.0e-5 || fabs(x - b.x) > 1.0e-5;
 		}
 	};
 	//Comparator for map of nodes
@@ -108,25 +118,37 @@ namespace INMOST
 		{
 			for(int k = 0; k < 3; ++k)
 			{
-				if( a[k] < b[k] - 1.0e-6)
+				if( a[k] < b[k] - 1.0e-5)
 					return true;
-				else if( a[k] > b[k] + 1.0e-6 )
+				else if( a[k] > b[k] + 1.0e-5 )
 					return false;
 			}
 			return false;
 		}
 	};
+	
 	//Comparator for events in line sweep algorithm
 	class event_less
 	{
 	public:
 		bool operator()(const std::pair<double, int> & a, const std::pair<double, int> & b) const
 		{
-			if (a.first < b.first - 1.0e-6)
+			if (a.first < b.first - 1.0e-5)
 				return true;
-			else if (a.first > b.first + 1.0e-6)
+			else if (a.first > b.first + 1.0e-5)
 				return false;
 			else if (a.second < b.second)
+				return true;
+			return false;
+		}
+	};
+	//Comparator for depth of nodes in pillar
+	class pillar_less
+	{
+	public:
+		bool operator()(Storage::real a, Storage::real b) const
+		{
+			if( a < b - 1.0e-5)
 				return true;
 			return false;
 		}
@@ -180,7 +202,7 @@ namespace INMOST
 	
 	
 
-	__INLINE void normalize(Storage::real v[3])
+	__INLINE Storage::real normalize(Storage::real v[3])
 	{
 		Storage::real l = sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
 		if( l )
@@ -189,6 +211,7 @@ namespace INMOST
 			v[1] /= l;
 			v[2] /= l;
 		}
+		return l;
 	}
 	
 	void compute_conormal(const Edge & a, const Edge & b, Storage::real vn[3])
@@ -276,10 +299,12 @@ namespace INMOST
 	
 	Point project(Storage::real pos[3], const Storage::real p0beg[3], const Storage::real  p0end[3], const Storage::real p1beg[3], const Storage::real p1end[3])
 	{
-		Storage::real alpha, beta, c;
+		Storage::real alpha, beta, c,l, zmax, zmin;
 		Storage::real v[3], v0[3], v1[3];
 		alpha = (pos[2]-p0end[2])/(p0beg[2]-p0end[2]);
 		beta = (pos[2]-p1end[2])/(p1beg[2]-p1end[2]);
+		zmax = std::max(std::max(p0beg[2],p0end[2]),std::max(p1beg[2],p1end[2]));
+		zmin = std::min(std::min(p0beg[2],p0end[2]),std::min(p1beg[2],p1end[2]));
 		//get slice of pillar at z position of beginning of the segment
 		v0[0] = p0end[0] + alpha*(p0beg[0]-p0end[0]);
 		v0[1] = p0end[1] + alpha*(p0beg[1]-p0end[1]);
@@ -289,10 +314,10 @@ namespace INMOST
 		v1[2] = pos[2];
 		//get vector connecting pillars
 		make_vec(v1,v0,v);
-		normalize(v);
+		l=normalize(v);
 		//project coordinates
-		c = dot_prod(pos,v);
-		return Point(pos[2],c);
+		c = ((pos[0]-v0[0])*v[0]+(pos[1]-v0[1])*v[1])/l;//dot_prod(pos,v);
+		return Point((pos[2]-zmin)/(zmax-zmin),c);
 	}
 	
 	//intersect a pair of segments
@@ -323,27 +348,27 @@ namespace INMOST
 		if (fabs(paend.x - pabeg.x) > 1.0e-9)
 		{
 			t1 = (pfind.x - pabeg.x) / (paend.x - pabeg.x);
-			if (t1 < 1.0e-9 || t1 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t1 < 1.0e-4 || t1 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
 		if (fabs(paend.y - pabeg.y) > 1.0e-9)
 		{
 			t1 = (pfind.y - pabeg.y) / (paend.y - pabeg.y);
-			if (t1 < 1.0e-9 || t1 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t1 < 1.0e-4 || t1 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
 		if (fabs(pbend.x - pbbeg.x) > 1.0e-9)
 		{
 			t2 = (pfind.x - pbbeg.x) / (pbend.x - pbbeg.x);
-			if (t2 < 1.0e-9 || t2 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t2 < 1.0e-4 || t2 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
 		if (fabs(pbend.y - pbbeg.y) > 1.0e-9)
 		{
 			t2 = (pfind.y - pbbeg.y) / (pbend.y - pbbeg.y);
-			if (t2 < 1.0e-9 || t2 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t2 < 1.0e-4 || t2 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
 		//restore third coordinate
 		for(int k = 0; k < 3; ++k)
 			find[k] = 0.5*((1-t1)*abeg[k]+t1*aend[k] + (1-t2)*bbeg[k]+t2*bend[k]);
-		if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ")" << std::endl;
+		if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
 		Node I;
 		std::map<position,Node,position_less>::iterator search = intersections.find(find);
 		//check whether intersection already exists
@@ -703,33 +728,39 @@ namespace INMOST
 	
 	void block_number_intersection(ElementArray<Element> & adj, Tag block, std::vector<int> & out)
 	{
-		Storage::integer_array be = adj[0]->IntegerArray(block);
-		std::vector<int> inter(be.begin(),be.end()), tmp(inter.size());
-		for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
-		{
-			be = adj[k]->IntegerArray(block);
-			tmp.resize(std::set_intersection(inter.begin(),inter.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
-			inter.swap(tmp);
-		}
 		out.clear();
-		out.insert(out.end(),inter.begin(),inter.end());
+		if( !adj.empty() )
+		{
+			Storage::integer_array be = adj[0]->IntegerArray(block);
+			std::vector<int> inter(be.begin(),be.end()), tmp(inter.size());
+			for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
+			{
+				be = adj[k]->IntegerArray(block);
+				tmp.resize(std::set_intersection(inter.begin(),inter.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
+				inter.swap(tmp);
+			}
+			out.insert(out.end(),inter.begin(),inter.end());
+		}
 		//Storage::integer_array bn = n->IntegerArray(block);
 		//bn.replace(bn.begin(),bn.end(),inter.begin(),inter.end());
 	}
 
 	void block_number_union(Element n, ElementArray<Element> & adj, Tag block)
 	{
-		Storage::integer_array be = adj[0]->IntegerArray(block);
-		std::vector<int> uni(be.begin(),be.end()), tmp(uni.size());
-		for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
+		if( !adj.empty() )
 		{
-			be = adj[k]->IntegerArray(block);
-			tmp.resize(uni.size()+be.size());
-			tmp.resize(std::set_union(uni.begin(),uni.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
-			uni.swap(tmp);
+			Storage::integer_array be = adj[0]->IntegerArray(block);
+			std::vector<int> uni(be.begin(),be.end()), tmp(uni.size());
+			for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
+			{
+				be = adj[k]->IntegerArray(block);
+				tmp.resize(uni.size()+be.size());
+				tmp.resize(std::set_union(uni.begin(),uni.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
+				uni.swap(tmp);
+			}
+			Storage::integer_array bn = n->IntegerArray(block);
+			bn.replace(bn.begin(),bn.end(),uni.begin(),uni.end());
 		}
-		Storage::integer_array bn = n->IntegerArray(block);
-		bn.replace(bn.begin(),bn.end(),uni.begin(),uni.end());
 	}
 	
 
@@ -763,7 +794,7 @@ namespace INMOST
 		Storage::integer dims[3], mapaxis[6] = {0,1,0,0,1,0};
 		Storage::real inrad = 0;
 		std::vector<Storage::real> xyz,perm,poro, tops,zcorn;
-		std::vector<Storage::integer> actnum;
+		std::vector<Storage::integer> actnum, satnum;
 		while(!fs.empty())
 		{
 			while(fgets(readline,2048,fs.back().first.first) != NULL)
@@ -923,6 +954,16 @@ namespace INMOST
 						argtype = ECL_VAR_INT;
 						offset = state = ECL_ACTNUM;
 					}
+					else if( !ECLSTRCMP(p,"SATNUM") )
+					{
+						assert(have_dimens);
+						satnum.resize(dims[0]*dims[1]*dims[2]);
+						read_arrayi = satnum.empty() ? NULL : &satnum[0];
+						numrecs = 1;
+						downread = totread = dims[0]*dims[1]*dims[2];
+						argtype = ECL_VAR_INT;
+						offset = state = ECL_SATNUM;
+					}
 					else if( !ECLSTRCMP(p,"RADIAL") )
 					{
 						radial = ECL_GTYPE_RADIAL;
@@ -985,6 +1026,7 @@ namespace INMOST
 				case ECL_PERMZ:
 				case ECL_PORO:
 				case ECL_ACTNUM:
+				case ECL_SATNUM:
 				case ECL_TOPS:
 					while( downread > 0 && p < pend )
 					{
@@ -1164,10 +1206,10 @@ ecl_exit_loop:
 						xyz[3*ECL_IJK_DATA(pif,0,0)+0]
 						)*0.5; 
 			}
-			Tag tagporo,tagperm;
+			Tag tagporo,tagperm, tagsatnum;
 			if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
 			if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
-
+			if( !satnum.empty() ) tagsatnum = CreateTag("SATNUM",DATA_INTEGER,CELL,NONE,1);
 			const Storage::integer nvf[24] = { 2, 3, 1, 0, 4, 5, 7, 6, 0, 1, 5, 4, 3, 2, 6, 7, 2, 0, 4, 6, 1, 3, 7, 5 };
 			const Storage::integer numnodes[6] = { 4, 4, 4, 4, 4, 4 };
 			for(int i = 0; i < dims[0]; i++)
@@ -1186,13 +1228,14 @@ ecl_exit_loop:
 						//for(int q = 0; q < 8; q++)
 						//	std::cout << verts[q]->Coords()[0] << " " << verts[q]->Coords()[1] << " " << verts[q]->Coords()[2] << " " << verts[q]->LocalID() << std::endl;
 						Cell c = CreateCell(ElementArray<Node>(this,verts,verts+8),nvf,numnodes,6).first;
-						if( !poro.empty() ) c->RealDF(tagporo) = poro[(i*dims[1]+j)*dims[2]+k];
+						if( !poro.empty() ) c->RealDF(tagporo) = poro[ECL_IJK_DATA(i,j,k)];
+						if( !satnum.empty() ) c->IntegerDF(tagsatnum) = satnum[ECL_IJK_DATA(i,j,k)];
 						if( !perm.empty() )
 						{
 							Storage::real_array arr_perm = c->RealArrayDF(tagperm);
-							arr_perm[0] = perm[3*((i*dims[1]+j)*dims[2]+k)+0];
-							arr_perm[1] = perm[3*((i*dims[1]+j)*dims[2]+k)+1];
-							arr_perm[2] = perm[3*((i*dims[1]+j)*dims[2]+k)+2];
+							arr_perm[0] = perm[3*(ECL_IJK_DATA(i,j,k))+0];
+							arr_perm[1] = perm[3*(ECL_IJK_DATA(i,j,k))+1];
+							arr_perm[2] = perm[3*(ECL_IJK_DATA(i,j,k))+2];
 						}
 					}
 		}
@@ -1204,7 +1247,17 @@ ecl_exit_loop:
 			SetTopologyCheck(DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL);
 			SetTopologyCheck(ADJACENT_DUPLICATE | ADJACENT_DIMENSION);
 			RemTopologyCheck(THROW_EXCEPTION);
-
+			//actnum.clear();
+			if( zcorn.empty() )
+			{
+				std::cout << "ZCORN was not provided, cannot construct grid" << std::endl;
+				throw BadFile;
+			}
+			if( xyz.empty() )
+			{
+				std::cout << "COORD was not provided, cannot construct grid" << std::endl;
+				throw BadFile;
+			}
 			//make arrays more human-readable
 			std::vector< std::vector< std::vector< std::vector< Storage::real > > > > zcorn_array, coords_array;
 			{
@@ -1252,16 +1305,16 @@ ecl_exit_loop:
 			//assemble pillars
 			{
 				//Tag node_number = CreateTag("NODE_NUMBER",DATA_INTEGER,NODE,NONE);
-				Tag cell_number = CreateTag("CELL_NUMBER",DATA_INTEGER,CELL,NONE,4);
+				Tag cell_number = CreateTag("CELL_NUMBER",DATA_INTEGER,CELL,NONE,1);
 				Tag edge_number = CreateTag("EDGE_NUMBER",DATA_INTEGER,EDGE,NONE);
 				Tag block_number = CreateTag("BLOCK_NUMBER",DATA_INTEGER,EDGE|NODE,NONE);
-				typedef std::map<Storage::real,Node> pillar;
+				typedef std::map<Storage::real,Node,pillar_less> pillar;
 				std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
 				for(int i = 0; i < dims[0]; i++)
 				{
 					for(int j = 0; j < dims[1]; j++)
 					{
-						for(int k = 0; k < dims[2]; k++)
+						for(int k = 0; k < dims[2]; k++) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
 						{
 							for(int l = 0; l < 8; ++l)
 							{
@@ -1325,15 +1378,18 @@ ecl_exit_loop:
 					for(int j = 0; j < dims[1]+1; ++j)
 					{
 						pillar & p = pillars[i*(dims[1]+1)+j];
-						ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
-						pillar::iterator it = p.begin();
-						pillar::iterator pre_it = it++;
-						while(it != p.end())
+						if( p.size() > 1 )
 						{
-							edge_nodes[0] = it->second;
-							edge_nodes[1] = pre_it->second;
-							p_edges.push_back(CreateEdge(edge_nodes).first);
-							pre_it = it++;
+							ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
+							pillar::iterator it = p.begin();
+							pillar::iterator pre_it = it++;
+							while(it != p.end())
+							{
+								edge_nodes[0] = it->second;
+								edge_nodes[1] = pre_it->second;
+								p_edges.push_back(CreateEdge(edge_nodes).first);
+								pre_it = it++;
+							}
 						}
 					} //j
 				} //i
@@ -1342,7 +1398,7 @@ ecl_exit_loop:
 				{
 					for(int j = 0; j < dims[1]; ++j)
 					{
-						for(int k = 0; k < dims[2]; ++k)
+						for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
 						{
 							const int edge_nodes[4][2] = 
 							{
@@ -1387,16 +1443,34 @@ ecl_exit_loop:
 						}
 					}
 				}
+				//erase edges on pillars that are not used in any block
+				for(int i = 0; i < dims[0]+1; ++i)
+				{
+					for(int j = 0; j < dims[1]+1; ++j)
+					{
+						ElementArray<Edge> & p = pillar_edges[i*(dims[1]+1) + j];
+						ElementArray<Edge>::iterator it = p.begin();
+						while(it != p.end())
+						{
+							if( it->IntegerArray(block_number).empty() )
+							{
+								it->Delete();
+								it = p.erase(it);
+							}
+							else ++it;
+						}
+					}
+				}
 				
-				Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
+				//Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
 				//set of lines to be intersected
 				ElementArray<Edge> edges(this);
 				ElementArray<Node> intersections(this);
 				//tags to be transfered
-				std::vector<Tag> transfer(3);
+				std::vector<Tag> transfer(2);
 				transfer[0] = edge_number;
 				transfer[1] = block_number;
-				transfer[2] = pillar_mark;
+				//transfer[2] = pillar_mark;
 				//for sorting a pair of data
 				std::vector<int> indices_sort, temporary;
 				//array to obtain block number
@@ -1410,7 +1484,7 @@ ecl_exit_loop:
 				//on front side of the pillar
 				std::vector< ElementArray<Edge> > pillar_block_edges_front(dims[2],ElementArray<Edge>(this));
 				//mark used nodes to detect top pillar node, bottom pillar node and pillar edge dropouts
-				MarkerType used = CreateMarker();
+				//MarkerType used = CreateMarker();
 				//mark edges on pillar for adjacency retrival
 				MarkerType mrk = CreateMarker();
 				//mark original edges of each block face, so that we know outer boundary on constructed interface
@@ -1442,15 +1516,6 @@ ecl_exit_loop:
 							//p1 is at i+1,j, when q = 0 and at i,j+1, when q = 1
 							pillar & p0 = pillars[(i+ 0)*(dims[1]+1)+j+0];
 							pillar & p1 = pillars[(i+!q)*(dims[1]+1)+j+q];
-							
-							for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)  it->second.RemMarker(used);
-							for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)  it->second.RemMarker(used);
-							
-							if( i == 100 && j == 50 && q == 1)
-								print_bedges = print_bn = print_info = true;
-							else
-								print_bedges = print_bn = print_info = false;
-							
 							//preallocate array for edges
 							edges.reserve(2*std::max(p0.size(),p1.size()));
 							//remember visited edges
@@ -1459,7 +1524,7 @@ ecl_exit_loop:
 							if( (1-q)*j + q*i > 0 ) //test j when q = 0 and i when q = 1
 							{
 								if( print_info ) std::cout << "back cell: " << i-q << "," << j-!q << std::endl;
-								for(int k = 0; k < dims[2]; ++k)
+								for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i-q,j-!q,k)] )
 								{
 									for(int l = 0; l < 2; ++l) //top-bottom
 									{
@@ -1469,7 +1534,7 @@ ecl_exit_loop:
 										edge_nodes[1] = p1[zcorn_array[i-q][j-!q][k][3 - 0 + 4*l]];
 										if( edge_nodes[0] != edge_nodes[1] )
 										{
-											edge_nodes.SetMarker(used);
+											//edge_nodes.SetMarker(used);
 											Edge e = CreateEdge(edge_nodes).first;
 											if( !e->GetMarker(visited) )
 											{
@@ -1478,12 +1543,12 @@ ecl_exit_loop:
 											}
 											e->IntegerArray(block_number).push_back((i-q + (j-!q+k*dims[1])*dims[0]));
 											e->IntegerArray(edge_number).push_back(1 + 2*l + 4*q);
-											Storage::integer_array mark = e->IntegerArray(pillar_mark);
+											//Storage::integer_array mark = e->IntegerArray(pillar_mark);
 											//back block indices
-											mark[0] = i;
-											mark[1] = j;
+											//mark[0] = i;
+											//mark[1] = j;
 											//nx or ny
-											mark[2] = q;
+											//mark[2] = q;
 										}
 									}
 								}
@@ -1492,7 +1557,7 @@ ecl_exit_loop:
 							if( (1-q)*j + q*i  < dims[!q] ) //test j when q = 0 and i when q = 1
 							{
 								if( print_info ) std::cout << "front cell: " << i << "," << j << std::endl;
-								for(int k = 0; k < dims[2]; ++k)
+								for(int k = 0; k < dims[2]; ++k)  if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
 								{
 									for(int l = 0; l < 2; ++l) //top-bottom
 									{
@@ -1502,7 +1567,7 @@ ecl_exit_loop:
 										edge_nodes[1] = p1[zcorn_array[i][j][k][1 + q + 4*l]];
 										if( edge_nodes[0] != edge_nodes[1] )
 										{
-											edge_nodes.SetMarker(used);
+											//edge_nodes.SetMarker(used);
 											Edge e = CreateEdge(edge_nodes).first;
 											if( !e->GetMarker(visited) )
 											{
@@ -1511,12 +1576,12 @@ ecl_exit_loop:
 											}
 											e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
 											e->IntegerArray(edge_number).push_back(0 + 2*l + 4*q);
-											Storage::integer_array mark = e->IntegerArray(pillar_mark);
+											//Storage::integer_array mark = e->IntegerArray(pillar_mark);
 											//front block indices
-											mark[0] = i;
-											mark[1] = j;
+											//mark[0] = i;
+											//mark[1] = j;
 											//nx or ny
-											mark[2] = q;
+											//mark[2] = q;
 										}
 									}
 								}
@@ -1528,7 +1593,7 @@ ecl_exit_loop:
 							if( print_inter )
 							{
 								std::cout << "input edges: " << edges.size() << std::endl;
-								for(int k = 0; k < edges.size(); ++k)
+								if( false ) for(int k = 0; k < edges.size(); ++k)
 								{
 									Storage::integer_array bn = edges[k]->IntegerArray(block_number);
 									Storage::integer_array en = edges[k]->IntegerArray(edge_number);
@@ -1536,6 +1601,11 @@ ecl_exit_loop:
 									for(int l = 0; l < (int)bn.size(); ++l)
 										std::cout << bn[l] << "(" << bn[l]%dims[0] << "," << bn[l]/dims[0]%dims[1] << "," << bn[l]/dims[0]/dims[1] << "):" << en[l] << " ";
 									std::cout << std::endl;
+								}
+								
+								for(int k = 0; k < edges.size(); ++k)
+								{
+									std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
 								}
 							}
 							assert(count_duplicates(edges) == 0);
@@ -1550,8 +1620,10 @@ ecl_exit_loop:
 								std::cout << "output edges: " << edges.size() << std::endl;
 								for(int k = 0; k < edges.size(); ++k)
 								{
-									std::cout << "edge " << k << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << std::endl;
-								}
+									//std::cout << "edge " << k << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << std::endl;
+									std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
+
+ 								}
 							}
 							
 							//distribute all the edges among blocks
@@ -1651,8 +1723,8 @@ ecl_exit_loop:
 								}
 							}
 							//unmark nodes
-							for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)  it->second.RemMarker(used);
-							for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)  it->second.RemMarker(used);
+							//for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)  it->second.RemMarker(used);
+							//for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)  it->second.RemMarker(used);
 							//unmark edges
 							edges.RemMarker(mrk);
 							//distribute edges to front and back blocks, so that we can assemble faces
@@ -1697,7 +1769,7 @@ ecl_exit_loop:
 								if( blocki[m] == -1 || blockj[m] == -1 ) {if(print_info) std::cout << "skip " << (m?"front ":"back ") << std::endl; continue;}
 								if( blocki[m] == dims[0] || blockj[m] == dims[1] ) {if(print_info) std::cout << "skip " << (m?"front ":"back ") << std::endl; continue;}
 								if( print_bedges ) std::cout << (m?"front ":"back ") << " column of blocks: " << blocki[m] << "," << blockj[m] << std::endl;
-								for(int k = 0; k < dims[2]; ++k) //go down the piller
+								for(int k = 0; k < dims[2]; ++k)  if( actnum.empty() || actnum[ECL_IJK_DATA(blocki[m],blockj[m],k)] ) //go down the piller
 								{
 									//retrive edge for the side
 									ElementArray<Edge> & bedges = pillar_block_edges[m]->at(k);
@@ -1721,9 +1793,9 @@ ecl_exit_loop:
 											}
 										}
 									}
-									//move marked edges to the end
-									if( outer_edge_number.size() > 1 )
+									if( outer_edge_number.size() > 2 )
 									{
+										//move marked edges to the end
 										std::sort(bedges.begin(),bedges.end(),Mesh::MarkerComparator(this,outer));
 										if( print_bedges )
 										{
@@ -1741,8 +1813,6 @@ ecl_exit_loop:
 											}
 											assert(count_duplicates(bedges) == 0);
 										}
-										//remove marker
-										bedges.RemMarker(outer);
 										//there is enough edges to handle triangle
 										if( bedges.size() > 2 )
 										{
@@ -1803,8 +1873,32 @@ ecl_exit_loop:
 											{
 												std::cout << "Not all edges were visited, matrix: " << std::endl;
 												matrix.print_matrix();
+												std::cout << "Current block " << blocki[m] + (blockj[m]+k*dims[1])*dims[0] << std::endl;
+												for(int l = 0; l < bedges.size(); ++l)
+												{
+													Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
+													Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
+													std::cout << "edge " << l << " " << bedges[l]->GetHandle() << " " << bedges[l]->getBeg()->GetHandle() << " <-> " << bedges[l]->getEnd()->GetHandle() << " " << (bedges[l]->GetMarker(outer) ? "outer":"inner");
+													std::cout << " blocks ";
+													for(int r = 0; r < (int)bn.size(); ++r)
+														std::cout << bn[r] << ":" << en[r] << " ";
+													std::cout << std::endl;
+												}
+
+												std::cout << "Outer edges [" << outer_edge_number.size() << "]:" << std::endl;
+												for(std::set<int>::iterator it = outer_edge_number.begin(); it != outer_edge_number.end(); ++it)
+													std::cout << *it << " ";
+												std::cout << std::endl;
+												
+												//form faces out of edgesm
+												incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer,true);
+												//collect all faces
+												ElementArray<Edge> loop2(this);
+												while(matrix.find_shortest_loop(loop2));
 											}
 										}
+										//remove marker
+										bedges.RemMarker(outer);
 									}
 									//cleanup structure for reuse
 									bedges.clear();
@@ -1817,11 +1911,11 @@ ecl_exit_loop:
 					} //i
 					printf("\n");
 				} //q
-				ReleaseMarker(used);
+				//ReleaseMarker(used);
 				ReleaseMarker(mrk);
 				ReleaseMarker(outer);
 				//do not need this tag on nodes
-				//DeleteTag(block_number, NODE);
+				DeleteTag(block_number, NODE);
 				//now construct top and bottom interfaces
 				for(int i = 0; i < dims[0]; ++i)
 				{
@@ -1829,7 +1923,7 @@ ecl_exit_loop:
 					fflush(stdout);
 					for(int j = 0; j < dims[1]; ++j)
 					{
-						for(int k = 0; k < dims[2]; ++k)
+						for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
 						{
 							//current block number
 							int cur = (i + (j+k*dims[1])*dims[0]);
@@ -1880,33 +1974,36 @@ ecl_exit_loop:
 								{
 									Face f = CreateFace(face_edges).first;
 									
-									if(!f->CheckEdgeOrder())
+									if(!f->FixEdgeOrder())
+									//if(!f->CheckEdgeOrder())
 									{
 										std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << face_edges.size() << std::endl;
+										std::cout << "block: " << cur << " (" << i << "," << j << "," << k << ") " << (q ? "top" : "bottom") << std::endl;
 										for(int l = 0; l < face_edges.size(); ++l)
 										{
-											//Storage::integer_array bn = face_edges[l]->IntegerArray(block_number);
-											//Storage::integer_array en = face_edges[l]->IntegerArray(edge_number);
+											Storage::integer_array bn = face_edges[l]->IntegerArray(block_number);
+											Storage::integer_array en = face_edges[l]->IntegerArray(edge_number);
 											std::cout << "edge " << l << " " << face_edges[l]->GetHandle() << " ";
-											//std::cout << "blocks: ";
-											//for(int p = 0; p < bn.size(); ++p)
-											//	std::cout << bn[p] << ":" << en[p] << " ";
+											std::cout << face_edges[l]->getBeg()->GetHandle() << "<->" << face_edges[l]->getEnd()->GetHandle() << " ";
+											std::cout << "blocks: ";
+											for(int p = 0; p < bn.size(); ++p)
+												std::cout << bn[p] << "(" << bn[p]%dims[0] << "," << bn[p]/dims[0]%dims[1] << "," << bn[p]/dims[0]/dims[1] << "):" << en[p] << " ";
 											std::cout << std::endl;
 										}
 									}
 									block_faces[cur].push_back(f);
 								}
-								else if( !face_edges.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << face_edges.size() << " " << (q?"top":"bottom") << " of block " << cur << " (" << i << "," << j << "," << k << ") actnum ma" << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
+								else if( !face_edges.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << face_edges.size() << " " << (q?"top":"bottom") << " of block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
 								face_edges.clear();
 							}
 							make_unique(block_faces[cur]); //some faces may be added twice?
 							if( block_faces[cur].size() > 3 )
 							{
 								Cell c =CreateCell(block_faces[cur]).first;
-								c->IntegerArray(cell_number)[0] = cur;
-								c->IntegerArray(cell_number)[1] = i;
-								c->IntegerArray(cell_number)[2] = j;
-								c->IntegerArray(cell_number)[3] = k;
+								c->Integer(cell_number) = cur+1;
+								//c->IntegerArray(cell_number)[1] = i;
+								//c->IntegerArray(cell_number)[2] = j;
+								//c->IntegerArray(cell_number)[3] = k;
 							}
 							else if( !block_faces[cur].empty() )
 							{
@@ -1918,10 +2015,35 @@ ecl_exit_loop:
 				} //i
 				printf("\n");
 				//cleanup data
-				//DeleteTag(edge_number);
-				//DeleteTag(block_number);
+				DeleteTag(edge_number);
+				DeleteTag(block_number);
 				//crack up the mesh along degenerate active cells
 				//populate properties to blocks
+				Tag tagporo, tagsatnum, tagperm;
+				if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
+				if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
+				if( !satnum.empty() ) tagsatnum = CreateTag("SATNUM",DATA_INTEGER,CELL,NONE,1);
+
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+				{
+					Cell c = CellByLocalID(it);
+					if( c->Integer(cell_number) > 0 ) //maybe this cell existed before
+					{
+						integer q = c->Integer(cell_number)-1;
+						if( !poro.empty() ) c->Real(tagporo) = poro[q];
+						if( !satnum.empty() ) c->Integer(tagsatnum) = satnum[q];
+						if( !perm.empty() )
+						{
+							Storage::real_array K = c->RealArray(tagperm);
+							K[0] = perm[q*3+0];
+							K[1] = perm[q*3+1];
+							K[2] = perm[q*3+2];
+						}
+					}
+				}
 			}
 		}
 	}

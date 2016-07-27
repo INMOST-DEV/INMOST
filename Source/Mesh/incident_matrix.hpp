@@ -57,6 +57,7 @@ namespace INMOST
 		Mesh * mesh;
 		dynarray< unsigned char, 4096 > matrix;
 		dynarray< char ,256 > visits;
+		dynarray< char ,256 > visits0;
 		dynarray<HandleType, 256> head_column;
 		dynarray<HandleType, 256> head_row;
 		dynarray<unsigned char ,256> head_row_count;
@@ -66,7 +67,9 @@ namespace INMOST
 		dynarray< char , 256 > hide_column;
 		dynarray< char , 256 > hide_row;
 		dynarray< char , 256 > stub_row;
+		std::vector< std::pair<std::vector<int>,double> > remember;
 		double min_loop_measure;
+		bool print;
 		
 		bool do_hide_row(unsigned k)
 		{
@@ -144,6 +147,7 @@ namespace INMOST
 				for(typename ElementArray<T>::size_type j = 1; j < data.size(); j++)
 				{
 					n1 = data[j]->getNodes();
+					assert(nodes.back() == n1[0] || nodes.back() == n1[1]);
 					if( nodes.back() == n1[0] )
 						nodes.push_back(n1[1]);
 					else
@@ -151,8 +155,18 @@ namespace INMOST
 				}
 				
 				Storage::real x[3] = {0,0,0};
-				Storage::real_array x0 = nodes[0].Coords();
-				for(unsigned i = 1; i < nodes.size()-1; i++)
+				Storage::real x0[3] = {0,0,0};
+				for(unsigned i = 0; i < nodes.size(); i++)
+				{
+					Storage::real_array v = nodes[i].Coords();
+					x0[0] += v[0];
+					x0[1] += v[1];
+					if( mdim == 3 ) x0[2] += v[2];
+				}
+				x0[0] /= (Storage::real)nodes.size();
+				x0[1] /= (Storage::real)nodes.size();
+				x0[2] /= (Storage::real)nodes.size();
+				for(unsigned i = 0; i < nodes.size()-1; i++)
 				{
 					Storage::real_array v1 = nodes[i].Coords();
 					Storage::real_array v2 = nodes[i+1].Coords();
@@ -290,10 +304,22 @@ namespace INMOST
 							temp_loop.at(j) = head_column[insert_order[j]];
 						Storage::real measure = compute_measure(temp_loop);
 						
-						if( min_loop.empty() || min_loop_measure >= measure )
+						if( print )
 						{
-							min_loop.swap(temp_loop);
-							min_loop_measure = measure;
+							std::cout << "found loop [" << temp_loop.size() <<"]: ";
+							for(unsigned j = 0; j < temp_loop.size(); ++j)
+								std::cout << insert_order[j] << " ";
+							std::cout << "measure " << measure << std::endl;
+						}
+						
+						if( min_loop.empty() || min_loop_measure + 1.0e-6 >= measure )
+						{
+							if( !(fabs(min_loop_measure-measure) < 1.0e-6 && min_loop.size() < temp_loop.size()) )
+							{
+								min_loop.swap(temp_loop);
+								min_loop_measure = measure;
+								if( print ) std::cout << "selected as current loop" << std::endl;
+							}
 							//~ if( min_loop.size() == head_column.size() ) // all elements were visited
 							//~ {
 							//~ unsigned num = 0;
@@ -370,16 +396,38 @@ namespace INMOST
 			{
 				for(dynarray<HandleType,256>::size_type j = 0; j < head_row.size(); j++)
 					std::cout << static_cast<int>(matrix[k*head_row.size()+ j]);
-				std::cout << " " << (int)visits[k];
+				std::cout << " " << (int)visits[k] << " " << (int)visits0[k];
 				Element(mesh,head_column[k])->Centroid(cnt);
 				std::cout << " " << cnt[0] << " " << cnt[1] << " " << cnt[2];
 				std::cout << std::endl;
 			}
-			std::cout << std::endl;
+			std::cout << "loops [" << remember.size() << "]:" << std::endl;
+			for(size_t k = 0; k < remember.size(); ++k)
+			{
+				std::cout << k << " size " << remember[k].first.size() << ": ";
+				for(size_t l = 0; l < remember[k].first.size()-1; ++l)
+					std::cout << remember[k].first[l] << ", ";
+				std::cout << remember[k].first.back() << " measure " << remember[k].second << std::endl;
+			}
+			if( GetHandleElementType(head_column[0]) == EDGE )
+			{
+				std::cout << "edges [" << head_column.size() << "]" << std::endl;
+				for(int k = 0; k < (int)head_column.size(); ++k)
+				{
+					Edge e(mesh,head_column[k]);
+					std::cout << "(" << e->getBeg()->Coords()[0] << "," << e->getBeg()->Coords()[1] << "," << e->getBeg()->Coords()[2] << ") <-> (" << e->getEnd()->Coords()[0] << "," << e->getEnd()->Coords()[1] << "," << e->getEnd()->Coords()[2] << ")" << std::endl;
+				}
+				std::cout << "edges [" << head_column.size() << "]" << std::endl;
+				for(int k = 0; k < (int)head_column.size(); ++k)
+				{
+					Edge e(mesh,head_column[k]);
+					std::cout << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << std::endl;
+				}
+			}
 		}
 		template<typename InputIterator>
-		incident_matrix(Mesh * mesh, InputIterator beg, InputIterator end, typename ElementArray<T>::size_type num_inner)
-		: mesh(mesh), head_column(beg,end), min_loop()
+		incident_matrix(Mesh * mesh, InputIterator beg, InputIterator end, typename ElementArray<T>::size_type num_inner, bool print = false)
+		: mesh(mesh), head_column(beg,end), min_loop(), print(print)
 		{
 			min_loop.SetMeshLink(mesh);
 			temp_loop.SetMeshLink(mesh);
@@ -389,9 +437,11 @@ namespace INMOST
 				MarkerType hide_marker = mesh->CreateMarker();
 				
 				visits.resize(head_column.size());
+				visits0.resize(head_column.size());
 				for(typename dynarray<HandleType, 256>::size_type it = 0; it < head_column.size(); ++it)
 				{
 					visits[it] = it < num_inner ? 2 : 1;
+					visits0[it] = visits[it];
 					Element::adj_type const & sub = mesh->LowConn(head_column[it]);
 					for(Element::adj_type::size_type jt = 0; jt < sub.size(); ++jt)
 					{
@@ -471,21 +521,37 @@ namespace INMOST
 					min_loop_measure = 1.0e+20;
 					recursive_find(first,1);
 					if( min_loop.empty() )
+					{
+						if( print ) std::cout << "abandon " << first << std::endl;
+						remember.push_back(std::make_pair(std::vector<int>(1,first),-1.0));
 						visits[first]--; //don't start again from this element
+					}
 				}
 			} while( min_loop.empty() && first != UINT_MAX );
+			
+
 			
 			ret.insert(ret.end(),min_loop.begin(),min_loop.end());
 			min_loop.clear();
 			
 			if( !ret.empty() )
 			{
+				std::vector<int> add_remember;
+				add_remember.reserve(min_loop.size());
 				MarkerType hide_marker = mesh->CreateMarker();
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetMarker(ret.at(k),hide_marker);
+				if( print ) std::cout << "return loop [" << ret.size() << "]:";
 				for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
-					if( mesh->GetMarker(head_column[k],hide_marker) ) visits[k]--;
+					if( mesh->GetMarker(head_column[k],hide_marker) )
+					{
+						visits[k]--;
+						add_remember.push_back(k);
+						if( print ) std::cout << k << " ";
+					}
+				if( print ) std::cout << std::endl;
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemMarker(ret.at(k),hide_marker);
 				mesh->ReleaseMarker(hide_marker);
+				remember.push_back(std::make_pair(add_remember,min_loop_measure));
 				return true;
 			}
 			return false;

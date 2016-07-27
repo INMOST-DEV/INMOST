@@ -163,8 +163,8 @@ namespace INMOST
 			iterator(Mesh * m, const cont_t::iterator & other ) : cont_t::iterator(other) , m_link(m){assert(m_link);}
 			iterator(const iterator & other ) : cont_t::iterator(other), m_link(other.m_link) {assert(m_link);}
 			ptrdiff_t     operator -(const iterator & other) const {return static_cast<const cont_t::iterator>(*this)-static_cast<const cont_t::iterator>(other);}
-			iterator      operator +(size_t n){iterator ret(*this); ret.cont_t::iterator::operator+(n); return ret;}
-			iterator      operator -(size_t n){iterator ret(*this); ret.cont_t::iterator::operator-(n); return ret;}
+			iterator      operator +(size_t n) const{return iterator(m_link,cont_t::iterator::operator +(n));}
+			iterator      operator -(size_t n) const{return iterator(m_link,cont_t::iterator::operator -(n));}
 			iterator &    operator ++() {cont_t::iterator::operator++(); return *this;}
 			iterator      operator ++(int) {iterator ret(*this); cont_t::iterator::operator++(); return ret;}
 			iterator &    operator --() {cont_t::iterator::operator--(); return *this;}
@@ -180,8 +180,8 @@ namespace INMOST
 			reverse_iterator(Mesh * m, const cont_t::reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(m) {assert(m_link);}
 			reverse_iterator(const reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(other.m_link) {assert(m_link);}
 			ptrdiff_t             operator -(const reverse_iterator & other) const {return static_cast<const cont_t::reverse_iterator>(other)-static_cast<const cont_t::reverse_iterator>(*this);}
-			reverse_iterator      operator +(size_t n){reverse_iterator ret(*this); ret.cont_t::reverse_iterator::operator+(n); return ret;}
-			reverse_iterator      operator -(size_t n){reverse_iterator ret(*this); ret.cont_t::reverse_iterator::operator-(n); return ret;}
+			reverse_iterator      operator +(size_t n) const {return reverse_iterator(m_link,cont_t::reverse_iterator::operator+(n));}
+			reverse_iterator      operator -(size_t n) const {return reverse_iterator(m_link,cont_t::reverse_iterator::operator-(n));}
 			reverse_iterator &    operator ++() {cont_t::reverse_iterator::operator++(); return *this;}
 			reverse_iterator      operator ++(int) {reverse_iterator ret(*this); cont_t::reverse_iterator::operator++(); return ret;}
 			reverse_iterator &    operator --() {cont_t::reverse_iterator::operator--(); return *this;}

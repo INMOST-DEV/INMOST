@@ -1223,7 +1223,10 @@ std::vector<face2gl> clip_boundary;
 
 void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 {
-  if( drawedges == 2 || drawedges == 3 ) return;
+	if( drawedges == 2 || drawedges == 3 ) return;
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(1.0, 1.0);
+	
 	glColor4f(0,1,0,0.1);
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw();
@@ -1235,12 +1238,17 @@ void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 		set[highlight].draw();
 		glEnd();
 	}
+	glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 {
 	if( drawedges == 2 || drawedges == 3) return;
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(1.0, 1.0);
+	
 	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
+	
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour();
 	glEnd();
@@ -1252,16 +1260,25 @@ void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 		set[highlight].draw();
 		glEnd();
 	}
+	
+	glDisable(GL_POLYGON_OFFSET_FILL);
+
 }
 
 void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
 {
 	if( drawedges == 2 || drawedges==3) return;
 	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
+	
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(1.0, 1.0);
+	
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour_alpha(alpha);
 	glEnd();
 	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
+	
+	glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 void draw_edges(std::vector<face2gl> & set, int highlight = -1)
@@ -1283,31 +1300,53 @@ void draw_edges(std::vector<face2gl> & set, int highlight = -1)
 
 void draw_faces_interactive_nc(std::vector<face2gl> & set)
 {
-  if( drawedges == 2 || drawedges==3 ) return;
+	if( drawedges == 2 || drawedges==3 ) return;
 	glColor4f(0,1,0,0.1);
+	
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(1.0, 1.0);
+	
+	
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw();
 	glEnd();
+	
+	glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 void draw_faces_interactive(std::vector<face2gl> & set)
 {
   if( drawedges == 2 || drawedges==3 ) return;
   if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
+	
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(1.0, 1.0);
+	
+	
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour();
 	glEnd();
 	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
+	
+	glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
 {
   if( drawedges == 2 || drawedges==3 ) return;
   if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
+	
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(1.0, 1.0);
+	
+	
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour_alpha(alpha);
 	glEnd();
 	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
+	
+	glDisable(GL_POLYGON_OFFSET_FILL);
+
 }
 
 void draw_edges_interactive(std::vector<face2gl> & set)
@@ -2329,6 +2368,9 @@ public:
 	void draw_clip(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3])
 	{
 		if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(1.0, 1.0);
+		
 		glBegin(GL_TRIANGLES);
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
 		{
@@ -2405,6 +2447,8 @@ public:
 			}
 		}
 		glEnd();
+		
+		glDisable(GL_POLYGON_OFFSET_FILL);
 		if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
 	}
 	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3])
@@ -2608,6 +2652,11 @@ public:
 				if( state == CLIP_FACE_INSIDE )
 				{
 					ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
+					
+					glEnable(GL_POLYGON_OFFSET_FILL);
+					glPolygonOffset(1.0, 1.0);
+					
+					
 					glBegin(GL_POLYGON);
 					if( visualization_tag.isValid() )
 					{
@@ -2624,6 +2673,8 @@ public:
 							glVertex3dv(&nodes[q].Coords()[0]);
 					}
 					glEnd();
+					
+					glDisable(GL_POLYGON_OFFSET_FILL);
 				}
 			}
 			mm->IntegerDF(faces[k],clip_state) = state;
@@ -2899,7 +2950,7 @@ void set_matrix3d()
 	else
 	{
 		const double pi = 3.1415926535897932384626433832795;
-		const double znear = 1;
+		const double znear = zoom*2*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.1;
 		const double zfar  = 1000000.0;
 		const double fH = znear * tan( 60.0 / 360.0 * pi);
 		double fW = fH * aspect;
@@ -3775,6 +3826,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 
 void draw_screen()
 {
+	//glDepthMask(GL_TRUE);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 	set_matrix3d();
