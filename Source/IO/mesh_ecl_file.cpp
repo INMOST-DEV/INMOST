@@ -74,6 +74,13 @@
 
 namespace INMOST
 {
+	static std::string GetFolder(std::string file)
+	{
+		size_t found = file.find_last_of("/\\");
+		if( found == std::string::npos )
+			return "";
+		else return file.substr(0,found);
+	}
 	//special structure for array of 3 reals for std::map
 	class position
 	{
@@ -984,7 +991,7 @@ namespace INMOST
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						//std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 					}
 					break;
 				case ECL_SKIP_SECTION:
@@ -999,13 +1006,13 @@ namespace INMOST
 							rec[strlen(rec)-1] = '\0';
 							shift_one = 1;
 						}
-						f = fopen(rec+shift_one,"r");
+						f = fopen((GetFolder(fs.back().first.second) + "/" + std::string(rec+shift_one)).c_str(),"r");
 						if( f == NULL )
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << rec+shift_one << " included from "<< fs.back().first.second << " line " << fs.back().second << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << (GetFolder(fs.back().first.second) + "/" + std::string(rec+shift_one)) << " included from "<< fs.back().first.second << " line " << fs.back().second << std::endl;
 							throw BadFileName;
 						}
-						fs.push_back(std::make_pair(std::make_pair(f,std::string(rec+shift_one)),0));
+						fs.push_back(std::make_pair(std::make_pair(f,GetFolder(fs.back().first.second) + "/"+std::string(rec+shift_one)),0));
 						if( *(pend-1) == '/' ) state = ECL_NONE; else state = ECL_SKIP_SECTION;
 					}
 					else
@@ -1310,6 +1317,58 @@ ecl_exit_loop:
 				Tag block_number = CreateTag("BLOCK_NUMBER",DATA_INTEGER,EDGE|NODE,NONE);
 				typedef std::map<Storage::real,Node,pillar_less> pillar;
 				std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
+				//this variant goes over pillars
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for(int i = 0; i < dims[0]+1; i++)
+				{
+					for(int j = 0; j < dims[1]+1; j++)
+					{
+						pillar & p = pillars[i*(dims[1]+1)+j];
+						//loop over nodes on pillar
+						for(int k = 0; k < dims[2]+1; k++)
+						{
+							//loop over 8 blocks around node
+							for(int l = 0; l < 8; ++l)
+							{
+								//block number
+								int bi = i + (l%2) - 1;
+								int bj = j + ((l/2)%2) - 1;
+								int bk = k + (l/4) - 1;
+								if( bi >= 0 && bj >= 0 && bk >= 0 && bi < dims[0] && bj < dims[1] && bk < dims[2] && (actnum.empty() || actnum[ECL_IJK_DATA(bi,bj,bk)]) )
+								{
+									//OPTIMIZE - can resolve locally that some nodes coincide
+									pillar::iterator search = p.find(zcorn_array[bi][bj][bk][7-l]);
+									Node n; //node added to pillar
+									if( search == p.end() )
+									{
+										Storage::real node_xyz[3];
+										Storage::real alpha = (zcorn_array[bi][bj][bk][7-l]-coords_array[i][j][1][2])/(coords_array[i][j][0][2]-coords_array[i][j][1][2]);
+										node_xyz[0] = coords_array[i][j][1][0] + alpha * (coords_array[i][j][0][0] - coords_array[i][j][1][0]);
+										node_xyz[1] = coords_array[i][j][1][1] + alpha * (coords_array[i][j][0][1] - coords_array[i][j][1][1]);
+										node_xyz[2] = zcorn_array[bi][bj][bk][7-l];
+										int find = -1;
+										if( !old_nodes.empty() )
+										{
+											std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),node_xyz,CentroidComparator(this));
+											if( it != old_nodes.end() )
+											{
+												Storage::real_array c = RealArrayDF(*it,CoordsTag());
+												if( CentroidComparator(this).Compare(node_xyz,c.data()) == 0 )
+													find = static_cast<int>(it - old_nodes.begin());
+											}
+										}
+										n = find == -1 ? CreateNode(node_xyz) : Node(this,old_nodes[find]);
+										p.insert(std::make_pair(zcorn_array[bi][bj][bk][7-l],n));
+									} else n = search->second; //if
+								}
+							}
+						}
+					}
+				}
+				/*
+				//this variant goes over blocks
 				for(int i = 0; i < dims[0]; i++)
 				{
 					for(int j = 0; j < dims[1]; j++)
@@ -1350,6 +1409,7 @@ ecl_exit_loop:
 						} //k
 					} //j
 				} //i
+				*/
 				/*      (6)*<<------[3]--------*(7)
 						  /|                  /|
 						[6]                 [7]|
@@ -1366,34 +1426,45 @@ ecl_exit_loop:
 					   |/                  |/
 					(0)*<<------[0]--------*(1)
 				*/
-				//structure to create an edge from pair of nodes
-				ElementArray<Node> edge_nodes(this,2);
 				//all edges along pillars
 				std::vector< ElementArray<Edge> > pillar_edges((dims[0]+1)*(dims[1]+1),ElementArray<Edge>(this));
 				//all edges of each block
 				//std::vector< std::vector<Edge> > block_edges(dims[0]*dims[1]*dims[2]);
 				//create edges along pillars
-				for(int i = 0; i < dims[0]+1; ++i)
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 				{
-					for(int j = 0; j < dims[1]+1; ++j)
+					//structure to create an edge from pair of nodes
+					ElementArray<Node> edge_nodes(this,2);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+					for(int i = 0; i < dims[0]+1; ++i)
 					{
-						pillar & p = pillars[i*(dims[1]+1)+j];
-						if( p.size() > 1 )
+						for(int j = 0; j < dims[1]+1; ++j)
 						{
-							ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
-							pillar::iterator it = p.begin();
-							pillar::iterator pre_it = it++;
-							while(it != p.end())
+							pillar & p = pillars[i*(dims[1]+1)+j];
+							if( p.size() > 1 )
 							{
-								edge_nodes[0] = it->second;
-								edge_nodes[1] = pre_it->second;
-								p_edges.push_back(CreateEdge(edge_nodes).first);
-								pre_it = it++;
+								ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
+								pillar::iterator it = p.begin();
+								pillar::iterator pre_it = it++;
+								while(it != p.end())
+								{
+									edge_nodes[0] = it->second;
+									edge_nodes[1] = pre_it->second;
+									p_edges.push_back(CreateEdge(edge_nodes).first);
+									pre_it = it++;
+								}
 							}
-						}
-					} //j
-				} //i
+						} //j
+					} //i
+				}
 				//mark edges along pillars (vertical edges, 8, 9, 10, 11)
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 				for(int i = 0; i < dims[0]; ++i)
 				{
 					for(int j = 0; j < dims[1]; ++j)
@@ -1435,8 +1506,13 @@ ecl_exit_loop:
 									find[0] = jt->second->GetHandle();
 									find[1] = it->second->GetHandle();
 									Edge e(this,FindSharedAdjacency(find,2)); //find edge
-									e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
-									e->IntegerArray(edge_number).push_back(8+l);
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+									{
+										e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
+										e->IntegerArray(edge_number).push_back(8+l);
+									}
 									//block_edges[(i + (j+k*dims[1])*dims[0])].push_back(e);
 								}
 							}
@@ -1444,6 +1520,10 @@ ecl_exit_loop:
 					}
 				}
 				//erase edges on pillars that are not used in any block
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+
 				for(int i = 0; i < dims[0]+1; ++i)
 				{
 					for(int j = 0; j < dims[1]+1; ++j)
@@ -1463,32 +1543,15 @@ ecl_exit_loop:
 				}
 				
 				//Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
-				//set of lines to be intersected
-				ElementArray<Edge> edges(this);
-				ElementArray<Node> intersections(this);
 				//tags to be transfered
 				std::vector<Tag> transfer(2);
 				transfer[0] = edge_number;
 				transfer[1] = block_number;
 				//transfer[2] = pillar_mark;
-				//for sorting a pair of data
-				std::vector<int> indices_sort, temporary;
-				//array to obtain block number
-				std::vector<int> block_number_inter;
 				//store faces for each block to assemble block cells later
 				std::vector< ElementArray<Face> > block_faces(dims[0]*dims[1]*dims[2],ElementArray<Face>(this));
 				//store top-bottom edges to assemble top and bottom faces later
 				std::vector< ElementArray<Edge> > block_edges(dims[0]*dims[1]*dims[2],ElementArray<Edge>(this));
-				//store edges along pillar to assemble faces along pillars, on back side of the pillar
-				std::vector< ElementArray<Edge> > pillar_block_edges_back(dims[2],ElementArray<Edge>(this));
-				//on front side of the pillar
-				std::vector< ElementArray<Edge> > pillar_block_edges_front(dims[2],ElementArray<Edge>(this));
-				//mark used nodes to detect top pillar node, bottom pillar node and pillar edge dropouts
-				//MarkerType used = CreateMarker();
-				//mark edges on pillar for adjacency retrival
-				MarkerType mrk = CreateMarker();
-				//mark original edges of each block face, so that we know outer boundary on constructed interface
-				MarkerType outer = CreateMarker();
 				//print out intersection algorithm
 				bool print_inter = false;
 				//print out block number information
@@ -1502,425 +1565,452 @@ ecl_exit_loop:
 				//go over nx pairs of pillars, then ny pairs of pillars
 				for(int q = 0; q < 2; ++q)
 				{
-					for(int i = 0; i < dims[0]+q; i++)
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 					{
-						printf("%s %6.2f%%\r",q ? "ny":"nx", ((double)i)/((double)dims[0]+q-1)*100);
-						fflush(stdout);
-						for(int j = 0; j < dims[1]+!q; ++j)
+						//structure to create an edge from pair of nodes
+						ElementArray<Node> edge_nodes(this,2);
+						//set of lines to be intersected
+						ElementArray<Edge> edges(this);
+						ElementArray<Node> intersections(this);
+						//for sorting a pair of data
+						std::vector<int> indices_sort, temporary;
+						//array to obtain block number
+						std::vector<int> block_number_inter;
+						//store edges along pillar to assemble faces along pillars, on back side of the pillar
+						std::vector< ElementArray<Edge> > pillar_block_edges_back(dims[2],ElementArray<Edge>(this));
+						//on front side of the pillar
+						std::vector< ElementArray<Edge> > pillar_block_edges_front(dims[2],ElementArray<Edge>(this));
+						//mark edges on pillar for adjacency retrival
+						MarkerType mrk = CreatePrivateMarker();
+						//mark original edges of each block face, so that we know outer boundary on constructed interface
+						MarkerType outer = CreatePrivateMarker();
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+						for(int i = 0; i < dims[0]+q; i++)
 						{
-							if( print_info )
+							//printf("%s %6.2f%%\r",q ? "ny":"nx", ((double)i)/((double)dims[0]+q-1)*100);
+							//fflush(stdout);
+							for(int j = 0; j < dims[1]+!q; ++j)
 							{
-								std::cout << "working on " << (q ? "ny" : "nx") << " pair of pillars: " << i << "," << j << " and " << i+!q << "," << j+q << std::endl;
-							}
-							//p0 is at i,j
-							//p1 is at i+1,j, when q = 0 and at i,j+1, when q = 1
-							pillar & p0 = pillars[(i+ 0)*(dims[1]+1)+j+0];
-							pillar & p1 = pillars[(i+!q)*(dims[1]+1)+j+q];
-							//preallocate array for edges
-							edges.reserve(2*std::max(p0.size(),p1.size()));
-							//remember visited edges
-							MarkerType visited = CreateMarker();
-							//add far faces of j-1 block
-							if( (1-q)*j + q*i > 0 ) //test j when q = 0 and i when q = 1
-							{
-								if( print_info ) std::cout << "back cell: " << i-q << "," << j-!q << std::endl;
-								for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i-q,j-!q,k)] )
+								if( print_info )
 								{
-									for(int l = 0; l < 2; ++l) //top-bottom
+									std::cout << "working on " << (q ? "ny" : "nx") << " pair of pillars: " << i << "," << j << " and " << i+!q << "," << j+q << std::endl;
+								}
+								//p0 is at i,j
+								//p1 is at i+1,j, when q = 0 and at i,j+1, when q = 1
+								pillar & p0 = pillars[(i+ 0)*(dims[1]+1)+j+0];
+								pillar & p1 = pillars[(i+!q)*(dims[1]+1)+j+q];
+								//preallocate array for edges
+								edges.reserve(2*std::max(p0.size(),p1.size()));
+								//remember visited edges
+								MarkerType visited = CreateMarker();
+								//add far faces of j-1 block
+								if( (1-q)*j + q*i > 0 ) //test j when q = 0 and i when q = 1
+								{
+									if( print_info ) std::cout << "back cell: " << i-q << "," << j-!q << std::endl;
+									for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i-q,j-!q,k)] )
 									{
-										//q = 0 - test 2,3 + 4*l (edge 1 and 3)
-										//q = 1 - test 1,3 + 4*l (edge 5 and 7)
-										edge_nodes[0] = p0[zcorn_array[i-q][j-!q][k][2 - q + 4*l]];
-										edge_nodes[1] = p1[zcorn_array[i-q][j-!q][k][3 - 0 + 4*l]];
-										if( edge_nodes[0] != edge_nodes[1] )
+										for(int l = 0; l < 2; ++l) //top-bottom
 										{
-											//edge_nodes.SetMarker(used);
-											Edge e = CreateEdge(edge_nodes).first;
-											if( !e->GetMarker(visited) )
+											//q = 0 - test 2,3 + 4*l (edge 1 and 3)
+											//q = 1 - test 1,3 + 4*l (edge 5 and 7)
+											edge_nodes[0] = p0[zcorn_array[i-q][j-!q][k][2 - q + 4*l]];
+											edge_nodes[1] = p1[zcorn_array[i-q][j-!q][k][3 - 0 + 4*l]];
+											if( edge_nodes[0] != edge_nodes[1] )
 											{
-												edges.push_back(e);
-												e->SetMarker(visited);
+												//edge_nodes.SetMarker(used);
+												Edge e = CreateEdge(edge_nodes).first;
+												if( !e->GetMarker(visited) )
+												{
+													edges.push_back(e);
+													e->SetMarker(visited);
+												}
+												e->IntegerArray(block_number).push_back((i-q + (j-!q+k*dims[1])*dims[0]));
+												e->IntegerArray(edge_number).push_back(1 + 2*l + 4*q);
+												//Storage::integer_array mark = e->IntegerArray(pillar_mark);
+												//back block indices
+												//mark[0] = i;
+												//mark[1] = j;
+												//nx or ny
+												//mark[2] = q;
 											}
-											e->IntegerArray(block_number).push_back((i-q + (j-!q+k*dims[1])*dims[0]));
-											e->IntegerArray(edge_number).push_back(1 + 2*l + 4*q);
-											//Storage::integer_array mark = e->IntegerArray(pillar_mark);
-											//back block indices
-											//mark[0] = i;
-											//mark[1] = j;
-											//nx or ny
-											//mark[2] = q;
 										}
 									}
 								}
-							}
-							//add near faces of j block
-							if( (1-q)*j + q*i  < dims[!q] ) //test j when q = 0 and i when q = 1
-							{
-								if( print_info ) std::cout << "front cell: " << i << "," << j << std::endl;
-								for(int k = 0; k < dims[2]; ++k)  if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
+								//add near faces of j block
+								if( (1-q)*j + q*i  < dims[!q] ) //test j when q = 0 and i when q = 1
 								{
-									for(int l = 0; l < 2; ++l) //top-bottom
+									if( print_info ) std::cout << "front cell: " << i << "," << j << std::endl;
+									for(int k = 0; k < dims[2]; ++k)  if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
 									{
-										//q = 0 - test 0,1 + 4*l (edge 0 and 2)
-										//q = 1 - test 0,2 + 4*l (edge 4 and 6)
-										edge_nodes[0] = p0[zcorn_array[i][j][k][0 + 0 + 4*l]];
-										edge_nodes[1] = p1[zcorn_array[i][j][k][1 + q + 4*l]];
-										if( edge_nodes[0] != edge_nodes[1] )
+										for(int l = 0; l < 2; ++l) //top-bottom
 										{
-											//edge_nodes.SetMarker(used);
-											Edge e = CreateEdge(edge_nodes).first;
-											if( !e->GetMarker(visited) )
+											//q = 0 - test 0,1 + 4*l (edge 0 and 2)
+											//q = 1 - test 0,2 + 4*l (edge 4 and 6)
+											edge_nodes[0] = p0[zcorn_array[i][j][k][0 + 0 + 4*l]];
+											edge_nodes[1] = p1[zcorn_array[i][j][k][1 + q + 4*l]];
+											if( edge_nodes[0] != edge_nodes[1] )
 											{
-												edges.push_back(e);
-												e->SetMarker(visited);
+												//edge_nodes.SetMarker(used);
+												Edge e = CreateEdge(edge_nodes).first;
+												if( !e->GetMarker(visited) )
+												{
+													edges.push_back(e);
+													e->SetMarker(visited);
+												}
+												e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
+												e->IntegerArray(edge_number).push_back(0 + 2*l + 4*q);
+												//Storage::integer_array mark = e->IntegerArray(pillar_mark);
+												//front block indices
+												//mark[0] = i;
+												//mark[1] = j;
+												//nx or ny
+												//mark[2] = q;
 											}
-											e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
-											e->IntegerArray(edge_number).push_back(0 + 2*l + 4*q);
-											//Storage::integer_array mark = e->IntegerArray(pillar_mark);
-											//front block indices
-											//mark[0] = i;
-											//mark[1] = j;
-											//nx or ny
-											//mark[2] = q;
 										}
 									}
 								}
-							}
-							edges.RemMarker(visited);
-							ReleaseMarker(visited);
-							
-							//produce intersected edges
-							if( print_inter )
-							{
-								std::cout << "input edges: " << edges.size() << std::endl;
-								if( false ) for(int k = 0; k < edges.size(); ++k)
-								{
-									Storage::integer_array bn = edges[k]->IntegerArray(block_number);
-									Storage::integer_array en = edges[k]->IntegerArray(edge_number);
-									std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << " blocks: ";
-									for(int l = 0; l < (int)bn.size(); ++l)
-										std::cout << bn[l] << "(" << bn[l]%dims[0] << "," << bn[l]/dims[0]%dims[1] << "," << bn[l]/dims[0]/dims[1] << "):" << en[l] << " ";
-									std::cout << std::endl;
-								}
-								
-								for(int k = 0; k < edges.size(); ++k)
-								{
-									std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
-								}
-							}
-							assert(count_duplicates(edges) == 0);
-							//i << "," << j << " and " << i+!q << "," << j+q <<
-							//intersect(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
-							intersect_naive(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
-							assert(count_duplicates(edges) == 0);
-							if( print_inter ) std::cout << "intersections: " << intersections.size() << std::endl;
-							if( print_inter )
-							{
-								
-								std::cout << "output edges: " << edges.size() << std::endl;
-								for(int k = 0; k < edges.size(); ++k)
-								{
-									//std::cout << "edge " << k << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << std::endl;
-									std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
+								edges.RemMarker(visited);
+								ReleaseMarker(visited);
 
- 								}
-							}
-							
-							//distribute all the edges among blocks
-							//add intersected edges into blocks, so that we can reconstruct top and bottom faces of each block
-							for(int k = 0; k < (int)edges.size(); ++k)
-							{
-								Storage::integer_array b = edges[k].IntegerArray(block_number);
-								for(int r = 0; r < (int)b.size(); ++r)
-									block_edges[b[r]].push_back(edges[k]);
-							}
-							//add vertical edges along pillars
-							ElementArray<Edge> & p0_edges = pillar_edges[(i+ 0)*(dims[1]+1)+j+0];
-							ElementArray<Edge> & p1_edges = pillar_edges[(i+!q)*(dims[1]+1)+j+q];
-							edges.reserve(edges.size()+p0_edges.size()+p1_edges.size());
-							for(int k = 0; k < (int)p0_edges.size(); ++k)
-							{
-								//if( p0_edges[k]->nbAdjElements(NODE,used) == 2 ) //this edge is used
-									edges.push_back(p0_edges[k]);
-							}
-							for(int k = 0; k < (int)p1_edges.size(); ++k)
-							{
-								//if( p1_edges[k]->nbAdjElements(NODE,used) == 2 ) //this edge is used
-									edges.push_back(p1_edges[k]);
-							}
-							assert(count_duplicates(edges) == 0);
-							//sort block numbers on edges
-							for(int k = 0; k < (int)edges.size(); ++k)
-							{
-								Storage::integer_array b = edges[k].IntegerArray(block_number);
-								Storage::integer_array e = edges[k].IntegerArray(edge_number);
-								assert(e.size() == b.size());
-								//sort indices according to b
-								indices_sort.resize(b.size());
-								for(int l = 0; l < indices_sort.size(); ++l) indices_sort[l] = l;
-								std::sort(indices_sort.begin(),indices_sort.end(),index_comparator(b));
-								//arrange data in b and e arrays according to indices_sort
-								temporary.resize(b.size());
-								//first b array
-								for(int l = 0; l < (int)b.size(); ++l) temporary[l] = b[l];
-								for(int l = 0; l < (int)b.size(); ++l) b[l] = temporary[indices_sort[l]];
-								//then e array
-								for(int l = 0; l < (int)e.size(); ++l) temporary[l] = e[l];
-								for(int l = 0; l < (int)e.size(); ++l) e[l] = temporary[indices_sort[l]];
-							}
-							//put block numbers to all nodes involved in pillars, so that we can figure out block numbers for constructed faces
-							edges.SetMarker(mrk);
-							//report block numbers on edges
-							if(print_bn)
-							{
+								//produce intersected edges
+								if( print_inter )
+								{
+									std::cout << "input edges: " << edges.size() << std::endl;
+									if( false ) for(int k = 0; k < edges.size(); ++k)
+									{
+										Storage::integer_array bn = edges[k]->IntegerArray(block_number);
+										Storage::integer_array en = edges[k]->IntegerArray(edge_number);
+										std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << " blocks: ";
+										for(int l = 0; l < (int)bn.size(); ++l)
+											std::cout << bn[l] << "(" << bn[l]%dims[0] << "," << bn[l]/dims[0]%dims[1] << "," << bn[l]/dims[0]/dims[1] << "):" << en[l] << " ";
+										std::cout << std::endl;
+									}
+
+									for(int k = 0; k < edges.size(); ++k)
+									{
+										std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
+									}
+								}
+								assert(count_duplicates(edges) == 0);
+								//i << "," << j << " and " << i+!q << "," << j+q <<
+								//intersect(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
+								intersect_naive(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
+								assert(count_duplicates(edges) == 0);
+								if( print_inter ) std::cout << "intersections: " << intersections.size() << std::endl;
+								if( print_inter )
+								{
+
+									std::cout << "output edges: " << edges.size() << std::endl;
+									for(int k = 0; k < edges.size(); ++k)
+									{
+										//std::cout << "edge " << k << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << std::endl;
+										std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
+
+									}
+								}
+
+								//distribute all the edges among blocks
+								//add intersected edges into blocks, so that we can reconstruct top and bottom faces of each block
 								for(int k = 0; k < (int)edges.size(); ++k)
 								{
-									Storage::integer_array b = edges[k]->IntegerArray(block_number);
-									Storage::integer_array e = edges[k]->IntegerArray(edge_number);
-									std::cout << "edge " << k << " " << edges[k]->GetHandle() << " blocks [" << b.size() << "]: ";
-									for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "):" << e[l] << " ";
-									std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << "):" << e.back() << std::endl;
+									Storage::integer_array b = edges[k].IntegerArray(block_number);
+									for(int r = 0; r < (int)b.size(); ++r)
+										block_edges[b[r]].push_back(edges[k]);
 								}
-							}
-							//unite block numbers on nodes
-							if( print_bn ) std::cout << "pillar 0 nodes: " << std::endl;
-							for(pillar::iterator it = p0.begin(); it != p0.end(); ++it) //if( it->second.GetMarker(used) )
-							{
-								ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
-								block_number_union(it->second.getAsElement(),nedges,block_number);
-								if( print_bn )
+								//add vertical edges along pillars
+								ElementArray<Edge> & p0_edges = pillar_edges[(i+ 0)*(dims[1]+1)+j+0];
+								ElementArray<Edge> & p1_edges = pillar_edges[(i+!q)*(dims[1]+1)+j+q];
+								edges.reserve(edges.size()+p0_edges.size()+p1_edges.size());
+								for(int k = 0; k < (int)p0_edges.size(); ++k)
 								{
-									Storage::integer_array b = it->second->IntegerArray(block_number);
-									std::cout << "node " << it->second->GetHandle() << " blocks [" << b.size() << "]: ";
-									for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
-									std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
+									//if( p0_edges[k]->nbAdjElements(NODE,used) == 2 ) //this edge is used
+									edges.push_back(p0_edges[k]);
 								}
-							}
-							if( print_bn ) std::cout << "pillar 1 nodes: " << std::endl;
-							for(pillar::iterator it = p1.begin(); it != p1.end(); ++it) //if( it->second.GetMarker(used) )
-							{
-								ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
-								block_number_union(it->second.getAsElement(),nedges,block_number);
-								if( print_bn )
+								for(int k = 0; k < (int)p1_edges.size(); ++k)
 								{
-									Storage::integer_array b = it->second->IntegerArray(block_number);
-									std::cout << "node " << it->second->GetHandle() << " blocks [" << b.size() << "]: ";
-									for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
-									std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
+									//if( p1_edges[k]->nbAdjElements(NODE,used) == 2 ) //this edge is used
+									edges.push_back(p1_edges[k]);
 								}
-							}
-							if( print_bn ) std::cout << "intersection nodes: " << std::endl;
-							for(int k = 0; k < (int)intersections.size(); ++k)
-							{
-								ElementArray<Element> nedges = intersections[k]->getAdjElements(EDGE,mrk);
-								block_number_union(intersections[k].getAsElement(),nedges,block_number);
-								if( print_bn )
+								assert(count_duplicates(edges) == 0);
+								//sort block numbers on edges
+								for(int k = 0; k < (int)edges.size(); ++k)
 								{
-									Storage::integer_array b = intersections[k]->IntegerArray(block_number);
-									std::cout << "node " << k << " " << intersections[k]->GetHandle() << " blocks [" << b.size() << "]: ";
-									for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
-									std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
+									Storage::integer_array b = edges[k].IntegerArray(block_number);
+									Storage::integer_array e = edges[k].IntegerArray(edge_number);
+									assert(e.size() == b.size());
+									//sort indices according to b
+									indices_sort.resize(b.size());
+									for(int l = 0; l < indices_sort.size(); ++l) indices_sort[l] = l;
+									std::sort(indices_sort.begin(),indices_sort.end(),index_comparator(b));
+									//arrange data in b and e arrays according to indices_sort
+									temporary.resize(b.size());
+									//first b array
+									for(int l = 0; l < (int)b.size(); ++l) temporary[l] = b[l];
+									for(int l = 0; l < (int)b.size(); ++l) b[l] = temporary[indices_sort[l]];
+									//then e array
+									for(int l = 0; l < (int)e.size(); ++l) temporary[l] = e[l];
+									for(int l = 0; l < (int)e.size(); ++l) e[l] = temporary[indices_sort[l]];
 								}
-							}
-							//unmark nodes
-							//for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)  it->second.RemMarker(used);
-							//for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)  it->second.RemMarker(used);
-							//unmark edges
-							edges.RemMarker(mrk);
-							//distribute edges to front and back blocks, so that we can assemble faces
-							for(int k = 0; k < (int)edges.size(); ++k)
-							{
-								//intersect block numbers on nodes to detect to which blocks this edge belongs
-								ElementArray<Element> nodes = edges[k]->getAdjElements(NODE);
-								block_number_intersection(nodes,block_number,block_number_inter);
-								for(int m = 0; m < (int)block_number_inter.size(); ++m)
+								//put block numbers to all nodes involved in pillars, so that we can figure out block numbers for constructed faces
+								edges.SetPrivateMarker(mrk);
+								//report block numbers on edges
+								if(print_bn)
 								{
-									int bi = block_number_inter[m] % dims[0];
-									int bj = block_number_inter[m] / dims[0] % dims[1];
-									int bk = block_number_inter[m] / dims[0] / dims[1];
-									assert(bi >= 0 && bi < dims[0]);
-									assert(bj >= 0 && bj < dims[1]);
-									if( bi == i-q && bj == j-!q ) //back blocks
+									for(int k = 0; k < (int)edges.size(); ++k)
 									{
-										pillar_block_edges_back[bk].push_back(edges[k]);
-										if( print_bn ) std::cout << "add edge " << k << " " << edges[k]->GetHandle() << " to back  block " << block_number_inter[m] << " (" << bi << "," << bj << "," << bk << ")" << std::endl;
+										Storage::integer_array b = edges[k]->IntegerArray(block_number);
+										Storage::integer_array e = edges[k]->IntegerArray(edge_number);
+										std::cout << "edge " << k << " " << edges[k]->GetHandle() << " blocks [" << b.size() << "]: ";
+										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "):" << e[l] << " ";
+										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << "):" << e.back() << std::endl;
 									}
-									else if(bi == i && bj == j) //front blocks
-									{
-										pillar_block_edges_front[bk].push_back(edges[k]);
-										if( print_bn ) std::cout << "add edge " << k << " " << edges[k]->GetHandle() << " to front block " << block_number_inter[m] << " (" << bi << "," << bj << "," << bk << ")" << std::endl;
-									}
-									//skip non-current blocks
 								}
-							}
-							std::vector< ElementArray<Edge> > * pillar_block_edges[2] = {&pillar_block_edges_back,&pillar_block_edges_front};
-							//(i-q + (j-!q+k*dims[1])*dims[0])
-							int blocki[2] = {i-q,i};
-							int blockj[2] = {j-!q,j};
-							if( print_info )
-							{
-								std::cout << "back  block " << blocki[0] << "," << blockj[0] << std::endl;
-								std::cout << "front block " << blocki[1] << "," << blockj[1] << std::endl;
-								std::cout << "dims " << dims[0] << "," << dims[1] << std::endl;
-							}
-							//construct interfaces (some computations will be redundant)
-							for(int m = 0; m < 2; ++m) //back and front
-							{
-								if( blocki[m] == -1 || blockj[m] == -1 ) {if(print_info) std::cout << "skip " << (m?"front ":"back ") << std::endl; continue;}
-								if( blocki[m] == dims[0] || blockj[m] == dims[1] ) {if(print_info) std::cout << "skip " << (m?"front ":"back ") << std::endl; continue;}
-								if( print_bedges ) std::cout << (m?"front ":"back ") << " column of blocks: " << blocki[m] << "," << blockj[m] << std::endl;
-								for(int k = 0; k < dims[2]; ++k)  if( actnum.empty() || actnum[ECL_IJK_DATA(blocki[m],blockj[m],k)] ) //go down the piller
+								//unite block numbers on nodes
+								if( print_bn ) std::cout << "pillar 0 nodes: " << std::endl;
+								for(pillar::iterator it = p0.begin(); it != p0.end(); ++it) //if( it->second.GetMarker(used) )
 								{
-									//retrive edge for the side
-									ElementArray<Edge> & bedges = pillar_block_edges[m]->at(k);
-									if( bedges.empty() ) continue;
-									//remove any duplicates
-									make_unique(bedges);
-									int num_outer = 0;
-									std::set<int> outer_edge_number;
-									for(int l = 0; l < bedges.size(); ++l) //loop through edges of the block
+									ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
+									block_number_union(it->second.getAsElement(),nedges,block_number);
+									if( print_bn )
 									{
-										//retrive block numbers of edges
-										Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
-										Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
-										for(int r = 0; r < (int)bn.size(); ++r)
+										Storage::integer_array b = it->second->IntegerArray(block_number);
+										std::cout << "node " << it->second->GetHandle() << " blocks [" << b.size() << "]: ";
+										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
+										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
+									}
+								}
+								if( print_bn ) std::cout << "pillar 1 nodes: " << std::endl;
+								for(pillar::iterator it = p1.begin(); it != p1.end(); ++it) //if( it->second.GetMarker(used) )
+								{
+									ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
+									block_number_union(it->second.getAsElement(),nedges,block_number);
+									if( print_bn )
+									{
+										Storage::integer_array b = it->second->IntegerArray(block_number);
+										std::cout << "node " << it->second->GetHandle() << " blocks [" << b.size() << "]: ";
+										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
+										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
+									}
+								}
+								if( print_bn ) std::cout << "intersection nodes: " << std::endl;
+								for(int k = 0; k < (int)intersections.size(); ++k)
+								{
+									ElementArray<Element> nedges = intersections[k]->getAdjElements(EDGE,mrk);
+									block_number_union(intersections[k].getAsElement(),nedges,block_number);
+									if( print_bn )
+									{
+										Storage::integer_array b = intersections[k]->IntegerArray(block_number);
+										std::cout << "node " << k << " " << intersections[k]->GetHandle() << " blocks [" << b.size() << "]: ";
+										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
+										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
+									}
+								}
+								//unmark nodes
+								//for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)  it->second.RemMarker(used);
+								//for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)  it->second.RemMarker(used);
+								//unmark edges
+								edges.RemPrivateMarker(mrk);
+								//distribute edges to front and back blocks, so that we can assemble faces
+								for(int k = 0; k < (int)edges.size(); ++k)
+								{
+									//intersect block numbers on nodes to detect to which blocks this edge belongs
+									ElementArray<Element> nodes = edges[k]->getAdjElements(NODE);
+									block_number_intersection(nodes,block_number,block_number_inter);
+									for(int m = 0; m < (int)block_number_inter.size(); ++m)
+									{
+										int bi = block_number_inter[m] % dims[0];
+										int bj = block_number_inter[m] / dims[0] % dims[1];
+										int bk = block_number_inter[m] / dims[0] / dims[1];
+										assert(bi >= 0 && bi < dims[0]);
+										assert(bj >= 0 && bj < dims[1]);
+										if( bi == i-q && bj == j-!q ) //back blocks
 										{
-											if( bn[r] == blocki[m] + (blockj[m]+k*dims[1])*dims[0] ) //this edge originally created by the block
-											{
-												bedges[l]->SetMarker(outer); //mark edge
-												num_outer++;
-												outer_edge_number.insert(en[r]);
-											}
+											pillar_block_edges_back[bk].push_back(edges[k]);
+											if( print_bn ) std::cout << "add edge " << k << " " << edges[k]->GetHandle() << " to back  block " << block_number_inter[m] << " (" << bi << "," << bj << "," << bk << ")" << std::endl;
 										}
-									}
-									if( outer_edge_number.size() > 2 )
-									{
-										//move marked edges to the end
-										std::sort(bedges.begin(),bedges.end(),Mesh::MarkerComparator(this,outer));
-										if( print_bedges )
+										else if(bi == i && bj == j) //front blocks
 										{
-											std::cout << (m?"front ":"back ") << "depth " << k << " block " <<blocki[m] + (blockj[m]+k*dims[1])*dims[0] << " edges [" << bedges.size() << "]:" << std::endl;
-											for(int l = 0; l < bedges.size(); ++l)
-											{
-												Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
-												Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
-												std::cout << "edge " << l << " " << bedges[l]->GetHandle() << " " << (bedges[l]->GetMarker(outer) ? "outer":"inner");
-												std::cout << " blocks ";
-												for(int r = 0; r < (int)bn.size(); ++r)
-													std::cout << bn[r] << ":" << en[r] << " ";
-												std::cout << std::endl;
-												
-											}
-											assert(count_duplicates(bedges) == 0);
+											pillar_block_edges_front[bk].push_back(edges[k]);
+											if( print_bn ) std::cout << "add edge " << k << " " << edges[k]->GetHandle() << " to front block " << block_number_inter[m] << " (" << bi << "," << bj << "," << bk << ")" << std::endl;
 										}
-										//there is enough edges to handle triangle
-										if( bedges.size() > 2 )
+										//skip non-current blocks
+									}
+								}
+								std::vector< ElementArray<Edge> > * pillar_block_edges[2] = {&pillar_block_edges_back,&pillar_block_edges_front};
+								//(i-q + (j-!q+k*dims[1])*dims[0])
+								int blocki[2] = {i-q,i};
+								int blockj[2] = {j-!q,j};
+								if( print_info )
+								{
+									std::cout << "back  block " << blocki[0] << "," << blockj[0] << std::endl;
+									std::cout << "front block " << blocki[1] << "," << blockj[1] << std::endl;
+									std::cout << "dims " << dims[0] << "," << dims[1] << std::endl;
+								}
+								//construct interfaces (some computations will be redundant)
+								for(int m = 0; m < 2; ++m) //back and front
+								{
+									if( blocki[m] == -1 || blockj[m] == -1 ) {if(print_info) std::cout << "skip " << (m?"front ":"back ") << std::endl; continue;}
+									if( blocki[m] == dims[0] || blockj[m] == dims[1] ) {if(print_info) std::cout << "skip " << (m?"front ":"back ") << std::endl; continue;}
+									if( print_bedges ) std::cout << (m?"front ":"back ") << " column of blocks: " << blocki[m] << "," << blockj[m] << std::endl;
+									for(int k = 0; k < dims[2]; ++k)  if( actnum.empty() || actnum[ECL_IJK_DATA(blocki[m],blockj[m],k)] ) //go down the piller
+									{
+										//retrive edge for the side
+										ElementArray<Edge> & bedges = pillar_block_edges[m]->at(k);
+										if( bedges.empty() ) continue;
+										//remove any duplicates
+										make_unique(bedges);
+										int num_outer = 0;
+										std::set<int> outer_edge_number;
+										for(int l = 0; l < bedges.size(); ++l) //loop through edges of the block
 										{
-											//form faces out of edges
-											incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer);
-											//collect all faces
-											ElementArray<Edge> loop(this);
-											while(matrix.find_shortest_loop(loop))
+											//retrive block numbers of edges
+											Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
+											Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
+											for(int r = 0; r < (int)bn.size(); ++r)
 											{
-												if( loop.size() > 2 ) //at least triangle
+												if( bn[r] == blocki[m] + (blockj[m]+k*dims[1])*dims[0] ) //this edge originally created by the block
 												{
-													if( print_bedges )
-													{
-														std::cout << "Found loop of " << loop.size() << " edges:" <<std::endl;
-														for(int g = 0; g < loop.size(); ++g)
-														{
-															std::cout << "edge " << g << " " << loop[g]->GetHandle() << " ";
-															Storage::integer_array bn = loop[g]->IntegerArray(block_number);
-															Storage::integer_array en = loop[g]->IntegerArray(edge_number);
-															std::cout << " blocks ";
-															for(int r = 0; r < (int)bn.size(); ++r)
-																std::cout << bn[r] << ":" << en[r] << " ";
-															std::cout << std::endl;
-														}
-													
-													}
-													//make face
-													Face f = CreateFace(loop).first;
-													if(!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
-													//detect block number
-													ElementArray<Element> nodes = f->getAdjElements(NODE);
-													if( print_bedges )
-													{
-														std::cout << "nodes of the face " << f->GetHandle() << "(" << f->LocalID() << "): " << std::endl;
-														for(int g = 0; g < nodes.size(); ++g)
-														{
-															std::cout << "node " << g << " " << nodes[g]->GetHandle() << " ";
-															Storage::integer_array bn = nodes[g]->IntegerArray(block_number);
-															std::cout << " blocks ";
-															for(int r = 0; r < (int)bn.size(); ++r)
-																std::cout << bn[r] << " ";
-															std::cout << std::endl;
-
-														}
-														std::cout << "intersection: ";
-													}
-													block_number_intersection(nodes,block_number,block_number_inter);
-													for(int r = 0; r < (int)block_number_inter.size(); ++r)
-													{
-														if( print_bedges ) std::cout << block_number_inter[r] << " (" << block_number_inter[r]%dims[0] << "," << block_number_inter[r]/dims[0] % dims[1] << "," << block_number_inter[r]/dims[0]/dims[1] <<") ";
-														block_faces[block_number_inter[r]].push_back(f);
-													}
-													if( print_bedges ) std::cout << std::endl;
+													bedges[l]->SetPrivateMarker(outer); //mark edge
+													num_outer++;
+													outer_edge_number.insert(en[r]);
 												}
-												else if( !loop.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << loop.size() << std::endl;
 											}
-											if( !matrix.all_visited() )
+										}
+										if( outer_edge_number.size() > 2 )
+										{
+											//move marked edges to the end
+											std::sort(bedges.begin(),bedges.end(),Mesh::PrivateMarkerComparator(this,outer));
+											if( print_bedges )
 											{
-												std::cout << "Not all edges were visited, matrix: " << std::endl;
-												matrix.print_matrix();
-												std::cout << "Current block " << blocki[m] + (blockj[m]+k*dims[1])*dims[0] << std::endl;
+												std::cout << (m?"front ":"back ") << "depth " << k << " block " <<blocki[m] + (blockj[m]+k*dims[1])*dims[0] << " edges [" << bedges.size() << "]:" << std::endl;
 												for(int l = 0; l < bedges.size(); ++l)
 												{
 													Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
 													Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
-													std::cout << "edge " << l << " " << bedges[l]->GetHandle() << " " << bedges[l]->getBeg()->GetHandle() << " <-> " << bedges[l]->getEnd()->GetHandle() << " " << (bedges[l]->GetMarker(outer) ? "outer":"inner");
+													std::cout << "edge " << l << " " << bedges[l]->GetHandle() << " " << (bedges[l]->GetPrivateMarker(outer) ? "outer":"inner");
 													std::cout << " blocks ";
 													for(int r = 0; r < (int)bn.size(); ++r)
 														std::cout << bn[r] << ":" << en[r] << " ";
 													std::cout << std::endl;
-												}
 
-												std::cout << "Outer edges [" << outer_edge_number.size() << "]:" << std::endl;
-												for(std::set<int>::iterator it = outer_edge_number.begin(); it != outer_edge_number.end(); ++it)
-													std::cout << *it << " ";
-												std::cout << std::endl;
-												
-												//form faces out of edgesm
-												incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer,true);
-												//collect all faces
-												ElementArray<Edge> loop2(this);
-												while(matrix.find_shortest_loop(loop2));
+												}
+												assert(count_duplicates(bedges) == 0);
 											}
+											//there is enough edges to handle triangle
+											if( bedges.size() > 2 )
+											{
+												//form faces out of edges
+												incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer);
+												//collect all faces
+												ElementArray<Edge> loop(this);
+												while(matrix.find_shortest_loop(loop))
+												{
+													if( loop.size() > 2 ) //at least triangle
+													{
+														if( print_bedges )
+														{
+															std::cout << "Found loop of " << loop.size() << " edges:" <<std::endl;
+															for(int g = 0; g < loop.size(); ++g)
+															{
+																std::cout << "edge " << g << " " << loop[g]->GetHandle() << " ";
+																Storage::integer_array bn = loop[g]->IntegerArray(block_number);
+																Storage::integer_array en = loop[g]->IntegerArray(edge_number);
+																std::cout << " blocks ";
+																for(int r = 0; r < (int)bn.size(); ++r)
+																	std::cout << bn[r] << ":" << en[r] << " ";
+																std::cout << std::endl;
+															}
+
+														}
+														//make face
+														Face f = CreateFace(loop).first;
+														if(!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
+														//detect block number
+														ElementArray<Element> nodes = f->getAdjElements(NODE);
+														if( print_bedges )
+														{
+															std::cout << "nodes of the face " << f->GetHandle() << "(" << f->LocalID() << "): " << std::endl;
+															for(int g = 0; g < nodes.size(); ++g)
+															{
+																std::cout << "node " << g << " " << nodes[g]->GetHandle() << " ";
+																Storage::integer_array bn = nodes[g]->IntegerArray(block_number);
+																std::cout << " blocks ";
+																for(int r = 0; r < (int)bn.size(); ++r)
+																	std::cout << bn[r] << " ";
+																std::cout << std::endl;
+
+															}
+															std::cout << "intersection: ";
+														}
+														block_number_intersection(nodes,block_number,block_number_inter);
+														for(int r = 0; r < (int)block_number_inter.size(); ++r)
+														{
+															if( print_bedges ) std::cout << block_number_inter[r] << " (" << block_number_inter[r]%dims[0] << "," << block_number_inter[r]/dims[0] % dims[1] << "," << block_number_inter[r]/dims[0]/dims[1] <<") ";
+															block_faces[block_number_inter[r]].push_back(f);
+														}
+														if( print_bedges ) std::cout << std::endl;
+													}
+													else if( !loop.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << loop.size() << std::endl;
+												}
+												if( !matrix.all_visited() )
+												{
+													std::cout << "Not all edges were visited, matrix: " << std::endl;
+													matrix.print_matrix();
+													std::cout << "Current block " << blocki[m] + (blockj[m]+k*dims[1])*dims[0] << std::endl;
+													for(int l = 0; l < bedges.size(); ++l)
+													{
+														Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
+														Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
+														std::cout << "edge " << l << " " << bedges[l]->GetHandle() << " " << bedges[l]->getBeg()->GetHandle() << " <-> " << bedges[l]->getEnd()->GetHandle() << " " << (bedges[l]->GetPrivateMarker(outer) ? "outer":"inner");
+														std::cout << " blocks ";
+														for(int r = 0; r < (int)bn.size(); ++r)
+															std::cout << bn[r] << ":" << en[r] << " ";
+														std::cout << std::endl;
+													}
+
+													std::cout << "Outer edges [" << outer_edge_number.size() << "]:" << std::endl;
+													for(std::set<int>::iterator it = outer_edge_number.begin(); it != outer_edge_number.end(); ++it)
+														std::cout << *it << " ";
+													std::cout << std::endl;
+
+													//form faces out of edgesm
+													incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer,true);
+													//collect all faces
+													ElementArray<Edge> loop2(this);
+													while(matrix.find_shortest_loop(loop2));
+												}
+											}
+											//remove marker
+											bedges.RemPrivateMarker(outer);
 										}
-										//remove marker
-										bedges.RemMarker(outer);
+										//cleanup structure for reuse
+										bedges.clear();
 									}
-									//cleanup structure for reuse
-									bedges.clear();
 								}
-							}
-							//clean-up structures
-							edges.clear();
-							intersections.clear();
-						} //j
-					} //i
-					printf("\n");
+								//clean-up structures
+								edges.clear();
+								intersections.clear();
+							} //j
+						} //i
+						ReleasePrivateMarker(mrk);
+						ReleasePrivateMarker(outer);
+						//printf("\n");
+					}
 				} //q
-				//ReleaseMarker(used);
-				ReleaseMarker(mrk);
-				ReleaseMarker(outer);
 				//do not need this tag on nodes
 				DeleteTag(block_number, NODE);
 				//now construct top and bottom interfaces
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 				for(int i = 0; i < dims[0]; ++i)
 				{
-					printf("top/bottom/cells %6.2f%%\r", ((double)i)/((double)dims[0]-1)*100);
-					fflush(stdout);
+					//printf("top/bottom/cells %6.2f%%\r", ((double)i)/((double)dims[0]-1)*100);
+					//fflush(stdout);
 					for(int j = 0; j < dims[1]; ++j)
 					{
 						for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
@@ -1986,7 +2076,7 @@ ecl_exit_loop:
 											std::cout << "edge " << l << " " << face_edges[l]->GetHandle() << " ";
 											std::cout << face_edges[l]->getBeg()->GetHandle() << "<->" << face_edges[l]->getEnd()->GetHandle() << " ";
 											std::cout << "blocks: ";
-											for(int p = 0; p < bn.size(); ++p)
+											for(int p = 0; p < (int)bn.size(); ++p)
 												std::cout << bn[p] << "(" << bn[p]%dims[0] << "," << bn[p]/dims[0]%dims[1] << "," << bn[p]/dims[0]/dims[1] << "):" << en[p] << " ";
 											std::cout << std::endl;
 										}
@@ -2013,7 +2103,7 @@ ecl_exit_loop:
 						} //k
 					} //j
 				} //i
-				printf("\n");
+				//printf("\n");
 				//cleanup data
 				DeleteTag(edge_number);
 				DeleteTag(block_number);

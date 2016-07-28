@@ -545,7 +545,7 @@ namespace INMOST
 					if( mesh->GetMarker(head_column[k],hide_marker) )
 					{
 						visits[k]--;
-						add_remember.push_back(k);
+						add_remember.push_back((int)k);
 						if( print ) std::cout << k << " ";
 					}
 				if( print ) std::cout << std::endl;

@@ -1225,7 +1225,7 @@ void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 {
 	if( drawedges == 2 || drawedges == 3 ) return;
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
+	//glPolygonOffset(1.0, 1.0);
 	
 	glColor4f(0,1,0,0.1);
 	glBegin(GL_TRIANGLES);
@@ -1245,7 +1245,7 @@ void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 {
 	if( drawedges == 2 || drawedges == 3) return;
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
+	//glPolygonOffset(1.0, 1.0);
 	
 	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	
@@ -1271,7 +1271,7 @@ void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
 	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
+	//glPolygonOffset(1.0, 1.0);
 	
 	glBegin(GL_TRIANGLES);
 	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour_alpha(alpha);
@@ -1304,7 +1304,7 @@ void draw_faces_interactive_nc(std::vector<face2gl> & set)
 	glColor4f(0,1,0,0.1);
 	
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
+	//glPolygonOffset(1.0, 1.0);
 	
 	
 	glBegin(GL_TRIANGLES);
@@ -1320,7 +1320,7 @@ void draw_faces_interactive(std::vector<face2gl> & set)
   if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
+	//glPolygonOffset(1.0, 1.0);
 	
 	
 	glBegin(GL_TRIANGLES);
@@ -1337,7 +1337,7 @@ void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
   if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 	
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
+	//glPolygonOffset(1.0, 1.0);
 	
 	
 	glBegin(GL_TRIANGLES);
@@ -2369,7 +2369,7 @@ public:
 	{
 		if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
 		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(1.0, 1.0);
+		//glPolygonOffset(1.0, 1.0);
 		
 		glBegin(GL_TRIANGLES);
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
@@ -2654,7 +2654,7 @@ public:
 					ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
 					
 					glEnable(GL_POLYGON_OFFSET_FILL);
-					glPolygonOffset(1.0, 1.0);
+					//glPolygonOffset(1.0, 1.0);
 					
 					
 					glBegin(GL_POLYGON);
