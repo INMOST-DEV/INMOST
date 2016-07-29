@@ -1219,6 +1219,9 @@ namespace INMOST
 	class Mesh : public TagManager, public Storage //implemented in mesh.cpp
 	{
 	public:
+#if defined(CHECKS_MARKERS)
+		bool check_shared_mrk, check_private_mrk;
+#endif
 		enum MeshState {Serial, Parallel};
 		typedef chunk_array<integer,chunk_bits_empty>               
 											empty_container;
@@ -1314,7 +1317,7 @@ namespace INMOST
 		/// @param n Byte position and byte bit mask.
 		/// @param cleanup Elements on which marker should be removed.
 		void                                ReleaseMarker       (MarkerType n, ElementType cleanup = NONE);
-		void                                ReleasePrivateMarker(MarkerType n);
+		void                                ReleasePrivateMarker(MarkerType n, ElementType cleanup = NONE);
 		/// Set tolerance for coordinates comparison. This tolerance is used in comparators 
 		/// when two meshes are merged during loading, in ResolveShared to check that nodes on different processors match 
 		/// and in UnpackElementsData

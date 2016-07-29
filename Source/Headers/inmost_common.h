@@ -41,7 +41,7 @@
 // a very expensive check for debug purposes, 
 // when you release marker checks all the elements
 // that no element is marked by released marker
-//#define CHECKS_MARKERS 
+//#define CHECKS_MARKERS
 
 // use additional sets to store elements for parallel
 // exchanges, otherwise it will recompute those elements

@@ -25,7 +25,7 @@
 // 5. (ok) populate keywords data, poro, perm, actnum, satnum, etc...
 // 5.1 add saturation, pressure
 // 6. local grid refinement
-// 7. omp-parallel loading
+// 7. (ok) omp-parallel loading
 // 8. mpi-parallel loading
 // 9. do not convert arrays xyz and zcorn
 //10. read wells into sets
@@ -81,19 +81,6 @@ namespace INMOST
 			return "";
 		else return file.substr(0,found);
 	}
-	//special structure for array of 3 reals for std::map
-	class position
-	{
-	public:
-		Storage::real xyz[3];
-		position & operator =(position const & b) {memcpy(xyz,b.xyz,sizeof(Storage::real)*3); return *this;}
-		position() {memset(xyz,0,sizeof(Storage::real)*3);}
-		position(Storage::real _xyz[3])  {memcpy(xyz,_xyz,sizeof(Storage::real)*3);}
-		position(const position & b) {memcpy(xyz,b.xyz,sizeof(Storage::real)*3);}
-		operator Storage::real *() {return xyz;}
-		Storage::real & operator [](int k){return xyz[k];}
-		Storage::real operator [](int k) const{return xyz[k];}
-	};
 	//2d point with comparison operator for line sweep algorithm
 	struct Point
 	{
@@ -101,36 +88,21 @@ namespace INMOST
 		Point & operator = (Point const & b) {  x = b.x; y = b.y; return *this; }
 		Point(const Point & b) : x(b.x), y(b.y) {}
 		Point(double _x, double _y) : x(_x), y(_y) {}
+		Point(double v[2]) : x(v[0]), y(v[1]) {}
 		bool operator <(const Point & b) const
 		{
-			if (y < b.y - 1.0e-5) return true;
-			else if (y > b.y + 1.0e-5) return false;
-			else if (x < b.x - 1.0e-5) return true;
+			if (y < b.y - 1.0e-7) return true;
+			else if (y > b.y + 1.0e-7) return false;
+			else if (x < b.x - 1.0e-7) return true;
 			else return false;
 		}
 		bool operator ==(const Point & b) const
 		{
-			return fabs(y - b.y) < 1.0e-5 && fabs(x - b.x) < 1.0e-5;
+			return fabs(y - b.y) < 1.0e-7 && fabs(x - b.x) < 1.0e-7;
 		}
 		bool operator !=(const Point & b) const
 		{
-			return fabs(y - b.y) > 1.0e-5 || fabs(x - b.x) > 1.0e-5;
-		}
-	};
-	//Comparator for map of nodes
-	class position_less
-	{
-	public:
-		bool operator()(const position & a, const position & b) const
-		{
-			for(int k = 0; k < 3; ++k)
-			{
-				if( a[k] < b[k] - 1.0e-5)
-					return true;
-				else if( a[k] > b[k] + 1.0e-5 )
-					return false;
-			}
-			return false;
+			return fabs(y - b.y) > 1.0e-7 || fabs(x - b.x) > 1.0e-7;
 		}
 	};
 	
@@ -173,16 +145,16 @@ namespace INMOST
 	int count_duplicates(ElementArray<T> & array)
 	{
 		Mesh * m = array.GetMeshLink();
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		int dups = 0;
 		for(int k = 0; k < array.size(); ++k)
 		{
-			if( array[k].GetMarker(mrk) )
+			if( array[k].GetPrivateMarker(mrk) )
 				dups++;
-			array[k].SetMarker(mrk);
+			array[k].SetPrivateMarker(mrk);
 		}
-		array.RemMarker(mrk);
-		m->ReleaseMarker(mrk);
+		array.RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 		return dups;
 	}
 	
@@ -190,58 +162,26 @@ namespace INMOST
 	void make_unique(ElementArray<T> & array)
 	{
 		Mesh * m = array.GetMeshLink();
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		int i = 0, j = 0;
 		while(j < array.size())
 		{
-			if( array[j].GetMarker(mrk) )
+			if( array[j].GetPrivateMarker(mrk) )
 				++j;
 			else
 			{
-				array[j].SetMarker(mrk);
+				array[j].SetPrivateMarker(mrk);
 				array[i++] = array[j++];
 			}
 		}
-		array.RemMarker(mrk);
+		array.RemPrivateMarker(mrk);
 		array.resize(i);
-		m->ReleaseMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 	}
 	
 	
-
-	__INLINE Storage::real normalize(Storage::real v[3])
-	{
-		Storage::real l = sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
-		if( l )
-		{
-			v[0] /= l;
-			v[1] /= l;
-			v[2] /= l;
-		}
-		return l;
-	}
 	
-	void compute_conormal(const Edge & a, const Edge & b, Storage::real vn[3])
-	{
-		Storage::real vz[3] = {0,0,1}, va[3], vb[3], na[3], nb[3], nn[3];
-		Storage::real_array abeg = a->getBeg()->Coords();
-		Storage::real_array aend = a->getEnd()->Coords();
-		Storage::real_array bbeg = b->getBeg()->Coords();
-		Storage::real_array bend = b->getEnd()->Coords();
-		make_vec(abeg.data(),aend.data(),va);
-		make_vec(bbeg.data(),bend.data(),vb);
-		cross_prod(va,vz,na);
-		cross_prod(vb,vz,nb);
-		nn[0] = va[0]+vb[0];
-		nn[1] = va[1]+vb[1];
-		nn[2] = va[2]+vb[2];
-		cross_prod(nn,vz,vn);
-		normalize(vn);
-	}
-	
-	//intersect a pair of segments
-	/*
-	std::pair<bool,Node> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::map<position,Node,position_less> & intersections, double & t1, double & t2, bool print)
+	std::pair<bool,Node> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::map<Point,Node> & intersections, Tag pnt, bool print)
 	{
 		if( a->getBeg() == b->getBeg() || a->getBeg() == b->getEnd() || a->getEnd() == b->getEnd() || a->getEnd() == b->getBeg() )
 			return std::make_pair(false,InvalidNode());
@@ -249,100 +189,17 @@ namespace INMOST
 		Storage::real_array aend = a->getEnd()->Coords();
 		Storage::real_array bbeg = b->getBeg()->Coords();
 		Storage::real_array bend = b->getEnd()->Coords();
-		Storage::real vn[3];
-		compute_conormal(a,b,vn);
-		Storage::real abeg_c_ = dot_prod(abeg.data(),vn);
-		Storage::real aend_c_ = dot_prod(aend.data(),vn);
-		Storage::real bbeg_c_ = dot_prod(bbeg.data(),vn);
-		Storage::real bend_c_ = dot_prod(bend.data(),vn);
-		position find;
-		Storage::real div = (abeg[2] - aend[2])*(bbeg_c_ - bend_c_) - (abeg_c_ - aend_c_)*(bbeg[2] - bend[2]), find_c_;//, t1,t2;
-		if (fabs(div) < 1.0e-13)
-		{
-			if (print) std::cout << "divisor is zero" << std::endl;
-			return std::make_pair(false,InvalidNode());
-		}
-		find[2] = ((abeg[2]*aend_c_ - abeg_c_*aend[2])*(bbeg[2] - bend[2]) - (abeg[2] - aend[2])*(bbeg[2]*bend_c_ - bbeg_c_*bend[2])) / div;
-		find_c_ = ((abeg[2]*aend_c_ - abeg_c_*aend[2])*(bbeg_c_ - bend_c_) - (abeg_c_ - aend_c_)*(bbeg[2]*bend_c_ - bbeg_c_*bend[2])) / div;
-		if (print) std::cout << "found (c "  << find_c_ << ",z " << find[2] << ")" << std::endl;
-		//probably some of these tests are redundant
-		if (fabs(aend[2] - abeg[2]) > 1.0e-9)
-		{
-			t1 = (find[2] - abeg[2]) / (aend[2] - abeg[2]);
-			if (t1 < 1.0e-9 || t1 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
-		}
-		if (fabs(aend_c_ - abeg_c_) > 1.0e-9)
-		{
-			t1 = (find_c_ - abeg_c_) / (aend_c_ - abeg_c_);
-			if (t1 < 1.0e-9 || t1 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
-		}
-		if (fabs(bend[2] - bbeg[2]) > 1.0e-9)
-		{
-			t2 = (find[2] - bbeg[2]) / (bend[2] - bbeg[2]);
-			if (t2 < 1.0e-9 || t2 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
-		}
-		if (fabs(bend_c_ - bbeg_c_) > 1.0e-9)
-		{
-			t2 = (find_c_ - bbeg_c_) / (bend_c_ - bbeg_c_);
-			if (t2 < 1.0e-9 || t2 > 1.0 - 1.0e-9)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
-		}
-		//restore third coordinate
-		find[0] = 0.5*((1-t1)*abeg[0]+t1*aend[0] + (1-t2)*bbeg[0]+t2*bend[0]);
-		find[0] = 0.5*((1-t1)*abeg[1]+t1*aend[1] + (1-t2)*bbeg[1]+t2*bend[1]);
-		if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ")" << std::endl;
-		Node I;
-		std::map<position,Node,position_less>::iterator search = intersections.find(find);
-		//check whether intersection already exists
-		if( search != intersections.end() ) //there is a node!
-			I = search->second;
-		else //no node, create one
-		{
-			I = m->CreateNode(find);
-			intersections.insert(std::make_pair(find,I));
-		}
-		return std::make_pair(true,I);
-	}
-	 */
-	
-	Point project(Storage::real pos[3], const Storage::real p0beg[3], const Storage::real  p0end[3], const Storage::real p1beg[3], const Storage::real p1end[3])
-	{
-		Storage::real alpha, beta, c,l, zmax, zmin;
-		Storage::real v[3], v0[3], v1[3];
-		alpha = (pos[2]-p0end[2])/(p0beg[2]-p0end[2]);
-		beta = (pos[2]-p1end[2])/(p1beg[2]-p1end[2]);
-		zmax = std::max(std::max(p0beg[2],p0end[2]),std::max(p1beg[2],p1end[2]));
-		zmin = std::min(std::min(p0beg[2],p0end[2]),std::min(p1beg[2],p1end[2]));
-		//get slice of pillar at z position of beginning of the segment
-		v0[0] = p0end[0] + alpha*(p0beg[0]-p0end[0]);
-		v0[1] = p0end[1] + alpha*(p0beg[1]-p0end[1]);
-		v0[2] = pos[2];
-		v1[0] = p1end[0] + beta*(p1beg[0]-p1end[0]);
-		v1[1] = p1end[1] + beta*(p1beg[1]-p1end[1]);
-		v1[2] = pos[2];
-		//get vector connecting pillars
-		make_vec(v1,v0,v);
-		l=normalize(v);
-		//project coordinates
-		c = ((pos[0]-v0[0])*v[0]+(pos[1]-v0[1])*v[1])/l;//dot_prod(pos,v);
-		return Point((pos[2]-zmin)/(zmax-zmin),c);
-	}
-	
-	//intersect a pair of segments
-	std::pair<bool,Node> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::map<position,Node,position_less> & intersections, double & t1, double & t2,   const Storage::real p0beg[3], const Storage::real  p0end[3], const Storage::real p1beg[3], const Storage::real p1end[3], bool print)
-	{
-		if( a->getBeg() == b->getBeg() || a->getBeg() == b->getEnd() || a->getEnd() == b->getEnd() || a->getEnd() == b->getBeg() )
-			return std::make_pair(false,InvalidNode());
-		Storage::real_array abeg = a->getBeg()->Coords();
-		Storage::real_array aend = a->getEnd()->Coords();
-		Storage::real_array bbeg = b->getBeg()->Coords();
-		Storage::real_array bend = b->getEnd()->Coords();
-		Point pabeg = project(abeg.data(),p0beg,p0end,p1beg,p1end);
-		Point paend = project(aend.data(),p0beg,p0end,p1beg,p1end);
-		Point pbbeg = project(bbeg.data(),p0beg,p0end,p1beg,p1end);
-		Point pbend = project(bend.data(),p0beg,p0end,p1beg,p1end);
+		Storage::real_array _pabeg = a->getBeg()->RealArray(pnt);
+		Storage::real_array _paend = a->getEnd()->RealArray(pnt);
+		Storage::real_array _pbbeg = b->getBeg()->RealArray(pnt);
+		Storage::real_array _pbend = b->getEnd()->RealArray(pnt);
+		Point pabeg(_pabeg[0],_pabeg[1]);
+		Point paend(_paend[0],_paend[1]);
+		Point pbbeg(_pbbeg[0],_pbbeg[1]);
+		Point pbend(_pbend[0],_pbend[1]);
 		Point pfind(0,0);
-		position find;
-		Storage::real div = (pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x);
+		Storage::real find[3];
+		Storage::real div = (pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x), t1,t2;
 		if (fabs(div) < 1.0e-13)
 		{
 			if (print) std::cout << "divisor is zero" << std::endl;
@@ -350,6 +207,9 @@ namespace INMOST
 		}
 		pfind.x = ((pabeg.x*paend.y - pabeg.y*paend.x)*(pbbeg.x - pbend.x) - (pabeg.x - paend.x)*(pbbeg.x*pbend.y - pbbeg.y*pbend.x)) / div;
 		pfind.y = ((pabeg.x*paend.y - pabeg.y*paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x*pbend.y - pbbeg.y*pbend.x)) / div;
+		//optimization uses information that we stay in unit cube
+		if( pfind.x < 0 || pfind.x > 1 || pfind.y < 0 || pfind.y > 1 )
+			return std::make_pair(false,InvalidNode());
 		if (print) std::cout << "found ("<< pfind.x << ", " << pfind.y << ")" << std::endl;
 		//probably some of these tests are redundant
 		if (fabs(paend.x - pabeg.x) > 1.0e-9)
@@ -377,14 +237,18 @@ namespace INMOST
 			find[k] = 0.5*((1-t1)*abeg[k]+t1*aend[k] + (1-t2)*bbeg[k]+t2*bend[k]);
 		if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
 		Node I;
-		std::map<position,Node,position_less>::iterator search = intersections.find(find);
+		std::map<Point,Node>::iterator search = intersections.find(pfind);
 		//check whether intersection already exists
 		if( search != intersections.end() ) //there is a node!
 			I = search->second;
 		else //no node, create one
 		{
 			I = m->CreateNode(find);
-			intersections.insert(std::make_pair(find,I));
+			Storage::real_array _pfind = I->RealArray(pnt);
+			_pfind[0] = pfind.x;
+			_pfind[1] = pfind.y;
+			std::pair<std::map<Point,Node>::iterator,bool> ins = intersections.insert(std::make_pair(pfind,I));
+			if( !ins.second ) std::cout << "intersection node " << I->GetHandle() << " was not inserted at " << pfind.x << "," << pfind.y << " since there " << ins.first->second->GetHandle() << std::endl;
 		}
 		if( I == a->getBeg() || I == b->getBeg() || I == a->getEnd() || I == b->getEnd())
 			return std::make_pair(false,I);
@@ -453,24 +317,32 @@ namespace INMOST
 				}
 		}
 	}
+	
 
-	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, const Storage::real p0beg[3], const Storage::real  p0end[3], const Storage::real p1beg[3], const Storage::real p1end[3], bool print)
+
+	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, bool print)
 	{
-		std::map<position,Node,position_less> intersections;
-		MarkerType initial = m->CreateMarker();
+		//Tag pnt = m->CreateTag("PROJ_PNT"+m->GetLocalProcessorRank(),DATA_REAL,NODE,NODE,2);
+		std::map<Point,Node> intersections;
+		std::vector<HandleType> initials(segments.size()*2);
+		MarkerType initial = m->CreatePrivateMarker();
 		for (int k = 0; k < (int)segments.size(); ++k)
 		{
-			segments[k]->getBeg()->SetMarker(initial);
-			segments[k]->getEnd()->SetMarker(initial);
-			intersections.insert(std::make_pair(position(segments[k]->getBeg()->Coords().data()),segments[k]->getBeg()));
-			intersections.insert(std::make_pair(position(segments[k]->getEnd()->Coords().data()),segments[k]->getEnd()));
+			initials[k*2+0] = segments[k]->getBeg()->GetHandle();
+			initials[k*2+1] = segments[k]->getEnd()->GetHandle();
+			segments[k]->getBeg()->SetPrivateMarker(initial);
+			segments[k]->getEnd()->SetPrivateMarker(initial);
+			Point pbeg(segments[k]->getBeg()->RealArray(pnt).data());
+			Point pend(segments[k]->getEnd()->RealArray(pnt).data());
+			intersections.insert(std::make_pair(pbeg,segments[k]->getBeg()));
+			intersections.insert(std::make_pair(pend,segments[k]->getEnd()));
 		}
 		for(int i = 0; i < (int)segments.size(); ++i)
 		{
 			for(int j = i+1; j < (int)segments.size(); ++j)
 			{
 				double t1,t2;
-				std::pair<bool,Node> I = intersect_segments(m,segments[i],segments[j],intersections,t1,t2,p0beg,p0end,p1beg,p1end,print);
+				std::pair<bool,Node> I = intersect_segments(m,segments[i],segments[j],intersections,pnt,print);
 				if( I.first )
 				{
 					ElementArray<Edge> splitted_a, splitted_b;
@@ -483,17 +355,18 @@ namespace INMOST
 			}
 		}
 		nodes.clear();
-		for(std::map<position,Node,position_less>::iterator it = intersections.begin(); it != intersections.end(); ++it)
+		for(std::map<Point,Node>::iterator it = intersections.begin(); it != intersections.end(); ++it)
 		{
-			if( !it->second->GetMarker(initial) )
+			if( !it->second->GetPrivateMarker(initial) )
 				nodes.push_back(it->second);
-			else it->second->RemMarker(initial);
 		}
-		m->ReleaseMarker(initial);
+		for(int k = 0; k < (int)initials.size(); ++k)
+			m->RemPrivateMarker(initials[k],initial);
+		m->ReleasePrivateMarker(initial);
 	}
 
 	//account for intersection event
-	void intersect_event(Mesh * m, int a, int b, Node I, ElementArray<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<double,int>, int,event_less> & events, std::vector<Tag> & transfer, bool print)
+	void intersect_event(Mesh * m, int a, int b, Node I, ElementArray<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<double,int>, int,event_less> & events, std::vector<Tag> & transfer, Tag pnt, bool print)
 	{
 		const bool checkmm = false;
 		//remove event of ending of old segment
@@ -503,7 +376,7 @@ namespace INMOST
 			rem_end_events[1] = b;
 			for (int k = 0; k < 2; ++k)
 			{
-				std::pair< std::multimap<std::pair<double,int>, int,event_less>::iterator, std::multimap<std::pair<double,int>,int,event_less>::iterator > del = events.equal_range(std::make_pair(segments[rem_end_events[k]]->getEnd()->Coords()[2],SEG_END)); //get all events at position of the end
+				std::pair< std::multimap<std::pair<double,int>, int,event_less>::iterator, std::multimap<std::pair<double,int>,int,event_less>::iterator > del = events.equal_range(std::make_pair(segments[rem_end_events[k]]->getEnd()->RealArray(pnt)[0],SEG_END)); //get all events at position of the end
 				bool flag = false;
 				for (std::multimap<std::pair<double,int>, int,event_less>::iterator it = del.first; it != del.second; ++it) //search over all events
 				{
@@ -535,71 +408,52 @@ namespace INMOST
 		//replace segment a by new one
 		segments[a] = splitted_a[0];
 		//add event of ending of old segment
-		if(print) std::cout << "1: Add segment " << a << " " << segments[a]->GetHandle() << " end" << " at " << I->Coords()[2] << " " << I->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(I->Coords()[2],SEG_END), a)),checkmm);
+		if(print) std::cout << "1: Add segment " << a << " " << segments[a]->GetHandle() << " end" << " at " << I->RealArray(pnt)[0] << " " << I->GetHandle() << std::endl;
+		check_multimap(events,events.insert(std::make_pair(std::make_pair(I->RealArray(pnt)[0],SEG_END), a)),checkmm);
 		//put other side of segment
 		segments.push_back(splitted_a[1]);
 		//detect proper starting event
-		if( segments.back()->getBeg()->Coords()[2] > segments.back()->getEnd()->Coords()[2] )
+		if( segments.back()->getBeg()->RealArray(pnt)[0] > segments.back()->getEnd()->RealArray(pnt)[0] )
 			segments.back()->SwapEnds();
 		//add event of starting of new segment
-		if(print) std::cout << "2: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " start at " << segments.back()->getBeg()->Coords()[2] << " " << segments.back()->getBeg()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getBeg()->Coords()[2],SEG_START), (int)segments.size() - 1)),checkmm);
+		if(print) std::cout << "2: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " start at " << segments.back()->getBeg()->RealArray(pnt)[0] << " " << segments.back()->getBeg()->GetHandle() << std::endl;
+		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getBeg()->RealArray(pnt)[0],SEG_START), (int)segments.size() - 1)),checkmm);
 		//add event of ending of new segment
-		if(print) std::cout << "3: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " end at " << segments.back()->getEnd()->Coords()[2] << " " << segments.back()->getEnd()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getEnd()->Coords()[2],SEG_END),(int)segments.size() - 1)),checkmm);
+		if(print) std::cout << "3: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " end at " << segments.back()->getEnd()->RealArray(pnt)[0] << " " << segments.back()->getEnd()->GetHandle() << std::endl;
+		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getEnd()->RealArray(pnt)[0],SEG_END),(int)segments.size() - 1)),checkmm);
 		//replace segment b by new one
 		segments[b] = splitted_b[0];
 		//add event of ending of old segment
-		if(print) std::cout << "4: Add segment " << b << " " << segments[b]->GetHandle() << " end at " << I->Coords()[2] << " " << I->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(I->Coords()[2],SEG_END), b)),checkmm);
+		if(print) std::cout << "4: Add segment " << b << " " << segments[b]->GetHandle() << " end at " << I->RealArray(pnt)[0] << " " << I->GetHandle() << std::endl;
+		check_multimap(events,events.insert(std::make_pair(std::make_pair(I->RealArray(pnt)[0],SEG_END), b)),checkmm);
 		//put other side of segment
 		segments.push_back(splitted_b[1]);
 		//detect proper starting event
-		if( segments.back()->getBeg()->Coords()[2] > segments.back()->getEnd()->Coords()[2] )
+		if( segments.back()->getBeg()->RealArray(pnt)[0] > segments.back()->getEnd()->RealArray(pnt)[0] )
 			segments.back()->SwapEnds();
 		//add event of starting of new segment
-		if(print) std::cout << "5: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " start at " << segments.back()->getBeg()->Coords()[2]<< " " << segments.back()->getBeg()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getBeg()->Coords()[2],SEG_START), (int)segments.size() - 1)),checkmm);
+		if(print) std::cout << "5: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " start at " << segments.back()->getBeg()->RealArray(pnt)[0]<< " " << segments.back()->getBeg()->GetHandle() << std::endl;
+		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getBeg()->RealArray(pnt)[0],SEG_START), (int)segments.size() - 1)),checkmm);
 		//add event of ending of new segment
-		if(print) std::cout << "6: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " end at " << segments.back()->getEnd()->Coords()[2] << " " << segments.back()->getEnd()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getEnd()->Coords()[2],SEG_END), (int)segments.size() - 1)),checkmm);
+		if(print) std::cout << "6: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " end at " << segments.back()->getEnd()->RealArray(pnt)[0] << " " << segments.back()->getEnd()->GetHandle() << std::endl;
+		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getEnd()->RealArray(pnt)[0],SEG_END), (int)segments.size() - 1)),checkmm);
 		if (print)
 		{
 			std::cout << "Number of events: " << events.size() << std::endl;
 			for (std::multimap<std::pair<double, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
 				std::cout << "x: " << it->first.first << " type " << (it->first.second == SEG_START ? "start" : "end") << " segment " << it->second << " " << segments[it->second]->GetHandle() << " " << segments[it->second]->getBeg()->GetHandle() << " " << segments[it->second]->getEnd()->GetHandle() << std::endl;
-			assert(count_duplicates(segments) == 0);
+			//assert(count_duplicates(segments) == 0);
 		}
-	}
-	/*
-	Point make_point(Edge e, int dir)
-	{
-		Storage::real_array ebeg = e->getBeg()->Coords();
-		//Storage::real_array eend = e->getEnd()->Coords();
-		//Storage::real v[3], vn[3], vc[3], vz[3] = {0,0,1};
-		//make_vec(eend.data(),ebeg.data(),v);
-		//cross_prod(vz,v,vn);
-		//cross_prod(vz,vn,vc);
-		//normalize(vc);
-		return Point(ebeg[2],ebeg[dir]);
-	}
-	 */
-	
-	Point make_point(Edge e,  const Storage::real p0beg[3], const Storage::real  p0end[3], const Storage::real p1beg[3], const Storage::real p1end[3])
-	{
-		Storage::real_array ebeg = e->getBeg()->Coords();
-		return project(ebeg.data(),p0beg,p0end,p1beg,p1end);
 	}
 
 	//intersect many segments
-	void intersect(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, const Storage::real p0beg[3], const Storage::real  p0end[3], const Storage::real p1beg[3], const Storage::real p1end[3], bool print)
+	void intersect(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, bool print)
 	{
-		std::map<position,Node,position_less> intersections;
+		std::map<Point,Node> intersections;
 		std::multimap<std::pair<double,int>,int,event_less> events;
 		std::multimap<Point,int> sweep;
 		double t1,t2;
-		MarkerType initial = m->CreateMarker();
+		MarkerType initial = m->CreatePrivateMarker();
 	
 		if( print )
 		{
@@ -611,14 +465,14 @@ namespace INMOST
 
 		for (int k = 0; k < (int)segments.size(); ++k)
 		{
-			if (segments[k]->getBeg()->Coords()[2] > segments[k]->getEnd()->Coords()[2])
+			if (segments[k]->getBeg()->RealArray(pnt)[0] > segments[k]->getEnd()->RealArray(pnt)[0])
 				segments[k].SwapEnds();
-			events.insert(std::make_pair(std::make_pair(segments[k]->getBeg()->Coords()[2],SEG_START),k));
-			events.insert(std::make_pair(std::make_pair(segments[k]->getEnd()->Coords()[2],SEG_END), k));
-			segments[k]->getBeg()->SetMarker(initial);
-			segments[k]->getEnd()->SetMarker(initial);
-			intersections.insert(std::make_pair(position(segments[k]->getBeg()->Coords().data()),segments[k]->getBeg()));
-			intersections.insert(std::make_pair(position(segments[k]->getEnd()->Coords().data()),segments[k]->getEnd()));
+			events.insert(std::make_pair(std::make_pair(segments[k]->getBeg()->RealArray(pnt)[0],SEG_START),k));
+			events.insert(std::make_pair(std::make_pair(segments[k]->getEnd()->RealArray(pnt)[0],SEG_END), k));
+			segments[k]->getBeg()->SetPrivateMarker(initial);
+			segments[k]->getEnd()->SetPrivateMarker(initial);
+			intersections.insert(std::make_pair(Point(segments[k]->getBeg()->RealArray(pnt).data()),segments[k]->getBeg()));
+			intersections.insert(std::make_pair(Point(segments[k]->getEnd()->RealArray(pnt).data()),segments[k]->getEnd()));
 		}
 
 
@@ -641,7 +495,7 @@ namespace INMOST
 			{
 				if( print ) std::cout << "Segment " << s << " start" << std::endl;
 				//check if there is a line with same position
-				Point p = make_point(segments[s],p0beg,p0end,p1beg,p1end);
+				Point p(segments[s]->getBeg()->RealArray(pnt).data());
 				std::multimap<Point, int>::iterator ins = sweep.insert(std::make_pair(p, s));
 				if (print)
 				{
@@ -661,11 +515,11 @@ namespace INMOST
 						if (segments[s]->getBeg() != segments[iter->second]->getBeg()) //ignore same starting position
 						{
 							if (print) std::cout << "checking intersection" << std::endl;
-							std::pair<bool,Node> I = intersect_segments(m,segments[s], segments[iter->second],intersections,t1,t2,p0beg,p0end,p1beg,p1end,print);
+							std::pair<bool,Node> I = intersect_segments(m,segments[s], segments[iter->second],intersections,pnt,print);
 							if (I.first)
 							{
 								if( print ) std::cout << "Intersection of " << s << " " <<segments[s]->GetHandle() << " " << segments[s]->getBeg()->GetHandle() << " " << segments[s]->getEnd()->GetHandle() << " and " << iter->second << " " << segments[iter->second]->GetHandle() << " " << segments[iter->second]->getBeg()->GetHandle() << " " << segments[iter->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
-								intersect_event(m,s, iter->second, I.second, segments, sweep, events,transfer,print);
+								intersect_event(m,s, iter->second, I.second, segments, sweep, events,transfer, pnt, print);
 								//break;
 							}
 						}
@@ -679,7 +533,7 @@ namespace INMOST
 			{
 				if( print ) std::cout << "Segment " << s << " end" << std::endl;
 				//remove segment from sweep
-				Point p = make_point(segments[s],p0beg,p0end,p1beg,p1end);
+				Point p(segments[s]->getBeg()->RealArray(pnt).data());
 				std::pair< std::multimap<Point, int>::iterator, std::multimap<Point, int>::iterator > range = sweep.equal_range(p);
 				if( print ) std::cout << "Range distance " << std::distance(range.first,range.second) << " sweep size " << sweep.size() << std::endl;
 				std::multimap<Point, int>::iterator above = range.second, below = range.first;
@@ -711,11 +565,11 @@ namespace INMOST
 					if (segments[above->second]->getBeg() != segments[below->second]->getBeg())
 					{
 						if (print) std::cout << "checking intersection" << std::endl;
-						std::pair<bool,Node> I = intersect_segments(m, segments[below->second], segments[above->second],intersections,t1,t2,p0beg,p0end,p1beg,p1end,print);
+						std::pair<bool,Node> I = intersect_segments(m, segments[below->second], segments[above->second],intersections,pnt,print);
 						if (I.first)
 						{
 							if( print ) std::cout << "Intersection of " << below->second << " " << segments[below->second]->GetHandle() << " " << segments[below->second]->getBeg()->GetHandle() << " " << segments[below->second]->getEnd()->GetHandle() << " and " << above->second << " " << segments[above->second]->GetHandle() << " " << segments[above->second]->getBeg()->GetHandle() << " " << segments[above->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
-							intersect_event(m,below->second, above->second, I.second, segments, sweep, events,transfer,print);
+							intersect_event(m,below->second, above->second, I.second, segments, sweep, events,transfer,pnt, print);
 						}
 					}
 					else if (print) std::cout << "skipping segments with same starting point" << std::endl;
@@ -724,13 +578,13 @@ namespace INMOST
 		}
 		//copy intersections
 		nodes.clear();
-		for(std::map<position,Node,position_less>::iterator it = intersections.begin(); it != intersections.end(); ++it)
+		for(std::map<Point,Node>::iterator it = intersections.begin(); it != intersections.end(); ++it)
 		{
-			if( !it->second->GetMarker(initial) )
+			if( !it->second->GetPrivateMarker(initial) )
 				nodes.push_back(it->second);
-			else it->second->RemMarker(initial);
+			else it->second->RemPrivateMarker(initial);
 		}
-		m->ReleaseMarker(initial);
+		m->ReleasePrivateMarker(initial);
 	}
 	
 	void block_number_intersection(ElementArray<Element> & adj, Tag block, std::vector<int> & out)
@@ -1248,12 +1102,12 @@ ecl_exit_loop:
 		}
 		else if( gtype == ECL_GTYPE_ZCORN )
 		{
-			SetTopologyCheck(PRINT_NOTIFY | NEED_TEST_CLOSURE | PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE | MARK_ON_ERROR);
-			SetTopologyCheck(DEGENERATE_EDGE | DEGENERATE_FACE | DEGENERATE_CELL);
-			SetTopologyCheck(TRIPLE_SHARED_FACE | FLATTENED_CELL | INTERLEAVED_FACES);
-			SetTopologyCheck(DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL);
-			SetTopologyCheck(ADJACENT_DUPLICATE | ADJACENT_DIMENSION);
-			RemTopologyCheck(THROW_EXCEPTION);
+			//SetTopologyCheck(PRINT_NOTIFY | NEED_TEST_CLOSURE | PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE | MARK_ON_ERROR);
+			//SetTopologyCheck(DEGENERATE_EDGE | DEGENERATE_FACE | DEGENERATE_CELL);
+			//SetTopologyCheck(TRIPLE_SHARED_FACE | FLATTENED_CELL | INTERLEAVED_FACES);
+			//SetTopologyCheck(DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL);
+			//SetTopologyCheck(ADJACENT_DUPLICATE | ADJACENT_DIMENSION);
+			//RemTopologyCheck(THROW_EXCEPTION);
 			//actnum.clear();
 			if( zcorn.empty() )
 			{
@@ -1561,6 +1415,8 @@ ecl_exit_loop:
 				//some intermediate info
 				bool print_info = false;
 				
+				//check_shared_mrk = false;
+				//check_private_mrk = false;
 
 				//go over nx pairs of pillars, then ny pairs of pillars
 				for(int q = 0; q < 2; ++q)
@@ -1586,13 +1442,19 @@ ecl_exit_loop:
 						MarkerType mrk = CreatePrivateMarker();
 						//mark original edges of each block face, so that we know outer boundary on constructed interface
 						MarkerType outer = CreatePrivateMarker();
+						//remember visited edges
+						MarkerType visited = CreatePrivateMarker();
+						//create tag that will be used for intersection of segments in projected space of [0,1]^2 quad
+						std::stringstream tag_name;
+						tag_name << "PROJ_PNT_PROC_" << GetLocalProcessorNumber();
+						Tag pnt = CreateTag(tag_name.str(),DATA_REAL,NODE,NONE,2);
 #if defined(USE_OMP)
 #pragma omp for
 #endif
 						for(int i = 0; i < dims[0]+q; i++)
 						{
-							//printf("%s %6.2f%%\r",q ? "ny":"nx", ((double)i)/((double)dims[0]+q-1)*100);
-							//fflush(stdout);
+							printf("%s %6.2f%%\r",q ? "ny":"nx", ((double)i)/((double)dims[0]+q-1)*100);
+							fflush(stdout);
 							for(int j = 0; j < dims[1]+!q; ++j)
 							{
 								if( print_info )
@@ -1603,10 +1465,21 @@ ecl_exit_loop:
 								//p1 is at i+1,j, when q = 0 and at i,j+1, when q = 1
 								pillar & p0 = pillars[(i+ 0)*(dims[1]+1)+j+0];
 								pillar & p1 = pillars[(i+!q)*(dims[1]+1)+j+q];
+								//add projected point information
+								for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)
+								{
+									Storage::real_array pos = it->second->RealArray(pnt);
+									pos[0] = (it->first-coords_array[i][j][1][2])/(coords_array[i][j][0][2]-coords_array[i][j][1][2]);
+									pos[1] = 0;
+								}
+								for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)
+								{
+									Storage::real_array pos = it->second->RealArray(pnt);
+									pos[0] = (it->first-coords_array[i+!q][j+q][1][2])/(coords_array[i+!q][j+q][0][2]-coords_array[i+!q][j+q][1][2]);
+									pos[1] = 1;
+								}
 								//preallocate array for edges
 								edges.reserve(2*std::max(p0.size(),p1.size()));
-								//remember visited edges
-								MarkerType visited = CreateMarker();
 								//add far faces of j-1 block
 								if( (1-q)*j + q*i > 0 ) //test j when q = 0 and i when q = 1
 								{
@@ -1623,10 +1496,10 @@ ecl_exit_loop:
 											{
 												//edge_nodes.SetMarker(used);
 												Edge e = CreateEdge(edge_nodes).first;
-												if( !e->GetMarker(visited) )
+												if( !e->GetPrivateMarker(visited) )
 												{
 													edges.push_back(e);
-													e->SetMarker(visited);
+													e->SetPrivateMarker(visited);
 												}
 												e->IntegerArray(block_number).push_back((i-q + (j-!q+k*dims[1])*dims[0]));
 												e->IntegerArray(edge_number).push_back(1 + 2*l + 4*q);
@@ -1656,10 +1529,10 @@ ecl_exit_loop:
 											{
 												//edge_nodes.SetMarker(used);
 												Edge e = CreateEdge(edge_nodes).first;
-												if( !e->GetMarker(visited) )
+												if( !e->GetPrivateMarker(visited) )
 												{
 													edges.push_back(e);
-													e->SetMarker(visited);
+													e->SetPrivateMarker(visited);
 												}
 												e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
 												e->IntegerArray(edge_number).push_back(0 + 2*l + 4*q);
@@ -1673,9 +1546,7 @@ ecl_exit_loop:
 										}
 									}
 								}
-								edges.RemMarker(visited);
-								ReleaseMarker(visited);
-
+								edges.RemPrivateMarker(visited);
 								//produce intersected edges
 								if( print_inter )
 								{
@@ -1697,8 +1568,8 @@ ecl_exit_loop:
 								}
 								assert(count_duplicates(edges) == 0);
 								//i << "," << j << " and " << i+!q << "," << j+q <<
-								//intersect(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
-								intersect_naive(this,edges,intersections,transfer,&coords_array[i][j][0][0],&coords_array[i][j][1][0],&coords_array[i+!q][j+q][0][0],&coords_array[i+!q][j+q][1][0],print_inter);
+								//intersect(this,edges,intersections,transfer,pnt,print_inter);
+								intersect_naive(this,edges,intersections,transfer,pnt,print_inter);
 								assert(count_duplicates(edges) == 0);
 								if( print_inter ) std::cout << "intersections: " << intersections.size() << std::endl;
 								if( print_inter )
@@ -1996,10 +1867,12 @@ ecl_exit_loop:
 								intersections.clear();
 							} //j
 						} //i
+						DeleteTag(pnt);
+						ReleasePrivateMarker(visited);
 						ReleasePrivateMarker(mrk);
 						ReleasePrivateMarker(outer);
-						//printf("\n");
-					}
+					} //omp parallel
+					printf("\n");
 				} //q
 				//do not need this tag on nodes
 				DeleteTag(block_number, NODE);

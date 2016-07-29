@@ -92,8 +92,11 @@ namespace INMOST
 		return "UNKNOWN";
 	}
 
-  void Mesh::Init(std::string name)
-  {
+	void Mesh::Init(std::string name)
+	{
+#if defined(CHECKS_MARKERS)
+		check_shared_mrk = check_private_mrk = false;
+#endif
 		m_link = this;
 		integer selfid = 1;
 		selfid = TieElement(5);
@@ -147,16 +150,16 @@ namespace INMOST
 	Mesh::Mesh()
 	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
 	{
-    std::stringstream tmp;
-    tmp << "Mesh" << allocated_meshes.size();
-    name = tmp.str();
-    Init(name);
+		std::stringstream tmp;
+		tmp << "Mesh" << allocated_meshes.size();
+		name = tmp.str();
+		Init(name);
 	}
 
-  Mesh::Mesh(std::string name)
+	Mesh::Mesh(std::string name)
 	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
 	{
-    Init(name);
+		Init(name);
 	}
 
   bool Mesh::GetPrivateMarker(HandleType h, MarkerType n) const
@@ -284,11 +287,15 @@ namespace INMOST
 	Mesh::Mesh(const Mesh & other)
 	:TagManager(other),Storage(NULL,ComposeHandle(MESH,0))
 	{
-    {
-      std::stringstream tmp;
-      tmp << other.name << "_copy";
-      name = tmp.str();
-    }
+		{
+			std::stringstream tmp;
+			tmp << other.name << "_copy";
+			name = tmp.str();
+		}
+#if defined(CHECKS_MARKERS)
+		check_shared_mrk = other.check_shared_mrk;
+		check_private_mrk = other.check_private_mrk;
+#endif
 		m_link = this;
 		integer selfid = 1;
 		selfid = TieElement(5);
@@ -361,11 +368,15 @@ namespace INMOST
 	Mesh & Mesh::operator =(Mesh const & other)
 	{
 		if( this == &other ) return *this; //don't do anything
-    {
-      std::stringstream tmp;
-      tmp << other.name << "_copy";
-      name = tmp.str();
-    }
+		{
+			std::stringstream tmp;
+			tmp << other.name << "_copy";
+			name = tmp.str();
+		}
+#if defined(CHECKS_MARKERS)
+		check_shared_mrk = other.check_shared_mrk;
+		check_private_mrk = other.check_private_mrk;
+#endif
 		//first delete everything
 		//delete parallel vars
 #if defined(USE_MPI)
@@ -1888,30 +1899,50 @@ namespace INMOST
 		}
 #if defined(CHECKS_MARKERS)
 #ifndef NDEBUG
-		for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
+		if( check_shared_mrk )
 		{
-			integer end = LastLocalIDNum(etypenum);
-			for(integer id = 0; id < end; ++id) 
-				if( isValidElementNum(etypenum,id) )
-					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");
+			for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
+			{
+				integer end = LastLocalIDNum(etypenum);
+				for(integer id = 0; id < end; ++id)
+					if( isValidElementNum(etypenum,id) )
+						assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");
+			}
 		}
 #endif
 #endif
 		Storage::RemMarker(n);
 	}
 
-	void Mesh::ReleasePrivateMarker(MarkerType n)
+	void Mesh::ReleasePrivateMarker(MarkerType n, ElementType cleanup)
 	{
 		assert(isPrivate(n));
+		if( cleanup )
+		{
+			for(ElementType etype = NODE; etype < MESH; etype = NextElementType(etype)) if( cleanup & etype )
+			{
+				integer end = LastLocalID(etype);
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for(integer id = 0; id < end; ++id)
+					if( isValidElement(etype,id) )
+						RemPrivateMarker(ComposeHandle(etype,id),n);
+			}
+		}
 #if defined(CHECKS_MARKERS)
 #ifndef NDEBUG
-		int thread = GetLocalProcessorRank();
-		for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
+		if( check_private_mrk )
 		{
-			integer end = LastLocalIDNum(etypenum);
-			for(integer id = 0; id < end; ++id) 
-				if( isValidElementNum(etypenum,id) )
-					assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,tag_private_marker[thread]))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) == 0 && "marker was not properly cleared from elements");
+			int thread = GetLocalProcessorRank();
+			MarkerType pn = n & ~MarkerPrivateBit;
+			for(int etypenum = 0; etypenum < ElementNum(MESH); ++etypenum)
+			{
+				integer end = LastLocalIDNum(etypenum);
+				for(integer id = 0; id < end; ++id)
+					if( isValidElementNum(etypenum,id) )
+						assert((static_cast<const bulk *>(MGetDenseLink(etypenum,id,tag_private_markers[thread]))[pn >> MarkerShift] & static_cast<bulk>(pn & MarkerMask)) == 0 && "marker was not properly cleared from elements");
+			}
 		}
 #endif
 #endif

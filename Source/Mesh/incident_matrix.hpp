@@ -147,7 +147,7 @@ namespace INMOST
 				for(typename ElementArray<T>::size_type j = 1; j < data.size(); j++)
 				{
 					n1 = data[j]->getNodes();
-					assert(nodes.back() == n1[0] || nodes.back() == n1[1]);
+					assert((nodes.back() == n1[0] || nodes.back() == n1[1]));
 					if( nodes.back() == n1[0] )
 						nodes.push_back(n1[1]);
 					else
@@ -434,10 +434,19 @@ namespace INMOST
 			//isInputForwardIterators<T,InputIterator>();
 			if( !head_column.empty() )
 			{
-				MarkerType hide_marker = mesh->CreateMarker();
+				MarkerType hide_marker = mesh->CreatePrivateMarker();
 				
 				visits.resize(head_column.size());
 				visits0.resize(head_column.size());
+				/*
+				for(typename dynarray<HandleType, 256>::size_type it = 0; it < head_column.size(); ++it)
+				{
+					Element::adj_type const & sub = mesh->LowConn(head_column[it]);
+					for(Element::adj_type::size_type jt = 0; jt < sub.size(); ++jt)
+						if( mesh->GetPrivateMarker(sub[jt],hide_marker) )
+							printf("element %s:%d already have marker %d\n",ElementTypeName(GetHandleElementType(sub[jt])),GetHandleID(sub[jt]),hide_marker);
+				}
+				 */
 				for(typename dynarray<HandleType, 256>::size_type it = 0; it < head_column.size(); ++it)
 				{
 					visits[it] = it < num_inner ? 2 : 1;
@@ -445,21 +454,21 @@ namespace INMOST
 					Element::adj_type const & sub = mesh->LowConn(head_column[it]);
 					for(Element::adj_type::size_type jt = 0; jt < sub.size(); ++jt)
 					{
-						if( !mesh->GetMarker(sub[jt],hide_marker) )
+						if( !mesh->GetPrivateMarker(sub[jt],hide_marker) )
 						{
 							head_row.push_back(sub[jt]);
-							mesh->SetMarker(sub[jt],hide_marker);
+							mesh->SetPrivateMarker(sub[jt],hide_marker);
 						}
 					}
 				}
 				tiny_map<HandleType,int,256> mat_num;
 				for(dynarray<HandleType,256>::size_type it = 0; it < head_row.size(); ++it)
 				{
-					mesh->RemMarker(head_row[it],hide_marker);
+					mesh->RemPrivateMarker(head_row[it],hide_marker);
 					mat_num[head_row[it]] = static_cast<int>(it);
 				}
 				
-				mesh->ReleaseMarker(hide_marker);
+				mesh->ReleasePrivateMarker(hide_marker);
 				
 				matrix.resize(head_row.size()*head_column.size(),0);
 				
@@ -538,19 +547,19 @@ namespace INMOST
 			{
 				std::vector<int> add_remember;
 				add_remember.reserve(min_loop.size());
-				MarkerType hide_marker = mesh->CreateMarker();
-				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetMarker(ret.at(k),hide_marker);
+				MarkerType hide_marker = mesh->CreatePrivateMarker();
+				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetPrivateMarker(ret.at(k),hide_marker);
 				if( print ) std::cout << "return loop [" << ret.size() << "]:";
 				for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
-					if( mesh->GetMarker(head_column[k],hide_marker) )
+					if( mesh->GetPrivateMarker(head_column[k],hide_marker) )
 					{
 						visits[k]--;
 						add_remember.push_back((int)k);
 						if( print ) std::cout << k << " ";
 					}
 				if( print ) std::cout << std::endl;
-				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemMarker(ret.at(k),hide_marker);
-				mesh->ReleaseMarker(hide_marker);
+				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemPrivateMarker(ret.at(k),hide_marker);
+				mesh->ReleasePrivateMarker(hide_marker);
 				remember.push_back(std::make_pair(add_remember,min_loop_measure));
 				return true;
 			}

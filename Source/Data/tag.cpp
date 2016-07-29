@@ -295,7 +295,7 @@ namespace INMOST
 		bool need_sparse[6] = {false,false,false,false,false,false};
 #endif
 		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
-    {
+		{
 			if( tags[i].GetTagName() == name )
 			{
 				assert( tags[i].GetDataType() == dtype && (size == ENUMUNDEF || size == tags[i].GetSize()) );
@@ -306,16 +306,16 @@ namespace INMOST
 				new_tag = tags[i];
 				break;
 			}
-    }
+		}
 		if( !new_tag.isValid() )
 		{
 			new_tag = Tag(m,name,dtype,size);
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-      {
-			  tags.push_back(new_tag);
-      }
+			{
+				tags.push_back(new_tag);
+			}
 		}
 		for(ElementType mask = NODE; mask <= MESH; mask = mask << 1)
 		{
@@ -331,20 +331,20 @@ namespace INMOST
 				}
 				else
 				{
-          INMOST_DATA_ENUM_TYPE new_pos = ENUMUNDEF;
+					INMOST_DATA_ENUM_TYPE new_pos = ENUMUNDEF;
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-          {
-					  new_pos = static_cast<INMOST_DATA_ENUM_TYPE>(dense_data.size());
-					  if( !empty_dense_data.empty() )
-					  {
-						  new_pos = empty_dense_data.back();
-						  empty_dense_data.pop_back();
-						  dense_data[new_pos] = dense_sub_type(new_tag.GetRecordSize());
-					  }
-					  else dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()));
-          }
+					{
+						new_pos = static_cast<INMOST_DATA_ENUM_TYPE>(dense_data.size());
+						if( !empty_dense_data.empty() )
+						{
+							new_pos = empty_dense_data.back();
+							empty_dense_data.pop_back();
+							dense_data[new_pos] = dense_sub_type(new_tag.GetRecordSize());
+						}
+						else dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()));
+					}
 					new_tag.SetPosition(new_pos,mask);
 					INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(ElementNum(mask));
 					if( new_size < 1024 && mask != MESH ) new_size = 1024;
@@ -363,9 +363,9 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-        {
-				  sparse_data[j].resize(new_size);
-        }
+				{
+					sparse_data[j].resize(new_size);
+				}
 			}
 #endif
 		return new_tag;
