@@ -67,7 +67,7 @@ namespace INMOST
 		dynarray< char , 256 > hide_column;
 		dynarray< char , 256 > hide_row;
 		dynarray< char , 256 > stub_row;
-		std::vector< std::pair<std::vector<int>,double> > remember;
+		//std::vector< std::pair<std::vector<int>,double> > remember;
 		double min_loop_measure;
 		bool print;
 		
@@ -401,6 +401,7 @@ namespace INMOST
 				std::cout << " " << cnt[0] << " " << cnt[1] << " " << cnt[2];
 				std::cout << std::endl;
 			}
+			/*
 			std::cout << "loops [" << remember.size() << "]:" << std::endl;
 			for(size_t k = 0; k < remember.size(); ++k)
 			{
@@ -409,6 +410,7 @@ namespace INMOST
 					std::cout << remember[k].first[l] << ", ";
 				std::cout << remember[k].first.back() << " measure " << remember[k].second << std::endl;
 			}
+			 */
 			if( GetHandleElementType(head_column[0]) == EDGE )
 			{
 				std::cout << "edges [" << head_column.size() << "]" << std::endl;
@@ -532,7 +534,7 @@ namespace INMOST
 					if( min_loop.empty() )
 					{
 						if( print ) std::cout << "abandon " << first << std::endl;
-						remember.push_back(std::make_pair(std::vector<int>(1,first),-1.0));
+						//remember.push_back(std::make_pair(std::vector<int>(1,first),-1.0));
 						visits[first]--; //don't start again from this element
 					}
 				}
@@ -545,8 +547,8 @@ namespace INMOST
 			
 			if( !ret.empty() )
 			{
-				std::vector<int> add_remember;
-				add_remember.reserve(min_loop.size());
+				//std::vector<int> add_remember;
+				//add_remember.reserve(min_loop.size());
 				MarkerType hide_marker = mesh->CreatePrivateMarker();
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetPrivateMarker(ret.at(k),hide_marker);
 				if( print ) std::cout << "return loop [" << ret.size() << "]:";
@@ -554,13 +556,13 @@ namespace INMOST
 					if( mesh->GetPrivateMarker(head_column[k],hide_marker) )
 					{
 						visits[k]--;
-						add_remember.push_back((int)k);
+						//add_remember.push_back((int)k);
 						if( print ) std::cout << k << " ";
 					}
 				if( print ) std::cout << std::endl;
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemPrivateMarker(ret.at(k),hide_marker);
 				mesh->ReleasePrivateMarker(hide_marker);
-				remember.push_back(std::make_pair(add_remember,min_loop_measure));
+				//remember.push_back(std::make_pair(add_remember,min_loop_measure));
 				return true;
 			}
 			return false;

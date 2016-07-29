@@ -25,10 +25,15 @@
 // 5. (ok) populate keywords data, poro, perm, actnum, satnum, etc...
 // 5.1 add saturation, pressure
 // 6. local grid refinement
+// 6.1 radial local grid refinement
+// 6.2 nested local grid refinement
 // 7. (ok) omp-parallel loading
 // 8. mpi-parallel loading
-// 9. do not convert arrays xyz and zcorn
+// 9. (ok) do not convert arrays xyz and zcorn
 //10. read wells into sets
+//11. optimize:
+//11.1 detect that pillars have no faults, skip intersection in this case
+//11.2 skip incident_matrix algorithm when no inner edges found
 
 //eclipse states
 #define ECLSTRCMP(x,y) strncmp(x,y,8)
@@ -65,6 +70,8 @@
 #define ECL_VAR_INT 2
 
 #define ECL_IJK_DATA(i,j,k) (i + ((j)+(k)*dims[1])*dims[0])
+#define ECL_IJK_COORDS(i,j,l,coord) ((((i) + (j)*(dims[0]+1))*2+(l))*3+(coord))
+#define ECL_IJK_ZCORN(i,j,k,l) ((k)*dims[1]*dims[0]*8 + (1-(l)/4)*dims[1]*dims[0]*4 + (j)*dims[0]*4 + ((l)/2%2)*dims[0]*2 + (i)*2 + (l)%2)
 
 //line sweep events
 #define SEG_START 0
@@ -84,37 +91,76 @@ namespace INMOST
 	//2d point with comparison operator for line sweep algorithm
 	struct Point
 	{
-		double x, y;
+		const Storage::real eps;
+		Storage::real x, y;
 		Point & operator = (Point const & b) {  x = b.x; y = b.y; return *this; }
-		Point(const Point & b) : x(b.x), y(b.y) {}
-		Point(double _x, double _y) : x(_x), y(_y) {}
-		Point(double v[2]) : x(v[0]), y(v[1]) {}
+		Point(const Point & b) : eps(1.0e-7), x(b.x), y(b.y) {}
+		Point(Storage::real _x, Storage::real _y) : eps(1.0e-7), x(_x), y(_y) {}
+		Point(Storage::real v[2]) : eps(1.0e-7), x(v[0]), y(v[1]) {}
 		bool operator <(const Point & b) const
 		{
-			if (y < b.y - 1.0e-7) return true;
-			else if (y > b.y + 1.0e-7) return false;
-			else if (x < b.x - 1.0e-7) return true;
+			if (y < b.y - eps) return true;
+			else if (y > b.y + eps) return false;
+			else if (x < b.x - eps) return true;
 			else return false;
 		}
 		bool operator ==(const Point & b) const
 		{
-			return fabs(y - b.y) < 1.0e-7 && fabs(x - b.x) < 1.0e-7;
+			return fabs(y - b.y) < eps && fabs(x - b.x) < eps;
 		}
 		bool operator !=(const Point & b) const
 		{
-			return fabs(y - b.y) > 1.0e-7 || fabs(x - b.x) > 1.0e-7;
+			return fabs(y - b.y) > eps || fabs(x - b.x) > eps;
 		}
 	};
-	
+	//class that returns a Point into 3d space based on coords of two pillars
+	class Unproject
+	{
+		Storage::real a0[3], a1[3], b0[3], b1[3];
+	public:
+		Unproject(Storage::real _a0[3], Storage::real _a1[3], Storage::real _b0[3], Storage::real _b1[3])
+		{
+			memcpy(a0,_a0,sizeof(Storage::real)*3);
+			memcpy(a1,_a1,sizeof(Storage::real)*3);
+			memcpy(b0,_b0,sizeof(Storage::real)*3);
+			memcpy(b1,_b1,sizeof(Storage::real)*3);
+		}
+		Unproject(const Unproject & b)
+		{
+			memcpy(a0,b.a0,sizeof(Storage::real)*3);
+			memcpy(a1,b.a1,sizeof(Storage::real)*3);
+			memcpy(b0,b.b0,sizeof(Storage::real)*3);
+			memcpy(b1,b.b1,sizeof(Storage::real)*3);
+		}
+		Unproject & operator =(Unproject const & b)
+		{
+			memmove(a0,b.a0,sizeof(Storage::real)*3);
+			memmove(a1,b.a1,sizeof(Storage::real)*3);
+			memmove(b0,b.b0,sizeof(Storage::real)*3);
+			memmove(b1,b.b1,sizeof(Storage::real)*3);
+			return *this;
+		}
+		void Act(const Point & p, Storage::real v[3]) const
+		{
+			Storage::real a, b;
+			for(int k = 0; k < 3; ++k)
+			{
+				a = (p.x)*a0[k] + (1-p.x)*a1[k];
+				b = (p.x)*b0[k] + (1-p.x)*b1[k];
+				v[k] = (1-p.y)*a+p.y*b;
+			}
+		}
+	};
 	//Comparator for events in line sweep algorithm
 	class event_less
 	{
 	public:
-		bool operator()(const std::pair<double, int> & a, const std::pair<double, int> & b) const
+		bool operator()(const std::pair<Storage::real, int> & a, const std::pair<Storage::real, int> & b) const
 		{
-			if (a.first < b.first - 1.0e-5)
+			const Storage::real eps = 1.0e-7;
+			if (a.first < b.first - eps)
 				return true;
-			else if (a.first > b.first + 1.0e-5)
+			else if (a.first > b.first + eps)
 				return false;
 			else if (a.second < b.second)
 				return true;
@@ -127,7 +173,8 @@ namespace INMOST
 	public:
 		bool operator()(Storage::real a, Storage::real b) const
 		{
-			if( a < b - 1.0e-5)
+			const Storage::real eps = 1.0e-7;
+			if( a < b - eps)
 				return true;
 			return false;
 		}
@@ -181,8 +228,9 @@ namespace INMOST
 	
 	
 	
-	std::pair<bool,Node> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::map<Point,Node> & intersections, Tag pnt, bool print)
+	std::pair<bool,Node> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::map<Point,Node> & intersections, Tag pnt, const Unproject & unp, bool print)
 	{
+		const Storage::real eps = 1.0e-9;
 		if( a->getBeg() == b->getBeg() || a->getBeg() == b->getEnd() || a->getEnd() == b->getEnd() || a->getEnd() == b->getBeg() )
 			return std::make_pair(false,InvalidNode());
 		Storage::real_array abeg = a->getBeg()->Coords();
@@ -212,29 +260,26 @@ namespace INMOST
 			return std::make_pair(false,InvalidNode());
 		if (print) std::cout << "found ("<< pfind.x << ", " << pfind.y << ")" << std::endl;
 		//probably some of these tests are redundant
-		if (fabs(paend.x - pabeg.x) > 1.0e-9)
+		if (fabs(paend.x - pabeg.x) > eps)
 		{
 			t1 = (pfind.x - pabeg.x) / (paend.x - pabeg.x);
-			if (t1 < 1.0e-4 || t1 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t1 < eps || t1 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
-		if (fabs(paend.y - pabeg.y) > 1.0e-9)
+		if (fabs(paend.y - pabeg.y) > eps)
 		{
 			t1 = (pfind.y - pabeg.y) / (paend.y - pabeg.y);
-			if (t1 < 1.0e-4 || t1 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t1 < eps || t1 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
-		if (fabs(pbend.x - pbbeg.x) > 1.0e-9)
+		if (fabs(pbend.x - pbbeg.x) > eps)
 		{
 			t2 = (pfind.x - pbbeg.x) / (pbend.x - pbbeg.x);
-			if (t2 < 1.0e-4 || t2 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t2 < eps || t2 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
-		if (fabs(pbend.y - pbbeg.y) > 1.0e-9)
+		if (fabs(pbend.y - pbbeg.y) > eps)
 		{
 			t2 = (pfind.y - pbbeg.y) / (pbend.y - pbbeg.y);
-			if (t2 < 1.0e-4 || t2 > 1.0 - 1.0e-4)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t2 < eps || t2 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
-		//restore third coordinate
-		for(int k = 0; k < 3; ++k)
-			find[k] = 0.5*((1-t1)*abeg[k]+t1*aend[k] + (1-t2)*bbeg[k]+t2*bend[k]);
 		if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
 		Node I;
 		std::map<Point,Node>::iterator search = intersections.find(pfind);
@@ -243,6 +288,10 @@ namespace INMOST
 			I = search->second;
 		else //no node, create one
 		{
+			//restore coordinate
+			//for(int k = 0; k < 3; ++k)
+			//	find[k] = 0.5*((1-t1)*abeg[k]+t1*aend[k] + (1-t2)*bbeg[k]+t2*bend[k]);
+			unp.Act(pfind,find);
 			I = m->CreateNode(find);
 			Storage::real_array _pfind = I->RealArray(pnt);
 			_pfind[0] = pfind.x;
@@ -256,12 +305,12 @@ namespace INMOST
 	}
 
 	 
-	void check_multimap(std::multimap<std::pair<double,int>, int,event_less> & events, const std::multimap<std::pair<double,int>, int,event_less>::iterator & it, bool print)
+	void check_multimap(std::multimap<std::pair<Storage::real,int>, int,event_less> & events, const std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator & it, bool print)
 	{
 		if( print )
 		{
 			{
-				std::multimap<std::pair<double,int>, int,event_less>::iterator jt = it;
+				std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator jt = it;
 				++jt;
 				if( jt != events.end() )
 				{
@@ -272,7 +321,7 @@ namespace INMOST
 			}
 			if( it != events.begin() )
 			{
-				std::multimap<std::pair<double,int>, int,event_less>::iterator  jt = it;
+				std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator  jt = it;
 				--jt;
 				std::cout << "prev     " << std::scientific << jt->first.first << " " << jt->first.second << " segment " << jt->second << std::endl;
 				std::cout << "inserted " << std::scientific << it->first.first << " " << it->first.second << " segment " << it->second << std::endl;
@@ -320,7 +369,7 @@ namespace INMOST
 	
 
 
-	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, bool print)
+	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, bool print)
 	{
 		//Tag pnt = m->CreateTag("PROJ_PNT"+m->GetLocalProcessorRank(),DATA_REAL,NODE,NODE,2);
 		std::map<Point,Node> intersections;
@@ -341,7 +390,7 @@ namespace INMOST
 		{
 			for(int j = i+1; j < (int)segments.size(); ++j)
 			{
-				std::pair<bool,Node> I = intersect_segments(m,segments[i],segments[j],intersections,pnt,print);
+				std::pair<bool,Node> I = intersect_segments(m,segments[i],segments[j],intersections,pnt,unp,print);
 				if( I.first )
 				{
 					ElementArray<Edge> splitted_a, splitted_b;
@@ -365,7 +414,7 @@ namespace INMOST
 	}
 
 	//account for intersection event
-	void intersect_event(Mesh * m, int a, int b, Node I, ElementArray<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<double,int>, int,event_less> & events, std::vector<Tag> & transfer, Tag pnt, bool print)
+	void intersect_event(Mesh * m, int a, int b, Node I, ElementArray<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<Storage::real,int>, int,event_less> & events, std::vector<Tag> & transfer, Tag pnt, bool print)
 	{
 		const bool checkmm = false;
 		//remove event of ending of old segment
@@ -375,9 +424,9 @@ namespace INMOST
 			rem_end_events[1] = b;
 			for (int k = 0; k < 2; ++k)
 			{
-				std::pair< std::multimap<std::pair<double,int>, int,event_less>::iterator, std::multimap<std::pair<double,int>,int,event_less>::iterator > del = events.equal_range(std::make_pair(segments[rem_end_events[k]]->getEnd()->RealArray(pnt)[0],SEG_END)); //get all events at position of the end
+				std::pair< std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator, std::multimap<std::pair<Storage::real,int>,int,event_less>::iterator > del = events.equal_range(std::make_pair(segments[rem_end_events[k]]->getEnd()->RealArray(pnt)[0],SEG_END)); //get all events at position of the end
 				bool flag = false;
-				for (std::multimap<std::pair<double,int>, int,event_less>::iterator it = del.first; it != del.second; ++it) //search over all events
+				for (std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator it = del.first; it != del.second; ++it) //search over all events
 				{
 					if (it->first.second == SEG_END && it->second == rem_end_events[k]) //event is end of segment and segment matches current
 					{
@@ -390,12 +439,12 @@ namespace INMOST
 				{
 					std::cout << "Cannot find proper ending event for segment " << rem_end_events[k] << std::endl;
 					std::cout << "Found events:" << std::endl;
-					for (std::multimap<std::pair<double,int>, int,event_less>::iterator it = del.first; it != del.second; ++it)
+					for (std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator it = del.first; it != del.second; ++it)
 						std::cout << "x: " << it->first.first << (it->first.second == SEG_END ? "end ":"start ") << " segment " << it->second << std::endl;
 					std::cout << "Was looking at " << segments[rem_end_events[k]]->getEnd()->Coords()[2] << " " << segments[rem_end_events[k]]->getEnd()->GetHandle() << std::endl;
 					std::cout << "Other side at " << segments[rem_end_events[k]]->getBeg()->Coords()[2] << " " << segments[rem_end_events[k]]->getBeg()->GetHandle() << std::endl;
 					std::cout << "All events: " << events.size() << std::endl;
-					for (std::multimap<std::pair<double, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
+					for (std::multimap<std::pair<Storage::real, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
 						std::cout << "x: " << it->first.first << " type " << (it->first.second == SEG_START ? "start" : "end") << " segment " << it->second << " " << segments[it->second]->GetHandle() << " " << segments[it->second]->getBeg()->GetHandle() << " " << segments[it->second]->getEnd()->GetHandle() <<std::endl;
 					
 				}
@@ -439,19 +488,19 @@ namespace INMOST
 		if (print)
 		{
 			std::cout << "Number of events: " << events.size() << std::endl;
-			for (std::multimap<std::pair<double, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
+			for (std::multimap<std::pair<Storage::real, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
 				std::cout << "x: " << it->first.first << " type " << (it->first.second == SEG_START ? "start" : "end") << " segment " << it->second << " " << segments[it->second]->GetHandle() << " " << segments[it->second]->getBeg()->GetHandle() << " " << segments[it->second]->getEnd()->GetHandle() << std::endl;
 			//assert(count_duplicates(segments) == 0);
 		}
 	}
 
 	//intersect many segments
-	void intersect(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, bool print)
+	void intersect(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, bool print)
 	{
 		std::map<Point,Node> intersections;
-		std::multimap<std::pair<double,int>,int,event_less> events;
+		std::multimap<std::pair<Storage::real,int>,int,event_less> events;
 		std::multimap<Point,int> sweep;
-		double t1,t2;
+		Storage::real t1,t2;
 		MarkerType initial = m->CreatePrivateMarker();
 	
 		if( print )
@@ -478,7 +527,7 @@ namespace INMOST
 		if (print)
 		{
 			std::cout << "Number of events: " << events.size() << std::endl;
-			for (std::multimap<std::pair<double, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
+			for (std::multimap<std::pair<Storage::real, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
 				std::cout << "x: " << it->first.first << " type " << (it->first.second == SEG_START ? "start" : "end") << " segment " << it->second << " " << segments[it->second]->GetHandle() << " " << segments[it->second]->getBeg()->GetHandle() << " " << segments[it->second]->getEnd()->GetHandle() << std::endl;
 		
 			std::cout << " Start parsing events" << std::endl;
@@ -486,7 +535,7 @@ namespace INMOST
 	
 		while (!events.empty())
 		{
-			std::multimap<std::pair<double,int>,int,event_less>::iterator first = events.begin();
+			std::multimap<std::pair<Storage::real,int>,int,event_less>::iterator first = events.begin();
 			int t = first->first.second;
 			int s = first->second;
 			events.erase(first);
@@ -514,7 +563,7 @@ namespace INMOST
 						if (segments[s]->getBeg() != segments[iter->second]->getBeg()) //ignore same starting position
 						{
 							if (print) std::cout << "checking intersection" << std::endl;
-							std::pair<bool,Node> I = intersect_segments(m,segments[s], segments[iter->second],intersections,pnt,print);
+							std::pair<bool,Node> I = intersect_segments(m,segments[s], segments[iter->second],intersections,pnt,unp,print);
 							if (I.first)
 							{
 								if( print ) std::cout << "Intersection of " << s << " " <<segments[s]->GetHandle() << " " << segments[s]->getBeg()->GetHandle() << " " << segments[s]->getEnd()->GetHandle() << " and " << iter->second << " " << segments[iter->second]->GetHandle() << " " << segments[iter->second]->getBeg()->GetHandle() << " " << segments[iter->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
@@ -564,7 +613,7 @@ namespace INMOST
 					if (segments[above->second]->getBeg() != segments[below->second]->getBeg())
 					{
 						if (print) std::cout << "checking intersection" << std::endl;
-						std::pair<bool,Node> I = intersect_segments(m, segments[below->second], segments[above->second],intersections,pnt,print);
+						std::pair<bool,Node> I = intersect_segments(m, segments[below->second], segments[above->second],intersections,pnt,unp,print);
 						if (I.first)
 						{
 							if( print ) std::cout << "Intersection of " << below->second << " " << segments[below->second]->GetHandle() << " " << segments[below->second]->getBeg()->GetHandle() << " " << segments[below->second]->getEnd()->GetHandle() << " and " << above->second << " " << segments[above->second]->GetHandle() << " " << segments[above->second]->getBeg()->GetHandle() << " " << segments[above->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
@@ -1119,7 +1168,8 @@ ecl_exit_loop:
 				throw BadFile;
 			}
 			//make arrays more human-readable
-			std::vector< std::vector< std::vector< std::vector< Storage::real > > > > zcorn_array, coords_array;
+			//std::vector< std::vector< std::vector< std::vector< Storage::real > > > > zcorn_array;//, coords_array;
+			/*
 			{
 				zcorn_array.resize(dims[0]);
 				for(int i = 0; i < dims[0]; i++)
@@ -1135,14 +1185,16 @@ ecl_exit_loop:
 				int pos = 0;
 				for(int k = 0; k < dims[2]; k++)
 				{
-					for(int q = 0; q < 2; q++)
+					for(int q = 0; q < 2; q++) //top-bottom
 						for(int j = 0; j < dims[1]; j++)
-							for(int m = 0; m < 2; m++)
+							for(int m = 0; m < 2; m++) //near-far
 								for(int i = 0; i < dims[0]; i++)
-									for(int l = 0; l < 2; l++)
+									for(int l = 0; l < 2; l++) //left-right
 										zcorn_array[i][j][k][l+m*2+(1-q)*4] = zcorn[pos++];
 				}
 			}
+			 */
+			/*
 			{
 				coords_array.resize(dims[0]+1);
 				for(int i = 0; i < dims[0]+1; i++)
@@ -1162,6 +1214,7 @@ ecl_exit_loop:
 							for(int k = 0; k < 3; k++)
 								coords_array[i][j][l][k] = xyz[pos++];
 			}
+			 */
 			//assemble pillars
 			{
 				//Tag node_number = CreateTag("NODE_NUMBER",DATA_INTEGER,NODE,NONE);
@@ -1182,6 +1235,8 @@ ecl_exit_loop:
 						//loop over nodes on pillar
 						for(int k = 0; k < dims[2]+1; k++)
 						{
+							Storage::real zpos[8], zalpha[8], z;
+							int nzpos = 0;
 							//loop over 8 blocks around node
 							for(int l = 0; l < 8; ++l)
 							{
@@ -1191,57 +1246,37 @@ ecl_exit_loop:
 								int bk = k + (l/4) - 1;
 								if( bi >= 0 && bj >= 0 && bk >= 0 && bi < dims[0] && bj < dims[1] && bk < dims[2] && (actnum.empty() || actnum[ECL_IJK_DATA(bi,bj,bk)]) )
 								{
-									//OPTIMIZE - can resolve locally that some nodes coincide
-									pillar::iterator search = p.find(zcorn_array[bi][bj][bk][7-l]);
-									Node n; //node added to pillar
-									if( search == p.end() )
+									bool found = false;
+									z = zcorn[ECL_IJK_ZCORN(bi,bj,bk,7-l)];
+									for(int q = 0; q < nzpos; ++q)
 									{
-										Storage::real node_xyz[3];
-										Storage::real alpha = (zcorn_array[bi][bj][bk][7-l]-coords_array[i][j][1][2])/(coords_array[i][j][0][2]-coords_array[i][j][1][2]);
-										node_xyz[0] = coords_array[i][j][1][0] + alpha * (coords_array[i][j][0][0] - coords_array[i][j][1][0]);
-										node_xyz[1] = coords_array[i][j][1][1] + alpha * (coords_array[i][j][0][1] - coords_array[i][j][1][1]);
-										node_xyz[2] = zcorn_array[bi][bj][bk][7-l];
-										int find = -1;
-										if( !old_nodes.empty() )
-										{
-											std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),node_xyz,CentroidComparator(this));
-											if( it != old_nodes.end() )
-											{
-												Storage::real_array c = RealArrayDF(*it,CoordsTag());
-												if( CentroidComparator(this).Compare(node_xyz,c.data()) == 0 )
-													find = static_cast<int>(it - old_nodes.begin());
-											}
-										}
-										n = find == -1 ? CreateNode(node_xyz) : Node(this,old_nodes[find]);
-										p.insert(std::make_pair(zcorn_array[bi][bj][bk][7-l],n));
-									} else n = search->second; //if
+										if( fabs(z-zpos[q]) < 1.0e-7 )
+											found = true;
+									}
+									if( !found )
+									{
+										zpos[nzpos] = z;
+										//zalpha[nzpos] = (z-coords_array[i][j][1][2])/(coords_array[i][j][0][2]-coords_array[i][j][1][2]);
+										zalpha[nzpos] = (z-xyz[ECL_IJK_COORDS(i,j,1,2)])/(xyz[ECL_IJK_COORDS(i,j,0,2)]-xyz[ECL_IJK_COORDS(i,j,1,2)]);
+										nzpos++;
+									}
 								}
 							}
-						}
-					}
-				}
-				/*
-				//this variant goes over blocks
-				for(int i = 0; i < dims[0]; i++)
-				{
-					for(int j = 0; j < dims[1]; j++)
-					{
-						for(int k = 0; k < dims[2]; k++) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
-						{
-							for(int l = 0; l < 8; ++l)
+							for(int l = 0; l < nzpos; ++l)
 							{
-								//pillar indexes
-								int i2 = i + l%2, j2 = j + (l/2)%2;
-								pillar & p = pillars[i2*(dims[1]+1) + j2];
-								pillar::iterator search = p.find(zcorn_array[i][j][k][l]);
+								pillar::iterator search = p.find(zpos[l]);
 								Node n; //node added to pillar
 								if( search == p.end() )
 								{
 									Storage::real node_xyz[3];
-									Storage::real alpha = (zcorn_array[i][j][k][l]-coords_array[i2][j2][1][2])/(coords_array[i2][j2][0][2]-coords_array[i2][j2][1][2]);
-									node_xyz[0] = coords_array[i2][j2][1][0] + alpha * (coords_array[i2][j2][0][0] - coords_array[i2][j2][1][0]);
-									node_xyz[1] = coords_array[i2][j2][1][1] + alpha * (coords_array[i2][j2][0][1] - coords_array[i2][j2][1][1]);
-									node_xyz[2] = zcorn_array[i][j][k][l];
+									Storage::real alpha = zalpha[l];
+									/*
+									node_xyz[0] = coords_array[i][j][1][0] + alpha * (coords_array[i][j][0][0] - coords_array[i][j][1][0]);
+									node_xyz[1] = coords_array[i][j][1][1] + alpha * (coords_array[i][j][0][1] - coords_array[i][j][1][1]);
+									 */
+									node_xyz[0] = xyz[ECL_IJK_COORDS(i,j,1,0)] + alpha * (xyz[ECL_IJK_COORDS(i,j,0,0)] - xyz[ECL_IJK_COORDS(i,j,1,0)]);
+									node_xyz[1] = xyz[ECL_IJK_COORDS(i,j,1,1)] + alpha * (xyz[ECL_IJK_COORDS(i,j,0,1)] - xyz[ECL_IJK_COORDS(i,j,1,1)]);
+									node_xyz[2] = zpos[l];//zcorn_array[bi][bj][bk][7-l];
 									int find = -1;
 									if( !old_nodes.empty() )
 									{
@@ -1254,15 +1289,12 @@ ecl_exit_loop:
 										}
 									}
 									n = find == -1 ? CreateNode(node_xyz) : Node(this,old_nodes[find]);
-									p.insert(std::make_pair(zcorn_array[i][j][k][l],n));
+									p.insert(std::make_pair(zpos[l],n));
 								} else n = search->second; //if
-								//n->IntegerArray(node_number).push_back(l);
-								//n->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
-							} //l
-						} //k
-					} //j
-				} //i
-				*/
+							}
+						}
+					}
+				}
 				/*      (6)*<<------[3]--------*(7)
 						  /|                  /|
 						[6]                 [7]|
@@ -1338,9 +1370,8 @@ ecl_exit_loop:
 								pillar & p = pillars[i2*(dims[1]+1) + j2];
 								pillar::iterator b,t, it, jt; 
 								//find nodes in pillar that belong to current block
-								std::vector<double> & debug = zcorn_array[i][j][k];
-								double pa = zcorn_array[i][j][k][edge_nodes[l][0]];
-								double pb = zcorn_array[i][j][k][edge_nodes[l][1]];
+								Storage::real pa = zcorn[ECL_IJK_ZCORN(i,j,k,edge_nodes[l][0])];
+								Storage::real pb = zcorn[ECL_IJK_ZCORN(i,j,k,edge_nodes[l][1])];
 								if(pa > pb) //otherwise run iterator in different direction
 								{
 									b = p.find(pb); //bottom
@@ -1452,8 +1483,8 @@ ecl_exit_loop:
 #endif
 						for(int i = 0; i < dims[0]+q; i++)
 						{
-							printf("%s %6.2f%%\r",q ? "ny":"nx", ((double)i)/((double)dims[0]+q-1)*100);
-							fflush(stdout);
+							//printf("%s %6.2f%%\r",q ? "ny":"nx", ((Storage::real)i)/((Storage::real)dims[0]+q-1)*100);
+							//fflush(stdout);
 							for(int j = 0; j < dims[1]+!q; ++j)
 							{
 								if( print_info )
@@ -1468,13 +1499,13 @@ ecl_exit_loop:
 								for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)
 								{
 									Storage::real_array pos = it->second->RealArray(pnt);
-									pos[0] = (it->first-coords_array[i][j][1][2])/(coords_array[i][j][0][2]-coords_array[i][j][1][2]);
+									pos[0] = (it->first-xyz[ECL_IJK_COORDS(i,j,1,2)])/(xyz[ECL_IJK_COORDS(i,j,0,2)]-xyz[ECL_IJK_COORDS(i,j,1,2)]);
 									pos[1] = 0;
 								}
 								for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)
 								{
 									Storage::real_array pos = it->second->RealArray(pnt);
-									pos[0] = (it->first-coords_array[i+!q][j+q][1][2])/(coords_array[i+!q][j+q][0][2]-coords_array[i+!q][j+q][1][2]);
+									pos[0] = (it->first-xyz[ECL_IJK_COORDS(i+!q,j+q,1,2)])/(xyz[ECL_IJK_COORDS(i+!q,j+q,0,2)]-xyz[ECL_IJK_COORDS(i+!q,j+q,1,2)]);
 									pos[1] = 1;
 								}
 								//preallocate array for edges
@@ -1489,8 +1520,8 @@ ecl_exit_loop:
 										{
 											//q = 0 - test 2,3 + 4*l (edge 1 and 3)
 											//q = 1 - test 1,3 + 4*l (edge 5 and 7)
-											edge_nodes[0] = p0[zcorn_array[i-q][j-!q][k][2 - q + 4*l]];
-											edge_nodes[1] = p1[zcorn_array[i-q][j-!q][k][3 - 0 + 4*l]];
+											edge_nodes[0] = p0[zcorn[ECL_IJK_ZCORN(i-q,j-!q,k,2 - q + 4*l)]];
+											edge_nodes[1] = p1[zcorn[ECL_IJK_ZCORN(i-q,j-!q,k,3 - 0 + 4*l)]];
 											if( edge_nodes[0] != edge_nodes[1] )
 											{
 												//edge_nodes.SetMarker(used);
@@ -1522,8 +1553,8 @@ ecl_exit_loop:
 										{
 											//q = 0 - test 0,1 + 4*l (edge 0 and 2)
 											//q = 1 - test 0,2 + 4*l (edge 4 and 6)
-											edge_nodes[0] = p0[zcorn_array[i][j][k][0 + 0 + 4*l]];
-											edge_nodes[1] = p1[zcorn_array[i][j][k][1 + q + 4*l]];
+											edge_nodes[0] = p0[zcorn[ECL_IJK_ZCORN(i,j,k,0 + 0 + 4*l)]];
+											edge_nodes[1] = p1[zcorn[ECL_IJK_ZCORN(i,j,k,1 + q + 4*l)]];
 											if( edge_nodes[0] != edge_nodes[1] )
 											{
 												//edge_nodes.SetMarker(used);
@@ -1567,8 +1598,9 @@ ecl_exit_loop:
 								}
 								assert(count_duplicates(edges) == 0);
 								//i << "," << j << " and " << i+!q << "," << j+q <<
-								//intersect(this,edges,intersections,transfer,pnt,print_inter);
-								intersect_naive(this,edges,intersections,transfer,pnt,print_inter);
+								Unproject unp(&xyz[ECL_IJK_COORDS(i,j,0,0)],&xyz[ECL_IJK_COORDS(i,j,1,0)],&xyz[ECL_IJK_COORDS(i+!q,j+q,0,0)],&xyz[ECL_IJK_COORDS(i+!q,j+q,1,0)]);
+								//intersect(this,edges,intersections,transfer,pnt,unp,print_inter);
+								intersect_naive(this,edges,intersections,transfer,pnt,unp,print_inter);
 								assert(count_duplicates(edges) == 0);
 								if( print_inter ) std::cout << "intersections: " << intersections.size() << std::endl;
 								if( print_inter )
@@ -1852,6 +1884,12 @@ ecl_exit_loop:
 													//collect all faces
 													ElementArray<Edge> loop2(this);
 													while(matrix.find_shortest_loop(loop2));
+													
+													std::cout << "All edges: " << std::endl;
+													for(int k = 0; k < (int)edges.size(); ++k)
+													{
+														std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
+													}
 												}
 											}
 											//remove marker
@@ -1871,7 +1909,7 @@ ecl_exit_loop:
 						ReleasePrivateMarker(mrk);
 						ReleasePrivateMarker(outer);
 					} //omp parallel
-					printf("\n");
+					//printf("\n");
 				} //q
 				//do not need this tag on nodes
 				DeleteTag(block_number, NODE);
@@ -1881,7 +1919,7 @@ ecl_exit_loop:
 #endif
 				for(int i = 0; i < dims[0]; ++i)
 				{
-					//printf("top/bottom/cells %6.2f%%\r", ((double)i)/((double)dims[0]-1)*100);
+					//printf("top/bottom/cells %6.2f%%\r", ((Storage::real)i)/((Storage::real)dims[0]-1)*100);
 					//fflush(stdout);
 					for(int j = 0; j < dims[1]; ++j)
 					{
