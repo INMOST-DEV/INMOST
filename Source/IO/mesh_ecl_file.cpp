@@ -341,7 +341,6 @@ namespace INMOST
 		{
 			for(int j = i+1; j < (int)segments.size(); ++j)
 			{
-				double t1,t2;
 				std::pair<bool,Node> I = intersect_segments(m,segments[i],segments[j],intersections,pnt,print);
 				if( I.first )
 				{
@@ -1446,7 +1445,7 @@ ecl_exit_loop:
 						MarkerType visited = CreatePrivateMarker();
 						//create tag that will be used for intersection of segments in projected space of [0,1]^2 quad
 						std::stringstream tag_name;
-						tag_name << "PROJ_PNT_PROC_" << GetLocalProcessorNumber();
+						tag_name << "PROJ_PNT_PROC_" << GetLocalProcessorRank();
 						Tag pnt = CreateTag(tag_name.str(),DATA_REAL,NODE,NONE,2);
 #if defined(USE_OMP)
 #pragma omp for
