@@ -4618,10 +4618,19 @@ int main(int argc, char ** argv)
     printf("done, sets %d\n",mesh->NumberOfSets());
   }
 
-  for(Mesh::iteratorElement it = mesh->BeginElement(FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
-	  if( it->nbAdjElements(CELL) == 0 ) orphans.push_back(it->self());
+  {
+	  std::map<ElementType,int> num_orphans;
+	  for(Mesh::iteratorElement it = mesh->BeginElement(FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
+		  if( it->nbAdjElements(CELL) == 0 ) 
+		  {
+			  orphans.push_back(it->self());
+			  num_orphans[it->GetElementType()]++;
+		  }
 
-  printf("number of orphan elements: %d\n",orphans.size());
+		  printf("number of orphan elements: %d\n",orphans.size());
+		  for(std::map<ElementType,int>::iterator it = num_orphans.begin(); it != num_orphans.end(); ++it)
+			  printf("%s %d\n",ElementTypeName(it->first),it->second);
+  }
 
 	quatinit();
 	glutInit(&argc,argv);

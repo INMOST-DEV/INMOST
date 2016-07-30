@@ -280,7 +280,7 @@ namespace INMOST
 			t2 = (pfind.y - pbbeg.y) / (pbend.y - pbbeg.y);
 			if (t2 < eps || t2 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
 		}
-		if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
+		if (print) std::cout << "intersection accepted (" << pfind.x << "," << pfind.y << ") t1 " << t1 << " t2 " << t2 << std::endl;
 		Node I;
 		std::map<Point,Node>::iterator search = intersections.find(pfind);
 		//check whether intersection already exists
@@ -500,7 +500,7 @@ namespace INMOST
 		std::map<Point,Node> intersections;
 		std::multimap<std::pair<Storage::real,int>,int,event_less> events;
 		std::multimap<Point,int> sweep;
-		Storage::real t1,t2;
+		
 		MarkerType initial = m->CreatePrivateMarker();
 	
 		if( print )
@@ -566,7 +566,7 @@ namespace INMOST
 							std::pair<bool,Node> I = intersect_segments(m,segments[s], segments[iter->second],intersections,pnt,unp,print);
 							if (I.first)
 							{
-								if( print ) std::cout << "Intersection of " << s << " " <<segments[s]->GetHandle() << " " << segments[s]->getBeg()->GetHandle() << " " << segments[s]->getEnd()->GetHandle() << " and " << iter->second << " " << segments[iter->second]->GetHandle() << " " << segments[iter->second]->getBeg()->GetHandle() << " " << segments[iter->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
+								if( print ) std::cout << "Intersection of " << s << " " <<segments[s]->GetHandle() << " " << segments[s]->getBeg()->GetHandle() << " " << segments[s]->getEnd()->GetHandle() << " and " << iter->second << " " << segments[iter->second]->GetHandle() << " " << segments[iter->second]->getBeg()->GetHandle() << " " << segments[iter->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") " << std::endl;
 								intersect_event(m,s, iter->second, I.second, segments, sweep, events,transfer, pnt, print);
 								//break;
 							}
@@ -616,7 +616,7 @@ namespace INMOST
 						std::pair<bool,Node> I = intersect_segments(m, segments[below->second], segments[above->second],intersections,pnt,unp,print);
 						if (I.first)
 						{
-							if( print ) std::cout << "Intersection of " << below->second << " " << segments[below->second]->GetHandle() << " " << segments[below->second]->getBeg()->GetHandle() << " " << segments[below->second]->getEnd()->GetHandle() << " and " << above->second << " " << segments[above->second]->GetHandle() << " " << segments[above->second]->getBeg()->GetHandle() << " " << segments[above->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") t1 " << t1 << " t2 " << t2 << std::endl;
+							if( print ) std::cout << "Intersection of " << below->second << " " << segments[below->second]->GetHandle() << " " << segments[below->second]->getBeg()->GetHandle() << " " << segments[below->second]->getEnd()->GetHandle() << " and " << above->second << " " << segments[above->second]->GetHandle() << " " << segments[above->second]->getBeg()->GetHandle() << " " << segments[above->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") " << std::endl;
 							intersect_event(m,below->second, above->second, I.second, segments, sweep, events,transfer,pnt, print);
 						}
 					}
@@ -1224,6 +1224,7 @@ ecl_exit_loop:
 				typedef std::map<Storage::real,Node,pillar_less> pillar;
 				std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
 				//this variant goes over pillars
+				printf("create nodes on pillars\n");
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -1316,6 +1317,7 @@ ecl_exit_loop:
 				//all edges of each block
 				//std::vector< std::vector<Edge> > block_edges(dims[0]*dims[1]*dims[2]);
 				//create edges along pillars
+				printf("create edges along pillars\n");
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
@@ -1403,6 +1405,7 @@ ecl_exit_loop:
 						}
 					}
 				}
+				printf("erase unused edges on pillars\n");
 				//erase edges on pillars that are not used in any block
 #if defined(USE_OMP)
 #pragma omp parallel for
@@ -1451,6 +1454,7 @@ ecl_exit_loop:
 				//go over nx pairs of pillars, then ny pairs of pillars
 				for(int q = 0; q < 2; ++q)
 				{
+					printf("started creating faces for pairs of pillar along %s\n",q ? "ny":"nx");
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
@@ -1910,10 +1914,12 @@ ecl_exit_loop:
 						ReleasePrivateMarker(outer);
 					} //omp parallel
 					//printf("\n");
+					printf("finished creating faces for pairs of pillar along %s\n",q ? "ny":"nx");
 				} //q
 				//do not need this tag on nodes
 				DeleteTag(block_number, NODE);
 				//now construct top and bottom interfaces
+				printf("started tops/bottoms/cells\n");
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -2013,6 +2019,7 @@ ecl_exit_loop:
 						} //k
 					} //j
 				} //i
+				printf("finished tops/bottoms/cells\n");
 				//printf("\n");
 				//cleanup data
 				DeleteTag(edge_number);
