@@ -168,8 +168,8 @@ public:
 		if(Array.empty()) return Ret;
 		Ret = static_cast<INMOST_DATA_ENUM_TYPE>(Array[0]-Base);
 		Array[0] = Array.back();
+		Position[Array[0] - Base] = 0;
 		Array.pop_back();
-		Position[Array[0]-Base] = 0;
 		Position[Ret] = ENUMUNDEF;
 		BalanceHeap(0);	
 		return Ret;
