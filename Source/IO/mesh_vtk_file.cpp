@@ -1101,8 +1101,8 @@ safe_output:
 					{
 						for(i = 0; i < ncells && grid_is_2d == 2; i++)
 							if( ct[i] > 9 ) grid_is_2d = 0;
-
-						grid_is_2d = 1;
+						//this will create all 2d elements as cells
+						//grid_is_2d = 1; 
 					}
 
 					if( verbosity > 0 )

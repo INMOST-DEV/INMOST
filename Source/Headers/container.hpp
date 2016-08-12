@@ -500,10 +500,10 @@ namespace INMOST
 			for(iterator it = m_first; it != m_last; it++) (*it).~element();
 			if( n-q != 0 )
 			{
-				size_type gf = growth_formula(m_size+(n-q));
+				size_type gf = growth_formula(m_size+static_cast<size_type>(n-q));
 				if( gf != growth_formula(m_size) )
 					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
-				m_size+=(n-q);
+				m_size+=static_cast<size_type>(n-q);
 				if( s > 0 ) memmove(m_arr+d+n,m_arr+d+q,sizeof(element)*s);
 			}
 			{

@@ -1555,7 +1555,7 @@ ecl_exit_loop:
 											Storage::integer_array bn = edges[k]->IntegerArray(block_number);
 											Storage::integer_array nn = edges[k]->IntegerArray(edge_number);
 											std::cout << " created by blocks [" << bn.size() << "]: ";
-											for(int m = 0; m < bn.size(); ++m)
+											for(int m = 0; m < (int)bn.size(); ++m)
 											{
 												int bi = bn[m] % dims[0];
 												int bj = bn[m] / dims[0] % dims[1];
@@ -1567,7 +1567,7 @@ ecl_exit_loop:
 										{
 											Storage::integer_array bn = edges[k]->getBeg()->IntegerArray(block_number);
 											std::cout << " node " << edges[k]->getBeg()->GetHandle() << " blocks [" << bn.size() << "]: ";
-											for(int m = 0; m < bn.size(); ++m)
+											for(int m = 0; m < (int)bn.size(); ++m)
 											{
 												int bi = bn[m] % dims[0];
 												int bj = bn[m] / dims[0] % dims[1];
@@ -1579,7 +1579,7 @@ ecl_exit_loop:
 										{
 											Storage::integer_array bn = edges[k]->getEnd()->IntegerArray(block_number);
 											std::cout << " node " << edges[k]->getEnd()->GetHandle() << " blocks [" << bn.size() << "]: ";
-											for(int m = 0; m < bn.size(); ++m)
+											for(int m = 0; m < (int)bn.size(); ++m)
 											{
 												int bi = bn[m] % dims[0];
 												int bj = bn[m] / dims[0] % dims[1];
@@ -2184,7 +2184,7 @@ ecl_exit_loop:
 						ElementArray<Face> nfaces = n->getFaces();
 						Storage::integer_array bn =  n->IntegerArray(node_blocks);
 						std::cout << "orphan node " << n->GetHandle() << " lc " << lc.size() << " hc " << hc.size() << " blocks numbers [" << bn.size() << "]: ";
-						for(int k = 0; k < bn.size(); ++k) std::cout << bn[k] << " ";
+						for(int k = 0; k < (int)bn.size(); ++k) std::cout << bn[k] << " ";
 						std::cout << std::endl;
 						std::cout << " adjacent faces [" << nfaces.size() << "]: " << std::endl;
 						for(int k = 0; k < nfaces.size(); ++k)
@@ -2220,10 +2220,10 @@ ecl_exit_loop:
 						}
 						std::cout << std::endl;
 						std::cout << "markers: ";
-						for(int k = 0; k < mrk.size(); ++k) std::cout << (int)mrk[k] << " ";
+						for(int k = 0; k < (int)mrk.size(); ++k) std::cout << (int)mrk[k] << " ";
 						std::cout << std::endl;
 						std::cout << "private markers: ";
-						for(int k = 0; k < private_mrk.size(); ++k) std::cout << (int)private_mrk[k] << " ";
+						for(int k = 0; k < (int)private_mrk.size(); ++k) std::cout << (int)private_mrk[k] << " ";
 						std::cout << std::endl;
 						
 						
