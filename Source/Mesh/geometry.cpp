@@ -761,8 +761,8 @@ namespace INMOST
 						//can copy orientation-independent algorithm from
 						//incident_matrix.hpp: incident_matrix::compute_measure
 						//assume mdim is of size 3 at most
-						bool repeatme = false;
 						dynarray<Storage::real,3> fcnt(mdim), fnrm(mdim), ccnt(mdim);
+						/*
 						me->Centroid(ccnt.data());
 						for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
 						{
@@ -773,8 +773,9 @@ namespace INMOST
 							*ret += vec_dot_product(fcnt.data(),fnrm.data(),mdim);
 						}
 						if( *ret < 0.0 ) //a robust algorithm that can handle unoriented cell
+						 */
 						{
-							real was = *ret/3.0;
+							//real was = *ret/3.0;
 							*ret = 0;
 							Face cur = faces[0];
 							Cell c1 = me;
@@ -866,16 +867,15 @@ namespace INMOST
 							} while(true);
 							faces.RemPrivateMarker(mrk);
 							mesh->ReleasePrivateMarker(mrk);
-							Storage::real nrm[3], cnt[3], ccnt[3];
-							c1->Centroid(ccnt);
+							c1->Centroid(ccnt.data());
 							for(unsigned j = 0; j < faces.size(); j++)
 							{
 								//compute normal to face
-								faces[j].Centroid(cnt);
-								faces[j].Normal(nrm);
-								for(int r = 0; r < 3; ++r)
-									cnt[r] = cnt[r]-ccnt[r];
-								*ret += (faces[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(cnt,nrm,3);
+								faces[j].Centroid(fcnt.data());
+								faces[j].Normal(fnrm.data());
+								for(int r = 0; r < mdim; ++r)
+									fcnt[r] = fcnt[r]-ccnt[r];
+								*ret += (faces[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(fcnt.data(),fnrm.data(),3);
 							}
 							*ret = fabs(*ret);
 							faces.RemPrivateMarker(rev);
