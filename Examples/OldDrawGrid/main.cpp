@@ -2077,7 +2077,7 @@ class clipper
 	};
 	Tag clip_point, clip_state;
 	kdtree * tree;
-	Tag clips, clipsv;
+	Tag clips, clipsv, clipsn;
 	MarkerType marker;
 	ElementArray<Cell> cells;
 	Mesh * mm;
@@ -2088,7 +2088,8 @@ public:
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) cells[k]->RemMarker(marker);
 		mm->ReleaseMarker(marker); 
 		mm->DeleteTag(clips); 
-		mm->DeleteTag(clipsv); 
+		mm->DeleteTag(clipsv);
+		mm->DeleteTag(clipsn);
 		mm->DeleteTag(clip_point); 
 		mm->DeleteTag(clip_state);
 	}
@@ -2100,6 +2101,7 @@ public:
 		marker = m->CreateMarker();
 		clips = m->CreateTag("CLIPS",DATA_REAL,CELL,CELL);
 		clipsv = m->CreateTag("CLIPS_VAL",DATA_REAL,CELL,CELL);
+		clipsn = m->CreateTag("CLIPS_NUM",DATA_INTEGER,CELL,CELL);
 		clip_point = m->CreateTag("CLIP_POINT",DATA_REAL,EDGE,NONE,3);
 		clip_state = m->CreateTag("CLIP_STATE",DATA_INTEGER,EDGE,NONE,1);
 	}
@@ -2126,6 +2128,7 @@ public:
 			{
 				cells[k]->RealArray(clips).clear();
 				cells[k]->RealArray(clipsv).clear();
+				cells[k]->IntegerArray(clipsn).clear();
 				cells[k]->RemMarker(marker);
 			}
 		tree->intersect_plane_edge(clip_point,clip_state,cells,marker,p,n);
@@ -2257,6 +2260,8 @@ public:
 				ElementArray<Node> nodes = full_face->getNodes();
 				Storage::real_array cl = cells[k]->RealArray(clips);
 				Storage::real_array clv = cells[k]->RealArray(clipsv);
+				Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
+				cln.resize(1,nodes.size());
 				cl.resize(static_cast<Storage::real_array::size_type>(3*nodes.size()));
 				clv.resize(static_cast<Storage::real_array::size_type>(nodes.size()));
 				for(INMOST_DATA_ENUM_TYPE r = 0; r < nodes.size(); r++)
@@ -2279,46 +2284,64 @@ public:
 				//Can make this faster using hash
 				closed.resize(ntotedges);
 				std::fill(closed.begin(),closed.end(),false);
-				loopcoords.push_back(clipcoords[0]); //this is starting point
-				loopcoords.push_back(clipcoords[1]); //this is next
-				closed[0] = true;
-				for(int r = 0; r < ntotedges-2; ++r) //we need to add this number of points
-				{
-					bool hit = false;
-					for(int q = 0; q < ntotedges; ++q) if( !closed[q] )
-					{
-						//some end of q-th edge connects to current end point - connect it
-						if( clipcoords[q*2+0] == loopcoords.back() )
-						{
-							loopcoords.push_back(clipcoords[q*2+1]);
-							closed[q] = true;
-							hit = true;
-							break;
-						}
-						else if( clipcoords[q*2+1] == loopcoords.back() )
-						{
-							loopcoords.push_back(clipcoords[q*2+0]);
-							closed[q] = true;
-							hit = true;
-							break;
-						}
-					}
-					if( !hit ) printf("%s:%d cannot find end for edge! total edges %d current loop size %ld\n",
-						__FILE__,__LINE__,ntotedges,loopcoords.size());
-				}
 				Storage::real_array cl = cells[k]->RealArray(clips);
 				Storage::real_array clv = cells[k]->RealArray(clipsv);
-				cl.resize(static_cast<Storage::real_array::size_type>(3*loopcoords.size()));
-				clv.resize(static_cast<Storage::real_array::size_type>(loopcoords.size()));
-				for(INMOST_DATA_ENUM_TYPE r = 0; r < loopcoords.size(); ++r)
+				Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
+				bool havestart = true;
+				cln.clear();
+				clv.clear();
+				cl.clear();
+				while( havestart )
 				{
-					cl[r*3+0] = loopcoords[r].xyz[0];
-					cl[r*3+1] = loopcoords[r].xyz[1];
-					cl[r*3+2] = loopcoords[r].xyz[2];
-					clv[r] = loopcoords[r].val;
+					havestart = false;
+					for(int r = 0; r < ntotedges && !havestart; ++r) if( !closed[r] )
+					{
+						loopcoords.push_back(clipcoords[r*2+0]); //this is starting point
+						loopcoords.push_back(clipcoords[r*2+1]); //this is next
+						closed[r] = true;
+						havestart = true;
+					}
+					if( !havestart ) break;
+					bool hit = true;
+					while (hit)
+					{
+						hit = false;
+						for(int q = 0; q < ntotedges; ++q) if( !closed[q] )
+						{
+							//some end of q-th edge connects to current end point - connect it
+							if( clipcoords[q*2+0] == loopcoords.back() )
+							{
+								loopcoords.push_back(clipcoords[q*2+1]);
+								closed[q] = true;
+								hit = true;
+								break;
+							}
+							else if( clipcoords[q*2+1] == loopcoords.back() )
+							{
+								loopcoords.push_back(clipcoords[q*2+0]);
+								closed[q] = true;
+								hit = true;
+								break;
+							}
+						}
+					}
+					//loopcoords.pop_back();
+					if( loopcoords.size() > 2 )
+					{
+						cln.push_back(loopcoords.size());
+						int offset = clv.size();
+						cl.resize(static_cast<Storage::real_array::size_type>(offset*3+3*loopcoords.size()));
+						clv.resize(static_cast<Storage::real_array::size_type>(offset+loopcoords.size()));
+						for(INMOST_DATA_ENUM_TYPE r = 0; r < loopcoords.size(); ++r)
+						{
+							cl[(offset+r)*3+0] = loopcoords[r].xyz[0];
+							cl[(offset+r)*3+1] = loopcoords[r].xyz[1];
+							cl[(offset+r)*3+2] = loopcoords[r].xyz[2];
+							clv[offset+r] = loopcoords[r].val;
+						}
+					}
+					loopcoords.clear();
 				}
-
-				loopcoords.clear();
 				clipcoords.clear();
 
 				cells[k]->SetMarker(marker);
@@ -2330,39 +2353,45 @@ public:
 		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,size()/100));
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) if( cells[k]->GetMarker(marker))
 		{
-			face2gl f;
-			f.set_color(0.6,0.6,0.6,1);
 			Storage::real_array cl = cells[k]->RealArray(clips);
 			Storage::real_array clv = cells[k]->RealArray(clipsv);
-			if( elevation && visualization_tag.isValid() )
+			Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
+			int offset = 0;
+			for(int r = 0; r < (int)cln.size(); ++r)
 			{
-				Storage::real pos[3], t;
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+				face2gl f;
+				f.set_color(0.6,0.6,0.6,1);
+				if( elevation && visualization_tag.isValid() )
 				{
-					t = (clv[q/3] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-					pos[0] = cl[q+0] + t*n[0];
-					pos[1] = cl[q+1] + t*n[1];
-					pos[2] = cl[q+2] + t*n[2];
-					f.add_vert(pos);
+					Storage::real pos[3], t;
+					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
+					{
+						t = (clv[q] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+						pos[0] = cl[q*3+0] + t*n[0];
+						pos[1] = cl[q*3+1] + t*n[1];
+						pos[2] = cl[q*3+2] + t*n[2];
+						f.add_vert(pos);
+					}
 				}
-			}
-			else
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) f.add_vert(&cl[q]);
-			if( visualization_tag.isValid() )
-			{
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < clv.size(); q++) 
+				else
+					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++) f.add_vert(&cl[q*3]);
+				if( visualization_tag.isValid() )
 				{
-					//f.add_color(CommonColorBar->pick_color(clv[q]));
-					if( visualization_type == CELL && !visualization_smooth )
-						f.add_texcoord(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
-					else
-						f.add_texcoord(CommonColorBar->pick_texture(clv[q]));
+					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
+					{
+						//f.add_color(CommonColorBar->pick_color(clv[q]));
+						if( visualization_type == CELL && !visualization_smooth )
+							f.add_texcoord(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
+						else
+							f.add_texcoord(CommonColorBar->pick_texture(clv[q]));
+					}
 				}
+				f.compute_center();
+				f.set_elem(cells[k]->GetElementType(),cells[k]->LocalID());
+				if( k%pace == 0 ) f.set_flag(true);
+				out.push_back(f);
+				offset += cln[r];
 			}
-			f.compute_center();
-			f.set_elem(cells[k]->GetElementType(),cells[k]->LocalID());
-			if( k%pace == 0 ) f.set_flag(true);
-			out.push_back(f);
 		}
 	}
 	void draw_clip(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3])
@@ -2376,74 +2405,80 @@ public:
 		{
 			Storage::real_array cl = cells[k]->RealArray(clips);
 			Storage::real_array clv = cells[k]->RealArray(clipsv);
-			Storage::real cnt[3] = {0,0,0};
-			Storage::real cntv = 0.0;
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3)
+			Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
+			int offset = 0;
+			for(int r = 0; r < (int)cln.size(); ++r)
 			{
-				cnt[0] += cl[q+0];
-				cnt[1] += cl[q+1];
-				cnt[2] += cl[q+2];
-				cntv += clv[q/3];
-			}
-			cnt[0] /= static_cast<Storage::real>(cl.size()/3);
-			cnt[1] /= static_cast<Storage::real>(cl.size()/3);
-			cnt[2] /= static_cast<Storage::real>(cl.size()/3);
-			cntv /= static_cast<Storage::real>(cl.size()/3);
-			if( !visualization_tag.isValid() )
-			{
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+				Storage::real cnt[3] = {0,0,0};
+				Storage::real cntv = 0.0;
+				for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
 				{
-					glVertex3dv(cnt);
-					glVertex3dv(&cl[q]);
-					glVertex3dv(&cl[(q+3)%cl.size()]);
+					cnt[0] += cl[q*3+0];
+					cnt[1] += cl[q*3+1];
+					cnt[2] += cl[q*3+2];
+					cntv += clv[q];
 				}
-			}
-			else if( elevation )
-			{
-				Storage::real pos[3], t;
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+				cnt[0] /= static_cast<Storage::real>(cln[r]);
+				cnt[1] /= static_cast<Storage::real>(cln[r]);
+				cnt[2] /= static_cast<Storage::real>(cln[r]);
+				cntv /= static_cast<Storage::real>(cln[r]);
+				if( !visualization_tag.isValid() )
 				{
-					if( visualization_type == CELL && !visualization_smooth )
-						glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
-					else
-						glTexCoord1d(CommonColorBar->pick_texture(cntv));
-					t = (cntv - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-					pos[0] = cnt[0] + n[0]*t;
-					pos[1] = cnt[1] + n[1]*t;
-					pos[2] = cnt[2] + n[2]*t;
-					glVertex3dv(pos);
-					if( !(visualization_type == CELL && !visualization_smooth) )
-						glTexCoord1d(CommonColorBar->pick_texture(clv[q/3]));
-					t = (clv[q/3] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-					pos[0] = cl[q+0] + n[0]*t;
-					pos[1] = cl[q+1] + n[1]*t;
-					pos[2] = cl[q+2] + n[2]*t;
-					glVertex3dv(pos);
-					if( !(visualization_type == CELL && !visualization_smooth) )
-						glTexCoord1d(CommonColorBar->pick_texture(clv[(q/3+1)%clv.size()]));
-					t = (clv[(q/3+1)%clv.size()] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-					pos[0] = cl[(q+3)%cl.size()+0] + n[0]*t;
-					pos[1] = cl[(q+3)%cl.size()+1] + n[1]*t;
-					pos[2] = cl[(q+3)%cl.size()+2] + n[2]*t;
-					glVertex3dv(pos);
+					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
+					{
+						glVertex3dv(cnt);
+						glVertex3dv(&cl[q*3]);
+						glVertex3dv(&cl[(((q+1-offset)%cln[r])+offset)*3]);
+					}
 				}
-			}
-			else
-			{
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+				else if( elevation )
 				{
-					if( visualization_type == CELL && !visualization_smooth )
-						glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
-					else
-						glTexCoord1d(CommonColorBar->pick_texture(cntv));
-					glVertex3dv(cnt);
-					if( !(visualization_type == CELL && !visualization_smooth) )
-						glTexCoord1d(CommonColorBar->pick_texture(clv[q/3]));
-					glVertex3dv(&cl[q]);
-					if( !(visualization_type == CELL && !visualization_smooth) )
-						glTexCoord1d(CommonColorBar->pick_texture(clv[(q/3+1)%clv.size()]));
-					glVertex3dv(&cl[(q+3)%cl.size()]);
+					Storage::real pos[3], t;
+					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
+					{
+						if( visualization_type == CELL && !visualization_smooth )
+							glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
+						else
+							glTexCoord1d(CommonColorBar->pick_texture(cntv));
+						t = (cntv - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+						pos[0] = cnt[0] + n[0]*t;
+						pos[1] = cnt[1] + n[1]*t;
+						pos[2] = cnt[2] + n[2]*t;
+						glVertex3dv(pos);
+						if( !(visualization_type == CELL && !visualization_smooth) )
+							glTexCoord1d(CommonColorBar->pick_texture(clv[q]));
+						t = (clv[q] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+						pos[0] = cl[q*3+0] + n[0]*t;
+						pos[1] = cl[q*3+1] + n[1]*t;
+						pos[2] = cl[q*3+2] + n[2]*t;
+						glVertex3dv(pos);
+						if( !(visualization_type == CELL && !visualization_smooth) )
+							glTexCoord1d(CommonColorBar->pick_texture(clv[(q+1-offset)%cln[r]+offset]));
+						t = (clv[(q+1-offset)%cln[r]+offset] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+						pos[0] = cl[((q+1-offset)%cln[r]+offset)*3+0] + n[0]*t;
+						pos[1] = cl[((q+1-offset)%cln[r]+offset)*3+1] + n[1]*t;
+						pos[2] = cl[((q+1-offset)%cln[r]+offset)*3+2] + n[2]*t;
+						glVertex3dv(pos);
+					}
 				}
+				else
+				{
+					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
+					{
+						if( visualization_type == CELL && !visualization_smooth )
+							glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
+						else
+							glTexCoord1d(CommonColorBar->pick_texture(cntv));
+						glVertex3dv(cnt);
+						if( !(visualization_type == CELL && !visualization_smooth) )
+							glTexCoord1d(CommonColorBar->pick_texture(clv[q]));
+						glVertex3dv(&cl[q*3]);
+						if( !(visualization_type == CELL && !visualization_smooth) )
+							glTexCoord1d(CommonColorBar->pick_texture(clv[(q+1-offset)%cln[r]+offset]));
+						glVertex3dv(&cl[((q+1-offset)%cln[r]+offset)*3]);
+					}
+				}
+				offset += cln[r];
 			}
 		}
 		glEnd();
@@ -2462,19 +2497,25 @@ public:
 				{
 					Storage::real_array cl = cells[k]->RealArray(clips);
 					Storage::real_array clv = cells[k]->RealArray(clipsv);
-					Storage::real pos[3], t;
-					for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+					Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
+					int offset = 0;
+					for(int r = 0; r < cln.size(); ++r)
 					{
-						t = (clv[q/3] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-						pos[0] = cl[q+0] + t*n[0];
-						pos[1] = cl[q+1] + t*n[1];
-						pos[2] = cl[q+2] + t*n[2];
-						glVertex3dv(pos);
-						t = (clv[(q/3+1)%clv.size()] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-						pos[0] = cl[(q+3)%cl.size()+0] + t*n[0];
-						pos[1] = cl[(q+3)%cl.size()+1] + t*n[1];
-						pos[2] = cl[(q+3)%cl.size()+2] + t*n[2];
-						glVertex3dv(pos);
+						Storage::real pos[3], t;
+						for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
+						{
+							t = (clv[q] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+							pos[0] = cl[q*3+0] + t*n[0];
+							pos[1] = cl[q*3+1] + t*n[1];
+							pos[2] = cl[q*3+2] + t*n[2];
+							glVertex3dv(pos);
+							t = (clv[(q+1-offset)%cln[r]+offset] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
+							pos[0] = cl[((q+1-offset)%cln[r]+offset)*3+0] + t*n[0];
+							pos[1] = cl[((q+1-offset)%cln[r]+offset)*3+1] + t*n[1];
+							pos[2] = cl[((q+1-offset)%cln[r]+offset)*3+2] + t*n[2];
+							glVertex3dv(pos);
+						}
+						offset += cln[r];
 					}
 				}
 			}
@@ -2483,10 +2524,16 @@ public:
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
 				{
 					Storage::real_array cl = cells[k]->RealArray(clips);
-					for(INMOST_DATA_ENUM_TYPE q = 0; q < cl.size(); q+=3) 
+					Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
+					int offset = 0;
+					for(int r = 0; r < cln.size(); ++r)
 					{
-						glVertex3dv(&cl[q]);
-						glVertex3dv(&cl[(q+3)%cl.size()]);
+						for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
+						{
+							glVertex3dv(&cl[q*3]);
+							glVertex3dv(&cl[((q+1-offset)%cln[r]+offset)*3]);
+						}
+						offset += cln[r];
 					}
 				}
 			}
@@ -3513,7 +3560,7 @@ void keyboard(unsigned char key, int x, int y)
 			CommonInput = new Input(visualization_prompt, "Enter data for visualization as Element:Name:Component or ElementType:Number");
 			visualization_prompt_active = 1;
 			clipupdate = true;
-			if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
+			//if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
 			//if( disp_e.isValid() ) disp_e = InvalidElement();
 		}
 		glutPostRedisplay();
@@ -4116,7 +4163,7 @@ void draw_screen()
 				{
 					char typen[1024],name[1024];
 					unsigned comp;
-					bool correct_elem = false;
+					bool correct_input = false;
 					int k = 0,l, slen = (int)strlen(visualization_prompt);
 					for(k = 0; k < slen; ++k) 
 					{
@@ -4135,8 +4182,29 @@ void draw_screen()
 						}
 					}
 					
+					//std::cout << "k: " << k << " l: " << l << std::endl;
+					
+					if( k == slen && l == slen+1 )
+					{
+						for(int q = 0; q < slen; ++q)
+							visualization_prompt[q] = tolower(visualization_prompt[q]);
+						if( std::string(visualization_prompt) == "clear" )
+						{
+							disp_e = InvalidElement();
+							if( visualization_tag.isValid() )
+							{
+								visualization_tag =  mesh->DeleteTag(visualization_tag);
+								clipupdate = true;
+							}
+							correct_input = true;
+							glutPostRedisplay();
+							
+						}
+					}
+					
 					if( k < slen && l == slen ) //ElementType:Number format
 					{
+						disp_e = InvalidElement();
 						bool is_number = true;
 						for(l = k+1; l < slen; ++l)
 							if( !isdigit(visualization_prompt[l]) )
@@ -4159,8 +4227,14 @@ void draw_screen()
 								printf("unknown element type %s\n",typen);
 							if( !mesh->isValidElement(visualization_type,comp) )
 								printf("provided element %s:%d is not valid\n",typen,comp);
-							correct_elem = true;
-							disp_e = mesh->ElementByLocalID(visualization_type,comp);
+							correct_input = true;
+							if( mesh->isValidElement(visualization_type,comp) )
+							{
+								disp_e = mesh->ElementByLocalID(visualization_type,comp);
+								disp_e->Centroid(shift);
+								for(int r = 0; r < 3; ++r)
+									shift[r] = -shift[r];
+							}
 						}
 						
 					}
@@ -4208,6 +4282,7 @@ void draw_screen()
 										{
 											float min = 1.0e20, max = -1.0e20;
 											printf("prepearing data for visualization\n");
+											if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
 											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG",DATA_REAL,NODE,NONE,1);
 											
 											for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
@@ -4277,7 +4352,7 @@ void draw_screen()
 						}
 						else printf("mesh do not have tag with name %s\n",name);
 					}
-					else if(!correct_elem) printf("malformed string %s for visualization\n",visualization_prompt);
+					else if(!correct_input) printf("malformed string %s for visualization\n",visualization_prompt);
 					visualization_prompt_active = 0;
 					//visualization_prompt[0] = '\0';
 				
@@ -4313,9 +4388,9 @@ int main(int argc, char ** argv)
 {
 	double tt;
 	table[CENTROID]    = CELL | FACE;
-	//table[NORMAL]      = FACE;
-	//table[ORIENTATION] = FACE;
-	//table[MEASURE]     = CELL|FACE;
+	table[NORMAL]      = FACE;
+	table[ORIENTATION] = FACE;
+	table[MEASURE]     = CELL|FACE;
 	mesh = new Mesh();
 	printf("Started loading mesh.\n");
 	tt = Timer();

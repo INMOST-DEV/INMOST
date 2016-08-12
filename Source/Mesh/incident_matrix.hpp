@@ -51,6 +51,38 @@ namespace INMOST
 		}
 	} orient_face;
 	
+	class AbstractCoords
+	{
+	public:
+		virtual Storage::real_array Get(const Node & s) const = 0;
+		virtual AbstractCoords * Copy() const = 0;
+		virtual ~AbstractCoords() {}
+	};
+	
+	class GridCoords : public AbstractCoords
+	{
+	public:
+		Storage::real_array Get(const Node & s) const
+		{
+			return s.Coords();
+		}
+		AbstractCoords * Copy() const {return new GridCoords(*this);}
+	};
+	
+	class TagCoords : public AbstractCoords
+	{
+		Tag t;
+	public:
+		TagCoords(Tag _t) : t(_t) {}
+		TagCoords & operator =(TagCoords const & b) {t = b.t; return *this;}
+		TagCoords(const TagCoords & b) : t(b.t) {}
+		Storage::real_array Get(const Node & s) const
+		{
+			return s.RealArray(t);
+		}
+		AbstractCoords * Copy() const {return new TagCoords(*this);}
+	};
+	
 	template<class T>
 	class incident_matrix
 	{
@@ -70,6 +102,7 @@ namespace INMOST
 		//std::vector< std::pair<std::vector<int>,double> > remember;
 		double min_loop_measure;
 		bool print;
+		AbstractCoords * coords;
 		
 		bool do_hide_row(unsigned k)
 		{
@@ -130,7 +163,7 @@ namespace INMOST
 			if( data[0]->GetElementDimension() == 1 ) //this is edge //use geometric dimension here for 2d compatibility
 			{
 				//calculate area
-				int mdim = data[0]->GetMeshLink()->GetDimensions();
+				//int mdim = data[0]->GetMeshLink()->GetDimensions();
 				ElementArray<Node> nodes,n1,n2;
 				n1 = data[0]->getNodes();
 				n2 = data[1]->getNodes();
@@ -155,22 +188,12 @@ namespace INMOST
 				}
 				
 				Storage::real x[3] = {0,0,0};
-				Storage::real x0[3] = {0,0,0};
-				for(unsigned i = 0; i < nodes.size(); i++)
+				Storage::real_array x0 = coords->Get(nodes[0]);
+				for(unsigned i = 1; i < nodes.size()-1; i++)
 				{
-					Storage::real_array v = nodes[i].Coords();
-					x0[0] += v[0];
-					x0[1] += v[1];
-					if( mdim == 3 ) x0[2] += v[2];
-				}
-				x0[0] /= (Storage::real)nodes.size();
-				x0[1] /= (Storage::real)nodes.size();
-				x0[2] /= (Storage::real)nodes.size();
-				for(unsigned i = 0; i < nodes.size()-1; i++)
-				{
-					Storage::real_array v1 = nodes[i].Coords();
-					Storage::real_array v2 = nodes[i+1].Coords();
-					if( mdim == 3 )
+					Storage::real_array v1 = coords->Get(nodes[i]);
+					Storage::real_array v2 = coords->Get(nodes[i+1]);
+					if( v1.size() == 3 && v2.size() == 3 )
 					{
 						x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
 						x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
@@ -271,11 +294,34 @@ namespace INMOST
 				} while(true);
 				data.RemPrivateMarker(mrk);
 				mesh->ReleasePrivateMarker(mrk);
-				Storage::real cnt[3], nrm[3];
+				Storage::real nrm[3], cnt[3];
+				Storage::real_array v0,v1,v2;
 				for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
 				{
-					data[j]->Centroid(cnt);
-					data[j]->getAsFace()->Normal(nrm);
+					//compute normal to face
+					ElementArray<Node> nodes = data[j]->getAsFace()->getNodes();
+					nrm[0] = nrm[1] = nrm[2] = 0;
+					v0 = v1 = coords->Get(nodes[0]);
+					cnt[0] = v1[0];
+					cnt[1] = v1[1];
+					cnt[2] = v1[2];
+					for(unsigned i = 0; i < nodes.size(); i++)
+					{
+						v2 = coords->Get(nodes[(i+1)%nodes.size()]);
+						cnt[0] += v2[0];
+						cnt[1] += v2[1];
+						cnt[2] += v2[2];
+						nrm[0] += (v1[1]-v0[1])*(v2[2]-v0[2]) - (v1[2]-v0[2])*(v2[1]-v0[1]);
+						nrm[1] += (v1[2]-v0[2])*(v2[0]-v0[0]) - (v1[0]-v0[0])*(v2[2]-v0[2]);
+						nrm[2] += (v1[0]-v0[0])*(v2[1]-v0[1]) - (v1[1]-v0[1])*(v2[0]-v0[0]);
+						v1.swap(v2);
+					}
+					nrm[0] *= 0.5;
+					nrm[1] *= 0.5;
+					nrm[2] *= 0.5;
+					cnt[0] /= (Storage::real)nodes.size();
+					cnt[1] /= (Storage::real)nodes.size();
+					cnt[2] /= (Storage::real)nodes.size();
 					measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*dot_prod(cnt,nrm);
 				}
 				data.RemPrivateMarker(rev);
@@ -428,8 +474,8 @@ namespace INMOST
 			}
 		}
 		template<typename InputIterator>
-		incident_matrix(Mesh * mesh, InputIterator beg, InputIterator end, typename ElementArray<T>::size_type num_inner, bool print = false)
-		: mesh(mesh), head_column(beg,end), min_loop(), print(print)
+		incident_matrix(Mesh * mesh, InputIterator beg, InputIterator end, typename ElementArray<T>::size_type num_inner, const AbstractCoords & _coords = GridCoords(), bool print = false)
+		: mesh(mesh), head_column(beg,end), min_loop(), print(print), coords(_coords.Copy())
 		{
 			min_loop.SetMeshLink(mesh);
 			temp_loop.SetMeshLink(mesh);
@@ -494,7 +540,7 @@ namespace INMOST
 		: mesh(other.mesh), matrix(other.matrix), head_column(other.head_column), head_row(other.head_row),
 		head_row_count(other.head_row_count), min_loop(other.min_loop),
 		hide_row(other.hide_row), hide_column(other.hide_column),
-		stub_row(other.stub_row)
+		stub_row(other.stub_row), coords(other.coords.Copy())
 		{
 		}
 		incident_matrix & operator =(const incident_matrix & other)
@@ -508,10 +554,12 @@ namespace INMOST
 			hide_row = other.hide_row;
 			hide_column = other.hide_column;
 			stub_row = other.stub_row;
+			coords = other.coords.Copy();
 			return *this;
 		}
 		~incident_matrix()
 		{
+			delete coords;
 		}
 		bool find_shortest_loop(ElementArray<T> & ret)
 		{

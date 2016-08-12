@@ -1757,7 +1757,7 @@ namespace INMOST
 		}
 		
 		void push_back(const element & e)
-		{			
+		{
 			if( pend == preserved ) reserve(capacity()*2);
 			new (pend++) element(e);	
 		}

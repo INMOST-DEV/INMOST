@@ -9,10 +9,10 @@
 
 //#define NEW_VERSION
 
-#if defined(USE_AUTODIFF) && (!defined(USE_MESH))
-#warning "USE_AUTODIFF require USE_MESH"
-#undef USE_AUTODIFF
-#endif
+//#if defined(USE_AUTODIFF) && (!defined(USE_MESH))
+//#warning "USE_AUTODIFF require USE_MESH"
+//#undef USE_AUTODIFF
+//#endif
 
 //#define DPRNT
 
@@ -27,7 +27,7 @@ namespace INMOST
 {
 	class Automatizator; //forward declaration
 
-
+#if defined(USE_SOLVER)
 	class Residual
 	{
 		Sparse::Matrix jacobian;
@@ -125,7 +125,9 @@ namespace INMOST
 		void UnLock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) locks.UnLock(pos);}
 		void TestLock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) locks.TestLock(pos);}
 	};
-
+#endif
+	
+#if defined(USE_MESH)
 	class Automatizator
 	{
 	private:
@@ -184,6 +186,7 @@ namespace INMOST
 		/// Retrive the automatizator.
 		static Automatizator * GetCurrent() {return CurrentAutomatizator;}
 	};
+#endif
 } //namespace INMOST
 
 #endif //USE_AUTODIFF

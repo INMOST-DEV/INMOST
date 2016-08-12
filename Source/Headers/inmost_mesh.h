@@ -179,7 +179,7 @@ namespace INMOST
 		public:
 			reverse_iterator(Mesh * m, const cont_t::reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(m) {assert(m_link);}
 			reverse_iterator(const reverse_iterator & other ) : cont_t::reverse_iterator(other), m_link(other.m_link) {assert(m_link);}
-			ptrdiff_t             operator -(const reverse_iterator & other) const {return static_cast<const cont_t::reverse_iterator>(other)-static_cast<const cont_t::reverse_iterator>(*this);}
+			ptrdiff_t             operator -(const reverse_iterator & other) const {return static_cast<const cont_t::reverse_iterator>(*this)-static_cast<const cont_t::reverse_iterator>(other);}
 			reverse_iterator      operator +(size_t n) const {return reverse_iterator(m_link,cont_t::reverse_iterator::operator+(n));}
 			reverse_iterator      operator -(size_t n) const {return reverse_iterator(m_link,cont_t::reverse_iterator::operator-(n));}
 			reverse_iterator &    operator ++() {cont_t::reverse_iterator::operator++(); return *this;}
@@ -196,6 +196,7 @@ namespace INMOST
 		public:
 			const_iterator(Mesh * m, const cont_t::const_iterator & other ) : cont_t::const_iterator(other), m_link(m) {assert(m_link);}
 			const_iterator(const const_iterator & other ) : cont_t::const_iterator(other), m_link(other.m_link) {assert(m_link);}
+			ptrdiff_t     operator -(const const_iterator & other) const {return static_cast<const cont_t::const_iterator>(*this)-static_cast<const cont_t::const_iterator>(other);}
 			const_iterator &    operator ++() {cont_t::const_iterator::operator++(); return *this;}
 			const_iterator      operator ++(int) {const_iterator ret(*this); cont_t::const_iterator::operator++(); return ret;}
 			const_iterator &    operator --() {cont_t::const_iterator::operator--(); return *this;}
@@ -210,6 +211,7 @@ namespace INMOST
 		public:
 			const_reverse_iterator(Mesh * m, const cont_t::const_reverse_iterator & other) : cont_t::const_reverse_iterator(other), m_link(m) {assert(m_link);}
 			const_reverse_iterator(const const_reverse_iterator & other ) : cont_t::const_reverse_iterator(other), m_link(other.m_link) {assert(m_link);}
+			ptrdiff_t     operator -(const const_reverse_iterator & other) const {return static_cast<const cont_t::const_reverse_iterator>(*this)-static_cast<const cont_t::const_reverse_iterator>(other);}
 			const_reverse_iterator &    operator ++() {cont_t::const_reverse_iterator::operator++(); return *this;}
 			const_reverse_iterator      operator ++(int) {const_reverse_iterator ret(*this); cont_t::const_reverse_iterator::operator++(); return ret;}
 			const_reverse_iterator &    operator --() {cont_t::const_reverse_iterator::operator--(); return *this;}
@@ -431,7 +433,7 @@ namespace INMOST
 		void                        PrintElementConnectivity() const;
 		static bool                 CheckConnectivity       (Mesh * m);
 		//implemented in geometry.cpp
-		void                        CastRay                 (real * pos, real * dir, dynarray< std::pair<Element, real> , 16 > & hits) const;
+		void                        CastRay                 (const real * pos, const real * dir, tiny_map<HandleType, real, 16> & hits) const;
 		void                        ComputeGeometricType    () const;
 		void                        Centroid                (real * cnt) const;
 		void                        Barycenter              (real * cnt) const;
@@ -604,8 +606,11 @@ namespace INMOST
 		static Face                 UniteFaces              (ElementArray<Face> & faces, MarkerType del_protect);
 		static bool                 TestUniteFaces          (const ElementArray<Face> & faces,  MarkerType del_protect);
 		static ElementArray<Face>   SplitFace               (Face face, const ElementArray<Edge> & edges, MarkerType del_protect); //provide all edges that lay inside face
-		static bool                 TestSplitFace           (Face face, const ElementArray<Edge> & edges, MarkerType del_protect);	
-		void                        SwapCells               (); //swap back cell and front cell
+		static bool                 TestSplitFace           (Face face, const ElementArray<Edge> & edges, MarkerType del_protect);
+		///This function changes Face::BackCell() with Face::FrontCell().
+		/// \warning Function does not modify normal orientation. You may have
+		/// to call Face::FixNormalOrientation().
+		void                        SwapCells               () const; 
 		//implemented in geometry.cpp
 		Storage::real               Area                    () const;
 		void                        Normal                  (real * nrm) const;
@@ -1268,8 +1273,8 @@ namespace INMOST
 		Tag                                 tag_bridge;
 		Tag                                 tag_redistribute;
 	private:
-    void AllocatePrivateMarkers();
-    void DeallocatePrivateMarkers();
+		void AllocatePrivateMarkers();
+		void DeallocatePrivateMarkers();
 		__INLINE static sparse_rec          mkrec               (const Tag & t) {sparse_rec ret; ret.tag = t.mem; ret.rec = NULL; return ret;}
 		__INLINE sparse_type const &        MGetSparseLink      (integer etypenum, integer ID) const {return GetSparseData(etypenum,links[etypenum][ID]);}
 		__INLINE sparse_type &              MGetSparseLink      (integer etypenum, integer ID) {return GetSparseData(etypenum,links[etypenum][ID]);}

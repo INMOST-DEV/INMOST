@@ -1309,52 +1309,37 @@ namespace INMOST
 				 */
 			case Element::Hex:
 			{
-				MarkerType mrk = CreatePrivateMarker();
 				MarkerType cemrk = CreatePrivateMarker();
 				MarkerType femrk = CreatePrivateMarker();
-				//printf("%lx %lx %lx\n",mrk,cemrk,femrk);
 				ElementArray<Face> faces = c->getFaces();
 				Face face = faces[0];
 				ret.reserve(8);
 				ElementArray<Node> verts = face->getNodes();
 				if( face->BackCell() == c )
-					for(ElementArray<Node>::iterator it = verts.begin(); it != verts.end(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
+					ret.insert(ret.end(),verts.begin(),verts.end());
 				else
-					for(ElementArray<Node>::reverse_iterator it = verts.rbegin(); it != verts.rend(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
+					ret.insert(ret.end(),verts.rbegin(),verts.rend());
 				ElementArray<Edge> c_edges = c->getEdges();
-				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++)
-					it->SetPrivateMarker(cemrk);
 				ElementArray<Edge> f_edges = face->getEdges();
-				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++)
-					it->SetPrivateMarker(femrk);
+				c_edges.SetPrivateMarker(cemrk);
+				f_edges.SetPrivateMarker(femrk);
 				for(unsigned int k = 0; k < 4; k++)
 				{
-					ElementArray<Edge> v_edges = ret[k]->getEdges();
+					ElementArray<Edge> v_edges = ret[k]->getEdges(cemrk);
 					for(ElementArray<Edge>::iterator it = v_edges.begin(); it != v_edges.end(); it++)
 					{
-						if( it->GetPrivateMarker(cemrk) && !it->GetPrivateMarker(femrk) )
+						if( !it->GetPrivateMarker(femrk) )
 						{
-							ElementArray<Node> nn = it->getNodes();
-							if( nn[0].GetPrivateMarker(mrk) )
-								ret.push_back(nn[1]);
+							if( it->getBeg() == ret[k] )
+								ret.push_back(it->getEnd());
 							else
-								ret.push_back(nn[0]);
+								ret.push_back(it->getBeg());
 							break;
 						}
 					}
-					ret[k]->RemPrivateMarker(mrk);
 				}
-				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->RemPrivateMarker(cemrk);
-				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->RemPrivateMarker(femrk);
-				ReleasePrivateMarker(mrk);
+				c_edges.RemPrivateMarker(cemrk);
+				f_edges.RemPrivateMarker(femrk);
 				ReleasePrivateMarker(cemrk);
 				ReleasePrivateMarker(femrk);
 				break;
@@ -1367,7 +1352,6 @@ namespace INMOST
 				 */
 			case Element::Prism:
 			{
-				MarkerType mrk = CreatePrivateMarker();
 				MarkerType cemrk = CreatePrivateMarker();
 				MarkerType femrk = CreatePrivateMarker();
 				ret.reserve(6);
@@ -1381,39 +1365,28 @@ namespace INMOST
 					}
 				ElementArray<Node> verts = face->getNodes();
 				if( face->BackCell() == c )
-					for(ElementArray<Node>::iterator it = verts.begin(); it != verts.end(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
+					ret.insert(ret.end(),verts.begin(),verts.end());
 				else
-					for(ElementArray<Node>::reverse_iterator it = verts.rbegin(); it != verts.rend(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
+					ret.insert(ret.end(),verts.rbegin(),verts.rend());
 				ElementArray<Edge> c_edges = c->getEdges();
-				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->SetPrivateMarker(cemrk);
 				ElementArray<Edge> f_edges = face->getEdges();
-				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->SetPrivateMarker(femrk);
+				c_edges.SetPrivateMarker(cemrk);
+				f_edges.SetPrivateMarker(femrk);
 				for(ElementArray<Cell>::size_type k = 0; k < 3; k++)
 				{
-					ElementArray<Edge> v_edges = ret[k]->getEdges();
+					ElementArray<Edge> v_edges = ret[k]->getEdges(cemrk);
 					for(ElementArray<Edge>::iterator it = v_edges.begin(); it != v_edges.end(); it++)
-						if( it->GetPrivateMarker(cemrk) && !it->GetPrivateMarker(femrk) )
+						if( !it->GetPrivateMarker(femrk) )
 						{
-							ElementArray<Node> nn = it->getNodes();
-							if( nn[0].GetPrivateMarker(mrk) )
-								ret.push_back(nn[1]);
+							if( it->getBeg() == ret[k] )
+								ret.push_back(it->getEnd());
 							else
-								ret.push_back(nn[0]);
+								ret.push_back(it->getBeg());
 							break;
 						}
-					ret[k]->RemPrivateMarker(mrk);
 				}
-				for(ElementArray<Edge>::iterator it = c_edges.begin(); it != c_edges.end(); it++) it->RemPrivateMarker(cemrk);
-				for(ElementArray<Edge>::iterator it = f_edges.begin(); it != f_edges.end(); it++) it->RemPrivateMarker(femrk);
-				ReleasePrivateMarker(mrk);
+				c_edges.RemPrivateMarker(cemrk);
+				f_edges.RemPrivateMarker(femrk);
 				ReleasePrivateMarker(cemrk);
 				ReleasePrivateMarker(femrk);
 				break;
@@ -1527,13 +1500,12 @@ namespace INMOST
 								SetPrivateMarker(ilc[j],mrk);
 							}
 						}
-
-						for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !Hidden(lc[i]) )  //iterate over faces
-						{
-							Element::adj_type & ilc = LowConn(lc[i]);
-							for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !Hidden(ilc[j]) ) //iterate over face edges
-								RemPrivateMarker(ilc[j],mrk);
-						}
+					}
+					for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !Hidden(lc[i]) )  //iterate over faces
+					{
+						Element::adj_type & ilc = LowConn(lc[i]);
+						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !Hidden(ilc[j]) ) //iterate over face edges
+							RemPrivateMarker(ilc[j],mrk);
 					}
 				}
 				for(ElementArray<Node>::size_type it = 0; it < ret.size(); it++) ret[it]->RemPrivateMarker(mrk);

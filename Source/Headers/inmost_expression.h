@@ -5,11 +5,6 @@
 #include <sstream> //for debug
 #include <new>
 
-#if defined(USE_AUTODIFF) && !defined(USE_SOLVER)
-#warning "USE_AUTODIFF require USE_SOLVER"
-#undef USE_AUTODIFF
-#endif
-
 
 //TODO:
 // 1. Incorporate tables
@@ -21,6 +16,10 @@
 // 7. choice of directional derivatives at discontinuities for abs, pow, max, min (see ADOL-C)
 // 8. replace stencil with foreach for provided iterators
 // 9. enclose in namespace
+//10. CheckCurrentAutomatizator -> CheckCurrentRowMerger
+//10.0 structure/service to handle multiple RowMerger objects in openmp environment
+//10.1 user should be able to provide RowMerger when Automatizator is not compiled
+//10.2 Automatizator may provide internal structure for RowMerger
 
 #ifdef _MSC_VER
 #pragma warning(disable : 4503)
@@ -1608,5 +1607,5 @@ template<class A>          __INLINE                 INMOST::function_expression<
 
 
 
-#endif
-#endif
+#endif //USE_AUTODIFF
+#endif //INMOST_AUTODIFF_ETEXPR_H_INCLUDED

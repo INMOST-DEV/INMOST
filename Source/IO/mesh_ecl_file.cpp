@@ -38,6 +38,12 @@
 //eclipse states
 #define ECLSTRCMP(x,y) strncmp(x,y,8)
 
+
+//controls when to consider two nodes on pillar to be the same
+#define ECL_PILLAR_DEPTH_EPS 1.0e-8
+#define ECL_POINT_EPS 1.0e-8
+#define ECL_INTERSECT_EPS 1.0e-12
+
 #define ECL_NEVER -1
 #define ECL_NONE 0
 #define ECL_SKIP_SECTION 1
@@ -91,94 +97,143 @@ namespace INMOST
 	//2d point with comparison operator for line sweep algorithm
 	struct Point
 	{
-		const Storage::real eps;
-		Storage::real x, y;
-		Point & operator = (Point const & b) {  x = b.x; y = b.y; return *this; }
-		Point(const Point & b) : eps(1.0e-7), x(b.x), y(b.y) {}
-		Point(Storage::real _x, Storage::real _y) : eps(1.0e-7), x(_x), y(_y) {}
-		Point(Storage::real v[2]) : eps(1.0e-7), x(v[0]), y(v[1]) {}
+		HandleType node;
+		long double x, y;
+		Point & operator = (Point const & b) { node = b.node; x = b.x; y = b.y; return *this; }
+		Point(const Point & b) : node(b.node), x(b.x), y(b.y) {}
+		Point(HandleType _node, Storage::real _x, Storage::real _y) : node(_node), x(_x), y(_y) {}
+		Point(HandleType _node, Storage::real v[2]) : node(_node), x(v[0]), y(v[1]) {}
 		bool operator <(const Point & b) const
 		{
-			if (y < b.y - eps) return true;
-			else if (y > b.y + eps) return false;
-			else if (x < b.x - eps) return true;
+			if (y < b.y - ECL_POINT_EPS) return true;
+			else if (y > b.y + ECL_POINT_EPS) return false;
+			else if (x < b.x - ECL_POINT_EPS) return true;
 			else return false;
 		}
 		bool operator ==(const Point & b) const
 		{
-			return fabs(y - b.y) < eps && fabs(x - b.x) < eps;
+			return std::abs(y - b.y) < ECL_POINT_EPS && std::abs(x - b.x) < ECL_POINT_EPS;
 		}
 		bool operator !=(const Point & b) const
 		{
-			return fabs(y - b.y) > eps || fabs(x - b.x) > eps;
+			return std::abs(y - b.y) > ECL_POINT_EPS || std::abs(x - b.x) > ECL_POINT_EPS;
 		}
 	};
 	//class that returns a Point into 3d space based on coords of two pillars
 	class Unproject
 	{
-		Storage::real a0[3], a1[3], b0[3], b1[3];
+		long double a0[3], a1[3], b0[3], b1[3];
 	public:
 		Unproject(Storage::real _a0[3], Storage::real _a1[3], Storage::real _b0[3], Storage::real _b1[3])
 		{
-			memcpy(a0,_a0,sizeof(Storage::real)*3);
-			memcpy(a1,_a1,sizeof(Storage::real)*3);
-			memcpy(b0,_b0,sizeof(Storage::real)*3);
-			memcpy(b1,_b1,sizeof(Storage::real)*3);
+			a0[0] = _a0[0];
+			a0[1] = _a0[1];
+			a0[2] = _a0[2];
+			a1[0] = _a1[0];
+			a1[1] = _a1[1];
+			a1[2] = _a1[2];
+			b0[0] = _b0[0];
+			b0[1] = _b0[1];
+			b0[2] = _b0[2];
+			b1[0] = _b1[0];
+			b1[1] = _b1[1];
+			b1[2] = _b1[2];
 		}
 		Unproject(const Unproject & b)
 		{
-			memcpy(a0,b.a0,sizeof(Storage::real)*3);
-			memcpy(a1,b.a1,sizeof(Storage::real)*3);
-			memcpy(b0,b.b0,sizeof(Storage::real)*3);
-			memcpy(b1,b.b1,sizeof(Storage::real)*3);
+			a0[0] = b.a0[0];
+			a0[1] = b.a0[1];
+			a0[2] = b.a0[2];
+			a1[0] = b.a1[0];
+			a1[1] = b.a1[1];
+			a1[2] = b.a1[2];
+			b0[0] = b.b0[0];
+			b0[1] = b.b0[1];
+			b0[2] = b.b0[2];
+			b1[0] = b.b1[0];
+			b1[1] = b.b1[1];
+			b1[2] = b.b1[2];
 		}
 		Unproject & operator =(Unproject const & b)
 		{
-			memmove(a0,b.a0,sizeof(Storage::real)*3);
-			memmove(a1,b.a1,sizeof(Storage::real)*3);
-			memmove(b0,b.b0,sizeof(Storage::real)*3);
-			memmove(b1,b.b1,sizeof(Storage::real)*3);
+			a0[0] = b.a0[0];
+			a0[1] = b.a0[1];
+			a0[2] = b.a0[2];
+			a1[0] = b.a1[0];
+			a1[1] = b.a1[1];
+			a1[2] = b.a1[2];
+			b0[0] = b.b0[0];
+			b0[1] = b.b0[1];
+			b0[2] = b.b0[2];
+			b1[0] = b.b1[0];
+			b1[1] = b.b1[1];
+			b1[2] = b.b1[2];
 			return *this;
 		}
-		void Act(const Point & p, Storage::real v[3]) const
+		// a1         b1
+		//          /
+		//         /
+		//        /
+		//       /
+		//      /
+		//     /
+		//    /
+		// a0         b0
+		/*
+		void Act(const Point & p, Storage::real ret[3]) const
 		{
-			Storage::real a, b;
-			for(int k = 0; k < 3; ++k)
+			if( p.y < 1-p.x ) //tri a0,a1,b1
 			{
-				a = (p.x)*a0[k] + (1-p.x)*a1[k];
-				b = (p.x)*b0[k] + (1-p.x)*b1[k];
-				v[k] = (1-p.y)*a+p.y*b;
+				//a = (0,0) (a0) u
+				//b = (0,1) (a1) v
+				//c = (1,1) (b1) w
+				//Vector v0 = (0,1), v1 = (1,1), v2 = p;
+				const Storage::real d00 = 1; //Dot(v0, v0);
+				const Storage::real d01 = 1; //Dot(v0, v1);
+				const Storage::real d11 = 2; //Dot(v1, v1);
+				const Storage::real denom = d00 * d11 - d01 * d01;
+				Storage::real d20 = 1-p.x; //Dot(v2, v0);
+				Storage::real d21 = 1-p.x+p.y; //Dot(v2, v1);
+				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for a1
+				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
+				Storage::real u = 1.0 - v - w; //for a0
+				for(int k = 0; k < 3; ++k)
+					ret[k] = a0[k]*u + a1[k]*v + b1[k]*w;
+			}
+			else //tri a0,b0,b1
+			{
+				//a = (0,0) (a0) u
+				//b = (1,0) (b0) v
+				//c = (1,1) (b1) w
+				//Vector v0 = (1,0), v1 = (1,1), v2 = p;
+				const Storage::real d00 = 1; //Dot(v0, v0);
+				const Storage::real d01 = 1; //Dot(v0, v1);
+				const Storage::real d11 = 2; //Dot(v1, v1);
+				const Storage::real denom = d00 * d11 - d01 * d01;
+				Storage::real d20 = p.y; //Dot(v2, v0);
+				Storage::real d21 = 1-p.x+p.y; //Dot(v2, v1);
+				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for b0
+				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
+				Storage::real u = 1.0 - v - w; //for a0
+				for(int k = 0; k < 3; ++k)
+					ret[k] = a0[k]*u + b0[k]*v + b1[k]*w;
 			}
 		}
-	};
-	//Comparator for events in line sweep algorithm
-	class event_less
-	{
-	public:
-		bool operator()(const std::pair<Storage::real, int> & a, const std::pair<Storage::real, int> & b) const
+		 */
+		
+		void Act(const Point & p, Storage::real v[3]) const
 		{
-			const Storage::real eps = 1.0e-7;
-			if (a.first < b.first - eps)
-				return true;
-			else if (a.first > b.first + eps)
-				return false;
-			else if (a.second < b.second)
-				return true;
-			return false;
+			long double a, b;
+			for(int k = 0; k < 3; ++k)
+			{
+				a = (p.x)*a0[k] + (1.0-p.x)*a1[k];
+				b = (p.x)*b0[k] + (1.0-p.x)*b1[k];
+				v[k] = (1.0-p.y)*a + p.y*b;
+			}
 		}
+		
 	};
-	//Comparator for depth of nodes in pillar
-	class pillar_less
-	{
-	public:
-		bool operator()(Storage::real a, Storage::real b) const
-		{
-			const Storage::real eps = 1.0e-7;
-			if( a < b - eps)
-				return true;
-			return false;
-		}
-	};
+	// Used to sort arrays by indices
 	class index_comparator
 	{
 		Storage::integer_array & data;
@@ -188,6 +243,17 @@ namespace INMOST
 		index_comparator & operator =(index_comparator const & b) {data = b.data; return *this;}
 		bool operator ()(int a, int b) const {return data[a] < data[b];}
 	};
+	// Used to sort arrays by depth
+	class depth_comparator
+	{
+		const Storage::real * data;
+	public:
+		depth_comparator(const Storage::real * data) : data(data) {}
+		depth_comparator(const depth_comparator & b) : data(b.data) {}
+		depth_comparator & operator =(depth_comparator const & b) {data = b.data; return *this;}
+		bool operator ()(int a, int b) const {return data[a] < data[b];}
+	};
+	
 	template<typename T>
 	int count_duplicates(ElementArray<T> & array)
 	{
@@ -226,111 +292,88 @@ namespace INMOST
 		m->ReleasePrivateMarker(mrk);
 	}
 	
-	
-	
-	std::pair<bool,Node> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::map<Point,Node> & intersections, Tag pnt, const Unproject & unp, bool print)
+	Point make_point(Node n, Tag pnt)
 	{
-		const Storage::real eps = 1.0e-9;
-		if( a->getBeg() == b->getBeg() || a->getBeg() == b->getEnd() || a->getEnd() == b->getEnd() || a->getEnd() == b->getBeg() )
-			return std::make_pair(false,InvalidNode());
-		Storage::real_array abeg = a->getBeg()->Coords();
-		Storage::real_array aend = a->getEnd()->Coords();
-		Storage::real_array bbeg = b->getBeg()->Coords();
-		Storage::real_array bend = b->getEnd()->Coords();
-		Storage::real_array _pabeg = a->getBeg()->RealArray(pnt);
-		Storage::real_array _paend = a->getEnd()->RealArray(pnt);
-		Storage::real_array _pbbeg = b->getBeg()->RealArray(pnt);
-		Storage::real_array _pbend = b->getEnd()->RealArray(pnt);
-		Point pabeg(_pabeg[0],_pabeg[1]);
-		Point paend(_paend[0],_paend[1]);
-		Point pbbeg(_pbbeg[0],_pbbeg[1]);
-		Point pbend(_pbend[0],_pbend[1]);
-		Point pfind(0,0);
-		Storage::real find[3];
-		Storage::real div = (pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x), t1,t2;
-		if (fabs(div) < 1.0e-13)
+		return Point(n->GetHandle(),n->RealArray(pnt).data());
+	}
+	
+	std::pair<bool,Point> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::set<Point> & intersections, Tag pnt, const Unproject & unp, bool print)
+	{
+		const Storage::real eps = ECL_INTERSECT_EPS;
+		Point pfind(InvalidHandle(),0,0);
+		if( a->getBeg() == b->getBeg() ||
+		    a->getBeg() == b->getEnd() ||
+		    a->getEnd() == b->getEnd() ||
+		    a->getEnd() == b->getBeg() )
+			return std::make_pair(false,pfind);
+		Point pabeg = make_point(a->getBeg(),pnt);
+		Point paend = make_point(a->getEnd(),pnt);
+		Point pbbeg = make_point(b->getBeg(),pnt);
+		Point pbend = make_point(b->getEnd(),pnt);
+		long double div = (long double)(pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x);
+		long double t1,t2;
+		if (std::abs(div) < 1.0e-50)
 		{
 			if (print) std::cout << "divisor is zero" << std::endl;
-			return std::make_pair(false,InvalidNode());
+			return std::make_pair(false,pfind);
 		}
 		pfind.x = ((pabeg.x*paend.y - pabeg.y*paend.x)*(pbbeg.x - pbend.x) - (pabeg.x - paend.x)*(pbbeg.x*pbend.y - pbbeg.y*pbend.x)) / div;
 		pfind.y = ((pabeg.x*paend.y - pabeg.y*paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x*pbend.y - pbbeg.y*pbend.x)) / div;
 		//optimization uses information that we stay in unit cube
 		if( pfind.x < 0 || pfind.x > 1 || pfind.y < 0 || pfind.y > 1 )
-			return std::make_pair(false,InvalidNode());
-		if (print) std::cout << "found ("<< pfind.x << ", " << pfind.y << ")" << std::endl;
+			return std::make_pair(false,pfind);
+		if (print) std::cout << "found ("<< pfind.x << ", " << pfind.y << ") for edges " << a->GetHandle() << " and " << b->GetHandle() << std::endl;
 		//probably some of these tests are redundant
-		if (fabs(paend.x - pabeg.x) > eps)
+		if (std::abs(paend.x - pabeg.x) > eps)
 		{
 			t1 = (pfind.x - pabeg.x) / (paend.x - pabeg.x);
-			if (t1 < eps || t1 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t1 < eps || t1 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,pfind); }
 		}
-		if (fabs(paend.y - pabeg.y) > eps)
+		if (std::abs(paend.y - pabeg.y) > eps)
 		{
 			t1 = (pfind.y - pabeg.y) / (paend.y - pabeg.y);
-			if (t1 < eps || t1 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t1 < eps || t1 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t1 << std::endl; return std::make_pair(false,pfind); }
 		}
-		if (fabs(pbend.x - pbbeg.x) > eps)
+		if (std::abs(pbend.x - pbbeg.x) > eps)
 		{
 			t2 = (pfind.x - pbbeg.x) / (pbend.x - pbbeg.x);
-			if (t2 < eps || t2 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t2 < eps || t2 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,pfind); }
 		}
-		if (fabs(pbend.y - pbbeg.y) > eps)
+		if (std::abs(pbend.y - pbbeg.y) > eps)
 		{
 			t2 = (pfind.y - pbbeg.y) / (pbend.y - pbbeg.y);
-			if (t2 < eps || t2 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,InvalidNode()); }
+			if (t2 < eps || t2 > 1.0 - eps)  { if (print) std::cout << "out of bound: " << t2 << std::endl; return std::make_pair(false,pfind); }
 		}
-		if (print) std::cout << "intersection accepted (" << pfind.x << "," << pfind.y << ") t1 " << t1 << " t2 " << t2 << std::endl;
-		Node I;
-		std::map<Point,Node>::iterator search = intersections.find(pfind);
+		std::set<Point>::iterator search = intersections.find(pfind);
 		//check whether intersection already exists
 		if( search != intersections.end() ) //there is a node!
-			I = search->second;
+		{
+			pfind = *search;
+			if( pfind.node == a->getBeg()->GetHandle() ||
+			    pfind.node == b->getBeg()->GetHandle() ||
+			    pfind.node == a->getEnd()->GetHandle() ||
+			    pfind.node == b->getEnd()->GetHandle())
+				return std::make_pair(false,pfind);
+		}
 		else //no node, create one
 		{
+			Storage::real find[3];
 			//restore coordinate
-			//for(int k = 0; k < 3; ++k)
-			//	find[k] = 0.5*((1-t1)*abeg[k]+t1*aend[k] + (1-t2)*bbeg[k]+t2*bend[k]);
+			//this is treaky, we do not want self intersection in 3d space
 			unp.Act(pfind,find);
-			I = m->CreateNode(find);
-			Storage::real_array _pfind = I->RealArray(pnt);
+			pfind.node = m->CreateNode(find)->GetHandle();
+			if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << " new node " << pfind.node << std::endl;
+			Storage::real_array _pfind = m->RealArray(pfind.node,pnt);
 			_pfind[0] = pfind.x;
 			_pfind[1] = pfind.y;
-			std::pair<std::map<Point,Node>::iterator,bool> ins = intersections.insert(std::make_pair(pfind,I));
-			if( !ins.second ) std::cout << "intersection node " << I->GetHandle() << " was not inserted at " << pfind.x << "," << pfind.y << " since there " << ins.first->second->GetHandle() << std::endl;
+			intersections.insert(pfind);
 		}
-		if( I == a->getBeg() || I == b->getBeg() || I == a->getEnd() || I == b->getEnd())
-			return std::make_pair(false,I);
-		return std::make_pair(true,I);
+		return std::make_pair(true,pfind);
 	}
 
-	 
-	void check_multimap(std::multimap<std::pair<Storage::real,int>, int,event_less> & events, const std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator & it, bool print)
-	{
-		if( print )
-		{
-			{
-				std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator jt = it;
-				++jt;
-				if( jt != events.end() )
-				{
-					std::cout << "inserted " << std::scientific << it->first.first << " " << it->first.second << " segment " << it->second << std::endl;
-					std::cout << "next     " << std::scientific << jt->first.first << " " << jt->first.second << " segment " << jt->second << std::endl;
-					std::cout << "compare " << event_less()(it->first,jt->first) << std::endl;
-				}
-			}
-			if( it != events.begin() )
-			{
-				std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator  jt = it;
-				--jt;
-				std::cout << "prev     " << std::scientific << jt->first.first << " " << jt->first.second << " segment " << jt->second << std::endl;
-				std::cout << "inserted " << std::scientific << it->first.first << " " << it->first.second << " segment " << it->second << std::endl;
-				std::cout << "compare " << event_less()(jt->first,it->first) << std::endl;
-			}
-		}
-	}
+	
 
-	void split_edges(Mesh * m, Node I, Edge a, Edge b, ElementArray<Edge> & splitted_a, ElementArray<Edge> & splitted_b,std::vector<Tag> & transfer)
+	void split_edges(Mesh * m, Node I, Edge a, Edge b, ElementArray<Edge> & splitted_a, ElementArray<Edge> & splitted_b,std::vector<Tag> & transfer, bool print)
 	{
 		//storage for data
 		std::vector< std::vector<char> > copy(transfer.size()*2);
@@ -345,8 +388,12 @@ namespace INMOST
 					if( !copy.empty() ) s[q]->GetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
 				}
 		}
+		if( print ) std::cout << "split a " << a->GetHandle() << " " << a->getBeg()->GetHandle() << " <-> " << a->getEnd()->GetHandle() << ":-> ";
 		splitted_a = Edge::SplitEdge(a,ElementArray<Node>(m,1,I->GetHandle()),0);
+		if( print ) std::cout << splitted_a[0]->GetHandle() << " " << splitted_a[0]->getBeg()->GetHandle() << " <-> " << splitted_a[0]->getEnd()->GetHandle() << " and " << splitted_a[1]->GetHandle() << " " << splitted_a[1]->getBeg()->GetHandle() << " <-> " << splitted_a[1]->getEnd()->GetHandle() << std::endl;
+		if( print ) std::cout << "split b " << b->GetHandle() << " " << b->getBeg()->GetHandle() << " <-> " << b->getEnd()->GetHandle() << ":-> ";
 		splitted_b = Edge::SplitEdge(b,ElementArray<Node>(m,1,I->GetHandle()),0);
+		if( print ) std::cout << splitted_b[0]->GetHandle() << " " << splitted_b[0]->getBeg()->GetHandle() << " <-> " << splitted_b[0]->getEnd()->GetHandle() << " and " << splitted_b[1]->GetHandle() << " " << splitted_b[1]->getBeg()->GetHandle() << " <-> " << splitted_b[1]->getEnd()->GetHandle() << std::endl;
 		//duplicate data
 		{
 			const Edge splitted[2][2] =
@@ -372,7 +419,7 @@ namespace INMOST
 	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, bool print)
 	{
 		//Tag pnt = m->CreateTag("PROJ_PNT"+m->GetLocalProcessorRank(),DATA_REAL,NODE,NODE,2);
-		std::map<Point,Node> intersections;
+		std::set<Point> intersections;
 		std::vector<HandleType> initials(segments.size()*2);
 		MarkerType initial = m->CreatePrivateMarker();
 		for (int k = 0; k < (int)segments.size(); ++k)
@@ -381,20 +428,18 @@ namespace INMOST
 			initials[k*2+1] = segments[k]->getEnd()->GetHandle();
 			segments[k]->getBeg()->SetPrivateMarker(initial);
 			segments[k]->getEnd()->SetPrivateMarker(initial);
-			Point pbeg(segments[k]->getBeg()->RealArray(pnt).data());
-			Point pend(segments[k]->getEnd()->RealArray(pnt).data());
-			intersections.insert(std::make_pair(pbeg,segments[k]->getBeg()));
-			intersections.insert(std::make_pair(pend,segments[k]->getEnd()));
+			intersections.insert(make_point(segments[k]->getBeg(),pnt));
+			intersections.insert(make_point(segments[k]->getEnd(),pnt));
 		}
 		for(int i = 0; i < (int)segments.size(); ++i)
 		{
 			for(int j = i+1; j < (int)segments.size(); ++j)
 			{
-				std::pair<bool,Node> I = intersect_segments(m,segments[i],segments[j],intersections,pnt,unp,print);
+				std::pair<bool,Point> I = intersect_segments(m,segments[i],segments[j],intersections,pnt,unp,print);
 				if( I.first )
 				{
 					ElementArray<Edge> splitted_a, splitted_b;
-					split_edges(m,I.second,segments[i],segments[j],splitted_a,splitted_b,transfer);
+					split_edges(m,Node(m,I.second.node),segments[i],segments[j],splitted_a,splitted_b,transfer,print);
 					segments[i] = splitted_a[0];
 					segments[j] = splitted_b[0];
 					segments.push_back(splitted_a[1]);
@@ -403,239 +448,54 @@ namespace INMOST
 			}
 		}
 		nodes.clear();
-		for(std::map<Point,Node>::iterator it = intersections.begin(); it != intersections.end(); ++it)
+		for(std::set<Point>::iterator it = intersections.begin(); it != intersections.end(); ++it)
 		{
-			if( !it->second->GetPrivateMarker(initial) )
-				nodes.push_back(it->second);
+			if( !m->GetPrivateMarker(it->node,initial) )
+				nodes.push_back(it->node);
 		}
 		for(int k = 0; k < (int)initials.size(); ++k)
 			m->RemPrivateMarker(initials[k],initial);
 		m->ReleasePrivateMarker(initial);
 	}
 
-	//account for intersection event
-	void intersect_event(Mesh * m, int a, int b, Node I, ElementArray<Edge> & segments, std::multimap<Point, int> & sweep, std::multimap<std::pair<Storage::real,int>, int,event_less> & events, std::vector<Tag> & transfer, Tag pnt, bool print)
+	
+	void block_number_union(Element n, ElementArray<Element> & adj, Tag block, Tag write)
 	{
-		const bool checkmm = false;
-		//remove event of ending of old segment
+		Storage::integer_array bn = n->IntegerArray(write);
+		if( !adj.empty() )
 		{
-			int rem_end_events[2];
-			rem_end_events[0] = a;
-			rem_end_events[1] = b;
-			for (int k = 0; k < 2; ++k)
+			std::vector<int> uni, tmp;
+			for(ElementArray<Edge>::size_type k = 0; k < adj.size(); ++k)
 			{
-				std::pair< std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator, std::multimap<std::pair<Storage::real,int>,int,event_less>::iterator > del = events.equal_range(std::make_pair(segments[rem_end_events[k]]->getEnd()->RealArray(pnt)[0],SEG_END)); //get all events at position of the end
-				bool flag = false;
-				for (std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator it = del.first; it != del.second; ++it) //search over all events
-				{
-					if (it->first.second == SEG_END && it->second == rem_end_events[k]) //event is end of segment and segment matches current
-					{
-						events.erase(it); //remove that segment
-						flag = true;
-						break; //do not expect any more
-					}
-				}
-				if (!flag)
-				{
-					std::cout << "Cannot find proper ending event for segment " << rem_end_events[k] << std::endl;
-					std::cout << "Found events:" << std::endl;
-					for (std::multimap<std::pair<Storage::real,int>, int,event_less>::iterator it = del.first; it != del.second; ++it)
-						std::cout << "x: " << it->first.first << (it->first.second == SEG_END ? "end ":"start ") << " segment " << it->second << std::endl;
-					std::cout << "Was looking at " << segments[rem_end_events[k]]->getEnd()->Coords()[2] << " " << segments[rem_end_events[k]]->getEnd()->GetHandle() << std::endl;
-					std::cout << "Other side at " << segments[rem_end_events[k]]->getBeg()->Coords()[2] << " " << segments[rem_end_events[k]]->getBeg()->GetHandle() << std::endl;
-					std::cout << "All events: " << events.size() << std::endl;
-					for (std::multimap<std::pair<Storage::real, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
-						std::cout << "x: " << it->first.first << " type " << (it->first.second == SEG_START ? "start" : "end") << " segment " << it->second << " " << segments[it->second]->GetHandle() << " " << segments[it->second]->getBeg()->GetHandle() << " " << segments[it->second]->getEnd()->GetHandle() <<std::endl;
-					
-				}
-				assert(flag);
+				Storage::integer_array be = adj[k]->IntegerArray(block);
+				tmp.resize(uni.size()+be.size());
+				tmp.resize(std::set_union(uni.begin(),uni.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
+				uni.swap(tmp);
 			}
+			bn.replace(bn.begin(),bn.end(),uni.begin(),uni.end());
 		}
-		ElementArray<Edge> splitted_a, splitted_b;
-		split_edges(m,I,segments[a],segments[b],splitted_a,splitted_b,transfer);
-		//replace segment a by new one
-		segments[a] = splitted_a[0];
-		//add event of ending of old segment
-		if(print) std::cout << "1: Add segment " << a << " " << segments[a]->GetHandle() << " end" << " at " << I->RealArray(pnt)[0] << " " << I->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(I->RealArray(pnt)[0],SEG_END), a)),checkmm);
-		//put other side of segment
-		segments.push_back(splitted_a[1]);
-		//detect proper starting event
-		if( segments.back()->getBeg()->RealArray(pnt)[0] > segments.back()->getEnd()->RealArray(pnt)[0] )
-			segments.back()->SwapEnds();
-		//add event of starting of new segment
-		if(print) std::cout << "2: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " start at " << segments.back()->getBeg()->RealArray(pnt)[0] << " " << segments.back()->getBeg()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getBeg()->RealArray(pnt)[0],SEG_START), (int)segments.size() - 1)),checkmm);
-		//add event of ending of new segment
-		if(print) std::cout << "3: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " end at " << segments.back()->getEnd()->RealArray(pnt)[0] << " " << segments.back()->getEnd()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getEnd()->RealArray(pnt)[0],SEG_END),(int)segments.size() - 1)),checkmm);
-		//replace segment b by new one
-		segments[b] = splitted_b[0];
-		//add event of ending of old segment
-		if(print) std::cout << "4: Add segment " << b << " " << segments[b]->GetHandle() << " end at " << I->RealArray(pnt)[0] << " " << I->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(I->RealArray(pnt)[0],SEG_END), b)),checkmm);
-		//put other side of segment
-		segments.push_back(splitted_b[1]);
-		//detect proper starting event
-		if( segments.back()->getBeg()->RealArray(pnt)[0] > segments.back()->getEnd()->RealArray(pnt)[0] )
-			segments.back()->SwapEnds();
-		//add event of starting of new segment
-		if(print) std::cout << "5: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " start at " << segments.back()->getBeg()->RealArray(pnt)[0]<< " " << segments.back()->getBeg()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getBeg()->RealArray(pnt)[0],SEG_START), (int)segments.size() - 1)),checkmm);
-		//add event of ending of new segment
-		if(print) std::cout << "6: Add segment " << segments.size() - 1 << " " << segments.back()->GetHandle() << " end at " << segments.back()->getEnd()->RealArray(pnt)[0] << " " << segments.back()->getEnd()->GetHandle() << std::endl;
-		check_multimap(events,events.insert(std::make_pair(std::make_pair(segments.back()->getEnd()->RealArray(pnt)[0],SEG_END), (int)segments.size() - 1)),checkmm);
-		if (print)
+		else bn.clear();
+	}
+	
+	void block_number_union_merge(Element n, ElementArray<Element> & adj, Tag block, Tag write)
+	{
+		Storage::integer_array bn = n->IntegerArray(write);
+		if( !adj.empty() )
 		{
-			std::cout << "Number of events: " << events.size() << std::endl;
-			for (std::multimap<std::pair<Storage::real, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
-				std::cout << "x: " << it->first.first << " type " << (it->first.second == SEG_START ? "start" : "end") << " segment " << it->second << " " << segments[it->second]->GetHandle() << " " << segments[it->second]->getBeg()->GetHandle() << " " << segments[it->second]->getEnd()->GetHandle() << std::endl;
-			//assert(count_duplicates(segments) == 0);
+			std::vector<int> uni(bn.begin(),bn.end()), tmp(uni.size());
+			for(ElementArray<Edge>::size_type k = 0; k < adj.size(); ++k)
+			{
+				Storage::integer_array be = adj[k]->IntegerArray(block);
+				tmp.resize(uni.size()+be.size());
+				tmp.resize(std::set_union(uni.begin(),uni.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
+				uni.swap(tmp);
+			}
+			bn.replace(bn.begin(),bn.end(),uni.begin(),uni.end());
 		}
 	}
 
-	//intersect many segments
-	void intersect(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, bool print)
-	{
-		std::map<Point,Node> intersections;
-		std::multimap<std::pair<Storage::real,int>,int,event_less> events;
-		std::multimap<Point,int> sweep;
-		
-		MarkerType initial = m->CreatePrivateMarker();
 	
-		if( print )
-		{
-			std::cout << "Input segments[" << segments.size() << "]: " << std::endl;
-			for (ElementArray<Edge>::iterator it = segments.begin(); it != segments.end(); ++it)
-				std::cout << "[ (" <<  it->getBeg()->Coords()[0] << "," << it->getBeg()->Coords()[1] << "," << it->getBeg()->Coords()[2] << "), ("<<  it->getEnd()->Coords()[0]   << "," << it->getEnd()->Coords()[1] << "," << it->getEnd()->Coords()[2] << ") ] " << std::endl;
-			std::cout << "Create events based on segments." << std::endl;
-		}
-
-		for (int k = 0; k < (int)segments.size(); ++k)
-		{
-			if (segments[k]->getBeg()->RealArray(pnt)[0] > segments[k]->getEnd()->RealArray(pnt)[0])
-				segments[k].SwapEnds();
-			events.insert(std::make_pair(std::make_pair(segments[k]->getBeg()->RealArray(pnt)[0],SEG_START),k));
-			events.insert(std::make_pair(std::make_pair(segments[k]->getEnd()->RealArray(pnt)[0],SEG_END), k));
-			segments[k]->getBeg()->SetPrivateMarker(initial);
-			segments[k]->getEnd()->SetPrivateMarker(initial);
-			intersections.insert(std::make_pair(Point(segments[k]->getBeg()->RealArray(pnt).data()),segments[k]->getBeg()));
-			intersections.insert(std::make_pair(Point(segments[k]->getEnd()->RealArray(pnt).data()),segments[k]->getEnd()));
-		}
-
-
-		if (print)
-		{
-			std::cout << "Number of events: " << events.size() << std::endl;
-			for (std::multimap<std::pair<Storage::real, int>, int,event_less>::iterator it = events.begin(); it != events.end(); ++it)
-				std::cout << "x: " << it->first.first << " type " << (it->first.second == SEG_START ? "start" : "end") << " segment " << it->second << " " << segments[it->second]->GetHandle() << " " << segments[it->second]->getBeg()->GetHandle() << " " << segments[it->second]->getEnd()->GetHandle() << std::endl;
-		
-			std::cout << " Start parsing events" << std::endl;
-		}
-	
-		while (!events.empty())
-		{
-			std::multimap<std::pair<Storage::real,int>,int,event_less>::iterator first = events.begin();
-			int t = first->first.second;
-			int s = first->second;
-			events.erase(first);
-			if (t == SEG_START)
-			{
-				if( print ) std::cout << "Segment " << s << " start" << std::endl;
-				//check if there is a line with same position
-				Point p(segments[s]->getBeg()->RealArray(pnt).data());
-				std::multimap<Point, int>::iterator ins = sweep.insert(std::make_pair(p, s));
-				if (print)
-				{
-					std::cout << "Inserted into sweep" << std::endl;
-					for (std::multimap<Point, int>::iterator it = sweep.begin(); it != sweep.end(); ++it)
-						std::cout << "(" << it->first.x << "," << it->first.y << ")" << " segment " << it->second << std::endl;
-				}
-				//check line (or lines above current)
-				for (int dir = 0; dir <= 1; ++dir) // look up or down
-				{
-					if( print ) std::cout << "Looking " << (dir ? "up" : "down") << std::endl;
-					std::multimap<Point, int>::iterator iter = ins;
-					while ((dir ? ++iter != sweep.end() : iter != sweep.begin())) //y is greater for next
-					{
-						if( !dir ) --iter;
-						if (print) std::cout << "test " << s << " with " << iter->second << std::endl;
-						if (segments[s]->getBeg() != segments[iter->second]->getBeg()) //ignore same starting position
-						{
-							if (print) std::cout << "checking intersection" << std::endl;
-							std::pair<bool,Node> I = intersect_segments(m,segments[s], segments[iter->second],intersections,pnt,unp,print);
-							if (I.first)
-							{
-								if( print ) std::cout << "Intersection of " << s << " " <<segments[s]->GetHandle() << " " << segments[s]->getBeg()->GetHandle() << " " << segments[s]->getEnd()->GetHandle() << " and " << iter->second << " " << segments[iter->second]->GetHandle() << " " << segments[iter->second]->getBeg()->GetHandle() << " " << segments[iter->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") " << std::endl;
-								intersect_event(m,s, iter->second, I.second, segments, sweep, events,transfer, pnt, print);
-								//break;
-							}
-						}
-						else if (print) std::cout << "skipping segments with same starting point" << std::endl;
-						if ((2*dir-1)*(iter->first.y - ins->first.y) > 0) //visited line is above (below) current
-							break; //stop search
-					}
-				}
-			}
-			else if (t == SEG_END)
-			{
-				if( print ) std::cout << "Segment " << s << " end" << std::endl;
-				//remove segment from sweep
-				Point p(segments[s]->getBeg()->RealArray(pnt).data());
-				std::pair< std::multimap<Point, int>::iterator, std::multimap<Point, int>::iterator > range = sweep.equal_range(p);
-				if( print ) std::cout << "Range distance " << std::distance(range.first,range.second) << " sweep size " << sweep.size() << std::endl;
-				std::multimap<Point, int>::iterator above = range.second, below = range.first;
-				bool flag = false, test = true;
-				if( below == sweep.begin() ) test = false;
-				else --below;
-				if( above == sweep.end() ) test = false;
-				if( test && print ) std::cout << "Test will be performed" << std::endl;
-				for (std::multimap<Point, int>::iterator it = range.first; it != range.second; ++it) //search over all events
-				{
-					if( it->second == s) //found necessery segment
-					{
-						if (print)
-						{
-							std::cout << "Erase segment " << s << " from sweep: " << std::endl;
-							for (std::multimap<Point, int>::iterator it = sweep.begin(); it != sweep.end(); ++it)
-								std::cout << "(" << it->first.x << "," << it->first.y << ")" << " segment " << it->second << std::endl;
-						}
-						sweep.erase(it);
-						flag = true;
-						break; //do not expect any more
-					}
-				}
-				if (!flag) std::cout << __FILE__ << ":" << __LINE__ <<  " Error: cannot find segment " << s << " in sweep" << std::endl;
-				assert(flag);
-				if (test)
-				{
-					if (print) std::cout << "test " << below->second << " with " << above->second << std::endl;
-					if (segments[above->second]->getBeg() != segments[below->second]->getBeg())
-					{
-						if (print) std::cout << "checking intersection" << std::endl;
-						std::pair<bool,Node> I = intersect_segments(m, segments[below->second], segments[above->second],intersections,pnt,unp,print);
-						if (I.first)
-						{
-							if( print ) std::cout << "Intersection of " << below->second << " " << segments[below->second]->GetHandle() << " " << segments[below->second]->getBeg()->GetHandle() << " " << segments[below->second]->getEnd()->GetHandle() << " and " << above->second << " " << segments[above->second]->GetHandle() << " " << segments[above->second]->getBeg()->GetHandle() << " " << segments[above->second]->getEnd()->GetHandle() << " at (" << I.second.Coords()[0] << "," << I.second.Coords()[1] << "," << I.second.Coords()[2] << ") " << std::endl;
-							intersect_event(m,below->second, above->second, I.second, segments, sweep, events,transfer,pnt, print);
-						}
-					}
-					else if (print) std::cout << "skipping segments with same starting point" << std::endl;
-				}
-			}
-		}
-		//copy intersections
-		nodes.clear();
-		for(std::map<Point,Node>::iterator it = intersections.begin(); it != intersections.end(); ++it)
-		{
-			if( !it->second->GetPrivateMarker(initial) )
-				nodes.push_back(it->second);
-			else it->second->RemPrivateMarker(initial);
-		}
-		m->ReleasePrivateMarker(initial);
-	}
-	
-	void block_number_intersection(ElementArray<Element> & adj, Tag block, std::vector<int> & out)
+	void block_number_intersection(const ElementArray<Element> & adj, Tag block, std::vector<int> & out)
 	{
 		out.clear();
 		if( !adj.empty() )
@@ -652,24 +512,6 @@ namespace INMOST
 		}
 		//Storage::integer_array bn = n->IntegerArray(block);
 		//bn.replace(bn.begin(),bn.end(),inter.begin(),inter.end());
-	}
-
-	void block_number_union(Element n, ElementArray<Element> & adj, Tag block)
-	{
-		if( !adj.empty() )
-		{
-			Storage::integer_array be = adj[0]->IntegerArray(block);
-			std::vector<int> uni(be.begin(),be.end()), tmp(uni.size());
-			for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
-			{
-				be = adj[k]->IntegerArray(block);
-				tmp.resize(uni.size()+be.size());
-				tmp.resize(std::set_union(uni.begin(),uni.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
-				uni.swap(tmp);
-			}
-			Storage::integer_array bn = n->IntegerArray(block);
-			bn.replace(bn.begin(),bn.end(),uni.begin(),uni.end());
-		}
 	}
 	
 
@@ -1150,12 +992,12 @@ ecl_exit_loop:
 		}
 		else if( gtype == ECL_GTYPE_ZCORN )
 		{
-			//SetTopologyCheck(PRINT_NOTIFY | NEED_TEST_CLOSURE | PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE | MARK_ON_ERROR);
-			//SetTopologyCheck(DEGENERATE_EDGE | DEGENERATE_FACE | DEGENERATE_CELL);
-			//SetTopologyCheck(TRIPLE_SHARED_FACE | FLATTENED_CELL | INTERLEAVED_FACES);
-			//SetTopologyCheck(DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL);
-			//SetTopologyCheck(ADJACENT_DUPLICATE | ADJACENT_DIMENSION);
-			//RemTopologyCheck(THROW_EXCEPTION);
+			SetTopologyCheck(PRINT_NOTIFY | NEED_TEST_CLOSURE | PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE | MARK_ON_ERROR);
+			SetTopologyCheck(DEGENERATE_EDGE | DEGENERATE_FACE | DEGENERATE_CELL);
+			SetTopologyCheck(TRIPLE_SHARED_FACE | FLATTENED_CELL | INTERLEAVED_FACES);
+			SetTopologyCheck(DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL);
+			SetTopologyCheck(ADJACENT_DUPLICATE | ADJACENT_DIMENSION);
+			RemTopologyCheck(THROW_EXCEPTION);
 			//actnum.clear();
 			if( zcorn.empty() )
 			{
@@ -1167,135 +1009,267 @@ ecl_exit_loop:
 				std::cout << "COORD was not provided, cannot construct grid" << std::endl;
 				throw BadFile;
 			}
-			//make arrays more human-readable
-			//std::vector< std::vector< std::vector< std::vector< Storage::real > > > > zcorn_array;//, coords_array;
-			/*
-			{
-				zcorn_array.resize(dims[0]);
-				for(int i = 0; i < dims[0]; i++)
-				{
-					zcorn_array[i].resize(dims[1]);
-					for(int j = 0; j < dims[1]; j++)
-					{
-						zcorn_array[i][j].resize(dims[2]);
-						for(int k = 0; k < dims[2]; k++)
-							zcorn_array[i][j][k].resize(8);
-					}
-				}
-				int pos = 0;
-				for(int k = 0; k < dims[2]; k++)
-				{
-					for(int q = 0; q < 2; q++) //top-bottom
-						for(int j = 0; j < dims[1]; j++)
-							for(int m = 0; m < 2; m++) //near-far
-								for(int i = 0; i < dims[0]; i++)
-									for(int l = 0; l < 2; l++) //left-right
-										zcorn_array[i][j][k][l+m*2+(1-q)*4] = zcorn[pos++];
-				}
-			}
-			 */
-			/*
-			{
-				coords_array.resize(dims[0]+1);
-				for(int i = 0; i < dims[0]+1; i++)
-				{
-					coords_array[i].resize(dims[1]+1);
-					for(int j = 0; j < dims[1]+1; j++)
-					{
-						coords_array[i][j].resize(2);
-						for(int l = 0; l < 2; l++)
-							coords_array[i][j][l].resize(3);
-					}
-				}
-				int pos = 0;
-				for(int j = 0; j < dims[1]+1; j++)
-					for(int i = 0; i < dims[0]+1; i++)
-						for(int l = 0; l < 2; l++)
-							for(int k = 0; k < 3; k++)
-								coords_array[i][j][l][k] = xyz[pos++];
-			}
-			 */
 			//assemble pillars
 			{
-				//Tag node_number = CreateTag("NODE_NUMBER",DATA_INTEGER,NODE,NONE);
 				Tag cell_number = CreateTag("CELL_NUMBER",DATA_INTEGER,CELL,NONE,1);
+				Tag block_index = CreateTag("BLOCK_IJK",DATA_INTEGER,CELL,NONE,3);
 				Tag edge_number = CreateTag("EDGE_NUMBER",DATA_INTEGER,EDGE,NONE);
-				Tag block_number = CreateTag("BLOCK_NUMBER",DATA_INTEGER,EDGE|NODE,NONE);
-				typedef std::map<Storage::real,Node,pillar_less> pillar;
-				std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
+				Tag block_number = CreateTag("BLOCK_NUMBER",DATA_INTEGER,EDGE | NODE,NONE);
+				Tag face_origin = CreateTag("FACE_ORIGIN",DATA_INTEGER,FACE,1);
+				Tag pillar_num = CreateTag("PILLAR_NUM",DATA_INTEGER,NODE,NONE,2);
+				Tag node_blocks = CreateTag("NODE_BLOCK",DATA_INTEGER,NODE,NONE);
+				Tag node_number = CreateTag("NODE_NUMBER",DATA_INTEGER,NODE,NONE);
+				Tag node_alpha = CreateTag("NODE_ALPHA",DATA_REAL,NODE,NONE,1);
+				Tag node_pos = CreateTag("NODE_POSITION",DATA_INTEGER,NODE,NONE,1);
+				//typedef std::map<Storage::real,Node,pillar_less> pillar;
+				//std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
+				std::vector< HandleType > block_nodes(dims[0]*dims[1]*dims[2]*8,InvalidHandle());
+				//all edges along pillars
+				std::vector< ElementArray<Edge> > pillar_edges((dims[0]+1)*(dims[1]+1),ElementArray<Edge>(this));
 				//this variant goes over pillars
-				printf("create nodes on pillars\n");
+				printf("started creating nodes and edges on pillars\n");
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-				for(int i = 0; i < dims[0]+1; i++)
 				{
-					for(int j = 0; j < dims[1]+1; j++)
+					//z-positions for all the nodes
+					std::vector< real > pillar_node_depth(dims[2]*8);
+					//block number that posses
+					std::vector< integer > pillar_node_block(dims[2]*8);
+					//position of node relative to block
+					std::vector< integer > pillar_node_number(dims[2]*8);
+					//position of each block's node in pillar_nodes array
+					//std::vector< int > pillar_node_pos(dims[2]*8);
+					//number of depths in array
+					int num;
+					//arrays to sort all the data fields
+					std::vector< int > indices_sort(dims[2]*8);
+					std::vector< integer > itemporary(dims[2]*8);
+					std::vector< real > rtemporary(dims[2]*8);
+					//nodes along pillar
+					std::vector< HandleType > pillar_nodes(dims[2]*8);
+					//number of unique nodes along pillar
+					int num_nodes;
+					//structure to create an edge from pair of nodes
+					ElementArray<Node> edge_nodes(this,2);
+					//compute union of block number that belong to edges
+					std::vector<int> block_union;
+					//pillar min and max positions
+					real zmin, zmax, xmin, xmax, ymin, ymax;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+					for(int i = 0; i < dims[0]+1; i++)
 					{
-						pillar & p = pillars[i*(dims[1]+1)+j];
-						//loop over nodes on pillar
-						for(int k = 0; k < dims[2]+1; k++)
+						for(int j = 0; j < dims[1]+1; j++)
 						{
-							Storage::real zpos[8], zalpha[8], z;
-							int nzpos = 0;
-							//loop over 8 blocks around node
-							for(int l = 0; l < 8; ++l)
+							//reset number of nodes
+							num_nodes = num = 0;
+							//loop over block corners on pillar
+							for(int k = 0; k < dims[2]; k++)
 							{
-								//block number
-								int bi = i + (l%2) - 1;
-								int bj = j + ((l/2)%2) - 1;
-								int bk = k + (l/4) - 1;
-								if( bi >= 0 && bj >= 0 && bk >= 0 && bi < dims[0] && bj < dims[1] && bk < dims[2] && (actnum.empty() || actnum[ECL_IJK_DATA(bi,bj,bk)]) )
+								//loop over 8 blocks around node
+								for(int l = 0; l < 4; ++l)
 								{
-									bool found = false;
-									z = zcorn[ECL_IJK_ZCORN(bi,bj,bk,7-l)];
-									for(int q = 0; q < nzpos; ++q)
+									//block number
+									int bi = i + (l%2) - 1;
+									int bj = j + ((l/2)%2) - 1;
+									if( bi >= 0 && bj >= 0 && bi < dims[0] && bj < dims[1] && (actnum.empty() || actnum[ECL_IJK_DATA(bi,bj,k)]) )
 									{
-										if( fabs(z-zpos[q]) < 1.0e-7 )
-											found = true;
-									}
-									if( !found )
-									{
-										zpos[nzpos] = z;
-										//zalpha[nzpos] = (z-coords_array[i][j][1][2])/(coords_array[i][j][0][2]-coords_array[i][j][1][2]);
-										zalpha[nzpos] = (z-xyz[ECL_IJK_COORDS(i,j,1,2)])/(xyz[ECL_IJK_COORDS(i,j,0,2)]-xyz[ECL_IJK_COORDS(i,j,1,2)]);
-										nzpos++;
+										for(int q = 0; q < 2; ++q)
+										{
+											pillar_node_block[num] = ECL_IJK_DATA(bi,bj,k);
+											pillar_node_depth[num] = zcorn[ECL_IJK_ZCORN(bi,bj,k,3-l + q*4)];
+											pillar_node_number[num] = 3-l + q*4;
+											num++;
+										}
 									}
 								}
 							}
-							for(int l = 0; l < nzpos; ++l)
+							//sort data
+							for(int l = 0; l < num; ++l) indices_sort[l] = l;
+							std::sort(&indices_sort[0],&indices_sort[num],depth_comparator(&pillar_node_depth[0]));
+							for(int l = 0; l < num; ++l) itemporary[l] = pillar_node_block[l];
+							for(int l = 0; l < num; ++l) pillar_node_block[l] = itemporary[indices_sort[l]];
+							for(int l = 0; l < num; ++l) itemporary[l] = pillar_node_number[l];
+							for(int l = 0; l < num; ++l) pillar_node_number[l] = itemporary[indices_sort[l]];
+							for(int l = 0; l < num; ++l) rtemporary[l] = pillar_node_depth[l];
+							for(int l = 0; l < num; ++l) pillar_node_depth[l] = rtemporary[indices_sort[l]];
+							assert(std::is_sorted(&pillar_node_depth[0],&pillar_node_depth[num]));
+							//retrive pillar info
+							xmin = xyz[ECL_IJK_COORDS(i,j,0,0)];
+							xmax = xyz[ECL_IJK_COORDS(i,j,1,0)];
+							ymin = xyz[ECL_IJK_COORDS(i,j,0,1)];
+							ymax = xyz[ECL_IJK_COORDS(i,j,1,1)];
+							zmin = xyz[ECL_IJK_COORDS(i,j,0,2)];
+							zmax = xyz[ECL_IJK_COORDS(i,j,1,2)];
+							//create nodes
+							for(int l = 0; l < num; ++l)
 							{
-								pillar::iterator search = p.find(zpos[l]);
-								Node n; //node added to pillar
-								if( search == p.end() )
+								real node_xyz[3];
+								real mean_depth = pillar_node_depth[l];
+								real mean_alpha = (mean_depth-zmin)/(zmax-zmin);
+								real mean_num = 1;
+								//compute node position
+								node_xyz[0] = xmin + mean_alpha * (xmax - xmin);
+								node_xyz[1] = ymin + mean_alpha * (ymax - ymin);
+								node_xyz[2] = mean_depth;
+								//search node among priviously existed nodes, create if not found
+								int find = -1;
+								if( !old_nodes.empty() )
 								{
-									Storage::real node_xyz[3];
-									Storage::real alpha = zalpha[l];
-									/*
-									node_xyz[0] = coords_array[i][j][1][0] + alpha * (coords_array[i][j][0][0] - coords_array[i][j][1][0]);
-									node_xyz[1] = coords_array[i][j][1][1] + alpha * (coords_array[i][j][0][1] - coords_array[i][j][1][1]);
-									 */
-									node_xyz[0] = xyz[ECL_IJK_COORDS(i,j,1,0)] + alpha * (xyz[ECL_IJK_COORDS(i,j,0,0)] - xyz[ECL_IJK_COORDS(i,j,1,0)]);
-									node_xyz[1] = xyz[ECL_IJK_COORDS(i,j,1,1)] + alpha * (xyz[ECL_IJK_COORDS(i,j,0,1)] - xyz[ECL_IJK_COORDS(i,j,1,1)]);
-									node_xyz[2] = zpos[l];//zcorn_array[bi][bj][bk][7-l];
-									int find = -1;
-									if( !old_nodes.empty() )
+									std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),node_xyz,CentroidComparator(this));
+									if( it != old_nodes.end() )
 									{
-										std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),node_xyz,CentroidComparator(this));
-										if( it != old_nodes.end() )
-										{
-											Storage::real_array c = RealArrayDF(*it,CoordsTag());
-											if( CentroidComparator(this).Compare(node_xyz,c.data()) == 0 )
-												find = static_cast<int>(it - old_nodes.begin());
-										}
+										Storage::real_array c = RealArrayDF(*it,CoordsTag());
+										if( CentroidComparator(this).Compare(node_xyz,c.data()) == 0 )
+											find = static_cast<int>(it - old_nodes.begin());
 									}
-									n = find == -1 ? CreateNode(node_xyz) : Node(this,old_nodes[find]);
-									p.insert(std::make_pair(zpos[l],n));
-								} else n = search->second; //if
+								}
+								Node current = (find == -1 ? CreateNode(node_xyz) : Node(this,old_nodes[find]));
+								//write down pillar node information (debug)
+								integer_array pn = current->IntegerArray(pillar_num);
+								pn[0] = i;
+								pn[1] = j;
+								//to detect edge possession
+								integer_array nb = current->IntegerArray(node_blocks);
+								// (debug)
+								integer_array nn = current->IntegerArray(node_number);
+								//remember which block the node belongs
+								assert(block_nodes[pillar_node_block[l]*8 + pillar_node_number[l]] == InvalidHandle());
+								block_nodes[pillar_node_block[l]*8 + pillar_node_number[l]] = current->GetHandle();
+								nb.push_back(pillar_node_block[l]);
+								nn.push_back(pillar_node_number[l]);
+								//check for nodes sharing the same position
+								for(int k = l+1; k < num; ++k)
+								{
+									if( std::abs(pillar_node_depth[l]-pillar_node_depth[k]) < ECL_PILLAR_DEPTH_EPS )
+									{
+										mean_depth += pillar_node_depth[l];
+										block_nodes[pillar_node_block[k]*8 + pillar_node_number[k]] = current->GetHandle();
+										nb.push_back(pillar_node_block[k]);
+										nn.push_back(pillar_node_number[k]);
+										mean_num++;
+										l = k;
+									}
+									else break;
+								}
+								//write alpha position
+								mean_depth /= mean_num;
+								mean_alpha = (mean_depth-zmin)/(zmax-zmin);
+								//correct position due to averaging
+								if( mean_num > 1 )
+								{
+									current->Real(node_alpha) = mean_alpha;
+									real_array coords = current->Coords();
+									coords[0] = xmin + mean_alpha * (xmax - xmin);
+									coords[1] = ymin + mean_alpha * (ymax - ymin);
+									coords[2] = mean_depth;
+								}
+								else current->Real(node_alpha) = mean_alpha;
+								//remember position of node
+								current->Integer(node_pos) = num_nodes;
+								//write nodes into array
+								pillar_nodes[num_nodes] = current->GetHandle();
+								num_nodes++;
+							} //l
+							//sort node blocks information on each node
+							for(int h = 0; h < num_nodes; ++h)
+							{
+								Storage::integer_array b = IntegerArray(pillar_nodes[h],node_blocks);
+								Storage::integer_array e = IntegerArray(pillar_nodes[h],node_number);
+								assert(e.size() == b.size());
+								//sort indices according to b
+								for(int l = 0; l < (int)b.size(); ++l) indices_sort[l] = l;
+								std::sort(&indices_sort[0],&indices_sort[b.size()],index_comparator(b));
+								//arrange data in b and e arrays according to indices_sort
+								//first b array
+								for(int l = 0; l < (int)b.size(); ++l) itemporary[l] = b[l];
+								for(int l = 0; l < (int)b.size(); ++l) b[l] = itemporary[indices_sort[l]];
+								//then e array
+								for(int l = 0; l < (int)e.size(); ++l) itemporary[l] = e[l];
+								for(int l = 0; l < (int)e.size(); ++l) e[l] = itemporary[indices_sort[l]];
+								assert(std::is_sorted(b.begin(),b.end()));
+							} //l
+							//create edges
+							ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
+							for(int l = 0; l < num_nodes-1; ++l)
+							{
+								edge_nodes.at(0) = pillar_nodes[l];
+								edge_nodes.at(1) = pillar_nodes[l+1];
+								p_edges.push_back(CreateEdge(edge_nodes).first);
+							} //l
+							//mark edges along pillars (vertical edges, 8, 9, 10, 11)
+							for(int k = 0; k < dims[2]; k++)
+							{
+								//loop over 4 blocks
+								for(int l = 0; l < 4; ++l)
+								{
+									//block number
+									int bi = i + (l%2) - 1;
+									int bj = j + (l/2) - 1;
+									if( bi >= 0 && bj >= 0 && bi < dims[0] && bj < dims[1] && (actnum.empty() || actnum[ECL_IJK_DATA(bi,bj,k)]) )
+									{
+										assert(block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + (3-l)+0] != InvalidHandle());
+										assert(block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + (3-l)+4] != InvalidHandle());
+										int pos0 = Integer(block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + (3-l)+0],node_pos); //bottom
+										int pos1 = Integer(block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + (3-l)+4],node_pos); //top
+										if( pos0 > pos1 ) std::swap(pos0,pos1);
+										//edge 11-l
+										for(int q = pos0; q < pos1; ++q)
+										{
+											p_edges[q]->IntegerArray(block_number).push_back(ECL_IJK_DATA(bi,bj,k));
+											p_edges[q]->IntegerArray(edge_number).push_back(11-l);
+										} //q
+									}
+								} //l
+							} //k
+							//erase edges on pillars that are not used in any block
+							ElementArray<Edge>::iterator it = p_edges.begin();
+							while(it != p_edges.end())
+							{
+								if( it->IntegerArray(block_number).empty() )
+								{
+									it->Delete();
+									it = p_edges.erase(it);
+								}
+								else ++it;
+							} //it
+							//sort block number information on edges
+							for(int h = 0; h < (int)p_edges.size(); ++h)
+							{
+								Storage::integer_array b = p_edges[h].IntegerArray(block_number);
+								Storage::integer_array e = p_edges[h].IntegerArray(edge_number);
+								assert(e.size() == b.size());
+								//sort indices according to b
+								for(int l = 0; l < (int)b.size(); ++l) indices_sort[l] = l;
+								std::sort(&indices_sort[0],&indices_sort[b.size()],index_comparator(b));
+								//arrange data in b and e arrays according to indices_sort
+								//first b array
+								for(int l = 0; l < (int)b.size(); ++l) itemporary[l] = b[l];
+								for(int l = 0; l < (int)b.size(); ++l) b[l] = itemporary[indices_sort[l]];
+								//then e array
+								for(int l = 0; l < (int)e.size(); ++l) itemporary[l] = e[l];
+								for(int l = 0; l < (int)e.size(); ++l) e[l] = itemporary[indices_sort[l]];
+								assert(std::is_sorted(b.begin(),b.end()));
 							}
-						}
-					}
-				}
+							//find out who shares each node along the pillar
+							for(int l = 0; l < num_nodes; ++l)
+							{
+								Node n(this,pillar_nodes[l]);
+								ElementArray<Element> adj = n->getAdjElements(EDGE);
+								Storage::integer_array nb = n->IntegerArray(node_blocks);
+								Storage::integer_array bn = n->IntegerArray(block_number);
+								bn.insert(bn.end(),nb.begin(),nb.end());
+								block_number_union_merge(n,adj,block_number,block_number);
+							}
+						} //i
+					} //j
+				} //omp parallel
+				printf("finished creating nodes and edges on pillars\n");
+				DeleteTag(node_pos);
+				
+				
 				/*      (6)*<<------[3]--------*(7)
 						  /|                  /|
 						[6]                 [7]|
@@ -1312,123 +1286,6 @@ ecl_exit_loop:
 					   |/                  |/
 					(0)*<<------[0]--------*(1)
 				*/
-				//all edges along pillars
-				std::vector< ElementArray<Edge> > pillar_edges((dims[0]+1)*(dims[1]+1),ElementArray<Edge>(this));
-				//all edges of each block
-				//std::vector< std::vector<Edge> > block_edges(dims[0]*dims[1]*dims[2]);
-				//create edges along pillars
-				printf("create edges along pillars\n");
-#if defined(USE_OMP)
-#pragma omp parallel
-#endif
-				{
-					//structure to create an edge from pair of nodes
-					ElementArray<Node> edge_nodes(this,2);
-#if defined(USE_OMP)
-#pragma omp for
-#endif
-					for(int i = 0; i < dims[0]+1; ++i)
-					{
-						for(int j = 0; j < dims[1]+1; ++j)
-						{
-							pillar & p = pillars[i*(dims[1]+1)+j];
-							if( p.size() > 1 )
-							{
-								ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
-								pillar::iterator it = p.begin();
-								pillar::iterator pre_it = it++;
-								while(it != p.end())
-								{
-									edge_nodes[0] = it->second;
-									edge_nodes[1] = pre_it->second;
-									p_edges.push_back(CreateEdge(edge_nodes).first);
-									pre_it = it++;
-								}
-							}
-						} //j
-					} //i
-				}
-				//mark edges along pillars (vertical edges, 8, 9, 10, 11)
-#if defined(USE_OMP)
-#pragma omp parallel for
-#endif
-				for(int i = 0; i < dims[0]; ++i)
-				{
-					for(int j = 0; j < dims[1]; ++j)
-					{
-						for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
-						{
-							const int edge_nodes[4][2] = 
-							{
-								{0,4}, //edge 8
-								{1,5}, //edge 9
-								{2,6}, //edge 10
-								{3,7}  //edge 11
-							}; //nodes of edges 8,9,10,11, bottom->top
-							for(int l = 0; l < 4; ++l) //loop edges
-							{
-								HandleType find[2];
-								int i2 = i + l%2, j2 = j + l/2;
-								pillar & p = pillars[i2*(dims[1]+1) + j2];
-								pillar::iterator b,t, it, jt; 
-								//find nodes in pillar that belong to current block
-								Storage::real pa = zcorn[ECL_IJK_ZCORN(i,j,k,edge_nodes[l][0])];
-								Storage::real pb = zcorn[ECL_IJK_ZCORN(i,j,k,edge_nodes[l][1])];
-								if(pa > pb) //otherwise run iterator in different direction
-								{
-									b = p.find(pb); //bottom
-									t = p.find(pa); //top
-								}
-								else
-								{
-									b = p.find(pa); //bottom
-									t = p.find(pb); //top
-								}
-								//go over edges
-								it = b;
-								while(it != t)
-								{
-									jt = it++; // jt<->it forms a segment
-									find[0] = jt->second->GetHandle();
-									find[1] = it->second->GetHandle();
-									Edge e(this,FindSharedAdjacency(find,2)); //find edge
-#if defined(USE_OMP)
-#pragma omp critical
-#endif
-									{
-										e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
-										e->IntegerArray(edge_number).push_back(8+l);
-									}
-									//block_edges[(i + (j+k*dims[1])*dims[0])].push_back(e);
-								}
-							}
-						}
-					}
-				}
-				printf("erase unused edges on pillars\n");
-				//erase edges on pillars that are not used in any block
-#if defined(USE_OMP)
-#pragma omp parallel for
-#endif
-
-				for(int i = 0; i < dims[0]+1; ++i)
-				{
-					for(int j = 0; j < dims[1]+1; ++j)
-					{
-						ElementArray<Edge> & p = pillar_edges[i*(dims[1]+1) + j];
-						ElementArray<Edge>::iterator it = p.begin();
-						while(it != p.end())
-						{
-							if( it->IntegerArray(block_number).empty() )
-							{
-								it->Delete();
-								it = p.erase(it);
-							}
-							else ++it;
-						}
-					}
-				}
-				
 				//Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
 				//tags to be transfered
 				std::vector<Tag> transfer(2);
@@ -1467,7 +1324,7 @@ ecl_exit_loop:
 						//for sorting a pair of data
 						std::vector<int> indices_sort, temporary;
 						//array to obtain block number
-						std::vector<int> block_number_inter;
+						std::vector<int> block_number_inter, node_number_inter;
 						//store edges along pillar to assemble faces along pillars, on back side of the pillar
 						std::vector< ElementArray<Edge> > pillar_block_edges_back(dims[2],ElementArray<Edge>(this));
 						//on front side of the pillar
@@ -1478,10 +1335,15 @@ ecl_exit_loop:
 						MarkerType outer = CreatePrivateMarker();
 						//remember visited edges
 						MarkerType visited = CreatePrivateMarker();
+						//mark intersection nodes
+						MarkerType internodes = CreatePrivateMarker();
 						//create tag that will be used for intersection of segments in projected space of [0,1]^2 quad
-						std::stringstream tag_name;
-						tag_name << "PROJ_PNT_PROC_" << GetLocalProcessorRank();
-						Tag pnt = CreateTag(tag_name.str(),DATA_REAL,NODE,NONE,2);
+						Tag pnt;
+						{
+							std::stringstream tag_name;
+							tag_name << "PROJ_PNT_PROC_" << GetLocalProcessorRank();
+							pnt = CreateTag(tag_name.str(),DATA_REAL,NODE,NONE,2);
+						}
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -1489,93 +1351,66 @@ ecl_exit_loop:
 						{
 							//printf("%s %6.2f%%\r",q ? "ny":"nx", ((Storage::real)i)/((Storage::real)dims[0]+q-1)*100);
 							//fflush(stdout);
-							for(int j = 0; j < dims[1]+!q; ++j)
+							for(int j = 0; j < dims[1]+(1-q); ++j)
 							{
+								//if( i == 63 && j == 129 && q == 1 ) print_inter = true;
 								if( print_info )
 								{
-									std::cout << "working on " << (q ? "ny" : "nx") << " pair of pillars: " << i << "," << j << " and " << i+!q << "," << j+q << std::endl;
+									std::cout << "working on " << (q ? "ny" : "nx") << " pair of pillars: " << i << "," << j << " and " << i+1-q << "," << j+q << std::endl;
 								}
 								//p0 is at i,j
 								//p1 is at i+1,j, when q = 0 and at i,j+1, when q = 1
-								pillar & p0 = pillars[(i+ 0)*(dims[1]+1)+j+0];
-								pillar & p1 = pillars[(i+!q)*(dims[1]+1)+j+q];
+								//pillar & p0 = pillars[(i+  0)*(dims[1]+1)+j+0];
+								//pillar & p1 = pillars[(i+1-q)*(dims[1]+1)+j+q];
+								//if( p0.empty() || p1.empty() ) continue;
 								//add projected point information
-								for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)
-								{
-									Storage::real_array pos = it->second->RealArray(pnt);
-									pos[0] = (it->first-xyz[ECL_IJK_COORDS(i,j,1,2)])/(xyz[ECL_IJK_COORDS(i,j,0,2)]-xyz[ECL_IJK_COORDS(i,j,1,2)]);
-									pos[1] = 0;
-								}
-								for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)
-								{
-									Storage::real_array pos = it->second->RealArray(pnt);
-									pos[0] = (it->first-xyz[ECL_IJK_COORDS(i+!q,j+q,1,2)])/(xyz[ECL_IJK_COORDS(i+!q,j+q,0,2)]-xyz[ECL_IJK_COORDS(i+!q,j+q,1,2)]);
-									pos[1] = 1;
-								}
+								//i << "," << j << " and " << i+1-q << "," << j+q <<
+								Unproject unp(&xyz[ECL_IJK_COORDS(i,j,1,0)],&xyz[ECL_IJK_COORDS(i,j,0,0)],&xyz[ECL_IJK_COORDS(i+1-q,j+q,1,0)],&xyz[ECL_IJK_COORDS(i+1-q,j+q,0,0)]);
+								//Unproject unp(p0.begin()->second->Coords().data(),p0.rbegin()->second.Coords().data(),p1.begin()->second->Coords().data(),p1.rbegin()->second.Coords().data());
 								//preallocate array for edges
-								edges.reserve(2*std::max(p0.size(),p1.size()));
-								//add far faces of j-1 block
-								if( (1-q)*j + q*i > 0 ) //test j when q = 0 and i when q = 1
+								//edges.reserve(2*std::max(p0.size(),p1.size()));
+								//add far faces of j-1 block and near faces of j block
+								for(int m = 0; m < 2; ++m)
 								{
-									if( print_info ) std::cout << "back cell: " << i-q << "," << j-!q << std::endl;
-									for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i-q,j-!q,k)] )
+									if( ((1-q)*j + q*i - dims[1-q]*m)*(1-2*m) > 0 ) //test j when q = 0 and i when q = 1
 									{
-										for(int l = 0; l < 2; ++l) //top-bottom
+										int bi = i-(q)*(1-m);
+										int bj = j-(1-q)*(1-m);
+										if( print_info ) std::cout << (m ?"front":"back") << " cell: " << bi << "," << bj << std::endl;
+										for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(bi,bj,k)] )
 										{
-											//q = 0 - test 2,3 + 4*l (edge 1 and 3)
-											//q = 1 - test 1,3 + 4*l (edge 5 and 7)
-											edge_nodes[0] = p0[zcorn[ECL_IJK_ZCORN(i-q,j-!q,k,2 - q + 4*l)]];
-											edge_nodes[1] = p1[zcorn[ECL_IJK_ZCORN(i-q,j-!q,k,3 - 0 + 4*l)]];
-											if( edge_nodes[0] != edge_nodes[1] )
+											for(int l = 0; l < 2; ++l) //top-bottom
 											{
-												//edge_nodes.SetMarker(used);
-												Edge e = CreateEdge(edge_nodes).first;
-												if( !e->GetPrivateMarker(visited) )
+												//q = 0 - test 2,3 + 4*l (edge 1 and 3)
+												//q = 1 - test 1,3 + 4*l (edge 5 and 7)
+												assert(block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + 2 - 2*m - q*(1-m) + 4*l] != InvalidHandle());
+												assert(block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + 3 - 2*m + q*(m)   + 4*l] != InvalidHandle());
+												edge_nodes.at(0) = block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + 2 - 2*m - q*(1-m) + 4*l];
+												edge_nodes.at(1) = block_nodes[ECL_IJK_DATA(bi,bj,k)*8 + 3 - 2*m + q*(m)   + 4*l];
+												if( edge_nodes.at(0) != edge_nodes.at(1) )
 												{
-													edges.push_back(e);
-													e->SetPrivateMarker(visited);
+													//edge_nodes.SetMarker(used);
+													Edge e = CreateEdge(edge_nodes).first;
+													if( !e->GetPrivateMarker(visited) )
+													{
+														edges.push_back(e);
+														e->SetPrivateMarker(visited);
+													}
+													e->IntegerArray(block_number).push_back(ECL_IJK_DATA(bi,bj,k));
+													e->IntegerArray(edge_number).push_back(1 - m + 2*l + 4*q);
+													real_array pbeg = edge_nodes[0]->RealArray(pnt);
+													real_array pend = edge_nodes[1]->RealArray(pnt);
+													pbeg[0] = edge_nodes[0]->Real(node_alpha);
+													pbeg[1] = 0;
+													pend[0] = edge_nodes[1]->Real(node_alpha);
+													pend[1] = 1;
+													//Storage::integer_array mark = e->IntegerArray(pillar_mark);
+													//back block indices
+													//mark[0] = i;
+													//mark[1] = j;
+													//nx or ny
+													//mark[2] = q;
 												}
-												e->IntegerArray(block_number).push_back((i-q + (j-!q+k*dims[1])*dims[0]));
-												e->IntegerArray(edge_number).push_back(1 + 2*l + 4*q);
-												//Storage::integer_array mark = e->IntegerArray(pillar_mark);
-												//back block indices
-												//mark[0] = i;
-												//mark[1] = j;
-												//nx or ny
-												//mark[2] = q;
-											}
-										}
-									}
-								}
-								//add near faces of j block
-								if( (1-q)*j + q*i  < dims[!q] ) //test j when q = 0 and i when q = 1
-								{
-									if( print_info ) std::cout << "front cell: " << i << "," << j << std::endl;
-									for(int k = 0; k < dims[2]; ++k)  if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
-									{
-										for(int l = 0; l < 2; ++l) //top-bottom
-										{
-											//q = 0 - test 0,1 + 4*l (edge 0 and 2)
-											//q = 1 - test 0,2 + 4*l (edge 4 and 6)
-											edge_nodes[0] = p0[zcorn[ECL_IJK_ZCORN(i,j,k,0 + 0 + 4*l)]];
-											edge_nodes[1] = p1[zcorn[ECL_IJK_ZCORN(i,j,k,1 + q + 4*l)]];
-											if( edge_nodes[0] != edge_nodes[1] )
-											{
-												//edge_nodes.SetMarker(used);
-												Edge e = CreateEdge(edge_nodes).first;
-												if( !e->GetPrivateMarker(visited) )
-												{
-													edges.push_back(e);
-													e->SetPrivateMarker(visited);
-												}
-												e->IntegerArray(block_number).push_back((i + (j+k*dims[1])*dims[0]));
-												e->IntegerArray(edge_number).push_back(0 + 2*l + 4*q);
-												//Storage::integer_array mark = e->IntegerArray(pillar_mark);
-												//front block indices
-												//mark[0] = i;
-												//mark[1] = j;
-												//nx or ny
-												//mark[2] = q;
 											}
 										}
 									}
@@ -1585,7 +1420,7 @@ ecl_exit_loop:
 								if( print_inter )
 								{
 									std::cout << "input edges: " << edges.size() << std::endl;
-									if( false ) for(int k = 0; k < edges.size(); ++k)
+									if( true ) for(int k = 0; k < edges.size(); ++k)
 									{
 										Storage::integer_array bn = edges[k]->IntegerArray(block_number);
 										Storage::integer_array en = edges[k]->IntegerArray(edge_number);
@@ -1601,8 +1436,7 @@ ecl_exit_loop:
 									}
 								}
 								assert(count_duplicates(edges) == 0);
-								//i << "," << j << " and " << i+!q << "," << j+q <<
-								Unproject unp(&xyz[ECL_IJK_COORDS(i,j,0,0)],&xyz[ECL_IJK_COORDS(i,j,1,0)],&xyz[ECL_IJK_COORDS(i+!q,j+q,0,0)],&xyz[ECL_IJK_COORDS(i+!q,j+q,1,0)]);
+								
 								//intersect(this,edges,intersections,transfer,pnt,unp,print_inter);
 								intersect_naive(this,edges,intersections,transfer,pnt,unp,print_inter);
 								assert(count_duplicates(edges) == 0);
@@ -1611,6 +1445,18 @@ ecl_exit_loop:
 								{
 
 									std::cout << "output edges: " << edges.size() << std::endl;
+									
+									if( true ) for(int k = 0; k < edges.size(); ++k)
+									{
+										Storage::integer_array bn = edges[k]->IntegerArray(block_number);
+										Storage::integer_array en = edges[k]->IntegerArray(edge_number);
+										std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << " blocks: ";
+										for(int l = 0; l < (int)bn.size(); ++l)
+											std::cout << bn[l] << "(" << bn[l]%dims[0] << "," << bn[l]/dims[0]%dims[1] << "," << bn[l]/dims[0]/dims[1] << "):" << en[l] << " ";
+										std::cout << std::endl;
+									}
+
+									
 									for(int k = 0; k < edges.size(); ++k)
 									{
 										//std::cout << "edge " << k << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << std::endl;
@@ -1627,21 +1473,6 @@ ecl_exit_loop:
 									for(int r = 0; r < (int)b.size(); ++r)
 										block_edges[b[r]].push_back(edges[k]);
 								}
-								//add vertical edges along pillars
-								ElementArray<Edge> & p0_edges = pillar_edges[(i+ 0)*(dims[1]+1)+j+0];
-								ElementArray<Edge> & p1_edges = pillar_edges[(i+!q)*(dims[1]+1)+j+q];
-								edges.reserve(edges.size()+p0_edges.size()+p1_edges.size());
-								for(int k = 0; k < (int)p0_edges.size(); ++k)
-								{
-									//if( p0_edges[k]->nbAdjElements(NODE,used) == 2 ) //this edge is used
-									edges.push_back(p0_edges[k]);
-								}
-								for(int k = 0; k < (int)p1_edges.size(); ++k)
-								{
-									//if( p1_edges[k]->nbAdjElements(NODE,used) == 2 ) //this edge is used
-									edges.push_back(p1_edges[k]);
-								}
-								assert(count_duplicates(edges) == 0);
 								//sort block numbers on edges
 								for(int k = 0; k < (int)edges.size(); ++k)
 								{
@@ -1660,7 +1491,15 @@ ecl_exit_loop:
 									//then e array
 									for(int l = 0; l < (int)e.size(); ++l) temporary[l] = e[l];
 									for(int l = 0; l < (int)e.size(); ++l) e[l] = temporary[indices_sort[l]];
+									assert(std::is_sorted(b.begin(),b.end()));
 								}
+								//add vertical edges along pillars
+								ElementArray<Edge> & p0_edges = pillar_edges[(i+  0)*(dims[1]+1)+j+0];
+								ElementArray<Edge> & p1_edges = pillar_edges[(i+1-q)*(dims[1]+1)+j+q];
+								edges.reserve(edges.size()+p0_edges.size()+p1_edges.size());
+								edges.insert(edges.end(),p0_edges.begin(),p0_edges.end());
+								edges.insert(edges.end(),p1_edges.begin(),p1_edges.end());
+								assert(count_duplicates(edges) == 0);
 								//put block numbers to all nodes involved in pillars, so that we can figure out block numbers for constructed faces
 								edges.SetPrivateMarker(mrk);
 								//report block numbers on edges
@@ -1670,62 +1509,86 @@ ecl_exit_loop:
 									{
 										Storage::integer_array b = edges[k]->IntegerArray(block_number);
 										Storage::integer_array e = edges[k]->IntegerArray(edge_number);
-										std::cout << "edge " << k << " " << edges[k]->GetHandle() << " blocks [" << b.size() << "]: ";
+										std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << " <-> " << edges[k]->getEnd()->GetHandle() << " blocks [" << b.size() << "]: ";
 										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "):" << e[l] << " ";
 										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << "):" << e.back() << std::endl;
-									}
-								}
-								//unite block numbers on nodes
-								if( print_bn ) std::cout << "pillar 0 nodes: " << std::endl;
-								for(pillar::iterator it = p0.begin(); it != p0.end(); ++it) //if( it->second.GetMarker(used) )
-								{
-									ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
-									block_number_union(it->second.getAsElement(),nedges,block_number);
-									if( print_bn )
-									{
-										Storage::integer_array b = it->second->IntegerArray(block_number);
-										std::cout << "node " << it->second->GetHandle() << " blocks [" << b.size() << "]: ";
-										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
-										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
-									}
-								}
-								if( print_bn ) std::cout << "pillar 1 nodes: " << std::endl;
-								for(pillar::iterator it = p1.begin(); it != p1.end(); ++it) //if( it->second.GetMarker(used) )
-								{
-									ElementArray<Element> nedges = it->second->getAdjElements(EDGE,mrk);
-									block_number_union(it->second.getAsElement(),nedges,block_number);
-									if( print_bn )
-									{
-										Storage::integer_array b = it->second->IntegerArray(block_number);
-										std::cout << "node " << it->second->GetHandle() << " blocks [" << b.size() << "]: ";
-										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
-										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
 									}
 								}
 								if( print_bn ) std::cout << "intersection nodes: " << std::endl;
 								for(int k = 0; k < (int)intersections.size(); ++k)
 								{
+									intersections[k]->SetPrivateMarker(internodes);
 									ElementArray<Element> nedges = intersections[k]->getAdjElements(EDGE,mrk);
-									block_number_union(intersections[k].getAsElement(),nedges,block_number);
+									block_number_union(intersections[k].getAsElement(),nedges,block_number,block_number);
+									block_number_union(intersections[k].getAsElement(),nedges,block_number,node_blocks);
+									intersections[k].IntegerArray(node_number).resize(intersections[k].IntegerArray(node_blocks).size(),-1);
 									if( print_bn )
 									{
 										Storage::integer_array b = intersections[k]->IntegerArray(block_number);
 										std::cout << "node " << k << " " << intersections[k]->GetHandle() << " blocks [" << b.size() << "]: ";
-										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << "), ";
+										for(int l = 0; l < (int)b.size()-1; ++l) std::cout << b[l] << "(" << b[l]%dims[0] << "," << b[l]/dims[0]%dims[1] << "," << b[l]/dims[0]/dims[1] << ") ";
 										std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
 									}
 								}
-								//unmark nodes
-								//for(pillar::iterator it = p0.begin(); it != p0.end(); ++it)  it->second.RemMarker(used);
-								//for(pillar::iterator it = p1.begin(); it != p1.end(); ++it)  it->second.RemMarker(used);
-								//unmark edges
-								edges.RemPrivateMarker(mrk);
 								//distribute edges to front and back blocks, so that we can assemble faces
 								for(int k = 0; k < (int)edges.size(); ++k)
 								{
 									//intersect block numbers on nodes to detect to which blocks this edge belongs
 									ElementArray<Element> nodes = edges[k]->getAdjElements(NODE);
 									block_number_intersection(nodes,block_number,block_number_inter);
+									//block_number_intersection(nodes,node_blocks,block_number_inter);
+									if( print_bn || block_number_inter.empty())
+									{
+										std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << " <-> " << edges[k]->getEnd()->GetHandle() << std::endl;
+										{
+											std::cout << " blocks [" << block_number_inter.size() << "]: ";
+											for(int m = 0; m < (int)block_number_inter.size(); ++m)
+											{
+												int bi = block_number_inter[m] % dims[0];
+												int bj = block_number_inter[m] / dims[0] % dims[1];
+												int bk = block_number_inter[m] / dims[0] / dims[1];
+												std::cout << block_number_inter[m] << "(" << bi << "," << bj << "," << bk << ") ";
+											}
+											std::cout << std::endl;
+										}
+										{
+											Storage::integer_array bn = edges[k]->IntegerArray(block_number);
+											Storage::integer_array nn = edges[k]->IntegerArray(edge_number);
+											std::cout << " created by blocks [" << bn.size() << "]: ";
+											for(int m = 0; m < bn.size(); ++m)
+											{
+												int bi = bn[m] % dims[0];
+												int bj = bn[m] / dims[0] % dims[1];
+												int bk = bn[m] / dims[0] / dims[1];
+												std::cout << bn[m] << "(" << bi << "," << bj << "," << bk << ")," << nn[m] << " ";
+											}
+											std::cout << std::endl;
+										}
+										{
+											Storage::integer_array bn = edges[k]->getBeg()->IntegerArray(block_number);
+											std::cout << " node " << edges[k]->getBeg()->GetHandle() << " blocks [" << bn.size() << "]: ";
+											for(int m = 0; m < bn.size(); ++m)
+											{
+												int bi = bn[m] % dims[0];
+												int bj = bn[m] / dims[0] % dims[1];
+												int bk = bn[m] / dims[0] / dims[1];
+												std::cout << bn[m] << "(" << bi << "," << bj << "," << bk << ") ";
+											}
+											std::cout << std::endl;
+										}
+										{
+											Storage::integer_array bn = edges[k]->getEnd()->IntegerArray(block_number);
+											std::cout << " node " << edges[k]->getEnd()->GetHandle() << " blocks [" << bn.size() << "]: ";
+											for(int m = 0; m < bn.size(); ++m)
+											{
+												int bi = bn[m] % dims[0];
+												int bj = bn[m] / dims[0] % dims[1];
+												int bk = bn[m] / dims[0] / dims[1];
+												std::cout << bn[m] << "(" << bi << "," << bj << "," << bk << ") ";
+											}
+											std::cout << std::endl;
+										}
+									}
 									for(int m = 0; m < (int)block_number_inter.size(); ++m)
 									{
 										int bi = block_number_inter[m] % dims[0];
@@ -1733,7 +1596,7 @@ ecl_exit_loop:
 										int bk = block_number_inter[m] / dims[0] / dims[1];
 										assert(bi >= 0 && bi < dims[0]);
 										assert(bj >= 0 && bj < dims[1]);
-										if( bi == i-q && bj == j-!q ) //back blocks
+										if( bi == i-q && bj == j-(1-q) ) //back blocks
 										{
 											pillar_block_edges_back[bk].push_back(edges[k]);
 											if( print_bn ) std::cout << "add edge " << k << " " << edges[k]->GetHandle() << " to back  block " << block_number_inter[m] << " (" << bi << "," << bj << "," << bk << ")" << std::endl;
@@ -1747,9 +1610,8 @@ ecl_exit_loop:
 									}
 								}
 								std::vector< ElementArray<Edge> > * pillar_block_edges[2] = {&pillar_block_edges_back,&pillar_block_edges_front};
-								//(i-q + (j-!q+k*dims[1])*dims[0])
 								int blocki[2] = {i-q,i};
-								int blockj[2] = {j-!q,j};
+								int blockj[2] = {j-(1-q),j};
 								if( print_info )
 								{
 									std::cout << "back  block " << blocki[0] << "," << blockj[0] << std::endl;
@@ -1778,7 +1640,7 @@ ecl_exit_loop:
 											Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
 											for(int r = 0; r < (int)bn.size(); ++r)
 											{
-												if( bn[r] == blocki[m] + (blockj[m]+k*dims[1])*dims[0] ) //this edge originally created by the block
+												if( bn[r] == ECL_IJK_DATA(blocki[m],blockj[m],k) ) //this edge originally created by the block
 												{
 													bedges[l]->SetPrivateMarker(outer); //mark edge
 													num_outer++;
@@ -1786,13 +1648,16 @@ ecl_exit_loop:
 												}
 											}
 										}
-										if( outer_edge_number.size() > 2 )
+										
+										//here we want to test that outer edges form a closed non-degenerate loop
+										if( outer_edge_number.size() > 2 )//&& num_outer > 2 )
 										{
 											//move marked edges to the end
 											std::sort(bedges.begin(),bedges.end(),Mesh::PrivateMarkerComparator(this,outer));
+											assert(std::is_sorted(bedges.begin(),bedges.end(),Mesh::PrivateMarkerComparator(this,outer)));
 											if( print_bedges )
 											{
-												std::cout << (m?"front ":"back ") << "depth " << k << " block " <<blocki[m] + (blockj[m]+k*dims[1])*dims[0] << " edges [" << bedges.size() << "]:" << std::endl;
+												std::cout << (m?"front ":"back ") << "depth " << k << " block " << ECL_IJK_DATA(blocki[m],blockj[m],k) << " edges [" << bedges.size() << "]:" << std::endl;
 												for(int l = 0; l < bedges.size(); ++l)
 												{
 													Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
@@ -1811,6 +1676,7 @@ ecl_exit_loop:
 											{
 												//form faces out of edges
 												incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer);
+												//incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer, TagCoords(pnt));
 												//collect all faces
 												ElementArray<Edge> loop(this);
 												while(matrix.find_shortest_loop(loop))
@@ -1834,31 +1700,82 @@ ecl_exit_loop:
 														}
 														//make face
 														Face f = CreateFace(loop).first;
+														if( TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag()) ) std::cout << __FILE__ <<":"<<__LINE__ << " topology error on face " << f->GetHandle() << std::endl;
+														f->Integer(face_origin) = q;
 														if(!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
 														//detect block number
+														block_faces[ECL_IJK_DATA(blocki[m],blockj[m],k)].push_back(f);
+														/*
 														ElementArray<Element> nodes = f->getAdjElements(NODE);
+														//block_number_intersection(nodes,block_number,block_number_inter);
+														block_number_intersection(nodes,block_number,block_number_inter);
+														if( block_number_inter.size() > 2 || block_number_inter.empty() )
+														{
+															std::cout << "face have " << block_number_inter.size() << " neighbours q is " << q << " block is " << ECL_IJK_DATA(blocki[m],blockj[m],k) << std::endl;
+															print_bedges = true;
+														}
+														
 														if( print_bedges )
 														{
 															std::cout << "nodes of the face " << f->GetHandle() << "(" << f->LocalID() << "): " << std::endl;
 															for(int g = 0; g < nodes.size(); ++g)
 															{
-																std::cout << "node " << g << " " << nodes[g]->GetHandle() << " ";
+																std::cout << "node " << g << " " << nodes[g]->GetHandle() << " pillar " << nodes[g]->IntegerArray(pillar_num)[0] << "," << nodes[g]->IntegerArray(pillar_num)[1] << " " << (nodes[g]->GetPrivateMarker(internodes) ? "intersection" : "initial") << " pnt " << nodes[g]->RealArray(pnt)[0] << "," << nodes[g]->RealArray(pnt)[1] << " " << std::endl;
 																Storage::integer_array bn = nodes[g]->IntegerArray(block_number);
+																std::cout << " blocks [" << bn.size() << "]: ";
+																for(int r = 0; r < (int)bn.size(); ++r)
+																	std::cout << bn[r] << "(" << bn[r]%dims[0] << "," << bn[r]/dims[0]%dims[1] << "," << bn[r]/dims[0]/dims[1] << ") ";
+																std::cout << std::endl;
+																Storage::integer_array cbn = nodes[g]->IntegerArray(node_blocks);
+																Storage::integer_array cnn = nodes[g]->IntegerArray(node_number);
+																std::cout << " created by [" << cbn.size() << "]: ";
+																for(int r = 0; r < (int)cbn.size(); ++r)
+																	std::cout << cbn[r] << "(" << cbn[r]%dims[0] << "," << cbn[r]/dims[0]%dims[1] << "," << cbn[r]/dims[0]/dims[1] << ")," << cnn[r] << " ";
+																std::cout << std::endl;
+																ElementArray<Edge> edges = nodes[g]->getEdges(mrk);
+																std::cout << " adjacent edges [" << edges.size() << "]: " << std::endl;
+																for(int r = 0; r < (int)edges.size(); ++r)
+																{
+																	Storage::integer_array ebn = edges[r]->IntegerArray(block_number);
+																	Storage::integer_array een = edges[r]->IntegerArray(edge_number);
+																	std::cout << "  " << edges[r]->GetHandle() << " " << edges[r]->getBeg()->GetHandle() << " <-> " << edges[r]->getEnd()-> GetHandle() << " blocks [" << ebn.size() << "]: ";
+																	for(int h = 0; h < (int)ebn.size(); ++h)
+																		std::cout << ebn[h] << "(" << ebn[h]%dims[0] << "," << ebn[h]/dims[0]%dims[1] << "," << ebn[h]/dims[0]/dims[1] << ")," << een[h] << " ";
+																	std::cout << std::endl;
+																	
+																}
+
+															}
+															ElementArray<Edge> edges = f->getEdges();
+															std::cout << "edges of the face: " << std::endl;
+															for(int g = 0; g < edges.size(); ++g)
+															{
+																std::cout << "edge " << g << " " << edges[g]->GetHandle() << " " << edges[g]->getBeg()->GetHandle() << " <-> " << edges[g]->getEnd()->GetHandle() << " length " << edges[g]->Length() << " " << (edges[g]->GetPrivateMarker(outer) ? "outer":"inner") << " ";
+																Storage::integer_array bn = edges[g]->IntegerArray(block_number);
+																Storage::integer_array en = edges[g]->IntegerArray(edge_number);
+																
 																std::cout << " blocks ";
 																for(int r = 0; r < (int)bn.size(); ++r)
-																	std::cout << bn[r] << " ";
+																	std::cout << bn[r] << "(" << bn[r]%dims[0] <<"," <<bn[r]/dims[0]%dims[1] << "," << bn[r]/dims[0]/dims[1] << ")," << en[r] << " ";
 																std::cout << std::endl;
 
 															}
+															block_number_intersection(nodes,node_blocks,node_number_inter);
+															std::cout << "node block number intersection: ";
+															for(int r = 0; r < (int)node_number_inter.size(); ++r) std::cout << node_number_inter[r] << " (" << node_number_inter[r]%dims[0] << "," << node_number_inter[r]/dims[0] % dims[1] << "," << node_number_inter[r]/dims[0]/dims[1] <<") ";
+															std::cout << std::endl;
+
 															std::cout << "intersection: ";
 														}
-														block_number_intersection(nodes,block_number,block_number_inter);
 														for(int r = 0; r < (int)block_number_inter.size(); ++r)
 														{
 															if( print_bedges ) std::cout << block_number_inter[r] << " (" << block_number_inter[r]%dims[0] << "," << block_number_inter[r]/dims[0] % dims[1] << "," << block_number_inter[r]/dims[0]/dims[1] <<") ";
 															block_faces[block_number_inter[r]].push_back(f);
 														}
 														if( print_bedges ) std::cout << std::endl;
+														//if( block_number_inter.size() > 2 )
+														print_bedges = false;
+														*/
 													}
 													else if( !loop.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << loop.size() << std::endl;
 												}
@@ -1866,7 +1783,8 @@ ecl_exit_loop:
 												{
 													std::cout << "Not all edges were visited, matrix: " << std::endl;
 													matrix.print_matrix();
-													std::cout << "Current block " << blocki[m] + (blockj[m]+k*dims[1])*dims[0] << std::endl;
+													std::cout << "Current block " << ECL_IJK_DATA(blocki[m],blockj[m],k) << std::endl;
+													std::cout << "pillars: " << i << "," << j << "," << q << std::endl;
 													for(int l = 0; l < bedges.size(); ++l)
 													{
 														Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
@@ -1877,14 +1795,20 @@ ecl_exit_loop:
 															std::cout << bn[r] << ":" << en[r] << " ";
 														std::cout << std::endl;
 													}
+													std::cout << "edges projected: " << std::endl;
+													for(int l = 0; l < bedges.size(); ++l)
+													{
+														std::cout << "(" << bedges[l]->getBeg()->RealArray(pnt)[0] << "," << bedges[l]->getBeg()->RealArray(pnt)[1] << ",0) <-> (" << bedges[l]->getEnd()->RealArray(pnt)[0] << "," << bedges[l]->getEnd()->RealArray(pnt)[1] << ",0)" << std::endl;
+													}
 
 													std::cout << "Outer edges [" << outer_edge_number.size() << "]:" << std::endl;
 													for(std::set<int>::iterator it = outer_edge_number.begin(); it != outer_edge_number.end(); ++it)
 														std::cout << *it << " ";
-													std::cout << std::endl;
+													std::cout << " num outer " << num_outer << std::endl;
 
 													//form faces out of edgesm
-													incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer,true);
+													incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer,GridCoords(),true);
+													//incident_matrix<Edge> matrix(this,bedges.data(),bedges.data()+bedges.size(),bedges.size()-num_outer,TagCoords(pnt),true);
 													//collect all faces
 													ElementArray<Edge> loop2(this);
 													while(matrix.find_shortest_loop(loop2));
@@ -1896,14 +1820,19 @@ ecl_exit_loop:
 													}
 												}
 											}
-											//remove marker
-											bedges.RemPrivateMarker(outer);
 										}
+										//remove marker
+										bedges.RemPrivateMarker(outer);
 										//cleanup structure for reuse
 										bedges.clear();
+										
+										//print_bn = false;
 									}
 								}
+								//unmark edges
+								edges.RemPrivateMarker(mrk);
 								//clean-up structures
+								intersections.RemPrivateMarker(internodes);
 								edges.clear();
 								intersections.clear();
 							} //j
@@ -1912,125 +1841,259 @@ ecl_exit_loop:
 						ReleasePrivateMarker(visited);
 						ReleasePrivateMarker(mrk);
 						ReleasePrivateMarker(outer);
+						ReleasePrivateMarker(internodes);
 					} //omp parallel
 					//printf("\n");
 					printf("finished creating faces for pairs of pillar along %s\n",q ? "ny":"nx");
 				} //q
 				//do not need this tag on nodes
-				DeleteTag(block_number, NODE);
+				//DeleteTag(block_number, NODE);
 				//now construct top and bottom interfaces
 				printf("started tops/bottoms/cells\n");
+				//Tag split_face = CreateTag("SPLIT_FACE",DATA_REFERENCE,FACE,NONE,1); //points to edge that should be used to split face
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+				{
+					ElementArray<Node> edge_nodes(this,2);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+					for(int i = 0; i < dims[0]; ++i)
+					{
+						//printf("top/bottom/cells %6.2f%%\r", ((Storage::real)i)/((Storage::real)dims[0]-1)*100);
+						//fflush(stdout);
+						for(int j = 0; j < dims[1]; ++j)
+						{
+							for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
+							{
+								//current block number
+								int cur = ECL_IJK_DATA(i,j,k);
+								//bottom face -> 0,4,1,5
+								//top face -> 2,7,3,6
+								const int map[8][2] =
+								{
+									{0,0}, //edge 0 -> first position, bottom face
+									{2,0}, //edge 1 -> third position, bottom face
+									{0,1}, //edge 2 -> first position, top face
+									{2,1}, //edge 3 -> third position, top face
+									{1,0}, //edge 4 -> second position, bottom face
+									{3,0}, //edge 5 -> fourth position, bottom face
+									{3,1}, //edge 6 -> fourth position, top face
+									{1,1} //edge 7 -> second position, top face
+								};
+								//which edges should be considered in reverse order
+								const bool rev[2][4] =
+								{
+									{true,false,false,true},
+									{false,false,true,true}
+								};
+								//array of ordered edges, first dimension - top or bottom, second dimension - edge number
+								std::vector<HandleType> edges[2][4];
+								//retrive set of edges of the block
+								ElementArray<Edge> & cbe = block_edges[cur];
+								for(int q = 0; q < cbe.size(); ++q)
+								{
+									Storage::integer_array bn = cbe[q].IntegerArray(block_number);
+									Storage::integer_array en = cbe[q].IntegerArray(edge_number);
+									assert(bn.size() == en.size());
+									for(int r = 0; r < (int)bn.size(); ++r) if( bn[r] == cur ) //how the edge is represented on current block
+										edges[map[en[r]][1]][map[en[r]][0]].push_back(cbe[q].GetHandle());
+								}
+								ElementArray<Edge> face_edges(this);
+								//collect edges and create face
+								for(int q = 0; q < 2; ++q) //bottom and top
+								{
+									for(int r = 0; r < 4; ++r) //all sides
+									{
+										if( rev[q][r] )
+											face_edges.insert(face_edges.end(),edges[q][r].rbegin(),edges[q][r].rend());
+										else
+											face_edges.insert(face_edges.end(),edges[q][r].begin(),edges[q][r].end());
+									}
+									make_unique(face_edges); //somehow duplicate appears there
+									if( face_edges.size() > 2 )
+									{
+										Face f = CreateFace(face_edges).first;
+										if( TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag()) ) std::cout << __FILE__ <<":"<<__LINE__ << " topology error on face " << f->GetHandle() << std::endl;
+										/*
+										int split = 0;
+										if( block_nodes[cur*8+0] == block_nodes[cur*8+4] &&
+									    block_nodes[cur*8+3] == block_nodes[cur*8+7] )
+											split = 1; //SE-NW diagonal
+										else
+											if( block_nodes[cur*8+1] == block_nodes[cur*8+5] &&
+											   block_nodes[cur*8+2] == block_nodes[cur*8+6] )
+												split = 2; //SW-NE diagonal
+										
+										HandleType diag = f->Reference(split_face);
+										//split up quad faces into triagnles if they degenerate
+										if( split )
+										{
+											if( diag == InvalidHandle() )
+											{
+												if( split == 1 ) //SE-NW diagonal
+												{
+													edge_nodes.at(0) = block_nodes[cur*8+1+q*4];
+													edge_nodes.at(1) = block_nodes[cur*8+2+q*4];
+													f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
+												}
+												else //SW-NE diagonal
+												{
+													edge_nodes.at(0) = block_nodes[cur*8+0+q*4];
+													edge_nodes.at(1) = block_nodes[cur*8+3+q*4];
+													f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
+												}
+											}
+											else //the face was already split
+											{
+												int was_split = 1; //was SE-NW
+												Edge e(this,diag);
+												if( e->getBeg()->GetHandle() == block_nodes[cur*8+0+q*4] &&
+												   e->getEnd()->GetHandle() == block_nodes[cur*8+3+q*4])
+													was_split = 2;
+												if( split != was_split )
+												{
+													std::cout << "Got different split direction" << std::endl;
+													std::cout << "was " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << (was_split == 1 ? "SE-NW" : "SW-NE") << std::endl;
+													std::cout << (q? "top" : "bottom") << " nodes: " << std::endl;
+													for(int l = 0; l < 4; ++l)
+														std::cout << block_nodes[cur*8+l+q*4];
+													std::cout << "want direction " << (split == 1? "SE-NW" : "SW-NE") << std::endl;
+												}
+											}
+										}
+										*/
+										
+										
+										f->Integer(face_origin) = 2;
+										if(!f->FixEdgeOrder())
+											//if(!f->CheckEdgeOrder())
+										{
+											std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << face_edges.size() << std::endl;
+											std::cout << "block: " << cur << " (" << i << "," << j << "," << k << ") " << (q ? "top" : "bottom") << std::endl;
+											for(int l = 0; l < face_edges.size(); ++l)
+											{
+												Storage::integer_array bn = face_edges[l]->IntegerArray(block_number);
+												Storage::integer_array en = face_edges[l]->IntegerArray(edge_number);
+												std::cout << "edge " << l << " " << face_edges[l]->GetHandle() << " ";
+												std::cout << face_edges[l]->getBeg()->GetHandle() << "<->" << face_edges[l]->getEnd()->GetHandle() << " ";
+												std::cout << "blocks: ";
+												for(int p = 0; p < (int)bn.size(); ++p)
+													std::cout << bn[p] << "(" << bn[p]%dims[0] << "," << bn[p]/dims[0]%dims[1] << "," << bn[p]/dims[0]/dims[1] << "):" << en[p] << " ";
+												std::cout << std::endl;
+											}
+										}
+										block_faces[cur].push_back(f);
+									}
+									else if( !face_edges.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << face_edges.size() << " " << (q?"top":"bottom") << " of block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
+									face_edges.clear();
+								}
+								make_unique(block_faces[cur]); //some faces may be added twice?
+								if( block_faces[cur].size() > 3 )
+								{
+									Cell c = CreateCell(block_faces[cur]).first;
+									c->Integer(cell_number) = cur+1;
+									c->IntegerArray(block_index)[0] = i;
+									c->IntegerArray(block_index)[1] = j;
+									c->IntegerArray(block_index)[2] = k;
+									
+									//c->IntegerArray(cell_number)[1] = i;
+									//c->IntegerArray(cell_number)[2] = j;
+									//c->IntegerArray(cell_number)[3] = k;
+									if( TopologyErrorTag().isValid() )
+									{
+										if( c->Integer(TopologyErrorTag()) & PROHIBIT_MULTIPOLYGON )
+										{
+											std::cout << "Cell " << c->GetHandle() << " id " << c->LocalID() << " " << Element::GeometricTypeName(c->GetGeometricType()) << " block " << i << "," << j << "," << k << "("<<cur<<") got topology error" << std::endl;
+											std::cout << "input faces [" << block_faces[cur].size() << "]: " << std::endl;
+											std::map<HandleType,int>  visits;
+											for(int r = 0; r < (int)block_faces[cur].size(); ++r)
+											{
+												ElementArray<Cell> fcells = block_faces[cur][r].getCells();
+												ElementArray<Node> fnodes = block_faces[cur][r].getNodes();
+												ElementArray<Edge> fedges = block_faces[cur][r].getEdges();
+												std::cout << " face " << block_faces[cur][r].GetHandle() << " " << Element::GeometricTypeName(block_faces[cur][r]->GetGeometricType()) << " origin " << block_faces[cur][r]->Integer(face_origin) << std::endl;
+												std::cout << "  cells [" << fcells.size() << "]: " << std::endl;
+												for(int l = 0; l < (int)fcells.size(); ++l)
+													std::cout << "  " << fcells[l]->GetHandle() << " " << Element::GeometricTypeName(fcells[l]->GetGeometricType()) << " block " << fcells[l]->Integer(cell_number) << std::endl;
+												
+												std::cout << "  edges [" << fedges.size() << "]: " << std::endl;
+												for(int l = 0; l < (int)fedges.size(); ++l)
+												{
+													Storage::integer_array bn = fedges[l]->IntegerArray(block_number);
+													Storage::integer_array en = fedges[l]->IntegerArray(edge_number);
+													std::cout << "  " << fedges[l]->GetHandle() << " nnodes " << fedges[l]->nbAdjElements(NODE) << " " << fedges[l]->getBeg()->GetHandle() << " <-> " << fedges[l]->getEnd()->GetHandle() << " block_numbers [" << bn.size() << "]: ";
+													for(int v = 0; v < (int)bn.size(); ++v) std::cout << bn[v] << ":" << en[v] << " ";
+													std::cout << std::endl;
+													visits[fedges[l]->GetHandle()]++;
+												}
+												std::cout << "  nodes [" << fnodes.size() << "]: ";
+												for(int l = 0; l < (int)fnodes.size(); ++l)
+													std::cout << fnodes[l]->GetHandle() << " ";
+												std::cout << std::endl;
+											}
+											for(std::map<HandleType,int>::iterator kt = visits.begin(); kt != visits.end(); ++kt)
+												std::cout << " edge " << kt->first << " visited " << kt->second << std::endl;
+											std::cout << " total cell nodes: " << c->nbAdjElements(NODE) << std::endl;
+											ElementArray<Node> cnodes = c->getNodes();
+											for(int r = 0; r < (int)cnodes.size(); ++r)
+												std::cout << "  " << cnodes[r]->GetHandle() << std::endl;
+										}
+										else if( c->Integer(TopologyErrorTag()) & TRIPLE_SHARED_FACE )
+										{
+											ElementArray<Face> faces = c->getFaces();
+											for(int r = 0; r < (int)faces.size(); ++r)
+												if( faces[r]->nbAdjElements(CELL) > 2 )
+												{
+													ElementArray<Cell> fcells = faces[r]->getCells();
+													std::cout << "face " << faces[r]->GetHandle() << "(" << faces[r]->LocalID() << ") " << Element::GeometricTypeName(faces[r]->GetGeometricType()) << " area " << faces[r]->Area() << " cells[" << fcells.size() << "]: ";
+													for(int l = 0; l < (int)fcells.size(); ++l)
+														std::cout << fcells[l]->LocalID() << " ";
+													std::cout << std::endl;
+												}
+										}
+									}
+								}
+								else if( !block_faces[cur].empty() )
+								{
+									//depending on actnum, mark faces that are not connected
+									//std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate cell " << block_faces[cur].size() << " block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
+								}
+							} //k
+						} //j
+					} //i
+				}
+				printf("finished tops/bottoms/cells\n");
+				/*
+				printf("started splitting faces of degenerate cells\n");
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-				for(int i = 0; i < dims[0]; ++i)
+				for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
 				{
-					//printf("top/bottom/cells %6.2f%%\r", ((Storage::real)i)/((Storage::real)dims[0]-1)*100);
-					//fflush(stdout);
-					for(int j = 0; j < dims[1]; ++j)
+					Face f = FaceByLocalID(it);
+					HandleType diag = f->Reference(split_face);
+					if( diag != InvalidHandle() )
 					{
-						for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
-						{
-							//current block number
-							int cur = (i + (j+k*dims[1])*dims[0]);
-							//bottom face -> 0,4,1,5
-							//top face -> 2,7,3,6
-							const int map[8][2] =
-							{
-								{0,0}, //edge 0 -> first position, bottom face
-								{2,0}, //edge 1 -> third position, bottom face
-								{0,1}, //edge 2 -> first position, top face
-								{2,1}, //edge 3 -> third position, top face
-								{1,0}, //edge 4 -> second position, bottom face
-								{3,0}, //edge 5 -> fourth position, bottom face
-								{3,1}, //edge 6 -> fourth position, top face
-								{1,1} //edge 7 -> second position, top face
-							};
-							//which edges should be considered in reverse order
-							const bool rev[2][4] = 
-							{
-								{true,false,false,true},
-								{false,false,true,true}
-							};
-							//array of ordered edges, first dimension - top or bottom, second dimension - edge number
-							std::vector<HandleType> edges[2][4];
-							//retrive set of edges of the block
-							ElementArray<Edge> & cbe = block_edges[cur];
-							for(int q = 0; q < cbe.size(); ++q)
-							{
-								Storage::integer_array bn = cbe[q].IntegerArray(block_number);
-								Storage::integer_array en = cbe[q].IntegerArray(edge_number);
-								assert(bn.size() == en.size());
-								for(int r = 0; r < (int)bn.size(); ++r) if( bn[r] == cur ) //how the edge is represented on current block
-									edges[map[en[r]][1]][map[en[r]][0]].push_back(cbe[q].GetHandle());
-							}
-							ElementArray<Edge> face_edges(this);
-							//collect edges and create face
-							for(int q = 0; q < 2; ++q) //top and bottom
-							{
-								for(int r = 0; r < 4; ++r) //all sides
-								{
-									if( rev[q][r] )
-										face_edges.insert(face_edges.end(),edges[q][r].rbegin(),edges[q][r].rend());
-									else
-										face_edges.insert(face_edges.end(),edges[q][r].begin(),edges[q][r].end());
-								}
-								make_unique(face_edges); //somehow duplicate appears there
-								if( face_edges.size() > 2 )
-								{
-									Face f = CreateFace(face_edges).first;
-									
-									if(!f->FixEdgeOrder())
-									//if(!f->CheckEdgeOrder())
-									{
-										std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << face_edges.size() << std::endl;
-										std::cout << "block: " << cur << " (" << i << "," << j << "," << k << ") " << (q ? "top" : "bottom") << std::endl;
-										for(int l = 0; l < face_edges.size(); ++l)
-										{
-											Storage::integer_array bn = face_edges[l]->IntegerArray(block_number);
-											Storage::integer_array en = face_edges[l]->IntegerArray(edge_number);
-											std::cout << "edge " << l << " " << face_edges[l]->GetHandle() << " ";
-											std::cout << face_edges[l]->getBeg()->GetHandle() << "<->" << face_edges[l]->getEnd()->GetHandle() << " ";
-											std::cout << "blocks: ";
-											for(int p = 0; p < (int)bn.size(); ++p)
-												std::cout << bn[p] << "(" << bn[p]%dims[0] << "," << bn[p]/dims[0]%dims[1] << "," << bn[p]/dims[0]/dims[1] << "):" << en[p] << " ";
-											std::cout << std::endl;
-										}
-									}
-									block_faces[cur].push_back(f);
-								}
-								else if( !face_edges.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << face_edges.size() << " " << (q?"top":"bottom") << " of block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
-								face_edges.clear();
-							}
-							make_unique(block_faces[cur]); //some faces may be added twice?
-							if( block_faces[cur].size() > 3 )
-							{
-								Cell c =CreateCell(block_faces[cur]).first;
-								c->Integer(cell_number) = cur+1;
-								//c->IntegerArray(cell_number)[1] = i;
-								//c->IntegerArray(cell_number)[2] = j;
-								//c->IntegerArray(cell_number)[3] = k;
-							}
-							else if( !block_faces[cur].empty() )
-							{
-								//depending on actnum, mark faces that are not connected
-								//std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate cell " << block_faces[cur].size() << " block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
-							}
-						} //k
-					} //j
-				} //i
-				printf("finished tops/bottoms/cells\n");
+						ElementArray<Edge> split_edge(this,1,diag);
+						Face::SplitFace(f,split_edge,0);
+					}
+				}
+				printf("finished splitting faces of degenerate cells\n");
+				 */
 				//printf("\n");
 				//cleanup data
+				//DeleteTag(split_face);
 				DeleteTag(edge_number);
-				DeleteTag(block_number);
+				//DeleteTag(block_number);
 				//crack up the mesh along degenerate active cells
 				//populate properties to blocks
 				Tag tagporo, tagsatnum, tagperm;
 				if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
 				if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
 				if( !satnum.empty() ) tagsatnum = CreateTag("SATNUM",DATA_INTEGER,CELL,NONE,1);
-
+				
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -2049,6 +2112,121 @@ ecl_exit_loop:
 							K[1] = perm[q*3+1];
 							K[2] = perm[q*3+2];
 						}
+					}
+				}
+				//compute cell centers that lay inside
+				
+				GeomParam table;
+				table[CENTROID] = CELL;
+				PrepareGeometricData(table);
+				//overwrite centroid info
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+				{
+					Cell c = CellByLocalID(it);
+					integer bnum = c->Integer(cell_number)-1;
+					if( bnum >= 0 ) //maybe this cell existed before
+					{
+						real ctop[3] = {0.0,0.0,0.0}, cbottom[3] = {0.0,0.0,0.0};
+						for(int l = 0; l < 4; ++l)
+						{
+							real_array bc = Node(this,block_nodes[bnum*8+l+0]).Coords();
+							real_array tc = Node(this,block_nodes[bnum*8+l+4]).Coords();
+							cbottom[0] += bc[0]*0.25;
+							cbottom[1] += bc[1]*0.25;
+							cbottom[2] += bc[2]*0.25;
+							ctop[0] += tc[0]*0.25;
+							ctop[1] += tc[1]*0.25;
+							ctop[2] += tc[2]*0.25;
+						}
+						real_array cnt = c->RealArray(centroid_tag);
+						cnt[0] = (cbottom[0]+ctop[0])*0.5;
+						cnt[1] = (cbottom[1]+ctop[1])*0.5;
+						cnt[2] = (cbottom[2]+ctop[2])*0.5;
+
+					}
+				}
+				
+				int num_outside = 0, num_total = 0;
+				for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+				{
+					Cell c = CellByLocalID(it);
+					integer bnum = c->Integer(cell_number)-1;
+					if( bnum >= 0 ) //maybe this cell existed before
+					{
+						Storage::real cnt[3];
+						c->Centroid(cnt);
+						if(!c->Inside(cnt) )
+						{
+							//std::cout << "Centroid is outside of cell " << bnum << std::endl;
+							num_outside++;
+						}
+						num_total++;
+					}
+				}
+				
+				std::cout << "Centroid is outside for " << num_outside << " cells out of " << num_total << " cells " << std::endl;
+				
+				for(integer it = 0; it < NodeLastLocalID(); ++it) if( isValidNode(it) )
+				{
+					Node n = NodeByLocalID(it);
+					if( n->nbAdjElements(CELL) == 0 )
+					{
+						//bool mrk[MarkerFields], mrkprv[MarkerFields];
+						Element::adj_type & hc = HighConn(n->GetHandle());
+						Element::adj_type & lc = LowConn(n->GetHandle());
+						Storage::bulk_array mrk = n->BulkArray(tag_markers);
+						Storage::bulk_array private_mrk = n->BulkArray(tag_private_markers[0]);
+						//n->GetMarkerSpace(mrk);
+						//ElementArray<Edge> nedges = n->getEdges();
+						ElementArray<Face> nfaces = n->getFaces();
+						Storage::integer_array bn =  n->IntegerArray(node_blocks);
+						std::cout << "orphan node " << n->GetHandle() << " lc " << lc.size() << " hc " << hc.size() << " blocks numbers [" << bn.size() << "]: ";
+						for(int k = 0; k < bn.size(); ++k) std::cout << bn[k] << " ";
+						std::cout << std::endl;
+						std::cout << " adjacent faces [" << nfaces.size() << "]: " << std::endl;
+						for(int k = 0; k < nfaces.size(); ++k)
+						{
+							std::cout << "  " << nfaces[k]->GetHandle() << " " << Element::GeometricTypeName(nfaces[k]->GetGeometricType()) << std::endl;
+							ElementArray<Node> fnodes = nfaces[k]->getNodes();
+							std::cout << "  nodes [" << fnodes.size() << "]: ";
+							for(int q = 0; q < fnodes.size(); ++q)
+							{
+								std::cout << fnodes[q]->GetHandle() << " ";
+							}
+							std::cout << std::endl;
+							std::cout << "  cells [" << nfaces[k]->nbAdjElements(CELL) << "]: " << std::endl;
+							ElementArray<Cell> fcells = nfaces[k]->getCells();
+							for(int q = 0; q < fcells.size(); ++q)
+							{
+								ElementArray<Node> cnodes = fcells[q]->getNodes();
+								std::cout << "  " <<fcells[q]->GetHandle() << " " << Element::GeometricTypeName(fcells[q]->GetGeometricType()) << " (";
+								for(int r = 0; r < cnodes.size()-1; ++r) std::cout << cnodes[r]->GetHandle() << ",";
+								std::cout << cnodes.back()->GetHandle() << ") " << std::endl;
+								ElementArray<Face> cfaces = fcells[q]->getFaces();
+								std::cout << "   cell faces [" << cfaces.size() << "]:" << std::endl;
+								for(int r = 0; r < cfaces.size(); ++r)
+								{
+									ElementArray<Node> ffnodes = cfaces[r]->getNodes();
+									std::cout << "   " << Element::GeometricTypeName(cfaces[r]->GetGeometricType()) << " (";
+									for(int l = 0; l < ffnodes.size()-1; ++l) std::cout << ffnodes[l]->GetHandle() << ",";
+									std::cout << ffnodes.back()->GetHandle() << ") " << std::endl;
+								}
+								
+							}
+							std::cout << std::endl;
+						}
+						std::cout << std::endl;
+						std::cout << "markers: ";
+						for(int k = 0; k < mrk.size(); ++k) std::cout << (int)mrk[k] << " ";
+						std::cout << std::endl;
+						std::cout << "private markers: ";
+						for(int k = 0; k < private_mrk.size(); ++k) std::cout << (int)private_mrk[k] << " ";
+						std::cout << std::endl;
+						
+						
 					}
 				}
 			}

@@ -5,18 +5,44 @@
 #include "inmost_common.h"
 
 
-#if defined(USE_SOLVER)
+
 
 
 namespace INMOST
 {
     namespace Sparse
     {
-        INMOST_MPI_Type GetRowEntryType();
-        void CreateRowEntryType();
-        void DestroyRowEntryType();
-        bool HaveRowEntryType();
-        
+#if defined(USE_SOLVER) || defined(USE_AUTODIFF)
+		/// Retrive MPI type for row entry type
+		INMOST_MPI_Type GetRowEntryType();
+		/// Create MPI type for row entry type
+		void CreateRowEntryType();
+		/// Release MPI type
+		void DestroyRowEntryType();
+		/// Check whether MPI type was created
+		bool HaveRowEntryType();
+		/// This class can be used to annotate the matrix
+		class AnnotationService
+		{
+			interval<INMOST_DATA_ENUM_TYPE,std::string> text;
+		public:
+			AnnotationService(INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0) { if( end != start ) SetInterval(start,end); }
+			AnnotationService(const AnnotationService & other) : text(other.text) { }
+			AnnotationService & operator = (AnnotationService const & other) {text = other.text; return *this;}
+			~AnnotationService() {}
+			/// Get the first row index of the distributed matrix interval.
+			INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return text.get_interval_beg();}
+			/// Get the last row index of the distributed matrix interval.
+			INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return text.get_interval_end();}
+			bool                   Empty() const {return text.empty();}
+			void                   SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) { text.set_interval_beg(beg); text.set_interval_end(end); }
+			void                   GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = text.get_interval_beg(); end = text.get_interval_end();}
+			std::string &          GetAnnotation(INMOST_DATA_ENUM_TYPE row) {assert(!text.empty()); return text[row];}
+			const std::string &    GetAnnotation(INMOST_DATA_ENUM_TYPE row) const {assert(!text.empty()); return text[row];}
+			void                   SetAnnotation(INMOST_DATA_ENUM_TYPE row, std::string str) {assert(!text.empty()); text[row] = str;}
+		};
+#endif
+#if defined(USE_SOLVER)
         /// Distributed vector class.
         /// This class can be used to store both local and distributed dense data of real type.
         /// For example, to form the right-hand side or initial guess to the solution.
@@ -85,8 +111,10 @@ namespace INMOST
             
         };
         
-        
-        
+#endif //defined(USE_SOLVER)
+		
+#if defined(USE_SOLVER) || defined(USE_AUTODIFF)
+		
         /// Class to store the sparse matrix row.
         class Row
         {
@@ -162,8 +190,10 @@ namespace INMOST
             reverse_iterator        rEnd() { return data.rend(); }
             const_reverse_iterator  rBegin() const { return data.rbegin(); }
             const_reverse_iterator  rEnd() const { return data.rend(); }
+#if defined(USE_SOLVER)
             /// Return the scalar product of the current sparse row by a dense Vector.
             INMOST_DATA_REAL_TYPE   RowVec(Vector & x) const; // returns A(row) * x
+#endif
             void                    MoveRow(Row & new_pos) {data = new_pos.data;} //here move constructor and std::move may be used in future
             /// Set the vector entries by zeroes.
             void                    Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
@@ -185,7 +215,9 @@ namespace INMOST
             static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row & left, INMOST_DATA_REAL_TYPE beta, const Row & right, Row & output);
         };
         
-        
+#endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
+		
+#if defined(USE_SOLVER) || defined(USE_AUTODIFF)
         /// Class to store the compressed symmetric matrix of a hessian row.
         class HessianRow
         {
@@ -298,7 +330,11 @@ namespace INMOST
             static void             MergeJacobianHessian(INMOST_DATA_REAL_TYPE a, const Row & JL, const Row & JR, INMOST_DATA_REAL_TYPE b, const HessianRow & HL, INMOST_DATA_REAL_TYPE c, const HessianRow & HR, HessianRow & output);
             static void             MergeJacobianHessian(INMOST_DATA_REAL_TYPE a, const Row & JL, const Row & JR, INMOST_DATA_REAL_TYPE b, const HessianRow & H, HessianRow & output);
         };
-        
+		
+#endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
+		
+#if defined(USE_SOLVER)
+		
         /// This class can be used for shared access to matrix with OpenMP.
         class LockService
         {
@@ -321,29 +357,6 @@ namespace INMOST
             bool TestLock(INMOST_DATA_ENUM_TYPE row);
             bool UnLock(INMOST_DATA_ENUM_TYPE row);
         };
-        
-        /// This class can be used to annotate the matrix
-        class AnnotationService
-        {
-            interval<INMOST_DATA_ENUM_TYPE,std::string> text;
-        public:
-            AnnotationService(INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0) { if( end != start ) SetInterval(start,end); }
-            AnnotationService(const AnnotationService & other) : text(other.text) { }
-            AnnotationService & operator = (AnnotationService const & other) {text = other.text; return *this;}
-            ~AnnotationService() {}
-            /// Get the first row index of the distributed matrix interval.
-            INMOST_DATA_ENUM_TYPE  GetFirstIndex() const {return text.get_interval_beg();}
-            /// Get the last row index of the distributed matrix interval.
-            INMOST_DATA_ENUM_TYPE  GetLastIndex() const {return text.get_interval_end();}
-            bool                   Empty() const {return text.empty();}
-            void                   SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) { text.set_interval_beg(beg); text.set_interval_end(end); }
-            void                   GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = text.get_interval_beg(); end = text.get_interval_end();}
-            std::string &          GetAnnotation(INMOST_DATA_ENUM_TYPE row) {assert(!text.empty()); return text[row];}
-            const std::string &    GetAnnotation(INMOST_DATA_ENUM_TYPE row) const {assert(!text.empty()); return text[row];}
-            void                   SetAnnotation(INMOST_DATA_ENUM_TYPE row, std::string str) {assert(!text.empty()); text[row] = str;}
-        };
-        
-        
         
         /// Class to store the distributed sparse matrix by compressed rows.
         /// The format used to store sparse matrix is analogous to Compressed Row Storage format (CRS).
@@ -414,7 +427,11 @@ namespace INMOST
             /// Get the matrix name specified in the main constructor.
             std::string          GetName() const {return name;}
         };
-        
+		
+#endif //defined(USE_SOLVER)
+		
+#if defined(USE_SOLVER)
+		
         /// Class to store the distributed sparse hessian hyper matrix by compressed symmetric matrices.
         class HessianMatrix
         {
@@ -482,7 +499,11 @@ namespace INMOST
             /// Get the matrix name specified in the main constructor.
             std::string          GetName() const {return name;}
         };
-        
+		
+#endif //defined(USE_SOLVER)
+		
+#if defined(USE_SOLVER) || defined(USE_AUTODIFF)
+		
         /// This class may be used to sum multiple sparse rows.
         /// \warning
         /// In parallel column indices of the matrix may span wider then
@@ -538,10 +559,12 @@ namespace INMOST
             /// @param interval_end Last index in linked list.
             /// @param Sorted Result should be sorted or not.
             RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
+#if defined(USE_SOLVER)
             /// Constructor that gets sizes from the matrix.
             /// @param A Matrix to get sizes from.
             /// @param Sorted Result should be sorted.
             RowMerger(Matrix & A, bool Sorted = true);
+#endif //USE_SOLVER
             /// Destructor.
             ~RowMerger();
             /// Resize linked list for new interval.
@@ -552,6 +575,7 @@ namespace INMOST
             /// @param interval_end Last index in linked list.
             /// @param Sorted Result should be sorted or not.
             void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
+#if defined(USE_SOLVER)
             /// Resize linked list for new matrix.
             /// \warning
             /// All contents of linked list will be lost after resize.
@@ -559,6 +583,7 @@ namespace INMOST
             /// @param A Matrix to get sizes from.
             /// @param Sorted Result should be sorted or not.
             void Resize(Matrix & A, bool Sorted = true);
+#endif //USE_SOLVER
             /// Clear linked list.
             void Clear();
             /// Add a row with a coefficient into empty linked list.
@@ -614,8 +639,8 @@ namespace INMOST
             iterator Begin() {return iterator(&LinkedList);}
             iterator End() {iterator ret(&LinkedList); ret.pos = EOL; return ret;}
         };
-    }
-}
-#endif
+#endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
+    } //namespace Sparse
+} //namespace INMOST
 
-#endif
+#endif //INMOST_SPARSE_INCLUDED

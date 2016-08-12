@@ -10,7 +10,7 @@ namespace INMOST
 {
 
 	
-	void Face::SwapCells()
+	void Face::SwapCells() const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType hm = m->HideMarker();
@@ -23,7 +23,7 @@ namespace INMOST
 			HandleType temp = hc[k1];
 			hc[k1] = hc[k2];
 			hc[k2] = temp;
-			FixNormalOrientation(); //maybe should change orientation?
+			//FixNormalOrientation(); //maybe should change orientation?
 		}
 	}
 
@@ -1104,7 +1104,12 @@ namespace INMOST
 		do
 		{
 			mat.find_shortest_loop(loop);
-			if (!loop.empty()) ret.push_back(m->CreateFace(loop).first);
+			if (!loop.empty())
+			{
+				ret.push_back(m->CreateFace(loop).first);
+				adj_type & hc = m->HighConn(ret.back()->GetHandle());
+				hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+			}
 			else break;
 		} while(true);
 		

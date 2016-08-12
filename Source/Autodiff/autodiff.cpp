@@ -13,6 +13,8 @@
 
 namespace INMOST
 {
+	
+#if defined(USE_MESH)
 	Automatizator * Automatizator::CurrentAutomatizator = NULL;
 	bool print_ad_ctor = false;
 	bool GetAutodiffPrint() {return print_ad_ctor;}
@@ -44,6 +46,14 @@ namespace INMOST
 		merger.RetriveRow(r);
 		merger.Clear();
 	}
+#else //USE_MESH
+	bool CheckCurrentAutomatizator() {return false;}
+	void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr) {}
+	void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr) {}
+	void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) {}
+#endif //USE_MESH
+	
+#if defined(USE_MESH)
 	Automatizator::Automatizator(Mesh * m) :first_num(0), last_num(0), m(m) {}
 	Automatizator::~Automatizator()
 	{
@@ -243,6 +253,7 @@ namespace INMOST
 		merger.Resize(0,max_unknowns,false);
 #endif
 	}
+#endif //USE_MESH
 };
 
 #endif //USE_AUTODIFF

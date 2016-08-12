@@ -9,11 +9,7 @@
 #include <sstream> //for debug
 #include <new>
 
-#if defined(USE_AUTODIFF) && (!defined(USE_MESH) || !defined(USE_SOLVER))
-#warning "USE_AUTODIFF require USE_MESH"
-#undef USE_AUTODIFF
-#endif
-
+#if defined(USE_AUTODIFF) && defined(USE_MESH)
 
 //TODO:
 // 1. Incorporate tables
@@ -32,7 +28,6 @@
 
 
 
-#if defined(USE_AUTODIFF)
 namespace INMOST
 {
   
@@ -582,9 +577,10 @@ template<class A>          __INLINE                                             
 	return INMOST::stencil_expression<typename A::Var>(tmp);
 }
 
+#endif //defined(USE_AUTODIFF) && defined(USE_MESH)
 
   
 
 
-#endif
-#endif
+#endif //INMOST_AUTODIFF_ETVAR_H_INCLUDED
+
