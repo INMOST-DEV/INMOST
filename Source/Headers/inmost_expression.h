@@ -1337,6 +1337,45 @@ namespace INMOST
     }
   };
 
+  template<class A, class B>
+  class branch_expression : public shell_expression<branch_expression<A,B> >
+  {
+	bool cond;
+    const A & left;
+    const B & right;
+	INMOST_DATA_REAL_TYPE value;
+  public:
+    branch_expression(bool pcond, const shell_expression<A> & pleft, const shell_expression<B> & pright) : cond(pcond), left(pleft), right(pright) 
+    {
+      value = cond ? left.GetValue() : right.GetValue();
+    }
+    branch_expression(const condition_expression & other)
+      :cond(other.cond), left(other.left), right(other.right), 
+      value(other.value) {}
+    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
+    {
+      if( cond )
+        left.GetJacobian(mult,r);
+      else
+        right.GetJacobian(mult,r);
+    }
+    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+    {
+      if( cond )
+        left.GetJacobian(mult,r);
+      else
+        right.GetJacobian(mult,r);
+    }
+    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
+    {
+      if( cond )
+        left.GetHessian(multJ,J,multH,H);
+      else
+        right.GetHessian(multJ,J,multH,H);
+    }
+  };
+
   template<class A> 
   class stencil_expression : public shell_expression<stencil_expression<A> >
   {
@@ -1376,6 +1415,7 @@ namespace INMOST
             H.Swap(tmpH);
         }
     }
+	void SetCondition(bool _cond) { cond = _cond; }
   };
 
 

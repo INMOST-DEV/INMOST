@@ -20,6 +20,7 @@
 // 6. Document everything
 // 7. change stencil_variable with foreach_variable and introduce function foreach(iterator beg, iterator end, arg)
 // 8. enclose in namespace
+// 9. maybe should not use const A & in classes, since some class may be destroyed prior use - investigate
 
 //This should stop Visual Studio from complaining of very long auto-generated class types
 #ifdef _MSC_VER
@@ -294,6 +295,7 @@ namespace INMOST
   };
 
   
+  
   class static_variable : public shell_dynamic_variable<const_expression,static_variable>
   {
   private:
@@ -375,7 +377,7 @@ namespace INMOST
   private:
     Tag tag_elems;
 	Tag tag_coefs;
-    const A & Arg;
+    A Arg;
   public:
     stencil_variable(Tag tag_elems, Tag tag_coefs, const shell_dynamic_variable<typename A::Var,A> & parg) : tag_elems(tag_elems), tag_coefs(tag_coefs), Arg(parg) {}
     stencil_variable(const stencil_variable & other) : tag_elems(other.tag_elems), tag_coefs(other.tag_coefs), Arg(other.Arg) {}
@@ -405,7 +407,7 @@ namespace INMOST
   template<class A>
   class table_variable : public shell_dynamic_variable< unary_pool_expression< function_expression<typename A::Var>,typename A::Var > , table_variable<A> >
   {
-    const A & Arg;
+    A Arg;
     const keyval_table & Table;
   public:
     table_variable(const shell_dynamic_variable<typename A::Var,A> & parg, const keyval_table & ptable) : Arg(parg), Table(ptable) {}
@@ -430,11 +432,82 @@ namespace INMOST
     abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new table_variable(*this));}
   };
 
+
+  template<class A, class B>
+  class etype_branch_variable : public shell_dynamic_variable< binary_pool_expression< branch_expression<typename A::Var, typename B::Var>, typename A::Var, typename B::Var >, etype_branch_variable<A,B> >
+  {
+  private:
+	  A ArgA;
+	  B ArgB;
+	  ElementType types_true;
+  public:
+	  etype_branch_variable(ElementType _types_true, const A & _ArgA, const B & _ArgB) : types_true(_types_true), ArgA(_ArgA), ArgB(_ArgB) {}
+	  etype_branch_variable(const etype_branch_variable & other) : types_true(other.types_true), ArgA(other.ArgA), ArgB(other.ArgB) {}
+	  etype_branch_variable & operator =(etype_branch_variable const & other)
+	  {
+		  types_true = other.types_true;
+		  ArgA = other.ArgA;
+		  ArgB = other.ArgB;
+		  return *this;
+	  }
+	  INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+	  multivar_expression Variable(const Storage & e) const
+	  {
+		  multivar_expression ret = (*this)[e];
+		  return ret;
+	  }
+	  binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var > operator [](const Storage & e) const
+	  {
+		  binary_pool<branch_expression<typename A::Var,typename B::Var> >,typename A::Var,typename B::Var> pool(Left[e],Right[e]);
+		  pool.get_op().SetCondition(e->GetElementType() & types_true);
+		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var> >, typename A::Var, typename B::Var >(pool);
+	  }
+	  void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+	  void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_condition_variable(*this));}
+  };
+
+  template<class A, class B>
+  class marker_branch_variable : public shell_dynamic_variable< binary_pool_expression< branch_expression<typename A::Var, typename B::Var>, typename A::Var, typename B::Var >, marker_branch_variable<A,B> >
+  {
+  private:
+	  A ArgA;
+	  B ArgB;
+	  MarkerType marker;
+  public:
+	  marker_branch_variable(MarkerType _marker, const A & _ArgA, const B & _ArgB) : marker(_marker), ArgA(_ArgA), ArgB(_ArgB) {}
+	  marker_branch_variable(const marker_branch_variable & other) : marker(other.marker), ArgA(other.ArgA), ArgB(other.ArgB) {}
+	  marker_branch_variable & operator =(marker_branch_variable const & other)
+	  {
+		  marker = other.marker;
+		  ArgA = other.ArgA;
+		  ArgB = other.ArgB;
+		  return *this;
+	  }
+	  INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+	  multivar_expression Variable(const Storage & e) const
+	  {
+		  multivar_expression ret = (*this)[e];
+		  return ret;
+	  }
+	  binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var  > operator [](const Storage & e) const
+	  {
+		  binary_pool<branch_expression<typename A::Var,typename B::Var> >,typename A::Var,typename B::Var> pool(Left[e],Right[e]);
+		  pool.get_op().SetCondition(isPrivateMarker(marker) ? e->GetPrivateMarker(marker) : e->GetMarker(marker));
+		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var> >, typename A::Var, typename B::Var >(pool);
+	  }
+	  void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+	  void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_condition_variable(*this));}
+  };
+
+  
+
   template<class Expr, class A>
   class unary_custom_variable : public shell_dynamic_variable< unary_pool_expression<Expr, typename A::Var >,unary_custom_variable<Expr,A> >
   {
   private:
-    const A & Arg;
+    A Arg;
   public:
     unary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & parg) : Arg(parg) {}
     unary_custom_variable(const unary_custom_variable & other) : Arg(other.Arg) {}
@@ -460,8 +533,8 @@ namespace INMOST
   class binary_custom_variable : public shell_dynamic_variable< binary_pool_expression<Expr, typename A::Var, typename B::Var >,binary_custom_variable<Expr,A,B> >
   {
   private:
-    const A & Left;
-    const B & Right;
+    A Left;
+    B Right;
   public:
     binary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pleft, const shell_dynamic_variable<typename B::Var,B> & pright) 
     : Left(pleft), Right(pright) {}
@@ -487,7 +560,7 @@ namespace INMOST
   class unary_const_custom_variable : public shell_dynamic_variable< unary_const_pool_expression<Expr, typename A::Var >,unary_const_custom_variable<Expr,A> >
   {
   private:
-    const A & Left;
+    A Left;
     INMOST_DATA_REAL_TYPE Right;
   public:
     unary_const_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pleft, INMOST_DATA_REAL_TYPE pright) 
@@ -514,9 +587,9 @@ namespace INMOST
   class ternary_custom_variable : public shell_dynamic_variable< ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var >,ternary_custom_variable<Expr,A,B,C> >
   {
   private:
-    const A & Cond;
-    const B & Left;
-    const C & Right;
+    A Cond;
+    B Left;
+    C Right;
   public:
     ternary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pcond, const shell_dynamic_variable<typename B::Var,B> & pleft, const shell_dynamic_variable<typename C::Var,C> & pright) 
     : Cond(pcond), Left(pleft), Right(pright) {}
@@ -576,6 +649,8 @@ template<class A>          __INLINE                                             
 		tmp.push_back(INMOST::const_multiplication_expression<typename A::Var>(Arg[elems[k]],coefs[k]));
 	return INMOST::stencil_expression<typename A::Var>(tmp);
 }
+template<class A, class B> __INLINE INMOST::etype_branch_variable<A,B> etype_branch(INMOST::ElementType true_type, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::etype_branch_variable(true_type,iftrue,iffalse);}
+template<class A, class B> __INLINE INMOST::marker_branch_variable<A,B> marker_branch(INMOST::MarkerType marker, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::marker_branch_variable(marker,iftrue,iffalse);}
 
 #endif //defined(USE_AUTODIFF) && defined(USE_MESH)
 

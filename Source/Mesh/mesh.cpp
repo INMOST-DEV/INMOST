@@ -2029,7 +2029,7 @@ namespace INMOST
 		else 
 			return reference_array(this,static_cast<reference *>(p),tag.GetSize());
 	}
-  Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
+	Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
 	{
 		Asserts(h,tag,DATA_REMOTE_REFERENCE);
 		void * p = MGetLink(h,tag); 
