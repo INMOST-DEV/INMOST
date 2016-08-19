@@ -1345,6 +1345,10 @@ namespace INMOST
     const B & right;
 	INMOST_DATA_REAL_TYPE value;
   public:
+	branch_expression(const shell_expression<A> & pleft, const shell_expression<B> & pright) : left(pleft), right(pright) 
+    {
+      value = 0;
+    }
     branch_expression(bool pcond, const shell_expression<A> & pleft, const shell_expression<B> & pright) : cond(pcond), left(pleft), right(pright) 
     {
       value = cond ? left.GetValue() : right.GetValue();
@@ -1374,7 +1378,11 @@ namespace INMOST
       else
         right.GetHessian(multJ,J,multH,H);
     }
-  	void SetCondition(bool _cond) { cond = _cond; }
+  	void SetCondition(bool _cond) 
+	{ 
+		cond = _cond; 
+		value = cond ? left.GetValue() : right.GetValue();
+	}
   };
 
   template<class A> 

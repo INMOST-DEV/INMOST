@@ -246,6 +246,7 @@ namespace INMOST
     get_variable<T> get_variable() {return get_variable<T>(*var);}
     abstract_dynamic_variable & retrive_expression() {return *var;}
     const abstract_dynamic_variable & retrive_expression() const {return *var;}
+	abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable_expression(*this));}
   };
 	
   
@@ -294,7 +295,28 @@ namespace INMOST
     abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new dynamic_variable(*this));}
   };
 
-  
+  class const_variable : public shell_dynamic_variable<const_expression,const_variable>
+  {
+  private:
+    INMOST_DATA_REAL_TYPE value;
+  public:
+    const_variable(INMOST_DATA_REAL_TYPE _value) : value(_value)  {}
+    const_variable(const const_variable & other) : value(other.value) {}
+    const_variable & operator =(const const_variable & other) 
+    {
+		value = other.value;
+      return * this;
+    }
+    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return value;}
+    multivar_expression Variable(const Storage & e) const 
+    {
+      return multivar_expression(value);
+    }
+    const_expression operator [](const Storage & e) const {return const_expression(value);}
+    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_variable(*this));}
+  };
   
   class static_variable : public shell_dynamic_variable<const_expression,static_variable>
   {
@@ -459,7 +481,7 @@ namespace INMOST
 	  binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var > operator [](const Storage & e) const
 	  {
 		  binary_pool<branch_expression<typename A::Var,typename B::Var>,typename A::Var,typename B::Var> pool(ArgA[e],ArgB[e]);
-		  pool.get_op().SetCondition(e->GetElementType() & types_true);
+		  pool.get_op().SetCondition(e->GetElementType() & types_true ? true : false);
 		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var >(pool);
 	  }
 	  void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
