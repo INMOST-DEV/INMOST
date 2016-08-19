@@ -1349,7 +1349,7 @@ namespace INMOST
     {
       value = cond ? left.GetValue() : right.GetValue();
     }
-    branch_expression(const condition_expression & other)
+    branch_expression(const branch_expression & other)
       :cond(other.cond), left(other.left), right(other.right), 
       value(other.value) {}
     __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
@@ -1374,6 +1374,7 @@ namespace INMOST
       else
         right.GetHessian(multJ,J,multH,H);
     }
+  	void SetCondition(bool _cond) { cond = _cond; }
   };
 
   template<class A> 
@@ -1415,7 +1416,6 @@ namespace INMOST
             H.Swap(tmpH);
         }
     }
-	void SetCondition(bool _cond) { cond = _cond; }
   };
 
 

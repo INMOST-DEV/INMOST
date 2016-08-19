@@ -458,13 +458,13 @@ namespace INMOST
 	  }
 	  binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var > operator [](const Storage & e) const
 	  {
-		  binary_pool<branch_expression<typename A::Var,typename B::Var> >,typename A::Var,typename B::Var> pool(Left[e],Right[e]);
+		  binary_pool<branch_expression<typename A::Var,typename B::Var>,typename A::Var,typename B::Var> pool(ArgA[e],ArgB[e]);
 		  pool.get_op().SetCondition(e->GetElementType() & types_true);
-		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var> >, typename A::Var, typename B::Var >(pool);
+		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var >(pool);
 	  }
 	  void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
 	  void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_condition_variable(*this));}
+	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_branch_variable(*this));}
   };
 
   template<class A, class B>
@@ -492,13 +492,13 @@ namespace INMOST
 	  }
 	  binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var  > operator [](const Storage & e) const
 	  {
-		  binary_pool<branch_expression<typename A::Var,typename B::Var> >,typename A::Var,typename B::Var> pool(Left[e],Right[e]);
+		  binary_pool<branch_expression<typename A::Var,typename B::Var>,typename A::Var,typename B::Var> pool(ArgA[e],ArgB[e]);
 		  pool.get_op().SetCondition(isPrivateMarker(marker) ? e->GetPrivateMarker(marker) : e->GetMarker(marker));
-		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var> >, typename A::Var, typename B::Var >(pool);
+		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var >(pool);
 	  }
 	  void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
 	  void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_condition_variable(*this));}
+	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new marker_branch_variable(*this));}
   };
 
   
@@ -649,8 +649,8 @@ template<class A>          __INLINE                                             
 		tmp.push_back(INMOST::const_multiplication_expression<typename A::Var>(Arg[elems[k]],coefs[k]));
 	return INMOST::stencil_expression<typename A::Var>(tmp);
 }
-template<class A, class B> __INLINE INMOST::etype_branch_variable<A,B> etype_branch(INMOST::ElementType true_type, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::etype_branch_variable(true_type,iftrue,iffalse);}
-template<class A, class B> __INLINE INMOST::marker_branch_variable<A,B> marker_branch(INMOST::MarkerType marker, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::marker_branch_variable(marker,iftrue,iffalse);}
+template<class A, class B> __INLINE INMOST::etype_branch_variable<A,B> etype_branch(INMOST::ElementType true_type, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::etype_branch_variable<A,B>(true_type,iftrue,iffalse);}
+template<class A, class B> __INLINE INMOST::marker_branch_variable<A,B> marker_branch(INMOST::MarkerType marker, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::marker_branch_variable<A,B>(marker,iftrue,iffalse);}
 
 #endif //defined(USE_AUTODIFF) && defined(USE_MESH)
 
