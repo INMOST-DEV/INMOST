@@ -284,9 +284,9 @@ namespace INMOST
       if( !mask || e->GetMarker(mask) )
         return multivar_expression(e->RealArray(value_tag)[comp],e->IntegerArray(index_tag)[comp]);
       else
-        return multivar_expression(e->Real(value_tag));
+        return multivar_expression(e->RealArray(value_tag)[comp]);
     }
-    var_expression operator [](const Storage & e) const {return var_expression(e->Real(value_tag),(!mask || e->GetMarker(mask))?e->Integer(index_tag):ENUMUNDEF);}
+    var_expression operator [](const Storage & e) const {return var_expression(e->RealArray(value_tag)[comp],(!mask || e->GetMarker(mask))?e->IntegerArray(index_tag)[comp]:ENUMUNDEF);}
     Tag IndexTag() {return index_tag;}
     Tag ValueTag() {return value_tag;}
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
