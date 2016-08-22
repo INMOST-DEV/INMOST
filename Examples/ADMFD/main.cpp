@@ -212,9 +212,12 @@ int main(int argc,char ** argv)
                     NK(k,1) = nK(0,1);
                     NK(k,2) = nK(0,2);
                 } //end of loop over faces
-                rMatrix SU,SS,SV;
                 nKGRAD = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //stability part
+				nKGRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
+
+
                 /*
+				 rMatrix SU,SS,SV;
                  std::cout << "W" << std::endl;
                  nKGRAD.Print();
                  nKGRAD.SVD(SU,SS,SV);
@@ -226,7 +229,7 @@ int main(int argc,char ** argv)
                  SV.Print();
                  std::cout << "Check " << (nKGRAD - SU*SS*SV.Transpose()).FrobeniusNorm() << std::endl;
                  */
-                
+                /*
                 int rank = 0; //size of matrix U
                 
                 { //Retrive orthogonal to R matrix D
@@ -353,7 +356,7 @@ int main(int argc,char ** argv)
                 //(U*D.Transpose()*R).Print();
                 
                 nKGRAD += D*U*D.Transpose();
-                
+                */
                 //std::cout << "W: " << std::endl;
                 //nKGRAD.Print();
                 bulk & isDMP = cell->Bulk(tag_DMP);

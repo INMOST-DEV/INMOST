@@ -454,76 +454,92 @@ namespace INMOST
     abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new table_variable(*this));}
   };
 
-
-  template<class A, class B>
-  class etype_branch_variable : public shell_dynamic_variable< binary_pool_expression< branch_expression<typename A::Var, typename B::Var>, typename A::Var, typename B::Var >, etype_branch_variable<A,B> >
-  {
-  private:
-	  A ArgA;
-	  B ArgB;
-	  ElementType types_true;
-  public:
-	  etype_branch_variable(ElementType _types_true, const A & _ArgA, const B & _ArgB) : types_true(_types_true), ArgA(_ArgA), ArgB(_ArgB) {}
-	  etype_branch_variable(const etype_branch_variable & other) : types_true(other.types_true), ArgA(other.ArgA), ArgB(other.ArgB) {}
-	  etype_branch_variable & operator =(etype_branch_variable const & other)
-	  {
-		  types_true = other.types_true;
-		  ArgA = other.ArgA;
-		  ArgB = other.ArgB;
-		  return *this;
-	  }
-	  INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
-	  multivar_expression Variable(const Storage & e) const
-	  {
-		  multivar_expression ret = (*this)[e];
-		  return ret;
-	  }
-	  binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var > operator [](const Storage & e) const
-	  {
-		  binary_pool<branch_expression<typename A::Var,typename B::Var>,typename A::Var,typename B::Var> pool(ArgA[e],ArgB[e]);
-		  pool.get_op().SetCondition(e->GetElementType() & types_true ? true : false);
-		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var >(pool);
-	  }
-	  void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-	  void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_branch_variable(*this));}
-  };
-
-  template<class A, class B>
-  class marker_branch_variable : public shell_dynamic_variable< binary_pool_expression< branch_expression<typename A::Var, typename B::Var>, typename A::Var, typename B::Var >, marker_branch_variable<A,B> >
-  {
-  private:
-	  A ArgA;
-	  B ArgB;
-	  MarkerType marker;
-  public:
-	  marker_branch_variable(MarkerType _marker, const A & _ArgA, const B & _ArgB) : marker(_marker), ArgA(_ArgA), ArgB(_ArgB) {}
-	  marker_branch_variable(const marker_branch_variable & other) : marker(other.marker), ArgA(other.ArgA), ArgB(other.ArgB) {}
-	  marker_branch_variable & operator =(marker_branch_variable const & other)
-	  {
-		  marker = other.marker;
-		  ArgA = other.ArgA;
-		  ArgB = other.ArgB;
-		  return *this;
-	  }
-	  INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
-	  multivar_expression Variable(const Storage & e) const
-	  {
-		  multivar_expression ret = (*this)[e];
-		  return ret;
-	  }
-	  binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var  > operator [](const Storage & e) const
-	  {
-		  binary_pool<branch_expression<typename A::Var,typename B::Var>,typename A::Var,typename B::Var> pool(ArgA[e],ArgB[e]);
-		  pool.get_op().SetCondition(isPrivateMarker(marker) ? e->GetPrivateMarker(marker) : e->GetMarker(marker));
-		  return binary_pool_expression<branch_expression<typename A::Var,typename B::Var>, typename A::Var, typename B::Var >(pool);
-	  }
-	  void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-	  void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-	  abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new marker_branch_variable(*this));}
-  };
-
-  
+	/// This class makes possible to evaluate different expressions on different element types.
+	/// See etype_branch function.
+	template<class A, class B>
+	class etype_branch_variable : public shell_dynamic_variable< multivar_expression, etype_branch_variable<A,B> >
+	{
+	private:
+		A ArgA; //< Variable expression to be evaluated when type of provided element matches selected types.
+		B ArgB; //< Variable expression to be evaluated when type of provided element does not match selected types.
+		ElementType types_true; //< Selected types of elements.
+	public:
+		/// Constructor. Used by etype_branch function.
+		etype_branch_variable(ElementType _types_true, const A & _ArgA, const B & _ArgB) : types_true(_types_true), ArgA(_ArgA), ArgB(_ArgB) {}
+		/// Copy constructor.
+		etype_branch_variable(const etype_branch_variable & other) : types_true(other.types_true), ArgA(other.ArgA), ArgB(other.ArgB) {}
+		/// Assignment operator.
+		etype_branch_variable & operator =(etype_branch_variable const & other)
+		{
+			types_true = other.types_true;
+			ArgA = other.ArgA;
+			ArgB = other.ArgB;
+			return *this;
+		}
+		/// Get value of variable expression on provided element e.
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+		/// Get value with derivatives of variable expression on provided element e.
+		/// This function collapses associated expression tree into multivar_expression.
+		multivar_expression Variable(const Storage & e) const { return (*this)[e]; }
+		/// Build an expression associated with variable expression on provided element e.
+		multivar_expression operator [](const Storage & e) const
+		{
+			if( e->GetElementType() & types_true )
+				return ArgA[e];
+			else return ArgB[e];
+		}
+		/// Retrive first derivatives of variable expression on provided element e, default approach.
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		/// Retrive first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_branch_variable(*this));}
+	};
+	
+	/// This class makes possible to evaluate different expressions depending on the markers.
+	/// Works similarly for shared and private markers.
+	/// See marker_branch function.
+	template<class A, class B>
+	class marker_branch_variable : public shell_dynamic_variable< multivar_expression, marker_branch_variable<A,B> >
+	{
+	private:
+		A ArgA; //< Variable expression to be evaluated when marker is set on the element.
+		B ArgB; //< Variable expression to be evaluated when marker is not set on the element.
+		MarkerType marker; //< Marker.
+	public:
+		/// Constructor. Used by marker_branch function.
+		marker_branch_variable(MarkerType _marker, const A & _ArgA, const B & _ArgB) : marker(_marker), ArgA(_ArgA), ArgB(_ArgB) {}
+		/// Copy constructor.
+		marker_branch_variable(const marker_branch_variable & other) : marker(other.marker), ArgA(other.ArgA), ArgB(other.ArgB) {}
+		/// Assignment operator.
+		marker_branch_variable & operator =(marker_branch_variable const & other)
+		{
+			marker = other.marker;
+			ArgA = other.ArgA;
+			ArgB = other.ArgB;
+			return *this;
+		}
+		/// Get value of variable expression on provided element e.
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+		/// Get value with derivatives of variable expression on provided element e.
+		/// This function collapses associated expression tree into multivar_expression.
+		multivar_expression Variable(const Storage & e) const { return (*this)[e]; }
+		/// Build an expression associated with variable expression on provided element e.
+		multivar_expression operator [](const Storage & e) const
+		{
+			if( isPrivateMarker(marker) ? e->GetPrivateMarker(marker) : e->GetMarker(marker) )
+				return ArgA[e];
+			else return ArgB[e];
+		}
+		/// Retrive first derivatives of variable expression on provided element e, default approach.
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		/// Retrive first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new marker_branch_variable(*this));}
+	};
+	
+	
 
   template<class Expr, class A>
   class unary_custom_variable : public shell_dynamic_variable< unary_pool_expression<Expr, typename A::Var >,unary_custom_variable<Expr,A> >

@@ -1296,7 +1296,7 @@ namespace INMOST
         throw NotImplemented;
     }
   };
-
+	
   template<class A, class B, class C>
   class condition_expression : public shell_expression<condition_expression<A,B,C> >
   {
