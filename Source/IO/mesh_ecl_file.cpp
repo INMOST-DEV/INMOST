@@ -1304,7 +1304,10 @@ ecl_exit_loop:
 				bool print_bedges = false;
 				//some intermediate info
 				bool print_info = false;
-				
+//#if defined(USE_OMP)
+//				std::vector<omp_lock_t> block_locks(dims[0]*dims[1]*dims[2]);
+//				for(int q = 0; q < dims[0]*dims[1]*dims[2]; ++q) omp_init_lock(&block_locks[q]);
+//#endif
 				//check_shared_mrk = false;
 				//check_private_mrk = false;
 
@@ -1344,15 +1347,29 @@ ecl_exit_loop:
 							tag_name << "PROJ_PNT_PROC_" << GetLocalProcessorRank();
 							pnt = CreateTag(tag_name.str(),DATA_REAL,NODE,NONE,2);
 						}
+						for(int uneven = 0; uneven < 2; uneven++)
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-						for(int i = 0; i < dims[0]+q; i++)
+						//for(int i = 0; i < dims[0]+q; i++)
+						for(int jt = uneven; jt < dims[1-q]+1; jt+=2)
 						{
 							//printf("%s %6.2f%%\r",q ? "ny":"nx", ((Storage::real)i)/((Storage::real)dims[0]+q-1)*100);
 							//fflush(stdout);
-							for(int j = 0; j < dims[1]+(1-q); ++j)
+							//for(int j = 0; j < dims[1]+(1-q); ++j)
+							for(int it = 0; it < dims[q]; it++)
 							{
+								int i,j;
+								if( q )
+								{
+									i = jt;
+									j = it;
+								}
+								else
+								{
+									i = it;
+									j = jt;
+								}
 								//if( i == 63 && j == 129 && q == 1 ) print_inter = true;
 								if( print_info )
 								{
@@ -1471,7 +1488,15 @@ ecl_exit_loop:
 								{
 									Storage::integer_array b = edges[k].IntegerArray(block_number);
 									for(int r = 0; r < (int)b.size(); ++r)
+									{
+//#if defined(USE_OMP)
+//										omp_set_lock(&block_locks[b[r]]);
+//#endif
 										block_edges[b[r]].push_back(edges[k]);
+//#if defined(USE_OMP)
+//										omp_unset_lock(&block_locks[b[r]]);
+//#endif
+									}
 								}
 								//sort block numbers on edges
 								for(int k = 0; k < (int)edges.size(); ++k)
@@ -1704,7 +1729,13 @@ ecl_exit_loop:
 														f->Integer(face_origin) = q;
 														if(!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
 														//detect block number
+//#if defined(USE_OMP)
+//														omp_set_lock(&block_locks[ECL_IJK_DATA(blocki[m],blockj[m],k)]);
+//#endif
 														block_faces[ECL_IJK_DATA(blocki[m],blockj[m],k)].push_back(f);
+//#if defined(USE_OMP)
+//														omp_unset_lock(&block_locks[ECL_IJK_DATA(blocki[m],blockj[m],k)]);
+//#endif
 														/*
 														ElementArray<Element> nodes = f->getAdjElements(NODE);
 														//block_number_intersection(nodes,block_number,block_number_inter);
@@ -1846,6 +1877,9 @@ ecl_exit_loop:
 					//printf("\n");
 					printf("finished creating faces for pairs of pillar along %s\n",q ? "ny":"nx");
 				} //q
+//#if defined(USE_OMP)
+//				for(int q = 0; q < dims[0]*dims[1]*dims[2]; ++q) omp_destroy_lock(&block_locks[q]);
+//#endif
 				//do not need this tag on nodes
 				//DeleteTag(block_number, NODE);
 				//now construct top and bottom interfaces
@@ -1856,213 +1890,216 @@ ecl_exit_loop:
 #endif
 				{
 					ElementArray<Node> edge_nodes(this,2);
+					for(int q = 0; q < 2; ++q) //uneven cell construction for OpenMP
+					{
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-					for(int i = 0; i < dims[0]; ++i)
-					{
-						//printf("top/bottom/cells %6.2f%%\r", ((Storage::real)i)/((Storage::real)dims[0]-1)*100);
-						//fflush(stdout);
-						for(int j = 0; j < dims[1]; ++j)
+						for(int i = q; i < dims[0]; i+=2)
 						{
-							for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
+							//printf("top/bottom/cells %6.2f%%\r", ((Storage::real)i)/((Storage::real)dims[0]-1)*100);
+							//fflush(stdout);
+							for(int j = 0; j < dims[1]; ++j)
 							{
-								//current block number
-								int cur = ECL_IJK_DATA(i,j,k);
-								//bottom face -> 0,4,1,5
-								//top face -> 2,7,3,6
-								const int map[8][2] =
+								for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
 								{
-									{0,0}, //edge 0 -> first position, bottom face
-									{2,0}, //edge 1 -> third position, bottom face
-									{0,1}, //edge 2 -> first position, top face
-									{2,1}, //edge 3 -> third position, top face
-									{1,0}, //edge 4 -> second position, bottom face
-									{3,0}, //edge 5 -> fourth position, bottom face
-									{3,1}, //edge 6 -> fourth position, top face
-									{1,1} //edge 7 -> second position, top face
-								};
-								//which edges should be considered in reverse order
-								const bool rev[2][4] =
-								{
-									{true,false,false,true},
-									{false,false,true,true}
-								};
-								//array of ordered edges, first dimension - top or bottom, second dimension - edge number
-								std::vector<HandleType> edges[2][4];
-								//retrive set of edges of the block
-								ElementArray<Edge> & cbe = block_edges[cur];
-								for(int q = 0; q < cbe.size(); ++q)
-								{
-									Storage::integer_array bn = cbe[q].IntegerArray(block_number);
-									Storage::integer_array en = cbe[q].IntegerArray(edge_number);
-									assert(bn.size() == en.size());
-									for(int r = 0; r < (int)bn.size(); ++r) if( bn[r] == cur ) //how the edge is represented on current block
-										edges[map[en[r]][1]][map[en[r]][0]].push_back(cbe[q].GetHandle());
-								}
-								ElementArray<Edge> face_edges(this);
-								//collect edges and create face
-								for(int q = 0; q < 2; ++q) //bottom and top
-								{
-									for(int r = 0; r < 4; ++r) //all sides
+									//current block number
+									int cur = ECL_IJK_DATA(i,j,k);
+									//bottom face -> 0,4,1,5
+									//top face -> 2,7,3,6
+									const int map[8][2] =
 									{
-										if( rev[q][r] )
-											face_edges.insert(face_edges.end(),edges[q][r].rbegin(),edges[q][r].rend());
-										else
-											face_edges.insert(face_edges.end(),edges[q][r].begin(),edges[q][r].end());
+										{0,0}, //edge 0 -> first position, bottom face
+										{2,0}, //edge 1 -> third position, bottom face
+										{0,1}, //edge 2 -> first position, top face
+										{2,1}, //edge 3 -> third position, top face
+										{1,0}, //edge 4 -> second position, bottom face
+										{3,0}, //edge 5 -> fourth position, bottom face
+										{3,1}, //edge 6 -> fourth position, top face
+										{1,1} //edge 7 -> second position, top face
+									};
+									//which edges should be considered in reverse order
+									const bool rev[2][4] =
+									{
+										{true,false,false,true},
+										{false,false,true,true}
+									};
+									//array of ordered edges, first dimension - top or bottom, second dimension - edge number
+									std::vector<HandleType> edges[2][4];
+									//retrive set of edges of the block
+									ElementArray<Edge> & cbe = block_edges[cur];
+									for(int q = 0; q < cbe.size(); ++q)
+									{
+										Storage::integer_array bn = cbe[q].IntegerArray(block_number);
+										Storage::integer_array en = cbe[q].IntegerArray(edge_number);
+										assert(bn.size() == en.size());
+										for(int r = 0; r < (int)bn.size(); ++r) if( bn[r] == cur ) //how the edge is represented on current block
+											edges[map[en[r]][1]][map[en[r]][0]].push_back(cbe[q].GetHandle());
 									}
-									make_unique(face_edges); //somehow duplicate appears there
-									if( face_edges.size() > 2 )
+									ElementArray<Edge> face_edges(this);
+									//collect edges and create face
+									for(int q = 0; q < 2; ++q) //bottom and top
 									{
-										Face f = CreateFace(face_edges).first;
-										if( TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag()) ) std::cout << __FILE__ <<":"<<__LINE__ << " topology error on face " << f->GetHandle() << std::endl;
-										/*
-										int split = 0;
-										if( block_nodes[cur*8+0] == block_nodes[cur*8+4] &&
-									    block_nodes[cur*8+3] == block_nodes[cur*8+7] )
-											split = 1; //SE-NW diagonal
-										else
-											if( block_nodes[cur*8+1] == block_nodes[cur*8+5] &&
-											   block_nodes[cur*8+2] == block_nodes[cur*8+6] )
-												split = 2; //SW-NE diagonal
-										
-										HandleType diag = f->Reference(split_face);
-										//split up quad faces into triagnles if they degenerate
-										if( split )
+										for(int r = 0; r < 4; ++r) //all sides
 										{
+											if( rev[q][r] )
+												face_edges.insert(face_edges.end(),edges[q][r].rbegin(),edges[q][r].rend());
+											else
+												face_edges.insert(face_edges.end(),edges[q][r].begin(),edges[q][r].end());
+										}
+										make_unique(face_edges); //somehow duplicate appears there
+										if( face_edges.size() > 2 )
+										{
+											Face f = CreateFace(face_edges).first;
+											if( TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag()) ) std::cout << __FILE__ <<":"<<__LINE__ << " topology error on face " << f->GetHandle() << std::endl;
+											/*
+											int split = 0;
+											if( block_nodes[cur*8+0] == block_nodes[cur*8+4] &&
+											block_nodes[cur*8+3] == block_nodes[cur*8+7] )
+											split = 1; //SE-NW diagonal
+											else
+											if( block_nodes[cur*8+1] == block_nodes[cur*8+5] &&
+											block_nodes[cur*8+2] == block_nodes[cur*8+6] )
+											split = 2; //SW-NE diagonal
+
+											HandleType diag = f->Reference(split_face);
+											//split up quad faces into triagnles if they degenerate
+											if( split )
+											{
 											if( diag == InvalidHandle() )
 											{
-												if( split == 1 ) //SE-NW diagonal
-												{
-													edge_nodes.at(0) = block_nodes[cur*8+1+q*4];
-													edge_nodes.at(1) = block_nodes[cur*8+2+q*4];
-													f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
-												}
-												else //SW-NE diagonal
-												{
-													edge_nodes.at(0) = block_nodes[cur*8+0+q*4];
-													edge_nodes.at(1) = block_nodes[cur*8+3+q*4];
-													f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
-												}
+											if( split == 1 ) //SE-NW diagonal
+											{
+											edge_nodes.at(0) = block_nodes[cur*8+1+q*4];
+											edge_nodes.at(1) = block_nodes[cur*8+2+q*4];
+											f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
+											}
+											else //SW-NE diagonal
+											{
+											edge_nodes.at(0) = block_nodes[cur*8+0+q*4];
+											edge_nodes.at(1) = block_nodes[cur*8+3+q*4];
+											f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
+											}
 											}
 											else //the face was already split
 											{
-												int was_split = 1; //was SE-NW
-												Edge e(this,diag);
-												if( e->getBeg()->GetHandle() == block_nodes[cur*8+0+q*4] &&
-												   e->getEnd()->GetHandle() == block_nodes[cur*8+3+q*4])
-													was_split = 2;
-												if( split != was_split )
+											int was_split = 1; //was SE-NW
+											Edge e(this,diag);
+											if( e->getBeg()->GetHandle() == block_nodes[cur*8+0+q*4] &&
+											e->getEnd()->GetHandle() == block_nodes[cur*8+3+q*4])
+											was_split = 2;
+											if( split != was_split )
+											{
+											std::cout << "Got different split direction" << std::endl;
+											std::cout << "was " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << (was_split == 1 ? "SE-NW" : "SW-NE") << std::endl;
+											std::cout << (q? "top" : "bottom") << " nodes: " << std::endl;
+											for(int l = 0; l < 4; ++l)
+											std::cout << block_nodes[cur*8+l+q*4];
+											std::cout << "want direction " << (split == 1? "SE-NW" : "SW-NE") << std::endl;
+											}
+											}
+											}
+											*/
+
+
+											f->Integer(face_origin) = 2;
+											if(!f->FixEdgeOrder())
+												//if(!f->CheckEdgeOrder())
+											{
+												std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << face_edges.size() << std::endl;
+												std::cout << "block: " << cur << " (" << i << "," << j << "," << k << ") " << (q ? "top" : "bottom") << std::endl;
+												for(int l = 0; l < face_edges.size(); ++l)
 												{
-													std::cout << "Got different split direction" << std::endl;
-													std::cout << "was " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << (was_split == 1 ? "SE-NW" : "SW-NE") << std::endl;
-													std::cout << (q? "top" : "bottom") << " nodes: " << std::endl;
-													for(int l = 0; l < 4; ++l)
-														std::cout << block_nodes[cur*8+l+q*4];
-													std::cout << "want direction " << (split == 1? "SE-NW" : "SW-NE") << std::endl;
+													Storage::integer_array bn = face_edges[l]->IntegerArray(block_number);
+													Storage::integer_array en = face_edges[l]->IntegerArray(edge_number);
+													std::cout << "edge " << l << " " << face_edges[l]->GetHandle() << " ";
+													std::cout << face_edges[l]->getBeg()->GetHandle() << "<->" << face_edges[l]->getEnd()->GetHandle() << " ";
+													std::cout << "blocks: ";
+													for(int p = 0; p < (int)bn.size(); ++p)
+														std::cout << bn[p] << "(" << bn[p]%dims[0] << "," << bn[p]/dims[0]%dims[1] << "," << bn[p]/dims[0]/dims[1] << "):" << en[p] << " ";
+													std::cout << std::endl;
 												}
 											}
+											block_faces[cur].push_back(f);
 										}
-										*/
-										
-										
-										f->Integer(face_origin) = 2;
-										if(!f->FixEdgeOrder())
-											//if(!f->CheckEdgeOrder())
-										{
-											std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << face_edges.size() << std::endl;
-											std::cout << "block: " << cur << " (" << i << "," << j << "," << k << ") " << (q ? "top" : "bottom") << std::endl;
-											for(int l = 0; l < face_edges.size(); ++l)
-											{
-												Storage::integer_array bn = face_edges[l]->IntegerArray(block_number);
-												Storage::integer_array en = face_edges[l]->IntegerArray(edge_number);
-												std::cout << "edge " << l << " " << face_edges[l]->GetHandle() << " ";
-												std::cout << face_edges[l]->getBeg()->GetHandle() << "<->" << face_edges[l]->getEnd()->GetHandle() << " ";
-												std::cout << "blocks: ";
-												for(int p = 0; p < (int)bn.size(); ++p)
-													std::cout << bn[p] << "(" << bn[p]%dims[0] << "," << bn[p]/dims[0]%dims[1] << "," << bn[p]/dims[0]/dims[1] << "):" << en[p] << " ";
-												std::cout << std::endl;
-											}
-										}
-										block_faces[cur].push_back(f);
+										else if( !face_edges.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << face_edges.size() << " " << (q?"top":"bottom") << " of block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
+										face_edges.clear();
 									}
-									else if( !face_edges.empty() ) std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate face " << face_edges.size() << " " << (q?"top":"bottom") << " of block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
-									face_edges.clear();
-								}
-								make_unique(block_faces[cur]); //some faces may be added twice?
-								if( block_faces[cur].size() > 3 )
-								{
-									Cell c = CreateCell(block_faces[cur]).first;
-									c->Integer(cell_number) = cur+1;
-									c->IntegerArray(block_index)[0] = i;
-									c->IntegerArray(block_index)[1] = j;
-									c->IntegerArray(block_index)[2] = k;
-									
-									//c->IntegerArray(cell_number)[1] = i;
-									//c->IntegerArray(cell_number)[2] = j;
-									//c->IntegerArray(cell_number)[3] = k;
-									if( TopologyErrorTag().isValid() )
+									make_unique(block_faces[cur]); //some faces may be added twice?
+									if( block_faces[cur].size() > 3 )
 									{
-										if( c->Integer(TopologyErrorTag()) & PROHIBIT_MULTIPOLYGON )
+										Cell c = CreateCell(block_faces[cur]).first;
+										c->Integer(cell_number) = cur+1;
+										c->IntegerArray(block_index)[0] = i;
+										c->IntegerArray(block_index)[1] = j;
+										c->IntegerArray(block_index)[2] = k;
+
+										//c->IntegerArray(cell_number)[1] = i;
+										//c->IntegerArray(cell_number)[2] = j;
+										//c->IntegerArray(cell_number)[3] = k;
+										if( TopologyErrorTag().isValid() )
 										{
-											std::cout << "Cell " << c->GetHandle() << " id " << c->LocalID() << " " << Element::GeometricTypeName(c->GetGeometricType()) << " block " << i << "," << j << "," << k << "("<<cur<<") got topology error" << std::endl;
-											std::cout << "input faces [" << block_faces[cur].size() << "]: " << std::endl;
-											std::map<HandleType,int>  visits;
-											for(int r = 0; r < (int)block_faces[cur].size(); ++r)
+											if( c->Integer(TopologyErrorTag()) & PROHIBIT_MULTIPOLYGON )
 											{
-												ElementArray<Cell> fcells = block_faces[cur][r].getCells();
-												ElementArray<Node> fnodes = block_faces[cur][r].getNodes();
-												ElementArray<Edge> fedges = block_faces[cur][r].getEdges();
-												std::cout << " face " << block_faces[cur][r].GetHandle() << " " << Element::GeometricTypeName(block_faces[cur][r]->GetGeometricType()) << " origin " << block_faces[cur][r]->Integer(face_origin) << std::endl;
-												std::cout << "  cells [" << fcells.size() << "]: " << std::endl;
-												for(int l = 0; l < (int)fcells.size(); ++l)
-													std::cout << "  " << fcells[l]->GetHandle() << " " << Element::GeometricTypeName(fcells[l]->GetGeometricType()) << " block " << fcells[l]->Integer(cell_number) << std::endl;
-												
-												std::cout << "  edges [" << fedges.size() << "]: " << std::endl;
-												for(int l = 0; l < (int)fedges.size(); ++l)
+												std::cout << "Cell " << c->GetHandle() << " id " << c->LocalID() << " " << Element::GeometricTypeName(c->GetGeometricType()) << " block " << i << "," << j << "," << k << "("<<cur<<") got topology error" << std::endl;
+												std::cout << "input faces [" << block_faces[cur].size() << "]: " << std::endl;
+												std::map<HandleType,int>  visits;
+												for(int r = 0; r < (int)block_faces[cur].size(); ++r)
 												{
-													Storage::integer_array bn = fedges[l]->IntegerArray(block_number);
-													Storage::integer_array en = fedges[l]->IntegerArray(edge_number);
-													std::cout << "  " << fedges[l]->GetHandle() << " nnodes " << fedges[l]->nbAdjElements(NODE) << " " << fedges[l]->getBeg()->GetHandle() << " <-> " << fedges[l]->getEnd()->GetHandle() << " block_numbers [" << bn.size() << "]: ";
-													for(int v = 0; v < (int)bn.size(); ++v) std::cout << bn[v] << ":" << en[v] << " ";
-													std::cout << std::endl;
-													visits[fedges[l]->GetHandle()]++;
-												}
-												std::cout << "  nodes [" << fnodes.size() << "]: ";
-												for(int l = 0; l < (int)fnodes.size(); ++l)
-													std::cout << fnodes[l]->GetHandle() << " ";
-												std::cout << std::endl;
-											}
-											for(std::map<HandleType,int>::iterator kt = visits.begin(); kt != visits.end(); ++kt)
-												std::cout << " edge " << kt->first << " visited " << kt->second << std::endl;
-											std::cout << " total cell nodes: " << c->nbAdjElements(NODE) << std::endl;
-											ElementArray<Node> cnodes = c->getNodes();
-											for(int r = 0; r < (int)cnodes.size(); ++r)
-												std::cout << "  " << cnodes[r]->GetHandle() << std::endl;
-										}
-										else if( c->Integer(TopologyErrorTag()) & TRIPLE_SHARED_FACE )
-										{
-											ElementArray<Face> faces = c->getFaces();
-											for(int r = 0; r < (int)faces.size(); ++r)
-												if( faces[r]->nbAdjElements(CELL) > 2 )
-												{
-													ElementArray<Cell> fcells = faces[r]->getCells();
-													std::cout << "face " << faces[r]->GetHandle() << "(" << faces[r]->LocalID() << ") " << Element::GeometricTypeName(faces[r]->GetGeometricType()) << " area " << faces[r]->Area() << " cells[" << fcells.size() << "]: ";
+													ElementArray<Cell> fcells = block_faces[cur][r].getCells();
+													ElementArray<Node> fnodes = block_faces[cur][r].getNodes();
+													ElementArray<Edge> fedges = block_faces[cur][r].getEdges();
+													std::cout << " face " << block_faces[cur][r].GetHandle() << " " << Element::GeometricTypeName(block_faces[cur][r]->GetGeometricType()) << " origin " << block_faces[cur][r]->Integer(face_origin) << std::endl;
+													std::cout << "  cells [" << fcells.size() << "]: " << std::endl;
 													for(int l = 0; l < (int)fcells.size(); ++l)
-														std::cout << fcells[l]->LocalID() << " ";
+														std::cout << "  " << fcells[l]->GetHandle() << " " << Element::GeometricTypeName(fcells[l]->GetGeometricType()) << " block " << fcells[l]->Integer(cell_number) << std::endl;
+
+													std::cout << "  edges [" << fedges.size() << "]: " << std::endl;
+													for(int l = 0; l < (int)fedges.size(); ++l)
+													{
+														Storage::integer_array bn = fedges[l]->IntegerArray(block_number);
+														Storage::integer_array en = fedges[l]->IntegerArray(edge_number);
+														std::cout << "  " << fedges[l]->GetHandle() << " nnodes " << fedges[l]->nbAdjElements(NODE) << " " << fedges[l]->getBeg()->GetHandle() << " <-> " << fedges[l]->getEnd()->GetHandle() << " block_numbers [" << bn.size() << "]: ";
+														for(int v = 0; v < (int)bn.size(); ++v) std::cout << bn[v] << ":" << en[v] << " ";
+														std::cout << std::endl;
+														visits[fedges[l]->GetHandle()]++;
+													}
+													std::cout << "  nodes [" << fnodes.size() << "]: ";
+													for(int l = 0; l < (int)fnodes.size(); ++l)
+														std::cout << fnodes[l]->GetHandle() << " ";
 													std::cout << std::endl;
 												}
+												for(std::map<HandleType,int>::iterator kt = visits.begin(); kt != visits.end(); ++kt)
+													std::cout << " edge " << kt->first << " visited " << kt->second << std::endl;
+												std::cout << " total cell nodes: " << c->nbAdjElements(NODE) << std::endl;
+												ElementArray<Node> cnodes = c->getNodes();
+												for(int r = 0; r < (int)cnodes.size(); ++r)
+													std::cout << "  " << cnodes[r]->GetHandle() << std::endl;
+											}
+											else if( c->Integer(TopologyErrorTag()) & TRIPLE_SHARED_FACE )
+											{
+												ElementArray<Face> faces = c->getFaces();
+												for(int r = 0; r < (int)faces.size(); ++r)
+													if( faces[r]->nbAdjElements(CELL) > 2 )
+													{
+														ElementArray<Cell> fcells = faces[r]->getCells();
+														std::cout << "face " << faces[r]->GetHandle() << "(" << faces[r]->LocalID() << ") " << Element::GeometricTypeName(faces[r]->GetGeometricType()) << " area " << faces[r]->Area() << " cells[" << fcells.size() << "]: ";
+														for(int l = 0; l < (int)fcells.size(); ++l)
+															std::cout << fcells[l]->LocalID() << " ";
+														std::cout << std::endl;
+													}
+											}
 										}
 									}
-								}
-								else if( !block_faces[cur].empty() )
-								{
-									//depending on actnum, mark faces that are not connected
-									//std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate cell " << block_faces[cur].size() << " block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
-								}
-							} //k
-						} //j
-					} //i
+									else if( !block_faces[cur].empty() )
+									{
+										//depending on actnum, mark faces that are not connected
+										//std::cout << __FILE__ << ":" << __LINE__ << " skip degenerate cell " << block_faces[cur].size() << " block " << cur << " (" << i << "," << j << "," << k << ") actnum " << actnum[ECL_IJK_DATA(i,j,k)] << std::endl;
+									}
+								} //k
+							} //j
+						} //i
+					} //q
 				}
 				printf("finished tops/bottoms/cells\n");
 				/*
