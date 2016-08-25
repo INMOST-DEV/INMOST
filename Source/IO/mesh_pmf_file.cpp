@@ -1413,6 +1413,8 @@ namespace INMOST
 			for(ElementType etype = NODE; etype <= CELL; etype = etype << 1)
 				if( tag_global_id.isDefined(etype) ) have_global_id |= etype;
 		}
+		if( HaveTag("TOPOLOGY_ERROR_TAG") )
+			tag_topologyerror = GetTag("TOPOLOGY_ERROR_TAG");
 #if defined(USE_MPI)
 		if( m_state == Mesh::Parallel )
 		{

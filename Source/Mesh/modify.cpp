@@ -1119,15 +1119,25 @@ namespace INMOST
 
 		for(dynarray<HandleType,2>::size_type it = 0; it < cells.size(); ++it)
 		{
-			adj_type & hc = m->HighConn(cells[it]);
+			adj_type & hc = m->HighConn(cells[it]); //cell nodes
 			hc.clear(); //have to recompute cell nodes
-			adj_type & lc = m->LowConn(cells[it]);
+			adj_type & lc = m->LowConn(cells[it]); //cell faces
 			lc.insert(lc.end(),ret.begin(),ret.end());
 			m->ComputeGeometricType(cells[it]);
 			ElementArray<Node> nn(m);
 			m->RestoreCellNodes(cells[it],nn);
 			hc.insert(hc.begin(),nn.begin(),nn.end());
 			m->RecomputeGeometricData(cells[it]);
+			//have to add cell to nodes that do not yet have connection to the cell
+			for(ElementArray<Node>::iterator jt = nn.begin(); jt != nn.end(); ++jt)
+			{
+				adj_type & nlc = m->LowConn(*jt); //node cells
+				bool have_cell = false;
+				for(adj_type::iterator kt = nlc.begin(); kt != nlc.end() && !have_cell; ++kt)
+					if( *kt == cells[it] ) have_cell = true;
+				if( !have_cell )
+					nlc.push_back(cells[it]);
+			}
 		}
 
 		return ret;

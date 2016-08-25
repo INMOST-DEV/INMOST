@@ -3956,6 +3956,18 @@ void draw_screen()
 				bclipper->clip_plane(p,n);
 				bclipper->gen_clip(clip_boundary,n);
 				clipboxupdate = false;
+				for(int k = 0; k < (int)orphans.size(); ++k)
+				{
+					if( orphans[k]->GetElementType() == FACE )
+						clip_boundary.push_back(DrawFace(orphans[k]->getAsFace()));
+					else if( orphans[k]->GetElementType() == CELL )
+					{
+						ElementArray<Face> faces = orphans[k].getFaces();
+						for(int q = 0; q < faces.size(); ++q)
+							clip_boundary.push_back(DrawFace(faces[q]));
+					}
+				}
+
 
 				if( current_picker != NULL ) {delete current_picker; current_picker = NULL;}
 				if( !clip_boundary.empty() ) current_picker = new picker(clip_boundary);
@@ -4107,13 +4119,15 @@ void draw_screen()
   }
   glEnd();
 
-	if( disp_e.isValid() )
-		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1));
 	
 	if( draw_orphan )
 		for(int k = 0; k < (int)orphans.size(); ++k)
-			DrawElement(orphans[k],color_t(1,0,0),color_t(0,1,0),color_t(0,0,1));
+			DrawElement(orphans[k],color_t(1,0,1),color_t(0,1,1),color_t(0,0,1));
 
+	if( disp_e.isValid() )
+		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1));
+
+	
 	double top = 0.96;
 	if( picked != -1 )
 	{
@@ -4694,17 +4708,33 @@ int main(int argc, char ** argv)
   }
 
   {
-	  std::map<ElementType,int> num_orphans;
+	  std::map<ElementType,int> num_orphans, num_topo;
+	  /*
 	  for(Mesh::iteratorElement it = mesh->BeginElement(FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
 		  if( it->nbAdjElements(CELL) == 0 ) 
 		  {
 			  orphans.push_back(it->self());
 			  num_orphans[it->GetElementType()]++;
 		  }
-
+	   */
 		  printf("number of orphan elements: %d\n",orphans.size());
 		  for(std::map<ElementType,int>::iterator it = num_orphans.begin(); it != num_orphans.end(); ++it)
 			  printf("%s %d\n",ElementTypeName(it->first),it->second);
+	  int was = orphans.size();
+	  if(mesh->TopologyErrorTag().isValid())
+	  {
+		  for(Mesh::iteratorElement it = mesh->BeginElement(FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
+			  if( it->HaveData(mesh->TopologyErrorTag()) )
+			  {
+				  orphans.push_back(it->self());
+				  num_topo[it->GetElementType()]++;
+			  }
+		  printf("number of elements with topology error: %d\n",orphans.size()-was);
+		  for(std::map<ElementType,int>::iterator it = num_topo.begin(); it != num_topo.end(); ++it)
+			  printf("%s %d\n",ElementTypeName(it->first),it->second);
+		  for(int k = was; k < orphans.size(); ++k)
+			  std::cout << ElementTypeName(orphans[k]->GetElementType()) << ":" << orphans[k]->LocalID() << std::endl;
+	  }
   }
 
 	quatinit();

@@ -2964,6 +2964,7 @@ namespace INMOST
 		/// Current availible file options:
 		/// - "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
 		/// - "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
+		/// - "ECL_SPLIT_GLUED" - set "TRUE" to triangulate faces of the blocks that degenerate on three pillars.
 		///
 		/// \todo
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write

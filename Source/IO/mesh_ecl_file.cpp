@@ -518,6 +518,17 @@ namespace INMOST
 	void Mesh::LoadECL(std::string File)
 	{
 		std::cout << std::scientific;
+		bool perform_splitting = false;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
+		{
+			if( file_options[k].first == "ECL_SPLIT_GLUED" )
+			{
+				if( file_options[k].second == "TRUE" )
+					perform_splitting = true;
+				else
+					perform_splitting = false;
+			}
+		}
 		FILE * f = fopen(File.c_str(),"r");
 		if( f == NULL )
 		{
@@ -1884,18 +1895,20 @@ ecl_exit_loop:
 				//DeleteTag(block_number, NODE);
 				//now construct top and bottom interfaces
 				printf("started tops/bottoms/cells\n");
-				//Tag split_face = CreateTag("SPLIT_FACE",DATA_REFERENCE,FACE,NONE,1); //points to edge that should be used to split face
+				Tag split_face;
+				if( perform_splitting )
+					split_face = CreateTag("SPLIT_FACE",DATA_REFERENCE,FACE,NONE,1); //points to edge that should be used to split face
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 				{
 					ElementArray<Node> edge_nodes(this,2);
-					for(int q = 0; q < 2; ++q) //uneven cell construction for OpenMP
+					for(int uneven = 0; uneven < 2; ++uneven) //uneven cell construction for OpenMP
 					{
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-						for(int i = q; i < dims[0]; i+=2)
+						for(int i = uneven; i < dims[0]; i+=2)
 						{
 							//printf("top/bottom/cells %6.2f%%\r", ((Storage::real)i)/((Storage::real)dims[0]-1)*100);
 							//fflush(stdout);
@@ -1952,54 +1965,90 @@ ecl_exit_loop:
 										{
 											Face f = CreateFace(face_edges).first;
 											if( TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag()) ) std::cout << __FILE__ <<":"<<__LINE__ << " topology error on face " << f->GetHandle() << std::endl;
-											/*
-											int split = 0;
-											if( block_nodes[cur*8+0] == block_nodes[cur*8+4] &&
-											block_nodes[cur*8+3] == block_nodes[cur*8+7] )
-											split = 1; //SE-NW diagonal
-											else
-											if( block_nodes[cur*8+1] == block_nodes[cur*8+5] &&
-											block_nodes[cur*8+2] == block_nodes[cur*8+6] )
-											split = 2; //SW-NE diagonal
-
-											HandleType diag = f->Reference(split_face);
-											//split up quad faces into triagnles if they degenerate
-											if( split )
+											
+											if( perform_splitting )
 											{
-											if( diag == InvalidHandle() )
-											{
-											if( split == 1 ) //SE-NW diagonal
-											{
-											edge_nodes.at(0) = block_nodes[cur*8+1+q*4];
-											edge_nodes.at(1) = block_nodes[cur*8+2+q*4];
-											f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
+												int split = 0;
+												bool senw = block_nodes[cur*8+0] == block_nodes[cur*8+4] && block_nodes[cur*8+3] == block_nodes[cur*8+7];
+												bool swne = block_nodes[cur*8+1] == block_nodes[cur*8+5] &&	block_nodes[cur*8+2] == block_nodes[cur*8+6];
+												if( senw && swne )
+													split = 0;
+												else if( senw )
+													split = 1; //SE-NW diagonal
+												else if( swne )
+													split = 2; //SW-NE diagonal
+												
+												
+												HandleType diag = f->Reference(split_face);
+												//split up quad faces into triagnles if they degenerate
+												if( split )
+												{
+													if( diag == InvalidHandle() )
+													{
+														if( split == 1 ) //SE-NW diagonal
+														{
+															edge_nodes.at(0) = block_nodes[cur*8+1+q*4];
+															edge_nodes.at(1) = block_nodes[cur*8+2+q*4];
+															f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
+														}
+														else if( split == 2 ) //SW-NE diagonal
+														{
+															edge_nodes.at(0) = block_nodes[cur*8+0+q*4];
+															edge_nodes.at(1) = block_nodes[cur*8+3+q*4];
+															f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
+														}
+													}
+													else //the face was already split
+													{
+														int was_split = 0;
+														Edge e(this,diag);
+														if( e->getBeg()->GetHandle() == block_nodes[cur*8+1+q*4] &&
+															e->getEnd()->GetHandle() == block_nodes[cur*8+2+q*4])
+															was_split = 1; //was SE-NW
+														else if( e->getBeg()->GetHandle() == block_nodes[cur*8+0+q*4] &&
+																 e->getEnd()->GetHandle() == block_nodes[cur*8+3+q*4])
+															was_split = 2; //was SW-NE
+														
+														if( !was_split )
+														{
+															std::cout << "Cannot detect how the face was priviously split" << std::endl;
+															std::cout << "edge:  " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << std::endl;
+															std::cout << "SE-NW: " << block_nodes[cur*8+0+q*4] << " <-> " << block_nodes[cur*8+3+q*4] << std::endl;
+															std::cout << "SW-NE: " << block_nodes[cur*8+1+q*4] << " <-> " << block_nodes[cur*8+2+q*4] << std::endl;
+														}
+														
+														if( split != was_split )
+														{
+															//replace with node
+															e->Delete();
+															Storage::real xyz[3] = {0,0,0};
+															for(int l = 0; l < 4; ++l)
+															{
+																Storage::real_array c = Node(this,block_nodes[cur*8+l+q*4]).Coords();
+																xyz[0] += c[0]*0.25;
+																xyz[1] += c[1]*0.25;
+																xyz[2] += c[2]*0.25;
+															}
+															f->Reference(split_face) = CreateNode(xyz)->GetHandle();
+															/*
+															std::cout << "Got different split direction" << std::endl;
+															std::cout << "was " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << " " << (was_split == 1 ? "SE-NW" : "SW-NE") << std::endl;
+															std::cout << (q? "top" : "bottom") << " nodes: " << std::endl;
+															for(int l = 0; l < 4; ++l)
+																std::cout << l+q*4 << ":" << block_nodes[cur*8+l+q*4] << " ";
+															std::cout << std::endl;
+															std::cout << (1-q? "top" : "bottom") << " nodes: " << std::endl;
+															for(int l = 0; l < 4; ++l)
+																std::cout << l+(1-q)*4 << ":" << block_nodes[cur*8+l+(1-q)*4] << " ";
+															std::cout << std::endl;
+															std::cout << "SE-NW: " << block_nodes[cur*8+0+q*4] << " <-> " << block_nodes[cur*8+3+q*4] << std::endl;
+															std::cout << "SW-NE: " << block_nodes[cur*8+1+q*4] << " <-> " << block_nodes[cur*8+2+q*4] << std::endl;
+															std::cout << "want direction " << (split == 1? "SE-NW" : "SW-NE") << std::endl;
+															 */
+														}
+													}
+												}
 											}
-											else //SW-NE diagonal
-											{
-											edge_nodes.at(0) = block_nodes[cur*8+0+q*4];
-											edge_nodes.at(1) = block_nodes[cur*8+3+q*4];
-											f->Reference(split_face) = CreateEdge(edge_nodes).first.GetHandle();
-											}
-											}
-											else //the face was already split
-											{
-											int was_split = 1; //was SE-NW
-											Edge e(this,diag);
-											if( e->getBeg()->GetHandle() == block_nodes[cur*8+0+q*4] &&
-											e->getEnd()->GetHandle() == block_nodes[cur*8+3+q*4])
-											was_split = 2;
-											if( split != was_split )
-											{
-											std::cout << "Got different split direction" << std::endl;
-											std::cout << "was " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << (was_split == 1 ? "SE-NW" : "SW-NE") << std::endl;
-											std::cout << (q? "top" : "bottom") << " nodes: " << std::endl;
-											for(int l = 0; l < 4; ++l)
-											std::cout << block_nodes[cur*8+l+q*4];
-											std::cout << "want direction " << (split == 1? "SE-NW" : "SW-NE") << std::endl;
-											}
-											}
-											}
-											*/
 
 
 											f->Integer(face_origin) = 2;
@@ -2102,23 +2151,40 @@ ecl_exit_loop:
 					} //q
 				}
 				printf("finished tops/bottoms/cells\n");
-				/*
-				printf("started splitting faces of degenerate cells\n");
+				if( perform_splitting )
+				{
+					printf("started splitting faces of degenerate cells\n");
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-				for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
-				{
-					Face f = FaceByLocalID(it);
-					HandleType diag = f->Reference(split_face);
-					if( diag != InvalidHandle() )
+					for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
 					{
-						ElementArray<Edge> split_edge(this,1,diag);
-						Face::SplitFace(f,split_edge,0);
+						Face f = FaceByLocalID(it);
+						HandleType diag = f->Reference(split_face);
+						if( diag != InvalidHandle() )
+						{
+							if( GetHandleElementType(diag) == NODE )
+							{
+								ElementArray<Edge> split_edges(this);
+								ElementArray<Node> edge_nodes(this,2);
+								ElementArray<Node> face_nodes = f->getNodes();
+								edge_nodes.at(0) = diag;
+								for(int k = 0; k < (int)face_nodes.size(); ++k)
+								{
+									edge_nodes[1] = face_nodes[k];
+									split_edges.push_back(CreateEdge(edge_nodes).first);
+								}
+								Face::SplitFace(f,split_edges,0);
+							}
+							else
+							{
+								if( diag != InvalidHandle() )
+									Face::SplitFace(f,ElementArray<Edge>(this,1,diag),0);
+							}
+						}
 					}
+					printf("finished splitting faces of degenerate cells\n");
 				}
-				printf("finished splitting faces of degenerate cells\n");
-				 */
 				//printf("\n");
 				//cleanup data
 				//DeleteTag(split_face);
