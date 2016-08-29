@@ -163,7 +163,9 @@ int main(int argc,char ** argv)
 		//~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
 		
 		// Solve \nabla \cdot \nabla phi = f equation
+#if defined(USE_OMP)
 #pragma omp parallel for
+#endif
 		//for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
     for(Storage::integer fi = 0; fi < m->FaceLastLocalID(); ++fi) if( m->isValidElement(FACE,fi) )
 		{
@@ -228,7 +230,9 @@ int main(int argc,char ** argv)
 
 
 		//for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+#if defined(USE_OMP)
 #pragma omp parallel for
+#endif
     for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
     {
       Cell cell(m,ComposeHandle(CELL,ci));
@@ -264,7 +268,9 @@ int main(int argc,char ** argv)
 
 		Storage::real err_C = 0.0, err_L2 = 0.0;
 		//for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+#if defined(USE_OMP)
 #pragma omp parallel for
+#endif
     for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
     {
       Cell cell(m,ComposeHandle(CELL,ci));
