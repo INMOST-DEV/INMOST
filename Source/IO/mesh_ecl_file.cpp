@@ -1106,7 +1106,7 @@ ecl_exit_loop:
 							for(int l = 0; l < num; ++l) pillar_node_number[l] = itemporary[indices_sort[l]];
 							for(int l = 0; l < num; ++l) rtemporary[l] = pillar_node_depth[l];
 							for(int l = 0; l < num; ++l) pillar_node_depth[l] = rtemporary[indices_sort[l]];
-							assert(std::is_sorted(&pillar_node_depth[0],&pillar_node_depth[num]));
+							//assert(std::is_sorted(&pillar_node_depth[0],&pillar_node_depth[num]));
 							//retrive pillar info
 							xmin = xyz[ECL_IJK_COORDS(i,j,0,0)];
 							xmax = xyz[ECL_IJK_COORDS(i,j,1,0)];
@@ -1200,7 +1200,7 @@ ecl_exit_loop:
 								//then e array
 								for(int l = 0; l < (int)e.size(); ++l) itemporary[l] = e[l];
 								for(int l = 0; l < (int)e.size(); ++l) e[l] = itemporary[indices_sort[l]];
-								assert(std::is_sorted(b.begin(),b.end()));
+								//assert(std::is_sorted(b.begin(),b.end()));
 							} //l
 							//create edges
 							ElementArray<Edge> & p_edges = pillar_edges[i*(dims[1]+1)+j];
@@ -1262,7 +1262,7 @@ ecl_exit_loop:
 								//then e array
 								for(int l = 0; l < (int)e.size(); ++l) itemporary[l] = e[l];
 								for(int l = 0; l < (int)e.size(); ++l) e[l] = itemporary[indices_sort[l]];
-								assert(std::is_sorted(b.begin(),b.end()));
+								//assert(std::is_sorted(b.begin(),b.end()));
 							}
 							//find out who shares each node along the pillar
 							for(int l = 0; l < num_nodes; ++l)
@@ -1527,7 +1527,7 @@ ecl_exit_loop:
 									//then e array
 									for(int l = 0; l < (int)e.size(); ++l) temporary[l] = e[l];
 									for(int l = 0; l < (int)e.size(); ++l) e[l] = temporary[indices_sort[l]];
-									assert(std::is_sorted(b.begin(),b.end()));
+									//assert(std::is_sorted(b.begin(),b.end()));
 								}
 								//add vertical edges along pillars
 								ElementArray<Edge> & p0_edges = pillar_edges[(i+  0)*(dims[1]+1)+j+0];
@@ -1690,7 +1690,7 @@ ecl_exit_loop:
 										{
 											//move marked edges to the end
 											std::sort(bedges.begin(),bedges.end(),Mesh::PrivateMarkerComparator(this,outer));
-											assert(std::is_sorted(bedges.begin(),bedges.end(),Mesh::PrivateMarkerComparator(this,outer)));
+											//assert(std::is_sorted(bedges.begin(),bedges.end(),Mesh::PrivateMarkerComparator(this,outer)));
 											if( print_bedges )
 											{
 												std::cout << (m?"front ":"back ") << "depth " << k << " block " << ECL_IJK_DATA(blocki[m],blockj[m],k) << " edges [" << bedges.size() << "]:" << std::endl;
