@@ -59,7 +59,7 @@ void MatrixInitDataPetsc(void ** data, INMOST_MPI_Comm comm, const char * name)
 		MatrixDestroyDataPetsc(data);
 	*data = static_cast<void *>(new Mat);
 #if !defined(USE_MPI)
-	ierr = MatCreate(PETSC_COMM_WORLD,static_cast<Mat *>(*data));
+    ierr = MatCreate(PETSC_COMM_WORLD,static_cast<Mat *>(*data)); (void) comm;
 #else
 	ierr = MatCreate(comm,static_cast<Mat *>(*data));
 #endif
@@ -137,7 +137,7 @@ void VectorInitDataPetsc(void ** data, INMOST_MPI_Comm comm, const char * name)
 		VectorDestroyDataPetsc(data);
 	*data = static_cast<void *>(new Vec);
 #if !defined(USE_MPI)
-	ierr = VecCreate(PETSC_COMM_WORLD,static_cast<Vec *>(*data));
+    ierr = VecCreate(PETSC_COMM_WORLD,static_cast<Vec *>(*data)); (void) comm;
 #else
 	ierr = VecCreate(comm,static_cast<Vec *>(*data));
 #endif
@@ -218,7 +218,7 @@ void SolverInitDataPetsc(void ** data, INMOST_MPI_Comm comm, const char * name)
 		SolverDestroyDataPetsc(data);
 	*data = static_cast<void *>(new KSP);
 #if !defined(USE_MPI)
-	ierr = KSPCreate(PETSC_COMM_WORLD,static_cast<KSP *>(*data));
+    ierr = KSPCreate(PETSC_COMM_WORLD,static_cast<KSP *>(*data)); (void) comm;
 #else
 	ierr = KSPCreate(comm,static_cast<KSP *>(*data));
 #endif
@@ -237,7 +237,7 @@ void SolverCopyDataPetsc(void ** data, void * other_data, INMOST_MPI_Comm comm)
 		SolverDestroyDataPetsc(data);
 	*data = static_cast<void *>(new KSP);
 #if !defined(USE_MPI)
-	ierr = KSPCreate(PETSC_COMM_WORLD,static_cast<KSP *>(*data));
+    ierr = KSPCreate(PETSC_COMM_WORLD,static_cast<KSP *>(*data)); (void) comm;
 #else
 	ierr = KSPCreate(comm,static_cast<KSP *>(*data));
 #endif
@@ -277,7 +277,7 @@ void SolverSetMatrixPetsc(void * data, void * matrix_data, bool same_pattern, bo
 		ierr = KSPSetReusePreconditioner(*m,PETSC_TRUE);
 	else 
 		ierr = KSPSetReusePreconditioner(*m,PETSC_FALSE);
-	ierr = KSPSetOperators(*m,*mat,*mat);//,reuse_preconditioner? SAME_PRECONDITIONER : (same_pattern? SAME_NONZERO_PATTERN : DIFFERENT_NONZERO_PATTERN));
+    ierr = KSPSetOperators(*m,*mat,*mat); (void)same_pattern; //,reuse_preconditioner? SAME_PRECONDITIONER : (same_pattern? SAME_NONZERO_PATTERN : DIFFERENT_NONZERO_PATTERN));
 	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
 }
 

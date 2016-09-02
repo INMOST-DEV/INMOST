@@ -2029,7 +2029,7 @@ namespace INMOST
 		else 
 			return reference_array(this,static_cast<reference *>(p),tag.GetSize());
 	}
-	Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
+  Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
 	{
 		Asserts(h,tag,DATA_REMOTE_REFERENCE);
 		void * p = MGetLink(h,tag); 
@@ -2061,6 +2061,7 @@ namespace INMOST
 		assert(this == tag.GetMeshLink());               //tag is not mine
 		assert(tag.GetDataType() == expected);           //tag data type coinside with expected data type
 		assert(tag.isDefinedByDim(GetHandleElementNum(h)));           //tag data type coinside with expected data type
+        (void)h; (void)tag; (void)expected; //due to __INLINE these variables considered by compilers as unreferenced
 	}
 	
 	void Mesh::ClearMarkerSpace(HandleType h) 

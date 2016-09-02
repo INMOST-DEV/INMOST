@@ -379,7 +379,8 @@ namespace INMOST
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
 #else//USE_MPI
-		(void) input;
+        (void) input;
+        (void) size;
 #endif//USE_MPI
 	}
 
@@ -392,6 +393,7 @@ namespace INMOST
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
 #else//USE_MPI
 		(void) input;
+        (void) size;
 #endif//USE_MPI
 	}
 	
@@ -454,6 +456,7 @@ namespace INMOST
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm);
 #else//USE_MPI
 		(void) input;
+        (void) size;
 #endif//USE_MPI
 	}
 
@@ -466,6 +469,7 @@ namespace INMOST
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #else//USE_MPI
 		(void) input;
+        (void) size;
 #endif//USE_MPI
 	}
 
@@ -500,6 +504,7 @@ namespace INMOST
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm);
 #else//USE_MPI
 		(void) input;
+        (void) size;
 #endif//USE_MPI
 	}
 
@@ -512,6 +517,7 @@ namespace INMOST
 		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm);
 #else//USE_MPI
 		(void) input;
+        (void) size;
 #endif//USE_MPI
 	}
 
