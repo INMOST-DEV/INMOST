@@ -1,3 +1,5 @@
+add_subdirectory(refactoring)
+
 set(SOURCE
     ${SOURCE}
     ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp

@@ -35,10 +35,11 @@ bool SolverIsFinalizedPetsc()
 	return (isFinalized == PETSC_TRUE);
 }
 
-void SolverFinalizePetsc()
-{
-	PetscErrorCode ierr = PetscFinalize();
-	if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+void SolverFinalizePetsc() {
+    if (!SolverIsFinalizedPetsc()) {
+        PetscErrorCode ierr = PetscFinalize();
+        if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+    }
 }
 
 void MatrixDestroyDataPetsc(void ** data)
@@ -55,7 +56,7 @@ void MatrixInitDataPetsc(void ** data, INMOST_MPI_Comm comm, const char * name)
 {
 	PetscErrorCode ierr;
 	if( data == NULL ) throw INMOST::DataCorruptedInSolver;
-	if( *data != NULL ) 
+	if( *data != NULL )
 		MatrixDestroyDataPetsc(data);
 	*data = static_cast<void *>(new Mat);
 #if !defined(USE_MPI)
@@ -214,7 +215,7 @@ void SolverInitDataPetsc(void ** data, INMOST_MPI_Comm comm, const char * name)
 {
 	PetscErrorCode ierr;
 	if( data == NULL ) throw INMOST::DataCorruptedInSolver;
-	if( *data != NULL ) 
+	if( *data != NULL )
 		SolverDestroyDataPetsc(data);
 	*data = static_cast<void *>(new KSP);
 #if !defined(USE_MPI)

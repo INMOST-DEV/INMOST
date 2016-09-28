@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "inmost.h"
+#include "Source/Solver/refactoring/Solver2.h"
 #include "inner_parser.h"
 using namespace INMOST;
 
@@ -177,8 +178,11 @@ int main(int argc, char ** argv) {
                 break;
         }
 
-        Solver::Initialize(&argc, &argv, parametersFound ? parametersFileName.c_str()
-                                                         : NULL); // Initialize the linear solver in accordance with args
+        // Initialize the linear solver in accordance with args
+        Solver2::Initialize(&argc, &argv, parametersFound ? parametersFileName.c_str() : NULL);
+        Solver2 solver = Solver2("petsc");
+        Solver2 solver2 = solver;
+        //solver2.Finalize();
 
         if (processRank == 0) {
             std::cout << "Solving with " << Solver::TypeName(type) << std::endl;
@@ -212,7 +216,7 @@ int main(int argc, char ** argv) {
         bool success;
         double resid, realresid = 0;
         std::string reason;
-        Solver s(type); // Declare the linear solver by specified type
+        //Solver s(type); // Declare the linear solver by specified type
 
         if (parametersFound) {
             char *fileName = findInnerOptions(parametersFileName.c_str());
@@ -222,9 +226,9 @@ int main(int argc, char ** argv) {
                     for (unsigned ii = 0; ii < options->options.size(); ii++) {
                         InnerOption *option = options->options[ii];
                         if (option->type == ENUM) {
-                            s.SetParameterEnum(option->name, (unsigned int) atoi(option->value.c_str()));
+                            //s.SetParameterEnum(option->name, (unsigned int) atoi(option->value.c_str()));
                         } else {
-                            s.SetParameterReal(option->name, atof(option->value.c_str()));
+                            //s.SetParameterReal(option->name, atof(option->value.c_str()));
                         };
                     }
                     delete options;
@@ -253,17 +257,18 @@ int main(int argc, char ** argv) {
 
 
         tempTimer = Timer();
-        s.SetMatrix(mat); // Compute the preconditioner for the original matrix
+        solver2.SetMatrix(mat);
+        //s.SetMatrix(mat); // Compute the preconditioner for the original matrix
         BARRIER
         if (processRank == 0) std::cout << "preconditioner time: " << Timer() - tempTimer << std::endl;
         tempTimer = Timer();
-        success = s.Solve(b, x); // Solve the linear system with the previously computted preconditioner
+        success = solver2.Solve(b, x); // Solve the linear system with the previously computted preconditioner
         BARRIER
         solvingTimer = Timer() - solvingTimer;
         if (processRank == 0) std::cout << "iterations time:     " << Timer() - tempTimer << std::endl;
-        iters = s.Iterations(); // Get the number of iterations performed
-        resid = s.Residual();   // Get the final residual achieved
-        reason = s.GetReason(); // Get the convergence reason
+        iters = solver2.Iterations(); // Get the number of iterations performed
+        resid = solver2.Residual();   // Get the final residual achieved
+        reason = solver2.ReturnReason(); // Get the convergence reason
         //x.Save("output.sol");  // Save the solution if required
 
         // Compute the true residual
@@ -347,6 +352,6 @@ int main(int argc, char ** argv) {
         }
     }
     BARRIER
-	Solver::Finalize(); // Finalize solver and close MPI activity
+	Solver2::Finalize(); // Finalize solver and close MPI activity
 	return 0;
 }

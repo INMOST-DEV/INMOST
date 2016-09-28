@@ -221,6 +221,7 @@ namespace INMOST
 		IndexesAreDifferentInSolver,
 		PrepareMatrixFirst,
 		CannotReusePreconditionerOfDifferentSize,
+		SolverNotFound,
 		
 		/// The list of errors may occur in the Partitioner.
 		ErrorInPartitioner = 500,
