@@ -42,8 +42,8 @@ namespace INMOST {
         Solver2(const Solver2& other);
         Solver2& operator =(const Solver2& other);
 
-        std::string getSolverName() const;
-        std::string getSolverPrefix() const;
+        std::string SolverName() const;
+        std::string SolverPrefix() const;
 
         static void Initialize(int *argc, char ***argv, const char *database);
         static bool isInitialized();

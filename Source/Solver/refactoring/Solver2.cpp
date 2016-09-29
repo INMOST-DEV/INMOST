@@ -18,7 +18,7 @@ namespace INMOST {
         this->solver = SolverFactory::getSolver(solverName);
         this->prefix = prefix;
 
-        solver->setCommunicator(_comm);
+        solver->SetCommunicator(_comm);
         std::string solverDatabasePath = Solver2::parseDatabase(solverName);
         solver->Initialize(argc, argv, solverDatabasePath.c_str(), prefix);
     }
@@ -27,14 +27,14 @@ namespace INMOST {
         this->solver = SolverFactory::copySolver(other.solver);
         this->prefix = other.prefix;
 
-        solver->setCommunicator(other.solver->getCommunicator());
-        std::string solverDatabasePath = Solver2::parseDatabase(solver->getSolverName());
+        solver->SetCommunicator(other.solver->GetCommunicator());
+        std::string solverDatabasePath = Solver2::parseDatabase(solver->SolverName());
         solver->Initialize(argc, argv, solverDatabasePath.c_str(), prefix);
     }
 
     Solver2& Solver2::operator=(const Solver2& other) {
         if( this != &other ) {
-            this->solver->setCommunicator(other.solver->getCommunicator());
+            this->solver->SetCommunicator(other.solver->GetCommunicator());
             this->prefix = other.prefix;
             this->solver->Assign(other.solver);
         }
@@ -60,7 +60,7 @@ namespace INMOST {
 
     bool Solver2::Solve(INMOST::Sparse::Vector & RHS, INMOST::Sparse::Vector & SOL) {
         if( !solver->isMatrixSet()) throw MatrixNotSetInSolver;
-        if( RHS.GetCommunicator() != solver->getCommunicator() || SOL.GetCommunicator() != solver->getCommunicator()) throw DifferentCommunicatorInSolver;
+        if( RHS.GetCommunicator() != solver->GetCommunicator() || SOL.GetCommunicator() != solver->GetCommunicator()) throw DifferentCommunicatorInSolver;
         INMOST_DATA_ENUM_TYPE vbeg,vend;
         RHS.GetInterval(vbeg,vend);
         if( RHS.Size() != SOL.Size() )
@@ -79,7 +79,6 @@ namespace INMOST {
         Sparse::DestroyRowEntryType();
         Solver2::is_finalized = true;
         Solver2::is_initialized = false;
-
     }
 
     bool Solver2::isInitialized() {
@@ -102,11 +101,11 @@ namespace INMOST {
         return solver->ReturnReason();
     }
 
-    std::string Solver2::getSolverName() const {
-        return solver->getSolverName();
+    std::string Solver2::SolverName() const {
+        return solver->SolverName();
     }
 
-    std::string Solver2::getSolverPrefix() const {
+    std::string Solver2::SolverPrefix() const {
         return prefix;
     }
 

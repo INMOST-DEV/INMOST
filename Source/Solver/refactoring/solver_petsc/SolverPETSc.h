@@ -17,7 +17,10 @@ namespace INMOST {
 
     class SolverPETSc : public SolverInterface {
     private:
-        std::string parameters_file;
+		//TODO
+		//may be should find another way to count petsc solvers and finalize them
+		static unsigned int petscSolversCount;
+        std::string parametersFile;
     	KSP* ksp;
     	Mat* matrix;
         Vec* rhs;
@@ -27,16 +30,25 @@ namespace INMOST {
     public:
         SolverPETSc();
         SolverPETSc(const SolverInterface* other);
-        virtual const std::string getSolverName() const;
+
+		virtual void Assign(const SolverInterface* other);
+
         virtual void Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix);
+		virtual void SetMatrix(Sparse::Matrix & A, bool ModifiedPattern, bool OldPreconditioner);
         virtual bool Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL);
-        virtual void SetMatrix(Sparse::Matrix & A, bool ModifiedPattern, bool OldPreconditioner);
-        virtual void Assign(const SolverInterface* other);
-        virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
-    	virtual const INMOST_DATA_REAL_TYPE Residual() const;
-    	virtual const std::string ReturnReason() const;
+
     	virtual bool isMatrixSet();
-        virtual void Finalize();
+
+		virtual INMOST_DATA_REAL_TYPE GetPropertyReal(std::string property) const;
+		virtual INMOST_DATA_ENUM_TYPE GetPropertyEnum(std::string property) const;
+
+		virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
+		virtual const INMOST_DATA_REAL_TYPE Residual() const;
+		virtual const std::string ReturnReason() const;
+
+		virtual const std::string SolverName() const;
+
+		virtual void Finalize();
         virtual ~SolverPETSc();
     };
 

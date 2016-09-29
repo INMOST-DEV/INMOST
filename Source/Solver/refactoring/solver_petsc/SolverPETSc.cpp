@@ -6,7 +6,10 @@
 
 namespace INMOST {
 
+    unsigned int SolverPETSc::petscSolversCount = 0;
+
     SolverPETSc::SolverPETSc() {
+        petscSolversCount++;
         this->ksp = NULL;
         this->matrix = NULL;
         this->rhs = NULL;
@@ -14,12 +17,13 @@ namespace INMOST {
     }
 
     SolverPETSc::SolverPETSc(const SolverInterface *other) {
+        petscSolversCount++;
         const SolverPETSc *solver = static_cast<const SolverPETSc*>(other);
         this->ksp = NULL;
         this->matrix = NULL;
         this->rhs = NULL;
         this->solution = NULL;
-        SolverCopyDataPetsc(&ksp, solver->ksp, this->getCommunicator());
+        SolverCopyDataPetsc(&ksp, solver->ksp, solver->communicator);
         if (solver->matrix != NULL) {
             MatrixCopyDataPetsc(&matrix, solver->matrix);
             SolverSetMatrixPetsc(ksp, matrix,false,false);
@@ -30,22 +34,38 @@ namespace INMOST {
             VectorCopyDataPetsc(&solution, solver->solution);
     }
 
+    void SolverPETSc::Assign(const SolverInterface *other) {
+        const SolverPETSc *other_solver = static_cast<const SolverPETSc*>(other);
+        this->parametersFile = other_solver->parametersFile;
+        SolverAssignDataPetsc(ksp, other_solver->ksp);
+        if (other_solver->matrix != NULL) {
+            if (matrix != NULL) {
+                MatrixAssignDataPetsc(matrix, other_solver->matrix);
+            } else {
+                MatrixCopyDataPetsc(&matrix, other_solver->matrix);
+            }
+            SolverSetMatrixPetsc(ksp, matrix, false, false);
+        }
+        if (other_solver->rhs != NULL) {
+            if (rhs != NULL) {
+                VectorAssignDataPetsc(rhs, other_solver->rhs);
+            } else {
+                VectorCopyDataPetsc(&rhs, other_solver->rhs);
+            }
+        }
+        if (other_solver->solution!= NULL) {
+            if (solution != NULL) {
+                VectorAssignDataPetsc(solution, other_solver->solution);
+            } else {
+                VectorCopyDataPetsc(&solution, other_solver->solution);
+            }
+        }
+    }
+
     void SolverPETSc::Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) {
-        this->parameters_file = std::string(parameters_file);
+        this->parametersFile = std::string(parameters_file);
         SolverInitializePetsc(argc, argv, parameters_file);
-        SolverInitDataPetsc(&ksp, this->getCommunicator(), prefix.c_str());
-    }
-
-    void SolverPETSc::Finalize() {
-        SolverFinalizePetsc();
-    }
-
-    const std::string SolverPETSc::getSolverName() const {
-        return "petsc";
-    }
-
-    bool SolverPETSc::isMatrixSet() {
-        return matrix != NULL;
+        SolverInitDataPetsc(&ksp, this->communicator, prefix.c_str());
     }
 
     void SolverPETSc::SetMatrix(Sparse::Matrix & A, bool ModifiedPattern, bool OldPreconditioner) {
@@ -56,10 +76,10 @@ namespace INMOST {
         }
         INMOST_DATA_ENUM_TYPE mbeg,mend;
         A.GetInterval(mbeg,mend);
-        if( modified_pattern ) {               
+        if( modified_pattern ) {
             local_size = A.Size();
 #if defined(USE_MPI)
-            MPI_Allreduce(&local_size,&global_size,1,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM, this->getCommunicator());
+            MPI_Allreduce(&local_size,&global_size,1,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM, this->communicator);
 #else
             global_size = local_size;
 #endif
@@ -68,18 +88,18 @@ namespace INMOST {
                 int * diag_nonzeroes = new int[local_size];
                 int * off_diag_nonzeroes = new int[local_size];
                 unsigned k = 0;
-                    
+
                 for(Sparse::Matrix::iterator it = A.Begin(); it != A.End(); ++it) {
                     diag_nonzeroes[k] = off_diag_nonzeroes[k] = 0;
                     for(INMOST_DATA_ENUM_TYPE i = 0; i < it->Size(); i++) {
                         INMOST_DATA_ENUM_TYPE index = it->GetIndex(i);
                         if( index < mbeg || index > mend-1 ) {
                             off_diag_nonzeroes[k]++;
-                        } else { 
+                        } else {
                             diag_nonzeroes[k]++;
                         }
                     }
-                    if( diag_nonzeroes[k] + off_diag_nonzeroes[k] > max ) { 
+                    if( diag_nonzeroes[k] + off_diag_nonzeroes[k] > max ) {
                         max = diag_nonzeroes[k] + off_diag_nonzeroes[k];
                     }
                     k++;
@@ -130,40 +150,13 @@ namespace INMOST {
         }
         MatrixFinalizePetsc(matrix);
 
-        if (parameters_file == "") {
+        if (parametersFile == "") {
             SolverSetDropTolerancePetsc(ksp, DEFAULT_PRECONDITIONER_DROP_TOLERANCE);
             SolverSetFillLevelPetsc(ksp, DEFAULT_PRECONDITIONER_FILL_LEVEL);
             SolverSetOverlapPetsc(ksp, DEFAULT_ADDITIVE_SCHWARTZ_OVERLAP);
         }
 
         SolverSetMatrixPetsc(ksp, matrix, modified_pattern, OldPreconditioner);
-    }
-
-    void SolverPETSc::Assign(const SolverInterface *other) {
-        const SolverPETSc *other_solver = static_cast<const SolverPETSc*>(other);
-        SolverAssignDataPetsc(ksp, other_solver->ksp);
-        if (other_solver->matrix != NULL) {
-            if (matrix != NULL) {
-                MatrixAssignDataPetsc(matrix, other_solver->matrix);
-            } else {
-                MatrixCopyDataPetsc(&matrix, other_solver->matrix);
-            }
-            SolverSetMatrixPetsc(ksp, matrix, false, false);
-        }
-        if (other_solver->rhs != NULL) {
-            if (rhs != NULL) {
-                VectorAssignDataPetsc(rhs, other_solver->rhs);
-            } else {
-                VectorCopyDataPetsc(&rhs, other_solver->rhs);
-            }
-        }
-        if (other_solver->solution!= NULL) {
-            if (solution != NULL) {
-                VectorAssignDataPetsc(solution, other_solver->solution);
-            } else {
-                VectorCopyDataPetsc(&solution, other_solver->solution);
-            }
-        }
     }
 
     bool SolverPETSc::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
@@ -188,7 +181,7 @@ namespace INMOST {
             }
             VectorFillPetsc(rhs, local_size, positions, values);
             VectorFinalizePetsc(rhs);
-                
+
             k = 0;
             for(Sparse::Vector::iterator it = SOL.Begin(); it != SOL.End(); ++it) {
                 values[k] = *it;
@@ -198,7 +191,7 @@ namespace INMOST {
             VectorFinalizePetsc(solution);
         }
 
-        if(parameters_file == "") {
+        if(parametersFile == "") {
             SolverSetTolerancesPetsc(ksp,
                                      DEFAULT_RELATIVE_TOLERANCE,
                                      DEFAULT_ABSOLUTE_TOLERANCE,
@@ -217,8 +210,20 @@ namespace INMOST {
         }
         delete [] positions;
         delete [] values;
-        return result;    
-        
+        return result;
+
+    }
+
+    bool SolverPETSc::isMatrixSet() {
+        return matrix != NULL;
+    }
+
+    INMOST_DATA_REAL_TYPE SolverPETSc::GetPropertyReal(std::string property) const {
+        throw NotImplemented;
+    }
+
+    INMOST_DATA_ENUM_TYPE SolverPETSc::GetPropertyEnum(std::string property) const {
+        throw NotImplemented;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverPETSc::Iterations() const {
@@ -233,8 +238,18 @@ namespace INMOST {
         return std::string(SolverConvergedReasonPetsc(ksp));
     }
 
-    SolverPETSc::~SolverPETSc() {
+    const std::string SolverPETSc::SolverName() const {
+        return "petsc";
+    }
 
+    void SolverPETSc::Finalize() {
+        if (petscSolversCount == 1) {
+            SolverFinalizePetsc();
+        }
+    }
+
+    SolverPETSc::~SolverPETSc() {
+        petscSolversCount--;
     }
 
 }

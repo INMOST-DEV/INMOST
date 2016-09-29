@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <cstdio>
 
 #include "inmost.h"
 #include "Source/Solver/refactoring/Solver2.h"
@@ -79,11 +80,20 @@ int main(int argc, char ** argv) {
             }
             //Matrix file name found with -m or --matrix options
             if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--matrix") == 0) {
-                if (processRank == 0) {
-                    std::cout << "Matrix file found: " << argv[i + 1] << std::endl;
-                }
                 matrixFound = true;
                 matrixFileName = std::string(argv[i + 1]);
+                FILE *matrixFile = fopen(matrixFileName.c_str(), "r");
+                if (matrixFile == NULL) {
+                    if (processRank == 0) {
+                        std::cout << "Matrix file not found: " << argv[i + 1] << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    if (processRank == 0) {
+                        std::cout << "Matrix file found: " << argv[i + 1] << std::endl;
+                    }
+                }
+                fclose(matrixFile);
                 i++;
                 continue;
             }

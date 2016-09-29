@@ -19,7 +19,7 @@ namespace INMOST {
     }
 
     SolverInterface *SolverFactory::copySolver(const SolverInterface *other) {
-        auto iterator = SolverFactory::solvers.find(other->getSolverName());
+        auto iterator = SolverFactory::solvers.find(other->SolverName());
         if (iterator != SolverFactory::solvers.end()) {
             return iterator->second->copy(other);
         } else {
