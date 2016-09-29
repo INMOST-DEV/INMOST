@@ -293,9 +293,7 @@ bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol)
     KSPConvergedReason reason;
     ierr = KSPGetConvergedReason(*ksp,&reason);
     if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
-    if( reason >= 0 )
-        return true;
-    return false;
+    return reason >= 0;
 }
 int SolverIterationNumberPetsc(KSP *ksp)
 {

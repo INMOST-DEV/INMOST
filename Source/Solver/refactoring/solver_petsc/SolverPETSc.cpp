@@ -12,8 +12,6 @@ namespace INMOST {
         petscSolversCount++;
         this->ksp = NULL;
         this->matrix = NULL;
-        this->rhs = NULL;
-        this->solution = NULL;
     }
 
     SolverPETSc::SolverPETSc(const SolverInterface *other) {
@@ -21,17 +19,12 @@ namespace INMOST {
         const SolverPETSc *solver = static_cast<const SolverPETSc*>(other);
         this->ksp = NULL;
         this->matrix = NULL;
-        this->rhs = NULL;
-        this->solution = NULL;
+
         SolverCopyDataPetsc(&ksp, solver->ksp, solver->communicator);
         if (solver->matrix != NULL) {
             MatrixCopyDataPetsc(&matrix, solver->matrix);
             SolverSetMatrixPetsc(ksp, matrix,false,false);
         }
-        if (solver->rhs != NULL)
-            VectorCopyDataPetsc(&rhs, solver->rhs);
-        if (solver->solution != NULL)
-            VectorCopyDataPetsc(&solution, solver->solution);
     }
 
     void SolverPETSc::Assign(const SolverInterface *other) {
@@ -45,20 +38,6 @@ namespace INMOST {
                 MatrixCopyDataPetsc(&matrix, other_solver->matrix);
             }
             SolverSetMatrixPetsc(ksp, matrix, false, false);
-        }
-        if (other_solver->rhs != NULL) {
-            if (rhs != NULL) {
-                VectorAssignDataPetsc(rhs, other_solver->rhs);
-            } else {
-                VectorCopyDataPetsc(&rhs, other_solver->rhs);
-            }
-        }
-        if (other_solver->solution!= NULL) {
-            if (solution != NULL) {
-                VectorAssignDataPetsc(solution, other_solver->solution);
-            } else {
-                VectorCopyDataPetsc(&solution, other_solver->solution);
-            }
         }
     }
 
@@ -159,39 +138,35 @@ namespace INMOST {
         SolverSetMatrixPetsc(ksp, matrix, modified_pattern, OldPreconditioner);
     }
 
-    bool SolverPETSc::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
-        if (rhs == NULL) {
-            VectorInitDataPetsc(&rhs, RHS.GetCommunicator(), RHS.GetName().c_str());
-        }
-        VectorPreallocatePetsc(rhs,local_size,global_size);
-        if (solution == NULL) {
-            VectorInitDataPetsc(&solution, SOL.GetCommunicator(), SOL.GetName().c_str());
-        }
+    bool SolverPETSc::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
+        Vec *rhs = NULL;
+        VectorInitDataPetsc(&rhs, RHS.GetCommunicator(), RHS.GetName().c_str());
+        VectorPreallocatePetsc(rhs, local_size, global_size);
+        Vec *solution = NULL;
+        VectorInitDataPetsc(&solution, SOL.GetCommunicator(), SOL.GetName().c_str());
         VectorPreallocatePetsc(solution, local_size, global_size);
         INMOST_DATA_ENUM_TYPE vbeg,vend;
         RHS.GetInterval(vbeg,vend);
         int * positions = new int[local_size];
         double * values = new double[local_size];
-        {
-            unsigned k = 0;
-            for(Sparse::Vector::iterator it = RHS.Begin(); it != RHS.End(); ++it) {
-                positions[k] = vbeg+k;
-                values[k] = *it;
-                k++;
-            }
-            VectorFillPetsc(rhs, local_size, positions, values);
-            VectorFinalizePetsc(rhs);
-
-            k = 0;
-            for(Sparse::Vector::iterator it = SOL.Begin(); it != SOL.End(); ++it) {
-                values[k] = *it;
-                k++;
-            }
-            VectorFillPetsc(solution, local_size, positions, values);
-            VectorFinalizePetsc(solution);
+        unsigned int k = 0;
+        for(Sparse::Vector::iterator it = RHS.Begin(); it != RHS.End(); ++it) {
+            positions[k] = vbeg+k;
+            values[k] = *it;
+            k++;
         }
+        VectorFillPetsc(rhs, local_size, positions, values);
+        VectorFinalizePetsc(rhs);
 
-        if(parametersFile == "") {
+        k = 0;
+        for(Sparse::Vector::iterator it = SOL.Begin(); it != SOL.End(); ++it) {
+            values[k] = *it;
+            k++;
+        }
+        VectorFillPetsc(solution, local_size, positions, values);
+        VectorFinalizePetsc(solution);
+
+        if (parametersFile == "") {
             SolverSetTolerancesPetsc(ksp,
                                      DEFAULT_RELATIVE_TOLERANCE,
                                      DEFAULT_ABSOLUTE_TOLERANCE,
@@ -202,16 +177,17 @@ namespace INMOST {
         bool result = SolverSolvePetsc(ksp, rhs, solution);
         if (result) {
             VectorLoadPetsc(solution, local_size, positions, values);
-            unsigned k = 0;
+            k = 0;
             for(Sparse::Vector::iterator it = SOL.Begin(); it != SOL.End(); ++it)  {
                 *it = values[k];
                 k++;
             }
         }
+        VectorDestroyDataPetsc(&rhs);
+        VectorDestroyDataPetsc(&solution);
         delete [] positions;
         delete [] values;
         return result;
-
     }
 
     bool SolverPETSc::isMatrixSet() {

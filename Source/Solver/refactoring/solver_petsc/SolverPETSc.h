@@ -23,8 +23,6 @@ namespace INMOST {
         std::string parametersFile;
     	KSP* ksp;
     	Mat* matrix;
-        Vec* rhs;
-		Vec* solution;
 
 		INMOST_DATA_ENUM_TYPE local_size, global_size;
     public:
@@ -35,7 +33,7 @@ namespace INMOST {
 
         virtual void Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix);
 		virtual void SetMatrix(Sparse::Matrix & A, bool ModifiedPattern, bool OldPreconditioner);
-        virtual bool Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL);
+        virtual bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL);
 
     	virtual bool isMatrixSet();
 
