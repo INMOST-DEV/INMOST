@@ -6,6 +6,7 @@
 
 #include "inmost.h"
 #include "inner_parser.h"
+
 using namespace INMOST;
 
 #if defined(USE_MPI)
@@ -14,14 +15,14 @@ using namespace INMOST;
 #define BARRIER
 #endif
 
-int main(int argc, char ** argv) {
+int main(int argc, char **argv) {
     int processRank = 0, processorsCount = 1;
 
-    #if defined(USE_MPI)
+#if defined(USE_MPI)
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &processRank);  // Get the rank of the current process
-    MPI_Comm_size(MPI_COMM_WORLD, &processorsCount ); // Get the total number of processors used
-    #endif
+    MPI_Comm_size(MPI_COMM_WORLD, &processorsCount); // Get the total number of processors used
+#endif
 
     if (processRank == 0) {
         std::cout << "Starting MatSolve2" << std::endl;
@@ -57,10 +58,14 @@ int main(int argc, char ** argv) {
                     std::cout << "-x, --xvector <X vector file name>" << std::endl;
                     std::cout << "-p, --parameters <Solver parameters file name>" << std::endl;
                     std::cout << "-t, --type <Solver type name>" << std::endl;
+                    std::cout << "  Available solvers:" << std::endl;
+                    Solver::Initialize(NULL, NULL, NULL);
+                    std::vector<std::string> availableSolvers = SolverFactory::getAvailableSolvers();
+                    for (auto it = availableSolvers.begin(); it != availableSolvers.end(); it++) {
+                        std::cout << "      " << *it << std::endl;
+                    }
+                    Solver::Finalize();
                 }
-                #if defined(USE_MPI)
-                MPI_Finalize();
-                #endif
                 return 0;
             }
             //Matrix file name found with -m or --matrix options
@@ -127,7 +132,7 @@ int main(int argc, char ** argv) {
         if (!matrixFound) {
             if (processRank == 0) {
                 std::cout <<
-                "Matrix not found, you can specify matrix file name using -m or --matrix options, otherwise specify -h option to see all options, exiting...";
+                          "Matrix not found, you can specify matrix file name using -m or --matrix options, otherwise specify -h option to see all options, exiting...";
             }
             return -1;
         }
@@ -135,23 +140,33 @@ int main(int argc, char ** argv) {
         if (!typeFound) {
             if (processRank == 0) {
                 std::cout <<
-                "Solver type not found in command line, you can specify solver type with -t or --type option, using INNER_ILU2 solver by default." <<
-                std::endl;
+                          "Solver type not found in command line, you can specify solver type with -t or --type option, using INNER_ILU2 solver by default."
+                          <<
+                          std::endl;
             }
         }
 
         if (!vectorBFound) {
             if (processRank == 0) {
                 std::cout <<
-                "B vector not found, you can specify b vector file name with -b or --bvector option, using identity vector by default." <<
-                std::endl;
+                          "B vector not found, you can specify b vector file name with -b or --bvector option, using identity vector by default."
+                          <<
+                          std::endl;
             }
         }
 
         // Initialize the linear solver in accordance with args
         Solver::Initialize(&argc, &argv, parametersFound ? parametersFileName.c_str() : NULL);
+
+        if (!SolverFactory::isSolverAvailable(solverName)) {
+            if (processRank == 0) {
+                std::cout << "Solver " << solverName << " is not available" << std::endl;
+            }
+            Solver::Finalize();
+            exit(1);
+        }
+
         Solver solver = Solver(solverName);
-        //solver2.Finalize();
 
         if (processRank == 0) {
             std::cout << "Solving with " << solverName << std::endl;
@@ -195,9 +210,9 @@ int main(int argc, char ** argv) {
                     for (unsigned ii = 0; ii < options->options.size(); ii++) {
                         InnerOption *option = options->options[ii];
                         if (option->type == ENUM) {
-                            //s.SetParameterEnum(option->name, (unsigned int) atoi(option->value.c_str()));
+                            solver.SetPropertyEnum(option->name, (unsigned int) atoi(option->value.c_str()));
                         } else {
-                            //s.SetParameterReal(option->name, atof(option->value.c_str()));
+                            solver.SetPropertyReal(option->name, atof(option->value.c_str()));
                         };
                     }
                     delete options;
@@ -206,24 +221,6 @@ int main(int argc, char ** argv) {
             }
         }
         BARRIER
-
-        //s.SetParameterEnum("maximum_iterations", 1000);
-        //s.SetParameterEnum("gmres_substeps", 4);
-        //s.SetParameterReal("relative_tolerance", 1.0e-6);
-        //s.SetParameterReal("absolute_tolerance", 1.0e-16);
-        //s.SetParameterReal("divergence_tolerance", 1e+200);
-
-        //s.SetParameterEnum("reorder_nonzeros", 0);
-        //s.SetParameterEnum("rescale_iterations", 8);
-        //s.SetParameterEnum("adapt_ddpq_tolerance", 0);
-
-        //s.SetParameterReal("drop_tolerance", 3.0e-3);
-        //s.SetParameterReal("reuse_tolerance", 1.0e-5);
-        //s.SetParameterReal("ddpq_tolerance", 0.0);
-
-        //s.SetParameterEnum("condition_estimation", 1);
-        //s.SetParameterEnum("schwartz_overlap", 3);
-
 
         tempTimer = Timer();
         solver.SetMatrix(mat);
@@ -266,7 +263,7 @@ int main(int argc, char ** argv) {
         info.RestoreVector(x);
         if (processRank == 0) {
             std::cout << "||Ax-b||=" << sqrt(recv[0]) << " ||b||=" << sqrt(recv[1]) << " ||Ax-b||/||b||=" <<
-            sqrt(recv[0] / (recv[1] + 1.0e-100)) << std::endl;
+                      sqrt(recv[0] / (recv[1] + 1.0e-100)) << std::endl;
             std::cout << "norms: " << Timer() - tempTimer << std::endl;
             std::cout << processorsCount << " processors for Solver " << solverName;
             if (success) {
@@ -312,15 +309,15 @@ int main(int argc, char ** argv) {
             norm += 1.0e-100;
             if (processRank == 0) {
                 std::cout << "Difference with exact solution \"" << vectorXFileName << "\": " << std::scientific <<
-                std::setprecision(6) << std::endl;
+                          std::setprecision(6) << std::endl;
                 std::cout << "dif1 = " << dif1 << "  dif2 = " << dif2 << "  dif8 = " << dif8 << "  ||ex||_1 = " <<
-                norm << std::endl;
+                          norm << std::endl;
                 std::cout << "rel1 = " << dif1 / norm << "  rel2 = " << dif2 / norm << "  rel8 = " << dif8 / norm <<
-                std::endl;
+                          std::endl;
             }
         }
     }
     BARRIER
-	Solver::Finalize(); // Finalize solver and close MPI activity
-	return 0;
+    Solver::Finalize(); // Finalize solver and close MPI activity
+    return 0;
 }

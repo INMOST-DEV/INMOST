@@ -13,9 +13,10 @@ namespace INMOST {
         preconditioner_reuse_tolerance = DEFAULT_PRECONDITIONER_REUSE_TOLERANCE;
         preconditioner_rescale_iterations = DEFAULT_PRECONDITIONER_RESCALE_ITERS;
         preconditioner_fill_level = DEFAULT_PRECONDITIONER_FILL_LEVEL;
+        solver_gmres_substeps = DEFAULT_SOLVER_GMRES_SUBSTEPS;
 
-        Method *prec = new ILU2_preconditioner(info);
-        solver = new BCGS_solver(prec, info);
+        Method *preconditioner = new ILU2_preconditioner(info);
+        solver = new KSOLVER(preconditioner, info);
         matrix = NULL;
     }
 
@@ -34,18 +35,21 @@ namespace INMOST {
     }
 
     void SolverILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
-        Sparse::Matrix *m = new Sparse::Matrix(A);
-        info.PrepareMatrix(*m, additive_schwartz_overlap);
-        solver->ReplaceMAT(*m);
         if (matrix != NULL) {
             delete matrix;
         }
-        matrix = m;
+        matrix = new Sparse::Matrix(A);
+        info.PrepareMatrix(*matrix, additive_schwartz_overlap);
+        solver->ReplaceMAT(*matrix);
 
         solver->RealParameter(":tau") = preconditioner_drop_tolerance;
         solver->RealParameter(":tau2") = preconditioner_reuse_tolerance;
         solver->EnumParameter(":scale_iters") = preconditioner_rescale_iterations;
         solver->EnumParameter(":fill") = static_cast<INMOST_DATA_ENUM_TYPE>(preconditioner_fill_level);
+
+        if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
+            solver->EnumParameter("levels") = solver_gmres_substeps;
+        }
 
         if (!solver->isInitialized()) {
             solver->Initialize();
@@ -115,6 +119,8 @@ namespace INMOST {
             preconditioner_rescale_iterations = value;
         } else if (property == "schwartz_overlap") {
             additive_schwartz_overlap = value;
+        } else if (property == "gmres_substeps") {
+            solver_gmres_substeps = value;
         } else std::cout << "Parameter " << property << " of integral type is unknown" << std::endl;
     }
 

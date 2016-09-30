@@ -1,13 +1,9 @@
 set(SOURCE
         ${SOURCE}
         ${CMAKE_CURRENT_SOURCE_DIR}/Solver.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/OrderInfo.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/SolverFactory.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sparse.cpp
-        )
-
-set(HEADER
-        ${HEADER}
-        ${CMAKE_CURRENT_SOURCE_DIR}/SolverFactory.h
         )
 
 add_subdirectory(solver_inner)

@@ -3,7 +3,6 @@
 //
 
 #include "inmost.h"
-#include "SolverFactory.h"
 
 
 namespace INMOST {

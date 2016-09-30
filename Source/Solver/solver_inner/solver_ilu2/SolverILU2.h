@@ -15,15 +15,16 @@ namespace INMOST {
 
 		INMOST_DATA_ENUM_TYPE additive_schwartz_overlap;
 
-		INMOST_DATA_ENUM_TYPE maximum_iterations;
-		INMOST_DATA_REAL_TYPE absolute_tolerance;
-		INMOST_DATA_REAL_TYPE relative_tolerance;
-		INMOST_DATA_REAL_TYPE divergence_tolerance;
+        INMOST_DATA_ENUM_TYPE maximum_iterations;
+        INMOST_DATA_REAL_TYPE absolute_tolerance;
+        INMOST_DATA_REAL_TYPE relative_tolerance;
+        INMOST_DATA_REAL_TYPE divergence_tolerance;
 
-		INMOST_DATA_REAL_TYPE preconditioner_drop_tolerance;
-		INMOST_DATA_REAL_TYPE preconditioner_reuse_tolerance;
-		INMOST_DATA_REAL_TYPE preconditioner_fill_level;
-		INMOST_DATA_ENUM_TYPE preconditioner_rescale_iterations;
+        INMOST_DATA_REAL_TYPE preconditioner_drop_tolerance;
+        INMOST_DATA_REAL_TYPE preconditioner_reuse_tolerance;
+        INMOST_DATA_REAL_TYPE preconditioner_fill_level;
+        INMOST_DATA_ENUM_TYPE preconditioner_rescale_iterations;
+        INMOST_DATA_ENUM_TYPE solver_gmres_substeps;
 	public:
         SolverILU2();
         SolverILU2(const SolverInterface* other);

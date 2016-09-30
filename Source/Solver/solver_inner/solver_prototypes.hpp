@@ -7,6 +7,8 @@
 
 #include "inmost_solver.h"
 
+#define KSOLVER BCGS_solver
+
 using namespace INMOST;
 
 class Method
