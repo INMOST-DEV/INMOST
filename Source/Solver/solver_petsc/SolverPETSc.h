@@ -1,16 +1,9 @@
-//
-// Created by Dmitri Bagaev on 22.09.16.
-//
-
 #ifndef INMOST_SOLVERPETSC_H
 #define INMOST_SOLVERPETSC_H
 
-#include "petsc.h"
 #include "inmost.h"
-#include "new_solver_petsc.h"
-#include "Source/Solver/solver_petsc.h"
-#include "Source/Solver/refactoring/SolverFactory.h"
-#include "Source/Solver/refactoring/SolverInterface.h"
+#include "petsc.h"
+#include "solver_petsc.h"
 
 
 namespace INMOST {
@@ -34,11 +27,15 @@ namespace INMOST {
         virtual void Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix);
 		virtual void SetMatrix(Sparse::Matrix & A, bool ModifiedPattern, bool OldPreconditioner);
         virtual bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL);
+        virtual bool Clear();
 
     	virtual bool isMatrixSet();
 
 		virtual INMOST_DATA_REAL_TYPE GetPropertyReal(std::string property) const;
 		virtual INMOST_DATA_ENUM_TYPE GetPropertyEnum(std::string property) const;
+
+		virtual void SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value);
+        virtual void SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value);
 
 		virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 		virtual const INMOST_DATA_REAL_TYPE Residual() const;

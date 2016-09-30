@@ -1,25 +1,22 @@
-add_subdirectory(refactoring)
-
 set(SOURCE
     ${SOURCE}
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Solver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SolverFactory.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/sparse.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ani.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ddpqiluc2.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_superlu.cpp
 )
 
 set(HEADER
     ${HEADER}
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_prototypes.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_superlu.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ilu2.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ddpqiluc2.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_bcgsl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ani.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SolverFactory.h
 )
+
+add_subdirectory(solver_inner)
+
+if(USE_SOLVER_PETSC)
+  add_subdirectory(solver_petsc)
+endif()
+
+
 
 
 if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.hpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.cpp" )

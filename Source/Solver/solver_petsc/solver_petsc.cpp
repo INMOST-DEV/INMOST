@@ -1,49 +1,45 @@
-//
-// Created by Dmitri Bagaev on 28.09.16.
-//
-
 #define _CRT_SECURE_NO_WARNINGS
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #if defined(USE_SOLVER_PETSC)
 #include <petsc.h>
-#include "new_solver_petsc.h"
+#include "solver_petsc.h"
 #define PETSC_SUCCESS 0
 
 
-//bool SolverIsInitializedPetsc()
-//{
-//    PetscBool isInitialized;
-//    PetscErrorCode ierr = PetscInitialized(&isInitialized);
-//    if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
-//    return (isInitialized == PETSC_TRUE);
-//}
-//
-//void SolverInitializePetsc(int * argc,char *** argv, const char * file_options)
-//{
-//    if( !SolverIsInitializedPetsc() )
-//    {
-//        PetscErrorCode ierr = PetscInitialize(argc,argv,file_options,"solver");
-//        //prevent petsc from catching signals, petsc error handling is misleading for
-//        //unexperienced user and results in the opinion that errors emerge from petsc
-//        PetscPopSignalHandler();
-//        if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
-//    }
-//}
-//
-//bool SolverIsFinalizedPetsc()
-//{
-//    PetscBool isFinalized;
-//    PetscErrorCode ierr = PetscFinalized(&isFinalized);
-//    if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
-//    return (isFinalized == PETSC_TRUE);
-//}
-//
-//void SolverFinalizePetsc()
-//{
-//    PetscErrorCode ierr = PetscFinalize();
-//    if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
-//}
+bool SolverIsInitializedPetsc()
+{
+   PetscBool isInitialized;
+   PetscErrorCode ierr = PetscInitialized(&isInitialized);
+   if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+   return (isInitialized == PETSC_TRUE);
+}
+
+void SolverInitializePetsc(int * argc,char *** argv, const char * file_options)
+{
+   if( !SolverIsInitializedPetsc() )
+   {
+       PetscErrorCode ierr = PetscInitialize(argc,argv,file_options,"solver");
+       //prevent petsc from catching signals, petsc error handling is misleading for
+       //unexperienced user and results in the opinion that errors emerge from petsc
+       PetscPopSignalHandler();
+       if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+   }
+}
+
+bool SolverIsFinalizedPetsc()
+{
+   PetscBool isFinalized;
+   PetscErrorCode ierr = PetscFinalized(&isFinalized);
+   if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+   return (isFinalized == PETSC_TRUE);
+}
+
+void SolverFinalizePetsc()
+{
+   PetscErrorCode ierr = PetscFinalize();
+   if( ierr != PETSC_SUCCESS ) throw INMOST::ErrorInSolver;
+}
 
 void MatrixDestroyDataPetsc(Mat **matrix)
 {

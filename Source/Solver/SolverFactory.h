@@ -1,11 +1,7 @@
-//
-// Created by Dmitri Bagaev on 28.09.16.
-//
-
 #ifndef INMOST_SOLVERFACTORY_H
 #define INMOST_SOLVERFACTORY_H
 
-#include "SolverInterface.h"
+#include <inmost.h>
 
 namespace INMOST {
 

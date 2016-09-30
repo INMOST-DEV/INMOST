@@ -2,8 +2,9 @@
 // Created by Dmitri Bagaev on 28.09.16.
 //
 
+#include "inmost.h"
 #include "SolverFactory.h"
-#include "SolverInterface.h"
+
 
 namespace INMOST {
 

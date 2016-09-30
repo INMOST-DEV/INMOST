@@ -1,7 +1,3 @@
-//
-// Created by Dmitri Bagaev on 22.09.16.
-//
-
 #include "SolverPETSc.h"
 
 namespace INMOST {
@@ -190,16 +186,32 @@ namespace INMOST {
         return result;
     }
 
+    bool SolverPETSc::Clear() {
+        local_size = global_size = 0;
+        if (matrix != NULL) {
+            MatrixDestroyDataPetsc(&matrix);
+        }
+        return true;
+    }
+
     bool SolverPETSc::isMatrixSet() {
         return matrix != NULL;
     }
 
     INMOST_DATA_REAL_TYPE SolverPETSc::GetPropertyReal(std::string property) const {
-        throw NotImplemented;
+        throw INMOST::SolverUnsupportedOperation;
     }
 
     INMOST_DATA_ENUM_TYPE SolverPETSc::GetPropertyEnum(std::string property) const {
-        throw NotImplemented;
+        throw INMOST::SolverUnsupportedOperation;
+    }
+
+    void SolverPETSc::SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value) {
+        //throw INMOST::SolverUnsupportedOperation;
+    }
+
+    void SolverPETSc::SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
+        //throw INMOST::SolverUnsupportedOperation;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverPETSc::Iterations() const {

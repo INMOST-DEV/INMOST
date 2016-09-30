@@ -1,5 +1,5 @@
-set(SOURCE ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/new_solver_petsc.cpp)
-set(SOURCE ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/new_solver_petsc.h)
+set(SOURCE ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.cpp)
+set(SOURCE ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.h)
 set(SOURCE ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/SolverPETSC.cpp)
 set(HEADER ${HEADER} ${CMAKE_CURRENT_SOURCE_DIR}/SolverPETSc.h)
 

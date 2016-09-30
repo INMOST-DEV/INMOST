@@ -27,10 +27,10 @@ void VectorFillPetsc(Vec *vector, int size, int * positions, double * values);
 void VectorLoadPetsc(Vec *vector, int size, int * positions, double * values);
 void VectorFinalizePetsc(Vec *vector);
 
-//bool SolverIsInitializedPetsc();
-//void SolverInitializePetsc(int * argc,char *** argv, const char * file_options);
-//bool SolverIsFinalizedPetsc();
-//void SolverFinalizePetsc();
+bool SolverIsInitializedPetsc();
+void SolverInitializePetsc(int * argc,char *** argv, const char * file_options);
+bool SolverIsFinalizedPetsc();
+void SolverFinalizePetsc();
 
 void SolverInitDataPetsc(KSP **ksp, INMOST_MPI_Comm comm, const char * name);
 void SolverCopyDataPetsc(KSP **ksp, KSP *other_ksp, INMOST_MPI_Comm comm);
