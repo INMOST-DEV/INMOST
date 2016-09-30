@@ -7,6 +7,9 @@ namespace INMOST {
         matrix = NULL;
         maximum_iterations = DEFAULT_MAXIMUM_ITERATIONS;
         relative_tolerance = DEFAULT_RELATIVE_TOLERANCE;
+        additive_schwartz_overlap = DEFAULT_ADDITIVE_SCHWARTZ_OVERLAP;
+        preconditioner_drop_tolerance = DEFAULT_PRECONDITIONER_DROP_TOLERANCE;
+        preconditioner_fill_level = DEFAULT_PRECONDITIONER_FILL_LEVEL;
     }
 
     SolverTrilinos::SolverTrilinos(const SolverInterface *other) {
@@ -120,11 +123,21 @@ namespace INMOST {
     }
 
     void SolverTrilinos::SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value) {
-        //throw INMOST::SolverUnsupportedOperation;
+        if (property == "relative_tolerance")
+            relative_tolerance = value;
+        else if (property == "drop_tolerance")
+            preconditioner_drop_tolerance = value;
+        else if (property == "fill_level")
+            preconditioner_fill_level = value;
+        else std::cout << "Parameter " << property << " of real type is unknown" << std::endl;
     }
 
     void SolverTrilinos::SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
-        //throw INMOST::SolverUnsupportedOperation;
+        if (property == "maximum_iterations")
+            maximum_iterations = value;
+        else if (property == "schwartz_overlap")
+            additive_schwartz_overlap = value;
+        else std::cout << "Parameter " << property << " of integral type is unknown" << std::endl;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {
@@ -145,5 +158,50 @@ namespace INMOST {
 
     SolverTrilinos::~SolverTrilinos() {
         this->Clear();
+    }
+
+    void SolverTrilinos::checkStatus(int status_id, bool &success, std::string &reason) {
+        success = true;
+        switch (status_id) {
+            case AZ_normal:
+                reason = "User requested convergence criteria is satisfied.";
+                break;
+            case AZ_param:
+                reason = "User requested option is not availible.";
+                success = false;
+                break;
+            case AZ_breakdown:
+                reason = "Numerical breakdown occurred.";
+                success = false;
+                break;
+            case AZ_loss:
+                reason = "Numerical loss precision occurred.";
+                success = false;
+                break;
+            case AZ_ill_cond:
+                reason = "The Hessenberg matrix within GMRES is illconditioned. "
+                        "This could be caused by a number "
+                        "of reasons. For example, the preconditioning "
+                        "matrix could be nearly singular due to an unstable "
+                        "factorization (note: pivoting is not implemented "
+                        "in any of the incomplete factorizations). "
+                        "Ill-conditioned Hessenberg matrices could also "
+                        "arise from a singular application matrix. In this "
+                        "case, GMRES tries to compute a least-squares "
+                        "solution.";
+                success = false;
+                break;
+            case AZ_maxits:
+                reason = "Maximum iterations taken without convergence.";
+                success = false;
+                break;
+            default: {
+                std::stringstream str;
+                str << "reason code " << status_id
+                    << " was not specified in manual by the time, reffer to Trilinos manual.";
+                reason = str.str();
+            }
+                break;
+        }
     }
 }

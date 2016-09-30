@@ -45,6 +45,11 @@ namespace INMOST {
 
         INMOST_DATA_ENUM_TYPE maximum_iterations;
         INMOST_DATA_REAL_TYPE relative_tolerance;
+        INMOST_DATA_ENUM_TYPE additive_schwartz_overlap;
+        INMOST_DATA_REAL_TYPE preconditioner_drop_tolerance;
+        INMOST_DATA_REAL_TYPE preconditioner_fill_level;
+
+        void checkStatus(int status_id, bool &success, std::string &reason);
     public:
         SolverTrilinos();
 

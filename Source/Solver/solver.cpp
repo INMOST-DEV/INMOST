@@ -11,7 +11,10 @@
 
 #if defined(USE_SOLVER_TRILINOS)
 #include "solver_trilinos/SolverTrilinos.h"
+#include "solver_trilinos/solver_aztec/SolverTrilinosAztec.h"
 #include "solver_trilinos/solver_belos/SolverTrilinosBelos.h"
+#include "solver_trilinos/solver_ml/SolverTrilinosML.h"
+#include "solver_trilinos/solver_ifpack/SolverTrilinosIfpack.h"
 #endif
 
 namespace INMOST {
@@ -85,7 +88,10 @@ namespace INMOST {
         SolverFactory::registerSolver<SolverPETSc>("petsc");
 #endif
 #if defined(USE_SOLVER_TRILINOS)
+        SolverFactory::registerSolver<SolverTrilinosAztec>("trilinos_aztec");
         SolverFactory::registerSolver<SolverTrilinosBelos>("trilinos_belos");
+        SolverFactory::registerSolver<SolverTrilinosML>("trilinos_ml");
+        SolverFactory::registerSolver<SolverTrilinosIfpack>("trilinos_ifpack");
 #endif
         Sparse::CreateRowEntryType();
     }
