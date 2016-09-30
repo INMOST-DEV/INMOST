@@ -199,10 +199,12 @@ namespace INMOST {
     }
 
     INMOST_DATA_REAL_TYPE SolverPETSc::GetPropertyReal(std::string property) const {
+        std::cout << "SolverPETSc::GetPropertyReal unsupported operation" << std::endl;
         throw INMOST::SolverUnsupportedOperation;
     }
 
     INMOST_DATA_ENUM_TYPE SolverPETSc::GetPropertyEnum(std::string property) const {
+        std::cout << "SolverPETSc::GetPropertyEnum unsupported operation" << std::endl;
         throw INMOST::SolverUnsupportedOperation;
     }
 

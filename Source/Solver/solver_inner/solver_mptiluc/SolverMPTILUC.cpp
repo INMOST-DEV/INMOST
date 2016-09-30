@@ -20,10 +20,12 @@ namespace INMOST {
     }
 
     SolverMPTILUC::SolverMPTILUC(const SolverInterface *other) {
+        //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
 
     void SolverMPTILUC::Assign(const SolverInterface *other) {
+        //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
 

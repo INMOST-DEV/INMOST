@@ -6,9 +6,12 @@
 #include "solver_inner/solver_mptilu2/SolverMPTILU2.h"
 
 #if defined(USE_SOLVER_PETSC)
-
 #include "solver_petsc/SolverPETSc.h"
+#endif
 
+#if defined(USE_SOLVER_TRILINOS)
+#include "solver_trilinos/SolverTrilinos.h"
+#include "solver_trilinos/solver_belos/SolverTrilinosBelos.h"
 #endif
 
 namespace INMOST {
@@ -80,6 +83,9 @@ namespace INMOST {
         SolverFactory::registerSolver<SolverMPTILU2>("inner_mptilu2");
 #if defined(USE_SOLVER_PETSC)
         SolverFactory::registerSolver<SolverPETSc>("petsc");
+#endif
+#if defined(USE_SOLVER_TRILINOS)
+        SolverFactory::registerSolver<SolverTrilinosBelos>("trilinos_belos");
 #endif
         Sparse::CreateRowEntryType();
     }

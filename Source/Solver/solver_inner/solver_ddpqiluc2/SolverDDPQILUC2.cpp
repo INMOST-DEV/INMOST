@@ -23,10 +23,12 @@ namespace INMOST {
     }
 
     SolverDDPQILUC2::SolverDDPQILUC2(const SolverInterface *other) {
+        //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
 
     void SolverDDPQILUC2::Assign(const SolverInterface *other) {
+        //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
 
