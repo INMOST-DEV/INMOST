@@ -44,8 +44,7 @@ namespace INMOST {
     public:
 
         /// Base class for low level operations with objects of Solver class.
-        class OrderInfo
-        {
+        class OrderInfo {
         private:
             typedef std::vector<INMOST_DATA_ENUM_TYPE> storage_type;
             storage_type global_to_proc; //stores ends of all non-overlapping intervals of elements, owned by this processor
@@ -62,55 +61,92 @@ namespace INMOST {
 
             bool have_matrix;
             INMOST_MPI_Comm comm;
-            int rank,size;
+            int rank, size;
         public:
             void Clear();
+
             /// Return true if Matrix data have already been specified.
-            bool & HaveMatrix() { return have_matrix; }
+            bool &HaveMatrix() { return have_matrix; }
+
             OrderInfo();
-            OrderInfo(const OrderInfo & other);
-            OrderInfo & operator =(OrderInfo const & other);
+
+            OrderInfo(const OrderInfo &other);
+
+            OrderInfo &operator=(OrderInfo const &other);
+
             ~OrderInfo();
+
             /// Prepare parallel state of the Matrix with specified overlap size.
             /// This state of the matrix can be used, for instance, to construct
             /// the preconditioner for Additive Swartz method.
             /// @param m Matrix to be expanded.
             /// @param overlap Overlap size, viz. the number of overlap layers.
-            void                    PrepareMatrix(Sparse::Matrix & m, INMOST_DATA_ENUM_TYPE overlap);
+            void PrepareMatrix(Sparse::Matrix &m, INMOST_DATA_ENUM_TYPE overlap);
+
             /// Restore initial nonparallel state of the Matrix with no overlap.
-            void                    RestoreMatrix(Sparse::Matrix & m);
+            void RestoreMatrix(Sparse::Matrix &m);
+
             /// Prepare parallel state of the Vector.
-            void                    PrepareVector(Sparse::Vector & v) const;
+            void PrepareVector(Sparse::Vector &v) const;
+
             /// Restore initial nonparallel state of the Vector.
-            void                    RestoreVector(Sparse::Vector & v) const;
+            void RestoreVector(Sparse::Vector &v) const;
             /// Retrieve the processor number by binary search for the specified global index.
-            INMOST_DATA_ENUM_TYPE   GetProcessor(INMOST_DATA_ENUM_TYPE gind) const; //retrieve processor by binary search in global_to_proc
-            void                    GetOverlapRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE & mbeg, INMOST_DATA_ENUM_TYPE & mend) const;
+            INMOST_DATA_ENUM_TYPE GetProcessor(
+                    INMOST_DATA_ENUM_TYPE gind) const; //retrieve processor by binary search in global_to_proc
+            void GetOverlapRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE &mbeg,
+                                  INMOST_DATA_ENUM_TYPE &mend) const;
+
             /// Get the local index region for the specified process.
-            void                    GetLocalRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE & mbeg, INMOST_DATA_ENUM_TYPE & mend) const;
+            void
+            GetLocalRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE &mbeg, INMOST_DATA_ENUM_TYPE &mend) const;
+
             /// Get the local index region for the current process.
-            void                    GetVectorRegion(INMOST_DATA_ENUM_TYPE & mbeg, INMOST_DATA_ENUM_TYPE & mend) const {mbeg = local_vector_begin; mend = local_vector_end;}
+            void GetVectorRegion(INMOST_DATA_ENUM_TYPE &mbeg, INMOST_DATA_ENUM_TYPE &mend) const {
+                mbeg = local_vector_begin;
+                mend = local_vector_end;
+            }
             /// Get the rank of the current communicator, i.e. the current process index.
-            INMOST_DATA_ENUM_TYPE   GetRank() const {return rank;}
+            INMOST_DATA_ENUM_TYPE GetRank() const { return rank; }
             /// Get the size of the current communicator, i.e. the total number of processes used.
-            INMOST_DATA_ENUM_TYPE   GetSize() const {return size;}
+            INMOST_DATA_ENUM_TYPE GetSize() const { return size; }
+
             /// Update the shared data in parallel vector.
-            void                    Update    (Sparse::Vector & x); // update parallel vector
+            void Update(Sparse::Vector &x); // update parallel vector
             /// Sum shared values in parallel vector.
-            void                    Accumulate(Sparse::Vector & x); // sum shared values in parallel vector
+            void Accumulate(Sparse::Vector &x); // sum shared values in parallel vector
             /// Get the sum of num elements of real array on all processes.
-            void                    Integrate(INMOST_DATA_REAL_TYPE * inout, INMOST_DATA_ENUM_TYPE num) const;
+            void Integrate(INMOST_DATA_REAL_TYPE *inout, INMOST_DATA_ENUM_TYPE num) const;
             /// Get the communicator which the solver is associated with.
-            INMOST_MPI_Comm         GetComm() const {return comm;}
+            INMOST_MPI_Comm GetComm() const { return comm; }
             // Access to arrays below allows to organize manual exchange
-            INMOST_MPI_Request    * GetSendRequests() {assert(!send_requests.empty()); return &send_requests[0];}
-            INMOST_MPI_Request    * GetRecvRequests() {assert(!recv_requests.empty()); return &recv_requests[0];}
-            INMOST_DATA_ENUM_TYPE   GetSendRequestsSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(send_requests.size());}
-            INMOST_DATA_ENUM_TYPE   GetRecvRequestsSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(recv_requests.size());}
-            INMOST_DATA_ENUM_TYPE * GetSendExchangeArray() {assert(!vector_exchange_send.empty()); return &vector_exchange_send[0];}
-            INMOST_DATA_ENUM_TYPE   GetSendExchangeSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(send_storage.size());}
-            INMOST_DATA_ENUM_TYPE * GetRecvExchangeArray() {assert(!vector_exchange_recv.empty()); return &vector_exchange_recv[0];}
-            INMOST_DATA_ENUM_TYPE   GetRecvExchangeSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(recv_storage.size());}
+            INMOST_MPI_Request *GetSendRequests() {
+                assert(!send_requests.empty());
+                return &send_requests[0];
+            }
+
+            INMOST_MPI_Request *GetRecvRequests() {
+                assert(!recv_requests.empty());
+                return &recv_requests[0];
+            }
+
+            INMOST_DATA_ENUM_TYPE GetSendRequestsSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(send_requests.size()); }
+
+            INMOST_DATA_ENUM_TYPE GetRecvRequestsSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(recv_requests.size()); }
+
+            INMOST_DATA_ENUM_TYPE *GetSendExchangeArray() {
+                assert(!vector_exchange_send.empty());
+                return &vector_exchange_send[0];
+            }
+
+            INMOST_DATA_ENUM_TYPE GetSendExchangeSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(send_storage.size()); }
+
+            INMOST_DATA_ENUM_TYPE *GetRecvExchangeArray() {
+                assert(!vector_exchange_recv.empty());
+                return &vector_exchange_recv[0];
+            }
+
+            INMOST_DATA_ENUM_TYPE GetRecvExchangeSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(recv_storage.size()); }
             //for debug
             //~ void                 BeginSequentialCode() {for(int i = 0; i < rank; i++) MPI_Barrier(comm);}
             //~ void                   EndSequentialCode() {for(int i = rank; i < size; i++) MPI_Barrier(comm);}
@@ -130,12 +166,14 @@ namespace INMOST {
         /// @see Solver::Finalize
         Solver(std::string solverName, std::string prefix = "", INMOST_MPI_Comm _comm = INMOST_MPI_COMM_WORLD);
 
-        Solver(const Solver& other);
-        Solver& operator =(const Solver& other);
+        Solver(const Solver &other);
+
+        Solver &operator=(const Solver &other);
 
         /// Return the solver name 
         /// @see Sparse::Solve
         std::string SolverName() const;
+
         /// Return the solver user specified name of the current solver
         /// @see Sparse::Solve
         std::string SolverPrefix() const;
@@ -173,8 +211,9 @@ namespace INMOST {
         static void Finalize();
 
         static bool isInitialized();
+
         static bool isFinalized();
-        
+
         /// Set the matrix and construct the preconditioner.
         /// @param A Matrix A in linear problem Ax = b
         /// @param ModifiedPattern Indicates whether the structure of the matrix have 
@@ -189,8 +228,8 @@ namespace INMOST {
         ///
         /// Any changes to preconditioner parameters should happen before that point.
         /// If you increase gmres_substep after this point, inner methods most likely will fail
-        void SetMatrix(Sparse::Matrix & A, bool ModifiedPattern = true, bool OldPreconditioner = false);
-        
+        void SetMatrix(Sparse::Matrix &A, bool ModifiedPattern = true, bool OldPreconditioner = false);
+
         /// Solver the linear system: A*x = b.
         /// Prior to this call you should call SetMatrix
         ///
@@ -201,29 +240,34 @@ namespace INMOST {
         /// and the preconditioner have been already constructed.
         ///
         /// @see Sparse::SetMatrix
-        bool Solve(INMOST::Sparse::Vector & RHS, INMOST::Sparse::Vector & SOL);
+        bool Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL);
 
         /// Clear all internal data of the current solver including matrix, preconditioner etc.
         bool Clear();
 
         INMOST_DATA_REAL_TYPE GetPropertyReal(std::string property) const;
+
         INMOST_DATA_ENUM_TYPE GetPropertyEnum(std::string property) const;
 
         void SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value);
+
         void SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value);
 
         /// Return the number of iterations performed by the last solution.
         /// @see Sparse::Solve
         const INMOST_DATA_ENUM_TYPE Iterations() const;
+
         /// Return the final residual achieved by the last solution.
         /// @see Sparse::Solve
         const INMOST_DATA_REAL_TYPE Residual() const;
+
         /// Get the reason of convergence or divergence of the last solution.
         /// @see Sparse::Solve
         const std::string ReturnReason() const;
 
         ~Solver();
-private:
+
+    private:
         static std::string parseDatabase(std::string solverName);
     };
 }

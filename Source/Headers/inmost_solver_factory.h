@@ -5,7 +5,9 @@ namespace INMOST {
 
     struct SolverBaseFactory {
         virtual SolverInterface *create() = 0;
+
         virtual SolverInterface *copy(const SolverInterface *other) = 0;
+
         virtual ~SolverBaseFactory() {};
     };
 
@@ -28,9 +30,13 @@ namespace INMOST {
         static void registerSolver(std::string name) {
             solvers.insert(std::make_pair(name, new SolverCreateFactory<T>));
         };
+
         static SolverInterface *getSolver(std::string name);
+
         static SolverInterface *copySolver(const SolverInterface *other);
+
         static std::vector<std::string> getAvailableSolvers();
+
         static bool isSolverAvailable(std::string name);
     };
 
