@@ -90,7 +90,7 @@ namespace INMOST {
     }
 
     const std::string SolverTrilinosIfpack::SolverName() const {
-        return "trilinos_ml";
+        return "trilinos_ifpack";
     }
 
     SolverTrilinosIfpack::~SolverTrilinosIfpack() {
