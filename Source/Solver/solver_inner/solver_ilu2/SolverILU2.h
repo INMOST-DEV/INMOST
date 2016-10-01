@@ -12,19 +12,6 @@ namespace INMOST {
         Sparse::Matrix *matrix;
         BCGS_solver *solver;
         Solver::OrderInfo info;
-
-        INMOST_DATA_ENUM_TYPE additive_schwartz_overlap;
-
-        INMOST_DATA_ENUM_TYPE maximum_iterations;
-        INMOST_DATA_REAL_TYPE absolute_tolerance;
-        INMOST_DATA_REAL_TYPE relative_tolerance;
-        INMOST_DATA_REAL_TYPE divergence_tolerance;
-
-        INMOST_DATA_REAL_TYPE preconditioner_drop_tolerance;
-        INMOST_DATA_REAL_TYPE preconditioner_reuse_tolerance;
-        INMOST_DATA_REAL_TYPE preconditioner_fill_level;
-        INMOST_DATA_ENUM_TYPE preconditioner_rescale_iterations;
-        INMOST_DATA_ENUM_TYPE solver_gmres_substeps;
     public:
         SolverILU2();
 
@@ -41,14 +28,6 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
-
-        virtual INMOST_DATA_REAL_TYPE GetPropertyReal(std::string property) const;
-
-        virtual INMOST_DATA_ENUM_TYPE GetPropertyEnum(std::string property) const;
-
-        virtual void SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value);
-
-        virtual void SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

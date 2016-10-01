@@ -22,7 +22,7 @@ namespace INMOST {
         };
     };
 
-    class SolverFactory {
+    class SolverMaster {
     private:
         static std::map<std::string, SolverBaseFactory *> solvers;
     public:
@@ -39,6 +39,9 @@ namespace INMOST {
 
         static bool isSolverAvailable(std::string name);
     };
+
+    typedef std::map<std::string, SolverBaseFactory *>::iterator solvers_map_iterator_t;
+    typedef std::vector<std::string>::iterator solvers_names_iterator_t;
 
 }
 

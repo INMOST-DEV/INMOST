@@ -8,9 +8,24 @@ namespace INMOST {
 
 #if defined(USE_SOLVER)
 
+    class SolverParameters {
+    private:
+        std::map<std::string, INMOST_DATA_ENUM_TYPE> enums;
+        std::map<std::string, INMOST_DATA_REAL_TYPE> reals;
+    public:
+        SolverParameters();
+        void SetDefaults();
+        void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value);
+        void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
+
+        const INMOST_DATA_REAL_TYPE GetParameterReal(std::string name) const;
+        const INMOST_DATA_ENUM_TYPE GetParameterEnum(std::string name) const;
+    };
+
     class SolverInterface {
     protected:
         INMOST_MPI_Comm communicator;
+        SolverParameters parameters;
     public:
         SolverInterface() {};
 
@@ -28,13 +43,21 @@ namespace INMOST {
 
         virtual bool isMatrixSet() = 0;
 
-        virtual INMOST_DATA_REAL_TYPE GetPropertyReal(std::string property) const = 0;
+        virtual INMOST_DATA_REAL_TYPE GetParameterReal(std::string name) const {
+            return parameters.GetParameterReal(name);
+        };
 
-        virtual INMOST_DATA_ENUM_TYPE GetPropertyEnum(std::string property) const = 0;
+        virtual INMOST_DATA_ENUM_TYPE GetParameterEnum(std::string name) const {
+            return parameters.GetParameterEnum(name);
+        };
 
-        virtual void SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value) = 0;
+        virtual void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) {
+            parameters.SetParameterReal(name, value);
+        };
 
-        virtual void SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value) = 0;
+        virtual void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) {
+            parameters.SetParameterEnum(name, value);
+        };
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const = 0;
 

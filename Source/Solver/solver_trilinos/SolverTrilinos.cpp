@@ -5,11 +5,6 @@ namespace INMOST {
     SolverTrilinos::SolverTrilinos() {
         Epetra_problem = NULL;
         matrix = NULL;
-        maximum_iterations = DEFAULT_MAXIMUM_ITERATIONS;
-        relative_tolerance = DEFAULT_RELATIVE_TOLERANCE;
-        additive_schwartz_overlap = DEFAULT_ADDITIVE_SCHWARTZ_OVERLAP;
-        preconditioner_drop_tolerance = DEFAULT_PRECONDITIONER_DROP_TOLERANCE;
-        preconditioner_fill_level = DEFAULT_PRECONDITIONER_FILL_LEVEL;
     }
 
     SolverTrilinos::SolverTrilinos(const SolverInterface *other) {
@@ -112,34 +107,6 @@ namespace INMOST {
         return matrix != NULL;
     }
 
-    INMOST_DATA_REAL_TYPE SolverTrilinos::GetPropertyReal(std::string property) const {
-        std::cout << "SolverTrilinos::GetPropertyReal unsupported operation" << std::endl;
-        throw INMOST::SolverUnsupportedOperation;
-    }
-
-    INMOST_DATA_ENUM_TYPE SolverTrilinos::GetPropertyEnum(std::string property) const {
-        std::cout << "SolverTrilinos::GetPropertyEnum unsupported operation" << std::endl;
-        throw INMOST::SolverUnsupportedOperation;
-    }
-
-    void SolverTrilinos::SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value) {
-        if (property == "relative_tolerance")
-            relative_tolerance = value;
-        else if (property == "drop_tolerance")
-            preconditioner_drop_tolerance = value;
-        else if (property == "fill_level")
-            preconditioner_fill_level = value;
-        else std::cout << "Parameter " << property << " of real type is unknown" << std::endl;
-    }
-
-    void SolverTrilinos::SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
-        if (property == "maximum_iterations")
-            maximum_iterations = value;
-        else if (property == "schwartz_overlap")
-            additive_schwartz_overlap = value;
-        else std::cout << "Parameter " << property << " of integral type is unknown" << std::endl;
-    }
-
     const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {
         return lastIterations;
     }
@@ -160,7 +127,7 @@ namespace INMOST {
         this->Clear();
     }
 
-    void SolverTrilinos::checkStatus(int status_id, bool &success, std::string &reason) {
+    void SolverTrilinos::TrilinosCheckStatus(int status_id, bool &success, std::string &reason) {
         success = true;
         switch (status_id) {
             case AZ_normal:

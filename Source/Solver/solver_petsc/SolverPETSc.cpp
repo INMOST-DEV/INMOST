@@ -198,21 +198,21 @@ namespace INMOST {
         return matrix != NULL;
     }
 
-    INMOST_DATA_REAL_TYPE SolverPETSc::GetPropertyReal(std::string property) const {
+    INMOST_DATA_REAL_TYPE SolverPETSc::GetParameterReal(std::string property) const {
         std::cout << "SolverPETSc::GetPropertyReal unsupported operation" << std::endl;
         throw INMOST::SolverUnsupportedOperation;
     }
 
-    INMOST_DATA_ENUM_TYPE SolverPETSc::GetPropertyEnum(std::string property) const {
+    INMOST_DATA_ENUM_TYPE SolverPETSc::GetParameterEnum(std::string property) const {
         std::cout << "SolverPETSc::GetPropertyEnum unsupported operation" << std::endl;
         throw INMOST::SolverUnsupportedOperation;
     }
 
-    void SolverPETSc::SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value) {
+    void SolverPETSc::SetParameterReal(std::string property, INMOST_DATA_REAL_TYPE value) {
         //throw INMOST::SolverUnsupportedOperation;
     }
 
-    void SolverPETSc::SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
+    void SolverPETSc::SetParameterEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
         //throw INMOST::SolverUnsupportedOperation;
     }
 

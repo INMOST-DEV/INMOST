@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
         std::string vectorBFileName = "";
         std::string vectorXFileName = "";
         std::string parametersFileName = "";
-        std::string solverName = "";
+        std::string solverName = "inner_ilu2";
 
         bool matrixFound = false;
         bool vectorBFound = false;
@@ -60,8 +60,8 @@ int main(int argc, char **argv) {
                     std::cout << "-t, --type <Solver type name>" << std::endl;
                     std::cout << "  Available solvers:" << std::endl;
                     Solver::Initialize(NULL, NULL, NULL);
-                    std::vector<std::string> availableSolvers = SolverFactory::getAvailableSolvers();
-                    for (auto it = availableSolvers.begin(); it != availableSolvers.end(); it++) {
+                    std::vector<std::string> availableSolvers = SolverMaster::getAvailableSolvers();
+                    for (solvers_names_iterator_t it = availableSolvers.begin(); it != availableSolvers.end(); it++) {
                         std::cout << "      " << *it << std::endl;
                     }
                     Solver::Finalize();
@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
         // Initialize the linear solver in accordance with args
         Solver::Initialize(&argc, &argv, parametersFound ? parametersFileName.c_str() : NULL);
 
-        if (!SolverFactory::isSolverAvailable(solverName)) {
+        if (!SolverMaster::isSolverAvailable(solverName)) {
             if (processRank == 0) {
                 std::cout << "Solver " << solverName << " is not available" << std::endl;
             }
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-        Solver solver = Solver(solverName);
+        Solver solver = Solver(solverName, "test");
 
         if (processRank == 0) {
             std::cout << "Solving with " << solverName << std::endl;
@@ -200,7 +200,6 @@ int main(int argc, char **argv) {
         bool success;
         double resid, realresid = 0;
         std::string reason;
-        //Solver s(type); // Declare the linear solver by specified type
 
         if (parametersFound) {
             char *fileName = findInnerOptions(parametersFileName.c_str());
@@ -210,9 +209,9 @@ int main(int argc, char **argv) {
                     for (unsigned ii = 0; ii < options->options.size(); ii++) {
                         InnerOption *option = options->options[ii];
                         if (option->type == ENUM) {
-                            solver.SetPropertyEnum(option->name, (unsigned int) atoi(option->value.c_str()));
+                            solver.SetParameterEnum(option->name, (unsigned int) atoi(option->value.c_str()));
                         } else {
-                            solver.SetPropertyReal(option->name, atof(option->value.c_str()));
+                            solver.SetParameterReal(option->name, atof(option->value.c_str()));
                         };
                     }
                     delete options;

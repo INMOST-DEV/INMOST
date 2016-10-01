@@ -43,13 +43,7 @@ namespace INMOST {
         INMOST_DATA_REAL_TYPE lastResidual;
         std::string returnReason;
 
-        INMOST_DATA_ENUM_TYPE maximum_iterations;
-        INMOST_DATA_REAL_TYPE relative_tolerance;
-        INMOST_DATA_ENUM_TYPE additive_schwartz_overlap;
-        INMOST_DATA_REAL_TYPE preconditioner_drop_tolerance;
-        INMOST_DATA_REAL_TYPE preconditioner_fill_level;
-
-        void checkStatus(int status_id, bool &success, std::string &reason);
+        void TrilinosCheckStatus(int status_id, bool &success, std::string &reason);
     public:
         SolverTrilinos();
 
@@ -66,14 +60,6 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
-
-        virtual INMOST_DATA_REAL_TYPE GetPropertyReal(std::string property) const;
-
-        virtual INMOST_DATA_ENUM_TYPE GetPropertyEnum(std::string property) const;
-
-        virtual void SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value);
-
-        virtual void SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

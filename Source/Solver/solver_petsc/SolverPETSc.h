@@ -35,13 +35,13 @@ namespace INMOST {
 
         virtual bool isMatrixSet();
 
-        virtual INMOST_DATA_REAL_TYPE GetPropertyReal(std::string property) const;
+        virtual INMOST_DATA_REAL_TYPE GetParameterReal(std::string property) const;
 
-        virtual INMOST_DATA_ENUM_TYPE GetPropertyEnum(std::string property) const;
+        virtual INMOST_DATA_ENUM_TYPE GetParameterEnum(std::string property) const;
 
-        virtual void SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value);
+        virtual void SetParameterReal(std::string property, INMOST_DATA_REAL_TYPE value);
 
-        virtual void SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value);
+        virtual void SetParameterEnum(std::string property, INMOST_DATA_ENUM_TYPE value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

@@ -223,6 +223,7 @@ namespace INMOST
 		CannotReusePreconditionerOfDifferentSize,
 		SolverNotFound,
 		SolverUnsupportedOperation,
+		SolverUnknownParameter,
 		
 		/// The list of errors may occur in the Partitioner.
 		ErrorInPartitioner = 500,

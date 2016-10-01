@@ -26,7 +26,7 @@ namespace INMOST {
     bool Solver::is_finalized = false;
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) {
-        this->solver = SolverFactory::getSolver(solverName);
+        this->solver = SolverMaster::getSolver(solverName);
         this->prefix = prefix;
 
         solver->SetCommunicator(_comm);
@@ -35,7 +35,7 @@ namespace INMOST {
     }
 
     Solver::Solver(const Solver &other) {
-        this->solver = SolverFactory::copySolver(other.solver);
+        this->solver = SolverMaster::copySolver(other.solver);
         this->prefix = other.prefix;
 
         solver->SetCommunicator(other.solver->GetCommunicator());
@@ -80,18 +80,18 @@ namespace INMOST {
         }
 #endif
         //Register all available solvers
-        SolverFactory::registerSolver<SolverILU2>("inner_ilu2");
-        SolverFactory::registerSolver<SolverDDPQILUC2>("inner_ddpqiluc2");
-        SolverFactory::registerSolver<SolverMPTILUC>("inner_mptiluc");
-        SolverFactory::registerSolver<SolverMPTILU2>("inner_mptilu2");
+        SolverMaster::registerSolver<SolverILU2>("inner_ilu2");
+        SolverMaster::registerSolver<SolverDDPQILUC2>("inner_ddpqiluc2");
+        SolverMaster::registerSolver<SolverMPTILUC>("inner_mptiluc");
+        SolverMaster::registerSolver<SolverMPTILU2>("inner_mptilu2");
 #if defined(USE_SOLVER_PETSC)
-        SolverFactory::registerSolver<SolverPETSc>("petsc");
+        SolverMaster::registerSolver<SolverPETSc>("petsc");
 #endif
 #if defined(USE_SOLVER_TRILINOS)
-        SolverFactory::registerSolver<SolverTrilinosAztec>("trilinos_aztec");
-        SolverFactory::registerSolver<SolverTrilinosBelos>("trilinos_belos");
-        SolverFactory::registerSolver<SolverTrilinosML>("trilinos_ml");
-        SolverFactory::registerSolver<SolverTrilinosIfpack>("trilinos_ifpack");
+        SolverMaster::registerSolver<SolverTrilinosAztec>("trilinos_aztec");
+        SolverMaster::registerSolver<SolverTrilinosBelos>("trilinos_belos");
+        SolverMaster::registerSolver<SolverTrilinosML>("trilinos_ml");
+        SolverMaster::registerSolver<SolverTrilinosIfpack>("trilinos_ifpack");
 #endif
         Sparse::CreateRowEntryType();
     }
@@ -143,20 +143,20 @@ namespace INMOST {
         return solver->Clear();
     }
 
-    INMOST_DATA_REAL_TYPE Solver::GetPropertyReal(std::string property) const {
-        return solver->GetPropertyReal(property);
+    INMOST_DATA_REAL_TYPE Solver::GetParameterReal(std::string property) const {
+        return solver->GetParameterReal(property);
     }
 
-    INMOST_DATA_ENUM_TYPE Solver::GetPropertyEnum(std::string property) const {
-        return solver->GetPropertyEnum(property);
+    INMOST_DATA_ENUM_TYPE Solver::GetParameterEnum(std::string property) const {
+        return solver->GetParameterEnum(property);
     }
 
-    void Solver::SetPropertyReal(std::string property, INMOST_DATA_REAL_TYPE value) {
-        solver->SetPropertyReal(property, value);
+    void Solver::SetParameterReal(std::string property, INMOST_DATA_REAL_TYPE value) {
+        solver->SetParameterReal(property, value);
     }
 
-    void Solver::SetPropertyEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
-        solver->SetPropertyEnum(property, value);
+    void Solver::SetParameterEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
+        solver->SetParameterEnum(property, value);
     }
 
     const INMOST_DATA_ENUM_TYPE Solver::Iterations() const {
