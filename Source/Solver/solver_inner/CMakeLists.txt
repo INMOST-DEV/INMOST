@@ -1,6 +1,10 @@
 set(HEADER ${HEADER}
         ${CMAKE_CURRENT_SOURCE_DIR}/solver_prototypes.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/solver_bcgsl.hpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/solver_bcgsl.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverInner.h)
+
+set(SOURCE ${SOURCE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverInner.cpp)
 
 add_subdirectory(solver_ilu2)
 add_subdirectory(solver_ddpqiluc2)
