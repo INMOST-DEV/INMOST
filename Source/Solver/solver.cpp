@@ -17,6 +17,10 @@
 #include "solver_trilinos/solver_ifpack/SolverTrilinosIfpack.h"
 #endif
 
+#if defined(USE_SOLVER_ANI)
+#include "solver_ani/SolverANI.h"
+#endif
+
 namespace INMOST {
 
     int *Solver::argc = NULL;
@@ -92,6 +96,9 @@ namespace INMOST {
         SolverMaster::registerSolver<SolverTrilinosBelos>("trilinos_belos");
         SolverMaster::registerSolver<SolverTrilinosML>("trilinos_ml");
         SolverMaster::registerSolver<SolverTrilinosIfpack>("trilinos_ifpack");
+#endif
+#if defined(USE_SOLVER_ANI)
+        SolverMaster::registerSolver<SolverANI>("ani");
 #endif
         Sparse::CreateRowEntryType();
     }
