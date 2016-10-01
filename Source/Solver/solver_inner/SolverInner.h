@@ -8,7 +8,7 @@
 
 namespace INMOST {
 
-    class SolverInner: public SolverInterface {
+    class SolverInner : public SolverInterface {
     protected:
         Sparse::Matrix *matrix;
         KSOLVER *solver;
@@ -45,8 +45,6 @@ namespace INMOST {
     };
 
 }
-
-
 
 
 #endif //INMOST_SOLVERINNER_H

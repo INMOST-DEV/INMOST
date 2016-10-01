@@ -5,7 +5,6 @@
 #include <cstdio>
 
 #include "inmost.h"
-#include "inner_parser.h"
 
 using namespace INMOST;
 
@@ -200,25 +199,6 @@ int main(int argc, char **argv) {
         bool success;
         double resid, realresid = 0;
         std::string reason;
-
-        if (parametersFound) {
-            char *fileName = findInnerOptions(parametersFileName.c_str());
-            if (fileName != NULL) {
-                InnerOptions *options = parseInnerDatabaseOptions(fileName);
-                if (options != NULL) {
-                    for (unsigned ii = 0; ii < options->options.size(); ii++) {
-                        InnerOption *option = options->options[ii];
-                        if (option->type == ENUM) {
-                            solver.SetParameterEnum(option->name, (unsigned int) atoi(option->value.c_str()));
-                        } else {
-                            solver.SetParameterReal(option->name, atof(option->value.c_str()));
-                        };
-                    }
-                    delete options;
-                }
-                free(fileName);
-            }
-        }
         BARRIER
 
         tempTimer = Timer();
