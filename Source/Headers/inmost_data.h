@@ -467,37 +467,37 @@ namespace INMOST
 		virtual ~Storage() {}
 	public:
 		/// Retrieve real value associated with Tag. Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE real &                     Real                (const Tag & tag) const;
 		/// Retrieve integer value associated with Tag. Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE integer &                  Integer             (const Tag & tag) const;
 		/// Retrieve one byte of abstract data associated with Tag. Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE bulk &                     Bulk                (const Tag & tag) const;
 		/// Retrieve Element reference associated with Tag. Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE reference &                Reference           (const Tag & tag) const;
-    /// Retrieve remote Element reference associated with Tag. Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// Retrieve remote Element reference associated with Tag. Implemented in inmost_mesh.h.
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE remote_reference &         RemoteReference     (const Tag & tag) const;
 		/// Retrieve array of real values associated with Tag. Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE real_array                 RealArray           (const Tag & tag) const;
 		/// Retrieve array of integer values associated with Tag. Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE integer_array              IntegerArray        (const Tag & tag) const;
 		/// Retrieve abstract data associated with Tag as a series of bytes. 
-    /// Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// Implemented in inmost_mesh.h.
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE bulk_array                 BulkArray           (const Tag & tag) const;
 		/// Retrieve array of Element references associated with Tag. 
-    /// Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// Implemented in inmost_mesh.h.
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE reference_array            ReferenceArray      (const Tag & tag) const;
-    /// Retrieve array of Element references associated with Tag. 
-    /// Implemented in inmost_mesh.h.
-    /// @param tag instance of class Tag that represent asking datum. 
+		/// Retrieve array of Element references associated with Tag. 
+		/// Implemented in inmost_mesh.h.
+		/// @param tag instance of class Tag that represent asking datum. 
 		__INLINE remote_reference_array     RemoteReferenceArray(const Tag & tag) const;
     
 		//optimized data requests for dense data with fixed size
@@ -505,52 +505,52 @@ namespace INMOST
 		__INLINE integer_array              IntegerArrayDF      (const Tag & tag) const;
 		__INLINE bulk_array                 BulkArrayDF         (const Tag & tag) const;
 		__INLINE reference_array            ReferenceArrayDF    (const Tag & tag) const;
-    __INLINE remote_reference_array     RemoteReferenceArrayDF(const Tag & tag) const;
+		__INLINE remote_reference_array     RemoteReferenceArrayDF(const Tag & tag) const;
 		__INLINE real      &                RealDF              (const Tag & tag) const;
 		__INLINE integer   &                IntegerDF           (const Tag & tag) const;
 		__INLINE bulk      &                BulkDF              (const Tag & tag) const;
 		__INLINE reference &                ReferenceDF         (const Tag & tag) const;
-    __INLINE remote_reference &         RemoteReferenceDF   (const Tag & tag) const;
+		__INLINE remote_reference &         RemoteReferenceDF   (const Tag & tag) const;
 		
 		//optimized data requests for dense data with variable size
 		__INLINE real_array                 RealArrayDV         (const Tag & tag) const;
 		__INLINE integer_array              IntegerArrayDV      (const Tag & tag) const;
 		__INLINE bulk_array                 BulkArrayDV         (const Tag & tag) const;
 		__INLINE reference_array            ReferenceArrayDV    (const Tag & tag) const;
-    __INLINE remote_reference_array     RemoteReferenceArrayDV(const Tag & tag) const;
+		__INLINE remote_reference_array     RemoteReferenceArrayDV(const Tag & tag) const;
 		__INLINE real      &                RealDV              (const Tag & tag) const;
 		__INLINE integer   &                IntegerDV           (const Tag & tag) const;
 		__INLINE bulk      &                BulkDV              (const Tag & tag) const;
 		__INLINE reference &                ReferenceDV         (const Tag & tag) const;
-    __INLINE remote_reference &         RemoteReferenceDV   (const Tag & tag) const;
+		__INLINE remote_reference &         RemoteReferenceDV   (const Tag & tag) const;
 #if defined(USE_AUTODIFF)
-    /// Retrieve variable reference associated with Tag.
+		/// Retrieve variable reference associated with Tag.
 		__INLINE var &                      Variable            (const Tag & tag) const;
-    __INLINE var &                      VariableDF          (const Tag & tag) const;
-    __INLINE var &                      VariableDV          (const Tag & tag) const;
-    /// Retrieve array of variables associated with Tag.
-    __INLINE var_array                  VariableArray       (const Tag & tag) const;
+		__INLINE var &                      VariableDF          (const Tag & tag) const;
+		__INLINE var &                      VariableDV          (const Tag & tag) const;
+		/// Retrieve array of variables associated with Tag.
+		__INLINE var_array                  VariableArray       (const Tag & tag) const;
 		__INLINE var_array                  VariableArrayDF     (const Tag & tag) const;
-    __INLINE var_array                  VariableArrayDV     (const Tag & tag) const;
+		__INLINE var_array                  VariableArrayDV     (const Tag & tag) const;
 #endif
 		
 		/// Return the data length associated with Tag.
 		/// For abstract data return the number of bytes, otherwise return the length of associated array. 
-    /// @param tag tag that represents the data
+		/// @param tag tag that represents the data
 		/// @see Storage::SetDataSize
-    /// @see Mesh::GetDataSize
+		/// @see Mesh::GetDataSize
 		__INLINE INMOST_DATA_ENUM_TYPE      GetDataSize         (const Tag & tag) const;
-    /// Return the size of the structure required to represent the data on current element.
-    /// This is equal to GetDataSize times Tag::GetBytesSize for all the data types,
-    /// except for DATA_VARIABLE, that requires a larger structure to accomodate derivatives.
-    /// @param tag tag that represents the data
-    /// @see Mesh::GetDataCapacity
-    __INLINE INMOST_DATA_ENUM_TYPE      GetDataCapacity     (const Tag & tag) const;
+		/// Return the size of the structure required to represent the data on current element.
+		/// This is equal to GetDataSize times Tag::GetBytesSize for all the data types,
+		/// except for DATA_VARIABLE, that requires a larger structure to accomodate derivatives.
+		/// @param tag tag that represents the data
+		/// @see Mesh::GetDataCapacity
+		__INLINE INMOST_DATA_ENUM_TYPE      GetDataCapacity     (const Tag & tag) const;
 		/// Set the length of  data associated with Tag.
 		/// @param tag Identifying Tag.
 		/// @param new_size The number of bytes for abstract data, otherwise the length of the array.
 		/// @see Storage::GetDataSize
-    /// @see Mesh::SetDataSize
+		/// @see Mesh::SetDataSize
 		__INLINE void                       SetDataSize         (const Tag & tag,
                                                              INMOST_DATA_ENUM_TYPE new_size) const;
 		/// Extract part of the data associated with Tag.
@@ -582,7 +582,7 @@ namespace INMOST
 		__INLINE void                       SetMarker           (MarkerType n) const;
 		__INLINE bool                       GetMarker           (MarkerType n) const;
 		__INLINE void                       RemMarker           (MarkerType n) const;
-    __INLINE void                       SetPrivateMarker    (MarkerType n) const;
+		__INLINE void                       SetPrivateMarker    (MarkerType n) const;
 		__INLINE bool                       GetPrivateMarker    (MarkerType n) const;
 		__INLINE void                       RemPrivateMarker    (MarkerType n) const;
 		__INLINE void                       ClearMarkerSpace    () const;
@@ -595,8 +595,8 @@ namespace INMOST
 		__INLINE bool                       isValid             () const;
 		__INLINE Mesh *                     GetMeshLink         () const;
 		__INLINE HandleType                 GetHandle           () const;
-    __INLINE Element                    getAsElement        () const;
-    __INLINE Node                       getAsNode           () const;
+	    __INLINE Element                    getAsElement        () const;
+		__INLINE Node                       getAsNode           () const;
 		__INLINE Edge                       getAsEdge           () const;
 		__INLINE Face                       getAsFace           () const;
 		__INLINE Cell                       getAsCell           () const;
@@ -604,136 +604,136 @@ namespace INMOST
 		friend class Mesh;
 	};
 
-  //////////////////////////////////////////////////////////////////////
-  /// Inline functions for class Tag                                  //
-  //////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////
+	/// Inline functions for class Tag                                  //
+	//////////////////////////////////////////////////////////////////////
 
-  __INLINE INMOST_DATA_ENUM_TYPE  Tag::GetRecordSize() const 
-  {
-    return mem->record_size;
-  }
+	__INLINE INMOST_DATA_ENUM_TYPE  Tag::GetRecordSize() const 
+	{
+		return mem->record_size;
+	}
 
-  __INLINE void Tag::SetSize(INMOST_DATA_ENUM_TYPE size) 
-  {
-    mem->size = size;
-  }
+	__INLINE void Tag::SetSize(INMOST_DATA_ENUM_TYPE size) 
+	{
+		mem->size = size;
+	}
 
-  __INLINE void Tag::SetPosition(INMOST_DATA_ENUM_TYPE pos, 
-                                 ElementType type) 
-  {
-    mem->pos[ElementNum(type)] = pos;
-  }
+	__INLINE void Tag::SetPosition(INMOST_DATA_ENUM_TYPE pos, 
+		ElementType type) 
+	{
+		mem->pos[ElementNum(type)] = pos;
+	}
 
-  __INLINE INMOST_DATA_ENUM_TYPE Tag::GetPosition(ElementType type) const 
-  {
-    assert(mem != NULL); 
-    return mem->pos[ElementNum(type)];
-  }
+	__INLINE INMOST_DATA_ENUM_TYPE Tag::GetPosition(ElementType type) const 
+	{
+		assert(mem != NULL); 
+		return mem->pos[ElementNum(type)];
+	}
 
-  __INLINE void Tag::SetSparse(ElementType type) 
-  {
-    mem->sparse[ElementNum(type)] = true;
-  }
+	__INLINE void Tag::SetSparse(ElementType type) 
+	{
+		mem->sparse[ElementNum(type)] = true;
+	}
 
-  __INLINE INMOST_DATA_ENUM_TYPE Tag::GetPositionByDim(INMOST_DATA_ENUM_TYPE typenum) const 
-  {
-    return mem->pos[typenum];
-  }
+	__INLINE INMOST_DATA_ENUM_TYPE Tag::GetPositionByDim(INMOST_DATA_ENUM_TYPE typenum) const 
+	{
+		return mem->pos[typenum];
+	}
 
-  __INLINE bool Tag::operator <(const Tag & other) const 
-  {
-    return mem < other.mem;
-  }
+	__INLINE bool Tag::operator <(const Tag & other) const 
+	{
+		return mem < other.mem;
+	}
 
-  __INLINE bool Tag::operator >(const Tag & other) const 
-  {
-    return mem > other.mem;
-  }
+	__INLINE bool Tag::operator >(const Tag & other) const 
+	{
+		return mem > other.mem;
+	}
 
-  __INLINE bool Tag::operator ==(const Tag & other) const 
-  {
-    return mem == other.mem;
-  }
+	__INLINE bool Tag::operator ==(const Tag & other) const 
+	{
+		return mem == other.mem;
+	}
 
-  __INLINE bool Tag::operator !=(const Tag & other) const 
-  {
-    return mem != other.mem;
-  }
+	__INLINE bool Tag::operator !=(const Tag & other) const 
+	{
+		return mem != other.mem;
+	}
 
-  __INLINE Tag & Tag::operator =(Tag const & other) 
-  {
-    mem = other.mem; 
-    return *this;	
-  }
+	__INLINE Tag & Tag::operator =(Tag const & other) 
+	{
+		mem = other.mem; 
+		return *this;	
+	}
 
-  __INLINE DataType Tag::GetDataType() const 
-  {
-    assert(mem!=NULL); 
-    return mem->dtype;
-  }
-  
-  __INLINE INMOST_MPI_Type Tag::GetBulkDataType() const 
-  {
-    assert(mem!=NULL); 
-    return mem->bulk_data_type;
-  }
+	__INLINE DataType Tag::GetDataType() const 
+	{
+		assert(mem!=NULL); 
+		return mem->dtype;
+	}
 
-  __INLINE INMOST_DATA_ENUM_TYPE Tag::GetBytesSize() const 
-  {
-    assert(mem!=NULL); 
-    return mem->bytes_size;
-  }
+	__INLINE INMOST_MPI_Type Tag::GetBulkDataType() const 
+	{
+		assert(mem!=NULL); 
+		return mem->bulk_data_type;
+	}
+
+	__INLINE INMOST_DATA_ENUM_TYPE Tag::GetBytesSize() const 
+	{
+		assert(mem!=NULL); 
+		return mem->bytes_size;
+	}
 	__INLINE INMOST_DATA_ENUM_TYPE Tag::GetSize() const 
-  {
-    assert(mem!=NULL); 
-    return mem->size;
-  }
+	{
+		assert(mem!=NULL); 
+		return mem->size;
+	}
 	__INLINE std::string Tag::GetTagName() const 
-  {
-    assert(mem!=NULL); 
-    return mem->tagname;
-  }
+	{
+		assert(mem!=NULL); 
+		return mem->tagname;
+	}
 	__INLINE bool Tag::isDefined(ElementType type) const 
-  {
-    assert(mem!=NULL);
-    assert(OneType(type)); 
-    return GetPosition(type) != ENUMUNDEF;
-  }
+	{
+		assert(mem!=NULL);
+		assert(OneType(type)); 
+		return GetPosition(type) != ENUMUNDEF;
+	}
 	__INLINE bool Tag::isSparse(ElementType type) const 
-  {
-    assert(mem!=NULL);
-    assert(OneType(type)); 
-    return mem->sparse[ElementNum(type)];
-  }
+	{
+		assert(mem!=NULL);
+		assert(OneType(type)); 
+		return mem->sparse[ElementNum(type)];
+	}
 	__INLINE bool Tag::isValid() const 
-  {
-    return mem != NULL;
-  }
+	{
+		return mem != NULL;
+	}
 	__INLINE Mesh * Tag::GetMeshLink() const 
-  {
-    assert(mem!=NULL); 
-    return mem->m_link;
-  }		
+	{
+		assert(mem!=NULL); 
+		return mem->m_link;
+	}		
 	__INLINE bool Tag::isSparseByDim(INMOST_DATA_INTEGER_TYPE typenum) const 
-  {
-    assert(mem!=NULL); 
-    return mem->sparse[typenum];
-  }
+	{
+		assert(mem!=NULL); 
+		return mem->sparse[typenum];
+	}
 	__INLINE bool Tag::isDefinedByDim(INMOST_DATA_INTEGER_TYPE typenum) const 
-  {
-    assert(mem!=NULL); 
-    return GetPositionByDim(typenum) != ENUMUNDEF;
-  }
+	{
+		assert(mem!=NULL); 
+		return GetPositionByDim(typenum) != ENUMUNDEF;
+	}
 	__INLINE void Tag::SetBulkDataType(INMOST_MPI_Type type) 
-  {
-    assert(mem!=NULL);
-    assert(mem->dtype == DATA_BULK ); 
-    mem->bulk_data_type = type;
-  }
-	
+	{
+		assert(mem!=NULL);
+		assert(mem->dtype == DATA_BULK ); 
+		mem->bulk_data_type = type;
+	}
+
 }
 
-  //Implementation of inlined functions
+//Implementation of inlined functions
 //#include "Source/Data/tag_inline.hpp"
 
 

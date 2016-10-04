@@ -24,6 +24,8 @@ inline static unsigned int flip(const unsigned int * fp)
 #define _2(x)	(x >> 22 )
 
 void draw_screen();
+void svg_draw(std::ostream & file);
+void svg_line(std::ostream & file, double x1, double y1, double z1, double x2, double y2, double z2, double modelview[16], double projection[16], int viewport[4]);
 
 using namespace INMOST;
 Mesh * mesh;
@@ -35,6 +37,7 @@ double shift[3] = {0,0,0};
 bool perspective = false;
 int drawedges = 0, draw_orphan = true;
 bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false, elevation = false;
+bool drawaxis = true, drawcolorbar = true;
 Element disp_e;
 Mesh::GeomParam table;
 ElementArray<Element> orphans;
@@ -648,7 +651,7 @@ bool write_tga( const char *filename, int w, int h, char *buffer )
 
 void screenshot()
 {
-  const int tiles = 8;
+  const int tiles = 4;
   int oldwidth = width;
   int oldheight = height;
   width *= tiles;
@@ -735,9 +738,9 @@ struct color_t
 	float g() const {return c[1];}
 	float b() const {return c[2];}
 	float a() const {return c[3];}
-	color_t operator *(float mult){return color_t(c[0]*mult,c[1]*mult,c[2]*mult,c[3]*mult);}
-	color_t operator +(color_t other){return color_t(c[0]+other.c[0],c[1]+other.c[1],c[2]+other.c[2],c[3]+other.c[3]);}
-	color_t operator -(color_t other){return color_t(c[0]-other.c[0],c[1]-other.c[1],c[2]-other.c[2],other.c[3]);}
+	color_t operator *(float mult)const {return color_t(c[0]*mult,c[1]*mult,c[2]*mult,c[3]*mult);}
+	color_t operator +(color_t other)const{return color_t(c[0]+other.c[0],c[1]+other.c[1],c[2]+other.c[2],c[3]+other.c[3]);}
+	color_t operator -(color_t other)const {return color_t(c[0]-other.c[0],c[1]-other.c[1],c[2]-other.c[2],other.c[3]);}
 };
 
 class color_bar
@@ -852,10 +855,14 @@ public:
 	void set_max(float newmax) { max = newmax;}
 	float get_min() { return min;}
 	float get_max() { return max;}
-	color_t pick_color(float value) 
+	color_t pick_color(float value) const
 	{
+		if( value < min ) 
+			return color_t(0.4,1.0,0.4);
+		if( value > max )
+			return color_t(0,0.6,0);
 		float t = (value-min)/(max-min);
-		std::vector<float>::iterator it = std::lower_bound(ticks.begin(),ticks.end(),t);
+		std::vector<float>::const_iterator it = std::lower_bound(ticks.begin(),ticks.end(),t);
 		size_t pos = it-ticks.begin();
 		if( it == ticks.end() || pos >= ticks.size() ) 
 		{
@@ -879,7 +886,7 @@ public:
 	{
 		glDisable( GL_TEXTURE_1D );
 	}
-	double pick_texture(double value)
+	double pick_texture(double value) const
 	{
 		double eps = 1.0/static_cast<double>(samples);
 		return (value-min)/(max-min)*(1-2*eps) + eps;
@@ -950,6 +957,63 @@ public:
 		}
 		glEnd();
 	}
+
+	void DrawSVG(std::ostream & file, double modelview[16], double projection[16], int viewport[4])
+	{
+		float text_pos = -0.89;
+		float left = -0.95;
+		float right = -0.9;
+		float bottom = -0.75;
+		float top = 0.75;
+		double px,py;
+		double px1, py1, z;
+		double px2, py2;
+		file << "<g>"<<std::endl;
+		for(int i = 0; i < ticks.size()-1; ++i)
+		{
+			colors[i].set_color();
+			gluProject(left,bottom+ticks[i]*(top-bottom),0,modelview,projection,viewport,&px1,&py1,&z); py1 = height - py1;
+			gluProject(right,bottom+ticks[i+1]*(top-bottom),0,modelview,projection,viewport,&px2,&py2,&z); py2 = height - py2;
+			file << "<def>" << std::endl;
+			file << "<linearGradient id=\"grad"<<i<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << px1 << "\" y1=\""<<py1<<"\" x2=\""<<px1<<"\" y2=\""<<py2<<"\">" << std::endl;
+			file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(colors[i].r()*255)<<","<<floor(colors[i].g()*255)<<","<<floor(colors[i].b()*255)<<")\"/>" << std::endl;
+			file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor(colors[i+1].r()*255)<<","<<floor(colors[i+1].g()*255)<<","<<floor(colors[i+1].b()*255)<<")\"/>" << std::endl;
+        	file << "</linearGradient>" << std::endl;
+			file << "</def>" << std::endl;
+			file << "<rect stroke=\"none\" x=\""<<px1<<"\" y=\""<<py2<<"\" width=\""<< px2-px1 <<"\" height=\""<<py1-py2<<"\" fill=\"url(#grad"<<i<<")\"/>" << std::endl;
+		}
+		
+		int tickmarks = 11;
+		
+		for(int i = 0; i < tickmarks; ++i)
+		{
+			float t = 1.0f*i/static_cast<float>(tickmarks-1);
+			glRasterPos2f(text_pos,bottom+t*(top-bottom));
+			gluProject(text_pos,bottom+t*(top-bottom),0,modelview,projection,viewport,&px,&py,&z); py = height - py;
+			file << "<text x=\""<<px<<"\" y=\""<<py<<"\">" << min+t*(max-min) << "</text>" << std::endl;
+		}
+		if( comment != "")
+		{
+			gluProject(left,bottom-0.04,0,modelview,projection,viewport,&px,&py,&z); py = height - py;
+			file << "<text x=\""<<px<<"\" y=\""<<py<<"\">" << comment.c_str() << "</text>" << std::endl;
+		}
+
+		gluProject(left,bottom,0,modelview,projection,viewport,&px1,&py1,&z); py1 = height - py1;
+		gluProject(right,top,0,modelview,projection,viewport,&px2,&py2,&z); py2 = height - py2;
+		file << "<rect stroke=\"black\" fill=\"none\" x=\""<<px1<<"\" y=\""<<py2<<"\" width=\""<<px2-px1<<"\" height=\""<<py1-py2<<"\"/>" << std::endl;
+		
+		file << "<g stroke=\"black\">" << std::endl;
+		for(int i = 0; i < tickmarks; ++i)
+		{
+			float t = 1.0f*i/static_cast<float>(tickmarks-1);
+			float pos = bottom+t*(top-bottom);
+			svg_line(file,left,pos,0,left+(right-left)*0.2,pos,0,modelview,projection,viewport);
+			svg_line(file,right+(left-right)*0.25,pos,0,right,pos,0,modelview,projection,viewport);
+		}
+		file << "</g>" << std::endl;
+		file << "</g>" << std::endl;
+	}
+	
 } * CommonColorBar;
 
 
@@ -1076,6 +1140,157 @@ public:
 			}
 		}
 	}
+	void svg_draw_colour(std::ostream & file, double modelview[16], double projection[16], int viewport[4]) const
+	{
+		static int shape_id = 0;
+		if( colors.empty() && texcoords.empty() )
+		{
+			double pcntx,pcnty,z;
+			double pverts1x,pverts1y;
+			double pverts2x,pverts2y;
+			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
+			//file << "<g stroke=\"none\" fill=\"rgb("<<floor(c[0]*255)<<","<<floor(c[1]*255)<<","<<floor(c[2]*255)<<")\" fill-opacity=\"" << c[3] << "\">" << std::endl;
+			file << "<g stroke=\"none\" fill=\"white\" fill-opacity=\"" << c[3] << "\">" << std::endl;
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
+				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height - pverts2y;
+				file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
+			}
+			file << "</g>" << std::endl;
+		}
+		
+		else if( !colors.empty() )
+		{
+			double pcntx,pcnty,z;
+			double pverts1x,pverts1y;
+			double pverts2x,pverts2y;
+			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
+			file << "<g stroke=\"none\" fill=\"rgb("<<floor(cntcolor.r()*255)<<","<<floor(cntcolor.g()*255)<<","<<floor(cntcolor.b()*255)<<")\">" << std::endl;
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
+				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
+				file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
+			}
+			file << "</g>" << std::endl;
+		}
+		else if( !texcoords.empty() )
+		{
+			double pcntx,pcnty,z;
+			double pverts1x,pverts1y;
+			double pverts2x,pverts2y;
+			color_t c0 = CommonColorBar->pick_color(cnttexcoord*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min());
+			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
+			//file << "<!-- " << cnttexcoord << " color " << c0.r() << " " << c0.g() << " " << c0.b() << " " << c0.a() << " -->" << std::endl;
+			//file << "<g stroke=\"none\" fill=\"rgb("<<floor(c0.r()*255)<<","<<floor(c0.g()*255)<<","<<floor(c0.b()*255)<<")\" fill-opacity=\"" << c[3] << "\">" << std::endl;
+			file << "<g stroke=\"none\" fill=\"rgb("<<floor(c0.r()*255)<<","<<floor(c0.g()*255)<<","<<floor(c0.b()*255)<<")\">" << std::endl;
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height - pverts1y;
+				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height - pverts2y;
+				file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
+			}
+			file << "</g>" << std::endl;
+		}
+		/*
+		
+		else if( !texcoords.empty() )
+		{
+			double pverts0x,pverts0y,z;
+			double pverts1x,pverts1y;
+			double pverts2x,pverts2y;
+			color_t c0 = CommonColorBar->pick_color(cnttexcoord*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min()),c1,c2;
+			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pverts0x,&pverts0y,&z); pverts0y = height-pverts0y;
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				c1 = CommonColorBar->pick_color(texcoords[k/3]*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min());
+				c2 = CommonColorBar->pick_color(texcoords[(k/3+1)%texcoords.size()]*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min());
+				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
+				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
+				file << "<defs>" << std::endl;
+				file << "<linearGradient id=\"fadeA"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts0x << "\" y1=\"" << pverts0y << "\" x2=\"" << (pverts1x+pverts2x)*0.5 << "\" y2=\"" << (pverts1y+pverts2y)*0.5 << "\">" << std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(c0.r()*255)<<","<<floor(c0.g()*255)<<","<<floor(c0.b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor((c1.r()+c2.r())*0.5*255)<<","<<floor((c1.g()+c2.g())*0.5*255)<<","<<floor((c1.b()+c2.b())*0.5*255)<<")\"/>" <<std::endl;
+				file << "</linearGradient>"<<std::endl;
+				file << "<linearGradient id=\"fadeB"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts1x << "\" y1=\"" << pverts1y << "\" x2=\"" << (pverts0x+pverts2x)*0.5 << "\" y2=\"" << (pverts0y+pverts2y)*0.5 << "\">" << std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(c1.r()*255)<<","<<floor(c1.g()*255)<<","<<floor(c1.b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor((c0.r()+c2.r())*0.5*255)<<","<<floor((c0.g()+c2.g())*0.5*255)<<","<<floor((c0.b()+c2.b())*0.5*255)<<")\"/>" <<std::endl;
+				file << "</linearGradient>"<<std::endl;
+				file << "<linearGradient id=\"fadeC"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts2x << "\" y1=\"" << pverts2y << "\" x2=\"" << (pverts0x+pverts1x)*0.5 << "\" y2=\"" << (pverts0y+pverts1y)*0.5 << "\">" << std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(c2.r()*255)<<","<<floor(c2.g()*255)<<","<<floor(c2.b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor((c1.r()+c0.r())*0.5*255)<<","<<floor((c1.g()+c0.g())*0.5*255)<<","<<floor((c1.b()+c0.b())*0.5*255)<<")\"/>" <<std::endl;
+				file << "</linearGradient>"<<std::endl;
+				file << "<path id=\"pathA"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeA"<<shape_id<<")\"/>" <<std::endl;
+				file << "<path id=\"pathB"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeB"<<shape_id<<")\"/>" <<std::endl;
+				file << "<filter id=\"filter"<<shape_id<<"\">"<<std::endl;
+				file << "<feImage xlink:href=\"#pathA"<<shape_id<<"\" result=\"layerA"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
+				file << "<feImage xlink:href=\"#pathB"<<shape_id<<"\" result=\"layerB"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
+				file << "<feComposite in=\"layerA"<<shape_id<<"\" in2=\"layerB"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1\" k3=\"1\" k4=\"0\" result=\"temp"<<shape_id<<"\"/>"<<std::endl;
+				file << "<feComposite in=\"temp"<<shape_id<<"\" in2=\"graphic"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1\" k3=\"1\" k4=\"0\"/>"<<std::endl;
+				file << "</filter>"<<std::endl;
+				file << "</defs>" << std::endl;
+				file << "<g stroke=\"none\">" << std::endl;
+				file << "<path d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeC"<<shape_id<<")\" filter=\"url(#filter"<<shape_id<<")\"/>" <<std::endl;
+				file << "</g>" << std::endl;
+				shape_id++;
+			}
+		}
+		else if( !colors.empty() )
+		{
+			double pverts0x,pverts0y,z;
+			double pverts1x,pverts1y;
+			double pverts2x,pverts2y;
+			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pverts0x,&pverts0y,&z); pverts0y = height-pverts0y;
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
+				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
+				file << "<defs>" << std::endl;
+				file << "<linearGradient id=\"fadeA"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts0x << "\" y1=\"" << pverts0y << "\" x2=\"" << (pverts1x+pverts2x)*0.5 << "\" y2=\"" << (pverts1y+pverts2y)*0.5 << "\">" << std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(cntcolor.r()*255)<<","<<floor(cntcolor.g()*255)<<","<<floor(cntcolor.b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
+				file << "</linearGradient>"<<std::endl;
+				file << "<linearGradient id=\"fadeB"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts1x << "\" y1=\"" << pverts1y << "\" x2=\"" << (pverts0x+pverts2x)*0.5 << "\" y2=\"" << (pverts0y+pverts2y)*0.5 << "\">" << std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(colors[k/3].r()*255)<<","<<floor(colors[k/3].g()*255)<<","<<floor(colors[k/3].b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
+				file << "</linearGradient>"<<std::endl;
+				file << "<linearGradient id=\"fadeC"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts2x << "\" y1=\"" << pverts2y << "\" x2=\"" << (pverts0x+pverts1x)*0.5 << "\" y2=\"" << (pverts0y+pverts1y)*0.5 << "\">" << std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(colors[(k/3+1)%colors.size()].r()*255)<<","<<floor(colors[(k/3+1)%colors.size()].g()*255)<<","<<floor(colors[(k/3+1)%colors.size()].b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
+				file << "</linearGradient>"<<std::endl;
+				file << "<path id=\"pathA"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeA"<<shape_id<<")\"/>" <<std::endl;
+				file << "<path id=\"pathB"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeB"<<shape_id<<")\"/>" <<std::endl;
+				file << "<filter id=\"filter"<<shape_id<<"\">"<<std::endl;
+				file << "<feImage xlink:href=\"#pathA"<<shape_id<<"\" result=\"layerA"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
+				file << "<feImage xlink:href=\"#pathB"<<shape_id<<"\" result=\"layerB"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
+				file << "<feComposite in=\"layerA"<<shape_id<<"\" in2=\"layerB"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1.0\" k4=\"0\" result=\"temp"<<shape_id<<"\"/>"<<std::endl;
+				file << "<feComposite in=\"temp"<<shape_id<<"\" in2=\"graphic"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1.0\" k4=\"0\"/>"<<std::endl;
+				file << "</filter>"<<std::endl;
+				file << "</defs>" << std::endl;
+				file << "<g stroke=\"none\" stroke-width=\"0\" shape-rendering=\"crispEdges\">" << std::endl;
+				file << "<path d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeC"<<shape_id<<")\" filter=\"url(#filter"<<shape_id<<")\"/>" <<std::endl;
+				file << "</g>" << std::endl;
+				shape_id++;
+			}
+		}
+		*/
+
+		if( ::drawedges && ::drawedges != 2 )
+		{
+			double px,py,z;
+			file << "<g stroke=\"black\">" << std::endl;
+			file << "<polyline fill=\"none\" points=\"";
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				gluProject(verts[k%verts.size()+0],verts[k%verts.size()+1],verts[k%verts.size()+2],modelview,projection,viewport,&px,&py,&z); py = height-py;
+				file << px << "," << py << " ";
+			}
+			file << "\" />" << std::endl;
+			file << "</g>" << std::endl;
+		}
+		
+	}
 	void draw_colour_alpha(double alpha) const
 	{
 		if( texcoords.empty() )
@@ -1132,6 +1347,34 @@ public:
 			glVertex3dv(&verts[(k+3)%verts.size()]);
 		}
 	}
+	void svg_draw(std::ostream & file, double modelview[16],double projection[16],int viewport[4]) const
+	{
+		double pcntx, pcnty, z;
+		double pverts1x, pverts1y;
+		double pverts2x, pverts2y;
+		gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
+		file << "<g stroke=\"none\">" << std::endl;
+		for(unsigned k = 0; k < verts.size(); k+=3) 
+		{
+			gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
+			gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
+			file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
+		}
+		file << "</g>" << std::endl;
+		if( ::drawedges && ::drawedges != 2 )
+		{
+			double px,py,z;
+			file << "<g stroke=\"black\">" << std::endl;
+			file << "<polyline fill=\"none\" points=\"";
+			for(unsigned k = 0; k < verts.size(); k+=3) 
+			{
+				gluProject(verts[k%verts.size()+0],verts[k%verts.size()+1],verts[k%verts.size()+2],modelview,projection,viewport,&px,&py,&z); py = height-py;
+				file << px << "," << py << " ";
+			}
+			file << "\" />" << std::endl;
+			file << "</g>" << std::endl;
+		}
+	}
 	void drawedges() const
 	{
 		for(unsigned k = 0; k < verts.size(); k+=3) 
@@ -1139,6 +1382,17 @@ public:
 			glVertex3dv(&verts[k]); 
 			glVertex3dv(&verts[(k+3)%verts.size()]); 
 		}
+	}
+	void svg_drawedges(std::ostream & file, double modelview[16],double projection[16],int viewport[4]) const
+	{
+		double px, py, z;
+		file << "<polyline fill=\"none\" points=\"";
+		for(unsigned k = 0; k < verts.size(); k+=3) 
+		{
+			gluProject(verts[k%verts.size()+0],verts[k%verts.size()+1],verts[k%verts.size()+2],modelview,projection,viewport,&px,&py,&z); py = height-py;
+			file << px << "," << py << " ";
+		}
+		file << "\" />" << std::endl;
 	}
 	bool operator <(const face2gl & other) const {return dist < other.dist;}
 	void set_color(double r, double g, double b, double a) {c[0] = r; c[1] = g; c[2] = b; c[3] = a;}
@@ -1241,6 +1495,21 @@ void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
 	glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
+void svg_draw_faces_nc(std::ostream & file, std::vector<face2gl> & set, double modelview[16], double projection[16], int viewport[4], int highlight = -1)
+{
+	if( drawedges == 2 || drawedges == 3 ) return;
+	
+	file << "<g stroke=\"none\" fill=\"green\" fill-opacity=\"0.1\">" << std::endl;
+	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].svg_draw(file,modelview,projection,viewport);
+	file << "</g>" << std::endl;
+	if( highlight != -1 )
+	{
+		file << "<g fill=\"red\" fill-opacity=\"1\">" << std::endl;
+		set[highlight].svg_draw(file,modelview,projection,viewport);
+		file << "</g>" << std::endl;
+	}
+}
+
 void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 {
 	if( drawedges == 2 || drawedges == 3) return;
@@ -1262,6 +1531,25 @@ void draw_faces(std::vector<face2gl> & set, int highlight = -1)
 	}
 	
 	glDisable(GL_POLYGON_OFFSET_FILL);
+
+}
+
+void svg_draw_faces(std::ostream & file, std::vector<face2gl> & set, double modelview[16], double projection[16], int viewport[4], int highlight = -1)
+{
+	if( drawedges == 2 || drawedges == 3) return;
+	
+	
+	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].svg_draw_colour(file,modelview,projection,viewport);
+	
+	
+	if( highlight != -1 )
+	{
+		file << "<g color=\"red\" fill-opacity=\"1\">" << std::endl;
+		set[highlight].svg_draw(file,modelview,projection,viewport);
+		file << "</g>" << std::endl;
+	}
+	
+	
 
 }
 
@@ -1294,6 +1582,21 @@ void draw_edges(std::vector<face2gl> & set, int highlight = -1)
 		  glBegin(GL_LINES);
 		  set[highlight].drawedges();
 		  glEnd();
+	  }
+  }
+}
+
+void svg_draw_edges(std::ostream & file, std::vector<face2gl> & set, double modelview[16], double projection[16], int viewport[4], int highlight = -1)
+{
+  if( drawedges && drawedges != 2 )
+  {
+	  
+	  for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].svg_drawedges(file,modelview,projection,viewport);
+	  if( highlight != -1 )
+	  {
+		  file << "<g fill=\"green\">" << std::endl;
+		  set[highlight].svg_drawedges(file,modelview,projection,viewport);
+		  file << "</g>" << std::endl;
 	  }
   }
 }
@@ -3581,7 +3884,12 @@ void keyboard(unsigned char key, int x, int y)
 		mesh->Save("mesh.xml");
 	}
 	else if( key == 't' )
+	{
 		screenshot();
+		std::fstream fout("screenshot.svg",std::ios::out);
+		svg_draw(fout);
+		fout.close();
+	}
 }
 
 void keyboard2(unsigned char key, int x, int y)
@@ -3887,6 +4195,7 @@ void draw_screen()
 		rotate();
 
 	//axis
+	if( drawaxis )
 	{
 		glLineWidth(3.0);
 		glBegin(GL_LINES);
@@ -3910,6 +4219,7 @@ void draw_screen()
 
 
 	//if( planecontrol )
+	if( drawaxis )
 	{
 		glColor3f(0.6,0.4,0.2);
 		glPointSize(5);
@@ -4025,8 +4335,8 @@ void draw_screen()
 		}
 
 
-    for(int k = 0; k < streamlines.size(); ++k)
-      streamlines[k].Draw(true);//interactive);
+		for(int k = 0; k < streamlines.size(); ++k)
+			streamlines[k].Draw(true);//interactive);
 
 		if( boundary )
 		{
@@ -4039,7 +4349,7 @@ void draw_screen()
 				face2gl::radix_sort_dist(all_boundary);
 
 
-        for(INMOST_DATA_ENUM_TYPE q = 0; q < added_faces.size() ; q++) 
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < added_faces.size() ; q++) 
 					added_faces[q].compute_dist(campos);
 				//std::sort(all_boundary.rbegin(),all_boundary.rend());
 				face2gl::radix_sort_dist(added_faces);
@@ -4062,64 +4372,64 @@ void draw_screen()
 
 
 
-  glEnable(GL_BLEND);
-  glColor4f(0,0,0,0.25); 
-  draw_edges(added_faces);
-  draw_faces_nc(added_faces);
-  glDisable(GL_BLEND);
+	glEnable(GL_BLEND);
+	glColor4f(0,0,0,0.25); 
+	draw_edges(added_faces);
+	draw_faces_nc(added_faces);
+	glDisable(GL_BLEND);
 
-  
-  if( !added_edges.empty() )
-  {
-    glColor3f(0,0,0);
-    glBegin(GL_LINES);
-    for(ElementArray<Edge>::iterator it = added_edges.begin(); it != added_edges.end(); ++it)
-    {
-      glVertex3dv(it->getBeg()->Coords().data());
-      glVertex3dv(it->getEnd()->Coords().data());
-    }
-    glEnd();
-  }
 
-  glLineWidth(2.0);
+	if( !added_edges.empty() )
+	{
+		glColor3f(0,0,0);
+		glBegin(GL_LINES);
+		for(ElementArray<Edge>::iterator it = added_edges.begin(); it != added_edges.end(); ++it)
+		{
+			glVertex3dv(it->getBeg()->Coords().data());
+			glVertex3dv(it->getEnd()->Coords().data());
+		}
+		glEnd();
+	}
 
-  glBegin(GL_LINES);
-  for(int k = 0; k < conormals.size(); k+=3)
-  {
-    glVertex3dv(&conormals[k]);
-  }
-  glEnd();
+	glLineWidth(2.0);
 
-  glLineWidth(1.0);
+	glBegin(GL_LINES);
+	for(int k = 0; k < conormals.size(); k+=3)
+	{
+		glVertex3dv(&conormals[k]);
+	}
+	glEnd();
 
-  glPointSize(5.0);
+	glLineWidth(1.0);
 
-  glColor3f(0,0,1);
-  glBegin(GL_POINTS);
-  for(int k = 0; k < harmonic_points.size(); k+=3)
-    glVertex3dv(&harmonic_points[k]);
-  glEnd();
+	glPointSize(5.0);
 
-  glColor3f(1,0,0);
-  glBegin(GL_POINTS);
-  for(int k = 0; k < dual_harmonic_points.size(); k+=9)
-    glVertex3dv(&dual_harmonic_points[k+3]);
-  glEnd();
+	glColor3f(0,0,1);
+	glBegin(GL_POINTS);
+	for(int k = 0; k < harmonic_points.size(); k+=3)
+		glVertex3dv(&harmonic_points[k]);
+	glEnd();
 
-  glPointSize(1.0);
+	glColor3f(1,0,0);
+	glBegin(GL_POINTS);
+	for(int k = 0; k < dual_harmonic_points.size(); k+=9)
+		glVertex3dv(&dual_harmonic_points[k+3]);
+	glEnd();
 
-  glColor3f(0.5,0.5,0.5);
-  glBegin(GL_LINES);
-  for(int k = 0; k < dual_harmonic_points.size(); k+=9)
-  {
-    glVertex3dv(&dual_harmonic_points[k+0]);
-    glVertex3dv(&dual_harmonic_points[k+3]);
-    glVertex3dv(&dual_harmonic_points[k+3]);
-    glVertex3dv(&dual_harmonic_points[k+6]);
-  }
-  glEnd();
+	glPointSize(1.0);
 
-	
+	glColor3f(0.5,0.5,0.5);
+	glBegin(GL_LINES);
+	for(int k = 0; k < dual_harmonic_points.size(); k+=9)
+	{
+		glVertex3dv(&dual_harmonic_points[k+0]);
+		glVertex3dv(&dual_harmonic_points[k+3]);
+		glVertex3dv(&dual_harmonic_points[k+3]);
+		glVertex3dv(&dual_harmonic_points[k+6]);
+	}
+	glEnd();
+
+
 	if( draw_orphan )
 		for(int k = 0; k < (int)orphans.size(); ++k)
 			DrawElement(orphans[k],color_t(1,0,1),color_t(0,1,1),color_t(0,0,1));
@@ -4127,15 +4437,15 @@ void draw_screen()
 	if( disp_e.isValid() )
 		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1));
 
-	
+
 	double top = 0.96;
 	if( picked != -1 )
 	{
-		
+
 		Element e = clip_boundary[picked].get_elem(mesh);
 		top = display_elem_info(e,0.96,0.0,0.04);
 	}
-	
+
 	if( disp_e.isValid() )
 		top = display_elem_info(disp_e,top+0.04,0.0,0.04);
 
@@ -4149,8 +4459,8 @@ void draw_screen()
 		{
 			if( ! CommonInput->Canceled() )
 			{
-        if( visualization_prompt_active == 2 )
-        {
+				if( visualization_prompt_active == 2 )
+				{
 					int k = 0, slen = (int)strlen(visualization_prompt);
 					for(k = 0; k < slen; ++k) 
 					{
@@ -4160,20 +4470,20 @@ void draw_screen()
 							break;
 						}
 					}
-          if( k < slen && k+1 < slen )
-          {
-            double minv, maxv;
-            visualization_prompt[k] = ':';
-            minv = atof(visualization_prompt);
-            maxv = atof(visualization_prompt+k+1);
-            CommonColorBar->set_min(minv);
-            CommonColorBar->set_max(maxv);
-            clipupdate = true;
-          }
-          else printf("malformed string %s for color map bounds\n",visualization_prompt);
+					if( k < slen && k+1 < slen )
+					{
+						double minv, maxv;
+						visualization_prompt[k] = ':';
+						minv = atof(visualization_prompt);
+						maxv = atof(visualization_prompt+k+1);
+						CommonColorBar->set_min(minv);
+						CommonColorBar->set_max(maxv);
+						clipupdate = true;
+					}
+					else printf("malformed string %s for color map bounds\n",visualization_prompt);
 					visualization_prompt_active = 0;
-        }
-        else if( visualization_prompt_active == 1 )
+				}
+				else if( visualization_prompt_active == 1 )
 				{
 					char typen[1024],name[1024];
 					unsigned comp;
@@ -4195,9 +4505,9 @@ void draw_screen()
 							break;
 						}
 					}
-					
+
 					//std::cout << "k: " << k << " l: " << l << std::endl;
-					
+
 					if( k == slen && l == slen+1 )
 					{
 						for(int q = 0; q < slen; ++q)
@@ -4212,10 +4522,10 @@ void draw_screen()
 							}
 							correct_input = true;
 							glutPostRedisplay();
-							
+
 						}
 					}
-					
+
 					if( k < slen && l == slen ) //ElementType:Number format
 					{
 						disp_e = InvalidElement();
@@ -4250,12 +4560,12 @@ void draw_screen()
 									shift[r] = -shift[r];
 							}
 						}
-						
+
 					}
-				
+
 					if( k < slen && l < slen && l+1 < slen )
 					{
-					
+
 						strcpy(typen,visualization_prompt);
 						strcpy(name,visualization_prompt+k+1);
 						comp = atoi(visualization_prompt+l+1);
@@ -4298,7 +4608,7 @@ void draw_screen()
 											printf("prepearing data for visualization\n");
 											if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
 											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG",DATA_REAL,NODE,NONE,1);
-											
+
 											for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
 											{
 												ElementArray<Element> elems = it->getAdjElements(visualization_type);
@@ -4351,8 +4661,8 @@ void draw_screen()
 											INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
 											for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++) 
 											{
-												all_boundary.push_back(DrawFace(boundary_faces[k]));
-												if( k%pace == 0 ) all_boundary.back().set_flag(true);
+											all_boundary.push_back(DrawFace(boundary_faces[k]));
+											if( k%pace == 0 ) all_boundary.back().set_flag(true);
 											}
 											*/
 										}
@@ -4369,7 +4679,7 @@ void draw_screen()
 					else if(!correct_input) printf("malformed string %s for visualization\n",visualization_prompt);
 					visualization_prompt_active = 0;
 					//visualization_prompt[0] = '\0';
-				
+
 				}
 
 				glutPostRedisplay();
@@ -4380,7 +4690,7 @@ void draw_screen()
 		glEnable(GL_DEPTH_TEST);
 	}
 
-	if( visualization_tag.isValid() )
+	if( visualization_tag.isValid() && drawcolorbar )
 	{
 		glDisable(GL_DEPTH_TEST);
 		glLoadIdentity();
@@ -4396,6 +4706,130 @@ void draw()
 	glutSwapBuffers();
 }
 
+
+void svg_line(std::ostream & file, double x1, double y1, double z1, double x2, double y2, double z2, double modelview[16], double projection[16], int viewport[4])
+{
+	double px1,py1,z;
+	double px2,py2;
+	gluProject(x1,y1,z1,modelview,projection,viewport,&px1,&py1,&z); py1 = height-py1;
+	gluProject(x2,y2,z2,modelview,projection,viewport,&px2,&py2,&z); py2 = height-py2;
+	file << "<line x1=\"" << px1 << "\" y1=\"" << py1 << "\" x2=\"" << px2 << "\" y2=\"" << py2 << "\"/>" << std::endl;
+}
+
+void svg_draw(std::ostream & file)
+{
+	//file << "<?xml version=\"1.0\" stanfalone=\"no\">" << std::endl;
+	//file << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">" << std::endl;
+	file << "<svg width=\"" << width << "\" height=\"" << height << "\" version=\"1.1\">" << std::endl;
+
+	//glDepthMask(GL_TRUE);
+	glLoadIdentity();
+	set_matrix3d();
+
+
+	Storage::real mult = zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5*0.1;
+	if( perspective )
+		glTranslated(0,0,-zoom*2*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5);
+	if( planecontrol )
+		rotate_from_stack();
+	else
+		rotate();
+
+	int viewport[4];
+	double projection[16];
+	double modelview[16]; 
+	glGetDoublev (GL_PROJECTION_MATRIX, projection);
+	glGetDoublev (GL_MODELVIEW_MATRIX, modelview);
+	glGetIntegerv(GL_VIEWPORT,viewport);
+
+	//axis
+	/*
+	{
+		file << "<g stroke-width=\"3\">" << std::endl;
+		file << "<g stroke=\"red\">" << std::endl;
+		svg_line(file, mult,0,0, 0,0,0, modelview,projection,viewport);
+		file << "</g>" << std::endl;
+		file << "<g stroke=\"green\">" << std::endl;
+		svg_line(file, 0,mult,0, 0,0,0, modelview,projection,viewport);
+		file << "</g>" << std::endl;
+		file << "<g stroke=\"blue\">" << std::endl;
+		svg_line(file, 0,0,mult, 0,0,0, modelview,projection,viewport);
+		file << "</g>" << std::endl;
+		file << "</g>" << std::endl;
+	}
+	*/
+	//glPointSize(1);
+	
+	//glTranslated(-(sleft+sright)*0.5+shift[0],-(sbottom+stop)*0.5 + shift[1],-(snear+sfar)*0.5 + shift[2]);
+	
+	glTranslated(shift[0],shift[1],shift[2]);
+
+	glGetDoublev (GL_PROJECTION_MATRIX, projection);
+	glGetDoublev (GL_MODELVIEW_MATRIX, modelview);
+	
+
+	double campos[3] = {0.5,0.5,0}, pickp[3], pickd[3];
+	whereami(campos[0],campos[1],campos[2]);
+	int picked = -1;
+
+	
+	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
+
+	{
+		
+		if( oclipper ) 
+		{
+			//std::vector<face2gl> temp_boundary;
+			//oclipper->gen_clip(temp_boundary,n);
+			//face2gl::radix_sort_dist(temp_boundary);
+			//svg_draw_faces(file,temp_boundary,modelview,projection,viewport);
+
+			std::vector<face2gl> sorted_clip_boundary(clip_boundary);
+			face2gl::radix_sort_dist(sorted_clip_boundary);
+			svg_draw_faces(file,sorted_clip_boundary,modelview,projection,viewport);
+
+			//file << "<g stroke=\"black\">" << std::endl;
+			//svg_draw_edges(file,sorted_clip_boundary,modelview,projection,viewport);
+			//file << "</g>" << std::endl;
+		}
+		
+		
+
+
+		if( draw_volumetric )
+		{
+			//if( bndupdate ) CommonVolumetricView->camera(campos,interactive);
+			//CommonVolumetricView->draw(interactive);
+		}
+
+
+		//for(int k = 0; k < streamlines.size(); ++k)
+		//streamlines[k].Draw(true);//interactive);
+
+		if( boundary )
+		{
+			file << "<g fill=\"black\" fill-opacity=\"0.25\">" << std::endl;
+			//svg_draw_edges(file,all_boundary,modelview,projection,viewport);
+			svg_draw_faces_nc(file,all_boundary,modelview,projection,viewport);
+			file << "</g>" << std::endl;
+		}
+	}
+
+	
+	if( visualization_tag.isValid() )
+	{
+		glLoadIdentity();
+		set_matrix2d();
+
+		glGetDoublev (GL_PROJECTION_MATRIX, projection);
+		glGetDoublev (GL_MODELVIEW_MATRIX, modelview);
+		glGetIntegerv(GL_VIEWPORT,viewport);
+
+		CommonColorBar->DrawSVG(file,modelview,projection,viewport);
+	}
+	
+	file << "</svg>" << std::endl;
+}
 
 
 int main(int argc, char ** argv)
