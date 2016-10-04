@@ -341,7 +341,7 @@ namespace INMOST
     Tag ValueTag() {return value_tag;}
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
     void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    bool isUnknown(const Storage & e) const {return false;}
+    bool isUnknown(const Storage & e) const {(void)e; return false;}
     abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new static_variable(*this));}
   };
 
@@ -389,7 +389,7 @@ namespace INMOST
     Tag VariableTag() {return variable_tag;}
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
     void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    bool isUnknown(const Storage & e) const {return false;}
+    bool isUnknown(const Storage & e) const {(void)e; return false;}
     abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable(*this));}
   };
 

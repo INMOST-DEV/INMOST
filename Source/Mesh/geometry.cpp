@@ -1165,7 +1165,7 @@ namespace INMOST
 	bool Face::CheckNormalOrientation() const
 	{
 		Mesh * mesh = GetMeshLink();
-		integer dim = mesh->GetDimensions();
+        //integer dim = mesh->GetDimensions();
 		Cell c1 = BackCell();
 		if( c1.isValid() )
 		{
@@ -1270,7 +1270,7 @@ namespace INMOST
 					cnt[r] = cnt[r]-ccnt[r];
 				measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(cnt,nrm,3);
 			}
-			bool have_rev = cur->GetPrivateMarker(rev);
+            //bool have_rev = cur->GetPrivateMarker(rev);
 			data.RemPrivateMarker(rev);
 			mesh->ReleasePrivateMarker(rev);
 			if( (measure < 0 ))// && !have_rev) || (measure > 0 && have_rev))

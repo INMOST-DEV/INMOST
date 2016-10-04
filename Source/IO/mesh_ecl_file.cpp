@@ -1766,7 +1766,6 @@ ecl_exit_loop:
 												for(int r = 0; r < (int)bn.size(); ++r)
 													std::cout << bn[r] << ":" << en[r] << " ";
 												std::cout << std::endl;
-
 											}
 											assert(count_duplicates(bedges) == 0);
 										}

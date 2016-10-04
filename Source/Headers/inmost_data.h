@@ -557,9 +557,9 @@ namespace INMOST
 		/// Copy part of the associated array or data to the destination memory.
 		/// @param tag Identifying Tag.
 		/// @param shift Starting position of the copied data.
-		/// For abstact data – number of bytes to skip, otherwise number of values to skip.
+        /// For abstact data - number of bytes to skip, otherwise number of values to skip.
 		/// @param size Number of elements to copy.
-		/// For abstact data – number of bytes to copy, otherwise number of values to copy.
+        /// For abstact data - number of bytes to copy, otherwise number of values to copy.
 		/// @param data Destination position to copy data to.
 		/// @see Storage::SetData
 		__INLINE void                       GetData             (const Tag & tag, 

@@ -302,8 +302,8 @@ namespace INMOST
 	std::istream & XMLReader::get_iStream() {return *inp.back().s;}
 	const std::istream & XMLReader::get_iStream() const {return *inp.back().s;}
 
-	XMLReader::XMLReader(const XMLReader & other) {}
-	XMLReader & XMLReader::operator =(XMLReader & other) {return *this;}
+    XMLReader::XMLReader(const XMLReader & other) {(void)other;}
+    XMLReader & XMLReader::operator =(XMLReader & other) {(void)other; return *this;}
 
 	char XMLReader::GetChar()
 	{

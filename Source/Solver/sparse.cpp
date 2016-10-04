@@ -1021,10 +1021,10 @@ namespace INMOST
 		void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = locks.get_interval_beg(); end = locks.get_interval_end();}
 #else
 		bool LockService::HaveLocks() const {return false;}
-		bool LockService::Lock(INMOST_DATA_ENUM_TYPE row) {return true;}
-		bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row) {return true;}
-		bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row) {return true;}
-		void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) {}
+        bool LockService::Lock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
+        bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
+        bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
+        void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) {(void)beg; (void)end;}
 		void LockService::DestroyLocks() {}
 		INMOST_DATA_ENUM_TYPE  LockService::GetFirstIndex() const {return 0;}
 		INMOST_DATA_ENUM_TYPE  LockService::GetLastIndex() const {return 0;}
