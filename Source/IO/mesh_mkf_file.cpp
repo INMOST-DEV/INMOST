@@ -65,7 +65,7 @@ namespace INMOST
 		{
 			std::stringstream str;
 			str << "ZONE_" << i << "_SET";
-			newsets[i] = CreateSet(str.str()).first;
+			newsets[i] = CreateSetUnique(str.str()).first;
 			newsets[i]->Integer(zone) = i;
 			if( verbosity > 1 &&  i % report_pace == 0 )
 			{
