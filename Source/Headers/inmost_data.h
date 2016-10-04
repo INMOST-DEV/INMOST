@@ -47,7 +47,7 @@ namespace INMOST
 		unsigned int v = static_cast<unsigned int>(t);  // 32-bit value to find the log2 of 
 		//static const unsigned int b[] = {0xAAAAAAAA, 0xCCCCCCCC, 0xF0F0F0F0, 0xFF00FF00, 0xFFFF0000};
 		static const unsigned int b[] = {0xAAAAAAAA, 0xCCCCCCCC, 0xF0F0F0F0};
-		register unsigned int r = (v & b[0]) != 0;
+		unsigned int r = (v & b[0]) != 0;
 		//r |= ((v & b[4]) != 0) << 4;
 		//r |= ((v & b[3]) != 0) << 3;
 		r |= ((v & b[2]) != 0) << 2;
