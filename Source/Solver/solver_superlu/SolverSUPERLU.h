@@ -1,21 +1,24 @@
-#ifndef INMOST_SOLVERANI_H
-#define INMOST_SOLVERANI_H
+#ifndef INMOST_SOLVERSUPERLU_H
+#define INMOST_SOLVERSUPERLU_H
 
 #include "inmost_solver_interface.h"
-#include "solver_ani.h"
+#include "superlu/slu_ddefs.h"
 
 namespace INMOST {
 
-    class SolverANI : public SolverInterface {
+    class SolverSUPERLU : public SolverInterface {
     private:
-        bcg solver;
-        matrix m;
-
-        INMOST_DATA_ENUM_TYPE local_size;
+        SuperMatrix A, L, U;
+        int * perm_r;
+        int * perm_c;
+        int * remap;
+        int a_size, info;
+        superlu_options_t options;
+        SuperLUStat_t stat;
     public:
-        SolverANI();
+        SolverSUPERLU();
 
-        SolverANI(const SolverInterface *other);
+        SolverSUPERLU(const SolverInterface *other);
 
         virtual void Assign(const SolverInterface *other);
 
@@ -45,11 +48,11 @@ namespace INMOST {
 
         virtual void Finalize();
 
-        virtual ~SolverANI();
+        virtual ~SolverSUPERLU();
 
     };
 
 }
 
 
-#endif //INMOST_SOLVERANI_H
+#endif //INMOST_SOLVERSUPERLU_H

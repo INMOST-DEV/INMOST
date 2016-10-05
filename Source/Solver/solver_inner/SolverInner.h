@@ -30,6 +30,8 @@ namespace INMOST {
 
         virtual bool isMatrixSet();
 
+        virtual void SetDefaultParameters();
+
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 
         virtual const INMOST_DATA_REAL_TYPE Residual() const;

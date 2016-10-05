@@ -19,48 +19,28 @@ namespace INMOST {
     void SolverInner::Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) {
         FILE *databaseFile = fopen(parameters_file, "r");
         if (!databaseFile) {
-            std::cout << "Inner options file not found" << std::endl;
             return;
         }
         char *tmp = (char *) calloc(256, sizeof(char));
         char *parameterName = (char *) calloc(128, sizeof(char));
         char *parameterValue = (char *) calloc(128, sizeof(char));
-        char *type = (char *) calloc(36, sizeof(char));
         while (!feof(databaseFile) && fgets(tmp, 256, databaseFile)) {
-            //removeSpaces(tmp);
             char *line = tmp;
             //Comment str
             if (line[0] == '#') continue;
-            //First 4 chars is 'real' or 'enum'
-            bool isReal = false, isEnum = false;
-            sscanf(line, "%s %s %s", type, parameterName, parameterValue);
-            if (strncmp(type, "real", 4) == 0) {
-                //fprintf(stdout, "Real parameter:");
-                isReal = true;
-            } else if (strncmp(type, "enum", 4) == 0) {
-                //fprintf(stdout, "Enum parameter:");
-                isEnum = true;
-            } else {
-                fprintf(stderr, "Skipping bad line: %s", line);
-                continue;
-            }
-            if (isReal) {
-                parameters.SetParameterReal(parameterName, atof(parameterValue));
-            } else {
-                parameters.SetParameterEnum(parameterName, static_cast<INMOST_DATA_ENUM_TYPE>(atoi(parameterValue)));
-            }
+            sscanf(line, "%s %s", parameterName, parameterValue);
+            parameters.SetParameter(parameterName, parameterValue);
         }
         free(parameterValue);
         free(parameterName);
         free(tmp);
-        free(type);
     }
 
     bool SolverInner::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
-        solver->EnumParameter("maxits") = parameters.GetParameterEnum("maximum_iterations");
-        solver->RealParameter("rtol") = parameters.GetParameterReal("relative_tolerance");
-        solver->RealParameter("atol") = parameters.GetParameterReal("absolute_tolerance");
-        solver->RealParameter("divtol") = parameters.GetParameterReal("divergence_tolerance");
+        solver->EnumParameter("maxits") = parameters.GetParameter("maximum_iterations").unsigned_integer();
+        solver->RealParameter("rtol") = parameters.GetParameter("relative_tolerance").real();
+        solver->RealParameter("atol") = parameters.GetParameter("absolute_tolerance").real();
+        solver->RealParameter("divtol") = parameters.GetParameter("divergence_tolerance").real();
 
         return solver->Solve(RHS, SOL);
     }
@@ -80,6 +60,24 @@ namespace INMOST {
 
     bool SolverInner::isMatrixSet() {
         return matrix != NULL;
+    }
+
+    void SolverInner::SetDefaultParameters() {
+        this->SetParameter("additive_schwartz_overlap", "1");
+        this->SetParameter("maximum_iterations", "2500");
+        this->SetParameter("reorder_nonzero", "1");
+        this->SetParameter("rescale_iterations", "6");
+        this->SetParameter("condition_estimation", "1");
+        this->SetParameter("adapt_ddpq_tolerance", "1");
+        this->SetParameter("gmres_substeps", "2");
+
+        this->SetParameter("absolute_tolerance", "1.0e-5");
+        this->SetParameter("relative_tolerance", "1.0e-12");
+        this->SetParameter("divergence_tolerance", "1.0e+100");
+        this->SetParameter("drop_tolerance", "0.005");
+        this->SetParameter("reuse_tolerance", "0.00005");
+        this->SetParameter("ddpq_tolerance", "0.75");
+        this->SetParameter("fill_level", "3");
     }
 
     const INMOST_DATA_ENUM_TYPE SolverInner::Iterations() const {

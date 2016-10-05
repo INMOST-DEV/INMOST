@@ -18,19 +18,19 @@ namespace INMOST {
             delete matrix;
         }
         matrix = new Sparse::Matrix(A);
-        info.PrepareMatrix(*matrix, parameters.GetParameterEnum("additive_schwartz_overlap"));
+        info.PrepareMatrix(*matrix, parameters.GetParameter("additive_schwartz_overlap").unsigned_integer());
         solver->ReplaceMAT(*matrix);
 
-        solver->RealParameter(":tau") = parameters.GetParameterReal("drop_tolerance");
-        solver->RealParameter(":tau2") = parameters.GetParameterReal("reuse_tolerance");
-        solver->EnumParameter(":scale_iters") = parameters.GetParameterEnum("rescale_iterations");
-        solver->RealParameter(":ddpq_tau") = parameters.GetParameterReal("ddpq_tolerance");
-        solver->EnumParameter(":reorder_nnz") = parameters.GetParameterEnum("reorder_nonzero");
-        solver->EnumParameter(":estimator") = parameters.GetParameterEnum("condition_estimation");
-        solver->EnumParameter(":ddpq_tau_adapt") = parameters.GetParameterEnum("adapt_ddpq_tolerance");
+        solver->RealParameter(":tau") = parameters.GetParameter("drop_tolerance").real();
+        solver->RealParameter(":tau2") = parameters.GetParameter("reuse_tolerance").real();
+        solver->EnumParameter(":scale_iters") = parameters.GetParameter("rescale_iterations").unsigned_integer();
+        solver->RealParameter(":ddpq_tau") = parameters.GetParameter("ddpq_tolerance").real();
+        solver->EnumParameter(":reorder_nnz") = parameters.GetParameter("reorder_nonzero").unsigned_integer();
+        solver->EnumParameter(":estimator") = parameters.GetParameter("condition_estimation").unsigned_integer();
+        solver->EnumParameter(":ddpq_tau_adapt") = parameters.GetParameter("adapt_ddpq_tolerance").unsigned_integer();
 
         if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
-            solver->EnumParameter("levels") = parameters.GetParameterEnum("gmres_substeps");
+            solver->EnumParameter("levels") = parameters.GetParameter("gmres_substeps").unsigned_integer();
         }
 
         if (!solver->isInitialized()) {

@@ -21,6 +21,10 @@ if (USE_SOLVER_ANI)
     add_subdirectory(solver_ani)
 endif()
 
+if (USE_SOLVER_SUPERLU)
+    add_subdirectory(solver_superlu)
+endif()
+
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.h" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.cpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fcbiilu2.cpp")
     set(SOLVER_DEFINITIONS ${SOLVER_DEFINITIONS} -DHAVE_SOLVER_FCBIILU2)
     set(HAVE_SOLVER_FCBIILU2 TRUE PARENT_SCOPE)

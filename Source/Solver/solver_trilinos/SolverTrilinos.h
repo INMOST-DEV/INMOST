@@ -44,6 +44,14 @@ namespace INMOST {
         std::string returnReason;
 
         void TrilinosCheckStatus(int status_id, bool &success, std::string &reason);
+
+        template <typename T>
+        std::string to_string(T const& value) {
+            std::stringstream sstr;
+            sstr << value;
+            return sstr.str();
+        }
+
     public:
         SolverTrilinos();
 
@@ -60,6 +68,8 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
+
+        virtual void SetDefaultParameters();
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

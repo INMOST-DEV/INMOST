@@ -107,6 +107,14 @@ namespace INMOST {
         return matrix != NULL;
     }
 
+    void SolverTrilinos::SetDefaultParameters() {
+        this->SetParameter("additive_schwartz_overlap", "1");
+        this->SetParameter("maximum_iterations", "2500");
+        this->SetParameter("drop_tolerance", "0.005");
+        this->SetParameter("relative_tolerance", "1.0e-12");
+        this->SetParameter("fill_level", "3");
+    }
+
     const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {
         return lastIterations;
     }

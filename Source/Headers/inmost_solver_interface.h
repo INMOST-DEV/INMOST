@@ -8,18 +8,26 @@ namespace INMOST {
 
 #if defined(USE_SOLVER)
 
+    class SolverParameter {
+    private:
+        std::string value;
+    public:
+        SolverParameter() {};
+        SolverParameter(std::string value) : value(value) {}; 
+        const INMOST_DATA_INTEGER_TYPE integer() const;
+        const INMOST_DATA_ENUM_TYPE unsigned_integer() const;
+        const INMOST_DATA_REAL_TYPE real() const;
+        const std::string str() const;
+    };
+
     class SolverParameters {
     private:
-        std::map<std::string, INMOST_DATA_ENUM_TYPE> enums;
-        std::map<std::string, INMOST_DATA_REAL_TYPE> reals;
+        std::map<std::string, SolverParameter> parameters;
     public:
         SolverParameters();
-        void SetDefaults();
-        void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value);
-        void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
+        void SetParameter(std::string name, std::string value);
 
-        const INMOST_DATA_REAL_TYPE GetParameterReal(std::string name) const;
-        const INMOST_DATA_ENUM_TYPE GetParameterEnum(std::string name) const;
+        const SolverParameter GetParameter(std::string name) const;
     };
 
     class SolverInterface {
@@ -43,20 +51,14 @@ namespace INMOST {
 
         virtual bool isMatrixSet() = 0;
 
-        virtual INMOST_DATA_REAL_TYPE GetParameterReal(std::string name) const {
-            return parameters.GetParameterReal(name);
+        virtual void SetDefaultParameters() = 0;
+
+        virtual SolverParameter GetParameter(std::string name) const {
+            return parameters.GetParameter(name);
         };
 
-        virtual INMOST_DATA_ENUM_TYPE GetParameterEnum(std::string name) const {
-            return parameters.GetParameterEnum(name);
-        };
-
-        virtual void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) {
-            parameters.SetParameterReal(name, value);
-        };
-
-        virtual void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) {
-            parameters.SetParameterEnum(name, value);
+        virtual void SetParameter(std::string name, std::string value) {
+            parameters.SetParameter(name, value);
         };
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const = 0;

@@ -245,13 +245,11 @@ namespace INMOST {
         /// Clear all internal data of the current solver including matrix, preconditioner etc.
         bool Clear();
 
-        INMOST_DATA_REAL_TYPE GetParameterReal(std::string property) const;
+        void SetDefaultParameters();
 
-        INMOST_DATA_ENUM_TYPE GetParameterEnum(std::string property) const;
+        SolverParameter GetParameter(std::string property) const;
 
-        void SetParameterReal(std::string property, INMOST_DATA_REAL_TYPE value);
-
-        void SetParameterEnum(std::string property, INMOST_DATA_ENUM_TYPE value);
+        void SetParameter(std::string property, std::string value);
 
         /// Return the number of iterations performed by the last solution.
         /// @see Sparse::Solve

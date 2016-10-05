@@ -109,21 +109,15 @@ namespace INMOST {
         return m.n != 0;
     }
 
-    INMOST_DATA_REAL_TYPE SolverANI::GetParameterReal(std::string name) const {
-        std::cout << "SolverANI::GetPropertyReal unsupported operation" << std::endl;
+    void SolverANI::SetDefaultParameters() {
+
+    }
+
+    SolverParameter SolverANI::GetParameter(std::string name) const {
         throw INMOST::SolverUnsupportedOperation;
     }
 
-    INMOST_DATA_ENUM_TYPE SolverANI::GetParameterEnum(std::string name) const {
-        std::cout << "SolverANI::GetPropertyEnum unsupported operation" << std::endl;
-        throw INMOST::SolverUnsupportedOperation;
-    }
-
-    void SolverANI::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) {
-        //throw INMOST::SolverUnsupportedOperation;
-    }
-
-    void SolverANI::SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) {
+    void SolverANI::SetParameter(std::string name, std::string value) {
         //throw INMOST::SolverUnsupportedOperation;
     }
 

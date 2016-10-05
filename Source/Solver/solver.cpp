@@ -21,6 +21,10 @@
 #include "solver_ani/SolverANI.h"
 #endif
 
+#if defined(USE_SOLVER_SUPERLU)
+#include "solver_superlu/SolverSUPERLU.h"
+#endif
+
 namespace INMOST {
 
     int *Solver::argc = NULL;
@@ -34,6 +38,7 @@ namespace INMOST {
         this->prefix = prefix;
 
         solver->SetCommunicator(_comm);
+        solver->SetDefaultParameters();
         std::string solverDatabasePath = Solver::parseDatabase(solverName);
         solver->Initialize(argc, argv, solverDatabasePath.c_str(), prefix);
     }
@@ -43,6 +48,7 @@ namespace INMOST {
         this->prefix = other.prefix;
 
         solver->SetCommunicator(other.solver->GetCommunicator());
+        solver->SetDefaultParameters();
         std::string solverDatabasePath = Solver::parseDatabase(solver->SolverName());
         solver->Initialize(argc, argv, solverDatabasePath.c_str(), prefix);
     }
@@ -50,6 +56,7 @@ namespace INMOST {
     Solver &Solver::operator=(const Solver &other) {
         if (this != &other) {
             this->solver->SetCommunicator(other.solver->GetCommunicator());
+            this->solver->SetDefaultParameters();
             this->prefix = other.prefix;
             this->solver->Assign(other.solver);
         }
@@ -99,6 +106,9 @@ namespace INMOST {
 #endif
 #if defined(USE_SOLVER_ANI)
         SolverMaster::registerSolver<SolverANI>("ani");
+#endif
+#if defined(USE_SOLVER_SUPERLU)
+        SolverMaster::registerSolver<SolverSUPERLU>("superlu");
 #endif
         Sparse::CreateRowEntryType();
     }
@@ -150,20 +160,16 @@ namespace INMOST {
         return solver->Clear();
     }
 
-    INMOST_DATA_REAL_TYPE Solver::GetParameterReal(std::string property) const {
-        return solver->GetParameterReal(property);
+    void Solver::SetDefaultParameters() {
+        return solver->SetDefaultParameters();
     }
 
-    INMOST_DATA_ENUM_TYPE Solver::GetParameterEnum(std::string property) const {
-        return solver->GetParameterEnum(property);
+    SolverParameter Solver::GetParameter(std::string property) const {
+        return solver->GetParameter(property);
     }
 
-    void Solver::SetParameterReal(std::string property, INMOST_DATA_REAL_TYPE value) {
-        solver->SetParameterReal(property, value);
-    }
-
-    void Solver::SetParameterEnum(std::string property, INMOST_DATA_ENUM_TYPE value) {
-        solver->SetParameterEnum(property, value);
+    void Solver::SetParameter(std::string property, std::string value) {
+        solver->SetParameter(property, value);
     }
 
     const INMOST_DATA_ENUM_TYPE Solver::Iterations() const {
