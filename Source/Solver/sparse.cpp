@@ -179,8 +179,6 @@ namespace INMOST
 		{
 			if( pos < IntervalBeg )
 			{
-				if(NonlocalPre.empty())
-					std::cout << "pre " << NonlocalPre.size() << " post " << NonlocalPost.size() << " pos " << pos << " beg " << IntervalBeg << " end " << IntervalEnd << std::endl;
 				assert(!NonlocalPre.empty()); //there are indices provided
 				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPre.begin(),NonlocalPre.end(),pos);
 				assert(*search == pos); //is there such index?
