@@ -802,7 +802,7 @@ namespace INMOST
 							entry.j = jj;
 							entry.k1 = kk1;
 							entry.k2 = kk2;
-							if( openshut == "OPEN" )
+							if( std::string(openshut) == "OPEN" )
 								entry.open = true;
 							else
 								entry.open = false;

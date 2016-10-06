@@ -157,6 +157,7 @@ namespace INMOST
 				}
 			}
 		}
+		std::set<INMOST_DATA_ENUM_TYPE> Pre, Post; //Nonlocal indices
 #if defined(USE_MPI)
 		if (m->GetProcessorsNumber() > 1)
 		{
@@ -228,18 +229,99 @@ namespace INMOST
 					}
 				}
 			}
+			//synchronize indices
 			last_num += first_num;
 			{
 				std::vector<Tag> exch_tags;
 				for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it) exch_tags.push_back(it->indices);
 				m->ExchangeData(exch_tags, exch_mask,0);
 			}
+			//compute out-of-bounds indices
+			for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+			{
+				for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+				{
+					if (it->indices.isDefined(etype))
+					{
+						exch_mask |= etype;
+						if (it->indices.GetSize() == ENUMUNDEF)
+						{
+							if (!it->indices.isSparse(etype))
+							{
+								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
+								{
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+									{
+										Storage::integer_array indarr = jt->IntegerArray(it->indices);
+										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										{
+											if( *qt < first_num ) Pre.insert(*qt);
+											else if( *qt >= last_num ) Post.insert(*qt);
+										}
+									}
+								}
+							}
+							else
+							{
+								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
+								{
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+									{
+										Storage::integer_array indarr = jt->IntegerArray(it->indices);
+										indarr.resize(jt->RealArray(it->d.t).size());
+										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										{
+											if( *qt < first_num ) Pre.insert(*qt);
+											else if( *qt >= last_num ) Post.insert(*qt);
+										}
+									}
+								}
+							}
+						}
+						else //getsize
+						{
+							if (!it->indices.isSparse(etype))
+							{
+								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
+								{
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+									{
+										Storage::integer_array indarr = jt->IntegerArray(it->indices);
+										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										{
+											if( *qt < first_num ) Pre.insert(*qt);
+											else if( *qt >= last_num ) Post.insert(*qt);
+										}
+									}
+								}
+							}
+							else
+							{
+								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
+								{
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+									{
+										Storage::integer_array indarr = jt->IntegerArray(it->indices);
+										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
+										{
+											if( *qt < first_num ) Pre.insert(*qt);
+											else if( *qt >= last_num ) Post.insert(*qt);
+										}
+									}
+								}
+							}
+						} //getsize
+					} //isdefined
+				} //etype
+			} //it
+			// after cycle
 		}
 #endif
 		// this version will fail in parallel
 		//merger.Resize(first_num,last_num,false);
 		// use this version until there is a way to define multiple intervals in RowMerger
-		INMOST_DATA_INTEGER_TYPE max_unknowns = m->AggregateMax(static_cast<INMOST_DATA_INTEGER_TYPE>(last_num));
+		//INMOST_DATA_INTEGER_TYPE max_unknowns = m->AggregateMax(static_cast<INMOST_DATA_INTEGER_TYPE>(last_num));
+		//std::cout << "Proc " << m->GetProcessorRank() << " size " << last_num-first_num <<  " pre " << Pre.size() << " post " << Post.size() << " max " << max_unknowns << std::endl;
 #if defined(USE_OMP)
 #pragma omp parallel
 		{
@@ -247,10 +329,10 @@ namespace INMOST
 			{
 				merger.resize(omp_get_num_procs());
 			}
-			merger[omp_get_thread_num()].Resize(0,max_unknowns,false);
+			merger[omp_get_thread_num()].Resize(first_num,last_num,std::vector<INMOST_DATA_ENUM_TYPE>(Pre.begin(),Pre.end()),std::vector<INMOST_DATA_ENUM_TYPE>(Post.begin(),Post.end()),false);
 		}
 #else
-		merger.Resize(0,max_unknowns,false);
+		merger.Resize(first_num,last_num,std::vector<INMOST_DATA_ENUM_TYPE>(Pre.begin(),Pre.end()),std::vector<INMOST_DATA_ENUM_TYPE>(Post.begin(),Post.end()),false);
 #endif
 	}
 #endif //USE_MESH

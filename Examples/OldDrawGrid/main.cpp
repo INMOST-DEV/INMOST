@@ -4785,6 +4785,8 @@ void svg_draw(std::ostream & file)
 			//svg_draw_faces(file,temp_boundary,modelview,projection,viewport);
 
 			std::vector<face2gl> sorted_clip_boundary(clip_boundary);
+			for(INMOST_DATA_ENUM_TYPE q = 0; q < sorted_clip_boundary.size() ; q++)
+				sorted_clip_boundary[q].compute_dist(campos);
 			face2gl::radix_sort_dist(sorted_clip_boundary);
 			svg_draw_faces(file,sorted_clip_boundary,modelview,projection,viewport);
 
