@@ -255,8 +255,8 @@ namespace INMOST
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 										{
-											if( *qt < first_num ) Pre.insert(*qt);
-											else if( *qt >= last_num ) Post.insert(*qt);
+											if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) < first_num ) Pre.insert(*qt);
+											else if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) >= last_num ) Post.insert(*qt);
 										}
 									}
 								}
@@ -271,8 +271,8 @@ namespace INMOST
 										indarr.resize(jt->RealArray(it->d.t).size());
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 										{
-											if( *qt < first_num ) Pre.insert(*qt);
-											else if( *qt >= last_num ) Post.insert(*qt);
+											if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) < first_num ) Pre.insert(*qt);
+											else if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) >= last_num ) Post.insert(*qt);
 										}
 									}
 								}
@@ -289,8 +289,8 @@ namespace INMOST
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 										{
-											if( *qt < first_num ) Pre.insert(*qt);
-											else if( *qt >= last_num ) Post.insert(*qt);
+											if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) < first_num ) Pre.insert(*qt);
+											else if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) >= last_num ) Post.insert(*qt);
 										}
 									}
 								}
@@ -304,8 +304,8 @@ namespace INMOST
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 										{
-											if( *qt < first_num ) Pre.insert(*qt);
-											else if( *qt >= last_num ) Post.insert(*qt);
+											if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) < first_num ) Pre.insert(*qt);
+											else if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) >= last_num ) Post.insert(*qt);
 										}
 									}
 								}
