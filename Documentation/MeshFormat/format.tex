@@ -64,57 +64,6 @@ The example of the layout of the file is presented below.
 <ParallelMesh Number="2" [Layers="2" Element="Face"]>
   <!-- Definition of the first mesh--> 
   <Mesh [Name="Box"] [RepairOrientation="False"]>
-    <!-- Describe data that is defined on the mesh -->
-    <!-- Number can be used to match 
-         the number of entries and
-         optimize memory allocation -->
-    <Tags [Number="8"]>
-      <!-- See further text for description of each attribute -->
-      <Tag Name="GLOBAL_ID" 
-           Size="1" 
-           Type="Integer" 
-           Sparse="Sets" 
-           Definition="Cells,Faces,Nodes,Sets" />
-     <!-- Size is optional, default: Variable,
-          Type is optional, default: Real,
-          Sparsity is optional, default: None,
-          Name and Definition are mandatory -->
-      <Tag Name="PERMEABILITY_TENSOR" 
-           [Size="6"] 
-           [Type="Real" ]
-           [Sparse="None"] 
-           Definition="Cells" />
-      <Tag Name="BOUNDARY_PRESSURE" 
-           Size="1" 
-           Type="Real" 
-           Sparse="Faces" 
-           Definition="Faces" />
-      <Tag Name="WELL_INDEX_WELL0" 
-           Size="1" 
-           Type="Real" 
-           Sparse="Cells" 
-           Definition="Cells" />
-      <Tag Name="BOUNDARY_DISPLACEMENT" 
-           Size="3" 
-           Type="Real" 
-           Sparse="True" 
-           Definition="Nodes" />
-      <Tag Name="CONNECTIONS"
-           Size="Variable"
-           Type="Reference"
-           Sparse="None"
-           Definition="Faces" />
-      <Tag Name="FLUX"
-           Size="1"
-           Type="Variable"
-           Sparse="None"
-           Definition="Faces" />
-      <Tag Name="WHATEVER"
-           Size="Variable"
-           Type="Bulk"
-           Sparse="Sets"
-           Definition="Sets" />
-    </Tags>
     <!-- Define all the nodes of the mesh -->
     <Nodes Number="100" [Dimension="3"]>
       <![CDATA[ 
@@ -202,6 +151,57 @@ The example of the layout of the file is presented below.
         </Set>
         <Set> ... </Set>
     </Sets>
+    <!-- Describe data that is defined on the mesh -->
+    <!-- Number can be used to match 
+         the number of entries and
+         optimize memory allocation -->
+    <Tags [Number="8"]>
+      <!-- See further text for description of each attribute -->
+      <Tag Name="GLOBAL_ID" 
+           Size="1" 
+           Type="Integer" 
+           Sparse="Sets" 
+           Definition="Cells,Faces,Nodes,Sets" />
+     <!-- Size is optional, default: Variable,
+          Type is optional, default: Real,
+          Sparsity is optional, default: None,
+          Name and Definition are mandatory -->
+      <Tag Name="PERMEABILITY_TENSOR" 
+           [Size="6"] 
+           [Type="Real" ]
+           [Sparse="None"] 
+           Definition="Cells" />
+      <Tag Name="BOUNDARY_PRESSURE" 
+           Size="1" 
+           Type="Real" 
+           Sparse="Faces" 
+           Definition="Faces" />
+      <Tag Name="WELL_INDEX_WELL0" 
+           Size="1" 
+           Type="Real" 
+           Sparse="Cells" 
+           Definition="Cells" />
+      <Tag Name="BOUNDARY_DISPLACEMENT" 
+           Size="3" 
+           Type="Real" 
+           Sparse="True" 
+           Definition="Nodes" />
+      <Tag Name="CONNECTIONS"
+           Size="Variable"
+           Type="Reference"
+           Sparse="None"
+           Definition="Faces" />
+      <Tag Name="FLUX"
+           Size="1"
+           Type="Variable"
+           Sparse="None"
+           Definition="Faces" />
+      <Tag Name="WHATEVER"
+           Size="Variable"
+           Type="Bulk"
+           Sparse="Sets"
+           Definition="Sets" />
+    </Tags>
    <!-- Define the data, the number of data sets should be equal to the number of tags -->
     <Data Number="11">
        <!-- TagName maps data set to the tag -->
@@ -310,25 +310,20 @@ The example of the layout of the file is presented below.
 The purpose of this XML tag is to optionally describe the number of meshes contained in the file in attribute "Number". As an additional information it can provide number of ghost layers between meshes in attribute "Layers" and the type of elements used to compute adjacency for ghost layers in attribute "Element". This information is reserved for the future use.
 \section{Mesh}
 This xml tag wraps all the data of the mesh. The optional attribute "Name" can be used to address elements of this mesh from another mesh. The optional attribute "RepairOrientation" if set to "True" will correct the orientation of the faces.
-\section{Tags}
-This xml tag declares the tags of the data that are present on the mesh. Optional attribute "Number" corresponds to the total number of tags defined.
-\subsection{Tag}
-Each xml tag contains attributes that describe the way the data is stored on the mesh. The following attributes can be defined:
-\begin{itemize}
-\item[Name] The name assigned to the data. Cannot be the same for two different tags. Mandatory to provide.
-\item[Size] Number of records of the data on each element. Can be any positive number or "Variable". "Variable" means that the data may have different number of entries on each element. Optional, default: "Variable".
-\item[Type] Type of the data that tag represents, can be either "Real" or "Integer" or "Bulk", or "Variable" or "Reference" or "RemoteReference". "Real" corresponds to floating numbers; "Integer" - to integral numbers; "Bulk" can represent any binary data; "Variable" can store a floating point value and corresponding variations represented by pairs of integral number and floating point coefficient; "Reference" and "RemoteReference" represent links to mesh elements or sets or mesh itself. Optional, default: "Real".
-\item[Sparse] Defines that data is present only on some elements of the indicated element type. Can be either Sets or Cells or Faces or Edges or Nodes or None. Optional, default: None.
-\item[Definition] Defines types of elements that posses the data. Can be Mesh, Sets, Cells, Faces, Edges or Nodes. Mandatory to provide.
-\end{itemize}
-The "GLOBAL\_ID" tag in the example defines a single integer entry on all the nodes, faces and cells, and on some sets. The "WHATEVER" tag defines a binary data of arbitrary size only to some sets. When one would like to have just a handful of entries unrelated to the mesh elements one can prescribe them to the mesh, i.e. write Definition="Mesh".
 
 \section{Nodes}
 This is a mandatory XML tag for the file that describes all the nodes of the mesh. The "Number" attribute describes the total number of nodes. Optional attribute "Dimension" tells the number of space dimensions, that is the number of coordinates in each entry, defaults to 3. The contents of the XML tag inside of "$<![CDATA[]]>$" can be entered in any format suitable to represent vectors as described in \S~\ref{data_format}. Nodes are mesh elements of dimension 0.
 \section{Faces, Edges, Cells}
 XML Tags Faces and Edges are optional and could be used to define only some of the elements of the mesh. For example one may introduce only boundary faces in XML tag Faces. The XML Tag Cells is mandatory and it represents cells of the mesh. One can optionally provide an optional attribute "Number" that will be used to check that the number of elements red is correct. Edges, faces and cells are mesh elements of dimension 1, 2 and 3 respectively.
 \subsubsection{Connections}
-XML tag "Connections" is used to provide the connection of each listed element to elements of lower dimension. Attributes are "Type" that describe types of listed elements; "Number" - total number of listed elements; "Offset" - optional attribute that describes first position of listed elements, default 0. It's required that the type of elements in "Type" has lower dimension than constructed element. It is possible to describe some cells constructed of nodes and some cells constructed of faces by using consecutive XML tags "Connections", see example for details. 
+XML tag "Connections" is used to provide the connection of each listed element to elements of lower dimension. Attributes are:
+\begin{itemize}
+\item[Type] Describe types of listed elements.  It's required that the type of elements in "Type" has lower dimension than constructed element. 
+\item[Number] Total number of listed elements, mandatory. 
+\item[Offset] Optional attribute that describes first position of listed elements, default 0.
+\item[Dimensions] This attribute is used to distinguish definition of 3D cells from 2D cells defined by nodes. Set to 2 to define 2D polygons and to 3 to define 3D volumetric cells, default 3.
+\end{itemize}
+It is possible to describe some cells constructed of nodes and some cells constructed of faces by using consecutive XML tags "Connections", see example for details. 
 
 The content of the XML tag inside of "$<![CDATA[]]>$" should start from the number of elements connected followed by a list of positions of elements. For example if we have a record $3 1 2 3$ for a face with connection to nodes then this record specifies that the face consists of 3 nodes namely node 1, node 2 and node 3. Enumeration of nodes here corresponds to the order of nodes in which their coordinates are listed in XML tag "Nodes".
 \section{Sets}
@@ -345,6 +340,19 @@ Describes each set. Sets could be arranged into an arbitrary tree, such as an oc
 \item [Offset] Sets a shift in the enumeration of elements. Optional, default: 0.
 \end{itemize}
 In the contents of the XML tag "Set" inside of  "$<![CDATA[]]>$" all the mesh elements are listed in whatever order is needed. They will be reordered internally if ordering was prescribed. The ordering happens after the mesh data is attached to the elements. Each element is listed as "type:position" where type can be either Mesh or Set or Cell or Face or Edge or Node. The position corresponds to the position in the order of elements in which their records are encountered in corresponding XML tags.
+\section{Tags}
+This xml tag declares the tags of the data that are present on the mesh. Optional attribute "Number" corresponds to the total number of tags defined.
+\subsection{Tag}
+Each xml tag contains attributes that describe the way the data is stored on the mesh. The following attributes can be defined:
+\begin{itemize}
+\item[Name] The name assigned to the data. Cannot be the same for two different tags. Mandatory to provide.
+\item[Size] Number of records of the data on each element. Can be any positive number or "Variable". "Variable" means that the data may have different number of entries on each element. Optional, default: "Variable".
+\item[Type] Type of the data that tag represents, can be either "Real" or "Integer" or "Bulk", or "Variable" or "Reference" or "RemoteReference". "Real" corresponds to floating numbers; "Integer" - to integral numbers; "Bulk" can represent any binary data; "Variable" can store a floating point value and corresponding variations represented by pairs of integral number and floating point coefficient; "Reference" and "RemoteReference" represent links to mesh elements or sets or mesh itself. Optional, default: "Real".
+\item[Sparse] Defines that data is present only on some elements of the indicated element type. Can be either Sets or Cells or Faces or Edges or Nodes or None. Optional, default: None.
+\item[Definition] Defines types of elements that posses the data. Can be Mesh, Sets, Cells, Faces, Edges or Nodes. Mandatory to provide.
+\end{itemize}
+The "GLOBAL\_ID" tag in the example defines a single integer entry on all the nodes, faces and cells, and on some sets. The "WHATEVER" tag defines a binary data of arbitrary size only to some sets. When one would like to have just a handful of entries unrelated to the mesh elements one can prescribe them to the mesh, i.e. write Definition="Mesh".
+
 \section{Data}
 Encloses all the data of the mesh. Optional attribute "Number" can be added to control the number of "DataSet" XML tags encountered.
 \subsection{DataSet} \label{tag_dataset}

@@ -40,91 +40,6 @@ namespace INMOST
         else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
       }
 
-      { //Tags
-
-        XMLReader::XMLTag TagTags = reader.OpenTag();
-        
-        if( TagTags.name != "Tags" )
-        {
-          reader.Report("Incorrect XML tag %s expected Tags",TagTags.name.c_str());
-          throw BadFile;
-        }
-
-        int ntags = 0;
-        bool matchntags = false;
-        for(int q = 0; q < TagTags.NumAttrib(); ++q)
-        {
-          XMLReader::XMLAttrib & attr = TagTags.GetAttib(q);
-          if( attr.name == "Number" ) 
-          {
-            ntags = atoi(attr.value.c_str());
-            matchntags = true;
-          }
-          else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
-        }
-
-        tags.reserve(ntags);
-
-
-        XMLReader::XMLTag TagTag;
-        for(TagTag = reader.OpenTag(); !TagTag.Finalize() && TagTag.name == "Tag"; reader.CloseTag(TagTag), TagTag = reader.OpenTag())
-        {
-          std::vector<std::string> parsed;
-          std::string tagname = "";
-          enumerator size = ENUMUNDEF;
-          DataType type = DATA_REAL;
-          ElementType sparse = NONE;
-          ElementType defined = NONE;
-          for(int q = 0; q < TagTag.NumAttrib(); ++q)
-          {
-            XMLReader::XMLAttrib & attr = TagTag.GetAttib(q);
-            if( attr.name == "Name" ) tagname = attr.value;
-            else if( attr.name == "Size" ) 
-            {
-              if( attr.value == "Variable" )
-                size = ENUMUNDEF;
-              else size = atoi(attr.value.c_str());
-            }
-            else if( attr.name == "Type" )
-            {
-              if( attr.value == "Real" ) type = DATA_REAL;
-              else if( attr.value == "Integer" ) type = DATA_INTEGER;
-              else if( attr.value == "Reference" ) type = DATA_REFERENCE;
-              else if( attr.value == "RemoteReference" ) type = DATA_REMOTE_REFERENCE;
-              else if( attr.value == "Bulk" ) type = DATA_BULK;
-#if defined(USE_AUTODIFF)
-              else if( attr.value == "Variable" ) type = DATA_VARIABLE;
-#endif
-            }
-            else if( attr.name == "Sparse" )
-            { 
-              reader.ParseCommaSeparated(attr.value,parsed);
-              for(int q = 0; q < (int)parsed.size(); ++q) sparse |= reader.atoes(parsed[q].c_str());
-            }
-            else if( attr.name == "Definition" )
-            {
-              reader.ParseCommaSeparated(attr.value,parsed);
-              for(int q = 0; q < (int)parsed.size(); ++q) defined |= reader.atoes(parsed[q].c_str());
-            }
-            else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
-          }
-          if( tagname == "" )
-            reader.Report("Tag name was not specified");
-          else if( defined == NONE )
-            reader.Report("Domain of definition for the tag was not specified");
-          tags.push_back(CreateTag(tagname,type,defined,sparse,size));
-        }
-        reader.CloseTag(TagTags);
-
-        if( !TagTag.Finalize() )
-        {
-          PassTag = TagTag;
-          pass_tag = true;
-        }
-
-        if( matchntags && ntags != tags.size() ) reader.Report("Number %d of XML tags Tag red do not match to the specified number %d",tags.size(),ntags);
-      }
-
       { //Nodes
         int nnodes = 0, ndims = 3;
         XMLReader::XMLTag TagNodes;
@@ -267,11 +182,13 @@ namespace INMOST
           {
             int nconns = 0;
             int offset = 0;
+			int dims = 3; //to distinguish 3d cells from 2d cells when they are created with nodes
             ElementType subtype = NODE;
             for(int q = 0; q < TagConns.NumAttrib(); ++q)
             {
               XMLReader::XMLAttrib & attr = TagConns.GetAttib(q);
               if( attr.name == "Number" ) nconns = atoi(attr.value.c_str());
+			  else if( attr.name == "Dimensions" ) dims = atoi(attr.value.c_str());
               else if( attr.name == "Type" ) subtype = reader.atoes(attr.value.c_str());
               else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
               else reader.Report("Unused attribute for %ss %s='%s'",TagConns.name.c_str(),attr.name.c_str(),attr.value.c_str());
@@ -304,48 +221,77 @@ namespace INMOST
                 break;
               case FACE:
                 if( subtype == NODE )
-                  elems->push_back(CreateFace(subarr.Convert<Node>()).first.GetHandle());
+				{
+					Face f = CreateFace(subarr.Convert<Node>()).first;
+					if( repair_orientation ) f.FixEdgeOrder();
+					elems->push_back(f.GetHandle());
+				}
                 else if( subtype == EDGE )
-                  elems->push_back(CreateFace(subarr.Convert<Edge>()).first.GetHandle());
+				{
+					Face f = CreateFace(subarr.Convert<Node>()).first;
+					if( repair_orientation ) f.FixEdgeOrder();
+					elems->push_back(f.GetHandle());
+				}
                 break;
               case CELL:
                 if( subtype == NODE )
                 {
-                  switch(subarr.size())
-                  {
-                  case 4: //Tetrahedron
-                    {
-                      const integer nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
-										  const integer sizes[4] = {3,3,3,3};
-                      elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,4).first.GetHandle());
-                    }
-                    break;
-                  case 5: //Pyramid
-                    {
-                      const integer nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
-										  const integer sizes[5] = {3,3,3,3,4};
-                      elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,5).first.GetHandle());
-                    }
-                    break;
-                  case 6: //Wedge or Prism
-                    {
-                      const integer nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
-										  const integer sizes[5] = {4,4,4,3,3};
-                      elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,5).first.GetHandle());
-                    }
-                    break;
-                  case 8: //Hexahedron
-                    {
-                      const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
-										  const integer sizes[6] = {4,4,4,4,4,4};
-                      elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,6).first.GetHandle());
-                    }
-                    break;
-                  default: 
-                    reader.Report("Sorry, no rule to convert %d nodes into a cell",subarr.size());
-                    throw BadFile;
-                    break;
-                  }
+					if( dims == 3 )
+					{
+						switch(subarr.size())
+						{
+						case 4: //Tetrahedron
+							{
+								const integer nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
+								const integer sizes[4] = {3,3,3,3};
+								elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,4).first.GetHandle());
+							}
+							break;
+						case 5: //Pyramid
+							{
+								const integer nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
+								const integer sizes[5] = {3,3,3,3,4};
+								elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,5).first.GetHandle());
+							}
+							break;
+						case 6: //Wedge or Prism
+							{
+								const integer nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
+								const integer sizes[5] = {4,4,4,3,3};
+								elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,5).first.GetHandle());
+							}
+							break;
+						case 8: //Hexahedron
+							{
+								const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
+								const integer sizes[6] = {4,4,4,4,4,4};
+								elems->push_back(CreateCell(subarr.Convert<Node>(),nodesnum,sizes,6).first.GetHandle());
+							}
+							break;
+						default: 
+							reader.Report("Sorry, no rule to convert %d nodes into a cell",subarr.size());
+							throw BadFile;
+							break;
+						}
+					}
+					else if( dims == 2 )
+					{
+						ElementArray<Node> e_nodes(this,1);
+						ElementArray<Edge> f_edges(this,2);
+						ElementArray<Face> c_faces;
+						for(unsigned int k = 0; k < subarr.size(); k++)
+						{
+							e_nodes.at(0) = subarr.at(k);
+							f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+							e_nodes.at(0) = subarr.at((k+1)%subarr.size());
+							f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+							c_faces.push_back(CreateFace(f_edges).first);
+						}
+						Cell c = CreateCell(c_faces).first;
+						if( repair_orientation ) c.FixEdgeOrder();
+						elems->push_back(c.GetHandle());
+					}
+					else reader.Report("Sorry, cannot understand number of dimensions %d for a cell",dims);
                 }
                 else if( subtype == EDGE )
                 {
@@ -385,7 +331,84 @@ namespace INMOST
           }
           else TagSetsData = reader.OpenTag();
           
-          if( TagSetsData.name == "Sets" )
+		  if( TagSetsData.name == "Tags" )
+		  {
+			  repeat = true;
+			  int ntags = 0;
+			  bool matchntags = false;
+			  for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
+			  {
+				  XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
+				  if( attr.name == "Number" ) 
+				  {
+					  ntags = atoi(attr.value.c_str());
+					  matchntags = true;
+				  }
+				  else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
+			  }
+
+			  tags.reserve(ntags);
+
+
+			  XMLReader::XMLTag TagTag;
+			  for(TagTag = reader.OpenTag(); !TagTag.Finalize() && TagTag.name == "Tag"; reader.CloseTag(TagTag), TagTag = reader.OpenTag())
+			  {
+				  std::vector<std::string> parsed;
+				  std::string tagname = "";
+				  enumerator size = ENUMUNDEF;
+				  DataType type = DATA_REAL;
+				  ElementType sparse = NONE;
+				  ElementType defined = NONE;
+				  for(int q = 0; q < TagTag.NumAttrib(); ++q)
+				  {
+					  XMLReader::XMLAttrib & attr = TagTag.GetAttib(q);
+					  if( attr.name == "Name" ) tagname = attr.value;
+					  else if( attr.name == "Size" ) 
+					  {
+						  if( attr.value == "Variable" )
+							  size = ENUMUNDEF;
+						  else size = atoi(attr.value.c_str());
+					  }
+					  else if( attr.name == "Type" )
+					  {
+						  if( attr.value == "Real" ) type = DATA_REAL;
+						  else if( attr.value == "Integer" ) type = DATA_INTEGER;
+						  else if( attr.value == "Reference" ) type = DATA_REFERENCE;
+						  else if( attr.value == "RemoteReference" ) type = DATA_REMOTE_REFERENCE;
+						  else if( attr.value == "Bulk" ) type = DATA_BULK;
+#if defined(USE_AUTODIFF)
+						  else if( attr.value == "Variable" ) type = DATA_VARIABLE;
+#endif
+					  }
+					  else if( attr.name == "Sparse" )
+					  { 
+						  reader.ParseCommaSeparated(attr.value,parsed);
+						  for(int q = 0; q < (int)parsed.size(); ++q) sparse |= reader.atoes(parsed[q].c_str());
+					  }
+					  else if( attr.name == "Definition" )
+					  {
+						  reader.ParseCommaSeparated(attr.value,parsed);
+						  for(int q = 0; q < (int)parsed.size(); ++q) defined |= reader.atoes(parsed[q].c_str());
+					  }
+					  else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
+				  }
+				  if( tagname == "" )
+					  reader.Report("Tag name was not specified");
+				  else if( defined == NONE )
+					  reader.Report("Domain of definition for the tag was not specified");
+				  tags.push_back(CreateTag(tagname,type,defined,sparse,size));
+			  }
+			  reader.CloseTag(TagSetsData);
+
+			  if( !TagTag.Finalize() )
+			  {
+				  PassTag = TagTag;
+				  pass_tag = true;
+			  }
+
+			  if( matchntags && ntags != tags.size() ) reader.Report("Number %d of XML tags Tag red do not match to the specified number %d",tags.size(),ntags);
+		  }
+          else if( TagSetsData.name == "Sets" )
           {
             repeat = true;
             HandleType * links[4] =
@@ -836,9 +859,11 @@ namespace INMOST
               pass_tag = true;
             }
           }
+		  else if( TagSetsData.name == "" )
+			  repeat = false;
           else
           {
-            reader.Report("Unexpected tag %s, expected Sets or Data",TagSetsData.name.c_str());
+            reader.Report("Unexpected tag %s, expected Tags or Sets or Data",TagSetsData.name.c_str());
             throw BadFile;
           }
         } while(repeat);
