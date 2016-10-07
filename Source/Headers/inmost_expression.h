@@ -1498,7 +1498,7 @@ namespace INMOST
 		  return std::make_pair(vals[i] + der * (arg - args[i]), der);
 	  }
     keyval_table() :name(""), vals(NULL), args(NULL), size(0) {}
-    keyval_table(std::string _name, INMOST_DATA_REAL_TYPE * _args, INMOST_DATA_REAL_TYPE * _vals, INMOST_DATA_ENUM_TYPE _size)
+    keyval_table(std::string _name, const INMOST_DATA_REAL_TYPE * _args, const INMOST_DATA_REAL_TYPE * _vals, INMOST_DATA_ENUM_TYPE _size)
     {
       name = _name;
       size = _size;
