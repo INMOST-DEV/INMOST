@@ -299,7 +299,11 @@ namespace INMOST
                   throw BadFile;
                 }
                 else if( subtype == FACE )
-                  elems->push_back(CreateCell(subarr.Convert<Face>()).first.GetHandle());
+				{
+					Cell c = CreateCell(subarr.Convert<Face>()).first;
+					if( repair_orientation ) c.FixEdgeOrder();
+					elems->push_back(c.GetHandle());
+				}
                 break;
               }
             }
@@ -887,41 +891,8 @@ namespace INMOST
     std::fstream fout(File.c_str(),std::ios::out);
     fout << "<ParallelMesh>\n";
     fout << "\t<Mesh>\n";
-    fout << "\t\t<Tags>\n";
-    for(int k = 0; k < (int)tags.size(); ++k)
-    {
-      if( tags[k].GetTagName().substr(0,9) == "PROTECTED" ) continue;
-      std::string names[6] = {"Nodes","Edges","Faces","Cells","Sets","Mesh"};
-      std::string definition = "", sparse = "", type = "";
-      switch(tags[k].GetDataType())
-      {
-      case DATA_REAL: type = "Real"; break;
-      case DATA_INTEGER: type = "Integer"; break;
-      case DATA_BULK: type = "Bulk"; break;
-      case DATA_REFERENCE: type = "Reference"; break;
-      case DATA_REMOTE_REFERENCE: type = "RemoteReference"; break;
-#if defined(USE_AUTODIFF)
-      case DATA_VARIABLE: type = "Variable"; break;
-#endif
-      }
-      for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
-      {
-        if( tags[k].isDefined(etype) ) definition += names[ElementNum(etype)] + ",";
-        if( tags[k].isSparse(etype) ) sparse += names[ElementNum(etype)] + ",";
-      }
-      if( !definition.empty() ) definition.resize(definition.size()-1); //remove trailing comma
-      if( !sparse.empty() ) sparse.resize(sparse.size()-1); //remove trailing comma
-      if( sparse == "" ) sparse = "None";
-      fout << "\t\t\t<Tag Name  =\"" << tags[k].GetTagName() << "\"\n";
-      if( tags[k].GetSize() !=ENUMUNDEF )
-      fout << "\t\t\t     Size  =\"" << tags[k].GetSize() << "\"\n";
-      fout << "\t\t\t     Type  =\"" << type << "\"\n";
-      fout << "\t\t\t     Sparse=\"" << sparse << "\"\n";
-      fout << "\t\t\t     Definition=\"" << definition << "\"/>\n";
-    }
     Tag idx = CreateTag("TEMPORARY_XML_ENUMERATOR",DATA_INTEGER,MESH|ESET|CELL|FACE|EDGE|NODE,NONE,1);
     Integer(GetHandle(),idx) = 0;
-    fout << "\t\t</Tags>\n";
     fout << "\t\t<Nodes Number=\"" << NumberOfNodes() << "\" Dimensions=\"" << GetDimensions() << "\">\n";
     fout << "\t\t\t<![CDATA[\n";
     dynarray<Storage::real,3> xyz(GetDimensions());
@@ -1034,6 +1005,39 @@ namespace INMOST
       fout << "\t\t\t</Set>\n";
     }
     fout << "\t\t</Sets>\n";
+	fout << "\t\t<Tags>\n";
+    for(int k = 0; k < (int)tags.size(); ++k)
+    {
+      if( tags[k].GetTagName().substr(0,9) == "PROTECTED" ) continue;
+      std::string names[6] = {"Nodes","Edges","Faces","Cells","Sets","Mesh"};
+      std::string definition = "", sparse = "", type = "";
+      switch(tags[k].GetDataType())
+      {
+      case DATA_REAL: type = "Real"; break;
+      case DATA_INTEGER: type = "Integer"; break;
+      case DATA_BULK: type = "Bulk"; break;
+      case DATA_REFERENCE: type = "Reference"; break;
+      case DATA_REMOTE_REFERENCE: type = "RemoteReference"; break;
+#if defined(USE_AUTODIFF)
+      case DATA_VARIABLE: type = "Variable"; break;
+#endif
+      }
+      for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
+      {
+        if( tags[k].isDefined(etype) ) definition += names[ElementNum(etype)] + ",";
+        if( tags[k].isSparse(etype) ) sparse += names[ElementNum(etype)] + ",";
+      }
+      if( !definition.empty() ) definition.resize(definition.size()-1); //remove trailing comma
+      if( !sparse.empty() ) sparse.resize(sparse.size()-1); //remove trailing comma
+      if( sparse == "" ) sparse = "None";
+      fout << "\t\t\t<Tag Name  =\"" << tags[k].GetTagName() << "\"\n";
+      if( tags[k].GetSize() !=ENUMUNDEF )
+      fout << "\t\t\t     Size  =\"" << tags[k].GetSize() << "\"\n";
+      fout << "\t\t\t     Type  =\"" << type << "\"\n";
+      fout << "\t\t\t     Sparse=\"" << sparse << "\"\n";
+      fout << "\t\t\t     Definition=\"" << definition << "\"/>\n";
+    }
+	fout << "\t\t</Tags>\n";
     fout << "\t\t<Data>\n";
     for(iteratorTag t = BeginTag(); t != EndTag(); ++t)
     {
