@@ -82,6 +82,50 @@ void CreateNWPrismElements(Mesh *m, ElementArray<Node> verts)
 	m->CreateCell(verts,sw_face_nodes,sw_num_nodes,5); // Create south-west prismatic cell
 }
 
+
+/*      (4)*-------*(6)
+          /|\     /|
+         /   \   / |
+        /  |  \ /  |
+    (5)*-------*(7)|
+       |   |   |   |
+       |       |   |
+       |   |   |   |
+       |(0)*- -|- -*(2)
+       |  / \  |  /
+       |       | /
+       |/     \|/
+    (1)*-------*(3)      */
+void CreateNWTetElements(Mesh *m, ElementArray<Node> verts)
+{
+	// Define prism faces assuming verts are numerated in the way presented above
+	const INMOST_DATA_INTEGER_TYPE ne_face_nodes1[12] = {0,1,5,  5,1,3,   1,0,3, 3,0,5};
+	const INMOST_DATA_INTEGER_TYPE ne_num_nodes1[4]   = {3,3,3,3};
+
+	const INMOST_DATA_INTEGER_TYPE ne_face_nodes2[12] = {0,3,5, 0,7,3, 5,3,7, 0,5,7};
+	const INMOST_DATA_INTEGER_TYPE ne_num_nodes2[4]   = {3,3,3,3};
+
+	const INMOST_DATA_INTEGER_TYPE ne_face_nodes3[12] = {0,7,5, 4,5,7, 0,5,4, 0,4,7};
+	const INMOST_DATA_INTEGER_TYPE ne_num_nodes3[4]   = {3,3,3,3};
+	
+
+	const INMOST_DATA_INTEGER_TYPE sw_face_nodes1[12] = {0,3,7, 2,7,3, 0,7,2, 0,2,3};
+	const INMOST_DATA_INTEGER_TYPE sw_num_nodes1[4]   = {3,3,3,3};
+
+	const INMOST_DATA_INTEGER_TYPE sw_face_nodes2[12] = {0,7,4, 0,2,7, 2,4,7, 0,4,2};
+	const INMOST_DATA_INTEGER_TYPE sw_num_nodes2[4]   = {3,3,3,3};
+
+	const INMOST_DATA_INTEGER_TYPE sw_face_nodes3[12] = {4,6,2, 6,7,2, 4,7,6, 4,2,7};
+	const INMOST_DATA_INTEGER_TYPE sw_num_nodes3[4]   = {3,3,3,3};
+
+	m->CreateCell(verts,ne_face_nodes1,ne_num_nodes1,4); // Create north-east prismatic cell
+	m->CreateCell(verts,ne_face_nodes2,ne_num_nodes2,4); // Create north-east prismatic cell
+	m->CreateCell(verts,ne_face_nodes3,ne_num_nodes3,4); // Create north-east prismatic cell
+	m->CreateCell(verts,sw_face_nodes1,sw_num_nodes1,4); // Create south-west prismatic cell
+	m->CreateCell(verts,sw_face_nodes2,sw_num_nodes2,4); // Create south-west prismatic cell
+	m->CreateCell(verts,sw_face_nodes3,sw_num_nodes3,4); // Create south-west prismatic cell
+}
+
 Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 {
 	int procs_per_axis[3] = {1,1,1};
@@ -175,7 +219,11 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 				verts.push_back(newverts[V_ID(i - 0,j - 0, k - 0)]); // 7      /*     |       | /       */
 				                                                               /*     |/      |/        */
 				// Create cells based on parameter ng                          /*  (1)*-------*(3)      */
-				if (ng == 4) // Create cubic cell
+				if (ng == 5)
+				{
+					CreateNWTetElements(m,verts);
+				}
+				else if (ng == 4) // Create cubic cell
 				{
 					CreateCubeElement(m,verts);
 				}

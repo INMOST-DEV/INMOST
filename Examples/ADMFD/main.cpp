@@ -24,7 +24,7 @@ typedef Storage::enumerator enumerator;
 typedef Storage::real_array real_array;
 typedef Storage::var_array var_array;
 
-
+bool rt0 = true;
 
 //#define OPTIMIZATION
 
@@ -54,6 +54,14 @@ int main(int argc,char ** argv)
         std::cout << "J: "; J.Print();
         return 0;
          */
+		if( argc > 2 ) 
+		{
+			if( std::string(argv[2]) == "MFD" )
+				rt0 = false;
+			else if ( std::string(argv[2]) == "MHFE" )
+				rt0 = true;
+		}
+
         double ttt; // Variable used to measure timing
         bool repartition = false; // Is it required to redistribute the mesh?
         Mesh * m = new Mesh(); // Create an empty mesh
@@ -70,6 +78,11 @@ int main(int argc,char ** argv)
             BARRIER
             if( m->GetProcessorRank() == 0 ) std::cout << "Load the mesh: " << Timer()-ttt << std::endl;
         }
+
+		if( rt0 )
+			std::cout << "Running MHFE RT0" << std::endl;
+		else
+			std::cout << "Running MFD" << std::endl;
         
         
 #if defined(USE_PARTITIONER)
@@ -182,201 +195,341 @@ int main(int argc,char ** argv)
 #endif
             for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
             {
+				Mesh * mesh = m;
                 Cell cell = m->CellByLocalID(q);
-                real xP[3]; //center of the cell
-                real yF[3]; //center of the face
-                real nF[3]; //normal to the face
-                real aF; //area of the face
-                real vP = cell->Volume(); //volume of the cell
-                cell->Centroid(xP);
-                ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-                int NF = (int)faces.size(); //number of faces;
-                rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
-                //rMatrix U,S,V;
-                //K0.SVD(U,S,V);
-                //for(int k = 0; k < 3; ++k) S(k,k) = sqrt(S(k,k));
-                //rMatrix K = U*S*V;
-                rMatrix nKGRAD(NF,NF), NK(NF,3), R(NF,3), D(NF,NF), U(NF,NF), Areas(NF,1); //big gradient matrix, co-normals, directions
-                for(int k = 0; k < NF; ++k) //loop over faces
-                {
-                    aF = faces[k].Area();
-                    faces[k].Centroid(yF);
-                    faces[k].OrientedUnitNormal(cell->self(),nF);
-                    // assemble matrix of directions
-                    R(k,0) = (yF[0]-xP[0])*aF;
-                    R(k,1) = (yF[1]-xP[1])*aF;
-                    R(k,2) = (yF[2]-xP[2])*aF;
-                    // assemble matrix of co-normals
-                    rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
-                    NK(k,0) = nK(0,0);
-                    NK(k,1) = nK(0,1);
-                    NK(k,2) = nK(0,2);
-                } //end of loop over faces
-                nKGRAD = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //stability part
-				nKGRAD += (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
+				ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
+				int NF = (int)faces.size(); //number of faces;	
+				rMatrix W(NF,NF);
+				
+				if( cell->GetElementType() == Element::Tet && rt0 ) // RT0 consturction of W matrix 
+				{
+					double V = cell.Volume();
+					double dN[12];
+					double J[9];
+					double J_T[9];
+					double K_inv[9];
+					double K_inv_ref1[9];
+					double K_inv_ref[9];
+					double W_RT0[12];
+					double B_RT0[16];
+					double gauss_pt_xyz[12];
+					double gauss_wei[4];
+					double tetra[12];
+					double xyz_i[3];
+					double xyz_j[3];
+					int i, j,k,Z;
+					double w,l,m, J_det,x,y,z;
+					
+						
+					rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
+					rMatrix K_inverse (3,3); // inverse of permeability 
+					K_inverse= K.Invert(true).first;
+					// gauss points for intgration
+					gauss_pt_xyz[0]=(5.0+3.0*(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[1]=(5.0-(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[2]=(5.0-(sqrt(5.0)))/20.0;
+
+					gauss_pt_xyz[3]=(5.0-(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[4]=(5.0+3.0*(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[5]=(5.0-(sqrt(5.0)))/20.0;
+
+					gauss_pt_xyz[6]=(5.0-(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[7]=(5.0-(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[8]=(5.0+3.0*(sqrt(5.0)))/20.0;
+
+					gauss_pt_xyz[9]=(5.0-(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[10]=(5.0-(sqrt(5.0)))/20.0;
+					gauss_pt_xyz[11]=(5.0-(sqrt(5.0)))/20.0;
+
+					// gauss weights 
+					gauss_wei[0]=  1.0/24.0;
+					gauss_wei[1]=  1.0/24.0;
+					gauss_wei[2]=  1.0/24.0;
+					gauss_wei[3]= 1.0/24.0;
+
+					// derivative of the finite element shape functions for tetraherdon (local) 
+					dN[0]=-1; 
+					dN[1]=-1;
+					dN[2]=-1;
+
+					dN[3]=1; 
+					dN[4]=0;
+					dN[5]=0;
+
+					dN[6]=0; 
+					dN[7]=1;
+					dN[8]=0;
+
+					dN[9]=0; 
+					dN[10]=0;
+					dN[11]=1;
 
 
-                /*
-				 rMatrix SU,SS,SV;
-                 std::cout << "W" << std::endl;
-                 nKGRAD.Print();
-                 nKGRAD.SVD(SU,SS,SV);
-                 std::cout << "U" << std::endl;
-                 SU.Print();
-                 std::cout << "S" << std::endl;
-                 SS.Print();
-                 std::cout << "V" << std::endl;
-                 SV.Print();
-                 std::cout << "Check " << (nKGRAD - SU*SS*SV.Transpose()).FrobeniusNorm() << std::endl;
-                 */
-                /*
-                int rank = 0; //size of matrix U
+					// local to reference tranformation 
+					ElementArray<Node> node(mesh);
+					for(j = 0; j < 4; ++j)
+					{
+						ElementArray<Node> cell_nodes = cell->getNodes();
+						cell_nodes.Subtract(faces[j].getNodes());
+						node.Unite(cell_nodes);
+					}
+					
+					for ( j = 0; j < 4; j++ )
+					{  
+
+						for ( i = 0; i < 3; i++ )
+							tetra[i+j*3]= node[j].Coords()[i]; // <-- X
+					}
+
+					J[0]=dN[0]*tetra[0]+dN[3]*tetra[3]+dN[6]*tetra[6]+dN[9]*tetra[9];
+					J[1]=dN[0]*tetra[1]+dN[3]*tetra[4]+dN[6]*tetra[7]+dN[9]*tetra[10];
+					J[2]=dN[0]*tetra[2]+dN[3]*tetra[5]+dN[6]*tetra[8]+dN[9]*tetra[11];
+
+					J[3]=dN[1]*tetra[0]+dN[4]*tetra[3]+dN[7]*tetra[6]+dN[10]*tetra[9];
+					J[4]=dN[1]*tetra[1]+dN[4]*tetra[4]+dN[7]*tetra[7]+dN[10]*tetra[10];
+					J[5]=dN[1]*tetra[2]+dN[4]*tetra[5]+dN[7]*tetra[8]+dN[10]*tetra[11];
+
+					J[6]=dN[2]*tetra[0]+dN[5]*tetra[3]+dN[8]*tetra[6]+dN[11]*tetra[9];
+					J[7]=dN[2]*tetra[1]+dN[5]*tetra[4]+dN[8]*tetra[7]+dN[11]*tetra[10];
+					J[8]=dN[2]*tetra[2]+dN[5]*tetra[5]+dN[8]*tetra[8]+dN[11]*tetra[11];
+
+					w = J[0] * (J[4] * J[8] -J [5] * J[7]);
+					l = J[1] * (J[3] * J[8] -J [5] * J[6]);
+					m = J[2] * (J[3] * J[7] -J [4] * J[6]);
+					J_det = w - l + m;
+					// cout << " Determinent equals " << J_det << endl;
+					if (J_det == 0.0)
+					{
+						std::cout << "As Determinent=0 so it is singular matrix and its inverse cannot exist for element "
+							<< std::endl;
+
+						exit(0);
+					}
+					// transpose of jacobian
+					J_T[0]=J[0]; J_T[1]=J[3]; J_T[2]=J[6];
+					J_T[3]=J[1]; J_T[4]=J[4]; J_T[5]=J[7];
+					J_T[6]=J[2]; J_T[7]=J[5]; J_T[8]=J[8];
+
+					// inverse of K tensor 
+					for ( j = 0; j < 3; j++ )
+					{  
+
+						for ( i = 0; i < 3; i++ )
+						{
+							K_inv[i+j*3]=K_inverse (i,j);
+						}
+
+					}
+
+					for ( i = 0; i < 3; i++) { // row number of output
+						for ( j = 0; j < 3; j++) { // column number of output
+							K_inv_ref1[3*i+j] = 0.0;
+							for ( k = 0; k < 3; k++) { // three elements are added for this output
+								K_inv_ref1[3*i+j] += J[3*i+k] * K_inv[3*k+j];
+							}
+						}
+					}
+
+					for ( i = 0; i < 16; i++) 
+					{ 
+						B_RT0[i]=0.0;
+					}
+
+					for ( i = 0; i < 4; i++) { // row number of output
+
+						for ( j = 0; j < 4; j++) { // column number of output
+
+
+							for ( Z = 0; Z < 4; Z++) { // GAUSS POINT IN Z DIRECTION 
+								x=gauss_pt_xyz[Z*3];
+								y=gauss_pt_xyz[Z*3+1];		
+								z=gauss_pt_xyz[Z*3+2];
+
+
+
+								W_RT0[0]=  2*x;///(sqrt(3.0));
+								W_RT0[1]=  2*y;///(sqrt(3.0));
+								W_RT0[2]=  2*z;///(sqrt(3.0));
+
+								W_RT0[3]=  2*(-1+x);
+								W_RT0[4]=  2*y;
+								W_RT0[5]=  2*z;  
+
+								W_RT0[6]=  (2*x);///(sqrt(3.0));
+								W_RT0[7]=  2*(-1+y);;///(sqrt(3.0));
+								W_RT0[8]=  (2*z);///(sqrt(3.0));
+
+								W_RT0[9]=  2*x;
+								W_RT0[10]= 2*y; 
+								W_RT0[11]= 2*(-1+z);
+
+
+
+
+
+								xyz_i[0]=W_RT0[i*3]*J[0]+W_RT0[i*3+1]*J[3]+W_RT0[i*3+2]*J[6];
+								xyz_i[1]=W_RT0[i*3]*J[1]+W_RT0[i*3+1]*J[4]+W_RT0[i*3+2]*J[7];
+								xyz_i[2]=W_RT0[i*3]*J[2]+W_RT0[i*3+1]*J[5]+W_RT0[i*3+2]*J[8];
+
+
+
+								xyz_j[0]=W_RT0[j*3]*K_inv_ref1[0]+W_RT0[j*3+1]*K_inv_ref1[3]+W_RT0[j*3+2]*K_inv_ref1[6];
+								xyz_j[1]=W_RT0[j*3]*K_inv_ref1[1]+W_RT0[j*3+1]*K_inv_ref1[4]+W_RT0[j*3+2]*K_inv_ref1[7];
+								xyz_j[2]=W_RT0[j*3]*K_inv_ref1[2]+W_RT0[j*3+1]*K_inv_ref1[5]+W_RT0[j*3+2]*K_inv_ref1[8];
+
+
+								B_RT0[i+j*4]+=gauss_wei[Z]*(xyz_i[0]*xyz_j[0]+ xyz_i[1]*xyz_j[1]+xyz_i[2]*xyz_j[2])/abs(J_det);
+
+
+							}
+
+						}
+					}	
+					for ( j = 0; j < 4; j++) { // row number of output
+						double sum = 0;
+						for ( i = 0; i < 4; i++) { // column number of output
+
+							sum += W(i,j);
+							W(i,j)= B_RT0[i+j*4];
+						}
+						//std::cout << "row " << j << " sum " << sum << std::endl;
+					}
+
+
+					//std::cout << "W" << std::endl;
+					//W.Print();
+
+					W = W.Invert(true).first ;
+
+
+					for ( j = 0; j < 4; j++) { // row number of output
+						double sum = 0;
+						for ( i = 0; i < 4; i++) { // column number of output
+
+							sum += W(i,j);
+						}
+						//std::cout << "row inverted " << j << " sum " << sum << std::endl;
+					}
+
+					//std::cout << "W inverted" << std::endl;
+
+					//W.Print();
+
+					
+
+					//scanf("%*c");
+
+				}
+				else
+				{
+					real xP[3]; //center of the cell
+					real yF[3]; //center of the face
+					real nF[3]; //normal to the face
+					real aF; //area of the face
+					real vP = cell->Volume(); //volume of the cell
+					cell->Centroid(xP);
+					rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
+					//rMatrix U,S,V;
+					//K0.SVD(U,S,V);
+					//for(int k = 0; k < 3; ++k) S(k,k) = sqrt(S(k,k));
+					//rMatrix K = U*S*V;
+					rMatrix NK(NF,3), R(NF,3), D(NF,NF), U(NF,NF), Areas(NF,NF); //big gradient matrix, co-normals, directions
+					Areas.Zero();
+					for(int k = 0; k < NF; ++k) //loop over faces
+					{
+						aF = faces[k].Area();
+						faces[k].Centroid(yF);
+						faces[k].OrientedUnitNormal(cell->self(),nF);
+						// assemble matrix of directions
+						R(k,0) = (yF[0]-xP[0])*aF;
+						R(k,1) = (yF[1]-xP[1])*aF;
+						R(k,2) = (yF[2]-xP[2])*aF;
+						// assemble matrix of co-normals
+						rMatrix nK = rMatrix::FromVector(nF,3).Transpose()*K;
+						NK(k,0) = nK(0,0);
+						NK(k,1) = nK(0,1);
+						NK(k,2) = nK(0,2);
+
+						Areas(k,k) = aF;
+					} //end of loop over faces
+					rMatrix SU,SS,SV;
+					W = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //stability part
+					/*
+					 std::cout << "W" << std::endl;
+					 nKGRAD.Print();
+					 nKGRAD.SVD(SU,SS,SV);
+					 std::cout << "U" << std::endl;
+					 SU.Print();
+					 std::cout << "S" << std::endl;
+					 SS.Print();
+					 std::cout << "V" << std::endl;
+					 SV.Print();
+					 std::cout << "Check " << (nKGRAD - SU*SS*SV.Transpose()).FrobeniusNorm() << std::endl;
+					 */
                 
-                { //Retrive orthogonal to R matrix D
-                    //Symmetric orthogonal matrix
-                    rMatrix DUD = (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose());
-                    //perfrom singular value decomposition
-                    //S should be unity matrix with rank NF-3
-                    rMatrix DUD_U,DUD_S,DUD_V;
-                    DUD.SVD(DUD_U,DUD_S,DUD_V);
-                    //compute the rank
-                    for(int q = 0; q < NF; ++q)
-                        if( DUD_S(q,q) > 1.0e-2 )
-                            rank++;
-                    rank = NF-3;
-                    if( rank != NF-3)
-                    {
-                        std::cout << "rank: " << rank << " expected " << NF-3 << std::endl;
-                        DUD_S.Print();
-                    }
-                    //chop matrix to the full rank
-                    DUD_S.RemoveSubset(rank,NF,rank,NF);
-                    DUD_V.RemoveColumns(rank,NF);
-                    //assign the matrix
-                    D = DUD_V;
-                    U = DUD_S;
-                }
-                //std::cout << "D" << std::endl;
-                //D.Print();
-                //std::cout << "U" << std::endl;
-                //U.Print();
-                //std::cout << "DtR" << std::endl;
-                //(D.Transpose()*R).Print();
+					int rank = 0; //size of matrix U
                 
-                U *=(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
-#if defined(OPTIMIZATION)
-                { //Make W a Z-matrix
-                    vMatrix vL(rank,rank), vD(rank,rank), vW(NF,NF);
-                    int unk = 0;
-                    // U = L*D*L^T
-                    vD.Zero();
-                    //diagonal D
-                    for(int i = 0; i < rank; ++i)
-                    {
-                        vD(i,i) = unknown(U(i,i),unk);
-                        unk++;
-                    }
-                    //off-diagonal
-                    vL.Zero();
-                    for(int i = 0; i < rank; ++i)
-                        vL(i,i) = 1.0;
-                    for(int i = 1; i < rank; ++i)
-                        for(int j = 0; j < i; ++j)
-                        {
-                            vL(i,j) = unknown(0.0,unk);
-                            unk++;
-                        }
-                    //std::cout << "unknowns: " << unk << std::endl;
-                    variable phi,s;
-                    //std::cout << "vD" << std::endl;
-                    //vD.Print();
-                    //std::cout << "vL" << std::endl;
-                    //vL.Print();
-                    
-                    int iter = 0;
-                    do
-                    { //Optimize U matrix
-                        vW = nKGRAD + D*vL*vD*vL.Transpose()*D.Transpose();
-                        //construct minimization functional phi(W)
-                        phi = 0.0;
-                        for(int i = 0; i < NF; ++i)
-                        {
-                            //phi += 1.0 / (vW(i,i)*vW(i,i));
-                            s = vW(i,i)*faces[i].Area();
-                            for(int j = 0; j < NF; ++j) if( i != j )
-                            {
-                                s += vW(i,j)*faces[j].Area();
-                                phi += (vW(i,j)+fabs(vW(i,j)))*(vW(i,j)+fabs(vW(i,j)));
-                            }
-                            phi += (s - fabs(s))*(s - fabs(s));
-                        }
-                        Sparse::Row & der = phi.GetRow(); //row of derivatives
-                        //std::sort(der.Begin(),der.End());
-                        //for(int i = 0; i < der.Size(); ++i)
-                        //    std::cout << "(" << der.GetIndex(i) << "," << der.GetValue(i) << ") ";
-                        //std::cout<<std::endl;
-                        int q = 0;
-                        real a = 0.00005;
-                        real minvD = 1.0e20;
-                        //diagonal
-                        for(int i = 0; i < rank; ++i)
-                        {
-                            real d = a*der[q++];
-                            //if( vD(i,i)-d > 0.0 )
-                            vD(i,i) -= d;
-                            if( vD(i,i) < minvD ) minvD = get_value(vD(i,i));
-                        }
-                        std::cout << "[" << iter << "] phi: " << get_value(phi) << " minD " << minvD << std::endl;
-                        //off-diagonal
-                        for(int i = 1; i < rank; ++i)
-                            for(int j = 0; j < i; ++j)
-                            {
-                                real d = a*der[q++];
-                                vL(i,j) -= d;
-                            }
-                        iter++;
-                        //std::cout << "vD" << std::endl;
-                        //vD.Print();
-                        //std::cout << "vL" << std::endl;
-                        //vL.Print();
-                    } while(iter < 100 && phi > 1.0e-3);
-                    {
-                        vMatrix vU = vL*vD*vL.Transpose();
-                        for(int i = 0; i < rank; ++i)
-                            for(int j = 0; j < rank; ++j)
-                                U(i,j) = get_value(vU(i,j));
-                    }
-                    //std::cout << "U: " << std::endl;
-                    //U.Print();
-                    
-                    
-                }
-#endif
-                //std::cout << "UDtR" << std::endl;
-                //(U*D.Transpose()*R).Print();
+					{ //Retrive orthogonal to R matrix D
+						//Symmetric orthogonal matrix
+						rMatrix DUD = (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose());
+						//perfrom singular value decomposition
+						//S should be unity matrix with rank NF-3
+						rMatrix DUD_U,DUD_S,DUD_V;
+						DUD.SVD(DUD_U,DUD_S,DUD_V);
+						//compute the rank
+						for(int q = 0; q < NF; ++q)
+							if( DUD_S(q,q) > 1.0e-2 )
+								rank++;
+						rank = NF-3;
+						if( rank != NF-3)
+						{
+							std::cout << "rank: " << rank << " expected " << NF-3 << std::endl;
+							DUD_S.Print();
+						}
+						//chop matrix to the full rank
+						DUD_S.RemoveSubset(rank,NF,rank,NF);
+						DUD_V.RemoveColumns(rank,NF);
+						//assign the matrix
+						D = DUD_V;
+						U = DUD_S;
+					}
+					//std::cout << "D" << std::endl;
+					//D.Print();
+					//std::cout << "U" << std::endl;
+					//U.Print();
+					//std::cout << "DtR" << std::endl;
+					//(D.Transpose()*R).Print();
                 
-                nKGRAD += D*U*D.Transpose();
-                */
-                //std::cout << "W: " << std::endl;
-                //nKGRAD.Print();
-                bulk & isDMP = cell->Bulk(tag_DMP);
-                isDMP = 1;
-                for(int k = 0; k < NF; ++k)
-                {
-                    real row_sum = 0;
-                    if( nKGRAD(k,k) < 0.0 ) isDMP = 0;
-                    for(int j = 0; j < NF; ++j)
-                        row_sum += nKGRAD(k,j);
-                    if( row_sum < 0.0 ) isDMP = 0;
-                    for(int j = k+1; j < NF; ++j)
-                        if( nKGRAD(k,j) > 0.0 )
-                            isDMP = 0;
-                }
-                ++total;
-                if( isDMP ) ++dmp;
-                real_array W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
-                W.resize(NF*NF); //resize the structure
-                std::copy(nKGRAD.data(),nKGRAD.data()+NF*NF,W.data()); //write down the gradient matrix
+					U *=(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
+
+					//std::cout << "UDtR" << std::endl;
+					//(U*D.Transpose()*R).Print();
+                
+					W += D*U*D.Transpose();
+
+
+					W = Areas*W*Areas;
+				}
+					//std::cout << "W: " << std::endl;
+					//W.Print();
+				bulk & isDMP = cell->Bulk(tag_DMP);
+				isDMP = 1;
+				for(int k = 0; k < NF; ++k)
+				{
+					real row_sum = 0;
+					if( W(k,k) < 0.0 ) isDMP = 0;
+					for(int j = 0; j < NF; ++j)
+						row_sum += W(k,j);
+					if( row_sum < 0.0 ) isDMP = 0;
+					for(int j = k+1; j < NF; ++j)
+						if( W(k,j) > 0.0 )
+							isDMP = 0;
+				}
+				++total;
+				if( isDMP ) ++dmp;
+				real_array store_W = cell->RealArrayDV(tag_W); //access data structure for gradient matrix in mesh
+				store_W.resize(NF*NF); //resize the structure
+				std::copy(W.data(),W.data()+NF*NF,store_W.data()); //write down the gradient matrix
             } //end of loop over cells
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
             std::cout << "Satisfy DMP: " << dmp << " out of " << total << std::endl;
@@ -400,7 +553,7 @@ int main(int argc,char ** argv)
             dynamic_variable P(aut,aut.RegisterDynamicTag(tag_P,CELL|FACE)); //register pressure as primary unknown
             aut.EnumerateDynamicTags(); //enumerate all primary variables
             
-            std::cout << "Enumeration done" << std::endl;
+            std::cout << "Enumeration done, size " << aut.GetLastIndex() - aut.GetFirstIndex() << std::endl;
             
             
             Residual R("",aut.GetFirstIndex(),aut.GetLastIndex());
@@ -446,74 +599,78 @@ int main(int argc,char ** argv)
                     bulk & isDMP = cell->Bulk(tag_DMP);
                     vMatrix pF(NF,1); //vector of pressure differences on faces
                     vMatrix FLUX(NF,1); //computed flux on faces
-                    for(int k = 0; k < NF; ++k)
-                        pF(k,0) = (P(faces[k]) - P(cell))*faces[k].Area();
+                    vMatrix FLUX_MASS(NF,1); //computed flux on faces for mass balance on cell
+					vMatrix POT (2,1); //vector of pressure differences on faces
+
+					for(int k = 0; k < NF; ++k)
+					{
+					
+					
+					if (faces[k]->FrontCell().isValid())
+					{
+						Cell cell_n = cell.Neighbour(faces[k]); 
+						ElementArray<Face> faces_n = cell_n->getFaces(); //obtain faces of the cell neighoubr
+					    rMatrix nKGRAD_n(cell_n->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
+						double B_1, B_2, L_1, L_2;
+						int face_n_k;
+
+                        L_1 =0.0; 
+						B_1= nKGRAD(k,k) ;
+						for(int j = 0; j < NF; ++j)
+						L_1 +=nKGRAD(k,j) ;
+						for(int j = 0; j < NF; ++j) if (faces_n[j] == faces[k])
+						{
+							face_n_k= j ;
+						}
+						L_2 =0.0; 
+						for(int j = 0; j < NF; ++j)
+						L_2 +=nKGRAD_n(face_n_k,j) ;
+
+						B_2 = nKGRAD_n(face_n_k,face_n_k) ;
+
+						POT(0,0)=L_1*P(cell) ;
+						POT(1,0)=L_2*P(cell_n) ;
+
+						for(int j = 0; j < NF; ++j)if (j != k)
+						POT(0,0) -= nKGRAD(k,j)* P(faces[j]);
+
+						for(int j = 0; j < NF; ++j) if (j != face_n_k)
+						POT(1,0) -= nKGRAD_n(face_n_k,j)* P(faces_n[j]);
+
+                        FLUX_MASS(k,0) = -(B_2*POT(0,0)-B_1 *POT(1,0))/(B_1+B_2) ;
+
+
+					}
+					else {
+						FLUX_MASS(k,0)=0.0;
+						
+					for(int j = 0; j < NF; ++j)
+						FLUX_MASS(k,0)+= nKGRAD(k,j)* (P(faces[j]) - P(cell)) ;
+					}
+					}
+				
+
+				//	for(int k = 0; k < NF; ++k)
+				//	{
+				//	FLUX_MASS(k,0)=0.0;
+				////	Cell cell_l =faces[k].BackCell();
+				//	Cell cell_l= cell.Neighbour(faces[k]);
+				//	Cell cell_n= cell_l.Neighbour(faces[k]);
+				//	for(int j = 0; j < NF; ++j)
+				//	FLUX_MASS(k,0)+= nKGRAD(k,j)* (P(faces[j]) - P(cell_n)) ;
+				//	}
+					
+	                    for(int k = 0; k < NF; ++k)
+                    pF(k,0) = (P(faces[k]) - P(cell));//*faces[k].Area();
                     FLUX = nKGRAD*pF; //fluxes on faces
                     //Change matrix by nonlinear correction for DMP
                     ++total;
-                    
-                    //if( !isDMP )
-                    if( false )
-                    {
-                        const real var = 0;//0.25;
-                        vMatrix vnKGRAD = nKGRAD;
-                        vMatrix card(NF,1);
-                        vMatrix dpF(NF,1);
-                        variable div = 0;
-                        //denominators of corrections
-                        //this is sum of absolute values of differences
-                        for(int k = 0; k < NF; ++k)
-                        {
-                            div += FLUX(k,0)*faces[k].Area();;
-                            for(int j = 0; j < NF; ++j)
-                            {
-                                dpF(k,0) += soft_fabs(pF(j,0) - pF(k,0),1.0e-9);
-                                card(k,0) += (soft_fabs(pF(j,0) - pF(k,0),1.0e-9)) / (soft_fabs(pF(j,0) - pF(k,0),1.0e-9)+1.0e-9);
-                            }
-                        }
-                        //actual corrections
-                        variable beta;
-                        for(int k = 0; k < NF; ++k)
-                        {
-                            for(int j = k+1; j < NF; ++j) //if( nKGRAD(k,j) > 0.0 )
-                            {
-                                //beta = soft_fabs(FLUX(k,0),1.0e-9)/(dpF(k,0)) + soft_fabs(FLUX(j,0),1.0e-9)/(dpF(j,0));
-                                beta = soft_max(soft_fabs(FLUX(k,0)-FLUX(j,0),1.0e-9)/card(k,0),soft_fabs(FLUX(j,0)-FLUX(k,0),1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
-                                //beta = soft_max(soft_fabs(FLUX(k,0),1.0e-9)/card(k,0),soft_fabs(FLUX(j,0),1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
-                                //beta = soft_max(soft_fabs(div,1.0e-9)/card(k,0),soft_fabs(div,1.0e-9)/card(j,0),1.0e-9)/soft_fabs(pF(k,0)-pF(j,0),1.0e-9);
-                                beta = variation(beta,var);
-                                vnKGRAD(k,j) -= (beta);
-                                vnKGRAD(j,k) -= (beta);
-                                vnKGRAD(k,k) += (beta);
-                                vnKGRAD(j,j) += (beta);
-                            }
-                        }
-                        FLUX = vnKGRAD*pF;
-                        bool haveDMP = true;
-                        for(int k = 0; k < NF; ++k)
-                        {
-                            real row_sum = 0;
-                            if( vnKGRAD(k,k) < 0.0 ) haveDMP = false;
-                            for(int j = 0; j < NF; ++j)
-                                row_sum += get_value(vnKGRAD(k,j));
-                            if( row_sum < 0.0 ) haveDMP = false;
-                            for(int j = k+1; j < NF; ++j)
-                                if( vnKGRAD(k,j) > 0.0 )
-                                    haveDMP = false;
-                        }
-                        if( !haveDMP )
-                        {
-                            //std::cout << "Failed to correct, matrix:" << std::endl;
-                            //nKGRAD.Print();
-                        }
-                        else ++dmp;
-                    }
-                    else ++dmp;
-                    
                     if( cell.GetStatus() != Element::Ghost )
                     {
                         for(int k = 0; k < NF; ++k) //loop over faces of current cell
-                            R[P.Index(cell)] += FLUX(k,0)*faces[k].Area();
+                        { //R[P.Index(cell)] += FLUX(k,0);//faces[k].Area();
+						   R[P.Index(cell)] +=  FLUX_MASS(k,0);//faces[k].Area();
+						}
                     }
                     for(int k = 0; k < NF; ++k) //loop over faces of current cell
                     {
@@ -559,12 +716,13 @@ int main(int argc,char ** argv)
                 
                 if( R.Norm() < 1.0e-4 ) break;
                 
+				//Solver S(Solver::INNER_ILU2);
                 //Solver S(Solver::INNER_MPTILUC);
 				Solver S(Solver::SUPERLU);
 				S.SetParameterReal("relative_tolerance", 1.0e-14);
                 S.SetParameterReal("absolute_tolerance", 1.0e-12);
-                S.SetParameterReal("drop_tolerance", 1.0e-2);
-                S.SetParameterReal("reuse_tolerance", 1.0e-4);
+                S.SetParameterReal("drop_tolerance", 1.0e-1);
+                S.SetParameterReal("reuse_tolerance", 1.0e-2);
                 S.SetMatrix(R.GetJacobian());
                 //std::fill(Update.Begin(),Update.End(),0.0);
                 if( S.Solve(R.GetResidual(),Update) )
