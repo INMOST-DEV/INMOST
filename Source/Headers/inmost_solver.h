@@ -1,7 +1,3 @@
-//
-// Created by Dmitri Bagaev on 22.09.16.
-//
-
 #ifndef INMOST_SOLVER_INCLUDED
 #define INMOST_SOLVER_INCLUDED
 

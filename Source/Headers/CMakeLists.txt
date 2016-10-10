@@ -13,7 +13,7 @@ set(HEADER
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_mesh.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver_interface.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver_factory
+        ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver_master.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_partitioner.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_autodiff.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_expression.h

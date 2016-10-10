@@ -23,6 +23,7 @@ namespace INMOST {
         }
 
         void SolverSUPERLU::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
+        	//check that the run is serial!
         	int *ia, *ja, nnz = 0;
 			double *a;
 			int mbeg = A.GetFirstIndex();

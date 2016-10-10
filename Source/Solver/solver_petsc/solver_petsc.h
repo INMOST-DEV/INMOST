@@ -1,7 +1,3 @@
-//
-// Created by Dmitri Bagaev on 28.09.16.
-//
-
 #ifndef INMOST_NEW_SOLVER_PETSC_H
 #define INMOST_NEW_SOLVER_PETSC_H
 
