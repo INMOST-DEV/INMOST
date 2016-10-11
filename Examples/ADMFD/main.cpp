@@ -201,7 +201,7 @@ int main(int argc,char ** argv)
 				int NF = (int)faces.size(); //number of faces;	
 				rMatrix W(NF,NF);
 				
-				if( cell->GetElementType() == Element::Tet && rt0 ) // RT0 consturction of W matrix 
+				if( cell->GetGeometricType() == Element::Tet && rt0 ) // RT0 consturction of W matrix 
 				{
 					double V = cell.Volume();
 					double dN[12];
