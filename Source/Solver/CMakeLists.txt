@@ -8,7 +8,7 @@ set(SOURCE
         )
 
 add_subdirectory(solver_inner)
-#add_subdirectory(solver_fcbiilu2)
+add_subdirectory(solver_fcbiilu2)
 add_subdirectory(solver_k3biilu2)
 
 if (USE_SOLVER_PETSC)

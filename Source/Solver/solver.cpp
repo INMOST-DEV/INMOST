@@ -25,8 +25,12 @@
 #include "solver_superlu/SolverSUPERLU.h"
 #endif
 
-#if defined (HAVE_SOLVER_K3BIILU2)
+#if defined(HAVE_SOLVER_K3BIILU2)
 #include "solver_k3biilu2/SolverK3BIILU2.h"
+#endif
+
+#if defined(HAVE_SOLVER_FCBIILU2)
+#include "solver_fcbiilu2/SolverFCBIILU2.h"
 #endif
 
 namespace INMOST {
@@ -116,6 +120,9 @@ namespace INMOST {
 #endif
 #if defined(HAVE_SOLVER_K3BIILU2)
         SolverMaster::registerSolver<SolverK3BIILU2>("k3biilu2");
+#endif
+#if defined(HAVE_SOLVER_FCBIILU2)
+        SolverMaster::registerSolver<SolverFCBIILU2>("fcbiilu2");
 #endif
         Sparse::CreateRowEntryType();
     }
