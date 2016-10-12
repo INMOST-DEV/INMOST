@@ -50,20 +50,20 @@ namespace INMOST {
             AztecSolver.SetAztecOption(AZ_diagnostics, AZ_none);
             AztecSolver.SetAztecOption(AZ_output, AZ_none);
             AztecSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
-            AztecSolver.SetAztecOption(AZ_overlap, parameters.GetParameter("additive_schwartz_overlap").unsigned_integer());
+            AztecSolver.SetAztecOption(AZ_overlap, parameters.get<INMOST_DATA_ENUM_TYPE>("additive_schwartz_overlap"));
         }
 
         if (!have_params) {
-            AztecSolver.SetAztecParam(AZ_drop, parameters.GetParameter("drop_tolerance").real());
-            AztecSolver.SetAztecParam(AZ_ilut_fill, parameters.GetParameter("fill_level").real());
+            AztecSolver.SetAztecParam(AZ_drop, parameters.get<INMOST_DATA_REAL_TYPE>("drop_tolerance"));
+            AztecSolver.SetAztecParam(AZ_ilut_fill, parameters.get<INMOST_DATA_REAL_TYPE>("fill_level"));
         }
 
-        AztecSolver.Iterate(parameters.GetParameter("maximum_iterations").unsigned_integer(), parameters.GetParameter("relative_tolerance").real());
+        AztecSolver.Iterate(parameters.get<INMOST_DATA_ENUM_TYPE>("maximum_iterations"), parameters.get<INMOST_DATA_ENUM_TYPE>("relative_tolerance"));
         const double *stats = AztecSolver.GetAztecStatus();
         bool success = true;
         std::string reason = "";
         TrilinosCheckStatus(static_cast<int>(stats[AZ_why]), success, reason);
-        lastIterations = AztecSolver.NumIters();
+        lastIterations = static_cast<INMOST_DATA_ENUM_TYPE>(AztecSolver.NumIters());
         lastResidual = AztecSolver.TrueResidual();
         returnReason = reason;
         return success;

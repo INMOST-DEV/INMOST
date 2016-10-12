@@ -37,10 +37,10 @@ namespace INMOST {
     }
 
     bool SolverInner::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
-        solver->EnumParameter("maxits") = parameters.GetParameter("maximum_iterations").unsigned_integer();
-        solver->RealParameter("rtol") = parameters.GetParameter("relative_tolerance").real();
-        solver->RealParameter("atol") = parameters.GetParameter("absolute_tolerance").real();
-        solver->RealParameter("divtol") = parameters.GetParameter("divergence_tolerance").real();
+        solver->EnumParameter("maxits") = parameters.get<INMOST_DATA_ENUM_TYPE>("maximum_iterations");
+        solver->RealParameter("rtol") = parameters.get<INMOST_DATA_REAL_TYPE>("relative_tolerance");
+        solver->RealParameter("atol") = parameters.get<INMOST_DATA_REAL_TYPE>("absolute_tolerance");
+        solver->RealParameter("divtol") = parameters.get<INMOST_DATA_REAL_TYPE>("divergence_tolerance");
 
         return solver->Solve(RHS, SOL);
     }

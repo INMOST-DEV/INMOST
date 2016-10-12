@@ -50,7 +50,7 @@ namespace INMOST {
             AztecSolver.SetAztecOption(AZ_diagnostics, AZ_none);
             AztecSolver.SetAztecOption(AZ_output, AZ_none);
             AztecSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
-            AztecSolver.SetAztecOption(AZ_overlap, parameters.GetParameter("additive_schwartz_overlap").unsigned_integer());
+            AztecSolver.SetAztecOption(AZ_overlap, parameters.get<INMOST_DATA_ENUM_TYPE>("additive_schwartz_overlap"));
         }
 
         Teuchos::ParameterList List;
@@ -65,12 +65,12 @@ namespace INMOST {
         ML_Epetra::MultiLevelPreconditioner *Prec = new ML_Epetra::MultiLevelPreconditioner(*matrix, List, true);
         AztecSolver.SetPrecOperator(Prec);
 
-        AztecSolver.Iterate(parameters.GetParameter("maximum_iterations").unsigned_integer(), parameters.GetParameter("relative_tolerance").real());
+        AztecSolver.Iterate(parameters.get<INMOST_DATA_ENUM_TYPE>("maximum_iterations"), parameters.get<INMOST_DATA_ENUM_TYPE>("relative_tolerance"));
         const double *stats = AztecSolver.GetAztecStatus();
         bool success = true;
         std::string reason = "";
         TrilinosCheckStatus(static_cast<int>(stats[AZ_why]), success, reason);
-        lastIterations = AztecSolver.NumIters();
+        lastIterations = static_cast<INMOST_DATA_ENUM_TYPE>(AztecSolver.NumIters());
         lastResidual = AztecSolver.TrueResidual();
         returnReason = reason;
         delete Prec;

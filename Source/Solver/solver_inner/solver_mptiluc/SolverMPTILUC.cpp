@@ -18,16 +18,16 @@ namespace INMOST {
             delete matrix;
         }
         matrix = new Sparse::Matrix(A);
-        info.PrepareMatrix(*matrix, parameters.GetParameter("additive_schwartz_overlap").unsigned_integer());
+        info.PrepareMatrix(*matrix, parameters.get<INMOST_DATA_ENUM_TYPE>("additive_schwartz_overlap"));
         solver->ReplaceMAT(*matrix);
 
-        solver->RealParameter(":tau") = parameters.GetParameter("drop_tolerance").real();
-        solver->RealParameter(":tau2") = parameters.GetParameter("reuse_tolerance").real();
-        solver->EnumParameter(":scale_iters") = parameters.GetParameter("rescale_iterations").unsigned_integer();
-        solver->EnumParameter(":estimator") = parameters.GetParameter("condition_estimation").unsigned_integer();
+        solver->RealParameter(":tau") = parameters.get<INMOST_DATA_REAL_TYPE>("drop_tolerance");
+        solver->RealParameter(":tau2") = parameters.get<INMOST_DATA_REAL_TYPE>("reuse_tolerance");
+        solver->EnumParameter(":scale_iters") = parameters.get<INMOST_DATA_ENUM_TYPE>("rescale_iterations");
+        solver->EnumParameter(":estimator") = parameters.get<INMOST_DATA_ENUM_TYPE>("condition_estimation");
 
         if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
-            solver->EnumParameter("levels") = parameters.GetParameter("gmres_substeps").unsigned_integer();
+            solver->EnumParameter("levels") = parameters.get<INMOST_DATA_ENUM_TYPE>("gmres_substeps");
         }
 
         if (!solver->isInitialized()) {

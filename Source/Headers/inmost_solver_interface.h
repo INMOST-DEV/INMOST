@@ -2,6 +2,7 @@
 #define INMOST_SOLVERINTERFACE_H
 
 #include <string>
+#include <sstream>
 #include "inmost_sparse.h"
 
 namespace INMOST {
@@ -13,11 +14,15 @@ namespace INMOST {
         std::string value;
     public:
         SolverParameter() {};
-        SolverParameter(std::string value) : value(value) {}; 
-        const INMOST_DATA_INTEGER_TYPE integer() const;
-        const INMOST_DATA_ENUM_TYPE unsigned_integer() const;
-        const INMOST_DATA_REAL_TYPE real() const;
-        const std::string str() const;
+        SolverParameter(std::string value) : value(value) {};
+
+        template<typename T>
+        const T get() const {
+            std::istringstream stream(value);
+            T parameter;
+            stream >> parameter;
+            return parameter;
+        }
     };
 
     class SolverParameters {
@@ -28,6 +33,11 @@ namespace INMOST {
         void SetParameter(std::string name, std::string value);
 
         const SolverParameter GetParameter(std::string name) const;
+
+        template<typename T>
+        const T get(std::string name) const {
+            return GetParameter(name).get<T>();
+        }
     };
 
     class SolverInterface {

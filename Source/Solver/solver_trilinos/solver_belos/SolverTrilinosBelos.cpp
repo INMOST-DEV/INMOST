@@ -33,9 +33,9 @@ namespace INMOST {
         else {
             List->set("Num Blocks", 100);
             List->set("Block Size", 1);
-            List->set("Maximum Iterations", parameters.GetParameter("maximum_iterations").integer());
+            List->set("Maximum Iterations", parameters.get<int>("maximum_iterations"));
             List->set("Maximum Restarts", 20);
-            List->set("Convergence Tolerance", static_cast<double>(parameters.GetParameter("relative_tolerance").real()));
+            List->set("Convergence Tolerance", parameters.get<double>("relative_tolerance"));
         }
 
         Teuchos::RCP<Belos::LinearProblem<double, Epetra_MultiVector, Epetra_Operator> > Problem =
@@ -55,7 +55,7 @@ namespace INMOST {
         BelosSolver->setParameters(List);
         BelosSolver->setProblem(Problem);
         Belos::ReturnType ret = BelosSolver->solve();
-        lastIterations = BelosSolver->getNumIters();
+        lastIterations = static_cast<INMOST_DATA_ENUM_TYPE>(BelosSolver->getNumIters());
         lastResidual = BelosSolver->achievedTol();
 
         if (ret == Belos::Converged) {
