@@ -966,7 +966,7 @@ namespace INMOST
     fout << "\t\t\t</Connections>\n";
     fout << "\t\t</Faces>\n";
     fout << "\t\t<Cells>\n";
-    fout << "\t\t\t<Connections Number=\"" << NumberOfFaces() << "\" Type=\"Faces\">\n";
+    fout << "\t\t\t<Connections Number=\"" << NumberOfCells() << "\" Type=\"Faces\">\n";
     fout << "\t\t\t<![CDATA[\n";
     cnt = 0;
     for(iteratorCell it = BeginCell(); it != EndCell(); ++it)
@@ -1033,6 +1033,7 @@ namespace INMOST
 	fout << "\t\t<Tags>\n";
     for(int k = 0; k < (int)tags.size(); ++k)
     {
+	  if( tags[k] == idx ) continue;
       if( tags[k].GetTagName().substr(0,9) == "PROTECTED" ) continue;
       std::string names[6] = {"Nodes","Edges","Faces","Cells","Sets","Mesh"};
       std::string definition = "", sparse = "", type = "";
