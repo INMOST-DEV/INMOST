@@ -56,11 +56,16 @@ namespace INMOST
           reader.Report("Incorrect XML tag %s expected Nodes",TagNodes.name.c_str());
           throw BadFile;
         }
+		  bool matchnnodes = false;
 
         for(int q = 0; q < TagNodes.NumAttrib(); ++q)
         {
           XMLReader::XMLAttrib & attr = TagNodes.GetAttib(q);
-          if( attr.name == "Number" ) nnodes = atoi(attr.value.c_str());
+          if( attr.name == "Number" )
+		  {
+			  nnodes = atoi(attr.value.c_str());
+			  matchnnodes = true;
+		  }
           else if( attr.name == "Dimensions" )
           {
             ndims = atoi(attr.value.c_str());
@@ -104,7 +109,7 @@ namespace INMOST
           reader.CloseTag(TagNodes);
         }
 
-        if( new_nodes.size() != nnodes )
+        if( matchnnodes && new_nodes.size() != nnodes )
         {
           reader.Report("Number of records for nodes %d do not match specified number of coordinates %d",new_nodes.size(),nnodes);
         }
@@ -180,6 +185,8 @@ namespace INMOST
           XMLReader::XMLTag TagConns;
           for(TagConns = reader.OpenTag(); !TagConns.Finalize() && TagConns.name == "Connections"; reader.CloseTag(TagConns), TagConns = reader.OpenTag())
           {
+			  bool matchnconns = false;
+			  int nexpectconns = 0;
             int nconns = 0;
             int offset = 0;
 			int dims = 3; //to distinguish 3d cells from 2d cells when they are created with nodes
@@ -187,14 +194,18 @@ namespace INMOST
             for(int q = 0; q < TagConns.NumAttrib(); ++q)
             {
               XMLReader::XMLAttrib & attr = TagConns.GetAttib(q);
-              if( attr.name == "Number" ) nconns = atoi(attr.value.c_str());
+              if( attr.name == "Number" )
+			  {
+				  nexpectconns = atoi(attr.value.c_str());
+				  matchnconns = true;
+			  }
 			  else if( attr.name == "Dimensions" ) dims = atoi(attr.value.c_str());
               else if( attr.name == "Type" ) subtype = reader.atoes(attr.value.c_str());
               else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
               else reader.Report("Unused attribute for %ss %s='%s'",TagConns.name.c_str(),attr.name.c_str(),attr.value.c_str());
             }
             
-            ntotconns += nconns;
+            //ntotconns += nconns;
             if( subtype >= curtype )
             {
               reader.Report("%ss cannot be constructed from %ss",ElementTypeName(curtype),ElementTypeName(subtype));
@@ -306,9 +317,14 @@ namespace INMOST
 				}
                 break;
               }
+				nconns++;
             }
             reader.ReadCloseContents();
-          } 
+			
+			  ntotconns += nconns;
+			  if( matchnconns && nconns != nexpectconns )
+				  reader.Report("Number %d of elements encountered do not match to the specified number %d",nconns,nexpectconns);
+          }
 
           if( matchelems && nelems != ntotconns) reader.Report("Number %d of elements encountered do not match to the specified number %d",ntotconns,nelems);
 
@@ -441,6 +457,8 @@ namespace INMOST
             XMLReader::XMLTag Set;
             for(Set = reader.OpenTag(); !Set.Finalize() && Set.name == "Set"; reader.CloseTag(Set), Set = reader.OpenTag() )
             {
+				int expectsize = 0;
+				bool matchsize = false;
               int size = 0, offset = 0;
               std::string name;
               HandleType parent = InvalidHandle(), child = InvalidHandle(), sibling = InvalidHandle();
@@ -449,7 +467,11 @@ namespace INMOST
               for(int q = 0; q < Set.NumAttrib(); ++q)
               {
                 XMLReader::XMLAttrib & attr = Set.GetAttib(q);
-                if( attr.name == "Size" ) size = atoi(attr.value.c_str());
+                if( attr.name == "Size" )
+				{
+					expectsize = atoi(attr.value.c_str());
+					matchsize = true;
+				}
                 else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
                 else if( attr.name == "Name" ) name = attr.value;
                 else if( attr.name == "Parent" ) 
@@ -494,7 +516,7 @@ namespace INMOST
               {
                 std::vector<std::pair<ElementType,int> > Vector;
                 int Repeat;
-                reader.ParseReference(val,Vector,Repeat,size);
+                reader.ParseReference(val,Vector,Repeat,0);
                 if( !Vector.empty() ) for(int l = 0; l < Repeat; ++l) 
                 {
                   for(int q = 0; q < (int)Vector.size(); ++q)
@@ -505,12 +527,15 @@ namespace INMOST
                       lc.push_back(ComposeHandle(Vector[q].first,Vector[q].second-offset));
                     else //Mesh
                       lc.push_back(GetHandle());
+					size++;
                   }
                     //s.PutElement(links[ElementNum(Vector[q].first)][Vector[q].second-offset]);
                   //s.PutElements(Vector[0],(enumerator)Vector.size());
                 }
               }
               reader.ReadCloseContents();
+				
+				if( matchsize && size != expectsize ) reader.Report("Number %d of elements encountered do not match to the specified set size %d",size, expectsize);
             }
             
             reader.CloseTag(TagSetsData);

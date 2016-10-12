@@ -1266,7 +1266,7 @@ namespace INMOST
 		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
 		{
 			//ElementSet it = EsetByLocalID(jt);
-			std::cout << "set name: " << it->GetName() << " size " << it->Size() << " id " << it->LocalID() << std::endl;
+			//std::cout << "set name: " << it->GetName() << " size " << it->Size() << " id " << it->LocalID() << std::endl;
 			if( it->HaveParent() && it->GetParent()->Hidden() )
 				it->GetParent()->RemChild(it->self());
 			while( it->HaveChild() && it->GetChild()->Hidden() )

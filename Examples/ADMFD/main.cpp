@@ -378,7 +378,7 @@ int main(int argc,char ** argv)
 								xyz_j[2]=W_RT0[j*3]*K_inv_ref1[2]+W_RT0[j*3+1]*K_inv_ref1[5]+W_RT0[j*3+2]*K_inv_ref1[8];
 
 
-								B_RT0[i+j*4]+=gauss_wei[Z]*(xyz_i[0]*xyz_j[0]+ xyz_i[1]*xyz_j[1]+xyz_i[2]*xyz_j[2])/abs(J_det);
+								B_RT0[i+j*4]+=gauss_wei[Z]*(xyz_i[0]*xyz_j[0]+ xyz_i[1]*xyz_j[1]+xyz_i[2]*xyz_j[2])/std::abs(J_det);
 
 
 							}
