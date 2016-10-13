@@ -239,7 +239,7 @@ namespace INMOST
 				}
                 else if( subtype == EDGE )
 				{
-					Face f = CreateFace(subarr.Convert<Node>()).first;
+					Face f = CreateFace(subarr.Convert<Edge>()).first;
 					if( repair_orientation ) f.FixEdgeOrder();
 					elems->push_back(f.GetHandle());
 				}
