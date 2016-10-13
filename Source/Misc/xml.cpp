@@ -771,13 +771,13 @@ namespace INMOST
 				}
 				break;
 			case ReadAttribute:
-				if( isalpha(c) ) ret.push_back(c);
-				else if( c == '=' || c == ' ' ) 
+				if( c == '=' || isspace(c) ) 
 				{
 					if( c == '=' ) RetChar();
 					_state = WaitAttributeValue;
 					done = true;
 				}
+				else if( isalpha(c) ) ret.push_back(c);
 				else 
 				{
 					Report("Unexpected symbol %c while reading attribute name",c);
@@ -825,7 +825,8 @@ namespace INMOST
 				else Report("Unexpected character %c while searching for '='",c);
 				break;
 			case ReadAttributeValue:
-				if( c == '"' && ret.empty() ) 
+				if( isspace(c) && ret.empty() ) continue;
+				else if( c == '"' && ret.empty() ) 
 				{
 					if( verbose > 1 ) Report("info: reading attribute value in quotes");
 					_state = ReadAttributeValueQuote;

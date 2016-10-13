@@ -5,6 +5,15 @@
 
 namespace INMOST
 {
+
+  std::string ToLower(std::string input)
+  {
+	  std::string ret(input);
+	  for(size_t k = 0; k < ret.size(); ++k)
+		  ret[k] = tolower(ret[k]);
+	  return ret;
+  }
+
   void Mesh::LoadXML(std::string File)
   {
     std::fstream infile(File.c_str(),std::ios::in);
@@ -26,7 +35,7 @@ namespace INMOST
     for(int q = 0; q < TagParallelMesh.NumAttrib(); ++q)
     {
       XMLReader::XMLAttrib & attr = TagParallelMesh.GetAttib(q);
-      if( attr.name == "Number" ) nmeshes = atoi(attr.value.c_str());
+      if( ToLower(attr.name) == "number" ) nmeshes = atoi(attr.value.c_str());
       else reader.Report("Unused attribute for ParallelMesh %s='%s'",attr.name.c_str(),attr.value.c_str());
     }
     
@@ -36,7 +45,7 @@ namespace INMOST
       for(int q = 0; q < TagMesh.NumAttrib(); ++q)
       {
         XMLReader::XMLAttrib & attr = TagMesh.GetAttib(q);
-        if( attr.name == "RepairOrientation" ) repair_orientation = reader.ParseBool(attr.value);
+        if( ToLower(attr.name) == "repairorientation" ) repair_orientation = reader.ParseBool(attr.value);
         else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
       }
 
@@ -61,12 +70,12 @@ namespace INMOST
         for(int q = 0; q < TagNodes.NumAttrib(); ++q)
         {
           XMLReader::XMLAttrib & attr = TagNodes.GetAttib(q);
-          if( attr.name == "Number" )
+          if( ToLower(attr.name) == "number" )
 		  {
 			  nnodes = atoi(attr.value.c_str());
 			  matchnnodes = true;
 		  }
-          else if( attr.name == "Dimensions" )
+          else if( ToLower(attr.name) == "dimensions" )
           {
             ndims = atoi(attr.value.c_str());
             if( GetDimensions() != ndims ) SetDimensions(ndims);
@@ -162,7 +171,7 @@ namespace INMOST
           for(int q = 0; q < TagElems.NumAttrib(); ++q)
           {
             XMLReader::XMLAttrib & attr = TagElems.GetAttib(q);
-            if( attr.name == "Number" ) 
+            if( ToLower(attr.name) == "number" ) 
             {
                 nelems = atoi(attr.value.c_str());
                 matchelems = true;
@@ -194,14 +203,14 @@ namespace INMOST
             for(int q = 0; q < TagConns.NumAttrib(); ++q)
             {
               XMLReader::XMLAttrib & attr = TagConns.GetAttib(q);
-              if( attr.name == "Number" )
+              if( ToLower(attr.name) == "number" )
 			  {
 				  nexpectconns = atoi(attr.value.c_str());
 				  matchnconns = true;
 			  }
-			  else if( attr.name == "Dimensions" ) dims = atoi(attr.value.c_str());
-              else if( attr.name == "Type" ) subtype = reader.atoes(attr.value.c_str());
-              else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
+			  else if( ToLower(attr.name) == "dimensions" ) dims = atoi(attr.value.c_str());
+              else if( ToLower(attr.name) == "type" ) subtype = reader.atoes(attr.value.c_str());
+              else if( ToLower(attr.name) == "offset" ) offset = atoi(attr.value.c_str());
               else reader.Report("Unused attribute for %ss %s='%s'",TagConns.name.c_str(),attr.name.c_str(),attr.value.c_str());
             }
             
@@ -359,7 +368,7 @@ namespace INMOST
 			  for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
 			  {
 				  XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
-				  if( attr.name == "Number" ) 
+				  if( ToLower(attr.name) == "number" ) 
 				  {
 					  ntags = atoi(attr.value.c_str());
 					  matchntags = true;
@@ -382,30 +391,30 @@ namespace INMOST
 				  for(int q = 0; q < TagTag.NumAttrib(); ++q)
 				  {
 					  XMLReader::XMLAttrib & attr = TagTag.GetAttib(q);
-					  if( attr.name == "Name" ) tagname = attr.value;
-					  else if( attr.name == "Size" ) 
+					  if( ToLower(attr.name) == "name" ) tagname = attr.value;
+					  else if( ToLower(attr.name) == "size" ) 
 					  {
-						  if( attr.value == "Variable" )
+						  if( ToLower(attr.value) == "variable" )
 							  size = ENUMUNDEF;
 						  else size = atoi(attr.value.c_str());
 					  }
-					  else if( attr.name == "Type" )
+					  else if( ToLower(attr.name) == "type" )
 					  {
-						  if( attr.value == "Real" ) type = DATA_REAL;
-						  else if( attr.value == "Integer" ) type = DATA_INTEGER;
-						  else if( attr.value == "Reference" ) type = DATA_REFERENCE;
-						  else if( attr.value == "RemoteReference" ) type = DATA_REMOTE_REFERENCE;
-						  else if( attr.value == "Bulk" ) type = DATA_BULK;
+						  if( ToLower(attr.value) == "real" ) type = DATA_REAL;
+						  else if( ToLower(attr.value) == "integer" ) type = DATA_INTEGER;
+						  else if( ToLower(attr.value) == "reference" ) type = DATA_REFERENCE;
+						  else if( ToLower(attr.value) == "remoteReference" ) type = DATA_REMOTE_REFERENCE;
+						  else if( ToLower(attr.value) == "bulk" ) type = DATA_BULK;
 #if defined(USE_AUTODIFF)
-						  else if( attr.value == "Variable" ) type = DATA_VARIABLE;
+						  else if( ToLower(attr.value) == "variable" ) type = DATA_VARIABLE;
 #endif
 					  }
-					  else if( attr.name == "Sparse" )
+					  else if( ToLower(attr.name) == "sparse" )
 					  { 
 						  reader.ParseCommaSeparated(attr.value,parsed);
 						  for(int q = 0; q < (int)parsed.size(); ++q) sparse |= reader.atoes(parsed[q].c_str());
 					  }
-					  else if( attr.name == "Definition" )
+					  else if( ToLower(attr.name) == "definition" )
 					  {
 						  reader.ParseCommaSeparated(attr.value,parsed);
 						  for(int q = 0; q < (int)parsed.size(); ++q) defined |= reader.atoes(parsed[q].c_str());
@@ -444,12 +453,12 @@ namespace INMOST
             for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
             {
               XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
-              if( attr.name == "Number" ) 
+              if( ToLower(attr.name) == "number" ) 
               {
                 nsets = atoi(attr.value.c_str());
                 matchsets = true;
               }
-              else if( attr.name == "Offset" ) sets_offset = atoi(attr.value.c_str());
+              else if( ToLower(attr.name) == "offset" ) sets_offset = atoi(attr.value.c_str());
               else reader.Report("Unused attribute for %ss %s='%s'",TagSetsData.name.c_str(),attr.name.c_str(),attr.value.c_str());
             }
             new_sets.reserve(nsets);
@@ -467,35 +476,35 @@ namespace INMOST
               for(int q = 0; q < Set.NumAttrib(); ++q)
               {
                 XMLReader::XMLAttrib & attr = Set.GetAttib(q);
-                if( attr.name == "Size" )
+                if( ToLower(attr.name) == "size" )
 				{
 					expectsize = atoi(attr.value.c_str());
 					matchsize = true;
 				}
-                else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
-                else if( attr.name == "Name" ) name = attr.value;
-                else if( attr.name == "Parent" ) 
+                else if( ToLower(attr.name) == "offset" ) offset = atoi(attr.value.c_str());
+                else if( ToLower(attr.name) == "name" ) name = attr.value;
+                else if( ToLower(attr.name) == "parent" ) 
                 {
-                  if( attr.value != "Unset" )
+                  if( ToLower(attr.value) != "unset" )
                     parent = ComposeHandle(ESET,atoi(attr.value.c_str()));
                 }
-                else if( attr.name == "Sibling" ) 
+                else if( ToLower(attr.name) == "sibling" ) 
                 {
-                  if( attr.value != "Unset" )
+                  if( ToLower(attr.value) != "unset" )
                     sibling = ComposeHandle(ESET,atoi(attr.value.c_str()));
                 }
-                else if( attr.name == "Child" ) 
+                else if( ToLower(attr.name) == "child" ) 
                 {
-                  if( attr.value != "Unset" )
+                  if( ToLower(attr.value) != "unset" )
                     child = ComposeHandle(ESET,atoi(attr.value.c_str()));
                 }
-                else if( attr.name == "Comparator" )
+                else if( ToLower(attr.name) == "comparator" )
                 {
-                  if( attr.value == "Unsorted" ) comparator = ElementSet::UNSORTED_COMPARATOR;
-                  else if( attr.value == "Identificator" ) comparator = ElementSet::GLOBALID_COMPARATOR;
-                  else if( attr.value == "Centroid" ) comparator = ElementSet::CENTROID_COMPARATOR;
-                  else if( attr.value == "Hierarchy" ) comparator = ElementSet::HIERARCHY_COMPARATOR;
-                  else if( attr.value == "Handle" ) comparator = ElementSet::HANDLE_COMPARATOR;
+                  if( ToLower(attr.value) == "unsorted" ) comparator = ElementSet::UNSORTED_COMPARATOR;
+                  else if( ToLower(attr.value) == "identificator" ) comparator = ElementSet::GLOBALID_COMPARATOR;
+                  else if( ToLower(attr.value) == "centroid" ) comparator = ElementSet::CENTROID_COMPARATOR;
+                  else if( ToLower(attr.value) == "hierarchy" ) comparator = ElementSet::HIERARCHY_COMPARATOR;
+                  else if( ToLower(attr.value) == "handle" ) comparator = ElementSet::HANDLE_COMPARATOR;
                   else reader.Report("Unexpected comparator type %s for attribute Comparator, expected Unsorted,Identificator,Centroid,Hierarchy,Handle",attr.value.c_str());
                 }
                 else reader.Report("Unused attribute for %ss %s='%s'",Set.name.c_str(),attr.name.c_str(),attr.value.c_str());
@@ -580,7 +589,7 @@ namespace INMOST
             for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
             {
               XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
-              if( attr.name == "Number" ) 
+              if( ToLower(attr.name) == "number" ) 
               {
                 ndata = atoi(attr.value.c_str());
                 matchndata = true;
@@ -599,21 +608,21 @@ namespace INMOST
               for(int q = 0; q < TagDataSet.NumAttrib(); ++q)
               {
                 XMLReader::XMLAttrib & attr = TagDataSet.GetAttib(q);
-                if( attr.name == "SetType" ) 
+                if( ToLower(attr.name) == "settype" ) 
                 {
-                  if( attr.value == "Cells" ) etype = CELL;
-                  else if( attr.value == "Faces" ) etype = FACE;
-                  else if( attr.value == "Edges" ) etype = EDGE;
-                  else if( attr.value == "Nodes" ) etype = NODE;
-                  else if( attr.value == "Sets" ) etype = ESET;
-                  else if( attr.value == "Mesh" ) etype = MESH;
-                  else if( attr.value == "SetData" ) etype = NONE;
+                  if( ToLower(attr.value) == "cells" ) etype = CELL;
+                  else if( ToLower(attr.value) == "faces" ) etype = FACE;
+                  else if( ToLower(attr.value) == "edges" ) etype = EDGE;
+                  else if( ToLower(attr.value) == "nodes" ) etype = NODE;
+                  else if( ToLower(attr.value) == "sets" ) etype = ESET;
+                  else if( ToLower(attr.value) == "mesh" ) etype = MESH;
+                  else if( ToLower(attr.value) == "setdata" ) etype = NONE;
                 }
-                else if( attr.name == "TagName" ) tagname = attr.value;
-                else if( attr.name == "SetName" ) setname = attr.value;
-                else if( attr.name == "MeshName" ) meshname = attr.value;
-                else if( attr.name == "Sparse" ) sparse_read = reader.ParseBool(attr.value);
-                else if( attr.name == "Offset" ) offset = atoi(attr.value.c_str());
+                else if( ToLower(attr.name) == "tagname" ) tagname = attr.value;
+                else if( ToLower(attr.name) == "setname" ) setname = attr.value;
+                else if( ToLower(attr.name) == "meshname" ) meshname = attr.value;
+                else if( ToLower(attr.name) == "sparse" ) sparse_read = reader.ParseBool(attr.value);
+                else if( ToLower(attr.name) == "offset" ) offset = atoi(attr.value.c_str());
                 else reader.Report("Unused attribute for %ss %s='%s'",TagDataSet.name.c_str(),attr.name.c_str(),attr.value.c_str());
               }
               
