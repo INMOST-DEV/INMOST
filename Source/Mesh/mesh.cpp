@@ -2267,6 +2267,18 @@ namespace INMOST
 	}
 
 
+	void Mesh::AllocateSparseData(void * & q, const Tag & tag)
+	{
+		q = calloc(1,tag.GetRecordSize());
+#if defined(USE_AUTODIFF)
+		if( tag.GetDataType() == DATA_VARIABLE && tag.GetSize() != ENUMUNDEF )
+		{
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
+				new (static_cast<variable *>(q)+k) variable();
+		}
+#endif
+	}
+
 	void Mesh::DelDenseData(HandleType h, const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
@@ -2299,11 +2311,11 @@ namespace INMOST
 			if( tag.GetSize() == ENUMUNDEF ) 
 				TagManager::DestroyVariableData(tag,s[i].rec);
 #if defined(USE_AUTODIFF)
-      else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
-      {
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
-          (static_cast<variable *>(s[i].rec)[k]).~variable();
-      }
+			else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
+			{
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
+					(static_cast<variable *>(s[i].rec)[k]).~variable();
+			}
 #endif
 			free(s[i].rec);
 			s.erase(s.begin()+i);

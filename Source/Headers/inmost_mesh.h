@@ -1287,8 +1287,9 @@ namespace INMOST
 		__INLINE const void *               MGetDenseLink       (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE void *                     MGetDenseLink       (HandleType h, const Tag & t) {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE const void *               MGetLink            (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
-		__INLINE void *                     MGetLink            (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
-    void                                Init                (std::string name);
+		__INLINE void *                     MGetLink            (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) AllocateSparseData(q,t); return q;}}
+		void                                AllocateSparseData  (void * & q, const Tag & t);
+		void                                Init                (std::string name);
 	public:
 		/// Remove all data and all elements from the mesh
 		/// Reset geometry service and topology check flags
