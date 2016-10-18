@@ -298,8 +298,12 @@ namespace INMOST
                   reader.Report("Sorry, no rule to convert %d edges into a cell",subarr.size());
                   throw BadFile;
                 }
-                else if( subtype == FACE )
-                  elems->push_back(CreateCell(subarr.Convert<Face>()).first.GetHandle());
+				else if (subtype == FACE)
+				{
+					Cell c = CreateCell(subarr.Convert<Face>()).first;
+					if (repair_orientation) c.FixEdgeOrder();
+					elems->push_back(c.GetHandle());
+				}
                 break;
               }
             }

@@ -56,6 +56,7 @@ namespace INMOST
 	{
 		switch(t)
 		{
+			case Element::Line: return 3;
 			case Element::Tri: return 5;
 			case Element::Quad: return 9;
 			case Element::MultiLine: return 4;
@@ -75,6 +76,7 @@ namespace INMOST
 	{
 		switch(t)
 		{
+			case Element::Line: return 2;
 			case Element::Tri: return 3;
 			case Element::Quad: return 4;
 			case Element::MultiLine: return ENUMUNDEF;
@@ -106,12 +108,14 @@ namespace INMOST
 		fprintf(f,"ASCII\n");
 		fprintf(f,"DATASET UNSTRUCTURED_GRID\n");
 		//ReorderEmpty(CELL | NODE);
-		Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL | NODE,NONE,1);
+		Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL |FACE| NODE,NONE,1);
 		Storage::integer cur_num = 0;
 		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
 		cur_num = 0;
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) it->IntegerDF(set_id) = cur_num++;
-		fprintf(f,"POINTS %u double\n",NumberOfNodes());
+		cur_num = 0;
+		for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) it->IntegerDF(set_id) = cur_num++;
+		fprintf(f, "POINTS %u double\n", NumberOfNodes());
 		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 		{
 			Storage::real_array coords = it->RealArray(CoordsTag());
@@ -210,7 +214,34 @@ safe_output:
 					default: printf("This should not happen %s\n",Element::GeometricTypeName(it->GetGeometricType()));
 				}
 			}
-			fprintf(f,"CELLS %u %ld\n",NumberOfCells(),values.size());
+			for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
+			{
+				switch (it->GetGeometricType())
+				{
+				case Element::Line:
+				{
+									  ElementArray<Node> nodes = it->getNodes();
+									  values.push_back(static_cast<integer>(nodes.size()));
+									  for (ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
+										  values.push_back(jt->IntegerDF(set_id));
+									  break;
+				}
+				case Element::Tri:
+				case Element::Quad:
+				case Element::MultiLine:
+				case Element::Polygon:
+				{
+										 ElementArray<Node> nodes = it->getNodes();
+										 values.push_back(static_cast<integer>(nodes.size()));
+										 for (ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
+											 values.push_back(jt->IntegerDF(set_id));
+										 break;
+				}
+				default: printf("This should not happen %s\n", Element::GeometricTypeName(it->GetGeometricType()));
+				}
+			}
+
+			fprintf(f,"CELLS %u %ld\n",NumberOfCells() + NumberOfFaces(),values.size());
 			for(dynarray<Storage::integer,64>::size_type i = 0; i < values.size(); i++)
 			{
 				fprintf(f,"%d ",values[i]);
@@ -218,7 +249,7 @@ safe_output:
 			}
 			fprintf(f,"\n");
 		}
-		fprintf(f,"CELL_TYPES %u\n",NumberOfCells());
+		fprintf(f,"CELL_TYPES %u\n",NumberOfCells() + NumberOfFaces());
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 		{
 			INMOST_DATA_ENUM_TYPE nnodes = VtkElementNodes(it->GetGeometricType());
@@ -226,6 +257,14 @@ safe_output:
 				fprintf(f,"%d\n",VtkElementType(it->GetGeometricType()));
 			else //number of nodes mismatch with expected - some topology checks must be off
 				fprintf(f,"%d\n",VtkElementType(Element::MultiPolygon));
+		}
+		for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
+		{
+			INMOST_DATA_ENUM_TYPE nnodes = VtkElementNodes(it->GetGeometricType());
+			if (nnodes == ENUMUNDEF || nnodes == it->nbAdjElements(NODE)) //nodes match - output correct type
+				fprintf(f, "%d\n", VtkElementType(it->GetGeometricType()));
+			else //number of nodes mismatch with expected - some topology checks must be off
+				fprintf(f, "%d\n", VtkElementType(Element::MultiPolygon));
 		}
 		DeleteTag(set_id);
 		{
@@ -236,8 +275,8 @@ safe_output:
 			{
 				Tag t = GetTag(tag_names[i]);
 				//printf("%s %d %d %d\n",tag_names[i].c_str(),t.isDefined(CELL),!t.isSparse(CELL),t.GetDataType() != DATA_BULK);
-				if( t.isDefined(CELL) && 
-            !t.isSparse(CELL) && 
+				if ((t.isDefined(CELL) && !t.isSparse(CELL) 
+					|| t.isDefined(FACE) ) &&
             t.GetDataType() != DATA_BULK && 
             t.GetDataType() != DATA_REFERENCE &&
             t.GetDataType() != DATA_REMOTE_REFERENCE &&
@@ -251,7 +290,7 @@ safe_output:
 				}
 			}
 				
-			if( !tags.empty() ) fprintf(f,"CELL_DATA %u\n",NumberOfCells());
+			if( !tags.empty() ) fprintf(f,"CELL_DATA %u\n",NumberOfCells() + NumberOfFaces());
 			for(unsigned int i = 0; i < tags.size(); i++)
 			{
 				unsigned int comps = tags[i].GetSize();
@@ -271,42 +310,101 @@ safe_output:
               ) type_str = "double";
 						fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
-						for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
+						for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 						{
-							switch( tags[i].GetDataType() )
+							switch (tags[i].GetDataType())
 							{
-								case DATA_REAL:
-								{
-									Storage::real_array arr = it->RealArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) 
-									{
-										double val = static_cast<double>(arr[m]);
-										fprintf(f,"%14e ",isbad(val) ? -0.9999E30 : val);
-									}
-									fprintf(f,"\n");
-								}
+							case DATA_REAL:
+							{
+											  if (tags[i].isDefined(CELL))
+											  {
+												  Storage::real_array arr = it->RealArray(tags[i]);
+												  for (unsigned int m = 0; m < comps; m++)
+												  {
+													  double val = static_cast<double>(arr[m]);
+													  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
+												  }
+											  }
+											  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0.0");
+											  fprintf(f, "\n");
+							}
 								break;
-								case DATA_INTEGER:
-								{
-									Storage::integer_array arr = it->IntegerArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) fprintf(f,"%d ",arr[m]);
-									fprintf(f,"\n");
-								}
+							case DATA_INTEGER:
+							{
+												 if (tags[i].isDefined(CELL))
+												 {
+													 Storage::integer_array arr = it->IntegerArray(tags[i]);
+													 for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
+												 }
+												 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0");
+												 fprintf(f, "\n");
+							}
 								break;
 #if defined(USE_AUTODIFF)
-                case DATA_VARIABLE:
-								{
-									Storage::var_array arr = it->VariableArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) 
-									{
-										double val = static_cast<double>(arr[m].GetValue());
-										fprintf(f,"%14e ",isbad(val) ? -0.9999E30 : val);
-									}
-									fprintf(f,"\n");
-								}
-                break;
+							case DATA_VARIABLE:
+							{
+												  if (tags[i].isDefined(CELL))
+												  {
+													  Storage::var_array arr = it->VariableArray(tags[i]);
+													  for (unsigned int m = 0; m < comps; m++)
+													  {
+														  double val = static_cast<double>(arr[m].GetValue());
+														  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
+													  }
+												  }
+												  else fprintf(f, "0.0");
+												  fprintf(f, "\n");
+							}
+								break;
 #endif
-								default: continue;
+							default: continue;
+							}
+						}
+							
+				for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
+				{
+					switch (tags[i].GetDataType())
+					{
+					case DATA_REAL:
+					{
+									  if (tags[i].isDefined(FACE))
+									  {
+										  Storage::real_array arr = it->RealArray(tags[i]);
+										  for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", arr[m]);
+									  }
+									  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0.0");
+									  fprintf(f, "\n");
+					}
+						break;
+					case DATA_INTEGER:
+					{
+										 if (tags[i].isDefined(FACE))
+										 {
+											 Storage::integer_array arr = it->IntegerArray(tags[i]);
+											 for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
+										 }
+										 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0");
+										 fprintf(f, "\n");
+					}
+						break;
+#if defined(USE_AUTODIFF)
+					case DATA_VARIABLE:
+					{
+										  if (tags[i].isDefined(FACE))
+										  {
+											  Storage::var_array arr = it->VariableArray(tags[i]);
+											  for (unsigned int m = 0; m < comps; m++)
+											  {
+												  double val = static_cast<double>(arr[m].GetValue());
+												  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
+											  }
+										  }
+										  else fprintf(f, "0.0");
+										  fprintf(f, "\n");
+					}
+						break;
+#endif
+					default: continue;
 							}
 						}
 					}
