@@ -209,7 +209,6 @@ int main(int argc,char ** argv)
 					double J_T[9];
 					double K_inv[9];
 					double K_inv_ref1[9];
-					double K_inv_ref[9];
 					double W_RT0[12];
 					double B_RT0[16];
 					double gauss_pt_xyz[12];

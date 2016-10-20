@@ -358,11 +358,11 @@ namespace INMOST
 		/// @param invert_mask if true then those are selected on wich marker is not set
 		/// @return array of elements
 		virtual ElementArray<Element>     getAdjElements          (ElementType etype, MarkerType mask, bool invert_mask = false) const;  //unordered
-		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
+		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
 		/// Retrieve all the nodes of the element.
 		///
 		/// For a node returns itself.
