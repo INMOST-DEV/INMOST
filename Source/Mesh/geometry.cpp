@@ -774,6 +774,7 @@ namespace INMOST
 						}
 						if( *ret < 0.0 ) //a robust algorithm that can handle unoriented cell
 						 */
+						if( !faces.empty() )
 						{
 							//real was = *ret/3.0;
 							*ret = 0;
