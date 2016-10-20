@@ -1748,7 +1748,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-			for(integer it = 0; it < FaceLastLocalID(); ++it)
+			for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
 			{
 				Face face = FaceByLocalID(it);
 				if( face->Boundary() ) face->SetMarker(boundary_marker);
