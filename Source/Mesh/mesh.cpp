@@ -1302,9 +1302,9 @@ namespace INMOST
 				break;
 			}
 				/*
-				 6 7
+				 7 6
 				 4 5
-				 2 3
+				 3 2
 				 0 1
 				 */
 			case Element::Hex:
@@ -1316,9 +1316,9 @@ namespace INMOST
 				ret.reserve(8);
 				ElementArray<Node> verts = face->getNodes();
 				if( face->BackCell() == c )
-					ret.insert(ret.end(),verts.begin(),verts.end());
-				else
 					ret.insert(ret.end(),verts.rbegin(),verts.rend());
+				else
+					ret.insert(ret.end(),verts.begin(),verts.end());
 				ElementArray<Edge> c_edges = c->getEdges();
 				ElementArray<Edge> f_edges = face->getEdges();
 				c_edges.SetPrivateMarker(cemrk);
