@@ -1616,7 +1616,15 @@ namespace INMOST
 		return NumChildren();
 	}
 
-
+	int XMLReader::XMLTree::FindAttrib(std::string name, int offset) const
+	{
+		for(int k = offset+1; k < NumAttrib(); ++k)
+			if( GetAttrib(k).name == name )
+				return k;
+		return NumAttrib();
+	}
+	
+	
 	void WriteXML(const XMLReader::XMLTree & t, std::ostream & output, int offset)
 	{
 		Tabs(output,offset) << "<" << t.GetName();
