@@ -1,5 +1,5 @@
 if(USE_MESH)
-#add_subdirectory(DrawGrid)
+add_subdirectory(DrawGrid)
 add_subdirectory(OldDrawGrid)
 add_subdirectory(GridGen)
 endif(USE_MESH)

@@ -11,9 +11,9 @@ namespace INMOST
 			case DATA_INTEGER:   return "INTEGER";
 			case DATA_BULK:      return "BULK";
 			case DATA_REFERENCE: return "REFERENCE";
-      case DATA_REMOTE_REFERENCE: return "REMOTE_REFERENCE";
+			case DATA_REMOTE_REFERENCE: return "REMOTE_REFERENCE";
 #if defined(USE_AUTODIFF)
-      case DATA_VARIABLE:  return "VARIABLE";
+			case DATA_VARIABLE:  return "VARIABLE";
 #endif
 		}
 		return "UNKNOWN";
@@ -27,10 +27,10 @@ namespace INMOST
 			case DATA_BULK:      return sizeof(INMOST_DATA_BULK_TYPE);
 			case DATA_INTEGER:   return sizeof(INMOST_DATA_INTEGER_TYPE);
 			case DATA_REAL:      return sizeof(INMOST_DATA_REAL_TYPE);
-      case DATA_REMOTE_REFERENCE:      return sizeof(RemoteHandleType);
+			case DATA_REMOTE_REFERENCE:      return sizeof(RemoteHandleType);
 			case DATA_REFERENCE: return sizeof(HandleType);
 #if defined(USE_AUTODIFF)
-      case DATA_VARIABLE:  return sizeof(variable);
+			case DATA_VARIABLE:  return sizeof(variable);
 #endif
 		}
 		return 0;
@@ -45,36 +45,35 @@ namespace INMOST
 			case DATA_INTEGER:   return sizeof(inner_integer_array);
 			case DATA_BULK:      return sizeof(inner_bulk_array);
 			case DATA_REFERENCE: return sizeof(inner_reference_array);
-      case DATA_REMOTE_REFERENCE: return sizeof(inner_remote_reference_array);
+			case DATA_REMOTE_REFERENCE: return sizeof(inner_remote_reference_array);
 #if defined(USE_AUTODIFF)
-      case DATA_VARIABLE:  return sizeof(inner_variable_array);
+			case DATA_VARIABLE:  return sizeof(inner_variable_array);
 #endif
 		}
 		return 0;
 	}
 
+	Tag::~Tag() 
+	{
+		mem = NULL;
+	}
 
-  Tag::~Tag() 
-  {
-    mem = NULL;
-  }
+	Tag::Tag() 
+	{
+		mem = NULL;
+	}
 
-  Tag::Tag() 
-  {
-    mem = NULL;
-  }
-
-  Tag::Tag(const Tag & other) 
-  {
-    mem = other.mem;
-  }
+	Tag::Tag(const Tag & other) 
+	{
+		mem = other.mem;
+	}
 
 	void TagManager::CopyData(const Tag & t, void * adata, const void * bdata)
 	{
 		
 		INMOST_DATA_ENUM_TYPE data_size = t.GetSize();
 		INMOST_DATA_ENUM_TYPE bytes = t.GetBytesSize();
-    DataType type = t.GetDataType();
+		DataType type = t.GetDataType();
 		if( data_size == ENUMUNDEF ) //variable size array
 		{
 			if( adata != NULL ) TagManager::DestroyVariableData(t,adata);
@@ -82,18 +81,18 @@ namespace INMOST
 			else if( type == DATA_INTEGER )   new (adata) inner_integer_array  (*static_cast<const inner_integer_array   * >(bdata));
 			else if( type == DATA_BULK )      new (adata) inner_bulk_array     (*static_cast<const inner_bulk_array      * >(bdata));
 			else if( type == DATA_REFERENCE ) new (adata) inner_reference_array(*static_cast<const inner_reference_array * >(bdata));
-      else if( type == DATA_REMOTE_REFERENCE ) 
-                                        new (adata) inner_remote_reference_array(*static_cast<const inner_remote_reference_array * >(bdata));
+			else if( type == DATA_REMOTE_REFERENCE ) 
+											  new (adata) inner_remote_reference_array(*static_cast<const inner_remote_reference_array * >(bdata));
 #if defined(USE_AUTODIFF)
-      else if( type == DATA_VARIABLE )  new (adata) inner_variable_array (*static_cast<const inner_variable_array  * >(bdata));
+			else if( type == DATA_VARIABLE )  new (adata) inner_variable_array (*static_cast<const inner_variable_array  * >(bdata));
 #endif
 		}
 #if defined(USE_AUTODIFF)
-    else if( type == DATA_VARIABLE ) //have to call constructor
-    {
-      for(INMOST_DATA_ENUM_TYPE k = 0; k < data_size; ++k)
-        new (static_cast<variable *>(adata)+k) variable(*(static_cast<const variable *>(bdata)+k));
-    }
+		else if( type == DATA_VARIABLE ) //have to call constructor
+		{
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < data_size; ++k)
+				new (static_cast<variable *>(adata)+k) variable(*(static_cast<const variable *>(bdata)+k));
+		}
 #endif
 		else // fixed size array
 			memcpy(adata,bdata,data_size*bytes);
@@ -124,17 +123,17 @@ namespace INMOST
 				(*static_cast<inner_reference_array *> (adata)).~inner_reference_array();
 				new (adata) inner_reference_array();
 			}
-      else if( type == DATA_REMOTE_REFERENCE ) 
+			else if( type == DATA_REMOTE_REFERENCE ) 
 			{
 				(*static_cast<inner_remote_reference_array *> (adata)).~inner_remote_reference_array();
 				new (adata) inner_remote_reference_array();
 			}
 #if defined(USE_AUTODIFF)
-      else if( type == DATA_VARIABLE ) 
-      {
-        (*static_cast<inner_variable_array *> (adata)).~inner_variable_array();
-        new (adata) inner_variable_array();
-      }
+			else if( type == DATA_VARIABLE ) 
+			{
+				(*static_cast<inner_variable_array *> (adata)).~inner_variable_array();
+				new (adata) inner_variable_array();
+			}
 #endif
 		}
 	}
@@ -199,12 +198,12 @@ namespace INMOST
 			case DATA_REAL:      mem->bulk_data_type = INMOST_MPI_DATA_REAL_TYPE;    break;
 			case DATA_INTEGER:   mem->bulk_data_type = INMOST_MPI_DATA_INTEGER_TYPE; break;
 			case DATA_REFERENCE: mem->bulk_data_type = INMOST_MPI_DATA_ENUM_TYPE;    break;
-      case DATA_REMOTE_REFERENCE: mem->bulk_data_type = INMOST_MPI_DATATYPE_NULL;    break; //should never send this
+			case DATA_REMOTE_REFERENCE: mem->bulk_data_type = INMOST_MPI_DATATYPE_NULL;    break; //should never send this
 #if defined(USE_AUTODIFF)
-      case DATA_VARIABLE:
-        if( !Sparse::HaveRowEntryType() ) Sparse::CreateRowEntryType();
-        mem->bulk_data_type = Sparse::GetRowEntryType();
-        break; 
+			case DATA_VARIABLE:
+				if( !Sparse::HaveRowEntryType() ) Sparse::CreateRowEntryType();
+				mem->bulk_data_type = Sparse::GetRowEntryType();
+				break; 
 #endif
 		}
 		mem->bytes_size = DataTypeBytesSize(mem->dtype);
@@ -417,14 +416,14 @@ namespace INMOST
 			bool flag = false;
 #if !defined(LAZY_SPARSE_ALLOCATION)
 			bool have_sparse[6] = {false,false,false,false,false,false};
-      for(int j = 0; j < 6; j++)
-      {
-        for(tag_array_type::size_type i = 0; i < tags.size() && !have_sparse[j]; i++)
-			    if( tags[i] != tag && tags[i].isSparseByDim(j) ) have_sparse[j] = true;
-      }
-      for(int j = 0; j < 6; j++) 
+			for(int j = 0; j < 6; j++)
+			{
+				for(tag_array_type::size_type i = 0; i < tags.size() && !have_sparse[j]; i++)
+					if( tags[i] != tag && tags[i].isSparseByDim(j) ) have_sparse[j] = true;
+			}
+			for(int j = 0; j < 6; j++) 
 				if( was_sparse[j] && !have_sparse[j] )
-          sparse_data[j].clear();
+			sparse_data[j].clear();
 #endif
 			for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 			{
@@ -511,31 +510,31 @@ namespace INMOST
 					case DATA_INTEGER:   for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_integer_array   *>( p )).~inner_integer_array();  } break;
 					case DATA_BULK:      for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_bulk_array      *>( p )).~inner_bulk_array();     } break;
 					case DATA_REFERENCE: for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_reference_array *>( p )).~inner_reference_array();} break;
-          case DATA_REMOTE_REFERENCE: 
-                               for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_remote_reference_array *>( p )).~inner_remote_reference_array();} break;
+					case DATA_REMOTE_REFERENCE: 
+										 for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_remote_reference_array *>( p )).~inner_remote_reference_array();} break;
 #if defined(USE_AUTODIFF)
-          case DATA_VARIABLE:  for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_variable_array  *>( p )).~inner_variable_array(); } break;
+					case DATA_VARIABLE:  for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) {void * p = static_cast<void *>(&arr[it]); if( p != NULL ) (*static_cast<inner_variable_array  *>( p )).~inner_variable_array(); } break;
 #endif
 				}
 			}
 		}
 #if defined(USE_AUTODIFF)
-    else if( data_type == DATA_VARIABLE ) //Have to perform in-memory deallocation to correctly remove class inheritance
-    {
-      for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) 
-      {
-        variable * p = static_cast<variable *>(static_cast<void *>(&arr[it]));
-        for(INMOST_DATA_ENUM_TYPE jt = 0; jt < data_size; ++jt)
-          p[jt].~variable();
-      }
-    }
+		else if( data_type == DATA_VARIABLE ) //Have to perform in-memory deallocation to correctly remove class inheritance
+		{
+			for(INMOST_DATA_ENUM_TYPE it = new_size; it < old_size; ++it) 
+			{
+				variable * p = static_cast<variable *>(static_cast<void *>(&arr[it]));
+				for(INMOST_DATA_ENUM_TYPE jt = 0; jt < data_size; ++jt)
+					p[jt].~variable();
+			}
+		}
 #endif
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-    {
-		  arr.resize(new_size);
-    }
+		{
+			arr.resize(new_size);
+		}
 		if(  data_size == ENUMUNDEF ) //Initialize variable-sized data
 		{
 			switch(data_type)
@@ -544,23 +543,23 @@ namespace INMOST
 				case DATA_INTEGER:   for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_integer_array();   break;
 				case DATA_BULK:      for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_bulk_array();      break;
 				case DATA_REFERENCE: for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_reference_array(); break;
-        case DATA_REMOTE_REFERENCE: 
-                             for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_remote_reference_array(); break;
+				case DATA_REMOTE_REFERENCE: 
+									 for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_remote_reference_array(); break;
 #if defined(USE_AUTODIFF)
-        case DATA_VARIABLE:  for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_variable_array();  break;
+				case DATA_VARIABLE:  for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_variable_array();  break;
 #endif
 			}
 		}
 #if defined(USE_AUTODIFF)
-    else if( data_type == DATA_VARIABLE ) //Have to perform in-memory allocation to correctly setup class inheritance
-    {
-      for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) 
-      {
-        variable * p = static_cast<variable *>(static_cast<void *>(&arr[it]));
-        for(INMOST_DATA_ENUM_TYPE jt = 0; jt < data_size; ++jt)
-          new (p+jt) variable();
-      }
-    }
+		else if( data_type == DATA_VARIABLE ) //Have to perform in-memory allocation to correctly setup class inheritance
+		{
+			for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) 
+			{
+				variable * p = static_cast<variable *>(static_cast<void *>(&arr[it]));
+				for(INMOST_DATA_ENUM_TYPE jt = 0; jt < data_size; ++jt)
+					new (p+jt) variable();
+			}
+		}
 #endif
 	}
 	

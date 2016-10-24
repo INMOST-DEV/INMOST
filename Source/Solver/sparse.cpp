@@ -109,8 +109,8 @@ namespace INMOST
 		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool Sorted)
 		: Sorted(Sorted), Nonzeros(0), IntervalBeg(interval_begin), IntervalEnd(interval_end), NonlocalPre(Pre), NonlocalPost(Post), LinkedList(interval_begin-Pre.size(),interval_end+Post.size()+1,Row::make_entry(UNDEF,0.0))
 		{
-			assert(std::is_sorted(Pre.begin(),Pre.end()));
-			assert(std::is_sorted(Post.begin(),Post.end()));
+			//assert(std::is_sorted(Pre.begin(),Pre.end()));
+			//assert(std::is_sorted(Post.begin(),Post.end()));
 			LinkedList.begin()->first = EOL;
 		}
 		
@@ -167,8 +167,8 @@ namespace INMOST
 		
 		void RowMerger::SetNonlocal(const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post)
 		{
-			assert(std::is_sorted(Pre.begin(),Pre.end()));
-			assert(std::is_sorted(Post.begin(),Post.end()));
+			//assert(std::is_sorted(Pre.begin(),Pre.end()));
+			//assert(std::is_sorted(Post.begin(),Post.end()));
 			NonlocalPre = Pre;
 			NonlocalPost = Post;
 			Resize(IntervalBeg,IntervalEnd,Sorted);

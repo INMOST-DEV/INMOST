@@ -358,11 +358,11 @@ namespace INMOST
 		/// @param invert_mask if true then those are selected on wich marker is not set
 		/// @return array of elements
 		virtual ElementArray<Element>     getAdjElements          (ElementType etype, MarkerType mask, bool invert_mask = false) const;  //unordered
-		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
+		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
 		/// Retrieve all the nodes of the element.
 		///
 		/// For a node returns itself.
@@ -1287,8 +1287,9 @@ namespace INMOST
 		__INLINE const void *               MGetDenseLink       (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE void *                     MGetDenseLink       (HandleType h, const Tag & t) {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE const void *               MGetLink            (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
-		__INLINE void *                     MGetLink            (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
-    void                                Init                (std::string name);
+		__INLINE void *                     MGetLink            (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) AllocateSparseData(q,t); return q;}}
+		void                                AllocateSparseData  (void * & q, const Tag & t);
+		void                                Init                (std::string name);
 	public:
 		/// Remove all data and all elements from the mesh
 		/// Reset geometry service and topology check flags
