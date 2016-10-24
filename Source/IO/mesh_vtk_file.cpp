@@ -478,7 +478,9 @@ safe_output:
 				state = R_QUIT;
 				continue;
 			}
-			if( readline[strlen(readline)-1] == '\n' )
+			//if( readline[strlen(readline)-1] == '\n' )
+			//	readline[strlen(readline)-1] = '\0';
+			while( strlen(readline) != 0 && isspace(readline[strlen(readline)-1]) )
 				readline[strlen(readline)-1] = '\0';
 			if( strlen(readline) == 0 ) continue;
 			switch( state )
@@ -505,7 +507,10 @@ safe_output:
 				case R_DATATYPE:
 				{
 					if( !strncmp(readline,"BINARY",6) )
+					{
 						binary = 1;
+						state = R_WAITDATA;
+					}
 					else if( !strncmp(readline,"ASCII",5) )
 						state = R_WAITDATA;
 					else 
@@ -967,6 +972,64 @@ safe_output:
 					INMOST_DATA_REAL_TYPE coords[3] = {0,0,0};
 					int npoints = 0, i = 0, ncells = 0, ncells2 = 0, nints = 0;
 					char datatype[1024];
+					
+					while( !strncmp(readline,"FIELD",5) )
+					{
+						char dataname[1024], fieldname[1024];
+						int nfields, ntuples, ncomps, nfields_done = 0;
+						filled = sscanf(readline,"%*s %s %d",fieldname,&nfields);
+						
+						while( nfields_done < nfields )
+						{
+							if( fgets(readline,2048,f) == NULL )
+							{
+								state = R_QUIT;
+								continue;
+							}
+							while( strlen(readline) != 0 && isspace(readline[strlen(readline)-1]) )
+								readline[strlen(readline)-1] = '\0';
+							if( strlen(readline) == 0 ) continue;
+							
+							sscanf(readline,"%s %d %d %s",dataname,&ncomps,&ntuples,datatype);
+							DataType t;
+							for(unsigned int i = 0; i < strlen(datatype); i++) datatype[i] = tolower(datatype[i]);
+							if( !strcmp(datatype,"bit") || !strcmp(datatype,"unsigned_char") || !strcmp(datatype,"char") ||
+								  !strcmp(datatype,"unsigned_short") || !strcmp(datatype,"short") || !strcmp(datatype,"unsigned_int") ||
+								  !strcmp(datatype,"int") || !strcmp(datatype,"unsigned_long") || !strcmp(datatype,"long"))
+								t = DATA_INTEGER;
+							else if( !strcmp(datatype,"float") || !strcmp(datatype,"double") )
+								t = DATA_REAL;
+							else
+								throw BadFile;
+							Tag field_data = CreateTag(std::string(fieldname)+"_"+std::string(dataname),t,MESH,NONE,ncomps*ntuples);
+							if( t == DATA_REAL )
+							{
+								for(int q = 0; q < ncomps*ntuples; ++q)
+									filled = fscanf(f,"%lf ", &RealArray(GetHandle(),field_data)[q]);
+							}
+							else
+							{
+								for(int q = 0; q < ncomps*ntuples; ++q)
+									filled = fscanf(f,"%d ", &IntegerArray(GetHandle(),field_data)[q]);
+							}
+
+							
+							nfields_done++;
+						}
+						do
+						{
+							if( fgets(readline,2048,f) == NULL )
+							{
+								state = R_QUIT;
+								continue;
+							}
+							while( strlen(readline) != 0 && isspace(readline[strlen(readline)-1]) )
+								readline[strlen(readline)-1] = '\0';
+						}
+						while( strlen(readline) == 0 );
+					}
+					
+					
 					filled = sscanf(readline,"%*s %d %s",&npoints,datatype);
 					newnodes.resize(npoints);
 					//printf("number of nodes: %d\n",npoints);
