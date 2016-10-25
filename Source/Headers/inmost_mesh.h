@@ -2964,6 +2964,7 @@ namespace INMOST
 		/// Set file option.
 		/// Current availible file options:
 		/// - "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
+		/// - "VTK_OUTPUT_FACES" - set "1" for vtk output of values on faces
 		/// - "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
 		/// - "ECL_SPLIT_GLUED" - set "TRUE" to triangulate faces of the blocks that degenerate on three pillars.
 		///
