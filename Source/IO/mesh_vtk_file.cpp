@@ -300,7 +300,7 @@ safe_output:
 			{
 				Tag t = GetTag(tag_names[i]);
 				//printf("%s %d %d %d\n",tag_names[i].c_str(),t.isDefined(CELL),!t.isSparse(CELL),t.GetDataType() != DATA_BULK);
-				if ((t.isDefined(CELL) && !t.isSparse(CELL) 
+				if (((t.isDefined(CELL) && !t.isSparse(CELL))
 					|| (t.isDefined(FACE) && output_faces)) &&
             t.GetDataType() != DATA_BULK && 
             t.GetDataType() != DATA_REFERENCE &&
@@ -355,7 +355,7 @@ safe_output:
 													  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
 												  }
 											  }
-											  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0.0");
+											  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
 											  fprintf(f, "\n");
 							}
 								break;
@@ -366,7 +366,7 @@ safe_output:
 													 Storage::integer_array arr = it->IntegerArray(tags[i]);
 													 for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
 												 }
-												 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0");
+												 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
 												 fprintf(f, "\n");
 							}
 								break;
@@ -382,7 +382,7 @@ safe_output:
 														  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
 													  }
 												  }
-												  else fprintf(f, "0.0");
+												  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
 												  fprintf(f, "\n");
 							}
 								break;
@@ -405,7 +405,7 @@ safe_output:
 													  Storage::real_array arr = it->RealArray(tags[i]);
 													  for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", arr[m]);
 												  }
-												  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0.0");
+												  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
 												  fprintf(f, "\n");
 								}
 									break;
@@ -416,7 +416,7 @@ safe_output:
 														 Storage::integer_array arr = it->IntegerArray(tags[i]);
 														 for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
 													 }
-													 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "0");
+													 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
 													 fprintf(f, "\n");
 								}
 									break;
@@ -432,7 +432,7 @@ safe_output:
 															  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
 														  }
 													  }
-													  else fprintf(f, "0.0");
+													  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
 													  fprintf(f, "\n");
 								}
 									break;

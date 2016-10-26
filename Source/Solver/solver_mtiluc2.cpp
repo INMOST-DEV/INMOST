@@ -5,11 +5,11 @@
 #include "solver_mtiluc2.hpp"
 #include <sstream>
 #include <deque>
-//#define REPORT_ILU
+#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
+#define REPORT_ILU_END
+#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
@@ -24,7 +24,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-#define REORDER_METIS_ND
+//#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -48,7 +48,7 @@ using namespace INMOST;
 #define DIAGONAL_PERTURBATION_REL 1.0e-10
 #define DIAGONAL_PERTURBATION_ABS 1.0e-12
 //#define DIAGONAL_PIVOT //probably there is some bug
-#define DIAGONAL_PIVOT_TAU 0.01
+#define DIAGONAL_PIVOT_TAU 0.1
 //#define DIAGONAL_PIVOT_COND 1.0e+6
 #define ILUC2
 #define TRACK_DIAGONAL
@@ -519,7 +519,7 @@ public:
 		
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
-		double tfactor = 0.0, trescale = 0.0, treorder = 0.0, treassamble = 0.0, ttotal, tt;
+		double tfactor = 0.0, tswap = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tlocal;
 #if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
 #endif
@@ -654,7 +654,7 @@ public:
 /////////// MAXIMUM TRANSVERSE REORDERING /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
-				tt = Timer();
+				ttransversal = Timer();
 				INMOST_DATA_ENUM_TYPE ColumnBegin;
 				INMOST_DATA_ENUM_TYPE pop_heap_pos;
 				INMOST_DATA_REAL_TYPE ShortestPath, AugmentPath;
@@ -947,9 +947,9 @@ public:
 				
 				//exit(-1);
 
-				tt = Timer() - tt;
+				ttransversal = Timer() - ttransversal;
 
-				treorder += tt;
+				treorder += ttransversal;
 			}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////// END MAXIMUM TRANSVERSE REORDERING /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1890,6 +1890,7 @@ public:
 #if defined(ESTIMATOR)
 				if( estimator )
 				{
+					tlocal = Timer();
 					NuU = NuL = 1.0;
 					if( estimator )
 					{
@@ -1912,6 +1913,7 @@ public:
 #endif
 						}
 					}
+					testimator += Timer() - tlocal;
 				}
 #endif
 				nzLU += L_Address[cbeg].Size() + U_Address[cbeg].Size() + 1;
@@ -1954,6 +1956,7 @@ swap_algorithm:
 							no_swap_algorithm--;
 						}
 #endif
+						tlocal = Timer();
 						j = k+1;
 						for (i = k + 1; i < cend; i++) if (fabs(LU_Diag[j]) < fabs(LU_Diag[i])) j = i;
 
@@ -2108,6 +2111,8 @@ swap_algorithm:
 							//probably should reject all unfactored parts for the next level
 						}
 						*/
+						tlocal = Timer() - tlocal;
+						tswap += tlocal;
 					}
 					
 #endif
@@ -2542,6 +2547,7 @@ swap_algorithm:
 #if defined(ESTIMATOR)
 					if( estimator )
 					{
+						tlocal = Timer();
 						NuU1_old = NuU1;
 						mup = 1.0 - EstU1[k];
 						mum = -1.0 - EstU1[k];
@@ -2580,6 +2586,7 @@ swap_algorithm:
 						if (np > nm) NuU2 = mup; else NuU2 = mum;
 						NuU2_new = std::max(fabs(mup), fabs(mum));
 #endif
+						testimator += Timer()-tlocal;
 					} //if( estimator )
 #endif //ESTIMATOR
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2589,6 +2596,7 @@ swap_algorithm:
 #if defined(ESTIMATOR)
 					if( estimator )
 					{
+						tlocal = Timer();
 						NuL1_old = NuL1;
 						mup = 1.0 - EstL1[k];
 						mum = -1.0 - EstL1[k];
@@ -2627,6 +2635,7 @@ swap_algorithm:
 						if (np > nm) NuL2 = mup; else NuL2 = mum;
 						NuL2_new = std::max(fabs(mup), fabs(mum));
 #endif
+						testimator += Timer()-tlocal;
 					}
 #endif //ESTIMATOR
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2741,6 +2750,7 @@ swap_algorithm:
 #if defined(ESTIMATOR)
 					if( estimator )
 					{
+						tlocal = Timer();
 						{ //U-estimator
 							Ui = LineIndecesU[k];
 							while (Ui != EOL)
@@ -2782,6 +2792,7 @@ swap_algorithm:
               NuL2 = NuL2_new;//std::max(NuL_new,NuL_old);
 #endif
 						}
+						testimator += Timer() - tlocal;
 					}
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3184,16 +3195,25 @@ swap_algorithm:
 #if defined(REPORT_ILU_SUMMARY)
 		printf("total      %f\n",ttotal);
 		printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
+		printf("   mpt     %f (%6.2f%%)\n",ttransversal, 100.0*ttransversal/ttotal);
 #if defined(REORDER_METIS_ND)
-		printf("metis      graph %f nd %f\n", tmetisgraph, tmetisnd);
+		printf("   graph   %f (%6.2f%%)\n",tmetisgraph, 100.0*tmetisgraph/ttotal);
+		printf("   nd      %f (%6.2f%%)\n", tmetisnd, 100.0*tmetisnd/ttotal);
 #endif
 #if defined(REORDER_RCM)
-		printf("rcm        graph %f reorder %f\n", trcmgraph, trcmorder);
+		printf("   graph   %f (%6.2f%%)\n",trcmgraph, 100.0*trcmgraph/ttotal);
+		printf("   rcm     %f (%6.2f%%)\n", trcmorder, 100.0*trcmorder/ttotal);
 #endif
 		printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
 		printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
 		printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
+		printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
+		printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
+#if defined(ILUC2)
 		printf("nnz A %d LU %d LU2 %d\n",nzA,nzLU,nzLU2);
+#else
+		printf("nnz A %d LU %d\n",nzA,nzLU);
+#endif
 #endif
 		init = true;
 		/*
