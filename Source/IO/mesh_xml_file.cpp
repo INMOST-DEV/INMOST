@@ -617,13 +617,14 @@ namespace INMOST
                   else if( ToLower(attr.value) == "sets" ) etype = ESET;
                   else if( ToLower(attr.value) == "mesh" ) etype = MESH;
                   else if( ToLower(attr.value) == "setdata" ) etype = NONE;
+				  else reader.Report("Cannot understand attribute value for %s %s='%s'",TagDataSet.name.c_str(),attr.name.c_str(),attr.value.c_str());
                 }
                 else if( ToLower(attr.name) == "tagname" ) tagname = attr.value;
                 else if( ToLower(attr.name) == "setname" ) setname = attr.value;
                 else if( ToLower(attr.name) == "meshname" ) meshname = attr.value;
                 else if( ToLower(attr.name) == "sparse" ) sparse_read = reader.ParseBool(attr.value);
                 else if( ToLower(attr.name) == "offset" ) offset = atoi(attr.value.c_str());
-                else reader.Report("Unused attribute for %ss %s='%s'",TagDataSet.name.c_str(),attr.name.c_str(),attr.value.c_str());
+                else reader.Report("Unused attribute for %s %s='%s'",TagDataSet.name.c_str(),attr.name.c_str(),attr.value.c_str());
               }
               
               if( tagname == "" )
@@ -694,7 +695,28 @@ namespace INMOST
               {
                 if( sparse_read )
                 {
-                  it = set_elems + atoi(val.c_str());
+				  int offset;
+				  if( etype == ESET && ((val[0]=='\'' && val[val.size()-1] == '\'') || (val[0] == '"' && val[1] == '"')) )
+				  {
+					  //helps check that the set was not found
+					  offset = -1;
+					  //strip qoutes
+					  val = val.substr(1,val.size()-2);
+					  //find set with provided name
+					  for(enumerator k = 0; k < set_size; ++k)
+						  if( ElementSet(this,set_elems[k])->GetName() == val )
+						  {
+							  offset = k;
+							  break;
+						  }
+					  if( offset == -1 )
+					  {
+						  reader.Report("Set with name %s was not found",val.c_str());
+						  throw BadFile;
+					  }
+				  }
+				  else offset = atoi(val.c_str());
+                  it = set_elems + offset;
                   val = reader.GetContentsWord();
                 }
                 switch(t.GetDataType())
