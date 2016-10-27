@@ -2398,15 +2398,15 @@ ecl_exit_loop:
 			}//it
 		} //if gtype
 		
-		std::cout << "Total wells: " << wells.size() << std::endl;
+		//std::cout << "Total wells: " << wells.size() << std::endl;
 
 		Tag tagnwell = CreateTag("NWELL",DATA_INTEGER,CELL,CELL,1);
 		std::vector<HandleType> well_sets;
 		int nwell = 0;
 		for(compdat_wells::iterator it = wells.begin(); it != wells.end(); ++it)
 		{
-			std::cout << "Well " << nwell << " name " << it->first << " elements ";
-			ElementSet set = CreateSet(it->first+"_old").first;
+			//std::cout << "Well " << nwell << " name " << it->first << " elements ";
+			ElementSet set = CreateSet(it->first).first;
 			for(compdat_entries::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
 			{
 				for(int k = jt->k1; k <= jt->k2; ++k) if( k >= 0 && k < dims[2] )
@@ -2419,12 +2419,12 @@ ecl_exit_loop:
 					}
 				}
 			}
-			std::cout << set.Size() << std::endl;
+			//std::cout << set.Size() << std::endl;
 			for(ElementSet::iterator it = set.Begin(); it != set.End(); ++it)
 			{
 				real c[3];
 				it->Centroid(c);
-				std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << c[0] << " " << c[1] << " " << c[2] << std::endl;
+				//std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << c[0] << " " << c[1] << " " << c[2] << std::endl;
 			}
 			well_sets.push_back(set->GetHandle());
 			nwell++;
