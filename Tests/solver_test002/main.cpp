@@ -87,25 +87,10 @@ int main(int argc, char ** argv)
 	int rank,procs;
 	if( argc < 3 )
 	{
-		std::cout << "Usage: " << argv[0] << " method_number<0:INNER_ILU2,1:INNER_DDPQILUC,2:INNER_MPTILUC,3:INNER_MPTILU2,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_ML,7:Trilinos_Ifpack,8:PETSc,9:ANI,10:FCBIILU2,11:K3BIILU2> N<for NxNxN problem> [solver_options.txt]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " S<method name> N<for NxNxN problem> [solver_options.txt]" << std::endl;
 		return -1;
 	}
-	Solver::Type type;
-	switch(atoi(argv[1]))
-	{
-		case  0: type = Solver::INNER_ILU2;      break;
-		case  1: type = Solver::INNER_DDPQILUC;  break;
-		case  2: type = Solver::INNER_MPTILUC;   break;
-		case  3: type = Solver::INNER_MPTILU2;   break;
-		case  4: type = Solver::Trilinos_Aztec;  break;
-		case  5: type = Solver::Trilinos_Belos;  break;
-		case  6: type = Solver::Trilinos_ML;     break;
-		case  7: type = Solver::Trilinos_Ifpack; break;
-		case  8: type = Solver::PETSc;           break;
-		case  9: type = Solver::ANI;             break;
-		case 10: type = Solver::FCBIILU2;        break;
-		case 11: type = Solver::K3BIILU2;        break;
-	}
+	std::string type = std::string(argv[1]);
   
 	int n = atoi(argv[2]);
 	Solver::Initialize(&argc,&argv,argc > 3 ? argv[3] : NULL); // Initialize the linear solver in accordance with args
@@ -118,7 +103,7 @@ int main(int argc, char ** argv)
 		procs = 1;
 #endif
     if( rank == 0 )
-      std::cout << "Testing " << Solver::TypeName(type) << std::endl;
+      std::cout << "Testing " << type << std::endl;
 		//std::cout << rank << "/" << procs << " " << argv[0] << std::endl;
 		Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
 		Sparse::Vector b("rhs"); // Declare the right-hand side vector
@@ -143,15 +128,15 @@ int main(int argc, char ** argv)
 		{
 			Solver s(type); // Declare the linear solver by specified type
 
-			s.SetParameterEnum("gmres_substeps",3);
+			s.SetParameter("gmres_substeps", "3");
 			
-			s.SetParameterEnum("reorder_nonzeros",0);
-			s.SetParameterEnum("rescale_iterations",8);
-			s.SetParameterEnum("adapt_ddpq_tolerance",0);
+			s.SetParameter("reorder_nonzeros", "0");
+			s.SetParameter("rescale_iterations", "8");
+			s.SetParameter("adapt_ddpq_tolerance", "0");
 			
-			s.SetParameterReal("drop_tolerance",0.001);
-			s.SetParameterReal("reuse_tolerance",0.00001);
-			s.SetParameterReal("ddpq_tolerance",0.7);
+			s.SetParameter("drop_tolerance", "0.001");
+			s.SetParameter("reuse_tolerance", "0.00001");
+			s.SetParameter("ddpq_tolerance", "0.7");
 			
 
 			t = Timer();
@@ -164,7 +149,7 @@ int main(int argc, char ** argv)
 			if( !rank ) std::cout << "solver: " << Timer() - t << std::endl;
 			iters = s.Iterations(); // Get the number of iterations performed
 			resid = s.Residual();   // Get the final residual achieved
-			reason = s.GetReason();
+			reason = s.ReturnReason();
 			//x.Save("output.rhs");
 		}
 		tt = Timer() - tt;
