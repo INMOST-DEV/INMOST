@@ -35,6 +35,18 @@ namespace INMOST {
         }
     }
 
+    bool SolverMPTILUC::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
+        solver->EnumParameter("maxits") = parameters.get<INMOST_DATA_ENUM_TYPE>("maximum_iterations");
+        solver->RealParameter("rtol") = parameters.get<INMOST_DATA_REAL_TYPE>("relative_tolerance");
+        solver->RealParameter("atol") = parameters.get<INMOST_DATA_REAL_TYPE>("absolute_tolerance");
+        solver->RealParameter("divtol") = parameters.get<INMOST_DATA_REAL_TYPE>("divergence_tolerance");
+
+        bool solve = solver->Solve(RHS, SOL);
+        parameters.SetParameter("condition_number_L", std::to_string(solver->RealParameter(":condition_number_L")));
+        parameters.SetParameter("condition_number_U", std::to_string(solver->RealParameter(":condition_number_U")));
+        return solve;
+    }
+
     const std::string SolverMPTILUC::SolverName() const {
         return "inner_mptiluc";
     }

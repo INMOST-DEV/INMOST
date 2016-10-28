@@ -23,10 +23,6 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &processorsCount); // Get the total number of processors used
 #endif
 
-    if (processRank == 0) {
-        std::cout << "Starting MatSolve2" << std::endl;
-    }
-
     {
         std::string matrixFileName = "";
         std::string vectorBFileName = "";
@@ -59,7 +55,7 @@ int main(int argc, char **argv) {
                     std::cout << "-t, --type <Solver type name>" << std::endl;
                     std::cout << "  Available solvers:" << std::endl;
                     Solver::Initialize(NULL, NULL, NULL);
-                    std::vector<std::string> availableSolvers = SolverMaster::getAvailableSolvers();
+                    std::vector<std::string> availableSolvers = Solver::getAvailableSolvers();
                     for (solvers_names_iterator_t it = availableSolvers.begin(); it != availableSolvers.end(); it++) {
                         std::cout << "      " << *it << std::endl;
                     }
@@ -157,7 +153,7 @@ int main(int argc, char **argv) {
         // Initialize the linear solver in accordance with args
         Solver::Initialize(&argc, &argv, parametersFound ? parametersFileName.c_str() : NULL);
 
-        if (!SolverMaster::isSolverAvailable(solverName)) {
+        if (!Solver::isSolverAvailable(solverName)) {
             if (processRank == 0) {
                 std::cout << "Solver " << solverName << " is not available" << std::endl;
             }

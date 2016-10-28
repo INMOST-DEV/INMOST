@@ -1,24 +1,31 @@
 #include <inmost.h>
 
+#include "SolverMaster.h"
 #include "solver_inner/solver_ilu2/SolverILU2.h"
 #include "solver_inner/solver_ddpqiluc2/SolverDDPQILUC2.h"
 #include "solver_inner/solver_mptiluc/SolverMPTILUC.h"
 #include "solver_inner/solver_mptilu2/SolverMPTILU2.h"
 
 #if defined(USE_SOLVER_PETSC)
+
 #include "solver_petsc/SolverPETSc.h"
+
 #endif
 
 #if defined(USE_SOLVER_TRILINOS)
+
 #include "solver_trilinos/SolverTrilinos.h"
 #include "solver_trilinos/solver_aztec/SolverTrilinosAztec.h"
 #include "solver_trilinos/solver_belos/SolverTrilinosBelos.h"
 #include "solver_trilinos/solver_ml/SolverTrilinosML.h"
 #include "solver_trilinos/solver_ifpack/SolverTrilinosIfpack.h"
+
 #endif
 
 #if defined(USE_SOLVER_ANI)
+
 #include "solver_ani/SolverANI.h"
+
 #endif
 
 #if defined(USE_SOLVER_SUPERLU)
@@ -196,6 +203,19 @@ namespace INMOST {
 
     const std::string Solver::ReturnReason() const {
         return solver->ReturnReason();
+    }
+
+    INMOST_DATA_REAL_TYPE Solver::Condest(INMOST_DATA_REAL_TYPE tol, unsigned int maxits) {
+        if (!solver->isMatrixSet()) throw MatrixNotSetInSolver;
+        return solver->Condest(tol, maxits);
+    }
+
+    bool Solver::isSolverAvailable(std::string name) {
+        return SolverMaster::isSolverAvailable(name);
+    }
+
+    std::vector<std::string> Solver::getAvailableSolvers() {
+        return SolverMaster::getAvailableSolvers();
     }
 
     Solver::~Solver() {

@@ -37,7 +37,7 @@ namespace INMOST {
     }
 
     bool SolverInner::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
-        solver->EnumParameter("maxits") = parameters.get<INMOST_DATA_ENUM_TYPE>("maximum_iterations");
+        solver->EnumParameter("maxits") = parameters.get < INMOST_DATA_ENUM_TYPE > ("maximum_iterations");
         solver->RealParameter("rtol") = parameters.get<INMOST_DATA_REAL_TYPE>("relative_tolerance");
         solver->RealParameter("atol") = parameters.get<INMOST_DATA_REAL_TYPE>("absolute_tolerance");
         solver->RealParameter("divtol") = parameters.get<INMOST_DATA_REAL_TYPE>("divergence_tolerance");
@@ -92,6 +92,191 @@ namespace INMOST {
         return solver->GetReason();
     }
 
+    const INMOST_DATA_REAL_TYPE SolverInner::Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
+#if defined(ACCELERATED_CONDEST)
+        INMOST_DATA_ENUM_TYPE lbeg, lend, l, iter;
+        INMOST_DATA_REAL_TYPE norm, sum[2], norm_prev, lambda_min, lambda_max;
+        bool diverged_max = false, diverged_min = false;
+        info.GetLocalRegion(info.GetRank(), lbeg, lend);
+        Sparse::Vector v, Av;
+        info.PrepareVector(v);
+        info.PrepareVector(Av);
+        //Set v to random
+        norm = 0;
+        for (l = lbeg; l < lend; ++l) {
+            v[l] = rand() / static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX);
+            norm += v[l] * v[l];
+        }
+        info.Integrate(&norm, 1);
+        norm_prev = 0.0;
+        norm = sqrt(norm);
+        for (l = lbeg; l < lend; ++l) v[l] /= norm;
+        //Compute maximum eigenvalue
+        iter = 0;
+        while (fabs((norm - norm_prev) / norm) > tol && iter < maxiter) {
+            info.Update(v);
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+            matrix->MatVec(1.0, v, 0.0, Av);
+            norm_prev = norm;
+            sum[0] = sum[1] = 0.0;
+            for (l = lbeg; l < lend; ++l) {
+                sum[0] += v[l] * Av[l];
+                sum[1] += v[l] * v[l];
+            }
+            info.Integrate(sum, 2);
+            norm = fabs(sum[0]) / sum[1];
+            for (l = lbeg; l < lend; ++l) v[l] = Av[l] / norm;
+#if defined(PRINT_CONDEST)
+            std::cout << "iteration " << iter << " norm " << norm << std::endl;
+#endif
+            iter++;
+        }
+#if defined(PRINT_CONDEST)
+        std::cout << "lambda_max " << norm << std::endl;
+#endif
+        if (iter == maxiter) {
+            diverged_max = true;
+            std::cout << "Max not converged" << std::endl;
+        }
+        lambda_max = norm;
+        //Set v to random
+        norm = 0;
+        for (l = lbeg; l < lend; ++l) {
+            v[l] = rand() / static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX);
+            norm += v[l] * v[l];
+        }
+        info.Integrate(&norm, 1);
+        norm_prev = 0.0;
+        norm = sqrt(norm);
+        for (l = lbeg; l < lend; ++l) v[l] /= norm;
+        //Compute minimal eigenvalue
+        iter = 0;
+        while (fabs((norm - norm_prev) / norm) > tol && iter < maxiter) {
+            info.Update(v);
+            Solve(v, Av);
+            norm_prev = norm;
+            sum[0] = sum[1] = 0;
+            for (l = lbeg; l < lend; ++l) {
+                sum[0] += v[l] * Av[l];
+                sum[1] += v[l] * v[l];
+            }
+            info.Integrate(sum, 2);
+            norm = fabs(sum[0]) / sum[1];
+            for (l = lbeg; l < lend; ++l) v[l] = Av[l] / norm;
+#if defined(PRINT_CONDEST)
+            std::cout << "iteration " << iter << " norm " << norm << "\t\t" << std::endl;
+#endif
+            iter++;
+        }
+#if defined(PRINT_CONDEST)
+        std::cout << "lambda_min " << 1.0 / norm << std::endl;
+#endif
+        if (iter == maxiter) {
+            diverged_min = true;
+            std::cout << "Min not converged" << std::endl;
+        }
+        lambda_min = 1.0 / norm;
+        if (diverged_max || diverged_min)
+            return 1.0e+100;
+#if defined(PRINT_CONDEST)
+        std::cout << "Condest: " << lambda_max / lambda_min << std::endl;
+#endif
+        return lambda_max / lambda_min;
+#else //!ACCELERATED_CONDEST
+        INMOST_DATA_ENUM_TYPE lbeg, lend, l, iter;
+        INMOST_DATA_REAL_TYPE norm, norm_prev, lambda_min, lambda_max;
+        bool diverged_max = false, diverged_min = false;
+        info.GetLocalRegion(info.GetRank(), lbeg, lend);
+        Sparse::Vector v, Av;
+        info.PrepareVector(v);
+        info.PrepareVector(Av);
+        //Set v to random
+        norm = 0;
+        for (l = lbeg; l < lend; ++l) {
+            v[l] = rand() / static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX);
+            norm += v[l] * v[l];
+        }
+        info.Integrate(&norm, 1);
+        norm_prev = 0.0;
+        norm = sqrt(norm);
+        for (l = lbeg; l < lend; ++l) v[l] /= norm;
+        //Compute maximum eigenvalue
+        iter = 0;
+        while (fabs(norm - norm_prev) / norm > tol && iter < maxiter) {
+            info.Update(v);
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+            matrix->MatVec(1.0, v, 0.0, Av);
+            v.Swap(Av);
+            norm_prev = norm;
+            norm = 0.0;
+            for (l = lbeg; l < lend; ++l) norm += v[l] * v[l];
+            info.Integrate(&norm, 1);
+            norm = sqrt(norm);
+            for (l = lbeg; l < lend; ++l) v[l] /= norm;
+#if defined(PRINT_CONDEST)
+            std::cout << "iteration " << iter << " norm " << norm << std::endl;
+#endif
+            iter++;
+        }
+#if defined(PRINT_CONDEST)
+        std::cout << "lambda_max " << norm << std::endl;
+#endif
+        if (iter == maxiter) {
+            norm = std::max(norm, norm_prev);
+            //diverged_max = true;
+            //std::cout << "Max not converged" << std::endl;
+        }
+        lambda_max = norm;
+        //Set v to random
+        norm = 0;
+        for (l = lbeg; l < lend; ++l) {
+            v[l] = rand() / static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX);
+            norm += v[l] * v[l];
+        }
+        info.Integrate(&norm, 1);
+        norm_prev = 0.0;
+        norm = sqrt(norm);
+        for (l = lbeg; l < lend; ++l) v[l] /= norm;
+        //Compute minimal eigenvalue
+        iter = 0;
+        while (fabs(norm - norm_prev) / norm > tol && iter < maxiter) {
+            info.Update(v);
+            Solve(v, Av);
+            v.Swap(Av);
+            norm_prev = norm;
+            norm = 0.0;
+            for (l = lbeg; l < lend; ++l) norm += v[l] * v[l];
+            info.Integrate(&norm, 1);
+            norm = sqrt(norm);
+            for (l = lbeg; l < lend; ++l) v[l] /= norm;
+#if defined(PRINT_CONDEST)
+            std::cout << "iteration " << iter << " norm " << norm << "\t\t" << std::endl;
+#endif
+            iter++;
+        }
+#if defined(PRINT_CONDEST)
+        std::cout << "lambda_min " << 1.0 / norm << std::endl;
+#endif
+        if (iter == maxiter) {
+            norm = std::max(norm, norm_prev);
+            //diverged_min = true;
+            //std::cout << "Min not converged" << std::endl;
+        }
+        lambda_min = 1.0 / norm;
+        //Condition is always false? Maybe check this
+        if (diverged_max || diverged_min)
+            return 1.0e+100;
+#if defined(PRINT_CONDEST)
+        std::cout << "Condest: " << lambda_max / lambda_min << std::endl;
+#endif
+        return lambda_max / lambda_min;
+#endif
+    }
+
     void SolverInner::Finalize() {
 
     }
@@ -99,4 +284,5 @@ namespace INMOST {
     SolverInner::~SolverInner() {
         this->Clear();
     }
+
 }

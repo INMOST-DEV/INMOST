@@ -40,6 +40,8 @@ namespace INMOST {
 
         virtual const std::string SolverName() const = 0;
 
+        virtual const INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter);
+
         virtual void Finalize();
 
         virtual ~SolverInner();

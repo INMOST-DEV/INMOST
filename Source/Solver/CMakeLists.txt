@@ -7,6 +7,10 @@ set(SOURCE
         ${CMAKE_CURRENT_SOURCE_DIR}/sparse.cpp
         )
 
+set(HEADER
+        ${HEADER}
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.h)
+
 add_subdirectory(solver_inner)
 add_subdirectory(solver_fcbiilu2)
 add_subdirectory(solver_k3biilu2)

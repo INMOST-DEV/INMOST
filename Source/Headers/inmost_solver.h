@@ -259,11 +259,31 @@ namespace INMOST {
         /// @see Sparse::Solve
         const std::string ReturnReason() const;
 
+        /// Computes the smallest and the largest eigenvalue with the power method.
+        /// Requires SetMatrix to be called to compute the preconditioner.
+        /// Currently works for internal methods only, since it uses internal matrix-vector multiplication.
+        /// Largest eigenvalue: vprev = 0; v = rand(); while( |v|-|vprev| > tol ) {vprev = v; v = A*v; v /= |v|;}
+        ///                     lambda_max = |v|;
+        /// Smallest eigenvalue: vprev = 0; v = rand(); while( |v|-|vprev| > tol ){vprev = v; solve(A*v = v); v /= |v|;}
+        ///                     lambda_min = 1.0/|v|;
+        /// See answer by Blair Perot in:
+        /// https://www.researchgate.net/post/What_is_the_best_way_to_estimate_the_condition_number_of_a_sparse_matrix.
+        /// @param tol Tolerance used for power series.
+        /// @param maxits Maximum number of iterations allowed.
+        /// @return Condition number or 1.0e100 if not converged.
+        INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxits = 100);
+
+        static bool isSolverAvailable(std::string name);
+
+        static std::vector<std::string> getAvailableSolvers();
+
         ~Solver();
 
     private:
         static std::string parseDatabase(std::string solverName);
     };
+
+    typedef std::vector<std::string>::iterator solvers_names_iterator_t;
 }
 
 #endif

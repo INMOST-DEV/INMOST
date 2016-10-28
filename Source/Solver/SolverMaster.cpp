@@ -1,5 +1,4 @@
-#include "inmost.h"
-
+#include "SolverMaster.h"
 
 namespace INMOST {
 
