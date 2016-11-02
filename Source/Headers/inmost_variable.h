@@ -527,7 +527,7 @@ namespace INMOST
 		/// Build an expression associated with variable expression on provided element e.
 		multivar_expression operator [](const Storage & e) const
 		{
-			if( isPrivateMarker(marker) ? e->GetPrivateMarker(marker) : e->GetMarker(marker) )
+			if( isPrivate(marker) ? e->GetPrivateMarker(marker) : e->GetMarker(marker) )
 				return ArgA[e];
 			else return ArgB[e];
 		}

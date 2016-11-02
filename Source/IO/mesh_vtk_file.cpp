@@ -27,10 +27,10 @@
 
 #define R_QUIT		  100
 
-static int isnan(double x) { return x != x; }
+static int __isnan__(double x) { return x != x; }
 //static int isinf(double x) { return !isnan(x) && isnan(x - x); }
-static int isinf(double x) { return fabs(x) > DBL_MAX; }
-static int isbad(double x) { return isnan(x) || isinf(x); }
+static int __isinf__(double x) { return fabs(x) > DBL_MAX; }
+static int __isbad(double x) { return __isnan__(x) || __isinf__(x); }
 
 template<typename T>
 void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
@@ -352,7 +352,7 @@ safe_output:
 												  for (unsigned int m = 0; m < comps; m++)
 												  {
 													  double val = static_cast<double>(arr[m]);
-													  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
+													  fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
 												  }
 											  }
 											  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
@@ -379,7 +379,7 @@ safe_output:
 													  for (unsigned int m = 0; m < comps; m++)
 													  {
 														  double val = static_cast<double>(arr[m].GetValue());
-														  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
+														  fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
 													  }
 												  }
 												  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
@@ -429,7 +429,7 @@ safe_output:
 														  for (unsigned int m = 0; m < comps; m++)
 														  {
 															  double val = static_cast<double>(arr[m].GetValue());
-															  fprintf(f, "%14e ", isbad(val) ? -0.9999E30 : val);
+															  fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
 														  }
 													  }
 													  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
@@ -494,7 +494,7 @@ safe_output:
 									for(unsigned int m = 0; m < comps; m++) 
 									{
 										double val = static_cast<double>(arr[m]);
-										fprintf(f,"%14e ",(isbad(val) ? -0.9999E30 : val));
+										fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
 									}
 									fprintf(f,"\n");
 								}
@@ -513,7 +513,7 @@ safe_output:
 									for(unsigned int m = 0; m < comps; m++) 
 									{
 										double val = static_cast<double>(arr[m].GetValue());
-										fprintf(f,"%14e ",(isbad(val) ? -0.9999E30 : val));
+										fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
 									}
 									fprintf(f,"\n");
 								}
