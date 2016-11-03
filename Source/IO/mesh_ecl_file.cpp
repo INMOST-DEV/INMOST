@@ -1577,6 +1577,7 @@ ecl_exit_loop:
 								j = jt;
 							}
 							//if( i == 63 && j == 129 && q == 1 ) print_inter = true;
+							//if( i == 9 && j == 91 && q == 1 ) 
 							//if( i == 7 && j == 78 && q == 1 ) 
 							//if( false )
 							{
