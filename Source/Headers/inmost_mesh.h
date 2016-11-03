@@ -441,7 +441,15 @@ namespace INMOST
 		bool                        Boundary                () const;
 		bool                        Planarity               () const; // check that all nodes lay on one plane
 		//implemented in modify.cpp
-		bool                        Hide                    () const; // if true then element was hidden, works only inside BeginModification and EndModification, on EndModification all Hidden elements are deleted
+		/// If the function returns true then element was hidden,
+		/// works only inside BeginModification and EndModification,
+		/// on EndModification all Hidden elements are deleted.
+		/// \todo Probably have to check normal orientation after hiding a back cell for a face.
+		bool                        Hide                    () const;
+		/// If the function returns true then element was recovered
+		/// from hidden state, works only inside BeginModification
+		/// and EndModification.
+		/// \todo Probably have to check normal orientation after recovering a back cell for a face.
 		bool                        Show                    () const; // if true then element was recovered
 		/// Remove element from mesh.
 		/// If you call this function inside modification phase, see Mesh::BeginModification and Mesh::EndModification,
@@ -910,7 +918,9 @@ namespace INMOST
 		/// This is automatically checked for if you activate NEED_TEST_CLOSURE
 		/// in Mesh::SetTopologyCheck.
 		/// @return True if faces of the cell form the closed set, false otherwise.
-		bool                        Closure                 () const; // test integrity of cell
+		bool                        Closure                 () const;
+		/// For each adjacent cell make me a front cell and fix normal orientation accordingly.
+		void                        SwapBackCell            () const;
 	};
 
 	///

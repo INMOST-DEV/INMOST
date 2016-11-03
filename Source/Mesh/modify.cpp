@@ -48,17 +48,18 @@ namespace INMOST
 	
 	void Element::Disconnect(bool del_upper) const
 	{
-		adj_type::size_type i = 0;
+		
 		dynarray<adj_type::size_type,64> del;
 		Mesh * m = GetMeshLink();
 		//BEGIN NEW CODE - CHECK
 		//Reorder face edges, so that they always apear in right direction
 		if( GetElementType() == CELL ) //This is a cell
 		{
-			
+			getAsCell()->SwapBackCell();
+			/*
 			MarkerType hm = m->HideMarker();
 			adj_type & lc = m->LowConn(GetHandle());
-			for( adj_type::size_type it = 0; it < lc.size(); it++) //iterator over faces
+			for( adj_type::size_type it = 0; it < lc.size(); it++) //if( !m->GetMarker(lc[it],hm) ) //iterator over unhidden faces
 			{
 				adj_type & hc = m->HighConn(lc[it]);
 				if( !hc.empty() && m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 ) //there are two cells connected to face
@@ -75,9 +76,11 @@ namespace INMOST
 					}
 				}
 			}
+			*/
 		}
 		//END NEW CODE - CHECK
 		adj_type & hc = m->HighConn(GetHandle());
+		adj_type::size_type i = 0;
 		for( adj_type::size_type it = 0; it < hc.size(); it++)
 		{
 			int flag = 0;
@@ -1303,22 +1306,23 @@ namespace INMOST
 	void Mesh::EndModification()
 	{
 		//ApplyModification();
-		temp_hide_element = hide_element;
-		hide_element = 0;
-		for(ElementType etype = CELL; etype >= NODE; etype = etype >> 1)
+		//temp_hide_element = hide_element;
+		//hide_element = 0;
+		for(ElementType etype = CELL; etype >= NODE; etype = PrevElementType(etype))
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 			{
 				HandleType h = ComposeHandle(etype,it);
 				RemMarker(h,new_element);
-				if( GetMarker(h,temp_hide_element) ) 
+				if( GetMarker(h,hide_element) )
 					Destroy(h);
 			}
 		}
 		memset(hidden_count,0,sizeof(integer)*6);
 		memset(hidden_count_zero,0,sizeof(integer)*6);
-		ReleaseMarker(temp_hide_element);
+		ReleaseMarker(hide_element);
 		ReleaseMarker(new_element);
+		hide_element = 0;
 		new_element = 0;
 		if( have_global_id ) AssignGlobalID(have_global_id);
 	}
@@ -1334,7 +1338,7 @@ namespace INMOST
 		assert(isValidHandleRange(h));
 		assert(isValidHandle(h));
 		ElementType htype = GetHandleElementType(h);
-		if( Hidden(h) ) Show(h);
+		//if( Hidden(h) ) Show(h);
 		if( htype & (NODE|EDGE|FACE|CELL) )
 			ElementByHandle(h).Disconnect(true);
 		else if( htype & ESET )
@@ -1356,6 +1360,8 @@ namespace INMOST
 		{
 			if( !Hidden(h) )
 			{
+				//TODO if we hide a back cell for a face we have to swap it's normal!
+				if( GetHandleElementType(h) == CELL ) Cell(this,h)->SwapBackCell();
 				hidden_count[GetHandleElementNum(h)]++;
 				SetMarker(h,HideMarker()); 
 			}
@@ -1458,7 +1464,36 @@ namespace INMOST
 	{
 		GetMeshLink()->RecomputeGeometricData(GetHandle());
 	}
-
+	
+	void Cell::SwapBackCell() const
+	{
+		Mesh * m = GetMeshLink();
+		
+		if( m->HaveGeometricData(ORIENTATION,FACE) )
+		{
+			//retrive faces
+			MarkerType hm = m->HideMarker();
+			adj_type & lc = m->LowConn(GetHandle());
+			for( adj_type::size_type it = 0; it < lc.size(); it++) if( !m->GetMarker(lc[it],hm) ) //iterator over unhidden faces
+			{
+				adj_type & hc = m->HighConn(lc[it]);
+				if( !hc.empty() && m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 ) //there are two cells connected to face
+				{
+					enumerator k1 = ENUMUNDEF, k2;
+					k1 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
+					if( hc[k1] == GetHandle() ) //the first cell is current
+					{
+						k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
+						std::swap(hc[k1],hc[k2]);
+						//hc[k2] = GetHandle(); //cannot use the cell because virtualization table is already destroyed and FixNormalOrientation will do bad things
+						//hc.resize(1); //just remove element, we will do this anyway later
+						Face(m,lc[it])->FixNormalOrientation(); //restore orientation
+					}
+				}
+			}
+		}
+	}
+	
 	void Element::Disconnect(const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const
 	{
 		Mesh * m = GetMeshLink();
