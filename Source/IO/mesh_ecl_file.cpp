@@ -32,6 +32,8 @@
 // 8. mpi-parallel loading
 // 9. (ok) do not convert arrays xyz and zcorn
 //10. read wells into sets
+//10.1 (ok) read compdat
+//10.2 read properties
 //11. optimize:
 //11.1 detect that pillars have no faults, skip intersection in this case
 //11.2 skip incident_matrix algorithm when no inner edges found
@@ -179,56 +181,107 @@ namespace INMOST
 			b1[2] = b.b1[2];
 			return *this;
 		}
-		// a1         b1
-		//          /
-		//         /
-		//        /
-		//       /
-		//      /
-		//     /
-		//    /
-		// a0         b0
 		/*
-		void Act(const Point & p, Storage::real ret[3]) const
+		void Act2(const Point & p, Storage::real ret[3]) const
 		{
-			if( p.y < 1-p.x ) //tri a0,a1,b1
+			// a1         b1
+			//          /
+			//         /
+			//        /
+			//       /
+			//      /
+			//     /
+			//    /
+			// a0         b0
+			Storage::real ret1[3],ret2[3];
+			//Storage::real px = 1-p.x, py = p.y;
+			Storage::real px = p.y, py = 1-p.x;
+			if( py > px ) //tri a0,a1,b1
 			{
 				//a = (0,0) (a0) u
 				//b = (0,1) (a1) v
 				//c = (1,1) (b1) w
-				//Vector v0 = (0,1), v1 = (1,1), v2 = p;
+				//Vector v0 = b-a = (0,1), v1 = c-a =(1,1), v2 = p-a;
 				const Storage::real d00 = 1; //Dot(v0, v0);
 				const Storage::real d01 = 1; //Dot(v0, v1);
 				const Storage::real d11 = 2; //Dot(v1, v1);
 				const Storage::real denom = d00 * d11 - d01 * d01;
-				Storage::real d20 = 1-p.x; //Dot(v2, v0);
-				Storage::real d21 = 1-p.x+p.y; //Dot(v2, v1);
+				Storage::real d20 = py; //Dot(v2, v0);
+				Storage::real d21 = px+py; //Dot(v2, v1);
 				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for a1
 				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
 				Storage::real u = 1.0 - v - w; //for a0
 				for(int k = 0; k < 3; ++k)
-					ret[k] = a0[k]*u + a1[k]*v + b1[k]*w;
+					ret1[k] = a0[k]*u + a1[k]*v + b1[k]*w;
 			}
 			else //tri a0,b0,b1
 			{
 				//a = (0,0) (a0) u
 				//b = (1,0) (b0) v
 				//c = (1,1) (b1) w
-				//Vector v0 = (1,0), v1 = (1,1), v2 = p;
+				//Vector v0 = b-a = (1,0), v1 = c-a = (1,1), v2 = p-a;
 				const Storage::real d00 = 1; //Dot(v0, v0);
 				const Storage::real d01 = 1; //Dot(v0, v1);
 				const Storage::real d11 = 2; //Dot(v1, v1);
 				const Storage::real denom = d00 * d11 - d01 * d01;
-				Storage::real d20 = p.y; //Dot(v2, v0);
-				Storage::real d21 = 1-p.x+p.y; //Dot(v2, v1);
+				Storage::real d20 = px; //Dot(v2, v0);
+				Storage::real d21 = px+py; //Dot(v2, v1);
 				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for b0
 				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
 				Storage::real u = 1.0 - v - w; //for a0
 				for(int k = 0; k < 3; ++k)
-					ret[k] = a0[k]*u + b0[k]*v + b1[k]*w;
+					ret1[k] = a0[k]*u + b0[k]*v + b1[k]*w;
 			}
+			// a1         b1
+			//    \
+			//     \
+			//      \
+			//       \
+			//        \
+			//         \
+			//          \
+			// a0         b0
+			if( py < 1-px ) //tri a0,a1,b0
+			{
+				//a = (0,0) (a0) u
+				//b = (0,1) (a1) v
+				//c = (1,0) (b0) w
+				//Vector v0 = b-a = (0,1), v1 = c-a = (1,0), v2 = p-a;
+				const Storage::real d00 = 1; //Dot(v0, v0);
+				const Storage::real d01 = 0; //Dot(v0, v1);
+				const Storage::real d11 = 1; //Dot(v1, v1);
+				const Storage::real denom = d00 * d11 - d01 * d01;
+				Storage::real d20 = py; //Dot(v2, v0);
+				Storage::real d21 = px; //Dot(v2, v1);
+				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for a1
+				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b0
+				Storage::real u = 1.0 - v - w; //for a0
+				for(int k = 0; k < 3; ++k)
+					ret2[k] = a0[k]*u + a1[k]*v + b0[k]*w;
+			}
+			else //tri a0,b0,b1
+			{
+				//a = (0,1) (a1) u
+				//b = (1,0) (b0) v
+				//c = (1,1) (b1) w
+				//Vector v0 = b-a = (1,-1), v1 = c-a = (1,0), v2 = p-a = (px,py-1);
+				const Storage::real d00 = 2; //Dot(v0, v0);
+				const Storage::real d01 = 1; //Dot(v0, v1);
+				const Storage::real d11 = 1; //Dot(v1, v1);
+				const Storage::real denom = d00 * d11 - d01 * d01;
+				Storage::real d20 = px-py+1; //Dot(v2, v0);
+				Storage::real d21 = px; //Dot(v2, v1);
+				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for b0
+				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
+				Storage::real u = 1.0 - v - w; //for a1
+				for(int k = 0; k < 3; ++k)
+					ret2[k] = a1[k]*u + b0[k]*v + b1[k]*w;
+			}
+
+			for(int k = 0; k < 3; ++k) ret[k] = (ret1[k]+ret2[k])*0.5;
 		}
-		 */
+		*/
+		 
 		
 		void Act(const Point & p, Storage::real v[3]) const
 		{
@@ -370,6 +423,9 @@ namespace INMOST
 			//restore coordinate
 			//this is treaky, we do not want self intersection in 3d space
 			unp.Act(pfind,find);
+			//find[0] = (a->getEnd()->Coords()[0]*t1 + a->getBeg()->Coords()[0]*(1-t1)+b->getEnd()->Coords()[0]*t1 + b->getBeg()->Coords()[0]*(1-t1))*0.5;
+			//find[1] = (a->getEnd()->Coords()[1]*t1 + a->getBeg()->Coords()[1]*(1-t1)+b->getEnd()->Coords()[1]*t1 + b->getBeg()->Coords()[1]*(1-t1))*0.5;
+			//find[2] = (a->getEnd()->Coords()[2]*t1 + a->getBeg()->Coords()[2]*(1-t1)+b->getEnd()->Coords()[2]*t1 + b->getBeg()->Coords()[2]*(1-t1))*0.5;
 			pfind.node = m->CreateNode(find)->GetHandle();
 			if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << " new node " << pfind.node << std::endl;
 			Storage::real_array _pfind = m->RealArray(pfind.node,pnt);
@@ -380,10 +436,37 @@ namespace INMOST
 		return std::make_pair(true,pfind);
 	}
 
-	
+	void split_edge(Mesh * m, Node I, Edge a, ElementArray<Edge> & splitted_a, std::vector<Tag> & transfer, bool print)
+	{
+		std::vector< std::vector<char> > copy(transfer.size());
+		//memorize data
+		for(int k = 0; k < transfer.size(); ++k) //tags
+		{
+			int size = a->GetDataSize(transfer[k]);
+				copy[k].resize(transfer[k].GetBytesSize()*size);
+			if( !copy.empty() ) a->GetData(transfer[k],0,size,&copy[k][0]);
+		}
+		
+		if( print ) std::cout << "split a " << a->GetHandle() << " " << a->getBeg()->GetHandle() << " <-> " << a->getEnd()->GetHandle() << ":-> ";
+		splitted_a = Edge::SplitEdge(a,ElementArray<Node>(m,1,I->GetHandle()),0);
+		if( print ) std::cout << splitted_a[0]->GetHandle() << " " << splitted_a[0]->getBeg()->GetHandle() << " <-> " << splitted_a[0]->getEnd()->GetHandle() << " and " << splitted_a[1]->GetHandle() << " " << splitted_a[1]->getBeg()->GetHandle() << " <-> " << splitted_a[1]->getEnd()->GetHandle() << std::endl;
+		//duplicate data
+		for(int k = 0; k < transfer.size();++k)
+		{
+			int size = (int)copy[k].size() / transfer[k].GetBytesSize();
+			if( size ) for(int l = 0; l < 2; ++l) //two parts
+			{
+				splitted_a[l].SetDataSize(transfer[k],size);
+				splitted_a[l].SetData(transfer[k],0,size,&copy[k][0]);
+			}
+		}
+	}
 
 	void split_edges(Mesh * m, Node I, Edge a, Edge b, ElementArray<Edge> & splitted_a, ElementArray<Edge> & splitted_b,std::vector<Tag> & transfer, bool print)
 	{
+		split_edge(m,I,a,splitted_a,transfer,print);
+		split_edge(m,I,b,splitted_b,transfer,print);
+		/*
 		//storage for data
 		std::vector< std::vector<char> > copy(transfer.size()*2);
 		//memorize data
@@ -420,7 +503,9 @@ namespace INMOST
 						splitted[q][l].SetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
 					}
 				}
+	
 		}
+		*/
 	}
 	
 
@@ -456,7 +541,7 @@ namespace INMOST
 				}
 			}
 		}
-		nodes.clear();
+		//nodes.clear();
 		for(std::set<Point>::iterator it = intersections.begin(); it != intersections.end(); ++it)
 		{
 			if( !m->GetPrivateMarker(it->node,initial) )
@@ -465,6 +550,52 @@ namespace INMOST
 		for(int k = 0; k < (int)initials.size(); ++k)
 			m->RemPrivateMarker(initials[k],initial);
 		m->ReleasePrivateMarker(initial);
+	}
+
+	void split_segments(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, bool print)
+	{
+		int i = 0;
+		MarkerType mrk = m->CreateMarker();
+		while( i < segments.size() )
+		{
+			/*
+			if( segments[i]->GetMarker(mrk) ) 
+			{
+				i++;
+				continue;
+			}
+			*/
+			//get projected center point of segment
+			//vl - point on the middle
+			//vu - unprojected middle point onto arc
+			Storage::real vu[3], vl[3];
+			for(int k = 0; k < 3; ++k)
+				vl[k] = (segments[i]->getBeg()->Coords()[k]+segments[i]->getEnd()->Coords()[k])*0.5;
+			Point pb = make_point(segments[i]->getBeg(),pnt);
+			Point pe = make_point(segments[i]->getEnd(),pnt);
+			Point pm(InvalidHandle(),(pb.x+pe.x)*0.5,(pb.y+pe.y)*0.5);
+			unp.Act(pm,vu);
+			// l - length of the segment
+			// h - distance to the arc
+			Storage::real l = segments[i]->Length();
+			Storage::real h = sqrt((vl[0]-vu[0])*(vl[0]-vu[0])+(vl[1]-vu[1])*(vl[1]-vu[1])+(vl[2]-vu[2])*(vl[2]-vu[2]));
+			if( h/l > 0.05 ) // it is rather curvy
+			{
+				Node n = m->CreateNode(vu);
+				n->RealArray(pnt)[0] = pm.x;
+				n->RealArray(pnt)[1] = pm.y;
+				ElementArray<Edge> splitted_a;
+				split_edge(m,n,segments[i],splitted_a,transfer,print);
+				splitted_a[0]->SetMarker(mrk);
+				splitted_a[1]->SetMarker(mrk);
+				segments[i] = splitted_a[0];
+				segments.push_back(splitted_a[1]);
+				nodes.push_back(n);
+			}
+			else i++;
+		}
+		segments.RemMarker(mrk);
+		m->ReleaseMarker(mrk);
 	}
 
 	
@@ -1095,6 +1226,7 @@ ecl_exit_loop:
 			Tag node_number = CreateTag("NODE_NUMBER",DATA_INTEGER,NODE,NONE);
 			Tag node_alpha = CreateTag("NODE_ALPHA",DATA_REAL,NODE,NONE,1);
 			Tag node_pos = CreateTag("NODE_POSITION",DATA_INTEGER,NODE,NONE,1);
+			Tag block_pair = CreateTag("BLOCK_PAIR",DATA_INTEGER,FACE,NONE,3);
 			//typedef std::map<Storage::real,Node,pillar_less> pillar;
 			//std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
 			std::vector< HandleType > block_nodes(dims[0]*dims[1]*dims[2]*8,InvalidHandle());
@@ -1390,7 +1522,7 @@ ecl_exit_loop:
 			{
 				printf("started creating faces for pairs of pillar along %s\n",q ? "ny":"nx");
 #if defined(USE_OMP)
-#pragma omp parallel
+//#pragma omp parallel
 #endif
 				{
 					//structure to create an edge from pair of nodes
@@ -1445,9 +1577,15 @@ ecl_exit_loop:
 								j = jt;
 							}
 							//if( i == 63 && j == 129 && q == 1 ) print_inter = true;
+							//if( i == 7 && j == 78 && q == 1 ) 
+							//if( false )
+							{
+								print_inter = true;
+								print_info = true;
+							}
 							if( print_info )
 							{
-								std::cout << "working on " << (q ? "ny" : "nx") << " pair of pillars: " << i << "," << j << " and " << i+1-q << "," << j+q << std::endl;
+								std::cout << "working on " << (q ? "ny" : "nx") << " pair of pillars: " << i << "," << j << " and " << i-q << "," << j-1+q << std::endl;
 							}
 							//p0 is at i,j
 							//p1 is at i+1,j, when q = 0 and at i,j+1, when q = 1
@@ -1525,11 +1663,53 @@ ecl_exit_loop:
 								{
 									std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
 								}
+
+								std::cout << "Projected: " << std::endl;
+
+								for(int k = 0; k < edges.size(); ++k)
+								{
+									std::cout << "(" << edges[k]->getBeg()->RealArray(pnt)[0] << "," << edges[k]->getBeg()->RealArray(pnt)[1] << ",0) <-> (" << edges[k]->getEnd()->RealArray(pnt)[0] << "," << edges[k]->getEnd()->RealArray(pnt)[1] << ",0)" << std::endl;
+								}
+								/*
+								std::cout << "Unprojected: " << std::endl;
+
+								for(int k = 0; k < edges.size(); ++k)
+								{
+									real v0[3],v1[3];
+									Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
+									Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
+									unp.Act(p0,v0);
+									unp.Act(p1,v1);
+									std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
+								}
+
+
+								std::cout << "Unprojected segmented: " << std::endl;
+
+								for(int k = 0; k < edges.size(); ++k)
+								{
+									real v0[3],v1[3];
+									Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
+									Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
+									int nsegments = 5;
+									for(int q = 0; q < nsegments; ++q)
+									{
+										Point pb(InvalidHandle(), q*(p1.x-p0.x)/nsegments+p0.x,q*(p1.y-p0.y)/nsegments+p0.y);
+										Point pe(InvalidHandle(), (q+1)*(p1.x-p0.x)/nsegments+p0.x,(q+1)*(p1.y-p0.y)/nsegments+p0.y);
+										unp.Act2(pb,v0);
+										unp.Act2(pe,v1);
+										std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
+									}	
+								}
+								*/
 							}
 							assert(count_duplicates(edges) == 0);
 								
+							intersections.clear();
 							//intersect(this,edges,intersections,transfer,pnt,unp,print_inter);
+							//split_segments(this,edges,intersections,transfer,pnt,unp,print_inter);
 							intersect_naive(this,edges,intersections,transfer,pnt,unp,print_inter);
+							
 							assert(count_duplicates(edges) == 0);
 							if( print_inter ) std::cout << "intersections: " << intersections.size() << std::endl;
 							if( print_inter )
@@ -1554,6 +1734,43 @@ ecl_exit_loop:
 									std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
 
 								}
+								std::cout << "Projected: " << std::endl;
+
+								for(int k = 0; k < edges.size(); ++k)
+								{
+									std::cout << "(" << edges[k]->getBeg()->RealArray(pnt)[0] << "," << edges[k]->getBeg()->RealArray(pnt)[1] << ",0) <-> (" << edges[k]->getEnd()->RealArray(pnt)[0] << "," << edges[k]->getEnd()->RealArray(pnt)[1] << ",0)" << std::endl;
+								}
+								/*
+								std::cout << "Unprojected: " << std::endl;
+
+								for(int k = 0; k < edges.size(); ++k)
+								{
+									real v0[3],v1[3];
+									Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
+									Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
+									unp.Act2(p0,v0);
+									unp.Act2(p1,v1);
+									std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
+								}
+								
+								std::cout << "Unprojected segmented: " << std::endl;
+
+								for(int k = 0; k < edges.size(); ++k)
+								{
+									real v0[3],v1[3];
+									Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
+									Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
+									int nsegments = 5;
+									for(int q = 0; q < nsegments; ++q)
+									{
+										Point pb(InvalidHandle(), q*(p1.x-p0.x)/nsegments+p0.x,q*(p1.y-p0.y)/nsegments+p0.y);
+										Point pe(InvalidHandle(), (q+1)*(p1.x-p0.x)/nsegments+p0.x,(q+1)*(p1.y-p0.y)/nsegments+p0.y);
+										unp.Act2(pb,v0);
+										unp.Act2(pe,v1);
+										std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
+									}	
+								}
+								*/
 							}
 
 							//distribute all the edges among blocks
@@ -1798,6 +2015,9 @@ ecl_exit_loop:
 													}
 													//make face
 													Face f = CreateFace(loop).first;
+													f->IntegerArray(block_pair)[0] = i;
+													f->IntegerArray(block_pair)[1] = j;
+													f->IntegerArray(block_pair)[2] = q;
 													if( TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag()) ) std::cout << __FILE__ <<":"<<__LINE__ << " topology error on face " << f->GetHandle() << std::endl;
 													f->Integer(face_origin) = q;
 													if(!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
@@ -1917,6 +2137,7 @@ ecl_exit_loop:
 												ElementArray<Edge> loop2(this);
 												while(matrix.find_shortest_loop(loop2));
 													
+												std::cout << "block i " << i << " j " << j << " q " << q << std::endl;
 												std::cout << "All edges: " << std::endl;
 												for(int k = 0; k < (int)edges.size(); ++k)
 												{
@@ -1939,6 +2160,10 @@ ecl_exit_loop:
 							intersections.RemPrivateMarker(internodes);
 							edges.clear();
 							intersections.clear();
+
+
+							print_info=false;
+							print_inter=false;
 						} //j
 					} //i
 					DeleteTag(pnt);
