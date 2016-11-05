@@ -179,67 +179,68 @@ namespace INMOST
 
 	void Mesh::SynchronizeMarker(MarkerType marker, ElementType mask, SyncBitOp op)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		if( m_state == Mesh::Parallel )
 		{
 			Tag t = CreateTag("TEMP_SYNC_MARKER",DATA_BULK,mask,mask,1);
-
+			
 			//workaround for old gcc compiler
 			const Element::Status SGhost = Element::Ghost;
 			const Element::Status SAny = Element::Any;
 			Element::Status Expr = (Element::Shared | ((op != SYNC_BIT_SET) ? SGhost : SAny));
-
+			
 			for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 				if( it->GetMarker(marker) && (it->GetStatus() & Expr) )
 					it->Bulk(t) = 1;
-
+			
 			
 			
 			switch(op)
 			{
-			case SYNC_BIT_SET:
-				ExchangeData(t,mask,0);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() == Element::Ghost )
+				case SYNC_BIT_SET:
+					ExchangeData(t,mask,0);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( it->HaveData(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						if( it->GetStatus() == Element::Ghost )
+						{
+							if( it->HaveData(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						}
 					}
-				}
-				break;
-			case SYNC_BIT_OR:
-				ReduceData(t,mask,0,UnpackSyncMarkerOR);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+					break;
+				case SYNC_BIT_OR:
+					ReduceData(t,mask,0,UnpackSyncMarkerOR);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( !it->GetMarker(marker) && it->HaveData(t) ) it->SetMarker(marker);
+						if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+						{
+							if( !it->GetMarker(marker) && it->HaveData(t) ) it->SetMarker(marker);
+						}
 					}
-				}
-				break;
-			case SYNC_BIT_AND:
-				ReduceData(t,mask,0,UnpackSyncMarkerAND);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() & (Element::Ghost | Element::Shared))
+					break;
+				case SYNC_BIT_AND:
+					ReduceData(t,mask,0,UnpackSyncMarkerAND);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						if( it->GetStatus() & (Element::Ghost | Element::Shared))
+						{
+							if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						}
 					}
-				}
-				break;
-			case SYNC_BIT_XOR:
-				ReduceData(t,mask,0,UnpackSyncMarkerXOR);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() & (Element::Ghost | Element::Shared))
+					break;
+				case SYNC_BIT_XOR:
+					ReduceData(t,mask,0,UnpackSyncMarkerXOR);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						if( it->GetStatus() & (Element::Ghost | Element::Shared))
+						{
+							if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						}
 					}
-				}
-				break;
+					break;
 			}
 			
-
+			
 			DeleteTag(t,mask);
 		}
 #else//USE_MPI
@@ -247,29 +248,34 @@ namespace INMOST
 		(void) mask;
 		(void) op;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	ElementType Mesh::SynchronizeElementType(ElementType etype)
 	{
+		ENTER_FUNC();
 		ElementType etypeout = etype;
 #if defined(USE_MPI)
-		MPI_Allreduce(&etype,&etypeout,1,INMOST_MPI_DATA_BULK_TYPE,MPI_BOR,GetCommunicator());
+		REPORT_MPI(MPI_Allreduce(&etype,&etypeout,1,INMOST_MPI_DATA_BULK_TYPE,MPI_BOR,GetCommunicator()));
 #endif//USE_MPI
 		return etypeout;
 	}
 	Storage::integer Mesh::TotalNumberOf(ElementType mask)
 	{
+		ENTER_FUNC();
 		Storage::integer number = 0, ret = 0;
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 			if( it->GetStatus() != Element::Ghost ) number++;
 		ret = number;
 #if defined(USE_MPI)
-		MPI_Allreduce(&number,&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&number,&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	Storage::integer Mesh::EnumerateSet(const ElementSet & set, const Tag & num_tag, Storage::integer start, bool define_sparse)
 	{
+		ENTER_FUNC();
 		Storage::integer shift = 0, ret = 0;
 		ElementType mask = CELL | FACE | EDGE | NODE;
 #if defined(USE_MPI)
@@ -277,7 +283,7 @@ namespace INMOST
 		for(ElementSet::iterator it = set.Begin(); it != set.End(); it++)
 			if( it->GetStatus() != Element::Ghost && (define_sparse || it->HaveData(num_tag)) )
 				number++;
-		MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		shift -= number;
 #endif//USE_MPI
 		shift += start;
@@ -290,44 +296,48 @@ namespace INMOST
 		ExchangeData(num_tag,mask,0);
 		ret = shift;
 #if defined(USE_MPI)
-		MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm);
+		REPORT_MPI(MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm));
 		//MPI_Allreduce(&shift,&ret,1,INMOST_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	Storage::integer Mesh::Enumerate(const HandleType * set, enumerator n, const Tag & num_tag, Storage::integer start, bool define_sparse)
 	{
+		ENTER_FUNC();
 		Storage::integer shift = 0, ret = 0;
 		ElementType mask = CELL | FACE | EDGE | NODE;
 #if defined(USE_MPI)
 		Storage::integer number = 0;
 		for(const HandleType * it = set; it != set+n; ++it)
 			if( GetStatus(*it) != Element::Ghost && (define_sparse || HaveData(*it,num_tag))) number++;
-		MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		shift -= number;
 #endif//USE_MPI
 		shift += start;
 		for(const HandleType * it = set; it != set+n; ++it)
 			if( GetStatus(*it) == Element::Owned && (define_sparse || HaveData(*it,num_tag))) Integer(*it,num_tag) = shift++;
-		for(const HandleType * it = set; it != set+n; ++it) 
+		for(const HandleType * it = set; it != set+n; ++it)
 			if( GetStatus(*it) == Element::Shared && (define_sparse || HaveData(*it,num_tag))) Integer(*it,num_tag) = shift++;
 		ExchangeData(num_tag,mask,0);
 		ret = shift;
 #if defined(USE_MPI)
-		MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm);
+		REPORT_MPI(MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm));
 		//MPI_Allreduce(&shift,&ret,1,INMOST_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	Storage::integer Mesh::Enumerate(ElementType mask, Tag num_tag, Storage::integer start, bool define_sparse)
 	{
+		ENTER_FUNC();
 		Storage::integer shift = 0, ret = 0;
 #if defined(USE_MPI)
 		Storage::integer number = 0;
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 			if( it->GetStatus() != Element::Ghost && (define_sparse || it->HaveData(num_tag)) )
 				number++;
-		MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		shift -= number;
 #endif//USE_MPI
 		shift += start;
@@ -340,188 +350,217 @@ namespace INMOST
 		ExchangeData(num_tag,mask,0);
 		ret = shift;
 #if defined(USE_MPI)
-		MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm);
+		REPORT_MPI(MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm));
 		//MPI_Allreduce(&shift,&ret,1,INMOST_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	
 	Storage::real Mesh::Integrate(Storage::real input)
 	{
+		ENTER_FUNC();
 		Storage::real output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
-
+	
+	
 	
 	
 	Storage::integer Mesh::Integrate(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
+	
 	void Mesh::Integrate(Storage::real * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::real,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 #else//USE_MPI
-        (void) input;
-        (void) size;
+		(void) input;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	void Mesh::Integrate(Storage::integer * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::integer,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
-        (void) size;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
 	
 	Storage::integer Mesh::ExclusiveSum(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = 0;
 #if defined(USE_MPI)
-		MPI_Scan(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		output -= input;
 #else//USE_MPI
 		(void) input;
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::real Mesh::Integrate(const Tag & t, enumerator entry, ElementType mask)
 	{
+		ENTER_FUNC();
 		Storage::real output = 0, input = 0;
 		for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
-			if( GetStatus(*it) != Element::Ghost && HaveData(*it,t) ) 
+			if( GetStatus(*it) != Element::Ghost && HaveData(*it,t) )
 			{
 				real_array arr = RealArray(*it,t);
 				if( arr.size() > entry ) input += arr[entry];
 			}
 		output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::real Mesh::AggregateMax(Storage::real input)
 	{
+		ENTER_FUNC();
 		Storage::real output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::integer Mesh::AggregateMax(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
+	
 	void Mesh::AggregateMax(Storage::real * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::real,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm));
 #else//USE_MPI
 		(void) input;
-        (void) size;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	void Mesh::AggregateMax(Storage::integer * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::integer,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm));
 #else//USE_MPI
 		(void) input;
-        (void) size;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	Storage::real Mesh::AggregateMin(Storage::real input)
 	{
+		ENTER_FUNC();
 		Storage::real output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::integer Mesh::AggregateMin(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
+	
 	void Mesh::AggregateMin(Storage::real * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::real,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
 #else//USE_MPI
 		(void) input;
-        (void) size;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	void Mesh::AggregateMin(Storage::integer * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::integer,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm));
 #else//USE_MPI
 		(void) input;
-        (void) size;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
-
+	
+	
 	INMOST_MPI_Comm Mesh::GetCommunicator() const
 	{
 #if defined(USE_MPI)

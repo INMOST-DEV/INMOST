@@ -329,7 +329,7 @@ namespace INMOST
 		}
 		if( get_iStream().fail() )
 		{
-			Report("Stream failed while getting the char");
+			Report("Stream failed while getting the char, state %s",StateName(_state).c_str());
 			WAITNL;
 			_state = Failure;
 		}
@@ -359,6 +359,16 @@ namespace INMOST
 			while(!done)
 			{
 				c = GetChar();
+				if( _state == Failure )
+				{
+					Report("Unexpected failure while skipping comments");
+					done = true;
+				}
+				else if( _state == EndOfFile )
+				{
+					Report("Unexpected end of file while skipping comments");
+					done = true;
+				}
 				tmp[ntmp] = c;
 				if( tmp[ntmp] == '>' && tmp[(ntmp-1+3)%3] == '-' && tmp[(ntmp-2+3)%3] == '-' ) 
 				{
@@ -373,6 +383,16 @@ namespace INMOST
 			while(!done)
 			{
 				c = GetChar();
+				if( _state == Failure )
+				{
+					Report("Unexpected failure while skipping comments");
+					done = true;
+				}
+				else if( _state == EndOfFile )
+				{
+					Report("Unexpected end of file while skipping comments");
+					done = true;
+				}
 				tmp[ntmp] = c;
 				if( tmp[ntmp] == '>' && tmp[(ntmp-1+2)%2] == '?' ) 
 				{
@@ -505,7 +525,7 @@ namespace INMOST
 				}
 				else if(!isspace(c))
 				{
-					if( verbose > 1 ) Report("info: encountered %c instead of expected '<' symbol",c);
+					if( verbose > 1 ) Report("info: encountered %x instead of expected '<'(%x) symbol",c,'<');
 					RetChar();
 					return false;
 				}
@@ -643,9 +663,9 @@ namespace INMOST
 				if( verbose > 1 ) Report("info: closed tag");
 				return 2; //tag was halted with />
 			}
-			Report("Encountered '%c%c' while expecting '/>' for tag closing",tmp[0],tmp[1]);
+			Report("Encountered %x%x while expecting '/>'(%x%x) for tag closing",tmp[0],tmp[1],'/','>');
 		}
-		Report("Encountered '%c' while expecting '>' for tag closing",tmp[0]);
+		Report("Encountered %x while expecting '>'(%x) for tag closing",tmp[0],'>');
 		_state = Failure;
 		return 0;
 	}
@@ -726,7 +746,10 @@ namespace INMOST
 		char c;
 		if( _state == EndTag ) return "";
 		if( _state != WaitAttribute )
-			Report("Attribute was not expected, state %s",StateName(_state).c_str());
+		{
+			Report("Attribute name was not expected, state %s",StateName(_state).c_str());
+			done = true;
+		}
 		while(!done)
 		{
 			c = GetChar();
@@ -807,7 +830,10 @@ namespace INMOST
 		char c;
 		if( _state == EndTag ) return "";
 		if( _state != WaitAttributeValue )
-			Report("Attribute was not expected, state %s",StateName(_state).c_str());
+		{
+			Report("Attribute value was not expected, state %s",StateName(_state).c_str());
+			done = true;
+		}
 		while(!done)
 		{
 			c = GetChar();
@@ -1422,7 +1448,9 @@ namespace INMOST
 		XMLTag ret;
 		XMLAttrib attr;
 		bool istag = ExpectOpenTag();
-		if( !istag )
+		if( _state == Failure || _state == EndOfFile )
+			ret.finish = 0; //there is an error
+		else if( !istag )
 			ret.finish = 5; //there is no tag opening, probably pure text
 		else
 		{
@@ -1438,7 +1466,7 @@ namespace INMOST
 				{
 					if( verbose > 1 ) Report("info: reading tag attributes");
 					attr.name = AttributeName();
-					while(!isTagEnded())
+					while(!isTagEnded() && !isFailure() && !isEof())
 					{
 						attr.value = AttributeValue();
 						if( attr.name == "Include" ) //some file was included
@@ -1490,6 +1518,16 @@ namespace INMOST
 		do
 		{
 			c = GetChar();
+			if( _state == Failure )
+			{
+				Report("Unexpected failure while searching for %s",stop.c_str());
+				break;
+			}
+			else if( _state == Failure )
+			{
+				Report("Unexpected end of file while searching for %s",stop.c_str());
+				break;
+			}
 			ret.push_back(c);
 		}
 		while( ret.size() < stop.size() || ret.substr(ret.size()-stop.size()) != stop );
