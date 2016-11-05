@@ -2973,10 +2973,18 @@ namespace INMOST
 	public:
 		/// Set file option.
 		/// Current availible file options:
-		/// - "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
-		/// - "VTK_OUTPUT_FACES" - set "1" for vtk output of values on faces
-		/// - "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
-		/// - "ECL_SPLIT_GLUED" - set "TRUE" to triangulate faces of the blocks that degenerate on three pillars.
+		/// - "VERBOSITY"        - Set "2" for progress messages, "1" for reports, "0" for silence
+		///
+		/// - "VTK_GRID_DIMS"    - Set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
+		///                        or "AUTO" for automatic detection.
+		/// - "VTK_OUTPUT_FACES" - Set "1" for vtk output of values on faces
+		///
+		/// - "ECL_SPLIT_GLUED"  - Set "TRUE" to triangulate faces of the blocks that degenerate on three pillars.
+		/// - "ECL_CURVILINEAR"  - Set "TRUE" to make edges curvilinear on non-flat faces, helps resolve weird geometry,
+		///                        right now this is "TRUE" by default since results are much better.
+		/// - "ECL_PROJECT_PERM" - Set "TRUE" to project permeability tensor from grid block coordinates
+		///                        into global coordinates. Otherwise the tensor is considered to be
+		///                        defined on global coordinates.
 		///
 		/// \todo
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write

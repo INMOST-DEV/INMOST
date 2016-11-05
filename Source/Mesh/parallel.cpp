@@ -873,10 +873,11 @@ namespace INMOST
 				for(integer k = 0; k < dim; k++)
 				{
 					if( bbox0[k] < bbox[k] ) bbox[k] = bbox0[k];
-					if( bbox0[k] > bbox[k+dim] ) bbox[k+dim] = bbox0[k];
+					if( bbox0[k+dim] > bbox[k+dim] ) bbox[k+dim] = bbox0[k+dim];
 				}
 			}
 		}
+		REPORT_VAL("dim",dim);
 		// write down bounding boxes
 		for(integer k = 0; k < dim; k++)
 		{
@@ -2365,8 +2366,11 @@ namespace INMOST
 		//int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
 		Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 		Storage::integer_array::iterator p = procs.begin();
+		REPORT_VAL("processors",procs.size());
 		storage.send_buffers.resize(procs.size());
 		storage.recv_buffers.resize(procs.size());
+		REPORT_VAL("send buffers size",storage.send_buffers.size());
+		REPORT_VAL("recv buffers size",storage.recv_buffers.size());
 		std::vector<int> done;
 		parallel_storage::const_iterator find;
 		std::vector<INMOST_DATA_ENUM_TYPE> send_size(procs.size(),0), recv_size(procs.size(),0);
@@ -3598,6 +3602,7 @@ namespace INMOST
 		assert( flag );
 		recv_reqs.resize(recv_bufs.size());
 		send_reqs.resize(send_bufs.size());
+		REPORT_VAL("strategy",parallel_strategy);
 		if( parallel_strategy == 0 )
 		{
 			for(i = 0; i < send_bufs.size(); i++)
@@ -3619,31 +3624,33 @@ namespace INMOST
 		}
 		else if( parallel_strategy == 1 )
 		{
-			for(i = 0; i < recv_bufs.size(); i++) if( !recv_bufs[i].second.empty() )
+			INMOST_DATA_BULK_TYPE stub;
+			for(i = 0; i < recv_bufs.size(); i++)// if( !recv_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
-				REPORT_MPI(MPI_Irecv(&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
+				REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
 			}
-			for(i = 0; i < send_bufs.size(); i++) if( !send_bufs[i].second.empty() )
+			for(i = 0; i < send_bufs.size(); i++) //if( !send_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+mpirank*mpisize+send_bufs[i].first;
-				REPORT_MPI(MPI_Isend(&send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
+				REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
 			}
 		}
 		else if( parallel_strategy == 2 )
 		{
-			for(i = 0; i < recv_bufs.size(); i++) if( !recv_bufs[i].second.empty() )
+			INMOST_DATA_BULK_TYPE stub;
+			for(i = 0; i < recv_bufs.size(); i++) //if( !recv_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
-				REPORT_MPI(MPI_Irecv(&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
+				REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()? &stub : &recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
 			}
 			REPORT_MPI(MPI_Barrier(comm));
-			for(i = 0; i < send_bufs.size(); i++) if( !send_bufs[i].second.empty() )
+			for(i = 0; i < send_bufs.size(); i++)// if( !send_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
-				REPORT_MPI(MPI_Irsend(&send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
+				REPORT_MPI(MPI_Irsend(send_bufs[i].second.empty()? &stub : &send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
 			}
 		}
 #else //USE_MPI
@@ -3710,13 +3717,14 @@ namespace INMOST
 				std::vector<int> send_recv_size(send_bufs.size()+recv_bufs.size());
 				std::vector<INMOST_MPI_Request> reqs(send_bufs.size()+recv_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++) send_recv_size[i+recv_bufs.size()] = static_cast<int>(send_bufs[i].second.size());
-
+				REPORT_VAL("recv buffers size",recv_bufs.size());
 				for(i = 0; i < recv_bufs.size(); i++)
 				{
 					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
 					//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
 					REPORT_MPI(MPI_Irecv(&send_recv_size[i],1,MPI_INT,recv_bufs[i].first,mpi_tag,comm,&reqs[i]));
 				}
+				REPORT_VAL("send buffers size",send_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++)
 				{
 					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;

@@ -109,7 +109,7 @@ namespace INMOST
 	struct Point
 	{
 		HandleType node;
-		long double x, y;
+		Storage::real x, y;
 		Point & operator = (Point const & b) { node = b.node; x = b.x; y = b.y; return *this; }
 		Point(const Point & b) : node(b.node), x(b.x), y(b.y) {}
 		Point(HandleType _node, Storage::real _x, Storage::real _y) : node(_node), x(_x), y(_y) {}
@@ -133,7 +133,7 @@ namespace INMOST
 	//class that returns a Point into 3d space based on coords of two pillars
 	class Unproject
 	{
-		long double a0[3], a1[3], b0[3], b1[3];
+		Storage::real a0[3], a1[3], b0[3], b1[3];
 	public:
 		Unproject(Storage::real _a0[3], Storage::real _a1[3], Storage::real _b0[3], Storage::real _b1[3])
 		{
@@ -181,9 +181,12 @@ namespace INMOST
 			b1[2] = b.b1[2];
 			return *this;
 		}
-		/*
-		void Act2(const Point & p, Storage::real ret[3]) const
+		
+		void ActTri(const Point & p, Storage::real ret[3]) const
 		{
+			//Storage::real ret1[3],ret2[3];
+			Storage::real px = p.y, py = 1-p.x;
+			
 			// a1         b1
 			//          /
 			//         /
@@ -193,9 +196,6 @@ namespace INMOST
 			//     /
 			//    /
 			// a0         b0
-			Storage::real ret1[3],ret2[3];
-			//Storage::real px = 1-p.x, py = p.y;
-			Storage::real px = p.y, py = 1-p.x;
 			if( py > px ) //tri a0,a1,b1
 			{
 				//a = (0,0) (a0) u
@@ -212,7 +212,7 @@ namespace INMOST
 				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
 				Storage::real u = 1.0 - v - w; //for a0
 				for(int k = 0; k < 3; ++k)
-					ret1[k] = a0[k]*u + a1[k]*v + b1[k]*w;
+					ret[k] = a0[k]*u + a1[k]*v + b1[k]*w;
 			}
 			else //tri a0,b0,b1
 			{
@@ -230,8 +230,10 @@ namespace INMOST
 				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
 				Storage::real u = 1.0 - v - w; //for a0
 				for(int k = 0; k < 3; ++k)
-					ret1[k] = a0[k]*u + b0[k]*v + b1[k]*w;
+					ret[k] = a0[k]*u + b0[k]*v + b1[k]*w;
 			}
+			
+			/*
 			// a1         b1
 			//    \
 			//     \
@@ -257,7 +259,7 @@ namespace INMOST
 				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b0
 				Storage::real u = 1.0 - v - w; //for a0
 				for(int k = 0; k < 3; ++k)
-					ret2[k] = a0[k]*u + a1[k]*v + b0[k]*w;
+					ret[k] = a0[k]*u + a1[k]*v + b0[k]*w;
 			}
 			else //tri a0,b0,b1
 			{
@@ -275,17 +277,18 @@ namespace INMOST
 				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
 				Storage::real u = 1.0 - v - w; //for a1
 				for(int k = 0; k < 3; ++k)
-					ret2[k] = a1[k]*u + b0[k]*v + b1[k]*w;
+					ret[k] = a1[k]*u + b0[k]*v + b1[k]*w;
 			}
-
-			for(int k = 0; k < 3; ++k) ret[k] = (ret1[k]+ret2[k])*0.5;
+			*/
+			//for(int k = 0; k < 3; ++k) ret[k] = (ret1[k]+ret2[k])*0.5;
+			
 		}
-		*/
+		
 		 
 		
 		void Act(const Point & p, Storage::real v[3]) const
 		{
-			long double a, b;
+			Storage::real a, b;
 			for(int k = 0; k < 3; ++k)
 			{
 				a = (p.x)*a0[k] + (1.0-p.x)*a1[k];
@@ -358,6 +361,41 @@ namespace INMOST
 	{
 		return Point(n->GetHandle(),n->RealArray(pnt).data());
 	}
+
+	std::pair<Storage::real,Storage::real> intersect_pairs(const Point & pabeg, const Point & paend, const Point & pbbeg, const Point & pbend)
+	{
+		const Storage::real eps = ECL_INTERSECT_EPS;
+		Point pfind(InvalidHandle(),0,0);
+		Storage::real t1,t2;
+		Storage::real div = (pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x);
+		if (std::abs(div) < 1.0e-50)
+			return std::make_pair(-1,-1);
+		pfind.x = ((pabeg.x*paend.y - pabeg.y*paend.x)*(pbbeg.x - pbend.x) - (pabeg.x - paend.x)*(pbbeg.x*pbend.y - pbbeg.y*pbend.x)) / div;
+		pfind.y = ((pabeg.x*paend.y - pabeg.y*paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x*pbend.y - pbbeg.y*pbend.x)) / div;
+		//optimization! - should belong unit cube
+		if( pfind.x < 0 || pfind.x > 1 || pfind.y < 0 || pfind.y > 1 ) return std::make_pair(-1,-1);
+		if (std::abs(paend.x - pabeg.x) > eps)
+		{
+			t1 = (pfind.x - pabeg.x) / (paend.x - pabeg.x);
+			if (t1 < eps || t1 > 1.0 - eps)  { return std::make_pair(-1,-1); }
+		}
+		if (std::abs(paend.y - pabeg.y) > eps)
+		{
+			t1 = (pfind.y - pabeg.y) / (paend.y - pabeg.y);
+			if (t1 < eps || t1 > 1.0 - eps)  { return std::make_pair(-1,-1); }
+		}
+		if (std::abs(pbend.x - pbbeg.x) > eps)
+		{
+			t2 = (pfind.x - pbbeg.x) / (pbend.x - pbbeg.x);
+			if (t2 < eps || t2 > 1.0 - eps)  { return std::make_pair(-1,-1); }
+		}
+		if (std::abs(pbend.y - pbbeg.y) > eps)
+		{
+			t2 = (pfind.y - pbbeg.y) / (pbend.y - pbbeg.y);
+			if (t2 < eps || t2 > 1.0 - eps)  { return std::make_pair(-1,-1); }
+		}
+		return std::make_pair(t1,t2);
+	}
 	
 	std::pair<bool,Point> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::set<Point> & intersections, Tag pnt, const Unproject & unp, bool print)
 	{
@@ -372,8 +410,8 @@ namespace INMOST
 		Point paend = make_point(a->getEnd(),pnt);
 		Point pbbeg = make_point(b->getBeg(),pnt);
 		Point pbend = make_point(b->getEnd(),pnt);
-		long double div = (long double)(pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x);
-		long double t1,t2;
+		Storage::real div = (pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x);
+		Storage::real t1,t2;
 		if (std::abs(div) < 1.0e-50)
 		{
 			if (print) std::cout << "divisor is zero" << std::endl;
@@ -423,9 +461,9 @@ namespace INMOST
 			//restore coordinate
 			//this is treaky, we do not want self intersection in 3d space
 			unp.Act(pfind,find);
-			//find[0] = (a->getEnd()->Coords()[0]*t1 + a->getBeg()->Coords()[0]*(1-t1)+b->getEnd()->Coords()[0]*t1 + b->getBeg()->Coords()[0]*(1-t1))*0.5;
-			//find[1] = (a->getEnd()->Coords()[1]*t1 + a->getBeg()->Coords()[1]*(1-t1)+b->getEnd()->Coords()[1]*t1 + b->getBeg()->Coords()[1]*(1-t1))*0.5;
-			//find[2] = (a->getEnd()->Coords()[2]*t1 + a->getBeg()->Coords()[2]*(1-t1)+b->getEnd()->Coords()[2]*t1 + b->getBeg()->Coords()[2]*(1-t1))*0.5;
+			//find[0] = (a->getEnd()->Coords()[0]*t1 + a->getBeg()->Coords()[0]*(1-t1)+b->getEnd()->Coords()[0]*t2 + b->getBeg()->Coords()[0]*(1-t2))*0.5;
+			//find[1] = (a->getEnd()->Coords()[1]*t1 + a->getBeg()->Coords()[1]*(1-t1)+b->getEnd()->Coords()[1]*t2 + b->getBeg()->Coords()[1]*(1-t2))*0.5;
+			//find[2] = (a->getEnd()->Coords()[2]*t1 + a->getBeg()->Coords()[2]*(1-t1)+b->getEnd()->Coords()[2]*t2 + b->getBeg()->Coords()[2]*(1-t2))*0.5;
 			pfind.node = m->CreateNode(find)->GetHandle();
 			if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << " new node " << pfind.node << std::endl;
 			Storage::real_array _pfind = m->RealArray(pfind.node,pnt);
@@ -552,19 +590,20 @@ namespace INMOST
 		m->ReleasePrivateMarker(initial);
 	}
 
-	void split_segments(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, bool print)
+	void split_segments(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, MarkerType mrk, bool print)
 	{
 		int i = 0;
-		MarkerType mrk = m->CreateMarker();
+		//MarkerType mrk = m->CreateMarker();
 		while( i < segments.size() )
 		{
-			/*
-			if( segments[i]->GetMarker(mrk) ) 
+			
+			//skip edges along pillars
+			if( !segments[i]->GetPrivateMarker(mrk) ) 
 			{
 				i++;
 				continue;
 			}
-			*/
+			
 			//get projected center point of segment
 			//vl - point on the middle
 			//vu - unprojected middle point onto arc
@@ -586,16 +625,68 @@ namespace INMOST
 				n->RealArray(pnt)[1] = pm.y;
 				ElementArray<Edge> splitted_a;
 				split_edge(m,n,segments[i],splitted_a,transfer,print);
-				splitted_a[0]->SetMarker(mrk);
-				splitted_a[1]->SetMarker(mrk);
+				splitted_a[0]->SetPrivateMarker(mrk);
+				splitted_a[1]->SetPrivateMarker(mrk);
 				segments[i] = splitted_a[0];
 				segments.push_back(splitted_a[1]);
 				nodes.push_back(n);
 			}
 			else i++;
 		}
-		segments.RemMarker(mrk);
-		m->ReleaseMarker(mrk);
+		//segments.RemMarker(mrk);
+		//m->ReleaseMarker(mrk);
+	}
+
+
+	void split_segments_tri(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, MarkerType mrk, bool print)
+	{
+		int i = 0;
+		while( i < segments.size() )
+		{
+			
+			//skip edges along pillars
+			if( !segments[i]->GetPrivateMarker(mrk) ) 
+			{
+				i++;
+				continue;
+			}
+			
+			//get projected center point of segment
+			//vl - point on the middle
+			//vu - unprojected middle point onto arc
+			Storage::real vu[3], vl[3];//, vt[3];
+			Point pb = make_point(segments[i]->getBeg(),pnt);
+			Point pe = make_point(segments[i]->getEnd(),pnt);
+			std::pair<Storage::real,Storage::real> tt = intersect_pairs(pb,pe,Point(InvalidHandle(),0,0),Point(InvalidHandle(),1,1));
+			Storage::real t = tt.first;
+			if( t > -0.5 )
+			{
+				Point pm(InvalidHandle(),pb.x*t+pe.x*(1-t),pb.y*t+pe.y*(1-t));
+				unp.ActTri(pm,vu);
+				for(int k = 0; k < 3; ++k)
+					vl[k] = segments[i]->getBeg()->Coords()[k]*t+segments[i]->getEnd()->Coords()[k]*(1-t);
+				// l - length of the segment
+				// h - distance to the arc
+				Storage::real l = segments[i]->Length();
+				Storage::real h = sqrt((vl[0]-vu[0])*(vl[0]-vu[0])+(vl[1]-vu[1])*(vl[1]-vu[1])+(vl[2]-vu[2])*(vl[2]-vu[2]));
+				if( h/l > 1.0e-2 ) // it is not on the same plane
+				{
+					//unp.ActTri(pm,vt);
+					Node n = m->CreateNode(vu);
+					n->RealArray(pnt)[0] = pm.x;
+					n->RealArray(pnt)[1] = pm.y;
+					ElementArray<Edge> splitted_a;
+					split_edge(m,n,segments[i],splitted_a,transfer,print);
+					splitted_a[0]->SetPrivateMarker(mrk);
+					splitted_a[1]->SetPrivateMarker(mrk);
+					segments[i] = splitted_a[0];
+					segments.push_back(splitted_a[1]);
+					nodes.push_back(n);
+				}
+				else i++;
+			}
+			else i++;
+		}
 	}
 
 	
@@ -634,6 +725,26 @@ namespace INMOST
 		}
 	}
 
+	void block_number_intersection(Element n,const ElementArray<Element> & adj, Tag block, Tag write)
+	{
+		Storage::integer_array bn = n->IntegerArray(write);
+		if( !adj.empty() )
+		{
+			Storage::integer_array be = adj[0]->IntegerArray(block);
+			std::vector<int> inter(be.begin(),be.end()), tmp(inter.size());
+			for(ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
+			{
+				be = adj[k]->IntegerArray(block);
+				tmp.resize(std::set_intersection(inter.begin(),inter.end(),be.begin(),be.end(),tmp.begin())-tmp.begin());
+				inter.swap(tmp);
+			}
+			bn.replace(bn.begin(),bn.end(),inter.begin(),inter.end());
+		}
+		else bn.clear();
+		//Storage::integer_array bn = n->IntegerArray(block);
+		//bn.replace(bn.begin(),bn.end(),inter.begin(),inter.end());
+	}
+
 	
 	void block_number_intersection(const ElementArray<Element> & adj, Tag block, std::vector<int> & out)
 	{
@@ -659,6 +770,9 @@ namespace INMOST
 	{
 		std::cout << std::scientific;
 		bool perform_splitting = false;
+		bool curvilinear_edges = true;
+		bool triangulated_edges = false; //this is not working, yet
+		bool project_perm = true;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "ECL_SPLIT_GLUED" )
@@ -668,12 +782,20 @@ namespace INMOST
 				else
 					perform_splitting = false;
 			}
-		}
-		FILE * f = fopen(File.c_str(),"r");
-		if( f == NULL )
-		{
-			std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << File << std::endl;
-			throw BadFileName;
+			if( file_options[k].first == "ECL_CURVILINEAR" )
+			{
+				if( file_options[k].second == "TRUE" )
+					curvilinear_edges = true;
+				else
+					curvilinear_edges = false;
+			}
+			if( file_options[k].first == "ECL_PROJECT_PERM" )
+			{
+				if( file_options[k].second == "TRUE" )
+					project_perm = true;
+				else
+					project_perm = false;
+			}
 		}
 		std::vector<HandleType> old_nodes(NumberOfNodes());
 		{
@@ -683,6 +805,13 @@ namespace INMOST
 		}
 		if( !old_nodes.empty() ) 
 			std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
+
+		FILE * f = fopen(File.c_str(),"r");
+		if( f == NULL )
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << File << std::endl;
+			throw BadFileName;
+		}
 		std::vector< std::pair< std::pair<FILE *,std::string>, int> > fs(1,std::make_pair(std::make_pair(f,File),0));
 		char readline[2048], *p, *pend, rec[2048];
 		int text_end, text_start, state = ECL_NONE, nchars;
@@ -1034,7 +1163,11 @@ ecl_exit_loop:
 		{
 			std::cout << __FILE__ << ":" << __LINE__ << " radial grids not supported yet " << std::endl;
 		}
-
+		int beg_dims[2], end_dims[2];
+		beg_dims[0] = 0;
+		beg_dims[1] = 0;
+		end_dims[0] = dims[0];
+		end_dims[1] = dims[1];
 		std::vector<HandleType> blocks(dims[0]*dims[1]*dims[2],InvalidHandle()); // for wells
 		if( gtype == ECL_GTYPE_TOPS )
 		{
@@ -1159,10 +1292,19 @@ ecl_exit_loop:
 			Tag tagporo,tagperm, tagsatnum;
 			Tag block_index = CreateTag("BLOCK_IJK",DATA_INTEGER,CELL,NONE,3);
 			if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
-			if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
+			if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,project_perm ? 6 : 3);
 			if( !satnum.empty() ) tagsatnum = CreateTag("SATNUM",DATA_INTEGER,CELL,NONE,1);
-			const Storage::integer nvf[24] = { 2, 3, 1, 0, 4, 5, 7, 6, 0, 1, 5, 4, 3, 2, 6, 7, 2, 0, 4, 6, 1, 3, 7, 5 };
+			const Storage::integer nvf[24] = 
+			{ 
+			2, 3, 1, 0, //bottom face z-
+			4, 5, 7, 6, //top face    z+
+			0, 1, 5, 4, //front face  y-
+			3, 2, 6, 7, //back face   y+ 
+			2, 0, 4, 6, //left face   x-
+			1, 3, 7, 5  //right face  x+
+			};
 			const Storage::integer numnodes[6] = { 4, 4, 4, 4, 4, 4 };
+			rMatrix UVW(3,3), U(3,3), S(3,3), Sinv(3,3), V(3,3), K(3,3);
 			for(int i = 0; i < dims[0]; i++)
 			{
 				for(int j = 0; j < dims[1]; j++)
@@ -1190,15 +1332,87 @@ ecl_exit_loop:
 						if( !perm.empty() )
 						{
 							Storage::real_array arr_perm = c->RealArrayDF(tagperm);
-							arr_perm[0] = perm[3*(ECL_IJK_DATA(i,j,k))+0];
-							arr_perm[1] = perm[3*(ECL_IJK_DATA(i,j,k))+1];
-							arr_perm[2] = perm[3*(ECL_IJK_DATA(i,j,k))+2];
+							if( project_perm )
+							{
+								ElementArray<Face> faces = c->getFaces();
+								Storage::real cntp[3], cntn[3], u[3], L;
+								//compute grid block coordinates
+								for(int r = 0; r < 3; ++r)
+								{
+									faces[5-r*2]->Centroid(cntp);
+									faces[4-r*2]->Centroid(cntn);
+									u[0] = cntp[0] - cntn[0];
+									u[1] = cntp[1] - cntn[1];
+									u[2] = cntp[2] - cntn[2];
+									L = sqrt(u[0]*u[0]+u[1]*u[1]+u[2]*u[2]);
+									if( L ) u[0] /= L, u[1] /= L, u[2] /= L;
+									//fill row
+									UVW(r,0) = u[0];
+									UVW(r,1) = u[1];
+									UVW(r,2) = u[2];
+
+								}
+								UVW.SVD(U,S,V);
+								for(int r = 0; r < 3; ++r)
+								{
+									if( S(r,r) > 0.0 )
+										Sinv(r,r) = 1.0/S(r,r);
+									else 
+										Sinv(r,r) = 0.0;
+								}
+								K.Zero();
+								K(0,0) = perm[3*(ECL_IJK_DATA(i,j,k))+0];
+								K(1,1) = perm[3*(ECL_IJK_DATA(i,j,k))+1];
+								K(2,2) = perm[3*(ECL_IJK_DATA(i,j,k))+2];
+								
+								K = V*Sinv*U.Transpose()*K*U*Sinv*V.Transpose();
+
+								arr_perm[0] = K(0,0);
+								arr_perm[1] = K(0,1);
+								arr_perm[2] = K(0,2);
+								arr_perm[3] = K(1,1);
+								arr_perm[4] = K(1,2);
+								arr_perm[5] = K(2,2);
+							}
+							else
+							{
+								arr_perm[0] = perm[3*(ECL_IJK_DATA(i,j,k))+0];
+								arr_perm[1] = perm[3*(ECL_IJK_DATA(i,j,k))+1];
+								arr_perm[2] = perm[3*(ECL_IJK_DATA(i,j,k))+2];
+							}
 						}
 					}
 			}
 		}
 		else if( gtype == ECL_GTYPE_ZCORN )
 		{
+#if defined(USE_MPI)
+			{
+				std::cout << "x: " << beg_dims[0] << " " << end_dims[0] << std::endl;
+				std::cout << "y: " << beg_dims[1] << " " << end_dims[1] << std::endl;
+				int mpi_dims[2] = {0,0};
+				MPI_Dims_create(GetProcessorsNumber(),2,mpi_dims);
+				std::cout << "mpi: " << mpi_dims[0] << " " << mpi_dims[1] << std::endl;
+				int rank = GetProcessorRank();
+				//my position on the grid
+				int rankx = rank % mpi_dims[0];
+				int ranky = rank / mpi_dims[0];
+				//my subgrid
+				int numx = dims[0]/mpi_dims[0];
+				int numy = dims[1]/mpi_dims[1];
+				std::cout << "num: " << numx << " " << numy << std::endl;
+				beg_dims[0] = numx*rankx;
+				beg_dims[1] = numy*ranky;
+				end_dims[0] = numx*(rankx+1);
+				end_dims[1] = numy*(ranky+1);
+				if( rankx == mpi_dims[0]-1 ) end_dims[0] = dims[0];
+				if( ranky == mpi_dims[1]-1 ) end_dims[1] = dims[1];
+				std::cout << "x: " << beg_dims[0] << " " << end_dims[0] << std::endl;
+				std::cout << "y: " << beg_dims[1] << " " << end_dims[1] << std::endl;
+			}
+#endif //USE_MPI
+
+
 			SetTopologyCheck(PRINT_NOTIFY | NEED_TEST_CLOSURE | PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE | MARK_ON_ERROR);
 			SetTopologyCheck(DEGENERATE_EDGE | DEGENERATE_FACE | DEGENERATE_CELL);
 			SetTopologyCheck(TRIPLE_SHARED_FACE | FLATTENED_CELL | INTERLEAVED_FACES);
@@ -1219,6 +1433,7 @@ ecl_exit_loop:
 			Tag cell_number = CreateTag("CELL_NUMBER",DATA_INTEGER,CELL,NONE,1);
 			Tag block_index = CreateTag("BLOCK_IJK",DATA_INTEGER,CELL,NONE,3);
 			Tag edge_number = CreateTag("EDGE_NUMBER",DATA_INTEGER,EDGE,NONE);
+			Tag block_intersection_number = CreateTag("BLOCK_INTERSECTION_NUMBER",DATA_INTEGER,EDGE,NONE);
 			Tag block_number = CreateTag("BLOCK_NUMBER",DATA_INTEGER,EDGE | NODE,NONE);
 			Tag face_origin = CreateTag("FACE_ORIGIN",DATA_INTEGER,FACE,1);
 			Tag pillar_num = CreateTag("PILLAR_NUM",DATA_INTEGER,NODE,NONE,2);
@@ -1265,9 +1480,9 @@ ecl_exit_loop:
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-				for(int i = 0; i < dims[0]+1; i++)
+				for(int i = beg_dims[0]; i < end_dims[0]+1; i++)
 				{
-					for(int j = 0; j < dims[1]+1; j++)
+					for(int j = beg_dims[1]; j < end_dims[1]+1; j++)
 					{
 						//reset number of nodes
 						num_nodes = num = 0;
@@ -1494,9 +1709,12 @@ ecl_exit_loop:
 			*/
 			//Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
 			//tags to be transfered
-			std::vector<Tag> transfer(2);
+			std::vector<Tag> transfer(2), transfer2(3);
 			transfer[0] = edge_number;
 			transfer[1] = block_number;
+			transfer2[0] = edge_number;
+			transfer2[1] = block_number;
+			transfer2[2] = block_intersection_number;
 			//transfer[2] = pillar_mark;
 			//store faces for each block to assemble block cells later
 			std::vector< ElementArray<Face> > block_faces(dims[0]*dims[1]*dims[2],ElementArray<Face>(this));
@@ -1522,7 +1740,7 @@ ecl_exit_loop:
 			{
 				printf("started creating faces for pairs of pillar along %s\n",q ? "ny":"nx");
 #if defined(USE_OMP)
-//#pragma omp parallel
+#pragma omp parallel
 #endif
 				{
 					//structure to create an edge from pair of nodes
@@ -1533,7 +1751,7 @@ ecl_exit_loop:
 					//for sorting a pair of data
 					std::vector<int> indices_sort, temporary;
 					//array to obtain block number
-					std::vector<int> block_number_inter, node_number_inter;
+					//std::vector<int> block_number_inter, node_number_inter;
 					//store edges along pillar to assemble faces along pillars, on back side of the pillar
 					std::vector< ElementArray<Edge> > pillar_block_edges_back(dims[2],ElementArray<Edge>(this));
 					//on front side of the pillar
@@ -1558,12 +1776,12 @@ ecl_exit_loop:
 #pragma omp for
 #endif
 					//for(int i = 0; i < dims[0]+q; i++)
-					for(int jt = uneven; jt < dims[1-q]+1; jt+=2)
+					for(int jt = uneven+beg_dims[1-q]; jt < end_dims[1-q]+1; jt+=2)
 					{
 						//printf("%s %6.2f%%\r",q ? "ny":"nx", ((Storage::real)i)/((Storage::real)dims[0]+q-1)*100);
 						//fflush(stdout);
 						//for(int j = 0; j < dims[1]+(1-q); ++j)
-						for(int it = 0; it < dims[q]; it++)
+						for(int it = beg_dims[q]; it < end_dims[q]; it++)
 						{
 							int i,j;
 							if( q )
@@ -1579,7 +1797,7 @@ ecl_exit_loop:
 							//if( i == 63 && j == 129 && q == 1 ) print_inter = true;
 							//if( i == 9 && j == 91 && q == 1 ) 
 							//if( i == 7 && j == 78 && q == 1 ) 
-							//if( false )
+							if( false )
 							{
 								print_inter = true;
 								print_info = true;
@@ -1708,7 +1926,7 @@ ecl_exit_loop:
 								
 							intersections.clear();
 							//intersect(this,edges,intersections,transfer,pnt,unp,print_inter);
-							//split_segments(this,edges,intersections,transfer,pnt,unp,print_inter);
+							
 							intersect_naive(this,edges,intersections,transfer,pnt,unp,print_inter);
 							
 							assert(count_duplicates(edges) == 0);
@@ -1774,22 +1992,7 @@ ecl_exit_loop:
 								*/
 							}
 
-							//distribute all the edges among blocks
-							//add intersected edges into blocks, so that we can reconstruct top and bottom faces of each block
-							for(int k = 0; k < (int)edges.size(); ++k)
-							{
-								Storage::integer_array b = edges[k].IntegerArray(block_number);
-								for(int r = 0; r < (int)b.size(); ++r)
-								{
-//#if defined(USE_OMP)
-//										omp_set_lock(&block_locks[b[r]]);
-//#endif
-									block_edges[b[r]].push_back(edges[k]);
-//#if defined(USE_OMP)
-//										omp_unset_lock(&block_locks[b[r]]);
-//#endif
-								}
-							}
+							
 							//sort block numbers on edges
 							for(int k = 0; k < (int)edges.size(); ++k)
 							{
@@ -1810,6 +2013,8 @@ ecl_exit_loop:
 								for(int l = 0; l < (int)e.size(); ++l) e[l] = temporary[indices_sort[l]];
 								//assert(std::is_sorted(b.begin(),b.end()));
 							}
+							//mark inter-pillar edges
+							edges.SetPrivateMarker(visited);
 							//add vertical edges along pillars
 							ElementArray<Edge> & p0_edges = pillar_edges[(i+  0)*(dims[1]+1)+j+0];
 							ElementArray<Edge> & p1_edges = pillar_edges[(i+1-q)*(dims[1]+1)+j+q];
@@ -1847,13 +2052,52 @@ ecl_exit_loop:
 									std::cout << b.back() << "(" << b.back()%dims[0] << "," << b.back()/dims[0]%dims[1] << "," << b.back()/dims[0]/dims[1] << ")" << std::endl;
 								}
 							}
+							//compute block number for each edge from node's block numbers
+							for(int k = 0; k < (int)edges.size(); ++k)
+								block_number_intersection(edges[k],edges[k]->getAdjElements(NODE),block_number,block_intersection_number);
+							//make segments curvy when necessery
+							if( triangulated_edges )
+							{
+								//re-project intersection nodes onto triangulated face
+								for(int k = 0; k < (int)intersections.size(); ++k)
+								{
+									Storage::real vt[3];
+									Point p = make_point(intersections[k],pnt);
+									unp.ActTri(p,vt);
+									//change point
+									intersections[k]->Coords()[0] = vt[0];
+									intersections[k]->Coords()[1] = vt[1];
+									intersections[k]->Coords()[2] = vt[2];
+								}
+								split_segments_tri(this,edges,intersections,transfer2,pnt,unp,visited,print_inter);
+							}
+							else if( curvilinear_edges )
+								split_segments(this,edges,intersections,transfer2,pnt,unp,visited,print_inter);
+							//distribute all the edges among blocks
+							//add intersected edges into blocks, so that we can reconstruct top and bottom faces of each block
+							for(int k = 0; k < (int)edges.size(); ++k) if( edges[k]->GetPrivateMarker(visited) ) //do not visit edges along pillars
+							{
+								Storage::integer_array b = edges[k].IntegerArray(block_number);
+								for(int r = 0; r < (int)b.size(); ++r)
+								{
+//#if defined(USE_OMP)
+//										omp_set_lock(&block_locks[b[r]]);
+//#endif
+									block_edges[b[r]].push_back(edges[k]);
+//#if defined(USE_OMP)
+//										omp_unset_lock(&block_locks[b[r]]);
+//#endif
+								}
+							}
+							edges.RemPrivateMarker(visited);
 							//distribute edges to front and back blocks, so that we can assemble faces
 							for(int k = 0; k < (int)edges.size(); ++k)
 							{
 								//intersect block numbers on nodes to detect to which blocks this edge belongs
-								ElementArray<Element> nodes = edges[k]->getAdjElements(NODE);
-								block_number_intersection(nodes,block_number,block_number_inter);
+								//ElementArray<Element> nodes = edges[k]->getAdjElements(NODE);
+								//block_number_intersection(nodes,block_number,block_number_inter);
 								//block_number_intersection(nodes,node_blocks,block_number_inter);
+								Storage::integer_array block_number_inter = edges[k]->IntegerArray(block_intersection_number);
 								if( print_bn || block_number_inter.empty())
 								{
 									std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << " <-> " << edges[k]->getEnd()->GetHandle() << std::endl;
@@ -2129,6 +2373,7 @@ ecl_exit_loop:
 												std::cout << "Outer edges [" << outer_edge_number.size() << "]:" << std::endl;
 												for(std::set<int>::iterator it = outer_edge_number.begin(); it != outer_edge_number.end(); ++it)
 													std::cout << *it << " ";
+												std::cout << std::endl;
 												std::cout << " num outer " << num_outer << std::endl;
 
 												//form faces out of edgesm
@@ -2196,11 +2441,11 @@ ecl_exit_loop:
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-					for(int i = uneven; i < dims[0]; i+=2)
+					for(int i = uneven+beg_dims[0]; i < end_dims[0]; i+=2)
 					{
 						//printf("top/bottom/cells %6.2f%%\r", ((Storage::real)i)/((Storage::real)dims[0]-1)*100);
 						//fflush(stdout);
-						for(int j = 0; j < dims[1]; ++j)
+						for(int j = beg_dims[1]; j < end_dims[1]; ++j)
 						{
 							for(int k = 0; k < dims[2]; ++k) if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,k)] )
 							{
@@ -2483,26 +2728,87 @@ ecl_exit_loop:
 			//populate properties to blocks
 			Tag tagporo, tagsatnum, tagperm;
 			if( !poro.empty() ) tagporo = CreateTag("PORO",DATA_REAL,CELL,NONE,1);
-			if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,3);
+			if( !perm.empty() ) tagperm = CreateTag("PERM",DATA_REAL,CELL,NONE,project_perm?6:3);
 			if( !satnum.empty() ) tagsatnum = CreateTag("SATNUM",DATA_INTEGER,CELL,NONE,1);
-				
-#if defined(USE_OMP)
-#pragma omp parallel for
-#endif
-			for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			const int face_node_nums[3][2][4]=
 			{
-				Cell c = CellByLocalID(it);
-				if( c->Integer(cell_number) > 0 ) //maybe this cell existed before
+				
+				{{0,2,4,6},{1,3,5,7}}, //u-direction face nodes n,p
+				{{0,1,4,5},{2,3,6,7}}, //v-direction face nodes n,p
+				{{0,1,2,3},{4,5,6,7}}  //w-direction face nodes n,p
+			};
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+			{
+				rMatrix UVW(3,3), U(3,3), S(3,3), Sinv(3,3), V(3,3), K(3,3);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
 				{
-					integer q = c->Integer(cell_number)-1;
-					if( !poro.empty() ) c->Real(tagporo) = poro[q];
-					if( !satnum.empty() ) c->Integer(tagsatnum) = satnum[q];
-					if( !perm.empty() )
+					Cell c = CellByLocalID(it);
+					if( c->Integer(cell_number) > 0 ) //maybe this cell existed before
 					{
-						Storage::real_array K = c->RealArray(tagperm);
-						K[0] = perm[q*3+0];
-						K[1] = perm[q*3+1];
-						K[2] = perm[q*3+2];
+						integer q = c->Integer(cell_number)-1;
+						if( q < 0 ) continue;
+						if( !poro.empty() ) c->Real(tagporo) = poro[q];
+						if( !satnum.empty() ) c->Integer(tagsatnum) = satnum[q];
+						if( !perm.empty() )
+						{
+							Storage::real_array arr_perm = c->RealArray(tagperm);
+							if( project_perm )
+							{
+								ElementArray<Face> faces = c->getFaces();
+								Storage::real u[3], L;
+								//compute grid block coordinates
+								for(int r = 0; r < 3; ++r)
+								{
+									for(int l = 0; l < 4; ++l)
+									{
+										u[0] -= Node(this,block_nodes[q*8+face_node_nums[r][0][l]])->Coords()[0];
+										u[1] -= Node(this,block_nodes[q*8+face_node_nums[r][0][l]])->Coords()[1];
+										u[2] -= Node(this,block_nodes[q*8+face_node_nums[r][0][l]])->Coords()[2];
+										u[0] += Node(this,block_nodes[q*8+face_node_nums[r][1][l]])->Coords()[0];
+										u[1] += Node(this,block_nodes[q*8+face_node_nums[r][1][l]])->Coords()[1];
+										u[2] += Node(this,block_nodes[q*8+face_node_nums[r][1][l]])->Coords()[2];
+									}
+									L = sqrt(u[0]*u[0]+u[1]*u[1]+u[2]*u[2]);
+									if( L ) u[0] /= L, u[1] /= L, u[2] /= L;
+									//fill row
+									UVW(r,0) = u[0];
+									UVW(r,1) = u[1];
+									UVW(r,2) = u[2];
+								}
+								UVW.SVD(U,S,V);
+								for(int r = 0; r < 3; ++r)
+								{
+									if( S(r,r) > 0.0 )
+										Sinv(r,r) = 1.0/S(r,r);
+									else 
+										Sinv(r,r) = 0.0;
+								}
+								K.Zero();
+								K(0,0) = perm[3*q+0];
+								K(1,1) = perm[3*q+1];
+								K(2,2) = perm[3*q+2];
+								
+								K = V*Sinv*U.Transpose()*K*U*Sinv*V.Transpose();
+
+								arr_perm[0] = K(0,0);
+								arr_perm[1] = K(0,1);
+								arr_perm[2] = K(0,2);
+								arr_perm[3] = K(1,1);
+								arr_perm[4] = K(1,2);
+								arr_perm[5] = K(2,2);
+							}
+							else
+							{
+								arr_perm[0] = perm[q*3+0];
+								arr_perm[1] = perm[q*3+1];
+								arr_perm[2] = perm[q*3+2];
+							}
+						}
 					}
 				}
 			}
@@ -2562,6 +2868,7 @@ ecl_exit_loop:
 				
 			std::cout << "Centroid is outside for " << num_outside << " cells out of " << num_total << " cells " << std::endl;
 				
+			if( false )
 			for(integer it = 0; it < NodeLastLocalID(); ++it) if( isValidNode(it) )
 			{
 				Node n = NodeByLocalID(it);
@@ -2635,13 +2942,16 @@ ecl_exit_loop:
 			ElementSet set = CreateSet(it->first).first;
 			for(compdat_entries::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
 			{
-				for(int k = jt->k1; k <= jt->k2; ++k) if( k >= 0 && k < dims[2] )
+				if( jt->i >= beg_dims[0] && jt->i < end_dims[0] && jt->j >= beg_dims[1] && jt->j < end_dims[1] )
 				{
-					HandleType h = blocks[ECL_IJK_DATA(jt->i,jt->j,k)];
-					if( h != InvalidHandle() )
+					for(int k = jt->k1; k <= jt->k2; ++k) if( k >= 0 && k < dims[2] )
 					{
-						set.PutElement(h);
-						Integer(h,tagnwell) = nwell;
+						HandleType h = blocks[ECL_IJK_DATA(jt->i,jt->j,k)];
+						if( h != InvalidHandle() )
+						{
+							set.PutElement(h);
+							Integer(h,tagnwell) = nwell;
+						}
 					}
 				}
 			}
@@ -2655,6 +2965,8 @@ ecl_exit_loop:
 			well_sets.push_back(set->GetHandle());
 			nwell++;
 		}
+
+		
 		
 		/*
 		{
@@ -2686,6 +2998,9 @@ ecl_exit_loop:
 			fout.close();
 		}
 		*/
+
+		//if( GetProcessorsNumber() )
+		ResolveShared();
 	} //LoadECL
 } //namespace
 

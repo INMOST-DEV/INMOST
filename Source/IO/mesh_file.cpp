@@ -144,7 +144,7 @@ namespace INMOST
 		std::string LFile;
 		LFile.resize(File.size());
 		std::transform(File.begin(),File.end(),LFile.begin(),::tolower);
-		if(LFile.find(".grdecl") != std::string::npos) return false;
+		if(LFile.find(".grdecl") != std::string::npos) return true;
 		if(LFile.find(".msh") != std::string::npos) return false;
 		if(LFile.find(".grid") != std::string::npos) return false;
 		else if(LFile.find(".vtk") != std::string::npos) return false;
