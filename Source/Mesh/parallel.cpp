@@ -1261,7 +1261,7 @@ namespace INMOST
 					REPORT_VAL("time",time);
 					
 					
-					dynarray<Storage::integer,64> result, intersection;
+					
 					
 					for(ElementType current_mask = EDGE; current_mask <= CELL; current_mask = current_mask << 1 )
 					{
@@ -1277,27 +1277,33 @@ namespace INMOST
 						time = Timer();
 						//Determine what processors potentially share the element
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-						for(integer eit = 0; eit < LastLocalID(current_mask); ++eit)
 						{
-							if( isValidElement(current_mask,eit) )
+							dynarray<Storage::integer,64> result, intersection;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+							for(integer eit = 0; eit < LastLocalID(current_mask); ++eit)
 							{
-								Element it = ElementByLocalID(current_mask,eit);
-								determine_my_procs_low(this,it->GetHandle(), result, intersection);
-								Storage::integer_array p = it->IntegerArrayDV(tag_processors);
-								if( result.empty() )
+								if( isValidElement(current_mask,eit) )
 								{
-									p.clear();
-									p.push_back(mpirank);
-									//++owned_elems;
-								}
-								else
-								{
-									p.replace(p.begin(),p.end(),result.begin(),result.end());
-									//if( result.size() == 1 && result[0] == mpirank )
-									//  ++owned_elems;
-									//else ++shared_elems;
+									Element it = ElementByLocalID(current_mask,eit);
+									determine_my_procs_low(this,it->GetHandle(), result, intersection);
+									Storage::integer_array p = it->IntegerArrayDV(tag_processors);
+									if( result.empty() )
+									{
+										p.clear();
+										p.push_back(mpirank);
+										//++owned_elems;
+									}
+									else
+									{
+										p.replace(p.begin(),p.end(),result.begin(),result.end());
+										//if( result.size() == 1 && result[0] == mpirank )
+										//  ++owned_elems;
+										//else ++shared_elems;
+									}
 								}
 							}
 						}
@@ -2462,6 +2468,9 @@ namespace INMOST
 		int num_send = 0, num_recv = 0;
 		for(p = procs.begin(); p != procs.end(); p++ )
 		{
+			REPORT_VAL("for processor",p-procs.begin());
+			REPORT_VAL("send size",send_size[p-procs.begin()]);
+			REPORT_VAL("recv size",recv_size[p-procs.begin()]);
 			if( send_size[p-procs.begin()] )
 			{
 				for(unsigned int k = 0; k < tags.size(); k++)
@@ -3670,12 +3679,14 @@ namespace INMOST
 		else if( parallel_strategy == 1 )
 		{
 			INMOST_DATA_BULK_TYPE stub;
+			REPORT_VAL("recv bufs size",recv_bufs.size());
 			for(i = 0; i < recv_bufs.size(); i++)// if( !recv_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
 				REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
 			}
+			REPORT_VAL("send bufs size",send_bufs.size());
 			for(i = 0; i < send_bufs.size(); i++) //if( !send_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
@@ -3686,12 +3697,14 @@ namespace INMOST
 		else if( parallel_strategy == 2 )
 		{
 			INMOST_DATA_BULK_TYPE stub;
+			REPORT_VAL("recv bufs size",recv_bufs.size());
 			for(i = 0; i < recv_bufs.size(); i++) //if( !recv_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
 				REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()? &stub : &recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
 			}
 			REPORT_MPI(MPI_Barrier(comm));
+			REPORT_VAL("send bufs size",send_bufs.size());
 			for(i = 0; i < send_bufs.size(); i++)// if( !send_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
