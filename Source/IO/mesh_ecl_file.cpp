@@ -2813,40 +2813,41 @@ ecl_exit_loop:
 				}
 			}
 			//compute cell centers that lay inside
-				
-			GeomParam table;
-			table[CENTROID] = CELL;
-			PrepareGeometricData(table);
-			//overwrite centroid info
+			if( !curvilinear_edges )
+			{
+				GeomParam table;
+				table[CENTROID] = CELL;
+				PrepareGeometricData(table);
+				//overwrite centroid info
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-			for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
-			{
-				Cell c = CellByLocalID(it);
-				integer bnum = c->Integer(cell_number)-1;
-				if( bnum >= 0 ) //maybe this cell existed before
+				for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
 				{
-					real ctop[3] = {0.0,0.0,0.0}, cbottom[3] = {0.0,0.0,0.0};
-					for(int l = 0; l < 4; ++l)
+					Cell c = CellByLocalID(it);
+					integer bnum = c->Integer(cell_number)-1;
+					if( bnum >= 0 ) //maybe this cell existed before
 					{
-						real_array bc = Node(this,block_nodes[bnum*8+l+0]).Coords();
-						real_array tc = Node(this,block_nodes[bnum*8+l+4]).Coords();
-						cbottom[0] += bc[0]*0.25;
-						cbottom[1] += bc[1]*0.25;
-						cbottom[2] += bc[2]*0.25;
-						ctop[0] += tc[0]*0.25;
-						ctop[1] += tc[1]*0.25;
-						ctop[2] += tc[2]*0.25;
+						real ctop[3] = {0.0,0.0,0.0}, cbottom[3] = {0.0,0.0,0.0};
+						for(int l = 0; l < 4; ++l)
+						{
+							real_array bc = Node(this,block_nodes[bnum*8+l+0]).Coords();
+							real_array tc = Node(this,block_nodes[bnum*8+l+4]).Coords();
+							cbottom[0] += bc[0]*0.25;
+							cbottom[1] += bc[1]*0.25;
+							cbottom[2] += bc[2]*0.25;
+							ctop[0] += tc[0]*0.25;
+							ctop[1] += tc[1]*0.25;
+							ctop[2] += tc[2]*0.25;
+						}
+						real_array cnt = c->RealArray(centroid_tag);
+						cnt[0] = (cbottom[0]+ctop[0])*0.5;
+						cnt[1] = (cbottom[1]+ctop[1])*0.5;
+						cnt[2] = (cbottom[2]+ctop[2])*0.5;
+						
 					}
-					real_array cnt = c->RealArray(centroid_tag);
-					cnt[0] = (cbottom[0]+ctop[0])*0.5;
-					cnt[1] = (cbottom[1]+ctop[1])*0.5;
-					cnt[2] = (cbottom[2]+ctop[2])*0.5;
-
 				}
 			}
-				
 			int num_outside = 0, num_total = 0;
 			for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
 			{

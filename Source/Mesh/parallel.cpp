@@ -2234,13 +2234,16 @@ namespace INMOST
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 						INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 						//array_data_send.resize(had_s+s*tag.GetBytesSize());
-            array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
-						GetData(*eit,tag,0,s,&array_data_send[had_s]);
+						if( s )
+						{
+							array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
+							GetData(*eit,tag,0,s,&array_data_send[had_s]);
             //REPORT_VAL("size",s);
             //for(int qq = 0; qq < s; ++qq)
             //{
             //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_send[had_s+qq*tag.GetBytesSize()]));
             //}
+						}
 						if( size == ENUMUNDEF ) array_size_send.push_back(s);
 						++total_packed;
 					}
@@ -2253,9 +2256,12 @@ namespace INMOST
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 					INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 					//array_data_send.resize(had_s+s*tag.GetBytesSize());
-          array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
-					GetData(*eit,tag,0,s,&array_data_send[had_s]);
-          if( size == ENUMUNDEF ) array_size_send.push_back(s);
+					if( s )
+					{
+						array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
+						GetData(*eit,tag,0,s,&array_data_send[had_s]);
+					}
+					if( size == ENUMUNDEF ) array_size_send.push_back(s);
 					++total_packed;
 				}
 			}

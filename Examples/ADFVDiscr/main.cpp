@@ -133,6 +133,7 @@ int main(int argc,char ** argv)
 		ttt = Timer();
 		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		S.SetParameterReal("absolute_tolerance",1e-8);
+		S.SetParameterEnum("schwartz_overlap",2);
     Residual R; // Residual vector
     Sparse::LockService Locks;
 		Sparse::Vector Update; // Declare the solution and the right-hand side vectors
