@@ -2305,7 +2305,7 @@ namespace INMOST
 		if( tag.GetDataType() == DATA_REFERENCE || tag.GetDataType() == DATA_REMOTE_REFERENCE) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 		REPORT_VAL("TagName",tag.GetTagName());
-		
+		REPORT_VAL("select marker",select);
 #if defined(USE_MPI)
 		if( !buffer.empty() )
 		{
@@ -2320,6 +2320,8 @@ namespace INMOST
 			//assert(recv_mask[0] == mask);//Element types mask is not synchronized among processors, this may lead to nasty errors
 			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&size_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
 			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&data_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			REPORT_VAL("size of size array",size_recv);
+			REPORT_VAL("size of data array",data_recv);
 			array_size_recv.resize(size_recv);
 			array_data_recv.resize(data_recv);
 			if( !array_size_recv.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&array_size_recv[0],static_cast<INMOST_MPI_SIZE>(array_size_recv.size()),INMOST_MPI_DATA_ENUM_TYPE,comm);
@@ -2333,12 +2335,14 @@ namespace INMOST
 					CreateTag(tag.GetTagName(),tag.GetDataType(),ElementTypeFromDim(i),recv_mask[1] & ElementTypeFromDim(i),size);
 				}
 				int total_unpacked = 0;
+				int total_skipped = 0;
 				if( tag.isSparseByDim(i) )
 				{
 					REPORT_VAL("sparse for type",ElementTypeName(ElementTypeFromDim(i)));
 					unsigned count = static_cast<unsigned>(array_size_recv[k++]);
 					if( size == ENUMUNDEF )
 					{
+						REPORT_STR("variable size");
 						for(unsigned j = 0; j < count; j++)
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
@@ -2358,6 +2362,7 @@ namespace INMOST
 					}
 					else
 					{
+						REPORT_STR("fixed size");
 						for(unsigned j = 0; j < count; j++)
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
@@ -2371,28 +2376,40 @@ namespace INMOST
 				}
 				else
 				{
+					REPORT_VAL("dense for type",ElementTypeName(ElementTypeFromDim(i)));
 					if( size == ENUMUNDEF )
 					{
-						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
+						REPORT_STR("variable size");
+						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
 						{
-							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
-							pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
-							//pos += array_size_recv[k]*tag.GetBytesSize();
-							++k;
-							++total_unpacked;
+							if( !select || GetMarker(*eit,select) )
+							{
+								op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
+								pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
+								//pos += array_size_recv[k]*tag.GetBytesSize();
+								++k;
+								++total_unpacked;
+							} 
+							else ++total_skipped;
 						}
 					}
 					else
 					{
-						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
+						REPORT_STR("fixed size");
+						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
 						{
-							op(tag,Element(this,*eit),&array_data_recv[pos],size);
-							pos += GetDataCapacity(&array_data_recv[pos],size,tag);
-							//pos += size*tag.GetBytesSize();
-							++total_unpacked;
+							if( !select || GetMarker(*eit,select) )
+							{
+								op(tag,Element(this,*eit),&array_data_recv[pos],size);
+								pos += GetDataCapacity(&array_data_recv[pos],size,tag);
+								//pos += size*tag.GetBytesSize();
+								++total_unpacked;
+							}
+							else total_skipped++;
 						}
 					}
 				}
+				REPORT_VAL("total skipped",total_skipped);
 				REPORT_VAL("total unpacked records",total_unpacked);
 			}
 		}
@@ -3614,7 +3631,7 @@ namespace INMOST
 				Tag tag = CreateTag(tag_name,static_cast<enum DataType>(datatype),static_cast<ElementType>(defined),static_cast<ElementType>(sparse),datasize);
 				//TODO 46 old
 				//UnpackTagData(tag,unpack_tags,0,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
-				UnpackTagData(tag,selems,unpack_tags_mrk,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
+				UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,position,DefaultUnpack);
 			}
 			
 		}
@@ -4100,6 +4117,7 @@ namespace INMOST
 				
 		if( action == AGhost ) //second round to inform owner about ghosted elements
 		{
+			REPORT_STR("Second round for ghost exchange");
 			if( !send_reqs.empty() )
 			{
 				REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_reqs.size()),&send_reqs[0],MPI_STATUSES_IGNORE));
@@ -4177,6 +4195,7 @@ namespace INMOST
 		
 		if( action == AMigrate ) //Compute new values
 		{
+			REPORT_STR("Second round for elements migration");
 			REPORT_STR("Computing new values");
 			Tag tag_new_owner = GetTag("TEMPORARY_NEW_OWNER");
 			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");	
