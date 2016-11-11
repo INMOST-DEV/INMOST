@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverTrilinosBelos::SolverTrilinosBelos() {
+    SolverTrilinosBelos::SolverTrilinosBelos(SolverParameters &parameters): SolverTrilinos(parameters) {
 
     }
 
-    SolverTrilinosBelos::SolverTrilinosBelos(const SolverInterface *other) {
+    SolverTrilinosBelos::SolverTrilinosBelos(const SolverInterface *other): SolverTrilinos(other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }

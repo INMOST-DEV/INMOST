@@ -13,7 +13,7 @@ namespace INMOST {
 
         INMOST_DATA_ENUM_TYPE local_size;
     public:
-        SolverANI();
+        SolverANI(SolverParameters &parameters);
 
         SolverANI(const SolverInterface *other);
 
@@ -28,12 +28,6 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
-
-        virtual void SetDefaultParameters();
-
-        virtual SolverParameter GetParameter(std::string name) const;
-
-        virtual void SetParameter(std::string name, std::string value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

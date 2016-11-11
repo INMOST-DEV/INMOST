@@ -2,13 +2,13 @@
 
 namespace INMOST {
 
-    SolverMPTILU2::SolverMPTILU2() {
+    SolverMPTILU2::SolverMPTILU2(SolverParameters &parameters): SolverInner(parameters) {
         Method *preconditioner = new MTILU2_preconditioner(info);
         solver = new KSOLVER(preconditioner, info);
         matrix = NULL;
     }
 
-    SolverMPTILU2::SolverMPTILU2(const SolverInterface *other) {
+    SolverMPTILU2::SolverMPTILU2(const SolverInterface *other): SolverInner(other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }

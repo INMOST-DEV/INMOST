@@ -4,13 +4,13 @@ namespace INMOST {
 
     unsigned int SolverPETSc::petscSolversCount = 0;
 
-    SolverPETSc::SolverPETSc() {
+    SolverPETSc::SolverPETSc(SolverParameters &parameters): SolverInterface(parameters) {
         petscSolversCount++;
         this->ksp = NULL;
         this->matrix = NULL;
     }
 
-    SolverPETSc::SolverPETSc(const SolverInterface *other) {
+    SolverPETSc::SolverPETSc(const SolverInterface *other): SolverInterface(other) {
         petscSolversCount++;
         const SolverPETSc *solver = static_cast<const SolverPETSc *>(other);
         this->ksp = NULL;
@@ -198,21 +198,8 @@ namespace INMOST {
         return matrix != NULL;
     }
 
-    void SolverPETSc::SetDefaultParameters() {
-
-    }
-
-    SolverParameter SolverPETSc::GetParameter(std::string name) const {
-        std::cout << "SolverPETSc::GetParameter unsupported operation" << std::endl;
-        throw INMOST::SolverUnsupportedOperation;
-    }
-
-    void SolverPETSc::SetParameter(std::string name, std::string value) {
-        //throw INMOST::SolverUnsupportedOperation;
-    }
-
     const INMOST_DATA_ENUM_TYPE SolverPETSc::Iterations() const {
-        return SolverIterationNumberPetsc(ksp);
+        return static_cast<INMOST_DATA_ENUM_TYPE>(SolverIterationNumberPetsc(ksp));
     }
 
     const INMOST_DATA_REAL_TYPE SolverPETSc::Residual() const {

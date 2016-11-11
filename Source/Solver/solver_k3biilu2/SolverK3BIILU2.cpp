@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-	SolverK3BIILU2::SolverK3BIILU2() {
+	SolverK3BIILU2::SolverK3BIILU2(SolverParameters &parameters): SolverInterface(parameters) {
 		
 	}
 
-    SolverK3BIILU2::SolverK3BIILU2(const SolverInterface *other) {
+    SolverK3BIILU2::SolverK3BIILU2(const SolverInterface *other): SolverInterface(other) {
     	const SolverK3BIILU2 *k3other = static_cast<const SolverK3BIILU2 *>(other);
     	SolverCopyDataK3biilu2(&solver_data, k3other->solver_data, k3other->communicator);
 		if (k3other->matrix_data != NULL) {
@@ -137,20 +137,8 @@ namespace INMOST {
 		return matrix_data != NULL;
 	}
 
-	void SolverK3BIILU2::SetDefaultParameters() {
-
-	}
-
-	SolverParameter SolverK3BIILU2::GetParameter(std::string name) const {
-		throw INMOST::SolverUnsupportedOperation;
-	}
-
-	void SolverK3BIILU2::SetParameter(std::string name, std::string value) {
-		throw INMOST::SolverUnsupportedOperation;
-	}
-
 	const INMOST_DATA_ENUM_TYPE SolverK3BIILU2::Iterations() const {
-		return SolverIterationNumberK3biilu2(solver_data);
+		return static_cast<INMOST_DATA_ENUM_TYPE>(SolverIterationNumberK3biilu2(solver_data));
 	}
 
 	const INMOST_DATA_REAL_TYPE SolverK3BIILU2::Residual() const {

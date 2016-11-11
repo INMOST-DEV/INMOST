@@ -21,12 +21,14 @@
 #define DEFAULT_PRECONDITIONER_ADAPT_DDPQ_TOLERANCE   1
 
 #if defined(USE_SOLVER)
-namespace INMOST {
+namespace INMOST
+{
 
 #define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {char str[4096]; int len; MPI_Error_string(ierr,str,&len); std::cout << #x << " not successfull: " << str << std::endl; MPI_Abort(comm,-1000);}}
 #define HASH_TABLE_SIZE 2048
 
-    class Solver {
+    class Solver
+    {
     private:
         static int *argc;
         static char ***argv;
@@ -40,7 +42,8 @@ namespace INMOST {
     public:
 
         /// Base class for low level operations with objects of Solver class.
-        class OrderInfo {
+        class OrderInfo
+        {
         private:
             typedef std::vector<INMOST_DATA_ENUM_TYPE> storage_type;
             storage_type global_to_proc; //stores ends of all non-overlapping intervals of elements, owned by this processor
@@ -98,7 +101,8 @@ namespace INMOST {
             GetLocalRegion(INMOST_DATA_ENUM_TYPE proc, INMOST_DATA_ENUM_TYPE &mbeg, INMOST_DATA_ENUM_TYPE &mend) const;
 
             /// Get the local index region for the current process.
-            void GetVectorRegion(INMOST_DATA_ENUM_TYPE &mbeg, INMOST_DATA_ENUM_TYPE &mend) const {
+            void GetVectorRegion(INMOST_DATA_ENUM_TYPE &mbeg, INMOST_DATA_ENUM_TYPE &mend) const
+            {
                 mbeg = local_vector_begin;
                 mend = local_vector_end;
             }
@@ -116,12 +120,14 @@ namespace INMOST {
             /// Get the communicator which the solver is associated with.
             INMOST_MPI_Comm GetComm() const { return comm; }
             // Access to arrays below allows to organize manual exchange
-            INMOST_MPI_Request *GetSendRequests() {
+            INMOST_MPI_Request *GetSendRequests()
+            {
                 assert(!send_requests.empty());
                 return &send_requests[0];
             }
 
-            INMOST_MPI_Request *GetRecvRequests() {
+            INMOST_MPI_Request *GetRecvRequests()
+            {
                 assert(!recv_requests.empty());
                 return &recv_requests[0];
             }
@@ -130,14 +136,16 @@ namespace INMOST {
 
             INMOST_DATA_ENUM_TYPE GetRecvRequestsSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(recv_requests.size()); }
 
-            INMOST_DATA_ENUM_TYPE *GetSendExchangeArray() {
+            INMOST_DATA_ENUM_TYPE *GetSendExchangeArray()
+            {
                 assert(!vector_exchange_send.empty());
                 return &vector_exchange_send[0];
             }
 
             INMOST_DATA_ENUM_TYPE GetSendExchangeSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(send_storage.size()); }
 
-            INMOST_DATA_ENUM_TYPE *GetRecvExchangeArray() {
+            INMOST_DATA_ENUM_TYPE *GetRecvExchangeArray()
+            {
                 assert(!vector_exchange_recv.empty());
                 return &vector_exchange_recv[0];
             }
@@ -241,11 +249,7 @@ namespace INMOST {
         /// Clear all internal data of the current solver including matrix, preconditioner etc.
         bool Clear();
 
-        void SetDefaultParameters();
-
-        SolverParameter GetParameter(std::string property) const;
-
-        void SetParameter(std::string property, std::string value);
+        SolverParameters &GetParameters() const;
 
         /// Return the number of iterations performed by the last solution.
         /// @see Sparse::Solve

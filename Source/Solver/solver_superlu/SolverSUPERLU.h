@@ -16,7 +16,7 @@ namespace INMOST {
         superlu_options_t options;
         SuperLUStat_t stat;
     public:
-        SolverSUPERLU();
+        SolverSUPERLU(SolverParameters &parameters);
 
         SolverSUPERLU(const SolverInterface *other);
 
@@ -31,12 +31,6 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
-
-        virtual void SetDefaultParameters();
-
-        virtual SolverParameter GetParameter(std::string name) const;
-
-        virtual void SetParameter(std::string name, std::string value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

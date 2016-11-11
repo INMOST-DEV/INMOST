@@ -132,7 +132,7 @@ int main(int argc,char ** argv)
 
 		ttt = Timer();
 		Solver S("inner_ilu2"); // Specify the linear solver to ASM+ILU2+BiCGStab one
-		S.SetParameter("absolute_tolerance", "1e-8");
+		S.GetParameters().set("absolute_tolerance", "1e-8");
     Residual R; // Residual vector
     Sparse::LockService Locks;
 		Sparse::Vector Update; // Declare the solution and the right-hand side vectors

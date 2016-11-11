@@ -2,13 +2,13 @@
 
 namespace INMOST {
 
-    SolverMPTILUC::SolverMPTILUC() {
+    SolverMPTILUC::SolverMPTILUC(SolverParameters &parameters): SolverInner(parameters) {
         Method *preconditioner = new MTILUC_preconditioner(info);
         solver = new KSOLVER(preconditioner, info);
         matrix = NULL;
     }
 
-    SolverMPTILUC::SolverMPTILUC(const SolverInterface *other) {
+    SolverMPTILUC::SolverMPTILUC(const SolverInterface *other): SolverInner(other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -42,8 +42,8 @@ namespace INMOST {
         solver->RealParameter("divtol") = parameters.get<INMOST_DATA_REAL_TYPE>("divergence_tolerance");
 
         bool solve = solver->Solve(RHS, SOL);
-        parameters.SetParameter("condition_number_L", std::to_string(solver->RealParameter(":condition_number_L")));
-        parameters.SetParameter("condition_number_U", std::to_string(solver->RealParameter(":condition_number_U")));
+        parameters.set("condition_number_L", std::to_string(solver->RealParameter(":condition_number_L")));
+        parameters.set("condition_number_U", std::to_string(solver->RealParameter(":condition_number_U")));
         return solve;
     }
 

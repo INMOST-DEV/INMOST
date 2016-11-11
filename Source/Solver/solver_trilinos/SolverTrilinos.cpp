@@ -2,12 +2,17 @@
 
 namespace INMOST {
 
-    SolverTrilinos::SolverTrilinos() {
+    SolverTrilinos::SolverTrilinos(SolverParameters &parameters): SolverInterface(parameters) {
+        parameters.require("additive_schwartz_overlap", "1");
+        parameters.require("maximum_iterations", "2500");
+        parameters.require("drop_tolerance", "0.005");
+        parameters.require("relative_tolerance", "1.0e-12");
+        parameters.require("fill_level", "3");
         Epetra_problem = NULL;
         matrix = NULL;
     }
 
-    SolverTrilinos::SolverTrilinos(const SolverInterface *other) {
+    SolverTrilinos::SolverTrilinos(const SolverInterface *other): SolverInterface(other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -105,14 +110,6 @@ namespace INMOST {
 
     bool SolverTrilinos::isMatrixSet() {
         return matrix != NULL;
-    }
-
-    void SolverTrilinos::SetDefaultParameters() {
-        this->SetParameter("additive_schwartz_overlap", "1");
-        this->SetParameter("maximum_iterations", "2500");
-        this->SetParameter("drop_tolerance", "0.005");
-        this->SetParameter("relative_tolerance", "1.0e-12");
-        this->SetParameter("fill_level", "3");
     }
 
     const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {

@@ -9,7 +9,7 @@ namespace INMOST {
 
     class SolverILU2 : public SolverInner {
     public:
-        SolverILU2();
+        SolverILU2(SolverParameters &parameters);
 
         SolverILU2(const SolverInterface *other);
 

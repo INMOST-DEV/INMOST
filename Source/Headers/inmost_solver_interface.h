@@ -1,55 +1,25 @@
-#ifndef INMOST_SOLVERINTERFACE_H
-#define INMOST_SOLVERINTERFACE_H
+#ifndef INMOST_SOLVER_INTERFACE_H
+#define INMOST_SOLVER_INTERFACE_H
 
 #include <string>
 #include <sstream>
+#include "inmost_solver_parameters.h"
 #include "inmost_sparse.h"
 
 namespace INMOST {
 
 #if defined(USE_SOLVER)
 
-    class SolverParameter {
-    private:
-        std::string value;
-    public:
-        SolverParameter() {};
-
-        SolverParameter(std::string value) : value(value) {};
-
-        template<typename T>
-        const T get() const {
-            std::istringstream stream(value);
-            T parameter;
-            stream >> parameter;
-            return parameter;
-        }
-    };
-
-    class SolverParameters {
-    private:
-        std::map<std::string, SolverParameter> parameters;
-    public:
-        SolverParameters();
-
-        void SetParameter(std::string name, std::string value);
-
-        const SolverParameter GetParameter(std::string name) const;
-
-        template<typename T>
-        const T get(std::string name) const {
-            return GetParameter(name).get<T>();
-        }
-    };
-
     class SolverInterface {
     protected:
         INMOST_MPI_Comm communicator;
-        SolverParameters parameters;
+        SolverParameters &parameters;
     public:
-        SolverInterface() {};
+        SolverInterface(SolverParameters &parameters): parameters(parameters) {};
 
-        SolverInterface(const SolverInterface *other) {};
+        SolverInterface(const SolverInterface *other): parameters(other->parameters) {
+            parameters = SolverParameters(other->parameters);
+        };
 
         virtual void Assign(const SolverInterface *other) = 0;
 
@@ -63,15 +33,13 @@ namespace INMOST {
 
         virtual bool isMatrixSet() = 0;
 
-        virtual void SetDefaultParameters() = 0;
-
-        virtual SolverParameter GetParameter(std::string name) const {
-            return parameters.GetParameter(name);
+        virtual SolverParameters &GetParameters() const {
+            return parameters;
         };
 
-        virtual void SetParameter(std::string name, std::string value) {
-            parameters.SetParameter(name, value);
-        };
+        virtual void SetParameters(SolverParameters &_parameters) {
+            parameters = _parameters;
+        }
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const = 0;
 
@@ -89,7 +57,6 @@ namespace INMOST {
 
         virtual ~SolverInterface() {};
 
-
         void SetCommunicator(INMOST_MPI_Comm _communicator) {
             communicator = _communicator;
         }
@@ -97,10 +64,11 @@ namespace INMOST {
         INMOST_MPI_Comm GetCommunicator() {
             return communicator;
         }
+
     };
 
 }
 #endif
 
 
-#endif //INMOST_SOLVERINTERFACE_H
+#endif //INMOST_SOLVER_INTERFACE_H

@@ -2,7 +2,7 @@
 
 namespace INMOST {
 
-		SolverSUPERLU::SolverSUPERLU() {
+		SolverSUPERLU::SolverSUPERLU(SolverParameters &parameters): SolverInterface(parameters) {
 			set_default_options(&options);
 			StatInit(&stat);
 			perm_c = NULL;
@@ -10,7 +10,7 @@ namespace INMOST {
 			a_size = 0;
 		}
 
-        SolverSUPERLU::SolverSUPERLU(const SolverInterface *other) {
+        SolverSUPERLU::SolverSUPERLU(const SolverInterface *other): SolverInterface(other) {
         	throw INMOST::SolverUnsupportedOperation;
         }
 
@@ -111,19 +111,6 @@ namespace INMOST {
 
         bool SolverSUPERLU::isMatrixSet() {
         	return a_size != 0;
-        }
-
-        void SolverSUPERLU::SetDefaultParameters() {
-
-        }
-
-        SolverParameter SolverSUPERLU::GetParameter(std::string name) const {
-        	std::cout << "SolverSUPERLU::GetParameter unsupported operation" << std::endl;
-        	throw INMOST::SolverUnsupportedOperation;
-        }
-
-        void SolverSUPERLU::SetParameter(std::string name, std::string value) {
-        	//throw INMOST::SolverUnsupportedOperation;
         }
 
         const INMOST_DATA_ENUM_TYPE SolverSUPERLU::Iterations() const {

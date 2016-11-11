@@ -13,6 +13,7 @@ set(HEADER
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_mesh.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver_interface.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/inmost_solver_parameters.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_partitioner.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_autodiff.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_expression.h
@@ -20,6 +21,7 @@ set(HEADER
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_sparse.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_nonlinear.h
         ${CMAKE_CURRENT_SOURCE_DIR}/inmost_xml.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/inmost_utils.h
         ${CMAKE_CURRENT_SOURCE_DIR}/container.hpp
         PARENT_SCOPE
         )

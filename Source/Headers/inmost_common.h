@@ -224,6 +224,7 @@ namespace INMOST
 		SolverNotFound,
 		SolverUnsupportedOperation,
 		SolverUnknownParameter,
+		SolverNonExistentParameters,
 		
 		/// The list of errors may occur in the Partitioner.
 		ErrorInPartitioner = 500,

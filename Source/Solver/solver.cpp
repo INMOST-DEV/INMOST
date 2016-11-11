@@ -49,11 +49,10 @@ namespace INMOST {
     bool Solver::is_finalized = false;
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) {
-        this->solver = SolverMaster::getSolver(solverName);
+        SolverParameters &p = GlobalSolversParameters::getSolverParameters(solverName, prefix);
+        this->solver = SolverMaster::getSolver(solverName, p);
         this->prefix = prefix;
-
         solver->SetCommunicator(_comm);
-        solver->SetDefaultParameters();
         std::string solverDatabasePath = Solver::parseDatabase(solverName);
         solver->Initialize(argc, argv, solverDatabasePath.c_str(), prefix);
     }
@@ -61,19 +60,17 @@ namespace INMOST {
     Solver::Solver(const Solver &other) {
         this->solver = SolverMaster::copySolver(other.solver);
         this->prefix = other.prefix;
-
         solver->SetCommunicator(other.solver->GetCommunicator());
-        solver->SetDefaultParameters();
         std::string solverDatabasePath = Solver::parseDatabase(solver->SolverName());
-        solver->Initialize(argc, argv, solverDatabasePath.c_str(), prefix);
+        solver->Initialize(argc, argv, solverDatabasePath.c_str(), this->prefix);
     }
 
     Solver &Solver::operator=(const Solver &other) {
         if (this != &other) {
             this->solver->SetCommunicator(other.solver->GetCommunicator());
-            this->solver->SetDefaultParameters();
             this->prefix = other.prefix;
             this->solver->Assign(other.solver);
+            this->solver->SetParameters(other.solver->GetParameters());
         }
         return *this;
     }
@@ -181,16 +178,8 @@ namespace INMOST {
         return solver->Clear();
     }
 
-    void Solver::SetDefaultParameters() {
-        return solver->SetDefaultParameters();
-    }
-
-    SolverParameter Solver::GetParameter(std::string property) const {
-        return solver->GetParameter(property);
-    }
-
-    void Solver::SetParameter(std::string property, std::string value) {
-        solver->SetParameter(property, value);
+    SolverParameters &Solver::GetParameters() const {
+        return solver->GetParameters();
     }
 
     const INMOST_DATA_ENUM_TYPE Solver::Iterations() const {

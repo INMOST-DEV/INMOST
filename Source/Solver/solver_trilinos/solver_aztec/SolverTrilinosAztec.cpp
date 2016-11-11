@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverTrilinosAztec::SolverTrilinosAztec() {
+    SolverTrilinosAztec::SolverTrilinosAztec(SolverParameters &parameters): SolverTrilinos(parameters) {
 
     }
 
-    SolverTrilinosAztec::SolverTrilinosAztec(const SolverInterface *other) {
+    SolverTrilinosAztec::SolverTrilinosAztec(const SolverInterface *other): SolverTrilinos(other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -38,10 +38,10 @@ namespace INMOST {
         if (have_params && local_list.isSublist("AztecOO")) {
             Teuchos::ParameterList AztecOOParams = local_list.sublist("AztecOO");
             if (AztecOOParams.isParameter("Max Iterations")) {
-                parameters.SetParameter("maximum_iterations", to_string(AztecOOParams.get<int>("Max Iterations")));
+                parameters.set("maximum_iterations", to_string(AztecOOParams.get<int>("Max Iterations")));
             }
             if (AztecOOParams.isParameter("Tolerance")) {
-                parameters.SetParameter("relative_tolerance", to_string(AztecOOParams.get<double>("Tolerance")));
+                parameters.set("relative_tolerance", to_string(AztecOOParams.get<double>("Tolerance")));
             }
             if (AztecOOParams.isSublist("AztecOO Settings")) {
                 AztecSolver.SetParameters(AztecOOParams.sublist("AztecOO Settings"));

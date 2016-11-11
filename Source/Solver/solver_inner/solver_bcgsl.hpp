@@ -20,7 +20,8 @@
 //#define USE_OMP
 
 
-namespace INMOST {
+namespace INMOST
+{
     //lapack svd
 #if defined(PSEUDOINVERSE)
 #if defined(USE_LAPACK_SVD)
@@ -31,29 +32,32 @@ namespace INMOST {
 #else
 
     //SVD adopted from http://www.public.iastate.edu/~dicook/JSS/paper/code/svd.c
-    static INMOST_DATA_REAL_TYPE SIGNFUNC(INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b) {
+    static INMOST_DATA_REAL_TYPE SIGNFUNC(INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+    {
         return b >= 0.0 ? fabs(a) : -fabs(a);
     }
 
     static INMOST_DATA_REAL_TYPE MAXFUNC(INMOST_DATA_REAL_TYPE x, INMOST_DATA_REAL_TYPE y) { return x > y ? x : y; }
 
-    static INMOST_DATA_REAL_TYPE PYTHAG(INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b) {
+    static INMOST_DATA_REAL_TYPE PYTHAG(INMOST_DATA_REAL_TYPE a, INMOST_DATA_REAL_TYPE b)
+    {
         INMOST_DATA_REAL_TYPE at = fabs(a), bt = fabs(b), ct, result;
-        if (at > bt) {
+        if (at > bt)
+        {
             ct = bt / at;
             result = sqrt(at) * sqrt(at + ct * bt);
-        }
-        else if (bt > 0.0) {
+        } else if (bt > 0.0)
+        {
             ct = at / bt;
             result = sqrt(bt) * sqrt(bt + ct * at);
-        }
-        else result = 0.0;
+        } else result = 0.0;
         return (result);
     }
 
     static int
     svdnxn(INMOST_DATA_REAL_TYPE *pa, INMOST_DATA_REAL_TYPE *pu, INMOST_DATA_REAL_TYPE *pw, INMOST_DATA_REAL_TYPE *pv,
-           const int n) {
+           const int n)
+    {
         shell<INMOST_DATA_REAL_TYPE> a(pa, n * n);
         shell<INMOST_DATA_REAL_TYPE> u(pu, n * n);
         shell<INMOST_DATA_REAL_TYPE> v(pv, n * n);
@@ -67,16 +71,20 @@ namespace INMOST {
         rv1.resize(n);
         // Householder reduction to bidiagonal form
         for (i = 0; i < n * n; ++i) u[i] = a[i];
-        for (i = 0; i < n; i++) {
+        for (i = 0; i < n; i++)
+        {
             // left-hand reduction
             l = i + 1;
             rv1[i] = scale * g;
             g = s = scale = 0.0;
-            if (i < n) {
+            if (i < n)
+            {
                 for (k = i; k < n; k++)
                     scale += fabs(u[k * n + i]);
-                if (scale) {
-                    for (k = i; k < n; k++) {
+                if (scale)
+                {
+                    for (k = i; k < n; k++)
+                    {
                         u[k * n + i] = u[k * n + i] / scale;
                         s += (u[k * n + i] * u[k * n + i]);
                     }
@@ -84,8 +92,10 @@ namespace INMOST {
                     g = -SIGNFUNC(sqrt(s), f);
                     h = f * g - s;
                     u[i * n + i] = (f - g);
-                    if (i != n - 1) {
-                        for (j = l; j < n; j++) {
+                    if (i != n - 1)
+                    {
+                        for (j = l; j < n; j++)
+                        {
                             for (s = 0.0, k = i; k < n; k++)
                                 s += (u[k * n + i] * u[k * n + j]);
                             f = s / h;
@@ -101,11 +111,14 @@ namespace INMOST {
 
             // right-hand reduction
             g = s = scale = 0.0;
-            if (i < n && i != n - 1) {
+            if (i < n && i != n - 1)
+            {
                 for (k = l; k < n; k++)
                     scale += fabs(u[i * n + k]);
-                if (scale) {
-                    for (k = l; k < n; k++) {
+                if (scale)
+                {
+                    for (k = l; k < n; k++)
+                    {
                         u[i * n + k] = (u[i * n + k] / scale);
                         s += (u[i * n + k] * u[i * n + k]);
                     }
@@ -115,8 +128,10 @@ namespace INMOST {
                     u[i * n + l] = (f - g);
                     for (k = l; k < n; k++)
                         rv1[k] = u[i * n + k] / h;
-                    if (i != n - 1) {
-                        for (j = l; j < n; j++) {
+                    if (i != n - 1)
+                    {
+                        for (j = l; j < n; j++)
+                        {
                             for (s = 0.0, k = l; k < n; k++)
                                 s += (u[j * n + k] * u[i * n + k]);
                             for (k = l; k < n; k++)
@@ -131,13 +146,17 @@ namespace INMOST {
         }
 
         // accumulate the right-hand transformation
-        for (i = n - 1; i >= 0; i--) {
-            if (i < n - 1) {
-                if (g) {
+        for (i = n - 1; i >= 0; i--)
+        {
+            if (i < n - 1)
+            {
+                if (g)
+                {
                     for (j = l; j < n; j++)
                         v[j * n + i] = ((u[i * n + j] / u[i * n + l]) / g);
                     // double division to avoid underflow
-                    for (j = l; j < n; j++) {
+                    for (j = l; j < n; j++)
+                    {
                         for (s = 0.0, k = l; k < n; k++)
                             s += (u[i * n + k] * v[k * n + j]);
                         for (k = l; k < n; k++)
@@ -153,16 +172,20 @@ namespace INMOST {
         }
 
         // accumulate the left-hand transformation
-        for (i = n - 1; i >= 0; i--) {
+        for (i = n - 1; i >= 0; i--)
+        {
             l = i + 1;
             g = w[i];
             if (i < n - 1)
                 for (j = l; j < n; j++)
                     u[i * n + j] = 0.0;
-            if (g) {
+            if (g)
+            {
                 g = 1.0 / g;
-                if (i != n - 1) {
-                    for (j = l; j < n; j++) {
+                if (i != n - 1)
+                {
+                    for (j = l; j < n; j++)
+                    {
                         for (s = 0.0, k = l; k < n; k++)
                             s += (u[k * n + i] * u[k * n + j]);
                         f = (s / u[i * n + i]) * g;
@@ -172,7 +195,8 @@ namespace INMOST {
                 }
                 for (j = i; j < n; j++)
                     u[j * n + i] = (u[j * n + i] * g);
-            } else {
+            } else
+            {
                 for (j = i; j < n; j++)
                     u[j * n + i] = 0.0;
             }
@@ -180,34 +204,42 @@ namespace INMOST {
         }
 
         // diagonalize the bidiagonal form
-        for (k = n - 1; k >= 0; k--) {
+        for (k = n - 1; k >= 0; k--)
+        {
             // loop over singular values
-            for (its = 0; its < 30; its++) {
+            for (its = 0; its < 30; its++)
+            {
                 // loop over allowed iterations
                 flag = 1;
-                for (l = k; l >= 0; l--) {
+                for (l = k; l >= 0; l--)
+                {
                     // test for splitting
                     nm = l - 1;
-                    if (fabs(rv1[l]) + anorm == anorm) {
+                    if (fabs(rv1[l]) + anorm == anorm)
+                    {
                         flag = 0;
                         break;
                     }
                     if (fabs(w[nm]) + anorm == anorm)
                         break;
                 }
-                if (flag) {
+                if (flag)
+                {
                     c = 0.0;
                     s = 1.0;
-                    for (i = l; i <= k; i++) {
+                    for (i = l; i <= k; i++)
+                    {
                         f = s * rv1[i];
-                        if (fabs(f) + anorm != anorm) {
+                        if (fabs(f) + anorm != anorm)
+                        {
                             g = w[i];
                             h = PYTHAG(f, g);
                             w[i] = h;
                             h = 1.0 / h;
                             c = g * h;
                             s = (-f * h);
-                            for (j = nm < 0 ? 1 : 0; j < n; j++) {
+                            for (j = nm < 0 ? 1 : 0; j < n; j++)
+                            {
                                 y = u[j * n + nm];
                                 z = u[j * n + i];
                                 u[j * n + nm] = (y * c + z * s);
@@ -217,9 +249,11 @@ namespace INMOST {
                     }
                 }
                 z = w[k];
-                if (l == k) {
+                if (l == k)
+                {
                     // convergence
-                    if (z < 0.0) {
+                    if (z < 0.0)
+                    {
                         // make singular value nonnegative
                         w[k] = (-z);
                         for (j = 0; j < n; j++)
@@ -227,7 +261,8 @@ namespace INMOST {
                     }
                     break;
                 }
-                if (its >= 30) {
+                if (its >= 30)
+                {
                     fprintf(stderr, "No convergence after 30,000! iterations \n");
                     return 1;
                 }
@@ -244,7 +279,8 @@ namespace INMOST {
 
                 // next QR transformation
                 c = s = 1.0;
-                for (j = l; j <= nm; j++) {
+                for (j = l; j <= nm; j++)
+                {
                     i = j + 1;
                     g = rv1[i];
                     y = w[i];
@@ -258,7 +294,8 @@ namespace INMOST {
                     g = g * c - x * s;
                     h = y * s;
                     y = y * c;
-                    for (jj = 0; jj < n; jj++) {
+                    for (jj = 0; jj < n; jj++)
+                    {
                         x = v[jj * n + j];
                         z = v[jj * n + i];
                         v[jj * n + j] = (x * c + z * s);
@@ -266,14 +303,16 @@ namespace INMOST {
                     }
                     z = PYTHAG(f, h);
                     w[j] = z;
-                    if (z) {
+                    if (z)
+                    {
                         z = 1.0 / z;
                         c = f * z;
                         s = h * z;
                     }
                     f = (c * g) + (s * y);
                     x = (c * y) - (s * g);
-                    for (jj = 0; jj < n; jj++) {
+                    for (jj = 0; jj < n; jj++)
+                    {
                         y = u[jj * n + j];
                         z = u[jj * n + i];
                         u[jj * n + j] = (y * c + z * s);
@@ -286,24 +325,29 @@ namespace INMOST {
             }
         }
 
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < n; i++)
+        {
             INMOST_DATA_REAL_TYPE temp;
-            for (int j = i + 1; j < n; j++) {
+            for (int j = i + 1; j < n; j++)
+            {
                 temp = u[i + n * j];
                 u[i + n * j] = u[j + n * i];
                 u[j + n * i] = temp;
             }
         }
-        for (i = 0; i < n; i++) {
+        for (i = 0; i < n; i++)
+        {
             k = i;
             for (j = i + 1; j < n; ++j)
                 if (w[k] < w[j]) k = j;
             INMOST_DATA_REAL_TYPE temp;
-            if (w[k] > w[i]) {
+            if (w[k] > w[i])
+            {
                 temp = w[k];
                 w[k] = w[i];
                 w[i] = temp;
-                for (int j = 0; j < n; ++j) {
+                for (int j = 0; j < n; ++j)
+                {
                     temp = u[k * n + j];
                     u[k * n + j] = u[i * n + j];
                     u[i * n + j] = temp;
@@ -404,7 +448,8 @@ namespace INMOST {
     }
 #endif //PSEUDOINVERSE
 
-    class BCGSL_solver : public IterativeMethod {
+    class BCGSL_solver : public IterativeMethod
+    {
         INMOST_DATA_REAL_TYPE length;
         INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
         INMOST_DATA_ENUM_TYPE iters, maxits, l, last_it;
@@ -421,8 +466,10 @@ namespace INMOST {
 
         INMOST_DATA_REAL_TYPE GetResidual() { return last_resid; }
 
-        INMOST_DATA_REAL_TYPE &RealParameter(std::string name) {
-            if (name[0] == ':') {
+        INMOST_DATA_REAL_TYPE &RealParameter(std::string name)
+        {
+            if (name[0] == ':')
+            {
                 if (prec != NULL) return prec->RealParameter(name.substr(1, name.size() - 1));
             }
             if (name == "rtol") return rtol;
@@ -432,12 +479,15 @@ namespace INMOST {
             throw -1;
         }
 
-        INMOST_DATA_ENUM_TYPE &EnumParameter(std::string name) {
-            if (name[0] == ':') {
+        INMOST_DATA_ENUM_TYPE &EnumParameter(std::string name)
+        {
+            if (name[0] == ':')
+            {
                 if (prec != NULL) return prec->EnumParameter(name.substr(1, name.size() - 1));
             }
             if (name == "maxits") return maxits;
-            else if (name == "levels") {
+            else if (name == "levels")
+            {
                 if (init) throw -1; //solver was already initialized, value should not be changed
                 return l;
             } else if (prec != NULL) return prec->EnumParameter(name);
@@ -445,12 +495,14 @@ namespace INMOST {
         }
 
         BCGSL_solver(Method *prec, Solver::OrderInfo &info)
-                : rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500), l(2), prec(prec), info(&info) {
+                : rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500), l(2), prec(prec), info(&info)
+        {
             Alink = NULL;
             init = false;
         }
 
-        bool Initialize() {
+        bool Initialize()
+        {
             if (isInitialized()) Finalize();
             if (prec != NULL && !prec->isInitialized()) prec->Initialize();
             info->PrepareVector(r_tilde);
@@ -464,7 +516,8 @@ namespace INMOST {
             theta3 = theta2 + l;
             u = new Sparse::Vector[l * 2 + 2];
             r = u + l + 1;
-            for (INMOST_DATA_ENUM_TYPE k = 0; k < l + 1; k++) {
+            for (INMOST_DATA_ENUM_TYPE k = 0; k < l + 1; k++)
+            {
                 info->PrepareVector(r[k]);
                 info->PrepareVector(u[k]);
             }
@@ -474,8 +527,10 @@ namespace INMOST {
 
         bool isInitialized() { return init && (prec == NULL || prec->isInitialized()); }
 
-        bool Finalize() {
-            if (isInitialized()) {
+        bool Finalize()
+        {
+            if (isInitialized())
+            {
                 if (!prec->isFinalized()) prec->Finalize();
                 delete[] u;
                 delete[] tau;
@@ -486,7 +541,8 @@ namespace INMOST {
 
         bool isFinalized() { return !init && (prec == NULL || prec->isFinalized()); }
 
-        void Copy(const Method *other) {
+        void Copy(const Method *other)
+        {
             const BCGSL_solver *b = dynamic_cast<const BCGSL_solver *>(other);
             assert(b != NULL);
             rtol = b->rtol;
@@ -501,41 +557,48 @@ namespace INMOST {
             Alink = b->Alink;
             info = b->info;
             if (init) Finalize();
-            if (b->prec != NULL) {
+            if (b->prec != NULL)
+            {
                 if (prec == NULL) prec = b->prec->Duplicate();
                 else prec->Copy(b->prec);
             }
             if (b->init) Initialize();
         }
 
-        BCGSL_solver(const BCGSL_solver &other) : IterativeMethod(other) {
+        BCGSL_solver(const BCGSL_solver &other) : IterativeMethod(other)
+        {
             Copy(&other);
         }
 
-        BCGSL_solver &operator=(BCGSL_solver const &other) {
+        BCGSL_solver &operator=(BCGSL_solver const &other)
+        {
             Copy(&other);
             return *this;
         }
 
-        ~BCGSL_solver() {
+        ~BCGSL_solver()
+        {
             if (!isFinalized()) Finalize();
             if (prec != NULL) delete prec;
         }
 
-        void ApplyOperator(Sparse::Vector &Input, Sparse::Vector &Output) {
+        void ApplyOperator(Sparse::Vector &Input, Sparse::Vector &Output)
+        {
             if (prec != NULL) //right preconditioning here! for left preconditioner have to reverse order
             {
                 prec->Solve(Input, t);
                 info->Update(t);
                 Alink->MatVec(1.0, t, 0, Output);
                 info->Update(Output);
-            } else {
+            } else
+            {
                 Alink->MatVec(1.0, Input, 0, Output);
                 info->Update(Output);
             }
         }
 
-        bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
+        bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL)
+        {
             assert(isInitialized());
             INMOST_DATA_ENUM_TYPE vbeg, vend, vlocbeg, vlocend;
             INMOST_DATA_INTEGER_TYPE ivbeg, ivend, ivlocbeg, ivlocend;
@@ -583,7 +646,8 @@ namespace INMOST {
                 r_tilde[k] /= resid;
             last_it = 0;
 #if defined(REPORT_RESIDUAL)
-            if (info->GetRank() == 0) {
+            if (info->GetRank() == 0)
+            {
                 //std::cout << "iter " << last_it << " residual " << resid << std::endl;
                 //std::cout << "iter " << last_it << " resid " << resid << "\r";
                 //printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
@@ -593,7 +657,8 @@ namespace INMOST {
 #endif
 
             bool halt = false;
-            if (last_resid < atol || last_resid < rtol * resid0) {
+            if (last_resid < atol || last_resid < rtol * resid0)
+            {
                 reason = "initial solution satisfy tolerances";
                 halt = true;
             }
@@ -603,7 +668,8 @@ namespace INMOST {
 #endif
             {
                 INMOST_DATA_ENUM_TYPE i = 0;
-                while (!halt) {
+                while (!halt)
+                {
 
 #if defined(USE_OMP)
 #pragma omp single
@@ -613,8 +679,10 @@ namespace INMOST {
                     }
 
 
-                    for (INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) {
-                        if (false) {
+                    for (INMOST_DATA_ENUM_TYPE j = 0; j < l; j++)
+                    {
+                        if (false)
+                        {
                             perturbate:
 #if defined(PERTURBATE_RTILDE)
                             //std::cout << "Rescue solver by perturbing orthogonal direction!" << std::endl;
@@ -631,7 +699,8 @@ namespace INMOST {
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-                            for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) {
+                            for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                            {
                                 INMOST_DATA_REAL_TYPE unit = 2 * static_cast<INMOST_DATA_REAL_TYPE>(rand()) /
                                                              static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX) - 1.0;
                                 r_tilde[k] += unit / length;
@@ -672,7 +741,8 @@ namespace INMOST {
                         for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
                             rho1 += r[j][k] * r_tilde[k];
                         info->Integrate(&rho1, 1);
-                        if (fabs(rho1) < 1.0e-50) {
+                        if (fabs(rho1) < 1.0e-50)
+                        {
                             //std::cout << "Asking to perturbate r_tilde since rho1 is too small " << rho1 << std::endl;
                             goto perturbate;
                         }
@@ -684,7 +754,8 @@ namespace INMOST {
                             beta = alpha * (rho1 / rho0);
                         }
 
-                        if (fabs(beta) > 1.0e+100) {
+                        if (fabs(beta) > 1.0e+100)
+                        {
                             //std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
 #if defined(USE_OMP)
 #pragma omp single
@@ -696,7 +767,8 @@ namespace INMOST {
                             break;
                         }
 
-                        if (beta != beta) {
+                        if (beta != beta)
+                        {
                             //std::cout << "alpha " << alpha << " rho1 " << rho1 << " rho0 " << rho0 << " beta " << beta << std::endl;
 #if defined(USE_OMP)
 #pragma omp single
@@ -713,7 +785,8 @@ namespace INMOST {
                         {
                             rho0 = rho1;
                         }
-                        for (INMOST_DATA_ENUM_TYPE m = 0; m < j + 1; m++) {
+                        for (INMOST_DATA_ENUM_TYPE m = 0; m < j + 1; m++)
+                        {
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -735,7 +808,8 @@ namespace INMOST {
                         info->Integrate(&eta, 1);
                         //info->ScalarProd(u[j+1],r_tilde,vlocbeg,vlocend,eta); //eta = dot(u[j+1],r_tilde)
 
-                        if (fabs(eta) < 1.0e-50) {
+                        if (fabs(eta) < 1.0e-50)
+                        {
                             //std::cout << "Asking to perturbate r_tilde since eta is too small " << eta << std::endl;
                             goto perturbate;
                         }
@@ -745,7 +819,8 @@ namespace INMOST {
 #endif
                         alpha = rho0 / eta;
 
-                        if (fabs(alpha) > 1.0e+100) {
+                        if (fabs(alpha) > 1.0e+100)
+                        {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -755,7 +830,8 @@ namespace INMOST {
                             }
                             break;
                         }
-                        if (alpha != alpha) {
+                        if (alpha != alpha)
+                        {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -772,7 +848,8 @@ namespace INMOST {
                         for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
                             SOL[k] += alpha * u[0][k];
 
-                        for (INMOST_DATA_ENUM_TYPE m = 0; m < j + 1; m++) {
+                        for (INMOST_DATA_ENUM_TYPE m = 0; m < j + 1; m++)
+                        {
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -800,7 +877,8 @@ namespace INMOST {
                             last_it++;
                         }
 
-                        if (resid < atol || resid < rtol * resid0) {
+                        if (resid < atol || resid < rtol * resid0)
+                        {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -818,8 +896,10 @@ namespace INMOST {
                     size = l+1;
 #endif
                     // Penalization for convex combination for update below
-                    for (INMOST_DATA_ENUM_TYPE j = 1; j < l + 1; j++) {
-                        for (INMOST_DATA_ENUM_TYPE m = 1; m < j + 1; m++) {
+                    for (INMOST_DATA_ENUM_TYPE j = 1; j < l + 1; j++)
+                    {
+                        for (INMOST_DATA_ENUM_TYPE m = 1; m < j + 1; m++)
+                        {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -830,7 +910,8 @@ namespace INMOST {
                             for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
                                 tau_sum += r[j][k] * r[m][k];
 
-                            if (fabs(tau_sum) > 1.0e+100) {
+                            if (fabs(tau_sum) > 1.0e+100)
+                            {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -839,7 +920,8 @@ namespace INMOST {
                                     halt = true;
                                 }
                             }
-                            if (tau_sum != tau_sum) {
+                            if (tau_sum != tau_sum)
+                            {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -865,7 +947,8 @@ namespace INMOST {
                         for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
                             sigma_sum += r[0][k] * r[j][k];
 
-                        if (fabs(sigma_sum) > 1.0e+100) {
+                        if (fabs(sigma_sum) > 1.0e+100)
+                        {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -874,7 +957,8 @@ namespace INMOST {
                                 halt = true;
                             }
                         }
-                        if (sigma_sum != sigma_sum) {
+                        if (sigma_sum != sigma_sum)
+                        {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -993,7 +1077,8 @@ namespace INMOST {
                         }
                         printf("\n");
                         */
-                        if (dgesvd_info != 0) {
+                        if (dgesvd_info != 0)
+                        {
                             printf("(%s:%d) dgesvd %d\n", __FILE__, __LINE__, dgesvd_info);
                             exit(-1);
                         }
@@ -1002,8 +1087,10 @@ namespace INMOST {
                         for (INMOST_DATA_ENUM_TYPE j = 1; j < size; j++) if (w[j] > maxw) maxw = w[j];
                         tol = size * maxw * 1.0e-14;
                         memset(gamma, 0, sizeof(INMOST_DATA_REAL_TYPE) * size);
-                        for (INMOST_DATA_ENUM_TYPE j = 0; j < size; j++) {
-                            if (w[j] > tol) {
+                        for (INMOST_DATA_ENUM_TYPE j = 0; j < size; j++)
+                        {
+                            if (w[j] > tol)
+                            {
                                 INMOST_DATA_REAL_TYPE sum = 0;
                                 for (INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
                                     sum += sigma[k] * U[j * size + k];
@@ -1044,7 +1131,8 @@ namespace INMOST {
 #pragma omp single
 #endif
                     omega = gamma[l - 1];
-                    if (fabs(omega) > 1.0e+100) {
+                    if (fabs(omega) > 1.0e+100)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1054,7 +1142,8 @@ namespace INMOST {
                         }
                         break;
                     }
-                    if (omega != omega) {
+                    if (omega != omega)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1064,11 +1153,13 @@ namespace INMOST {
                         }
                         break;
                     }
-                    for (INMOST_DATA_ENUM_TYPE j = 1; j < l + 1; ++j) {
+                    for (INMOST_DATA_ENUM_TYPE j = 1; j < l + 1; ++j)
+                    {
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-                        for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) {
+                        for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                        {
                             u[0][k] -= gamma[j - 1] * u[j][k];
                             SOL[k] += gamma[j - 1] * r[j - 1][k];
                             r[0][k] -= gamma[j - 1] * r[j][k];
@@ -1150,7 +1241,8 @@ namespace INMOST {
                     }
 
 #if defined(REPORT_RESIDUAL)
-                    if (info->GetRank() == 0) {
+                    if (info->GetRank() == 0)
+                    {
                         //std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
                         //std::cout << "iter " << last_it << " resid " << resid << "\r";
                         //printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
@@ -1167,35 +1259,40 @@ namespace INMOST {
 #pragma omp single
 #endif
                     last_resid = resid;
-                    if (resid != resid) {
+                    if (resid != resid)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
                         reason = "residual is NAN";
                         break;
                     }
-                    if (resid < atol) {
+                    if (resid < atol)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
                         reason = "converged due to absolute tolerance";
                         break;
                     }
-                    if (resid < rtol * resid0) {
+                    if (resid < rtol * resid0)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
                         reason = "converged due to relative tolerance";
                         break;
                     }
-                    if (resid > divtol) {
+                    if (resid > divtol)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
                         reason = "diverged due to divergence tolerance";
                         break;
                     }
-                    if (i == maxits) {
+                    if (i == maxits)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1205,7 +1302,8 @@ namespace INMOST {
                     i++;
                 }
             }
-            if (prec != NULL) {
+            if (prec != NULL)
+            {
                 prec->Solve(SOL, r_tilde); //undo right preconditioner
                 std::copy(r_tilde.Begin(), r_tilde.End(), SOL.Begin());
             }
@@ -1221,19 +1319,22 @@ namespace INMOST {
             return false;
         }
 
-        bool ReplaceMAT(Sparse::Matrix &A) {
+        bool ReplaceMAT(Sparse::Matrix &A)
+        {
             if (isInitialized()) Finalize();
             if (prec != NULL) prec->ReplaceMAT(A);
             Alink = &A;
             return true;
         }
 
-        bool ReplaceRHS(Sparse::Vector &RHS) {
+        bool ReplaceRHS(Sparse::Vector &RHS)
+        {
             (void) RHS;
             return true;
         }
 
-        bool ReplaceSOL(Sparse::Vector &SOL) {
+        bool ReplaceSOL(Sparse::Vector &SOL)
+        {
             (void) SOL;
             return true;
         }
@@ -1244,7 +1345,8 @@ namespace INMOST {
     };
 
 
-    class BCGS_solver : public IterativeMethod {
+    class BCGS_solver : public IterativeMethod
+    {
         INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
         INMOST_DATA_ENUM_TYPE iters, maxits, last_it;
         INMOST_DATA_REAL_TYPE resid;
@@ -1259,8 +1361,10 @@ namespace INMOST {
 
         INMOST_DATA_REAL_TYPE GetResidual() { return last_resid; }
 
-        INMOST_DATA_REAL_TYPE &RealParameter(std::string name) {
-            if (name[0] == ':') {
+        INMOST_DATA_REAL_TYPE &RealParameter(std::string name)
+        {
+            if (name[0] == ':')
+            {
                 if (prec != NULL) return prec->RealParameter(name.substr(1, name.size() - 1));
             }
             if (name == "rtol") return rtol;
@@ -1270,8 +1374,10 @@ namespace INMOST {
             throw -1;
         }
 
-        INMOST_DATA_ENUM_TYPE &EnumParameter(std::string name) {
-            if (name[0] == ':') {
+        INMOST_DATA_ENUM_TYPE &EnumParameter(std::string name)
+        {
+            if (name[0] == ':')
+            {
                 if (prec != NULL) return prec->EnumParameter(name.substr(1, name.size() - 1));
             }
             if (name == "maxits") return maxits;
@@ -1280,11 +1386,13 @@ namespace INMOST {
         }
 
         BCGS_solver(Method *prec, Solver::OrderInfo &info)
-                : rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500), prec(prec), info(&info) {
+                : rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500), prec(prec), info(&info)
+        {
             init = false;
         }
 
-        bool Initialize() {
+        bool Initialize()
+        {
             assert(Alink != NULL);
             if (isInitialized()) Finalize();
             if (prec != NULL && !prec->isInitialized()) prec->Initialize();
@@ -1302,7 +1410,8 @@ namespace INMOST {
 
         bool isInitialized() { return init && (prec == NULL || prec->isInitialized()); }
 
-        bool Finalize() {
+        bool Finalize()
+        {
             if (prec != NULL && !prec->isFinalized()) prec->Finalize();
             init = false;
             return true;
@@ -1310,7 +1419,8 @@ namespace INMOST {
 
         bool isFinalized() { return !init && (prec == NULL || prec->isFinalized()); }
 
-        void Copy(const Method *other) {
+        void Copy(const Method *other)
+        {
             const BCGS_solver *b = dynamic_cast<const BCGS_solver *>(other);
             assert(b != NULL);
             info = b->info;
@@ -1323,28 +1433,33 @@ namespace INMOST {
             last_it = b->last_it;
             resid = b->resid;
             Alink = b->Alink;
-            if (b->prec != NULL) {
+            if (b->prec != NULL)
+            {
                 if (prec == NULL) prec = b->prec->Duplicate();
                 else prec->Copy(b->prec);
             }
             if (b->init) Initialize();
         }
 
-        BCGS_solver(const BCGS_solver &other) : IterativeMethod(other) {
+        BCGS_solver(const BCGS_solver &other) : IterativeMethod(other)
+        {
             Copy(&other);
         }
 
-        BCGS_solver &operator=(BCGS_solver const &other) {
+        BCGS_solver &operator=(BCGS_solver const &other)
+        {
             Copy(&other);
             return *this;
         }
 
-        ~BCGS_solver() {
+        ~BCGS_solver()
+        {
             if (!isFinalized()) Finalize();
             if (prec != NULL) delete prec;
         }
 
-        bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
+        bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL)
+        {
             assert(isInitialized());
             INMOST_DATA_REAL_TYPE tempa = 0.0, tempb = 0.0, r0_norm = 0, length;
             INMOST_DATA_ENUM_TYPE vbeg, vend, vlocbeg, vlocend;
@@ -1390,7 +1505,8 @@ namespace INMOST {
                 r0[k] /= resid;
             last_it = 0;
 #if defined(REPORT_RESIDUAL)
-            if (info->GetRank() == 0) {
+            if (info->GetRank() == 0)
+            {
                 //std::cout << "iter " << last_it << " residual " << resid << std::endl;
                 //std::cout << "iter " << last_it << " resid " << resid << "\r";
                 //printf("iter %3d resid %12g | %12g relative %12g | %12g\r",last_it,resid,atol,resid/resid0,rtol);
@@ -1400,7 +1516,8 @@ namespace INMOST {
 #endif
 
             bool halt = false;
-            if (last_resid < atol || last_resid < rtol * resid0) {
+            if (last_resid < atol || last_resid < rtol * resid0)
+            {
                 reason = "initial solution satisfy tolerances";
                 halt = true;
             }
@@ -1410,9 +1527,11 @@ namespace INMOST {
 #endif
             {
                 INMOST_DATA_ENUM_TYPE i = 0;
-                while (!halt) {
+                while (!halt)
+                {
 
-                    if (false) {
+                    if (false)
+                    {
                         perturbate:
 #if defined(PERTURBATE_RTILDE)
                         //std::cout << "Rescue solver by perturbing orthogonal direction!" << std::endl;
@@ -1429,7 +1548,8 @@ namespace INMOST {
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-                        for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k) {
+                        for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                        {
                             INMOST_DATA_REAL_TYPE unit = 2 * static_cast<INMOST_DATA_REAL_TYPE>(rand()) /
                                                          static_cast<INMOST_DATA_REAL_TYPE>(RAND_MAX) - 1.0;
                             r0[k] += unit / length;
@@ -1492,7 +1612,8 @@ namespace INMOST {
 
                     info->Integrate(&rho1, 1);
 
-                    if (fabs(rho1) < 1.0e-50) {
+                    if (fabs(rho1) < 1.0e-50)
+                    {
                         //std::cout << "Asking to perturbate r_tilde since rho1 is too small " << rho1 << std::endl;
                         goto perturbate;
                     }
@@ -1505,7 +1626,8 @@ namespace INMOST {
                         rho = rho1;
                     }
 
-                    if (fabs(beta) > 1.0e+100) {
+                    if (fabs(beta) > 1.0e+100)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1516,7 +1638,8 @@ namespace INMOST {
                         continue;
                     }
 
-                    if (beta != beta) {
+                    if (beta != beta)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1536,13 +1659,15 @@ namespace INMOST {
 
 
 
-                    if (prec != NULL) {
+                    if (prec != NULL)
+                    {
                         prec->Solve(p, y);
                         info->Update(y);
                         Alink->MatVec(1, y, 0,
                                       v); // global multiplication, y should be updated, v probably needs an update
                         info->Update(v);
-                    } else {
+                    } else
+                    {
                         Alink->MatVec(1, p, 0,
                                       v); // global multiplication, y should be updated, v probably needs an update
                         info->Update(v);
@@ -1572,7 +1697,8 @@ namespace INMOST {
                         alpha = rho / alpha; //local indexes, r0, v
                     }
 
-                    if (fabs(alpha) > 1.0e+100) {
+                    if (fabs(alpha) > 1.0e+100)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1583,7 +1709,8 @@ namespace INMOST {
                         continue;
                     }
 
-                    if (alpha != alpha) {
+                    if (alpha != alpha)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1602,13 +1729,15 @@ namespace INMOST {
 
 
 
-                    if (prec != NULL) {
+                    if (prec != NULL)
+                    {
                         prec->Solve(s, z);
                         info->Update(z);
                         Alink->MatVec(1.0, z, 0,
                                       t); // global multiplication, z should be updated, t probably needs an update
                         info->Update(t);
-                    } else {
+                    } else
+                    {
                         Alink->MatVec(1.0, s, 0,
                                       t); // global multiplication, z should be updated, t probably needs an update
                         info->Update(t);
@@ -1625,7 +1754,8 @@ namespace INMOST {
 #if defined(USE_OMP)
 #pragma omp for reduction(+:tempa,tempb)
 #endif
-                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++) {
+                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; k++)
+                    {
                         tempa += t[k] * s[k];
                         tempb += t[k] * t[k];
                     }
@@ -1649,7 +1779,8 @@ namespace INMOST {
                         omega = temp[0] / temp[1];
                     }
 
-                    if (fabs(omega) > 1.0e+100) {
+                    if (fabs(omega) > 1.0e+100)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1660,7 +1791,8 @@ namespace INMOST {
                         continue;
                     }
 
-                    if (omega != omega) {
+                    if (omega != omega)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1706,7 +1838,8 @@ namespace INMOST {
                         resid = sqrt(resid);
                     }
 #if defined(REPORT_RESIDUAL)
-                    if (info->GetRank() == 0) {
+                    if (info->GetRank() == 0)
+                    {
                         //std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5 << " precond " << tp*0.5 << std::endl;
                         //std::cout << "iter " << last_it << " resid " << resid << "\r";
                         //printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
@@ -1726,7 +1859,8 @@ namespace INMOST {
                     {
                         last_resid = resid;
                     }
-                    if (resid != resid) {
+                    if (resid != resid)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1735,7 +1869,8 @@ namespace INMOST {
                             halt = true;
                         }
                     }
-                    if (resid > divtol) {
+                    if (resid > divtol)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1744,7 +1879,8 @@ namespace INMOST {
                             halt = true;
                         }
                     }
-                    if (resid < atol) {
+                    if (resid < atol)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1753,7 +1889,8 @@ namespace INMOST {
                             halt = true;
                         }
                     }
-                    if (resid < rtol * resid0) {
+                    if (resid < rtol * resid0)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1762,7 +1899,8 @@ namespace INMOST {
                             halt = true;
                         }
                     }
-                    if (i == maxits) {
+                    if (i == maxits)
+                    {
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1781,19 +1919,22 @@ namespace INMOST {
             return false;
         }
 
-        bool ReplaceMAT(Sparse::Matrix &A) {
+        bool ReplaceMAT(Sparse::Matrix &A)
+        {
             if (isInitialized()) Finalize();
             if (prec != NULL) prec->ReplaceMAT(A);
             Alink = &A;
             return true;
         }
 
-        bool ReplaceRHS(Sparse::Vector &RHS) {
+        bool ReplaceRHS(Sparse::Vector &RHS)
+        {
             (void) RHS;
             return true;
         }
 
-        bool ReplaceSOL(Sparse::Vector &SOL) {
+        bool ReplaceSOL(Sparse::Vector &SOL)
+        {
             (void) SOL;
             return true;
         }

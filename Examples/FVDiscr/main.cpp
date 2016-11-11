@@ -129,7 +129,7 @@ int main(int argc,char ** argv)
 
 		ttt = Timer();
 		Solver S("inner_ilu2"); // Specify the linear solver to ASM+ILU2+BiCGStab one
-		S.SetParameter("absolute_tolerance", "1e-8");
+		S.GetParameters().set("absolute_tolerance", "1e-8");
     Sparse::LockService L;
 		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
 		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors

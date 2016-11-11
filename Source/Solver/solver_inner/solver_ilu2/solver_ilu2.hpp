@@ -16,7 +16,8 @@ using namespace INMOST;
 
 
 
-class ILU2_preconditioner : public Method {
+class ILU2_preconditioner : public Method
+{
 private:
 
     Sparse::Matrix *Alink;
@@ -32,27 +33,31 @@ private:
     INMOST_DATA_ENUM_TYPE nnz, sciters;
     bool init;
 public:
-    INMOST_DATA_REAL_TYPE &RealParameter(std::string name) {
+    INMOST_DATA_REAL_TYPE &RealParameter(std::string name)
+    {
         if (name == "tau") return tau;
         else if (name == "tau2") return tau2;
         throw -1;
     }
 
-    INMOST_DATA_ENUM_TYPE &EnumParameter(std::string name) {
+    INMOST_DATA_ENUM_TYPE &EnumParameter(std::string name)
+    {
         if (name == "fill") return Lfill;
         else if (name == "scale_iters") return sciters;
         throw -1;
     }
 
     ILU2_preconditioner(Solver::OrderInfo &info)
-            : info(&info), tau(DEFAULT_TAU), tau2(DEFAULT_TAU2) {
+            : info(&info), tau(DEFAULT_TAU), tau2(DEFAULT_TAU2)
+    {
         Alink = NULL;
         init = false;
         sciters = 12;
         Lfill = 1;
     }
 
-    bool Initialize() {
+    bool Initialize()
+    {
         if (isInitialized()) Finalize();
         assert(Alink != NULL);
         nnz = 0;
@@ -102,12 +107,14 @@ public:
         //Rescale Matrix
         DL.SetInterval(mobeg, moend);
         info->PrepareVector(DR);
-        for (k = mobeg; k < moend; k++) {
+        for (k = mobeg; k < moend; k++)
+        {
             for (Sparse::Row::iterator rit = (*Alink)[k].Begin(); rit != (*Alink)[k].End(); ++rit)
                 DL[k] += rit->second * rit->second;
             if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
         }
-        for (iter = 0; iter < sciters; iter++) {
+        for (iter = 0; iter < sciters; iter++)
+        {
             for (Sparse::Vector::iterator rit = DR.Begin(); rit != DR.End(); ++rit) *rit = 0.0;
             for (k = vlocbeg; k < vlocend; k++)
                 for (Sparse::Row::iterator rit = (*Alink)[k].Begin(); rit != (*Alink)[k].End(); ++rit)
@@ -134,7 +141,8 @@ public:
         std::vector<INMOST_DATA_ENUM_TYPE> sort_indeces;
         //INMOST_DATA_ENUM_TYPE nza = 0, nzl = 0, nzu = 0, nzu2 = 0;
         //for(k = mobeg; k != moend; k++) nza += A[k].Size();
-        for (k = mobeg; k != moend; k++) {
+        for (k = mobeg; k != moend; k++)
+        {
 #if defined(REPORT_ILU_PROGRESS)
             if (k % 1000 == 0)
             {
@@ -150,7 +158,8 @@ public:
             end = Ak.Size();
             sort_indeces.clear();
             for (r = 0; r < end; r++)
-                if (fabs(Ak.GetValue(r)) > eps) {
+                if (fabs(Ak.GetValue(r)) > eps)
+                {
                     RowValues[Ak.GetIndex(r)] = Ak.GetValue(r);
 #if defined(LFILL)
                     RowFill[Ak.GetIndex(r)] = 0;
@@ -161,7 +170,8 @@ public:
             std::sort(sort_indeces.begin(), sort_indeces.end());
             prev = static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg) - 1;
             ipred = static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg) - 1;
-            for (r = 0; r < sort_indeces.size(); r++) {
+            for (r = 0; r < sort_indeces.size(); r++)
+            {
                 ind = sort_indeces[r];
                 RowIndeces[prev] = ind;
                 prev = static_cast<INMOST_DATA_INTEGER_TYPE>(ind);
@@ -169,7 +179,8 @@ public:
             }
             RowIndeces[prev] = EOL;
 
-            if (ipred != static_cast<INMOST_DATA_INTEGER_TYPE>(k)) {
+            if (ipred != static_cast<INMOST_DATA_INTEGER_TYPE>(k))
+            {
                 RowValues[k] = 0.0;
 #if defined(LFILL)
                 RowFill[k] = 0;
@@ -196,7 +207,8 @@ public:
 #endif
                 {
                     curr = j;
-                    for (r = iu[j] + 1; r < ilu[j + 1]; r++) {
+                    for (r = iu[j] + 1; r < ilu[j + 1]; r++)
+                    {
                         ind = lui[r];
                         if (RowIndeces[ind] != UNDEF) //update without pondering on thresholds
                         {
@@ -204,11 +216,13 @@ public:
 #if defined(LFILL)
                             RowFill[ind] = std::min(lfill[r]+1,RowFill[ind]);
 #endif
-                        } else {
+                        } else
+                        {
                             flin = -RowValues[j] * luv[r];
                             //insert new value
                             foll = curr;
-                            while (foll < ind) {
+                            while (foll < ind)
+                            {
                                 curr = foll;
                                 foll = RowIndeces[curr];
                             }
@@ -224,9 +238,11 @@ public:
                         curr = ind;
                     }
 
-                    if (leabs > tau) {
+                    if (leabs > tau)
+                    {
                         curr = j;
-                        for (r = ir[j]; r < ir[j + 1]; r++) {
+                        for (r = ir[j]; r < ir[j + 1]; r++)
+                        {
                             //ind = U2j.GetIndex(r);
                             ind = ri[r];
                             if (RowIndeces[ind] != UNDEF) //update without pondering on thresholds
@@ -236,7 +252,8 @@ public:
                                 flin = -RowValues[j] * rv[r];
                                 //insert new value
                                 foll = curr;
-                                while (foll < ind) {
+                                while (foll < ind)
+                                {
                                     curr = foll;
                                     foll = RowIndeces[curr];
                                 }
@@ -260,12 +277,14 @@ public:
             j = RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg) - 1];
             //find minimum value in row
             ldiag = 0;
-            while (j != EOL) {
+            while (j != EOL)
+            {
                 INMOST_DATA_REAL_TYPE temp = fabs(RowValues[j]);
                 ldiag = std::max(ldiag, temp);
                 j = RowIndeces[j];
             }
-            if (ldiag < tau2) {
+            if (ldiag < tau2)
+            {
                 ldiag = 1.0 / tau2;
                 //std::cout << "ldiag too small " << ldiag << std::endl;
             } else
@@ -274,19 +293,23 @@ public:
             //if (ldiag > 1000) std::cout << "ldiag is big " << k << " " << ldiag << std::endl;
             //divide all entries on right from the diagonal
             j = k;
-            while (j != EOL) {
+            while (j != EOL)
+            {
                 RowValues[j] *= ldiag;
                 j = RowIndeces[j];
             }
             j = RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg) - 1];
-            while (j < k) {
+            while (j < k)
+            {
                 mva = fabs(RowValues[j]);
-                if (mva > tau2 * tau2) {
+                if (mva > tau2 * tau2)
+                {
                     if (mva > tau
 #if defined(LFILL)
                         || RowFill[j] <= Lfill
 #endif
-                            ) {
+                            )
+                    {
                         //L[k][j] = RowValues[j];
                         lui.push_back(j); //lui indicates column index of L matrix
                         luv.push_back(RowValues[j]); //luv indicates corresponding value
@@ -312,7 +335,8 @@ public:
             // END of L-part
             if (fabs(RowValues[j]) > tol_modif)
                 udiag = 1.0 / RowValues[j];
-            else {
+            else
+            {
                 //std::cout << "udiag too small " << RowValues[j] << std::endl;
                 udiag = (RowValues[j] < 0.0 ? -1.0 : 1.0) / tol_modif;
             }
@@ -330,14 +354,17 @@ public:
             lfill.push_back(RowFill[k]);
 #endif
             //nzu++;
-            while (j != EOL) {
+            while (j != EOL)
+            {
                 mva = fabs(RowValues[j]);
-                if (mva > tau2 * tau2) {
+                if (mva > tau2 * tau2)
+                {
                     if (mva > tau
 #if defined(LFILL)
                         || RowFill[j] <= Lfill
 #endif
-                            ) {
+                            )
+                    {
                         //add values to U matrix
                         lui.push_back(j);
                         luv.push_back(RowValues[j]);
@@ -345,7 +372,8 @@ public:
                         lfill.push_back(RowFill[j]);
 #endif
                         //nzu++;
-                    } else if (mva > tau2) {
+                    } else if (mva > tau2)
+                    {
                         //add values to U2 matrix
                         ri.push_back(j);
                         rv.push_back(RowValues[j]);
@@ -366,16 +394,20 @@ public:
         //timer = Timer();
         //Rescale LU
         //xxlusc
-        for (k = mobeg; k < moend; k++) {
-            for (r = iu[k] - 1; r > ilu[k]; r--) {
+        for (k = mobeg; k < moend; k++)
+        {
+            for (r = iu[k] - 1; r > ilu[k]; r--)
+            {
                 luv[r - 1] /= DL[k];
                 //LFNORM += luv[r-1]*luv[r-1];
             }
             luv[iu[k] - 1] *= DL[k]; // L diagonal entry
             //LFNORM += luv[iu[k]-1]*luv[iu[k]-1];
         }
-        for (k = mobeg; k < moend; k++) {
-            for (r = iu[k] + 1; r < ilu[k + 1]; r++) {
+        for (k = mobeg; k < moend; k++)
+        {
+            for (r = iu[k] + 1; r < ilu[k + 1]; r++)
+            {
                 luv[r] /= DR[lui[r]];
                 //UFNORM += luv[r]*luv[r];
             }
@@ -425,8 +457,10 @@ public:
 
     bool isInitialized() { return init; }
 
-    bool Finalize() {
-        if (!isFinalized()) {
+    bool Finalize()
+    {
+        if (!isFinalized())
+        {
             luv.clear();
             lui.clear();
             init = false;
@@ -436,11 +470,13 @@ public:
 
     bool isFinalized() { return !init; }
 
-    ~ILU2_preconditioner() {
+    ~ILU2_preconditioner()
+    {
         if (!isFinalized()) Finalize();
     }
 
-    void Copy(const Method *other) {
+    void Copy(const Method *other)
+    {
         const ILU2_preconditioner *b = dynamic_cast<const ILU2_preconditioner *>(other);
         assert(b != NULL);
         info = b->info;
@@ -455,16 +491,19 @@ public:
     }
 
     ILU2_preconditioner(const ILU2_preconditioner &other)
-            : Method(other) {
+            : Method(other)
+    {
         Copy(&other);
     }
 
-    ILU2_preconditioner &operator=(ILU2_preconditioner const &other) {
+    ILU2_preconditioner &operator=(ILU2_preconditioner const &other)
+    {
         Copy(&other);
         return *this;
     }
 
-    bool Solve(Sparse::Vector &input, Sparse::Vector &output) {
+    bool Solve(Sparse::Vector &input, Sparse::Vector &output)
+    {
         assert(isInitialized());
 #if defined(USE_OMP)
 #pragma omp single
@@ -495,18 +534,21 @@ public:
         return true;
     }
 
-    bool ReplaceMAT(Sparse::Matrix &A) {
+    bool ReplaceMAT(Sparse::Matrix &A)
+    {
         if (isInitialized()) Finalize();
         Alink = &A;
         return true;
     };
 
-    bool ReplaceSOL(Sparse::Vector &x) {
+    bool ReplaceSOL(Sparse::Vector &x)
+    {
         (void) x;
         return true;
     }
 
-    bool ReplaceRHS(Sparse::Vector &b) {
+    bool ReplaceRHS(Sparse::Vector &b)
+    {
         (void) b;
         return true;
     }

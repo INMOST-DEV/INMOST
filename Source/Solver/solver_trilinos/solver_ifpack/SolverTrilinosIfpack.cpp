@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverTrilinosIfpack::SolverTrilinosIfpack() {
+    SolverTrilinosIfpack::SolverTrilinosIfpack(SolverParameters &parameters): SolverTrilinos(parameters) {
 
     }
 
-    SolverTrilinosIfpack::SolverTrilinosIfpack(const SolverInterface *other) {
+    SolverTrilinosIfpack::SolverTrilinosIfpack(const SolverInterface *other): SolverTrilinos(other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -38,10 +38,10 @@ namespace INMOST {
         if (have_params && local_list.isSublist("AztecOO")) {
             Teuchos::ParameterList AztecOOParams = local_list.sublist("AztecOO");
             if (AztecOOParams.isParameter("Max Iterations")) {
-                parameters.SetParameter("maximum_iterations", to_string(AztecOOParams.get<int>("Max Iterations")));
+                parameters.set("maximum_iterations", to_string(AztecOOParams.get<int>("Max Iterations")));
             }
             if (AztecOOParams.isParameter("Tolerance")) {
-                parameters.SetParameter("relative_tolerance", to_string(AztecOOParams.get<double>("Tolerance")));
+                parameters.set("relative_tolerance", to_string(AztecOOParams.get<double>("Tolerance")));
             }
             if (AztecOOParams.isSublist("AztecOO Settings")) {
                 AztecSolver.SetParameters(AztecOOParams.sublist("AztecOO Settings"));
@@ -62,7 +62,7 @@ namespace INMOST {
                 PrecType = ifpacklist.get<std::string>("Prec Type");
             }
             if (ifpacklist.isParameter("Overlap")) {
-                parameters.SetParameter("additive_schwartz_overlap", to_string(ifpacklist.get<int>("Overlap")));
+                parameters.set("additive_schwartz_overlap", to_string(ifpacklist.get<int>("Overlap")));
             }
         }
         Prec = Factory->Create(PrecType, matrix, parameters.get<INMOST_DATA_ENUM_TYPE>("additive_schwartz_overlap"));

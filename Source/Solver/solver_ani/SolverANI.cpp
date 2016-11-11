@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverANI::SolverANI() {
+    SolverANI::SolverANI(SolverParameters &parameters): SolverInterface(parameters) {
 
     };
 
-    SolverANI::SolverANI(const SolverInterface *other) {
+    SolverANI::SolverANI(const SolverInterface *other): SolverInterface(other) {
         throw INMOST::SolverUnsupportedOperation; //later
     };
 
@@ -107,18 +107,6 @@ namespace INMOST {
 
     bool SolverANI::isMatrixSet() {
         return m.n != 0;
-    }
-
-    void SolverANI::SetDefaultParameters() {
-
-    }
-
-    SolverParameter SolverANI::GetParameter(std::string name) const {
-        throw INMOST::SolverUnsupportedOperation;
-    }
-
-    void SolverANI::SetParameter(std::string name, std::string value) {
-        //throw INMOST::SolverUnsupportedOperation;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverANI::Iterations() const {

@@ -718,10 +718,12 @@ int main(int argc,char ** argv)
 				//Solver S(Solver::INNER_ILU2);
                 //Solver S(Solver::INNER_MPTILUC);
 				Solver S("superlu");
-				S.SetParameter("relative_tolerance", "1.0e-14");
-                S.SetParameter("absolute_tolerance", "1.0e-12");
-                S.SetParameter("drop_tolerance", "1.0e-1");
-                S.SetParameter("reuse_tolerance", "1.0e-2");
+				SolverParameters &p = S.GetParameters();
+				p.set("relative_tolerance", "1.0e-14");
+                p.set("absolute_tolerance", "1.0e-12");
+                p.set("drop_tolerance", "1.0e-1");
+                p.set("reuse_tolerance", "1.0e-2");
+
                 S.SetMatrix(R.GetJacobian());
                 //std::fill(Update.Begin(),Update.End(),0.0);
                 if( S.Solve(R.GetResidual(),Update) )

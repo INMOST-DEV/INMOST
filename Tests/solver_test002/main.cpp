@@ -127,16 +127,17 @@ int main(int argc, char ** argv)
 		std::string reason;
 		{
 			Solver s(type); // Declare the linear solver by specified type
+			SolverParameters &p = s.GetParameters();
 
-			s.SetParameter("gmres_substeps", "3");
+			p.set("gmres_substeps", "3");
 			
-			s.SetParameter("reorder_nonzeros", "0");
-			s.SetParameter("rescale_iterations", "8");
-			s.SetParameter("adapt_ddpq_tolerance", "0");
+			p.set("reorder_nonzeros", "0");
+			p.set("rescale_iterations", "8");
+			p.set("adapt_ddpq_tolerance", "0");
 			
-			s.SetParameter("drop_tolerance", "0.001");
-			s.SetParameter("reuse_tolerance", "0.00001");
-			s.SetParameter("ddpq_tolerance", "0.7");
+			p.set("drop_tolerance", "0.001");
+			p.set("reuse_tolerance", "0.00001");
+			p.set("ddpq_tolerance", "0.7");
 			
 
 			t = Timer();

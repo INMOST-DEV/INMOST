@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverFCBIILU2::SolverFCBIILU2() {
+    SolverFCBIILU2::SolverFCBIILU2(SolverParameters &parameters): SolverInterface(parameters) {
 
     }
 
-    SolverFCBIILU2::SolverFCBIILU2(const SolverInterface *other) {
+    SolverFCBIILU2::SolverFCBIILU2(const SolverInterface *other): SolverInterface(other) {
         const SolverFCBIILU2 *fcother = static_cast<const SolverFCBIILU2 *>(other);
         SolverCopyDataFcbiilu2(&solver_data, fcother->solver_data, communicator);
         if (fcother->matrix_data != NULL) {
@@ -127,18 +127,6 @@ namespace INMOST {
 
     bool SolverFCBIILU2::isMatrixSet() {
         return matrix_data != NULL;
-    }
-
-    void SolverFCBIILU2::SetDefaultParameters() {
-
-    }
-
-    SolverParameter SolverFCBIILU2::GetParameter(std::string name) const {
-        throw INMOST::SolverUnsupportedOperation;
-    }
-
-    void SolverFCBIILU2::SetParameter(std::string name, std::string value) {
-        throw INMOST::SolverUnsupportedOperation;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverFCBIILU2::Iterations() const {

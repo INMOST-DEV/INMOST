@@ -10,7 +10,7 @@ namespace INMOST {
 
     class SolverDDPQILUC2 : public SolverInner {
     public:
-        SolverDDPQILUC2();
+        SolverDDPQILUC2(SolverParameters &parameters);
 
         SolverDDPQILUC2(const SolverInterface *other);
 

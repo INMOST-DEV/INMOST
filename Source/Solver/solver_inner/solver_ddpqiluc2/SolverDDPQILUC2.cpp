@@ -2,13 +2,13 @@
 
 namespace INMOST {
 
-    SolverDDPQILUC2::SolverDDPQILUC2() {
+    SolverDDPQILUC2::SolverDDPQILUC2(SolverParameters &parameters): SolverInner(parameters) {
         Method *preconditioner = new ILUC_preconditioner(info);
         solver = new KSOLVER(preconditioner, info);
         matrix = NULL;
     }
 
-    SolverDDPQILUC2::SolverDDPQILUC2(const SolverInterface *other) {
+    SolverDDPQILUC2::SolverDDPQILUC2(const SolverInterface *other): SolverInner(other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }

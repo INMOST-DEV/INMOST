@@ -11,5 +11,6 @@
 #include "inmost_variable.h"
 #include "inmost_nonlinear.h"
 #include "inmost_xml.h"
+#include "inmost_utils.h"
 
 #endif // INMOST_H_INCLUDED
