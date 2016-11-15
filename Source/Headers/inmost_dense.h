@@ -975,7 +975,16 @@ namespace INMOST
         } while( repeat );
         return V;
     }
-
+	Matrix SubMatrix(enumerator ibeg, enumerator jbeg, enumerator iend, enumerator jend)
+	  {
+		  Matrix ret(iend-ibeg,jend-jbeg);
+		  for(enumerator i = ibeg; i < iend; ++i)
+		  {
+			  for(enumerator j = jbeg; j < jend; ++j)
+				  ret(i-ibeg,j-ibeg) = (*this)(i,j);
+		  }
+		  return ret;
+	  }
   };
     
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
