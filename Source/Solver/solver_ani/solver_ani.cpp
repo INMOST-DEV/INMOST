@@ -123,7 +123,7 @@ int renewbcg(bcg *s, double *A) {
 }
 
 /* Solve linear system */
-int solvebcg(bcg *s, vector *b, vector *x) {
+int solvebcg_ani(bcg *s, vector *b, vector *x) {
     int NUNIT = 6, INFO = 0, eight = 8;
 
     s->ITER = 1000;

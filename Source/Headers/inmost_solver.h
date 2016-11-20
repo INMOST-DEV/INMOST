@@ -249,7 +249,8 @@ namespace INMOST
         /// Clear all internal data of the current solver including matrix, preconditioner etc.
         bool Clear();
 
-        SolverParameters &GetParameters() const;
+        std::string GetParameter(std::string name) const;
+        void SetParameter(std::string name, std::string value);
 
         /// Return the number of iterations performed by the last solution.
         /// @see Sparse::Solve

@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverTrilinosBelos::SolverTrilinosBelos(SolverParameters &parameters): SolverTrilinos(parameters) {
+    SolverTrilinosBelos::SolverTrilinosBelos() {
 
     }
 
-    SolverTrilinosBelos::SolverTrilinosBelos(const SolverInterface *other): SolverTrilinos(other) {
+    SolverTrilinosBelos::SolverTrilinosBelos(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -33,9 +33,9 @@ namespace INMOST {
         else {
             List->set("Num Blocks", 100);
             List->set("Block Size", 1);
-            List->set("Maximum Iterations", parameters.get<int>("maximum_iterations"));
+            List->set("Maximum Iterations", iters);
             List->set("Maximum Restarts", 20);
-            List->set("Convergence Tolerance", parameters.get<double>("relative_tolerance"));
+            List->set("Convergence Tolerance", rtol);
         }
 
         Teuchos::RCP<Belos::LinearProblem<double, Epetra_MultiVector, Epetra_Operator> > Problem =

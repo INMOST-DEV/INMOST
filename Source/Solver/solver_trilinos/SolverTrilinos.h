@@ -43,17 +43,12 @@ namespace INMOST {
         INMOST_DATA_REAL_TYPE lastResidual;
         std::string returnReason;
 
+        int overlap, iters, fill;
+        double rtol, tau;
+
         void TrilinosCheckStatus(int status_id, bool &success, std::string &reason);
-
-        template <typename T>
-        std::string to_string(T const& value) {
-            std::stringstream sstr;
-            sstr << value;
-            return sstr.str();
-        }
-
     public:
-        SolverTrilinos(SolverParameters &parameters);
+        SolverTrilinos();
 
         SolverTrilinos(const SolverInterface *other);
 
@@ -68,6 +63,10 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
+
+        virtual std::string GetParameter(std::string name) const;
+
+        virtual void SetParameter(std::string name, std::string value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

@@ -3,7 +3,6 @@
 
 #include <string>
 #include <sstream>
-#include "inmost_solver_parameters.h"
 #include "inmost_sparse.h"
 
 namespace INMOST {
@@ -13,13 +12,10 @@ namespace INMOST {
     class SolverInterface {
     protected:
         INMOST_MPI_Comm communicator;
-        SolverParameters &parameters;
     public:
-        SolverInterface(SolverParameters &parameters): parameters(parameters) {};
+        SolverInterface() {};
 
-        SolverInterface(const SolverInterface *other): parameters(other->parameters) {
-            parameters = SolverParameters(other->parameters);
-        };
+        SolverInterface(const SolverInterface *other) {};
 
         virtual void Assign(const SolverInterface *other) = 0;
 
@@ -33,13 +29,9 @@ namespace INMOST {
 
         virtual bool isMatrixSet() = 0;
 
-        virtual SolverParameters &GetParameters() const {
-            return parameters;
-        };
+        virtual std::string GetParameter(std::string name) const = 0;
 
-        virtual void SetParameters(SolverParameters &_parameters) {
-            parameters = _parameters;
-        }
+        virtual void SetParameter(std::string name, std::string value) = 0;
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const = 0;
 

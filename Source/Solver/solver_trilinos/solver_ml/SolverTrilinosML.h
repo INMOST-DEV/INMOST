@@ -8,7 +8,7 @@ namespace INMOST {
 
     class SolverTrilinosML: public SolverTrilinos {
     public:
-        SolverTrilinosML(SolverParameters &parameters);
+        SolverTrilinosML();
 
         SolverTrilinosML(const SolverInterface *other);
 

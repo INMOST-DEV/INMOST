@@ -2,8 +2,10 @@
 #define INMOST_SOLVERINNER_H
 
 #include "inmost_solver_interface.h"
+#include "inmost_utils.h"
 #include "solver_prototypes.hpp"
 #include "solver_bcgsl.hpp"
+
 
 
 namespace INMOST {
@@ -13,8 +15,11 @@ namespace INMOST {
         Sparse::Matrix *matrix;
         KSOLVER *solver;
         Solver::OrderInfo info;
+
+        INMOST_DATA_ENUM_TYPE iters, scale_iters, condest, ddpqatol, overlap, ell, reorder_nnz, fill;
+        INMOST_DATA_REAL_TYPE atol, rtol, dtol,  ddpqtol, tau, tau2;
     public:
-        SolverInner(SolverParameters &parameters);
+        SolverInner();
 
         SolverInner(const SolverInterface *other);
 
@@ -29,6 +34,10 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
+
+        virtual std::string GetParameter(std::string name) const;
+
+        virtual void SetParameter(std::string name, std::string value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

@@ -12,7 +12,7 @@
 
 #endif
 
-#if defined(USE_SOLVER_TRILINOS)
+#if defined(USE_SOLVER_TRILINOS) && defined(USE_MPI)
 
 #include "solver_trilinos/SolverTrilinos.h"
 #include "solver_trilinos/solver_aztec/SolverTrilinosAztec.h"
@@ -49,8 +49,7 @@ namespace INMOST {
     bool Solver::is_finalized = false;
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) {
-        SolverParameters &p = GlobalSolversParameters::getSolverParameters(solverName, prefix);
-        this->solver = SolverMaster::getSolver(solverName, p);
+        this->solver = SolverMaster::getSolver(solverName);
         this->prefix = prefix;
         solver->SetCommunicator(_comm);
         std::string solverDatabasePath = Solver::parseDatabase(solverName);
@@ -70,7 +69,6 @@ namespace INMOST {
             this->solver->SetCommunicator(other.solver->GetCommunicator());
             this->prefix = other.prefix;
             this->solver->Assign(other.solver);
-            this->solver->SetParameters(other.solver->GetParameters());
         }
         return *this;
     }
@@ -110,7 +108,7 @@ namespace INMOST {
 #if defined(USE_SOLVER_PETSC)
         SolverMaster::registerSolver<SolverPETSc>("petsc");
 #endif
-#if defined(USE_SOLVER_TRILINOS)
+#if defined(USE_SOLVER_TRILINOS) && defined(USE_MPI)
         SolverMaster::registerSolver<SolverTrilinosAztec>("trilinos_aztec");
         SolverMaster::registerSolver<SolverTrilinosBelos>("trilinos_belos");
         SolverMaster::registerSolver<SolverTrilinosML>("trilinos_ml");
@@ -178,8 +176,12 @@ namespace INMOST {
         return solver->Clear();
     }
 
-    SolverParameters &Solver::GetParameters() const {
-        return solver->GetParameters();
+    std::string Solver::GetParameter(std::string name) const {
+        return solver->GetParameter(name);
+    }
+
+    void Solver::SetParameter(std::string name, std::string value) {
+        return solver->SetParameter(name, value);
     }
 
     const INMOST_DATA_ENUM_TYPE Solver::Iterations() const {

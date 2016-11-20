@@ -2,13 +2,13 @@
 
 namespace INMOST {
 
-    SolverMPTILU2::SolverMPTILU2(SolverParameters &parameters): SolverInner(parameters) {
+    SolverMPTILU2::SolverMPTILU2() {
         Method *preconditioner = new MTILU2_preconditioner(info);
         solver = new KSOLVER(preconditioner, info);
         matrix = NULL;
     }
 
-    SolverMPTILU2::SolverMPTILU2(const SolverInterface *other): SolverInner(other) {
+    SolverMPTILU2::SolverMPTILU2(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -18,15 +18,15 @@ namespace INMOST {
             delete matrix;
         }
         matrix = new Sparse::Matrix(A);
-        info.PrepareMatrix(*matrix, parameters.get<INMOST_DATA_ENUM_TYPE>("additive_schwartz_overlap"));
+        info.PrepareMatrix(*matrix, overlap);
         solver->ReplaceMAT(*matrix);
 
-        solver->RealParameter(":tau") = parameters.get<INMOST_DATA_REAL_TYPE>("drop_tolerance");
-        solver->RealParameter(":tau2") = parameters.get<INMOST_DATA_REAL_TYPE>("reuse_tolerance");
-        solver->EnumParameter(":scale_iters") = parameters.get<INMOST_DATA_ENUM_TYPE>("rescale_iterations");
+        solver->RealParameter(":tau") = tau;
+        solver->RealParameter(":tau2") = tau2;
+        solver->EnumParameter(":scale_iters") = scale_iters;
 
         if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
-            solver->EnumParameter("levels") = parameters.get<INMOST_DATA_ENUM_TYPE>("gmres_substeps");
+            solver->EnumParameter("levels") = ell;
         }
 
         if (!solver->isInitialized()) {

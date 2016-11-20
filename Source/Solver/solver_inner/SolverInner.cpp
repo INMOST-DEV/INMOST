@@ -2,22 +2,22 @@
 
 namespace INMOST {
 
-    SolverInner::SolverInner(SolverParameters &parameters): SolverInterface(parameters) {
-        parameters.require("additive_schwartz_overlap", "1");
-        parameters.require("maximum_iterations", "2500");
-        parameters.require("reorder_nonzero", "1");
-        parameters.require("rescale_iterations", "6");
-        parameters.require("condition_estimation", "1");
-        parameters.require("adapt_ddpq_tolerance", "1");
-        parameters.require("gmres_substeps", "2");
+    SolverInner::SolverInner() {
+        iters = 2500;
+        scale_iters = 6;
+        condest = 1;
+        ddpqatol = 1;
+        overlap = 1;
+        ell = 2;
+        reorder_nnz = 1;
 
-        parameters.require("absolute_tolerance", "1.0e-5");
-        parameters.require("relative_tolerance", "1.0e-12");
-        parameters.require("divergence_tolerance", "1.0e+100");
-        parameters.require("drop_tolerance", "0.005");
-        parameters.require("reuse_tolerance", "0.00005");
-        parameters.require("ddpq_tolerance", "0.75");
-        parameters.require("fill_level", "3");
+        atol = 1.0e-5;
+        rtol = 1.0e-12;
+        dtol = 1.0e+100;
+        tau = 0.005;
+        tau2 = 0.00005;
+        ddpqtol = 0.75;
+        fill = 3;
     }
 
     SolverInner::SolverInner(const SolverInterface *other): SolverInterface(other) {
@@ -51,10 +51,10 @@ namespace INMOST {
     }
 
     bool SolverInner::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
-        solver->EnumParameter("maxits") = parameters.get < INMOST_DATA_ENUM_TYPE > ("maximum_iterations");
-        solver->RealParameter("rtol") = parameters.get<INMOST_DATA_REAL_TYPE>("relative_tolerance");
-        solver->RealParameter("atol") = parameters.get<INMOST_DATA_REAL_TYPE>("absolute_tolerance");
-        solver->RealParameter("divtol") = parameters.get<INMOST_DATA_REAL_TYPE>("divergence_tolerance");
+        solver->EnumParameter("maxits") = iters;
+        solver->RealParameter("rtol") = rtol;
+        solver->RealParameter("atol") = atol;
+        solver->RealParameter("divtol") = dtol;
 
         return solver->Solve(RHS, SOL);
     }
@@ -74,6 +74,46 @@ namespace INMOST {
 
     bool SolverInner::isMatrixSet() {
         return matrix != NULL;
+    }
+
+    std::string SolverInner::GetParameter(std::string name) const {
+        if(name == "maximum_iterations" ) return to_string(iters);
+        else if( name == "rescale_iterations" ) return to_string(scale_iters);
+        else if( name == "condition_estimation" ) return to_string(condest);
+        else if( name == "adapt_ddpq_tolerance" ) return to_string(ddpqatol);
+        else if( name == "schwartz_overlap" ) return to_string(overlap);
+        else if( name == "gmres_substeps" ) return to_string(ell);
+        else if( name == "reorder_nonzeros" ) return to_string(reorder_nnz);
+        else if( name == "absolute_tolerance") return to_string(atol);
+        else if( name == "relative_tolerance") return to_string(rtol);
+        else if( name == "divergence_tolerance") return to_string(dtol);
+        else if( name == "drop_tolerance") return to_string(tau);
+        else if( name == "reuse_tolerance") return to_string(tau2);
+        else if( name == "ddpq_tolerance") return to_string(ddpqtol);
+        else if( name == "fill_level") return to_string(fill);
+        else {
+            std::cout << "Parameter " << name << " is unknown" << std::endl;
+            return "";
+        }
+    }
+
+    void SolverInner::SetParameter(std::string name, std::string value) {
+        const char *val = value.c_str();
+        if(name == "maximum_iterations" ) iters = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if( name == "rescale_iterations" ) scale_iters = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if( name == "condition_estimation" ) condest = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if( name == "adapt_ddpq_tolerance" ) ddpqatol = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if( name == "schwartz_overlap" ) overlap = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if( name == "gmres_substeps" ) ell = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if( name == "reorder_nonzeros" ) reorder_nnz = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if( name == "absolute_tolerance") atol = atof(val);
+        else if( name == "relative_tolerance") rtol = atof(val);
+        else if( name == "divergence_tolerance") dtol = atof(val);
+        else if( name == "drop_tolerance") tau = atof(val);
+        else if( name == "reuse_tolerance") tau2  = atof(val);
+        else if( name == "ddpq_tolerance") ddpqtol = atof(val);
+        else if( name == "fill_level") fill = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else std::cout << "Parameter " << name << " is unknown" << std::endl;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverInner::Iterations() const {

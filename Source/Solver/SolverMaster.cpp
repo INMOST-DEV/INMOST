@@ -4,10 +4,10 @@ namespace INMOST {
 
     std::map<std::string, SolverBaseFactory *> SolverMaster::solvers = std::map<std::string, SolverBaseFactory *>();
 
-    SolverInterface *SolverMaster::getSolver(std::string name, SolverParameters &parameters) {
+    SolverInterface *SolverMaster::getSolver(std::string name) {
         solvers_map_iterator_t iterator = SolverMaster::solvers.find(name);
         if (iterator != SolverMaster::solvers.end()) {
-            return iterator->second->create(parameters);
+            return iterator->second->create();
         } else {
             throw INMOST::SolverNotFound;
         }

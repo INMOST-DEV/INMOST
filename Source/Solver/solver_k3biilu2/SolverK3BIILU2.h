@@ -12,7 +12,7 @@ namespace INMOST {
         void *matrix_data;
         INMOST_DATA_ENUM_TYPE local_size, global_size;
     public:
-        SolverK3BIILU2(SolverParameters &parameters);
+        SolverK3BIILU2();
 
         SolverK3BIILU2(const SolverInterface *other);
 
@@ -27,6 +27,10 @@ namespace INMOST {
         virtual bool Clear();
 
         virtual bool isMatrixSet();
+
+        virtual std::string GetParameter(std::string name) const;
+
+        virtual void SetParameter(std::string name, std::string value);
 
         virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
 

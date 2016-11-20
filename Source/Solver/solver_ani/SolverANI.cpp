@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverANI::SolverANI(SolverParameters &parameters): SolverInterface(parameters) {
+    SolverANI::SolverANI() {
 
     };
 
-    SolverANI::SolverANI(const SolverInterface *other): SolverInterface(other) {
+    SolverANI::SolverANI(const SolverInterface *other) {
         throw INMOST::SolverUnsupportedOperation; //later
     };
 
@@ -83,7 +83,7 @@ namespace INMOST {
         solution.v = (double *) malloc(sizeof(double) * local_size);
         memcpy(solution.v, &SOL[vbeg], sizeof(double) * local_size);
 
-        bool result = (solvebcg(&solver, &rhs, &solution) == 0);
+        bool result = (solvebcg_ani(&solver, &rhs, &solution) == 0);
         if (result) {
             memcpy(&SOL[vbeg], solution.v, sizeof(double) * local_size);
         }
@@ -107,6 +107,17 @@ namespace INMOST {
 
     bool SolverANI::isMatrixSet() {
         return m.n != 0;
+    }
+
+    std::string SolverANI::GetParameter(std::string name) const {
+        std::cout << "SolverANI::GetParameter unsupported operation" << std::endl;
+        //throw INMOST::SolverUnsupportedOperation;
+        return "";
+    }
+
+    void SolverANI::SetParameter(std::string name, std::string value) {
+        std::cout << "SolverANI::SetParameter unsupported operation" << std::endl;
+        //throw INMOST::SolverUnsupportedOperation;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverANI::Iterations() const {

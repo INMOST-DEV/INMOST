@@ -10,3 +10,5 @@ if(USE_PARTITIONER)
 add_subdirectory(pmesh_test001)
 endif()
 endif()
+
+add_subdirectory(xml_reader_test000)

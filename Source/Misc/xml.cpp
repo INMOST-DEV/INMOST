@@ -329,6 +329,7 @@ namespace INMOST
 		}
 		if( get_iStream().fail() )
 		{
+
 			Report("Stream failed while getting the char");
 			WAITNL;
 			_state = Failure;
@@ -466,7 +467,14 @@ namespace INMOST
 		add.hadlinechar = 0;
 		add.src = file;
 		add.s = new std::fstream(file.c_str(),std::ios::in);
-		inp.push_back(add);
+
+        if (!add.s->fail()) {
+            inp.push_back(add);
+        } else {
+            Report("Got a bad stream on input in %s (Include stream %s)" ,__FUNCTION__, file.c_str());
+            delete add.s;
+        }
+
 		if( get_iStream().fail() )
 		{
 			Report("Got a bad stream on input in %s",__FUNCTION__);

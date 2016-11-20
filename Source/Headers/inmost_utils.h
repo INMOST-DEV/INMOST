@@ -14,6 +14,13 @@ namespace INMOST {
         return v;
     }
 
+    template<typename T>
+    std::string to_string(T value) {
+        std::stringstream ss;
+        ss << value;
+        return ss.str();
+    }
+
 }
 
 #endif //INMOST_UTILS_H

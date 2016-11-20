@@ -19,11 +19,11 @@ if (USE_SOLVER_PETSC)
     add_subdirectory(solver_petsc)
 endif()
 
-if (USE_SOLVER_TRILINOS)
+if (USE_SOLVER_TRILINOS AND USE_MPI)
     add_subdirectory(solver_trilinos)
 endif()
 
-if (USE_SOLVER_ANI)
+if (USE_SOLVER_ANI AND TEST_FORTRAN_ANI3D)
     add_subdirectory(solver_ani)
 endif()
 

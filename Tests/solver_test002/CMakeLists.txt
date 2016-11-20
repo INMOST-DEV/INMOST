@@ -52,7 +52,7 @@ if(HAVE_SOLVER_MPTILU2)
 add_test(NAME solver_test002_serial_inner_mptilu2               COMMAND $<TARGET_FILE:solver_test002>  inner_mptilu2 20)
 endif()
 
-if(USE_SOLVER_TRILINOS)
+if(USE_SOLVER_TRILINOS AND USE_MPI)
 add_test(NAME solver_test002_serial_trilinos_aztec             COMMAND $<TARGET_FILE:solver_test002>  trilinos_aztec 20)
 add_test(NAME solver_test002_serial_trilinos_belos             COMMAND $<TARGET_FILE:solver_test002>  trilinos_belos 20)
 add_test(NAME solver_test002_serial_trilinos_ml                COMMAND $<TARGET_FILE:solver_test002>  trilinos_ml 20)

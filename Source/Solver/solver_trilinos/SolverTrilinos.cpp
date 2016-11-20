@@ -2,12 +2,14 @@
 
 namespace INMOST {
 
-    SolverTrilinos::SolverTrilinos(SolverParameters &parameters): SolverInterface(parameters) {
-        parameters.require("additive_schwartz_overlap", "1");
-        parameters.require("maximum_iterations", "2500");
-        parameters.require("drop_tolerance", "0.005");
-        parameters.require("relative_tolerance", "1.0e-12");
-        parameters.require("fill_level", "3");
+    SolverTrilinos::SolverTrilinos() {
+        iters = 2500;
+        overlap = 1;
+
+        rtol = 1.0e-12;
+        tau = 0.005;
+        fill = 3;
+
         Epetra_problem = NULL;
         matrix = NULL;
     }
@@ -110,6 +112,28 @@ namespace INMOST {
 
     bool SolverTrilinos::isMatrixSet() {
         return matrix != NULL;
+    }
+
+    std::string SolverTrilinos::GetParameter(std::string name) const {
+        if(name == "maximum_iterations" ) return to_string(iters);
+        else if( name == "schwartz_overlap" ) return to_string(overlap);
+        else if( name == "relative_tolerance") return to_string(rtol);
+        else if( name == "drop_tolerance") return to_string(tau);
+        else if( name == "fill_level") return to_string(fill);
+        else {
+            std::cout << "Parameter " << name << " is unknown" << std::endl;
+            return "";
+        }
+    }
+
+    void SolverTrilinos::SetParameter(std::string name, std::string value) {
+        const char *val = value.c_str();
+        if(name == "maximum_iterations" ) iters = atoi(val);
+        else if( name == "schwartz_overlap" ) overlap = atoi(val);
+        else if( name == "relative_tolerance") rtol = atof(val);
+        else if( name == "drop_tolerance") tau = atof(val);
+        else if( name == "fill_level") fill = atoi(val);
+        else std::cout << "Parameter " << name << " is unknown" << std::endl;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {

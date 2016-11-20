@@ -9,7 +9,7 @@ namespace INMOST {
 
     class SolverMPTILUC : public SolverInner {
     public:
-        SolverMPTILUC(SolverParameters &parameters);
+        SolverMPTILUC();
 
         SolverMPTILUC(const SolverInterface *other);
 

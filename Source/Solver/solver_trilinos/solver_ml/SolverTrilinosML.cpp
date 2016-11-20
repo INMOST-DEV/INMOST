@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverTrilinosML::SolverTrilinosML(SolverParameters &parameters): SolverTrilinos(parameters) {
+    SolverTrilinosML::SolverTrilinosML() {
 
     }
 
-    SolverTrilinosML::SolverTrilinosML(const SolverInterface *other): SolverTrilinos(other) {
+    SolverTrilinosML::SolverTrilinosML(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -38,10 +38,11 @@ namespace INMOST {
         if (have_params && local_list.isSublist("AztecOO")) {
             Teuchos::ParameterList AztecOOParams = local_list.sublist("AztecOO");
             if (AztecOOParams.isParameter("Max Iterations")) {
-                parameters.set("maximum_iterations", to_string(AztecOOParams.get<int>("Max Iterations")));
+                iters = AztecOOParams.get<int>("Max Iterations");
+
             }
             if (AztecOOParams.isParameter("Tolerance")) {
-                parameters.set("relative_tolerance", to_string(AztecOOParams.get<double>("Tolerance")));
+                rtol = AztecOOParams.get<double>("Tolerance");
             }
             if (AztecOOParams.isSublist("AztecOO Settings")) {
                 AztecSolver.SetParameters(AztecOOParams.sublist("AztecOO Settings"));
@@ -50,7 +51,7 @@ namespace INMOST {
             AztecSolver.SetAztecOption(AZ_diagnostics, AZ_none);
             AztecSolver.SetAztecOption(AZ_output, AZ_none);
             AztecSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
-            AztecSolver.SetAztecOption(AZ_overlap, parameters.get<INMOST_DATA_ENUM_TYPE>("additive_schwartz_overlap"));
+            AztecSolver.SetAztecOption(AZ_overlap, overlap);
         }
 
         Teuchos::ParameterList List;
@@ -65,7 +66,7 @@ namespace INMOST {
         ML_Epetra::MultiLevelPreconditioner *Prec = new ML_Epetra::MultiLevelPreconditioner(*matrix, List, true);
         AztecSolver.SetPrecOperator(Prec);
 
-        AztecSolver.Iterate(parameters.get<INMOST_DATA_ENUM_TYPE>("maximum_iterations"), parameters.get<INMOST_DATA_ENUM_TYPE>("relative_tolerance"));
+        AztecSolver.Iterate(iters, rtol);
         const double *stats = AztecSolver.GetAztecStatus();
         bool success = true;
         std::string reason = "";

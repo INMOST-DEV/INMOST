@@ -2,11 +2,11 @@
 
 namespace INMOST {
 
-    SolverFCBIILU2::SolverFCBIILU2(SolverParameters &parameters): SolverInterface(parameters) {
+    SolverFCBIILU2::SolverFCBIILU2() {
 
     }
 
-    SolverFCBIILU2::SolverFCBIILU2(const SolverInterface *other): SolverInterface(other) {
+    SolverFCBIILU2::SolverFCBIILU2(const SolverInterface *other)  {
         const SolverFCBIILU2 *fcother = static_cast<const SolverFCBIILU2 *>(other);
         SolverCopyDataFcbiilu2(&solver_data, fcother->solver_data, communicator);
         if (fcother->matrix_data != NULL) {
@@ -52,7 +52,7 @@ namespace INMOST {
             MPI_Comm_rank(A.GetCommunicator(), &myid);
 #else
             nproc = 1;
-                myid = 0;
+            myid = 0;
 #endif
             int *ibl = (int *) malloc(sizeof(int) * (nproc + 1));
             ibl[0] = 0;
@@ -127,6 +127,17 @@ namespace INMOST {
 
     bool SolverFCBIILU2::isMatrixSet() {
         return matrix_data != NULL;
+    }
+
+    std::string SolverFCBIILU2::GetParameter(std::string name) const {
+        std::cout << "SolverFCBIILU2::GetParameter unsupported operation" << std::endl;
+        //throw INMOST::SolverUnsupportedOperation;
+        return "";
+    }
+
+    void SolverFCBIILU2::SetParameter(std::string name, std::string value) {
+        std::cout << "SolverFCBIILU2::SetParameter unsupported operation" << std::endl;
+        //throw INMOST::SolverUnsupportedOperation;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverFCBIILU2::Iterations() const {

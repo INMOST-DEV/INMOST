@@ -2,13 +2,13 @@
 
 namespace INMOST {
 
-    SolverMPTILUC::SolverMPTILUC(SolverParameters &parameters): SolverInner(parameters) {
+    SolverMPTILUC::SolverMPTILUC() {
         Method *preconditioner = new MTILUC_preconditioner(info);
         solver = new KSOLVER(preconditioner, info);
         matrix = NULL;
     }
 
-    SolverMPTILUC::SolverMPTILUC(const SolverInterface *other): SolverInner(other) {
+    SolverMPTILUC::SolverMPTILUC(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }
@@ -18,16 +18,16 @@ namespace INMOST {
             delete matrix;
         }
         matrix = new Sparse::Matrix(A);
-        info.PrepareMatrix(*matrix, parameters.get<INMOST_DATA_ENUM_TYPE>("additive_schwartz_overlap"));
+        info.PrepareMatrix(*matrix, overlap);
         solver->ReplaceMAT(*matrix);
 
-        solver->RealParameter(":tau") = parameters.get<INMOST_DATA_REAL_TYPE>("drop_tolerance");
-        solver->RealParameter(":tau2") = parameters.get<INMOST_DATA_REAL_TYPE>("reuse_tolerance");
-        solver->EnumParameter(":scale_iters") = parameters.get<INMOST_DATA_ENUM_TYPE>("rescale_iterations");
-        solver->EnumParameter(":estimator") = parameters.get<INMOST_DATA_ENUM_TYPE>("condition_estimation");
+        solver->RealParameter(":tau") = tau;
+        solver->RealParameter(":tau2") = tau2;
+        solver->EnumParameter(":scale_iters") = scale_iters;
+        solver->EnumParameter(":estimator") = condest;
 
         if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
-            solver->EnumParameter("levels") = parameters.get<INMOST_DATA_ENUM_TYPE>("gmres_substeps");
+            solver->EnumParameter("levels") = ell;
         }
 
         if (!solver->isInitialized()) {
@@ -36,14 +36,12 @@ namespace INMOST {
     }
 
     bool SolverMPTILUC::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
-        solver->EnumParameter("maxits") = parameters.get<INMOST_DATA_ENUM_TYPE>("maximum_iterations");
-        solver->RealParameter("rtol") = parameters.get<INMOST_DATA_REAL_TYPE>("relative_tolerance");
-        solver->RealParameter("atol") = parameters.get<INMOST_DATA_REAL_TYPE>("absolute_tolerance");
-        solver->RealParameter("divtol") = parameters.get<INMOST_DATA_REAL_TYPE>("divergence_tolerance");
+        solver->EnumParameter("maxits") = iters;
+        solver->RealParameter("rtol") = rtol;
+        solver->RealParameter("atol") = atol;
+        solver->RealParameter("divtol") = dtol;
 
         bool solve = solver->Solve(RHS, SOL);
-        parameters.set("condition_number_L", std::to_string(solver->RealParameter(":condition_number_L")));
-        parameters.set("condition_number_U", std::to_string(solver->RealParameter(":condition_number_U")));
         return solve;
     }
 

@@ -7,7 +7,7 @@
 namespace INMOST {
 
     struct SolverBaseFactory {
-        virtual SolverInterface *create(SolverParameters &parameters) = 0;
+        virtual SolverInterface *create() = 0;
 
         virtual SolverInterface *copy(const SolverInterface *other) = 0;
 
@@ -16,8 +16,8 @@ namespace INMOST {
 
     template<class C>
     struct SolverCreateFactory : SolverBaseFactory {
-        SolverInterface *create(SolverParameters &parameters) {
-            return new C(parameters);
+        SolverInterface *create() {
+            return new C();
         };
 
         SolverInterface *copy(const SolverInterface *other) {
@@ -34,7 +34,7 @@ namespace INMOST {
             solvers.insert(std::make_pair(name, new SolverCreateFactory<T>));
         };
 
-        static SolverInterface *getSolver(std::string name, SolverParameters &parameters);
+        static SolverInterface *getSolver(std::string name);
 
         static SolverInterface *copySolver(const SolverInterface *other);
 

@@ -36,7 +36,7 @@ int initbcg(bcg *s, matrix *A);
 int renewbcg(bcg *s, double *A);
 
 /* Solve linear system */
-int solvebcg(bcg *s, vector *b, vector *x);
+int solvebcg_ani(bcg *s, vector *b, vector *x);
 
 /* Free memory used by solver */
 void freebcg(bcg *s);
