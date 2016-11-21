@@ -8,6 +8,14 @@ namespace INMOST {
         petscSolversCount++;
         this->ksp = NULL;
         this->matrix = NULL;
+        maximum_iterations = 2500;
+        schwartz_overlap = 1;
+
+        atol = 1.0e-5;
+        rtol = 1.0e-12;
+        dtol = 1.0e+100;
+        drop_tolerance = 0.005;
+        fill_level = 3;
     }
 
     SolverPETSc::SolverPETSc(const SolverInterface *other) {
@@ -37,10 +45,16 @@ namespace INMOST {
         }
     }
 
-    void SolverPETSc::Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) {
-        this->parametersFile = std::string(parameters_file);
-        SolverInitializePetsc(argc, argv, parameters_file);
-        SolverInitDataPetsc(&ksp, this->communicator, prefix.c_str());
+    void SolverPETSc::Setup(int *argc, char ***argv, SolverParameters &p) {
+        this->parametersFile = p.internalFile;
+        if (p.internalFile.empty()) {
+            for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
+                this->SetParameter((*parameter).first, (*parameter).second);
+            }
+        }
+
+        SolverInitializePetsc(argc, argv, p.internalFile.empty() ? NULL : p.internalFile.c_str());
+        SolverInitDataPetsc(&ksp, this->communicator, p.solverPrefix.c_str());
     }
 
     void SolverPETSc::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
@@ -126,9 +140,9 @@ namespace INMOST {
         MatrixFinalizePetsc(matrix);
 
         if (parametersFile == "") {
-            SolverSetDropTolerancePetsc(ksp, DEFAULT_PRECONDITIONER_DROP_TOLERANCE);
-            SolverSetFillLevelPetsc(ksp, DEFAULT_PRECONDITIONER_FILL_LEVEL);
-            SolverSetOverlapPetsc(ksp, DEFAULT_ADDITIVE_SCHWARTZ_OVERLAP);
+            SolverSetDropTolerancePetsc(ksp, drop_tolerance);
+            SolverSetFillLevelPetsc(ksp, fill_level);
+            SolverSetOverlapPetsc(ksp, schwartz_overlap);
         }
 
         SolverSetMatrixPetsc(ksp, matrix, modified_pattern, OldPreconditioner);
@@ -163,11 +177,7 @@ namespace INMOST {
         VectorFinalizePetsc(solution);
 
         if (parametersFile == "") {
-            SolverSetTolerancesPetsc(ksp,
-                                     DEFAULT_RELATIVE_TOLERANCE,
-                                     DEFAULT_ABSOLUTE_TOLERANCE,
-                                     DEFAULT_DIVERGENCE_TOLERANCE,
-                                     DEFAULT_MAXIMUM_ITERATIONS);
+            SolverSetTolerancesPetsc(ksp, rtol, atol, dtol, maximum_iterations);
         }
 
         bool result = SolverSolvePetsc(ksp, rhs, solution);
@@ -199,14 +209,29 @@ namespace INMOST {
     }
 
     std::string SolverPETSc::GetParameter(std::string name) const {
-        std::cout << "SolverPETSc::GetParameter unsupported operation" << std::endl;
-        //throw INMOST::SolverUnsupportedOperation;
-        return "";
+        if (name == "maximum_iterations") return to_string(maximum_iterations);
+        else if (name == "schwartz_overlap") return to_string(schwartz_overlap);
+        else if (name == "absolute_tolerance") return to_string(atol);
+        else if (name == "relative_tolerance") return to_string(rtol);
+        else if (name == "divergence_tolerance") return to_string(dtol);
+        else if (name == "drop_tolerance") return to_string(drop_tolerance);
+        else if (name == "fill_level") return to_string(fill_level);
+        else {
+            std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
+            return "";
+        }
     }
 
     void SolverPETSc::SetParameter(std::string name, std::string value) {
-        std::cout << "SolverPETSc::SetParameter unsupported operation" << std::endl;
-        //throw INMOST::SolverUnsupportedOperation;
+        const char *val = value.c_str();
+        if (name == "maximum_iterations") maximum_iterations = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "schwartz_overlap") schwartz_overlap = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "absolute_tolerance") atol = atof(val);
+        else if (name == "relative_tolerance") rtol = atof(val);
+        else if (name == "divergence_tolerance") dtol = atof(val);
+        else if (name == "drop_tolerance") drop_tolerance = atof(val);
+        else if (name == "fill_level") fill_level = atof(val);
+        else std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverPETSc::Iterations() const {

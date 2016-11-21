@@ -226,6 +226,9 @@ public:
   };
 
   void WriteXML(const XMLReader::XMLTree & t, std::ostream & output, int offset = 0);
+
+	typedef std::vector<XMLReader::XMLTree>::iterator xml_reader_tree_iterator_t;
+	typedef std::vector<XMLReader::XMLAttrib>::iterator xml_reader_attrib_iterator_t;
 }
 
 

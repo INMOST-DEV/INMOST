@@ -14,7 +14,7 @@ namespace INMOST {
         throw INMOST::SolverUnsupportedOperation; //later
     }
 
-    void SolverANI::Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) {
+    void SolverANI::Setup(int *argc, char ***argv, SolverParameters &p) {
         solver.n = 0;
         m.n = 0;
     }

@@ -1457,9 +1457,15 @@ namespace INMOST
 					ret.finish = ReadCloseTag(); //retrive '>'
 					if( !include.empty() )
 					{
-						if( verbose > 1 ) Report("info: switching to stream %s",(GetFolder(get_Stream().src) + "/" + include).c_str());
 
-						PushStream((GetFolder(get_Stream().src) + "/" + include).c_str()); //switch to the included file
+						std::string folder = GetFolder(get_Stream().src);
+						if (!folder.empty()) {
+							folder += "/";
+						}
+
+						if( verbose > 1 ) Report("info: switching to stream %s",(folder + include).c_str());
+
+						PushStream((folder + include).c_str()); //switch to the included file
 					}
 				}
 				else //encountered '</' of the root tag, no tag was red

@@ -38,7 +38,7 @@ namespace INMOST {
         if (have_params && local_list.isSublist("AztecOO")) {
             Teuchos::ParameterList AztecOOParams = local_list.sublist("AztecOO");
             if (AztecOOParams.isParameter("Max Iterations")) {
-                iters = AztecOOParams.get<int>("Max Iterations");
+                maximum_iterations = AztecOOParams.get<int>("Max Iterations");
 
             }
             if (AztecOOParams.isParameter("Tolerance")) {
@@ -51,7 +51,7 @@ namespace INMOST {
             AztecSolver.SetAztecOption(AZ_diagnostics, AZ_none);
             AztecSolver.SetAztecOption(AZ_output, AZ_none);
             AztecSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
-            AztecSolver.SetAztecOption(AZ_overlap, overlap);
+            AztecSolver.SetAztecOption(AZ_overlap, schwartz_overlap);
         }
 
         Ifpack *Factory = new Ifpack();
@@ -63,24 +63,24 @@ namespace INMOST {
                 PrecType = ifpacklist.get<std::string>("Prec Type");
             }
             if (ifpacklist.isParameter("Overlap")) {
-                overlap = ifpacklist.get<int>("Overlap");
+                schwartz_overlap = ifpacklist.get<int>("Overlap");
             }
         }
-        Prec = Factory->Create(PrecType, matrix, overlap);
+        Prec = Factory->Create(PrecType, matrix, schwartz_overlap);
         Teuchos::ParameterList List;
         if (have_params && local_list.isSublist("Ifpack") &&
             local_list.sublist("Ifpack").isSublist("Ifpack Settings")) {
             List = local_list.sublist("Ifpack").sublist("Ifpack Settings");
         } else {
             //Do not delete (int) please
-            List.set("fact: level-of-fill", (int) fill);
+            List.set("fact: level-of-fill", (int) fill_level);
         }
         Prec->SetParameters(List);
         Prec->Initialize();
         Prec->Compute();
         AztecSolver.SetPrecOperator(Prec);
 
-        AztecSolver.Iterate(iters, rtol);
+        AztecSolver.Iterate(maximum_iterations, rtol);
         const double *stats = AztecSolver.GetAztecStatus();
         bool success = true;
         std::string reason = "";

@@ -29,15 +29,21 @@
 #endif
 
 #if defined(USE_SOLVER_SUPERLU)
+
 #include "solver_superlu/SolverSUPERLU.h"
+
 #endif
 
 #if defined(HAVE_SOLVER_K3BIILU2)
+
 #include "solver_k3biilu2/SolverK3BIILU2.h"
+
 #endif
 
 #if defined(HAVE_SOLVER_FCBIILU2)
+
 #include "solver_fcbiilu2/SolverFCBIILU2.h"
+
 #endif
 
 namespace INMOST {
@@ -47,21 +53,50 @@ namespace INMOST {
     const char *Solver::database = NULL;
     bool Solver::is_initialized = false;
     bool Solver::is_finalized = false;
+    std::vector<SolverParameters> Solver::parameters = std::vector<SolverParameters>();
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) {
-        this->solver = SolverMaster::getSolver(solverName);
-        this->prefix = prefix;
+        std::string lowerName = string_to_lower(solverName);
+        this->solver = SolverMaster::getSolver(lowerName);
+        this->prefix = string_to_lower(prefix);
         solver->SetCommunicator(_comm);
-        std::string solverDatabasePath = Solver::parseDatabase(solverName);
-        solver->Initialize(argc, argv, solverDatabasePath.c_str(), prefix);
+        //TODO find easiest way
+        bool parametersFound = false;
+        if (Solver::parameters.size() > 0) {
+            for (solver_parameters_iterator_t parameters = Solver::parameters.end() - 1; parameters >= Solver::parameters.begin(); parameters--) {
+                if ((*parameters).solverName == lowerName && (*parameters).solverPrefix == (this->prefix)) {
+                    solver->Setup(argc, argv, *parameters);
+                    parametersFound = true;
+                    break;
+                }
+            }
+        }
+        if (!parametersFound) {
+            SolverParameters emptyParameters(lowerName, this->prefix, "");
+            solver->Setup(argc, argv, emptyParameters);
+        }
+
     }
 
     Solver::Solver(const Solver &other) {
         this->solver = SolverMaster::copySolver(other.solver);
         this->prefix = other.prefix;
         solver->SetCommunicator(other.solver->GetCommunicator());
-        std::string solverDatabasePath = Solver::parseDatabase(solver->SolverName());
-        solver->Initialize(argc, argv, solverDatabasePath.c_str(), this->prefix);
+        //TODO find easiest way
+        bool parametersFound = false;
+        if (Solver::parameters.size() > 0) {
+            for (solver_parameters_iterator_t parameters = Solver::parameters.end() - 1; parameters >= Solver::parameters.begin(); parameters--) {
+                if ((*parameters).solverName == other.solver->SolverName() && (*parameters).solverPrefix == (this->prefix)) {
+                    solver->Setup(argc, argv, *parameters);
+                    parametersFound = true;
+                    break;
+                }
+            }
+        }
+        if (!parametersFound) {
+            SolverParameters emptyParameters(other.solver->SolverName(), this->prefix, "");
+            solver->Setup(argc, argv, emptyParameters);
+        }
     }
 
     Solver &Solver::operator=(const Solver &other) {
@@ -126,6 +161,18 @@ namespace INMOST {
 #if defined(HAVE_SOLVER_FCBIILU2)
         SolverMaster::registerSolver<SolverFCBIILU2>("fcbiilu2");
 #endif
+        Solver::parseXMLDatabase(database);
+
+        //Debug
+//        for (auto p = parameters.begin(); p < parameters.end(); p++) {
+//            std::cout << "============================================================================" << std::endl;
+//            std::cout << (*p).solverName << ":" << (*p).solverPrefix << ":" << (*p).internalFile << std::endl;
+//            for (auto pp = (*p).parameters.begin(); pp < (*p).parameters.end(); pp++) {
+//                std::cout << (*pp).first << " = " << (*pp).second << std::endl;
+//            }
+//            std::cout << "============================================================================" << std::endl;
+//        }
+
         Sparse::CreateRowEntryType();
     }
 
@@ -214,33 +261,79 @@ namespace INMOST {
         delete solver;
     }
 
-    std::string Solver::parseDatabase(std::string solverName) {
-        const char *name = solverName.c_str();
-        if (database != NULL) {
-            FILE *f = fopen(database, "r");
-            if (f != NULL) {
-                char str[4096];
-                while (!feof(f) && fgets(str, 4096, f)) {
-                    int k = 0, l;
-                    for (k = 0; k < (int) strlen(str); ++k) {
-                        if (str[k] == ':') break;
-                    }
-                    if (k == strlen(str)) continue; //invalid line
-                    for (l = 0; l < k; ++l) str[l] = tolower(str[l]);
-                    l = (int) strlen(str) - 1; // Right-trim string
-                    while (l > 0 && isspace(str[l])) --l;
-                    str[l + 1] = 0;
-                    l = k + 1;
-                    while (l < (int) strlen(str) && isspace(str[l])) ++l;
-                    if (l == strlen(str)) continue; //skip empty entry
-                    if (!strncmp(str, name, k)) {
-                        return std::string(str + l);
+    void Solver::parseXMLDatabase(const char *xml_database) {
+        if (xml_database == NULL) return;
+
+        std::ifstream input;
+        input.open(xml_database);
+
+        if (input.fail()) {
+            std::cout << __FILE__ << ": XML database file not found " << std::endl;
+            return;
+        }
+
+        XMLReader reader(std::string(xml_database), input);
+
+        try {
+            XMLReader::XMLTree root = reader.ReadXML();
+
+            if (root.tag.name != "SolverParameters") {
+                std::cout << __FILE__ << ": Bad XML database file" << std::endl;
+                return;
+            }
+
+            for (xml_reader_tree_iterator_t solver = root.children.begin(); solver < root.children.end(); solver++) {
+                std::string solverName = string_to_lower((*solver).tag.name);
+                std::string internalFile = "";
+
+                if ((*solver).tag.attributes.size() != 0) {
+                    for (xml_reader_attrib_iterator_t attr = (*solver).tag.attributes.begin(); attr < (*solver).tag.attributes.end(); attr++) {
+                        if ((*attr).name == "File" || (*attr).name == "file" || (*attr).name == "FILE") {
+                            internalFile = (*attr).value;
+                        }
                     }
                 }
-                fclose(f);
+
+                if ((*solver).children.size() == 0) {
+                    //Internal solver
+                    parameters.push_back(SolverParameters(solverName, "", internalFile));
+                } else {
+                    //Inner solver
+                    for (xml_reader_tree_iterator_t prefix = (*solver).children.begin(); prefix < (*solver).children.end(); prefix++) {
+                        internalFile = "";
+                        std::string solverPrefix = string_to_lower((*prefix).tag.name);
+
+                        if ((*prefix).tag.attributes.size() != 0) {
+                            for (xml_reader_attrib_iterator_t attr = (*prefix).tag.attributes.begin(); attr < (*prefix).tag.attributes.end(); attr++) {
+                                if ((*attr).name == "File" || (*attr).name == "file" || (*attr).name == "FILE") {
+                                    internalFile = (*attr).value;
+                                }
+                            }
+                        }
+
+                        SolverParameters prefix_p = SolverParameters(solverName, solverPrefix, internalFile);
+
+                        for (xml_reader_tree_iterator_t p = (*prefix).children.begin(); p < (*prefix).children.end(); p++) {
+
+                            if ((*p).tag.attributes.size() == 1) {
+                                if ((*p).tag.attributes[0].name == "value" || (*p).tag.attributes[0].name == "Value") {
+                                    prefix_p.parameters.push_back(std::make_pair((*p).tag.name, (*p).tag.attributes[0].value));
+                                }
+                            }
+                        }
+
+                        parameters.push_back(prefix_p);
+
+                    }
+
+                }
+
             }
+
+        } catch (...) {
+            std::cout << __FILE__ << ": Error while parsing xml database file" << std::endl;
         }
-        return std::string("");
+
     }
 
 }

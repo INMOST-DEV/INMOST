@@ -7,7 +7,6 @@
 #include "solver_bcgsl.hpp"
 
 
-
 namespace INMOST {
 
     class SolverInner : public SolverInterface {
@@ -16,8 +15,8 @@ namespace INMOST {
         KSOLVER *solver;
         Solver::OrderInfo info;
 
-        INMOST_DATA_ENUM_TYPE iters, scale_iters, condest, ddpqatol, overlap, ell, reorder_nnz, fill;
-        INMOST_DATA_REAL_TYPE atol, rtol, dtol,  ddpqtol, tau, tau2;
+        INMOST_DATA_ENUM_TYPE maximum_iterations, rescale_iterations, condition_estimation, adapt_ddpq_tolerance, schwartz_overlap, gmres_substeps, reorder_nnz, fill_level;
+        INMOST_DATA_REAL_TYPE atol, rtol, dtol, ddpq_tolerance, drop_tolerance, reuse_tolerance;
     public:
         SolverInner();
 
@@ -25,7 +24,7 @@ namespace INMOST {
 
         virtual void Assign(const SolverInterface *other);
 
-        virtual void Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix);
+        virtual void Setup(int *argc, char ***argv, SolverParameters &p);
 
         virtual void SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) = 0;
 

@@ -264,7 +264,6 @@ set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
                            Source/Headers/inmost_partitioner.h
                            Source/Headers/inmost_solver.h
 						   Source/Headers/inmost_solver_interface.h
-						   Source/Headers/inmost_solver_parameters.h
                            Source/Headers/inmost_sparse.h
                            Source/Headers/inmost_xml.h
 		 				   Source/Headers/inmost_utils.h
@@ -297,7 +296,6 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_partitioner.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_solver.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_solver_interface.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_solver_parameters.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_sparse.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h"

@@ -3,12 +3,12 @@
 namespace INMOST {
 
     SolverTrilinos::SolverTrilinos() {
-        iters = 2500;
-        overlap = 1;
+        maximum_iterations = 2500;
+        schwartz_overlap = 1;
 
         rtol = 1.0e-12;
-        tau = 0.005;
-        fill = 3;
+        drop_tolerance = 0.005;
+        fill_level = 3;
 
         Epetra_problem = NULL;
         matrix = NULL;
@@ -24,10 +24,13 @@ namespace INMOST {
         throw INMOST::SolverUnsupportedOperation;
     }
 
-    void SolverTrilinos::Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) {
+    void SolverTrilinos::Setup(int *argc, char ***argv, SolverParameters &p) {
         this->Epetra_problem = new std::pair<std::string, Epetra_LinearProblem>;
-        this->Epetra_problem->first = prefix;
-        this->parameters_file = parameters_file;
+        this->Epetra_problem->first = p.solverPrefix;
+        this->parameters_file = p.internalFile;
+        for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
+            this->SetParameter((*parameter).first, (*parameter).second);
+        }
     }
 
     void SolverTrilinos::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
@@ -115,25 +118,25 @@ namespace INMOST {
     }
 
     std::string SolverTrilinos::GetParameter(std::string name) const {
-        if(name == "maximum_iterations" ) return to_string(iters);
-        else if( name == "schwartz_overlap" ) return to_string(overlap);
+        if(name == "maximum_iterations" ) return to_string(maximum_iterations);
+        else if( name == "schwartz_overlap" ) return to_string(schwartz_overlap);
         else if( name == "relative_tolerance") return to_string(rtol);
-        else if( name == "drop_tolerance") return to_string(tau);
-        else if( name == "fill_level") return to_string(fill);
+        else if( name == "drop_tolerance") return to_string(drop_tolerance);
+        else if( name == "fill_level") return to_string(fill_level);
         else {
-            std::cout << "Parameter " << name << " is unknown" << std::endl;
+            std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
             return "";
         }
     }
 
     void SolverTrilinos::SetParameter(std::string name, std::string value) {
         const char *val = value.c_str();
-        if(name == "maximum_iterations" ) iters = atoi(val);
-        else if( name == "schwartz_overlap" ) overlap = atoi(val);
+        if(name == "maximum_iterations" ) maximum_iterations = atoi(val);
+        else if( name == "schwartz_overlap" ) schwartz_overlap = atoi(val);
         else if( name == "relative_tolerance") rtol = atof(val);
-        else if( name == "drop_tolerance") tau = atof(val);
-        else if( name == "fill_level") fill = atoi(val);
-        else std::cout << "Parameter " << name << " is unknown" << std::endl;
+        else if( name == "drop_tolerance") drop_tolerance = atof(val);
+        else if( name == "fill_level") fill_level = atoi(val);
+        else std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {

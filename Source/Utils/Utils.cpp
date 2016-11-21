@@ -17,4 +17,12 @@ namespace INMOST {
         return str;
     }
 
+    std::string string_to_lower(const std::string &str) {
+        std::string lower = std::string(str);
+        for (int i = 0; i < lower.length(); i++) {
+            lower[i] = (char) tolower(lower[i]);
+        }
+        return lower;
+    }
+
 }

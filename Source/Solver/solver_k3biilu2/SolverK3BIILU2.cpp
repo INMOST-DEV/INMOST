@@ -28,9 +28,9 @@ namespace INMOST {
         }
     }
 
-    void SolverK3BIILU2::Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) {
-        SolverInitDataK3biilu2(&solver_data, communicator, prefix.c_str());
-        SolverInitializeK3biilu2(argc, argv, parameters_file);
+    void SolverK3BIILU2::Setup(int *argc, char ***argv, SolverParameters &p) {
+        SolverInitDataK3biilu2(&solver_data, communicator, p.solverPrefix.c_str());
+        SolverInitializeK3biilu2(argc, argv, p.internalFile);
     }
 
     void SolverK3BIILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {

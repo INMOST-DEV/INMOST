@@ -30,6 +30,7 @@ namespace INMOST
     class Solver
     {
     private:
+        static std::vector<SolverParameters> parameters;
         static int *argc;
         static char ***argv;
         static const char *database;
@@ -278,17 +279,23 @@ namespace INMOST
         /// @return Condition number or 1.0e100 if not converged.
         INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxits = 100);
 
+        /// Checks if solver available
+        /// @param name Solver name
         static bool isSolverAvailable(std::string name);
 
+        /// Return the list of all available solvers
         static std::vector<std::string> getAvailableSolvers();
 
         ~Solver();
 
     private:
-        static std::string parseDatabase(std::string solverName);
+
+        static void parseXMLDatabase(const char* xml_database);
     };
 
     typedef std::vector<std::string>::iterator solvers_names_iterator_t;
+    typedef std::vector<SolverParameters>::iterator solver_parameters_iterator_t;
+
 }
 
 #endif

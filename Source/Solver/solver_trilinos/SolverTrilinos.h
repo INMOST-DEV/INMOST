@@ -43,8 +43,8 @@ namespace INMOST {
         INMOST_DATA_REAL_TYPE lastResidual;
         std::string returnReason;
 
-        int overlap, iters, fill;
-        double rtol, tau;
+        int schwartz_overlap, maximum_iterations, fill_level;
+        double rtol, drop_tolerance;
 
         void TrilinosCheckStatus(int status_id, bool &success, std::string &reason);
     public:
@@ -54,7 +54,7 @@ namespace INMOST {
 
         virtual void Assign(const SolverInterface *other);
 
-        virtual void Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix);
+        virtual void Setup(int *argc, char ***argv, SolverParameters &p);
 
         virtual void SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner);
 

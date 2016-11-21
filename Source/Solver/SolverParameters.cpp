@@ -1,6 +1,17 @@
-#include "inmost_solver_parameters.h"
-#include "inmost_solver.h"
+#include "inmost_solver_interface.h"
 
 namespace INMOST {
+
+    SolverParameters::SolverParameters(std::string solverName, std::string solverPrefix, std::string internalFile) : solverName(solverName),
+                                                                                                                             solverPrefix(solverPrefix),
+                                                                                                                             internalFile(internalFile) {}
+
+    SolverParameters::SolverParameters(const SolverParameters &other) : solverName(other.solverName), solverPrefix(other.solverPrefix),
+                                                                                internalFile(other.internalFile),
+                                                                                parameters(other.parameters) {
+    }
+
+
+    SolverParameters::~SolverParameters() {}
 
 }

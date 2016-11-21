@@ -18,6 +18,9 @@ namespace INMOST {
         Mat *matrix;
 
         INMOST_DATA_ENUM_TYPE local_size, global_size;
+
+        INMOST_DATA_ENUM_TYPE maximum_iterations, schwartz_overlap;
+        INMOST_DATA_REAL_TYPE atol, dtol, rtol, drop_tolerance, fill_level;
     public:
         SolverPETSc();
 
@@ -25,7 +28,7 @@ namespace INMOST {
 
         virtual void Assign(const SolverInterface *other);
 
-        virtual void Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix);
+        virtual void Setup(int *argc, char ***argv, SolverParameters &p);
 
         virtual void SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner);
 

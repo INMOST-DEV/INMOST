@@ -38,7 +38,7 @@ namespace INMOST {
         if (have_params && local_list.isSublist("AztecOO")) {
             Teuchos::ParameterList AztecOOParams = local_list.sublist("AztecOO");
             if (AztecOOParams.isParameter("Max Iterations")) {
-                iters = AztecOOParams.get<int>("Max Iterations");
+                maximum_iterations = AztecOOParams.get<int>("Max Iterations");
 
             }
             if (AztecOOParams.isParameter("Tolerance")) {
@@ -51,7 +51,7 @@ namespace INMOST {
             AztecSolver.SetAztecOption(AZ_diagnostics, AZ_none);
             AztecSolver.SetAztecOption(AZ_output, AZ_none);
             AztecSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
-            AztecSolver.SetAztecOption(AZ_overlap, overlap);
+            AztecSolver.SetAztecOption(AZ_overlap, schwartz_overlap);
         }
 
         Teuchos::ParameterList List;
@@ -66,7 +66,7 @@ namespace INMOST {
         ML_Epetra::MultiLevelPreconditioner *Prec = new ML_Epetra::MultiLevelPreconditioner(*matrix, List, true);
         AztecSolver.SetPrecOperator(Prec);
 
-        AztecSolver.Iterate(iters, rtol);
+        AztecSolver.Iterate(maximum_iterations, rtol);
         const double *stats = AztecSolver.GetAztecStatus();
         bool success = true;
         std::string reason = "";

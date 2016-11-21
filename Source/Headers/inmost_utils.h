@@ -21,6 +21,8 @@ namespace INMOST {
         return ss.str();
     }
 
+    std::string string_to_lower(const std::string &str);
+
 }
 
 #endif //INMOST_UTILS_H

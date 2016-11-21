@@ -18,7 +18,7 @@ namespace INMOST {
         throw INMOST::SolverUnsupportedOperation;
     }
 
-    void SolverSUPERLU::Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) {
+    void SolverSUPERLU::Setup(int *argc, char ***argv, SolverParameters &p) {
         //read options from file and arguments
     }
 

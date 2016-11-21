@@ -18,19 +18,19 @@ namespace INMOST {
             delete matrix;
         }
         matrix = new Sparse::Matrix(A);
-        info.PrepareMatrix(*matrix, overlap);
+        info.PrepareMatrix(*matrix, schwartz_overlap);
         solver->ReplaceMAT(*matrix);
 
-        solver->RealParameter(":tau") = tau;
-        solver->RealParameter(":tau2") = tau2;
-        solver->EnumParameter(":scale_iters") = scale_iters;
-        solver->RealParameter(":ddpq_tau") = ddpqtol;
+        solver->RealParameter(":tau") = drop_tolerance;
+        solver->RealParameter(":tau2") = reuse_tolerance;
+        solver->EnumParameter(":scale_iters") = rescale_iterations;
+        solver->RealParameter(":ddpq_tau") = ddpq_tolerance;
         solver->EnumParameter(":reorder_nnz") = reorder_nnz;
-        solver->EnumParameter(":estimator") = condest;
-        solver->EnumParameter(":ddpq_tau_adapt") = ddpqatol;
+        solver->EnumParameter(":estimator") = condition_estimation;
+        solver->EnumParameter(":ddpq_tau_adapt") = adapt_ddpq_tolerance;
 
         if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
-            solver->EnumParameter("levels") = ell;
+            solver->EnumParameter("levels") = gmres_substeps;
         }
 
         if (!solver->isInitialized()) {

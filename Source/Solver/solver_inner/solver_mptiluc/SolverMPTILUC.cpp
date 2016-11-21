@@ -18,16 +18,16 @@ namespace INMOST {
             delete matrix;
         }
         matrix = new Sparse::Matrix(A);
-        info.PrepareMatrix(*matrix, overlap);
+        info.PrepareMatrix(*matrix, schwartz_overlap);
         solver->ReplaceMAT(*matrix);
 
-        solver->RealParameter(":tau") = tau;
-        solver->RealParameter(":tau2") = tau2;
-        solver->EnumParameter(":scale_iters") = scale_iters;
-        solver->EnumParameter(":estimator") = condest;
+        solver->RealParameter(":tau") = drop_tolerance;
+        solver->RealParameter(":tau2") = reuse_tolerance;
+        solver->EnumParameter(":scale_iters") = rescale_iterations;
+        solver->EnumParameter(":estimator") = condition_estimation;
 
         if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
-            solver->EnumParameter("levels") = ell;
+            solver->EnumParameter("levels") = gmres_substeps;
         }
 
         if (!solver->isInitialized()) {
@@ -36,7 +36,7 @@ namespace INMOST {
     }
 
     bool SolverMPTILUC::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
-        solver->EnumParameter("maxits") = iters;
+        solver->EnumParameter("maxits") = maximum_iterations;
         solver->RealParameter("rtol") = rtol;
         solver->RealParameter("atol") = atol;
         solver->RealParameter("divtol") = dtol;

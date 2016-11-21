@@ -33,7 +33,7 @@ namespace INMOST {
         else {
             List->set("Num Blocks", 100);
             List->set("Block Size", 1);
-            List->set("Maximum Iterations", iters);
+            List->set("Maximum Iterations", maximum_iterations);
             List->set("Maximum Restarts", 20);
             List->set("Convergence Tolerance", rtol);
         }

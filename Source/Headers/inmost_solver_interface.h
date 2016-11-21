@@ -9,6 +9,22 @@ namespace INMOST {
 
 #if defined(USE_SOLVER)
 
+    class SolverParameters {
+    public:
+        const std::string solverName;
+        const std::string solverPrefix;
+        const std::string internalFile;
+
+        std::vector<std::pair<std::string, std::string> > parameters;
+
+        SolverParameters(std::string solverName, std::string solverPrefix, std::string internalFile);
+        SolverParameters(const SolverParameters &other);
+
+        ~SolverParameters();
+    };
+
+    typedef std::vector<std::pair<std::string, std::string> >::iterator parameters_iterator_t;
+
     class SolverInterface {
     protected:
         INMOST_MPI_Comm communicator;
@@ -19,7 +35,7 @@ namespace INMOST {
 
         virtual void Assign(const SolverInterface *other) = 0;
 
-        virtual void Initialize(int *argc, char ***argv, const char *parameters_file, std::string prefix) = 0;
+        virtual void Setup(int *argc, char ***argv, SolverParameters &p) = 0;
 
         virtual void SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) = 0;
 
