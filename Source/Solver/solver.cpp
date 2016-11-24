@@ -50,7 +50,6 @@ namespace INMOST {
 
     int *Solver::argc = NULL;
     char ***Solver::argv = NULL;
-    const char *Solver::database = NULL;
     bool Solver::is_initialized = false;
     bool Solver::is_finalized = false;
     std::vector<SolverParameters> Solver::parameters = std::vector<SolverParameters>();
@@ -119,7 +118,6 @@ namespace INMOST {
     void Solver::Initialize(int *argc, char ***argv, const char *database) {
         Solver::argc = argc;
         Solver::argv = argv;
-        Solver::database = database;
         Solver::is_initialized = true;
         Solver::is_finalized = false;
 #if defined(USE_MPI)

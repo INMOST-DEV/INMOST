@@ -4,20 +4,9 @@ namespace INMOST {
 
     SolverInner::SolverInner() {
         maximum_iterations = 2500;
-        rescale_iterations = 6;
-        condition_estimation = 1;
-        adapt_ddpq_tolerance = 1;
-        schwartz_overlap = 1;
-        gmres_substeps = 2;
-        reorder_nnz = 1;
-
         atol = 1.0e-5;
         rtol = 1.0e-12;
         dtol = 1.0e+100;
-        drop_tolerance = 0.005;
-        reuse_tolerance = 0.00005;
-        ddpq_tolerance = 0.75;
-        fill_level = 3;
     }
 
     SolverInner::SolverInner(const SolverInterface *other) : SolverInterface(other) {
@@ -85,19 +74,9 @@ namespace INMOST {
 
     std::string SolverInner::GetParameter(std::string name) const {
         if (name == "maximum_iterations") return to_string(maximum_iterations);
-        else if (name == "rescale_iterations") return to_string(rescale_iterations);
-        else if (name == "condition_estimation") return to_string(condition_estimation);
-        else if (name == "adapt_ddpq_tolerance") return to_string(adapt_ddpq_tolerance);
-        else if (name == "schwartz_overlap") return to_string(schwartz_overlap);
-        else if (name == "gmres_substeps") return to_string(gmres_substeps);
-        else if (name == "reorder_nonzeros") return to_string(reorder_nnz);
         else if (name == "absolute_tolerance") return to_string(atol);
         else if (name == "relative_tolerance") return to_string(rtol);
         else if (name == "divergence_tolerance") return to_string(dtol);
-        else if (name == "drop_tolerance") return to_string(drop_tolerance);
-        else if (name == "reuse_tolerance") return to_string(reuse_tolerance);
-        else if (name == "ddpq_tolerance") return to_string(ddpq_tolerance);
-        else if (name == "fill_level") return to_string(fill_level);
         else {
             std::cout << "Parameter " << name << " is unknown" << std::endl;
             return "";
@@ -107,19 +86,9 @@ namespace INMOST {
     void SolverInner::SetParameter(std::string name, std::string value) {
         const char *val = value.c_str();
         if (name == "maximum_iterations") maximum_iterations = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "rescale_iterations") rescale_iterations = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "condition_estimation") condition_estimation = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "adapt_ddpq_tolerance") adapt_ddpq_tolerance = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "schwartz_overlap") schwartz_overlap = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "gmres_substeps") gmres_substeps = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "reorder_nonzeros") reorder_nnz = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
         else if (name == "absolute_tolerance") atol = atof(val);
         else if (name == "relative_tolerance") rtol = atof(val);
         else if (name == "divergence_tolerance") dtol = atof(val);
-        else if (name == "drop_tolerance") drop_tolerance = atof(val);
-        else if (name == "reuse_tolerance") reuse_tolerance = atof(val);
-        else if (name == "ddpq_tolerance") ddpq_tolerance = atof(val);
-        else if (name == "fill_level") fill_level = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
     }
 

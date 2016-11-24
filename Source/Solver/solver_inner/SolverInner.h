@@ -2,7 +2,7 @@
 #define INMOST_SOLVERINNER_H
 
 #include "inmost_solver_interface.h"
-#include "inmost_utils.h"
+#include "Source/Utils/Utils.h"
 #include "solver_prototypes.hpp"
 #include "solver_bcgsl.hpp"
 
@@ -15,8 +15,8 @@ namespace INMOST {
         KSOLVER *solver;
         Solver::OrderInfo info;
 
-        INMOST_DATA_ENUM_TYPE maximum_iterations, rescale_iterations, condition_estimation, adapt_ddpq_tolerance, schwartz_overlap, gmres_substeps, reorder_nnz, fill_level;
-        INMOST_DATA_REAL_TYPE atol, rtol, dtol, ddpq_tolerance, drop_tolerance, reuse_tolerance;
+        INMOST_DATA_ENUM_TYPE maximum_iterations;
+        INMOST_DATA_REAL_TYPE atol, rtol, dtol;
     public:
         SolverInner();
 

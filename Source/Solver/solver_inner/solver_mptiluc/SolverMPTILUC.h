@@ -8,6 +8,8 @@
 namespace INMOST {
 
     class SolverMPTILUC : public SolverInner {
+        INMOST_DATA_ENUM_TYPE rescale_iterations, condition_estimation, schwartz_overlap, gmres_substeps, reorder_nnz, fill_level;
+        INMOST_DATA_REAL_TYPE drop_tolerance, reuse_tolerance;
     public:
         SolverMPTILUC();
 
@@ -15,7 +17,7 @@ namespace INMOST {
 
         virtual void SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner);
 
-        virtual bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL);
+        virtual void SetParameter(std::string name, std::string value);
 
         virtual const std::string SolverName() const;
 

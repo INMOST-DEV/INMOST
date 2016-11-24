@@ -5,21 +5,6 @@
 #include "inmost_common.h"
 #include "inmost_sparse.h"
 
-#define DEFAULT_ADDITIVE_SCHWARTZ_OVERLAP             1
-#define DEFAULT_ABSOLUTE_TOLERANCE                    1.0e-5
-#define DEFAULT_RELATIVE_TOLERANCE                    1.0e-12
-#define DEFAULT_DIVERGENCE_TOLERANCE                  1.0e+100
-#define DEFAULT_MAXIMUM_ITERATIONS                    2500
-#define DEFAULT_SOLVER_GMRES_SUBSTEPS                 2
-#define DEFAULT_PRECONDITIONER_DROP_TOLERANCE         0.005
-#define DEFAULT_PRECONDITIONER_REUSE_TOLERANCE        0.00005
-#define DEFAULT_PRECONDITIONER_FILL_LEVEL             3
-#define DEFAULT_PRECONDITIONER_DDPQ_TOLERANCE         0.75
-#define DEFAULT_PRECONDITIONER_REORDER_NONZEROS       1
-#define DEFAULT_PRECONDITIONER_RESCALE_ITERS          6
-#define DEFAULT_PRECONDITIONER_CONDITION_ESTIMATION   1
-#define DEFAULT_PRECONDITIONER_ADAPT_DDPQ_TOLERANCE   1
-
 #if defined(USE_SOLVER)
 namespace INMOST
 {
@@ -33,7 +18,6 @@ namespace INMOST
         static std::vector<SolverParameters> parameters;
         static int *argc;
         static char ***argv;
-        static const char *database;
         static bool is_initialized;
         static bool is_finalized;
 

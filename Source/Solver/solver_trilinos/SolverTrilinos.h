@@ -7,6 +7,7 @@
 
 
 #include <inmost.h>
+#include "Source/Utils/Utils.h"
 
 #if defined(USE_MPI)
 

@@ -4,6 +4,7 @@
 #include "inmost.h"
 #include "petsc.h"
 #include "solver_petsc.h"
+#include "Source/Utils/Utils.h"
 
 
 namespace INMOST {

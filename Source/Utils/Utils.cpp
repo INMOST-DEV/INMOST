@@ -1,4 +1,4 @@
-#include "inmost_utils.h"
+#include "Utils.h"
 
 namespace INMOST {
 

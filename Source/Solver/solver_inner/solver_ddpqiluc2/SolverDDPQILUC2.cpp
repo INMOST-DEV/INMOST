@@ -6,6 +6,15 @@ namespace INMOST {
         Method *preconditioner = new ILUC_preconditioner(info);
         solver = new KSOLVER(preconditioner, info);
         matrix = NULL;
+        rescale_iterations = 6;
+        condition_estimation = 1;
+        adapt_ddpq_tolerance = 1;
+        schwartz_overlap = 1;
+        gmres_substeps = 2;
+        reorder_nnz = 1;
+        drop_tolerance = 0.005;
+        reuse_tolerance = 0.00005;
+        ddpq_tolerance = 0.75;
     }
 
     SolverDDPQILUC2::SolverDDPQILUC2(const SolverInterface *other) {
@@ -36,6 +45,20 @@ namespace INMOST {
         if (!solver->isInitialized()) {
             solver->Initialize();
         }
+    }
+
+    void SolverDDPQILUC2::SetParameter(std::string name, std::string value) {
+        const char *val = value.c_str();
+        if (name == "rescale_iterations") rescale_iterations = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "condition_estimation") condition_estimation = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "adapt_ddpq_tolerance") adapt_ddpq_tolerance = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "schwartz_overlap") schwartz_overlap = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "gmres_substeps") gmres_substeps = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "reorder_nonzeros") reorder_nnz = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "drop_tolerance") drop_tolerance = atof(val);
+        else if (name == "reuse_tolerance") reuse_tolerance = atof(val);
+        else if (name == "ddpq_tolerance") ddpq_tolerance = atof(val);
+        else SolverInner::SetParameter(name, value);
     }
 
     const std::string SolverDDPQILUC2::SolverName() const {
