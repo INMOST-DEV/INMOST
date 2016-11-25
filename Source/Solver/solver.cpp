@@ -1,50 +1,7 @@
 #include <inmost.h>
-
 #include "SolverMaster.h"
-#include "solver_inner/solver_ilu2/SolverILU2.h"
-#include "solver_inner/solver_ddpqiluc2/SolverDDPQILUC2.h"
-#include "solver_inner/solver_mptiluc/SolverMPTILUC.h"
-#include "solver_inner/solver_mptilu2/SolverMPTILU2.h"
+#include "Source/Utils/Utils.h"
 
-#if defined(USE_SOLVER_PETSC)
-
-#include "solver_petsc/SolverPETSc.h"
-
-#endif
-
-#if defined(USE_SOLVER_TRILINOS) && defined(USE_MPI)
-
-#include "solver_trilinos/SolverTrilinos.h"
-#include "solver_trilinos/solver_aztec/SolverTrilinosAztec.h"
-#include "solver_trilinos/solver_belos/SolverTrilinosBelos.h"
-#include "solver_trilinos/solver_ml/SolverTrilinosML.h"
-#include "solver_trilinos/solver_ifpack/SolverTrilinosIfpack.h"
-
-#endif
-
-#if defined(USE_SOLVER_ANI)
-
-#include "solver_ani/SolverANI.h"
-
-#endif
-
-#if defined(USE_SOLVER_SUPERLU)
-
-#include "solver_superlu/SolverSUPERLU.h"
-
-#endif
-
-#if defined(HAVE_SOLVER_K3BIILU2)
-
-#include "solver_k3biilu2/SolverK3BIILU2.h"
-
-#endif
-
-#if defined(HAVE_SOLVER_FCBIILU2)
-
-#include "solver_fcbiilu2/SolverFCBIILU2.h"
-
-#endif
 
 namespace INMOST {
 
@@ -56,7 +13,7 @@ namespace INMOST {
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) {
         std::string lowerName = string_to_lower(solverName);
-        this->solver = SolverMaster::getSolver(lowerName);
+        this->solver = SolverMaster::getSolver(solverName);
         this->prefix = string_to_lower(prefix);
         solver->SetCommunicator(_comm);
         //TODO find easiest way
@@ -78,7 +35,8 @@ namespace INMOST {
     }
 
     Solver::Solver(const Solver &other) {
-        this->solver = SolverMaster::copySolver(other.solver);
+        this->solver = SolverMaster::getSolver(other.solver->SolverName());
+        this->solver->Copy(other.solver);
         this->prefix = other.prefix;
         solver->SetCommunicator(other.solver->GetCommunicator());
         //TODO find easiest way
@@ -133,44 +91,7 @@ namespace INMOST {
             }
         }
 #endif
-        //Register all available solvers
-        SolverMaster::registerSolver<SolverILU2>("inner_ilu2");
-        SolverMaster::registerSolver<SolverDDPQILUC2>("inner_ddpqiluc2");
-        SolverMaster::registerSolver<SolverMPTILUC>("inner_mptiluc");
-        SolverMaster::registerSolver<SolverMPTILU2>("inner_mptilu2");
-#if defined(USE_SOLVER_PETSC)
-        SolverMaster::registerSolver<SolverPETSc>("petsc");
-#endif
-#if defined(USE_SOLVER_TRILINOS) && defined(USE_MPI)
-        SolverMaster::registerSolver<SolverTrilinosAztec>("trilinos_aztec");
-        SolverMaster::registerSolver<SolverTrilinosBelos>("trilinos_belos");
-        SolverMaster::registerSolver<SolverTrilinosML>("trilinos_ml");
-        SolverMaster::registerSolver<SolverTrilinosIfpack>("trilinos_ifpack");
-#endif
-#if defined(USE_SOLVER_ANI)
-        SolverMaster::registerSolver<SolverANI>("ani");
-#endif
-#if defined(USE_SOLVER_SUPERLU)
-        SolverMaster::registerSolver<SolverSUPERLU>("superlu");
-#endif
-#if defined(HAVE_SOLVER_K3BIILU2)
-        SolverMaster::registerSolver<SolverK3BIILU2>("k3biilu2");
-#endif
-#if defined(HAVE_SOLVER_FCBIILU2)
-        SolverMaster::registerSolver<SolverFCBIILU2>("fcbiilu2");
-#endif
         Solver::parseXMLDatabase(database);
-
-        //Debug
-//        for (auto p = parameters.begin(); p < parameters.end(); p++) {
-//            std::cout << "============================================================================" << std::endl;
-//            std::cout << (*p).solverName << ":" << (*p).solverPrefix << ":" << (*p).internalFile << std::endl;
-//            for (auto pp = (*p).parameters.begin(); pp < (*p).parameters.end(); pp++) {
-//                std::cout << (*pp).first << " = " << (*pp).second << std::endl;
-//            }
-//            std::cout << "============================================================================" << std::endl;
-//        }
-
         Sparse::CreateRowEntryType();
     }
 

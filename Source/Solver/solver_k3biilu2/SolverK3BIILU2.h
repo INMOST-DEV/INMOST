@@ -14,7 +14,7 @@ namespace INMOST {
     public:
         SolverK3BIILU2();
 
-        SolverK3BIILU2(const SolverInterface *other);
+        virtual SolverInterface *Copy(const SolverInterface *other);
 
         virtual void Assign(const SolverInterface *other);
 

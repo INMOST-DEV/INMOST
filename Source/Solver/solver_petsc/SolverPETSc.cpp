@@ -18,7 +18,7 @@ namespace INMOST {
         fill_level = 3;
     }
 
-    SolverPETSc::SolverPETSc(const SolverInterface *other) {
+    SolverInterface *SolverPETSc::Copy(const SolverInterface *other) {
         petscSolversCount++;
         const SolverPETSc *solver = static_cast<const SolverPETSc *>(other);
         this->ksp = NULL;
@@ -29,6 +29,7 @@ namespace INMOST {
             MatrixCopyDataPetsc(&matrix, solver->matrix);
             SolverSetMatrixPetsc(ksp, matrix, false, false);
         }
+        return this;
     }
 
     void SolverPETSc::Assign(const SolverInterface *other) {

@@ -51,7 +51,7 @@ namespace INMOST {
     public:
         SolverTrilinos();
 
-        SolverTrilinos(const SolverInterface *other);
+        virtual SolverInterface *Copy(const SolverInterface *other);
 
         virtual void Assign(const SolverInterface *other);
 

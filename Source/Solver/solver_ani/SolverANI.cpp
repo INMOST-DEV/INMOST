@@ -6,7 +6,7 @@ namespace INMOST {
 
     };
 
-    SolverANI::SolverANI(const SolverInterface *other) {
+    SolverInterface *SolverANI::Copy(const SolverInterface *other) {
         throw INMOST::SolverUnsupportedOperation; //later
     };
 

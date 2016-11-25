@@ -18,7 +18,7 @@ namespace INMOST {
     public:
         SolverSUPERLU();
 
-        SolverSUPERLU(const SolverInterface *other);
+        virtual SolverInterface *Copy(const SolverInterface *other);
 
         virtual void Assign(const SolverInterface *other);
 

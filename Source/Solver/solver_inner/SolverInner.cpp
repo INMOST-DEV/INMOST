@@ -9,7 +9,7 @@ namespace INMOST {
         dtol = 1.0e+100;
     }
 
-    SolverInner::SolverInner(const SolverInterface *other) : SolverInterface(other) {
+    SolverInterface *SolverInner::Copy(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
     }

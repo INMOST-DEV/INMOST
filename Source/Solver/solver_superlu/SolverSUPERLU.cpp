@@ -10,7 +10,7 @@ namespace INMOST {
         a_size = 0;
     }
 
-    SolverSUPERLU::SolverSUPERLU(const SolverInterface *other) {
+    SolverInterface *SolverSUPERLU::Copy(const SolverInterface *other) {
         throw INMOST::SolverUnsupportedOperation;
     }
 

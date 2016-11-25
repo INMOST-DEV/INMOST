@@ -6,13 +6,14 @@ namespace INMOST {
 
     }
 
-    SolverK3BIILU2::SolverK3BIILU2(const SolverInterface *other) {
+    SolverInterface *SolverK3BIILU2::Copy(const SolverInterface *other) {
         const SolverK3BIILU2 *k3other = static_cast<const SolverK3BIILU2 *>(other);
         SolverCopyDataK3biilu2(&solver_data, k3other->solver_data, k3other->communicator);
         if (k3other->matrix_data != NULL) {
             MatrixCopyDataK3biilu2(&matrix_data, k3other->matrix_data);
             SolverSetMatrixK3biilu2(solver_data, matrix_data, false, false);
         }
+        return this;
     }
 
     void SolverK3BIILU2::Assign(const SolverInterface *other) {

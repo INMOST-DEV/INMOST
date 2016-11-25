@@ -31,7 +31,7 @@ namespace INMOST {
     public:
         SolverInterface() {};
 
-        SolverInterface(const SolverInterface *other) {};
+        virtual SolverInterface *Copy(const SolverInterface *other) = 0;
 
         virtual void Assign(const SolverInterface *other) = 0;
 

@@ -15,7 +15,7 @@ namespace INMOST {
     public:
         SolverANI();
 
-        SolverANI(const SolverInterface *other);
+        virtual SolverInterface *Copy(const SolverInterface *other);
 
         virtual void Assign(const SolverInterface *other);
 
