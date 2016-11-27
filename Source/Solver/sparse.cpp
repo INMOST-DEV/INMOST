@@ -50,153 +50,6 @@ namespace INMOST {
         }
 
 ////////class RowMerger
-<<<<<<< HEAD
-
-        RowMerger::RowMerger() : Sorted(true), Nonzeros(0) {}
-
-        INMOST_DATA_REAL_TYPE &RowMerger::operator[](INMOST_DATA_ENUM_TYPE pos) {
-            if (LinkedList[pos + 1].first != UNDEF) return LinkedList[pos + 1].second;
-            else {
-                INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
-                if (Sorted) {
-                    next = index;
-                    while (next < pos + 1) {
-                        index = next;
-                        next = LinkedList[index].first;
-                    }
-                    assert(index < pos + 1);
-                    assert(pos + 1 < next);
-                    ++Nonzeros;
-                    LinkedList[index].first = pos + 1;
-                    LinkedList[pos + 1].first = next;
-                    return LinkedList[pos + 1].second;
-                } else {
-                    INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
-                    ++Nonzeros;
-                    LinkedList[pos + 1].first = LinkedList[index].first;
-                    LinkedList[index].first = pos + 1;
-                    return LinkedList[pos + 1].second;
-                }
-            }
-        }
-
-        INMOST_DATA_REAL_TYPE RowMerger::operator[](INMOST_DATA_ENUM_TYPE pos) const {
-            if (LinkedList[pos + 1].first != UNDEF) return LinkedList[pos + 1].second;
-            else throw -1;
-        }
-
-        RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted)
-                : Sorted(Sorted), Nonzeros(0),
-                  LinkedList(interval_begin, interval_end + 1, Row::make_entry(UNDEF, 0.0)) {
-            LinkedList.begin()->first = EOL;
-        }
-
-        void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool _Sorted) {
-            LinkedList.set_interval_beg(interval_begin);
-            LinkedList.set_interval_end(interval_end + 1);
-            std::fill(LinkedList.begin(), LinkedList.end(), Row::make_entry(UNDEF, 0.0));
-            LinkedList.begin()->first = EOL;
-            Nonzeros = 0;
-            Sorted = _Sorted;
-        }
-
-#if defined(USE_SOLVER)
-
-        void RowMerger::Resize(Matrix &A, bool _Sorted) {
-            INMOST_DATA_ENUM_TYPE mbeg, mend;
-            A.GetInterval(mbeg, mend);
-            Resize(mbeg, mend, _Sorted);
-        }
-
-        RowMerger::RowMerger(Matrix &A, bool Sorted) : Sorted(Sorted), Nonzeros(0) {
-            INMOST_DATA_ENUM_TYPE mbeg, mend;
-            A.GetInterval(mbeg, mend);
-            LinkedList.set_interval_beg(mbeg);
-            LinkedList.set_interval_end(mend + 1);
-            std::fill(LinkedList.begin(), LinkedList.end(), Row::make_entry(UNDEF, 0.0));
-            LinkedList.begin()->first = EOL;
-        }
-
-#endif
-
-        RowMerger::~RowMerger() {}
-
-        void RowMerger::Clear() {
-            INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, j;
-            LinkedList.begin()->first = EOL;
-            while (i != EOL) {
-                j = LinkedList[i].first;
-                LinkedList[i].first = UNDEF;
-                LinkedList[i].second = 0.0;
-                i = j;
-            }
-            Nonzeros = 0;
-        }
-
-        void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, Row &r, bool PreSortRow) {
-            if (Sorted && PreSortRow) std::sort(r.Begin(), r.End());
-            //if( Nonzeros != 0 ) printf("nnz %d link %p proc %d\n",Nonzeros,this,omp_get_thread_num());
-            assert(Nonzeros == 0); //Linked list should be empty
-            assert(LinkedList.begin()->first == EOL); //again check that list is empty
-            INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
-            Row::iterator it = r.Begin(), jt;
-            while (it != r.End()) {
-                LinkedList[index].first = it->first + 1;
-                LinkedList[it->first + 1].first = EOL;
-                LinkedList[it->first + 1].second = it->second * coef;
-                index = it->first + 1;
-                ++Nonzeros;
-                jt = it;
-                ++it;
-                assert(!Sorted || it == r.End() || jt->first < it->first);
-            }
-        }
-
-        void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, Row &r, bool PreSortRow) {
-            if (Sorted && PreSortRow) std::sort(r.Begin(), r.End());
-            INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
-            Row::iterator it = r.Begin(), jt;
-            while (it != r.End()) {
-                if (LinkedList[it->first + 1].first != UNDEF)
-                    LinkedList[it->first + 1].second += coef * it->second;
-                else if (Sorted) {
-                    next = index;
-                    while (next < it->first + 1) {
-                        index = next;
-                        next = LinkedList[index].first;
-                    }
-                    assert(index < it->first + 1);
-                    assert(it->first + 1 < next);
-                    LinkedList[index].first = it->first + 1;
-                    LinkedList[it->first + 1].first = next;
-                    LinkedList[it->first + 1].second = coef * it->second;
-                    ++Nonzeros;
-                } else {
-                    LinkedList[it->first + 1].first = LinkedList[index].first;
-                    LinkedList[it->first + 1].second = coef * it->second;
-                    LinkedList[index].first = it->first + 1;
-                    ++Nonzeros;
-                }
-                jt = it;
-                ++it;
-                assert(!Sorted || it == r.End() || jt->first < it->first);
-            }
-        }
-
-        void RowMerger::RetriveRow(Row &r) {
-            r.Resize(Nonzeros);
-            INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, k = 0;
-            while (i != EOL) {
-                if (LinkedList[i].second) {
-                    r.GetIndex(k) = i - 1;
-                    r.GetValue(k) = LinkedList[i].second;
-                    ++k;
-                }
-                i = LinkedList[i].first;
-            }
-            r.Resize(k);
-        }
-=======
 		
 		RowMerger::RowMerger() : Sorted(true), Nonzeros(0), IntervalBeg(0), IntervalEnd(0) {}
 		
@@ -447,7 +300,6 @@ namespace INMOST {
 			}
 			r.Resize(k);
 		}
->>>>>>> INMOST-DEV/master
 ////////class HessianRow
 
         void HessianRow::RowVec(INMOST_DATA_REAL_TYPE alpha, const Row &rU, INMOST_DATA_REAL_TYPE beta, Row &rJ) const {
@@ -1200,32 +1052,6 @@ namespace INMOST {
         bool LockService::Empty() const {return locks.empty();}
         void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = locks.get_interval_beg(); end = locks.get_interval_end();}
 #else
-<<<<<<< HEAD
-
-        bool LockService::HaveLocks() const { return false; }
-
-        bool LockService::Lock(INMOST_DATA_ENUM_TYPE row) { return true; }
-
-        bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row) { return true; }
-
-        bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row) { return true; }
-
-        void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) {}
-
-        void LockService::DestroyLocks() {}
-
-        INMOST_DATA_ENUM_TYPE  LockService::GetFirstIndex() const { return 0; }
-
-        INMOST_DATA_ENUM_TYPE  LockService::GetLastIndex() const { return 0; }
-
-        bool LockService::Empty() const { return true; }
-
-        void LockService::GetInterval(INMOST_DATA_ENUM_TYPE &start, INMOST_DATA_ENUM_TYPE &end) const {
-            start = 0;
-            end = 0;
-        }
-
-=======
 		bool LockService::HaveLocks() const {return false;}
         bool LockService::Lock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
         bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
@@ -1236,7 +1062,6 @@ namespace INMOST {
 		INMOST_DATA_ENUM_TYPE  LockService::GetLastIndex() const {return 0;}
 		bool LockService::Empty() const {return true;}
 		void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = 0; end = 0;}
->>>>>>> INMOST-DEV/master
 #endif
 
 

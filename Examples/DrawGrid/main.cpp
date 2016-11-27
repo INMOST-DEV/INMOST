@@ -493,11 +493,7 @@ face2gl DrawFace(Element & f, int mmat, double campos[3])
 		double r = color ? mmat / (double)maxcolor : mmat / (double) maxmat;
 		ret.set_color(1-r,r,1-r,0.25);
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> INMOST-DEV/master
 	for( ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 		ret.add_vert(&(kt->Coords()[0]));
 
@@ -601,20 +597,11 @@ void draw()
 
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
 	int pacef = std::max(1,mesh->FaceLastLocalID()/10000);
-<<<<<<< HEAD
-
-=======
->>>>>>> INMOST-DEV/master
 
 	std::vector<face2gl> polygons;
 
 	if( badfaces )
 	{
-<<<<<<< HEAD
-
-=======
-		
->>>>>>> INMOST-DEV/master
 		for(INMOST_DATA_INTEGER_TYPE it = 0; it < mesh->FaceLastLocalID(); it += (interactive ? pacef : 1)) if( mesh->isValidFace(it) )
 		{
 			Face f = mesh->FaceByLocalID(it);
@@ -754,17 +741,9 @@ void draw()
 				{
 					edges[k].Centroid(cnt);
 					if( mats_tag.isValid() )mats = edges[k].IntegerArray(mats_tag);
-<<<<<<< HEAD
 
 					ElementArray<Node> nodes = edges[k].getNodes();
 
-
-=======
-				
-					ElementArray<Node> nodes = edges[k].getNodes();
-				
-				
->>>>>>> INMOST-DEV/master
 					if( matfilter == 0 || (mats_tag.isValid() && std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
 						if( mats_tag.isValid() ) fill_mat_str(edges[k].LocalID(), mats,str);
@@ -801,15 +780,9 @@ void draw()
 						if( text == 1 || text == 5 ) if(text) printtext(str);
 					}
 				}
-<<<<<<< HEAD
 
 				ElementArray<Face> faces = it->getFaces();
 
-=======
-			
-				ElementArray<Face> faces = it->getFaces();
-			
->>>>>>> INMOST-DEV/master
 				for(unsigned k = 0; k < faces.size(); k++)
 				{
 					if(mats_tag.isValid())mats = faces[k].IntegerArray(mats_tag);
@@ -878,15 +851,9 @@ void draw()
 				//if( edges[k].nbAdjElements(CELL) == 0 )
 				{
 					if(mats_tag.isValid() ) mats = edges[k].IntegerArray(mats_tag);
-<<<<<<< HEAD
 
 					ElementArray<Node> nodes = edges[k].getNodes();
 
-=======
-				
-					ElementArray<Node> nodes = edges[k].getNodes();
-				
->>>>>>> INMOST-DEV/master
 					if( matfilter == 0 || (mats_tag.isValid() &&std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
 						edges[k].Centroid(cnt);
@@ -1075,17 +1042,9 @@ void draw()
 				{
 					edges[k].Centroid(cnt);
 					mats = edges[k].IntegerArray(mats_tag);
-<<<<<<< HEAD
 
 					ElementArray<Node> nodes = edges[k].getNodes();
 
-
-=======
-					
-					ElementArray<Node> nodes = edges[k].getNodes();
-					
-					
->>>>>>> INMOST-DEV/master
 					if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 					{
 						fill_mat_str(edges[k].LocalID(), mats,str);
@@ -1119,15 +1078,9 @@ void draw()
 						if( text == 1 || text == 5 ) if(text) printtext(str);
 					}
 				}
-<<<<<<< HEAD
 
 				ElementArray<Face> faces = it->getFaces();
 
-=======
-				
-				ElementArray<Face> faces = it->getFaces();
-				
->>>>>>> INMOST-DEV/master
 				for(unsigned k = 0; k < faces.size(); k++)
 				{
 					mats = faces[k].IntegerArray(mats_tag);
@@ -1193,15 +1146,9 @@ void draw()
 				{
 					Storage::integer_array mats = it->IntegerArray(mats_tag);
 					Storage::real cnt[3];
-<<<<<<< HEAD
 
 					ElementArray<Node> nodes = it->getNodes();
 
-=======
-				
-					ElementArray<Node> nodes = it->getNodes();
-				
->>>>>>> INMOST-DEV/master
 					if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 					{
 						it->Centroid(cnt);
@@ -1250,24 +1197,14 @@ void draw()
 					Storage::integer_array mats;
 					Storage::real cnt[3];
 					ElementArray<Edge> edges = it->getEdges();
-<<<<<<< HEAD
 
-=======
-				
->>>>>>> INMOST-DEV/master
 					for(unsigned k = 0; k < edges.size(); k++)
 					//if( edges[k].nbAdjElements(CELL) == 0 )
 					{
 						mats = edges[k].IntegerArray(mats_tag);
-<<<<<<< HEAD
 
 						ElementArray<Node> nodes = edges[k].getNodes();
 
-=======
-					
-						ElementArray<Node> nodes = edges[k].getNodes();
-					
->>>>>>> INMOST-DEV/master
 						if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 						{
 							edges[k].Centroid(cnt);
@@ -1364,15 +1301,9 @@ void draw()
 			//if( it->nbAdjElements(CELL) == 0 )
 			{
 				Storage::real cnt[3];
-<<<<<<< HEAD
-
-				ElementArray<Node> nodes = it->getNodes();
-
-=======
 				
 				ElementArray<Node> nodes = it->getNodes();
-				
->>>>>>> INMOST-DEV/master
+
 				{
 					glBegin(GL_LINES);
 					glVertex3dv(&nodes[0].Coords()[0]);
@@ -1390,11 +1321,7 @@ void draw()
 				Storage::integer_array mats;
 				Storage::real cnt[3];
 				ElementArray<Edge> edges = it->getEdges();
-<<<<<<< HEAD
 
-=======
-				
->>>>>>> INMOST-DEV/master
 				for(unsigned k = 0; k < edges.size(); k++)
 				{
 					ElementArray<Node> nodes = edges[k].getNodes();
@@ -1607,11 +1534,8 @@ void draw()
 			if( show_cell != -1 )
 			{
 				it = mesh->ElementByLocalID(CELL,show_cell);
-<<<<<<< HEAD
+
 				if( !it.isValid() )
-=======
-				if( !it.isValid() ) 
->>>>>>> INMOST-DEV/master
 				{
 					std::cout << "cell " << show_cell << " not accepted " << std::endl;
 					show_cell = -1;
@@ -1626,11 +1550,8 @@ void draw()
 			if( show_face != -1 )
 			{
 				it = mesh->ElementByLocalID(FACE,show_face);
-<<<<<<< HEAD
+
 				if( !it.isValid() )
-=======
-				if( !it.isValid() ) 
->>>>>>> INMOST-DEV/master
 				{
 					std::cout << "face " << show_face << " not accepted " << std::endl;
 					show_face = -1;

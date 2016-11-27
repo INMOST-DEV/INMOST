@@ -54,11 +54,7 @@ int main(int argc,char ** argv)
         std::cout << "J: "; J.Print();
         return 0;
          */
-<<<<<<< HEAD
 		if( argc > 2 )
-=======
-		if( argc > 2 ) 
->>>>>>> INMOST-DEV/master
 		{
 			if( std::string(argv[2]) == "MFD" )
 				rt0 = false;
@@ -87,13 +83,7 @@ int main(int argc,char ** argv)
 			std::cout << "Running MHFE RT0" << std::endl;
 		else
 			std::cout << "Running MFD" << std::endl;
-<<<<<<< HEAD
 
-
-=======
-        
-        
->>>>>>> INMOST-DEV/master
 #if defined(USE_PARTITIONER)
         if (m->GetProcessorsNumber() > 1 )//&& !repartition) // Currently only non-distributed meshes are supported by Inner_RCM partitioner
         {
@@ -207,17 +197,11 @@ int main(int argc,char ** argv)
 				Mesh * mesh = m;
                 Cell cell = m->CellByLocalID(q);
 				ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-<<<<<<< HEAD
-				int NF = (int)faces.size(); //number of faces;
-				rMatrix W(NF,NF);
 
-				if( cell->GetGeometricType() == Element::Tet && rt0 ) // RT0 consturction of W matrix
-=======
 				int NF = (int)faces.size(); //number of faces;	
 				rMatrix W(NF,NF);
 				
-				if( cell->GetGeometricType() == Element::Tet && rt0 ) // RT0 consturction of W matrix 
->>>>>>> INMOST-DEV/master
+				if( cell->GetGeometricType() == Element::Tet && rt0 ) // RT0 consturction of W matrix
 				{
 					double V = cell.Volume();
 					double dN[12];
@@ -234,17 +218,10 @@ int main(int argc,char ** argv)
 					double xyz_j[3];
 					int i, j,k,Z;
 					double w,l,m, J_det,x,y,z;
-<<<<<<< HEAD
 
-
-					rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
-					rMatrix K_inverse (3,3); // inverse of permeability
-=======
-					
-						
 					rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
 					rMatrix K_inverse (3,3); // inverse of permeability 
->>>>>>> INMOST-DEV/master
+
 					K_inverse= K.Invert(true).first;
 					// gauss points for intgration
 					gauss_pt_xyz[0]=(5.0+3.0*(sqrt(5.0)))/20.0;
@@ -263,32 +240,12 @@ int main(int argc,char ** argv)
 					gauss_pt_xyz[10]=(5.0-(sqrt(5.0)))/20.0;
 					gauss_pt_xyz[11]=(5.0-(sqrt(5.0)))/20.0;
 
-<<<<<<< HEAD
 					// gauss weights
-=======
-					// gauss weights 
->>>>>>> INMOST-DEV/master
 					gauss_wei[0]=  1.0/24.0;
 					gauss_wei[1]=  1.0/24.0;
 					gauss_wei[2]=  1.0/24.0;
 					gauss_wei[3]= 1.0/24.0;
 
-<<<<<<< HEAD
-					// derivative of the finite element shape functions for tetraherdon (local)
-					dN[0]=-1;
-					dN[1]=-1;
-					dN[2]=-1;
-
-					dN[3]=1;
-					dN[4]=0;
-					dN[5]=0;
-
-					dN[6]=0;
-					dN[7]=1;
-					dN[8]=0;
-
-					dN[9]=0;
-=======
 					// derivative of the finite element shape functions for tetraherdon (local) 
 					dN[0]=-1; 
 					dN[1]=-1;
@@ -303,16 +260,11 @@ int main(int argc,char ** argv)
 					dN[8]=0;
 
 					dN[9]=0; 
->>>>>>> INMOST-DEV/master
+
 					dN[10]=0;
 					dN[11]=1;
 
-
-<<<<<<< HEAD
 					// local to reference tranformation
-=======
-					// local to reference tranformation 
->>>>>>> INMOST-DEV/master
 					ElementArray<Node> node(mesh);
 					for(j = 0; j < 4; ++j)
 					{
@@ -320,16 +272,9 @@ int main(int argc,char ** argv)
 						cell_nodes.Subtract(faces[j].getNodes());
 						node.Unite(cell_nodes);
 					}
-<<<<<<< HEAD
 
 					for ( j = 0; j < 4; j++ )
 					{
-=======
-					
-					for ( j = 0; j < 4; j++ )
-					{  
->>>>>>> INMOST-DEV/master
-
 						for ( i = 0; i < 3; i++ )
 							tetra[i+j*3]= node[j].Coords()[i]; // <-- X
 					}
@@ -363,15 +308,9 @@ int main(int argc,char ** argv)
 					J_T[3]=J[1]; J_T[4]=J[4]; J_T[5]=J[7];
 					J_T[6]=J[2]; J_T[7]=J[5]; J_T[8]=J[8];
 
-<<<<<<< HEAD
-					// inverse of K tensor
-					for ( j = 0; j < 3; j++ )
-					{
-=======
 					// inverse of K tensor 
 					for ( j = 0; j < 3; j++ )
-					{  
->>>>>>> INMOST-DEV/master
+					{
 
 						for ( i = 0; i < 3; i++ )
 						{
@@ -389,13 +328,8 @@ int main(int argc,char ** argv)
 						}
 					}
 
-<<<<<<< HEAD
-					for ( i = 0; i < 16; i++)
-					{
-=======
 					for ( i = 0; i < 16; i++) 
-					{ 
->>>>>>> INMOST-DEV/master
+					{
 						B_RT0[i]=0.0;
 					}
 
@@ -403,16 +337,9 @@ int main(int argc,char ** argv)
 
 						for ( j = 0; j < 4; j++) { // column number of output
 
-
-<<<<<<< HEAD
-							for ( Z = 0; Z < 4; Z++) { // GAUSS POINT IN Z DIRECTION
-								x=gauss_pt_xyz[Z*3];
-								y=gauss_pt_xyz[Z*3+1];
-=======
 							for ( Z = 0; Z < 4; Z++) { // GAUSS POINT IN Z DIRECTION 
 								x=gauss_pt_xyz[Z*3];
-								y=gauss_pt_xyz[Z*3+1];		
->>>>>>> INMOST-DEV/master
+								y=gauss_pt_xyz[Z*3+1];
 								z=gauss_pt_xyz[Z*3+2];
 
 
@@ -423,22 +350,17 @@ int main(int argc,char ** argv)
 
 								W_RT0[3]=  2*(-1+x);
 								W_RT0[4]=  2*y;
-<<<<<<< HEAD
+
 								W_RT0[5]=  2*z;
-=======
-								W_RT0[5]=  2*z;  
->>>>>>> INMOST-DEV/master
 
 								W_RT0[6]=  (2*x);///(sqrt(3.0));
 								W_RT0[7]=  2*(-1+y);;///(sqrt(3.0));
 								W_RT0[8]=  (2*z);///(sqrt(3.0));
 
 								W_RT0[9]=  2*x;
-<<<<<<< HEAD
+
 								W_RT0[10]= 2*y;
-=======
-								W_RT0[10]= 2*y; 
->>>>>>> INMOST-DEV/master
+
 								W_RT0[11]= 2*(-1+z);
 
 
@@ -462,11 +384,8 @@ int main(int argc,char ** argv)
 							}
 
 						}
-<<<<<<< HEAD
-					}
-=======
 					}	
->>>>>>> INMOST-DEV/master
+
 					for ( j = 0; j < 4; j++) { // row number of output
 						double sum = 0;
 						for ( i = 0; i < 4; i++) { // column number of output
@@ -496,12 +415,6 @@ int main(int argc,char ** argv)
 					//std::cout << "W inverted" << std::endl;
 
 					//W.Print();
-
-<<<<<<< HEAD
-
-=======
-					
->>>>>>> INMOST-DEV/master
 
 					//scanf("%*c");
 
@@ -552,15 +465,9 @@ int main(int argc,char ** argv)
 					 SV.Print();
 					 std::cout << "Check " << (nKGRAD - SU*SS*SV.Transpose()).FrobeniusNorm() << std::endl;
 					 */
-<<<<<<< HEAD
-
-					int rank = 0; //size of matrix U
-
-=======
                 
 					int rank = 0; //size of matrix U
-                
->>>>>>> INMOST-DEV/master
+
 					{ //Retrive orthogonal to R matrix D
 						//Symmetric orthogonal matrix
 						rMatrix DUD = (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose());
@@ -591,20 +498,12 @@ int main(int argc,char ** argv)
 					//U.Print();
 					//std::cout << "DtR" << std::endl;
 					//(D.Transpose()*R).Print();
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> INMOST-DEV/master
 					U *=(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
 
 					//std::cout << "UDtR" << std::endl;
 					//(U*D.Transpose()*R).Print();
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> INMOST-DEV/master
 					W += D*U*D.Transpose();
 
 
@@ -652,17 +551,9 @@ int main(int argc,char ** argv)
             Automatizator::MakeCurrent(&aut);
             dynamic_variable P(aut,aut.RegisterDynamicTag(tag_P,CELL|FACE)); //register pressure as primary unknown
             aut.EnumerateDynamicTags(); //enumerate all primary variables
-<<<<<<< HEAD
 
             std::cout << "Enumeration done, size " << aut.GetLastIndex() - aut.GetFirstIndex() << std::endl;
 
-
-=======
-            
-            std::cout << "Enumeration done, size " << aut.GetLastIndex() - aut.GetFirstIndex() << std::endl;
-            
-            
->>>>>>> INMOST-DEV/master
             Residual R("",aut.GetFirstIndex(),aut.GetLastIndex());
             Sparse::LockService Locks(aut.GetFirstIndex(),aut.GetLastIndex());
             Sparse::AnnotationService Text(aut.GetFirstIndex(),aut.GetLastIndex());
@@ -711,29 +602,18 @@ int main(int argc,char ** argv)
 
 					for(int k = 0; k < NF; ++k)
 					{
-<<<<<<< HEAD
-
-
-					if (faces[k]->FrontCell().isValid())
-					{
-						Cell cell_n = cell.Neighbour(faces[k]);
-=======
-					
 					
 					if (faces[k]->FrontCell().isValid())
 					{
 						Cell cell_n = cell.Neighbour(faces[k]); 
->>>>>>> INMOST-DEV/master
+
 						ElementArray<Face> faces_n = cell_n->getFaces(); //obtain faces of the cell neighoubr
 					    rMatrix nKGRAD_n(cell_n->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
 						double B_1, B_2, L_1, L_2;
 						int face_n_k;
 
-<<<<<<< HEAD
-                        L_1 =0.0;
-=======
                         L_1 =0.0; 
->>>>>>> INMOST-DEV/master
+
 						B_1= nKGRAD(k,k) ;
 						for(int j = 0; j < NF; ++j)
 						L_1 +=nKGRAD(k,j) ;
@@ -741,11 +621,9 @@ int main(int argc,char ** argv)
 						{
 							face_n_k= j ;
 						}
-<<<<<<< HEAD
-						L_2 =0.0;
-=======
+
 						L_2 =0.0; 
->>>>>>> INMOST-DEV/master
+
 						for(int j = 0; j < NF; ++j)
 						L_2 +=nKGRAD_n(face_n_k,j) ;
 
@@ -766,20 +644,11 @@ int main(int argc,char ** argv)
 					}
 					else {
 						FLUX_MASS(k,0)=0.0;
-<<<<<<< HEAD
 
-=======
-						
->>>>>>> INMOST-DEV/master
 					for(int j = 0; j < NF; ++j)
 						FLUX_MASS(k,0)+= nKGRAD(k,j)* (P(faces[j]) - P(cell)) ;
 					}
 					}
-<<<<<<< HEAD
-
-=======
-				
->>>>>>> INMOST-DEV/master
 
 				//	for(int k = 0; k < NF; ++k)
 				//	{
@@ -790,11 +659,7 @@ int main(int argc,char ** argv)
 				//	for(int j = 0; j < NF; ++j)
 				//	FLUX_MASS(k,0)+= nKGRAD(k,j)* (P(faces[j]) - P(cell_n)) ;
 				//	}
-<<<<<<< HEAD
 
-=======
-					
->>>>>>> INMOST-DEV/master
 	                    for(int k = 0; k < NF; ++k)
                     pF(k,0) = (P(faces[k]) - P(cell));//*faces[k].Area();
                     FLUX = nKGRAD*pF; //fluxes on faces
@@ -850,7 +715,6 @@ int main(int argc,char ** argv)
                 std::cout << "Nonlinear residual: " << R.Norm() << "\t\t" << std::endl;
 
                 if( R.Norm() < 1.0e-4 ) break;
-<<<<<<< HEAD
 
 				//Solver S(Solver::INNER_ILU2);
                 //Solver S(Solver::INNER_MPTILUC);
@@ -860,16 +724,6 @@ int main(int argc,char ** argv)
                 S.SetParameter("drop_tolerance", "1.0e-1");
                 S.SetParameter("reuse_tolerance", "1.0e-2");
 
-=======
-                
-				//Solver S(Solver::INNER_ILU2);
-                //Solver S(Solver::INNER_MPTILUC);
-				Solver S(Solver::SUPERLU);
-				S.SetParameterReal("relative_tolerance", 1.0e-14);
-                S.SetParameterReal("absolute_tolerance", 1.0e-12);
-                S.SetParameterReal("drop_tolerance", 1.0e-1);
-                S.SetParameterReal("reuse_tolerance", 1.0e-2);
->>>>>>> INMOST-DEV/master
                 S.SetMatrix(R.GetJacobian());
                 //std::fill(Update.Begin(),Update.End(),0.0);
                 if( S.Solve(R.GetResidual(),Update) )

@@ -329,12 +329,7 @@ namespace INMOST
 		}
 		if( get_iStream().fail() )
 		{
-<<<<<<< HEAD
-
-			Report("Stream failed while getting the char");
-=======
 			Report("Stream failed while getting the char, state %s",StateName(_state).c_str());
->>>>>>> INMOST-DEV/master
 			WAITNL;
 			_state = Failure;
 		}

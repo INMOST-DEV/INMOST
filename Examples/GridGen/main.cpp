@@ -126,50 +126,6 @@ void CreateNWTetElements(Mesh *m, ElementArray<Node> verts)
     m->CreateCell(verts,sw_face_nodes3,sw_num_nodes3,4); // Create south-west prismatic cell
 }
 
-
-/*      (4)*-------*(6)
-          /|\     /|
-         /   \   / |
-        /  |  \ /  |
-    (5)*-------*(7)|
-       |   |   |   |
-       |       |   |
-       |   |   |   |
-       |(0)*- -|- -*(2)
-       |  / \  |  /
-       |       | /
-       |/     \|/
-    (1)*-------*(3)      */
-void CreateNWTetElements(Mesh *m, ElementArray<Node> verts)
-{
-	// Define prism faces assuming verts are numerated in the way presented above
-	const INMOST_DATA_INTEGER_TYPE ne_face_nodes1[12] = {0,1,5,  5,1,3,   1,0,3, 3,0,5};
-	const INMOST_DATA_INTEGER_TYPE ne_num_nodes1[4]   = {3,3,3,3};
-
-	const INMOST_DATA_INTEGER_TYPE ne_face_nodes2[12] = {0,3,5, 0,7,3, 5,3,7, 0,5,7};
-	const INMOST_DATA_INTEGER_TYPE ne_num_nodes2[4]   = {3,3,3,3};
-
-	const INMOST_DATA_INTEGER_TYPE ne_face_nodes3[12] = {0,7,5, 4,5,7, 0,5,4, 0,4,7};
-	const INMOST_DATA_INTEGER_TYPE ne_num_nodes3[4]   = {3,3,3,3};
-	
-
-	const INMOST_DATA_INTEGER_TYPE sw_face_nodes1[12] = {0,3,7, 2,7,3, 0,7,2, 0,2,3};
-	const INMOST_DATA_INTEGER_TYPE sw_num_nodes1[4]   = {3,3,3,3};
-
-	const INMOST_DATA_INTEGER_TYPE sw_face_nodes2[12] = {0,7,4, 0,2,7, 2,4,7, 0,4,2};
-	const INMOST_DATA_INTEGER_TYPE sw_num_nodes2[4]   = {3,3,3,3};
-
-	const INMOST_DATA_INTEGER_TYPE sw_face_nodes3[12] = {4,6,2, 6,7,2, 4,7,6, 4,2,7};
-	const INMOST_DATA_INTEGER_TYPE sw_num_nodes3[4]   = {3,3,3,3};
-
-	m->CreateCell(verts,ne_face_nodes1,ne_num_nodes1,4); // Create north-east prismatic cell
-	m->CreateCell(verts,ne_face_nodes2,ne_num_nodes2,4); // Create north-east prismatic cell
-	m->CreateCell(verts,ne_face_nodes3,ne_num_nodes3,4); // Create north-east prismatic cell
-	m->CreateCell(verts,sw_face_nodes1,sw_num_nodes1,4); // Create south-west prismatic cell
-	m->CreateCell(verts,sw_face_nodes2,sw_num_nodes2,4); // Create south-west prismatic cell
-	m->CreateCell(verts,sw_face_nodes3,sw_num_nodes3,4); // Create south-west prismatic cell
-}
-
 Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 {
     int procs_per_axis[3] = {1,1,1};
@@ -183,110 +139,6 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
     MPI_Comm_set_errhandler(comm,MPI_ERRORS_RETURN);
     //MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
 #endif
-
-<<<<<<< HEAD
-    rank = m->GetProcessorRank(); // Get the rank of the current process
-    size = m->GetProcessorsNumber(); // Get the number of processors used in communicator comm
-
-    // Compute the configuration of processes connection
-    {
-        int divsize = size;
-        std::vector<int> divs;
-        while( divsize > 1 )
-        {
-            for(int k = 2; k <= divsize; k++)
-                if( divsize % k == 0 )
-                {
-                    divs.push_back(k);
-                    divsize /= k;
-                    break;
-                }
-        }
-        int elements_per_procs[3] = {sizes[0],sizes[1],sizes[2]};
-        for(std::vector<int>::reverse_iterator it = divs.rbegin(); it != divs.rend(); it++)
-        {
-            int * max = std::max_element(elements_per_procs+0,elements_per_procs+3);
-            procs_per_axis[max-elements_per_procs] *= *it;
-            (*max) /= *it;
-        }
-    }
-
-    //rank = proc_coords[2] * procs_per_axis[0] *procs_per_axis[1] + proc_coords[1] * procs_per_axis[0] + proc_coords[0];
-    int proc_coords[3] = {rank % procs_per_axis[0] , rank / procs_per_axis[0] % procs_per_axis[1], rank / (procs_per_axis[0] *procs_per_axis[1]) };
-
-    int localsize[3], localstart[3], localend[3];
-    int avgsize[3] =
-            {
-                    (int)ceil((double)sizes[0]/procs_per_axis[0]),
-                    (int)ceil((double)sizes[1]/procs_per_axis[1]),
-                    (int)ceil((double)sizes[2]/procs_per_axis[2])
-            };
-
-    for(int j = 0; j < 3; j++)
-    {
-        localstart[j] = avgsize[j] * proc_coords[j];
-        if( proc_coords[j] == procs_per_axis[j] - 1 )
-            localsize[j] = sizes[j] - avgsize[j] * (procs_per_axis[j]-1);
-        else localsize[j] = avgsize[j];
-        localend[j] = localstart[j] + localsize[j];
-    }
-
-    // Create i-j-k structure of nodes
-    ElementArray<Node> newverts(m);
-    newverts.reserve(localsize[0]*localsize[1]*localsize[2]);
-
-    for(int i = localstart[0]; i <= localend[0]; i++)
-        for(int j = localstart[1]; j <= localend[1]; j++)
-            for(int k = localstart[2]; k <= localend[2]; k++)
-            {
-                Storage::real xyz[3];
-                xyz[0] = i * 1.0 / (sizes[0]);
-                xyz[1] = j * 1.0 / (sizes[1]);
-                xyz[2] = k * 1.0 / (sizes[2]);
-                newverts.push_back(m->CreateNode(xyz)); // Create node in the mesh with index V_ID(i,j,k)
-            }
-
-    // Create i-j-k structure of elements
-    for(int i = localstart[0]+1; i <= localend[0]; i++)
-        for(int j = localstart[1]+1; j <= localend[1]; j++)
-            for(int k = localstart[2]+1; k <= localend[2]; k++)
-            {
-                // Create local array of eight nodes                           /*      (4)*-------*(6)  */
-                // using representation on the right figure                    /*        /|      /|     */
-                ElementArray<Node> verts(m);                                   /*       /       / |     */
-                verts.push_back(newverts[V_ID(i - 1,j - 1, k - 1)]); // 0      /*      /  |    /  |     */
-                verts.push_back(newverts[V_ID(i - 0,j - 1, k - 1)]); // 1      /*  (5)*-------*(7)|     */
-                verts.push_back(newverts[V_ID(i - 1,j - 0, k - 1)]); // 2      /*     |   |   |   |     */
-                verts.push_back(newverts[V_ID(i - 0,j - 0, k - 1)]); // 3      /*     |       |   |     */
-                verts.push_back(newverts[V_ID(i - 1,j - 1, k - 0)]); // 4      /*     |   |   |   |     */
-                verts.push_back(newverts[V_ID(i - 0,j - 1, k - 0)]); // 5      /*     |(0)*- -|- -*(2)  */
-                verts.push_back(newverts[V_ID(i - 1,j - 0, k - 0)]); // 6      /*     |  /    |  /      */
-                verts.push_back(newverts[V_ID(i - 0,j - 0, k - 0)]); // 7      /*     |       | /       */
-                /*     |/      |/        */
-                // Create cells based on parameter ng                          /*  (1)*-------*(3)      */
-                if (ng == 5)
-                {
-                    CreateNWTetElements(m,verts);
-                }
-                else if (ng == 4) // Create cubic cell
-                {
-                    CreateCubeElement(m,verts);
-                }
-                else if ((i + j) % 2 == 0) // Create two prism cells
-                {
-                    CreateNWPrismElements(m,verts);
-                }
-                else // Two prism cells with different diagonal direction
-                {
-                    CreateNEPrismElements(m,verts);
-                }
-            }
-
-    m->ResolveShared(); // Resolve duplicate nodes
-
-    m->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
-    return m;
-=======
 	rank = m->GetProcessorRank(); // Get the rank of the current process
 	size = m->GetProcessorsNumber(); // Get the number of processors used in communicator comm
 
@@ -388,7 +240,6 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 
 	m->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
 	return m;
->>>>>>> INMOST-DEV/master
 }
 
 int main(int argc, char *argv[])

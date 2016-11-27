@@ -31,17 +31,10 @@ Storage::real dot_prod(Storage::real v1[3], Storage::real v2[3])
 
 Storage::real func(Storage::real x[3], Storage::real tmp)
 {
-<<<<<<< HEAD
-//  	return x[0] + 2 * x[1] + 3 * x[2];
-  double s0 = sin (M_PI * x[0]);
-  double s1 = sin (M_PI * x[1]);
-  double s2 = sin (M_PI * x[2]);
-=======
 	//  	return x[0] + 2 * x[1] + 3 * x[2];
 	double s0 = sin (M_PI * x[0]); 
 	double s1 = sin (M_PI * x[1]);
 	double s2 = sin (M_PI * x[2]);
->>>>>>> INMOST-DEV/master
 	return s0 * s1 * s2;
 	(void) tmp;
 }
@@ -80,13 +73,7 @@ int main(int argc,char ** argv)
 			if( m->GetProcessorRank() == 0 )
 				m->Load(argv[1]); // Load mesh from the serial file format
 		}
-<<<<<<< HEAD
-		BARRIER
-=======
-
 		BARRIER;
->>>>>>> INMOST-DEV/master
-
 		if( m->GetProcessorRank() == 0 ) std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_File): " << Timer()-ttt << std::endl;
 
@@ -99,13 +86,8 @@ int main(int argc,char ** argv)
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
 
 #if defined(USE_PARTITIONER)
-<<<<<<< HEAD
-		if (!repartition)
-    { // currently only non-distributed meshes are supported by Inner_RCM partitioner
-=======
 		if (!repartition) 
 		{ // currently only non-distributed meshes are supported by Inner_RCM partitioner
->>>>>>> INMOST-DEV/master
 			ttt = Timer();
 			Partitioner * p = new Partitioner(m);
 			p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition); // Specify the partitioner
@@ -126,24 +108,13 @@ int main(int argc,char ** argv)
 
 		ttt = Timer();
 		m->AssignGlobalID(CELL | EDGE | FACE | NODE);
-<<<<<<< HEAD
-		BARRIER
-		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;
-=======
 		BARRIER;
-		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;		
->>>>>>> INMOST-DEV/master
+		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;
 		id = m->GlobalIDTag(); // Get the tag of the global ID
 		//m->Save("solution_check_0.vtk");
 		phi = m->CreateTag("Solution",DATA_REAL,CELL,NONE,1); // Create a new tag for the solution phi
 		tensor_K = m->CreateTag("K",DATA_REAL,CELL,NONE,1); // Create a new tag for K tensor
 		//m->Save("solution_check_1.vtk");
-
-
-<<<<<<< HEAD
-
-=======
->>>>>>> INMOST-DEV/master
 		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 			if( cell->GetStatus() != Element::Ghost ) // If the cell is an own one
 				cell->Real(tensor_K) = 1.0; // Store the tensor K value into the tag
@@ -157,18 +128,11 @@ int main(int argc,char ** argv)
 
 
 		ttt = Timer();
-<<<<<<< HEAD
 		Solver S("inner_ilu2"); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		S.SetParameter("absolute_tolerance", "1e-8");
-    Residual R; // Residual vector
-    Sparse::LockService Locks;
-=======
-		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
-		S.SetParameterReal("absolute_tolerance",1e-8);
-		S.SetParameterEnum("schwartz_overlap",2);
-		Residual R; // Residual vector
-		Sparse::LockService Locks;
->>>>>>> INMOST-DEV/master
+		S.SetParameter("schwartz_overlap", "2");
+    	Residual R; // Residual vector
+    	Sparse::LockService Locks;
 		Sparse::Vector Update; // Declare the solution and the right-hand side vectors
 
 		Mesh::GeomParam table;
@@ -181,23 +145,6 @@ int main(int argc,char ** argv)
 		m->PrepareGeometricData(table);
 		//~ BARRIER
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
-
-<<<<<<< HEAD
-    {
-		  Automatizator aut(m);
-      Automatizator::MakeCurrent(&aut);
-      INMOST_DATA_ENUM_TYPE iphi = aut.RegisterDynamicTag(phi,CELL);
-      aut.EnumerateDynamicTags();
-
-		  // Set the indeces intervals for the matrix and vectors
-      R.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
-      Locks.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
-      Update.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
-      //~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
-      dynamic_variable Phi(aut,iphi);
-		  // Solve \nabla \cdot \nabla phi = f equation
-		  //for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
-=======
 		{
 			Automatizator aut(m);
 			Automatizator::MakeCurrent(&aut);
@@ -212,7 +159,6 @@ int main(int argc,char ** argv)
 			dynamic_variable Phi(aut,iphi);
 			// Solve \nabla \cdot \nabla phi = f equation
 			//for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
->>>>>>> INMOST-DEV/master
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
@@ -278,45 +224,6 @@ int main(int argc,char ** argv)
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-<<<<<<< HEAD
-      for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
-      {
-        Cell cell = Cell(m,ComposeCellHandle(icell));
-			  if( cell->GetStatus() != Element::Ghost )
-				  R[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
-      }
-		  BARRIER
-		  if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
-
-		  m->RemoveGeometricData(table); // Clean the computed geometric data
-
-		  if( argc > 3 ) // Save the matrix and RHS if required
-		  {
-			  ttt = Timer();
-        R.GetJacobian().Save(std::string(argv[2])); // "A.mtx"
-        R.GetResidual().Save(std::string(argv[3])); // "b.rhs"
-			  BARRIER
-			  if( m->GetProcessorRank() == 0 ) std::cout << "Save matrix \"" << argv[2] << "\" and RHS \"" << argv[3] << "\": " << Timer()-ttt << std::endl;
-		  }
-
-		  ttt = Timer();
-
-      S.SetMatrix(R.GetJacobian()); // Compute the preconditioner for the original matrix
-      S.Solve(R.GetResidual(),Update);   // Solve the linear system with the previously computted preconditioner
-
-		  BARRIER
-		  if( m->GetProcessorRank() == 0 )
-      {
-        std::cout << S.Residual() << " " << S.Iterations() << " " << S.ReturnReason() << std::endl;
-        std::cout << "Solve system: " << Timer()-ttt << std::endl;
-      }
-
-		  ttt = Timer();
-
-      Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
-
-		  Storage::real err_C = 0.0, err_L2 = 0.0;
-=======
 			for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
 			{
 				Cell cell = Cell(m,ComposeCellHandle(icell));
@@ -345,7 +252,7 @@ int main(int argc,char ** argv)
 			BARRIER;
 			if( m->GetProcessorRank() == 0 ) 
 			{
-				std::cout << S.Residual() << " " << S.Iterations() << " " << S.GetReason() << std::endl;
+				std::cout << S.Residual() << " " << S.Iterations() << " " << S.ReturnReason() << std::endl;
 				std::cout << "Solve system: " << Timer()-ttt << std::endl;
 			}
 
@@ -354,7 +261,6 @@ int main(int argc,char ** argv)
 			Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
 
 			Storage::real err_C = 0.0, err_L2 = 0.0;
->>>>>>> INMOST-DEV/master
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
