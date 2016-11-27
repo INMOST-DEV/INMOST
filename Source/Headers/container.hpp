@@ -1040,6 +1040,7 @@ namespace INMOST
 		iterator find(IndType ind)
 		{
 			iterator k = lower_bound(ind);
+			if( k == end() ) return end();
 			if( k->first == ind ) return k;
 			return end();
 		}

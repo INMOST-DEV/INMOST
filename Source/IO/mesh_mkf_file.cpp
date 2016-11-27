@@ -8,10 +8,10 @@
 
 namespace INMOST
 {
-  // mesh format by Mohammad Karimi-Fard
-  void Mesh::LoadMKF(std::string File)
-  {
-    int verbosity = 0;
+	// mesh format by Mohammad Karimi-Fard
+	void Mesh::LoadMKF(std::string File)
+	{
+		int verbosity = 0;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "VERBOSITY" )
@@ -51,6 +51,9 @@ namespace INMOST
 		std::vector<HandleType> newnodes;
 		std::vector<HandleType> newpolygon;
 		std::vector<HandleType> newpolyhedron;
+		std::vector<INMOST_DATA_REAL_TYPE> poro_zones;
+		std::vector<INMOST_DATA_REAL_TYPE> factor_zones;
+		std::vector<INMOST_DATA_REAL_TYPE> perm_zones;
 		ElementArray<ElementSet> newsets(this);
 		ElementArray<Node> f_nodes(this);
 		ElementArray<Face> c_faces(this);
@@ -58,21 +61,26 @@ namespace INMOST
 		newnodes.resize(nbnodes);
 		newpolygon.resize(nbpolygon);
 		newpolyhedron.resize(nbpolyhedra);
+		poro_zones.resize(nbzones);
+		factor_zones.resize(nbzones);
+		perm_zones.resize(nbzones*9);
+		/*
 		newsets.resize(nbzones);
 		if( verbosity > 0 ) printf("Creating %d sets for zones.\n",nbzones);
 		report_pace = std::max<int>(nbzones/250,1);
 		for(int i = 0; i < nbzones; i++)
 		{
-			std::stringstream str;
-			str << "ZONE_" << i << "_SET";
-			newsets[i] = CreateSet(str.str()).first;
-			newsets[i]->Integer(zone) = i;
-			if( verbosity > 1 &&  i % report_pace == 0 )
-			{
-				printf("sets %3.1f%%\r",(i*100.0)/(1.0*nbzones));
-				fflush(stdout);
-			}
+		std::stringstream str;
+		str << "ZONE_" << i << "_SET";
+		newsets[i] = CreateSetUnique(str.str()).first;
+		newsets[i]->Integer(zone) = i;
+		if( verbosity > 1 &&  i % report_pace == 0 )
+		{
+		printf("sets %3.1f%%\r",(i*100.0)/(1.0*nbzones));
+		fflush(stdout);
 		}
+		}
+		*/
 		if( verbosity > 0 ) printf("Reading %d nodes.\n",nbnodes);
 		report_pace = std::max<int>(nbnodes/250,1);
 		for(int i = 0; i < nbnodes; i++)
@@ -140,7 +148,7 @@ namespace INMOST
 			}
 			Face f = CreateFace(f_nodes).first;
 			f->Integer(zone) = num;
-			if( num >= 0 ) newsets[num]->PutElement(f);
+			//if( num >= 0 ) newsets[num]->PutElement(f);
 			newpolygon[i] = f->GetHandle();
 			f_nodes.clear();
 
@@ -186,7 +194,7 @@ namespace INMOST
 			Cell c = CreateCell(c_faces).first;
 			c->Integer(zone) = num;
 			newpolyhedron[i] = c->GetHandle();
-			if( num >= 0 ) newsets[num]->PutElement(newpolyhedron[i]);
+			//if( num >= 0 ) newsets[num]->PutElement(newpolyhedron[i]);
 			c_faces.clear();
 
 			if( verbosity > 1 &&  i % report_pace == 0 )
@@ -250,19 +258,44 @@ namespace INMOST
 				//just copy
 				memcpy(K,readK,sizeof(Storage::real)*9);
 			}
+			/*
 			for(ElementSet::iterator it = newsets[num]->Begin(); it != newsets[num]->End(); ++it)
 			{
-				it->Real(volume_factor) = vfac;
-				it->Real(porosity) = poro;
-				memcpy(it->RealArray(permiability).data(),K,sizeof(Storage::real)*9);
+			it->Real(volume_factor) = vfac;
+			it->Real(porosity) = poro;
+			memcpy(it->RealArray(permiability).data(),K,sizeof(Storage::real)*9);
 			}
+			*/
+			poro_zones[num] = poro;
+			factor_zones[num] = vfac;
+			for(int l = 0; l < 9; ++l)
+				perm_zones[num*9+l] = K[l];
 			if( verbosity > 1 &&  i % report_pace == 0 )
 			{
 				printf("data %3.1f%%\r",(i*100.0)/(1.0*nbzones));
 				fflush(stdout);
 			}
 		}
-
+		for(int i = 0; i < nbpolygon; ++i)
+		{
+			int z = Integer(newpolygon[i],zone);
+			if( z >= 0 )
+			{
+				Real(newpolygon[i],volume_factor) = factor_zones[z];
+				Real(newpolygon[i],porosity) = poro_zones[z];
+				memcpy(RealArray(newpolygon[i],permiability).data(),&perm_zones[z*9],sizeof(Storage::real)*9);
+			}
+		}
+		for(int i = 0; i < nbpolyhedra; ++i)
+		{
+			int z = Integer(newpolyhedron[i],zone);
+			if( z >= 0 )
+			{
+				Real(newpolyhedron[i],volume_factor) = factor_zones[z];
+				Real(newpolyhedron[i],porosity) = poro_zones[z];
+				memcpy(RealArray(newpolyhedron[i],permiability).data(),&perm_zones[z*9],sizeof(Storage::real)*9);
+			}
+		}
 		//TEMPORARY
 		//for(int i = 0; i < nbzones; i++) newsets[i]->Delete();
 

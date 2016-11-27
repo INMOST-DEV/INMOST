@@ -774,6 +774,7 @@ namespace INMOST
 						}
 						if( *ret < 0.0 ) //a robust algorithm that can handle unoriented cell
 						 */
+						if( !faces.empty() )
 						{
 							//real was = *ret/3.0;
 							*ret = 0;
@@ -1165,7 +1166,7 @@ namespace INMOST
 	bool Face::CheckNormalOrientation() const
 	{
 		Mesh * mesh = GetMeshLink();
-		integer dim = mesh->GetDimensions();
+        //integer dim = mesh->GetDimensions();
 		Cell c1 = BackCell();
 		if( c1.isValid() )
 		{
@@ -1270,7 +1271,7 @@ namespace INMOST
 					cnt[r] = cnt[r]-ccnt[r];
 				measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(cnt,nrm,3);
 			}
-			bool have_rev = cur->GetPrivateMarker(rev);
+            //bool have_rev = cur->GetPrivateMarker(rev);
 			data.RemPrivateMarker(rev);
 			mesh->ReleasePrivateMarker(rev);
 			if( (measure < 0 ))// && !have_rev) || (measure > 0 && have_rev))
@@ -1747,7 +1748,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-			for(integer it = 0; it < FaceLastLocalID(); ++it)
+			for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
 			{
 				Face face = FaceByLocalID(it);
 				if( face->Boundary() ) face->SetMarker(boundary_marker);

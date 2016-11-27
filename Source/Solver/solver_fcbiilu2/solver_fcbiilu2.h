@@ -34,7 +34,7 @@ bool SolverSolveFcbiilu2(void * data, void * rhs_data, void * sol_data);
 int SolverIterationNumberFcbiilu2(void * data);
 double SolverResidualNormFcbiilu2(void * data);
 void SolverAddOtherStatFcbiilu2(void * data, unsigned int * pivmod, double * prdens, double * t_prec, double * t_iter);
-//#endif //USE_FCSOLVER_BIILU2
+//#endif //USE_SOLVER_FCBIILU2
 
 
 #endif //SOLVER_FCBIILU2_H_INCLUDED

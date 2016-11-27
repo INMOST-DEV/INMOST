@@ -358,11 +358,11 @@ namespace INMOST
 		/// @param invert_mask if true then those are selected on wich marker is not set
 		/// @return array of elements
 		virtual ElementArray<Element>     getAdjElements          (ElementType etype, MarkerType mask, bool invert_mask = false) const;  //unordered
-		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
-		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType mask = 0, bool invert_mask = false) const;
+		ElementArray<Element>       BridgeAdjacencies       (ElementType Bridge, ElementType Dest, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Node>          BridgeAdjacencies2Node  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Edge>          BridgeAdjacencies2Edge  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Face>          BridgeAdjacencies2Face  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
+		ElementArray<Cell>          BridgeAdjacencies2Cell  (ElementType Bridge, MarkerType bridge_mask = 0, bool bridge_invert = false, MarkerType target_mask = 0, bool target_invert = false) const;
 		/// Retrieve all the nodes of the element.
 		///
 		/// For a node returns itself.
@@ -441,7 +441,15 @@ namespace INMOST
 		bool                        Boundary                () const;
 		bool                        Planarity               () const; // check that all nodes lay on one plane
 		//implemented in modify.cpp
-		bool                        Hide                    () const; // if true then element was hidden, works only inside BeginModification and EndModification, on EndModification all Hidden elements are deleted
+		/// If the function returns true then element was hidden,
+		/// works only inside BeginModification and EndModification,
+		/// on EndModification all Hidden elements are deleted.
+		/// \todo Probably have to check normal orientation after hiding a back cell for a face.
+		bool                        Hide                    () const;
+		/// If the function returns true then element was recovered
+		/// from hidden state, works only inside BeginModification
+		/// and EndModification.
+		/// \todo Probably have to check normal orientation after recovering a back cell for a face.
 		bool                        Show                    () const; // if true then element was recovered
 		/// Remove element from mesh.
 		/// If you call this function inside modification phase, see Mesh::BeginModification and Mesh::EndModification,
@@ -910,7 +918,9 @@ namespace INMOST
 		/// This is automatically checked for if you activate NEED_TEST_CLOSURE
 		/// in Mesh::SetTopologyCheck.
 		/// @return True if faces of the cell form the closed set, false otherwise.
-		bool                        Closure                 () const; // test integrity of cell
+		bool                        Closure                 () const;
+		/// For each adjacent cell make me a front cell and fix normal orientation accordingly.
+		void                        SwapBackCell            () const;
 	};
 
 	///
@@ -1287,8 +1297,9 @@ namespace INMOST
 		__INLINE const void *               MGetDenseLink       (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE void *                     MGetDenseLink       (HandleType h, const Tag & t) {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE const void *               MGetLink            (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
-		__INLINE void *                     MGetLink            (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) q = calloc(1,t.GetRecordSize()); return q;}}
-    void                                Init                (std::string name);
+		__INLINE void *                     MGetLink            (HandleType h, const Tag & t) {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else {void * & q = MGetSparseLink(h,t); if( q == NULL ) AllocateSparseData(q,t); return q;}}
+		void                                AllocateSparseData  (void * & q, const Tag & t);
+		void                                Init                (std::string name);
 	public:
 		/// Remove all data and all elements from the mesh
 		/// Reset geometry service and topology check flags
@@ -2962,9 +2973,18 @@ namespace INMOST
 	public:
 		/// Set file option.
 		/// Current availible file options:
-		/// - "VTK_GRID_DIMS" - set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
-		/// - "VERBOSITY"     - set "2" for progress messages, "1" for reports, "0" for silence
-		/// - "ECL_SPLIT_GLUED" - set "TRUE" to triangulate faces of the blocks that degenerate on three pillars.
+		/// - "VERBOSITY"        - Set "2" for progress messages, "1" for reports, "0" for silence
+		///
+		/// - "VTK_GRID_DIMS"    - Set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
+		///                        or "AUTO" for automatic detection.
+		/// - "VTK_OUTPUT_FACES" - Set "1" for vtk output of values on faces
+		///
+		/// - "ECL_SPLIT_GLUED"  - Set "TRUE" to triangulate faces of the blocks that degenerate on three pillars.
+		/// - "ECL_CURVILINEAR"  - Set "TRUE" to make edges curvilinear on non-flat faces, helps resolve weird geometry,
+		///                        right now this is "TRUE" by default since results are much better.
+		/// - "ECL_PROJECT_PERM" - Set "TRUE" to project permeability tensor from grid block coordinates
+		///                        into global coordinates. Otherwise the tensor is considered to be
+		///                        defined on global coordinates.
 		///
 		/// \todo
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write

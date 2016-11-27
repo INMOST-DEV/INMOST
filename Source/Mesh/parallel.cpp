@@ -179,67 +179,68 @@ namespace INMOST
 
 	void Mesh::SynchronizeMarker(MarkerType marker, ElementType mask, SyncBitOp op)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		if( m_state == Mesh::Parallel )
 		{
 			Tag t = CreateTag("TEMP_SYNC_MARKER",DATA_BULK,mask,mask,1);
-
+			
 			//workaround for old gcc compiler
 			const Element::Status SGhost = Element::Ghost;
 			const Element::Status SAny = Element::Any;
 			Element::Status Expr = (Element::Shared | ((op != SYNC_BIT_SET) ? SGhost : SAny));
-
+			
 			for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 				if( it->GetMarker(marker) && (it->GetStatus() & Expr) )
 					it->Bulk(t) = 1;
-
+			
 			
 			
 			switch(op)
 			{
-			case SYNC_BIT_SET:
-				ExchangeData(t,mask,0);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() == Element::Ghost )
+				case SYNC_BIT_SET:
+					ExchangeData(t,mask,0);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( it->HaveData(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						if( it->GetStatus() == Element::Ghost )
+						{
+							if( it->HaveData(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						}
 					}
-				}
-				break;
-			case SYNC_BIT_OR:
-				ReduceData(t,mask,0,UnpackSyncMarkerOR);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+					break;
+				case SYNC_BIT_OR:
+					ReduceData(t,mask,0,UnpackSyncMarkerOR);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( !it->GetMarker(marker) && it->HaveData(t) ) it->SetMarker(marker);
+						if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+						{
+							if( !it->GetMarker(marker) && it->HaveData(t) ) it->SetMarker(marker);
+						}
 					}
-				}
-				break;
-			case SYNC_BIT_AND:
-				ReduceData(t,mask,0,UnpackSyncMarkerAND);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() & (Element::Ghost | Element::Shared))
+					break;
+				case SYNC_BIT_AND:
+					ReduceData(t,mask,0,UnpackSyncMarkerAND);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						if( it->GetStatus() & (Element::Ghost | Element::Shared))
+						{
+							if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						}
 					}
-				}
-				break;
-			case SYNC_BIT_XOR:
-				ReduceData(t,mask,0,UnpackSyncMarkerXOR);
-				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
-				{
-					if( it->GetStatus() & (Element::Ghost | Element::Shared))
+					break;
+				case SYNC_BIT_XOR:
+					ReduceData(t,mask,0,UnpackSyncMarkerXOR);
+					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
-						if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						if( it->GetStatus() & (Element::Ghost | Element::Shared))
+						{
+							if( it->HaveData(t) && it->Bulk(t) ) it->SetMarker(marker); else it->RemMarker(marker);
+						}
 					}
-				}
-				break;
+					break;
 			}
 			
-
+			
 			DeleteTag(t,mask);
 		}
 #else//USE_MPI
@@ -247,29 +248,34 @@ namespace INMOST
 		(void) mask;
 		(void) op;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	ElementType Mesh::SynchronizeElementType(ElementType etype)
 	{
+		ENTER_FUNC();
 		ElementType etypeout = etype;
 #if defined(USE_MPI)
-		MPI_Allreduce(&etype,&etypeout,1,INMOST_MPI_DATA_BULK_TYPE,MPI_BOR,GetCommunicator());
+		REPORT_MPI(MPI_Allreduce(&etype,&etypeout,1,INMOST_MPI_DATA_BULK_TYPE,MPI_BOR,GetCommunicator()));
 #endif//USE_MPI
 		return etypeout;
 	}
 	Storage::integer Mesh::TotalNumberOf(ElementType mask)
 	{
+		ENTER_FUNC();
 		Storage::integer number = 0, ret = 0;
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 			if( it->GetStatus() != Element::Ghost ) number++;
 		ret = number;
 #if defined(USE_MPI)
-		MPI_Allreduce(&number,&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&number,&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	Storage::integer Mesh::EnumerateSet(const ElementSet & set, const Tag & num_tag, Storage::integer start, bool define_sparse)
 	{
+		ENTER_FUNC();
 		Storage::integer shift = 0, ret = 0;
 		ElementType mask = CELL | FACE | EDGE | NODE;
 #if defined(USE_MPI)
@@ -277,7 +283,7 @@ namespace INMOST
 		for(ElementSet::iterator it = set.Begin(); it != set.End(); it++)
 			if( it->GetStatus() != Element::Ghost && (define_sparse || it->HaveData(num_tag)) )
 				number++;
-		MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		shift -= number;
 #endif//USE_MPI
 		shift += start;
@@ -290,44 +296,48 @@ namespace INMOST
 		ExchangeData(num_tag,mask,0);
 		ret = shift;
 #if defined(USE_MPI)
-		MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm);
+		REPORT_MPI(MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm));
 		//MPI_Allreduce(&shift,&ret,1,INMOST_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	Storage::integer Mesh::Enumerate(const HandleType * set, enumerator n, const Tag & num_tag, Storage::integer start, bool define_sparse)
 	{
+		ENTER_FUNC();
 		Storage::integer shift = 0, ret = 0;
 		ElementType mask = CELL | FACE | EDGE | NODE;
 #if defined(USE_MPI)
 		Storage::integer number = 0;
 		for(const HandleType * it = set; it != set+n; ++it)
 			if( GetStatus(*it) != Element::Ghost && (define_sparse || HaveData(*it,num_tag))) number++;
-		MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		shift -= number;
 #endif//USE_MPI
 		shift += start;
 		for(const HandleType * it = set; it != set+n; ++it)
 			if( GetStatus(*it) == Element::Owned && (define_sparse || HaveData(*it,num_tag))) Integer(*it,num_tag) = shift++;
-		for(const HandleType * it = set; it != set+n; ++it) 
+		for(const HandleType * it = set; it != set+n; ++it)
 			if( GetStatus(*it) == Element::Shared && (define_sparse || HaveData(*it,num_tag))) Integer(*it,num_tag) = shift++;
 		ExchangeData(num_tag,mask,0);
 		ret = shift;
 #if defined(USE_MPI)
-		MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm);
+		REPORT_MPI(MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm));
 		//MPI_Allreduce(&shift,&ret,1,INMOST_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	Storage::integer Mesh::Enumerate(ElementType mask, Tag num_tag, Storage::integer start, bool define_sparse)
 	{
+		ENTER_FUNC();
 		Storage::integer shift = 0, ret = 0;
 #if defined(USE_MPI)
 		Storage::integer number = 0;
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 			if( it->GetStatus() != Element::Ghost && (define_sparse || it->HaveData(num_tag)) )
 				number++;
-		MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&number,&shift,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		shift -= number;
 #endif//USE_MPI
 		shift += start;
@@ -340,182 +350,217 @@ namespace INMOST
 		ExchangeData(num_tag,mask,0);
 		ret = shift;
 #if defined(USE_MPI)
-		MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm);
+		REPORT_MPI(MPI_Bcast(&ret,1,INMOST_MPI_DATA_INTEGER_TYPE,GetProcessorsNumber()-1,comm));
 		//MPI_Allreduce(&shift,&ret,1,INMOST_DATA_INTEGER_TYPE,MPI_MAX,comm);
 #endif//USE_MPI
+		EXIT_FUNC();
 		return ret;
 	}
 	
 	Storage::real Mesh::Integrate(Storage::real input)
 	{
+		ENTER_FUNC();
 		Storage::real output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
-
+	
+	
 	
 	
 	Storage::integer Mesh::Integrate(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
+	
 	void Mesh::Integrate(Storage::real * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::real,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	void Mesh::Integrate(Storage::integer * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::integer,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
 	
 	Storage::integer Mesh::ExclusiveSum(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = 0;
 #if defined(USE_MPI)
-		MPI_Scan(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Scan(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
 		output -= input;
 #else//USE_MPI
 		(void) input;
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::real Mesh::Integrate(const Tag & t, enumerator entry, ElementType mask)
 	{
+		ENTER_FUNC();
 		Storage::real output = 0, input = 0;
 		for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
-			if( GetStatus(*it) != Element::Ghost && HaveData(*it,t) ) 
+			if( GetStatus(*it) != Element::Ghost && HaveData(*it,t) )
 			{
 				real_array arr = RealArray(*it,t);
 				if( arr.size() > entry ) input += arr[entry];
 			}
 		output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
 #endif//USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::real Mesh::AggregateMax(Storage::real input)
 	{
+		ENTER_FUNC();
 		Storage::real output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::integer Mesh::AggregateMax(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
+	
 	void Mesh::AggregateMax(Storage::real * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::real,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm));
 #else//USE_MPI
 		(void) input;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	void Mesh::AggregateMax(Storage::integer * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::integer,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm));
 #else//USE_MPI
 		(void) input;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	Storage::real Mesh::AggregateMin(Storage::real input)
 	{
+		ENTER_FUNC();
 		Storage::real output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
 	
 	Storage::integer Mesh::AggregateMin(Storage::integer input)
 	{
+		ENTER_FUNC();
 		Storage::integer output = input;
 #if defined(USE_MPI)
-		MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
+		EXIT_FUNC();
 		return output;
 	}
-
+	
 	void Mesh::AggregateMin(Storage::real * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::real,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
 #else//USE_MPI
 		(void) input;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
+	
 	void Mesh::AggregateMin(Storage::integer * input, Storage::integer size)
 	{
+		ENTER_FUNC();
 #if defined(USE_MPI)
 		static dynarray<Storage::integer,64> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm));
 #else//USE_MPI
 		(void) input;
+		(void) size;
 #endif//USE_MPI
+		EXIT_FUNC();
 	}
-
-
+	
+	
 	INMOST_MPI_Comm Mesh::GetCommunicator() const
 	{
 #if defined(USE_MPI)
@@ -867,10 +912,11 @@ namespace INMOST
 				for(integer k = 0; k < dim; k++)
 				{
 					if( bbox0[k] < bbox[k] ) bbox[k] = bbox0[k];
-					if( bbox0[k] > bbox[k+dim] ) bbox[k+dim] = bbox0[k];
+					if( bbox0[k+dim] > bbox[k+dim] ) bbox[k+dim] = bbox0[k+dim];
 				}
 			}
 		}
+		REPORT_VAL("dim",dim);
 		// write down bounding boxes
 		for(integer k = 0; k < dim; k++)
 		{
@@ -1215,7 +1261,7 @@ namespace INMOST
 					REPORT_VAL("time",time);
 					
 					
-					dynarray<Storage::integer,64> result, intersection;
+					
 					
 					for(ElementType current_mask = EDGE; current_mask <= CELL; current_mask = current_mask << 1 )
 					{
@@ -1231,27 +1277,33 @@ namespace INMOST
 						time = Timer();
 						//Determine what processors potentially share the element
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-						for(integer eit = 0; eit < LastLocalID(current_mask); ++eit)
 						{
-							if( isValidElement(current_mask,eit) )
+							dynarray<Storage::integer,64> result, intersection;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+							for(integer eit = 0; eit < LastLocalID(current_mask); ++eit)
 							{
-								Element it = ElementByLocalID(current_mask,eit);
-								determine_my_procs_low(this,it->GetHandle(), result, intersection);
-								Storage::integer_array p = it->IntegerArrayDV(tag_processors);
-								if( result.empty() )
+								if( isValidElement(current_mask,eit) )
 								{
-									p.clear();
-									p.push_back(mpirank);
-									//++owned_elems;
-								}
-								else
-								{
-									p.replace(p.begin(),p.end(),result.begin(),result.end());
-									//if( result.size() == 1 && result[0] == mpirank )
-									//  ++owned_elems;
-									//else ++shared_elems;
+									Element it = ElementByLocalID(current_mask,eit);
+									determine_my_procs_low(this,it->GetHandle(), result, intersection);
+									Storage::integer_array p = it->IntegerArrayDV(tag_processors);
+									if( result.empty() )
+									{
+										p.clear();
+										p.push_back(mpirank);
+										//++owned_elems;
+									}
+									else
+									{
+										p.replace(p.begin(),p.end(),result.begin(),result.end());
+										//if( result.size() == 1 && result[0] == mpirank )
+										//  ++owned_elems;
+										//else ++shared_elems;
+									}
 								}
 							}
 						}
@@ -2188,13 +2240,16 @@ namespace INMOST
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 						INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 						//array_data_send.resize(had_s+s*tag.GetBytesSize());
-            array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
-						GetData(*eit,tag,0,s,&array_data_send[had_s]);
+						if( s )
+						{
+							array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
+							GetData(*eit,tag,0,s,&array_data_send[had_s]);
             //REPORT_VAL("size",s);
             //for(int qq = 0; qq < s; ++qq)
             //{
             //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_send[had_s+qq*tag.GetBytesSize()]));
             //}
+						}
 						if( size == ENUMUNDEF ) array_size_send.push_back(s);
 						++total_packed;
 					}
@@ -2207,9 +2262,12 @@ namespace INMOST
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 					INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 					//array_data_send.resize(had_s+s*tag.GetBytesSize());
-          array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
-					GetData(*eit,tag,0,s,&array_data_send[had_s]);
-          if( size == ENUMUNDEF ) array_size_send.push_back(s);
+					if( s )
+					{
+						array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
+						GetData(*eit,tag,0,s,&array_data_send[had_s]);
+					}
+					if( size == ENUMUNDEF ) array_size_send.push_back(s);
 					++total_packed;
 				}
 			}
@@ -2247,7 +2305,7 @@ namespace INMOST
 		if( tag.GetDataType() == DATA_REFERENCE || tag.GetDataType() == DATA_REMOTE_REFERENCE) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 		REPORT_VAL("TagName",tag.GetTagName());
-		
+		REPORT_VAL("select marker",select);
 #if defined(USE_MPI)
 		if( !buffer.empty() )
 		{
@@ -2262,6 +2320,8 @@ namespace INMOST
 			//assert(recv_mask[0] == mask);//Element types mask is not synchronized among processors, this may lead to nasty errors
 			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&size_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
 			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&data_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			REPORT_VAL("size of size array",size_recv);
+			REPORT_VAL("size of data array",data_recv);
 			array_size_recv.resize(size_recv);
 			array_data_recv.resize(data_recv);
 			if( !array_size_recv.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&array_size_recv[0],static_cast<INMOST_MPI_SIZE>(array_size_recv.size()),INMOST_MPI_DATA_ENUM_TYPE,comm);
@@ -2275,12 +2335,14 @@ namespace INMOST
 					CreateTag(tag.GetTagName(),tag.GetDataType(),ElementTypeFromDim(i),recv_mask[1] & ElementTypeFromDim(i),size);
 				}
 				int total_unpacked = 0;
+				int total_skipped = 0;
 				if( tag.isSparseByDim(i) )
 				{
 					REPORT_VAL("sparse for type",ElementTypeName(ElementTypeFromDim(i)));
 					unsigned count = static_cast<unsigned>(array_size_recv[k++]);
 					if( size == ENUMUNDEF )
 					{
+						REPORT_STR("variable size");
 						for(unsigned j = 0; j < count; j++)
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
@@ -2300,6 +2362,7 @@ namespace INMOST
 					}
 					else
 					{
+						REPORT_STR("fixed size");
 						for(unsigned j = 0; j < count; j++)
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
@@ -2313,28 +2376,40 @@ namespace INMOST
 				}
 				else
 				{
+					REPORT_VAL("dense for type",ElementTypeName(ElementTypeFromDim(i)));
 					if( size == ENUMUNDEF )
 					{
-						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
+						REPORT_STR("variable size");
+						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
 						{
-							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
-							pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
-							//pos += array_size_recv[k]*tag.GetBytesSize();
-							++k;
-							++total_unpacked;
+							if( !select || GetMarker(*eit,select) )
+							{
+								op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
+								pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
+								//pos += array_size_recv[k]*tag.GetBytesSize();
+								++k;
+								++total_unpacked;
+							} 
+							else ++total_skipped;
 						}
 					}
 					else
 					{
-						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
+						REPORT_STR("fixed size");
+						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
 						{
-							op(tag,Element(this,*eit),&array_data_recv[pos],size);
-							pos += GetDataCapacity(&array_data_recv[pos],size,tag);
-							//pos += size*tag.GetBytesSize();
-							++total_unpacked;
+							if( !select || GetMarker(*eit,select) )
+							{
+								op(tag,Element(this,*eit),&array_data_recv[pos],size);
+								pos += GetDataCapacity(&array_data_recv[pos],size,tag);
+								//pos += size*tag.GetBytesSize();
+								++total_unpacked;
+							}
+							else total_skipped++;
 						}
 					}
 				}
+				REPORT_VAL("total skipped",total_skipped);
 				REPORT_VAL("total unpacked records",total_unpacked);
 			}
 		}
@@ -2359,8 +2434,11 @@ namespace INMOST
 		//int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
 		Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 		Storage::integer_array::iterator p = procs.begin();
+		REPORT_VAL("processors",procs.size());
 		storage.send_buffers.resize(procs.size());
 		storage.recv_buffers.resize(procs.size());
+		REPORT_VAL("send buffers size",storage.send_buffers.size());
+		REPORT_VAL("recv buffers size",storage.recv_buffers.size());
 		std::vector<int> done;
 		parallel_storage::const_iterator find;
 		std::vector<INMOST_DATA_ENUM_TYPE> send_size(procs.size(),0), recv_size(procs.size(),0);
@@ -2407,6 +2485,9 @@ namespace INMOST
 		int num_send = 0, num_recv = 0;
 		for(p = procs.begin(); p != procs.end(); p++ )
 		{
+			REPORT_VAL("for processor",p-procs.begin());
+			REPORT_VAL("send size",send_size[p-procs.begin()]);
+			REPORT_VAL("recv size",recv_size[p-procs.begin()]);
 			if( send_size[p-procs.begin()] )
 			{
 				for(unsigned int k = 0; k < tags.size(); k++)
@@ -3550,7 +3631,7 @@ namespace INMOST
 				Tag tag = CreateTag(tag_name,static_cast<enum DataType>(datatype),static_cast<ElementType>(defined),static_cast<ElementType>(sparse),datasize);
 				//TODO 46 old
 				//UnpackTagData(tag,unpack_tags,0,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
-				UnpackTagData(tag,selems,unpack_tags_mrk,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
+				UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,position,DefaultUnpack);
 			}
 			
 		}
@@ -3592,6 +3673,7 @@ namespace INMOST
 		assert( flag );
 		recv_reqs.resize(recv_bufs.size());
 		send_reqs.resize(send_bufs.size());
+		REPORT_VAL("strategy",parallel_strategy);
 		if( parallel_strategy == 0 )
 		{
 			for(i = 0; i < send_bufs.size(); i++)
@@ -3613,31 +3695,37 @@ namespace INMOST
 		}
 		else if( parallel_strategy == 1 )
 		{
-			for(i = 0; i < recv_bufs.size(); i++) if( !recv_bufs[i].second.empty() )
+			INMOST_DATA_BULK_TYPE stub;
+			REPORT_VAL("recv bufs size",recv_bufs.size());
+			for(i = 0; i < recv_bufs.size(); i++)// if( !recv_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
-				REPORT_MPI(MPI_Irecv(&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
+				REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
 			}
-			for(i = 0; i < send_bufs.size(); i++) if( !send_bufs[i].second.empty() )
+			REPORT_VAL("send bufs size",send_bufs.size());
+			for(i = 0; i < send_bufs.size(); i++) //if( !send_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+mpirank*mpisize+send_bufs[i].first;
-				REPORT_MPI(MPI_Isend(&send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
+				REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
 			}
 		}
 		else if( parallel_strategy == 2 )
 		{
-			for(i = 0; i < recv_bufs.size(); i++) if( !recv_bufs[i].second.empty() )
+			INMOST_DATA_BULK_TYPE stub;
+			REPORT_VAL("recv bufs size",recv_bufs.size());
+			for(i = 0; i < recv_bufs.size(); i++) //if( !recv_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
-				REPORT_MPI(MPI_Irecv(&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
+				REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()? &stub : &recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
 			}
 			REPORT_MPI(MPI_Barrier(comm));
-			for(i = 0; i < send_bufs.size(); i++) if( !send_bufs[i].second.empty() )
+			REPORT_VAL("send bufs size",send_bufs.size());
+			for(i = 0; i < send_bufs.size(); i++)// if( !send_bufs[i].second.empty() )
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
-				REPORT_MPI(MPI_Irsend(&send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
+				REPORT_MPI(MPI_Irsend(send_bufs[i].second.empty()? &stub : &send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
 			}
 		}
 #else //USE_MPI
@@ -3704,13 +3792,14 @@ namespace INMOST
 				std::vector<int> send_recv_size(send_bufs.size()+recv_bufs.size());
 				std::vector<INMOST_MPI_Request> reqs(send_bufs.size()+recv_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++) send_recv_size[i+recv_bufs.size()] = static_cast<int>(send_bufs[i].second.size());
-
+				REPORT_VAL("recv buffers size",recv_bufs.size());
 				for(i = 0; i < recv_bufs.size(); i++)
 				{
 					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
 					//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
 					REPORT_MPI(MPI_Irecv(&send_recv_size[i],1,MPI_INT,recv_bufs[i].first,mpi_tag,comm,&reqs[i]));
 				}
+				REPORT_VAL("send buffers size",send_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++)
 				{
 					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
@@ -4028,6 +4117,7 @@ namespace INMOST
 				
 		if( action == AGhost ) //second round to inform owner about ghosted elements
 		{
+			REPORT_STR("Second round for ghost exchange");
 			if( !send_reqs.empty() )
 			{
 				REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_reqs.size()),&send_reqs[0],MPI_STATUSES_IGNORE));
@@ -4105,6 +4195,7 @@ namespace INMOST
 		
 		if( action == AMigrate ) //Compute new values
 		{
+			REPORT_STR("Second round for elements migration");
 			REPORT_STR("Computing new values");
 			Tag tag_new_owner = GetTag("TEMPORARY_NEW_OWNER");
 			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");	

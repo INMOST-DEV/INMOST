@@ -138,6 +138,7 @@ namespace INMOST
 					if( jt == jend ) return false; //no matching edge
 				}
 				adj_type::size_type it = 1, iend = lc.size()-1;
+				bool corrected = false;
 				while(it < iend) //loop over edges
 				{
 					adj_type const & ilc = m->LowConn(lc[it]);
@@ -164,11 +165,19 @@ namespace INMOST
 								HandleType temp = lc[it];
 								lc[it] = lc[jt];
 								lc[jt] = temp;
+								corrected = true;
 								break;
 							}
 						}
 						if( jt == jend ) return false; //no matching edge
 					}
+				}
+				if( corrected )
+				{
+					ElementArray<Node> nodes(GetMeshLink());
+					GetMeshLink()->RestoreCellNodes(GetHandle(),nodes);
+					Element::adj_type & hc = GetMeshLink()->HighConn(GetHandle());
+					hc.replace(hc.begin(),hc.end(),nodes.begin(),nodes.end());
 				}
 				//check that the loop is closed
 				adj_type const & ilc = m->LowConn(lc[iend]);

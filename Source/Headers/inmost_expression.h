@@ -34,7 +34,7 @@ namespace INMOST
 	{
 	public:
 		basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Created" << std::endl;}
-		basic_expression(const basic_expression & other) {};//std::cout << this << " Created from " << &other << std::endl;}
+		basic_expression(const basic_expression & other) {(void)other;};//std::cout << this << " Created from " << &other << std::endl;}
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
@@ -74,9 +74,9 @@ namespace INMOST
 		const_expression(const const_expression & other) :value(other.value) {}
 		const_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {}
-		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {(void)mult; (void)r;}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {(void)mult; (void)r;}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {(void)multJ; (void)J; (void)multH; (void)H;}
 		__INLINE const_expression & operator =(const_expression const & other)
 		{
 			value = other.value;
@@ -97,7 +97,7 @@ namespace INMOST
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
-		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);  (void)multH; (void)H;}
 		__INLINE var_expression & operator =(var_expression const & other)
 		{
 			value = other.value;
@@ -1498,7 +1498,7 @@ namespace INMOST
 		  return std::make_pair(vals[i] + der * (arg - args[i]), der);
 	  }
     keyval_table() :name(""), vals(NULL), args(NULL), size(0) {}
-    keyval_table(std::string _name, INMOST_DATA_REAL_TYPE * _args, INMOST_DATA_REAL_TYPE * _vals, INMOST_DATA_ENUM_TYPE _size)
+    keyval_table(std::string _name, const INMOST_DATA_REAL_TYPE * _args, const INMOST_DATA_REAL_TYPE * _vals, INMOST_DATA_ENUM_TYPE _size)
     {
       name = _name;
       size = _size;

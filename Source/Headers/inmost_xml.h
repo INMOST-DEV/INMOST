@@ -162,7 +162,7 @@ namespace INMOST
     {
       std::string name; //<Name of the XML tag.
       std::vector<XMLAttrib> attributes; //<List of attributes.
-      int finish; //<Whether to close the ta.g
+      int finish; //<Whether to close the tag.
 
 
 	  ///This is data without ![CDATA[ wrap.
@@ -200,6 +200,9 @@ namespace INMOST
 		///Return next occurance of XML tag with the specified
 		///name. Returns NumChildren() if not found.
 		int FindChild(std::string name, int offset = -1) const;
+		///Return next occurance of XML attribute with the specified
+		///name. Returns NumAttrib() if not found.
+		int FindAttrib(std::string name, int offset = -1) const;
 		///Retrive a child of current XML tag with number n.
 		const XMLTree & GetChild(int n) const {return children[n];}
 		///Retrive number of children.
@@ -207,7 +210,7 @@ namespace INMOST
 		///Retrive attribute of current XML tag with number n.
 		const XMLAttrib & GetAttrib(int n) const {return tag.GetAttib(n);}
 		///Retrive number of attributes.
-		int NumAttrib() const {return (int)tag.NumAttrib();}
+		int NumAttrib() const {return tag.NumAttrib();}
 		///Retrive the name of the tag.
 		std::string GetName() const {return tag.GetName();}
 		///Retrive contents of the tag.

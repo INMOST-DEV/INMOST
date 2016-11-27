@@ -1302,9 +1302,9 @@ namespace INMOST
 				break;
 			}
 				/*
-				 6 7
+				 7 6
 				 4 5
-				 2 3
+				 3 2
 				 0 1
 				 */
 			case Element::Hex:
@@ -1316,9 +1316,9 @@ namespace INMOST
 				ret.reserve(8);
 				ElementArray<Node> verts = face->getNodes();
 				if( face->BackCell() == c )
-					ret.insert(ret.end(),verts.begin(),verts.end());
-				else
 					ret.insert(ret.end(),verts.rbegin(),verts.rend());
+				else
+					ret.insert(ret.end(),verts.begin(),verts.end());
 				ElementArray<Edge> c_edges = c->getEdges();
 				ElementArray<Edge> f_edges = face->getEdges();
 				c_edges.SetPrivateMarker(cemrk);
@@ -1420,18 +1420,55 @@ namespace INMOST
 				}
 				ElementArray<Node> base_nodes = quad->getNodes();
 				if( quad->BackCell() == c )
-					for(ElementArray<Node>::iterator it = base_nodes.begin(); it != base_nodes.end(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
-				else
 					for(ElementArray<Node>::reverse_iterator it = base_nodes.rbegin(); it != base_nodes.rend(); it++)
 					{
 						ret.push_back(*it);
 						it->SetPrivateMarker(mrk);
 					}
+				else
+					for(ElementArray<Node>::iterator it = base_nodes.begin(); it != base_nodes.end(); it++)
+					{
+						ret.push_back(*it);
+						it->SetPrivateMarker(mrk);
+					}
 				ElementArray<Node> tri_nodes = triangle->getNodes();
+				for(ElementArray<Node>::iterator it = tri_nodes.begin(); it != tri_nodes.end(); it++)
+				{
+					if( !it->GetPrivateMarker(mrk) )
+					{
+						ret.push_back(*it);
+						break;
+					}
+				}
+				for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); it++)
+					it->RemPrivateMarker(mrk);
+				ReleasePrivateMarker(mrk);
+				break;
+			}
+			/*
+			  3
+			 2
+			 0 1
+			 */
+			case Element::Tet:
+			{
+				ret.reserve(4);
+				MarkerType mrk = CreatePrivateMarker();
+				ElementArray<Face> faces = c->getFaces();
+				ElementArray<Node> base_nodes = faces[0]->getNodes();
+				if( faces[0]->BackCell() == c )
+					for(ElementArray<Node>::reverse_iterator it = base_nodes.rbegin(); it != base_nodes.rend(); it++)
+					{
+						ret.push_back(*it);
+						it->SetPrivateMarker(mrk);
+					}
+				else
+					for(ElementArray<Node>::iterator it = base_nodes.begin(); it != base_nodes.end(); it++)
+					{
+						ret.push_back(*it);
+						it->SetPrivateMarker(mrk);
+					}
+				ElementArray<Node> tri_nodes = faces[1]->getNodes();
 				for(ElementArray<Node>::iterator it = tri_nodes.begin(); it != tri_nodes.end(); it++)
 				{
 					if( !it->GetPrivateMarker(mrk) )
@@ -2029,7 +2066,7 @@ namespace INMOST
 		else 
 			return reference_array(this,static_cast<reference *>(p),tag.GetSize());
 	}
-	Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
+  Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
 	{
 		Asserts(h,tag,DATA_REMOTE_REFERENCE);
 		void * p = MGetLink(h,tag); 
@@ -2061,6 +2098,7 @@ namespace INMOST
 		assert(this == tag.GetMeshLink());               //tag is not mine
 		assert(tag.GetDataType() == expected);           //tag data type coinside with expected data type
 		assert(tag.isDefinedByDim(GetHandleElementNum(h)));           //tag data type coinside with expected data type
+        (void)h; (void)tag; (void)expected; //due to __INLINE these variables considered by compilers as unreferenced
 	}
 	
 	void Mesh::ClearMarkerSpace(HandleType h) 
@@ -2266,6 +2304,18 @@ namespace INMOST
 	}
 
 
+	void Mesh::AllocateSparseData(void * & q, const Tag & tag)
+	{
+		q = calloc(1,tag.GetRecordSize());
+#if defined(USE_AUTODIFF)
+		if( tag.GetDataType() == DATA_VARIABLE && tag.GetSize() != ENUMUNDEF )
+		{
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
+				new (static_cast<variable *>(q)+k) variable();
+		}
+#endif
+	}
+
 	void Mesh::DelDenseData(HandleType h, const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
@@ -2298,11 +2348,11 @@ namespace INMOST
 			if( tag.GetSize() == ENUMUNDEF ) 
 				TagManager::DestroyVariableData(tag,s[i].rec);
 #if defined(USE_AUTODIFF)
-      else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
-      {
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
-          (static_cast<variable *>(s[i].rec)[k]).~variable();
-      }
+			else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
+			{
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
+					(static_cast<variable *>(s[i].rec)[k]).~variable();
+			}
 #endif
 			free(s[i].rec);
 			s.erase(s.begin()+i);

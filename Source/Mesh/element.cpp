@@ -1048,7 +1048,7 @@ namespace INMOST
 	
 	
 	
-	ElementArray<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest, MarkerType mask, bool invert) const
+	ElementArray<Element> Element::BridgeAdjacencies(ElementType Bridge, ElementType Dest,  MarkerType bridge_mask, bool bridge_invert, MarkerType target_mask, bool target_invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreatePrivateMarker();
@@ -1056,11 +1056,11 @@ namespace INMOST
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(Dest);
 		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
-		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++) if(bridge_mask == 0 || (bridge_invert ^ (isPrivate(bridge_mask) ? it->GetPrivateMarker(bridge_mask) : it->GetMarker(bridge_mask))))
 		{
 			ElementArray<Element> sub = it->getAdjElements(Dest);
 			for(ElementArray<Element>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
+				if( !jt->GetPrivateMarker(mrk) && (target_mask == 0 || (target_invert ^ (isPrivate(target_mask) ? jt->GetPrivateMarker(target_mask) : jt->GetMarker(target_mask)))) )
 				{
 					adjcells.push_back(*jt);
 					jt->SetPrivateMarker(mrk);
@@ -1073,7 +1073,7 @@ namespace INMOST
 	}
 
 
-	ElementArray<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MarkerType mask, bool invert) const
+	ElementArray<Node> Element::BridgeAdjacencies2Node(ElementType Bridge, MarkerType bridge_mask, bool bridge_invert, MarkerType target_mask, bool target_invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreatePrivateMarker();
@@ -1081,11 +1081,11 @@ namespace INMOST
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(NODE);
 		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
-		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++) if(bridge_mask == 0 || (bridge_invert ^ (isPrivate(bridge_mask) ? it->GetPrivateMarker(bridge_mask) : it->GetMarker(bridge_mask))))
 		{
 			ElementArray<Node> sub = it->getNodes();
 			for(ElementArray<Node>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
+				if( !jt->GetPrivateMarker(mrk) && (target_mask == 0 || (target_invert ^ (isPrivate(target_mask) ? jt->GetPrivateMarker(target_mask) : jt->GetMarker(target_mask)))) )
 				{
 					adjcells.push_back(*jt);
 					jt->SetPrivateMarker(mrk);
@@ -1097,7 +1097,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	ElementArray<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge, MarkerType mask, bool invert) const
+	ElementArray<Edge> Element::BridgeAdjacencies2Edge(ElementType Bridge,  MarkerType bridge_mask, bool bridge_invert, MarkerType target_mask, bool target_invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreatePrivateMarker();
@@ -1105,11 +1105,11 @@ namespace INMOST
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(EDGE);
 		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
-		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++) if(bridge_mask == 0 || (bridge_invert ^ (isPrivate(bridge_mask) ? it->GetPrivateMarker(bridge_mask) : it->GetMarker(bridge_mask))))
 		{
 			ElementArray<Edge> sub = it->getEdges();
 			for(ElementArray<Edge>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
+				if( !jt->GetPrivateMarker(mrk) && (target_mask == 0 || (target_invert ^ (isPrivate(target_mask) ? jt->GetPrivateMarker(target_mask) : jt->GetMarker(target_mask)))) )
 				{
 					adjcells.push_back(*jt);
 					jt->SetPrivateMarker(mrk);
@@ -1121,7 +1121,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	ElementArray<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MarkerType mask, bool invert) const
+	ElementArray<Face> Element::BridgeAdjacencies2Face(ElementType Bridge, MarkerType bridge_mask, bool bridge_invert, MarkerType target_mask, bool target_invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreatePrivateMarker();
@@ -1129,11 +1129,11 @@ namespace INMOST
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(FACE);
 		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
-		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++) if(bridge_mask == 0 || (bridge_invert ^ (isPrivate(bridge_mask) ? it->GetPrivateMarker(bridge_mask) : it->GetMarker(bridge_mask))))
 		{
 			ElementArray<Face> sub = it->getFaces();
 			for(ElementArray<Face>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
+				if( !jt->GetPrivateMarker(mrk) && (target_mask == 0 || (target_invert ^ (isPrivate(target_mask) ? jt->GetPrivateMarker(target_mask) : jt->GetMarker(target_mask)))) )
 				{
 					adjcells.push_back(*jt);
 					jt->SetPrivateMarker(mrk);
@@ -1145,7 +1145,7 @@ namespace INMOST
 		return adjcells;
 	}
 
-	ElementArray<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge, MarkerType mask, bool invert) const
+	ElementArray<Cell> Element::BridgeAdjacencies2Cell(ElementType Bridge,  MarkerType bridge_mask, bool bridge_invert, MarkerType target_mask, bool target_invert) const
 	{
 		Mesh * m = GetMeshLink();
 		MarkerType mrk = m->CreatePrivateMarker();
@@ -1153,11 +1153,11 @@ namespace INMOST
 		ElementArray<Element> adjfaces = getAdjElements(Bridge);
 		ElementArray<Element> my = Bridge & GetElementType() ? ElementArray<Element>(m) : getAdjElements(CELL);
 		for(ElementArray<Element>::iterator it = my.begin(); it != my.end(); it++) it->SetPrivateMarker(mrk);
-		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++)
+		for(ElementArray<Element>::iterator it = adjfaces.begin(); it != adjfaces.end(); it++) if(bridge_mask == 0 || (bridge_invert ^ (isPrivate(bridge_mask) ? it->GetPrivateMarker(bridge_mask) : it->GetMarker(bridge_mask))))
 		{
 			ElementArray<Cell> sub = it->getCells();
 			for(ElementArray<Cell>::iterator jt = sub.begin(); jt != sub.end(); jt++)
-				if( !jt->GetPrivateMarker(mrk) && (mask == 0 || (invert ^ (isPrivate(mask) ? jt->GetPrivateMarker(mask) : jt->GetMarker(mask)))) )
+				if( !jt->GetPrivateMarker(mrk) && (target_mask == 0 || (target_invert ^ (isPrivate(target_mask) ? jt->GetPrivateMarker(target_mask) : jt->GetMarker(target_mask)))) )
 				{
 					adjcells.push_back(*jt);
 					jt->SetPrivateMarker(mrk);

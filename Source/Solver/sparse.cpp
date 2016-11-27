@@ -50,6 +50,7 @@ namespace INMOST {
         }
 
 ////////class RowMerger
+<<<<<<< HEAD
 
         RowMerger::RowMerger() : Sorted(true), Nonzeros(0) {}
 
@@ -195,6 +196,258 @@ namespace INMOST {
             }
             r.Resize(k);
         }
+=======
+		
+		RowMerger::RowMerger() : Sorted(true), Nonzeros(0), IntervalBeg(0), IntervalEnd(0) {}
+		
+		INMOST_DATA_REAL_TYPE & RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos)
+		{
+			pos = MapIndex(pos);
+			if( LinkedList[pos+1].first != UNDEF ) return LinkedList[pos+1].second;
+			else
+			{
+				INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
+				if( Sorted )
+				{
+					next = index;
+					while(next < pos+1)
+					{
+						index = next;
+						next = LinkedList[index].first;
+					}
+					assert(index < pos+1);
+					assert(pos+1 < next);
+					++Nonzeros;
+					LinkedList[index].first = pos+1;
+					LinkedList[pos+1].first = next;
+					return LinkedList[pos+1].second;
+				}
+				else
+				{
+					INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
+					++Nonzeros;
+					LinkedList[pos+1].first = LinkedList[index].first;
+					LinkedList[index].first = pos+1;
+					return LinkedList[pos+1].second;
+				}
+			}
+		}
+		
+		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos) const
+		{
+			pos = MapIndex(pos);
+			if( LinkedList[pos+1].first != UNDEF ) return LinkedList[pos+1].second;
+			else throw -1;
+		}
+		
+		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted)
+		: Sorted(Sorted), Nonzeros(0), IntervalBeg(interval_begin), IntervalEnd(interval_end), LinkedList(interval_begin,interval_end+1,Row::make_entry(UNDEF,0.0))
+		{
+			LinkedList.begin()->first = EOL;
+		}
+		
+		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool Sorted)
+		: Sorted(Sorted), Nonzeros(0), IntervalBeg(interval_begin), IntervalEnd(interval_end), NonlocalPre(Pre), NonlocalPost(Post), LinkedList(interval_begin-Pre.size(),interval_end+Post.size()+1,Row::make_entry(UNDEF,0.0))
+		{
+			//assert(std::is_sorted(Pre.begin(),Pre.end()));
+			//assert(std::is_sorted(Post.begin(),Post.end()));
+			LinkedList.begin()->first = EOL;
+		}
+		
+		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool _Sorted)
+		{
+			LinkedList.set_interval_beg(interval_begin-NonlocalPre.size());
+			LinkedList.set_interval_end(interval_end+1+NonlocalPost.size());
+			IntervalBeg = interval_begin;
+			IntervalEnd = interval_end;
+			std::fill(LinkedList.begin(),LinkedList.end(),Row::make_entry(UNDEF,0.0));
+			LinkedList.begin()->first = EOL;
+			Nonzeros = 0;
+			Sorted = _Sorted;
+		}
+		
+		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool _Sorted)
+		{
+			NonlocalPre = Pre;
+			NonlocalPost = Post;
+			Resize(interval_begin,interval_end,_Sorted);
+		}
+#if defined(USE_SOLVER)
+		void RowMerger::Resize(const Matrix & A, bool _Sorted)
+		{
+			INMOST_DATA_ENUM_TYPE mbeg, mend, k, l, ind;
+			//retrive interval of indices
+			A.GetInterval(mbeg,mend);
+			//gather non-local mapping from matrix
+			std::set<INMOST_DATA_ENUM_TYPE> Pre, Post;
+			for(k = mbeg; k < mend; ++k)
+			{
+				for(l = 0; l < A[k].Size(); ++l)
+				{
+					ind = A[k].GetIndex(l);
+					if( ind < mbeg ) Pre.insert(ind);
+					else if( ind >= mend ) Post.insert(ind);
+				}
+			}
+			//sort to prepare for binary search
+			NonlocalPre.clear();
+			NonlocalPre.insert(NonlocalPre.end(),Pre.begin(),Pre.end());
+			NonlocalPost.clear();
+			NonlocalPre.insert(NonlocalPost.end(),Post.begin(),Post.end());
+			Resize(mbeg,mend,_Sorted);
+		}
+		
+		RowMerger::RowMerger(const Matrix & A, bool Sorted) : Sorted(Sorted), Nonzeros(0)
+		{
+			Resize(A,Sorted);
+		}
+#endif
+		
+		RowMerger::~RowMerger() {}
+		
+		void RowMerger::SetNonlocal(const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post)
+		{
+			//assert(std::is_sorted(Pre.begin(),Pre.end()));
+			//assert(std::is_sorted(Post.begin(),Post.end()));
+			NonlocalPre = Pre;
+			NonlocalPost = Post;
+			Resize(IntervalBeg,IntervalEnd,Sorted);
+		}
+		
+		
+		INMOST_DATA_ENUM_TYPE RowMerger::MapIndex(INMOST_DATA_ENUM_TYPE pos) const
+		{
+			if( pos < IntervalBeg )
+			{
+				assert(!NonlocalPre.empty()); //there are indices provided
+				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPre.begin(),NonlocalPre.end(),pos);
+				assert(*search == pos); //is there such index?
+				return IntervalBeg - NonlocalPre.size() + static_cast<INMOST_DATA_ENUM_TYPE>(search-NonlocalPre.begin());
+			}
+			else if( pos >= IntervalEnd )
+			{
+				assert(!NonlocalPost.empty()); //there are indices provided
+				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPost.begin(),NonlocalPost.end(),pos);
+				assert(*search == pos); //is there such index?
+				return IntervalEnd + static_cast<INMOST_DATA_ENUM_TYPE>(search-NonlocalPost.begin());
+			}
+			return pos;
+		}
+		
+		INMOST_DATA_ENUM_TYPE RowMerger::UnmapIndex(INMOST_DATA_ENUM_TYPE pos) const
+		{
+			if( pos < IntervalBeg )
+				return NonlocalPre[pos+NonlocalPre.size()-IntervalBeg];
+			else if( pos >= IntervalEnd )
+				return NonlocalPost[pos-IntervalEnd];
+			return pos;
+		}
+		
+		
+		void RowMerger::Clear()
+		{
+			INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, j;
+			LinkedList.begin()->first = EOL;
+			while( i != EOL )
+			{
+				j = LinkedList[i].first;
+				LinkedList[i].first = UNDEF;
+				LinkedList[i].second = 0.0;
+				i = j;
+			}
+			Nonzeros = 0;
+		}
+		
+		
+		void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow)
+		{
+			if( Sorted && PreSortRow ) std::sort(r.Begin(),r.End());
+			PushRow(coef,r);
+		}
+		
+		void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, const Row & r)
+		{
+			assert(Nonzeros == 0); //Linked list should be empty
+			assert(LinkedList.begin()->first == EOL); //again check that list is empty
+			INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
+			Row::const_iterator it = r.Begin(), jt;
+			while( it != r.End() )
+			{
+				INMOST_DATA_ENUM_TYPE pos = it->first;
+				pos = MapIndex(pos);
+				LinkedList[index].first = pos+1;
+				LinkedList[pos+1].first = EOL;
+				LinkedList[pos+1].second = it->second*coef;
+				index = pos+1;
+				++Nonzeros;
+				jt = it;
+				++it;
+				assert(!Sorted || it == r.End() || jt->first < it->first);
+			}
+		}
+		
+		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow)
+		{
+			if( Sorted && PreSortRow ) std::sort(r.Begin(),r.End());
+			AddRow(coef,r);
+		}
+		
+		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row & r)
+		{
+			INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
+			Row::const_iterator it = r.Begin(), jt;
+			while( it != r.End() )
+			{
+				INMOST_DATA_ENUM_TYPE pos = it->first;
+				pos = MapIndex(pos);
+				if( LinkedList[pos+1].first != UNDEF )
+					LinkedList[pos+1].second += coef*it->second;
+				else if( Sorted )
+				{
+					next = index;
+					while(next < pos+1)
+					{
+						index = next;
+						next = LinkedList[index].first;
+					}
+					assert(index < pos+1);
+					assert(pos+1 < next);
+					LinkedList[index].first = pos+1;
+					LinkedList[pos+1].first = next;
+					LinkedList[pos+1].second = coef*it->second;
+					++Nonzeros;
+				}
+				else
+				{
+					LinkedList[pos+1].first = LinkedList[index].first;
+					LinkedList[pos+1].second = coef*it->second;
+					LinkedList[index].first = pos+1;
+					++Nonzeros;
+				}
+				jt = it;
+				++it;
+				assert(!Sorted || it == r.End() || jt->first < it->first);
+			}
+		}
+		
+		
+		void RowMerger::RetriveRow(Row & r)
+		{
+			r.Resize(Nonzeros);
+			INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, k = 0;
+			while( i != EOL )
+			{
+				if( LinkedList[i].second )
+				{
+					r.GetIndex(k) = UnmapIndex(i-1);
+					r.GetValue(k) = LinkedList[i].second;
+					++k;
+				}
+				i = LinkedList[i].first;
+			}
+			r.Resize(k);
+		}
+>>>>>>> INMOST-DEV/master
 ////////class HessianRow
 
         void HessianRow::RowVec(INMOST_DATA_REAL_TYPE alpha, const Row &rU, INMOST_DATA_REAL_TYPE beta, Row &rJ) const {
@@ -947,6 +1200,7 @@ namespace INMOST {
         bool LockService::Empty() const {return locks.empty();}
         void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = locks.get_interval_beg(); end = locks.get_interval_end();}
 #else
+<<<<<<< HEAD
 
         bool LockService::HaveLocks() const { return false; }
 
@@ -971,6 +1225,18 @@ namespace INMOST {
             end = 0;
         }
 
+=======
+		bool LockService::HaveLocks() const {return false;}
+        bool LockService::Lock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
+        bool LockService::TestLock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
+        bool LockService::UnLock(INMOST_DATA_ENUM_TYPE row) {(void)row; return true;}
+        void LockService::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) {(void)beg; (void)end;}
+		void LockService::DestroyLocks() {}
+		INMOST_DATA_ENUM_TYPE  LockService::GetFirstIndex() const {return 0;}
+		INMOST_DATA_ENUM_TYPE  LockService::GetLastIndex() const {return 0;}
+		bool LockService::Empty() const {return true;}
+		void LockService::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = 0; end = 0;}
+>>>>>>> INMOST-DEV/master
 #endif
 
 

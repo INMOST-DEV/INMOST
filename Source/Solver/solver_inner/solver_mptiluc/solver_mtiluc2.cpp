@@ -4,6 +4,7 @@
 #if defined(USE_SOLVER)
 #include "solver_mtiluc2.hpp"
 #include <sstream>
+#include <deque>
 //#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
@@ -20,10 +21,10 @@ using namespace INMOST;
 #endif
 
 
-//#define REORDER_RCM
+#define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-#define REORDER_METIS_ND
+//#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -47,7 +48,7 @@ using namespace INMOST;
 #define DIAGONAL_PERTURBATION_REL 1.0e-10
 #define DIAGONAL_PERTURBATION_ABS 1.0e-12
 //#define DIAGONAL_PIVOT //probably there is some bug
-#define DIAGONAL_PIVOT_TAU 0.01
+#define DIAGONAL_PIVOT_TAU 0.1
 //#define DIAGONAL_PIVOT_COND 1.0e+6
 #define ILUC2
 #define TRACK_DIAGONAL
@@ -76,6 +77,20 @@ __INLINE static bool compare(INMOST_DATA_REAL_TYPE * a, INMOST_DATA_REAL_TYPE * 
 	return (*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(a)) <=
 		(*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(b));
 }
+
+//this structure is used to provide sorting routing for Reverse-Cuthill-McKee reordering
+struct RCM_Comparator
+{
+	INMOST_DATA_ENUM_TYPE wbeg;
+	std::vector<INMOST_DATA_ENUM_TYPE> & xadj;
+public:
+	RCM_Comparator(INMOST_DATA_ENUM_TYPE _wbeg, std::vector<INMOST_DATA_ENUM_TYPE> & _xadj)
+				   : wbeg(_wbeg), xadj(_xadj) {}
+	RCM_Comparator(const RCM_Comparator & b) : wbeg(b.wbeg), xadj(b.xadj) {}
+	RCM_Comparator & operator = (RCM_Comparator const & b) {wbeg = b.wbeg; xadj = b.xadj; return *this;}
+	bool operator () (INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j)
+	{return xadj[i+1-wbeg] -xadj[i-wbeg] < xadj[j+1-wbeg] - xadj[j-wbeg];}
+};
 
 
 class BinaryHeap
@@ -504,9 +519,12 @@ public:
 		
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
-		double tfactor = 0.0, trescale = 0.0, treorder = 0.0, treassamble = 0.0, ttotal, tt;
+		double tfactor = 0.0, tswap = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tlocal;
 #if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
+#endif
+#if defined(REORDER_RCM)
+		double trcmgraph = 0, trcmorder = 0;
 #endif
         double tlfactor, tlrescale, tlreorder, tlreassamble;
 		ttotal = Timer();
@@ -636,7 +654,7 @@ public:
 /////////// MAXIMUM TRANSVERSE REORDERING /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
-				tt = Timer();
+				ttransversal = Timer();
 				INMOST_DATA_ENUM_TYPE ColumnBegin;
 				INMOST_DATA_ENUM_TYPE pop_heap_pos;
 				INMOST_DATA_REAL_TYPE ShortestPath, AugmentPath;
@@ -929,13 +947,14 @@ public:
 				
 				//exit(-1);
 
-				tt = Timer() - tt;
+				ttransversal = Timer() - ttransversal;
 
-				treorder += tt;
+				treorder += ttransversal;
 			}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////// END MAXIMUM TRANSVERSE REORDERING /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			tt = Timer();
 #if defined(REORDER_DDPQ)
 
 #if defined(REPORT_ILU)
@@ -1152,7 +1171,6 @@ public:
 			cend = wend;
 			i = wend;
 
-			treorder += Timer() - tt;
 #elif defined(REORDER_NNZ)
 			//for (k = cbeg; k < cend; ++k) V[k] = DR[localQ[k]];
 			//for (k = cbeg; k < cend; ++k) DR[k] = V[k];
@@ -1202,31 +1220,153 @@ public:
 			}
 			cend = i;
 #elif defined(REORDER_RCM)
-            //compute order of each entry
-            std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, 0);
-            std::fill(Llist.begin() + wbeg - mobeg, Llist.begin() + wend - mobeg, 0);
-            for (k = wbeg; k < wend; ++k)
-            {
-                for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it != A_Address[k].last; ++it)
-                {
-                    i = A_Entries[it].first;
-                    //nonzeros
-                    Ulist[k]++; //row nnz
-                    Llist[i]++; //col nnz
-                }
-            }
-            //find node with the lowest order
-            INMOST_DATA_ENUM_TYPE start = wbeg;
-            INMOST_DATA_ENUM_TYPE index = wbeg;
-            for(k = wbeg; k < wend; ++k)
-                if( Ulist[k] + Llist[Blist[k]] < Ulist[start] + Llist[Blist[start]] )
-                    start = k;
-            localP[start] = localQ[Blist[start]] = index++;
-            
+			{
+				//create a symmetric graph of the matrix A + A^T
+				std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1), adjncy;
+				adjncy.reserve(nzA*2);
+
+				for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) printf("%s:%d No column permutation for row %d. Matrix is structurally singular\n",__FILE__,__LINE__,k);
+
+				for (k = cbeg; k < cend; ++k) localP[k] = k;
+				for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
+				for (k = cbeg; k < cend; ++k) DR[k] = V[k];
+
+				for(k = wbeg; k < wend; ++k)
+				{
+					for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt != A_Address[k].last; ++jt)
+					{
+						A_Entries[jt].first = localQ[A_Entries[jt].first];
+						//A_Entries[jt].second *= DL[k]*DR[A_Entries[jt].first];
+					}
+					std::sort(A_Entries.begin()+A_Address[k].first,A_Entries.begin()+A_Address[k].last);
+				}
+
+				inversePQ(wbeg,wend,localP,localQ, invP,invQ);
+				applyPQ(wbeg, wend, localP, localQ, invP, invQ);
+
+				trcmgraph = Timer();
+
+				for (k = wend; k > wbeg; --k)
+				{
+					//vwgt[k-1] = 1;
+					if (A_Address[k-1].Size() > 0)
+					{
+						i = A_Entries[A_Address[k-1].first].first;
+						Blist[k-1] = Bbeg[i];
+						Bbeg[i] = k-1;
+					}
+					Ulist[k-1] = A_Address[k-1].first;
+				}
+				xadj[0] = 0;
+				for(i = wbeg; i < wend; ++i)
+				{
+					for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt != A_Address[i].last; ++jt)
+					{
+						if( A_Entries[jt].first != i )
+							adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries[jt].first));
+					}
+
+					Li = Bbeg[i];
+					while (Li != EOL)
+					{
+						if( Li != i )
+							adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(Li));
+						Li = Blist[Li];
+					}
+
+					Li = Bbeg[i];
+					while (Li != EOL)
+					{
+						Ui = Blist[Li];
+						Ulist[Li]++;
+						if (A_Address[Li].last - Ulist[Li] > 0)
+						{
+							k = A_Entries[Ulist[Li]].first;
+							Blist[Li] = Bbeg[k];
+							Bbeg[k] = Li;
+						}
+
+						Li = Ui;
+					}
+
+					std::sort(adjncy.begin()+xadj[i-wbeg],adjncy.end());
+					adjncy.resize(std::unique(adjncy.begin()+xadj[i-wbeg],adjncy.end())-adjncy.begin());
+
+					xadj[i-wbeg+1] = static_cast<INMOST_DATA_ENUM_TYPE>(adjncy.size());
+				}
+
+				std::fill(Bbeg.begin(),Bbeg.end(),EOL);
+
+				trcmgraph = Timer()-trcmgraph;
+
+				trcmorder = Timer();
+				std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, ENUMUNDEF);
+				//find node with the lowest order
+				INMOST_DATA_ENUM_TYPE start = wbeg;
+				INMOST_DATA_ENUM_TYPE index = wbeg;
+				INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
+				std::deque<INMOST_DATA_ENUM_TYPE> q;
+				std::vector<INMOST_DATA_ENUM_TYPE> conns;
+				//for(k = wbeg+1; k < wend; ++k)
+				//    if( RCM_Comparator(wbeg,xadj)(k,start) )
+				//        start = k;
+				//Ulist[start] = index++;
+				do
+				{
+					cur = ENUMUNDEF;
+					for(k = wbeg; k < wend && cur == ENUMUNDEF; ++k)
+					{
+						if( Ulist[k] == ENUMUNDEF )
+							cur = k;
+					}
+					assert(cur != ENUMUNDEF);
+					for(k = cur+1; k < wend; ++k) if( Ulist[k] == ENUMUNDEF )
+					{
+						if( RCM_Comparator(wbeg,xadj)(k,cur) )
+							cur = k;
+					}
+					q.push_back(cur);
+					Ulist[cur] = index++;
+					while(!q.empty())
+					{
+						cur = q.front();
+						q.pop_front();
+						for (INMOST_DATA_ENUM_TYPE it = xadj[cur-wbeg]; it < xadj[cur-wbeg+1]; ++it)
+							if( Ulist[adjncy[it]] == ENUMUNDEF )
+								conns.push_back(adjncy[it]);
+						std::sort(conns.begin(),conns.end(),RCM_Comparator(wbeg,xadj));
+						for (k = 0; k < static_cast<INMOST_DATA_ENUM_TYPE>(conns.size()); ++k)
+						{
+							Ulist[conns[k]] = index++;
+							q.push_back(conns[k]);
+						}
+						conns.clear();
+					}
+				}
+				while( index < wend );
+
+				for(k = wbeg; k < wend; ++k)
+					Ulist[k] = wend-(Ulist[k]-wbeg)-1;
+
+				for(k = wbeg; k < wend; ++k)
+				{
+					localP[k] = Ulist[k];//wend - Ulist[k] + 1;
+					localQ[k] = Ulist[k];//wend - Ulist[k] + 1;
+					//localP[Ulist[k]] = k;
+					//localQ[Ulist[k]] = k;
+				}
+				cend = wend;
+				i = wend;
+
+
+				trcmorder = Timer() - trcmorder;
+			}
 #else
 			cend = wend;
 			i = wbeg;
 #endif
+			tt = Timer() - tt;
+			treorder += tt;
 			if (cbeg == cend && cbeg != wend)
 			{
 				//std::cout << __FILE__ << ":" << __LINE__ << " singular matrix, factored " << mobeg << ".." << cend << " out of " << mobeg << ".." << moend << std::endl;
@@ -1299,7 +1439,21 @@ public:
 				nzA += A_Address[k].Size();
 			}
 
-			//DumpMatrix(B_Address,B_Entries,cbeg,cend,"mat_reorder.mtx");
+			/*
+			{
+				int rank = 0;
+#if defined(USE_MPI)
+				MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+#endif
+				std::stringstream str;
+				str << "mat_reorder" << rank << ".mtx";
+				DumpMatrix(B_Address,B_Entries,cbeg,cend,str.str());
+			}
+#if defined(USE_MPI)
+			MPI_Barrier(MPI_COMM_WORLD);
+#endif
+			exit(0);
+			*/
 			//Setup column addressing for B,F, in descending order to keep list ordered
 			for (k = cend; k > cbeg; --k)
 			{
@@ -1552,7 +1706,7 @@ public:
 				//initialize diagonal values
 				for (k = cbeg; k < cend; k++)
 				{
-          LU_Diag[k] = 0.0;
+					LU_Diag[k] = 0.0;
 					localQ[k] = B_Address[k].first; //remember B block starts permutation for pivoting
 					for (i = B_Address[k].first; i < B_Address[k].last; i++)
 					{
@@ -1606,44 +1760,44 @@ public:
 				LU_Beg = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 				U_Address[cbeg].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
-        U2_Address[cbeg].first = 0;
+				U2_Address[cbeg].first = 0;
 #endif
 				for (INMOST_DATA_ENUM_TYPE r = B_Address[cbeg].first + (B_Entries[B_Address[cbeg].first].first == cbeg ? 1 : 0); r != B_Address[cbeg].last; ++r) 
-        {
-          u = B_Entries[r].second / LU_Diag[cbeg];
-          if( fabs(u) > tau )
-					  LU_Entries.push_back(Sparse::Row::make_entry(B_Entries[r].first, u));
+				{
+					u = B_Entries[r].second / LU_Diag[cbeg];
+					if( fabs(u) > tau )
+						LU_Entries.push_back(Sparse::Row::make_entry(B_Entries[r].first, u));
 #if defined(ILUC2)
-          else if( fabs(u) > tau2 )
-            LU2_Entries.push_back(Sparse::Row::make_entry(B_Entries[r].first, u));
+					else if( fabs(u) > tau2 )
+						LU2_Entries.push_back(Sparse::Row::make_entry(B_Entries[r].first, u));
 #endif
-        }
-        U_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());				
+				}
+				U_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());				
 #if defined(ILUC2)
-        U2_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());				
+				U2_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());				
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//       form first line of L and second-order L                                 //
-///////////////////////////////////////////////////////////////////////////////////
-        L_Address[cbeg].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
+				///////////////////////////////////////////////////////////////////////////////////
+				//       form first line of L and second-order L                                 //
+				///////////////////////////////////////////////////////////////////////////////////
+				L_Address[cbeg].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
-        L2_Address[cbeg].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());				
+				L2_Address[cbeg].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());				
 #endif
 				Li = Bbeg[cbeg];
 				while (Li != EOL)
 				{
-          l = B_Entries[B_Address[Li].first].second / LU_Diag[cbeg];
-          if( fabs(l) > tau )
-					  LU_Entries.push_back(Sparse::Row::make_entry(Li, l));
+					l = B_Entries[B_Address[Li].first].second / LU_Diag[cbeg];
+					if( fabs(l) > tau )
+						LU_Entries.push_back(Sparse::Row::make_entry(Li, l));
 #if defined(ILUC2)
-          else if( fabs(l) > tau2 )
-            LU2_Entries.push_back(Sparse::Row::make_entry(Li, l));
+					else if( fabs(l) > tau2 )
+						LU2_Entries.push_back(Sparse::Row::make_entry(Li, l));
 #endif
 					Li = Blist[Li];
 				}
 				L_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
-        L2_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());				
+				L2_Address[cbeg].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());				
 #endif
 				//update diagonal by factors
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1734,31 +1888,33 @@ public:
 //              initialize condition estimator                                   //
 ///////////////////////////////////////////////////////////////////////////////////
 #if defined(ESTIMATOR)
-        if( estimator )
-        {
-				  NuU = NuL = 1.0;
-				  if( estimator )
-				  {
-					  EstU1[cbeg] = EstL1[cbeg] = 0.0;
+				if( estimator )
+				{
+					tlocal = Timer();
+					NuU = NuL = 1.0;
+					if( estimator )
+					{
+						EstU1[cbeg] = EstL1[cbeg] = 0.0;
 #if defined(ESTIMATOR_REFINE)
 						EstU2[cbeg] = EstL2[cbeg] = 0.0;
 #endif
-					  for (INMOST_DATA_ENUM_TYPE it = U_Address[cbeg].first; it != U_Address[cbeg].last; ++it) 
+						for (INMOST_DATA_ENUM_TYPE it = U_Address[cbeg].first; it != U_Address[cbeg].last; ++it) 
 						{
 							EstU1[LU_Entries[it].first] = LU_Entries[it].second;
 #if defined(ESTIMATOR_REFINE)
 							EstU2[LU_Entries[it].first] = LU_Entries[it].second;
 #endif
 						}
-					  for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it != L_Address[cbeg].last; ++it) 
+						for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it != L_Address[cbeg].last; ++it) 
 						{
 							EstL1[LU_Entries[it].first] = LU_Entries[it].second;
 #if defined(ESTIMATOR_REFINE)
 							EstL2[LU_Entries[it].first] = LU_Entries[it].second;
 #endif
 						}
-				  }
-        }
+					}
+					testimator += Timer() - tlocal;
+				}
 #endif
 				nzLU += L_Address[cbeg].Size() + U_Address[cbeg].Size() + 1;
 				max_diag = min_diag = fabs(LU_Diag[cbeg]);
@@ -1785,7 +1941,7 @@ public:
 //              diagonal pivoting algorithm                                      //
 ///////////////////////////////////////////////////////////////////////////////////
 #if defined(DIAGONAL_PIVOT_COND)
-          int no_swap_algorithm = 1;
+					int no_swap_algorithm = 1;
 #endif
 #if defined(DIAGONAL_PIVOT_TAU)
 					if ( k < cend-1 &&  fabs(LU_Diag[k])*(cend-k) < DIAGONAL_PIVOT_TAU*mean_diag)
@@ -1794,19 +1950,20 @@ public:
 #endif
 					{
 #if defined(DIAGONAL_PIVOT_COND)
-            if( false )
-            {
+						if( false )
+						{
 swap_algorithm:
-              no_swap_algorithm--;
-            }
+							no_swap_algorithm--;
+						}
 #endif
+						tlocal = Timer();
 						j = k+1;
 						for (i = k + 1; i < cend; i++) if (fabs(LU_Diag[j]) < fabs(LU_Diag[i])) j = i;
 
-            if( j > cend-1 )
-            {
-              std::cout << "Oops! asking to exchange beyond matrix! k = " << k << " j = " << j << " cend = " << cend << std::endl;
-            }
+						if( j > cend-1 )
+						{
+							std::cout << "Oops! asking to exchange beyond matrix! k = " << k << " j = " << j << " cend = " << cend << std::endl;
+						}
 						/*
             if( fabs(LU_Diag[j]) < fabs(LU_Diag[k]) )
             {
@@ -1816,7 +1973,7 @@ swap_algorithm:
             else*/
 						{
 							//TODO!!!
-              ++swaps;
+							++swaps;
 #if defined(REPORT_ILU)
 							//std::cout << "Detected, that there is a much better pivot, i'm " << k << " " << LU_Diag[k] << " other " << j << " " << LU_Diag[j] << std::endl;
 							//std::cout << "Condition numbers: L " << NuL << " D " << NuD << " U " << NuU << std::endl;
@@ -1954,6 +2111,8 @@ swap_algorithm:
 							//probably should reject all unfactored parts for the next level
 						}
 						*/
+						tlocal = Timer() - tlocal;
+						tswap += tlocal;
 					}
 					
 #endif
@@ -2388,6 +2547,7 @@ swap_algorithm:
 #if defined(ESTIMATOR)
 					if( estimator )
 					{
+						tlocal = Timer();
 						NuU1_old = NuU1;
 						mup = 1.0 - EstU1[k];
 						mum = -1.0 - EstU1[k];
@@ -2426,6 +2586,7 @@ swap_algorithm:
 						if (np > nm) NuU2 = mup; else NuU2 = mum;
 						NuU2_new = std::max(fabs(mup), fabs(mum));
 #endif
+						testimator += Timer()-tlocal;
 					} //if( estimator )
 #endif //ESTIMATOR
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2435,6 +2596,7 @@ swap_algorithm:
 #if defined(ESTIMATOR)
 					if( estimator )
 					{
+						tlocal = Timer();
 						NuL1_old = NuL1;
 						mup = 1.0 - EstL1[k];
 						mum = -1.0 - EstL1[k];
@@ -2473,6 +2635,7 @@ swap_algorithm:
 						if (np > nm) NuL2 = mup; else NuL2 = mum;
 						NuL2_new = std::max(fabs(mup), fabs(mum));
 #endif
+						testimator += Timer()-tlocal;
 					}
 #endif //ESTIMATOR
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2587,6 +2750,7 @@ swap_algorithm:
 #if defined(ESTIMATOR)
 					if( estimator )
 					{
+						tlocal = Timer();
 						{ //U-estimator
 							Ui = LineIndecesU[k];
 							while (Ui != EOL)
@@ -2628,6 +2792,7 @@ swap_algorithm:
               NuL2 = NuL2_new;//std::max(NuL_new,NuL_old);
 #endif
 						}
+						testimator += Timer() - tlocal;
 					}
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3030,12 +3195,25 @@ swap_algorithm:
 #if defined(REPORT_ILU_SUMMARY)
 		printf("total      %f\n",ttotal);
 		printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
+		printf("   mpt     %f (%6.2f%%)\n",ttransversal, 100.0*ttransversal/ttotal);
 #if defined(REORDER_METIS_ND)
-		printf("metis      graph %f nd %f\n", tmetisgraph, tmetisnd);
+		printf("   graph   %f (%6.2f%%)\n",tmetisgraph, 100.0*tmetisgraph/ttotal);
+		printf("   nd      %f (%6.2f%%)\n", tmetisnd, 100.0*tmetisnd/ttotal);
+#endif
+#if defined(REORDER_RCM)
+		printf("   graph   %f (%6.2f%%)\n",trcmgraph, 100.0*trcmgraph/ttotal);
+		printf("   rcm     %f (%6.2f%%)\n", trcmorder, 100.0*trcmorder/ttotal);
 #endif
 		printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
 		printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
 		printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
+		printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
+		printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
+#if defined(ILUC2)
+		printf("nnz A %d LU %d LU2 %d\n",nzA,nzLU,nzLU2);
+#else
+		printf("nnz A %d LU %d\n",nzA,nzLU);
+#endif
 #endif
 		init = true;
 		/*
