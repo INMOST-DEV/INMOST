@@ -765,8 +765,8 @@ namespace INMOST
     template<typename typeB>
     typename Promote<Var,typeB>::type DotProduct(const Matrix<typeB> & other) const
     {
-      assert(n == other.n);
-      assert(m == other.m);
+      assert(Cols() == other.Cols());
+      assert(Rows() == other.Rows());
       typename Promote<Var,typeB>::type ret = 0.0;
       for(enumerator i = 0; i < n; ++i)
         for(enumerator j = 0; j < m; ++j)
