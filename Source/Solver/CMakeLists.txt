@@ -1,63 +1,34 @@
 set(SOURCE
-    ${SOURCE}
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/sparse.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ani.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ddpqiluc2.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_superlu.cpp
-)
+        ${SOURCE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/Solver.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/OrderInfo.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverParameters.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/sparse.cpp
+        )
 
 set(HEADER
-    ${HEADER}
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_prototypes.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_petsc.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_superlu.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ilu2.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ddpqiluc2.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_bcgsl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver_ani.h
-)
+        ${HEADER}
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.h)
 
+add_subdirectory(solver_inner)
+add_subdirectory(solver_fcbiilu2)
+add_subdirectory(solver_k3biilu2)
 
-if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.hpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.cpp" )
-  set(SOLVER_DEFINITIONS ${SOLVER_DEFINITIONS} -DHAVE_SOLVER_MPTILUC2)
-  set(HAVE_SOLVER_MPTILUC2 TRUE PARENT_SCOPE)
-  list(APPEND HEADER ${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.hpp)
-  list(APPEND SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.cpp)
-else()
-  set(HAVE_SOLVER_MPTILUC2 FALSE PARENT_SCOPE)
+if (USE_SOLVER_PETSC)
+    add_subdirectory(solver_petsc)
 endif()
 
-if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_mtilu2.hpp" )
-  set(SOLVER_DEFINITIONS ${SOLVER_DEFINITIONS} -DHAVE_SOLVER_MPTILU2)
-  set(HAVE_SOLVER_MPTILU2 TRUE PARENT_SCOPE)
-  list(APPEND HEADER ${CMAKE_CURRENT_SOURCE_DIR}/solver_mtilu2.hpp)
-  list(APPEND SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/solver_mtilu2.cpp)
-else()
-  set(HAVE_SOLVER_MPTILU2 FALSE PARENT_SCOPE)
+if (USE_SOLVER_TRILINOS AND USE_MPI)
+    add_subdirectory(solver_trilinos)
 endif()
 
-if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.h" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.cpp" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fcbiilu2.cpp" )
-  set(SOLVER_DEFINITIONS ${SOLVER_DEFINITIONS} -DHAVE_SOLVER_FCBIILU2)
-  set(HAVE_SOLVER_FCBIILU2 TRUE PARENT_SCOPE)
-  list(APPEND HEADER ${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.h)
-  list(APPEND SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/solver_fcbiilu2.cpp ${CMAKE_CURRENT_SOURCE_DIR}/fcbiilu2.cpp)
-else()
-  set(HAVE_SOLVER_FCBIILU2 FALSE)
+if (USE_SOLVER_ANI AND TEST_FORTRAN_ANI3D)
+    add_subdirectory(solver_ani)
 endif()
-if (USE_MPI)
-  if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.h" AND EXISTS
-  		"${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.cpp" AND EXISTS
-		"${CMAKE_CURRENT_SOURCE_DIR}/k3d.h" AND EXISTS
-		"${CMAKE_CURRENT_SOURCE_DIR}/k3d.cpp" )
-    set(SOLVER_DEFINITIONS ${SOLVER_DEFINITIONS} -DHAVE_SOLVER_K3BIILU2)
-    set(HAVE_SOLVER_K3BIILU2 TRUE PARENT_SCOPE)
-    list(APPEND HEADER ${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.h ${CMAKE_CURRENT_SOURCE_DIR}/k3d.h)
-    list(APPEND SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.cpp ${CMAKE_CURRENT_SOURCE_DIR}/k3d.cpp)
-  else()
-    set(HAVE_SOLVER_K3BIILU2 FALSE PARENT_SCOPE)
-  endif()
+
+if (USE_SOLVER_SUPERLU)
+    add_subdirectory(solver_superlu)
 endif()
 
 

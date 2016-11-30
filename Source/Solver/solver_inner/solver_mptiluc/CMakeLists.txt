@@ -1,0 +1,10 @@
+set(SOURCE ${SOURCE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverMPTILUC.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.cpp)
+
+set(HEADER ${HEADER}
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverMPTILUC.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/solver_mtiluc2.hpp)
+
+set(SOURCE ${SOURCE} PARENT_SCOPE)
+set(HEADER ${HEADER} PARENT_SCOPE)

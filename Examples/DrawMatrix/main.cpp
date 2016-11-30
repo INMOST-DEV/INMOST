@@ -229,7 +229,7 @@ public:
 	void compute(int _maxblock)
 	{
 		//maxblock = (mend - mbeg) * 0.85 / 4;//_maxblock;
-		
+
 		maxblock = _maxblock;
 		std::cout << "Block size: " << maxblock << std::endl;
 		sblock = 0;
@@ -369,14 +369,14 @@ void keyboard(unsigned char key, int x, int y)
 	if( key == '+' || key == '=' )
 	{
 		zoom++;
-		
+
 	}
 	if( key == '-' )
 	{
-		if( zoom > 1 ) 
+		if( zoom > 1 )
 		{
 			zoom--;
-			
+
 		}
 	}
 	if (key == 'c') ord->clear();
@@ -425,7 +425,7 @@ void draw()
 			DrawEntry((it - m->Begin()), m->Size() - jt->first);//, sqrt((jt->second-min)/(max-min)));
 	glEnd();
 
-	
+
 	/*
 	glColor3f(0.0, 1.0, 0);
 	glBegin(GL_QUADS);
@@ -438,11 +438,11 @@ void draw()
 	glEnd();
 	*/
 
-	
+
 	glBegin(GL_QUADS);
 	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 	{
-		
+
 		int ind = it - m->Begin();
 		double t = fabs((*it)[ind]) / row_sum[ind];
 		//if (fabs((*it)[ind]) < row_sum[ind]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
@@ -496,7 +496,7 @@ int main(int argc, char ** argv)
 	//ord = new Reorder_ARMS(m,0,m->Size());
 	std::cout << "Matrix size: " << m->Size() << std::endl;
 	INMOST_DATA_ENUM_TYPE nnz = 0, nnzrow;
-	
+
 	row_sum.set_interval_beg(0);
 	row_sum.set_interval_end(m->Size());
 	std::fill(row_sum.begin(),row_sum.end(),0.0);
@@ -514,21 +514,21 @@ int main(int argc, char ** argv)
 		row_sum[it-m->Begin()] /= (double)nnzrow;
 	}
 
-	
+
 
 	std::cout << "Nonzeros: " << nnz << std::endl;
-	
+
 	zoom = m->Size() / 1000;
-	
+
 	//~ for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 		//~ for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
 		//~ {
-			//~ if(jt->second < min ) 
+			//~ if(jt->second < min )
 			//~ {
 				//~ min = jt->second;
 				//~ std::cout << (it-m->Begin()) << " " << jt->first << " " << jt->second << std::endl;
 			//~ }
-			//~ if(jt->second > max ) 
+			//~ if(jt->second > max )
 			//~ {
 				//~ max = jt->second;
 				//~ std::cout << (it-m->Begin()) << " " << jt->first << " " << jt->second << std::endl;
@@ -541,13 +541,13 @@ int main(int argc, char ** argv)
 	glutInitWindowPosition (5, 5);
 	glutCreateWindow(argv[1]);
 
-	
+
 
 	glClearColor (1.0f, 1.0f, 1.0f, 1.f);
 	glutDisplayFunc(draw);
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(keyboard);
-	
+
 
 	glutPostRedisplay();
 	glutMainLoop();

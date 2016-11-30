@@ -7,7 +7,8 @@ using namespace INMOST;
 int main(int argc,char ** argv)
 {
 	int permut = 0;
-	int solver = 0; // 0 - INNER_ILU2, 1 - INNER_MLILUC, 2 - PETSc
+	std::string solver = "inner_ilu2";
+    // 0 - INNER_ILU2, 1 - INNER_MLILUC, 2 - PETSc
 	// 3 - Trilinos_Aztec, 4 - Trilinos_Ifpack,
 	// 5 - Trilinos_ML, 6 - Trilinos_Belos, 7 - ANI
 	int rank,procs,newrank;
@@ -22,30 +23,15 @@ int main(int argc,char ** argv)
 #endif
 
 	if (argc > 1)  permut = atoi(argv[1]);
-	if (argc > 2)  solver = atoi(argv[2]);
+	if (argc > 2)  solver = std::string(argv[2]);
 
 	if (permut < procs)  newrank = (rank + permut) % procs;
 	else newrank = (permut - rank) % procs;
 
 	std::cout << rank <<  " -> " << newrank << std::endl;
 
-	Solver::Type type;
-	switch(solver)
 	{
-	case 0: type = Solver::INNER_ILU2; break;
-	case 1: type = Solver::INNER_DDPQILUC; break;
-	case 2: type = Solver::PETSc; break;
-	case 3: type = Solver::Trilinos_Aztec; break;
-	case 4: type = Solver::Trilinos_Ifpack; break;
-	case 5: type = Solver::Trilinos_ML; break;
-	case 6: type = Solver::Trilinos_Belos; break;
-	case 7: type = Solver::ANI; break;
-	case 8: type = Solver::INNER_MPTILUC; break;
-	case 9: type = Solver::INNER_MPTILU2; break;
-	}
-
-	{
-		Solver S(type); // Specify the linear solver
+		Solver S(solver); // Specify the linear solver
 
 
 		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
@@ -72,7 +58,7 @@ int main(int argc,char ** argv)
 		if( !S.Solve(b,x) )   // Solve the linear system with the previously computted preconditioner
 		{
 			if( rank == 0 )
-				std::cout << S.GetReason() << std::endl;
+				std::cout << S.ReturnReason() << std::endl;
 #if defined(USE_MPI)
 			MPI_Abort(MPI_COMM_WORLD,-1);
 #else
