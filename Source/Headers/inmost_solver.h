@@ -1,7 +1,6 @@
 #ifndef INMOST_SOLVER_INCLUDED
 #define INMOST_SOLVER_INCLUDED
 
-#include "inmost_solver_interface.h"
 #include "inmost_common.h"
 #include "inmost_sparse.h"
 
@@ -11,6 +10,9 @@ namespace INMOST
 
 #define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {char str[4096]; int len; MPI_Error_string(ierr,str,&len); std::cout << #x << " not successfull: " << str << std::endl; MPI_Abort(comm,-1000);}}
 #define HASH_TABLE_SIZE 2048
+
+    class SolverInterface;
+    class SolverParameters;
 
     class Solver
     {

@@ -1,7 +1,7 @@
 #ifndef INMOST_SOLVERINNER_H
 #define INMOST_SOLVERINNER_H
 
-#include "inmost_solver_interface.h"
+#include "Source/Solver/SolverInterface.h"
 #include "Source/Utils/Utils.h"
 #include "solver_prototypes.hpp"
 #include "solver_bcgsl.hpp"

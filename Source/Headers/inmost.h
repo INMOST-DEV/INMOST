@@ -6,7 +6,6 @@
 #include "inmost_mesh.h"
 #include "inmost_dense.h"
 #include "inmost_solver.h"
-#include "inmost_solver_interface.h"
 #include "inmost_partitioner.h"
 #include "inmost_variable.h"
 #include "inmost_nonlinear.h"

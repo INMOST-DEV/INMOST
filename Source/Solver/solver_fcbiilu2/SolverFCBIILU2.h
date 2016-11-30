@@ -1,7 +1,7 @@
 #ifndef INMOST_SOLVERFCBIILU2_H
 #define INMOST_SOLVERFCBIILU2_H
 
-#include "inmost_solver_interface.h"
+#include "Source/Solver/SolverInterface.h"
 #include "solver_fcbiilu2.h"
 
 namespace INMOST {

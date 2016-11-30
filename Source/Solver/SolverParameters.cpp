@@ -1,4 +1,4 @@
-#include "inmost_solver_interface.h"
+#include "SolverInterface.h"
 
 namespace INMOST {
 

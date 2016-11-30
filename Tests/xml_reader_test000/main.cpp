@@ -1,8 +1,6 @@
 
 #include <cstdlib>
 #include <inmost.h>
-#include <istream>
-#include <string>
 #include <cassert>
 
 using namespace INMOST;

@@ -1,9 +1,9 @@
 #ifndef INMOST_SOLVERPETSC_H
 #define INMOST_SOLVERPETSC_H
 
-#include "inmost.h"
 #include "petsc.h"
 #include "solver_petsc.h"
+#include "Source/Solver/SolverInterface.h"
 #include "Source/Utils/Utils.h"
 
 

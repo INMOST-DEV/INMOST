@@ -1,7 +1,7 @@
 #ifndef INMOST_SOLVERK3BIILU2_H
 #define INMOST_SOLVERK3BIILU2_H
 
-#include "inmost_solver_interface.h"
+#include "Source/Solver/SolverInterface.h"
 #include "solver_k3biilu2.h"
 
 namespace INMOST {

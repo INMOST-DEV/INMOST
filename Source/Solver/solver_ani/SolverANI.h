@@ -1,7 +1,7 @@
 #ifndef INMOST_SOLVERANI_H
 #define INMOST_SOLVERANI_H
 
-#include "inmost_solver_interface.h"
+#include "Source/Solver/SolverInterface.h"
 #include "solver_ani.h"
 
 namespace INMOST {

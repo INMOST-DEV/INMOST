@@ -2,7 +2,7 @@
 #define INMOST_SOLVER_MASTER
 
 #include <inmost_solver.h>
-#include <inmost_solver_interface.h>
+#include <Source/Solver/SolverInterface.h>
 
 #include "SolverMaster.h"
 #include "solver_inner/solver_ilu2/SolverILU2.h"

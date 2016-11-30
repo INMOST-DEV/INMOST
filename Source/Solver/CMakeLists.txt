@@ -9,7 +9,8 @@ set(SOURCE
 
 set(HEADER
         ${HEADER}
-        ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/SolverInterface.h)
 
 add_subdirectory(solver_inner)
 add_subdirectory(solver_fcbiilu2)
