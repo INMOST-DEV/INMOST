@@ -7,7 +7,15 @@ namespace INMOST {
     }
 
     SolverInterface *SolverK3BIILU2::Copy(const SolverInterface *other) {
-        const SolverK3BIILU2 *k3other = static_cast<const SolverK3BIILU2 *>(other);
+        if (other == NULL) {
+            throw INMOST::SolverCopyNullException;
+        }
+        const SolverK3BIILU2 *k3other;
+        try {
+            k3other = dynamic_cast<const SolverK3BIILU2 *>(other);
+        } catch (...) {
+            throw INMOST::SolverCopyException;
+        }
         SolverCopyDataK3biilu2(&solver_data, k3other->solver_data, k3other->communicator);
         if (k3other->matrix_data != NULL) {
             MatrixCopyDataK3biilu2(&matrix_data, k3other->matrix_data);
@@ -17,7 +25,15 @@ namespace INMOST {
     }
 
     void SolverK3BIILU2::Assign(const SolverInterface *other) {
-        const SolverK3BIILU2 *k3other = static_cast<const SolverK3BIILU2 *>(other);
+        if (other == NULL) {
+            throw INMOST::SolverAssignNullException;
+        }
+        const SolverK3BIILU2 *k3other;
+        try {
+            k3other = dynamic_cast<const SolverK3BIILU2 *>(other);
+        } catch (...) {
+            throw INMOST::SolverAssignException;
+        }
         SolverAssignDataK3biilu2(solver_data, k3other->solver_data);
         if (k3other->matrix_data != NULL) {
             if (matrix_data != NULL) {

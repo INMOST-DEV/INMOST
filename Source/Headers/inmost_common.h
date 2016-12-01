@@ -225,6 +225,10 @@ namespace INMOST
 		SolverUnsupportedOperation,
 		SolverUnknownParameter,
 		SolverNonExistentParameters,
+		SolverCopyNullException,
+		SolverCopyException,
+        SolverAssignNullException,
+        SolverAssignException,
 		
 		/// The list of errors may occur in the Partitioner.
 		ErrorInPartitioner = 500,

@@ -56,6 +56,8 @@ endif()
 
 if(USE_SOLVER_PETSC)
 add_test(NAME solver_test000_serial_petsc                      COMMAND $<TARGET_FILE:solver_test000> 0 petsc)
+add_test(NAME solver_test000_copy_serial_petsc                      COMMAND $<TARGET_FILE:solver_test000> 0 petsc 1)
+add_test(NAME solver_test000_assign_serial_petsc                      COMMAND $<TARGET_FILE:solver_test000> 0 petsc 2)
 endif()
 
 if(USE_SOLVER_TRILINOS AND USE_MPI)
@@ -93,6 +95,8 @@ endif()
 
 if(USE_SOLVER_PETSC)
 add_test(NAME solver_test000_parallel_normal_petsc             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 petsc)
+add_test(NAME solver_test000_copy_parallel_normal_petsc             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 petsc 1)
+add_test(NAME solver_test000_assign_parallel_normal_petsc             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 petsc 2)
 #add_test(NAME solver_test000_parallel_permute1_petsc           COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 2)
 #add_test(NAME solver_test000_parallel_permute2_petsc           COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 2)
 endif()

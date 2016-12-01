@@ -8,7 +8,7 @@
 
 #include <inmost.h>
 #include "Source/Solver/SolverInterface.h"
-#include "Source/Utils/Utils.h"
+#include "Source/Misc/utils.h"
 
 #if defined(USE_MPI)
 

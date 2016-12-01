@@ -7,7 +7,6 @@ add_subdirectory(NonlinearSolver)
 add_subdirectory(Autodiff)
 add_subdirectory(Partitioner)
 add_subdirectory(Misc)
-add_subdirectory(Utils)
 add_subdirectory(Headers)
 
 

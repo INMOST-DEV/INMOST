@@ -2,7 +2,7 @@
 #define INMOST_SOLVERINNER_H
 
 #include "Source/Solver/SolverInterface.h"
-#include "Source/Utils/Utils.h"
+#include "Source/Misc/utils.h"
 #include "solver_prototypes.hpp"
 #include "solver_bcgsl.hpp"
 

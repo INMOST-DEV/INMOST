@@ -7,10 +7,8 @@ using namespace INMOST;
 int main(int argc,char ** argv)
 {
 	int permut = 0;
+	int copy_test = 0;
 	std::string solver = "inner_ilu2";
-    // 0 - INNER_ILU2, 1 - INNER_MLILUC, 2 - PETSc
-	// 3 - Trilinos_Aztec, 4 - Trilinos_Ifpack,
-	// 5 - Trilinos_ML, 6 - Trilinos_Belos, 7 - ANI
 	int rank,procs,newrank;
 
 	Solver::Initialize(&argc,&argv,"database.txt"); // Initialize the solver and MPI activity
@@ -24,6 +22,7 @@ int main(int argc,char ** argv)
 
 	if (argc > 1)  permut = atoi(argv[1]);
 	if (argc > 2)  solver = std::string(argv[2]);
+	if (argc > 3)  copy_test = atoi(argv[3]);
 
 	if (permut < procs)  newrank = (rank + permut) % procs;
 	else newrank = (permut - rank) % procs;
@@ -32,7 +31,13 @@ int main(int argc,char ** argv)
 
 	{
 		Solver S(solver); // Specify the linear solver
+        Solver &actualSolver = S;
 
+        //Copy test
+        if (copy_test == 1) {
+            Solver copySolver(S);
+            actualSolver = copySolver;
+        }
 
 		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
 		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors
@@ -52,13 +57,21 @@ int main(int argc,char ** argv)
 			b[i] = i;
 			x[i] = 0.1;
 		}
-		if (rank==0)  std::cout << "next call S.SetMatrix(A);" << std::endl;
-		S.SetMatrix(A); // Compute the preconditioner for the original matrix
-		if (rank==0)  std::cout << "next call S.Solve(b,x);" << std::endl;
-		if( !S.Solve(b,x) )   // Solve the linear system with the previously computted preconditioner
+		if (rank==0)  std::cout << "next call SetMatrix(A);" << std::endl;
+		actualSolver.SetMatrix(A); // Compute the preconditioner for the original matrix
+		if (rank==0)  std::cout << "next call Solve(b,x);" << std::endl;
+
+        //Assign test
+        if (copy_test == 2) {
+            Solver assignSolver(solver);
+            assignSolver = Solver(actualSolver);
+            actualSolver = assignSolver;
+        }
+
+		if( !actualSolver.Solve(b,x) )   // Solve the linear system with the previously computted preconditioner
 		{
 			if( rank == 0 )
-				std::cout << S.ReturnReason() << std::endl;
+				std::cout << actualSolver.ReturnReason() << std::endl;
 #if defined(USE_MPI)
 			MPI_Abort(MPI_COMM_WORLD,-1);
 #else
@@ -98,6 +111,7 @@ int main(int argc,char ** argv)
 		//A.Save("A.mtx");
 	}
 
+    MPI_Barrier(MPI_COMM_WORLD);
 	Solver::Finalize(); // Finalize solver and close MPI activity
 	return 0;
 }

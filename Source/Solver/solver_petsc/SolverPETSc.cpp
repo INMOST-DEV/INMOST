@@ -19,8 +19,15 @@ namespace INMOST {
     }
 
     SolverInterface *SolverPETSc::Copy(const SolverInterface *other) {
-        petscSolversCount++;
-        const SolverPETSc *solver = static_cast<const SolverPETSc *>(other);
+        if (other == NULL) {
+            throw INMOST::SolverCopyNullException;
+        }
+        const SolverPETSc *solver;
+        try {
+            solver = dynamic_cast<const SolverPETSc *>(other);
+        } catch (...) {
+            throw INMOST::SolverCopyException;
+        }
         this->ksp = NULL;
         this->matrix = NULL;
 
@@ -33,7 +40,15 @@ namespace INMOST {
     }
 
     void SolverPETSc::Assign(const SolverInterface *other) {
-        const SolverPETSc *other_solver = static_cast<const SolverPETSc *>(other);
+        if (other == NULL) {
+            throw INMOST::SolverAssignNullException;
+        }
+        const SolverPETSc *other_solver;
+        try {
+            other_solver = dynamic_cast<const SolverPETSc *>(other);
+        } catch (...) {
+            throw INMOST::SolverAssignException;
+        }
         this->parametersFile = other_solver->parametersFile;
         SolverAssignDataPetsc(ksp, other_solver->ksp);
         if (other_solver->matrix != NULL) {

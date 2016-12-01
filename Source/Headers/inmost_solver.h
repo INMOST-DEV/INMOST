@@ -8,12 +8,18 @@
 namespace INMOST
 {
 
-#define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {char str[4096]; int len; MPI_Error_string(ierr,str,&len); std::cout << #x << " not successfull: " << str << std::endl; MPI_Abort(comm,-1000);}}
-#define HASH_TABLE_SIZE 2048
-
     class SolverInterface;
     class SolverParameters;
 
+    /// Main class to set and solve linear system.
+    /// Solver class is used to set the coefficient Matrix, the right-hand side Vector
+    /// and the initial guess Vector, construct the preconditioner and Solve
+    /// the linear system.
+    ///
+    /// Formally, Solver class is independent of INMOST::Mesh class.
+    /// @see Sparse::Matrix
+    /// @see Sparse::Vector
+    /// @see Sparse::Solve
     class Solver
     {
     private:
@@ -147,7 +153,7 @@ namespace INMOST
             //void ScalarProd(Vector const & left, Vector const & right, INMOST_DATA_ENUM_TYPE index_begin, INMOST_DATA_ENUM_TYPE index_end, INMOST_DATA_REAL_TYPE & sum) const;
         };
 
-        // Main constructor of the solver.
+        /// Main constructor of the solver.
         /// @param solverName The solver name to be used for solution.
         /// @param prefix The user specified name of the current solver.
         /// @param comm Communicator for parallel data exchanges, MPI_COMM_WORLD by default.
@@ -172,11 +178,9 @@ namespace INMOST
         /// Initialize the stage of parallel solution.
         /// If MPI is not initialized yet, then it will be initialized.
         ///
-        /// database file is used to pass parameters to PETSc and Trilinos packages.
-        /// if database file for is provided any changes through SetParameterEnum,
-        /// SetParameterReal would not be effective for PETSc and Trilinos packages.
-        /// Currently this database file provides directions for package-specific
-        /// files. In future it is supposed to set up parameters for internal solvers.
+        /// database file is used to pass parameters to Inner solvers, PETSc and Trilinos packages.
+        /// if database file for is provided any changes through SetParameter
+        /// would not be effective for PETSc and Trilinos packages.
         /// @param argc The number of arguments transmitted to the function main.
         /// @param argv The pointer to arguments transmitted to the function main.
         /// @param database Usually the name of the file with the Solver parameters.
@@ -186,7 +190,7 @@ namespace INMOST
         /// @see Solver::isInitialized
         ///
         /// Example of contents of the database file:
-        ///
+        ///     Main: database.xml
         ///     PETSc: petsc_options.txt
         ///     Trilinos_Ifpack: trilinos_ifpack_options.xml
         ///     Trilinos_ML: trilinos_ml_options.xml
@@ -201,8 +205,10 @@ namespace INMOST
         /// @see Solver::isFinalized
         static void Finalize();
 
+        /// Checks the stage of parallel solution is initialized
         static bool isInitialized();
 
+        /// Checks the stage of parallel solution is finalized
         static bool isFinalized();
 
         /// Set the matrix and construct the preconditioner.
@@ -236,7 +242,73 @@ namespace INMOST
         /// Clear all internal data of the current solver including matrix, preconditioner etc.
         bool Clear();
 
+        /// Get the solver output parameter
+        /// @param name The name of solver's output parameter
+        /// @see Solver::SetParameter
         std::string GetParameter(std::string name) const;
+
+        /// @param name The name of parameter
+        /// @param value The value of parameter
+        /// Set the solver parameter of the integer type.
+        ///
+        /// Parameters:
+        /// - "maximum_iterations" - total number of iterations
+        /// - "schwartz_overlap"   - number of overlapping levels for additive schwartz method,
+        ///                          works for:
+        ///                          INNER_ILU2, INNER_MLILUC
+        ///                          Trilinos_Aztec, Trilinos_Belos, Trilinos_ML, Trilinos_Ifpack
+        ///                          PETSc
+        /// - "gmres_substeps"     - number of gmres steps performed after each bicgstab step,
+        ///                          works for:
+        ///                          INNER_ILU2, INNER_MLILUC
+        /// - "reorder_nonzeros"   - place sparser rows at the beggining of matrix during reordering,
+        ///                          works for:
+        ///                          INNER_MLILUC
+        /// - "rescale_iterations" - number of iterations for two-side matrix rescaling,
+        ///                          works for:
+        ///                          INNER_ILU2, INNER_MLILUC
+        /// - "condition_estimation" - exploit condition estimation of inversed factors to adapt
+        ///                          drop and reuse tolerances,
+        ///                          works for:
+        ///                          INNER_MLILUC
+        /// - "adapt_ddpq_tolerance" - adapt ddpq tolerance depending from the complexity
+        ///                          of calculation of Schur complement,
+        ///                          works for:
+        ///                          INNER_MLILUC
+        /// Set the solver parameter of the real type.
+        ///
+        /// Parameters:
+        /// - "absolute_tolerance" - iterative method will stop on i-th iteration
+        ///                          if ||A x(i)-b|| < absolute_tolerance
+        /// - "relative_tolerance" - iterative method will stop on i-th iteration
+        ///                          if ||A x(i)-b||/||A x(0) - b||
+        /// - "divergence_tolerance" - iterative method will fail if
+        ///                          ||A x(i) - b|| > divergence_tolerance
+        /// - "drop_tolerance"     - tolerance for dropping values during incomplete factorization,
+        ///                          works for:
+        ///                          INNER_ILU2, INNER_MLILUC
+        ///                          Trilinos_Aztec, Trilinos_Ifpack
+        ///                          PETSc
+        /// - "reuse_tolerance"    - tolerance for reusing values during incomplete factorization,
+        ///                          these values are used only during calculation of L and U factors
+        ///                          and/or Schur complement and discarded once factorization is done,
+        ///                          value should be less then "drop_tolerance",
+        ///                          typical value is drop_tolerance^2,
+        ///                          works for:
+        ///                          INNER_ILU2, INNER_MLILUC
+        /// - "ddpq_tolerance"     - by this tolerance most diagonnaly-dominant elements will be selected
+        ///                          to form the next level of factorization, the closer the tolerance
+        ///                          is to one the smaller will be the level. Actual rule is:
+        ///                          A(i,j)/(sum(A(i,:))+sum(A(:,j))-A(i,j)) > ddpq_tolerance *
+        ///                          A(imax,jmax)/(sum(A(imax,:))+sum(A(:,jmax))-A(imax,jmax))
+        ///                          where on imax, jmax maximum is reached.
+        ///                          works for:
+        ///                          INNER_MLILUC
+        /// - "fill_level"         - level of fill for ILU-type preconditioners,
+        ///                          works for:
+        ///                          INNER_ILU2 (if LFILL is defined in solver_ilu2.hpp)
+        ///                          Trilinos, Trilinos_Ifpack
+        /// @see Solver::GetParameter
         void SetParameter(std::string name, std::string value);
 
         /// Return the number of iterations performed by the last solution.
@@ -267,15 +339,18 @@ namespace INMOST
 
         /// Checks if solver available
         /// @param name Solver name
+        /// @see Solver::getAvailableSolvers
         static bool isSolverAvailable(std::string name);
 
         /// Return the list of all available solvers
+        /// @see Solver::isSolverAvailable
         static std::vector<std::string> getAvailableSolvers();
 
         ~Solver();
 
     private:
 
+        /// Reads the parameters from database file stored in xml format.
         static void parseXMLDatabase(const char* xml_database);
     };
 

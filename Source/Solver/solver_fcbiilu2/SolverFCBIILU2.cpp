@@ -7,7 +7,15 @@ namespace INMOST {
     }
 
     SolverInterface *SolverFCBIILU2::Copy(const SolverInterface *other) {
-        const SolverFCBIILU2 *fcother = static_cast<const SolverFCBIILU2 *>(other);
+        if (other == NULL) {
+            throw INMOST::SolverCopyNullException;
+        }
+        const SolverFCBIILU2 *fcother;
+        try {
+            fcother = dynamic_cast<const SolverFCBIILU2 *>(other);
+        } catch (...) {
+            throw INMOST::SolverCopyException;
+        }
         SolverCopyDataFcbiilu2(&solver_data, fcother->solver_data, communicator);
         if (fcother->matrix_data != NULL) {
             MatrixCopyDataFcbiilu2(&matrix_data, fcother->matrix_data);
@@ -17,7 +25,15 @@ namespace INMOST {
     }
 
     void SolverFCBIILU2::Assign(const SolverInterface *other) {
-        const SolverFCBIILU2 *fcother = static_cast<const SolverFCBIILU2 *>(other);
+        if (other == NULL) {
+            throw INMOST::SolverAssignNullException;
+        }
+        const SolverFCBIILU2 *fcother;
+        try {
+            fcother = dynamic_cast<const SolverFCBIILU2 *>(other);
+        } catch (...) {
+            throw INMOST::SolverAssignException;
+        }
         SolverAssignDataFcbiilu2(solver_data, fcother->solver_data);
         if (fcother->matrix_data != NULL) {
             if (matrix_data != NULL) {
