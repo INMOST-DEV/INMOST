@@ -115,18 +115,23 @@ namespace INMOST
 			return value != value;
 		}
 	};
+
 	
+	//forward declaration that helps define copy constructor and assignment operator.
+	class hessian_multivar_expression;
 
 #if defined(PACK_ARRAY)
 #pragma pack(push,r1,4)
 #endif
 
 
+	/// A class that represents a variable with multiple
+	/// first order variations.
+	/// Short type name is variable.
 	class multivar_expression : public shell_expression<multivar_expression>
 	{
-		INMOST_DATA_REAL_TYPE value;
-		Sparse::Row entries;
-		Sparse::HessianRow hessian_entries;
+		INMOST_DATA_REAL_TYPE value; //< Value of the variable.
+		Sparse::Row entries; //< Sparse vector of variations.
 	public:
 		multivar_expression() :value(0) {}
 		multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
@@ -167,14 +172,12 @@ namespace INMOST
 			J = entries;
 			if( !J.isSorted() ) std::sort(J.Begin(),J.End());
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
-			H = hessian_entries;
-			for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
+			H.Clear();
 		}
 		__INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
 			value = pvalue;
 			entries.Clear();
-			hessian_entries.Clear();
 			return *this;
 		}
 		__INLINE multivar_expression & operator = (basic_expression const & expr)
@@ -194,13 +197,10 @@ namespace INMOST
 		{
 			value = other.value;
 			entries = other.entries;
-			hessian_entries = other.hessian_entries;
 			return *this;
 		}
 		__INLINE Sparse::Row & GetRow() {return entries;}
-		__INLINE Sparse::HessianRow & GetHessianRow() {return hessian_entries;}
 		__INLINE const Sparse::Row & GetRow() const {return entries;}
-		__INLINE const Sparse::HessianRow & GetHessianRow() const {return hessian_entries;}
 		__INLINE multivar_expression & operator +=(basic_expression const & expr)
 		{
 			value += expr.GetValue();
@@ -337,22 +337,220 @@ namespace INMOST
 		
 		friend class multivar_expression_reference;
 	};
-
+	
+	/// A class that represents a variable with multiple
+	/// first order and second order variations.
+	/// Short type name is hessian_variable.
+	class hessian_multivar_expression : public shell_expression<hessian_multivar_expression>
+	{
+		INMOST_DATA_REAL_TYPE value;
+		Sparse::Row entries;
+		Sparse::HessianRow hessian_entries;
+	public:
+		/// Sets zero value and no first or second order variations.
+		hessian_multivar_expression() :value(0) {}
+		/// Sets value and no first or second order variations.
+		hessian_multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
+		/// Copy value and all first and second order variations from hessian_variable.
+		hessian_multivar_expression(const hessian_multivar_expression & other) : value(other.value), entries(other.entries), hessian_entries(other.hessian_entries) {}
+		/// Copy value and all first variations from variable, no second order variations.
+		hessian_multivar_expression(const multivar_expression & other) : value(other.GetValue()), entries(other.GetRow()) {}
+		/// Sets value and all first variations, no second order variations.
+		hessian_multivar_expression(INMOST_DATA_REAL_TYPE pvalue, Sparse::Row & pentries)
+		: value(pvalue), entries(pentries) {}
+		/// Sets value and all first and second order variations.
+		hessian_multivar_expression(INMOST_DATA_REAL_TYPE pvalue, Sparse::Row & pentries, Sparse::HessianRow & phentries)
+		: value(pvalue), entries(pentries), hessian_entries(phentries) {}
+		/// Sets value and it's variation index.
+		hessian_multivar_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex, INMOST_DATA_REAL_TYPE pdmult = 1.0)
+		: value(pvalue)
+		{
+			entries.Push(pindex,pdmult);
+		}
+		/// Evaluates argument expression to get the value and all variations of variable.
+		hessian_multivar_expression(const basic_expression & expr)
+		{
+			value = expr.GetValue();
+			expr.GetHessian(1.0,entries,1.0,hessian_entries);
+		}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
+		{
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				r[it->first] += it->second*mult;
+		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+		{
+			if( CheckCurrentAutomatizator() )
+				FromGetJacobian(*this,mult,r);
+			else
+			{
+				for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+					r[it->first] += it->second*mult;
+			}
+		}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
+		{
+			J = entries;
+			if( !J.isSorted() ) std::sort(J.Begin(),J.End());
+			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
+			H = hessian_entries;
+			for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
+		}
+		__INLINE multivar_expression GetVariable(INMOST_DATA_ENUM_TYPE index)
+		{
+			multivar_expression ret(0);
+			for(int k = 0; k < entries.Size(); ++k)
+				if( entries.GetIndex(k) == index )
+				{
+					ret.SetValue(entries.GetValue(k));
+					Sparse::Row & r = ret.GetRow();
+					for(int q = 0; q < hessian_entries.Size(); ++q)
+					{
+						Sparse::HessianRow::index & i = hessian_entries.GetIndex(q);
+						if( i.first == index )
+							r.Push(i.second,hessian_entries.GetValue(q)*(i.first == i.second ? 1.0 : 0.5));
+						else if( i.second == index )
+							r.Push(i.first,hessian_entries.GetValue(q)*(i.first == i.second ? 1.0 : 0.5));
+					}
+					break;
+				}
+			return ret;
+		}
+		__INLINE hessian_multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
+		{
+			value = pvalue;
+			entries.Clear();
+			hessian_entries.Clear();
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator = (basic_expression const & expr)
+		{
+			value = expr.GetValue();
+			Sparse::Row tmp;
+			Sparse::HessianRow htmp;
+			expr.GetHessian(1.0,tmp,1.0,htmp);
+			entries.Swap(tmp);
+			hessian_entries.Swap(htmp);
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator = (multivar_expression const & other)
+		{
+			value = other.GetValue();
+			entries = other.GetRow();
+			hessian_entries.Clear();
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator = (hessian_multivar_expression const & other)
+		{
+			value = other.value;
+			entries = other.entries;
+			hessian_entries = other.hessian_entries;
+			return *this;
+		}
+		__INLINE Sparse::Row & GetRow() {return entries;}
+		__INLINE Sparse::HessianRow & GetHessianRow() {return hessian_entries;}
+		__INLINE const Sparse::Row & GetRow() const {return entries;}
+		__INLINE const Sparse::HessianRow & GetHessianRow() const {return hessian_entries;}
+		__INLINE hessian_multivar_expression & operator +=(basic_expression const & expr)
+		{
+			value += expr.GetValue();
+			Sparse::Row tmp(entries);
+			Sparse::HessianRow htmp(hessian_entries);
+			expr.GetHessian(1.0,tmp,1.0,htmp);
+			entries.Swap(tmp);
+			hessian_entries.Swap(htmp);
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator -=(basic_expression const & expr)
+		{
+			value -= expr.GetValue();
+			Sparse::Row tmp(entries);
+			Sparse::HessianRow htmp(hessian_entries);
+			expr.GetHessian(-1.0,tmp,-1.0,htmp);
+			entries.Swap(tmp);
+			hessian_entries.Swap(htmp);
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator *=(basic_expression const & expr)
+		{
+			throw NotImplemented; //check code below is correct
+			INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
+			Sparse::Row tmp(entries);
+			Sparse::HessianRow htmp(hessian_entries);
+			for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
+			for(Sparse::HessianRow::iterator it = htmp.Begin(); it != htmp.End(); ++it) it->second *= rval;
+			expr.GetHessian(lval,tmp,lval,htmp);
+			entries.Swap(tmp);
+			hessian_entries.Swap(htmp);
+			value *= rval;
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator /=(basic_expression const & expr)
+		{
+			throw NotImplemented; //check code below is correct
+			INMOST_DATA_REAL_TYPE rval = expr.GetValue();
+			INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
+			value *= reciprocial_rval;
+			Sparse::Row tmp(entries);
+			Sparse::HessianRow htmp(hessian_entries);
+			for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
+			for(Sparse::HessianRow::iterator it = htmp.Begin(); it != htmp.End(); ++it) it->second *= reciprocial_rval;
+			expr.GetHessian(-value*reciprocial_rval,tmp,1.0,htmp);
+			entries.Swap(tmp);
+			hessian_entries.Swap(htmp);
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator +=(INMOST_DATA_REAL_TYPE right)
+		{
+			value += right;
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator -=(INMOST_DATA_REAL_TYPE right)
+		{
+			value -= right;
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator *=(INMOST_DATA_REAL_TYPE right)
+		{
+			value *= right;
+			for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second *= right;
+			for(Sparse::HessianRow::iterator it = hessian_entries.Begin(); it != hessian_entries.End(); ++it) it->second *= right;
+			return *this;
+		}
+		__INLINE hessian_multivar_expression & operator /=(INMOST_DATA_REAL_TYPE right)
+		{
+			value /= right;
+			for(Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it) it->second /= right;
+			for(Sparse::HessianRow::iterator it = hessian_entries.Begin(); it != hessian_entries.End(); ++it) it->second /= right;
+			return *this;
+		}
+		bool check_nans() const
+		{
+			if( value != value ) return true;
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				if( it->second != it->second ) return true;
+			for(Sparse::HessianRow::const_iterator it = hessian_entries.Begin(); it != hessian_entries.End(); ++it)
+				if( it->second != it->second ) return true;
+			return false;
+		}
+	};
+	
 #if defined(PACK_ARRAY)
 #pragma pack(pop,r1)
 #endif
-
-
-  
-  class multivar_expression_reference : public shell_expression<multivar_expression_reference>
-  {
-    INMOST_DATA_REAL_TYPE & value;
-    Sparse::Row * entries;
-    Sparse::HessianRow * hessian_entries;
+	
+	
+	
+	class multivar_expression_reference : public shell_expression<multivar_expression_reference>
+	{
+		INMOST_DATA_REAL_TYPE & value;
+		Sparse::Row * entries;
   public:
     /// Constructor, set links to the provided value and entries
-    multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row * _entries, Sparse::HessianRow * _hentries = NULL) 
-      : value(_value), entries(_entries), hessian_entries(_hentries) {}
+    multivar_expression_reference(INMOST_DATA_REAL_TYPE & _value, Sparse::Row * _entries)
+      : value(_value), entries(_entries) {}
     /// Copy constructor, sets links to the same reference of value and entries
     multivar_expression_reference(const multivar_expression_reference & other) 
       : value(other.value), entries(other.entries) {}
@@ -385,11 +583,7 @@ namespace INMOST
         J = *entries;
         if( !J.isSorted() ) std::sort(J.Begin(),J.End());
         for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
-        if( hessian_entries )
-        {
-            H = *hessian_entries;
-            for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
-        }
+		H.Clear();
     }
     __INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
     {
@@ -424,8 +618,6 @@ namespace INMOST
     }
     __INLINE Sparse::Row & GetRow() {return *entries;}
     __INLINE const Sparse::Row & GetRow() const {return *entries;}
-    __INLINE Sparse::HessianRow & GetHessianRow() {return *hessian_entries;}
-    __INLINE const Sparse::HessianRow & GetHessianRow() const {return *hessian_entries;}
     __INLINE multivar_expression_reference & operator +=(basic_expression const & expr)
     {
       value += expr.GetValue();
@@ -1555,8 +1747,9 @@ namespace INMOST
     INMOST_DATA_ENUM_TYPE GetSize() const {return size;}
   };
 
-  typedef multivar_expression variable;
-  typedef var_expression unknown;
+	typedef multivar_expression variable;
+	typedef hessian_multivar_expression hessian_variable;
+	typedef var_expression unknown;
 }
 
 

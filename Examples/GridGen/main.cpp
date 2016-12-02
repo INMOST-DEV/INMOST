@@ -219,7 +219,7 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 				verts.push_back(newverts[V_ID(i - 0,j - 0, k - 0)]); // 7      /*     |       | /       */
 				                                                               /*     |/      |/        */
 				// Create cells based on parameter ng                          /*  (1)*-------*(3)      */
-				if (ng == 5)
+				if (ng == 5) // Create tetrahedral grid
 				{
 					CreateNWTetElements(m,verts);
 				}
@@ -270,20 +270,27 @@ int main(int argc, char *argv[])
 	{
 		if( args == 0 ) std::cout << "Usage: " << argv[0] << " ng nx ny nz [output.[p]vtk]" << std::endl << "ng - 3 for prismatic mesh, 4 for cubic mesh" << std::endl;
 		if( args == 0 ) std::cout << "Default ";
-		if( ng == 4 )   
-    {
-      std::cout << "Cubic ";
-      std::stringstream str;
-      str << "CUBIC_" << nx << "x" << ny << "x" << nz;
-      mesh_name = str.str();
-    }
-		else            
-    {
-      std::cout << "Prismatic ";
-      std::stringstream str;
-      str << "PRISMATIC_" << nx << "x" << ny << "x" << nz;
-      mesh_name = str.str();
-    }
+		if( ng == 5 )
+		{
+			std::cout << "Tetrahedral ";
+			std::stringstream str;
+			str << "TETRAHEDRAL_" << nx << "x" << ny << "x" << nz;
+			mesh_name = str.str();
+		}
+		else if( ng == 4 )
+		{
+			std::cout << "Cubic ";
+			std::stringstream str;
+			str << "CUBIC_" << nx << "x" << ny << "x" << nz;
+			mesh_name = str.str();
+		}
+		else
+		{
+			std::cout << "Prismatic ";
+			std::stringstream str;
+			str << "PRISMATIC_" << nx << "x" << ny << "x" << nz;
+			mesh_name = str.str();
+		}
 		std::cout << "Grid: " << nx << " x " << ny << " x " << nz << std::endl;
 		std::cout << "Processors: " <<mesh->GetProcessorsNumber() << std::endl;	
 		std::cout << "Mesh generator time: " << tt << std::endl;

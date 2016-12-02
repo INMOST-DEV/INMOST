@@ -4948,8 +4948,9 @@ int main(int argc, char ** argv)
   if(mesh->HaveTag("ADDED_ELEMENTS") )
   {
     Tag add = mesh->GetTag("ADDED_ELEMENTS");
-    for(Mesh::iteratorEdge it = mesh->BeginEdge(); it != mesh->EndEdge(); ++it) if( it->Integer(add) ) added_edges.push_back(it->self());
-    for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it) if( it->Integer(add) && !it->Boundary() ) added_faces.push_back(DrawFace(it->self()));
+	  
+    if( add.isDefined(EDGE) ) for(Mesh::iteratorEdge it = mesh->BeginEdge(); it != mesh->EndEdge(); ++it) if( it->Integer(add) ) added_edges.push_back(it->self());
+    if( add.isDefined(FACE) )  for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it) if( it->Integer(add) && !it->Boundary() ) added_faces.push_back(DrawFace(it->self()));
   }
   if(mesh->HaveTag("CONORMALS"))
   {
@@ -5034,12 +5035,12 @@ int main(int argc, char ** argv)
   }
 
 
-  if( false )
+  //if( false )
   //if( mesh->HaveTag("VELOCITY") && mesh->GetTag("VELOCITY").isDefined(CELL) )
   {
     printf("preparing octree around mesh, was sets %d\n",mesh->NumberOfSets());
     Octree octsearch = Octree(mesh->CreateSet("octsearch").first);
-    octsearch.Construct(NODE,true);
+    octsearch.Construct(NODE,false); //auto-detect octree or quadtree
     printf("done, sets %d\n",mesh->NumberOfSets());
     printf("building streamlines\n");
     Tag cell_size = mesh->CreateTag("CELL_SIZES",DATA_REAL,CELL,NONE,1);
@@ -5055,73 +5056,76 @@ int main(int argc, char ** argv)
     }
     velmax = log(velmax+1.0e-25);
     velmin = log(velmin+1.0e-25);
+	if( mesh->HaveTag("FACE_FLUX") )
+	{
+		Tag flux = mesh->GetTag("FACE_FLUX");
+		MarkerType visited = mesh->CreateMarker();
+		for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); ++f) if( f->Boundary() )
+		{
+			if( f->Real(flux) > 1.0e-5 )
+			{
+				coord cntf;
+				f->Centroid(cntf.data());
+				streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,1.0,visited));
+				
+				ElementArray<Edge> edges = f->getEdges();
+				for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
+				{
+					coord cntn;
+					n->Centroid(cntn.data());
+					if( cntn[2] == cntf[2] )
+					{
+						const Storage::real coef[4] = {0.4,0.8};
+						for(int q = 0; q < 2; ++q)
+							streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,1.0,visited));
+					}
+				}
+			}
+			else if( f->Real(flux) < -1.0e-5 )
+			{
+				coord cntf;
+				f->Centroid(cntf.data());
+				streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,-1.0,visited));
+				
+				ElementArray<Edge> edges = f->getEdges();
+				for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
+				{
+					coord cntn;
+					n->Centroid(cntn.data());
+					if( cntn[2] == cntf[2] )
+					{
+						const Storage::real coef[4] = {0.4,0.8};
+						for(int q = 0; q < 2; ++q)
+							streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,-1.0,visited));
+					}
+				}
+			}
+		}
+		
+		printf("done from boundary faces, total streamlines = %d\n",streamlines.size());
+		/*
+		for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+		{
+			if( !it->GetMarker(visited) )
+			{
+				coord cntc;
+				it->Centroid(cntc.data());
+				if( coord(it->RealArray(vel).data()).length() > 1.0e-4 )
+				{
+					streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,1.0,0));
+					streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,-1.0,0));
+				}
+			}
+		}
+		printf("done from unvisited cells, total streamlines = %d\n",streamlines.size());
+		 */
+		for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+			it->RemMarker(visited);
+		mesh->ReleaseMarker(visited);
+		
+	}
 	/*
-    Tag flux = mesh->GetTag("FACE_FLUX");
-    MarkerType visited = mesh->CreateMarker();
-    if( false )
-    for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); ++f) if( f->Boundary() )
-    {
-      if( f->Real(flux) > 1.0e-5 )
-      {
-        coord cntf;
-        f->Centroid(cntf.data());
-        streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,1.0,visited));
-
-        ElementArray<Edge> edges = f->getEdges();
-        for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
-        {
-          coord cntn;
-          n->Centroid(cntn.data());
-          if( cntn[2] == cntf[2] )
-          {
-            const Storage::real coef[4] = {0.4,0.8};
-            for(int q = 0; q < 2; ++q)
-              streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,1.0,visited));
-          }
-        }
-      }
-      else if( f->Real(flux) < -1.0e-5 )
-      {
-        coord cntf;
-        f->Centroid(cntf.data());
-        streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,-1.0,visited));
-
-        ElementArray<Edge> edges = f->getEdges();
-        for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
-        {
-          coord cntn;
-          n->Centroid(cntn.data());
-          if( cntn[2] == cntf[2] )
-          {
-            const Storage::real coef[4] = {0.4,0.8};
-            for(int q = 0; q < 2; ++q)
-              streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,-1.0,visited));
-          }
-        }
-      }
-    }
-    
-    printf("done from boundary faces, total streamlines = %d\n",streamlines.size());
-    
-    for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
-    {
-      if( !it->GetMarker(visited) )
-      {
-        coord cntc;
-        it->Centroid(cntc.data());
-        if( coord(it->RealArray(vel).data()).length() > 1.0e-4 )
-        {
-          streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,1.0,0));
-          streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,-1.0,0));
-        }
-      }
-    }
-    printf("done from unvisited cells, total streamlines = %d\n",streamlines.size());
-    for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
-      it->RemMarker(visited);
-    mesh->ReleaseMarker(visited);
-    */
-    int numlines = 16;
+	int numlines = 16;
     for(int i = 0; i < numlines; ++i)
     {
       for(int j = 0; j < numlines; ++j)
@@ -5136,6 +5140,7 @@ int main(int argc, char ** argv)
       }
     }
     printf("done from %d by %d grid, total streamlines = %d\n",numlines,numlines,(int)streamlines.size());
+	 */
     mesh->DeleteTag(cell_size);
     printf("done, total streamlines = %d\n",streamlines.size());
     printf("killing octree, was sets %d\n",mesh->NumberOfSets());

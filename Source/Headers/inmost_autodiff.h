@@ -146,9 +146,8 @@ namespace INMOST
 		tagpairs_type         reg_tags;
 		INMOST_DATA_ENUM_TYPE first_num;
 		INMOST_DATA_ENUM_TYPE last_num;
-		Mesh * m;
 	public:
-		Automatizator(Mesh * m);
+		Automatizator();
 		~Automatizator();
 		__INLINE INMOST_DATA_ENUM_TYPE                                   GetFirstIndex() { return first_num; }
 		__INLINE INMOST_DATA_ENUM_TYPE                                   GetLastIndex() { return last_num; }
@@ -157,19 +156,16 @@ namespace INMOST
 		/// Don't register tag twice.
 		/// \todo
 		/// Read comments inside, change merger.Resize() behavior.
-		INMOST_DATA_ENUM_TYPE                                            RegisterDynamicTag(Tag t, ElementType typemask, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE                                            RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask = 0);
 		/// Set index for every data entry of dynamic tag.
-		void                                                             EnumerateDynamicTags();
-		__INLINE Tag                                                     GetDynamicValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.t; }
-		__INLINE Tag                                                     GetDynamicIndexTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].indices; }
-		__INLINE MarkerType                                              GetDynamicMask(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.domain_mask; }
-		__INLINE INMOST_DATA_REAL_TYPE                                   GetDynamicValue(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetDynamicValueTag(ind))[comp]; }
-		__INLINE INMOST_DATA_ENUM_TYPE                                   GetDynamicIndex(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetDynamicIndexTag(ind))[comp]; }
-		__INLINE bool                                                    isDynamicValid(const Storage & e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetDynamicMask(ind); return mask == 0 || e->GetMarker(mask); }
-		__INLINE INMOST_DATA_REAL_TYPE                                   GetIndex(const Storage & e, INMOST_DATA_ENUM_TYPE tagind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetDynamicIndexTag(tagind))[comp]; }
-		__INLINE INMOST_DATA_ENUM_TYPE                                   GetComponents(const Storage & e, INMOST_DATA_ENUM_TYPE tagind) { return static_cast<INMOST_DATA_ENUM_TYPE>(e->IntegerArray(GetDynamicIndexTag(tagind)).size()); }
-		__INLINE Mesh *                                                  GetMesh() { return m; }
-		Sparse::RowMerger &                                              GetMerger() 
+		void                                                             EnumerateTags();
+		__INLINE Tag                                                     GetValueTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.t; }
+		__INLINE Tag                                                     GetIndexTag(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].indices; }
+		__INLINE MarkerType                                              GetMask(INMOST_DATA_ENUM_TYPE ind) { return reg_tags[ind].d.domain_mask; }
+		__INLINE INMOST_DATA_REAL_TYPE                                   GetValue(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->RealArray(GetValueTag(ind))[comp]; }
+		__INLINE INMOST_DATA_ENUM_TYPE                                   GetIndex(const Storage & e, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE comp = 0) { return e->IntegerArray(GetIndexTag(ind))[comp]; }
+		__INLINE bool                                                    isValid(const Storage & e, INMOST_DATA_ENUM_TYPE ind) { MarkerType mask = GetMask(ind); return mask == 0 || e->GetMarker(mask); }
+		Sparse::RowMerger &                                              GetMerger()
 		{
 #if defined(USE_OMP)
 			return merger[omp_get_thread_num()];
