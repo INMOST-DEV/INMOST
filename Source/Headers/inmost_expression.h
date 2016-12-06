@@ -334,7 +334,11 @@ namespace INMOST
 		{
 			return 1 + v[0].first;
 		}
-		
+		void Print() const
+		{
+			std::cout << value << std::endl;
+			entries.Print();
+		}
 		friend class multivar_expression_reference;
 	};
 	

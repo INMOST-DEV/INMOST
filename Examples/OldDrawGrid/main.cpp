@@ -797,7 +797,7 @@ public:
 		colors.push_back(color_t(0.45,0,0.55));
 		colors.push_back(color_t(0,0,0));
 
-		samples = 2048;
+		samples = 4096;
 
 		float * pixel_array = new float[(samples+2)*4];
 
@@ -808,8 +808,8 @@ public:
 			float t = 1.0f*q/static_cast<float>(samples+1);
 			color_t c = pick_color(t);
 			//countour lines
-			//if( ((q+1) % 64 == 0 || (q+1) % 64 == 63) && (q+1) < samples ) 
-			//	c = pick_color(1-t) + color_t(0,2*t*(1-t),0); 
+			//if( ((q+1) % 128 == 0 || (q+1) % 128 == 127) && (q+1) < samples )
+			//	c = pick_color(1-t) + color_t(0,2*t*(1-t),0);
 
 			pixel_array[(q)*4+0] = c.r();
 			pixel_array[(q)*4+1] = c.g();
@@ -4093,11 +4093,13 @@ double display_elem_info(Element e, double top, double left, double interval)
 			char str[4096];
 			char temp[4096];
 			str[0] = '\0';
+			int dsize;
 			switch(t->GetDataType())
 			{
 				case DATA_INTEGER:
 				{
 					Storage::integer_array arr = e->IntegerArray(*t);
+					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
 						sprintf(temp,"%s %d",str,arr[k]);
@@ -4108,6 +4110,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 				case DATA_REAL:
 				{
 					Storage::real_array arr = e->RealArray(*t);
+					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
 						sprintf(temp,"%s %lf",str,arr[k]);
@@ -4118,6 +4121,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 				case DATA_BULK:
 				{
 					Storage::bulk_array arr = e->BulkArray(*t);
+					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
 						sprintf(temp,"%s %d",str,arr[k]);
@@ -4128,6 +4132,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 				case DATA_REFERENCE:
 				{
 					Storage::reference_array arr = e->ReferenceArray(*t);
+					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
 						if(arr.at(k) == InvalidHandle()) sprintf(temp,"%s NULL",str);
@@ -4139,6 +4144,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 				case DATA_REMOTE_REFERENCE:
 				{
 					Storage::remote_reference_array arr = e->RemoteReferenceArray(*t);
+					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
 						if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sprintf(temp,"%s NULL",str);
@@ -4151,6 +4157,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 				case DATA_VARIABLE:
 				{
 					Storage::var_array arr = e->VariableArray(*t);
+					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
 						std::stringstream stream;
@@ -4167,7 +4174,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 				}
 #endif
 			}
-			sprintf(temp,"%s %s %s",t->GetTagName().c_str(),DataTypeName(t->GetDataType()),str);
+			sprintf(temp,"%s[%d] %s %s",t->GetTagName().c_str(),dsize,DataTypeName(t->GetDataType()),str);
 			strcpy(str,temp);
 			top -= interval;
 			glRasterPos2f(left,top);
@@ -5036,7 +5043,7 @@ int main(int argc, char ** argv)
 
 
   //if( false )
-  //if( mesh->HaveTag("VELOCITY") && mesh->GetTag("VELOCITY").isDefined(CELL) )
+  if( mesh->HaveTag("VELOCITY") && mesh->GetTag("VELOCITY").isDefined(CELL) )
   {
     printf("preparing octree around mesh, was sets %d\n",mesh->NumberOfSets());
     Octree octsearch = Octree(mesh->CreateSet("octsearch").first);
