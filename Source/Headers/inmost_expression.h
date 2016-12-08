@@ -405,12 +405,12 @@ namespace INMOST
 		__INLINE multivar_expression GetVariable(INMOST_DATA_ENUM_TYPE index)
 		{
 			multivar_expression ret(0);
-			for(int k = 0; k < entries.Size(); ++k)
+			for(int k = 0; k < (int)entries.Size(); ++k)
 				if( entries.GetIndex(k) == index )
 				{
 					ret.SetValue(entries.GetValue(k));
 					Sparse::Row & r = ret.GetRow();
-					for(int q = 0; q < hessian_entries.Size(); ++q)
+					for(int q = 0; q < (int)hessian_entries.Size(); ++q)
 					{
 						Sparse::HessianRow::index & i = hessian_entries.GetIndex(q);
 						if( i.first == index )
