@@ -409,6 +409,7 @@ namespace INMOST
 			Element operator[] (size_type n) const;
 			class iterator : public shell<remote_reference>::iterator 
 			{
+			public:
 				iterator() :shell<remote_reference>::iterator() {}
 				iterator(const shell<remote_reference>::iterator & other) : shell<remote_reference>::iterator(other) {}
 				iterator(const iterator & other) : shell<remote_reference>::iterator(other) {}
@@ -416,6 +417,7 @@ namespace INMOST
 			};
 			class const_iterator : public shell<remote_reference>::const_iterator 
 			{
+			public:
 				const_iterator() :shell<remote_reference>::const_iterator() {}
 				const_iterator(const shell<remote_reference>::const_iterator & other) : shell<remote_reference>::const_iterator(other) {}
 				const_iterator(const const_iterator & other) : shell<remote_reference>::const_iterator(other) {}
@@ -423,6 +425,7 @@ namespace INMOST
 			};
 			class reverse_iterator : public shell<remote_reference>::reverse_iterator 
 			{
+			public:
 				reverse_iterator() :shell<remote_reference>::reverse_iterator() {}
 				reverse_iterator(const shell<remote_reference>::reverse_iterator & other) : shell<remote_reference>::reverse_iterator(other) {}
 				reverse_iterator(const reverse_iterator & other) : shell<remote_reference>::reverse_iterator(other) {}
@@ -430,6 +433,7 @@ namespace INMOST
 			};
 			class const_reverse_iterator : public shell<remote_reference>::const_reverse_iterator 
 			{
+			public:
 				const_reverse_iterator() :shell<remote_reference>::const_reverse_iterator() {}
 				const_reverse_iterator(const shell<remote_reference>::const_reverse_iterator & other) : shell<remote_reference>::const_reverse_iterator(other) {}
 				const_reverse_iterator(const const_reverse_iterator & other) : shell<remote_reference>::const_reverse_iterator(other) {}
