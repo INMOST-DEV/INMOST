@@ -20,3 +20,6 @@ add_test(NAME autodiff_test000_hessian_cos_mixed           COMMAND $<TARGET_FILE
 add_test(NAME autodiff_test000_hessian_sin_mult           COMMAND $<TARGET_FILE:autodiff_test000> 3)
 add_test(NAME autodiff_test000_hessian_cos_mult           COMMAND $<TARGET_FILE:autodiff_test000> 4)
 add_test(NAME autodiff_test000_hessian_sqrt_mixed           COMMAND $<TARGET_FILE:autodiff_test000> 5)
+add_test(NAME autodiff_test000_hessian_poly           COMMAND $<TARGET_FILE:autodiff_test000> 6)
+add_test(NAME autodiff_test000_hessian_sin_poly           COMMAND $<TARGET_FILE:autodiff_test000> 7)
+add_test(NAME autodiff_test000_hessian_minus_sin_poly           COMMAND $<TARGET_FILE:autodiff_test000> 8)

@@ -460,20 +460,24 @@ namespace INMOST
 		__INLINE hessian_multivar_expression & operator +=(basic_expression const & expr)
 		{
 			value += expr.GetValue();
-			Sparse::Row tmp(entries);
-			Sparse::HessianRow htmp(hessian_entries);
-			expr.GetHessian(1.0,tmp,1.0,htmp);
+			Sparse::Row tmpr, tmp;
+			Sparse::HessianRow htmpr, htmp;
+			expr.GetHessian(1.0,tmpr,1.0,htmpr);
+			Sparse::Row::MergeSortedRows(1.0,entries,1.0,tmpr,tmp);
 			entries.Swap(tmp);
+			Sparse::HessianRow::MergeSortedRows(1.0,hessian_entries,1.0,htmpr,htmp);
 			hessian_entries.Swap(htmp);
 			return *this;
 		}
 		__INLINE hessian_multivar_expression & operator -=(basic_expression const & expr)
 		{
 			value -= expr.GetValue();
-			Sparse::Row tmp(entries);
-			Sparse::HessianRow htmp(hessian_entries);
-			expr.GetHessian(-1.0,tmp,-1.0,htmp);
+			Sparse::Row tmpr, tmp;
+			Sparse::HessianRow htmpr, htmp;
+			expr.GetHessian(1.0,tmpr,1.0,htmpr);
+			Sparse::Row::MergeSortedRows(1.0,entries,-1.0,tmpr,tmp);
 			entries.Swap(tmp);
+			Sparse::HessianRow::MergeSortedRows(1.0,hessian_entries,-1.0,htmpr,htmp);
 			hessian_entries.Swap(htmp);
 			return *this;
 		}
@@ -1046,9 +1050,7 @@ namespace INMOST
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
 		Sparse::HessianRow htmp;
-        arg.GetHessian(multJ,J,multH,htmp);
-		Sparse::HessianRow::MergeJacobianHessian(-value,J,J,dmult,htmp,H);
-		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult;
+        arg.GetHessian(1,J,1,htmp);
     }
 	};
 
@@ -1078,9 +1080,6 @@ namespace INMOST
     {
         //arg.GetHessian(multJ*dmult,J,-multH*value,H);
 		Sparse::HessianRow htmp;
-        arg.GetHessian(multJ,J,multH,htmp);
-		Sparse::HessianRow::MergeJacobianHessian(-value,J,J,dmult,htmp,H);
-		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult;
     }
 	};
 
@@ -1109,8 +1108,6 @@ namespace INMOST
 		//general formula:
 		// (F(G))'' = F'(G) G'' + F''(G) G'.G'
 		Sparse::HessianRow htmp;
-		arg.GetHessian(multJ,J,multH,htmp);
-		Sparse::HessianRow::MergeJacobianHessian(-0.25/::pow(value,3.0),J,J,0.5/value,htmp,H);
 		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value;
         //arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
     }
@@ -1272,16 +1269,12 @@ namespace INMOST
     {
         Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
         Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
-        left.GetHessian(multJ,JL,multH,HL); //retrive jacobian row and hessian matrix of the left expression
-        right.GetHessian(multJ,JR,multH,HR); //retrive jacobian row and hessian matrix of the right expression
         //assume rows are sorted (this is to be ensured by corresponding GetHessian functions)
         //preallocate J to JL.Size+JR.Size
         //perform merging of two sorted arrays
         //resize to correct size
-        Sparse::Row::MergeSortedRows(right.GetValue(),JL,left.GetValue(),JR,J);
         //preallocate H to HL.Size+HR.Size+JL.Size*JR.Size
         //merge sorted
-        Sparse::HessianRow::MergeJacobianHessian(2.0,JL,JR,right.GetValue(),HL,left.GetValue(),HR,H);
     }
   };
 
@@ -1357,10 +1350,6 @@ namespace INMOST
     {
         Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
         Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
-        left.GetHessian(multJ,JL,multH,HL); //retrive jacobian row and hessian matrix of the left expression
-        right.GetHessian(multJ,JR,multH,HR); //retrive jacobian row and hessian matrix of the right expression
-        Sparse::Row::MergeSortedRows(1.0,JL,1.0,JR,J);
-        Sparse::HessianRow::MergeSortedRows(1.0,HL,1.0,HR,H);
     }
   };
 
@@ -1392,10 +1381,6 @@ namespace INMOST
     {
         Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
         Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
-        left.GetHessian(multJ,JL,multH,HL); //retrive jacobian row and hessian matrix of the left expression
-        right.GetHessian(multJ,JR,multH,HR); //retrive jacobian row and hessian matrix of the right expression
-        Sparse::Row::MergeSortedRows(1.0,JL,-1.0,JR,J);
-        Sparse::HessianRow::MergeSortedRows(1.0,HL,-1.0,HR,H);
     }
   };
 

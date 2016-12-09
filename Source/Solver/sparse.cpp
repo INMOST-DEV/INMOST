@@ -401,20 +401,23 @@ namespace INMOST
 			assert(HL.isSorted());
 			assert(HR.isSorted());
 			output.Resize(HL.Size()+HR.Size()+JL.Size()*JR.Size());
-			INMOST_DATA_ENUM_TYPE i = 0, j = 0, k = 0, l = 0, q = 0, kk = 0, ll = 0, r;
-			entry candidate[3] = {stub_entry,stub_entry,stub_entry};
+			INMOST_DATA_ENUM_TYPE i = 0, j = 0, k1 = 0, l1 = 0, k2 = 0, l2 = 0, q = 0, kk1 = 0, ll2 = 0, r;
+			entry candidate[4] = {stub_entry,stub_entry,stub_entry,stub_entry};
 			if( i < HL.Size() )
 				candidate[0] = make_entry(HL.GetIndex(i),b*HL.GetValue(i));
 			if( j < HR.Size() )
 				candidate[1] = make_entry(HR.GetIndex(j),c*HR.GetValue(j));
-			if( k < JL.Size() && l < JR.Size() )
-				candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
+			if( k1 < JL.Size() && l1 < JR.Size() )
+				candidate[2] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),0.5*a*JL.GetValue(k1)*JR.GetValue(l1));
+			if( k2 < JL.Size() && l2 < JR.Size() )
+				candidate[3] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),0.5*a*JL.GetValue(k2)*JR.GetValue(l2));
 			do
 			{
 				//pick smallest
 				r = 0;
 				if( candidate[1].first < candidate[r].first ) r = 1;
 				if( candidate[2].first < candidate[r].first ) r = 2;
+				if( candidate[3].first < candidate[r].first ) r = 3;
 				//all candidates are stub - exit
 				if( candidate[r].first == stub_entry.first ) break;
 				//record selected entry
@@ -438,39 +441,37 @@ namespace INMOST
 						candidate[1] = make_entry(HR.GetIndex(j),c*HR.GetValue(j));
 					else candidate[1] = stub_entry;
 				}
-				else //update jacobians indexes
+				else if( r == 2 ) //update jacobians indexes
 				{
-					if( JR.GetIndex(l) < JL.GetIndex(k) )
+					if( ++k1 == JL.Size() )
 					{
-						if( ++kk == JL.Size() )
+						++l1;
+						if( l1 < JR.Size() )
 						{
-							++l;
-							kk = k;
-							ll = l;
+							while(kk1 < JL.Size() && JL.GetIndex(kk1) < JR.GetIndex(l1) ) kk1++;
+							k1 = kk1;
 						}
 					}
-					else if( JL.GetIndex(k) < JR.GetIndex(l) )
-					{
-						if( ++ll == JR.Size() )
-						{
-							++k;
-							kk = k;
-							ll = l;
-						}
-					}
-					else //values are equal
-					{
-						if( ++ll == JR.Size() )
-						{
-							++k;
-							kk = k;
-							ll = l;
-						}
-					}
-					if( kk < JL.Size() && ll < JR.Size() )
-						candidate[2] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
+					if( k1 < JL.Size() && l1 < JR.Size() )
+						candidate[2] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(k1==l1?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
 					else
 						candidate[2] = stub_entry;
+				}
+				else //update jacobians indexes
+				{
+					if( ++l2 == JR.Size() )
+					{
+						++k2;
+						if( k2 < JL.Size() )
+						{
+							while(ll2 < JR.Size() && JL.GetIndex(k2) > JR.GetIndex(ll2) ) ll2++;
+							l2 = ll2;
+						}
+					}
+					if( k2 < JL.Size() && l2 < JR.Size() )
+						candidate[3] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(k2==l2?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
+					else
+						candidate[3] = stub_entry;
 				}
 			}
 			while(true);
@@ -486,22 +487,27 @@ namespace INMOST
 			assert(JR.isSorted());
 			assert(H.isSorted());
 			output.Resize(H.Size()+JL.Size()*JR.Size());
-			INMOST_DATA_ENUM_TYPE i = 0, k = 0, l = 0, q = 0, kk = 0, ll = 0, r;
-			entry candidate[2] = {stub_entry,stub_entry};
+			INMOST_DATA_ENUM_TYPE i = 0, k1 = 0, l1 = 0, q = 0, k2 = 0, l2 = 0, r, ll2 = 0, kk1 = 0;
+			entry candidate[3] = {stub_entry,stub_entry,stub_entry};
 			if( i < H.Size() )
 				candidate[0] = make_entry(H.GetIndex(i),b*H.GetValue(i));
-			if( k < JL.Size() && l < JR.Size() )
-				candidate[1] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
+			if( k1 < JL.Size() && l1 < JR.Size() )
+				candidate[1] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),0.5*a*JL.GetValue(k1)*JR.GetValue(l1));
+			if( k2 < JL.Size() && l2 < JR.Size() )
+				candidate[2] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),0.5*a*JL.GetValue(k2)*JR.GetValue(l2));
 			do
 			{
 				//pick smallest
 				r = 0;
 				if( candidate[1].first < candidate[r].first ) r = 1;
+				if( candidate[2].first < candidate[r].first ) r = 2;
 				//all candidates are stub - exit
 				if( candidate[r].first == stub_entry.first ) break;
 				//record selected entry
 				if( q > 0 && (output.GetIndex(q-1) == candidate[r].first) )
+				{
 					output.GetValue(q-1) += candidate[r].second;
+				}
 				else
 				{
 					output.GetIndex(q) = candidate[r].first;
@@ -514,39 +520,37 @@ namespace INMOST
 						candidate[0] = make_entry(H.GetIndex(i),b*H.GetValue(i));
 					else candidate[0] = stub_entry;
 				}
-				else //update jacobians indexes
+				else if( r == 1 )
 				{
-					if( JR.GetIndex(l) < JL.GetIndex(k) )
+					if( ++k1 == JL.Size() )
 					{
-						if( ++kk == JL.Size() )
+						++l1;
+						if( l1 < JR.Size() )
 						{
-							++l;
-							kk = k;
-							ll = l;
+							while(kk1 < JL.Size() && JL.GetIndex(kk1) < JR.GetIndex(l1) ) kk1++;
+							k1 = kk1;
 						}
 					}
-					else if( JL.GetIndex(k) < JR.GetIndex(l) )
-					{
-						if( ++ll == JR.Size() )
-						{
-							++k;
-							kk = k;
-							ll = l;
-						}
-					}
-					else //values are equal
-					{
-						if( ++ll == JR.Size() )
-						{
-							++k;
-							kk = k;
-							ll = l;
-						}
-					}
-					if( kk < JL.Size() && ll < JR.Size() )
-						candidate[1] = make_entry(make_index(JL.GetIndex(kk),JR.GetIndex(ll)),a*JL.GetValue(kk)*JR.GetValue(ll));
+					if( k1 < JL.Size() && l1 < JR.Size() )
+						candidate[1] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(k1==l1?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
 					else
 						candidate[1] = stub_entry;
+				}
+				else //update jacobians indexes
+				{
+					if( ++l2 == JR.Size() )
+					{
+						++k2;
+						if( k2 < JL.Size() )
+						{
+							while(ll2 < JR.Size() && JL.GetIndex(k2) > JR.GetIndex(ll2) ) ll2++;
+							l2 = ll2;
+						}
+					}
+					if( k2 < JL.Size() && l2 < JR.Size() )
+						candidate[2] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(k2==l2?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
+					else
+						candidate[2] = stub_entry;
 				}
 			}
 			while(true);
