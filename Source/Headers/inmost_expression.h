@@ -1051,6 +1051,11 @@ namespace INMOST
     {
 		Sparse::HessianRow htmp;
         arg.GetHessian(1,J,1,htmp);
+		assert(J.isSorted());
+		assert(htmp.isSorted());
+		Sparse::HessianRow::MergeJacobianHessian(-value*multH,J,J,dmult*multH,htmp,H);
+		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult*multJ;
+		assert(H.isSorted());
     }
 	};
 
@@ -1080,6 +1085,9 @@ namespace INMOST
     {
         //arg.GetHessian(multJ*dmult,J,-multH*value,H);
 		Sparse::HessianRow htmp;
+        arg.GetHessian(1,J,1,htmp);
+		Sparse::HessianRow::MergeJacobianHessian(-value*multH,J,J,dmult*multH,htmp,H);
+		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult*multJ;
     }
 	};
 
@@ -1108,7 +1116,9 @@ namespace INMOST
 		//general formula:
 		// (F(G))'' = F'(G) G'' + F''(G) G'.G'
 		Sparse::HessianRow htmp;
-		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value;
+		arg.GetHessian(1,J,1,htmp);
+		Sparse::HessianRow::MergeJacobianHessian(-0.25/::pow(value,3.0)*multH,J,J,0.5/value*multH,htmp,H);
+		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value*multJ;
         //arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
     }
 	};
@@ -1267,14 +1277,25 @@ namespace INMOST
     }
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
+		// (F*G)'' = (F'G+G'F)' = (F''G + F'G' + G''F + G'F') = (F''G + G''F + 2F'G')
         Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
         Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
+        left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
+		assert(JL.isSorted());
+		assert(HL.isSorted());
+        right.GetHessian(1,JR,1,HR); //retrive jacobian row and hessian matrix of the right expression
+		assert(JR.isSorted());
+		assert(HR.isSorted());
         //assume rows are sorted (this is to be ensured by corresponding GetHessian functions)
         //preallocate J to JL.Size+JR.Size
         //perform merging of two sorted arrays
         //resize to correct size
+        Sparse::Row::MergeSortedRows(right.GetValue()*multJ,JL,left.GetValue()*multJ,JR,J);
+		assert(J.isSorted());
         //preallocate H to HL.Size+HR.Size+JL.Size*JR.Size
         //merge sorted
+        Sparse::HessianRow::MergeJacobianHessian(2.0*multH,JL,JR,right.GetValue()*multH,HL,left.GetValue()*multH,HR,H);
+		assert(H.isSorted());
     }
   };
 
@@ -1350,6 +1371,16 @@ namespace INMOST
     {
         Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
         Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
+        left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
+		assert(JL.isSorted());
+		assert(HL.isSorted());
+        right.GetHessian(1,JR,1,HR); //retrive jacobian row and hessian matrix of the right expression
+		assert(JR.isSorted());
+		assert(HR.isSorted());
+        Sparse::Row::MergeSortedRows(multJ,JL,multJ,JR,J);
+		assert(J.isSorted());
+        Sparse::HessianRow::MergeSortedRows(multH,HL,multH,HR,H);
+		assert(H.isSorted());
     }
   };
 
@@ -1379,8 +1410,13 @@ namespace INMOST
     }
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
+		//(F-G)'' = (F'-G')' = (F''-G'')
         Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
         Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
+        left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
+        right.GetHessian(1,JR,1,HR); //retrive jacobian row and hessian matrix of the right expression
+        Sparse::Row::MergeSortedRows(multJ,JL,-multJ,JR,J);
+        Sparse::HessianRow::MergeSortedRows(multH,HL,-multH,HR,H);
     }
   };
 
