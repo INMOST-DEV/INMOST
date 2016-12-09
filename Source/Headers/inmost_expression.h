@@ -1106,7 +1106,13 @@ namespace INMOST
     }
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
-        arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
+		//general formula:
+		// (F(G))'' = F'(G) G'' + F''(G) G'.G'
+		Sparse::HessianRow htmp;
+		arg.GetHessian(multJ,J,multH,htmp);
+		Sparse::HessianRow::MergeJacobianHessian(-0.25/::pow(value,3.0),J,J,0.5/value,htmp,H);
+		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value;
+        //arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
     }
 	};
 
