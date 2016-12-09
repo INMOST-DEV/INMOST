@@ -1021,7 +1021,7 @@ namespace INMOST
   };
 
 
-  template<class A>
+	template<class A>
 	class sin_expression : public shell_expression<sin_expression<A> >
 	{
     const A & arg;
@@ -1029,9 +1029,9 @@ namespace INMOST
 	public:
     sin_expression(const shell_expression<A> & parg) : arg(parg) 
     {
-      value = arg.GetValue();
-      dmult = ::cos(value);
-      value = ::sin(value);
+		value = arg.GetValue();
+		dmult = ::cos(value);
+		value = ::sin(value);
     }
     sin_expression(const sin_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
@@ -1045,7 +1045,10 @@ namespace INMOST
     }
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
-        arg.GetHessian(multJ*dmult,J,-multH*value,H);
+		Sparse::HessianRow htmp;
+        arg.GetHessian(multJ,J,multH,htmp);
+		Sparse::HessianRow::MergeJacobianHessian(-value,J,J,dmult,htmp,H);
+		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult;
     }
 	};
 
@@ -1073,7 +1076,11 @@ namespace INMOST
     }
     __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
     {
-        arg.GetHessian(multJ*dmult,J,-multH*value,H);
+        //arg.GetHessian(multJ*dmult,J,-multH*value,H);
+		Sparse::HessianRow htmp;
+        arg.GetHessian(multJ,J,multH,htmp);
+		Sparse::HessianRow::MergeJacobianHessian(-value,J,J,dmult,htmp,H);
+		for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult;
     }
 	};
 
