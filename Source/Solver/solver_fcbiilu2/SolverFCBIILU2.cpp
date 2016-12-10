@@ -1,9 +1,11 @@
 #include "SolverFCBIILU2.h"
+#include "solver_fcbiilu2.h"
 
 namespace INMOST {
 
     SolverFCBIILU2::SolverFCBIILU2() {
-
+        solver_data = NULL;
+        matrix_data = NULL;
     }
 
     SolverInterface *SolverFCBIILU2::Copy(const SolverInterface *other) {
@@ -47,7 +49,12 @@ namespace INMOST {
 
     void SolverFCBIILU2::Setup(int *argc, char ***argv, SolverParameters &p) {
         SolverInitDataFcbiilu2(&solver_data, communicator, p.solverPrefix.c_str());
-        SolverInitializeFcbiilu2(argc, argv, p.internalFile.c_str());
+        solver_data->kovl = 0;    // number of overlap layers: kovl=0,1,2,...
+        solver_data->tau = 3e-3;  // the ILU2 precision (for the submatrix factorization); tau=3e-3
+        solver_data->eps = 1e-5;  // the residual precision: ||r|| < eps * ||b||; eps=1e-6
+        solver_data->nit = 999;   // number of iterations permitted; nit=999
+        solver_data->msglev = 2;  // messages level; msglev=0 for silent; msglev=1 to output solution statistics
+        SolverInitializeFcbiilu2(solver_data, argc, argv, p.internalFile.c_str());
     }
 
     void SolverFCBIILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
@@ -117,11 +124,11 @@ namespace INMOST {
         INMOST_DATA_ENUM_TYPE vbeg, vend;
         RHS.GetInterval(vbeg, vend);
 
-        void *rhs_data = NULL;
+        vector *rhs_data = NULL;
         VectorInitDataFcbiilu2(&rhs_data, RHS.GetCommunicator(), RHS.GetName().c_str());
         VectorPreallocateFcbiilu2(rhs_data, local_size);
 
-        void *solution_data = NULL;
+        vector *solution_data = NULL;
         VectorInitDataFcbiilu2(&solution_data, SOL.GetCommunicator(), SOL.GetName().c_str());
         VectorPreallocateFcbiilu2(solution_data, local_size);
         VectorFillFcbiilu2(rhs_data, &RHS[vbeg]);
@@ -153,16 +160,22 @@ namespace INMOST {
     }
 
     void SolverFCBIILU2::SetParameter(std::string name, std::string value) {
-        std::cout << "SolverFCBIILU2::SetParameter unsupported operation" << std::endl;
+        const char *val = value.c_str();
+        if (name == "kovl") solver_data->kovl = atoi(val);
+        else if (name == "tau") solver_data->tau = atof(val);
+        else if (name == "eps") solver_data->eps = atof(val);
+        else if (name == "nit") solver_data->nit = atoi(val);
+        else if (name == "msglev") solver_data->msglev = atoi(val);
+        else std::cout << "Parameter " << name << " is unknown" << std::endl;
         //throw INMOST::SolverUnsupportedOperation;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverFCBIILU2::Iterations() const {
-        return static_cast<INMOST_DATA_ENUM_TYPE>(SolverIterationNumberFcbiilu2(solver_data));
+        return static_cast<INMOST_DATA_ENUM_TYPE>(solver_data->ITER);
     }
 
     const INMOST_DATA_REAL_TYPE SolverFCBIILU2::Residual() const {
-        return SolverResidualNormFcbiilu2(solver_data);
+        return solver_data->RESID;
     }
 
     const std::string SolverFCBIILU2::ReturnReason() const {
