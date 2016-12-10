@@ -1188,7 +1188,7 @@ namespace INMOST
 	{
 		INMOST::Sparse::Row entries;
 		INMOST::Storage::real val;
-		if( !(_str[0] == '(' && _str[1] == ')' ) ) Report("Expected scopes for variable %s",_str);
+		if( !(_str[0] == '(' && _str[strlen(_str)-1] == ')' ) ) Report("Expected scopes for variable %s",_str);
 		std::string str(_str+1,strlen(_str)-2);
 		std::vector<std::string> decomposed;
 		ParseCommaSeparated(str,decomposed,';');

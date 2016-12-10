@@ -726,7 +726,7 @@ namespace INMOST
                     Storage::real_array data = RealArray(*it,t);
                     std::vector<Storage::real> Vector; int Repeat;
                     reader.ParseReal(val,Vector,Repeat,set_size);
-                    if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+					if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
                     else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
                     {
                       reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
@@ -745,6 +745,11 @@ namespace INMOST
                         }
                       }
                     }
+					if( !sparse_read && t.GetSize() == ENUMUNDEF )
+					{
+						++it;
+						if( ((int)(it-set_elems)) < (int)set_size ) data = RealArray(*it,t);
+					}
                   }
                   break;
                 case DATA_INTEGER:
@@ -770,6 +775,11 @@ namespace INMOST
                         }
                       }
                     }
+					if( !sparse_read && t.GetSize() == ENUMUNDEF )
+					{
+						++it;
+						if( ((int)(it-set_elems)) < (int)set_size ) data = IntegerArray(*it,t);
+					}
                   }
                   break;
                 case DATA_BULK:
@@ -795,6 +805,11 @@ namespace INMOST
                         }
                       }
                     }
+					  if( !sparse_read && t.GetSize() == ENUMUNDEF )
+					  {
+						  ++it;
+						  if( ((int)(it-set_elems)) < (int)set_size ) data = BulkArray(*it,t);
+					  }
                   }
                   break;
                 case DATA_REFERENCE:
@@ -820,6 +835,11 @@ namespace INMOST
                         }
                       }
                     }
+					  if( !sparse_read && t.GetSize() == ENUMUNDEF )
+					  {
+						  ++it;
+						  if( ((int)(it-set_elems)) < (int)set_size ) data = ReferenceArray(*it,t);
+					  }
                   }
                   break;
                 case DATA_REMOTE_REFERENCE:
@@ -848,6 +868,11 @@ namespace INMOST
                           }
                         }
                       }
+						if( !sparse_read && t.GetSize() == ENUMUNDEF )
+						{
+							++it;
+							if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
+						}
                     }
                     else
                     {
@@ -874,6 +899,11 @@ namespace INMOST
                           }
                         }
                       }
+						if( !sparse_read && t.GetSize() == ENUMUNDEF )
+						{
+							++it;
+							if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
+						}
                     }
                   }
                   break;
@@ -901,6 +931,11 @@ namespace INMOST
                         }
                       }
                     }
+					  if( !sparse_read && t.GetSize() == ENUMUNDEF )
+					  {
+						  ++it;
+						  if( ((int)(it-set_elems)) < (int)set_size ) data = VariableArray(*it,t);
+					  }
                   }
                   break;
 #endif

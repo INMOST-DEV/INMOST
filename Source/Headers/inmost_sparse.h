@@ -319,9 +319,9 @@ namespace INMOST
             /// that allow for the modification of individual entries.
             /// @param size New size of the row.
             void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
-            void                    Print()
+            void                    Print() const
             {
-                for(iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first.first << "," << it->first.second << "," << it->second << ") ";
+                for(const_iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first.first << "," << it->first.second << "," << it->second << ") ";
                 std::cout << std::endl;
             }
             bool                    isSorted() const;
@@ -506,17 +506,10 @@ namespace INMOST
 		/// This class may be used to sum multiple sparse rows.
         /// \warning
         /// In parallel column indices of the matrix may span wider then
-        /// local row indices, to prevent any problem you are currently
-        /// advised to set total size of the matrix as interval of the
-        /// RowMerger. In future this may change, see todo 2 below.
-        /// \todo
-        /// 1. (testing!) Add iterators over entries.
-        /// 2. Implement multiple intervals for distributed computation,
-        ///    then in parallel the user may specify additional range of indexes
-        ///    for elements that lay on the borders between each pair of processors.
-        ///    Or even better implement mapping that will remap nonlocal entries to the
-        ///    end of current linked list when added and put them back in correct places
-        ///    when retrived. May use algorithm from class OrderInfo.
+        /// local row indices, to prevent any problem you can safely
+        /// set total size of the matrix as interval of the RowMerger.
+        /// For efficiency you should use RowMerger::SetNonlocal function
+		/// to provide information about non-local elements.
         class RowMerger
         {
         public:

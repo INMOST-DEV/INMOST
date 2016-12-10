@@ -30,6 +30,11 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, variable>  {typedef variable type;};
 	template<> struct Promote<variable, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<variable, variable> {typedef variable type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, INMOST_DATA_REAL_TYPE>  {typedef hessian_variable type;};
+	template<> struct Promote<variable, hessian_variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #else
 	__INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE x) {return x;}
 #endif
@@ -868,16 +873,30 @@ namespace INMOST
 						break;
 					case 21: //symmetric elasticity tensor (note - diagonal first, then off-diagonal rows)
 					{
-						int shift[5] = {6,11,15,18,20};
-						for(int i = 0; i < 6; ++i)
-						{
-							Kc(i,i) = K[i]; //diagonal term first
-							for(int j = i+1; j < 6; ++j)
-								Kc(i,j) = Kc(j,i) = K[shift[i]+j-i-1]; //off diagonal parts
-						}
+						Kc(0,0) = K[0]; //c11
+						Kc(0,1) = Kc(1,0) = K[1]; //c12
+						Kc(0,2) = Kc(2,0) = K[2]; //c13
+						Kc(0,3) = Kc(3,0) = K[3]; //c14
+						Kc(0,4) = Kc(4,0) = K[4]; //c15
+						Kc(0,5) = Kc(5,0) = K[5]; //c16
+						Kc(1,1) = K[6]; //c22
+						Kc(1,2) = Kc(2,1) = K[7]; //c23
+						Kc(1,3) = Kc(3,1) = K[8]; //c24
+						Kc(1,4) = Kc(4,1) = K[9]; //c25
+						Kc(1,5) = Kc(5,1) = K[10]; //c26
+						Kc(2,2) = K[11]; //c33
+						Kc(2,3) = Kc(3,2) = K[12]; //c34
+						Kc(2,4) = Kc(4,2) = K[13]; //c35
+						Kc(2,5) = Kc(5,2) = K[14]; //c36
+						Kc(3,3) = K[15]; //c44
+						Kc(3,4) = Kc(4,3) = K[16]; //c45
+						Kc(3,5) = Kc(5,3) = K[17]; //c46
+						Kc(4,4) = K[18]; //c55
+						Kc(4,5) = Kc(5,4) = K[19]; //c56
+						Kc(5,5) = K[20]; //c66
 						break;
 					}
-					case 36: //full permeability tensor
+					case 36: //full elasticity tensor
 						for(int i = 0; i < 6; ++i)
 							for(int j = 0; j < 6; ++j)
 								Kc(i,j) = K[6*i+j];
@@ -1082,7 +1101,7 @@ namespace INMOST
 			for(enumerator i = ibeg; i < iend; ++i)
 			{
 				for(enumerator j = jbeg; j < jend; ++j)
-					ret(i-ibeg,j-ibeg) = (*this)(i,j);
+					ret(i-ibeg,j-jbeg) = (*this)(i,j);
 			}
 			return ret;
 		}
@@ -1091,6 +1110,7 @@ namespace INMOST
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
 #if defined(USE_AUTODIFF)
 	typedef Matrix<variable> vMatrix; //shortcut for matrix with variations
+	typedef Matrix<hessian_variable> hMatrix; //shortcut for matrix with second variations
 #endif
 	
 }
