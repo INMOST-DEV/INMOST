@@ -54,13 +54,13 @@ namespace INMOST
 #endif //USE_MESH
 	
 #if defined(USE_MESH)
-	Automatizator::Automatizator(Mesh * m) :first_num(0), last_num(0), m(m) {}
+	Automatizator::Automatizator() :first_num(0), last_num(0) {}
 	Automatizator::~Automatizator()
 	{
 		for (unsigned k = 0; k < index_tags.size(); k++)
-			index_tags[k].indices = m->DeleteTag(index_tags[k].indices);
+			index_tags[k].indices = index_tags[k].indices.GetMeshLink()->DeleteTag(index_tags[k].indices);
 	}
-	INMOST_DATA_ENUM_TYPE Automatizator::RegisterDynamicTag(Tag t, ElementType typemask, MarkerType domain_mask)
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask)
 	{
 		tagpair p;
 		p.d.domain_mask = domain_mask;
@@ -71,18 +71,19 @@ namespace INMOST
 			if (t.isDefined(q)) def |= q;
 			if (t.isSparse(q)) sparse |= q;
 		}
-		p.indices = m->CreateTag(t.GetTagName() + "_index", DATA_INTEGER, def, sparse, t.GetSize());
+		p.indices = t.GetMeshLink()->CreateTag(t.GetTagName() + "_index", DATA_INTEGER, def, sparse, t.GetSize());
 		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_tags.size());
 		reg_tags.push_back(p);
 		index_tags.push_back(p);
 		return ret;
 	}
-	void Automatizator::EnumerateDynamicTags()
+	void Automatizator::EnumerateTags()
 	{
 		first_num = last_num = 0;
 		const ElementType paralleltypes = NODE | EDGE | FACE | CELL;
 		for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
 		{
+			Mesh * m = it->indices.GetMeshLink();
 			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if (it->indices.isDefined(etype) && it->indices.isSparse(etype))
 				{
@@ -94,6 +95,7 @@ namespace INMOST
 
 		for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
 		{
+			Mesh * m = it->indices.GetMeshLink();
 			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 			{
 				if (it->indices.isDefined(etype))
@@ -159,13 +161,16 @@ namespace INMOST
 		}
 		std::set<INMOST_DATA_ENUM_TYPE> Pre, Post; //Nonlocal indices
 #if defined(USE_MPI)
-		if (m->GetProcessorsNumber() > 1)
+		int size;
+		MPI_Comm_size(MPI_COMM_WORLD,&size);
+		if (size > 1)
 		{
-			MPI_Scan(&last_num, &first_num, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, m->GetCommunicator());
+			MPI_Scan(&last_num, &first_num, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, MPI_COMM_WORLD);
 			first_num -= last_num;
 			ElementType exch_mask = NONE;
 			for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
 			{
+				Mesh * m = it->indices.GetMeshLink();
 				for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				{
 					if (it->indices.isDefined(etype))
@@ -232,13 +237,16 @@ namespace INMOST
 			//synchronize indices
 			last_num += first_num;
 			{
-				std::vector<Tag> exch_tags;
-				for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it) exch_tags.push_back(it->indices);
-				m->ExchangeData(exch_tags, exch_mask,0);
+				std::map<Mesh *,std::vector<Tag> > exch_tags;
+				for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+					exch_tags[it->indices.GetMeshLink()].push_back(it->indices);
+				for(std::map<Mesh *,std::vector<Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)
+					it->first->ExchangeData(it->second, exch_mask,0);
 			}
 			//compute out-of-bounds indices
 			for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
 			{
+				Mesh * m = it->indices.GetMeshLink();
 				for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				{
 					if (it->indices.isDefined(etype))

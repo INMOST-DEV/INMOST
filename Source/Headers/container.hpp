@@ -1800,7 +1800,7 @@ namespace INMOST
 			}
 			else
 			{
-				memcpy(other.stack,stack,sizeof(element)*k);
+				memcpy((void *)other.stack,(void *)stack,sizeof(element)*k);
 				other.pbegin = other.stack;
 				other.pend = other.stack+k;
 				other.preserved = other.stack+static_cast<size_type>(stacked);
@@ -1814,15 +1814,15 @@ namespace INMOST
 			if( k <= static_cast<size_type>(stacked) && n <= static_cast<size_type>(stacked) )
 			{
 				char temp[stacked*sizeof(element)];
-				memcpy(temp,stack,sizeof(element)*k);
-				memcpy(stack,other.stack,sizeof(element)*n);
-				memcpy(other.stack,temp,sizeof(element)*k);
+				memcpy(temp,(void *)stack,sizeof(element)*k);
+				memcpy((void *)stack,(void *)other.stack,sizeof(element)*n);
+				memcpy((void *)other.stack,temp,sizeof(element)*k);
 				other.pend = other.pbegin+k;
 				pend = pbegin+n;
 			}
 			else if( k <= static_cast<size_type>(stacked) && n > static_cast<size_type>(stacked) )
 			{
-				memcpy(other.stack,stack,sizeof(element)*k);
+				memcpy((void *)other.stack,(void *)stack,sizeof(element)*k);
 				pbegin = other.pbegin;
 				pend = other.pend;
 				preserved = other.preserved;
@@ -1832,7 +1832,7 @@ namespace INMOST
 			}
 			else if( k > static_cast<size_type>(stacked) && n <= static_cast<size_type>(stacked) )
 			{
-				memcpy(stack,other.stack,sizeof(element)*n);
+				memcpy((void *)stack,(void *)other.stack,sizeof(element)*n);
 				other.pbegin = pbegin;
 				other.pend = pend;
 				other.preserved = preserved;
@@ -1867,7 +1867,7 @@ namespace INMOST
 			ptrdiff_t d = pos-begin();
 			ptrdiff_t s = (end()-pos)-1;
 			(*pos).~element();
-			if( s > 0 ) memmove(pbegin+d,pbegin+d+1,sizeof(element)*s);
+			if( s > 0 ) memmove((void *)(pbegin+d),(void *)(pbegin+d+1),sizeof(element)*s);
 			pend--;
 			return pbegin+d;
 		}
@@ -1877,7 +1877,7 @@ namespace INMOST
 			ptrdiff_t s = iterator(pend)-e;
 			ptrdiff_t n = e-b;
 			for(iterator i = b; i != e; i++) (*i).~element();
-			if( s > 0 ) memmove(pbegin+d,pbegin+d+1,sizeof(element)*s);
+			if( s > 0 ) memmove((void *)(pbegin+d),(void *)(pbegin+d+1),sizeof(element)*s);
 			pend -= n;
 			return pbegin+d;
 		}
@@ -1887,7 +1887,7 @@ namespace INMOST
 			ptrdiff_t s = iterator(pend)-pos;
 			if( pend == preserved ) reserve(capacity()*2);
 			pend++;
-			if( s > 0 ) memmove(pbegin+d+1,pbegin+d,sizeof(element)*s);
+			if( s > 0 ) memmove((void *)(pbegin+d+1),(void *)(pbegin+d),sizeof(element)*s);
 			new (pbegin+d) element(x);
 			return pbegin+d;
 		}
@@ -1896,7 +1896,7 @@ namespace INMOST
 			ptrdiff_t d = pos-iterator(pbegin);
 			ptrdiff_t s = iterator(pend)-pos;
 			while( capacity()-size() < n ) reserve(capacity()*2);
-			if( s > 0 ) memmove(pbegin+d+n,pbegin+d,sizeof(element)*s);
+			if( s > 0 ) memmove((void *)(pbegin+d+n),(void *)(pbegin+d),sizeof(element)*s);
 			pend+=n;
 			for(size_type i = 0; i < n; i++) new (pbegin+d+i) element(x);
 		}
@@ -1907,7 +1907,7 @@ namespace INMOST
 			ptrdiff_t d = pos-iterator(pbegin);
 			ptrdiff_t s = iterator(pend)-pos;
 			while( capacity() < size()+n ) reserve(capacity()*2);
-			if( s > 0 ) memmove(pbegin+d+n,pbegin+d,sizeof(element)*s);
+			if( s > 0 ) memmove((void *)(pbegin+d+n),(void *)(pbegin+d),sizeof(element)*s);
 			{
 				InputIterator it = first;
 				element * i = pbegin+d;

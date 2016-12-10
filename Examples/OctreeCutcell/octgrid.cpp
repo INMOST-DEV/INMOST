@@ -1896,7 +1896,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 										replace.push_back(new_edge);
 									}
 									
-									if( replace.size() == 4 && replace[1] == replace[3]  || replace.size() < 4) 
+									if( (replace.size() == 4 && replace[1] == replace[3])  || replace.size() < 4)
 									{
 										//if( new_edge != NULL ) face_edges.push_back(new_edge);
 										replace.clear(); // there is only one node and one edge left - avoid this edge duplication

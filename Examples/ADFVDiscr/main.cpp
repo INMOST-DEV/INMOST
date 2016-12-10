@@ -146,10 +146,10 @@ int main(int argc,char ** argv)
 		//~ BARRIER
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
 		{
-			Automatizator aut(m);
+			Automatizator aut;
 			Automatizator::MakeCurrent(&aut);
-			INMOST_DATA_ENUM_TYPE iphi = aut.RegisterDynamicTag(phi,CELL);
-			aut.EnumerateDynamicTags();
+			INMOST_DATA_ENUM_TYPE iphi = aut.RegisterTag(phi,CELL);
+			aut.EnumerateTags();
 
 			// Set the indeces intervals for the matrix and vectors
 			R.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
@@ -175,7 +175,7 @@ int main(int argc,char ** argv)
 					Cell r2 = face->FrontCell();
 					if( ((!r1->isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +
 						((!r2->isValid() || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
-					Storage::integer i1 = aut.GetDynamicIndex(r1,iphi), i2;
+					Storage::integer i1 = aut.GetIndex(r1,iphi), i2;
 					Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1, d2, D, v[3], T;
 					Storage::real f_area = face->Area(); // Get the face area
 					face->UnitNormal(f_nrm); // Get the face normal
@@ -198,7 +198,7 @@ int main(int argc,char ** argv)
 					}
 					else
 					{
-						i2 = aut.GetDynamicIndex(r2,iphi);
+						i2 = aut.GetIndex(r2,iphi);
 						r2->Centroid(r2_cnt);
 						D = dot_prod(f_nrm,f_cnt);
 						d1 = fabs(dot_prod(r1_cnt,f_nrm) - D);
@@ -276,7 +276,7 @@ int main(int argc,char ** argv)
 					{
 						Storage::real old = cell->Real(phi);
 						Storage::real exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
-						Storage::real res = Update[aut.GetDynamicIndex(cell->self(),iphi)];
+						Storage::real res = Update[aut.GetIndex(cell->self(),iphi)];
 						Storage::real sol = old-res;
 						Storage::real err = fabs (sol - exact);
 						if (err > local_err_C) local_err_C = err;

@@ -82,6 +82,9 @@ void transformation(double xyz[3])
 
 mat_ret_type get_material_types(double xyz[3])
 {
+	mat_ret_type ret1;
+	ret1.push_back(1);
+	return ret1;
 #if defined(MASAHIKO_MESH)
 	mat_ret_type ret;
 	//ret.push_back(1);
@@ -274,6 +277,7 @@ Storage::real get_press_by_mat(Storage::integer mat)
 
 void fill_K(Storage::real * center, Storage::real * Kvec, Storage::real * K)
 {
+	return;
 	Storage::real Knrm[3];
 	if( !get_type.Normal(center,Knrm) )
 	{
@@ -923,14 +927,16 @@ int main(int argc, char ** argv)
 		make_proj.ReadLayers(layers);
 	}
 	{
+		
 		std::vector<std::string> layers;
-		for(int i = 1; i <= 19; i++)
+		for(int i = 1; i <= 1; i++)
 		{
 			 std::stringstream name;
 				//name << "Obj/rt" << i+1 << ".obj";
 				 name << "oil_obj2/mat/layer" << i << ".obj";
 				layers.push_back(name.str());
 		}
+		 
 		/*
 		for(int i = 1; i <= 3; i++)
 		{

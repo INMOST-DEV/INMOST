@@ -262,9 +262,9 @@ namespace INMOST
     {
       if( pregval != ENUMUNDEF )
       {
-        mask = aut.GetDynamicMask(pregval);
-        value_tag = aut.GetDynamicValueTag(pregval);
-        index_tag = aut.GetDynamicIndexTag(pregval);
+        mask = aut.GetMask(pregval);
+        value_tag = aut.GetValueTag(pregval);
+        index_tag = aut.GetIndexTag(pregval);
       }
     }
     dynamic_variable(const dynamic_variable & other) : aut(other.aut), index_tag(other.index_tag), value_tag(other.value_tag), mask(other.mask), comp(other.comp) {}

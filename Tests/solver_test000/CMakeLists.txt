@@ -81,17 +81,13 @@ add_test(NAME solver_test000_parallel_normal_inner_ddpqiluc      COMMAND ${MPIEX
 add_test(NAME solver_test000_parallel_permute1_inner_ddpqiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 inner_ddpqiluc2)
 add_test(NAME solver_test000_parallel_permute2_inner_ddpqiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 inner_ddpqiluc2)
 
-if( HAVE_SOLVER_MPTILUC2 )
 add_test(NAME solver_test000_parallel_normal_inner_mptiluc      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 inner_mptiluc)
 add_test(NAME solver_test000_parallel_permute1_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 inner_mptiluc)
 add_test(NAME solver_test000_parallel_permute2_inner_mptiluc    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 inner_mptiluc)
-endif()
 
-if( HAVE_SOLVER_MPTILU2 )
 add_test(NAME solver_test000_parallel_normal_inner_mptilu2      COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 inner_mptilu2)
 add_test(NAME solver_test000_parallel_permute1_inner_mptilu2    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 inner_mptilu2)
 add_test(NAME solver_test000_parallel_permute2_inner_mptilu2    COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 inner_mptilu2)
-endif()
 
 if(USE_SOLVER_PETSC)
 add_test(NAME solver_test000_parallel_normal_petsc             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 petsc)
