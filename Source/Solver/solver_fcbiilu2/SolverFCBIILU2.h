@@ -11,6 +11,9 @@ namespace INMOST {
         bcg *solver_data;
         matrix *matrix_data;
         INMOST_DATA_ENUM_TYPE local_size, global_size;
+
+        double time_prec;
+        double iter_time;
     public:
         SolverFCBIILU2();
 

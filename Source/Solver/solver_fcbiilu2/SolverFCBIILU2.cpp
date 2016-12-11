@@ -1,3 +1,4 @@
+#include <Source/Misc/utils.h>
 #include "SolverFCBIILU2.h"
 #include "solver_fcbiilu2.h"
 
@@ -54,7 +55,13 @@ namespace INMOST {
         solver_data->eps = 1e-5;  // the residual precision: ||r|| < eps * ||b||; eps=1e-6
         solver_data->nit = 999;   // number of iterations permitted; nit=999
         solver_data->msglev = 2;  // messages level; msglev=0 for silent; msglev=1 to output solution statistics
-        SolverInitializeFcbiilu2(solver_data, argc, argv, p.internalFile.c_str());
+        if (p.internalFile != "") {
+            SolverInitializeFcbiilu2(solver_data, argc, argv, p.internalFile.c_str());
+        } else {
+            for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
+                this->SetParameter((*parameter).first, (*parameter).second);
+            }
+        }
     }
 
     void SolverFCBIILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
@@ -118,6 +125,7 @@ namespace INMOST {
         }
         MatrixFinalizeFcbiilu2(matrix_data);
         SolverSetMatrixFcbiilu2(solver_data, matrix_data, modified_pattern, OldPreconditioner);
+        time_prec = solver_data->dstat[7];
     }
 
     bool SolverFCBIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
@@ -138,6 +146,7 @@ namespace INMOST {
         VectorFinalizeFcbiilu2(solution_data);
         bool result = SolverSolveFcbiilu2(solver_data, rhs_data, solution_data);
         if (result) VectorLoadFcbiilu2(solution_data, &SOL[vbeg]);
+        iter_time = solver_data->dstat[9];
         return result;
     }
 
@@ -154,8 +163,12 @@ namespace INMOST {
     }
 
     std::string SolverFCBIILU2::GetParameter(std::string name) const {
-        std::cout << "SolverFCBIILU2::GetParameter unsupported operation" << std::endl;
-        //throw INMOST::SolverUnsupportedOperation;
+        if (name == "time_prec") return INMOST::to_string(time_prec);
+        if (name == "time_iter") return INMOST::to_string(iter_time);
+        if (name == "time_total") return INMOST::to_string(time_prec + iter_time);
+        if (name == "prec_density") return INMOST::to_string(solver_data->dstat[0]);
+        if (name == "pivot_mod") return INMOST::to_string(solver_data->istat[0]);
+        std::cout << "Parameter " << name << " is unknown" << std::endl;
         return "";
     }
 
@@ -167,7 +180,6 @@ namespace INMOST {
         else if (name == "nit") solver_data->nit = atoi(val);
         else if (name == "msglev") solver_data->msglev = atoi(val);
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
-        //throw INMOST::SolverUnsupportedOperation;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverFCBIILU2::Iterations() const {
