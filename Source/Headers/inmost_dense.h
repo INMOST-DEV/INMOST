@@ -1108,6 +1108,13 @@ namespace INMOST
 			}
 			return ret;
 		}
+		//change representation of the matrix into matrix of another size
+		void Repack(enumerator _n, enumerator _m)
+		{
+			assert(n*m==_n*_m);
+			n = _n;
+			m = _m;
+		}
 	};
 	
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
