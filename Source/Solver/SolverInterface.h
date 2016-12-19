@@ -11,9 +11,9 @@ namespace INMOST {
 
     class SolverParameters {
     public:
-        const std::string solverName;
-        const std::string solverPrefix;
-        const std::string internalFile;
+        std::string solverName;
+        std::string solverPrefix;
+        std::string internalFile;
 
         std::vector<std::pair<std::string, std::string> > parameters;
 

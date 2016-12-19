@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <cstdlib>
 
 namespace INMOST {
 
