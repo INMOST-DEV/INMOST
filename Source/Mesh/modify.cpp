@@ -748,8 +748,9 @@ namespace INMOST
 				if( m->GetMarker(lc[k],rem) )
 				{
 					//all united edges should appear in consecutive order in deleted face
+					/*
 					adj_type::size_type sum = 0, j = k;
-					while( !m->GetMarker(lc[j],hm) && m->GetMarker(lc[j],rem) )
+					while( j < lc.size() && !m->GetMarker(lc[j],hm) && m->GetMarker(lc[j],rem) )
 					{
 						sum++; j++;
 					}
@@ -758,6 +759,7 @@ namespace INMOST
 						doexit = true;
 						dothrow = true;
 					}
+					 */
 					insert_pos.push_back(k);
 					break;
 				}

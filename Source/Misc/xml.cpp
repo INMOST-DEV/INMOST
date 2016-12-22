@@ -51,6 +51,13 @@ namespace INMOST
 		str.append(&hex[c & 0xF], 1);
 		return str;
 	}
+	
+	static bool isspacestr(const std::string & str)
+	{
+		for(size_t k = 0; k < str.size(); ++k)
+			if( !isspace(str[k]) ) return false;
+		return true;
+	}
 
 #if defined(USE_MESH)
 	std::string ReferenceToString(INMOST::HandleType h, int pos)
@@ -1279,8 +1286,11 @@ namespace INMOST
 				comma = value.find(',',comma_prev);
 				if( comma == std::string::npos ) comma = value.find('}',comma_prev);
 				substr = value.substr(comma_prev,comma-comma_prev);
-				//const char * debug_substr = substr.c_str();
-				Vector.push_back(atof(substr.c_str()));
+				if( !isspacestr(substr) )
+				{
+					//const char * debug_substr = substr.c_str();
+					Vector.push_back(atof(substr.c_str()));
+				}
 				comma_prev = comma+1;
 			} while( value[comma] != '}' );
 		}
@@ -1304,7 +1314,8 @@ namespace INMOST
 				comma = value.find(',',comma_prev);
 				if( comma == std::string::npos ) comma = value.find('}',comma_prev);
 				substr = value.substr(comma_prev,comma-comma_prev);
-				Vector.push_back(atov(substr.c_str()));
+				if( !isspacestr(substr) )
+					Vector.push_back(atov(substr.c_str()));
 				comma_prev = comma+1;
 			} while( value[comma] != '}' );
 		}
@@ -1327,7 +1338,8 @@ namespace INMOST
 				comma = value.find(',',comma_prev);
 				if( comma == std::string::npos ) comma = value.find('}',comma_prev);
 				substr = value.substr(comma_prev,comma-comma_prev);
-				Vector.push_back(atoi(substr.c_str()));
+				if( !isspacestr(substr) )
+					Vector.push_back(atoi(substr.c_str()));
 				comma_prev = comma+1;
 			} while( value[comma] != '}' );
 		}
@@ -1355,9 +1367,12 @@ namespace INMOST
 				comma = value.find(',',comma_prev);
 				if( comma == std::string::npos ) comma = value.find('}',comma_prev);
 				substr = value.substr(comma_prev,comma-comma_prev);
-				if( substr.size() != 2 )
-					Report("Unexpected size %d of substring %s in vector, expected 2",substr.size(),substr.c_str());
-				Vector.push_back(atoc(substr.c_str()));
+				if( !isspacestr(substr) )
+				{
+					if( substr.size() != 2 )
+						Report("Unexpected size %d of substring %s in vector, expected 2",substr.size(),substr.c_str());
+					Vector.push_back(atoc(substr.c_str()));
+				}
 				comma_prev = comma+1;
 			} while( value[comma] != '}' );
 		}
@@ -1385,9 +1400,12 @@ namespace INMOST
 				comma = value.find(',',comma_prev);
 				if( comma == std::string::npos ) comma = value.find('}',comma_prev);
 				substr = value.substr(comma_prev,comma-comma_prev);
-				Vector.push_back(atoh(substr.c_str()));
-				if( Vector.back().first == INMOST::NONE && Vector.back().second == 1 )
-					Report("Cannot convert handle to the element, %s",substr.c_str());
+				if( !isspacestr(substr) )
+				{
+					Vector.push_back(atoh(substr.c_str()));
+					if( Vector.back().first == INMOST::NONE && Vector.back().second == 1 )
+						Report("Cannot convert handle to the element, %s",substr.c_str());
+				}
 				comma_prev = comma+1;
 			} while( value[comma] != '}' );
 		}
@@ -1415,11 +1433,14 @@ namespace INMOST
 				comma = value.find(',',comma_prev);
 				if( comma == std::string::npos ) comma = value.find('}',comma_prev);
 				substr = value.substr(comma_prev,comma-comma_prev);
-				Vector.push_back(atorh(substr.c_str()));
-				if( Vector.back().first == "" )
-					Report("Cannot extract mesh name, %s",substr.c_str());
-				if( Vector.back().second.first == INMOST::NONE && Vector.back().second.second == 1 )
-					Report("Cannot convert handle to the element, %s",substr.c_str());
+				if( !isspacestr(substr) )
+				{
+					Vector.push_back(atorh(substr.c_str()));
+					if( Vector.back().first == "" )
+						Report("Cannot extract mesh name, %s",substr.c_str());
+					if( Vector.back().second.first == INMOST::NONE && Vector.back().second.second == 1 )
+						Report("Cannot convert handle to the element, %s",substr.c_str());
+				}
 				comma_prev = comma+1;
 			} while( value[comma] != '}' );
 		}

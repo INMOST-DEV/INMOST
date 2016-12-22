@@ -49,7 +49,7 @@ using namespace INMOST;
 #define DIAGONAL_PERTURBATION_ABS 1.0e-12
 //#define DIAGONAL_PIVOT //probably there is some bug
 #define DIAGONAL_PIVOT_TAU 0.1
-//#define DIAGONAL_PIVOT_COND 1.0e+6
+//#define DIAGONAL_PIVOT_COND 100
 #define ILUC2
 #define TRACK_DIAGONAL
 
@@ -1973,8 +1973,9 @@ swap_algorithm:
             else*/
 						{
 							//TODO!!!
-							++swaps;
+							
 #if defined(REPORT_ILU)
+							++swaps;
 							//std::cout << "Detected, that there is a much better pivot, i'm " << k << " " << LU_Diag[k] << " other " << j << " " << LU_Diag[j] << std::endl;
 							//std::cout << "Condition numbers: L " << NuL << " D " << NuD << " U " << NuU << std::endl;
 #endif
