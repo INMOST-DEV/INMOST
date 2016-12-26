@@ -55,12 +55,9 @@ namespace INMOST {
         solver_data->eps = 1e-5;  // the residual precision: ||r|| < eps * ||b||; eps=1e-6
         solver_data->nit = 999;   // number of iterations permitted; nit=999
         solver_data->msglev = 2;  // messages level; msglev=0 for silent; msglev=1 to output solution statistics
-        if (p.internalFile != "") {
-            SolverInitializeFcbiilu2(solver_data, argc, argv, p.internalFile.c_str());
-        } else {
-            for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
-                this->SetParameter((*parameter).first, (*parameter).second);
-            }
+        SolverInitializeFcbiilu2(solver_data, argc, argv, p.internalFile.c_str());
+        for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
+            this->SetParameter((*parameter).first, (*parameter).second);
         }
     }
 
