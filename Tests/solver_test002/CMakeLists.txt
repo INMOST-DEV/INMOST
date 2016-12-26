@@ -51,6 +51,9 @@ endif()
 if(HAVE_SOLVER_MPTILU2)
 add_test(NAME solver_test002_serial_inner_mptilu2               COMMAND $<TARGET_FILE:solver_test002>  inner_mptilu2 20)
 endif()
+if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_FCBIILU2.*$")
+    add_test(NAME solver_test002_serial_fcbiilu2 COMMAND $<TARGET_FILE:solver_test002> fcbiilu2 20)
+endif()
 
 if(USE_SOLVER_TRILINOS AND USE_MPI)
 add_test(NAME solver_test002_serial_trilinos_aztec             COMMAND $<TARGET_FILE:solver_test002>  trilinos_aztec 20)
@@ -85,6 +88,10 @@ endif()
 
 if(USE_SOLVER_PETSC)
 add_test(NAME solver_test002_parallel_petsc             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test002>  petsc 20)
+endif()
+
+if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_FCBIILU2.*$")
+    add_test(NAME solver_test002_parallel_fcbiilu2 COMMAND $<TARGET_FILE:solver_test002> fcbiilu2 20)
 endif()
 
 endif()

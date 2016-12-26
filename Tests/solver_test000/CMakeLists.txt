@@ -71,6 +71,10 @@ if(USE_SOLVER_ANI)
 add_test(NAME solver_test000_serial_ani COMMAND $<TARGET_FILE:solver_test000> 0 ani)
 endif()
 
+if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_FCBIILU2.*$")
+  add_test(NAME solver_test000_serial_fcbiilu2 COMMAND $<TARGET_FILE:solver_test000> 0 fcbiilu2)
+endif()
+
 if( USE_MPI )
 if( EXISTS ${MPIEXEC} )
 add_test(NAME solver_test000_parallel_normal_inner_ilu2        COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 inner_ilu2)
@@ -114,5 +118,10 @@ add_test(NAME solver_test000_parallel_permute2_trilinos_ml     COMMAND ${MPIEXEC
 #add_test(NAME solver_test000_parallel_permute1_trilinos_belos  COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 1 6)
 #add_test(NAME solver_test000_parallel_permute2_trilinos_belos  COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 2 6)
 endif()
+
+if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_FCBIILU2.*$")
+  add_test(NAME solver_test000_parallel_normal_fcbiilu2             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 fcbiilu2)
+endif()
+
 endif()
 endif()

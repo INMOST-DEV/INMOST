@@ -662,7 +662,7 @@ namespace INMOST
         {
         }
 
-        void     Vector::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend)
+        void     Vector::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend, std::string file_ord)
         {
             char str[16384];
             std::ifstream input(file.c_str());
@@ -680,6 +680,30 @@ namespace INMOST
                 MPI_Comm_size(GetCommunicator(),&size);
             }
 #endif
+            int * ord = NULL;
+            if (file_ord != "")
+            {
+                std::ifstream input_ord;
+                input_ord.open(file_ord.c_str(), std::ifstream::in);
+                if( input_ord.fail() ) throw -2;
+                int n;
+                input_ord >> n;
+                ord = (int *) malloc(sizeof(int) * n);
+                for (int i=0; i<n; i++) input_ord >> ord[i];
+                int nbl;
+                input_ord >> nbl;
+                if( nbl != size ) throw -3;
+                int * ibl;
+                ibl = (int *) malloc(sizeof(int) * (nbl+1));
+                for (int i=0; i<nbl+1; i++) input_ord >> ibl[i];
+                if( mbeg == ENUMUNDEF ) mbeg = ibl[rank];
+                if( mend == ENUMUNDEF ) mend = ibl[rank+1];
+                for (int i=0; i<n; i++) ord[i] -= 1;
+                free(ibl);
+                input_ord.close();
+                //std::cout<<"Vector::Load(): n="<<n<<" nbl="<<nbl<<" np="<<size<<" id="<<rank<<" mbeg="<<mbeg<<" mend="<<mend<<std::endl;//db
+            }
+
             while( !input.getline(str,16384).eof() )
             {
                 k = 0; while( isspace(str[k]) ) k++;
@@ -700,12 +724,17 @@ namespace INMOST
                         break;
                     case 1:
                         istr >> val;
-                        if( ind >= mbeg && ind < mend ) data[ind] = val;
+                        if( ord ) {
+                            if( ord[ind] >= mbeg && ord[ind] < mend ) data[ord[ind]] = val;
+                        } else {
+                            if( ind >= mbeg && ind < mend ) data[ind] = val;
+                        }
                         ind++;
                         break;
                 }
             }
             input.close();
+            if (file_ord != "") free(ord);
         }
 
 
@@ -958,6 +987,7 @@ namespace INMOST
             for(iterator it = Begin(); it != End(); ++it) nonzero += it->Size();
             //~ std::cout << rank << " total nonzero " << max_lines << " my nonzero " << nonzero << std::endl;
             input.close();
+            if (file_ord != "") free(ord);
         }
 
         void     Matrix::Save(std::string file, const AnnotationService * text)
@@ -1149,7 +1179,7 @@ namespace INMOST
 
 ////////class HessianMatrix
 
-        void     HessianMatrix::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend)
+        void     HessianMatrix::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend, std::string file_ord)
         {
             char str[16384];
             std::ifstream input(file.c_str());
