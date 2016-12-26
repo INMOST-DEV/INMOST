@@ -1,6 +1,5 @@
 if(USE_AUTODIFF)
 add_subdirectory(autodiff_test000)
-add_subdirectory(autodiff_test001)
 endif(USE_AUTODIFF)
 
 if(USE_SOLVER)
@@ -15,3 +14,5 @@ if(USE_PARTITIONER)
 add_subdirectory(pmesh_test001)
 endif()
 endif()
+
+add_subdirectory(xml_reader_test000)

@@ -1462,45 +1462,9 @@ namespace INMOST
         throw NotImplemented;
     }
   };
-	
-	
-	template<class A, class B>
-	class atan2_expression : public shell_expression<atan2_expression<A,B> >
-	{
-		const A & left;
-		const B & right;
-		INMOST_DATA_REAL_TYPE value, ldmult, rdmult;
-	public:
-		atan2_expression(const shell_expression<A> & pleft, const shell_expression<B> & pright) : left(pleft), right(pright)
-		{
-			INMOST_DATA_REAL_TYPE lval = left.GetValue();
-			INMOST_DATA_REAL_TYPE rval = right.GetValue();
-			value = ::atan2(lval,rval);
-			ldmult = rval/(rval*rval+lval*lval);
-			rdmult = -lval/(rval*rval+lval*lval);
-		}
-		atan2_expression(const atan2_expression & other)
-		:left(other.left), right(other.right), value(other.value),
-		ldmult(other.ldmult), rdmult(other.rdmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-		{
-			left.GetJacobian(mult*ldmult,r);
-			right.GetJacobian(mult*rdmult,r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
-		{
-			left.GetJacobian(mult*ldmult,r);
-			right.GetJacobian(mult*rdmult,r);
-		}
-		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
-		{
-			throw NotImplemented;
-		}
-	};
-	
-	template<class A>
-	class pow_const_expression : public shell_expression<pow_const_expression<A> >
+
+  template<class A>
+  class pow_const_expression : public shell_expression<pow_const_expression<A> >
   {
     const A & left;
     INMOST_DATA_REAL_TYPE value, ldmult;
@@ -1860,25 +1824,18 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
 						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg.SetValue(Val.GetValue()); }
 						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg.SetValue(Val.GetValue()); }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::var_expression & Val) {Arg = Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}
-                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::var_expression & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
 template<class A>          __INLINE                 INMOST::soft_abs_expression<A> soft_fabs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_abs_expression<A>(Arg,tol); }
                            __INLINE                          INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
 template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_sign_expression<A>(Arg,tol); }
@@ -1888,7 +1845,6 @@ template<class A, class B> __INLINE              INMOST::division_expression<A, 
 template<class A, class B> __INLINE              INMOST::addition_expression<A, B> operator+(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::addition_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE           INMOST::subtraction_expression<A, B> operator-(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::subtraction_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE                   INMOST::pow_expression<A, B>       pow(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::pow_expression<A, B> (Left, Right); }
-template<class A, class B> __INLINE                   INMOST::atan2_expression<A, B>   atan2(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::atan2_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE              INMOST::soft_max_expression<A, B>  soft_max(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_max_expression<A, B> (Left, Right,tol); }
                            __INLINE                          INMOST_DATA_REAL_TYPE  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right+::sqrt((Left-Right)*(Left-Right)+tol*tol));}
 template<class A, class B> __INLINE              INMOST::soft_min_expression<A, B>  soft_min(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_min_expression<A, B> (Left, Right,tol); }

@@ -468,12 +468,11 @@ namespace INMOST
 		template<typename typeB>
 		Matrix & operator =(Matrix<typeB> const & other)
 		{
-			if( Cols()*Rows() != other.Cols()*other.Rows() ) space.resize(other.Cols()*other.Rows());
-			for(enumerator i = 0; i < other.Rows(); ++i)
-				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i,j),other(i,j));
-			n = other.Rows();
-			m = other.Cols();
+			if( n*m != other.n*other.m ) space.resize(other.n*other.m);
+			for(enumerator i = 0; i < other.n*other.m; ++i)
+				space[i] = get_value(other.space[i]);
+			n = other.n;
+			m = other.m;
 			return *this;
 		}
 		// i is in [0,n] - row index
@@ -738,8 +737,6 @@ namespace INMOST
 		const Var * data() const {return space.data();}
 		enumerator Rows() const {return n;}
 		enumerator Cols() const {return m;}
-		enumerator & Rows() {return n;}
-		enumerator & Cols() {return m;}
 		void Print(INMOST_DATA_REAL_TYPE threshold = 1.0e-10) const
 		{
 			for(enumerator k = 0; k < n; ++k)
@@ -1107,13 +1104,6 @@ namespace INMOST
 					ret(i-ibeg,j-jbeg) = (*this)(i,j);
 			}
 			return ret;
-		}
-		//change representation of the matrix into matrix of another size
-		void Repack(enumerator _n, enumerator _m)
-		{
-			assert(n*m==_n*_m);
-			n = _n;
-			m = _m;
 		}
 	};
 	

@@ -73,9 +73,7 @@ int main(int argc,char ** argv)
 			if( m->GetProcessorRank() == 0 )
 				m->Load(argv[1]); // Load mesh from the serial file format
 		}
-
 		BARRIER;
-
 		if( m->GetProcessorRank() == 0 ) std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_File): " << Timer()-ttt << std::endl;
 
@@ -111,14 +109,12 @@ int main(int argc,char ** argv)
 		ttt = Timer();
 		m->AssignGlobalID(CELL | EDGE | FACE | NODE);
 		BARRIER;
-		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;		
+		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;
 		id = m->GlobalIDTag(); // Get the tag of the global ID
 		//m->Save("solution_check_0.vtk");
 		phi = m->CreateTag("Solution",DATA_REAL,CELL,NONE,1); // Create a new tag for the solution phi
 		tensor_K = m->CreateTag("K",DATA_REAL,CELL,NONE,1); // Create a new tag for K tensor
 		//m->Save("solution_check_1.vtk");
-
-
 		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 			if( cell->GetStatus() != Element::Ghost ) // If the cell is an own one
 				cell->Real(tensor_K) = 1.0; // Store the tensor K value into the tag
@@ -132,11 +128,11 @@ int main(int argc,char ** argv)
 
 
 		ttt = Timer();
-		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
-		S.SetParameterReal("absolute_tolerance",1e-8);
-		S.SetParameterEnum("schwartz_overlap",2);
-		Residual R; // Residual vector
-		Sparse::LockService Locks;
+		Solver S("inner_ilu2"); // Specify the linear solver to ASM+ILU2+BiCGStab one
+		S.SetParameter("absolute_tolerance", "1e-8");
+		S.SetParameter("schwartz_overlap", "2");
+    	Residual R; // Residual vector
+    	Sparse::LockService Locks;
 		Sparse::Vector Update; // Declare the solution and the right-hand side vectors
 
 		Mesh::GeomParam table;
@@ -149,7 +145,6 @@ int main(int argc,char ** argv)
 		m->PrepareGeometricData(table);
 		//~ BARRIER
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
-
 		{
 			Automatizator aut;
 			Automatizator::MakeCurrent(&aut);
@@ -257,7 +252,7 @@ int main(int argc,char ** argv)
 			BARRIER;
 			if( m->GetProcessorRank() == 0 ) 
 			{
-				std::cout << S.Residual() << " " << S.Iterations() << " " << S.GetReason() << std::endl;
+				std::cout << S.Residual() << " " << S.Iterations() << " " << S.ReturnReason() << std::endl;
 				std::cout << "Solve system: " << Timer()-ttt << std::endl;
 			}
 
