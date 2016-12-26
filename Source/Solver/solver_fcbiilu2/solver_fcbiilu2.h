@@ -23,7 +23,7 @@ typedef struct
     double dstat[16]; // double  statistics array on return
     double RESID;     // residual norm
     int    ITER;      // number of BiCGStab iterations performed
-} bcg;
+} bcg_fcbiilu2;
 
 typedef struct
 {
@@ -33,40 +33,40 @@ typedef struct
     int * ia;
     int * ja;
     double * A;
-} matrix;
+} matrix_fcbiilu2;
 
 typedef struct
 {
     int n;            // local number of unknowns at the local processor
     double * v;
-} vector;
+} vector_fcbiilu2;
 
-void MatrixCopyDataFcbiilu2(matrix **pA, matrix *B);
-void MatrixAssignDataFcbiilu2(matrix *A, matrix* B);
-void MatrixInitDataFcbiilu2(matrix ** ppA, INMOST_MPI_Comm comm, const char * name);
-void MatrixDestroyDataFcbiilu2(matrix ** pA);
-void MatrixFillFcbiilu2(matrix * pA, int size, int nproc, int * ibl, int * ia, int * ja, double * values);
-void MatrixFillValuesFcbiilu2(matrix * pA, double * values);
-void MatrixFinalizeFcbiilu2(matrix * data);
+void MatrixCopyDataFcbiilu2(matrix_fcbiilu2 **pA, matrix_fcbiilu2 *B);
+void MatrixAssignDataFcbiilu2(matrix_fcbiilu2 *A, matrix_fcbiilu2* B);
+void MatrixInitDataFcbiilu2(matrix_fcbiilu2 ** ppA, INMOST_MPI_Comm comm, const char * name);
+void MatrixDestroyDataFcbiilu2(matrix_fcbiilu2 ** pA);
+void MatrixFillFcbiilu2(matrix_fcbiilu2 * pA, int size, int nproc, int * ibl, int * ia, int * ja, double * values);
+void MatrixFillValuesFcbiilu2(matrix_fcbiilu2 * pA, double * values);
+void MatrixFinalizeFcbiilu2(matrix_fcbiilu2 * data);
 
-void VectorInitDataFcbiilu2(vector ** ppA, INMOST_MPI_Comm comm, const char * name);
-void VectorCopyDataFcbiilu2(vector ** ppA, vector * pB);
-void VectorAssignDataFcbiilu2(vector * pA, vector * pB);
-void VectorPreallocateFcbiilu2(vector * pA, int size);
-void VectorFillFcbiilu2(vector * pA, double * values);
-void VectorLoadFcbiilu2(vector * pA, double * values);
-void VectorFinalizeFcbiilu2(vector * data);
-void VectorDestroyDataFcbiilu2(vector ** ppA);
+void VectorInitDataFcbiilu2(vector_fcbiilu2 ** ppA, INMOST_MPI_Comm comm, const char * name);
+void VectorCopyDataFcbiilu2(vector_fcbiilu2 ** ppA, vector_fcbiilu2 * pB);
+void VectorAssignDataFcbiilu2(vector_fcbiilu2 * pA, vector_fcbiilu2 * pB);
+void VectorPreallocateFcbiilu2(vector_fcbiilu2 * pA, int size);
+void VectorFillFcbiilu2(vector_fcbiilu2 * pA, double * values);
+void VectorLoadFcbiilu2(vector_fcbiilu2 * pA, double * values);
+void VectorFinalizeFcbiilu2(vector_fcbiilu2 * data);
+void VectorDestroyDataFcbiilu2(vector_fcbiilu2 ** ppA);
 
-void SolverInitializeFcbiilu2(bcg *data, int * argc,char *** argv, const char * file_options);
+void SolverInitializeFcbiilu2(bcg_fcbiilu2 *data, int * argc,char *** argv, const char * file_options);
 bool SolverIsFinalizedFcbiilu2();
 void SolverFinalizeFcbiilu2();
-void SolverDestroyDataFcbiilu2(bcg ** data);
-void SolverInitDataFcbiilu2(bcg ** data, INMOST_MPI_Comm comm, const char * name);
-void SolverCopyDataFcbiilu2(bcg **data, bcg *other_data, INMOST_MPI_Comm comm);
-void SolverAssignDataFcbiilu2(bcg * data, bcg * other_data);
-void SolverSetMatrixFcbiilu2(bcg * data, matrix * matrix_data, bool same_pattern, bool reuse_preconditioner);
-bool SolverSolveFcbiilu2(bcg * data, vector * rhs_data, vector * sol_data);
+void SolverDestroyDataFcbiilu2(bcg_fcbiilu2 ** data);
+void SolverInitDataFcbiilu2(bcg_fcbiilu2 ** data, INMOST_MPI_Comm comm, const char * name);
+void SolverCopyDataFcbiilu2(bcg_fcbiilu2 **data, bcg_fcbiilu2 *other_data, INMOST_MPI_Comm comm);
+void SolverAssignDataFcbiilu2(bcg_fcbiilu2 * data, bcg_fcbiilu2 * other_data);
+void SolverSetMatrixFcbiilu2(bcg_fcbiilu2 * data, matrix_fcbiilu2 * matrix_data, bool same_pattern, bool reuse_preconditioner);
+bool SolverSolveFcbiilu2(bcg_fcbiilu2 * data, vector_fcbiilu2 * rhs_data, vector_fcbiilu2 * sol_data);
 
 
 #endif //SOLVER_FCBIILU2_H_INCLUDED

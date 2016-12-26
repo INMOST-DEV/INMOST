@@ -132,11 +132,11 @@ namespace INMOST {
         INMOST_DATA_ENUM_TYPE vbeg, vend;
         RHS.GetInterval(vbeg, vend);
 
-        vector *rhs_data = NULL;
+        vector_fcbiilu2 *rhs_data = NULL;
         VectorInitDataFcbiilu2(&rhs_data, RHS.GetCommunicator(), RHS.GetName().c_str());
         VectorPreallocateFcbiilu2(rhs_data, local_size);
 
-        vector *solution_data = NULL;
+        vector_fcbiilu2 *solution_data = NULL;
         VectorInitDataFcbiilu2(&solution_data, SOL.GetCommunicator(), SOL.GetName().c_str());
         VectorPreallocateFcbiilu2(solution_data, local_size);
         VectorFillFcbiilu2(rhs_data, &RHS[vbeg]);
