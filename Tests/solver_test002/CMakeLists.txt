@@ -55,6 +55,10 @@ if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_FCBIILU2.*$")
     add_test(NAME solver_test002_serial_fcbiilu2 COMMAND $<TARGET_FILE:solver_test002> fcbiilu2 20)
 endif()
 
+if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_K3BIILU2.*$")
+    add_test(NAME solver_test002_serial_k3biilu2 COMMAND $<TARGET_FILE:solver_test002> k3biilu2 20)
+endif()
+
 if(USE_SOLVER_TRILINOS AND USE_MPI)
 add_test(NAME solver_test002_serial_trilinos_aztec             COMMAND $<TARGET_FILE:solver_test002>  trilinos_aztec 20)
 add_test(NAME solver_test002_serial_trilinos_belos             COMMAND $<TARGET_FILE:solver_test002>  trilinos_belos 20)
@@ -92,6 +96,10 @@ endif()
 
 if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_FCBIILU2.*$")
     add_test(NAME solver_test002_parallel_fcbiilu2 COMMAND $<TARGET_FILE:solver_test002> fcbiilu2 20)
+endif()
+
+if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_K3BIILU2.*$")
+    add_test(NAME solver_test002_parallel_k3biilu2 COMMAND $<TARGET_FILE:solver_test002> k3biilu2 20)
 endif()
 
 endif()

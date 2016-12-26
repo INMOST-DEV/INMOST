@@ -1,9 +1,11 @@
 #include "SolverK3BIILU2.h"
+#include "solver_k3biilu2.h"
 
 namespace INMOST {
 
     SolverK3BIILU2::SolverK3BIILU2() {
-
+        solver_data = NULL;
+        matrix_data = NULL;
     }
 
     SolverInterface *SolverK3BIILU2::Copy(const SolverInterface *other) {
@@ -47,7 +49,7 @@ namespace INMOST {
 
     void SolverK3BIILU2::Setup(int *argc, char ***argv, SolverParameters &p) {
         SolverInitDataK3biilu2(&solver_data, communicator, p.solverPrefix.c_str());
-        SolverInitializeK3biilu2(argc, argv, p.internalFile);
+        SolverInitializeK3biilu2(solver_data, argc, argv, p.internalFile.c_str());
     }
 
     void SolverK3BIILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
@@ -122,8 +124,8 @@ namespace INMOST {
     bool SolverK3BIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
         INMOST_DATA_ENUM_TYPE vbeg, vend;
         RHS.GetInterval(vbeg, vend);
-        void *rhs_data = NULL;
-        void *solution_data = NULL;
+        vector_k3biilu2 *rhs_data = NULL;
+        vector_k3biilu2 *solution_data = NULL;
 
         VectorInitDataK3biilu2(&rhs_data, RHS.GetCommunicator(), RHS.GetName().c_str());
         VectorPreallocateK3biilu2(rhs_data, local_size);
@@ -161,8 +163,9 @@ namespace INMOST {
     }
 
     void SolverK3BIILU2::SetParameter(std::string name, std::string value) {
-        std::cout << "SolverK3BIILU2::SetParameter unsupported operation" << std::endl;
-        //throw INMOST::SolverUnsupportedOperation;
+        const char *val = value.c_str();
+        if (name == "msglev") solver_data->pParIter->msglev = atoi(val);
+        else std::cout << "Parameter " << name << " is unknown" << std::endl;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverK3BIILU2::Iterations() const {

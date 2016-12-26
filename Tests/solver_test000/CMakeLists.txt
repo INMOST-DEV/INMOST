@@ -123,5 +123,9 @@ if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_FCBIILU2.*$")
   add_test(NAME solver_test000_parallel_normal_fcbiilu2             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 fcbiilu2)
 endif()
 
+if(SOLVER_DEFINITIONS MATCHES "^.*HAVE_SOLVER_K3BIILU2.*$")
+  add_test(NAME solver_test000_parallel_normal_k3biilu2             COMMAND ${MPIEXEC} -np 4 $<TARGET_FILE:solver_test000> 0 k3biilu2)
+endif()
+
 endif()
 endif()

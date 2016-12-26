@@ -8,8 +8,8 @@ namespace INMOST {
 
     class SolverK3BIILU2 : public SolverInterface {
     private:
-        void *solver_data;
-        void *matrix_data;
+        bcg_k3biilu2 *solver_data;
+        matrix_k3biilu2 *matrix_data;
         INMOST_DATA_ENUM_TYPE local_size, global_size;
     public:
         SolverK3BIILU2();
