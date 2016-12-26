@@ -23,25 +23,6 @@
 
 #endif
 
-//getline(is, s);                                                  //1 skip iext
-//getline(is, s);                                                  //2 skip mtx filename
-//getline(is, s);                                                  //3 skip rhs filename
-//getline(is, s);
-//sscanf(s.c_str(), "%lg", &parIter.eps);          //4 eps
-//getline(is, s);
-//sscanf(s.c_str(), "%d", &parIter.maxit);        //5 maxit
-//getline(is, s);
-//sscanf(s.c_str(), "%d", &parIter.niter_cycle);  //6 kgmr
-//getline(is, s);
-//sscanf(s.c_str(), "%d", &parIter.ncoef);        //7 kdeg
-//getline(is, s);
-//sscanf(s.c_str(), "%d", &parPrec.ncycle);       //8 kovl
-//getline(is, s);
-//sscanf(s.c_str(), "%lg", &parPrec.tau1);         //9 tau
-//parPrec.tau2 = -1.0;
-//parIter.ittype = (parIter.niter_cycle > 1) ? 1 : 0;
-////? msglev
-
 void ParametersDefault(ParIter &parIter, k3d::SParams &parPrec) {
     parIter.ittype = 0;    // 0 - BiCGStab; 1,2,3 - GMRES(niter_cycle); 2 - +Poly(ncoef)_BiCGStab; 3 - +Poly(ncoef)_GMRESb(niter_cycle2)
     parIter.niter_cycle = 1;   // outer GMRES cycle (=kgmr by IEK); 1 - BiCGStab
@@ -50,7 +31,7 @@ void ParametersDefault(ParIter &parIter, k3d::SParams &parPrec) {
     parIter.eps = 1e-6; // the residual precision: ||r|| < eps * ||b||; eps=1e-6
     parIter.maxit = 999;  // number of iterations permitted; maxit=999
     parIter.ichk = 5;    // number of skipped iterations to check the convergence
-    parIter.msglev = 2;    // messages level; msglev=0 for silent; msglev>0 to output solution statistics
+    parIter.msglev = 0;    // messages level; msglev=0 for silent; msglev>0 to output solution statistics
 
     parPrec.ncycle = 3;
     parPrec.tau1 = 3e-3;
@@ -125,7 +106,10 @@ int k3biilu2_bcg(
         if (pParIter->msglev > 0)
             std::cout << " K3: prec_extend=" << prec_extend << "  density=" << density << "  scpiv_min=" << scpiv_min << "  scpiv_max=" << scpiv_max
                       << "  nmodif=" << nmodif << "  piv_min=" << piv_min << "  piv_max=" << piv_max << "  dtime_fct=" << dtime_fct << endl;
+
+        istat[0] = nmodif;
         dstat[0] = density;
+        dstat[7] = dtime_fct;
 //    } else {
 //        T(cout<<"HHHHH k3biilu2_bcg: else (job == 0)\n";)//DB!
         //pSolver->PrepareMatrix((void *)&comm, np, pblks, pblk2cpu,
@@ -146,8 +130,11 @@ int k3biilu2_bcg(
         if (pParIter->msglev > 0)
             std::cout << " K3: rhs_norm=" << rhs_norm << "  res_ini=" << res_ini << "  niter=" << niter << "  nmvm=" << nmvm << "  res_fin=" << res_fin
                       << "  dtime_iter=" << dtime_iter << endl;
-        istat[2] = niter;
+
         dstat[2] = (rhs_norm == 0e0) ? res_fin : res_fin / rhs_norm;
+        dstat[9] = dtime_iter;
+
+        istat[2] = niter;
         pSolver->CleanMvmA(); //? prec iter iter
     }
 
@@ -557,12 +544,4 @@ void SolverSetMatrixK3biilu2(bcg_k3biilu2 *data, matrix_k3biilu2 *matrix_data, b
 bool SolverSolveK3biilu2(bcg_k3biilu2 *data, vector_k3biilu2 *rhs_data, vector_k3biilu2 *sol_data) {
     T(std::cout << "##### ins. SolverSolveK3biilu2 \n";)//db!
     return solvebcg_k3(data, rhs_data, sol_data) == 0;
-}
-
-int SolverIterationNumberK3biilu2(bcg_k3biilu2 *data) {
-    return data->ITER;
-}
-
-double SolverResidualNormK3biilu2(bcg_k3biilu2 *data) {
-    return data->RESID;
 }

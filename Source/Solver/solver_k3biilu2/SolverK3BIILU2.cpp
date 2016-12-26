@@ -1,5 +1,6 @@
 #include "SolverK3BIILU2.h"
 #include "solver_k3biilu2.h"
+#include <Source/Misc/utils.h>
 
 namespace INMOST {
 
@@ -49,10 +50,17 @@ namespace INMOST {
 
     void SolverK3BIILU2::Setup(int *argc, char ***argv, SolverParameters &p) {
         SolverInitDataK3biilu2(&solver_data, communicator, p.solverPrefix.c_str());
-        SolverInitializeK3biilu2(solver_data, argc, argv, p.internalFile.c_str());
+        if (p.internalFile != "") {
+            SolverInitializeK3biilu2(solver_data, argc, argv, p.internalFile.c_str());
+        } else {
+            for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
+                this->SetParameter((*parameter).first, (*parameter).second);
+            }
+        }
     }
 
     void SolverK3BIILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
+        double time_start = Timer();
         bool modified_pattern = ModifiedPattern;
         //~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
         if (matrix_data == NULL) {
@@ -77,7 +85,7 @@ namespace INMOST {
             ibl[0] = 0;
             int n = A.Size();
 #if defined(USE_MPI)
-            INMOST_DATA_ENUM_TYPE mbeg,mend;
+            INMOST_DATA_ENUM_TYPE mbeg, mend;
             A.GetInterval(mbeg, mend);
             n = mend - mbeg;
             int block_end = mend;
@@ -119,6 +127,7 @@ namespace INMOST {
         }
         MatrixFinalizeK3biilu2(matrix_data);
         SolverSetMatrixK3biilu2(solver_data, matrix_data, modified_pattern, OldPreconditioner);
+        time_prec = Timer() - time_start;
     }
 
     bool SolverK3BIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
@@ -141,6 +150,7 @@ namespace INMOST {
 
         bool result = SolverSolveK3biilu2(solver_data, rhs_data, solution_data);
         if (result) VectorLoadK3biilu2(solution_data, &SOL[vbeg]);
+        iter_time = solver_data->dstat[9];
         return result;
     }
 
@@ -157,23 +167,33 @@ namespace INMOST {
     }
 
     std::string SolverK3BIILU2::GetParameter(std::string name) const {
-        std::cout << "SolverK3BIILU2::GetParameter unsupported operation" << std::endl;
-        //throw INMOST::SolverUnsupportedOperation;
+        if (name == "time_prec") return INMOST::to_string(time_prec);
+        if (name == "time_iter") return INMOST::to_string(iter_time);
+        if (name == "time_total") return INMOST::to_string(time_prec + iter_time);
+        if (name == "prec_density") return INMOST::to_string(solver_data->dstat[0]);
+        if (name == "pivot_mod") return INMOST::to_string(solver_data->istat[0]);
+        std::cout << "Parameter " << name << " is unknown" << std::endl;
         return "";
     }
 
     void SolverK3BIILU2::SetParameter(std::string name, std::string value) {
         const char *val = value.c_str();
         if (name == "msglev") solver_data->pParIter->msglev = atoi(val);
+        else if (name == "kovl") solver_data->pParams->ncycle = atoi(val);
+        else if (name == "tau") {
+            solver_data->pParams->tau1 = atof(val);
+            solver_data->pParams->tau2 = -1.0;
+        } else if (name == "nit") solver_data->pParIter->maxit = atoi(val);
+        else if (name == "eps") solver_data->pParIter->eps = atof(val);
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
     }
 
     const INMOST_DATA_ENUM_TYPE SolverK3BIILU2::Iterations() const {
-        return static_cast<INMOST_DATA_ENUM_TYPE>(SolverIterationNumberK3biilu2(solver_data));
+        return static_cast<INMOST_DATA_ENUM_TYPE>(solver_data->istat[2]);
     }
 
     const INMOST_DATA_REAL_TYPE SolverK3BIILU2::Residual() const {
-        return SolverResidualNormK3biilu2(solver_data);
+        return solver_data->dstat[2];
     }
 
     const std::string SolverK3BIILU2::ReturnReason() const {

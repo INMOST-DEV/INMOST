@@ -118,9 +118,5 @@ void SolverSetMatrixK3biilu2(bcg_k3biilu2 *data, matrix_k3biilu2 *matrix_data, b
 
 bool SolverSolveK3biilu2(bcg_k3biilu2 *data, vector_k3biilu2 *rhs_data, vector_k3biilu2 *sol_data);
 
-int SolverIterationNumberK3biilu2(bcg_k3biilu2 *data);
-
-double SolverResidualNormK3biilu2(bcg_k3biilu2 *data);
-
 
 #endif //SOLVER_K3BIILU2_H_INCLUDED

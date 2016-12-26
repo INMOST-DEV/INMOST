@@ -11,6 +11,9 @@ namespace INMOST {
         bcg_k3biilu2 *solver_data;
         matrix_k3biilu2 *matrix_data;
         INMOST_DATA_ENUM_TYPE local_size, global_size;
+
+        double time_prec;
+        double iter_time;
     public:
         SolverK3BIILU2();
 
