@@ -8,8 +8,8 @@ namespace INMOST {
 
     class SolverFCBIILU2: public SolverInterface {
     private:
-        bcg *solver_data;
-        matrix *matrix_data;
+        bcg_fcbiilu2 *solver_data;
+        matrix_fcbiilu2 *matrix_data;
         INMOST_DATA_ENUM_TYPE local_size, global_size;
 
         double time_prec;

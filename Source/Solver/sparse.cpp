@@ -883,7 +883,7 @@ namespace INMOST
         }
 
 
-        void     Matrix::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend)
+        void     Matrix::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend, std::string file_ord)
         {
             char str[16384];
             std::ifstream input(file.c_str());
@@ -901,6 +901,30 @@ namespace INMOST
                 MPI_Comm_size(GetCommunicator(),&size);
             }
 #endif
+            int * ord = NULL;
+            if (file_ord != "")
+            {
+                std::ifstream input_ord;
+                input_ord.open(file_ord.c_str(), std::ifstream::in);
+                if( input_ord.fail() ) throw -2;
+                int n;
+                input_ord >> n; // check if( n == line )
+                ord = (int *) malloc(sizeof(int) * n);
+                for (int i=0; i<n; i++) input_ord >> ord[i];
+                int nbl;
+                input_ord >> nbl;
+                if( nbl != size ) throw -3;
+                int * ibl;
+                ibl = (int *) malloc(sizeof(int) * (nbl+1));
+                for (int i=0; i<nbl+1; i++) input_ord >> ibl[i];
+                if( mbeg == ENUMUNDEF ) mbeg = (unsigned int) ibl[rank];
+                if( mend == ENUMUNDEF ) mend = (unsigned int) ibl[rank + 1];
+                for (int i=0; i<n; i++) ord[i] -= 1;
+                free(ibl);
+                input_ord.close();
+                //std::cout<<"Matrix::Load(): n="<<n<<" nbl="<<nbl<<" np="<<size<<" id="<<rank<<" mbeg="<<mbeg<<" mend="<<mend<<std::endl;//db
+            }
+
             int line = 0;
             while( !input.getline(str,16384).eof() )
             {
@@ -925,6 +949,7 @@ namespace INMOST
                     case 1:
                         istr >> row >> col >> val;
                         row--; col--;
+                        if( ord ) { row = ord[row]; col = ord[col]; }
                         if( row >= mbeg && row < mend ) data[row][col] = val;
                         break;
                 }

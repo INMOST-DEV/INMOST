@@ -49,20 +49,20 @@ int biilu2_bcg(
 /*****************************************************************************/
 
 /* Initialize bcg solver */
-static int initbcg(bcg *s, matrix *A, double eps);
+static int initbcg(bcg_fcbiilu2 *s, matrix_fcbiilu2 *A, double eps);
 
 /* Reinitialize solver preconditioner with new matrix A */
-static int renewbcg(bcg *s, double *A);
+static int renewbcg(bcg_fcbiilu2 *s, double *A);
 /* Solve linear system */
-/*static*/ int solvebcg(bcg *s, vector *b, vector *x);
+/*static*/ int solvebcg(bcg_fcbiilu2 *s, vector_fcbiilu2 *b, vector_fcbiilu2 *x);
 
 /* Free memory used by solver */
-static void freebcg(bcg *s);
+static void freebcg(bcg_fcbiilu2 *s);
 
 /*****************************************************************************/
 
 /* Initialize solver with new matrix A */
-static int newmatrixbcg(bcg *s, matrix *A, bool same_precond) {
+static int newmatrixbcg(bcg_fcbiilu2 *s, matrix_fcbiilu2 *A, bool same_precond) {
     if (s->n != A->n && same_precond) throw INMOST::CannotReusePreconditionerOfDifferentSize;
     s->n = A->n;
     s->nproc = A->nproc;
@@ -78,14 +78,14 @@ static int newmatrixbcg(bcg *s, matrix *A, bool same_precond) {
 
 /* solver */
 /* Initialize bcg solver */
-int initbcg(bcg *s, matrix *A) {
+int initbcg(bcg_fcbiilu2 *s, matrix_fcbiilu2 *A) {
     //s->eps = eps;
     T(std::cout << "##### inside initbcg bef. newmatrixbcg eps=" << eps << " \n";)//db!
     return newmatrixbcg(s, A, false);
 }
 
 /* Reinitialize solver preconditioner with new matrix A */
-int renewbcg(bcg *s, double *A) {
+int renewbcg(bcg_fcbiilu2 *s, double *A) {
     //reinitialize matrix values
     s->a = A;
     //BIILU2 preconditioner construction...
@@ -118,7 +118,7 @@ int renewbcg(bcg *s, double *A) {
 }
 
 /* Solve linear system */
-int solvebcg(bcg *s, vector *b, vector *x) {
+int solvebcg(bcg_fcbiilu2 *s, vector_fcbiilu2 *b, vector_fcbiilu2 *x) {
     //s->kovl = set_kovl;
     //s->tau = set_tau;
 //  s->eps     = set_eps;
@@ -143,17 +143,17 @@ int solvebcg(bcg *s, vector *b, vector *x) {
 }
 
 /* Free memory used by solver */
-void freebcg(bcg *s) {
+void freebcg(bcg_fcbiilu2 *s) {
     if (s->W) free(s->W);
     s->W = NULL;
 }
 
 /*****************************************************************************/
 
-void MatrixCopyDataFcbiilu2(matrix **pA, matrix *B) {
+void MatrixCopyDataFcbiilu2(matrix_fcbiilu2 **pA, matrix_fcbiilu2 *B) {
     if (pA == NULL || B == NULL) throw INMOST::DataCorruptedInSolver;
-    *pA = (matrix *) malloc(sizeof(matrix));
-    matrix *A = *pA;
+    *pA = (matrix_fcbiilu2 *) malloc(sizeof(matrix_fcbiilu2));
+    matrix_fcbiilu2 *A = *pA;
     A->n = B->n;
     if (B->n != 0) {
         int nnz = B->ia[B->n] - B->ia[0];
@@ -169,7 +169,7 @@ void MatrixCopyDataFcbiilu2(matrix **pA, matrix *B) {
     }
 }
 
-void MatrixAssignDataFcbiilu2(matrix *A, matrix *B) {
+void MatrixAssignDataFcbiilu2(matrix_fcbiilu2 *A, matrix_fcbiilu2 *B) {
     if (A == NULL || B == NULL) throw INMOST::DataCorruptedInSolver;
     if (A != B) {
         if (A->n != 0) {
@@ -194,12 +194,12 @@ void MatrixAssignDataFcbiilu2(matrix *A, matrix *B) {
     }
 }
 
-void MatrixInitDataFcbiilu2(matrix **ppA, INMOST_MPI_Comm comm, const char *name) {
+void MatrixInitDataFcbiilu2(matrix_fcbiilu2 **ppA, INMOST_MPI_Comm comm, const char *name) {
     T(std::cout << "##### ins. MatrixInitDataFcbiilu2 \n";)//db!
     if (ppA == NULL) throw INMOST::DataCorruptedInSolver;
     if (*ppA == NULL) {
-        *ppA = (matrix *) malloc(sizeof(matrix));
-        matrix *A = (matrix *) *ppA;
+        *ppA = (matrix_fcbiilu2 *) malloc(sizeof(matrix_fcbiilu2));
+        matrix_fcbiilu2 *A = (matrix_fcbiilu2 *) *ppA;
         A->n = 0;
         A->nproc = 0;
         T(std::cout << "##### ins. MatrixInitDataFcbiilu2 n=nproc=0 \n";)//db!
@@ -208,8 +208,8 @@ void MatrixInitDataFcbiilu2(matrix **ppA, INMOST_MPI_Comm comm, const char *name
     (void) name;
 }
 
-void MatrixDestroyDataFcbiilu2(matrix **pA) {
-    matrix *A = (matrix *) (*pA);
+void MatrixDestroyDataFcbiilu2(matrix_fcbiilu2 **pA) {
+    matrix_fcbiilu2 *A = (matrix_fcbiilu2 *) (*pA);
     if (A != NULL) {
         if (A->n != 0) {
             free(A->ibl);
@@ -224,10 +224,10 @@ void MatrixDestroyDataFcbiilu2(matrix **pA) {
 }
 
 
-void MatrixFillFcbiilu2(matrix *pA, int size, int nproc, int *ibl, int *ia, int *ja, double *values) {
+void MatrixFillFcbiilu2(matrix_fcbiilu2 *pA, int size, int nproc, int *ibl, int *ia, int *ja, double *values) {
     T(std::cout << "##### ins. MatrixFillFcbiilu2 n=" << size << " nproc=" << nproc << " \n";)//db!
     if (pA == NULL) throw INMOST::DataCorruptedInSolver;
-    matrix *A = (matrix *) pA;
+    matrix_fcbiilu2 *A = (matrix_fcbiilu2 *) pA;
     A->n = size;
     A->nproc = nproc;
     A->ibl = ibl;
@@ -236,34 +236,34 @@ void MatrixFillFcbiilu2(matrix *pA, int size, int nproc, int *ibl, int *ia, int 
     A->A = values;
 }
 
-void MatrixFillValuesFcbiilu2(matrix *pA, double *values) {
+void MatrixFillValuesFcbiilu2(matrix_fcbiilu2 *pA, double *values) {
     T(std::cout << "##### ins. MatrixFillValuesFcbiilu2 \n";)//db!
     if (pA == NULL) throw INMOST::DataCorruptedInSolver;
-    matrix *A = (matrix *) pA;
+    matrix_fcbiilu2 *A = (matrix_fcbiilu2 *) pA;
     free(A->A);
     A->A = values;
 }
 
-void MatrixFinalizeFcbiilu2(matrix *data) {
+void MatrixFinalizeFcbiilu2(matrix_fcbiilu2 *data) {
     //don't need to do anything
     (void) data;
 }
 
-void VectorInitDataFcbiilu2(vector **ppA, INMOST_MPI_Comm comm, const char *name) {
+void VectorInitDataFcbiilu2(vector_fcbiilu2 **ppA, INMOST_MPI_Comm comm, const char *name) {
     if (ppA == NULL) throw INMOST::DataCorruptedInSolver;
-    *ppA = (vector *) malloc(sizeof(vector));
-    vector *A = (vector *) *ppA;
+    *ppA = (vector_fcbiilu2 *) malloc(sizeof(vector_fcbiilu2));
+    vector_fcbiilu2 *A = (vector_fcbiilu2 *) *ppA;
     A->n = 0;
     (void) comm;
     (void) name;
 }
 
-void VectorCopyDataFcbiilu2(vector **ppA, vector *pB) {
+void VectorCopyDataFcbiilu2(vector_fcbiilu2 **ppA, vector_fcbiilu2 *pB) {
     T(std::cout << "##### ins. VectorCopyDataFcbiilu2 \n";)//db!
     if (ppA == NULL || pB == NULL) throw INMOST::DataCorruptedInSolver;
-    *ppA = (vector *) malloc(sizeof(vector));
-    vector *A = (vector *) *ppA;
-    vector *B = (vector *) pB;
+    *ppA = (vector_fcbiilu2 *) malloc(sizeof(vector_fcbiilu2));
+    vector_fcbiilu2 *A = (vector_fcbiilu2 *) *ppA;
+    vector_fcbiilu2 *B = (vector_fcbiilu2 *) pB;
     A->n = B->n;
     if (B->n != 0) {
         A->v = (double *) malloc(sizeof(double) * A->n);
@@ -271,10 +271,10 @@ void VectorCopyDataFcbiilu2(vector **ppA, vector *pB) {
     }
 }
 
-void VectorAssignDataFcbiilu2(vector *pA, vector *pB) {
+void VectorAssignDataFcbiilu2(vector_fcbiilu2 *pA, vector_fcbiilu2 *pB) {
     T(std::cout << "##### ins. VectorAssignDataFcbiilu2 \n";)//db!
-    vector *A = (vector *) pA;
-    vector *B = (vector *) pB;
+    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
+    vector_fcbiilu2 *B = (vector_fcbiilu2 *) pB;
     if (A == NULL || B == NULL) throw INMOST::DataCorruptedInSolver;
     if (A != B) {
         if (A->n != 0) free(A->v);
@@ -286,40 +286,40 @@ void VectorAssignDataFcbiilu2(vector *pA, vector *pB) {
     }
 }
 
-void VectorPreallocateFcbiilu2(vector *pA, int size) {
-    vector *A = (vector *) pA;
+void VectorPreallocateFcbiilu2(vector_fcbiilu2 *pA, int size) {
+    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
     if (A == NULL) throw INMOST::DataCorruptedInSolver;
     A->n = size;
     A->v = (double *) malloc(sizeof(double) * size);
 }
 
-void VectorFillFcbiilu2(vector *pA, double *values) {
-    vector *A = (vector *) pA;
+void VectorFillFcbiilu2(vector_fcbiilu2 *pA, double *values) {
+    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
     if (A == NULL) throw INMOST::DataCorruptedInSolver;
     memcpy(A->v, values, sizeof(double) * A->n);
 }
 
-void VectorLoadFcbiilu2(vector *pA, double *values) {
-    vector *A = (vector *) pA;
+void VectorLoadFcbiilu2(vector_fcbiilu2 *pA, double *values) {
+    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
     if (A == NULL) throw INMOST::DataCorruptedInSolver;
     memcpy(values, A->v, sizeof(double) * A->n);
 }
 
-void VectorFinalizeFcbiilu2(vector *data) {
+void VectorFinalizeFcbiilu2(vector_fcbiilu2 *data) {
     (void) data;
 }
 
-void VectorDestroyDataFcbiilu2(vector **ppA) {
+void VectorDestroyDataFcbiilu2(vector_fcbiilu2 **ppA) {
     if (ppA == NULL) throw INMOST::DataCorruptedInSolver;
     if (*ppA != NULL) {
-        vector *A = (vector *) *ppA;
+        vector_fcbiilu2 *A = (vector_fcbiilu2 *) *ppA;
         free(A->v);
         free(*ppA);
         *ppA = NULL;
     }
 }
 
-void SolverInitializeFcbiilu2(bcg *data, int *argc, char ***argv, const char *file_options) {
+void SolverInitializeFcbiilu2(bcg_fcbiilu2 *data, int *argc, char ***argv, const char *file_options) {
     T(std::cout << "##### ins. SolverInitializeFcbiilu2 (" << file_options << ") \n";)//db!
     if (file_options == NULL) return;
     std::string s = file_options;
@@ -367,10 +367,10 @@ bool SolverIsFinalizedFcbiilu2() {
 void SolverFinalizeFcbiilu2() {
 }
 
-void SolverDestroyDataFcbiilu2(bcg **data) {
+void SolverDestroyDataFcbiilu2(bcg_fcbiilu2 **data) {
     if (data != NULL) {
         if (*data != NULL) {
-            bcg *m = (bcg *) *data;
+            bcg_fcbiilu2 *m = (bcg_fcbiilu2 *) *data;
             freebcg(m);
             free(m);
         }
@@ -378,34 +378,34 @@ void SolverDestroyDataFcbiilu2(bcg **data) {
     }
 }
 
-void SolverInitDataFcbiilu2(bcg **data, INMOST_MPI_Comm comm, const char *name) {
+void SolverInitDataFcbiilu2(bcg_fcbiilu2 **data, INMOST_MPI_Comm comm, const char *name) {
     T(std::cout << "##### ins. SolverInitDataFcbiilu2 \n";)//db!
-    *data = (bcg *) malloc(sizeof(bcg));
-    ((bcg *) *data)->n = 0;
-    ((bcg *) *data)->nproc = 0;
-    ((bcg *) *data)->len_r8 = 0;
-    ((bcg *) *data)->W = NULL;
+    *data = (bcg_fcbiilu2 *) malloc(sizeof(bcg_fcbiilu2));
+    ((bcg_fcbiilu2 *) *data)->n = 0;
+    ((bcg_fcbiilu2 *) *data)->nproc = 0;
+    ((bcg_fcbiilu2 *) *data)->len_r8 = 0;
+    ((bcg_fcbiilu2 *) *data)->W = NULL;
     (void) comm;
     (void) name;
 }
 
-void SolverCopyDataFcbiilu2(bcg **data, bcg *other_data, INMOST_MPI_Comm comm) {
+void SolverCopyDataFcbiilu2(bcg_fcbiilu2 **data, bcg_fcbiilu2 *other_data, INMOST_MPI_Comm comm) {
     throw INMOST::NotImplemented; //later
     (void) data;
     (void) other_data;
     (void) comm;
 }
 
-void SolverAssignDataFcbiilu2(bcg *data, bcg *other_data) {
+void SolverAssignDataFcbiilu2(bcg_fcbiilu2 *data, bcg_fcbiilu2 *other_data) {
     throw INMOST::NotImplemented; //later
     (void) data;
     (void) other_data;
 }
 
-void SolverSetMatrixFcbiilu2(bcg *data, matrix *matrix_data, bool same_pattern, bool reuse_preconditioner) {
+void SolverSetMatrixFcbiilu2(bcg_fcbiilu2 *data, matrix_fcbiilu2 *matrix_data, bool same_pattern, bool reuse_preconditioner) {
     T(std::cout << "##### ins. SolverSetMatrixFcbiilu2 \n";)//db!
-    bcg *m = (bcg *) data;
-    matrix *A = (matrix *) matrix_data;
+    bcg_fcbiilu2 *m = (bcg_fcbiilu2 *) data;
+    matrix_fcbiilu2 *A = (matrix_fcbiilu2 *) matrix_data;
     T(if (A == NULL) std::cout << "##### A == NULL ... \n";)//db!
     T(if (m == NULL) std::cout << "##### m == NULL ... \n";)//db!
     if (A == NULL || m == NULL) throw INMOST::DataCorruptedInSolver;
@@ -418,9 +418,9 @@ void SolverSetMatrixFcbiilu2(bcg *data, matrix *matrix_data, bool same_pattern, 
     T(std::cout << "##### ins. SolverSetMatrixFcbiilu2 bef. return \n";)//db!
 }
 
-bool SolverSolveFcbiilu2(bcg *data, vector *rhs_data, vector *sol_data) {
+bool SolverSolveFcbiilu2(bcg_fcbiilu2 *data, vector_fcbiilu2 *rhs_data, vector_fcbiilu2 *sol_data) {
     T(std::cout << "##### ins. SolverSolveFcbiilu2 \n";)//db!
-    bcg *m = (bcg *) data;
-    vector *rhs = (vector *) rhs_data, *sol = (vector *) sol_data;
+    bcg_fcbiilu2 *m = (bcg_fcbiilu2 *) data;
+    vector_fcbiilu2 *rhs = (vector_fcbiilu2 *) rhs_data, *sol = (vector_fcbiilu2 *) sol_data;
     return solvebcg(m, rhs, sol) == 0;
 }
