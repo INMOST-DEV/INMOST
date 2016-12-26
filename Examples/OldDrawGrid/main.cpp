@@ -41,6 +41,7 @@ bool drawaxis = true, drawcolorbar = true;
 Element disp_e;
 Mesh::GeomParam table;
 ElementArray<Element> orphans;
+int is_material_defined = 0;
 
 #define CLIP_NONE 0
 #define CLIP_NODE 1
@@ -55,6 +56,10 @@ ElementArray<Element> orphans;
 Storage::real p[3] = {0,0,0}, n[3] = {0,0,1};
 ElementArray<Element> boundary_faces;
 ElementArray<Edge> added_edges;
+std::map<int,std::vector<HandleType> > material_faces;
+std::map<int,double> material_x;
+std::map<int,double> material_y;
+std::map<int,double> material_z;
 std::vector<double> harmonic_points, dual_harmonic_points, conormals;
 
 
@@ -1031,6 +1036,18 @@ class face2gl
 	color_t cntcolor;
 	double cnttexcoord;
 public:
+	void shift(double x, double y, double z)
+	{
+		cnt[0] += x;
+		cnt[1] += y;
+		cnt[2] += z;
+		for(size_t k = 0; k < verts.size(); k+=3)
+		{
+			verts[k+0] += x;
+			verts[k+1] += y;
+			verts[k+2] += z;
+		}
+	}
 	static void radix_sort_dist(std::vector<face2gl> & set)
 	{
 		static std::vector<face2gl> tmp;
@@ -1281,7 +1298,7 @@ public:
 			double px,py,z;
 			file << "<g stroke=\"black\">" << std::endl;
 			file << "<polyline fill=\"none\" points=\"";
-			for(unsigned k = 0; k < verts.size(); k+=3) 
+			for(unsigned k = 0; k < verts.size()+3; k+=3)
 			{
 				gluProject(verts[k%verts.size()+0],verts[k%verts.size()+1],verts[k%verts.size()+2],modelview,projection,viewport,&px,&py,&z); py = height-py;
 				file << px << "," << py << " ";
@@ -3599,7 +3616,7 @@ void keyboard(unsigned char key, int x, int y)
 	}
   else if( key == 'e' )
   {
-    drawedges = (drawedges+1)%4;
+    drawedges = (drawedges+1)%(4+is_material_defined);
     glutPostRedisplay();
   }
 	else if( key == 'w' )
@@ -4252,10 +4269,27 @@ void draw_screen()
 
 	
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
-
+	if( drawedges == 4 )
+	{
+		clip_boundary.clear();
+		for(std::map<int,std::vector<HandleType> >::iterator it = material_faces.begin(); it != material_faces.end(); ++it)
+		{
+			for(std::vector<HandleType>::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+			{
+				clip_boundary.push_back(DrawFace(Face(mesh,*jt)));
+				clip_boundary.back().shift(material_x[it->first],material_y[it->first],material_z[it->first]);
+				clip_boundary.back().set_color(0.6,0.6,0.6,1);
+			}
+		}
+		draw_faces(clip_boundary);
+		glColor4f(0,0,0,1);
+		draw_edges(clip_boundary);
+		clipboxupdate = true;
+	}
+	else
 	{
 		
-		if( oclipper ) 
+		if( oclipper )
 		{
 			
 			if( clipupdate ) 
@@ -4572,20 +4606,33 @@ void draw_screen()
 
 					if( k < slen && l < slen && l+1 < slen )
 					{
+						bool is_number = true;
+						for(int r = l+1; r < slen; ++r)
+							if( !isdigit(visualization_prompt[r]) )
+								is_number = false;
+						if( !is_number ) for(int r = l+1; r < slen; ++r) visualization_prompt[r] = tolower(visualization_prompt[r]);
 
 						strcpy(typen,visualization_prompt);
 						strcpy(name,visualization_prompt+k+1);
-						comp = atoi(visualization_prompt+l+1);
+						if( is_number )
+							comp = atoi(visualization_prompt+l+1);
+						else if( std::string(visualization_prompt+l+1) == "mag" )
+							comp = ENUMUNDEF;
+						else
+						{
+							std::cout << "unknown name for component, expected number or 'mag'" << std::endl;
+							comp = ENUMUNDEF-1;
+						}
 						visualization_prompt[k] = ':';
 						visualization_prompt[l] = ':';
 						printf("type %s name %s comp %d\n",typen,name,comp);
 						std::string stype(typen), sname(name);
-						if( mesh->HaveTag(sname) )
+						if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
 						{
 							Tag source_tag = mesh->GetTag(sname);
 							if( source_tag.GetDataType() == DATA_REAL || source_tag.GetDataType() == DATA_INTEGER )
 							{
-								if( comp >= 0 && comp < source_tag.GetSize() )
+								if( (comp >= 0 && comp < source_tag.GetSize()) || comp == ENUMUNDEF )
 								{
 									visualization_type = NONE;
 									for(size_t q = 0; q < stype.size(); ++q) 
@@ -4622,12 +4669,35 @@ void draw_screen()
 												Storage::real_array coords = it->Coords();
 												Storage::real cnt[3], dist, wgt;
 												Storage::real val = 0.0, vol = 0.0, res;
-												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && jt->GetDataSize(source_tag) > comp )
+												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF) )
 												{
 													jt->Centroid(cnt);
 													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
 													wgt = 1.0/(dist+1.0e-8);
-													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : static_cast<Storage::real>(jt->IntegerArray(source_tag)[comp]) );
+													if( source_tag.GetDataType() == DATA_REAL )
+													{
+														Storage::real_array v = jt->RealArray(source_tag);
+														if( comp == ENUMUNDEF )
+														{
+															double l = 0;
+															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * v[comp];
+													}
+													else if( source_tag.GetDataType() == DATA_INTEGER )
+													{
+														Storage::integer_array v = jt->IntegerArray(source_tag);
+														if( comp == ENUMUNDEF )
+														{
+															double l = 0;
+															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * v[comp];
+													}
 													vol += wgt;
 												}
 												res = val/vol;
@@ -4643,12 +4713,35 @@ void draw_screen()
 												it->Centroid(coords);
 												Storage::real cnt[3], dist, wgt;
 												Storage::real val = 0.0, vol = 0.0, res;
-												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && jt->GetDataSize(source_tag) > comp )
+												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF) )
 												{
 													jt->Centroid(cnt);
 													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
 													wgt = 1.0/(dist+1.0e-8);
-													val += wgt * (source_tag.GetDataType() == DATA_REAL ? jt->RealArray(source_tag)[comp] : static_cast<Storage::real>(jt->IntegerArray(source_tag)[comp]) );
+													if( source_tag.GetDataType() == DATA_REAL )
+													{
+														Storage::real_array v = jt->RealArray(source_tag);
+														if( comp == ENUMUNDEF )
+														{
+															double l = 0;
+															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * v[comp];
+													}
+													else if( source_tag.GetDataType() == DATA_INTEGER )
+													{
+														Storage::integer_array v = jt->IntegerArray(source_tag);
+														if( comp == ENUMUNDEF )
+														{
+															double l = 0;
+															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * v[comp];
+													}
 													vol += wgt;
 												}
 												res = val/vol;
@@ -4781,7 +4874,24 @@ void svg_draw(std::ostream & file)
 
 	
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
-
+	if( drawedges == 4 )
+	{
+		std::vector<face2gl> sorted_clip_boundary;
+		for(std::map<int,std::vector<HandleType> >::iterator it = material_faces.begin(); it != material_faces.end(); ++it)
+		{
+			for(std::vector<HandleType>::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+			{
+				sorted_clip_boundary.push_back(DrawFace(Face(mesh,*jt)));
+				sorted_clip_boundary.back().shift(material_x[it->first],material_y[it->first],material_z[it->first]);
+				sorted_clip_boundary.back().compute_dist(campos);
+				sorted_clip_boundary.back().set_color(1,1,1,1);
+			}
+		}
+		face2gl::radix_sort_dist(sorted_clip_boundary);
+		//std::sort(sorted_clip_boundary.rbegin(),sorted_clip_boundary.rend());
+		svg_draw_faces(file,sorted_clip_boundary,modelview,projection,viewport);
+	}
+	else
 	{
 		
 		if( oclipper ) 
@@ -5183,6 +5293,58 @@ int main(int argc, char ** argv)
 		  for(int k = was; k < orphans.size(); ++k)
 			  std::cout << ElementTypeName(orphans[k]->GetElementType()) << ":" << orphans[k]->LocalID() << std::endl;
 	  }
+  }
+	
+  if( mesh->HaveTag("MATERIAL") )
+  {
+	  is_material_defined = 1;
+	  Tag mat = mesh->GetTag("MATERIAL");
+	  for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it)
+	  {
+		  int m1 = -1, m2 = -1;
+		  if( it->BackCell().isValid()  ) m1 = it->BackCell()->Integer(mat);
+		  if( it->FrontCell().isValid() ) m2 = it->FrontCell()->Integer(mat);
+		  if( m1 != m2 )
+		  {
+			  if( m1 >= 0 ) material_faces[m1].push_back(it->GetHandle());
+			  if( m2 >= 0 ) material_faces[m2].push_back(it->GetHandle());
+		  }
+	  }
+	  std::map<int,double> material_v;
+	  double gx = 0, gy = 0, gz = 0, gv = 0;
+	  for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+	  {
+		  double cnt[3], v = it->Volume();
+		  it->Centroid(cnt);
+		  int m = it->Integer(mat);
+		  material_x[m] += cnt[0]*v;
+		  material_y[m] += cnt[1]*v;
+		  material_z[m] += cnt[2]*v;
+		  material_v[m] += v;
+		  gx += cnt[0]*v;
+		  gy += cnt[1]*v;
+		  gz += cnt[2]*v;
+		  gv += v;
+	  }
+	  gx /= gv;
+	  gy /= gv;
+	  gz /= gv;
+	  for(std::map<int,double>::iterator it = material_v.begin(); it != material_v.end(); ++it)
+	  {
+		  double & x = material_x[it->first];
+		  double & y = material_y[it->first];
+		  double & z = material_z[it->first];
+		  x /= it->second;
+		  y /= it->second;
+		  z /= it->second;
+		  double dx = x - gx;
+		  double dy = y - gy;
+		  double dz = z - gz;
+		  x = dx * 0.65;
+		  y = dy * 0.65;
+		  z = dz * 0.65;
+	  }
+	  
   }
 
 	quatinit();

@@ -748,8 +748,9 @@ namespace INMOST
 				if( m->GetMarker(lc[k],rem) )
 				{
 					//all united edges should appear in consecutive order in deleted face
+					/*
 					adj_type::size_type sum = 0, j = k;
-					while( !m->GetMarker(lc[j],hm) && m->GetMarker(lc[j],rem) )
+					while( j < lc.size() && !m->GetMarker(lc[j],hm) && m->GetMarker(lc[j],rem) )
 					{
 						sum++; j++;
 					}
@@ -758,6 +759,7 @@ namespace INMOST
 						doexit = true;
 						dothrow = true;
 					}
+					 */
 					insert_pos.push_back(k);
 					break;
 				}
@@ -1042,15 +1044,43 @@ namespace INMOST
 		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
 		{
 			adj_type & lc = m->LowConn(faces[it]);
-			lc.insert(lc.begin()+insert_pos[it],ret.begin(),ret.end());
+			//check that that one of the nodes of privious edge match n[0],
+			//otherwise we have to insert in reverse
+			const adj_type & phc = m->LowConn(lc[(insert_pos[it]+lc.size()-1)%lc.size()]);
+			if( phc[0] == n[0] || phc[1] == n[0] )
+				lc.insert(lc.begin()+insert_pos[it],ret.begin(),ret.end());
+			else
+				lc.insert(lc.begin()+insert_pos[it],ret.rbegin(),ret.rend());
 			m->ComputeGeometricType(faces[it]);
 			m->RecomputeGeometricData(faces[it]);
+			//Face(m,faces[it]).FixEdgeOrder();
+		}
+		//inform edges that they are connected to faces
+		for(ElementArray<Edge>::iterator kt = ret.begin(); kt != ret.end(); ++kt)
+		{
+			adj_type & hc = m->HighConn(kt->GetHandle());
+			hc.insert(hc.end(),faces.begin(),faces.end());
 		}
 
 		for(dynarray<HandleType,128>::size_type it = 0; it < cells.size(); ++it)
 		{
+			adj_type & hc = m->HighConn(cells[it]); //cell nodes
+			hc.clear(); //have to recompute cell nodes
 			m->ComputeGeometricType(cells[it]);
+			ElementArray<Node> nn(m);
+			m->RestoreCellNodes(cells[it],nn);
+			hc.insert(hc.begin(),nn.begin(),nn.end());
 			m->RecomputeGeometricData(cells[it]);
+			//connect nodes to cells
+			for(ElementArray<Node>::size_type k = 0; k < nn.size(); k++)
+			{
+				adj_type & nlc = m->LowConn(nn[k].GetHandle()); //node cells
+				bool have_cell = false;
+				for(adj_type::iterator kt = nlc.begin(); kt != nlc.end() && !have_cell; ++kt)
+					if( *kt == cells[it] ) have_cell = true;
+				if( !have_cell )
+					nlc.push_back(cells[it]);
+			}
 		}
 		return ret;
 	}
@@ -1069,7 +1099,6 @@ namespace INMOST
 		dynarray<HandleType,128> temp;
 		if( edges.empty() || face->GetMarker(del_protect) ) return ret;
 		MarkerType hm = m->HideMarker();
-		ElementArray<Edge>::size_type input_edges = edges.size();
 		dynarray<HandleType,2> cells;
 
 		adj_type & hc = m->HighConn(face->GetHandle());
@@ -1078,13 +1107,34 @@ namespace INMOST
 
 		//assert(cells.size() == 2);
 
-		temp.insert(temp.end(),edges.begin(),edges.end());
+		
+		MarkerType outer = m->CreateMarker();
 
+		int ninner = 0;
 		adj_type & lc = m->LowConn(face->GetHandle());
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
-			temp.push_back(lc[it]);
+			m->SetMarker(lc[it],outer);
+		
+		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
+			if( !m->GetMarker(edges[it].GetHandle(),outer) )
+			{
+				temp.push_back(edges[it].GetHandle());
+				ninner++;
+			}
 
-		incident_matrix<Edge> mat(m,temp.begin(),temp.end(),input_edges);
+		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
+		{
+			temp.push_back(lc[it]);
+			m->RemMarker(lc[it],outer);
+		}
+		m->ReleaseMarker(outer);
+
+		//all provided edges coincide with boundary edges of current face, no action required
+		if( ninner == 0 ) 
+		{
+			ret.push_back(face);
+			return ret;
+		}
 		
 		if( !face->Hide() )
 		{
@@ -1104,6 +1154,8 @@ namespace INMOST
 			m->Destroy(face->GetHandle());
 		}
 		
+		incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner);
+
 		do
 		{
 			mat.find_shortest_loop(loop);
@@ -1159,13 +1211,37 @@ namespace INMOST
 		dynarray<HandleType,128> temp;
 		if( faces.empty() || cell->GetMarker(del_protect) ) return ret;
 		MarkerType hm = m->HideMarker();
-		ElementArray<Face>::size_type input_faces = faces.size();
-		temp.insert(temp.end(),faces.begin(),faces.end());
+
+
+
+		MarkerType outer = m->CreateMarker();
+		int ninner = 0;
 		adj_type & lc = m->LowConn(cell->GetHandle());
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
+			m->SetMarker(lc[it],outer);
+
+		for(ElementArray<Face>::size_type it = 0; it < faces.size(); ++it)
+			if( !m->GetMarker(faces[it].GetHandle(),outer) )
+			{
+				temp.push_back(faces[it].GetHandle());
+				ninner++;
+			}
+
+		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
+		{
 			temp.push_back(lc[it]);
+			m->RemMarker(lc[it],outer);
+		}
+		m->ReleaseMarker(outer);
+
+		//all provided faces coincide with boundary faces of current cell, no action required
+		if( ninner == 0 )
+		{
+			ret.push_back(cell);
+			return ret;
+		}
 			
-		incident_matrix<Face> mat(m,temp.begin(),temp.end(),input_faces);
+		incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner);
 		//mat.print_matrix();
 		cell->Delete();
 			

@@ -1184,6 +1184,8 @@ namespace INMOST
               }
               else fout << " ";
             }
+			else if( !t->isSparse(etype) ) fout << " { } ";
+
           }
           break;
         case DATA_INTEGER:
@@ -1215,6 +1217,7 @@ namespace INMOST
               else fout << " ";
               //fout << std::endl;
             }
+			else if( !t->isSparse(etype) ) fout << " { } ";
           }
           break;
         case DATA_BULK:
@@ -1246,6 +1249,7 @@ namespace INMOST
               else fout << " ";
               //fout << std::endl;
             }
+			else if( !t->isSparse(etype) ) fout << " { } ";
           }
           break;
         case DATA_REFERENCE:
@@ -1291,6 +1295,7 @@ namespace INMOST
               else fout << " ";
               //fout << std::endl;
             }
+			else if( !t->isSparse(etype) ) fout << " { } ";
           }
           break;
         case DATA_REMOTE_REFERENCE:
@@ -1336,6 +1341,7 @@ namespace INMOST
               else fout << " ";
               //fout << std::endl;
             }
+			else if( !t->isSparse(etype) ) fout << " { } ";
           }
           break;
 #if defined(USE_AUTODIFF)
@@ -1368,6 +1374,7 @@ namespace INMOST
               else fout << " ";
               //fout << std::endl;
             }
+			else if( !t->isSparse(etype) ) fout << " { } ";
           }
           break;
 #endif

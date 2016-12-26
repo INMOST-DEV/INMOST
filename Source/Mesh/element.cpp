@@ -981,7 +981,15 @@ namespace INMOST
 					found = true;
 					break;
 				}
-			if( !found ) return false;
+			if( !found ) 
+			{
+				std::cout << "Not found connection from ";
+				std::cout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
+				std::cout << " to ";
+				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
+				std::cout << std::endl;
+				return false;
+			}
 		}
 		adj_type const & lc = mesh->LowConn(GetHandle());
 		for(adj_type::size_type jt = 0; jt < lc.size(); jt++) //iterate over lower adjacent
@@ -994,7 +1002,15 @@ namespace INMOST
 					found = true;
 					break;
 				}
-			if( !found ) return false;
+			if( !found ) 
+			{
+				std::cout << "Not found connection from ";
+				std::cout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
+				std::cout << " to ";
+				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
+				std::cout << std::endl;
+				return false;
+			}
 		}
 		return true;
 	}
@@ -1041,9 +1057,10 @@ namespace INMOST
 	
 	bool Element::CheckConnectivity(Mesh * m)
 	{
+		bool check = true;
 		for(Mesh::iteratorElement it = m->BeginElement(CELL | FACE | EDGE | NODE); it != m->EndElement(); it++)
-			if( !it->CheckElementConnectivity() ) return false;
-		return true;
+			if( !it->CheckElementConnectivity() ) check = false;
+		return check;
 	}
 	
 	

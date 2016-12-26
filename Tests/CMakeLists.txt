@@ -1,5 +1,6 @@
 if(USE_AUTODIFF)
 add_subdirectory(autodiff_test000)
+add_subdirectory(autodiff_test001)
 endif(USE_AUTODIFF)
 
 if(USE_SOLVER)
