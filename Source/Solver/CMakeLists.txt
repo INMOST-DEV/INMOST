@@ -1,6 +1,6 @@
 set(SOURCE
         ${SOURCE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/Solver.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/OrderInfo.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/SolverParameters.cpp
