@@ -60,7 +60,6 @@ namespace INMOST {
     }
 
     void SolverK3BIILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
-        double time_start = Timer();
         bool modified_pattern = ModifiedPattern;
         //~ if( A.comm != comm ) throw DifferentCommunicatorInSolver;
         if (matrix_data == NULL) {
@@ -127,7 +126,7 @@ namespace INMOST {
         }
         MatrixFinalizeK3biilu2(matrix_data);
         SolverSetMatrixK3biilu2(solver_data, matrix_data, modified_pattern, OldPreconditioner);
-        time_prec = Timer() - time_start;
+        time_prec = solver_data->dstat[7];
     }
 
     bool SolverK3BIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
