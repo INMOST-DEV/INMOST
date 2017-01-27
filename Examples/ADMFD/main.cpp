@@ -54,7 +54,7 @@ int main(int argc,char ** argv)
         std::cout << "J: "; J.Print();
         return 0;
          */
-		if( argc > 2 ) 
+		if( argc > 2 )
 		{
 			if( std::string(argv[2]) == "MFD" )
 				rt0 = false;
@@ -83,8 +83,7 @@ int main(int argc,char ** argv)
 			std::cout << "Running MHFE RT0" << std::endl;
 		else
 			std::cout << "Running MFD" << std::endl;
-        
-        
+
 #if defined(USE_PARTITIONER)
         if (m->GetProcessorsNumber() > 1 )//&& !repartition) // Currently only non-distributed meshes are supported by Inner_RCM partitioner
         {
@@ -96,7 +95,7 @@ int main(int argc,char ** argv)
                 BARRIER
                 if( m->GetProcessorRank() == 0 ) std::cout << "Evaluate: " << Timer()-ttt << std::endl;
             }
-            
+
             { //Distribute the mesh
                 ttt = Timer();
                 m->Redistribute(); // Redistribute the mesh data
@@ -106,7 +105,7 @@ int main(int argc,char ** argv)
             }
         }
 #endif
-        
+
         { // prepare geometrical data on the mesh
             ttt = Timer();
             Mesh::GeomParam table;
@@ -119,7 +118,7 @@ int main(int argc,char ** argv)
             BARRIER
             if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
         }
-        
+
         // data tags for
         Tag tag_P;  // Pressure
         Tag tag_K;  // Diffusion tensor
@@ -127,7 +126,7 @@ int main(int argc,char ** argv)
         Tag tag_BC; // Boundary conditions
         Tag tag_W;  // Gradient matrix acting on harmonic points on faces and returning gradient on faces
         Tag tag_DMP; // Indicates weather local W matrix satisfy DMP condition
-        
+
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
             ttt = Timer();
@@ -135,11 +134,11 @@ int main(int argc,char ** argv)
             BARRIER
             if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
         }
-        
+
         { //initialize data
             if( m->HaveTag("PERM") ) // is diffusion tensor already defined on the mesh? (PERM from permeability)
                 tag_K = m->GetTag("PERM"); // get the diffusion tensor
-            
+
             if( !tag_K.isValid() || !tag_K.isDefined(CELL) ) // diffusion tensor was not initialized or was not defined on cells.
             {
                 tag_K = m->CreateTag("PERM",DATA_REAL,CELL,NONE,6); // create a new tag for symmetric diffusion tensor K
@@ -155,13 +154,13 @@ int main(int argc,char ** argv)
                     K[4] = 0.0; //YZ
                     K[5] = 1.0; //ZZ
                 }
-                
+
                 m->ExchangeData(tag_K,CELL,0); //Exchange diffusion tensor
             }
-            
+
             if( m->HaveTag("PRESSURE") ) //Is there a pressure on the mesh?
                 tag_P = m->GetTag("PRESSURE"); //Get the pressure
-            
+
             if( !tag_P.isValid() || !tag_P.isDefined(CELL) ) // Pressure was not initialized or was not defined on nodes
             {
                 srand(1); // Randomization
@@ -169,16 +168,16 @@ int main(int argc,char ** argv)
                 for(Mesh::iteratorElement e = m->BeginElement(CELL|FACE); e != m->EndElement(); ++e) //Loop over mesh cells
                     e->Real(tag_P) = 0;//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
             }
-            
+
             if( !tag_P.isDefined(FACE) )
             {
                 tag_P = m->CreateTag("PRESSURE",DATA_REAL,FACE,NONE,1);
                 for(Mesh::iteratorElement e = m->BeginElement(FACE); e != m->EndElement(); ++e) //Loop over mesh cells
                     e->Real(tag_P) = 0;//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
             }
-            
-            
-            
+
+
+
             if( m->HaveTag("BOUNDARY_CONDITION") ) //Is there boundary condition on the mesh?
             {
                 tag_BC = m->GetTag("BOUNDARY_CONDITION");
@@ -198,10 +197,11 @@ int main(int argc,char ** argv)
 				Mesh * mesh = m;
                 Cell cell = m->CellByLocalID(q);
 				ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
+
 				int NF = (int)faces.size(); //number of faces;	
 				rMatrix W(NF,NF);
 				
-				if( cell->GetGeometricType() == Element::Tet && rt0 ) // RT0 consturction of W matrix 
+				if( cell->GetGeometricType() == Element::Tet && rt0 ) // RT0 consturction of W matrix
 				{
 					double V = cell.Volume();
 					double dN[12];
@@ -218,10 +218,10 @@ int main(int argc,char ** argv)
 					double xyz_j[3];
 					int i, j,k,Z;
 					double w,l,m, J_det,x,y,z;
-					
-						
+
 					rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),cell->RealArrayDF(tag_K).size()); //get permeability for the cell
 					rMatrix K_inverse (3,3); // inverse of permeability 
+
 					K_inverse= K.Invert(true).first;
 					// gauss points for intgration
 					gauss_pt_xyz[0]=(5.0+3.0*(sqrt(5.0)))/20.0;
@@ -240,7 +240,7 @@ int main(int argc,char ** argv)
 					gauss_pt_xyz[10]=(5.0-(sqrt(5.0)))/20.0;
 					gauss_pt_xyz[11]=(5.0-(sqrt(5.0)))/20.0;
 
-					// gauss weights 
+					// gauss weights
 					gauss_wei[0]=  1.0/24.0;
 					gauss_wei[1]=  1.0/24.0;
 					gauss_wei[2]=  1.0/24.0;
@@ -260,11 +260,11 @@ int main(int argc,char ** argv)
 					dN[8]=0;
 
 					dN[9]=0; 
+
 					dN[10]=0;
 					dN[11]=1;
 
-
-					// local to reference tranformation 
+					// local to reference tranformation
 					ElementArray<Node> node(mesh);
 					for(j = 0; j < 4; ++j)
 					{
@@ -272,10 +272,9 @@ int main(int argc,char ** argv)
 						cell_nodes.Subtract(faces[j].getNodes());
 						node.Unite(cell_nodes);
 					}
-					
-					for ( j = 0; j < 4; j++ )
-					{  
 
+					for ( j = 0; j < 4; j++ )
+					{
 						for ( i = 0; i < 3; i++ )
 							tetra[i+j*3]= node[j].Coords()[i]; // <-- X
 					}
@@ -311,7 +310,7 @@ int main(int argc,char ** argv)
 
 					// inverse of K tensor 
 					for ( j = 0; j < 3; j++ )
-					{  
+					{
 
 						for ( i = 0; i < 3; i++ )
 						{
@@ -330,7 +329,7 @@ int main(int argc,char ** argv)
 					}
 
 					for ( i = 0; i < 16; i++) 
-					{ 
+					{
 						B_RT0[i]=0.0;
 					}
 
@@ -338,10 +337,9 @@ int main(int argc,char ** argv)
 
 						for ( j = 0; j < 4; j++) { // column number of output
 
-
 							for ( Z = 0; Z < 4; Z++) { // GAUSS POINT IN Z DIRECTION 
 								x=gauss_pt_xyz[Z*3];
-								y=gauss_pt_xyz[Z*3+1];		
+								y=gauss_pt_xyz[Z*3+1];
 								z=gauss_pt_xyz[Z*3+2];
 
 
@@ -352,14 +350,17 @@ int main(int argc,char ** argv)
 
 								W_RT0[3]=  2*(-1+x);
 								W_RT0[4]=  2*y;
-								W_RT0[5]=  2*z;  
+
+								W_RT0[5]=  2*z;
 
 								W_RT0[6]=  (2*x);///(sqrt(3.0));
 								W_RT0[7]=  2*(-1+y);;///(sqrt(3.0));
 								W_RT0[8]=  (2*z);///(sqrt(3.0));
 
 								W_RT0[9]=  2*x;
-								W_RT0[10]= 2*y; 
+
+								W_RT0[10]= 2*y;
+
 								W_RT0[11]= 2*(-1+z);
 
 
@@ -384,6 +385,7 @@ int main(int argc,char ** argv)
 
 						}
 					}	
+
 					for ( j = 0; j < 4; j++) { // row number of output
 						double sum = 0;
 						for ( i = 0; i < 4; i++) { // column number of output
@@ -413,8 +415,6 @@ int main(int argc,char ** argv)
 					//std::cout << "W inverted" << std::endl;
 
 					//W.Print();
-
-					
 
 					//scanf("%*c");
 
@@ -467,7 +467,7 @@ int main(int argc,char ** argv)
 					 */
                 
 					int rank = 0; //size of matrix U
-                
+
 					{ //Retrive orthogonal to R matrix D
 						//Symmetric orthogonal matrix
 						rMatrix DUD = (rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose());
@@ -498,12 +498,12 @@ int main(int argc,char ** argv)
 					//U.Print();
 					//std::cout << "DtR" << std::endl;
 					//(D.Transpose()*R).Print();
-                
+
 					U *=(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
 
 					//std::cout << "UDtR" << std::endl;
 					//(U*D.Transpose()*R).Print();
-                
+
 					W += D*U*D.Transpose();
 
 
@@ -532,29 +532,27 @@ int main(int argc,char ** argv)
             } //end of loop over cells
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
             std::cout << "Satisfy DMP: " << dmp << " out of " << total << std::endl;
-            
+
             if( m->HaveTag("FORCE") ) //Is there force on the mesh?
             {
                 tag_F = m->GetTag("FORCE"); //initial force
                 assert(tag_F.isDefined(CELL)); //assuming it was defined on cells
             } // end of force
         } //end of initialize data
-        
+
         std::cout << "Initialization done" << std::endl;
-        
-        
+
+
         integer nit = 0;
         ttt = Timer();
-        
+
         { //Main loop for problem solution
             Automatizator aut; // declare class to help manage unknowns
             Automatizator::MakeCurrent(&aut);
             dynamic_variable P(aut,aut.RegisterTag(tag_P,CELL|FACE)); //register pressure as primary unknown
             aut.EnumerateTags(); //enumerate all primary variables
-            
             std::cout << "Enumeration done, size " << aut.GetLastIndex() - aut.GetFirstIndex() << std::endl;
-            
-            
+
             Residual R("",aut.GetFirstIndex(),aut.GetLastIndex());
             Sparse::LockService Locks(aut.GetFirstIndex(),aut.GetLastIndex());
             Sparse::AnnotationService Text(aut.GetFirstIndex(),aut.GetLastIndex());
@@ -578,9 +576,9 @@ int main(int argc,char ** argv)
                     }
                 }
             }
-            
+
             std::cout << "Matrix was annotated" << std::endl;
-            
+
             do
             {
                 R.Clear(); //clean up the residual
@@ -604,16 +602,17 @@ int main(int argc,char ** argv)
 					for(int k = 0; k < NF; ++k)
 					{
 					
-					
 					if (faces[k]->FrontCell().isValid())
 					{
 						Cell cell_n = cell.Neighbour(faces[k]); 
+
 						ElementArray<Face> faces_n = cell_n->getFaces(); //obtain faces of the cell neighoubr
 					    rMatrix nKGRAD_n(cell_n->RealArrayDV(tag_W).data(),NF,NF); //Matrix for gradient
 						double B_1, B_2, L_1, L_2;
 						int face_n_k;
 
                         L_1 =0.0; 
+
 						B_1= nKGRAD(k,k) ;
 						for(int j = 0; j < NF; ++j)
 						L_1 +=nKGRAD(k,j) ;
@@ -621,7 +620,9 @@ int main(int argc,char ** argv)
 						{
 							face_n_k= j ;
 						}
+
 						L_2 =0.0; 
+
 						for(int j = 0; j < NF; ++j)
 						L_2 +=nKGRAD_n(face_n_k,j) ;
 
@@ -642,12 +643,11 @@ int main(int argc,char ** argv)
 					}
 					else {
 						FLUX_MASS(k,0)=0.0;
-						
+
 					for(int j = 0; j < NF; ++j)
 						FLUX_MASS(k,0)+= nKGRAD(k,j)* (P(faces[j]) - P(cell)) ;
 					}
 					}
-				
 
 				//	for(int k = 0; k < NF; ++k)
 				//	{
@@ -658,7 +658,7 @@ int main(int argc,char ** argv)
 				//	for(int j = 0; j < NF; ++j)
 				//	FLUX_MASS(k,0)+= nKGRAD(k,j)* (P(faces[j]) - P(cell_n)) ;
 				//	}
-					
+
 	                    for(int k = 0; k < NF; ++k)
                     pF(k,0) = (P(faces[k]) - P(cell));//*faces[k].Area();
                     FLUX = nKGRAD*pF; //fluxes on faces
@@ -686,10 +686,10 @@ int main(int argc,char ** argv)
                         Locks.UnLock(index);
                     }
                 } //end of loop over cells
-                
+
                 std::cout << "Satisfy DMP: " << dmp << " out of " << total << std::endl;
-                
-                
+
+
                 if( tag_F.isValid() )
                 {
 #if defined(USE_OMP)
@@ -702,26 +702,27 @@ int main(int argc,char ** argv)
                         if( cell->HaveData(tag_F) ) R[P.Index(cell)] += cell->Real(tag_F)*cell->Volume();
                     }
                 }
-                
+
                 std::cout << "assembled in " << Timer() - tttt << "\t\t\t" << std::endl;
-                
-                
+
+
                 R.Rescale();
                 //R.GetJacobian().Save("jacobian.mtx",&Text);
                 //R.GetResidual().Save("residual.mtx");
-                
-                
+
+
                 std::cout << "Nonlinear residual: " << R.Norm() << "\t\t" << std::endl;
-                
+
                 if( R.Norm() < 1.0e-4 ) break;
-                
+
 				//Solver S(Solver::INNER_ILU2);
                 //Solver S(Solver::INNER_MPTILUC);
-				Solver S(Solver::SUPERLU);
-				S.SetParameterReal("relative_tolerance", 1.0e-14);
-                S.SetParameterReal("absolute_tolerance", 1.0e-12);
-                S.SetParameterReal("drop_tolerance", 1.0e-1);
-                S.SetParameterReal("reuse_tolerance", 1.0e-2);
+				Solver S("superlu");
+                S.SetParameter("relative_tolerance", "1.0e-14");
+                S.SetParameter("absolute_tolerance", "1.0e-12");
+                S.SetParameter("drop_tolerance", "1.0e-1");
+                S.SetParameter("reuse_tolerance", "1.0e-2");
+
                 S.SetMatrix(R.GetJacobian());
                 //std::fill(Update.Begin(),Update.End(),0.0);
                 if( S.Solve(R.GetResidual(),Update) )
@@ -755,14 +756,14 @@ int main(int argc,char ** argv)
                 }
                 else
                 {
-                    std::cout << "Unable to solve: " << S.GetReason() << std::endl;
+                    std::cout << "Unable to solve: " << S.ReturnReason() << std::endl;
                     break;
                 }
                 ++nit;
             } while( R.Norm() > 1.0e-4 && nit < 10); //check the residual norm
         }
         std::cout << "Solved problem in " << Timer() - ttt << " seconds with " << nit << " iterations " << std::endl;
-        
+
         if( m->HaveTag("REFERENCE_SOLUTION") )
         {
             Tag tag_E = m->CreateTag("ERRROR",DATA_REAL,CELL,NONE,1);
@@ -800,19 +801,19 @@ int main(int argc,char ** argv)
             }
             else std::cout << "Reference solution was not defined on faces" << std::endl;
         }
-        
+
         if( m->GetProcessorsNumber() == 1 )
             m->Save("out.vtk");
         else
             m->Save("out.pvtk");
-        
+
         delete m; //clean up the mesh
     }
     else
     {
         std::cout << argv[0] << " mesh_file" << std::endl;
     }
-    
+
 #if defined(USE_PARTITIONER)
     Partitioner::Finalize(); // Finalize the partitioner activity
 #endif

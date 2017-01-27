@@ -107,7 +107,7 @@ void CreateNWTetElements(Mesh *m, ElementArray<Node> verts)
 
 	const INMOST_DATA_INTEGER_TYPE ne_face_nodes3[12] = {0,7,5, 4,5,7, 0,5,4, 0,4,7};
 	const INMOST_DATA_INTEGER_TYPE ne_num_nodes3[4]   = {3,3,3,3};
-	
+
 
 	const INMOST_DATA_INTEGER_TYPE sw_face_nodes1[12] = {0,3,7, 2,7,3, 0,7,2, 0,2,3};
 	const INMOST_DATA_INTEGER_TYPE sw_num_nodes1[4]   = {3,3,3,3};
@@ -171,11 +171,11 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 
 	int localsize[3], localstart[3], localend[3];
 	int avgsize[3] =
-	{
-		(int)ceil((double)sizes[0]/procs_per_axis[0]),
-		(int)ceil((double)sizes[1]/procs_per_axis[1]),
-		(int)ceil((double)sizes[2]/procs_per_axis[2])
-	};
+			{
+					(int)ceil((double)sizes[0]/procs_per_axis[0]),
+					(int)ceil((double)sizes[1]/procs_per_axis[1]),
+					(int)ceil((double)sizes[2]/procs_per_axis[2])
+			};
 
 	for(int j = 0; j < 3; j++)
 	{
@@ -217,7 +217,7 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 				verts.push_back(newverts[V_ID(i - 0,j - 1, k - 0)]); // 5      /*     |(0)*- -|- -*(2)  */
 				verts.push_back(newverts[V_ID(i - 1,j - 0, k - 0)]); // 6      /*     |  /    |  /      */
 				verts.push_back(newverts[V_ID(i - 0,j - 0, k - 0)]); // 7      /*     |       | /       */
-				                                                               /*     |/      |/        */
+				/*     |/      |/        */
 				// Create cells based on parameter ng                          /*  (1)*-------*(3)      */
 				if (ng == 5) // Create tetrahedral grid
 				{
@@ -245,7 +245,7 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 
 int main(int argc, char *argv[])
 {
-  std::string mesh_name;
+	std::string mesh_name;
 	Mesh * mesh;
 	Mesh::Initialize(&argc,&argv);
 
@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
 		args = 1;
 	}
 
- 	// Construct a mesh in parallel
+	// Construct a mesh in parallel
 	//MPI_Barrier(mesh->GetCommunicator());
 	double tt = Timer();
 	mesh = ParallelGenerator(INMOST_MPI_COMM_WORLD,ng,nx,ny,nz);
@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
 			mesh_name = str.str();
 		}
 		std::cout << "Grid: " << nx << " x " << ny << " x " << nz << std::endl;
-		std::cout << "Processors: " <<mesh->GetProcessorsNumber() << std::endl;	
+		std::cout << "Processors: " <<mesh->GetProcessorsNumber() << std::endl;
 		std::cout << "Mesh generator time: " << tt << std::endl;
 	}
 
@@ -310,8 +310,8 @@ int main(int argc, char *argv[])
 			filename += ".pvtk";
 	}
 
-  Storage::bulk_array name = mesh->self()->BulkArray(mesh->CreateTag("GRIDNAME",DATA_BULK,MESH,NONE));
-  name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
+	Storage::bulk_array name = mesh->self()->BulkArray(mesh->CreateTag("GRIDNAME",DATA_BULK,MESH,NONE));
+	name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
 
 #if defined(USE_MPI)
 	MPI_Barrier(mesh->GetCommunicator());

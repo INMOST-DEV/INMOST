@@ -1,16 +1,16 @@
-enum maximum_iterations 300
-enum gmres_substeps 4
-real relative_tolerance 1.0e-5
-real absolute_tolerance 1.0e-10
-real divergence_tolerance 1e+200
+maximum_iterations 300
+gmres_substeps 4
+relative_tolerance 1.0e-5
+absolute_tolerance 1.0e-10
+divergence_tolerance 1e+200
 
-enum reorder_nonzeros 0
-enum rescale_iterations 8
-enum adapt_ddpq_tolerance 0
+reorder_nonzeros 0
+rescale_iterations 8
+adapt_ddpq_tolerance 0
 
-real drop_tolerance 3.0e-5
-real reuse_tolerance 1.0e-5
-real ddpq_tolerance 0.0
+drop_tolerance 3.0e-5
+reuse_tolerance 1.0e-5
+ddpq_tolerance 0.0
 
-enum condition_estimation 1
-enum schwartz_overlap 6
+condition_estimation 1
+schwartz_overlap 6

@@ -63,7 +63,7 @@ int main(int argc,char ** argv)
 		m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
 		if( m->GetProcessorRank() == 0 ) // If the current process is the master one
 			std::cout << argv[0] << std::endl;
-		
+
 		if( m->isParallelFileFormat(argv[1]) )
 		{
 			m->Load(argv[1]); // Load mesh from the parallel file format
@@ -75,10 +75,10 @@ int main(int argc,char ** argv)
 				m->Load(argv[1]); // Load mesh from the serial file format
 		}
 		BARRIER
-		
+
 		if( m->GetProcessorRank() == 0 ) std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_File): " << Timer()-ttt << std::endl;
-		
+
 		//~ double ttt2 = Timer();
 		//~ Mesh t;
 		//~ t.SetCommunicator(INMOST_MPI_COMM_WORLD);
@@ -86,9 +86,9 @@ int main(int argc,char ** argv)
 		//~ t.Load(argv[1]);
 		//~ BARRIER
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
-		
+
 #if defined(USE_PARTITIONER)
-		if (m->GetProcessorsNumber() > 1 && !repartition) 
+		if (m->GetProcessorsNumber() > 1 && !repartition)
     { // currently only non-distributed meshes are supported by Inner_RCM partitioner
 			ttt = Timer();
 			Partitioner * p = new Partitioner(m);
@@ -107,35 +107,35 @@ int main(int argc,char ** argv)
 			if( m->GetProcessorRank() == 0 ) std::cout << "Redistribute: " << Timer()-ttt << std::endl;
 		}
 #endif
-		
+
 		ttt = Timer();
 		m->AssignGlobalID(CELL | EDGE | FACE | NODE);
 		BARRIER
-		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;		
+		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;
 		id = m->GlobalIDTag(); // Get the tag of the global ID
-		
+
 		phi = m->CreateTag("Solution",DATA_REAL,CELL,NONE,1); // Create a new tag for the solution phi
 		tensor_K = m->CreateTag("K",DATA_REAL,CELL,NONE,1); // Create a new tag for K tensor
-		
+
 		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 			if( cell->GetStatus() != Element::Ghost ) // If the cell is an own one
 				cell->Real(tensor_K) = 1.0; // Store the tensor K value into the tag
-		
+
 		ttt = Timer();
 		m->ExchangeGhost(1,FACE);
 		m->ExchangeData(tensor_K,CELL,0); // Exchange the tensor_K data over processors
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
-		
+
 		ttt = Timer();
-		Solver S(Solver::INNER_ILU2); // Specify the linear solver to ASM+ILU2+BiCGStab one
-		S.SetParameterReal("absolute_tolerance",1e-8);
+		Solver S("inner_ilu2"); // Specify the linear solver to ASM+ILU2+BiCGStab one
+		S.SetParameter("absolute_tolerance", "1e-8");
     Sparse::LockService L;
 		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
 		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors
-		
+
 		Mesh::GeomParam table;
-		
+
 		table[CENTROID] = CELL | FACE;
 		table[NORMAL] = FACE;
 		table[ORIENTATION] = FACE;
@@ -144,7 +144,7 @@ int main(int argc,char ** argv)
 		m->PrepareGeometricData(table);
 		//~ BARRIER
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
-		
+
 		unsigned idmax = 0, idmin = UINT_MAX;
 		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
 			if( cell->GetStatus() != Element::Ghost )
@@ -161,7 +161,7 @@ int main(int argc,char ** argv)
 		x.SetInterval(idmin,idmax);
 		b.SetInterval(idmin,idmax);
 		//~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
-		
+
 		// Solve \nabla \cdot \nabla phi = f equation
 #if defined(USE_OMP)
 #pragma omp parallel for
@@ -253,12 +253,12 @@ int main(int argc,char ** argv)
 			BARRIER
 			if( m->GetProcessorRank() == 0 ) std::cout << "Save matrix \"" << argv[2] << "\" and RHS \"" << argv[3] << "\": " << Timer()-ttt << std::endl;
 		}
-		
+
 		ttt = Timer();
-		
+
 		S.SetMatrix(A); // Compute the preconditioner for the original matrix
 		S.Solve(b,x);   // Solve the linear system with the previously computted preconditioner
-		
+
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "\nSolve system: " << Timer()-ttt << std::endl;
 

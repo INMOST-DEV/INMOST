@@ -1,8 +1,8 @@
 project(DrawGrid)
 set(SOURCE main.cpp
-           rotate.cpp
-           rotate.h
-           my_glut.h)
+		rotate.cpp
+		rotate.h
+		my_glut.h)
 find_package(OpenGL)
 find_package(GLUT)
 
@@ -14,10 +14,10 @@ if(OPENGL_FOUND)
 		add_executable(DrawGrid ${SOURCE})
 		target_link_libraries(DrawGrid inmost ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
 		if(USE_MPI)
-			target_link_libraries(DrawGrid ${MPI_LIBRARIES}) 
+			target_link_libraries(DrawGrid ${MPI_LIBRARIES})
 			if(MPI_LINK_FLAGS)
 				set_target_properties(DrawGrid PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
-			endif() 
+			endif()
 		endif(USE_MPI)
 		install(TARGETS DrawGrid EXPORT inmost-targets RUNTIME DESTINATION bin)
 	else(GLUT_FOUND)
@@ -26,4 +26,3 @@ if(OPENGL_FOUND)
 else(OPENGL_FOUND)
 	message("OpenGL not found, not building DrawGrid")
 endif(OPENGL_FOUND)
-
