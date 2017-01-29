@@ -4896,17 +4896,21 @@ void svg_draw(std::ostream & file)
 		
 		if( oclipper ) 
 		{
-			//std::vector<face2gl> temp_boundary;
-			//oclipper->gen_clip(temp_boundary,n);
-			//face2gl::radix_sort_dist(temp_boundary);
-			//svg_draw_faces(file,temp_boundary,modelview,projection,viewport);
-
+			/*
+			std::vector<face2gl> temp_boundary;
+			oclipper->gen_clip(temp_boundary,n);
+			for(INMOST_DATA_ENUM_TYPE q = 0; q < temp_boundary.size() ; q++)
+				temp_boundary[q].compute_dist(campos);
+			face2gl::radix_sort_dist(temp_boundary);
+			svg_draw_faces(file,temp_boundary,modelview,projection,viewport);
+			 */
+			
 			std::vector<face2gl> sorted_clip_boundary(clip_boundary);
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < sorted_clip_boundary.size() ; q++)
 				sorted_clip_boundary[q].compute_dist(campos);
 			face2gl::radix_sort_dist(sorted_clip_boundary);
 			svg_draw_faces(file,sorted_clip_boundary,modelview,projection,viewport);
-
+			
 			//file << "<g stroke=\"black\">" << std::endl;
 			//svg_draw_edges(file,sorted_clip_boundary,modelview,projection,viewport);
 			//file << "</g>" << std::endl;

@@ -22,6 +22,26 @@ namespace INMOST
     /// @see Sparse::Solve
     class Solver
     {
+	public:
+		//Backward-compatibility
+		typedef std::string Type;
+		static const Type INNER_ILU2;     ///< inner Solver based on BiCGStab(L) solver with second order ILU factorization as preconditioner.
+		static const Type INNER_DDPQILUC; ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner.
+		static const Type INNER_MPTILUC;  ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner.
+		static const Type INNER_MPTILU2;  ///< inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditioner.
+		static const Type Trilinos_Aztec; ///< external Solver AztecOO from Trilinos package.
+		static const Type Trilinos_Belos; ///< external Solver Belos from Trilinos package, currently without preconditioner.
+		static const Type Trilinos_ML;    ///< external Solver AztecOO with ML preconditioner.
+		static const Type Trilinos_Ifpack;///< external Solver AztecOO with Ifpack preconditioner.
+		static const Type PETSc;          ///< external Solver PETSc, @see http://www.mcs.anl.gov/petsc/
+		static const Type ANI;            ///< external Solver from ANI3D based on ILU2 (sequential Fortran version), @see http://ani3d.sourceforge.net/
+		static const Type FCBIILU2;       ///< external FCBIILU2 Solver (BIILU2 parallel F2C version).
+		static const Type K3BIILU2;       ///< inner    K3BIILU2 Solver (BIILU2 parallel version).
+		static const Type SUPERLU;        ///< external Solver SuperLU @see https://github.com/starseeker/SuperLU
+		void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
+		void SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value);
+		std::string GetReason() {return ReturnReason();}
+		//Backward-compatibility
     private:
         static std::vector<SolverParameters> parameters;
         static int *argc;
@@ -196,7 +216,7 @@ namespace INMOST
         ///     Trilinos_ML: trilinos_ml_options.xml
         ///     Trilinos_Aztec: trilinos_aztec_options.xml
         ///     Trilinos_Belos: trilinos_belos_options.xml
-        static void Initialize(int *argc, char ***argv, const char *database);
+        static void Initialize(int *argc, char ***argv, const char *database = NULL);
 
         /// Finalize the stage of parallel solution.
         /// If MPI was initialized in Solver::Initialize, then it will be finalized.
