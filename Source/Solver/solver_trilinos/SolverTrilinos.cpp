@@ -66,7 +66,7 @@ namespace INMOST {
             for (k = imbeg; k < imend; ++k) {
                 temporary[k - imbeg] = A[k].Size();
             }
-            matrix = new Epetra_CrsMatrix(Epetra_DataAccess::Copy, Map, temporary, true);
+            matrix = new Epetra_CrsMatrix(::Copy, Map, temporary, true);
             delete[] temporary;
             refill = false;
         }
