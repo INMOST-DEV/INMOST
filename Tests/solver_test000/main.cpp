@@ -110,8 +110,9 @@ int main(int argc,char ** argv)
 		//b.Save("b.rhs");
 		//A.Save("A.mtx");
 	}
-
+#if defined(USE_MPI)
     MPI_Barrier(MPI_COMM_WORLD);
+#endif
 	Solver::Finalize(); // Finalize solver and close MPI activity
 	return 0;
 }

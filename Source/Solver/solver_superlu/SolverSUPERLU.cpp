@@ -155,7 +155,7 @@ namespace INMOST {
     }
 
     SolverSUPERLU::~SolverSUPERLU() {
-        this->Clear();
+        //this->Clear();
     }
 
 
