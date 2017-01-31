@@ -104,7 +104,8 @@ namespace INMOST
 		FILE * f = fopen(File.c_str(),"w");
 		if( !f ) throw BadFileName;
 		fprintf(f,"# vtk DataFile Version 3.0\n");
-		fprintf(f,"file is written by INMOST\n");
+		if (this->GetFileOption("VTK_OUTPUT_FACES") == "1") fprintf(f, "VTK_OUTPUT_FACES file is written by INMOST\n");
+		else fprintf(f,"file is written by INMOST\n");
 		fprintf(f,"ASCII\n");
 		fprintf(f,"DATASET UNSTRUCTURED_GRID\n");
 
@@ -633,6 +634,7 @@ safe_output:
 				case R_USERDATA:
 				{
 					//printf("Attached info: %s\n",readline);
+					if (!strncmp(readline, "VTK_OUTPUT_FACES", 16)) this->SetFileOption("VTK_OUTPUT_FACES", "1");
 					state = R_DATATYPE;
 					break;
 				}

@@ -10,6 +10,9 @@ namespace INMOST {
     bool Solver::is_initialized = false;
     bool Solver::is_finalized = false;
     std::vector<SolverParameters> Solver::parameters = std::vector<SolverParameters>();
+	
+	void Solver::SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) {SetParameter(name,to_string(value));}
+	void Solver::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) {SetParameter(name,to_string(value));}
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) {
         std::string lowerName = string_to_lower(solverName);

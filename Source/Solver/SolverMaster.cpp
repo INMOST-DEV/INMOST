@@ -46,6 +46,21 @@
 #endif
 
 namespace INMOST {
+	
+	//initialization of backward-compatibility constants
+	const Solver::Type Solver::INNER_ILU2 = "inner_ilu2";
+	const Solver::Type Solver::INNER_DDPQILUC = "inner_ddpqiluc2";
+	const Solver::Type Solver::INNER_MPTILUC = "inner_mptiluc";
+	const Solver::Type Solver::INNER_MPTILU2 = "inner_mptilu2";
+	const Solver::Type Solver::Trilinos_Aztec = "trilinos_aztec";
+	const Solver::Type Solver::Trilinos_Belos = "trilinos_belos";
+	const Solver::Type Solver::Trilinos_ML = "trilinos_ml";
+	const Solver::Type Solver::Trilinos_Ifpack = "trilinos_ifpack";
+	const Solver::Type Solver::PETSc = "petsc";
+	const Solver::Type Solver::ANI = "inner_ilu2";
+	const Solver::Type Solver::FCBIILU2 = "fcbiilu2";
+	const Solver::Type Solver::K3BIILU2 = "k3biilu2";
+	const Solver::Type Solver::SUPERLU = "superlu";
 
     SolverInterface *SolverMaster::getSolver(std::string name) {
         if (name == "inner_ilu2") return new SolverILU2();

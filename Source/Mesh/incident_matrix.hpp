@@ -99,7 +99,7 @@ namespace INMOST
 		dynarray< char , 256 > hide_column;
 		dynarray< char , 256 > hide_row;
 		dynarray< char , 256 > stub_row;
-		//std::vector< std::pair<std::vector<int>,double> > remember;
+		std::vector< std::pair<std::vector<int>,double> > remember;
 		double min_loop_measure;
 		bool print;
 		AbstractCoords * coords;
@@ -293,37 +293,61 @@ namespace INMOST
 					}
 				} while(true);
 				data.RemPrivateMarker(mrk);
-				mesh->ReleasePrivateMarker(mrk);
-				Storage::real nrm[3], cnt[3];
-				Storage::real_array v0,v1,v2;
+				Storage::real fnrm[3], fcnt[3], ccnt[3] = {0,0,0}, nnodes = 0;
+				Storage::real_array x0,a,b;
+				//find cell centroid
+				for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
+				{
+					ElementArray<Node> nodes = data[j]->getAsFace()->getNodes(mrk,true);
+					nodes.SetPrivateMarker(mrk);
+					for(ElementArray<Node>::iterator qt = nodes.begin(); qt != nodes.end(); ++qt)
+					{
+						x0 = coords->Get(qt->self());
+						ccnt[0] += x0[0];
+						ccnt[1] += x0[1];
+						ccnt[2] += x0[2];
+						nnodes += 1;
+					}
+				}
+				ccnt[0] /= nnodes;
+				ccnt[1] /= nnodes;
+				ccnt[2] /= nnodes;
 				for(typename ElementArray<T>::size_type j = 0; j < data.size(); j++)
 				{
 					//compute normal to face
 					ElementArray<Node> nodes = data[j]->getAsFace()->getNodes();
-					nrm[0] = nrm[1] = nrm[2] = 0;
-					v0 = v1 = coords->Get(nodes[0]);
-					cnt[0] = v1[0];
-					cnt[1] = v1[1];
-					cnt[2] = v1[2];
+					nodes.RemPrivateMarker(mrk);
+					fnrm[0] = fnrm[1] = fnrm[2] = 0;
+					fcnt[0] = fcnt[1] = fcnt[2] = 0;
+					nnodes = 0;
+					x0 = coords->Get(nodes[0]);
+					a = x0;
 					for(unsigned i = 0; i < nodes.size(); i++)
 					{
-						v2 = coords->Get(nodes[(i+1)%nodes.size()]);
-						cnt[0] += v2[0];
-						cnt[1] += v2[1];
-						cnt[2] += v2[2];
-						nrm[0] += (v1[1]-v0[1])*(v2[2]-v0[2]) - (v1[2]-v0[2])*(v2[1]-v0[1]);
-						nrm[1] += (v1[2]-v0[2])*(v2[0]-v0[0]) - (v1[0]-v0[0])*(v2[2]-v0[2]);
-						nrm[2] += (v1[0]-v0[0])*(v2[1]-v0[1]) - (v1[1]-v0[1])*(v2[0]-v0[0]);
-						v1.swap(v2);
+						b = coords->Get(nodes[(i+1)%nodes.size()]);
+						fnrm[0] += (a[1]-x0[1])*(b[2]-x0[2]) - (a[2]-x0[2])*(b[1]-x0[1]);
+						fnrm[1] += (a[2]-x0[2])*(b[0]-x0[0]) - (a[0]-x0[0])*(b[2]-x0[2]);
+						fnrm[2] += (a[0]-x0[0])*(b[1]-x0[1]) - (a[1]-x0[1])*(b[0]-x0[0]);
+						
+						fcnt[0] += a[0];
+						fcnt[1] += a[1];
+						fcnt[2] += a[2];
+						
+						a.swap(b);
+						
+						nnodes += 1;
 					}
-					nrm[0] *= 0.5;
-					nrm[1] *= 0.5;
-					nrm[2] *= 0.5;
-					cnt[0] /= (Storage::real)nodes.size();
-					cnt[1] /= (Storage::real)nodes.size();
-					cnt[2] /= (Storage::real)nodes.size();
-					measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*dot_prod(cnt,nrm);
+					fnrm[0] *= 0.5;
+					fnrm[1] *= 0.5;
+					fnrm[2] *= 0.5;
+					fcnt[0] /= nnodes;
+					fcnt[1] /= nnodes;
+					fcnt[2] /= nnodes;
+					for(int r = 0; r < 3; ++r)
+						fcnt[r] = fcnt[r]-ccnt[r];
+					measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*dot_prod(fcnt,fnrm);
 				}
+				mesh->ReleasePrivateMarker(mrk);
 				data.RemPrivateMarker(rev);
 				mesh->ReleasePrivateMarker(rev);
 				measure /= 3.0;
@@ -447,7 +471,7 @@ namespace INMOST
 				std::cout << " " << cnt[0] << " " << cnt[1] << " " << cnt[2];
 				std::cout << std::endl;
 			}
-			/*
+			
 			std::cout << "loops [" << remember.size() << "]:" << std::endl;
 			for(size_t k = 0; k < remember.size(); ++k)
 			{
@@ -456,7 +480,7 @@ namespace INMOST
 					std::cout << remember[k].first[l] << ", ";
 				std::cout << remember[k].first.back() << " measure " << remember[k].second << std::endl;
 			}
-			 */
+			
 			if( GetHandleElementType(head_column[0]) == EDGE )
 			{
 				std::cout << "edges [" << head_column.size() << "]" << std::endl;
@@ -582,7 +606,7 @@ namespace INMOST
 					if( min_loop.empty() )
 					{
 						if( print ) std::cout << "abandon " << first << std::endl;
-						//remember.push_back(std::make_pair(std::vector<int>(1,first),-1.0));
+						remember.push_back(std::make_pair(std::vector<int>(1,first),-1.0));
 						visits[first]--; //don't start again from this element
 					}
 				}
@@ -595,8 +619,8 @@ namespace INMOST
 			
 			if( !ret.empty() )
 			{
-				//std::vector<int> add_remember;
-				//add_remember.reserve(min_loop.size());
+				std::vector<int> add_remember;
+				add_remember.reserve(min_loop.size());
 				MarkerType hide_marker = mesh->CreatePrivateMarker();
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetPrivateMarker(ret.at(k),hide_marker);
 				if( print ) std::cout << "return loop [" << ret.size() << "]:";
@@ -604,13 +628,13 @@ namespace INMOST
 					if( mesh->GetPrivateMarker(head_column[k],hide_marker) )
 					{
 						visits[k]--;
-						//add_remember.push_back((int)k);
+						add_remember.push_back((int)k);
 						if( print ) std::cout << k << " ";
 					}
 				if( print ) std::cout << std::endl;
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemPrivateMarker(ret.at(k),hide_marker);
 				mesh->ReleasePrivateMarker(hide_marker);
-				//remember.push_back(std::make_pair(add_remember,min_loop_measure));
+				remember.push_back(std::make_pair(add_remember,min_loop_measure));
 				return true;
 			}
 			return false;

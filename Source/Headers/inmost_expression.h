@@ -1501,35 +1501,44 @@ namespace INMOST
 	
 	template<class A>
 	class pow_const_expression : public shell_expression<pow_const_expression<A> >
-  {
-    const A & left;
-    INMOST_DATA_REAL_TYPE value, ldmult;
-  public:
-    pow_const_expression(const shell_expression<A> & pleft, INMOST_DATA_REAL_TYPE pright) : left(pleft)
-    {
-      INMOST_DATA_REAL_TYPE lval = left.GetValue();
-      value = ::pow(lval,pright);
-      if( lval != 0 )
-        ldmult = value * pright / lval;
-      else
-        ldmult = 0;
-    }
-    pow_const_expression(const pow_const_expression & other)
-      :left(other.left), value(other.value), ldmult(other.ldmult) {}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-    {
-      left.GetJacobian(mult*ldmult,r);
-    }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
-    {
-      left.GetJacobian(mult*ldmult,r);
-    }
-    __INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
-    {
-        throw NotImplemented;
-    }
-  };
+	{
+		const A & left;
+		INMOST_DATA_REAL_TYPE value, ldmult, ldmult2;
+	public:
+		pow_const_expression(const shell_expression<A> & pleft, INMOST_DATA_REAL_TYPE pright) : left(pleft)
+		{
+			INMOST_DATA_REAL_TYPE lval = left.GetValue();
+			value = ::pow(lval,pright);
+			if( lval != 0 )
+			{
+				ldmult = value * pright / lval;
+				ldmult2 = ldmult * (pright-1) / lval;
+			}
+			else
+				ldmult = ldmult2 = 0;
+		}
+		pow_const_expression(const pow_const_expression & other)
+		:left(other.left), value(other.value), ldmult(other.ldmult) {}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
+		{
+			left.GetJacobian(mult*ldmult,r);
+		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+		{
+			left.GetJacobian(mult*ldmult,r);
+		}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
+		{
+			//(F(G))'' = (F'(G)G')' = (F''(G)G'+F'(G)G'')
+			//(g(x)^n)'' = n g(x)^(n - 2) (g(x) g''(x) + (n - 1) g'(x)^2)
+			Sparse::Row JL;
+			Sparse::HessianRow HL;
+			left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
+			Sparse::HessianRow::MergeJacobianHessian(multH*ldmult2,JL,JL,multH*ldmult,HL,H);
+			for(Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) it->second *= ldmult*multJ;
+		}
+	};
 
   template<class A>
   class const_pow_expression : public shell_expression<const_pow_expression<A> >

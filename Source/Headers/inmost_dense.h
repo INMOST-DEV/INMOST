@@ -298,10 +298,11 @@ namespace INMOST
 							flag = 0;
 							break;
 						}
+						if( l == 0 ) break;
 						if (fabs(get_value(Sigma(nm,nm))) + anorm == anorm)
 							break;
 					}
-					if (flag)
+					if (flag && l != 0)
 					{
 						c = 0.0;
 						s = 1.0;
@@ -377,7 +378,7 @@ namespace INMOST
 						}
 						z = pythag(f, h);
 						Sigma(j,j) = z;
-						if (z)
+						if (get_value(z))
 						{
 							z = 1.0 / z;
 							c = f * z;
@@ -1114,6 +1115,19 @@ namespace INMOST
 			assert(n*m==_n*_m);
 			n = _n;
 			m = _m;
+		}
+		Matrix PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0)
+		{
+			Matrix U,S,V;
+			SVD(U,S,V);
+			for(int k = 0; k < S.Cols(); ++k)
+			{
+				if( S(k,k) > tol )
+					S(k,k) = 1.0/S(k,k);
+				else
+					S(k,k) = 0.0;
+			}
+			return V*S*U.Transpose();
 		}
 	};
 	

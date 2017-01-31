@@ -1251,6 +1251,20 @@ namespace INMOST
 			if (!loop.empty()) ret.push_back(m->CreateCell(loop).first);
 			else break;
 		} while( true );
+		
+		/* //debug
+		if(!mat.all_visited())
+		{
+			mat.print_matrix();
+			incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner,GridCoords(),true);
+			do
+			{
+				mat.find_shortest_loop(loop);
+				if (!loop.empty()) ret.push_back(m->CreateCell(loop).first);
+				else break;
+			} while( true );
+		}
+		 */
 
 		return ret;
 	}
