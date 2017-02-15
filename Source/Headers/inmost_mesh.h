@@ -438,18 +438,28 @@ namespace INMOST
 		void                        Centroid                (real * cnt) const;
 		void                        Barycenter              (real * cnt) const;
 		Storage::real               Mean                    (real (*func)(real* x,real t),real time) const;
+		/// Determine that the element is on the boundary.
+		/// \warning This function does not involve communication
+		/// for distributed mesh and works only for local partition
+		/// of the mesh. It cannot correctly determine boundary elements
+		/// of the global mesh. For this purpose you should use
+		/// Mesh::MarkBoundaryFaces
+		/// @return True if the element is on the boundary, otherwise false.
+		/// @see Mesh::MarkBoundaryFaces
 		bool                        Boundary                () const;
 		bool                        Planarity               () const; // check that all nodes lay on one plane
 		//implemented in modify.cpp
 		/// If the function returns true then element was hidden,
 		/// works only inside BeginModification and EndModification,
 		/// on EndModification all Hidden elements are deleted.
-		/// \todo Probably have to check normal orientation after hiding a back cell for a face.
+		/// \todo Probably have to check normal orientation after
+		/// hiding a back cell for a face.
 		bool                        Hide                    () const;
 		/// If the function returns true then element was recovered
 		/// from hidden state, works only inside BeginModification
 		/// and EndModification.
-		/// \todo Probably have to check normal orientation after recovering a back cell for a face.
+		/// \todo Probably have to check normal orientation after
+		/// recovering a back cell for a face.
 		bool                        Show                    () const; // if true then element was recovered
 		/// Remove element from mesh.
 		/// If you call this function inside modification phase, see Mesh::BeginModification and Mesh::EndModification,

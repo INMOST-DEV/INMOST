@@ -220,8 +220,10 @@ namespace INMOST
 		friend class Storage;
 		friend class Mesh;
 	};
+	
+	
 
-  class TagManager //implemented in tag.cpp
+	class TagManager //implemented in tag.cpp
 	{
 	protected:
 		TagManager();
@@ -606,6 +608,120 @@ namespace INMOST
 		__INLINE Cell                       getAsCell           () const;
 		__INLINE ElementSet                 getAsSet            () const;
 		friend class Mesh;
+	};
+	
+	//////////////////////////////////////////////////////////////////////
+	/// Helper classes for class Tag                                    //
+	//////////////////////////////////////////////////////////////////////
+	
+	class TagReal : public Tag
+	{
+	public:
+		TagReal() : Tag() {}
+		TagReal(const TagReal & b) : Tag(b) {}
+		TagReal(const Tag & b) : Tag(b) {}
+		TagReal & operator = (TagReal const & b) {Tag::operator =(b); return *this;}
+		TagReal & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::real & operator [](const Storage & arg) const {return arg.Real(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagInteger : public Tag
+	{
+	public:
+		TagInteger() : Tag() {}
+		TagInteger(const TagInteger & b) : Tag(b) {}
+		TagInteger(const Tag & b) : Tag(b) {}
+		TagInteger & operator = (TagInteger const & b) {Tag::operator =(b); return *this;}
+		TagInteger & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::integer & operator [](const Storage & arg) const {return arg.Integer(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagBulk : public Tag
+	{
+	public:
+		TagBulk() : Tag() {}
+		TagBulk(const TagBulk & b) : Tag(b) {}
+		TagBulk(const Tag & b) : Tag(b) {}
+		TagBulk & operator = (TagBulk const & b) {Tag::operator =(b); return *this;}
+		TagBulk & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::bulk & operator [](const Storage & arg) const {return arg.Bulk(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagReference : public Tag
+	{
+	public:
+		TagReference() : Tag() {}
+		TagReference(const TagReference & b) : Tag(b) {}
+		TagReference(const Tag & b) : Tag(b) {}
+		TagReference & operator = (TagReference const & b) {Tag::operator =(b); return *this;}
+		TagReference & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::reference & operator [](const Storage & arg) const {return arg.Reference(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagVariable : public Tag
+	{
+	public:
+		TagVariable() : Tag() {}
+		TagVariable(const TagVariable & b) : Tag(b) {}
+		TagVariable(const Tag & b) : Tag(b) {}
+		TagVariable & operator = (TagVariable const & b) {Tag::operator =(b); return *this;}
+		TagVariable & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::var & operator [](const Storage & arg) const {return arg.Variable(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagRealArray : public Tag
+	{
+	public:
+		TagRealArray() : Tag() {}
+		TagRealArray(const TagRealArray & b) : Tag(b) {}
+		TagRealArray(const Tag & b) : Tag(b) {}
+		TagRealArray & operator = (TagRealArray const & b) {Tag::operator =(b); return *this;}
+		TagRealArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::real_array operator [](const Storage & arg) const {return arg.RealArray(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagIntegerArray : public Tag
+	{
+	public:
+		TagIntegerArray() : Tag() {}
+		TagIntegerArray(const TagIntegerArray & b) : Tag(b) {}
+		TagIntegerArray(const Tag & b) : Tag(b) {}
+		TagIntegerArray & operator = (TagIntegerArray const & b) {Tag::operator =(b); return *this;}
+		TagIntegerArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::integer_array operator [](const Storage & arg) const {return arg.IntegerArray(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagBulkArray : public Tag
+	{
+	public:
+		TagBulkArray() : Tag() {}
+		TagBulkArray(const TagBulkArray & b) : Tag(b) {}
+		TagBulkArray(const Tag & b) : Tag(b) {}
+		TagBulkArray & operator = (TagBulkArray const & b) {Tag::operator =(b); return *this;}
+		TagBulkArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::bulk_array operator [](const Storage & arg) const {return arg.BulkArray(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagReferenceArray : public Tag
+	{
+	public:
+		TagReferenceArray() : Tag() {}
+		TagReferenceArray(const TagReferenceArray & b) : Tag(b) {}
+		TagReferenceArray(const Tag & b) : Tag(b) {}
+		TagReferenceArray & operator = (TagReferenceArray const & b) {Tag::operator =(b); return *this;}
+		TagReferenceArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::reference_array operator [](const Storage & arg) const {return arg.ReferenceArray(*static_cast<const Tag*>(this));}
+	};
+	
+	class TagVariableArray : public Tag
+	{
+	public:
+		TagVariableArray() : Tag() {}
+		TagVariableArray(const TagVariableArray & b) : Tag(b) {}
+		TagVariableArray(const Tag & b) : Tag(b) {}
+		TagVariableArray & operator = (TagVariableArray const & b) {Tag::operator =(b); return *this;}
+		TagVariableArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::var_array operator [](const Storage & arg) const {return arg.VariableArray(*static_cast<const Tag*>(this));}
 	};
 
 	//////////////////////////////////////////////////////////////////////
