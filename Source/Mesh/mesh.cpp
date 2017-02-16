@@ -1365,9 +1365,9 @@ namespace INMOST
 					}
 				ElementArray<Node> verts = face->getNodes();
 				if( face->BackCell() == c )
-					ret.insert(ret.end(),verts.begin(),verts.end());
-				else
 					ret.insert(ret.end(),verts.rbegin(),verts.rend());
+				else
+					ret.insert(ret.end(),verts.begin(),verts.end());
 				ElementArray<Edge> c_edges = c->getEdges();
 				ElementArray<Edge> f_edges = face->getEdges();
 				c_edges.SetPrivateMarker(cemrk);
