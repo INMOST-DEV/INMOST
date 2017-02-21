@@ -6,7 +6,7 @@
 #endif
 #include <iomanip>
 
-// Matrix with n columns and m rows
+// Matrix with n rows and m columns
 //   __m__
 //  |     |
 // n|     |
@@ -611,6 +611,19 @@ namespace INMOST
 			}
 			return ret;
 		}
+		/// Inverts matrix using Crout-LU decomposition with full pivoting for
+		/// maximum element. Works well for non-singular matrices, for singular
+		/// matrices look see Matrix::PseudoInvert.
+		/// @param print_fail Verbose output for singular matrices.
+		/// @return A pair of inverse matrix and boolean. If boolean is true,
+		/// then the matrix was inverted successfully.
+		/// @see Matrix::PseudoInvert.
+		/// \todo
+		/// 1. Introduce Matrix::Solve, that uses the same algorithm with
+		///    right hand side, a matrix. Then Matrix::Invert is Matrix::Solve
+		///    with unit matrix.
+		/// 2. Maximum product transversal + block pivoting instead of pivoting
+		///    by maxium element.
 		std::pair<Matrix,bool> Invert(bool print_fail = false) const
 		{
 			std::pair<Matrix,bool> ret = std::make_pair(Matrix(m,n),true);
@@ -793,8 +806,27 @@ namespace INMOST
 			for(enumerator i = 0; i < n*m; ++i) ret += space[i]*space[i];
 			return sqrt(ret);
 		}
-		/// Convert values in array into matrix.
-		/// Depending on
+		/// Convert values in array into square matrix.
+		/// Supports the following representation, depending on the size
+		/// of input array and size of side of final tensors' matrix:
+		///
+		/// representation | (array size, tensor size)
+		///
+		/// scalar         | (1,1), (1,2), (1,3), (1,6)
+		///
+		/// diagonal       | (2,2), (2,2), (3,3), (6,6)
+		///
+		/// symmetric      | (3,2), (6,3), (21,6)
+		///
+		/// full           | (4,2), (9,3), (36,6)
+		///
+		/// For full matrix elements in array are enumerated row by row.
+		/// For symmetric matrix elements in array are enumerated row by
+		/// row starting from diagonal.
+		/// @param K Array of elements to be converted into tensor.
+		/// @param size Size of the input array.
+		/// @param matsize Size of the final tensor.
+		/// @return Matrix of the tensor of size matsize by matsize.
 		static Matrix<Var> FromTensor(Var * K, enumerator size, enumerator matsize = 3)
 		{
 			Matrix<Var> Kc(matsize,matsize);
@@ -909,43 +941,8 @@ namespace INMOST
 			}
 			return Kc;
 		}
-		static Matrix<Var> FromElasticTensor(Var * K, enumerator size)
-		{
-			Matrix<Var> Kc(6,6);
-			switch(size)
-			{
-				case 1: //scalar permeability tensor
-					Kc(0,0) = Kc(1,1) = Kc(2,2) = Kc(3,3) = Kc(4,4) = Kc(5,5) = K[0];
-					break;
-				case 6: //diagonal tensor
-					Kc.Zero();
-					Kc(0,0) = K[0]; //KXX
-					Kc(1,1) = K[1]; //KYY
-					Kc(2,2) = K[2]; //KZZ
-					break;
-				case 21: //symmetric tensor
-					Kc(0,0) = K[0]; //KXX
-					Kc(0,1) = Kc(1,0) = K[1]; //KXY
-					Kc(0,2) = Kc(2,0) = K[2]; //KXZ
-					Kc(1,1) = K[3]; //KYY
-					Kc(1,2) = Kc(2,1) = K[4]; //KYZ
-					Kc(2,2) = K[5]; //KZZ
-					break;
-				case 36: //full tensor
-					Kc(0,0) = K[0]; //KXX
-					Kc(0,1) = K[1]; //KXY
-					Kc(0,2) = K[2]; //KXZ
-					Kc(1,0) = K[3]; //KYX
-					Kc(1,1) = K[4]; //KYY
-					Kc(1,2) = K[5]; //KYZ
-					Kc(2,0) = K[6]; //KZX
-					Kc(2,1) = K[7]; //KZY
-					Kc(2,2) = K[8]; //KZZ
-					break;
-			}
-			return Kc;
-		}
-		///Retrive vector in matrix form from array
+		///Retrive vector in matrix form from array.
+		///
 		static Matrix<Var> FromVector(Var * n, enumerator size)
 		{
 			return Matrix(n,size,1);
@@ -966,6 +963,12 @@ namespace INMOST
 			for(enumerator k = 0; k < size; ++k) ret(k,k) = 1.0/r[k];
 			return ret;
 		}
+		/// Cross-product matrix. Converts an array of 3 elements
+		/// representing a vector into matrix, helps replace
+		/// a cross product of two vectors by multiplication of matrix
+		/// and vector. For a x b equivalent is CrossProduct(a)*b.
+		/// @param vec Array of elements representing a vector.
+		/// @return A matrix representing cross product.
 		static Matrix CrossProduct(Var vec[3])
 		{
 			// |  0  -z   y |
@@ -983,7 +986,10 @@ namespace INMOST
 			ret(2,2) = 0;
 			return ret;
 		}
-		///Unit matrix
+		/// Unit matrix. Creates a square matrix of size pn by pn
+		/// and fills the diagonal with ones.
+		/// @param pn Number of rows and columns in the matrix.
+		/// @return Returns a unit matrix.
 		static Matrix Unit(enumerator pn)
 		{
 			Matrix ret(pn,pn);
@@ -994,6 +1000,9 @@ namespace INMOST
 		/// Concatenate B matrix as columns of current matrix.
 		/// Assumes that number of rows of current matrix is
 		/// equal to number of rows of B matrix.
+		/// @param B Matrix to be concatenated to current matrix.
+		/// @return Result of concatenation of current matrix and parameter.
+		/// @see Matrix::ConcatRows
 		Matrix ConcatCols(const Matrix & B)
 		{
 			assert(Rows() == B.Rows());
@@ -1011,6 +1020,9 @@ namespace INMOST
 		/// Concatenate B matrix as rows of current matrix.
 		/// Assumes that number of colums of current matrix is
 		/// equal to number of columns of B matrix.
+		/// @param B Matrix to be concatenated to current matrix.
+		/// @return Result of concatenation of current matrix and parameter.
+		/// @see Matrix::ConcatCols
 		Matrix ConcatRows(const Matrix & B)
 		{
 			assert(Cols() == B.Cols());
@@ -1032,7 +1044,14 @@ namespace INMOST
 		/// Joint diagonalization algorithm by Cardoso
 		/// http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
 		/// Current matrix should have size n by n*m
-		/// And represent concatination of m n by n matrices
+		/// And represent concatination of m n by n matrices.
+		/// Current matrix is replaced by diagonalized matrices.
+		/// For correct result requires that input matrices are
+		/// exectly diagonalizable, otherwise the result may be approximate.
+		/// @param threshold Optional small number.
+		/// @return A unitary n by n matrix V used to diagonalize array of
+		/// initial matrices. Current matrix is replaced by concatination of
+		/// V^T*A_i*V, a collection of diagonalized matrices.
 		Matrix JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-7)
 		{
 			enumerator N = Rows();
@@ -1099,6 +1118,15 @@ namespace INMOST
 			} while( repeat );
 			return V;
 		}
+		/// Extract submatrix of a matrix.
+		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
+		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
+		/// and j in [jbeg,jend).
+		/// @param ibeg Starting row in the original matrix.
+		/// @param jbeg Starting column in the original matrix.
+		/// @param iend Last row (excluded) in the original matrix.
+		/// @param jend Last column (excluded) in the original matrix.
+		/// @return Submatrix of the original matrix.
 		Matrix SubMatrix(enumerator ibeg, enumerator jbeg, enumerator iend, enumerator jend)
 		{
 			Matrix ret(iend-ibeg,jend-jbeg);
@@ -1109,17 +1137,32 @@ namespace INMOST
 			}
 			return ret;
 		}
-		//change representation of the matrix into matrix of another size
-		void Repack(enumerator _n, enumerator _m)
+		/// Change representation of the matrix into matrix of another size.
+		/// Useful to change representation from matrix into vector and back.
+		/// Replaces original number of columns and rows with a new one.
+		/// @return Matrix with same entries and provided number of rows and columns.
+		Matrix Repack(enumerator rows, enumerator cols)
 		{
-			assert(n*m==_n*_m);
-			n = _n;
-			m = _m;
+			assert(n*m==rows*cols);
+			Matrix ret(*this);
+			ret.n = rows;
+			ret.m = cols;
+			return ret;
 		}
-		Matrix PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0)
+		/// Calculates Moore-Penrose psedo-inverse of the matrix.
+		/// @param tol Thershold for singular values. Singular values smaller
+		///                      then threshold are considered to be zero.
+		/// @param print_fail Verbose output if singular value decomposition
+		///                   algorithm has failed.
+		/// @return A pair of psedo-inverse matrix and boolean. If boolean is true,
+		///         then the matrix was inverted successfully.
+		std::pair<Matrix,bool> PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, bool print_fail = false)
 		{
+			std::pair<Matrix,bool> ret = std::make_pair(Matrix(m,n),true);
 			Matrix U,S,V;
-			SVD(U,S,V);
+			ret.second = SVD(U,S,V);
+			if( print_fail && !ret.second )
+				std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
 			for(int k = 0; k < S.Cols(); ++k)
 			{
 				if( S(k,k) > tol )
@@ -1127,25 +1170,44 @@ namespace INMOST
 				else
 					S(k,k) = 0.0;
 			}
-			return V*S*U.Transpose();
+			ret.first = V*S*U.Transpose();
+			return ret;
 		}
 	};
-	
-	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix; //shortcut for real matrix
+	/// shortcut for matrix of real values.
+	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
 #if defined(USE_AUTODIFF)
-	typedef Matrix<variable> vMatrix; //shortcut for matrix with variations
-	typedef Matrix<hessian_variable> hMatrix; //shortcut for matrix with second variations
+	/// shortcut for matrix of variables with first order derivatives.
+	typedef Matrix<variable> vMatrix;
+	//< shortcut for matrix of variables with first and second order derivatives.
+	typedef Matrix<hessian_variable> hMatrix;
 #endif
 	
 }
-
+/// Multiplication of matrix by constant from left.
+/// @param coef Constant coefficient multiplying matrix.
+/// @param other Matrix to be multiplied.
+/// @return Matrix, each entry multiplied by a constant.
 template<typename typeB>
 INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::Matrix<typeB> & other)
 {return other*coef;}
-
 #if defined(USE_AUTODIFF)
+/// Multiplication of matrix by a variable from left.
+/// Takes account for derivatives of variable.
+/// @param coef Variable coefficient multiplying matrix.
+/// @param other Matrix to be multiplied.
+/// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
 INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator *(const INMOST::variable & coef, const INMOST::Matrix<typeB> & other)
+{return other*coef;}
+/// Multiplication of matrix by a variable with first and
+/// second order derivatives from left.
+/// Takes account for first and second order derivatives of variable.
+/// @param coef Variable coefficient multiplying matrix.
+/// @param other Matrix to be multiplied.
+/// @return Matrix, each entry multiplied by a variable.
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> operator *(const INMOST::hessian_variable & coef, const INMOST::Matrix<typeB> & other)
 {return other*coef;}
 #endif
 

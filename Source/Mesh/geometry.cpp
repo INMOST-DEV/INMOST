@@ -1134,11 +1134,8 @@ namespace INMOST
 		switch(GetElementType())
 		{
 			case FACE:
-				if( nbAdjElements(CELL) == 1 )
-				{
-					if( getAsFace()->BackCell()->GetStatus() != Element::Ghost )
-						return true;
-				}
+				if( !getAsFace()->FrontCell().isValid() )
+					return true;
 				return false;
 			case CELL:
 			case EDGE:

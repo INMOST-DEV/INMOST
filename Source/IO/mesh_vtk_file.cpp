@@ -152,6 +152,9 @@ namespace INMOST
 					case Element::MultiLine:
 					case Element::Polygon:
 					case Element::Tet:
+					case Element::Hex:
+					case Element::Pyramid:
+					case Element::Prism:
 					{
 						ElementArray<Node> nodes = it->getNodes();
 						values.push_back(static_cast<integer>(nodes.size()));
@@ -159,6 +162,7 @@ namespace INMOST
 							values.push_back(jt->IntegerDF(set_id));
 						break;
 					}
+						/*
 					case Element::Prism:
 					{
 						ElementArray<Node> nodes = it->getNodes();
@@ -172,6 +176,8 @@ namespace INMOST
 						values.push_back(nodes[4].IntegerDF(set_id));
 						break;
 					}
+						 */
+					/*
 					case Element::Hex:
 					{
 						ElementArray<Node> nodes = it->getNodes();
@@ -199,6 +205,7 @@ namespace INMOST
 						values.push_back(nodes[4].IntegerDF(set_id));
 						break;
 					}
+					 */
 					case Element::Polyhedron:
 					case Element::MultiPolygon:
 					{
