@@ -1,8 +1,8 @@
 #include "octgrid.h"
-#include "oc_glut.h"
+#include "my_glut.h"
 #include "rotate.h"
 #include <math.h>
-#include "../../inmost.h"
+#include "inmost.h"
 
 #include <iomanip>
 #include <iostream>
@@ -72,7 +72,7 @@ void dump_to_vtk()
     else
         filename << ".pvtk";
     thegrid.mesh->Save(filename.str());
-    cout << "Process " << rank << ": dumped mesh to file" << endl;
+	cout << "Process " << ::rank << ": dumped mesh to file" << endl;
 }
 
 /// Function provided to octgrid algorithm. Defines transformation from grid to grid for draw.
@@ -353,7 +353,7 @@ void send_coordinates_to_slaves()
 /// special command 'm' to slaves. Slave receive the message 'm', sends his cells to master.
 void refresh_slaves_grid()
 {
-    if (rank == 0) { // Send command to slaves for they will sent grid to us
+	if (::rank == 0) { // Send command to slaves for they will sent grid to us
         char buff[10][2];
         MPI_Request req[10];
         for (int i = 1; i < size; i++)
@@ -409,7 +409,7 @@ void refresh_slaves_grid()
 
 void prepare_to_correct_brothers()
 {
-    correct_brothers(&thegrid,size,rank, 0);
+	correct_brothers(&thegrid,size,::rank, 0);
     thegrid.mesh->RemoveGhost();
     thegrid.mesh->Redistribute(); 
     thegrid.mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
@@ -419,7 +419,7 @@ void prepare_to_correct_brothers()
 /// Redistribute grid by using partitioner
 void redistribute(int type)
 {
-    LOG(2,"Process " << rank << ": redistribute. Cells: " << thegrid.mesh->NumberOfCells())
+	LOG(2,"Process " << ::rank << ": redistribute. Cells: " << thegrid.mesh->NumberOfCells())
     Partitioner * part = new Partitioner(thegrid.mesh);
     
     // Specify the partitioner
@@ -431,12 +431,12 @@ void redistribute(int type)
     part->Evaluate();
     delete part;
 
-    correct_brothers(&thegrid,size,rank, 2);
+	correct_brothers(&thegrid,size,::rank, 2);
     thegrid.mesh->RemoveGhost();
     thegrid.mesh->Redistribute(); 
     thegrid.mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
     thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
-    LOG(2,"Process " << rank << ": redistribute completed")
+	LOG(2,"Process " << ::rank << ": redistribute completed")
 }
 
 /// Prepare to redistribute. Master sends special command to slaves which means redistribute
@@ -454,7 +454,7 @@ void redistribute_command()
    
     for (int i = 1; i < size; i++)
     {
-        LOG(3,"Master: send redistribute command to slave " << rank)
+		LOG(3,"Master: send redistribute command to slave " << ::rank)
         buff[i][0] = 'x'; // Special key, means redistribute
         buff[i][1] = type + '0'; // Special key, means redistribute
         MPI_Isend(buff[i], 2, MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
@@ -474,7 +474,7 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	if( key == ' ' ) 
 	{
-        if (rank == 0) 
+		if (::rank == 0)
         {
             send_coordinates_to_slaves();
 		}
@@ -485,7 +485,7 @@ void keyboard(unsigned char key, int x, int y)
 	}
     if( key == '[' ) 
 	{
-        if (rank == 0) 
+		if (::rank == 0)
         {
             send_coordinates_to_slaves();
 		}
@@ -500,7 +500,7 @@ void keyboard(unsigned char key, int x, int y)
     }
     if( key == 'f' ) 
 	{
-        if (rank == 0) { // Send dump command to other process
+		if (::rank == 0) { // Send dump command to other process
             dump_to_vtk();
             char buff[10][2];
             MPI_Request req[10];
@@ -565,7 +565,7 @@ void NotMainProcess()
     while (1) {
         MPI_Recv(buff, 256, MPI_CHAR, 0,0, INMOST_MPI_COMM_WORLD, &status);
 
-        LOG(2, "Process " << rank << ": received message '" << buff[0] << "'")
+		LOG(2, "Process " << ::rank << ": received message '" << buff[0] << "'")
         
         if (buff[0] == 'm') // Need to refine, mouse coordinates come
         {
@@ -637,7 +637,7 @@ void NotMainProcess()
 
             // Теперь мы готовы слать. Пошлем 2мя заходами
             // Now we are ready to transmit the data. Transmit with 2 steps
-            LOG(2, "Process " << rank << ": send buffer with faces = " << count_f << " of " << count_df << ". Edges " << count_e)
+			LOG(2, "Process " << ::rank << ": send buffer with faces = " << count_f << " of " << count_df << ". Edges " << count_e)
             MPI_Send(buff_f, offset                             ,MPI_CHAR,0,0,INMOST_MPI_COMM_WORLD);
             MPI_Send(buff_e,count_e*sizeof(double) + sizeof(int),MPI_CHAR,0,0,INMOST_MPI_COMM_WORLD);
         }
@@ -654,18 +654,18 @@ int main(int argc, char ** argv)
 	thegrid.cell_should_split = cell_should_split;
 	thegrid.cell_should_unite = cell_should_unite;
     Mesh::Initialize(&argc,&argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_rank(MPI_COMM_WORLD, &::rank);
 
     gridInit(&thegrid,n);
 
     Partitioner::Initialize(&argc,&argv);
 
-    size = thegrid.mesh->GetProcessorsNumber();
-    rank = thegrid.mesh->GetProcessorRank();
+	::size = thegrid.mesh->GetProcessorsNumber();
+	::rank = thegrid.mesh->GetProcessorRank();
 
     //dump_to_vtk();
 
-	if (rank != 0)
+	if (::rank != 0)
     {
         NotMainProcess();
     }

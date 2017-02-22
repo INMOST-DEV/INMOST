@@ -39,6 +39,12 @@ if(USE_SOLVER_SUPERLU)
   target_link_libraries(solver_test001 ${SUPERLU_LIBRARIES})
 endif()
 
+set(SOLVERS inner_ilu2
+            inner_mptilu2
+            inner_mptiluc)
+
+foreach(solver ${SOLVERS})
+
 set(TOKAMAK_TESTS utm300
                   utm1700a
                   utm1700b
@@ -46,7 +52,7 @@ set(TOKAMAK_TESTS utm300
                   utm5940)
 
 foreach(test ${TOKAMAK_TESTS})
-  add_test(NAME solver_test001_sparsekit_tokamak_${test}  COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/tokamak/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/tokamak/${test}_rhs1.mtx)
+  add_test(NAME solver_test001_sparsekit_tokamak_${solver}_${test}  COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/tokamak/${test}.mtx ${solver} ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/tokamak/${test}_rhs1.mtx)
 endforeach()
 
 
@@ -78,7 +84,7 @@ set(DRIVCAV_OLD_TESTS cavity01
                       cavity26)
 
 foreach(test ${DRIVCAV_OLD_TESTS})
-  add_test(NAME solver_test001_sparsekit_drivcav_old_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav_old/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav_old/${test}_rhs1.mtx)
+  add_test(NAME solver_test001_sparsekit_drivcav_old_${solver}_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav_old/${test}.mtx ${solver} ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav_old/${test}_rhs1.mtx)
 endforeach()
 
 
@@ -116,7 +122,7 @@ set(DRIVCAV_TESTS e05r0000
 
 
 foreach(test ${DRIVCAV_TESTS})
-  add_test(NAME solver_test001_sparsekit_drivcav_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}_rhs1.mtx)
+  add_test(NAME solver_test001_sparsekit_drivcav_${solver}_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}.mtx ${solver} ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/drivcav/${test}_rhs1.mtx)
 endforeach()
 
 
@@ -170,6 +176,7 @@ set(FIDAP_TESTS fidap001
 
 
 foreach(test ${FIDAP_TESTS})
-  add_test(NAME solver_test001_sparsekit_fidap_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/fidap/${test}.mtx ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/fidap/${test}_rhs1.mtx)
+  add_test(NAME solver_test001_sparsekit_fidap_${solver}_${test}     COMMAND $<TARGET_FILE:solver_test001> ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/fidap/${test}.mtx ${solver} ${CMAKE_CURRENT_SOURCE_DIR}/matrices/sparskit/fidap/${test}_rhs1.mtx)
 endforeach()
 
+endforeach(solver ${SOLVERS})

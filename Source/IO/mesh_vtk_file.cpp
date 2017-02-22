@@ -157,6 +157,7 @@ namespace INMOST
 					case Element::Prism:
 					{
 						ElementArray<Node> nodes = it->getNodes();
+						if( nodes.size() != VtkElementNodes(it->GetGeometricType()) ) goto safe_output;
 						values.push_back(static_cast<integer>(nodes.size()));
 						for(ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
 							values.push_back(jt->IntegerDF(set_id));
@@ -212,11 +213,10 @@ namespace INMOST
 safe_output:
 						//printf("polyhedron!!!\n");
 						ElementArray<Face> faces = it->getFaces();
-                          integer totalNum = 1 + static_cast<integer>(faces.size());
-                          for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
-                              totalNum += jt->nbAdjElements(NODE);
-
-                          values.push_back(totalNum);
+						integer totalNum = 1 + static_cast<integer>(faces.size());
+                        for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
+							totalNum += jt->nbAdjElements(NODE);
+						values.push_back(totalNum);
 						values.push_back(static_cast<integer>(faces.size()));
 						for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
 						{

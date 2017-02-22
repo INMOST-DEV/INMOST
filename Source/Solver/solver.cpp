@@ -190,7 +190,7 @@ namespace INMOST {
         input.open(xml_database);
 
         if (input.fail()) {
-            std::cout << __FILE__ << ": XML database file not found " << std::endl;
+            std::cout << __FILE__ << ":" << __LINE__ << ": XML database file " << xml_database << " not found." << std::endl;
             return;
         }
 
@@ -200,7 +200,7 @@ namespace INMOST {
             XMLReader::XMLTree root = reader.ReadXML();
 
             if (root.tag.name != "SolverParameters") {
-                std::cout << __FILE__ << ": Bad XML database file" << std::endl;
+                std::cout << __FILE__ << ":" << __LINE__ <<  ": Bad XML database file " << xml_database << "!" << std::endl;
                 return;
             }
 

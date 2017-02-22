@@ -1,6 +1,6 @@
 #ifndef _OCTGRID_H
 #define _OCTGRID_H
-#include "../../inmost.h"
+#include "inmost.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

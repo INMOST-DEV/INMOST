@@ -114,13 +114,17 @@ namespace INMOST {
     }
 
     std::string SolverSUPERLU::GetParameter(std::string name) const {
+#if !defined(SILENCE_SET_PARAMETER)
         std::cout << "SolverSUPERLU::GetParameter unsupported operation" << std::endl;
+#endif
         //throw INMOST::SolverUnsupportedOperation;
         return "";
     }
 
     void SolverSUPERLU::SetParameter(std::string name, std::string value) {
+#if !defined(SILENCE_SET_PARAMETER)
         std::cout << "SolverSUPERLU::SetParameter unsupported operation" << std::endl;
+#endif
         //throw INMOST::SolverUnsupportedOperation;
     }
 

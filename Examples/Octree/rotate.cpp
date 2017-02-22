@@ -15,7 +15,7 @@
  Specific: glut.h
  **********************************/
 
-#include "oc_glut.h" 
+#include "my_glut.h" 
 #include "rotate.h"
 #include "math.h"
 #include <stdio.h>

@@ -658,16 +658,6 @@ namespace INMOST
 		Storage::reference & operator [](const Storage & arg) const {return arg.Reference(*static_cast<const Tag*>(this));}
 	};
 	
-	class TagVariable : public Tag
-	{
-	public:
-		TagVariable() : Tag() {}
-		TagVariable(const TagVariable & b) : Tag(b) {}
-		TagVariable(const Tag & b) : Tag(b) {}
-		TagVariable & operator = (TagVariable const & b) {Tag::operator =(b); return *this;}
-		TagVariable & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::var & operator [](const Storage & arg) const {return arg.Variable(*static_cast<const Tag*>(this));}
-	};
 	
 	class TagRealArray : public Tag
 	{
@@ -713,6 +703,18 @@ namespace INMOST
 		Storage::reference_array operator [](const Storage & arg) const {return arg.ReferenceArray(*static_cast<const Tag*>(this));}
 	};
 	
+#if defined(USE_AUTODIFF)
+	class TagVariable : public Tag
+	{
+	public:
+		TagVariable() : Tag() {}
+		TagVariable(const TagVariable & b) : Tag(b) {}
+		TagVariable(const Tag & b) : Tag(b) {}
+		TagVariable & operator = (TagVariable const & b) {Tag::operator =(b); return *this;}
+		TagVariable & operator = (Tag const & b) {Tag::operator =(b); return *this;}
+		Storage::var & operator [](const Storage & arg) const {return arg.Variable(*static_cast<const Tag*>(this));}
+	};
+	
 	class TagVariableArray : public Tag
 	{
 	public:
@@ -723,6 +725,7 @@ namespace INMOST
 		TagVariableArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
 		Storage::var_array operator [](const Storage & arg) const {return arg.VariableArray(*static_cast<const Tag*>(this));}
 	};
+#endif //USE_AUTODIFF
 
 	//////////////////////////////////////////////////////////////////////
 	/// Inline functions for class Tag                                  //

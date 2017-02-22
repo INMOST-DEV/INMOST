@@ -376,6 +376,7 @@ Cell get_adjacent_cell(struct grid* g, Node node, int cell_num, int* result)
             }
    }
    *result = -1;
+	return InvalidCell();
 }
 
 /// Returns true if edge is not a greatest in this cell
