@@ -5,6 +5,8 @@
 #include <sstream>
 #include "inmost_sparse.h"
 
+#define SILENCE_SET_PARAMETER
+
 namespace INMOST {
 
 #if defined(USE_SOLVER)

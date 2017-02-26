@@ -19,29 +19,27 @@ namespace INMOST {
         throw INMOST::SolverUnsupportedOperation;
     }
 
-    void SolverInner::Setup(int *argc, char ***argv, SolverParameters &p) {
-        if (!p.internalFile.empty()) {
+    void SolverInner::Setup(int *argc, char ***argv, SolverParameters &p)
+	{
+		char line[4096];
+		char parameterName[4096];
+		char parameterValue[4096];
+        if (!p.internalFile.empty())
+		{
             FILE *databaseFile = fopen(p.internalFile.c_str(), "r");
-            if (!databaseFile) {
-                return;
-            }
-            char *tmp = (char *) calloc(256, sizeof(char));
-            char *parameterName = (char *) calloc(128, sizeof(char));
-            char *parameterValue = (char *) calloc(128, sizeof(char));
-            while (!feof(databaseFile) && fgets(tmp, 256, databaseFile)) {
-                char *line = tmp;
-                //Comment str
+            if (!databaseFile) return;
+            while (!feof(databaseFile) && fgets(line, 4096, databaseFile))
+			{
                 if (line[0] == '#') continue;
                 sscanf(line, "%s %s", parameterName, parameterValue);
                 this->SetParameter(parameterName, parameterValue);
             }
-            free(parameterValue);
-            free(parameterName);
-            free(tmp);
-        } else {
-            for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
+			
+        }
+		else
+		{
+            for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++)
                 this->SetParameter((*parameter).first, (*parameter).second);
-            }
         }
 
     }
@@ -78,7 +76,9 @@ namespace INMOST {
         else if (name == "relative_tolerance") return to_string(rtol);
         else if (name == "divergence_tolerance") return to_string(dtol);
         else {
+#if !defined(SILENCE_SET_PARAMETER)
             std::cout << "Parameter " << name << " is unknown" << std::endl;
+#endif
             return "";
         }
     }
@@ -89,7 +89,9 @@ namespace INMOST {
         else if (name == "absolute_tolerance") atol = atof(val);
         else if (name == "relative_tolerance") rtol = atof(val);
         else if (name == "divergence_tolerance") dtol = atof(val);
+#if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
+#endif
     }
 
     const INMOST_DATA_ENUM_TYPE SolverInner::Iterations() const {

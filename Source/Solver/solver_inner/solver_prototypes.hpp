@@ -7,7 +7,6 @@
 
 #include "inmost_solver.h"
 
-#define KSOLVER BCGSL_solver
 
 using namespace INMOST;
 

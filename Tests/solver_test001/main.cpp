@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 
-#include "../../inmost.h"
+#include "inmost.h"
 using namespace INMOST;
 
 #if defined(USE_MPI)
@@ -15,10 +15,11 @@ int main(int argc, char ** argv)
 	int rank,procs;
 	if( argc < 2 )
 	{
-		std::cout << "Usage: " << argv[0] << " matrix.mtx [right_hand_side.rhs]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " matrix.mtx [solver_type] [right_hand_side.rhs]" << std::endl;
+		std::cout << "solver_type: inner_ilu2 (default), inner_mptilu2, inner_mptiluc, inner_ddpqiluc." << std::endl;
 		return -1;
 	}
-	Solver::Type type = Solver::INNER_MPTILU2;
+	Solver::Type type = Solver::INNER_ILU2;
 	Solver::Initialize(&argc,&argv,NULL); // Initialize the linear solver in accordance with args
 	{
 #if defined(USE_MPI)
@@ -28,6 +29,22 @@ int main(int argc, char ** argv)
 		rank = 0;
 		procs = 1;
 #endif
+		if( argc > 2 )
+		{
+			std::string stype(argv[2]);
+			for(size_t k = 0; k < stype.size(); ++k) stype[k] = tolower(stype[k]);
+			if( stype == "inner_mptilu2" )
+				type = Solver::INNER_MPTILU2;
+			else if( stype == "inner_mptiluc" )
+				type = Solver::INNER_MPTILUC;
+			else if( stype == "inner_ddpqiluc" )
+				type = Solver::INNER_DDPQILUC;
+			else if( stype != "inner_ilu2" && stype != "*" )
+			{
+				std::cout << "Unknown type of the solver " << stype << std::endl;
+				return -1;
+			}
+		}
 		//std::cout << rank << "/" << procs << " " << argv[0] << std::endl;
 		Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
 		Sparse::Vector b("rhs"); // Declare the right-hand side vector
@@ -39,10 +56,10 @@ int main(int argc, char ** argv)
 		if( !rank ) std::cout << "load matrix: " << Timer() - t << std::endl;
 		//mat.Save("test.mtx");
 		t = Timer();
-		if( argc > 2 )
+		if( argc > 3 )
 		{
 			//std::cout << rank << " load vector from " << std::string(argv[3]) << std::endl;
-			b.Load(std::string(argv[2])); // Load RHS vector
+			b.Load(std::string(argv[3])); // Load RHS vector
 		}
 		else // Set local RHS to 1 if it was not specified
 		{

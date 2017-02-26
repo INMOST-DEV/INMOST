@@ -124,7 +124,9 @@ namespace INMOST {
         else if( name == "drop_tolerance") return to_string(drop_tolerance);
         else if( name == "fill_level") return to_string(fill_level);
         else {
+#if !defined(SILENCE_SET_PARAMETER)
             std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
+#endif
             return "";
         }
     }
@@ -136,7 +138,9 @@ namespace INMOST {
         else if( name == "relative_tolerance") rtol = atof(val);
         else if( name == "drop_tolerance") drop_tolerance = atof(val);
         else if( name == "fill_level") fill_level = atoi(val);
+#if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
+#endif
     }
 
     const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {
