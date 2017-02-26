@@ -126,7 +126,6 @@ namespace INMOST {
         }
         MatrixFinalizeK3biilu2(matrix_data);
         SolverSetMatrixK3biilu2(solver_data, matrix_data, modified_pattern, OldPreconditioner);
-        time_prec = solver_data->dstat[7];
     }
 
     bool SolverK3BIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
@@ -150,6 +149,7 @@ namespace INMOST {
         bool result = SolverSolveK3biilu2(solver_data, rhs_data, solution_data);
         if (result) VectorLoadK3biilu2(solution_data, &SOL[vbeg]);
         iter_time = solver_data->dstat[9];
+        time_prec = solver_data->dstat[7];
         return result;
     }
 
