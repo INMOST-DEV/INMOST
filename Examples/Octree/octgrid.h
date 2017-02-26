@@ -62,9 +62,12 @@ struct grid
 /// Often after redistribution brother cells splits to different processor
 /// This function corrects this division. Puts all children to one processor
 void correct_brothers(struct grid* g, int size, int rank, int type);
+void pre_eval(struct grid* g, int size, int rank);
 
 /// Debug. Print information about all cells
 void print_all_about_cells(struct grid * g);
+
+void print_redist_tag(struct grid* g,  int rank);
 
 /// Initialize grid. Create tags and other data
 void gridInit(struct grid * g, int n[3]);
