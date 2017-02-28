@@ -351,7 +351,7 @@ void gridInit(struct grid * g, int n[3])
     }
 
 	g->mesh->ResolveShared(); // Resolve duplicate nodes
-	g->mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
+	//g->mesh->ExchangeGhost(1,NODE); // Construct Ghost cells in 2 layers connected via nodes
 }
 
 /// Return adjacent cell with number cell_num 
@@ -1177,6 +1177,59 @@ void gridCoarse(struct grid * g)
     }
 }
 
+void print_redist_tag(struct grid* g,  int rank)
+{
+    Tag tag_owner = g->mesh->RedistributeTag();
+    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+    {
+        cout << rank << " : " <<  it->getAsCell().Integer(tag_owner) << " : ";
+        print_cell_center(g, it->getAsCell());
+    }
+}
+
+void pre_eval(struct grid* g, int size, int rank)
+{
+    int c_all =  g->mesh->TotalNumberOf(CELL);
+    int c_average = c_all / size;
+    int c_my  = g->mesh->NumberOfCells();
+    
+    Tag tag_owner = g->mesh->RedistributeTag();
+
+    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+    { 
+        it->getAsCell().Integer(tag_owner) = rank;
+        if( it->getAsCell().GetStatus() == Element::Ghost ) continue;
+
+        if (c_my > c_average)
+        {
+            int adj_count = 0;
+            bool has_adj = false;
+            ElementArray<Face> faces = it->getAsCell().getFaces(); 
+            for (ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); face++)
+            {
+                ElementArray<Element> adjs = face->getAsFace().getAdjElements(CELL); 
+                if (adjs.size() > 1) adj_count++;
+                if (adjs.size() > 1)
+                {
+                    for (ElementArray<Element>::iterator p = adjs.begin(); p != adjs.end(); p++)
+                        if (p->getAsCell().GetStatus() == Element::Ghost) 
+                        {
+                            has_adj = true;
+                            break;
+                        }
+                    if (has_adj) break;
+                }
+
+            }
+            if (has_adj)
+            {
+                c_my--;
+                it->getAsCell().Integer(tag_owner) = (rank + 1) % size;
+            }
+        }
+    };
+}
+
 void correct_brothers(struct grid* g, int size, int rank, int type)
 {
     Tag tag_owner = g->mesh->RedistributeTag();
@@ -1193,7 +1246,7 @@ void correct_brothers(struct grid* g, int size, int rank, int type)
         ElementArray<Cell> children;
 
         ElementArray<Element> adjs = center_node.getAdjElements(CELL); 
-        if (adjs.size() != 8) TSNH
+        //if (adjs.size() != 8) TSNH
 
         int my = 0;
         int new_owner = 0;
@@ -1210,7 +1263,7 @@ void correct_brothers(struct grid* g, int size, int rank, int type)
             for (ElementArray<Element>::iterator p = adjs.begin(); p != adjs.end(); p++)
             {
                 if (p->getAsCell().Integer(g->c_tags.level) == 0) continue;
-                if (type == 2) p->getAsCell().Integer(tag_owner) = rank == 0? 1 : 0;
+                p->getAsCell().Integer(tag_owner) = new_owner;
             }
     }
 }
@@ -1221,14 +1274,14 @@ void gridAMR(struct grid * g, int action)
     if (action == 0 || action == 1)
         gridCoarse(g);
     
-    g->mesh->ReorderEmpty(CELL | FACE | EDGE | NODE);
-	g->mesh->ResolveShared(); // Resolve duplicate nodes
-	g->mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
-
+	//g->mesh->ExchangeGhost(1,NODE); // Construct Ghost cells in 2 layers connected via nodes
+    //g->mesh->ReorderEmpty(CELL | FACE | EDGE | NODE);
+	//g->mesh->ResolveShared(); // Resolve duplicate nodes
+    
     if (action == 0 || action == 2)
         gridRefine(g);
     
     g->mesh->ReorderEmpty(CELL | FACE | EDGE | NODE);
+   // g->mesh->ExchangeGhost(1,NODE); // Construct Ghost cells in 2 layers connected via nodes
     g->mesh->ResolveShared(); // Resolve duplicate nodes
-    g->mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
 }

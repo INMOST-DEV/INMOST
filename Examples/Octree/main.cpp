@@ -8,6 +8,7 @@
 #include <iostream>
 
 #define LOG(level,msg)  { if (log_level >= level) cout << msg << endl; }
+#define BARRIER MPI_Barrier(MPI_COMM_WORLD);
 
 using namespace std;
 
@@ -167,6 +168,24 @@ void motion(int nmx, int nmy) // Mouse
 	glutPostRedisplay();
 }
 
+void set_color(int i)
+{
+    switch (i)
+    {
+        case 0: glColor3f(0.0, 0.0, 1.0); break;
+        case 1: glColor3f(0.0, 1.0, 0.0); break;
+        case 2: glColor3f(1.0, 0.0, 0.0); break;
+        case 3: glColor3f(0.0, 1.0, 1.0); break;
+        case 4: glColor3f(1.0, 0.0, 1.0); break;
+        case 5: glColor3f(0.0, 0.5, 0.5); break;
+        case 6: glColor3f(1.0, 1.0, 0.0); break;
+        case 7: glColor3f(0.3, 0.8, 0.5); break;
+        case 8: glColor3f(0.5, 0.0, 0.5); break;
+        case 9: glColor3f(0.5, 0.5, 0.0); break;
+        case 10: glColor3f(1.0, 1.0, 1.0); break;
+    }
+}
+
 /// Main drawing function. MPI version draws cells of each processor with unique color.
 void mpi_draw()
 {
@@ -204,19 +223,7 @@ void mpi_draw()
         for (int i = 1; i < size; i++)
         {
             if (current_proc_draw != -1 && current_proc_draw != i) continue;
-            switch (i)
-            {
-                case 1: glColor3f(0.0, 1.0, 0.0); break;
-                case 2: glColor3f(1.0, 0.0, 0.0); break;
-                case 3: glColor3f(0.0, 1.0, 1.0); break;
-                case 4: glColor3f(1.0, 0.0, 1.0); break;
-                case 5: glColor3f(0.0, 0.5, 0.5); break;
-                case 6: glColor3f(1.0, 1.0, 0.0); break;
-                case 7: glColor3f(0.3, 0.8, 0.5); break;
-                case 8: glColor3f(0.5, 0.0, 0.5); break;
-                case 9: glColor3f(0.5, 0.5, 0.0); break;
-               case 10: glColor3f(1.0, 1.0, 1.0); break;
-            }
+            set_color(i);
 
             if (i > 10 && i < 13)
             {
@@ -249,20 +256,23 @@ void mpi_draw()
         // Draw our edges
         glColor3f(0.0f,0.0f,0.0f);
         
-        glBegin(GL_LINES);
-        for (Mesh::iteratorEdge f = thegrid.mesh->BeginEdge(); f != thegrid.mesh->EndEdge(); f++)
+        if (current_proc_draw == -1 || current_proc_draw == 0)
         {
-            ElementArray<Node> nodes = f->getNodes();
-            glVertex3dv(&nodes[0].RealArray(thegrid.mesh->CoordsTag())[0]);
-            glVertex3dv(&nodes[1].RealArray(thegrid.mesh->CoordsTag())[0]);
+            glBegin(GL_LINES);
+            for (Mesh::iteratorEdge f = thegrid.mesh->BeginEdge(); f != thegrid.mesh->EndEdge(); f++)
+            {
+                ElementArray<Node> nodes = f->getNodes();
+                glVertex3dv(&nodes[0].RealArray(thegrid.mesh->CoordsTag())[0]);
+                glVertex3dv(&nodes[1].RealArray(thegrid.mesh->CoordsTag())[0]);
+            }
+            glEnd();
         }
-        glEnd();
-        
         // Draw other edges
         glLineWidth(2);
         glBegin(GL_LINES);
         for (int i = 1; i < size; i++)
         {
+            if (current_proc_draw != -1 && current_proc_draw != i) continue;
             for (int j = 0; j < sub_edges_nodes_n[i]; j+=6)
             {
                 glVertex3dv(&(sub_edges_nodes[i][j]));
@@ -416,7 +426,7 @@ void prepare_to_correct_brothers()
     thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
 }
 
-/// Redistribute grid by using partitioner
+/// Redistribute grid by  partitioner
 void redistribute(int type)
 {
 	LOG(2,"Process " << ::rank << ": redistribute. Cells: " << thegrid.mesh->NumberOfCells())
@@ -426,14 +436,27 @@ void redistribute(int type)
     if (type == 0) part->SetMethod(Partitioner::Parmetis, Partitioner::Partition);
     if (type == 1) part->SetMethod(Partitioner::Parmetis, Partitioner::Repartition);
     if (type == 2) part->SetMethod(Partitioner::Parmetis, Partitioner::Refine);
-
-    // Compute the partitioner and store new processor ID in the mesh
-    part->Evaluate();
+    
+    try
+    {
+        part->Evaluate();
+    }
+    catch (INMOST::ErrorType er)
+    {
+        cout << "Exception: " << er << endl;
+    }
     delete part;
 
 	correct_brothers(&thegrid,size,::rank, 2);
+    try
+    {
+        thegrid.mesh->Redistribute(); 
+    }
+    catch (INMOST::ErrorType er)
+    {
+        cout << "Exception: " << er << endl;
+    }
     thegrid.mesh->RemoveGhost();
-    thegrid.mesh->Redistribute(); 
     thegrid.mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
     thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
 	LOG(2,"Process " << ::rank << ": redistribute completed")
@@ -544,6 +567,10 @@ void keyboard(unsigned char key, int x, int y)
 	{
         draw_edges = !draw_edges;
 	}
+	if( key == 't' || key == 'T' )
+	{
+        draw_faces = !draw_faces;
+	}
     if( key == 'i' || key == 'I' )
     {
         draw_in_motion = !draw_in_motion ;
@@ -647,7 +674,7 @@ void NotMainProcess()
 int main(int argc, char ** argv)
 {
 	int i;
-	int n[3] = {10,10,1};
+	int n[3] = {2,2,1};
 
 	thegrid.transformation = transformation;
 	thegrid.rev_transformation = rev_transformation;
