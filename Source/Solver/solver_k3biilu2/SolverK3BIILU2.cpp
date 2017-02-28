@@ -126,7 +126,6 @@ namespace INMOST {
         }
         MatrixFinalizeK3biilu2(matrix_data);
         SolverSetMatrixK3biilu2(solver_data, matrix_data, modified_pattern, OldPreconditioner);
-        time_prec = solver_data->dstat[7];
     }
 
     bool SolverK3BIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
@@ -150,6 +149,7 @@ namespace INMOST {
         bool result = SolverSolveK3biilu2(solver_data, rhs_data, solution_data);
         if (result) VectorLoadK3biilu2(solution_data, &SOL[vbeg]);
         iter_time = solver_data->dstat[9];
+        time_prec = solver_data->dstat[7];
         return result;
     }
 
@@ -171,7 +171,9 @@ namespace INMOST {
         if (name == "time_total") return INMOST::to_string(time_prec + iter_time);
         if (name == "prec_density") return INMOST::to_string(solver_data->dstat[0]);
         if (name == "pivot_mod") return INMOST::to_string(solver_data->istat[0]);
+#if !defined(SILENCE_SET_PARAMETER)
         std::cout << "Parameter " << name << " is unknown" << std::endl;
+#endif
         return "";
     }
 
@@ -184,7 +186,9 @@ namespace INMOST {
             solver_data->pParams->tau2 = -1.0;
         } else if (name == "nit") solver_data->pParIter->maxit = atoi(val);
         else if (name == "eps") solver_data->pParIter->eps = atof(val);
+#if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
+#endif
     }
 
     const INMOST_DATA_ENUM_TYPE SolverK3BIILU2::Iterations() const {
