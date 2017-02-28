@@ -171,7 +171,9 @@ namespace INMOST {
         if (name == "time_total") return INMOST::to_string(time_prec + iter_time);
         if (name == "prec_density") return INMOST::to_string(solver_data->dstat[0]);
         if (name == "pivot_mod") return INMOST::to_string(solver_data->istat[0]);
+#if !defined(SILENCE_SET_PARAMETER)
         std::cout << "Parameter " << name << " is unknown" << std::endl;
+#endif
         return "";
     }
 
@@ -184,7 +186,9 @@ namespace INMOST {
             solver_data->pParams->tau2 = -1.0;
         } else if (name == "nit") solver_data->pParIter->maxit = atoi(val);
         else if (name == "eps") solver_data->pParIter->eps = atof(val);
+#if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
+#endif
     }
 
     const INMOST_DATA_ENUM_TYPE SolverK3BIILU2::Iterations() const {
