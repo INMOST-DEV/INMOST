@@ -122,6 +122,7 @@ namespace INMOST {
         }
         MatrixFinalizeFcbiilu2(matrix_data);
         SolverSetMatrixFcbiilu2(solver_data, matrix_data, modified_pattern, OldPreconditioner);
+        time_prec = solver_data->dstat[7];
     }
 
     bool SolverFCBIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
@@ -143,7 +144,6 @@ namespace INMOST {
         bool result = SolverSolveFcbiilu2(solver_data, rhs_data, solution_data);
         if (result) VectorLoadFcbiilu2(solution_data, &SOL[vbeg]);
         iter_time = solver_data->dstat[9];
-        time_prec = solver_data->dstat[7];
         return result;
     }
 
