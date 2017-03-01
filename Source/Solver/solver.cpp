@@ -184,7 +184,7 @@ namespace INMOST {
     }
 
     void Solver::parseXMLDatabase(const char *xml_database) {
-        if (xml_database == NULL) return;
+        if (xml_database == NULL || xml_database[0] == '\0') return;
 
         std::ifstream input;
         input.open(xml_database);

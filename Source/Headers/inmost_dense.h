@@ -6,24 +6,11 @@
 #endif
 #include <iomanip>
 
-// Matrix with n rows and m columns
-//   __m__
-//  |     |
-// n|     |
-//  |_____|
-//
-// todo:
-// 1. expression templates for operations
-//    (???) how to for multiplication?
-// 2. (ok) template matrix type for AD variables
-// 3. template container type for data storage.
-// 4. option for wrapper container around provided data storage. (to perform matrix operations with existing data)
-// 5. class Subset for fortran-like access to matrix.
 
 namespace INMOST
 {
 	
-	
+	/// Structure that selects desired class, depending on the operation.
 	template<class A, class B> struct Promote;
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
 #if defined(USE_AUTODIFF)
@@ -39,18 +26,24 @@ namespace INMOST
 	__INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE x) {return x;}
 #endif
 	
+	template<typename Var, typename Storage = array<Var> >
+	class SubMatrix;
+	
+	template<typename Var, typename Storage = array<Var> >
+	class Matrix;
+	
+	/// Abstract class for a matrix,
+	/// used to abstract away all the data storage and access
+	/// and provide common implementation of the algorithms.
 	template<typename Var>
-	class Matrix
+	class AbstractMatrix
 	{
-	public:
-		typedef unsigned enumerator;
-	protected:
-		array<Var> space;
-		enumerator n, m;
-  
-		
+	private:
+		/// Sign function for SVD algorithm.
 		static Var sign_func(const Var & a, const Var & b) {return (b >= 0.0 ? fabs(a) : -fabs(a));}
+		/// Max function for SVD algorithm.
 		static INMOST_DATA_REAL_TYPE max_func(INMOST_DATA_REAL_TYPE x, INMOST_DATA_REAL_TYPE y) { return x > y ? x : y; }
+		/// Function for QR rotation in SVD algorithm.
 		static Var pythag(const Var & a, const Var & b)
 		{
 			Var at = fabs(a), bt = fabs(b), ct, result;
@@ -60,94 +53,98 @@ namespace INMOST
 			return result;
 		}
 	public:
+		typedef unsigned enumerator;
+		/// Construct empty matrix.
+		AbstractMatrix() {}
+		/// Construct from matrix of the same type.
+		/// @param other Another matrix of the same type.
+		AbstractMatrix(const AbstractMatrix & b)
+		{
+			Resize(b.Rows(),b.Cols());
+			for(enumerator i = 0; i < b.Rows(); ++i)
+				for(enumerator j = 0; j < b.Cols(); ++j)
+					(*this)(i,j) = b(i,j);
+			return *this;
+		}
+		/// Construct from matrix of another type.
+		/// @param other Another matrix of different type.
+		template<typename typeB>
+		AbstractMatrix(const AbstractMatrix<typeB> & b)
+		{
+			Resize(b.Rows(),b.Cols());
+			for(enumerator i = 0; i < b.Rows(); ++i)
+				for(enumerator j = 0; j < b.Cols(); ++j)
+					assign((*this)(i,j),b(i,j));
+			return *this;
+		}
+		/// Assign matrix of the same type.
+		/// @param other Another matrix of the same type.
+		/// @return Reference to matrix.
+		AbstractMatrix & operator =(AbstractMatrix const & other)
+		{
+			Resize(other.Rows(),other.Cols());
+			for(enumerator i = 0; i < other.Rows(); ++i)
+				for(enumerator j = 0; j < other.Cols(); ++j)
+					assign((*this)(i,j),other(i,j));
+			return *this;
+		}
+		/// Assign matrix of another type.
+		/// @param other Another matrix of different type.
+		/// @return Reference to matrix.
+		template<typename typeB>
+		AbstractMatrix & operator =(AbstractMatrix<typeB> const & other)
+		{
+			Resize(other.Rows(),other.Cols());
+			for(enumerator i = 0; i < other.Rows(); ++i)
+				for(enumerator j = 0; j < other.Cols(); ++j)
+					assign((*this)(i,j),other(i,j));
+			return *this;
+		}
+		/// Obtain number of rows.
+		/// @return Number of rows.
+		virtual enumerator Rows() const = 0;
+		/// Obtain number of columns.
+		/// @return Number of columns.
+		virtual enumerator Cols() const = 0;
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to element.
+		virtual Var & operator () (enumerator i, enumerator j) = 0;
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		virtual const Var & operator () (enumerator i, enumerator j) const = 0;
+		/// Resize the matrix into different size.
+		/// @param nrows New number of rows.
+		/// @param ncols New number of columns.
+		virtual void Resize(enumerator rows, enumerator cols) = 0;
+		/// Check all matrix entries for nans.
+		/// Also checks derivatives for matrices of variables.
 		bool CheckNans()
 		{
-			for(enumerator k = 0; k < n*m; ++k)
-				if( check_nans(space[k]) ) return true;
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					if( check_nans((*this)(i,j)) ) return true;
 			return false;
-		}
-		void RemoveRow(enumerator row)
-		{
-			for(enumerator k = row+1; k < n; ++k)
-			{
-				for(enumerator l = 0; l < m; ++l)
-					(*this)(k-1,l) = (*this)(k,l);
-			}
-			space.resize((n-1)*m);
-			--n;
-		}
-		void RemoveRows(enumerator first, enumerator last)
-		{
-			enumerator shift = last-first;
-			for(enumerator k = last+1; k < n; ++k)
-			{
-				for(enumerator l = 0; l < m; ++l)
-					(*this)(k-shift-1,l) = (*this)(k,l);
-			}
-			space.resize((n-shift)*m);
-			n-=shift;
-		}
-		void RemoveColumn(enumerator col)
-		{
-			Matrix<Var> tmp(n,m-1);
-			for(enumerator k = 0; k < n; ++k)
-			{
-				for(enumerator l = 0; l < col; ++l)
-					tmp(k,l) = (*this)(k,l);
-				for(enumerator l = col+1; l < m; ++l)
-					tmp(k,l-1) = (*this)(k,l);
-			}
-			this->Swap(tmp);
-		}
-		void RemoveColumns(enumerator first, enumerator last)
-		{
-			enumerator shift = last-first;
-			Matrix<Var> tmp(n,m-shift);
-			for(enumerator k = 0; k < n; ++k)
-			{
-				for(enumerator l = 0; l < first; ++l)
-					tmp(k,l) = (*this)(k,l);
-				for(enumerator l = last+1; l < m; ++l)
-					tmp(k,l-shift-1) = (*this)(k,l);
-			}
-			this->Swap(tmp);
-		}
-		void RemoveSubset(enumerator firstrow, enumerator lastrow, enumerator firstcol, enumerator lastcol)
-		{
-			enumerator shiftrow = lastrow-firstrow;
-			enumerator shiftcol = lastcol-firstcol;
-			Matrix<Var> tmp(n-shiftrow, m-shiftcol);
-			for(enumerator k = 0; k < firstrow; ++k)
-			{
-				for(enumerator l = 0; l < firstcol; ++l)
-					tmp(k,l) = (*this)(k,l);
-				for(enumerator l = lastcol+1; l < m; ++l)
-					tmp(k,l-shiftcol-1) = (*this)(k,l);
-			}
-			for(enumerator k = lastrow+1; k < n; ++k)
-			{
-				for(enumerator l = 0; l < firstcol; ++l)
-					tmp(k-shiftrow-1,l) = (*this)(k,l);
-				for(enumerator l = lastcol+1; l < m; ++l)
-					tmp(k-shiftrow-1,l-shiftcol-1) = (*this)(k,l);
-			}
-			this->Swap(tmp);
-		}
-		void Swap(Matrix & b)
-		{
-			space.swap(b.space);
-			std::swap(n,b.n);
-			std::swap(m,b.m);
 		}
 		/// Singular value decomposition.
 		/// Reconstruct matrix: A = U*Sigma*V.Transpose().
+		/// Source http://www.public.iastate.edu/~dicook/JSS/paper/code/svd.c
+		/// With few corrections for robustness.
 		/// @param U Left unitary matrix, U^T U = I.
 		/// @param Sigma Diagonal matrix with singular values.
 		/// @param V Right unitary matrix, not transposed.
 		/// @param order_singular_values
-		bool SVD(Matrix & U, Matrix & Sigma, Matrix & V, bool order_singular_values = true)
+		/// \warning Somehow result differ in auto-differential mode.
+		/// \todo Test implementation for auto-differentiation.
+		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true) const
 		{
 			int flag, i, its, j, jj, k, l, nm;
+			int n = Rows();
+			int m = Cols();
 			Var c, f, h, s, x, y, z;
 			Var g = 0.0, scale = 0.0;
 			INMOST_DATA_REAL_TYPE anorm = 0.0;
@@ -169,7 +166,6 @@ namespace INMOST
 			Sigma.Resize(m,m);
 			Sigma.Zero();
 			V.Resize(m,m);
-			
 			std::swap(n,m); //this how original algorithm takes it
 			// Householder reduction to bidiagonal form
 			for (i = 0; i < (int)n; i++)
@@ -434,183 +430,90 @@ namespace INMOST
 			std::swap(n,m);
 			return true;
 		}
-		Matrix() : space(0),n(0),m(0) {}
-		Matrix(Var * pspace, enumerator pn, enumerator pm) : space(pspace,pspace+pn*pm), n(pn), m(pm) {}
-		Matrix(enumerator pn, enumerator pm) : space(pn*pm), n(pn), m(pm) {}
-		Matrix(const Matrix & other) : space(other.n*other.m), n(other.n), m(other.m)
+		/// Set all the elements of the matrix to zero.
+		void Zero()
 		{
-			for(enumerator i = 0; i < n*m; ++i)
-				space[i] = other.space[i];
-		}
-		template<typename typeB>
-		Matrix(const Matrix<typeB> & other) : space(other.Cols()*other.Rows()), n(other.Rows()), m(other.Cols())
-		{
-			for(enumerator i = 0; i < n; ++i)
-				for(enumerator j = 0; j < m; ++j)
-					(*this)(i,j) = get_value(other(i,j));
-		}
-		~Matrix() {}
-		void Resize(enumerator nrows, enumerator mcols)
-		{
-			if( space.size() != mcols*nrows )
-				space.resize(mcols*nrows);
-			n = nrows;
-			m = mcols;
-		}
-		Matrix & operator =(Matrix const & other)
-		{
-			if( n*m != other.n*other.m ) space.resize(other.n*other.m);
-			for(enumerator i = 0; i < other.n*other.m; ++i)
-				space[i] = other.space[i];
-			n = other.n;
-			m = other.m;
-			return *this;
-		}
-		template<typename typeB>
-		Matrix & operator =(Matrix<typeB> const & other)
-		{
-			if( Cols()*Rows() != other.Cols()*other.Rows() ) space.resize(other.Cols()*other.Rows());
-			for(enumerator i = 0; i < other.Rows(); ++i)
-				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i,j),other(i,j));
-			n = other.Rows();
-			m = other.Cols();
-			return *this;
-		}
-		// i is in [0,n] - row index
-		// j is in [0,m] - column index
-		Var & operator()(enumerator i, enumerator j)
-		{
-			assert(i >= 0 && i < n);
-			assert(j >= 0 && j < m);
-			assert(i*m+j < n*m); //overflow check?
-			return space[i*m+j];
-		}
-		const Var & operator()(enumerator i, enumerator j) const
-		{
-			assert(i >= 0 && i < n);
-			assert(j >= 0 && j < m);
-			assert(i*m+j < n*m); //overflow check?
-			return space[i*m+j];
-		}
-		Matrix operator-() const
-		{
-			Matrix ret(n,m);
-			for(enumerator k = 0; k < n*m; ++k) ret.space[k] = -space[k];
-			return ret;
-		}
-		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator-(const Matrix<typeB> & other) const
-		{
-			assert(Rows() == other.Rows());
-			assert(Cols() == other.Cols());
-			Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = (*this)(i,j)-other(i,j);
-			return ret;
+					(*this)(i,j) = 0.0;
 		}
-		Matrix & operator-=(const Matrix & other)
-		{
-			assert(n == other.n);
-			assert(m == other.m);
-			for(enumerator k = 0; k < n*m; ++k) space[k] -= other.space[k];
-			return *this;
-		}
+		/// Transpose the current matrix.
+		/// @return Transposed matrix.
+		Matrix<Var> Transpose() const;
+		///Exchange contents of two matrices.
+		virtual void Swap(AbstractMatrix<Var> & b);
+		/// Unary minus. Change sign of each element of the matrix.
+		Matrix<Var> operator-() const;
+		/// Subtract a matrix.
+		/// @param other The matrix to be subtracted.
+		/// @return Difference of current matrix with another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator+(const Matrix<typeB> & other) const
-		{
-			assert(Rows() == other.Rows());
-			assert(Cols() == other.Cols());
-			Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = (*this)(i,j)+other(i,j);
-			return ret;
-		}
-		Matrix & operator+=(const Matrix & other)
-		{
-			assert(n == other.n);
-			assert(m == other.m);
-			for(enumerator k = 0; k < n*m; ++k) space[k] += other.space[k];
-			return *this;
-		}
+		Matrix<typename Promote<Var,typeB>::type> operator-(const AbstractMatrix<typeB> & other) const;
+		/// Subtract a matrix and store result in the current.
+		/// @param other The matrix to be subtracted.
+		/// @return Reference to the current matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator*(typeB coef) const
-		{
-			Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j) ret(i,j) = (*this)(i,j)*coef;
-			return ret;
-		}
-		Matrix & operator*=(Var coef)
-		{
-			for(enumerator k = 0; k < n*m; ++k) space[k] *= coef;
-			return *this;
-		}
+		AbstractMatrix & operator-=(const AbstractMatrix<typeB> & other);
+		/// Add a matrix.
+		/// @param other The matrix to be added.
+		/// @return Sum of current matrix with another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator/(typeB coef) const
-		{
-			Matrix<typename Promote<Var,typeB>::type> ret(n,m); //check RVO
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j) ret(i,j) = (*this)(i,j)/coef;
-			return ret;
-		}
-		Matrix & operator/=(Var coef)
-		{
-			for(enumerator k = 0; k < n*m; ++k) space[k] /= coef;
-			return *this;
-		}
+		Matrix<typename Promote<Var,typeB>::type> operator+(const AbstractMatrix<typeB> & other) const;
+		/// Add a matrix and store result in the current.
+		/// @param other The matrix to be added.
+		/// @return Reference to the current matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator*(const Matrix<typeB> & other) const
-		{
-			assert(Cols() == other.Rows());
-			Matrix<typename Promote<Var,typeB>::type> ret(Rows(),other.Cols()); //check RVO
-			for(enumerator i = 0; i < Rows(); ++i) //loop rows
-			{
-				for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
-				{
-					typename Promote<Var,typeB>::type tmp = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-						tmp += (*this)(i,k)*other(k,j);
-					ret(i,j) = tmp;
-				}
-			}
-			return ret;
-		}
-		/// performs A*B^{-1}
-		/// checks existence of B^{-1} only in debug mode.
+		AbstractMatrix & operator+=(const AbstractMatrix<typeB> & other);
+		/// Multiply the matrix by another matrix.
+		/// @param other Matrix to be multiplied from right.
+		/// @return Matrix multipled by another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator/(const Matrix<typeB> & other) const
+		Matrix<typename Promote<Var,typeB>::type> operator*(const AbstractMatrix<typeB> & other) const;
+		/// Multiply matrix with another matrix in-place.
+		/// @param B Another matrix to the right in multiplication.
+		/// @return Reference to current matrix.
+		template<typename typeB>
+		AbstractMatrix & operator*=(const AbstractMatrix<typeB> & B);
+		/// Multiply the matrix by a coefficient.
+		/// @param coef Coefficient.
+		/// @return Matrix multiplied by the coefficient.
+		template<typename typeB>
+		Matrix<typename Promote<Var,typeB>::type> operator*(typeB coef) const;
+		/// Multiply the matrix by the coefficient of the same type and store the result.
+		/// @param coef Coefficient.
+		/// @return Reference to the current matrix.
+		template<typename typeB>
+		AbstractMatrix & operator*=(typeB coef);
+		/// Divide the matrix by a coefficient of a different type.
+		/// @param coef Coefficient.
+		/// @return Matrix divided by the coefficient.
+		template<typename typeB>
+		Matrix<typename Promote<Var,typeB>::type>
+		operator/(typeB coef) const;
+		/// Divide the matrix by the coefficient of the same type and store the result.
+		/// @param coef Coefficient.
+		/// @return Reference to the current matrix.
+		template<typename typeB>
+		AbstractMatrix &
+		operator/=(typeB coef);
+		/// Performs B^{-1}*A, multiplication by inverse matrix from left.
+		/// @param other Matrix to be inverted and multiplied from left.
+		/// @return Multiplication of current matrix by inverse of another
+		/// matrix from left and boolean.
+		/// If boolean is true, then the matrix was inverted successfully.
+		/// \todo (test) Use Solve here.
+		template<typename typeB>
+		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		operator/(const AbstractMatrix<typeB> & other) const
 		{
-			std::pair<Matrix<typeB>,bool> other_inv = other.Invert();
-			assert(other_inv.second);
-			assert(Cols() == other_inv.Rows());
-			Matrix<typename Promote<Var,typeB>::type> ret(n,other.m); //check RVO
-			for(enumerator i = 0; i < Rows(); ++i) //loop rows
-			{
-				for(enumerator j = 0; j < other_inv.Cols(); ++j) //loop columns
-				{
-					typename Promote<Var,typeB>::type tmp = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-						tmp += (*this)(i,k)*other_inv.first(k,j);
-					ret(i,j) = tmp;
-				}
-			}
-			return ret;
+			return other.Solve(*this);
 		}
-		Matrix Transpose() const
-		{
-			Matrix ret(m,n);
-			for(enumerator i = 0; i < n; ++i)
-			{
-				for(enumerator j = 0; j < m; ++j)
-				{
-					ret(j,i) = (*this)(i,j);
-				}
-			}
-			return ret;
-		}
+		/// Kronecker product, latex symbol \otimes.
+		/// @param other Matrix on the right of the Kronecker product.
+		/// @return Result of the Kronecker product of current and another matrix.
+		template<typename typeB>
+		Matrix<typename Promote<Var,typeB>::type>
+		Kronecker(const AbstractMatrix<typeB> & other) const;
 		/// Inverts matrix using Crout-LU decomposition with full pivoting for
 		/// maximum element. Works well for non-singular matrices, for singular
 		/// matrices look see Matrix::PseudoInvert.
@@ -618,154 +521,45 @@ namespace INMOST
 		/// @return A pair of inverse matrix and boolean. If boolean is true,
 		/// then the matrix was inverted successfully.
 		/// @see Matrix::PseudoInvert.
+		/// \todo (test) Activate and test implementation with Solve.
+		std::pair<Matrix<Var>,bool> Invert(bool print_fail = false) const;
+		/// Finds X in A*X=B, where A and B are matrices.
+		/// Converts system into A^T*A*X=A^T*B.
+		/// Inverts matrix A^T*A using Crout-LU decomposition with full pivoting for
+		/// maximum element. Works well for non-singular matrices, for singular
+		/// matrices see Matrix::PseudoInvert.
+		/// @param print_fail Verbose output for singular matrices.
+		/// @return A pair of inverse matrix and boolean. If boolean is true,
+		/// then the matrix was inverted successfully.
+		/// @see Matrix::PseudoInvert.
+		/// \warning Number of rows in matrices A and B should match.
 		/// \todo
-		/// 1. Introduce Matrix::Solve, that uses the same algorithm with
-		///    right hand side, a matrix. Then Matrix::Invert is Matrix::Solve
-		///    with unit matrix.
+		/// 1. Test implementation.
 		/// 2. Maximum product transversal + block pivoting instead of pivoting
-		///    by maxium element.
-		std::pair<Matrix,bool> Invert(bool print_fail = false) const
-		{
-			std::pair<Matrix,bool> ret = std::make_pair(Matrix(m,n),true);
-			Matrix At = Transpose(); //m by n matrix
-			Matrix AtB = At; //m by n matrix
-			Matrix AtA = At*(*this); //m by m matrix
-			enumerator * order = new enumerator [m];
-			for(enumerator i = 0; i < m; ++i) order[i] = i;
-			for(enumerator i = 0; i < m; i++)
-			{
-				enumerator maxk = i, maxq = i, temp2;
-				Var max, temp;
-				max = fabs(AtA(maxk,maxq));
-				//Find best pivot
-				for(enumerator k = i; k < m; k++) // over rows
-				{
-					for(enumerator q = i; q < m; q++) // over columns
-					{
-						if( fabs(AtA(k,q)) > max )
-						{
-							max = fabs(AtA(k,q));
-							maxk = k;
-							maxq = q;
-						}
-					}
-				}
-				//Exchange rows
-				if( maxk != i )
-				{
-					for(enumerator q = 0; q < m; q++) // over columns of A
-					{
-						temp = AtA(maxk,q);
-						AtA(maxk,q) = AtA(i,q);
-						AtA(i,q) = temp;
-					}
-					//exchange rhs
-					for(enumerator q = 0; q < n; q++) // over columns of B
-					{
-						temp = AtB(maxk,q);
-						AtB(maxk,q) = AtB(i,q);
-						AtB(i,q) = temp;
-					}
-				}
-				//Exchange columns
-				if( maxq != i )
-				{
-					for(enumerator k = 0; k < m; k++) //over rows
-					{
-						temp = AtA(k,maxq);
-						AtA(k,maxq) = AtA(k,i);
-						AtA(k,i) = temp;
-					}
-					//remember order in sol
-					{
-						temp2 = order[maxq];
-						order[maxq] = order[i];
-						order[i] = temp2;
-					}
-				}
-				
-				if( fabs(AtA(i,i)) < 1.0e-54 )
-				{
-					bool ok = true;
-					for(enumerator k = 0; k < n; k++) // over columns of B
-					{
-						if( fabs(AtB(i,k)/1.0e-54) > 1 )
-						{
-							ok = false;
-							break;
-						}
-					}
-					if( ok ) AtA(i,i) = AtA(i,i) < 0.0 ? - 1.0e-12 : 1.0e-12;
-					else
-					{
-						if( print_fail ) std::cout << "Failed to invert matrix" << std::endl;
-						ret.second = false;
-						delete [] order;
-						return ret;
-					}
-				}
-				for(enumerator k = i+1; k < m; k++)
-				{
-					AtA(i,k) /= AtA(i,i);
-					AtA(k,i) /= AtA(i,i);
-				}
-				for(enumerator k = i+1; k < m; k++)
-					for(enumerator q = i+1; q < m; q++)
-					{
-						AtA(k,q) -= AtA(k,i) * AtA(i,i) * AtA(i,q);
-					}
-				for(enumerator k = 0; k < n; k++)
-				{
-					for(enumerator j = i+1; j < m; j++) //iterate over columns of L
-					{
-						AtB(j,k) -= AtB(i,k) * AtA(j,i);
-					}
-					AtB(i,k) /= AtA(i,i);
-				}
-			}
-			
-			for(enumerator k = 0; k < n; k++)
-			{
-				for(enumerator i = m; i-- > 0; ) //iterate over rows of U
-					for(enumerator j = i+1; j < m; j++)
-					{
-						AtB(i,k) -= AtB(j,k) * AtA(i,j);
-					}
-				for(enumerator i = 0; i < m; i++)
-					ret.first(order[i],k) = AtB(i,k);
-			}
-			delete [] order;
-			return ret;
-		}
-		void Zero()
-		{
-			for(enumerator i = 0; i < n*m; ++i) space[i] = 0.0;
-		}
+		///    by maximum element.
+		template<typename typeB>
+		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		Solve(const AbstractMatrix<typeB> & B, bool print_fail = false) const;
+		/// Calculate sum of the diagonal elements of the matrix.
+		/// @return Trace of the matrix.
 		Var Trace() const
 		{
-			assert(n == m);
+			assert(Cols() == Rows());
 			Var ret = 0.0;
-			for(enumerator i = 0; i < n; ++i) ret += (*this)(i,i);
+			for(enumerator i = 0; i < Rows(); ++i) ret += (*this)(i,i);
 			return ret;
 		}
-		Var * data() {return space.data();}
-		const Var * data() const {return space.data();}
-		enumerator Rows() const {return n;}
-		enumerator Cols() const {return m;}
-		enumerator & Rows() {return n;}
-		enumerator & Cols() {return m;}
+		/// Output matrix to screen.
+		/// Does not output derivatices.
+		/// @param threshold Elements smaller then the number are considered to be zero.
 		void Print(INMOST_DATA_REAL_TYPE threshold = 1.0e-10) const
 		{
-			for(enumerator k = 0; k < n; ++k)
+			for(enumerator k = 0; k < Rows(); ++k)
 			{
-				for(enumerator l = 0; l < m; ++l)
+				for(enumerator l = 0; l < Cols(); ++l)
 				{
 					if( fabs(get_value((*this)(k,l))) > threshold )
-#if defined(USE_AUTODIFF)
 						std::cout << std::setw(10) << get_value((*this)(k,l));
-#else
-					std::cout << std::setw(10) << (*this)(k,l);
-#endif
 					else
 						std::cout << std::setw(10) << 0;
 					std::cout << " ";
@@ -773,39 +567,352 @@ namespace INMOST
 				std::cout << std::endl;
 			}
 		}
+		/// Check if the matrix is symmetric.
+		/// @return Returns true if the matrix is symmetric, otherwise false.
 		bool isSymmetric() const
 		{
-			if( n != m ) return false;
-			for(enumerator k = 0; k < n; ++k)
+			if( Rows() != Cols() ) return false;
+			for(enumerator k = 0; k < Rows(); ++k)
 			{
-				for(enumerator l = k+1; l < n; ++l)
+				for(enumerator l = k+1; l < Rows(); ++l)
 					if( fabs((*this)(k,l)-(*this)(l,k)) > 1.0e-7 )
 						return false;
 			}
 			return true;
 		}
+		/// Computes dot product by summing up multiplication of entries with the
+		/// same indices in the current and the provided matrix.
+		/// @param other Provided matrix.
+		/// @return Dot product of two matrices.
 		template<typename typeB>
-		typename Promote<Var,typeB>::type DotProduct(const Matrix<typeB> & other) const
+		typename Promote<Var,typeB>::type
+		DotProduct(const AbstractMatrix<typeB> & other) const
 		{
 			assert(Cols() == other.Cols());
 			assert(Rows() == other.Rows());
 			typename Promote<Var,typeB>::type ret = 0.0;
-			for(enumerator i = 0; i < n; ++i)
-				for(enumerator j = 0; j < m; ++j)
+			for(enumerator i = 0; i < Cols(); ++i)
+				for(enumerator j = 0; j < Rows(); ++j)
 					ret += ((*this)(i,j))*other(i,j);
 			return ret;
 		}
+		/// Computes dot product by summing up multiplication of entries with the
+		/// same indices in the current and the provided matrix.
+		/// @param other Provided matrix.
+		/// @return Dot product of two matrices.
 		template<typename typeB>
-		typename Promote<Var,typeB>::type operator ^(const Matrix<typeB> & other) const
+		typename Promote<Var,typeB>::type operator ^(const AbstractMatrix<typeB> & other) const
 		{
 			return DotProduct(other);
 		}
-		Var FrobeniusNorm()
+		/// Computes frobenious norm of the matrix.
+		/// @return Frobenius norm of the matrix.
+		Var FrobeniusNorm() const
 		{
 			Var ret = 0;
-			for(enumerator i = 0; i < n*m; ++i) ret += space[i]*space[i];
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret += (*this)(i,j)*(*this)(i,j);
 			return sqrt(ret);
 		}
+		/// Calculates Moore-Penrose pseudo-inverse of the matrix.
+		/// @param tol Thershold for singular values. Singular values smaller
+		///                      then threshold are considered to be zero.
+		/// @param print_fail Verbose output if singular value decomposition
+		///                   algorithm has failed.
+		/// @return A pair of pseudo-inverse matrix and boolean. If boolean is true,
+		///         then the matrix was inverted successfully.
+		std::pair<Matrix<Var>,bool> PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, bool print_fail = false) const;
+		/// Solves the system of equations of the form A*X=B, with A and B matrices.
+		/// Uses Moore-Penrose pseudo-inverse of the matrix A and calculates X = A^+*B.
+		/// @param B Matrix at the right hand side.
+		/// @param tol Thershold for singular values. Singular values smaller
+		///                      then threshold are considered to be zero.
+		/// @param print_fail Verbose output if singular value decomposition
+		///                   algorithm has failed.
+		/// @return A pair of the solution matrix X and boolean. If boolean is true,
+		///         then the matrix was inverted successfully.
+		template<typename typeB>
+		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		PseudoSolve(const AbstractMatrix<typeB> & B, INMOST_DATA_REAL_TYPE tol = 0, bool print_fail = false) const;
+		/// Extract submatrix of a matrix.
+		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
+		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
+		/// and j in [jbeg,jend).
+		/// @param ibeg Starting row in the original matrix.
+		/// @param iend Last row (excluded) in the original matrix.
+		/// @param jbeg Starting column in the original matrix.
+		/// @param jend Last column (excluded) in the original matrix.
+		/// @return Submatrix of the original matrix.
+		Matrix<Var> ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const;
+		/// Change representation of the matrix into matrix of another size.
+		/// Useful to change representation from matrix into vector and back.
+		/// Replaces original number of columns and rows with a new one.
+		/// @return Matrix with same entries and provided number of rows and columns.
+		Matrix<Var> Repack(enumerator rows, enumerator cols) const;
+	};
+	
+	/// Class for linear algebra operations on dense matrices.
+	/// Matrix with n rows and m columns.
+	///
+	///   __m__
+	///  |     |
+	/// n|     |
+	///  |_____|
+	///
+	/// \todo:
+	/// 1. expression templates for operations
+	///    (???) how to for multiplication?
+	///    efficient multiplication would require all the
+	///    matrix elements to be precomputed.
+	///    consider number 5 instead.
+	/// 2. (ok) template matrix type for AD variables
+	/// 3. (ok,test) template container type for data storage.
+	/// 4. (ok,test) option for wrapper container around provided data storage.
+	///    (to perform matrix operations with existing data)
+	/// 5. consider multi-threaded stack to get space for
+	///    matrices for local operations and returns.
+	/// 6. class SubMatrix for fortran-like access to matrix.
+	/// 7. Uniform implementation of algorithms for Matrix and Submatrix.
+	///    to achieve: make abdstract class with abstract element access
+	///    operator, make matrix and submatrix ancestors of that class
+	template<typename Var, typename storage_type>
+	class Matrix : public AbstractMatrix<Var>
+	{
+	public:
+		typedef unsigned enumerator; //< Integer type for indexes.
+	protected:
+		//array<Var> space; //< Array of row-wise stored elements.
+		storage_type space; //< Array of row-wise stored elements.
+		enumerator n; //< Number of rows.
+		enumerator m; //< Number of columns.
+	public:
+		/// Erase single row.
+		/// @param row Position of row, should be from 0 to Matrix::Rows()-1.
+		void RemoveRow(enumerator row)
+		{
+			assert(row < n);
+			for(enumerator k = row+1; k < n; ++k)
+			{
+				for(enumerator l = 0; l < m; ++l)
+					(*this)(k-1,l) = (*this)(k,l);
+			}
+			space.resize((n-1)*m);
+			--n;
+		}
+		/// Erase multiple rows. Assumes first <= last.
+		/// If first == last, then no row is deleted.
+		/// @param first Position of the first row, should be from 0 to Matrix::Rows()-1.
+		/// @param last Position behind the last row, should be from 0 to Matrix::Rows().
+		/// \todo check
+		void RemoveRows(enumerator first, enumerator last)
+		{
+			assert(first < n);
+			assert(last <= n);
+			assert(first <= last);
+			enumerator shift = last-first;
+			for(enumerator k = last; k < n; ++k)
+			{
+				for(enumerator l = 0; l < m; ++l)
+					(*this)(k-shift,l) = (*this)(k,l);
+			}
+			space.resize((n-shift)*m);
+			n-=shift;
+		}
+		/// Erase single column.
+		/// @param row Position of column, should be from 0 to Matrix::Cols()-1.
+		void RemoveColumn(enumerator col)
+		{
+			assert(col < m);
+			Matrix<Var> tmp(n,m-1);
+			for(enumerator k = 0; k < n; ++k)
+			{
+				for(enumerator l = 0; l < col; ++l)
+					tmp(k,l) = (*this)(k,l);
+				for(enumerator l = col+1; l < m; ++l)
+					tmp(k,l-1) = (*this)(k,l);
+			}
+			this->Swap(tmp);
+		}
+		/// Erase multiple columns. Assumes first <= last.
+		/// If first == last, then no column is deleted.
+		/// @param first Position of the first column, should be from 0 to Matrix::Cols()-1.
+		/// @param last Position behind the last column, should be from 0 to Matrix::Cols().
+		/// \todo check
+		void RemoveColumns(enumerator first, enumerator last)
+		{
+			assert(first < m);
+			assert(last <= m);
+			assert(first <= last);
+			enumerator shift = last-first;
+			Matrix<Var> tmp(n,m-shift);
+			for(enumerator k = 0; k < n; ++k)
+			{
+				for(enumerator l = 0; l < first; ++l)
+					tmp(k,l) = (*this)(k,l);
+				for(enumerator l = last; l < m; ++l)
+					tmp(k,l-shift) = (*this)(k,l);
+			}
+			this->Swap(tmp);
+		}
+		/// Erase part of the matrix.
+		/// @param firstrow Position of the first row, should be from 0 to Matrix::Rows()-1.
+		/// @param lastrow Position behind the last row, should be from 0 to Matrix::Rows().
+		/// @param firstcol Position of the first column, should be from 0 to Matrix::Cols()-1.
+		/// @param lastcol Position behind the last column, should be from 0 to Matrix::Cols().
+		void RemoveSubset(enumerator firstrow, enumerator lastrow, enumerator firstcol, enumerator lastcol)
+		{
+			enumerator shiftrow = lastrow-firstrow;
+			enumerator shiftcol = lastcol-firstcol;
+			Matrix<Var> tmp(n-shiftrow, m-shiftcol);
+			for(enumerator k = 0; k < firstrow; ++k)
+			{
+				for(enumerator l = 0; l < firstcol; ++l)
+					tmp(k,l) = (*this)(k,l);
+				for(enumerator l = lastcol; l < m; ++l)
+					tmp(k,l-shiftcol) = (*this)(k,l);
+			}
+			for(enumerator k = lastrow; k < n; ++k)
+			{
+				for(enumerator l = 0; l < firstcol; ++l)
+					tmp(k-shiftrow,l) = (*this)(k,l);
+				for(enumerator l = lastcol; l < m; ++l)
+					tmp(k-shiftrow,l-shiftcol) = (*this)(k,l);
+			}
+			this->Swap(tmp);
+		}
+		///Exchange contents of two matrices.
+		void Swap(AbstractMatrix<Var> & b)
+		{
+			if( dynamic_cast<Matrix<Var,storage_type> *>(&b) != NULL )
+			{
+				Matrix<Var,storage_type> & bb = dynamic_cast<Matrix<Var,storage_type> &>(b);
+				space.swap(bb.space);
+				std::swap(n,bb.n);
+				std::swap(m,bb.m);
+			}
+			else AbstractMatrix<Var>::Swap(b);
+		}
+		/// Construct empty matrix.
+		Matrix() : space(), n(0), m(0) {}
+		/// Construct the matrix from provided array and sizes.
+		/// @param pspace Array of elements of the matrix, stored in row-wise format.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		Matrix(const Var * pspace, enumerator pn, enumerator pm) : space(pspace,pspace+pn*pm), n(pn), m(pm) {}
+		/// Construct the matrix with the provided storage.
+		/// Could be used to wrap existing array.
+		/// @param pspace Storage of elements of the matrix, stored in row-wise format.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		/// \todo Do we need reference for pspace or just pspace?
+		Matrix(storage_type pspace, enumerator pn, enumerator pm) : space(pspace), n(pn), m(pm) {}
+		/// Construct a matrix with provided sizes.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		/// \warning The matrix does not necessery have zero entries.
+		Matrix(enumerator pn, enumerator pm) : space(pn*pm), n(pn), m(pm) {}
+		/// Copy matrix.
+		/// @param other Another matrix of the same type.
+		Matrix(const Matrix & other) : space(other.n*other.m), n(other.n), m(other.m)
+		{
+			for(enumerator i = 0; i < n*m; ++i)
+				space[i] = other.space[i];
+		}
+		/// Construct matrix from matrix of different type.
+		/// Uses assign function declared in inmost_expression.h.
+		/// Copies derivative information if possible.
+		/// @param other Another matrix of different type.
+		template<typename typeB>
+		Matrix(const AbstractMatrix<typeB> & other) : space(other.Cols()*other.Rows()), n(other.Rows()), m(other.Cols())
+		{
+			for(enumerator i = 0; i < n; ++i)
+				for(enumerator j = 0; j < m; ++j)
+					assign((*this)(i,j),other(i,j));
+		}
+		/// Delete matrix.
+		~Matrix() {}
+		/// Resize the matrix into different size.
+		/// @param nrows New number of rows.
+		/// @param ncols New number of columns.
+		void Resize(enumerator nrows, enumerator mcols)
+		{
+			if( space.size() != mcols*nrows )
+				space.resize(mcols*nrows);
+			n = nrows;
+			m = mcols;
+		}
+		/// Assign matrix of the same type.
+		/// @param other Another matrix of the same type.
+		/// @return Reference to matrix.
+		Matrix & operator =(Matrix const & other)
+		{
+			if( n*m != other.n*other.m )
+				space.resize(other.n*other.m);
+			for(enumerator i = 0; i < other.n*other.m; ++i)
+				space[i] = other.space[i];
+			n = other.n;
+			m = other.m;
+			return *this;
+		}
+		/// Assign matrix of another type.
+		/// @param other Another matrix of different type.
+		/// @return Reference to matrix.
+		template<typename typeB>
+		Matrix & operator =(AbstractMatrix<typeB> const & other)
+		{
+			if( Cols()*Rows() != other.Cols()*other.Rows() )
+				space.resize(other.Cols()*other.Rows());
+			for(enumerator i = 0; i < other.Rows(); ++i)
+				for(enumerator j = 0; j < other.Cols(); ++j)
+					assign((*this)(i,j),other(i,j));
+			n = other.Rows();
+			m = other.Cols();
+			return *this;
+		}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to element.
+		Var & operator()(enumerator i, enumerator j)
+		{
+			assert(i >= 0 && i < n);
+			assert(j >= 0 && j < m);
+			assert(i*m+j < n*m); //overflow check?
+			return space[i*m+j];
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		const Var & operator()(enumerator i, enumerator j) const
+		{
+			assert(i >= 0 && i < n);
+			assert(j >= 0 && j < m);
+			assert(i*m+j < n*m); //overflow check?
+			return space[i*m+j];
+		}
+		
+		/// Return raw pointer to matrix data, stored in row-wise format.
+		/// @return Pointer to data.
+		Var * data() {return space.data();}
+		/// Return raw pointer to matrix data without right of change,
+		/// stored in row-wise format.
+		/// @return Pointer to constant data.
+		const Var * data() const {return space.data();}
+		/// Obtain number of rows.
+		/// @return Number of rows.
+		enumerator Rows() const {return n;}
+		/// Obtain number of columns.
+		/// @return Number of columns.
+		enumerator Cols() const {return m;}
+		/// Obtain number of rows.
+		/// @return Reference to number of rows.
+		enumerator & Rows() {return n;}
+		/// Obtain number of rows.
+		/// @return Reference to number of columns.
+		enumerator & Cols() {return m;}
 		/// Convert values in array into square matrix.
 		/// Supports the following representation, depending on the size
 		/// of input array and size of side of final tensors' matrix:
@@ -941,22 +1048,30 @@ namespace INMOST
 			}
 			return Kc;
 		}
-		///Retrive vector in matrix form from array.
-		///
-		static Matrix<Var> FromVector(Var * n, enumerator size)
+		/// Create column-vector in matrix form from array.
+		/// @param r Array of elements of the vector.
+		/// @param size Size of the vector.
+		/// @return Vector with contents of the array.
+		static Matrix FromVector(Var * r, enumerator size)
 		{
-			return Matrix(n,size,1);
+			return Matrix(r,size,1);
 		}
-		///Create diagonal matrix from array
-		static Matrix<Var> FromDiagonal(Var * r, enumerator size)
+		/// Create diagonal matrix from array
+		/// @param r Array of diagonal elements.
+		/// @param size Size of the matrix.
+		/// @return Matrix with diagonal defined by array, other elements are zero.
+		static Matrix FromDiagonal(Var * r, enumerator size)
 		{
 			Matrix ret(size,size);
 			ret.Zero();
 			for(enumerator k = 0; k < size; ++k) ret(k,k) = r[k];
 			return ret;
 		}
-		///Create diagonal matrix from array of inversed values
-		static Matrix<Var> FromDiagonalInverse(Var * r, enumerator size)
+		/// Create diagonal matrix from array of values that have to be inversed.
+		/// @param r Array of diagonal elements.
+		/// @param size Size of the matrix.
+		/// @return Matrix with diagonal defined by inverse of array elements.
+		static Matrix FromDiagonalInverse(Var * r, enumerator size)
 		{
 			Matrix ret(size,size);
 			ret.Zero();
@@ -1041,8 +1156,8 @@ namespace INMOST
 			return ret;
 		}
 		
-		/// Joint diagonalization algorithm by Cardoso
-		/// http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
+		/// Joint diagonalization algorithm by Cardoso.
+		/// Source http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
 		/// Current matrix should have size n by n*m
 		/// And represent concatination of m n by n matrices.
 		/// Current matrix is replaced by diagonalized matrices.
@@ -1118,62 +1233,507 @@ namespace INMOST
 			} while( repeat );
 			return V;
 		}
-		/// Extract submatrix of a matrix.
+		/// Extract submatrix of a matrix for in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
 		/// and j in [jbeg,jend).
-		/// @param ibeg Starting row in the original matrix.
-		/// @param jbeg Starting column in the original matrix.
-		/// @param iend Last row (excluded) in the original matrix.
-		/// @param jend Last column (excluded) in the original matrix.
+		/// @param first_row Starting row in the original matrix.
+		/// @param last_row Last row (excluded) in the original matrix.
+		/// @param first_col Starting column in the original matrix.
+		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		Matrix SubMatrix(enumerator ibeg, enumerator jbeg, enumerator iend, enumerator jend)
+		SubMatrix<Var,storage_type> MakeSubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+	};
+	/// This class allows for in-place operations on submatrix of the matrix elements.
+	template<typename Var, typename Storage>
+	class SubMatrix : public AbstractMatrix<Var>
+	{
+	public:
+		typedef unsigned enumerator; //< Integer type for indexes.
+	private:
+		Matrix<Var,Storage> * M;
+		enumerator brow; //< First row in matrix M.
+		enumerator erow; //< Last row in matrix M.
+		enumerator bcol; //< First column in matrix M.
+		enumerator ecol; //< Last column in matrix M.
+	public:
+		/// Number of rows in submatrix.
+		/// @return Number of rows.
+		enumerator Rows() const {return erow-brow;}
+		/// Number of columns in submatrix.
+		/// @return Number of columns.
+		enumerator Cols() const {return ecol-bcol;}
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param first_row First row in the matrix.
+		/// @param last_row Last row in the matrix.
+		/// @param first_column First column in the matrix.
+		/// @param last_column Last column in the matrix.
+		SubMatrix(Matrix<Var,Storage> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
+		{}
+		SubMatrix(const SubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
+		/// Assign matrix of another type to submatrix.
+		/// @param other Another matrix of different type.
+		/// @return Reference to current submatrix.
+		template<typename typeB>
+		SubMatrix & operator =(AbstractMatrix<typeB> const & other)
 		{
-			Matrix ret(iend-ibeg,jend-jbeg);
-			for(enumerator i = ibeg; i < iend; ++i)
-			{
-				for(enumerator j = jbeg; j < jend; ++j)
-					ret(i-ibeg,j-jbeg) = (*this)(i,j);
-			}
+			assert( Cols() == other.Cols() );
+			assert( Rows() == other.Rows() );
+			for(enumerator i = 0; i < other.Rows(); ++i)
+				for(enumerator j = 0; j < other.Cols(); ++j)
+					assign((*this)(i,j),other(i,j));
+			return *this;
+		}
+		/// Assign submatrix of another type to submatrix.
+		/// @param other Another submatrix of different type.
+		/// @return Reference to current submatrix.
+		template<typename typeB,typename storageB>
+		SubMatrix & operator =(SubMatrix<typeB,storageB> const & other)
+		{
+			assert( Cols() == other.Cols() );
+			assert( Rows() == other.Rows() );
+			for(enumerator i = 0; i < other.Rows(); ++i)
+				for(enumerator j = 0; j < other.Cols(); ++j)
+					assign((*this)(i,j),other(i,j));
+			return *this;
+		}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to element.
+		Var & operator()(enumerator i, enumerator j)
+		{
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
+			return (*M)(i+brow,j+bcol);
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		const Var & operator()(enumerator i, enumerator j) const
+		{
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
+			return (*M)(i+brow,j+bcol);
+		}
+		/// Convert submatrix into matrix.
+		/// Note, that modifying returned matrix does
+		/// not affect elements of the submatrix or original matrix
+		/// used to create submatrix.
+		/// @return Matrix with same entries as submatrix.
+		Matrix<Var> MakeMatrix()
+		{
+			Matrix<Var> ret(Rows(),Cols());
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret(i,j) = (*this)(i,j);
 			return ret;
 		}
-		/// Change representation of the matrix into matrix of another size.
-		/// Useful to change representation from matrix into vector and back.
-		/// Replaces original number of columns and rows with a new one.
-		/// @return Matrix with same entries and provided number of rows and columns.
-		Matrix Repack(enumerator rows, enumerator cols)
+		/// This is a stub function to fulfill abstract
+		/// inheritance. SubMatrix cannot change it's size,
+		/// since it just points to a part of the original matrix.
+		void Resize(enumerator rows, enumerator cols)
 		{
-			assert(n*m==rows*cols);
-			Matrix ret(*this);
-			ret.n = rows;
-			ret.m = cols;
-			return ret;
-		}
-		/// Calculates Moore-Penrose psedo-inverse of the matrix.
-		/// @param tol Thershold for singular values. Singular values smaller
-		///                      then threshold are considered to be zero.
-		/// @param print_fail Verbose output if singular value decomposition
-		///                   algorithm has failed.
-		/// @return A pair of psedo-inverse matrix and boolean. If boolean is true,
-		///         then the matrix was inverted successfully.
-		std::pair<Matrix,bool> PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, bool print_fail = false)
-		{
-			std::pair<Matrix,bool> ret = std::make_pair(Matrix(m,n),true);
-			Matrix U,S,V;
-			ret.second = SVD(U,S,V);
-			if( print_fail && !ret.second )
-				std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
-			for(int k = 0; k < S.Cols(); ++k)
-			{
-				if( S(k,k) > tol )
-					S(k,k) = 1.0/S(k,k);
-				else
-					S(k,k) = 0.0;
-			}
-			ret.first = V*S*U.Transpose();
-			return ret;
+			assert(Cols() == cols);
+			assert(Rows() == rows);
 		}
 	};
+	
+	template<typename Var>
+	Matrix<Var>
+	AbstractMatrix<Var>::Transpose() const
+	{
+		Matrix<Var> ret(Cols(),Rows());
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				ret(j,i) = (*this)(i,j);
+		return ret;
+	}
+	
+	template<typename Var>
+	void
+	AbstractMatrix<Var>::Swap(AbstractMatrix<Var> & b)
+	{
+		Matrix<Var> tmp = b;
+		b = (*this);
+		(*this) = tmp;
+	}
+	
+	template<typename Var>
+	Matrix<Var>
+	AbstractMatrix<Var>::operator-() const
+	{
+		Matrix<Var> ret(Rows(),Cols());
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				ret(i,j) = -(*this)(i,j);
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type>
+	AbstractMatrix<Var>::operator-(const AbstractMatrix<typeB> & other) const
+	{
+		assert(Rows() == other.Rows());
+		assert(Cols() == other.Cols());
+		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				ret(i,j) = (*this)(i,j)-other(i,j);
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	AbstractMatrix<Var> &
+	AbstractMatrix<Var>::operator-=(const AbstractMatrix<typeB> & other)
+	{
+		assert(Rows() == other.Rows());
+		assert(Cols() == other.Cols());
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				assign((*this)(i,j),(*this)(i,j)-other(i,j));
+		return *this;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type>
+	AbstractMatrix<Var>::operator+(const AbstractMatrix<typeB> & other) const
+	{
+		assert(Rows() == other.Rows());
+		assert(Cols() == other.Cols());
+		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				ret(i,j) = (*this)(i,j)+other(i,j);
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	AbstractMatrix<Var> &
+	AbstractMatrix<Var>::operator+=(const AbstractMatrix<typeB> & other)
+	{
+		assert(Rows() == other.Rows());
+		assert(Cols() == other.Cols());
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				assign((*this)(i,j),(*this)(i,j)+other(i,j));
+		return *this;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type>
+	AbstractMatrix<Var>::operator*(const AbstractMatrix<typeB> & other) const
+	{
+		assert(Cols() == other.Rows());
+		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),other.Cols()); //check RVO
+		for(enumerator i = 0; i < Rows(); ++i) //loop rows
+		{
+			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
+			{
+				typename Promote<Var,typeB>::type tmp = 0.0;
+				for(enumerator k = 0; k < Cols(); ++k)
+					tmp += (*this)(i,k)*other(k,j);
+				ret(i,j) = tmp;
+			}
+		}
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	AbstractMatrix<Var> &
+	AbstractMatrix<Var>::operator*=(const AbstractMatrix<typeB> & B)
+	{
+		(*this) = (*this)*B;
+		return *this;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type>
+	AbstractMatrix<Var>::operator*(typeB coef) const
+	{
+		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				ret(i,j) = (*this)(i,j)*coef;
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	AbstractMatrix<Var> &
+	AbstractMatrix<Var>::operator*=(typeB coef)
+	{
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				assign((*this)(i,j),(*this)(i,j)*coef);
+		return *this;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type>
+	AbstractMatrix<Var>::operator/(typeB coef) const
+	{
+		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols());
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				ret(i,j) = (*this)(i,j)/coef;
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	AbstractMatrix<Var> &
+	AbstractMatrix<Var>::operator/=(typeB coef)
+	{
+		for(enumerator i = 0; i < Rows(); ++i)
+			for(enumerator j = 0; j < Cols(); ++j)
+				assign((*this)(i,j),(*this)(i,j)/coef);
+		return *this;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type>
+	AbstractMatrix<Var>::Kronecker(const AbstractMatrix<typeB> & other) const
+	{
+		Matrix<typename Promote<Var,typeB>::type> ret(Rows()*other.Rows(),Cols()*other.Cols());
+		for(enumerator i = 0; i < Rows(); ++i) //loop rows
+		{
+			for(enumerator j = 0; j < other.Rows(); ++j) //loop columns
+			{
+				for(enumerator k = 0; k < Cols(); ++k)
+				{
+					for(enumerator l = 0; l < other.Cols(); ++l)
+					{
+						ret(i*other.Rows()+j,k*other.Cols()+l) = other(j,l)*(*this)(i,k);
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	
+	template<typename Var>
+	std::pair<Matrix<Var>,bool>
+	AbstractMatrix<Var>::Invert(bool print_fail) const
+	{
+		return Solve(Matrix<Var>::Unit(Rows()),print_fail);
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+	AbstractMatrix<Var>::Solve(const AbstractMatrix<typeB> & B, bool print_fail) const
+	{
+		// for A^T B
+		assert(Rows() == B.Rows());
+		Matrix<Var> At = this->Transpose(); //m by n matrix
+		Matrix<typename Promote<Var,typeB>::type> AtB = At*B; //m by l matrix
+		Matrix<Var> AtA = At*(*this); //m by m matrix
+		enumerator l = AtB.Cols();
+		enumerator n = Rows();
+		enumerator m = Cols();
+		enumerator * order = new enumerator [m];
+		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(m,l),true);
+		for(enumerator i = 0; i < m; ++i) order[i] = i;
+		for(enumerator i = 0; i < m; i++)
+		{
+			enumerator maxk = i, maxq = i, temp2;
+			Var max, temp;
+			max = fabs(AtA(maxk,maxq));
+			//Find best pivot
+			for(enumerator k = i; k < m; k++) // over rows
+			{
+				for(enumerator q = i; q < m; q++) // over columns
+				{
+					if( fabs(AtA(k,q)) > max )
+					{
+						max = fabs(AtA(k,q));
+						maxk = k;
+						maxq = q;
+					}
+				}
+			}
+			//Exchange rows
+			if( maxk != i )
+			{
+				for(enumerator q = 0; q < m; q++) // over columns of A
+				{
+					temp = AtA(maxk,q);
+					AtA(maxk,q) = AtA(i,q);
+					AtA(i,q) = temp;
+				}
+				//exchange rhs
+				for(enumerator q = 0; q < l; q++) // over columns of B
+				{
+					temp = AtB(maxk,q);
+					AtB(maxk,q) = AtB(i,q);
+					AtB(i,q) = temp;
+				}
+			}
+			//Exchange columns
+			if( maxq != i )
+			{
+				for(enumerator k = 0; k < m; k++) //over rows
+				{
+					temp = AtA(k,maxq);
+					AtA(k,maxq) = AtA(k,i);
+					AtA(k,i) = temp;
+				}
+				//remember order in sol
+				{
+					temp2 = order[maxq];
+					order[maxq] = order[i];
+					order[i] = temp2;
+				}
+			}
+			//Check small entry
+			if( fabs(AtA(i,i)) < 1.0e-54 )
+			{
+				bool ok = true;
+				for(enumerator k = 0; k < l; k++) // over columns of B
+				{
+					if( fabs(AtB(i,k)/1.0e-54) > 1 )
+					{
+						ok = false;
+						break;
+					}
+				}
+				if( ok ) AtA(i,i) = AtA(i,i) < 0.0 ? - 1.0e-12 : 1.0e-12;
+				else
+				{
+					if( print_fail ) std::cout << "Failed to invert matrix" << std::endl;
+					ret.second = false;
+					delete [] order;
+					return ret;
+				}
+			}
+			//Divide row and column by diagonal values
+			for(enumerator k = i+1; k < m; k++)
+			{
+				AtA(i,k) /= AtA(i,i);
+				AtA(k,i) /= AtA(i,i);
+			}
+			//Elimination step for matrix
+			for(enumerator k = i+1; k < m; k++)
+				for(enumerator q = i+1; q < m; q++)
+				{
+					AtA(k,q) -= AtA(k,i) * AtA(i,i) * AtA(i,q);
+				}
+			//Elimination step for right hand side
+			for(enumerator k = 0; k < l; k++)
+			{
+				for(enumerator j = i+1; j < m; j++) //iterate over columns of L
+				{
+					AtB(j,k) -= AtB(i,k) * AtA(j,i);
+				}
+				AtB(i,k) /= AtA(i,i);
+			}
+		}
+		//Back substitution step
+		for(enumerator k = 0; k < l; k++)
+		{
+			for(enumerator i = m; i-- > 0; ) //iterate over rows of U
+				for(enumerator j = i+1; j < m; j++)
+				{
+					AtB(i,k) -= AtB(j,k) * AtA(i,j);
+				}
+			for(enumerator i = 0; i < m; i++)
+				ret.first(order[i],k) = AtB(i,k);
+		}
+		delete [] order;
+		return ret;
+	}
+	
+	template<typename Var>
+	Matrix<Var>
+	AbstractMatrix<Var>::ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const
+	{
+		assert(ibeg < Rows());
+		assert(iend < Rows());
+		assert(jbeg < Cols());
+		assert(jend < Cols());
+		Matrix<Var> ret(iend-ibeg,jend-jbeg);
+		for(enumerator i = ibeg; i < iend; ++i)
+		{
+			for(enumerator j = jbeg; j < jend; ++j)
+				ret(i-ibeg,j-jbeg) = (*this)(i,j);
+		}
+		return ret;
+	}
+	
+	template<typename Var>
+	Matrix<Var>
+	AbstractMatrix<Var>::Repack(enumerator rows, enumerator cols) const
+	{
+		assert(Cols()*Rows()==rows*cols);
+		Matrix<Var> ret(*this);
+		ret.n = rows;
+		ret.m = cols;
+		return ret;
+	}
+	
+	template<typename Var>
+	std::pair<Matrix<Var>,bool>
+	AbstractMatrix<Var>::PseudoInvert(INMOST_DATA_REAL_TYPE tol, bool print_fail) const
+	{
+		std::pair<Matrix<Var>,bool> ret = std::make_pair(Matrix<Var>(Cols(),Rows()),true);
+		Matrix<Var> U,S,V;
+		ret.second = SVD(U,S,V);
+		if( print_fail && !ret.second )
+			std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
+		for(int k = 0; k < S.Cols(); ++k)
+		{
+			if( S(k,k) > tol )
+				S(k,k) = 1.0/S(k,k);
+			else
+				S(k,k) = 0.0;
+		}
+		ret.first = V*S*U.Transpose();
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+	AbstractMatrix<Var>::PseudoSolve(const AbstractMatrix<typeB> & B, INMOST_DATA_REAL_TYPE tol, bool print_fail) const
+	{
+		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(Cols(),B.Cols()),true);
+		Matrix<Var> U,S,V;
+		ret.second = SVD(U,S,V);
+		if( print_fail && !ret.second )
+			std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
+		for(int k = 0; k < S.Cols(); ++k)
+		{
+			if( S(k,k) > tol )
+				S(k,k) = 1.0/S(k,k);
+			else
+				S(k,k) = 0.0;
+		}
+		ret.first = V*S*U.Transpose()*B;
+		return ret;
+	}
+	
+	template<typename Var,typename storage_type>
+	SubMatrix<Var,storage_type> Matrix<Var,storage_type>::MakeSubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
+	{
+		return SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
+	}
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
 #if defined(USE_AUTODIFF)
@@ -1182,14 +1742,13 @@ namespace INMOST
 	//< shortcut for matrix of variables with first and second order derivatives.
 	typedef Matrix<hessian_variable> hMatrix;
 #endif
-	
 }
 /// Multiplication of matrix by constant from left.
 /// @param coef Constant coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
-template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::Matrix<typeB> & other)
+template<typename typeB,typename storageB>
+INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::Matrix<typeB,storageB> & other)
 {return other*coef;}
 #if defined(USE_AUTODIFF)
 /// Multiplication of matrix by a variable from left.
@@ -1197,8 +1756,8 @@ INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> oper
 /// @param coef Variable coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
-template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator *(const INMOST::variable & coef, const INMOST::Matrix<typeB> & other)
+template<typename typeB,typename storageB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator *(const INMOST::variable & coef, const INMOST::Matrix<typeB,storageB> & other)
 {return other*coef;}
 /// Multiplication of matrix by a variable with first and
 /// second order derivatives from left.
@@ -1206,8 +1765,8 @@ INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator 
 /// @param coef Variable coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
-template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> operator *(const INMOST::hessian_variable & coef, const INMOST::Matrix<typeB> & other)
+template<typename typeB,typename storageB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> operator *(const INMOST::hessian_variable & coef, const INMOST::Matrix<typeB,storageB> & other)
 {return other*coef;}
 #endif
 
