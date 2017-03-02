@@ -64,7 +64,6 @@ namespace INMOST
 			for(enumerator i = 0; i < b.Rows(); ++i)
 				for(enumerator j = 0; j < b.Cols(); ++j)
 					(*this)(i,j) = b(i,j);
-			return *this;
 		}
 		/// Construct from matrix of another type.
 		/// @param other Another matrix of different type.
@@ -75,7 +74,6 @@ namespace INMOST
 			for(enumerator i = 0; i < b.Rows(); ++i)
 				for(enumerator j = 0; j < b.Cols(); ++j)
 					assign((*this)(i,j),b(i,j));
-			return *this;
 		}
 		/// Assign matrix of the same type.
 		/// @param other Another matrix of the same type.
