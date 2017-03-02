@@ -108,6 +108,7 @@ int main(int argc,char ** argv)
 		case 5: type = Partitioner::Zoltan_PHG; break;
 		case 6: type = Partitioner::Zoltan_Scotch; break;
 		case 7: type = Partitioner::Zoltan_Parmetis; break;
+		case 8: /*reserved*/ break;
 	}
 
 	Partitioner::Action action;
@@ -118,7 +119,20 @@ int main(int argc,char ** argv)
 		case 2: action = Partitioner::Refine; break;
 	}
 
-	if( itype >= 0 )
+	if( itype == 8 ) //pass the whole local mesh on the current processor to the next one
+	{
+		if( m->OwnerTag().isValid() )
+		{
+			TagInteger r = m->RedistributeTag(); //new location of the element
+			TagInteger o = m->OwnerTag(); //current owner
+			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) //for each cell
+				r[it->self()] = (o[it->self()]+1)%m->GetProcessorsNumber(); //pass to the next
+			m->Redistribute(); // Redistribute the mesh data
+			m->ReorderEmpty(CELL|FACE|EDGE|NODE); // Clean the data after reordring
+		}
+		else std::cout << "Current mesh is not parallel for this type of distribution" << std::endl;
+	}
+	else if( itype >= 0 )
 	{
 		Partitioner * p = new Partitioner(m);
 		p->SetMethod(type,action); // Specify the partitioner
