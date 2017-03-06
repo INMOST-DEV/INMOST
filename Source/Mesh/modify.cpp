@@ -1414,6 +1414,13 @@ namespace INMOST
 		ReleaseMarker(new_element);
 		hide_element = 0;
 		new_element = 0;
+		//This should be done in ResolveModification
+		ElementType have_global_id = NONE;
+		if( GlobalIDTag().isValid() )
+		{
+			for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+				if( GlobalIDTag().isDefined(etype) ) have_global_id |= etype;
+		}
 		if( have_global_id ) AssignGlobalID(have_global_id);
 	}
 

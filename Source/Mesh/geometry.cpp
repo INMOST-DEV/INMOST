@@ -1715,7 +1715,7 @@ namespace INMOST
 		{
 			Tag tag_bnd = CreateTag("CALC_BOUNDARY",DATA_INTEGER,FACE,NONE);
 			//we need shared unique numbers on cells
-			if( !(have_global_id & CELL) ) AssignGlobalID(CELL);
+			if( !HaveGlobalID(CELL) ) AssignGlobalID(CELL);
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif

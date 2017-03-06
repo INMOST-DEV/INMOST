@@ -174,7 +174,22 @@ namespace INMOST
 	//////////////////////////////
 	/// REDUCTION FUNCTIONS END///
 	//////////////////////////////
-
+	bool Mesh::HaveGlobalID(ElementType type) const
+	{
+		assert(OneType(type));
+		Tag test;
+		if( GlobalIDTag().isValid() ) test = GlobalIDTag();
+		//else if( HaveTag("GLOBAL_ID") ) test = GetTag("GLOBAL_ID") );
+		if( test.isValid() )
+		{
+			//bool ret = true;
+			//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) ) if( etype & types )
+			//	ret &= test.isDefined(etype);
+			//return ret;
+			return test.isDefined(type);
+		}
+		else return false;
+	}
 
 
 	void Mesh::SynchronizeMarker(MarkerType marker, ElementType mask, SyncBitOp op)
@@ -838,11 +853,11 @@ namespace INMOST
 	*/
 	
 	
-	__INLINE bool point_in_bbox(Storage::real * p, Storage::real bbox[6], unsigned dim)
+	__INLINE bool point_in_bbox(Storage::real * p, Storage::real bbox[6], unsigned dim, Storage::real eps)
 	{
 		bool ret = true;
 		for(unsigned k = 0; k < dim; k++) 
-			ret &= (p[k] >= bbox[k] && p[k] <= bbox[dim+k]);
+			ret &= (p[k] > bbox[k]-eps && p[k] < bbox[dim+k]+eps);
 		return ret;
 	}
 	
@@ -861,8 +876,10 @@ namespace INMOST
 	void Mesh::ResolveShared()
 	{
 		ENTER_FUNC();
+		
 #if defined(USE_MPI)
 		if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
+		if( tag_global_id.isValid() ) tag_global_id = DeleteTag(tag_global_id,CELL | EDGE | FACE | NODE);
 		integer dim = GetDimensions();
 		int sendsize;
 		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
@@ -917,6 +934,7 @@ namespace INMOST
 			}
 		}
 		REPORT_VAL("dim",dim);
+		assert(dim*2 <= 6);
 		// write down bounding boxes
 		for(integer k = 0; k < dim; k++)
 		{
@@ -931,7 +949,7 @@ namespace INMOST
 			{
 				bool flag = true;
 				for(integer q = 0; q < dim; q++)
-					flag &= !((bbox[q] > bboxs[k*dim*2+q+dim]) || (bbox[dim+q] < bboxs[k*dim*2+q]));
+					flag &= !((bbox[q]-GetEpsilon() > bboxs[k*dim*2+q+dim]) || (bbox[dim+q]+GetEpsilon() < bboxs[k*dim*2+q]));
 				if( flag ) procs.push_back(k);
 			}
 		REPORT_VAL("neighbour processors",procs.size());
@@ -956,7 +974,7 @@ namespace INMOST
 			{
 				same_box = true;
 				for(integer j = 0; j < dim*2; j++)
-					same_box &= ::fabs(bbox[j] - bboxs[k*dim*2+j]) < epsilon;
+					same_box &= ::fabs(bbox[j] - bboxs[k*dim*2+j]) < GetEpsilon();
 				same_boxes &= same_box;
 			}
 			
@@ -1009,7 +1027,7 @@ namespace INMOST
 				Storage::real epsilon = GetEpsilon();
 			
 				GeomParam table;
-				for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
+				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 					if( !HaveGeometricData(CENTROID,etype) )
 						table[CENTROID] |= etype;
 				PrepareGeometricData(table);
@@ -1019,8 +1037,6 @@ namespace INMOST
 				REPORT_STR("Prepare geometric data");
 				REPORT_VAL("time",time);
 			
-				
-				
 				//for(iteratorNode it = BeginNode(); it != EndNode(); it++)
 #if defined(USE_OMP)
 #pragma omp parallel for
@@ -1049,7 +1065,7 @@ namespace INMOST
 				{
 					real_array c = n->Coords();
 					for(real_array::size_type k = 0; k < procs.size(); k++)
-						if( point_in_bbox(c.data(),bboxs.data()+procs[k]*dim*2,dim) )
+						if( point_in_bbox(c.data(),bboxs.data()+procs[k]*dim*2,dim,GetEpsilon()) )
 						{
 							sorted_nodes.push_back(*n);
 							break;
@@ -1099,6 +1115,7 @@ namespace INMOST
 				REPORT_STR("Pack coordinates");
 				REPORT_VAL("time",time);
 
+				
 				
 				{
 					std::vector< MPI_Request > send_reqs, recv_reqs;
@@ -1263,7 +1280,7 @@ namespace INMOST
 					
 					
 					
-					for(ElementType current_mask = EDGE; current_mask <= CELL; current_mask = current_mask << 1 )
+					for(ElementType current_mask = EDGE; current_mask <= CELL; current_mask = NextElementType(current_mask))
 					{
 						REPORT_STR("Set parallel info for");
 						REPORT_VAL("type",ElementTypeName(current_mask));
@@ -1317,15 +1334,19 @@ namespace INMOST
 						time = Timer();
 						//Initialize mapping that helps get local id by global id
 						std::vector<std::pair<int,int> > mapping;
-						REPORT_VAL("mapping type",ElementTypeName(current_mask >> 1));
-						for(Mesh::iteratorElement it = BeginElement(current_mask >> 1); it != EndElement(); it++)
+						REPORT_VAL("mapping type",ElementTypeName(PrevElementType(current_mask)));
+						for(Mesh::iteratorElement it = BeginElement(PrevElementType(current_mask)); it != EndElement(); it++)
 						{
 							mapping.push_back(std::make_pair(it->GlobalID(),it->LocalID()));
 						}
 						if( !mapping.empty() ) 
 							std::sort(mapping.begin(),mapping.end(),MappingComparator());
+#if defined(USE_PARALLEL_WRITE_TIME)
+						for(std::vector<std::pair<int,int> >::iterator it = mapping.begin(); it != mapping.end(); ++it)
+							REPORT_STR("global " << it->first << " local " << it->second << Element::StatusName(ElementByLocalID(PrevElementType(current_mask),it->second)->GetStatus()));
+#endif
 						time = Timer() - time;
-            REPORT_VAL("mapping size",mapping.size())
+						REPORT_VAL("mapping size",mapping.size())
 						REPORT_STR("Compute global to local indexes mapping");
 						REPORT_VAL("time",time);
 						//Initialize arrays
@@ -1343,6 +1364,7 @@ namespace INMOST
 						//Gather all possible shared elements and send global ids of their connectivity to the neighbouring proccessors
 						for(p = procs.begin(); p != procs.end(); p++)
 						{
+							REPORT_VAL("for processor",*p);
 							int m = static_cast<int>(p-procs.begin());
 							{
 								message_send.clear();
@@ -1356,14 +1378,18 @@ namespace INMOST
 										Element::adj_type & sub = LowConn(*it);
 										if( sub.size() == 0 ) throw Impossible;
 										message_send.push_back(static_cast<int>(sub.size()));
+										REPORT_VAL("number of connections",sub.size());
 										for(Element::adj_type::iterator kt = sub.begin(); kt != sub.end(); kt++)
+										{
 											message_send.push_back(GlobalID(*kt));
+											REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()));
+										}
 										message_send[1]++;
 										elements[m].push_back(*it);
 									}
 								}
-                REPORT_VAL("for processor",*p);
-                REPORT_VAL("gathered elements",elements[m].size());
+								
+								REPORT_VAL("gathered elements",elements[m].size());
 								message_send[0] = static_cast<int>(message_send.size());
 								MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(message_send.size()),MPI_INT,comm,&sendsize);
 								send_buffs[m].first = *p;
@@ -1401,7 +1427,7 @@ namespace INMOST
 									}
 								if( pos == -1 ) throw Impossible;
 								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&size,1,MPI_INT,comm);
-                REPORT_VAL("unpacked message size",size-1);
+								REPORT_VAL("unpacked message size",size-1);
 								message_recv[pos].resize(size-1);
 								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&message_recv[pos][0],static_cast<INMOST_MPI_SIZE>(message_recv[pos].size()),MPI_INT,comm);
 							}
@@ -1415,15 +1441,17 @@ namespace INMOST
 						//Now find the difference of local elements with given processor number and remote elements
 						for(p = procs.begin(); p != procs.end(); p++)
 						{
+							REPORT_VAL("on processor",*p);
 							int m = static_cast<int>(p-procs.begin());
 							element_set remote_elements;
 							int pos = 0;
 							if( message_recv[m].empty() ) continue;
 							int num_remote_elements = message_recv[m][pos++];
+							REPORT_VAL("number of remote elements",num_remote_elements);
 							for(int i = 0; i < num_remote_elements; i++)
 							{
 								int conn_size = message_recv[m][pos++], flag = 1;
-								
+								REPORT_VAL("number of connections",conn_size);
 								dynarray<HandleType,64> sub_elements;
 								for(int j = 0; j < conn_size; j++)
 								{
@@ -1434,38 +1462,42 @@ namespace INMOST
 										find = static_cast<int>(it-mapping.begin());
 									if( find == -1 ) 
 									{
+										REPORT_STR("global id " << global_id << " local id -1");
 										flag = 0;
 										pos += conn_size-j-1;
 										break;
 									}
 									int find_local_id = mapping[find].second;
+									REPORT_STR("global id " << global_id << " local id " << find_local_id << " " << Element::StatusName(ElementByLocalID(PrevElementType(current_mask), find_local_id)->GetStatus()));
 									sub_elements.push_back(ComposeHandle(PrevElementType(current_mask), find_local_id));
 									
 								}
+								REPORT_VAL("is element found",flag);
 								if( flag )
 								{
 									HandleType e = FindSharedAdjacency(sub_elements.data(),static_cast<enumerator>(sub_elements.size()));
+									REPORT_VAL("found element",e);
 									if( e == InvalidHandle() ) continue;
 									remote_elements.push_back(e);
 								}
 							}
-              REPORT_VAL("number of unpacked remote elements",remote_elements.size());
-              if( !remote_elements.empty() )
-              {
-                REPORT_VAL("first",remote_elements.front());
-                REPORT_VAL("first type",ElementTypeName(GetHandleElementType(remote_elements.front())));
-                REPORT_VAL("last",remote_elements.back());
-                REPORT_VAL("last type",ElementTypeName(GetHandleElementType(remote_elements.back())));
-              }
+							REPORT_VAL("number of unpacked remote elements",remote_elements.size());
+							if( !remote_elements.empty() )
+							{
+								REPORT_VAL("first",remote_elements.front());
+								REPORT_VAL("first type",ElementTypeName(GetHandleElementType(remote_elements.front())));
+								REPORT_VAL("last",remote_elements.back());
+								REPORT_VAL("last type",ElementTypeName(GetHandleElementType(remote_elements.back())));
+							}
 							std::sort(remote_elements.begin(),remote_elements.end());
-              REPORT_VAL("original elements size",elements[m].size());
-              if( !elements[m].empty() )
-              {
-                REPORT_VAL("first",elements[m].front());
-                REPORT_VAL("first type",ElementTypeName(GetHandleElementType(elements[m].front())));
-                REPORT_VAL("last",elements[m].back());
-                REPORT_VAL("last type",ElementTypeName(GetHandleElementType(elements[m].back())));
-              }
+							REPORT_VAL("original elements size",elements[m].size());
+							if( !elements[m].empty() )
+							{
+								REPORT_VAL("first",elements[m].front());
+								REPORT_VAL("first type",ElementTypeName(GetHandleElementType(elements[m].front())));
+								REPORT_VAL("last",elements[m].back());
+								REPORT_VAL("last type",ElementTypeName(GetHandleElementType(elements[m].back())));
+							}
 							std::sort(elements[m].begin(),elements[m].end());
 							element_set result;
 							element_set::iterator set_end;
@@ -1474,7 +1506,7 @@ namespace INMOST
 							set_end = std::set_difference(elements[m].begin(),elements[m].end(),remote_elements.begin(),remote_elements.end(), result.begin());
 							result.resize(set_end-result.begin());
 
-              REPORT_VAL("set difference size",result.size());
+							REPORT_VAL("set difference size",result.size());
 							
 							//elements in result are wrongly marked as ghost
 							for(element_set::iterator qt = result.begin(); qt != result.end(); qt++)
@@ -1594,14 +1626,14 @@ namespace INMOST
 			element_set & ref = ghost_elements[it->first][ElementNum(CELL)];
 			if( !it->second.empty() ) 
 			{
-				if( have_global_id & CELL )
+				if( HaveGlobalID(CELL) )
 					std::sort(it->second.begin(),it->second.end(),GlobalIDComparator(this));
 				else
 					std::sort(it->second.begin(),it->second.end(),CentroidComparator(this));
 			}
 			element_set result(ref.size());
 			element_set::iterator end;
-			if( have_global_id & CELL )
+			if( HaveGlobalID(CELL) )
 				end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),GlobalIDComparator(this));
 			else
 				end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),CentroidComparator(this));
@@ -1614,14 +1646,14 @@ namespace INMOST
 			element_set & ref = shared_elements[it->first][ElementNum(CELL)];
 			if( !it->second.empty() ) 
 			{
-				if( have_global_id & CELL )
+				if( HaveGlobalID(CELL) )
 					std::sort(it->second.begin(),it->second.end(),GlobalIDComparator(this));
 				else
 					std::sort(it->second.begin(),it->second.end(),CentroidComparator(this));
 			}
 			element_set result(ref.size());
 			element_set::iterator end;
-			if( have_global_id & CELL )
+			if( HaveGlobalID(CELL) )
 				end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),GlobalIDComparator(this));
 			else
 				end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),CentroidComparator(this));
@@ -1634,13 +1666,13 @@ namespace INMOST
 		for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
 		
 		delete_elements.clear();
-		for(ElementType mask = FACE; mask >= NODE; mask = mask >> 1)
+		for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 		{
 			for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 			{
 				Element::Status estat = GetStatus(*it);
 				if( estat == Element::Owned || estat == Element::Shared ) continue;
-				if( it->nbAdjElements(mask<<1) == 0 ) it->Integer(tag_delete) = mpirank;
+				if( it->nbAdjElements(NextElementType(mask)) == 0 ) it->Integer(tag_delete) = mpirank;
 			}
 			ReduceData(tag_delete,mask,0,DeleteUnpack);
 			ExchangeData(tag_delete,mask,0);
@@ -1648,7 +1680,7 @@ namespace INMOST
 			{
 				Element::Status estat = GetStatus(*it);
 				if( estat == Element::Owned ) continue;
-				if( estat == Element::Ghost && it->nbAdjElements(mask<<1) == 0 ) 
+				if( estat == Element::Ghost && it->nbAdjElements(NextElementType(mask)) == 0 )
 				{
 #if defined(USE_PARALLEL_STORAGE)
 					del_ghost[it->IntegerDF(tag_owner)].push_back(*it);
@@ -1681,14 +1713,14 @@ namespace INMOST
 				element_set & ref = ghost_elements[it->first][ElementNum(mask)];
 				if( !it->second.empty() ) 
 				{
-					if( have_global_id & mask )
+					if( HaveGlobalID(mask) )
 						std::sort(it->second.begin(),it->second.end(),GlobalIDComparator(this));
 					else
 						std::sort(it->second.begin(),it->second.end(),CentroidComparator(this));
 				}
 				element_set result(ref.size());
 				element_set::iterator end;
-				if( have_global_id & CELL )
+				if( HaveGlobalID(CELL) )
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),GlobalIDComparator(this));
 				else
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),CentroidComparator(this));
@@ -1701,14 +1733,14 @@ namespace INMOST
 				element_set & ref = shared_elements[it->first][ElementNum(mask)];
 				if( !it->second.empty() ) 
 				{
-					if( have_global_id & mask )
+					if( HaveGlobalID(mask) )
 						std::sort(it->second.begin(),it->second.end(),GlobalIDComparator(this));
 					else
 						std::sort(it->second.begin(),it->second.end(),CentroidComparator(this));
 				}
 				element_set result(ref.size());
 				element_set::iterator end;
-				if( have_global_id & CELL )
+				if( HaveGlobalID(CELL) )
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),GlobalIDComparator(this));
 				else
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),CentroidComparator(this));
@@ -1739,7 +1771,7 @@ namespace INMOST
 		proc_elements del_shared, del_ghost;
 #endif //USE_PARALLEL_STORAGE
 		
-		for(ElementType mask = CELL; mask >= NODE; mask = mask >> 1)
+		for(ElementType mask = CELL; mask >= NODE; mask = PrevElementType(mask))
 		{
 			if( mask & CELL )
 			{
@@ -1752,7 +1784,7 @@ namespace INMOST
 				{
 					Element::Status estat = GetStatus(*it);
 					if( estat == Element::Owned || estat == Element::Shared ) continue;
-					if( it->nbAdjElements(mask<<1) == 0 ) it->Integer(tag_delete) = mpirank;
+					if( it->nbAdjElements(NextElementType(mask)) == 0 ) it->Integer(tag_delete) = mpirank;
 				}
 			}
 			ReduceData(tag_delete,mask,0,DeleteUnpack);
@@ -1800,14 +1832,14 @@ namespace INMOST
 				element_set & ref = ghost_elements[it->first][ElementNum(mask)];
 				if( !it->second.empty() ) 
 				{
-					if( have_global_id & mask )
+					if( HaveGlobalID(mask) )
 						std::sort(it->second.begin(),it->second.end(),GlobalIDComparator(this));
 					else
 						std::sort(it->second.begin(),it->second.end(),CentroidComparator(this));
 				}
 				element_set result(ref.size());
 				element_set::iterator end;
-				if( have_global_id & CELL )
+				if( HaveGlobalID(CELL) )
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),GlobalIDComparator(this));
 				else
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),CentroidComparator(this));
@@ -1820,14 +1852,14 @@ namespace INMOST
 				element_set & ref = shared_elements[it->first][ElementNum(mask)];
 				if( !it->second.empty() ) 
 				{
-					if( have_global_id & mask )
+					if( HaveGlobalID(mask) )
 						std::sort(it->second.begin(),it->second.end(),GlobalIDComparator(this));
 					else
 						std::sort(it->second.begin(),it->second.end(),CentroidComparator(this));
 				}
 				element_set result(ref.size());
 				element_set::iterator end;
-				if( have_global_id & CELL )
+				if( HaveGlobalID(CELL) )
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),GlobalIDComparator(this));
 				else
 					end = std::set_difference(ref.begin(),ref.end(),it->second.begin(),it->second.end(),result.begin(),CentroidComparator(this));
@@ -1851,13 +1883,7 @@ namespace INMOST
 	
 	void Mesh::AssignGlobalID(ElementType mask)
 	{
-		
-		for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = currenttype << 1 )
-			if( (currenttype & mask) && !(currenttype & have_global_id ) )
-			{
-				tag_global_id = CreateTag("GLOBAL_ID",DATA_INTEGER, currenttype, NONE,1);
-				have_global_id |= currenttype;
-			}
+		tag_global_id = CreateTag("GLOBAL_ID",DATA_INTEGER, mask, NONE,1);
 		ENTER_FUNC();
 
 #if defined(USE_MPI)
@@ -1868,7 +1894,7 @@ namespace INMOST
 			int num;
 			//std::vector<INMOST_DATA_BIG_ENUM_TYPE> shifts(mpisize*4);
 			memset(shift,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE));
-			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = currenttype << 1 )
+			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = NextElementType(currenttype) )
 			{
 				if( mask & currenttype )
 				{
@@ -1887,7 +1913,7 @@ namespace INMOST
 				REPORT_MPI(ierr = MPI_Scan(shift,shift_recv,4,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_SUM,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			}
-			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = currenttype << 1 )
+			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = NextElementType(currenttype) )
 			{
 				if( mask & currenttype )
 				{
@@ -1901,13 +1927,20 @@ namespace INMOST
 				}
 			}
 			if( tag_global_id.isValid() )
-				ExchangeData(tag_global_id,mask,0);
+			{
+				Tag exchange = tag_global_id;
+				//Protect ExchangeData from using global id to sort ghost/shared elements
+				tag_global_id = Tag();
+				ExchangeData(exchange,mask,0);
+				tag_global_id = exchange;
+			}
+			SortParallelStorage(mask);
 		}
 		else
 		{
 #endif //USE_MPI
 			INMOST_DATA_BIG_ENUM_TYPE number;
-			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = currenttype << 1 )
+			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = NextElementType(currenttype) )
 				if( mask & currenttype )
 				{
 					number = 0;
@@ -1966,7 +1999,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		if( !(have_global_id & CELL) ) AssignGlobalID(CELL);
+		if( !HaveGlobalID(CELL) ) AssignGlobalID(CELL);
 
 		int mpirank = GetProcessorRank();
 		Tag tag_skin = CreateTag("TEMPORARY_COMPUTE_SHARED_SKIN_SET",DATA_INTEGER,FACE,FACE);
@@ -2223,6 +2256,7 @@ namespace INMOST
 		for(int i = ElementNum(NODE); i <= ElementNum(CELL); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
 		{
 			pack_types[0] |= ElementTypeFromDim(i);
+			REPORT_VAL("select marker",select);
 			REPORT_VAL("pack for type",ElementTypeName(ElementTypeFromDim(i)));
 			REPORT_VAL("number of elements",elements[i].size());
 			int total_packed = 0;
@@ -2459,13 +2493,13 @@ namespace INMOST
 			{
 				find = from.find(*p);
 				if( find != from.end() )
-					for(int i = 0; i < 4; i++)  if( mask & (1 << i) )
+					for(int i = 0; i < 4; i++)  if( mask & ElementTypeFromDim(i) )
 						for(element_set::const_iterator it = find->second[i].begin(); it != find->second[i].end(); ++it)
 							if( GetMarker(*it,select) ) send_size[pos]++;
 				
 				find = to.find(*p);
 				if( find != to.end() )
-					for(int i = 0; i < 4; i++)  if( mask & (1 << i) )
+					for(int i = 0; i < 4; i++)  if( mask & ElementTypeFromDim(i) )
 						for(element_set::const_iterator it = find->second[i].begin(); it != find->second[i].end(); ++it)
 							if( GetMarker(*it,select) ) recv_size[pos]++;
 			}
@@ -2473,11 +2507,11 @@ namespace INMOST
 			{
 				find = from.find(*p);
 				if( find != from.end() )
-					for(int i = 0; i < 4; i++)  if( mask & (1 << i) )
+					for(int i = 0; i < 4; i++)  if( mask & ElementTypeFromDim(i) )
 						send_size[pos] += static_cast<INMOST_DATA_ENUM_TYPE>(find->second[i].size());
 				find = to.find(*p);
 				if( find != to.end() )
-					for(int i = 0; i < 4; i++)  if( mask & (1 << i) )
+					for(int i = 0; i < 4; i++)  if( mask & ElementTypeFromDim(i) )
 						recv_size[pos] += static_cast<INMOST_DATA_ENUM_TYPE>(find->second[i].size());
 			}
 		}
@@ -2568,12 +2602,12 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 	
+	
 
 	void Mesh::GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask)
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-#if defined(USE_PARALLEL_STORAGE)
 		int mpirank = GetProcessorRank();
 		REPORT_STR("gather ghost and shared elements")
 		double time = Timer();
@@ -2592,45 +2626,7 @@ namespace INMOST
 		}
 		time = Timer() - time;
 		REPORT_VAL("time",time);
-		REPORT_STR("sort shared elements")
-		time = Timer();
-		for(parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
-		{
-			REPORT_VAL("processor",it->first);
-			for(int i = 0; i < 4; i++) if( mask & (1 << i) )
-			{
-				if( !it->second[i].empty() )
-				{
-					if(have_global_id & (1<<i))
-						std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
-					else
-						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
-				}
-				REPORT_VAL(ElementTypeName(mask & (1 << i)),it->second[i].size());
-			}
-		}
-		time = Timer() - time;
-		REPORT_VAL("time",time);
-		REPORT_STR("sort ghost elements")
-		time = Timer();
-		for(parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
-		{
-			REPORT_VAL("processor",it->first);
-			for(int i = 0; i < 4; i++) if( mask & (1 << i) )
-			{
-				if( !it->second[i].empty() ) 
-				{
-					if( (have_global_id & (1<<i)) )
-						std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
-					else
-						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
-				}
-				REPORT_VAL(ElementTypeName(mask & (1 << i)),it->second[i].size());
-			}
-		}
-		time = Timer() - time;
-		REPORT_VAL("time",time);
-#endif //USE_PARALLEL_STORAGE
+		SortParallelStorage(ghost,shared,mask);
 #else //USE_MPI
 		(void) ghost;
 		(void) shared;
@@ -2870,7 +2866,7 @@ namespace INMOST
 			new_size = 0;
 			MPI_Pack_size(1                                                 ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,comm,&temp); new_size += temp;
-			if( have_global_id & NODE )
+			if( HaveGlobalID(NODE) )
 				MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			buffer.resize(position+new_size);
 			num = static_cast<INMOST_DATA_ENUM_TYPE>(selems[0].size());
@@ -2903,7 +2899,7 @@ namespace INMOST
 						//	pack_tags[0].push_back(*it);
 						++marked_for_data;
 					}
-					if( have_global_id & NODE ) 
+					if( HaveGlobalID(NODE) )
 					{
 						global_ids.push_back(Integer(*it,GlobalIDTag()));
 						//REPORT_VAL("packed global_id",global_ids.back());
@@ -2912,7 +2908,7 @@ namespace INMOST
 				}
 				if( !coords.empty() ) 
 					MPI_Pack(&coords[0]    ,static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				if( (have_global_id & NODE) && !global_ids.empty() ) 
+				if( HaveGlobalID(NODE) && !global_ids.empty() )
 					MPI_Pack(&global_ids[0],static_cast<INMOST_MPI_SIZE>(selems[0].size())    ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			}
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
@@ -3159,7 +3155,7 @@ namespace INMOST
 					datasize = tag.GetSize();
 					defined = NONE;
 					sparse = NONE;
-					for(ElementType mask = NODE; mask <= MESH; mask = mask << 1)
+					for(ElementType mask = NODE; mask <= MESH; mask = NextElementType(mask))
 					{
 						if( tag.isDefined(mask) ) defined |= mask;
 						if( tag.isSparse(mask) ) sparse |= mask;
@@ -3192,6 +3188,7 @@ namespace INMOST
 				//TODO 46 old
 				//PackTagData(GetTag(tag_list[i]),pack_tags,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 				PackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,pack_tags_mrk,buffer);
+				//PackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 			}
 		}
 		for(integer i = ElementNum(NODE); i <= ElementNum(CELL); i++) 
@@ -3230,7 +3227,7 @@ namespace INMOST
 			old_nodes[k++] = *it;
 		if( !old_nodes.empty() )
 		{
-			if( have_global_id & NODE )
+			if( HaveGlobalID(NODE) )
 			{
 				REPORT_STR("sorted for global id");
 				std::sort(old_nodes.begin(),old_nodes.end(),GlobalIDComparator(this));
@@ -3264,7 +3261,7 @@ namespace INMOST
 			REPORT_STR("unpack nodes coordinates");
 			coords.resize(num*dim);
 			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&coords[0],static_cast<INMOST_MPI_SIZE>(num*dim),INMOST_MPI_DATA_REAL_TYPE,comm);
-			if( have_global_id & NODE )
+			if( HaveGlobalID(NODE) )
 			{
 				REPORT_STR("unpack nodes global identificators");
 				global_ids.resize(num);
@@ -3282,7 +3279,7 @@ namespace INMOST
 				//TODO 49
 				if( !old_nodes.empty() )
 				{
-					if( have_global_id & NODE ) 
+					if( HaveGlobalID(NODE) )
 					{
 						//REPORT_STR("searching node by global id");
 						//REPORT_VAL("global_id",global_ids[i]);
@@ -3632,6 +3629,7 @@ namespace INMOST
 				//TODO 46 old
 				//UnpackTagData(tag,unpack_tags,0,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
 				UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,position,DefaultUnpack);
+				//UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0, buffer,position,DefaultUnpack);
 			}
 			
 		}
@@ -4047,7 +4045,7 @@ namespace INMOST
 							if( !GetMarker(*kt,delete_marker) )
 							{
 								Storage::integer_array procs = IntegerArray(*kt,tag_new_processors);
-								if( !std::binary_search(procs.begin(),procs.end(),mpirank) ) 
+								if( !std::binary_search(procs.begin(),procs.end(),mpirank) )
 								{
 									delete_elements[GetHandleElementNum(*kt)].push_back(*kt);
 									SetMarker(*kt,delete_marker);
@@ -4250,23 +4248,78 @@ namespace INMOST
 	void Mesh::RecomputeParallelStorage(ElementType mask)
 	{
 		ENTER_FUNC();
-#if defined(USE_MPI)
-#if defined(USE_PARALLEL_STORAGE)
+#if defined(USE_MPI) && defined(USE_PARALLEL_STORAGE)
 		for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
-			for(int i = 0; i < 4; i++) if( mask & (1 << i) )
+			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
 				it->second[i].clear();
 		for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); it++)			
-			for(int i = 0; i < 4; i++) if( mask & (1 << i) )
+			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
 				it->second[i].clear();
 		GatherParallelStorage(ghost_elements,shared_elements,mask);
-#endif
-#else
+#else //USE_MPI and USE_PARALLEL_STORAGE
 		(void) mask;
-#endif
+#endif //USE_MPI and USE_PARALLEL_STORAGE
 		EXIT_FUNC();
 	}
-
 	
+	void Mesh::SortParallelStorage(ElementType mask)
+	{
+#if defined(USE_PARALLEL_STORAGE)
+		SortParallelStorage(ghost_elements,shared_elements,mask);
+#else
+		(void)mask;
+#endif
+	}
+
+	void Mesh::SortParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask)
+	{
+		ENTER_FUNC();
+#if defined(USE_MPI)
+		REPORT_STR("sort shared elements")
+		double time = Timer();
+		for(parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
+		{
+			REPORT_VAL("processor",it->first);
+			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
+			{
+				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
+				if( !it->second[i].empty() )
+				{
+					if(HaveGlobalID(ElementTypeFromDim(i)))
+						std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
+					else
+						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
+				}
+				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
+			}
+		}
+		time = Timer() - time;
+		REPORT_VAL("time",time);
+		REPORT_STR("sort ghost elements")
+		time = Timer();
+		for(parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
+		{
+			REPORT_VAL("processor",it->first);
+			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
+			{
+				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
+				if( !it->second[i].empty() )
+				{
+					if( HaveGlobalID(ElementTypeFromDim(i)) )
+						std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
+					else
+						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
+				}
+				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
+			}
+		}
+		time = Timer() - time;
+		REPORT_VAL("time",time);
+#else //USE_MPI and USE_PARALLEL_STORAGE
+		(void) mask;
+#endif //USE_MPI and USE_PARALLEL_STORAGE
+		EXIT_FUNC();
+	}
 	
 	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge)
 	{
@@ -4282,7 +4335,7 @@ namespace INMOST
 		int test_bridge = 0;
 		
 		if( (bridge & MESH) || (bridge & ESET) || (bridge & CELL) ) throw Impossible;
-		for(ElementType mask = NODE; mask <= FACE; mask = mask << 1)
+		for(ElementType mask = NODE; mask <= FACE; mask = NextElementType(mask))
 			test_bridge += (bridge & mask)? 1 : 0;
 		if( test_bridge == 0 || test_bridge > 1 ) throw Impossible;
 		double time;
@@ -4493,6 +4546,7 @@ namespace INMOST
 		time = Timer();
 		if( bridge != NONE && layers != 0 )
 		{
+			REPORT_STR("Multiple layers");
 			proc_elements redistribute_skin, skin_faces;
 			element_set all_visited;
 		
@@ -4629,7 +4683,7 @@ namespace INMOST
 			
 			time2 = Timer();
 			
-			for(ElementType mask = FACE; mask >= NODE; mask = mask >> 1)
+			for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 			{
 				for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 				{
@@ -4654,6 +4708,7 @@ namespace INMOST
 		}
 		else 
 		{
+			REPORT_STR("No layers");
 			ReduceData(tag_new_processors,FACE | EDGE | NODE,0,RedistUnpack);
 			ExchangeData(tag_new_processors,FACE | EDGE | NODE,0);
 		}
@@ -4683,6 +4738,11 @@ namespace INMOST
 				sendto.insert(sendto.end(),result.begin(),result.end());
 			}
 		}
+		
+		
+		std::stringstream str;
+		str << "before_migrate" << GetProcessorRank() << ".xml";
+		Save(str.str());
 		
 		time = Timer() - time;
 		REPORT_STR("Determine local entities to send");

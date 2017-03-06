@@ -1408,16 +1408,18 @@ namespace INMOST
 		RestoreGeometricTags();
 			
 		if( HaveTag("GLOBAL_ID") )
-		{
 			tag_global_id = GetTag("GLOBAL_ID");
-			for(ElementType etype = NODE; etype <= CELL; etype = etype << 1)
-				if( tag_global_id.isDefined(etype) ) have_global_id |= etype;
-		}
 		if( HaveTag("TOPOLOGY_ERROR_TAG") )
 			tag_topologyerror = GetTag("TOPOLOGY_ERROR_TAG");
 #if defined(USE_MPI)
 		if( m_state == Mesh::Parallel )
 		{
+			ElementType have_global_id = NONE;
+			if( GlobalIDTag().isValid() )
+			{
+				for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+					if( GlobalIDTag().isDefined(etype) ) have_global_id |= etype;
+			}
 			int hgi = have_global_id, recvtype = 0;
 			//~ int flag = 0, recvflag;
 			REPORT_MPI(MPI_Allreduce(&hgi,&recvtype,1,MPI_INT,MPI_BOR,comm));
@@ -1429,7 +1431,6 @@ namespace INMOST
 				if( (etype & recvtype) && !(etype & have_global_id) ) 
 				{
 					tag_global_id = CreateTag("GLOBAL_ID",DATA_INTEGER, etype, NONE,1);
-					have_global_id |= etype;
 					//~ flag = 1;
 					REPORT_VAL("created new global id tag",ElementTypeName(etype));
 				}

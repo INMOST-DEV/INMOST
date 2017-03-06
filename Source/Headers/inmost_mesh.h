@@ -1281,7 +1281,6 @@ namespace INMOST
 		integer								hidden_count[6];
 		integer								hidden_count_zero[6];
 	private:
-		ElementType                         have_global_id;
 		INMOST_DATA_BIG_ENUM_TYPE           parallel_mesh_unique_id;
 		INMOST_MPI_Comm                     comm;
         //INMOST_MPI_Group                    group;
@@ -1311,9 +1310,14 @@ namespace INMOST
 		void                                AllocateSparseData  (void * & q, const Tag & t);
 		void                                Init                (std::string name);
 	public:
+		/// Test whether global identificator was set on certain type of elements.
+		/// This function does not validate correctness of global identificators.
+		/// @param type Single type of elements on which to test presence of global identificators.
+		/// @return Returns true if global identificators are present on provided type of elements.
+		bool                                HaveGlobalID        (ElementType types) const;
 		/// Remove all data and all elements from the mesh
 		/// Reset geometry service and topology check flags
-		void                                Clear();
+		void                                Clear               ();
 		/// For debug purposes
 		integer                             HandleDataPos       (HandleType h) {return links[GetHandleElementNum(h)][GetHandleID(h)];}
 		/// For parmetis
@@ -1323,7 +1327,7 @@ namespace INMOST
 											Mesh                (std::string name);
 		                                    Mesh                (const Mesh & other);
 		Mesh &                              operator =          (Mesh const & other);
-		                                    ~Mesh               ();
+		virtual                             ~Mesh               ();
 		/// Allocate a new marker.
 		/// Assert will fire in debug mode (NDEBUG not set) if you run out of space for markers, in this case you either
 		/// use too many markers, then you can just increase MarkerFields variable (increasing by 1 gives you 8 more markers)
@@ -2255,6 +2259,7 @@ namespace INMOST
 		void                              ExchangeDataInnerEnd(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, ReduceOperation op, exchange_data & storage);
 		void                              ExchangeBuffersInner(exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs,std::vector<INMOST_MPI_Request> & send_reqs, std::vector<INMOST_MPI_Request> & recv_reqs);
 		std::vector<int>                  FinishRequests     (std::vector<INMOST_MPI_Request> & recv_reqs);
+		void                              SortParallelStorage(parallel_storage & ghost, parallel_storage & shared,ElementType mask);
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
 	public:
 #if defined(USE_PARALLEL_WRITE_TIME)	
@@ -2819,12 +2824,27 @@ namespace INMOST
 		/// Generally this is not needed if you use high-level algorithms for mesh modification
 		/// or mesh redistribution.
 		///
-		/// @param mask bitwise type mask
+		/// @param mask Bitwise mask of element types for which to recompute the parallel storage.
 		/// @see Mesh::BeginModification
 		/// @see Mesh::EndModification
 		/// @see Mesh::ExchangeMarked
 		/// @see Mesh::RemoveGhostElements
 		void                              RecomputeParallelStorage(ElementType mask);
+		/// Sort parallel storage. Parallel storage is sorted according to
+		/// global identificators or centroids of elements if global identificators
+		/// are not availible. If you manually change global identificators or
+		/// if global identificators are not availible and coordinates of nodes
+		/// change, then you should invoke this function.
+		/// You can check presence of global identificators on single
+		/// type of elements using function Mesh::HaveGlobalID.
+		/// This function is called automatically inside Mesh::AssignGlobalID.
+		/// No action will be performed if USE_PARALLEL_STORAGE is not set in inmost_common.h.
+		/// @param mask Bitwise mask of element types for which to sort the parallel storage.
+		void                              SortParallelStorage(ElementType mask);
+		/// Outputs parallel storage into xml log files.
+		/// USE_PARALLEL_STORAGE and USE_PARALLEL_WRITE_TIME should be activated in inmost_common.h.
+		/// @param mask Bitwise mask of element types for which to log the parallel storage.
+		void                              RecordParallelStorage(ElementType mask);
 		/// Synchronize bitwise mask of element types between processors.
 		///
 		/// Collective operation

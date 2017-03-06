@@ -102,7 +102,7 @@ namespace INMOST
 		selfid = TieElement(5);
 		assert(selfid == 0);
 		dim = 3;
-		have_global_id = NONE;
+		//have_global_id = NONE;
 		checkset = DEFAULT_CHECK;
 		errorset = 0;
 		new_element = hide_element = 0;
@@ -353,7 +353,7 @@ namespace INMOST
 		new_element = other.new_element;
 		hide_element = other.hide_element;
 		epsilon = other.epsilon;
-		have_global_id = other.have_global_id;
+		//have_global_id = other.have_global_id;
 		// copy communicator
 		if( m_state == Mesh::Parallel ) SetCommunicator(other.comm); else comm = INMOST_MPI_COMM_WORLD;
 		// reestablish geometric tags and table
@@ -478,7 +478,7 @@ namespace INMOST
 		new_element = other.new_element;
 		hide_element = other.hide_element;
 		epsilon = other.epsilon;
-		have_global_id = other.have_global_id;
+		//have_global_id = other.have_global_id;
 		// copy communicator
 		if( m_state == Mesh::Parallel ) SetCommunicator(other.comm); else comm = INMOST_MPI_COMM_WORLD;
 		// reestablish geometric tags and table

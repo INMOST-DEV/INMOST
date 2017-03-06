@@ -6,17 +6,25 @@ set(SOURCE main.cpp
 	   octgrid.h
            my_glut.h)
 
-add_executable(Octree ${SOURCE})
+set(SOURCE_LIGHT main_light.cpp
+	   octgrid.cpp
+	   octgrid.h)
 
-target_link_libraries(Octree inmost lapack blas) 
+add_executable(Octree ${SOURCE})
+add_executable(Octree_light ${SOURCE_LIGHT})
+set(TARGETS Octree Octree_light)
+
+foreach(vtarget ${TARGETS})
+target_link_libraries(${vtarget} inmost)
+#target_link_libraries(${vtarget} lapack blas) 
 
 
 if(USE_MPI)
-  message("linking with mpi")
-  target_link_libraries(Octree ${MPI_LIBRARIES}) 
+  message("linking ${vtarget} with mpi")
+  target_link_libraries(${vtarget} ${MPI_LIBRARIES}) 
   if(MPI_LINK_FLAGS)
-    message("adding link flags")
-    set_target_properties(Octree PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+    message("adding link flags to ${vtarget}")
+    set_target_properties(${vtarget} PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
 
@@ -28,20 +36,23 @@ if(OPENGL_FOUND)
 		include_directories(${OPENGL_INCLUDE_DIR})
 		include_directories(${GLUT_INCLUDE_DIR})
 		add_definitions(-D__GRAPHICS__)
-		target_link_libraries(Octree ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
+		target_link_libraries(${vtarget} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
 	else(GLUT_FOUND)
-		message("GLUT not found")
+		message("GLUT not found for ${vtarget}")
 	endif(GLUT_FOUND)
 else(OPENGL_FOUND)
-	message("OpenGL not found")
+	message("OpenGL not found for ${vtarget}")
 endif(OPENGL_FOUND)
 
 if(USE_PARTITIONER_ZOLTAN)
-  message("linking Octree with Zoltan")
-  target_link_libraries(Octree ${ZOLTAN_LIBRARIES})
+  message("linking ${vtarget} with Zoltan")
+  target_link_libraries(${vtarget} ${ZOLTAN_LIBRARIES})
 endif()
 if(USE_PARTITIONER_PARMETIS)
-  message("linking Octree with ParMETIS")
-  target_link_libraries(Octree ${PARMETIS_LIBRARIES})
+  message("linking ${vtarget} with ParMETIS")
+  target_link_libraries(${vtarget} ${PARMETIS_LIBRARIES})
 endif()
+
+endforeach(vtarget ${TARGETS})
+
 

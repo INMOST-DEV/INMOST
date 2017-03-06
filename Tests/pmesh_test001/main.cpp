@@ -119,6 +119,11 @@ int main(int argc,char ** argv)
 		case 2: action = Partitioner::Refine; break;
 	}
 
+	m->ResolveShared();
+	//std::stringstream str;
+	//str << "dump" << m->GetProcessorRank() << ".xml";
+	//m->Save(str.str());
+
 	if( itype == 8 ) //pass the whole local mesh on the current processor to the next one
 	{
 		if( m->OwnerTag().isValid() )
