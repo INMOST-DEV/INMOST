@@ -98,7 +98,7 @@ namespace INMOST
 
 
 #if defined(USE_AUTODIFF)
-	std::string VariableToString(INMOST::Storage::var v)
+	std::string VariableToString(INMOST::variable v)
 	{
 		std::stringstream ret;
 		const INMOST::Sparse::Row & r = v.GetRow();
@@ -1191,10 +1191,10 @@ namespace INMOST
 #endif
 
 #if defined(USE_AUTODIFF)
-	INMOST::Storage::var XMLReader::atov(const char * _str)
+	INMOST::variable XMLReader::atov(const char * _str)
 	{
 		INMOST::Sparse::Row entries;
-		INMOST::Storage::real val;
+		INMOST_DATA_REAL_TYPE val;
 		if( !(_str[0] == '(' && _str[strlen(_str)-1] == ')' ) ) Report("Expected scopes for variable %s",_str);
 		std::string str(_str+1,strlen(_str)-2);
 		std::vector<std::string> decomposed;

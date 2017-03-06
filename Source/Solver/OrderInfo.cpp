@@ -3,6 +3,8 @@
 #define GUARD_MPI(x) {ierr = x; if( ierr != MPI_SUCCESS ) {char str[4096]; int len; MPI_Error_string(ierr,str,&len); std::cout << #x << " not successfull: " << str << std::endl; MPI_Abort(comm,-1000);}}
 #define HASH_TABLE_SIZE 2048
 
+#if defined(USE_SOLVER)
+
 namespace INMOST {
 
     int comparator(const void *pa, const void *pb) {
@@ -739,3 +741,4 @@ namespace INMOST {
 
 }
 
+#endif//USE_SOLVER

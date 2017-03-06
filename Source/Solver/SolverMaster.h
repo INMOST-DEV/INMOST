@@ -2,7 +2,7 @@
 #define INMOST_SOLVER_MASTER
 
 #include <Source/Solver/SolverInterface.h>
-
+#if defined(USE_SOLVER)
 namespace INMOST {
 
     class SolverMaster {
@@ -14,5 +14,5 @@ namespace INMOST {
         static bool isSolverAvailable(std::string name);
     };
 }
-
+#endif //USE_SOLVER
 #endif //INMOST_SOLVER_MASTER

@@ -10,7 +10,7 @@ namespace INMOST
   std::string ReferenceToString(INMOST::HandleType h, int pos);
 #endif
 #if defined(USE_AUTODIFF)
-  std::string VariableToString(INMOST::Storage::var v);
+  std::string VariableToString(INMOST::variable v);
 #endif
   
     
@@ -130,7 +130,7 @@ namespace INMOST
     std::pair<std::string,std::pair<INMOST::ElementType,int> > atorh(const char * _str);
 #endif
 #if defined(USE_AUTODIFF)
-    INMOST::Storage::var atov(const char * _str);
+    INMOST::variable atov(const char * _str);
 #endif
     int EvaluateExpression(std::string expression);
     int ConvertMultiplier(std::string expression, int SetSize);

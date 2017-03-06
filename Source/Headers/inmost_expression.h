@@ -1938,6 +1938,14 @@ template<class A>          __INLINE                 INMOST::function_expression<
                            __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_REAL_TYPE Arg, const INMOST::keyval_table & Table) {return Table.GetValue(Arg);}
 
 
-
+#else //USE_AUTODIFF
+__INLINE void                     assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+__INLINE void                  set_value(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+__INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
+__INLINE INMOST_DATA_REAL_TYPE variation(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE) {return Arg;}
+__INLINE INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
+__INLINE INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return Arg/::sqrt(Arg*Arg+tol*tol);}
+__INLINE INMOST_DATA_REAL_TYPE  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right+::sqrt((Left-Right)*(Left-Right)+tol*tol));}
+__INLINE INMOST_DATA_REAL_TYPE  soft_min(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right-::sqrt((Left-Right)*(Left-Right)+tol*tol));}
 #endif //USE_AUTODIFF
 #endif //INMOST_AUTODIFF_ETEXPR_H_INCLUDED

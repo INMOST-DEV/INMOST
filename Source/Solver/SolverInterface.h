@@ -6,10 +6,8 @@
 #include "inmost_sparse.h"
 
 #define SILENCE_SET_PARAMETER
-
-namespace INMOST {
-
 #if defined(USE_SOLVER)
+namespace INMOST {
 
     class SolverParameters {
     public:
@@ -78,7 +76,7 @@ namespace INMOST {
     };
 
 }
-#endif
+#endif //USE_SOLVER
 
 
 #endif //INMOST_SOLVER_INTERFACE_H

@@ -1,5 +1,5 @@
 #include "SolverInterface.h"
-
+#if defined(USE_SOLVER)
 namespace INMOST {
 
     SolverParameters::SolverParameters(std::string solverName, std::string solverPrefix, std::string internalFile) : solverName(solverName),
@@ -15,3 +15,4 @@ namespace INMOST {
     SolverParameters::~SolverParameters() {}
 
 }
+#endif //USE_SOLVER

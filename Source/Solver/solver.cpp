@@ -1,7 +1,7 @@
 #include <inmost.h>
 #include "SolverMaster.h"
 #include "Source/Misc/utils.h"
-
+#if defined(USE_SOLVER)
 
 namespace INMOST {
 
@@ -259,3 +259,5 @@ namespace INMOST {
     }
 
 }
+
+#endif //USE_SOLVER

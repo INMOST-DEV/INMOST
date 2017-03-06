@@ -1,5 +1,5 @@
 #include "SolverMaster.h"
-
+#if defined(USE_SOLVER)
 #include "solver_inner/solver_ilu2/SolverILU2.h"
 #include "solver_inner/solver_ddpqiluc2/SolverDDPQILUC2.h"
 #include "solver_inner/solver_mptiluc/SolverMPTILUC.h"
@@ -133,3 +133,4 @@ namespace INMOST {
 
 }
 
+#endif //USE_SOLVER
