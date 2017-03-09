@@ -1,9 +1,7 @@
 #ifndef INMOST_DENSE_INCLUDED
 #define INMOST_DENSE_INCLUDED
 #include "inmost_common.h"
-#if defined(USE_AUTODIFF)
 #include "inmost_expression.h"
-#endif
 #include <iomanip>
 
 
@@ -22,8 +20,6 @@ namespace INMOST
 	template<> struct Promote<variable, hessian_variable>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, variable>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
-#else
-	__INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE x) {return x;}
 #endif
 	
 	template<typename Var, typename Storage = array<Var> >

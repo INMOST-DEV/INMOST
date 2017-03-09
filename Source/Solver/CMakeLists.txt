@@ -12,6 +12,7 @@ set(HEADER
         ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.h
         ${CMAKE_CURRENT_SOURCE_DIR}/SolverInterface.h)
 
+if(USE_SOLVER)
 add_subdirectory(solver_inner)
 add_subdirectory(solver_fcbiilu2)
 add_subdirectory(solver_k3biilu2)
@@ -31,7 +32,7 @@ endif()
 if (USE_SOLVER_SUPERLU)
     add_subdirectory(solver_superlu)
 endif()
-
+endif(USE_SOLVER)
 
 set(HEADER ${HEADER} PARENT_SCOPE)
 set(SOURCE ${SOURCE} PARENT_SCOPE)
