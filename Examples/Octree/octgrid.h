@@ -63,11 +63,22 @@ struct grid
 /// This function corrects this division. Puts all children to one processor
 void correct_brothers(struct grid* g, int size, int rank, int type);
 void pre_eval(struct grid* g, int size, int rank);
+void init_mesh(struct grid* g);
 
 /// Debug. Print information about all cells
 void print_all_about_cells(struct grid * g);
+void print_cell_center(struct grid* g, Cell cell);
+void print_node_center(struct grid* g, Node node);
+void print_edge(struct grid* g, Edge edge);
+void print_face_nodes(struct grid* g, Face face);
+void print_face_edges(struct grid* g, Face face);
+void print_cells_statistics(grid* g);
+void command(grid* g);
 
 void print_redist_tag(struct grid* g,  int rank);
+void ghost_to_shared(grid* g);
+void remove_ghost_edges(grid* g);
+void resolve_ghost(grid* g);
 
 /// Initialize grid. Create tags and other data
 void gridInit(struct grid * g, int n[3]);

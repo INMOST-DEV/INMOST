@@ -17,14 +17,24 @@ struct grid thegrid;
 // Variables for drawing
 int draw_edges = 1;
 int draw_faces = 1;
-int draw_in_motion = false; // redraw mode. true - always, false - by space press.
+int draw_ghost = 1;
+int draw_in_motion = 0; // redraw mode. true - always, false - by space press.
+int draw_sem = 0;
+
+int cur_cell = 0; bool draw_all_cells = true;
+int cur_face = 0; bool draw_all_faces = true;
+int cur_edge = 0; bool draw_all_edges = true;
+
+int from_file = 0;
+int redist_after_amr = 0;
 
 // Variables for refine and coarse
 int refine_depth = 1;
 double  mx = 0,  my = 0;
 double rmx = 0, rmy = 0;
 double base_radius = 0.02;
-int log_level = 3;
+int action = 0;
+int log_level = 0;
 
 // Variables for MPI
 int rank;
@@ -39,14 +49,18 @@ const int MAX_NODES_IN_FACE = 10;
 const int MAX_PROCESSORS_COUNT = 128;
 int current_proc_draw = -1;
 void refresh_slaves_grid();
-void send_coordinates_to_slaves();
+void send_coordinates_to_slaves(int action);
+
+void redistribute_command();
 
 struct drawing_face {
     int nodes_count;
+    char stat;
     double** nodes;
 
     drawing_face()
     {
+        stat = Element::Owned;
         nodes = new double*[MAX_NODES_IN_FACE];
         for (int i = 0; i < MAX_NODES_IN_FACE; i++)
             nodes[i] = new double[3];
@@ -58,6 +72,7 @@ drawing_face** drawing_faces;
 int*           drawing_faces_n;
 double** sub_edges_nodes;
 int*     sub_edges_nodes_n; 
+char**    sub_edges_ghost;
 
 /// Dump mesh to vtk file in folder "grids"
 void dump_to_vtk()
@@ -158,11 +173,13 @@ void motion(int nmx, int nmy) // Mouse
 	mx = ((nmx/(double)(width))-0.5)*((double)width/(double)height)+0.5;
 	my = (1.0 - nmy/(double)height);	
 	
-	if(draw_in_motion)
+	if(draw_sem == 0 && draw_in_motion)
 	{
-        send_coordinates_to_slaves();
-        refresh_slaves_grid();   
-		gridAMR(&thegrid, 0);
+        if (size > 0) send_coordinates_to_slaves(0);
+        gridAMR(&thegrid, 0); 
+        if (redist_after_amr) redistribute_command();
+        if (size > 0) refresh_slaves_grid();   
+        draw_sem = 1;
 	}
 
 	glutPostRedisplay();
@@ -202,12 +219,30 @@ void mpi_draw()
         if (current_proc_draw == -1 || current_proc_draw == 0)
         {
             glColor3f(0.0,   0.0   ,255.0);
+            int c = 0;
+            int cf = 0;
             for(Mesh::iteratorCell it = thegrid.mesh->BeginCell(); it != thegrid.mesh->EndCell(); it++)
             {
+                if (it->GetStatus() == Element::Ghost)
+                {
+                    if (draw_ghost == 0) continue;
+                    glColor3f(1.0,   0.0   ,0.0);
+                }
+                else if (it->GetStatus() == Element::Shared) glColor3f(1.0,   1.0   ,0.0);
+                else                                         glColor3f(0.0,   0.0   ,1.0);
+
+                if (!draw_all_cells && cur_cell % thegrid.mesh->NumberOfCells() != c++) continue;
+
                 // Draw faces
                 ElementArray<Face> faces = it->getFaces();
                 for (ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++) 
                 {
+
+                    if (f->GetStatus() == Element::Ghost)        glColor3f(0.4,   0.4   ,0.0);
+                    else if (f->GetStatus() == Element::Shared)  glColor3f(1.0,   1.0   ,1.0);
+                    else                                         glColor3f(0.0,   0.0   ,1.0);
+
+                    if (!draw_all_faces && cur_face % faces.size() != cf++) continue;
                     ElementArray<Node> nodes = f->getNodes();
                     glBegin(GL_POLYGON);
                     for (ElementArray<Node>::iterator n = nodes.begin(); n != nodes.end(); n++)
@@ -238,11 +273,22 @@ void mpi_draw()
                 glColor3f(0.3,0.3,colo);
             }
 
+            int cf = 0;
             for (int j = 1; j < drawing_faces_n[i]; j++)
             {
+                if (!draw_all_faces && cur_face % drawing_faces_n[i] != cf++) continue;
+                if (!draw_all_faces) cout << drawing_faces[i][j].nodes_count << endl;
                 glBegin(GL_POLYGON);
                 for (int k = 0; k < drawing_faces[i][j].nodes_count; k++)
                 {
+                    if (drawing_faces[i][j].stat == Element::Ghost) 
+                    {
+                        if (draw_ghost == 0) continue;
+                        glColor3f(0.4,0.4,0);
+                    }
+                    else
+                        set_color(i);
+
                     glVertex3dv((drawing_faces[i][j].nodes[k]));
                 }
                 glEnd();
@@ -258,31 +304,64 @@ void mpi_draw()
         
         if (current_proc_draw == -1 || current_proc_draw == 0)
         {
-            glBegin(GL_LINES);
+            int c = 0;
             for (Mesh::iteratorEdge f = thegrid.mesh->BeginEdge(); f != thegrid.mesh->EndEdge(); f++)
             {
+                if (!draw_all_edges && cur_edge % thegrid.mesh->NumberOfEdges() != c++)  {  glEnable(GL_LINE_STIPPLE); glLineStipple(1, 0x0FF0); }
+                else                                                                     {  glDisable(GL_LINE_STIPPLE);                          }
+
+                glBegin(GL_LINES);
+                if (f->GetStatus() == Element::Ghost)        glColor3f(1.0,   0.0   ,0.0);
+                else if (f->GetStatus() == Element::Shared)  glColor3f(0.8,   0.8   ,0.8);
+                else                                         glColor3f(0.0,   0.0   ,0.0);
                 ElementArray<Node> nodes = f->getNodes();
                 glVertex3dv(&nodes[0].RealArray(thegrid.mesh->CoordsTag())[0]);
                 glVertex3dv(&nodes[1].RealArray(thegrid.mesh->CoordsTag())[0]);
+                glEnd();
             }
-            glEnd();
         }
         // Draw other edges
         glLineWidth(2);
-        glBegin(GL_LINES);
+        glColor3f(0.0,   0.0   ,0.0);
         for (int i = 1; i < size; i++)
         {
             if (current_proc_draw != -1 && current_proc_draw != i) continue;
+            int gc = 0;
+            int c = 0;
             for (int j = 0; j < sub_edges_nodes_n[i]; j+=6)
             {
+                 if (!draw_all_edges && cur_edge != c++)  { glEnable(GL_LINE_STIPPLE); glLineStipple(1, 0x0FF0); }
+                 else { glDisable(GL_LINE_STIPPLE);  }
+                 
+                 glBegin(GL_LINES);
+                 if (sub_edges_ghost[i][gc] == Element::Shared)
+                    glColor3f(0.8,   0.8   ,0.8);
+                 else if (sub_edges_ghost[i][gc] == Element::Ghost)
+                    glColor3f(0.1,   0.0   ,0.0);
+                 else
+                    glColor3f(0.0,   0.0   ,0.0);
                 glVertex3dv(&(sub_edges_nodes[i][j]));
                 glVertex3dv(&(sub_edges_nodes[i][j+3]));
+                gc++;
+                glEnd();
             }
         }       
-        glEnd();
-	}	
-	
+
+    }	
+    glEnable(GL_POINT_SMOOTH);
+    glBegin(GL_POINTS);
+    for(Mesh::iteratorNode it = thegrid.mesh->BeginNode(); it != thegrid.mesh->EndNode(); it++)
+    {
+        if (it->GetStatus() == Element::Ghost) glColor3f(1, 1, 1);
+        else if (it->GetStatus() == Element::Shared) glColor3f(1, 0.0, 0.0);
+        else glColor3f(0.0, 0.0, 0.0);
+        glVertex3dv(&(it->getAsNode().RealArray(thegrid.mesh->CoordsTag())[0]));
+    }
+    glEnd();
+    glDisable(GL_POINT_SMOOTH);
+
     glutSwapBuffers();
+    draw_sem = 0;
 }
 
 /// Main drawing function. 
@@ -328,6 +407,7 @@ void draw()
 	}	
  
     glutSwapBuffers();
+    draw_sem = 0;
 }
 
 
@@ -344,7 +424,7 @@ void reshape(int w, int h)
 }
 
 /// Send mpuse coordinates to slaves. Slaves receive the message 'm', execute "refine" with received coordinates.
-void send_coordinates_to_slaves()
+void send_coordinates_to_slaves(int action)
 {
     char buff[MAX_PROCESSORS_COUNT][10];
     MPI_Request req[MAX_PROCESSORS_COUNT];
@@ -355,7 +435,8 @@ void send_coordinates_to_slaves()
         buff[i][0] = 'm'; // Special key, means refine 
         *((double*)(buff[i] + 1)) = mx;
         *((double*)(buff[i] + 1 + sizeof(double))) = my;
-        MPI_Isend(buff[i], 1 + 2 * sizeof(double), MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
+        *((int*)(buff[i] + 1 + 2*sizeof(double))) = action;
+        MPI_Isend(buff[i], 1 + 2 * sizeof(double) + sizeof(int), MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
     }
 }
 
@@ -364,12 +445,12 @@ void send_coordinates_to_slaves()
 void refresh_slaves_grid()
 {
 	if (::rank == 0) { // Send command to slaves for they will sent grid to us
-        char buff[10][2];
+        char buff1[10][2];
         MPI_Request req[10];
         for (int i = 1; i < size; i++)
         {
-            buff[i][0] = 'r'; // Special key, means send mesh
-            MPI_Isend(buff[i], 1, MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
+            buff1[i][0] = 'r'; // Special key, means send mesh
+            MPI_Isend(buff1[i], 1, MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
         }
     }
 
@@ -377,24 +458,25 @@ void refresh_slaves_grid()
     char buff[MAX_NODES_COUNT * sizeof(double)];
     MPI_Status status;
     int count_e;
-    int count_f;
     int count_df = 0;
     char nodes_count;
+    char stat;
 
     for (int i = 1; i < size; i++)
     {
         // First receive array of vertices of faces
         MPI_Recv(buff, MAX_NODES_COUNT * sizeof(double),MPI_CHAR,i,0,INMOST_MPI_COMM_WORLD, &status);
-        count_f  = *((int*)buff);
-        count_df = *((int*)buff + sizeof(int));
-        LOG(2,"Main process: received faces from " << i << " with " << count_f << " doubles of " << count_df << " faces")
+        count_df = *((int*)buff);
+        LOG(2,"Main process: received faces from " << i << " with " << count_df << " faces")
 
         drawing_faces_n[i] = count_df;
-        int offset = sizeof(int)*2;
+        int offset = sizeof(int);
         for (int j = 0; j < count_df; j++)
         {
             nodes_count = *(buff + offset++); // Read count of vertex in face
+            stat = *(buff + offset++);
             drawing_faces[i][j].nodes_count = nodes_count;
+            drawing_faces[i][j].stat = stat;
             for (int k = 0; k < nodes_count; k++)
             {
                 drawing_faces[i][j].nodes[k][0] = *((double*)(buff + offset)); 
@@ -407,12 +489,20 @@ void refresh_slaves_grid()
         // Now receive array of vertices of edges
         MPI_Recv(buff, MAX_NODES_COUNT * sizeof(double),MPI_CHAR,i,0,INMOST_MPI_COMM_WORLD, &status);
         count_e = *((int*)buff);
-        sub_edges_nodes_n[i] = count_e;
+        sub_edges_nodes_n[i] = (count_e/7)*6;
         LOG(2,"Main process: received edges from " << i << " with " << count_e << " doubles")
 
-        for (int j = 0; j < count_e; j++)
+        int c = 0;
+        int gc = 0;
+        while (c+gc < count_e)
         {
-            sub_edges_nodes[i][j] = *((double*)(buff + sizeof(int) + sizeof(double)*j)); 
+            sub_edges_ghost[i][gc] = *((double*)(buff + sizeof(int) + sizeof(double)*(c+gc)));
+            gc++;
+            for (int j = 0; j < 6 ; j++)
+            {
+                sub_edges_nodes[i][c] = *((double*)(buff + sizeof(int) + sizeof(double)*(c+gc))); 
+                c++;
+            }
         }
     }
 }
@@ -433,6 +523,7 @@ void redistribute(int type)
     Partitioner * part = new Partitioner(thegrid.mesh);
     
     // Specify the partitioner
+    type = 0;
     if (type == 0) part->SetMethod(Partitioner::Parmetis, Partitioner::Partition);
     if (type == 1) part->SetMethod(Partitioner::Parmetis, Partitioner::Repartition);
     if (type == 2) part->SetMethod(Partitioner::Parmetis, Partitioner::Refine);
@@ -445,9 +536,13 @@ void redistribute(int type)
     {
         cout << "Exception: " << er << endl;
     }
+    catch(...)
+    {
+    }
     delete part;
 
 	correct_brothers(&thegrid,size,::rank, 2);
+
     try
     {
         thegrid.mesh->Redistribute(); 
@@ -456,9 +551,14 @@ void redistribute(int type)
     {
         cout << "Exception: " << er << endl;
     }
+    catch(...)
+    {
+    }
+
+
     thegrid.mesh->RemoveGhost();
     thegrid.mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
-    thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
+    //thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
 	LOG(2,"Process " << ::rank << ": redistribute completed")
 }
 
@@ -485,6 +585,7 @@ void redistribute_command()
     
     redistribute(type);
     counter++;
+
 }
 
 
@@ -495,26 +596,115 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		exit(-1);
 	}
+    if( key == '+')
+    {
+        cur_cell++;
+		glutPostRedisplay();
+    }
+    if( key == '-')
+    {
+        cur_cell--;
+		glutPostRedisplay();
+    }
+    if( key == 'q')
+    {
+        draw_all_cells = !draw_all_cells;
+		glutPostRedisplay();
+    }
+    if( key == 'a')
+    {
+        draw_all_faces = !draw_all_faces;
+		glutPostRedisplay();
+    }
+    if( key == 'w')
+    {
+        draw_all_edges = !draw_all_edges;
+		glutPostRedisplay();
+    }
+    if( key == '6')
+    {
+        cur_edge++;
+		glutPostRedisplay();
+    }
+    if( key == '4')
+    {
+        cur_edge--;
+		glutPostRedisplay();
+    }
+    if( key == '>')
+    {
+        cur_face++;
+		glutPostRedisplay();
+    }
+    if( key == '<')
+    {
+        cur_face--;
+		glutPostRedisplay();
+    }
+    if( key == 'g' || key == 'G')
+    {
+        draw_ghost = !draw_ghost;
+		glutPostRedisplay();
+    }
+    if( key == 'o' || key == 'O')
+    {
+        if (action == 0) action = 3;
+        else action = 0;
+		glutPostRedisplay();
+    }
+    if( key == 'p' || key == 'P')
+    {
+        redist_after_amr = !redist_after_amr; 
+        draw_in_motion = !draw_in_motion;
+		glutPostRedisplay();
+    }
+    if( key == 'c' || key == 'C')
+    {
+        char buff[10][1];
+        MPI_Request req[10];
+        for (int i = 1; i < size; i++)
+        {
+            buff[i][0] = 'c'; // Special key, means command
+            MPI_Isend(buff[i], 1, MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
+        } 
+        command(&thegrid);
+        
+		glutPostRedisplay();
+    }
+    if( key == 'u' || key == 'U')
+    {
+        char buff[10][1];
+        MPI_Request req[10];
+        for (int i = 1; i < size; i++)
+        {
+            buff[i][0] = 'u'; // Special key, means remove_ghost
+            MPI_Isend(buff[i], 1, MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
+        } 
+        thegrid.mesh->RemoveGhost();
+		glutPostRedisplay();
+    }
 	if( key == ' ' ) 
 	{
 		if (::rank == 0)
         {
-            send_coordinates_to_slaves();
+            send_coordinates_to_slaves(action);
 		}
 
-        gridAMR(&thegrid, 0);
-        thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
+        gridAMR(&thegrid, action);
+        //thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
+        if (redist_after_amr)
+            redistribute_command();
 		glutPostRedisplay();
 	}
     if( key == '[' ) 
 	{
 		if (::rank == 0)
         {
-            send_coordinates_to_slaves();
+            send_coordinates_to_slaves(action);
 		}
 
         gridAMR(&thegrid, 1);
-        thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
+        //thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
 		glutPostRedisplay();
 	}
     if( key == 'r' || key == 'R'|| key == ' ') 
@@ -598,14 +788,24 @@ void NotMainProcess()
         {
             mx = *((double*)(buff + 1));
             my = *((double*)(buff + 1 + sizeof(double)));
-            gridAMR(&thegrid, 0);
-            thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
+            int action = *((int*)(buff + 1 + 2*sizeof(double)));
+
+            gridAMR(&thegrid, action); 
+            //thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
         }
         if (buff[0] == 'x') // Need to redistribute 
         {
             char type_C = buff[1];
             int  type = type_C - '0';
             redistribute(type);
+        }
+        if (buff[0] == 'u') // Need remove ghosts
+        {
+            thegrid.mesh->RemoveGhost();
+        }
+        if (buff[0] == 'c') // Need command
+        {
+            command(&thegrid);
         }
         if (buff[0] == 'z') // Need to correct brothers 
         {
@@ -620,39 +820,41 @@ void NotMainProcess()
             // First fill the buffer for sent
             char buff_f[MAX_NODES_COUNT * sizeof(double)];
             char buff_e[MAX_NODES_COUNT * sizeof(double)];
-            int count_f = 0; // Number of transmitted doubles in array buff_f
             int count_e = 0;
-            int offset = 2*sizeof(int);
+            int offset = sizeof(int);
             int count_df = 0; // Number of transmitted faces in array buff_f
            
             // Fill array buff_f. Strcuture of array:
-            // [Points count] [Faces count] [Vertices' count in face] [Face] [Vertices' count in face] [Face]...
+            // [Faces count] [Vertices' count in face] [Status] [Points] [Vertices' count in face] [Status] [Points]...
             for(Mesh::iteratorCell it = thegrid.mesh->BeginCell(); it != thegrid.mesh->EndCell(); it++)
             {
                 ElementArray<Face> faces = it->getFaces();
                 for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++) 
                 {
                     count_df++;
+
                     ElementArray<Node> nodes = f->getNodes();
-                    if (nodes.size() != 0)
-                        *(buff_f + offset++) = (char)nodes.size();
+                    if (nodes.size() == 0) continue;
+
+                    *(buff_f + offset++) = (char)nodes.size();
+                    *(buff_f + offset++) = (char)it->GetStatus();
+
                     for(ElementArray<Node>::iterator n = nodes.begin(); n != nodes.end(); n++)
                     {
                         *((double*)(buff_f + offset                   )) = n->RealArray(thegrid.mesh->CoordsTag())[0];
                         *((double*)(buff_f + offset + sizeof(double)  )) = n->RealArray(thegrid.mesh->CoordsTag())[1];
                         *((double*)(buff_f + offset + sizeof(double)*2)) = n->RealArray(thegrid.mesh->CoordsTag())[2];
-                        count_f += 3;
                         offset  += 3*sizeof(double);
                     }
                 }
             }
-            *((int*)buff_f              ) = count_f;
-            *((int*)buff_f + sizeof(int)) = count_df;
+            *((int*)buff_f) = count_df;
 
             // Fill array buff_e
             for(Mesh::iteratorEdge f = thegrid.mesh->BeginEdge(); f != thegrid.mesh->EndEdge(); f++)
 			{
                 ElementArray<Node> nodes = f->getNodes();
+				*((double*)(buff_e + sizeof(int) + sizeof(double)*count_e++)) = (double)f->GetStatus();
 				*((double*)(buff_e + sizeof(int) + sizeof(double)*count_e++)) = nodes[0].RealArray(thegrid.mesh->CoordsTag())[0];
 				*((double*)(buff_e + sizeof(int) + sizeof(double)*count_e++)) = nodes[0].RealArray(thegrid.mesh->CoordsTag())[1];
 				*((double*)(buff_e + sizeof(int) + sizeof(double)*count_e++)) = nodes[0].RealArray(thegrid.mesh->CoordsTag())[2];
@@ -662,9 +864,8 @@ void NotMainProcess()
 			}
             *((int*)buff_e) = count_e;
 
-            // Теперь мы готовы слать. Пошлем 2мя заходами
             // Now we are ready to transmit the data. Transmit with 2 steps
-			LOG(2, "Process " << ::rank << ": send buffer with faces = " << count_f << " of " << count_df << ". Edges " << count_e)
+			LOG(2, "Process " << ::rank << ": send buffer with faces = " << count_df << ". Edges " << count_e)
             MPI_Send(buff_f, offset                             ,MPI_CHAR,0,0,INMOST_MPI_COMM_WORLD);
             MPI_Send(buff_e,count_e*sizeof(double) + sizeof(int),MPI_CHAR,0,0,INMOST_MPI_COMM_WORLD);
         }
@@ -674,7 +875,7 @@ void NotMainProcess()
 int main(int argc, char ** argv)
 {
 	int i;
-	int n[3] = {2,2,1};
+	int n[3] = {10,10,1};
 
 	thegrid.transformation = transformation;
 	thegrid.rev_transformation = rev_transformation;
@@ -684,7 +885,6 @@ int main(int argc, char ** argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &::rank);
 
     gridInit(&thegrid,n);
-
     Partitioner::Initialize(&argc,&argv);
 
 	::size = thegrid.mesh->GetProcessorsNumber();
@@ -704,11 +904,13 @@ int main(int argc, char ** argv)
         drawing_faces_n   = new int[size-1];
         sub_edges_nodes   = new double*[size-1];
         sub_edges_nodes_n = new int[size-1];
-
+        sub_edges_ghost   = new char*[size-1];
+        
         for (int i = 0; i < size; i++) {
             drawing_faces_n[i] = 0;
             drawing_faces[i] = new drawing_face[30000];
             sub_edges_nodes_n[i] = 0;
+            sub_edges_ghost[i] = new char[25000];
             sub_edges_nodes[i] = new double[75000];
         }
         #endif

@@ -6,11 +6,27 @@ using namespace std;
 
 double epsilon = 0.0001;
 
+#define IS_GHOST(c) c.GetStatus() == Element::Ghost
+#define IS_GHOST_P(c) c->GetStatus() == Element::Ghost
+#define BARRIER MPI_Barrier(MPI_COMM_WORLD);
+
 void default_transformation(double xyz[3]) { (void) xyz; }
 int default_cell_should_unite(struct grid * g, int cell) { (void) g; (void) cell; return 0; }
 int default_cell_should_split(struct grid * g, int cell) { (void) g; (void) cell; return 0; }
 void mark_cell(struct grid* g, Cell cell);
 void cellCoarse(struct grid* g, Cell cell);
+void resolve_connections(grid* g);
+
+void dump_to_vtk(grid* g)
+{
+    //thegrid.mesh->ResolveShared(); // Resolve duplicate nodes
+    //thegrid.mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
+
+    std::stringstream filename;
+    filename << "grids/grid";
+        filename << ".pvtk";
+    g->mesh->Save(filename.str());
+}
 
 /// Create tags
 void init_mesh(struct grid* g)
@@ -76,7 +92,7 @@ void print_cell_center(struct grid* g, Cell cell)
     xyz[1] = cell.RealArrayDF(g->c_tags.center)[1];
     xyz[2] = cell.RealArrayDF(g->c_tags.center)[2];
     g->transformation(xyz);
-    cout << xyz[0] << " " << xyz[1] << " " << xyz[2] << endl;
+    cout << xyz[0] << " " << xyz[1] << " " << xyz[2];
 }
 
 /// Makes correct order od edges in face
@@ -197,7 +213,7 @@ void reorder_1(struct grid* g, ElementArray<Node>* nodes)
 }
                  
 /// Create cube cell from verts
-Cell CreateCubeElement(struct grid* g, ElementArray<Node> verts) 
+Cell CreateCubeElement(struct grid* g, ElementArray<Node> verts, int ghost) 
 {
     /*      (5)*-------*(6)  */
 	/*     z  /|      /|     */
@@ -217,7 +233,9 @@ Cell CreateCubeElement(struct grid* g, ElementArray<Node> verts)
     const INMOST_DATA_INTEGER_TYPE face_nodes[24] = {0,4,5,1, 1,5,6,2, 2,6,7,3, 3,7,4,0, 0,1,2,3, 4,5,6,7};
     const INMOST_DATA_INTEGER_TYPE num_nodes[6]   = {4,       4,       4,       4,       4,       4};
 
-    return g->mesh->CreateCell(verts,face_nodes,num_nodes,6).first;
+    Cell res = g->mesh->CreateCell(verts,face_nodes,num_nodes,6).first;
+    if (ghost) res.SetStatus(Element::Ghost);
+    return res;
 }
 
 int l_n[3];
@@ -329,7 +347,7 @@ void gridInit(struct grid * g, int n[3])
                 e_nodes.push_back(newverts[get_num(i+0,j+1,k+1)]);
                 e_nodes.push_back(newverts[get_num(i+1,j+1,k+1)]);
                 e_nodes.push_back(newverts[get_num(i+1,j+0,k+1)]);
-                Cell c = CreateCubeElement(g, e_nodes);
+                Cell c = CreateCubeElement(g, e_nodes,0);
 
                 c.RealArrayDF(g->c_tags.center)[0] = sx + dx*(i+0.5); 
                 c.RealArrayDF(g->c_tags.center)[1] = sy + dy*(j+0.5); 
@@ -404,7 +422,9 @@ bool isSmallEdge(struct grid* g, Edge edge, Cell cell)
     else if (!equal(nodes[0].RealArray(g->mesh->CoordsTag())[2], nodes[1].RealArray(g->mesh->CoordsTag())[2]))
         p = cell.RealArrayDF(g->c_tags.side)[2];
     else 
+    {
         TSNH
+    }
 
     s[0] = cell.RealArrayDF(g->c_tags.side)[0];
     s[1] = cell.RealArrayDF(g->c_tags.side)[1];
@@ -436,7 +456,9 @@ bool isSmallFace(struct grid* g, Face face, Cell cell)
 /// Creates cell with faces based on cell. After deletes cell
 Cell recreate_cell(struct grid* g, Cell cell, ElementArray<Face> faces)
 {
+    int ghost = IS_GHOST(cell);
     Cell res = g->mesh->CreateCell(faces).first;
+    res.SetStatus(cell.GetStatus());
 
     res.RealArrayDF(g->c_tags.center)[0] = cell.RealArrayDF(g->c_tags.center)[0];
     res.RealArrayDF(g->c_tags.center)[1] = cell.RealArrayDF(g->c_tags.center)[1];
@@ -460,8 +482,9 @@ Cell recreate_cell(struct grid* g, Cell cell, ElementArray<Face> faces)
 }
 
 /// Split edge to 2
-ElementArray<Edge> Split_Edge(struct grid* g, Edge edge, Cell* cell_for_split)
+ElementArray<Edge> Split_Edge(struct grid* g, Edge edge, Cell* cell_for_split, Face* cor_face = NULL)
 {
+    int status = edge.GetStatus();
     ElementArray<Node> nodes = edge.getNodes();
     if (nodes.size() != 2) TSNH
     double c[3];
@@ -470,12 +493,18 @@ ElementArray<Edge> Split_Edge(struct grid* g, Edge edge, Cell* cell_for_split)
     c[2] = (nodes[0].RealArray(g->mesh->CoordsTag())[2] + nodes[1].RealArray(g->mesh->CoordsTag())[2])/2.0;
 
     Node center_node = g->mesh->CreateNode(c);
+    center_node.SetStatus(edge.GetStatus());
     ElementArray<Node> ne1; ne1.push_back(nodes[0]); ne1.push_back(center_node);
     ElementArray<Node> ne2; ne2.push_back(nodes[1]); ne2.push_back(center_node);
 
     ElementArray<Edge> new_edges;
-    new_edges.push_back(g->mesh->CreateEdge(ne1).first);
-    new_edges.push_back(g->mesh->CreateEdge(ne2).first);
+    Edge n_edge = g->mesh->CreateEdge(ne1).first;
+    n_edge.SetStatus(status);
+    new_edges.push_back(n_edge);
+
+    n_edge = g->mesh->CreateEdge(ne2).first;
+    n_edge.SetStatus(status);
+    new_edges.push_back(n_edge);
     
     // For correct devide, neccesary recreate all adjacent faces and cells
     ElementArray<Face> faces = edge->getFaces();
@@ -494,6 +523,8 @@ ElementArray<Edge> Split_Edge(struct grid* g, Edge edge, Cell* cell_for_split)
         reorder_edges(g,&new_face_edges);
 
         Face new_face = g->mesh->CreateFace(new_face_edges).first;
+        new_face.SetStatus(face->GetStatus());
+        if (cor_face && *cor_face == face->getAsFace()) *cor_face = new_face->getAsFace();
         
         // Face created. Now need recreate all cells connected with this face
         ElementArray<Cell> cells = face->getCells();
@@ -548,16 +579,93 @@ void order_nodes_in_face(struct grid* g, ElementArray<Node>* nodes)
         }
 }
 
+double dot(double* a, double* b, int n = 3)
+{
+    double res = 0;
+    for (int i = 0; i < n; i++)
+        res += a[i]*b[i];
+    return res;
+}
+
+/// Reorder nodes with this order
+/// 1 2 
+/// 0 3                                                                 
+void order_nodes_in_face_a(struct grid* g, ElementArray<Node>* nodes)
+{
+
+    int rank = g->mesh->GetProcessorRank();
+    int I[2] = {0,2};
+
+    if (nodes->size() == 0) return;
+    double cen[3] = {0,0,0};
+    double xyz[3] = {1,1,1};
+    for (int i = 0; i < nodes->size(); i++)
+    {
+        if (i < nodes->size() - 1)
+        {
+            for (int j = 0;j < 3;j++)
+                if ((*nodes)[i].RealArray(g->mesh->CoordsTag())[j] != (*nodes)[i+1].RealArray(g->mesh->CoordsTag())[j]) xyz[j] = 0;
+        }
+        cen[0] += (*nodes)[i].RealArray(g->mesh->CoordsTag())[0];
+        cen[1] += (*nodes)[i].RealArray(g->mesh->CoordsTag())[1];
+        cen[2] += (*nodes)[i].RealArray(g->mesh->CoordsTag())[2];
+    }
+    cen[0] /= nodes->size();
+    cen[1] /= nodes->size();
+    cen[2] /= nodes->size();
+
+    if (xyz[0] == 0 && xyz[1] == 0) { I[0] = 0; I[1] = 1; }
+    else if (xyz[1] == 0 && xyz[2] == 0) { I[0] = 1; I[1] = 2; }
+    else if (xyz[0] == 0 && xyz[2] == 0) { I[0] = 0; I[1] = 2; }
+
+    double a[3];
+    a[0] = (*nodes)[0].RealArray(g->mesh->CoordsTag())[0] - cen[0];
+    a[1] = (*nodes)[0].RealArray(g->mesh->CoordsTag())[1] - cen[1];
+    a[2] = (*nodes)[0].RealArray(g->mesh->CoordsTag())[2] - cen[2];
+
+    double* alphas = new double[nodes->size()];
+    double t[3];
+    double cos_v;
+    for (int i = 0; i < nodes->size(); i++)
+    {
+        t[0] = (*nodes)[i].RealArray(g->mesh->CoordsTag())[0] - cen[0];
+        t[1] = (*nodes)[i].RealArray(g->mesh->CoordsTag())[1] - cen[1];
+        t[2] = (*nodes)[i].RealArray(g->mesh->CoordsTag())[2] - cen[2];
+
+        cos_v = dot(t,a)/(sqrt(dot(t,t))*sqrt(dot(a,a))); 
+
+        alphas[i] = acos(cos_v);
+        double D = (t[I[0]]*a[I[1]]) - (t[I[1]]*a[I[0]]);
+        if (D > 0) alphas[i] = 2*acos(-1) - alphas[i];
+    }
+
+    for (int i = 0; i < nodes->size(); i++)
+    for (int j = nodes->size() - 1; j > i; j--)
+    {
+        if (alphas[j-1] > alphas[j])
+        {
+            double t = alphas[j-1];
+            alphas[j-1] = alphas[j];
+            alphas[j] = t;
+           Node tmp = (*nodes)[j-1];
+           (*nodes)[j-1] = (*nodes)[j];
+           (*nodes)[j] = tmp;
+        }
+    }
+    
+    return;
+}
+
 /// Split face to 4. face don't delete
-ElementArray<Face> split_face_to_4(struct grid* g, Face face, Node center_node)
+ElementArray<Face> split_face_to_4(struct grid* g, Face face, Node center_node, int ghost)
 {
     // Reorder nodes in following order
     //   2 4 7
     //   1   6
     //   0 3 5
     ElementArray<Node> nodes = face.getNodes();
-
-    if (nodes.size() != 8) TSNH
+    
+    if (nodes.size() != 8) { cout << nodes.size(); TSNH }
     
     order_nodes_in_face(g, &nodes);
   
@@ -569,7 +677,10 @@ ElementArray<Face> split_face_to_4(struct grid* g, Face face, Node center_node)
     {
         local_nodes.push_back(center_node);
         local_nodes.push_back(nodes[ edges_nodes[i] ]);
-        new_edges.push_back(g->mesh->CreateEdge(local_nodes).first);
+        Edge n_edge = g->mesh->CreateEdge(local_nodes).first;
+        if (ghost) n_edge.SetStatus(Element::Ghost);
+        new_edges.push_back(n_edge);
+
         local_nodes.clear();
     }
 
@@ -593,6 +704,8 @@ ElementArray<Face> split_face_to_4(struct grid* g, Face face, Node center_node)
 /// Split cell to 8. Recreate adjacent cells
 ElementArray<Cell> cellSplit_2(struct grid* g, Cell cell) 
 {
+    int rank = g->mesh->GetProcessorRank();
+    int ghost = IS_GHOST(cell);
     ElementArray<Edge> edges = cell.getEdges();
     for (ElementArray<Edge>::iterator edge = edges.begin(); edge != edges.end(); edge++)
     {
@@ -611,7 +724,7 @@ ElementArray<Cell> cellSplit_2(struct grid* g, Cell cell)
         {
             double xyz[3] = {0,0,0};
             ElementArray<Node> face_nodes = face->getNodes(); 
-            if (face_nodes.size() != 8) TSNH
+            if (face_nodes.size() != 8) { cout << face_nodes.size(); TSNH}
             for (ElementArray<Node>::iterator node = face_nodes.begin(); node != face_nodes.end(); node++)
             {
                 xyz[0] += node->RealArray(g->mesh->CoordsTag())[0];
@@ -624,7 +737,13 @@ ElementArray<Cell> cellSplit_2(struct grid* g, Cell cell)
 
             Node new_node = g->mesh->CreateNode(xyz);
 
-            ElementArray<Face> new_faces = split_face_to_4(g,face->getAsFace(),new_node);
+            int l_ghost = 1;
+
+            ElementArray<Element> adjs = face->getAdjElements(CELL); 
+            for (ElementArray<Element>::iterator adj = adjs.begin(); adj != adjs.end(); adj++)
+            if (IS_GHOST_P(adj) == 0) l_ghost = 0;
+
+            ElementArray<Face> new_faces = split_face_to_4(g,face->getAsFace(),new_node,l_ghost);
             if (new_faces.size() != 4) TSNH
 
             ElementArray<Cell> face_cells = face->getCells();
@@ -654,7 +773,11 @@ ElementArray<Cell> cellSplit_2(struct grid* g, Cell cell)
 
     ElementArray<Node> nodes = cell.getNodes();
     if (cell.getFaces().size() != 24) TSNH  
-    if (nodes.size()           != 26) TSNH 
+    if (nodes.size()           != 26)
+    {
+         cout << nodes.size() << " "; 
+         TSNH  
+    }
         
     double xyz[3];
     xyz[0] = cell.RealArrayDF(g->c_tags.center)[0];
@@ -712,7 +835,7 @@ ElementArray<Cell> cellSplit_2(struct grid* g, Cell cell)
         for (int j = 0; j < 8; j++)
             local_nodes.push_back(nodes[cell_nodes[i][j]]);
 
-        Cell c = CreateCubeElement(g, local_nodes);
+        Cell c = CreateCubeElement(g, local_nodes,ghost);
         result.push_back(c);
 
         c.RealArrayDF(g->c_tags.center)[0] = cx + ndx*dirs[i][0]/2.0; 
@@ -738,6 +861,8 @@ ElementArray<Cell> cellSplit_2(struct grid* g, Cell cell)
         }
         c.Integer(g->c_tags.to_split) = 0;
     }
+
+    ElementArray<Element> adjs = center_node.getAdjElements(EDGE); 
 
     g->mesh->Destroy(cell);
    
@@ -831,8 +956,8 @@ Cell cell_unite(struct grid* g, ElementArray<Cell> children, Node center)
             Face new_face = g->mesh->CreateFace(face_nodes).first;
 
             ElementArray<Face> faces = def_nodes[ x_nodes[i] ].getFaces();
-            if (faces.size() != 4) TSNH
-            if (faces[0].getCells().size() != 1) TSNH
+            //if (faces.size() != 4) TSNH
+            if (faces[0].getCells().size() != 1) { cout << faces[0].getCells().size(); TSNH }
 
             if (def_nodes[x_nodes[i]].getCells().size() != 1) TSNH
             Cell neight_cell = (def_nodes[x_nodes[i]].getCells())[0];
@@ -1074,6 +1199,7 @@ void gridRefine(struct grid * g)
         /// Mark cells
         for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
         {   
+     //       if (it->GetStatus() == Element::Ghost) continue; 
            if (cell_check_mark(g,it->getAsCell())) all_ready = false;
         }
 
@@ -1086,6 +1212,7 @@ void gridRefine(struct grid * g)
             split_ready = true;
             for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
             {
+       //         if (it->GetStatus() == Element::Ghost) continue; 
                 if (it->getAsCell().Integer(g->c_tags.to_split) == 1)
                 {
                     split_ready = false;
@@ -1148,20 +1275,11 @@ void unite_2_edges(struct grid* g, Node node)
     g->mesh->Destroy(node);
 }
 
-void gridCoarse(struct grid * g)
+void resolve_edges(grid* g)
 {
-    int m = 0;
-    bool ready;
-    while (1)
-    {
-        ready = true;
-        for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+        for(Mesh::iteratorEdge it = g->mesh->BeginEdge(); it != g->mesh->EndEdge(); it++)
         {
-            if (cell_check_coarse(g,it->getAsCell()))      
-            {
-                ready = false;
-                break;
-            }
+            ElementArray<Element> adjs = it->getAdjElements(FACE);
         }
 
         for(Mesh::iteratorNode it = g->mesh->BeginNode(); it != g->mesh->EndNode(); it++)
@@ -1172,7 +1290,27 @@ void gridCoarse(struct grid * g)
                 unite_2_edges(g,it->getAsNode());
             }
         }
+}
 
+void gridCoarse(struct grid * g)
+{
+    int rank = g->mesh->GetProcessorRank();
+    int m = 0;
+    bool ready;
+    while (1)
+    {
+        ready = true;
+        for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+        {
+            if (it->GetStatus() == Element::Ghost) continue; 
+            if (cell_check_coarse(g,it->getAsCell()))      
+            {
+                ready = false;
+                break;
+            }
+        }
+
+        resolve_edges(g);
         if (ready) break;
     }
 }
@@ -1185,49 +1323,6 @@ void print_redist_tag(struct grid* g,  int rank)
         cout << rank << " : " <<  it->getAsCell().Integer(tag_owner) << " : ";
         print_cell_center(g, it->getAsCell());
     }
-}
-
-void pre_eval(struct grid* g, int size, int rank)
-{
-    int c_all =  g->mesh->TotalNumberOf(CELL);
-    int c_average = c_all / size;
-    int c_my  = g->mesh->NumberOfCells();
-    
-    Tag tag_owner = g->mesh->RedistributeTag();
-
-    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
-    { 
-        it->getAsCell().Integer(tag_owner) = rank;
-        if( it->getAsCell().GetStatus() == Element::Ghost ) continue;
-
-        if (c_my > c_average)
-        {
-            int adj_count = 0;
-            bool has_adj = false;
-            ElementArray<Face> faces = it->getAsCell().getFaces(); 
-            for (ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); face++)
-            {
-                ElementArray<Element> adjs = face->getAsFace().getAdjElements(CELL); 
-                if (adjs.size() > 1) adj_count++;
-                if (adjs.size() > 1)
-                {
-                    for (ElementArray<Element>::iterator p = adjs.begin(); p != adjs.end(); p++)
-                        if (p->getAsCell().GetStatus() == Element::Ghost) 
-                        {
-                            has_adj = true;
-                            break;
-                        }
-                    if (has_adj) break;
-                }
-
-            }
-            if (has_adj)
-            {
-                c_my--;
-                it->getAsCell().Integer(tag_owner) = (rank + 1) % size;
-            }
-        }
-    };
 }
 
 void correct_brothers(struct grid* g, int size, int rank, int type)
@@ -1268,20 +1363,317 @@ void correct_brothers(struct grid* g, int size, int rank, int type)
     }
 }
 
+
+void resolve_ghost(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank();
+    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+    {
+        if (IS_GHOST(it->getAsCell())) continue;
+        ElementArray<Edge> edges = it->getEdges();
+        for (ElementArray<Edge>::iterator e = edges.begin(); e != edges.end(); e++)
+        {
+            if (!IS_GHOST(e->getAsEdge())) continue;
+            e->SetStatus(Element::Shared);
+        }
+    }
+}
+
+void remove_ghost_edges(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank();
+    for(Mesh::iteratorEdge f = g->mesh->BeginEdge(); f != g->mesh->EndEdge(); f++)
+    {
+        if (IS_GHOST(f->getAsEdge()))
+        {
+            g->mesh->Destroy(f->getAsEdge());
+        }
+    }
+}
+
+void ghost_to_shared(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank();
+    for(Mesh::iteratorEdge f = g->mesh->BeginEdge(); f != g->mesh->EndEdge(); f++)
+    {
+        if (IS_GHOST(f->getAsEdge()))
+        {
+            f->SetStatus(Element::Shared);
+        }
+    }
+}
+
+// Return true if edges in one plane
+bool check_edges_plane(grid* g, ElementArray<Edge> edges)
+{
+    double xyz[3] = {1,1,1};
+    ElementArray<Node> nodes;
+    
+    for (ElementArray<Edge>::iterator e = edges.begin(); e != edges.end(); e++)
+    {
+        nodes.push_back(e->getBeg());
+        nodes.push_back(e->getEnd());
+    }
+    double c1[3], c2[3];
+    for (int i = 0; i < nodes.size() - 1; i++)
+    {
+        c1[0] = nodes[i].RealArray(g->mesh->CoordsTag())[0];
+        c1[1] = nodes[i].RealArray(g->mesh->CoordsTag())[1];
+        c1[2] = nodes[i].RealArray(g->mesh->CoordsTag())[2];
+        c2[0] = nodes[i+1].RealArray(g->mesh->CoordsTag())[0];
+        c2[1] = nodes[i+1].RealArray(g->mesh->CoordsTag())[1];
+        c2[2] = nodes[i+1].RealArray(g->mesh->CoordsTag())[2];
+
+        if (!equal(c1[0],c2[0])) xyz[0] = 0;
+        if (!equal(c1[1],c2[1])) xyz[1] = 0;
+        if (!equal(c1[2],c2[2])) xyz[2] = 0;
+    }
+
+    return xyz[0] || xyz[1] || xyz[2];
+}
+
+void remove_border(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank();
+    for(Mesh::iteratorNode it = g->mesh->BeginNode(); it != g->mesh->EndNode(); it++)
+    {
+        if (it->getAdjElements(EDGE).size() != 4) continue;
+
+        ElementArray<Element> adjs = it->getAdjElements(FACE);
+        if (adjs.size() != 4) continue;
+        if (!check_edges_plane(g, it->getEdges())) continue;
+        bool to_remove = true;
+        for (ElementArray<Element>::iterator f = adjs.begin(); f != adjs.end(); f++)
+        {
+            if (f->getAsFace().getAdjElements(CELL).size() != 1) 
+            {
+                to_remove = false;
+                break;
+            }
+        } 
+        if (!to_remove) continue;
+
+        ElementArray<Element> cells = it->getAdjElements(CELL);
+        if (cells.size() != 1) continue;
+
+        Cell cell = cells.begin()->getAsCell();
+
+        ElementArray<Face> faces = cell.getFaces();
+        ElementArray<Face> new_faces;
+        for (ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); face++)
+        {
+            bool to_add = true;
+            for (ElementArray<Element>::iterator f = adjs.begin(); f != adjs.end(); f++)
+            {
+                if (f->getAsFace() == face->getAsFace()) { to_add = false; break; }
+            }
+            if (to_add) new_faces.push_back(face->getAsFace());
+        }
+                
+        // new_faces contains faces that should't be unite
+        
+        // Unite 4 faces to one
+
+        ElementArray<Node> new_nodes;
+        ElementArray<Node> points_to_delete;
+
+        ElementArray<Element> l_edges = it->getAdjElements(EDGE);
+        for (ElementArray<Element>::iterator f = l_edges.begin(); f != l_edges.end(); f++)
+        {
+            if (f->getAsEdge().getBeg() == it->getAsNode()) points_to_delete.push_back(f->getAsEdge().getEnd());
+            else points_to_delete.push_back(f->getAsEdge().getBeg());
+        }
+        for (ElementArray<Node>::iterator p = points_to_delete.begin(); p != points_to_delete.end(); p++)
+        {
+            if (p->getAdjElements(EDGE).size() > 3) new_nodes.push_back(p->getAsNode());
+        }
+        points_to_delete.push_back(it->getAsNode());
+
+        // 4 faces
+        for (ElementArray<Element>::iterator f = adjs.begin(); f != adjs.end(); f++)
+        {
+            ElementArray<Node> nodes = f->getNodes();
+            // Nodes in face
+            for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
+            {
+                if (it->getAsNode() == node->getAsNode()) continue;
+                bool to_add = true;
+                for (ElementArray<Node>::iterator u = points_to_delete.begin(); u != points_to_delete.end(); u++)
+                {
+                    if (node->getAsNode() == u->getAsNode()) { to_add = false; break; }
+                }
+                if (!to_add) continue;
+                new_nodes.push_back(node->getAsNode());
+            }
+        }
+
+        order_nodes_in_face_a(g,&new_nodes);
+        // Now we have 4 nodes for create new face
+        Face new_face = g->mesh->CreateFace(new_nodes).first;
+        new_faces.push_back(new_face);
+        Cell new_cell = recreate_cell(g,cell,new_faces);
+        g->mesh->Destroy(it->getAsNode());
+    }
+}
+
+void command(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank();
+    resolve_connections(g);
+	g->mesh->ResolveShared(); // Resolve duplicate nodes
+    return;
+}
+
+
+double dist(double* a, double* b)
+{
+    return sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]) );
+}
+double dist(grid* g, Node n1, Node n2)
+{
+   double c1[3], c2[3];
+   c1[0] = n1.RealArray(g->mesh->CoordsTag())[0];
+   c1[1] = n1.RealArray(g->mesh->CoordsTag())[1];
+   c1[2] = n1.RealArray(g->mesh->CoordsTag())[2];
+   c2[0] = n2.RealArray(g->mesh->CoordsTag())[0];
+   c2[1] = n2.RealArray(g->mesh->CoordsTag())[1];
+   c2[2] = n2.RealArray(g->mesh->CoordsTag())[2];
+   return dist(c1,c2);
+}
+
+double get_center(grid* g, Node n1, Node n2, double* cen)
+{
+   double c1[3], c2[3];
+   c1[0] = n1.RealArray(g->mesh->CoordsTag())[0];
+   c1[1] = n1.RealArray(g->mesh->CoordsTag())[1];
+   c1[2] = n1.RealArray(g->mesh->CoordsTag())[2];
+   c2[0] = n2.RealArray(g->mesh->CoordsTag())[0];
+   c2[1] = n2.RealArray(g->mesh->CoordsTag())[1];
+   c2[2] = n2.RealArray(g->mesh->CoordsTag())[2];
+   cen[0] = (c1[0]+c2[0])/2.0;
+   cen[1] = (c1[1]+c2[1])/2.0;
+   cen[2] = (c1[2]+c2[2])/2.0;
+}
+
+void find_face_center(grid* g, Face f, double* res)
+{
+    ElementArray<Node> nodes = f->getNodes();
+    double max = 0;
+    
+    for (int i = 0; i < nodes.size(); i++)
+    for (int j = i+1; j < nodes.size(); j++)
+    {
+        if (dist(g,nodes[i],nodes[j]) > max)
+        {
+            max = dist(g,nodes[i],nodes[j]);
+            get_center(g,nodes[i],nodes[j],res);
+        }
+    }
+}
+
+bool split_if_needed(grid* g, Cell c, Face f)
+{
+    int rank = g->mesh->GetProcessorRank();
+    double cx = c.RealArrayDF(g->c_tags.center)[0]; 
+    double cy = c.RealArrayDF(g->c_tags.center)[1];
+    double cz = c.RealArrayDF(g->c_tags.center)[2];
+
+    ElementArray<Node> nodes = f->getNodes();
+    double fc[3] = {0,0,0};
+    double fc_center[3] = {0,0,0};
+
+    find_face_center(g,f,fc);
+    fc_center[0] = fc[0];
+    fc_center[1] = fc[1];
+    fc_center[2] = fc[2];
+    g->rev_transformation(fc);
+
+    // Compute symmetrical point etwen c and fc
+    fc[0] = 2*fc[0] - cx;
+    fc[1] = 2*fc[1] - cy;
+    fc[2] = 2*fc[2] - cz;
+
+    c.RealArrayDF(g->c_tags.center)[0] = fc[0];
+    c.RealArrayDF(g->c_tags.center)[1] = fc[1];
+    c.RealArrayDF(g->c_tags.center)[2] = fc[2];
+
+    int res = g->cell_should_split(g, c , 2);
+    c.RealArrayDF(g->c_tags.center)[0] = cx;
+    c.RealArrayDF(g->c_tags.center)[1] = cy;
+    c.RealArrayDF(g->c_tags.center)[2] = cz;
+
+    if (res == 0) return false;
+    // Face must split to 4
+    
+    ElementArray<Edge> edges = f->getEdges();
+    for (ElementArray<Edge>::iterator edge = edges.begin(); edge != edges.end(); edge++)
+    {
+        if (!isSmallEdge(g, edge->getAsEdge(),c))
+        {
+            ElementArray<Edge> res = Split_Edge(g, edge->getAsEdge(), &c, &f);
+        }
+    }
+
+    Node center_node = g->mesh->CreateNode(fc_center);
+    ElementArray<Face> new_faces = split_face_to_4(g, f->getAsFace(), center_node, 0);
+    if (new_faces.size() != 4) TSNH
+
+    ElementArray<Face>     cell_faces = c.getFaces();
+    for (ElementArray<Face>::iterator p = cell_faces.begin(); p != cell_faces.end(); p++)
+        if (p->getAsFace() != f)
+            new_faces.push_back(p->getAsFace()); 
+
+
+    c = recreate_cell(g, c , new_faces);
+    g->mesh->Destroy(f);
+    return true;
+}
+
+void resolve_connections(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank();
+    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+    {
+        if (!it->isValid()) continue;
+        ElementArray<Face> faces = it->getFaces();
+        for (ElementArray<Face>::iterator face = faces.begin(); face != faces.end(); face++)
+        {
+            if (!it->isValid()) break;
+            if (!face->isValid()) continue;
+            if (isSmallFace(g, face->getAsFace(), it->getAsCell())) continue;
+
+            if(face->getAdjElements(CELL).size() == 1)
+            {
+                ElementArray<Node> nodes = face->getNodes();
+                int sh_c = 0;
+                for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
+                    if (node->isValid() && node->GetStatus() != Element::Owned) sh_c++;
+                if (sh_c >= 4)
+                {
+                    split_if_needed(g, it->getAsCell(), face->getAsFace());
+                }
+            }
+        }
+    }
+}
+
 int yo = 0;
 void gridAMR(struct grid * g, int action)
 {
-    if (action == 0 || action == 1)
-        gridCoarse(g);
+    int rank = g->mesh->GetProcessorRank();
+    if (action == 0 || action == 1 || action == 3)
+       gridCoarse(g);
     
-	//g->mesh->ExchangeGhost(1,NODE); // Construct Ghost cells in 2 layers connected via nodes
-    //g->mesh->ReorderEmpty(CELL | FACE | EDGE | NODE);
-	//g->mesh->ResolveShared(); // Resolve duplicate nodes
+    if (action == 0 || action == 2 || action == 3)
+       gridRefine(g); 
     
-    if (action == 0 || action == 2)
-        gridRefine(g);
-    
-    g->mesh->ReorderEmpty(CELL | FACE | EDGE | NODE);
-   // g->mesh->ExchangeGhost(1,NODE); // Construct Ghost cells in 2 layers connected via nodes
-    g->mesh->ResolveShared(); // Resolve duplicate nodes
+    resolve_edges(g);
+   
+    if (action == 3)
+    {
+        remove_border(g);
+        resolve_edges(g);
+        resolve_connections(g);
+    }
+	g->mesh->ResolveShared(); // Resolve duplicate nodes
 }
