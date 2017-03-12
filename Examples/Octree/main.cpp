@@ -20,6 +20,7 @@ int draw_faces = 1;
 int draw_ghost = 1;
 int draw_in_motion = 0; // redraw mode. true - always, false - by space press.
 int draw_sem = 0;
+int all_cells_count;
 
 int cur_cell = 0; bool draw_all_cells = true;
 int cur_face = 0; bool draw_all_faces = true;
@@ -29,10 +30,10 @@ int from_file = 0;
 int redist_after_amr = 0;
 
 // Variables for refine and coarse
-int refine_depth = 1;
+int refine_depth = 2;
 double  mx = 0,  my = 0;
 double rmx = 0, rmy = 0;
-double base_radius = 0.02;
+double base_radius = 0.01;
 int action = 0;
 int log_level = 0;
 
@@ -89,6 +90,14 @@ void dump_to_vtk()
         filename << ".pvtk";
     thegrid.mesh->Save(filename.str());
 	cout << "Process " << ::rank << ": dumped mesh to file" << endl;
+}
+
+void print_all_cells(grid* g)
+{
+    for(Mesh::iteratorCell it = thegrid.mesh->BeginCell(); it != thegrid.mesh->EndCell(); it++)
+    {
+        cout << ::rank << "-" << it->Integer(g->c_tags.base_id) << endl;
+    }
 }
 
 /// Function provided to octgrid algorithm. Defines transformation from grid to grid for draw.
@@ -231,8 +240,10 @@ void mpi_draw()
                 else if (it->GetStatus() == Element::Shared) glColor3f(1.0,   1.0   ,0.0);
                 else                                         glColor3f(0.0,   0.0   ,1.0);
 
-                if (!draw_all_cells && cur_cell % thegrid.mesh->NumberOfCells() != c++) continue;
+                
 
+                if (!draw_all_cells && cur_cell % thegrid.mesh->NumberOfCells() != c++) continue;
+                
                 // Draw faces
                 ElementArray<Face> faces = it->getFaces();
                 for (ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++) 
@@ -277,7 +288,6 @@ void mpi_draw()
             for (int j = 1; j < drawing_faces_n[i]; j++)
             {
                 if (!draw_all_faces && cur_face % drawing_faces_n[i] != cf++) continue;
-                if (!draw_all_faces) cout << drawing_faces[i][j].nodes_count << endl;
                 glBegin(GL_POLYGON);
                 for (int k = 0; k < drawing_faces[i][j].nodes_count; k++)
                 {
@@ -519,11 +529,13 @@ void prepare_to_correct_brothers()
 /// Redistribute grid by  partitioner
 void redistribute(int type)
 {
+    thegrid.mesh->RemoveGhost();
+
 	LOG(2,"Process " << ::rank << ": redistribute. Cells: " << thegrid.mesh->NumberOfCells())
     Partitioner * part = new Partitioner(thegrid.mesh);
     
     // Specify the partitioner
-    type = 0;
+    type = 1;
     if (type == 0) part->SetMethod(Partitioner::Parmetis, Partitioner::Partition);
     if (type == 1) part->SetMethod(Partitioner::Parmetis, Partitioner::Repartition);
     if (type == 2) part->SetMethod(Partitioner::Parmetis, Partitioner::Refine);
@@ -541,6 +553,7 @@ void redistribute(int type)
     }
     delete part;
 
+    thegrid.mesh->RemoveGhost();
 	correct_brothers(&thegrid,size,::rank, 2);
 
     try
@@ -872,10 +885,72 @@ void NotMainProcess()
     }
 }
 
+void parse_arguments(int argc, char** argv, int* n, double* R)
+{
+  if (argc < 2) return;
+
+  string str;
+  string str1, str2;
+  for (int i = 1; i < argc; i++)
+  {
+    str = argv[i];
+    size_t pos = str.find('=');
+    if (pos == string::npos)
+    {
+      cout << "Invalid argument: " << str << endl;
+      continue;
+    }
+
+    str1 = str.substr(0, pos);
+    str2 = str.substr(pos + 1);
+
+    if (str1 == "-n")
+    {
+      for (int j = 0; j < 3; j++)
+      {
+        pos = str2.find('x');
+        if (j < 2 && pos == string::npos) 
+        {
+          cout << "Invalid command: " << str2 << endl;
+          break;
+        }
+        str1 = str2.substr(0, pos);
+        n[j] = atoi(str1.c_str());
+        str2 = str2.substr(pos + 1);
+      }
+    }
+    else if (str1 == "-r")
+    {
+
+      *R = atof(str2.c_str());
+    }
+    else
+    {
+      cout << "Invalid command: " << str1 << endl;
+    }
+  }
+}
+
+void print_help()
+{
+  cout << "Example of Octree refine on redistributed grid" << endl;
+  cout << "Command arguments:" << endl;
+  cout << "   -n=20x20x1 - grid size" << endl;
+  cout << "   -R=0.02    - refine radius" << endl;
+  cout << endl;
+  cout << "Hotkeys:" << endl;
+  cout << "   Space - refine grid around mouse cursor" << endl;
+  cout << "       r - redraw grid" << endl;
+  cout << "       f - dump grid to file (see grids folder)" << endl;
+  cout << "       x - redistribute grid" << endl;
+}
+
+
 int main(int argc, char ** argv)
 {
 	int i;
 	int n[3] = {10,10,1};
+
 
 	thegrid.transformation = transformation;
 	thegrid.rev_transformation = rev_transformation;
@@ -883,6 +958,10 @@ int main(int argc, char ** argv)
 	thegrid.cell_should_unite = cell_should_unite;
     Mesh::Initialize(&argc,&argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &::rank);
+
+    if (::rank == 0) print_help();
+    parse_arguments(argc, argv, n, &base_radius);
+    all_cells_count = n[0]*n[1]*n[2] * 2;
 
     gridInit(&thegrid,n);
     Partitioner::Initialize(&argc,&argv);

@@ -44,11 +44,14 @@ struct Cell_Tags
     /// Number of processor before redistribute
     Tag proc; 
     Tag i;        
+    Tag base_id; 
 };
 
 /// Main object, contains all information about mesh
 struct grid
 {
+    int last_base_id;
+
     /// Inmost mesh
 	Mesh* mesh;
     Cell_Tags c_tags;
@@ -61,6 +64,7 @@ struct grid
 
 /// Often after redistribution brother cells splits to different processor
 /// This function corrects this division. Puts all children to one processor
+void old_correct_brothers(struct grid* g, int size, int rank, int type);
 void correct_brothers(struct grid* g, int size, int rank, int type);
 void pre_eval(struct grid* g, int size, int rank);
 void init_mesh(struct grid* g);
