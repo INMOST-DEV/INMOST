@@ -741,6 +741,8 @@ void keyboard(unsigned char key, int x, int y)
     if( key == 'x' || key == 'X' )
     {
         redistribute_command();
+        refresh_slaves_grid();   
+	glutPostRedisplay();
     }
     if( key == 'z' || key == 'Z' )
     {
@@ -885,7 +887,7 @@ void NotMainProcess()
     }
 }
 
-void parse_arguments(int argc, char** argv, int* n, double* R)
+void parse_arguments(int argc, char** argv, int* n, double* R, int* L)
 {
   if (argc < 2) return;
 
@@ -922,7 +924,11 @@ void parse_arguments(int argc, char** argv, int* n, double* R)
     else if (str1 == "-r")
     {
 
-      *R = atof(str2.c_str());
+	    *R = atof(str2.c_str());
+    }
+    else if (str1 == "-l")
+    {
+	    *L = atoi(str2.c_str());
     }
     else
     {
@@ -935,12 +941,13 @@ void print_help()
 {
   cout << "Example of Octree refine on redistributed grid" << endl;
   cout << "Command arguments:" << endl;
-  cout << "   -n=20x20x1 - grid size" << endl;
-  cout << "   -R=0.02    - refine radius" << endl;
+  cout << "   -n=10x10x1 - grid size" << endl;
+  cout << "   -r=0.01    - refine radius" << endl;
+  cout << "   -l=2       - refine level"  << endl;
   cout << endl;
   cout << "Hotkeys:" << endl;
   cout << "   Space - refine grid around mouse cursor" << endl;
-  cout << "       r - redraw grid" << endl;
+  //cout << "       r - redraw grid" << endl;
   cout << "       f - dump grid to file (see grids folder)" << endl;
   cout << "       x - redistribute grid" << endl;
 }
@@ -960,7 +967,7 @@ int main(int argc, char ** argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &::rank);
 
     if (::rank == 0) print_help();
-    parse_arguments(argc, argv, n, &base_radius);
+    parse_arguments(argc, argv, n, &base_radius,&refine_depth);
     all_cells_count = n[0]*n[1]*n[2] * 2;
 
     gridInit(&thegrid,n);
