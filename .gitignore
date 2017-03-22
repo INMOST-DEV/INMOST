@@ -5,7 +5,7 @@ SyncToy*
 
 *.iml
 
-*.xml
+.idea/*.xml
 
 Source/Solver/solver_fcbiilu2/fcbiilu2.cpp
 

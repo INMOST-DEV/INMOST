@@ -11,7 +11,7 @@ int main(int argc,char ** argv)
 	std::string solver = "inner_ilu2";
 	int rank,procs,newrank;
 
-	Solver::Initialize(&argc,&argv,"database.txt"); // Initialize the solver and MPI activity
+	Solver::Initialize(&argc,&argv,"database.xml"); // Initialize the solver and MPI activity
 #if defined(USE_MPI)
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);  // Get the rank of the current process
 	MPI_Comm_size(MPI_COMM_WORLD,&procs); // Get the total number of processors used

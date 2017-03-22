@@ -1,0 +1,26 @@
+<SolverParameters>
+    <inner_ilu2>
+        <test file="inner_options.txt" />
+    </inner_ilu2>
+    <inner_ddpqiluc2>
+        <test file="inner_options.txt" />
+    </inner_ddpqiluc2>
+    <inner_mptiluc>
+        <test file="inner_options.txt" />
+    </inner_mptiluc>
+    <inner_mptilu2>
+        <test file="inner_options.txt" />
+    </inner_mptilu2>
+    <fcbiilu2>
+        <test file="ctrl_dat" />
+    </fcbiilu2>
+    <k3biilu2>
+        <test file="ctrl_dat" />
+    </k3biilu2>
+    <petsc>
+        <test file="petsc_options.txt" />
+    </petsc>
+    <trilinos_ifpack>
+        <test file="trilinos_ifpack_options.xml" />
+    </trilinos_ifpack>
+</SolverParameters>
