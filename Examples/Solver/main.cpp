@@ -147,7 +147,7 @@ Storage::real tensor_K_mat_rotOxy(Storage::integer mat)
 int main(int argc,char ** argv)
 {
     Mesh::Initialize(&argc,&argv);
-    Solver::Initialize(&argc,&argv,"database.txt");
+    Solver::Initialize(&argc,&argv,"database.xml");
 #if defined(USE_PARTITIONER)
     Partitioner::Initialize(&argc,&argv);
 #endif

@@ -50,7 +50,7 @@ namespace INMOST {
 
     void SolverFCBIILU2::Setup(int *argc, char ***argv, SolverParameters &p) {
         SolverInitDataFcbiilu2(&solver_data, communicator, p.solverPrefix.c_str());
-        solver_data->kovl = 0;    // number of overlap layers: kovl=0,1,2,...
+        solver_data->kovl = 3;    // number of overlap layers: kovl=0,1,2,...
         solver_data->tau = 3e-3;  // the ILU2 precision (for the submatrix factorization); tau=3e-3
         solver_data->eps = 1e-5;  // the residual precision: ||r|| < eps * ||b||; eps=1e-6
         solver_data->nit = 999;   // number of iterations permitted; nit=999
