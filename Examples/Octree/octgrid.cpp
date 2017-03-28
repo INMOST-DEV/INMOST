@@ -7,8 +7,8 @@ using namespace std;
 
 double epsilon = 0.0001;
 
-#define IS_GHOST(c) c.GetStatus() == Element::Ghost
-#define IS_GHOST_P(c) c->GetStatus() == Element::Ghost
+#define IS_GHOST(c) (c.GetStatus() == Element::Ghost)
+#define IS_GHOST_P(c) (c->GetStatus() == Element::Ghost)
 #define BARRIER MPI_Barrier(MPI_COMM_WORLD);
 
 void default_transformation(double xyz[3]) { (void) xyz; }
@@ -18,17 +18,78 @@ void mark_cell(struct grid* g, Cell cell);
 void cellCoarse(struct grid* g, Cell cell);
 void resolve_connections(grid* g);
 inline bool equal(double a, double b);
+void correct_brothers(struct grid* g, int size, int rank, int type);
 int global = 0;
 
+/// Dump mesh to vtk file in folder "grids"
 void dump_to_vtk(grid* g)
 {
-    //thegrid.mesh->ResolveShared(); // Resolve duplicate nodes
-    //thegrid.mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
+	//thegrid.mesh->ResolveShared(); // Resolve duplicate nodes
+	//thegrid.mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
+    int rank = g->mesh->GetProcessorRank(); // Get the rank of the current process
+	int size = g->mesh->GetProcessorsNumber();
 
     std::stringstream filename;
-    filename << "grids/grid";
+    filename << "grids/grid_";
+    filename << size;
+    if( size == 1 )
+        filename << ".vtk";
+    else
         filename << ".pvtk";
     g->mesh->Save(filename.str());
+	cout << "Process " << rank << ": dumped mesh to file" << endl;
+}
+
+
+/// Redistribute grid by  partitioner
+void redistribute(grid* g, int type)
+{
+    g->mesh->RemoveGhost();
+    int rank = g->mesh->GetProcessorRank(); // Get the rank of the current process
+	int size = g->mesh->GetProcessorsNumber();
+
+	//LOG(2,"Process " << rank << ": redistribute. Cells: " << g->mesh->NumberOfCells())
+    Partitioner * part = new Partitioner(g->mesh);
+    
+    // Specify the partitioner
+    type = 1;
+    if (type == 0) part->SetMethod(Partitioner::Parmetis, Partitioner::Partition);
+    if (type == 1) part->SetMethod(Partitioner::Parmetis, Partitioner::Repartition);
+    if (type == 2) part->SetMethod(Partitioner::Parmetis, Partitioner::Refine);
+    
+    try
+    {
+        part->Evaluate();
+    }
+    catch (INMOST::ErrorType er)
+    {
+        cout << "Exception: " << er << endl;
+    }
+    catch(...)
+    {
+    }
+    delete part;
+
+    g->mesh->RemoveGhost();
+	correct_brothers(g,size,rank, 2);
+
+    try
+    {
+        g->mesh->Redistribute(); 
+    }
+    catch (INMOST::ErrorType er)
+    {
+        cout << "Exception: " << er << endl;
+    }
+    catch(...)
+    {
+    }
+
+
+    g->mesh->RemoveGhost();
+    g->mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
+    //g->mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
+//	LOG(2,"Process " << rank << ": redistribute completed")
 }
 
 /// Create tags
@@ -1604,28 +1665,39 @@ bool check_edges_plane(grid* g, ElementArray<Edge> edges)
 void remove_border(grid* g)
 {
     int rank = g->mesh->GetProcessorRank();
-    for(Mesh::iteratorNode it = g->mesh->BeginNode(); it != g->mesh->EndNode(); it++)
+//    for(Mesh::iteratorNode it = g->mesh->BeginNode(); it != g->mesh->EndNode(); it++)
+    for(Mesh::iteratorFace f = g->mesh->BeginFace(); f != g->mesh->EndFace(); f++)
     {
-        if (it->getAdjElements(EDGE).size() != 4) continue;
-
-        ElementArray<Element> adjs = it->getAdjElements(FACE);
-        if (adjs.size() != 4) continue;
-        if (!check_edges_plane(g, it->getEdges())) continue;
-        bool to_remove = true;
-        for (ElementArray<Element>::iterator f = adjs.begin(); f != adjs.end(); f++)
+        if (!f->isValid()) continue;
+        if (f->getAdjElements(CELL).size() != 1) continue;
+        ElementArray<Node> nodes = f->getNodes();
+        ElementArray<Node>::iterator it = nodes.begin();
+        ElementArray<Element> adjs;
+        bool find = false;
+        for (; it != nodes.end(); it++)
         {
-            if (f->getAsFace().getAdjElements(CELL).size() != 1) 
+            if (it->getAdjElements(EDGE).size() != 4) continue;
+            adjs = it->getAdjElements(FACE);
+            if (adjs.size() != 4) continue;
+            if (!check_edges_plane(g, it->getEdges())) continue;
+
+            bool to_remove = true;
+            for (ElementArray<Element>::iterator f = adjs.begin(); f != adjs.end(); f++)
             {
-                to_remove = false;
-                break;
-            }
-        } 
-        if (!to_remove) continue;
+                if (f->getAsFace().getAdjElements(CELL).size() != 1) 
+                {
+                    to_remove = false;
+                    break;
+                }
+            } 
+            if (!to_remove) continue;
+            
+            find = true;
+            break;
+        }
+        if (!find) continue;
 
-        ElementArray<Element> cells = it->getAdjElements(CELL);
-        if (cells.size() != 1) continue;
-
-        Cell cell = cells.begin()->getAsCell();
+        Cell cell = it->getCells().begin()->getAsCell();
 
         ElementArray<Face> faces = cell.getFaces();
         ElementArray<Face> new_faces;
@@ -1843,19 +1915,42 @@ void resolve_connections(grid* g)
     }
 }
 
+double tt;
+void start_time()
+{
+   	BARRIER
+	double tt = Timer();
+}
+
+void print_time(string what, int rank)
+{
+    BARRIER
+    double tt1 = Timer();
+	if (rank == 0) cout << setw(15) << what << " time = " << tt1 - tt << endl;
+    tt = tt1;
+}
+
 int yo = 0;
 void gridAMR(struct grid * g, int action)
 {
+    int rank = g->mesh->GetProcessorRank(); // Get the rank of the current process
+    start_time();
     remove_border(g);
+    print_time("Remove border",rank);
+
     resolve_edges(g);
+    print_time("Resolve edges",rank);
 
     if (action == 0 || action == 1 || action == 3)
         gridCoarse(g);
+    print_time("Coarse",rank);
 
     if (action == 0 || action == 2 || action == 3)
         gridRefine(g); 
+    print_time("Refine",rank);
 
     resolve_edges(g);
+    print_time("Resolve edges",rank);
 
     if (action == 3)
     {

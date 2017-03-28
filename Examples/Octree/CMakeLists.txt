@@ -10,9 +10,15 @@ set(SOURCE_LIGHT main_light.cpp
 	   octgrid.cpp
 	   octgrid.h)
 
+set(SOURCE_TEST main_test.cpp
+	   octgrid.cpp
+	   octgrid.h)
+
+
 add_executable(Octree ${SOURCE})
 add_executable(Octree_light ${SOURCE_LIGHT})
-set(TARGETS Octree Octree_light)
+add_executable(Octree_test ${SOURCE_TEST})
+set(TARGETS Octree Octree_light Octree_test)
 
 foreach(vtarget ${TARGETS})
 target_link_libraries(${vtarget} inmost)

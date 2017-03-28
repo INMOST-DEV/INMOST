@@ -78,6 +78,8 @@ void print_face_nodes(struct grid* g, Face face);
 void print_face_edges(struct grid* g, Face face);
 void print_cells_statistics(grid* g);
 void command(grid* g);
+void dump_to_vtk(grid* g);
+void redistribute(grid* g,int type);
 
 void print_redist_tag(struct grid* g,  int rank);
 void ghost_to_shared(grid* g);

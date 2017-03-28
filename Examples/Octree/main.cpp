@@ -26,7 +26,7 @@ int cur_cell = 0; bool draw_all_cells = true;
 int cur_face = 0; bool draw_all_faces = true;
 int cur_edge = 0; bool draw_all_edges = true;
 
-int from_file = 0;
+int from_file = 1;
 int redist_after_amr = 0;
 
 // Variables for refine and coarse
@@ -75,22 +75,7 @@ double** sub_edges_nodes;
 int*     sub_edges_nodes_n; 
 char**    sub_edges_ghost;
 
-/// Dump mesh to vtk file in folder "grids"
-void dump_to_vtk()
-{
-	//thegrid.mesh->ResolveShared(); // Resolve duplicate nodes
-	//thegrid.mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
 
-    std::stringstream filename;
-    filename << "grids/grid_";
-    filename << size;
-    if( size == 1 )
-        filename << ".vtk";
-    else
-        filename << ".pvtk";
-    thegrid.mesh->Save(filename.str());
-	cout << "Process " << ::rank << ": dumped mesh to file" << endl;
-}
 
 void print_all_cells(grid* g)
 {
@@ -526,54 +511,7 @@ void prepare_to_correct_brothers()
     thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
 }
 
-/// Redistribute grid by  partitioner
-void redistribute(int type)
-{
-    thegrid.mesh->RemoveGhost();
 
-	LOG(2,"Process " << ::rank << ": redistribute. Cells: " << thegrid.mesh->NumberOfCells())
-    Partitioner * part = new Partitioner(thegrid.mesh);
-    
-    // Specify the partitioner
-    type = 1;
-    if (type == 0) part->SetMethod(Partitioner::Parmetis, Partitioner::Partition);
-    if (type == 1) part->SetMethod(Partitioner::Parmetis, Partitioner::Repartition);
-    if (type == 2) part->SetMethod(Partitioner::Parmetis, Partitioner::Refine);
-    
-    try
-    {
-        part->Evaluate();
-    }
-    catch (INMOST::ErrorType er)
-    {
-        cout << "Exception: " << er << endl;
-    }
-    catch(...)
-    {
-    }
-    delete part;
-
-    thegrid.mesh->RemoveGhost();
-	correct_brothers(&thegrid,size,::rank, 2);
-
-    try
-    {
-        thegrid.mesh->Redistribute(); 
-    }
-    catch (INMOST::ErrorType er)
-    {
-        cout << "Exception: " << er << endl;
-    }
-    catch(...)
-    {
-    }
-
-
-    thegrid.mesh->RemoveGhost();
-    thegrid.mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
-    //thegrid.mesh->AssignGlobalID(CELL | EDGE | FACE | NODE);
-	LOG(2,"Process " << ::rank << ": redistribute completed")
-}
 
 /// Prepare to redistribute. Master sends special command to slaves which means redistribute
 void redistribute_command()
@@ -596,7 +534,7 @@ void redistribute_command()
         MPI_Isend(buff[i], 2, MPI_CHAR, i, 0, INMOST_MPI_COMM_WORLD, req + i);
     }       
     
-    redistribute(type);
+    redistribute(&thegrid, type);
     counter++;
 
 }
@@ -727,7 +665,7 @@ void keyboard(unsigned char key, int x, int y)
     if( key == 'f' ) 
 	{
 		if (::rank == 0) { // Send dump command to other process
-            dump_to_vtk();
+            dump_to_vtk(&thegrid);
             char buff[10][2];
             MPI_Request req[10];
             for (int i = 1; i < size; i++)
@@ -812,7 +750,7 @@ void NotMainProcess()
         {
             char type_C = buff[1];
             int  type = type_C - '0';
-            redistribute(type);
+            redistribute(&thegrid,type);
         }
         if (buff[0] == 'u') // Need remove ghosts
         {
@@ -828,7 +766,7 @@ void NotMainProcess()
         }
         if (buff[0] == 'f') // Dump mesh to file
         {
-            dump_to_vtk();
+            dump_to_vtk(&thegrid);
         }
         if (buff[0] == 'r') // Master wants to redraw mesh. Now this procces need send own grid to master.
         {
@@ -887,7 +825,7 @@ void NotMainProcess()
     }
 }
 
-void parse_arguments(int argc, char** argv, int* n, double* R, int* L)
+void parse_arguments(int argc, char** argv, int* n, double* R, int* L, string& file_name)
 {
   if (argc < 2) return;
 
@@ -930,6 +868,10 @@ void parse_arguments(int argc, char** argv, int* n, double* R, int* L)
     {
 	    *L = atoi(str2.c_str());
     }
+    else if (str1 == "-f")
+    {
+        file_name = str2;
+    }
     else
     {
       cout << "Invalid command: " << str1 << endl;
@@ -941,9 +883,10 @@ void print_help()
 {
   cout << "Example of Octree refine on redistributed grid" << endl;
   cout << "Command arguments:" << endl;
-  cout << "   -n=10x10x1 - grid size" << endl;
-  cout << "   -r=0.01    - refine radius" << endl;
-  cout << "   -l=2       - refine level"  << endl;
+  cout << "   -n=10x10x1     - grid size" << endl;
+  cout << "   -r=0.01        - refine radius" << endl;
+  cout << "   -l=2           - refine level"  << endl;
+  cout << "   -f=grid_3.pvtk - takes grid from file" << endl;
   cout << endl;
   cout << "Hotkeys:" << endl;
   cout << "   Space - refine grid around mouse cursor" << endl;
@@ -967,10 +910,21 @@ int main(int argc, char ** argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &::rank);
 
     if (::rank == 0) print_help();
-    parse_arguments(argc, argv, n, &base_radius,&refine_depth);
+    string file_name;
+    parse_arguments(argc, argv, n, &base_radius,&refine_depth, file_name);
     all_cells_count = n[0]*n[1]*n[2] * 2;
+    
+    if (file_name.empty()) {
+        gridInit(&thegrid,n);
+    } else {   
+        thegrid.mesh = new Mesh(); // Create an empty mesh
+        thegrid.mesh->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
+        file_name = "grids/" + file_name;
+        thegrid.mesh->Load(file_name.c_str()); // Load input mesh
+        //	thegrid.mesh->Load("dump.pvtk"); // Load input mesh
+        init_mesh(&thegrid); 
+    }
 
-    gridInit(&thegrid,n);
     Partitioner::Initialize(&argc,&argv);
 
 	::size = thegrid.mesh->GetProcessorsNumber();
