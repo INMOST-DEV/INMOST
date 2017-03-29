@@ -69,15 +69,15 @@ namespace INMOST
 
 		INMOST_DATA_ENUM_TYPE header[9] = 
 		{
-			GetDimensions(), 
-			NumberOfNodes(), 
-			NumberOfEdges(), 
-			NumberOfFaces(), 
-			NumberOfCells(), 
-			NumberOfSets(), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(GetDimensions()), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfNodes()), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfEdges()), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfFaces()), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfCells()), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfSets()), 
 			NumberOfTags()-5, //add counter to skip unwanted tags here SKIPHERE, search by SKIPHERE for additional instructions
 			m_state, 
-			GetProcessorRank()
+			static_cast<INMOST_DATA_ENUM_TYPE>(GetProcessorRank())
 		},k;
 		for(k = 0; k < 9; k++) uconv.write_iValue(out,header[k]);
 		out.write(reinterpret_cast<char *>(remember),sizeof(remember));
