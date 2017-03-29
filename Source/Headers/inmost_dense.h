@@ -1676,8 +1676,8 @@ namespace INMOST
 	{
 		assert(Cols()*Rows()==rows*cols);
 		Matrix<Var> ret(*this);
-		ret.n = rows;
-		ret.m = cols;
+		ret.Rows() = rows;
+		ret.Cols() = cols;
 		return ret;
 	}
 	
