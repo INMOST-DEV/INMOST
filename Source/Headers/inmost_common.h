@@ -41,6 +41,9 @@
 // a very expensive check for debug purposes, 
 // when you release marker checks all the elements
 // that no element is marked by released marker
+// in Mesh::Init function change two variables:
+// check_shared_mrk  - check shared markers.
+// check_private_mrk - check private markers.
 //#define CHECKS_MARKERS
 
 // use additional sets to store elements for parallel

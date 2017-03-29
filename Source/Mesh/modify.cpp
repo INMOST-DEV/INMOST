@@ -138,25 +138,33 @@ namespace INMOST
 		dynarray<HandleType,64> inner_faces;
 		bool doexit = false;
 		MarkerType hm = m->HideMarker();
+		//Compute which faces of the provided cells lay on boundary (1 visit) and
+		//inside of the set of cells (2 visits)
 		for(ElementArray<Cell>::size_type j = 0; j < unite.size(); j++)
 		{
-			if( unite[j]->GetMarker(del_protect) ) doexit = true; 
+			if( unite[j]->GetMarker(del_protect) ) doexit = true;
+			//access faces
 			adj_type const & lc = m->LowConn(unite.at(j));
-			for(adj_type::size_type it = 0; it < lc.size(); it++) if( !m->GetMarker(lc[it],hm) )
-				face_visit[lc[it]]++;
+			for(adj_type::size_type it = 0; it < lc.size(); it++)
+				if( !m->GetMarker(lc[it],hm) ) face_visit[lc[it]]++;
 		}
 		if( doexit ) return Cell(m,InvalidHandle());
 		MarkerType visited = m->CreateMarker(), rem = m->CreateMarker();
 		dynarray<HandleType,64> edges;
 		dynarray<HandleType,64> nodes;
+		//gather boundary faces into set that will be used to create new cell
+		//mark internal faces to be deleted. For internal faces find out
+		//all internal edges that should be deleted as well.
 		for(tiny_map<HandleType,int,64>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
 		{
-			if( it->second == 1 )
+			if( it->second == 1 ) //boundary faces, use for new cell
 				faces.push_back(it->first);
-			else
+			else //internal faces
 			{
 				if( m->GetMarker(it->first,del_protect) ) doexit = true;
+				//mark face to be deleted
 				m->SetMarker(it->first,rem);
+				//access edges of the face, gather into array
 				adj_type const & lc = m->LowConn(it->first);
 				for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
 					if( !m->GetMarker(lc[jt],visited) )
@@ -164,12 +172,17 @@ namespace INMOST
 						m->SetMarker(lc[jt],visited);
 						edges.push_back(lc[jt]);
 					}
+				//gather internal faces
 				inner_faces.push_back(it->first);
 			}
 		}
+		//for edges of internal faces gather their nodes,
+		//for each edge check if all it's faces are to be deleted,
+		//then the edge should be deleted, otherwise keep the edge
 		for(dynarray<HandleType,64>::size_type i = 0; i < edges.size(); i++) 
 		{
 			m->RemMarker(edges[i],visited);
+			//access nodes of the edge, gather into array
 			adj_type const & lc = m->LowConn(edges[i]);
 			for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
 			{
@@ -179,73 +192,99 @@ namespace INMOST
 					nodes.push_back(lc[jt]);
 				}
 			}
+			//access faces of the edge, check is there any
+			//face that would not be deleted
 			int nonzero = 0;
 			adj_type const & hc = m->HighConn(edges[i]);
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )//iterate over faces
 				if( !m->GetMarker(hc[jt],rem) ) nonzero++; // check if it is not deleted
 			if( nonzero == 0 ) //all faces should be deleted, edge to remove
 			{
+				//mark edge to be deleted
 				m->SetMarker(edges[i],rem);
 				if( m->GetMarker(edges[i],del_protect) ) doexit = true;
 			}
 		}
+		//for nodes of internal faces check is there any edges
+		//that should not be deleted
 		for(dynarray<HandleType,64>::size_type i = 0; i < nodes.size(); i++) 
 		{
 			m->RemMarker(nodes[i],visited);
-			
-			if( m->GetMarker(nodes[i],del_protect) )
+			int nonzero = 0;
+			//acces edges of the node, check is there any
+			//edge that would not be deleted
+			adj_type const & hc = m->HighConn(nodes[i]);
+			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )
+				if( !m->GetMarker(hc[jt],rem) ) nonzero++;
+			if( nonzero == 0 ) //all edges should be deleted, node to remove
 			{
-				int nonzero = 0;
-				adj_type const & hc = m->HighConn(nodes[i]);
-				for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )
-					if( !m->GetMarker(hc[jt],rem) ) nonzero++;
-				if( nonzero == 0 )
-					doexit = true;
-				
+				//mark node to be deleted
+				m->SetMarker(nodes[i],rem);
+				if( m->GetMarker(nodes[i],del_protect) ) doexit = true;
 			}
 		}
 		m->ReleaseMarker(visited);
-		for(dynarray<HandleType,64>::size_type it = 0; it < inner_faces.size(); it++)
-			m->RemMarker(inner_faces[it],rem);
-		for(dynarray<HandleType,64>::size_type i = 0; i < edges.size(); i++)  
-			m->RemMarker(edges[i],rem);
-		m->ReleaseMarker(rem);
-		if( doexit ) return Cell(m,InvalidHandle());
+		if( doexit )
+		{
+			m->RemMarkerArray(inner_faces.data(),inner_faces.size(),rem);
+			m->RemMarkerArray(edges.data(),edges.size(),rem);
+			m->RemMarkerArray(nodes.data(),nodes.size(),rem);
+			m->ReleaseMarker(rem);
+			return Cell(m,InvalidHandle());
+		}
 		//delete cells
 		for(ElementArray<Cell>::size_type j = 0; j < unite.size(); j++)
 		{
 			if( m->GetMarker(unite.at(j),del_protect) )
 				std::cout << __FUNCTION__ << " deleted protected cells, united " << unite.size() << " cells " << std::endl;
-			m->Delete(unite.at(j));
+			if( m->HideMarker() )
+				m->Hide(unite.at(j));
+			else
+				m->Delete(unite.at(j));
 		}
 		//delete inner faces
 		for(dynarray<HandleType,64>::size_type j = 0; j < inner_faces.size(); j++)
 		{
-			if( m->GetMarker(inner_faces[j],del_protect) )
-				std::cout << __FUNCTION__ << " deleted protected faces, united " << unite.size() << " cells " << std::endl;
-			m->Delete(inner_faces[j]);
-		}
-		for(dynarray<HandleType,64>::size_type j = 0; j < edges.size(); j++) //delete unused edges
-		{
-			adj_type const & hc = m->HighConn(edges[j]);
-			if( hc.empty() || m->Count(hc.data(),static_cast<integer>(hc.size()),hm) == 0 ) //there are no faces that use this edge
+			if( m->GetMarker(inner_faces[j],rem) )
 			{
-				if( m->GetMarker(edges[j],del_protect) )
-					std::cout << __FUNCTION__ << " deleted protected edge, united " << unite.size() << " cells " << std::endl;
-				m->Delete(edges[j]);
+				m->RemMarker(inner_faces[j],rem);
+				if( m->GetMarker(inner_faces[j],del_protect) )
+					std::cout << __FUNCTION__ << " deleted protected faces, united " << unite.size() << " cells " << std::endl;
+				if( m->HideMarker() )
+					m->Hide(inner_faces[j]);
+				else
+					m->Delete(inner_faces[j]);
 			}
 		}
-		for(dynarray<HandleType,64>::size_type j = 0; j < nodes.size(); j++) //delete unused nodes
+		//delete unused edges
+		for(dynarray<HandleType,64>::size_type j = 0; j < edges.size(); j++)
+		{
+			if( m->GetMarker(edges[j],rem) )
+			{
+				m->RemMarker(edges[j],rem);
+				if( m->GetMarker(edges[j],del_protect) )
+					std::cout << __FUNCTION__ << " deleted protected edge, united " << unite.size() << " cells " << std::endl;
+				if( m->HideMarker() )
+					m->Hide(edges[j]);
+				else
+					m->Delete(edges[j]);
+			}
+		}
+		//delete unused nodes
+		for(dynarray<HandleType,64>::size_type j = 0; j < nodes.size(); j++)
 		{
 
-			adj_type const & hc = m->HighConn(nodes[j]);
-			if( hc.empty() || m->Count(hc.data(),static_cast<integer>(hc.size()),hm) == 0 ) //there are no edges that use this edge
+			if( m->GetMarker(nodes[j],rem) ) //there are no edges that use this edge
 			{
+				m->RemMarker(nodes[j],rem);
 				// there must be no cells that use this node
 				assert( m->LowConn(nodes[j]).empty() || m->Count(m->LowConn(nodes[j]).data(),static_cast<integer>(m->LowConn(nodes[j]).size()),hm) == 0 );
 				if( m->GetMarker(nodes[j],del_protect) )
 					std::cout << __FUNCTION__ << " deleted protected node, united " << unite.size() << " cells " << std::endl;
-				m->Delete(nodes[j]);
+				if( m->HideMarker() )
+					m->Hide(nodes[j]);
+				else
+					m->Delete(nodes[j]);
 				//disconnect node from cell
 				//we don't need this algorithm, because all dependent cells should be deleted
 				//if( !nodes[j]->Hide() )
@@ -267,6 +306,7 @@ namespace INMOST
 				//}
 			}
 		}
+		m->ReleaseMarker(rem);
 		//reconstruct cell by outer faces
 		return m->CreateCell(faces).first;
 	}
@@ -318,30 +358,30 @@ namespace INMOST
 				}
 			}
 			int nonzero = 0;
+			//access faces of the edge, check is there any
+			//that would not be deleted
 			adj_type const & hc = m->HighConn(edges[i]);
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) ) //iterate over faces
 				if( !m->GetMarker(hc[jt],rem) ) nonzero++; // check if it is not deleted
-			if( nonzero == 0 ) //all faces should be deleted, edge to remove
-			{
-				m->SetMarker(edges[i],rem);
-				if( m->GetMarker(edges[i],del_protect) ) doexit = true;
-			}
+			//all faces should be deleted, edge to remove
+			if( nonzero == 0 && m->GetMarker(edges[i],del_protect) )
+				doexit = true;
 		}
 		for(dynarray<HandleType,64>::size_type i = 0; i < nodes.size(); i++) 
 		{
-			m->RemMarker(nodes[i],rem);
-			if( m->GetMarker(nodes[i],del_protect) )
-			{
-				int nonzero = 0;
-				adj_type const & hc = m->HighConn(nodes[i]);
-				for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )
-					if( !m->GetMarker(hc[jt],rem) ) nonzero++;
-				if( nonzero == 0 ) doexit = true;
-			}
+			int nonzero = 0;
+			//access edges of the node, check is there
+			//any that would not be deleted
+			adj_type const & hc = m->HighConn(nodes[i]);
+			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )
+				if( !m->GetMarker(hc[jt],rem) ) nonzero++;
+			//all edges should be deleted, node to remove
+			if( nonzero == 0 && m->GetMarker(edges[i],del_protect) )
+				doexit = true;
 		}
-		for(tiny_map<HandleType,int,64>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
-				if( it->second != 1 ) m->RemMarker(it->first,rem);
-		for(dynarray<HandleType,64>::size_type i = 0; i < edges.size(); i++)  m->RemMarker(edges[i],rem);
+		for(tiny_map<HandleType,int,64>::iterator it = face_visit.begin(); it != face_visit.end(); it++) m->RemMarker(it->first,rem);
+		m->RemMarkerArray(edges.data(),edges.size(),rem);
+		m->RemMarkerArray(nodes.data(),nodes.size(),rem);
 		m->ReleaseMarker(rem);
 		if( doexit ) return false;
 		return true;
@@ -351,17 +391,18 @@ namespace INMOST
 	Face Face::UniteFaces(ElementArray<Face> & unite, MarkerType del_protect)
 	{
 		Mesh * m = unite.GetMeshLink();
+		assert(m != NULL);
 		if( unite.empty() ) return Face(m,InvalidHandle());
 		MarkerType hm = m->HideMarker();
 		bool doexit = false, dothrow = false;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 			if( m->GetMarker(unite.at(j),del_protect) ) doexit = true;
 		if( doexit ) return Face(m,InvalidHandle());
-		dynarray<HandleType,64> high_conn_set;
+		dynarray<HandleType,64> cells;
 		MarkerType edge_set = m->CreateMarker();
 		MarkerType rem = m->CreateMarker();
 		
-		
+		//gather cells adjacent to united faces
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 		{
 			adj_type const & hc = m->HighConn(unite.at(j));
@@ -369,18 +410,16 @@ namespace INMOST
 			{
 				if( !m->GetMarker(hc[it],edge_set) )
 				{
-					high_conn_set.push_back(hc[it]);
+					cells.push_back(hc[it]);
 					m->SetMarker(hc[it],edge_set);
 				}
 			}
-		}		
-		
-		
-		for(dynarray<HandleType,64>::size_type j = 0; j < high_conn_set.size(); j++)
-			m->RemMarker(high_conn_set[j],edge_set);
-		
-		
-		if( m->GetTopologyCheck(TRIPLE_SHARED_FACE) && high_conn_set.size() > 2 )
+		}
+		m->RemMarkerArray(cells.data(),cells.size(),edge_set);
+		assert(cells.size() <= 2);
+		//check is there a topological problem
+		//new face should be adjacent to no more then two cells
+		if( m->GetTopologyCheck(TRIPLE_SHARED_FACE) && cells.size() > 2 )
 		{
 			m->SetTopologyError(TRIPLE_SHARED_FACE);
 			if( m->GetTopologyCheck(PRINT_NOTIFY) ) std::cerr << TopologyCheckNotifyString(TRIPLE_SHARED_FACE) << std::endl;
@@ -390,25 +429,34 @@ namespace INMOST
 		dynarray<HandleType,64> nodes;
 		tiny_map<HandleType, int,64> edge_visit;
 		ElementArray<Edge> edges(m);
+		//compute how many times each edge is visited
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 		{
+			//access edges of the face
 			adj_type const & lc = m->LowConn(unite.at(j));
-			for(adj_type::size_type it = 0; it < lc.size(); it++) if( !m->GetMarker(lc[it],hm) )
-				edge_visit[lc[it]]++;
+			for(adj_type::size_type it = 0; it < lc.size(); it++)
+				if( !m->GetMarker(lc[it],hm) ) edge_visit[lc[it]]++;
 		}
 		HandleType first = InvalidHandle(); //first edge
 		HandleType prev = InvalidHandle(); //prev node
+		//Mark all the edges on boundary to recreate the face,
+		//assemble set of nodes
+		int expect_q = 0; //used to test for consistency of the loop of edges
 		for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 		{
 			if( it->second == 1 )
 			{
+				expect_q++;
 				m->SetMarker(it->first,edge_set);
 				if( first == InvalidHandle() ) first = it->first;
 			}
 			else if( it->second == 2 )
 			{
-				if( m->GetMarker(it->first,del_protect) ) doexit = true; // edge is protected
+				//edge is protected
+				if( m->GetMarker(it->first,del_protect) ) doexit = true;
+				//mark edge to be deleted
 				m->SetMarker(it->first,rem);
+				//access nodes of the edge
 				adj_type const & lc = m->LowConn(it->first);
 				for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
 				{
@@ -425,18 +473,20 @@ namespace INMOST
 				dothrow = true;
 			}
 		}
-		
+		//Find out set of nodes to be deleted
 		for(dynarray<HandleType,64>::size_type j = 0; j < nodes.size(); j++) 
 		{
 			m->RemMarker(nodes[j],edge_set);
-			if( m->GetMarker(nodes[j],del_protect) )
+			int nonzero = 0;
+			//access edges of the nodes, find out whether all
+			//of them are deleted
+			adj_type const & hc = m->HighConn(nodes[j]);
+			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) ) //iterate through edges of the node
+				if( !m->GetMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
+			if( nonzero == 0 ) //all edges are deleted but the node is protected
 			{
-				int nonzero = 0;
-				adj_type const & hc = m->HighConn(nodes[j]);
-				for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) ) //iterate through edges of the node
-					if( !m->GetMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
-				if( nonzero == 0 ) //all edges are deleted but the node is protected
-					doexit = true;
+				m->SetMarker(nodes[j],rem);
+				if( m->GetMarker(nodes[j],del_protect) ) doexit = true;
 			}
 		}
 			
@@ -444,33 +494,42 @@ namespace INMOST
 		{
 			for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 			{
-				if( it->second != 1 ) m->RemMarker(it->first,rem);
-				else m->RemMarker(it->first,edge_set);
-			}	
+				m->RemMarker(it->first,rem);
+				m->RemMarker(it->first,edge_set);
+			}
+			m->RemMarkerArray(nodes.data(),nodes.size(),rem);
 			m->ReleaseMarker(edge_set);
 			m->ReleaseMarker(rem);
 			assert( !dothrow ); //report the situation, because user need to debug the input
 			return Face(m,InvalidHandle());
 		}
+		//Order edges on the boundary of united faces into loop
 		edges.push_back(first);
 		edges.back()->RemMarker(edge_set);
 		bool done = false;
-		int q = 0;
+		int q = 1;
 		while( !done )
 		{
 			enumerator k1 = ENUMUNDEF,k2;
+			//access nodes of the last pushed edge
 			adj_type const & lc = m->LowConn(edges.atback());
+			//find out first node
 			k1 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
+			//find out second node
 			k2 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
+			//find out which of the nodes should connect to the next edge
+			//at the begining we can select any of the two
 			if( lc[k1] != prev ) 
 				prev = lc[k1]; 
 			else 
 				prev = lc[k2];
-			bool found = false;
+			//find out the next edge connected to the privious node
+			bool found = false; //detect that edge was found, otherwise there is no loop
 			adj_type const & hc = m->HighConn(prev);
 			for(adj_type::size_type it = 0; it < hc.size(); ++it) if( !m->GetMarker(hc[it],hm) )
 			{
-				if( hc[it] == first && q != 0)
+				//we came back to the first edge, the loop is closed
+				if( hc[it] == first && q != 1)
 				{
 					found = done = true;
 					break;
@@ -484,37 +543,44 @@ namespace INMOST
 					break;
 				}
 			}
-			assert(found);
+			assert(found); //there is no loop
 			//if( !found ) throw Failure;
 		}
 		m->ReleaseMarker(edge_set);
 		
+		//number of edges collected matches number of edges expected
+		assert(expect_q == q);
 		
 
 		
-		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
-			m->SetMarker(unite.at(j),rem);
 		
 		if( !m->HideMarker() ) //we can't hide elements
 		{
-			for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_set.size(); it++) //untie every face from cell
+			unite.SetMarker(rem);
+			//untie every face from the cell
+			for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); it++)
 			{
-				adj_type & lc = m->LowConn(high_conn_set[it]);
+				adj_type & lc = m->LowConn(cells[it]);
 				adj_type::iterator jt = lc.begin();
 				while( jt != lc.end()) //don't need to check is it hidden
 					if( m->GetMarker(*jt,rem) )
 						jt = lc.erase(jt);
 					else jt++;
 			}
+			unite.RemMarker(rem);
 		}
 		
+		//delete old faces
 		if( m->HideMarker() )
-			for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++) m->Hide(unite.at(j));
+			for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
+				m->Hide(unite.at(j));
 		else
 		{
-			for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++) // delete all faces
+			// delete all faces
+			for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 			{
-				m->HighConn(unite.at(j)).clear(); //untie cells from face
+				//untie cells from face
+				m->HighConn(unite.at(j)).clear();
 				if( m->GetMarker(unite.at(j),del_protect) )
 					std::cout << __FUNCTION__ << " deleted protected face, united " << unite.size() << " faces " << std::endl;
 				m->Delete(unite.at(j)); 
@@ -528,17 +594,22 @@ namespace INMOST
 				assert( m->HighConn(it->first).empty() || m->Count(m->HighConn(it->first).data(),static_cast<integer>(m->HighConn(it->first).size()),hm) == 0 ); //it's connected to face somewhere
 				if( m->GetMarker(it->first,del_protect) )
 					std::cout << __FUNCTION__ << " deleted protected edge, united " << unite.size() << " faces " << std::endl;
-				m->Delete(it->first);
+				if( m->HideMarker() )
+					m->Hide(it->first);
+				else
+					m->Delete(it->first);
 			}
 			
-		m->ReleaseMarker(rem);
+		
 
 		for(dynarray<HandleType,64>::size_type it = 0; it < nodes.size(); it++) //delete nodes inside the face
 		{
 			adj_type const & hc = m->HighConn(nodes[it]);
-			if( hc.empty() || m->Count(hc.data(),static_cast<integer>(hc.size()),hm) == 0 )
+			if( m->GetMarker(nodes[it],rem) )
 			{
-				if( !m->Hide(nodes[it]) )
+				assert( m->HighConn(nodes[it]).empty() || m->Count(m->HighConn(nodes[it]).data(),static_cast<integer>(m->HighConn(nodes[it]).size()),hm) == 0 );
+				m->RemMarker(nodes[it],rem);
+				if( !m->HideMarker() )
 				{
 					adj_type & lc = m->LowConn(nodes[it]);
 					adj_type::iterator jt = lc.begin();
@@ -559,24 +630,45 @@ namespace INMOST
 						std::cout << __FUNCTION__ << " deleted protected node, united " << unite.size() << " faces " << std::endl;
 					m->Destroy(nodes[it]);
 				}
+				else m->Hide(nodes[it]);
 			}
 		}
+		
+		m->ReleaseMarker(rem);
 				
 		Face ret = m->CreateFace(edges).first;
 		
+		
 		assert( ret->GetGeometricType() != MultiLine );
 		
+		
 		adj_type & hc = m->HighConn(ret->GetHandle());
-		for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_set.size(); it++)  //tie new face to old cells
+		for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); it++)  //tie new face to old cells
 		{
-			hc.push_back(high_conn_set[it]); // connect new face to cells
-			m->LowConn(high_conn_set[it]).push_back(ret.GetHandle()); // connect cells to new face
+			hc.push_back(cells[it]); // connect new face to cells
+			m->LowConn(cells[it]).push_back(ret.GetHandle()); // connect cells to new face
 			
 		}
-		for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_set.size(); it++)  //tie new face to old cells
+		
+		
+		for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); it++)  //tie new face to old cells
 		{
-			m->ComputeGeometricType(high_conn_set[it]);
-			m->RecomputeGeometricData(high_conn_set[it]);
+			assert(m->Count(m->LowConn(cells[it]).data(),m->LowConn(cells[it]).size(),hm) >= 4);
+			//compute geometric data
+			m->ComputeGeometricType(cells[it]);
+			assert(m->GetGeometricType(cells[it]) != MultiPolygon);
+			//change nodes of the cell according to ordering
+			ElementArray<Node> nodes(m);
+			m->RestoreCellNodes(cells[it],nodes);
+			adj_type & hc = m->HighConn(cells[it]);
+			assert(nodes.size() == m->Count(hc.data(),hc.size(),hm));
+			//should keep hidden nodes of the cell
+			//todo: think about how we should order them
+			for(adj_type::size_type k = 0; k < hc.size(); ++k)
+				if( m->Hidden(hc[k]) ) nodes.push_back(hc[k]);
+			hc.replace(hc.begin(),hc.end(),nodes.begin(),nodes.end());
+			//recompute geometric data
+			m->RecomputeGeometricData(cells[it]);
 		}
 		
 		return ret;
@@ -592,7 +684,7 @@ namespace INMOST
 			if( m->GetMarker(unite.at(j),del_protect) ) doexit = true;
 		MarkerType hm = m->HideMarker();
 		if( doexit ) return false;
-		dynarray<HandleType,64> high_conn_set;
+		dynarray<HandleType,64> cells;
 		MarkerType rem = m->CreateMarker();
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 		{
@@ -600,12 +692,11 @@ namespace INMOST
 			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) )
 				if( !m->GetMarker(hc[it],rem) )
 				{
-					high_conn_set.push_back(hc[it]);
+					cells.push_back(hc[it]);
 					m->SetMarker(hc[it],rem);
 				}
 		}
-		for(dynarray<HandleType,64>::size_type j = 0; j < high_conn_set.size(); j++) 
-			m->RemMarker(high_conn_set[j],rem);
+		m->RemMarkerArray(cells.data(),cells.size(),rem);
 		dynarray<HandleType,64> nodes;
 		tiny_map<HandleType, int,64> edge_visit;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
@@ -639,15 +730,12 @@ namespace INMOST
 		for(dynarray<HandleType,64>::size_type j = 0; j < nodes.size(); j++) 
 		{
 			m->RemMarker(nodes[j],rem);
-			if( m->GetMarker(nodes[j],del_protect) )
-			{
-				int nonzero = 0;
-				adj_type const & hc = m->HighConn(nodes[j]);
-				for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) )//iterate through edges of the node
-					if( !m->GetMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
-				if( nonzero == 0 ) //all edges are deleted but the node is protected
-					doexit = true;
-			}
+			int nonzero = 0;
+			adj_type const & hc = m->HighConn(nodes[j]);
+			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) )//iterate through edges of the node
+				if( !m->GetMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
+			//all edges are deleted but the node is protected
+			if( nonzero == 0 && m->GetMarker(nodes[j],del_protect)) doexit = true;
 		}
 		for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 			if( it->second != 1 ) m->RemMarker(it->first,rem);
@@ -670,7 +758,7 @@ namespace INMOST
 		MarkerType hm = m->HideMarker();
 		MarkerType rem = m->CreateMarker();
 		dynarray<HandleType,64> cells;
-		dynarray<HandleType,64> high_conn_faces;
+		dynarray<HandleType,64> faces;
 		tiny_map<HandleType,int,64> nodes;
 		ElementArray<Node> build_nodes(m);
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
@@ -682,7 +770,7 @@ namespace INMOST
 			{
 				if( !m->GetMarker(hc[jt],rem) )
 				{
-					high_conn_faces.push_back(hc[jt]);
+					faces.push_back(hc[jt]);
 					m->SetMarker(hc[jt],rem);
 				}
 			}
@@ -691,10 +779,10 @@ namespace INMOST
 				nodes[lc[jt]]++;
 		}
 		
-		for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_faces.size(); ++it) 
+		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
 		{
-			m->RemMarker(high_conn_faces[it],rem);
-			adj_type const & hc = m->HighConn(high_conn_faces[it]);
+			m->RemMarker(faces[it],rem);
+			adj_type const & hc = m->HighConn(faces[it]);
 			for(adj_type::size_type jt = 0; jt < hc.size(); ++jt)
 			{
 				if( !m->GetMarker(hc[jt],rem) )
@@ -704,6 +792,10 @@ namespace INMOST
 				}
 			}
 		}
+		
+		m->RemMarkerArray(cells.data(),cells.size(),rem);
+		
+		
 
 		if( doexit )
 		{
@@ -713,6 +805,7 @@ namespace INMOST
 		
 		for(tiny_map<HandleType,int,64>::iterator it = nodes.begin(); it != nodes.end(); it++)
 		{
+			
 			if( it->second == 1 )
 				build_nodes.push_back(it->first);
 			else if( it->second == 2 )
@@ -726,6 +819,9 @@ namespace INMOST
 				dothrow = true;
 			}
 		}
+		
+		
+		assert(build_nodes.size() == 2);
 
 		if( doexit )
 		{
@@ -738,11 +834,13 @@ namespace INMOST
 
 		dynarray<adj_type::size_type,64> insert_pos; //position where we insert new edge
 
-		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->SetMarker(edges.at(it),rem);
+		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
+			m->SetMarker(edges.at(it),rem);
 
-		for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_faces.size(); ++it)
+		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
 		{
-			adj_type const & lc = m->LowConn(high_conn_faces[it]); //edges of face
+			adj_type const & lc = m->LowConn(faces[it]); //edges of face
+			bool found_rem = false;
 			for(adj_type::size_type k = 0; k < lc.size(); k++) //insert new edge to the first position where we delete old edge
 			{
 				if( m->GetMarker(lc[k],rem) )
@@ -761,14 +859,20 @@ namespace INMOST
 					}
 					 */
 					insert_pos.push_back(k);
+					found_rem = true;
 					break;
 				}
+			}
+			if( !found_rem )
+			{
+				doexit = true;
+				dothrow = true;
 			}
 		}
 
 		if( doexit )
 		{
-			for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->RemMarker(edges.at(it),rem);
+			m->RemMarkerArray(edges.data(),edges.size(),rem);
 			m->ReleaseMarker(rem);
 			assert(!dothrow);
 			//if( dothrow ) throw Impossible; // bad input
@@ -777,9 +881,9 @@ namespace INMOST
 
 		if( !m->HideMarker() ) //disconnect if cannot hide
 		{
-			for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_faces.size(); ++it)
+			for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
 			{
-				adj_type & lc = m->LowConn(high_conn_faces[it]);
+				adj_type & lc = m->LowConn(faces[it]);
 				adj_iterator jt = lc.begin(); //iterate over edges of faces
 				while( jt != lc.end())
 				{
@@ -817,7 +921,9 @@ namespace INMOST
 						while(jt != hc.end() ) // iterate through nodes of the cell
 						{
 							if( *jt == it->first )
+							{
 								jt = hc.erase(jt); //erase link to node
+							}
 							else ++jt;
 						}
 					}
@@ -831,19 +937,31 @@ namespace INMOST
 
 		for(dynarray<adj_type::size_type,64>::size_type k = 0; k < insert_pos.size(); k++)
 		{
-			adj_type & lc = m->LowConn(high_conn_faces[k]);
+			adj_type & lc = m->LowConn(faces[k]);
 			lc.insert(lc.begin()+insert_pos[k],e->GetHandle());
-			ehc.push_back(high_conn_faces[k]);
-			m->ComputeGeometricType(high_conn_faces[k]);
-			m->RecomputeGeometricData(high_conn_faces[k]);
+			ehc.push_back(faces[k]);
+			m->ComputeGeometricType(faces[k]);
+			m->RecomputeGeometricData(faces[k]);
 		}
 
 		for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); ++it)
 		{
 			m->ComputeGeometricType(cells[it]);
+			//change nodes of the cell according to ordering
+			ElementArray<Node> nodes(m);
+			m->RestoreCellNodes(cells[it],nodes);
+			adj_type & hc = m->HighConn(cells[it]);
+			assert(nodes.size() == m->Count(hc.data(),hc.size(),hm));
+			//should keep hidden nodes of the cell
+			//todo: think about how we should order them
+			for(adj_type::size_type k = 0; k < hc.size(); ++k)
+				if( m->Hidden(hc[k]) ) nodes.push_back(hc[k]);
+			hc.replace(hc.begin(),hc.end(),nodes.begin(),nodes.end());
+			//update centroid, volume, orientation, etc
 			m->RecomputeGeometricData(cells[it]);
 		}
-
+		
+		
 
 		return e;
 	}
@@ -854,7 +972,7 @@ namespace INMOST
 		bool doexit = false, dothrow = false;
 		MarkerType hm = m->HideMarker();
 		MarkerType rem = m->CreateMarker();
-		dynarray<HandleType,64> high_conn_faces;
+		dynarray<HandleType,64> faces;
 		tiny_map<HandleType,int,64> nodes;
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
@@ -866,7 +984,7 @@ namespace INMOST
 			{
 				if( !m->GetMarker(hc[jt],rem) )
 				{
-					high_conn_faces.push_back(hc[jt]);
+					faces.push_back(hc[jt]);
 					m->SetMarker(hc[jt],rem);
 				}
 			}
@@ -875,8 +993,8 @@ namespace INMOST
 				nodes[lc[jt]]++;
 		}
 		
-		for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_faces.size(); ++it) 
-			m->RemMarker(high_conn_faces[it],rem);
+		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+			m->RemMarker(faces[it],rem);
 
 		if( doexit )
 		{
@@ -914,13 +1032,15 @@ namespace INMOST
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->SetMarker(edges.at(it),rem);
 
-		for(dynarray<HandleType,64>::size_type it = 0; it < high_conn_faces.size(); ++it)
+		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
 		{
-			adj_type const & lc = m->LowConn(high_conn_faces[it]);
+			adj_type const & lc = m->LowConn(faces[it]);
+			bool found_rem = false;
 			for(adj_type::size_type k = 0; k < lc.size(); k++) //insert new edge to the first position where we delete old edge
 			{
 				if( m->GetMarker(lc[k],rem) )
 				{
+					/*
 					//all united edges should appear in consecutive order in deleted face
 					adj_type::size_type sum = 0, j = k;
 					while( !m->GetMarker(lc[j],hm) && m->GetMarker(lc[j],rem) )
@@ -932,8 +1052,15 @@ namespace INMOST
 						doexit = true;
 						dothrow = true;
 					}
+					 */
+					found_rem = true;
 					break;
 				}
+			}
+			if( !found_rem )
+			{
+				doexit = true;
+				dothrow = true;
 			}
 		}
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->RemMarker(edges.at(it),rem);
@@ -1065,11 +1192,15 @@ namespace INMOST
 		for(dynarray<HandleType,128>::size_type it = 0; it < cells.size(); ++it)
 		{
 			adj_type & hc = m->HighConn(cells[it]); //cell nodes
-			hc.clear(); //have to recompute cell nodes
+			//hc.clear(); //have to recompute cell nodes
 			m->ComputeGeometricType(cells[it]);
 			ElementArray<Node> nn(m);
 			m->RestoreCellNodes(cells[it],nn);
-			hc.insert(hc.begin(),nn.begin(),nn.end());
+			//should keep hidden nodes of the cell
+			//todo: think about how we should order them
+			for(adj_type::size_type k = 0; k < hc.size(); ++k)
+				if( m->Hidden(hc[k]) ) nn.push_back(hc[k]);
+			hc.replace(hc.begin(),hc.end(),nn.begin(),nn.end());
 			m->RecomputeGeometricData(cells[it]);
 			//connect nodes to cells
 			for(ElementArray<Node>::size_type k = 0; k < nn.size(); k++)
@@ -1175,13 +1306,17 @@ namespace INMOST
 		for(dynarray<HandleType,2>::size_type it = 0; it < cells.size(); ++it)
 		{
 			adj_type & hc = m->HighConn(cells[it]); //cell nodes
-			hc.clear(); //have to recompute cell nodes
+			//hc.clear(); //have to recompute cell nodes
 			adj_type & lc = m->LowConn(cells[it]); //cell faces
 			lc.insert(lc.end(),ret.begin(),ret.end());
 			m->ComputeGeometricType(cells[it]);
 			ElementArray<Node> nn(m);
 			m->RestoreCellNodes(cells[it],nn);
-			hc.insert(hc.begin(),nn.begin(),nn.end());
+			//should keep hidden nodes of the cell
+			//todo: think about how we should order them
+			for(adj_type::size_type k = 0; k < hc.size(); ++k)
+				if( m->Hidden(hc[k]) ) nn.push_back(hc[k]);
+			hc.replace(hc.begin(),hc.end(),nn.begin(),nn.end());
 			m->RecomputeGeometricData(cells[it]);
 			//have to add cell to nodes that do not yet have connection to the cell
 			for(ElementArray<Node>::iterator jt = nn.begin(); jt != nn.end(); ++jt)
@@ -1398,7 +1533,7 @@ namespace INMOST
 		//ApplyModification();
 		//temp_hide_element = hide_element;
 		//hide_element = 0;
-		for(ElementType etype = CELL; etype >= NODE; etype = PrevElementType(etype))
+		for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 			{
@@ -1485,10 +1620,12 @@ namespace INMOST
 	{
 		if(!New(h) && Hide(h))
 		{
-			if( GetHandleElementType(h) != CELL ) //mark all elements that rely on this that they should be deleted
+			//mark all elements that rely on this that they should be deleted
+			if( GetHandleElementType(h) < CELL )
 			{
 				Element::adj_type & hc = HighConn(h);
-				for(Element::adj_type::size_type it = 0; it < hc.size(); ++it) if( !Hidden(hc[it]) ) Hide(hc[it]);
+				for(Element::adj_type::size_type it = 0; it < hc.size(); ++it)
+					if( !Hidden(hc[it]) ) Delete(hc[it]);
 			}
 			return false;
 		}

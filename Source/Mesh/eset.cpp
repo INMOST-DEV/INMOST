@@ -1737,13 +1737,15 @@ namespace INMOST
 		if( HaveParent() ) GetParent()->RemChild(self());
 		Element::adj_type & lc = m->LowConn(GetHandle());
 		Element::adj_type & hc = m->HighConn(GetHandle());
-		for(enumerator k = 0; k < lc.size(); ++k)
-			if( lc[k] != InvalidHandle() ) 
-			{
-				ElementSet child = ElementSet(m,lc[k]);
-				hParent(m->HighConn(child->GetHandle())) = InvalidHandle();
-				child->DeleteSetTree();
-			}
+		HandleType hchild = hChild(hc), nchild;
+		while(hchild != InvalidHandle())
+		{
+			Element::adj_type & chc = m->HighConn(hchild);
+			hParent(chc) = InvalidHandle();
+			nchild = hSibling(chc);
+			ElementSet(m,hchild).DeleteSetTree();
+			hchild = nchild;
+		}
 		hc.resize(ElementSet::high_conn_reserved);
 		lc.clear();
 		BulkDF(m->SetComparatorTag()) = UNSORTED_COMPARATOR;

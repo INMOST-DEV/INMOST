@@ -970,6 +970,13 @@ namespace INMOST
 	{
 		Mesh * mesh = GetMeshLink();
 		HandleType me = GetHandle();
+		//MarkerType hm = mesh->HideMarker();
+		//hidden element should maintain connections to hidden and unhidden elements
+		//both hidden and unhidden elements should maintain connection back to hidden element
+		//
+		//for unhidden element
+		
+		
 		adj_type const & hc = mesh->HighConn(GetHandle());
 		for(adj_type::size_type jt = 0; jt < hc.size(); jt++) //iterate over upper adjacent
 		{
@@ -981,7 +988,7 @@ namespace INMOST
 					found = true;
 					break;
 				}
-			if( !found ) 
+			if( !found )
 			{
 				std::cout << "Not found connection from ";
 				std::cout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
@@ -1002,7 +1009,7 @@ namespace INMOST
 					found = true;
 					break;
 				}
-			if( !found ) 
+			if( !found )
 			{
 				std::cout << "Not found connection from ";
 				std::cout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
@@ -1012,6 +1019,7 @@ namespace INMOST
 				return false;
 			}
 		}
+		
 		return true;
 	}
 

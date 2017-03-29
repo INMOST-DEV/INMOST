@@ -106,7 +106,7 @@ void printtext(const char * fmt, ... )
 {
 	
 	unsigned int i;
-	char stext[4096];
+	char stext[1048576];
 	va_list ap;
 	if ( fmt == NULL ) return;
 	va_start(ap,fmt);
@@ -4102,13 +4102,14 @@ double display_elem_info(Element e, double top, double left, double interval)
 	top -= interval;
 	glRasterPos2f(left,top);
 	printtext("%s %d",ElementTypeName(e->GetElementType()),e->LocalID());
+	if( e->GetElementType() == ESET ) printtext(" size %d",e->getAsSet().Size());
 	glColor3f(0.2,0.2,0.2);
 	for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
 	{
 		if( e->HaveData(*t) )
 		{
-			char str[4096];
-			char temp[4096];
+			char str[1048576];
+			char temp[1048576];
 			str[0] = '\0';
 			int dsize;
 			switch(t->GetDataType())
@@ -4475,7 +4476,7 @@ void draw_screen()
 		for(int k = 0; k < (int)orphans.size(); ++k)
 			DrawElement(orphans[k],color_t(1,0,1),color_t(0,1,1),color_t(0,0,1));
 
-	if( disp_e.isValid() )
+	if( disp_e.isValid() && disp_e.GetElementType() != ESET)
 		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1));
 
 
@@ -4588,6 +4589,7 @@ void draw_screen()
 							else if ( stype == "edge" ) visualization_type = EDGE;
 							else if ( stype == "face" ) visualization_type = FACE;
 							else if ( stype == "cell" ) visualization_type = CELL;
+							else if ( stype == "eset" ) visualization_type = ESET;
 							if( visualization_type == NONE )
 								printf("unknown element type %s\n",typen);
 							if( !mesh->isValidElement(visualization_type,comp) )
@@ -4596,9 +4598,12 @@ void draw_screen()
 							if( mesh->isValidElement(visualization_type,comp) )
 							{
 								disp_e = mesh->ElementByLocalID(visualization_type,comp);
-								disp_e->Centroid(shift);
-								for(int r = 0; r < 3; ++r)
-									shift[r] = -shift[r];
+								if( disp_e.GetElementType() != ESET )
+								{
+									disp_e->Centroid(shift);
+									for(int r = 0; r < 3; ++r)
+										shift[r] = -shift[r];
+								}
 							}
 						}
 
