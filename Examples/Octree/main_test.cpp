@@ -134,7 +134,7 @@ void NotMainProcess()
             int  type = type_C - '0';
             //redistribute(&thegrid,type);
             pre_redistribute(type);
-            cout << rank << ": iteration " << iteration++ << " complete. Cells: " << thegrid.mesh->NumberOfCells() << endl;
+			cout << ::rank << ": iteration " << iteration++ << " complete. Cells: " << thegrid.mesh->NumberOfCells() << endl;
         }
         if (buff[0] == 'u') // Need remove ghosts
         {
@@ -315,7 +315,7 @@ int main(int argc, char ** argv)
 	::rank = thegrid.mesh->GetProcessorRank();
 
     //dump_to_vtk();
-	if (rank == 0) cout << "Test start" << endl;
+	if (::rank == 0) cout << "Test start" << endl;
 
     {
 		mx = 0.1;
@@ -329,24 +329,24 @@ int main(int argc, char ** argv)
         {
     		BARRIER
             ct = Timer();
-            if (rank == 0) LOG(1, "Iteration: " << i)
+			if (::rank == 0) LOG(1, "Iteration: " << i)
             gridAMR(&thegrid,0);
     		BARRIER
             tt = Timer();
-    		if (rank == 0) LOG(1, "AMR time = " << tt-ct);
+			if (::rank == 0) LOG(1, "AMR time = " << tt-ct);
             ct = tt;
             redistribute(&thegrid, 0);
     		BARRIER
             tt = Timer();
-    		if (rank == 0) LOG(1, "Red time = " << tt-ct);
+			if (::rank == 0) LOG(1, "Red time = " << tt-ct);
             ct = tt;
-            LOG(2, rank << ": iteration " << i << " complete. Cells: " << thegrid.mesh->NumberOfCells())
+			LOG(2, ::rank << ": iteration " << i << " complete. Cells: " << thegrid.mesh->NumberOfCells())
 			i++;
             mx += h;
         }
     	BARRIER
 		tt = Timer() - tt;
-		if (rank == 0) cout << "time = " << tt << endl;
+		if (::rank == 0) cout << "time = " << tt << endl;
 
 		dump_to_vtk(&thegrid);
 //		send_dump_command();
