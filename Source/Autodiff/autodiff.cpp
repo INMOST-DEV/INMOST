@@ -401,6 +401,86 @@ namespace INMOST
 			return ret;
 	}
 #endif //USE_MESH
+
+#if defined(USE_SOLVER)
+	void Residual::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const 
+	{
+		start = residual.GetFirstIndex(); 
+		end = residual.GetLastIndex();
+	}
+	void Residual::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+	{
+		jacobian.SetInterval(beg,end);
+		residual.SetInterval(beg,end);
+	}
+	void Residual::ClearResidual()
+	{
+		for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) (*it) = 0.0;
+	}
+	void Residual::ClearJacobian()
+	{
+		for(Sparse::Matrix::iterator it = jacobian.Begin(); it != jacobian.End(); ++it) it->Clear();
+	}
+	void Residual::Clear()
+	{
+#if defined(USE_OMP)
+#pragma omp for
+#endif //USE_OMP
+		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+		{
+			residual[k] = 0.0;
+			jacobian[k].Clear();
+		}
+	}
+	INMOST_DATA_REAL_TYPE Residual::Norm()
+	{
+		INMOST_DATA_REAL_TYPE ret = 0;
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:ret)
+#endif //USE_OMP
+		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+			ret += residual[k]*residual[k];
+#if defined(USE_MPI)
+		INMOST_DATA_REAL_TYPE tmp = ret;
+		MPI_Allreduce(&tmp, &ret, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, jacobian.GetCommunicator());
+#endif
+		return sqrt(ret);
+	}
+	Residual & Residual::operator =(Residual const & other)
+	{
+		jacobian = other.jacobian;
+		residual = other.residual;
+		return *this;
+	}
+	void Residual::Rescale()
+	{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif //USE_OMP
+		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
+		{
+			INMOST_DATA_REAL_TYPE norm = 0.0;
+			for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+				norm += jacobian[k].GetValue(q)*jacobian[k].GetValue(q);
+			norm = sqrt(norm);
+			if( norm )
+			{
+				norm = 1.0/norm;
+				residual[k] *= norm;
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+					jacobian[k].GetValue(q) *= norm;
+			}
+		}
+	}
+	Residual::Residual(std::string name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm)
+	: jacobian(name,start,end,_comm),residual(name,start,end,_comm) 
+	{
+	}
+	Residual::Residual(const Residual & other) 
+	: jacobian(other.jacobian), residual(other.residual) 
+	{
+	}
+#endif //USE_SOLVER
 };
 
 #endif //USE_AUTODIFF
