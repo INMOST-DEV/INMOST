@@ -254,11 +254,11 @@ namespace INMOST {
 #endif
     }
 
-    const INMOST_DATA_ENUM_TYPE SolverPETSc::Iterations() const {
+    INMOST_DATA_ENUM_TYPE SolverPETSc::Iterations() const {
         return static_cast<INMOST_DATA_ENUM_TYPE>(SolverIterationNumberPetsc(ksp));
     }
 
-    const INMOST_DATA_REAL_TYPE SolverPETSc::Residual() const {
+    INMOST_DATA_REAL_TYPE SolverPETSc::Residual() const {
         return SolverResidualNormPetsc(ksp);
     }
 

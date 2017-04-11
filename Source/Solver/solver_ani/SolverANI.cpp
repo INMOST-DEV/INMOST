@@ -120,11 +120,11 @@ namespace INMOST {
         //throw INMOST::SolverUnsupportedOperation;
     }
 
-    const INMOST_DATA_ENUM_TYPE SolverANI::Iterations() const {
+    INMOST_DATA_ENUM_TYPE SolverANI::Iterations() const {
         return static_cast<INMOST_DATA_ENUM_TYPE>(solver.ITER);
     }
 
-    const INMOST_DATA_REAL_TYPE SolverANI::Residual() const {
+    INMOST_DATA_REAL_TYPE SolverANI::Residual() const {
         return solver.RESID;
     }
 

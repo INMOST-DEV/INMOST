@@ -128,11 +128,11 @@ namespace INMOST {
         //throw INMOST::SolverUnsupportedOperation;
     }
 
-    const INMOST_DATA_ENUM_TYPE SolverSUPERLU::Iterations() const {
+    INMOST_DATA_ENUM_TYPE SolverSUPERLU::Iterations() const {
         return 1;
     }
 
-    const INMOST_DATA_REAL_TYPE SolverSUPERLU::Residual() const {
+    INMOST_DATA_REAL_TYPE SolverSUPERLU::Residual() const {
         return 0;
     }
 

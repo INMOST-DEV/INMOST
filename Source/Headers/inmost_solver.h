@@ -332,10 +332,10 @@ namespace INMOST
 		void SetParameter(std::string name, std::string value);
 		/// Return the number of iterations performed by the last solution.
 		/// @see Sparse::Solve
-		const INMOST_DATA_ENUM_TYPE Iterations() const;
+		INMOST_DATA_ENUM_TYPE Iterations() const;
 		/// Return the final residual achieved by the last solution.
 		/// @see Sparse::Solve
-		const INMOST_DATA_REAL_TYPE Residual() const;
+		INMOST_DATA_REAL_TYPE Residual() const;
 		/// Get the reason of convergence or divergence of the last solution.
 		/// @see Sparse::Solve
 		const std::string ReturnReason() const;

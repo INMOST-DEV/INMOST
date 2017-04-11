@@ -16,7 +16,7 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
-set_property(TARGET AdaptiveMeshLib PROPERTY PUBLIC_HEADER "${PROJECT_BINARY_DIR}/Examples/AdaptiveMesh/amesh.h")
+set_property(TARGET AdaptiveMeshLib PROPERTY PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/amesh.h")
 
 install(TARGETS AdaptiveMeshLib EXPORT inmost-targets 
         LIBRARY DESTINATION lib 

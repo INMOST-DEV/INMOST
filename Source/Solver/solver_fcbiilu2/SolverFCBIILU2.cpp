@@ -183,11 +183,11 @@ namespace INMOST {
 #endif
     }
 
-    const INMOST_DATA_ENUM_TYPE SolverFCBIILU2::Iterations() const {
+    INMOST_DATA_ENUM_TYPE SolverFCBIILU2::Iterations() const {
         return static_cast<INMOST_DATA_ENUM_TYPE>(solver_data->ITER);
     }
 
-    const INMOST_DATA_REAL_TYPE SolverFCBIILU2::Residual() const {
+    INMOST_DATA_REAL_TYPE SolverFCBIILU2::Residual() const {
         return solver_data->RESID;
     }
 

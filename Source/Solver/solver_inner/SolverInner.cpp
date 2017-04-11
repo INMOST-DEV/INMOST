@@ -94,11 +94,11 @@ namespace INMOST {
 #endif
     }
 
-    const INMOST_DATA_ENUM_TYPE SolverInner::Iterations() const {
+    INMOST_DATA_ENUM_TYPE SolverInner::Iterations() const {
         return solver->GetIterations();
     }
 
-    const INMOST_DATA_REAL_TYPE SolverInner::Residual() const {
+    INMOST_DATA_REAL_TYPE SolverInner::Residual() const {
         return solver->GetResidual();
     }
 
