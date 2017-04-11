@@ -106,7 +106,7 @@ namespace INMOST {
         return solver->GetReason();
     }
 
-    const INMOST_DATA_REAL_TYPE SolverInner::Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
+    INMOST_DATA_REAL_TYPE SolverInner::Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
 #if defined(ACCELERATED_CONDEST)
         INMOST_DATA_ENUM_TYPE lbeg, lend, l, iter;
         INMOST_DATA_REAL_TYPE norm, sum[2], norm_prev, lambda_min, lambda_max;

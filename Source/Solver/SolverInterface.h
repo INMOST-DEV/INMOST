@@ -59,7 +59,7 @@ namespace INMOST {
 
         virtual void Finalize() = 0;
 
-        virtual const INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
+        virtual INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
             throw INMOST::SolverUnsupportedOperation;
         };
 
