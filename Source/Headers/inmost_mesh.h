@@ -3080,6 +3080,7 @@ namespace INMOST
 	private:
 		void                              RestoreGeometricTags();
 		void                              RepairGeometricTags();
+	public:
 		bool                              HideGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
 		bool                              ShowGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
 	public:
@@ -3104,6 +3105,16 @@ namespace INMOST
 		/// Sets marker for all the faces that have only one neighbouring cell, works correctly in parallel environment.
 		/// @param boundary_marker Non-private marker that will indicate boundary faces.
 		void                              MarkBoundaryFaces(MarkerType boundary_marker);
+		/// This function should be used to detect normal inversion on ghost interfaces
+		/// with respect to normal orientation on owner of the interface.
+		/// Due to automatic control over normal orientation in the grid, it may
+		/// happen that some ghost faces have different orientation rather then
+		/// face on owner processor.
+		/// It may happen that some data depends on normal orientation, then
+		/// one should be aware on a local processor orientation may be different
+		/// from owner value, then the data may have incorrect sign.
+		/// @param mrk Non-private marker that will indicate inverted normals
+		void MarkNormalOrientation(MarkerType mrk);
 		//implemented in modify.cpp
 	private:
 		MarkerType hide_element, new_element, temp_hide_element;

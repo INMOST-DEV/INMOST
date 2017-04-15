@@ -73,7 +73,7 @@ real refP(real xyz[3], real nu, real t)
 }
 
 // (done)todo: adapt for parallel use
-void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real visc, real T)
+void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real visc, real T, MarkerType mrk)
 {
 	{
 		TagReal      tag_refP = m.CreateTag("refP" ,DATA_REAL,CELL|FACE,NONE,1);
@@ -83,6 +83,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			for(integer it = 0; it < m.LastLocalID(etype); ++it) if( m.isValidElement(etype,it) )
 			{
 				Element e = m.ElementByLocalID(etype,it);
+				if( e.GetStatus() == Element::Ghost ) continue;
 				real x[3],p;
 				e.Centroid(x);
 				p = refP(x,visc,T);
@@ -100,6 +101,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			for(integer it = 0; it < m.LastLocalID(etype); ++it) if( m.isValidElement(etype,it) )
 			{
 				Element e = m.ElementByLocalID(etype,it);
+				if( e.GetStatus() == Element::Ghost ) continue;
 				real x[3];
 				e.Centroid(x);
 				tag_refP[e] = refP(x,visc,T) - p_ref_min;
@@ -112,6 +114,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 		TagReal      tag_E   = m.CreateTag("ERROR_P" ,DATA_REAL,CELL|FACE,NONE,1);
 		TagRealArray tag_EU  = m.CreateTag("ERROR_U" ,DATA_REAL,CELL,NONE,3);
 		TagRealArray tag_U  =  m.CreateTag("U" ,DATA_REAL,CELL,NONE,3);
+		TagRealArray tag_refU  =  m.CreateTag("refU" ,DATA_REAL,CELL,NONE,3);
 		TagReal      tag_EnU = m.CreateTag("ERROR_nU",DATA_REAL,FACE,NONE,1);
 		real C, L2, volume, Cu[3], L2u[3], Cnu, L2nu;
 		C = L2 = volume = 0.0;
@@ -120,7 +123,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 		{
 			Cell c = m.CellByLocalID(q);
 			if( c.GetStatus() == Element::Ghost ) continue;
-			real x[3], z[3];
+			real x[3], z[3], n[3];
 			c.Centroid(x);
 			real err = tag_P[c] - p_min - tag_refP[c];
 			real vol = c.Volume();
@@ -129,15 +132,25 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			volume += vol;
 			tag_E[c] = err;
 			
-			real V[3] = {0,0,0}; //restored velocity
+			real V[3],Q[3]; //restored velocity
+			V[0] = V[1] = V[2] = 0;
+			Q[0] = Q[1] = Q[2] = 0;
 			real a,s,v;
 			ElementArray<Face> cfaces = c.getFaces();
 			for(integer kt = 0; kt < cfaces.size(); ++kt)
 			{
+				//cfaces[kt].FixNormalOrientation();
+				//if( !cfaces[kt].FixNormalOrientation() ) std::cout << "Orientation is bad" << std::endl;
 				cfaces[kt].Centroid(z);
+				cfaces[kt].UnitNormal(n);
 				a = cfaces[kt].Area();
 				s = cfaces[kt].FaceOrientedOutside(c) ? 1.0 : -1.0;
+				s*= cfaces[kt].GetMarker(mrk) ? -1.0 : 1.0;
 				v = tag_nU[cfaces[kt]]*s*a;
+				//v = n[0]*refU(z,visc,T).GetValue()
+				//  + n[1]*refV(z,visc,T).GetValue()
+				//  + n[2]*refW(z,visc,T).GetValue();
+				//v*= a*s;
 				V[0] += v*(z[0]-x[0]);
 				V[1] += v*(z[1]-x[1]);
 				V[2] += v*(z[2]-x[2]);
@@ -150,23 +163,27 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			tag_U[c][1] = V[1];
 			tag_U[c][2] = V[2];
 			
-			err = V[0] - refU(x,visc,T).GetValue();
+			tag_refU[c][0] = refU(x,visc,T).GetValue();
+			tag_refU[c][1] = refV(x,visc,T).GetValue();
+			tag_refU[c][2] = refW(x,visc,T).GetValue();
+			
+			err = V[0] - tag_refU[c][0];
 			if( Cu[0] < fabs(err) ) Cu[0] = fabs(err);
 			L2u[0] += err*err*vol;
 			tag_EU[c][0] = err;
 			
-			err = V[1] - refV(x,visc,T).GetValue();
+			err = V[1] - tag_refU[c][1];
 			if( Cu[1] < fabs(err) ) Cu[1] = fabs(err);
 			L2u[1] += err*err*vol;
 			tag_EU[c][1] = err;
 			
-			err = V[2] - refW(x,visc,T).GetValue();
+			err = V[2] - tag_refU[c][2];
 			if( Cu[2] < fabs(err) ) Cu[2] = fabs(err);
 			L2u[2] += err*err*vol;
 			tag_EU[c][2] = err;
 		}
 		m.ExchangeData(tag_U,CELL,0);
-		m.ExchangeData(tag_EU,CELL,0);
+		m.ExchangeData(tag_refU,CELL,0);
 		volume = m.Integrate(volume);
 		L2 = sqrt(m.Integrate(L2)/volume);
 		m.Integrate(L2u,3);
@@ -182,6 +199,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			std::cout << "Reconstructed V error on cells, C-norm " << Cu[1] << " L2-norm " << L2u[1] << std::endl;
 			std::cout << "Reconstructed W error on cells, C-norm " << Cu[2] << " L2-norm " << L2u[2] << std::endl;
 		}
+		
 		C = L2 = volume = 0.0;
 		Cnu = L2nu = 0.0;
 		for( int q = 0; q < m.FaceLastLocalID(); ++q ) if( m.isValidFace(q) )
@@ -211,7 +229,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			V[0] = refU(x,visc,T).GetValue();
 			V[1] = refV(x,visc,T).GetValue();
 			V[2] = refW(x,visc,T).GetValue();
-			nV = n[0]*V[0]+n[1]*V[1]+n[2]*V[2];
+			nV = (n[0]*V[0]+n[1]*V[1]+n[2]*V[2])*(f.GetMarker(mrk)?-1:1);
 			err = tag_nU[f] - nV;
 			
 			if( Cnu < fabs(err) ) Cnu = fabs(err);
@@ -241,6 +259,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			{
 				a = cfaces[kt].Area();
 				s = cfaces[kt].FaceOrientedOutside(c)?1.0:-1.0;
+				s*= cfaces[kt].GetMarker(mrk) ? -1.0 : 1.0;
 				div += tag_nU[cfaces[kt]]*a*s;
 			}
 			if( div > div_max ) div_max = div;
@@ -332,7 +351,9 @@ int main(int argc,char ** argv)
 			for(int k = 0; k < 3; ++k)
 				c[k] = 2.0*(c[k]-xmin[k])/(xmax[k]-xmin[k])-1.0;
 		}
-
+		
+		
+		
         { // prepare geometrical data on the mesh
             Mesh::GeomParam table;
             table[CENTROID]    = CELL | FACE; //Compute averaged center of mass
@@ -340,9 +361,11 @@ int main(int argc,char ** argv)
             table[ORIENTATION] = FACE;        //Check and fix normal orientation
             table[MEASURE]     = CELL | FACE; //Compute volumes and areas
             //table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
+			m.RemoveGeometricData(table);
             m.PrepareGeometricData(table); //Ask to precompute the data
         }
-
+		
+		
         // data tags for
 		TagReal tag_nU; // Normal component of velocity
 		TagReal tag_nUold; // on previous step
@@ -352,11 +375,19 @@ int main(int argc,char ** argv)
         TagRealArray tag_W; // Gradient matrix
 		TagInteger tag_i; // row number for current cell in back cell matrix
 		
+		
         if( m.GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
             m.ExchangeGhost(1,FACE); // Produce layer of ghost cells
         }
-
+		
+		
+		MarkerType nrm_ornt = m.CreateMarker();
+		MarkerType boundary = m.CreateMarker();
+		
+		m.MarkNormalOrientation(nrm_ornt);
+		m.MarkBoundaryFaces(boundary);
+		
         { //initialize data
             tag_P = m.CreateTag("PRESSURE",DATA_REAL,CELL|FACE,NONE,1); // Create a new tag for the pressure
 			tag_W = m.CreateTag("W",DATA_REAL,CELL,NONE);
@@ -416,10 +447,11 @@ int main(int argc,char ** argv)
 				u[0] = refU(x,visc,0).GetValue();
 				u[1] = refV(x,visc,0).GetValue();
 				u[2] = refW(x,visc,0).GetValue();
-				tag_nUold[f] = tag_nU[f] = u[0]*n[0]+u[1]*n[1]+u[2]*n[2];
+				tag_nUold[f] = tag_nU[f] = (u[0]*n[0]+u[1]*n[1]+u[2]*n[2])*(f.GetMarker(nrm_ornt)?-1:1);
 				//pressure
 				tag_P[f] = refP(x,visc,0);
 			}
+			
 			
 			//initialize pressure
 #if defined(USE_OMP)
@@ -432,12 +464,17 @@ int main(int argc,char ** argv)
 				c.Centroid(x);
 				tag_P[c] = refP(x,visc,0);
 			}
-
+			
+			//CheckResidual(m,tag_P,tag_nU,visc,0,nrm_ornt);
+			
+			m.ExchangeData(tag_nU,FACE,0);
+			m.ExchangeData(tag_nUold,FACE,0);
+			
+			//CheckResidual(m,tag_P,tag_nU,visc,0,nrm_ornt);
+			
         } //end of initialize data
 		
-		MarkerType boundary = m.CreateMarker();
 		
-		m.MarkBoundaryFaces(boundary);
 
         if( m.GetProcessorRank() == 0 ) std::cout << "Initialization done" << std::endl;
         { //Main loop for problem solution
@@ -510,7 +547,7 @@ int main(int argc,char ** argv)
 				if( report_residual )
 				{
 					if( m.GetProcessorRank() == 0 )  std::cout << "Before velocity update " << std::endl;
-					CheckResidual(m,tag_P,tag_nU,visc,t);
+					CheckResidual(m,tag_P,tag_nU,visc,t,nrm_ornt);
 				}
 				
 				
@@ -520,7 +557,9 @@ int main(int argc,char ** argv)
 				for(integer it = 0; it < m.FaceLastLocalID(); ++it) if( m.isValidFace(it) )
 				{
 					Face f = m.FaceByLocalID(it);
-					real x[3], n[3], V[3], nV, U, Uold;
+					if( f.GetStatus() == Element::Ghost ) continue;
+					real x[3], n[3], V[3], nV, U, Uold, s;
+					s = f.GetMarker(nrm_ornt) ? -1 : 1;
 					f.UnitNormal(n);
 					f.Centroid(x);
 					U = tag_nU[f];
@@ -531,7 +570,7 @@ int main(int argc,char ** argv)
 						V[0] = refU(x,visc,t+dT).GetValue();
 						V[1] = refV(x,visc,t+dT).GetValue();
 						V[2] = refW(x,visc,t+dT).GetValue();
-						nV = n[0]*V[0]+n[1]*V[1]+n[2]*V[2];
+						nV = (n[0]*V[0]+n[1]*V[1]+n[2]*V[2])*s;
 						tag_nU[f] = nV;
 						tag_nUold[f] = U;
 					}
@@ -564,19 +603,19 @@ int main(int argc,char ** argv)
 						V[0] = u.GetValue()*u.GetRow()[0] + v.GetValue()*u.GetRow()[1] + w.GetValue()*u.GetRow()[2];
 						V[1] = u.GetValue()*v.GetRow()[0] + v.GetValue()*v.GetRow()[1] + w.GetValue()*v.GetRow()[2];
 						V[2] = u.GetValue()*w.GetRow()[0] + v.GetValue()*w.GetRow()[1] + w.GetValue()*w.GetRow()[2];
-						nV = n[0]*V[0]+n[1]*V[1]+n[2]*V[2];
+						nV = (n[0]*V[0]+n[1]*V[1]+n[2]*V[2])*s;
 						tag_nU[f] = -(beta*U + gamma*Uold + (nV + ngradP)*dT)/alpha;
 						tag_nUold[f] = U;
 					}
 				}
 				
-				
 				m.ExchangeData(tag_nU,FACE,0);
+				m.ExchangeData(tag_nUold,FACE,0);
 				
 				if( report_residual )
 				{
 					if( m.GetProcessorRank() == 0 )  std::cout << "After velocity update " << std::endl;
-					CheckResidual(m,tag_P,tag_nU,visc,t+dT);
+					CheckResidual(m,tag_P,tag_nU,visc,t+dT,nrm_ornt);
 				}
 				
 				R.Clear(); //clean up the residual
@@ -630,6 +669,7 @@ int main(int argc,char ** argv)
 						{
 							a = cfaces[kt].Area();
 							s = cfaces[kt].FaceOrientedOutside(c)?1.0:-1.0;
+							s*= cfaces[kt].GetMarker(nrm_ornt) ? -1 : 1;
 							div += tag_nU[cfaces[kt]]*a*s;
 						}
 						tag_F[c] = div/dT;
@@ -680,6 +720,7 @@ int main(int argc,char ** argv)
 				S.SetParameter("absolute_tolerance", "1.0e-12");
 				S.SetParameter("drop_tolerance", "5.0e-2");
 				S.SetParameter("reuse_tolerance", "1.0e-3");
+				S.SetParameter("schwartz_overlap", "2");
 				S.SetMatrix(R.GetJacobian());;
 				if( S.Solve(R.GetResidual(),Update) )
 				{
@@ -694,6 +735,7 @@ int main(int argc,char ** argv)
 						for(integer it = 0; it < m.LastLocalID(etype); ++it) if( m.isValidElement(etype,it) )
 						{
 							Element e = m.ElementByLocalID(etype,it);
+							if( e.GetStatus() == Element::Ghost ) continue;
 							tag_Q[e] -= Update[Q.Index(e)];
 							//if( tag_Q[e] < Q_min ) Q_min = tag_Q[e];
 							//if( tag_Q[e] > Q_max ) Q_max = tag_Q[e];
@@ -756,7 +798,7 @@ int main(int argc,char ** argv)
 					if( report_residual )
 					{
 						if( m.GetProcessorRank() == 0 )  std::cout << "After projection" << std::endl;
-						CheckResidual(m,tag_P,tag_nU,visc,t+dT);
+						CheckResidual(m,tag_P,tag_nU,visc,t+dT,nrm_ornt);
 					}
 					
 					if( write_steps )
@@ -787,7 +829,7 @@ int main(int argc,char ** argv)
 		}
 		
 		
-		CheckResidual(m,tag_P,tag_nU,visc,T);
+		CheckResidual(m,tag_P,tag_nU,visc,T,nrm_ornt);
 		
 
         if( m.GetProcessorsNumber() == 1 )
@@ -797,7 +839,7 @@ int main(int argc,char ** argv)
 		
 		
 		m.ReleaseMarker(boundary,FACE);
-
+		m.ReleaseMarker(nrm_ornt,FACE);
     }
     else
     {

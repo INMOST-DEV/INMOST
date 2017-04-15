@@ -3,6 +3,11 @@
 #include <deque>
 using namespace std;
 
+const std::string normal_name = "PROTECTED_GEOM_UTIL_NORMAL";
+const std::string measure_name = "PROTECTED_GEOM_UTIL_MEASURE";
+const std::string centroid_name = "PROTECTED_GEOM_UTIL_CENTROID";
+const std::string barycenter_name = "PROTECTED_GEOM_UTIL_BARYCENTER";
+
 namespace INMOST
 {
 	typedef struct orient_face_t
@@ -548,10 +553,10 @@ namespace INMOST
 			{
 				switch(gtype)
 				{
-				case MEASURE:       measure_tag = GetTag("GEOM_UTIL_MEASURE");    break;
-				case CENTROID:     centroid_tag = GetTag("GEOM_UTIL_CENTROID");   break;
-				case BARYCENTER: barycenter_tag = GetTag("GEOM_UTIL_BARYCENTER"); break;
-				case NORMAL:         normal_tag = GetTag("GEOM_UTIL_NORMAL");     break;
+				case MEASURE:       measure_tag = GetTag(measure_name);    break;
+				case CENTROID:     centroid_tag = GetTag(centroid_name);   break;
+				case BARYCENTER: barycenter_tag = GetTag(barycenter_name); break;
+				case NORMAL:         normal_tag = GetTag(normal_name);     break;
 				}
 			}
 		}
@@ -559,30 +564,30 @@ namespace INMOST
 
 	void Mesh::RepairGeometricTags()
 	{
-		if( HaveTag("GEOM_UTIL_MEASURE") ) 
+		if( HaveTag(measure_name) )
 		{
-			measure_tag = GetTag("GEOM_UTIL_MEASURE");
+			measure_tag = GetTag(measure_name);
 			for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				if( measure_tag.isDefined(etype) && !HaveGeometricData(MEASURE,etype) )
 					ShowGeometricData(MEASURE,etype);
 		}
-		if( HaveTag("GEOM_UTIL_CENTROID") )
+		if( HaveTag(centroid_name) )
 		{
-			centroid_tag = GetTag("GEOM_UTIL_CENTROID");
+			centroid_tag = GetTag(centroid_name);
 			for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				if( centroid_tag.isDefined(etype) && !HaveGeometricData(CENTROID,etype) )
 					ShowGeometricData(CENTROID,etype);
 		}
-		if( HaveTag("GEOM_UTIL_BARYCENTER") )
+		if( HaveTag(barycenter_name) )
 		{
-			barycenter_tag = GetTag("GEOM_UTIL_BARYCENTER");
+			barycenter_tag = GetTag(barycenter_name);
 			for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				if( barycenter_tag.isDefined(etype) && !HaveGeometricData(BARYCENTER,etype) )
 					ShowGeometricData(BARYCENTER,etype);
 		}
-		if( HaveTag("GEOM_UTIL_NORMAL") )
+		if( HaveTag(normal_name) )
 		{
-			normal_tag = GetTag("GEOM_UTIL_NORMAL");
+			normal_tag = GetTag(normal_name);
 			for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 				if( normal_tag.isDefined(etype) && !HaveGeometricData(NORMAL,etype) )
 					ShowGeometricData(NORMAL,etype);
@@ -619,7 +624,7 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(MEASURE,etype))
 					{
-						measure_tag = CreateTag("GEOM_UTIL_MEASURE",DATA_REAL,etype,NONE,1);
+						measure_tag = CreateTag(measure_name,DATA_REAL,etype,NONE,1);
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -639,7 +644,7 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(CENTROID,etype))
 					{
-						centroid_tag = CreateTag("GEOM_UTIL_CENTROID",DATA_REAL,etype,NONE,GetDimensions());
+						centroid_tag = CreateTag(centroid_name,DATA_REAL,etype,NONE,GetDimensions());
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -659,7 +664,7 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(BARYCENTER,etype))
 					{
-						barycenter_tag = CreateTag("GEOM_UTIL_BARYCENTER",DATA_REAL,etype,NONE,GetDimensions());
+						barycenter_tag = CreateTag(barycenter_name,DATA_REAL,etype,NONE,GetDimensions());
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -679,7 +684,7 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(NORMAL,etype))
 					{
-						normal_tag = CreateTag("GEOM_UTIL_NORMAL",DATA_REAL,etype,NONE,GetDimensions());
+						normal_tag = CreateTag(normal_name,DATA_REAL,etype,NONE,GetDimensions());
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -1027,57 +1032,74 @@ namespace INMOST
 			}
 			break;
 			case NORMAL:
-			if( HaveGeometricData(NORMAL,etype) )
-				memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);
-			else
 			{
-				memset(ret,0,sizeof(real)*mdim);
-				if( edim == 2 )//&& mdim == 3)
+//				real sret[3];
+//				bool cmp = false;
+				if( HaveGeometricData(NORMAL,etype) )
 				{
-					ElementArray<Node> nodes = Element(this,e)->getNodes();
-					
-					Storage::real_array x0 = nodes[0].Coords(), a = x0, b;
-					for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
-					{
-						b = nodes[(i+1)%nodes.size()].Coords();
-						ret[0] += (a[1]-x0[1])*(b[2]-x0[2]) - (a[2]-x0[2])*(b[1]-x0[1]);
-						ret[1] += (a[2]-x0[2])*(b[0]-x0[0]) - (a[0]-x0[0])*(b[2]-x0[2]);
-						ret[2] += (a[0]-x0[0])*(b[1]-x0[1]) - (a[1]-x0[1])*(b[0]-x0[0]);
-						a.swap(b);
-					}
-					/*
-					for(unsigned i = 0; i < nodes.size(); i++)
-					{
-						Storage::real_array a = nodes[i].Coords();
-						Storage::real_array b = nodes[(i+1)%nodes.size()].Coords();
-						ret[0] += a[1]*b[2] - a[2]*b[1];
-						ret[1] += a[2]*b[0] - a[0]*b[2];
-						ret[2] += a[0]*b[1] - a[1]*b[0];
-					}
-					*/
-					ret[0] *= 0.5;
-					ret[1] *= 0.5;
-					ret[2] *= 0.5;
+					memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);
+//					cmp = true;
 				}
-				else if( edim == 1 )//&& mdim == 2 )
+				else
 				{
-					ElementArray<Node> nodes = Element(this,e)->getNodes();
-					if( nodes.size() > 1 )
+					memset(ret,0,sizeof(real)*mdim);
+					if( edim == 2 )//&& mdim == 3)
 					{
-						Storage::real_array a = nodes[0].Coords();
-						Storage::real_array b = nodes[1].Coords();
-						ret[0] = b[1] - a[1];
-						ret[1] = a[0] - b[0];
-						Storage::real l = ::sqrt(ret[0]*ret[0]+ret[1]*ret[1]);
-						if( l )
+						ElementArray<Node> nodes = Element(this,e)->getNodes();
+						
+						Storage::real_array x0 = nodes[0].Coords(), a = x0, b;
+						for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
 						{
-							ret[0] /= l;
-							ret[1] /= l;
+							b = nodes[(i+1)%nodes.size()].Coords();
+							ret[0] += (a[1]-x0[1])*(b[2]-x0[2]) - (a[2]-x0[2])*(b[1]-x0[1]);
+							ret[1] += (a[2]-x0[2])*(b[0]-x0[0]) - (a[0]-x0[0])*(b[2]-x0[2]);
+							ret[2] += (a[0]-x0[0])*(b[1]-x0[1]) - (a[1]-x0[1])*(b[0]-x0[0]);
+							a.swap(b);
 						}
-						l = ::sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]));
-						ret[0] *= l;
-						ret[1] *= l;
+						/*
+						 for(unsigned i = 0; i < nodes.size(); i++)
+						 {
+						 Storage::real_array a = nodes[i].Coords();
+						 Storage::real_array b = nodes[(i+1)%nodes.size()].Coords();
+						 ret[0] += a[1]*b[2] - a[2]*b[1];
+						 ret[1] += a[2]*b[0] - a[0]*b[2];
+						 ret[2] += a[0]*b[1] - a[1]*b[0];
+						 }
+						 */
+						ret[0] *= 0.5;
+						ret[1] *= 0.5;
+						ret[2] *= 0.5;
 					}
+					else if( edim == 1 )//&& mdim == 2 )
+					{
+						ElementArray<Node> nodes = Element(this,e)->getNodes();
+						if( nodes.size() > 1 )
+						{
+							Storage::real_array a = nodes[0].Coords();
+							Storage::real_array b = nodes[1].Coords();
+							ret[0] = b[1] - a[1];
+							ret[1] = a[0] - b[0];
+							Storage::real l = ::sqrt(ret[0]*ret[0]+ret[1]*ret[1]);
+							if( l )
+							{
+								ret[0] /= l;
+								ret[1] /= l;
+							}
+							l = ::sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]));
+							ret[0] *= l;
+							ret[1] *= l;
+						}
+					}
+//					real err = 0;
+//					for(int k = 0; k < 3; ++k)
+//						err += (ret[0]-sret[0])*(ret[0]-sret[0]);
+//					err = sqrt(err);
+//					if( err > 1.0e-8 && cmp )
+//					{
+//						std::cout << "face " << GetHandleID(e) << " rank " << GetProcessorRank() <<  std::endl;
+//						std::cout << "cn " << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
+//						std::cout << "sn " << sret[0] << " " << sret[1] << " " << sret[2] << std::endl;
+//					}
 				}
 			}
 			break;
@@ -1261,6 +1283,7 @@ namespace INMOST
 			c1->Centroid(ccnt);
 			for(unsigned j = 0; j < data.size(); j++)
 			{
+				//std::cout << (data[j].GetPrivateMarker(rev) ? 0:1);
 				//compute normal to face
 				data[j].Centroid(cnt);
 				data[j].Normal(nrm);
@@ -1268,6 +1291,7 @@ namespace INMOST
 					cnt[r] = cnt[r]-ccnt[r];
 				measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(cnt,nrm,3);
 			}
+			//std::cout << "cur" << (cur->GetPrivateMarker(rev) ? 0:1) << " " << measure << " ";
             //bool have_rev = cur->GetPrivateMarker(rev);
 			data.RemPrivateMarker(rev);
 			mesh->ReleasePrivateMarker(rev);
