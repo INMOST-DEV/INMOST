@@ -62,6 +62,6 @@ endif()
 
 endforeach(vtarget ${TARGETS})
 
-if(NOT OPENGL_FOUND)
+if(NOT GLUT_FOUND)
 	set_target_properties(Octree PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
-endif(NOT OPENGL_FOUND)
+endif(NOT GLUT_FOUND)
