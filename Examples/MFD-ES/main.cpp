@@ -373,7 +373,7 @@ int main(int argc,char ** argv)
 		TagReal tag_Q;  // Pressure update
         TagReal tag_F;  // Forcing term
         TagRealArray tag_W; // Gradient matrix
-		TagInteger tag_i; // row number for current cell in back cell matrix
+		TagInteger tag_i; // row number for current face in back cell matrix
 		
 		
         if( m.GetProcessorsNumber() > 1 ) //skip for one processor job
@@ -404,8 +404,8 @@ int main(int argc,char ** argv)
             {
                 Cell c = m.CellByLocalID(it);
 				ElementArray<Face> faces = c.getFaces(); //obtain faces of the cell
-				tag_W[c].resize(faces.size()*faces.size());
-				Matrix<real,real_array> W(tag_W[c],faces.size(),faces.size());
+				Matrix<real,real_array> W(tag_W[c]);
+				W.Resize(faces.size(),faces.size());
 				real xP[3]; //center of the cell
 				real yF[3]; //center of the face
 				real nF[3]; //normal to the face

@@ -48,6 +48,7 @@ if(OPENGL_FOUND)
 	endif(GLUT_FOUND)
 else(OPENGL_FOUND)
 	message("OpenGL not found for ${vtarget}")
+	
 endif(OPENGL_FOUND)
 
 if(USE_PARTITIONER_ZOLTAN)
@@ -61,4 +62,6 @@ endif()
 
 endforeach(vtarget ${TARGETS})
 
-
+if(NOT OPENGL_FOUND)
+	set_target_properties(Octree PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
+endif(NOT OPENGL_FOUND)
