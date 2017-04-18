@@ -4786,9 +4786,9 @@ namespace INMOST
 		}
 		
 		
-		std::stringstream str;
-		str << "before_migrate" << GetProcessorRank() << ".xml";
-		Save(str.str());
+		//std::stringstream str;
+		//str << "before_migrate" << GetProcessorRank() << ".xml";
+		//Save(str.str());
 		
 		time = Timer() - time;
 		REPORT_STR("Determine local entities to send");
