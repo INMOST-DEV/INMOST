@@ -410,7 +410,6 @@ int main(int argc,char ** argv)
 				real yF[3]; //center of the face
 				real nF[3]; //normal to the face
 				real aF; //area of the face
-				real vP = c.Volume(); //volume of the cell
 				c.Centroid(xP);
 				rMatrix N(faces.size(),3), R(faces.size(),3); //big gradient matrix, co-normals, directions
 				for(int k = 0; k < faces.size(); ++k) //loop over faces
@@ -431,7 +430,7 @@ int main(int argc,char ** argv)
 						tag_i[faces[k]] = k;
 				} //end of loop over faces
 				W = N*(N.Transpose()*R).Invert(true).first*N.Transpose(); //stability part
-				W += (rMatrix::Unit(faces.size()) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*(4.0/faces.size()*W.Trace());
+				W += (rMatrix::Unit(faces.size()) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*(4.0/(faces.size())*W.Trace());
             } //end of loop over cells
 			
 			//initialize normal velocity
@@ -629,7 +628,7 @@ int main(int argc,char ** argv)
 				Automatizator::MakeCurrent(&aut);
 				
 #if defined(USE_OMP)
-#pragma omp parallel 
+#pragma omp parallel for
 #endif
 				for(integer it = 0; it < m.CellLastLocalID(); ++it) if( m.isValidCell(it) ) //loop over cells
 				{
