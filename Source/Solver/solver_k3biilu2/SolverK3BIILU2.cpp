@@ -191,11 +191,11 @@ namespace INMOST {
 #endif
     }
 
-    const INMOST_DATA_ENUM_TYPE SolverK3BIILU2::Iterations() const {
+    INMOST_DATA_ENUM_TYPE SolverK3BIILU2::Iterations() const {
         return static_cast<INMOST_DATA_ENUM_TYPE>(solver_data->istat[2]);
     }
 
-    const INMOST_DATA_REAL_TYPE SolverK3BIILU2::Residual() const {
+    INMOST_DATA_REAL_TYPE SolverK3BIILU2::Residual() const {
         return solver_data->dstat[2];
     }
 

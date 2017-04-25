@@ -3216,6 +3216,9 @@ namespace INMOST
 		int position = 0;
 		elements_by_type selems;
 		MarkerType unpack_tags_mrk = CreateMarker();
+		//MarkerType swap_normal = 0;
+		//if( HaveGeometricData(NORMAL,FACE) )
+		//	swap_normal = CreateMarker();
 		//TODO 46 old
 		//elements_by_type unpack_tags;
 		std::vector<HandleType> old_nodes(NumberOfNodes());
@@ -3478,15 +3481,40 @@ namespace INMOST
 				} 
 				else 
 				{
+					//current solution - no communication of geometric data
+					//here we should check tat remote face orientation match
+					//existing face orientation, otherwise we would need
+					//to swap normal if it is precomputed and comes from remote
+					//processor the worong way
 					if( IntegerDF(new_face,tag_owner) != mpirank ) 
 					{
 						//TODO 46 old
 						//unpack_tags[2].push_back(new_face);
 						SetMarker(new_face,unpack_tags_mrk);
 						++marked_for_data;
+						
+//						if( swap_normal )//&& GetMarker(new_face,unpack_tags_mrk) )
+//						{
+//							const Element::adj_type & lc = LowConn(new_face);
+//							assert(lc.size() > 1 );
+//							assert(lc.size() == f_edges.size());
+//							if(lc.size() != f_edges.size() )
+//								std::cout << "This should not happen" << std::endl;
+//							for(ElementArray<Edge>::size_type q = 0; q < f_edges.size(); ++q)
+//							{
+//								if( f_edges.at(q) == lc[0] )
+//								{
+//									if( f_edges.at((q+1)%f_edges.size()) != lc[1] )
+//										SetMarker(new_face,swap_normal);
+//									break;
+//								}
+//							}
+//						}
+						
 					}
 					++found;
 				}
+				
 				selems[2].push_back(new_face);
 				shift+= low_conn_size[i];
 			}
@@ -3636,6 +3664,24 @@ namespace INMOST
 		for(integer k = ElementNum(NODE); k <= ElementNum(CELL); ++k)
 			if( !selems[k].empty() ) RemMarkerArray(&selems[k][0],static_cast<enumerator>(selems[k].size()),unpack_tags_mrk);
 		ReleaseMarker(unpack_tags_mrk);
+//		if( swap_normal )
+//		{
+//			for(enumerator q = 0; q < selems[2].size(); ++q)
+//			{
+//				if( GetMarker(selems[2][q],swap_normal) )
+//				{
+//					real_array nrm = RealArrayDF(selems[2][q],GetGeometricTag(NORMAL));
+//					std::cout << "Swap normal face " << GetHandleID(selems[2][q]) << " rank " << GetProcessorRank() <<  std::endl;
+//					for(real_array::size_type it = 0; it < nrm.size(); ++it)
+//						nrm[it] = -nrm[it];
+//					RemMarker(selems[2][q],swap_normal);
+//				}
+//				else
+//					std::cout << "No swap normal face " << GetHandleID(selems[2][q]) << " rank " << GetProcessorRank() <<  std::endl;
+//				
+//			}
+//			ReleaseMarker(swap_normal);
+//		}
 		time = Timer() - time;
 		REPORT_STR("unpack tag data");
 		REPORT_VAL("time", time);	
@@ -4740,9 +4786,9 @@ namespace INMOST
 		}
 		
 		
-		std::stringstream str;
-		str << "before_migrate" << GetProcessorRank() << ".xml";
-		Save(str.str());
+		//std::stringstream str;
+		//str << "before_migrate" << GetProcessorRank() << ".xml";
+		//Save(str.str());
 		
 		time = Timer() - time;
 		REPORT_STR("Determine local entities to send");
@@ -4767,7 +4813,49 @@ namespace INMOST
 		EXIT_FUNC();
 
 	}
-	void Mesh::BeginSequentialCode() 
+	
+	
+	void UnpackMarkNormalOrientation(const Tag & tag,
+								 const Element & element,
+								 const INMOST_DATA_BULK_TYPE * data,
+								 INMOST_DATA_ENUM_TYPE size)
+	{
+		Storage::real_array    local_nrm = element.RealArrayDF(tag);
+		const Storage::real * remote_nrm = (const Storage::real *) data;
+		assert(size == local_nrm.size());
+		Storage::real dot = 0;
+		for(Storage::enumerator k = 0; k < local_nrm.size(); ++k)
+			dot += local_nrm[k]*remote_nrm[k];
+		local_nrm[0] = dot;
+	}
+	
+	void Mesh::MarkNormalOrientation(MarkerType mrk)
+	{
+		if( m_state == Serial ) return;
+		ENTER_FUNC();
+#if defined(USE_MPI)
+#if !defined(USE_PARALLEL_STORAGE)
+		parallel_storage ghost_elements, shared_elements;
+		GatherParallelStorage(ghost_elements,shared_elements,mask);
+#endif //USE_PARALLEL_STORAGE
+		TagRealArray tag_nrm = CreateTag("TEMPORARY_NORMAL",DATA_REAL,FACE,NONE,3);
+		for(iteratorFace it = BeginFace(); it != EndFace(); ++it)
+			if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+				it->UnitNormal(tag_nrm[it->self()].data());
+		exchange_data storage;
+		ExchangeDataInnerBegin(tag_set(1,tag_nrm),shared_elements,ghost_elements,FACE,0,storage);
+		ExchangeDataInnerEnd(tag_set(1,tag_nrm),shared_elements,ghost_elements,FACE,0,UnpackMarkNormalOrientation,storage);
+		for(iteratorFace it = BeginFace(); it != EndFace(); ++it)
+			if( it->GetStatus() == Element::Ghost && tag_nrm[it->self()][0] < 0 )
+				it->SetMarker(mrk);
+		DeleteTag(tag_nrm);
+#else //USE_MPI
+		(void) mrk;
+#endif //USE_MPI
+		EXIT_FUNC();
+	}
+	
+	void Mesh::BeginSequentialCode()
 	{
 #if defined(USE_MPI)
 		for(int i = 0; i < GetProcessorRank(); i++) 

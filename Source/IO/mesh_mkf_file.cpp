@@ -57,7 +57,8 @@ namespace INMOST
 		ElementArray<ElementSet> newsets(this);
 		ElementArray<Node> f_nodes(this);
 		ElementArray<Face> c_faces(this);
-		fscanf(f," %d %d %d %d %d",&nbnodes,&nbpolygon,&nbpolyhedra,&nbzones,&volcorr);
+		int ret = fscanf(f," %d %d %d %d %d",&nbnodes,&nbpolygon,&nbpolyhedra,&nbzones,&volcorr);
+		if( ret != 5 ) throw BadFile;
 		newnodes.resize(nbnodes);
 		newpolygon.resize(nbpolygon);
 		newpolyhedron.resize(nbpolyhedra);

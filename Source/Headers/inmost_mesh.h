@@ -1310,6 +1310,9 @@ namespace INMOST
 		void                                AllocateSparseData  (void * & q, const Tag & t);
 		void                                Init                (std::string name);
 	public:
+		/// Go through all elements and detect presence of prescribed element in
+		/// any reference data tag.
+		void                                ReportConnection(HandleType h);
 		/// Test whether global identificator was set on certain type of elements.
 		/// This function does not validate correctness of global identificators.
 		/// @param type Single type of elements on which to test presence of global identificators.
@@ -1318,8 +1321,6 @@ namespace INMOST
 		/// Remove all data and all elements from the mesh
 		/// Reset geometry service and topology check flags
 		void                                Clear               ();
-		/// For debug purposes
-		integer                             HandleDataPos       (HandleType h) {return links[GetHandleElementNum(h)][GetHandleID(h)];}
 		/// For parmetis
 		/// return total number in bytes of occupied memory by element and its data
 		enumerator                          MemoryUsage         (HandleType h);
@@ -1459,7 +1460,7 @@ namespace INMOST
 		bool                              isValidEdge        (integer lid) const {return links[ElementNum(EDGE)][lid] != -1;}
 		bool                              isValidNode        (integer lid) const {return links[ElementNum(NODE)][lid] != -1;}
 		bool                              isValidElementSet  (integer lid) const {return links[ElementNum(ESET)][lid] != -1;}
-		bool                              isValidElement     (HandleType h) const {return isValidHandle(h) && isValidElementNum(GetHandleElementNum(h),GetHandleID(h));}
+		bool                              isValidElement     (HandleType h) const {return  isValidHandleRange(h) && isValidElementNum(GetHandleElementNum(h),GetHandleID(h));}
 		/// Retrieve upper adjacent that is shared by multiple lower adjacencies.
 		/// @return handle of found element or InvalidHandle()
 		HandleType                        FindSharedAdjacency(const HandleType * arr, enumerator num) const;
@@ -3079,6 +3080,7 @@ namespace INMOST
 	private:
 		void                              RestoreGeometricTags();
 		void                              RepairGeometricTags();
+	public:
 		bool                              HideGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
 		bool                              ShowGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
 	public:
@@ -3103,6 +3105,16 @@ namespace INMOST
 		/// Sets marker for all the faces that have only one neighbouring cell, works correctly in parallel environment.
 		/// @param boundary_marker Non-private marker that will indicate boundary faces.
 		void                              MarkBoundaryFaces(MarkerType boundary_marker);
+		/// This function should be used to detect normal inversion on ghost interfaces
+		/// with respect to normal orientation on owner of the interface.
+		/// Due to automatic control over normal orientation in the grid, it may
+		/// happen that some ghost faces have different orientation rather then
+		/// face on owner processor.
+		/// It may happen that some data depends on normal orientation, then
+		/// one should be aware on a local processor orientation may be different
+		/// from owner value, then the data may have incorrect sign.
+		/// @param mrk Non-private marker that will indicate inverted normals
+		void MarkNormalOrientation(MarkerType mrk);
 		//implemented in modify.cpp
 	private:
 		MarkerType hide_element, new_element, temp_hide_element;
@@ -3438,6 +3450,38 @@ namespace INMOST
 	{
 		return GetMeshLink()->RemoteReferenceDV(GetHandle(),tag);
 	}
+	__INLINE Storage::real & TagReal::operator [](HandleType h) const
+	{
+		return GetMeshLink()->Real(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::integer & TagInteger::operator [](HandleType h) const
+	{
+		return GetMeshLink()->Integer(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::bulk & TagBulk::operator [](HandleType h) const
+	{
+		return GetMeshLink()->Bulk(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::reference & TagReference::operator [](HandleType h) const
+	{
+		return GetMeshLink()->Reference(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::real_array TagRealArray::operator [](HandleType h) const
+	{
+		return GetMeshLink()->RealArray(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::integer_array TagIntegerArray::operator [](HandleType h) const
+	{
+		return GetMeshLink()->IntegerArray(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::bulk_array TagBulkArray::operator [](HandleType h) const
+	{
+		return GetMeshLink()->BulkArray(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::reference_array TagReferenceArray::operator [](HandleType h) const
+	{
+		return GetMeshLink()->ReferenceArray(h,*static_cast<const Tag*>(this));
+	}
 #if defined(USE_AUTODIFF)
 	__INLINE Storage::var & Storage::Variable(const Tag & tag) const
 	{
@@ -3463,17 +3507,25 @@ namespace INMOST
 	{
 		return GetMeshLink()->VariableArrayDV(GetHandle(),tag);
 	}
+	__INLINE Storage::var & TagVariable::operator [](HandleType h) const
+	{
+		return GetMeshLink()->Variable(h,*static_cast<const Tag*>(this));
+	}
+	__INLINE Storage::var_array TagVariableArray::operator [](HandleType h) const
+	{
+		return GetMeshLink()->VariableArray(h,*static_cast<const Tag*>(this));
+	}
 #endif
 	__INLINE bool Storage::HaveData(const Tag & tag) const
 	{
 		assert(isValid());
 		return GetMeshLink()->HaveData(GetHandle(),tag);
 	}
-  __INLINE INMOST_DATA_ENUM_TYPE Storage::GetDataSize(const Tag & tag) const
+	__INLINE INMOST_DATA_ENUM_TYPE Storage::GetDataSize(const Tag & tag) const
 	{
 		return GetMeshLink()->GetDataSize(GetHandle(),tag);
 	}
-  __INLINE INMOST_DATA_ENUM_TYPE Storage::GetDataCapacity(const Tag & tag) const
+	__INLINE INMOST_DATA_ENUM_TYPE Storage::GetDataCapacity(const Tag & tag) const
 	{
 		return GetMeshLink()->GetDataCapacity(GetHandle(),tag);
 	}
@@ -3481,15 +3533,15 @@ namespace INMOST
 	{
 		GetMeshLink()->SetDataSize(GetHandle(),tag,new_size);
 	}
-  __INLINE ElementType Storage::GetElementType() const 
-  {
-    return GetHandleElementType(handle);
-  }
-	__INLINE Storage::integer Storage::GetElementNum   () const 
-  {
-    return GetHandleElementNum(handle);
-  }
-  __INLINE void Storage::GetData(const Tag & tag,INMOST_DATA_ENUM_TYPE shift, INMOST_DATA_ENUM_TYPE size, void * data_out) const
+	__INLINE ElementType Storage::GetElementType() const
+	{
+		return GetHandleElementType(handle);
+	}
+	__INLINE Storage::integer Storage::GetElementNum   () const
+	{
+		return GetHandleElementNum(handle);
+	}
+	__INLINE void Storage::GetData(const Tag & tag,INMOST_DATA_ENUM_TYPE shift, INMOST_DATA_ENUM_TYPE size, void * data_out) const
 	{
 		GetMeshLink()->GetData(GetHandle(),tag,shift,size,data_out);
 	}
@@ -3504,7 +3556,7 @@ namespace INMOST
 	__INLINE void Storage::DelDenseData(const Tag & tag) const
 	{
 		GetMeshLink()->DelDenseData(GetHandle(),tag);
-  }
+	}
 	__INLINE void Storage::DelSparseData(const Tag & tag) const
 	{
 		GetMeshLink()->DelSparseData(GetHandle(),tag);
@@ -3514,7 +3566,7 @@ namespace INMOST
 		assert( isValid() );
 		GetMeshLink()->SetMarker(GetHandle(),n);
 	}
-	__INLINE bool Storage::GetMarker(MarkerType n) const  
+	__INLINE bool Storage::GetMarker(MarkerType n) const
 	{
 		assert( isValid() );
 		return GetMeshLink()->GetMarker(GetHandle(),n);
@@ -3524,12 +3576,12 @@ namespace INMOST
 		assert( isValid() );
 		GetMeshLink()->RemMarker(GetHandle(),n);
 	}
-  __INLINE void Storage::SetPrivateMarker(MarkerType n)  const
+	__INLINE void Storage::SetPrivateMarker(MarkerType n)  const
 	{
 		assert( isValid() );
 		GetMeshLink()->SetPrivateMarker(GetHandle(),n);
 	}
-	__INLINE bool Storage::GetPrivateMarker(MarkerType n) const  
+	__INLINE bool Storage::GetPrivateMarker(MarkerType n) const
 	{
 		assert( isValid() );
 		return GetMeshLink()->GetPrivateMarker(GetHandle(),n);
@@ -3543,7 +3595,7 @@ namespace INMOST
 	{
 		GetMeshLink()->ClearMarkerSpace(GetHandle());
 	}
-	__INLINE void Storage::GetMarkerSpace(Storage::bulk copy[MarkerFields]) const 
+	__INLINE void Storage::GetMarkerSpace(Storage::bulk copy[MarkerFields]) const
 	{
 		GetMeshLink()->GetMarkerSpace(GetHandle(),copy);
 	}
@@ -3551,56 +3603,58 @@ namespace INMOST
 	{
 		GetMeshLink()->SetMarkerSpace(GetHandle(),source);
 	}
-	__INLINE bool Storage::isValid() const 
+	__INLINE bool Storage::isValid() const
 	{
 		return handle != InvalidHandle() && GetMeshLink() != NULL && GetMeshLink()->isValidElement(handle);
 	}
-	__INLINE Storage::integer Storage::LocalID() const 
-  {
-    return GetHandleID(handle);
-  }
-  __INLINE Storage::integer Storage::DataLocalID() const
+	__INLINE Storage::integer Storage::LocalID() const
+	{
+		return GetHandleID(handle);
+	}
+	__INLINE Storage::integer Storage::DataLocalID() const
 	{
 		return GetMeshLink()->DataLocalID(GetHandle());
 	}
-  __INLINE Element Storage::getAsElement() const 
-  {
-    assert(GetElementType() & (NODE | EDGE | FACE | CELL | ESET) ); 
-    return Element(GetMeshLink(), GetHandle());
-  }
-  __INLINE Node Storage::getAsNode() const 
-  {
-    assert(GetElementType() == NODE); 
-    return Node(GetMeshLink(),GetHandle());
-  }
-	__INLINE Edge Storage::getAsEdge() const 
-  {
-    assert(GetElementType() == EDGE); 
-    return Edge(GetMeshLink(),GetHandle());
-  }
-	__INLINE Face Storage::getAsFace() const 
-  {
-    assert(GetElementType() == FACE); 
-    return Face(GetMeshLink(),GetHandle());
-  } 
-	__INLINE Cell Storage::getAsCell() const 
-  {
-    assert(GetElementType() == CELL); 
-    return Cell(GetMeshLink(),GetHandle());
-  }
-	__INLINE ElementSet Storage::getAsSet() const 
-  {
-    assert(GetElementType() == ESET); 
-    return ElementSet(GetMeshLink(),GetHandle());
-  }
-  __INLINE Mesh * Storage::GetMeshLink() const 
-  {
-    return m_link;
-  }
-  __INLINE HandleType Storage::GetHandle() const 
-  {
-    return handle;
-  }
+	__INLINE Element Storage::getAsElement() const
+	{
+		assert(GetElementType() & (NODE | EDGE | FACE | CELL | ESET) );
+		return Element(GetMeshLink(), GetHandle());
+	}
+	__INLINE Node Storage::getAsNode() const
+	{
+		assert(GetElementType() == NODE);
+		return Node(GetMeshLink(),GetHandle());
+	}
+	__INLINE Edge Storage::getAsEdge() const
+	{
+		assert(GetElementType() == EDGE);
+		return Edge(GetMeshLink(),GetHandle());
+	}
+	__INLINE Face Storage::getAsFace() const
+	{
+		assert(GetElementType() == FACE);
+		return Face(GetMeshLink(),GetHandle());
+	}
+	__INLINE Cell Storage::getAsCell() const
+	{
+		assert(GetElementType() == CELL);
+		return Cell(GetMeshLink(),GetHandle());
+	}
+	__INLINE ElementSet Storage::getAsSet() const
+	{
+		assert(GetElementType() == ESET);
+		return ElementSet(GetMeshLink(),GetHandle());
+	}
+	__INLINE Mesh * Storage::GetMeshLink() const
+	{
+		return m_link;
+	}
+	__INLINE HandleType Storage::GetHandle() const
+	{
+		return handle;
+	}
+	
+	
 
 }
 

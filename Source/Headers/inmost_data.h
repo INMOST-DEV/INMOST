@@ -622,7 +622,8 @@ namespace INMOST
 		TagReal(const Tag & b) : Tag(b) {}
 		TagReal & operator = (TagReal const & b) {Tag::operator =(b); return *this;}
 		TagReal & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::real & operator [](const Storage & arg) const {return arg.Real(*static_cast<const Tag*>(this));}
+		__INLINE Storage::real & operator [](const Storage & arg) const {return arg.Real(*static_cast<const Tag*>(this));}
+		__INLINE Storage::real & operator [](HandleType h) const;
 	};
 	
 	class TagInteger : public Tag
@@ -633,7 +634,8 @@ namespace INMOST
 		TagInteger(const Tag & b) : Tag(b) {}
 		TagInteger & operator = (TagInteger const & b) {Tag::operator =(b); return *this;}
 		TagInteger & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::integer & operator [](const Storage & arg) const {return arg.Integer(*static_cast<const Tag*>(this));}
+		__INLINE Storage::integer & operator [](const Storage & arg) const {return arg.Integer(*static_cast<const Tag*>(this));}
+		__INLINE Storage::integer & operator [](HandleType h) const;
 	};
 	
 	class TagBulk : public Tag
@@ -644,7 +646,8 @@ namespace INMOST
 		TagBulk(const Tag & b) : Tag(b) {}
 		TagBulk & operator = (TagBulk const & b) {Tag::operator =(b); return *this;}
 		TagBulk & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::bulk & operator [](const Storage & arg) const {return arg.Bulk(*static_cast<const Tag*>(this));}
+		__INLINE Storage::bulk & operator [](const Storage & arg) const {return arg.Bulk(*static_cast<const Tag*>(this));}
+		__INLINE Storage::bulk & operator [](HandleType h) const;
 	};
 	
 	class TagReference : public Tag
@@ -655,7 +658,8 @@ namespace INMOST
 		TagReference(const Tag & b) : Tag(b) {}
 		TagReference & operator = (TagReference const & b) {Tag::operator =(b); return *this;}
 		TagReference & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::reference & operator [](const Storage & arg) const {return arg.Reference(*static_cast<const Tag*>(this));}
+		__INLINE Storage::reference & operator [](const Storage & arg) const {return arg.Reference(*static_cast<const Tag*>(this));}
+		__INLINE Storage::reference & operator [](HandleType h) const;
 	};
 	
 	
@@ -667,7 +671,8 @@ namespace INMOST
 		TagRealArray(const Tag & b) : Tag(b) {}
 		TagRealArray & operator = (TagRealArray const & b) {Tag::operator =(b); return *this;}
 		TagRealArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::real_array operator [](const Storage & arg) const {return arg.RealArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::real_array operator [](const Storage & arg) const {return arg.RealArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::real_array operator [](HandleType h) const;
 	};
 	
 	class TagIntegerArray : public Tag
@@ -678,7 +683,8 @@ namespace INMOST
 		TagIntegerArray(const Tag & b) : Tag(b) {}
 		TagIntegerArray & operator = (TagIntegerArray const & b) {Tag::operator =(b); return *this;}
 		TagIntegerArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::integer_array operator [](const Storage & arg) const {return arg.IntegerArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::integer_array operator [](const Storage & arg) const {return arg.IntegerArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::integer_array operator [](HandleType h) const;
 	};
 	
 	class TagBulkArray : public Tag
@@ -689,7 +695,8 @@ namespace INMOST
 		TagBulkArray(const Tag & b) : Tag(b) {}
 		TagBulkArray & operator = (TagBulkArray const & b) {Tag::operator =(b); return *this;}
 		TagBulkArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::bulk_array operator [](const Storage & arg) const {return arg.BulkArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::bulk_array operator [](const Storage & arg) const {return arg.BulkArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::bulk_array operator [](HandleType h) const;
 	};
 	
 	class TagReferenceArray : public Tag
@@ -700,7 +707,8 @@ namespace INMOST
 		TagReferenceArray(const Tag & b) : Tag(b) {}
 		TagReferenceArray & operator = (TagReferenceArray const & b) {Tag::operator =(b); return *this;}
 		TagReferenceArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::reference_array operator [](const Storage & arg) const {return arg.ReferenceArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::reference_array operator [](const Storage & arg) const {return arg.ReferenceArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::reference_array operator [](HandleType h) const;
 	};
 	
 #if defined(USE_AUTODIFF)
@@ -712,7 +720,8 @@ namespace INMOST
 		TagVariable(const Tag & b) : Tag(b) {}
 		TagVariable & operator = (TagVariable const & b) {Tag::operator =(b); return *this;}
 		TagVariable & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::var & operator [](const Storage & arg) const {return arg.Variable(*static_cast<const Tag*>(this));}
+		__INLINE Storage::var & operator [](const Storage & arg) const {return arg.Variable(*static_cast<const Tag*>(this));}
+		__INLINE Storage::var & operator [](HandleType h) const;
 	};
 	
 	class TagVariableArray : public Tag
@@ -723,7 +732,8 @@ namespace INMOST
 		TagVariableArray(const Tag & b) : Tag(b) {}
 		TagVariableArray & operator = (TagVariableArray const & b) {Tag::operator =(b); return *this;}
 		TagVariableArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
-		Storage::var_array operator [](const Storage & arg) const {return arg.VariableArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::var_array operator [](const Storage & arg) const {return arg.VariableArray(*static_cast<const Tag*>(this));}
+		__INLINE Storage::var_array operator [](HandleType h) const;
 	};
 #endif //USE_AUTODIFF
 

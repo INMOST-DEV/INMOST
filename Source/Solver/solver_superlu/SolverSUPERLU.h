@@ -36,9 +36,9 @@ namespace INMOST {
 
         virtual void SetParameter(std::string name, std::string value);
 
-        virtual const INMOST_DATA_ENUM_TYPE Iterations() const;
+        virtual INMOST_DATA_ENUM_TYPE Iterations() const;
 
-        virtual const INMOST_DATA_REAL_TYPE Residual() const;
+        virtual INMOST_DATA_REAL_TYPE Residual() const;
 
         virtual const std::string ReturnReason() const;
 

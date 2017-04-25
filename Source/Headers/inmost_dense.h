@@ -794,13 +794,20 @@ namespace INMOST
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
 		Matrix(const Var * pspace, enumerator pn, enumerator pm) : space(pspace,pspace+pn*pm), n(pn), m(pm) {}
-		/// Construct the matrix with the provided storage.
+		/// Construct the matrix with the provided storage with known size.
 		/// Could be used to wrap existing array.
+		/// \warning The size of the provided container is assumed to be pn*pm.
 		/// @param pspace Storage of elements of the matrix, stored in row-wise format.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
 		/// \todo Do we need reference for pspace or just pspace?
-		Matrix(storage_type pspace, enumerator pn, enumerator pm) : space(pspace), n(pn), m(pm) {}
+		Matrix(const storage_type & pspace, enumerator pn, enumerator pm) : space(pspace), n(pn), m(pm) {}
+		/// Construct the matrix with the provided storage and unknown size.
+		/// Could be used to wrap existing array.
+		/// \warning Have to call Resize afterwards.
+		/// @param pspace Storage of elements of the matrix, stored in row-wise format.
+		/// \todo Do we need reference for pspace or just pspace?
+		Matrix(const storage_type & pspace) : space(pspace), n(0), m(0) {}
 		/// Construct a matrix with provided sizes.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
@@ -928,7 +935,7 @@ namespace INMOST
 		/// @param size Size of the input array.
 		/// @param matsize Size of the final tensor.
 		/// @return Matrix of the tensor of size matsize by matsize.
-		static Matrix<Var> FromTensor(Var * K, enumerator size, enumerator matsize = 3)
+		static Matrix<Var> FromTensor(const Var * K, enumerator size, enumerator matsize = 3)
 		{
 			Matrix<Var> Kc(matsize,matsize);
 			if( matsize == 1 )
@@ -1046,7 +1053,7 @@ namespace INMOST
 		/// @param r Array of elements of the vector.
 		/// @param size Size of the vector.
 		/// @return Vector with contents of the array.
-		static Matrix FromVector(Var * r, enumerator size)
+		static Matrix FromVector(const Var * r, enumerator size)
 		{
 			return Matrix(r,size,1);
 		}
@@ -1054,7 +1061,7 @@ namespace INMOST
 		/// @param r Array of diagonal elements.
 		/// @param size Size of the matrix.
 		/// @return Matrix with diagonal defined by array, other elements are zero.
-		static Matrix FromDiagonal(Var * r, enumerator size)
+		static Matrix FromDiagonal(const Var * r, enumerator size)
 		{
 			Matrix ret(size,size);
 			ret.Zero();
@@ -1065,7 +1072,7 @@ namespace INMOST
 		/// @param r Array of diagonal elements.
 		/// @param size Size of the matrix.
 		/// @return Matrix with diagonal defined by inverse of array elements.
-		static Matrix FromDiagonalInverse(Var * r, enumerator size)
+		static Matrix FromDiagonalInverse(const Var * r, enumerator size)
 		{
 			Matrix ret(size,size);
 			ret.Zero();
@@ -1078,7 +1085,7 @@ namespace INMOST
 		/// and vector. For a x b equivalent is CrossProduct(a)*b.
 		/// @param vec Array of elements representing a vector.
 		/// @return A matrix representing cross product.
-		static Matrix CrossProduct(Var vec[3])
+		static Matrix CrossProduct(const Var vec[3])
 		{
 			// |  0  -z   y |
 			// |  z   0  -x |
@@ -1676,8 +1683,8 @@ namespace INMOST
 	{
 		assert(Cols()*Rows()==rows*cols);
 		Matrix<Var> ret(*this);
-		ret.n = rows;
-		ret.m = cols;
+		ret.Rows() = rows;
+		ret.Cols() = cols;
 		return ret;
 	}
 	

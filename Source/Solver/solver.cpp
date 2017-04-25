@@ -153,11 +153,11 @@ namespace INMOST {
         return solver->SetParameter(name, value);
     }
 
-    const INMOST_DATA_ENUM_TYPE Solver::Iterations() const {
+    INMOST_DATA_ENUM_TYPE Solver::Iterations() const {
         return solver->Iterations();
     }
 
-    const INMOST_DATA_REAL_TYPE Solver::Residual() const {
+    INMOST_DATA_REAL_TYPE Solver::Residual() const {
         return solver->Residual();
     }
 

@@ -22,21 +22,67 @@ namespace INMOST
 	}
 #endif //USE_PARALLEL_WRITE_TIME
 
-  std::string Mesh::GetMeshName()
-  {
-    return name;
-  }
-  void Mesh::SetMeshName(std::string new_name)
-  {
-    name = new_name;
-  }
-  Mesh * Mesh::GetMesh(std::string name)
-  {
-    for(int q = 0; q < (int)allocated_meshes.size(); ++q)
-      if( allocated_meshes[q]->GetMeshName() == name )
-        return allocated_meshes[q];
-    return NULL;
-  }
+	void Mesh::ReportConnection(HandleType h)
+	{
+		if( isValidElement(h) )
+		{
+			std::cout << ElementTypeName(GetHandleElementType(h)) << ":" << GetHandleID(h);
+			if( HideMarker() && Hidden(h) )
+				std::cout << " is hidden" << std::endl;
+			else
+				std::cout << " is visible" << std::endl;
+			for(iteratorTag t = BeginTag(); t != EndTag(); ++t)
+			{
+				if( t->GetDataType() == DATA_REFERENCE )
+				{
+					for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
+					{
+						if( t->isDefined(etype) )
+						{
+							for(Storage::integer kt = 0; kt < LastLocalID(etype); ++kt) if( isValidElement(etype,kt) )
+							{
+								Storage::reference_array a = ElementByLocalID(etype,kt).ReferenceArray(*t);
+								for(Storage::reference_array::size_type lt = 0; lt < a.size(); ++lt)
+								{
+									if( a[lt].GetHandle() == h )
+									{
+										std::cout << ElementTypeName(GetHandleElementType(h)) << ":" << GetHandleID(h);
+										std::cout << " handle " << h;
+										std::cout << " found on ";
+										std::cout << ElementTypeName(etype) << ":" << kt;
+										if( HideMarker() && Hidden(ComposeHandle(etype,kt)) )
+											std::cout << "(hidden)";
+										else std::cout << "(visible)";
+										std::cout << " tag " << t->GetTagName();
+										std::cout << " position " << lt;
+										std::cout << std::endl;
+									}
+									//prevent from checking deleted positions in the set
+									if( etype == ESET && t->GetTagName() == "PROTECTED_HIGH_CONN" && lt == 2 )
+										break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	std::string Mesh::GetMeshName()
+	{
+		return name;
+	}
+	void Mesh::SetMeshName(std::string new_name)
+	{
+		name = new_name;
+	}
+	Mesh * Mesh::GetMesh(std::string name)
+	{
+		for(int q = 0; q < (int)allocated_meshes.size(); ++q)
+			if( allocated_meshes[q]->GetMeshName() == name )
+				return allocated_meshes[q];
+		return NULL;
+	}
 
 	const char * TopologyCheckNotifyString(TopologyCheck c)
 	{
@@ -95,7 +141,8 @@ namespace INMOST
 	void Mesh::Init(std::string name)
 	{
 #if defined(CHECKS_MARKERS)
-		check_shared_mrk = check_private_mrk = false;
+		check_shared_mrk = true;
+		check_private_mrk = true;
 #endif
 		m_link = this;
 		integer selfid = 1;
@@ -1672,7 +1719,7 @@ namespace INMOST
 		return std::make_pair(Cell(this,he),true);
 	}
 	
-  std::pair<ElementSet,bool> Mesh::CreateSetUnique(std::string name)
+	std::pair<ElementSet,bool> Mesh::CreateSetUnique(std::string name)
 	{
 		HandleType he = ComposeHandleNum(4,TieElement(4));
 		bulk_array set_name = BulkArrayDV(he,SetNameTag());
@@ -1765,7 +1812,9 @@ namespace INMOST
 			}
 			else  //no gaps in data space, number of data entries is equal to total number of links
 			{
-				ADDR = static_cast<integer>(links[etypenum].size()-empty_links[etypenum].size());
+				ADDR = static_cast<integer>(links[etypenum].size()-empty_links[etypenum].size()+empty_space[etypenum].size());
+				//ADDR = static_cast<integer>(links[etypenum].size()-empty_links[etypenum].size());
+				//ADDR = static_cast<integer>(back_links[etypenum].size());
 			}
 			// ID points to gap in links
 			if( !empty_links[etypenum].empty() )
@@ -2093,7 +2142,6 @@ namespace INMOST
 	void Mesh::Asserts(HandleType h, const Tag & tag, DataType expected) const
 	{
 		assert(isValidHandleRange(h));                   //handle doesn't point out of range
-		assert(isValidHandle(h));                        //handle doesn't point to deleted element
 		assert(tag.isValid());                           //tag was allocated
 		assert(this == tag.GetMeshLink());               //tag is not mine
 		assert(tag.GetDataType() == expected);           //tag data type coinside with expected data type

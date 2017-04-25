@@ -143,11 +143,11 @@ namespace INMOST {
 #endif
     }
 
-    const INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {
+    INMOST_DATA_ENUM_TYPE SolverTrilinos::Iterations() const {
         return lastIterations;
     }
 
-    const INMOST_DATA_REAL_TYPE SolverTrilinos::Residual() const {
+    INMOST_DATA_REAL_TYPE SolverTrilinos::Residual() const {
         return lastResidual;
     }
 

@@ -49,9 +49,9 @@ namespace INMOST {
 
         virtual void SetParameter(std::string name, std::string value) = 0;
 
-        virtual const INMOST_DATA_ENUM_TYPE Iterations() const = 0;
+        virtual INMOST_DATA_ENUM_TYPE Iterations() const = 0;
 
-        virtual const INMOST_DATA_REAL_TYPE Residual() const = 0;
+        virtual INMOST_DATA_REAL_TYPE Residual() const = 0;
 
         virtual const std::string ReturnReason() const = 0;
 
@@ -59,7 +59,7 @@ namespace INMOST {
 
         virtual void Finalize() = 0;
 
-        virtual const INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
+        virtual INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
             throw INMOST::SolverUnsupportedOperation;
         };
 

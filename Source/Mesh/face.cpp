@@ -525,17 +525,20 @@ namespace INMOST
 					aret.data()[1] = temp;
 				}
 				adj_type::size_type it = i, iend = lc.size()-1;
-				while(it != iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
+				while(it != iend)
 				{
-					adj_type const & ilc = m->LowConn(lc[it]);
-					assert(m->Count(ilc.data(),ilc.size(),hm)==2);
-					k1 = ENUMUNDEF; 
-					k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					if( aret.atback() == ilc[k1] ) 
-						aret.push_back(ilc[k2]);
-					else 
-						aret.push_back(ilc[k1]);
+					if( !m->GetMarker(lc[it],hm) ) //loop over edges
+					{
+						adj_type const & ilc = m->LowConn(lc[it]);
+						assert(m->Count(ilc.data(),ilc.size(),hm)==2);
+						k1 = ENUMUNDEF;
+						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						if( aret.atback() == ilc[k1] )
+							aret.push_back(ilc[k2]);
+						else
+							aret.push_back(ilc[k1]);
+					}
 					++it;
 				}
 			}

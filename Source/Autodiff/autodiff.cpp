@@ -54,34 +54,74 @@ namespace INMOST
 #endif //USE_MESH
 	
 #if defined(USE_MESH)
-	Automatizator::Automatizator() :first_num(0), last_num(0) {}
+	Automatizator::Automatizator(const Automatizator & b) : name(b.name+"_copy")
+	{
+		std::vector<INMOST_DATA_ENUM_TYPE> regs = b.ListRegisteredTags();
+		for(std::vector<INMOST_DATA_ENUM_TYPE>::iterator kt = regs.begin(); kt != regs.end(); ++kt)
+			RegisterTag(b.GetValueTag(*kt),b.GetElementType(*kt),b.GetMask(*kt));
+		if( b.last_num != 0 ) EnumerateTags();
+	}
+	Automatizator & Automatizator::operator =(Automatizator const & b)
+	{
+		if( &b != this )
+		{
+			name = b.name+"_copy";
+			del_tags.clear();
+			reg_tags.clear();
+			std::vector<INMOST_DATA_ENUM_TYPE> regs = b.ListRegisteredTags();
+			for(std::vector<INMOST_DATA_ENUM_TYPE>::iterator kt = regs.begin(); kt != regs.end(); ++kt)
+				RegisterTag(b.GetValueTag(*kt),b.GetElementType(*kt),b.GetMask(*kt));
+			if( b.last_num != 0 ) EnumerateTags();
+		}
+		return *this;
+	}
+	Automatizator::Automatizator(std::string _name) :name(_name), first_num(0), last_num(0) {}
 	Automatizator::~Automatizator()
 	{
-		for (unsigned k = 0; k < index_tags.size(); k++)
-			index_tags[k].indices = index_tags[k].indices.GetMeshLink()->DeleteTag(index_tags[k].indices);
+		del_tags.clear();
+		for (unsigned k = 0; k < reg_tags.size(); k++) if( reg_tags[k].active )
+			reg_tags[k].indices = reg_tags[k].indices.GetMeshLink()->DeleteTag(reg_tags[k].indices);
 	}
 	INMOST_DATA_ENUM_TYPE Automatizator::RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask)
 	{
-		tagpair p;
-		p.d.domain_mask = domain_mask;
-		p.d.t = t;
+		tagdata p;
+		p.domain_mask = domain_mask;
+		p.t = t;
 		ElementType def = NONE, sparse = NONE;
 		for (ElementType q = NODE; q <= MESH; q = q << 1) if (q & typemask)
 		{
 			if (t.isDefined(q)) def |= q;
 			if (t.isSparse(q)) sparse |= q;
 		}
-		p.indices = t.GetMeshLink()->CreateTag(t.GetTagName() + "_index", DATA_INTEGER, def, sparse, t.GetSize());
-		INMOST_DATA_ENUM_TYPE ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_tags.size());
-		reg_tags.push_back(p);
-		index_tags.push_back(p);
+		p.indices = t.GetMeshLink()->CreateTag(t.GetTagName() + "_index_" + name, DATA_INTEGER, def, sparse, t.GetSize());
+		p.active = true;
+		INMOST_DATA_ENUM_TYPE ret;
+		
+		if( del_tags.empty() )
+		{
+			ret = static_cast<INMOST_DATA_ENUM_TYPE>(reg_tags.size());
+			reg_tags.push_back(p);
+		}
+		else
+		{
+			ret = del_tags.back();
+			assert(!reg_tags[ret].active);
+			del_tags.pop_back();
+			reg_tags[ret] = p;
+		}
 		return ret;
+	}
+	void Automatizator::UnregisterTag(INMOST_DATA_ENUM_TYPE ind)
+	{
+		assert(reg_tags[ind].active);
+		del_tags.push_back(ind);
+		reg_tags[ind].active = false;
 	}
 	void Automatizator::EnumerateTags()
 	{
 		first_num = last_num = 0;
 		const ElementType paralleltypes = NODE | EDGE | FACE | CELL;
-		for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+		for (tag_enum::iterator it = reg_tags.begin(); it != reg_tags.end(); ++it) if( it->active )
 		{
 			Mesh * m = it->indices.GetMeshLink();
 			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
@@ -93,10 +133,10 @@ namespace INMOST
 		}
 
 
-		for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+		for (tag_enum::iterator it = reg_tags.begin(); it != reg_tags.end(); ++it) if( it->active )
 		{
 			Mesh * m = it->indices.GetMeshLink();
-			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+			for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype))
 			{
 				if (it->indices.isDefined(etype))
 				{
@@ -106,10 +146,10 @@ namespace INMOST
 						{
 							for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 							{
-								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask)))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
-									indarr.resize(jt->RealArray(it->d.t).size());
+									indarr.resize(jt->RealArray(it->t).size());
 									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 										*qt = last_num++;
 								}
@@ -119,10 +159,10 @@ namespace INMOST
 						{
 							for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 							{
-								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->t) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask))))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
-									indarr.resize(jt->RealArray(it->d.t).size());
+									indarr.resize(jt->RealArray(it->t).size());
 									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 										*qt = last_num++;
 								}
@@ -135,7 +175,7 @@ namespace INMOST
 						{
 							for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 							{
-								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask)))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
 									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -147,7 +187,7 @@ namespace INMOST
 						{
 							for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 							{
-								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+								if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->t) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask))))
 								{
 									Storage::integer_array indarr = jt->IntegerArray(it->indices);
 									for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -168,10 +208,10 @@ namespace INMOST
 			MPI_Scan(&last_num, &first_num, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, MPI_COMM_WORLD);
 			first_num -= last_num;
 			ElementType exch_mask = NONE;
-			for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+			for (tag_enum::iterator it = reg_tags.begin(); it != reg_tags.end(); ++it) if( it->active )
 			{
 				Mesh * m = it->indices.GetMeshLink();
-				for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+				for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 				{
 					if (it->indices.isDefined(etype))
 					{
@@ -182,7 +222,7 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask)))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -194,10 +234,10 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->t) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask))))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
-										indarr.resize(jt->RealArray(it->d.t).size());
+										indarr.resize(jt->RealArray(it->t).size());
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 											*qt += first_num;
 									}
@@ -210,7 +250,7 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask)))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -222,7 +262,7 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() != Element::Ghost)) && (jt->HaveData(it->t) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask))))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -238,16 +278,16 @@ namespace INMOST
 			last_num += first_num;
 			{
 				std::map<Mesh *,std::vector<Tag> > exch_tags;
-				for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+				for (tag_enum::iterator it = reg_tags.begin(); it != reg_tags.end(); ++it) if( it->active )
 					exch_tags[it->indices.GetMeshLink()].push_back(it->indices);
 				for(std::map<Mesh *,std::vector<Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)
 					it->first->ExchangeData(it->second, exch_mask,0);
 			}
 			//compute out-of-bounds indices
-			for (index_enum::iterator it = index_tags.begin(); it != index_tags.end(); ++it)
+			for (tag_enum::iterator it = reg_tags.begin(); it != reg_tags.end(); ++it) if( it->active )
 			{
 				Mesh * m = it->indices.GetMeshLink();
-				for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+				for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 				{
 					if (it->indices.isDefined(etype))
 					{
@@ -258,7 +298,7 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask)))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -273,10 +313,10 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (jt->HaveData(it->t) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask))))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
-										indarr.resize(jt->RealArray(it->d.t).size());
+										indarr.resize(jt->RealArray(it->t).size());
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
 										{
 											if( static_cast<INMOST_DATA_ENUM_TYPE>(*qt) < first_num ) Pre.insert(*qt);
@@ -292,7 +332,7 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask)))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask)))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -307,7 +347,7 @@ namespace INMOST
 							{
 								for (Mesh::iteratorStorage jt = m->Begin(etype); jt != m->End(); ++jt)
 								{
-									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (jt->HaveData(it->d.t) && (it->d.domain_mask == 0 || jt->GetMarker(it->d.domain_mask))))
+									if ((!(etype & paralleltypes) || ((etype & paralleltypes) && jt->getAsElement()->GetStatus() == Element::Ghost)) && (jt->HaveData(it->t) && (it->domain_mask == 0 || jt->GetMarker(it->domain_mask))))
 									{
 										Storage::integer_array indarr = jt->IntegerArray(it->indices);
 										for (Storage::integer_array::iterator qt = indarr.begin(); qt != indarr.end(); ++qt)
@@ -343,7 +383,104 @@ namespace INMOST
 		merger.Resize(first_num,last_num,std::vector<INMOST_DATA_ENUM_TYPE>(Pre.begin(),Pre.end()),std::vector<INMOST_DATA_ENUM_TYPE>(Post.begin(),Post.end()),false);
 #endif
 	}
+	
+	std::vector<INMOST_DATA_ENUM_TYPE> Automatizator::ListRegisteredTags() const
+	{
+		std::vector<INMOST_DATA_ENUM_TYPE> ret;
+		for(tag_enum::size_type it = 0; it < reg_tags.size(); ++it) if( reg_tags[it].active )
+			ret.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(it));
+		return ret;
+	}
+	
+	ElementType Automatizator::GetElementType(INMOST_DATA_ENUM_TYPE ind) const
+	{
+		Tag index = GetIndexTag(ind);
+		ElementType ret = NONE;
+		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+			ret |= (index.isDefined(etype) ? etype : NONE);
+			return ret;
+	}
 #endif //USE_MESH
+
+#if defined(USE_SOLVER)
+	void Residual::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const 
+	{
+		start = residual.GetFirstIndex(); 
+		end = residual.GetLastIndex();
+	}
+	void Residual::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+	{
+		jacobian.SetInterval(beg,end);
+		residual.SetInterval(beg,end);
+	}
+	void Residual::ClearResidual()
+	{
+		for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) (*it) = 0.0;
+	}
+	void Residual::ClearJacobian()
+	{
+		for(Sparse::Matrix::iterator it = jacobian.Begin(); it != jacobian.End(); ++it) it->Clear();
+	}
+	void Residual::Clear()
+	{
+#if defined(USE_OMP)
+#pragma omp for
+#endif //USE_OMP
+		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+		{
+			residual[k] = 0.0;
+			jacobian[k].Clear();
+		}
+	}
+	INMOST_DATA_REAL_TYPE Residual::Norm()
+	{
+		INMOST_DATA_REAL_TYPE ret = 0;
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:ret)
+#endif //USE_OMP
+		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
+			ret += residual[k]*residual[k];
+#if defined(USE_MPI)
+		INMOST_DATA_REAL_TYPE tmp = ret;
+		MPI_Allreduce(&tmp, &ret, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, jacobian.GetCommunicator());
+#endif
+		return sqrt(ret);
+	}
+	Residual & Residual::operator =(Residual const & other)
+	{
+		jacobian = other.jacobian;
+		residual = other.residual;
+		return *this;
+	}
+	void Residual::Rescale()
+	{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif //USE_OMP
+		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
+		{
+			INMOST_DATA_REAL_TYPE norm = 0.0;
+			for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+				norm += jacobian[k].GetValue(q)*jacobian[k].GetValue(q);
+			norm = sqrt(norm);
+			if( norm )
+			{
+				norm = 1.0/norm;
+				residual[k] *= norm;
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+					jacobian[k].GetValue(q) *= norm;
+			}
+		}
+	}
+	Residual::Residual(std::string name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm)
+	: jacobian(name,start,end,_comm),residual(name,start,end,_comm) 
+	{
+	}
+	Residual::Residual(const Residual & other) 
+	: jacobian(other.jacobian), residual(other.residual) 
+	{
+	}
+#endif //USE_SOLVER
 };
 
 #endif //USE_AUTODIFF
