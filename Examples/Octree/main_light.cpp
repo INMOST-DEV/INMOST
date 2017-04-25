@@ -96,7 +96,7 @@ int cell_should_unite(struct grid * g, Cell cell)
 
 /// Function provided to octgrid algorithm. 
 /// Defines that cell should be split. Returns 1 for split else returns 0.
-int cell_should_split(struct grid * g, Cell cell, int level)
+int cell_should_split(struct grid * g, Cell cell)
 {
 	double r = base_radius;
 

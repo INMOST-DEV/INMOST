@@ -1,3 +1,5 @@
+
+//make all && mpirun -np 1 ./Octree_test -log=3 -l=2 -n=50x50x2 
 #include "octgrid.h"
 #include <math.h>
 #include "inmost.h"
@@ -66,19 +68,28 @@ void pre_redistribute(int type)
 /// Defines that cell should be unite. Returns 1 for unite else returns 0.
 int cell_should_unite(struct grid * g, Cell cell)
 {
+//    return !cell_should_split(g,cell);
 	const double r = base_radius;
-	int test = 1;	
 
     double x = cell.RealArrayDF(g->c_tags.center)[0];
     double y = cell.RealArrayDF(g->c_tags.center)[1];
+    int c_level = cell.Integer(g->c_tags.level);
 
-	test &= (x-mx)*(x-mx)+(y-my)*(y-my) > r;
-	return test;
+    if (c_level == refine_depth)
+    {
+        if ((x-mx)*(x-mx)+(y-my)*(y-my) > r) return 1;
+    }
+    else
+    {
+        double R = (refine_depth - c_level)*5*r;
+        if ((x-mx)*(x-mx)+(y-my)*(y-my) > R) return 1;
+    }
+    return 0;
 }
 
 /// Function provided to octgrid algorithm. 
 /// Defines that cell should be split. Returns 1 for split else returns 0.
-int cell_should_split(struct grid * g, Cell cell, int level)
+int cell_should_split(struct grid * g, Cell cell)
 {
 	double r = base_radius;
 
@@ -290,7 +301,7 @@ void parse_arguments(int argc, char** argv, int* n, double* R, int* L, int* log)
   }
 }
 
-int iters_count = 5;
+int iters_count = 6;
 
 int main(int argc, char ** argv)
 {
@@ -325,6 +336,9 @@ int main(int argc, char ** argv)
    		BARRIER
 		double st = Timer();
         double ct , tt;
+        double time_amr, time_red;
+        double a_amr = 0;
+        double a_red = 0;
         for (int iter = 0; iter < iters_count; iter++)
         {
     		BARRIER
@@ -333,22 +347,34 @@ int main(int argc, char ** argv)
             gridAMR(&thegrid,0);
     		BARRIER
             tt = Timer();
-    		if (rank == 0) LOG(1, "AMR time = " << tt-ct);
+            time_amr = tt-ct;
             ct = tt;
             redistribute(&thegrid, 0);
     		BARRIER
             tt = Timer();
-    		if (rank == 0) LOG(1, "Red time = " << tt-ct);
+            time_red = tt-ct;
             ct = tt;
             LOG(2, rank << ": iteration " << i << " complete. Cells: " << thegrid.mesh->NumberOfCells())
+            if (iter > 0) 
+            {
+                a_amr += time_amr;
+                a_red += time_red;
+            }
+    		if (rank == 0) LOG(1, "AMR time = " << time_amr);
+    		if (rank == 0) LOG(1, "Red time = " << time_red);
+		dump_to_vtk(&thegrid);
+    		BARRIER
+    		if (rank == 0) LOG(1, "===============");
 			i++;
             mx += h;
         }
     	BARRIER
-		tt = Timer() - tt;
+		tt = Timer() - st;
+		if (rank == 0) cout << "time = " << tt << endl;
+		if (rank == 0) cout << "Average AMR time = " << a_amr/(iters_count - 1) << endl;
+		if (rank == 0) cout << "Average RED time = " << a_red/(iters_count - 1) << endl;
 		if (rank == 0) cout << "time = " << tt << endl;
 
-		dump_to_vtk(&thegrid);
 //		send_dump_command();
 //		send_quit_command();
 

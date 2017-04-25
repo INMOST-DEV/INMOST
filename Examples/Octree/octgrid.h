@@ -58,7 +58,7 @@ struct grid
 	
 	void (*transformation)(double xyz[3]);
 	void (*rev_transformation)(double xyz[3]);
-	int (*cell_should_split)(struct grid * g, Cell cell, int level);
+	int (*cell_should_split)(struct grid * g, Cell cell);
 	int (*cell_should_unite)(struct grid * g, Cell cell);
 };
 

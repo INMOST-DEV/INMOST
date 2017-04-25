@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <map>
+#include <vector>
 using namespace std;
 
 double epsilon = 0.0001;
@@ -11,15 +12,109 @@ double epsilon = 0.0001;
 #define IS_GHOST_P(c) (c->GetStatus() == Element::Ghost)
 #define BARRIER MPI_Barrier(MPI_COMM_WORLD);
 
+const int MAX_LEVEL = 10;
 void default_transformation(double xyz[3]) { (void) xyz; }
 int default_cell_should_unite(struct grid * g, int cell) { (void) g; (void) cell; return 0; }
 int default_cell_should_split(struct grid * g, int cell) { (void) g; (void) cell; return 0; }
 void mark_cell(struct grid* g, Cell cell);
 void cellCoarse(struct grid* g, Cell cell);
 void resolve_connections(grid* g);
+void resolve_edges(grid* g, Cell* c = NULL);
 inline bool equal(double a, double b);
 void correct_brothers(struct grid* g, int size, int rank, int type);
 int global = 0;
+
+double time_u;
+double time_p;
+double time_r1;
+double time_r2;
+double ttt;
+
+
+class CR_cells
+{
+    ElementArray<Cell>* d_cells[MAX_LEVEL];
+    vector<bool>* d_valid[MAX_LEVEL];
+    ElementArray<Cell> d_cr_cells; // Array for refine and coarse
+    vector<bool> d_cr_valids;
+    bool d_empty;
+    grid* g;
+
+    public: 
+        bool active;
+        CR_cells() 
+        {
+            d_empty = true; 
+            active = false;
+            for (int i = 0; i < MAX_LEVEL; i++) d_cells[i]  = NULL;
+            for (int i = 0; i < MAX_LEVEL; i++) d_valid[i] = NULL;
+        }
+        void push(Cell c) 
+        { 
+            int l = c.Integer(g->c_tags.level);
+            if (d_cells[l] == NULL) d_cells[l]  = new ElementArray<Cell>;
+            if (d_valid[l] == NULL) d_valid[l] = new vector<bool>;
+
+            d_cells[l]->push_back(c);
+            d_valid[l]->push_back(true);
+            c.Integer(g->c_tags.i) = d_cells[l]->size() - 1;
+
+/*
+            d_cr_cells.push_back(c); 
+            d_cr_valids.push_back(true); 
+            */
+            d_empty = false; 
+        }
+        void set_grid(grid* _g) { g = _g; }
+        
+//        bool check(int i)        { return i >= d_cr_valids.size() ? false : d_cr_valids[i]; }
+        bool check(int l, int i) { return d_valid[l] == NULL ? false : ( i >= d_valid[l]->size() ? false : (*d_valid[l])[i]); }
+        
+  //      void dis(int i)   { d_cr_valids[i] = false; }
+        void dis(int l, int i)   { (*d_valid[l])[i] = false; }
+        
+    //    int  size()       {  return d_cr_cells.size(); }
+        int  size(int l)  {  return d_cells[l] == NULL ? 0 : d_cells[l]->size(); }
+
+      //  Cell operator[](int i) { return d_cr_cells[i]; }
+        Cell get(int l, int i) 
+        {
+             if (d_cells[l] == NULL) TSNH;
+             return (*(d_cells[l]))[i]; 
+        }
+
+        void clear()      
+        {
+             d_cr_cells.clear(); d_cr_valids.clear(); 
+            for (int i = 0; i < MAX_LEVEL; i++)
+            {
+                if (d_cells[i] != NULL) delete d_cells[i];
+                if (d_valid[i] != NULL) delete d_valid[i];
+                d_cells[i] = NULL;
+                d_valid[i] = NULL;
+            }
+            d_empty = true;
+        }
+
+      //  void set(Cell c, int i)   { d_cr_cells[i] = c; }
+        void set1(Cell c, int i)   
+        {
+            int l = c.Integer(g->c_tags.level);
+             (*d_cells[l])[i] = c; 
+            c.Integer(g->c_tags.i) = i;
+        }
+
+        bool empty()      { return d_empty; }
+       // bool check_i(int i )        { return (i >= 0 && i < d_cr_cells.size()); }
+        bool check_i(int l, int i ) { return d_cells[l] == NULL ? false : (i >= 0 && i < d_cells[l]->size()); }
+
+        void print_size()
+        {
+            for (int i = 0; i < MAX_LEVEL; i++)
+                if (d_cells[i] != NULL) cout << i << ": " << d_cells[i]->size() << endl;
+        }
+};
+CR_cells cr_cells;
 
 /// Dump mesh to vtk file in folder "grids"
 void dump_to_vtk(grid* g)
@@ -335,6 +430,7 @@ void gridInit(struct grid * g, int n[3])
 	int i,j,k,l,m, c[3], v, r, env[1<<DIM], flag;
     double dx,dy,dz;
     double sx,sy,sz;
+    cr_cells.set_grid(g);
 
 	g->mesh = new Mesh();
 	g->mesh->SetDimensions(3);
@@ -558,11 +654,27 @@ Cell recreate_cell(struct grid* g, Cell cell, ElementArray<Face> faces)
 
     res.Integer(g->c_tags.floor) = cell.Integer(g->c_tags.floor);
     res.Integer(g->c_tags.chld_num) = cell.Integer(g->c_tags.chld_num);
+    int l = res.Integer(g->c_tags.level) = cell.Integer(g->c_tags.level);
+    int cr_i = res.Integer(g->c_tags.i) = cell.Integer(g->c_tags.i);
+
+/*
+    if (cr_cells.check_i(l,cr_i))
+        if (cr_cells.get(l.cr_i) == cell) 
+            cr_cells.set1(res,cr_i);
+*/
+    if (cr_cells.active && l > 0)
+        if (cr_cells.check_i(l,cr_i))
+        {
+            if (cr_cells.get(l,cr_i) == cell) 
+                cr_cells.set1(res,cr_i);
+            else
+                TSNH
+        }
+
 
     for (int i = 0; i < 8; i++)
         res.IntegerArrayDF(g->c_tags.par_chld_nums)[i] = cell.IntegerArrayDF(g->c_tags.par_chld_nums)[i];
 
-    res.Integer(g->c_tags.level) = cell.Integer(g->c_tags.level);
     res.Integer(g->c_tags.to_split) = cell.Integer(g->c_tags.to_split);
     res.Integer(g->c_tags.base_id) = cell.Integer(g->c_tags.base_id);
 
@@ -1040,8 +1152,15 @@ Cell cell_unite(struct grid* g, ElementArray<Cell> children, Node center)
     
     order_nodes_in_face(g, &def_nodes);
 
+    // Destroy cells 
     for (ElementArray<Cell>::iterator p = children.begin(); p != children.end(); p++)
+    {
+        int cr_i = p->Integer(g->c_tags.i);
+        int l = p->Integer(g->c_tags.level);
+        //cr_cells.dis(cr_i);
+        cr_cells.dis(l,cr_i);
         g->mesh->Destroy(p->getAsCell());
+    }
     g->mesh->Destroy(center);
 
     int x_nodes[6] = { 4,15,21,10,12,13 };
@@ -1062,7 +1181,7 @@ Cell cell_unite(struct grid* g, ElementArray<Cell> children, Node center)
             if ((new_faces.size() - m) != 4 ) TSNH
         }
         
-        // This case means that adjacent cell in on cell. 
+        // This case means that adjacent cell in one cell. 
         if (adjs_count == 1)
         {
             ElementArray<Node> face_nodes;
@@ -1121,7 +1240,6 @@ Cell cell_unite(struct grid* g, ElementArray<Cell> children, Node center)
     }
 
     Cell c = g->mesh->CreateCell(new_faces).first;
-
     g->rev_transformation(xyz);
     c.RealArrayDF(g->c_tags.center)[0] = xyz[0]; 
     c.RealArrayDF(g->c_tags.center)[1] = xyz[1]; 
@@ -1153,6 +1271,20 @@ Cell cell_unite(struct grid* g, ElementArray<Cell> children, Node center)
             break;
         }
     }
+
+/*
+    int cr_i = cr_cells.size();
+    c.Integer(g->c_tags.i) = cr_i;
+    cr_cells.push(c);
+*/
+    
+    if (level - 1 > 0)
+    {
+        int cr_i = cr_cells.size(level - 1);
+        c.Integer(g->c_tags.i) = cr_i;
+        cr_cells.push(c);
+    }
+
     
     return c;
 }
@@ -1161,7 +1293,7 @@ Cell cell_unite(struct grid* g, ElementArray<Cell> children, Node center)
 bool cell_check_mark(struct grid* g, Cell cell)
 {
     if (cell->Integer(g->c_tags.to_split) == 1) return false;
-    if( g->cell_should_split(g,cell,2) )
+    if( g->cell_should_split(g,cell) )
     {
         mark_cell(g,cell);
         return true;
@@ -1284,7 +1416,6 @@ void cellCoarse(struct grid* g, Cell cell)
     if (adjs.size() != 8) { cout << adjs.size(); TSNH }
     for (ElementArray<Element>::iterator adj = adjs.begin(); adj != adjs.end(); adj++)
     {
-
         ElementArray<Node> local_nodes = adj->getAsCell().getNodes();
         for (ElementArray<Node>::iterator p = local_nodes.begin(); p != local_nodes.end(); p++)
         {
@@ -1292,7 +1423,19 @@ void cellCoarse(struct grid* g, Cell cell)
             for (ElementArray<Element>::iterator q = local_adjs.begin(); q != local_adjs.end(); q++)
                 if (q->getAsCell().Integer(g->c_tags.level) > adj->getAsCell().Integer(g->c_tags.level))
                 {
+                    int cr_i = cell.Integer(g->c_tags.i);
+                    int l = cell.Integer(g->c_tags.level);
                     cellCoarse(g,q->getAsCell());
+                    //if (cr_cells.check(i)) 
+                    //{
+                    //    cr_cells.push(cr_cells[i]);
+                    //    cr_cells.dis(i);
+                   // }
+                    if (cr_cells.check(l,i)) 
+                    {
+                        cr_cells.push(cr_cells.get(l,i));
+                        cr_cells.dis(l,i);
+                    }
                     return;
                 }
         }
@@ -1300,7 +1443,14 @@ void cellCoarse(struct grid* g, Cell cell)
         children.push_back(adj->getAsCell());
     }
 
+    time_p += Timer() - ttt;
+    ttt = Timer();
     Cell c = cell_unite(g,children, center_node);
+    time_u += Timer() - ttt;
+    ttt = Timer();
+    resolve_edges(g,&c);
+    time_r1 += Timer() - ttt;
+    ttt = Timer();
    
     return;
 }
@@ -1391,21 +1541,31 @@ void unite_2_edges(struct grid* g, Node node)
     g->mesh->Destroy(node);
 }
 
-void resolve_edges(grid* g)
+void resolve_edges(grid* g, Cell* c)
 {
-        for(Mesh::iteratorEdge it = g->mesh->BeginEdge(); it != g->mesh->EndEdge(); it++)
-        {
-            ElementArray<Element> adjs = it->getAdjElements(FACE);
-        }
-
-        for(Mesh::iteratorNode it = g->mesh->BeginNode(); it != g->mesh->EndNode(); it++)
-        {
-            ElementArray<Edge> edges = it->getEdges();
-            if (edges.size() == 2)
+    if (c)
+    {
+        ElementArray<Node> nodes = c->getNodes();
+        for (int i = 0; i < nodes.size(); i++)
+            if (nodes[i].getEdges().size() == 2)
             {
-                unite_2_edges(g,it->getAsNode());
+                time_r1 += Timer() - ttt;
+                ttt = Timer();
+                unite_2_edges(g,nodes[i]);
+                time_r2 += Timer() - ttt;
+                ttt = Timer();
             }
+        return;
+    }
+
+    for(Mesh::iteratorNode it = g->mesh->BeginNode(); it != g->mesh->EndNode(); it++)
+    {
+        ElementArray<Edge> edges = it->getEdges();
+        if (edges.size() == 2)
+        {
+            unite_2_edges(g,it->getAsNode());
         }
+    }
 }
 
 void gridCoarse(struct grid * g)
@@ -1413,6 +1573,66 @@ void gridCoarse(struct grid * g)
     int rank = g->mesh->GetProcessorRank();
     int m = 0;
     bool ready;
+    cr_cells.clear();
+    bool empty = true;
+    cr_cells.active = true;
+    double tt = Timer();
+    int i = 0;
+    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+    {
+        if (it->Integer(g->c_tags.level) == 0) continue;
+    //    if (g->cell_should_unite(g,it->getAsCell()))
+        {
+            empty = false;
+            it->Integer(g->c_tags.i) = i;
+            cr_cells.push(it->getAsCell());
+            i++;
+        }
+      //  else
+    //        it->Integer(g->c_tags.i) = -1;
+    }
+    cr_cells.print_size();
+    cout << "N time: " << Timer() - tt << endl;
+    if (empty) 
+    {
+        cr_cells.push(g->mesh->BeginCell()->getAsCell());
+        return;
+    }
+
+    time_u = 0;
+    time_p = 0;
+    time_r1 = 0;
+    time_r2 = 0;
+    ttt = Timer();
+    for (int l = MAX_LEVEL-1; l >= 1; l--)
+    {
+        for (int i = 0; i < cr_cells.size(l); i++)
+        {
+            if (cr_cells.check(l,i) == false) continue;
+            if (!cr_cells.get(l,i).isValid()) continue;
+            if (cr_cells.get(l,i).GetStatus() == Element::Ghost) continue; 
+        //    cell_check_coarse(g,cr_cells.get(l,i));
+            Cell c = cr_cells.get(l,i);
+            if (g->cell_should_unite(g,c))
+                cellCoarse(g,c);
+ 
+        }
+    }
+    /*
+    for (int i = 0; i < cr_cells.size(); i++)
+    {
+        if (cr_cells.check(i) == false) continue;
+        if (!cr_cells[i].isValid()) continue;
+        if (cr_cells[i].GetStatus() == Element::Ghost) continue; 
+        cell_check_coarse(g,cr_cells[i]);
+    }
+    */
+    time_p += Timer() - ttt;
+    cout << "Time Prep: " << time_p << endl;
+    cout << "Time Unit: " << time_u << endl;
+    cout << "Time Res1: " << time_r1 << endl;
+    cout << "Time Res2: " << time_r2 << endl;
+    /*
     while (1)
     {
         ready = true;
@@ -1426,9 +1646,12 @@ void gridCoarse(struct grid * g)
             }
         }
 
-        resolve_edges(g);
+        //resolve_edges(g);
         if (ready) break;
     }
+    */
+
+    cr_cells.active = false;
 }
 
 void print_redist_tag(struct grid* g,  int rank)
@@ -1855,7 +2078,7 @@ bool split_if_needed(grid* g, Cell c, Face f)
     c.RealArrayDF(g->c_tags.center)[1] = fc[1];
     c.RealArrayDF(g->c_tags.center)[2] = fc[2];
 
-    int res = g->cell_should_split(g, c , 2);
+    int res = g->cell_should_split(g, c );
     c.RealArrayDF(g->c_tags.center)[0] = cx;
     c.RealArrayDF(g->c_tags.center)[1] = cy;
     c.RealArrayDF(g->c_tags.center)[2] = cz;
@@ -1915,48 +2138,74 @@ void resolve_connections(grid* g)
     }
 }
 
-double tt;
-void start_time()
+class IterTime
 {
-   	BARRIER
-	double tt = Timer();
-}
+    vector<double> time;
+    vector<string> what;
+    double tt;
+    double all;
 
-void print_time(string what, int rank)
-{
-    BARRIER
-    double tt1 = Timer();
-	if (rank == 0) cout << setw(15) << what << " time = " << tt1 - tt << endl;
-    tt = tt1;
-}
+    public:
+    void start() 
+    { 
+        BARRIER 
+        tt = Timer();  
+    }
+    void add(string _what)
+    {
+        double tt1 = Timer();
+        double ct = tt1 - tt;
+        all += ct;
+        time.push_back(ct);
+        what.push_back(_what);
+        tt = tt1;   
+    }
+    void print_time(int rank)
+    {
+        if (rank > 0) return;
+        for (int i = 0; i < time.size(); i++)
+        {
+            double per = (time[i]/all)*100;
+            cout << setw(15) << what[i] << " time = " << setw(10) << time[i] << " : ";
+            if (per > 70)
+                cout <<  "\033[1;31m"  << setprecision(2) << setw(5) << (time[i]/all)*100 << " %" << "\033[0m" << endl;
+            else
+                cout << setprecision(2) << setw(5) << (time[i]/all)*100 << " %" << endl;
+        }
+    }
+};
 
 int yo = 0;
 void gridAMR(struct grid * g, int action)
 {
     int rank = g->mesh->GetProcessorRank(); // Get the rank of the current process
-    start_time();
+    IterTime time;
+    time.start();
+
     remove_border(g);
-    print_time("Remove border",rank);
+    time.add("Remove border");
 
     resolve_edges(g);
-    print_time("Resolve edges",rank);
+    time.add("Resolve edges");
 
     if (action == 0 || action == 1 || action == 3)
         gridCoarse(g);
-    print_time("Coarse",rank);
+    time.add("Coarse");
 
-    if (action == 0 || action == 2 || action == 3)
+    //if (action == 0 || action == 2 || action == 3)
+    if (action != 3)
         gridRefine(g); 
-    print_time("Refine",rank);
+    time.add("Refine");
 
     resolve_edges(g);
-    print_time("Resolve edges",rank);
+    time.add("Resolve edges");
 
-    if (action == 3)
+    if (action == 4)
     {
         remove_border(g);
         resolve_edges(g);
         resolve_connections(g);
     }
 	g->mesh->ResolveShared(); // Resolve duplicate nodes
+    time.print_time(rank);
 }

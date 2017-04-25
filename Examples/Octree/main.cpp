@@ -119,23 +119,10 @@ void rev_transformation(double xyz[3])
 	xyz[2] = (tmp[2] - 4010.0) / 10.0 + 0.5;
 }
 
-/// Function provided to octgrid algorithm. 
-/// Defines that cell should be unite. Returns 1 for unite else returns 0.
-int cell_should_unite(struct grid * g, Cell cell)
-{
-	const double r = base_radius;
-	int test = 1;	
-
-    double x = cell.RealArrayDF(g->c_tags.center)[0];
-    double y = cell.RealArrayDF(g->c_tags.center)[1];
-
-	test &= (x-mx)*(x-mx)+(y-my)*(y-my) > r;
-	return test;
-}
 
 /// Function provided to octgrid algorithm. 
 /// Defines that cell should be split. Returns 1 for split else returns 0.
-int cell_should_split(struct grid * g, Cell cell, int level)
+int cell_should_split(struct grid * g, Cell cell)
 {
 	double r = base_radius;
 
@@ -151,7 +138,34 @@ int cell_should_split(struct grid * g, Cell cell, int level)
     for (int level = 2; level <= refine_depth; level++)
     {
 	    if ((x-mx)*(x-mx)+(y-my)*(y-my) < r*5*(level-1))
-            if (c_level < refine_depth - level + 1) return 1;
+            if (c_level < refine_depth - level + 1) 
+                {
+                    return 1;
+                }
+    }
+    return 0;
+}
+
+
+/// Function provided to octgrid algorithm. 
+/// Defines that cell should be unite. Returns 1 for unite else returns 0.
+int cell_should_unite(struct grid * g, Cell cell)
+{
+//    return !cell_should_split(g,cell);
+	const double r = base_radius;
+
+    double x = cell.RealArrayDF(g->c_tags.center)[0];
+    double y = cell.RealArrayDF(g->c_tags.center)[1];
+    int c_level = cell.Integer(g->c_tags.level);
+
+    if (c_level == refine_depth)
+    {
+        if ((x-mx)*(x-mx)+(y-my)*(y-my) > r) return 1;
+    }
+    else
+    {
+        double R = (refine_depth - c_level)*5*r;
+        if ((x-mx)*(x-mx)+(y-my)*(y-my) > R) return 1;
     }
     return 0;
 }
