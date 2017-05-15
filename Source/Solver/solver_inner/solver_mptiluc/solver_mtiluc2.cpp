@@ -1905,7 +1905,7 @@ public:
 							EstU2[LU_Entries[it].first] = LU_Entries[it].second;
 #endif
 						}
-						for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it != L_Address[cbeg].last; ++it) 
+						for (INMOST_DATA_ENUM_TYPE it = L_Address[cbeg].first; it < L_Address[cbeg].last; ++it) 
 						{
 							EstL1[LU_Entries[it].first] = LU_Entries[it].second;
 #if defined(ESTIMATOR_REFINE)
@@ -2159,7 +2159,7 @@ swap_algorithm:
 					}
 
 					Ui = k;
-					for (INMOST_DATA_ENUM_TYPE it = B_Address[k].first + (B_Entries[B_Address[k].first].first == k ? 1 : 0); it != B_Address[k].last; ++it)
+					for (INMOST_DATA_ENUM_TYPE it = B_Address[k].first + (B_Entries[B_Address[k].first].first == k ? 1 : 0); it < B_Address[k].last; ++it)
 					{
 						LineValuesU[B_Entries[it].first] = B_Entries[it].second;
 						Ui = LineIndecesU[Ui] = B_Entries[it].first;
@@ -2471,7 +2471,7 @@ swap_algorithm:
 #endif
             {
 						  curr = cbeg;
-						  for (INMOST_DATA_ENUM_TYPE it = L_Address[i].first; it != L_Address[i].last; ++it)
+						  for (INMOST_DATA_ENUM_TYPE it = L_Address[i].first; it < L_Address[i].last; ++it)
 						  {
 							  j = LU_Entries[it].first;
 							  l = u*LU_Entries[it].second;
@@ -2498,7 +2498,7 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 #if 0
               curr = cbeg;
-						  for (INMOST_DATA_ENUM_TYPE it = L2_Address[i].first; it != L2_Address[i].last; ++it)
+						  for (INMOST_DATA_ENUM_TYPE it = L2_Address[i].first; it < L2_Address[i].last; ++it)
 						  {
 							  j = LU2_Entries[it].first;
 							  l = u*LU2_Entries[it].second;
@@ -3253,7 +3253,7 @@ swap_algorithm:
 		for(k = cbeg; k < cend; ++k)
 		{
 			temp = 0.0;
-			for(m = B_Address[k].first; m != B_Address[k].last; ++m)
+			for(m = B_Address[k].first; m < B_Address[k].last; ++m)
 			{
 				temp += B_Entries[m].second*x[B_Entries[m].first];
 			}
@@ -3281,7 +3281,7 @@ swap_algorithm:
 			//Solve with L first
 			for (k = mobeg; k < moend; ++k) //iterator over columns of L
 			{
-				for (INMOST_DATA_ENUM_TYPE r = L_Address[k].first; r != L_Address[k].last; ++r)
+				for (INMOST_DATA_ENUM_TYPE r = L_Address[k].first; r < L_Address[k].last; ++r)
 					temp[LU_Entries[r].first] -= temp[k] * LU_Entries[r].second;
 			}
 			//Solve with diagonal
@@ -3289,7 +3289,7 @@ swap_algorithm:
 			//Solve with U
 			for (k = moend; k > mobeg; --k) //iterator over rows of U
 			{
-				for (INMOST_DATA_ENUM_TYPE r = U_Address[k - 1].first; r != U_Address[k - 1].last; ++r)
+				for (INMOST_DATA_ENUM_TYPE r = U_Address[k - 1].first; r < U_Address[k - 1].last; ++r)
 					temp[k - 1] -= temp[LU_Entries[r].first] * LU_Entries[r].second;
 			}
 
