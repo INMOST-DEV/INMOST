@@ -117,7 +117,7 @@ class CR_cells
 CR_cells cr_cells;
 
 /// Dump mesh to vtk file in folder "grids"
-void dump_to_vtk(grid* g)
+void dump_to_vtk(grid* g, const char* suffix)
 {
 	//thegrid.mesh->ResolveShared(); // Resolve duplicate nodes
 	//thegrid.mesh->ExchangeGhost(2,NODE); // Construct Ghost cells in 2 layers connected via nodes
@@ -127,12 +127,13 @@ void dump_to_vtk(grid* g)
     std::stringstream filename;
     filename << "grids/grid_";
     filename << size;
+    filename << suffix;
     if( size == 1 )
         filename << ".vtk";
     else
         filename << ".pvtk";
     g->mesh->Save(filename.str());
-	cout << "Process " << rank << ": dumped mesh to file" << endl;
+	cout << "Process " << rank << ": dumped mesh to file: " << filename.str() << endl;
 }
 
 
@@ -1591,8 +1592,8 @@ void gridCoarse(struct grid * g)
       //  else
     //        it->Integer(g->c_tags.i) = -1;
     }
-    cr_cells.print_size();
-    cout << "N time: " << Timer() - tt << endl;
+//    cr_cells.print_size();
+//    cout << "N time: " << Timer() - tt << endl;
     if (empty) 
     {
         cr_cells.push(g->mesh->BeginCell()->getAsCell());
@@ -1628,10 +1629,12 @@ void gridCoarse(struct grid * g)
     }
     */
     time_p += Timer() - ttt;
+    /*
     cout << "Time Prep: " << time_p << endl;
     cout << "Time Unit: " << time_u << endl;
     cout << "Time Res1: " << time_r1 << endl;
     cout << "Time Res2: " << time_r2 << endl;
+    */
     /*
     while (1)
     {

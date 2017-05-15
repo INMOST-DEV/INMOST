@@ -5,6 +5,7 @@
 #include "inmost.h"
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 #define LOG(level,msg)  { if (log_level >= level) cout << msg << endl; }
 #define BARRIER MPI_Barrier(MPI_COMM_WORLD);
@@ -145,7 +146,7 @@ void NotMainProcess()
             int  type = type_C - '0';
             //redistribute(&thegrid,type);
             pre_redistribute(type);
-            cout << rank << ": iteration " << iteration++ << " complete. Cells: " << thegrid.mesh->NumberOfCells() << endl;
+            cout << ::rank << ": iteration " << iteration++ << " complete. Cells: " << thegrid.mesh->NumberOfCells() << endl;
         }
         if (buff[0] == 'u') // Need remove ghosts
         {
@@ -301,7 +302,6 @@ void parse_arguments(int argc, char** argv, int* n, double* R, int* L, int* log)
   }
 }
 
-int iters_count = 6;
 
 int main(int argc, char ** argv)
 {
@@ -325,13 +325,17 @@ int main(int argc, char ** argv)
 	::size = thegrid.mesh->GetProcessorsNumber();
 	::rank = thegrid.mesh->GetProcessorRank();
 
+
     //dump_to_vtk();
-	if (rank == 0) cout << "Test start" << endl;
+	if (::rank == 0) cout << "Test start" << endl;
 
     {
 		mx = 0.1;
 		my = 0.5;
-        double h = 0.8 / iters_count;
+        int iters_count = 10;
+        // double h = 0.8 / iters_count;
+//        double h = 0.03;
+        double h = 0.05;
         int i = 0;
    		BARRIER
 		double st = Timer();
@@ -339,11 +343,12 @@ int main(int argc, char ** argv)
         double time_amr, time_red;
         double a_amr = 0;
         double a_red = 0;
+        bool forward = true;
         for (int iter = 0; iter < iters_count; iter++)
         {
     		BARRIER
             ct = Timer();
-            if (rank == 0) LOG(1, "Iteration: " << i)
+            if (::rank == 0) LOG(1, "Iteration: " << i)
             gridAMR(&thegrid,0);
     		BARRIER
             tt = Timer();
@@ -354,30 +359,37 @@ int main(int argc, char ** argv)
             tt = Timer();
             time_red = tt-ct;
             ct = tt;
-            LOG(2, rank << ": iteration " << i << " complete. Cells: " << thegrid.mesh->NumberOfCells())
+            LOG(2, ::rank << ": iteration " << i << " complete. Cells: " << thegrid.mesh->NumberOfCells())
             if (iter > 0) 
             {
                 a_amr += time_amr;
                 a_red += time_red;
             }
-    		if (rank == 0) LOG(1, "AMR time = " << time_amr);
-    		if (rank == 0) LOG(1, "Red time = " << time_red);
-		dump_to_vtk(&thegrid);
+    		if (::rank == 0) LOG(1, "AMR time = " << time_amr);
+    		if (::rank == 0) LOG(1, "Red time = " << time_red);
+       //     stringstream suffix;
+         //   suffix << "_" << iter;
     		BARRIER
-    		if (rank == 0) LOG(1, "===============");
+    		if (::rank == 0) LOG(1, "===============");
 			i++;
-            mx += h;
+            if (forward) {
+                mx += h;
+                if (mx >= 0.9) forward = false;
+            } else {
+                mx -= h;
+                if (mx <= 0.1) forward = true;
+            }
         }
     	BARRIER
 		tt = Timer() - st;
-		if (rank == 0) cout << "time = " << tt << endl;
-		if (rank == 0) cout << "Average AMR time = " << a_amr/(iters_count - 1) << endl;
-		if (rank == 0) cout << "Average RED time = " << a_red/(iters_count - 1) << endl;
-		if (rank == 0) cout << "time = " << tt << endl;
+		if (::rank == 0) cout << "time = " << tt << endl;
+		if (::rank == 0) cout << "Average AMR time = " << a_amr/(iters_count - 1) << endl;
+		if (::rank == 0) cout << "Average RED time = " << a_red/(iters_count - 1) << endl;
+		if (::rank == 0) cout << "time = " << tt << endl;
 
+		dump_to_vtk(&thegrid);
 //		send_dump_command();
 //		send_quit_command();
-
     }
 
 	Mesh::Finalize();
