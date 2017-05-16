@@ -136,6 +136,26 @@ void dump_to_vtk(grid* g, const char* suffix)
 	cout << "Process " << rank << ": dumped mesh to file: " << filename.str() << endl;
 }
 
+void fill_proc_tag(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank(); // Get the rank of the current process
+    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+    {
+        it->Integer(g->c_tags.proc) = rank;
+    }
+}
+
+int calc_sends(grid* g)
+{
+    int rank = g->mesh->GetProcessorRank(); // Get the rank of the current process
+    int res = 0;
+    for(Mesh::iteratorCell it = g->mesh->BeginCell(); it != g->mesh->EndCell(); it++)
+    {
+        if (it->Integer(g->c_tags.proc) != rank) res++;
+    }
+
+    return res;
+}
 
 /// Redistribute grid by  partitioner
 void redistribute(grid* g, int type)

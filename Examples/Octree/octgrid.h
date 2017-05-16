@@ -68,6 +68,8 @@ void old_correct_brothers(struct grid* g, int size, int rank, int type);
 void correct_brothers(struct grid* g, int size, int rank, int type);
 void pre_eval(struct grid* g, int size, int rank);
 void init_mesh(struct grid* g);
+void fill_proc_tag(grid* g);
+int calc_sends(grid* g);
 
 /// Debug. Print information about all cells
 void print_all_about_cells(struct grid * g);

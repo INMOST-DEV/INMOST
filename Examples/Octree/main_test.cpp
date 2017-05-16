@@ -350,7 +350,7 @@ int main(int argc, char ** argv)
 
       {
 		mx = 0.1;
-		my = 0.5;
+		my = 0.6;
         // double h = 0.8 / iters_count;
 //        double h = 0.03;
         int i = 0;
@@ -360,23 +360,32 @@ int main(int argc, char ** argv)
         double time_amr, time_red;
         double a_amr = 0;
         double a_red = 0;
+        int sends = 0;
         bool forward = true;
         for (int iter = 0; iter < iters_count; iter++)
         {
     		BARRIER
-            ct = Timer();
             if (::rank == 0) LOG(1, "Iteration: " << i)
+
+            ct = Timer();
             gridAMR(&thegrid,0);
     		BARRIER
             tt = Timer();
             time_amr = tt-ct;
-            ct = tt;
+            
+            fill_proc_tag(&thegrid);
+            
+            ct = Timer();
             redistribute(&thegrid, 0);
     		BARRIER
             tt = Timer();
             time_red = tt-ct;
-            ct = tt;
-            LOG(2, ::rank << ": iteration " << i << " complete. Cells: " << thegrid.mesh->NumberOfCells())
+            
+            int l_sends = calc_sends(&thegrid);
+            sends += l_sends;
+
+            ct = Timer();
+            LOG(2, ::rank << ": iteration " << i << " complete. Cells: " << thegrid.mesh->NumberOfCells() << ". Sends: " << l_sends << ". All sends: " << sends)
             if (iter > 0) 
             {
                 a_amr += time_amr;
@@ -384,8 +393,9 @@ int main(int argc, char ** argv)
             }
     		if (::rank == 0) LOG(1, "AMR time = " << time_amr);
     		if (::rank == 0) LOG(1, "Red time = " << time_red);
-       //     stringstream suffix;
-         //   suffix << "_" << iter;
+            stringstream suffix;
+            suffix << "_" << iter;
+//            dump_to_vtk(&thegrid,suffix.str().c_str());
     		BARRIER
     		if (::rank == 0) LOG(1, "===============");
 			i++;
@@ -397,11 +407,24 @@ int main(int argc, char ** argv)
                 if (mx <= 0.1) forward = true;
             }
         }
+
+    	BARRIER
+        LOG(2, ::rank << ": test completed. Average sends: " << double(sends)/double(iters_count))
+        int* g_sends = new int[size];
+        MPI_Allgather(&sends, 1, MPI_INTEGER, g_sends, 1, MPI_INTEGER, MPI_COMM_WORLD);
+
+        int av_sends = 0;
+        if (::rank == 0) 
+            for (int i = 0; i < size; i++)
+                av_sends += g_sends[i];
+    
+
     	BARRIER
 		tt = Timer() - st;
 		if (::rank == 0) cout << "time = " << tt << endl;
 		if (::rank == 0) cout << "Average AMR time = " << a_amr/(iters_count - 1) << endl;
 		if (::rank == 0) cout << "Average RED time = " << a_red/(iters_count - 1) << endl;
+		if (::rank == 0) cout << "Average sends = " << int(double(av_sends)/double(iters_count*size)) << endl;
 		if (::rank == 0) cout << "time = " << tt << endl;
 
 		dump_to_vtk(&thegrid);
