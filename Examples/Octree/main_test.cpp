@@ -248,7 +248,7 @@ void print_help()
   cout << "       x - redistribute grid" << endl;
 }
 
-void parse_arguments(int argc, char** argv, int* n, double* R, int* L, int* log)
+void parse_arguments(int argc, char** argv, int* n, double* R, int* L, int* log, int* iters_count, double* h)
 {
   if (argc < 2) return;
 
@@ -291,9 +291,17 @@ void parse_arguments(int argc, char** argv, int* n, double* R, int* L, int* log)
     {
 	    *L = atoi(str2.c_str());
     }
+    else if (str1 == "-h")
+    {
+	    sscanf(str2.c_str(),"%lf",h);
+    }
     else if (str1 == "-log")
     {
 	    *log = atoi(str2.c_str());
+    }
+    else if (str1 == "-i")
+    {
+	    *iters_count = atoi(str2.c_str());
     }
     else
     {
@@ -307,6 +315,8 @@ int main(int argc, char ** argv)
 {
 	int i;
 	int n[3] = {10,10,1};
+  int iters_count = 10;
+  double h = 0.02;
 
 	thegrid.transformation = transformation;
 	thegrid.rev_transformation = rev_transformation;
@@ -316,7 +326,7 @@ int main(int argc, char ** argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &::rank);
 
     if (::rank == 0) print_help();
-    parse_arguments(argc, argv, n, &base_radius,&refine_depth,&log_level);
+    parse_arguments(argc, argv, n, &base_radius,&refine_depth,&log_level,&iters_count,&h);
     all_cells_count = n[0]*n[1]*n[2] * 2;
 
     gridInit(&thegrid,n);
@@ -327,15 +337,22 @@ int main(int argc, char ** argv)
 
 
     //dump_to_vtk();
-	if (::rank == 0) cout << "Test start" << endl;
+	if (::rank == 0)
+  {
+  	cout << "Test start: " << endl;
+  	cout << "Size: " << n[0] << "x" << n[1] << "x" << n[2] << endl;
+  	cout << "Radius: " << base_radius << endl;
+  	cout << "Refine depth: " << refine_depth << endl;
+  	cout << "Iters count: " << iters_count << endl;
+  	cout << "Step: " << h << endl;
+  	cout << "Processors: " << ::size << endl;
+  } 
 
-    {
+      {
 		mx = 0.1;
 		my = 0.5;
-        int iters_count = 10;
         // double h = 0.8 / iters_count;
 //        double h = 0.03;
-        double h = 0.05;
         int i = 0;
    		BARRIER
 		double st = Timer();

@@ -202,7 +202,7 @@ void redistribute(int type)
 int main(int argc, char ** argv)
 {
 	int i;
-	int n[3] = {2,4,1};
+	int n[3] = {20,40,1};
 
 	thegrid.transformation = transformation;
 	thegrid.rev_transformation = rev_transformation;
@@ -222,7 +222,8 @@ int main(int argc, char ** argv)
 	std::cout << "gridAMR" << std::endl;
 	gridAMR(&thegrid, 0);
 	std::cout << "redistribute" << std::endl;
-	redistribute(3);
+	redistribute(1);
+	std::cout << "after redistribute " << thegrid.mesh->NumberOfCells() <<  std::endl;
 	thegrid.mesh->Save("end.pvtk");
 	Partitioner::Finalize();
 	Mesh::Finalize();
