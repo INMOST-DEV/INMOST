@@ -226,7 +226,7 @@ void Band(int n, int r, Sparse::Matrix & A)
     A.SetInterval(idmin,idmax);
 
     for (int i=idmin; i<idmax; i++) {
-        for (int j=0; j<n; j++) {
+        for (int j=std::max(0, i - r); j < std::max(i + r, n); j++) {
             if (abs(i - j) < r) {
                 if (i == j) {
                     A[i][j] = (ndiag - 1.) + 1e-3;
