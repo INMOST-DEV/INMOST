@@ -36,28 +36,28 @@ memory requirements.
 
 (*) Arguments
 
-Usage: ./solver_test002 method_number<0:INNER_ILU2,1:INNER_DDPQILUC,2:INNER_MPTILUC,3:INNER_MPTILU2,4:Trilinos_Aztec,5:Trilinos_Belos,6:Trilinos_ML,7:Trilinos_Ifpack,8:PETSc,9:ANI,10:FCBIILU2,11:K3BIILU2> N<for NxNxN problem> [solver_options.txt]
+Usage: ./solver_test002 <solver_type> N<for NxNxN problem> [solver_options.xml]
 
 
     * First parameter is the Solver type:
-        0 – INNER_ILU2, inner Solver based on BiCGStab(L) solver with second
+        inner_ilu2, inner Solver based on BiCGStab(L) solver with second
 order IIU factorization as preconditioner;
-        1 - INNER_DDPQILUC, inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner;
-        2 - INNER_MPTILUC, inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner;
-        3 - INNER_MPTILU2, inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditione;
-        4 – Trilinos_Aztec, external Solver AztecOO from Trilinos package;
+        inner_ddpqiluc, inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner;
+        inner_mptiluc, inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner;
+        inner_mptilu2, inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditione;
+        trilinos_aztec, external Solver AztecOO from Trilinos package;
 currentty without preconditioner;
-        5 – Trilinos_Belos, external Solver Belos from Trilinos package, currently without preconditioner;
-        6 – Trilinos_ML, external Solver AztecOO with ML preconditioner;
-        7 – Trilinos_Ifpack, external Solver AztecOO with Ifpack preconditioner;
-        8 - PETSc, external Solver PETSc;
-        9 – ANI, external Solver from ANI3D based on ILU2 (sequential Fortran version);
-       10 – FCBIILU2, external FCBIILU2 Solver (BIILU2 parallel F2C version);
-       11 – K3BIILU2, internal K3BIILU2 Solver (BIILU2 parallel version).
+        trilinos_belos, external Solver Belos from Trilinos package, currently without preconditioner;
+        trilinos_ml, external Solver AztecOO with ML preconditioner;
+        trilinos_ifpack, external Solver AztecOO with Ifpack preconditioner;
+        petsc, external Solver PETSc;
+        ani, external Solver from ANI3D based on ILU2 (sequential Fortran version);
+       fcbiilu2, external FCBIILU2 Solver (BIILU2 parallel F2C version);
+       k3biilu2, internal K3BIILU2 Solver (BIILU2 parallel version).
     * Second parameter is the dimension N of the 3D Poisson problem for NxNxN
 mesh.
     * Third optional parameter is the file with solver parameters, see
-examples/MatSolve/database.txt as example.
+examples/MatSolve/database.xml as example.
 
 (*) Running test
 
@@ -66,7 +66,7 @@ For example, you can specify the 100x100x100 test case and solve it by the
 internal ILU2 based solver with the default parameters on 4 processors:
 
 $ cd tests/solver_test002
-$ mpirun -np 4 ./solver_test002 0 100 
+$ mpirun -np 4 ./solver_test002 inner_ilu2 100
 
 (*) Source
 
