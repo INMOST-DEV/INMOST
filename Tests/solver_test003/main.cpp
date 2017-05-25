@@ -94,7 +94,7 @@ int main(int argc, char ** argv)
 
     int n = atoi(argv[2]);
     int r = atoi(argv[3]);
-    Solver::Initialize(&argc,&argv,argc > 3 ? argv[3] : NULL); // Initialize the linear solver in accordance with args
+    Solver::Initialize(&argc,&argv,argc > 4 ? argv[4] : NULL); // Initialize the linear solver in accordance with args
     {
 #if defined(USE_MPI)
         MPI_Comm_rank(MPI_COMM_WORLD,&rank);  // Get the rank of the current process
@@ -227,10 +227,12 @@ void Band(int n, int r, Sparse::Matrix & A)
 
     for (int i=idmin; i<idmax; i++) {
         for (int j=0; j<n; j++) {
-            if (i == j) {
-                A[i][j] = (ndiag - 1.) + 1e-3;
-            } else {
-                A[i][j] = -1.;
+            if (abs(i - j) < r) {
+                if (i == j) {
+                    A[i][j] = (ndiag - 1.) + 1e-3;
+                } else {
+                    A[i][j] = -1.;
+                }
             }
         }
     }
