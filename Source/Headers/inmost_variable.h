@@ -253,24 +253,23 @@ namespace INMOST
   class dynamic_variable : public shell_dynamic_variable<var_expression,dynamic_variable >
   {
   private:
-    Automatizator & aut;
     Tag index_tag, value_tag;
     MarkerType mask;
     INMOST_DATA_ENUM_TYPE comp;
   public:
-    dynamic_variable(Automatizator & paut, INMOST_DATA_ENUM_TYPE pregval, INMOST_DATA_ENUM_TYPE pcomp = 0) : aut(paut), comp(pcomp) 
+	  dynamic_variable() : index_tag(),value_tag(),mask(0),comp(ENUMUNDEF) {}
+    dynamic_variable(Automatizator & paut, INMOST_DATA_ENUM_TYPE pregval, INMOST_DATA_ENUM_TYPE pcomp = 0) : comp(pcomp)
     {
       if( pregval != ENUMUNDEF )
       {
-        mask = aut.GetMask(pregval);
-        value_tag = aut.GetValueTag(pregval);
-        index_tag = aut.GetIndexTag(pregval);
+        mask = paut.GetMask(pregval);
+        value_tag = paut.GetValueTag(pregval);
+        index_tag = paut.GetIndexTag(pregval);
       }
     }
-    dynamic_variable(const dynamic_variable & other) : aut(other.aut), index_tag(other.index_tag), value_tag(other.value_tag), mask(other.mask), comp(other.comp) {}
+    dynamic_variable(const dynamic_variable & other) : index_tag(other.index_tag), value_tag(other.value_tag), mask(other.mask), comp(other.comp) {}
     dynamic_variable & operator =(const dynamic_variable & other) 
     {
-      aut = other.aut; 
       index_tag = other.index_tag; 
       value_tag = other.value_tag;
       mask = other.mask;
@@ -351,6 +350,7 @@ namespace INMOST
     Tag variable_tag;
     INMOST_DATA_ENUM_TYPE comp;
   public:
+	stored_variable() : variable_tag(), comp(ENUMUNDEF) {}
     stored_variable(Tag t, INMOST_DATA_ENUM_TYPE pcomp = 0) : variable_tag(t), comp(pcomp)  
 	{
 		assert(t.GetDataType() == DATA_REAL || t.GetDataType() == DATA_VARIABLE);

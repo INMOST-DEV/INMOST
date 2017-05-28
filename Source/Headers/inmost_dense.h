@@ -585,8 +585,8 @@ namespace INMOST
 			assert(Cols() == other.Cols());
 			assert(Rows() == other.Rows());
 			typename Promote<Var,typeB>::type ret = 0.0;
-			for(enumerator i = 0; i < Cols(); ++i)
-				for(enumerator j = 0; j < Rows(); ++j)
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
 					ret += ((*this)(i,j))*other(i,j);
 			return ret;
 		}
@@ -1243,7 +1243,18 @@ namespace INMOST
 		/// @param first_col Starting column in the original matrix.
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		SubMatrix<Var,storage_type> MakeSubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		//::INMOST::SubMatrix<Var,storage_type> SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		
+		/// Extract submatrix of a matrix for in-place manipulation of elements.
+		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
+		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
+		/// and j in [jbeg,jend).
+		/// @param first_row Starting row in the original matrix.
+		/// @param last_row Last row (excluded) in the original matrix.
+		/// @param first_col Starting column in the original matrix.
+		/// @param last_col Last column (excluded) in the original matrix.
+		/// @return Submatrix of the original matrix.
+		::INMOST::SubMatrix<Var,storage_type> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
 	};
 	/// This class allows for in-place operations on submatrix of the matrix elements.
 	template<typename Var, typename Storage>
@@ -1327,9 +1338,9 @@ namespace INMOST
 		/// not affect elements of the submatrix or original matrix
 		/// used to create submatrix.
 		/// @return Matrix with same entries as submatrix.
-		Matrix<Var> MakeMatrix()
+		Matrix<Var> Matrix()
 		{
-			Matrix<Var> ret(Rows(),Cols());
+			::INMOST::Matrix<Var> ret(Rows(),Cols());
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					ret(i,j) = (*this)(i,j);
@@ -1550,11 +1561,12 @@ namespace INMOST
 		enumerator * order = new enumerator [m];
 		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
 		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(m,l),true);
+		Var max, temp;
+		typename Promote<Var,typeB>::type tempb;
 		for(enumerator i = 0; i < m; ++i) order[i] = i;
 		for(enumerator i = 0; i < m; i++)
 		{
 			enumerator maxk = i, maxq = i, temp2;
-			Var max, temp;
 			max = fabs(AtA(maxk,maxq));
 			//Find best pivot
 			for(enumerator k = i; k < m; k++) // over rows
@@ -1581,9 +1593,9 @@ namespace INMOST
 				//exchange rhs
 				for(enumerator q = 0; q < l; q++) // over columns of B
 				{
-					temp = AtB(maxk,q);
+					tempb = AtB(maxk,q);
 					AtB(maxk,q) = AtB(i,q);
-					AtB(i,q) = temp;
+					AtB(i,q) = tempb;
 				}
 			}
 			//Exchange columns
@@ -1730,10 +1742,16 @@ namespace INMOST
 		return ret;
 	}
 	
+	//template<typename Var,typename storage_type>
+	//SubMatrix<Var,storage_type> Matrix<Var,storage_type>::SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
+	//{
+	//	return ::INMOST::SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
+	//}
+	
 	template<typename Var,typename storage_type>
-	SubMatrix<Var,storage_type> Matrix<Var,storage_type>::MakeSubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
+	SubMatrix<Var,storage_type> Matrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{
-		return SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
+		return ::INMOST::SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
 	}
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;

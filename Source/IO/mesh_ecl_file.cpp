@@ -87,7 +87,9 @@
 #define SEG_START 0
 #define SEG_END 1
 
-
+#define HAVE_PERM_X 1
+#define HAVE_PERM_Y 2
+#define HAVE_PERM_Z 4
 
 namespace INMOST
 {
@@ -768,11 +770,12 @@ namespace INMOST
 
 	void Mesh::LoadECL(std::string File)
 	{
+		char have_perm = 0;
 		std::cout << std::scientific;
 		bool perform_splitting = false;
 		bool curvilinear_edges = true;
 		bool triangulated_edges = false; //this is not working, yet
-		bool project_perm = true;
+		bool project_perm = false;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "ECL_SPLIT_GLUED" )
@@ -943,6 +946,7 @@ namespace INMOST
 						downread = totread = dims[0]*dims[1]*dims[2];
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_PERMX;
+						have_perm |= HAVE_PERM_X;
 					}
 					else if( !ECLSTRCMP(p,"PERMY") )
 					{
@@ -954,6 +958,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = ECL_PERMX;
 						state = ECL_PERMY;
+						have_perm |= HAVE_PERM_Y;
 					}
 					else if( !ECLSTRCMP(p,"PERMZ") )
 					{
@@ -965,6 +970,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = ECL_PERMX;
 						state = ECL_PERMZ;
+						have_perm |= HAVE_PERM_Z;
 					}
 					else if( !ECLSTRCMP(p,"PORO") )
 					{
@@ -1162,6 +1168,58 @@ ecl_exit_loop:
 		if( radial == ECL_GTYPE_RADIAL )
 		{
 			std::cout << __FILE__ << ":" << __LINE__ << " radial grids not supported yet " << std::endl;
+		}
+		if( !have_perm ) perm.clear();
+		if( !(HAVE_PERM_X & have_perm) )
+		{
+			if( HAVE_PERM_Y & have_perm )
+			{
+				for(int i = 0; i < dims[0]; ++i)
+					for(int j = 0; j < dims[1]; ++j)
+						for(int k = 0; k < dims[2]; ++k)
+							perm[3*ECL_IJK_DATA(i,j,k)+0] = perm[3*ECL_IJK_DATA(i,j,k)+1];
+			}
+			if( HAVE_PERM_Z & have_perm )
+			{
+				for(int i = 0; i < dims[0]; ++i)
+					for(int j = 0; j < dims[1]; ++j)
+						for(int k = 0; k < dims[2]; ++k)
+							perm[3*ECL_IJK_DATA(i,j,k)+0] = perm[3*ECL_IJK_DATA(i,j,k)+2];
+			}
+		}
+		if( !(HAVE_PERM_Y & have_perm) )
+		{
+			if( HAVE_PERM_X & have_perm )
+			{
+				for(int i = 0; i < dims[0]; ++i)
+					for(int j = 0; j < dims[1]; ++j)
+						for(int k = 0; k < dims[2]; ++k)
+							perm[3*ECL_IJK_DATA(i,j,k)+1] = perm[3*ECL_IJK_DATA(i,j,k)+0];
+			}
+			if( HAVE_PERM_Z & have_perm )
+			{
+				for(int i = 0; i < dims[0]; ++i)
+					for(int j = 0; j < dims[1]; ++j)
+						for(int k = 0; k < dims[2]; ++k)
+							perm[3*ECL_IJK_DATA(i,j,k)+1] = perm[3*ECL_IJK_DATA(i,j,k)+2];
+			}
+		}
+		if( !(HAVE_PERM_Z & have_perm) )
+		{
+			if( HAVE_PERM_X & have_perm )
+			{
+				for(int i = 0; i < dims[0]; ++i)
+					for(int j = 0; j < dims[1]; ++j)
+						for(int k = 0; k < dims[2]; ++k)
+							perm[3*ECL_IJK_DATA(i,j,k)+2] = perm[3*ECL_IJK_DATA(i,j,k)+0];
+			}
+			if( HAVE_PERM_Y & have_perm )
+			{
+				for(int i = 0; i < dims[0]; ++i)
+					for(int j = 0; j < dims[1]; ++j)
+						for(int k = 0; k < dims[2]; ++k)
+							perm[3*ECL_IJK_DATA(i,j,k)+2] = perm[3*ECL_IJK_DATA(i,j,k)+1];
+			}
 		}
 		int beg_dims[2], end_dims[2];
 		beg_dims[0] = 0;
