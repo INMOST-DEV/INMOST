@@ -553,9 +553,9 @@ namespace INMOST
 				for(enumerator l = 0; l < Cols(); ++l)
 				{
 					if( fabs(get_value((*this)(k,l))) > threshold )
-						std::cout << std::setw(10) << get_value((*this)(k,l));
+						std::cout << std::setw(12) << get_value((*this)(k,l));
 					else
-						std::cout << std::setw(10) << 0;
+						std::cout << std::setw(12) << 0;
 					std::cout << " ";
 				}
 				std::cout << std::endl;
@@ -815,10 +815,10 @@ namespace INMOST
 		Matrix(enumerator pn, enumerator pm) : space(pn*pm), n(pn), m(pm) {}
 		/// Copy matrix.
 		/// @param other Another matrix of the same type.
-		Matrix(const Matrix & other) : space(other.n*other.m), n(other.n), m(other.m)
+		Matrix(const Matrix & other) : space(other.space), n(other.n), m(other.m)
 		{
-			for(enumerator i = 0; i < n*m; ++i)
-				space[i] = other.space[i];
+			//for(enumerator i = 0; i < n*m; ++i)
+			//	space[i] = other.space[i];
 		}
 		/// Construct matrix from matrix of different type.
 		/// Uses assign function declared in inmost_expression.h.

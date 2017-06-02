@@ -3470,6 +3470,12 @@ namespace INMOST
 	{
 		return GetMeshLink()->RealArray(h,*static_cast<const Tag*>(this));
 	}
+	__INLINE Matrix<Storage::real,Storage::real_array> TagRealArray::operator ()(HandleType h, int n, int m) const
+	{
+		Storage::real_array data = GetMeshLink()->RealArray(h,*static_cast<const Tag*>(this));
+		assert(data.size() == n*m);
+		return Matrix<Storage::real,Storage::real_array>(data,n,m);
+	}
 	__INLINE Storage::integer_array TagIntegerArray::operator [](HandleType h) const
 	{
 		return GetMeshLink()->IntegerArray(h,*static_cast<const Tag*>(this));
@@ -3515,6 +3521,13 @@ namespace INMOST
 	{
 		return GetMeshLink()->VariableArray(h,*static_cast<const Tag*>(this));
 	}
+	__INLINE Matrix<Storage::var,Storage::var_array> TagVariableArray::operator ()(HandleType h, int n, int m) const
+	{
+		Storage::var_array data = GetMeshLink()->VariableArray(h,*static_cast<const Tag*>(this));
+		assert(data.size() == n*m);
+		return Matrix<Storage::var,Storage::var_array>(data,n,m);
+	}
+	
 #endif
 	__INLINE bool Storage::HaveData(const Tag & tag) const
 	{

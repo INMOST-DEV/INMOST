@@ -5,7 +5,7 @@
 #if defined(USE_AUTODIFF)
 #include "inmost_expression.h"
 #endif
-
+#include "inmost_dense.h"
 
 #if defined(USE_MESH)
 
@@ -673,6 +673,13 @@ namespace INMOST
 		TagRealArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
 		__INLINE Storage::real_array operator [](const Storage & arg) const {return arg.RealArray(*static_cast<const Tag*>(this));}
 		__INLINE Storage::real_array operator [](HandleType h) const;
+		__INLINE Matrix<Storage::real,Storage::real_array> operator()(const Storage & arg, int n, int m) const
+		{
+			Storage::real_array data = arg.RealArray(*static_cast<const Tag*>(this));
+			assert(data.size() == n*m);
+			return Matrix<Storage::real,Storage::real_array>(data,n,m);
+		}
+		__INLINE Matrix<Storage::real,Storage::real_array> operator()(HandleType h, int n, int m) const;
 	};
 	
 	class TagIntegerArray : public Tag
@@ -734,6 +741,13 @@ namespace INMOST
 		TagVariableArray & operator = (Tag const & b) {Tag::operator =(b); return *this;}
 		__INLINE Storage::var_array operator [](const Storage & arg) const {return arg.VariableArray(*static_cast<const Tag*>(this));}
 		__INLINE Storage::var_array operator [](HandleType h) const;
+		__INLINE Matrix<Storage::var,Storage::var_array> operator()(const Storage & arg, int n, int m) const
+		{
+			Storage::var_array data = arg.VariableArray(*static_cast<const Tag*>(this));
+			assert(data.size() == n*m);
+			return Matrix<Storage::var,Storage::var_array>(data,n,m);
+		}
+		__INLINE Matrix<Storage::var,Storage::var_array> operator()(HandleType h, int n, int m) const;
 	};
 #endif //USE_AUTODIFF
 
