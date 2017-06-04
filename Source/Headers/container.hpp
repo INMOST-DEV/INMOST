@@ -14,6 +14,7 @@
 #include <limits>
 #include "inmost_common.h"
 
+#define __VOLATILE volatile
 //#define OUT_OF_RANGE
 
 //TODO
@@ -2142,7 +2143,7 @@ namespace INMOST
 		static size_type const fwd_alloc_chunk_bits_mask = (1 << (fwd_alloc_chunk_bits))-1;
 		static size_type const fwd_alloc_chunk_val = 1 << fwd_alloc_chunk_bits;
 		static size_type const fwd_alloc_chunk_size = sizeof(element *)*fwd_alloc_chunk_val;
-		element ** chunks;
+		element ** __VOLATILE chunks;
 		size_type m_size;
 		//This neads static_cast to unsigned to 
 		__INLINE size_type GetChunkNumber(size_type k) const {return static_cast<uenum>(k) >> block_bits;}
@@ -2269,13 +2270,21 @@ namespace INMOST
 			{
 				if( newn > 0 )
 				{
-					chunks = (element **) realloc(chunks,fwd_alloc_chunk_size*newn);
-					assert(chunks != NULL);
-					if( newn > oldn ) memset(chunks+oldn*fwd_alloc_chunk_val,0,fwd_alloc_chunk_size*(newn-oldn));
+					element ** __VOLATILE chunks_old = chunks;
+					element ** __VOLATILE chunks_new = (element **)malloc(fwd_alloc_chunk_size*newn);
+					assert(chunks_new != NULL);
+					memcpy(chunks_new, chunks_old, fwd_alloc_chunk_size*oldn);
+					memset(chunks_new + oldn*fwd_alloc_chunk_val, 0, fwd_alloc_chunk_size*(newn - oldn));
+					chunks = chunks_new; //this must be atomic
+					free(chunks_old); //hopefully no other thread use it
+
+					//chunks = (element **) realloc(chunks,fwd_alloc_chunk_size*newn);
+					//assert(chunks != NULL);
+					//if( newn > oldn ) memset(chunks+oldn*fwd_alloc_chunk_val,0,fwd_alloc_chunk_size*(newn-oldn));
 				}
 				else
 				{
-					free(chunks);
+					free((void *)chunks);
 					chunks = NULL;
 				}
 			}
@@ -2305,7 +2314,7 @@ namespace INMOST
 				free(chunks[q]);
 				chunks[q] = NULL;
 			}
-			free(chunks);
+			free((void *)chunks);
 			chunks = NULL;
 			m_size = 0;
 		}
@@ -2420,7 +2429,7 @@ namespace INMOST
 		static size_type const fwd_alloc_chunk_bits_mask = (1 << (fwd_alloc_chunk_bits))-1;
 		static size_type const fwd_alloc_chunk_val = 1 << fwd_alloc_chunk_bits;
 		static size_type const fwd_alloc_chunk_size = sizeof(char *)*fwd_alloc_chunk_val;
-		char ** chunks;
+		char ** __VOLATILE chunks;
 		size_type record_size;
 		size_type m_size;
 		
@@ -2467,13 +2476,20 @@ namespace INMOST
 			{
 				if( newn > 0 )
 				{
-					chunks = reinterpret_cast<char **>(realloc(chunks,fwd_alloc_chunk_size*newn));
-					assert(chunks != NULL);
-					if( newn > oldn ) memset(chunks+oldn*fwd_alloc_chunk_val,0,fwd_alloc_chunk_size*(newn-oldn));
+					char ** __VOLATILE chunks_old = chunks;
+					char ** __VOLATILE chunks_new = (char **)malloc(fwd_alloc_chunk_size*newn);
+					assert(chunks_new != NULL);
+					memcpy(chunks_new, chunks_old, fwd_alloc_chunk_size*oldn);
+					memset(chunks_new + oldn*fwd_alloc_chunk_val, 0, fwd_alloc_chunk_size*(newn - oldn));
+					chunks = chunks_new; //this must be atomic
+					free(chunks_old); //hopefully no other thread use it
+					//chunks = reinterpret_cast<char **>(realloc(chunks,fwd_alloc_chunk_size*newn));
+					//assert(chunks != NULL);
+					//if( newn > oldn ) memset(chunks+oldn*fwd_alloc_chunk_val,0,fwd_alloc_chunk_size*(newn-oldn));
 				}
 				else
 				{
-					free(chunks);
+					free((void *)chunks);
 					chunks = NULL;
 				}
 			}
@@ -2481,8 +2497,8 @@ namespace INMOST
 			{
 				assert(chunks[q] == NULL);
 				chunks[q] = static_cast<char *>(malloc(block_size*record_size));
-				memset(chunks[q],0,block_size*record_size);
 				assert(chunks[q] != NULL);
+				memset(chunks[q],0,block_size*record_size);				
 			}
 		}
 	public:
@@ -2502,7 +2518,7 @@ namespace INMOST
 				free(chunks[q]);
 				chunks[q] = NULL;
 			}
-			free(chunks);
+			free((void *)chunks);
 			chunks = NULL;
 			m_size = 0;
 		}
