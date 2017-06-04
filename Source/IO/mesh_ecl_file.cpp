@@ -39,7 +39,7 @@
 //11.2 skip incident_matrix algorithm when no inner edges found
 
 //eclipse states
-#define ECLSTRCMP(x,y) strncmp(x,y,8)
+#define ECLSTRCMP(x,y) strncmp(STR8(x).c_str(),STR8(y).c_str(),8)
 
 
 //controls when to consider two nodes on pillar to be the same
@@ -90,6 +90,15 @@
 #define HAVE_PERM_X 1
 #define HAVE_PERM_Y 2
 #define HAVE_PERM_Z 4
+
+std::string STR8(char * input)
+{
+	std::string ret(8,' ');
+	int kend = (int)strlen(input);
+	if( kend > 8 ) kend = 8;
+	for (int k = 0; k < kend; k++) ret[k] = input[k];
+	return ret;
+}
 
 namespace INMOST
 {
@@ -1567,7 +1576,7 @@ ecl_exit_loop:
 						}
 						//sort data
 						for(int l = 0; l < num; ++l) indices_sort[l] = l;
-						std::sort(&indices_sort[0],&indices_sort[num],depth_comparator(&pillar_node_depth[0]));
+						std::sort(indices_sort.begin(),indices_sort.begin()+num,depth_comparator(&pillar_node_depth[0]));
 						for(int l = 0; l < num; ++l) itemporary[l] = pillar_node_block[l];
 						for(int l = 0; l < num; ++l) pillar_node_block[l] = itemporary[indices_sort[l]];
 						for(int l = 0; l < num; ++l) itemporary[l] = pillar_node_number[l];
