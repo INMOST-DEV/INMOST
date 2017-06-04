@@ -19,7 +19,7 @@ namespace INMOST
 		sprintf(keyword,"gmvinput"); fwrite(keyword,1,8,file);
 		sprintf(keyword,"ieee");
 		if( sizeof(Storage::real) != 8 || sizeof(Storage::integer) != 8 )
-			sprintf(keyword,"ieeei%zdr%zd",sizeof(Storage::integer),sizeof(Storage::real));
+			sprintf(keyword,"ieeei%dr%d",(int)sizeof(Storage::integer),(int)sizeof(Storage::real));
 		fwrite(keyword,1,8,file);
 		sprintf(keyword,"nodev"); fwrite(keyword,1,8,file);
 		keynum = static_cast<Storage::integer>(NumberOfNodes()); fwrite(&keynum,sizeof(Storage::integer),1,file);

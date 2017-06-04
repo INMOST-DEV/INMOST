@@ -263,10 +263,10 @@ safe_output:
 					}
 				}
 
-				fprintf(f, "CELLS %u %zd\n", NumberOfCells() + NumberOfFaces(), values.size());
+				fprintf(f, "CELLS %u %d\n", NumberOfCells() + NumberOfFaces(), (int)values.size());
 			}
 			else
-				fprintf(f, "CELLS %u %zd\n", NumberOfCells(), values.size());
+				fprintf(f, "CELLS %u %d\n", NumberOfCells(), (int)values.size());
 
 			for(dynarray<Storage::integer,64>::size_type i = 0; i < values.size(); i++)
 			{
