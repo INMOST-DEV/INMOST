@@ -215,6 +215,11 @@ if(USE_AUTODIFF_EXPRESSION_TEMPLATES)
 	endif()
 endif()
 
+if(MSVC)
+	message("Adding flag for exception handling in Visual Studio that is sometimes missing for some reason")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+endif()
+
 
 if(MSVC)
   if(USE_SOLVER_TRILINOS)

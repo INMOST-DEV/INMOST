@@ -76,7 +76,7 @@ namespace INMOST
 			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfCells()), 
 			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfSets()), 
 			NumberOfTags()-5, //add counter to skip unwanted tags here SKIPHERE, search by SKIPHERE for additional instructions
-			m_state, 
+			static_cast<INMOST_DATA_ENUM_TYPE>(m_state), 
 			static_cast<INMOST_DATA_ENUM_TYPE>(GetProcessorRank())
 		},k;
 		for(k = 0; k < 9; k++) uconv.write_iValue(out,header[k]);
