@@ -106,7 +106,7 @@ void printtext(const char * fmt, ... )
 {
 	
 	unsigned int i;
-	char stext[1048576];
+	char stext[131072];
 	va_list ap;
 	if ( fmt == NULL ) return;
 	va_start(ap,fmt);
@@ -2110,6 +2110,7 @@ class kdtree
 			case 2: qsort(set,size,sizeof(entry),cmpElements2);break;
 			}
 			children = static_cast<kdtree *>(malloc(sizeof(kdtree)*2));//new kdtree[2];
+			assert(children != NULL);
 			children[0].marked = 0;
 			children[0].children = NULL;
 			children[0].set = set;
@@ -3144,6 +3145,7 @@ class kdtree_picker
 			case 2: qsort(set,size,sizeof(entry),cmpElements2);break;
 			}
 			children = static_cast<kdtree_picker *>(malloc(sizeof(kdtree_picker)*2));//new kdtree_picker[2];
+			assert(children != NULL);
 			children[0].children = NULL;
 			children[0].set = set;
 			children[0].size = size/2;
@@ -4108,8 +4110,8 @@ double display_elem_info(Element e, double top, double left, double interval)
 	{
 		if( e->HaveData(*t) )
 		{
-			char str[1048576];
-			char temp[1048576];
+			char str[131072];
+			char temp[131072];
 			str[0] = '\0';
 			int dsize;
 			switch(t->GetDataType())

@@ -689,12 +689,14 @@ namespace INMOST
 				int n;
 				input_ord >> n;
 				ord = (int *) malloc(sizeof(int) * n);
+				assert(ord != NULL);
 				for (int i=0; i<n; i++) input_ord >> ord[i];
 				int nbl;
 				input_ord >> nbl;
 				if( nbl != size ) throw -3;
 				int * ibl;
 				ibl = (int *) malloc(sizeof(int) * (nbl+1));
+				assert(ibl != NULL);
 				for (int i=0; i<nbl+1; i++) input_ord >> ibl[i];
 				if( mbeg == ENUMUNDEF ) mbeg = ibl[rank];
 				if( mend == ENUMUNDEF ) mend = ibl[rank+1];
@@ -939,12 +941,14 @@ namespace INMOST
 				int n;
 				input_ord >> n; // check if( n == line )
 				ord = (int *) malloc(sizeof(int) * n);
+				assert(ord != NULL);
 				for (int i=0; i<n; i++) input_ord >> ord[i];
 				int nbl;
 				input_ord >> nbl;
 				if( nbl != size ) throw -3;
 				int * ibl;
 				ibl = (int *) malloc(sizeof(int) * (nbl+1));
+				assert(ibl != NULL);
 				for (int i=0; i<nbl+1; i++) input_ord >> ibl[i];
 				if( mbeg == ENUMUNDEF ) mbeg = (unsigned int) ibl[rank];
 				if( mend == ENUMUNDEF ) mend = (unsigned int) ibl[rank + 1];

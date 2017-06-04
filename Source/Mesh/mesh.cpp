@@ -2355,6 +2355,7 @@ namespace INMOST
 	void Mesh::AllocateSparseData(void * & q, const Tag & tag)
 	{
 		q = calloc(1,tag.GetRecordSize());
+		assert(q != NULL);
 #if defined(USE_AUTODIFF)
 		if( tag.GetDataType() == DATA_VARIABLE && tag.GetSize() != ENUMUNDEF )
 		{
