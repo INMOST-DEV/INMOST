@@ -180,7 +180,7 @@ namespace INMOST
 	  ///Retrive attribute number n.
       const XMLAttrib & GetAttib(int n) const {return attributes[n];}
 	  ///Retrive attribute number n.
-      XMLAttrib & GetAttib(int n) {return attributes[n];}
+      XMLAttrib & GetAttrib(int n) {return attributes[n];}
 	  ///Retrive number of attributes.
       int NumAttrib() const {return (int)attributes.size();}
 	  ///Retrive the name of the tag.
@@ -205,10 +205,24 @@ namespace INMOST
 		int FindAttrib(std::string name, int offset = -1) const;
 		///Retrive a child of current XML tag with number n.
 		const XMLTree & GetChild(int n) const {return children[n];}
+		///Retrive a child of current XML tag with name
+		const XMLTree & GetChild(std::string name) const 
+		{ 
+			int n = FindChild(name);
+			assert(n != NumChildren());
+			return children[n]; 
+		}
 		///Retrive number of children.
 		int NumChildren() const {return (int)children.size();}
 		///Retrive attribute of current XML tag with number n.
 		const XMLAttrib & GetAttrib(int n) const {return tag.GetAttib(n);}
+		///Retrive attribute of current XML tag with name.
+		const std::string & GetAttrib(std::string name) const 
+		{ 
+			int n = FindAttrib(name);
+			assert(n != NumAttrib());
+			return GetAttrib(n).value; 
+		}
 		///Retrive number of attributes.
 		int NumAttrib() const {return tag.NumAttrib();}
 		///Retrive the name of the tag.
