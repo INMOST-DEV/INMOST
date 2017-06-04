@@ -110,8 +110,10 @@ namespace INMOST
 		  LoadMKF(File);
 		else if(LFile.find(".msh") != std::string::npos ) // GMSH file format
 		  LoadMSH(File);
-    else if(LFile.find(".xml") != std::string::npos) //new mesh format 
-      LoadXML(File);
+		else if (LFile.find(".xml") != std::string::npos) //new mesh format 
+			LoadXML(File);
+		else if (LFile.find(".vtu") != std::string::npos)
+			LoadVTU(File);
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
 		  LoadPMF(File);
 		else throw NotImplemented;
@@ -151,7 +153,8 @@ namespace INMOST
 		else if(LFile.find(".gmv") != std::string::npos) return false;
 		else if(LFile.find(".pvtk") != std::string::npos) return true;
 		else if(LFile.find(".pmf") != std::string::npos) return true;
-    else if(LFile.find(".xml") != std::string::npos) return true;
+		else if(LFile.find(".xml") != std::string::npos) return true;
+		else if (LFile.find(".vtu") != std::string::npos) return false;
 		throw NotImplemented;
 	}
 }

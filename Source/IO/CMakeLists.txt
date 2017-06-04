@@ -4,6 +4,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_pmf_file.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_xml_file.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_vtk_file.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mesh_vtu_file.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_pvtk_file.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_gmsh_file.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_gmv_file.cpp

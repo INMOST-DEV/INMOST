@@ -1638,6 +1638,7 @@ safe_output:
 									j = j + 1 + cp[j];
 									if( c_nodes.size() != 6 ) throw BadFile;
 									const integer nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
+									//const integer nodesnum[18] = { 0, 3, 5, 2, 0, 1, 4, 3, 1, 4, 5, 2, 3, 4, 5, 0, 2, 1 };
 									const integer sizes[5] = {4,4,4,3,3};
 									Cell c = CreateCell(c_nodes,nodesnum,sizes,5).first;
 									newcells[i] = c->GetHandle();
@@ -1660,12 +1661,57 @@ safe_output:
 								}
 								case 15: //VTK_PENTAGONAL_PRISM
 								{
-									printf("no order description for VTK_PENTAGONAL_PRISM\n");
+									for (int k = j + 1; k < j + 1 + cp[j]; k++)
+									{
+										c_nodes.push_back(newnodes[cp[k]]);
+										RemMarker(newnodes[cp[k]], unused_marker);
+									}
+									j = j + 1 + cp[j];
+									if (c_nodes.size() != 10) throw BadFile;
+									const integer nodesnum[30] =
+									{
+										0, 1, 6, 5,
+										1, 2, 7, 6,
+										2, 3, 8, 7,
+										3, 4, 9, 8,
+										4, 0, 5, 9,
+										5, 6, 7, 8, 9,
+										4, 3, 2, 1, 0
+									};
+									//5, 6, 7, 8, 9
+									//0, 1, 2, 3, 4
+									const integer sizes[7] = { 4, 4, 4, 4, 4, 5, 5 };
+									Cell c = CreateCell(c_nodes, nodesnum, sizes, 7).first;
+									newcells[i] = c->GetHandle();
+									//printf("no order description for VTK_PENTAGONAL_PRISM\n");
 									break;
 								}
 								case 16: //VTK_HEXAGONAL_PRISM
 								{
-									printf("no order description for VTK_HEXAGONAL_PRISM\n");
+									for (int k = j + 1; k < j + 1 + cp[j]; k++)
+									{
+										c_nodes.push_back(newnodes[cp[k]]);
+										RemMarker(newnodes[cp[k]], unused_marker);
+									}
+									j = j + 1 + cp[j];
+									if (c_nodes.size() != 12) throw BadFile;
+									const integer nodesnum[36] =
+									{
+										0, 1, 7, 6,
+										1, 2, 8, 7,
+										2, 3, 9, 8,
+										3, 4, 10, 9,
+										4, 5, 11, 10,
+										5, 0, 6, 11,
+										6, 7, 8, 9, 10, 11,
+										5, 4, 3, 2, 1, 0
+									};
+									//6, 7, 8, 9, 10, 11
+									//0, 1, 2, 3, 4, 5
+									const integer sizes[8] = { 4, 4, 4, 4, 4, 4, 6, 6 };
+									Cell c = CreateCell(c_nodes, nodesnum, sizes, 8).first;
+									newcells[i] = c->GetHandle();
+									//printf("no order description for VTK_HEXAGONAL_PRISM\n");
 									break;
 								}
 								case 21: //VTK_QUADRATIC_EDGE

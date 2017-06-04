@@ -3045,6 +3045,7 @@ namespace INMOST
 		void         LoadXML(std::string File);
 		void         LoadPMF(std::string File); 
 		void         LoadVTK(std::string File); 
+		void         LoadVTU(std::string File);
 		void         LoadPVTK(std::string File); 
 		void         LoadMKF(std::string File);
 		/// Acceptable file formats for writing

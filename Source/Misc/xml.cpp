@@ -587,6 +587,7 @@ namespace INMOST
 					if( verbose > 1 ) Report("info: skipping comments");
 					_state = ReadCommentQuestion;
 					SkipComments(WaitTag);
+					_state = Intro; //wait for '<' again
 				}
 				else if( c == '!' ) //can be ![CDATA[
 				{
@@ -599,6 +600,7 @@ namespace INMOST
 							if( verbose > 1 ) Report("info: skipping comments");
 							_state = ReadCommentExclamation;
 							SkipComments(WaitTag);
+							_state = Intro; //wait for '<' again
 						}
 						else Report("unexpected character %c while reading comment",c);
 					}
@@ -618,7 +620,7 @@ namespace INMOST
 					_state = ReadCloseTagSlash;
 					done = true;
 				}
-				else if( isalpha(c) )
+				else if( isalpha(c) || c == '_' )
 				{
 					if( verbose > 1 ) Report("info: reading tag name");
 					ret.push_back(c);
@@ -793,7 +795,7 @@ namespace INMOST
 						done = true;
 					}
 				}
-				else if( isalpha(c) ) 
+				else if( isalpha(c) || c == '_' ) 
 				{
 					if( verbose > 1 ) Report("info: reading attribute name");
 					ret.push_back(c);
@@ -814,7 +816,7 @@ namespace INMOST
 					_state = WaitAttributeValue;
 					done = true;
 				}
-				else if( isalpha(c) ) ret.push_back(c);
+				else if (isalpha(c) || isdigit(c) || c == '_' || c == '-' || c == '.' || c == ':') ret.push_back(c);
 				else 
 				{
 					Report("Unexpected symbol %c while reading attribute name",c);
@@ -1695,7 +1697,34 @@ namespace INMOST
 				return k;
 		return NumAttrib();
 	}
+
+	const XMLReader::XMLTree * XMLReader::XMLTree::GetChild(std::string name) const
+	{
+		int n = FindChild(name);
+		if (n != NumChildren())
+			return &children[n];
+		else
+			return NULL;
+	}
+
+	const XMLReader::XMLTree * XMLReader::XMLTree::GetChildWithAttrib(std::string name, std::string value) const
+	{
+		for (int k = 0; k < NumChildren(); ++k)
+		{
+			const XMLTree & t = GetChild(k);
+			int q = t.FindAttrib(name);
+			if (q != t.NumAttrib() && t.GetAttrib(q).value == value)
+				return &t;
+		}
+		return NULL;
+	}
 	
+	const std::string & XMLReader::XMLTree::GetAttrib(std::string name) const
+	{
+		int n = FindAttrib(name);
+		assert(n != NumAttrib());
+		return GetAttrib(n).value;
+	}
 	
 	void WriteXML(const XMLReader::XMLTree & t, std::ostream & output, int offset)
 	{
