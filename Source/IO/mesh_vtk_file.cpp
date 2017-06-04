@@ -51,6 +51,16 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 
 namespace INMOST
 {
+
+	std::string Space2Underscore(const std::string & inp)
+	{
+		std::string ret = inp;
+		for (size_t k = 0; k < ret.size(); ++k)
+		{
+			if (ret[k] == ' ') ret[k] = '_';
+		}
+		return ret;
+	}
   
 	int VtkElementType(ElementType t)
 	{
@@ -346,7 +356,7 @@ safe_output:
               || tags[i].GetDataType() == DATA_VARIABLE
 #endif
               ) type_str = "double";
-						fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),type_str.c_str(),comps);
+						fprintf(f,"SCALARS %s %s %d\n",Space2Underscore(tags[i].GetTagName()).c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
 						for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 						{
@@ -478,7 +488,7 @@ safe_output:
 				unsigned int comps = tags[i].GetSize();
 				if( comps == ENUMUNDEF )
 				{
-					//printf("Warning: vtk don't support arrays of variable size (tag name: %s)\n",tags[i].GetTagName().c_str());
+					//printf("Warning: vtk don't support arrays of variable size (tag name: %s)\n",tags[i].\().c_str());
 					continue;
 				}
 				else
@@ -490,7 +500,7 @@ safe_output:
               || tags[i].GetDataType() == DATA_VARIABLE
 #endif
               ) type_str = "double";
-						fprintf(f,"SCALARS %s %s %d\n",tags[i].GetTagName().c_str(),type_str.c_str(),comps);
+						fprintf(f,"SCALARS %s %s %d\n",Space2Underscore(tags[i].GetTagName()).c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
 						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 						{
@@ -692,7 +702,7 @@ safe_output:
 							t = DATA_REAL;
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " unexpected data type " << attrtype << " in " << File << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " unexpected data type " << attrtype << " in " << File << " for " << attrname << std::endl;
 							std::cout << "expected one of: bit, unsigned_char, char, unsigned_short, short, unsigned_int, int, unsigned_long, long, float, double" << std::endl;
 							throw BadFile;
 						}
