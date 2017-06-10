@@ -13,6 +13,9 @@
 #include "my_glut.h"
 #include <iomanip>
 #include "clipboard.h"
+#include "color.h"
+#include "coord.h"
+#include "octree.h"
 
 inline static unsigned int flip(const unsigned int * fp)
 {
@@ -120,77 +123,7 @@ void printtext(const char * fmt, ... )
 }
 
 
-class coord
-{
-	double p[3];
-public:
-	coord() { p[0] = p[1] = p[2] = 0; }
-  coord(double xyz[3]) {p[0] = xyz[0]; p[1] = xyz[1]; p[2] = xyz[2];}
-	coord(double x, double y, double z) {p[0] = x; p[1] = y; p[2] = z;}
-	coord(const coord & other) {p[0] = other.p[0]; p[1] = other.p[1]; p[2] = other.p[2];}
-	coord & operator = (coord const & other) {p[0] = other.p[0]; p[1] = other.p[1]; p[2] = other.p[2]; return *this;}
-  coord & operator +=(const coord & other) {p[0] += other.p[0]; p[1] += other.p[1]; p[2] += other.p[2]; return *this;}
-  coord & operator -=(const coord & other) {p[0] -= other.p[0]; p[1] -= other.p[1]; p[2] -= other.p[2]; return *this;}
-  coord & operator *=(const coord & other) 
-  {
-    double tmp[3] = {p[1]*other.p[2] - p[2]*other.p[1], p[2]*other.p[0] - p[0]*other.p[2], p[0]*other.p[1] - p[1]*other.p[0]};
-    p[0] = tmp[0]; p[1] = tmp[1]; p[2] = tmp[2];
-    return *this;
-  }
-  coord & operator *=(double other) { p[0] *= other; p[1] *= other; p[2] *= other; return *this;}
-  coord & operator /=(double other) { p[0] /= other; p[1] /= other; p[2] /= other; return *this;}
-	coord operator -(const coord & other) const {return coord(p[0]-other.p[0],p[1]-other.p[1],p[2]-other.p[2]);}
-	coord operator +(const coord & other) const {return coord(p[0]+other.p[0],p[1]+other.p[1],p[2]+other.p[2]);}
-	coord operator *(const coord & other) const {return coord(p[1]*other.p[2] - p[2]*other.p[1],p[2]*other.p[0] - p[0]*other.p[2],p[0]*other.p[1] - p[1]*other.p[0]);}
-	coord operator /(double other) const {return coord(p[0]/other,p[1]/other,p[2]/other);}
-  coord operator *(double other) const {return coord(p[0]*other,p[1]*other,p[2]*other);}
-	double operator ^(const coord & other) const {return p[0]*other.p[0]+p[1]*other.p[1]+p[2]*other.p[2];}
-	~coord() {}
-  double length() const {return sqrt((*this)^(*this));}
-	double & operator [](int i) {return p[i];}
-  double * data() {return p;}
-};
 
-double abs(const coord & p)
-{
-  return sqrt(p^p);
-}
-
-
-void get_matrix(const coord & a, const coord & b, double matrix[16])
-{
-	double d;
-	coord z = (b-a)/sqrt((b-a)^(b-a));
-	coord y;
-	coord x;
-	y = coord(z[1],-z[2],0);
-	d = sqrt(y^y);
-	if( d < 1e-5 )
-	{
-		y = coord(-z[2],0,z[0]);
-		d = sqrt(y^y);
-	}
-	y = y / d;
-	x = y*z;
-	x = x / sqrt(x^x);
-	y = x*z;
-	matrix[0] = x[0];
-	matrix[1] = x[1];
-	matrix[2] = x[2];
-	matrix[3] = 0;
-	matrix[4] = y[0];
-	matrix[5] = y[1];
-	matrix[6] = y[2];
-	matrix[7] = 0;
-	matrix[8] = z[0];
-	matrix[9] = z[1];
-	matrix[10] = z[2];
-	matrix[11] = 0;
-	matrix[12] = 0;
-	matrix[13] = 0;
-	matrix[14] = 0;
-	matrix[15] = 1;
-}
 
 GLUquadric * cylqs = NULL;
 void drawcylinder(coord a,coord b, double width)
@@ -211,238 +144,6 @@ void drawcylinder(coord a,coord b, double width)
 	glPopMatrix();
 }
 
-class Octree : public ElementSet
-{
-  Tag save_center_tag;
-  bool save_quad_tree;
-  void SubConstruct(const Tag & child_tag, const Tag & center_tag, HandleType * cells, HandleType * temp, int size, bool quad_tree)
-  {
-    Storage::real_array center = RealArray(center_tag);
-    //create 8 nodes
-    Storage::real cell_center[3];
-    int offsets[8], sizes[8];
-    int dims = 3 - (quad_tree ? 1 : 0);
-    int numchildren = (1 << dims);
-    for(int k = 0; k < numchildren; ++k)
-    {
-      offsets[k] = 0;
-      sizes[k] = 0;
-    }
-    for(int r = 0; r < size; ++r)
-    {
-      Element c = Element(GetMeshLink(),cells[r]);
-      c->Centroid(cell_center);
-      int child_num = 0;
-      for(int k = 0; k < dims; ++k)
-      {
-        if( cell_center[k] > center[k] )
-        {
-          int m = 1<<k;
-          child_num += m;
-        }
-      }
-      c->IntegerDF(child_tag) = child_num;
-      sizes[child_num]++;
-    }
-    for(int k = 1; k < numchildren; ++k)
-    {
-      offsets[k] = offsets[k-1]+sizes[k-1];
-    }
-    for(int k = 0; k < numchildren; ++k)
-    {
-      std::stringstream name;
-      name << GetName() << "chld" << k;
-      ElementSet child = GetMeshLink()->CreateSetUnique(name.str()).first;
-      Storage::real_array child_center = child->RealArray(center_tag);
-      for(int r = 0; r < dims; ++r)
-      {
-        int l = 1 << r;
-        int m = k & l;
-        child_center[r] = center[r] + ((m ? 1.0 : -1.0) * center[r+3] * 0.25);
-        child_center[r+3] = center[r+3]*0.5;
-      }
-      int m = 0;
-      for(int r = 0; r < size; ++r)
-      {
-        Element c = Element(GetMeshLink(),cells[r]);
-        int q = c->IntegerDF(child_tag);
-        if( q == k ) (temp+offsets[k])[m++] = cells[r];
-      }
-      AddChild(child);
-      if( sizes[k] <= 16 && sizes[k] > 0 )
-        child->PutElements(temp+offsets[k],sizes[k]);
-    }
-    // cells array is not needed anymore
-    ElementSet child = GetChild();
-    for(int k = 0; k < numchildren; ++k)
-    {
-      if( sizes[k] > 16 )
-        Octree(child).SubConstruct(child_tag,center_tag,temp+offsets[k],cells+offsets[k],sizes[k], quad_tree);
-      child = child->GetSibling();
-    }
-  }
-  Cell SubFindCell(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
-  {
-    if( HaveChild() )
-    {
-      Storage::real_array center = RealArray(center_tag);
-      int child_num = 0, q;
-      int dims = 3 - (quad_tree ? 1 : 0);
-      for(int k = 0; k < dims; ++k)
-      {
-        if( pnt[k] > center[k] )
-          child_num += (1 << k);
-      }
-      q = 0;
-      ElementSet set = GetChild();
-      while(q != child_num) {set = set->GetSibling(); q++;}
-      return Octree(set).SubFindCell(center_tag,pnt,quad_tree);
-    }
-    else
-    {
-      HandleType * cells = getHandles();
-      int ncells = (int)nbHandles();
-      Node closest = InvalidNode();
-      Storage::real mindist = 1.0e20, dist;
-      for(int k = 0; k < ncells; ++k)
-      {
-        Node c = Node(GetMeshLink(),cells[k]);
-        Storage::real_array cnt = c->Coords();
-        dist = sqrt((cnt[0]-pnt[0])*(cnt[0]-pnt[0])+(cnt[1]-pnt[1])*(cnt[1]-pnt[1])+(cnt[2]-pnt[2])*(cnt[2]-pnt[2]));
-        if( mindist > dist )
-        {
-          mindist = dist;
-          closest = c;
-        }
-      }
-      if( closest.isValid() )
-      {
-        ElementArray<Cell> cells = closest->getCells();
-        for(ElementArray<Cell>::iterator c = cells.begin(); c != cells.end(); ++c)
-          if( c->Inside(pnt) ) return c->self();
-      }
-      return InvalidCell();
-    }
-  }
-  bool Inside(const Storage::real_array & center, Storage::real pnt[3], bool quad_tree) const
-  {
-    bool inside = true;
-    int dims = 3 - (quad_tree ? 1 : 0);
-    for(int i = 0; i < dims; ++i) 
-      inside &= (pnt[i] >= center[i] - center[3+i]*0.5 && pnt[i] <= center[i] + center[3+i]*0.5);
-    return inside;
-  }
-  Node SubFindNode(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
-  {
-    if( HaveChild() )
-    {
-      Storage::real_array center = RealArray(center_tag);
-      if( !Inside(center,pnt,quad_tree) ) return InvalidNode();
-      int child_num = 0, q;
-      int dims = 3 - (quad_tree ? 1 : 0);
-      for(int k = 0; k < dims; ++k)
-      {
-        if( pnt[k] > center[k] )
-          child_num += (1 << k);
-      }
-      q = 0;
-      ElementSet set = GetChild();
-      while(q != child_num) {set = set->GetSibling(); q++;}
-      return Octree(set).SubFindNode(center_tag,pnt,quad_tree);
-    }
-    else
-    {
-      HandleType * cells = getHandles();
-      int ncells = (int)nbHandles();
-      Node closest = InvalidNode();
-      Storage::real mindist = 1.0e20, dist;
-      for(int k = 0; k < ncells; ++k)
-      {
-        Node c = Node(GetMeshLink(),cells[k]);
-        Storage::real_array cnt = c->Coords();
-        dist = sqrt((cnt[0]-pnt[0])*(cnt[0]-pnt[0])+(cnt[1]-pnt[1])*(cnt[1]-pnt[1])+(cnt[2]-pnt[2])*(cnt[2]-pnt[2]));
-        if( mindist > dist )
-        {
-          mindist = dist;
-          closest = c;
-        }
-      }
-      return closest;
-    }
-  }
-  void SubDestroy()
-  {
-    if( HaveChild() )
-    {
-      ElementSet set = GetChild(), next;
-      while(set->isValid())
-      {
-        next = set->GetSibling();
-        Octree(set).SubDestroy();
-        set = next;
-      }
-    }
-    DeleteSet();
-    handle = InvalidHandle();
-    handle_link = NULL;
-  }
-public:
-  Octree() : ElementSet(InvalidElementSet()) {}
-  Octree(const Octree & other) : ElementSet(other) {}
-  Octree(const ElementSet & eset) : ElementSet(eset) {}
-  void Construct(ElementType elem, bool quad_tree = false)
-  {
-    save_quad_tree = quad_tree;
-    int dims = 3 - (quad_tree ? 1 : 0);
-    Tag child_tag = GetMeshLink()->CreateTag("OCTREE_CHILD_NUM_"+GetName(),DATA_INTEGER,elem,NONE,1);
-    save_center_tag = GetMeshLink()->CreateTag("OCTREE_CENTER_"+GetName(),DATA_REAL,ESET,ESET,6);
-    Storage::real bounds[3][2];
-    for(int k = 0; k < dims; ++k)
-    {
-      bounds[k][0] = 1.0e20;
-      bounds[k][1] =-1.0e20;
-    }
-    //calculate bounds
-    for(Mesh::iteratorNode node = GetMeshLink()->BeginNode(); node != GetMeshLink()->EndNode(); ++node)
-    {
-      Storage::real_array coord = node->Coords();
-      for(int k = 0; k < dims; ++k)
-      {
-        if( coord[k] < bounds[k][0] ) bounds[k][0] = coord[k];
-        if( coord[k] > bounds[k][1] ) bounds[k][1] = coord[k];
-      }
-    }
-    Storage::real_array center_data = RealArray(save_center_tag);
-    for(int k = 0; k < dims; ++k)
-    {
-      center_data[k] = (bounds[k][0]+bounds[k][1])*0.5; //central position
-      center_data[k+3] = bounds[k][1]-bounds[k][0]; //length
-    }
-    //copy cells
-    int size = GetMeshLink()->NumberOf(elem), k = 0;
-    HandleType * cells = new HandleType[size*2];
-    HandleType * temp = cells+size;
-    for(Mesh::iteratorElement cell = GetMeshLink()->BeginElement(elem); cell != GetMeshLink()->EndElement(); ++cell)
-      cells[k++] = *cell;
-    SubConstruct(child_tag,save_center_tag,cells,temp,size,quad_tree);
-    GetMeshLink()->DeleteTag(child_tag);
-  }
-  Cell FindCell(Storage::real pnt[3]) const
-  {
-    return SubFindCell(save_center_tag,pnt,save_quad_tree);
-  }
-  Node FindNode(Storage::real pnt[3]) const
-  {
-    return SubFindNode(save_center_tag,pnt,save_quad_tree);
-  }
-  void Destroy()
-  {
-    if( save_center_tag.isValid() )
-      GetMeshLink()->DeleteTag(save_center_tag);
-    SubDestroy();
-  }
-  ~Octree() { }
-};
 
 
 
@@ -576,9 +277,58 @@ public:
 		}
 		
 	}
+	void SVGDraw(std::ostream & file, double modelview[16], double projection[16], int viewport[4])
+	{
+		for (unsigned int i = 0; i < points.size() - 1; i++)
+		{
+			double * v0 = points[i].data();
+			double * v1 = points[i+1].data();
+			color_t c(velarr[i + 1] * 0.65, 0.65*(velarr[i + 1] < 0.5 ? velarr[i] : 1.0 - velarr[i]), 0.65*(1 - velarr[i + 1]));
+			file << "<g stroke=\"" << c.svg_rgb() << "\">" << std::endl;
+			svg_line(file, v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], modelview, projection, viewport);
+			file << "</g>" << std::endl;
+		}
+	}
 };
 
 std::vector<Streamline> streamlines;
+
+
+class segment
+{
+	coord v[2];
+public:
+	segment(coord a, coord b) 
+	{
+		v[0] = a; 
+		v[1] = b;
+	}
+	segment(const segment & b)
+	{
+		v[0] = b.v[0];
+		v[1] = b.v[1];
+	}
+	segment & operator =(segment const & b)
+	{
+		v[0] = b.v[0];
+		v[1] = b.v[1];
+		return *this;
+	}
+	void Draw()
+	{
+		glVertex3dv(v[0].data());
+		glVertex3dv(v[1].data());
+	}
+	void SVGDraw(std::ostream & file, double modelview[16], double projection[16], int viewport[4])
+	{
+		double * v0 = v[0].data();
+		double * v1 = v[1].data();
+		svg_line(file, v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], modelview, projection, viewport);
+	}
+};
+
+std::vector<segment> segments;
+
 
 
 const int name_width = 32;
@@ -712,43 +462,6 @@ void screenshot()
   glViewport(0,0,width,height);
 }
 
-struct color_t
-{
-	float c[4];
-	color_t() {memset(c,0,sizeof(float)*4);}
-	color_t(float r, float g, float b)
-	{
-		c[0] = r;
-		c[1] = g;
-		c[2] = b;
-		c[3] = 1.0;
-	}
-	color_t(float r, float g, float b, float a)
-	{
-		c[0] = r;
-		c[1] = g;
-		c[2] = b;
-		c[3] = a;
-	}
-	color_t(const color_t & other) {memcpy(c,other.c,sizeof(float)*4);}
-	color_t & operator =(color_t const & other)
-	{
-		memmove(c,other.c,sizeof(float)*4);
-		return *this;
-	}
-	void set_color() const {glColor4fv(c);}
-	float & r() {return c[0];}
-	float & g() {return c[1];}
-	float & b() {return c[2];}
-	float & a() {return c[3];}
-	float r() const {return c[0];}
-	float g() const {return c[1];}
-	float b() const {return c[2];}
-	float a() const {return c[3];}
-	color_t operator *(float mult)const {return color_t(c[0]*mult,c[1]*mult,c[2]*mult,c[3]*mult);}
-	color_t operator +(color_t other)const{return color_t(c[0]+other.c[0],c[1]+other.c[1],c[2]+other.c[2],c[3]+other.c[3]);}
-	color_t operator -(color_t other)const {return color_t(c[0]-other.c[0],c[1]-other.c[1],c[2]-other.c[2],other.c[3]);}
-};
 
 class color_bar
 {
@@ -983,8 +696,8 @@ public:
 			gluProject(right,bottom+ticks[i+1]*(top-bottom),0,modelview,projection,viewport,&px2,&py2,&z); py2 = height - py2;
 			file << "<def>" << std::endl;
 			file << "<linearGradient id=\"grad"<<i<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << px1 << "\" y1=\""<<py1<<"\" x2=\""<<px1<<"\" y2=\""<<py2<<"\">" << std::endl;
-			file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(colors[i].r()*255)<<","<<floor(colors[i].g()*255)<<","<<floor(colors[i].b()*255)<<")\"/>" << std::endl;
-			file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor(colors[i+1].r()*255)<<","<<floor(colors[i+1].g()*255)<<","<<floor(colors[i+1].b()*255)<<")\"/>" << std::endl;
+			file << "<stop offset=\"0%\" stop-color=\""<< colors[i].svg_rgb() << "\"/>" << std::endl;
+			file << "<stop offset=\"100%\" stop-color=\"" << colors[i+1].svg_rgb() << "\"/>" << std::endl;
         	file << "</linearGradient>" << std::endl;
 			file << "</def>" << std::endl;
 			file << "<rect stroke=\"none\" x=\""<<px1<<"\" y=\""<<py2<<"\" width=\""<< px2-px1 <<"\" height=\""<<py1-py2<<"\" fill=\"url(#grad"<<i<<")\"/>" << std::endl;
@@ -1185,7 +898,7 @@ public:
 			double pverts1x,pverts1y;
 			double pverts2x,pverts2y;
 			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
-			file << "<g stroke=\"none\" fill=\"rgb("<<floor(cntcolor.r()*255)<<","<<floor(cntcolor.g()*255)<<","<<floor(cntcolor.b()*255)<<")\">" << std::endl;
+			file << "<g stroke=\"none\" fill=\"" << cntcolor.svg_rgb() << "\">" << std::endl;
 			for(unsigned k = 0; k < verts.size(); k+=3) 
 			{
 				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
@@ -1202,8 +915,8 @@ public:
 			color_t c0 = CommonColorBar->pick_color(cnttexcoord*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min());
 			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
 			//file << "<!-- " << cnttexcoord << " color " << c0.r() << " " << c0.g() << " " << c0.b() << " " << c0.a() << " -->" << std::endl;
-			//file << "<g stroke=\"none\" fill=\"rgb("<<floor(c0.r()*255)<<","<<floor(c0.g()*255)<<","<<floor(c0.b()*255)<<")\" fill-opacity=\"" << c[3] << "\">" << std::endl;
-			file << "<g stroke=\"none\" fill=\"rgb("<<floor(c0.r()*255)<<","<<floor(c0.g()*255)<<","<<floor(c0.b()*255)<<")\">" << std::endl;
+			//file << "<g stroke=\"none\" "<< c0.svg_rgba_fill() <<"\">" << std::endl;
+			file << "<g stroke=\"none\" fill=\""<< c0.svg_rgb() << "\">" << std::endl;
 			for(unsigned k = 0; k < verts.size(); k+=3) 
 			{
 				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height - pverts1y;
@@ -1229,16 +942,16 @@ public:
 				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
 				file << "<defs>" << std::endl;
 				file << "<linearGradient id=\"fadeA"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts0x << "\" y1=\"" << pverts0y << "\" x2=\"" << (pverts1x+pverts2x)*0.5 << "\" y2=\"" << (pverts1y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(c0.r()*255)<<","<<floor(c0.g()*255)<<","<<floor(c0.b()*255)<<")\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor((c1.r()+c2.r())*0.5*255)<<","<<floor((c1.g()+c2.g())*0.5*255)<<","<<floor((c1.b()+c2.b())*0.5*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"" << c0.svg_rgb() << "\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"" << ((c1+c2)*0.5).svg_rgb() << "\"/>" <<std::endl;
 				file << "</linearGradient>"<<std::endl;
 				file << "<linearGradient id=\"fadeB"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts1x << "\" y1=\"" << pverts1y << "\" x2=\"" << (pverts0x+pverts2x)*0.5 << "\" y2=\"" << (pverts0y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(c1.r()*255)<<","<<floor(c1.g()*255)<<","<<floor(c1.b()*255)<<")\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor((c0.r()+c2.r())*0.5*255)<<","<<floor((c0.g()+c2.g())*0.5*255)<<","<<floor((c0.b()+c2.b())*0.5*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"0%\" stop-color=\""<< c1.svg_rgb() <<"\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"" << ((c0+c2)*0.5).svg_rgb() << "\"/>" <<std::endl;
 				file << "</linearGradient>"<<std::endl;
 				file << "<linearGradient id=\"fadeC"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts2x << "\" y1=\"" << pverts2y << "\" x2=\"" << (pverts0x+pverts1x)*0.5 << "\" y2=\"" << (pverts0y+pverts1y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(c2.r()*255)<<","<<floor(c2.g()*255)<<","<<floor(c2.b()*255)<<")\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"rgb("<<floor((c1.r()+c0.r())*0.5*255)<<","<<floor((c1.g()+c0.g())*0.5*255)<<","<<floor((c1.b()+c0.b())*0.5*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"" << c2.svg_rgb() << "\"/>" <<std::endl;
+				file << "<stop offset=\"100%\" stop-color=\"" << ((c0+c1)*0.5).svg_rgb() << "\"/>" <<std::endl;
 				file << "</linearGradient>"<<std::endl;
 				file << "<path id=\"pathA"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeA"<<shape_id<<")\"/>" <<std::endl;
 				file << "<path id=\"pathB"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeB"<<shape_id<<")\"/>" <<std::endl;
@@ -1267,15 +980,15 @@ public:
 				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
 				file << "<defs>" << std::endl;
 				file << "<linearGradient id=\"fadeA"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts0x << "\" y1=\"" << pverts0y << "\" x2=\"" << (pverts1x+pverts2x)*0.5 << "\" y2=\"" << (pverts1y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(cntcolor.r()*255)<<","<<floor(cntcolor.g()*255)<<","<<floor(cntcolor.b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"" << cntcolor.svg_rgb() << "\"/>" <<std::endl;
 				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
 				file << "</linearGradient>"<<std::endl;
 				file << "<linearGradient id=\"fadeB"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts1x << "\" y1=\"" << pverts1y << "\" x2=\"" << (pverts0x+pverts2x)*0.5 << "\" y2=\"" << (pverts0y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(colors[k/3].r()*255)<<","<<floor(colors[k/3].g()*255)<<","<<floor(colors[k/3].b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"" << colors[k/3].svg_rgb() << "\"/>" <<std::endl;
 				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
 				file << "</linearGradient>"<<std::endl;
 				file << "<linearGradient id=\"fadeC"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts2x << "\" y1=\"" << pverts2y << "\" x2=\"" << (pverts0x+pverts1x)*0.5 << "\" y2=\"" << (pverts0y+pverts1y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"rgb("<<floor(colors[(k/3+1)%colors.size()].r()*255)<<","<<floor(colors[(k/3+1)%colors.size()].g()*255)<<","<<floor(colors[(k/3+1)%colors.size()].b()*255)<<")\"/>" <<std::endl;
+				file << "<stop offset=\"0%\" stop-color=\"" << colors[(k/3+1)%colors.size()].svg_rgb() << "\"/>" <<std::endl;
 				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
 				file << "</linearGradient>"<<std::endl;
 				file << "<path id=\"pathA"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeA"<<shape_id<<")\"/>" <<std::endl;
@@ -4407,6 +4120,12 @@ void draw_screen()
 		for(int k = 0; k < streamlines.size(); ++k)
 			streamlines[k].Draw(true);//interactive);
 
+		glColor4f(0, 0, 0, 1);
+		glBegin(GL_LINES);
+		for (int k = 0; k < segments.size(); ++k)
+			segments[k].Draw();
+		glEnd();
+
 		if( boundary )
 		{
 			glEnable(GL_BLEND);
@@ -4662,149 +4381,236 @@ void draw_screen()
 						if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
 						{
 							Tag source_tag = mesh->GetTag(sname);
-							if( source_tag.GetDataType() == DATA_REAL || source_tag.GetDataType() == DATA_INTEGER )
+							if ((comp >= 0 && comp < source_tag.GetSize()) || comp == ENUMUNDEF)
 							{
-								if( (comp >= 0 && comp < source_tag.GetSize()) || comp == ENUMUNDEF )
+								visualization_type = NONE;
+								for (size_t q = 0; q < stype.size(); ++q)
 								{
-									visualization_type = NONE;
-									for(size_t q = 0; q < stype.size(); ++q) 
-									{
-										stype[q] = tolower(stype[q]);
-										typen[q] = tolower(typen[q]);
-									}
-									if( stype == "node" ) visualization_type = NODE;
-									else if ( stype == "edge" ) visualization_type = EDGE;
-									else if ( stype == "face" ) visualization_type = FACE;
-									else if ( stype == "cell" ) 
-									{
-										visualization_type = CELL;
-										visualization_smooth = false;
-									}
-									else if ( stype == "smooth_cell" ) 
-									{
-										visualization_type = CELL;
-										visualization_smooth = true;
-									}
+									stype[q] = tolower(stype[q]);
+									typen[q] = tolower(typen[q]);
+								}
+								if (stype == "node") visualization_type = NODE;
+								else if (stype == "edge") visualization_type = EDGE;
+								else if (stype == "face") visualization_type = FACE;
+								else if (stype == "cell")
+								{
+									visualization_type = CELL;
+									visualization_smooth = false;
+								}
+								else if (stype == "smooth_cell")
+								{
+									visualization_type = CELL;
+									visualization_smooth = true;
+								}
 
-									if( visualization_type != NONE )
+								if (visualization_type != NONE)
+								{
+									if (source_tag.isDefined(visualization_type))
 									{
-										if( source_tag.isDefined(visualization_type) )
+										if (source_tag.GetDataType() == DATA_REAL || source_tag.GetDataType() == DATA_INTEGER || source_tag.GetDataType() == DATA_BULK || source_tag.GetDataType() == DATA_VARIABLE)
 										{
+											if (source_tag.GetDataType() == DATA_VARIABLE)
+												printf("I can show only value for data of type variable\n");
 											float min = 1.0e20, max = -1.0e20;
 											printf("prepearing data for visualization\n");
-											if( visualization_tag.isValid() ) visualization_tag =  mesh->DeleteTag(visualization_tag);
-											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG",DATA_REAL,NODE,NONE,1);
+											if (visualization_tag.isValid()) visualization_tag = mesh->DeleteTag(visualization_tag);
+											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG", DATA_REAL, NODE, NONE, 1);
 
-											for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
+											for (Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
 											{
 												ElementArray<Element> elems = it->getAdjElements(visualization_type);
 												Storage::real_array coords = it->Coords();
 												Storage::real cnt[3], dist, wgt;
 												Storage::real val = 0.0, vol = 0.0, res;
-												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF) )
+												for (ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if (jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF))
 												{
 													jt->Centroid(cnt);
-													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
-													wgt = 1.0/(dist+1.0e-8);
-													if( source_tag.GetDataType() == DATA_REAL )
+													dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
+													wgt = 1.0 / (dist + 1.0e-8);
+													if (source_tag.GetDataType() == DATA_REAL)
 													{
 														Storage::real_array v = jt->RealArray(source_tag);
-														if( comp == ENUMUNDEF )
+														if (comp == ENUMUNDEF)
 														{
 															double l = 0;
-															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
 															l = sqrt(l);
 															val += wgt * l;
 														}
 														else val += wgt * v[comp];
 													}
-													else if( source_tag.GetDataType() == DATA_INTEGER )
+													else if (source_tag.GetDataType() == DATA_INTEGER)
 													{
 														Storage::integer_array v = jt->IntegerArray(source_tag);
-														if( comp == ENUMUNDEF )
+														if (comp == ENUMUNDEF)
 														{
 															double l = 0;
-															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
 															l = sqrt(l);
 															val += wgt * l;
 														}
-														else val += wgt * v[comp];
+														else val += wgt * static_cast<double>(v[comp]);
+													}
+													else if (source_tag.GetDataType() == DATA_BULK)
+													{
+														Storage::bulk_array v = jt->BulkArray(source_tag);
+														if (comp == ENUMUNDEF)
+														{
+															double l = 0;
+															for (unsigned q = 0; q < v.size(); ++q)
+															{
+																double g = static_cast<double>(v[q]);
+																l += g * g;
+															}
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * static_cast<double>(v[comp]);
+													}
+													else if (source_tag.GetDataType() == DATA_VARIABLE)
+													{
+														Storage::var_array v = jt->VariableArray(source_tag);
+														if (comp == ENUMUNDEF)
+														{
+															double l = 0;
+															for (unsigned q = 0; q < v.size(); ++q) l += v[q].GetValue() * v[q].GetValue();
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * static_cast<double>(v[comp].GetValue());
 													}
 													vol += wgt;
 												}
-												res = val/vol;
-												if( res < min ) min = res;
-												if( res > max ) max = res;
+												res = val / vol;
+												if (res < min) min = res;
+												if (res > max) max = res;
 												it->RealDF(visualization_tag) = res;
 											}
-											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG",DATA_REAL,CELL,NONE,1);
-											for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG", DATA_REAL, CELL, NONE, 1);
+											for (Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
 											{
 												ElementArray<Element> elems = it->getAdjElements(visualization_type);
 												Storage::real coords[3];
 												it->Centroid(coords);
 												Storage::real cnt[3], dist, wgt;
 												Storage::real val = 0.0, vol = 0.0, res;
-												for(ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if( jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF) )
+												for (ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if (jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF))
 												{
 													jt->Centroid(cnt);
-													dist = (cnt[0]-coords[0])*(cnt[0]-coords[0])+(cnt[1]-coords[1])*(cnt[1]-coords[1])+(cnt[2]-coords[2])*(cnt[2]-coords[2]);
-													wgt = 1.0/(dist+1.0e-8);
-													if( source_tag.GetDataType() == DATA_REAL )
+													dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
+													wgt = 1.0 / (dist + 1.0e-8);
+													if (source_tag.GetDataType() == DATA_REAL)
 													{
 														Storage::real_array v = jt->RealArray(source_tag);
-														if( comp == ENUMUNDEF )
+														if (comp == ENUMUNDEF)
 														{
 															double l = 0;
-															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
 															l = sqrt(l);
 															val += wgt * l;
 														}
 														else val += wgt * v[comp];
 													}
-													else if( source_tag.GetDataType() == DATA_INTEGER )
+													else if (source_tag.GetDataType() == DATA_INTEGER)
 													{
 														Storage::integer_array v = jt->IntegerArray(source_tag);
-														if( comp == ENUMUNDEF )
+														if (comp == ENUMUNDEF)
 														{
 															double l = 0;
-															for(unsigned q = 0; q < v.size(); ++q) l += v[q]*v[q];
+															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
 															l = sqrt(l);
 															val += wgt * l;
 														}
 														else val += wgt * v[comp];
+													}
+													else if (source_tag.GetDataType() == DATA_BULK)
+													{
+														Storage::bulk_array v = jt->BulkArray(source_tag);
+														if (comp == ENUMUNDEF)
+														{
+															double l = 0;
+															for (unsigned q = 0; q < v.size(); ++q)
+															{
+																double g = static_cast<double>(v[q]);
+																l += g*g;
+															}
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * static_cast<double>(v[comp]);
+													}
+													else if (source_tag.GetDataType() == DATA_VARIABLE)
+													{
+														Storage::var_array v = jt->VariableArray(source_tag);
+														if (comp == ENUMUNDEF)
+														{
+															double l = 0;
+															for (unsigned q = 0; q < v.size(); ++q) l += v[q].GetValue() * v[q].GetValue();
+															l = sqrt(l);
+															val += wgt * l;
+														}
+														else val += wgt * v[comp].GetValue();
 													}
 													vol += wgt;
 												}
-												res = val/vol;
-												if( res < min ) min = res;
-												if( res > max ) max = res;
+												res = val / vol;
+												if (res < min) min = res;
+												if (res > max) max = res;
 												it->RealDF(visualization_tag) = res;
 											}
 
 											CommonColorBar->set_min(min);
 											CommonColorBar->set_max(max);
 											char comment[1024];
-											sprintf(comment,"%s[%d] on %s, [%g:%g]",name,comp,typen,min,max);
+											sprintf(comment, "%s[%d] on %s, [%g:%g]", name, comp, typen, min, max);
 											CommonColorBar->set_comment(comment);
 											clipupdate = true;
 											/*
 											all_boundary.clear();
 											INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
-											for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++) 
+											for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++)
 											{
 											all_boundary.push_back(DrawFace(boundary_faces[k]));
 											if( k%pace == 0 ) all_boundary.back().set_flag(true);
 											}
 											*/
 										}
-										else printf("tag %s is not defined on element type %s\n",name, typen);
+										else if (source_tag.GetDataType() == DATA_REFERENCE)
+										{
+											segments.clear();
+											if (comp == ENUMUNDEF)
+											{
+												for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
+												{
+													coord cnt1, cnt2;
+													it->Centroid(cnt1.data());
+													Storage::reference_array arr = it->ReferenceArray(source_tag);
+													for (Storage::reference_array::iterator jt = arr.begin(); jt != arr.end(); ++jt) if (jt->isValid())
+													{
+														jt->Centroid(cnt2.data());
+														segments.push_back(segment(cnt1, cnt2));
+													}
+												}
+											}
+											else for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
+											{
+												coord cnt1, cnt2;
+												it->Centroid(cnt1.data());
+												Storage::reference_array arr = it->ReferenceArray(source_tag);
+												if( arr.size() > comp )
+												{
+													arr[comp]->Centroid(cnt2.data());
+													segments.push_back(segment(cnt1, cnt2));
+												}
+											}
+										}
+										else printf("tag %s is not real or integer or bulk or variable or reference\n", name);
 									}
-									else printf("do not understand element type %s, should be: node, edge, face, cell, smooth_cell\n",typen);
+									else printf("tag %s is not defined on element type %s\n", name, typen);
 								}
-								else printf("component is out of range for tag %s of size %u\n",name,source_tag.GetSize());
+								else printf("do not understand element type %s, should be: node, edge, face, cell, smooth_cell\n", typen);
 							}
-							else printf("tag %s is not real or integer\n",name);
+							else printf("component is out of range for tag %s of size %u\n", name, source_tag.GetSize());
 						}
 						else printf("mesh do not have tag with name %s\n",name);
 					}
@@ -4958,8 +4764,13 @@ void svg_draw(std::ostream & file)
 		}
 
 
-		//for(int k = 0; k < streamlines.size(); ++k)
-		//streamlines[k].Draw(true);//interactive);
+		for(int k = 0; k < streamlines.size(); ++k)
+			streamlines[k].SVGDraw(file,modelview,projection,viewport);//interactive);
+
+		file << "<g stroke=\"black\">" << std::endl;
+		for (int k = 0; k < segments.size(); ++k)
+			segments[k].SVGDraw(file, modelview, projection, viewport);
+		file << "</g>" << std::endl;
 
 		if( boundary )
 		{

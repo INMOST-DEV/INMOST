@@ -1142,11 +1142,11 @@ namespace INMOST
 		/// @param B Matrix to be concatenated to current matrix.
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatRows
-		Matrix ConcatCols(const Matrix & B)
+		Matrix ConcatCols(const Matrix & B) const
 		{
 			assert(Rows() == B.Rows());
 			Matrix ret(Rows(),Cols()+B.Cols());
-			Matrix & A = *this;
+			const Matrix & A = *this;
 			for(enumerator i = 0; i < Rows(); ++i)
 			{
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -1162,11 +1162,11 @@ namespace INMOST
 		/// @param B Matrix to be concatenated to current matrix.
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatCols
-		Matrix ConcatRows(const Matrix & B)
+		Matrix ConcatRows(const Matrix & B) const
 		{
 			assert(Cols() == B.Cols());
 			Matrix ret(Rows()+B.Rows(),Cols());
-			Matrix & A = *this;
+			const Matrix & A = *this;
 			for(enumerator i = 0; i < Rows(); ++i)
 			{
 				for(enumerator j = 0; j < Cols(); ++j)

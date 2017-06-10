@@ -4,7 +4,11 @@ set(SOURCE main.cpp
            clipboard.cpp
            rotate.h
            my_glut.h
-           clipboard.h)
+           clipboard.h
+           color.h
+           coord.h
+           coord.cpp
+           octree.h)
 find_package(OpenGL)
 find_package(GLUT)
 
