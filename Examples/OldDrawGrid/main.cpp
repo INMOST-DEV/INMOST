@@ -662,9 +662,11 @@ void screenshot()
   width *= tiles;
   height *= tiles;
   
-  char * pixelbuffer = new char[width*height*3+oldwidth*oldheight*3];
-  char * tempbuffer = pixelbuffer + width*height*3;
-
+  char * vpixelbuffer = new char[width*height*3+oldwidth*oldheight*3];
+  assert(vpixelbuffer);
+  char * vtempbuffer = vpixelbuffer + width*height*3;
+  shell<char> pixelbuffer(vpixelbuffer, width*height * 3);
+  shell<char> tempbuffer(vtempbuffer, oldwidth*oldheight * 3);
   
   
   
@@ -675,7 +677,7 @@ void screenshot()
       glViewport(-oldwidth*i,-oldheight*j,width,height);
       draw_screen();
       glReadBuffer(GL_BACK);
-      glReadPixels(0,0,oldwidth,oldheight,GL_BGR_EXT,GL_UNSIGNED_BYTE,tempbuffer);
+      glReadPixels(0,0,oldwidth,oldheight,GL_BGR_EXT,GL_UNSIGNED_BYTE,vtempbuffer);
 
       int koff = oldwidth*(i);
       int loff = oldheight*(j);
@@ -703,8 +705,8 @@ void screenshot()
   
   
   
-  write_tga("screenshot.tga",width,height,pixelbuffer);
-  delete [] pixelbuffer;
+  write_tga("screenshot.tga",width,height,vpixelbuffer);
+  delete [] vpixelbuffer;
   width = oldwidth;
   height = oldheight;
   glViewport(0,0,width,height);
@@ -3534,7 +3536,7 @@ public:
 	bool Canceled() {return canceled;}
 	void Draw()
 	{
-		float h = 24.0f/(float)height;
+		float h = 26.0f/(float)height;
 		
 		glColor3f(1,1,1);
 		glBegin(GL_QUADS);
@@ -3552,7 +3554,7 @@ public:
 		glEnd();
 		
 		glColor4f(0,0,0,1);
-		glRasterPos2d(-0.985,-0.985);
+		glRasterPos2d(-0.985,-0.98);
 		//printtext(str.c_str());
 		char oldval[4096];
 		if( type == Double ) sprintf(oldval,"%g",*(double*)input_link);
@@ -3941,7 +3943,7 @@ face2gl DrawFace(Element f)
 	return ret;
 }
 
-void DrawElement(Element e, color_t face, color_t edge, color_t node)
+void DrawElement(Element e, color_t face, color_t edge, color_t node, double campos[3])
 {
 	if( e.GetElementType() == NODE )
 	{
@@ -3981,27 +3983,48 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node)
 		glEnd();
 		node.set_color();
 		ElementArray<Node> nodes = e->getNodes();
+		ElementArray<Edge> edges = e->getEdges();
 		glBegin(GL_POINTS);
 		for(ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); ++it)
 			glVertex3dv(it->Coords().data());
 		glEnd();
+		glColor3f(0, 0, 0);
+		//glDisable(GL_DEPTH_TEST);
+		for (ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); ++it)
+		{
+			double cnt[3];
+			it->Centroid(cnt);
+			//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
+			glRasterPos3dv(cnt);
+			printtext("%d", it->LocalID());
+		}
+		//glEnable(GL_DEPTH_TEST);
 	}
 	else if( e.GetElementType() == CELL )
 	{
 		ElementArray<Face> dfaces = e.getFaces();
 		face.set_color();
 		glBegin(GL_TRIANGLES);
-		for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end
-			(); ++it)
+		for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end(); ++it)
 		{
 			face2gl f = DrawFace(it->self());
 			f.draw();
 		}
 		glEnd();
+		glColor3f(0, 0, 0);
+		//glDisable(GL_DEPTH_TEST);
+		for (ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end(); ++it)
+		{
+			double cnt[3];
+			it->Centroid(cnt);
+			//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
+			glRasterPos3dv(cnt);
+			printtext("%d", it->LocalID());
+		}
+		//glEnable(GL_DEPTH_TEST);
 		edge.set_color();
 		glBegin(GL_LINES);
-		for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end
-			(); ++it)
+		for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end(); ++it)
 		{
 			face2gl f = DrawFace(it->self());
 			f.drawedges();
@@ -4084,13 +4107,15 @@ double display_elem_info(Element e, double top, double left, double interval)
 	set_matrix2d();
 	
 	
-	glColor3f(1,1,1);
+	glColor4f(1,1,1,0.45);
+	glEnable(GL_BLEND);
 	glBegin(GL_QUADS);
 	glVertex2f(left-0.01,bottom-0.01);
 	glVertex2f(left-0.01,top-0.01);
 	glVertex2f(0.99,top-0.01);
 	glVertex2f(0.99,bottom-0.01);
 	glEnd();
+	glDisable(GL_BLEND);
 	glColor3f(0,0,0);
 	glBegin(GL_LINE_LOOP);
 	glVertex2f(left-0.01,bottom-0.01);
@@ -4203,7 +4228,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 		}
 	}
 	glEnable(GL_DEPTH_TEST);
-	return top;
+	return top-2*interval;
 }
 
 void draw_screen()
@@ -4267,7 +4292,7 @@ void draw_screen()
 	
 
 	double campos[3] = {0.5,0.5,0}, pickp[3], pickd[3];
-	whereami(campos[0],campos[1],campos[2]);
+	whereami(campos[0], campos[1], campos[2]);
 	int picked = -1;
 
 	
@@ -4476,10 +4501,10 @@ void draw_screen()
 
 	if( draw_orphan )
 		for(int k = 0; k < (int)orphans.size(); ++k)
-			DrawElement(orphans[k],color_t(1,0,1),color_t(0,1,1),color_t(0,0,1));
+			DrawElement(orphans[k],color_t(1,0,1),color_t(0,1,1),color_t(0,0,1),campos);
 
 	if( disp_e.isValid() && disp_e.GetElementType() != ESET)
-		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1));
+		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1),campos);
 
 
 	double top = 0.96;

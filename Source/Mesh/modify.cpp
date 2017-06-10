@@ -226,9 +226,9 @@ namespace INMOST
 		m->ReleaseMarker(visited);
 		if( doexit )
 		{
-			m->RemMarkerArray(inner_faces.data(),inner_faces.size(),rem);
-			m->RemMarkerArray(edges.data(),edges.size(),rem);
-			m->RemMarkerArray(nodes.data(),nodes.size(),rem);
+			m->RemMarkerArray(inner_faces.data(),(enumerator)inner_faces.size(),rem);
+			m->RemMarkerArray(edges.data(), (enumerator)edges.size(), rem);
+			m->RemMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
 			m->ReleaseMarker(rem);
 			return Cell(m,InvalidHandle());
 		}
@@ -380,8 +380,8 @@ namespace INMOST
 				doexit = true;
 		}
 		for(tiny_map<HandleType,int,64>::iterator it = face_visit.begin(); it != face_visit.end(); it++) m->RemMarker(it->first,rem);
-		m->RemMarkerArray(edges.data(),edges.size(),rem);
-		m->RemMarkerArray(nodes.data(),nodes.size(),rem);
+		m->RemMarkerArray(edges.data(), (enumerator)edges.size(),rem);
+		m->RemMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
 		m->ReleaseMarker(rem);
 		if( doexit ) return false;
 		return true;
@@ -415,7 +415,7 @@ namespace INMOST
 				}
 			}
 		}
-		m->RemMarkerArray(cells.data(),cells.size(),edge_set);
+		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), edge_set);
 		assert(cells.size() <= 2);
 		//check is there a topological problem
 		//new face should be adjacent to no more then two cells
@@ -497,7 +497,7 @@ namespace INMOST
 				m->RemMarker(it->first,rem);
 				m->RemMarker(it->first,edge_set);
 			}
-			m->RemMarkerArray(nodes.data(),nodes.size(),rem);
+			m->RemMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
 			m->ReleaseMarker(edge_set);
 			m->ReleaseMarker(rem);
 			assert( !dothrow ); //report the situation, because user need to debug the input
@@ -696,7 +696,7 @@ namespace INMOST
 					m->SetMarker(hc[it],rem);
 				}
 		}
-		m->RemMarkerArray(cells.data(),cells.size(),rem);
+		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), rem);
 		dynarray<HandleType,64> nodes;
 		tiny_map<HandleType, int,64> edge_visit;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
@@ -793,7 +793,7 @@ namespace INMOST
 			}
 		}
 		
-		m->RemMarkerArray(cells.data(),cells.size(),rem);
+		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), rem);
 		
 		
 
@@ -872,7 +872,7 @@ namespace INMOST
 
 		if( doexit )
 		{
-			m->RemMarkerArray(edges.data(),edges.size(),rem);
+			m->RemMarkerArray(edges.data(), (enumerator)edges.size(), rem);
 			m->ReleaseMarker(rem);
 			assert(!dothrow);
 			//if( dothrow ) throw Impossible; // bad input

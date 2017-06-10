@@ -813,6 +813,11 @@ namespace INMOST
 		/// @param pm Number of columns.
 		/// \warning The matrix does not necessery have zero entries.
 		Matrix(enumerator pn, enumerator pm) : space(pn*pm), n(pn), m(pm) {}
+		/// Construct a matrix with provided sizes and fills with value.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		/// @param c Value to fill the matrix.
+		Matrix(enumerator pn, enumerator pm, const Var & c) : space(pn*pm,c), n(pn), m(pm) {}
 		/// Copy matrix.
 		/// @param other Another matrix of the same type.
 		Matrix(const Matrix & other) : space(other.space), n(other.n), m(other.m)
@@ -1103,15 +1108,33 @@ namespace INMOST
 			return ret;
 		}
 		/// Unit matrix. Creates a square matrix of size pn by pn
-		/// and fills the diagonal with ones.
+		/// and fills the diagonal with c.
 		/// @param pn Number of rows and columns in the matrix.
+		/// @param c Value to put onto diagonal.
 		/// @return Returns a unit matrix.
-		static Matrix Unit(enumerator pn)
+		static Matrix Unit(enumerator pn, const Var & c = 1.0)
 		{
-			Matrix ret(pn,pn);
-			ret.Zero();
-			for(enumerator i = 0; i < pn; ++i) ret(i,i) = 1.0;
+			Matrix ret(pn,pn,0.0);
+			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
 			return ret;
+		}
+		/// Matix with 1 row, Create a matrix of size 1 by pn and
+		/// fills it with c.
+		/// @param pn Number of columns.
+		/// @param c Value to fill the matrix.
+		/// @return Returns a matrix with 1 row.
+		static Matrix Row(enumerator pn, const Var & c = 1.0)
+		{
+			return Matrix(1,pn,c);
+		}
+		/// Matix with 1 column, Create a matrix of size pn by 1 and
+		/// fills it with c.
+		/// @param pn Number of rows.
+		/// @param c Value to fill the matrix.
+		/// @return Returns a matrix with 1 column.
+		static Matrix Col(enumerator pn, const Var & c = 1.0)
+		{
+			return Matrix(pn, 1, c);
 		}
 		/// Concatenate B matrix as columns of current matrix.
 		/// Assumes that number of rows of current matrix is
@@ -1255,6 +1278,8 @@ namespace INMOST
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
 		::INMOST::SubMatrix<Var,storage_type> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+
+		const ::INMOST::SubMatrix<Var, storage_type> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	/// This class allows for in-place operations on submatrix of the matrix elements.
 	template<typename Var, typename Storage>
@@ -1338,7 +1363,7 @@ namespace INMOST
 		/// not affect elements of the submatrix or original matrix
 		/// used to create submatrix.
 		/// @return Matrix with same entries as submatrix.
-		Matrix<Var> Matrix()
+		::INMOST::Matrix<Var> MakeMatrix()
 		{
 			::INMOST::Matrix<Var> ret(Rows(),Cols());
 			for(enumerator i = 0; i < Rows(); ++i)
@@ -1752,6 +1777,11 @@ namespace INMOST
 	SubMatrix<Var,storage_type> Matrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{
 		return ::INMOST::SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
+	}
+	template<typename Var, typename storage_type>
+	const SubMatrix<Var, storage_type> Matrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+	{
+		return ::INMOST::SubMatrix<Var, storage_type>(*this, first_row, last_row, first_col, last_col);
 	}
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
