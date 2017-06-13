@@ -354,6 +354,7 @@ namespace INMOST
 	Element::GeometricType Mesh::ComputeGeometricType(ElementType etype, const HandleType * lc, INMOST_DATA_ENUM_TYPE s) const
 	{
 		Element::GeometricType ret = Element::Unset;
+		int dmax = -1, dmin = 4;
 		if( s == 0 && etype != NODE) return ret;
 		switch(etype)
 		{
@@ -365,8 +366,17 @@ namespace INMOST
 					ret = Element::Line;
 				break;
 			case FACE:
-
-				if( Element::GetGeometricDimension(GetGeometricType(lc[0])) == 0 )
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
+				{
+					int d = Element::GetGeometricDimension(GetGeometricType(lc[k]));
+					if (dmax < d) dmax = d;
+					if (dmin > d) dmin = d;
+				}
+				if (dmax != dmin)
+				{
+					ret = Element::MultiPolygon;
+				}
+				else if( dmax == 0 )
 				{ 
 					ret = Element::Line;
 				}
@@ -385,7 +395,17 @@ namespace INMOST
 				}
 				break;
 			case CELL:
-				if(  Element::GetGeometricDimension(GetGeometricType(lc[0])) == 1 )
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
+				{
+					int d = Element::GetGeometricDimension(GetGeometricType(lc[k]));
+					if (dmax < d) dmax = d;
+					if (dmin > d) dmin = d;
+				}
+				if (dmax != dmin)
+				{
+					ret = Element::MultiPolygon;
+				}
+				else if(  dmax == 1 )
 				{
 					if( !GetTopologyCheck(NEED_TEST_CLOSURE) || TestClosure(lc,s) )
 					{

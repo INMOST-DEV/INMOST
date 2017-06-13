@@ -1871,10 +1871,10 @@ namespace INMOST
 						}
 					}
 					hc.clear(); //disconnect cell from all of it's nodes
+					m->ComputeGeometricType(arr[el_num][it]);
 					if( !m->LowConn(arr[el_num][it]).empty() )
 					{
 						ElementArray<Node> newnodes(m);
-						m->ComputeGeometricType(arr[el_num][it]);
 						m->RestoreCellNodes(arr[el_num][it],newnodes); //find new nodes of the cell
 						hc.insert(hc.end(),newnodes.begin(),newnodes.end()); //connect to new nodes
 						//add me to my new nodes
@@ -1894,6 +1894,8 @@ namespace INMOST
 	{
 		assert( !(GetElementType() == EDGE && GetMeshLink()->LowConn(GetHandle()).size() > 2) ); // cannot add another node to edge
 		Mesh * m = GetMeshLink();
+		dynarray<HandleType, 64> arr[4];
+		MarkerType mod = m->CreateMarker();
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < num; k++)
 		{
 			assert( GetHandleElementType(adjacent[k]) == (GetElementType() >> 1) ); //only lower dimension elements can be connected
@@ -1902,11 +1904,22 @@ namespace INMOST
 			m->HighConn(adjacent[k]).push_back(GetHandle());
 			//this may be dead slow
 			//LowConn().push_back(adjacent[k]);
+			if (!m->GetMarker(adjacent[k], mod))
+			{
+				m->SetMarker(adjacent[k], mod);
+				arr[GetHandleElementNum(adjacent[k])].push_back(adjacent[k]);
+			}
 		}
 		adj_type & lc = m->LowConn(GetHandle());
 		//TODO:
 		//for face have to find positions where to attach edges
 		lc.insert(lc.end(),adjacent,adjacent+num);
+		if (!m->GetMarker(GetHandle(), mod))
+		{
+			m->SetMarker(GetHandle(), mod);
+			arr[GetElementNum()].push_back(GetHandle());
+		}
+		//perform fix instead of algorithm above
 		if( Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2 )
 		{
 			if( GetElementType() == CELL ) 
@@ -1919,6 +1932,7 @@ namespace INMOST
 					getAsFace()->FixNormalOrientation();
 			}
 		}
+		/*
 		if( GetElementType() == CELL ) //update cell nodes
 		{
 			//remove me from old nodes
@@ -1949,7 +1963,64 @@ namespace INMOST
 			}
 		}
 		else ComputeGeometricType();
-		UpdateGeometricData();
+		*/
+		//if element placed below on ierarhy was modified, then all upper elements
+		//should be also modified, start from lowest elements in ierarchy and go up
+		for (ElementType etype = NODE; etype <= CELL; etype = etype << 1)
+		{
+			int el_num = ElementNum(etype);
+			for (dynarray<HandleType, 64>::size_type it = 0; it < arr[el_num].size(); it++)
+			{
+				assert(GetHandleElementType(arr[el_num][it]) == etype);
+				if (etype < CELL) //check for upper adjacencies of current element
+				{
+					//check all upper adjacencies that may be affected by modification of me
+					adj_type & hc = m->HighConn(arr[el_num][it]);
+					for (adj_type::size_type jt = 0; jt < hc.size(); ++jt)
+					{
+						if (!m->GetMarker(hc[jt], mod))
+						{
+							m->SetMarker(hc[jt], mod);
+							arr[GetHandleElementNum(hc[jt])].push_back(hc[jt]);
+						}
+					}
+					m->ComputeGeometricType(arr[el_num][it]);
+				}
+				else //update nodes for current cell
+				{
+					//remove me from old nodes
+					adj_type & hc = m->HighConn(arr[el_num][it]);
+					for (adj_iterator jt = hc.begin(); jt != hc.end(); ++jt) //iterate over my nodes
+					{
+						adj_type & lc = m->LowConn(*jt);
+						adj_iterator kt = lc.begin();
+						while (kt != lc.end()) //iterate over nodes's cells
+						{
+							if ((*kt) == arr[el_num][it]) // if nodes's cell is equal to modified cell, then remove connection
+							{
+								kt = lc.erase(kt);
+								break;
+							}
+							else kt++;
+						}
+					}
+					hc.clear(); //disconnect cell from all of it's nodes
+					m->ComputeGeometricType(arr[el_num][it]);
+					if (!m->LowConn(arr[el_num][it]).empty())
+					{
+						ElementArray<Node> newnodes(m);
+						m->RestoreCellNodes(arr[el_num][it], newnodes); //find new nodes of the cell
+						hc.insert(hc.end(), newnodes.begin(), newnodes.end()); //connect to new nodes
+						//add me to my new nodes
+						for (adj_iterator jt = hc.begin(); jt != hc.end(); ++jt)
+							m->LowConn(*jt).push_back(arr[el_num][it]);
+					}
+				}
+				m->RecomputeGeometricData(arr[el_num][it]);
+				m->RemMarker(arr[el_num][it], mod);
+			}
+		}
+		m->ReleaseMarker(mod);
 	}
 }
 
