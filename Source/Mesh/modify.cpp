@@ -129,7 +129,7 @@ namespace INMOST
 		lc.clear();
 	}
 	
-	Cell Cell::UniteCells(ElementArray<Cell> & unite, MarkerType del_protect)
+	Cell Cell::UniteCells(const ElementArray<Cell> & unite, MarkerType del_protect)
 	{
 		Mesh * m = unite.GetMeshLink();
 		if( unite.empty() ) return Cell(m,InvalidHandle());
@@ -388,9 +388,9 @@ namespace INMOST
 	}
 	
 	
-	Face Face::UniteFaces(ElementArray<Face> & unite, MarkerType del_protect)
+	Face Face::UniteFaces(const ElementArray<Face> & unite, MarkerType del_protect)
 	{
-		Mesh * m = unite.GetMeshLink();
+		Mesh * m = const_cast<Mesh *>(unite.GetMeshLink());
 		assert(m != NULL);
 		if( unite.empty() ) return Face(m,InvalidHandle());
 		MarkerType hm = m->HideMarker();
@@ -677,7 +677,7 @@ namespace INMOST
 	
 	bool Face::TestUniteFaces(const ElementArray<Face> & unite, MarkerType del_protect)
 	{
-		Mesh * m = unite.GetMeshLink();
+		Mesh * m = const_cast<Mesh *>(unite.GetMeshLink());
 		if( unite.size() == 0 ) return false;
 		bool doexit = false, dothrow = false;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
@@ -749,9 +749,9 @@ namespace INMOST
 		return true;
 	}
 
-	Edge Edge::UniteEdges(ElementArray<Edge> & edges, MarkerType del_protect)
+	Edge Edge::UniteEdges(const ElementArray<Edge> & edges, MarkerType del_protect)
 	{
-		Mesh * m = edges.GetMeshLink();
+		Mesh * m = const_cast<Mesh *>(edges.GetMeshLink());
 		if( edges.size() == 0 ) return Edge(m,InvalidHandle());
 		
 		bool doexit = false, dothrow = false;

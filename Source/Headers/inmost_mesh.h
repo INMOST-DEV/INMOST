@@ -542,7 +542,7 @@ namespace INMOST
 		Node                        getBeg                  () const;
 		Node                        getEnd                  () const;
 		//implemented in modify.cpp
-		static Edge                 UniteEdges              (ElementArray<Edge> & edges, MarkerType del_protect);
+		static Edge                 UniteEdges              (const ElementArray<Edge> & edges, MarkerType del_protect);
 		static bool                 TestUniteEdges          (const ElementArray<Edge> & edges, MarkerType del_protect);
 		static ElementArray<Edge>   SplitEdge               (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
 		static bool                 TestSplitEdge           (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect);
@@ -621,7 +621,7 @@ namespace INMOST
 		bool                        CheckEdgeOrder          () const; //not implemented// returns true if edges of face form an ordered closed loop
 		bool                        FixEdgeOrder            () const; //not implemented// returns true if edges were successfully reordered to form a closed loop
 		//implemented in modify.cpp
-		static Face                 UniteFaces              (ElementArray<Face> & faces, MarkerType del_protect);
+		static Face                 UniteFaces              (const ElementArray<Face> & faces, MarkerType del_protect);
 		static bool                 TestUniteFaces          (const ElementArray<Face> & faces,  MarkerType del_protect);
 		static ElementArray<Face>   SplitFace               (Face face, const ElementArray<Edge> & edges, MarkerType del_protect); //provide all edges that lay inside face
 		static bool                 TestSplitFace           (Face face, const ElementArray<Edge> & edges, MarkerType del_protect);
@@ -854,7 +854,7 @@ namespace INMOST
 		/// @param cells A set of cells to be united.
 		/// @param del_protect A marker that protects elements from deletion. Zero means no check.
 		/// @return A new cell.
-		static Cell                 UniteCells              (ElementArray<Cell> & cells, MarkerType del_protect);
+		static Cell                 UniteCells              (const ElementArray<Cell> & cells, MarkerType del_protect);
 		/// \brief Test that no marked element will be deleted during union of given cells.
 		/// @param cells A set of cells to be united.
 		/// @param del_protect A marker that protects elements from deletion. Zero means no check.
