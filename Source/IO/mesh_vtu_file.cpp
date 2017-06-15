@@ -162,6 +162,33 @@ namespace INMOST
 					newpolyh.push_back(CreateCell(hfaces).first.GetHandle());
 				}
 			}
+			//check grid type
+			if( grid_is_2d == 2 && ncells) //detect grid type
+			{
+				std::stringstream type(v->GetChild("Cells")->GetChildWithAttrib("Name", "types")->GetContents());
+				int ctype;
+				bool have_2d = false;
+				for (int q = 0; q < ncells && grid_is_2d == 2; ++q)
+				{
+					type >> ctype;
+					if( ctype > 9 ) grid_is_2d = 0;
+				}
+				if( grid_is_2d == 2 ) grid_is_2d = 1;
+			}
+
+			if (verbosity > 0)
+			{
+				switch (grid_is_2d)
+				{
+				case 0: std::cout << "Grid has three dimensions" << std::endl; break;
+				case 1: std::cout << "Grid has two dimensions" << std::endl; break;
+				case 2: std::cout << "Grid has undetermined dimension" << std::endl; break;
+				}
+			}
+
+			bool have_faces = false; //some elements go as faces
+			bool have_edges = false;
+			bool have_nodes = false;
 			//read all the cells
 			{
 				std::stringstream conn(v->GetChild("Cells")->GetChildWithAttrib("Name", "connectivity")->GetContents());
@@ -184,7 +211,132 @@ namespace INMOST
 						RemMarker(newnodes[cconn], unused_marker);
 						totread++;
 					}
-					if (ctype == 10)
+					if (ctype == 1) //VTK_VERTEX
+					{
+						newcells[q] = hnodes.at(0);
+						have_nodes = true;
+					}
+					else if (ctype == 2) //VTK_POLY_VERTEX
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " skipping VTK_POLY_VERTEX" << std::endl;
+					}
+					else if (ctype == 3) //VTK_LINE
+					{
+						newcells[q] = CreateEdge(hnodes).first.GetHandle();
+						have_edges = true;
+					}
+					else if (ctype == 4)
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " skipping VTK_POLY_LINE" << std::endl;
+					}
+					else if (ctype == 5) //VTK_TRIANGLE
+					{
+						if (grid_is_2d == 1)
+						{
+							ElementArray<Node> e_nodes(this, 1);
+							ElementArray<Edge> f_edges(this, 2);
+							ElementArray<Face> c_faces(this);
+							for (unsigned int k = 0; k < 3; k++)
+							{
+								e_nodes.at(0) = hnodes.at(k);
+								f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+								e_nodes.at(0) = hnodes.at((k + 1) % 3);
+								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+								c_faces.push_back(CreateFace(f_edges).first);
+							}
+							Cell c = CreateCell(c_faces,hnodes).first;
+							newcells[q] = c->GetHandle();
+						}
+						else
+						{
+							newcells[q] = CreateFace(hnodes).first->GetHandle();
+							have_faces = true;
+						}
+						break;
+					}
+					else if (ctype == 6) //VTK_TRIANGLE_STRIP
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " skipping VTK_TRIANGLE_STRIP" << std::endl;
+					}
+					else if (ctype == 7) //VTK_POLYGON
+					{
+						if (grid_is_2d == 1)
+						{
+							ElementArray<Node> e_nodes(this, 1);
+							ElementArray<Edge> f_edges(this, 2);
+							ElementArray<Face> c_faces(this);
+							for (ElementArray<Node>::size_type k = 0; k < hnodes.size(); k++)
+							{
+								e_nodes.at(0) = hnodes.at(k);
+								f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+								e_nodes.at(0) = hnodes.at((k + 1) % hnodes.size());
+								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+								c_faces.push_back(CreateFace(f_edges).first);
+							}
+							Cell c = CreateCell(c_faces, hnodes).first;
+							newcells[q] = c->GetHandle();
+						}
+						else
+						{
+							newcells[q] = CreateFace(hnodes).first->GetHandle();
+							have_faces = true;
+						}
+						break;
+					}
+					else if (ctype == 8) //VTK_PIXEL
+					{
+						HandleType temp = hnodes.at(2);
+						hnodes.at(2) = hnodes.at(3);
+						hnodes.at(3) = temp;
+						if (grid_is_2d == 1)
+						{
+							ElementArray<Node> e_nodes(this, 1);
+							ElementArray<Edge> f_edges(this, 2);
+							ElementArray<Face> c_faces(this);
+							e_nodes.resize(1);
+							f_edges.resize(2);
+							for (int k = 0; k < 4; k++)
+							{
+								e_nodes.at(0) = hnodes.at(k);
+								f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+								e_nodes.at(0) = hnodes.at((k + 1) % 4);
+								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+								c_faces.push_back(CreateFace(f_edges).first);
+							}
+							Cell c = CreateCell(c_faces, hnodes).first;
+							newcells[q] = c->GetHandle();
+						}
+						else
+						{
+							newcells[q] = CreateFace(hnodes).first->GetHandle();
+							have_faces = true;
+						}
+					}
+					else if (ctype == 9) //VTK_QUAD
+					{
+						if (grid_is_2d == 1)
+						{
+							ElementArray<Node> e_nodes(this,1);
+							ElementArray<Edge> f_edges(this,2);
+							ElementArray<Face> c_faces(this);
+							for (int k = 0; k < 4; k++)
+							{
+								e_nodes.at(0) = hnodes.at(k);
+								f_edges.at(0) = CreateEdge(e_nodes).first->GetHandle();
+								e_nodes.at(0) = hnodes.at((k + 1) % 4);
+								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
+								c_faces.push_back(CreateFace(f_edges).first);
+							}
+							Cell c = CreateCell(c_faces, hnodes).first;
+							newcells[q] = c->GetHandle();
+						}
+						else
+						{
+							newcells[q] = CreateFace(hnodes).first->GetHandle();
+							have_faces = true;
+						}
+					}
+					else if (ctype == 10) //VTK_TETRA
 					{
 						assert(nread == 4);
 						const integer nodesnum[12] = { 0, 2, 1, 0, 1, 3, 1, 2, 3, 0, 3, 2 };
@@ -238,6 +390,9 @@ namespace INMOST
 						};
 						//5, 6, 7, 8, 9
 						//0, 1, 2, 3, 4
+
+						//9, 8, 7, 6, 5
+						//0, 1, 2, 3, 4
 						const integer sizes[7] = { 4, 4, 4, 4, 4, 5, 5 };
 						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 7).first.GetHandle();
 					}
@@ -269,6 +424,22 @@ namespace INMOST
 			{
 				std::string dname[2] = { "PointData", "CellData" };
 				ElementType dtype[2] = { NODE, CELL };
+				ElementType dsparse[2] = { NONE, NONE };
+				if (have_faces)
+				{
+					dtype[1] |= FACE;
+					dsparse[1] |= FACE;
+				}
+				if (have_edges)
+				{
+					dtype[1] |= EDGE;
+					dsparse[1] |= EDGE;
+				}
+				if (have_nodes)
+				{
+					dtype[1] |= NODE;
+					dsparse[1] |= NODE;
+				}
 				HandleType * darray[2] = { &newnodes[0], &newcells[0] };
 				int dsize[2] = { nnodes, ncells };
 				for (int j = 0; j < 2; ++j)
@@ -284,7 +455,7 @@ namespace INMOST
 								int ncomps = 1;
 								int nca = pd->FindAttrib("NumberOfComponents");
 								if (nca != pd->NumAttrib()) ncomps = atoi(pd->GetAttrib(nca).value.c_str());
-								TagRealArray t = CreateTag(pd->GetAttrib("Name"), DATA_REAL, dtype[j], NONE, ncomps);
+								TagRealArray t = CreateTag(pd->GetAttrib("Name"), DATA_REAL, dtype[j], dsparse[j], ncomps);
 								std::stringstream inp(pd->GetContents());
 								for (int l = 0; l < dsize[j]; ++l)
 								{

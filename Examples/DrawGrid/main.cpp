@@ -1018,7 +1018,7 @@ void draw()
 
 	glEnable(GL_BLEND);
 
-	for(int q = 0; q < inside_face.size() ; q++) inside_face[q].draw();
+	for (int q = 0; q < inside_face.size(); q++) inside_face[q].draw();
 
 	glDisable(GL_BLEND);
 
@@ -1271,7 +1271,7 @@ void draw()
 				{
 					Element it = mesh->ElementByLocalID(etype,i);
 					if( !it.isValid() ) continue;
-					if( it->Boundary() )
+					if( it->Boundary() || (etype == CELL && Element::GetGeometricDimension(it->GetGeometricType()) == 2))
 					{
 						int mmat = color ? (!it->getAsFace()->BackCell().isValid() ? 0 : it->getAsFace()->BackCell()->Integer(colort)) : (!it->getAsFace()->BackCell().isValid() ? 0 : it->getAsFace()->BackCell()->Integer(mat));
 						if( matfilter == 0 || matfilter-1 == mmat )
@@ -1285,7 +1285,7 @@ void draw()
 				{
 					Element it = mesh->ElementByLocalID(etype,i);
 					if( !it.isValid() ) continue;
-					if( it->Boundary() )
+					if (it->Boundary() || (etype == CELL && Element::GetGeometricDimension(it->GetGeometricType()) == 2))
 						polygons.push_back(DrawFace(it->self(),0,campos));
 				}
 			}

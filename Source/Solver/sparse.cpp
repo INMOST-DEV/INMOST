@@ -107,7 +107,8 @@ namespace INMOST
 		}
 
 		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool Sorted)
-				: Sorted(Sorted), Nonzeros(0), IntervalBeg(interval_begin), IntervalEnd(interval_end), NonlocalPre(Pre), NonlocalPost(Post), LinkedList(interval_begin-Pre.size(),interval_end+Post.size()+1,Row::make_entry(UNDEF,0.0))
+				: Sorted(Sorted), Nonzeros(0), IntervalBeg(interval_begin), IntervalEnd(interval_end), NonlocalPre(Pre), NonlocalPost(Post), 
+				LinkedList(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin - Pre.size()), static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + Post.size() + 1), Row::make_entry(UNDEF, 0.0))
 		{
 			//assert(std::is_sorted(Pre.begin(),Pre.end()));
 			//assert(std::is_sorted(Post.begin(),Post.end()));
@@ -116,8 +117,8 @@ namespace INMOST
 
 		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool _Sorted)
 		{
-			LinkedList.set_interval_beg(interval_begin-NonlocalPre.size());
-			LinkedList.set_interval_end(interval_end+1+NonlocalPost.size());
+			LinkedList.set_interval_beg(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin - NonlocalPre.size()));
+			LinkedList.set_interval_end(static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + 1 + NonlocalPost.size()));
 			IntervalBeg = interval_begin;
 			IntervalEnd = interval_end;
 			std::fill(LinkedList.begin(),LinkedList.end(),Row::make_entry(UNDEF,0.0));
@@ -182,7 +183,7 @@ namespace INMOST
 				assert(!NonlocalPre.empty()); //there are indices provided
 				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPre.begin(),NonlocalPre.end(),pos);
 				assert(*search == pos); //is there such index?
-				return IntervalBeg - NonlocalPre.size() + static_cast<INMOST_DATA_ENUM_TYPE>(search-NonlocalPre.begin());
+				return static_cast<INMOST_DATA_ENUM_TYPE>(IntervalBeg - NonlocalPre.size() + static_cast<INMOST_DATA_ENUM_TYPE>(search - NonlocalPre.begin()));
 			}
 			else if( pos >= IntervalEnd )
 			{
@@ -680,7 +681,7 @@ namespace INMOST
 				MPI_Comm_size(GetCommunicator(),&size);
 			}
 #endif
-			int * ord = NULL;
+			INMOST_DATA_ENUM_TYPE * ord = NULL;
 			if (file_ord != "")
 			{
 				std::ifstream input_ord;
@@ -688,7 +689,7 @@ namespace INMOST
 				if( input_ord.fail() ) throw -2;
 				int n;
 				input_ord >> n;
-				ord = (int *) malloc(sizeof(int) * n);
+				ord = (INMOST_DATA_ENUM_TYPE *)malloc(sizeof(INMOST_DATA_ENUM_TYPE)* n);
 				assert(ord != NULL);
 				for (int i=0; i<n; i++) input_ord >> ord[i];
 				int nbl;

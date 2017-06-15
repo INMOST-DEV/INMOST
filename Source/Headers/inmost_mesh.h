@@ -3015,7 +3015,15 @@ namespace INMOST
 		///                        right now this is "TRUE" by default since results are much better.
 		/// - "ECL_PROJECT_PERM" - Set "TRUE" to project permeability tensor from grid block coordinates
 		///                        into global coordinates. Otherwise the tensor is considered to be
-		///                        defined on global coordinates.
+		///                        defined on global coordinates. Default "FALSE".
+		/// - "ECL_DEGENERATE"   - In GRDECL format some active grid block may have zero volume, which
+		///                        means there is a fault. Set "TRUE" to introduce a gap between blocks
+		///                        that share degenerate active grid block, set to "TRANM" to introduce
+		///                        zero transmissibility multiplier and keep the grid connected and "FALSE" 
+		///                        to simply keep the grid connected. Default: "TRUE".
+		/// - "ECL_TOPOLOGY"     - If "TRUE" checks topology of the grid for errors, this may provide useful
+		///                        warnings if layers of the mesh enter each other and the grid cannot be
+		///                        considered conformal. Default: "FALSE".
 		///
 		/// \todo
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write

@@ -1812,7 +1812,9 @@ namespace INMOST
 		void swap(dynarray<element,stacked> & other)
 		{
 			size_type k = size(), n = other.size();
-			if( k <= static_cast<size_type>(stacked) && n <= static_cast<size_type>(stacked) )
+			bool konstack = (pbegin == stack);
+			bool nonstack = (other.pbegin == other.stack);
+			if( konstack && nonstack )
 			{
 				char temp[stacked*sizeof(element)];
 				memcpy(temp,(void *)stack,sizeof(element)*k);
@@ -1821,7 +1823,7 @@ namespace INMOST
 				other.pend = other.pbegin+k;
 				pend = pbegin+n;
 			}
-			else if( k <= static_cast<size_type>(stacked) && n > static_cast<size_type>(stacked) )
+			else if( konstack && !nonstack )
 			{
 				memcpy((void *)other.stack,(void *)stack,sizeof(element)*k);
 				pbegin = other.pbegin;
@@ -1831,7 +1833,7 @@ namespace INMOST
 				other.pend = other.stack+k;
 				other.preserved = other.stack+static_cast<size_type>(stacked);
 			}
-			else if( k > static_cast<size_type>(stacked) && n <= static_cast<size_type>(stacked) )
+			else if( !konstack && nonstack )
 			{
 				memcpy((void *)stack,(void *)other.stack,sizeof(element)*n);
 				other.pbegin = pbegin;

@@ -1311,12 +1311,13 @@ safe_output:
 						filled = fscanf(f,"\n");
 					}
 
-					if( grid_is_2d == 2 )
+					if( grid_is_2d == 2 && ncells )
 					{
 						for(i = 0; i < ncells && grid_is_2d == 2; i++)
 							if( ct[i] > 9 ) grid_is_2d = 0;
 						//this will create all 2d elements as cells
 						//grid_is_2d = 1; 
+						if (grid_is_2d == 2) grid_is_2d = 1;
 					}
 
 					if( verbosity > 0 )
