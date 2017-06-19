@@ -374,7 +374,7 @@ namespace INMOST
 				}
 				if (dmax != dmin)
 				{
-					ret = Element::MultiPolygon;
+					ret = Element::MultiLine;
 				}
 				else if( dmax == 0 )
 				{ 
