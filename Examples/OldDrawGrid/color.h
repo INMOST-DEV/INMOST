@@ -1,8 +1,9 @@
 #ifndef _COLOR_H
 #define _COLOR_H
 
-#include "my_glut.h"
+#include "inc_glut.h"
 #include <iostream>
+#include <sstream>
 
 struct color_t
 {

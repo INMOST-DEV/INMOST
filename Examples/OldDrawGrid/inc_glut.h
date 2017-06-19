@@ -1,3 +1,6 @@
+#ifndef _INC_GLUT_H
+#define _INC_GLUT_H
+
 #if defined (__APPLE__) || defined(MAXOSX)
 #include <GLUT/glut.h>
 #endif
@@ -15,4 +18,8 @@
 #endif
 #if defined(__linux__)
 #include <GL/glut.h>
+#endif
+
+void printtext(const char * fmt, ...); //in printtext.cpp
+
 #endif

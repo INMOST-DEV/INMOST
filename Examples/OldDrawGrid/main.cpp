@@ -10,12 +10,22 @@
 #include <sstream>
 #include <algorithm>
 #include <stdarg.h>
-#include "my_glut.h"
+#include "inc_glut.h"
 #include <iomanip>
 #include "clipboard.h"
 #include "color.h"
 #include "coord.h"
 #include "octree.h"
+#include "streamline.h"
+#include "svg_line.h"
+#include "face2gl.h"
+#include "color_bar.h"
+#include "tga.h"
+#include "screenshot.h"
+#include "volumetric.h"
+#include "input.h"
+#include "picker.h"
+#include "clipper.h"
 
 inline static unsigned int flip(const unsigned int * fp)
 {
@@ -28,7 +38,6 @@ inline static unsigned int flip(const unsigned int * fp)
 
 void draw_screen();
 void svg_draw(std::ostream & file);
-void svg_line(std::ostream & file, double x1, double y1, double z1, double x2, double y2, double z2, double modelview[16], double projection[16], int viewport[4]);
 
 using namespace INMOST;
 Mesh * mesh;
@@ -46,15 +55,6 @@ Mesh::GeomParam table;
 ElementArray<Element> orphans;
 int is_material_defined = 0;
 
-#define CLIP_NONE 0
-#define CLIP_NODE 1
-#define CLIP_FULL 2
-#define CLIP_ENDP 3
-
-#define CLIP_FACE_NONE      0
-#define CLIP_FACE_INSIDE    1
-#define CLIP_FACE_OUTSIDE   2
-#define CLIP_FACE_INTERSECT 3
 
 Storage::real p[3] = {0,0,0}, n[3] = {0,0,1};
 ElementArray<Element> boundary_faces;
@@ -105,191 +105,6 @@ Tag visualization_tag;
 ElementType visualization_type;
 bool visualization_smooth = false;
 
-void printtext(const char * fmt, ... )
-{
-	
-	unsigned int i;
-	char stext[131072];
-	va_list ap;
-	if ( fmt == NULL ) return;
-	va_start(ap,fmt);
-	vsprintf(stext,fmt,ap);
-	va_end(ap);
-	for(i=0;i<strlen(stext);i++)
-	{
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, 
-							stext[i]);
-	}
-}
-
-
-
-
-GLUquadric * cylqs = NULL;
-void drawcylinder(coord a,coord b, double width)
-{
-	double matrix[16];
-	if( cylqs == NULL )
-	{
-		cylqs = gluNewQuadric();
-		gluQuadricNormals(cylqs, GLU_SMOOTH);
-		gluQuadricOrientation(cylqs, GLU_OUTSIDE);
-		gluQuadricDrawStyle(cylqs,GLU_FILL);//GLU_SILHOUETTE
-	}
-	glPushMatrix();
-	glTranslated(a[0],a[1],a[2]);
-	get_matrix(a,b,matrix);
-	glMultMatrixd(matrix);
-	gluCylinder(cylqs, width,width,sqrt((b-a)^(b-a)), 4, 2);
-	glPopMatrix();
-}
-
-
-
-
-void GetVelocity(Cell c, const Tag & velocity_tag, coord pnt, coord & ret)
-{
-  ElementArray<Cell> adj = c->NeighbouringCells();
-  adj.push_back(c);
-  coord cnt;
-  const Storage::real eps = 1.0e-8;
-  Storage::real dist = 0;
-  ret[0] = ret[1] = ret[2] = 0;
-  for(ElementArray<Cell>::iterator it = adj.begin(); it != adj.end(); ++it)
-  {
-    it->Centroid(cnt.data());
-    coord vel = coord(it->RealArray(velocity_tag).data());
-    Storage::real l = (cnt-pnt).length() + eps;
-    Storage::real omega = 1.0/(l*l);
-    ret += vel*omega;
-    dist += omega;
-  }
-  ret /= dist;
-}
-
-void GetVelocity(Node c, const Tag & velocity_tag, coord pnt, coord & ret)
-{
-  ElementArray<Cell> adj = c->getCells();
-  coord cnt;
-  const Storage::real eps = 1.0e-8;
-  Storage::real dist = 0;
-  ret[0] = ret[1] = ret[2] = 0;
-  for(ElementArray<Cell>::iterator it = adj.begin(); it != adj.end(); ++it)
-  {
-    it->Centroid(cnt.data());
-    coord vel = coord(it->RealArray(velocity_tag).data());
-    Storage::real l = (cnt-pnt).length() + eps;
-    Storage::real omega = 1.0/(l*l);
-    ret += vel*omega;
-    dist += omega;
-  }
-  ret /= dist;
-}
-
-
-Storage::real GetSize(Cell c)
-{
-  Storage::real bounds[3][2] = {{1.0e20,-1.0e20},{1.0e20,-1.0e20},{1.0e20,-1.0e20}};
-  ElementArray<Node> nodes = c->getNodes();
-  for(ElementArray<Node>::iterator n = nodes.begin(); n != nodes.end(); ++n)
-  {
-    Storage::real_array cnt = n->Coords();
-    for(int k = 0; k < 3; ++k)
-    {
-      if( bounds[k][0] > cnt[k] ) bounds[k][0] = cnt[k];
-      if( bounds[k][1] < cnt[k] ) bounds[k][1] = cnt[k];
-    }
-  }
-  Storage::real ret = bounds[0][1]-bounds[0][0];
-  ret = std::min(ret,bounds[1][1]-bounds[1][0]);
-  ret = std::min(ret,bounds[2][1]-bounds[2][0]);
-  return ret;
-}
-
-
-Storage::real GetSize(Node n, const Tag & size_tag)
-{
-  ElementArray<Cell> cells = n->getCells();
-  Storage::real minsize = 1.0e+20, size;
-  for(ElementArray<Cell>::iterator c = cells.begin(); c != cells.end(); ++c)
-  {
-    size = c->RealDF(size_tag);
-    if( minsize > size ) minsize = size;
-  }
-  if( minsize > 1.0e+19 ) std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
-  return minsize;
-}
-
-
-class Streamline
-{
-private:
-	std::vector<coord> points;
-	std::vector<double> velarr;
-public:
-  Streamline() {}
-	Streamline(const Octree & octsearch, coord pos, Tag velocity_tag, Tag cell_size, Storage::real velocity_min, Storage::real velocity_max, Storage::real sign, MarkerType visited)
-	{
-		Storage::real coef, len, size;
-    coord next = pos, vel;
-    Node c;
-    const int maxsteps = 4000;
-    points.reserve(maxsteps/2);
-    velarr.reserve(maxsteps/2);
-		points.push_back(pos);
-		velarr.push_back(0);
-	  while( points.size() < maxsteps )
-		{
-      c = octsearch.FindNode(next.data());
-      if( !c.isValid() ) break;
-      //c.SetMarker(visited);
-      GetVelocity(c,velocity_tag,next,vel);
-      len = vel.length();
-      if( len < 1.0e-4 ) break;
-      size = GetSize(c,cell_size);// c->RealDF(cell_size);
-      coef = 0.35*size/len;
-      next += vel*coef*sign;
-      points.push_back(next);
-      velarr.push_back((log(len+1.0e-25)-velocity_min)/(velocity_max-velocity_min));
-		}
-		//printf("%ld %ld\n",points.size(),velarr.size());
-	}
-	Streamline(const Streamline & other) { points = other.points; velarr = other.velarr; }
-	Streamline & operator =(Streamline const & other) {points = other.points; velarr = other.velarr; return *this;}
-	~Streamline() { points.clear(); velarr.clear(); }
-	void Draw(int reduced)
-	{
-		
-		if( reduced )
-		{
-			glBegin(GL_LINE_STRIP);
-			for(unsigned int i = 0; i < points.size()-1; i++)
-			{
-				glColor3f(velarr[i+1]*0.65,0.65*(velarr[i+1] < 0.5 ? velarr[i] : 1.0-velarr[i]),0.65*(1-velarr[i+1]));
-				glVertex3d(points[i][0],points[i][1],points[i][2]);
-			}
-			glEnd();
-		}
-		else for(unsigned int i = 0; i < points.size()-1; i++)
-		{
-			glColor3f(velarr[i+1]*0.65,0.65*(velarr[i+1] < 0.5 ? velarr[i] : 1.0-velarr[i]),0.65*(1-velarr[i+1]));
-			drawcylinder(points[i],points[i+1],0.25*abs(points[i+1]-points[i]));
-		}
-		
-	}
-	void SVGDraw(std::ostream & file, double modelview[16], double projection[16], int viewport[4])
-	{
-		for (unsigned int i = 0; i < points.size() - 1; i++)
-		{
-			double * v0 = points[i].data();
-			double * v1 = points[i+1].data();
-			color_t c(velarr[i + 1] * 0.65, 0.65*(velarr[i + 1] < 0.5 ? velarr[i] : 1.0 - velarr[i]), 0.65*(1 - velarr[i + 1]));
-			file << "<g stroke=\"" << c.svg_rgb() << "\">" << std::endl;
-			svg_line(file, v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], modelview, projection, viewport);
-			file << "</g>" << std::endl;
-		}
-	}
-};
 
 std::vector<Streamline> streamlines;
 
@@ -379,2639 +194,24 @@ void PrintTags(Mesh * m, ElementType etypes)
 	}
 }
 
-bool write_tga( const char *filename, int w, int h, char *buffer ) 
-{ 
-  FILE *f = fopen( filename, "wb" ); 
-  if ( !f ) 
-    return false;
-  putc(0,f);
-  putc(0,f);
-  putc(2,f);
-  putc(0,f);putc(0,f);
-  putc(0,f);putc(0,f);
-  putc(0,f);
-  putc(0,f);putc(0,f);
-  putc(0,f);putc(0,f);
-  putc((w & 0x00ff),f);
-  putc((w & 0xff00)/256,f);
-  putc((h & 0x00ff),f);
-  putc((h & 0xff00)/256,f);
-  putc(24,f);
-  putc(0,f);
-  size_t buflen = w * h * 3; 
-  fwrite( buffer, 1, buflen, f ); 
-  fclose(f); 
-  return true; 
-}
-
-void screenshot()
-{
-  const int tiles = 4;
-  int oldwidth = width;
-  int oldheight = height;
-  width *= tiles;
-  height *= tiles;
-  
-  char * vpixelbuffer = new char[width*height*3+oldwidth*oldheight*3];
-  assert(vpixelbuffer);
-  char * vtempbuffer = vpixelbuffer + width*height*3;
-  shell<char> pixelbuffer(vpixelbuffer, width*height * 3);
-  shell<char> tempbuffer(vtempbuffer, oldwidth*oldheight * 3);
-  
-  
-  
-  for(int i = 0; i < tiles; ++i)
-  {
-    for(int j = 0; j < tiles; ++j )
-    {
-      glViewport(-oldwidth*i,-oldheight*j,width,height);
-      draw_screen();
-      glReadBuffer(GL_BACK);
-      glReadPixels(0,0,oldwidth,oldheight,GL_BGR_EXT,GL_UNSIGNED_BYTE,vtempbuffer);
-
-      int koff = oldwidth*(i);
-      int loff = oldheight*(j);
-      
-      for(int l = 0; l < oldheight; ++l)
-      for(int k = 0; k < oldwidth; ++k)
-      for(int m = 0; m < 3; ++m)
-        pixelbuffer[((koff+k) + (loff+l)*width)*3+m] = tempbuffer[(k + l*oldwidth)*3+m];
-
-      //filename[0] += i;
-      //filename[1] += j;
-      //write_tga(filename,width,height,pixelbuffer);
-      //filename[0] = filename[1] = '0';
-    }
-  }
-  
-  /*
-  glViewport(-oldwidth*3,-oldheight*3,width,height);
-  draw_screen();
-  glReadBuffer(GL_BACK);
-  glReadPixels(0,0,width,height,GL_BGR_EXT,GL_UNSIGNED_BYTE,pixelbuffer);
-  */
 
 
-  
-  
-  
-  write_tga("screenshot.tga",width,height,vpixelbuffer);
-  delete [] vpixelbuffer;
-  width = oldwidth;
-  height = oldheight;
-  glViewport(0,0,width,height);
-}
 
 
-class color_bar
-{
-	float min, max;
-	std::vector<float> ticks; //ticks from 0 to 1 for each color
-	std::vector<color_t> colors; //4 floats for each tick
-	std::string comment;
-	unsigned texture;
-	int samples;
-public:
-	color_bar()
-	{
-		min = 0;
-		max = 1;
-		comment = "";
-
-		/*
-		ticks.push_back(0.f);
-		ticks.push_back(0.2f);
-		ticks.push_back(0.4f);
-		ticks.push_back(0.6f);
-		ticks.push_back(0.8f);
-		ticks.push_back(1.f);
-
-		 
-		//colors.push_back(color_t(1,0,0));
-		//colors.push_back(color_t(1,1,0));
-		//colors.push_back(color_t(0,1,0));
-		//colors.push_back(color_t(0,1,1));
-		//colors.push_back(color_t(0,0,1));
-		//colors.push_back(color_t(1,0,1));
-		
-		colors.push_back(color_t(1,0,1));
-		colors.push_back(color_t(0,0,1));
-		colors.push_back(color_t(0,1,1));
-		colors.push_back(color_t(0,1,0));
-		colors.push_back(color_t(1,1,0));
-		colors.push_back(color_t(1,0,0));
-		*/
-
-		//inversed gnuplot color scheme
-		ticks.push_back(0.f);
-		ticks.push_back(0.05f);
-		ticks.push_back(0.5f);
-		ticks.push_back(0.75f);
-		ticks.push_back(0.95f);
-		ticks.push_back(1.f);
-
-		colors.push_back(color_t(1,1,1));
-		colors.push_back(color_t(1,1,0));
-		colors.push_back(color_t(0.85,0,0));
-		colors.push_back(color_t(0.65,0.25,0.85));
-		colors.push_back(color_t(0.45,0,0.55));
-		colors.push_back(color_t(0,0,0));
-
-		samples = 4096;
-
-		float * pixel_array = new float[(samples+2)*4];
-
-		
-		
-		for(int q = 0; q < samples+2; ++q)
-		{
-			float t = 1.0f*q/static_cast<float>(samples+1);
-			color_t c = pick_color(t);
-			//countour lines
-			//if( ((q+1) % 128 == 0 || (q+1) % 128 == 127) && (q+1) < samples )
-			//	c = pick_color(1-t) + color_t(0,2*t*(1-t),0);
-
-			pixel_array[(q)*4+0] = c.r();
-			pixel_array[(q)*4+1] = c.g();
-			pixel_array[(q)*4+2] = c.b();
-			pixel_array[(q)*4+3] = c.a();
-		}
-
-		pixel_array[0] = 0;
-		pixel_array[1] = 1;
-		pixel_array[2] = 0;
-		pixel_array[3] = 1;
-
-		pixel_array[(samples+1)*4+0] = 0;
-		pixel_array[(samples+1)*4+1] = 1;
-		pixel_array[(samples+1)*4+2] = 0;
-		pixel_array[(samples+1)*4+3] = 1;
-
-		
-		
-		glEnable(GL_TEXTURE);
-		glEnable(GL_TEXTURE_1D);
-		glGenTextures(1,&texture);
-		glBindTexture(GL_TEXTURE_1D,texture);
-		glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-		
-		glTexImage1D(GL_TEXTURE_1D,0,4,samples+2,1,GL_RGBA,GL_FLOAT,pixel_array);
-
-		std::cout << "Created texture " << texture << std::endl;
-		
-		glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_WRAP_S,GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
-
-		UnbindTexture();
-
-		delete [] pixel_array;
-		//colors.push_back(color_t(1,0,0));
-	}
-	void set_comment(std::string text) {comment = text;}
-	void set_min(float newmin) { min = newmin;}
-	void set_max(float newmax) { max = newmax;}
-	float get_min() { return min;}
-	float get_max() { return max;}
-	color_t pick_color(float value) const
-	{
-		if( value < min ) 
-			return color_t(0.4,1.0,0.4);
-		if( value > max )
-			return color_t(0,0.6,0);
-		float t = (value-min)/(max-min);
-		std::vector<float>::const_iterator it = std::lower_bound(ticks.begin(),ticks.end(),t);
-		size_t pos = it-ticks.begin();
-		if( it == ticks.end() || pos >= ticks.size() ) 
-		{
-			return colors.back();
-		}
-		if( pos == 0 ) 
-		{
-			return colors[0];
-		}
-		float interp = (t-ticks[pos-1])/(ticks[pos]-ticks[pos-1]);
-		return (colors[pos]*interp+colors[pos-1]*(1-interp));
-	}
-	void BindTexture()
-	{
-		//glDisable( GL_TEXTURE_GEN_S ); 
-		glDisable(GL_TEXTURE_2D);
-		glEnable( GL_TEXTURE_1D );
-		glBindTexture(GL_TEXTURE_1D, texture);
-	}
-	void UnbindTexture()
-	{
-		glDisable( GL_TEXTURE_1D );
-	}
-	double pick_texture(double value) const
-	{
-		double eps = 1.0/static_cast<double>(samples);
-		return (value-min)/(max-min)*(1-2*eps) + eps;
-		//return std::max(std::min((value-min)/(max-min),0.99),0.01);
-	}
-	void Draw()
-	{
-		float text_pos = -0.89;
-		float left = -0.95;
-		float right = -0.9;
-		float bottom = -0.75;
-		float top = 0.75;
-		BindTexture();
-		glBegin(GL_QUADS);
-
-		glTexCoord1d(1.0/1024.0);
-		glVertex2f(left,bottom);
-		glVertex2f(right,bottom);
-		glTexCoord1d(1.0);
-		glVertex2f(right,top);
-		glVertex2f(left,top);
-		/*
-		for(int i = 0; i < ticks.size()-1; ++i)
-		{
-			colors[i].set_color();
-			glVertex2f(left,bottom+ticks[i]*(top-bottom));
-			glVertex2f(right,bottom+ticks[i]*(top-bottom));
-			colors[i+1].set_color();
-			glVertex2f(right,bottom+ticks[(i+1)]*(top-bottom));
-			glVertex2f(left,bottom+ticks[(i+1)]*(top-bottom));
-		}
-		*/
-		glEnd();
-		UnbindTexture();
-
-		int tickmarks = 11;
-		
-		glColor4f(0,0,0,1);
-		for(int i = 0; i < tickmarks; ++i)
-		{
-			float t = 1.0f*i/static_cast<float>(tickmarks-1);
-			glRasterPos2f(text_pos,bottom+t*(top-bottom));
-			printtext("%g",min+t*(max-min));
-		}
-		if( comment != "")
-		{
-			glRasterPos2f(left,bottom-0.04);
-			printtext("%s",comment.c_str());
-		}
-
-		glBegin(GL_LINE_LOOP);
-		glVertex2f(left,bottom);
-		glVertex2f(right,bottom);
-		glVertex2f(right,top);
-		glVertex2f(left,top);
-		glEnd();
-
-		glBegin(GL_LINES);
-		for(int i = 0; i < tickmarks; ++i)
-		{
-			float t = 1.0f*i/static_cast<float>(tickmarks-1);
-			float pos = bottom+t*(top-bottom);
-			glVertex2f(left,pos);
-			glVertex2f(left+(right-left)*0.2,pos);
-
-			glVertex2f(right+(left-right)*0.25,pos);
-			glVertex2f(right,pos);
-		}
-		glEnd();
-	}
-
-	void DrawSVG(std::ostream & file, double modelview[16], double projection[16], int viewport[4])
-	{
-		float text_pos = -0.89;
-		float left = -0.95;
-		float right = -0.9;
-		float bottom = -0.75;
-		float top = 0.75;
-		double px,py;
-		double px1, py1, z;
-		double px2, py2;
-		file << "<g>"<<std::endl;
-		for(int i = 0; i < ticks.size()-1; ++i)
-		{
-			colors[i].set_color();
-			gluProject(left,bottom+ticks[i]*(top-bottom),0,modelview,projection,viewport,&px1,&py1,&z); py1 = height - py1;
-			gluProject(right,bottom+ticks[i+1]*(top-bottom),0,modelview,projection,viewport,&px2,&py2,&z); py2 = height - py2;
-			file << "<def>" << std::endl;
-			file << "<linearGradient id=\"grad"<<i<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << px1 << "\" y1=\""<<py1<<"\" x2=\""<<px1<<"\" y2=\""<<py2<<"\">" << std::endl;
-			file << "<stop offset=\"0%\" stop-color=\""<< colors[i].svg_rgb() << "\"/>" << std::endl;
-			file << "<stop offset=\"100%\" stop-color=\"" << colors[i+1].svg_rgb() << "\"/>" << std::endl;
-        	file << "</linearGradient>" << std::endl;
-			file << "</def>" << std::endl;
-			file << "<rect stroke=\"none\" x=\""<<px1<<"\" y=\""<<py2<<"\" width=\""<< px2-px1 <<"\" height=\""<<py1-py2<<"\" fill=\"url(#grad"<<i<<")\"/>" << std::endl;
-		}
-		
-		int tickmarks = 11;
-		
-		for(int i = 0; i < tickmarks; ++i)
-		{
-			float t = 1.0f*i/static_cast<float>(tickmarks-1);
-			glRasterPos2f(text_pos,bottom+t*(top-bottom));
-			gluProject(text_pos,bottom+t*(top-bottom),0,modelview,projection,viewport,&px,&py,&z); py = height - py;
-			file << "<text x=\""<<px<<"\" y=\""<<py<<"\">" << min+t*(max-min) << "</text>" << std::endl;
-		}
-		if( comment != "")
-		{
-			gluProject(left,bottom-0.04,0,modelview,projection,viewport,&px,&py,&z); py = height - py;
-			file << "<text x=\""<<px<<"\" y=\""<<py<<"\">" << comment.c_str() << "</text>" << std::endl;
-		}
-
-		gluProject(left,bottom,0,modelview,projection,viewport,&px1,&py1,&z); py1 = height - py1;
-		gluProject(right,top,0,modelview,projection,viewport,&px2,&py2,&z); py2 = height - py2;
-		file << "<rect stroke=\"black\" fill=\"none\" x=\""<<px1<<"\" y=\""<<py2<<"\" width=\""<<px2-px1<<"\" height=\""<<py1-py2<<"\"/>" << std::endl;
-		
-		file << "<g stroke=\"black\">" << std::endl;
-		for(int i = 0; i < tickmarks; ++i)
-		{
-			float t = 1.0f*i/static_cast<float>(tickmarks-1);
-			float pos = bottom+t*(top-bottom);
-			svg_line(file,left,pos,0,left+(right-left)*0.2,pos,0,modelview,projection,viewport);
-			svg_line(file,right+(left-right)*0.25,pos,0,right,pos,0,modelview,projection,viewport);
-		}
-		file << "</g>" << std::endl;
-		file << "</g>" << std::endl;
-	}
-	
-} * CommonColorBar;
-
-
-class face2gl
-{
-	float dist;
-	double c[4];
-	double cnt[3];
-	bool flag;
-	ElementType etype;
-	Storage::integer id;
-	std::vector<double> verts;
-	std::vector<double> texcoords;
-	std::vector<color_t> colors;
-	color_t cntcolor;
-	double cnttexcoord;
-public:
-	void shift(double x, double y, double z)
-	{
-		cnt[0] += x;
-		cnt[1] += y;
-		cnt[2] += z;
-		for(size_t k = 0; k < verts.size(); k+=3)
-		{
-			verts[k+0] += x;
-			verts[k+1] += y;
-			verts[k+2] += z;
-		}
-	}
-	static void radix_sort_dist(std::vector<face2gl> & set)
-	{
-		static std::vector<face2gl> tmp;
-		tmp.resize(set.size());
-		unsigned int i;
-		const unsigned int kHist = 2048;
-		unsigned int  b0[kHist * 3];
-		unsigned int *b1 = b0 + kHist;
-		unsigned int *b2 = b1 + kHist;
-		memset(b0,0,sizeof(unsigned int)*kHist*3);
-		for (i = 0; i < set.size(); i++) 
-		{
-			unsigned int fi = flip((unsigned int *)&set[i].dist);
-			++b0[_0(fi)]; ++b1[_1(fi)]; ++b2[_2(fi)];
-		}
-		{
-			unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
-			for (i = 0; i < kHist; i++) 
-			{
-				b0[kHist-1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist-1];
-				b1[kHist-1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist-1];
-				b2[kHist-1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist-1];
-			}
-		}
-		for (i = 0; i < set.size(); i++) tmp[++b0[_0(flip((unsigned int *)&set[i].dist))]] = set[i];
-		for (i = 0; i < set.size(); i++) set[++b1[_1(flip((unsigned int *)&tmp[i].dist))]] = tmp[i];
-		for (i = 0; i < set.size(); i++) tmp[++b2[_2(flip((unsigned int *)&set[i].dist))]] = set[i];
-		for (i = 0; i < set.size(); i++) set[i] = tmp[set.size()-1-i];
-	}
-	face2gl():verts(),colors(),texcoords() {etype = NONE; id = 0; dist = 0; flag = false; memset(c,0,sizeof(double)*4);}
-	face2gl(const face2gl & other) :verts(other.verts) 
-	{
-		etype = other.etype;
-		id = other.id;
-		dist = other.dist; 
-		cnt[0] = other.cnt[0];
-		cnt[1] = other.cnt[1];
-		cnt[2] = other.cnt[2];
-		c[0] = other.c[0];
-		c[1] = other.c[1];
-		c[2] = other.c[2];
-		c[3] = other.c[3];
-		flag = other.flag;
-		colors = other.colors;
-		texcoords = other.texcoords;
-		cntcolor = other.cntcolor;
-		cnttexcoord = other.cnttexcoord;
-	}
-	face2gl & operator =(face2gl const & other) 
-	{ 
-		etype = other.etype;
-		id = other.id;
-		verts = other.verts; 
-		dist = other.dist; 
-		cnt[0] = other.cnt[0];
-		cnt[1] = other.cnt[1];
-		cnt[2] = other.cnt[2];
-		c[0] = other.c[0];
-		c[1] = other.c[1];
-		c[2] = other.c[2];
-		c[3] = other.c[3];
-		flag = other.flag;
-		colors = other.colors;
-		cntcolor = other.cntcolor;
-		texcoords = other.texcoords;
-		cnttexcoord = other.cnttexcoord;
-		return *this;
-	}
-	~face2gl() {}
-	void draw_colour() const
-	{
-		if( texcoords.empty() )
-		{
-			if( colors.empty() )
-			{
-				glColor4dv(c); 
-				for(unsigned k = 0; k < verts.size(); k+=3) 
-				{
-					glVertex3dv(cnt);
-					glVertex3dv(&verts[k]);
-					glVertex3dv(&verts[(k+3)%verts.size()]);
-				}
-			}
-			else
-			{
-				for(unsigned k = 0; k < verts.size(); k+=3) 
-				{
-					cntcolor.set_color();
-					glVertex3dv(cnt);
-					colors[k/3].set_color();
-					glVertex3dv(&verts[k]);
-					colors[(k/3+1)%colors.size()].set_color();
-					glVertex3dv(&verts[(k+3)%verts.size()]);
-				}
-			}
-		}
-		else
-		{
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				glTexCoord1d(cnttexcoord);
-				glVertex3dv(cnt);
-				glTexCoord1d(texcoords[k/3]);
-				glVertex3dv(&verts[k]);
-				glTexCoord1d(texcoords[(k/3+1)%texcoords.size()]);
-				glVertex3dv(&verts[(k+3)%verts.size()]);
-			}
-		}
-	}
-	void svg_draw_colour(std::ostream & file, double modelview[16], double projection[16], int viewport[4]) const
-	{
-		static int shape_id = 0;
-		if( colors.empty() && texcoords.empty() )
-		{
-			double pcntx,pcnty,z;
-			double pverts1x,pverts1y;
-			double pverts2x,pverts2y;
-			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
-			//file << "<g stroke=\"none\" fill=\"rgb("<<floor(c[0]*255)<<","<<floor(c[1]*255)<<","<<floor(c[2]*255)<<")\" fill-opacity=\"" << c[3] << "\">" << std::endl;
-			file << "<g stroke=\"none\" fill=\"white\" fill-opacity=\"" << c[3] << "\">" << std::endl;
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
-				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height - pverts2y;
-				file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
-			}
-			file << "</g>" << std::endl;
-		}
-		
-		else if( !colors.empty() )
-		{
-			double pcntx,pcnty,z;
-			double pverts1x,pverts1y;
-			double pverts2x,pverts2y;
-			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
-			file << "<g stroke=\"none\" fill=\"" << cntcolor.svg_rgb() << "\">" << std::endl;
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
-				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
-				file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
-			}
-			file << "</g>" << std::endl;
-		}
-		else if( !texcoords.empty() )
-		{
-			double pcntx,pcnty,z;
-			double pverts1x,pverts1y;
-			double pverts2x,pverts2y;
-			color_t c0 = CommonColorBar->pick_color(cnttexcoord*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min());
-			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
-			//file << "<!-- " << cnttexcoord << " color " << c0.r() << " " << c0.g() << " " << c0.b() << " " << c0.a() << " -->" << std::endl;
-			//file << "<g stroke=\"none\" "<< c0.svg_rgba_fill() <<"\">" << std::endl;
-			file << "<g stroke=\"none\" fill=\""<< c0.svg_rgb() << "\">" << std::endl;
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height - pverts1y;
-				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height - pverts2y;
-				file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
-			}
-			file << "</g>" << std::endl;
-		}
-		/*
-		
-		else if( !texcoords.empty() )
-		{
-			double pverts0x,pverts0y,z;
-			double pverts1x,pverts1y;
-			double pverts2x,pverts2y;
-			color_t c0 = CommonColorBar->pick_color(cnttexcoord*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min()),c1,c2;
-			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pverts0x,&pverts0y,&z); pverts0y = height-pverts0y;
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				c1 = CommonColorBar->pick_color(texcoords[k/3]*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min());
-				c2 = CommonColorBar->pick_color(texcoords[(k/3+1)%texcoords.size()]*(CommonColorBar->get_max()-CommonColorBar->get_min())+CommonColorBar->get_min());
-				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
-				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
-				file << "<defs>" << std::endl;
-				file << "<linearGradient id=\"fadeA"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts0x << "\" y1=\"" << pverts0y << "\" x2=\"" << (pverts1x+pverts2x)*0.5 << "\" y2=\"" << (pverts1y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"" << c0.svg_rgb() << "\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"" << ((c1+c2)*0.5).svg_rgb() << "\"/>" <<std::endl;
-				file << "</linearGradient>"<<std::endl;
-				file << "<linearGradient id=\"fadeB"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts1x << "\" y1=\"" << pverts1y << "\" x2=\"" << (pverts0x+pverts2x)*0.5 << "\" y2=\"" << (pverts0y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\""<< c1.svg_rgb() <<"\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"" << ((c0+c2)*0.5).svg_rgb() << "\"/>" <<std::endl;
-				file << "</linearGradient>"<<std::endl;
-				file << "<linearGradient id=\"fadeC"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts2x << "\" y1=\"" << pverts2y << "\" x2=\"" << (pverts0x+pverts1x)*0.5 << "\" y2=\"" << (pverts0y+pverts1y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"" << c2.svg_rgb() << "\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"" << ((c0+c1)*0.5).svg_rgb() << "\"/>" <<std::endl;
-				file << "</linearGradient>"<<std::endl;
-				file << "<path id=\"pathA"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeA"<<shape_id<<")\"/>" <<std::endl;
-				file << "<path id=\"pathB"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeB"<<shape_id<<")\"/>" <<std::endl;
-				file << "<filter id=\"filter"<<shape_id<<"\">"<<std::endl;
-				file << "<feImage xlink:href=\"#pathA"<<shape_id<<"\" result=\"layerA"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
-				file << "<feImage xlink:href=\"#pathB"<<shape_id<<"\" result=\"layerB"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
-				file << "<feComposite in=\"layerA"<<shape_id<<"\" in2=\"layerB"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1\" k3=\"1\" k4=\"0\" result=\"temp"<<shape_id<<"\"/>"<<std::endl;
-				file << "<feComposite in=\"temp"<<shape_id<<"\" in2=\"graphic"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1\" k3=\"1\" k4=\"0\"/>"<<std::endl;
-				file << "</filter>"<<std::endl;
-				file << "</defs>" << std::endl;
-				file << "<g stroke=\"none\">" << std::endl;
-				file << "<path d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeC"<<shape_id<<")\" filter=\"url(#filter"<<shape_id<<")\"/>" <<std::endl;
-				file << "</g>" << std::endl;
-				shape_id++;
-			}
-		}
-		else if( !colors.empty() )
-		{
-			double pverts0x,pverts0y,z;
-			double pverts1x,pverts1y;
-			double pverts2x,pverts2y;
-			gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pverts0x,&pverts0y,&z); pverts0y = height-pverts0y;
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
-				gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
-				file << "<defs>" << std::endl;
-				file << "<linearGradient id=\"fadeA"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts0x << "\" y1=\"" << pverts0y << "\" x2=\"" << (pverts1x+pverts2x)*0.5 << "\" y2=\"" << (pverts1y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"" << cntcolor.svg_rgb() << "\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
-				file << "</linearGradient>"<<std::endl;
-				file << "<linearGradient id=\"fadeB"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts1x << "\" y1=\"" << pverts1y << "\" x2=\"" << (pverts0x+pverts2x)*0.5 << "\" y2=\"" << (pverts0y+pverts2y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"" << colors[k/3].svg_rgb() << "\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
-				file << "</linearGradient>"<<std::endl;
-				file << "<linearGradient id=\"fadeC"<<shape_id<<"\" gradientUnits=\"userSpaceOnUse\" x1=\"" << pverts2x << "\" y1=\"" << pverts2y << "\" x2=\"" << (pverts0x+pverts1x)*0.5 << "\" y2=\"" << (pverts0y+pverts1y)*0.5 << "\">" << std::endl;
-				file << "<stop offset=\"0%\" stop-color=\"" << colors[(k/3+1)%colors.size()].svg_rgb() << "\"/>" <<std::endl;
-				file << "<stop offset=\"100%\" stop-color=\"#000000\"/>" <<std::endl;
-				file << "</linearGradient>"<<std::endl;
-				file << "<path id=\"pathA"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeA"<<shape_id<<")\"/>" <<std::endl;
-				file << "<path id=\"pathB"<<shape_id<<"\" d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeB"<<shape_id<<")\"/>" <<std::endl;
-				file << "<filter id=\"filter"<<shape_id<<"\">"<<std::endl;
-				file << "<feImage xlink:href=\"#pathA"<<shape_id<<"\" result=\"layerA"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
-				file << "<feImage xlink:href=\"#pathB"<<shape_id<<"\" result=\"layerB"<<shape_id<<"\" x=\"0\" y=\"0\"/>" <<std::endl;
-				file << "<feComposite in=\"layerA"<<shape_id<<"\" in2=\"layerB"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1.0\" k4=\"0\" result=\"temp"<<shape_id<<"\"/>"<<std::endl;
-				file << "<feComposite in=\"temp"<<shape_id<<"\" in2=\"graphic"<<shape_id<<"\" operator=\"arithmetic\" k1=\"0\" k2=\"1.0\" k4=\"0\"/>"<<std::endl;
-				file << "</filter>"<<std::endl;
-				file << "</defs>" << std::endl;
-				file << "<g stroke=\"none\" stroke-width=\"0\" shape-rendering=\"crispEdges\">" << std::endl;
-				file << "<path d=\"M "<<pverts0x<<","<<pverts0y<<" L "<<pverts1x<<","<<pverts1y<<" "<<pverts2x<<","<<pverts2y<<" Z\" fill=\"url(#fadeC"<<shape_id<<")\" filter=\"url(#filter"<<shape_id<<")\"/>" <<std::endl;
-				file << "</g>" << std::endl;
-				shape_id++;
-			}
-		}
-		*/
-
-		if( ::drawedges && ::drawedges != 2 )
-		{
-			double px,py,z;
-			file << "<g stroke=\"black\">" << std::endl;
-			file << "<polyline fill=\"none\" points=\"";
-			for(unsigned k = 0; k < verts.size()+3; k+=3)
-			{
-				gluProject(verts[k%verts.size()+0],verts[k%verts.size()+1],verts[k%verts.size()+2],modelview,projection,viewport,&px,&py,&z); py = height-py;
-				file << px << "," << py << " ";
-			}
-			file << "\" />" << std::endl;
-			file << "</g>" << std::endl;
-		}
-		
-	}
-	void draw_colour_alpha(double alpha) const
-	{
-		if( texcoords.empty() )
-		{
-			if( colors.empty() )
-			{
-				//double cc[4] = {c[0],c[1],c[2],alpha};
-				glColor4dv(c); 
-				for(unsigned k = 0; k < verts.size(); k+=3) 
-				{
-					glVertex3dv(cnt);
-					glVertex3dv(&verts[k]);
-					glVertex3dv(&verts[(k+3)%verts.size()]);
-				}
-			}
-			else
-			{
-				for(unsigned k = 0; k < verts.size(); k+=3) 
-				{
-					color_t t = cntcolor;
-					t.a() = alpha;
-					t.set_color();
-					glVertex3dv(cnt);
-					t = colors[k/3];
-					t.a() = alpha;
-					t.set_color();
-					glVertex3dv(&verts[k]);
-					t = colors[(k/3+1)%colors.size()];
-					t.a() = alpha;
-					t.set_color();
-					glVertex3dv(&verts[(k+3)%verts.size()]);
-				}
-			}
-		}
-		else
-		{
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				glTexCoord1d(cnttexcoord);
-				glVertex3dv(cnt);
-				glTexCoord1d(texcoords[k/3]);
-				glVertex3dv(&verts[k]);
-				glTexCoord1d(texcoords[(k/3+1)%texcoords.size()]);
-				glVertex3dv(&verts[(k+3)%verts.size()]);
-			}
-		}
-	}
-	void draw() const
-	{
-		for(unsigned k = 0; k < verts.size(); k+=3) 
-		{
-			glVertex3dv(cnt);
-			glVertex3dv(&verts[k]);
-			glVertex3dv(&verts[(k+3)%verts.size()]);
-		}
-	}
-	void svg_draw(std::ostream & file, double modelview[16],double projection[16],int viewport[4]) const
-	{
-		double pcntx, pcnty, z;
-		double pverts1x, pverts1y;
-		double pverts2x, pverts2y;
-		gluProject(cnt[0],cnt[1],cnt[2],modelview,projection,viewport,&pcntx,&pcnty,&z); pcnty = height-pcnty;
-		file << "<g stroke=\"none\">" << std::endl;
-		for(unsigned k = 0; k < verts.size(); k+=3) 
-		{
-			gluProject(verts[k+0],verts[k+1],verts[k+2],modelview,projection,viewport,&pverts1x,&pverts1y,&z); pverts1y = height-pverts1y;
-			gluProject(verts[(k+3)%verts.size()+0],verts[(k+3)%verts.size()+1],verts[(k+3)%verts.size()+2],modelview,projection,viewport,&pverts2x,&pverts2y,&z); pverts2y = height-pverts2y;
-			file << "<polygon points=\"" << pcntx <<"," << pcnty << " " << pverts1x << "," << pverts1y << " " << pverts2x << "," << pverts2y << "\"/>" << std::endl;
-		}
-		file << "</g>" << std::endl;
-		if( ::drawedges && ::drawedges != 2 )
-		{
-			double px,py,z;
-			file << "<g stroke=\"black\">" << std::endl;
-			file << "<polyline fill=\"none\" points=\"";
-			for(unsigned k = 0; k < verts.size(); k+=3) 
-			{
-				gluProject(verts[k%verts.size()+0],verts[k%verts.size()+1],verts[k%verts.size()+2],modelview,projection,viewport,&px,&py,&z); py = height-py;
-				file << px << "," << py << " ";
-			}
-			file << "\" />" << std::endl;
-			file << "</g>" << std::endl;
-		}
-	}
-	void drawedges() const
-	{
-		for(unsigned k = 0; k < verts.size(); k+=3) 
-		{
-			glVertex3dv(&verts[k]); 
-			glVertex3dv(&verts[(k+3)%verts.size()]); 
-		}
-	}
-	void svg_drawedges(std::ostream & file, double modelview[16],double projection[16],int viewport[4]) const
-	{
-		double px, py, z;
-		file << "<polyline fill=\"none\" points=\"";
-		for(unsigned k = 0; k < verts.size(); k+=3) 
-		{
-			gluProject(verts[k%verts.size()+0],verts[k%verts.size()+1],verts[k%verts.size()+2],modelview,projection,viewport,&px,&py,&z); py = height-py;
-			file << px << "," << py << " ";
-		}
-		file << "\" />" << std::endl;
-	}
-	bool operator <(const face2gl & other) const {return dist < other.dist;}
-	void set_color(double r, double g, double b, double a) {c[0] = r; c[1] = g; c[2] = b; c[3] = a;}
-	void add_vert(double x, double y, double z) {unsigned s = (unsigned)verts.size(); verts.resize(s+3); verts[s] = x; verts[s+1] = y; verts[s+2] = z;}
-	void add_vert(double v[3]) {verts.insert(verts.end(),v,v+3);}
-	void add_color(color_t c) {colors.push_back(c);}
-	void add_texcoord(double val) {texcoords.push_back(val);}
-	double * get_vert(int k) {return &verts[k*3];}
-	unsigned size() {return (unsigned)verts.size()/3;}
-	void set_center(double _cnt[3], color_t c = color_t(0,0,0,0))
-	{
-		cnt[0] = _cnt[0];
-		cnt[1] = _cnt[1];
-		cnt[2] = _cnt[2];
-		cntcolor = c;
-	}
-	void get_center(float _cnt[3])
-	{
-		_cnt[0] = cnt[0];
-		_cnt[1] = cnt[1];
-		_cnt[2] = cnt[2];
-	}
-	void get_center(double _cnt[3])
-	{
-		_cnt[0] = cnt[0];
-		_cnt[1] = cnt[1];
-		_cnt[2] = cnt[2];
-	}
-	double * get_center() {return cnt;}
-	void compute_center()
-	{
-		cnt[0] = cnt[1] = cnt[2] = 0;
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < verts.size(); k+=3)
-		{
-			cnt[0] += verts[k+0];
-			cnt[1] += verts[k+1];
-			cnt[2] += verts[k+2];
-		}
-		cnt[0] /= (verts.size()/3)*1.0;
-		cnt[1] /= (verts.size()/3)*1.0;
-		cnt[2] /= (verts.size()/3)*1.0;
-		compute_center_color();
-		compute_center_texcoord();
-	}
-	void compute_center_color()
-	{
-		if( !colors.empty() )
-		{
-			cntcolor.r() = 0;
-			cntcolor.g() = 0;
-			cntcolor.b() = 0;
-			cntcolor.a() = 0;
-			for(INMOST_DATA_ENUM_TYPE k = 0; k < colors.size(); k++)
-				cntcolor = cntcolor + colors[k];
-			cntcolor =  cntcolor*(1.0f/static_cast<float>(colors.size()));
-		}
-	}
-	void compute_center_texcoord()
-	{
-		if( !texcoords.empty() )
-		{
-			cnttexcoord = 0.0;
-			for(INMOST_DATA_ENUM_TYPE k = 0; k < texcoords.size(); k++)
-				cnttexcoord += texcoords[k];
-			cnttexcoord /= static_cast<double>(texcoords.size());
-		}
-	}
-	void compute_dist(double cam[3])
-	{
-		dist = sqrt((cnt[0]-cam[0])*(cnt[0]-cam[0])+(cnt[1]-cam[1])*(cnt[1]-cam[1])+(cnt[2]-cam[2])*(cnt[2]-cam[2]));
-	}
-	void set_flag(bool set) { flag = set;}
-	bool get_flag() {return flag;}
-	void set_elem(ElementType _etype, Storage::integer _id) {etype = _etype; id = _id;}
-	Element get_elem(Mesh * m) {return m->ElementByLocalID(etype,id);}
-};
-face2gl DrawFace(Element f);
 
 std::vector<face2gl> all_boundary;
 std::vector<face2gl> added_faces;
 std::vector<face2gl> clip_boundary;
 
-void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1)
-{
-	if( drawedges == 2 || drawedges == 3 ) return;
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
-	
-	glColor4f(0,1,0,0.1);
-	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw();
-	glEnd();
-	if( highlight != -1 )
-	{
-		glColor4f(1,0,0,1);
-		glBegin(GL_TRIANGLES);
-		set[highlight].draw();
-		glEnd();
-	}
-	glDisable(GL_POLYGON_OFFSET_FILL);
-}
 
-void svg_draw_faces_nc(std::ostream & file, std::vector<face2gl> & set, double modelview[16], double projection[16], int viewport[4], int highlight = -1)
-{
-	if( drawedges == 2 || drawedges == 3 ) return;
-	
-	file << "<g stroke=\"none\" fill=\"green\" fill-opacity=\"0.1\">" << std::endl;
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].svg_draw(file,modelview,projection,viewport);
-	file << "</g>" << std::endl;
-	if( highlight != -1 )
-	{
-		file << "<g fill=\"red\" fill-opacity=\"1\">" << std::endl;
-		set[highlight].svg_draw(file,modelview,projection,viewport);
-		file << "</g>" << std::endl;
-	}
-}
 
-void draw_faces(std::vector<face2gl> & set, int highlight = -1)
-{
-	if( drawedges == 2 || drawedges == 3) return;
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
-	
-	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
-	
-	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour();
-	glEnd();
-	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
-	if( highlight != -1 )
-	{
-		glColor4f(1,0,0,1);
-		glBegin(GL_TRIANGLES);
-		set[highlight].draw();
-		glEnd();
-	}
-	
-	glDisable(GL_POLYGON_OFFSET_FILL);
-
-}
-
-void svg_draw_faces(std::ostream & file, std::vector<face2gl> & set, double modelview[16], double projection[16], int viewport[4], int highlight = -1)
-{
-	if( drawedges == 2 || drawedges == 3) return;
-	
-	
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].svg_draw_colour(file,modelview,projection,viewport);
-	
-	
-	if( highlight != -1 )
-	{
-		file << "<g color=\"red\" fill-opacity=\"1\">" << std::endl;
-		set[highlight].svg_draw(file,modelview,projection,viewport);
-		file << "</g>" << std::endl;
-	}
-	
-	
-
-}
-
-void draw_faces_alpha(std::vector<face2gl> & set, double alpha)
-{
-	if( drawedges == 2 || drawedges==3) return;
-	if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
-	
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
-	
-	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].draw_colour_alpha(alpha);
-	glEnd();
-	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
-	
-	glDisable(GL_POLYGON_OFFSET_FILL);
-}
-
-void draw_edges(std::vector<face2gl> & set, int highlight = -1)
-{
-  if( drawedges && drawedges != 2 )
-  {
-	  glBegin(GL_LINES);
-	  for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].drawedges();
-	  glEnd();
-	  if( highlight != -1 )
-	  {
-		  glColor4f(0,1,0,1);
-		  glBegin(GL_LINES);
-		  set[highlight].drawedges();
-		  glEnd();
-	  }
-  }
-}
-
-void svg_draw_edges(std::ostream & file, std::vector<face2gl> & set, double modelview[16], double projection[16], int viewport[4], int highlight = -1)
-{
-  if( drawedges && drawedges != 2 )
-  {
-	  
-	  for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) set[q].svg_drawedges(file,modelview,projection,viewport);
-	  if( highlight != -1 )
-	  {
-		  file << "<g fill=\"green\">" << std::endl;
-		  set[highlight].svg_drawedges(file,modelview,projection,viewport);
-		  file << "</g>" << std::endl;
-	  }
-  }
-}
-
-void draw_faces_interactive_nc(std::vector<face2gl> & set)
-{
-	if( drawedges == 2 || drawedges==3 ) return;
-	glColor4f(0,1,0,0.1);
-	
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
-	
-	
-	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw();
-	glEnd();
-	
-	glDisable(GL_POLYGON_OFFSET_FILL);
-}
-
-void draw_faces_interactive(std::vector<face2gl> & set)
-{
-  if( drawedges == 2 || drawedges==3 ) return;
-  if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
-	
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
-	
-	
-	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour();
-	glEnd();
-	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
-	
-	glDisable(GL_POLYGON_OFFSET_FILL);
-}
-
-void draw_faces_interactive_alpha(std::vector<face2gl> & set, double alpha)
-{
-  if( drawedges == 2 || drawedges==3 ) return;
-  if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
-	
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.0, 1.0);
-	
-	
-	glBegin(GL_TRIANGLES);
-	for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].draw_colour_alpha(alpha);
-	glEnd();
-	if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
-	
-	glDisable(GL_POLYGON_OFFSET_FILL);
-
-}
-
-void draw_edges_interactive(std::vector<face2gl> & set)
-{
-  if( drawedges && drawedges != 2 )
-  {
-	  glBegin(GL_LINES);
-	  for(INMOST_DATA_ENUM_TYPE q = 0; q < set.size() ; q++) if( set[q].get_flag() ) set[q].drawedges();
-	  glEnd();
-  }
-}
-
-Storage::integer clip_plane_edge(double sp0[3], double sp1[3], double p[3], double n[3], double node[3])
-{
-	Storage::real u[3], w[3], D, N, sI;
-	u[0] = sp1[0] - sp0[0]; u[1] = sp1[1] - sp0[1]; u[2] = sp1[2] - sp0[2];
-	w[0] = sp0[0] - p[0];   w[1] = sp0[1] - p[1];   w[2] = sp0[2] - p[2];
-	D =  (n[0]*u[0] + n[1]*u[1] + n[2]*u[2]);
-	N = -(n[0]*w[0] + n[1]*w[1] + n[2]*w[2]);
-	if( fabs(D) < 1.0e-9 )
-	{
-		if( fabs(N) < 1.0e-9 ) return CLIP_FULL;
-		else return CLIP_NONE;
-	}
-	else
-	{
-		sI = N/D;
-		if( sI < 0-1.0e-9 || sI > 1+1.0e-9 ) return CLIP_NONE;
-		else
-		{
-			node[0] = sp0[0] + sI * u[0];
-			node[1] = sp0[1] + sI * u[1];
-			node[2] = sp0[2] + sI * u[2];
-			return (sI > 1.0e-9 && sI < 1.0-1.0e-9) ? CLIP_NODE : CLIP_ENDP;
-		}
-	}
-}
-
-typedef struct point
-{
-	float coords[3];
-	float diam;
-	float dist;
-	int id;
-	/*
-	point & operator = (point const & b)
-	{
-		coords[0] = b.coords[0];
-		coords[1] = b.coords[1];
-		coords[2] = b.coords[2];
-		diam = b.diam;
-		dist = b.dist;
-		id = b.id;
-	}
-
-	point(const point & b)
-	{
-		coords[0] = b.coords[0];
-		coords[1] = b.coords[1];
-		coords[2] = b.coords[2];
-		diam = b.diam;
-		dist = b.dist;
-		id = b.id;
-	}
-	*/
-} point_t;
-
-bool operator <(point_t & a, point_t & b) {return a.dist < b.dist;}
+volumetric * CommonVolumetricView;
 
 
 
-
-class volumetric
-{
-	std::vector<point_t> points;
-	Mesh * m;
-
-	void radix_sort_dist(std::vector<point_t> & set)
-	{
-		static std::vector<point_t> tmp;
-		tmp.resize(set.size());
-		unsigned int i;
-		const unsigned int kHist = 2048;
-		unsigned int  b0[kHist * 3];
-		unsigned int *b1 = b0 + kHist;
-		unsigned int *b2 = b1 + kHist;
-		memset(b0,0,sizeof(unsigned int)*kHist*3);
-		for (i = 0; i < set.size(); i++) 
-		{
-			unsigned int fi = flip((unsigned int *)&set[i].dist);
-			++b0[_0(fi)]; ++b1[_1(fi)]; ++b2[_2(fi)];
-		}
-		{
-			unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
-			for (i = 0; i < kHist; i++) 
-			{
-				b0[kHist-1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist-1];
-				b1[kHist-1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist-1];
-				b2[kHist-1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist-1];
-			}
-		}
-		for (i = 0; i < set.size(); i++) tmp[++b0[_0(flip((unsigned int *)&set[i].dist))]] = set[i];
-		for (i = 0; i < set.size(); i++) set[++b1[_1(flip((unsigned int *)&tmp[i].dist))]] = tmp[i];
-		for (i = 0; i < set.size(); i++) tmp[++b2[_2(flip((unsigned int *)&set[i].dist))]] = set[i];
-		for (i = 0; i < set.size(); i++) set[i] = tmp[set.size()-1-i];
-	}
-public:
-	
-	volumetric(Mesh * _m)
-	{
-		m = _m;
-		
-		points.resize(m->NumberOfCells());
-		int q = 0;
-		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
-		{
-			Storage::real cnt[3], cntf[3];
-			it->Centroid(cnt);
-			points[q].coords[0] = cnt[0];
-			points[q].coords[1] = cnt[1];
-			points[q].coords[2] = cnt[2];
-			points[q].id = it->LocalID();
-			points[q].diam = 0.f;
-			ElementArray<Face> faces = it->getFaces();
-			for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); ++f)
-			{
-				f->Centroid(cntf);
-				Storage::real d = sqrt((cnt[0]-cntf[0])*(cnt[0]-cntf[0])+(cnt[1]-cntf[1])*(cnt[1]-cntf[1])+(cnt[2]-cntf[2])*(cnt[2]-cntf[2]));
-				if( points[q].diam < d ) points[q].diam = d;
-			}
-			++q;
-		}
-		/*
-		points.reserve(m->NumberOfNodes()*20);
-		int q = 0;
-		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it)
-		{
-			point_t pnt;
-			Storage::real_array cnt = it->Coords();
-			pnt.coords[0] = cnt[0];
-			pnt.coords[1] = cnt[1];
-			pnt.coords[2] = cnt[2];
-			pnt.id = it->LocalID();
-			points.push_back(pnt);
-			
-			ElementArray<Element> adj = it->getAdjElements(CELL);
-			for(ElementArray<Element>::iterator jt = adj.begin(); jt != adj.end(); ++jt)
-			{
-				Storage::real cnt2[3];
-				jt->Centroid(cnt2);
-				const int ncoefs = 1;
-				const Storage::real coefs[ncoefs] = {0.82};
-				for(int j = 0; j < ncoefs; ++j)
-				{
-					pnt.coords[0] = cnt[0]*(1-coefs[j]) + cnt2[0]*coefs[j];
-					pnt.coords[1] = cnt[1]*(1-coefs[j]) + cnt2[1]*coefs[j];
-					pnt.coords[2] = cnt[2]*(1-coefs[j]) + cnt2[2]*coefs[j];
-					pnt.id = it->LocalID();
-					points.push_back(pnt);
-				}
-			}
-			
-		}
-		*/
-		printf("number of points %d\n",(int)points.size());
-	}
-	void camera(double pos[3], int interactive)
-	{
-		if( interactive ) return;
-		float posf[3];
-		posf[0] = pos[0];
-		posf[1] = pos[1];
-		posf[2] = pos[2];
-		for(int k = 0; k < points.size(); ++k)
-		{
-			points[k].dist = sqrtf(
-				(posf[0]-points[k].coords[0])*(posf[0]-points[k].coords[0])+
-				(posf[1]-points[k].coords[1])*(posf[1]-points[k].coords[1])+
-				(posf[2]-points[k].coords[2])*(posf[2]-points[k].coords[2]));
-		}
-		double t = Timer();
-		radix_sort_dist(points);
-		//std::sort(points.rbegin(),points.rend());
-		printf("Time to sort %lf\n",Timer()-t);
-	}
-	void draw(int interactive)
-	{
-		double origin[3], right[3], up[3];
-		GLdouble modelview[16],projection[16];
-		GLint viewport[4] = {0,0,1,1};
-		glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
-		glGetDoublev(GL_PROJECTION_MATRIX, projection);
-		GLdouble outx, outy, outz;  // Var's to save the answer in
-		gluUnProject(0.5, 0.5, 0.,
-               modelview, projection, viewport,
-               &outx, &outy, &outz);
-		origin[0] = outx;
-		origin[1] = outy;
-		origin[2] = outz;
-		gluUnProject(1.0, 0.5, 0.,
-               modelview, projection, viewport,
-               &outx, &outy, &outz);
-		right[0] = outx;
-		right[1] = outy;
-		right[2] = outz;
-		gluUnProject(0.5, 1.0, 0.,
-               modelview, projection, viewport,
-               &outx, &outy, &outz);
-		up[0] = outx;
-		up[1] = outy;
-		up[2] = outz;
-		right[0] -= origin[0];
-		right[1] -= origin[1];
-		right[2] -= origin[2];
-		up[0] -= origin[0];
-		up[1] -= origin[1];
-		up[2] -= origin[2];
-    
-		double l = sqrt(right[0]*right[0]+right[1]*right[1]+right[2]*right[2]);
-		if( l )
-		{
-			right[0] /= l;
-			right[1] /= l;
-			right[2] /= l;
-		}
-		l = sqrt(up[0]*up[0]+up[1]*up[1]+up[2]*up[2]);
-		if( l )
-		{
-			up[0] /= l;
-			up[1] /= l;
-			up[2] /= l;
-		}
-    
-		const float alpha = 0.0075f;
-		const float mult = 1.0f;
-		const float rmult = 0.7f;
-		//glPointSize(5.0);
-		glColor4f(0.5f,0.5f,0.5f,alpha);
-		glEnable(GL_BLEND);
-		//glBegin(GL_TRIANGLES);
-		//glBegin(GL_QUADS);
-		if( interactive )
-		{
-      for(int k = 0; k < points.size(); ++k) if( k % 100 == 0 )
-			{
-				if( visualization_tag.isValid() )
-				{
-					color_t c = CommonColorBar->pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
-					c.a() = alpha;
-					c.set_color();
-				}
-				
-				glBegin(GL_TRIANGLE_FAN);
-				glVertex3f(points[k].coords[0],points[k].coords[1],points[k].coords[2]);
-				glVertex3f(points[k].coords[0]+(right[0]*rmult+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult+up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(right[0]*rmult*2)*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult*2)*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult*2)*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(right[0]*rmult-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult-up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(-right[0]*rmult-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]*rmult-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]*rmult-up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(-right[0]*rmult*2)*points[k].diam*mult,points[k].coords[1]+(-right[1]*rmult*2)*points[k].diam*mult,points[k].coords[2]+(-right[2]*rmult*2)*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(-right[0]*rmult+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]*rmult+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]*rmult+up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(right[0]*rmult+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]*rmult+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]*rmult+up[2])*points[k].diam*mult);
-				glEnd();
-				
-				/*
-				glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(-up[0]*2)*points[k].diam*mult,points[k].coords[1]+(-up[1]*2)*points[k].diam*mult,points[k].coords[2]+(-up[2]*2)*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
-				*/
-				/*
-				glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]-up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(-right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]-up[2])*points[k].diam*mult);
-				glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
-				*/
-				//glVertex3f(points[k].coords[0]+right[0]*points[k].diam*mult,points[k].coords[1]+right[1]*points[k].diam*mult,points[k].coords[2]+right[2]*points[k].diam*mult);
-				//glVertex3f(points[k].coords[0]+up[0]*points[k].diam*mult,points[k].coords[1]+up[1]*points[k].diam*mult,points[k].coords[2]+up[2]*points[k].diam*mult);
-				//glVertex3f(points[k].coords[0]-right[0]*points[k].diam*mult,points[k].coords[1]-right[1]*points[k].diam*mult,points[k].coords[2]-right[2]*points[k].diam*mult);
-				//glVertex3f(points[k].coords[0]-up[0]*points[k].diam*mult,points[k].coords[1]-up[1]*points[k].diam*mult,points[k].coords[2]-up[2]*points[k].diam*mult);
-			}
-		}
-		else
-		for(int k = 0; k < points.size(); ++k)
-		{
-			if( visualization_tag.isValid() )
-			{
-				color_t c = CommonColorBar->pick_color(m->CellByLocalID(points[k].id)->RealDF(visualization_tag));
-				c.a() = alpha;
-				c.set_color();
-			}
-			
-			glBegin(GL_TRIANGLE_FAN);
-			glVertex3f(points[k].coords[0],points[k].coords[1],points[k].coords[2]);
-			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(right[0]*2)*points[k].diam*mult,points[k].coords[1]+(right[1]*2)*points[k].diam*mult,points[k].coords[2]+(right[2]*2)*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]-up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(-right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]-up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(-right[0]*2)*points[k].diam*mult,points[k].coords[1]+(-right[1]*2)*points[k].diam*mult,points[k].coords[2]+(-right[2]*2)*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
-			glEnd();	
-			
-			/*
-			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(-up[0]*2)*points[k].diam*mult,points[k].coords[1]+(-up[1]*2)*points[k].diam*mult,points[k].coords[2]+(-up[2]*2)*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
-			*/
-			/*
-			glVertex3f(points[k].coords[0]+(right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]+up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(right[2]-up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(-right[0]-up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]-up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]-up[2])*points[k].diam*mult);
-			glVertex3f(points[k].coords[0]+(-right[0]+up[0])*points[k].diam*mult,points[k].coords[1]+(-right[1]+up[1])*points[k].diam*mult,points[k].coords[2]+(-right[2]+up[2])*points[k].diam*mult);
-			*/
-			//glVertex3f(points[k].coords[0]+right[0]*points[k].diam*mult,points[k].coords[1]+right[1]*points[k].diam*mult,points[k].coords[2]+right[2]*points[k].diam*mult);
-			//glVertex3f(points[k].coords[0]+up[0]*points[k].diam*mult,points[k].coords[1]+up[1]*points[k].diam*mult,points[k].coords[2]+up[2]*points[k].diam*mult);
-			//glVertex3f(points[k].coords[0]-right[0]*points[k].diam*mult,points[k].coords[1]-right[1]*points[k].diam*mult,points[k].coords[2]-right[2]*points[k].diam*mult);
-			//glVertex3f(points[k].coords[0]-up[0]*points[k].diam*mult,points[k].coords[1]-up[1]*points[k].diam*mult,points[k].coords[2]-up[2]*points[k].diam*mult);
-		}
-		//glEnd();
-		glDisable(GL_BLEND);
-		//glPointSize(1.0);
-	}
-} * CommonVolumetricView;
-
-
-/*
-class volumetric2
-{
-	std::vector<face2gl> faces;
-	Mesh * m;
-public:
-	volumetric2(Mesh * _m)
-	{
-		m = _m;
-		
-		faces.reserve(m->NumberOfFaces());
-		int q = 0;
-		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)m->NumberOfFaces()/100));
-		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it)
-		{
-			faces.push_back(DrawFace(it->self()));
-			if( q%pace == 0 ) faces.back().set_flag(true);
-			q++;
-		}
-		printf("number of faces %d\n",faces.size());
-	}
-	void camera(double pos[3], int interactive)
-	{
-		if( interactive ) return;
-		for(int k = 0; k < faces.size(); ++k)
-			faces[k].compute_dist(pos);
-		//face2gl::radix_sort_dist(faces);
-		std::sort(faces.rbegin(),faces.rend());
-	}
-	void draw(int interactive)
-	{
-		if( interactive ) draw_faces_interactive_alpha(faces,0.05);
-		else draw_faces_alpha(faces,0.05);
-	}
-}* CommonVolumetricView;
-*/
-class kdtree
-{
-	int marked;
-	struct entry
-	{
-		HandleType e;
-		float xyz[3];
-		struct entry & operator =(const struct entry & other)
-		{
-			e = other.e;
-			xyz[0] = other.xyz[0];
-			xyz[1] = other.xyz[1];
-			xyz[2] = other.xyz[2];
-			return *this;
-		}
-	} * set;
-	Mesh * m;
-	INMOST_DATA_ENUM_TYPE size;
-	float bbox[6];
-	kdtree * children;
-	static int cmpElements0(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[0];
-		float bd = eb->xyz[0];
-		return (ad > bd) - (ad < bd);
-	}
-	static int cmpElements1(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[1];
-		float bd = eb->xyz[1];
-		return (ad > bd) - (ad < bd);
-	}
-	static int cmpElements2(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[2];
-		float bd = eb->xyz[2];
-		return (ad > bd) - (ad < bd);
-	}
-	void radix_sort(int dim, struct entry * temp)
-	{
-		unsigned int i;
-		const unsigned int kHist = 2048;
-		unsigned int  b0[kHist * 3];
-		unsigned int *b1 = b0 + kHist;
-		unsigned int *b2 = b1 + kHist;
-		memset(b0,0,sizeof(unsigned int)*kHist*3);
-		for (i = 0; i < size; i++) 
-		{
-			unsigned int fi = flip((unsigned int *)&set[i].xyz[dim]);
-			++b0[_0(fi)]; ++b1[_1(fi)]; ++b2[_2(fi)];
-		}
-		{
-			unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
-			for (i = 0; i < kHist; i++) 
-			{
-				b0[kHist-1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist-1];
-				b1[kHist-1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist-1];
-				b2[kHist-1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist-1];
-			}
-		}
-		for (i = 0; i < size; i++) temp[++b0[_0(flip((unsigned int *)&set[i].xyz[dim]))]] = set[i];
-		for (i = 0; i < size; i++) set[++b1[_1(flip((unsigned int *)&temp[i].xyz[dim]))]] = temp[i];
-		for (i = 0; i < size; i++) temp[++b2[_2(flip((unsigned int *)&set[i].xyz[dim]))]] = set[i];
-		for (i = 0; i < size; i++) set[i] = temp[i];
-	}
-	void kdtree_build(int dim, int & done, int total, struct entry * temp)
-	{
-		if( size > 1 )
-		{
-			if( size > 128 ) radix_sort(dim,temp); else 
-			switch(dim)
-			{
-			case 0: qsort(set,size,sizeof(entry),cmpElements0);break;
-			case 1: qsort(set,size,sizeof(entry),cmpElements1);break;
-			case 2: qsort(set,size,sizeof(entry),cmpElements2);break;
-			}
-			children = static_cast<kdtree *>(malloc(sizeof(kdtree)*2));//new kdtree[2];
-			assert(children != NULL);
-			children[0].marked = 0;
-			children[0].children = NULL;
-			children[0].set = set;
-			children[0].size = size/2;
-			children[0].m = m;
-			children[1].marked = 0;
-			children[1].children = NULL;
-			children[1].set = set+size/2;
-			children[1].size = size - size/2;
-			children[1].m = m;
-			children[0].kdtree_build((dim+1)%3,done,total,temp);
-			children[1].kdtree_build((dim+1)%3,done,total,temp);
-			for(int k = 0; k < 3; k++)
-			{
-				bbox[0+2*k] = std::min(children[0].bbox[0+2*k],children[1].bbox[0+2*k]);
-				bbox[1+2*k] = std::max(children[0].bbox[1+2*k],children[1].bbox[1+2*k]);
-			}
-		}
-		else 
-		{
-			assert(size == 1);
-			if( GetHandleElementType(set[0].e) == EDGE )
-			{
-				Storage::real_array n1 = Edge(m,set[0].e)->getBeg()->Coords();
-				Storage::real_array n2 = Edge(m,set[0].e)->getEnd()->Coords();
-				for(int k = 0; k < 3; k++)
-				{
-					bbox[0+2*k] = std::min(n1[k],n2[k]);
-					bbox[1+2*k] = std::max(n1[k],n2[k]);
-				}
-				done++;
-				if( done%150 == 0 )
-				{
-					printf("%3.1f%%\r",(done*100.0)/(total*1.0));
-					fflush(stdout);
-				}
-			}
-			else
-			{
-				ElementArray<Node> nodes = Element(m,set[0].e)->getNodes();
-				bbox[0] = bbox[2] = bbox[4] = 1.0e20;
-				bbox[1] = bbox[3] = bbox[5] = -1.0e20;
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < nodes.size(); ++k)
-				{
-					Storage::real_array coords = nodes[k].Coords();
-					for(INMOST_DATA_ENUM_TYPE q = 0; q < 3; q++)
-					{
-						bbox[q*2+0] = std::min<float>(bbox[q*2+0],coords[q]);
-						bbox[q*2+1] = std::max<float>(bbox[q*2+1],coords[q]);
-					}
-				}
-			}
-		}
-	}
-	kdtree() : marked(0), set(NULL), size(0), children(NULL) {}
-	inline int plane_bbox(double p[3], double n[3])
-	{
-		Storage::real pv[3], nv[3];
-		for(int k = 0; k < 3; ++k)
-		{
-			if( n[k] >= 0 ) 
-			{ 
-				pv[k] = bbox[1+2*k]; //max
-				nv[k] = bbox[0+2*k]; //min
-			} 
-			else 
-			{ 
-				pv[k] = bbox[0+2*k]; //min
-				nv[k] = bbox[1+2*k]; //max
-			}
-		}
-		Storage::real pvD, nvD;
-		pvD = n[0]*(pv[0]-p[0])+n[1]*(pv[1]-p[1])+n[2]*(pv[2]-p[2]);
-		nvD = n[0]*(nv[0]-p[0])+n[1]*(nv[1]-p[1])+n[2]*(nv[2]-p[2]);
-		if( nvD*pvD <= 0.0 )
-			return 2;
-		else if( nvD < 0.0 )
-			return 1;
-		else return 0;
-	}
-	bool sub_intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mrk, double p[3], double n[3])
-	{
-		if( size == 1 )
-		{
-			assert( GetHandleElementType(set[0].e) == EDGE );
-			Edge ee = Edge(m,set[0].e);
-			Storage::real_array sp0 = ee->getBeg()->Coords();
-			Storage::real_array sp1 = ee->getEnd()->Coords();
-			Storage::integer & clip = m->IntegerDF(set[0].e,clip_state);
-			clip = clip_plane_edge(&sp0[0],&sp1[0],p,n,&ee->RealArrayDF(clip_point)[0]);
-			if( clip )
-			{
-				ElementArray<Cell> ecells = ee->getCells();
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < ecells.size(); ++k) if( !ecells[k].GetMarker(mrk) )
-				{
-					ecells[k].SetMarker(mrk);
-					cells.push_back(ecells[k]);
-				}
-				marked = 1;
-			}
-		}
-		else if( plane_bbox(p,n) == 2 )
-		{
-			bool test1 = children[0].sub_intersect_plane_edge(clip_point,clip_state,cells,mrk,p,n);
-			bool test2 = children[1].sub_intersect_plane_edge(clip_point,clip_state,cells,mrk,p,n);
-			if( test1 || test2 ) marked = 1;
-		}
-		return marked != 0;
-	}
-	void sub_intersect_plane_faces(Tag clip_state, double p[3], double n[3])
-	{
-		if( size == 1 )
-		{
-			Storage::integer state;
-			Element ee(m,set[0].e);
-			assert( ee->GetElementDimension() == 2 );
-			ElementArray<Node> nodes = ee->getNodes();
-			Storage::real_array coords = nodes[0].Coords();
-			Storage::real dot0 = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-			if( dot0 <= 0.0 ) state = CLIP_FACE_INSIDE; else state = CLIP_FACE_OUTSIDE;
-			for(INMOST_DATA_ENUM_TYPE k = 1; k < nodes.size(); k++)
-			{
-				coords = nodes[k].Coords();
-				Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-				if( dot*dot0 <= 0.0 ) 
-				{
-					state = CLIP_FACE_INTERSECT;
-					break;
-				}
-			}
-			m->IntegerDF(set[0].e,clip_state) = state;
-		}
-		else
-		{
-			marked = plane_bbox(p,n);
-			if( marked == 0 )
-			{
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) m->IntegerDF(set[k].e,clip_state) = CLIP_FACE_OUTSIDE;
-			}
-			else if( marked == 1 )
-			{
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) m->IntegerDF(set[k].e,clip_state) = CLIP_FACE_INSIDE;
-			}
-			else
-			{
-				children[0].sub_intersect_plane_faces(clip_state,p,n);
-				children[1].sub_intersect_plane_faces(clip_state,p,n);
-			}
-		}
-	}
-	void unmark_old_edges(Tag clip_state)
-	{
-		if( size == 1 )
-		{
-			assert(GetHandleElementType(set[0].e) == EDGE);
-			marked = 0;
-			if( GetHandleElementType(set[0].e) == EDGE )
-				m->IntegerDF(set[0].e,clip_state) = CLIP_NONE;
-			else if( GetHandleElementType(set[0].e) == FACE )
-				m->IntegerDF(set[0].e,clip_state) = CLIP_FACE_NONE;
-		}
-		else if( children )
-		{
-			if(children[0].marked) {children[0].unmark_old_edges(clip_state); marked = 0;}
-			if(children[1].marked) {children[1].unmark_old_edges(clip_state); marked = 0;}
-		}
-	}
-	void clear_children() { if( children ) {children[0].clear_children(); children[1].clear_children(); free(children);}}
-public:
-	kdtree(Mesh * m) :  marked(0),m(m),children(NULL)
-	{
-		double tt;
-		size = m->NumberOfEdges();
-		assert(size > 1);
-		set = new entry[size];
-		INMOST_DATA_ENUM_TYPE k = 0;
-		tt = Timer();
-		printf("Prepearing edge set.\n");
-		for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it) 
-		{
-			set[k].e = *it;
-			set[k].xyz[0] = (it->getBeg()->Coords()[0] + it->getEnd()->Coords()[0])*0.5;
-			set[k].xyz[1] = (it->getBeg()->Coords()[1] + it->getEnd()->Coords()[1])*0.5;
-			set[k].xyz[2] = (it->getBeg()->Coords()[2] + it->getEnd()->Coords()[2])*0.5;
-			k++;
-			if( k%150 == 0 ) 
-			{
-				printf("%3.1f%%\r",(k*100.0)/(size*1.0));
-				fflush(stdout);
-			}
-		}
-		printf("Done. Time %lg\n",Timer()-tt);
-		int done = 0, total = size;
-		printf("Building KD-tree.\n");
-		tt = Timer();
-		struct entry *  temp = new entry[size];
-		kdtree_build(0,done,total,temp);
-		delete [] temp;
-		printf("Done. Time %lg\n",Timer()-tt);
-		for(int k = 0; k < 3; k++)
-		{
-			bbox[0+2*k] = std::min(children[0].bbox[0+2*k],children[1].bbox[0+2*k]);
-			bbox[1+2*k] = std::max(children[0].bbox[1+2*k],children[1].bbox[1+2*k]);
-		}
-	}
-	kdtree(Mesh * m, HandleType * eset, INMOST_DATA_ENUM_TYPE size) : marked(0), m(m),size(size),children(NULL)
-	{
-		double tt;
-		assert(size > 1);
-		set = new entry[size];
-		tt = Timer();
-		printf("Prepearing elements set.\n");
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k++) 
-		{
-			set[k].e = eset[k];
-			Storage::real cnt[3];
-			m->GetGeometricData(set[k].e,CENTROID,cnt);
-			set[k].xyz[0] = cnt[0];
-			set[k].xyz[1] = cnt[1];
-			set[k].xyz[2] = cnt[2];
-			if( k%150 == 0 ) 
-			{
-				printf("%3.1f%%\r",(k*100.0)/(size*1.0));
-				fflush(stdout);
-			}
-		}
-		printf("Done. Time %lg\n",Timer()-tt);
-		int done = 0, total = size;
-		printf("Building KD-tree.\n");
-		tt = Timer();
-		struct entry *  temp = new entry[size];
-		kdtree_build(0,done,total,temp);
-		delete [] temp;
-		printf("Done. Time %lg\n",Timer()-tt);
-		for(int k = 0; k < 3; k++)
-		{
-			bbox[0+2*k] = std::min(children[0].bbox[0+2*k],children[1].bbox[0+2*k]);
-			bbox[1+2*k] = std::max(children[0].bbox[1+2*k],children[1].bbox[1+2*k]);
-		}
-	}
-	void intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mark_cells, double p[3], double n[3])
-	{
-		if( marked ) 
-		{
-			unmark_old_edges(clip_state);
-			cells.clear();
-		}
-		sub_intersect_plane_edge(clip_point, clip_state, cells,mark_cells,p,n);
-	}
-	void intersect_plane_face(Tag clip_state, double p[3], double n[3])
-	{
-		sub_intersect_plane_faces(clip_state, p,n);
-	}
-	~kdtree()
-	{
-		delete [] set;
-		clear_children();
-	}
-};
-
-class clipper
-{
-	struct edge_point
-	{
-		double val;
-		Storage::real xyz[3];
-		Storage::integer edge;
-		edge_point(){}
-		edge_point(Storage::real _xyz[3], Storage::integer n, float v)
-		{
-			xyz[0] = _xyz[0];
-			xyz[1] = _xyz[1];
-			xyz[2] = _xyz[2];
-			edge = n;
-			val = v;
-		}
-		bool operator ==(const edge_point& b) const
-		{
-			Storage::real temp = 0.0;
-			for(int k = 0; k < 3; k++) temp += (xyz[k]-b.xyz[k])*(xyz[k]-b.xyz[k]);
-			if( temp < 1.0e-8 ) return true; else return false;
-		}
-		bool operator !=(const edge_point& b) const {return !(operator ==(b));}
-		void print() {printf("%g %g %g e %d\n",xyz[0],xyz[1],xyz[2],edge);}
-	};
-	Tag clip_point, clip_state;
-	kdtree * tree;
-	Tag clips, clipsv, clipsn;
-	MarkerType marker;
-	ElementArray<Cell> cells;
-	Mesh * mm;
-public:
-	~clipper() 
-	{
-		delete tree; 
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) cells[k]->RemMarker(marker);
-		mm->ReleaseMarker(marker); 
-		mm->DeleteTag(clips); 
-		mm->DeleteTag(clipsv);
-		mm->DeleteTag(clipsn);
-		mm->DeleteTag(clip_point); 
-		mm->DeleteTag(clip_state);
-	}
-	clipper(Mesh * m)
-	{
-		mm = m;
-		cells.SetMeshLink(mm);
-		tree = new kdtree(m);
-		marker = m->CreateMarker();
-		clips = m->CreateTag("CLIPS",DATA_REAL,CELL,CELL);
-		clipsv = m->CreateTag("CLIPS_VAL",DATA_REAL,CELL,CELL);
-		clipsn = m->CreateTag("CLIPS_NUM",DATA_INTEGER,CELL,CELL);
-		clip_point = m->CreateTag("CLIP_POINT",DATA_REAL,EDGE,NONE,3);
-		clip_state = m->CreateTag("CLIP_STATE",DATA_INTEGER,EDGE,NONE,1);
-	}
-	double compute_value(Edge e, Storage::real * pnt)
-	{
-		if( visualization_tag.isValid() )
-		{
-			Storage::real_array c1 = e->getBeg()->Coords();
-			Storage::real_array c2 = e->getEnd()->Coords();
-			Storage::real d1,d2,t;
-			d1 = sqrt((pnt[0]-c1[0])*(pnt[0]-c1[0])+(pnt[1]-c1[1])*(pnt[1]-c1[1])+(pnt[2]-c1[2])*(pnt[2]-c1[2]));
-			d2 = sqrt((c2[0]-c1[0])*(c2[0]-c1[0])+(c2[1]-c1[1])*(c2[1]-c1[1])+(c2[2]-c1[2])*(c2[2]-c1[2]));
-			t = d1/d2; //(pnt == c2, t = 1 : pnt == c1, t = 0)
-			return e->getBeg()->RealDF(visualization_tag)*(1-t)+e->getEnd()->RealDF(visualization_tag)*t;
-		}
-		else return 0.f;
-	}
-	void clip_plane(Storage::real p[3], Storage::real n[3])
-	{
-		const bool print = false;
-
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); ++k) 
-			if( cells[k]->GetMarker(marker) )
-			{
-				cells[k]->RealArray(clips).clear();
-				cells[k]->RealArray(clipsv).clear();
-				cells[k]->IntegerArray(clipsn).clear();
-				cells[k]->RemMarker(marker);
-			}
-		tree->intersect_plane_edge(clip_point,clip_state,cells,marker,p,n);
-		dynarray<edge_point,128> clipcoords, loopcoords;
-		std::vector<bool> closed;
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); ++k)
-		{
-			//assuming faces are convex we will have at most one clipping edge per polygon
-			//otherwise every pair of clipping nodes forming edge should appear consequently
-			//as long as we go through face's edges in ordered way
-			clipcoords.clear();
-			//we will gather all the pairs of nodes, then form closed loop
-			ElementArray<Face> faces = cells[k]->getFaces();
-			Face full_face;
-			int ntotpoints = 0, ntotedges = 0;
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < faces.size(); ++q)
-			{
-				int last_edge_type = CLIP_NONE;
-				int nfulledges = 0, npoints = 0, nstartedge = ntotedges;
-				ElementArray<Edge> edges = faces[q].getEdges();
-				for(INMOST_DATA_ENUM_TYPE r = 0; r < edges.size(); ++r)
-				{
-					Storage::integer state = edges[r].IntegerDF(clip_state);
-					if( state == CLIP_FULL )
-					{
-						nfulledges++;
-						edge_point n1 = edge_point(&edges[r].getBeg()->Coords()[0],ntotedges,visualization_tag.isValid() ? edges[r].getBeg()->RealDF(visualization_tag) : 0.f);
-						edge_point n2 = edge_point(&edges[r].getEnd()->Coords()[0],ntotedges,visualization_tag.isValid() ? edges[r].getEnd()->RealDF(visualization_tag) : 0.f);
-						if( npoints % 2 == 0 ) //all privious edges are closed, just add this one
-						{
-							clipcoords.push_back(n1);
-							clipcoords.push_back(n2);
-							npoints+=2;
-							ntotedges++;
-							last_edge_type = CLIP_FULL;
-						} 
-						else if(n1 == clipcoords.back()) //this may be prolongation of one point that hit one edge
-						{
-							clipcoords.push_back(n2);
-							npoints++;
-							ntotedges++;
-							last_edge_type = CLIP_FULL;
-						}
-						else if( n2 == clipcoords.back() )
-						{
-							clipcoords.push_back(n1);
-							npoints++;
-							ntotedges++;
-							last_edge_type = CLIP_FULL;
-						}
-						else printf("%s:%d strange orphan node before me\n",__FILE__,__LINE__);
-					}
-					else if( state == CLIP_ENDP )
-					{
-						edge_point n = edge_point(&edges[r].RealArrayDF(clip_point)[0],ntotedges,compute_value(edges[r],&edges[r].RealArrayDF(clip_point)[0]));
-						bool add = true;
-						if( last_edge_type == CLIP_ENDP )
-						{
-							if( n == clipcoords.back() )
-								add = false;
-						}
-						else if( last_edge_type == CLIP_FULL )
-						{
-							if( n == clipcoords.back() || n == clipcoords[clipcoords.size()-2])
-								add = false;
-						}
-						if( add ) //this one node should be prolongation of privious edge
-						{
-							if( print )
-							{
-								printf("added: ");
-								n.print();
-							}
-							clipcoords.push_back(n);
-							npoints++;
-							if( npoints % 2 == 0 ) 
-							{
-								if( print ) printf("edge %d accepted\n",ntotedges);
-								ntotedges++;
-							}
-							last_edge_type = CLIP_ENDP;
-						}
-						else if( print )
-						{
-							printf("ignored: ");
-							n.print();
-						}
-					}
-					else if( state == CLIP_NODE )
-					{
-						edge_point n = edge_point(&edges[r].RealArrayDF(clip_point)[0],ntotedges,compute_value(edges[r],&edges[r].RealArrayDF(clip_point)[0]));
-						if( print )
-						{
-							printf("added: ");
-							n.print();
-						}
-						clipcoords.push_back(n);
-						npoints++;
-						if( npoints % 2 == 0 ) 
-						{
-							if( print ) printf("edge %d accepted\n",ntotedges);
-							ntotedges++;
-						}
-						last_edge_type = CLIP_NODE;
-					}
-				}
-				if( npoints % 2 != 0 ) 
-				{
-					if( print ) printf("edge %d not closed - remove\n",ntotedges);
-					clipcoords.pop_back();
-					npoints--;
-					//printf("%s:%d this should not happen!\n",__FILE__,__LINE__);
-				}
-				
-				if( nfulledges == static_cast<int>(edges.size()) )
-				{
-					full_face = faces[q];
-					break;
-				}
-				if( print )
-				{
-					printf("nodes on face %d\n",faces[q].LocalID());
-					for(int m = nstartedge*2; m < static_cast<int>(clipcoords.size()); m++) clipcoords[m].print();
-				}
-				ntotpoints += npoints;
-			}
-			if( full_face.isValid() )
-			{
-				ElementArray<Node> nodes = full_face->getNodes();
-				Storage::real_array cl = cells[k]->RealArray(clips);
-				Storage::real_array clv = cells[k]->RealArray(clipsv);
-				Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-				cln.resize(1,nodes.size());
-				cl.resize(static_cast<Storage::real_array::size_type>(3*nodes.size()));
-				clv.resize(static_cast<Storage::real_array::size_type>(nodes.size()));
-				for(INMOST_DATA_ENUM_TYPE r = 0; r < nodes.size(); r++)
-				{
-					Storage::real_array p = nodes[r].Coords();
-					cl[0+3*r] = p[0];
-					cl[1+3*r] = p[1];
-					cl[2+3*r] = p[2];
-					clv[r] = visualization_tag.isValid() ? nodes[r].RealDF(visualization_tag) : 0.0;
-				}
-				cells[k]->SetMarker(marker);
-			}
-			else if( ntotedges > 2 )
-			{
-				if( print )
-				{
-					printf("coords on cell %d\n",cells[k]->LocalID());
-					for(int m = 0; m < static_cast<int>(clipcoords.size()); m++) clipcoords[m].print();
-				}
-				//Can make this faster using hash
-				closed.resize(ntotedges);
-				std::fill(closed.begin(),closed.end(),false);
-				Storage::real_array cl = cells[k]->RealArray(clips);
-				Storage::real_array clv = cells[k]->RealArray(clipsv);
-				Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-				bool havestart = true;
-				cln.clear();
-				clv.clear();
-				cl.clear();
-				while( havestart )
-				{
-					havestart = false;
-					for(int r = 0; r < ntotedges && !havestart; ++r) if( !closed[r] )
-					{
-						loopcoords.push_back(clipcoords[r*2+0]); //this is starting point
-						loopcoords.push_back(clipcoords[r*2+1]); //this is next
-						closed[r] = true;
-						havestart = true;
-					}
-					if( !havestart ) break;
-					bool hit = true;
-					while (hit)
-					{
-						hit = false;
-						for(int q = 0; q < ntotedges; ++q) if( !closed[q] )
-						{
-							//some end of q-th edge connects to current end point - connect it
-							if( clipcoords[q*2+0] == loopcoords.back() )
-							{
-								loopcoords.push_back(clipcoords[q*2+1]);
-								closed[q] = true;
-								hit = true;
-								break;
-							}
-							else if( clipcoords[q*2+1] == loopcoords.back() )
-							{
-								loopcoords.push_back(clipcoords[q*2+0]);
-								closed[q] = true;
-								hit = true;
-								break;
-							}
-						}
-					}
-					//loopcoords.pop_back();
-					if( loopcoords.size() > 2 )
-					{
-						cln.push_back(loopcoords.size());
-						int offset = clv.size();
-						cl.resize(static_cast<Storage::real_array::size_type>(offset*3+3*loopcoords.size()));
-						clv.resize(static_cast<Storage::real_array::size_type>(offset+loopcoords.size()));
-						for(INMOST_DATA_ENUM_TYPE r = 0; r < loopcoords.size(); ++r)
-						{
-							cl[(offset+r)*3+0] = loopcoords[r].xyz[0];
-							cl[(offset+r)*3+1] = loopcoords[r].xyz[1];
-							cl[(offset+r)*3+2] = loopcoords[r].xyz[2];
-							clv[offset+r] = loopcoords[r].val;
-						}
-					}
-					loopcoords.clear();
-				}
-				clipcoords.clear();
-
-				cells[k]->SetMarker(marker);
-			}
-		}
-	}
-	void gen_clip(std::vector<face2gl> & out, Storage::real n[3])
-	{
-		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,size()/100));
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k++) if( cells[k]->GetMarker(marker))
-		{
-			Storage::real_array cl = cells[k]->RealArray(clips);
-			Storage::real_array clv = cells[k]->RealArray(clipsv);
-			Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-			int offset = 0;
-			for(int r = 0; r < (int)cln.size(); ++r)
-			{
-				face2gl f;
-				f.set_color(0.6,0.6,0.6,1);
-				if( elevation && visualization_tag.isValid() )
-				{
-					Storage::real pos[3], t;
-					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-					{
-						t = (clv[q] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-						pos[0] = cl[q*3+0] + t*n[0];
-						pos[1] = cl[q*3+1] + t*n[1];
-						pos[2] = cl[q*3+2] + t*n[2];
-						f.add_vert(pos);
-					}
-				}
-				else
-					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++) f.add_vert(&cl[q*3]);
-				if( visualization_tag.isValid() )
-				{
-					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-					{
-						//f.add_color(CommonColorBar->pick_color(clv[q]));
-						if( visualization_type == CELL && !visualization_smooth )
-							f.add_texcoord(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
-						else
-							f.add_texcoord(CommonColorBar->pick_texture(clv[q]));
-					}
-				}
-				f.compute_center();
-				f.set_elem(cells[k]->GetElementType(),cells[k]->LocalID());
-				if( k%pace == 0 ) f.set_flag(true);
-				out.push_back(f);
-				offset += cln[r];
-			}
-		}
-	}
-	void draw_clip(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3])
-	{
-		if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
-		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(1.0, 1.0);
-		
-		glBegin(GL_TRIANGLES);
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
-		{
-			Storage::real_array cl = cells[k]->RealArray(clips);
-			Storage::real_array clv = cells[k]->RealArray(clipsv);
-			Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-			int offset = 0;
-			for(int r = 0; r < (int)cln.size(); ++r)
-			{
-				Storage::real cnt[3] = {0,0,0};
-				Storage::real cntv = 0.0;
-				for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-				{
-					cnt[0] += cl[q*3+0];
-					cnt[1] += cl[q*3+1];
-					cnt[2] += cl[q*3+2];
-					cntv += clv[q];
-				}
-				cnt[0] /= static_cast<Storage::real>(cln[r]);
-				cnt[1] /= static_cast<Storage::real>(cln[r]);
-				cnt[2] /= static_cast<Storage::real>(cln[r]);
-				cntv /= static_cast<Storage::real>(cln[r]);
-				if( !visualization_tag.isValid() )
-				{
-					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-					{
-						glVertex3dv(cnt);
-						glVertex3dv(&cl[q*3]);
-						glVertex3dv(&cl[(((q+1-offset)%cln[r])+offset)*3]);
-					}
-				}
-				else if( elevation )
-				{
-					Storage::real pos[3], t;
-					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-					{
-						if( visualization_type == CELL && !visualization_smooth )
-							glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
-						else
-							glTexCoord1d(CommonColorBar->pick_texture(cntv));
-						t = (cntv - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-						pos[0] = cnt[0] + n[0]*t;
-						pos[1] = cnt[1] + n[1]*t;
-						pos[2] = cnt[2] + n[2]*t;
-						glVertex3dv(pos);
-						if( !(visualization_type == CELL && !visualization_smooth) )
-							glTexCoord1d(CommonColorBar->pick_texture(clv[q]));
-						t = (clv[q] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-						pos[0] = cl[q*3+0] + n[0]*t;
-						pos[1] = cl[q*3+1] + n[1]*t;
-						pos[2] = cl[q*3+2] + n[2]*t;
-						glVertex3dv(pos);
-						if( !(visualization_type == CELL && !visualization_smooth) )
-							glTexCoord1d(CommonColorBar->pick_texture(clv[(q+1-offset)%cln[r]+offset]));
-						t = (clv[(q+1-offset)%cln[r]+offset] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-						pos[0] = cl[((q+1-offset)%cln[r]+offset)*3+0] + n[0]*t;
-						pos[1] = cl[((q+1-offset)%cln[r]+offset)*3+1] + n[1]*t;
-						pos[2] = cl[((q+1-offset)%cln[r]+offset)*3+2] + n[2]*t;
-						glVertex3dv(pos);
-					}
-				}
-				else
-				{
-					for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-					{
-						if( visualization_type == CELL && !visualization_smooth )
-							glTexCoord1d(CommonColorBar->pick_texture(cells[k].RealDF(visualization_tag)));
-						else
-							glTexCoord1d(CommonColorBar->pick_texture(cntv));
-						glVertex3dv(cnt);
-						if( !(visualization_type == CELL && !visualization_smooth) )
-							glTexCoord1d(CommonColorBar->pick_texture(clv[q]));
-						glVertex3dv(&cl[q*3]);
-						if( !(visualization_type == CELL && !visualization_smooth) )
-							glTexCoord1d(CommonColorBar->pick_texture(clv[(q+1-offset)%cln[r]+offset]));
-						glVertex3dv(&cl[((q+1-offset)%cln[r]+offset)*3]);
-					}
-				}
-				offset += cln[r];
-			}
-		}
-		glEnd();
-		
-		glDisable(GL_POLYGON_OFFSET_FILL);
-		if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
-	}
-	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3])
-	{
-		if( drawedges )
-		{
-			glBegin(GL_LINES);
-			if( visualization_tag.isValid() && elevation )
-			{
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
-				{
-					Storage::real_array cl = cells[k]->RealArray(clips);
-					Storage::real_array clv = cells[k]->RealArray(clipsv);
-					Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-					int offset = 0;
-					for(int r = 0; r < cln.size(); ++r)
-					{
-						Storage::real pos[3], t;
-						for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-						{
-							t = (clv[q] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-							pos[0] = cl[q*3+0] + t*n[0];
-							pos[1] = cl[q*3+1] + t*n[1];
-							pos[2] = cl[q*3+2] + t*n[2];
-							glVertex3dv(pos);
-							t = (clv[(q+1-offset)%cln[r]+offset] - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-							pos[0] = cl[((q+1-offset)%cln[r]+offset)*3+0] + t*n[0];
-							pos[1] = cl[((q+1-offset)%cln[r]+offset)*3+1] + t*n[1];
-							pos[2] = cl[((q+1-offset)%cln[r]+offset)*3+2] + t*n[2];
-							glVertex3dv(pos);
-						}
-						offset += cln[r];
-					}
-				}
-			}
-			else
-			{
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); k+=pace) if( cells[k]->GetMarker(marker))
-				{
-					Storage::real_array cl = cells[k]->RealArray(clips);
-					Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-					int offset = 0;
-					for(int r = 0; r < cln.size(); ++r)
-					{
-						for(INMOST_DATA_ENUM_TYPE q = offset; q < offset+cln[r]; q++)
-						{
-							glVertex3dv(&cl[q*3]);
-							glVertex3dv(&cl[((q+1-offset)%cln[r]+offset)*3]);
-						}
-						offset += cln[r];
-					}
-				}
-			}
-			glEnd();
-		}
-	}
-	INMOST_DATA_ENUM_TYPE size() {return (INMOST_DATA_ENUM_TYPE)cells.size();}
-} * oclipper = NULL;
-
-class bnd_clipper
-{
-	Tag clip_state;
-	kdtree * tree;
-	Mesh * mm;
-	HandleType * faces;
-	INMOST_DATA_ENUM_TYPE nfaces;
-public:
-	~bnd_clipper()
-	{
-		mm->DeleteTag(clip_state);
-		delete tree;
-		delete [ ]faces;
-	}
-	bnd_clipper(Mesh * m , HandleType * _faces, INMOST_DATA_ENUM_TYPE size)
-	{
-		mm = m;
-		clip_state = m->CreateTag("CLIP_FACE_STATE",DATA_INTEGER,FACE,NONE,1);
-		nfaces = size;
-		faces = new HandleType[nfaces];
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++) faces[k] = _faces[k];
-		tree = new kdtree(mm,faces,nfaces);
-	}
-	double compute_value(Node n1, Node n2, Storage::real * c1, Storage::real * c2, Storage::real * pnt)
-	{
-		if( visualization_tag.isValid() )
-		{
-			Storage::real d1,d2,t;
-			d1 = sqrt((pnt[0]-c1[0])*(pnt[0]-c1[0])+(pnt[1]-c1[1])*(pnt[1]-c1[1])+(pnt[2]-c1[2])*(pnt[2]-c1[2]));
-			d2 = sqrt((c2[0]-c1[0])*(c2[0]-c1[0])+(c2[1]-c1[1])*(c2[1]-c1[1])+(c2[2]-c1[2])*(c2[2]-c1[2]));
-			t = d1/d2; //(pnt == c2, t = 1 : pnt == c1, t = 0)
-			return n1->RealDF(visualization_tag)*(1-t)+n2->RealDF(visualization_tag)*t;
-		}
-		else return 0.f;
-	}
-	void clip_plane(Storage::real p[3], Storage::real n[3])
-	{
-		tree->intersect_plane_face(clip_state,p,n);
-	}
-	void gen_clip(std::vector<face2gl> & out, Storage::real n[3] )
-	{
-		INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,nfaces/100));
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++)
-		{
-			int state = mm->IntegerDF(faces[k],clip_state);
-			if( state == CLIP_FACE_INSIDE )
-			{
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-				face2gl f;
-				f.set_color(0.6,0.6,0.6,1);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
-				{
-					f.add_vert(&nodes[q].Coords()[0]);
-					if( visualization_tag.isValid() ) 
-					{
-						//f.add_color(CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)));
-						if( visualization_type == CELL && !visualization_smooth )
-							f.add_texcoord(CommonColorBar->pick_texture(Face(mm,faces[k]).BackCell().RealDF(visualization_tag)));
-						else
-							f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
-					}
-				}
-				f.compute_center();
-				f.set_elem(GetHandleElementType(faces[k]),GetHandleID(faces[k]));
-				if( k%pace == 0 ) f.set_flag(true);
-				out.push_back(f);
-			}
-			else if( state == CLIP_FACE_INTERSECT )
-			{
-				face2gl f;
-				f.set_color(0.6,0.6,0.6,1);
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-				dynarray<bool,64> nodepos(nodes.size());
-				dynarray<Storage::real,64> faceverts;
-				Storage::real_array coords = nodes[0].Coords();
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++)
-				{
-					coords = nodes[q].Coords();
-					Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-					nodepos[q] = dot < 1.0e-10;
-				}
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++)
-				{
-					if( nodepos[q] )
-					{
-						coords = nodes[q].Coords();
-						f.add_vert(&coords[0]);
-						if( visualization_tag.isValid() ) 
-						{
-							//f.add_color(CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)));
-							if( visualization_type == CELL && !visualization_smooth )
-								f.add_texcoord(CommonColorBar->pick_texture(Face(mm,faces[k]).BackCell().RealDF(visualization_tag)));
-							else 
-								f.add_texcoord(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
-						}
-					}
-					if( nodepos[q] != nodepos[(q+1)%nodes.size()] )
-					{
-						Storage::real_array sp0 = nodes[q].Coords();
-						Storage::real_array sp1 = nodes[(q+1)%nodes.size()].Coords();
-						Storage::real node[3], t, c = 0;
-						if( clip_plane_edge(&sp0[0],&sp1[0],p,n,node) > CLIP_NONE) 
-						{
-							if( visualization_tag.isValid() ) 
-							{
-								//f.add_color(CommonColorBar->pick_color(compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node)));
-								if( visualization_type == CELL && !visualization_smooth )
-									c = Face(mm,faces[k]).BackCell().RealDF(visualization_tag);
-								else
-									c = compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node);
-								//f.add_texcoord(CommonColorBar->pick_texture(Face(mm,faces[k]).BackCell().RealDF(visualization_tag)));
-								f.add_texcoord(CommonColorBar->pick_texture(c));
-								if( elevation )
-								{
-									c = compute_value(nodes[q],nodes[(q+1)%nodes.size()],&sp0[0],&sp1[0],node);
-									t = (c - CommonColorBar->get_min())/(CommonColorBar->get_max() - CommonColorBar->get_min());
-									node[0] += t*n[0];
-									node[1] += t*n[1];
-									node[2] += t*n[2];
-								}
-							}
-							f.add_vert(node);
-						}
-					}
-				}
-				f.compute_center();
-				f.set_elem(GetHandleElementType(faces[k]),GetHandleID(faces[k]));
-				if( k%pace == 0 ) f.set_flag(true);
-				out.push_back(f);
-			}
-		}
-	}
-	void draw_clip(INMOST_DATA_ENUM_TYPE pace)
-	{
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k+=pace)
-		{
-			int state = CLIP_FACE_NONE;
-			ElementArray<Node> nodes = boundary_faces[k]->getNodes();
-			Storage::real_array coords = nodes[0].Coords();
-			Storage::real dot0 = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-			if( dot0 <= 0.0 ) state = CLIP_FACE_INSIDE; else state = CLIP_FACE_OUTSIDE;
-			if( state == CLIP_FACE_INSIDE )
-			{
-				for(INMOST_DATA_ENUM_TYPE q = 1; q < nodes.size(); ++q)
-				{
-					coords = nodes[q].Coords();
-					Storage::real dot = n[0]*(coords[0]-p[0])+n[1]*(coords[1]-p[1])+n[2]*(coords[2]-p[2]);
-					if( dot*dot0 <= 0.0 ) 
-					{
-						state = CLIP_FACE_INTERSECT;
-						break;
-					}
-				}
-				if( state == CLIP_FACE_INSIDE )
-				{
-					ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-					
-					glEnable(GL_POLYGON_OFFSET_FILL);
-					glPolygonOffset(1.0, 1.0);
-					
-					
-					glBegin(GL_POLYGON);
-					if( visualization_tag.isValid() )
-					{
-						for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
-						{
-							CommonColorBar->pick_color(nodes[q].RealDF(visualization_tag)).set_color();
-							glTexCoord1f(CommonColorBar->pick_texture(nodes[q].RealDF(visualization_tag)));
-							glVertex3dv(&nodes[q].Coords()[0]);
-						}
-					}
-					else
-					{
-						for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) 
-							glVertex3dv(&nodes[q].Coords()[0]);
-					}
-					glEnd();
-					
-					glDisable(GL_POLYGON_OFFSET_FILL);
-				}
-			}
-			mm->IntegerDF(faces[k],clip_state) = state;
-		}
-	}
-	void draw_clip_edges(INMOST_DATA_ENUM_TYPE pace)
-	{
-		if( drawedges ) for(INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k+=pace)
-		{
-			if( mm->IntegerDF(faces[k],clip_state) == CLIP_FACE_INSIDE )
-			{
-				ElementArray<Node> nodes = Face(mm,faces[k])->getNodes();
-				glBegin(GL_LINE_LOOP);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
-				glEnd();
-			}
-		}
-	}
-	INMOST_DATA_ENUM_TYPE size() {return nfaces;}
-} * bclipper = NULL;
-
-class kdtree_picker
-{
-	struct entry
-	{
-		int index;
-		float xyz[3];
-	} * set;
-	INMOST_DATA_ENUM_TYPE size;
-	Storage::real bbox[6];
-	kdtree_picker * children;
-	static int cmpElements0(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[0];
-		float bd = eb->xyz[0];
-		return (ad > bd) - (ad < bd);
-	}
-	static int cmpElements1(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[1];
-		float bd = eb->xyz[1];
-		return (ad > bd) - (ad < bd);
-	}
-	static int cmpElements2(const void * a,const void * b) 
-	{
-		const entry * ea = ((const entry *)a);
-		const entry * eb = ((const entry *)b);
-		float ad = ea->xyz[2];
-		float bd = eb->xyz[2];
-		return (ad > bd) - (ad < bd);
-	}
-	inline static unsigned int flip(const unsigned int * fp)
-	{
-		unsigned int mask = -((int)(*fp >> 31)) | 0x80000000;
-		return *fp ^ mask;
-	}
-#define _0(x)	(x & 0x7FF)
-#define _1(x)	(x >> 11 & 0x7FF)
-#define _2(x)	(x >> 22 )
-	void radix_sort(int dim, struct entry * temp)
-	{
-		unsigned int i;
-		const unsigned int kHist = 2048;
-		unsigned int  b0[kHist * 3];
-		unsigned int *b1 = b0 + kHist;
-		unsigned int *b2 = b1 + kHist;
-		memset(b0,0,sizeof(unsigned int)*kHist*3);
-		for (i = 0; i < size; i++) 
-		{
-			unsigned int fi = flip((unsigned int *)&set[i].xyz[dim]);
-			++b0[_0(fi)]; ++b1[_1(fi)]; ++b2[_2(fi)];
-		}
-		{
-			unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
-			for (i = 0; i < kHist; i++) 
-			{
-				b0[kHist-1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist-1];
-				b1[kHist-1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist-1];
-				b2[kHist-1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist-1];
-			}
-		}
-		for (i = 0; i < size; i++) temp[++b0[_0(flip((unsigned int *)&set[i].xyz[dim]))]] = set[i];
-		for (i = 0; i < size; i++) set[++b1[_1(flip((unsigned int *)&temp[i].xyz[dim]))]] = temp[i];
-		for (i = 0; i < size; i++) temp[++b2[_2(flip((unsigned int *)&set[i].xyz[dim]))]] = set[i];
-		for (i = 0; i < size; i++) set[i] = temp[i];
-	}
-	void kdtree_build(int dim, std::vector<face2gl> & in, struct entry * temp)
-	{
-		if( size > 1 )
-		{
-			if( size > 128 ) radix_sort(dim,temp); else 
-			switch(dim)
-			{
-			case 0: qsort(set,size,sizeof(entry),cmpElements0);break;
-			case 1: qsort(set,size,sizeof(entry),cmpElements1);break;
-			case 2: qsort(set,size,sizeof(entry),cmpElements2);break;
-			}
-			children = static_cast<kdtree_picker *>(malloc(sizeof(kdtree_picker)*2));//new kdtree_picker[2];
-			assert(children != NULL);
-			children[0].children = NULL;
-			children[0].set = set;
-			children[0].size = size/2;
-			children[1].children = NULL;
-			children[1].set = set+size/2;
-			children[1].size = size - size/2;
-			children[0].kdtree_build((dim+1)%3,in,temp);
-			children[1].kdtree_build((dim+1)%3,in,temp);
-			for(int k = 0; k < 3; k++)
-			{
-				bbox[0+2*k] = std::min(children[0].bbox[0+2*k],children[1].bbox[0+2*k]);
-				bbox[1+2*k] = std::max(children[0].bbox[1+2*k],children[1].bbox[1+2*k]);
-			}
-		}
-		else 
-		{
-			assert(size == 1);
-			bbox[0] = bbox[2] = bbox[4] = 1.0e20;
-			bbox[1] = bbox[3] = bbox[5] = -1.0e20;
-			for(INMOST_DATA_ENUM_TYPE k = 0; k < in[set[0].index].size(); ++k)
-			{
-				double * coords = in[set[0].index].get_vert(k);
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < 3; q++)
-				{
-					bbox[q*2+0] = std::min(bbox[q*2+0],coords[q]);
-					bbox[q*2+1] = std::max(bbox[q*2+1],coords[q]);
-				}
-			}
-		}
-	}
-	void clear_children() { if( children ) {children[0].clear_children(); children[1].clear_children(); free(children);}}
-	int raybox(double pos[3], double ray[3], double closest)
-	{
-		double tnear = -1.0e20, tfar = 1.0e20, t1,t2,c;
-		for(int i = 0; i < 3; i++)
-		{
-			if( fabs(ray[i]) < 1.0e-15 )
-			{
-				if( pos[i] < bbox[i*2] || pos[i] > bbox[i*2+1] )
-					return 0;
-			}
-			else
-			{
-				t1 = (bbox[i*2+0] - pos[i])/ray[i];
-				t2 = (bbox[i*2+1] - pos[i])/ray[i];
-				if( t1 > t2 ) {c = t1; t1 = t2; t2 = c;}
-				if( t1 > tnear ) tnear = t1;
-				if( t2 < tfar ) tfar = t2;
-				if( tnear > closest ) return 0;
-				if( tnear > tfar ) return 0;
-				if( tfar < 0 ) return 0;
-			}
-		}
-		return 1;
-	}
-	void sub_intersect_ray_faces(std::vector<face2gl> & in, double p[3], double dir[3], std::pair<double,int> & closest)
-	{
-		if( size == 1 )
-		{
-			face2gl & f = in[set[0].index];
-			double * tri[3], btri[3][3], dot[3], prod[3][3], norm[3], d, proj[3];
-			tri[0] = f.get_center();
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < f.size(); i++)
-			{
-				INMOST_DATA_ENUM_TYPE j = (i+1)%f.size();
-				tri[1] = f.get_vert(i);
-				tri[2] = f.get_vert(j);
-				norm[0] = (tri[2][1]-tri[0][1])*(tri[1][2]-tri[0][2]) - (tri[2][2]-tri[0][2])*(tri[1][1]-tri[0][1]);
-				norm[1] = (tri[2][2]-tri[0][2])*(tri[1][0]-tri[0][0]) - (tri[2][0]-tri[0][0])*(tri[1][2]-tri[0][2]);
-				norm[2] = (tri[2][0]-tri[0][0])*(tri[1][1]-tri[0][1]) - (tri[2][1]-tri[0][1])*(tri[1][0]-tri[0][0]);
-				d = norm[0]*(tri[0][0]-p[0])+norm[1]*(tri[0][1]-p[1])+norm[2]*(tri[0][2]-p[2]);
-				d /= norm[0]*dir[0] + norm[1]*dir[1] + norm[2]*dir[2];
-				proj[0] = p[0] + d*dir[0];
-				proj[1] = p[1] + d*dir[1];
-				proj[2] = p[2] + d*dir[2];
-
-				if( d > closest.first ) break;
-
-				for(int k = 0; k < 3; k++)
-				{
-					btri[k][0] = tri[k][0] - proj[0];
-					btri[k][1] = tri[k][1] - proj[1];
-					btri[k][2] = tri[k][2] - proj[2];
-				}
-				for(int k = 0; k < 3; k++)
-				{
-					int l = (k+1)%3;
-					prod[k][0] = btri[k][1]*btri[l][2] - btri[k][2]*btri[l][1];
-					prod[k][1] = btri[k][2]*btri[l][0] - btri[k][0]*btri[l][2];
-					prod[k][2] = btri[k][0]*btri[l][1] - btri[k][1]*btri[l][0];
-				}
-
-				for(int k = 0; k < 3; k++)
-				{
-					int l = (k+1)%3;
-					dot[k] = prod[k][0]*prod[l][0]+prod[k][1]*prod[l][1]+prod[k][2]*prod[l][2];
-				}
-				if( dot[0] >= 0 && dot[1] >= 0 && dot[2] >= 0 ) 
-				{
-					closest.first = d;
-					closest.second = set[0].index;
-					break; //don't expect anything better here
-				}
-			}
-		}
-		else
-		{
-			if( raybox(p,dir,closest.first) )
-			{
-				children[0].sub_intersect_ray_faces(in,p,dir,closest);
-				children[1].sub_intersect_ray_faces(in,p,dir,closest);
-			}
-		}
-	}
-public:
-	kdtree_picker() : set(NULL), size(0), children(NULL) {}
-	~kdtree_picker() { clear_children(); delete [] set;}
-	kdtree_picker(std::vector<face2gl> & in)
-	{
-		size = (unsigned)in.size();
-		set = new struct entry[size];
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < in.size(); ++k)
-		{
-			set[k].index = k;
-			in[k].get_center(set[k].xyz);
-		}
-		struct entry * temp = new struct entry[size];
-		kdtree_build(0,in,temp);
-		delete [] temp;
-	}
-	int ray_faces(std::vector<face2gl> & in, double p[3], double dir[3])
-	{
-		std::pair<double, int> closest(1.0e20,-1);
-		sub_intersect_ray_faces(in,p,dir,closest);
-		return closest.second;
-	}
-};
-
-class picker
-{
-	kdtree_picker * tree;
-	std::vector<face2gl> * faces;
-public:
-	~picker() {delete tree;}
-	picker(std::vector<face2gl> & _faces)
-	{
-		faces = &_faces;
-		tree = new kdtree_picker(*faces);
-	}
-	int select(double p[3], double ray[3]) {return tree->ray_faces(*faces,p,ray);};
-} * current_picker = NULL;
+clipper * oclipper = NULL;
+bnd_clipper * bclipper = NULL;
+picker * current_picker = NULL;
 
 
 void set_matrix3d()
@@ -3197,86 +397,7 @@ void myclick(int b, int s, int nmx, int nmy) // Mouse
 }
 
 
-class Input
-{
-public:
-	enum InputType {Double,Integer,String};
-private:
-	std::string str;
-	std::string comment;
-	void * input_link;
-	InputType type;
-	bool done;
-	bool canceled;
-	
-public:
-	Input(int * val, std::string comment) : comment(comment) {input_link = val; type = Integer; canceled = false; done = false; str = "";}
-	Input(double * val, std::string comment) : comment(comment) {input_link = val; type = Double; canceled = false; done = false; str = "";}
-	Input(char * val, std::string comment) : comment(comment) {input_link = val; type = String; canceled = false; done = false; str = "";}
-	Input(void * link, InputType type, std::string comment) : comment(comment), input_link(link), type(type) {canceled = false; done = false; str = "";}
-	Input(const Input & other):str(other.str),comment(other.comment), input_link(other.input_link),  type(other.type), done(other.done), canceled(other.canceled) {}
-	Input & operator =(Input const & other) {comment = other.comment; input_link = other.input_link; str = other.str; type = other.type; canceled = other.canceled; done = other.done; return *this;}
-	~Input() {}
-	void KeyPress(char c) 
-	{
-		if( c == 13 )
-		{
-			
-			done = true;
-			if( type == Double ) *((double *)input_link) = atof(str.c_str());
-			else if( type == Integer ) *((int *)input_link) = atoi(str.c_str());
-			else if( type == String ) strcpy((char *)input_link,str.c_str());
-			glutPostRedisplay();
-		}
-		else if( c == 8 )
-		{
-			if( !str.empty() ) str.erase(str.size()-1);
-			glutPostRedisplay();
-		}
-		else if( c == 27 )
-		{
-			canceled = true;
-			done = true;
-			glutPostRedisplay();
-		}
-		else if( type == String || ( (c >= '0' && c <= '9') || ((str.empty() || tolower(*str.rbegin()) == 'e') && (c=='+' || c=='-')) || (type == Double && (c=='.' || c=='e' || c == 'E'))) )
-		{
-			str += c;
-			glutPostRedisplay();
-		}
-	}
-	bool Done() {return done;}
-	bool Canceled() {return canceled;}
-	void Draw()
-	{
-		float h = 26.0f/(float)height;
-		
-		glColor3f(1,1,1);
-		glBegin(GL_QUADS);
-		glVertex3f(-0.99,-0.99,1);
-		glVertex3f(-0.99,-0.99+h,1);
-		glVertex3f(0.99,-0.99+h,1);
-		glVertex3f(0.99,-0.99,1);
-		glEnd();
-		glColor3f(0,0,0);
-		glBegin(GL_LINE_LOOP);
-		glVertex3f(-0.99,-0.99,1);
-		glVertex3f(-0.99,-0.99+h,1);
-		glVertex3f(0.99,-0.99+h,1);
-		glVertex3f(0.99,-0.99,1);
-		glEnd();
-		
-		glColor4f(0,0,0,1);
-		glRasterPos2d(-0.985,-0.98);
-		//printtext(str.c_str());
-		char oldval[4096];
-		if( type == Double ) sprintf(oldval,"%g",*(double*)input_link);
-		else if( type == Integer ) sprintf(oldval,"%d",*(int*)input_link);
-		else if( type == String ) sprintf(oldval,"%s",(char *)input_link);
-		printtext("input number (%s[%s]:%s): %s",comment.c_str(),oldval,type == Integer ? "integer": (type == Double ? "double" : "string"), str.c_str());
-	}
-	std::string GetString() {return str;}
-} * CommonInput = NULL;
+Input * CommonInput = NULL;
 
 
 
@@ -3619,7 +740,7 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if( key == 't' )
 	{
-		screenshot();
+		screenshot(4);
 		std::fstream fout("screenshot.svg",std::ios::out);
 		svg_draw(fout);
 		fout.close();
@@ -3641,32 +762,16 @@ void keyboard2(unsigned char key, int x, int y)
 
 Tag face_center;
 
-face2gl DrawFace(Element f)
+void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print_adj)
 {
-	face2gl ret;
-	ElementArray<Node> nodes = f->getNodes();
-
-	if( f->nbAdjElements(CELL) == 0 ) ret.set_color(1,0,0,0.1);
-	else ret.set_color(0,1,0,0.1);
-	
-	for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
-		ret.add_vert(&(kt->Coords()[0]));
-	ret.set_elem(f->GetElementType(),f->LocalID());
-	ret.compute_center();
-	return ret;
-}
-
-void DrawElement(Element e, color_t face, color_t edge, color_t node, double campos[3])
-{
+	glPointSize(4);
 	if( e.GetElementType() == NODE )
 	{
 		node.set_color();
-		glPointSize(4);
 		glColor3f(1,1,0);
 		glBegin(GL_POINTS);
 		glVertex3dv(e->getAsNode()->Coords().data());
 		glEnd();
-		glPointSize(1);
 	}
 	else if( e.GetElementType() == EDGE )
 	{
@@ -3682,6 +787,14 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, double cam
 		glVertex3dv(e->getAsEdge()->getEnd()->Coords().data());
 		glEnd();
 		glLineWidth(1);
+
+		if (print_adj)
+		{
+			glRasterPos3dv(e->getAsEdge().getBeg().Coords().data());
+			printtext("%d", e->getAsEdge().getBeg().LocalID());
+			glRasterPos3dv(e->getAsEdge().getEnd().Coords().data());
+			printtext("%d", e->getAsEdge().getEnd().LocalID());
+		}
 	}
 	else if( e.GetElementType() == FACE )
 	{
@@ -3703,13 +816,16 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, double cam
 		glEnd();
 		glColor3f(0, 0, 0);
 		//glDisable(GL_DEPTH_TEST);
-		for (ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); ++it)
+		if (print_adj)
 		{
-			double cnt[3];
-			it->Centroid(cnt);
-			//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
-			glRasterPos3dv(cnt);
-			printtext("%d", it->LocalID());
+			for (ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); ++it)
+			{
+				double cnt[3];
+				it->Centroid(cnt);
+				//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
+				glRasterPos3dv(cnt);
+				printtext("%d", it->LocalID());
+			}
 		}
 		//glEnable(GL_DEPTH_TEST);
 	}
@@ -3725,16 +841,6 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, double cam
 		}
 		glEnd();
 		glColor3f(0, 0, 0);
-		//glDisable(GL_DEPTH_TEST);
-		for (ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end(); ++it)
-		{
-			double cnt[3];
-			it->Centroid(cnt);
-			//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
-			glRasterPos3dv(cnt);
-			printtext("%d", it->LocalID());
-		}
-		//glEnable(GL_DEPTH_TEST);
 		edge.set_color();
 		glBegin(GL_LINES);
 		for(ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end(); ++it)
@@ -3749,7 +855,40 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, double cam
 		for(ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); ++it)
 			glVertex3dv(it->Coords().data());
 		glEnd();
+
+		if (print_adj)
+		{
+			for (ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end(); ++it)
+			{
+				double cnt[3];
+				it->Centroid(cnt);
+				//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
+				glRasterPos3dv(cnt);
+				printtext("%d", it->LocalID());
+			}
+		}
 	}
+	glPointSize(1);
+	if (e.GetElementType() == ESET)
+	{
+		ElementSet s = e.getAsSet();
+		for(ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
+			DrawElement(it->self(),face,edge,node,false);
+
+		if (print_adj)
+		{
+			glDisable(GL_DEPTH_TEST);
+			for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
+			{
+				double cnt[3];
+				it->Centroid(cnt);
+				glRasterPos3dv(cnt);
+				printtext("%d", it->LocalID());
+			}
+			glEnable(GL_DEPTH_TEST);
+		}
+	}
+	
 }
 
 void whereami(double & cx, double & cy, double & cz)
@@ -4008,7 +1147,14 @@ void draw_screen()
 	whereami(campos[0], campos[1], campos[2]);
 	int picked = -1;
 
-	
+	if (draw_orphan)
+	for (int k = 0; k < (int)orphans.size(); ++k)
+		DrawElement(orphans[k], color_t(1, 0, 1), color_t(0, 1, 1), color_t(0, 0, 1), true);
+
+	if (disp_e.isValid())
+		DrawElement(disp_e, color_t(1, 1, 0), color_t(1, 0, 0), color_t(0, 0, 1), true);
+
+
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
 	if( drawedges == 4 )
 	{
@@ -4022,9 +1168,11 @@ void draw_screen()
 				clip_boundary.back().set_color(0.6,0.6,0.6,1);
 			}
 		}
-		draw_faces(clip_boundary);
+		if (!(drawedges == 2 || drawedges == 3))
+			draw_faces(clip_boundary);
 		glColor4f(0,0,0,1);
-		draw_edges(clip_boundary);
+		if (drawedges && drawedges != 2) 
+			draw_edges(clip_boundary);
 		clipboxupdate = true;
 	}
 	else
@@ -4044,9 +1192,9 @@ void draw_screen()
 			if( !interactive && clipboxupdate )
 			{
 				clip_boundary.clear();
-				oclipper->gen_clip(clip_boundary,n);
+				oclipper->gen_clip(clip_boundary,n,elevation);
 				bclipper->clip_plane(p,n);
-				bclipper->gen_clip(clip_boundary,n);
+				bclipper->gen_clip(clip_boundary,p,n,elevation);
 				clipboxupdate = false;
 				for(int k = 0; k < (int)orphans.size(); ++k)
 				{
@@ -4080,13 +1228,16 @@ void draw_screen()
 				INMOST_DATA_ENUM_TYPE opace = !planecontrol ? std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,oclipper->size()/100)) : 1;
 				INMOST_DATA_ENUM_TYPE bpace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,bclipper->size()/100));
 				glColor4f(0.6,0.6,0.6,1);
-				if( visualization_tag.isValid() ) CommonColorBar->BindTexture();
-				oclipper->draw_clip(opace,n);
-				bclipper->draw_clip(bpace);
-				if( visualization_tag.isValid() ) CommonColorBar->UnbindTexture();
+				if (isColorBarEnabled()) GetColorBar()->BindTexture();
+				oclipper->draw_clip(opace,n,elevation);
+				bclipper->draw_clip(bpace,p,n);
+				if (isColorBarEnabled()) GetColorBar()->UnbindTexture();
 				glColor4f(0,0,0,1); 
-				oclipper->draw_clip_edges(opace,n);
-				bclipper->draw_clip_edges(bpace);
+				if (drawedges)
+				{
+					oclipper->draw_clip_edges(opace, n,elevation);
+					bclipper->draw_clip_edges(bpace);
+				}
 				
 			}
 			else
@@ -4094,15 +1245,19 @@ void draw_screen()
 				//printf("draw2 %d %d\n",interactive, clipboxupdate);
 				if( interactive )
 				{
-					draw_faces_interactive(clip_boundary);
+					if (!(drawedges == 2 || drawedges == 3)) 
+						draw_faces_interactive(clip_boundary);
 					glColor4f(0,0,0,1); 
-					draw_edges_interactive(clip_boundary);
+					if (drawedges && drawedges != 2) 
+						draw_edges_interactive(clip_boundary);
 				}
 				else
 				{
-					draw_faces(clip_boundary,picked);
+					if (!(drawedges == 2 || drawedges == 3))
+						draw_faces(clip_boundary,picked);
 					glColor4f(0,0,0,1); 
-					draw_edges(clip_boundary,picked);
+					if (drawedges && drawedges != 2) 
+						draw_edges(clip_boundary, picked);
 				}
 			}
 		}
@@ -4143,12 +1298,28 @@ void draw_screen()
 				face2gl::radix_sort_dist(added_faces);
 			}
 			glColor4f(0,0,0,0.25); 
-			if( interactive ) draw_edges_interactive(all_boundary);
-			else draw_edges(all_boundary);
+			if (interactive) 
+			{
+				if (drawedges && drawedges != 2) 
+					draw_edges_interactive(all_boundary);
+			}
+			else
+			{
+				if (drawedges && drawedges != 2)
+					draw_edges(all_boundary);
+			}
 			
 
-			if( interactive ) draw_faces_interactive_nc(all_boundary);
-			else draw_faces_nc(all_boundary);
+			if (interactive)
+			{
+				if (!(drawedges == 2 || drawedges == 3))
+					draw_faces_interactive_nc(all_boundary);
+			}
+			else
+			{
+				if (!(drawedges == 2 || drawedges == 3))
+					draw_faces_nc(all_boundary);
+			}
 			
 			glDisable(GL_BLEND);
 		}
@@ -4162,8 +1333,10 @@ void draw_screen()
 
 	glEnable(GL_BLEND);
 	glColor4f(0,0,0,0.25); 
-	draw_edges(added_faces);
-	draw_faces_nc(added_faces);
+	if (drawedges && drawedges != 2) 
+		draw_edges(added_faces);
+	if (!(drawedges == 2 || drawedges == 3))
+		draw_faces_nc(added_faces);
 	glDisable(GL_BLEND);
 
 
@@ -4218,12 +1391,7 @@ void draw_screen()
 	glEnd();
 
 
-	if( draw_orphan )
-		for(int k = 0; k < (int)orphans.size(); ++k)
-			DrawElement(orphans[k],color_t(1,0,1),color_t(0,1,1),color_t(0,0,1),campos);
 
-	if( disp_e.isValid() && disp_e.GetElementType() != ESET)
-		DrawElement(disp_e,color_t(1,1,0),color_t(1,0,0),color_t(0,0,1),campos);
 
 
 	double top = 0.96;
@@ -4264,8 +1432,8 @@ void draw_screen()
 						visualization_prompt[k] = ':';
 						minv = atof(visualization_prompt);
 						maxv = atof(visualization_prompt+k+1);
-						CommonColorBar->set_min(minv);
-						CommonColorBar->set_max(maxv);
+						GetColorBar()->set_min(minv);
+						GetColorBar()->set_max(maxv);
 						clipupdate = true;
 					}
 					else printf("malformed string %s for color map bounds\n",visualization_prompt);
@@ -4306,9 +1474,11 @@ void draw_screen()
 							if( visualization_tag.isValid() )
 							{
 								visualization_tag =  mesh->DeleteTag(visualization_tag);
+								color_bar::UnsetVisualizationTag();
 								clipupdate = true;
 							}
 							correct_input = true;
+							streamlines.clear();
 							glutPostRedisplay();
 
 						}
@@ -4316,43 +1486,84 @@ void draw_screen()
 
 					if( k < slen && l == slen ) //ElementType:Number format
 					{
-						disp_e = InvalidElement();
-						bool is_number = true;
-						for(l = k+1; l < slen; ++l)
-							if( !isdigit(visualization_prompt[l]) )
-								is_number = false;
-						if( is_number )
+						strcpy(typen, visualization_prompt);
+						std::string stype(typen);
+						visualization_type = NONE;
+						for (size_t q = 0; q < stype.size(); ++q)
+							stype[q] = tolower(stype[q]);
+						if (stype == "node") visualization_type = NODE;
+						else if (stype == "edge") visualization_type = EDGE;
+						else if (stype == "face") visualization_type = FACE;
+						else if (stype == "cell") visualization_type = CELL;
+						else if (stype == "eset") visualization_type = ESET;
+						if (visualization_type == NONE)
+							printf("unknown element type %s\n", typen);
+						else
 						{
-							strcpy(typen,visualization_prompt);
-							comp = atoi(visualization_prompt+k+1);
-							visualization_prompt[k] = ':';
-							printf("Display data for %s:%d\n",typen,comp);
-							std::string stype(typen);
-							visualization_type = NONE;
-							for(size_t q = 0; q < stype.size(); ++q)
-								stype[q] = tolower(stype[q]);
-							if( stype == "node" ) visualization_type = NODE;
-							else if ( stype == "edge" ) visualization_type = EDGE;
-							else if ( stype == "face" ) visualization_type = FACE;
-							else if ( stype == "cell" ) visualization_type = CELL;
-							else if ( stype == "eset" ) visualization_type = ESET;
-							if( visualization_type == NONE )
-								printf("unknown element type %s\n",typen);
-							if( !mesh->isValidElement(visualization_type,comp) )
-								printf("provided element %s:%d is not valid\n",typen,comp);
-							correct_input = true;
-							if( mesh->isValidElement(visualization_type,comp) )
+							disp_e = InvalidElement();
+							bool is_number = true;
+							for (l = k + 1; l < slen; ++l)
+							if (!isdigit(visualization_prompt[l]))
+								is_number = false;
+							if (is_number)
 							{
-								disp_e = mesh->ElementByLocalID(visualization_type,comp);
-								if( disp_e.GetElementType() != ESET )
+								comp = atoi(visualization_prompt + k + 1);
+								visualization_prompt[k] = ':';
+
+
+								correct_input = true;
+
+								if (mesh->isValidElement(visualization_type, comp))
+								{
+									printf("Display data for %s:%d\n", typen, comp);
+									disp_e = mesh->ElementByLocalID(visualization_type, comp);
+								}
+								else
+									printf("No valid element at %s:%d\n", typen, comp);
+							}
+							else if (visualization_type == ESET)
+							{
+								std::string name = std::string(visualization_prompt + k + 1);
+								visualization_prompt[k] = ':';
+								correct_input = true;
+								disp_e = mesh->GetSet(name);
+								if (disp_e.isValid())
+									printf("Display data for %s:%d\n", typen, disp_e.LocalID());
+								else
+									printf("Cannot find set with name %s\n", name.c_str());
+							}
+
+							if (disp_e.isValid())
+							{
+								if (disp_e.GetElementType() != ESET)
 								{
 									disp_e->Centroid(shift);
-									for(int r = 0; r < 3; ++r)
+									for (int r = 0; r < 3; ++r)
+										shift[r] = -shift[r];
+								}
+								else
+								{
+									shift[0] = shift[1] = shift[2] = 0;
+									ElementSet s = disp_e.getAsSet();
+									int nelem = 0;
+									for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
+									{
+										double cnt[3];
+										it->Centroid(cnt);
+										shift[0] += cnt[0];
+										shift[1] += cnt[1];
+										shift[2] += cnt[2];
+										nelem++;
+									}
+									shift[0] /= (double)nelem;
+									shift[1] /= (double)nelem;
+									shift[2] /= (double)nelem;
+									for (int r = 0; r < 3; ++r)
 										shift[r] = -shift[r];
 								}
 							}
 						}
-
+						
 					}
 
 					if( k < slen && l < slen && l+1 < slen )
@@ -4369,6 +1580,8 @@ void draw_screen()
 							comp = atoi(visualization_prompt+l+1);
 						else if( std::string(visualization_prompt+l+1) == "mag" )
 							comp = ENUMUNDEF;
+						else if (std::string(visualization_prompt + l + 1) == "streamline")
+							comp = ENUMUNDEF-2;
 						else
 						{
 							std::cout << "unknown name for component, expected number or 'mag'" << std::endl;
@@ -4378,7 +1591,23 @@ void draw_screen()
 						visualization_prompt[l] = ':';
 						printf("type %s name %s comp %d\n",typen,name,comp);
 						std::string stype(typen), sname(name);
-						if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
+						if (mesh->HaveTag(sname) && comp == ENUMUNDEF - 2)
+						{
+							ElementType vel_def = NONE;
+							for (size_t q = 0; q < stype.size(); ++q)
+							{
+								stype[q] = tolower(stype[q]);
+								typen[q] = tolower(typen[q]);
+							}
+							if (stype == "node") vel_def = NODE;
+							else if (stype == "edge") vel_def = EDGE;
+							else if (stype == "face") vel_def = FACE;
+							else if (stype == "cell") vel_def = CELL;
+							
+							streamlines.clear();
+							BuildStreamlines(mesh,mesh->GetTag(sname),vel_def,streamlines);
+						}
+						else if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
 						{
 							Tag source_tag = mesh->GetTag(sname);
 							if ((comp >= 0 && comp < source_tag.GetSize()) || comp == ENUMUNDEF)
@@ -4413,9 +1642,13 @@ void draw_screen()
 												printf("I can show only value for data of type variable\n");
 											float min = 1.0e20, max = -1.0e20;
 											printf("prepearing data for visualization\n");
-											if (visualization_tag.isValid()) visualization_tag = mesh->DeleteTag(visualization_tag);
+											if (visualization_tag.isValid())
+											{
+												visualization_tag = mesh->DeleteTag(visualization_tag);
+												color_bar::UnsetVisualizationTag();
+											}
 											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG", DATA_REAL, NODE, NONE, 1);
-
+											color_bar::SetVisualizationTag(visualization_tag,visualization_type,visualization_smooth);
 											for (Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
 											{
 												ElementArray<Element> elems = it->getAdjElements(visualization_type);
@@ -4559,11 +1792,11 @@ void draw_screen()
 												it->RealDF(visualization_tag) = res;
 											}
 
-											CommonColorBar->set_min(min);
-											CommonColorBar->set_max(max);
+											GetColorBar()->set_min(min);
+											GetColorBar()->set_max(max);
 											char comment[1024];
 											sprintf(comment, "%s[%d] on %s, [%g:%g]", name, comp, typen, min, max);
-											CommonColorBar->set_comment(comment);
+											GetColorBar()->set_comment(comment);
 											clipupdate = true;
 											/*
 											all_boundary.clear();
@@ -4628,12 +1861,12 @@ void draw_screen()
 		glEnable(GL_DEPTH_TEST);
 	}
 
-	if( visualization_tag.isValid() && drawcolorbar )
+	if( isColorBarEnabled() && drawcolorbar )
 	{
 		glDisable(GL_DEPTH_TEST);
 		glLoadIdentity();
 		set_matrix2d();
-		CommonColorBar->Draw();
+		GetColorBar()->Draw();
 		glEnable(GL_DEPTH_TEST);
 	}
 }
@@ -4645,14 +1878,6 @@ void draw()
 }
 
 
-void svg_line(std::ostream & file, double x1, double y1, double z1, double x2, double y2, double z2, double modelview[16], double projection[16], int viewport[4])
-{
-	double px1,py1,z;
-	double px2,py2;
-	gluProject(x1,y1,z1,modelview,projection,viewport,&px1,&py1,&z); py1 = height-py1;
-	gluProject(x2,y2,z2,modelview,projection,viewport,&px2,&py2,&z); py2 = height-py2;
-	file << "<line x1=\"" << px1 << "\" y1=\"" << py1 << "\" x2=\"" << px2 << "\" y2=\"" << py2 << "\"/>" << std::endl;
-}
 
 void svg_draw(std::ostream & file)
 {
@@ -4727,7 +1952,8 @@ void svg_draw(std::ostream & file)
 		}
 		face2gl::radix_sort_dist(sorted_clip_boundary);
 		//std::sort(sorted_clip_boundary.rbegin(),sorted_clip_boundary.rend());
-		svg_draw_faces(file,sorted_clip_boundary,modelview,projection,viewport);
+		if (!(drawedges == 2 || drawedges == 3))
+			svg_draw_faces(file, sorted_clip_boundary, ::drawedges && ::drawedges != 2, modelview, projection, viewport);
 	}
 	else
 	{
@@ -4740,17 +1966,19 @@ void svg_draw(std::ostream & file)
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < temp_boundary.size() ; q++)
 				temp_boundary[q].compute_dist(campos);
 			face2gl::radix_sort_dist(temp_boundary);
-			svg_draw_faces(file,temp_boundary,modelview,projection,viewport);
+			if (!(drawedges == 2 || drawedges == 3))
+				svg_draw_faces(file,:drawedges && ::drawedges != 2,temp_boundary,modelview,projection,viewport);
 			 */
 			
 			std::vector<face2gl> sorted_clip_boundary(clip_boundary);
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < sorted_clip_boundary.size() ; q++)
 				sorted_clip_boundary[q].compute_dist(campos);
 			face2gl::radix_sort_dist(sorted_clip_boundary);
-			svg_draw_faces(file,sorted_clip_boundary,modelview,projection,viewport);
+			if (!(drawedges == 2 || drawedges == 3))
+				svg_draw_faces(file, sorted_clip_boundary, ::drawedges && ::drawedges != 2, modelview, projection, viewport);
 			
 			//file << "<g stroke=\"black\">" << std::endl;
-			//svg_draw_edges(file,sorted_clip_boundary,modelview,projection,viewport);
+			//if (drawedges && drawedges != 2)svg_draw_edges(file,sorted_clip_boundary,modelview,projection,viewport);
 			//file << "</g>" << std::endl;
 		}
 		
@@ -4775,14 +2003,15 @@ void svg_draw(std::ostream & file)
 		if( boundary )
 		{
 			file << "<g fill=\"black\" fill-opacity=\"0.25\">" << std::endl;
-			//svg_draw_edges(file,all_boundary,modelview,projection,viewport);
-			svg_draw_faces_nc(file,all_boundary,modelview,projection,viewport);
+			//if (drawedges && drawedges != 2)svg_draw_edges(file,all_boundary,modelview,projection,viewport);
+			if (!(drawedges == 2 || drawedges == 3))
+				svg_draw_faces_nc(file, all_boundary, ::drawedges && ::drawedges != 2, modelview, projection, viewport);
 			file << "</g>" << std::endl;
 		}
 	}
 
 	
-	if( visualization_tag.isValid() )
+	if( isColorBarEnabled() )
 	{
 		glLoadIdentity();
 		set_matrix2d();
@@ -4791,7 +2020,7 @@ void svg_draw(std::ostream & file)
 		glGetDoublev (GL_MODELVIEW_MATRIX, modelview);
 		glGetIntegerv(GL_VIEWPORT,viewport);
 
-		CommonColorBar->DrawSVG(file,modelview,projection,viewport);
+		GetColorBar()->DrawSVG(file, modelview, projection, viewport);
 	}
 	
 	file << "</svg>" << std::endl;
@@ -4999,118 +2228,8 @@ int main(int argc, char ** argv)
   }
 
 
-  //if( false )
-  if( mesh->HaveTag("VELOCITY") && mesh->GetTag("VELOCITY").isDefined(CELL) )
-  {
-    printf("preparing octree around mesh, was sets %d\n",mesh->NumberOfSets());
-    Octree octsearch = Octree(mesh->CreateSet("octsearch").first);
-    octsearch.Construct(NODE,false); //auto-detect octree or quadtree
-    printf("done, sets %d\n",mesh->NumberOfSets());
-    printf("building streamlines\n");
-    Tag cell_size = mesh->CreateTag("CELL_SIZES",DATA_REAL,CELL,NONE,1);
-    Tag vel = mesh->GetTag("VELOCITY");
-    Storage::real velmax = 0, velmin = 1.0e20, l;
-    for(Mesh::iteratorCell c = mesh->BeginCell(); c != mesh->EndCell(); ++c)
-    {
-      coord velv(c->RealArray(vel).data());
-      l = velv.length();
-      if( l > velmax ) velmax = l;
-      if( l < velmin ) velmin = l;
-      c->RealDF(cell_size) = GetSize(c->self());
-    }
-    velmax = log(velmax+1.0e-25);
-    velmin = log(velmin+1.0e-25);
-	if( mesh->HaveTag("FACE_FLUX") )
-	{
-		Tag flux = mesh->GetTag("FACE_FLUX");
-		MarkerType visited = mesh->CreateMarker();
-		for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); ++f) if( f->Boundary() )
-		{
-			if( f->Real(flux) > 1.0e-5 )
-			{
-				coord cntf;
-				f->Centroid(cntf.data());
-				streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,1.0,visited));
-				
-				ElementArray<Edge> edges = f->getEdges();
-				for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
-				{
-					coord cntn;
-					n->Centroid(cntn.data());
-					if( cntn[2] == cntf[2] )
-					{
-						const Storage::real coef[4] = {0.4,0.8};
-						for(int q = 0; q < 2; ++q)
-							streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,1.0,visited));
-					}
-				}
-			}
-			else if( f->Real(flux) < -1.0e-5 )
-			{
-				coord cntf;
-				f->Centroid(cntf.data());
-				streamlines.push_back(Streamline(octsearch,cntf,vel,cell_size,velmin,velmax,-1.0,visited));
-				
-				ElementArray<Edge> edges = f->getEdges();
-				for(ElementArray<Edge>::iterator n = edges.begin(); n != edges.end(); ++n)
-				{
-					coord cntn;
-					n->Centroid(cntn.data());
-					if( cntn[2] == cntf[2] )
-					{
-						const Storage::real coef[4] = {0.4,0.8};
-						for(int q = 0; q < 2; ++q)
-							streamlines.push_back(Streamline(octsearch,cntf*coef[q]+cntn*(1-coef[q]),vel,cell_size,velmin,velmax,-1.0,visited));
-					}
-				}
-			}
-		}
-		
-		printf("done from boundary faces, total streamlines = %d\n",streamlines.size());
-		/*
-		for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
-		{
-			if( !it->GetMarker(visited) )
-			{
-				coord cntc;
-				it->Centroid(cntc.data());
-				if( coord(it->RealArray(vel).data()).length() > 1.0e-4 )
-				{
-					streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,1.0,0));
-					streamlines.push_back(Streamline(octsearch,cntc,vel,cell_size,velmin,velmax,-1.0,0));
-				}
-			}
-		}
-		printf("done from unvisited cells, total streamlines = %d\n",streamlines.size());
-		 */
-		for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
-			it->RemMarker(visited);
-		mesh->ReleaseMarker(visited);
-		
-	}
-	/*
-	int numlines = 16;
-    for(int i = 0; i < numlines; ++i)
-    {
-      for(int j = 0; j < numlines; ++j)
-      {
-        coord xyz;
-        double div = static_cast<double>(numlines);
-        xyz[0] = i/div + 0.5/div;
-        xyz[1] = j/div + 0.5/div;
-        xyz[2] = 0.5;
-        streamlines.push_back(Streamline(octsearch,xyz,vel,cell_size,velmin,velmax,1.0,0));
-        streamlines.push_back(Streamline(octsearch,xyz,vel,cell_size,velmin,velmax,-1.0,0));
-      }
-    }
-    printf("done from %d by %d grid, total streamlines = %d\n",numlines,numlines,(int)streamlines.size());
-	 */
-    mesh->DeleteTag(cell_size);
-    printf("done, total streamlines = %d\n",streamlines.size());
-    printf("killing octree, was sets %d\n",mesh->NumberOfSets());
-    octsearch.Destroy();
-    printf("done, sets %d\n",mesh->NumberOfSets());
-  }
+  //if (mesh->HaveTag("VELOCITY") && mesh->GetTag("VELOCITY").isDefined(CELL))
+	//	  BuildStreamlines(mesh,mesh->GetTag("VELOCITY"),streamlines);
 
   {
 	  std::map<ElementType,int> num_orphans, num_topo;
@@ -5207,7 +2326,7 @@ int main(int argc, char ** argv)
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
 
-	CommonColorBar = new color_bar;
+	color_bar::InitColorBar();
 	
 	glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
 	glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);

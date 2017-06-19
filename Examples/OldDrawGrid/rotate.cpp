@@ -14,7 +14,7 @@
  Specific: glut.h
  **********************************/
 
-#include "my_glut.h"
+#include "inc_glut.h"
 #include "rotate.h"
 #include "math.h"
 #include <vector>
@@ -33,7 +33,6 @@ struct vector
 struct quaternion q;
 struct vector drag, onclick;
 double mx,my;
-extern int width, height;
 extern int interactive;
 //
 std::vector<quaternion> storage;
@@ -42,6 +41,8 @@ void clickmotion(int nmx, int nmy) // Mouse
 {
 	struct vector n;
 	double norm,length,t;
+	int width = glutGet(GLUT_WINDOW_WIDTH);
+	int height = glutGet(GLUT_WINDOW_HEIGHT);
 	mx = 2.*(nmx/(double)width - 0.5);
 	my = 2.*(0.5 - nmy/(double)height);
 	norm = mx*mx + my*my;
@@ -76,12 +77,16 @@ void clickmotion(int nmx, int nmy) // Mouse
 }
 void motion(int nmx, int nmy) // Mouse
 {
+	int width = glutGet(GLUT_WINDOW_WIDTH);
+	int height = glutGet(GLUT_WINDOW_HEIGHT);
 	mx = 2.*(nmx/(double)width - 0.5);
 	my = 2.*(0.5 - nmy/(double)height);
 }
 void click(int b, int s, int nmx, int nmy) // Mouse
 {
 	double norm,length;
+	int width = glutGet(GLUT_WINDOW_WIDTH);
+	int height = glutGet(GLUT_WINDOW_HEIGHT);
 	switch(b)
 	{
 		case GLUT_LEFT_BUTTON:

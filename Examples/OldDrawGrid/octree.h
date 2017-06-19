@@ -76,48 +76,46 @@ namespace INMOST
 				child = child->GetSibling();
 			}
 		}
-		Cell SubFindCell(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
+		Element SubFindClosestCell(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
 		{
-			if (HaveChild())
+			Storage::real_array center = RealArray(center_tag);
+			if (Inside(center, pnt, quad_tree))
 			{
-				Storage::real_array center = RealArray(center_tag);
-				int child_num = 0, q;
-				int dims = 3 - (quad_tree ? 1 : 0);
-				for (int k = 0; k < dims; ++k)
+				if (HaveChild())
 				{
-					if (pnt[k] > center[k])
-						child_num += (1 << k);
-				}
-				q = 0;
-				ElementSet set = GetChild();
-				while (q != child_num) { set = set->GetSibling(); q++; }
-				return Octree(set).SubFindCell(center_tag, pnt, quad_tree);
-			}
-			else
-			{
-				HandleType * cells = getHandles();
-				int ncells = (int)nbHandles();
-				Node closest = InvalidNode();
-				Storage::real mindist = 1.0e20, dist;
-				for (int k = 0; k < ncells; ++k)
-				{
-					Node c = Node(GetMeshLink(), cells[k]);
-					Storage::real_array cnt = c->Coords();
-					dist = sqrt((cnt[0] - pnt[0])*(cnt[0] - pnt[0]) + (cnt[1] - pnt[1])*(cnt[1] - pnt[1]) + (cnt[2] - pnt[2])*(cnt[2] - pnt[2]));
-					if (mindist > dist)
+					int child_num = 0, q;
+					int dims = 3 - (quad_tree ? 1 : 0);
+					for (int k = 0; k < dims; ++k)
 					{
-						mindist = dist;
-						closest = c;
+						if (pnt[k] > center[k])
+							child_num += (1 << k);
 					}
+					q = 0;
+					ElementSet set = GetChild();
+					while (q != child_num) { set = set->GetSibling(); q++; }
+					return Octree(set).SubFindClosestCell(center_tag, pnt, quad_tree);
 				}
-				if (closest.isValid())
+				else
 				{
-					ElementArray<Cell> cells = closest->getCells();
-					for (ElementArray<Cell>::iterator c = cells.begin(); c != cells.end(); ++c)
-					if (c->Inside(pnt)) return c->self();
+					HandleType * cells = getHandles();
+					int ncells = (int)nbHandles();
+					Element closest = InvalidElement();
+					Storage::real mindist = 1.0e20, dist, cnt[3];
+					for (int k = 0; k < ncells; ++k)
+					{
+						Element c(GetMeshLink(), cells[k]);
+						c->Centroid(cnt);
+						dist = sqrt((cnt[0] - pnt[0])*(cnt[0] - pnt[0]) + (cnt[1] - pnt[1])*(cnt[1] - pnt[1]) + (cnt[2] - pnt[2])*(cnt[2] - pnt[2]));
+						if (mindist > dist)
+						{
+							mindist = dist;
+							closest = c;
+						}
+					}
+					return closest;
 				}
-				return InvalidCell();
 			}
+			else return InvalidCell();
 		}
 		bool Inside(const Storage::real_array & center, Storage::real pnt[3], bool quad_tree) const
 		{
@@ -127,7 +125,7 @@ namespace INMOST
 				inside &= (pnt[i] >= center[i] - center[3 + i] * 0.5 && pnt[i] <= center[i] + center[3 + i] * 0.5);
 			return inside;
 		}
-		Node SubFindNode(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
+		Node SubFindClosestNode(const Tag & center_tag, Storage::real pnt[3], bool quad_tree) const
 		{
 			if (HaveChild())
 			{
@@ -143,7 +141,7 @@ namespace INMOST
 				q = 0;
 				ElementSet set = GetChild();
 				while (q != child_num) { set = set->GetSibling(); q++; }
-				return Octree(set).SubFindNode(center_tag, pnt, quad_tree);
+				return Octree(set).SubFindClosestNode(center_tag, pnt, quad_tree);
 			}
 			else
 			{
@@ -153,13 +151,17 @@ namespace INMOST
 				Storage::real mindist = 1.0e20, dist;
 				for (int k = 0; k < ncells; ++k)
 				{
-					Node c = Node(GetMeshLink(), cells[k]);
-					Storage::real_array cnt = c->Coords();
-					dist = sqrt((cnt[0] - pnt[0])*(cnt[0] - pnt[0]) + (cnt[1] - pnt[1])*(cnt[1] - pnt[1]) + (cnt[2] - pnt[2])*(cnt[2] - pnt[2]));
-					if (mindist > dist)
+					Element c = Element(GetMeshLink(), cells[k]);
+					ElementArray<Node> nodes = c->getNodes();
+					for (ElementArray<Node>::iterator q = nodes.begin(); q != nodes.end(); ++q)
 					{
-						mindist = dist;
-						closest = c;
+						Storage::real_array cnt = q->Coords();
+						dist = sqrt((cnt[0] - pnt[0])*(cnt[0] - pnt[0]) + (cnt[1] - pnt[1])*(cnt[1] - pnt[1]) + (cnt[2] - pnt[2])*(cnt[2] - pnt[2]));
+						if (mindist > dist)
+						{
+							mindist = dist;
+							closest = q->self();
+						}
 					}
 				}
 				return closest;
@@ -222,13 +224,13 @@ namespace INMOST
 			SubConstruct(child_tag, save_center_tag, cells, temp, size, quad_tree);
 			GetMeshLink()->DeleteTag(child_tag);
 		}
-		Cell FindCell(Storage::real pnt[3]) const
+		Element FindClosestCell(Storage::real pnt[3]) const
 		{
-			return SubFindCell(save_center_tag, pnt, save_quad_tree);
+			return SubFindClosestCell(save_center_tag, pnt, save_quad_tree);
 		}
-		Node FindNode(Storage::real pnt[3]) const
+		Node FindClosestNode(Storage::real pnt[3]) const
 		{
-			return SubFindNode(save_center_tag, pnt, save_quad_tree);
+			return SubFindClosestNode(save_center_tag, pnt, save_quad_tree);
 		}
 		void Destroy()
 		{

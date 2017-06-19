@@ -3,12 +3,33 @@ set(SOURCE main.cpp
            rotate.cpp
            clipboard.cpp
            rotate.h
-           my_glut.h
+           inc_glut.h
            clipboard.h
            color.h
            coord.h
            coord.cpp
-           octree.h)
+           octree.h
+           streamline.h
+           streamline.cpp
+           svg_line.h
+           svg_line.cpp
+           face2gl.h
+           face2gl.cpp
+		   color_bar.h
+		   color_bar.cpp
+		   printtext.cpp
+		   tga.h
+		   tga.cpp
+		   screenshot.h
+		   screenshot.cpp
+		   volumetric.h
+		   volumetric.cpp
+		   input.h
+		   input.cpp
+		   picker.h
+		   picker.cpp
+		   clipper.h
+		   clipper.cpp)
 find_package(OpenGL)
 find_package(GLUT)
 
