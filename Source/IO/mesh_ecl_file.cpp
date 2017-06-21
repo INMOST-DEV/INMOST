@@ -4845,12 +4845,13 @@ namespace INMOST
 			//ElementSet wsets = CreateSet("WELL_SETS").first;
 			ElementSet wgrps = CreateSet("WELL_GROUPS").first;
 			//all of type real for schedule compatibility
-			TagReal tagcval = CreateTag("CONTROL_VALUE",DATA_REAL,ESET,ESET,1); //Rate or bhp
-			TagReal tagtype = CreateTag("TYPE", DATA_REAL, ESET, ESET, 1);
-			TagReal tagph   = CreateTag("PHASE", DATA_REAL, ESET, ESET, 1);
-			TagReal tagWI   = CreateTag("WI",DATA_REAL,CELL,CELL,1);
-			TagReal tagopen = CreateTag("STATE",DATA_REAL,CELL|ESET,CELL|ESET,1);
-			TagReal tagctrl = CreateTag("CTRL",DATA_REAL,ESET,ESET,1);
+			TagReal tagcval = CreateTag("WELL_CONTROL_VALUE",DATA_REAL,ESET,ESET,1); //Rate or bhp
+			TagReal tagtype = CreateTag("WELL_TYPE", DATA_REAL, ESET, ESET, 1);
+			TagReal tagph   = CreateTag("WELL_PHASE", DATA_REAL, ESET, ESET, 1);
+			TagReal tagWI   = CreateTag("WELL_INDEX",DATA_REAL,CELL,CELL,1);
+			TagReal tagopen = CreateTag("WELL_STATE",DATA_REAL,CELL|ESET,CELL|ESET,1);
+			TagReal tagctrl = CreateTag("WELL_CTRL",DATA_REAL,ESET,ESET,1);
+			TagReal tagz    = CreateTag("WELL_DEPTH",DATA_REAL,ESET,ESET,1);
 			TagRealArray      tagschd_time = CreateTag("SCHEDULE_TIME",DATA_REAL,ESET,ESET); //time of simulation that activates record
 			TagBulkArray      tagschd_tag  = CreateTag("SCHEDULE_TAG",DATA_BULK,ESET,ESET); //names of changed tags separated by '\0'
 			TagReferenceArray tagschd_elem = CreateTag("SCHEDULE_ELEM",DATA_REFERENCE,ESET,ESET); //element on which data is changed
@@ -4872,6 +4873,7 @@ namespace INMOST
 					grp->SetMarker(added);
 				}
 				//default behavior
+				tagz[set] = wspec.depth;
 				tagopen[set] = false;
 				tagcval[set] = 1.0e+5;
 				tagph[set] = ECL_WPHASE_WATER;
@@ -5168,6 +5170,21 @@ namespace INMOST
 			ReleaseMarker(added);
 			
 			if (verbosity > 0) std::cout << "Finished creating sets according to WELSPECS/COMPDAT/WCONPROD/WCONINJE keywords time " << Timer() - tt << std::endl;
+		}
+
+		if (tsteps.size() > 0)
+		{
+			if (verbosity > 0)
+			{
+				tt = Timer();
+				std::cout << "Writing TSTEPS data into mesh" << std::endl;
+			}
+			TagRealArray tagtsteps = CreateTag("TSTEPS",DATA_REAL,MESH,NONE);
+			for(int k = 1; k < (int)tsteps.size(); ++k)
+				tagtsteps[this->self()].push_back(tsteps[k]);
+
+			if(verbosity > 0 )
+				std::cout << "Finished writing TSTEPS data into mesh time " << Timer()-tt << std::endl;
 		}
 
 
