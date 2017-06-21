@@ -1,0 +1,76 @@
+project(GridGen)
+
+add_executable(FixFaults fix_faults.cpp)
+add_executable(FixTiny fix_tiny.cpp)
+add_executable(UniteFaces unite_faces.cpp)
+add_executable(Dual dual.cpp)
+add_executable(Slice slice.cpp)
+add_executable(SliceFunc slice_func.cpp)
+
+target_link_libraries(FixFaults inmost)
+if(USE_MPI)
+  message("linking FixFaults with MPI")
+  target_link_libraries(FixFaults ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(FixFaults PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS FixFaults EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+target_link_libraries(FixTiny inmost)
+if(USE_MPI)
+  message("linking FixTiny with MPI")
+  target_link_libraries(FixTiny ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(FixTiny PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS FixTiny EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+target_link_libraries(UniteFaces inmost)
+if(USE_MPI)
+  message("linking UniteFaces with MPI")
+  target_link_libraries(UniteFaces ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(UniteFaces PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS UniteFaces EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+
+target_link_libraries(Dual inmost)
+if(USE_MPI)
+  message("linking Dual with MPI")
+  target_link_libraries(Dual ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(Dual PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS Dual EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+
+target_link_libraries(Slice inmost)
+if(USE_MPI)
+  message("linking Slice with MPI")
+  target_link_libraries(Slice ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(Slice PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS Slice EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+
+target_link_libraries(SliceFunc inmost)
+if(USE_MPI)
+  message("linking SliceFunc with MPI")
+  target_link_libraries(SliceFunc ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(SliceFunc PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS SliceFunc EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+
+
+
+
