@@ -603,7 +603,7 @@ namespace INMOST
 				Storage::real_array cl = cells[k]->RealArray(clips);
 				Storage::real_array clv = cells[k]->RealArray(clipsv);
 				Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-				cln.resize(1, nodes.size());
+				cln.resize(1, (int)nodes.size());
 				cl.resize(static_cast<Storage::real_array::size_type>(3 * nodes.size()));
 				clv.resize(static_cast<Storage::real_array::size_type>(nodes.size()));
 				for (INMOST_DATA_ENUM_TYPE r = 0; r < nodes.size(); r++)
@@ -670,7 +670,7 @@ namespace INMOST
 					//loopcoords.pop_back();
 					if (loopcoords.size() > 2)
 					{
-						cln.push_back(loopcoords.size());
+						cln.push_back((int)loopcoords.size());
 						int offset = clv.size();
 						cl.resize(static_cast<Storage::real_array::size_type>(offset * 3 + 3 * loopcoords.size()));
 						clv.resize(static_cast<Storage::real_array::size_type>(offset + loopcoords.size()));
@@ -707,7 +707,7 @@ namespace INMOST
 				if (elevation && isColorBarEnabled())
 				{
 					Storage::real pos[3], t;
-					for (INMOST_DATA_ENUM_TYPE q = offset; q < offset + cln[r]; q++)
+					for (INMOST_DATA_ENUM_TYPE q = offset; q < (INMOST_DATA_ENUM_TYPE)offset + cln[r]; q++)
 					{
 						t = (clv[q] - GetColorBar()->get_min()) / (GetColorBar()->get_max() - GetColorBar()->get_min());
 						pos[0] = cl[q * 3 + 0] + t*n[0];
