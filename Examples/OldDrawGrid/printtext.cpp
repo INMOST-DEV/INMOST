@@ -1,6 +1,7 @@
 #include "inc_glut.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 void printtext(const char * fmt, ...)
 {
 

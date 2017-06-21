@@ -1,5 +1,6 @@
 #include "input.h"
 #include "inc_glut.h"
+#include <stdlib.h>
 
 Input::Input(int * val, std::string comment) : comment(comment) 
 { 
