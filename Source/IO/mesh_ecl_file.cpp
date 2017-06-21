@@ -1,10 +1,12 @@
 #ifdef _MSC_VER //kill some warnings
 #define _CRT_SECURE_NO_WARNINGS
+#define _SCL_SECURE_NO_WARNINGS
 #endif
 
 #include "inmost.h"
 #include "../Mesh/incident_matrix.hpp"
 #include <string>
+#include <ctime>
 #if defined(USE_MESH)
 
 // coords/zcorn algorithm
@@ -37,15 +39,18 @@
 // 9. (ok) do not convert arrays xyz and zcorn
 //10. read wells into sets
 //10.1 (ok) read compdat
-//10.2 read properties
+//10.2 (ok) read properties
+//10.3 RESV, TODO10.3
+//10.4 schedule for wells
+//10.5 track previous record on schedule to optmize number of records
 //11. optimize:
 //11.1 detect that pillars have no faults, skip intersection in this case
 //11.2 (ok) skip incident_matrix algorithm when no inner edges found
 //11.3 drop out edges from intersection that are not expected to intersect
 //11.4 if intersections array is empty consider faster algorithm
 //11.5 (slower) tree along z direction in transformed coordinates in intersect_naive
-//12. High-order elements: edge, face for ECL_CURVILINEAR option, see TODO12, need high order elements support and algorithms in geometry.cpp
-//13. When curvature is high, split edges along triangle edge before intersection, see TODO13
+//12. (cancel, no longer needed with new method for intersection point position) High-order elements: edge, face for ECL_CURVILINEAR option, see TODO12, need high order elements support and algorithms in geometry.cpp
+//13. (fail, projection onto triangles is very bad) When curvature is high, split edges along triangle edge before intersection, see TODO13
 //14. Process BOX/ENDBOX keywords
 //15. (ok) verbosity
 //16. Make cell centers inside blocks TODO16
@@ -58,6 +63,29 @@
 #define ECL_PILLAR_DEPTH_EPS 1.0e-8
 #define ECL_POINT_EPS 1.0e-8
 #define ECL_INTERSECT_EPS 1.0e-12
+
+//this controls what is recorded into tag CTRL of well sets
+#define ECL_WCTRL_RATE 0
+#define ECL_WCTRL_BHP 1
+
+//this controls what is recorded into tag PHASE of well sets
+#define ECL_WPHASE_WATER 0
+#define ECL_WPHASE_OIL 1
+#define ECL_WPHASE_GAS 3
+#define ECL_WPHASE_MULTI 4 //LRAT
+
+//this controls what is recorded into tag TYPE of well sets
+#define ECL_WTYPE_INJE 0
+#define ECL_WTYPE_PROD 1
+
+
+//this controls what tag is changed by schedule record
+#define ECL_WTAG_WI 0
+#define ECL_WTAG_CVAL 1
+#define ECL_WTAG_STATE 3
+#define ECL_WTAG_CTRL 4
+#define ECL_WTAG_TYPE 5
+#define ECL_WTAG_PHASE 6
 
 //eclipse states
 #define ECL_NEVER -1
@@ -79,7 +107,7 @@
 #define ECL_ZCORN 15
 #define ECL_ACTNUM 16
 #define ECL_SATNUM 17
-#define ECL_COMPDAT 18
+#define ECL_THCONR 18
 #define ECL_MULTIPLY 19
 #define ECL_MULTIPLY_MUL 20
 #define ECL_MULTIPLY_BLK 21
@@ -100,8 +128,34 @@
 #define ECL_EQLNUM 36
 #define ECL_ROCKNUM 37
 #define ECL_PVTNUM 38
-
-
+#define ECL_COMPDAT 39
+#define ECL_COMPDAT_BLK 40
+#define ECL_COMPDAT_OPEN 41
+#define ECL_COMPDAT_SATNUM 42
+#define ECL_COMPDAT_TRANS 43
+#define ECL_COMPDAT_BORE 44
+#define ECL_COMPDAT_PERM 45
+#define ECL_COMPDAT_SKIN 46
+#define ECL_COMPDAT_DFAC 47
+#define ECL_COMPDAT_DIR 48
+#define ECL_COMPDAT_RAD 49
+#define ECL_DATES 50
+#define ECL_DATES_MON 51
+#define ECL_DATES_YEAR 52
+#define ECL_DATES_HRS 53
+#define ECL_WELSPECS 54
+#define ECL_WELSPECS_GROUP 55
+#define ECL_WELSPECS_I 56
+#define ECL_WELSPECS_J 57
+#define ECL_WELSPECS_Z 58
+#define ECL_WELSPECS_PHASE 59
+#define ECL_TSTEP 60
+#define ECL_WCONPRODINJE 61
+#define ECL_WCONPRODINJE_TYPE 62
+#define ECL_WCONPRODINJE_OPEN 63
+#define ECL_WCONPRODINJE_CTRL 64
+#define ECL_WCONPRODINJE_RATES 65
+#define ECL_WCONPRODINJE_BHP 66
 
 
 #define ECL_GTYPE_NONE 0
@@ -132,6 +186,85 @@
 namespace INMOST
 {
 
+
+	static void GetDXYZ(Element e, double & dx, double & dy, double & dz)
+	{
+		Storage::real maxmin[6];
+		maxmin[0] = -1e20;
+		maxmin[1] = 1e20;
+		maxmin[2] = -1e20;
+		maxmin[3] = 1e20;
+		maxmin[4] = -1e20;
+		maxmin[5] = 1e20;
+		ElementArray<Node> nodes = e->getNodes();
+		for (ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); it++)
+		{
+			Storage::real_array c = it->Coords();
+			for (int i = 0; i < (int)c.size(); i++)
+			{
+				if (maxmin[2 * i + 0] < c[i]) maxmin[2 * i + 0] = c[i]; //max
+				if (maxmin[2 * i + 1] > c[i]) maxmin[2 * i + 1] = c[i]; //min
+			}
+		}
+		dx = maxmin[0] - maxmin[1];
+		dy = maxmin[2] - maxmin[3];
+		dz = maxmin[4] - maxmin[5];
+	}
+
+	bool ReadName(const char * p, const char * pend, char * rec, int * nchars)
+	{
+		int k = 0;
+		int r = 0;
+		int s;
+		while (p + k != pend && isspace(p[k])) ++k;
+		s = k;
+		if (p[k] == '\'' || p[k] == '"')
+		{
+			char quote = p[k++];
+			while (p + k != pend && p[k] != quote)
+				rec[r++] = p[k++];
+			*nchars = k+1; //skip quote
+		}
+		else
+		{
+			while (p + k != pend && !isspace(p[k]))
+				rec[r++] = p[k++];
+			*nchars = k;
+		}
+		rec[r] = '\0';
+		return s != k;
+	}
+
+	int MonthInt(std::string mo)
+	{
+		if( mo == "JAN" )
+			return 1;
+		else if( mo == "FEB" )
+			return 2;
+		else if( mo == "MAR" )
+			return 3;
+		else if( mo == "APR" )
+			return 4;
+		else if( mo == "MAY" )
+			return 5;
+		else if( mo == "JUN" )
+			return 6;
+		else if( mo == "JLY" )
+			return 7;
+		else if( mo == "JUL" )
+			return 7;
+		else if( mo == "AUG" )
+			return 8;
+		else if( mo == "SEP" )
+			return 9;
+		else if( mo == "OCT" )
+			return 10;
+		else if( mo == "NOV" )
+			return 11;
+		else if( mo == "DEC" )
+			return 12;
+		return -1;
+	}
 	void Faults(Mesh * m, MarkerType frac_markers)
 	{
 		//m->BeginModification();
@@ -383,6 +516,46 @@ namespace INMOST
 		//m->Save("fracture_test.vtk");
 	}
 
+	//replace n* witn n stars
+	static void UnStar(const char * input, char * output)
+	{
+		size_t q = 1, j;
+		output[0] = input[0]; //we skip first char
+		if (input[0] != '\0')
+		{
+			for (size_t k = 1; k < strlen(input) - 1; ++k)
+			{
+				//current character is star, next char is space or end of line and prev char is not space
+				if (input[k] == '*' && (isspace(input[k + 1]) || input[k + 1] == '/') && !isspace(input[k - 1]))
+				{
+					j = k;
+					//roll back to previous space
+					while (!isspace(input[k]) && k > 0)
+					{
+						k--;
+						q--;
+					}
+					//advance from space
+					if (isspace(input[k]))
+					{
+						k++;
+						q++;
+					}
+					int count = atoi(input+k);
+					for (int l = 0; l < count; ++l)
+					{
+						output[q++] = '*';
+						output[q++] = ' ';
+					}
+					k = j;
+				}
+				else output[q++] = input[k];
+			}
+			output[q++] = input[strlen(input) - 1]; //we skip last char
+			output[q++] = '\0'; // end of line
+		}
+	}
+
 	static std::string STR8(const char * input)
 	{
 		std::string ret(8, ' ');
@@ -498,13 +671,7 @@ namespace INMOST
 		return ret;
 	}
 
-	struct compdat_entry
-	{
-		int i, j, k1, k2;
-		bool open;
-	};
-	typedef std::vector<compdat_entry> compdat_entries;
-	typedef std::map<std::string, compdat_entries > compdat_wells;
+	
 	//2d point with comparison operator for line sweep algorithm
 	struct Point
 	{
@@ -530,174 +697,7 @@ namespace INMOST
 			return std::abs(y - b.y) > ECL_POINT_EPS || std::abs(x - b.x) > ECL_POINT_EPS;
 		}
 	};
-	//class that returns a Point into 3d space based on coords of two pillars
-	class Unproject
-	{
-		Storage::real a0[3], a1[3], b0[3], b1[3];
-	public:
-		Unproject(Storage::real _a0[3], Storage::real _a1[3], Storage::real _b0[3], Storage::real _b1[3])
-		{
-			a0[0] = _a0[0];
-			a0[1] = _a0[1];
-			a0[2] = _a0[2];
-			a1[0] = _a1[0];
-			a1[1] = _a1[1];
-			a1[2] = _a1[2];
-			b0[0] = _b0[0];
-			b0[1] = _b0[1];
-			b0[2] = _b0[2];
-			b1[0] = _b1[0];
-			b1[1] = _b1[1];
-			b1[2] = _b1[2];
-		}
-		Unproject(const Unproject & b)
-		{
-			a0[0] = b.a0[0];
-			a0[1] = b.a0[1];
-			a0[2] = b.a0[2];
-			a1[0] = b.a1[0];
-			a1[1] = b.a1[1];
-			a1[2] = b.a1[2];
-			b0[0] = b.b0[0];
-			b0[1] = b.b0[1];
-			b0[2] = b.b0[2];
-			b1[0] = b.b1[0];
-			b1[1] = b.b1[1];
-			b1[2] = b.b1[2];
-		}
-		Unproject & operator =(Unproject const & b)
-		{
-			a0[0] = b.a0[0];
-			a0[1] = b.a0[1];
-			a0[2] = b.a0[2];
-			a1[0] = b.a1[0];
-			a1[1] = b.a1[1];
-			a1[2] = b.a1[2];
-			b0[0] = b.b0[0];
-			b0[1] = b.b0[1];
-			b0[2] = b.b0[2];
-			b1[0] = b.b1[0];
-			b1[1] = b.b1[1];
-			b1[2] = b.b1[2];
-			return *this;
-		}
 
-		void ActTri(const Point & p, Storage::real ret[3]) const
-		{
-			//Storage::real ret1[3],ret2[3];
-			Storage::real px = p.y, py = 1 - p.x;
-
-			// a1         b1
-			//          /
-			//         /
-			//        /
-			//       /
-			//      /
-			//     /
-			//    /
-			// a0         b0
-			if (py > px) //tri a0,a1,b1
-			{
-				//a = (0,0) (a0) u
-				//b = (0,1) (a1) v
-				//c = (1,1) (b1) w
-				//Vector v0 = b-a = (0,1), v1 = c-a =(1,1), v2 = p-a = (px,py);
-				const Storage::real d00 = 1; //Dot(v0, v0);
-				const Storage::real d01 = 1; //Dot(v0, v1);
-				const Storage::real d11 = 2; //Dot(v1, v1);
-				const Storage::real denom = d00 * d11 - d01 * d01;
-				Storage::real d20 = py; //Dot(v2, v0);
-				Storage::real d21 = px + py; //Dot(v2, v1);
-				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for a1
-				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
-				Storage::real u = 1.0 - v - w; //for a0
-				for (int k = 0; k < 3; ++k)
-					ret[k] = a0[k] * u + a1[k] * v + b1[k] * w;
-			}
-			else //tri a0,b0,b1
-			{
-				//a = (0,0) (a0) u
-				//b = (1,0) (b0) v
-				//c = (1,1) (b1) w
-				//Vector v0 = b-a = (1,0), v1 = c-a = (1,1), v2 = p-a = (px,py);
-				const Storage::real d00 = 1; //Dot(v0, v0);
-				const Storage::real d01 = 1; //Dot(v0, v1);
-				const Storage::real d11 = 2; //Dot(v1, v1);
-				const Storage::real denom = d00 * d11 - d01 * d01;
-				Storage::real d20 = px; //Dot(v2, v0);
-				Storage::real d21 = px + py; //Dot(v2, v1);
-				Storage::real v = (d11 * d20 - d01 * d21) / denom; //for b0
-				Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
-				Storage::real u = 1.0 - v - w; //for a0
-				for (int k = 0; k < 3; ++k)
-					ret[k] = a0[k] * u + b0[k] * v + b1[k] * w;
-			}
-
-			/*
-			// a1         b1
-			//    \
-			//     \
-			//      \
-			//       \
-			//        \
-			//         \
-			//          \
-			// a0         b0
-			if( py < 1-px ) //tri a0,a1,b0
-			{
-			//a = (0,0) (a0) u
-			//b = (0,1) (a1) v
-			//c = (1,0) (b0) w
-			//Vector v0 = b-a = (0,1), v1 = c-a = (1,0), v2 = p-a;
-			const Storage::real d00 = 1; //Dot(v0, v0);
-			const Storage::real d01 = 0; //Dot(v0, v1);
-			const Storage::real d11 = 1; //Dot(v1, v1);
-			const Storage::real denom = d00 * d11 - d01 * d01;
-			Storage::real d20 = py; //Dot(v2, v0);
-			Storage::real d21 = px; //Dot(v2, v1);
-			Storage::real v = (d11 * d20 - d01 * d21) / denom; //for a1
-			Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b0
-			Storage::real u = 1.0 - v - w; //for a0
-			for(int k = 0; k < 3; ++k)
-			ret[k] = a0[k]*u + a1[k]*v + b0[k]*w;
-			}
-			else //tri a0,b0,b1
-			{
-			//a = (0,1) (a1) u
-			//b = (1,0) (b0) v
-			//c = (1,1) (b1) w
-			//Vector v0 = b-a = (1,-1), v1 = c-a = (1,0), v2 = p-a = (px,py-1);
-			const Storage::real d00 = 2; //Dot(v0, v0);
-			const Storage::real d01 = 1; //Dot(v0, v1);
-			const Storage::real d11 = 1; //Dot(v1, v1);
-			const Storage::real denom = d00 * d11 - d01 * d01;
-			Storage::real d20 = px-py+1; //Dot(v2, v0);
-			Storage::real d21 = px; //Dot(v2, v1);
-			Storage::real v = (d11 * d20 - d01 * d21) / denom; //for b0
-			Storage::real w = (d00 * d21 - d01 * d20) / denom; //for b1
-			Storage::real u = 1.0 - v - w; //for a1
-			for(int k = 0; k < 3; ++k)
-			ret[k] = a1[k]*u + b0[k]*v + b1[k]*w;
-			}
-			*/
-			//for(int k = 0; k < 3; ++k) ret[k] = (ret1[k]+ret2[k])*0.5;
-
-		}
-
-
-
-		void Act(const Point & p, Storage::real v[3]) const
-		{
-			Storage::real a, b;
-			for (int k = 0; k < 3; ++k)
-			{
-				a = (p.x)*a0[k] + (1.0 - p.x)*a1[k];
-				b = (p.x)*b0[k] + (1.0 - p.x)*b1[k];
-				v[k] = (1.0 - p.y)*a + p.y*b;
-			}
-		}
-
-	};
 	// Used to sort arrays by indices
 	class index_comparator
 	{
@@ -797,7 +797,105 @@ namespace INMOST
 		return std::make_pair(t1, t2);
 	}
 
-	std::pair<bool, Point> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::set<Point> & intersections, Tag pnt, const Unproject & unp, bool print)
+
+
+	//returns distance between line if shortest line is within segments, writes position of distance into last argument
+	static double SegmentDistance(const double v1[3], const double v2[3], const double v3[3], const double v4[3], double vout[3])
+	{
+		double v13[3], v21[3], v43[3];
+		for (int k = 0; k < 3; ++k)
+		{
+			v13[k] = v1[k] - v3[k];
+			v21[k] = v2[k] - v1[k];
+			v43[k] = v4[k] - v3[k];
+		}
+		double d1321 = 0, d2121 = 0, d4321 = 0, d1343 = 0, d4343 = 0;
+		for (int k = 0; k < 3; ++k)
+		{
+			d1321 += v13[k] * v21[k];
+			d2121 += v21[k] * v21[k];
+			d4321 += v43[k] * v21[k];
+			d1343 += v13[k] * v43[k];
+			d4343 += v43[k] * v43[k];
+		}
+		double mu1 = 0, mu2 = 0;
+		/*
+		double parallel = 0;
+		for (int k = 0; k < 3; ++k)
+		parallel += v21[k] * v43[k];
+		parallel = fabs(parallel);
+		parallel /= sqrt(d2121)*sqrt(d4343);
+		if (fabs(parallel - 1.0) > 1.0e-6)
+		*/
+		if (fabs(d2121*d4343 - d4321*d4321) > 1.0e-6)
+		{
+			mu1 = (d1343*d4321 - d1321*d4343) / (d2121*d4343 - d4321*d4321);
+			mu2 = (d1343 + mu1*d4321) / d4343;
+			if (mu1 > 1) mu1 = 1;
+			if (mu1 < 0) mu1 = 0;
+			if (mu2 > 1) mu2 = 1;
+			if (mu2 < 0) mu2 = 0;
+		}
+		else //parallel lines
+		{
+			//1d problem
+			double la = 0, ra = 0;
+			double lb = 0, rb = 0;
+			for (int k = 0; k < 3; ++k)
+			{
+				la += v1[k] * v21[k];
+				ra += v2[k] * v21[k];
+				lb += v3[k] * v21[k];
+				rb += v4[k] * v21[k];
+			}
+			bool invb = false;
+			if (lb > rb)
+			{
+				std::swap(lb, rb);
+				invb = true;
+			}
+
+			if (ra+1.0e-7 < lb) // (la,ra) is to the left of (lb,rb), no intersection
+			{
+				mu1 = 1;
+				mu2 = 0;
+			}
+			else if (la > rb+1.0e-7) // (la,ra) is to the right of (lb,rb), no intersection
+			{
+				mu1 = 0;
+				mu2 = 1;
+			}
+			else if (lb > la) // (lb,rb) intersects to the right of or contains (la,ra)
+			{
+				mu2 = 0;
+				mu1 = (lb - la) / (ra - la);
+			}
+			else if (rb < ra) // (lb,rb) intersects to the left of or contains (la,ra)
+			{
+				mu2 = 1;
+				mu1 = (rb - la) / (ra - la);
+			}
+			else // (lb,rb) contains (la,ra)
+			{
+				mu1 = 0;
+				mu2 = (la - lb) / (rb - lb);
+			}
+			if (invb) mu2 = 1 - mu2;
+		}
+		double vs1[3], vs2[3], h = 0;
+		for (int k = 0; k < 3; ++k)
+		{
+			vs1[k] = v1[k] + mu1*(v2[k] - v1[k]);
+			vs2[k] = v3[k] + mu2*(v4[k] - v3[k]);
+			vout[k] = (vs1[k] + vs2[k])*0.5;
+			h += (vs2[k] - vs1[k])*(vs2[k] - vs1[k]);
+		}
+		return sqrt(h);
+	}
+
+
+
+	std::pair<bool, Point> intersect_segments(Mesh * m, const Edge & a, const Edge & b, std::set<Point> & intersections, Tag pnt, bool print)
 	{
 		const Storage::real eps = ECL_INTERSECT_EPS;
 		Point pfind(InvalidHandle(), 0, 0);
@@ -859,11 +957,8 @@ namespace INMOST
 		{
 			Storage::real find[3];
 			//restore coordinate
-			//this is treaky, we do not want self intersection in 3d space
-			unp.Act(pfind, find);
-			//find[0] = (a->getEnd()->Coords()[0]*t1 + a->getBeg()->Coords()[0]*(1-t1)+b->getEnd()->Coords()[0]*t2 + b->getBeg()->Coords()[0]*(1-t2))*0.5;
-			//find[1] = (a->getEnd()->Coords()[1]*t1 + a->getBeg()->Coords()[1]*(1-t1)+b->getEnd()->Coords()[1]*t2 + b->getBeg()->Coords()[1]*(1-t2))*0.5;
-			//find[2] = (a->getEnd()->Coords()[2]*t1 + a->getBeg()->Coords()[2]*(1-t1)+b->getEnd()->Coords()[2]*t2 + b->getBeg()->Coords()[2]*(1-t2))*0.5;
+			SegmentDistance(a->getBeg().Coords().data(), a->getEnd().Coords().data(), b->getBeg().Coords().data(), b->getEnd().Coords().data(), find);
+
 			pfind.node = m->CreateNode(find)->GetHandle();
 			if (print) std::cout << "intersection accepted (" << find[0] << "," << find[1] << "," << find[2] << ") t1 " << t1 << " t2 " << t2 << " new node " << pfind.node << std::endl;
 			Storage::real_array _pfind = m->RealArray(pfind.node, pnt);
@@ -904,127 +999,10 @@ namespace INMOST
 	{
 		split_edge(m, I, a, splitted_a, transfer, print);
 		split_edge(m, I, b, splitted_b, transfer, print);
-		/*
-		//storage for data
-		std::vector< std::vector<char> > copy(transfer.size()*2);
-		//memorize data
-		{
-		const Edge * s[2] = {&a,&b};
-		for(int q = 0; q < 2; ++q) //segments
-		for(int k = 0; k < transfer.size(); ++k) //tags
-		{
-		int size = s[q]->GetDataSize(transfer[k]);
-		copy[k + q*transfer.size()].resize(transfer[k].GetBytesSize()*size);
-		if( !copy.empty() ) s[q]->GetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
-		}
-		}
-		if( print ) std::cout << "split a " << a->GetHandle() << " " << a->getBeg()->GetHandle() << " <-> " << a->getEnd()->GetHandle() << ":-> ";
-		splitted_a = Edge::SplitEdge(a,ElementArray<Node>(m,1,I->GetHandle()),0);
-		if( print ) std::cout << splitted_a[0]->GetHandle() << " " << splitted_a[0]->getBeg()->GetHandle() << " <-> " << splitted_a[0]->getEnd()->GetHandle() << " and " << splitted_a[1]->GetHandle() << " " << splitted_a[1]->getBeg()->GetHandle() << " <-> " << splitted_a[1]->getEnd()->GetHandle() << std::endl;
-		if( print ) std::cout << "split b " << b->GetHandle() << " " << b->getBeg()->GetHandle() << " <-> " << b->getEnd()->GetHandle() << ":-> ";
-		splitted_b = Edge::SplitEdge(b,ElementArray<Node>(m,1,I->GetHandle()),0);
-		if( print ) std::cout << splitted_b[0]->GetHandle() << " " << splitted_b[0]->getBeg()->GetHandle() << " <-> " << splitted_b[0]->getEnd()->GetHandle() << " and " << splitted_b[1]->GetHandle() << " " << splitted_b[1]->getBeg()->GetHandle() << " <-> " << splitted_b[1]->getEnd()->GetHandle() << std::endl;
-		//duplicate data
-		{
-		const Edge splitted[2][2] =
-		{
-		{splitted_a[0],splitted_a[1]},
-		{splitted_b[0],splitted_b[1]}
-		};
-		for(int q = 0; q < 2;++q) //segments
-		for(int k = 0; k < transfer.size();++k)
-		{
-		int size = (int)copy[k + q*transfer.size()].size() / transfer[k].GetBytesSize();
-		if( size ) for(int l = 0; l < 2; ++l) //two parts
-		{
-		splitted[q][l].SetDataSize(transfer[k],size);
-		splitted[q][l].SetData(transfer[k],0,size,&copy[k + q*transfer.size()][0]);
-		}
-		}
-
-		}
-		*/
 	}
 
-	class ytree
-	{
-
-		struct ytree_elem
-		{
-			float t, b;
-			int pos;
-			bool operator <(const ytree_elem & a)
-			{
-				return (t + b)*0.5f < (a.t + a.b)*0.5f;
-			}
-		}*set;
-		int size;
-		float t, b;
-		ytree * children;
-		void build_tree()
-		{
-			if (size > 1)
-			{
-				std::sort(set, set + size);
-				children = static_cast<ytree *>(malloc(sizeof(ytree)* 2));
-				assert(children != NULL);
-				children[0].children = NULL;
-				children[0].set = set;
-				children[0].size = size / 2;
-				children[1].children = NULL;
-				children[1].set = set + size / 2;
-				children[1].size = size - size / 2;
-				for (int k = 0; k < 2; ++k)
-					children[k].build_tree();
-				t = std::max(children[0].t, children[1].t);
-				b = std::min(children[0].b, children[1].b);
-			}
-			else
-			{
-				assert(size == 1);
-				t = set[0].t;
-				b = set[0].b;
-			}
-		}
-		void pick_set_sub(float st, float sb, dynarray<int, 128> & out)
-		{
-			if (!(st < b || sb > t))
-			{
-				if (size > 1)
-				{
-					children[0].pick_set_sub(st, sb, out);
-					children[1].pick_set_sub(st, sb, out);
-				}
-				else out.push_back(set[0].pos);
-			}
-		}
-	public:
-		ytree(ElementArray<Edge> & segments, Tag pnt)
-		{
-			set = static_cast<ytree_elem *>(malloc(sizeof(ytree_elem)*segments.size()));
-			size = (int)segments.size();
-			for (int k = 0; k < size; ++k)
-			{
-				set[k].pos = k;// segments.at(k);
-				set[k].t = static_cast<float>(segments[k].getBeg().RealArray(pnt)[1]);
-				set[k].b = static_cast<float>(segments[k].getEnd().RealArray(pnt)[1]);
-				if (set[k].t < set[k].b)
-					std::swap(set[k].t, set[k].b);
-			}
-			build_tree();
-		}
-		void pick_set(Edge e, Tag pnt, dynarray<int, 128> & out)
-		{
-			out.clear();
-			float st = static_cast<float>(e.getBeg().RealArray(pnt)[1]);
-			float sb = static_cast<float>(e.getEnd().RealArray(pnt)[1]);
-			if (st < sb)
-				std::swap(st, sb);
-			pick_set_sub(st, sb, out);
-		}
-	};
-
-	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, bool print)
+	
+	void intersect_naive(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, bool print)
 	{
 		//Tag pnt = m->CreateTag("PROJ_PNT"+m->GetLocalProcessorRank(),DATA_REAL,NODE,NODE,2);
 		std::set<Point> intersections;
@@ -1039,24 +1017,17 @@ namespace INMOST
 			intersections.insert(make_point(segments[k]->getBeg(), pnt));
 			intersections.insert(make_point(segments[k]->getEnd(), pnt));
 		}
-		//ytree t(segments, pnt);
-		//dynarray<int,128> test_pos;
 		for (int i = 0; i < (int)segments.size(); ++i)
 		{
-			Edge & ei = segments[i];
-			//t.pick_set(ei, pnt, test_pos);
 			for (int j = i + 1; j < (int)segments.size(); ++j)
-				//for (int j = 0; j < (int)test_pos.size(); ++j) if( test_pos[j] != i )
 			{
-				Edge & ej = segments[j];
-				//Edge & ej = segments[test_pos[j]];
-				std::pair<bool, Point> I = intersect_segments(m, ei, ej, intersections, pnt, unp, print);
+				std::pair<bool, Point> I = intersect_segments(m, segments[i], segments[j], intersections, pnt, print);
 				if (I.first)
 				{
 					ElementArray<Edge> splitted_a, splitted_b;
-					split_edges(m, Node(m, I.second.node), ei, ej, splitted_a, splitted_b, transfer, print);
-					ei = splitted_a[0];
-					ej = splitted_b[0];
+					split_edges(m, Node(m, I.second.node), segments[i], segments[j], splitted_a, splitted_b, transfer, print);
+					segments[i] = splitted_a[0];
+					segments[j] = splitted_b[0];
 					segments.push_back(splitted_a[1]);
 					segments.push_back(splitted_b[1]);
 				}
@@ -1072,114 +1043,6 @@ namespace INMOST
 			m->RemPrivateMarker(initials[k], initial);
 		m->ReleasePrivateMarker(initial);
 	}
-
-	void split_segments(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, MarkerType mrk, bool print)
-	{
-		int i = 0;
-		//MarkerType mrk = m->CreateMarker();
-		while (i < segments.size())
-		{
-
-			//skip edges along pillars
-			if (!segments[i]->GetPrivateMarker(mrk))
-			{
-				i++;
-				continue;
-			}
-
-			//get projected center point of segment
-			//vl - point on the middle
-			//vu - unprojected middle point onto arc
-			Storage::real vu[3], vl[3];
-			for (int k = 0; k < 3; ++k)
-				vl[k] = (segments[i]->getBeg()->Coords()[k] + segments[i]->getEnd()->Coords()[k])*0.5;
-			Point pb = make_point(segments[i]->getBeg(), pnt);
-			Point pe = make_point(segments[i]->getEnd(), pnt);
-			Point pm(InvalidHandle(), (pb.x + pe.x)*0.5, (pb.y + pe.y)*0.5);
-			unp.Act(pm, vu);
-			// l - length of the segment
-			// h - distance to the arc
-			Storage::real l = segments[i]->Length();
-			Storage::real h = sqrt((vl[0] - vu[0])*(vl[0] - vu[0]) + (vl[1] - vu[1])*(vl[1] - vu[1]) + (vl[2] - vu[2])*(vl[2] - vu[2]));
-			if (h / l > 0.05) // it is rather curvy
-			{
-				Node n = m->CreateNode(vu);
-				n->RealArray(pnt)[0] = pm.x;
-				n->RealArray(pnt)[1] = pm.y;
-				ElementArray<Edge> splitted_a;
-				split_edge(m, n, segments[i], splitted_a, transfer, print);
-				splitted_a[0]->SetPrivateMarker(mrk);
-				splitted_a[1]->SetPrivateMarker(mrk);
-				segments[i] = splitted_a[0];
-				segments.push_back(splitted_a[1]);
-				nodes.push_back(n);
-			}
-			else i++;
-		}
-		//segments.RemMarker(mrk);
-		//m->ReleaseMarker(mrk);
-	}
-
-
-	void split_segments_tri(Mesh * m, ElementArray<Edge> & segments, ElementArray<Node> & nodes, std::vector<Tag> & transfer, Tag pnt, const Unproject & unp, MarkerType mrk, bool print)
-	{
-		int i = 0;
-		while (i < segments.size())
-		{
-
-			//skip edges along pillars
-			if (!segments[i]->GetPrivateMarker(mrk))
-			{
-				i++;
-				continue;
-			}
-
-			//get projected center point of segment
-			//vl - point on the middle
-			//vu - unprojected middle point onto arc
-			Storage::real vu[3], vl[3], cb[3], ce[3];//, vt[3];
-			Point pb = make_point(segments[i]->getBeg(), pnt);
-			Point pe = make_point(segments[i]->getEnd(), pnt);
-			Point tb = Point(InvalidHandle(), 0, 0);
-			Point te = Point(InvalidHandle(), 1, 1);
-			std::pair<Storage::real, Storage::real> tt = intersect_pairs(pb, pe, tb, te);
-			Storage::real t1 = tt.first, t2 = tt.second;
-			if (t1 >= 0.0 && t1 <= 1.0)
-			{
-				//t = 1 - t;
-				Point pm(InvalidHandle(), pb.x + t1*(pe.x-pb.x), pb.y + t1*(pe.y-pb.y));
-				Point qm(InvalidHandle(), tb.x + t2*(te.x-tb.x), tb.y + t2*(te.y-tb.y));
-				unp.ActTri(pm, vu);
-				Storage::real_array vb = segments[i]->getBeg()->Coords();
-				Storage::real_array ve = segments[i]->getEnd()->Coords();
-				unp.ActTri(pb, cb);
-				unp.ActTri(pe, ce);
-				for (int k = 0; k < 3; ++k)
-					vl[k] = vb[k] + t1*(ve[k]-vb[k]);
-				// l - length of the segment
-				// h - distance to the arc
-				Storage::real l = segments[i]->Length();
-				Storage::real h = sqrt((vl[0] - vu[0])*(vl[0] - vu[0]) + (vl[1] - vu[1])*(vl[1] - vu[1]) + (vl[2] - vu[2])*(vl[2] - vu[2]));
-				if (h / l > 1.0e-2) // it is not on the same plane
-				{
-					//unp.ActTri(pm,vt);
-					Node n = m->CreateNode(vu);
-					n->RealArray(pnt)[0] = pm.x;
-					n->RealArray(pnt)[1] = pm.y;
-					ElementArray<Edge> splitted_a;
-					split_edge(m, n, segments[i], splitted_a, transfer, print);
-					splitted_a[0]->SetPrivateMarker(mrk);
-					splitted_a[1]->SetPrivateMarker(mrk);
-					segments[i] = splitted_a[0];
-					segments.push_back(splitted_a[1]);
-					nodes.push_back(n);
-				}
-				else i++;
-			}
-			else i++;
-		}
-	}
-
 
 	void block_number_union(Element n, ElementArray<Element> & adj, Tag block, Tag write)
 	{
@@ -1266,13 +1129,75 @@ namespace INMOST
 		double mult;
 	};
 
+	struct prod_rate
+	{
+		double orat;
+		double wrat;
+		double grat;
+		double lrat;
+		double resv;
+	};
+
+	struct inje_rate
+	{
+		double rate;
+		double resv;
+	};
+
+	struct wconprodinje_rec
+	{
+		std::string type;
+		std::string ctrl;
+		bool open;
+		union
+		{
+			prod_rate prat;
+			inje_rate irat;
+			double rats[5];
+		} urats;
+		double bhp;
+	};
+	
+	struct compdat_rec
+	{
+		int bijk[4];
+		bool open;
+		int satnum;
+		double WI, skin, perm, dfac,rw,r0;
+		char dir;
+	};
+	struct welspecs_rec
+	{
+		int bij[2];
+		double depth;
+		std::string group;
+		std::string phase;
+	};
+	typedef std::vector<compdat_rec> compdat_recs;
+	struct well_rec
+	{
+		welspecs_rec wspec;
+		std::map<int,wconprodinje_rec> wpi;
+		std::map<int,compdat_recs> compdat;
+	};
+	//typedef std::map<std::string, compdat_recs > compdat_wells;
+	//typedef std::map<std::string, welspecs_rec > welspecs_wells;
+	typedef std::map<std::string, well_rec > wells_data;
+	struct schedule
+	{
+		char tagnum;
+		double value;
+		HandleType element;
+	};
+	typedef std::vector<schedule> schedules;
+
+
+
 	void Mesh::LoadECL(std::string File)
 	{
 		char have_perm = 0;
 		std::cout << std::scientific;
 		bool perform_splitting = false;
-		bool curvilinear_edges = true;
-		bool triangulated_edges = false; //this is not working, yet
 		bool project_perm = false;
 		int split_degenerate = 1;
 		bool check_topology = false;
@@ -1294,13 +1219,6 @@ namespace INMOST
 					split_degenerate = 2;
 				else
 					split_degenerate = 0;
-			}
-			if (file_options[k].first == "ECL_CURVILINEAR")
-			{
-				if (file_options[k].second == "TRUE")
-					curvilinear_edges = true;
-				else
-					curvilinear_edges = false;
 			}
 			if (file_options[k].first == "ECL_TOPOLOGY")
 			{
@@ -1348,7 +1266,7 @@ namespace INMOST
 			std::cout << "Started loading " << File << std::endl;
 		}
 		std::vector< std::pair< std::pair<FILE *, std::string>, int> > fs(1, std::make_pair(std::make_pair(f, File), 0));
-		char readline[2048], *p, *pend, rec[2048];
+		char readline[2048], readlines[2048], *p, *pend, rec[2048];
 		int text_end, text_start, state = ECL_NONE, state_from = ECL_NONE, nchars;
 		int waitlines = 0;
 		int have_dimens = 0, totread, downread, numrecs, offset;
@@ -1359,7 +1277,7 @@ namespace INMOST
 		Storage::integer * read_arrayi = NULL;
 		Storage::integer dims[3], mapaxis[6] = { 0, 1, 0, 0, 1, 0 };
 		Storage::real inrad = 0;
-		std::vector<Storage::real> xyz, perm, poro, tops, zcorn, ntg, pressure, pbub, swat, soil, sgas;
+		std::vector<Storage::real> xyz, perm, poro, tops, zcorn, ntg, pressure, pbub, swat, soil, sgas, thconr;
 		std::vector<Storage::integer> actnum, satnum, eqlnum, pvtnum, rocknum;
 		std::vector<mult_rec> multiply;
 		mult_rec mult_cur;
@@ -1369,9 +1287,21 @@ namespace INMOST
 		fault_rec fault_cur;
 		std::vector<multflt_rec> multflt;
 		multflt_rec multflt_cur;
+		time_t start, last;
+		bool have_start = false;
+		struct tm date_cur;
+		bool read_start;
+		std::vector<double> tsteps(1,0.0); //skip first tstep
+		std::pair<std::string,compdat_rec> compdat_cur;
+		std::pair<std::string,welspecs_rec> welspecs_cur;
+		std::pair<std::string,wconprodinje_rec> wconprodinje_cur;
 		bool multiply_trans = false;
 		bool multiply_props = false;
-		compdat_wells wells;
+		bool wconprod = false; //WCONPROD or WCONINJE
+		bool wellspec = false;// WELLSPEC keyword instead of WELLSPECS
+		//compdat_wells compdat; 
+		//welspecs_wells welspecs;
+		wells_data wells_sched;
 		while (!fs.empty())
 		{
 			while (fgets(readline, 2048, fs.back().first.first) != NULL)
@@ -1379,6 +1309,8 @@ namespace INMOST
 				fs.back().second++; //line number
 				{
 					if (readline[strlen(readline) - 1] == '\n') readline[strlen(readline) - 1] = '\0';
+					UnStar(readline,readlines); //remove n*
+					strcpy(readline,readlines); //copy back
 					text_end = static_cast<int>(strlen(readline));
 					for (text_start = 0; isspace(readline[text_start]) && text_start < text_end; text_start++);
 					if (text_start == text_end) continue;
@@ -1548,6 +1480,16 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_PORO;
 					}
+					else if (!ECLSTRCMP(p, "THCONR"))
+					{
+						assert(have_dimens);
+						thconr.resize(dims[0] * dims[1] * dims[2]);
+						read_arrayf = thconr.empty() ? NULL : &thconr[0];
+						numrecs = 1;
+						downread = totread = dims[0] * dims[1] * dims[2];
+						argtype = ECL_VAR_REAL;
+						offset = state = ECL_THCONR;
+					}
 					else if (!ECLSTRCMP(p, "PRESSURE"))
 					{
 						assert(have_dimens);
@@ -1666,10 +1608,45 @@ namespace INMOST
 					{
 						radial = ECL_GTYPE_CARTESIAN;
 					}
-					else if (!ECLSTRCMP(p, "COMPDAT")) //some well data
-					{
+					else if (!ECLSTRCMP(p, "COMPDAT")) // well data
 						state = ECL_COMPDAT;
+					else if (!ECLSTRCMP(p, "WELLSPEC")) // well data
+					{
+						wellspec = true;
+						state = ECL_WELSPECS;
 					}
+					else if (!ECLSTRCMP(p, "WELSPECS"))
+					{
+						wellspec = false;
+						state = ECL_WELSPECS;
+					}
+					else if (!ECLSTRCMP(p, "WCONPROD")) // well data
+					{
+						wconprod = true;
+						state = ECL_WCONPRODINJE;
+					}
+					else if (!ECLSTRCMP(p, "WCONINJE")) // well data
+					{
+						wconprod = false;
+						state = ECL_WCONPRODINJE;
+					}
+					else if (!ECLSTRCMP(p, "DATES"))
+					{
+						state = ECL_DATES;
+						read_start = false;
+						if (!have_start && verbosity > 0)
+						{
+							std::cout << " DATES keyword without prior START keyword ";
+							std::cout << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						}
+					}
+					else if (!ECLSTRCMP(p, "START"))
+					{
+						state = ECL_DATES;
+						read_start = true;
+					}
+					else if (!ECLSTRCMP(p, "TSTEP"))
+						state = ECL_TSTEP;
 					else if (!ECLSTRCMP(p, "INRAD"))
 					{
 						if (radial != ECL_GTYPE_RADIAL && verbosity > 0)
@@ -1698,7 +1675,7 @@ namespace INMOST
 							shift_one = 1;
 						}
 						std::string filename = (GetFolder(fs.back().first.second) + "/" + std::string(rec + shift_one));
-						if (verbosity > 0)
+						if (verbosity > 1)
 						{
 							std::cout << filename << " included from " << fs.back().first.second << " line " << fs.back().second << std::endl;
 						}
@@ -1716,26 +1693,6 @@ namespace INMOST
 						std::cout << __FILE__ << ":" << __LINE__ << " cannot read file name, string " << p << " in " << fs.back().first.second << " line " << fs.back().second << std::endl;
 						throw BadFile;
 					}
-					break;
-				case ECL_COMPDAT:
-				{
-									char wellname[4096];
-									char openshut[4096];
-									int ii, jj, kk1, kk2;
-									if (6 == sscanf(p, "%s %d %d %d %d %s", wellname, &ii, &jj, &kk1, &kk2, openshut))
-									{
-										compdat_entry entry;
-										entry.i = ii;
-										entry.j = jj;
-										entry.k1 = kk1;
-										entry.k2 = kk2;
-										if (std::string(openshut) == "OPEN")
-											entry.open = true;
-										else
-											entry.open = false;
-										wells[std::string(wellname)].push_back(entry);
-									}
-				}
 					break;
 				case ECL_ZCORN:
 				case ECL_COORDS:
@@ -1760,6 +1717,7 @@ namespace INMOST
 				case ECL_SWAT:
 				case ECL_PBUB:
 				case ECL_PRESSURE:
+				case ECL_THCONR:
 					while (downread > 0 && p < pend)
 					{
 						if (1 == sscanf(p, "%s%n", rec, &nchars))
@@ -1779,7 +1737,7 @@ namespace INMOST
 							if (argtype == ECL_VAR_REAL)
 							{
 								Storage::real val = atof(rec + begval);
-								while (count)
+								while (count && downread)
 								{
 									read_arrayf[numrecs*(totread - (downread--)) + (state - offset)] = val;
 									count--;
@@ -1788,7 +1746,7 @@ namespace INMOST
 							else if (argtype == ECL_VAR_INT)
 							{
 								Storage::integer val = atoi(rec + begval);
-								while (count)
+								while (count && downread)
 								{
 									read_arrayi[numrecs*(totread - (downread--)) + (state - offset)] = val;
 									count--;
@@ -1829,11 +1787,136 @@ namespace INMOST
 					}
 					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
 					break;
+				case ECL_TSTEP:
+					while (p != pend && ReadName(p, pend, rec, &nchars))
+					{
+						if (rec[0] == '/')
+						{
+							state = ECL_NONE;
+							break;
+						}
+						else
+						{
+							int count = 1;
+							double val = -1;
+							bool have_star = false;
+							for (size_t k = 0; k < strlen(rec); ++k)
+							{
+								if (rec[k] == '*')
+								{
+									count = atoi(rec);
+									val = atof(rec+k+1);
+									have_star = true;
+									break;
+								}
+							}
+							if(!have_star) val = atof(rec);
+							for(int k = 0; k < count; ++k)
+								tsteps.push_back(val);
+						}
+					}
+					break;
+				case ECL_DATES:
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
+					{
+						memset(&date_cur, 0, sizeof(struct tm));
+						date_cur.tm_mday = atoi(rec);
+						if( !read_start )
+							state_from = ECL_DATES;
+						state = ECL_DATES_MON;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else if (*(pend - 1) == '/' || *p == '/')
+					{
+						state_from = state = ECL_NONE;
+						break;
+					}
+					else
+					{
+						state_from = ECL_NONE;
+						state = ECL_SKIP_SECTION;
+						break;
+					}
+					if (p == pend) break;
+				case ECL_DATES_MON:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						date_cur.tm_mon = MonthInt(ToUpper(rec))-1;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_DATES_YEAR:
+					if (1 == sscanf(p, "%d%n", &date_cur.tm_year, &nchars))
+					{
+						date_cur.tm_year = date_cur.tm_year - 1900;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+					//may end here
+					if (*(pend - 1) == '/' || *p == '/')
+					{
+						if (read_start)
+						{
+							last = start = mktime(&date_cur);
+							have_start = true;
+						}
+						else
+						{
+							time_t t = mktime(&date_cur);
+							tsteps.push_back((t - last) / 86400.0);
+							last = t;
+						}
+						state = state_from;
+						break;
+					}
+				case ECL_DATES_HRS:
+					if (1 == sscanf(p, "%s%d", rec,&nchars))
+					{
+						if (3 == sscanf(rec, "%d:%d:%d", &date_cur.tm_hour, &date_cur.tm_min, &date_cur.tm_sec))
+						{
+							if (read_start)
+							{
+								last = start = mktime(&date_cur);
+								have_start = true;
+							}
+							else
+							{
+								time_t t = mktime(&date_cur);
+								tsteps.push_back((t - last) / 86400.0);
+								last = t;
+							}
+							state = state_from;
+						}
+						else
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							throw BadFile;
+						}
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
 				case ECL_MULTIPLY:
 					//read name
-					if (1 == sscanf(p, "%s%n", rec, &nchars) && rec[0] != '/')
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
 					{
-						mult_cur.name = ToUpper(STR8(UnQoute(rec).c_str()));
+						mult_cur.name = ToUpper(STR8(rec));
 						if (mult_cur.name == STR8("TRANX") ||
 							mult_cur.name == STR8("TRANY") ||
 							mult_cur.name == STR8("TRANZ"))
@@ -1842,6 +1925,7 @@ namespace INMOST
 							mult_cur.name == STR8("PERMY") ||
 							mult_cur.name == STR8("PERMZ") ||
 							mult_cur.name == STR8("PORO") ||
+							mult_cur.name == STR8("THCONR") ||
 							mult_cur.name == STR8("NTG"))
 							multiply_props = true;
 						else if (verbosity > 0)
@@ -1865,7 +1949,7 @@ namespace INMOST
 						state = ECL_SKIP_SECTION;
 						break;
 					}
-					//break; //just fall to the next
+					if (p == pend) break;
 				case ECL_MULTIPLY_MUL:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -1881,6 +1965,7 @@ namespace INMOST
 						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 						throw BadFile;
 					}
+					if (p == pend) break;
 				case ECL_MULTIPLY_BLK:
 					while (downread < totread && p < pend)
 					{
@@ -1904,6 +1989,7 @@ namespace INMOST
 							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 							throw BadFile;
 						}
+						if (p == pend) break;
 					}
 					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
 					break;
@@ -1932,6 +2018,7 @@ namespace INMOST
 							break;
 						}
 					}
+					if (p == pend) break;
 				case ECL_EDITNNC_BLK:
 					while (downread < totread && p < pend)
 					{
@@ -1948,8 +2035,9 @@ namespace INMOST
 							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 							throw BadFile;
 						}
+						if (p == pend) break;
 					}
-					//break;
+					if (p == pend) break;
 				case ECL_EDITNNC_MUL:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -1959,12 +2047,509 @@ namespace INMOST
 						p += nchars;
 						while (isspace(*p) && p < pend) ++p;
 					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
+					break;
+				case ECL_WCONPRODINJE:
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
+					{
+						wconprodinje_cur.first = std::string(rec);
+						wconprodinje_cur.second.open = true;
+						wconprodinje_cur.second.ctrl = "BHP";
+						if (wconprod)
+							wconprodinje_cur.second.type = "PROD";
+						else
+							wconprodinje_cur.second.type = "WATER";
+						memset(wconprodinje_cur.second.urats.rats,0,sizeof(double)*5);
+						wconprodinje_cur.second.bhp = 1.0e+5; //default psia in eclipse
+						if( wconprod )
+							state = ECL_WCONPRODINJE_OPEN;
+						else
+							state = ECL_WCONPRODINJE_TYPE;
+						state_from = ECL_WCONPRODINJE;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else if (*(pend - 1) == '/' || *p == '/')
+					{
+						state_from = state = ECL_NONE;
+						break;
+					}
+					else
+					{
+						state_from = ECL_NONE;
+						state = ECL_SKIP_SECTION;
+						break;
+					}
+					if (p == pend) break;
+				case ECL_WCONPRODINJE_TYPE:
+					if (ReadName(p, pend, rec, &nchars) )
+					{
+						if( rec[0] != '*' )
+							wconprodinje_cur.second.type = std::string(rec);
+						state = ECL_WCONPRODINJE_OPEN;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_WCONPRODINJE_OPEN:
+					if (ReadName(p, pend, rec, &nchars))
+					{
+						if (rec[0] != '*')
+							wconprodinje_cur.second.type = std::string(rec);
+						state = ECL_WCONPRODINJE_CTRL;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_WCONPRODINJE_CTRL:
+					if (ReadName(p, pend, rec, &nchars))
+					{
+						if (rec[0] != '*')
+							wconprodinje_cur.second.ctrl = std::string(rec);
+						state = ECL_WCONPRODINJE_RATES;
+						downread = 0;
+						if (!wconprod)
+							totread = 2;
+						else
+							totread = 5;
+
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_WCONPRODINJE_RATES:
+					while (downread < totread && p < pend)
+					{
+						if (ReadName(p,pend,rec,&nchars) && rec[0] != '/')
+						{
+							if( rec[0] != '*' )
+								wconprodinje_cur.second.urats.rats[downread] = atof(rec);
+							downread++;
+							if (downread == totread)
+								state = ECL_WCONPRODINJE_BHP;
+							p += nchars;
+							while (isspace(*p) && p < pend) ++p;
+						}
+						else if (rec[0] == '/')
+						{
+							wells_sched[wconprodinje_cur.first].wpi[(int)tsteps.size()] = wconprodinje_cur.second;
+							state_from = state = ECL_WCONPRODINJE;
+							break;
+						}
+						else
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							throw BadFile;
+						}
+						if (p == pend) break;
+					}
+					if (p == pend) break;
+				case ECL_WCONPRODINJE_BHP:
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
+					{
+						if (rec[0] != '*')
+							wconprodinje_cur.second.bhp = atof(rec);
+						wells_sched[wconprodinje_cur.first].wpi[(int)tsteps.size()] = wconprodinje_cur.second;
+						state_from = state = ECL_WCONPRODINJE;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else if( rec[0] != '/' )
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
+					break;
+				case ECL_WELSPECS:
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
+					{
+						welspecs_cur.first = std::string(rec);
+						welspecs_cur.second.group = "FIELD";
+						welspecs_cur.second.depth = -1; //compute from i,j,0
+						welspecs_cur.second.phase = "";
+						state = ECL_WELSPECS_GROUP;
+						if( !wellspec ) state_from = ECL_WELSPECS;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else if (*(pend - 1) == '/' || *p == '/')
+					{
+						state_from = state = ECL_NONE;
+						break;
+					}
+					else
+					{
+						state_from = ECL_NONE;
+						state = ECL_SKIP_SECTION;
+						break;
+					}
+					if (p == pend) break;
+				case ECL_WELSPECS_GROUP:
+					if (ReadName(p, pend, rec, &nchars))
+					{
+						if( rec[0] != '*' )
+							welspecs_cur.second.group = std::string(rec);
+						state = ECL_WELSPECS_I;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_WELSPECS_I:
+					if (1 == sscanf(p,"%d%n",welspecs_cur.second.bij,&nchars))
+					{
+						state = ECL_WELSPECS_J;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_WELSPECS_J:
+					if (1 == sscanf(p, "%d%n", welspecs_cur.second.bij+1, &nchars))
+					{
+						state = ECL_WELSPECS_Z;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_WELSPECS_Z:
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
+					{
+						if( rec[0] != '*' )
+							welspecs_cur.second.depth = atof(rec);
+						if (wellspec)
+						{
+							wells_sched[welspecs_cur.first].wspec = welspecs_cur.second;
+							//welspecs[welspecs_cur.first] = welspecs_cur.second;
+							
+							if (*(pend - 1) == '/' || *p == '/')
+								state = ECL_NONE;
+							else
+								state = ECL_SKIP_SECTION;
+						}
+						else state = ECL_WELSPECS_PHASE;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else if( rec[0] != '/' )
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					//may end after this record, the rest is defaulted
+					if (state != ECL_WELSPECS_PHASE && *(pend - 1) == '/' || *p == '/')
+					{
+						wells_sched[welspecs_cur.first].wspec = welspecs_cur.second;
+						//welspecs[welspecs_cur.first] = welspecs_cur.second;
+						state_from = state = ECL_WELSPECS;
+						break;
+					}
+					if (p == pend) break;
+				case ECL_WELSPECS_PHASE:
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
+					{
+						if( rec[0] != '*' )
+							welspecs_cur.second.phase = std::string(rec);
+						wells_sched[welspecs_cur.first].wspec = welspecs_cur.second;
+						//welspecs[welspecs_cur.first] = welspecs_cur.second;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else if( rec[0] != '/' )
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
+					break;
+				case ECL_COMPDAT:
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
+					{
+						compdat_cur.first = std::string(rec);
+						//default values
+						compdat_cur.second.WI = -1;
+						compdat_cur.second.satnum = 0;
+						compdat_cur.second.rw = -1;
+						compdat_cur.second.perm = -1;
+						compdat_cur.second.open = true;
+						compdat_cur.second.skin = 0;
+						compdat_cur.second.dfac = -1;
+						compdat_cur.second.dir = 'Z';
+						compdat_cur.second.r0 = -1;
+						p += nchars;
+						state_from = ECL_COMPDAT;
+						state = ECL_COMPDAT_BLK;
+						downread = 0;
+						totread = 4;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else if (*(pend - 1) == '/' || *p == '/')
+					{
+						state_from = state = ECL_NONE;
+						break;
+					}
+					else
+					{
+						state_from = ECL_NONE;
+						state = ECL_SKIP_SECTION;
+						break;
+					}
+					if (p == pend) break;
+				case ECL_COMPDAT_BLK:
+					while (downread < totread && p < pend)
+					{
+						if (1 == sscanf(p, "%d%n", compdat_cur.second.bijk + downread, &nchars))
+						{
+							downread++;
+							if (downread == totread)
+								state = ECL_COMPDAT_OPEN;
+							p += nchars;
+							while (isspace(*p) && p < pend) ++p;
+						}
+						else
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							throw BadFile;
+						}
+						if (p == pend) break;
+					}
+					if (p == pend) break;
+				case ECL_COMPDAT_OPEN:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if (std::string(rec) == "OPEN")
+							compdat_cur.second.open = true;
+						else
+							compdat_cur.second.open = false;
+						state = ECL_COMPDAT_SATNUM;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+				case ECL_COMPDAT_SATNUM:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if( rec[0] != '*' )
+							compdat_cur.second.satnum = atoi(rec);
+						state = ECL_COMPDAT_TRANS;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if( p == pend ) break;
+				case ECL_COMPDAT_TRANS:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if (rec[0] != '*')
+							compdat_cur.second.WI = atof(rec);
+						state = ECL_COMPDAT_BORE;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+					//may end after this record, the rest is defaulted
+					if (compdat_cur.second.WI > 0 && *(pend - 1) == '/' || *p == '/')
+					{
+						//compdat[compdat_cur.first].push_back(compdat_cur.second);
+						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);
+						state_from = state = ECL_COMPDAT;
+						break;
+					}
+				case ECL_COMPDAT_BORE:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if (rec[0] != '*')
+							compdat_cur.second.rw = atof(rec);
+						state = ECL_COMPDAT_PERM;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+					//may end after this record, the rest is defaulted
+					if (*(pend - 1) == '/' || *p == '/')
+					{
+						//compdat[compdat_cur.first].push_back(compdat_cur.second);
+						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);
+						state_from = state = ECL_COMPDAT;
+						break;
+					}
+				case ECL_COMPDAT_PERM:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if( rec[0] != '*' )
+							compdat_cur.second.perm = atof(rec);
+						state = ECL_COMPDAT_SKIN;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+					//may end after this record, the rest is defaulted
+					if (*(pend - 1) == '/' || *p == '/')
+					{
+						//compdat[compdat_cur.first].push_back(compdat_cur.second);
+						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);
+						state_from = state = ECL_COMPDAT;
+						break;
+					}
+				case ECL_COMPDAT_SKIN:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if (rec[0] != '*')
+							compdat_cur.second.skin = atof(rec);
+						state = ECL_COMPDAT_DFAC;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+					//may end after this record, the rest is defaulted
+					if (*(pend - 1) == '/' || *p == '/')
+					{
+						//compdat[compdat_cur.first].push_back(compdat_cur.second);
+						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);
+						state_from = state = ECL_COMPDAT;
+						break;
+					}
+				case ECL_COMPDAT_DFAC:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if (rec[0] != '*')
+							compdat_cur.second.dfac = atof(rec);
+						state = ECL_COMPDAT_DIR;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+					//may end after this record, the rest is defaulted
+					if (*(pend - 1) == '/' || *p == '/')
+					{
+						//compdat[compdat_cur.first].push_back(compdat_cur.second);
+						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);
+						state_from = state = ECL_COMPDAT;
+						break;
+					}
+				case ECL_COMPDAT_DIR:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if (rec[0] != '*')
+						{
+							if( rec[0] == 'X' || rec[0] == 'Y' || rec[0] == 'Z' )
+								compdat_cur.second.dir = rec[0];
+							else if( rec[0] == 'F' && (rec[1] == 'X' || rec[1] == 'Y')) //well complition in fracture
+								compdat_cur.second.dir = 'F' + (rec[1]-'X'); //F for FX or G for FY
+							else
+							{
+								std::cout << __FILE__ << ":" << __LINE__ << "direction " << rec << " in COMPDAT ";
+								std::cout << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							}
+						}
+						state = ECL_COMPDAT_RAD;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
+					if (p == pend) break;
+					//may end after this record, the rest is defaulted
+					if (*(pend - 1) == '/' || *p == '/')
+					{
+						//compdat[compdat_cur.first].push_back(compdat_cur.second);
+						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);
+						state_from = state = ECL_COMPDAT;
+						break;
+					}
+				case ECL_COMPDAT_RAD:
+					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					{
+						if (rec[0] != '*')
+							compdat_cur.second.r0 = atof(rec);
+						//compdat[compdat_cur.first].push_back(compdat_cur.second);
+						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);
+						state = ECL_COMPDAT;
+						p += nchars;
+						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
+					}
 					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
 					break;
 				case ECL_FAULTS:
-					if (1 == sscanf(p, "%s%n", rec, &nchars) && rec[0] != '/')
+					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
 					{
-						fault_cur.name = ToUpper(STR8(UnQoute(rec).c_str()));
+						fault_cur.name = ToUpper(STR8(rec));
 						state_from = ECL_FAULTS;
 						state = ECL_FAULTS_BLK;
 						downread = 0;
@@ -1983,7 +2568,7 @@ namespace INMOST
 						state = ECL_SKIP_SECTION;
 						break;
 					}
-					//break;
+					if (p == pend) break;
 				case ECL_FAULTS_BLK:
 					while (downread < totread && p < pend)
 					{
@@ -1995,12 +2580,18 @@ namespace INMOST
 							p += nchars;
 							while (isspace(*p) && p < pend) ++p;
 						}
+						else
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							throw BadFile;
+						}
+						if (p == pend) break;
 					}
-					//break;
+					if (p == pend) break;
 				case ECL_FAULTS_DIR:
-					if (1 == sscanf(p, "%s%n", rec, &nchars))
+					if (ReadName(p, pend, rec, &nchars))
 					{
-						fault_cur.dir = GetDir(ToUpper(UnQoute(rec)));
+						fault_cur.dir = GetDir(ToUpper(rec));
 						if (fault_cur.dir == -1)
 						{
 							if (verbosity > 0)
@@ -2014,9 +2605,10 @@ namespace INMOST
 					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
 					break;
 				case ECL_MULTFLT:
-					if (1 == sscanf(p, "%s%n", rec, &nchars) && rec[0] != '/')
+					//if (1 == sscanf(p, "%s%n", rec, &nchars) && rec[0] != '/')
+					if( ReadName(p,pend,rec,&nchars) && rec[0] != '/' )
 					{
-						multflt_cur.name = ToUpper(STR8(UnQoute(rec).c_str()));
+						multflt_cur.name = ToUpper(STR8(rec));
 						state_from = ECL_MULTFLT;
 						state = ECL_MULTFLT_MUL;
 						p += nchars;
@@ -2033,7 +2625,7 @@ namespace INMOST
 						state = ECL_SKIP_SECTION;
 						break;
 					}
-					//break;
+					if (p == pend) break;
 				case ECL_MULTFLT_MUL:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2041,6 +2633,11 @@ namespace INMOST
 						multflt.push_back(multflt_cur);
 						p += nchars;
 						while (isspace(*p) && p < pend) ++p;
+					}
+					else
+					{
+						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						throw BadFile;
 					}
 					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
 					break;
@@ -2370,7 +2967,7 @@ namespace INMOST
 			Tag node_alpha = CreateTag("NODE_ALPHA", DATA_REAL, NODE, NONE, 1);
 			//Tag node_inter = CreateTag("NODE_INTER", DATA_BULK, NODE, NONE, 1);
 			Tag node_pos = CreateTag("NODE_POSITION", DATA_INTEGER, NODE, NONE, 1);
-			//Tag block_pair = CreateTag("BLOCCK_PAIR", DATA_INTEGER, FACE, NONE, 3);
+			Tag block_pair = CreateTag("BLOCCK_PAIR", DATA_INTEGER, FACE, NONE, 3);
 			//typedef std::map<Storage::real,Node,pillar_less> pillar;
 			//std::vector< pillar > pillars((dims[0]+1)*(dims[1]+1));
 			std::vector< HandleType > block_nodes(dims[0] * dims[1] * dims[2] * 8, InvalidHandle());
@@ -2681,7 +3278,7 @@ namespace INMOST
 					std::cout << "Started creating faces for pairs of pillar along " << (q ? "ny" : "nx") << std::endl;
 				}
 #if defined(USE_OMP)
-//#pragma omp parallel
+#pragma omp parallel
 #endif
 				{
 					//structure to create an edge from pair of nodes
@@ -2755,8 +3352,6 @@ namespace INMOST
 							//if( p0.empty() || p1.empty() ) continue;
 							//add projected point information
 							//i << "," << j << " and " << i+1-q << "," << j+q <<
-							Unproject unp(&xyz[ECL_IJK_COORDS(i, j, 1, 0)], &xyz[ECL_IJK_COORDS(i, j, 0, 0)], &xyz[ECL_IJK_COORDS(i + 1 - q, j + q, 1, 0)], &xyz[ECL_IJK_COORDS(i + 1 - q, j + q, 0, 0)]);
-							//Unproject unp(p0.begin()->second->Coords().data(),p0.rbegin()->second.Coords().data(),p1.begin()->second->Coords().data(),p1.rbegin()->second.Coords().data());
 							//preallocate array for edges
 							//edges.reserve(2*std::max(p0.size(),p1.size()));
 							//add far faces of j-1 block and near faces of j block
@@ -2813,74 +3408,13 @@ namespace INMOST
 							//edges_skip.RemPrivateMarker(visited);
 							edges.RemPrivateMarker(visited);
 							//produce intersected edges
-							if (print_inter)
-							{
-								/*
-								std::cout << "input edges: " << edges.size() << std::endl;
-								if( true ) for(int k = 0; k < edges.size(); ++k)
-								{
-								Storage::integer_array bn = edges[k]->IntegerArray(block_number);
-								Storage::integer_array en = edges[k]->IntegerArray(edge_number);
-								std::cout << "edge " << k << " " << edges[k]->GetHandle() << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << " blocks: ";
-								for(int l = 0; l < (int)bn.size(); ++l)
-								std::cout << bn[l] << "(" << bn[l]%dims[0] << "," << bn[l]/dims[0]%dims[1] << "," << bn[l]/dims[0]/dims[1] << "):" << en[l] << " ";
-								std::cout << std::endl;
-								}
-
-								for(int k = 0; k < edges.size(); ++k)
-								{
-								std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
-								}
-
-								std::cout << "Projected: " << std::endl;
-
-								for(int k = 0; k < edges.size(); ++k)
-								{
-								std::cout << "(" << edges[k]->getBeg()->RealArray(pnt)[0] << "," << edges[k]->getBeg()->RealArray(pnt)[1] << ",0) <-> (" << edges[k]->getEnd()->RealArray(pnt)[0] << "," << edges[k]->getEnd()->RealArray(pnt)[1] << ",0)" << std::endl;
-								}
-								*/
-								/*
-								std::cout << "Unprojected: " << std::endl;
-
-								for(int k = 0; k < edges.size(); ++k)
-								{
-								real v0[3],v1[3];
-								Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
-								Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
-								unp.Act(p0,v0);
-								unp.Act(p1,v1);
-								std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
-								}
-
-
-								std::cout << "Unprojected segmented: " << std::endl;
-
-								for(int k = 0; k < edges.size(); ++k)
-								{
-								real v0[3],v1[3];
-								Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
-								Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
-								int nsegments = 5;
-								for(int q = 0; q < nsegments; ++q)
-								{
-								Point pb(InvalidHandle(), q*(p1.x-p0.x)/nsegments+p0.x,q*(p1.y-p0.y)/nsegments+p0.y);
-								Point pe(InvalidHandle(), (q+1)*(p1.x-p0.x)/nsegments+p0.x,(q+1)*(p1.y-p0.y)/nsegments+p0.y);
-								unp.Act2(pb,v0);
-								unp.Act2(pe,v1);
-								std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
-								}
-								}
-								*/
-							}
-							//assert(count_duplicates(edges_inter) == 0);
-							//assert(count_duplicates(edges_skip) == 0);
 							assert(count_duplicates(edges) == 0);
 
 							intersections.clear();
 							//intersect(this,edges,intersections,transfer,pnt,unp,print_inter);
 
-							intersect_naive(this, edges, intersections, transfer, pnt, unp, print_inter);
-
+							intersect_naive(this, edges, intersections, transfer, pnt, print_inter);
+							
 							//assert(count_duplicates(edges_inter) == 0);
 							assert(count_duplicates(edges) == 0);
 
@@ -2920,37 +3454,6 @@ namespace INMOST
 								{
 									std::cout << "(" << edges[k]->getBeg()->RealArray(pnt)[0] << "," << edges[k]->getBeg()->RealArray(pnt)[1] << ",0) <-> (" << edges[k]->getEnd()->RealArray(pnt)[0] << "," << edges[k]->getEnd()->RealArray(pnt)[1] << ",0)" << std::endl;
 								}
-								/*
-								std::cout << "Unprojected: " << std::endl;
-
-								for(int k = 0; k < edges.size(); ++k)
-								{
-								real v0[3],v1[3];
-								Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
-								Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
-								unp.Act2(p0,v0);
-								unp.Act2(p1,v1);
-								std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
-								}
-
-								std::cout << "Unprojected segmented: " << std::endl;
-
-								for(int k = 0; k < edges.size(); ++k)
-								{
-								real v0[3],v1[3];
-								Point p0(edges[k]->getBeg()->GetHandle(),edges[k]->getBeg()->RealArray(pnt).data());
-								Point p1(edges[k]->getEnd()->GetHandle(),edges[k]->getEnd()->RealArray(pnt).data());
-								int nsegments = 5;
-								for(int q = 0; q < nsegments; ++q)
-								{
-								Point pb(InvalidHandle(), q*(p1.x-p0.x)/nsegments+p0.x,q*(p1.y-p0.y)/nsegments+p0.y);
-								Point pe(InvalidHandle(), (q+1)*(p1.x-p0.x)/nsegments+p0.x,(q+1)*(p1.y-p0.y)/nsegments+p0.y);
-								unp.Act2(pb,v0);
-								unp.Act2(pe,v1);
-								std::cout << "(" << v0[0] << "," << v0[1] << "," << v0[2] << ") <-> (" << v1[0] << "," << v1[1] << "," << v1[2] << ")" << std::endl;
-								}
-								}
-								*/
 							}
 
 
@@ -3017,25 +3520,6 @@ namespace INMOST
 							for (int k = 0; k < (int)edges.size(); ++k)
 								block_number_intersection(edges[k], edges[k]->getAdjElements(NODE), block_number, block_intersection_number);
 								
-							//make segments curvy when necessery
-							if (triangulated_edges)
-							{
-								//re-project intersection nodes onto triangulated face
-								for (int k = 0; k < (int)intersections.size(); ++k)
-								{
-									Storage::real vt[3];
-									Point p = make_point(intersections[k], pnt);
-									unp.ActTri(p, vt);
-									//change point
-									intersections[k]->Coords()[0] = vt[0];
-									intersections[k]->Coords()[1] = vt[1];
-									intersections[k]->Coords()[2] = vt[2];
-								}
-								//TODO13:
-								split_segments_tri(this, edges, intersections, transfer2, pnt, unp, visited, print_inter);
-							}
-							else if (curvilinear_edges) //TODO12:
-								split_segments(this, edges, intersections, transfer2, pnt, unp, visited, print_inter);
 							//distribute all the edges among blocks
 							//add intersected edges into blocks, so that we can reconstruct top and bottom faces of each block
 							for (int k = 0; k < (int)edges.size(); ++k) if (edges[k]->GetPrivateMarker(visited)) //do not visit edges along pillars
@@ -3205,9 +3689,9 @@ namespace INMOST
 													for (int l = 0; l < bedges_ordered.size(); ++l) std::cout << " " << bedges_ordered[l].LocalID();
 													std::cout << std::endl;
 												}
-												//f->IntegerArray(block_pair)[0] = i;
-												//f->IntegerArray(block_pair)[1] = j;
-												//f->IntegerArray(block_pair)[2] = q;
+												f->IntegerArray(block_pair)[0] = i;
+												f->IntegerArray(block_pair)[1] = j;
+												f->IntegerArray(block_pair)[2] = q;
 												if (TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag())) std::cout << __FILE__ << ":" << __LINE__ << " topology error on face " << f->GetHandle() << std::endl;
 												//f->Integer(face_origin) = q;
 												//detect block number
@@ -3262,9 +3746,9 @@ namespace INMOST
 														}
 														//make face
 														Face f = CreateFace(loop).first;
-														//f->IntegerArray(block_pair)[0] = i;
-														//f->IntegerArray(block_pair)[1] = j;
-														//f->IntegerArray(block_pair)[2] = q;
+														f->IntegerArray(block_pair)[0] = i;
+														f->IntegerArray(block_pair)[1] = j;
+														f->IntegerArray(block_pair)[2] = q;
 														if (TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag())) std::cout << __FILE__ << ":" << __LINE__ << " topology error on face " << f->GetHandle() << std::endl;
 														//f->Integer(face_origin) = q;
 														//if (!f->CheckEdgeOrder()) std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << loop.size() << std::endl;
@@ -3826,55 +4310,54 @@ namespace INMOST
 			//compute cell centers that lay inside
 			if (false) //TODO16
 			{
-				if (!curvilinear_edges)
+				
+				if (verbosity > 0)
 				{
-					if (verbosity > 0)
-					{
-						ttt = Timer();
-						std::cout << "Compute geometric data for cell centers" << std::endl;
-					}
-					GeomParam table;
-					table[CENTROID] = CELL;
-					PrepareGeometricData(table);
-					if (verbosity)
-						std::cout << "Finished computing geometric data time " << Timer() - ttt << std::endl;
-					//overwrite centroid info
-					if (verbosity > 0)
-					{
-						ttt = Timer();
-						std::cout << "Started rewriting cell centers" << std::endl;
-					}
+					ttt = Timer();
+					std::cout << "Compute geometric data for cell centers" << std::endl;
+				}
+				GeomParam table;
+				table[CENTROID] = CELL;
+				PrepareGeometricData(table);
+				if (verbosity)
+					std::cout << "Finished computing geometric data time " << Timer() - ttt << std::endl;
+				//overwrite centroid info
+				if (verbosity > 0)
+				{
+					ttt = Timer();
+					std::cout << "Started rewriting cell centers" << std::endl;
+				}
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-					for (integer it = 0; it < CellLastLocalID(); ++it) if (isValidCell(it))
+				for (integer it = 0; it < CellLastLocalID(); ++it) if (isValidCell(it))
+				{
+					Cell c = CellByLocalID(it);
+					integer bnum = c->Integer(cell_number) - 1;
+					if (bnum >= 0) //maybe this cell existed before
 					{
-						Cell c = CellByLocalID(it);
-						integer bnum = c->Integer(cell_number) - 1;
-						if (bnum >= 0) //maybe this cell existed before
+						real ctop[3] = { 0.0, 0.0, 0.0 }, cbottom[3] = { 0.0, 0.0, 0.0 };
+						for (int l = 0; l < 4; ++l)
 						{
-							real ctop[3] = { 0.0, 0.0, 0.0 }, cbottom[3] = { 0.0, 0.0, 0.0 };
-							for (int l = 0; l < 4; ++l)
-							{
-								real_array bc = Node(this, block_nodes[bnum * 8 + l + 0]).Coords();
-								real_array tc = Node(this, block_nodes[bnum * 8 + l + 4]).Coords();
-								cbottom[0] += bc[0] * 0.25;
-								cbottom[1] += bc[1] * 0.25;
-								cbottom[2] += bc[2] * 0.25;
-								ctop[0] += tc[0] * 0.25;
-								ctop[1] += tc[1] * 0.25;
-								ctop[2] += tc[2] * 0.25;
-							}
-							real_array cnt = c->RealArray(centroid_tag);
-							cnt[0] = (cbottom[0] + ctop[0])*0.5;
-							cnt[1] = (cbottom[1] + ctop[1])*0.5;
-							cnt[2] = (cbottom[2] + ctop[2])*0.5;
-
+							real_array bc = Node(this, block_nodes[bnum * 8 + l + 0]).Coords();
+							real_array tc = Node(this, block_nodes[bnum * 8 + l + 4]).Coords();
+							cbottom[0] += bc[0] * 0.25;
+							cbottom[1] += bc[1] * 0.25;
+							cbottom[2] += bc[2] * 0.25;
+							ctop[0] += tc[0] * 0.25;
+							ctop[1] += tc[1] * 0.25;
+							ctop[2] += tc[2] * 0.25;
 						}
+						real_array cnt = c->RealArray(centroid_tag);
+						cnt[0] = (cbottom[0] + ctop[0])*0.5;
+						cnt[1] = (cbottom[1] + ctop[1])*0.5;
+						cnt[2] = (cbottom[2] + ctop[2])*0.5;
+
 					}
-					if (verbosity)
-						std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
 				}
+				if (verbosity)
+					std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
+
 
 				if (verbosity > 0)
 				{
@@ -3964,6 +4447,14 @@ namespace INMOST
 									if (c1.isValid()) poro[c1.Integer(cell_number) - 1] *= multiply[q].mult;
 								}
 							}
+							else if (multiply[q].name == STR8("THCONR"))
+							{
+								if (!thconr.empty())
+								{
+									Cell c1(this, blocks[ECL_IJK_DATA(i, j, k)]);
+									if (c1.isValid()) thconr[c1.Integer(cell_number) - 1] *= multiply[q].mult;
+								}
+							}
 							else if (multiply[q].name == STR8("PERMX"))
 							{
 								if (!perm.empty())
@@ -4011,11 +4502,16 @@ namespace INMOST
 			std::cout << "Populating properties";
 		}
 		//populate properties to blocks
-		Tag tagporo, tagsatnum, tagperm, tagpressure, tagpbub, tagswat, tagsgas, tagsoil, tagpvtnum, tageqlnum, tagrocknum;
+		Tag tagporo, tagsatnum, tagperm, tagpressure, tagpbub, tagswat, tagsgas, tagsoil, tagpvtnum, tageqlnum, tagrocknum, tagthconr;
 		if (!poro.empty())
 		{
 			if (verbosity > 0) std::cout << " PORO";
 			tagporo = CreateTag("PORO", DATA_REAL, CELL, NONE, 1);
+		}
+		if (!thconr.empty())
+		{
+			if (verbosity > 0) std::cout << " THCONR";
+			tagthconr = CreateTag("THCONR", DATA_REAL, CELL, NONE, 1);
 		}
 		if (!perm.empty())
 		{
@@ -4084,6 +4580,7 @@ namespace INMOST
 					integer q = c->Integer(cell_number) - 1;
 					if (q < 0) continue;
 					if (!poro.empty()) c->Real(tagporo) = poro[q];
+					if (!thconr.empty()) c->Real(tagthconr) = poro[q];
 					//if (!ntg.empty()) c->Real(tagntg) = ntg[q];
 					if (!satnum.empty()) c->Integer(tagsatnum) = satnum[q];
 					if (!eqlnum.empty()) c->Integer(tageqlnum) = eqlnum[q];
@@ -4197,7 +4694,7 @@ namespace INMOST
 											}
 										}
 									}
-									if (!found && verbosity > 0)
+									if (!found && verbosity > 1)
 									{
 										const char xyz[3] = { 'X', 'Y', 'Z' };
 										const char pm[2] = { '-', '+' };
@@ -4269,7 +4766,7 @@ namespace INMOST
 											}
 										}
 									}
-									if (!found && verbosity > 0)
+									if (!found && verbosity > 1)
 									{
 										Cell c2(this, blocks[ECL_IJK_DATA(pi, pj, pk)]);
 										std::cout << __FILE__ << ":" << __LINE__ << " face connecting " << i << " " << j << " " << k << "(CELL:" << (c1.isValid() ? c1.LocalID() : -1) << ")";
@@ -4323,7 +4820,7 @@ namespace INMOST
 						}
 					}
 				}
-				if (!found && verbosity > 0)
+				if (!found && verbosity > 1)
 				{
 					Cell c2(this, blocks[ECL_IJK_DATA(pi, pj, pk)]);
 					std::cout << __FILE__ << ":" << __LINE__ << " face connecting " << i << " " << j << " " << k << "(CELL:" << (c1.isValid() ? c1.LocalID() : -1) << ")";
@@ -4337,50 +4834,340 @@ namespace INMOST
 			std::cout << "TRANM multipliers introduced: " << tranm_cnt << std::endl;
 
 
-		if (!wells.empty())
+		if (!wells_sched.empty())
 		{
 			if (verbosity > 0)
 			{
 				tt = Timer();
-				std::cout << "Creating sets according to COMPDAT keyword" << std::endl;
+				std::cout << "Creating sets according to WELSPECS/COMPDAT/WCONPROD/WCONINJE keywords" << std::endl;
+				std::cout << "Total scheduled records " << wells_sched.size() << std::endl;
 			}
-
-			Tag tagnwell = CreateTag("NWELL", DATA_INTEGER, CELL, CELL, 1);
+			//ElementSet wsets = CreateSet("WELL_SETS").first;
+			ElementSet wgrps = CreateSet("WELL_GROUPS").first;
+			//all of type real for schedule compatibility
+			TagReal tagcval = CreateTag("CONTROL_VALUE",DATA_REAL,ESET,ESET,1); //Rate or bhp
+			TagReal tagtype = CreateTag("TYPE", DATA_REAL, ESET, ESET, 1);
+			TagReal tagph   = CreateTag("PHASE", DATA_REAL, ESET, ESET, 1);
+			TagReal tagWI   = CreateTag("WI",DATA_REAL,CELL,CELL,1);
+			TagReal tagopen = CreateTag("STATE",DATA_REAL,CELL|ESET,CELL|ESET,1);
+			TagReal tagctrl = CreateTag("CTRL",DATA_REAL,ESET,ESET,1);
+			TagRealArray      tagschd_time = CreateTag("SCHEDULE_TIME",DATA_REAL,ESET,ESET); //time of simulation that activates record
+			TagBulkArray      tagschd_tag  = CreateTag("SCHEDULE_TAG",DATA_BULK,ESET,ESET); //names of changed tags separated by '\0'
+			TagReferenceArray tagschd_elem = CreateTag("SCHEDULE_ELEM",DATA_REFERENCE,ESET,ESET); //element on which data is changed
+			TagRealArray      tagschd_val  = CreateTag("SCHEDULE_VAL",DATA_REAL,ESET,ESET); //new value for tag
 			std::vector<HandleType> well_sets;
-			int nwell = 0;
-			for (compdat_wells::iterator it = wells.begin(); it != wells.end(); ++it)
+			std::vector<HandleType> well_grps;
+			MarkerType added = CreateMarker();
+			for (wells_data::iterator it = wells_sched.begin(); it != wells_sched.end(); ++it)
 			{
-				if (verbosity > 1)
-					std::cout << "Well " << nwell << " name " << it->first << " elements ";
 				ElementSet set = CreateSet(it->first).first;
-				for (compdat_entries::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				welspecs_rec & wspec = it->second.wspec;
+				//connect well to set
+				ElementSet grp = CreateSet(wspec.group).first;
+				grp.AddChild(set);
+				if (!grp->GetMarker(added))
 				{
-					if (jt->i >= beg_dims[0] && jt->i < end_dims[0] && jt->j >= beg_dims[1] && jt->j < end_dims[1])
+					well_grps.push_back(grp->GetHandle());
+					wgrps.AddChild(grp);
+					grp->SetMarker(added);
+				}
+				//default behavior
+				tagopen[set] = false;
+				tagcval[set] = 1.0e+5;
+				tagph[set] = ECL_WPHASE_WATER;
+				tagctrl[set] = ECL_WCTRL_BHP; 
+				tagtype[set] = ECL_WTYPE_PROD;
+				//default to closed water production well with bhp control
+				std::map<int,schedules> wschd; //record all changes ordered in time
+				//add completion data
+				for (std::map<int, compdat_recs>::iterator jt = it->second.compdat.begin(); jt != it->second.compdat.end(); ++jt)
+				{
+					for (compdat_recs::iterator kt = jt->second.begin(); kt != jt->second.end(); ++kt)
 					{
-						for (int k = jt->k1; k <= jt->k2; ++k) if (k >= 0 && k < dims[2])
+						int i = kt->bijk[0];
+						int j = kt->bijk[1];
+						int k1 = kt->bijk[2];
+						int k2 = kt->bijk[3];
+						if( i == 0 ) i = wspec.bij[0];
+						if( j == 0 ) j = wspec.bij[1];
+						if( k1 == 0 ) k1 = 1;
+						if( k2 == 0 ) k2 = dims[2];
+						i = i - 1;
+						j = j - 1;
+						k1 = k1 - 1;
+						k2 = k2 - 1;
+						double WI = kt->WI;
+						bool open = kt->open;
+						if (i >= beg_dims[0] && i < end_dims[0] && j >= beg_dims[1] && j < end_dims[1])
 						{
-							HandleType h = blocks[ECL_IJK_DATA(jt->i, jt->j, k)];
-							if (h != InvalidHandle())
+							for (int k = k1; k <= k2; ++k) if (k >= 0 && k < dims[2])
 							{
-								set.PutElement(h);
-								Integer(h, tagnwell) = nwell;
+								HandleType h = blocks[ECL_IJK_DATA(i, j, k)];
+								if (h != InvalidHandle())
+								{
+									if (WI <= 0) //calculate WI with peacman
+									{
+										double Kh = kt->perm;
+										double rw = kt->rw;
+										double r0 = kt->r0;
+										double skin = kt->skin;
+										double kx = perm[3 * ECL_IJK_DATA(i, j, k) + 0];
+										double ky = perm[3 * ECL_IJK_DATA(i, j, k) + 1];
+										double kz = perm[3 * ECL_IJK_DATA(i, j, k) + 2];
+										double nkx = kx, nky = ky;
+										double dx, dy, dz;
+										GetDXYZ(Element(this,h),dx,dy,dz);
+										if (kt->dir == 'X')
+										{
+											std::swap(kx, kz);
+											std::swap(dx, dz);
+										}
+										else if (kt->dir == 'Y')
+										{
+											std::swap(ky, kz);
+											std::swap(dy, dz);
+										}
+										//calculate perm
+										if (Kh <= 0)
+										{
+											Kh = sqrt(kx*ky)*dz;
+											if( Kh != Kh ) Kh = 0;
+										}
+										//calculate pressure equivalent radius
+										if (r0 <= 0)
+										{
+											r0 = 0.28*sqrt(dx*dx*sqrt(ky / kx) + dy*dy*sqrt(kx / ky)) / (pow(kx / ky, 0.25) + pow(ky / kx, 0.25));
+											if( r0 != r0 ) r0 = 0;
+										}
+										WI = Kh/(log(r0/rw)+skin);
+										if( WI != WI ) WI = 0;
+									}
+									if (WI > 0)
+									{
+										if (!GetMarker(h, added))
+										{
+											set.PutElement(h);
+											SetMarker(h, added);
+											//initially each complition is closed, 
+											//unless we open it with the first record
+											tagopen[h] = false;
+											//initially well index is zero,
+											//unless we set it with the first record
+											tagWI[h] = 0;
+										}
+										if (jt->first == 1) //first record
+										{
+											tagWI[h] = WI;
+											tagopen[h] = open;
+										}
+										else //schedule change
+										{
+											//add records
+											schedule s;
+											s.tagnum = ECL_WTAG_WI;
+											s.value = WI;
+											s.element = h;
+											wschd[jt->first].push_back(s);
+											s.tagnum = ECL_WTAG_STATE;
+											s.value = (open ? 1.0 : 0.0);
+											s.element = h;
+											wschd[jt->first].push_back(s);
+										}
+									}
+									else
+										std::cout << __FILE__ << ":" << __LINE__ << " non-positive well index " << WI << " block " << i << " " << j << " " << k << " in COMPDAT of well " << it->first << std::endl;
+								}
+								else if (verbosity > 1)
+								{
+									std::cout << __FILE__ << ":" << __LINE__ << " block " << i << " " << j << " " << k << " not found for well " << it->first;
+									std::cout << " complition with COMPDAT keyword" << std::endl;
+								}
 							}
 						}
 					}
 				}
-				if (verbosity > 1)
-					std::cout << set.Size() << std::endl;
-				for (ElementSet::iterator it = set.Begin(); it != set.End(); ++it)
+				//add injection/production data
+				for (std::map<int, wconprodinje_rec>::iterator jt = it->second.wpi.begin(); jt != it->second.wpi.end(); ++jt)
 				{
-					real c[3];
-					it->Centroid(c);
-					//std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << c[0] << " " << c[1] << " " << c[2] << std::endl;
-				}
-				well_sets.push_back(set->GetHandle());
-				nwell++;
-			}
+					if (jt->first == 1) //first record
+					{
+						tagopen[set] = jt->second.open;
+						if (jt->second.type == "PROD")
+						{
+							tagtype[set] = ECL_WTYPE_PROD;
+							if (jt->second.ctrl == "ORAT")
+							{
+								tagph[set] = ECL_WPHASE_WATER;
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.prat.orat;
+							}
+							else if (jt->second.type == "GRAT")
+							{
+								tagph[set] = ECL_WPHASE_GAS;
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.prat.grat;
+							}
+							else if (jt->second.type == "LRAT")
+							{
+								tagph[set] = ECL_WPHASE_MULTI;
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.prat.lrat;
+							}
+							else if (jt->second.type == "RESV") //TODO10.3: what should we do with this?
+							{
+								tagph[set] = ECL_WPHASE_MULTI;
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.prat.resv;
+							}
+							else if (jt->second.type == "BHP")
+							{
+								tagph[set] = ECL_WPHASE_MULTI;
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.prat.lrat;
+							}
+						}
+						else
+						{
+							tagtype[set] = ECL_WTYPE_INJE;
+							if (jt->second.type == "WATER")
+								tagph[set] = ECL_WPHASE_WATER;
+							else if (jt->second.type == "OIL")
+								tagph[set] = ECL_WPHASE_OIL;
+							else if (jt->second.type == "GAS")
+								tagph[set] = ECL_WPHASE_GAS;
+							else if (jt->second.type == "MULTI")
+								tagph[set] = ECL_WPHASE_MULTI;
+							if (jt->second.ctrl == "RATE")
+							{
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.irat.rate;
+							}
+							else if (jt->second.ctrl == "RESV") //TODO10.3:
+							{
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.irat.resv;
+							}
+							else if (jt->second.ctrl == "BHP")
+							{
+								tagctrl[set] = ECL_WCTRL_BHP;
+								tagcval[set] = jt->second.bhp;
+							}
+						}
 
-			if (verbosity > 0) std::cout << "Finished creating sets according to COMPDAT keyword time " << Timer() - tt << std::endl;
+					}
+					else //schedule change
+					{
+						schedule sopen, stype, sph, sctrl, scval;
+						sopen.element = set->GetHandle();
+						stype.element = set->GetHandle();
+						sph.element   = set->GetHandle();
+						sctrl.element = set->GetHandle();
+						scval.element = set->GetHandle();
+						sopen.tagnum  = ECL_WTAG_STATE;
+						stype.tagnum  = ECL_WTAG_TYPE;
+						sph.tagnum    = ECL_WTAG_PHASE;
+						sctrl.tagnum  = ECL_WTAG_CTRL;
+						scval.tagnum  = ECL_WTAG_CVAL;
+						sopen.value = jt->second.open;
+						if (jt->second.type == "PROD")
+						{
+							stype.value = ECL_WTYPE_PROD;
+							if (jt->second.ctrl == "ORAT")
+							{
+								sph.value = ECL_WPHASE_WATER;
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.prat.orat;
+							}
+							else if (jt->second.type == "GRAT")
+							{
+								sph.value = ECL_WPHASE_GAS;
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.prat.grat;
+							}
+							else if (jt->second.type == "LRAT")
+							{
+								sph.value = ECL_WPHASE_MULTI;
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.prat.lrat;
+							}
+							else if (jt->second.type == "RESV") //TODO10.3: what should we do with this?
+							{
+								sph.value = ECL_WPHASE_MULTI;
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.prat.resv;
+							}
+							else if (jt->second.type == "BHP")
+							{
+								sph.value = ECL_WPHASE_MULTI;
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.prat.lrat;
+							}
+						}
+						else
+						{
+							stype.value = ECL_WTYPE_INJE;
+							if (jt->second.type == "WATER")
+								sph.value = ECL_WPHASE_WATER;
+							else if (jt->second.type == "OIL")
+								sph.value = ECL_WPHASE_OIL;
+							else if (jt->second.type == "GAS")
+								sph.value = ECL_WPHASE_GAS;
+							else if (jt->second.type == "MULTI")
+								sph.value = ECL_WPHASE_MULTI;
+							if (jt->second.ctrl == "RATE")
+							{
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.irat.rate;
+							}
+							else if (jt->second.ctrl == "RESV") //TODO10.3:
+							{
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.irat.resv;
+							}
+							else if (jt->second.ctrl == "BHP")
+							{
+								sctrl.value = ECL_WCTRL_BHP;
+								scval.value = jt->second.bhp;
+							}
+						}
+						//add records
+						wschd[jt->first].push_back(sopen);
+						wschd[jt->first].push_back(stype);
+						wschd[jt->first].push_back(sph);
+						wschd[jt->first].push_back(sctrl);
+						wschd[jt->first].push_back(scval);
+					}
+				}
+				if (verbosity > 1)
+					std::cout << "Well " << set->GetName() << " has " << set->Size() << " connections and " << wschd.size() << " scheduled changes " << std::endl;
+				//add schedule information to wells
+				if (!wschd.empty())
+				{
+					int changes = 0;
+					for (std::map<int, schedules>::iterator jt = wschd.begin(); jt != wschd.end(); ++jt)
+					{
+						double event_time = 0;
+						for(int k = 0; k < jt->first; ++k) event_time += tsteps[k];
+						for (schedules::iterator kt = jt->second.begin(); kt != jt->second.end(); ++kt)
+						{
+							tagschd_time[set].push_back(event_time);
+							tagschd_elem[set].push_back(kt->element);
+							tagschd_val[set].push_back(kt->value);
+							tagschd_tag[set].push_back(kt->tagnum);
+							changes++;
+						}
+					}
+					if (verbosity > 1)
+						std::cout << "Total scheduled records " << changes << std::endl;
+				}
+				set->RemMarkerElements(added);
+				well_sets.push_back(set->GetHandle());
+				//wsets.AddChild(set);
+			}
+			RemMarkerArray(&well_grps[0],(enumerator)well_grps.size(),added);
+			ReleaseMarker(added);
+			
+			if (verbosity > 0) std::cout << "Finished creating sets according to WELSPECS/COMPDAT/WCONPROD/WCONINJE keywords time " << Timer() - tt << std::endl;
 		}
 
 

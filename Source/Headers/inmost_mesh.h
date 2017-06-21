@@ -3011,8 +3011,6 @@ namespace INMOST
 		/// - "VTK_OUTPUT_FACES" - Set "1" for vtk output of values on faces
 		///
 		/// - "ECL_SPLIT_GLUED"  - Set "TRUE" to triangulate faces of the blocks that degenerate on three pillars.
-		/// - "ECL_CURVILINEAR"  - Set "TRUE" to make edges curvilinear on non-flat faces, helps resolve weird geometry,
-		///                        right now this is "TRUE" by default since results are much better.
 		/// - "ECL_PROJECT_PERM" - Set "TRUE" to project permeability tensor from grid block coordinates
 		///                        into global coordinates. Otherwise the tensor is considered to be
 		///                        defined on global coordinates. Default "FALSE".
