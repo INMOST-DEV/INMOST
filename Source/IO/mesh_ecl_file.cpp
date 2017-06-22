@@ -1876,8 +1876,12 @@ namespace INMOST
 						else
 						{
 							time_t t = mktime(&date_cur);
-							tsteps.push_back((t - last) / 86400.0);
-							last = t;
+							if (t - last > 0)
+							{
+								tsteps.push_back((t - last) / 86400.0);
+								last = t;
+							}
+							else std::cout << __FILE__ << ":" << __LINE__ << " Negative difference of " << (t - last) / 86400.0 << " days between report dates" << std::endl;
 						}
 						state = state_from;
 						break;
@@ -1895,8 +1899,12 @@ namespace INMOST
 							else
 							{
 								time_t t = mktime(&date_cur);
-								tsteps.push_back((t - last) / 86400.0);
-								last = t;
+								if (t - last > 0)
+								{
+									tsteps.push_back((t - last) / 86400.0);
+									last = t;
+								}
+								else std::cout << __FILE__ << ":" << __LINE__ << " Negative difference of " << (t - last) / 86400.0 << " days between report dates" << std::endl;
 							}
 							state = state_from;
 						}
@@ -4852,6 +4860,7 @@ namespace INMOST
 			TagReal tagopen = CreateTag("WELL_STATE",DATA_REAL,CELL|ESET,CELL|ESET,1);
 			TagReal tagctrl = CreateTag("WELL_CTRL",DATA_REAL,ESET,ESET,1);
 			TagReal tagz    = CreateTag("WELL_DEPTH",DATA_REAL,ESET,ESET,1);
+			TagBulk tagdir  = CreateTag("WELL_DIRECTION",DATA_BULK,CELL,CELL,1);
 			TagRealArray      tagschd_time = CreateTag("SCHEDULE_TIME",DATA_REAL,ESET,ESET); //time of simulation that activates record
 			TagBulkArray      tagschd_tag  = CreateTag("SCHEDULE_TAG",DATA_BULK,ESET,ESET); //names of changed tags separated by '\0'
 			TagReferenceArray tagschd_elem = CreateTag("SCHEDULE_ELEM",DATA_REFERENCE,ESET,ESET); //element on which data is changed
@@ -4956,6 +4965,7 @@ namespace INMOST
 											//initially well index is zero,
 											//unless we set it with the first record
 											tagWI[h] = 0;
+											tagdir[h] = kt->dir;
 										}
 										if (jt->first == 1) //first record
 										{

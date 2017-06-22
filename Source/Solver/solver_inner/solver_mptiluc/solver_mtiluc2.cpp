@@ -596,7 +596,7 @@ public:
 				A_Address[k].last = j;
 				assert(A_Address[k].Size() != 0); //singular matrix
 			}
-			DumpMatrix(A_Address,A_Entries,mobeg,moend,"mondriaan.mtx");
+			//DumpMatrix(A_Address,A_Entries,mobeg,moend,"mondriaan.mtx");
 			/*
 			sp.MMTypeCode[0] = 'M';
 			FILE * f = fopen("mondriaan.mtx","w");
@@ -623,6 +623,7 @@ public:
 			//assert(A_Address[k].Size() != 0); //singular matrix
 		}
 #endif
+		//DumpMatrix(A_Address, A_Entries, mobeg, moend, "A.mtx");
 
 		std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
 
@@ -1438,7 +1439,7 @@ public:
 				std::sort(B_Entries.begin() + B_Address[k].first, B_Entries.end());
 				nzA += A_Address[k].Size();
 			}
-
+			B_Entries.push_back(Sparse::Row::make_entry(-1,0.0));
 			/*
 			{
 				int rank = 0;
