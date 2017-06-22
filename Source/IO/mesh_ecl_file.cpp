@@ -67,6 +67,7 @@
 //this controls what is recorded into tag CTRL of well sets
 #define ECL_WCTRL_RATE 0
 #define ECL_WCTRL_BHP 1
+#define ECL_WCTRL_RESV 2
 
 //this controls what is recorded into tag PHASE of well sets
 #define ECL_WPHASE_WATER 0
@@ -86,6 +87,7 @@
 #define ECL_WTAG_CTRL 4
 #define ECL_WTAG_TYPE 5
 #define ECL_WTAG_PHASE 6
+#define ECL_WTAG_BHP 7
 
 //eclipse states
 #define ECL_NEVER -1
@@ -2072,8 +2074,9 @@ namespace INMOST
 							wconprodinje_cur.second.type = "PROD";
 						else
 							wconprodinje_cur.second.type = "WATER";
-						memset(wconprodinje_cur.second.urats.rats,0,sizeof(double)*5);
-						wconprodinje_cur.second.bhp = 1.0e+5; //default psia in eclipse
+						for(int k = 0; k < 5; ++k) 
+							wconprodinje_cur.second.urats.rats[k] = -1;
+						wconprodinje_cur.second.bhp = -1; //default psia in eclipse
 						if( wconprod )
 							state = ECL_WCONPRODINJE_OPEN;
 						else
@@ -2095,25 +2098,33 @@ namespace INMOST
 					}
 					if (p == pend) break;
 				case ECL_WCONPRODINJE_TYPE:
-					if (ReadName(p, pend, rec, &nchars) )
+					if (state == ECL_WCONPRODINJE_TYPE)
 					{
-						if( rec[0] != '*' )
-							wconprodinje_cur.second.type = std::string(rec);
-						state = ECL_WCONPRODINJE_OPEN;
-						p += nchars;
-						while (isspace(*p) && p < pend) ++p;
+						if (ReadName(p, pend, rec, &nchars))
+						{
+							if (rec[0] != '*')
+								wconprodinje_cur.second.type = std::string(rec);
+							state = ECL_WCONPRODINJE_OPEN;
+							p += nchars;
+							while (isspace(*p) && p < pend) ++p;
+						}
+						else
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+							throw BadFile;
+						}
+						if (p == pend) break;
 					}
-					else
-					{
-						std::cout << __FILE__ << ":" << __LINE__ << " cannot read data " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
-						throw BadFile;
-					}
-					if (p == pend) break;
 				case ECL_WCONPRODINJE_OPEN:
 					if (ReadName(p, pend, rec, &nchars))
 					{
 						if (rec[0] != '*')
-							wconprodinje_cur.second.type = std::string(rec);
+						{
+							if( std::string(rec) == "OPEN" )
+								wconprodinje_cur.second.open = true;
+							else
+								wconprodinje_cur.second.open = false;
+						}
 						state = ECL_WCONPRODINJE_CTRL;
 						p += nchars;
 						while (isspace(*p) && p < pend) ++p;
@@ -4860,6 +4871,7 @@ namespace INMOST
 			TagReal tagopen = CreateTag("WELL_STATE",DATA_REAL,CELL|ESET,CELL|ESET,1);
 			TagReal tagctrl = CreateTag("WELL_CTRL",DATA_REAL,ESET,ESET,1);
 			TagReal tagz    = CreateTag("WELL_DEPTH",DATA_REAL,ESET,ESET,1);
+			TagReal tagbhp  = CreateTag("WELL_BHP", DATA_REAL, ESET, ESET, 1);
 			TagBulk tagdir  = CreateTag("WELL_DIRECTION",DATA_BULK,CELL,CELL,1);
 			TagRealArray      tagschd_time = CreateTag("SCHEDULE_TIME",DATA_REAL,ESET,ESET); //time of simulation that activates record
 			TagBulkArray      tagschd_tag  = CreateTag("SCHEDULE_TAG",DATA_BULK,ESET,ESET); //names of changed tags separated by '\0'
@@ -4884,7 +4896,8 @@ namespace INMOST
 				//default behavior
 				tagz[set] = wspec.depth;
 				tagopen[set] = false;
-				tagcval[set] = 1.0e+5;
+				tagbhp[set] = -1;
+				tagcval[set] = -1;
 				tagph[set] = ECL_WPHASE_WATER;
 				tagctrl[set] = ECL_WCTRL_BHP; 
 				tagtype[set] = ECL_WTYPE_PROD;
@@ -5003,39 +5016,46 @@ namespace INMOST
 				{
 					if (jt->first == 1) //first record
 					{
+						tagbhp[set] = jt->second.bhp;
 						tagopen[set] = jt->second.open;
 						if (jt->second.type == "PROD")
 						{
 							tagtype[set] = ECL_WTYPE_PROD;
 							if (jt->second.ctrl == "ORAT")
 							{
-								tagph[set] = ECL_WPHASE_WATER;
+								tagph[set] = ECL_WPHASE_OIL;
 								tagctrl[set] = ECL_WCTRL_RATE;
 								tagcval[set] = jt->second.urats.prat.orat;
 							}
-							else if (jt->second.type == "GRAT")
+							else if (jt->second.ctrl == "WRAT")
+							{
+								tagph[set] = ECL_WPHASE_WATER;
+								tagctrl[set] = ECL_WCTRL_RATE;
+								tagcval[set] = jt->second.urats.prat.wrat;
+							}
+							else if (jt->second.ctrl == "GRAT")
 							{
 								tagph[set] = ECL_WPHASE_GAS;
 								tagctrl[set] = ECL_WCTRL_RATE;
 								tagcval[set] = jt->second.urats.prat.grat;
 							}
-							else if (jt->second.type == "LRAT")
+							else if (jt->second.ctrl == "LRAT")
 							{
 								tagph[set] = ECL_WPHASE_MULTI;
 								tagctrl[set] = ECL_WCTRL_RATE;
 								tagcval[set] = jt->second.urats.prat.lrat;
 							}
-							else if (jt->second.type == "RESV") //TODO10.3: what should we do with this?
+							else if (jt->second.ctrl == "RESV") //TODO10.3: what should we do with this?
 							{
 								tagph[set] = ECL_WPHASE_MULTI;
-								tagctrl[set] = ECL_WCTRL_RATE;
+								tagctrl[set] = ECL_WCTRL_RESV;
 								tagcval[set] = jt->second.urats.prat.resv;
 							}
-							else if (jt->second.type == "BHP")
+							else if (jt->second.ctrl == "BHP")
 							{
 								tagph[set] = ECL_WPHASE_MULTI;
-								tagctrl[set] = ECL_WCTRL_RATE;
-								tagcval[set] = jt->second.urats.prat.lrat;
+								tagctrl[set] = ECL_WCTRL_BHP;
+								tagcval[set] = jt->second.bhp;
 							}
 						}
 						else
@@ -5056,7 +5076,7 @@ namespace INMOST
 							}
 							else if (jt->second.ctrl == "RESV") //TODO10.3:
 							{
-								tagctrl[set] = ECL_WCTRL_RATE;
+								tagctrl[set] = ECL_WCTRL_RESV;
 								tagcval[set] = jt->second.urats.irat.resv;
 							}
 							else if (jt->second.ctrl == "BHP")
@@ -5069,26 +5089,35 @@ namespace INMOST
 					}
 					else //schedule change
 					{
-						schedule sopen, stype, sph, sctrl, scval;
+						schedule sopen, stype, sph, sctrl, scval, sbhp;
+						sbhp.element  = set->GetHandle();
 						sopen.element = set->GetHandle();
 						stype.element = set->GetHandle();
 						sph.element   = set->GetHandle();
 						sctrl.element = set->GetHandle();
 						scval.element = set->GetHandle();
+						sbhp.tagnum   = ECL_WTAG_BHP;
 						sopen.tagnum  = ECL_WTAG_STATE;
 						stype.tagnum  = ECL_WTAG_TYPE;
 						sph.tagnum    = ECL_WTAG_PHASE;
 						sctrl.tagnum  = ECL_WTAG_CTRL;
 						scval.tagnum  = ECL_WTAG_CVAL;
+						sbhp.value = jt->second.bhp;
 						sopen.value = jt->second.open;
 						if (jt->second.type == "PROD")
 						{
 							stype.value = ECL_WTYPE_PROD;
 							if (jt->second.ctrl == "ORAT")
 							{
-								sph.value = ECL_WPHASE_WATER;
+								sph.value = ECL_WPHASE_OIL;
 								sctrl.value = ECL_WCTRL_RATE;
 								scval.value = jt->second.urats.prat.orat;
+							}
+							else if (jt->second.ctrl == "WRAT")
+							{
+								sph.value = ECL_WPHASE_WATER;
+								sctrl.value = ECL_WCTRL_RATE;
+								scval.value = jt->second.urats.prat.wrat;
 							}
 							else if (jt->second.type == "GRAT")
 							{
@@ -5105,7 +5134,7 @@ namespace INMOST
 							else if (jt->second.type == "RESV") //TODO10.3: what should we do with this?
 							{
 								sph.value = ECL_WPHASE_MULTI;
-								sctrl.value = ECL_WCTRL_RATE;
+								sctrl.value = ECL_WCTRL_RESV;
 								scval.value = jt->second.urats.prat.resv;
 							}
 							else if (jt->second.type == "BHP")
@@ -5133,7 +5162,7 @@ namespace INMOST
 							}
 							else if (jt->second.ctrl == "RESV") //TODO10.3:
 							{
-								sctrl.value = ECL_WCTRL_RATE;
+								sctrl.value = ECL_WCTRL_RESV;
 								scval.value = jt->second.urats.irat.resv;
 							}
 							else if (jt->second.ctrl == "BHP")
@@ -5143,6 +5172,7 @@ namespace INMOST
 							}
 						}
 						//add records
+						wschd[jt->first].push_back(sbhp);
 						wschd[jt->first].push_back(sopen);
 						wschd[jt->first].push_back(stype);
 						wschd[jt->first].push_back(sph);
@@ -5170,7 +5200,29 @@ namespace INMOST
 						}
 					}
 					if (verbosity > 1)
-						std::cout << "Total scheduled records " << changes << std::endl;
+						std::cout << "Total scheduled records " << changes << " for well " << set->GetName() << std::endl;
+					//debug
+					/*
+					{
+						for (int k = 0; k < (int)tagschd_time[set].size(); ++k)
+						{
+							std::cout << std::setw(4) << k << " " << std::setw(12) << tagschd_time[set][k] << " ";
+							switch (tagschd_tag[set][k])
+							{
+							case ECL_WTAG_BHP: std::cout << "BHP  "; break;
+							case ECL_WTAG_CTRL: std::cout << "CTRL "; break;
+							case ECL_WTAG_CVAL: std::cout << "CVAL "; break;
+							case ECL_WTAG_PHASE: std::cout << "PHASE"; break;
+							case ECL_WTAG_STATE: std::cout << "OPEN "; break;
+							case ECL_WTAG_TYPE: std::cout << "TYPE "; break;
+							case ECL_WTAG_WI: std::cout << "WI   "; break;
+							}
+							std::cout << " " << std::setw(12) << tagschd_val[set][k] << " on ";
+							std::cout << ElementTypeName(tagschd_elem[set][k].GetElementType());
+							std::cout << ":" << tagschd_elem[set][k].LocalID() << std::endl;
+						}
+					}
+					*/
 				}
 				set->RemMarkerElements(added);
 				well_sets.push_back(set->GetHandle());

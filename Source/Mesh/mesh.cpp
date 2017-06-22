@@ -2455,7 +2455,7 @@ namespace INMOST
 			if( e->GetName() == name )
 				return e;
 		}
-		return ElementSet(this,InvalidHandle());
+		return InvalidElementSet();
 	}
 
 	ElementArray<ElementSet> Mesh::GetSetsByPrefix(std::string name)
