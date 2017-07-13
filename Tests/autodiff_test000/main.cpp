@@ -13,6 +13,7 @@ int main(int argc,char ** argv)
 	double _dx, _dy, _dxdx, _dydy, _dxdy;
 	unknown x(_x,0), y(_y,1);
 	hessian_variable f;
+	variable f2;
 
 
 	if( test == 0 ) //check derivative and hessian of sin(x*x+y*y)
@@ -34,6 +35,7 @@ int main(int argc,char ** argv)
 		_dydy = 2*cos(_x*_x+_y*_y)-4*sin(_x*_x+_y*_y)*_y*_y;
 		_dxdy = -8*sin(_x*_x+_y*_y)*_x*_y;
 		f = sin(x*x+y*y);
+		f2 = sin(x*x + y*y);
 	}
 	else if( test == 1 )
 	{
@@ -55,6 +57,7 @@ int main(int argc,char ** argv)
 		_dydy = 2*cos(_x*_x+_y*_y+_x*_y)-sin(_x*_x+_y*_y+_x*_y)*(_x+2*_y)*(_x+2*_y);
 		_dxdy = 2*cos(_x*_x+_y*_y+_x*_y)-2*sin(_x*_x+_y*_y+_x*_y)*(2*_x+_y)*(_x+2*_y);
 		f = sin(x*x+y*y+x*y);
+		f2 = sin(x*x + y*y + x*y);
 	}
 	else if( test == 2 )
 	{
@@ -76,6 +79,7 @@ int main(int argc,char ** argv)
 		_dydy = -2*sin(_x*_x+_y*_y+_x*_y)-cos(_x*_x+_y*_y+_x*_y)*(_x+2*_y)*(_x+2*_y);
 		_dxdy = -2*sin(_x*_x+_y*_y+_x*_y)-2*cos(_x*_x+_y*_y+_x*_y)*(2*_x+_y)*(_x+2*_y);
 		f = cos(x*x+y*y+x*y);
+		f2 = cos(x*x + y*y + x*y);
 	}
 	else if( test == 3 )
 	{
@@ -93,6 +97,7 @@ int main(int argc,char ** argv)
 		_dxdy = 2*cos(_x);
 		_dydy = 0;
 		f = sin(x)*y;
+		f2 = sin(x)*y;
 	}
 	else if( test == 4 )
 	{
@@ -110,6 +115,7 @@ int main(int argc,char ** argv)
 		_dxdy = -2*sin(_x);
 		_dydy = 0;
 		f = cos(x)*y;
+		f2 = cos(x)*y;
 	}
 	else if( test == 5 )
 	{
@@ -127,6 +133,7 @@ int main(int argc,char ** argv)
 		_dxdy = -6*_x*_y/(4*pow(_x*_x+_x*_y+_y*_y,1.5));
 		_dydy = 3*_x*_x/(4*pow(_x*_x+_x*_y+_y*_y,1.5));
 		f = sqrt(x*x+y*y+x*y);
+		f2 = sqrt(x*x + y*y + x*y);
 	}
 	else if( test == 6 )
 	{
@@ -136,6 +143,7 @@ int main(int argc,char ** argv)
 		_dxdy = 8;
 		_dydy = 6;
 		f = 2*x*x+3*y*y+4*x*y;
+		f2 = 2 * x*x + 3 * y*y + 4 * x*y;
 	}
 	else if( test == 7 )
 	{
@@ -145,6 +153,7 @@ int main(int argc,char ** argv)
 		_dxdy = -32*(_x-0.5)*(_y-0.5)*sin(2*((_x-0.5)*(_x-0.5)+(_y-0.5)*(_y-0.5)));
 		_dydy = 4*cos(2*((_x - 0.5)*(_x - 0.5) + (_y - 0.5)*(_y - 0.5))) - 16*(_y - 0.5)*(_y - 0.5)*sin(2.0*((_x - 0.5)*(_x - 0.5) + (_y - 0.5)*(_y - 0.5)));
 		f = sin(2*((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)));
+		f2 = sin(2 * ((x - 0.5)*(x - 0.5) + (y - 0.5)*(y - 0.5)));
 	}
 	else if( test == 8 )
 	{
@@ -154,6 +163,7 @@ int main(int argc,char ** argv)
 		_dxdy = -(-32*(_x-0.5)*(_y-0.5)*sin(2*((_x-0.5)*(_x-0.5)+(_y-0.5)*(_y-0.5))));
 		_dydy = -(4*cos(2*((_x - 0.5)*(_x - 0.5) + (_y - 0.5)*(_y - 0.5))) - 16*(_y - 0.5)*(_y - 0.5)*sin(2.0*((_x - 0.5)*(_x - 0.5) + (_y - 0.5)*(_y - 0.5))));
 		f = 1.0-sin(2*((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)));
+		f2 = 1.0 - sin(2 * ((x - 0.5)*(x - 0.5) + (y - 0.5)*(y - 0.5)));
 	}
 	else if( test == 9 )
 	{
@@ -163,6 +173,7 @@ int main(int argc,char ** argv)
 		_dxdy = 32*(_x-0.5)*(_y-0.5)*cos(2*((_x-0.5)*(_x-0.5)+(_y-0.5)*(_y-0.5)));
 		_dydy = 4*sin(2*((_x - 0.5)*(_x - 0.5) + (_y - 0.5)*(_y - 0.5))) + 16*(_y - 0.5)*(_y - 0.5)*cos(2.0*((_x - 0.5)*(_x - 0.5) + (_y - 0.5)*(_y - 0.5)));
 		f = 1.0-cos(2*((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)));
+		f2 = 1.0 - cos(2 * ((x - 0.5)*(x - 0.5) + (y - 0.5)*(y - 0.5)));
 	}
 	else if( test == 10 )
 	{
@@ -172,6 +183,7 @@ int main(int argc,char ** argv)
 		_dxdy = 8*(_y-0.5)*cos(2*((_x-0.5)*(_x-0.5)+(_y-0.5)*(_y-0.5)))-4*(_x-0.5)*_x*sin(2*((_x-0.5)*(_x-0.5)+(_y-0.5)*(_y-0.5)));
 		_dydy = 4*_x*cos(2*((_x-0.5)*(_x-0.5)+(_y-0.5)*(_y-0.5))) - 16*_x*(_y-0.5)*(_y-0.5)*sin(2*((_x-0.5)*(_x-0.5)+(_y-0.5)*(_y-0.5)));
 		f = sin(2*((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)))*x;
+		f2 = sin(2 * ((x - 0.5)*(x - 0.5) + (y - 0.5)*(y - 0.5)))*x;
 	}
 	else if( test == 11 )
 	{
@@ -189,6 +201,7 @@ int main(int argc,char ** argv)
 		_dxdy = 2*cos(_x*_x+_y) - 4*_x*_x*sin(_x*_x+_y);
 		_dydy = -_x*sin(_x*_x+_y);
 		f = sin(x*x+y)*x;
+		f2 = sin(x*x + y)*x;
 	}
 	else if( test == 12 )
 	{
@@ -206,6 +219,7 @@ int main(int argc,char ** argv)
 		_dxdy = 4*_y*(cos(_x*_x+_y*_y) - 2*_x*_x*sin(_x*_x+_y*_y));
 		_dydy = 2*_x*(cos(_x*_x+_y*_y)-2*_y*_y*sin(_x*_x+_y*_y));
 		f = sin(x*x+y*y)*x;
+		f2 = sin(x*x + y*y)*x;
 	}
 	double dx = f.GetRow()[0];
 	double dy = f.GetRow()[1];
@@ -214,6 +228,7 @@ int main(int argc,char ** argv)
 	double dydy = f.GetHessianRow()[Sparse::HessianRow::make_index(1,1)];
 
 	bool error = false;
+	std::cout << "For GetHessian:" << std::endl;
 	std::cout << std::setw(10) << "derivative " << std::setw(10) << "original " << std::setw(10) << "computed" << std::endl;
 	std::cout << std::setw(10) << "dx " << std::setw(10) << _dx << std::setw(10) << dx << std::endl;
 	std::cout << std::setw(10) << "dy " << std::setw(10) << _dy << std::setw(10) << dy << std::endl;
@@ -226,7 +241,15 @@ int main(int argc,char ** argv)
 	if( std::abs(dxdy-_dxdy) > 1.0e-9 ) error = true, std::cout << "Error in dxdy: " << std::abs(dxdy-_dxdy) << " original " << _dxdy << " computed " << dxdy << std::endl;
 	if( std::abs(dydy-_dydy) > 1.0e-9 ) error = true, std::cout << "Error in dydy: " << std::abs(dydy-_dydy) << " original " << _dydy << " computed " << dydy << std::endl;
 
-	if( error ) return -1;
+	
 
+	dx = f2.GetRow()[0];
+	dy = f2.GetRow()[1];
+	std::cout << "For GetJacobian:" << std::endl;
+	std::cout << std::setw(10) << "derivative " << std::setw(10) << "original " << std::setw(10) << "computed" << std::endl;
+	std::cout << std::setw(10) << "dx " << std::setw(10) << _dx << std::setw(10) << dx << std::endl;
+	std::cout << std::setw(10) << "dy " << std::setw(10) << _dy << std::setw(10) << dy << std::endl;
+
+	if( error ) return -1;
 	return 0;
 }

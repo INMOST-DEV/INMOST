@@ -403,15 +403,19 @@ namespace INMOST
 			assert(HR.isSorted());
 			output.Resize(HL.Size()+HR.Size()+JL.Size()*JR.Size());
 			INMOST_DATA_ENUM_TYPE i = 0, j = 0, k1 = 0, l1 = 0, k2 = 0, l2 = 0, q = 0, kk1 = 0, ll2 = 0, r;
+			while(kk1 < JL.Size() && JL.GetIndex(kk1) < JR.GetIndex(l1) ) kk1++;
+			k1 = kk1;
+			while(ll2 < JR.Size() && JL.GetIndex(k2) > JR.GetIndex(ll2) ) ll2++;
+			l2 = ll2;
 			entry candidate[4] = {stub_entry,stub_entry,stub_entry,stub_entry};
 			if( i < HL.Size() )
 				candidate[0] = make_entry(HL.GetIndex(i),b*HL.GetValue(i));
 			if( j < HR.Size() )
 				candidate[1] = make_entry(HR.GetIndex(j),c*HR.GetValue(j));
 			if( k1 < JL.Size() && l1 < JR.Size() )
-				candidate[2] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),0.5*a*JL.GetValue(k1)*JR.GetValue(l1));
+				candidate[2] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(JL.GetIndex(k1)==JR.GetIndex(l1)?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
 			if( k2 < JL.Size() && l2 < JR.Size() )
-				candidate[3] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),0.5*a*JL.GetValue(k2)*JR.GetValue(l2));
+				candidate[3] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(JL.GetIndex(k2)==JR.GetIndex(l2)?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
 			do
 			{
 				//pick smallest
@@ -454,7 +458,7 @@ namespace INMOST
 						}
 					}
 					if( k1 < JL.Size() && l1 < JR.Size() )
-						candidate[2] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(k1==l1?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
+						candidate[2] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(JL.GetIndex(k1)==JR.GetIndex(l1)?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
 					else
 						candidate[2] = stub_entry;
 				}
@@ -470,7 +474,7 @@ namespace INMOST
 						}
 					}
 					if( k2 < JL.Size() && l2 < JR.Size() )
-						candidate[3] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(k2==l2?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
+						candidate[3] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(JL.GetIndex(k2)==JR.GetIndex(l2)?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
 					else
 						candidate[3] = stub_entry;
 				}
@@ -489,13 +493,17 @@ namespace INMOST
 			assert(H.isSorted());
 			output.Resize(H.Size()+JL.Size()*JR.Size());
 			INMOST_DATA_ENUM_TYPE i = 0, k1 = 0, l1 = 0, q = 0, k2 = 0, l2 = 0, r, ll2 = 0, kk1 = 0;
+			while(kk1 < JL.Size() && JL.GetIndex(kk1) < JR.GetIndex(l1) ) kk1++;
+			k1 = kk1;
+			while(ll2 < JR.Size() && JL.GetIndex(k2) > JR.GetIndex(ll2) ) ll2++;
+			l2 = ll2;
 			entry candidate[3] = {stub_entry,stub_entry,stub_entry};
 			if( i < H.Size() )
 				candidate[0] = make_entry(H.GetIndex(i),b*H.GetValue(i));
 			if( k1 < JL.Size() && l1 < JR.Size() )
-				candidate[1] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),0.5*a*JL.GetValue(k1)*JR.GetValue(l1));
+				candidate[1] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(JL.GetIndex(k1)==JR.GetIndex(l1)?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
 			if( k2 < JL.Size() && l2 < JR.Size() )
-				candidate[2] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),0.5*a*JL.GetValue(k2)*JR.GetValue(l2));
+				candidate[2] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(JL.GetIndex(k2)==JR.GetIndex(l2)?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
 			do
 			{
 				//pick smallest
@@ -533,7 +541,7 @@ namespace INMOST
 						}
 					}
 					if( k1 < JL.Size() && l1 < JR.Size() )
-						candidate[1] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(k1==l1?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
+						candidate[1] = make_entry(make_index(JL.GetIndex(k1),JR.GetIndex(l1)),(JL.GetIndex(k1)==JR.GetIndex(l1)?0.5:1)*a*JL.GetValue(k1)*JR.GetValue(l1));
 					else
 						candidate[1] = stub_entry;
 				}
@@ -549,7 +557,7 @@ namespace INMOST
 						}
 					}
 					if( k2 < JL.Size() && l2 < JR.Size() )
-						candidate[2] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(k2==l2?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
+						candidate[2] = make_entry(make_index(JL.GetIndex(k2),JR.GetIndex(l2)),(JL.GetIndex(k2)==JR.GetIndex(l2)?0.5:1)*a*JL.GetValue(k2)*JR.GetValue(l2));
 					else
 						candidate[2] = stub_entry;
 				}
