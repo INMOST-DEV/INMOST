@@ -17,7 +17,7 @@ private:
 	InputType type;
 	bool done;
 	bool canceled;
-
+	bool noctrl;
 public:
 	Input(int * val, std::string comment);
 	Input(double * val, std::string comment);

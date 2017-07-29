@@ -2290,7 +2290,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					//may end after this record, the rest is defaulted
-					if (state != ECL_WELSPECS_PHASE && *(pend - 1) == '/' || *p == '/')
+					if ((state != ECL_WELSPECS_PHASE && *(pend - 1) == '/') || *p == '/')
 					{
 						wells_sched[welspecs_cur.first].wspec = welspecs_cur.second;
 						//welspecs[welspecs_cur.first] = welspecs_cur.second;
@@ -2415,7 +2415,7 @@ namespace INMOST
 					}
 					if (p == pend) break;
 					//may end after this record, the rest is defaulted
-					if (compdat_cur.second.WI > 0 && *(pend - 1) == '/' || *p == '/')
+					if ((compdat_cur.second.WI > 0 && *(pend - 1) == '/') || *p == '/')
 					{
 						//compdat[compdat_cur.first].push_back(compdat_cur.second);
 						wells_sched[compdat_cur.first].compdat[(int)tsteps.size()].push_back(compdat_cur.second);

@@ -1,7 +1,7 @@
 #ifndef _INC_GLUT_H
 #define _INC_GLUT_H
 
-#if defined (__APPLE__) || defined(MAXOSX)
+#if defined (__APPLE__) || defined(MACOSX)
 #include <GLUT/glut.h>
 #endif
 #if defined(_WIN32)

@@ -10,14 +10,21 @@ namespace INMOST
 	
 	/// Structure that selects desired class, depending on the operation.
 	template<class A, class B> struct Promote;
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_INTEGER_TYPE type;};
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
 #if defined(USE_AUTODIFF)
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, variable>  {typedef variable type;};
+	template<> struct Promote<variable, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<variable, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<variable, variable> {typedef variable type;};
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_variable>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
-	template<> struct Promote<hessian_variable, INMOST_DATA_REAL_TYPE>  {typedef hessian_variable type;};
 	template<> struct Promote<variable, hessian_variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, INMOST_DATA_INTEGER_TYPE>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, INMOST_DATA_REAL_TYPE>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, variable>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #endif
@@ -92,6 +99,16 @@ namespace INMOST
 			for(enumerator i = 0; i < other.Rows(); ++i)
 				for(enumerator j = 0; j < other.Cols(); ++j)
 					assign((*this)(i,j),other(i,j));
+			return *this;
+		}
+		/// Assign value to all entries of the matrix.
+		/// @param b Assigned value.
+		/// @return Reference to matrix.
+		AbstractMatrix & operator =(Var const & b)
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					assign((*this)(i,j),b);
 			return *this;
 		}
 		/// Obtain number of rows.
@@ -1783,6 +1800,8 @@ namespace INMOST
 	{
 		return ::INMOST::SubMatrix<Var, storage_type>(*this, first_row, last_row, first_col, last_col);
 	}
+	/// shortcut for matrix of integer values.
+	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
 #if defined(USE_AUTODIFF)

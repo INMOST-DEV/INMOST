@@ -906,8 +906,6 @@ namespace INMOST
 							*ret = fabs(*ret);
 							faces.RemPrivateMarker(rev);
 							mesh->ReleasePrivateMarker(rev);
-							
-							//std::cout << "volume is " << *ret/3.0 << " was " << was << " for " << me->LocalID() << std::endl;
 						}
 						*ret /= 3.0;
 						
@@ -1426,9 +1424,7 @@ namespace INMOST
 		{
 			integer dim = m->GetDimensions();
 			real val = 0, vol = 0, tvol,tval;
-			real normal[3];
 			real v1[3] = {0,0,0},v2[3] = {0,0,0}, product[3] = {0,0,0};
-			m->GetGeometricData(GetHandle(),NORMAL,normal);
 			ElementArray<Node> nodes = getNodes();
 			real_array av0 = nodes.front().Coords();
 			for(ElementArray<Node>::iterator it = ++nodes.begin(); it != nodes.end(); it++)
@@ -1441,7 +1437,7 @@ namespace INMOST
 				vec_diff(av1.data(),av0.data(),v1,dim);
 				vec_diff(av2.data(),av0.data(),v2,dim);
 				vec_cross_product(v1,v2,product);
-				tvol = vec_dot_product(product,normal,dim)*0.5;
+				tvol = sqrt(vec_dot_product(product,product,dim))*0.5;
 				val += tval*tvol;
 				vol += tvol;
 				it = jt;

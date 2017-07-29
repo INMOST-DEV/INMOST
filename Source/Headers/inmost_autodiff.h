@@ -88,6 +88,27 @@ namespace INMOST
 #endif //USE_SOLVER
 	
 #if defined(USE_MESH)
+	///
+	/*
+	class BlockEntry :public AbstractEntry
+	{
+		INMOST_DATA_ENUM_TYPE reg_index;
+		std::vector<Tag> unknown_tags;
+		std::vector<Tag> bitmask_tags;
+		std::vector<INMOST_DATA_ENUM_TYPE> comp;
+		std::vector<INMOST_DATA_ENUM_TYPE> eqn_pos;
+		std::vector<INMOST_DATA_ENUM_TYPE> unk_pos;
+		Tag index_tag;
+		MarkerType mask;
+		ElementType etype;
+	public:
+		BlockEntry() : reg_index(ENUMUNDEF) {}
+		void AddTag(ElementType etype, Tag value, Tag bitmask = Tag(), MarkerType mask = 0, int eqn = -1, int unk = -1);
+		rMatrix Value(const Storage & e) const;
+		iMatrix Index(const Storage & e) const;
+		vMatrix operator [](const Storage & e) const;
+	};
+	 */
 	/// The Automatizator class helps in defining primary unknowns of the model and
 	/// enhances user experience in interaction with automatic differentiation functionality.
 	/// User may declare real-typed mesh data as primary unknowns on the mesh with the

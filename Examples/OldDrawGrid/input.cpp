@@ -1,13 +1,37 @@
 #include "input.h"
 #include "inc_glut.h"
 #include <stdlib.h>
+#include "clipboard.h"
+#include <iostream>
+/*
+#if defined(__APPLE__) || defined(MACOSX)
+#include <Carbon/Carbon.h>
 
+KeyMap keyStates;
+bool IS_KEYDOWN( uint16_t vKey )
+{
+	uint8_t index = vKey / 32 ;
+	uint8_t shift = vKey % 32 ;
+	return keyStates[index].bigEndianValue & (1 << shift) ;
+}
+
+bool getGetCommandModifier()
+{
+	// This grabs all key states, then checks if you were holding down command or not
+	GetKeys(keyStates) ;
+	if( IS_KEYDOWN( kVK_Command ) )
+		return true;
+	return false;
+}
+#endif
+*/
 Input::Input(int * val, std::string comment) : comment(comment) 
 { 
 	input_link = val; 
 	type = Integer; 
 	canceled = false; 
-	done = false; 
+	done = false;
+	noctrl = false;
 	str = ""; 
 }
 Input::Input(double * val, std::string comment) : comment(comment) 
@@ -15,7 +39,8 @@ Input::Input(double * val, std::string comment) : comment(comment)
 	input_link = val; 
 	type = Double; 
 	canceled = false; 
-	done = false; 
+	done = false;
+ noctrl = false;
 	str = ""; 
 }
 Input::Input(char * val, std::string comment) : comment(comment) 
@@ -23,16 +48,18 @@ Input::Input(char * val, std::string comment) : comment(comment)
 	input_link = val; 
 	type = String; 
 	canceled = false; 
-	done = false; 
+	done = false;
+	noctrl = false;
 	str = ""; 
 }
 Input::Input(void * link, InputType type, std::string comment) : comment(comment), input_link(link), type(type) 
 { 
 	canceled = false; 
-	done = false; 
+	done = false;
+	noctrl = false;
 	str = ""; 
 }
-Input::Input(const Input & other) :str(other.str), comment(other.comment), input_link(other.input_link), type(other.type), done(other.done), canceled(other.canceled) 
+Input::Input(const Input & other) :str(other.str), comment(other.comment), input_link(other.input_link), type(other.type), done(other.done), canceled(other.canceled), noctrl(other.noctrl)
 {
 }
 Input & Input::operator = (Input const & other) 
@@ -42,14 +69,38 @@ Input & Input::operator = (Input const & other)
 	str = other.str; 
 	type = other.type; 
 	canceled = other.canceled; 
-	done = other.done; 
+	done = other.done;
+	noctrl = other.noctrl;
 	return *this; 
 }
 
 
 void Input::KeyPress(char c)
 {
-	if (c == 13)
+	bool ctrl = false;
+//#if defined(__APPLE__) || defined(MACOSX)
+//	ctrl = getGetCommandModifier();
+//#else
+	ctrl = glutGetModifiers() & (GLUT_ACTIVE_CTRL);
+//#endif
+	if( (c == 'v' || c == 'V' || c == 22) && ctrl && !noctrl ) //paste
+	{
+		std::string paste = getTextFromPasteboard();
+		std::cout << "paste: " << paste << std::endl;
+		if( !paste.empty() )
+		{
+			noctrl = true;
+			for(int k = 0; k < paste.length(); ++k) KeyPress(paste[k]);
+			noctrl = false;
+		}
+	}
+	else if( (c == 'c' || c == 'C' || c == 3) && ctrl ) //copy
+	{
+		std::string copy = GetString();
+		std::cout << "copy: " << copy << std::endl;
+		setTextToPasteboard(copy);
+	}
+	else if (c == 13)
 	{
 
 		done = true;
@@ -58,7 +109,11 @@ void Input::KeyPress(char c)
 		else if (type == String) strcpy((char *)input_link, str.c_str());
 		glutPostRedisplay();
 	}
+#if defined(__APPLE__) || defined(MACOSX)
+	else if (c == 127 || c == 8)
+#else
 	else if (c == 8)
+#endif
 	{
 		if (!str.empty()) str.erase(str.size() - 1);
 		glutPostRedisplay();

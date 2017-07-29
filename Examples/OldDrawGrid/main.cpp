@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include "inc_glut.h"
 #include <iomanip>
-#include "clipboard.h"
+
 #include "color.h"
 #include "coord.h"
 #include "octree.h"
@@ -405,27 +405,12 @@ void keyboard(unsigned char key, int x, int y)
 {
 	(void) x;
 	(void) y;
+	printf("%d %d\n",(int)key,(int)glutGetModifiers());
 	if( glutGetModifiers() & (GLUT_ACTIVE_CTRL) )
 		std::cout << "pressed " << ((char)(key)) << " int " << ((int)key) << " ctrl " << (glutGetModifiers() & GLUT_ACTIVE_CTRL ? "yes" : "no") << " shift " << (glutGetModifiers() & GLUT_ACTIVE_SHIFT ? "yes" : "no") << " alt " << (glutGetModifiers() & GLUT_ACTIVE_ALT ? "yes" : "no") << std::endl;
 	if( CommonInput != NULL )
 	{
-		if( (key == 'v' || key == 'V' || key == 22) && (glutGetModifiers() & GLUT_ACTIVE_CTRL) ) //paste
-		{
-			std::string paste = getTextFromPasteboard();
-			std::cout << "paste: " << paste << std::endl;
-			if( !paste.empty() )
-			{
-				for(int k = 0; k < paste.length(); ++k)
-					CommonInput->KeyPress(paste[k]);
-			}
-		}
-		else if( (key == 'c' || key == 'C' || key == 3) && (glutGetModifiers() & GLUT_ACTIVE_CTRL) ) //copy
-		{
-			std::string copy = CommonInput->GetString();
-			std::cout << "copy: " << copy << std::endl;
-			setTextToPasteboard(copy);
-		}
-		else CommonInput->KeyPress(key);
+		CommonInput->KeyPress(key);
 		return;
 	}
 	if( key == 27 )
@@ -737,6 +722,7 @@ void keyboard(unsigned char key, int x, int y)
 		mesh->Save("mesh.vtk");
 		mesh->Save("mesh.pmf");
 		mesh->Save("mesh.xml");
+		mesh->Save("mesh.gmv");
 	}
 	else if( key == 't' )
 	{
