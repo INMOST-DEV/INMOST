@@ -1483,6 +1483,7 @@ namespace INMOST
 		return *this;
 	}
 	
+	
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
@@ -1502,6 +1503,43 @@ namespace INMOST
 		}
 		return ret;
 	}
+	
+	
+	/*
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var, typeB>::type>
+	AbstractMatrix<Var>::operator*(const AbstractMatrix<typeB> & other) const
+	{
+		const enumerator b = 32;
+		assert(Cols() == other.Rows());
+		Matrix<typename Promote<Var, typeB>::type> ret(Rows(), other.Cols()); //check RVO
+		for (enumerator i0 = 0; i0 < Rows(); i0+=b) //loop rows
+		{
+			for (enumerator j0 = 0; j0 < other.Cols(); j0 += b) //loop columns
+			{
+				enumerator i0e = std::min(i0+b,Rows());
+				enumerator j0e = std::min(j0+b,other.Cols());
+				for (enumerator i = i0; i < i0e; ++i)
+					for(enumerator j = j0; j < j0e; ++j)
+						ret(i,j) = 0.0;
+				for (enumerator k0 = 0; k0 < Cols(); k0+=b)
+				{
+					enumerator k0e = std::min(k0+b,Cols());
+					for (enumerator i = i0; i < i0e; ++i)
+					{
+						for (enumerator k = k0; k < k0e; ++k)
+						{
+							for(enumerator j = j0; j < j0e; ++j)
+								assign(ret(i, j),ret(i, j)+(*this)(i, k)*other(k, j));
+						}
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	*/
 	
 	template<typename Var>
 	template<typename typeB>
@@ -1594,6 +1632,15 @@ namespace INMOST
 	{
 		// for A^T B
 		assert(Rows() == B.Rows());
+		/*
+		if( Rows() != Cols() )
+		{
+			Matrix<Var> At = this->Transpose(); //m by n matrix
+			return (At*(*this)).Solve(At*B,print_fail);
+		}
+		Matrix<typeB> AtB = B; //m by l matrix
+		Matrix<Var> AtA = (*this); //m by m matrix
+		 */
 		Matrix<Var> At = this->Transpose(); //m by n matrix
 		Matrix<typename Promote<Var,typeB>::type> AtB = At*B; //m by l matrix
 		Matrix<Var> AtA = At*(*this); //m by m matrix
@@ -1603,66 +1650,75 @@ namespace INMOST
 		enumerator * order = new enumerator [m];
 		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
 		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(m,l),true);
-		Var max, temp;
-		typename Promote<Var,typeB>::type tempb;
+		//Var temp;
+		INMOST_DATA_REAL_TYPE max,v;
+		//typeB tempb;
 		for(enumerator i = 0; i < m; ++i) order[i] = i;
 		for(enumerator i = 0; i < m; i++)
 		{
-			enumerator maxk = i, maxq = i, temp2;
-			max = fabs(AtA(maxk,maxq));
+			enumerator maxk = i, maxq = i;//, temp2;
+			max = fabs(get_value(AtA(maxk,maxq)));
 			//Find best pivot
-			for(enumerator k = i; k < m; k++) // over rows
+			if( max < 1.0e-8 )
 			{
-				for(enumerator q = i; q < m; q++) // over columns
+				for(enumerator k = i; k < m; k++) // over rows
 				{
-					if( fabs(AtA(k,q)) > max )
+					for(enumerator q = i; q < m; q++) // over columns
 					{
-						max = fabs(AtA(k,q));
-						maxk = k;
-						maxq = q;
+						v = fabs(get_value(AtA(k,q)));
+						if( v > max )
+						{
+							max = v;
+							maxk = k;
+							maxq = q;
+						}
+					}
+				}
+				//Exchange rows
+				if( maxk != i )
+				{
+					for(enumerator q = 0; q < m; q++) // over columns of A
+					{
+						std::swap(AtA(maxk,q),AtA(i,q));
+						//temp = AtA(maxk,q);
+						//AtA(maxk,q) = AtA(i,q);
+						//AtA(i,q) = temp;
+					}
+					//exchange rhs
+					for(enumerator q = 0; q < l; q++) // over columns of B
+					{
+						std::swap(AtB(maxk,q),AtB(i,q));
+						//tempb = AtB(maxk,q);
+						//AtB(maxk,q) = AtB(i,q);
+						//AtB(i,q) = tempb;
+					}
+				}
+				//Exchange columns
+				if( maxq != i )
+				{
+					for(enumerator k = 0; k < m; k++) //over rows
+					{
+						std::swap(AtA(k,maxq),AtA(k,i));
+						//temp = AtA(k,maxq);
+						//AtA(k,maxq) = AtA(k,i);
+						//AtA(k,i) = temp;
+					}
+					//remember order in sol
+					{
+						std::swap(order[maxq],order[i]);
+						//temp2 = order[maxq];
+						//order[maxq] = order[i];
+						//order[i] = temp2;
 					}
 				}
 			}
-			//Exchange rows
-			if( maxk != i )
-			{
-				for(enumerator q = 0; q < m; q++) // over columns of A
-				{
-					temp = AtA(maxk,q);
-					AtA(maxk,q) = AtA(i,q);
-					AtA(i,q) = temp;
-				}
-				//exchange rhs
-				for(enumerator q = 0; q < l; q++) // over columns of B
-				{
-					tempb = AtB(maxk,q);
-					AtB(maxk,q) = AtB(i,q);
-					AtB(i,q) = tempb;
-				}
-			}
-			//Exchange columns
-			if( maxq != i )
-			{
-				for(enumerator k = 0; k < m; k++) //over rows
-				{
-					temp = AtA(k,maxq);
-					AtA(k,maxq) = AtA(k,i);
-					AtA(k,i) = temp;
-				}
-				//remember order in sol
-				{
-					temp2 = order[maxq];
-					order[maxq] = order[i];
-					order[i] = temp2;
-				}
-			}
 			//Check small entry
-			if( fabs(AtA(i,i)) < 1.0e-54 )
+			if( fabs(get_value(AtA(i,i))) < 1.0e-54 )
 			{
 				bool ok = true;
 				for(enumerator k = 0; k < l; k++) // over columns of B
 				{
-					if( fabs(AtB(i,k)/1.0e-54) > 1 )
+					if( fabs(get_value(AtB(i,k))/1.0e-54) > 1 )
 					{
 						ok = false;
 						break;
@@ -1815,8 +1871,8 @@ namespace INMOST
 /// @param coef Constant coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
-template<typename typeB,typename storageB>
-INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::Matrix<typeB,storageB> & other)
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 #if defined(USE_AUTODIFF)
 /// Multiplication of matrix by a variable from left.
@@ -1824,8 +1880,8 @@ INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> oper
 /// @param coef Variable coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
-template<typename typeB,typename storageB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator *(const INMOST::variable & coef, const INMOST::Matrix<typeB,storageB> & other)
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator *(const INMOST::variable & coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 /// Multiplication of matrix by a variable with first and
 /// second order derivatives from left.
@@ -1833,8 +1889,8 @@ INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator 
 /// @param coef Variable coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
-template<typename typeB,typename storageB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> operator *(const INMOST::hessian_variable & coef, const INMOST::Matrix<typeB,storageB> & other)
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> operator *(const INMOST::hessian_variable & coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 #endif
 

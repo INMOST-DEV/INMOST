@@ -6,6 +6,7 @@ add_executable(UniteFaces unite_faces.cpp)
 add_executable(Dual dual.cpp)
 add_executable(Slice slice.cpp)
 add_executable(SliceFunc slice_func.cpp)
+add_executable(SplitNonplanar split_nonplanar.cpp)
 
 target_link_libraries(FixFaults inmost)
 if(USE_MPI)
@@ -71,6 +72,15 @@ endif(USE_MPI)
 install(TARGETS SliceFunc EXPORT inmost-targets RUNTIME DESTINATION bin)
 
 
+target_link_libraries(SplitNonplanar inmost)
+if(USE_MPI)
+  message("linking SplitNonplanar with MPI")
+  target_link_libraries(SplitNonplanar ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(SplitNonplanar PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS SplitNonplanar EXPORT inmost-targets RUNTIME DESTINATION bin)
 
 
 

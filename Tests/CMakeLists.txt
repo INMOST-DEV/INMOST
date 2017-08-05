@@ -1,3 +1,7 @@
+if(USE_MESH)
+add_subdirectory(geom_test000)
+endif(USE_MESH)
+
 if(USE_AUTODIFF)
 add_subdirectory(autodiff_test000)
 add_subdirectory(autodiff_test001)
@@ -17,5 +21,7 @@ if(USE_PARTITIONER)
 add_subdirectory(pmesh_test001)
 endif()
 endif()
+
+
 
 add_subdirectory(xml_reader_test000)

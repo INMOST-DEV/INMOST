@@ -19,7 +19,7 @@ int main(int argc, char ** argv)
 	
 	Mesh::GeomParam table;
 	table[ORIENTATION] = FACE;
-	table[CENTROID] = FACE | CELL;
+	table[BARYCENTER] = FACE | CELL | EDGE;
 	A.PrepareGeometricData(table);
 	
 	
@@ -28,13 +28,13 @@ int main(int argc, char ** argv)
 	for(Mesh::iteratorCell it = A.BeginCell(); it != A.EndCell(); ++it)
 	{
 		real cnt[3];
-		it->Centroid(cnt);
+		it->Barycenter(cnt);
 		it->RemoteReference(cell2node) = RemoteHandleType(&B,B.CreateNode(cnt).GetHandle());
 	}
 	for(Mesh::iteratorFace it = A.BeginFace(); it != A.EndFace(); ++it) if( it->Boundary() )
 	{
 		real cnt[3];
-		it->Centroid(cnt);
+		it->Barycenter(cnt);
 		it->RemoteReference(cell2node) = RemoteHandleType(&B,B.CreateNode(cnt).GetHandle());
 	}
 	//add corner nodes
@@ -54,7 +54,7 @@ int main(int argc, char ** argv)
 		{
 			corners++;
 			it->SetMarker(corner);
-			it->Centroid(cnt);
+			it->Barycenter(cnt);
 			it->RemoteReference(cell2node) = RemoteHandleType(&B,B.CreateNode(cnt).GetHandle());
 		}
 	}
@@ -66,7 +66,7 @@ int main(int argc, char ** argv)
 		{
 			corners++;
 			it->SetMarker(corner);
-			it->Centroid(cnt);
+			it->Barycenter(cnt);
 			it->RemoteReference(cell2node) = RemoteHandleType(&B,B.CreateNode(cnt).GetHandle());
 		}
 		else if( ncorners == 2 )
@@ -75,9 +75,9 @@ int main(int argc, char ** argv)
 			Node n1 = edges[0]->getBeg() == it->self() ? edges[0]->getEnd() : edges[0]->getBeg();
 			Node n2 = edges[1]->getBeg() == it->self() ? edges[1]->getEnd() : edges[1]->getBeg();
 			real cnt1[3], cnt2[3], r1[3],r2[3], l, dot;
-			it->Centroid(cnt);
-			n1->Centroid(cnt1);
-			n2->Centroid(cnt2);
+			it->Barycenter(cnt);
+			n1->Barycenter(cnt1);
+			n2->Barycenter(cnt2);
 			r1[0] = cnt[0] - cnt1[0];
 			r1[1] = cnt[1] - cnt1[1];
 			r1[2] = cnt[2] - cnt1[2];
@@ -98,7 +98,7 @@ int main(int argc, char ** argv)
 			{
 				corners++;
 				it->SetMarker(corner);
-				it->Centroid(cnt);
+				it->Barycenter(cnt);
 				it->RemoteReference(cell2node) = RemoteHandleType(&B,B.CreateNode(cnt).GetHandle());
 			}
 		}

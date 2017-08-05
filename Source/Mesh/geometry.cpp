@@ -27,6 +27,13 @@ namespace INMOST
 			vecout[i] = vecin1[i] - vecin2[i];
 	}
 	
+	__INLINE static void vec_diff(const Storage::real_array & vecin1,const Storage::real_array & vecin2, Storage::real * vecout, unsigned int size)
+	{
+		for(unsigned int i = 0; i < size; i++)
+			vecout[i] = vecin1[i] - vecin2[i];
+	}
+	
+	
 	__INLINE static void vec_cross_product(const Storage::real * vecin1, const Storage::real * vecin2, Storage::real * vecout)
 	{
 		Storage::real temp[3];
@@ -720,11 +727,118 @@ namespace INMOST
 		}
 	}
 	
+	void Mesh::FacesOrientation(ElementArray<Face> & faces, MarkerType rev)
+	{
+		//can copy orientation-independent algorithm from
+		//incident_matrix.hpp: incident_matrix::compute_measure
+		//assume mdim is of size 3 at most
+		if( !faces.empty() )
+		{
+			//real was = *ret/3.0;
+			Face cur = faces[0];
+			Mesh * mesh = faces.GetMeshLink();
+			//firstly, have to figure out orientation of each face
+			//mark all faces, so that we can perform adjacency retrival
+			MarkerType mrk = mesh->CreatePrivateMarker();
+			//MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
+			faces.SetPrivateMarker(mrk); //0-th face orientation is default
+			cur->RemPrivateMarker(mrk);
+			Node n1,n2; //to retrive edge
+			bool reverse = false; //reverse orientation in considered face
+			std::deque< orient_face > stack; //edge and first node and face for visiting
+			ElementArray<Edge> edges = cur->getEdges();
+			do
+			{
+				//figure out starting node order
+				if( edges[0]->getBeg() == edges[1]->getBeg() ||
+				    edges[0]->getBeg() == edges[1]->getEnd() )
+				{
+					n1 = edges[0]->getEnd();
+					n2 = edges[0]->getBeg();
+				}
+				else
+				{
+					n1 = edges[0]->getBeg();
+					n2 = edges[0]->getEnd();
+				}
+				//schedule unvisited adjacent faces
+				for(unsigned j = 0; j < edges.size(); j++)
+				{
+					//schedule face adjacent to considered edge
+					ElementArray<Face> adjacent = edges[j]->getFaces(mrk);
+					assert(adjacent.size() <= 1);
+					if( !adjacent.empty() )
+					{
+						adjacent.RemPrivateMarker(mrk);
+						stack.push_back(orient_face(edges[j],reverse ? n2 : n1,adjacent[0]));
+					}
+					//update edge nodes
+					n1 = n2; //current end is new begin
+					//find new end
+					if( n2 == edges[(j+1)%edges.size()]->getBeg() )
+						n2 = edges[(j+1)%edges.size()]->getEnd();
+						else
+							n2 = edges[(j+1)%edges.size()]->getBeg();
+							}
+				if( stack.empty() ) break;
+				//get entry from stack
+				orient_face r = stack.front();
+				//remove face from stack
+				stack.pop_front();
+				//retrive edges for new face
+				edges = r.face->getEdges();
+				reverse = false;
+				//figure out starting node order
+				if( edges[0]->getBeg() == edges[1]->getBeg() ||
+				    edges[0]->getBeg() == edges[1]->getEnd() )
+				{
+					n1 = edges[0]->getEnd();
+					n2 = edges[0]->getBeg();
+				}
+				else
+				{
+					n1 = edges[0]->getBeg();
+					n2 = edges[0]->getEnd();
+				}
+				//find out common edge orientation
+				for(unsigned j = 0; j < edges.size(); j++)
+				{
+					if( edges[j] == r.bridge ) //found the edge
+					{
+						//reverse ordering on this face
+						if( r.first == n1 )
+						{
+							if( isPrivate(rev) )
+								r.face->SetPrivateMarker(rev);
+							else
+								r.face->SetMarker(rev);
+							reverse = true;
+						}
+						break;
+					}
+					//update edge nodes
+					n1 = n2; //current end is new begin
+					//find new end
+					if( n2 == edges[(j+1)%edges.size()]->getBeg() )
+						n2 = edges[(j+1)%edges.size()]->getEnd();
+					else
+						n2 = edges[(j+1)%edges.size()]->getBeg();
+				}
+			} while(true);
+			faces.RemPrivateMarker(mrk);
+			mesh->ReleasePrivateMarker(mrk);
+			//faces.RemPrivateMarker(rev);
+		}
+	}
+	
 	void Mesh::GetGeometricData(HandleType e, GeometricData type, Storage::real * ret)
 	{
 		assert(e != InvalidHandle());
 		assert(ret != NULL);
-		assert(type == MEASURE || type == CENTROID || type == BARYCENTER || type == NORMAL);
+		assert(type == MEASURE ||
+			   type == CENTROID ||
+			   type == BARYCENTER ||
+			   type == NORMAL);
 		ElementType etype = GetHandleElementType(e);
 		integer edim = Element::GetGeometricDimension(GetGeometricType(e));
 		integer mdim = GetDimensions();
@@ -746,8 +860,10 @@ namespace INMOST
 						ElementArray<Node> nodes = Element(this,e)->getNodes();
 						if( nodes.size() > 1 )
 						{
-							Storage::real c[3];
-							vec_diff(nodes[0]->Coords().data(),nodes[1]->Coords().data(),c,mdim);
+							real c[3] = {0,0,0};
+							real_array v0 = nodes[0].Coords();
+							real_array v1 = nodes[1].Coords();
+							vec_diff(v0.data(),v1.data(),c,mdim);
 							*ret = vec_len(c,mdim);
 						}
 						else *ret = 0;
@@ -759,20 +875,26 @@ namespace INMOST
 						ElementArray<Node> nodes = Element(this,e)->getNodes();
 						if( nodes.size() > 2 )
 						{
-							real x[3] = {0,0,0};
-							Storage::real_array x0 = nodes[0].Coords();
-							for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
+							*ret = 0;
+							real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0},n0[3] = {0,0,0}, ss;
+							real_array v0 = nodes[0].Coords();
+							real_array v1 = nodes[1].Coords();
+							real_array v2 = nodes[2].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
+							vec_cross_product(l1,l2,n0);
+							for(int i = 1; i < (int)nodes.size()-1; i++)
 							{
-								Storage::real_array v1 = nodes[i].Coords();
-								Storage::real_array v2 = nodes[i+1].Coords();
-								if( mdim == 3 )
-								{
-									x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
-									x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
-								}
-								x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
+								v1 = nodes[i].Coords();
+								v2 = nodes[i+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
+								vec_cross_product(l1,l2,nt);
+								ss = vec_dot_product(n0,nt,3);
+								ss /= fabs(ss);
+								*ret += sqrt(vec_dot_product(nt,nt,3))*0.5*ss;
 							}
-							*ret = ::sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2])*0.5;
+							*ret = fabs(*ret);
 						} else *ret = 0;
 						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 						break;
@@ -782,133 +904,63 @@ namespace INMOST
 						
 						Cell me = Cell(this,e);
 						ElementArray<Face> faces = me->getFaces();
-						*ret = 0;
-						//can copy orientation-independent algorithm from
-						//incident_matrix.hpp: incident_matrix::compute_measure
-						//assume mdim is of size 3 at most
-						dynarray<Storage::real,3> fcnt(mdim), fnrm(mdim), ccnt(mdim);
-						/*
-						me->Centroid(ccnt.data());
-						for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
+						bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+						MarkerType rev = 0;
+						if( ornt )
 						{
-							faces[i]->Centroid(fcnt.data());
-							for(int r = 0; r < mdim; ++r)
-								fcnt[r] = fcnt[r]-ccnt[r];
-							faces[i]->OrientedNormal(me,fnrm.data());
-							*ret += vec_dot_product(fcnt.data(),fnrm.data(),mdim);
+							rev = CreatePrivateMarker();
+							FacesOrientation(faces,rev);
 						}
-						if( *ret < 0.0 ) //a robust algorithm that can handle unoriented cell
-						 */
-						if( !faces.empty() )
+						real vol = 0, a, at;
+						real x[3] = {0,0,0}, n[3] = {0,0,0}, n0[3] = {0,0,0}, s, ss;
+						real l1[3] = {0,0,0}, l2[3] = {0,0,0};
+						real nt[3] = {0,0,0};
+						for(unsigned j = 0; j < faces.size(); j++)
 						{
-							//real was = *ret/3.0;
-							*ret = 0;
-							Face cur = faces[0];
-							Cell c1 = me;
-							Mesh * mesh = c1.GetMeshLink();
-							//firstly, have to figure out orientation of each face
-							//mark all faces, so that we can perform adjacency retrival
-							MarkerType mrk = mesh->CreatePrivateMarker();
-							MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
-							faces.SetPrivateMarker(mrk); //0-th face orientation is default
-							cur->RemPrivateMarker(mrk);
-							Node n1,n2; //to retrive edge
-							bool reverse = false; //reverse orientation in considered face
-							std::deque< orient_face > stack; //edge and first node and face for visiting
-							ElementArray<Edge> edges = cur->getEdges();
-							do
+							//compute normal to face
+							ElementArray<Node> nodes = faces[j].getNodes();
+							if( ornt )
+								s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
+							else
+								s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
+							x[0] = x[1] = x[2] = 0;
+							n[0] = n[1] = n[2] = 0;
+							a = 0;
+							real_array v0 = nodes[0].Coords();
+							real_array v1 = nodes[1].Coords();
+							real_array v2 = nodes[2].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
+							vec_cross_product(l1,l2,n0);
+							for(int k = 1; k < (int)nodes.size()-1; k++)
 							{
-								//figure out starting node order
-								if( edges[0]->getBeg() == edges[1]->getBeg() ||
-								    edges[0]->getBeg() == edges[1]->getEnd() )
-								{
-									n1 = edges[0]->getEnd();
-									n2 = edges[0]->getBeg();
-								}
-								else
-								{
-									n1 = edges[0]->getBeg();
-									n2 = edges[0]->getEnd();
-								}
-								//schedule unvisited adjacent faces
-								for(unsigned j = 0; j < edges.size(); j++)
-								{
-									//schedule face adjacent to considered edge
-									ElementArray<Face> adjacent = edges[j]->getFaces(mrk);
-									assert(adjacent.size() <= 1);
-									if( !adjacent.empty() )
-									{
-										adjacent.RemPrivateMarker(mrk);
-										stack.push_back(orient_face(edges[j],reverse ? n2 : n1,adjacent[0]));
-									}
-									//update edge nodes
-									n1 = n2; //current end is new begin
-									//find new end
-									if( n2 == edges[(j+1)%edges.size()]->getBeg() )
-										n2 = edges[(j+1)%edges.size()]->getEnd();
-									else
-										n2 = edges[(j+1)%edges.size()]->getBeg();
-								}
-								if( stack.empty() ) break;
-								//get entry from stack
-								orient_face r = stack.front();
-								//remove face from stack
-								stack.pop_front();
-								//retrive edges for new face
-								edges = r.face->getEdges();
-								reverse = false;
-								//figure out starting node order
-								if( edges[0]->getBeg() == edges[1]->getBeg() ||
-								   edges[0]->getBeg() == edges[1]->getEnd() )
-								{
-									n1 = edges[0]->getEnd();
-									n2 = edges[0]->getBeg();
-								}
-								else
-								{
-									n1 = edges[0]->getBeg();
-									n2 = edges[0]->getEnd();
-								}
-								//find out common edge orientation
-								for(unsigned j = 0; j < edges.size(); j++)
-								{
-									if( edges[j] == r.bridge ) //found the edge
-									{
-										//reverse ordering on this face
-										if( r.first == n1 )
-										{
-											r.face->SetPrivateMarker(rev);
-											reverse = true;
-										}
-										break;
-									}
-									//update edge nodes
-									n1 = n2; //current end is new begin
-									//find new end
-									if( n2 == edges[(j+1)%edges.size()]->getBeg() )
-										n2 = edges[(j+1)%edges.size()]->getEnd();
-									else
-										n2 = edges[(j+1)%edges.size()]->getBeg();
-								}
-							} while(true);
-							faces.RemPrivateMarker(mrk);
-							mesh->ReleasePrivateMarker(mrk);
-							c1->Centroid(ccnt.data());
-							for(unsigned j = 0; j < faces.size(); j++)
-							{
-								//compute normal to face
-								faces[j].Centroid(fcnt.data());
-								faces[j].Normal(fnrm.data());
-								for(int r = 0; r < mdim; ++r)
-									fcnt[r] = fcnt[r]-ccnt[r];
-								*ret += (faces[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(fcnt.data(),fnrm.data(),3);
+								v1 = nodes[k+0].Coords();
+								v2 = nodes[k+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
+								vec_cross_product(l1,l2,nt);
+								for(int q = 0; q < 3; ++q) nt[q] *= 0.5;
+								ss = vec_dot_product(n0,nt,3);
+								ss /= fabs(ss);
+								at = sqrt(vec_dot_product(nt,nt,3))*ss;
+								//same as faces[j].Normal(n)
+								for(int q = 0; q < 3; ++q)
+									n[q] += nt[q];
+								//same as faces[j].Centroid(x)
+								for(int q = 0; q < 3; ++q)
+									x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+								a += at;
 							}
-							*ret = fabs(*ret);
-							faces.RemPrivateMarker(rev);
-							mesh->ReleasePrivateMarker(rev);
+							for(int q = 0; q < 3; ++q) x[q] /= a;
+							vol += s*vec_dot_product(x,n,3);
 						}
-						*ret /= 3.0;
-						
+						if( ornt )
+						{
+							if( vol < 0.0 ) vol = -vol;
+							faces.RemPrivateMarker(rev);
+							ReleasePrivateMarker(rev);
+						}
+						*ret = vol/3.0;
 						break;
 					}
 				}
@@ -916,33 +968,32 @@ namespace INMOST
 			//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 			break;
 			case CENTROID:
-			if(etype == NODE )
-				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
-			else if(HaveGeometricData(CENTROID,etype))
-			{
-				memcpy(ret,MGetDenseLink(e,centroid_tag),sizeof(real)*mdim);
-			}
-			else
-			{
-				ElementArray<Node> nodes = Element(this,e)->getNodes();
-				memset(ret,0,sizeof(real)*mdim);
-				if(nodes.size() != 0)
+				if(etype == NODE )
+					memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
+				else if(HaveGeometricData(CENTROID,etype))
 				{
-					Storage::real div = 1.0/nodes.size();
-					for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
-					{
-						Storage::real_array c =nodes[i].Coords();
-						for(integer j = 0; j < mdim; j++) ret[j] += c[j];
-					}
-					for(integer j = 0; j < mdim; j++) ret[j] *= div;
+					memcpy(ret,MGetDenseLink(e,centroid_tag),sizeof(real)*mdim);
 				}
-			}
+				else
+				{
+					ElementArray<Node> nodes = Element(this,e).getNodes();
+					memset(ret,0,sizeof(real)*mdim);
+					for(unsigned k = 0; k < nodes.size(); ++k)
+					{
+						for(int q = 0; q < mdim; ++q)
+							ret[q] += nodes[k].Coords()[q];
+					}
+					for(int q = 0; q < mdim; ++q)
+						ret[q] /= (real)nodes.size();
+				}
 			break;
 			case BARYCENTER:
-			if( etype == NODE )
+			if(etype == NODE )
 				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
 			else if(HaveGeometricData(BARYCENTER,etype))
+			{
 				memcpy(ret,MGetDenseLink(e,barycenter_tag),sizeof(real)*mdim);
+			}
 			else
 			{
 				memset(ret,0,sizeof(real)*mdim);
@@ -951,112 +1002,132 @@ namespace INMOST
 					ElementArray<Node> n = Element(this,e)->getNodes();
 					if( n.size() == 2 )
 					{
-						Storage::real_array a = n[0].Coords();
-						Storage::real_array b = n[1].Coords();
-						for(integer j = 0; j < dim; j++) 
-							ret[j] = (a[j] + b[j])*0.5;
+						real_array v0 = n[0].Coords();
+						real_array v1 = n[1].Coords();
+						for(integer j = 0; j < dim; j++)
+							ret[j] = (v0[j] + v1[j])*0.5;
 					}
 					else if( n.size() == 1 )
 					{
-						Storage::real_array a = n[0].Coords();
-						for(integer j = 0; j < dim; j++) ret[j] = a[j];
+						real_array v0 = n[0].Coords();
+						for(integer j = 0; j < dim; j++) ret[j] = v0[j];
 					}
 				}
 				else if( edim == 2 )
 				{
 					ElementArray<Node> nodes = Element(this,e)->getNodes();
-					real s,d, x1[3] = {0,0,0},x2[3] = {0,0,0},x[3] = {0,0,0};
-					//here we compute area of polygon
-					//~ if( HaveGeometricData(MEASURE,etype) && HaveGeometricData(NORMAL,etype) )
-					//~ {
-						//~ s = e->RealDF(measure_tag);
-						//~ memcpy(x,&e->RealDF(normal_tag),sizeof(Storage::real)*mdim);
-					//~ }
-					//~ else
-					//~ {
 					if( nodes.size() > 2 )
 					{
-						Storage::real_array x0 = nodes[0].Coords();
-						for(ElementArray<Node>::size_type i = 1; i < nodes.size()-1; i++)
+						*ret = 0;
+						real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
+						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss;
+						real_array v0 = nodes[0].Coords();
+						real_array v1 = nodes[1].Coords();
+						real_array v2 = nodes[2].Coords();
+						vec_diff(v1,v0,l1,mdim);
+						vec_diff(v2,v0,l2,mdim);
+						vec_cross_product(l1,l2,n0);
+						real a = 0, at;
+						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
-							Storage::real_array v1 = nodes[i].Coords();
-							Storage::real_array v2 = nodes[i+1].Coords();
-							if( mdim == 3 )
-							{
-								x[0] += (v1[1]-x0[1])*(v2[2]-x0[2]) - (v1[2]-x0[2])*(v2[1]-x0[1]);
-								x[1] += (v1[2]-x0[2])*(v2[0]-x0[0]) - (v1[0]-x0[0])*(v2[2]-x0[2]);
-							}
-							x[2] += (v1[0]-x0[0])*(v2[1]-x0[1]) - (v1[1]-x0[1])*(v2[0]-x0[0]);
+							real_array v1 = nodes[i].Coords();
+							real_array v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
+							vec_cross_product(l1,l2,nt);
+							ss = vec_dot_product(n0,nt,3);
+							ss /= fabs(ss);
+							at = sqrt(vec_dot_product(nt,nt,3))*0.5*ss;
+							for(int q = 0; q < mdim; ++q)
+								c[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+							a += at;
 						}
-						s = ::sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-						x[0] /= s; x[1] /= s; x[2] /= s; //here we obtain the unit normal
-						//~ }
-						//here we compute the center
-						Storage::real_array v0 = nodes[0].Coords();
-						for(ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
-						{
-							Storage::real_array v1 = nodes[j].Coords();
-							Storage::real_array v2 = nodes[j+1].Coords();
-							for(integer k = 0; k < mdim; k++)
-							{
-								x1[k] = v0[k] - v1[k];
-								x2[k] = v0[k] - v2[k];
-							}
-							d = det3v(x1,x2,x); //here we use unit normal
-							for(integer k = 0; k < mdim; k++) 
-								ret[k] += d*(v0[k]+v1[k]+v2[k]);
-						}
-						for(integer k = 0; k < mdim; k++) ret[k] /= 3.0 * s;
+						for(int q = 0; q < mdim; ++q) ret[q] = c[q]/a;
 					}
-					else
-					{
-						for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
-						{
-							Storage::real_array c = nodes[i].Coords();
-							for(integer k = 0; k < mdim; k++) ret[k] += c[k];
-						}
-						for(integer k = 0; k < mdim; k++) ret[k] /= static_cast<Storage::real>(nodes.size());
-					}
+					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
 				}
 				else if( edim == 3 )
 				{
-					ElementArray<Face> faces = Element(this,e)->getFaces();
-					real d,c,vol = 0, y[3];
-					for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++)
+					Cell me = Cell(this,e);
+					ElementArray<Face> faces = me->getFaces();
+					bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+					MarkerType rev = 0;
+					if( ornt )
 					{
-						d = y[0] = y[1] = y[2] = 0;
-						ElementArray<Node> nodes = faces[i].getNodes();
-						Storage::real_array v0 = nodes[0].Coords();
-						for(ElementArray<Node>::size_type j = 1; j < nodes.size()-1; j++)
-						{
-							Storage::real_array v1 = nodes[j].Coords();
-							Storage::real_array v2 = nodes[j+1].Coords();
-							c = det3v(v0.data(),v1.data(),v2.data());
-							d += c;
-							y[0] += c * (v0[0] + v1[0] + v2[0]);
-							y[1] += c * (v0[1] + v1[1] + v2[1]);
-							y[2] += c * (v0[2] + v1[2] + v2[2]);
-						}
-						c = faces[i].FaceOrientedOutside(Cell(this,e)) ? 1 : -1;
-						ret[0] += c * y[0];
-						ret[1] += c * y[1];
-						ret[2] += c * y[2];
-						vol += c*d;
+						rev = CreatePrivateMarker();
+						FacesOrientation(faces,rev);
 					}
-					ret[0] /= vol*4;
-					ret[1] /= vol*4;
-					ret[2] /= vol*4;
+					real vol = 0, a, at;
+					real x[3] = {0,0,0}, nt[3] = {0,0,0}, s;
+					real c[3] = {0,0,0}, n[3] = {0,0,0};
+					real n0[3] = {0,0,0}, ss;
+					real l1[3] = {0,0,0}, l2[3] = {0,0,0};
+					for(unsigned j = 0; j < faces.size(); j++)
+					{
+						//compute normal to face
+						ElementArray<Node> nodes = faces[j].getNodes();
+						if( ornt )
+							s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
+						else
+							s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
+						real_array v0 = nodes[0].Coords();
+						real_array v1 = nodes[1].Coords();
+						real_array v2 = nodes[2].Coords();
+						vec_diff(v1,v0,l1,mdim);
+						vec_diff(v2,v0,l2,mdim);
+						vec_cross_product(l1,l2,n0);
+						x[0] = x[1] = x[2] = 0;
+						n[0] = n[1] = n[2] = 0;
+						a = 0;
+						for(int i = 1; i < (int)nodes.size()-1; i++)
+						{
+							real_array v1 = nodes[i].Coords();
+							real_array v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
+							vec_cross_product(l1,l2,nt);
+							for(int q = 0; q < 3; ++q)
+								nt[q] *= 0.5;
+							ss = vec_dot_product(n0,nt,3);
+							ss /= fabs(ss);
+							at = sqrt(vec_dot_product(nt,nt,3))*ss;
+							//same as faces[j].Normal(n)
+							for(int q = 0; q < 3; ++q)
+								n[q] += nt[q];
+							//same as faces[j].Centroid(x)
+							for(int q = 0; q < 3; ++q)
+								x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+							a += at;
+							//second-order midpoint formula
+							for(int q = 0; q < 3; ++q)
+								c[q] += s*nt[q]*(pow(v0[q]+v1[q],2)+pow(v0[q]+v2[q],2)+pow(v1[q]+v2[q],2))/24.0;
+						}
+						for(int q = 0; q < 3; ++q) x[q] /= a;
+						vol += s*vec_dot_product(x,n,3);
+					}
+					if( ornt )
+					{
+						if( vol < 0.0 )
+						{
+							vol = -vol;
+							for(int q = 0; q < 3; ++q)
+								c[q] = -c[q];
+						}
+						faces.RemPrivateMarker(rev);
+						ReleasePrivateMarker(rev);
+					}
+					vol /= 3.0;
+					for(int q = 0; q < mdim; ++q)
+						ret[q] = c[q]/(vol);
+					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
 				}
 			}
 			break;
 			case NORMAL:
 			{
-//				real sret[3];
-//				bool cmp = false;
 				if( HaveGeometricData(NORMAL,etype) )
 				{
 					memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);
-//					cmp = true;
 				}
 				else
 				{
@@ -1064,29 +1135,21 @@ namespace INMOST
 					if( edim == 2 )//&& mdim == 3)
 					{
 						ElementArray<Node> nodes = Element(this,e)->getNodes();
-						
-						Storage::real_array x0 = nodes[0].Coords(), a = x0, b;
-						for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
+						real n[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
+						real nt[3] = {0,0,0};
+						real_array v0 = nodes[0].Coords();
+						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
-							b = nodes[(i+1)%nodes.size()].Coords();
-							ret[0] += (a[1]-x0[1])*(b[2]-x0[2]) - (a[2]-x0[2])*(b[1]-x0[1]);
-							ret[1] += (a[2]-x0[2])*(b[0]-x0[0]) - (a[0]-x0[0])*(b[2]-x0[2]);
-							ret[2] += (a[0]-x0[0])*(b[1]-x0[1]) - (a[1]-x0[1])*(b[0]-x0[0]);
-							a.swap(b);
+							real_array v1 = nodes[i].Coords();
+							real_array v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
+							vec_cross_product(l1,l2,nt);
+							for(int q = 0; q < 3; ++q)
+								n[q] += nt[q]*0.5;
 						}
-						/*
-						 for(unsigned i = 0; i < nodes.size(); i++)
-						 {
-						 Storage::real_array a = nodes[i].Coords();
-						 Storage::real_array b = nodes[(i+1)%nodes.size()].Coords();
-						 ret[0] += a[1]*b[2] - a[2]*b[1];
-						 ret[1] += a[2]*b[0] - a[0]*b[2];
-						 ret[2] += a[0]*b[1] - a[1]*b[0];
-						 }
-						 */
-						ret[0] *= 0.5;
-						ret[1] *= 0.5;
-						ret[2] *= 0.5;
+						for(int q = 0; q < mdim; ++q)
+							ret[q] = n[q];
 					}
 					else if( edim == 1 )//&& mdim == 2 )
 					{
@@ -1108,16 +1171,6 @@ namespace INMOST
 							ret[1] *= l;
 						}
 					}
-//					real err = 0;
-//					for(int k = 0; k < 3; ++k)
-//						err += (ret[0]-sret[0])*(ret[0]-sret[0]);
-//					err = sqrt(err);
-//					if( err > 1.0e-8 && cmp )
-//					{
-//						std::cout << "face " << GetHandleID(e) << " rank " << GetProcessorRank() <<  std::endl;
-//						std::cout << "cn " << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
-//						std::cout << "sn " << sret[0] << " " << sret[1] << " " << sret[2] << std::endl;
-//					}
 				}
 			}
 			break;
@@ -1298,15 +1351,12 @@ namespace INMOST
 			data.RemPrivateMarker(mrk);
 			mesh->ReleasePrivateMarker(mrk);
 			Storage::real nrm[3], cnt[3], ccnt[3];
-			c1->Centroid(ccnt);
 			for(unsigned j = 0; j < data.size(); j++)
 			{
 				//std::cout << (data[j].GetPrivateMarker(rev) ? 0:1);
 				//compute normal to face
 				data[j].Centroid(cnt);
 				data[j].Normal(nrm);
-				for(int r = 0; r < 3; ++r)
-					cnt[r] = cnt[r]-ccnt[r];
 				measure += (data[j]->GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(cnt,nrm,3);
 			}
 			//std::cout << "cur" << (cur->GetPrivateMarker(rev) ? 0:1) << " " << measure << " ";
@@ -1526,7 +1576,7 @@ namespace INMOST
 		{
 		case    MEASURE: return    measure_tag; 
 		case   CENTROID: return   centroid_tag; 
-		case BARYCENTER: return barycenter_tag; 
+		case BARYCENTER: return barycenter_tag;
 		case     NORMAL: return     normal_tag;
 		}
 		assert(false);

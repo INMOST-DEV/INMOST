@@ -586,15 +586,15 @@ namespace INMOST
 	{
 		if (dir == "X-" || dir == "I-")
 			return 0;
-		else if (dir == "X" || dir == "I" || dir == "X+" || dir == "I+")
+		else if (dir == "X" || dir == "I" || dir == "X+" || dir == "I+" || dir == "X " || dir == "I ")
 			return 1;
 		else if (dir == "Y-" || dir == "J-")
 			return 2;
-		else if (dir == "Y" || dir == "J" || dir == "Y+" || dir == "J+")
+		else if (dir == "Y" || dir == "J" || dir == "Y+" || dir == "J+" || dir == "Y " || dir == "J ")
 			return 3;
 		else if (dir == "Z-" || dir == "K-")
 			return 4;
-		else if (dir == "Z" || dir == "K" || dir == "Z+" || dir == "K+")
+		else if (dir == "Z" || dir == "K" || dir == "Z+" || dir == "K+" || dir == "Z " || dir == "K ")
 			return 5;
 		return -1;
 	}
@@ -2614,7 +2614,7 @@ namespace INMOST
 						if (fault_cur.dir == -1)
 						{
 							if (verbosity > 0)
-								std::cout << "Unknown direction for fault " << fault_cur.name << " " << rec << std::endl;
+								std::cout << "Unknown direction for fault " << fault_cur.name << " " << rec << " (size:" <<strlen(rec)<<")"<< std::endl;
 						}
 						else
 							faults.push_back(fault_cur);
@@ -4583,6 +4583,13 @@ namespace INMOST
 			tagsoil = CreateTag("SOIL", DATA_REAL, CELL, NONE, 1);
 		}
 		if (verbosity > 0) std::cout << std::endl;
+		if (verbosity > 0)
+		{
+			if(project_perm )
+				std::cout << "Permeability is projected onto axis" << std::endl;
+			else
+				std::cout << "Permeability is original" << std::endl;
+		}
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif

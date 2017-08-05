@@ -3097,6 +3097,10 @@ namespace INMOST
 		// types for BARYCENTER:  EDGE | FACE | CELL
 		// types for NORMAL:      FACE | CELL          (may precompute normal for cells in 2d case)
 		// types for ORIENTATION: FACE
+		/// Marks face with the orientation direction by marker.
+		/// If marker is set then face is reversed.
+		/// Then all faces are oriented either inside or outside of the cell.
+		void                              FacesOrientation(ElementArray<Face> & faces, MarkerType rev);
 		void                              PrepareGeometricData(GeomParam table);
 		void                              RemoveGeometricData(GeomParam table);
 		bool                              HaveGeometricData  (GeometricData type, ElementType mask) const {return remember[type][ElementNum(mask)-1];} // requests to only one geometric and element type allowed

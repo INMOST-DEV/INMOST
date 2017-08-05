@@ -339,6 +339,11 @@ namespace INMOST
 			std::cout << value << std::endl;
 			entries.Print();
 		}
+		void swap(multivar_expression & b)
+		{
+			std::swap(value,b.value);
+			entries.Swap(b.entries);
+		}
 		friend class multivar_expression_reference;
 	};
 	
@@ -351,6 +356,12 @@ namespace INMOST
 		Sparse::Row entries;
 		Sparse::HessianRow hessian_entries;
 	public:
+		void swap(hessian_multivar_expression & b)
+		{
+			std::swap(value,b.value);
+			entries.Swap(b.entries);
+			hessian_entries.Swap(b.hessian_entries);
+		}
 		/// Sets zero value and no first or second order variations.
 		hessian_multivar_expression() :value(0) {}
 		/// Sets value and no first or second order variations.
@@ -1869,7 +1880,10 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
 						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg.SetValue(Val.GetValue()); }
 						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg.SetValue(Val.GetValue()); }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
-                           __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::var_expression & Val) {Arg = Val.GetValue();}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = Val.GetValue();}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::var_expression & Val) {Arg = Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}
@@ -1943,6 +1957,9 @@ template<class A>          __INLINE                 INMOST::function_expression<
 
 
 #else //USE_AUTODIFF
+__INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = Val;}
+__INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+__INLINE void                     assign(INMOST_REAL_INTEGER_TYPE & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = Val;}
 __INLINE void                     assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
 __INLINE void                  set_value(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
 __INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
