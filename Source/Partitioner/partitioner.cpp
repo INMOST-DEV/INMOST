@@ -679,101 +679,108 @@ namespace INMOST
 			
 			wgtflag = have_vwgt + have_adjwgt*2;
 			
+			debug_output = false;
+			
 			if( debug_output )
 			{
-				m->BeginSequentialCode();
-				std::cout << "on processor " << rank << std::endl;
-				std::cout << "vtxdist: " << std::endl;
+				std::stringstream name;
+				name << "before" << rank << ".txt";
+				std::fstream f(name.str().c_str(),std::ios::out);
+				//m->BeginSequentialCode();
+				f << "on processor " << rank << std::endl;
+				f << "vtxdist: " << std::endl;
 				for(unsigned int i = 0; i < vtxdist.size(); i++)
 				{
-					std::cout << vtxdist[i] << " ";
-					if( (i+1)%30 == 0 ) std::cout << std::endl;
+					f << vtxdist[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
 				}
-				std::cout << std::endl;
+				f << std::endl;
+				f << "local size: " << vtxdist[rank+1]-vtxdist[rank] << std::endl;
 				
 				{
-					std::cout << "xadj size " << xadj.size() << ":" << std::endl;
+					f << "xadj size " << xadj.size() << ":" << std::endl;
 					for(unsigned int i = 0; i < xadj.size(); i++)
 					{
-						std::cout << xadj[i] << " ";
-						if( (i+1)%30 == 0 ) std::cout << std::endl;
+						f << xadj[i] << " ";
+						if( (i+1)%30 == 0 ) f << std::endl;
 					}
-					std::cout << std::endl;
-					std::cout << "adjncy size " << adjncy.size() << ":" << std::endl;
+					f << std::endl;
+					f << "adjncy size " << adjncy.size() << ":" << std::endl;
 					for(unsigned int i = 0; i < adjncy.size(); i++)
 					{
-						std::cout << adjncy[i] << " ";
-						if( (i+1)%30 == 0 ) std::cout << std::endl;
+						f << adjncy[i] << " ";
+						if( (i+1)%30 == 0 ) f << std::endl;
 					}
-					std::cout << std::endl;
+					f << std::endl;
 					if( have_vwgt )
 					{
-						std::cout << "vwgt: " << std::endl;
+						f << "vwgt: " << std::endl;
 						for(unsigned int i = 0; i < vwgt.size(); i++)
 						{
-							std::cout << vwgt[i] << " ";
-							if( (i+1)%30 == 0 ) std::cout << std::endl;
+							f << vwgt[i] << " ";
+							if( (i+1)%30 == 0 ) f << std::endl;
 						}
-						std::cout << std::endl;
+						f << std::endl;
 					}
 					if( have_adjwgt )
 					{
-						std::cout << "adjwgt: " << std::endl;
+						f << "adjwgt: " << std::endl;
 						for(unsigned int i = 0; i < adjwgt.size(); i++)
 						{
-							std::cout << adjwgt[i] << " ";
-							if( (i+1)%30 == 0 ) std::cout << std::endl;
+							f << adjwgt[i] << " ";
+							if( (i+1)%30 == 0 ) f << std::endl;
 						}
-						std::cout << std::endl;
+						f << std::endl;
 					}
 					if( pa == Repartition )
 					{
-						std::cout << "vsize: " << std::endl;
+						f << "vsize: " << std::endl;
 						for(unsigned int i = 0; i < vsize.size(); i++)
 						{
-							std::cout << vsize[i] << " ";
-							if( (i+1)%30 == 0 ) std::cout << std::endl;
+							f << vsize[i] << " ";
+							if( (i+1)%30 == 0 ) f << std::endl;
 						}
-						std::cout << std::endl;
+						f << std::endl;
 					}			
-					std::cout << "wgtflag = " << wgtflag << std::endl;
-					std::cout << "numflag = " << numflag << std::endl;
+					f << "wgtflag = " << wgtflag << std::endl;
+					f << "numflag = " << numflag << std::endl;
 				}
 				if( pa == Partition )
 				{
-					std::cout << "ndims = " << ndims << std::endl;
-					std::cout << "xyz: " << std::endl;
+					f << "ndims = " << ndims << std::endl;
+					f << "xyz: " << std::endl;
 					for(unsigned int i = 0; i < xyz.size(); i++)
 					{
-						std::cout << xyz[i] << " ";
-						if( (i+1)%30 == 0 ) std::cout << std::endl;
+						f << xyz[i] << " ";
+						if( (i+1)%30 == 0 ) f << std::endl;
 					}
-					std::cout << std::endl;
+					f << std::endl;
 				}
-				std::cout << "ncon = " << ncon << std::endl;
-				std::cout << "nparts = " << nparts << std::endl;
-				std::cout << "tpwgts: " << std::endl;
+				f << "ncon = " << ncon << std::endl;
+				f << "nparts = " << nparts << std::endl;
+				f << "tpwgts: " << std::endl;
 				for(unsigned int i = 0; i < tpwgts.size(); i++)
 				{
-					std::cout << tpwgts[i] << " ";
-					if( (i+1)%30 == 0 ) std::cout << std::endl;
+					f << tpwgts[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
 				}
-				std::cout << std::endl;
-				std::cout << "ubvec: " << std::endl;
+				f << std::endl;
+				f << "ubvec: " << std::endl;
 				for(unsigned int i = 0; i < ubvec.size(); i++)
 				{
-					std::cout << ubvec[i] << " ";
-					if( (i+1)%30 == 0 ) std::cout << std::endl;
+					f << ubvec[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
 				}
-				std::cout << std::endl;
-				std::cout << "options: " << std::endl;
+				f << std::endl;
+				f << "options: " << std::endl;
 				for(unsigned int i = 0; i < options.size(); i++)
 				{
-					std::cout << options[i] << " ";
-					if( (i+1)%30 == 0 ) std::cout << std::endl;
+					f << options[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
 				}
-				std::cout << std::endl;
-				m->EndSequentialCode();
+				f << std::endl;
+				//m->EndSequentialCode();
+				f.close();
 			}
 			
 			//redistribute entities;
@@ -781,36 +788,99 @@ namespace INMOST
 			
 			
 			
-			
+			if( true )
 			{
 				int it,jt,kt,flag;
 				unsigned int fill[3];
 				
+				
+				
 				send.reserve(3*nparts*2);
+				/*
+				if( rank == 0 )
+				{
+					std::cout << "initial" << std::endl;
+					for(it = 1; it <= size; it++) std::cout << it << " " << vtxdist[it]-vtxdist[it-1] << std::endl;
+					std::cout << " total " << vtxdist[size]-vtxdist[0] << std::endl;
+					
+					std::cout << "vtxdist";
+					for(it = 0; it <= size; it++) std::cout << " " << vtxdist[it];
+					std::cout << std::endl;
+				}
+				 */
+				std::vector<idx_t> vtxdistbase = vtxdist;
 				for(it = size; it >= 1; it--)
 				{
 					if( vtxdist[it]-vtxdist[it-1] == 0 )
 					{
+						//if( rank == 0 ) std::cout << "bkw send data to " << it-1;
 						fill[0] = it - 1; //to
 						flag = 0;
 						for(jt = it-1; jt >= 1; jt--)
 						{
-							if( vtxdist[jt]-vtxdist[jt-1] > 0 )
+							if( vtxdist[jt]-vtxdist[jt-1] > 1 )
 							{
+								//if( rank == 0 ) std::cout << " from " << jt-1 << std::endl;
 								fill[1] = jt - 1; //from
-								fill[2] = vtxdist[jt]-1-vtxdist[rank]; //id
+								fill[2] = vtxdist[jt]-1-vtxdistbase[rank]; //id
 								send.insert(send.end(),fill,fill+3);
-								vtxdist[jt]--;
-								for(kt = jt+1; kt < it; kt++)
-									vtxdist[kt] = vtxdist[jt];
+								for(kt = jt; kt < it; kt++) vtxdist[kt]--;
 								flag = 1;
 								break;
 							}
 						}
-						if( !flag ) throw Impossible;
+						
+						if( !flag )
+						{
+							//if(rank == 0)std::cout << "no bkw data for " << fill[0] << std::endl;
+							break;
+						}
 					}
 				}
 				
+				for(it = 1; it <= size; it++)
+				{
+					if( vtxdist[it]-vtxdist[it-1] == 0 )
+					{
+						//if( rank == 0 ) std::cout << "fwd send data to " << it-1;
+						fill[0] = it - 1; //to
+						flag = 0;
+						
+						for(jt = it+1; jt <= size; jt++)
+						{
+							if( vtxdist[jt]-vtxdist[jt-1] > 1 )
+							{
+								//if( rank == 0 ) std::cout << " from " << jt-1 << std::endl;
+								fill[1] = jt - 1; //from
+								fill[2] = vtxdist[jt-1]-vtxdistbase[rank]; //id
+								send.insert(send.end(),fill,fill+3);
+								for(kt = it; kt < jt; kt++) vtxdist[kt]++;
+								flag = 1;
+								break;
+							}
+						}
+						
+						
+						if( !flag )
+						{
+							//if(rank == 0)std::cout << "no fwd data for " << fill[0] << std::endl;
+							break;
+							//throw Impossible;
+						}
+					}
+				}
+				/*
+				if( rank == 0 )
+				{
+					std::cout << "redistr" << std::endl;
+					for(it = 1; it <= size; it++) std::cout << it << " " << vtxdist[it]-vtxdist[it-1] << std::endl;
+					std::cout << " total " << vtxdist[size]-vtxdist[0] << std::endl;
+					
+					std::cout << "vtxdist";
+					for(it = 0; it <= size; it++) std::cout << " " << vtxdist[it];
+					std::cout << std::endl;
+				}
+				*/
 				REPORT_STR("redistribute graph:");
 				REPORT_VAL("send_size",send.size()/3);
 				
@@ -825,18 +895,37 @@ namespace INMOST
 					{	
 						{
 							trans_adjncy_size = xadj[send[i*3+2]+1]-xadj[send[i*3+2]];
+							int size = 0;
 							for(jt = xadj[send[i*3+2]]; jt < xadj[send[i*3+2]+1]; jt++)
+							{
 								trans_adjncy.push_back(adjncy[jt]);
+								size++;
+							}
+							//adjncy.erase(adjancy.begin()+xadj[send[i*3+2]],adjancy.begin()+xadj[send[i*3+2]+1]);
 							if( have_adjwgt )
+							{
 								for(jt = xadj[send[i*3+2]]; jt < xadj[send[i*3+2]+1]; jt++)
+								{
 									trans_adjncy.push_back(adjwgt[jt]);
+									size++;
+								}
+								//adjwgt.erase(adjwgt.begin()+xadj[send[i*3+2]],adjwgt.begin()+xadj[send[i*3+2]+1]);
+							}
 							if( have_vwgt )
+							{
 								trans_adjncy.push_back(vwgt[send[i*3+2]]);
+								//vwgt.erase(vwgt.begin()+vwgt[send[i*3+2]]);
+								size++;
+							}
 							if( pa == Repartition )
+							{
 								trans_adjncy.push_back(part[send[i*3+2]]);
+								//part.erase(part.begin()+send[i*3+2]);
+								size++;
+							}
 							REPORT_VAL("to",send[i*3+0]);
-							REPORT_VAL("send_size",(trans_adjncy_size*(1+have_adjwgt)));
-							REPORT_MPI(result = MPI_Send(&trans_adjncy[0],trans_adjncy_size*(1+have_adjwgt),IDX_T,send[i*3+0],2,m->GetCommunicator()));
+							REPORT_VAL("send_size",size);
+							REPORT_MPI(result = MPI_Send(&trans_adjncy[0],size,IDX_T,send[i*3+0],2,m->GetCommunicator()));
 							if( result != MPI_SUCCESS ) 
 								throw Impossible;
 						}
@@ -844,6 +933,7 @@ namespace INMOST
 						{
 							for(jt = 0; jt < static_cast<int>(dim); jt++)
 								trans_xyz[jt] = xyz[send[i*3+2]*dim+jt];
+							//xyz.erase(send[i*3+2]*dim,(send[i*3+2]+1)*dim);
 							REPORT_VAL("to",send[i*3+0]);
 							REPORT_MPI(result = MPI_Send(trans_xyz,dim,REAL_T,send[i*3+0],3,m->GetCommunicator()));
 							if( result != MPI_SUCCESS ) throw Impossible;
@@ -862,7 +952,7 @@ namespace INMOST
 							if( result != MPI_SUCCESS ) throw Impossible;
 							trans_adjncy_size = (msgsize-have_vwgt-((pa == Repartition)?1:0))/(1+have_adjwgt);
 							trans_adjncy.resize(msgsize);
-							REPORT_VAL("from",send[i*3+1]);
+							REPORT_VAL("size",trans_adjncy_size);
 							REPORT_MPI(result = MPI_Recv(&trans_adjncy[0],msgsize,IDX_T,send[i*3+1],2,m->GetCommunicator(),&stat));
 							if( result != MPI_SUCCESS ) throw Impossible;
 							xadj.resize(2);
@@ -887,11 +977,138 @@ namespace INMOST
 							for(jt = 0; jt < static_cast<int>(dim); jt++)
 								xyz[jt] = trans_xyz[jt];
 						}
-						part.resize(1);
 					}
 				}
-				
+				//cleanup
+				{
+					std::vector<int> erase;
+					for(unsigned int i = 0; i < send.size()/3; i++)
+					{
+						if( send[i*3+1] == static_cast<unsigned int>(rank) )
+							erase.push_back(send[i*3+2]);
+					}
+					std::sort(erase.rbegin(),erase.rend());
+					for(unsigned int i = 0; i < erase.size(); ++i)
+					{
+						int pos = erase[i];
+						idx_t trans_adjncy_size = xadj[pos+1]-xadj[pos];
+						adjncy.erase(adjncy.begin()+xadj[pos],adjncy.begin()+xadj[pos+1]);
+						if( have_adjwgt )
+							adjwgt.erase(adjwgt.begin()+xadj[pos],adjwgt.begin()+xadj[pos+1]);
+						if( have_vwgt )
+							vwgt.erase(vwgt.begin()+pos);
+						if( pa == Repartition )
+							part.erase(part.begin()+pos);
+						if( pa == Partition )
+							xyz.erase(xyz.begin()+pos*dim,xyz.begin()+(pos+1)*dim);
+						
+						for(it = pos+1; it < xadj.size(); ++it) xadj[it] -= trans_adjncy_size;
+						xadj.erase(xadj.begin()+pos);
+					}
+				}
 				REPORT_STR("graph redistributed");
+			}
+			
+			if( debug_output )
+			{
+				std::stringstream name;
+				name << "after" << rank << ".txt";
+				std::fstream f(name.str().c_str(),std::ios::out);
+				//m->BeginSequentialCode();
+				f << "on processor " << rank << std::endl;
+				f << "vtxdist: " << std::endl;
+				for(unsigned int i = 0; i < vtxdist.size(); i++)
+				{
+					f << vtxdist[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
+				}
+				f << std::endl;
+				f << "local size: " << vtxdist[rank+1]-vtxdist[rank] << std::endl;
+				
+				{
+					f << "xadj size " << xadj.size() << ":" << std::endl;
+					for(unsigned int i = 0; i < xadj.size(); i++)
+					{
+						f << xadj[i] << " ";
+						if( (i+1)%30 == 0 ) f << std::endl;
+					}
+					f << std::endl;
+					f << "adjncy size " << adjncy.size() << ":" << std::endl;
+					for(unsigned int i = 0; i < adjncy.size(); i++)
+					{
+						f << adjncy[i] << " ";
+						if( (i+1)%30 == 0 ) f << std::endl;
+					}
+					f << std::endl;
+					if( have_vwgt )
+					{
+						f << "vwgt: " << std::endl;
+						for(unsigned int i = 0; i < vwgt.size(); i++)
+						{
+							f << vwgt[i] << " ";
+							if( (i+1)%30 == 0 ) f << std::endl;
+						}
+						f << std::endl;
+					}
+					if( have_adjwgt )
+					{
+						f << "adjwgt: " << std::endl;
+						for(unsigned int i = 0; i < adjwgt.size(); i++)
+						{
+							f << adjwgt[i] << " ";
+							if( (i+1)%30 == 0 ) f << std::endl;
+						}
+						f << std::endl;
+					}
+					if( pa == Repartition )
+					{
+						f << "vsize: " << std::endl;
+						for(unsigned int i = 0; i < vsize.size(); i++)
+						{
+							f << vsize[i] << " ";
+							if( (i+1)%30 == 0 ) f << std::endl;
+						}
+						f << std::endl;
+					}
+					f << "wgtflag = " << wgtflag << std::endl;
+					f << "numflag = " << numflag << std::endl;
+				}
+				if( pa == Partition )
+				{
+					f << "ndims = " << ndims << std::endl;
+					f << "xyz: " << std::endl;
+					for(unsigned int i = 0; i < xyz.size(); i++)
+					{
+						f << xyz[i] << " ";
+						if( (i+1)%30 == 0 ) f << std::endl;
+					}
+					f << std::endl;
+				}
+				f << "ncon = " << ncon << std::endl;
+				f << "nparts = " << nparts << std::endl;
+				f << "tpwgts: " << std::endl;
+				for(unsigned int i = 0; i < tpwgts.size(); i++)
+				{
+					f << tpwgts[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
+				}
+				f << std::endl;
+				f << "ubvec: " << std::endl;
+				for(unsigned int i = 0; i < ubvec.size(); i++)
+				{
+					f << ubvec[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
+				}
+				f << std::endl;
+				f << "options: " << std::endl;
+				for(unsigned int i = 0; i < options.size(); i++)
+				{
+					f << options[i] << " ";
+					if( (i+1)%30 == 0 ) f << std::endl;
+				}
+				f << std::endl;
+				//m->EndSequentialCode();
+				f.close();
 			}
 			
 			if( time_output )
@@ -906,6 +1123,7 @@ namespace INMOST
 			if( time_output ) time = Timer();
 			
 			MPI_Comm comm = m->GetCommunicator();
+			
 			
 			idx_t  * link_vtxdist = vtxdist.empty() ? NULL : &vtxdist[0];
 			idx_t  * link_xadj    = xadj.empty()    ? NULL : &xadj[0];
@@ -933,11 +1151,11 @@ namespace INMOST
 
 			switch(pa)
 			{
-				//~ case Partition:
-				//~ result = ParMETIS_V3_PartKway(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&adjwgt[0],
-											  //~ &wgtflag,&numflag,&ncon,&nparts,&tpwgts[0],
-											  //~ &ubvec[0],&options[0],&edgecut,&part[0],&comm);
-				//~ break;
+				 //case Partition:
+				 //result = ParMETIS_V3_PartKway(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&adjwgt[0],
+					//						   &wgtflag,&numflag,&ncon,&nparts,&tpwgts[0],
+					//						   &ubvec[0],&options[0],&edgecut,&part[0],&comm);
+				 break;
 				case Refine:
 				REPORT_STR("run refine");
 				result = ParMETIS_V3_RefineKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
