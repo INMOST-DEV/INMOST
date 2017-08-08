@@ -4836,7 +4836,7 @@ namespace INMOST
 #if defined(USE_MPI)
 #if !defined(USE_PARALLEL_STORAGE)
 		parallel_storage ghost_elements, shared_elements;
-		GatherParallelStorage(ghost_elements,shared_elements,mask);
+		GatherParallelStorage(ghost_elements,shared_elements,FACE);
 #endif //USE_PARALLEL_STORAGE
 		TagRealArray tag_nrm = CreateTag("TEMPORARY_NORMAL",DATA_REAL,FACE,NONE,3);
 		for(iteratorFace it = BeginFace(); it != EndFace(); ++it)

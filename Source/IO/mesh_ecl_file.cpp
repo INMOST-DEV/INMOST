@@ -1200,7 +1200,7 @@ namespace INMOST
 		char have_perm = 0;
 		std::cout << std::scientific;
 		bool perform_splitting = false;
-		bool project_perm = false;
+		bool project_perm = true;
 		int split_degenerate = 1;
 		bool check_topology = false;
 		int verbosity = 0;
@@ -4535,7 +4535,7 @@ namespace INMOST
 		if (!perm.empty())
 		{
 			if (verbosity > 0) std::cout << " PERM";
-			tagperm = CreateTag("PERM", DATA_REAL, CELL, NONE, project_perm ? 6 : 3);
+			tagperm = CreateTag("PERM", DATA_REAL, CELL, NONE, project_perm ? 9 : 3);
 		}
 		if (!satnum.empty())
 		{
@@ -4626,7 +4626,7 @@ namespace INMOST
 							block_axis(c, 3, 3).SVD(U, S, V);
 							for (int r = 0; r < 3; ++r)
 							{
-								if (S(r, r) > 1.0e-8)
+								if (S(r, r) > 1.0e-4)
 									Sinv(r, r) = 1.0 / S(r, r);
 								else
 									Sinv(r, r) = 0.0;
@@ -4641,9 +4641,12 @@ namespace INMOST
 							arr_perm[0] = K(0, 0);
 							arr_perm[1] = K(0, 1);
 							arr_perm[2] = K(0, 2);
-							arr_perm[3] = K(1, 1);
-							arr_perm[4] = K(1, 2);
-							arr_perm[5] = K(2, 2);
+							arr_perm[3] = K(1, 0);
+							arr_perm[4] = K(1, 1);
+							arr_perm[5] = K(1, 2);
+							arr_perm[6] = K(2, 0);
+							arr_perm[7] = K(2, 1);
+							arr_perm[8] = K(2, 2);
 						}
 						else
 						{

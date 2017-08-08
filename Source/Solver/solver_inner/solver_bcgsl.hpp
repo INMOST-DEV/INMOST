@@ -10,12 +10,12 @@
 #include "inmost_solver.h"
 
 #define PERTURBATE_RTILDE
-#define CONVEX_COMBINATION
+//#define CONVEX_COMBINATION
 #define PSEUDOINVERSE  // same trick as in petsc with pseudoinverse
 //#define USE_LAPACK_SVD // use lapack's dgesvd routine instead of built-in svdnxn
 
 //#if !defined(NDEBUG)
-//#define REPORT_RESIDUAL
+#define REPORT_RESIDUAL
 //#endif
 //#define USE_OMP
 

@@ -1659,7 +1659,7 @@ namespace INMOST
 			enumerator maxk = i, maxq = i;//, temp2;
 			max = fabs(get_value(AtA(maxk,maxq)));
 			//Find best pivot
-			if( max < 1.0e-8 )
+			//if( max < 1.0e-8 )
 			{
 				for(enumerator k = i; k < m; k++) // over rows
 				{
