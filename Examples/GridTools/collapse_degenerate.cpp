@@ -27,7 +27,8 @@ int main(int argc, char ** argv)
 	
 	double vol;
 	int collapsed = 0;
-	MarkerType rev = A.CreatePrivateMarker();
+	//MarkerType rev = A.CreatePrivateMarker();
+	MarkerType set = A.CreateMarker();
 	for(Mesh::iteratorCell it = A.BeginCell(); it != A.EndCell(); ++it)
 	{
 		ElementArray<Face> faces = it->getFaces();
@@ -35,38 +36,31 @@ int main(int argc, char ** argv)
 		double vol = 0,vol0 = 0;
 		E.Zero();
 		it->Centroid(cx.data());
-		A.FacesOrientation(faces,rev);
+		//A.FacesOrientation(faces,rev);
 		
 		for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
 		{
 			jt->Barycenter(x.data());
-			jt->Normal(n.data());
-			n*= jt->GetPrivateMarker(rev) ? -1.0:1.0;
-			E += (x-cx)*n.Transpose();
-			vol += n.DotProduct(x-cx)/3.0;
+			//jt->Normal(n.data());
+			//n*= jt->GetPrivateMarker(rev) ? -1.0:1.0;
+			jt->OrientedNormal(it->self(),n.data());
+			E += (x)*n.Transpose();
+			vol += n.DotProduct(x)/3.0;
 			vol0 += n.DotProduct(cx)/3.0;
 		}
-		if( vol < 0.0 )
-		{
-			vol = -vol;
-			E = -E;
-			vol0 = -vol0;
-		}
-		faces.RemPrivateMarker(rev);
+		
+		//faces.RemPrivateMarker(rev);
 		E = E-vol*I;
 		if( E.FrobeniusNorm() > 1.0e-4 || vol0 > 1.0e-5)
 		{
-			std::cout << "Collapsing cell " << it->LocalID() << " err " << E.FrobeniusNorm() << std::endl;
-			std::cout << "Volume " << it->Volume() << " vol " << vol << " vol0 " << vol0 << std::endl;
-			std::cout << "E:" << std::endl;
-			E.Print();
-			//replace with node
-			//it->Centroid(x.data());
-			it->Delete();
+			it->SetMarker(set);
 			collapsed ++;
 		}
 	}
-	A.ReleasePrivateMarker(rev);
+	//A.ReleasePrivateMarker(rev);
+	for(Mesh::iteratorCell it = A.BeginCell(); it != A.EndCell(); ++it) if( it->GetMarker(set) )
+		it->Delete();
+	A.ReleaseMarker(set);
 	std::cout << "total collapsed: " << collapsed << std::endl;
 	
 	for(ElementType et = FACE; et > NONE; et = PrevElementType(et) )

@@ -44,7 +44,7 @@ using namespace INMOST;
 
 #define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-9
-//#define DIAGONAL_PERTURBATION
+#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
 #define DIAGONAL_PERTURBATION_ABS 1.0e-12
 //#define DIAGONAL_PIVOT //probably there is some bug
