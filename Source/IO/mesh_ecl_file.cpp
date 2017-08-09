@@ -1200,8 +1200,8 @@ namespace INMOST
 		char have_perm = 0;
 		std::cout << std::scientific;
 		bool perform_splitting = false;
-		bool project_perm = true;
-		int split_degenerate = 1;
+		bool project_perm = false;
+		int split_degenerate = 0;
 		bool check_topology = false;
 		int verbosity = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)

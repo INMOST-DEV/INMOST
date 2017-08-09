@@ -914,7 +914,8 @@ namespace INMOST
 						real vol = 0, a, at;
 						real x[3] = {0,0,0}, n[3] = {0,0,0}, n0[3] = {0,0,0}, s, ss;
 						real l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real nt[3] = {0,0,0};
+						real nt[3] = {0,0,0}, cx[3] = {0,0,0};
+						me.Centroid(cx);
 						for(unsigned j = 0; j < faces.size(); j++)
 						{
 							//compute normal to face
@@ -948,7 +949,7 @@ namespace INMOST
 									n[q] += nt[q];
 								//same as faces[j].Centroid(x)
 								for(int q = 0; q < 3; ++q)
-									x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+									x[q] += at*((v0[q]-cx[q])+(v1[q]-cx[q])+(v2[q]-cx[q]))/3.0;
 								a += at;
 							}
 							for(int q = 0; q < 3; ++q) x[q] /= a;
@@ -1020,7 +1021,7 @@ namespace INMOST
 					{
 						*ret = 0;
 						real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss;
+						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss, cx[3] = {0,0,0};
 						real_array v0 = nodes[0].Coords();
 						real_array v1 = nodes[1].Coords();
 						real_array v2 = nodes[2].Coords();
@@ -1028,6 +1029,7 @@ namespace INMOST
 						vec_diff(v2,v0,l2,mdim);
 						vec_cross_product(l1,l2,n0);
 						real a = 0, at;
+						Element(this,e).Centroid(cx);
 						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
 							real_array v1 = nodes[i].Coords();
@@ -1039,10 +1041,10 @@ namespace INMOST
 							ss /= fabs(ss);
 							at = sqrt(vec_dot_product(nt,nt,3))*0.5*ss;
 							for(int q = 0; q < mdim; ++q)
-								c[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+								c[q] += at*((v0[q]-cx[q])+(v1[q]-cx[q])+(v2[q]-cx[q]))/3.0;
 							a += at;
 						}
-						for(int q = 0; q < mdim; ++q) ret[q] = c[q]/a;
+						for(int q = 0; q < mdim; ++q) ret[q] = c[q]/a+cx[q];
 					}
 					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
 				}
@@ -1062,6 +1064,8 @@ namespace INMOST
 					real c[3] = {0,0,0}, n[3] = {0,0,0};
 					real n0[3] = {0,0,0}, ss;
 					real l1[3] = {0,0,0}, l2[3] = {0,0,0};
+					real cx[3] = {0,0,0};
+					me.Centroid(cx);
 					for(unsigned j = 0; j < faces.size(); j++)
 					{
 						//compute normal to face
@@ -1096,13 +1100,13 @@ namespace INMOST
 								n[q] += nt[q];
 							//same as faces[j].Centroid(x)
 							for(int q = 0; q < 3; ++q)
-								x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+								x[q] += at*((v0[q]-cx[q])+(v1[q]-cx[q])+(v2[q]-cx[q]))/3.0;
 							a += at;
 							//second-order midpoint formula
 							for(int q = 0; q < 3; ++q)
-								c[q] += s*nt[q]*(pow(v0[q]+v1[q],2)+pow(v0[q]+v2[q],2)+pow(v1[q]+v2[q],2))/24.0;
+								c[q] += s*nt[q]*(pow((v0[q]-cx[q])+(v1[q]-cx[q]),2)+pow((v0[q]-cx[q])+(v2[q]-cx[q]),2)+pow((v1[q]-cx[q])+(v2[q]-cx[q]),2))/24.0;
 						}
-						for(int q = 0; q < 3; ++q) x[q] /= a;
+						for(int q = 0; q < 3; ++q) x[q] = x[q]/a;
 						vol += s*vec_dot_product(x,n,3);
 					}
 					if( ornt )
@@ -1118,7 +1122,7 @@ namespace INMOST
 					}
 					vol /= 3.0;
 					for(int q = 0; q < mdim; ++q)
-						ret[q] = c[q]/(vol);
+						ret[q] = c[q]/(vol) + cx[q];
 					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
 				}
 			}

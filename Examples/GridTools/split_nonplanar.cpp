@@ -275,8 +275,10 @@ int main(int argc, char ** argv)
 	A.PrepareGeometricData(table);
 	
 	Tag proj_coords = A.CreateTag("PROJECTED_COORDS",DATA_REAL,NODE,NONE,2);
-	
+	MarkerType myedges = A.CreateMarker();
 	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], fcnt[3], ray[3], orthx[3], orthy[3], d, nd, c[2];
+	std::cout << "Start splitting faces" << std::endl;
+	int nsplit = 0, had_faces = A.NumberOfFaces();
 	for(Mesh::iteratorFace it = A.BeginFace(); it != A.EndFace(); ++it)
 	{
 		if( !it->Planarity() )
@@ -312,6 +314,7 @@ int main(int argc, char ** argv)
 			
 			//gather all the segments in projected coordinates
 			ElementArray<Edge> face_edges = it->getEdges();
+			face_edges.SetMarker(myedges);
 			for(ElementArray<Edge>::iterator mt = face_edges.begin(); mt != face_edges.end(); ++mt)
 				segments.push_back(segment(mt->getBeg().RealArray(proj_coords).data(),mt->getEnd().RealArray(proj_coords).data()));
 			//form a loop out of face nodes
@@ -347,16 +350,81 @@ int main(int argc, char ** argv)
 						{
 							edge_nodes[1] = kt->self();
 							std::pair<Edge,bool> edge = A.CreateEdge(edge_nodes);
-							if( edge.second ) //this is actually a new edge
+							//if( edge.second ) //this is actually a new edge
+							if( !edge.first.GetMarker(myedges) )
 								new_edges.push_back(edge.first);
 						}
 					}
+					int had_id = it->LocalID();
+					int had_nodes = it->nbAdjElements(NODE);
 					ElementArray<Face> split_faces = Face::SplitFace(it->self(),new_edges,0);
+					for(int q = 0; q < split_faces.size(); ++q)
+						if( !split_faces[q].Planarity() )
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << "Face " << split_faces[q].LocalID() << " non-planar after split, nodes " << split_faces[q].nbAdjElements(NODE) << " original face " << had_id << " with " << had_nodes << " nodes, split by " << new_edges.size() << " edges, resulted in " << split_faces.size() << " new faces" << std::endl;
+							std::cout << "original nodes:";
+							for(ElementArray<Node>::iterator kt = face_nodes.begin(); kt != face_nodes.end(); ++kt)
+								std::cout << " " << kt->LocalID();
+							std::cout << std::endl;
+							std::cout << "split node " << jt->LocalID() << std::endl;
+							std::cout << "split edges:";
+							for(ElementArray<Edge>::iterator kt = new_edges.begin(); kt != new_edges.end(); ++kt)
+								std::cout << " " << kt->LocalID() << " (" << kt->getBeg().LocalID() << "," << kt->getEnd().LocalID() << ")";
+							std::cout << std::endl;
+						}
+					nsplit++;
 					success = true;
 				}
 			}
+			face_edges.RemMarker(myedges);
+			if( !success )
+			{
+				std::cout << "Face " << it->LocalID() << ", nodes " << it->nbAdjElements(NODE) << ", testing center" << std::endl;
+				std::vector<segment> joints;
+				//check that the node sees centers of all segments
+				for(int k = 0; k < (int)segments.size(); ++k)
+				{
+					const real cnt0[2] = {0.0,0.0};
+					scnt[0] = (segments[k].beg[0]+segments[k].end[0])*0.5;
+					scnt[1] = (segments[k].beg[1]+segments[k].end[1])*0.5;
+					joints.push_back(segment(cnt0,scnt));
+				}
+				if( check_intersect(segments,joints) )
+				{
+					std::cout << "Center of face " << it->LocalID() << " is not suitable to divide it" << std::endl;
+				}
+				else
+				{
+					//found a suitable node
+					ElementArray<Edge> new_edges(&A);
+					ElementArray<Node> edge_nodes(&A,2);
+					edge_nodes[0] = A.CreateNode(cnt);
+					for(ElementArray<Node>::iterator kt = face_nodes.begin(); kt != face_nodes.end(); ++kt)
+					{
+						edge_nodes[1] = kt->self();
+						std::pair<Edge,bool> edge = A.CreateEdge(edge_nodes);
+						new_edges.push_back(edge.first);
+					}
+					ElementArray<Face> split_faces = Face::SplitFace(it->self(),new_edges,0);
+					int had_id = it->LocalID();
+					int had_nodes = it->nbAdjElements(NODE);
+					for(int q = 0; q < split_faces.size(); ++q)
+						if( !split_faces[q].Planarity() )
+							std::cout << __FILE__ << ":" << __LINE__ << "Face " << split_faces[q].LocalID() << " non-planar after split, nodes " << split_faces[q].nbAdjElements(NODE) << " original face " << had_id << " with " << had_nodes << " nodes, split by " << new_edges.size() << " edges, resulted in " << split_faces.size() << " new faces" << std::endl;
+					nsplit++;
+					success = true;
+				}
+			}
+			if( !success ) std::cout << "Cannot split face " << it->LocalID() << std::endl;
 		}
 	}
+	
+	std::cout <<"total split: " << nsplit << " / " << had_faces << std::endl;
+	A.ReleaseMarker(myedges);
+	for(Mesh::iteratorFace it = A.BeginFace(); it != A.EndFace(); ++it)
+		if( !it->Planarity() )
+			std::cout << it->LocalID() << " is still non-planar, nodes " << it->nbAdjElements(NODE) << std::endl;
+	
 	
 	if( A.HaveTag("GRIDNAME") )
 	{

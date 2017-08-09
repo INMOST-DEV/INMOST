@@ -7,6 +7,7 @@ add_executable(Dual dual.cpp)
 add_executable(Slice slice.cpp)
 add_executable(SliceFunc slice_func.cpp)
 add_executable(SplitNonplanar split_nonplanar.cpp)
+add_executable(CollapseDegenerate collapse_degenerate.cpp)
 
 target_link_libraries(FixFaults inmost)
 if(USE_MPI)
@@ -81,6 +82,17 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 install(TARGETS SplitNonplanar EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+
+target_link_libraries(CollapseDegenerate inmost)
+if(USE_MPI)
+  message("linking CollapseDegenerate with MPI")
+  target_link_libraries(CollapseDegenerate ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(CollapseDegenerate PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS CollapseDegenerate EXPORT inmost-targets RUNTIME DESTINATION bin)
 
 
 
