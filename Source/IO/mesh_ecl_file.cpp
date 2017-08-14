@@ -1199,7 +1199,7 @@ namespace INMOST
 	{
 		char have_perm = 0;
 		std::cout << std::scientific;
-		bool perform_splitting = false;
+		int perform_splitting = 0;
 		bool project_perm = false;
 		int split_degenerate = 0;
 		bool check_topology = false;
@@ -1209,9 +1209,9 @@ namespace INMOST
 			if (file_options[k].first == "ECL_SPLIT_GLUED")
 			{
 				if (file_options[k].second == "TRUE")
-					perform_splitting = true;
+					perform_splitting = 1;
 				else
-					perform_splitting = false;
+					perform_splitting = 0;
 			}
 			if (file_options[k].first == "ECL_DEGENERATE") //TODO4
 			{
@@ -4042,9 +4042,9 @@ namespace INMOST
 
 											HandleType diag = f->Reference(split_face);
 											//split up quad faces into triagnles if they degenerate
-											if (split)
+											if (split || perform_splitting == 2)
 											{
-												if (diag == InvalidHandle())
+												if (perform_splitting != 2 && diag == InvalidHandle() )
 												{
 													if (split == 1) //SE-NW diagonal
 													{
@@ -4063,25 +4063,28 @@ namespace INMOST
 												{
 													int was_split = 0;
 													Edge e(this, diag);
-													if (e->getBeg()->GetHandle() == block_nodes[cur * 8 + 1 + q * 4] &&
-														e->getEnd()->GetHandle() == block_nodes[cur * 8 + 2 + q * 4])
-														was_split = 1; //was SE-NW
-													else if (e->getBeg()->GetHandle() == block_nodes[cur * 8 + 0 + q * 4] &&
-														e->getEnd()->GetHandle() == block_nodes[cur * 8 + 3 + q * 4])
-														was_split = 2; //was SW-NE
-
-													if (!was_split)
+													if( perform_splitting != 2 )
 													{
-														std::cout << "Cannot detect how the face was priviously split" << std::endl;
-														std::cout << "edge:  " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << std::endl;
-														std::cout << "SE-NW: " << block_nodes[cur * 8 + 0 + q * 4] << " <-> " << block_nodes[cur * 8 + 3 + q * 4] << std::endl;
-														std::cout << "SW-NE: " << block_nodes[cur * 8 + 1 + q * 4] << " <-> " << block_nodes[cur * 8 + 2 + q * 4] << std::endl;
+														if (e->getBeg()->GetHandle() == block_nodes[cur * 8 + 1 + q * 4] &&
+															e->getEnd()->GetHandle() == block_nodes[cur * 8 + 2 + q * 4])
+															was_split = 1; //was SE-NW
+														else if (e->getBeg()->GetHandle() == block_nodes[cur * 8 + 0 + q * 4] &&
+															e->getEnd()->GetHandle() == block_nodes[cur * 8 + 3 + q * 4])
+															was_split = 2; //was SW-NE
+
+														if (!was_split)
+														{
+															std::cout << "Cannot detect how the face was priviously split" << std::endl;
+															std::cout << "edge:  " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << std::endl;
+															std::cout << "SE-NW: " << block_nodes[cur * 8 + 0 + q * 4] << " <-> " << block_nodes[cur * 8 + 3 + q * 4] << std::endl;
+															std::cout << "SW-NE: " << block_nodes[cur * 8 + 1 + q * 4] << " <-> " << block_nodes[cur * 8 + 2 + q * 4] << std::endl;
+														}
 													}
 
-													if (split != was_split)
+													if (split != was_split || perform_splitting == 2)
 													{
 														//replace with node
-														e->Delete();
+														if( e.isValid() ) e->Delete();
 														Storage::real xyz[3] = { 0, 0, 0 };
 														for (int l = 0; l < 4; ++l)
 														{
