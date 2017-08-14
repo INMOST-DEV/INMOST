@@ -4022,6 +4022,9 @@ namespace INMOST
 									{
 										ElementArray<Edge> face_edges_ordered = OrderEdges(face_edges, mrk);
 										Face f = CreateFace(face_edges_ordered).first;
+										f->IntegerArray(block_pair)[0] = i;
+										f->IntegerArray(block_pair)[1] = j;
+										f->IntegerArray(block_pair)[2] = 2+k;
 										if (TopologyErrorTag().isValid() && f->HaveData(TopologyErrorTag())) std::cout << __FILE__ << ":" << __LINE__ << " topology error on face " << f->GetHandle() << std::endl;
 
 										if (perform_splitting)
@@ -4260,6 +4263,34 @@ namespace INMOST
 			}
 			if (verbosity > 0)
 				std::cout << "Finished tops/bottoms/cells time " << Timer() - ttt << std::endl;
+				
+			//mark boundary faces
+			TagBulk tag_bc_face = CreateTag("BCFACEDIR",DATA_BULK,FACE,FACE,1);
+			for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) if( it->Boundary() )
+			{
+				Storage::integer_array bn = it->IntegerArray(block_pair);
+				if( bn[2] >= 2 ) //distinguish bottom
+				{
+					int i = bn[0];
+					int j = bn[1];
+					int k = bn[2]-2;
+					bool has_cell = false;
+					for(int kk = k-1; kk >= 0; --kk)
+					{
+						if( actnum[ECL_IJK_DATA(i,j,kk)] )
+						{
+							has_cell = true;
+							break;
+						}
+					}
+					if( has_cell )
+						tag_bc_face[it->self()] = 1; //this is not bottom
+					else
+						tag_bc_face[it->self()] = 2; //this is bottom-most cell
+				}
+				else tag_bc_face[it->self()] = 0; //this is vertical bc
+			}
+			
 
 			if (!tranm_cnt)
 			{
