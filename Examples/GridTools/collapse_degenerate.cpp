@@ -44,14 +44,14 @@ int main(int argc, char ** argv)
 			//jt->Normal(n.data());
 			//n*= jt->GetPrivateMarker(rev) ? -1.0:1.0;
 			jt->OrientedNormal(it->self(),n.data());
-			E += (x)*n.Transpose();
-			vol += n.DotProduct(x)/3.0;
+			E += (x-cx)*n.Transpose();
+			vol += n.DotProduct(x-cx)/3.0;
 			vol0 += n.DotProduct(cx)/3.0;
 		}
 		
 		//faces.RemPrivateMarker(rev);
-		E = E-vol*I;
-		if( E.FrobeniusNorm() > 1.0e-4 || vol0 > 1.0e-5)
+		E = E/vol-I;
+		if( E.FrobeniusNorm() > 1.0e-5 || vol0 > 1.0e-5)
 		{
 			it->SetMarker(set);
 			collapsed ++;
