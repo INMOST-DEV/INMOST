@@ -255,7 +255,7 @@ bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol) {
     char *prefix;
     ierr = KSPGetOptionsPrefix(*ksp, const_cast<const char **>(&prefix));
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
-    ierr = PetscOptionsGetString(prefix, "-ksp_type", typeksp, 2048, &haveksp);
+    ierr = PetscOptionsGetString(NULL,prefix, "-ksp_type", typeksp, 2048, &haveksp);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     if (haveksp && !strcmp(typeksp, "preonly")) guess = false;
     if (guess) {
