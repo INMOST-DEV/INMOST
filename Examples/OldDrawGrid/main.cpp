@@ -945,7 +945,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 	set_matrix2d();
 	
 	
-	glColor4f(1,1,1,0.45);
+	glColor4f(1,1,1,0.65);
 	glEnable(GL_BLEND);
 	glBegin(GL_QUADS);
 	glVertex2f(left-0.01,bottom-0.01);

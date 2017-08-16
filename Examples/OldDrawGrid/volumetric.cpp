@@ -65,26 +65,51 @@ namespace INMOST
 	volumetric::volumetric(Mesh * _m)
 	{
 		m = _m;
-
-		points.resize(m->NumberOfCells());
+		const double opt_points = 1000000;
+		double density = opt_points / (double)m->NumberOfCells();
+		std::cout << "point density " << density << std::endl;
+		if( density > 1 )
+			points.reserve(ceil(density*m->NumberOfCells()));
+		else
+			points.reserve(m->NumberOfCells());
 		int q = 0;
+		double div = pow(density,1.0/4.0);
 		for (Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
+			point_t p;
 			Storage::real cnt[3], cntf[3];
 			it->Centroid(cnt);
-			points[q].coords[0] = cnt[0];
-			points[q].coords[1] = cnt[1];
-			points[q].coords[2] = cnt[2];
-			points[q].id = it->LocalID();
-			points[q].diam = 0.f;
+			p.coords[0] = cnt[0];
+			p.coords[1] = cnt[1];
+			p.coords[2] = cnt[2];
+			p.id = it->LocalID();
+			double diam = 0;
 			ElementArray<Face> faces = it->getFaces();
 			for (ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); ++f)
 			{
 				f->Centroid(cntf);
 				Storage::real d = sqrt((cnt[0] - cntf[0])*(cnt[0] - cntf[0]) + (cnt[1] - cntf[1])*(cnt[1] - cntf[1]) + (cnt[2] - cntf[2])*(cnt[2] - cntf[2]));
-				if (points[q].diam < d) points[q].diam = d;
+				//diam += d;
+				if (diam < d) diam = d;
 			}
-			++q;
+			
+			p.diam = diam / div;// / density;
+			
+			points.push_back(p);
+			
+			int kmax = (int)(rand()%2) ? ceil(density) : floor(density);
+			
+			for(int k = 1; k < kmax; ++k)
+			{
+				double r = diam*(rand()/(double)RAND_MAX*0.4+0.75);
+				double phi = rand()/(double)RAND_MAX*2*3.141592;
+				double u = rand()/(double)RAND_MAX*2-1;
+				p.coords[0] = cnt[0] + sqrt(1-u*u)*cos(phi)*r;
+				p.coords[1] = cnt[1] + sqrt(1-u*u)*sin(phi)*r;
+				p.coords[2] = cnt[2] + u*r;
+				points.push_back(p);
+			}
+			
 		}
 		/*
 		points.reserve(m->NumberOfNodes()*20);
@@ -189,7 +214,7 @@ namespace INMOST
 			up[2] /= l;
 		}
 
-		const float alpha = 0.0075f;
+		const float alpha = 0.008f;
 		const float mult = 1.0f;
 		const float rmult = 0.7f;
 		//glPointSize(5.0);
