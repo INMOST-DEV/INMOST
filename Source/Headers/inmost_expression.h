@@ -1880,10 +1880,10 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
 						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg.SetValue(Val.GetValue()); }
 						   __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg.SetValue(Val.GetValue()); }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
-                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
-                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::var_expression & Val) {Arg = Val.GetValue();}
-                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = Val.GetValue();}
-                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val;}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::var_expression & Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val.GetValue();}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val.GetValue();}
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::var_expression & Val) {Arg = Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression & Val) {Arg = Val.GetValue();}
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}

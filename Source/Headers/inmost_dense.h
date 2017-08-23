@@ -795,14 +795,18 @@ namespace INMOST
 		///Exchange contents of two matrices.
 		void Swap(AbstractMatrix<Var> & b)
 		{
-			if( dynamic_cast<Matrix<Var,storage_type> *>(&b) != NULL )
+#if defined(_CPPRTTI) || defined(__GXX_RTTI)
+			Matrix<Var,storage_type> * bb = dynamic_cast<Matrix<Var,storage_type> *>(&b);
+			if( bb != NULL )
 			{
-				Matrix<Var,storage_type> & bb = dynamic_cast<Matrix<Var,storage_type> &>(b);
-				space.swap(bb.space);
-				std::swap(n,bb.n);
-				std::swap(m,bb.m);
+				space.swap((*bb).space);
+				std::swap(n,(*bb).n);
+				std::swap(m,(*bb).m);
 			}
 			else AbstractMatrix<Var>::Swap(b);
+#else //_CPPRTTI
+			AbstractMatrix<Var>::Swap(b);
+#endif //_CPPRTTI	
 		}
 		/// Construct empty matrix.
 		Matrix() : space(), n(0), m(0) {}
