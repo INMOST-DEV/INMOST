@@ -4280,7 +4280,7 @@ namespace INMOST
 					bool has_cell = false;
 					for(int kk = k-1; kk >= 0; --kk)
 					{
-						if( actnum[ECL_IJK_DATA(i,j,kk)] )
+						if( actnum.empty() || actnum[ECL_IJK_DATA(i,j,kk)] )
 						{
 							has_cell = true;
 							break;
