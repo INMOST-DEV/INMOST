@@ -63,6 +63,9 @@ int main(int argc, char ** argv)
 
 	std::cout << "Cells: " << m.NumberOfCells() << std::endl;
 	std::cout << "Faces: " << m.NumberOfFaces() << std::endl;
+	
+	MarkerType original = m.CreateMarker();
+	for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it) it->SetMarker(original);
 
 	MarkerType slice = m.CreateMarker();
 	MarkerType mrk = m.CreateMarker();
@@ -155,9 +158,11 @@ int main(int argc, char ** argv)
 		ElementArray<Node> nodes = it->getNodes(slice); //those nodes should be ordered so that each pair forms an edge
 		if( nodes.size() > 1 ) // if there is 1, then only one vertex touches the plane
 		{
+			int nsliced = 0;
+			for(int q = 0; q < (int)nodes.size(); ++q) if( !nodes[q].GetMarker(original) ) nsliced++;
 			//if there is more then two, then original face is non-convex
-			if( nodes.size() > 2 ) std::cout << "Looks like face " << it->LocalID() << " is nonconvex, there is " << nodes.size() << " nodes"<< std::endl;
-			else
+			if( nsliced && nodes.size() > 2 ) std::cout << "Looks like face " << it->LocalID() << " is nonconvex, there is " << nodes.size() << " nodes, out of them " << nsliced << " new cuts on edge" << std::endl;
+			else if( nodes.size() == 2 )
 			{
 				Edge e = m.CreateEdge(nodes).first;
 				e.Integer(material) = 2; //on slice
@@ -168,9 +173,12 @@ int main(int argc, char ** argv)
 				if( was_sliced ) for(int q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
 				nslice++;
 			}
+			//else std::cout << "No new edges on face " << it->LocalID() << std::endl;
 		}
 		//else std::cout << "Only one adjacent slice node, face " << it->LocalID() << std::endl;
 	}
+	
+	m.ReleaseMarker(original,NODE);
 
 	nmark = 0;
 	for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it)
