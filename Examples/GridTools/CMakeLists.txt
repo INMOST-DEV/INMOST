@@ -8,6 +8,7 @@ add_executable(Slice slice.cpp)
 add_executable(SliceFunc slice_func.cpp)
 add_executable(SplitNonplanar split_nonplanar.cpp)
 add_executable(CollapseDegenerate collapse_degenerate.cpp)
+add_executable(Bnd2Stl bnd2stl.cpp)
 
 target_link_libraries(FixFaults inmost)
 if(USE_MPI)
@@ -94,5 +95,15 @@ if(USE_MPI)
 endif(USE_MPI)
 install(TARGETS CollapseDegenerate EXPORT inmost-targets RUNTIME DESTINATION bin)
 
+
+target_link_libraries(Bnd2Stl inmost)
+if(USE_MPI)
+  message("linking Bnd2Stl with MPI")
+  target_link_libraries(Bnd2Stl ${MPI_LIBRARIES})
+  if(MPI_LINK_FLAGS)
+    set_target_properties(Bnd2Stl PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif()
+endif(USE_MPI)
+install(TARGETS Bnd2Stl EXPORT inmost-targets RUNTIME DESTINATION bin)
 
 
