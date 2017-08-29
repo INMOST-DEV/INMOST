@@ -421,6 +421,10 @@ namespace INMOST
 	{
 		for(Sparse::Matrix::iterator it = jacobian.Begin(); it != jacobian.End(); ++it) it->Clear();
 	}
+	void Residual::ClearHessian()
+	{
+		for(Sparse::HessianMatrix::iterator it = hessian.Begin(); it != hessian.End(); ++it) it->Clear();
+	}
 	void Residual::Clear()
 	{
 #if defined(USE_OMP)
@@ -429,7 +433,8 @@ namespace INMOST
 		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
 		{
 			residual[k] = 0.0;
-			jacobian[k].Clear();
+			if( !jacobian.Empty() ) jacobian[k].Clear();
+			if( !hessian.Empty() ) hessian[k].Clear();
 		}
 	}
 	INMOST_DATA_REAL_TYPE Residual::Norm()
@@ -448,11 +453,12 @@ namespace INMOST
 	}
 	Residual & Residual::operator =(Residual const & other)
 	{
+		hessian = other.hessian;
 		jacobian = other.jacobian;
 		residual = other.residual;
 		return *this;
 	}
-	void Residual::Rescale()
+	void Residual::Rescale(INMOST_DATA_ENUM_TYPE p)
 	{
 #if defined(USE_OMP)
 #pragma omp parallel for
@@ -460,24 +466,36 @@ namespace INMOST
 		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
 		{
 			INMOST_DATA_REAL_TYPE norm = 0.0;
-			for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
-				norm += jacobian[k].GetValue(q)*jacobian[k].GetValue(q);
-			norm = sqrt(norm);
+			if( p == ENUMUNDEF ) //infinite norm
+			{
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+					if( norm < fabs(jacobian[k].GetValue(q)) )
+						norm = fabs(jacobian[k].GetValue(q));
+			}
+			else //p-norm
+			{
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
+					norm += pow(fabs(jacobian[k].GetValue(q)),p);
+				norm = pow(norm,1.0/p);
+			}
 			if( norm )
 			{
 				norm = 1.0/norm;
 				residual[k] *= norm;
 				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
 					jacobian[k].GetValue(q) *= norm;
+				if( !hessian.Empty() )
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < hessian[k].Size(); ++q)
+						hessian[k].GetValue(q) *= norm;
 			}
 		}
 	}
 	Residual::Residual(std::string name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm)
-	: jacobian(name,start,end,_comm),residual(name,start,end,_comm) 
+	: jacobian(name,start,end,_comm),residual(name,start,end,_comm), hessian(name,0,0,_comm)
 	{
 	}
 	Residual::Residual(const Residual & other) 
-	: jacobian(other.jacobian), residual(other.residual) 
+	: jacobian(other.jacobian), residual(other.residual), hessian(other.hessian)
 	{
 	}
 #endif //USE_SOLVER

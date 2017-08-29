@@ -22,6 +22,7 @@ namespace INMOST
 	///  1. Extend for hessian calculation.
 	class Residual
 	{
+		Sparse::HessianMatrix hessian; ///< Hessian matrix
 		Sparse::Matrix jacobian; ///< Jacobian matrix.
 		Sparse::Vector residual; ///< Right hand side vector.
 		Sparse::LockService locks; ///< Array of locks for openmp shared access.
@@ -38,14 +39,6 @@ namespace INMOST
 		/// Assignment operator.
 		/// \warning May be expensive if matrices are large.
 		Residual & operator =(Residual const & other);
-		/// Retrive jacobian matrix. Use in Sparse::Solver::Solve function.
-		Sparse::Matrix & GetJacobian() {return jacobian;}
-		/// Retrive jacobian matrix without right of modificaiton.
-		const Sparse::Matrix & GetJacobian() const {return jacobian;}
-		/// Retrive right hand side vector. Use in Sparse::Solver::Solve function.
-		Sparse::Vector & GetResidual() {return residual;}
-		/// Retrive right hand side vector without right of modification.
-		const Sparse::Vector & GetResidual() const {return residual;}
 		/// Retrive the first index of the equations in the local partition.
 		INMOST_DATA_ENUM_TYPE GetFirstIndex() const {return residual.GetFirstIndex();}
 		/// Retrive the last index of the equations in the local partition.
@@ -61,17 +54,33 @@ namespace INMOST
 		/// Retrive a residual value and a jacobian row corresponding to certain equation.
 		/// @param row Equation number.
 		/// @return A structure that can be used in or assigned an automatic differentiation expression.
-		__INLINE multivar_expression_reference operator [](INMOST_DATA_ENUM_TYPE row) {return multivar_expression_reference(residual[row],&jacobian[row]);}
+		__INLINE multivar_expression_reference operator [](INMOST_DATA_ENUM_TYPE row)
+		{return multivar_expression_reference(residual[row],&jacobian[row]);}
+		/// Retrive hessian matrix. Use in nonlinear solver.
+		Sparse::HessianMatrix & GetHessian() {return hessian;}
+		/// Retrive hessian matrix without right of modificaiton.
+		const Sparse::HessianMatrix & GetHessian() const {return hessian;}
+		/// Retrive jacobian matrix. Use in Sparse::Solver::Solve function.
+		Sparse::Matrix & GetJacobian() {return jacobian;}
+		/// Retrive jacobian matrix without right of modificaiton.
+		const Sparse::Matrix & GetJacobian() const {return jacobian;}
+		/// Retrive right hand side vector. Use in Sparse::Solver::Solve function.
+		Sparse::Vector & GetResidual() {return residual;}
+		/// Retrive right hand side vector without right of modification.
+		const Sparse::Vector & GetResidual() const {return residual;}
 		/// Zero out right hand side vector.
 		void ClearResidual();
 		/// Remove all entries in jacobian matrix.
 		void ClearJacobian();
+		/// Remove all entries in hessian matrix.
+		void ClearHessian();
 		/// Zero out right hand side vector and remove all entries in jacobian matrix.
 		void Clear();
 		/// Compute the second norm of the right hand side vector over all of the processors.
 		INMOST_DATA_REAL_TYPE Norm();
-		/// Normalize jacobian rows to unit second norms and scale right hand side accordingly.
-		void Rescale();
+		/// Normalize jacobian rows to unit p-norms and scale right hand side accordingly.
+		/// Use ENUMUNDEF as p to scale to infinite-norm.
+		void Rescale(INMOST_DATA_ENUM_TYPE p = 2);
 		/// Initialize openmp locks.
 		void InitLocks() {locks.SetInterval(GetFirstIndex(),GetLastIndex());}
 		/// Lock an equation to avoid simultaneous shared access.
