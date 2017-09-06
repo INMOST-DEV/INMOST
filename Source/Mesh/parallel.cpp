@@ -663,7 +663,7 @@ namespace INMOST
 		comm = _comm;
 		{
 			INMOST_DATA_BIG_ENUM_TYPE t = pmid;
-			REPORT_MPI(MPI_Allreduce(&t,&parallel_mesh_unique_id,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_MAX,MPI_COMM_WORLD));
+			REPORT_MPI(MPI_Allreduce(&t,&parallel_mesh_unique_id,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_MAX,comm));
 			pmid = parallel_mesh_unique_id+1;
 		}
 		m_state = Mesh::Parallel;
