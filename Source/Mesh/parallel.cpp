@@ -3706,15 +3706,14 @@ namespace INMOST
 		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber(), rand_num = randomizer.Number()+1;
 		int mpi_tag;
 		int max_tag = 32767;
-		int flag;
+		int flag = 0;
 		int * p_max_tag;
 #if defined(USE_MPI2)
 		MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
 #else //USE_MPI2
 		MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
 #endif //USE_MPI2
-		max_tag = *p_max_tag;
-		assert( flag );
+		if( flag ) max_tag = *p_max_tag;
 		recv_reqs.resize(recv_bufs.size());
 		send_reqs.resize(send_bufs.size());
 		REPORT_VAL("strategy",parallel_strategy);
@@ -3825,14 +3824,14 @@ namespace INMOST
 				int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber(), rand_num = randomizer.Number()+1;
 				int mpi_tag;
 				int max_tag = 32767;
-				int flag;
+				int flag = 0;
 				int * p_max_tag;
 #if defined(USE_MPI2)
 				MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
 #else //USE_MPI2
 				MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
 #endif //USE_MPI2
-				max_tag = *p_max_tag;
+				if( flag ) max_tag = *p_max_tag;
 				std::vector<int> send_recv_size(send_bufs.size()+recv_bufs.size());
 				std::vector<INMOST_MPI_Request> reqs(send_bufs.size()+recv_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++) send_recv_size[i+recv_bufs.size()] = static_cast<int>(send_bufs[i].second.size());

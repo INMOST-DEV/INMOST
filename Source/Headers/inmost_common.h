@@ -81,6 +81,7 @@
 #include <omp.h>
 #endif
 #if defined(USE_MPI)
+#define NOMINMAX
 #include <mpi.h>
 #if !defined(MSMPI_VER) && !defined(MPIO_INCLUDE) && defined(USE_MPI_FILE) && !defined(OMPI_PROVIDE_MPI_FILE_INTERFACE)
 #include <mpio.h> //some versions of MPI doesn't include that
@@ -112,6 +113,7 @@
 #define INMOST_MPI_Comm        int
 #define INMOST_MPI_Group       int
 #define INMOST_MPI_COMM_WORLD  0
+#define INMOST_MPI_COMM_SELF  0
 #define INMOST_MPI_BYTE        0
 #define INMOST_MPI_INT         0
 #define INMOST_MPI_DOUBLE      0
@@ -125,6 +127,7 @@
 #define INMOST_MPI_Comm        MPI_Comm
 #define INMOST_MPI_Group       MPI_Group
 #define INMOST_MPI_COMM_WORLD  MPI_COMM_WORLD
+#define INMOST_MPI_COMM_SELF   MPI_COMM_SELF
 #define INMOST_MPI_BYTE        MPI_BYTE
 #define INMOST_MPI_INT         MPI_INT
 #define INMOST_MPI_DOUBLE      MPI_DOUBLE

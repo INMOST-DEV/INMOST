@@ -39,8 +39,19 @@ option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
+if( MSVC )
+option(USE_MT "Use /MT switch instead of /MD switch for libraries generated with Visual Studio" OFF)
+endif( MSVC )
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_find/")
 
+
+if( USE_MT )
+set(CompilerFlags CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE)
+foreach(CompilerFlag ${CompilerFlags}) 
+	string(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
+endforeach()
+endif( USE_MT )
 
 if(TEST_FORTRAN_ANI3D)
 	include(CheckLanguage)
