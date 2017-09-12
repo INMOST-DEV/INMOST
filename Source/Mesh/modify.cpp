@@ -1387,7 +1387,8 @@ namespace INMOST
 			else break;
 		} while( true );
 		
-		/* //debug
+		//debug
+		/*
 		if(!mat.all_visited())
 		{
 			mat.print_matrix();
@@ -1395,8 +1396,7 @@ namespace INMOST
 			do
 			{
 				mat.find_shortest_loop(loop);
-				if (!loop.empty()) ret.push_back(m->CreateCell(loop).first);
-				else break;
+				if( loop.empty() ) break;
 			} while( true );
 		}
 		 */

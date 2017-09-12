@@ -55,11 +55,14 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #endif
 	
-	template<typename Var, typename Storage = array<Var> >
+	template<typename Var>
 	class SubMatrix;
 	
 	template<typename Var, typename Storage = array<Var> >
 	class Matrix;
+	
+	template<typename Var, typename Storage = array<Var> >
+	class SymmetricMatrix;
 	
 	/// Abstract class for a matrix,
 	/// used to abstract away all the data storage and access
@@ -560,7 +563,9 @@ namespace INMOST
 		/// @see Matrix::PseudoInvert.
 		/// \todo (test) Activate and test implementation with Solve.
 		std::pair<Matrix<Var>,bool> Invert(bool print_fail = false) const;
-		/// Finds X in A*X=B, where A and B are matrices.
+		/// Inverts symmetric positive-definite matrix using Cholesky decomposition.
+		std::pair<Matrix<Var>,bool> CholeskyInvert(bool print_fail = false) const;
+		/// Finds X in A*X=B, where A and B are general matrices.
 		/// Converts system into A^T*A*X=A^T*B.
 		/// Inverts matrix A^T*A using Crout-LU decomposition with full pivoting for
 		/// maximum element. Works well for non-singular matrices, for singular
@@ -577,6 +582,11 @@ namespace INMOST
 		template<typename typeB>
 		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
 		Solve(const AbstractMatrix<typeB> & B, bool print_fail = false) const;
+		/// Finds X in A*X=B, where A is a square symmetric positive definite matrix.
+		/// Uses Cholesky decomposition algorithm.
+		template<typename typeB>
+		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		CholeskySolve(const AbstractMatrix<typeB> & B, bool print_fail = false) const;
 		/// Calculate sum of the diagonal elements of the matrix.
 		/// @return Trace of the matrix.
 		Var Trace() const
@@ -687,6 +697,340 @@ namespace INMOST
 		/// Replaces original number of columns and rows with a new one.
 		/// @return Matrix with same entries and provided number of rows and columns.
 		Matrix<Var> Repack(enumerator rows, enumerator cols) const;
+	};
+	
+	
+	template<typename Var, typename storage_type>
+	class SymmetricMatrix : public AbstractMatrix<Var>
+	{
+	public:
+		typedef unsigned enumerator; //< Integer type for indexes.
+	protected:
+		storage_type space; //< Array of row-wise stored elements.
+		enumerator n; //< Number of rows.
+	public:
+		///Exchange contents of two matrices.
+		void Swap(AbstractMatrix<Var> & b)
+		{
+#if defined(_CPPRTTI) || defined(__GXX_RTTI)
+			SymmetricMatrix<Var,storage_type> * bb = dynamic_cast<SymmetricMatrix<Var,storage_type> *>(&b);
+			if( bb != NULL )
+			{
+				space.swap((*bb).space);
+				std::swap(n,(*bb).n);
+			}
+			else AbstractMatrix<Var>::Swap(b);
+#else //_CPPRTTI
+			AbstractMatrix<Var>::Swap(b);
+#endif //_CPPRTTI
+		}
+		/// Construct empty matrix.
+		SymmetricMatrix() : space(), n(0) {}
+		/// Construct the matrix from provided array and sizes.
+		/// @param pspace Array of elements of the matrix, stored in row-wise format.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		SymmetricMatrix(const Var * pspace, enumerator pn) : space(pspace,pspace+pn*(pn+1)/2), n(pn) {}
+		/// Construct the matrix with the provided storage with known size.
+		/// Could be used to wrap existing array.
+		/// \warning The size of the provided container is assumed to be pn*pm.
+		/// @param pspace Storage of elements of the matrix, stored in row-wise format.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		/// \todo Do we need reference for pspace or just pspace?
+		SymmetricMatrix(const storage_type & pspace, enumerator pn) : space(pspace), n(pn) {}
+		/// Construct the matrix with the provided storage and unknown size.
+		/// Could be used to wrap existing array.
+		/// \warning Have to call Resize afterwards.
+		/// @param pspace Storage of elements of the matrix, stored in row-wise format.
+		/// \todo Do we need reference for pspace or just pspace?
+		SymmetricMatrix(const storage_type & pspace) : space(pspace), n(0) {}
+		/// Construct a matrix with provided sizes.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		/// \warning The matrix does not necessery have zero entries.
+		SymmetricMatrix(enumerator pn) : space(pn*(pn+1)/2), n(pn) {}
+		/// Construct a matrix with provided sizes and fills with value.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		/// @param c Value to fill the matrix.
+		SymmetricMatrix(enumerator pn, const Var & c) : space(pn*(pn+1)/2,c), n(pn) {}
+		/// Copy matrix.
+		/// @param other Another matrix of the same type.
+		SymmetricMatrix(const SymmetricMatrix & other) : space(other.space), n(other.n)
+		{
+			//for(enumerator i = 0; i < n*m; ++i)
+			//	space[i] = other.space[i];
+		}
+		/// Construct matrix from matrix of different type.
+		/// Function assumes that the other matrix is square and symmetric.
+		/// Copies only top-right triangular part.
+		/// Uses assign function declared in inmost_expression.h.
+		/// Copies derivative information if possible.
+		/// @param other Another matrix of different type.
+		template<typename typeB>
+		SymmetricMatrix(const AbstractMatrix<typeB> & other) : space(other.Rows()*(other.Rows()+1)/2), n(other.Rows())
+		{
+			assert(other.Rows() == other.Cols());
+			for(enumerator i = 0; i < n; ++i)
+				for(enumerator j = i; j < n; ++j)
+					assign((*this)(i,j),other(i,j));
+		}
+		/// Delete matrix.
+		~SymmetricMatrix() {}
+		/// Resize the matrix into different size.
+		/// Number of rows must match number of columns for symmetric matrix.
+		/// @param nrows New number of rows.
+		/// @param ncols New number of columns.
+		void Resize(enumerator nrows, enumerator ncols)
+		{
+			assert(nrows == ncols);
+			if( space.size() != (nrows+1)*nrows/2 )
+				space.resize((nrows+1)*nrows/2);
+			n = nrows;
+		}
+		/// Assign matrix of the same type.
+		/// @param other Another matrix of the same type.
+		/// @return Reference to matrix.
+		SymmetricMatrix & operator =(SymmetricMatrix const & other)
+		{
+			if( this != &other )
+			{
+				if( n != other.n )
+					space.resize(other.n*(other.n+1)/2);
+				for(enumerator i = 0; i < other.n*(other.n+1)/2; ++i)
+					space[i] = other.space[i];
+				n = other.n;
+			}
+			return *this;
+		}
+		/// Assign matrix of another type.
+		/// Function assumes that the other matrix is square and symmetric.
+		/// Copies only top-right triangular part.
+		/// @param other Another matrix of different type.
+		/// @return Reference to matrix.
+		template<typename typeB>
+		SymmetricMatrix & operator =(AbstractMatrix<typeB> const & other)
+		{
+			assert(other.Rows() == other.Cols());
+			if( Rows() != other.Rows() )
+				space.resize((other.Rows()+1)*other.Rows()+1);
+			for(enumerator i = 0; i < other.Rows(); ++i)
+				for(enumerator j = i; j < other.Cols(); ++j)
+					assign((*this)(i,j),other(i,j));
+			n = other.Rows();
+			return *this;
+		}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to element.
+		Var & operator()(enumerator i, enumerator j)
+		{
+			assert(i >= 0 && i < n);
+			assert(j >= 0 && j < n);
+			if( i > j ) std::swap(i,j);
+			return space[j+n*i-i*(i+1)/2];
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		const Var & operator()(enumerator i, enumerator j) const
+		{
+			assert(i >= 0 && i < n);
+			assert(j >= 0 && j < n);
+			if( i > j ) std::swap(i,j);
+			return space[j+n*i-i*(i+1)/2];
+		}
+		
+		/// Return raw pointer to matrix data, stored in row-wise format.
+		/// @return Pointer to data.
+		Var * data() {return space.data();}
+		/// Return raw pointer to matrix data without right of change,
+		/// stored in row-wise format.
+		/// @return Pointer to constant data.
+		const Var * data() const {return space.data();}
+		/// Obtain number of rows.
+		/// @return Number of rows.
+		enumerator Rows() const {return n;}
+		/// Obtain number of columns.
+		/// @return Number of columns.
+		enumerator Cols() const {return n;}
+		/// Obtain number of rows.
+		/// @return Reference to number of rows.
+		enumerator & Rows() {return n;}
+		/// Obtain number of rows.
+		/// @return Reference to number of columns.
+		enumerator & Cols() {return n;}
+		/// Convert values in array into square matrix.
+		/// Supports the following representation, depending on the size
+		/// of input array and size of side of final tensors' matrix:
+		///
+		/// representation | (array size, tensor size)
+		///
+		/// scalar         | (1,1), (1,2), (1,3), (1,6)
+		///
+		/// diagonal       | (2,2), (3,3), (6,6)
+		///
+		/// symmetric      | (3,2), (6,3), (21,6)
+		///
+		/// For symmetric matrix elements in array are enumerated row by
+		/// row starting from diagonal.
+		/// @param K Array of elements to be converted into tensor.
+		/// @param size Size of the input array.
+		/// @param matsize Size of the final tensor.
+		/// @return Matrix of the tensor of size matsize by matsize.
+		static SymmetricMatrix<Var> FromTensor(const Var * K, enumerator size, enumerator matsize = 3)
+		{
+			Matrix<Var> Kc(matsize,matsize);
+			if( matsize == 1 )
+			{
+				assert(size == 1);
+				Kc(0,0) = K[0];
+			}
+			if( matsize == 2 )
+			{
+				assert(size == 1 || size == 2 || size == 3 || size == 4);
+				switch(size)
+				{
+					case 1: //scalar
+						Kc(0,0) = Kc(1,1) = K[0];
+						break;
+					case 2: //diagonal
+						Kc(0,0) = K[0]; // KXX
+						Kc(1,1) = K[1]; // KYY
+						break;
+					case 3: //symmetric
+						Kc(0,0) = K[0]; // KXX
+						Kc(0,1) = K[1]; //KXY
+						Kc(1,1) = K[2]; //KYY
+						break;
+				}
+			}
+			else if( matsize == 3 )
+			{
+				assert(size == 1 || size == 3 || size == 6 || size == 9);
+				switch(size)
+				{
+					case 1: //scalar permeability tensor
+						Kc(0,0) = Kc(1,1) = Kc(2,2) = K[0];
+						break;
+					case 3: //diagonal permeability tensor
+						Kc(0,0) = K[0]; //KXX
+						Kc(1,1) = K[1]; //KYY
+						Kc(2,2) = K[2]; //KZZ
+						break;
+					case 6: //symmetric permeability tensor
+						Kc(0,0) = K[0]; //KXX
+						Kc(0,1) = K[1]; //KXY
+						Kc(0,2) = K[2]; //KXZ
+						Kc(1,1) = K[3]; //KYY
+						Kc(1,2) = K[4]; //KYZ
+						Kc(2,2) = K[5]; //KZZ
+						break;
+				}
+			}
+			else if( matsize == 6 )
+			{
+				assert(size == 1 || size == 6 || size == 21 || size == 36);
+				switch(size)
+				{
+					case 1: //scalar elasticity tensor
+						Kc(0,0) = Kc(1,1) = Kc(2,2) = Kc(3,3) = Kc(4,4) = Kc(5,5) = K[0];
+						break;
+					case 6: //diagonal elasticity tensor
+						Kc(0,0) = K[0]; //KXX
+						Kc(1,1) = K[1]; //KYY
+						Kc(2,2) = K[2]; //KZZ
+						break;
+					case 21: //symmetric elasticity tensor (note - diagonal first, then off-diagonal rows)
+					{
+						Kc(0,0) = K[0]; //c11
+						Kc(0,1) = K[1]; //c12
+						Kc(0,2) = K[2]; //c13
+						Kc(0,3) = K[3]; //c14
+						Kc(0,4) = K[4]; //c15
+						Kc(0,5) = K[5]; //c16
+						Kc(1,1) = K[6]; //c22
+						Kc(1,2) = K[7]; //c23
+						Kc(1,3) = K[8]; //c24
+						Kc(1,4) = K[9]; //c25
+						Kc(1,5) = K[10]; //c26
+						Kc(2,2) = K[11]; //c33
+						Kc(2,3) = K[12]; //c34
+						Kc(2,4) = K[13]; //c35
+						Kc(2,5) = K[14]; //c36
+						Kc(3,3) = K[15]; //c44
+						Kc(3,4) = K[16]; //c45
+						Kc(3,5) = K[17]; //c46
+						Kc(4,4) = K[18]; //c55
+						Kc(4,5) = K[19]; //c56
+						Kc(5,5) = K[20]; //c66
+						break;
+					}
+				}
+			}
+			return Kc;
+		}
+		/// Create diagonal matrix from array
+		/// @param r Array of diagonal elements.
+		/// @param size Size of the matrix.
+		/// @return Matrix with diagonal defined by array, other elements are zero.
+		static SymmetricMatrix FromDiagonal(const Var * r, enumerator size)
+		{
+			SymmetricMatrix ret(size);
+			ret.Zero();
+			for(enumerator k = 0; k < size; ++k) ret(k,k) = r[k];
+			return ret;
+		}
+		/// Create diagonal matrix from array of values that have to be inversed.
+		/// @param r Array of diagonal elements.
+		/// @param size Size of the matrix.
+		/// @return Matrix with diagonal defined by inverse of array elements.
+		static SymmetricMatrix FromDiagonalInverse(const Var * r, enumerator size)
+		{
+			SymmetricMatrix ret(size);
+			ret.Zero();
+			for(enumerator k = 0; k < size; ++k) ret(k,k) = 1.0/r[k];
+			return ret;
+		}
+		/// Unit matrix. Creates a square matrix of size pn by pn
+		/// and fills the diagonal with c.
+		/// @param pn Number of rows and columns in the matrix.
+		/// @param c Value to put onto diagonal.
+		/// @return Returns a unit matrix.
+		static SymmetricMatrix Unit(enumerator pn, const Var & c = 1.0)
+		{
+			SymmetricMatrix ret(pn,0.0);
+			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
+			return ret;
+		}
+		
+		/// Extract submatrix of a matrix for in-place manipulation of elements.
+		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
+		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
+		/// and j in [jbeg,jend).
+		/// @param first_row Starting row in the original matrix.
+		/// @param last_row Last row (excluded) in the original matrix.
+		/// @param first_col Starting column in the original matrix.
+		/// @param last_col Last column (excluded) in the original matrix.
+		/// @return Submatrix of the original matrix.
+		//::INMOST::SubMatrix<Var,storage_type> SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		
+		/// Extract submatrix of a matrix for in-place manipulation of elements.
+		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
+		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
+		/// and j in [jbeg,jend).
+		/// @param first_row Starting row in the original matrix.
+		/// @param last_row Last row (excluded) in the original matrix.
+		/// @param first_col Starting column in the original matrix.
+		/// @param last_col Last column (excluded) in the original matrix.
+		/// @return Submatrix of the original matrix.
+		::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		
+		const ::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	
 	/// Class for linear algebra operations on dense matrices.
@@ -900,12 +1244,15 @@ namespace INMOST
 		/// @return Reference to matrix.
 		Matrix & operator =(Matrix const & other)
 		{
-			if( n*m != other.n*other.m )
-				space.resize(other.n*other.m);
-			for(enumerator i = 0; i < other.n*other.m; ++i)
-				space[i] = other.space[i];
-			n = other.n;
-			m = other.m;
+			if( this != &other )
+			{
+				if( n*m != other.n*other.m )
+					space.resize(other.n*other.m);
+				for(enumerator i = 0; i < other.n*other.m; ++i)
+					space[i] = other.space[i];
+				n = other.n;
+				m = other.m;
+			}
 			return *this;
 		}
 		/// Assign matrix of another type.
@@ -974,7 +1321,7 @@ namespace INMOST
 		///
 		/// scalar         | (1,1), (1,2), (1,3), (1,6)
 		///
-		/// diagonal       | (2,2), (2,2), (3,3), (6,6)
+		/// diagonal       | (2,2), (3,3), (6,6)
 		///
 		/// symmetric      | (3,2), (6,3), (21,6)
 		///
@@ -1324,18 +1671,18 @@ namespace INMOST
 		/// @param first_col Starting column in the original matrix.
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		::INMOST::SubMatrix<Var,storage_type> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
 
-		const ::INMOST::SubMatrix<Var, storage_type> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
+		const ::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	/// This class allows for in-place operations on submatrix of the matrix elements.
-	template<typename Var, typename Storage>
+	template<typename Var>
 	class SubMatrix : public AbstractMatrix<Var>
 	{
 	public:
 		typedef unsigned enumerator; //< Integer type for indexes.
 	private:
-		Matrix<Var,Storage> * M;
+		AbstractMatrix<Var> * M;
 		enumerator brow; //< First row in matrix M.
 		enumerator erow; //< Last row in matrix M.
 		enumerator bcol; //< First column in matrix M.
@@ -1353,7 +1700,7 @@ namespace INMOST
 		/// @param last_row Last row in the matrix.
 		/// @param first_column First column in the matrix.
 		/// @param last_column Last column in the matrix.
-		SubMatrix(Matrix<Var,Storage> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
+		SubMatrix(AbstractMatrix<Var> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
 		{}
 		SubMatrix(const SubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
 		/// Assign matrix of another type to submatrix.
@@ -1372,8 +1719,8 @@ namespace INMOST
 		/// Assign submatrix of another type to submatrix.
 		/// @param other Another submatrix of different type.
 		/// @return Reference to current submatrix.
-		template<typename typeB,typename storageB>
-		SubMatrix & operator =(SubMatrix<typeB,storageB> const & other)
+		template<typename typeB>
+		SubMatrix & operator =(SubMatrix<typeB> const & other)
 		{
 			assert( Cols() == other.Cols() );
 			assert( Rows() == other.Rows() );
@@ -1656,6 +2003,114 @@ namespace INMOST
 	}
 	
 	template<typename Var>
+	std::pair<Matrix<Var>,bool>
+	AbstractMatrix<Var>::CholeskyInvert(bool print_fail) const
+	{
+		return CholeskySolve(Matrix<Var>::Unit(Rows()),print_fail);
+	}
+	
+	
+	template<typename Var>
+	template<typename typeB>
+	std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+	AbstractMatrix<Var>::CholeskySolve(const AbstractMatrix<typeB> & B, bool print_fail) const
+	{
+		
+		
+		const AbstractMatrix<Var> & A = *this;
+		assert(A.Rows() == A.Cols());
+		assert(A.Rows() == B.Rows());
+		enumerator n = A.Rows();
+		enumerator l = B.Cols();
+		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(B),true);
+		SymmetricMatrix<Var> L = A;
+		
+		//SAXPY
+		/*
+		for(enumerator i = 0; i < n; ++i)
+		{
+			for(enumerator k = 0; k < i; ++k)
+				for(enumerator j = i; j < n; ++j)
+					L(i,j) -= L(i,k)*L(j,k);
+			if( L(i,i) < 0.0 )
+			{
+				ret.second = false;
+				if( print_fail ) std::cout << "Negative diagonal pivot " << get_value(L(i,i)) << std::endl;
+				return ret;
+			}
+			
+			L(i,i) = sqrt(L(i,i));
+			
+			if( fabs(L(i,i)) < 1.0e-24 )
+			{
+				ret.second = false;
+				if( print_fail ) std::cout << "Diagonal pivot is too small " << get_value(L(i,i)) << std::endl;
+				return ret;
+			}
+			
+			for(enumerator j = i+1; j < n; ++j)
+				L(i,j) = L(i,j)/L(i,i);
+		}
+		*/
+		//Outer product
+		for(enumerator k = 0; k < n; ++k)
+		{
+			if( L(k,k) < 0.0 )
+			{
+				ret.second = false;
+				if( print_fail ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << std::endl;
+				return ret;
+			}
+			
+			L(k,k) = sqrt(L(k,k));
+			
+			if( fabs(L(k,k)) < 1.0e-24 )
+			{
+				ret.second = false;
+				if( print_fail ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << std::endl;
+				return ret;
+			}
+			
+			for(enumerator i = k+1; i < n; ++i)
+				L(i,k) = L(i,k)/L(k,k);
+			
+			for(enumerator j = k+1; j < n; ++j)
+			{
+				for(enumerator i = j; i < n; ++i)
+					L(i,j) -= L(i,k)*L(j,k);
+			}
+		}
+		// LY=B
+		Matrix<typename Promote<Var,typeB>::type> & Y = ret.first;
+		for(enumerator i = 0; i < n; ++i)
+		{
+			for(enumerator k = 0; k < l; ++k)
+			{
+				for(enumerator j = 0; j < i; ++j)
+					Y(i,k) -= Y(j,k)*L(j,i);
+				Y(i,k) /= L(i,i);
+			}
+		}
+		// L^TX = Y
+		Matrix<typename Promote<Var,typeB>::type> & X = ret.first;
+		for(enumerator it = n; it > 0; --it)
+		{
+			enumerator i = it-1;
+			for(enumerator k = 0; k < l; ++k)
+			{
+				for(enumerator jt = n; jt > it; --jt)
+				{
+					enumerator j = jt-1;
+					X(i,k) -= X(j,k)*L(i,j);
+				}
+				X(i,k) /= L(i,i);
+			}
+		}
+		return ret;
+	}
+	
+	template<typename Var>
 	template<typename typeB>
 	std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
 	AbstractMatrix<Var>::Solve(const AbstractMatrix<typeB> & B, bool print_fail) const
@@ -1877,14 +2332,25 @@ namespace INMOST
 	//}
 	
 	template<typename Var,typename storage_type>
-	SubMatrix<Var,storage_type> Matrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
+	SubMatrix<Var> SymmetricMatrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{
-		return ::INMOST::SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
+		return ::INMOST::SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
 	}
 	template<typename Var, typename storage_type>
-	const SubMatrix<Var, storage_type> Matrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+	const SubMatrix<Var> SymmetricMatrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
 	{
-		return ::INMOST::SubMatrix<Var, storage_type>(*this, first_row, last_row, first_col, last_col);
+		return ::INMOST::SubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
+	}
+	
+	template<typename Var,typename storage_type>
+	SubMatrix<Var> Matrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
+	{
+		return ::INMOST::SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
+	}
+	template<typename Var, typename storage_type>
+	const SubMatrix<Var> Matrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+	{
+		return ::INMOST::SubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
 	/// shortcut for matrix of integer values.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;

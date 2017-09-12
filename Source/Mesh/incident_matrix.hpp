@@ -4,7 +4,7 @@
 
 //#define NEW_ALGORITHM
 //#define RECORD_PATH
-//#define DEEP_RECURSE
+#define DEEP_RECURSE
 //TODO:
 // incident_matrix class should measure for minimal volume,
 // possibly check and update from projects/OctreeCutcell/octgrid.cpp
@@ -144,6 +144,15 @@ namespace INMOST
 						if( head_row_count[i] > 0 ) hide_row[i] = 0;
 						if( head_row_count[i] > 2 ) success = false;
 					}
+				if( print )
+				{
+					std::cout << (success? "ok":"fail") << std::endl;
+					std::cout << "row count:";
+					for(unsigned i = 0; i < head_row_count.size(); i++)
+						std::cout << " " << (int)head_row_count[i];
+					std::cout << std::endl;
+					//std::cout << " success? " << (success?"yes":"no") << std::endl;
+				}
 				insert_order.push_back(k);
 				if( !success ) do_hide_row(k);
 				return success;
@@ -367,8 +376,17 @@ namespace INMOST
 			if( !min_loop.empty() && length > min_loop.size() ) return;
 #endif
 			bool success = false;
+			
+			if( print )
+			{
+				std::cout << "current loop:";
+				for(unsigned j = 0; j < insert_order.size(); j++)
+					std::cout << " " << ElementTypeName(GetHandleElementType(head_column[insert_order[j]])) << ":" << GetHandleID(head_column[insert_order[j]]);
+				std::cout << " try add " << ElementTypeName(GetHandleElementType(head_column[node])) << ":" << GetHandleID(head_column[node]) << " (" <<(int)hide_column[node] << ") ";
+			}
 			if( do_show_row(node) )
 			{
+				//if( print ) std::cout << "ok" << std::endl;
 				success = test_success();
 				
 				if( success )
@@ -386,7 +404,7 @@ namespace INMOST
 						{
 							std::cout << "found loop [" << temp_loop.size() <<"]: ";
 							for(unsigned j = 0; j < temp_loop.size(); ++j)
-								std::cout << insert_order[j] << " ";
+								std::cout << ElementTypeName(GetHandleElementType(head_column[insert_order[j]])) << ":" << GetHandleID(head_column[insert_order[j]]) << " ";
 							std::cout << "measure " << measure << std::endl;
 						}
 						
@@ -454,6 +472,7 @@ namespace INMOST
 				}
 				do_hide_row(node);
 			}
+			//else if( print ) std::cout << "fail" << std::endl;
 			if( length == 1 )
 			{
 				for(dynarray<HandleType,256>::size_type j = 0; j < head_row.size(); j++)
@@ -477,6 +496,8 @@ namespace INMOST
 				std::cout << " " << (int)visits[k] << " " << (int)visits0[k];
 				Element(mesh,head_column[k])->Centroid(cnt);
 				std::cout << " " << cnt[0] << " " << cnt[1] << " " << cnt[2];
+				std::cout << " " << ElementTypeName(GetHandleElementType(head_column[k]));
+				std::cout << ":" << GetHandleID(head_column[k]);
 				std::cout << std::endl;
 			}
 #if defined(RECORD_PATH)
@@ -485,8 +506,8 @@ namespace INMOST
 			{
 				std::cout << k << " size " << remember[k].first.size() << ": ";
 				for(size_t l = 0; l < remember[k].first.size()-1; ++l)
-					std::cout << remember[k].first[l] << ", ";
-				std::cout << remember[k].first.back() << " measure " << remember[k].second << std::endl;
+					std::cout << ElementTypeName(GetHandleElementType(head_column[remember[k].first[l]])) << ":" << GetHandleID(head_column[remember[k].first[l]]) << ", ";
+				std::cout << ElementTypeName(GetHandleElementType(head_column[remember[k].first.back()])) << ":" << GetHandleID(head_column[remember[k].first.back()]) << " measure " << remember[k].second << std::endl;
 			}
 #endif
 			
@@ -644,7 +665,7 @@ namespace INMOST
 #if defined(RECORD_PATH)
 						add_remember.push_back((int)k);
 #endif
-						if( print ) std::cout << k << " ";
+						if( print ) std::cout << ElementTypeName(GetHandleElementType(head_column[k])) << ":" << GetHandleID(head_column[k]) << " ";
 					}
 				if( print ) std::cout << std::endl;
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->RemPrivateMarker(ret.at(k),hide_marker);
@@ -959,7 +980,7 @@ namespace INMOST
 						{
 							std::cout << "found loop [" << temp_loop.size() <<"]: ";
 							for(unsigned j = 0; j < temp_loop.size(); ++j)
-								std::cout << insert_order[j] << " ";
+								std::cout << ElementTypeName(GetHandleElementType(head_column[insert_order[j]])) << ":" << GetHandleID(head_column[insert_order[j]]) << " ";
 							std::cout << "measure " << measure << std::endl;
 						}
 						
