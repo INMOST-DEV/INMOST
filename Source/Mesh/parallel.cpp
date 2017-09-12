@@ -651,7 +651,7 @@ namespace INMOST
 		tag_sendto = CreateTag("PROTECTED_SENDTO",DATA_INTEGER, CELL | FACE | EDGE | NODE, CELL | FACE | EDGE | NODE);
 
 #if defined(USE_MPI)
-		
+		randomizer = Random();
 		
 		parallel_strategy = 1;
 		parallel_file_strategy = 1;
