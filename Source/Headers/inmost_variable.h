@@ -253,44 +253,32 @@ namespace INMOST
   class dynamic_variable : public shell_dynamic_variable<var_expression,dynamic_variable >
   {
   private:
-    Tag index_tag, value_tag;
-    MarkerType mask;
+    const AbstractEntry * entry;
     INMOST_DATA_ENUM_TYPE comp;
   public:
-	  dynamic_variable() : index_tag(),value_tag(),mask(0),comp(ENUMUNDEF) {}
-    dynamic_variable(Automatizator & paut, INMOST_DATA_ENUM_TYPE pregval, INMOST_DATA_ENUM_TYPE pcomp = 0) : comp(pcomp)
-    {
-      if( pregval != ENUMUNDEF )
-      {
-        mask = paut.GetMask(pregval);
-        value_tag = paut.GetValueTag(pregval);
-        index_tag = paut.GetIndexTag(pregval);
-      }
-    }
-    dynamic_variable(const dynamic_variable & other) : index_tag(other.index_tag), value_tag(other.value_tag), mask(other.mask), comp(other.comp) {}
+    dynamic_variable() :entry(NULL), comp(ENUMUNDEF) {}
+	dynamic_variable(Automatizator & aut, INMOST_DATA_ENUM_TYPE reg_index, INMOST_DATA_ENUM_TYPE comp = 0) : entry(&aut.GetEntry(reg_index)), comp(comp) {}
+    dynamic_variable(const AbstractEntry * re, INMOST_DATA_ENUM_TYPE comp = 0) : entry(re), comp(comp) {}
+    dynamic_variable(const dynamic_variable & other) : entry(other.entry), comp(other.comp) {}
     dynamic_variable & operator =(const dynamic_variable & other) 
     {
-      index_tag = other.index_tag; 
-      value_tag = other.value_tag;
-      mask = other.mask;
+      entry = other.entry; 
       comp = other.comp;
       return * this;
     }
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return e->RealArray(value_tag)[comp];}
-    INMOST_DATA_ENUM_TYPE Index(const Storage & e) const {return (!mask || e->GetMarker(mask))?e->IntegerArray(index_tag)[comp]:ENUMUNDEF;}
+    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return entry->Value(e,comp);}
+    INMOST_DATA_ENUM_TYPE Index(const Storage & e) const {return entry->isValid(e) ? entry->Index(e,comp):ENUMUNDEF;}
     multivar_expression Variable(const Storage & e) const 
     {
-      if( !mask || e->GetMarker(mask) )
-        return multivar_expression(e->RealArray(value_tag)[comp],e->IntegerArray(index_tag)[comp]);
+      if( entry->isValid(e) )
+        return entry->Unknown(e,comp);
       else
-        return multivar_expression(e->RealArray(value_tag)[comp]);
+        return entry->Value(e,comp);
     }
-    var_expression operator [](const Storage & e) const {return var_expression(e->RealArray(value_tag)[comp],(!mask || e->GetMarker(mask))?e->IntegerArray(index_tag)[comp]:ENUMUNDEF);}
-    Tag IndexTag() {return index_tag;}
-    Tag ValueTag() {return value_tag;}
+    var_expression operator [](const Storage & e) const {return var_expression(entry->Value(e,comp),entry->isValid(e)?entry->Index(e,comp):ENUMUNDEF);}
     void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
     void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    bool isUnknown(const Storage & e) const {return (!mask || e->GetMarker(mask))?true:false;}
+    bool isUnknown(const Storage & e) const {return entry->isValid(e)?true:false;}
     abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new dynamic_variable(*this));}
   };
 

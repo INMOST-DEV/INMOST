@@ -2227,7 +2227,7 @@ int main(int argc, char ** argv)
 			  num_orphans[it->GetElementType()]++;
 		  }
 	   
-		  printf("number of orphan elements: %d\n",orphans.size());
+		  printf("number of orphan elements: %lu\n",orphans.size());
 		  for(std::map<ElementType,int>::iterator it = num_orphans.begin(); it != num_orphans.end(); ++it)
 			  printf("%s %d\n",ElementTypeName(it->first),it->second);
 	  int was = orphans.size();
@@ -2239,7 +2239,7 @@ int main(int argc, char ** argv)
 				  orphans.push_back(it->self());
 				  num_topo[it->GetElementType()]++;
 			  }
-		  printf("number of elements with topology error: %d\n",orphans.size()-was);
+		  printf("number of elements with topology error: %lu\n",orphans.size()-was);
 		  for(std::map<ElementType,int>::iterator it = num_topo.begin(); it != num_topo.end(); ++it)
 			  printf("%s %d\n",ElementTypeName(it->first),it->second);
 		  for(int k = was; k < orphans.size(); ++k)

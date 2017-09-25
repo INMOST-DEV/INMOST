@@ -120,7 +120,7 @@ void ps_inmost (Sparse::Matrix & A, const std::string file)
             ps_ij (row,jt->first);
         row++;
     }
-    ps_file (file, NULL, NULL);
+    ps_file (file, 0, NULL);
 }
 #endif
 

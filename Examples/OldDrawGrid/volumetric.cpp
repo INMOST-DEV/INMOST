@@ -318,7 +318,7 @@ namespace INMOST
 			if (q%pace == 0) faces.back().set_flag(true);
 			q++;
 		}
-		printf("number of faces %d\n", faces.size());
+		printf("number of faces %lu\n", faces.size());
 	}
 
 	void volumetric2::camera(double pos[3], int interactive)

@@ -168,7 +168,7 @@ namespace INMOST
 				}
 			}
 
-			printf("done from boundary faces, total streamlines = %d\n", output.size());
+			printf("done from boundary faces, total streamlines = %lu\n", output.size());
 
 			printf("started building streamlines from unvisited cells\n");
 			tot = 0;
@@ -196,13 +196,13 @@ namespace INMOST
 					fflush(stdout);
 				}
 			}
-			printf("done from unvisited cells, total streamlines = %d\n", output.size());
+			printf("done from unvisited cells, total streamlines = %lu\n", output.size());
 
 			mesh->ReleaseMarker(visited,vel_def);
 
 		}
 		mesh->DeleteTag(cell_size);
-		printf("done, total streamlines = %d\n", output.size());
+		printf("done, total streamlines = %lu\n", output.size());
 		printf("killing octree, was sets %d\n", mesh->NumberOfSets());
 		octsearch.Destroy();
 		printf("done, sets %d\n", mesh->NumberOfSets());

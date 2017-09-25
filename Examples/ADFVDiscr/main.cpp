@@ -149,7 +149,7 @@ int main(int argc,char ** argv)
 			Automatizator aut;
 			Automatizator::MakeCurrent(&aut);
 			INMOST_DATA_ENUM_TYPE iphi = aut.RegisterTag(phi,CELL);
-			aut.EnumerateTags();
+			aut.EnumerateEntries();
 
 			// Set the indeces intervals for the matrix and vectors
 			R.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());

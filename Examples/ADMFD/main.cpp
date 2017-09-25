@@ -427,7 +427,7 @@ int main(int argc,char ** argv)
 			Automatizator aut; // declare class to help manage unknowns
 			Automatizator::MakeCurrent(&aut);
 			dynamic_variable P(aut,aut.RegisterTag(tag_P,CELL|(hybrid?FACE:NONE))); //register pressure as primary unknown
-			aut.EnumerateTags(); //enumerate all primary variables
+			aut.EnumerateEntries(); //enumerate all primary variables
 			
 			std::cout << "Enumeration done, size " << aut.GetLastIndex() - aut.GetFirstIndex() << std::endl;
 			

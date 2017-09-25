@@ -16,11 +16,13 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
 #if defined(USE_AUTODIFF)
 	//For INMOST_DATA_INTEGER_TYPE
-	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, multivar_expression_reference>  {typedef variable type;};
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_variable>  {typedef hessian_variable type;};
 	//For INMOST_DATA_REAL_TYPE
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, variable>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
@@ -28,29 +30,33 @@ namespace INMOST
 	//For multivar_expression_reference
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
-	template<> struct Promote<multivar_expression_reference, multivar_expression_reference> {typedef variable type;};
+	template<> struct Promote<multivar_expression_reference, unknown> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, variable> {typedef variable type;};
+	template<> struct Promote<multivar_expression_reference, multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, hessian_multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, hessian_variable> {typedef variable type;};
 	//For variable
 	template<> struct Promote<variable, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<variable, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
-	template<> struct Promote<variable, multivar_expression_reference> {typedef variable type;};
+	template<> struct Promote<variable, unknown> {typedef variable type;};
 	template<> struct Promote<variable, variable> {typedef variable type;};
+	template<> struct Promote<variable, multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<variable, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<variable, hessian_variable>  {typedef hessian_variable type;};
 	//For hessian_multivar_expression_reference
 	template<> struct Promote<hessian_multivar_expression_reference, INMOST_DATA_INTEGER_TYPE>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef hessian_variable type;};
-	template<> struct Promote<hessian_multivar_expression_reference, multivar_expression_reference>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_multivar_expression_reference, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_multivar_expression_reference, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_variable> {typedef hessian_variable type;};
 	//For hessian_variable
 	template<> struct Promote<hessian_variable, INMOST_DATA_INTEGER_TYPE>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, INMOST_DATA_REAL_TYPE>  {typedef hessian_variable type;};
-	template<> struct Promote<hessian_variable, multivar_expression_reference>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #endif
@@ -2357,6 +2363,8 @@ namespace INMOST
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
 #if defined(USE_AUTODIFF)
+/// shortcut for matrix of variables with single unit entry of first order derivative.
+	typedef Matrix<unknown> uMatrix;
 	/// shortcut for matrix of variables with first order derivatives.
 	typedef Matrix<variable> vMatrix;
 	//< shortcut for matrix of variables with first and second order derivatives.
