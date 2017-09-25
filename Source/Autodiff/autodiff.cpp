@@ -232,10 +232,15 @@ namespace INMOST
 						Element jt = m->ElementByLocalID(etype,kt);
 						if ((!(etype & paralleltypes) || (jt.GetStatus() == Element::Ghost)) && b.isValid(jt) && b.Size(jt))
 						{
-							if( offset_tag[jt] < first_num )
-								for(unsigned q = 0; q < b.Size(jt); ++q) Pre.insert(b.Index(jt,q));
-							else if( offset_tag[jt] > last_num )
-								for(unsigned q = 0; q < b.Size(jt); ++q) Post.insert(b.Index(jt,q));
+							for(unsigned q = 0; q < b.MatrixSize(jt); ++q) 
+							{
+								INMOST_DATA_ENUM_TYPE ind =  b.Index(jt,q);
+								if( ind != ENUMUNDEF ) 
+								{
+									if( ind < first_num ) Pre.insert(ind);
+									if( ind >= last_num ) Post.insert(ind);
+								}
+							}
 						}
 					}
 				} //etype

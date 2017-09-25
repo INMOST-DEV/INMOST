@@ -4486,7 +4486,7 @@ namespace INMOST
 			time = Timer();
 			ReduceData(layers_marker,CELL,0,UnpackLayersMarker);
 			ExchangeData(layers_marker,CELL,0);
-			ElementArray<Element> del_ghost;
+			ElementArray<Element> del_ghost(this);
 			for(iteratorElement it = BeginElement(CELL); it != EndElement(); it++)
 			{
 				if( GetStatus(*it) == Element::Ghost )
