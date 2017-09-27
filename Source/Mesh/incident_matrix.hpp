@@ -4,7 +4,7 @@
 
 //#define NEW_ALGORITHM
 //#define RECORD_PATH
-#define DEEP_RECURSE
+//#define DEEP_RECURSE
 //TODO:
 // incident_matrix class should measure for minimal volume,
 // possibly check and update from projects/OctreeCutcell/octgrid.cpp
