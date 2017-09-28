@@ -31,417 +31,417 @@
 
 namespace INMOST
 {
-  
-  template<class Op, class A>
-  class unary_pool
-  {
-    A arg;
-    Op operand;
-  public:
-    unary_pool(const A & parg) : arg(parg), operand(arg) {}
-    unary_pool(const unary_pool & other) : arg(other.arg), operand(arg) {}
-    unary_pool & operator = (unary_pool const & other) {arg = other.arg; operand = Op(arg); return * this;}
-    const shell_expression<A> & get_arg() {return arg;}
-    Op & get_op() {return operand;}
-    const Op & get_op() const {return operand;}
-  };
-
-
-  template<class Op, class A>
-  class unary_const_pool
-  {
-    A left;
-    INMOST_DATA_REAL_TYPE right;
-    Op operand;
-  public:
-    unary_const_pool(const A & pleft, INMOST_DATA_REAL_TYPE pright) : left(pleft), right(pright), operand(left,right) {}
-    unary_const_pool(const unary_const_pool & other) : left(other.left), right(other.right), operand(left,right) {}
-    unary_const_pool & operator = (unary_const_pool const & other) {left = other.left; right = other.right; operand = Op(left,right); return * this;}
-    const shell_expression<A> & get_arg() {return left;}
-    Op & get_op() {return operand;}
-    const Op & get_op() const {return operand;}
-  };
-
-  template<class Op, class A, class B>
-  class binary_pool
-  {
-    
-    A left;
-    B right;
-    Op operand;
-  public:
-    binary_pool(const A & pleft, const B & pright) : left(pleft), right(pright), operand(left,right) {}
-    binary_pool(const binary_pool & other) : left(other.left), right(other.right), operand(left,right) {}
-    binary_pool & operator =(binary_pool const & other) {left = other.left; right = other.right; operand = Op(left,right); return * this;}
-    const shell_expression<A> & get_left() {return left;}
-    const shell_expression<B> & get_right() {return right;}
-    Op & get_op() {return operand;}
-    const Op & get_op() const {return operand;}
-    ~binary_pool() {}
-  };
-
-  template<class Op, class A, class B, class C>
-  class ternary_pool
-  {
-    A cond;
-    B left;
-    C right;
-    Op operand;
-  public:
-    ternary_pool(const A & pcond, const B & pleft, const C & pright) : cond(pcond), left(pleft), right(pright), operand(cond,left,right) {}
-    ternary_pool(const ternary_pool & other) : cond(other.cond), left(other.left), right(other.right), operand(cond,left,right) {}
-    ternary_pool & operator =(ternary_pool const & other) {cond = other.cond; left = other.left; right = other.right; operand = Op(cond,left,right); return * this;}
-    const shell_expression<A> & get_cond() {return cond;}
-    const shell_expression<B> & get_left() {return left;}
-    const shell_expression<C> & get_right() {return right;}
-    Op & get_op() {return operand;}
-    const Op & get_op() const {return operand;}
-    ~ternary_pool() {}
-  };
-
-  template<class A, class ArgA>
-  class unary_pool_expression : public shell_expression<unary_pool_expression<A,ArgA> >
-  {
-    unary_pool<A,ArgA> pool;
-   public:
-    unary_pool_expression(const unary_pool<A,ArgA> & ppool) : pool(ppool) {}
-    unary_pool_expression(const unary_pool_expression & other) : pool(other.pool) {}
-    unary_pool_expression & operator = (unary_pool_expression const & other) {pool = other.pool; return * this;}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
-	__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
-  };
-
-  template<class A, class ArgA>
-  class unary_const_pool_expression : public shell_expression<unary_const_pool_expression<A,ArgA> >
-  {
-    unary_const_pool<A,ArgA> pool;
-   public:
-    unary_const_pool_expression(const unary_const_pool<A,ArgA> & ppool) : pool(ppool) {}
-    unary_const_pool_expression(const unary_const_pool_expression & other) : pool(other.pool) {}
-    unary_const_pool_expression & operator = (unary_const_pool_expression const & other) {pool = other.pool; return * this;}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
-	__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
-  };
-
-  template<class A, class ArgA, class ArgB>
-  class binary_pool_expression : public shell_expression<binary_pool_expression<A,ArgA,ArgB> >
-  {
-    binary_pool<A,ArgA,ArgB> pool;
-   public:
-    binary_pool_expression(const binary_pool<A,ArgA,ArgB> & ppool) : pool(ppool) {}
-    binary_pool_expression(const binary_pool_expression & other) : pool(other.pool) {}
-    binary_pool_expression & operator = (binary_pool_expression const & other) {pool = other.pool; return * this;}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
-	__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
-  };
-
-  template<class A, class ArgA, class ArgB, class ArgC>
-  class ternary_pool_expression : public shell_expression<ternary_pool_expression<A,ArgA,ArgB,ArgC> >
-  {
-    ternary_pool<A,ArgA,ArgB,ArgC> pool;
-   public:
-    ternary_pool_expression(const ternary_pool<A,ArgA,ArgB,ArgC> & ppool) : pool(ppool) {}
-    ternary_pool_expression(const ternary_pool_expression & other) : pool(other.pool) {}
-    ternary_pool_expression & operator = (ternary_pool_expression const & other) {pool = other.pool; return * this;}
-    __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
-    __INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
-	__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
-  };
-
-  class abstract_dynamic_variable
-  {
-  public:
-    virtual INMOST_DATA_REAL_TYPE Value (const Storage & e) const = 0;
-    virtual multivar_expression Variable(const Storage & e) const = 0;
-    virtual void GetVariation(const Storage & e, Sparse::Row & r) const = 0;
-    virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const = 0;
-    virtual abstract_dynamic_variable * Copy() const = 0;
-    virtual ~abstract_dynamic_variable() {}
-  };
-
-  template<typename RetType>
-  class get_variable
-  {
-  public:
-    virtual RetType operator()(const Storage & e) const = 0;
-  };
-
-  template<>
-  class get_variable<multivar_expression>
-  {
-    const abstract_dynamic_variable & var;
-  public:
-    typedef multivar_expression type;
-    get_variable(const abstract_dynamic_variable & var) : var(var) {}
-    multivar_expression operator()(const Storage & e) const {return var.Variable(e);}
-  };
-
-  template<>
-  class get_variable<INMOST_DATA_REAL_TYPE>
-  {
-    const abstract_dynamic_variable & var;
-  public:
-    typedef INMOST_DATA_REAL_TYPE type;
-    get_variable(const abstract_dynamic_variable & var) : var(var) {}
-    INMOST_DATA_REAL_TYPE operator()(const Storage & e) const {return var.Value(e);}
-  };
-
-  
-
-
-
-  template<class VariableType>
-  class basic_dynamic_variable : public abstract_dynamic_variable
-  {
-  public:
-    typedef VariableType Var;
-    virtual INMOST_DATA_REAL_TYPE Value(const Storage & e) const = 0;
-    virtual multivar_expression Variable(const Storage & e) const = 0;
-    virtual VariableType operator[](const Storage & e) const = 0;
-    virtual void GetVariation(const Storage & e, Sparse::Row & r) const = 0;
-    virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const = 0;
-    virtual abstract_dynamic_variable * Copy() const = 0;
-    virtual ~basic_dynamic_variable() {}
-  };
-
-  template<class VariableType, class Derived>
-  class shell_dynamic_variable : virtual public basic_dynamic_variable<VariableType>
-  {
-  public:
-    typedef VariableType Var;
-    virtual INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return static_cast<const Derived *>(this)->Value(e);}
-    virtual multivar_expression operator ()(const Storage & e) const {return static_cast<const Derived *>(this)->Variable(e);}
-    virtual VariableType operator[](const Storage & e) const {return (*static_cast<const Derived *>(this))[e];}
-    virtual void GetVariation(const Storage & e, Sparse::Row & r) const {static_cast<const Derived *>(this)->GetVariation(e,r);}
-    virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const {static_cast<const Derived *>(this)->GetVariation(e,r);}
-    operator Derived & () {return *static_cast<Derived *>(this);}
-    operator const Derived & () const {return *static_cast<const Derived *>(this);}
-    virtual abstract_dynamic_variable * Copy() const { return static_cast<const Derived *>(this)->Copy(); }
-  };
-
-  class stored_variable_expression : public shell_dynamic_variable<multivar_expression,stored_variable_expression>
-  {
-    abstract_dynamic_variable * var;
-  public:
-    stored_variable_expression() : var(NULL) {}
-    stored_variable_expression(const abstract_dynamic_variable & pvar) : var(pvar.Copy()) {}
-    stored_variable_expression(const stored_variable_expression & other) : var(other.var->Copy()) {}
-    ~stored_variable_expression() {delete var; var = NULL;}
-    stored_variable_expression operator =(stored_variable_expression const & other) {var = other.var->Copy(); return *this;}
-    stored_variable_expression operator =(const abstract_dynamic_variable & pvar) {var = pvar.Copy(); return *this;}
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return var->Value(e);}
-    multivar_expression Variable(const Storage & e) const {return var->Variable(e);}
-    multivar_expression operator [](const Storage & e) const {return var->Variable(e);}
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-
-    template<typename T>
-    get_variable<T> get_variable() {return get_variable<T>(*var);}
-    abstract_dynamic_variable & retrive_expression() {return *var;}
-    const abstract_dynamic_variable & retrive_expression() const {return *var;}
-	abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable_expression(*this));}
-  };
 	
-  
-  class dynamic_variable : public shell_dynamic_variable<var_expression,dynamic_variable >
-  {
-  private:
-    const AbstractEntry * entry;
-    INMOST_DATA_ENUM_TYPE comp;
-  public:
-    dynamic_variable() :entry(NULL), comp(ENUMUNDEF) {}
-	dynamic_variable(Automatizator & aut, INMOST_DATA_ENUM_TYPE reg_index, INMOST_DATA_ENUM_TYPE comp = 0) : entry(&aut.GetEntry(reg_index)), comp(comp) {}
-    dynamic_variable(const AbstractEntry * re, INMOST_DATA_ENUM_TYPE comp = 0) : entry(re), comp(comp) {}
-    dynamic_variable(const dynamic_variable & other) : entry(other.entry), comp(other.comp) {}
-    dynamic_variable & operator =(const dynamic_variable & other) 
-    {
-      entry = other.entry; 
-      comp = other.comp;
-      return * this;
-    }
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return entry->Value(e,comp);}
-    INMOST_DATA_ENUM_TYPE Index(const Storage & e) const {return entry->isValid(e) ? entry->Index(e,comp):ENUMUNDEF;}
-    multivar_expression Variable(const Storage & e) const 
-    {
-      if( entry->isValid(e) )
-        return entry->Unknown(e,comp);
-      else
-        return entry->Value(e,comp);
-    }
-    var_expression operator [](const Storage & e) const {return var_expression(entry->Value(e,comp),entry->isValid(e)?entry->Index(e,comp):ENUMUNDEF);}
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    bool isUnknown(const Storage & e) const {return entry->isValid(e)?true:false;}
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new dynamic_variable(*this));}
-  };
-
-  class const_variable : public shell_dynamic_variable<const_expression,const_variable>
-  {
-  private:
-    INMOST_DATA_REAL_TYPE value;
-  public:
-    const_variable(INMOST_DATA_REAL_TYPE _value) : value(_value)  {}
-    const_variable(const const_variable & other) : value(other.value) {}
-    const_variable & operator =(const const_variable & other) 
-    {
-		value = other.value;
-      return * this;
-    }
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return value;}
-    multivar_expression Variable(const Storage & e) const 
-    {
-      return multivar_expression(value);
-    }
-    const_expression operator [](const Storage & e) const {return const_expression(value);}
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_variable(*this));}
-  };
-  
-  class static_variable : public shell_dynamic_variable<const_expression,static_variable>
-  {
-  private:
-    Tag value_tag;
-    INMOST_DATA_ENUM_TYPE comp;
-  public:
-    static_variable(Tag t, INMOST_DATA_ENUM_TYPE pcomp = 0) : value_tag(t), comp(pcomp)  {}
-    static_variable(const static_variable & other) : value_tag(other.value_tag), comp(other.comp) {}
-    static_variable & operator =(const static_variable & other) 
-    {
-      value_tag = other.value_tag;
-      comp = other.comp;
-      return * this;
-    }
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return e->RealArray(value_tag)[comp];}
-    multivar_expression Variable(const Storage & e) const 
-    {
-      return multivar_expression(e->RealArray(value_tag)[comp]);
-    }
-    const_expression operator [](const Storage & e) const {return const_expression(e->RealArray(value_tag)[comp]);}
-    Tag ValueTag() {return value_tag;}
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    bool isUnknown(const Storage & e) const {(void)e; return false;}
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new static_variable(*this));}
-  };
-
-  class stored_variable : public shell_dynamic_variable<multivar_expression_reference,stored_variable>
-  {
-  private:
-    Tag variable_tag;
-    INMOST_DATA_ENUM_TYPE comp;
-  public:
-	stored_variable() : variable_tag(), comp(ENUMUNDEF) {}
-    stored_variable(Tag t, INMOST_DATA_ENUM_TYPE pcomp = 0) : variable_tag(t), comp(pcomp)  
+	template<class Op, class A>
+	class unary_pool
 	{
-		assert(t.GetDataType() == DATA_REAL || t.GetDataType() == DATA_VARIABLE);
-	}
-    stored_variable(const stored_variable & other) : variable_tag(other.variable_tag), comp(other.comp) {}
-    stored_variable & operator =(const stored_variable & other) 
-    {
-      variable_tag = other.variable_tag;
-      comp = other.comp;
-      return * this;
-    }
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const 
+		A arg;
+		Op operand;
+	public:
+		unary_pool(const A & parg) : arg(parg), operand(arg) {}
+		unary_pool(const unary_pool & other) : arg(other.arg), operand(arg) {}
+		unary_pool & operator = (unary_pool const & other) {arg = other.arg; operand = Op(arg); return * this;}
+		const shell_expression<A> & get_arg() {return arg;}
+		Op & get_op() {return operand;}
+		const Op & get_op() const {return operand;}
+	};
+	
+	
+	template<class Op, class A>
+	class unary_const_pool
 	{
-		if( variable_tag.GetDataType() == DATA_VARIABLE )
-			return e->VariableArray(variable_tag)[comp].GetValue();
-		else if( variable_tag.GetDataType() == DATA_REAL )
-			return e->RealArray(variable_tag)[comp];
-		else throw NotImplemented;
-	}
-    multivar_expression Variable(const Storage & e) const 
-    {
-		if( variable_tag.GetDataType() == DATA_VARIABLE )
-			return e->VariableArray(variable_tag)[comp];
-		else if( variable_tag.GetDataType() == DATA_REAL )
-			return variable(e->RealArray(variable_tag)[comp]);
-		else throw NotImplemented;
-    }
-    multivar_expression_reference operator [](const Storage & e) const
+		A left;
+		INMOST_DATA_REAL_TYPE right;
+		Op operand;
+	public:
+		unary_const_pool(const A & pleft, INMOST_DATA_REAL_TYPE pright) : left(pleft), right(pright), operand(left,right) {}
+		unary_const_pool(const unary_const_pool & other) : left(other.left), right(other.right), operand(left,right) {}
+		unary_const_pool & operator = (unary_const_pool const & other) {left = other.left; right = other.right; operand = Op(left,right); return * this;}
+		const shell_expression<A> & get_arg() {return left;}
+		Op & get_op() {return operand;}
+		const Op & get_op() const {return operand;}
+	};
+	
+	template<class Op, class A, class B>
+	class binary_pool
 	{
-		if( variable_tag.GetDataType() == DATA_VARIABLE )
-			return e->VariableArray(variable_tag)[comp];
-		else if( variable_tag.GetDataType() == DATA_REAL )
-			return multivar_expression_reference(e->RealArray(variable_tag)[comp],NULL);
-		else throw NotImplemented;
-	}
-    Tag VariableTag() {return variable_tag;}
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    bool isUnknown(const Storage & e) const {(void)e; return false;}
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable(*this));}
-  };
-
-  template<class A>
-  class stencil_variable : public shell_dynamic_variable< stencil_expression<typename A::Var>, stencil_variable<A> >
-  {
-  private:
-    Tag tag_elems;
-	Tag tag_coefs;
-    A Arg;
-  public:
-    stencil_variable(Tag tag_elems, Tag tag_coefs, const shell_dynamic_variable<typename A::Var,A> & parg) : tag_elems(tag_elems), tag_coefs(tag_coefs), Arg(parg) {}
-    stencil_variable(const stencil_variable & other) : tag_elems(other.tag_elems), tag_coefs(other.tag_coefs), Arg(other.Arg) {}
-    stencil_variable & operator =(const stencil_variable & other) {tag_elems = other.tag_elems; tag_coefs = other.tag_coefs; Arg = other.Arg; return * this;}
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
-    multivar_expression Variable(const Storage & e) const
-    {
-      multivar_expression ret = (*this)[e];
-      return ret;
-    }
-    stencil_expression<typename A::Var> operator [](const Storage & e) const
-    {
-      dynarray< const_multiplication_expression<typename A::Var>, 64> tmp;
-	  Storage::real_array      coefs = e.RealArray(tag_coefs);
-	  Storage::reference_array elems = e.RealArray(tag_elems);
-	  assert(coefs.size() == elems.size());
-      tmp.resize(elems.size());
-      for(INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k)
-		  tmp[k] = const_multiplication_expression<A>(Arg[elems[k]],coefs[k]);
-      return stencil_expression<typename A::Var>(tmp);
-    }
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stencil_variable(*this));}
-  };
-
-  template<class A>
-  class table_variable : public shell_dynamic_variable< unary_pool_expression< function_expression<typename A::Var>,typename A::Var > , table_variable<A> >
-  {
-    A Arg;
-    const keyval_table & Table;
-  public:
-    table_variable(const shell_dynamic_variable<typename A::Var,A> & parg, const keyval_table & ptable) : Arg(parg), Table(ptable) {}
-    table_variable(const table_variable & other) : Arg(other.Arg), Table(other.Table) {}
-    table_variable & operator = (table_variable const & other) {Arg = other.Arg; Table = other.Table; return * this;}
-    multivar_expression Variable(const Storage & e) const
-    {
-      multivar_expression ret = (*this)[e];
-      return ret;
-    }
-    unary_pool_expression< function_expression<typename A::Var> ,typename A::Var > operator [](const Storage & e) const
-    {
-      typename A::Var arg = Arg[e];
-      unary_pool< function_expression<typename A::Var>, typename A::Var> pool(arg);
-      std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> both = Table.GetBoth(arg.GetValue());
-      pool.get_op().SetFunctionValue(both.first);
-      pool.get_op().SetFunctionDerivative(both.second);
-      return unary_pool_expression< function_expression<typename A::Var>, typename A::Var >(pool);
-    }
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new table_variable(*this));}
-  };
-
+		
+		A left;
+		B right;
+		Op operand;
+	public:
+		binary_pool(const A & pleft, const B & pright) : left(pleft), right(pright), operand(left,right) {}
+		binary_pool(const binary_pool & other) : left(other.left), right(other.right), operand(left,right) {}
+		binary_pool & operator =(binary_pool const & other) {left = other.left; right = other.right; operand = Op(left,right); return * this;}
+		const shell_expression<A> & get_left() {return left;}
+		const shell_expression<B> & get_right() {return right;}
+		Op & get_op() {return operand;}
+		const Op & get_op() const {return operand;}
+		~binary_pool() {}
+	};
+	
+	template<class Op, class A, class B, class C>
+	class ternary_pool
+	{
+		A cond;
+		B left;
+		C right;
+		Op operand;
+	public:
+		ternary_pool(const A & pcond, const B & pleft, const C & pright) : cond(pcond), left(pleft), right(pright), operand(cond,left,right) {}
+		ternary_pool(const ternary_pool & other) : cond(other.cond), left(other.left), right(other.right), operand(cond,left,right) {}
+		ternary_pool & operator =(ternary_pool const & other) {cond = other.cond; left = other.left; right = other.right; operand = Op(cond,left,right); return * this;}
+		const shell_expression<A> & get_cond() {return cond;}
+		const shell_expression<B> & get_left() {return left;}
+		const shell_expression<C> & get_right() {return right;}
+		Op & get_op() {return operand;}
+		const Op & get_op() const {return operand;}
+		~ternary_pool() {}
+	};
+	
+	template<class A, class ArgA>
+	class unary_pool_expression : public shell_expression<unary_pool_expression<A,ArgA> >
+	{
+		unary_pool<A,ArgA> pool;
+	public:
+		unary_pool_expression(const unary_pool<A,ArgA> & ppool) : pool(ppool) {}
+		unary_pool_expression(const unary_pool_expression & other) : pool(other.pool) {}
+		unary_pool_expression & operator = (unary_pool_expression const & other) {pool = other.pool; return * this;}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
+	};
+	
+	template<class A, class ArgA>
+	class unary_const_pool_expression : public shell_expression<unary_const_pool_expression<A,ArgA> >
+	{
+		unary_const_pool<A,ArgA> pool;
+	public:
+		unary_const_pool_expression(const unary_const_pool<A,ArgA> & ppool) : pool(ppool) {}
+		unary_const_pool_expression(const unary_const_pool_expression & other) : pool(other.pool) {}
+		unary_const_pool_expression & operator = (unary_const_pool_expression const & other) {pool = other.pool; return * this;}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
+	};
+	
+	template<class A, class ArgA, class ArgB>
+	class binary_pool_expression : public shell_expression<binary_pool_expression<A,ArgA,ArgB> >
+	{
+		binary_pool<A,ArgA,ArgB> pool;
+	public:
+		binary_pool_expression(const binary_pool<A,ArgA,ArgB> & ppool) : pool(ppool) {}
+		binary_pool_expression(const binary_pool_expression & other) : pool(other.pool) {}
+		binary_pool_expression & operator = (binary_pool_expression const & other) {pool = other.pool; return * this;}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
+	};
+	
+	template<class A, class ArgA, class ArgB, class ArgC>
+	class ternary_pool_expression : public shell_expression<ternary_pool_expression<A,ArgA,ArgB,ArgC> >
+	{
+		ternary_pool<A,ArgA,ArgB,ArgC> pool;
+	public:
+		ternary_pool_expression(const ternary_pool<A,ArgA,ArgB,ArgC> & ppool) : pool(ppool) {}
+		ternary_pool_expression(const ternary_pool_expression & other) : pool(other.pool) {}
+		ternary_pool_expression & operator = (ternary_pool_expression const & other) {pool = other.pool; return * this;}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
+	};
+	
+	class abstract_dynamic_variable
+	{
+	public:
+		virtual INMOST_DATA_REAL_TYPE Value (const Storage & e) const = 0;
+		virtual multivar_expression Variable(const Storage & e) const = 0;
+		virtual void GetVariation(const Storage & e, Sparse::Row & r) const = 0;
+		virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const = 0;
+		virtual abstract_dynamic_variable * Copy() const = 0;
+		virtual ~abstract_dynamic_variable() {}
+	};
+	
+	template<typename RetType>
+	class get_variable
+	{
+	public:
+		virtual RetType operator()(const Storage & e) const = 0;
+	};
+	
+	template<>
+	class get_variable<multivar_expression>
+	{
+		const abstract_dynamic_variable & var;
+	public:
+		typedef multivar_expression type;
+		get_variable(const abstract_dynamic_variable & var) : var(var) {}
+		multivar_expression operator()(const Storage & e) const {return var.Variable(e);}
+	};
+	
+	template<>
+	class get_variable<INMOST_DATA_REAL_TYPE>
+	{
+		const abstract_dynamic_variable & var;
+	public:
+		typedef INMOST_DATA_REAL_TYPE type;
+		get_variable(const abstract_dynamic_variable & var) : var(var) {}
+		INMOST_DATA_REAL_TYPE operator()(const Storage & e) const {return var.Value(e);}
+	};
+	
+	
+	
+	
+	
+	template<class VariableType>
+	class basic_dynamic_variable : public abstract_dynamic_variable
+	{
+	public:
+		typedef VariableType Var;
+		virtual INMOST_DATA_REAL_TYPE Value(const Storage & e) const = 0;
+		virtual multivar_expression Variable(const Storage & e) const = 0;
+		virtual VariableType operator[](const Storage & e) const = 0;
+		virtual void GetVariation(const Storage & e, Sparse::Row & r) const = 0;
+		virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const = 0;
+		virtual abstract_dynamic_variable * Copy() const = 0;
+		virtual ~basic_dynamic_variable() {}
+	};
+	
+	template<class VariableType, class Derived>
+	class shell_dynamic_variable : virtual public basic_dynamic_variable<VariableType>
+	{
+	public:
+		typedef VariableType Var;
+		virtual INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return static_cast<const Derived *>(this)->Value(e);}
+		virtual multivar_expression operator ()(const Storage & e) const {return static_cast<const Derived *>(this)->Variable(e);}
+		virtual VariableType operator[](const Storage & e) const {return (*static_cast<const Derived *>(this))[e];}
+		virtual void GetVariation(const Storage & e, Sparse::Row & r) const {static_cast<const Derived *>(this)->GetVariation(e,r);}
+		virtual void GetVariation(const Storage & e, Sparse::RowMerger & r) const {static_cast<const Derived *>(this)->GetVariation(e,r);}
+		operator Derived & () {return *static_cast<Derived *>(this);}
+		operator const Derived & () const {return *static_cast<const Derived *>(this);}
+		virtual abstract_dynamic_variable * Copy() const { return static_cast<const Derived *>(this)->Copy(); }
+	};
+	
+	class stored_variable_expression : public shell_dynamic_variable<multivar_expression,stored_variable_expression>
+	{
+		abstract_dynamic_variable * var;
+	public:
+		stored_variable_expression() : var(NULL) {}
+		stored_variable_expression(const abstract_dynamic_variable & pvar) : var(pvar.Copy()) {}
+		stored_variable_expression(const stored_variable_expression & other) : var(other.var->Copy()) {}
+		~stored_variable_expression() {delete var; var = NULL;}
+		stored_variable_expression operator =(stored_variable_expression const & other) {var = other.var->Copy(); return *this;}
+		stored_variable_expression operator =(const abstract_dynamic_variable & pvar) {var = pvar.Copy(); return *this;}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return var->Value(e);}
+		multivar_expression Variable(const Storage & e) const {return var->Variable(e);}
+		multivar_expression operator [](const Storage & e) const {return var->Variable(e);}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		
+		template<typename T>
+		get_variable<T> get_variable() {return get_variable<T>(*var);}
+		abstract_dynamic_variable & retrive_expression() {return *var;}
+		const abstract_dynamic_variable & retrive_expression() const {return *var;}
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable_expression(*this));}
+	};
+	
+	
+	class dynamic_variable : public shell_dynamic_variable<var_expression,dynamic_variable >
+	{
+	private:
+		const AbstractEntry * entry;
+		INMOST_DATA_ENUM_TYPE comp;
+	public:
+		dynamic_variable() :entry(NULL), comp(ENUMUNDEF) {}
+		dynamic_variable(Automatizator & aut, INMOST_DATA_ENUM_TYPE reg_index, INMOST_DATA_ENUM_TYPE comp = 0) : entry(reg_index==ENUMUNDEF?NULL:&aut.GetEntry(reg_index)), comp(comp) {}
+		dynamic_variable(const AbstractEntry * re, INMOST_DATA_ENUM_TYPE comp = 0) : entry(re), comp(comp) {}
+		dynamic_variable(const dynamic_variable & other) : entry(other.entry), comp(other.comp) {}
+		dynamic_variable & operator =(const dynamic_variable & other)
+		{
+			entry = other.entry;
+			comp = other.comp;
+			return * this;
+		}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return entry->Value(e,comp);}
+		INMOST_DATA_ENUM_TYPE Index(const Storage & e) const {return entry->isValid(e) ? entry->Index(e,comp):ENUMUNDEF;}
+		multivar_expression Variable(const Storage & e) const
+		{
+			if( entry->isValid(e) )
+				return entry->Unknown(e,comp);
+			else
+				return entry->Value(e,comp);
+		}
+		var_expression operator [](const Storage & e) const {return var_expression(entry->Value(e,comp),entry->isValid(e)?entry->Index(e,comp):ENUMUNDEF);}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		bool isUnknown(const Storage & e) const {return entry->isValid(e)?true:false;}
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new dynamic_variable(*this));}
+	};
+	
+	class const_variable : public shell_dynamic_variable<const_expression,const_variable>
+	{
+	private:
+		INMOST_DATA_REAL_TYPE value;
+	public:
+		const_variable(INMOST_DATA_REAL_TYPE _value) : value(_value)  {}
+		const_variable(const const_variable & other) : value(other.value) {}
+		const_variable & operator =(const const_variable & other)
+		{
+			value = other.value;
+			return * this;
+		}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return value;}
+		multivar_expression Variable(const Storage & e) const
+		{
+			return multivar_expression(value);
+		}
+		const_expression operator [](const Storage & e) const {return const_expression(value);}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_variable(*this));}
+	};
+	
+	class static_variable : public shell_dynamic_variable<const_expression,static_variable>
+	{
+	private:
+		Tag value_tag;
+		INMOST_DATA_ENUM_TYPE comp;
+	public:
+		static_variable(Tag t, INMOST_DATA_ENUM_TYPE pcomp = 0) : value_tag(t), comp(pcomp)  {}
+		static_variable(const static_variable & other) : value_tag(other.value_tag), comp(other.comp) {}
+		static_variable & operator =(const static_variable & other)
+		{
+			value_tag = other.value_tag;
+			comp = other.comp;
+			return * this;
+		}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return e->RealArray(value_tag)[comp];}
+		multivar_expression Variable(const Storage & e) const
+		{
+			return multivar_expression(e->RealArray(value_tag)[comp]);
+		}
+		const_expression operator [](const Storage & e) const {return const_expression(e->RealArray(value_tag)[comp]);}
+		Tag ValueTag() {return value_tag;}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		bool isUnknown(const Storage & e) const {(void)e; return false;}
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new static_variable(*this));}
+	};
+	
+	class stored_variable : public shell_dynamic_variable<multivar_expression_reference,stored_variable>
+	{
+	private:
+		Tag variable_tag;
+		INMOST_DATA_ENUM_TYPE comp;
+	public:
+		stored_variable() : variable_tag(), comp(ENUMUNDEF) {}
+		stored_variable(Tag t, INMOST_DATA_ENUM_TYPE pcomp = 0) : variable_tag(t), comp(pcomp)
+		{
+			assert(t.GetDataType() == DATA_REAL || t.GetDataType() == DATA_VARIABLE);
+		}
+		stored_variable(const stored_variable & other) : variable_tag(other.variable_tag), comp(other.comp) {}
+		stored_variable & operator =(const stored_variable & other)
+		{
+			variable_tag = other.variable_tag;
+			comp = other.comp;
+			return * this;
+		}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const
+		{
+			if( variable_tag.GetDataType() == DATA_VARIABLE )
+				return e->VariableArray(variable_tag)[comp].GetValue();
+			else if( variable_tag.GetDataType() == DATA_REAL )
+				return e->RealArray(variable_tag)[comp];
+			else throw NotImplemented;
+		}
+		multivar_expression Variable(const Storage & e) const
+		{
+			if( variable_tag.GetDataType() == DATA_VARIABLE )
+				return e->VariableArray(variable_tag)[comp];
+			else if( variable_tag.GetDataType() == DATA_REAL )
+				return variable(e->RealArray(variable_tag)[comp]);
+			else throw NotImplemented;
+		}
+		multivar_expression_reference operator [](const Storage & e) const
+		{
+			if( variable_tag.GetDataType() == DATA_VARIABLE )
+				return e->VariableArray(variable_tag)[comp];
+			else if( variable_tag.GetDataType() == DATA_REAL )
+				return multivar_expression_reference(e->RealArray(variable_tag)[comp],NULL);
+			else throw NotImplemented;
+		}
+		Tag VariableTag() {return variable_tag;}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		bool isUnknown(const Storage & e) const {(void)e; return false;}
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable(*this));}
+	};
+	
+	template<class A>
+	class stencil_variable : public shell_dynamic_variable< stencil_expression<typename A::Var>, stencil_variable<A> >
+	{
+	private:
+		Tag tag_elems;
+		Tag tag_coefs;
+		A Arg;
+	public:
+		stencil_variable(Tag tag_elems, Tag tag_coefs, const shell_dynamic_variable<typename A::Var,A> & parg) : tag_elems(tag_elems), tag_coefs(tag_coefs), Arg(parg) {}
+		stencil_variable(const stencil_variable & other) : tag_elems(other.tag_elems), tag_coefs(other.tag_coefs), Arg(other.Arg) {}
+		stencil_variable & operator =(const stencil_variable & other) {tag_elems = other.tag_elems; tag_coefs = other.tag_coefs; Arg = other.Arg; return * this;}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+		multivar_expression Variable(const Storage & e) const
+		{
+			multivar_expression ret = (*this)[e];
+			return ret;
+		}
+		stencil_expression<typename A::Var> operator [](const Storage & e) const
+		{
+			dynarray< const_multiplication_expression<typename A::Var>, 64> tmp;
+			Storage::real_array      coefs = e.RealArray(tag_coefs);
+			Storage::reference_array elems = e.RealArray(tag_elems);
+			assert(coefs.size() == elems.size());
+			tmp.resize(elems.size());
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k)
+				tmp[k] = const_multiplication_expression<A>(Arg[elems[k]],coefs[k]);
+			return stencil_expression<typename A::Var>(tmp);
+		}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stencil_variable(*this));}
+	};
+	
+	template<class A>
+	class table_variable : public shell_dynamic_variable< unary_pool_expression< function_expression<typename A::Var>,typename A::Var > , table_variable<A> >
+	{
+		A Arg;
+		const keyval_table & Table;
+	public:
+		table_variable(const shell_dynamic_variable<typename A::Var,A> & parg, const keyval_table & ptable) : Arg(parg), Table(ptable) {}
+		table_variable(const table_variable & other) : Arg(other.Arg), Table(other.Table) {}
+		table_variable & operator = (table_variable const & other) {Arg = other.Arg; Table = other.Table; return * this;}
+		multivar_expression Variable(const Storage & e) const
+		{
+			multivar_expression ret = (*this)[e];
+			return ret;
+		}
+		unary_pool_expression< function_expression<typename A::Var> ,typename A::Var > operator [](const Storage & e) const
+		{
+			typename A::Var arg = Arg[e];
+			unary_pool< function_expression<typename A::Var>, typename A::Var> pool(arg);
+			std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> both = Table.GetBoth(arg.GetValue());
+			pool.get_op().SetFunctionValue(both.first);
+			pool.get_op().SetFunctionDerivative(both.second);
+			return unary_pool_expression< function_expression<typename A::Var>, typename A::Var >(pool);
+		}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new table_variable(*this));}
+	};
+	
 	/// This class makes possible to evaluate different expressions on different element types.
 	/// See etype_branch function.
 	template<class A, class B>
@@ -528,120 +528,120 @@ namespace INMOST
 	};
 	
 	
-
-  template<class Expr, class A>
-  class unary_custom_variable : public shell_dynamic_variable< unary_pool_expression<Expr, typename A::Var >,unary_custom_variable<Expr,A> >
-  {
-  private:
-    A Arg;
-  public:
-    unary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & parg) : Arg(parg) {}
-    unary_custom_variable(const unary_custom_variable & other) : Arg(other.Arg) {}
-    unary_custom_variable & operator =(unary_custom_variable const & other) {Arg = other.Arg; return * this;}
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
-    multivar_expression Variable(const Storage & e) const
-    {
-      multivar_expression ret = (*this)[e];
-      return ret;
-    }
-    unary_pool_expression<Expr, typename A::Var > operator [](const Storage & e) const 
-    {
-      unary_pool<Expr,typename A::Var> pool(Arg[e]);
-      return unary_pool_expression<Expr, typename A::Var >(pool);
-    }
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new unary_custom_variable(*this));}
-  };
-
-
-  template<class Expr, class A, class B>
-  class binary_custom_variable : public shell_dynamic_variable< binary_pool_expression<Expr, typename A::Var, typename B::Var >,binary_custom_variable<Expr,A,B> >
-  {
-  private:
-    A Left;
-    B Right;
-  public:
-    binary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pleft, const shell_dynamic_variable<typename B::Var,B> & pright) 
-    : Left(pleft), Right(pright) {}
-    binary_custom_variable(const binary_custom_variable & other) : Left(other.Left), Right(other.Right) {}
-    binary_custom_variable & operator =(binary_custom_variable const & other) {Left = other.Left; Right = other.Right; return * this;}
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
-    multivar_expression Variable(const Storage & e) const
-    {
-      multivar_expression ret = (*this)[e];
-      return ret;
-    }
-    binary_pool_expression<Expr, typename A::Var, typename B::Var > operator [](const Storage & e) const 
-    {
-      binary_pool<Expr,typename A::Var,typename B::Var> pool(Left[e],Right[e]);
-      return binary_pool_expression<Expr, typename A::Var, typename B::Var >(pool);
-    }
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new binary_custom_variable(*this));}
-  };
-
-  template<class Expr, class A>
-  class unary_const_custom_variable : public shell_dynamic_variable< unary_const_pool_expression<Expr, typename A::Var >,unary_const_custom_variable<Expr,A> >
-  {
-  private:
-    A Left;
-    INMOST_DATA_REAL_TYPE Right;
-  public:
-    unary_const_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pleft, INMOST_DATA_REAL_TYPE pright) 
-    : Left(pleft), Right(pright) {}
-    unary_const_custom_variable(const unary_const_custom_variable & other) : Left(other.Left), Right(other.Right) {}
-    unary_const_custom_variable & operator =(unary_const_custom_variable const & other) {Left = other.Left; Right = other.Right; return * this;}
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
-    multivar_expression Variable(const Storage & e) const
-    {
-      multivar_expression ret = (*this)[e];
-      return ret;
-    }
-    unary_const_pool_expression<Expr, typename A::Var > operator [](const Storage & e) const 
-    {
-      unary_const_pool<Expr,typename A::Var> pool(Left[e],Right);
-      return unary_const_pool_expression<Expr, typename A::Var >(pool);
-    }
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new unary_const_custom_variable(*this));}
-  };
-
-  template<class Expr, class A, class B, class C>
-  class ternary_custom_variable : public shell_dynamic_variable< ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var >,ternary_custom_variable<Expr,A,B,C> >
-  {
-  private:
-    A Cond;
-    B Left;
-    C Right;
-  public:
-    ternary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pcond, const shell_dynamic_variable<typename B::Var,B> & pleft, const shell_dynamic_variable<typename C::Var,C> & pright) 
-    : Cond(pcond), Left(pleft), Right(pright) {}
-    ternary_custom_variable(const ternary_custom_variable & other) : Left(other.Left), Right(other.Right) {}
-    ternary_custom_variable & operator =(ternary_custom_variable const & other) {Left = other.Left; Right = other.Right; return * this;}
-    INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
-    multivar_expression Variable(const Storage & e) const
-    {
-      multivar_expression ret = (*this)[e];
-      return ret;
-    }
-    ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var > operator [](const Storage & e) const 
-    {
-      ternary_pool<Expr,typename A::Var,typename B::Var, typename C::Var> pool(Cond[e],Left[e],Right[e]);
-      return ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var>(pool);
-    }
-    void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-    void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
-    abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new ternary_custom_variable(*this));}
-  };
-  typedef abstract_dynamic_variable abstract_variable;
+	
+	template<class Expr, class A>
+	class unary_custom_variable : public shell_dynamic_variable< unary_pool_expression<Expr, typename A::Var >,unary_custom_variable<Expr,A> >
+	{
+	private:
+		A Arg;
+	public:
+		unary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & parg) : Arg(parg) {}
+		unary_custom_variable(const unary_custom_variable & other) : Arg(other.Arg) {}
+		unary_custom_variable & operator =(unary_custom_variable const & other) {Arg = other.Arg; return * this;}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+		multivar_expression Variable(const Storage & e) const
+		{
+			multivar_expression ret = (*this)[e];
+			return ret;
+		}
+		unary_pool_expression<Expr, typename A::Var > operator [](const Storage & e) const
+		{
+			unary_pool<Expr,typename A::Var> pool(Arg[e]);
+			return unary_pool_expression<Expr, typename A::Var >(pool);
+		}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new unary_custom_variable(*this));}
+	};
+	
+	
+	template<class Expr, class A, class B>
+	class binary_custom_variable : public shell_dynamic_variable< binary_pool_expression<Expr, typename A::Var, typename B::Var >,binary_custom_variable<Expr,A,B> >
+	{
+	private:
+		A Left;
+		B Right;
+	public:
+		binary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pleft, const shell_dynamic_variable<typename B::Var,B> & pright)
+		: Left(pleft), Right(pright) {}
+		binary_custom_variable(const binary_custom_variable & other) : Left(other.Left), Right(other.Right) {}
+		binary_custom_variable & operator =(binary_custom_variable const & other) {Left = other.Left; Right = other.Right; return * this;}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+		multivar_expression Variable(const Storage & e) const
+		{
+			multivar_expression ret = (*this)[e];
+			return ret;
+		}
+		binary_pool_expression<Expr, typename A::Var, typename B::Var > operator [](const Storage & e) const
+		{
+			binary_pool<Expr,typename A::Var,typename B::Var> pool(Left[e],Right[e]);
+			return binary_pool_expression<Expr, typename A::Var, typename B::Var >(pool);
+		}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new binary_custom_variable(*this));}
+	};
+	
+	template<class Expr, class A>
+	class unary_const_custom_variable : public shell_dynamic_variable< unary_const_pool_expression<Expr, typename A::Var >,unary_const_custom_variable<Expr,A> >
+	{
+	private:
+		A Left;
+		INMOST_DATA_REAL_TYPE Right;
+	public:
+		unary_const_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pleft, INMOST_DATA_REAL_TYPE pright)
+		: Left(pleft), Right(pright) {}
+		unary_const_custom_variable(const unary_const_custom_variable & other) : Left(other.Left), Right(other.Right) {}
+		unary_const_custom_variable & operator =(unary_const_custom_variable const & other) {Left = other.Left; Right = other.Right; return * this;}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+		multivar_expression Variable(const Storage & e) const
+		{
+			multivar_expression ret = (*this)[e];
+			return ret;
+		}
+		unary_const_pool_expression<Expr, typename A::Var > operator [](const Storage & e) const
+		{
+			unary_const_pool<Expr,typename A::Var> pool(Left[e],Right);
+			return unary_const_pool_expression<Expr, typename A::Var >(pool);
+		}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new unary_const_custom_variable(*this));}
+	};
+	
+	template<class Expr, class A, class B, class C>
+	class ternary_custom_variable : public shell_dynamic_variable< ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var >,ternary_custom_variable<Expr,A,B,C> >
+	{
+	private:
+		A Cond;
+		B Left;
+		C Right;
+	public:
+		ternary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pcond, const shell_dynamic_variable<typename B::Var,B> & pleft, const shell_dynamic_variable<typename C::Var,C> & pright)
+		: Cond(pcond), Left(pleft), Right(pright) {}
+		ternary_custom_variable(const ternary_custom_variable & other) : Left(other.Left), Right(other.Right) {}
+		ternary_custom_variable & operator =(ternary_custom_variable const & other) {Left = other.Left; Right = other.Right; return * this;}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
+		multivar_expression Variable(const Storage & e) const
+		{
+			multivar_expression ret = (*this)[e];
+			return ret;
+		}
+		ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var > operator [](const Storage & e) const
+		{
+			ternary_pool<Expr,typename A::Var,typename B::Var, typename C::Var> pool(Cond[e],Left[e],Right[e]);
+			return ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var>(pool);
+		}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new ternary_custom_variable(*this));}
+	};
+	typedef abstract_dynamic_variable abstract_variable;
 }
 
 template<class A, class B, class C> 
-                           __INLINE 
-							  INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C> condition(INMOST::shell_dynamic_variable<typename A::Var, A> const & control, INMOST::shell_dynamic_variable<typename B::Var, B> const & if_ge_zero, INMOST::shell_dynamic_variable<typename C::Var, C> const & if_lt_zero) { return INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C>(control,if_ge_zero,if_lt_zero); }
+__INLINE 
+INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C> condition(INMOST::shell_dynamic_variable<typename A::Var, A> const & control, INMOST::shell_dynamic_variable<typename B::Var, B> const & if_ge_zero, INMOST::shell_dynamic_variable<typename C::Var, C> const & if_lt_zero) { return INMOST::ternary_custom_variable<INMOST::condition_expression<typename A::Var, typename B::Var, typename C::Var>,A,B,C>(control,if_ge_zero,if_lt_zero); }
 template<class A>          __INLINE                                 INMOST::unary_custom_variable<INMOST::unary_minus_expression<typename A::Var>,A> operator-(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::unary_minus_expression<typename A::Var>,A>(Arg); }
 template<class A>          __INLINE                                  INMOST::unary_custom_variable<INMOST::unary_plus_expression<typename A::Var>,A> operator+(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::unary_plus_expression<typename A::Var>,A>(Arg); }
 template<class A>          __INLINE                                         INMOST::unary_custom_variable<INMOST::abs_expression<typename A::Var>,A>      fabs(INMOST::shell_dynamic_variable<typename A::Var, A> const & Arg) { return INMOST::unary_custom_variable<INMOST::abs_expression<typename A::Var>,A>(Arg); }
@@ -680,7 +680,7 @@ template<class A, class B> __INLINE INMOST::marker_branch_variable<A,B> marker_b
 
 #endif //defined(USE_AUTODIFF) && defined(USE_MESH)
 
-  
+
 
 
 #endif //INMOST_AUTODIFF_ETVAR_H_INCLUDED
