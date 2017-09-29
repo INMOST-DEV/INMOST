@@ -904,7 +904,7 @@ namespace INMOST
 						
 						Cell me = Cell(this,e);
 						ElementArray<Face> faces = me->getFaces();
-						bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+						bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
 						MarkerType rev = 0;
 						if( ornt )
 						{
@@ -1052,7 +1052,7 @@ namespace INMOST
 				{
 					Cell me = Cell(this,e);
 					ElementArray<Face> faces = me->getFaces();
-					bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+					bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
 					MarkerType rev = 0;
 					if( ornt )
 					{
