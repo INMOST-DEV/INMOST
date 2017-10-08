@@ -179,13 +179,16 @@ namespace INMOST {
 
     void SolverK3BIILU2::SetParameter(std::string name, std::string value) {
         const char *val = value.c_str();
-        if (name == "msglev") solver_data->pParIter->msglev = atoi(val);
-        else if (name == "kovl") solver_data->pParams->ncycle = atoi(val);
-        else if (name == "tau") {
+        if (name == "msglev" ) solver_data->pParIter->msglev = atoi(val);
+        else if (name == "kovl" || name == "schwartz_overlap") solver_data->pParams->ncycle = atoi(val);
+        else if (name == "tau" || name == "drop_tolerance" ) 
+        {
             solver_data->pParams->tau1 = atof(val);
-            solver_data->pParams->tau2 = -1.0;
-        } else if (name == "nit") solver_data->pParIter->maxit = atoi(val);
-        else if (name == "eps") solver_data->pParIter->eps = atof(val);
+            //solver_data->pParams->tau2 = -1.0;
+        } 
+        else if (name == "reuse_tolerance" ) solver_data->pParams->tau2 = atof(val);
+        else if (name == "nit" || name == "maximum_iterations") solver_data->pParIter->maxit = atoi(val);
+        else if (name == "eps" || name == "absolute_tolerance") solver_data->pParIter->eps = atof(val);
 #if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
 #endif

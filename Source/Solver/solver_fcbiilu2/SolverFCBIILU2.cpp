@@ -173,10 +173,10 @@ namespace INMOST {
 
     void SolverFCBIILU2::SetParameter(std::string name, std::string value) {
         const char *val = value.c_str();
-        if (name == "kovl") solver_data->kovl = atoi(val);
-        else if (name == "tau") solver_data->tau = atof(val);
-        else if (name == "eps") solver_data->eps = atof(val);
-        else if (name == "nit") solver_data->nit = atoi(val);
+        if (name == "kovl" || name == "schwartz_overlap" ) solver_data->kovl = atoi(val);
+        else if (name == "tau" || name == "drop_tolerance" ) solver_data->tau = atof(val);
+        else if (name == "eps" || name == "absolute_tolerance" ) solver_data->eps = atof(val);
+        else if (name == "nit" || name == "maximum_iterations" ) solver_data->nit = atoi(val);
         else if (name == "msglev") solver_data->msglev = atoi(val);
 #if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown" << std::endl;

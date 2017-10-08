@@ -42,6 +42,9 @@ class MTILUC_preconditioner : public Method
 									std::vector<Sparse::Row::entry> & Entries,
 									INMOST_DATA_ENUM_TYPE wmbeg, INMOST_DATA_ENUM_TYPE wmend,
 									std::string file_name);
+	void CheckOrder(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
+					 std::vector<Sparse::Row::entry> & Entries, 
+					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend);
 	void SwapEntries(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
 					 std::vector<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend, 

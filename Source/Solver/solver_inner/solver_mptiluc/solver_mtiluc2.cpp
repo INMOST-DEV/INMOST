@@ -5,11 +5,11 @@
 #include "solver_mtiluc2.hpp"
 #include <sstream>
 #include <deque>
-//#define REPORT_ILU
+#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
 //#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
+#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
@@ -36,17 +36,17 @@ using namespace INMOST;
 #define ESTIMATOR_REFINE
 #define RESCALE_B
 
-#define PREMATURE_DROPPING
+//#define PREMATURE_DROPPING
 
-//#define EQUALIZE_1NORM
-#define EQUALIZE_2NORM
+#define EQUALIZE_1NORM
+//#define EQUALIZE_2NORM
 //#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
-#define PIVOT_THRESHOLD_VALUE 1.0e-9
+#define PIVOT_THRESHOLD_VALUE 1.0e-6
 #define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
-#define DIAGONAL_PERTURBATION_ABS 1.0e-12
+#define DIAGONAL_PERTURBATION_ABS 1.0e-10
 //#define DIAGONAL_PIVOT //probably there is some bug
 #define DIAGONAL_PIVOT_TAU 0.01
 //#define DIAGONAL_PIVOT_COND 100
@@ -286,6 +286,56 @@ public:
 		}
 		fout.close();
 	}
+	void MTILUC_preconditioner::CheckOrder(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
+					 std::vector<Sparse::Row::entry> & Entries, 
+					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend)
+	{
+		INMOST_DATA_ENUM_TYPE i,r;
+		for (i = rbeg; i < rend; i++) if( Address[i].first != Address[i].last )
+		{
+			//check ordered on entry
+			bool ordered = true;
+			for (r = Address[i].first; r < Address[i].last-1; r++)
+			{
+				if( !(Entries[r].first < Entries[r+1].first) )
+				{
+					ordered = false;
+					break;
+				}
+			}
+			if( !ordered )
+			{
+				std::cout << "Row " << i << " not ordered: " << std::endl;
+				std::cout << "Interval: " << Address[i].first << ":" << Address[i].last << std::endl;
+				for (r = Address[i].first; r < Address[i].last; r++)
+				{
+					std::cout << "(" << Entries[r].first << "," << Entries[r].second << ") ";
+				}
+				std::cout << std::endl;
+				throw -1;
+			}
+			bool nan = false;
+			for (r = Address[i].first; r < Address[i].last; r++)
+			{
+				if( Entries[r].second != Entries[r].second )
+				{
+					nan = true;
+					break;
+				}
+			}
+			if( nan )
+			{
+				std::cout << "Row " << i << " contains nan: " << std::endl;
+				std::cout << "Interval: " << Address[i].first << ":" << Address[i].last << std::endl;
+				for (r = Address[i].first; r < Address[i].last; r++)
+				{
+					std::cout << "(" << Entries[r].first << "," << Entries[r].second << ") ";
+				}
+				std::cout << std::endl;
+				throw -1;
+			}
+		}
+	}
 	void MTILUC_preconditioner::SwapEntries(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
 					 std::vector<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend, 
@@ -293,46 +343,71 @@ public:
 	{
 		INMOST_DATA_ENUM_TYPE i;
 		INMOST_DATA_REAL_TYPE u;
-		for (i = rbeg; i < rend; i++)
+		assert(k < j);
+		for (i = rbeg; i < rend; i++) if( Address[i].last != Address[i].last )
 		{
 			INMOST_DATA_ENUM_TYPE pk = Address[i].last, pj = Address[i].last, r;
+			//check ordered on entry
+			for (r = Address[i].first; r < Address[i].last-1; r++)
+			{
+				assert(Entries[r].first < Entries[r+1].first);
+			}
+			
 			for (r = Address[i].first; r < Address[i].last; r++)
 			{
 				if (Entries[r].first >= k) { pk = r; break; }
 			}
-			for (r = pk; r < Address[i].last; r++)
+			for (r = Address[i].first; r < Address[i].last; r++)
 			{
 				if (Entries[r].first >= j) { pj = r; break; }
 			}
-			if (pk < Address[i].last)
+			bool found_k = pk < Address[i].last && Entries[pk].first == k;
+			bool found_j = pj < Address[i].last && Entries[pj].first == j;
+			
+			if( found_k && found_j )
 			{
-				if (pj < Address[i].last && Entries[pj].first == j)
+				//just swap values, indices are intact
+				u = Entries[pj].second;
+				Entries[pj].second = Entries[pk].second;
+				Entries[pk].second = u;
+			}
+			else if( found_k )
+			{
+				//we have to place value of k into position of j and give it an index of j
+				//don't move at pj, since it's index is greater then j
+				u = Entries[pk].second;
+				for (r = pk; r < pj - 1; r++) Entries[r] = Entries[r + 1];
+				Entries[pj - 1].first = j;
+				Entries[pj - 1].second = u;
+				
+				//check ordered
+				for (r = Address[i].first; r < Address[i].last-1; r++)
 				{
-					if (Entries[pk].first == k)
-					{
-						u = Entries[pj].second;
-						Entries[pj].second = Entries[pk].second;
-						Entries[pk].second = u;
-					}
-					else
-					{
-						u = Entries[pj].second;
-						for (r = pj; r > pk; r--) Entries[r] = Entries[r - 1];
-						Entries[pk].first = k;
-						Entries[pk].second = u;
-					}
+					assert(Entries[r].first < Entries[r+1].first);
 				}
-				else
+				
+			}
+			else if( found_j )
+			{
+				//we have to place value of j into position of k and give it an index of k
+				// move at pk, since it's index is greater then k
+				u = Entries[pj].second;
+				for (r = pj; r > pk; r--) Entries[r] = Entries[r - 1];
+				Entries[pk].first = k;
+				Entries[pk].second = u;
+				
+				//check ordered
+				for (r = Address[i].first; r < Address[i].last-1; r++)
 				{
-					if (Entries[pk].first == k)
-					{
-						u = Entries[pk].second;
-						for (r = pk; r < pj - 1; r++) Entries[r] = Entries[r + 1];
-						Entries[pj - 1].first = j;
-						Entries[pj - 1].second = u;
-					}
+					assert(Entries[r].first < Entries[r+1].first);
 				}
 			}
+			//check nan
+			for (r = Address[i].first; r < Address[i].last; r++)
+			{
+				assert(Entries[r].second == Entries[r].second);
+			}
+			
 		}
 	}
 	void MTILUC_preconditioner::SwapLine(interval<INMOST_DATA_ENUM_TYPE, Interval> & Line, INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j)
@@ -467,14 +542,16 @@ public:
 		//prepare rescaling vectors
 		DL.SetInterval(mobeg, moend);
 		DR.SetInterval(mobeg, moend);
-		for(Sparse::Vector::iterator ri = DL.Begin(); ri != DL.End(); ++ri) *ri = 0.0;
+		for(Sparse::Vector::iterator ri = DL.Begin(); ri != DL.End(); ++ri) *ri = 1.0;
+		for(Sparse::Vector::iterator ri = DR.Begin(); ri != DR.End(); ++ri) *ri = 1.0;
 
 		
 
 		for (k = mobeg; k != moend; k++) ddP[k] = ddQ[k] = k;
 		// supplementary data for ddPQ reordering
-		interval<INMOST_DATA_ENUM_TYPE, bool> donePQ(mobeg, moend);
+		
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> invP(mobeg, moend), invQ(mobeg,moend), localP(mobeg, moend,ENUMUNDEF), localQ(mobeg,moend,ENUMUNDEF);		
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Bstart(mobeg,moend);
 
 		//supplimentary data structures for ILUC
 		INMOST_DATA_ENUM_TYPE LU_Beg;
@@ -639,8 +716,17 @@ public:
 		INMOST_DATA_REAL_TYPE tau2 = tau;
 #endif
 
+		for(k = mobeg; k < moend; ++k)
+		{
+			U_Address[k].first = U_Address[k].last = ENUMUNDEF;
+			L_Address[k].first = L_Address[k].last = ENUMUNDEF;
+			U2_Address[k].first = U2_Address[k].last = ENUMUNDEF;
+			L2_Address[k].first = L2_Address[k].last = ENUMUNDEF;
+		}
+
 #if defined(REPORT_ILU)
 		std::cout << "nonzeros in A " << nzA << std::endl;
+		int swaps = 0;
 #endif
 		//set up working interval
 		wbeg = mobeg;
@@ -1474,6 +1560,11 @@ public:
 			ttt = Timer();
 			applyPQ(wbeg, wend, localP, localQ, invP, invQ);
 			tt1 += Timer() - ttt;
+			
+			//reset localPQ
+			
+			//for(int k = mobeg; k < moend; ++k) localP[k] = localQ[k] = k;
+			
 
 			tlreassamble = Timer() - tt;
 			treassamble += tlreassamble;
@@ -1687,15 +1778,12 @@ public:
 #endif
 			
 
-			
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////// FACTORIZATION BEGIN ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
         //int discarded = 0;
-#if defined(REPORT_ILU)
-        int swaps = 0;
-#endif
 #if defined(ILUC2)
 				nzLU2 = 0;
 				LU2_Entries.clear();
@@ -1708,7 +1796,7 @@ public:
 				for (k = cbeg; k < cend; k++)
 				{
 					LU_Diag[k] = 0.0;
-					localQ[k] = B_Address[k].first; //remember B block starts permutation for pivoting
+					Bstart[k] = B_Address[k].first; //remember B block starts permutation for pivoting
 					for (i = B_Address[k].first; i < B_Address[k].last; i++)
 					{
 						if (B_Entries[i].first == k)
@@ -1788,6 +1876,7 @@ public:
 				while (Li != EOL)
 				{
 					l = B_Entries[B_Address[Li].first].second / LU_Diag[cbeg];
+					//if( !(l == l) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 					if( fabs(l) > tau )
 						LU_Entries.push_back(Sparse::Row::make_entry(Li, l));
 #if defined(ILUC2)
@@ -1987,6 +2076,11 @@ swap_algorithm:
 							//SwapEntries(*E_Address.back(), E_Entries, cend, wend, k, j);
 							//Then correct F
 
+							//CheckOrder(B_Address,B_Entries,cbeg,cend);
+							//CheckOrder(L_Address,LU_Entries,cbeg,cend);
+							//CheckOrder(U_Address,LU_Entries,cbeg,cend);
+							//CheckOrder(L2_Address,LU2_Entries,cbeg,cend);
+							//CheckOrder(U2_Address,LU2_Entries,cbeg,cend);
 							
 							//SwapLine(F_Address,k, j);
 							//Swap lines of B
@@ -1994,31 +2088,38 @@ swap_algorithm:
 							//Correct B the same way E is corrected
 							SwapEntries(B_Address, B_Entries, cbeg, cend, k, j);
 							//now reintialize entrie column linked list
-							for (i = k; i < cend; ++i) Bbeg[i] = EOL;
-							for (i = cend; i > k; --i)
+							for (i = cbeg; i < cend; ++i) Bbeg[i] = EOL;
+							for (i = cend; i > cbeg; --i)
 							{
-								Li = B_Entries[B_Address[i - 1].first].first;
-								if (Li < i - 1)
+								if( B_Address[i - 1].Size() > 0 )
 								{
-									Blist[i - 1] = Bbeg[Li];
-									Bbeg[Li] = i - 1;
+									Li = B_Entries[B_Address[i - 1].first].first;
+									if (Li < i - 1)
+									{
+										Blist[i - 1] = Bbeg[Li];
+										Bbeg[Li] = i - 1;
+									}
 								}
 							}
 							//now update L
-							SwapEntries(L_Address, LU_Entries, cbeg, cend, k, j);
+							//SwapLine(L_Address, k, j);
+							SwapEntries(L_Address, LU_Entries, cbeg, k, k, j);
 							//reinitialize linked list
 							//now update U
-							SwapEntries(U_Address, LU_Entries, cbeg, cend, k, j);
+							//SwapLine(U_Address, k, j);
+							SwapEntries(U_Address, LU_Entries, cbeg, k, k, j);
 							//reinitialize linked list
 #if defined(ILUC2)
 							//now update L2
-							SwapEntries(U2_Address, LU2_Entries, cbeg, cend, k, j);
+							//SwapLine(U2_Address, k, j);
+							SwapEntries(U2_Address, LU2_Entries, cbeg, k, k, j);
 							//reinitialize linked list
 							//now update U2
-							SwapEntries(L2_Address, LU2_Entries, cbeg, cend, k, j);
+							//SwapLine(L2_Address, k, j);
+							SwapEntries(L2_Address, LU2_Entries, cbeg, k, k, j);
 							//reinitialize linked list
 #endif
-							for (i = k; i < cend; i++)
+							for (i = cbeg; i < cend; i++)
 							{
 								Ubeg[i] = EOL;
 								Lbeg[i] = EOL;
@@ -2027,7 +2128,7 @@ swap_algorithm:
 								L2beg[i] = EOL;
 #endif
 							}
-							for (i = cbeg; i < k; i++)
+							for (i = cbeg; i < cend; i++)
 							{
 								if (U_Address[i].Size() > 0)
 								{
@@ -2097,13 +2198,25 @@ swap_algorithm:
 							ddQ[j] = Ui;
 
 							//update interval starts for B block to correctly restore intervals
-							Ui = localQ[k];
-							localQ[k] = localQ[j];
-							localQ[j] = Ui;
+							Ui = Bstart[k];
+							Bstart[k] = Bstart[j];
+							Bstart[j] = Ui;
 
-							Ui = localP[k];
-							localP[k] = localP[j];
-							localP[j] = Ui;
+							//Ui = localQ[k];
+							//localQ[k] = localQ[j];
+							//localQ[j] = Ui;
+
+							//Ui = localP[k];
+							//localP[k] = localP[j];
+							//localP[j] = Ui;
+							
+							
+							
+							//CheckOrder(B_Address,B_Entries,cbeg,cend);
+							//CheckOrder(L_Address,LU_Entries,cbeg,cend);
+							//CheckOrder(U_Address,LU_Entries,cbeg,cend);
+							//CheckOrder(L2_Address,LU2_Entries,cbeg,cend);
+							//CheckOrder(U2_Address,LU2_Entries,cbeg,cend);
 						}
 						/*
 						else
@@ -2143,9 +2256,11 @@ swap_algorithm:
 #else
 					abs_udiag = 1.0;
 #endif
+
 ///////////////////////////////////////////////////////////////////////////////////
 //            Prepare linked list for U-part                                     //
 ///////////////////////////////////////////////////////////////////////////////////
+
 					//DropLk = DropUk = 0.0;
 					//uncompress k-th row
 					// add diagonal value first, there shouldn't be values on left from diagonal
@@ -2180,7 +2295,7 @@ swap_algorithm:
 #if defined(PREMATURE_DROPPING)
 						if( fabs(l) > tau2*tau2 * abs_udiag )
 #endif
-            {
+						{
 						  curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = U_Address[i].first; it < U_Address[i].last; ++it)
 						  {
@@ -2254,7 +2369,7 @@ swap_algorithm:
 #if defined(PREMATURE_DROPPING)
 						if( fabs(l) > tau2*abs_udiag )
 #endif
-            {
+						{
 						  curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = U_Address[i].first; it < U_Address[i].last; ++it)
 						  {
@@ -2282,29 +2397,29 @@ swap_algorithm:
 //                 second order U-part elimination with second-order L           //
 ///////////////////////////////////////////////////////////////////////////////////
 #if 0
-              curr = cbeg;
-						  for (INMOST_DATA_ENUM_TYPE it = U2_Address[i].first; it < U2_Address[i].last; ++it)
-						  {
-                j = LU2_Entries[it].first;
-							  u = l*LU2_Entries[it].second;
-							  //eliminate values
-							  if (LineIndecesU[j] != UNDEF) //there is an entry in the list
-								  LineValuesU[j] -= u;
-                else //if (fabs(u)*NuU /*NuL_old*/ > tau2*abs_udiag)//add new entry
-							  {
-								  next = curr;
-								  while (next < j)
-								  {
-									  curr = next;
-									  next = LineIndecesU[curr];
-								  }
-								  assert(curr < j);
-								  assert(j < next);
-								  LineIndecesU[curr] = j;
-								  LineIndecesU[j] = next;
-								  LineValuesU[j] = -u;
-							  }
-						  }
+							curr = cbeg;
+							for (INMOST_DATA_ENUM_TYPE it = U2_Address[i].first; it < U2_Address[i].last; ++it)
+							{
+								j = LU2_Entries[it].first;
+								u = l*LU2_Entries[it].second;
+								//eliminate values
+								if (LineIndecesU[j] != UNDEF) //there is an entry in the list
+									LineValuesU[j] -= u;
+								else //if (fabs(u)*NuU /*NuL_old*/ > tau2*abs_udiag)//add new entry
+								{
+									next = curr;
+									while (next < j)
+									{
+										curr = next;
+										next = LineIndecesU[curr];
+									}
+									assert(curr < j);
+									assert(j < next);
+									LineIndecesU[curr] = j;
+									LineIndecesU[j] = next;
+									LineValuesU[j] = -u;
+								}
+							}
 #endif
 						}
 						i = L2list[i];
@@ -2338,7 +2453,7 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////
 //                    Condition estimator for diagonal D                         //
 ///////////////////////////////////////////////////////////////////////////////////
-          if (fabs(udiag) > max_diag) max_diag = fabs(udiag);
+					if (fabs(udiag) > max_diag) max_diag = fabs(udiag);
 					if (fabs(udiag) < min_diag) min_diag = fabs(udiag);
 					NuD = max_diag / min_diag;
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2364,15 +2479,18 @@ swap_algorithm:
 						//std::cout << __LINE__ << " No diagonal value! " << k << std::endl;
 						LineValuesL[k] = 0.0;
 					}
+					//if( !(LineValuesL[k] == LineValuesL[k]) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 					//start from diagonal
 					//sort_indeces.clear();
 					Ui = k;
 					Li = Bbeg[k];
 					while (Li != EOL)
 					{
+						if( !(B_Entries[B_Address[Li].first].first == k) ) std::cout << "B_Entries[B_Address[Li].first].first: " << B_Entries[B_Address[Li].first].first << " k: " << k << std::endl;
 						assert(B_Entries[B_Address[Li].first].first == k);
 						//sort_indeces.push_back(Li);
 						LineValuesL[Li] = B_Entries[B_Address[Li].first].second;
+						//if( !(LineValuesL[Li] == LineValuesL[Li]) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 						Ui = LineIndecesL[Ui] = Li;
 						Li = Blist[Li];
 					}
@@ -2396,12 +2514,13 @@ swap_algorithm:
 #if defined(PREMATURE_DROPPING)
 						if( fabs(u) > tau2*tau2*abs_udiag )
 #endif
-            {
+						{
 						  curr = cbeg;
 						  for (INMOST_DATA_ENUM_TYPE it = L_Address[i].first; it < L_Address[i].last; ++it)
 						  {
 							  j = LU_Entries[it].first;
 							  l = u*LU_Entries[it].second;
+							  //if( !(l == l) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 							  //eliminate values
 							  if (LineIndecesL[j] != UNDEF) //there is an entry in the list
 								  LineValuesL[j] -= l;
@@ -2435,6 +2554,7 @@ swap_algorithm:
 							{
 								j = LU2_Entries[it].first;
 								l = u*LU2_Entries[it].second;
+								//if( !(l == l) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 								if (LineIndecesL[j] != UNDEF) //there is an entry in the list
 									LineValuesL[j] -= l;
 								else //if (fabs(l)*NuL /*NuU_old*/ > tau2*abs_udiag)//add new entry
@@ -2476,6 +2596,7 @@ swap_algorithm:
 						  {
 							  j = LU_Entries[it].first;
 							  l = u*LU_Entries[it].second;
+							  //if( !(l == l) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 							  //eliminate values
 							  if (LineIndecesL[j] != UNDEF) //there is an entry in the list
 								  LineValuesL[j] -= l;
@@ -2503,6 +2624,7 @@ swap_algorithm:
 						  {
 							  j = LU2_Entries[it].first;
 							  l = u*LU2_Entries[it].second;
+							  //if( !(l == l) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 							  //eliminate values
 							  if (LineIndecesL[j] != UNDEF) //there is an entry in the list
 								  LineValuesL[j] -= l;
@@ -2540,6 +2662,7 @@ swap_algorithm:
 					while (Li != EOL)
 					{
 						LineValuesL[Li] /= udiag;
+						//if( !(LineValuesL[Li] == LineValuesL[Li]) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 						Li = LineIndecesL[Li];
 					}
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2698,6 +2821,7 @@ swap_algorithm:
 						NuU_max = std::max(NuU,NuU_max);
           }
 #endif //ESTIMATOR
+					
 ///////////////////////////////////////////////////////////////////////////////////
 //                 reconstruct U-part from linked list                           //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2734,6 +2858,7 @@ swap_algorithm:
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
+						//if( !(u == u) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
 						if (u*NuL /*NuU_old*/ > tau) //apply dropping 
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
@@ -2816,11 +2941,13 @@ swap_algorithm:
 						LineIndecesU[Ui] = UNDEF; //clean indeces after use
 						Ui = i;
           }
+          
+          					
 ///////////////////////////////////////////////////////////////////////////////////
 //     Update diagonal                                                           //
 ///////////////////////////////////////////////////////////////////////////////////
 #if defined(DIAGONAL_PIVOT)
-          mean_diag -= fabs(LU_Diag[k]); //remove current value
+					mean_diag -= fabs(LU_Diag[k]); //remove current value
 #endif
 					LU_Diag[k] = udiag;
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3082,6 +3209,11 @@ swap_algorithm:
 #endif //TRACK_DIAGONAL
 //#endif //DIAGONAL_PIVOT
 
+					//CheckOrder(L_Address,LU_Entries,cbeg,k+1);
+					//CheckOrder(U_Address,LU_Entries,cbeg,k+1);
+					//CheckOrder(L2_Address,LU2_Entries,cbeg,k+1);
+					//CheckOrder(U2_Address,LU2_Entries,cbeg,k+1);
+
 					//number of nonzeros
 					nzLU += U_Address[k].Size() + L_Address[k].Size() + 1;
 					
@@ -3129,7 +3261,7 @@ swap_algorithm:
 			tlfactor = Timer() - tt;
 			tfactor += tlfactor;
 			//restore indexes
-			B_Address[cbeg].first = localQ[cbeg];
+			B_Address[cbeg].first = Bstart[cbeg];
 			U_Address[cbeg].first = LU_Beg;
 			L_Address[cbeg].first = U_Address[cbeg].last;
 #if defined(ILUC2)
@@ -3138,7 +3270,7 @@ swap_algorithm:
 #endif
 			for (k = cbeg+1; k < cend; ++k)
 			{
-				B_Address[k].first = localQ[k];
+				B_Address[k].first = Bstart[k];
 				U_Address[k].first = L_Address[k - 1].last;
 				L_Address[k].first = U_Address[k].last;
 #if defined(ILUC2)
@@ -3153,7 +3285,6 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			//After we have factored the rescaled matrix we must rescale obtained factors
 			tt = Timer();
-
 #if defined(RESCALE_B)
 #if defined(REPORT_ILU)
 			std::cout << " rescaling block B back " << std::endl;
@@ -3190,6 +3321,12 @@ swap_algorithm:
 			*/
 			wend = wbeg;
 		}
+		
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////  UPDATE ORDERING DUE TO PIVOTING //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//inversePQ(wbeg,wend,localP,localQ,invP,invQ);
+		//applyPQ(wbeg,wend,localP,localQ,invP,invQ);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////  FACTORIZATION COMPLETE ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3212,9 +3349,9 @@ swap_algorithm:
 		printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
 		printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
 #if defined(ILUC2)
-		printf("nnz A %d LU %d LU2 %d\n",nzA,nzLU,nzLU2);
+		printf("nnz A %d LU %d LU2 %d swaps %d\n",nzA,nzLU,nzLU2, swaps);
 #else
-		printf("nnz A %d LU %d\n",nzA,nzLU);
+		printf("nnz A %d LU %d swaps %d\n",nzA,nzLU,swaps);
 #endif
 #endif
 		init = true;
@@ -3277,22 +3414,40 @@ swap_algorithm:
 			for (k = mobeg; k < moend; ++k) temp[k] = input[ddP[k]];
 			for (k = moend; k < vend; k++) temp[k] = 0;
 
-
+			//for (k = mobeg; k < moend; ++k) if( temp[k] != temp[k] ) {std::cout << "Nan in input" << " rank " << info->GetRank() << std::endl; break;}
 
 			//Solve with L first
-			for (k = mobeg; k < moend; ++k) //iterator over columns of L
+			for (k = mobeg; k < moend; ++k) if( L_Address[k].first != L_Address[k].last ) //iterator over columns of L
 			{
 				for (INMOST_DATA_ENUM_TYPE r = L_Address[k].first; r < L_Address[k].last; ++r)
+				{
 					temp[LU_Entries[r].first] -= temp[k] * LU_Entries[r].second;
+					//if( LU_Entries[r].second != LU_Entries[r].second ) std::cout << "L-row " << k << " column " << LU_Entries[r].first << " is nan " << " rank " << info->GetRank() << std::endl;
+				}
 			}
+			
+			//for (k = mobeg; k < moend; ++k) if( temp[k] != temp[k] ) {std::cout << "Nan after L-solve" << " rank " << info->GetRank() << std::endl; break;}
 			//Solve with diagonal
-			for (k = mobeg; k < moend; ++k) temp[k] /= LU_Diag[k];
+			for (k = mobeg; k < moend; ++k) 
+			{
+				temp[k] /= LU_Diag[k];
+				//if( LU_Diag[k] != LU_Diag[k] ) std::cout << "Diag-row " << k << " is nan " << std::endl;
+			}
+			
+			//for (k = mobeg; k < moend; ++k) if( temp[k] != temp[k] ) {std::cout << "Nan after diagonal" << " rank " << info->GetRank() << std::endl; break;}
 			//Solve with U
-			for (k = moend; k > mobeg; --k) //iterator over rows of U
+			for (k = moend; k > mobeg; --k) if( U_Address[k - 1].first != U_Address[k - 1].last ) //iterator over rows of U
 			{
 				for (INMOST_DATA_ENUM_TYPE r = U_Address[k - 1].first; r < U_Address[k - 1].last; ++r)
+				{
 					temp[k - 1] -= temp[LU_Entries[r].first] * LU_Entries[r].second;
+					//if( LU_Entries[r].second != LU_Entries[r].second ) std::cout << "U-row " << k << " at " << LU_Entries[r].first << " is nan " << " rank " << info->GetRank() << std::endl;
+				}
 			}
+			
+			//for (k = mobeg; k < moend; ++k) if( temp[k] != temp[k] ) {std::cout << "Nan after U-solve" << " rank " << info->GetRank() << std::endl; break;}
+			
+			//for (k = mobeg; k < moend; ++k) if( temp[k] != temp[k] ) {std::cout << "Nan in output" << " rank " << info->GetRank() << std::endl; break;}
 
 		
 			for (k = mobeg; k < moend; ++k) output[ddQ[k]] = temp[k];
