@@ -1265,11 +1265,12 @@ namespace INMOST
 			if( &other != this )
 			{
 				for(iterator i = begin(); i != end(); ++i) (*i).~ValType();
+				IndType old_beg_index = beg_index;
 				beg_index = other.beg_index;
 				end_index = other.end_index;
 				if( beg_index != end_index )
 				{
-					array = static_cast<ValType *>(realloc(array+beg_index,sizeof(ValType)*(end_index-beg_index)));
+					array = static_cast<ValType *>(realloc(array+old_beg_index,sizeof(ValType)*(end_index-beg_index)));
 					assert(array != NULL);
 					array = array - beg_index;
 					for(IndType i = beg_index; i < end_index; ++i) new (array+i) ValType(other.array[i]);
@@ -1277,7 +1278,7 @@ namespace INMOST
 				}
 				else 
 				{
-					free(array+beg_index);
+					free(array+old_beg_index);
 					array = NULL;
 				}
 			}

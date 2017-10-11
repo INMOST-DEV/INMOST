@@ -210,9 +210,9 @@ namespace INMOST
 		/// The intended size of the matrix for this entry.
 		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return Size();}
 		/// Number of tags in block.
-		INMOST_DATA_ENUM_TYPE Size() const {return unknown_tags.size();}
+		INMOST_DATA_ENUM_TYPE Size() const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Number of entries for each tag in the block.
-		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return unknown_tags.size();}
+		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Retrive component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {return unknown_comp[unk];}
 		/// Retrive tag related to unknown value.
@@ -283,17 +283,17 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos<unknown_tag[e].size()); return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const { rMatrix ret(MatrixSize(e),1); for(int k = 0; k < unknown_tag[e].size(); ++k) ret(k,0) = Value(e,k); return ret; }
+		rMatrix Value(const Storage & e) const { rMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
-		iMatrix Index(const Storage & e) const { iMatrix ret(MatrixSize(e),1); for(int k = 0; k < unknown_tag[e].size(); ++k) ret(k,0) = Index(e,k); return ret; }
+		iMatrix Index(const Storage & e) const { iMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Index(e,k); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix operator [](const Storage & e) const { uMatrix ret(MatrixSize(e),1); for(int k = 0; k < unknown_tag[e].size(); ++k) ret(0,0) = Unknown(e,k); return ret; }
+		uMatrix operator [](const Storage & e) const { uMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(0,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
-		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return unknown_tag[e].size();}
+		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size();}
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
-		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return unknown_tag[e].size();}
+		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size();}
 		/// Retrive component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {assert(unk==0); return ENUMUNDEF;}
 		/// Retrive tag related to unknown value.
@@ -337,15 +337,15 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const {rMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
+		rMatrix Value(const Storage & e) const {rMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
-		iMatrix Index(const Storage & e) const {iMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
+		iMatrix Index(const Storage & e) const {iMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
+		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
 		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return Size();}
 		/// Number of tags in block.
-		INMOST_DATA_ENUM_TYPE Size() const {return unknown_tags.size();}
+		INMOST_DATA_ENUM_TYPE Size() const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Number of entries for each tag in the block.
 		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const;
 		/// Retrive component of the tag related to unknown.
@@ -378,7 +378,7 @@ namespace INMOST
 		///Retirve entry from block of entries.
 		const AbstractEntry & GetEntry(INMOST_DATA_ENUM_TYPE k) const {return *entries[k];}
 		///Total number of entries.
-		INMOST_DATA_ENUM_TYPE NumEntries() const {return entries.size();}
+		INMOST_DATA_ENUM_TYPE NumEntries() const {return (INMOST_DATA_ENUM_TYPE)entries.size();}
 		/// Return value in vector of unknowns of the block at certain position.
 		INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const;
 		/// Return value in vector of unknowns of the block at certain position.
