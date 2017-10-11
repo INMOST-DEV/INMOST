@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 2.6)
 project (INMOST)
 
-add_subdirectory(Source)
+
 add_definitions(${SOLVER_DEFINITIONS})
 include_directories("Source/Headers")
 
@@ -11,7 +11,6 @@ set(INMOST_PATCH_VERSION 0)
 set(INMOST_VERSION "${INMOST_MAJOR_VERSION}.${INMOST_MINOR_VERSION}.${INMOST_PATCH_VERSION}")
 
 
-add_library(inmost STATIC ${SOURCE} ${HEADER})
 
 option(USE_MPI "Compile with MPI support" ON)
 option(USE_MPI_P2P "Use MPI point to point functionality, may be faster with hardware support" ON)
@@ -42,6 +41,9 @@ option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
 if( MSVC )
 option(USE_MT "Use /MT switch instead of /MD switch for libraries generated with Visual Studio" OFF)
 endif( MSVC )
+
+add_subdirectory(Source)
+add_library(inmost STATIC ${SOURCE} ${HEADER})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_find/")
 
