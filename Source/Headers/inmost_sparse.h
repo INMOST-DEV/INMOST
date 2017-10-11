@@ -329,8 +329,8 @@ namespace INMOST
 			__INLINE static index make_index(INMOST_DATA_ENUM_TYPE _first, INMOST_DATA_ENUM_TYPE _second)
 			{
 				index ret;
-				ret.first = std::min(_first,_second);
-				ret.second = std::max(_first,_second);
+				ret.first = _first >_second ? _second : _first;
+				ret.second = _first < _second ? _second : _first;
 				return ret;
 			}
 			typedef struct hessian_entry_s

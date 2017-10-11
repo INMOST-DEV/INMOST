@@ -103,8 +103,12 @@
 #if defined(USE_OMP)
 #include <omp.h>
 #endif
-#if defined(USE_MPI)
-#include <mpi.h>
+
+#if defined(min)
+#undef min
+#endif
+#if defined(max)
+#undef max
 #endif
 
 #if !defined(USE_MPI)
