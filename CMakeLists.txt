@@ -2,7 +2,6 @@ cmake_minimum_required (VERSION 2.6)
 project (INMOST)
 
 
-add_definitions(${SOLVER_DEFINITIONS})
 include_directories("Source/Headers")
 
 set(INMOST_MAJOR_VERSION 0)
@@ -43,6 +42,8 @@ option(USE_MT "Use /MT switch instead of /MD switch for libraries generated with
 endif( MSVC )
 
 add_subdirectory(Source)
+add_definitions(${SOLVER_DEFINITIONS})
+
 add_library(inmost STATIC ${SOURCE} ${HEADER})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_find/")
