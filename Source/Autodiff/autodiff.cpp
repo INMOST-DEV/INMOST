@@ -105,11 +105,11 @@ namespace INMOST
 	{
 		Mesh * m = b.GetMeshLink();
 		
-		ElementType sparse = b.GetElementType();
+    ElementType sparse = NONE;// b.GetElementType();
 		for (ElementType q = NODE; q <= MESH; q = NextElementType(q)) if (q & b.GetElementType())
 		{
 			for(unsigned unk = 0; unk < b.Size(); ++unk)
-				sparse &= b.GetValueTag(unk).isSparse(q);
+				sparse |= b.GetValueTag(unk).isSparse(q) ? q : NONE;
 		}
 		
 		INMOST_DATA_ENUM_TYPE ret = ENUMUNDEF;
