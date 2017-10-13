@@ -11,15 +11,18 @@
 #define PETSC_SUCCESS 0
 
 
-bool SolverIsInitializedPetsc() {
+bool SolverIsInitializedPetsc()
+{
     PetscBool isInitialized;
     PetscErrorCode ierr = PetscInitialized(&isInitialized);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     return (isInitialized == PETSC_TRUE);
 }
 
-void SolverInitializePetsc(int *argc, char ***argv, const char *file_options) {
-    if (!SolverIsInitializedPetsc()) {
+void SolverInitializePetsc(int *argc, char ***argv, const char *file_options) 
+{
+    if (!SolverIsInitializedPetsc()) 
+    {
         PetscErrorCode ierr = PetscInitialize(argc, argv, file_options, "solver");
         //prevent petsc from catching signals, petsc error handling is misleading for
         //unexperienced user and results in the opinion that errors emerge from petsc
@@ -28,19 +31,22 @@ void SolverInitializePetsc(int *argc, char ***argv, const char *file_options) {
     }
 }
 
-bool SolverIsFinalizedPetsc() {
+bool SolverIsFinalizedPetsc() 
+{
     PetscBool isFinalized;
     PetscErrorCode ierr = PetscFinalized(&isFinalized);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     return (isFinalized == PETSC_TRUE);
 }
 
-void SolverFinalizePetsc() {
+void SolverFinalizePetsc() 
+{
     PetscErrorCode ierr = PetscFinalize();
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void MatrixDestroyDataPetsc(Mat **matrix) {
+void MatrixDestroyDataPetsc(Mat **matrix) 
+{
     PetscErrorCode ierr = MatDestroy(*matrix);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     delete *matrix;
@@ -48,7 +54,8 @@ void MatrixDestroyDataPetsc(Mat **matrix) {
 }
 
 
-void MatrixInitDataPetsc(Mat **matrix, INMOST_MPI_Comm comm, const char *name) {
+void MatrixInitDataPetsc(Mat **matrix, INMOST_MPI_Comm comm, const char *name) 
+{
     PetscErrorCode ierr;
     if (matrix == NULL) throw INMOST::DataCorruptedInSolver;
     if (*matrix != NULL)
@@ -66,7 +73,8 @@ void MatrixInitDataPetsc(Mat **matrix, INMOST_MPI_Comm comm, const char *name) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void MatrixCopyDataPetsc(Mat **matrix, Mat *other_matrix) {
+void MatrixCopyDataPetsc(Mat **matrix, Mat *other_matrix) 
+{
     PetscErrorCode ierr;
     if (matrix == NULL || other_matrix == NULL) throw INMOST::DataCorruptedInSolver;
     if (*matrix != NULL)
@@ -76,7 +84,8 @@ void MatrixCopyDataPetsc(Mat **matrix, Mat *other_matrix) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void MatrixAssignDataPetsc(Mat *matrix, Mat *other_matrix) {
+void MatrixAssignDataPetsc(Mat *matrix, Mat *other_matrix) 
+{
     PetscErrorCode ierr;
     ierr = MatCopy(*other_matrix, *matrix, DIFFERENT_NONZERO_PATTERN);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
@@ -84,7 +93,8 @@ void MatrixAssignDataPetsc(Mat *matrix, Mat *other_matrix) {
 
 
 void
-MatrixPreallocatePetsc(Mat *matrix, int local_size, int global_size, int *diag_nonzeroes, int *off_diag_nonzeroes) {
+MatrixPreallocatePetsc(Mat *matrix, int local_size, int global_size, int *diag_nonzeroes, int *off_diag_nonzeroes) 
+{
     PetscErrorCode ierr;
     ierr = MatSetSizes(*matrix, local_size, local_size, global_size, global_size);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
@@ -92,13 +102,15 @@ MatrixPreallocatePetsc(Mat *matrix, int local_size, int global_size, int *diag_n
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void MatrixFillPetsc(Mat *matrix, int row, int cols, int *col_positions, double *col_values) {
+void MatrixFillPetsc(Mat *matrix, int row, int cols, int *col_positions, double *col_values)
+{
     PetscErrorCode ierr;
     ierr = MatSetValues(*matrix, 1, &row, cols, col_positions, col_values, INSERT_VALUES);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void MatrixFinalizePetsc(Mat *matrix) {
+void MatrixFinalizePetsc(Mat *matrix) 
+{
     PetscErrorCode ierr;
     ierr = MatAssemblyBegin(*matrix, MAT_FINAL_ASSEMBLY);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
@@ -107,7 +119,8 @@ void MatrixFinalizePetsc(Mat *matrix) {
 }
 
 
-void VectorDestroyDataPetsc(Vec **vector) {
+void VectorDestroyDataPetsc(Vec **vector) 
+{
     PetscErrorCode ierr = VecDestroy(*vector);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     delete *vector;
@@ -115,7 +128,8 @@ void VectorDestroyDataPetsc(Vec **vector) {
 }
 
 
-void VectorInitDataPetsc(Vec **vector, INMOST_MPI_Comm comm, const char *name) {
+void VectorInitDataPetsc(Vec **vector, INMOST_MPI_Comm comm, const char *name) 
+{
     PetscErrorCode ierr;
     if (vector == NULL) throw INMOST::DataCorruptedInSolver;
     if (*vector != NULL)
@@ -133,7 +147,8 @@ void VectorInitDataPetsc(Vec **vector, INMOST_MPI_Comm comm, const char *name) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void VectorCopyDataPetsc(Vec **vector, Vec *other_vector) {
+void VectorCopyDataPetsc(Vec **vector, Vec *other_vector) 
+{
     PetscErrorCode ierr;
     if (vector == NULL || other_vector == NULL) throw INMOST::DataCorruptedInSolver;
     if (*vector != NULL)
@@ -146,29 +161,34 @@ void VectorCopyDataPetsc(Vec **vector, Vec *other_vector) {
 }
 
 
-void VectorAssignDataPetsc(Vec *vector, Vec *other_vector) {
+void VectorAssignDataPetsc(Vec *vector, Vec *other_vector) 
+{
     PetscErrorCode ierr;
     if (vector == NULL || other_vector == NULL) throw INMOST::DataCorruptedInSolver;
     ierr = VecCopy(*other_vector, *vector);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void VectorPreallocatePetsc(Vec *vector, int local_size, int global_size) {
+void VectorPreallocatePetsc(Vec *vector, int local_size, int global_size) 
+{
     PetscErrorCode ierr = VecSetSizes(*vector, local_size, global_size);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void VectorFillPetsc(Vec *vector, int size, int *positions, double *values) {
+void VectorFillPetsc(Vec *vector, int size, int *positions, double *values) 
+{
     PetscErrorCode ierr = VecSetValues(*vector, size, positions, values, INSERT_VALUES);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void VectorLoadPetsc(Vec *vector, int size, int *positions, double *values) {
+void VectorLoadPetsc(Vec *vector, int size, int *positions, double *values) 
+{
     PetscErrorCode ierr = VecGetValues(*vector, size, positions, values);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void VectorFinalizePetsc(Vec *vector) {
+void VectorFinalizePetsc(Vec *vector) 
+{
     PetscErrorCode ierr;
     ierr = VecAssemblyBegin(*vector);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
@@ -176,7 +196,8 @@ void VectorFinalizePetsc(Vec *vector) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void SolverDestroyDataPetsc(KSP **ksp) {
+void SolverDestroyDataPetsc(KSP **ksp) 
+{
     PetscErrorCode ierr = KSPDestroy(*ksp);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     delete *ksp;
@@ -184,7 +205,8 @@ void SolverDestroyDataPetsc(KSP **ksp) {
 }
 
 
-void SolverInitDataPetsc(KSP **ksp, INMOST_MPI_Comm comm, const char *name) {
+void SolverInitDataPetsc(KSP **ksp, INMOST_MPI_Comm comm, const char *name) 
+{
     PetscErrorCode ierr;
     if (ksp == NULL) throw INMOST::DataCorruptedInSolver;
     if (*ksp != NULL)
@@ -202,7 +224,8 @@ void SolverInitDataPetsc(KSP **ksp, INMOST_MPI_Comm comm, const char *name) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void SolverCopyDataPetsc(KSP **ksp, KSP *other_ksp, INMOST_MPI_Comm comm) {
+void SolverCopyDataPetsc(KSP **ksp, KSP *other_ksp, INMOST_MPI_Comm comm) 
+{
     PetscErrorCode ierr;
     if (ksp == NULL) throw INMOST::DataCorruptedInSolver;
     if (*ksp != NULL)
@@ -223,7 +246,8 @@ void SolverCopyDataPetsc(KSP **ksp, KSP *other_ksp, INMOST_MPI_Comm comm) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void SolverAssignDataPetsc(KSP *ksp, KSP *other_ksp) {
+void SolverAssignDataPetsc(KSP *ksp, KSP *other_ksp)
+{
     PetscErrorCode ierr;
     char *prefix;
     ierr = KSPGetOptionsPrefix(*other_ksp, const_cast<const char **>(&prefix));
@@ -235,7 +259,8 @@ void SolverAssignDataPetsc(KSP *ksp, KSP *other_ksp) {
 }
 
 
-void SolverSetMatrixPetsc(KSP *ksp, Mat *matrix, bool same_pattern, bool reuse_preconditioner) {
+void SolverSetMatrixPetsc(KSP *ksp, Mat *matrix, bool same_pattern, bool reuse_preconditioner) 
+{
     PetscErrorCode ierr;
     if (reuse_preconditioner)
         ierr = KSPSetReusePreconditioner(*ksp, PETSC_TRUE);
@@ -247,7 +272,8 @@ void SolverSetMatrixPetsc(KSP *ksp, Mat *matrix, bool same_pattern, bool reuse_p
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol) {
+bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol) 
+{
     PetscErrorCode ierr;
     PetscBool haveksp;
     bool guess = true;
@@ -263,7 +289,8 @@ bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol) {
 #endif //PETSC_VERSION
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     if (haveksp && !strcmp(typeksp, "preonly")) guess = false;
-    if (guess) {
+    if (guess) 
+    {
         ierr = KSPSetInitialGuessNonzero(*ksp, PETSC_TRUE);
         if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     }
@@ -278,14 +305,16 @@ bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol) {
     return reason >= 0;
 }
 
-int SolverIterationNumberPetsc(KSP *ksp) {
+int SolverIterationNumberPetsc(KSP *ksp) 
+{
     PetscInt its;
     PetscErrorCode ierr = KSPGetIterationNumber(*ksp, &its);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     return its;
 }
 
-double SolverResidualNormPetsc(KSP *ksp) {
+double SolverResidualNormPetsc(KSP *ksp) 
+{
     PetscReal norm;
     PetscErrorCode ierr = KSPGetResidualNorm(*ksp, &norm);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
@@ -293,13 +322,15 @@ double SolverResidualNormPetsc(KSP *ksp) {
 }
 
 
-void SolverSetTolerancesPetsc(KSP *ksp, double rtol, double atol, double divtol, int maxits) {
+void SolverSetTolerancesPetsc(KSP *ksp, double rtol, double atol, double divtol, int maxits) 
+{
     PetscErrorCode ierr = KSPSetTolerances(*ksp, rtol, atol, divtol, maxits);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
 
-void SolverSetOverlapPetsc(KSP *ksp, int levels) {
+void SolverSetOverlapPetsc(KSP *ksp, int levels) 
+{
     PetscErrorCode ierr;
     PC pc;
     PCType pc_type;
@@ -307,15 +338,19 @@ void SolverSetOverlapPetsc(KSP *ksp, int levels) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     ierr = PCGetType(pc, &pc_type);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
-    if (!strcmp(pc_type, "asm")) {
+    if (!strcmp(pc_type, "asm")) 
+    {
         ierr = PCASMSetOverlap(pc, levels);
-    } else if (!strcmp(pc_type, "gasm")) {
+    } 
+    else if (!strcmp(pc_type, "gasm")) 
+    {
         ierr = PCGASMSetOverlap(pc, levels);
     }
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void SolverSetDropTolerancePetsc(KSP *ksp, double dtol) {
+void SolverSetDropTolerancePetsc(KSP *ksp, double dtol) 
+{
     PetscErrorCode ierr;
     PC pc;
     ierr = KSPGetPC(*ksp, &pc);
@@ -324,7 +359,8 @@ void SolverSetDropTolerancePetsc(KSP *ksp, double dtol) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-void SolverSetFillLevelPetsc(KSP *ksp, double lfill) {
+void SolverSetFillLevelPetsc(KSP *ksp, double lfill) 
+{
     PetscErrorCode ierr;
     PC pc;
     ierr = KSPGetPC(*ksp, &pc);
@@ -333,12 +369,14 @@ void SolverSetFillLevelPetsc(KSP *ksp, double lfill) {
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
-const char *SolverConvergedReasonPetsc(KSP *ksp) {
+const char *SolverConvergedReasonPetsc(KSP *ksp) 
+{
     static char reason_str[4096];
     KSPConvergedReason reason;
     PetscErrorCode ierr = KSPGetConvergedReason(*ksp, &reason);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
-    switch (reason) {
+    switch (reason) 
+    {
         case KSP_CONVERGED_RTOL:
         case KSP_CONVERGED_RTOL_NORMAL:
             strcpy(reason_str, "norm decreased by a factor of relative tolerance");
