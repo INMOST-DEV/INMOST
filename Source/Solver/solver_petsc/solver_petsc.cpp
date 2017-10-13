@@ -255,7 +255,12 @@ bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol) {
     char *prefix;
     ierr = KSPGetOptionsPrefix(*ksp, const_cast<const char **>(&prefix));
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+//due to https://www.mcs.anl.gov/petsc/documentation/changes/37.html
+#if PETSC_VERSION_MAJOR >= 3 || (PETSC_VERSION_MAJOR == 3 && PETSC_VERSION_MINOR >= 7)
     ierr = PetscOptionsGetString(NULL,prefix, "-ksp_type", typeksp, 2048, &haveksp);
+#else //PETSC_VERSION
+	ierr = PetscOptionsGetString(prefix, "-ksp_type", typeksp, 2048, &haveksp);
+#endif //PETSC_VERSION
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     if (haveksp && !strcmp(typeksp, "preonly")) guess = false;
     if (guess) {
