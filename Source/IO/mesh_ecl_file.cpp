@@ -1268,7 +1268,7 @@ namespace INMOST
 			std::cout << "Started loading " << File << std::endl;
 		}
 		std::vector< std::pair< std::pair<FILE *, std::string>, int> > fs(1, std::make_pair(std::make_pair(f, File), 0));
-		char readline[2048], readlines[2048], *p, *pend, rec[2048];
+		char readline[2048], readlines[2048], *p, *pend, rec[2048], pupper[2048];
 		int text_end, text_start, state = ECL_NONE, state_from = ECL_NONE, nchars;
 		int waitlines = 0;
 		int have_dimens = 0, totread, downread, numrecs, offset;
@@ -1320,19 +1320,20 @@ namespace INMOST
 					readline[text_end + 1] = '\0';
 					p = readline + text_start;
 					pend = readline + text_end + 1;
-					for (char * q = p; q < pend; q++) *q = toupper(*q);
+					strcpy(pupper,p); //upper case for keyword comparison
+					for (char * q = pupper; q < pupper + (pend-p); q++) *q = toupper(*q);
 				}
 				if (p[0] == '-' && p[1] == '-') continue; //skip comment
 				if (waitlines) { waitlines--; continue; } //skip meaningful lines
 				switch (state)
 				{
 				case ECL_NONE:
-					if (!ECLSTRCMP(p, "END")) //end of data - don't read beyond
+					if (!ECLSTRCMP(pupper, "END")) //end of data - don't read beyond
 					{
 						goto ecl_exit_loop;
 					}
-					else if (!ECLSTRCMP(p, "INCLUDE")) state = ECL_INCLUDE;
-					else if (!ECLSTRCMP(p, "BOX"))
+					else if (!ECLSTRCMP(pupper, "INCLUDE")) state = ECL_INCLUDE;
+					else if (!ECLSTRCMP(pupper, "BOX"))
 					{
 						if (verbosity > 0)
 						{
@@ -1340,7 +1341,7 @@ namespace INMOST
 							std::cout << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 						}
 					}
-					else if (!ECLSTRCMP(p, "ENDBOX"))
+					else if (!ECLSTRCMP(pupper, "ENDBOX"))
 					{
 						if (verbosity > 0)
 						{
@@ -1348,15 +1349,15 @@ namespace INMOST
 							std::cout << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 						}
 					}
-					else if (!ECLSTRCMP(p, "MULTIPLY")) state = ECL_MULTIPLY;
-					else if (!ECLSTRCMP(p, "EDITNNC"))
+					else if (!ECLSTRCMP(pupper, "MULTIPLY")) state = ECL_MULTIPLY;
+					else if (!ECLSTRCMP(pupper, "EDITNNC"))
 					{
 						state = ECL_EDITNNC;
 						downread = 0;
 					}
-					else if (!ECLSTRCMP(p, "FAULTS"))
+					else if (!ECLSTRCMP(pupper, "FAULTS"))
 						state = ECL_FAULTS;
-					else if (!ECLSTRCMP(p, "DIMENS") || !ECLSTRCMP(p, "SPECGRID"))
+					else if (!ECLSTRCMP(pupper, "DIMENS") || !ECLSTRCMP(pupper, "SPECGRID"))
 					{
 						read_arrayi = dims;
 						numrecs = 1;
@@ -1365,7 +1366,7 @@ namespace INMOST
 						offset = state = ECL_DIMENS;
 						have_dimens = 1;
 					}
-					else if (!ECLSTRCMP(p, "MAPAXIS"))
+					else if (!ECLSTRCMP(pupper, "MAPAXIS"))
 					{
 						read_arrayi = mapaxis;
 						numrecs = 1;
@@ -1373,7 +1374,7 @@ namespace INMOST
 						argtype = ECL_VAR_INT;
 						offset = state = ECL_MAPAXIS;
 					}
-					else if (!ECLSTRCMP(p, "DX"))
+					else if (!ECLSTRCMP(pupper, "DX"))
 					{
 						assert(have_dimens);
 						if (xyz.empty()) xyz.resize(3 * dims[0] * dims[1] * dims[2]);
@@ -1383,7 +1384,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_DX;
 					}
-					else if (!ECLSTRCMP(p, "DY"))
+					else if (!ECLSTRCMP(pupper, "DY"))
 					{
 						assert(have_dimens);
 						if (xyz.empty()) xyz.resize(3 * dims[0] * dims[1] * dims[2]);
@@ -1394,7 +1395,7 @@ namespace INMOST
 						offset = ECL_DX;
 						state = ECL_DY;
 					}
-					else if (!ECLSTRCMP(p, "DZ"))
+					else if (!ECLSTRCMP(pupper, "DZ"))
 					{
 						assert(have_dimens);
 						if (xyz.empty()) xyz.resize(3 * dims[0] * dims[1] * dims[2]);
@@ -1405,7 +1406,7 @@ namespace INMOST
 						offset = ECL_DX;
 						state = ECL_DZ;
 					}
-					else if (!ECLSTRCMP(p, "COORD"))
+					else if (!ECLSTRCMP(pupper, "COORD"))
 					{
 						assert(have_dimens);
 						if (xyz.empty()) xyz.resize(3 * 2 * (dims[0] + 1)*(dims[1] + 1));
@@ -1416,7 +1417,7 @@ namespace INMOST
 						offset = state = ECL_COORDS;
 						gtype = ECL_GTYPE_ZCORN;
 					}
-					else if (!ECLSTRCMP(p, "ZCORN"))
+					else if (!ECLSTRCMP(pupper, "ZCORN"))
 					{
 						assert(have_dimens);
 						if (zcorn.empty()) zcorn.resize(dims[0] * dims[1] * dims[2] * 8);
@@ -1426,7 +1427,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						state = offset = ECL_ZCORN;
 					}
-					else if (!ECLSTRCMP(p, "TOPS"))
+					else if (!ECLSTRCMP(pupper, "TOPS"))
 					{
 						assert(have_dimens);
 						tops.resize(dims[0] * dims[1] * dims[2]);
@@ -1437,7 +1438,7 @@ namespace INMOST
 						offset = state = ECL_TOPS;
 						gtype = ECL_GTYPE_TOPS;
 					}
-					else if (!ECLSTRCMP(p, "PERMX"))
+					else if (!ECLSTRCMP(pupper, "PERMX"))
 					{
 						assert(have_dimens);
 						if (perm.empty()) perm.resize(3 * dims[0] * dims[1] * dims[2]);
@@ -1448,7 +1449,7 @@ namespace INMOST
 						offset = state = ECL_PERMX;
 						have_perm |= HAVE_PERM_X;
 					}
-					else if (!ECLSTRCMP(p, "PERMY"))
+					else if (!ECLSTRCMP(pupper, "PERMY"))
 					{
 						assert(have_dimens);
 						if (perm.empty()) perm.resize(3 * dims[0] * dims[1] * dims[2]);
@@ -1460,7 +1461,7 @@ namespace INMOST
 						state = ECL_PERMY;
 						have_perm |= HAVE_PERM_Y;
 					}
-					else if (!ECLSTRCMP(p, "PERMZ"))
+					else if (!ECLSTRCMP(pupper, "PERMZ"))
 					{
 						assert(have_dimens);
 						if (perm.empty()) perm.resize(3 * dims[0] * dims[1] * dims[2]);
@@ -1472,7 +1473,7 @@ namespace INMOST
 						state = ECL_PERMZ;
 						have_perm |= HAVE_PERM_Z;
 					}
-					else if (!ECLSTRCMP(p, "PORO"))
+					else if (!ECLSTRCMP(pupper, "PORO"))
 					{
 						assert(have_dimens);
 						poro.resize(dims[0] * dims[1] * dims[2]);
@@ -1482,7 +1483,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_PORO;
 					}
-					else if (!ECLSTRCMP(p, "THCONR"))
+					else if (!ECLSTRCMP(pupper, "THCONR"))
 					{
 						assert(have_dimens);
 						thconr.resize(dims[0] * dims[1] * dims[2]);
@@ -1492,7 +1493,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_THCONR;
 					}
-					else if (!ECLSTRCMP(p, "PRESSURE"))
+					else if (!ECLSTRCMP(pupper, "PRESSURE"))
 					{
 						assert(have_dimens);
 						pressure.resize(dims[0] * dims[1] * dims[2]);
@@ -1502,7 +1503,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_PRESSURE;
 					}
-					else if (!ECLSTRCMP(p, "PBUB"))
+					else if (!ECLSTRCMP(pupper, "PBUB"))
 					{
 						assert(have_dimens);
 						pbub.resize(dims[0] * dims[1] * dims[2]);
@@ -1512,7 +1513,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_PBUB;
 					}
-					else if (!ECLSTRCMP(p, "SWAT"))
+					else if (!ECLSTRCMP(pupper, "SWAT"))
 					{
 						assert(have_dimens);
 						swat.resize(dims[0] * dims[1] * dims[2]);
@@ -1522,7 +1523,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_SWAT;
 					}
-					else if (!ECLSTRCMP(p, "SGAS"))
+					else if (!ECLSTRCMP(pupper, "SGAS"))
 					{
 						assert(have_dimens);
 						sgas.resize(dims[0] * dims[1] * dims[2]);
@@ -1532,7 +1533,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_SGAS;
 					}
-					else if (!ECLSTRCMP(p, "SOIL"))
+					else if (!ECLSTRCMP(pupper, "SOIL"))
 					{
 						assert(have_dimens);
 						soil.resize(dims[0] * dims[1] * dims[2]);
@@ -1542,7 +1543,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_SOIL;
 					}
-					else if (!ECLSTRCMP(p, "EQLNUM"))
+					else if (!ECLSTRCMP(pupper, "EQLNUM"))
 					{
 						assert(have_dimens);
 						eqlnum.resize(dims[0] * dims[1] * dims[2]);
@@ -1552,7 +1553,7 @@ namespace INMOST
 						argtype = ECL_VAR_INT;
 						offset = state = ECL_EQLNUM;
 					}
-					else if (!ECLSTRCMP(p, "PVTNUM"))
+					else if (!ECLSTRCMP(pupper, "PVTNUM"))
 					{
 						assert(have_dimens);
 						pvtnum.resize(dims[0] * dims[1] * dims[2]);
@@ -1562,7 +1563,7 @@ namespace INMOST
 						argtype = ECL_VAR_INT;
 						offset = state = ECL_PVTNUM;
 					}
-					else if (!ECLSTRCMP(p, "ROCKNUM"))
+					else if (!ECLSTRCMP(pupper, "ROCKNUM"))
 					{
 						assert(have_dimens);
 						rocknum.resize(dims[0] * dims[1] * dims[2]);
@@ -1572,7 +1573,7 @@ namespace INMOST
 						argtype = ECL_VAR_INT;
 						offset = state = ECL_ROCKNUM;
 					}
-					else if (!ECLSTRCMP(p, "NTG"))
+					else if (!ECLSTRCMP(pupper, "NTG"))
 					{
 						assert(have_dimens);
 						ntg.resize(dims[0] * dims[1] * dims[2]);
@@ -1582,7 +1583,7 @@ namespace INMOST
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_NTG;
 					}
-					else if (!ECLSTRCMP(p, "ACTNUM"))
+					else if (!ECLSTRCMP(pupper, "ACTNUM"))
 					{
 						assert(have_dimens);
 						actnum.resize(dims[0] * dims[1] * dims[2]);
@@ -1592,7 +1593,7 @@ namespace INMOST
 						argtype = ECL_VAR_INT;
 						offset = state = ECL_ACTNUM;
 					}
-					else if (!ECLSTRCMP(p, "SATNUM"))
+					else if (!ECLSTRCMP(pupper, "SATNUM"))
 					{
 						assert(have_dimens);
 						satnum.resize(dims[0] * dims[1] * dims[2]);
@@ -1602,37 +1603,37 @@ namespace INMOST
 						argtype = ECL_VAR_INT;
 						offset = state = ECL_SATNUM;
 					}
-					else if (!ECLSTRCMP(p, "RADIAL"))
+					else if (!ECLSTRCMP(pupper, "RADIAL"))
 					{
 						radial = ECL_GTYPE_RADIAL;
 					}
-					else if (!ECLSTRCMP(p, "CART"))
+					else if (!ECLSTRCMP(pupper, "CART"))
 					{
 						radial = ECL_GTYPE_CARTESIAN;
 					}
-					else if (!ECLSTRCMP(p, "COMPDAT")) // well data
+					else if (!ECLSTRCMP(pupper, "COMPDAT")) // well data
 						state = ECL_COMPDAT;
-					else if (!ECLSTRCMP(p, "WELLSPEC")) // well data
+					else if (!ECLSTRCMP(pupper, "WELLSPEC")) // well data
 					{
 						wellspec = true;
 						state = ECL_WELSPECS;
 					}
-					else if (!ECLSTRCMP(p, "WELSPECS"))
+					else if (!ECLSTRCMP(pupper, "WELSPECS"))
 					{
 						wellspec = false;
 						state = ECL_WELSPECS;
 					}
-					else if (!ECLSTRCMP(p, "WCONPROD")) // well data
+					else if (!ECLSTRCMP(pupper, "WCONPROD")) // well data
 					{
 						wconprod = true;
 						state = ECL_WCONPRODINJE;
 					}
-					else if (!ECLSTRCMP(p, "WCONINJE")) // well data
+					else if (!ECLSTRCMP(pupper, "WCONINJE")) // well data
 					{
 						wconprod = false;
 						state = ECL_WCONPRODINJE;
 					}
-					else if (!ECLSTRCMP(p, "DATES"))
+					else if (!ECLSTRCMP(pupper, "DATES"))
 					{
 						state = ECL_DATES;
 						read_start = false;
@@ -1642,14 +1643,14 @@ namespace INMOST
 							std::cout << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 						}
 					}
-					else if (!ECLSTRCMP(p, "START"))
+					else if (!ECLSTRCMP(pupper, "START"))
 					{
 						state = ECL_DATES;
 						read_start = true;
 					}
-					else if (!ECLSTRCMP(p, "TSTEP"))
+					else if (!ECLSTRCMP(pupper, "TSTEP"))
 						state = ECL_TSTEP;
-					else if (!ECLSTRCMP(p, "INRAD"))
+					else if (!ECLSTRCMP(pupper, "INRAD"))
 					{
 						if (radial != ECL_GTYPE_RADIAL && verbosity > 0)
 						{
@@ -1815,6 +1816,7 @@ namespace INMOST
 							if(!have_star) val = atof(rec);
 							for(int k = 0; k < count; ++k)
 								tsteps.push_back(val);
+							p += nchars;
 						}
 					}
 					break;
@@ -4979,33 +4981,41 @@ namespace INMOST
 										double rw = kt->rw;
 										double r0 = kt->r0;
 										double skin = kt->skin;
-										double kx = perm[3 * ECL_IJK_DATA(i, j, k) + 0];
-										double ky = perm[3 * ECL_IJK_DATA(i, j, k) + 1];
-										double kz = perm[3 * ECL_IJK_DATA(i, j, k) + 2];
-										double nkx = kx, nky = ky;
+										double kx = 1, ky = 1, kz = 1;
 										double dx, dy, dz;
 										GetDXYZ(Element(this,h),dx,dy,dz);
-										if (kt->dir == 'X')
+										
+										if( Kh <= 0 || r0 <= 0 )
 										{
-											std::swap(kx, kz);
-											std::swap(dx, dz);
-										}
-										else if (kt->dir == 'Y')
-										{
-											std::swap(ky, kz);
-											std::swap(dy, dz);
-										}
-										//calculate perm
-										if (Kh <= 0)
-										{
-											Kh = sqrt(kx*ky)*dz;
-											if( Kh != Kh ) Kh = 0;
-										}
-										//calculate pressure equivalent radius
-										if (r0 <= 0)
-										{
-											r0 = 0.28*sqrt(dx*dx*sqrt(ky / kx) + dy*dy*sqrt(kx / ky)) / (pow(kx / ky, 0.25) + pow(ky / kx, 0.25));
-											if( r0 != r0 ) r0 = 0;
+											if( !perm.empty() )
+											{
+												kx = perm[3 * ECL_IJK_DATA(i, j, k) + 0];
+												ky = perm[3 * ECL_IJK_DATA(i, j, k) + 1];
+												kz = perm[3 * ECL_IJK_DATA(i, j, k) + 2];
+											}
+											else std::cout << __FILE__ << ":" << __LINE__ << " PERM is required to calculate correct well index" << std::endl;
+											if (kt->dir == 'X')
+											{
+												std::swap(kx, kz);
+												std::swap(dx, dz);
+											}
+											else if (kt->dir == 'Y')
+											{
+												std::swap(ky, kz);
+												std::swap(dy, dz);
+											}
+											//calculate perm
+											if (Kh <= 0)
+											{
+												Kh = sqrt(kx*ky)*dz;
+												if( Kh != Kh ) Kh = 0;
+											}
+											//calculate pressure equivalent radius
+											if (r0 <= 0)
+											{
+												r0 = 0.28*sqrt(dx*dx*sqrt(ky / kx) + dy*dy*sqrt(kx / ky)) / (pow(kx / ky, 0.25) + pow(ky / kx, 0.25));
+												if( r0 != r0 ) r0 = 0;
+											}
 										}
 										WI = Kh/(log(r0/rw)+skin);
 										if( WI != WI ) WI = 0;
