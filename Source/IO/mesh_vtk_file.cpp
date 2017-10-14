@@ -722,7 +722,7 @@ safe_output:
 						}
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
+							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -787,7 +787,7 @@ safe_output:
 						if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,read_into_cell & ESET,nentries);
+							Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,read_into_cell & ~CELL,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -858,7 +858,7 @@ safe_output:
 						if( fgets(readline,2048,f) == NULL ) throw BadFile; //LOOK_UP TABLE
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
+							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -935,7 +935,7 @@ safe_output:
 						if( fgets(readline,2048,f) == NULL ) throw BadFile; //LOOK_UP TABLE
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
+							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -1014,7 +1014,7 @@ safe_output:
 								throw BadFile;
 							if( read_into == 2 )
 							{
-								Tag attr  = CreateTag(attrname,t,read_into_cell,read_into_cell & ESET,nentries);
+								Tag attr  = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
 								if( ntuples != newcells.size() ) printf("number of tuples in field is not equal to number of cells\n");
 								unsigned report_pace = std::max<unsigned>(ntuples/250,1);
 								for(unsigned int it = 0; it < ntuples; it++)
@@ -1392,14 +1392,30 @@ safe_output:
 								}
 								case 3: //VTK_LINE
 								{
-									for(int k = j+1; k < j+1+cp[j]; k++)
+									if( grid_is_2d )
 									{
-										c_nodes.push_back(newnodes[cp[k]]);
-										RemMarker(newnodes[cp[k]],unused_marker);
+										c_nodes.resize(1);
+										for(int k = j+1; k < j+1+cp[j]; k++)
+										{
+											c_nodes.at(0) = newnodes[cp[k]];
+											RemMarker(newnodes[cp[k]],unused_marker);
+											f_edges.push_back(CreateEdge(c_nodes).first);
+										}
+										j = j + 1 + cp[j];
+										assert(f_edges.size() == 2);
+										newcells[i] = CreateFace(f_edges).first->GetHandle();
 									}
-									j = j + 1 + cp[j];
-									assert(c_nodes.size() == 2);
-									newcells[i] = CreateEdge(c_nodes).first->GetHandle();
+									else
+									{
+										for(int k = j+1; k < j+1+cp[j]; k++)
+										{
+											c_nodes.push_back(newnodes[cp[k]]);
+											RemMarker(newnodes[cp[k]],unused_marker);
+										}
+										j = j + 1 + cp[j];
+										assert(c_nodes.size() == 2);
+										newcells[i] = CreateEdge(c_nodes).first->GetHandle();
+									}
 									break;
 								}
 								case 4: //VTK_POLY_LINE
@@ -1928,6 +1944,13 @@ safe_output:
 							for(ElementSet::iterator it = set->Begin(); it != set->End(); ++it)
 								read_into_cell |= it->GetElementType();
 						}
+					}
+					if( verbosity > 1 )
+					{
+						printf("\nCell types: ");
+						for(ElementType etype = EDGE; etype <= MESH; etype = NextElementType(etype) ) if( etype & read_into_cell )
+							printf("%s ", ElementTypeName(etype) );
+						printf("\n");
 					}
 					break;
 				}
