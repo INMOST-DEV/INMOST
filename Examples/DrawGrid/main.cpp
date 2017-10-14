@@ -493,9 +493,13 @@ face2gl DrawFace(Element & f, int mmat, double campos[3])
 		double r = color ? mmat / (double)maxcolor : mmat / (double) maxmat;
 		ret.set_color(1-r,r,1-r,0.25);
 	}
-
+	double v[3] = {0,0,0};
 	for( ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
-		ret.add_vert(&(kt->Coords()[0]));
+	{
+		for(int k = 0; k < f->GetMeshLink()->GetDimensions(); ++k)
+			v[k] = kt->Coords()[k];
+		ret.add_vert(v);
+	}
 
 
 	if( edges )
@@ -504,7 +508,12 @@ face2gl DrawFace(Element & f, int mmat, double campos[3])
 		if( boundary == 1 ) glColor3f(0,0,1); else glColor3f(0,0,0);
 		glBegin(GL_LINE_LOOP);
 		for( ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
-			glVertex3dv(&(kt->Coords()[0]));
+		{
+			if( f->GetMeshLink()->GetDimensions() == 2 )
+				glVertex2dv(&(kt->Coords()[0]));
+			else 
+				glVertex3dv(&(kt->Coords()[0]));
+		}
 		glEnd();
 		//glLineWidth(1.0);
 	}
@@ -1812,15 +1821,30 @@ int main(int argc, char ** argv)
 	for(std::map<Element::GeometricType,int>::iterator it = num.begin(); it != num.end(); ++it)
 		std::cout << Element::GeometricTypeName(it->first) << ": " << it->second << std::endl;
 
-	for(Mesh::iteratorNode n = mesh->BeginNode(); n != mesh->EndNode(); n++)
+	if( mesh->GetDimensions() == 2 )
 	{
-		Storage::real_array c = n->Coords();
-		if( c[0] > sright ) sright = c[0];
-		if( c[0] < sleft ) sleft = c[0];
-		if( c[1] > stop ) stop = c[1];
-		if( c[1] < sbottom ) sbottom = c[1];
-		if( c[2] > sfar ) sfar = c[2];
-		if( c[2] < snear ) snear = c[2];
+		for(Mesh::iteratorNode n = mesh->BeginNode(); n != mesh->EndNode(); n++)
+		{
+			Storage::real_array c = n->Coords();
+			if( c[0] > sright ) sright = c[0];
+			if( c[0] < sleft ) sleft = c[0];
+			if( c[1] > stop ) stop = c[1];
+			if( c[1] < sbottom ) sbottom = c[1];
+		}
+		sfar = -1, snear = 1;
+	}
+	else
+	{
+		for(Mesh::iteratorNode n = mesh->BeginNode(); n != mesh->EndNode(); n++)
+		{
+			Storage::real_array c = n->Coords();
+			if( c[0] > sright ) sright = c[0];
+			if( c[0] < sleft ) sleft = c[0];
+			if( c[1] > stop ) stop = c[1];
+			if( c[1] < sbottom ) sbottom = c[1];
+			if( c[2] > sfar ) sfar = c[2];
+			if( c[2] < snear ) snear = c[2];
+		}
 	}
 	printf("%g:%g %g:%g %g:%g\n",sleft,sright,sbottom,stop,snear,sfar);
 

@@ -444,12 +444,12 @@ namespace INMOST
 			//CHECK THIS!
 			if( order_singular_values )
 			{
+				Var temp;
 				for(i = 0; i < (int)n; i++)
 				{
 					k = i;
 					for(j = i+1; j < (int)n; ++j)
 						if( Sigma(k,k) < Sigma(j,j) ) k = j;
-					Var temp;
 					if( Sigma(k,k) > Sigma(i,i) )
 					{
 						temp       = Sigma(k,k);

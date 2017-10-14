@@ -13,8 +13,9 @@ namespace INMOST
 		if (f->nbAdjElements(CELL) == 0) ret.set_color(1, 0, 0, 0.1);
 		else ret.set_color(0, 1, 0, 0.1);
 
+		
 		for (ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
-			ret.add_vert(&(kt->Coords()[0]));
+			ret.add_vert(&kt->Coords()[0],kt->GetMeshLink()->GetDimensions());
 		ret.set_elem(f->GetElementType(), f->LocalID());
 		ret.compute_center();
 		return ret;

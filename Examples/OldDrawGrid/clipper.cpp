@@ -893,18 +893,24 @@ namespace INMOST
 	bnd_clipper::~bnd_clipper()
 	{
 		mm->DeleteTag(clip_state);
-		delete tree;
+		if( tree ) delete tree;
 		delete[]faces;
 	}
 
 	bnd_clipper::bnd_clipper(Mesh * m, HandleType * _faces, INMOST_DATA_ENUM_TYPE size)
 	{
 		mm = m;
-		clip_state = m->CreateTag("CLIP_FACE_STATE", DATA_INTEGER, FACE, NONE, 1);
+		clip_state = m->CreateTag("CLIP_FACE_STATE", DATA_INTEGER, (mm->GetDimensions() == 2 ? CELL : NONE) |FACE, NONE, 1);
 		nfaces = size;
 		faces = new HandleType[nfaces];
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++) faces[k] = _faces[k];
-		tree = new kdtree(mm, faces, nfaces);
+		if( mm->GetDimensions() == 2 )
+		{
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < nfaces; k++)
+				mm->IntegerDF(faces[k],clip_state) = CLIP_FACE_INSIDE;
+			tree = NULL;
+		}
+		else tree = new kdtree(mm, faces, nfaces);
 	}
 
 	double bnd_clipper::compute_value(Node n1, Node n2, Storage::real * c1, Storage::real * c2, Storage::real * pnt)
@@ -922,7 +928,8 @@ namespace INMOST
 
 	void bnd_clipper::clip_plane(Storage::real p[3], Storage::real n[3])
 	{
-		tree->intersect_plane_face(clip_state, p, n);
+		if( mm->GetDimensions() != 2 )
+			tree->intersect_plane_face(clip_state, p, n);
 	}
 
 	void bnd_clipper::gen_clip(std::vector<face2gl> & out, Storage::real p[3], Storage::real n[3], bool elevation)
@@ -933,17 +940,22 @@ namespace INMOST
 			int state = mm->IntegerDF(faces[k], clip_state);
 			if (state == CLIP_FACE_INSIDE)
 			{
-				ElementArray<Node> nodes = Face(mm, faces[k])->getNodes();
+				ElementArray<Node> nodes = Element(mm, faces[k])->getNodes();
 				face2gl f;
 				f.set_color(0.6, 0.6, 0.6, 1);
 				for (INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++)
 				{
-					f.add_vert(&nodes[q].Coords()[0]);
+					f.add_vert(&nodes[q].Coords()[0], mm->GetDimensions());
 					if (isColorBarEnabled())
 					{
 						//f.add_color(GetColorBar()->pick_color(nodes[q].RealDF(GetVisualizationTag())));
 						if (GetVisualizationType() == CELL && !isVisualizationSmooth())
-							f.add_texcoord(GetColorBar()->pick_texture(Face(mm, faces[k]).BackCell().RealDF(GetVisualizationTag())));
+						{
+							if( GetHandleElementType(faces[k]) == CELL )
+								f.add_texcoord(GetColorBar()->pick_texture(Cell(mm, faces[k]).RealDF(GetVisualizationTag())));
+							else
+								f.add_texcoord(GetColorBar()->pick_texture(Face(mm, faces[k]).BackCell().RealDF(GetVisualizationTag())));
+						}
 						else
 							f.add_texcoord(GetColorBar()->pick_texture(nodes[q].RealDF(GetVisualizationTag())));
 					}
@@ -957,7 +969,7 @@ namespace INMOST
 			{
 				face2gl f;
 				f.set_color(0.6, 0.6, 0.6, 1);
-				ElementArray<Node> nodes = Face(mm, faces[k])->getNodes();
+				ElementArray<Node> nodes = Element(mm, faces[k])->getNodes();
 				dynarray<bool, 64> nodepos(nodes.size());
 				dynarray<Storage::real, 64> faceverts;
 				Storage::real_array coords = nodes[0].Coords();
@@ -1055,13 +1067,13 @@ namespace INMOST
 						{
 							GetColorBar()->pick_color(nodes[q].RealDF(GetVisualizationTag())).set_color();
 							glTexCoord1f(GetColorBar()->pick_texture(nodes[q].RealDF(GetVisualizationTag())));
-							glVertex3dv(&nodes[q].Coords()[0]);
+							glVertexNdv(&nodes[q].Coords()[0],mm->GetDimensions());
 						}
 					}
 					else
 					{
 						for (INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++)
-							glVertex3dv(&nodes[q].Coords()[0]);
+							glVertexNdv(&nodes[q].Coords()[0],mm->GetDimensions());
 					}
 					glEnd();
 
@@ -1078,9 +1090,9 @@ namespace INMOST
 		{
 			if (mm->IntegerDF(faces[k], clip_state) == CLIP_FACE_INSIDE)
 			{
-				ElementArray<Node> nodes = Face(mm, faces[k])->getNodes();
+				ElementArray<Node> nodes = Element(mm, faces[k])->getNodes();
 				glBegin(GL_LINE_LOOP);
-				for (INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) glVertex3dv(&nodes[q].Coords()[0]);
+				for (INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++) glVertexNdv(&nodes[q].Coords()[0],mm->GetDimensions());
 				glEnd();
 			}
 		}

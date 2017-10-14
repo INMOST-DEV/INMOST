@@ -560,10 +560,11 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if( key == 'z' )
 	{
+		int ret;
 		printf("Enter point of plane (x,y,z):\n");
-		scanf("%lf %lf %lf",p,p+1,p+2);
+		ret = scanf("%lf %lf %lf",p,p+1,p+2);
 		printf("Enter normal of plane (x,y,z):\n");
-		scanf("%lf %lf %lf",n,n+1,n+2);
+		ret = scanf("%lf %lf %lf",n,n+1,n+2);
 		Storage::real l = sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
 		if( l )
 		{
@@ -574,6 +575,10 @@ void keyboard(unsigned char key, int x, int y)
 		if( oclipper ) 
 		{
 			oclipper->clip_plane(p,n);
+			clipboxupdate = true;
+		}
+		if( bclipper )
+		{
 			bclipper->clip_plane(p,n);
 			clipboxupdate = true;
 		}
@@ -645,7 +650,8 @@ void keyboard(unsigned char key, int x, int y)
 		if( oclipper ) delete oclipper;
 		if( bclipper ) delete bclipper;
 		bclipper = new bnd_clipper(mesh,boundary_faces.data(),(int)boundary_faces.size());
-		oclipper = new clipper(mesh);
+		if( mesh->GetDimensions() != 2 )
+			oclipper = new clipper(mesh);
 		clipupdate = true;
 		glutPostRedisplay();
 	}
@@ -679,7 +685,8 @@ void keyboard(unsigned char key, int x, int y)
 		if( oclipper ) delete oclipper;
 		if( bclipper ) delete bclipper;
 		bclipper = new bnd_clipper(mesh,boundary_faces.data(),(unsigned)boundary_faces.size());
-		oclipper = new clipper(mesh);
+		if( mesh->GetDimensions() != 2 )
+			oclipper = new clipper(mesh);
 		clipupdate = true;
 		glutPostRedisplay();
 	}
@@ -756,21 +763,29 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 		node.set_color();
 		glColor3f(1,1,0);
 		glBegin(GL_POINTS);
-		glVertex3dv(e->getAsNode()->Coords().data());
+		glVertexNdv(e->getAsNode()->Coords().data(),e.GetMeshLink()->GetDimensions());
 		glEnd();
 	}
-	else if( e.GetElementType() == EDGE )
+	if( e.GetElementType() == EDGE && e.GetElementDimension() == 0)
+	{
+		node.set_color();
+		glColor3f(1,1,0);
+		glBegin(GL_POINTS);
+		glVertexNdv(e->getNodes()[0]->Coords().data(),e.GetMeshLink()->GetDimensions());
+		glEnd();
+	}
+	else if( e.GetElementType() == EDGE && e.GetElementDimension() == 1 )
 	{
 		edge.set_color();
 		glLineWidth(4);
 		glBegin(GL_LINES);
-		glVertex3dv(e->getAsEdge()->getBeg()->Coords().data());
-		glVertex3dv(e->getAsEdge()->getEnd()->Coords().data());
+		glVertexNdv(e->getAsEdge()->getBeg()->Coords().data(),e.GetMeshLink()->GetDimensions());
+		glVertexNdv(e->getAsEdge()->getEnd()->Coords().data(),e.GetMeshLink()->GetDimensions());
 		glEnd();
 		node.set_color();
 		glBegin(GL_POINTS);
-		glVertex3dv(e->getAsEdge()->getBeg()->Coords().data());
-		glVertex3dv(e->getAsEdge()->getEnd()->Coords().data());
+		glVertexNdv(e->getAsEdge()->getBeg()->Coords().data(),e.GetMeshLink()->GetDimensions());
+		glVertexNdv(e->getAsEdge()->getEnd()->Coords().data(),e.GetMeshLink()->GetDimensions());
 		glEnd();
 		glLineWidth(1);
 
@@ -782,7 +797,30 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 			printtext("%d", e->getAsEdge().getEnd().LocalID());
 		}
 	}
-	else if( e.GetElementType() == FACE )
+	else if(  e.GetElementType() == FACE && e.GetElementDimension() == 1 )
+	{
+		edge.set_color();
+		glLineWidth(4);
+		glBegin(GL_LINES);
+		glVertexNdv(e->getAsFace()->getBeg()->Coords().data(),e.GetMeshLink()->GetDimensions());
+		glVertexNdv(e->getAsFace()->getEnd()->Coords().data(),e.GetMeshLink()->GetDimensions());
+		glEnd();
+		node.set_color();
+		glBegin(GL_POINTS);
+		glVertexNdv(e->getAsFace()->getBeg()->Coords().data(),e.GetMeshLink()->GetDimensions());
+		glVertexNdv(e->getAsFace()->getEnd()->Coords().data(),e.GetMeshLink()->GetDimensions());
+		glEnd();
+		glLineWidth(1);
+
+		if (print_adj)
+		{
+			glRasterPos3dv(e->getAsFace().getBeg().Coords().data());
+			printtext("%d", e->getAsFace().getBeg().LocalID());
+			glRasterPos3dv(e->getAsFace().getEnd().Coords().data());
+			printtext("%d", e->getAsFace().getEnd().LocalID());
+		}
+	}
+	else if( e.GetElementType() == FACE || (e.GetElementType() == CELL && e.GetElementDimension() == 2) )
 	{
 		face2gl f = DrawFace(e);
 		face.set_color();
@@ -798,7 +836,7 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 		ElementArray<Edge> edges = e->getEdges();
 		glBegin(GL_POINTS);
 		for(ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); ++it)
-			glVertex3dv(it->Coords().data());
+			glVertexNdv(it->Coords().data(),it->GetMeshLink()->GetDimensions());
 		glEnd();
 		glColor3f(0, 0, 0);
 		//glDisable(GL_DEPTH_TEST);
@@ -839,7 +877,7 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 		ElementArray<Node> nodes = e->getNodes();
 		glBegin(GL_POINTS);
 		for(ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); ++it)
-			glVertex3dv(it->Coords().data());
+			glVertexNdv(it->Coords().data(),it->GetMeshLink()->GetDimensions());
 		glEnd();
 
 		if (print_adj)
@@ -1164,13 +1202,13 @@ void draw_screen()
 	else
 	{
 		
-		if( oclipper )
+		if( oclipper || bclipper )
 		{
 			
 			if( clipupdate ) 
 			{
 				if( current_picker != NULL ) {delete current_picker; current_picker = NULL;}
-				oclipper->clip_plane(p,n);
+				if( oclipper ) oclipper->clip_plane(p,n);
 				clipupdate = false;
 				clipboxupdate = true;
 			}
@@ -1178,7 +1216,7 @@ void draw_screen()
 			if( !interactive && clipboxupdate )
 			{
 				clip_boundary.clear();
-				oclipper->gen_clip(clip_boundary,n,elevation);
+				if( oclipper ) oclipper->gen_clip(clip_boundary,n,elevation);
 				bclipper->clip_plane(p,n);
 				bclipper->gen_clip(clip_boundary,p,n,elevation);
 				clipboxupdate = false;
@@ -1215,13 +1253,13 @@ void draw_screen()
 				INMOST_DATA_ENUM_TYPE bpace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,bclipper->size()/100));
 				glColor4f(0.6,0.6,0.6,1);
 				if (isColorBarEnabled()) GetColorBar()->BindTexture();
-				oclipper->draw_clip(opace,n,elevation);
+				if( oclipper ) oclipper->draw_clip(opace,n,elevation);
 				bclipper->draw_clip(bpace,p,n);
 				if (isColorBarEnabled()) GetColorBar()->UnbindTexture();
 				glColor4f(0,0,0,1); 
 				if (drawedges)
 				{
-					oclipper->draw_clip_edges(opace, n,elevation);
+					if( oclipper ) oclipper->draw_clip_edges(opace, n,elevation);
 					bclipper->draw_clip_edges(bpace);
 				}
 				
@@ -1332,8 +1370,8 @@ void draw_screen()
 		glBegin(GL_LINES);
 		for(ElementArray<Edge>::iterator it = added_edges.begin(); it != added_edges.end(); ++it)
 		{
-			glVertex3dv(it->getBeg()->Coords().data());
-			glVertex3dv(it->getEnd()->Coords().data());
+			glVertexNdv(it->getBeg()->Coords().data(),it->GetMeshLink()->GetDimensions());
+			glVertexNdv(it->getEnd()->Coords().data(),it->GetMeshLink()->GetDimensions());
 		}
 		glEnd();
 	}
@@ -1644,7 +1682,10 @@ void draw_screen()
 												for (ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if (jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF))
 												{
 													jt->Centroid(cnt);
-													dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
+													if( mesh->GetDimensions() == 2 )
+														dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]);
+													else
+														dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
 													wgt = 1.0 / (dist + 1.0e-8);
 													if (source_tag.GetDataType() == DATA_REAL)
 													{
@@ -1944,7 +1985,7 @@ void svg_draw(std::ostream & file)
 	else
 	{
 		
-		if( oclipper ) 
+		if( oclipper || bclipper ) 
 		{
 			/*
 			std::vector<face2gl> temp_boundary;
@@ -2080,15 +2121,30 @@ int main(int argc, char ** argv)
 	
 	printf("Calculating bounds.\n");
 	tt = Timer();
-	for(Mesh::iteratorNode n = mesh->BeginNode(); n != mesh->EndNode(); n++)
+	if( mesh->GetDimensions() == 2 )
 	{
-		Storage::real_array c = n->Coords();
-		if( c[0] > sright ) sright = c[0];
-		if( c[0] < sleft ) sleft = c[0];
-		if( c[1] > stop ) stop = c[1];
-		if( c[1] < sbottom ) sbottom = c[1];
-		if( c[2] > sfar ) sfar = c[2];
-		if( c[2] < snear ) snear = c[2];
+		for(Mesh::iteratorNode n = mesh->BeginNode(); n != mesh->EndNode(); n++)
+		{
+			Storage::real_array c = n->Coords();
+			if( c[0] > sright ) sright = c[0];
+			if( c[0] < sleft ) sleft = c[0];
+			if( c[1] > stop ) stop = c[1];
+			if( c[1] < sbottom ) sbottom = c[1];
+		}
+		sfar = -1, snear = 1;
+	}
+	else
+	{
+		for(Mesh::iteratorNode n = mesh->BeginNode(); n != mesh->EndNode(); n++)
+		{
+			Storage::real_array c = n->Coords();
+			if( c[0] > sright ) sright = c[0];
+			if( c[0] < sleft ) sleft = c[0];
+			if( c[1] > stop ) stop = c[1];
+			if( c[1] < sbottom ) sbottom = c[1];
+			if( c[2] > sfar ) sfar = c[2];
+			if( c[2] < snear ) snear = c[2];
+		}
 	}
 	printf("Done. Time %lg\n",Timer()-tt);
 	printf("%g:%g %g:%g %g:%g\n",sleft,sright,sbottom,stop,snear,sfar);
@@ -2190,7 +2246,8 @@ int main(int argc, char ** argv)
 
 	printf("Prepearing interactive mesh clipper.\n");
 	//tt = Timer();
-	oclipper = new clipper(mesh);
+	if( mesh->GetDimensions() != 2 )
+		oclipper = new clipper(mesh);
 	bclipper = new bnd_clipper(mesh,boundary_faces.data(),(unsigned)boundary_faces.size());
 	clipupdate = true;
 	//printf("Done. Time %g\n",Timer() - tt);

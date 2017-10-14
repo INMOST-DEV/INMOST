@@ -22,4 +22,10 @@
 
 void printtext(const char * fmt, ...); //in printtext.cpp
 
+static void glVertexNdv(double * v, int N)
+{
+	if( N == 2 ) glVertex2dv(v);
+	else glVertex3dv(v);
+}
+
 #endif

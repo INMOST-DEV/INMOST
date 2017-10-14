@@ -39,6 +39,7 @@ namespace INMOST
 		void set_color(double r, double g, double b, double a) { c[0] = r; c[1] = g; c[2] = b; c[3] = a; }
 		void add_vert(double x, double y, double z) { unsigned s = (unsigned)verts.size(); verts.resize(s + 3); verts[s] = x; verts[s + 1] = y; verts[s + 2] = z; }
 		void add_vert(double v[3]) { verts.insert(verts.end(), v, v + 3); }
+		void add_vert(double * v, int N) { double vv[3] = {0,0,0}; for(int k = 0; k < N; ++k) vv[k] = v[k]; verts.insert(verts.end(), vv, vv + 3); }
 		void add_color(color_t c) { colors.push_back(c); }
 		void add_texcoord(double val) { texcoords.push_back(val); }
 		double * get_vert(int k) { return &verts[k * 3]; }

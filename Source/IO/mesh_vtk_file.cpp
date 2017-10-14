@@ -159,8 +159,8 @@ namespace INMOST
 				{
 					case Element::Tri:
 					case Element::Quad:
-					case Element::MultiLine:
-					case Element::Polygon:
+					//case Element::MultiLine:
+					//case Element::Polygon:
 					case Element::Tet:
 					case Element::Hex:
 					case Element::Pyramid:
@@ -168,6 +168,15 @@ namespace INMOST
 					{
 						ElementArray<Node> nodes = it->getNodes();
 						if( nodes.size() != VtkElementNodes(it->GetGeometricType()) ) goto safe_output;
+						values.push_back(static_cast<integer>(nodes.size()));
+						for(ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
+							values.push_back(jt->IntegerDF(set_id));
+						break;
+					}
+					case Element::MultiLine:
+					case Element::Polygon:
+					{
+						ElementArray<Node> nodes = it->getNodes();
 						values.push_back(static_cast<integer>(nodes.size()));
 						for(ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
 							values.push_back(jt->IntegerDF(set_id));
@@ -1329,6 +1338,8 @@ safe_output:
 						case 2: std::cout << "Grid has undetermined dimension" << std::endl; break;
 						}
 					}
+					
+					if( grid_is_2d && old_nodes.empty() ) SetDimensions(2);
 
 					{
 						if( verbosity > 0 ) printf("Reading %d cells.\n",ncells);
