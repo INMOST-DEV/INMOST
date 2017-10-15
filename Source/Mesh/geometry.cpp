@@ -877,12 +877,23 @@ namespace INMOST
 						{
 							*ret = 0;
 							real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0},n0[3] = {0,0,0}, ss;
-							real_array v0 = nodes[0].Coords();
-							real_array v1 = nodes[1].Coords();
-							real_array v2 = nodes[2].Coords();
-							vec_diff(v1,v0,l1,mdim);
-							vec_diff(v2,v0,l2,mdim);
-							vec_cross_product(l1,l2,n0);
+							//real_array v0 = nodes[0].Coords();
+							//real_array v1 = nodes[1].Coords();
+							//real_array v2 = nodes[2].Coords();
+							//vec_diff(v1,v0,l1,mdim);
+							//vec_diff(v2,v0,l2,mdim);
+							//vec_cross_product(l1,l2,n0);
+							real_array v0 = nodes[0].Coords(), v1, v2;
+							for(int i = 1; i < (int)nodes.size()-1; i++)
+							{
+								v1 = nodes[i].Coords();
+								v2 = nodes[i+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
+								vec_cross_product(l1,l2,nt);
+								for(int q = 0; q < 3; ++q)
+									n0[q] += nt[q]*0.5;
+							}
 							for(int i = 1; i < (int)nodes.size()-1; i++)
 							{
 								v1 = nodes[i].Coords();
@@ -891,9 +902,10 @@ namespace INMOST
 								vec_diff(v2,v0,l2,mdim);
 								vec_cross_product(l1,l2,nt);
 								ss = vec_dot_product(n0,nt,3);
-								ss /= fabs(ss);
+								if( ss ) ss /= fabs(ss);
 								*ret += sqrt(vec_dot_product(nt,nt,3))*0.5*ss;
 							}
+							if( *ret != *ret ) std::cout << "area is nan" << std::endl;
 							*ret = fabs(*ret);
 						} else *ret = 0;
 						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
@@ -901,7 +913,8 @@ namespace INMOST
 					}
 					case 3: //volume of cell
 					{
-						
+						//bool print = false;
+//redo:
 						Cell me = Cell(this,e);
 						ElementArray<Face> faces = me->getFaces();
 						bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
@@ -916,6 +929,7 @@ namespace INMOST
 						real l1[3] = {0,0,0}, l2[3] = {0,0,0};
 						real nt[3] = {0,0,0}, cx[3] = {0,0,0};
 						me.Centroid(cx);
+						//if( print ) std::cout << "cx: " << cx[0] << " " << cx[1] << " " << cx[2] << std::endl;
 						for(unsigned j = 0; j < faces.size(); j++)
 						{
 							//compute normal to face
@@ -926,13 +940,27 @@ namespace INMOST
 								s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 							x[0] = x[1] = x[2] = 0;
 							n[0] = n[1] = n[2] = 0;
+							n0[0] = n0[1] = n0[2] = 0;
 							a = 0;
-							real_array v0 = nodes[0].Coords();
-							real_array v1 = nodes[1].Coords();
-							real_array v2 = nodes[2].Coords();
-							vec_diff(v1,v0,l1,mdim);
-							vec_diff(v2,v0,l2,mdim);
-							vec_cross_product(l1,l2,n0);
+							//real_array v0 = nodes[0].Coords();
+							//real_array v1 = nodes[1].Coords();
+							//real_array v2 = nodes[2].Coords();
+							//vec_diff(v1,v0,l1,mdim);
+							//vec_diff(v2,v0,l2,mdim);
+							//vec_cross_product(l1,l2,n0);
+							real_array v0 = nodes[0].Coords(), v1, v2;
+							for(int i = 1; i < (int)nodes.size()-1; i++)
+							{
+								v1 = nodes[i].Coords();
+								v2 = nodes[i+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
+								vec_cross_product(l1,l2,nt);
+								//if( print ) std::cout << "nt: " << nt[0] << " " << nt[1] << " " << nt[2] << std::endl;
+								for(int q = 0; q < 3; ++q)
+									n0[q] += nt[q]*0.5;
+							}
+							//if( print ) std::cout << "n0: " << n0[0] << " " << n0[1] << " " << n0[2] << std::endl;
 							for(int k = 1; k < (int)nodes.size()-1; k++)
 							{
 								v1 = nodes[k+0].Coords();
@@ -942,8 +970,9 @@ namespace INMOST
 								vec_cross_product(l1,l2,nt);
 								for(int q = 0; q < 3; ++q) nt[q] *= 0.5;
 								ss = vec_dot_product(n0,nt,3);
-								ss /= fabs(ss);
+								if( ss ) ss /= fabs(ss);
 								at = sqrt(vec_dot_product(nt,nt,3))*ss;
+								//if( print ) std::cout << "nt: " << nt[0] << " " << nt[1] << " " << nt[2] << " ss " << ss << " at " << at << std::endl;
 								//same as faces[j].Normal(n)
 								for(int q = 0; q < 3; ++q)
 									n[q] += nt[q];
@@ -952,9 +981,12 @@ namespace INMOST
 									x[q] += at*((v0[q]-cx[q])+(v1[q]-cx[q])+(v2[q]-cx[q]))/3.0;
 								a += at;
 							}
+							//if( print ) std::cout << "n: " << n[0] << " " << n[1] << " " << n[2] << std::endl;
+							//if( print ) std::cout << "x: " << x[0] << " " << x[1] << " " << x[2] << " a " << a << std::endl;
 							for(int q = 0; q < 3; ++q) x[q] /= a;
 							vol += s*vec_dot_product(x,n,3);
 						}
+						//if( print ) std::cout << "vol: " << vol << std::endl;
 						if( ornt )
 						{
 							if( vol < 0.0 ) vol = -vol;
@@ -962,6 +994,12 @@ namespace INMOST
 							ReleasePrivateMarker(rev);
 						}
 						*ret = vol/3.0;
+						//if( *ret < 0 || *ret != *ret ) 
+						//{
+						//	std::cout << "volume is " << *ret << std::endl;
+						//	print = true;
+						//	goto redo;
+						//}
 						break;
 					}
 				}
@@ -1022,12 +1060,23 @@ namespace INMOST
 						*ret = 0;
 						real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
 						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss, cx[3] = {0,0,0};
-						real_array v0 = nodes[0].Coords();
-						real_array v1 = nodes[1].Coords();
-						real_array v2 = nodes[2].Coords();
-						vec_diff(v1,v0,l1,mdim);
-						vec_diff(v2,v0,l2,mdim);
-						vec_cross_product(l1,l2,n0);
+						//real_array v0 = nodes[0].Coords();
+						//real_array v1 = nodes[1].Coords();
+						//real_array v2 = nodes[2].Coords();
+						//vec_diff(v1,v0,l1,mdim);
+						//vec_diff(v2,v0,l2,mdim);
+						//vec_cross_product(l1,l2,n0);
+						real_array v0 = nodes[0].Coords(), v1, v2;
+						for(int i = 1; i < (int)nodes.size()-1; i++)
+						{
+							v1 = nodes[i].Coords();
+							v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
+							vec_cross_product(l1,l2,nt);
+							for(int q = 0; q < 3; ++q)
+								n0[q] += nt[q]*0.5;
+						}
 						real a = 0, at;
 						Element(this,e).Centroid(cx);
 						for(int i = 1; i < (int)nodes.size()-1; i++)
@@ -1038,7 +1087,7 @@ namespace INMOST
 							vec_diff(v2,v0,l2,mdim);
 							vec_cross_product(l1,l2,nt);
 							ss = vec_dot_product(n0,nt,3);
-							ss /= fabs(ss);
+							if( ss ) ss /= fabs(ss);
 							at = sqrt(vec_dot_product(nt,nt,3))*0.5*ss;
 							for(int q = 0; q < mdim; ++q)
 								c[q] += at*((v0[q]-cx[q])+(v1[q]-cx[q])+(v2[q]-cx[q]))/3.0;
@@ -1074,15 +1123,27 @@ namespace INMOST
 							s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
 						else
 							s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
-						real_array v0 = nodes[0].Coords();
-						real_array v1 = nodes[1].Coords();
-						real_array v2 = nodes[2].Coords();
-						vec_diff(v1,v0,l1,mdim);
-						vec_diff(v2,v0,l2,mdim);
-						vec_cross_product(l1,l2,n0);
+						//real_array v0 = nodes[0].Coords();
+						//real_array v1 = nodes[1].Coords();
+						//real_array v2 = nodes[2].Coords();
+						//vec_diff(v1,v0,l1,mdim);
+						//vec_diff(v2,v0,l2,mdim);
+						//vec_cross_product(l1,l2,n0);
+						n0[0] = n0[1] = n0[2] = 0;
 						x[0] = x[1] = x[2] = 0;
 						n[0] = n[1] = n[2] = 0;
 						a = 0;
+						real_array v0 = nodes[0].Coords(), v1, v2;
+						for(int i = 1; i < (int)nodes.size()-1; i++)
+						{
+							v1 = nodes[i].Coords();
+							v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
+							vec_cross_product(l1,l2,nt);
+							for(int q = 0; q < 3; ++q)
+								n0[q] += nt[q]*0.5;
+						}
 						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
 							real_array v1 = nodes[i].Coords();
@@ -1093,7 +1154,7 @@ namespace INMOST
 							for(int q = 0; q < 3; ++q)
 								nt[q] *= 0.5;
 							ss = vec_dot_product(n0,nt,3);
-							ss /= fabs(ss);
+							if( ss ) ss /= fabs(ss);
 							at = sqrt(vec_dot_product(nt,nt,3))*ss;
 							//same as faces[j].Normal(n)
 							for(int q = 0; q < 3; ++q)
@@ -1121,8 +1182,12 @@ namespace INMOST
 						ReleasePrivateMarker(rev);
 					}
 					vol /= 3.0;
-					for(int q = 0; q < mdim; ++q)
-						ret[q] = c[q]/(vol) + cx[q];
+					if( vol ) 
+					{
+						for(int q = 0; q < mdim; ++q)
+							ret[q] = c[q]/(vol) + cx[q];
+					}
+					else for(int q = 0; q < mdim; ++q) ret[q] = cx[q];
 					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
 				}
 			}
