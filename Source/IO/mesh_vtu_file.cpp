@@ -65,6 +65,9 @@ namespace INMOST
 			for (Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
 				old_nodes[qq++] = *it;
 		}
+		
+		if( grid_is_2d && old_nodes.empty() ) SetDimensions(2);
+		
 		if (!old_nodes.empty())
 		{
 			std::sort(old_nodes.begin(), old_nodes.end(), CentroidComparator(this));
@@ -222,8 +225,23 @@ namespace INMOST
 					}
 					else if (ctype == 3) //VTK_LINE
 					{
-						newcells[q] = CreateEdge(hnodes).first.GetHandle();
-						have_edges = true;
+						if( grid_is_2d == 1 )
+						{
+							ElementArray<Edge> f_edges(this,hnodes.size());
+							ElementArray<Node> e_nodes(this,1);
+							for(int k = 0; k < (int)hnodes.size(); ++k)
+							{
+								e_nodes[0] = hnodes[k];
+								f_edges[k] = CreateEdge(e_nodes).first;
+							}
+							newcells[q] = CreateFace(f_edges).first.GetHandle();
+							have_faces = true;
+						}
+						else
+						{
+							newcells[q] = CreateEdge(hnodes).first.GetHandle();
+							have_edges = true;
+						}
 					}
 					else if (ctype == 4)
 					{

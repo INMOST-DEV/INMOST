@@ -1269,7 +1269,7 @@ namespace INMOST
 		}
 		std::vector< std::pair< std::pair<FILE *, std::string>, int> > fs(1, std::make_pair(std::make_pair(f, File), 0));
 		char readline[2048], readlines[2048], *p, *pend, rec[2048], pupper[2048];
-		int text_end, text_start, state = ECL_NONE, state_from = ECL_NONE, nchars;
+		int text_end, text_start, state = ECL_NONE, state_from = ECL_NONE, state_incl = ECL_NONE, nchars;
 		int waitlines = 0;
 		int have_dimens = 0, totread, downread, numrecs, offset;
 		int gtype = ECL_GTYPE_NONE;
@@ -1662,7 +1662,7 @@ namespace INMOST
 					}
 					else
 					{
-						//std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 					}
 					break;
 				case ECL_SKIP_SECTION:
@@ -1689,7 +1689,8 @@ namespace INMOST
 							throw BadFileName;
 						}
 						fs.push_back(std::make_pair(std::make_pair(f, GetFolder(fs.back().first.second) + "/" + std::string(rec + shift_one)), 0));
-						if (*(pend - 1) == '/') state = state_from; else state = ECL_SKIP_SECTION;
+						if (*(pend - 1) == '/') state_incl = ECL_NONE; else state_incl = ECL_SKIP_SECTION;
+						state = ECL_NONE;
 					}
 					else
 					{
@@ -2667,6 +2668,7 @@ namespace INMOST
 		ecl_exit_loop:
 			fclose(fs.back().first.first);
 			fs.pop_back();
+			if( !fs.empty() ) state = state_incl;
 		}
 		if (radial == ECL_GTYPE_RADIAL)
 		{
