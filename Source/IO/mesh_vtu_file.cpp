@@ -66,7 +66,7 @@ namespace INMOST
 				old_nodes[qq++] = *it;
 		}
 		
-		if( grid_is_2d && old_nodes.empty() ) SetDimensions(2);
+		
 		
 		if (!old_nodes.empty())
 		{
@@ -178,6 +178,8 @@ namespace INMOST
 				}
 				if( grid_is_2d == 2 ) grid_is_2d = 1;
 			}
+			
+			
 
 			if (verbosity > 0)
 			{
@@ -188,6 +190,8 @@ namespace INMOST
 				case 2: std::cout << "Grid has undetermined dimension" << std::endl; break;
 				}
 			}
+			
+			if( grid_is_2d == 1 && old_nodes.empty() ) SetDimensions(2);
 
 			bool have_faces = false; //some elements go as faces
 			bool have_edges = false;
