@@ -1662,7 +1662,7 @@ namespace INMOST
 					}
 					else
 					{
-						std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
+						//std::cout << __FILE__ << ":" << __LINE__ << " skipped " << p << " in " << fs.back().first.second << ":" << fs.back().second << std::endl;
 					}
 					break;
 				case ECL_SKIP_SECTION:
