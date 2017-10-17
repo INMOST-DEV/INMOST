@@ -34,7 +34,7 @@ namespace INMOST
 
     for(int q = 0; q < TagParallelMesh.NumAttrib(); ++q)
     {
-      const XMLReader::XMLAttrib & attr = TagParallelMesh.GetAttib(q);
+      const XMLReader::XMLAttrib & attr = TagParallelMesh.GetAttrib(q);
       if( ToLower(attr.name) == "number" ) nmeshes = atoi(attr.value.c_str());
       else reader.Report("Unused attribute for ParallelMesh %s='%s'",attr.name.c_str(),attr.value.c_str());
     }
@@ -44,7 +44,7 @@ namespace INMOST
       bool repair_orientation = false;
       for(int q = 0; q < TagMesh.NumAttrib(); ++q)
       {
-        const XMLReader::XMLAttrib & attr = TagMesh.GetAttib(q);
+        const XMLReader::XMLAttrib & attr = TagMesh.GetAttrib(q);
         if( ToLower(attr.name) == "repairorientation" ) repair_orientation = reader.ParseBool(attr.value);
         else reader.Report("Unused attribute for Tags %s='%s'",attr.name.c_str(),attr.value.c_str());
       }
@@ -69,7 +69,7 @@ namespace INMOST
 
         for(int q = 0; q < TagNodes.NumAttrib(); ++q)
         {
-          const XMLReader::XMLAttrib & attr = TagNodes.GetAttib(q);
+          const XMLReader::XMLAttrib & attr = TagNodes.GetAttrib(q);
           if( ToLower(attr.name) == "number" )
 		  {
 			  nnodes = atoi(attr.value.c_str());
@@ -170,7 +170,7 @@ namespace INMOST
 
           for(int q = 0; q < TagElems.NumAttrib(); ++q)
           {
-            const XMLReader::XMLAttrib & attr = TagElems.GetAttib(q);
+            const XMLReader::XMLAttrib & attr = TagElems.GetAttrib(q);
             if( ToLower(attr.name) == "number" ) 
             {
                 nelems = atoi(attr.value.c_str());
@@ -202,7 +202,7 @@ namespace INMOST
             ElementType subtype = NODE;
             for(int q = 0; q < TagConns.NumAttrib(); ++q)
             {
-              const XMLReader::XMLAttrib & attr = TagConns.GetAttib(q);
+              const XMLReader::XMLAttrib & attr = TagConns.GetAttrib(q);
               if( ToLower(attr.name) == "number" )
 			  {
 				  nexpectconns = atoi(attr.value.c_str());
@@ -368,7 +368,7 @@ namespace INMOST
 			  bool matchntags = false;
 			  for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
 			  {
-				  const XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
+				  const XMLReader::XMLAttrib & attr = TagSetsData.GetAttrib(q);
 				  if( ToLower(attr.name) == "number" ) 
 				  {
 					  ntags = atoi(attr.value.c_str());
@@ -391,7 +391,7 @@ namespace INMOST
 				  ElementType defined = NONE;
 				  for(int q = 0; q < TagTag.NumAttrib(); ++q)
 				  {
-					  const XMLReader::XMLAttrib & attr = TagTag.GetAttib(q);
+					  const XMLReader::XMLAttrib & attr = TagTag.GetAttrib(q);
 					  if( ToLower(attr.name) == "name" ) tagname = attr.value;
 					  else if( ToLower(attr.name) == "size" ) 
 					  {
@@ -453,7 +453,7 @@ namespace INMOST
             bool matchsets = false;
             for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
             {
-              const XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
+              const XMLReader::XMLAttrib & attr = TagSetsData.GetAttrib(q);
               if( ToLower(attr.name) == "number" ) 
               {
                 nsets = atoi(attr.value.c_str());
@@ -476,7 +476,7 @@ namespace INMOST
               nsets_read++;
               for(int q = 0; q < Set.NumAttrib(); ++q)
               {
-                const XMLReader::XMLAttrib & attr = Set.GetAttib(q);
+                const XMLReader::XMLAttrib & attr = Set.GetAttrib(q);
                 if( ToLower(attr.name) == "size" )
 				{
 					expectsize = atoi(attr.value.c_str());
@@ -589,7 +589,7 @@ namespace INMOST
 
             for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
             {
-              const XMLReader::XMLAttrib & attr = TagSetsData.GetAttib(q);
+              const XMLReader::XMLAttrib & attr = TagSetsData.GetAttrib(q);
               if( ToLower(attr.name) == "number" ) 
               {
                 ndata = atoi(attr.value.c_str());
@@ -608,7 +608,7 @@ namespace INMOST
               ElementType etype = NONE;
               for(int q = 0; q < TagDataSet.NumAttrib(); ++q)
               {
-                const XMLReader::XMLAttrib & attr = TagDataSet.GetAttib(q);
+                const XMLReader::XMLAttrib & attr = TagDataSet.GetAttrib(q);
                 if( ToLower(attr.name) == "settype" ) 
                 {
                   if( ToLower(attr.value) == "cells" ) etype = CELL;
