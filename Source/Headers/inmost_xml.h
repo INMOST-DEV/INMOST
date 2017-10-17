@@ -178,7 +178,7 @@ namespace INMOST
       ///Tag was not red, finish of enclosing tag was encountered.
       bool Finalize() const {return finish == 3;}
 	  ///Retrive attribute number n.
-      const XMLAttrib & GetAttib(int n) const {return attributes[n];}
+      const XMLAttrib & GetAttrib(int n) const {return attributes[n];}
 	  ///Retrive attribute number n.
       XMLAttrib & GetAttrib(int n) {return attributes[n];}
 	  ///Retrive number of attributes.
@@ -214,7 +214,7 @@ namespace INMOST
 		///Retrive number of children.
 		int NumChildren() const {return (int)children.size();}
 		///Retrive attribute of current XML tag with number n.
-		const XMLAttrib & GetAttrib(int n) const {return tag.GetAttib(n);}
+		const XMLAttrib & GetAttrib(int n) const {return tag.GetAttrib(n);}
 		///Retrive attribute of current XML tag with name.
 		///Returns NULL if not found.
 		const std::string & GetAttrib(std::string name) const;
