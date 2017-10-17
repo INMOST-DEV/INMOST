@@ -515,6 +515,11 @@ namespace INMOST
 				while(it != last) new (m_arr+d+i++) element(*it++);
 			}
 		}
+		template <class InputIterator>
+		void assign(InputIterator first, InputIterator last)
+		{
+			replace(begin(),end(),first,last);
+		}
 		template<class> friend class shell;
 	};	
 #if defined(PACK_ARRAY)
@@ -955,6 +960,11 @@ namespace INMOST
 				size_type i = 0;
 				while(it != last) new ((*m_arr)+d+i++) element(*it++);
 			}
+		}
+		template <class InputIterator>
+		void assign(InputIterator first, InputIterator last)
+		{
+			replace(begin(),end(),first,last);
 		}
 	};
 
