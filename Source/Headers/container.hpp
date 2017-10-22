@@ -555,6 +555,7 @@ namespace INMOST
 			_iterator operator --(int){ return _iterator(e--); }
 			ptrdiff_t operator -(const _iterator & other) const {return e-other.e;}
 			dtype & operator *() { return *e; }
+			const dtype & operator *() const { return *e; }
 			dtype * operator ->() { return e; }
 			_iterator & operator =(_iterator const & other) { e = other.e; return *this; }
 			bool operator ==(const _iterator & other) { return e == other.e;}
