@@ -3703,6 +3703,16 @@ public:
 		ddP.clear();
 		ddQ.clear();
 		LU_Diag.clear();
+		for(int k = 0; k < (int)E_Address.size(); ++k)
+			delete E_Address[k];
+		for(int k = 0; k < (int)F_Address.size(); ++k)
+			delete F_Address[k];
+		E_Address.clear();
+		F_Address.clear();
+		level_size.clear();
+		level_interval.clear();
+		E_Entries.clear();
+		F_Entries.clear();
 		return true;
 	}
 	void MLMTILUC_preconditioner::ApplyB(double alpha, Sparse::Vector & x, double beta, Sparse::Vector & y) // y = alpha A x + beta y

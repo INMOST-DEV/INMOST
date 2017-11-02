@@ -13,11 +13,6 @@ class MLMTILUC_preconditioner : public Method
 		INMOST_DATA_ENUM_TYPE first, last;
 		INMOST_DATA_ENUM_TYPE Size() { return last - first; }
 	} Interval;
-	typedef struct row_col_t
-	{
-		Sparse::Row row, col;
-		INMOST_DATA_REAL_TYPE diag;
-	} row_col;
 	typedef dynarray<INMOST_DATA_ENUM_TYPE,256> levels_t;
 	
 	std::vector<Sparse::Row::entry> LU_Entries, B_Entries;
