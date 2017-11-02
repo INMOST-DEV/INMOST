@@ -422,7 +422,7 @@ void draw()
 		for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
 			if( jt->first != it - m->Begin() )
 			//DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
-			DrawEntry((it - m->Begin()), m->Size() - jt->first);//, sqrt((jt->second-min)/(max-min)));
+			DrawEntry(jt->first, m->Size() - (it - m->Begin()));//, sqrt((jt->second-min)/(max-min)));
 	glEnd();
 
 
@@ -488,11 +488,68 @@ int main(int argc, char ** argv)
 {
 	if( argc < 2 )
 	{
-		std::cout << "usage: " << argv[0] << " matrix.mtx " << std::endl;
+		std::cout << "usage: " << argv[0] << " matrix.mtx [text]" << std::endl;
 		return -1;
 	}
 	m = new Sparse::Matrix();
 	m->Load(argv[1]);
+	
+	if( argc > 2 )
+	{
+		int recw = (argc > 3 ? (atoi(argv[3])+4) : 10);
+		if( recw <= 4 )
+		{
+			std::cout << "Bad record width " << argv[3] << " on input, setting 10" << std::endl;
+			recw = 10;
+		}
+		std::string line(recw,'-');
+		if( std::string(argv[2]) == "text" )
+		{
+			std::cout << std::fixed << std::setprecision(recw-4);
+			std::cout << "    ";
+			for(int k = 0; k < (int)m->Size(); ++k)
+				std::cout << std::setw(recw) << k;
+			std::cout << ' ' << std::endl;
+			
+			std::cout << "   *";
+			for(int k = 0; k < (int)m->Size(); ++k)
+				std::cout << line;
+			std::cout << "*" << std::endl;
+			
+			for(int k = 0; k < (int)m->Size(); ++k)
+			{
+				std::cout << std::setw(3) << k << "|";
+				int pos = 0;
+				for(int l = 0; l < (int)(*m)[k].Size(); ++l)
+				{
+					int r = (*m)[k].GetIndex(l);
+					double v = (*m)[k].GetValue(l);
+					while(pos < r)
+					{
+						std::cout << std::setw(recw) << ' ';
+						pos++;
+					}
+					std::cout << std::setw(recw) << v;
+					pos++;
+				}
+				while(pos < (int)m->Size())
+				{
+					std::cout << std::setw(recw) << ' ';
+					pos++;
+				}
+				
+				std::cout << "|" << std::endl;
+			}
+			
+			std::cout << "   *";
+			for(int k = 0; k < (int)m->Size(); ++k)
+				std::cout << line;
+			std::cout << "*" << std::endl;
+		}
+		delete m;
+		return 0;
+	}
+	
 	//ord = new Reorder_ARMS(m,0,m->Size());
 	std::cout << "Matrix size: " << m->Size() << std::endl;
 	INMOST_DATA_ENUM_TYPE nnz = 0, nnzrow;

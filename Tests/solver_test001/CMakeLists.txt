@@ -39,9 +39,10 @@ if(USE_SOLVER_SUPERLU)
   target_link_libraries(solver_test001 ${SUPERLU_LIBRARIES})
 endif()
 
-set(SOLVERS inner_ilu2
-            inner_mptilu2
-            inner_mptiluc)
+set(SOLVERS #inner_ilu2
+            #inner_mptilu2
+            inner_mptiluc
+            inner_mlmptiluc)
 
 foreach(solver ${SOLVERS})
 

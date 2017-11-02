@@ -3,6 +3,7 @@
 #include "solver_inner/solver_ilu2/SolverILU2.h"
 #include "solver_inner/solver_ddpqiluc2/SolverDDPQILUC2.h"
 #include "solver_inner/solver_mptiluc/SolverMPTILUC.h"
+#include "solver_inner/solver_mlmptiluc/SolverMLMPTILUC.h"
 #include "solver_inner/solver_mptilu2/SolverMPTILU2.h"
 
 #if defined(USE_SOLVER_PETSC)
@@ -51,6 +52,7 @@ namespace INMOST {
 	const Solver::Type Solver::INNER_ILU2 = "inner_ilu2";
 	const Solver::Type Solver::INNER_DDPQILUC = "inner_ddpqiluc2";
 	const Solver::Type Solver::INNER_MPTILUC = "inner_mptiluc";
+	const Solver::Type Solver::INNER_MLMPTILUC = "inner_mlmptiluc";
 	const Solver::Type Solver::INNER_MPTILU2 = "inner_mptilu2";
 	const Solver::Type Solver::Trilinos_Aztec = "trilinos_aztec";
 	const Solver::Type Solver::Trilinos_Belos = "trilinos_belos";
@@ -62,10 +64,12 @@ namespace INMOST {
 	const Solver::Type Solver::K3BIILU2 = "k3biilu2";
 	const Solver::Type Solver::SUPERLU = "superlu";
 
-    SolverInterface *SolverMaster::getSolver(std::string name) {
+    SolverInterface *SolverMaster::getSolver(std::string name)
+	{
         if (name == "inner_ilu2") return new SolverILU2();
         if (name == "inner_ddpqiluc2") return new SolverDDPQILUC2();
         if (name == "inner_mptiluc") return new SolverMPTILUC();
+		if (name == "inner_mlmptiluc") return new SolverMLMPTILUC();
         if (name == "inner_mptilu2") return new SolverMPTILU2();
 #if defined(USE_SOLVER_PETSC)
         if (name == "petsc") return new SolverPETSc();
@@ -91,11 +95,13 @@ namespace INMOST {
         throw INMOST::SolverNotFound;
     }
 
-    std::vector<std::string> SolverMaster::getAvailableSolvers() {
+    std::vector<std::string> SolverMaster::getAvailableSolvers()
+	{
         std::vector<std::string> s;
         s.push_back("inner_ilu2");
         s.push_back("inner_ddpqiluc2");
         s.push_back("inner_mptiluc");
+		s.push_back("inner_mlmptiluc");
         s.push_back("inner_mptilu2");
 #if defined(USE_SOLVER_PETSC)
         s.push_back("petsc");
@@ -121,12 +127,16 @@ namespace INMOST {
         return s;
     }
 
-    bool SolverMaster::isSolverAvailable(std::string name) {
-        try {
+    bool SolverMaster::isSolverAvailable(std::string name)
+	{
+        try
+		{
             SolverInterface *s = SolverMaster::getSolver(name);
             delete s;
             return true;
-        } catch (...) {
+        }
+		catch (...)
+		{
             return false;
         }
     }

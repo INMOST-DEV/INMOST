@@ -5,11 +5,11 @@
 #include "solver_mtiluc2.hpp"
 #include <sstream>
 #include <deque>
-#define REPORT_ILU
+//#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
 //#define REPORT_ILU_END
-#define REPORT_ILU_SUMMARY
+//#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
@@ -93,7 +93,7 @@ public:
 };
 
 
-class BinaryHeap
+class BinaryHeap1
 {
 	
 	INMOST_DATA_REAL_TYPE * Base;
@@ -189,13 +189,13 @@ public:
 		BalanceHeap(0);	
 		return Ret;
 	}
-	BinaryHeap(INMOST_DATA_REAL_TYPE * Base, INMOST_DATA_ENUM_TYPE Size) 
+	BinaryHeap1(INMOST_DATA_REAL_TYPE * Base, INMOST_DATA_ENUM_TYPE Size)
 		: Base(Base)
 	{
 		Position.resize(Size,ENUMUNDEF);
 		Array.reserve(4096);
 	}
-	~BinaryHeap()
+	~BinaryHeap1()
 	{
 	}
 };
@@ -757,7 +757,7 @@ public:
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> AugmentPosition(wbeg,wend,ENUMUNDEF);
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ColumnPosition(wbeg,wend,ENUMUNDEF);
 				
-				BinaryHeap Heap(&Dist[wbeg],wend-wbeg);
+				BinaryHeap1 Heap(&Dist[wbeg],wend-wbeg);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////// Arrays initialization   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -790,7 +790,7 @@ public:
 					for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it != A_Address[k].last; ++it)
 					{
 						i = A_Entries[it].first;
-						if( Cmax[i] == 0.0 )
+						if( Cmax[i] == 0.0 || C_Entries[it] == 0.0 )
 							C_Entries[it] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 						else
 						{
@@ -965,45 +965,27 @@ public:
 				//T = Timer();
 				for (k = cbeg; k < cend; ++k)
 				{
-					//B_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
-
-					bool flip_sign = false;
+					if( V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ) l = 1;
+					else l = exp(V[k]);
+					if( U[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[k] == 0 ) u = 1;
+					else u = exp(U[k])/Cmax[k];
+					//if( l != l || fabs(l) < 1.0e-12 || isnan(l) || isinf(l) ) std::cout << "k " << k << " l is " << l << " V " << V[k] << std::endl;
+					//if( u != u || fabs(u) < 1.0e-12 || isnan(u) || isinf(u) ) std::cout << "k " << k << " u is " << u << " U " << U[k] << " Cmax " << Cmax[k] << std::endl;
+					DL[k] = l;
+					DR[k] = u;
 					
+					
+					bool flip_sign = false;
 					for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt != A_Address[k].last; ++jt)
 					{
 						i = A_Entries[jt].first;
 						j = Perm[A_Entries[jt].first];
-						
-						l = exp(V[k]);
-						u = exp(U[i])/Cmax[i];
-						DL[k] = l;
-						DR[i] = u;
-						//l = l*u;
-						//l = l*u;//exp(U[i]+V[k])/Cmax[i];
-						//l = pow(10,U[i]+V[k])/Cmax[i];
-						//l = exp(U[i]+V[k])/Cmax[i];
-						//A_Entries[jt].first = j;
-						//A_Entries[jt].second *= l;
-
-						
-						
-						//B_Entries.push_back(Sparse::Row::make_entry(j, l*A_Entries[jt].second));
-
+						if( U[i] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[i] == 0 ) u = 1;
+						else u = exp(U[i])/Cmax[i];
 						if( j == k && (l*A_Entries[jt].second*u) < 0.0 ) flip_sign = true;
 					}
-
-					//B_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
-
-					if( flip_sign )
-					{
-						DL[k] *= -1;
-						//for(Li = B_Address[k].first; Li < B_Address[k].last; ++Li)
-						//	B_Entries[Li].second *= -1;
-					}
-						
-
-					//std::sort(B_Entries.begin() + B_Address[k].first, B_Entries.end());
-					//std::sort(A_Entries.begin() + A_Address[k].first, A_Entries.begin() + A_Address[k].last);
+					
+					if( flip_sign ) DL[k] *= -1;
 				}
 				//printf("Reorder matrix %lf\n",Timer()-T);
 
@@ -3349,7 +3331,7 @@ swap_algorithm:
 		printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
 		printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
 #if defined(ILUC2)
-		printf("nnz A %d LU %d LU2 %d swaps %d\n",nzA,nzLU,nzLU2, swaps);
+		printf("nnz A %d LU %d LU2 %d\n",nzA,nzLU,nzLU2);//, swaps);
 #else
 		printf("nnz A %d LU %d swaps %d\n",nzA,nzLU,swaps);
 #endif

@@ -28,6 +28,7 @@ namespace INMOST
 		static const Type INNER_ILU2;     ///< inner Solver based on BiCGStab(L) solver with second order ILU factorization as preconditioner.
 		static const Type INNER_DDPQILUC; ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and unsymmetric reordering for diagonal dominance as preconditioner.
 		static const Type INNER_MPTILUC;  ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner.
+		static const Type INNER_MLMPTILUC;  ///< inner Solver based on BiCGStab(L) solver with second order Crout-ILU with inversed-based condition estimation and maximum product transversal reordering as preconditioner.
 		static const Type INNER_MPTILU2;  ///< inner Solver based on BiCGStab(L) solver with second order ILU and maximum product transversal reordering as preconditioner.
 		static const Type Trilinos_Aztec; ///< external Solver AztecOO from Trilinos package.
 		static const Type Trilinos_Belos; ///< external Solver Belos from Trilinos package, currently without preconditioner.
@@ -275,26 +276,26 @@ namespace INMOST
 		/// - "maximum_iterations" - total number of iterations
 		/// - "schwartz_overlap"   - number of overlapping levels for additive schwartz method,
 		///                          works for:
-		///                          INNER_ILU2, INNER_MLILUC
+		///                          INNER_ILU2, INNER_MPTILU2, INNER_MPTILUC, INNER_MLMPTILUC, INNER_DDPQILUC
 		///                          Trilinos_Aztec, Trilinos_Belos, Trilinos_ML, Trilinos_Ifpack
 		///                          PETSc
 		/// - "gmres_substeps"     - number of gmres steps performed after each bicgstab step,
 		///                          works for:
-		///                          INNER_ILU2, INNER_MLILUC
+		///                          INNER_ILU2, INNER_MPTILU2, INNER_MPTILUC, INNER_MLMPTILUC, INNER_DDPQILUC
 		/// - "reorder_nonzeros"   - place sparser rows at the beggining of matrix during reordering,
 		///                          works for:
-		///                          INNER_MLILUC
+		///                          INNER_DDPQILUC
 		/// - "rescale_iterations" - number of iterations for two-side matrix rescaling,
 		///                          works for:
-		///                          INNER_ILU2, INNER_MLILUC
+		///                          INNER_ILU2, INNER_MPTILU2, INNER_MPTILUC, INNER_MLMPTILUC, INNER_DDPQILUC
 		/// - "condition_estimation" - exploit condition estimation of inversed factors to adapt
 		///                          drop and reuse tolerances,
 		///                          works for:
-		///                          INNER_MLILUC
+		///                          INNER_MPTILUC, INNER_MLMPTILUC, INNER_DDPQILUC
 		/// - "adapt_ddpq_tolerance" - adapt ddpq tolerance depending from the complexity
 		///                          of calculation of Schur complement,
 		///                          works for:
-		///                          INNER_MLILUC
+		///                          INNER_DDPQILUC
 		/// Set the solver parameter of the real type.
 		///
 		/// Parameters:
@@ -306,7 +307,7 @@ namespace INMOST
 		///                          ||A x(i) - b|| > divergence_tolerance
 		/// - "drop_tolerance"     - tolerance for dropping values during incomplete factorization,
 		///                          works for:
-		///                          INNER_ILU2, INNER_MLILUC
+		///                          INNER_ILU2, INNER_MPTILU2, INNER_MPTILUC, INNER_MLMPTILUC, INNER_DDPQILUC
 		///                          Trilinos_Aztec, Trilinos_Ifpack
 		///                          PETSc
 		/// - "reuse_tolerance"    - tolerance for reusing values during incomplete factorization,
@@ -315,7 +316,7 @@ namespace INMOST
 		///                          value should be less then "drop_tolerance",
 		///                          typical value is drop_tolerance^2,
 		///                          works for:
-		///                          INNER_ILU2, INNER_MLILUC
+		///                          INNER_ILU2, INNER_MPTILU2, INNER_MPTILUC, INNER_MLMPTILUC, INNER_DDPQILUC
 		/// - "ddpq_tolerance"     - by this tolerance most diagonnaly-dominant elements will be selected
 		///                          to form the next level of factorization, the closer the tolerance
 		///                          is to one the smaller will be the level. Actual rule is:
@@ -323,11 +324,19 @@ namespace INMOST
 		///                          A(imax,jmax)/(sum(A(imax,:))+sum(A(:,jmax))-A(imax,jmax))
 		///                          where on imax, jmax maximum is reached.
 		///                          works for:
-		///                          INNER_MLILUC
+		///                          INNER_DDPQILUC
 		/// - "fill_level"         - level of fill for ILU-type preconditioners,
 		///                          works for:
 		///                          INNER_ILU2 (if LFILL is defined in solver_ilu2.hpp)
 		///                          Trilinos, Trilinos_Ifpack
+		/// - "pivot_condition"    - delay factoriation of the row of the matrix to the next level, if
+		///                          the estimated condition number is above prescribed value.
+		///                          works for:
+		///                          INNER_MLMPTILUC
+		/// - "pivot_diag"         - delay factoriation of the row of the matrix to the next level, if
+		///                          the inverted diagonal value is above the prescribed value.
+		///                          works for:
+		///                          INNER_MLMPTILUC
 		/// @see Solver::GetParameter
 		void SetParameter(std::string name, std::string value);
 		/// Return the number of iterations performed by the last solution.

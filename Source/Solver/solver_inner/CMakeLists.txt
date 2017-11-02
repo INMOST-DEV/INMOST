@@ -9,6 +9,7 @@ set(SOURCE ${SOURCE}
 add_subdirectory(solver_ilu2)
 add_subdirectory(solver_ddpqiluc2)
 add_subdirectory(solver_mptiluc)
+add_subdirectory(solver_mlmptiluc)
 add_subdirectory(solver_mptilu2)
 
 set(SOURCE ${SOURCE} PARENT_SCOPE)

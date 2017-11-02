@@ -21,7 +21,7 @@
 
 namespace INMOST
 {
-  typedef char HeaderType;
+	typedef char HeaderType;
 	//const HeaderType EndOfData  = 0x01;
 	const HeaderType NodeHeader = 0x02;
 	const HeaderType EdgeHeader = 0x03;
@@ -33,8 +33,8 @@ namespace INMOST
 	const HeaderType EoMHeader  = 0x09;
 	const HeaderType INMOSTFile   = 0x10;
 	const HeaderType MeshDataHeader = 0x11;
-
-  
+	
+	
 	std::ostream & operator <<(std::ostream & out, HeaderType H)
 	{
 		out.put(H);
@@ -46,51 +46,51 @@ namespace INMOST
 		in.get(H);
 		return in;
 	}
-
-  void Mesh::SavePMF(std::string File)
-  {
+	
+	void Mesh::SavePMF(std::string File)
+	{
 		io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
 		io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
 		INMOST_DATA_ENUM_TYPE nlow,nhigh, lid;
 		char wetype;
 		//~ if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
 		std::stringstream out(std::ios::in | std::ios::out | std::ios::binary);
-			
+		
 		out << INMOST::INMOSTFile;
 		out << INMOST::MeshHeader;
 		ReorderEmpty(NODE | EDGE | FACE | CELL | ESET);
-
+		
 		uconv.write_iByteOrder(out);
 		uconv.write_iByteSize(out);
 		iconv.write_iByteOrder(out);
 		iconv.write_iByteSize(out);
 		iconv.write_fByteOrder(out);
 		iconv.write_fByteSize(out);
-
-		INMOST_DATA_ENUM_TYPE header[9] = 
+		
+		INMOST_DATA_ENUM_TYPE header[9] =
 		{
-			static_cast<INMOST_DATA_ENUM_TYPE>(GetDimensions()), 
-			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfNodes()), 
-			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfEdges()), 
-			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfFaces()), 
-			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfCells()), 
-			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfSets()), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(GetDimensions()),
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfNodes()),
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfEdges()),
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfFaces()),
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfCells()),
+			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfSets()),
 			NumberOfTags()-5, //add counter to skip unwanted tags here SKIPHERE, search by SKIPHERE for additional instructions
-			static_cast<INMOST_DATA_ENUM_TYPE>(m_state), 
+			static_cast<INMOST_DATA_ENUM_TYPE>(m_state),
 			static_cast<INMOST_DATA_ENUM_TYPE>(GetProcessorRank())
 		},k;
 		for(k = 0; k < 9; k++) uconv.write_iValue(out,header[k]);
 		out.write(reinterpret_cast<char *>(remember),sizeof(remember));
 		
-
-			
+		
+		
 		// Tags
 		out << INMOST::TagsHeader;
 		uconv.write_iValue(out,header[6]);
 		REPORT_STR("TagsHeader");
 		REPORT_VAL("tag_size",header[6]);
 		int tags_written = 0;
-		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)  
+		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
 		{
 			//SKIPHERE
 			//don't forget to change header[6] if you skip more
@@ -100,7 +100,7 @@ namespace INMOST
 			if( *it == LowConnTag() ) continue;
 			if( *it == CoordsTag() ) continue;
 			if( *it == SetNameTag() ) continue;
-
+			
 			std::string name = it->GetTagName();
 			INMOST_DATA_ENUM_TYPE namesize = static_cast<INMOST_DATA_BULK_TYPE>(name.size());
 			INMOST_DATA_BULK_TYPE datatype = static_cast<INMOST_DATA_BULK_TYPE>(it->GetDataType());
@@ -121,8 +121,8 @@ namespace INMOST
 			++tags_written;
 		}
 		assert(tags_written == header[6]);
-
-
+		
+		
 		Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID_PMF_WRITER",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
 		{
 			Storage::integer cur_num = 0;
@@ -136,14 +136,14 @@ namespace INMOST
 			cur_num = 0;
 			for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) it->IntegerDF(set_id) = cur_num++;
 		}
-
-
-		// Nodes 
+		
+		
+		// Nodes
 		out << INMOST::NodeHeader;
 		uconv.write_iValue(out,header[1]);
 		REPORT_STR("NodeHeader");
 		REPORT_VAL("node_size",header[1]);
-		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++) 
+		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 		{
 			Storage::real_array coords = it->Coords();
 			for(Storage::real_array::size_type it = 0; it < coords.size(); it++)
@@ -155,8 +155,8 @@ namespace INMOST
 		uconv.write_iValue(out,header[2]);
 		REPORT_STR("EdgeHeader");
 		REPORT_VAL("edge_size",header[2]);
-			
-		for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); it++) 
+		
+		for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); it++)
 		{
 			Element::adj_type & lc = LowConn(*it);
 			nlow = static_cast<INMOST_DATA_ENUM_TYPE>(lc.size());
@@ -173,7 +173,7 @@ namespace INMOST
 		uconv.write_iValue(out,header[3]);
 		REPORT_STR("FaceHeader");
 		REPORT_VAL("face_size",header[3]);
-		for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++) 
+		for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
 		{
 			Element::adj_type & lc = LowConn(*it);
 			nlow = static_cast<INMOST_DATA_ENUM_TYPE>(lc.size());
@@ -190,7 +190,7 @@ namespace INMOST
 		uconv.write_iValue(out,header[4]);
 		REPORT_STR("CellHeader");
 		REPORT_VAL("cell_size",header[4]);
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 		{
 			Element::adj_type & lc = LowConn(*it);
 			nlow = static_cast<INMOST_DATA_ENUM_TYPE>(lc.size());
@@ -215,7 +215,7 @@ namespace INMOST
 		REPORT_STR("ESetHeader");
 		REPORT_VAL("eset_size",header[5]);
 		uconv.write_iValue(out,header[5]);
-		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it)
 		{
 			std::string name = it->GetName();
 			INMOST_DATA_ENUM_TYPE name_size = static_cast<INMOST_DATA_ENUM_TYPE>(name.size());
@@ -230,8 +230,8 @@ namespace INMOST
 				{
 					wetype = GetHandleElementType(*kt);
 					out.put(wetype);
-          assert(wetype != NONE);
-          lid = IntegerDF(*kt,set_id);
+					assert(wetype != NONE);
+					lid = IntegerDF(*kt,set_id);
 					uconv.write_iValue(out,lid);
 				}
 				else out.put(NONE);
@@ -245,7 +245,7 @@ namespace INMOST
 				{
 					wetype = GetHandleElementType(*kt);
 					out.put(wetype);
-          assert(wetype != NONE);
+					assert(wetype != NONE);
 					lid = IntegerDF(*kt,set_id);
 					uconv.write_iValue(out,lid);
 				}
@@ -254,14 +254,14 @@ namespace INMOST
 			//write additional information
 			for(Element::adj_type::iterator kt = hc.begin()+ElementSet::high_conn_reserved-1; kt != hc.end(); ++kt)
 			{
-        uconv.write_iValue(out,*kt);
+				uconv.write_iValue(out,*kt);
 			}
 		}
 		
 		out << INMOST::MeshDataHeader;
 		REPORT_STR("MeshDataHeader");
-
-		for(Mesh::iteratorTag jt = BeginTag(); jt != EndTag(); jt++) 
+		
+		for(Mesh::iteratorTag jt = BeginTag(); jt != EndTag(); jt++)
 		{
 			std::string tagname = jt->GetTagName();
 			//skipping should match with header[6] and content
@@ -275,13 +275,13 @@ namespace INMOST
 			if( *jt == SetNameTag() ) continue;
 			REPORT_VAL("TagName",tagname);
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
-				if( jt->isDefined(etype) ) 
+				if( jt->isDefined(etype) )
 				{
 					INMOST_DATA_ENUM_TYPE q = 0;
 					INMOST_DATA_ENUM_TYPE tagsize = jt->GetSize(), recsize = tagsize, lid, k;
 					DataType data_type = jt->GetDataType();
 					bool sparse = jt->isSparse(etype);
-					for(Mesh::iteratorStorage it = Begin(etype); it != End(); it++) 
+					for(Mesh::iteratorStorage it = Begin(etype); it != End(); it++)
 					{
 						if( !sparse || (sparse && it->HaveData(*jt)) )
 						{
@@ -293,23 +293,23 @@ namespace INMOST
 							}
 							switch(data_type)
 							{
-							case DATA_REAL:
+								case DATA_REAL:
 								{
 									Storage::real_array arr = it->RealArray(*jt);
 									for(k = 0; k < recsize; k++)
 										uconv.write_fValue(out,arr[k]);
 								} break;
-							case DATA_INTEGER:
+								case DATA_INTEGER:
 								{
 									Storage::integer_array arr = it->IntegerArray(*jt);
 									for(k = 0; k < recsize; k++)
 										uconv.write_iValue(out,arr[k]);
 								} break;
-							case DATA_BULK:
+								case DATA_BULK:
 								{
 									out.write(reinterpret_cast<char *>(&it->Bulk(*jt)),recsize);
 								} break;
-							case DATA_REFERENCE:
+								case DATA_REFERENCE:
 								{
 									Storage::reference_array arr = it->ReferenceArray(*jt);
 									for(k = 0; k < recsize; k++)
@@ -324,15 +324,15 @@ namespace INMOST
 										else out.put(NONE);
 									}
 								} break;
-              case DATA_REMOTE_REFERENCE:
+								case DATA_REMOTE_REFERENCE:
 								{
 									Storage::remote_reference_array arr = it->RemoteReferenceArray(*jt);
 									for(k = 0; k < recsize; k++)
 									{
 										if( arr[k].isValid() )
 										{
-                      uconv.write_iValue(out,static_cast<INMOST_DATA_ENUM_TYPE>(arr[k].GetMeshLink()->GetMeshName().size()));
-                      out.write(arr[k].GetMeshLink()->GetMeshName().c_str(),arr[k].GetMeshLink()->GetMeshName().size());
+											uconv.write_iValue(out,static_cast<INMOST_DATA_ENUM_TYPE>(arr[k].GetMeshLink()->GetMeshName().size()));
+											out.write(arr[k].GetMeshLink()->GetMeshName().c_str(),arr[k].GetMeshLink()->GetMeshName().size());
 											wetype = arr[k].GetElementType();
 											out.put(wetype);
 											lid = IntegerDF(arr[k]->GetHandle(),set_id);
@@ -342,19 +342,19 @@ namespace INMOST
 									}
 								} break;
 #if defined(USE_AUTODIFF)
-              case DATA_VARIABLE:
+								case DATA_VARIABLE:
 								{
 									Storage::var_array arr = it->VariableArray(*jt);
 									for(k = 0; k < recsize; k++)
 									{
-                    const Sparse::Row & r = arr[k].GetRow();
-                    uconv.write_fValue(out,arr[k].GetValue());
-                    uconv.write_iValue(out,arr[k].GetRow().Size());
-                    for(int m = 0; m < (int)r.Size(); ++m)
-                    {
-                      uconv.write_fValue(out,r.GetValue(m));
-                      uconv.write_iValue(out,r.GetIndex(m));
-                    }
+										const Sparse::Row & r = arr[k].GetRow();
+										uconv.write_fValue(out,arr[k].GetValue());
+										uconv.write_iValue(out,arr[k].GetRow().Size());
+										for(int m = 0; m < (int)r.Size(); ++m)
+										{
+											uconv.write_fValue(out,r.GetValue(m));
+											uconv.write_iValue(out,r.GetIndex(m));
+										}
 									}
 								} break;
 #endif
@@ -387,7 +387,7 @@ namespace INMOST
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				REPORT_MPI(ierr = MPI_File_close(&fh));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
-                REPORT_MPI(ierr = MPI_Barrier(GetCommunicator()));
+				REPORT_MPI(ierr = MPI_Barrier(GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
@@ -399,7 +399,7 @@ namespace INMOST
 					uconv.write_iByteSize(header);
 					uconv.write_iValue(header,numprocs);
 					for(k = 0; k < numprocs; k++) uconv.write_iValue(header,datasizes[k]);
-
+					
 					std::string header_data(header.str());
 					REPORT_MPI(ierr = MPI_File_write_shared(fh,&header_data[0],static_cast<INMOST_MPI_SIZE>(header_data.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
@@ -409,7 +409,7 @@ namespace INMOST
 					REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				}
-
+				
 				REPORT_MPI(ierr = MPI_File_close(&fh));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			}
@@ -463,13 +463,13 @@ namespace INMOST
 			fout << out.rdbuf();
 			fout.close();
 		}
-			
+		
 	}
-
-
-  void Mesh::LoadPMF(std::string File)
-  {
-    int verbosity = 0;
+	
+	
+	void Mesh::LoadPMF(std::string File)
+	{
+		int verbosity = 0;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "VERBOSITY" )
@@ -482,7 +482,7 @@ namespace INMOST
 				}
 			}
 		}
-    //std::cout << "parallel strategy " << parallel_strategy << " file strategy " << parallel_file_strategy << std::endl;
+		//std::cout << "parallel strategy " << parallel_strategy << " file strategy " << parallel_file_strategy << std::endl;
 		io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
 		io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
 		REPORT_STR("start load pmf");
@@ -495,7 +495,7 @@ namespace INMOST
 #if defined(USE_MPI_FILE)
 			if( parallel_file_strategy == 1 )
 			{
-        REPORT_STR("strategy 1");
+				REPORT_STR("strategy 1");
 				int ierr;
 				std::vector<char> buffer;
 				MPI_File fh;
@@ -503,55 +503,55 @@ namespace INMOST
 				REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_RDONLY,MPI_INFO_NULL,&fh));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), recvsize = 0, mpirank = GetProcessorRank();
-        REPORT_VAL("number of processors",numprocs);
-        REPORT_VAL("rank of processor", mpirank);
+				REPORT_VAL("number of processors",numprocs);
+				REPORT_VAL("rank of processor", mpirank);
 				std::vector<INMOST_DATA_ENUM_TYPE> recvsizes;
 				if( mpirank == 0 ) //the alternative is to read alltogether
 				{
 					INMOST_DATA_ENUM_TYPE datanum, chunk,pos,k,q;
 					std::stringstream header;
-						
+					
 					buffer.resize(3);
 					//ierr = MPI_File_read_all(fh,&buffer[0],3,MPI_CHAR,&stat);
 					REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],3,MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-
+					
 					if( static_cast<HeaderType>(buffer[0]) != INMOST::INMOSTFile ) throw BadFile;
-
+					
 					header.write(&buffer[1],2);
 					uconv.read_iByteOrder(header);
 					uconv.read_iByteSize(header);
-
-          REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
-          REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
-        
-
+					
+					REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
+					REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+					
+					
 					buffer.resize(uconv.get_source_iByteSize());
 					//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
 					REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
-
-          header.write(&buffer[0],buffer.size());
+					
+					header.write(&buffer[0],buffer.size());
 					uconv.read_iValue(header,datanum);
-
-          REPORT_VAL("number of data entries",datanum);
-
+					
+					REPORT_VAL("number of data entries",datanum);
+					
 					buffer.resize(datanum*uconv.get_source_iByteSize());
 					std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
 					//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
 					REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-
-          INMOST_DATA_ENUM_TYPE datasum = 0;
+					
+					INMOST_DATA_ENUM_TYPE datasum = 0;
 					header.write(&buffer[0],buffer.size());
-					for(k = 0; k < datanum; k++) 
-          {
-            uconv.read_iValue(header,datasizes[k]);
-            REPORT_VAL("size of data entry " << k,datasizes[k]);
-            datasum += datasizes[k];
-          }
-          REPORT_VAL("total size",datasum);
-
+					for(k = 0; k < datanum; k++)
+					{
+						uconv.read_iValue(header,datasizes[k]);
+						REPORT_VAL("size of data entry " << k,datasizes[k]);
+						datasum += datasizes[k];
+					}
+					REPORT_VAL("total size",datasum);
+					
 					// use this commented code when all processors read the file alltogether through MPI_File_read_all
 					//{
 					//	MPI_Offset off;
@@ -579,65 +579,65 @@ namespace INMOST
 					//			recvsize += datasizes[k];
 					//	}
 					//}
-
+					
 					recvsizes.resize(numprocs,0);
 					if( datanum <= recvsizes.size() )
 					{
-            REPORT_STR("number of processors is greater or equal then number of data entries");
+						REPORT_STR("number of processors is greater or equal then number of data entries");
 						for(k = 0; k < datanum; k++)
 							recvsizes[k] = datasizes[k];
 					}
 					else
 					{
-            REPORT_STR("number of processors is less then number of data entries - accumulating data");
+						REPORT_STR("number of processors is less then number of data entries - accumulating data");
 						chunk = static_cast<INMOST_DATA_ENUM_TYPE>(floor(static_cast<double>(datanum)/static_cast<double>(recvsizes.size())));
-            REPORT_VAL("chunk size" ,chunk);
+						REPORT_VAL("chunk size" ,chunk);
 						pos = 0;
 						for(k = 0; k < recvsizes.size()-1; k++)
-            {
+						{
 							for(q = 0; q < chunk; q++)
 								recvsizes[k] += datasizes[pos++];
-
-              REPORT_VAL("recv on " << k, recvsizes[k]);
-            }
+							
+							REPORT_VAL("recv on " << k, recvsizes[k]);
+						}
 						for(k = pos; k < datanum; k++)
 							recvsizes[recvsizes.size()-1] += datasizes[k];
-            REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
+						REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
 					}
 				}
 				else recvsizes.resize(1,0); //protect from dereferencing null
-
+				
 				REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-
-        REPORT_VAL("read on current processor",recvsize);
-
+				
+				REPORT_VAL("read on current processor",recvsize);
+				
 				buffer.resize(std::max(1u,recvsize)); //protect from dereferencing null
-
-
+				
+				
 				{
 					REPORT_MPI(ierr = MPI_File_read_ordered(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(recvsize),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 					in.write(&buffer[0],recvsize);
 				}
-
+				
 				REPORT_MPI(ierr = MPI_File_close(&fh));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 			}
 			else
 #endif
 			{
-
-        REPORT_STR("strategy 0");
+				
+				REPORT_STR("strategy 0");
 				int ierr;
 				std::vector<char> buffer, local_buffer;
 				INMOST_DATA_ENUM_TYPE recvsize;
-					
+				
 				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(),mpirank = GetProcessorRank();
 				std::vector<INMOST_DATA_ENUM_TYPE> recvsizes(numprocs,0);
 				std::vector<INMOST_MPI_SIZE> sendcnts(numprocs), displs(numprocs);
-        REPORT_VAL("number of processors",numprocs);
-        REPORT_VAL("rank of processor", mpirank);
+				REPORT_VAL("number of processors",numprocs);
+				REPORT_VAL("rank of processor", mpirank);
 				if( mpirank == 0 ) //zero reads everything
 				{
 					std::fstream fin(File.c_str(),std::ios::in | std::ios::binary);
@@ -645,75 +645,75 @@ namespace INMOST
 					if( token != INMOST::INMOSTFile ) throw BadFile;
 					uconv.read_iByteOrder(fin);
 					uconv.read_iByteSize(fin);
-
-          REPORT_VAL("file position",fin.tellg());
-
-          REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
-          REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
-        
-
+					
+					REPORT_VAL("file position",fin.tellg());
+					
+					REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
+					REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+					
+					
 					INMOST_DATA_ENUM_TYPE datanum,k,q,datasum = 0,chunk,pos;
 					uconv.read_iValue(fin,datanum);
-
-          REPORT_VAL("number of data entries",datanum);
-          REPORT_VAL("file position",fin.tellg());
-
+					
+					REPORT_VAL("number of data entries",datanum);
+					REPORT_VAL("file position",fin.tellg());
+					
 					std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
-					for(k = 0; k < datanum; k++) 
+					for(k = 0; k < datanum; k++)
 					{
 						uconv.read_iValue(fin,datasizes[k]);
-            REPORT_VAL("size of data entry " << k,datasizes[k]);
+						REPORT_VAL("size of data entry " << k,datasizes[k]);
 						datasum += datasizes[k];
 					}
-
-          REPORT_VAL("file position",fin.tellg());
-
+					
+					REPORT_VAL("file position",fin.tellg());
+					
 					{
 						buffer.resize(datasum);
 						fin.read(&buffer[0],buffer.size());
-              
+						
 					}
-          REPORT_VAL("file position",fin.tellg());
-          REPORT_VAL("total size",datasum);
+					REPORT_VAL("file position",fin.tellg());
+					REPORT_VAL("total size",datasum);
 					fin.close();
-
-
+					
+					
 					if( datanum <= recvsizes.size() )
 					{
-            REPORT_STR("number of processors is greater or equal then number of data entries");
+						REPORT_STR("number of processors is greater or equal then number of data entries");
 						for(k = 0; k < datanum; k++)
 							recvsizes[k] = datasizes[k];
 					}
 					else
 					{
-            REPORT_STR("number of processors is less then number of data entries - accumulating data");
+						REPORT_STR("number of processors is less then number of data entries - accumulating data");
 						chunk = static_cast<INMOST_DATA_ENUM_TYPE>(floor(static_cast<double>(datanum)/static_cast<double>(recvsizes.size())));
-            REPORT_VAL("chunk size" ,chunk);
+						REPORT_VAL("chunk size" ,chunk);
 						pos = 0;
 						for(k = 0; k < recvsizes.size()-1; k++)
-            {
+						{
 							for(q = 0; q < chunk; q++)
 								recvsizes[k] += datasizes[pos++];
-              REPORT_VAL("recv on " << k, recvsizes[k]);
-            }
+							REPORT_VAL("recv on " << k, recvsizes[k]);
+						}
 						for(k = pos; k < datanum; k++)
 							recvsizes[recvsizes.size()-1] += datasizes[k];
-            REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
+						REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
 					}
-
+					
 					displs[0] = 0;
 					sendcnts[0] = static_cast<INMOST_MPI_SIZE>(recvsizes[0]);
-          REPORT_VAL("disp on "<<0,displs[0]);
-          REPORT_VAL("send on "<<0,sendcnts[0]);
+					REPORT_VAL("disp on "<<0,displs[0]);
+					REPORT_VAL("send on "<<0,sendcnts[0]);
 					for(k = 1; k < numprocs; k++)
 					{
 						sendcnts[k] = static_cast<INMOST_MPI_SIZE>(recvsizes[k]);
 						displs[k] = sendcnts[k-1]+displs[k-1];
-            REPORT_VAL("disp on "<<k,displs[k]);
-            REPORT_VAL("send on "<<k,sendcnts[k]);
+						REPORT_VAL("disp on "<<k,displs[k]);
+						REPORT_VAL("send on "<<k,sendcnts[k]);
 					}
 				}
-				else 
+				else
 				{
 					//protect from dereferencing null
 					buffer.resize(1);
@@ -721,16 +721,16 @@ namespace INMOST
 				REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				local_buffer.resize(std::max(1u,recvsize));
-
-        REPORT_VAL("read on current processor",recvsize);
-
-
+				
+				REPORT_VAL("read on current processor",recvsize);
+				
+				
 				REPORT_MPI(ierr = MPI_Scatterv(&buffer[0],&sendcnts[0],&displs[0],MPI_CHAR,&local_buffer[0],recvsize,MPI_CHAR,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				in.write(&local_buffer[0],local_buffer.size());
-        REPORT_VAL("output position",in.tellg());
+				REPORT_VAL("output position",in.tellg());
 			}
-
+			
 		}
 		else
 #endif
@@ -740,48 +740,48 @@ namespace INMOST
 			if( token != INMOST::INMOSTFile ) throw BadFile;
 			uconv.read_iByteOrder(fin);
 			uconv.read_iByteSize(fin);
-
-      REPORT_VAL("file position",fin.tellg());
-
-      REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
-      REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
-        
+			
+			REPORT_VAL("file position",fin.tellg());
+			
+			REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
+			REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+			
 			INMOST_DATA_ENUM_TYPE datanum,k,datasum = 0;
 			uconv.read_iValue(fin,datanum);
-
-      REPORT_VAL("file position",fin.tellg());
-
-      REPORT_VAL("number of data entries",datanum);
-
+			
+			REPORT_VAL("file position",fin.tellg());
+			
+			REPORT_VAL("number of data entries",datanum);
+			
 			std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
-			for(k = 0; k < datanum; k++) 
+			for(k = 0; k < datanum; k++)
 			{
 				uconv.read_iValue(fin,datasizes[k]);
-        REPORT_VAL("size of data entry " << k,datasizes[k]);
+				REPORT_VAL("size of data entry " << k,datasizes[k]);
 				datasum += datasizes[k];
 			}
-
-      REPORT_VAL("file position",fin.tellg());
-
-      REPORT_VAL("total size",datasum);
+			
+			REPORT_VAL("file position",fin.tellg());
+			
+			REPORT_VAL("total size",datasum);
 			{
 				std::vector<char> buffer;
 				buffer.resize(datasum);
 				fin.read(&buffer[0],buffer.size());
 				in.write(&buffer[0],buffer.size());
-        REPORT_VAL("output position",in.tellg());
+				REPORT_VAL("output position",in.tellg());
 			}
-
-      REPORT_VAL("file position",fin.tellg());
-
+			
+			REPORT_VAL("file position",fin.tellg());
+			
 			fin.close();
 		}
-			
+		
 		//std::fstream in(File.c_str(),std::ios::in | std::ios::binary);
-			
+		
 		std::vector<Tag> tags;
-    std::vector<ElementType> tags_defined;
-    std::vector<ElementType> tags_sparse;
+		std::vector<ElementType> tags_defined;
+		std::vector<ElementType> tags_sparse;
 		std::vector<HandleType> old_nodes;
 		std::vector<HandleType> new_nodes;
 		std::vector<HandleType> new_edges;
@@ -791,26 +791,26 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE size,i,q;
 		TopologyCheck tmp;
 		INMOST_DATA_ENUM_TYPE current_dim = GetDimensions();
-
+		
 		bool start = false;
-			
+		
 		std::map<GeometricData,ElementType> table;
-			
+		
 		BeginModification();
 		
-		while (in >> token) 
+		while (in >> token)
 		{
-      REPORT_VAL("output position, loop",in.tellg());
-			if( !start ) 
+			REPORT_VAL("output position, loop",in.tellg());
+			if( !start )
 			{
 				if( token != INMOST::INMOSTFile ) throw BadFile; //check that this is valid file
-				else 
+				else
 				{
 					REPORT_STR("File chunk start read");
 					//~ std::cout << "start read" << std::endl;
 					tags.clear();
-          tags_sparse.clear();
-          tags_defined.clear();
+					tags_sparse.clear();
+					tags_defined.clear();
 					old_nodes.clear();
 					old_nodes.resize(NumberOfNodes());
 					{
@@ -818,7 +818,7 @@ namespace INMOST
 						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
 							old_nodes[qq++] = *it;
 					}
-					if( !old_nodes.empty() ) 
+					if( !old_nodes.empty() )
 						std::sort(old_nodes.begin(),old_nodes.end(),CentroidComparator(this));
 					if( old_nodes.empty() )
 					{
@@ -830,13 +830,13 @@ namespace INMOST
 						tmp = GetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE); //we expect to have duplicates
 						SetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE);
 					}
-						
+					
 					start = true;
 				}
 			}
-			else if (token == INMOST::EoMHeader)  
+			else if (token == INMOST::EoMHeader)
 			{
-					
+				
 				if( !start ) throw BadFile;
 				REPORT_STR("File chunk end read");
 				//~ std::cout << "end read" << std::endl;
@@ -867,22 +867,22 @@ namespace INMOST
 				iconv.read_iByteSize(in);
 				iconv.read_fByteOrder(in);
 				iconv.read_fByteSize(in);
-
+				
 				INMOST_DATA_ENUM_TYPE header[9],k;
 				for(k = 0; k < 9; k++)
 					uconv.read_iValue(in,header[k]);
-					
+				
 				{
-						
+					
 					char rtemp[5][3];
 					in.read(reinterpret_cast<char *>(rtemp),sizeof(rtemp));
 					for(GeometricData d = CENTROID; d <= BARYCENTER; d++)
 						for(ElementType et = EDGE; et <= CELL; et = et << 1)
 							if( rtemp[d][ElementNum(et)-1] ) table[d] |= et;
-						
-				}
-
 					
+				}
+				
+				
 				current_dim = header[0];
 				SetDimensions(header[0]);
 				new_nodes.clear();
@@ -896,10 +896,10 @@ namespace INMOST
 				new_sets.clear();
 				new_sets.resize(header[5]);
 				tags.resize(header[6]);
-        tags_sparse.resize(header[6]);
-        tags_defined.resize(header[6]);
+				tags_sparse.resize(header[6]);
+				tags_defined.resize(header[6]);
 				//~ if( static_cast<Mesh::MeshState>(header[7]) == Mesh::Parallel && m_state != Mesh::Parallel)
-					//~ SetCommunicator(INMOST_MPI_COMM_WORLD);
+				//~ SetCommunicator(INMOST_MPI_COMM_WORLD);
 				myprocs.push_back(header[8]);
 			}
 			else if (token == INMOST::TagsHeader)
@@ -907,7 +907,7 @@ namespace INMOST
 				uconv.read_iValue(in,size);
 				REPORT_STR("TagsHeader");
 				REPORT_VAL("tag_size",size);
-				for(i = 0; i < size; i++) 
+				for(i = 0; i < size; i++)
 				{
 					INMOST_DATA_ENUM_TYPE namesize;
 					char name[4096];
@@ -918,25 +918,25 @@ namespace INMOST
 					in.read(name, namesize);
 					assert(namesize < 4096);
 					name[namesize] = '\0';
-          REPORT_VAL("tag name",name);
+					REPORT_VAL("tag name",name);
 					in.get(datatype);
-          REPORT_VAL("tag data type",DataTypeName(static_cast<DataType>(datatype)));
+					REPORT_VAL("tag data type",DataTypeName(static_cast<DataType>(datatype)));
 					in.get(sparsemask);
 					in.get(definedmask);
-          //for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
-          //{
-          //  if( etype & definedmask ) REPORT_VAL("defined on",ElementTypeName(etype));
-          //  if( etype & sparsemask ) REPORT_VAL("sparse on",ElementTypeName(etype));
-          //}
+					//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
+					//{
+					//  if( etype & definedmask ) REPORT_VAL("defined on",ElementTypeName(etype));
+					//  if( etype & sparsemask ) REPORT_VAL("sparse on",ElementTypeName(etype));
+					//}
 					uconv.read_iValue(in,datalength);
-          REPORT_VAL("length",datalength);
+					REPORT_VAL("length",datalength);
 					tags[i] = CreateTag(std::string(name),static_cast<DataType>(datatype),
-						                  static_cast<ElementType>(definedmask),
-						                  static_cast<ElementType>(sparsemask),datalength);
-          tags_defined[i] = static_cast<ElementType>(definedmask);
-          tags_sparse[i] = static_cast<ElementType>(sparsemask);
-
-          REPORT_VAL("output position, tag " << i,in.tellg());
+										static_cast<ElementType>(definedmask),
+										static_cast<ElementType>(sparsemask),datalength);
+					tags_defined[i] = static_cast<ElementType>(definedmask);
+					tags_sparse[i] = static_cast<ElementType>(sparsemask);
+					
+					REPORT_VAL("output position, tag " << i,in.tellg());
 				}
 			}
 			else if (token == INMOST::NodeHeader)
@@ -946,14 +946,14 @@ namespace INMOST
 				REPORT_STR("NodeHeader");
 				REPORT_VAL("node_size",size);
 				Storage::real coords[3] = {0,0,0};
-				for(i = 0; i < size; i++) 
+				for(i = 0; i < size; i++)
 				{
 					for(unsigned int k = 0; k < current_dim; k++) iconv.read_fValue(in,coords[k]);
 					int find = -1;
-					if( !old_nodes.empty() ) 
+					if( !old_nodes.empty() )
 					{
 						std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),coords,CentroidComparator(this));
-						if( it != old_nodes.end() ) 
+						if( it != old_nodes.end() )
 						{
 							Storage::real_array c = RealArrayDF(*it,CoordsTag());
 							if( CentroidComparator(this).Compare(coords,c.data()) == 0 )
@@ -963,8 +963,8 @@ namespace INMOST
 					if( find == -1 ) new_nodes[i] = CreateNode(coords)->GetHandle();
 					else  new_nodes[i] = old_nodes[find];
 				}
-
-        REPORT_VAL("output position, nodes",in.tellg());
+				
+				REPORT_VAL("output position, nodes",in.tellg());
 			}
 			else if (token == INMOST::EdgeHeader)
 			{
@@ -974,7 +974,7 @@ namespace INMOST
 				REPORT_VAL("edge_size",size);
 				INMOST_DATA_ENUM_TYPE nlow, lid, i;
 				ElementArray<Node> sub_elements(this);
-				for(i = 0; i < size; i++) 
+				for(i = 0; i < size; i++)
 				{
 					uconv.read_iValue(in,nlow);
 					for(q = 0; q < nlow; q++)
@@ -985,8 +985,8 @@ namespace INMOST
 					new_edges[i] = CreateEdge(sub_elements).first->GetHandle();
 					sub_elements.clear();
 				}
-
-        REPORT_VAL("output position, edges",in.tellg());
+				
+				REPORT_VAL("output position, edges",in.tellg());
 			}
 			else if (token == INMOST::FaceHeader)
 			{
@@ -996,7 +996,7 @@ namespace INMOST
 				REPORT_VAL("face_size",size);
 				INMOST_DATA_ENUM_TYPE nlow,lid,i;
 				ElementArray<Edge> sub_elements(this);
-				for(i = 0; i < size; i++) 
+				for(i = 0; i < size; i++)
 				{
 					uconv.read_iValue(in,nlow);
 					for(q = 0; q < nlow; q++)
@@ -1007,8 +1007,8 @@ namespace INMOST
 					new_faces[i] = CreateFace(sub_elements).first->GetHandle();
 					sub_elements.clear();
 				}
-
-        REPORT_VAL("output position, faces",in.tellg());
+				
+				REPORT_VAL("output position, faces",in.tellg());
 			}
 			else if (token == INMOST::CellHeader)
 			{
@@ -1019,7 +1019,7 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE nlow, nhigh,lid;
 				ElementArray<Face> sub_elements(this);
 				ElementArray<Node> suggest_nodes(this);
-				for(unsigned i = 0; i < size; i++) 
+				for(unsigned i = 0; i < size; i++)
 				{
 					uconv.read_iValue(in,nlow);
 					for(q = 0; q < nlow; q++)
@@ -1037,8 +1037,8 @@ namespace INMOST
 					sub_elements.clear();
 					suggest_nodes.clear();
 				}
-
-        REPORT_VAL("output position, cells",in.tellg());
+				
+				REPORT_VAL("output position, cells",in.tellg());
 			}
 			else if (token == INMOST::ESetHeader)
 			{
@@ -1057,7 +1057,7 @@ namespace INMOST
 				};
 				bool low_conn_have_sets = false;
 				bool high_conn_have_sets = false;
-				for(unsigned i = 0; i < size; i++) 
+				for(unsigned i = 0; i < size; i++)
 				{
 					uconv.read_iValue(in,name_size);
 					in.read(set_name,name_size);
@@ -1109,7 +1109,7 @@ namespace INMOST
 				//convert handles to sets into links to new_sets
 				if( high_conn_have_sets )
 				{
-					for(unsigned i = 0; i < size; i++) 
+					for(unsigned i = 0; i < size; i++)
 					{
 						Element::adj_type & hc = HighConn(new_sets[i]);
 						for(enumerator j = 0; j < ElementSet::high_conn_reserved-1; ++j)
@@ -1119,16 +1119,16 @@ namespace INMOST
 				}
 				if( low_conn_have_sets ) //this may be expensive and redundant in some cases
 				{
-					for(unsigned i = 0; i < size; i++) 
+					for(unsigned i = 0; i < size; i++)
 					{
 						Element::adj_type & lc = LowConn(new_sets[i]);
 						for(Element::adj_type::size_type j = 0; j < lc.size(); ++j)
-								if( GetHandleElementType(lc[j]) == ESET )
-									lc[j] = new_sets[GetHandleID(lc[j])];
+							if( GetHandleElementType(lc[j]) == ESET )
+								lc[j] = new_sets[GetHandleID(lc[j])];
 					}
 				}
-
-        REPORT_VAL("output position, sets",in.tellg());
+				
+				REPORT_VAL("output position, sets",in.tellg());
 			}
 			else if (token == INMOST::MeshDataHeader)
 			{
@@ -1152,7 +1152,7 @@ namespace INMOST
 					new_sets.empty() ? NULL : &new_sets[0],
 					&m_storage
 				};
-				for(INMOST_DATA_ENUM_TYPE j = 0; j < tags.size(); j++) 
+				for(INMOST_DATA_ENUM_TYPE j = 0; j < tags.size(); j++)
 				{
 					REPORT_VAL("TagName",tags[j].GetTagName());
 					if( verbosity > 0 ) std::cout << "Reading " << tags[j].GetTagName() << std::endl;
@@ -1161,61 +1161,61 @@ namespace INMOST
 					{
 						if( etype & tags_defined[j] )
 						{
-              REPORT_VAL("defined on",ElementTypeName(etype));
+							REPORT_VAL("defined on",ElementTypeName(etype));
 							INMOST_DATA_ENUM_TYPE q, cycle_end, etypenum = ElementNum(etype);
 							cycle_end = elem_sizes[etypenum];
-              REPORT_VAL("cycle end",cycle_end);
+							REPORT_VAL("cycle end",cycle_end);
 							bool sparse = false;
-              if( etype & tags_sparse[j] ) sparse = true;
+							if( etype & tags_sparse[j] ) sparse = true;
 							INMOST_DATA_ENUM_TYPE tagsize = jt->GetSize(), recsize = tagsize, lid;
 							INMOST_DATA_ENUM_TYPE k;
 							DataType data_type = jt->GetDataType();
-							if( sparse ) 
+							if( sparse )
 							{
-                REPORT_VAL("sparse on",ElementTypeName(etype));
-								uconv.read_iValue(in,q); 
+								REPORT_VAL("sparse on",ElementTypeName(etype));
+								uconv.read_iValue(in,q);
 								if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 							}
 							else q = 0;
-
-              REPORT_VAL("data type",DataTypeName(data_type));
-              REPORT_VAL("tag size",tagsize);
-
+							
+							REPORT_VAL("data type",DataTypeName(data_type));
+							REPORT_VAL("tag size",tagsize);
+							
 							while(q != cycle_end)
 							{
 								HandleType he = elem_links[etypenum][q];
-								if( tagsize == ENUMUNDEF ) 
+								if( tagsize == ENUMUNDEF )
 								{
-									uconv.read_iValue(in,recsize); 
+									uconv.read_iValue(in,recsize);
 									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 									SetDataSize(he,*jt,recsize);
 								}
 								switch(data_type)
 								{
-								case DATA_REAL:
+									case DATA_REAL:
 									{
 										Storage::real_array arr = RealArray(he,*jt);
-										for(k = 0; k < recsize; k++) 
+										for(k = 0; k < recsize; k++)
 										{
-											iconv.read_fValue(in,arr[k]); 
+											iconv.read_fValue(in,arr[k]);
 											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 										}
 									} break;
-								case DATA_INTEGER:   
+									case DATA_INTEGER:
 									{
-										Storage::integer_array arr = IntegerArray(he,*jt); 
-										for(k = 0; k < recsize; k++) 
+										Storage::integer_array arr = IntegerArray(he,*jt);
+										for(k = 0; k < recsize; k++)
 										{
-											iconv.read_iValue(in,arr[k]); 
+											iconv.read_iValue(in,arr[k]);
 											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 										}
 									} break;
-								case DATA_BULK:      
+									case DATA_BULK:
 									{
 										in.read(reinterpret_cast<char *>(&Bulk(he,*jt)),recsize);
 										if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 									} break;
-								case DATA_REFERENCE: 
+									case DATA_REFERENCE:
 									{
 										Storage::reference_array arr = ReferenceArray(he,*jt);
 										for(k = 0; k < recsize; k++)
@@ -1232,20 +1232,20 @@ namespace INMOST
 											else arr.at(k) = InvalidHandle();
 										}
 									} break;
-                case DATA_REMOTE_REFERENCE: 
+									case DATA_REMOTE_REFERENCE:
 									{
 										Storage::remote_reference_array arr = RemoteReferenceArray(he,*jt);
 										for(k = 0; k < recsize; k++)
 										{
-                      INMOST_DATA_ENUM_TYPE size;
-                      std::vector<char> name;
-                      uconv.read_iValue(in,size);
-                      name.resize(size);
-                      if( !name.empty() ) in.read(&name[0],size);
-                      else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
-                      arr.at(k).first = GetMesh(std::string(name.begin(),name.end()));
-                      if( arr.at(k).first == NULL )
-                        std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(),name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;
+											INMOST_DATA_ENUM_TYPE size;
+											std::vector<char> name;
+											uconv.read_iValue(in,size);
+											name.resize(size);
+											if( !name.empty() ) in.read(&name[0],size);
+											else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
+											arr.at(k).first = GetMesh(std::string(name.begin(),name.end()));
+											if( arr.at(k).first == NULL )
+												std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(),name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;
 											char type;
 											in.get(type);
 											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
@@ -1253,65 +1253,65 @@ namespace INMOST
 											{
 												uconv.read_iValue(in, lid);
 												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
-                        arr.at(k).second = ComposeHandle(type,lid);
+												arr.at(k).second = ComposeHandle(type,lid);
 											}
-                      else arr.at(k).second = InvalidHandle();
+											else arr.at(k).second = InvalidHandle();
 										}
 									} break;
 #if defined(USE_AUTODIFF)
-                case DATA_VARIABLE:
-                  {
-                    Storage::var_array arr = VariableArray(he,*jt);
-                    Storage::real val;
-                    Storage::integer ival;
-                    for(k = 0; k < recsize; k++)
-                    {
-                      Sparse::Row & r = arr[k].GetRow();
-                      iconv.read_fValue(in,val);
-                      arr[k].SetValue(val);
-                      iconv.read_iValue(in,ival);
-                      r.Resize(ival);
-                      for(int l = 0; l < (int)r.Size(); ++l)
-                      {
-                        iconv.read_fValue(in,val);
-                        iconv.read_iValue(in,ival);
-                        r.GetValue(l) = val;
-                        r.GetIndex(l) = ival;
-                      }
-                    }
-                  } break;
+									case DATA_VARIABLE:
+									{
+										Storage::var_array arr = VariableArray(he,*jt);
+										Storage::real val;
+										Storage::integer ival;
+										for(k = 0; k < recsize; k++)
+										{
+											Sparse::Row & r = arr[k].GetRow();
+											iconv.read_fValue(in,val);
+											arr[k].SetValue(val);
+											iconv.read_iValue(in,ival);
+											r.Resize(ival);
+											for(int l = 0; l < (int)r.Size(); ++l)
+											{
+												iconv.read_fValue(in,val);
+												iconv.read_iValue(in,ival);
+												r.GetValue(l) = val;
+												r.GetIndex(l) = ival;
+											}
+										}
+									} break;
 #endif
 								}
-								if( sparse ) 
+								if( sparse )
 								{
-									uconv.read_iValue(in,q); 
+									uconv.read_iValue(in,q);
 									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 								}
 								else q++;
 							}
 						}
 					}
-
-          REPORT_VAL("output position, tag data " << j,in.tellg());
+					
+					REPORT_VAL("output position, tag data " << j,in.tellg());
 				}
-
-        REPORT_VAL("output position, tag data",in.tellg());
+				
+				REPORT_VAL("output position, tag data",in.tellg());
 				if( verbosity > 0 ) std::cout << "Finished reading data" << std::endl;
 				REPORT_STR("EndOfData");
 			}
-			else 
+			else
 			{
 				std::cout << "Unknown token on input" << std::endl;
 				throw BadFile;
 			}
 		}
-			
-			
-			
+		
+		
+		
 		if( m_state == Mesh::Parallel )
 		{
 #if defined(USE_MPI) 
-				
+			
 			bool restore_state = false;
 			INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), size = static_cast<INMOST_DATA_ENUM_TYPE>(myprocs.size()),k;
 			INMOST_DATA_ENUM_TYPE procs_sum = 0;
@@ -1329,7 +1329,7 @@ namespace INMOST
 				procs_sum = procs_sizes[0];
 				recvcnts[0] = static_cast<INMOST_MPI_SIZE>(procs_sizes[0]);
 				displs[0] = 0;
-				for(k = 1; k < numprocs; k++) 
+				for(k = 1; k < numprocs; k++)
 				{
 					procs_sum += procs_sizes[k];
 					recvcnts[k] = static_cast<INMOST_MPI_SIZE>(procs_sizes[k]);
@@ -1340,14 +1340,14 @@ namespace INMOST
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				//we have to distinguish new elements and old elements
 				//all new elements with owner in myprocs belong to me
-					
+				
 				if( procs_sizes[myrank] > 0 )
 				{
 					for(Mesh::iteratorElement it = BeginElement(CELL | FACE | EDGE | NODE); it != EndElement(); ++it)
 						if( it->New() )
 						{
 							Storage::integer & owner = it->IntegerDF(tag_owner);
-							if( std::binary_search(myprocs.begin(),myprocs.end(),static_cast<INMOST_DATA_ENUM_TYPE>(owner)) ) 
+							if( std::binary_search(myprocs.begin(),myprocs.end(),static_cast<INMOST_DATA_ENUM_TYPE>(owner)) )
 								owner = myrank;
 							else
 							{
@@ -1384,11 +1384,11 @@ namespace INMOST
 								it->BulkDF(tag_shared) = Element::Ghost;
 						}
 				}
-
+				
 			}
 			ComputeSharedProcs();
 			RecomputeParallelStorage(CELL | FACE | EDGE | NODE);
-				
+			
 			//Share number of Layers
 			REPORT_MPI(MPI_Bcast(&Integer(GetHandle(),tag_layers),1,INMOST_MPI_DATA_INTEGER_TYPE,0,GetCommunicator()));
 			REPORT_MPI(MPI_Bcast(&Integer(GetHandle(),tag_bridge),1,INMOST_MPI_DATA_BULK_TYPE,0,GetCommunicator()));
@@ -1403,10 +1403,10 @@ namespace INMOST
 #endif
 		}
 		EndModification();
-			
+		
 		//~ PrepareGeometricData(table);
 		RestoreGeometricTags();
-			
+		
 		if( HaveTag("GLOBAL_ID") )
 			tag_global_id = GetTag("GLOBAL_ID");
 		if( HaveTag("TOPOLOGY_ERROR_TAG") )
@@ -1428,7 +1428,7 @@ namespace INMOST
 			for(ElementType etype = NODE; etype <= CELL; etype = etype << 1 )
 			{
 				REPORT_VAL("test global id tag type",ElementTypeName(etype));
-				if( (etype & recvtype) && !(etype & have_global_id) ) 
+				if( (etype & recvtype) && !(etype & have_global_id) )
 				{
 					tag_global_id = CreateTag("GLOBAL_ID",DATA_INTEGER, etype, NONE,1);
 					//~ flag = 1;
@@ -1437,7 +1437,7 @@ namespace INMOST
 			}
 			//~ REPORT_MPI(MPI_Allreduce(&flag,&recvflag,1,MPI_INT,MPI_BOR,comm));
 			//~ REPORT_VAL("flag",&recvflag);
-			//~ if( recvflag ) 
+			//~ if( recvflag )
 			AssignGlobalID(recvtype);
 		}
 #endif

@@ -345,7 +345,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 				for (INMOST_DATA_ENUM_TYPE it = C_Address[k]; it < C_Address[k+1]; ++it)
 				{
 					INMOST_DATA_ENUM_TYPE i = C_Entries[it].first;
-					if( Cmax[i] == 0.0 )
+					if( Cmax[i] == 0.0 || C_Entries[it].second == 0.0 )
 						C_Entries[it].second = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 					else
 					{
@@ -549,7 +549,11 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
                 for(INMOST_DATA_ENUM_TYPE qt = 0; qt < A[k].Size(); ++qt)
                 {
                     INMOST_DATA_ENUM_TYPE i = A[k].GetIndex(qt), j = Perm[i];
-                    INMOST_DATA_REAL_TYPE l = exp(V[k]), u = exp(U[i])/Cmax[i];
+					INMOST_DATA_REAL_TYPE l,u;
+					if( V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ) l = 1;
+					else l = exp(V[k]);
+					if( U[i] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[i] == 0 ) u = 1;
+					else u = exp(U[i])/Cmax[i];
                     DL[k] = l;
                     DR[i] = u;
                     B_Entries[cnt++] = 	Sparse::Row::make_entry(j, l*u*A[k].GetValue(qt));

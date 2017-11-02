@@ -33,12 +33,17 @@ int main(int argc, char ** argv)
 		{
 			std::string stype(argv[2]);
 			for(size_t k = 0; k < stype.size(); ++k) stype[k] = tolower(stype[k]);
+			/*
 			if( stype == "inner_mptilu2" )
 				type = Solver::INNER_MPTILU2;
 			else if( stype == "inner_mptiluc" )
 				type = Solver::INNER_MPTILUC;
 			else if( stype == "inner_ddpqiluc" )
 				type = Solver::INNER_DDPQILUC;
+			else
+			 */
+			if( Solver::isSolverAvailable(stype) )
+				type = stype;
 			else if( stype != "inner_ilu2" && stype != "*" )
 			{
 				std::cout << "Unknown type of the solver " << stype << std::endl;
@@ -54,6 +59,17 @@ int main(int argc, char ** argv)
 		mat.Load(std::string(argv[1])); //if interval parameters not set, matrix will be divided automatically
 		BARRIER
 		if( !rank ) std::cout << "load matrix: " << Timer() - t << std::endl;
+		
+		/*
+		b.SetInterval(0,mat.Size());
+		x.SetInterval(0,mat.Size());
+		for(int k = 0; k < (int)mat.Size(); ++k)
+			x[k] = (1+k)*10;
+		mat.MatVec(1.0,x,0.0,b);
+		for(int k = 0; k < (int)mat.Size(); ++k)
+			x[k] = 0;
+		*/
+		
 		//mat.Save("test.mtx");
 		t = Timer();
 		if( argc > 3 )
@@ -61,7 +77,7 @@ int main(int argc, char ** argv)
 			//std::cout << rank << " load vector from " << std::string(argv[3]) << std::endl;
 			b.Load(std::string(argv[3])); // Load RHS vector
 		}
-		else // Set local RHS to 1 if it was not specified
+		else if( b.Empty() )// Set local RHS to 1 if it was not specified
 		{
 			INMOST_DATA_ENUM_TYPE mbeg,mend,k;
 			mat.GetInterval(mbeg,mend);
@@ -82,10 +98,11 @@ int main(int argc, char ** argv)
 			s.SetParameterEnum("condition_estimation",1);
 			s.SetParameterReal("relative_tolerance",1.0e-9);
 			s.SetParameterReal("absolute_tolerance",1.0e-16);
-			s.SetParameterEnum("rescale_iterations",8);
+			s.SetParameterEnum("rescale_iterations",16);
 			s.SetParameterReal("drop_tolerance",1.0e-2);
 			s.SetParameterReal("reuse_tolerance",1.0e-4);
-
+			//s.SetParameterReal("drop_tolerance",0);
+			//s.SetParameterReal("reuse_tolerance",0);
 			/*
 			
 			s.SetParameterEnum("reorder_nonzeros",0);
@@ -104,7 +121,7 @@ int main(int argc, char ** argv)
 			iters = s.Iterations(); // Get the number of iterations performed
 			resid = s.Residual();   // Get the final residual achieved
 			reason = s.GetReason();
-			//x.Save("output.rhs");
+			//x.Save("sol.mtx");
 		}
 		tt = Timer() - tt;
 
@@ -122,11 +139,14 @@ int main(int argc, char ** argv)
 			{
 				INMOST_DATA_ENUM_TYPE mbeg,mend,k;
 				info.GetLocalRegion(info.GetRank(),mbeg,mend);
+				//Sparse::Vector tmp("",mbeg,mend);
 				for( k = mbeg; k < mend; ++k )
 				{
+					//tmp[k] = test[k]-b[k];
 					aresid += (test[k]-b[k])*(test[k]-b[k]);
 					bresid += b[k]*b[k];
 				}
+				//tmp.Save("diff.mtx");
 			}
 			double temp[2] = {aresid,bresid}, recv[2] = {aresid,bresid};
 #if defined(USE_MPI)
@@ -151,8 +171,9 @@ int main(int argc, char ** argv)
 				}
 				else std::cout << " failed to solve" << std::endl;
 				std::cout  << " matrix \"" << argv[1] << "\"" << std::endl;
-				if( argc > 2 ) std::cout  << " vector \"" << argv[2] << "\"" << std::endl;
+				if( argc > 3 ) std::cout  << " vector \"" << argv[3] << "\"" << std::endl;
 				else std::cout  << " unit right hand side" << std::endl;
+				std::cout  << " solver \"" << type << "\"" << std::endl;
 				std::cout << " true residual ||Ax-b||/||b|| " << realresid << std::endl;;
 				std::cout << "converged reason: " << reason << std::endl;
 			}
