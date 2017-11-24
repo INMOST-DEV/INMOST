@@ -3242,7 +3242,7 @@ public:
 						Li = LineIndecesU[Li];
 					}
 					LF_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
-					assert(std::is_sorted(LF_Entries.begin()+LF_Address[k].first,LF_Entries.end()));
+					//assert(std::is_sorted(LF_Entries.begin()+LF_Address[k].first,LF_Entries.end()));
 ///////////////////////////////////////////////////////////////////////////////////
 //              clean linked list                                                //
 ///////////////////////////////////////////////////////////////////////////////////
