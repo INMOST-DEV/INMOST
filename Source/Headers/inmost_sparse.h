@@ -6,8 +6,6 @@
 
 
 
-
-
 namespace INMOST
 {
 	namespace Sparse
@@ -103,6 +101,8 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE & operator [](INMOST_DATA_ENUM_TYPE i) {return data[i];}
 			/// Return i-th element of the vector.
 			INMOST_DATA_REAL_TYPE   operator [](INMOST_DATA_ENUM_TYPE i) const {return data[i];}
+			/// Return a block of elements.
+			INMOST::Matrix<INMOST_DATA_REAL_TYPE> operator [](const INMOST::AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows) const;
 			/// Return the global size of the vector.
 			INMOST_DATA_ENUM_TYPE  Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
 			/// Iterator pointing to the first value of the vector.
@@ -643,6 +643,7 @@ namespace INMOST
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
 			std::vector< INMOST_DATA_ENUM_TYPE > NonlocalPre; ///< List of global indices, that are to the left of owned index interval
 			std::vector< INMOST_DATA_ENUM_TYPE > NonlocalPost; ///< List of global indices, that are to the right of owned index interval
+			std::map< INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE > Nonlocal; ///< Additional space
 		public:
 			/// This function converts global index into local index.
 			/// @param pos Global index.

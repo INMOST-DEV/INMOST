@@ -1,10 +1,10 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include <iomanip>
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #include "solver_mlmtiluc2.hpp"
 #include <sstream>
 #include <deque>
+#include <iomanip>
 //#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
@@ -597,7 +597,7 @@ public:
         double tlfactor, tlrescale, tlreorder, tlreassamble;
 		ttotal = Timer();
 
-		(*Alink).Save("M.mtx");
+		//(*Alink).Save("M.mtx");
 		
 		//calculate number of nonzeros
 		nzA = 0;
@@ -3242,7 +3242,7 @@ public:
 						Li = LineIndecesU[Li];
 					}
 					LF_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
-					assert(std::is_sorted(LF_Entries.begin()+LF_Address[k].first,LF_Entries.end()));
+					//assert(std::is_sorted(LF_Entries.begin()+LF_Address[k].first,LF_Entries.end()));
 ///////////////////////////////////////////////////////////////////////////////////
 //              clean linked list                                                //
 ///////////////////////////////////////////////////////////////////////////////////

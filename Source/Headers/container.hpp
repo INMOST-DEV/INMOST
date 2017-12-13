@@ -2721,6 +2721,13 @@ namespace INMOST
 			m_size = n;
 		}
 	};
+	
+	/// This class is used to replace #pragma omp threadprivate
+	/// Functionality that is not supported on many older systems.
+	template<typename T>
+	class thread_private
+	{
+	};
 }
 
 #endif

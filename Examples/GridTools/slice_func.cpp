@@ -34,6 +34,10 @@ double func(double x, double y, double z, int n)
 		if (y < Ly) return y - Ly;
 		return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
 	}
+	else if( n == 6 )
+	{
+		return std::min(std::min(sqrt((x-0.48)*(x-0.48) + (z-1)*(z-1))-0.25,sqrt((y-0.53)*(y-0.53) + (z-3)*(z-3))-0.24),sqrt((x-0.6)*(x-0.6) + (z-5)*(z-5))-0.3);
+	}
 	return 1;
 }
 
@@ -1057,7 +1061,7 @@ int main(int argc, char ** argv)
 			nvv++;
 		}
 		vv /= nvv;
-		if( v < vv*0.15 )
+		if( v < vv*0.01 )
 		{
 			if( false )
 			{
@@ -1117,7 +1121,7 @@ int main(int argc, char ** argv)
 	}
 	
 	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
-		if( material[*it] == 0 )
+		if( material[*it] == 0 || it->Integer(collapse) )
 			it->Delete();
 	
 	for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype) )

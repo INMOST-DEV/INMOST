@@ -120,8 +120,6 @@ namespace INMOST
 #if defined(PACK_ARRAY)
 #pragma pack(push,r1,4)
 #endif
-	
-	
 	/// A class that represents a variable with multiple
 	/// first order variations.
 	/// Short type name is variable.
@@ -554,12 +552,12 @@ namespace INMOST
 		}
 		friend class hessian_multivar_expression_reference;
 	};
-	
 #if defined(PACK_ARRAY)
 #pragma pack(pop,r1)
 #endif
 	
 	static INMOST_DATA_REAL_TYPE stub_multivar_expression_reference_value; //for default constructor in multivar_expression_reference
+
 	
 	class multivar_expression_reference : public shell_expression<multivar_expression_reference>
 	{
@@ -1875,47 +1873,6 @@ namespace INMOST
 		{
 			cond = _cond;
 			value = cond ? left.GetValue() : right.GetValue();
-		}
-	};
-	
-	template<class A>
-	class stencil_expression : public shell_expression<stencil_expression<A> >
-	{
-		dynarray< const_multiplication_expression<A>, 64 > arg;
-		INMOST_DATA_REAL_TYPE value;
-	public:
-		stencil_expression(const dynarray< const_multiplication_expression<A>, 64 > & parg) : arg(parg)
-		{
-			value = 0.0;
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				value += it->GetValue();
-		}
-		stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-		{
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetJacobian(mult,r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
-		{
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetJacobian(mult,r);
-		}
-		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
-		{
-			Sparse::Row tmpJ, curJ;
-			Sparse::HessianRow tmpH, curH;
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-			{
-				curJ.Clear();
-				curH.Clear();
-				it->GetHessian(multJ,curJ,multH,curH);
-				Sparse::Row::MergeSortedRows(1.0,curJ,1.0,J,tmpJ);
-				Sparse::HessianRow::MergeSortedRows(1.0,curH,1.0,H,tmpH);
-				J.Swap(tmpJ);
-				H.Swap(tmpH);
-			}
 		}
 	};
 	

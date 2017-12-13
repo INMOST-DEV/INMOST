@@ -382,11 +382,57 @@ namespace INMOST
 	};
 	
 	template<class A>
+	class stencil_expression : public shell_expression<stencil_expression<A> >
+	{
+	public:
+		typedef const_multiplication_expression<A> argument;
+		typedef unary_pool_expression< argument, A> pool;
+		typedef dynarray< argument, 64 > container;
+	private:
+		container arg;
+		INMOST_DATA_REAL_TYPE value;
+	public:
+		stencil_expression(const container & parg) : arg(parg)
+		{
+			value = 0.0;
+			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				value += it->GetValue();
+		}
+		stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
+		{
+			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetJacobian(mult,r);
+		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+		{
+			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetJacobian(mult,r);
+		}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
+		{
+			Sparse::Row tmpJ, curJ;
+			Sparse::HessianRow tmpH, curH;
+			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+			{
+				curJ.Clear();
+				curH.Clear();
+				it->GetHessian(multJ,curJ,multH,curH);
+				Sparse::Row::MergeSortedRows(1.0,curJ,1.0,J,tmpJ);
+				Sparse::HessianRow::MergeSortedRows(1.0,curH,1.0,H,tmpH);
+				J.Swap(tmpJ);
+				H.Swap(tmpH);
+			}
+		}
+	};
+	
+	template<class A>
 	class stencil_variable : public shell_dynamic_variable< stencil_expression<typename A::Var>, stencil_variable<A> >
 	{
 	private:
-		Tag tag_elems;
-		Tag tag_coefs;
+		TagReferenceArray tag_elems;
+		TagRealArray      tag_coefs;
 		A Arg;
 	public:
 		stencil_variable(Tag tag_elems, Tag tag_coefs, const shell_dynamic_variable<typename A::Var,A> & parg) : tag_elems(tag_elems), tag_coefs(tag_coefs), Arg(parg) {}
@@ -400,13 +446,17 @@ namespace INMOST
 		}
 		stencil_expression<typename A::Var> operator [](const Storage & e) const
 		{
-			dynarray< const_multiplication_expression<typename A::Var>, 64> tmp;
-			Storage::real_array      coefs = e.RealArray(tag_coefs);
-			Storage::reference_array elems = e.RealArray(tag_elems);
+			typename stencil_expression<typename A::Var>::container tmp;
+			Storage::real_array      coefs = tag_coefs[e];
+			Storage::reference_array elems = tag_elems[e];
 			assert(coefs.size() == elems.size());
 			tmp.resize(elems.size());
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < elems.size(); ++k)
-				tmp[k] = const_multiplication_expression<A>(Arg[elems[k]],coefs[k]);
+			{
+				typename stencil_expression<typename A::Var>::argument arg(Arg[elems[k]],coefs[k]);
+				typename stencil_expression<typename A::Var>::pool pool(arg);
+				tmp[k] = pool;
+			}
 			return stencil_expression<typename A::Var>(tmp);
 		}
 		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
@@ -423,6 +473,7 @@ namespace INMOST
 		table_variable(const shell_dynamic_variable<typename A::Var,A> & parg, const keyval_table & ptable) : Arg(parg), Table(ptable) {}
 		table_variable(const table_variable & other) : Arg(other.Arg), Table(other.Table) {}
 		table_variable & operator = (table_variable const & other) {Arg = other.Arg; Table = other.Table; return * this;}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
 		multivar_expression Variable(const Storage & e) const
 		{
 			multivar_expression ret = (*this)[e];

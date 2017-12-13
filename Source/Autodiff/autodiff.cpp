@@ -105,7 +105,7 @@ namespace INMOST
 	{
 		Mesh * m = b.GetMeshLink();
 		
-    ElementType sparse = NONE;// b.GetElementType();
+		ElementType sparse = NONE;// b.GetElementType();
 		for (ElementType q = NODE; q <= MESH; q = NextElementType(q)) if (q & b.GetElementType())
 		{
 			for(unsigned unk = 0; unk < b.Size(); ++unk)
@@ -141,7 +141,7 @@ namespace INMOST
 	
 	void Automatizator::UnregisterEntry(INMOST_DATA_ENUM_TYPE ind)
 	{
-		assert(act_blocks[ind]);
+		assert(reg_blocks[ind]);
 		if( reg_blocks[ind]->GetOffsetTag().isValid() ) 
 			reg_blocks[ind]->GetOffsetTag().GetMeshLink()->DeleteTag(reg_blocks[ind]->GetOffsetTag());
 		delete reg_blocks[ind];
@@ -149,6 +149,21 @@ namespace INMOST
 		del_blocks.push_back(ind);
 		act_blocks[ind] = false;
 	}
+	
+	void Automatizator::DeactivateEntry(INMOST_DATA_ENUM_TYPE ind)
+	{
+		assert(reg_blocks[ind] != NULL); ///This block was not deleted
+		reg_blocks[ind]->reg_index = ENUMUNDEF;
+		act_blocks[ind] = false;
+	}
+	
+	void Automatizator::ActivateEntry(INMOST_DATA_ENUM_TYPE ind)
+	{
+		assert(reg_blocks[ind] != NULL); ///This block was not deleted
+		reg_blocks[ind]->reg_index = ind;
+		act_blocks[ind] = true;
+	}
+	
 	void Automatizator::EnumerateEntries()
 	{
 		first_num = last_num = 0;
@@ -159,7 +174,7 @@ namespace INMOST
 			AbstractEntry & b = *reg_blocks[it];
 			TagInteger offset_tag = b.GetOffsetTag();
 			Mesh * m = offset_tag.GetMeshLink();
-			for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+			for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 				if (offset_tag.isDefined(etype) && offset_tag.isSparse(etype))
 				{
 					for(int kt = 0; kt < m->LastLocalID(etype); ++kt) if( m->isValidElement(etype,kt) )
@@ -397,7 +412,7 @@ namespace INMOST
 	INMOST_DATA_ENUM_TYPE MultiEntry::GetValueComp(INMOST_DATA_ENUM_TYPE unk) const
 	{
 		unsigned pos = 0, k = 0;
-		while( pos + entries[k]->Size() < unk ) pos += entries[k++]->Size();
+		while( pos + entries[k]->Size() <= unk ) pos += entries[k++]->Size();
 		assert(k < entries.size());
 		return entries[k]->GetValueComp(unk-pos);
 	}
@@ -405,7 +420,7 @@ namespace INMOST
 	TagRealArray MultiEntry::GetValueTag(INMOST_DATA_ENUM_TYPE unk) const
 	{
 		unsigned pos = 0, k = 0;
-		while( pos + entries[k]->Size() < unk ) pos += entries[k++]->Size();
+		while( pos + entries[k]->Size() <= unk ) pos += entries[k++]->Size();
 		assert(k < entries.size());
 		return entries[k]->GetValueTag(unk-pos);
 	}
@@ -464,114 +479,44 @@ namespace INMOST
 			ret->AddTag(unknown_tags[k],unknown_comp[k]); 
 		return ret; 
 	}
+	
+	void AbstractEntry::SynchronizeData()
+	{
+		//synchronize indices
+		{
+			Mesh * m = NULL;
+			std::set<Tag> exch_tags;
+			for(unsigned jt = 0; jt < Size(); ++jt)
+			{
+				if( m == NULL )
+					m = GetValueTag(jt).GetMeshLink();
+				else assert(m == GetValueTag(jt).GetMeshLink());
+				exch_tags.insert(GetValueTag(jt));
+			}
+			m->ExchangeData(std::vector<Tag>(exch_tags.begin(),exch_tags.end()), GetElementType(),0);
+		}
+	}
+	
+	
+	void Automatizator::SynchronizeData()
+	{
+		//synchronize indices
+		{
+			std::map<Mesh *,std::set<Tag> > exch_tags;
+			ElementType exch_mask = NONE;
+			for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
+			{
+				exch_mask |= reg_blocks[it]->GetElementType();
+				for(unsigned jt = 0; jt < reg_blocks[it]->Size(); ++jt)
+					exch_tags[reg_blocks[it]->GetValueTag(jt).GetMeshLink()].insert(reg_blocks[it]->GetValueTag(jt));
+			}
+			for(std::map<Mesh *,std::set<Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)
+			{
+				it->first->ExchangeData(std::vector<Tag>(it->second.begin(),it->second.end()), exch_mask,0);
+			}
+		}
+	}
 #endif //USE_MESH
-
-#if defined(USE_SOLVER)
-	void Residual::GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const 
-	{
-		start = residual.GetFirstIndex(); 
-		end = residual.GetLastIndex();
-	}
-	void Residual::SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
-	{
-		jacobian.SetInterval(beg,end);
-		residual.SetInterval(beg,end);
-	}
-	void Residual::ClearResidual()
-	{
-		for(Sparse::Vector::iterator it = residual.Begin(); it != residual.End(); ++it) (*it) = 0.0;
-	}
-	void Residual::ClearJacobian()
-	{
-		for(Sparse::Matrix::iterator it = jacobian.Begin(); it != jacobian.End(); ++it) it->Clear();
-	}
-	void Residual::ClearHessian()
-	{
-		for(Sparse::HessianMatrix::iterator it = hessian.Begin(); it != hessian.End(); ++it) it->Clear();
-	}
-	void Residual::Clear()
-	{
-#if defined(USE_OMP)
-#pragma omp for
-#endif //USE_OMP
-		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
-		{
-			residual[k] = 0.0;
-			if( !jacobian.Empty() ) jacobian[k].Clear();
-			if( !hessian.Empty() ) hessian[k].Clear();
-		}
-	}
-	INMOST_DATA_REAL_TYPE Residual::Norm()
-	{
-		INMOST_DATA_REAL_TYPE ret = 0;
-#if defined(USE_OMP)
-#pragma omp parallel for reduction(+:ret)
-#endif //USE_OMP
-		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k) 
-			ret += residual[k]*residual[k];
-#if defined(USE_MPI)
-		INMOST_DATA_REAL_TYPE tmp = ret;
-		MPI_Allreduce(&tmp, &ret, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, jacobian.GetCommunicator());
-#endif
-		return sqrt(ret);
-	}
-	Residual & Residual::operator =(Residual const & other)
-	{
-		hessian = other.hessian;
-		jacobian = other.jacobian;
-		residual = other.residual;
-		return *this;
-	}
-	void Residual::Rescale(INMOST_DATA_ENUM_TYPE p)
-	{
-#if defined(USE_OMP)
-#pragma omp parallel for
-#endif //USE_OMP
-		for(int k = (int)GetFirstIndex(); k < (int)GetLastIndex(); ++k)
-		{
-			INMOST_DATA_REAL_TYPE norm = 0.0;
-			if( p == ENUMUNDEF ) //infinite norm
-			{
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
-					if( norm < fabs(jacobian[k].GetValue(q)) )
-						norm = fabs(jacobian[k].GetValue(q));
-			}
-			else //p-norm
-			{
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
-					norm += pow(fabs(jacobian[k].GetValue(q)),p);
-				norm = pow(norm,1.0/p);
-			}
-			if( norm )
-			{
-				norm = 1.0/norm;
-				residual[k] *= norm;
-				for(INMOST_DATA_ENUM_TYPE q = 0; q < jacobian[k].Size(); ++q)
-					jacobian[k].GetValue(q) *= norm;
-				if( !hessian.Empty() )
-					for(INMOST_DATA_ENUM_TYPE q = 0; q < hessian[k].Size(); ++q)
-						hessian[k].GetValue(q) *= norm;
-			}
-		}
-	}
-	Residual::Residual(std::string name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm)
-	: jacobian(name,start,end,_comm),residual(name,start,end,_comm), hessian(name,0,0,_comm)
-	{
-	}
-	Residual::Residual(const Residual & other) 
-	: jacobian(other.jacobian), residual(other.residual), hessian(other.hessian)
-	{
-	}
-
-	Matrix<multivar_expression_reference> Residual::operator [](const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows)	
-	{
-		Matrix<multivar_expression_reference> ret(rows.Rows(),rows.Cols());
-		for(INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
-			for(INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
-				ret(i,j) = multivar_expression_reference(residual[rows(i,j)],&jacobian[rows(i,j)]);
-		return ret;
-	}
-#endif //USE_SOLVER
-};
+} //namespace INMOST
 
 #endif //USE_AUTODIFF

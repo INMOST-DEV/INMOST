@@ -420,7 +420,7 @@ void draw()
 	glBegin(GL_QUADS);
 	for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 		for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
-			if( jt->first != it - m->Begin() )
+			if( jt->first != it - m->Begin() && jt->second)
 			//DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
 			DrawEntry(jt->first, m->Size() - (it - m->Begin()));//, sqrt((jt->second-min)/(max-min)));
 	glEnd();
@@ -451,17 +451,17 @@ void draw()
 	}
 	glEnd();
 
-	zoom += 1;
+	//zoom += 1;
 	glColor3f(1.0, 0, 0);
 	glBegin(GL_QUADS);
 	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 	{
 		int ind = it - m->Begin();
-		if (fabs((*it)[ind]) < 1e-9) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+		if (fabs((*it)[ind]) < 1e-13) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
 			DrawEntry((it - m->Begin()), m->Size() - ind);
 	}
 	glEnd();
-	zoom -= 1;
+	//zoom -= 1;
 
 	if (CommonInput != NULL)
 	{

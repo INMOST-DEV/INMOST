@@ -54,7 +54,7 @@
 // output xml files for debugging of parallel algorithms
 // search for style.xsl within examples for comfortable
 // view of generated xml files
-//#define USE_PARALLEL_WRITE_TIME
+#define USE_PARALLEL_WRITE_TIME
 
 // this will revert Mesh::PrepareReceiveInner to always
 // use MPI point to point functionality disregarding problem type
@@ -100,9 +100,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+
 #if defined(USE_OMP)
-#include <omp.h>
-#endif
+#define OMP_THREAD omp_get_thread_num()
+#define MAX_THREADS omp_get_max_threads()
+#else //USE_OMP
+#define OMP_THREAD 0
+#define MAX_THREADS 1
+#endif //USE_OMP
+
 
 #if defined(min)
 #undef min
@@ -253,6 +259,22 @@ namespace INMOST
 
 #include "container.hpp"
 //#include "io.hpp"
+
+
+namespace INMOST
+{
+	template<typename Var>
+	class AbstractMatrix;
+	
+	template<typename Var>
+	class SubMatrix;
+	
+	template<typename Var, typename Storage = array<Var> >
+	class Matrix;
+	
+	template<typename Var, typename Storage = array<Var> >
+	class SymmetricMatrix;
+}
 
 
 #endif //INMOST_COMMON_INCLUDED

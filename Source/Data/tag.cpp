@@ -35,6 +35,22 @@ namespace INMOST
 		}
 		return 0;
 	}
+	
+	__INLINE static INMOST_DATA_ENUM_TYPE DataTypePackedBytesSize(DataType t)
+	{
+		switch(t)
+		{
+			case DATA_BULK:      return sizeof(INMOST_DATA_BULK_TYPE);
+			case DATA_INTEGER:   return sizeof(INMOST_DATA_INTEGER_TYPE);
+			case DATA_REAL:      return sizeof(INMOST_DATA_REAL_TYPE);
+			case DATA_REMOTE_REFERENCE: throw -1; //todo, exchange of this data type is not yet supported
+			case DATA_REFERENCE: throw -1; //todo, exchange of this data type is not yet supported
+#if defined(USE_AUTODIFF)
+			case DATA_VARIABLE:  return sizeof(Sparse::Row::entry);
+#endif
+		}
+		return 0;
+	}
 
 
 	__INLINE static INMOST_DATA_ENUM_TYPE VariableDataSize(DataType t)
@@ -51,6 +67,11 @@ namespace INMOST
 #endif
 		}
 		return 0;
+	}
+	
+	INMOST_DATA_ENUM_TYPE Tag::GetPackedBytesSize() const
+	{
+		return DataTypePackedBytesSize(GetDataType());
 	}
 
 	Tag::~Tag() 

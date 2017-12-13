@@ -180,8 +180,8 @@ namespace INMOST
 		friend class Storage;
 	};
 
-  
-  ///This class provides the access to the individual mesh datum and general information about it. 
+	
+	///This class provides the access to the individual mesh datum and general information about it.
 	class Tag //implemented in tag.cpp
 	{
 	private:
@@ -206,7 +206,13 @@ namespace INMOST
 		__INLINE Tag & operator =(Tag const & other);
 		__INLINE DataType GetDataType() const;
 		__INLINE INMOST_MPI_Type GetBulkDataType() const;
+		/// Amount of bytes necessery to support one record
+		/// referred by the tag on one element. Used internally
+		/// to allocate, manage and copy data of the mesh.
 		__INLINE INMOST_DATA_ENUM_TYPE GetBytesSize() const;
+		/// Amount of bytes necessery for one record in packed
+		/// form that is used in GetData.
+		INMOST_DATA_ENUM_TYPE GetPackedBytesSize() const;
 		__INLINE INMOST_DATA_ENUM_TYPE GetSize() const;
 		__INLINE std::string GetTagName() const;
 		__INLINE bool isDefined(ElementType type) const;
