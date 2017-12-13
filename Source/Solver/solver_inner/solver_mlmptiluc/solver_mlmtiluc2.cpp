@@ -1680,7 +1680,7 @@ public:
 							if( i != k ) //out of diagonal
 							{
 								u = C_Entries[r] + temp[k] - temp[i];
-								if( isnan(u) || u != u ) std::cout << __FILE__ << ":" << __LINE__ << " u is " << u << std::endl;
+								//if( isnan(u) || u != u ) std::cout << __FILE__ << ":" << __LINE__ << " u is " << u << std::endl;
 								DL[k] = std::min(DL[k],u);// update Y1
 								DR[i] = std::min(DR[i],u);// update Y2
 							}
