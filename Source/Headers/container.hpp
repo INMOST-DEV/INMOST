@@ -88,6 +88,7 @@ namespace INMOST
 			_iterator operator --(int){ return _iterator(e--); }
 			ptrdiff_t operator -(const _iterator & other) const {return e-other.e;}
 			etype & operator *() { return *e; }
+			const etype & operator *() const { return *e; }
 			etype * operator ->() { return e; }
 			_iterator & operator =(_iterator const & other) { e = other.e; return *this; }
 			bool operator ==(const _iterator & other) const { return e == other.e;}
@@ -126,6 +127,7 @@ namespace INMOST
 			_reverse_iterator operator --(int){ return _reverse_iterator(e++); }
 			ptrdiff_t operator -(const _reverse_iterator & other) const {return other.e-e;}
 			etype & operator *() { return *e; }
+			const etype & operator *() const { return *e; }
 			etype * operator ->() { return e; }
 			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
 			bool operator ==(const _reverse_iterator & other) const { return e == other.e;}
@@ -593,6 +595,7 @@ namespace INMOST
 			_reverse_iterator operator --(int){ return _reverse_iterator(e++); }
 			ptrdiff_t operator -(const _reverse_iterator & other) const {return other.e-e;}
 			dtype & operator *() { return *e; }
+			const dtype & operator *() const { return *e; }
 			dtype * operator ->() { return e; }
 			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
 			bool operator ==(const _reverse_iterator & other) { return e == other.e;}
@@ -1574,6 +1577,7 @@ namespace INMOST
 			_iterator operator --(int){ return _iterator(e--); }
 			size_type operator -(const _iterator & other) const {return static_cast<size_type>(e-other.e);}
 			dtype & operator *() { return *e; }
+			const dtype & operator *() const { return *e; }
 			dtype * operator ->() { return e; }
 			_iterator & operator =(_iterator const & other) { e = other.e; return *this; }
 			bool operator ==(const _iterator & other) const { return e == other.e;}
@@ -1612,6 +1616,7 @@ namespace INMOST
 			_reverse_iterator operator --(int){ return _reverse_iterator(e++); }
 			size_type operator -(const _reverse_iterator & other) const {return static_cast<size_type>(other.e-e);}
 			dtype & operator *() { return *e; }
+			const dtype & operator *() const { return *e; }
 			dtype * operator ->() { return e; }
 			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
 			bool operator ==(const _reverse_iterator & other) const { return e == other.e;}
@@ -2054,6 +2059,7 @@ namespace INMOST
 			}
 			_iterator operator --(int){ _iterator ret = *this; --(*this); return ret; }
 			dtype & operator *() { return *it; }
+			const dtype & operator *() const { return *it; }
 			dtype * operator ->() { return &*it; }
 			_iterator & operator =(_iterator const & other) {it = other.it; cur_list = other.cur_list; lists = other.lists; return *this; }
 			bool operator ==(const _iterator & other) const { return it == other.it;}
@@ -2095,6 +2101,7 @@ namespace INMOST
 			_reverse_iterator & operator --(){ --it; if(it == (*lists)[cur_list]->rbegin()-1 ) {++cur_list; if( cur_list < HSize ) it = (*lists)[cur_list]->rend()-1; else it = NULL;}  return *this; }
 			_reverse_iterator operator --(int){  _iterator ret = *this; --(*this); return ret; }
 			dtype & operator *() { return *it; }
+			const dtype & operator *() const { return *it; }
 			dtype * operator ->() { return &*it; }
 			_reverse_iterator & operator =(_reverse_iterator const & other) {it = other.it; return *this;}
 			bool operator ==(const _reverse_iterator & other) { return it == other.it;}
@@ -2329,6 +2336,7 @@ namespace INMOST
 			iterator operator --(int){ return iterator(link,pos--); }
 			ptrdiff_t operator -(const iterator & other) const {return pos-other.pos;}
 			element & operator *() { return link->at(pos); }
+			const element & operator *() const { return link->at(pos); }
 			element * operator ->() { return &link->at(pos); }
 			iterator & operator =(iterator const & other) { link = other.link; pos = other.pos; return *this; }
 			bool operator ==(const iterator & other) const { assert(link == other.link); return pos == other.pos;}
