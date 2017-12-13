@@ -171,11 +171,25 @@ namespace INMOST
 		virtual void Resize(enumerator rows, enumerator cols) = 0;
 		/// Check all matrix entries for nans.
 		/// Also checks derivatives for matrices of variables.
-		bool CheckNans()
+		bool CheckNans() const
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					if( check_nans((*this)(i,j)) ) return true;
+			return false;
+		}
+		bool CheckInfs() const
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					if( check_infs((*this)(i,j)) ) return true;
+			return false;
+		}
+		bool CheckNansInfs() const
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					if( check_nans_infs((*this)(i,j)) ) return true;
 			return false;
 		}
 		/// Singular value decomposition.
@@ -2426,5 +2440,11 @@ INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> o
 {return other*coef;}
 #endif
 
+template<typename T>
+__INLINE bool check_nans(const INMOST::AbstractMatrix<T> & A) {return A.CheckNans();}
+template<typename T>
+__INLINE bool check_infs(const INMOST::AbstractMatrix<T> & A) {return A.CheckInfs();}
+template<typename T>
+__INLINE bool check_nans_infs(const INMOST::AbstractMatrix<T> & A) {return A.CheckNansInfs();}
 
 #endif //INMOST_DENSE_INCLUDED

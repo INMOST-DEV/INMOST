@@ -502,17 +502,26 @@ namespace INMOST
 	{
 		//synchronize indices
 		{
-			std::map<Mesh *,std::set<Tag> > exch_tags;
+			std::map<Mesh *,std::map<std::string,Tag> > exch_tags;
 			ElementType exch_mask = NONE;
 			for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
 			{
 				exch_mask |= reg_blocks[it]->GetElementType();
 				for(unsigned jt = 0; jt < reg_blocks[it]->Size(); ++jt)
-					exch_tags[reg_blocks[it]->GetValueTag(jt).GetMeshLink()].insert(reg_blocks[it]->GetValueTag(jt));
+					exch_tags[reg_blocks[it]->GetValueTag(jt).GetMeshLink()][reg_blocks[it]->GetValueTag(jt).GetTagName()] = reg_blocks[it]->GetValueTag(jt);
 			}
-			for(std::map<Mesh *,std::set<Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)
+			for(std::map<Mesh *,std::map<std::string,Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)
 			{
-				it->first->ExchangeData(std::vector<Tag>(it->second.begin(),it->second.end()), exch_mask,0);
+				std::vector<Tag> sync;
+				//std::cout << "Synchronize tags: ";
+				for(std::map<std::string,Tag>::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				{
+					sync.push_back(jt->second);
+					//std::cout << jt->first << " ";
+				}
+				//std::cout << std::endl;
+				
+				it->first->ExchangeData(sync, exch_mask,0);
 			}
 		}
 	}

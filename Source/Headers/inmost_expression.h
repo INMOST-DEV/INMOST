@@ -115,6 +115,10 @@ namespace INMOST
 		{
 			return value != value;
 		}
+		bool check_infs() const
+		{
+			return std::isinf(value);
+		}
 	};
 	
 #if defined(PACK_ARRAY)
@@ -280,6 +284,13 @@ namespace INMOST
 			if( value != value ) return true;
 			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
 				if( it->second != it->second ) return true;
+			return false;
+		}
+		bool check_infs() const
+		{
+			if( std::isinf(value) ) return true;
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				if( std::isinf(it->second) ) return true;
 			return false;
 		}
 		/// Write variable into array of entries.
@@ -550,6 +561,15 @@ namespace INMOST
 				if( it->second != it->second ) return true;
 			return false;
 		}
+		bool check_infs() const
+		{
+			if( std::isinf(value)) return true;
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				if( std::isinf(it->second) ) return true;
+			for(Sparse::HessianRow::const_iterator it = hessian_entries.Begin(); it != hessian_entries.End(); ++it)
+				if( std::isinf(it->second) ) return true;
+			return false;
+		}
 		friend class hessian_multivar_expression_reference;
 	};
 #if defined(PACK_ARRAY)
@@ -720,6 +740,13 @@ namespace INMOST
 			if( value != value ) return true;
 			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
 				if( it->second != it->second ) return true;
+			return false;
+		}
+		bool check_infs() const
+		{
+			if( std::isinf(value) ) return true;
+			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+				if( std::isinf(it->second) ) return true;
 			return false;
 		}
 	};
@@ -926,6 +953,15 @@ namespace INMOST
 				if( it->second != it->second ) return true;
 			for(Sparse::HessianRow::iterator it = hentries->Begin(); it != hentries->End(); ++it)
 				if( it->second != it->second ) return true;
+			return false;
+		}
+		bool check_infs() const
+		{
+			if( std::isinf(value) ) return true;
+			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+				if( std::isinf(it->second) ) return true;
+			for(Sparse::HessianRow::iterator it = hentries->Begin(); it != hentries->End(); ++it)
+				if( std::isinf(it->second) ) return true;
 			return false;
 		}
 	};
@@ -2015,6 +2051,14 @@ __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
 __INLINE bool check_nans(INMOST::var_expression const & e) {return e.check_nans();}
 __INLINE bool check_nans(INMOST::multivar_expression const & e) {return e.check_nans();}
 __INLINE bool check_nans(INMOST::multivar_expression_reference const & e) {return e.check_nans();}
+__INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return std::isinf(val);}
+__INLINE bool check_infs(INMOST::var_expression const & e) {return e.check_infs();}
+__INLINE bool check_infs(INMOST::multivar_expression const & e) {return e.check_infs();}
+__INLINE bool check_infs(INMOST::multivar_expression_reference const & e) {return e.check_infs();}
+__INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val) || check_infs(val);}
+__INLINE bool check_nans_infs(INMOST::var_expression const & e) {return e.check_nans() || e.check_infs();}
+__INLINE bool check_nans_infs(INMOST::multivar_expression const & e) {return e.check_nans() || e.check_infs();}
+__INLINE bool check_nans_infs(INMOST::multivar_expression_reference const & e) {return e.check_nans() || e.check_infs();}
 
 template<class A, class B, class C> __INLINE   INMOST::condition_expression<A,B,C> condition(INMOST::shell_expression<A> const & control, INMOST::shell_expression<B> const & if_ge_zero, INMOST::shell_expression<C> const & if_lt_zero) { return INMOST::condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
 __INLINE                 INMOST_DATA_REAL_TYPE condition(INMOST_DATA_REAL_TYPE control, INMOST_DATA_REAL_TYPE if_ge_zero, INMOST_DATA_REAL_TYPE if_lt_zero) {return control >= 0.0 ? if_ge_zero : if_lt_zero;}
