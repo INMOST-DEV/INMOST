@@ -500,6 +500,9 @@ namespace INMOST
 	
 	void Automatizator::SynchronizeData()
 	{
+		//TODO:
+		// optimize std::map usage
+		// don't sort Tag by itself, only by name, otherwise memory location may affect order and result
 		//synchronize indices
 		{
 			std::map<Mesh *,std::map<std::string,Tag> > exch_tags;
