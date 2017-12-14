@@ -194,7 +194,7 @@ namespace INMOST
 		{
 			if( pos < IntervalBeg )
 			{
-				return ENUMUNDEF;
+				//return ENUMUNDEF;
 				//assert(!NonlocalPre.empty()); //there are indices provided
 				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPre.begin(),NonlocalPre.end(),pos);
 				//assert(*search == pos); //is there such index?
@@ -205,7 +205,7 @@ namespace INMOST
 			}
 			else if( pos >= IntervalEnd )
 			{
-				return ENUMUNDEF;
+				//return ENUMUNDEF;
 				//assert(!NonlocalPost.empty()); //there are indices provided
 				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPost.begin(),NonlocalPost.end(),pos);
 				//assert(*search == pos); //is there such index?
