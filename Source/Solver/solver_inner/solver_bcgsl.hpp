@@ -1262,7 +1262,7 @@ namespace INMOST
                         reason = "diverged due to divergence tolerance";
                         break;
                     }
-                    if( i == maxits )
+                    if( last_it >= maxits )
                     {
 #if defined(USE_OMP)
 #pragma omp single
