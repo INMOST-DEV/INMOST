@@ -39,8 +39,8 @@ namespace INMOST
 		Op operand;
 	public:
 		unary_pool(const A & parg) : arg(parg), operand(arg) {}
-		unary_pool(const unary_pool & other) : arg(other.arg), operand(arg) {}
-		unary_pool & operator = (unary_pool const & other) {arg = other.arg; operand = Op(arg); return * this;}
+		unary_pool(const unary_pool & other) : arg(other.arg), operand(other.operand) {}
+		unary_pool & operator = (unary_pool const & other) {arg = other.arg; operand = other.operand; return * this;}
 		const shell_expression<A> & get_arg() {return arg;}
 		Op & get_op() {return operand;}
 		const Op & get_op() const {return operand;}
@@ -55,8 +55,8 @@ namespace INMOST
 		Op operand;
 	public:
 		unary_const_pool(const A & pleft, INMOST_DATA_REAL_TYPE pright) : left(pleft), right(pright), operand(left,right) {}
-		unary_const_pool(const unary_const_pool & other) : left(other.left), right(other.right), operand(left,right) {}
-		unary_const_pool & operator = (unary_const_pool const & other) {left = other.left; right = other.right; operand = Op(left,right); return * this;}
+		unary_const_pool(const unary_const_pool & other) : left(other.left), right(other.right), operand(other.operand) {}
+		unary_const_pool & operator = (unary_const_pool const & other) {left = other.left; right = other.right; operand = other.operand; return * this;}
 		const shell_expression<A> & get_arg() {return left;}
 		Op & get_op() {return operand;}
 		const Op & get_op() const {return operand;}
@@ -71,8 +71,8 @@ namespace INMOST
 		Op operand;
 	public:
 		binary_pool(const A & pleft, const B & pright) : left(pleft), right(pright), operand(left,right) {}
-		binary_pool(const binary_pool & other) : left(other.left), right(other.right), operand(left,right) {}
-		binary_pool & operator =(binary_pool const & other) {left = other.left; right = other.right; operand = Op(left,right); return * this;}
+		binary_pool(const binary_pool & other) : left(other.left), right(other.right), operand(other.operand) {}
+		binary_pool & operator =(binary_pool const & other) {left = other.left; right = other.right; operand = other.operand; return * this;}
 		const shell_expression<A> & get_left() {return left;}
 		const shell_expression<B> & get_right() {return right;}
 		Op & get_op() {return operand;}
@@ -89,8 +89,8 @@ namespace INMOST
 		Op operand;
 	public:
 		ternary_pool(const A & pcond, const B & pleft, const C & pright) : cond(pcond), left(pleft), right(pright), operand(cond,left,right) {}
-		ternary_pool(const ternary_pool & other) : cond(other.cond), left(other.left), right(other.right), operand(cond,left,right) {}
-		ternary_pool & operator =(ternary_pool const & other) {cond = other.cond; left = other.left; right = other.right; operand = Op(cond,left,right); return * this;}
+		ternary_pool(const ternary_pool & other) : cond(other.cond), left(other.left), right(other.right), operand(other.operand) {}
+		ternary_pool & operator =(ternary_pool const & other) {cond = other.cond; left = other.left; right = other.right; operand = other.operand; return * this;}
 		const shell_expression<A> & get_cond() {return cond;}
 		const shell_expression<B> & get_left() {return left;}
 		const shell_expression<C> & get_right() {return right;}
@@ -420,7 +420,7 @@ namespace INMOST
 		A Arg;
 		const keyval_table & Table;
 	public:
-		table_variable(const shell_dynamic_variable<typename A::Var,A> & parg, const keyval_table & ptable) : Arg(parg), Table(ptable) {}
+		table_variable(const shell_dynamic_variable<typename A::Var,A> & parg,  const keyval_table  & ptable) : Arg(parg), Table(ptable) {}
 		table_variable(const table_variable & other) : Arg(other.Arg), Table(other.Table) {}
 		table_variable & operator = (table_variable const & other) {Arg = other.Arg; Table = other.Table; return * this;}
 		multivar_expression Variable(const Storage & e) const

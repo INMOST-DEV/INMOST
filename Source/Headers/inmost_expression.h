@@ -1921,17 +1921,28 @@ namespace INMOST
 	
 	
 	template<class A>
-	class function_expression : public shell_expression< function_expression<A> >
-	{
-		const A & arg;
-		INMOST_DATA_REAL_TYPE value, dmult, ddmult;
-	public:
-		function_expression(const shell_expression<A> & _arg)
-		:arg(_arg), value(1), dmult(0) {}
-		function_expression(const shell_expression<A> & _arg, INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_REAL_TYPE pdmult, INMOST_DATA_REAL_TYPE pddmult = 0)
-		:arg(_arg), value(pvalue), dmult(pdmult), ddmult(pddmult) {}
-		function_expression(const function_expression & other)
-		: arg(other.arg), value(other.value), dmult(other.dmult), ddmult(other.ddmult) {}
+	class function_expression : public shell_expression< function_expression<A> > {
+        const A &arg;
+        INMOST_DATA_REAL_TYPE value, dmult, ddmult;
+    public:
+        function_expression(const shell_expression<A> &_arg)
+                : arg(_arg), value(1), dmult(0) {}
+
+        function_expression(const shell_expression<A> &_arg, INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_REAL_TYPE pdmult,
+                            INMOST_DATA_REAL_TYPE pddmult = 0)
+                : arg(_arg), value(pvalue), dmult(pdmult), ddmult(pddmult) {}
+
+        function_expression(const function_expression &other)
+                : arg(other.arg), value(other.value), dmult(other.dmult), ddmult(other.ddmult) {}
+
+        function_expression &operator=(function_expression const &b)
+        {
+            arg = b.arg;
+            value = b.value;
+            dmult = b.dmult;
+            ddmult = b.ddmult;
+            return *this;
+        }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
