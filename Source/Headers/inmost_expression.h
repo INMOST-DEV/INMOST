@@ -1357,20 +1357,23 @@ namespace INMOST
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			arg.GetJacobian(0.5*mult/value,r);
+			if( value ) arg.GetJacobian(0.5*mult/value,r);
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
-			arg.GetJacobian(0.5*mult/value,r);
+			if( value ) arg.GetJacobian(0.5*mult/value,r);
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			//general formula:
 			// (F(G))'' = F'(G) G'' + F''(G) G'.G'
-			Sparse::HessianRow htmp;
-			arg.GetHessian(1,J,1,htmp);
-			Sparse::HessianRow::MergeJacobianHessian(-0.25/::pow(value,3.0)*multH,J,J,0.5/value*multH,htmp,H);
-			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value*multJ;
+			if( value )
+			{
+				Sparse::HessianRow htmp;
+				arg.GetHessian(1,J,1,htmp);
+				Sparse::HessianRow::MergeJacobianHessian(-0.25/::pow(value,3.0)*multH,J,J,0.5/value*multH,htmp,H);
+				for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value*multJ;
+			}
 			//arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
 		}
 	};
@@ -1562,8 +1565,16 @@ namespace INMOST
 		{
 			INMOST_DATA_REAL_TYPE lval = left.GetValue();
 			INMOST_DATA_REAL_TYPE rval = right.GetValue();
-			reciprocal_rval = 1.0 / rval;
-			value = lval * reciprocal_rval;
+			if( rval )
+			{
+				reciprocal_rval = 1.0 / rval;
+				value = lval * reciprocal_rval;
+			}
+			else
+			{
+				reciprocal_rval = 0;
+				value = 0;
+			}
 		}
 		division_expression(const division_expression & other) : left(other.left), right(other.right), value(other.value), reciprocal_rval(other.reciprocal_rval) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
