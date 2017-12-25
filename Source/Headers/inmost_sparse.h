@@ -295,10 +295,11 @@ namespace INMOST
 			/// @param size New size of the row.
 			void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
 			/// Output all entries of the row.
-			void                    Print() const
+			void                    Print(double eps = -1) const
 			{
-				for(const_iterator it = Begin(); it != End(); ++it) std::cout << "(" << it->first << "," << it->second << ") ";
-				std::cout << std::endl;
+				int k = 0;
+				for(const_iterator it = Begin(); it != End(); ++it) if( fabs(it->second) > eps ) {std::cout << "(" << it->first << "," << it->second << ") "; k++; }
+				if( k ) std::cout << std::endl;
 			}
 			/// Check whether the row is sorted.
 			bool                    isSorted() const;
