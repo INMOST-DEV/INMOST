@@ -61,6 +61,7 @@ namespace INMOST {
 
         virtual INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
             throw INMOST::SolverUnsupportedOperation;
+            (void) tol; (void) maxiter;
         };
 
         virtual ~SolverInterface() {};

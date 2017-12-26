@@ -8,15 +8,18 @@ namespace INMOST {
 
     SolverInterface *SolverANI::Copy(const SolverInterface *other) {
         throw INMOST::SolverUnsupportedOperation; //later
+        (void) other;
     };
 
     void SolverANI::Assign(const SolverInterface *other) {
         throw INMOST::SolverUnsupportedOperation; //later
+        (void) other;
     }
 
     void SolverANI::Setup(int *argc, char ***argv, SolverParameters &p) {
         solver.n = 0;
         m.n = 0;
+        (void) argc; (void) argv; (void) p;
     }
 
     void SolverANI::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {

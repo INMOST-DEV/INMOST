@@ -4361,7 +4361,7 @@ namespace INMOST
 		time = Timer() - time;
 		REPORT_VAL("time",time);
 #else //USE_MPI and USE_PARALLEL_STORAGE
-		(void) mask;
+		(void) ghost; (void) shared; (void) mask;
 #endif //USE_MPI and USE_PARALLEL_STORAGE
 		EXIT_FUNC();
 	}

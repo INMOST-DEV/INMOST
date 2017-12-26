@@ -170,7 +170,7 @@ namespace INMOST
 			{
 				std::stringstream type(v->GetChild("Cells")->GetChildWithAttrib("Name", "types")->GetContents());
 				int ctype;
-				bool have_2d = false;
+				//bool have_2d = false;
 				for (int q = 0; q < ncells && grid_is_2d == 2; ++q)
 				{
 					type >> ctype;

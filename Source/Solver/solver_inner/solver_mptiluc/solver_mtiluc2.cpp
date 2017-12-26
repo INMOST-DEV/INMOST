@@ -597,6 +597,7 @@ public:
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
 		double tfactor = 0.0, tswap = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tlocal;
+        (void) tswap; //can be unused for some defines
 #if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
 #endif
@@ -1371,7 +1372,7 @@ public:
 				trcmorder = Timer();
 				std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, ENUMUNDEF);
 				//find node with the lowest order
-				INMOST_DATA_ENUM_TYPE start = wbeg;
+				//INMOST_DATA_ENUM_TYPE start = wbeg;
 				INMOST_DATA_ENUM_TYPE index = wbeg;
 				INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
 				std::deque<INMOST_DATA_ENUM_TYPE> q;

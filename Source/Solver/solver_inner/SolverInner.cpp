@@ -13,11 +13,13 @@ namespace INMOST {
     SolverInterface *SolverInner::Copy(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
+        (void) other;
     }
 
     void SolverInner::Assign(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
+        (void) other;
     }
 
     void SolverInner::Setup(int *argc, char ***argv, SolverParameters &p)
@@ -42,7 +44,7 @@ namespace INMOST {
             for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++)
                 this->SetParameter((*parameter).first, (*parameter).second);
         }
-
+        (void) argc; (void) argv;
     }
 
     bool SolverInner::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {

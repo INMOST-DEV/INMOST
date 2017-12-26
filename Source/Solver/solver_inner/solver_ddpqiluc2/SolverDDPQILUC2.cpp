@@ -20,6 +20,7 @@ namespace INMOST {
     SolverDDPQILUC2::SolverDDPQILUC2(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
+        (void) other;
     }
 
     void SolverDDPQILUC2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {

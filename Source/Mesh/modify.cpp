@@ -604,7 +604,7 @@ namespace INMOST
 
 		for(dynarray<HandleType,64>::size_type it = 0; it < nodes.size(); it++) //delete nodes inside the face
 		{
-			adj_type const & hc = m->HighConn(nodes[it]);
+			//adj_type const & hc = m->HighConn(nodes[it]);
 			if( m->GetMarker(nodes[it],rem) )
 			{
 				assert( m->HighConn(nodes[it]).empty() || m->Count(m->HighConn(nodes[it]).data(),static_cast<integer>(m->HighConn(nodes[it]).size()),hm) == 0 );
