@@ -37,7 +37,7 @@ namespace INMOST
 		virtual bool Prepare() = 0;
 		/// This allows operator to update introduced variables.
 		/// May be useful for mimetic finite differences operators.
-		virtual bool UpdateSolution(const Sparse::Vector & V) = 0;
+		virtual bool UpdateSolution(const Sparse::Vector & V, double alpha) = 0;
 		/// This allows operator to update time-dependent variables.
 		virtual bool UpdateTimeStep() = 0;
 		/// Check, whether we need to compute operator on this element.

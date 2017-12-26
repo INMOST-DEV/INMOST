@@ -188,15 +188,15 @@ namespace INMOST
 		return success;
 	}
 	
-	bool Model::UpdateSolution(const Sparse::Vector & sol)
+	bool Model::UpdateSolution(const Sparse::Vector & sol, double alpha)
 	{
 		bool success = true;
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
-			success &= it->second->UpdateSolution(sol);
+			success &= it->second->UpdateSolution(sol,alpha);
 		for(std::vector< std::pair<std::string, AbstractOperator *> >::const_iterator it = Operators.begin();
 			it != Operators.end(); ++it)
-			success &= it->second->UpdateSolution(sol);
+			success &= it->second->UpdateSolution(sol,alpha);
 		return success;
 	}
 	
@@ -229,5 +229,31 @@ namespace INMOST
 			it != SubModels.end(); ++it)
 			success &= it->second->RestoreTimeStep();
 		return success;
+	}
+	
+	double Model::UpdateMultiplier(const Sparse::Vector & sol) const
+	{
+		double alpha = 1;
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			alpha = std::min(alpha,it->second->UpdateMultiplier(sol));
+#if defined(USE_MPI)
+		double tmp = alpha;
+		MPI_Allreduce(&tmp,&alpha,1,MPI_DOUBLE,MPI_MIN,MPI_COMM_WORLD);
+#endif
+		return alpha;
+	}
+	
+	double Model::AdjustTimeStep(double dt) const
+	{
+		double ret = dt;
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			ret = std::min(ret,it->second->AdjustTimeStep(dt));
+#if defined(USE_MPI)
+		double tmp = ret;
+		MPI_Allreduce(&tmp,&ret,1,MPI_DOUBLE,MPI_MIN,MPI_COMM_WORLD);
+#endif
+		return ret;
 	}
 }

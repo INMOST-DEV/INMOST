@@ -27,13 +27,17 @@ namespace INMOST
 		/// Fill part of the residual related to my unknowns.
 		virtual bool FillResidual(Residual & R) const = 0;
 		/// Update solution.
-		virtual bool UpdateSolution(const Sparse::Vector & sol) = 0;
+		virtual bool UpdateSolution(const Sparse::Vector & sol, double alpha) = 0;
 		/// Update time step.
 		virtual bool UpdateTimeStep() = 0;
 		/// Provide time step.
 		virtual bool SetTimeStep(double dt) = 0;
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() = 0;
+		/// Calculate multiplier for update for this model. Can simply return 1.
+		virtual double UpdateMultiplier(const Sparse::Vector & sol) const {return 1;}
+		/// Calculate time step for this model. Can simply return dt.
+		virtual double AdjustTimeStep(double dt) const {return dt;}
 	};
 	
 	/// A class to organize a model.
@@ -107,7 +111,9 @@ namespace INMOST
 		/// Compute the residual of the model.
 		bool FillResidual(Residual & R) const;
 		/// Update solution.
-		bool UpdateSolution(const Sparse::Vector & sol);
+		/// alpha is the parameter that scales the update solution.
+		/// Usually calculated with UpdateMultiplier.
+		bool UpdateSolution(const Sparse::Vector & sol, double alpha);
 		/// Move to the next time step
 		bool UpdateTimeStep();
 		/// Provide new time step.
@@ -119,6 +125,10 @@ namespace INMOST
 		/// Update variables  contained in all block of automatizator on ghost elements of the grid.
 		/// For synchronization of data in individual blocks see AbstractEntry::SynhronizeData.
 		void SynchronizeData() { aut.SynchronizeData(); }
+		/// Calculate multiplier for update.
+		double UpdateMultiplier(const Sparse::Vector & sol) const;
+		/// Calculate optimal time step for submodels.
+		double AdjustTimeStep(double dt) const;
 	};
 }
 
