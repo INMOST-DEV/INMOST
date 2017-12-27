@@ -978,6 +978,7 @@ namespace INMOST
 			value = arg.GetValue()*dmult;
 		}
 		const_multiplication_expression(const const_multiplication_expression & other) : arg(other.arg), value(other.value), dmult(other.dmult) {}
+        const_multiplication_expression(const const_multiplication_expression & other, const A & parg) : arg(parg), value(other.value), dmult(other.dmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1004,6 +1005,7 @@ namespace INMOST
 			value = arg.GetValue();
 		}
 		variation_multiplication_expression(const variation_multiplication_expression & other) : arg(other.arg), value(other.value), dmult(other.dmult) {}
+        variation_multiplication_expression(const variation_multiplication_expression & other, const A & parg) : arg(parg), value(other.value), dmult(other.dmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1032,6 +1034,7 @@ namespace INMOST
 			value = arg.GetValue()*dmult;
 		}
 		const_division_expression(const const_division_expression & other) : arg(other.arg), value(other.value), dmult(other.dmult) {}
+        const_division_expression(const const_division_expression & other, const A & parg) : arg(parg), value(other.value), dmult(other.dmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1058,7 +1061,8 @@ namespace INMOST
 			value = arg.GetValue()+padd;
 		}
 		const_addition_expression(const const_addition_expression & other) : arg(other.arg), value(other.value) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+        const_addition_expression(const const_addition_expression & other, const A & parg) : arg(parg), value(other.value) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(mult,r);
@@ -1084,7 +1088,8 @@ namespace INMOST
 			value = pleft-arg.GetValue();
 		}
 		const_subtraction_expression(const const_subtraction_expression & other) : arg(other.arg), value(other.value) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+        const_subtraction_expression(const const_subtraction_expression & other, const A & parg) : arg(parg), value(other.value) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(-mult,r);
@@ -1114,6 +1119,8 @@ namespace INMOST
 		}
 		reciprocal_expression(const reciprocal_expression & other)
 		: arg(other.arg), value(other.value), reciprocial_val(other.reciprocial_val) {}
+        reciprocal_expression(const reciprocal_expression & other, const A & parg)
+                : arg(parg), value(other.value), reciprocial_val(other.reciprocial_val) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1142,7 +1149,8 @@ namespace INMOST
 	public:
 		unary_minus_expression(const shell_expression<A> & parg) : arg(parg) {value = -arg.GetValue();}
 		unary_minus_expression(const unary_minus_expression & b) : arg(b.arg) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
+        unary_minus_expression(const unary_minus_expression & b, const A & parg) : arg(parg) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(-mult,r);
@@ -1165,7 +1173,8 @@ namespace INMOST
 	public:
 		unary_plus_expression(const shell_expression<A> & parg) : arg(parg) {value = arg.GetValue();}
 		unary_plus_expression(const unary_plus_expression & b) : arg(b.arg) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
+        unary_plus_expression(const unary_plus_expression & b, const A & parg) : arg(parg) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(mult,r);
@@ -1193,7 +1202,8 @@ namespace INMOST
 			value = ::fabs(value);
 		}
 		abs_expression(const abs_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
+        abs_expression(const abs_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const {return value;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian( (value == 0 ? (mult < 0.0 ? -1 : 1) : 1) * mult * dmult, r);
@@ -1223,6 +1233,7 @@ namespace INMOST
 			value = ::exp(value);
 		}
 		exp_expression(const exp_expression & b) : arg(b.arg), value(b.value) {}
+        exp_expression(const exp_expression & b, const A & parg) : arg(parg), value(b.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1256,7 +1267,8 @@ namespace INMOST
 			value = ::log(value);
 		}
 		log_expression(const log_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+        log_expression(const log_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(mult*dmult,r);
@@ -1290,7 +1302,8 @@ namespace INMOST
 			value = ::sin(value);
 		}
 		sin_expression(const sin_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+        sin_expression(const sin_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(mult*dmult,r);
@@ -1324,7 +1337,8 @@ namespace INMOST
 			value = ::cos(value);
 		}
 		cos_expression(const cos_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+        cos_expression(const cos_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(mult*dmult,r);
@@ -1354,7 +1368,8 @@ namespace INMOST
 			value = ::sqrt(arg.GetValue());
 		}
 		sqrt_expression(const sqrt_expression & b) : arg(b.arg), value(b.value) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+        sqrt_expression(const sqrt_expression & b, const A & parg) : arg(parg), value(b.value) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			if( value ) arg.GetJacobian(0.5*mult/value,r);
@@ -1392,7 +1407,8 @@ namespace INMOST
 			dmult = lval/value;
 		}
 		soft_abs_expression(const soft_abs_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+        soft_abs_expression(const soft_abs_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(mult*dmult,r);
@@ -1422,7 +1438,8 @@ namespace INMOST
 			dmult = (1.0 - lval2/div)/sdiv;
 		}
 		soft_sign_expression(const soft_sign_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
+        soft_sign_expression(const soft_sign_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			arg.GetJacobian(mult*dmult,r);
@@ -1454,7 +1471,10 @@ namespace INMOST
 		}
 		soft_max_expression(const soft_max_expression & other)
 		: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult), rdmult(other.rdmult) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+        soft_max_expression(const soft_max_expression & other, const A & pleft, const B & pright)
+                : left(pleft), right(pright), value(other.value), ldmult(other.ldmult), rdmult(other.rdmult) {}
+
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			left.GetJacobian(mult*ldmult,r);
@@ -1488,6 +1508,8 @@ namespace INMOST
 		}
 		soft_min_expression(const soft_min_expression & other)
 		: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult), rdmult(other.rdmult) {}
+        soft_min_expression(const soft_min_expression & other, const A & pleft, const B & pright)
+                : left(pleft), right(pright), value(other.value), ldmult(other.ldmult), rdmult(other.rdmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1519,6 +1541,8 @@ namespace INMOST
 		}
 		multiplication_expression(const multiplication_expression & other)
 		: left(other.left), right(other.right), value(other.value) {}
+        multiplication_expression(const multiplication_expression & other, const A & pleft, const B & pright)
+                : left(pleft), right(pright), value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1577,7 +1601,10 @@ namespace INMOST
 			}
 		}
 		division_expression(const division_expression & other) : left(other.left), right(other.right), value(other.value), reciprocal_rval(other.reciprocal_rval) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+        division_expression(const division_expression & other, const A & pleft, const B & pright) :
+                left(pleft), right(pright), value(other.value), reciprocal_rval(other.reciprocal_rval) {}
+
+        __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			left.GetJacobian(mult * reciprocal_rval,r);
@@ -1619,6 +1646,8 @@ namespace INMOST
 		}
 		addition_expression(const addition_expression & other)
 		: left(other.left), right(other.right), value(other.value) {}
+        addition_expression(const addition_expression & other, const A & pleft, const B & pright)
+                : left(pleft), right(pright), value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1660,6 +1689,8 @@ namespace INMOST
 		}
 		subtraction_expression(const subtraction_expression & other)
 		: left(other.left), right(other.right),value(other.value) {}
+        subtraction_expression(const subtraction_expression & other, const A & pleft, const B & pright)
+                : left(pleft), right(pright),value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1709,6 +1740,9 @@ namespace INMOST
 		pow_expression(const pow_expression & other)
 		:left(other.left), right(other.right), value(other.value),
 		ldmult(other.ldmult), rdmult(other.rdmult) {}
+        pow_expression(const pow_expression & other, const A & pleft, const B & pright)
+                :left(pleft), right(pright), value(other.value),
+                 ldmult(other.ldmult), rdmult(other.rdmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1745,6 +1779,9 @@ namespace INMOST
 		atan2_expression(const atan2_expression & other)
 		:left(other.left), right(other.right), value(other.value),
 		ldmult(other.ldmult), rdmult(other.rdmult) {}
+        atan2_expression(const atan2_expression & other, const A & pleft, const B & pright)
+                :left(pleft), right(pright), value(other.value),
+                 ldmult(other.ldmult), rdmult(other.rdmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1782,6 +1819,8 @@ namespace INMOST
 		}
 		pow_const_expression(const pow_const_expression & other)
 		:left(other.left), value(other.value), ldmult(other.ldmult) {}
+        pow_const_expression(const pow_const_expression & other, const A & pleft)
+                :left(pleft), value(other.value), ldmult(other.ldmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1820,6 +1859,8 @@ namespace INMOST
 		}
 		const_pow_expression(const const_pow_expression & other)
 		:right(other.right), value(other.value), rdmult(other.rdmult) {}
+        const_pow_expression(const const_pow_expression & other, const A & pright)
+                :right(pright), value(other.value), rdmult(other.rdmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1851,6 +1892,9 @@ namespace INMOST
 		condition_expression(const condition_expression & other)
 		:cond(other.cond), left(other.left), right(other.right),
 		value(other.value), cond_value(other.cond_value) {}
+        condition_expression(const condition_expression & other, const A & pcond, const B & pleft, const C & pright)
+                :cond(pcond), left(pleft), right(pright),
+                 value(other.value), cond_value(other.cond_value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1894,6 +1938,9 @@ namespace INMOST
 		branch_expression(const branch_expression & other)
 		:cond(other.cond), left(other.left), right(other.right),
 		value(other.value) {}
+        branch_expression(const branch_expression & other, bool pcond, const A & pleft, const B & pright)
+                :cond(pcond), left(pleft), right(pright),
+                 value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
@@ -1923,7 +1970,49 @@ namespace INMOST
 		}
 	};
 	
-	
+	template<class A>
+	class stencil_expression : public shell_expression<stencil_expression<A> >
+	{
+		dynarray< const_multiplication_expression<A>, 64 > arg;
+		INMOST_DATA_REAL_TYPE value;
+	public:
+		stencil_expression(const dynarray< const_multiplication_expression<A>, 64 > & parg) : arg(parg)
+		{
+			value = 0.0;
+			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+				value += it->GetValue();
+		}
+		stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
+        stencil_expression(const stencil_expression & other, dynarray<const_multiplication_expression<A>,64> & parg) :
+                arg(parg), value(other.value) {}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
+		{
+			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetJacobian(mult,r);
+		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+		{
+			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetJacobian(mult,r);
+		}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
+		{
+			Sparse::Row tmpJ, curJ;
+			Sparse::HessianRow tmpH, curH;
+			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
+			{
+				curJ.Clear();
+				curH.Clear();
+				it->GetHessian(multJ,curJ,multH,curH);
+				Sparse::Row::MergeSortedRows(1.0,curJ,1.0,J,tmpJ);
+				Sparse::HessianRow::MergeSortedRows(1.0,curH,1.0,H,tmpH);
+				J.Swap(tmpJ);
+				H.Swap(tmpH);
+			}
+		}
+	};
+		
 	template<class A>
 	class function_expression : public shell_expression< function_expression<A> > {
         const A &arg;
@@ -1938,6 +2027,8 @@ namespace INMOST
 
         function_expression(const function_expression &other)
                 : arg(other.arg), value(other.value), dmult(other.dmult), ddmult(other.ddmult) {}
+        function_expression(const function_expression &other, const A & parg)
+                : arg(parg), value(other.value), dmult(other.dmult), ddmult(other.ddmult) {}
 
         function_expression &operator=(function_expression const &b)
         {

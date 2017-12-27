@@ -63,6 +63,7 @@ void MatrixInitDataPetsc(Mat **matrix, INMOST_MPI_Comm comm, const char *name)
     *matrix = new Mat();
 #if !defined(USE_MPI)
     ierr = MatCreate(PETSC_COMM_WORLD, *matrix);
+    (void) comm;
 #else
     ierr = MatCreate(comm, *matrix);
 #endif
@@ -137,6 +138,7 @@ void VectorInitDataPetsc(Vec **vector, INMOST_MPI_Comm comm, const char *name)
     *vector = new Vec();
 #if !defined(USE_MPI)
     ierr = VecCreate(PETSC_COMM_WORLD, *vector);
+    (void) comm;
 #else
     ierr = VecCreate(comm, *vector);
 #endif
@@ -214,6 +216,7 @@ void SolverInitDataPetsc(KSP **ksp, INMOST_MPI_Comm comm, const char *name)
     *ksp = new KSP();
 #if !defined(USE_MPI)
     ierr = KSPCreate(PETSC_COMM_WORLD, *ksp);
+    (void) comm;
 #else
     ierr = KSPCreate(comm, *ksp);
 #endif
@@ -233,6 +236,7 @@ void SolverCopyDataPetsc(KSP **ksp, KSP *other_ksp, INMOST_MPI_Comm comm)
     *ksp = new KSP();
 #if !defined(USE_MPI)
     ierr = KSPCreate(PETSC_COMM_WORLD, *ksp);
+    (void) comm;
 #else
     ierr = KSPCreate(comm, *ksp);
 #endif

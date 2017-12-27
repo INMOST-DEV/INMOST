@@ -19,6 +19,7 @@ namespace INMOST {
     SolverMPTILU2::SolverMPTILU2(const SolverInterface *other) {
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
+        (void) other;
     }
 
     void SolverMPTILU2::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
