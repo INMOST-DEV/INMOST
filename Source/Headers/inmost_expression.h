@@ -1970,48 +1970,6 @@ namespace INMOST
 		}
 	};
 	
-	template<class A>
-	class stencil_expression : public shell_expression<stencil_expression<A> >
-	{
-		dynarray< const_multiplication_expression<A>, 64 > arg;
-		INMOST_DATA_REAL_TYPE value;
-	public:
-		stencil_expression(const dynarray< const_multiplication_expression<A>, 64 > & parg) : arg(parg)
-		{
-			value = 0.0;
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				value += it->GetValue();
-		}
-		stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
-        stencil_expression(const stencil_expression & other, dynarray<const_multiplication_expression<A>,64> & parg) :
-                arg(parg), value(other.value) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-		{
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetJacobian(mult,r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
-		{
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetJacobian(mult,r);
-		}
-		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
-		{
-			Sparse::Row tmpJ, curJ;
-			Sparse::HessianRow tmpH, curH;
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-			{
-				curJ.Clear();
-				curH.Clear();
-				it->GetHessian(multJ,curJ,multH,curH);
-				Sparse::Row::MergeSortedRows(1.0,curJ,1.0,J,tmpJ);
-				Sparse::HessianRow::MergeSortedRows(1.0,curH,1.0,H,tmpH);
-				J.Swap(tmpJ);
-				H.Swap(tmpH);
-			}
-		}
-	};
 		
 	template<class A>
 	class function_expression : public shell_expression< function_expression<A> > {
