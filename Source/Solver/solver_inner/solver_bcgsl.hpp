@@ -206,6 +206,7 @@ namespace INMOST
                         flag = 0;
                         break;
                     }
+                    if( l == 0 ) break;
                     if (fabs(w[nm]) + anorm == anorm)
                         break;
                 }
@@ -698,8 +699,8 @@ namespace INMOST
                             //Recompute rho1
 #else
                             reason = "r_tilde perturbation algorithm is disabled";
-              halt = true;
-              break;
+							halt = true;
+							break;
 #endif
                         }
 #if defined(USE_OMP)
