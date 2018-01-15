@@ -648,8 +648,8 @@ namespace INMOST
 	public:
 		ternary_custom_variable(const shell_dynamic_variable<typename A::Var,A> & pcond, const shell_dynamic_variable<typename B::Var,B> & pleft, const shell_dynamic_variable<typename C::Var,C> & pright)
 		: Cond(pcond), Left(pleft), Right(pright) {}
-		ternary_custom_variable(const ternary_custom_variable & other) : Left(other.Left), Right(other.Right) {}
-		ternary_custom_variable & operator =(ternary_custom_variable const & other) {Left = other.Left; Right = other.Right; return * this;}
+		ternary_custom_variable(const ternary_custom_variable & other) : Cond(other.Cond), Left(other.Left), Right(other.Right) {}
+		ternary_custom_variable & operator =(ternary_custom_variable const & other) {Cond = other.Cond; Left = other.Left; Right = other.Right; return * this;}
 		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
 		multivar_expression Variable(const Storage & e) const
 		{
