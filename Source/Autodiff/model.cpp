@@ -176,6 +176,15 @@ namespace INMOST
 		return success;
 	}
 	
+	bool Model::PrepareIterations()
+	{
+		bool success = true;
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			success &= it->second->PrepareIterations();
+		return success;
+	}
+	
 	bool Model::FillResidual(Residual & R) const
 	{
 		bool success = true;

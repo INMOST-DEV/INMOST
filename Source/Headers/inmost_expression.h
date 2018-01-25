@@ -2028,7 +2028,7 @@ namespace INMOST
 				mid = (l + r) / 2;
 				if (args[mid] > arg) r = mid - 1;
 				else if (args[mid] < arg) l = mid + 1;
-				else return mid;
+				else break;
 			}
 			mid = (l + r) / 2;
 			if (mid > static_cast<int>(size - 2)) mid = static_cast<int>(size - 2);

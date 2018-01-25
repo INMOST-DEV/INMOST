@@ -202,7 +202,7 @@ namespace INMOST
 		/// @param order_singular_values
 		/// \warning Somehow result differ in auto-differential mode.
 		/// \todo Test implementation for auto-differentiation.
-		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true) const
+		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true, bool nonnegative = true) const
 		{
 			int flag, i, its, j, jj, k, l, nm;
 			int n = Rows();
@@ -388,7 +388,7 @@ namespace INMOST
 					z = Sigma(k,k);
 					if (l == k)
 					{// convergence
-						if (z < 0.0)
+						if (z < 0.0 && nonnegative)
 						{// make singular value nonnegative
 							Sigma(k,k) = -z;
 							for (j = 0; j < (int)n; j++) V(j,k) = -V(j,k);

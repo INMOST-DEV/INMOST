@@ -24,6 +24,9 @@ namespace INMOST
 		virtual bool PrepareEntries(Model & P) = 0;
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model & P) = 0;
+		/// Initialize data needed for FillResidual.
+		/// Called once before nonlinear iterations.
+		virtual bool PrepareIterations() {return true;}
 		/// Fill part of the residual related to my unknowns.
 		virtual bool FillResidual(Residual & R) const = 0;
 		/// Update solution.
@@ -108,6 +111,9 @@ namespace INMOST
 		bool PrepareEntries();
 		/// Initialze all entries and submodels.
 		bool Initialize();
+		/// Initialize data needed for FillResidual.
+		/// Called once before nonlinear iterations.
+		bool PrepareIterations();
 		/// Compute the residual of the model.
 		bool FillResidual(Residual & R) const;
 		/// Update solution.
