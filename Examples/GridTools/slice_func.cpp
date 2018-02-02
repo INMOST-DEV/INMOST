@@ -21,7 +21,8 @@ double func(double x, double y, double z, int n)
 		return y-(10*x*x*x*x-8*x*x*x-5*x*x+0.2+4*x)+z*z*z;
 	else if( n == 5 )
 	{
-		double Lx = 0.2, Rx = 0.4, Ly = 0.1, Ry = 0.3;
+		//double Lx = 0.2, Rx = 0.4, Ly = 0.1, Ry = 0.3;
+		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
 		if (x > Rx){
 			if (y > Ry) return -sqrt( (x-Rx)*(x-Rx) + (y-Ry)*(y-Ry) );
 			else return -(x-Rx);
@@ -107,8 +108,8 @@ int main(int argc, char ** argv)
 
 	Mesh m;
 	m.Load(argv[1]);
-	m.SetTopologyCheck(NEED_TEST_CLOSURE|PROHIBIT_MULTILINE|PROHIBIT_MULTIPOLYGON|GRID_CONFORMITY|DEGENERATE_EDGE|DEGENERATE_FACE|DEGENERATE_CELL | FACE_EDGES_ORDER);
-	//m.RemTopologyCheck(THROW_EXCEPTION);
+	m.SetTopologyCheck(NEED_TEST_CLOSURE|PROHIBIT_MULTILINE|PROHIBIT_MULTIPOLYGON|GRID_CONFORMITY|DEGENERATE_EDGE|DEGENERATE_FACE|DEGENERATE_CELL | FACE_EDGES_ORDER | MARK_ON_ERROR);
+	m.RemTopologyCheck(THROW_EXCEPTION);
 	TagInteger material = m.CreateTag("MATERIAL",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 	Tag sliced = m.CreateTag("SLICED",DATA_BULK,FACE|EDGE|NODE,FACE|EDGE|NODE,1);
 
@@ -238,6 +239,7 @@ int main(int argc, char ** argv)
 	
 	
 	nslice = 0;
+	MarkerType unique = m.CreateMarker();
 	for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if( !it->GetMarker(mrk) )
 	{
 		ElementArray<Node> nodes = it->getNodes(slice); //those nodes should be ordered so that each pair forms an edge
@@ -379,11 +381,15 @@ int main(int argc, char ** argv)
 						{
 							edge_nodes[0] = n2;
 							edge_nodes[1] = cutnodes[i1];
-							Edge e = m.CreateEdge(edge_nodes).first;
-							material[e] = 2; //on slice
-							e.Bulk(sliced) = 1;
-							e.SetMarker(slice);
-							split_edges.push_back(e);
+							std::pair<Edge,bool> en = m.CreateEdge(edge_nodes);
+							//if( en.second )
+							{
+								Edge e = en.first;
+								material[e] = 2; //on slice
+								e.Bulk(sliced) = 1;
+								e.SetMarker(slice);
+								split_edges.push_back(e);
+							}
 						}
 					}
 					else if( s1 )
@@ -393,27 +399,47 @@ int main(int argc, char ** argv)
 						{
 							edge_nodes[0] = n1;
 							edge_nodes[1] = cutnodes[i2];
-							Edge e = m.CreateEdge(edge_nodes).first;
-							material[e] = 2; //on slice
-							e.Bulk(sliced) = 1;
-							e.SetMarker(slice);
-							split_edges.push_back(e);
+							std::pair<Edge,bool> en = m.CreateEdge(edge_nodes);
+							//if( en.second )
+							{
+								Edge e = en.first;
+								material[e] = 2; //on slice
+								e.Bulk(sliced) = 1;
+								e.SetMarker(slice);
+								split_edges.push_back(e);
+							}
 						}
 					}
 					else if( cutnodes[i1].isValid() && cutnodes[i2].isValid() )
 					{
 						edge_nodes[0] = cutnodes[i1];
 						edge_nodes[1] = cutnodes[i2];
-						Edge e = m.CreateEdge(edge_nodes).first;
-						material[e] = 2; //on slice
-						e.Bulk(sliced) = 1;
-						e.SetMarker(slice);
-						split_edges.push_back(e);
+						std::pair<Edge,bool> en = m.CreateEdge(edge_nodes);
+						//if( en.second )
+						{
+							Edge e = en.first;
+							material[e] = 2; //on slice
+							e.Bulk(sliced) = 1;
+							e.SetMarker(slice);
+							split_edges.push_back(e);
+						}
 					}
 				}
 				//split face with multiple edges
 				if( !split_edges.empty() )
 				{
+					
+					int k = 0;
+					for(int q = 0; q < split_edges.size(); ++q)
+					{
+						if( !split_edges[q].GetMarker(unique) )
+						{
+							split_edges[q].SetMarker(unique);
+							split_edges[k++] = split_edges[q];
+						}
+					}
+					split_edges.RemMarker(unique);
+					split_edges.resize(k);
 					//std::cout << "Split edges " << split_edges.size() << std::endl;
 					//for(int q = 0; q < (int)split_edges.size(); ++q)
 					//	std::cout << split_edges[q].getBeg().LocalID() << "<->" << split_edges[q].getEnd().LocalID() << std::endl;
@@ -438,7 +464,7 @@ int main(int argc, char ** argv)
 		}
 		//else std::cout << "Only one adjacent slice node, face " << it->LocalID() << std::endl;
 	}
-	
+	m.ReleaseMarker(unique);
 	
 
 	nmark = 0;
