@@ -284,6 +284,29 @@ namespace INMOST
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_variable(*this));}
 	};
 	
+	class const_link_variable : public shell_dynamic_variable<const_expression,const_link_variable>
+	{
+	private:
+		const INMOST_DATA_REAL_TYPE * value;
+	public:
+		const_link_variable(const INMOST_DATA_REAL_TYPE * _value) : value(_value)  {}
+		const_link_variable(const const_link_variable & other) : value(other.value) {}
+		const_link_variable & operator =(const const_link_variable & other)
+		{
+			value = other.value;
+			return * this;
+		}
+		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return *value;}
+		multivar_expression Variable(const Storage & e) const
+		{
+			return multivar_expression(*value);
+		}
+		const_expression operator [](const Storage & e) const {return const_expression(*value);}
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
+		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_link_variable(*this));}
+	};
+	
 	class static_variable : public shell_dynamic_variable<const_expression,static_variable>
 	{
 	private:
@@ -706,6 +729,7 @@ template<class A>          __INLINE                                             
 }
 template<class A, class B> __INLINE INMOST::etype_branch_variable<A,B> etype_branch(INMOST::ElementType true_type, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::etype_branch_variable<A,B>(true_type,iftrue,iffalse);}
 template<class A, class B> __INLINE INMOST::marker_branch_variable<A,B> marker_branch(INMOST::MarkerType marker, INMOST::shell_dynamic_variable<typename A::Var,A> const & iftrue, INMOST::shell_dynamic_variable<typename B::Var,B> const & iffalse) {return INMOST::marker_branch_variable<A,B>(marker,iftrue,iffalse);}
+__INLINE INMOST::const_link_variable extval(const INMOST_DATA_REAL_TYPE & pvar) {return INMOST::const_link_variable(&pvar);}
 
 #endif //defined(USE_AUTODIFF) && defined(USE_MESH)
 

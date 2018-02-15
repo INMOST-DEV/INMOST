@@ -602,26 +602,35 @@ namespace INMOST
 		/// Retrive derivatives with multiplier into Sparse::RowMerger structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-				r[it->first] += it->second*mult;
-		}
-		/// Retrive derivatives with multiplier into Sparse::Row structure.
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
-		{
-			if( CheckCurrentAutomatizator() )
-				FromGetJacobian(*this,mult,r);
-			else
+			if( entries )
 			{
 				for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
 					r[it->first] += it->second*mult;
 			}
 		}
+		/// Retrive derivatives with multiplier into Sparse::Row structure.
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+		{
+			if( entries )
+			{
+				if( CheckCurrentAutomatizator() )
+					FromGetJacobian(*this,mult,r);
+				else
+				{
+					for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+						r[it->first] += it->second*mult;
+				}
+			}
+		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J,INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
-			J = *entries;
-			if( !J.isSorted() ) std::sort(J.Begin(),J.End());
-			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
-			H.Clear();
+			if( entries )
+			{
+				J = *entries;
+				if( !J.isSorted() ) std::sort(J.Begin(),J.End());
+				for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
+				H.Clear();
+			}
 		}
 		__INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
