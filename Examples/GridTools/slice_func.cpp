@@ -21,6 +21,7 @@ double func(double x, double y, double z, int n)
 		return y-(10*x*x*x*x-8*x*x*x-5*x*x+0.2+4*x)+z*z*z;
 	else if( n == 5 )
 	{
+		/*
 		//double Lx = 0.2, Rx = 0.4, Ly = 0.1, Ry = 0.3;
 		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
 		if (x > Rx){
@@ -34,6 +35,23 @@ double func(double x, double y, double z, int n)
 		if (y > Ry) return Ry - y;
 		if (y < Ly) return y - Ly;
 		return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
+		*/
+		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
+	    if (x > Rx)
+	    {
+	        if (y > Ry) return -sqrt( (x-Rx)*(x-Rx) + (y-Ry)*(y-Ry) );
+	        if (y < Ly) return -sqrt( (x-Rx)*(x-Rx) + (y-Ly)*(y-Ly) );
+	        return -(x-Rx);
+	    }
+	    if (x < Lx)
+	    {
+	        if (y < Ly)  return -sqrt( (x-Lx)*(x-Lx) + (y-Ly)*(y-Ly) );
+	        if (y > Ry)  return -sqrt( (x-Lx)*(x-Lx) + (y-Ry)*(y-Ry) );
+	        else return (x - Lx);
+	    }
+	    if (y > Ry) return Ry - y;
+	    if (y < Ly) return y - Ly;
+	    return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
 	}
 	else if( n == 6 )
 	{
@@ -109,7 +127,7 @@ int main(int argc, char ** argv)
 	Mesh m;
 	m.Load(argv[1]);
 	m.SetTopologyCheck(NEED_TEST_CLOSURE|PROHIBIT_MULTILINE|PROHIBIT_MULTIPOLYGON|GRID_CONFORMITY|DEGENERATE_EDGE|DEGENERATE_FACE|DEGENERATE_CELL | FACE_EDGES_ORDER | MARK_ON_ERROR);
-	m.RemTopologyCheck(THROW_EXCEPTION);
+	//m.RemTopologyCheck(THROW_EXCEPTION);
 	TagInteger material = m.CreateTag("MATERIAL",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 	Tag sliced = m.CreateTag("SLICED",DATA_BULK,FACE|EDGE|NODE,FACE|EDGE|NODE,1);
 

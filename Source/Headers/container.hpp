@@ -2730,12 +2730,132 @@ namespace INMOST
 		}
 	};
 	
+#if defined(_OPENMP)
+#include <omp.h>
+#define PADDING_SIZE 4096
+	template<typename T>
+	struct thread_private_item
+	{
+		T item;
+		char padding[PADDING_SIZE-sizeof(T)];
+	};
+
 	/// This class is used to replace #pragma omp threadprivate
 	/// Functionality that is not supported on many older systems.
 	template<typename T>
 	class thread_private
 	{
+		std::vector< thread_private_item<T> > items;
+	public:
+		thread_private() 
+		{
+			items.resize(omp_get_max_threads());
+		}
+		thread_private(const T & b)
+		{
+			items.resize(omp_get_max_threads());
+			for(int k = 0; k < omp_get_max_threads(); ++k)
+				items[k].item = b;
+		}
+		thread_private(const thread_private & b)
+		{
+			items.resize(omp_get_max_threads);
+			for(int k = 0; k < omp_get_max_threads(); ++k)
+				items[k].item = b.get(k);
+		}
+		~thread_private() 
+		{
+		}
+		thread_private & operator =(thread_private const & b)
+		{
+			if( omp_in_parallel() )
+			{
+				items[omp_get_thread_num()].item = b.get();
+			}
+			else
+			{
+#pragma omp parallel
+				items[omp_get_thread_num()].item = b.get();
+			}
+			return *this;
+		}
+		operator T & () {return items[omp_get_thread_num()].item;}
+		operator const T & () const {return items[omp_get_thread_num()].item;}
+		//operator T () {return items[omp_get_thread_num()].item;}
+		//operator T () const {return items[omp_get_thread_num()].item;}
+		template <typename B>
+		T & operator = (B const & b) {items[omp_get_thread_num()].item = b; return items[omp_get_thread_num()].item;}
+		template <typename B>
+		T & operator += (B const & b) {items[omp_get_thread_num()].item += b; return items[omp_get_thread_num()].item;}
+		template <typename B>
+		T & operator -= (B const & b) {items[omp_get_thread_num()].item -= b; return items[omp_get_thread_num()].item;}
+		template <typename B>
+		T & operator *= (B const & b) {items[omp_get_thread_num()].item *= b; return items[omp_get_thread_num()].item;}
+		template <typename B>
+		T & operator /= (B const & b) {items[omp_get_thread_num()].item /= b; return items[omp_get_thread_num()].item;}
+		T & get() {return items[omp_get_thread_num()].item;}
+		const T & get() const {return items[omp_get_thread_num()].item;}
+		T & get(int k) {return items[k].item;}
+		const T & get(int k) const {return items[k].item;}
+		T & operator ->() {return get();}
+		const T & operator ->() const {return get();}
 	};
+#else //_OPENMP
+	template<typename T>
+	class thread_private
+	{
+		T item;
+	public:
+		thread_private() {}
+		~thread_private() {}
+		thread_private(const T & b) {item = b;}
+		thread_private(const thread_private & b) {item = b();}
+		thread_private & operator = (thread_private const & b) {item = b(); return *this;}
+		operator T & () {return item;}
+		operator const T & () const {return item;}
+		//operator T () {return items[omp_get_thread_num()].item;}
+		//operator T () const {return items[omp_get_thread_num()].item;}
+		template <typename B>
+		T & operator = (B const & b) {item = b; return item;}
+		template <typename B>
+		T & operator += (B const & b) {item += b; return item;}
+		template <typename B>
+		T & operator -= (B const & b) {item -= b; return item;}
+		template <typename B>
+		T & operator *= (B const & b) {item *= b; return item;}
+		template <typename B>
+		T & operator /= (B const & b) {item /= b; return item;}
+		T & get() {return item;}
+		const T & get() const {return item;}
+		T & get(int k) {return item;}
+		const T & get(int k) const {return item;}
+		T & operator ->() {return get();}
+		const T & operator ->() const {return get();}
+	};
+#endif //_OPENMP
+	/*
+	class memory_pool
+	{
+		std::vector<char> pool;           ///< Data storage
+		std::vector<unsigned> last_alloc; ///< Last allocated block position, used to track allocation
+	public:
+		memory_pool() pool_size(0) {}
+		memory_pool(const memory_pool & b) : pool(b.pool), last_alloc(b.last_alloc) {}
+		memory_pool & operator = (memory_pool const & b) {pool = b.pool; last_alloc = b.last_alloc; return *this;}
+		template<typename T>
+		T * allocate(unsigned n, const T & c = T())
+		{
+			unsigned oldsize = pool.size();
+			pool.resize(pool_size() + sizeof(T)*n);
+			for(unsigned i = 0; i < n; ++i)
+				new (&static_cast<T *>(static_cast<void *>(&pool[oldsize]))[i]) T(c);
+			last_alloc.push_back(oldsize);
+			return &pool[oldsize];
+		}
+		template<typename T>
+		void deallocate
+	};
+	*/
 }
 
 #endif
