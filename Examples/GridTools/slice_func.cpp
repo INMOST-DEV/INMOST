@@ -205,13 +205,25 @@ int main(int argc, char ** argv)
 		material[it->getBeg()] = (r0 <= 0)? 0 : 1;
 		material[it->getEnd()] = (r1 <= 0)? 0 : 1;
 		//std::cout << "r0 " << r0 << " r1 " << r1 << std::endl;
-		if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))) )
+		if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))) )
 		{
 			pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 			pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-			if((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))
+			if((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))
 			{
 				search_zero(r0,r1,pc0,pc1,p,type);
+				if( fabs(r0) < 1.0e-6 )
+				{
+					material[it->getBeg()] = 2;
+					it->getBeg()->SetMarker(slice);
+					nmark++;
+				}
+				if( fabs(r1) < 1.0e-6 )
+				{
+					material[it->getEnd()] = 2;
+					it->getEnd()->SetMarker(slice);
+					nmark++;
+				}
 			}
 			else
 			{
@@ -239,13 +251,13 @@ int main(int argc, char ** argv)
 			l0 = sqrt(l0);
 			l1 = sqrt(l1);
 			l = l0+l1;
-			if( l0 < 1.0e-5*l )
+			if( l0 < 5.0e-2*l )
 			{
 				material[it->getBeg()] = 2;
 				it->getBeg()->SetMarker(slice);
 				nmark++;
 			}
-			else if( l1 < 1.0e-5*l )
+			else if( l1 < 5.0e-2*l )
 			{
 				material[it->getEnd()] = 2;
 				it->getEnd()->SetMarker(slice);
@@ -309,7 +321,7 @@ int main(int argc, char ** argv)
 		if( !(mat[0] == 0 || mat[1] == 0) )
 		{
 			material[*it] = 2;
-			std::cout << "oops, materials for edge nodes were not split, 0: " << mat[0] << " ,1: " << mat[1] << " ,2: " << mat[2] << std::endl;
+			std::cout << "oops, materials for edge nodes were not split, 0: " << mat[0] << ", 1: " << mat[1] << ", 2: " << mat[2] << std::endl;
 		}
 		else if( mat[0] != 0 ) material[*it] = 0;
 		else if( mat[1] != 0 ) material[*it] = 1;
@@ -378,11 +390,11 @@ int main(int argc, char ** argv)
 					nodes[q].Centroid(c1);
 					double r1 = func(c1[0],c1[1],c1[2],type);
 					//std::cout << "NODE:" << nodes[q].LocalID() << " r0 " << r0 << " r1 " << r1 << " r0*r1 " << r0*r1 << std::endl;
-					if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))))
+					if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))))
 					{
 						pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 						pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-						if((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))
+						if((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))
 						{
 							search_zero(r0,r1,pc0,pc1,p,type);
 						}
@@ -410,14 +422,14 @@ int main(int argc, char ** argv)
 						l0 = sqrt(l0);
 						l1 = sqrt(l1);
 						l = l0+l1;
-						if( l0 < 1.0e-3*l ) //edge goes through centernode
+						if( l0 < 5.0e-2*l ) //edge goes through centernode
 						{
 							if( !centernode.isValid() )
 								centernode = m.CreateNode(c0);
 							cutnodes[q] = centernode;
 							//std::cout << "selected centernode " << std::endl;
 						}
-						else if( l1 > 1.0e-3*l )
+						else if( l1 > 5.0e-2*l )
 						{
 							cutnodes[q] = m.CreateNode(p);
 							//std::cout << "created new node " << std::endl;
@@ -756,11 +768,11 @@ int main(int argc, char ** argv)
 						double r1 = func(c1[0],c1[1],c1[2],type);
 						//std::cout << "NODE:" << cnodes[q].LocalID() << " r0 " << r0 << " r1 " << r1 << " r0*r1 " << r0*r1 << " " << (cnodes[q].GetMarker(slice)?"":"not ") << "sliced" << std::endl;
 						
-						if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))))
+						if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))))
 						{
 							pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 							pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-							if((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))
+							if((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))
 							{
 								search_zero(r0,r1,pc0,pc1,p,type);
 							}
@@ -788,14 +800,14 @@ int main(int argc, char ** argv)
 							l0 = sqrt(l0);
 							l1 = sqrt(l1);
 							l = l0+l1;
-							if( l0 < 1.0e-3*l ) //edge goes through centernode
+							if( l0 < 5.0e-2*l ) //edge goes through centernode
 							{
 								if( !centernode.isValid() )
 									centernode = m.CreateNode(c0);
 								cutnodes[q] = centernode;
 								//std::cout << "selected centernode " << cutnodes[q].LocalID() << std::endl;
 							}
-							else if( l1 > 1.0e-3*l )
+							else if( l1 > 5.0e-2*l )
 							{
 								cutnodes[q] = m.CreateNode(p);
 								//std::cout << "created new node " << cutnodes[q].LocalID() << std::endl;
