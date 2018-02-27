@@ -21,8 +21,9 @@ double func(double x, double y, double z, int n)
 		return y-(10*x*x*x*x-8*x*x*x-5*x*x+0.2+4*x)+z*z*z;
 	else if( n == 5 )
 	{
-		/*
+		
 		//double Lx = 0.2, Rx = 0.4, Ly = 0.1, Ry = 0.3;
+		/*
 		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
 		if (x > Rx){
 			if (y > Ry) return -sqrt( (x-Rx)*(x-Rx) + (y-Ry)*(y-Ry) );
@@ -36,6 +37,7 @@ double func(double x, double y, double z, int n)
 		if (y < Ly) return y - Ly;
 		return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
 		*/
+		
 		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
 	    if (x > Rx)
 	    {
@@ -52,6 +54,7 @@ double func(double x, double y, double z, int n)
 	    if (y > Ry) return Ry - y;
 	    if (y < Ly) return y - Ly;
 	    return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
+	    
 	}
 	else if( n == 6 )
 	{
@@ -108,6 +111,57 @@ double search(double r0, double r1, double c0[3], double c1[3], double p[3],int 
 	return rp;
 }
 
+
+double search_zero(double r0, double r1, double c0[3], double c1[3], double p[3],int type)
+{
+	int iters = 0;
+	double rp = 1.0e+20;
+	do
+	{
+		p[0] = 0.5*c1[0] + 0.5*c0[0];
+		p[1] = 0.5*c1[1] + 0.5*c0[1];
+		p[2] = 0.5*c1[2] + 0.5*c0[2];
+		rp = func(p[0],p[1],p[2],type);
+		if( fabs(rp) < 1.0e-8 )
+		{
+			if( fabs(r0) < 1.0e-8 )
+			{
+				c0[0] = p[0];
+				c0[1] = p[1];
+				c0[2] = p[2];
+				r0 = rp;
+			}
+			else
+			{
+				c1[0] = p[0];
+				c1[1] = p[1];
+				c1[2] = p[2];
+				r1 = rp;
+			}
+		}
+		else
+		{
+			if( fabs(r0) > 1.0e-8 )
+			{
+				c0[0] = p[0];
+				c0[1] = p[1];
+				c0[2] = p[2];
+				r0 = rp;
+			}
+			else
+			{
+				c1[0] = p[0];
+				c1[1] = p[1];
+				c1[2] = p[2];
+				r1 = rp;
+			}
+		}
+		iters++;
+	} while( iters < 20 );
+	
+	return rp;
+}
+
 int main(int argc, char ** argv)
 {
 	if( argc < 2 )
@@ -151,17 +205,24 @@ int main(int argc, char ** argv)
 		material[it->getBeg()] = (r0 <= 0)? 0 : 1;
 		material[it->getEnd()] = (r1 <= 0)? 0 : 1;
 		//std::cout << "r0 " << r0 << " r1 " << r1 << std::endl;
-		if( r0*r1 < -1.0e-12 )
+		if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))) )
 		{
 			pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 			pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-			double rp = search(r0,r1,pc0,pc1,p,type);
-			if( rp > 1.0e-3 ) //cannot find intersection
+			if((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))
 			{
-				rp = search(r0,r1,pc0,pc1,p,type,true);
-				p[0] = c0[0]*0.5+c1[0]*0.5;
-				p[1] = c0[1]*0.5+c1[1]*0.5;
-				p[2] = c0[2]*0.5+c1[2]*0.5;
+				search_zero(r0,r1,pc0,pc1,p,type);
+			}
+			else
+			{
+				double rp = search(r0,r1,pc0,pc1,p,type);
+				if( rp > 1.0e-3 ) //cannot find intersection
+				{
+					rp = search(r0,r1,pc0,pc1,p,type,true);
+					p[0] = c0[0]*0.5+c1[0]*0.5;
+					p[1] = c0[1]*0.5+c1[1]*0.5;
+					p[2] = c0[2]*0.5+c1[2]*0.5;
+				}
 			}
 			//p[0] = (r0*c1[0] - r1*c0[0])/(r0-r1);
 			//p[1] = (r0*c1[1] - r1*c0[1])/(r0-r1);
@@ -317,20 +378,27 @@ int main(int argc, char ** argv)
 					nodes[q].Centroid(c1);
 					double r1 = func(c1[0],c1[1],c1[2],type);
 					//std::cout << "NODE:" << nodes[q].LocalID() << " r0 " << r0 << " r1 " << r1 << " r0*r1 " << r0*r1 << std::endl;
-					if( r0*r1 < -1.0e-12 )
+					if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))))
 					{
 						pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 						pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-						double rp = search(r0,r1,pc0,pc1,p,type);
-						if( rp > 1.0e-3 )
+						if((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))
 						{
-							//std::cout << "inaccurate search " << rp;
-							rp = search(r0,r1,pc0,pc1,p,type,true);
-							//std::cout << " binary " << rp << std::endl;
-							p[0] = c0[0]*0.5+c1[0]*0.5;
-							p[1] = c0[1]*0.5+c1[1]*0.5;
-							p[2] = c0[2]*0.5+c1[2]*0.5;
-							
+							search_zero(r0,r1,pc0,pc1,p,type);
+						}
+						else
+						{						
+							double rp = search(r0,r1,pc0,pc1,p,type);
+							if( rp > 1.0e-3 )
+							{
+								//std::cout << "inaccurate search " << rp;
+								rp = search(r0,r1,pc0,pc1,p,type,true);
+								//std::cout << " binary " << rp << std::endl;
+								p[0] = c0[0]*0.5+c1[0]*0.5;
+								p[1] = c0[1]*0.5+c1[1]*0.5;
+								p[2] = c0[2]*0.5+c1[2]*0.5;
+								
+							}
 						}
 						//distance to the center node
 						double l0 = 0, l1 = 0, l;
@@ -687,20 +755,28 @@ int main(int argc, char ** argv)
 						cnodes[q].Centroid(c1);
 						double r1 = func(c1[0],c1[1],c1[2],type);
 						//std::cout << "NODE:" << cnodes[q].LocalID() << " r0 " << r0 << " r1 " << r1 << " r0*r1 " << r0*r1 << " " << (cnodes[q].GetMarker(slice)?"":"not ") << "sliced" << std::endl;
-						if( r0*r1 < -1.0e-12 )
+						
+						if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))))
 						{
 							pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 							pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-							double rp = search(r0,r1,pc0,pc1,p,type);
-							if( rp > 1.0e-3 )
+							if((fabs(r0) < 1.0e-12) ^ (fabs(r1) < 1.0e-12))
 							{
-								//std::cout << "inaccurate search " << rp;
-								rp = search(r0,r1,pc0,pc1,p,type,true);
-								//std::cout << " binary " << rp << std::endl;
-								p[0] = c0[0]*0.5+c1[0]*0.5;
-								p[1] = c0[1]*0.5+c1[1]*0.5;
-								p[2] = c0[2]*0.5+c1[2]*0.5;
-								
+								search_zero(r0,r1,pc0,pc1,p,type);
+							}
+							else
+							{						
+								double rp = search(r0,r1,pc0,pc1,p,type);
+								if( rp > 1.0e-3 )
+								{
+									//std::cout << "inaccurate search " << rp;
+									rp = search(r0,r1,pc0,pc1,p,type,true);
+									//std::cout << " binary " << rp << std::endl;
+									p[0] = c0[0]*0.5+c1[0]*0.5;
+									p[1] = c0[1]*0.5+c1[1]*0.5;
+									p[2] = c0[2]*0.5+c1[2]*0.5;
+									
+								}
 							}
 							//distance to the center node
 							double l0 = 0, l1 = 0, l;
@@ -853,6 +929,7 @@ int main(int argc, char ** argv)
 					}
 				
 				if( isolate_alogirthm )
+				//if( false )
 				{
 					//std::cout << "Isolation algorithm" << std::endl;
 					//on pyramids, build faces that start from cutedges and end up with edge on original edge
@@ -1163,7 +1240,7 @@ int main(int argc, char ** argv)
 		}
 		
 	}
-	
+	/*
 	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 		if( material[*it] == 0 || it->Integer(collapse) )
 			it->Delete();
@@ -1171,7 +1248,7 @@ int main(int argc, char ** argv)
 	for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype) )
 		for(Mesh::iteratorElement it = m.BeginElement(etype); it != m.EndElement(); ++it)
 			if( it->nbAdjElements(CELL) == 0 ) it->Delete();
-	
+	*/
 
 	m.ReleaseMarker(slice,NODE|EDGE);
 	m.ReleaseMarker(original,NODE|EDGE);
