@@ -6,6 +6,8 @@
 // incident_matrix class should measure for minimal volume,
 // possibly check and update from projects/OctreeCutcell/octgrid.cpp
 
+using namespace std;
+
 namespace INMOST
 {
 
@@ -1591,9 +1593,80 @@ namespace INMOST
 		//Destroy(erase);//old approach
 	}
 
+    double Mesh::dist(Cell a, Cell b)
+    {
+        double xyza[3];
+        double xyzb[3];
+        a.Centroid(xyza);
+        b.Centroid(xyzb);
+
+
+        double dx = xyza[0] - xyzb[0];
+        double dy = xyza[1] - xyzb[1];
+        double dz = xyza[2] - xyzb[2];
+        return sqrt(dx*dx + dy*dy + dz*dz);
+    }
+
+    void OperationMinDistance(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+    {        
+        int owner  =  *((double*)data);
+        double dist = *((double*)(data+sizeof(double)));
+
+        TagReal r_tag = tag;
+
+        if (dist < element->RealArray(tag)[1])
+        {
+            element->RealArray(tag)[0] = owner;
+            element->RealArray(tag)[1] = dist;
+        }
+    }
+
 	void Mesh::ResolveModification()
 	{
-		throw NotImplemented;
+		int rank = GetProcessorRank(),mpisize = GetProcessorsNumber();
+	    
+        Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
+
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
+        {
+            double min = 0;
+            int first = 0;
+            Cell near_cell;
+		    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false)
+            {
+                double d = dist(it->getAsCell(), jt->getAsCell());
+                if (first++ == 0 || min > d) 
+                {
+                    min = d;
+                    near_cell = jt->getAsCell();
+                }
+            }
+            
+            int owner1 = it->IntegerDF(tag_owner);
+            int owner2 = near_cell.IntegerDF(tag_owner);
+    
+            it->RealArray(tag)[0] = owner2;
+            it->RealArray(tag)[1] = min;
+       }
+
+        ReduceData(tag, CELL, 0, OperationMinDistance);
+        ExchangeData(tag, CELL, 0);
+
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
+        {
+            int new_owner = it->RealArray(tag)[0];
+
+            it->IntegerDF(tag_owner) = new_owner;
+
+            if (rank == new_owner)
+            {
+                it->SetStatus(Element::Shared);
+            }
+            else
+            {
+                it->SetStatus(Element::Ghost);
+            }
+        }
 	}
 	
 	void Mesh::EndModification()
