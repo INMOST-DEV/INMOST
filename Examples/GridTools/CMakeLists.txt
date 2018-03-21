@@ -16,6 +16,7 @@ add_executable(Move move.cpp)
 add_executable(Convert convert.cpp)
 add_executable(SameMeshDifference difference_same.cpp)
 add_executable(MeshDifference difference_map.cpp)
+add_library(FractureLib fracture.cpp fracture.h)
 
 target_link_libraries(FixFaults inmost)
 if(USE_MPI)
@@ -183,4 +184,12 @@ if(USE_MPI)
   endif()
 endif(USE_MPI)
 install(TARGETS MeshDifference EXPORT inmost-targets RUNTIME DESTINATION bin)
+
+
+set_property(TARGET FractureLib PROPERTY PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/fracture.h")
+
+install(TARGETS FractureLib EXPORT inmost-targets 
+        LIBRARY DESTINATION lib 
+        ARCHIVE DESTINATION lib
+        PUBLIC_HEADER DESTINATION include)
 
