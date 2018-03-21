@@ -1,10 +1,10 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include <iomanip>
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #include "solver_mlmtiluc2.hpp"
 #include <sstream>
 #include <deque>
+#include <iomanip>
 //#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
@@ -597,7 +597,7 @@ public:
         double tlfactor, tlrescale, tlreorder, tlreassamble;
 		ttotal = Timer();
 
-		(*Alink).Save("M.mtx");
+		//(*Alink).Save("M.mtx");
 		
 		//calculate number of nonzeros
 		nzA = 0;
@@ -1680,7 +1680,7 @@ public:
 							if( i != k ) //out of diagonal
 							{
 								u = C_Entries[r] + temp[k] - temp[i];
-								if( isnan(u) || u != u ) std::cout << __FILE__ << ":" << __LINE__ << " u is " << u << std::endl;
+								//if( isnan(u) || u != u ) std::cout << __FILE__ << ":" << __LINE__ << " u is " << u << std::endl;
 								DL[k] = std::min(DL[k],u);// update Y1
 								DR[i] = std::min(DR[i],u);// update Y2
 							}

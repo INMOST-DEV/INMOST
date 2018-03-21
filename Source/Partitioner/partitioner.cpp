@@ -8,6 +8,7 @@
 #include <zoltan.h>
 #endif
 #if defined(USE_PARTITIONER_PARMETIS)
+#define METIS_EXPORT
 #include <metis.h>
 #include <parmetis.h>
 #endif

@@ -1,119 +1,23 @@
 
 #ifndef INMOST_AUTODIFF_H_INCLUDED
 #define INMOST_AUTODIFF_H_INCLUDED
+
 #include "inmost_common.h"
 #include "inmost_mesh.h"
-#include "inmost_solver.h"
-#include "inmost_variable.h"
 
-#if defined(USE_AUTODIFF)
-#include <math.h>
+#if defined(USE_AUTODIFF) && defined(USE_MESH)
 
 namespace INMOST
 {
 	class Automatizator; //forward declaration
-
-#if defined(USE_OMP)
-#define OMP_THREAD omp_get_thread_num()
-#define MAX_THREADS omp_get_max_threads()
-#else //USE_OMP
-#define OMP_THREAD 0
-#define MAX_THREADS 1
-#endif //USE_OMP
-
-#if defined(USE_SOLVER)
-	/// The Residual class provides a representation for array of residuals of nonlinear equations.
-	/// By working with the residual class you automatically assemble right hand side and
-	/// the jacobian of a nonlinear system of equation.
-	/// Jacobian matrix has a sparse representation.
-	/// \todo
-	///  1. Extend for hessian calculation.
-	class Residual
-	{
-		Sparse::HessianMatrix hessian; ///< Hessian matrix
-		Sparse::Matrix jacobian; ///< Jacobian matrix.
-		Sparse::Vector residual; ///< Right hand side vector.
-		Sparse::LockService locks; ///< Array of locks for openmp shared access.
-	public:
-		/// Constructor
-		/// @param name Name for the matrix and right hand side. Can be used to set options for linear solver.
-		/// @param start First index of the equation in the local partition. Use Automatizator::GetFirstIndex.
-		/// @param end Last index of the equation in the local partition. Use Automatizator::GetLastIndex.
-		/// @param _comm MPI Communicator.
-		Residual(std::string name = "", INMOST_DATA_ENUM_TYPE start = 0, INMOST_DATA_ENUM_TYPE end = 0, INMOST_MPI_Comm _comm = INMOST_MPI_COMM_WORLD);
-		/// Copy constructor. 
-		/// \warning May be expensive if matrices are large.
-		Residual(const Residual & other);
-		/// Assignment operator.
-		/// \warning May be expensive if matrices are large.
-		Residual & operator =(Residual const & other);
-		/// Retrive the first index of the equations in the local partition.
-		INMOST_DATA_ENUM_TYPE GetFirstIndex() const {return residual.GetFirstIndex();}
-		/// Retrive the last index of the equations in the local partition.
-		INMOST_DATA_ENUM_TYPE GetLastIndex() const {return residual.GetLastIndex();}
-		/// Retrive the first and the last indices of the equations in the local partition
-		/// @param start The first index of the equations will be recorded here.
-		/// @param end The last index of the equations will be recorded here.
-		void GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const;
-		/// Assign the new first and last indices of the equations in the local partition.
-		/// @param start The new first index of the equations.
-		/// @param end The new last index of the equations.
-		void SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end);
-		/// Retrive a residual value and a jacobian row corresponding to certain equation.
-		/// @param row Equation number.
-		/// @return A structure that can be used in or assigned an automatic differentiation expression.
-		__INLINE multivar_expression_reference operator [](INMOST_DATA_ENUM_TYPE row)
-		{return multivar_expression_reference(residual[row],&jacobian[row]);}
-		/// Retrive a vector of entries in residual, corresponding to a set of equations.
-		/// @param rows A row-vector of equation numbers.
-		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
-		Matrix<multivar_expression_reference> operator [](const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows);
-		/// Retrive hessian matrix. Use in nonlinear solver.
-		Sparse::HessianMatrix & GetHessian() {return hessian;}
-		/// Retrive hessian matrix without right of modificaiton.
-		const Sparse::HessianMatrix & GetHessian() const {return hessian;}
-		/// Retrive jacobian matrix. Use in Sparse::Solver::Solve function.
-		Sparse::Matrix & GetJacobian() {return jacobian;}
-		/// Retrive jacobian matrix without right of modificaiton.
-		const Sparse::Matrix & GetJacobian() const {return jacobian;}
-		/// Retrive right hand side vector. Use in Sparse::Solver::Solve function.
-		Sparse::Vector & GetResidual() {return residual;}
-		/// Retrive right hand side vector without right of modification.
-		const Sparse::Vector & GetResidual() const {return residual;}
-		/// Zero out right hand side vector.
-		void ClearResidual();
-		/// Remove all entries in jacobian matrix.
-		void ClearJacobian();
-		/// Remove all entries in hessian matrix.
-		void ClearHessian();
-		/// Zero out right hand side vector and remove all entries in jacobian matrix.
-		void Clear();
-		/// Compute the second norm of the right hand side vector over all of the processors.
-		INMOST_DATA_REAL_TYPE Norm();
-		/// Normalize jacobian rows to unit p-norms and scale right hand side accordingly.
-		/// Use ENUMUNDEF as p to scale to infinite-norm.
-		void Rescale(INMOST_DATA_ENUM_TYPE p = 2);
-		/// Initialize openmp locks.
-		void InitLocks() {locks.SetInterval(GetFirstIndex(),GetLastIndex());}
-		/// Lock an equation to avoid simultaneous shared access.
-		/// @param pos Equation number.
-		__INLINE void Lock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) locks.Lock(pos);}
-		/// UnLock an equation to allow simultaneous shared access.
-		/// @param pos Equation number.
-		__INLINE void UnLock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) locks.UnLock(pos);}
-		/// Try to lock the equation.
-		/// @param pos Equation number.
-		/// @return True if equation was locked.
-		__INLINE bool TestLock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) return locks.TestLock(pos); return false;}
-	};
-#endif //USE_SOLVER
 	
-#if defined(USE_MESH)
 	/// This class is used to organize unknowns in abstract way,
 	/// it should be registered with and managed by class Automatizator.
 	/// \todo
 	/// 1. Is there a need for layout on how matrices are returned?
 	/// 2. Is there a need for layout on how unknowns and equations are arrenged?
+	/// 3. Function for update of variables.
+	/// 4. Function for synchronization of variables.
 	class AbstractEntry
 	{
 		INMOST_DATA_ENUM_TYPE              reg_index;    ///< Index of block registry with Automatizator.
@@ -121,7 +25,8 @@ namespace INMOST
 		MarkerType                         mask;         ///< Allows to enable or disable the entire block.
 		ElementType                        etype;        ///< Type of elements on which unknowns are defined.
 	public:
-		AbstractEntry(ElementType etype = NONE, MarkerType mask = 0) : reg_index(ENUMUNDEF), offset_tag(Tag()), mask(mask), etype(etype) {}
+		AbstractEntry(ElementType etype = NONE, MarkerType mask = 0)
+		: reg_index(ENUMUNDEF), offset_tag(Tag()), mask(mask), etype(etype) {}
 		/// Retrive mask of the block.
 		MarkerType GetMask() const {return mask;}
 		/// Set mask for the block.
@@ -135,7 +40,7 @@ namespace INMOST
 		/// Retrive tag that stores enumeration offset on each element.
 		void SetOffsetTag(TagInteger tag) {offset_tag = tag;}
 		/// Check that the block is valid on given element.
-		bool isValid(const Storage & e) const {return (e.GetElementType() & etype) && (mask == 0 || e->GetMarker(mask));}
+		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && (e.GetElementType() & etype) && (mask == 0 || e->GetMarker(mask));}
 		/// Return value in vector of unknowns of the block at certain position.
 		/// @param pos Position for which to extract the value, should be no larger the MatrixSize.
 		virtual INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
@@ -153,6 +58,8 @@ namespace INMOST
 		virtual rMatrix Value(const Storage & e) const = 0;
 		/// Return vector filled with indices of unknowns of the block.
 		virtual iMatrix Index(const Storage & e) const = 0;
+		/// Return vector filled with unknowns of the block with their derivatives.
+		virtual uMatrix Unknown(const Storage & e) const = 0;
 		/// Return vector filled with unknowns of the block with their derivatives.
 		virtual uMatrix operator [](const Storage & e) const = 0;
 		/// The intended size of the matrix for this entry.
@@ -175,10 +82,14 @@ namespace INMOST
 		virtual AbstractEntry * Copy() const = 0;
 		/// Retrive a registration index.
 		INMOST_DATA_ENUM_TYPE GetRegistrationIndex() const {return reg_index;}
+		/// Update variables  contained in block on ghost elements of the grid.
+		/// For synchronization of data in all blocks see Automatizator::SynhronizeData.
+		void SynchronizeData();
 		/// Destructor.
 		virtual ~AbstractEntry() {}
 		
 		friend class Automatizator; //provide registration index from inside of Automatizator
+		friend class Model; //provide registration index from inside of Model
 	};
 	/// This class is used to organize unknowns into blocks,
 	/// blocks enumeration are managed by class Automatizator.
@@ -205,6 +116,8 @@ namespace INMOST
 		rMatrix Value(const Storage & e) const {rMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
 		iMatrix Index(const Storage & e) const {iMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
+		/// Return vector filled with unknowns of the block with their derivatives.
+		uMatrix Unknown(const Storage & e) const {return BlockEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
@@ -247,6 +160,8 @@ namespace INMOST
 		/// Return vector filled with indices of unknowns of the block.
 		iMatrix Index(const Storage & e) const { iMatrix ret(1,1); ret(0,0) = Index(e,0); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
+		uMatrix Unknown(const Storage & e) const {return SingleEntry::operator [](e);}
+		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const { uMatrix ret(1,1); ret(0,0) = Unknown(e,0); return ret; }
 		/// The intended size of the matrix for this entry.
 		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return 1;}
@@ -286,6 +201,8 @@ namespace INMOST
 		rMatrix Value(const Storage & e) const { rMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
 		iMatrix Index(const Storage & e) const { iMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Index(e,k); return ret; }
+		/// Return vector filled with unknowns of the block with their derivatives.
+		uMatrix Unknown(const Storage & e) const {return VectorEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const { uMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(0,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
@@ -341,6 +258,8 @@ namespace INMOST
 		/// Return vector filled with indices of unknowns of the block.
 		iMatrix Index(const Storage & e) const {iMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
+		uMatrix Unknown(const Storage & e) const {return StatusBlockEntry::operator [](e);}
+		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
 		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return Size();}
@@ -391,6 +310,8 @@ namespace INMOST
 		rMatrix Value(const Storage & e) const;
 		/// Return vector filled with indices of unknowns of the block.
 		iMatrix Index(const Storage & e) const;
+		/// Return vector filled with unknowns of the block with their derivatives.
+		uMatrix Unknown(const Storage & e) const {return MultiEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const;
 		/// The intended size of the matrix for this entry.
@@ -474,11 +395,21 @@ namespace INMOST
 		/// \warning
 		/// 1. Have to call Automatizator::EnumerateEntries to recompute indices.
 		void UnregisterEntry(INMOST_DATA_ENUM_TYPE ind);
+		/// Swith a registered tag to be non-active, in this case it's unknowns are considered to be constant.
+		/// @param ind Integer returned from Automatizator::RegisterTag.
+		/// \warning
+		/// 1. Have to call Automatizator::EnumerateEntries to recompute indices.
+		void DeactivateEntry(INMOST_DATA_ENUM_TYPE ind);
+		/// Swith a registered tag to be active, in this case it's unknowns are considered to be variable.
+		/// @param ind Integer returned from Automatizator::RegisterTag.
+		/// \warning
+		/// 1. Have to call Automatizator::EnumerateEntries to recompute indices.
+		void ActivateEntry(INMOST_DATA_ENUM_TYPE ind);
 		/// Set index for every data entry of dynamic tag.
 		void EnumerateEntries();
 		/// Check whether the tag is still registered.
 		/// @param True if tag is still registered.
-		__INLINE bool isRegisteredEntry(INMOST_DATA_ENUM_TYPE ind) const {return act_blocks[ind];}
+		__INLINE bool isRegisteredEntry(INMOST_DATA_ENUM_TYPE ind) const {return reg_blocks[ind] != NULL;}
 		/// Get index of the unknown associated with the entry on element.
 		INMOST_DATA_ENUM_TYPE GetIndex(const Storage & e, INMOST_DATA_ENUM_TYPE reg_index, INMOST_DATA_ENUM_TYPE pos = 0) const {return GetEntry(reg_index).Index(e,pos);}
 		/// Get value of the unknown associated with the entry on element.
@@ -503,9 +434,12 @@ namespace INMOST
 		/// Lists all the indices of registered tags.
 		/// @return An array with indices corresponding to all registered tags.
 		std::vector<INMOST_DATA_ENUM_TYPE> ListRegisteredEntries() const;
+		/// Update variables  contained in all block of automatizator on ghost elements of the grid.
+		/// For synchronization of data in individual blocks see AbstractEntry::SynhronizeData.
+		void SynchronizeData();
 	};
-#endif //USE_MESH
 } //namespace INMOST
 
-#endif //USE_AUTODIFF
+#endif //USE_AUTODIFF && USE_MESH
+
 #endif //INMOST_AUTODIFF_H_INCLUDED

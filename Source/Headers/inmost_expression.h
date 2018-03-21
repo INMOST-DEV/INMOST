@@ -115,13 +115,15 @@ namespace INMOST
 		{
 			return value != value;
 		}
+		bool check_infs() const
+		{
+			return std::isinf(value);
+		}
 	};
 	
 #if defined(PACK_ARRAY)
 #pragma pack(push,r1,4)
 #endif
-	
-	
 	/// A class that represents a variable with multiple
 	/// first order variations.
 	/// Short type name is variable.
@@ -284,6 +286,13 @@ namespace INMOST
 				if( it->second != it->second ) return true;
 			return false;
 		}
+		bool check_infs() const
+		{
+			if( std::isinf(value) ) return true;
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				if( std::isinf(it->second) ) return true;
+			return false;
+		}
 		/// Write variable into array of entries.
 		/// Size of array can be determined via RecordSize.
 		/// Used internally by Mesh::GetData.
@@ -331,10 +340,10 @@ namespace INMOST
 		{
 			return 1 + v[0].first;
 		}
-		void Print() const
+		void Print(double eps = -1) const
 		{
 			std::cout << value << std::endl;
-			entries.Print();
+			entries.Print(eps);
 		}
 		void swap(multivar_expression & b)
 		{
@@ -552,14 +561,23 @@ namespace INMOST
 				if( it->second != it->second ) return true;
 			return false;
 		}
+		bool check_infs() const
+		{
+			if( std::isinf(value)) return true;
+			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				if( std::isinf(it->second) ) return true;
+			for(Sparse::HessianRow::const_iterator it = hessian_entries.Begin(); it != hessian_entries.End(); ++it)
+				if( std::isinf(it->second) ) return true;
+			return false;
+		}
 		friend class hessian_multivar_expression_reference;
 	};
-	
 #if defined(PACK_ARRAY)
 #pragma pack(pop,r1)
 #endif
 	
 	static INMOST_DATA_REAL_TYPE stub_multivar_expression_reference_value; //for default constructor in multivar_expression_reference
+
 	
 	class multivar_expression_reference : public shell_expression<multivar_expression_reference>
 	{
@@ -584,26 +602,35 @@ namespace INMOST
 		/// Retrive derivatives with multiplier into Sparse::RowMerger structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-				r[it->first] += it->second*mult;
-		}
-		/// Retrive derivatives with multiplier into Sparse::Row structure.
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
-		{
-			if( CheckCurrentAutomatizator() )
-				FromGetJacobian(*this,mult,r);
-			else
+			if( entries )
 			{
 				for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
 					r[it->first] += it->second*mult;
 			}
 		}
+		/// Retrive derivatives with multiplier into Sparse::Row structure.
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
+		{
+			if( entries )
+			{
+				if( CheckCurrentAutomatizator() )
+					FromGetJacobian(*this,mult,r);
+				else
+				{
+					for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+						r[it->first] += it->second*mult;
+				}
+			}
+		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J,INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
-			J = *entries;
-			if( !J.isSorted() ) std::sort(J.Begin(),J.End());
-			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
-			H.Clear();
+			if( entries )
+			{
+				J = *entries;
+				if( !J.isSorted() ) std::sort(J.Begin(),J.End());
+				for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
+				H.Clear();
+			}
 		}
 		__INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
@@ -722,6 +749,13 @@ namespace INMOST
 			if( value != value ) return true;
 			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
 				if( it->second != it->second ) return true;
+			return false;
+		}
+		bool check_infs() const
+		{
+			if( std::isinf(value) ) return true;
+			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+				if( std::isinf(it->second) ) return true;
 			return false;
 		}
 	};
@@ -928,6 +962,15 @@ namespace INMOST
 				if( it->second != it->second ) return true;
 			for(Sparse::HessianRow::iterator it = hentries->Begin(); it != hentries->End(); ++it)
 				if( it->second != it->second ) return true;
+			return false;
+		}
+		bool check_infs() const
+		{
+			if( std::isinf(value) ) return true;
+			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+				if( std::isinf(it->second) ) return true;
+			for(Sparse::HessianRow::iterator it = hentries->Begin(); it != hentries->End(); ++it)
+				if( std::isinf(it->second) ) return true;
 			return false;
 		}
 	};
@@ -1338,20 +1381,23 @@ namespace INMOST
         __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			arg.GetJacobian(0.5*mult/value,r);
+			if( value ) arg.GetJacobian(0.5*mult/value,r);
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
-			arg.GetJacobian(0.5*mult/value,r);
+			if( value ) arg.GetJacobian(0.5*mult/value,r);
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			//general formula:
 			// (F(G))'' = F'(G) G'' + F''(G) G'.G'
-			Sparse::HessianRow htmp;
-			arg.GetHessian(1,J,1,htmp);
-			Sparse::HessianRow::MergeJacobianHessian(-0.25/::pow(value,3.0)*multH,J,J,0.5/value*multH,htmp,H);
-			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value*multJ;
+			if( value )
+			{
+				Sparse::HessianRow htmp;
+				arg.GetHessian(1,J,1,htmp);
+				Sparse::HessianRow::MergeJacobianHessian(-0.25/::pow(value,3.0)*multH,J,J,0.5/value*multH,htmp,H);
+				for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= 0.5/value*multJ;
+			}
 			//arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
 		}
 	};
@@ -1552,8 +1598,16 @@ namespace INMOST
 		{
 			INMOST_DATA_REAL_TYPE lval = left.GetValue();
 			INMOST_DATA_REAL_TYPE rval = right.GetValue();
-			reciprocal_rval = 1.0 / rval;
-			value = lval * reciprocal_rval;
+			if( rval )
+			{
+				reciprocal_rval = 1.0 / rval;
+				value = lval * reciprocal_rval;
+			}
+			else
+			{
+				reciprocal_rval = 0;
+				value = 0;
+			}
 		}
 		division_expression(const division_expression & other) : left(other.left), right(other.right), value(other.value), reciprocal_rval(other.reciprocal_rval) {}
         division_expression(const division_expression & other, const A & pleft, const B & pright) :
@@ -1925,50 +1979,7 @@ namespace INMOST
 		}
 	};
 	
-	template<class A>
-	class stencil_expression : public shell_expression<stencil_expression<A> >
-	{
-		dynarray< const_multiplication_expression<A>, 64 > arg;
-		INMOST_DATA_REAL_TYPE value;
-	public:
-		stencil_expression(const dynarray< const_multiplication_expression<A>, 64 > & parg) : arg(parg)
-		{
-			value = 0.0;
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				value += it->GetValue();
-		}
-		stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
-        stencil_expression(const stencil_expression & other, dynarray<const_multiplication_expression<A>,64> & parg) :
-                arg(parg), value(other.value) {}
-		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-		{
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetJacobian(mult,r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
-		{
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetJacobian(mult,r);
-		}
-		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
-		{
-			Sparse::Row tmpJ, curJ;
-			Sparse::HessianRow tmpH, curH;
-			for(typename dynarray< const_multiplication_expression<A>, 64 >::iterator it = arg.begin(); it != arg.end(); ++it)
-			{
-				curJ.Clear();
-				curH.Clear();
-				it->GetHessian(multJ,curJ,multH,curH);
-				Sparse::Row::MergeSortedRows(1.0,curJ,1.0,J,tmpJ);
-				Sparse::HessianRow::MergeSortedRows(1.0,curH,1.0,H,tmpH);
-				J.Swap(tmpJ);
-				H.Swap(tmpH);
-			}
-		}
-	};
-	
-	
+		
 	template<class A>
 	class function_expression : public shell_expression< function_expression<A> > {
         const A &arg;
@@ -2026,7 +2037,7 @@ namespace INMOST
 				mid = (l + r) / 2;
 				if (args[mid] > arg) r = mid - 1;
 				else if (args[mid] < arg) l = mid + 1;
-				else return mid;
+				else break;
 			}
 			mid = (l + r) / 2;
 			if (mid > static_cast<int>(size - 2)) mid = static_cast<int>(size - 2);
@@ -2120,6 +2131,14 @@ __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
 __INLINE bool check_nans(INMOST::var_expression const & e) {return e.check_nans();}
 __INLINE bool check_nans(INMOST::multivar_expression const & e) {return e.check_nans();}
 __INLINE bool check_nans(INMOST::multivar_expression_reference const & e) {return e.check_nans();}
+__INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return std::isinf(val);}
+__INLINE bool check_infs(INMOST::var_expression const & e) {return e.check_infs();}
+__INLINE bool check_infs(INMOST::multivar_expression const & e) {return e.check_infs();}
+__INLINE bool check_infs(INMOST::multivar_expression_reference const & e) {return e.check_infs();}
+__INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val) || check_infs(val);}
+__INLINE bool check_nans_infs(INMOST::var_expression const & e) {return e.check_nans() || e.check_infs();}
+__INLINE bool check_nans_infs(INMOST::multivar_expression const & e) {return e.check_nans() || e.check_infs();}
+__INLINE bool check_nans_infs(INMOST::multivar_expression_reference const & e) {return e.check_nans() || e.check_infs();}
 
 template<class A, class B, class C> __INLINE   INMOST::condition_expression<A,B,C> condition(INMOST::shell_expression<A> const & control, INMOST::shell_expression<B> const & if_ge_zero, INMOST::shell_expression<C> const & if_lt_zero) { return INMOST::condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
 __INLINE                 INMOST_DATA_REAL_TYPE condition(INMOST_DATA_REAL_TYPE control, INMOST_DATA_REAL_TYPE if_ge_zero, INMOST_DATA_REAL_TYPE if_lt_zero) {return control >= 0.0 ? if_ge_zero : if_lt_zero;}

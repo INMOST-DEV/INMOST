@@ -265,6 +265,9 @@ endif(COMPILE_TESTS)
 
 set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
                            Source/Headers/inmost_autodiff.h
+                           Source/Headers/inmost_residual.h
+                           Source/Headers/inmost_model.h
+                           Source/Headers/inmost_operator.h
                            Source/Headers/inmost_common.h
                            Source/Headers/inmost_data.h
                            Source/Headers/inmost_dense.h
@@ -276,6 +279,7 @@ set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
                            Source/Headers/inmost_sparse.h
                            Source/Headers/inmost_xml.h
                            Source/Headers/inmost_variable.h
+                           Source/Headers/inmost_block_variable.h
                            Source/Headers/container.hpp)
 
 
@@ -295,6 +299,9 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_BINARY_DIR}/inmost_options.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_autodiff.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_residual.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_operator.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_model.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_common.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_data.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_dense.h"
@@ -305,6 +312,7 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_solver.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_sparse.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_variable.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_block_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp")
 

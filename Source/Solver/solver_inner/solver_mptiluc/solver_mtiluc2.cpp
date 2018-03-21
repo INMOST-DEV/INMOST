@@ -1,10 +1,11 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include <iomanip>
+
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #include "solver_mtiluc2.hpp"
 #include <sstream>
 #include <deque>
+#include <iomanip>
 //#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
@@ -3348,8 +3349,16 @@ swap_algorithm:
 			level_interval[k].last = level_interval[k].first + level_size[k];
 		}
 		*/
-    condestL = NuL;
-    condestU = NuU;
+		condestL = NuL;
+		condestU = NuU;
+		//for partition of unity
+		/*
+		info->PrepareVector(div);
+		std::fill(div.Begin(),div.End(),0);
+		for(k = mobeg; k < moend; k++) div[k] = 1.0;
+		info->Accumulate(div);
+		for(k = mobeg; k < moend; k++) div[k] = 1.0/div[k];
+		 */
 		return true;
 	}
 	bool MTILUC_preconditioner::Finalize()
@@ -3385,11 +3394,12 @@ swap_algorithm:
 	{
 		assert(&input != &output);
 		//
+		INMOST_DATA_ENUM_TYPE mobeg, moend, k;
 #if defined(USE_OMP)
 #pragma omp single
 #endif
 		{
-			INMOST_DATA_ENUM_TYPE k, mobeg, moend, vbeg, vend;
+			INMOST_DATA_ENUM_TYPE vbeg, vend;
 			info->GetOverlapRegion(info->GetRank(), mobeg, moend);
 			info->GetVectorRegion(vbeg, vend);
 		
@@ -3442,6 +3452,14 @@ swap_algorithm:
 			for (k = moend; k < vend; ++k) output[k] = 0;
 		}
 		info->Accumulate(output);
+		/*
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+		{
+			for (k = mobeg; k < moend; ++k) output[k] *= div[k];
+		}
+		 */
 		return true;
 	}
 	bool MTILUC_preconditioner::ReplaceMAT(Sparse::Matrix & A){ if (isInitialized()) Finalize(); Alink = &A; return true; }

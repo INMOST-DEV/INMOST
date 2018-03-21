@@ -27,6 +27,15 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
+	//for unknown
+	//For INMOST_DATA_INTEGER_TYPE
+	template<> struct Promote<unknown, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
+	template<> struct Promote<unknown, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
+	template<> struct Promote<unknown, unknown>  {typedef variable type;};
+	template<> struct Promote<unknown, variable>  {typedef variable type;};
+	template<> struct Promote<unknown, multivar_expression_reference>  {typedef variable type;};
+	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
+	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
 	//For multivar_expression_reference
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
@@ -61,14 +70,7 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #endif
 	
-	template<typename Var>
-	class SubMatrix;
 	
-	template<typename Var, typename Storage = array<Var> >
-	class Matrix;
-	
-	template<typename Var, typename Storage = array<Var> >
-	class SymmetricMatrix;
 	
 	/// Abstract class for a matrix,
 	/// used to abstract away all the data storage and access
@@ -169,11 +171,25 @@ namespace INMOST
 		virtual void Resize(enumerator rows, enumerator cols) = 0;
 		/// Check all matrix entries for nans.
 		/// Also checks derivatives for matrices of variables.
-		bool CheckNans()
+		bool CheckNans() const
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					if( check_nans((*this)(i,j)) ) return true;
+			return false;
+		}
+		bool CheckInfs() const
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					if( check_infs((*this)(i,j)) ) return true;
+			return false;
+		}
+		bool CheckNansInfs() const
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					if( check_nans_infs((*this)(i,j)) ) return true;
 			return false;
 		}
 		/// Singular value decomposition.
@@ -186,7 +202,7 @@ namespace INMOST
 		/// @param order_singular_values
 		/// \warning Somehow result differ in auto-differential mode.
 		/// \todo Test implementation for auto-differentiation.
-		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true) const
+		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true, bool nonnegative = true) const
 		{
 			int flag, i, its, j, jj, k, l, nm;
 			int n = Rows();
@@ -372,7 +388,7 @@ namespace INMOST
 					z = Sigma(k,k);
 					if (l == k)
 					{// convergence
-						if (z < 0.0)
+						if (z < 0.0 && nonnegative)
 						{// make singular value nonnegative
 							Sigma(k,k) = -z;
 							for (j = 0; j < (int)n; j++) V(j,k) = -V(j,k);
@@ -1514,7 +1530,8 @@ namespace INMOST
 		/// @return Returns a unit matrix.
 		static Matrix Unit(enumerator pn, const Var & c = 1.0)
 		{
-			Matrix ret(pn,pn,0.0);
+			Matrix ret(pn,pn);
+			ret.Zero();
 			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
 			return ret;
 		}
@@ -2362,13 +2379,30 @@ namespace INMOST
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
+	/// shortcut for matrix of integer values in existing array.
+	typedef Matrix<INMOST_DATA_INTEGER_TYPE,shell<INMOST_DATA_INTEGER_TYPE> > iaMatrix;
+	/// shortcut for matrix of real values in existing array.
+	typedef Matrix<INMOST_DATA_REAL_TYPE,shell<INMOST_DATA_REAL_TYPE> > raMatrix;
+	/// return a matrix
+	static iaMatrix iaMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaMatrix::enumerator n, iaMatrix::enumerator m) {return iaMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*m),n,m);}
+	static raMatrix raMatrixMake(INMOST_DATA_REAL_TYPE * p, raMatrix::enumerator n, raMatrix::enumerator m) {return raMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*m),n,m);}
 #if defined(USE_AUTODIFF)
-/// shortcut for matrix of variables with single unit entry of first order derivative.
+	/// shortcut for matrix of variables with single unit entry of first order derivative.
 	typedef Matrix<unknown> uMatrix;
 	/// shortcut for matrix of variables with first order derivatives.
 	typedef Matrix<variable> vMatrix;
 	//< shortcut for matrix of variables with first and second order derivatives.
 	typedef Matrix<hessian_variable> hMatrix;
+	/// shortcut for matrix of unknowns in existing array.
+	typedef Matrix<unknown,shell<unknown> > uaMatrix;
+	/// shortcut for matrix of variables in existing array.
+	typedef Matrix<variable,shell<variable> > vaMatrix;
+	/// shortcut for matrix of variables in existing array.
+	typedef Matrix<hessian_variable,shell<hessian_variable> > haMatrix;
+	
+	static uaMatrix uaMatrixMake(unknown * p, uaMatrix::enumerator n, uaMatrix::enumerator m) {return uaMatrix(shell<unknown>(p,n*m),n,m);}
+	static vaMatrix vaMatrixMake(variable * p, vaMatrix::enumerator n, vaMatrix::enumerator m) {return vaMatrix(shell<variable>(p,n*m),n,m);}
+	static haMatrix vaMatrixMake(hessian_variable * p, haMatrix::enumerator n, haMatrix::enumerator m) {return haMatrix(shell<hessian_variable>(p,n*m),n,m);}
 #endif
 }
 /// Multiplication of matrix by constant from left.
@@ -2379,6 +2413,14 @@ template<typename typeB>
 INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 #if defined(USE_AUTODIFF)
+/// Multiplication of matrix by a unknown from left.
+/// Takes account for derivatives of variable.
+/// @param coef Variable coefficient multiplying matrix.
+/// @param other Matrix to be multiplied.
+/// @return Matrix, each entry multiplied by a variable.
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type> operator *(const INMOST::unknown & coef, const INMOST::AbstractMatrix<typeB> & other)
+{return other*coef;}
 /// Multiplication of matrix by a variable from left.
 /// Takes account for derivatives of variable.
 /// @param coef Variable coefficient multiplying matrix.
@@ -2398,5 +2440,11 @@ INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> o
 {return other*coef;}
 #endif
 
+template<typename T>
+__INLINE bool check_nans(const INMOST::AbstractMatrix<T> & A) {return A.CheckNans();}
+template<typename T>
+__INLINE bool check_infs(const INMOST::AbstractMatrix<T> & A) {return A.CheckInfs();}
+template<typename T>
+__INLINE bool check_nans_infs(const INMOST::AbstractMatrix<T> & A) {return A.CheckNansInfs();}
 
 #endif //INMOST_DENSE_INCLUDED

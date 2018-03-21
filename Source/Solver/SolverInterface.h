@@ -1,9 +1,10 @@
 #ifndef INMOST_SOLVER_INTERFACE_H
 #define INMOST_SOLVER_INTERFACE_H
 
+#include "inmost_sparse.h"
 #include <string>
 #include <sstream>
-#include "inmost_sparse.h"
+
 
 #define SILENCE_SET_PARAMETER
 #if defined(USE_SOLVER)

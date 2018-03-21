@@ -2149,17 +2149,17 @@ namespace INMOST
         (void)h; (void)tag; (void)expected; //due to __INLINE these variables considered by compilers as unreferenced
 	}
 	
-	void Mesh::ClearMarkerSpace(HandleType h) 
+	void Mesh::ClearMarkerSpace(HandleType h)
 	{
 		Storage::bulk * marker_space = static_cast<Storage::bulk *>(MGetDenseLink(h,MarkersTag()));
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k) marker_space[k] = 0;
 	}
-	void Mesh::GetMarkerSpace(HandleType h, Storage::bulk copy[MarkerFields]) const 
+	void Mesh::GetMarkerSpace(HandleType h, Storage::bulk copy[MarkerFields]) const
 	{
 		const Storage::bulk * marker_space = static_cast<const Storage::bulk *>(MGetDenseLink(h,MarkersTag()));
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k) copy[k] = marker_space[k];
 	}
-	void Mesh::SetMarkerSpace(HandleType h, Storage::bulk source[MarkerFields]) 
+	void Mesh::SetMarkerSpace(HandleType h, Storage::bulk source[MarkerFields])
 	{
 		Storage::bulk * marker_space = static_cast<Storage::bulk *>(MGetDenseLink(h,MarkersTag()));
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k) marker_space[k] = source[k];
@@ -2178,65 +2178,72 @@ namespace INMOST
 				case DATA_INTEGER:  return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_integer_array  *>(adata)->size());
 				case DATA_BULK:     return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_bulk_array     *>(adata)->size());
 				case DATA_REFERENCE:return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_reference_array*>(adata)->size());
-        case DATA_REMOTE_REFERENCE:
-                            return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_remote_reference_array*>(adata)->size());
+				case DATA_REMOTE_REFERENCE:
+					return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_remote_reference_array*>(adata)->size());
 #if defined(USE_AUTODIFF)
-        case DATA_VARIABLE: return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_variable_array *>(adata)->size());
+				case DATA_VARIABLE: return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_variable_array *>(adata)->size());
 #endif
 			}
 			throw BadTag;
 		}
 		return tag.GetSize();
 	}
-  INMOST_DATA_ENUM_TYPE Mesh::GetDataCapacity(const INMOST_DATA_BULK_TYPE * adata, INMOST_DATA_ENUM_TYPE size, const Tag & tag) const
-  {
-    assert( tag.GetMeshLink() == this );
-#if defined(USE_AUTODIFF)
-    if( tag.GetDataType() == DATA_VARIABLE )
-    {
-      INMOST_DATA_ENUM_TYPE ret = 0;
-      const Sparse::Row::entry * arr = static_cast<const Sparse::Row::entry *>(static_cast<const void *>(adata));
-      for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
-        ret += variable::RetriveSize(arr+ret);
-      return ret*sizeof(Sparse::Row::entry);
-    }
-    else
-#endif
-      return size*tag.GetBytesSize();
-    assert(false);
-    return 0;
-  }
-  INMOST_DATA_ENUM_TYPE Mesh::GetDataCapacity(HandleType h,const Tag & tag) const
+	INMOST_DATA_ENUM_TYPE Mesh::GetDataCapacity(const INMOST_DATA_BULK_TYPE * adata, INMOST_DATA_ENUM_TYPE size, const Tag & tag) const
 	{
 		assert( tag.GetMeshLink() == this );
-		if( tag.GetSize() == ENUMUNDEF )
+#if defined(USE_AUTODIFF)
+		if( tag.GetDataType() == DATA_VARIABLE )
+		{
+			INMOST_DATA_ENUM_TYPE ret = 0;
+			const Sparse::Row::entry * arr = static_cast<const Sparse::Row::entry *>(static_cast<const void *>(adata));
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
+				ret += variable::RetriveSize(arr+ret);
+			return ret*sizeof(Sparse::Row::entry);
+		}
+		else
+#endif
+			return size*tag.GetBytesSize();
+		assert(false);
+		return 0;
+	}
+	INMOST_DATA_ENUM_TYPE Mesh::GetDataCapacity(HandleType h,const Tag & tag) const
+	{
+		assert( tag.GetMeshLink() == this );
+		INMOST_DATA_ENUM_TYPE s = tag.GetSize();
+		if( s == ENUMUNDEF )
 		{
 			const void * adata = MGetLink(h,tag);
 			assert( adata != NULL );
 			switch(tag.GetDataType())
 			{
-        case DATA_REAL:     return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_real_array     *>(adata)->size())*tag.GetBytesSize();
+				case DATA_REAL:     return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_real_array     *>(adata)->size())*tag.GetBytesSize();
 				case DATA_INTEGER:  return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_integer_array  *>(adata)->size())*tag.GetBytesSize();
 				case DATA_BULK:     return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_bulk_array     *>(adata)->size())*tag.GetBytesSize();
 				case DATA_REFERENCE:return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_reference_array*>(adata)->size())*tag.GetBytesSize();
-        case DATA_REMOTE_REFERENCE:
-                            return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_remote_reference_array*>(adata)->size())*tag.GetBytesSize();
+				case DATA_REMOTE_REFERENCE:
+					return static_cast<INMOST_DATA_ENUM_TYPE>(static_cast<const inner_remote_reference_array*>(adata)->size())*tag.GetBytesSize();
 #if defined(USE_AUTODIFF)
-        case DATA_VARIABLE: 
-          {
-            INMOST_DATA_ENUM_TYPE ret = 0;
-            const inner_variable_array * arr = static_cast<const inner_variable_array *>(adata);
-            for(inner_variable_array::size_type k = 0; k < arr->size(); ++k)
-              ret += (*arr)[k].RecordSize();//(*arr)[k].GetRow().Size();
-            return ret*sizeof(Sparse::Row::entry_s);
-          }
+				case DATA_VARIABLE:
+				{
+					INMOST_DATA_ENUM_TYPE ret = 0;
+					const inner_variable_array * arr = static_cast<const inner_variable_array *>(adata);
+					for(inner_variable_array::size_type k = 0; k < arr->size(); ++k)
+						ret += (*arr)[k].RecordSize();//(*arr)[k].GetRow().Size();
+					return ret*sizeof(Sparse::Row::entry_s);
+				}
 #endif
 			}
 			throw BadTag;
 		}
 #if defined(USE_AUTODIFF)
-    if( tag.GetDataType() == DATA_VARIABLE )
-      return static_cast<const var *>(MGetLink(h,tag))->RecordSize()*sizeof(Sparse::Row::entry_s);
+		if( tag.GetDataType() == DATA_VARIABLE )
+		{
+			INMOST_DATA_ENUM_TYPE ret = 0;
+			const var * v = static_cast<const var *>(MGetLink(h,tag));
+			for(INMOST_DATA_ENUM_TYPE r = 0; r < s; ++r)
+				ret += v[r].RecordSize()*sizeof(Sparse::Row::entry_s);
+			return ret;
+		}
 #endif
 		return tag.GetSize()*tag.GetBytesSize();
 	}
@@ -2253,10 +2260,10 @@ namespace INMOST
 				case DATA_INTEGER:  static_cast<inner_integer_array   *>(adata)->resize(new_size); break;
 				case DATA_BULK:     static_cast<inner_bulk_array      *>(adata)->resize(new_size); break;
 				case DATA_REFERENCE:static_cast<inner_reference_array *>(adata)->resize(new_size); break;
-        case DATA_REMOTE_REFERENCE:
+				case DATA_REMOTE_REFERENCE:
                             static_cast<inner_remote_reference_array *>(adata)->resize(new_size); break;
 #if defined(USE_AUTODIFF)
-        case DATA_VARIABLE: static_cast<inner_variable_array  *>(adata)->resize(new_size); break;
+				case DATA_VARIABLE: static_cast<inner_variable_array  *>(adata)->resize(new_size); break;
 #endif
 			}
 			return;
@@ -2280,30 +2287,30 @@ namespace INMOST
 				case DATA_INTEGER:  memcpy(data_out,&(*static_cast<const inner_integer_array   *>(adata))[shift],bytes*size); break;
 				case DATA_BULK:     memcpy(data_out,&(*static_cast<const inner_bulk_array      *>(adata))[shift],bytes*size); break;
 				case DATA_REFERENCE:memcpy(data_out,&(*static_cast<const inner_reference_array *>(adata))[shift],bytes*size); break;
-        case DATA_REMOTE_REFERENCE:
+				case DATA_REMOTE_REFERENCE:
                             memcpy(data_out,&(*static_cast<const inner_remote_reference_array *>(adata))[shift],bytes*size); break;
 #if defined(USE_AUTODIFF)
-        case DATA_VARIABLE:
-          {
-            const inner_variable_array * arr = static_cast<const inner_variable_array      *>(adata);
-            Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
-            int k = 0;
-            for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-              k += (*arr)[r+shift].Record(data+k);
-          }
-          break;
+				case DATA_VARIABLE:
+				{
+					const inner_variable_array * arr = static_cast<const inner_variable_array      *>(adata);
+					Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
+					int k = 0;
+					for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
+						k += (*arr)[r+shift].Record(data+k);
+				}
+					break;
 #endif
 			}
 		}
 #if defined(USE_AUTODIFF)
-    else if( tag.GetDataType() == DATA_VARIABLE )
-    {
-      Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
-      const var * v = static_cast<const var *>(MGetLink(h,tag));
-      int k = 0;
-      for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-        k += v[r+shift].Record(data+k);
-    }
+		else if( tag.GetDataType() == DATA_VARIABLE )
+		{
+			Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
+			const var * v = static_cast<const var *>(MGetLink(h,tag));
+			int k = 0;
+			for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
+				k += v[r+shift].Record(data+k);
+		}
 #endif
 		else memcpy(data_out,static_cast<const INMOST_DATA_BULK_TYPE *>(adata)+shift*bytes,size*bytes);
 		return;
@@ -2323,30 +2330,30 @@ namespace INMOST
 				case DATA_INTEGER:  memcpy(&(*static_cast<inner_integer_array  *>(adata))[shift],data_in,bytes*size); break;
 				case DATA_BULK:     memcpy(&(*static_cast<inner_bulk_array     *>(adata))[shift],data_in,bytes*size); break;
 				case DATA_REFERENCE:memcpy(&(*static_cast<inner_reference_array*>(adata))[shift],data_in,bytes*size); break;
-        case DATA_REMOTE_REFERENCE:
-                            memcpy(&(*static_cast<inner_reference_array*>(adata))[shift],data_in,bytes*size); break;
+				case DATA_REMOTE_REFERENCE:
+					memcpy(&(*static_cast<inner_reference_array*>(adata))[shift],data_in,bytes*size); break;
 #if defined(USE_AUTODIFF)
-        case DATA_VARIABLE:
-          {
-            inner_variable_array * arr = static_cast<inner_variable_array*>(adata);
-            const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
-            int k = 0;
-            for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-              k += (*arr)[r+shift].Retrive(data+k);
-          }
-          break;
+				case DATA_VARIABLE:
+				{
+					inner_variable_array * arr = static_cast<inner_variable_array*>(adata);
+					const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
+					int k = 0;
+					for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
+						k += (*arr)[r+shift].Retrive(data+k);
+				}
+					break;
 #endif
 			}
 		}
 #if defined(USE_AUTODIFF)
-    else if( tag.GetDataType() == DATA_VARIABLE )
-    {
-      const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
-      var * v = static_cast<var *>(MGetLink(h,tag));
-      int k = 0;
-      for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-        k += v[r+shift].Retrive(data+k);
-    }
+		else if( tag.GetDataType() == DATA_VARIABLE )
+		{
+			const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
+			var * v = static_cast<var *>(MGetLink(h,tag));
+			int k = 0;
+			for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
+				k += v[r+shift].Retrive(data+k);
+		}
 #endif
 		else memcpy(static_cast<INMOST_DATA_BULK_TYPE *>(adata)+shift*bytes,data_in,size*bytes);
 	}

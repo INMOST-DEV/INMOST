@@ -23,7 +23,7 @@ private:
     Sparse::Matrix *Alink;
     Solver::OrderInfo *info;
     //Sparse::Matrix L,U;
-    //Sparse::Vector div;
+    Sparse::Vector div;
     std::vector<INMOST_DATA_REAL_TYPE> luv;
     std::vector<INMOST_DATA_ENUM_TYPE> lui;
     interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ilu, iu;
@@ -444,13 +444,13 @@ public:
         //std::cout << __FUNCTION__ << " done" << std::endl;
 #endif
 
-        /*
-        info.PrepareVector(div);
+		/*
+        info->PrepareVector(div);
         std::fill(div.Begin(),div.End(),0);
         for(k = mobeg; k < moend; k++) div[k] = 1.0;
-        info.Accumulate(div);
+        info->Accumulate(div);
         for(k = mobeg; k < moend; k++) div[k] = 1.0/div[k];
-        */
+		*/
         init = true;
         return true;
     }
@@ -505,11 +505,12 @@ public:
     bool Solve(Sparse::Vector &input, Sparse::Vector &output)
     {
         assert(isInitialized());
+		INMOST_DATA_ENUM_TYPE mobeg, moend, k;
 #if defined(USE_OMP)
 #pragma omp single
 #endif
         {
-            INMOST_DATA_ENUM_TYPE mobeg, moend, r, k, vbeg, vend; //, end;
+            INMOST_DATA_ENUM_TYPE r, vbeg, vend; //, end;
             info->GetOverlapRegion(info->GetRank(), mobeg, moend);
             info->GetVectorRegion(vbeg, vend);
             for (k = vbeg; k < mobeg; k++) output[k] = 0; //Restrict additive schwartz (maybe do it outside?)
@@ -528,9 +529,17 @@ public:
                 output[k - 1] *= luv[iu[k - 1]];
             }
         }
-        //May assemble partition of unity instead of restriction before accumulation
-        //assembly should be done instead of initialization
-        info->Accumulate(output);
+		//May assemble partition of unity instead of restriction before accumulation
+		//assembly should be done instead of initialization
+		info->Accumulate(output);
+		/*
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+		{
+			for (INMOST_DATA_ENUM_TYPE k = mobeg; k < moend; k++) output[k] *= div[k];
+		}
+		 */
         return true;
     }
 

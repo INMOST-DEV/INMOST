@@ -1226,6 +1226,9 @@ namespace INMOST
 	
 	ElementArray<Face> Face::SplitFace(Face face, const ElementArray<Edge> & edges, MarkerType del_protect)
 	{
+		//bool did_restart = false;
+		//bool report = false;
+		//restart_algorithm:
 		Mesh * m = face->GetMeshLink();
 		ElementArray<Edge> loop(m);
 		ElementArray<Face> ret(m);
@@ -1233,10 +1236,20 @@ namespace INMOST
 		if( edges.empty() || face->GetMarker(del_protect) ) return ret;
 		MarkerType hm = m->HideMarker();
 		dynarray<HandleType,2> cells;
+		
+		//if( report ) std::cout << "Marker for hidden elements: " << hm << std::endl;
 
 		adj_type & hc = m->HighConn(face->GetHandle());
-		for(adj_type::size_type it = 0; it < hc.size(); ++it) if( !m->GetMarker(hc[it],hm) )
-			cells.push_back(hc[it]);
+		//if( report ) std::cout << "Adjacent cells for face: ";
+		for(adj_type::size_type it = 0; it < hc.size(); ++it) 
+		{
+			if( !m->GetMarker(hc[it],hm) )
+			{
+				cells.push_back(hc[it]);
+				//if( report ) std::cout << GetHandleID(hc[it]) << " ";
+			}
+		}
+		//if( report ) std::cout << std::endl;
 
 		//assert(cells.size() == 2);
 
@@ -1245,15 +1258,24 @@ namespace INMOST
 
 		int ninner = 0;
 		adj_type & lc = m->LowConn(face->GetHandle());
+		//if( report ) std::cout << "Edges for face: ";
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
+		{
 			m->SetMarker(lc[it],outer);
+			//if( report ) std::cout << GetHandleID(lc[it]) << " ";
+		}
+		//if( report ) std::cout << std::endl;
 		
+		
+		//if( report ) std::cout << "Split edges: ";
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
 			if( !m->GetMarker(edges[it].GetHandle(),outer) )
 			{
 				temp.push_back(edges[it].GetHandle());
+				//if( report ) std::cout << GetHandleID(edges[it].GetHandle()) << " ";
 				ninner++;
 			}
+		//if( report ) std::cout << std::endl;
 
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
 		{
@@ -1268,6 +1290,43 @@ namespace INMOST
 			ret.push_back(face);
 			return ret;
 		}
+		
+		/*
+		if( !did_restart )
+		{
+			incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner);
+			do
+			{
+				mat.find_shortest_loop(loop);
+				if (!loop.empty())
+				{
+					if( loop.size() > 2 )
+					{
+						//ret.push_back(m->CreateFace(loop).first);
+						//adj_type & hc = m->HighConn(ret.back()->GetHandle());
+						//hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+					}
+					else report = true;
+				}
+				else break;
+			} while(true);
+			
+			
+			if(report )//!mat.all_visited())
+			{
+				mat.print_matrix();
+				incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner,GridCoords(),true);
+				do
+				{
+					mat.find_shortest_loop(loop);
+					if( loop.empty() ) break;
+				} while( true );
+				did_restart = true;
+				goto restart_algorithm;
+			}
+		}
+		*/
+
 		
 		if( !face->Hide() )
 		{
@@ -1289,20 +1348,22 @@ namespace INMOST
 		
 		incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner);
 
+		
 		do
 		{
 			mat.find_shortest_loop(loop);
 			if (!loop.empty())
 			{
-				ret.push_back(m->CreateFace(loop).first);
-				adj_type & hc = m->HighConn(ret.back()->GetHandle());
-				hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+				if( loop.size() > 2 )
+				{
+					ret.push_back(m->CreateFace(loop).first);
+					adj_type & hc = m->HighConn(ret.back()->GetHandle());
+					hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+				}
 			}
 			else break;
 		} while(true);
-		
 
-		
 
 
 		for(dynarray<HandleType,2>::size_type it = 0; it < cells.size(); ++it)
@@ -1381,17 +1442,24 @@ namespace INMOST
 		incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner);
 		//mat.print_matrix();
 		cell->Delete();
-			
+		
+		bool report = false;
 		do
 		{
 			mat.find_shortest_loop(loop);
-			if (!loop.empty()) ret.push_back(m->CreateCell(loop).first);
+			if (!loop.empty() ) 
+			{
+				if( loop.size() > 3 )
+					ret.push_back(m->CreateCell(loop).first);
+				else
+					report = true;
+			}
 			else break;
 		} while( true );
 		
 		//debug
-		/*
-		if(!mat.all_visited())
+		
+		if(report )//!mat.all_visited())
 		{
 			mat.print_matrix();
 			incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner,GridCoords(),true);
@@ -1401,7 +1469,7 @@ namespace INMOST
 				if( loop.empty() ) break;
 			} while( true );
 		}
-		 */
+		 
 
 		return ret;
 	}
