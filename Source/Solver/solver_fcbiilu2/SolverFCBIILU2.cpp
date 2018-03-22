@@ -55,9 +55,16 @@ namespace INMOST {
         solver_data->eps = 1e-5;  // the residual precision: ||r|| < eps * ||b||; eps=1e-6
         solver_data->nit = 999;   // number of iterations permitted; nit=999
         solver_data->msglev = 2;  // messages level; msglev=0 for silent; msglev=1 to output solution statistics
-        SolverInitializeFcbiilu2(solver_data, argc, argv, p.internalFile.c_str());
-        for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
-            this->SetParameter((*parameter).first, (*parameter).second);
+        solver_data->params_initialized = false;
+        if (!p.internalFile.empty()) {
+            SolverInitializeFcbiilu2(solver_data, argc, argv, p.internalFile.c_str());
+            if (!solver_data->params_initialized) {
+                SolverParameters::SetInnerParametersFromFile(p.internalFile, this);
+            }
+        } else {
+            for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
+                this->SetParameter((*parameter).first, (*parameter).second);
+            }
         }
     }
 
@@ -129,20 +136,15 @@ namespace INMOST {
         INMOST_DATA_ENUM_TYPE vbeg, vend;
         RHS.GetInterval(vbeg, vend);
 
-        vector_fcbiilu2 *rhs_data = NULL;
-        VectorInitDataFcbiilu2(&rhs_data, RHS.GetCommunicator(), RHS.GetName().c_str());
-        VectorPreallocateFcbiilu2(rhs_data, local_size);
+        vector_fcbiilu2 rhs_data = {};
+        rhs_data.n = local_size;
+        rhs_data.v = &RHS[vbeg];
 
-        vector_fcbiilu2 *solution_data = NULL;
-        VectorInitDataFcbiilu2(&solution_data, SOL.GetCommunicator(), SOL.GetName().c_str());
-        VectorPreallocateFcbiilu2(solution_data, local_size);
-        VectorFillFcbiilu2(rhs_data, &RHS[vbeg]);
-        VectorFinalizeFcbiilu2(rhs_data);
+        vector_fcbiilu2 solution_data = {};
+        solution_data.n = local_size;
+        solution_data.v = &SOL[vbeg];
 
-        VectorFillFcbiilu2(solution_data, &SOL[vbeg]);
-        VectorFinalizeFcbiilu2(solution_data);
-        bool result = SolverSolveFcbiilu2(solver_data, rhs_data, solution_data);
-        if (result) VectorLoadFcbiilu2(solution_data, &SOL[vbeg]);
+        bool result = SolverSolveFcbiilu2(solver_data, &rhs_data, &solution_data);
         iter_time = solver_data->dstat[9];
         return result;
     }

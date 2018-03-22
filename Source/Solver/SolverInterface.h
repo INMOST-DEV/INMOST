@@ -10,6 +10,7 @@
 #if defined(USE_SOLVER)
 namespace INMOST {
 
+    class SolverInterface;
     class SolverParameters {
     public:
         std::string solverName;
@@ -22,6 +23,8 @@ namespace INMOST {
         SolverParameters(const SolverParameters &other);
 
         ~SolverParameters();
+
+        static void SetInnerParametersFromFile(const std::string &file, SolverInterface *solver);
     };
 
     typedef std::vector<std::pair<std::string, std::string> >::iterator parameters_iterator_t;
