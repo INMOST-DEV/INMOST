@@ -389,6 +389,7 @@ void SolverInitializeK3biilu2(bcg_k3biilu2 *data, int *argc, char ***argv, const
         sscanf(s.c_str(), "%lg", &parPrec.tau1);         //9 tau
         parPrec.tau2 = -1.0;
         parIter.ittype = (parIter.niter_cycle > 1) ? 1 : 0;
+        data->parameters_initialized = true;
         //? msglev
     } else if (s == "biilu2_options.txt") { // file: "biilu2_options.txt"
         getline(is, s);
