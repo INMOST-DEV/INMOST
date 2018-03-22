@@ -34,6 +34,7 @@ typedef struct {
     double dstat[16]; // double  statistics array on return
     double RESID;     // residual norm
     int ITER;      // number of BiCGStab iterations performed
+    bool parameters_initialized; // backward compatibility with old parameter files
 } bcg_k3biilu2;
 
 typedef struct {
@@ -83,22 +84,6 @@ void MatrixFillK3biilu2(matrix_k3biilu2 *pA, int size, int nproc, int *ibl, int 
 void MatrixFillValuesK3biilu2(matrix_k3biilu2 *pA, double *values);
 
 void MatrixFinalizeK3biilu2(matrix_k3biilu2 *data);
-
-void VectorInitDataK3biilu2(vector_k3biilu2 **ppA, INMOST_MPI_Comm comm, const char *name);
-
-void VectorCopyDataK3biilu2(vector_k3biilu2 **ppA, vector_k3biilu2 *pB);
-
-void VectorAssignDataK3biilu2(vector_k3biilu2 *pA, vector_k3biilu2 *pB);
-
-void VectorPreallocateK3biilu2(vector_k3biilu2 *pA, int size);
-
-void VectorFillK3biilu2(vector_k3biilu2 *pA, double *values);
-
-void VectorLoadK3biilu2(vector_k3biilu2 *pA, double *values);
-
-void VectorFinalizeK3biilu2(vector_k3biilu2 *data);
-
-void VectorDestroyDataK3biilu2(vector_k3biilu2 **ppA);
 
 void SolverInitializeK3biilu2(bcg_k3biilu2 *data, int *argc, char ***argv, const char *file_options);
 

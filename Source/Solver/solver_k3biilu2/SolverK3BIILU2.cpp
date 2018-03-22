@@ -1,6 +1,7 @@
 #include "SolverK3BIILU2.h"
 #include "solver_k3biilu2.h"
 #include <Source/Misc/utils.h>
+#include <Source/Solver/solver_inner/SolverInner.h>
 
 namespace INMOST {
 
@@ -50,8 +51,11 @@ namespace INMOST {
 
     void SolverK3BIILU2::Setup(int *argc, char ***argv, SolverParameters &p) {
         SolverInitDataK3biilu2(&solver_data, communicator, p.solverPrefix.c_str());
-        if (p.internalFile != "") {
+        if (!p.internalFile.empty()) {
             SolverInitializeK3biilu2(solver_data, argc, argv, p.internalFile.c_str());
+            if (!solver_data->parameters_initialized) {
+                SolverParameters::SetInnerParametersFromFile(p.internalFile, this);
+            }
         } else {
             for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++) {
                 this->SetParameter((*parameter).first, (*parameter).second);
@@ -131,23 +135,16 @@ namespace INMOST {
     bool SolverK3BIILU2::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
         INMOST_DATA_ENUM_TYPE vbeg, vend;
         RHS.GetInterval(vbeg, vend);
-        vector_k3biilu2 *rhs_data = NULL;
-        vector_k3biilu2 *solution_data = NULL;
 
-        VectorInitDataK3biilu2(&rhs_data, RHS.GetCommunicator(), RHS.GetName().c_str());
-        VectorPreallocateK3biilu2(rhs_data, local_size);
+        vector_k3biilu2 rhs_data = {};
+        rhs_data.n = local_size;
+        rhs_data.v = &RHS[vbeg];
 
-        VectorInitDataK3biilu2(&solution_data, SOL.GetCommunicator(), SOL.GetName().c_str());
-        VectorPreallocateK3biilu2(solution_data, local_size);
+        vector_k3biilu2 solution_data = {};
+        solution_data.n = local_size;
+        solution_data.v = &SOL[vbeg];
 
-        VectorFillK3biilu2(rhs_data, &RHS[vbeg]);
-        VectorFinalizeK3biilu2(rhs_data);
-
-        VectorFillK3biilu2(solution_data, &SOL[vbeg]);
-        VectorFinalizeK3biilu2(solution_data);
-
-        bool result = SolverSolveK3biilu2(solver_data, rhs_data, solution_data);
-        if (result) VectorLoadK3biilu2(solution_data, &SOL[vbeg]);
+        bool result = SolverSolveK3biilu2(solver_data, &rhs_data, &solution_data);
         iter_time = solver_data->dstat[9];
         time_prec = solver_data->dstat[7];
         return result;

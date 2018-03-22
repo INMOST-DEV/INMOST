@@ -24,23 +24,9 @@ namespace INMOST {
 
     void SolverInner::Setup(int *argc, char ***argv, SolverParameters &p)
 	{
-		char line[4096];
-		char parameterName[4096];
-		char parameterValue[4096];
-        if (!p.internalFile.empty())
-		{
-            FILE *databaseFile = fopen(p.internalFile.c_str(), "r");
-            if (!databaseFile) return;
-            while (!feof(databaseFile) && fgets(line, 4096, databaseFile))
-			{
-                if (line[0] == '#') continue;
-                sscanf(line, "%s %s", parameterName, parameterValue);
-                this->SetParameter(parameterName, parameterValue);
-            }
-			
-        }
-		else
-		{
+        if (!p.internalFile.empty()) {
+            SolverParameters::SetInnerParametersFromFile(p.internalFile, this);
+        } else {
             for (parameters_iterator_t parameter = p.parameters.begin(); parameter < p.parameters.end(); parameter++)
                 this->SetParameter((*parameter).first, (*parameter).second);
         }

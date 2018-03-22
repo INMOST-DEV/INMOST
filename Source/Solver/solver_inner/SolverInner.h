@@ -51,7 +51,6 @@ namespace INMOST {
         virtual void Finalize();
 
         virtual ~SolverInner();
-
     };
 
 }
