@@ -163,8 +163,8 @@ namespace INMOST
 	{
 		for(int i = 0; i < NUM_ELEMENT_TYPS; i++)
 		{
-			pos[i]	= other.pos[i];
-			sparse[i] = other.sparse[i];
+			pos[i]	   = other.pos[i];
+			sparse[i]  = other.sparse[i];
 		}
 		tagname		   = other.tagname;
 		dtype		   = other.dtype;
@@ -173,23 +173,25 @@ namespace INMOST
 		size           = other.size;
 		record_size    = other.record_size;
 		bytes_size     = other.bytes_size;
+		print_tag      = other.print_tag; //Temporary solution: @see Mesh::file_options
 	}
 	
 	TagMemory & TagMemory::operator =(TagMemory const & other)
 	{
 		for(int i = 0; i < NUM_ELEMENT_TYPS; i++)
 		{
-			pos[i]      = other.pos[i];
-			sparse[i]   = other.sparse[i];
+			pos[i]     = other.pos[i];
+			sparse[i]  = other.sparse[i];
 		}
-		tagname         = other.tagname;
-		dtype           = other.dtype;
-		bulk_data_type  = other.bulk_data_type;
-		m_link          = other.m_link;
-		size            = other.size;
-		record_size     = other.record_size;
-		bytes_size      = other.bytes_size;
-		return *this;	
+		tagname        = other.tagname;
+		dtype          = other.dtype;
+		bulk_data_type = other.bulk_data_type;
+		m_link         = other.m_link;
+		size           = other.size;
+		record_size    = other.record_size;
+		bytes_size     = other.bytes_size;
+		print_tag      = other.print_tag; //Temporary solution: @see Mesh::file_options
+		return *this;
 	}
 	
 	TagMemory::TagMemory()
