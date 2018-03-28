@@ -3704,7 +3704,7 @@ namespace INMOST
 }
 
   //Implementation of inlined functions
-//#include "Source/Data/storage_inline.hpp"
+//#include "../Data/storage_inline.hpp"
 
 #endif
 

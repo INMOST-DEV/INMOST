@@ -1,8 +1,8 @@
 #ifndef INMOST_SOLVERINNER_H
 #define INMOST_SOLVERINNER_H
 
-#include "Source/Solver/SolverInterface.h"
-#include "Source/Misc/utils.h"
+#include "../Solver/SolverInterface.h"
+#include "../Misc/utils.h"
 #include "solver_prototypes.hpp"
 #include "solver_bcgsl.hpp"
 #define KSOLVER BCGSL_solver

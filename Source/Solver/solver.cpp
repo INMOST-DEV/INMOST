@@ -1,6 +1,6 @@
 #include <inmost.h>
 #include "SolverMaster.h"
-#include "Source/Misc/utils.h"
+#include "../Misc/utils.h"
 #if defined(USE_SOLVER)
 
 namespace INMOST {

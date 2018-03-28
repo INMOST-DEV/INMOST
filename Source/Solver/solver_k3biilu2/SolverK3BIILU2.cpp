@@ -1,7 +1,7 @@
 #include "SolverK3BIILU2.h"
 #include "solver_k3biilu2.h"
-#include <Source/Misc/utils.h>
-#include <Source/Solver/solver_inner/SolverInner.h>
+#include <../Misc/utils.h>
+#include <../Solver/solver_inner/SolverInner.h>
 
 namespace INMOST {
 

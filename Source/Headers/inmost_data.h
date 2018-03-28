@@ -906,7 +906,7 @@ namespace INMOST
 }
 
 //Implementation of inlined functions
-//#include "Source/Data/tag_inline.hpp"
+//#include "../Data/tag_inline.hpp"
 
 
 #endif
