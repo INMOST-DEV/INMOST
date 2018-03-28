@@ -273,12 +273,13 @@ namespace INMOST
 			value = other.value;
 			return * this;
 		}
-		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return value;}
+        INMOST_DATA_REAL_TYPE Value(const Storage & e) const {(void)e; return value;}
 		multivar_expression Variable(const Storage & e) const
 		{
-			return multivar_expression(value);
+            (void)e;
+            return multivar_expression(value);
 		}
-		const_expression operator [](const Storage & e) const {return const_expression(value);}
+        const_expression operator [](const Storage & e) const {(void)e; return const_expression(value);}
 		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_variable(*this));}
@@ -296,12 +297,13 @@ namespace INMOST
 			value = other.value;
 			return * this;
 		}
-		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return *value;}
+        INMOST_DATA_REAL_TYPE Value(const Storage & e) const {(void)e; return *value;}
 		multivar_expression Variable(const Storage & e) const
 		{
-			return multivar_expression(*value);
+            (void)e;
+            return multivar_expression(*value);
 		}
-		const_expression operator [](const Storage & e) const {return const_expression(*value);}
+        const_expression operator [](const Storage & e) const {(void)e; return const_expression(*value);}
 		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_link_variable(*this));}

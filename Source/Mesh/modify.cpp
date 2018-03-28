@@ -1609,7 +1609,7 @@ namespace INMOST
 
     void OperationMinDistance(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
     {        
-        int owner  =  *((double*)data);
+        int owner  =  (int)*((double*)data);
         double dist = *((double*)(data+sizeof(double)));
 
         TagReal r_tag = tag;
@@ -1619,11 +1619,12 @@ namespace INMOST
             element->RealArray(tag)[0] = owner;
             element->RealArray(tag)[1] = dist;
         }
+        (void)size;
     }
 
 	void Mesh::ResolveModification()
 	{
-		int rank = GetProcessorRank(),mpisize = GetProcessorsNumber();
+        int rank = GetProcessorRank();
 	    
         Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
 
@@ -1642,7 +1643,7 @@ namespace INMOST
                 }
             }
             
-            int owner1 = it->IntegerDF(tag_owner);
+            //int owner1 = it->IntegerDF(tag_owner);
             int owner2 = near_cell.IntegerDF(tag_owner);
     
             it->RealArray(tag)[0] = owner2;
@@ -1654,7 +1655,7 @@ namespace INMOST
 
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
         {
-            int new_owner = it->RealArray(tag)[0];
+            int new_owner = (int)it->RealArray(tag)[0];
 
             it->IntegerDF(tag_owner) = new_owner;
 

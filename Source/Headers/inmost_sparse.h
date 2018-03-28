@@ -4,8 +4,6 @@
 
 #include "inmost_common.h"
 
-
-
 namespace INMOST
 {
 	namespace Sparse

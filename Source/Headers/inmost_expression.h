@@ -173,6 +173,7 @@ namespace INMOST
 			if( !J.isSorted() ) std::sort(J.Begin(),J.End());
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 			H.Clear();
+            (void)multH;
 		}
 		__INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
@@ -632,6 +633,7 @@ namespace INMOST
 				for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 				H.Clear();
 			}
+            (void)multH;
 		}
 		__INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
@@ -1849,6 +1851,7 @@ namespace INMOST
 			left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
 			Sparse::HessianRow::MergeJacobianHessian(multH*ldmult2,JL,JL,multH*ldmult,HL,H);
 			for(Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) it->second *= ldmult*multJ;
+            (void)J;
 		}
 	};
 	

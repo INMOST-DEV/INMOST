@@ -1,7 +1,7 @@
 #ifndef INMOST_SOLVER_MASTER
 #define INMOST_SOLVER_MASTER
 
-#include <Source/Solver/SolverInterface.h>
+#include <../Solver/SolverInterface.h>
 #if defined(USE_SOLVER)
 namespace INMOST {
 

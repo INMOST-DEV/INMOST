@@ -121,11 +121,11 @@ namespace INMOST
 		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
-		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return Size();}
+        INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {(void)e; return Size();}
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Number of entries for each tag in the block.
-		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
+        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Retrive component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {return unknown_comp[unk];}
 		/// Retrive tag related to unknown value.
@@ -148,11 +148,11 @@ namespace INMOST
 		///Provide tag.
 		void SetTag(Tag unknown_tag_in, INMOST_DATA_ENUM_TYPE unknown_comp_in = 0) {unknown_tag = unknown_tag_in; unknown_comp = unknown_comp_in;}
 		/// Return value in vector of unknowns of the block at certain position.
-		INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos==0); return unknown_tag[e][unknown_comp];}
+        INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {(void)pos; assert(pos==0); return unknown_tag[e][unknown_comp];}
 		/// Return value in vector of unknowns of the block at certain position.
-		INMOST_DATA_REAL_TYPE & Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) {assert(pos==0); return unknown_tag[e][unknown_comp];}
+        INMOST_DATA_REAL_TYPE & Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) {(void)pos; assert(pos==0); return unknown_tag[e][unknown_comp];}
 		/// Return index in vector of indices of the block at certain position.
-		INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos==0); return isValid(e) ? GetOffsetTag()[e] : ENUMUNDEF;}
+        INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {(void)pos; assert(pos==0); return isValid(e) ? GetOffsetTag()[e] : ENUMUNDEF;}
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos==0); return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
@@ -164,15 +164,15 @@ namespace INMOST
 		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const { uMatrix ret(1,1); ret(0,0) = Unknown(e,0); return ret; }
 		/// The intended size of the matrix for this entry.
-		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return 1;}
+        INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {(void)e; return 1;}
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
-		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return 1;}
+        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return 1;}
 		/// Retrive component of the tag related to unknown.
-		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {assert(unk == 0); return unknown_comp;}
+        INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk == 0); return unknown_comp;}
 		/// Retrive tag related to unknown value.
-		TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const { assert(unk == 0); return unknown_tag;}
+        TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk == 0); return unknown_tag;}
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
@@ -212,9 +212,9 @@ namespace INMOST
 		/// Number of entries for each tag in the block.
 		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size();}
 		/// Retrive component of the tag related to unknown.
-		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {assert(unk==0); return ENUMUNDEF;}
+        INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk==0); return ENUMUNDEF;}
 		/// Retrive tag related to unknown value.
-		TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const {assert(unk==0); return unknown_tag;}
+        TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk==0); return unknown_tag;}
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
@@ -262,7 +262,7 @@ namespace INMOST
 		/// Return vector filled with unknowns of the block with their derivatives.
 		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
-		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return Size();}
+        INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {(void)e; return Size();}
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Number of entries for each tag in the block.

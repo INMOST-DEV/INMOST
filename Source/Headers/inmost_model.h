@@ -38,7 +38,7 @@ namespace INMOST
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() = 0;
 		/// Calculate multiplier for update for this model. Can simply return 1.
-		virtual double UpdateMultiplier(const Sparse::Vector & sol) const {return 1;}
+                virtual double UpdateMultiplier(const Sparse::Vector & sol) const {(void)sol; return 1;}
 		/// Calculate time step for this model. Can simply return dt.
 		virtual double AdjustTimeStep(double dt) const {return dt;}
 	};

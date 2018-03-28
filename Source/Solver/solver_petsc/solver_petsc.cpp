@@ -274,6 +274,7 @@ void SolverSetMatrixPetsc(KSP *ksp, Mat *matrix, bool same_pattern, bool reuse_p
     ierr = KSPSetOperators(*ksp, *matrix,
                            *matrix);//,reuse_preconditioner? SAME_PRECONDITIONER : (same_pattern? SAME_NONZERO_PATTERN : DIFFERENT_NONZERO_PATTERN));
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+    (void)same_pattern;
 }
 
 bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol) 

@@ -492,7 +492,7 @@ public:
 	bool MLMTILUC_preconditioner::Initialize()
 	{
 		
-		const INMOST_DATA_REAL_TYPE subst = 1.0;
+        const INMOST_DATA_REAL_TYPE subst = 1.0; (void)subst;
 		const INMOST_DATA_REAL_TYPE tol_modif = PIVOT_THRESHOLD_VALUE;
 		const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
@@ -587,7 +587,7 @@ public:
 		
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
-		double tfactor = 0.0, tswap = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tschur = 0.0, tlocal;
+        double tfactor = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tschur = 0.0, tlocal;
 #if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
 #endif
@@ -1334,16 +1334,11 @@ public:
 				trcmorder = Timer();
 				std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, ENUMUNDEF);
 				//find node with the lowest order
-				INMOST_DATA_ENUM_TYPE start = wbeg;
-				INMOST_DATA_ENUM_TYPE index = wbeg;
+                INMOST_DATA_ENUM_TYPE index = wbeg;
 				INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
 				std::deque<INMOST_DATA_ENUM_TYPE> q;
 				std::vector<INMOST_DATA_ENUM_TYPE> conns;
-				//for(k = wbeg+1; k < wend; ++k)
-				//    if( RCM_Comparator(wbeg,xadj)(k,start) )
-				//        start = k;
-				//Ulist[start] = index++;
-				do
+                do
 				{
 					cur = ENUMUNDEF;
 					for(k = wbeg; k < wend && cur == ENUMUNDEF; ++k)
@@ -3666,8 +3661,7 @@ public:
 		printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
 		printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
 		printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
-		printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
-		printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
+        printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
 		printf("  schur    %f (%6.2f%%)\n", tschur, 100.0*tschur / ttotal);
 #if defined(ILUC2)
 		printf("nnz A %d LU %d LU2 %d swaps %d levels %d\n",nzA,nzLU,nzLU2tot, totswaps, (int)level_size.size());
@@ -3822,7 +3816,7 @@ public:
 			
 
 #define MLFACTOR
-#if not defined(MLFACTOR)
+#if !defined(MLFACTOR)
 			for (k = vbeg; k < mobeg; k++) temp[k] = 0;
 			for (k = mobeg; k < moend; ++k) temp[k] = input[ddP[k]];
 			for (k = moend; k < vend; k++) temp[k] = 0;

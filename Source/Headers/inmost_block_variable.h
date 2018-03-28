@@ -112,15 +112,15 @@ namespace INMOST
 	private:
 		rMatrix value;
 	public:
-		const_block_variable(INMOST_DATA_REAL_TYPE _value) : value(_value)  {}
+                const_block_variable(const rMatrix & _value) : value(_value)  {}
 		const_block_variable(const const_block_variable & other) : value(other.value) {}
 		const_block_variable & operator =(const const_block_variable & other)
 		{
 			value = other.value;
 			return * this;
 		}
-		rMatrix Value(const Storage & e) const {return value;}
-		vMatrix Variable(const Storage & e) const { return value;	}
+                rMatrix Value(const Storage & e) const {(void)e; return value;}
+                vMatrix Variable(const Storage & e) const {(void)e; return value;}
 		abstract_dynamic_block_variable * Copy() const {return static_cast<abstract_dynamic_block_variable *>(new const_block_variable(*this));}
 	};
 	
@@ -231,16 +231,16 @@ namespace INMOST
 		rMatrix Value(const Storage & e) const
 		{
 			rMatrix ret = Arg.Value(e);
-			for(int k = 0; k < ret.Rows(); ++k)
-				for(int l = 0; l < ret.Cols(); ++l)
+                        for(INMOST_DATA_ENUM_TYPE k = 0; k < ret.Rows(); ++k)
+                                for(INMOST_DATA_ENUM_TYPE l = 0; l < ret.Cols(); ++l)
 					ret(k,l) = get_table(ret(k,l),Table);
 			return ret;
 		}
 		vMatrix Variable(const Storage & e) const
 		{
 			vMatrix ret = Arg.Variable(e);
-			for(int k = 0; k < ret.Rows(); ++k)
-				for(int l = 0; l < ret.Cols(); ++l)
+                        for(INMOST_DATA_ENUM_TYPE k = 0; k < ret.Rows(); ++k)
+                                for(INMOST_DATA_ENUM_TYPE l = 0; l < ret.Cols(); ++l)
 					ret(k,l) = get_table(ret(k,l),Table);
 			return ret;
 		}

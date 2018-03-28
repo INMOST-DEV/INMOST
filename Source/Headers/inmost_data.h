@@ -170,13 +170,20 @@ namespace INMOST
 		/// on certain elements of the mesh.
 		bool sparse[NUM_ELEMENT_TYPS];
 		///Number of bytes used to store data for one element. It is size times bytes_size for data of 
-		// fixed size or number of bytes for the structure used to represent data of variable size.
+		/// fixed size or number of bytes for the structure used to represent data of variable size.
 		INMOST_DATA_ENUM_TYPE record_size;
+		///Print this tag to files.
+		/// Temporary solution for compatibility with external packages.
+		/// @see Mesh::SetPrint
+		/// @see Mesh::GetPrint
+		/// \todo The general solution:
+		/// @see Mesh::file_options
+		bool print_tag;
 		///Link to the mesh.
 		Mesh * m_link;
-		/// Provide access to interface.
+		///Provide access to interface.
 		friend class Tag;
-		/// For debug purposes only.
+		///For debug purposes only.
 		friend class Storage;
 	};
 
@@ -222,6 +229,8 @@ namespace INMOST
 		__INLINE bool isSparseByDim(INMOST_DATA_INTEGER_TYPE typenum)const;
 		__INLINE bool isDefinedByDim(INMOST_DATA_INTEGER_TYPE typenum)const;
 		__INLINE void SetBulkDataType(INMOST_MPI_Type type);
+        __INLINE void SetPrint(bool print);
+        __INLINE bool GetPrint() const;
 		friend class TagManager;
 		friend class Storage;
 		friend class Mesh;
@@ -788,6 +797,16 @@ namespace INMOST
 		mem->sparse[ElementNum(type)] = true;
 	}
 
+	__INLINE void Tag::SetPrint(bool print)
+	{
+		mem->print_tag = print;
+	}
+
+	__INLINE bool Tag::GetPrint() const
+	{
+		return mem->print_tag;
+	}
+
 	__INLINE INMOST_DATA_ENUM_TYPE Tag::GetPositionByDim(INMOST_DATA_ENUM_TYPE typenum) const 
 	{
 		return mem->pos[typenum];
@@ -887,7 +906,7 @@ namespace INMOST
 }
 
 //Implementation of inlined functions
-//#include "Source/Data/tag_inline.hpp"
+//#include "../Data/tag_inline.hpp"
 
 
 #endif
