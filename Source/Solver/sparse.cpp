@@ -350,7 +350,7 @@ namespace INMOST
 
 		void RowMerger::RetriveRow(Row & r)
 		{
-			r.Resize(Nonzeros+Nonlocal.size());
+            r.Resize(static_cast<INMOST_DATA_ENUM_TYPE>(Nonzeros+Nonlocal.size()));
 			INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, k = 0;
 			while( i != EOL )
 			{

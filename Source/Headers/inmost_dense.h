@@ -1795,6 +1795,7 @@ namespace INMOST
 		{
 			assert(Cols() == cols);
 			assert(Rows() == rows);
+            (void)cols; (void)rows;
 		}
 	};
 	
@@ -2153,7 +2154,7 @@ namespace INMOST
 		Matrix<typename Promote<Var,typeB>::type> AtB = At*B; //m by l matrix
 		Matrix<Var> AtA = At*(*this); //m by m matrix
 		enumerator l = AtB.Cols();
-		enumerator n = Rows();
+        //enumerator n = Rows();
 		enumerator m = Cols();
 		enumerator * order = new enumerator [m];
 		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
@@ -2315,7 +2316,7 @@ namespace INMOST
 		ret.second = SVD(U,S,V);
 		if( print_fail && !ret.second )
 			std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
-		for(int k = 0; k < S.Cols(); ++k)
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k)
 		{
 			if( S(k,k) > tol )
 				S(k,k) = 1.0/S(k,k);

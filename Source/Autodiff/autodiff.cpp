@@ -96,7 +96,7 @@ namespace INMOST
 		else
 		{
 			BlockEntry b(typemask,domain_mask);
-			for(int k = 0; k < t.GetSize(); ++k)
+            for(INMOST_DATA_ENUM_TYPE k = 0; k < t.GetSize(); ++k)
 				b.AddTag(t,k);
 			return RegisterEntry(b);
 		}
@@ -282,8 +282,9 @@ namespace INMOST
 	std::vector<INMOST_DATA_ENUM_TYPE> Automatizator::ListRegisteredEntries() const
 	{
 		std::vector<INMOST_DATA_ENUM_TYPE> ret;
-		for(blk_enum::size_type it = 0; it < reg_blocks.size(); ++it) if( isRegisteredEntry(it) )
-			ret.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(it));
+        for(blk_enum::size_type it = 0; it < reg_blocks.size(); ++it)
+            if( isRegisteredEntry(static_cast<INMOST_DATA_ENUM_TYPE>(it)) )
+                ret.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(it));
 		return ret;
 	}
 	
@@ -320,7 +321,7 @@ namespace INMOST
 	
 	INMOST_DATA_REAL_TYPE MultiEntry::Value(const Storage & e, INMOST_DATA_ENUM_TYPE unk) const
 	{
-		unsigned pos = 0, k = 0;
+        unsigned pos = 0;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			unsigned s = entries[k]->MatrixSize(e);
@@ -333,7 +334,7 @@ namespace INMOST
 	
 	INMOST_DATA_REAL_TYPE & MultiEntry::Value(const Storage & e, INMOST_DATA_ENUM_TYPE unk)
 	{
-		unsigned pos = 0, k = 0;
+        unsigned pos = 0;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			unsigned s = entries[k]->MatrixSize(e);
@@ -346,7 +347,7 @@ namespace INMOST
 	
 	INMOST_DATA_ENUM_TYPE MultiEntry::Index(const Storage & e, INMOST_DATA_ENUM_TYPE unk) const
 	{
-		unsigned pos = 0, k = 0;
+        unsigned pos = 0;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			unsigned s = entries[k]->MatrixSize(e);
@@ -359,7 +360,7 @@ namespace INMOST
 	
 	unknown MultiEntry::Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE unk) const
 	{
-		unsigned pos = 0, k = 0;
+        unsigned pos = 0;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			unsigned s = entries[k]->MatrixSize(e);

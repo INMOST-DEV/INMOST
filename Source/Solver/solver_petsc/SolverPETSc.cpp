@@ -217,6 +217,7 @@ namespace INMOST {
         if (matrix != NULL) {
             MatrixDestroyDataPetsc(&matrix);
         }
+        SolverDestroyDataPetsc(&ksp);
         return true;
     }
 
@@ -271,13 +272,14 @@ namespace INMOST {
     }
 
     void SolverPETSc::Finalize() {
-        if (petscSolversCount == 1) {
-            SolverFinalizePetsc();
-        }
+       // if (petscSolversCount == 1) {
+        //    SolverFinalizePetsc(); \\commented by Kramarenko
+        //}
     }
 
     SolverPETSc::~SolverPETSc() {
-        petscSolversCount--;
+        this->Clear();
+        //petscSolversCount--;
     }
 
 }

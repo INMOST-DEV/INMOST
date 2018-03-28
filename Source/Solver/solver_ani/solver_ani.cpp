@@ -1,12 +1,15 @@
 #include "solver_ani.h"
 
+#if defined(_WIN32) || defined(_WIN64) || defined(WIN32) || defined(WIN64)
+__declspec( dllexport ) void solver_ani_stub(){} //to avoid LNK4221 warning
+#endif
+
 #if defined(USE_SOLVER_ANI)
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
 #include <math.h>
-
 
 #if defined (__APPLE__) || defined(MAXOSX) || defined(__linux__)
 #define ILUOO    iluoo_

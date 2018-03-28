@@ -1419,7 +1419,7 @@ namespace INMOST
 			} while(true);
 			data.RemPrivateMarker(mrk);
 			mesh->ReleasePrivateMarker(mrk);
-			Storage::real nrm[3], cnt[3], ccnt[3];
+            Storage::real nrm[3], cnt[3];
 			for(unsigned j = 0; j < data.size(); j++)
 			{
 				//std::cout << (data[j].GetPrivateMarker(rev) ? 0:1);

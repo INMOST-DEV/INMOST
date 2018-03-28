@@ -1,5 +1,7 @@
 #ifdef _MSC_VER //kill some warnings
+#ifndef _SCL_SECURE_NO_WARNINGS
 #define _SCL_SECURE_NO_WARNINGS
+#endif
 #endif
 
 #include "inmost.h"
@@ -40,7 +42,9 @@ namespace INMOST
     std::string ro()
     {
         int rank = 0;
+#ifdef USE_MPI
         MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+#endif
         std::stringstream ss;
         for (int i = 0; i < rank; i++)
             ss << "   ";
@@ -1618,6 +1622,7 @@ namespace INMOST
 		
 #else //USE_MPI
 		AssignGlobalID(CELL | FACE | EDGE | NODE);
+        (void)only_new;
 #endif //USE_MPI
 		EXIT_FUNC();
 	}
@@ -2284,7 +2289,6 @@ namespace INMOST
 	
 	void Mesh::PackTagData(const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer)
 	{
-        int rank = GetProcessorRank();
         if( tag.GetDataType() == DATA_REMOTE_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 #if defined(USE_MPI)
@@ -2397,6 +2401,7 @@ namespace INMOST
 #else
 		(void) tag;
 		(void) elements;
+        (void) destination;
 		(void) mask;
 		(void) select;
 		(void) buffer;
@@ -2409,7 +2414,6 @@ namespace INMOST
 
     bool Mesh::FindSharedGhost(int global_id, INMOST_DATA_INTEGER_TYPE el_type_num,  HandleType& res)
     {
-        int rank = GetProcessorRank();
         int dim = el_type_num;
         for (parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
         {
@@ -2439,8 +2443,7 @@ namespace INMOST
 
 	void Mesh::UnpackTagData(const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op)
 	{
-        int rank = GetProcessorRank();
-		(void) mask;
+        (void) mask;
 		if( tag.GetDataType() == DATA_REMOTE_REFERENCE) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 		REPORT_VAL("TagName",tag.GetTagName());
@@ -2980,13 +2983,13 @@ namespace INMOST
 	
 	void Mesh::PackElementsData(element_set & all, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list)
 	{
-        int rank = GetProcessorRank();
-        //std::cout << ro() << rank << " In pack elements data " << all.size() << std::endl;
-        //std::cout << rank << " In pack elements Data" << std::endl;
 		ENTER_FUNC();
 		REPORT_VAL("dest",destination);
 #if defined(USE_MPI)
-		INMOST_DATA_ENUM_TYPE num;
+        int rank = GetProcessorRank();
+        //std::cout << ro() << rank << " In pack elements data " << all.size() << std::endl;
+        //std::cout << rank << " In pack elements Data" << std::endl;
+        INMOST_DATA_ENUM_TYPE num;
 		//assume hex mesh for forward allocation 
 		//8 nodes per cell, 2 nodes per edge, 4 edges per face, 6 faces per cell
 		const INMOST_DATA_ENUM_TYPE size_hint[5] = {8,2,4,6,1};
@@ -3102,7 +3105,7 @@ namespace INMOST
 		}
 
         stringstream ss;
-        ss << ro() << rank << ": to send: ";
+        ss << ro() << mpirank << ": to send: ";
         ss << "nodes: " << selems[0].size() << " | ";
         ss << "edge: "  << selems[1].size() << " | ";
         ss << "faces: " << selems[2].size() << " | ";
@@ -3414,7 +3417,7 @@ namespace INMOST
             
             // Compute names_buff_size
 			for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) names_buff_size += ElementSet(this,*it).GetName().size() + 1;
-            //cout << ro() << rank << ": Names buff size = " << names_buff_size << endl;
+            //cout << ro() << mpirank << ": Names buff size = " << names_buff_size << endl;
             char* names_buff;
             if (names_buff_size > 0) names_buff = new char[names_buff_size];
             int names_buff_pos = 0;
@@ -3429,7 +3432,7 @@ namespace INMOST
 
                 // Add all low conns to low_conn_nums
                 stringstream ss;
-                ss << ro() << rank << ": For set " << ElementSet(this,*it).GetName() << " low conns (";
+                ss << ro() << mpirank << ": For set " << ElementSet(this,*it).GetName() << " low conns (";
 				low_conn_size[k] = 0;
 				Element::adj_type const & lc = LowConn(*it);
 				for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); jt++) if( !Hidden(*jt) )
@@ -3451,7 +3454,7 @@ namespace INMOST
                 if (set.HaveParent())  high_conn_nums[k*3+2] = Integer(selems[4][Integer(set.GetParent().GetHandle(), arr_position)],arr_position); else high_conn_nums[k*3 + 2] = -1;
 
                 stringstream ss5;
-                ss5 << ro() << rank << ": high_conn_nums for set " << set.GetName() << ": ";
+                ss5 << ro() << mpirank << ": high_conn_nums for set " << set.GetName() << ": ";
                 ss5 << high_conn_nums[k*3 + 0] << " " << high_conn_nums[k*3 + 1] << " " << high_conn_nums[k*3 + 2] << endl;
                 cout << ss5.str();
             	
@@ -3459,7 +3462,7 @@ namespace INMOST
 			}
 
             stringstream s1;
-            s1 << ro() << rank << ": Packed names: ";
+            s1 << ro() << mpirank << ": Packed names: ";
             for (int i = 0; i < names_buff_size; i++)
                 if (names_buff[i] == '\0')
                     s1 << "|";
@@ -3467,7 +3470,7 @@ namespace INMOST
                     s1 << names_buff[i];
 
             stringstream ss;
-            ss << ro() << rank << ": packed low_conns_size array: ";
+            ss << ro() << mpirank << ": packed low_conns_size array: ";
             for (int i = 0; i < num; i++) ss << low_conn_size[i] << " ";
 
 			MPI_Pack_size(1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // count of sets
@@ -3555,7 +3558,7 @@ namespace INMOST
 				//PackTagData(GetTag(tag_list[i]),pack_tags,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 				PackTagData(tag,selems,destination,NODE | EDGE | FACE | CELL | ESET,pack_tags_mrk,buffer);
 				//PackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0,buffer);
-                //std::cout << rank << " After pack_tag_data\n" << std::endl;
+                //std::cout << mpirank << " After pack_tag_data\n" << std::endl;
 
 			}
 		}
@@ -4269,10 +4272,10 @@ namespace INMOST
 	void Mesh::PrepareReceiveInner(Prepare todo, exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs)
 	{
 
-		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
 		if( parallel_strategy == 0 && todo == UnknownSize ) return; //in this case we know all we need
 		ENTER_FUNC();
 #if defined(USE_MPI)
+        int mpirank = GetProcessorRank();
 #if defined(USE_MPI_P2P) && defined(PREFFER_MPI_P2P)
 		unsigned i, end = send_bufs.size();
         REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
@@ -4488,11 +4491,10 @@ namespace INMOST
 	
 	void Mesh::ExchangeMarked(enum Action action)
 	{
-		int rank = GetProcessorRank();
 		ENTER_FUNC();
 		if( m_state == Serial ) return;
 #if defined(USE_MPI)
-		INMOST_DATA_BIG_ENUM_TYPE num_wait;
+        INMOST_DATA_BIG_ENUM_TYPE num_wait;
 		int mpirank = GetProcessorRank();
 		std::vector<MPI_Request> send_reqs, recv_reqs;
 		std::vector<std::string> tag_list, tag_list_recv;
@@ -5351,6 +5353,7 @@ namespace INMOST
 		for(Storage::enumerator k = 0; k < local_nrm.size(); ++k)
 			dot += local_nrm[k]*remote_nrm[k];
 		local_nrm[0] = dot;
+        (void)size;
 	}
 	
 	void Mesh::MarkNormalOrientation(MarkerType mrk)
@@ -5396,6 +5399,7 @@ namespace INMOST
 
     void Mesh::ResolveSets()
     {
+#ifdef USE_MPI
         int mpirank = GetProcessorRank();
         int mpisize = GetProcessorsNumber();
 
@@ -5547,6 +5551,8 @@ namespace INMOST
                cout << endl;
            }
         */
+#endif
+
     }
 }
 
