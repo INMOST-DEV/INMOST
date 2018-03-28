@@ -627,7 +627,11 @@ namespace INMOST
 			{
 				for(enumerator l = 0; l < Cols(); ++l)
 				{
-					if( fabs(get_value((*this)(k,l))) > threshold )
+					if( std::isinf(get_value((*this)(k,l))) )
+						std::cout << std::setw(12) << "inf";
+					else if( std::isnan(get_value((*this)(k,l))) )
+						std::cout << std::setw(12) << "nan";
+					else if( fabs(get_value((*this)(k,l))) > threshold )
 						std::cout << std::setw(12) << get_value((*this)(k,l));
 					else
 						std::cout << std::setw(12) << 0;
