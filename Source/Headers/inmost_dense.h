@@ -192,6 +192,13 @@ namespace INMOST
 					if( check_nans_infs((*this)(i,j)) ) return true;
 			return false;
 		}
+		/// Maximum product transversal.
+		/// Computes unsymmetric reordering that maximizes product on diagonal.
+		/// Returns reordering matrix P and scaling matrix S that transforms matrix into I-dominant matrix.
+		/// @param Perm Array for reordering, size of columns of the matrix.
+		/// @param SL Diagonal for rescaling matrix from left, size of columns of the matrix.
+		/// @param SR Diagonal for rescaling matrix from right, size of rows of the matrix.
+		void MPT(INMOST_DATA_ENUM_TYPE * Perm, INMOST_DATA_REAL_TYPE * SL = NULL, INMOST_DATA_REAL_TYPE * SR = NULL) const;
 		/// Singular value decomposition.
 		/// Reconstruct matrix: A = U*Sigma*V.Transpose().
 		/// Source http://www.public.iastate.edu/~dicook/JSS/paper/code/svd.c
@@ -199,7 +206,8 @@ namespace INMOST
 		/// @param U Left unitary matrix, U^T U = I.
 		/// @param Sigma Diagonal matrix with singular values.
 		/// @param V Right unitary matrix, not transposed.
-		/// @param order_singular_values
+		/// @param order_singular_values Return singular values in descending order.
+		/// @param nonnegative Change sign of singular values.
 		/// \warning Somehow result differ in auto-differential mode.
 		/// \todo Test implementation for auto-differentiation.
 		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true, bool nonnegative = true) const
@@ -1339,6 +1347,23 @@ namespace INMOST
 		/// Obtain number of rows.
 		/// @return Reference to number of columns.
 		enumerator & Cols() {return m;}
+		/// Construct row permutation matrix from array of new positions for rows.
+		/// Row permutation matrix multiplies matrix from left.
+		/// Column permutation matrix is obtained by transposition and is multiplied
+		/// from the right.
+		/// Argument Perm is filled with the new position for rows, i.e.
+		/// i-th row takes new position Perm[i]
+		/// @param Perm Array with new positions for rows.
+		/// @param size Size of the array and the resulting matrix.
+		/// @return Permutation matrix.
+		static Matrix<Var> Permutation(const INMOST_DATA_ENUM_TYPE * Perm, enumerator size)
+		{
+			Matrix<Var> Ret(size,size);
+			Ret.Zero();
+			for(enumerator k = 0; k < size; ++k)
+				Ret(k,Perm[k]) = 1;
+			return Ret;
+		}
 		/// Convert values in array into square matrix.
 		/// Supports the following representation, depending on the size
 		/// of input array and size of side of final tensors' matrix:
@@ -2380,6 +2405,352 @@ namespace INMOST
 	{
 		return ::INMOST::SubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
+	
+	
+	template<class T> struct make_integer;
+	template<> struct make_integer<float> {typedef int type;};
+	template<> struct make_integer<double> {typedef long long type;};
+
+	__INLINE static bool compare(INMOST_DATA_REAL_TYPE * a, INMOST_DATA_REAL_TYPE * b)
+	{
+		return (*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(a)) <=
+			(*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(b));
+	}
+	
+	class BinaryHeapDense
+	{
+		
+		INMOST_DATA_REAL_TYPE * Base;
+		std::vector<INMOST_DATA_REAL_TYPE *> Array;
+		std::vector<INMOST_DATA_ENUM_TYPE> Position;
+	public:
+		void Clear()
+		{
+			while(!Array.empty())
+			{
+				Position[Array.back()-Base] = ENUMUNDEF;
+				Array.pop_back();
+			}
+		}
+		INMOST_DATA_REAL_TYPE * Get(INMOST_DATA_ENUM_TYPE pos) {return Array[pos];}
+		INMOST_DATA_ENUM_TYPE GetSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(Array.size());}
+		INMOST_DATA_ENUM_TYPE GetPosition(INMOST_DATA_ENUM_TYPE pos)
+		{
+			return Position[pos];
+		}
+		INMOST_DATA_ENUM_TYPE DecreaseKey(INMOST_DATA_ENUM_TYPE pos)
+		{
+			INMOST_DATA_ENUM_TYPE i = Position[pos];
+			++i;
+			while(i > 1)
+			{
+				//if((*Array[i-1]) <= (*Array[i/2-1]))
+				if( compare(Array[i-1],Array[i/2-1]) )
+				{
+					Position[(Array[i/2-1]-Base)] = i-1; 
+					Position[(Array[i-1]-Base)] = i/2-1; 
+					std::swap(Array[i/2-1],Array[i-1]);
+				}
+				else break;
+				i = i/2;
+			}
+			return i;
+		}
+		INMOST_DATA_ENUM_TYPE PushHeap(INMOST_DATA_REAL_TYPE * key)
+		{
+			INMOST_DATA_ENUM_TYPE i = GetSize();
+			Array.push_back(key);
+			Position[(key-Base)] = i;
+			++i;
+			while(i > 1)
+			{
+				//if((*Array[i-1]) <= (*Array[i/2-1]) )
+				if( compare(Array[i-1],Array[i/2-1]) )
+				{
+					Position[(Array[i-1]-Base)] = i/2-1; 
+					Position[(Array[i/2-1]-Base)] = i-1; 
+					std::swap(Array[i-1],Array[i/2-1]);
+				}
+				else break;
+				i = i/2;
+			}
+			return i;
+		}
+
+		void BalanceHeap(INMOST_DATA_ENUM_TYPE i)
+		{
+			INMOST_DATA_ENUM_TYPE Index;
+			++i;
+			while(i <= Array.size()/2)
+			{
+				if( 2*i+1 > Array.size() )
+					Index = 2*i;
+				//else if( (*Array[2*i-1]) <= (*Array[2*i+1-1]) )
+				else if( compare(Array[2*i-1],Array[2*i+1-1]) )
+					Index = 2*i;
+				else
+					Index = 2*i+1;
+				//if(!((*Array[i-1]) <= (*Array[Index-1])))
+				if(!compare(Array[i-1],Array[Index-1]))
+				{ 
+					Position[(Array[i-1]-Base)] = Index-1;
+					Position[(Array[Index-1]-Base)] = i-1; 
+					std::swap(Array[i-1],Array[Index-1]);
+				}
+				else break;
+				i = Index;
+			}
+		}
+		INMOST_DATA_ENUM_TYPE PopHeap()
+		{
+			INMOST_DATA_ENUM_TYPE Ret = ENUMUNDEF;
+			if(Array.empty()) return Ret;
+			Ret = static_cast<INMOST_DATA_ENUM_TYPE>(Array[0]-Base);
+			Array[0] = Array.back();
+			Position[Array[0] - Base] = 0;
+			Array.pop_back();
+			Position[Ret] = ENUMUNDEF;
+			BalanceHeap(0);	
+			return Ret;
+		}
+		BinaryHeapDense(INMOST_DATA_REAL_TYPE * Base, INMOST_DATA_ENUM_TYPE Size)
+			: Base(Base)
+		{
+			Position.resize(Size,ENUMUNDEF);
+			Array.reserve(4096);
+		}
+		~BinaryHeapDense()
+		{
+		}
+	};
+
+	
+	template<typename Var>
+	void AbstractMatrix<Var>::MPT(INMOST_DATA_ENUM_TYPE * Perm, INMOST_DATA_REAL_TYPE * SL, INMOST_DATA_REAL_TYPE * SR) const
+	{
+		const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1;
+		int n = Rows();
+		int m = Cols();
+		INMOST_DATA_REAL_TYPE u, l;
+		array<INMOST_DATA_REAL_TYPE> Cmax(m,0.0);
+		array<INMOST_DATA_REAL_TYPE> U(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		array<INMOST_DATA_REAL_TYPE> V(n,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		std::fill(Perm,Perm+m,ENUMUNDEF);
+		//array<INMOST_DATA_ENUM_TYPE> Perm(m,ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> IPerm(std::max(n,m),ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> ColumnList(m,ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> ColumnPosition(n,ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> Parent(n,ENUMUNDEF);
+		array<INMOST_DATA_REAL_TYPE> Dist(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		const AbstractMatrix<Var> & A = *this;
+		Matrix<INMOST_DATA_REAL_TYPE> C(n,m);
+		INMOST_DATA_ENUM_TYPE Li, Ui;
+		INMOST_DATA_ENUM_TYPE ColumnBegin, PathEnd, Trace, IPermPrev;
+		INMOST_DATA_REAL_TYPE ShortestPath, AugmentPath;
+		BinaryHeapDense Heap(&Dist[0],m);
+		//Initial LOG transformation to dual problem and initial extreme match
+		for(int k = 0; k < n; ++k)
+		{
+			for(int i = 0; i < m; ++i)
+			{
+				C(k,i) = fabs(get_value(A(k,i)));
+				if( Cmax[i] < C(k,i) ) Cmax[i] = C(k,i);
+			}
+		}
+		for(int k = 0; k < n; ++k)
+		{
+			for (int i = 0; i < m; ++i)
+			{
+				if( Cmax[i] == 0 || C(k,i) == 0 )
+					C(k,i) = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+				else
+				{
+					C(k,i) = log(Cmax[i])-log(C(k,i));
+					if( C(k,i) < U[i] ) U[i] = C(k,i);
+				}
+			}
+		}
+		for(int k = 0; k < n; ++k)
+		{
+			for (int i = 0; i < m; ++i)
+			{
+				u = C(k,i) - U[i];
+				if( u < V[k] ) V[k] = u;
+			}
+		}
+		// Update cost and match 
+		for(int k = 0; k < n; ++k)
+		{
+			for (int i = 0; i < m; ++i)
+			{
+				u = fabs(C(k,i) - V[k] - U[i]);
+				if( u < 1.0e-30 && Perm[i] == ENUMUNDEF && IPerm[k] == ENUMUNDEF )
+				{
+					 Perm[i] = k;
+					 IPerm[k] = i;
+					 ColumnPosition[k] = i;
+				}
+			}
+		}
+		//1-step augmentation 
+		for(int k = 0; k < n; ++k)
+		{
+			if( IPerm[k] == ENUMUNDEF ) //unmatched row
+			{
+				for (int i = 0; i < m && IPerm[k] == ENUMUNDEF; ++i)
+				{
+					u = fabs(C(k,i) - V[k] - U[i]);
+					if( u <= 1.0e-30 )
+					{
+						Li = Perm[i];
+						assert(Li != ENUMUNDEF);
+						// Search other row in C for 0
+						for (int Lit = 0; Lit < m; ++Lit)
+						{
+							u = fabs(C(Li,Lit) - V[Li] - U[Lit]);
+							if( u <= 1.0e-30 && Perm[Lit] == ENUMUNDEF )
+							{
+								Perm[i] = k;
+								IPerm[k] = i;
+								ColumnPosition[k] = i;
+								Perm[Lit] = Li;
+								IPerm[Li] = Lit;
+								ColumnPosition[Li] = Lit;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+		// Weighted bipartite matching 
+		for(int k = 0; k < n; ++k)
+		{
+			if( IPerm[k] != ENUMUNDEF )
+				continue;
+			Li = k;
+			ColumnBegin = EOL;
+			Parent[Li] = ENUMUNDEF;
+			PathEnd = ENUMUNDEF;
+			Trace = k;
+			ShortestPath = 0;
+			AugmentPath = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+			while(true)
+			{
+				for (int Lit = 0; Lit < m; ++Lit)
+				{
+					if( ColumnList[Lit] != ENUMUNDEF ) continue;
+					l = ShortestPath + C(Li,Lit) - V[Li] - U[Lit];
+					if( l < 0.0 && fabs(l) < 1.0e-12 ) l = 0;
+					if( l < AugmentPath )
+					{
+						if( Perm[Lit] == ENUMUNDEF )
+						{
+							PathEnd = Lit;
+							Trace = Li;
+							AugmentPath = l;
+						}
+						else if( l < Dist[Lit] )
+						{
+							Dist[Lit] = l;
+							Parent[Perm[Lit]] = Li;
+							if( Heap.GetPosition(Lit) != ENUMUNDEF )
+								Heap.DecreaseKey(Lit);
+							else 
+								Heap.PushHeap(&Dist[Lit]);
+						}
+					}
+				}
+
+				INMOST_DATA_ENUM_TYPE pop_heap_pos = Heap.PopHeap();
+				if( pop_heap_pos == ENUMUNDEF ) break;
+			
+				Ui = pop_heap_pos;
+				ShortestPath = Dist[Ui];
+
+				if( AugmentPath <= ShortestPath ) 
+				{
+					Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					break;
+				}
+
+
+				ColumnList[Ui] = ColumnBegin;
+				ColumnBegin = Ui;
+
+				Li = Perm[Ui];
+				
+			}
+			if( PathEnd != ENUMUNDEF )
+			{
+				Ui = ColumnBegin;
+				while(Ui != EOL)
+				{
+					U[Ui] += Dist[Ui] - AugmentPath;
+					if( Perm[Ui] != ENUMUNDEF ) V[Perm[Ui]] = C(Perm[Ui],ColumnPosition[Perm[Ui]]) - U[Ui];
+					Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					Li = ColumnList[Ui];
+					ColumnList[Ui] = ENUMUNDEF;
+					Ui = Li;
+				}
+
+				Ui = PathEnd;
+				while(Trace != ENUMUNDEF)
+				{
+					IPermPrev = IPerm[Trace];
+					Perm[Ui] = Trace;
+					IPerm[Trace] = Ui;
+
+					ColumnPosition[Trace] = Ui;
+					V[Trace] = C(Trace,ColumnPosition[Trace]) - U[Ui];
+
+					Ui = IPermPrev;
+					Trace = Parent[Trace];
+
+				}
+				for(Ui = 0; Ui < Heap.GetSize(); ++Ui) *Heap.Get(Ui) = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+				Heap.Clear();
+			}
+		}
+		
+		if( SL || SR )
+		{
+			for (int k = 0; k < std::min(n,m); ++k)
+			{
+				l = (V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ? 1 : exp(V[k]));
+				u = (U[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[k] == 0 ? 1 : exp(U[k])/Cmax[k]);
+				
+				if( l*get_value(A(k,Perm[k]))*u < 0.0 ) l *= -1;
+				
+				if( SL ) SL[Perm[k]] = u;
+				if( SR ) SR[k] = l;
+			}
+			if( SR ) for(int k = std::min(n,m); k < n; ++k) SR[k] = 1;
+			if( SL ) for(int k = std::min(n,m); k < m; ++k) SL[k] = 1;
+		}
+		//check that there are no gaps in Perm
+		std::fill(IPerm.begin(),IPerm.end(),ENUMUNDEF);
+		std::vector<INMOST_DATA_ENUM_TYPE> gaps;
+		for(int k = 0; k < m; ++k)
+		{
+			if( Perm[k] != ENUMUNDEF )
+				IPerm[Perm[k]] = 0;
+		}
+		for(int k = 0; k < m; ++k)
+		{
+			if( IPerm[k] == ENUMUNDEF )
+				gaps.push_back(k);
+		}
+		for(int k = 0; k < m; ++k)
+		{
+			if( Perm[k] == ENUMUNDEF )
+			{
+				Perm[k] = gaps.back();
+				gaps.pop_back();
+			}
+		}
+	}
+	
 	/// shortcut for matrix of integer values.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
