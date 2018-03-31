@@ -198,6 +198,9 @@ namespace INMOST
 		/// @param Perm Array for reordering, size of columns of the matrix.
 		/// @param SL Diagonal for rescaling matrix from left, size of columns of the matrix.
 		/// @param SR Diagonal for rescaling matrix from right, size of rows of the matrix.
+		/// \todo 
+		/// 1. Test rescaling.
+		/// 2. Test on non-square matrices.
 		void MPT(INMOST_DATA_ENUM_TYPE * Perm, INMOST_DATA_REAL_TYPE * SL = NULL, INMOST_DATA_REAL_TYPE * SR = NULL) const;
 		/// Singular value decomposition.
 		/// Reconstruct matrix: A = U*Sigma*V.Transpose().
@@ -238,18 +241,18 @@ namespace INMOST
 			V.Resize(m,m);
 			std::swap(n,m); //this how original algorithm takes it
 			// Householder reduction to bidiagonal form
-			for (i = 0; i < (int)n; i++)
+			for (i = 0; i < n; i++)
 			{
 				// left-hand reduction
 				l = i + 1;
 				rv1[i] = scale * g;
 				g = s = scale = 0.0;
-				if (i < (int)m)
+				if (i < m)
 				{
-					for (k = i; k < (int)m; k++) scale += fabs(U(k,i));
+					for (k = i; k < m; k++) scale += fabs(U(k,i));
 					if (get_value(scale))
 					{
-						for (k = i; k < (int)m; k++)
+						for (k = i; k < m; k++)
 						{
 							U(k,i) /= scale;
 							s += U(k,i) * U(k,i);
@@ -260,25 +263,25 @@ namespace INMOST
 						U(i,i) = f - g;
 						if (i != n - 1)
 						{
-							for (j = l; j < (int)n; j++)
+							for (j = l; j < n; j++)
 							{
-								for (s = 0.0, k = i; k < (int)m; k++) s += U(k,i) * U(k,j);
+								for (s = 0.0, k = i; k < m; k++) s += U(k,i) * U(k,j);
 								f = s / h;
-								for (k = i; k < (int)m; k++) U(k,j) += f * U(k,i);
+								for (k = i; k < m; k++) U(k,j) += f * U(k,i);
 							}
 						}
-						for (k = i; k < (int)m; k++) U(k,i) *= scale;
+						for (k = i; k < m; k++) U(k,i) *= scale;
 					}
 				}
 				Sigma(i,i) = scale * g;
 				// right-hand reduction
 				g = s = scale = 0.0;
-				if (i < (int)m && i != n - 1)
+				if (i < m && i != n - 1)
 				{
-					for (k = l; k < (int)n; k++) scale += fabs(U(i,k));
+					for (k = l; k < n; k++) scale += fabs(U(i,k));
 					if (get_value(scale))
 					{
-						for (k = l; k < (int)n; k++)
+						for (k = l; k < n; k++)
 						{
 							U(i,k) = U(i,k)/scale;
 							s += U(i,k) * U(i,k);
@@ -287,16 +290,16 @@ namespace INMOST
 						g = -sign_func(sqrt(s), f);
 						h = f * g - s;
 						U(i,l) = f - g;
-						for (k = l; k < (int)n; k++) rv1[k] = U(i,k) / h;
+						for (k = l; k < n; k++) rv1[k] = U(i,k) / h;
 						if (i != m - 1)
 						{
-							for (j = l; j < (int)m; j++)
+							for (j = l; j < m; j++)
 							{
-								for (s = 0.0, k = l; k < (int)n; k++) s += U(j,k) * U(i,k);
-								for (k = l; k < (int)n; k++) U(j,k) += s * rv1[k];
+								for (s = 0.0, k = l; k < n; k++) s += U(j,k) * U(i,k);
+								for (k = l; k < n; k++) U(j,k) += s * rv1[k];
 							}
 						}
-						for (k = l; k < (int)n; k++) U(i,k) *= scale;
+						for (k = l; k < n; k++) U(i,k) *= scale;
 					}
 				}
 				anorm = max_func(anorm,fabs(get_value(Sigma(i,i))) + fabs(get_value(rv1[i])));
@@ -305,19 +308,19 @@ namespace INMOST
 			// accumulate the right-hand transformation
 			for (i = n - 1; i >= 0; i--)
 			{
-				if (i < (int)(n - 1))
+				if (i < (n - 1))
 				{
 					if (get_value(g))
 					{
-						for (j = l; j < (int)n; j++) V(j,i) = ((U(i,j) / U(i,l)) / g);
+						for (j = l; j < n; j++) V(j,i) = ((U(i,j) / U(i,l)) / g);
 						// double division to avoid underflow
-						for (j = l; j < (int)n; j++)
+						for (j = l; j < n; j++)
 						{
-							for (s = 0.0, k = l; k < (int)n; k++) s += U(i,k) * V(k,j);
-							for (k = l; k < (int)n; k++) V(k,j) += s * V(k,i);
+							for (s = 0.0, k = l; k < n; k++) s += U(i,k) * V(k,j);
+							for (k = l; k < n; k++) V(k,j) += s * V(k,i);
 						}
 					}
-					for (j = l; j < (int)n; j++) V(i,j) = V(j,i) = 0.0;
+					for (j = l; j < n; j++) V(i,j) = V(j,i) = 0.0;
 				}
 				V(i,i) = 1.0;
 				g = rv1[i];
@@ -329,24 +332,24 @@ namespace INMOST
 			{
 				l = i + 1;
 				g = Sigma(i,i);
-				if (i < (int)(n - 1))
-					for (j = l; j < (int)n; j++)
+				if (i < (n - 1))
+					for (j = l; j < n; j++)
 						U(i,j) = 0.0;
 				if (get_value(g))
 				{
 					g = 1.0 / g;
 					if (i != n - 1)
 					{
-						for (j = l; j < (int)n; j++)
+						for (j = l; j < n; j++)
 						{
-							for (s = 0.0, k = l; k < (int)m; k++) s += (U(k,i) * U(k,j));
+							for (s = 0.0, k = l; k < m; k++) s += (U(k,i) * U(k,j));
 							f = (s / U(i,i)) * g;
-							for (k = i; k < (int)m; k++) U(k,j) += f * U(k,i);
+							for (k = i; k < m; k++) U(k,j) += f * U(k,i);
 						}
 					}
-					for (j = i; j < (int)m; j++) U(j,i) = U(j,i)*g;
+					for (j = i; j < m; j++) U(j,i) = U(j,i)*g;
 				}
-				else for (j = i; j < (int)m; j++) U(j,i) = 0.0;
+				else for (j = i; j < m; j++) U(j,i) = 0.0;
 				U(i,i) += 1;
 			}
 			
@@ -383,7 +386,7 @@ namespace INMOST
 								h = 1.0 / h;
 								c = g * h;
 								s = (- f * h);
-								for (j = 0; j < (int)m; j++)
+								for (j = 0; j < m; j++)
 								{
 									y = U(j,nm);
 									z = U(j,i);
@@ -399,7 +402,7 @@ namespace INMOST
 						if (z < 0.0 && nonnegative)
 						{// make singular value nonnegative
 							Sigma(k,k) = -z;
-							for (j = 0; j < (int)n; j++) V(j,k) = -V(j,k);
+							for (j = 0; j < n; j++) V(j,k) = -V(j,k);
 						}
 						break;
 					}
@@ -435,7 +438,7 @@ namespace INMOST
 						g = g * c - x * s;
 						h = y * s;
 						y = y * c;
-						for (jj = 0; jj < (int)n; jj++)
+						for (jj = 0; jj < n; jj++)
 						{
 							x = V(jj,j);
 							z = V(jj,i);
@@ -452,7 +455,7 @@ namespace INMOST
 						}
 						f = (c * g) + (s * y);
 						x = (c * y) - (s * g);
-						for (jj = 0; jj < (int)m; jj++)
+						for (jj = 0; jj < m; jj++)
 						{
 							y = U(jj,j);
 							z = U(jj,i);
@@ -469,10 +472,10 @@ namespace INMOST
 			if( order_singular_values )
 			{
 				Var temp;
-				for(i = 0; i < (int)n; i++)
+				for(i = 0; i < n; i++)
 				{
 					k = i;
-					for(j = i+1; j < (int)n; ++j)
+					for(j = i+1; j < n; ++j)
 						if( Sigma(k,k) < Sigma(j,j) ) k = j;
 					if( Sigma(k,k) > Sigma(i,i) )
 					{
@@ -480,14 +483,14 @@ namespace INMOST
 						Sigma(k,k) = Sigma(i,i);
 						Sigma(i,i) = temp;
 						// U is m by n
-						for(int j = 0; j < (int)m; ++j)
+						for(int j = 0; j < m; ++j)
 						{
 							temp   = U(j,k);
 							U(j,k) = U(j,i);
 							U(j,i) = temp;
 						}
 						// V is n by n
-						for(int j = 0; j < (int)n; ++j)
+						for(int j = 0; j < n; ++j)
 						{
 							temp   = V(j,k);
 							V(j,k) = V(j,i);
