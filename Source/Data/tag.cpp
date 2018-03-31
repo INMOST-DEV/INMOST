@@ -202,6 +202,7 @@ namespace INMOST
 			sparse[i] = false;
 		}
 		tagname = "";
+		print_tag = true;
 	}
 	
 	Tag::Tag(Mesh * m, std::string name, DataType _dtype,INMOST_DATA_ENUM_TYPE size)
