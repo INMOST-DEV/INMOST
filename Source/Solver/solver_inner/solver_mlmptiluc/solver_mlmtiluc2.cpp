@@ -5,11 +5,11 @@
 #include <sstream>
 #include <deque>
 #include <iomanip>
-//#define REPORT_ILU
+#define REPORT_ILU
 //#undef REPORT_ILU
-//#define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
+#define REPORT_ILU_PROGRESS
+#define REPORT_ILU_END
+#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
@@ -45,7 +45,7 @@ static bool allow_pivot = true;
 //#define EQUALIZE_2NORM
 #define EQUALIZE_IDOMINANCE
 
-//#define PIVOT_THRESHOLD
+#define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-12
 //#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
@@ -53,9 +53,11 @@ static bool allow_pivot = true;
 #define ILUC2
 #define TRACK_DIAGONAL
 //#define PIVOT_COND_DEFAULT 0.1/tau
-#define PIVOT_COND_DEFAULT 1.0e+7
+#define PIVOT_COND_DEFAULT 1.0e+2
 #define PIVOT_DIAG_DEFAULT 1.0e+5
-//#define SCHUR_DROPPING
+#define SCHUR_DROPPING_LF
+#define SCHUR_DROPPING_EU
+#define SCHUR_DROPPING_S
 #define DIAGONAL_PIVOT
 #define CONDITION_PIVOT
 
@@ -717,7 +719,7 @@ public:
 		}
 
 #if defined(REPORT_ILU)
-		std::cout << "nonzeros in A " << nzA << std::endl;
+		std::cout << "nonzeros in A " << nzA << " pivot cond " << pivot_cond << " diag " << pivot_diag << " tau " << tau << " tau2 " << tau2 << std::endl;
 #endif
 		
 		int swaps = 0, totswaps = 0;
@@ -733,6 +735,9 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////
 			if( run_mpt )
 			{
+#if defined(REPORT_ILU)
+				printf("Reordering with MPT\n");
+#endif
 				ttransversal = Timer();
 				INMOST_DATA_ENUM_TYPE ColumnBegin;
 				INMOST_DATA_ENUM_TYPE pop_heap_pos;
@@ -1058,6 +1063,9 @@ public:
 			idx_t nvtxs = wend-wbeg;
 			std::vector<idx_t> xadj(nvtxs+1), adjncy, perm(nvtxs),iperm(nvtxs);
 			//adjncy.reserve(nzA*2);
+#if defined(REPORT_ILU)
+			printf("Reordering with METIS\n");
+#endif
 			
 			for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) printf("%s:%d No column permutation for row %d. Matrix is structurally singular\n",__FILE__,__LINE__,k);
 
@@ -1248,6 +1256,9 @@ public:
 			cend = i;
 #elif defined(REORDER_RCM)
 			{
+#if defined(REPORT_ILU)
+				printf("Reordering with RCM\n");
+#endif
 				//create a symmetric graph of the matrix A + A^T
 				std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1), adjncy;
 				//adjncy.reserve(nzA*2);
@@ -2417,10 +2428,12 @@ public:
 					while (Ui != EOL)
 					{
 						u = fabs(LineValuesU[Ui]);
-						if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
+						//if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
+						if( u > tau )
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
+						//else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
+						else if( u > tau2 )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #endif
 						else ndrops++;
@@ -2442,10 +2455,12 @@ public:
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
-						if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
+						//if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
+						if( u > tau )
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
+						//else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
+						else if( u > tau2 )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #endif
 						else ndrops++;
@@ -3209,7 +3224,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////
 						Li = LineIndecesU[Li];
 					}
-#if defined(SCHUR_DROPPING)
+#if defined(SCHUR_DROPPING_LF)
 					INMOST_DATA_REAL_TYPE LFnorm = 0, LFnum = 0;
 					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
@@ -3228,10 +3243,11 @@ public:
 					{
 						u = LineValuesU[Li - 1];
 						assert(Li - 1 >= wbeg && Li - 1 < cend);
-#if defined(SCHUR_DROPPING)
-						if( fabs(u)*NuL*NuL_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
+#if defined(SCHUR_DROPPING_LF)
+						//if( fabs(u)*NuL*NuL_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
+						if( fabs(u) > tau*tau*LFnorm )
 #else
-						if( u )
+						if( 1+u != 1 )
 #endif
 							LF_Entries.push_back(Sparse::Row::make_entry(Li - 1, u));
 						Li = LineIndecesU[Li];
@@ -3254,7 +3270,7 @@ public:
 #if defined(REPORT_ILU)
 					//if (i % 100 == 0)
 					{
-						printf("LF %6.2f%%\t\t\r", 100.f*(k - cend) / (1.f*(wend - cend-1)));
+						printf("LF %6.2f%% nnz %lu\t\t\r", 100.f*(k - cend) / (1.f*(wend - cend-1)),LF_Entries.size());
 						fflush(stdout);
 					}
 #endif
@@ -3408,7 +3424,7 @@ public:
 //         solve iteration done                                                  //
 ///////////////////////////////////////////////////////////////////////////////////
 					}
-#if defined(SCHUR_DROPPING)
+#if defined(SCHUR_DROPPING_EU)
 					INMOST_DATA_REAL_TYPE EUnorm = 0, EUnum = 0;
 					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
@@ -3431,10 +3447,11 @@ public:
 						j = LineIndecesU[Li];
 						u = LineValuesU[Li - 1];
 						//if( !u )
-#if defined(SCHUR_DROPPING)
-						if (fabs(u)*NuU*NuU_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+#if defined(SCHUR_DROPPING_EU)
+						//if (fabs(u)*NuU*NuU_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+						if( fabs(u) < tau*tau*EUnorm )
 #else
-						if( !u )
+						if( (1+u == 1) )
 #endif
 						{
 							LineIndecesU[Ui] = j;
@@ -3504,7 +3521,7 @@ public:
 						}
 						Li = LineIndecesU[Li];
 					}
-#if defined(SCHUR_DROPPING)
+#if defined(SCHUR_DROPPING_S)
 					INMOST_DATA_REAL_TYPE Snorm = 0, Snum = 0;
 					Ui = Sbeg;
 					while (Ui != EOL)
@@ -3524,8 +3541,9 @@ public:
 					while (Ui != EOL)
 					{
 						u = LineValuesL[Ui];
-#if defined(SCHUR_DROPPING)
-						if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc > tau * Snorm )
+#if defined(SCHUR_DROPPING_S)
+						//if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc > tau * Snorm )
+						if( fabs(u) > tau*tau * Snorm )
 #else
 						if( u )
 #endif
@@ -3561,7 +3579,7 @@ public:
 #if defined(REPORT_ILU)
 					//if (i % 100 == 0)
 					{
-						printf("Schur %6.2f%%\t\t\r",  100.f*(k - cend) / (1.f*(wend - cend-1)));
+						printf("Schur %6.2f%% nnz %lu\t\t\r",  100.f*(k - cend) / (1.f*(wend - cend-1)),S_Entries.size());
 						fflush(stdout);
 					}
 #endif
@@ -3617,7 +3635,7 @@ public:
 					//EU_Address[k].first = EU_Address[k].last = ENUMUNDEF;
 				}
 				
-				if( wend-cend < 5 )
+				if( wend-cend < 5 || A_Entries.empty() )
 					allow_pivot = false;
 				
 				
