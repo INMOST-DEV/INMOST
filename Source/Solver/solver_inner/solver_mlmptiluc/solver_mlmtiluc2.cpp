@@ -5,9 +5,9 @@
 #include <sstream>
 #include <deque>
 #include <iomanip>
-//#define REPORT_ILU
+#define REPORT_ILU
 //#undef REPORT_ILU
-//#define REPORT_ILU_PROGRESS
+#define REPORT_ILU_PROGRESS
 #define REPORT_ILU_END
 #define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
@@ -24,7 +24,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-//#define REORDER_METIS_ND
+#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -42,15 +42,16 @@ static bool allow_pivot = true;
 //#define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
-#define EQUALIZE_2NORM
-//#define EQUALIZE_IDOMINANCE
+//#define EQUALIZE_2NORM
+#define EQUALIZE_IDOMINANCE
 
-//#define PIVOT_THRESHOLD
+#define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-12
 //#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
 #define DIAGONAL_PERTURBATION_ABS 1.0e-10
 #define ILUC2
+//#define ILUC2_SCHUR
 #define TRACK_DIAGONAL
 //#define PIVOT_COND_DEFAULT 0.1/tau
 #define PIVOT_COND_DEFAULT 1.0e+2
@@ -58,7 +59,7 @@ static bool allow_pivot = true;
 #define SCHUR_DROPPING_LF
 #define SCHUR_DROPPING_EU
 #define SCHUR_DROPPING_S
-#define DIAGONAL_PIVOT
+//#define DIAGONAL_PIVOT
 #define CONDITION_PIVOT
 
 #if defined(REORDER_METIS_ND)
@@ -697,6 +698,7 @@ public:
 		//DumpMatrix(A_Address, A_Entries, mobeg, moend, "A.mtx");
 
 		std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
+		INMOST_DATA_REAL_TYPE Unorm, Lnorm;
 
 #if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0, nzLU2tot = 0, ndrops = 0;
@@ -2424,18 +2426,29 @@ public:
 #if defined(ILUC2)
 					U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
+					Unorm = 0;
+					Ui = LineIndecesU[k];
+					while (Ui != EOL)
+					{
+						u = LineValuesU[Ui];
+						Unorm += u*u;
+						Ui = LineIndecesU[Ui];
+					}
+					Unorm = sqrt(Unorm);
 					Ui = LineIndecesU[k];
 					while (Ui != EOL)
 					{
 						u = fabs(LineValuesU[Ui]);
 						//if (u*NuU > tau) // apply dropping rule
-						if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
-						//if( u > tau )
+						//if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
+						//if (u*NuU_acc*NuD_acc > tau) // apply dropping rule
+						if( u > tau*Unorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
 						//else if (u*NuU > tau2)
-						else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
-						//else if( u > tau2 )
+						//else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
+						//else if (u*NuU_acc*NuD_acc > tau2)
+						else if( u > tau2*Unorm )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #endif
 						else ndrops++;
@@ -2449,22 +2462,33 @@ public:
 //                 reconstruct L-part from linked list                           //
 ///////////////////////////////////////////////////////////////////////////////////
 					//insert column to L part
-					Li = LineIndecesL[k];
 					L_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
 					L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
+					Lnorm = 0;
+					Li = LineIndecesL[k];
+					while (Li != EOL)
+					{
+						u = LineValuesL[Li];
+						Lnorm += u*u;
+						Li = LineIndecesL[Li];
+					}
+					Lnorm = sqrt(Lnorm);
+					Li = LineIndecesL[k];
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
 						//if (u*NuL > tau) //apply dropping
-						if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
-						//if( u > tau )
+						//if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
+						//if (u*NuL_acc*NuD_acc > tau) //apply dropping
+						if( u > tau*Lnorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
 						//else if (u*NuL > tau2)
-						else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
-						//else if( u > tau2 )
+						//else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
+						//else if (u*NuL_acc*NuD_acc > tau2)
+						else if( u > tau2*Lnorm )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #endif
 						else ndrops++;
@@ -3196,7 +3220,7 @@ public:
 								LineValuesU[j] = -u;
 							}
 						}
-#if defined(ILUC2)
+#if defined(ILUC2) && defined(ILUC2_SCHUR)
 ///////////////////////////////////////////////////////////////////////////////////
 //         perform solve with second-order L part                                //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3229,16 +3253,15 @@ public:
 						Li = LineIndecesU[Li];
 					}
 #if defined(SCHUR_DROPPING_LF)
-					INMOST_DATA_REAL_TYPE LFnorm = 0, LFnum = 0;
+					INMOST_DATA_REAL_TYPE LFnorm = 0;
 					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
 						u = LineValuesU[Li - 1];
 						LFnorm += u*u;
-						LFnum++;
 						Li = LineIndecesU[Li];
 					}
-					if( LFnum ) LFnorm = sqrt(LFnorm/LFnum);
+					LFnorm = sqrt(LFnorm);
 #endif
 					//Assemble column into matrix
 					Li = LineIndecesU[cbeg];
@@ -3249,7 +3272,8 @@ public:
 						assert(Li - 1 >= wbeg && Li - 1 < cend);
 #if defined(SCHUR_DROPPING_LF)
 						//if( fabs(u)*NuL > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
-						if( fabs(u)*NuL*NuL_acc*NuD*NuD_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
+						//if( fabs(u)*NuL*NuL_acc*NuD*NuD_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
+						if( fabs(u)*NuL*NuD*NuL_acc*NuD_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u) > tau*tau*LFnorm )
 #else
 						if( 1+u != 1 )
@@ -3397,7 +3421,7 @@ public:
 								LineValuesU[j] = -u;
 							}
 						}
-#if defined(ILUC2)
+#if defined(ILUC2) && defined(ILUC2_SCHUR)
 ///////////////////////////////////////////////////////////////////////////////////
 //         perform solve with second-order U part                                //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3430,16 +3454,15 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////
 					}
 #if defined(SCHUR_DROPPING_EU)
-					INMOST_DATA_REAL_TYPE EUnorm = 0, EUnum = 0;
+					INMOST_DATA_REAL_TYPE EUnorm = 0;
 					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
 						u = LineValuesU[Li - 1];
 						EUnorm += u*u;
-						EUnum++;
 						Li = LineIndecesU[Li];;
 					}
-					if( EUnum ) EUnorm = sqrt(EUnorm/EUnum);
+					EUnorm = sqrt(EUnorm);
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //drop values that do not satisfy tolerances from linked list of line of EU block//
@@ -3454,7 +3477,8 @@ public:
 						//if( !u )
 #if defined(SCHUR_DROPPING_EU)
 						//if (fabs(u)*NuU < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
-						if (fabs(u)*NuU*NuU_acc*NuD*NuD_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+						//if (fabs(u)*NuU*NuU_acc*NuD*NuD_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+						if (fabs(u)*NuU*NuD*NuU_acc*NuD_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u) < tau*tau*EUnorm )
 #else
 						if( (1+u == 1) )
@@ -3528,16 +3552,15 @@ public:
 						Li = LineIndecesU[Li];
 					}
 #if defined(SCHUR_DROPPING_S)
-					INMOST_DATA_REAL_TYPE Snorm = 0, Snum = 0;
+					INMOST_DATA_REAL_TYPE Snorm = 0;
 					Ui = Sbeg;
 					while (Ui != EOL)
 					{
 						u = LineValuesL[Ui];
 						Snorm += u*u;
-						Snum++;
 						Ui = LineIndecesL[Ui];
 					}
-					Snorm = sqrt(Snorm/Snum);
+					Snorm = sqrt(Snorm);
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //         put calculated row to Schur complement                                //
@@ -3549,7 +3572,8 @@ public:
 						u = LineValuesL[Ui];
 #if defined(SCHUR_DROPPING_S)
 						//if( fabs(u)*NuU*NuL > tau * Snorm )
-						if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc*NuD*NuD_acc > tau * Snorm )
+						//if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc*NuD*NuD_acc > tau * Snorm )
+						if( fabs(u)*NuU*NuL*NuD*NuU_acc*NuL_acc*NuD_acc > tau * Snorm )
 						//if( fabs(u) > tau*tau * Snorm )
 #else
 						if( u )

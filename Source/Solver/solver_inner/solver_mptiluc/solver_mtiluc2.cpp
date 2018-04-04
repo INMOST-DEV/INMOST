@@ -8,7 +8,7 @@
 #include <iomanip>
 //#define REPORT_ILU
 //#undef REPORT_ILU
-//#define REPORT_ILU_PROGRESS
+#define REPORT_ILU_PROGRESS
 //#define REPORT_ILU_END
 //#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
@@ -25,7 +25,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-//#define REORDER_METIS_ND
+#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -3224,7 +3224,7 @@ swap_algorithm:
 #elif defined(REPORT_ILU_PROGRESS)
 					if (k % 500 == 0)
 					{
-						printf("%lu %d/%d factor %6.2f%%\t\t\r",static_cast<unsigned long>(level_size.size()), cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
+						printf("%d/%d factor %6.2f%%\t\t\r",cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
 						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
 						fflush(stdout);
 					}
