@@ -42,10 +42,10 @@ static bool allow_pivot = true;
 //#define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
-//#define EQUALIZE_2NORM
-#define EQUALIZE_IDOMINANCE
+#define EQUALIZE_2NORM
+//#define EQUALIZE_IDOMINANCE
 
-#define PIVOT_THRESHOLD
+//#define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-12
 //#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
@@ -497,7 +497,7 @@ public:
         const INMOST_DATA_REAL_TYPE subst = 1.0; (void)subst;
 		const INMOST_DATA_REAL_TYPE tol_modif = PIVOT_THRESHOLD_VALUE;
 		const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
-
+		bool block_pivot = false;
 		
 		INMOST_DATA_ENUM_TYPE wbeg, wend; //working interval
 		INMOST_DATA_ENUM_TYPE mobeg, moend; // total interval
@@ -1819,7 +1819,7 @@ public:
 #if defined(TRACK_DIAGONAL)
 					udiag = LU_Diag[k]; // LU_Diag is calculated with less dropping
 #if defined(DIAGONAL_PIVOT)
-					if( allow_pivot && fabs(udiag)*pivot_diag < 1 )
+					if( allow_pivot && !block_pivot && fabs(udiag)*pivot_diag < 1 )
 					{
 						//std::cout << "k " << k << " diag " << udiag << " cond " << pivot_diag << std::endl;
 						Pivot[k] = true;
@@ -2031,7 +2031,7 @@ public:
 #if !defined(TRACK_DIAGONAL)
 					udiag = LineValuesU[k];
 #if defined(DIAGONAL_PIVOT)
-					if( allow_pivot && fabs(udiag)*pivot_diag < 1 )
+					if( allow_pivot && !block_pivot && fabs(udiag)*pivot_diag < 1 )
 					{
 						Pivot[k] = true;
 						swaps++;
@@ -2375,7 +2375,7 @@ public:
 					NuL_tmp = NuL1_new;
 #endif
 #if defined(CONDITION_PIVOT)
-					if(allow_pivot && (NuU_tmp > pivot_cond || NuL_tmp > pivot_cond || NuD > pivot_cond) )
+					if(allow_pivot && !block_pivot && (NuU_tmp > pivot_cond || NuL_tmp > pivot_cond || NuD > pivot_cond) )
 					{
 						//restore condition number
 						NuL1 = NuU1_old;
@@ -2428,12 +2428,14 @@ public:
 					while (Ui != EOL)
 					{
 						u = fabs(LineValuesU[Ui]);
-						//if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
-						if( u > tau )
+						//if (u*NuU > tau) // apply dropping rule
+						if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
+						//if( u > tau )
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						//else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
-						else if( u > tau2 )
+						//else if (u*NuU > tau2)
+						else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
+						//else if( u > tau2 )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #endif
 						else ndrops++;
@@ -2455,12 +2457,14 @@ public:
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
-						//if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
-						if( u > tau )
+						//if (u*NuL > tau) //apply dropping
+						if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
+						//if( u > tau )
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						//else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
-						else if( u > tau2 )
+						//else if (u*NuL > tau2)
+						else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
+						//else if( u > tau2 )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #endif
 						else ndrops++;
@@ -2825,7 +2829,7 @@ public:
 #if defined(ILUC2)
 				std::cout << " in LU2 " << nzLU2;
 #endif
-				std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max << " pivot swaps " << swaps << std::endl;
+				std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max << " pivot swaps " << swaps << "                  " << std::endl;
 #endif
 			}
 			tlfactor = Timer() - tt;
@@ -3244,8 +3248,9 @@ public:
 						u = LineValuesU[Li - 1];
 						assert(Li - 1 >= wbeg && Li - 1 < cend);
 #if defined(SCHUR_DROPPING_LF)
-						//if( fabs(u)*NuL*NuL_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
-						if( fabs(u) > tau*tau*LFnorm )
+						//if( fabs(u)*NuL > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
+						if( fabs(u)*NuL*NuL_acc*NuD*NuD_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
+						//if( fabs(u) > tau*tau*LFnorm )
 #else
 						if( 1+u != 1 )
 #endif
@@ -3448,8 +3453,9 @@ public:
 						u = LineValuesU[Li - 1];
 						//if( !u )
 #if defined(SCHUR_DROPPING_EU)
-						//if (fabs(u)*NuU*NuU_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
-						if( fabs(u) < tau*tau*EUnorm )
+						//if (fabs(u)*NuU < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+						if (fabs(u)*NuU*NuU_acc*NuD*NuD_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+						//if( fabs(u) < tau*tau*EUnorm )
 #else
 						if( (1+u == 1) )
 #endif
@@ -3542,8 +3548,9 @@ public:
 					{
 						u = LineValuesL[Ui];
 #if defined(SCHUR_DROPPING_S)
-						//if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc > tau * Snorm )
-						if( fabs(u) > tau*tau * Snorm )
+						//if( fabs(u)*NuU*NuL > tau * Snorm )
+						if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc*NuD*NuD_acc > tau * Snorm )
+						//if( fabs(u) > tau*tau * Snorm )
 #else
 						if( u )
 #endif
@@ -3635,8 +3642,8 @@ public:
 					//EU_Address[k].first = EU_Address[k].last = ENUMUNDEF;
 				}
 				
-				if( wend-cend < 5 || A_Entries.empty() )
-					allow_pivot = false;
+				if( wend-cend < 25 || A_Entries.empty() )
+					block_pivot = true;
 				
 				
 				wbeg = cend; //there is more work to do
