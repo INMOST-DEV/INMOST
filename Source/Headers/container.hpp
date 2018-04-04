@@ -2759,7 +2759,7 @@ namespace INMOST
 		}
 		thread_private(const thread_private & b)
 		{
-			items.resize(omp_get_max_threads);
+			items.resize(omp_get_max_threads());
 			for(int k = 0; k < omp_get_max_threads(); ++k)
 				items[k].item = b.get(k);
 		}

@@ -5,9 +5,9 @@
 #include <sstream>
 #include <deque>
 #include <iomanip>
-#define REPORT_ILU
+//#define REPORT_ILU
 //#undef REPORT_ILU
-#define REPORT_ILU_PROGRESS
+//#define REPORT_ILU_PROGRESS
 #define REPORT_ILU_END
 #define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
@@ -24,7 +24,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-#define REORDER_METIS_ND
+//#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
