@@ -37,7 +37,7 @@ static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 
 namespace INMOST
 {
-    static int flag = 0;
+    static int block_recursion = 0;
 
     std::string ro()
     {
@@ -2671,8 +2671,9 @@ namespace INMOST
 		
 		int num_send = 0, num_recv = 0;
         ///////////
-        if (flag == 0)
+        if ( block_recursion == 0)
         {
+			bool call_exchange = false;
             for(unsigned int k = 0; k < tags.size(); k++)
             {
                 if(tags[k].GetDataType() == DATA_REFERENCE)
@@ -2694,6 +2695,7 @@ namespace INMOST
                                     for(ElementSet child = set.GetChild(); child.isValid(); child = child.GetSibling())
                                     {
                                         child.IntegerArray(tag_sendto).push_back(*p);
+                                        call_exchange = true;
                                     }
                                 }
                                 else
@@ -2702,6 +2704,7 @@ namespace INMOST
                                     {
                                         if (refs[i] == InvalidElement()) continue;
                                         refs[i].IntegerArray(tag_sendto).push_back(*p);
+                                        call_exchange = true;
                                     }
                                 }
                             }
@@ -2709,9 +2712,12 @@ namespace INMOST
                     }
                 }
             }
-            flag = 1;
-            ExchangeMarked();
-            flag = 0;
+            if( call_exchange )
+            {
+				block_recursion = 1;
+				ExchangeMarked();
+				block_recursion = 0;
+			}
         }
         ///////////
 		for(p = procs.begin(); p != procs.end(); p++ )
@@ -3041,7 +3047,7 @@ namespace INMOST
             }
             ind++;
         }
-
+        for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); ++it) RemMarker(*it,busy);
         // Add low conns elements to selems array. Low conns for ESET can contain any element
         // Low conns for ESETs
         {
@@ -3103,7 +3109,7 @@ namespace INMOST
 			//TODO: 44 old
 			//std::sort(selems[etypenum].begin(),selems[etypenum].end());
 		}
-
+		/*
         stringstream ss;
         ss << ro() << mpirank << ": to send: ";
         ss << "nodes: " << selems[0].size() << " | ";
@@ -3117,7 +3123,7 @@ namespace INMOST
             ss << ElementSet(this,*it).GetName() << " ";
         }
         //cout << ss.str() << endl;
-
+		*/
 		REPORT_STR("final number of elements");
 		REPORT_VAL("NODE",selems[0].size());
 		REPORT_VAL("EDGE",selems[1].size());
@@ -3241,8 +3247,8 @@ namespace INMOST
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[1].size())  ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			buffer.resize(position+new_size);
-			INMOST_DATA_ENUM_TYPE itemp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[1].size());
-			MPI_Pack(&itemp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[1].size());
+			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[1].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			buffer.resize(position);
@@ -3302,8 +3308,8 @@ namespace INMOST
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[2].size())  ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			buffer.resize(position+new_size);
-			INMOST_DATA_ENUM_TYPE itemp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[2].size());
-			MPI_Pack(&itemp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[2].size());
+			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[2].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			buffer.resize(position);
@@ -3387,7 +3393,7 @@ namespace INMOST
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num_high)        ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			buffer.resize(position+new_size);
-			INMOST_DATA_ENUM_TYPE temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[3].size());
+			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[3].size());
 			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_size.empty() )  MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_nums.empty() )  MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
@@ -3398,11 +3404,12 @@ namespace INMOST
 
         /////////////////////////////////////////
         // pack esets
+        //if( false )
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[4].size());
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // TODO - 3
 			std::vector<Storage::integer> low_conn_nums;  // array composed elements : ElementType and position in array 
-			int* high_conn_nums = new int[selems[4].size() * 3];        // array of indexes of children, sibling, parent. -1 if has't
+			std::vector<int> high_conn_nums(selems[4].size() * 3);        // array of indexes of children, sibling, parent. -1 if has't
 			INMOST_DATA_ENUM_TYPE num_high = 0;
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
@@ -3418,8 +3425,7 @@ namespace INMOST
             // Compute names_buff_size
 			for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) names_buff_size += ElementSet(this,*it).GetName().size() + 1;
             //cout << ro() << mpirank << ": Names buff size = " << names_buff_size << endl;
-            char* names_buff;
-            if (names_buff_size > 0) names_buff = new char[names_buff_size];
+            std::vector<char> names_buff(names_buff_size);
             int names_buff_pos = 0;
 
 			for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) 
@@ -3460,7 +3466,7 @@ namespace INMOST
             	
                 k++;
 			}
-
+			/*
             stringstream s1;
             s1 << ro() << mpirank << ": Packed names: ";
             for (int i = 0; i < names_buff_size; i++)
@@ -3472,7 +3478,7 @@ namespace INMOST
             stringstream ss;
             ss << ro() << mpirank << ": packed low_conns_size array: ";
             for (int i = 0; i < num; i++) ss << low_conn_size[i] << " ";
-
+			*/
 			MPI_Pack_size(1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // count of sets
 			MPI_Pack_size(1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // names_buff_size
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(names_buff_size)   ,INMOST_MPI_DATA_BULK_TYPE   ,comm,&temp); new_size += temp;   // names_buff
@@ -3481,15 +3487,15 @@ namespace INMOST
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size()*3),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // high_conn_nums array
             
 			buffer.resize(position+new_size);
-			INMOST_DATA_ENUM_TYPE temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[4].size());
+			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[4].size());
             
 			                         MPI_Pack(&temp           ,1                                            ,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			                         MPI_Pack(&names_buff_size,1                                            ,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if(names_buff_size > 0)  MPI_Pack(&names_buff[0]  ,static_cast<INMOST_MPI_SIZE>(names_buff_size),INMOST_MPI_DATA_BULK_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 
-			if( !low_conn_size.empty() )  MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[4].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_nums.empty() )  MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( selems[4].size() > 0 )    MPI_Pack(&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num*3)           ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !low_conn_size.empty() )  MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[4].size())  ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !low_conn_nums.empty() )  MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( selems[4].size() > 0 )    MPI_Pack(&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(selems[4].size()*3),INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			buffer.resize(position);
 		}
         /////////////////////////////////////////
@@ -3989,12 +3995,13 @@ namespace INMOST
 
         /////////////////////////////////////////////////////////////
         //unpack esets
+        //if( false )
 		{
 			ElementArray<Face> c_faces(this);
 			ElementArray<Node> c_nodes(this);
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
-			int* high_conn_nums;
+			std::vector<int> high_conn_nums;
 			INMOST_DATA_ENUM_TYPE shift_high = 0;
 			INMOST_DATA_ENUM_TYPE names_buff_size  = 0;
 			shift = 0;
@@ -4003,29 +4010,30 @@ namespace INMOST
 			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
         //    cout << ro() << rank << ": Unpack num - " << num << endl;
             
-            high_conn_nums = new int[num*3];
+            high_conn_nums.resize(num*3);
             
             // Count of chars in names buffer
 			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff_size,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
           //  cout << ro() << rank << ": Unpack " << names_buff_size << " names buff size" << endl;
-            char* names_buff = new char[names_buff_size];
+            std::vector<char> names_buff(names_buff_size);
 
             // Names buffer
 	        if( names_buff_size != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff[0],static_cast<INMOST_MPI_SIZE>(names_buff_size),INMOST_MPI_DATA_BULK_TYPE,comm);
 
             // Gather sets names to array
             int pos = 0;
-            vector<string> names;
+            std::vector<string> names;
             while (pos < names_buff_size)
             {
                 names.push_back(string(&names_buff[pos]));
                 pos += names[names.size() - 1].length() + 1;
             }
-                    
+            /*   
             stringstream ss;
             ss << ro() << rank << ": unpacked names: ";
             for (int i = 0; i < names.size(); i++)
                 ss << names[i] << " ";
+            */
             //cout << ss.str() << endl;
 
             // Looking to all names and create the sets if it's needed
