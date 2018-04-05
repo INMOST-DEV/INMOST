@@ -42,8 +42,8 @@ static bool allow_pivot = true;
 //#define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
-//#define EQUALIZE_2NORM
-#define EQUALIZE_IDOMINANCE
+#define EQUALIZE_2NORM
+//#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-12
@@ -51,14 +51,14 @@ static bool allow_pivot = true;
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
 #define DIAGONAL_PERTURBATION_ABS 1.0e-10
 #define ILUC2
-//#define ILUC2_SCHUR
-#define TRACK_DIAGONAL
+#define ILUC2_SCHUR
+//#define TRACK_DIAGONAL
 //#define PIVOT_COND_DEFAULT 0.1/tau
 #define PIVOT_COND_DEFAULT 1.0e+2
 #define PIVOT_DIAG_DEFAULT 1.0e+5
 #define SCHUR_DROPPING_LF
 #define SCHUR_DROPPING_EU
-#define SCHUR_DROPPING_S
+//#define SCHUR_DROPPING_S
 //#define DIAGONAL_PIVOT
 #define CONDITION_PIVOT
 
@@ -2439,16 +2439,16 @@ public:
 					while (Ui != EOL)
 					{
 						u = fabs(LineValuesU[Ui]);
-						//if (u*NuU > tau) // apply dropping rule
+						if (u*NuU*NuU_acc > tau*Unorm) // apply dropping rule
 						//if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
 						//if (u*NuU_acc*NuD_acc > tau) // apply dropping rule
-						if( u > tau*Unorm )
+						//if( u > tau*Unorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						//else if (u*NuU > tau2)
+						else if (u*NuU*NuU_acc > tau2*Unorm)
 						//else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuU_acc*NuD_acc > tau2)
-						else if( u > tau2*Unorm )
+						//else if( u > tau2*Unorm )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #endif
 						else ndrops++;
@@ -2479,16 +2479,16 @@ public:
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
-						//if (u*NuL > tau) //apply dropping
+						if (u*NuL*NuL_acc > tau*Lnorm) //apply dropping
 						//if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
 						//if (u*NuL_acc*NuD_acc > tau) //apply dropping
-						if( u > tau*Lnorm )
+						//if( u > tau*Lnorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						//else if (u*NuL > tau2)
+						else if (u*NuL*NuL_acc > tau2*Lnorm)
 						//else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuL_acc*NuD_acc > tau2)
-						else if( u > tau2*Lnorm )
+						//else if( u > tau2*Lnorm )
 							LU2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #endif
 						else ndrops++;
@@ -3168,6 +3168,8 @@ public:
 				}
 				 */
 				applyPQ(wbeg, wend, localP, localQ, invP, invQ);
+				
+				int ndrops_lf = 0, ndrops_eu = 0, ndrops_s = 0;
 ///////////////////////////////////////////////////////////////////////////////////
 //  Compute Schur                                                                //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3273,12 +3275,13 @@ public:
 #if defined(SCHUR_DROPPING_LF)
 						//if( fabs(u)*NuL > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u)*NuL*NuL_acc*NuD*NuD_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
-						if( fabs(u)*NuL*NuD*NuL_acc*NuD_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
+						if( fabs(u)*NuL*NuD*NuL_acc*NuD_acc > tau2*LFnorm )//*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u) > tau*tau*LFnorm )
 #else
 						if( 1+u != 1 )
 #endif
 							LF_Entries.push_back(Sparse::Row::make_entry(Li - 1, u));
+						else ndrops_lf++;
 						Li = LineIndecesU[Li];
 					}
 					LF_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
@@ -3299,7 +3302,7 @@ public:
 #if defined(REPORT_ILU)
 					//if (i % 100 == 0)
 					{
-						printf("LF %6.2f%% nnz %lu\t\t\r", 100.f*(k - cend) / (1.f*(wend - cend-1)),LF_Entries.size());
+						printf("LF %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend) / (1.f*(wend - cend-1)),LF_Entries.size(),ndrops_lf);
 						fflush(stdout);
 					}
 #endif
@@ -3478,7 +3481,7 @@ public:
 #if defined(SCHUR_DROPPING_EU)
 						//if (fabs(u)*NuU < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
 						//if (fabs(u)*NuU*NuU_acc*NuD*NuD_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
-						if (fabs(u)*NuU*NuD*NuU_acc*NuD_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+						if (fabs(u)*NuU*NuD*NuU_acc*NuD_acc < tau2*EUnorm ) //*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u) < tau*tau*EUnorm )
 #else
 						if( (1+u == 1) )
@@ -3487,6 +3490,7 @@ public:
 							LineIndecesU[Ui] = j;
 							LineIndecesU[Li] = UNDEF;
 							LineValuesU[Li - 1] = 0.0;
+							ndrops_eu++;
 						}
 						else Ui = Li;
 						Li = j;
@@ -3576,9 +3580,11 @@ public:
 						if( fabs(u)*NuU*NuL*NuD*NuU_acc*NuL_acc*NuD_acc > tau * Snorm )
 						//if( fabs(u) > tau*tau * Snorm )
 #else
-						if( u )
+						if( 1+u != 1 )
 #endif
 							S_Entries.push_back(Sparse::Row::make_entry(Ui,u));
+						else
+							ndrops_s++;
 						Ui = LineIndecesL[Ui];
 					}
 					S_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
@@ -3610,7 +3616,7 @@ public:
 #if defined(REPORT_ILU)
 					//if (i % 100 == 0)
 					{
-						printf("Schur %6.2f%% nnz %lu\t\t\r",  100.f*(k - cend) / (1.f*(wend - cend-1)),S_Entries.size());
+						printf("Schur %6.2f%% nnz %lu drop EU %d drop S %d\t\t\r",  100.f*(k - cend) / (1.f*(wend - cend-1)),S_Entries.size(),ndrops_eu,ndrops_s);
 						fflush(stdout);
 					}
 #endif
