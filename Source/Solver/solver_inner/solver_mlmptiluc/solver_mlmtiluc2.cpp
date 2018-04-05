@@ -42,8 +42,8 @@ static bool allow_pivot = true;
 //#define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
-#define EQUALIZE_2NORM
-//#define EQUALIZE_IDOMINANCE
+//#define EQUALIZE_2NORM
+#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-12
@@ -590,6 +590,8 @@ public:
 		
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
+		
+		std::vector<INMOST_DATA_ENUM_TYPE> indicesU, indicesL, indicesS;
         double tfactor = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tschur = 0.0, tlocal;
 #if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
@@ -698,7 +700,7 @@ public:
 		//DumpMatrix(A_Address, A_Entries, mobeg, moend, "A.mtx");
 
 		std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
-		INMOST_DATA_REAL_TYPE Unorm, Lnorm;
+		INMOST_DATA_REAL_TYPE Unorm, Unum, Lnorm, Lnum;
 
 #if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0, nzLU2tot = 0, ndrops = 0;
@@ -1865,6 +1867,7 @@ public:
 					// add diagonal value first, there shouldn't be values on left from diagonal
 					//assert(B_Entries[B_Address[k].first].first == k);
 					LineIndecesU[cbeg] = k;
+					LineIndecesU[k] = EOL;
 					if (B_Entries[B_Address[k].first].first == k)
 						LineValuesU[k] = B_Entries[B_Address[k].first].second;
 					else
@@ -1876,6 +1879,7 @@ public:
 						Ui = LineIndecesU[Ui] = B_Entries[it].first;
 					}
 					LineIndecesU[Ui] = EOL;
+					Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                    U-part elimination with L                                  //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1902,6 +1906,7 @@ public:
 									LineValuesU[j] -= u;
 								else if( u )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -1913,6 +1918,10 @@ public:
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
+									*/
+									LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 						}
@@ -1936,6 +1945,7 @@ public:
 									LineValuesU[j] -= u;
 								else if( u )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -1947,6 +1957,10 @@ public:
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
+									*/
+									LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 						}
@@ -1979,6 +1993,7 @@ public:
 									LineValuesU[j] -= u;
 								else if( u )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -1990,6 +2005,10 @@ public:
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
+									*/
+									LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2008,6 +2027,7 @@ public:
 									LineValuesU[j] -= u;
 								else if( u )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2019,6 +2039,10 @@ public:
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
+									*/
+									LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 #endif
@@ -2026,7 +2050,21 @@ public:
 						i = L2list[i];
 					}
 #endif
-					//define the diagonal value
+///////////////////////////////////////////////////////////////////////////////////
+//                  Order contents of linked list                                //
+///////////////////////////////////////////////////////////////////////////////////
+					indicesU.clear();
+					Ui = Sbeg;
+					while(Ui != EOL)
+					{
+						indicesU.push_back(Ui);
+						Ui = LineIndecesU[Ui];
+					}
+					std::sort(indicesU.begin(),indicesU.end());
+					//Sbeg = indices[0];
+					for(size_t qt = 1; qt < indicesU.size(); ++qt)
+						LineIndecesU[indicesU[qt-1]] = indicesU[qt];
+					LineIndecesU[indicesU.back()] = EOL;
 ///////////////////////////////////////////////////////////////////////////////////
 //                  Retrieve diagonal value                                      //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2086,6 +2124,7 @@ public:
 					//uncompress column
 					//insert diagonal value first
 					LineIndecesL[cbeg] = k;
+					LineIndecesL[k] = EOL;
 					if (B_Entries[B_Address[k].first].first == k)
 						LineValuesL[k] = B_Entries[B_Address[k].first].second;
 					else
@@ -2101,6 +2140,7 @@ public:
 						Li = Blist[Li];
 					}
 					LineIndecesL[Ui] = EOL;
+					Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                 L-part elimination with U                                     //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2128,6 +2168,7 @@ public:
 									LineValuesL[j] -= l;
 								else if( l )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2139,6 +2180,10 @@ public:
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
+									*/
+									LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 						}
@@ -2162,6 +2207,7 @@ public:
 									LineValuesL[j] -= l;
 								else if( l )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2173,6 +2219,10 @@ public:
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
+									*/
+									LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 						}
@@ -2206,6 +2256,7 @@ public:
 									LineValuesL[j] -= l;
 								else if( l )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2217,6 +2268,10 @@ public:
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
+									*/
+									LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2236,6 +2291,7 @@ public:
 									LineValuesL[j] -= l;
 								else if( l )
 								{
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2247,6 +2303,10 @@ public:
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
+									*/
+									LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
 								}
 							}
 #endif
@@ -2254,6 +2314,21 @@ public:
 						i = U2list[i];
 					}
 #endif
+///////////////////////////////////////////////////////////////////////////////////
+//                  Order contents of linked list                                //
+///////////////////////////////////////////////////////////////////////////////////
+					indicesL.clear();
+					Ui = Sbeg;
+					while(Ui != EOL)
+					{
+						indicesL.push_back(Ui);
+						Ui = LineIndecesL[Ui];
+					}
+					std::sort(indicesL.begin(),indicesL.end());
+					//Sbeg = indices[0];
+					for(size_t qt = 1; qt < indicesL.size(); ++qt)
+						LineIndecesL[indicesL[qt-1]] = indicesL[qt];
+					LineIndecesL[indicesL.back()] = EOL;
 					//check that diagonal value is the same(must be!)
 					//assert(fabs(LineValues[k] / udiag - 1.0) < 1.0e-10);
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2426,26 +2501,30 @@ public:
 #if defined(ILUC2)
 					U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
-					Unorm = 0;
+					Unum = Unorm = 0;
+					
 					Ui = LineIndecesU[k];
 					while (Ui != EOL)
 					{
 						u = LineValuesU[Ui];
 						Unorm += u*u;
+						Unum++;
 						Ui = LineIndecesU[Ui];
 					}
-					Unorm = sqrt(Unorm);
+					if( Unum ) Unorm = sqrt(Unorm/Unum);
+					Unorm = std::min(1.0,Unorm);
+					
 					Ui = LineIndecesU[k];
 					while (Ui != EOL)
 					{
 						u = fabs(LineValuesU[Ui]);
-						if (u*NuU*NuU_acc > tau*Unorm) // apply dropping rule
+						if (u*NuU > tau*Unorm) // apply dropping rule
 						//if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
 						//if (u*NuU_acc*NuD_acc > tau) // apply dropping rule
 						//if( u > tau*Unorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						else if (u*NuU*NuU_acc > tau2*Unorm)
+						else if (u*NuU > tau2*Unorm)
 						//else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuU_acc*NuD_acc > tau2)
 						//else if( u > tau2*Unorm )
@@ -2466,26 +2545,30 @@ public:
 #if defined(ILUC2)
 					L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
-					Lnorm = 0;
+					Lnum = Lnorm = 0;
+					
 					Li = LineIndecesL[k];
 					while (Li != EOL)
 					{
 						u = LineValuesL[Li];
 						Lnorm += u*u;
+						Lnum++;
 						Li = LineIndecesL[Li];
 					}
-					Lnorm = sqrt(Lnorm);
+					if( Lnum ) Lnorm = sqrt(Lnorm/Lnum);
+					Lnorm = std::min(1.0,Lnorm);
+					
 					Li = LineIndecesL[k];
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
-						if (u*NuL*NuL_acc > tau*Lnorm) //apply dropping
+						if (u*NuL > tau*Lnorm) //apply dropping
 						//if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
 						//if (u*NuL_acc*NuD_acc > tau) //apply dropping
 						//if( u > tau*Lnorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						else if (u*NuL*NuL_acc > tau2*Lnorm)
+						else if (u*NuL > tau2*Lnorm)
 						//else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuL_acc*NuD_acc > tau2)
 						//else if( u > tau2*Lnorm )
@@ -3254,18 +3337,34 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////
 						Li = LineIndecesU[Li];
 					}
+///////////////////////////////////////////////////////////////////////////////////
+//                 Rescale by diagonal                                           //
+///////////////////////////////////////////////////////////////////////////////////
+					Li = LineIndecesU[cbeg];
+					while (Li != EOL)
+					{
+						LineValuesU[Li - 1] /= LU_Diag[Li-1]; //Li - 1 or k?
+						Li = LineIndecesU[Li];
+					}
+///////////////////////////////////////////////////////////////////////////////////
+//                 Compute norm for dropping                                     //
+///////////////////////////////////////////////////////////////////////////////////
 #if defined(SCHUR_DROPPING_LF)
-					INMOST_DATA_REAL_TYPE LFnorm = 0;
+					INMOST_DATA_REAL_TYPE LFnorm = 0, LFnum = 0;
 					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
 						u = LineValuesU[Li - 1];
 						LFnorm += u*u;
+						LFnum++;
 						Li = LineIndecesU[Li];
 					}
-					LFnorm = sqrt(LFnorm);
+					if( LFnum ) LFnorm = sqrt(LFnorm/LFnum);
+					LFnorm = std::min(1.0,LFnorm);
 #endif
-					//Assemble column into matrix
+///////////////////////////////////////////////////////////////////////////////////
+//                 Assemble column into matrix                                   //
+///////////////////////////////////////////////////////////////////////////////////
 					Li = LineIndecesU[cbeg];
 					LF_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
 					while (Li != EOL)
@@ -3275,7 +3374,7 @@ public:
 #if defined(SCHUR_DROPPING_LF)
 						//if( fabs(u)*NuL > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u)*NuL*NuL_acc*NuD*NuD_acc > tau*LFnorm )//*fabs(LU_Diag[Li-1]) )
-						if( fabs(u)*NuL*NuD*NuL_acc*NuD_acc > tau2*LFnorm )//*fabs(LU_Diag[Li-1]) )
+						if( fabs(u) > tau2*LFnorm )//*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u) > tau*tau*LFnorm )
 #else
 						if( 1+u != 1 )
@@ -3456,16 +3555,31 @@ public:
 //         solve iteration done                                                  //
 ///////////////////////////////////////////////////////////////////////////////////
 					}
+///////////////////////////////////////////////////////////////////////////////////
+//         rescale by diagonal                                                   //
+///////////////////////////////////////////////////////////////////////////////////
+					//rescale vector by diagonal *E = ~E_i D^{-1} = E_i U^{-1} D^{-1}
+					Li = LineIndecesU[cbeg];
+					while (Li != EOL)
+					{
+						LineValuesU[Li - 1] /= LU_Diag[Li - 1];
+						Li = LineIndecesU[Li];
+					}
+///////////////////////////////////////////////////////////////////////////////////
+//       compute norm                                                            //
+///////////////////////////////////////////////////////////////////////////////////
 #if defined(SCHUR_DROPPING_EU)
-					INMOST_DATA_REAL_TYPE EUnorm = 0;
+					INMOST_DATA_REAL_TYPE EUnorm = 0, EUnum = 0;
 					Li = LineIndecesU[cbeg];
 					while (Li != EOL)
 					{
 						u = LineValuesU[Li - 1];
 						EUnorm += u*u;
-						Li = LineIndecesU[Li];;
+						EUnum++;
+						Li = LineIndecesU[Li];
 					}
-					EUnorm = sqrt(EUnorm);
+					if( EUnum ) EUnorm = sqrt(EUnorm/EUnum);
+					EUnorm = std::min(1.0,EUnorm);
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //drop values that do not satisfy tolerances from linked list of line of EU block//
@@ -3481,7 +3595,7 @@ public:
 #if defined(SCHUR_DROPPING_EU)
 						//if (fabs(u)*NuU < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
 						//if (fabs(u)*NuU*NuU_acc*NuD*NuD_acc < tau*EUnorm ) //*fabs(LU_Diag[Li-1]) )
-						if (fabs(u)*NuU*NuD*NuU_acc*NuD_acc < tau2*EUnorm ) //*fabs(LU_Diag[Li-1]) )
+						if (fabs(u) < tau2*EUnorm ) //*fabs(LU_Diag[Li-1]) )
 						//if( fabs(u) < tau*tau*EUnorm )
 #else
 						if( (1+u == 1) )
@@ -3510,16 +3624,7 @@ public:
 					EU_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(EU_Entries.size());
 					assert(std::is_sorted(EU_Entries.begin()+EU_Address[k].first,EU_Entries.end()));
 					 */
-///////////////////////////////////////////////////////////////////////////////////
-//         rescale by diagonal                                                   //
-///////////////////////////////////////////////////////////////////////////////////
-					//rescale vector by diagonal *E = ~E_i D^{-1} = E_i U^{-1} D^{-1}
-					Li = LineIndecesU[cbeg];
-					while (Li != EOL)
-					{
-						LineValuesU[Li - 1] /= LU_Diag[Li - 1];
-						Li = LineIndecesU[Li];
-					}
+
 ///////////////////////////////////////////////////////////////////////////////////
 //         unpack line of A matrix to temporary linked list                      //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3543,10 +3648,10 @@ public:
 						{
 							j = LFt_Entries[r].first;
 							u = LFt_Entries[r].second;
-							v = -l*u;
+							v = -l*u*LU_Diag[Li-1];
 							if (LineIndecesL[j] != UNDEF)
 								LineValuesL[j] += v;
-							else
+							else if( v )
 							{
 								LineValuesL[j] = v;
 								LineIndecesL[j] = Sbeg;
@@ -3555,29 +3660,54 @@ public:
 						}
 						Li = LineIndecesU[Li];
 					}
-#if defined(SCHUR_DROPPING_S)
-					INMOST_DATA_REAL_TYPE Snorm = 0;
+///////////////////////////////////////////////////////////////////////////////////
+//         sort contents of linked list                                          //
+///////////////////////////////////////////////////////////////////////////////////
+					indicesS.clear();
 					Ui = Sbeg;
-					while (Ui != EOL)
+					while(Ui != EOL)
 					{
-						u = LineValuesL[Ui];
-						Snorm += u*u;
+						indicesS.push_back(Ui);
 						Ui = LineIndecesL[Ui];
 					}
-					Snorm = sqrt(Snorm);
+					std::sort(indicesS.begin(),indicesS.end());
+					//Sbeg = indices[0];
+					//for(size_t qt = 1; qt < indices.size(); ++qt)
+					//	LineIndecesL[indices[qt-1]] = indices[qt];
+					//LineIndecesL[indices.back()] = EOL;
+///////////////////////////////////////////////////////////////////////////////////
+//         prepare row norm for dropping                                         //
+///////////////////////////////////////////////////////////////////////////////////
+#if defined(SCHUR_DROPPING_S)
+					INMOST_DATA_REAL_TYPE Snorm = 0, Snum = 0;
+					
+					//Ui = Sbeg;
+					//while (Ui != EOL)
+					for(size_t qt = 0; qt < indicesS.size(); ++qt)
+					{
+						Ui = indicesS[qt];
+						u = LineValuesL[Ui];
+						Snorm += u*u;
+						Snum++;
+						//Ui = LineIndecesL[Ui];
+					}
+					if( Snum ) Snorm = sqrt(Snorm/Snum);
+					Snorm = std::min(1.0,Snorm);
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //         put calculated row to Schur complement                                //
 ///////////////////////////////////////////////////////////////////////////////////
-					Ui = Sbeg;
+					//Ui = Sbeg;
 					S_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
-					while (Ui != EOL)
+					//while (Ui != EOL)
+					for(size_t qt = 0; qt < indicesS.size(); ++qt)
 					{
+						Ui = indicesS[qt];
 						u = LineValuesL[Ui];
 #if defined(SCHUR_DROPPING_S)
 						//if( fabs(u)*NuU*NuL > tau * Snorm )
 						//if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc*NuD*NuD_acc > tau * Snorm )
-						if( fabs(u)*NuU*NuL*NuD*NuU_acc*NuL_acc*NuD_acc > tau * Snorm )
+						if( fabs(u) > tau * tau * Snorm )
 						//if( fabs(u) > tau*tau * Snorm )
 #else
 						if( 1+u != 1 )
@@ -3585,7 +3715,7 @@ public:
 							S_Entries.push_back(Sparse::Row::make_entry(Ui,u));
 						else
 							ndrops_s++;
-						Ui = LineIndecesL[Ui];
+						//Ui = LineIndecesL[Ui];
 					}
 					S_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 					//assert(std::is_sorted(S_Entries.begin()+S_Addres[k].first,S_Entries.end()));
@@ -3672,7 +3802,7 @@ public:
 					//EU_Address[k].first = EU_Address[k].last = ENUMUNDEF;
 				}
 				
-				if( wend-cend < 25 || A_Entries.empty() )
+				if( wend-cend < 10 || A_Entries.empty() )
 					block_pivot = true;
 				
 				

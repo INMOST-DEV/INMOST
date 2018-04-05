@@ -9,8 +9,8 @@
 //#define REPORT_ILU
 //#undef REPORT_ILU
 #define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
+#define REPORT_ILU_END
+#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
@@ -3239,7 +3239,7 @@ swap_algorithm:
 #if defined(ILUC2)
 				std::cout << " in LU2 " << nzLU2;
 #endif
-				std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max << " pivot swaps " << swaps << std::endl;
+				std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max/* << " pivot swaps " << swaps*/ << std::endl;
 #endif
 			}
 			tlfactor = Timer() - tt;
