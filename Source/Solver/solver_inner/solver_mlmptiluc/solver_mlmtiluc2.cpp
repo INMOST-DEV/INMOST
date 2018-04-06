@@ -531,8 +531,12 @@ public:
 		//prepare rescaling vectors
 		DL.SetInterval(mobeg, moend);
 		DR.SetInterval(mobeg, moend);
+		//DL0.SetInterval(mobeg, moend);
+		//DR0.SetInterval(mobeg, moend);
 		for(Sparse::Vector::iterator ri = DL.Begin(); ri != DL.End(); ++ri) *ri = 1.0;
 		for(Sparse::Vector::iterator ri = DR.Begin(); ri != DR.End(); ++ri) *ri = 1.0;
+		//for(Sparse::Vector::iterator ri = DL0.Begin(); ri != DL0.End(); ++ri) *ri = 1.0;
+		//for(Sparse::Vector::iterator ri = DR0.Begin(); ri != DR0.End(); ++ri) *ri = 1.0;
 
 		
 
@@ -763,10 +767,10 @@ public:
 ///  Arrays initialization                                                      ///
 ///////////////////////////////////////////////////////////////////////////////////
 				
-				//std::fill(U.Begin() + wbeg - mobeg, U.Begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-				//std::fill(V.Begin() + wbeg - mobeg, V.Begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+				std::fill(U.begin() + wbeg - mobeg, U.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+				std::fill(V.begin() + wbeg - mobeg, V.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 				//std::fill(Cmax.begin() + wbeg - mobeg, Cmax.begin() + wend - mobeg, 0.0);
-				//std::fill(Dist.begin() + wbeg - mobeg, Dist.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+				std::fill(Dist.begin() + wbeg - mobeg, Dist.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 				std::fill(Perm.begin() + wbeg - mobeg, Perm.begin() + wend - mobeg, ENUMUNDEF);
 				std::fill(IPerm.begin() + wbeg - mobeg, IPerm.begin() + wend - mobeg, ENUMUNDEF);
 				std::fill(Parent.begin() + wbeg - mobeg, Parent.begin() + wend - mobeg, ENUMUNDEF);
@@ -1076,6 +1080,9 @@ public:
 			for (k = cbeg; k < cend; ++k) localP[k] = k;
 			for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
 			for (k = cbeg; k < cend; ++k) DR[k] = V[k];
+			
+			//for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR0[k]; //if you expirience a bug here then the matrix is structurally singular
+			//for (k = cbeg; k < cend; ++k) DR0[k] = V[k];
 
 			
 			
@@ -1272,6 +1279,9 @@ public:
 				for (k = cbeg; k < cend; ++k) localP[k] = k;
 				for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
 				for (k = cbeg; k < cend; ++k) DR[k] = V[k];
+				
+				//for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR0[k]; //if you expirience a bug here then the matrix is structurally singular
+				//for (k = cbeg; k < cend; ++k) DR0[k] = V[k];
 
 				for(k = wbeg; k < wend; ++k)
 				{
@@ -1432,16 +1442,24 @@ public:
 			{
 				U[localP[k]] = DL[k];
 				V[localQ[k]] = DR[k];
-
-				//U[k] = DL[localP[k]];
-				//V[k] = DR[localQ[k]];
 			}
 			for (k = cbeg; k < cend; ++k) 
 			{
 				DL[k] = U[k];
 				DR[k] = V[k];
 			}
-
+			/*
+			for (k = cbeg; k < cend; ++k) 
+			{
+				U[localP[k]] = DL0[k];
+				V[localQ[k]] = DR0[k];
+			}
+			for (k = cbeg; k < cend; ++k) 
+			{
+				DL0[k] = U[k];
+				DR0[k] = V[k];
+			}
+			*/
 			tlreorder = Timer() - tt;
 			treorder += tlreorder;
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1748,6 +1766,45 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////
 				//End rescale B block
 				trescale += Timer() - tt;
+				//stack scaling
+				/*
+				for (k = cbeg; k < cend; k++)
+				{
+					DL0[k] *= DL[k];
+					DR0[k] *= DR[k];
+				}
+				//rescale EF
+				if( !level_size.empty() )
+				{
+					INMOST_DATA_ENUM_TYPE first = mobeg, last;
+					INMOST_DATA_ENUM_TYPE kbeg, kend, r;
+					for(size_t level = 0; level < level_size.size(); ++level)
+					{
+						last = first + level_size[level];
+						kbeg = std::max(cbeg,last);
+						kend = std::min(cend,moend);
+						std::cout << "Rescale EF level " << level << " ";
+						std::cout << "interval [" << first << "," << last << "] ";
+						std::cout << "matrix [" << mobeg << "," << moend << "] ";
+						std::cout << "rescaling [" << cbeg << "," << cend << "] ";
+						std::cout << "selected [" << kbeg << ":" << kend << "]" << std::endl;
+						for (k = kbeg; k < kend; ++k) 
+						{
+							if( F_Address[level]->at(k).Size() )
+							{
+								for (r = F_Address[level]->at(k).first; r < F_Address[level]->at(k).last; ++r)
+									F_Entries[r].second *= DL[k];
+							}
+							if( E_Address[level]->at(k).Size() )
+							{
+								for (r = E_Address[level]->at(k).first; r < E_Address[level]->at(k).last; ++r)
+									E_Entries[r].second *= DR[k];
+							}
+						}
+						first = last;
+					}
+				}
+				*/
 			}
 			/*
 			{
@@ -2975,6 +3032,7 @@ public:
 ///             FACTORIZATION COMPLETE                                          ///
 ///////////////////////////////////////////////////////////////////////////////////
 			//After we have factored the rescaled matrix we must rescale obtained factors
+			
 			tt = Timer();
 			if( rescale_b )
 			{
@@ -2998,14 +3056,15 @@ public:
 					}
 				}
 #endif
-				//reset the scaling vectors
-				for (k = cbeg; k < cend; ++k) DL[k] = DR[k] = 1.0;
 			}
 ///////////////////////////////////////////////////////////////////////////////////
 ///                RESCALING DONE                                               ///
 ///////////////////////////////////////////////////////////////////////////////////
 			tlrescale = Timer() - tt;
 			trescale += tlrescale;
+			
+			//reset the scaling vectors
+			for (k = cbeg; k < cend; ++k) DL[k] = DR[k] = 1.0;
 ///////////////////////////////////////////////////////////////////////////////////
 //  Check that we have to enter the next level due to pivoting                   //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3030,6 +3089,18 @@ public:
 					localQ[k] = i;
 					++i;
 				}
+				/*
+				for (k = cbeg; k < cend; ++k) 
+				{
+					U[localP[k]] = DL0[k];
+					V[localQ[k]] = DR0[k];
+				}
+				for (k = cbeg; k < cend; ++k) 
+				{
+					DL0[k] = U[k];
+					DR0[k] = V[k];
+				}
+				*/
 				//inverse the ordering
 				ReorderEF(wbeg, wend, donePQ, localP, localQ);
 				inversePQ(wbeg,wend,localP,localQ, invP,invQ);
@@ -3816,7 +3887,7 @@ public:
 					//EU_Address[k].first = EU_Address[k].last = ENUMUNDEF;
 				}
 				
-				if( wend-cend < 256 || A_Entries.empty() )
+				if( wend-cend < 16 || A_Entries.empty() )
 					block_pivot = true;
 				
 				
@@ -3832,15 +3903,75 @@ public:
 			swaps = 0;
 		}
 		
-		level_interval.resize(level_size.size());
-		level_interval[0].first = mobeg;
-		level_interval[0].last = mobeg + level_size[0];
-		for (k = 1; k < level_size.size(); k++)
+		tt = Timer();
+		/*
+		if( rescale_b )
 		{
-			level_interval[k].first = level_interval[k - 1].last;
-			level_interval[k].last = level_interval[k].first + level_size[k];
+#if defined(REPORT_ILU)
+			std::cout << std::endl << " rescaling block B back " << std::endl;
+#endif
+			for (k = mobeg; k < moend; ++k)
+			{
+				LU_Diag[k] /= (DL0[k] * DR0[k]);
+				for (INMOST_DATA_ENUM_TYPE r = U_Address[k].first; r < U_Address[k].last; ++r) LU_Entries[r].second *= (DR0[k] / DR0[LU_Entries[r].first]);
+				for (INMOST_DATA_ENUM_TYPE r = L_Address[k].first; r < L_Address[k].last; ++r) LU_Entries[r].second *= (DL0[k] / DL0[LU_Entries[r].first]);
+				//for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r) B_Entries[r].second /= (DL0[k] * DR0[B_Entries[r].first]);
+			}
+			
+			//rescale EF
+			if( !level_size.empty() )
+			{
+				INMOST_DATA_ENUM_TYPE first = mobeg, last;
+				INMOST_DATA_ENUM_TYPE kbeg, kend, r;
+				for(size_t level = 0; level < level_size.size(); ++level)
+				{
+					last = first + level_size[level];
+					kbeg = last;//std::max(cbeg,last);
+					kend = moend;//std::min(cend,moend);
+					std::cout << "Rescale EF back level " << level << " ";
+					std::cout << "size " << level_size[level] << " ";
+					std::cout << "interval [" << first << "," << last << "] ";
+					//std::cout << "matrix [" << mobeg << "," << moend << "] ";
+					//std::cout << "rescaling [" << cbeg << "," << cend << "] ";
+					std::cout << "selected [" << kbeg << ":" << kend << "]" << std::endl;
+					for (k = kbeg; k < kend; ++k) 
+					{
+						if( F_Address[level]->at(k).Size() )
+						{
+							for (r = F_Address[level]->at(k).first; r < F_Address[level]->at(k).last; ++r)
+								F_Entries[r].second /= DR0[k];
+						}
+						if( E_Address[level]->at(k).Size() )
+						{
+							for (r = E_Address[level]->at(k).first; r < E_Address[level]->at(k).last; ++r)
+								E_Entries[r].second /= DL0[k];
+						}
+					}
+					first = last;
+				}
+			}
+			//TODO: rescale E and F
+			//reset the scaling vectors
+			//for (k = cbeg; k < cend; ++k) DL[k] = DR[k] = 1.0;
 		}
+		*/
+///////////////////////////////////////////////////////////////////////////////////
+///                RESCALING DONE                                               ///
+///////////////////////////////////////////////////////////////////////////////////
+		tlrescale = Timer() - tt;
+		trescale += tlrescale;
 		
+		level_interval.resize(level_size.size());
+		if( !level_size.empty() )
+		{
+			level_interval[0].first = mobeg;
+			level_interval[0].last = mobeg + level_size[0];
+			for (k = 1; k < level_size.size(); k++)
+			{
+				level_interval[k].first = level_interval[k - 1].last;
+				level_interval[k].last = level_interval[k].first + level_size[k];
+			}
+		}
 ///////////////////////////////////////////////////////////////////////////////////
 ///  FACTORIZATION COMPLETE                                                     ///
 ///////////////////////////////////////////////////////////////////////////////////
@@ -4062,14 +4193,16 @@ public:
 			// 4) u = ~f - B^{-1} F y
 			
 			for (k = vbeg; k < mobeg; k++) output[k] = 0;
-			for (k = mobeg; k < moend; ++k) output[k] = temp[ddP[k]];
+			for (k = mobeg; k < moend; ++k) output[k] = temp[ddP[k]];//*DL0[k];
 			for (k = moend; k < vend; k++) output[k] = 0;
+			//for (k = mobeg; k < moend; ++k) output[k] *= DL0[k];
 			
 			int level = 0;
 			while (level < level_size.size()) level = Descend(level, output);
 			while (level > 0) level = Ascend(level, output);
 			
-			for (k = mobeg; k < moend; ++k) temp[ddQ[k]] = output[k];
+			//for (k = mobeg; k < moend; ++k) output[k] *= DR0[k];
+			for (k = mobeg; k < moend; ++k) temp[ddQ[k]] = output[k];//*DR0[k];
 			for (k = mobeg; k < moend; ++k) output[k] = temp[k];
 #endif
 			
