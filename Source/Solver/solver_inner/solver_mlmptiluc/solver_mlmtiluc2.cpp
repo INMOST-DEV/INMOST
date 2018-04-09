@@ -1863,7 +1863,7 @@ static bool allow_pivot = true;
 									LineValuesU[j] -= u;
 								else if( u )
 								{
-									
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -1875,11 +1875,12 @@ static bool allow_pivot = true;
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
-									/*
+									*/
+									
 									LineValuesU[j] = -u;
 									LineIndecesU[j] = Sbeg;
 									Sbeg = j;
-									 */
+									 
 								}
 							}
 						}
@@ -1903,7 +1904,7 @@ static bool allow_pivot = true;
 									LineValuesU[j] -= u;
 								else if( u )
 								{
-									
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -1915,11 +1916,12 @@ static bool allow_pivot = true;
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
-									/*
+									*/
+									
 									LineValuesU[j] = -u;
 									LineIndecesU[j] = Sbeg;
 									Sbeg = j;
-									 */
+									 
 								}
 							}
 						}
@@ -1952,7 +1954,7 @@ static bool allow_pivot = true;
 									LineValuesU[j] -= u;
 								else if( u )
 								{
-									
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -1964,11 +1966,12 @@ static bool allow_pivot = true;
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
-									/*
+									*/
+									
 									LineValuesU[j] = -u;
 									LineIndecesU[j] = Sbeg;
 									Sbeg = j;
-									 */
+									 
 								}
 							}
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1994,16 +1997,18 @@ static bool allow_pivot = true;
 										curr = next;
 										next = LineIndecesU[curr];
 									}
+									/*
 									assert(curr < j);
 									assert(j < next);
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
-									/*
+									*/
+									
 									LineValuesU[j] = -u;
 									LineIndecesU[j] = Sbeg;
 									Sbeg = j;
-									 */
+									 
 								}
 							}
 #endif
@@ -2014,7 +2019,7 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 //                  Order contents of linked list                                //
 ///////////////////////////////////////////////////////////////////////////////////
-					/*
+					
 					indicesU.clear();
 					Ui = Sbeg;
 					while(Ui != EOL)
@@ -2027,7 +2032,7 @@ static bool allow_pivot = true;
 					for(size_t qt = 1; qt < indicesU.size(); ++qt)
 						LineIndecesU[indicesU[qt-1]] = indicesU[qt];
 					LineIndecesU[indicesU.back()] = EOL;
-					 */
+					
 ///////////////////////////////////////////////////////////////////////////////////
 //                  Retrieve diagonal value                                      //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2131,7 +2136,7 @@ static bool allow_pivot = true;
 									LineValuesL[j] -= l;
 								else if( l )
 								{
-									
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2143,11 +2148,12 @@ static bool allow_pivot = true;
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
-									/*
+									*/
+									
 									LineValuesL[j] = -l;
 									LineIndecesL[j] = Sbeg;
 									Sbeg = j;
-									 */
+									
 								}
 							}
 						}
@@ -2171,7 +2177,7 @@ static bool allow_pivot = true;
 									LineValuesL[j] -= l;
 								else if( l )
 								{
-									
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2183,11 +2189,12 @@ static bool allow_pivot = true;
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
-									/*
+									*/
+									
 									LineValuesL[j] = -l;
 									LineIndecesL[j] = Sbeg;
 									Sbeg = j;
-									 */
+									
 								}
 							}
 						}
@@ -2221,7 +2228,7 @@ static bool allow_pivot = true;
 									LineValuesL[j] -= l;
 								else if( l )
 								{
-									
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2233,11 +2240,12 @@ static bool allow_pivot = true;
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
-									/*
+									*/
+									
 									LineValuesL[j] = -l;
 									LineIndecesL[j] = Sbeg;
 									Sbeg = j;
-									 */
+									
 								}
 							}
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2257,7 +2265,7 @@ static bool allow_pivot = true;
 									LineValuesL[j] -= l;
 								else if( l )
 								{
-									
+									/*
 									next = curr;
 									while (next < j)
 									{
@@ -2269,11 +2277,12 @@ static bool allow_pivot = true;
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
-									/*
+									*/
+									
 									LineValuesL[j] = -l;
 									LineIndecesL[j] = Sbeg;
 									Sbeg = j;
-									 */
+									
 								}
 							}
 #endif
@@ -2284,7 +2293,7 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 //                  Order contents of linked list                                //
 ///////////////////////////////////////////////////////////////////////////////////
-					/*
+					
 					indicesL.clear();
 					Ui = Sbeg;
 					while(Ui != EOL)
@@ -2297,7 +2306,7 @@ static bool allow_pivot = true;
 					for(size_t qt = 1; qt < indicesL.size(); ++qt)
 						LineIndecesL[indicesL[qt-1]] = indicesL[qt];
 					LineIndecesL[indicesL.back()] = EOL;
-					 */
+					
 					//check that diagonal value is the same(must be!)
 					//assert(fabs(LineValues[k] / udiag - 1.0) < 1.0e-10);
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2870,8 +2879,8 @@ static bool allow_pivot = true;
 					//if (k % 2000 == 0)
 					{
 						
-						std::cout << std::fixed << std::setprecision(2) << std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg-1) << "%";
-						std::cout << " nnz LU " << std::setprecision(10) << std::setw(10) << nzLU;
+						std::cout << /*std::fixed << std::setprecision(2) <<*/ std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg-1) << "%";
+						std::cout << " nnz LU " << /*std::setprecision(10) <<*/ std::setw(10) << nzLU;
 #if defined(ILUC2)
 						std::cout << " LU2 " << std::setw(10) << nzLU2;
 #endif
@@ -2882,7 +2891,7 @@ static bool allow_pivot = true;
 						std::cout << "\r"; //carrige return
 						std::cout.flush();
 						//std::cout << std::endl;
-						std::cout << std::setprecision(0);
+						//std::cout << std::setprecision(0);
 						//std::cout.setf(0,std::ios::floatfield);
 						
 						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
@@ -2959,12 +2968,12 @@ static bool allow_pivot = true;
 				}
 #endif
 			}
+			tlrescale = Timer() - tt;
+			trescale += tlrescale;
 			 */
 ///////////////////////////////////////////////////////////////////////////////////
 ///                RESCALING DONE                                               ///
 ///////////////////////////////////////////////////////////////////////////////////
-			tlrescale = Timer() - tt;
-			trescale += tlrescale;
 			
 			//reset the scaling vectors
 			for (k = cbeg; k < cend; ++k) DL[k] = DR[k] = 1.0;
@@ -3267,6 +3276,7 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 					//compute ~F_i = L^{-1} F_i
 					Li = LineIndecesU[cbeg];
+					Sbeg = cbeg;
 					while (Li != EOL)
 					{
 						curr = Li;
@@ -3278,6 +3288,7 @@ static bool allow_pivot = true;
 								LineValuesU[j] -= u;
 							else if( u )
 							{
+								
 								next = curr;
 								while (next < j + 1)
 								{
@@ -3289,6 +3300,11 @@ static bool allow_pivot = true;
 								LineIndecesU[curr] = j + 1;
 								LineIndecesU[j + 1] = next;
 								LineValuesU[j] = -u;
+								
+								
+								//LineValuesU[j] = -u;
+								//LineIndecesU[j + 1] = Sbeg;
+								//Sbeg = j+1;
 							}
 						}
 #if defined(ILUC2) && defined(ILUC2_SCHUR)
@@ -3304,6 +3320,7 @@ static bool allow_pivot = true;
 								LineValuesU[j] -= u;
 							else if( u )
 							{
+								
 								next = curr;
 								while (next < j + 1)
 								{
@@ -3315,6 +3332,11 @@ static bool allow_pivot = true;
 								LineIndecesU[curr] = j + 1;
 								LineIndecesU[j + 1] = next;
 								LineValuesU[j] = -u;
+								
+								
+								//LineValuesU[j] = -u;
+								//LineIndecesU[j + 1] = Sbeg;
+								//Sbeg = j+1;
 							}
 						}
 #endif
@@ -3323,6 +3345,22 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 						Li = LineIndecesU[Li];
 					}
+///////////////////////////////////////////////////////////////////////////////////
+//             order indices                                                     //
+///////////////////////////////////////////////////////////////////////////////////
+					/*
+					indicesU.clear();
+					Li = Sbeg;
+					while(Li != EOL)
+					{
+						indicesU.push_back(Li);
+						Li = LineIndecesU[Li];
+					}
+					std::sort(indicesU.begin(),indicesU.end());
+					for(size_t qt = 1; qt < indicesU.size(); ++qt)
+						LineIndecesU[indicesU[qt-1]] = indicesU[qt];
+					LineIndecesU[indicesU.back()] = EOL;
+					*/
 ///////////////////////////////////////////////////////////////////////////////////
 //                 Rescale by diagonal                                           //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3667,7 +3705,7 @@ static bool allow_pivot = true;
 //         prepare row norm for dropping                                         //
 ///////////////////////////////////////////////////////////////////////////////////
 #if defined(SCHUR_DROPPING_S)
-					INMOST_DATA_REAL_TYPE Snorm = 0, Snum = 0, tauS = std::min(tau*tau,tau2);
+					INMOST_DATA_REAL_TYPE Snorm = 0, Snum = 0, tauS = std::min(tau*tau,tau2)/std::max(NuU_max,NuL_max);
 					
 					Ui = Sbeg;
 					while (Ui != EOL)
