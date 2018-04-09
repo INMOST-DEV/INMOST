@@ -6,6 +6,7 @@
 #include <sstream>
 #include <deque>
 #include <iomanip>
+#include "../../../Misc/utils.h"
 //#define REPORT_ILU
 //#undef REPORT_ILU
 #define REPORT_ILU_PROGRESS
@@ -69,137 +70,7 @@ using namespace INMOST;
 #include <Mondriaan.h>
 #endif
 
-template<class T> struct make_integer;
-template<> struct make_integer<float> {typedef int type;};
-template<> struct make_integer<double> {typedef long long type;};
 
-__INLINE static bool compare(INMOST_DATA_REAL_TYPE * a, INMOST_DATA_REAL_TYPE * b)
-{
-	return (*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(a)) <=
-		(*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(b));
-}
-
-//this structure is used to provide sorting routing for Reverse-Cuthill-McKee reordering
-struct RCM_Comparator
-{
-	INMOST_DATA_ENUM_TYPE wbeg;
-	std::vector<INMOST_DATA_ENUM_TYPE> & xadj;
-public:
-	RCM_Comparator(INMOST_DATA_ENUM_TYPE _wbeg, std::vector<INMOST_DATA_ENUM_TYPE> & _xadj)
-				   : wbeg(_wbeg), xadj(_xadj) {}
-	RCM_Comparator(const RCM_Comparator & b) : wbeg(b.wbeg), xadj(b.xadj) {}
-	RCM_Comparator & operator = (RCM_Comparator const & b) {wbeg = b.wbeg; xadj = b.xadj; return *this;}
-	bool operator () (INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j)
-	{return xadj[i+1-wbeg] -xadj[i-wbeg] < xadj[j+1-wbeg] - xadj[j-wbeg];}
-};
-
-
-class BinaryHeap1
-{
-	
-	INMOST_DATA_REAL_TYPE * Base;
-	std::vector<INMOST_DATA_REAL_TYPE *> Array;
-	std::vector<INMOST_DATA_ENUM_TYPE> Position;
-public:
-	void Clear()
-	{
-		while(!Array.empty())
-		{
-			Position[Array.back()-Base] = ENUMUNDEF;
-			Array.pop_back();
-		}
-	}
-	INMOST_DATA_REAL_TYPE * Get(INMOST_DATA_ENUM_TYPE pos) {return Array[pos];}
-	INMOST_DATA_ENUM_TYPE GetSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(Array.size());}
-	INMOST_DATA_ENUM_TYPE GetPosition(INMOST_DATA_ENUM_TYPE pos)
-	{
-		return Position[pos];
-	}
-	INMOST_DATA_ENUM_TYPE DecreaseKey(INMOST_DATA_ENUM_TYPE pos)
-	{
-		INMOST_DATA_ENUM_TYPE i = Position[pos];
-		++i;
-		while(i > 1)
-		{
-			//if((*Array[i-1]) <= (*Array[i/2-1]))
-			if( compare(Array[i-1],Array[i/2-1]) )
-			{
-				Position[(Array[i/2-1]-Base)] = i-1; 
-				Position[(Array[i-1]-Base)] = i/2-1; 
-				std::swap(Array[i/2-1],Array[i-1]);
-			}
-			else break;
-			i = i/2;
-		}
-		return i;
-	}
-	INMOST_DATA_ENUM_TYPE PushHeap(INMOST_DATA_REAL_TYPE * key)
-	{
-		INMOST_DATA_ENUM_TYPE i = GetSize();
-		Array.push_back(key);
-		Position[(key-Base)] = i;
-		++i;
-		while(i > 1)
-		{
-			//if((*Array[i-1]) <= (*Array[i/2-1]) )
-			if( compare(Array[i-1],Array[i/2-1]) )
-			{
-				Position[(Array[i-1]-Base)] = i/2-1; 
-				Position[(Array[i/2-1]-Base)] = i-1; 
-				std::swap(Array[i-1],Array[i/2-1]);
-			}
-			else break;
-			i = i/2;
-		}
-		return i;
-	}
-
-	void BalanceHeap(INMOST_DATA_ENUM_TYPE i)
-	{
-		INMOST_DATA_ENUM_TYPE Index;
-		++i;
-		while(i <= Array.size()/2)
-		{
-			if( 2*i+1 > Array.size() )
-				Index = 2*i;
-			//else if( (*Array[2*i-1]) <= (*Array[2*i+1-1]) )
-			else if( compare(Array[2*i-1],Array[2*i+1-1]) )
-				Index = 2*i;
-			else
-				Index = 2*i+1;
-			//if(!((*Array[i-1]) <= (*Array[Index-1])))
-			if(!compare(Array[i-1],Array[Index-1]))
-			{ 
-				Position[(Array[i-1]-Base)] = Index-1;
-				Position[(Array[Index-1]-Base)] = i-1; 
-				std::swap(Array[i-1],Array[Index-1]);
-			}
-			else break;
-			i = Index;
-		}
-	}
-	INMOST_DATA_ENUM_TYPE PopHeap()
-	{
-		INMOST_DATA_ENUM_TYPE Ret = ENUMUNDEF;
-		if(Array.empty()) return Ret;
-		Ret = static_cast<INMOST_DATA_ENUM_TYPE>(Array[0]-Base);
-		Array[0] = Array.back();
-		Position[Array[0] - Base] = 0;
-		Array.pop_back();
-		Position[Ret] = ENUMUNDEF;
-		BalanceHeap(0);	
-		return Ret;
-	}
-	BinaryHeap1(INMOST_DATA_REAL_TYPE * Base, INMOST_DATA_ENUM_TYPE Size)
-		: Base(Base)
-	{
-		Position.resize(Size,ENUMUNDEF);
-		Array.reserve(4096);
-	}
-	~BinaryHeap1()
-	{
-	}
-};
 
 
 
@@ -759,7 +630,7 @@ public:
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> AugmentPosition(wbeg,wend,ENUMUNDEF);
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ColumnPosition(wbeg,wend,ENUMUNDEF);
 				
-				BinaryHeap1 Heap(&Dist[wbeg],wend-wbeg);
+				BinaryHeap Heap(&Dist[wbeg],wend-wbeg);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////// Arrays initialization   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -900,13 +771,12 @@ public:
 								}
 								else if( l < Dist[Ui] )
 								{
-									Dist[Ui] = l;
 									Parent[Perm[Ui]] = Li;
 									AugmentPosition[Ui] = Lit;
-									if( Heap.GetPosition(Ui-wbeg) != ENUMUNDEF )
-										Heap.DecreaseKey(Ui-wbeg);
+									if( Heap.Contains(Ui-wbeg) )
+										Heap.DecreaseKey(Ui-wbeg,l);
 									else 
-										Heap.PushHeap(&Dist[Ui]);
+										Heap.PushHeap(Ui-wbeg,l);
 								}
 							}
 						}
@@ -957,7 +827,6 @@ public:
 							Trace = Parent[Trace];
 
 						}
-						for(Ui = 0; Ui < Heap.GetSize(); ++Ui) *Heap.Get(Ui) = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 						Heap.Clear();
 					}
 				}

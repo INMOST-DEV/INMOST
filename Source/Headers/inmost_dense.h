@@ -2422,111 +2422,84 @@ namespace INMOST
 	
 	class BinaryHeapDense
 	{
+		INMOST_DATA_ENUM_TYPE size_max, size;
+		std::vector<INMOST_DATA_ENUM_TYPE> heap;
+		std::vector<INMOST_DATA_ENUM_TYPE> index;
+		INMOST_DATA_REAL_TYPE * keys;
 		
-		INMOST_DATA_REAL_TYPE * Base;
-		std::vector<INMOST_DATA_REAL_TYPE *> Array;
-		std::vector<INMOST_DATA_ENUM_TYPE> Position;
+		void swap(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j)
+		{
+			INMOST_DATA_ENUM_TYPE t = heap[i];
+			heap[i] = heap[j];
+			heap[j] = t;
+			index[heap[i]] = i;
+			index[heap[j]] = j;
+		}
+		void bubbleUp(INMOST_DATA_ENUM_TYPE k)
+		{
+			while(k > 1 && keys[heap[k/2]] > keys[heap[k]])
+			{
+				swap(k, k/2);
+				k = k/2;
+			}
+		}
+		void bubbleDown(INMOST_DATA_ENUM_TYPE k)
+		{
+			INMOST_DATA_ENUM_TYPE j;
+			while(2*k <= size)
+			{
+				j = 2*k;
+				if(j < size && keys[heap[j]] > keys[heap[j+1]])
+					j++;
+				if(keys[heap[k]] <= keys[heap[j]])
+					break;
+				swap(k, j);
+				k = j;
+			}
+		}
 	public:
-		void Clear()
+		BinaryHeapDense(INMOST_DATA_REAL_TYPE * pkeys, INMOST_DATA_ENUM_TYPE len)
 		{
-			while(!Array.empty())
-			{
-				Position[Array.back()-Base] = ENUMUNDEF;
-				Array.pop_back();
-			}
+			size_max = len;
+			keys = pkeys;
+			size = 0;
+			heap.resize(size_max+1);
+			index.resize(size_max+1);
+			for(INMOST_DATA_ENUM_TYPE i = 0; i <= size_max; i++)
+				index[i] = ENUMUNDEF;
 		}
-		INMOST_DATA_REAL_TYPE * Get(INMOST_DATA_ENUM_TYPE pos) {return Array[pos];}
-		INMOST_DATA_ENUM_TYPE GetSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(Array.size());}
-		INMOST_DATA_ENUM_TYPE GetPosition(INMOST_DATA_ENUM_TYPE pos)
+		void PushHeap(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
 		{
-			return Position[pos];
-		}
-		INMOST_DATA_ENUM_TYPE DecreaseKey(INMOST_DATA_ENUM_TYPE pos)
-		{
-			INMOST_DATA_ENUM_TYPE i = Position[pos];
-			++i;
-			while(i > 1)
-			{
-				//if((*Array[i-1]) <= (*Array[i/2-1]))
-				if( compare(Array[i-1],Array[i/2-1]) )
-				{
-					Position[(Array[i/2-1]-Base)] = i-1; 
-					Position[(Array[i-1]-Base)] = i/2-1; 
-					std::swap(Array[i/2-1],Array[i-1]);
-				}
-				else break;
-				i = i/2;
-			}
-			return i;
-		}
-		INMOST_DATA_ENUM_TYPE PushHeap(INMOST_DATA_REAL_TYPE * key)
-		{
-			INMOST_DATA_ENUM_TYPE i = GetSize();
-			Array.push_back(key);
-			Position[(key-Base)] = i;
-			++i;
-			while(i > 1)
-			{
-				//if((*Array[i-1]) <= (*Array[i/2-1]) )
-				if( compare(Array[i-1],Array[i/2-1]) )
-				{
-					Position[(Array[i-1]-Base)] = i/2-1; 
-					Position[(Array[i/2-1]-Base)] = i-1; 
-					std::swap(Array[i-1],Array[i/2-1]);
-				}
-				else break;
-				i = i/2;
-			}
-			return i;
-		}
-
-		void BalanceHeap(INMOST_DATA_ENUM_TYPE i)
-		{
-			INMOST_DATA_ENUM_TYPE Index;
-			++i;
-			while(i <= Array.size()/2)
-			{
-				if( 2*i+1 > Array.size() )
-					Index = 2*i;
-				//else if( (*Array[2*i-1]) <= (*Array[2*i+1-1]) )
-				else if( compare(Array[2*i-1],Array[2*i+1-1]) )
-					Index = 2*i;
-				else
-					Index = 2*i+1;
-				//if(!((*Array[i-1]) <= (*Array[Index-1])))
-				if(!compare(Array[i-1],Array[Index-1]))
-				{ 
-					Position[(Array[i-1]-Base)] = Index-1;
-					Position[(Array[Index-1]-Base)] = i-1; 
-					std::swap(Array[i-1],Array[Index-1]);
-				}
-				else break;
-				i = Index;
-			}
+			size++;
+			index[i] = size;
+			heap[size] = i;
+			keys[i] = key;
+			bubbleUp(size);
 		}
 		INMOST_DATA_ENUM_TYPE PopHeap()
 		{
-			INMOST_DATA_ENUM_TYPE Ret = ENUMUNDEF;
-			if(Array.empty()) return Ret;
-			Ret = static_cast<INMOST_DATA_ENUM_TYPE>(Array[0]-Base);
-			Array[0] = Array.back();
-			Position[Array[0] - Base] = 0;
-			Array.pop_back();
-			Position[Ret] = ENUMUNDEF;
-			BalanceHeap(0);	
-			return Ret;
+			if( size == 0 ) return ENUMUNDEF;
+			INMOST_DATA_ENUM_TYPE min = heap[1];
+			swap(1, size--);
+			bubbleDown(1);
+			index[min] = ENUMUNDEF;
+			heap[size+1] = ENUMUNDEF;
+			return min;
 		}
-		BinaryHeapDense(INMOST_DATA_REAL_TYPE * Base, INMOST_DATA_ENUM_TYPE Size)
-			: Base(Base)
+		void DecreaseKey(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
 		{
-			Position.resize(Size,ENUMUNDEF);
-			Array.reserve(4096);
+			keys[i] = key;
+			bubbleUp(index[i]);
 		}
-		~BinaryHeapDense()
+		void Clear()
 		{
+			while( size ) keys[PopHeap()] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+		}
+		bool Contains(INMOST_DATA_ENUM_TYPE i)
+		{
+			return index[i] != ENUMUNDEF;
 		}
 	};
-
 	
 	template<typename Var>
 	void AbstractMatrix<Var>::MPT(INMOST_DATA_ENUM_TYPE * Perm, INMOST_DATA_REAL_TYPE * SL, INMOST_DATA_REAL_TYPE * SR) const
@@ -2655,12 +2628,11 @@ namespace INMOST
 						}
 						else if( l < Dist[Lit] )
 						{
-							Dist[Lit] = l;
 							Parent[Perm[Lit]] = Li;
-							if( Heap.GetPosition(Lit) != ENUMUNDEF )
-								Heap.DecreaseKey(Lit);
+							if( Heap.Contains(Lit) )
+								Heap.DecreaseKey(Lit,l);
 							else 
-								Heap.PushHeap(&Dist[Lit]);
+								Heap.PushHeap(Lit,l);
 						}
 					}
 				}
@@ -2711,7 +2683,6 @@ namespace INMOST
 					Trace = Parent[Trace];
 
 				}
-				for(Ui = 0; Ui < Heap.GetSize(); ++Ui) *Heap.Get(Ui) = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 				Heap.Clear();
 			}
 		}

@@ -1,6 +1,7 @@
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #include "solver_mtilu2.hpp"
+#include "../../../Misc/utils.h"
 
 #define DEFAULT_TAU 0.005
 #define DEFAULT_TAU2 0.00001
@@ -12,124 +13,6 @@
 //#define RESCALE_MAXIMUM_TRANSVERSAL //use rescaling produced by maximum product transversal algorithm that bounds all values between -1 and 1
 
 #define REORDER_MAXIMUM_TRANSVERSAL
-
-template<class T> struct make_integer;
-template<> struct make_integer<float> {typedef int type;};
-template<> struct make_integer<double> {typedef long long type;};
-
-__INLINE static bool compare(INMOST_DATA_REAL_TYPE * a, INMOST_DATA_REAL_TYPE * b)
-{
-	return (*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(a)) <=
-		(*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(b));
-}
-
-
-class BinaryHeap
-{
-	
-	INMOST_DATA_REAL_TYPE * Base;
-	std::vector<INMOST_DATA_REAL_TYPE *> Array;
-	std::vector<INMOST_DATA_ENUM_TYPE> Position;
-public:
-	void Clear()
-	{
-		while(!Array.empty())
-		{
-			Position[Array.back()-Base] = ENUMUNDEF;
-			Array.pop_back();
-		}
-	}
-	INMOST_DATA_REAL_TYPE * Get(INMOST_DATA_ENUM_TYPE pos) {return Array[pos];}
-	INMOST_DATA_ENUM_TYPE GetSize() {return static_cast<INMOST_DATA_ENUM_TYPE>(Array.size());}
-	INMOST_DATA_ENUM_TYPE GetPosition(INMOST_DATA_ENUM_TYPE pos)
-	{
-		return Position[pos];
-	}
-	INMOST_DATA_ENUM_TYPE DecreaseKey(INMOST_DATA_ENUM_TYPE pos)
-	{
-		INMOST_DATA_ENUM_TYPE i = Position[pos];
-		++i;
-		while(i > 1)
-		{
-			//if((*Array[i-1]) <= (*Array[i/2-1]))
-			if( compare(Array[i-1],Array[i/2-1]) )
-			{
-				Position[(Array[i/2-1]-Base)] = i-1; 
-				Position[(Array[i-1]-Base)] = i/2-1; 
-				std::swap(Array[i/2-1],Array[i-1]);
-			}
-			else break;
-			i = i/2;
-		}
-		return i;
-	}
-	INMOST_DATA_ENUM_TYPE PushHeap(INMOST_DATA_REAL_TYPE * key)
-	{
-		INMOST_DATA_ENUM_TYPE i = GetSize();
-		Array.push_back(key);
-		Position[(key-Base)] = i;
-		++i;
-		while(i > 1)
-		{
-			//if((*Array[i-1]) <= (*Array[i/2-1]) )
-			if( compare(Array[i-1],Array[i/2-1]) )
-			{
-				Position[(Array[i-1]-Base)] = i/2-1; 
-				Position[(Array[i/2-1]-Base)] = i-1; 
-				std::swap(Array[i-1],Array[i/2-1]);
-			}
-			else break;
-			i = i/2;
-		}
-		return i;
-	}
-
-	void BalanceHeap(INMOST_DATA_ENUM_TYPE i)
-	{
-		INMOST_DATA_ENUM_TYPE Index;
-		++i;
-		while(i <= Array.size()/2)
-		{
-			if( 2*i+1 > Array.size() )
-				Index = 2*i;
-			//else if( (*Array[2*i-1]) <= (*Array[2*i+1-1]) )
-			else if( compare(Array[2*i-1],Array[2*i+1-1]) )
-				Index = 2*i;
-			else
-				Index = 2*i+1;
-			//if(!((*Array[i-1]) <= (*Array[Index-1])))
-			if(!compare(Array[i-1],Array[Index-1]))
-			{ 
-				Position[(Array[i-1]-Base)] = Index-1;
-				Position[(Array[Index-1]-Base)] = i-1; 
-				std::swap(Array[i-1],Array[Index-1]);
-			}
-			else break;
-			i = Index;
-		}
-	}
-	INMOST_DATA_ENUM_TYPE PopHeap()
-	{
-		INMOST_DATA_ENUM_TYPE Ret = ENUMUNDEF;
-		if(Array.empty()) return Ret;
-		Ret = static_cast<INMOST_DATA_ENUM_TYPE>(Array[0]-Base);
-		Array[0] = Array.back();
-		Position[Array[0] - Base] = 0;
-		Array.pop_back();
-		Position[Ret] = ENUMUNDEF;
-		BalanceHeap(0);	
-		return Ret;
-	}
-	BinaryHeap(INMOST_DATA_REAL_TYPE * Base, INMOST_DATA_ENUM_TYPE Size) 
-		: Base(Base)
-	{
-		Position.resize(Size,ENUMUNDEF);
-		Array.reserve(4096);
-	}
-	~BinaryHeap()
-	{
-	}
-};
 
 
 void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & Address, 
@@ -453,13 +336,12 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 							}
 							else if( l < Dist[Ui] )
 							{
-								Dist[Ui] = l;
 								Parent[Perm[Ui]] = Li;
 								AugmentPosition[Ui] = Lit;
-								if( Heap.GetPosition(Ui-mobeg) != ENUMUNDEF )
-									Heap.DecreaseKey(Ui-mobeg);
+								if( Heap.Contains(Ui-mobeg) )
+									Heap.DecreaseKey(Ui-mobeg,l);
 								else 
-									Heap.PushHeap(&Dist[Ui]);
+									Heap.PushHeap(Ui-mobeg,l);
 							}
 						}
 					}
@@ -510,7 +392,6 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 						Trace = Parent[Trace];
 
 					}
-					for(Ui = 0; Ui < Heap.GetSize(); ++Ui) *Heap.Get(Ui) = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 					Heap.Clear();
 				}
 			}
