@@ -217,7 +217,9 @@ namespace INMOST {
         if (matrix != NULL) {
             MatrixDestroyDataPetsc(&matrix);
         }
-        SolverDestroyDataPetsc(&ksp);
+	if (ksp != NULL) {
+        	SolverDestroyDataPetsc(&ksp);
+	}
         return true;
     }
 
