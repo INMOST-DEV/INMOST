@@ -17,8 +17,9 @@ Sparse::Matrix * m = NULL;
 
 int zoom = 200;
 int block_size = 0;
+int draw_color = 0;
 
-//~ Storage::real min = 1e20,max = -1e20;
+double amin = 1e20,amax = -1e20;
 
 void printtext(const char * fmt, ...)
 {
@@ -379,6 +380,18 @@ void keyboard(unsigned char key, int x, int y)
 
 		}
 	}
+	if( key == 'd' )
+	{
+		draw_color = (draw_color+1)%5;
+		switch(draw_color)
+		{
+			case 0: std::cout << "color diagonal" << std::endl; break;
+			case 1: std::cout << "color by min:max" << std::endl; break;
+			case 2: std::cout << "color by min:max in log scale" << std::endl; break;
+			case 3: std::cout << "color by min:max per row" << std::endl; break;
+			case 4: std::cout << "color by min:max per row in log scale" << std::endl; break;
+		}
+	}
 	if (key == 'c') ord->clear();
 	if (key == 'r')
 	{
@@ -415,53 +428,128 @@ void draw()
 	glVertex2i(m->Size(), m->Size() - ord->GetMatrixPartSize());
 	glEnd();
 	*/
-
-	glColor3f(0,0,0);
-	glBegin(GL_QUADS);
-	for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
-		for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
-			if( jt->first != it - m->Begin() && jt->second)
-			//DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
-			DrawEntry(jt->first, m->Size() - (it - m->Begin()));//, sqrt((jt->second-min)/(max-min)));
-	glEnd();
-
+	
 
 	/*
-	glColor3f(0.0, 1.0, 0);
-	glBegin(GL_QUADS);
-	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	 glColor3f(0.0, 1.0, 0);
+	 glBegin(GL_QUADS);
+	 for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	 {
+	 int ind = it - m->Begin();
+	 if (fabs((*it)[ind]) > row_sum[it-m->Begin()]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+	 DrawEntry((it - m->Begin()), m->Size() - ind);
+	 }
+	 glEnd();
+	 */
+	
+	if( draw_color == 0 )
 	{
-		int ind = it - m->Begin();
-		if (fabs((*it)[ind]) > row_sum[it-m->Begin()]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
-			DrawEntry((it - m->Begin()), m->Size() - ind);
-	}
-	glEnd();
-	*/
-
-
-	glBegin(GL_QUADS);
-	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
-	{
-
-		int ind = it - m->Begin();
-		double t = fabs((*it)[ind]) / row_sum[ind];
-		//if (fabs((*it)[ind]) < row_sum[ind]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
-		glColor3f(0.0, t, 1.0-t);
+		
+		glColor3f(0,0,0);
+		glBegin(GL_QUADS);
+		for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+				if( jt->first != it - m->Begin() && jt->second)
+				{
+					//double r = jt->second
+					//DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
+					DrawEntry(jt->first, m->Size() - (it - m->Begin()));//, sqrt((jt->second-min)/(max-min)));
+				}
+		glEnd();
+		
+		
+		glBegin(GL_QUADS);
+		for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+		{
+			
+			int ind = it - m->Begin();
+			double t = fabs((*it)[ind]) / row_sum[ind];
+			//if (fabs((*it)[ind]) < row_sum[ind]) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+			glColor3f(0.0, t, 1.0-t);
 			DrawEntry(ind, m->Size() - ind);
+		}
+		glEnd();
+		
+		//zoom += 1;
+		glColor3f(1.0, 0, 0);
+		glBegin(GL_QUADS);
+		for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+		{
+			int ind = it - m->Begin();
+			if (fabs((*it)[ind]) < 1e-13) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
+				DrawEntry((it - m->Begin()), m->Size() - ind);
+		}
+		glEnd();
+		//zoom -= 1;
 	}
-	glEnd();
-
-	//zoom += 1;
-	glColor3f(1.0, 0, 0);
-	glBegin(GL_QUADS);
-	for (Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+	else if( draw_color == 1 )
 	{
-		int ind = it - m->Begin();
-		if (fabs((*it)[ind]) < 1e-13) //DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(ind));
-			DrawEntry((it - m->Begin()), m->Size() - ind);
+		glBegin(GL_QUADS);
+		for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+			{
+				double r = (fabs(jt->second) - amin)/(amax-amin);
+				glColor3f(1-r,1-r,1-r);
+				DrawEntry(jt->first, m->Size() - (it - m->Begin()));
+			}
+		glEnd();
 	}
-	glEnd();
-	//zoom -= 1;
+	else if( draw_color == 2 )
+	{
+		glBegin(GL_QUADS);
+		for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+			{
+				double r = log((fabs(jt->second) - amin)/(amax-amin)*63 + 1)/log(64);
+				glColor3f(1-r,1-r,1-r);
+				DrawEntry(jt->first, m->Size() - (it - m->Begin()));
+			}
+		glEnd();
+	}
+	else if( draw_color == 3 )
+	{
+		glBegin(GL_QUADS);
+		for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+		{
+			double rmax = -1.0e20, rmin = 1.0e20;
+			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+			{
+				if( fabs(jt->second) < rmin ) rmin = fabs(jt->second);
+				if( fabs(jt->second) > rmax ) rmax = fabs(jt->second);
+			}
+			if( rmin > rmax ) continue;
+			//if( rmax - rmin < 1.0e-13 ) continue;
+			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+			{
+				double r = (fabs(jt->second) - rmin)/(rmax-rmin);
+				glColor3f(1-r,1-r,1-r);
+				DrawEntry(jt->first, m->Size() - (it - m->Begin()));
+			}
+		}
+		glEnd();
+	}
+	else if( draw_color == 4 )
+	{
+		glBegin(GL_QUADS);
+		for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+		{
+			double rmax = -1.0e20, rmin = 1.0e20;
+			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+			{
+				if( fabs(jt->second) < rmin ) rmin = fabs(jt->second);
+				if( fabs(jt->second) > rmax ) rmax = fabs(jt->second);
+			}
+			if( rmin > rmax ) continue;
+			//if( rmax - rmin < 1.0e-13 ) continue;
+			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+			{
+				double r = log((fabs(jt->second) - rmin)/(rmax-rmin)*63 + 1)/log(64);
+				glColor3f(1-r,1-r,1-r);
+				DrawEntry(jt->first, m->Size() - (it - m->Begin()));
+			}
+		}
+		glEnd();
+	}
 
 	if (CommonInput != NULL)
 	{
@@ -575,23 +663,23 @@ int main(int argc, char ** argv)
 
 	std::cout << "Nonzeros: " << nnz << std::endl;
 
-	zoom = m->Size() / 1000;
+	zoom = 1;//m->Size() / 1000;
 
-	//~ for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
-		//~ for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
-		//~ {
-			//~ if(jt->second < min )
-			//~ {
-				//~ min = jt->second;
-				//~ std::cout << (it-m->Begin()) << " " << jt->first << " " << jt->second << std::endl;
-			//~ }
-			//~ if(jt->second > max )
-			//~ {
-				//~ max = jt->second;
-				//~ std::cout << (it-m->Begin()) << " " << jt->first << " " << jt->second << std::endl;
-			//~ }
-		//~ }
-	//~ std::cout << "max: " << max << " min: " << min << std::endl;
+	for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
+		for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
+		{
+			if(fabs(jt->second) < amin )
+			{
+				amin = fabs(jt->second);
+				//std::cout << (it-m->Begin()) << " " << jt->first << " " << jt->second << std::endl;
+			}
+			if(fabs(jt->second) > amax )
+			{
+				amax = fabs(jt->second);
+				//std::cout << (it-m->Begin()) << " " << jt->first << " " << jt->second << std::endl;
+			}
+		}
+	std::cout << "absolute max: " << amax << " min: " << amin << std::endl;
 	glutInit(&argc,argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(width, height);

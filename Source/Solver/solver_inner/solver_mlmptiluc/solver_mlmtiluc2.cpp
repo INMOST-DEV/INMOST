@@ -613,6 +613,8 @@ static bool allow_pivot = true;
 		{
 			//ddPQ reordering on current Schur complement
 			INMOST_DATA_ENUM_TYPE cbeg = wbeg, cend = wend; //next size of factored B block
+			
+		//DumpMatrix(A_Address,A_Entries,cbeg,cend,"mat"+to_string(level_size.size())+".mtx");
 ///////////////////////////////////////////////////////////////////////////////////
 ///   MAXIMUM TRANSVERSE REORDERING                                             ///
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1672,6 +1674,7 @@ static bool allow_pivot = true;
 				DR0.Save("DR0_"+to_string(level_size.size())+".mtx");
 				DumpMatrix(B_Address,B_Entries,cbeg,cend,"mat_equil"+to_string(level_size.size())+".mtx");
 				 */
+			//DumpMatrix(B_Address,B_Entries,cbeg,cend,"rescale"+to_string(level_size.size())+".mtx");
 				//exit(-1);
 				//rescale EF
 				if( !level_size.empty() )
@@ -1825,17 +1828,21 @@ static bool allow_pivot = true;
 					//assert(B_Entries[B_Address[k].first].first == k);
 					LineIndecesU[cbeg] = k;
 					LineIndecesU[k] = EOL;
-					if (B_Entries[B_Address[k].first].first == k)
-						LineValuesU[k] = B_Entries[B_Address[k].first].second;
-					else
-						LineValuesU[k] = 0.0;
-					Ui = k;
-					for (INMOST_DATA_ENUM_TYPE it = B_Address[k].first + (B_Entries[B_Address[k].first].first == k ? 1 : 0); it < B_Address[k].last; ++it)
+					LineValuesU[k] = 0.0;
+					if( B_Address[k].Size() )
 					{
-						LineValuesU[B_Entries[it].first] = B_Entries[it].second;
-						Ui = LineIndecesU[Ui] = B_Entries[it].first;
+						if (B_Entries[B_Address[k].first].first == k)
+							LineValuesU[k] = B_Entries[B_Address[k].first].second;
+						else
+							LineValuesU[k] = 0.0;
+						Ui = k;
+						for (INMOST_DATA_ENUM_TYPE it = B_Address[k].first + (B_Entries[B_Address[k].first].first == k ? 1 : 0); it < B_Address[k].last; ++it)
+						{
+							LineValuesU[B_Entries[it].first] = B_Entries[it].second;
+							Ui = LineIndecesU[Ui] = B_Entries[it].first;
+						}
+						LineIndecesU[Ui] = EOL;
 					}
-					LineIndecesU[Ui] = EOL;
 					Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                    U-part elimination with L                                  //
@@ -2027,11 +2034,14 @@ static bool allow_pivot = true;
 						indicesU.push_back(Ui);
 						Ui = LineIndecesU[Ui];
 					}
-					std::sort(indicesU.begin(),indicesU.end());
-					//Sbeg = indices[0];
-					for(size_t qt = 1; qt < indicesU.size(); ++qt)
-						LineIndecesU[indicesU[qt-1]] = indicesU[qt];
-					LineIndecesU[indicesU.back()] = EOL;
+					if( !indicesU.empty() )
+					{
+						std::sort(indicesU.begin(),indicesU.end());
+						//Sbeg = indices[0];
+						for(size_t qt = 1; qt < indicesU.size(); ++qt)
+							LineIndecesU[indicesU[qt-1]] = indicesU[qt];
+						LineIndecesU[indicesU.back()] = EOL;
+					}
 					
 ///////////////////////////////////////////////////////////////////////////////////
 //                  Retrieve diagonal value                                      //
@@ -2093,21 +2103,25 @@ static bool allow_pivot = true;
 					//insert diagonal value first
 					LineIndecesL[cbeg] = k;
 					LineIndecesL[k] = EOL;
-					if (B_Entries[B_Address[k].first].first == k)
-						LineValuesL[k] = B_Entries[B_Address[k].first].second;
-					else
-						LineValuesL[k] = 0.0;
-					//start from diagonal
-					Ui = k;
-					Li = Bbeg[k];
-					while (Li != EOL)
+					LineValuesL[k] = 0.0;
+					if( B_Address[k].Size() )
 					{
-						assert(B_Entries[B_Address[Li].first].first == k);
-						LineValuesL[Li] = B_Entries[B_Address[Li].first].second;
-						Ui = LineIndecesL[Ui] = Li;
-						Li = Blist[Li];
+						if (B_Entries[B_Address[k].first].first == k)
+							LineValuesL[k] = B_Entries[B_Address[k].first].second;
+						else
+							LineValuesL[k] = 0.0;
+						//start from diagonal
+						Ui = k;
+						Li = Bbeg[k];
+						while (Li != EOL)
+						{
+							assert(B_Entries[B_Address[Li].first].first == k);
+							LineValuesL[Li] = B_Entries[B_Address[Li].first].second;
+							Ui = LineIndecesL[Ui] = Li;
+							Li = Blist[Li];
+						}
+						LineIndecesL[Ui] = EOL;
 					}
-					LineIndecesL[Ui] = EOL;
 					Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                 L-part elimination with U                                     //
@@ -2301,11 +2315,14 @@ static bool allow_pivot = true;
 						indicesL.push_back(Ui);
 						Ui = LineIndecesL[Ui];
 					}
-					std::sort(indicesL.begin(),indicesL.end());
-					//Sbeg = indices[0];
-					for(size_t qt = 1; qt < indicesL.size(); ++qt)
-						LineIndecesL[indicesL[qt-1]] = indicesL[qt];
-					LineIndecesL[indicesL.back()] = EOL;
+					if( !indicesL.empty() )
+					{
+						std::sort(indicesL.begin(),indicesL.end());
+						//Sbeg = indices[0];
+						for(size_t qt = 1; qt < indicesL.size(); ++qt)
+							LineIndecesL[indicesL[qt-1]] = indicesL[qt];
+						LineIndecesL[indicesL.back()] = EOL;
+					}
 					
 					//check that diagonal value is the same(must be!)
 					//assert(fabs(LineValues[k] / udiag - 1.0) < 1.0e-10);
@@ -3687,7 +3704,7 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 //         sort contents of linked list                                          //
 ///////////////////////////////////////////////////////////////////////////////////
-					/*
+					
 					indicesS.clear();
 					Ui = Sbeg;
 					while(Ui != EOL)
@@ -3695,34 +3712,45 @@ static bool allow_pivot = true;
 						indicesS.push_back(Ui);
 						Ui = LineIndecesL[Ui];
 					}
-					std::sort(indicesS.begin(),indicesS.end());
-					 */
-					//Sbeg = indices[0];
-					//for(size_t qt = 1; qt < indices.size(); ++qt)
-					//	LineIndecesL[indices[qt-1]] = indices[qt];
-					//LineIndecesL[indices.back()] = EOL;
+					if( !indicesS.empty() )
+					{
+						std::sort(indicesS.begin(),indicesS.end());
+						
+						Sbeg = indicesS[0];
+						for(size_t qt = 1; qt < indicesS.size(); ++qt)
+							LineIndecesL[indicesS[qt-1]] = indicesS[qt];
+						LineIndecesL[indicesS.back()] = EOL;
+					}
 ///////////////////////////////////////////////////////////////////////////////////
 //         prepare row norm for dropping                                         //
 ///////////////////////////////////////////////////////////////////////////////////
 #if defined(SCHUR_DROPPING_S)
-					INMOST_DATA_REAL_TYPE Snorm = 0, Snum = 0, tauS = std::min(tau*tau,tau2)/std::max(NuU_max,NuL_max);
+					INMOST_DATA_REAL_TYPE Snorm = 0, Snum = 0, tauS, Smax = 0, Smin = 1.0e+54;
 					
 					Ui = Sbeg;
 					while (Ui != EOL)
 					//for(size_t qt = 0; qt < indicesS.size(); ++qt)
 					{
 						//Ui = indicesS[qt];
-						u = LineValuesL[Ui];
+						u = fabs(LineValuesL[Ui]);
+						if( u > Smax ) Smax = u;
+						if( u < Smin ) Smin = u;
 						Snorm += u*u;
 						Snum++;
 						Ui = LineIndecesL[Ui];
 					}
 					if( Snum ) Snorm = sqrt(Snorm/Snum);
 					Snorm = std::min(1.0,Snorm);
+					
+					//tauS = std::min(tau*tau,tau2)/std::max(NuU_max,NuL_max)*Snorm;
+					tauS = Smin - 1.0e-7 + (Smax-Smin)*std::min(tau*tau,tau2);
+					//exp(log((fabs(u)-Smin)/(Smax-Smin)*127+1)) > exp(0.5*log(128))
+					//fabs(u) > exp(0.5)/127*(Smax-Smin) + Smax
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //         put calculated row to Schur complement                                //
 ///////////////////////////////////////////////////////////////////////////////////
+					INMOST_DATA_REAL_TYPE Sdrop = 0;
 					Ui = Sbeg;
 					S_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 					while (Ui != EOL)
@@ -3731,19 +3759,34 @@ static bool allow_pivot = true;
 						//Ui = indicesS[qt];
 						u = LineValuesL[Ui];
 #if defined(SCHUR_DROPPING_S)
-						//if( fabs(u)*NuU*NuL > tau * Snorm )
-						//if( fabs(u)*NuU*NuL*NuU_acc*NuL_acc*NuD*NuD_acc > tau * Snorm )
-						if( fabs(u) > tauS * Snorm )
-						//if( fabs(u) > tau*tau * Snorm )
+						//if( fabs(Smax-Smin) < 1.0e-5 || log((fabs(u)-Smin)/(Smax-Smin)*127+1)/log(128) > 0.5 )
+						if( fabs(u) > tauS )
 #else
 						if( 1+u != 1 )
 #endif
 							S_Entries.push_back(Sparse::Row::make_entry(Ui,u));
 						else
+						{
+							Sdrop += u;
 							ndrops_s++;
+						}
 						Ui = LineIndecesL[Ui];
 					}
 					S_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
+///////////////////////////////////////////////////////////////////////////////////
+//         Substract dropped elements from maximal element to keep sum of row    //
+//    (TODO: may collect dropping per row/column and preserve row-column sum)    //
+///////////////////////////////////////////////////////////////////////////////////
+					if( Sdrop )
+					{
+						INMOST_DATA_ENUM_TYPE rmax = S_Address[k].first, r;
+						INMOST_DATA_REAL_TYPE Sadd = Sdrop / (double)S_Address[k].Size();
+						for(r = S_Address[k].first; r < S_Address[k].last; ++r)
+							S_Entries[r].second += Sadd;
+						//	if( fabs(S_Entries[r].second) > fabs(S_Entries[rmax].second) )
+							//	rmax = r;
+						//S_Entries[rmax].second += Sdrop;
+					}
 					//assert(std::is_sorted(S_Entries.begin()+S_Addres[k].first,S_Entries.end()));
 ///////////////////////////////////////////////////////////////////////////////////
 //         clean up temporary linked list                                        //
