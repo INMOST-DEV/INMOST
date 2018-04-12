@@ -61,6 +61,7 @@ using namespace INMOST;
 
 
 #if defined(REORDER_METIS_ND)
+#define METIS_EXPORT
 #include "metis.h"
 #endif
 #if defined(REORDER_ZOLTAN_HUND)
