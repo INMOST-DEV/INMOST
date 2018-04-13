@@ -24,7 +24,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-#define REORDER_METIS_ND
+//#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -2960,7 +2960,7 @@ static bool allow_pivot = true;
 #elif defined(REPORT_ILU_PROGRESS)
 					if (k % 500 == 0)
 					{
-						printf("%lu %d/%d factor %6.2f%%\t\t\r",static_cast<unsigned long>(level_size.size()), cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
+						printf("%lu %d/%d factor %6.2f%%\t\t\r",static_cast<unsigned long>(level_size.size()), cend,moend, 100.0f*(k - cbeg + 1) / (float)(cend - cbeg));
 						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
 						fflush(stdout);
 					}
@@ -3487,8 +3487,8 @@ static bool allow_pivot = true;
 						Li = j;
 					}
 					LineIndecesU[cbeg] = UNDEF;
-#if defined(REPORT_ILU)
-					//if (i % 100 == 0)
+#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
+					if (i % 100 == 0)
 					{
 						printf("LF %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),LF_Entries.size(),ndrops_lf);
 						fflush(stdout);
@@ -3728,8 +3728,8 @@ static bool allow_pivot = true;
 						Li = j;
 					}
 					LineIndecesU[cbeg] = UNDEF;
-#if defined(REPORT_ILU)
-					//if (i % 100 == 0)
+#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
+					if (i % 100 == 0)
 					{
 						printf("EU %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),EU_Entries.size(),ndrops_eu);
 						fflush(stdout);
@@ -3778,8 +3778,8 @@ static bool allow_pivot = true;
 						Ui = LineIndecesU[Ui];
 						LineIndecesU[Li] = UNDEF;
 					}
-#if defined(REPORT_ILU)
-					//if (i % 100 == 0)
+#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
+					if (i % 100 == 0)
 					{
 						printf("Schur column norm %6.2f%%\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)));
 						fflush(stdout);
@@ -3948,8 +3948,8 @@ static bool allow_pivot = true;
 					}
 					LineIndecesU[cbeg] = UNDEF;
 					*/
-#if defined(REPORT_ILU)
-					//if (i % 100 == 0)
+#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
+					if (i % 100 == 0)
 					{
 						printf("Schur %6.2f%% nnz %lu drop S %d\t\t\r",  100.f*(k - cend+1) / (1.f*(wend - cend)),S_Entries.size(),ndrops_s);
 						fflush(stdout);
