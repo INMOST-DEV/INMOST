@@ -63,6 +63,7 @@ static bool allow_pivot = true;
 #define CONDITION_PIVOT
 
 #if defined(REORDER_METIS_ND)
+#define METIS_EXPORT
 #include "metis.h"
 #endif
 #if defined(REORDER_ZOLTAN_HUND)

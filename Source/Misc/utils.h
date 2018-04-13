@@ -1,9 +1,9 @@
 #ifndef INMOST_UTILS_H
 #define INMOST_UTILS_H
 
+#include "inmost_common.h"
 #include <sstream>
 #include <string>
-#include "inmost_common.h"
 
 namespace INMOST
 {
