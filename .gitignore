@@ -14,3 +14,5 @@ Source/Solver/solver_k3biilu2/k3d.cpp
 Source/Solver/solver_k3biilu2/k3d.h
 
 .vscode/*
+
+.DS_Store

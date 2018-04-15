@@ -84,7 +84,7 @@
 #define NOMINMAX
 #include <mpi.h>
 #if !defined(MSMPI_VER) && !defined(MPIO_INCLUDE) && defined(USE_MPI_FILE) && !defined(OMPI_PROVIDE_MPI_FILE_INTERFACE)
-#include <mpio.h> //some versions of MPI doesn't include that
+//#include <mpio.h> //some versions of MPI doesn't include that
 #endif
 #endif
 

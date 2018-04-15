@@ -231,16 +231,16 @@ namespace INMOST
 		rMatrix Value(const Storage & e) const
 		{
 			rMatrix ret = Arg.Value(e);
-                        for(INMOST_DATA_ENUM_TYPE k = 0; k < ret.Rows(); ++k)
-                                for(INMOST_DATA_ENUM_TYPE l = 0; l < ret.Cols(); ++l)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < ret.Rows(); ++k)
+				for(INMOST_DATA_ENUM_TYPE l = 0; l < ret.Cols(); ++l)
 					ret(k,l) = get_table(ret(k,l),Table);
 			return ret;
 		}
 		vMatrix Variable(const Storage & e) const
 		{
 			vMatrix ret = Arg.Variable(e);
-                        for(INMOST_DATA_ENUM_TYPE k = 0; k < ret.Rows(); ++k)
-                                for(INMOST_DATA_ENUM_TYPE l = 0; l < ret.Cols(); ++l)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < ret.Rows(); ++k)
+				for(INMOST_DATA_ENUM_TYPE l = 0; l < ret.Cols(); ++l)
 					ret(k,l) = get_table(ret(k,l),Table);
 			return ret;
 		}

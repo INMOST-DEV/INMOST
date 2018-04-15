@@ -82,7 +82,7 @@ namespace INMOST
 			value = other.value;
 			return *this;
 		}
-		operator INMOST_DATA_REAL_TYPE () {return value;}
+		//operator INMOST_DATA_REAL_TYPE () {return value;}
 	};
 	
 	
@@ -181,6 +181,13 @@ namespace INMOST
 			entries.Clear();
 			return *this;
 		}
+		__INLINE multivar_expression & operator = (multivar_expression const & other)
+		{
+			value = other.value;
+			entries = other.entries;
+			return *this;
+		}
+		/*
 		__INLINE multivar_expression & operator = (basic_expression const & expr)
 		{
 			value = expr.GetValue();
@@ -194,12 +201,7 @@ namespace INMOST
 			}
 			return *this;
 		}
-		__INLINE multivar_expression & operator = (multivar_expression const & other)
-		{
-			value = other.value;
-			entries = other.entries;
-			return *this;
-		}
+		*/
 		__INLINE Sparse::Row & GetRow() {return entries;}
 		__INLINE const Sparse::Row & GetRow() const {return entries;}
 		__INLINE multivar_expression & operator +=(basic_expression const & expr)
@@ -450,6 +452,7 @@ namespace INMOST
 			hessian_entries.Clear();
 			return *this;
 		}
+		/*
 		__INLINE hessian_multivar_expression & operator = (basic_expression const & expr)
 		{
 			value = expr.GetValue();
@@ -460,6 +463,8 @@ namespace INMOST
 			hessian_entries.Swap(htmp);
 			return *this;
 		}
+		*/
+		/*
 		__INLINE hessian_multivar_expression & operator = (multivar_expression const & other)
 		{
 			value = other.GetValue();
@@ -467,6 +472,7 @@ namespace INMOST
 			hessian_entries.Clear();
 			return *this;
 		}
+		*/
 		__INLINE hessian_multivar_expression & operator = (hessian_multivar_expression const & other)
 		{
 			value = other.value;
@@ -635,12 +641,13 @@ namespace INMOST
 			}
             (void)multH;
 		}
-		__INLINE multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
+		 multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
 			value = pvalue;
 			entries->Clear();
 			return *this;
 		}
+	
 		__INLINE multivar_expression_reference & operator = (basic_expression const & expr)
 		{
 			value = expr.GetValue();
@@ -654,18 +661,21 @@ namespace INMOST
 			}
 			return *this;
 		}
+		
 		__INLINE multivar_expression_reference & operator = (multivar_expression_reference const & other)
 		{
 			value = other.GetValue();
 			*entries = other.GetRow();
 			return *this;
 		}
+		/*
 		__INLINE multivar_expression_reference & operator = (multivar_expression const & other)
 		{
 			value = other.GetValue();
 			*entries = other.GetRow();
 			return *this;
 		}
+		*/
 		__INLINE Sparse::Row & GetRow() {return *entries;}
 		__INLINE const Sparse::Row & GetRow() const {return *entries;}
 		__INLINE multivar_expression_reference & operator +=(basic_expression const & expr)
@@ -1985,7 +1995,8 @@ namespace INMOST
 	
 		
 	template<class A>
-	class function_expression : public shell_expression< function_expression<A> > {
+	class function_expression : public shell_expression< function_expression<A> > 
+	{
         const A &arg;
         INMOST_DATA_REAL_TYPE value, dmult, ddmult;
     public:
@@ -2190,31 +2201,31 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::var_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::var_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::var_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
-                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::var_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val; }
+//                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val; }
 template<class A>          __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::shell_expression<A> & Val) {Arg = (INMOST_DATA_REAL_TYPE)Val.GetValue();}
 template<class A>          __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val.GetValue();}
 template<class A>          __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
