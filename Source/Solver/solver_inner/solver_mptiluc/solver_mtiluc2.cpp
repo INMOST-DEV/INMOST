@@ -7,11 +7,11 @@
 #include <deque>
 #include <iomanip>
 #include "../../../Misc/utils.h"
-//#define REPORT_ILU
+#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
+#define REPORT_ILU_END
+#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
