@@ -5,11 +5,11 @@
 #include <sstream>
 #include <deque>
 #include <iomanip>
-//#define REPORT_ILU
+#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
+#define REPORT_ILU_END
+#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 #include "../../../Misc/utils.h"
 //#define USE_OMP
@@ -489,7 +489,7 @@ static bool allow_pivot = true;
 #if defined(REORDER_RCM)
 		double trcmgraph = 0, trcmorder = 0;
 #endif
-        double tlfactor, tlrescale, tlreorder, tlreassamble;
+        double tlfactor, tlrescale, tlreorder, tlreassamble, tlschur;
 		ttotal = Timer();
 
 		//(*Alink).Save("M.mtx");
@@ -959,6 +959,9 @@ static bool allow_pivot = true;
 				ttransversal = Timer() - ttransversal;
 
 				treorder += ttransversal;
+#if defined(REPORT_ILU)
+				printf("Time %g\n",ttransversal);
+#endif
 			}
 			else
 			{
@@ -973,7 +976,6 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 			tt = Timer();
 #if defined(REORDER_METIS_ND)
-			tt = Timer();
 			idx_t nvtxs = wend-wbeg;
 			std::vector<idx_t> xadj(nvtxs+1), adjncy, perm(nvtxs),iperm(nvtxs);
 			//adjncy.reserve(nzA*2);
@@ -1128,61 +1130,6 @@ static bool allow_pivot = true;
 			}
 			cend = wend;
 			i = wend;
-
-#elif defined(REORDER_NNZ)
-			//for (k = cbeg; k < cend; ++k) V[k] = DR[localQ[k]];
-			//for (k = cbeg; k < cend; ++k) DR[k] = V[k];
-
-			//DumpMatrix(A_Address,A_Entries,cbeg,cend,"mat_original.mtx");
-			//std::fill(U.begin() + wbeg - mobeg, U.begin() + wend - mobeg, 0.0);
-			//std::fill(V.begin() + wbeg - mobeg, V.begin() + wend - mobeg, 0.0);
-			
-
-			//std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, 0);
-			//std::fill(Llist.begin() + wbeg - mobeg, Llist.begin() + wend - mobeg, 0);
-			
-			for(k = wbeg; k < wend; ++k)
-			{
-				U[k] = V[k] = 0.0;
-				Ulist[k] = Llist[k] = 0;
-			}
-
-			for (k = wbeg; k < wend; ++k) Blist[localQ[k]] = k;
-
-			for (k = wbeg; k < wend; ++k)
-			{
-				for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
-				{
-					i = A_Entries[it].first;
-					u = fabs(A_Entries[it].second);
-					//row-col norms
-					U[k] += u; //row norm
-					V[i] += u; //col norm
-					//nonzeros
-					Ulist[k]++; //row nnz
-					Llist[i]++; //col nnz
-
-					if( Blist[i] == k ) temp[k] = u;
-				}
-			}
-
-			sort_wgts.clear();
-			for (k = wbeg; k < wend; ++k)
-                sort_wgts.push_back(wgt_coord(Ulist[k]+Llist[Blist[k]]-1, coord(k, Blist[k])));
-				//sort_wgts.push_back(wgt_coord((Ulist[k]+Llist[Blist[k]]-1)*(U[k]+V[Blist[k]]), coord(k, Blist[k])));
-				//sort_wgts.push_back(wgt_coord((Ulist[k]+Llist[Blist[k]]-1)*(U[k]+V[Blist[k]]-temp[k])/temp[k], coord(k, Blist[k])));
-				//sort_wgts.push_back(wgt_coord(1.0/temp[k], coord(k, Blist[k])));
-				//sort_wgts.push_back(wgt_coord((U[k]+V[Blist[k]])*(U[k]+V[Blist[k]])/(temp[k]), coord(k, Blist[k])));
-			std::sort(sort_wgts.begin(), sort_wgts.end());
-
-			i = wbeg;
-			for (wgt_coords::iterator it = sort_wgts.begin(); it != sort_wgts.end(); ++it)
-			{
-				localP[it->second.first] = i;
-				localQ[it->second.second] = i;
-				++i;
-			}
-			cend = i;
 #elif defined(REORDER_RCM)
 			{
 #if defined(REPORT_ILU)
@@ -1346,6 +1293,11 @@ static bool allow_pivot = true;
 #endif
 			tt = Timer() - tt;
 			treorder += tt;
+#if defined(REPORT_ILU)
+			printf("Time %g\n",tt);
+			printf("Reorder\n");
+#endif
+			tt = Timer();
 			if (cbeg == cend && cbeg != wend)
 			{
 				//std::cout << __FILE__ << ":" << __LINE__ << " singular matrix, factored " << mobeg << ".." << cend << " out of " << mobeg << ".." << moend << std::endl;
@@ -1353,7 +1305,7 @@ static bool allow_pivot = true;
 					LU_Diag[k] = tol_modif;
 				break;
 			}
-			tt = Timer();
+			
 			//finish reordering
 			if (i < wend)
 			{
@@ -1392,18 +1344,24 @@ static bool allow_pivot = true;
 			
 			tlreorder = Timer() - tt;
 			treorder += tlreorder;
+#if defined(REPORT_ILU)
+			printf("Time %g\n",tlreorder);
+#endif
 ///////////////////////////////////////////////////////////////////////////////////
 ///                  REASSAMBLE                                                 ///
 ///////////////////////////////////////////////////////////////////////////////////
-			tt = Timer();
+#if defined(REPORT_ILU)
+			printf("Reassemble\n");
+#endif
+			//tt = Timer();
 			double tt1, tt2,ttt;
 			//in localPQ numbers indicate where to put current row/column
 			//reorder E,F blocks by swaps
-			tt1 = Timer();
+			//tt1 = Timer();
 			//inverse ordering
 			ReorderEF(wbeg,wend, donePQ, localP, localQ);
 			inversePQ(wbeg,wend,localP,localQ, invP,invQ);
-			tt1 = Timer() - tt1;
+			//tt1 = Timer() - tt1;
 
 			//std::cout << "reorder: " << tt1 << std::endl;
 			tt2 = Timer();
@@ -1474,6 +1432,9 @@ static bool allow_pivot = true;
 			*/
 			tlreassamble = Timer() - tt;
 			treassamble += tlreassamble;
+#if defined(REPORT_ILU)
+			printf("Time %g\n",tlreassamble);
+#endif
 ///////////////////////////////////////////////////////////////////////////////////
 ///                  RESCALING                                                  ///
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1702,8 +1663,7 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 ///               RESCALING DONE                                                ///
 ///////////////////////////////////////////////////////////////////////////////////
-				//End rescale B block
-				trescale += Timer() - tt;
+				
 				//stack scaling
 				
 				for (k = cbeg; k < cend; k++)
@@ -1751,7 +1711,12 @@ static bool allow_pivot = true;
 						first = last;
 					}
 				}
-				
+				//End rescale B block
+				tlrescale = Timer() - tt;
+				trescale += tlrescale;
+#if defined(REPORT_ILU)
+				printf("Time %g\n",tlrescale);
+#endif
 			}
 			/*
 			{
@@ -2978,8 +2943,7 @@ static bool allow_pivot = true;
 				std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max << " pivot swaps " << swaps << "                  " << std::endl;
 #endif
 			}
-			tlfactor = Timer() - tt;
-			tfactor += tlfactor;
+
 			//restore indexes
 			B_Address[cbeg].first = Bstart[cbeg];
 			U_Address[cbeg].first = LU_Beg;
@@ -3001,6 +2965,11 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 ///             FACTORIZATION COMPLETE                                          ///
 ///////////////////////////////////////////////////////////////////////////////////
+			tlfactor = Timer() - tt;
+			tfactor += tlfactor;
+#if defined(REPORT_ILU)
+			printf("Time %g\n",tlfactor);
+#endif
 			//After we have factored the rescaled matrix we must rescale obtained factors
 			/*
 			tt = Timer();
@@ -3043,8 +3012,10 @@ static bool allow_pivot = true;
 			{
 				tlocal = Timer();
 				cend = wend-swaps;
+				tt = Timer();
 #if defined(REPORT_ILU)
 				std::cout << "Total swaps: " << swaps << " interval: " << cend << " " << wend << std::endl;
+				printf("Reassemble pivots\n");
 #endif
 				level_size.push_back(cend - wbeg);
 				i = wbeg;
@@ -3307,7 +3278,10 @@ static bool allow_pivot = true;
 				}
 				 */
 				applyPQ(wbeg, wend, localP, localQ, invP, invQ);
-				
+				tt = Timer()-tt;
+#if defined(REPORT_ILU)
+				printf("Time %g\n",tt);
+#endif
 				int ndrops_lf = 0, ndrops_eu = 0, ndrops_s = 0;
 ///////////////////////////////////////////////////////////////////////////////////
 //  Compute Schur                                                                //
@@ -3321,7 +3295,11 @@ static bool allow_pivot = true;
 				// S = C - (E U^{-1}) D^{-1} (L^{-1} F)
 				//
 				//first precompute LF block
-				LF_Entries.clear();
+				tt = Timer();
+#if defined(REPORT_ILU)
+				printf("Assemble LF\n");
+#endif
+				
 				for (k = cend; k < wend; ++k)
 				{
 					Li = cbeg;
@@ -3342,66 +3320,67 @@ static bool allow_pivot = true;
 					while (Li != EOL)
 					{
 						curr = Li;
-						for (INMOST_DATA_ENUM_TYPE ru = L_Address[Li - 1].first; ru < L_Address[Li - 1].last; ++ru)
+						if( 1 + LineValuesU[Li - 1] != 1 )
 						{
-							u = LineValuesU[Li - 1] * LU_Entries[ru].second;
-							j = LU_Entries[ru].first;
-							if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
-								LineValuesU[j] -= u;
-							else if( u )
+							for (INMOST_DATA_ENUM_TYPE ru = L_Address[Li - 1].first; ru < L_Address[Li - 1].last; ++ru)
 							{
-								
-								next = curr;
-								while (next < j + 1)
+								u = LineValuesU[Li - 1] * LU_Entries[ru].second;
+								j = LU_Entries[ru].first;
+								if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+									LineValuesU[j] -= u;
+								else if( 1+u != 1 )
 								{
-									curr = next;
-									next = LineIndecesU[curr];
+									
+									next = curr;
+									while (next < j + 1)
+									{
+										curr = next;
+										next = LineIndecesU[curr];
+									}
+									assert(curr < j + 1);
+									assert(j + 1 < next);
+									LineIndecesU[curr] = j + 1;
+									LineIndecesU[j + 1] = next;
+									LineValuesU[j] = -u;
+									
+									//LineValuesU[j] = -u;
+									//LineIndecesU[j + 1] = Sbeg;
+									//Sbeg = j+1;
 								}
-								assert(curr < j + 1);
-								assert(j + 1 < next);
-								LineIndecesU[curr] = j + 1;
-								LineIndecesU[j + 1] = next;
-								LineValuesU[j] = -u;
-								
-								
-								//LineValuesU[j] = -u;
-								//LineIndecesU[j + 1] = Sbeg;
-								//Sbeg = j+1;
 							}
-						}
 #if defined(ILUC2) && defined(ILUC2_SCHUR)
 ///////////////////////////////////////////////////////////////////////////////////
 //         perform solve with second-order L part                                //
 ///////////////////////////////////////////////////////////////////////////////////
-						curr = Li;
-						for (INMOST_DATA_ENUM_TYPE ru = L2_Address[Li - 1].first; ru < L2_Address[Li - 1].last; ++ru)
-						{
-							u = LineValuesU[Li - 1] * LU2_Entries[ru].second;
-							j = LU2_Entries[ru].first;
-							if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
-								LineValuesU[j] -= u;
-							else if( u )
+							curr = Li;
+							for (INMOST_DATA_ENUM_TYPE ru = L2_Address[Li - 1].first; ru < L2_Address[Li - 1].last; ++ru)
 							{
-								
-								next = curr;
-								while (next < j + 1)
+								u = LineValuesU[Li - 1] * LU2_Entries[ru].second;
+								j = LU2_Entries[ru].first;
+								if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+									LineValuesU[j] -= u;
+								else if( 1+u != 1 )
 								{
-									curr = next;
-									next = LineIndecesU[curr];
+									
+									next = curr;
+									while (next < j + 1)
+									{
+										curr = next;
+										next = LineIndecesU[curr];
+									}
+									assert(curr < j + 1);
+									assert(j + 1 < next);
+									LineIndecesU[curr] = j + 1;
+									LineIndecesU[j + 1] = next;
+									LineValuesU[j] = -u;
+									
+									//LineValuesU[j] = -u;
+									//LineIndecesU[j + 1] = Sbeg;
+									//Sbeg = j+1;
 								}
-								assert(curr < j + 1);
-								assert(j + 1 < next);
-								LineIndecesU[curr] = j + 1;
-								LineIndecesU[j + 1] = next;
-								LineValuesU[j] = -u;
-								
-								
-								//LineValuesU[j] = -u;
-								//LineIndecesU[j + 1] = Sbeg;
-								//Sbeg = j+1;
 							}
-						}
 #endif
+						}
 ///////////////////////////////////////////////////////////////////////////////////
 //             solve iteration done                                              //
 ///////////////////////////////////////////////////////////////////////////////////						
@@ -3487,7 +3466,7 @@ static bool allow_pivot = true;
 					}
 					LineIndecesU[cbeg] = UNDEF;
 #if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (i % 100 == 0)
+					if (k % 100 == 0)
 					{
 						printf("LF %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),LF_Entries.size(),ndrops_lf);
 						fflush(stdout);
@@ -3497,13 +3476,19 @@ static bool allow_pivot = true;
 //             iteration done!                                                   //
 ///////////////////////////////////////////////////////////////////////////////////
 				}
+				tt = Timer()-tt;
 #if defined(REPORT_ILU)
-				printf("\n");
+				printf("LF nnz %lu drops %d         \t\t\n", LF_Entries.size(),ndrops_lf);
+				printf("Time %g\n",tt);
 #endif
 				//DumpMatrix(LF_Address,LF_Entries,wbeg,wend,"LF.mtx");
 ///////////////////////////////////////////////////////////////////////////////////
 //         prepearing LF block for transposed traversal                          //
 ///////////////////////////////////////////////////////////////////////////////////
+				tt = Timer();
+#if defined(REPORT_ILU)
+				printf("Transpose LF\n");
+#endif
 				//std::fill(Fbeg.begin() + wbeg - mobeg, Fbeg.begin() + cend - mobeg, EOL);
 				for(k = wbeg; k < cend; ++k) Fbeg[k] = EOL;
 				for(k = wend; k > cend; --k)
@@ -3559,25 +3544,24 @@ static bool allow_pivot = true;
 //              iteration done                                                   //
 ///////////////////////////////////////////////////////////////////////////////////
 				}
+				LF_Entries.clear();
+				tt = Timer()-tt;
+#if defined(REPORT_ILU)
+				printf("Time %g\n",tt);
+#endif
 				//DumpMatrix(LFt_Address,LFt_Entries,wbeg,wend,"LFt.mtx");
 ///////////////////////////////////////////////////////////////////////////////////
 //             EU and Schur                                                      //
 ///////////////////////////////////////////////////////////////////////////////////
-				EU_Entries.clear();
+				tt = Timer();
+#if defined(REPORT_ILU)
+				printf("Assemble EU\n");
+#endif
 				for(k = cend; k < wend; ++k)
 				{
 ///////////////////////////////////////////////////////////////////////////////////
 //          no values at E block - unpack C block into Schur                     //
 ///////////////////////////////////////////////////////////////////////////////////
-					if (E_Address.back()->at(k).Size() == 0) //iterate over rows of E
-					{
-						S_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
-						for (i = A_Address[k].first; i < A_Address[k].last; i++)
-							S_Entries.push_back(A_Entries[i]);
-						S_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
-						continue;
-					}
-					
 					Li = cbeg;
 					for (j = E_Address.back()->at(k).first; j < E_Address.back()->at(k).last; ++j) //iterate over values of k-th row of E
 					{
@@ -3595,54 +3579,57 @@ static bool allow_pivot = true;
 					while (Li != EOL)
 					{
 						curr = Li;
-						for (INMOST_DATA_ENUM_TYPE ru = U_Address[Li - 1].first; ru < U_Address[Li - 1].last; ++ru)
+						if( 1 + LineValuesU[Li - 1] != 1 )
 						{
-							u = LineValuesU[Li - 1] * LU_Entries[ru].second;
-							j = LU_Entries[ru].first;
-							if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
-								LineValuesU[j] -= u;
-							else if ( u )
+							for (INMOST_DATA_ENUM_TYPE ru = U_Address[Li - 1].first; ru < U_Address[Li - 1].last; ++ru)
 							{
-								next = curr;
-								while (next < j + 1)
+								u = LineValuesU[Li - 1] * LU_Entries[ru].second;
+								j = LU_Entries[ru].first;
+								if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+									LineValuesU[j] -= u;
+								else if ( 1+u != 1 )
 								{
-									curr = next;
-									next = LineIndecesU[curr];
+									next = curr;
+									while (next < j + 1)
+									{
+										curr = next;
+										next = LineIndecesU[curr];
+									}
+									assert(curr < j + 1);
+									assert(j + 1 < next);
+									LineIndecesU[curr] = j + 1;
+									LineIndecesU[j + 1] = next;
+									LineValuesU[j] = -u;
 								}
-								assert(curr < j + 1);
-								assert(j + 1 < next);
-								LineIndecesU[curr] = j + 1;
-								LineIndecesU[j + 1] = next;
-								LineValuesU[j] = -u;
 							}
-						}
 #if defined(ILUC2) && defined(ILUC2_SCHUR)
 ///////////////////////////////////////////////////////////////////////////////////
 //         perform solve with second-order U part                                //
 ///////////////////////////////////////////////////////////////////////////////////
-						curr = Li;
-						for (INMOST_DATA_ENUM_TYPE ru = U2_Address[Li - 1].first; ru < U2_Address[Li - 1].last; ++ru)
-						{
-							u = LineValuesU[Li - 1] * LU2_Entries[ru].second;
-							j = LU2_Entries[ru].first;
-							if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
-								LineValuesU[j] -= u;
-							else if ( u )
+							curr = Li;
+							for (INMOST_DATA_ENUM_TYPE ru = U2_Address[Li - 1].first; ru < U2_Address[Li - 1].last; ++ru)
 							{
-								next = curr;
-								while (next < j + 1)
+								u = LineValuesU[Li - 1] * LU2_Entries[ru].second;
+								j = LU2_Entries[ru].first;
+								if (LineIndecesU[j + 1] != UNDEF) // There is an entry in the list
+									LineValuesU[j] -= u;
+								else if ( 1+u != 1 )
 								{
-									curr = next;
-									next = LineIndecesU[curr];
+									next = curr;
+									while (next < j + 1)
+									{
+										curr = next;
+										next = LineIndecesU[curr];
+									}
+									assert(curr < j + 1);
+									assert(j + 1 < next);
+									LineIndecesU[curr] = j + 1;
+									LineIndecesU[j + 1] = next;
+									LineValuesU[j] = -u;
 								}
-								assert(curr < j + 1);
-								assert(j + 1 < next);
-								LineIndecesU[curr] = j + 1;
-								LineIndecesU[j + 1] = next;
-								LineValuesU[j] = -u;
 							}
-						}
 #endif
+						}
 						Li = LineIndecesU[Li];
 ///////////////////////////////////////////////////////////////////////////////////
 //         solve iteration done                                                  //
@@ -3728,20 +3715,26 @@ static bool allow_pivot = true;
 					}
 					LineIndecesU[cbeg] = UNDEF;
 #if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (i % 100 == 0)
+					if (k % 100 == 0)
 					{
 						printf("EU %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),EU_Entries.size(),ndrops_eu);
 						fflush(stdout);
 					}
 #endif
 				}
+				tt = Timer()-tt;
 #if defined(REPORT_ILU)
-				printf("\n");
+				printf("EU nnz %lu drops %d          \t\t\n",EU_Entries.size(),ndrops_eu);
+				printf("Time %g\n",tt);
 #endif
 #if defined(SCHUR_DROPPING_S)
 ///////////////////////////////////////////////////////////////////////////////////
 //         Compute column-norms of schur                                         //
 ///////////////////////////////////////////////////////////////////////////////////
+				tt = Timer();
+#if defined(REPORT_ILU)
+				printf("Compute Schur column norm\n");
+#endif
 				for(k = cend; k < wend; ++k) Scolnorm[k] = Scolnum[k] = 0.0;
 				for(k = cend; k < wend; ++k)
 				{
@@ -3778,21 +3771,26 @@ static bool allow_pivot = true;
 						LineIndecesU[Li] = UNDEF;
 					}
 #if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (i % 100 == 0)
+					if (k % 100 == 0)
 					{
 						printf("Schur column norm %6.2f%%\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)));
 						fflush(stdout);
 					}
 #endif
 				}
-				for(k = cend; k < wend; ++k) Scolnorm[k] = sqrt(Scolnorm[k]/Scolnum[k]);
+				for(k = cend; k < wend; ++k) Scolnorm[k] = Scolnum[k] ? sqrt(Scolnorm[k]/(double)Scolnum[k]) : 1.0;
+				tt = Timer()-tt;
 #if defined(REPORT_ILU)
-				printf("\n");
+				printf("\nTime %g\n",tt);
 #endif //REPORT_ILU
 #endif //SCHUR_DROPPING_S
 ///////////////////////////////////////////////////////////////////////////////////
 //         Construction of Schur complement                                      //
 ///////////////////////////////////////////////////////////////////////////////////
+				tt = Timer();
+#if defined(REPORT_ILU)
+				printf("Construct Schur\n");
+#endif
 				for(k = cend; k < wend; ++k)
 				{
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3821,7 +3819,7 @@ static bool allow_pivot = true;
 							v = -l*u*LU_Diag[Li];
 							if (LineIndecesL[j] != UNDEF)
 								LineValuesL[j] += v;
-							else if( v )
+							else if( 1+v != 1 )
 							{
 								LineValuesL[j] = v;
 								LineIndecesL[j] = Sbeg;
@@ -3948,7 +3946,7 @@ static bool allow_pivot = true;
 					LineIndecesU[cbeg] = UNDEF;
 					*/
 #if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (i % 100 == 0)
+					if (k % 100 == 0)
 					{
 						printf("Schur %6.2f%% nnz %lu drop S %d\t\t\r",  100.f*(k - cend+1) / (1.f*(wend - cend)),S_Entries.size(),ndrops_s);
 						fflush(stdout);
@@ -3958,10 +3956,15 @@ static bool allow_pivot = true;
 //         Schur complement row done                                             //
 ///////////////////////////////////////////////////////////////////////////////////
 				}
+				tt = Timer()-tt;
 #if defined(REPORT_ILU)
-				printf("\n");
-#endif				
+				printf("Schur nnz %lu drop S %d          \t\t\n", S_Entries.size(),ndrops_s);
+				printf("Time %g\n",tt);
+#endif
 				//DumpMatrix(EU_Address,EU_Entries,wbeg,wend,"EU.mtx");
+				LFt_Entries.clear();
+				EU_Entries.clear();
+				
 				A_Entries.swap(S_Entries);
 				A_Address.swap(S_Address);
 				
@@ -3973,6 +3976,10 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 //         Cleanup arrays for the next iteration                                 //
 ///////////////////////////////////////////////////////////////////////////////////
+				tt = Timer();
+#if defined(REPORT_ILU)
+				printf("Cleanup\n");
+#endif
 				for(k = wbeg; k < wend; ++k)
 				{
 					localP[k] = localQ[k] = ENUMUNDEF;
@@ -4020,9 +4027,14 @@ static bool allow_pivot = true;
 					block_pivot = true;
 				//rescale_b = false;
 				//run_mpt = false;
-				
+				tt = Timer()-tt;
+				tlschur = Timer()-tlocal;
+				tschur += tlschur;
+#if defined(REPORT_ILU)
+				printf("Time %g\n",tt);
+				printf("Total Schur %g\n",tlschur);
+#endif
 				wbeg = cend; //there is more work to do
-				tschur += Timer()-tlocal;
 			}
 			else
 			{
