@@ -7,11 +7,11 @@
 #include <deque>
 #include <iomanip>
 #include "../../../Misc/utils.h"
-#define REPORT_ILU
+//#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
-#define REPORT_ILU_END
-#define REPORT_ILU_SUMMARY
+//#define REPORT_ILU_END
+//#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
@@ -2772,7 +2772,7 @@ swap_algorithm:
 						if (u*NuU /*NuL_old*/ > tau) // apply dropping rule
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						else if (u*NuU*NuD /*NuL_old*/ > tau2)
+						else if (u*NuU /*NuL_old*/ > tau2)
 							LU2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #endif
 						Ui = LineIndecesU[Ui];
@@ -2797,7 +2797,7 @@ swap_algorithm:
 						if (u*NuL /*NuU_old*/ > tau) //apply dropping 
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						else if (u*NuL*NuD /*NuU_old*/ > tau2)
+						else if (u*NuL /*NuU_old*/ > tau2)
 							LU2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #endif
 						Li = LineIndecesL[Li];

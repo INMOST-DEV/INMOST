@@ -65,6 +65,11 @@ namespace INMOST
 		/// The intries should be added from Model::Initialize function,
 		/// either by model or by any of the submodels.
 		void AddEntry(std::string name, AbstractEntry & entry);
+		/// Add an entry of block unknowns to a model as a first entry.
+		/// The model stores a link to the entry and may modify it contents.
+		/// The intries should be added from Model::Initialize function,
+		/// either by model or by any of the submodels.
+		void AddFirstEntry(std::string name, AbstractEntry & entry);
 		/// Add a mesh to a model.
 		/// The model stores a link to the provided mesh, so it should not
 		/// be deallocated. The meshes are provided by the user from outside

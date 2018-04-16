@@ -5,11 +5,11 @@
 #include <sstream>
 #include <deque>
 #include <iomanip>
-#define REPORT_ILU
+//#define REPORT_ILU
 //#undef REPORT_ILU
 //#define REPORT_ILU_PROGRESS
-#define REPORT_ILU_END
-#define REPORT_ILU_SUMMARY
+//#define REPORT_ILU_END
+//#define REPORT_ILU_SUMMARY
 //#undef REPORT_ILU_PROGRESS
 #include "../../../Misc/utils.h"
 //#define USE_OMP
@@ -42,8 +42,8 @@ static bool allow_pivot = true;
 //#define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
-//#define EQUALIZE_2NORM
-#define EQUALIZE_IDOMINANCE
+#define EQUALIZE_2NORM
+//#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-12
@@ -722,7 +722,7 @@ static bool allow_pivot = true;
 					for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
 					{
 						u = fabs(C_Entries[it] - V[k] - U[A_Entries[it].first]);
-						if( u < 1.0e-8 && Perm[A_Entries[it].first] == ENUMUNDEF && IPerm[k] == ENUMUNDEF )
+						if( u < 1.0e-30 && Perm[A_Entries[it].first] == ENUMUNDEF && IPerm[k] == ENUMUNDEF )
 						{
 							 Perm[A_Entries[it].first] = k;
 							 IPerm[k] = A_Entries[it].first;
@@ -742,7 +742,7 @@ static bool allow_pivot = true;
 						for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last && IPerm[k] == ENUMUNDEF; ++it)
 						{
 							u = fabs(C_Entries[it] - V[k] - U[A_Entries[it].first]);
-							if( u <= 1.0e-8 )
+							if( u <= 1.0e-30 )
 							{
 								Li = Perm[A_Entries[it].first];
 								assert(Li != ENUMUNDEF);
@@ -750,7 +750,7 @@ static bool allow_pivot = true;
 								for (INMOST_DATA_ENUM_TYPE Lit = A_Address[Li].first; Lit < A_Address[Li].last; ++Lit)
 								{
 									u = fabs(C_Entries[Lit]- V[Li] - U[A_Entries[Lit].first]);
-									if( u <= 1.0e-8 && Perm[A_Entries[Lit].first] == ENUMUNDEF )
+									if( u <= 1.0e-30 && Perm[A_Entries[Lit].first] == ENUMUNDEF )
 									{
 										Perm[A_Entries[it].first] = k;
 										IPerm[k] = A_Entries[it].first;

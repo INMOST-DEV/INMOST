@@ -11,6 +11,13 @@ namespace INMOST
 		Entries.push_back(std::make_pair(name,&entry));
 	}
 	
+	void Model::AddFirstEntry(std::string name, AbstractEntry & entry)
+	{
+		assert( !isInitialized() ); // do not add new data after initialization
+		assert( GetEntry(name) == NULL ); // do not overwrite entry with the same name
+		Entries.insert(Entries.begin(),std::make_pair(name,&entry));
+	}
+	
 	void Model::AddMesh(std::string name, Mesh & m)
 	{
 		assert( !isInitialized() ); // do not add new data after initialization
