@@ -1798,7 +1798,6 @@ static bool allow_pivot = true;
 #if defined(ESTIMATOR)
 				if( estimator )
 				{
-					tlocal = Timer();
 					NuU_acc *= NuU;
 					NuL_acc *= NuL;
 					NuD_acc *= NuD;
@@ -1806,7 +1805,6 @@ static bool allow_pivot = true;
 					NuU1 = NuL1 = 1.0;
 					NuU2 = NuL2 = 1.0;
 					NuU_max = NuL_max = 1.0;
-					testimator += Timer() - tlocal;
 				}
 #endif
 				max_diag = 0;

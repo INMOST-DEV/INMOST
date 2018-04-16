@@ -26,7 +26,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-#define REORDER_METIS_ND
+//#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -40,8 +40,8 @@ using namespace INMOST;
 
 //#define PREMATURE_DROPPING
 
-#define EQUALIZE_1NORM
-//#define EQUALIZE_2NORM
+//#define EQUALIZE_1NORM
+#define EQUALIZE_2NORM
 //#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
@@ -578,6 +578,8 @@ using namespace INMOST;
 
 		std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
 
+		INMOST_DATA_ENUM_TYPE Sbeg;
+		std::vector<INMOST_DATA_ENUM_TYPE> indices;
 #if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0;
 		INMOST_DATA_REAL_TYPE tau2 = iluc2_tau;
@@ -1670,6 +1672,7 @@ using namespace INMOST;
 //       get diagonal value                                                      //
 ///////////////////////////////////////////////////////////////////////////////////
 				//assert(B_Entries[B_Address[cbeg].first].first == cbeg);
+				/*
 				if (B_Entries[B_Address[cbeg].first].first == cbeg)
 					LU_Diag[cbeg] = B_Entries[B_Address[cbeg].first].second;
 				else
@@ -1862,11 +1865,12 @@ using namespace INMOST;
 #endif
 				nzLU += L_Address[cbeg].Size() + U_Address[cbeg].Size() + 1;
 				max_diag = min_diag = fabs(LU_Diag[cbeg]);
+				*/
 				NuD = 1.0;
 #if defined(REPORT_ILU)
 				std::cout << " starting factorization " << std::endl;
 #endif
-				for (k = cbeg + 1; k < cend; ++k)
+				for (k = cbeg; k < cend; ++k)
 				{
 ///////////////////////////////////////////////////////////////////////////////////
 //              starting factorization step                                      //
@@ -2120,13 +2124,10 @@ swap_algorithm:
 					// add diagonal value first, there shouldn't be values on left from diagonal
 					//assert(B_Entries[B_Address[k].first].first == k);
 					LineIndecesU[cbeg] = k;
+					LineIndecesU[k] = EOL;
+					LineValuesU[k] = 0.0;
 					if (B_Entries[B_Address[k].first].first == k)
 						LineValuesU[k] = B_Entries[B_Address[k].first].second;
-					else
-					{
-						//std::cout << __LINE__ << " No diagonal value! " << k << " " << B_Entries[B_Address[k].first].first << std::endl;
-						LineValuesU[k] = 0.0;
-					}
 
 					Ui = k;
 					for (INMOST_DATA_ENUM_TYPE it = B_Address[k].first + (B_Entries[B_Address[k].first].first == k ? 1 : 0); it < B_Address[k].last; ++it)
@@ -2135,6 +2136,7 @@ swap_algorithm:
 						Ui = LineIndecesU[Ui] = B_Entries[it].first;
 					}
 					LineIndecesU[Ui] = EOL;
+					Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                    U-part elimination with L                                  //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2171,6 +2173,11 @@ swap_algorithm:
 								  LineIndecesU[curr] = j;
 								  LineIndecesU[j] = next;
 								  LineValuesU[j] = -u;
+								  /*
+									LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
+									*/
 							  }
 						  }
             }
@@ -2204,6 +2211,11 @@ swap_algorithm:
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
+									/*
+									LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
+									*/
 								}
 							}
 						}
@@ -2245,6 +2257,11 @@ swap_algorithm:
 								  LineIndecesU[curr] = j;
 								  LineIndecesU[j] = next;
 								  LineValuesU[j] = -u;
+								  /*
+								  LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
+									*/
 							  }
 						  }
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2272,6 +2289,12 @@ swap_algorithm:
 									LineIndecesU[curr] = j;
 									LineIndecesU[j] = next;
 									LineValuesU[j] = -u;
+									/*
+									LineValuesU[j] = -u;
+									LineIndecesU[j] = Sbeg;
+									Sbeg = j;
+									*/
+									
 								}
 							}
 #endif
@@ -2279,6 +2302,26 @@ swap_algorithm:
 						i = L2list[i];
 					}
 #endif
+///////////////////////////////////////////////////////////////////////////////////
+//                  Order contents of linked list                                //
+///////////////////////////////////////////////////////////////////////////////////
+					/*
+					indices.clear();
+					Ui = Sbeg;
+					while(Ui != EOL)
+					{
+						indices.push_back(Ui);
+						Ui = LineIndecesU[Ui];
+					}
+					if( !indices.empty() )
+					{
+						std::sort(indices.begin(),indices.end());
+						//Sbeg = indices[0];
+						for(size_t qt = 1; qt < indices.size(); ++qt)
+							LineIndecesU[indices[qt-1]] = indices[qt];
+						LineIndecesU[indices.back()] = EOL;
+					}
+					*/
 					//std::cout << std::endl;
 					//define the diagonal value
 //this check will fail due to global check of tolerances, if global check will be removed then this will never fail
@@ -2326,34 +2369,25 @@ swap_algorithm:
 					//uncompress column
 					//insert diagonal value first
 					LineIndecesL[cbeg] = k;
-					if (B_Entries[B_Address[k].first].first == k)
-						LineValuesL[k] = B_Entries[B_Address[k].first].second;
-					else
+					LineIndecesL[k] = EOL;
+					LineValuesL[k] = 0.0;
+					if( B_Address[k].Size() )
 					{
-						//std::cout << __LINE__ << " No diagonal value! " << k << std::endl;
-						LineValuesL[k] = 0.0;
+						if (B_Entries[B_Address[k].first].first == k)
+							LineValuesL[k] = B_Entries[B_Address[k].first].second;
+						Ui = k;
+						Li = Bbeg[k];
+						while (Li != EOL)
+						{
+							if( !(B_Entries[B_Address[Li].first].first == k) ) std::cout << "B_Entries[B_Address[Li].first].first: " << B_Entries[B_Address[Li].first].first << " k: " << k << std::endl;
+							assert(B_Entries[B_Address[Li].first].first == k);
+							LineValuesL[Li] = B_Entries[B_Address[Li].first].second;
+							Ui = LineIndecesL[Ui] = Li;
+							Li = Blist[Li];
+						}
+						LineIndecesL[Ui] = EOL;
 					}
-					//if( !(LineValuesL[k] == LineValuesL[k]) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
-					//start from diagonal
-					//sort_indeces.clear();
-					Ui = k;
-					Li = Bbeg[k];
-					while (Li != EOL)
-					{
-						if( !(B_Entries[B_Address[Li].first].first == k) ) std::cout << "B_Entries[B_Address[Li].first].first: " << B_Entries[B_Address[Li].first].first << " k: " << k << std::endl;
-						assert(B_Entries[B_Address[Li].first].first == k);
-						//sort_indeces.push_back(Li);
-						LineValuesL[Li] = B_Entries[B_Address[Li].first].second;
-						//if( !(LineValuesL[Li] == LineValuesL[Li]) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
-						Ui = LineIndecesL[Ui] = Li;
-						Li = Blist[Li];
-					}
-					/*
-					std::sort(sort_indeces.begin(), sort_indeces.end());
-					for (Li = 0; Li < sort_indeces.size(); Li++)
-					Ui = LineIndeces[Ui] = sort_indeces[Li];
-					*/
-					LineIndecesL[Ui] = EOL;
+					Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                 L-part elimination with U                                     //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2380,6 +2414,7 @@ swap_algorithm:
 								  LineValuesL[j] -= l;
 							  else //if (fabs(l)*NuL /*NuU_old*/ > tau2*abs_udiag)//add new entry
 							  {
+								  
 								  next = curr;
 								  while (next < j)
 								  {
@@ -2391,6 +2426,11 @@ swap_algorithm:
 								  LineIndecesL[curr] = j;
 								  LineIndecesL[j] = next;
 								  LineValuesL[j] = -l;
+								  /*
+								  LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
+									*/
 							  }
 						  }
             }
@@ -2413,6 +2453,7 @@ swap_algorithm:
 									LineValuesL[j] -= l;
 								else //if (fabs(l)*NuL /*NuU_old*/ > tau2*abs_udiag)//add new entry
 								{
+									
 									next = curr;
 									while (next < j)
 									{
@@ -2424,6 +2465,12 @@ swap_algorithm:
 									LineIndecesL[curr] = j;
 									LineIndecesL[j] = next;
 									LineValuesL[j] = -l;
+									
+									/*
+									LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
+									*/
 								}
 							}
 						}
@@ -2456,6 +2503,7 @@ swap_algorithm:
 								  LineValuesL[j] -= l;
 							  else //if (fabs(l)*NuL /*NuU_old*/ > tau2*abs_udiag)//add new entry
 							  {
+								  
 								  next = curr;
 								  while (next < j)
 								  {
@@ -2467,6 +2515,12 @@ swap_algorithm:
 								  LineIndecesL[curr] = j;
 								  LineIndecesL[j] = next;
 								  LineValuesL[j] = -l;
+								  
+								  /*
+								  LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
+									*/
                 }
 						  }
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2484,6 +2538,7 @@ swap_algorithm:
 								  LineValuesL[j] -= l;
                 else //if (fabs(l)*NuL /*NuU_old*/ > tau2 *abs_udiag)//add new entry
 							  {
+								  
 								  next = curr;
 								  while (next < j)
 								  {
@@ -2495,6 +2550,12 @@ swap_algorithm:
 								  LineIndecesL[curr] = j;
 								  LineIndecesL[j] = next;
 								  LineValuesL[j] = -l;
+								  
+								  /*
+								  LineValuesL[j] = -l;
+									LineIndecesL[j] = Sbeg;
+									Sbeg = j;
+									*/
                 }
 						  }
 #endif
@@ -2502,6 +2563,26 @@ swap_algorithm:
 						i = U2list[i];
 					}
 #endif
+///////////////////////////////////////////////////////////////////////////////////
+//                  Order contents of linked list                                //
+///////////////////////////////////////////////////////////////////////////////////
+					/*
+					indices.clear();
+					Ui = Sbeg;
+					while(Ui != EOL)
+					{
+						indices.push_back(Ui);
+						Ui = LineIndecesL[Ui];
+					}
+					if( !indices.empty() )
+					{
+						std::sort(indices.begin(),indices.end());
+						//Sbeg = indices[0];
+						for(size_t qt = 1; qt < indices.size(); ++qt)
+							LineIndecesL[indices[qt-1]] = indices[qt];
+						LineIndecesL[indices.back()] = EOL;
+					}
+					*/
 					//check that diagonal value is the same(must be!)
 					//assert(fabs(LineValues[k] / udiag - 1.0) < 1.0e-10);
 //this check will fail due to global check of tolerances, if global check will be removed then this will never fail
@@ -2691,7 +2772,7 @@ swap_algorithm:
 						if (u*NuU /*NuL_old*/ > tau) // apply dropping rule
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						else if (u*NuU /*NuL_old*/ > tau2)
+						else if (u*NuU*NuD /*NuL_old*/ > tau2)
 							LU2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #endif
 						Ui = LineIndecesU[Ui];
@@ -2716,7 +2797,7 @@ swap_algorithm:
 						if (u*NuL /*NuU_old*/ > tau) //apply dropping 
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						else if (u*NuL /*NuU_old*/ > tau2)
+						else if (u*NuL*NuD /*NuU_old*/ > tau2)
 							LU2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #endif
 						Li = LineIndecesL[Li];
