@@ -686,8 +686,8 @@ namespace INMOST
 	Tag Mesh::DeleteTag(Tag tag, ElementType type_mask)
 	{
 		//std::cout << "Delete tag " << tag.GetTagName() << " type " << DataTypeName(tag.GetDataType()) << " on ";
-		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( (etype & type_mask) && tag.isDefined(etype) ) std::cout << ElementTypeName(etype) << " ";
-		std::cout << std::endl;
+		//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( (etype & type_mask) && tag.isDefined(etype) ) std::cout << ElementTypeName(etype) << " ";
+		//std::cout << std::endl;
 		//deallocate data on elements
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 		{
@@ -1875,16 +1875,9 @@ namespace INMOST
 				if( data_pos == ENUMUNDEF ) continue;
 				TagManager::dense_sub_type & arr = GetDenseData(data_pos);
 				INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
-				memcpy(&arr[new_addr],&arr[old_addr],record_size);
-#if defined(USE_AUTODIFF)
-				if( t->GetDataType() == DATA_VARIABLE )
-				{
-					variable * p = static_cast<variable *>(static_cast<void *>(&arr[old_addr]));
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < t->GetSize(); ++j) p[j] = 0.0;
-				}
-				else
-#endif
-				memset(&arr[old_addr],0,record_size);
+				TagManager::CopyData(*t,static_cast<void *>(&arr[new_addr]),static_cast<void *>(&arr[old_addr]));
+				//memcpy(&arr[new_addr],&arr[old_addr],record_size);
+				DelDenseData(ComposeHandle(etypenum,old_addr),*t);
 			}
 		}
 	}
