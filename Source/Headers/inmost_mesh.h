@@ -2085,6 +2085,10 @@ namespace INMOST
 		/// @param h handle to the element
 		/// @param tag tag that indicates the data
 		void                              DelDenseData       (HandleType h,const Tag & tag);
+		/// Removes data of variable size, clears to zero data of fixed size.
+		/// @param data link to data
+		/// @param tag tag that indicates the data
+		void                              DelDenseData       (void * data,const Tag & tag);
 		/// Removes data of variable size and sparse tag data.
 		/// @param h handle to the element
 		/// @param tag tag that indicates the data

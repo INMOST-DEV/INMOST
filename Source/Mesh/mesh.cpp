@@ -1876,8 +1876,7 @@ namespace INMOST
 				TagManager::dense_sub_type & arr = GetDenseData(data_pos);
 				INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
 				TagManager::CopyData(*t,static_cast<void *>(&arr[new_addr]),static_cast<void *>(&arr[old_addr]));
-				//memcpy(&arr[new_addr],&arr[old_addr],record_size);
-				DelDenseData(ComposeHandleNum(etypenum,old_addr),*t);
+				DelDenseData(static_cast<void *>(&arr[old_addr]),*t);
 			}
 		}
 	}
@@ -2386,27 +2385,26 @@ namespace INMOST
 		}
 #endif
 	}
+	
+	void Mesh::DelDenseData(void * data, const Tag & tag)
+	{
+		if( tag.GetSize() == ENUMUNDEF )
+			TagManager::DestroyVariableData(tag,data);
+#if defined(USE_AUTODIFF)
+		else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
+		{
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k) (static_cast<variable *>(data)[k]) = 0.0;
+		}
+#endif
+		else memset(data,0,tag.GetRecordSize());
+	}
 
 	void Mesh::DelDenseData(HandleType h, const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
 		assert( !tag.isSparseByDim(GetHandleElementNum(h)) );
 		void * data = MGetLink(h,tag);
-		if( data != NULL )
-		{
-			if( tag.GetSize() == ENUMUNDEF )
-				TagManager::DestroyVariableData(tag,data);
-#if defined(USE_AUTODIFF)
-      else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
-      {
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k) (static_cast<variable *>(data)[k]) = 0.0;
-          //(static_cast<variable *>(data)[k]).~variable();
-      }
-#endif
-			//else if( tag.GetDataType() == DATA_REFERENCE )
-			//	 memset(data,0xff,tag.GetRecordSize());
-			else memset(data,0,tag.GetRecordSize());
-		}
+		if( data != NULL ) DelDenseData(data,tag);
 	}
 
 	void Mesh::DelSparseData(HandleType h,const Tag & tag)
