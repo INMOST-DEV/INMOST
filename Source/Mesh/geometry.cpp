@@ -633,13 +633,32 @@ namespace INMOST
 				//std::cout << "ORIENTATION" << std::endl;
 				if( mask & FACE )
 				{
+					if( HideMarker() )
+					{
+						MarkerType hm = HideMarker();
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-					for(integer e = 0; e < FaceLastLocalID(); ++e) 
+						for(integer e = 0; e < FaceLastLocalID(); ++e) 
+						{
+							if( isValidElement(FACE,e) )
+							{
+								HandleType h = ComposeHandle(FACE,e);
+								if( !GetMarker(h,hm) )
+									Face(this,h)->FixNormalOrientation();
+							}
+						}
+					}
+					else
 					{
-						if( isValidElement(FACE,e) )
-							Face(this,ComposeHandle(FACE,e))->FixNormalOrientation();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+						for(integer e = 0; e < FaceLastLocalID(); ++e) 
+						{
+							if( isValidElement(FACE,e) )
+								Face(this,ComposeHandle(FACE,e))->FixNormalOrientation();
+						}
 					}
 				}
 				ShowGeometricData(ORIENTATION,FACE);
@@ -652,13 +671,28 @@ namespace INMOST
 					if( (mask & etype) && !HaveGeometricData(MEASURE,etype))
 					{
 						measure_tag = CreateTag(measure_name,DATA_REAL,etype,NONE,1);
+						if( HideMarker() )
+						{
+							MarkerType hm = HideMarker();
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-						for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							{
+								HandleType h = ComposeHandle(etype,e);
+								if( !GetMarker(h,hm) ) GetGeometricData(h,MEASURE,static_cast<Storage::real *>(MGetDenseLink(h,measure_tag)));
+							}
+						}
+						else
 						{
-							HandleType h = ComposeHandle(etype,e);
-							GetGeometricData(h,MEASURE,static_cast<Storage::real *>(MGetDenseLink(h,measure_tag)));
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+							for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							{
+								HandleType h = ComposeHandle(etype,e);
+								GetGeometricData(h,MEASURE,static_cast<Storage::real *>(MGetDenseLink(h,measure_tag)));
+							}
 						}
 						ShowGeometricData(MEASURE,etype);
 					}
@@ -672,13 +706,28 @@ namespace INMOST
 					if( (mask & etype) && !HaveGeometricData(CENTROID,etype))
 					{
 						centroid_tag = CreateTag(centroid_name,DATA_REAL,etype,NONE,GetDimensions());
+						if( HideMarker() )
+						{
+							MarkerType hm = HideMarker();
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-						for(integer k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k) )
+							for(integer k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k) )
+							{
+								HandleType h = ComposeHandle(etype,k);
+								if( !GetMarker(h,hm) ) GetGeometricData(h,CENTROID,static_cast<Storage::real *>(MGetDenseLink(h,centroid_tag)));
+							}
+						}
+						else
 						{
-							HandleType h = ComposeHandle(etype,k);
-							GetGeometricData(h,CENTROID,static_cast<Storage::real *>(MGetDenseLink(h,centroid_tag)));
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+							for(integer k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k) )
+							{
+								HandleType h = ComposeHandle(etype,k);
+								GetGeometricData(h,CENTROID,static_cast<Storage::real *>(MGetDenseLink(h,centroid_tag)));
+							}
 						}
 						ShowGeometricData(CENTROID,etype);
 					}
@@ -692,13 +741,28 @@ namespace INMOST
 					if( (mask & etype) && !HaveGeometricData(BARYCENTER,etype))
 					{
 						barycenter_tag = CreateTag(barycenter_name,DATA_REAL,etype,NONE,GetDimensions());
+						if( HideMarker() )
+						{
+							MarkerType hm = HideMarker();
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-						for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							{
+								HandleType h = ComposeHandle(etype,e);
+								if( !GetMarker(h,hm) ) GetGeometricData(h,BARYCENTER,static_cast<Storage::real *>(MGetDenseLink(h,barycenter_tag)));
+							}
+						}
+						else
 						{
-							HandleType h = ComposeHandle(etype,e);
-							GetGeometricData(h,BARYCENTER,static_cast<Storage::real *>(MGetDenseLink(h,barycenter_tag)));
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+							for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							{
+								HandleType h = ComposeHandle(etype,e);
+								GetGeometricData(h,BARYCENTER,static_cast<Storage::real *>(MGetDenseLink(h,barycenter_tag)));
+							}
 						}
 						ShowGeometricData(BARYCENTER,etype);
 					}
@@ -712,13 +776,28 @@ namespace INMOST
 					if( (mask & etype) && !HaveGeometricData(NORMAL,etype))
 					{
 						normal_tag = CreateTag(normal_name,DATA_REAL,etype,NONE,GetDimensions());
+						if( HideMarker() )
+						{
+							MarkerType hm = HideMarker();
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-						for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							{
+								HandleType h = ComposeHandle(etype,e);
+								if( !GetMarker(h,hm) ) GetGeometricData(h,NORMAL,static_cast<Storage::real *>(MGetDenseLink(h,normal_tag)));
+							}
+						}
+						else
 						{
-							HandleType h = ComposeHandle(etype,e);
-							GetGeometricData(h,NORMAL,static_cast<Storage::real *>(MGetDenseLink(h,normal_tag)));
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+							for(integer e = 0; e < LastLocalID(etype); ++e) if( isValidElement(etype,e) )
+							{
+								HandleType h = ComposeHandle(etype,e);
+								GetGeometricData(h,NORMAL,static_cast<Storage::real *>(MGetDenseLink(h,normal_tag)));
+							}
 						}
 						ShowGeometricData(NORMAL,etype);
 					}

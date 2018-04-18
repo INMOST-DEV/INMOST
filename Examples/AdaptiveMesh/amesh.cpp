@@ -326,6 +326,7 @@ namespace INMOST
 			ReleaseMarker(mark_hanging_nodes);
 			ReleaseMarker(mark_cell_edges);
 			DeleteTag(internal_face_edges);
+			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
@@ -635,12 +636,14 @@ namespace INMOST
 				}
 			}
 			//jump to later schedule
+			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			schedule_counter--;
 		}
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//todo:
-		//ResolveModification();
+		ResolveShared(true);
+		ResolveModification();
 		//todo:
 		//let the user update their data
 		ApplyModification();
