@@ -420,6 +420,7 @@ void keyboard(unsigned char key, int x, int y)
 		if( oclipper ) delete oclipper;
 		if( bclipper ) delete bclipper;
 		if( current_picker ) delete current_picker;
+		delete CommonVolumetricView;
 		delete mesh;
 		exit(-1);
 	}

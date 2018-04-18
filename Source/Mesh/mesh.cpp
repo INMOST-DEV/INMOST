@@ -685,7 +685,7 @@ namespace INMOST
 	}
 	Tag Mesh::DeleteTag(Tag tag, ElementType type_mask)
 	{
-		std::cout << "Delete tag " << tag.GetTagName() << " type " << DataTypeName(tag.GetDataType()) << " on ";
+		//std::cout << "Delete tag " << tag.GetTagName() << " type " << DataTypeName(tag.GetDataType()) << " on ";
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( (etype & type_mask) && tag.isDefined(etype) ) std::cout << ElementTypeName(etype) << " ";
 		std::cout << std::endl;
 		//deallocate data on elements
