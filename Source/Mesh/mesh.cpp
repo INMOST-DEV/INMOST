@@ -1877,7 +1877,7 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
 				TagManager::CopyData(*t,static_cast<void *>(&arr[new_addr]),static_cast<void *>(&arr[old_addr]));
 				//memcpy(&arr[new_addr],&arr[old_addr],record_size);
-				DelDenseData(ComposeHandle(etypenum,old_addr),*t);
+				DelDenseData(ComposeHandleNum(etypenum,old_addr),*t);
 			}
 		}
 	}
