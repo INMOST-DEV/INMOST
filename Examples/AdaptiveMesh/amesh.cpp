@@ -326,20 +326,21 @@ namespace INMOST
 			ReleaseMarker(mark_hanging_nodes);
 			ReleaseMarker(mark_cell_edges);
 			DeleteTag(internal_face_edges);
-			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//11. Restore parallel connectivity, global ids
-		//ResolveModification();
+		ResolveShared(true);
+		ResolveModification();
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
 		ApplyModification();
 		//14. Done
 		EndModification();
+		//ExchangeData(hanging_nodes,CELL | FACE,0);
 		//reorder element's data to free up space
 		ReorderEmpty(CELL|FACE|EDGE|NODE);
 		//return number of refined cells
@@ -636,7 +637,6 @@ namespace INMOST
 				}
 			}
 			//jump to later schedule
-			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			schedule_counter--;
 		}
 		//free created tag
@@ -649,6 +649,7 @@ namespace INMOST
 		ApplyModification();
 		//done
 		EndModification();
+		//ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 		{

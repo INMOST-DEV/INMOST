@@ -58,7 +58,7 @@ namespace INMOST
 		
 		out << INMOST::INMOSTFile;
 		out << INMOST::MeshHeader;
-		ReorderEmpty(NODE | EDGE | FACE | CELL | ESET);
+		//ReorderEmpty(NODE | EDGE | FACE | CELL | ESET);
 		
 		uconv.write_iByteOrder(out);
 		uconv.write_iByteSize(out);
