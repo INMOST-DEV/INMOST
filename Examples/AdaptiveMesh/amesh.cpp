@@ -1,4 +1,7 @@
 #include "amesh.h"
+#include <iomanip>
+
+using namespace std;
 
 /// todo:
 /// 1. coarsment
@@ -31,6 +34,233 @@ namespace INMOST
 		(void) size;
 		element->Integer(tag) = std::min(element->Integer(tag),*((const INMOST_DATA_INTEGER_TYPE *)data));
 	}
+
+
+    void AdaptiveMesh::PrintSetLocal(string offset, ElementSet it, stringstream& ss)
+    {
+        stringstream ss1;
+        ss1 << offset << rank << ": Set : " << setw(5) << it.GetName() << " ";
+        for (int i = ss1.str().length(); i < 23; i++) ss1 << " ";
+        ss << ss1.str();
+        ss << setw(6);
+        if (it.GetStatus() == Element::Shared) ss << "shared";
+        else if (it.GetStatus() == Element::Ghost) ss << "ghost";
+        else if (it.GetStatus() == Element::Owned) ss << "owned";
+        else ss << "none";
+
+        ss << " tag_owner (" << it.IntegerDF(OwnerTag()) << ")";
+
+        //ss << "   level (" << level[it.self()] << ")  ";
+        ss << " tag_processors (";
+        stringstream ss2;
+        Storage::integer_array arr = it.IntegerArrayDV(tag_processors);
+        for (int i = 0; i < arr.size(); i++)
+            ss2 << arr[i] << " ";
+        ss << setw(5) << ss2.str() <<")";
+        
+
+        ElementSet::iterator p = it.Begin();
+        ss << "     | Refs: ";
+        int first = 0;
+        while(p != it.End())
+        {
+        //    if (first++ == 0) ss << endl << offset << "   ";
+            string type = "unknw";
+            if (p->GetElementType() == CELL) type = "cell";
+            if (p->GetElementType() == FACE) type = "face";
+            if (p->GetElementType() == EDGE) type = "edge";
+            if (p->GetElementType() == NODE) type = "node";
+            ss << type << "-" << p->GlobalID() << " ";
+            p++;
+        }
+        ss << endl;
+
+        for(ElementSet child = it.GetChild(); child.isValid(); child = child.GetSibling())
+        {
+            PrintSetLocal(offset + "   ",child,ss);
+        }
+    }
+
+
+    void AdaptiveMesh::PrintSet()
+    {
+        stringstream ss;
+        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+        {
+            if (it->HaveParent()) continue;
+            PrintSetLocal("",ElementSet(this,*it),ss);
+        }
+        cout << ss.str() << endl;
+    }
+
+    void AdaptiveMesh::PrintMesh(ostream& os, int cell, int face, int edge, int node)
+    {
+        if (cell + face + edge + node == 0) return;
+        stringstream ss;
+        ss << "================= " << rank << " =====================" << endl;
+        if (cell)
+        {
+            ss << "Cells: " << NumberOfCells() <<  endl;
+            for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
+            {
+                ss << rank << ": " << it->GlobalID() << " - " ;            
+                if (it->GetStatus() == Element::Shared) ss << "shared";
+                else if (it->GetStatus() == Element::Ghost) ss << "ghost";
+                else ss << "none";
+
+                Storage::reference_array refs = ref_tag[it->self()];
+                if (refs.size() > 0) ss << ". Ref: ";
+                for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+                {
+                    string type = "unknw";
+                    if (refs[i].GetElementType() == CELL) type = "cell";
+                    if (refs[i].GetElementType() == FACE) type = "face";
+                    if (refs[i].GetElementType() == EDGE) type = "edge";
+                    if (refs[i].GetElementType() == NODE) type = "node";
+                    ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
+                }
+
+                ss << endl;
+            }
+        }
+
+        if (face)
+        {
+            ss << "Faces: " << NumberOfFaces() <<  endl;
+            for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) 
+            {
+                ss << rank << ": " << it->GlobalID() << " - " ;            
+                if (it->GetStatus() == Element::Shared) ss << "shared";
+                else if (it->GetStatus() == Element::Ghost) ss << "ghost";
+                else ss << "none";
+
+                Storage::reference_array refs = ref_tag[it->self()];
+                if (refs.size() > 0) ss << ". Ref: ";
+                for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+                {
+                    string type = "unknw";
+                    if (refs[i].GetElementType() == CELL) type = "cell";
+                    if (refs[i].GetElementType() == FACE) type = "face";
+                    if (refs[i].GetElementType() == EDGE) type = "edge";
+                    if (refs[i].GetElementType() == NODE) type = "node";
+                    ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
+                }
+
+                ss << endl;
+            }
+        }
+
+        if (edge)
+        {
+            ss << "Edges: " << NumberOfEdges() <<  endl;
+            for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); ++it) 
+            {
+                ss << rank << ": " << it->GlobalID() << " - " ;            
+                if (it->GetStatus() == Element::Shared) ss << "shared";
+                else if (it->GetStatus() == Element::Ghost) ss << "ghost";
+                else ss << "none";
+
+                Storage::reference_array refs = ref_tag[it->self()];
+                if (refs.size() > 0) ss << ". Ref: ";
+                for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+                {
+                    string type = "unknw";
+                    if (refs[i].GetElementType() == CELL) type = "cell";
+                    if (refs[i].GetElementType() == FACE) type = "face";
+                    if (refs[i].GetElementType() == EDGE) type = "edge";
+                    if (refs[i].GetElementType() == NODE) type = "node";
+                    ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
+                }
+
+                ss << endl;
+            }
+        }
+
+        if (node)
+        {
+            ss << "Nodes:" << endl;
+            for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) 
+            {
+                ss << rank << ": " << it->GlobalID() << " - " ;            
+                if (it->GetStatus() == Element::Shared) ss << "shared";
+                else if (it->GetStatus() == Element::Ghost) ss << "ghost";
+                else ss << "none";
+
+                {
+                    Storage::reference_array refs = ref_tag[it->self()];
+                    if (refs.size() > 0) ss << ". Ref: ";
+                    for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+                    {
+                        string type = "unknw";
+                        if (refs[i].GetElementType() == CELL) type = "cell";
+                    if (refs[i].GetElementType() == FACE) type = "face";
+                    if (refs[i].GetElementType() == EDGE) type = "edge";
+                        if (refs[i].GetElementType() == NODE) type = "node";
+                        ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
+                        
+                    }
+                }
+                ss << endl;
+            }
+        }
+
+        ss << "=========================================" << endl;
+        os << ss.str() << endl;
+    }
+
+    void AdaptiveMesh::UpdateStatus()
+    {
+
+        for(ElementType mask = CELL; mask >= NODE; mask = PrevElementType(mask))
+        {
+            for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
+            {
+                int stat = 0;
+                if (it->GetStatus() == Element::Shared) stat = 1;
+                else if (it->GetStatus() == Element::Ghost)  stat = 2;
+
+                tag_status[it->self()] = stat;
+            }
+        }
+
+
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
+        {
+                }
+    }
+    
+    void AdaptiveMesh::PrintSet(ElementSet set, std::string offset)
+    {
+        std::cout << offset << "Set: " << std::endl;
+
+		ElementSet::iterator it = set.Begin();
+		while(it != set.End())
+        {
+		    ElementSet parent(this,parent_set[*it]);
+            std::cout << offset << it->GlobalID() << " - " << level[*it] << " : ";
+		    
+            ElementSet::iterator p = parent.Begin();
+    		while(p != parent.End())
+            {
+                std::cout << p->GlobalID() << " ";
+                p++;
+            }
+            std::cout << std::endl;
+            it++;
+        }
+
+		for(ElementSet child = set.GetChild(); child.isValid(); child = child.GetSibling())
+        {
+            PrintSet(child,offset + "  ");
+        }
+
+    }
+
+    void AdaptiveMesh::Test()
+    {
+        std::cout << rank << ": ================" << endl;
+        PrintSet(root,"");
+    }
 	
 	
 	void AdaptiveMesh::ClearData()
@@ -57,7 +287,7 @@ namespace INMOST
 					parent_set[it->self()] = root.GetHandle();
 				}
 			}
-		}
+        }
 		if( !HaveGlobalID(CELL) ) AssignGlobalID(CELL); //for unique set names
 	}
 	
@@ -65,10 +295,15 @@ namespace INMOST
 	{
 		//create a tag that stores maximal refinement level of each element
 		level = CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
+		tag_status = CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+		tag_an = CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+		ref_tag = CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
 		hanging_nodes = CreateTag("HANGING_NODES",DATA_REFERENCE,CELL|FACE,NONE);
 		//create a tag that stores links to sets
 		parent_set = CreateTag("PARENT_SET",DATA_REFERENCE,CELL,NONE,1);
+	    size = GetProcessorsNumber();
+    	rank = GetProcessorRank();
 	}
 	
 	AdaptiveMesh::~AdaptiveMesh()
@@ -79,6 +314,7 @@ namespace INMOST
 	
 	bool AdaptiveMesh::Refine(TagInteger & indicator)
 	{
+        cout << ro() << rank << ": IN REFINE" << endl;
 		static int call_counter = 0;
 		int ret = 0; //return number of refined cells
 		//initialize tree structure
@@ -329,27 +565,54 @@ namespace INMOST
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
+
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
+
+
+        stringstream ss;
+        ss << ro() << rank << ": during refine: ";
+        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
+        {
+            int marked = (it->GetMarker(NewMarker())) ? 1 : 0;
+            int st = 0;
+            if (it->GetStatus() == Element::Shared) st = 1;
+            else if (it->GetStatus() == Element::Ghost) st = 2;
+            //tag_an[it->self()] = it->IntegerDF(OwnerTag());
+            tag_an[it->self()] = marked;
+            ss << "(" << it->GlobalID() << "," << level[it->self()] << "," << marked << ") ";
+
+        }
+        for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) 
+        {
+            int marked = (it->GetMarker(NewMarker())) ? 1 : 0;
+            tag_an[it->self()] = marked;
+        }
+        //cout << ss.str() << endl;
+
+
 		//11. Restore parallel connectivity, global ids
-		//ResolveModification();
+        // AAND REFINE
+        ResolveShared(1);
+        cout << ro() << rank << "Before modificatrion| " << call_counter << endl;
+        //if (call_counter == 0)
+		ResolveModification(0);
+        cout << ro() << rank << "After modificatrion|" << endl;
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
 		ApplyModification();
 		//14. Done
+        //cout << rank << ": Before end " << endl;
 		EndModification();
+        //cout << rank << ": After end " << endl;
 		//reorder element's data to free up space
 		ReorderEmpty(CELL|FACE|EDGE|NODE);
 		//return number of refined cells
 		call_counter++;
+        cout << ro() << rank << ": END REFINE " << (ret != 0) << endl;
 		return ret != 0;
 	}
-	
-	
-	
-	
-	
 	
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
@@ -640,7 +903,8 @@ namespace INMOST
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//todo:
-		//ResolveModification();
+        ResolveShared(1);
+		ResolveModification(0);
 		//todo:
 		//let the user update their data
 		ApplyModification();
@@ -666,4 +930,11 @@ namespace INMOST
 		call_counter++;
 		return ret != 0;
 	}
+
+
+    void AdaptiveMesh::test_sets()
+    {
+    }
+
+
 }
