@@ -1553,39 +1553,113 @@ namespace INMOST
         }
     }
 
-	void Mesh::ResolveModification()
+    void Mesh::FindMinDijkstra(Cell c, double& dist, int& owner)
+    {   
+        TagInteger tag_dist = CreateTag("TEMP_DIJ_DISTANSE",DATA_INTEGER,CELL,CELL,1);
+        TagInteger tag_mark = CreateTag("TEMP_DIJ_MARK",DATA_INTEGER,CELL,CELL,1);
+
+        stringstream ss;
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
+        {
+            tag_mark[*it] = 0;
+        }
+
+        ElementSet set = CreateSetUnique("DIST").first;
+        set.PutElement(c);
+        tag_dist[c] = 0;
+
+        int cur_dist = 0;
+        bool was_change;
+        while (set.getCells().size() > 0)
+        {
+            was_change = false;
+            ElementArray<Cell> cells = set.getCells();
+            for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); it++)
+            {
+                assert(tag_mark[*it] == 0);
+
+                if (tag_dist[*it] == cur_dist)
+                {
+                    was_change = true;
+                    ElementArray<Face> faces = Cell(this,*it).getFaces();
+                    for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
+                    {
+                        if (f->getCells().size() <= 1) continue;
+                        Cell oc = (*it == f->BackCell().GetHandle()) ? f->FrontCell() : f->BackCell();
+                        assert(oc.GetHandle() != *it);
+                        if (tag_mark[oc] == 1) continue;
+
+                        if (GetMarker(oc.GetHandle(),NewMarker()) == false) 
+                        {
+                            dist = tag_dist[*it] + 1;
+                            owner = oc.IntegerDF(tag_owner);
+                            DeleteTag(tag_dist);
+                            DeleteTag(tag_mark);
+                            return;
+                        }
+                        // oc - is new cell
+                        if (tag_dist[oc] == 0 || tag_dist[oc] > cur_dist+1)
+                            tag_dist[oc] = tag_dist[*it]+1;
+                        set.AddElement(oc.GetHandle());
+                    }
+
+                    tag_mark[*it] = 1;
+                    set.RemoveElement(Cell(this,*it));
+                    break;
+                }
+            }
+            if (was_change == false) cur_dist++;
+        }
+        
+        DeleteTag(tag_dist);
+        DeleteTag(tag_mark);
+        throw "Cannot find other process elements";
+    }
+
+
+	void Mesh::ResolveModification(int metric)
 	{
 		int rank = GetProcessorRank(),mpisize = GetProcessorsNumber();
 	    
         Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
-
+        stringstream ss;
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
         {
-            double min = 0;
-            int first = 0;
-            Cell near_cell;
-		    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false)
-            {
-                double d = dist(it->getAsCell(), jt->getAsCell());
-                if (first++ == 0 || min > d) 
-                {
-                    min = d;
-                    near_cell = jt->getAsCell();
-                }
-            }
-            
-            int owner1 = it->IntegerDF(tag_owner);
-            int owner2 = near_cell.IntegerDF(tag_owner);
-    
-            it->RealArray(tag)[0] = owner2;
-            it->RealArray(tag)[1] = min;
-       }
+            if (it->GetStatus() == Element::Owned) continue;
+            double min_distance = 0;
+            int owner = rank;
 
+            if (metric == 0)
+            {
+                int first = 0;
+                Cell near_cell;
+                for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false)
+                {
+                    double d = dist(it->getAsCell(), jt->getAsCell());
+                    if (first++ == 0 || min_distance > d) 
+                    {
+                        min_distance = d;
+                        near_cell = jt->getAsCell();
+                    }
+                }
+
+                owner = near_cell.IntegerDF(tag_owner);
+            }
+            else  
+            {
+                FindMinDijkstra(it->getAsCell(), min_distance, owner);
+            }
+
+            it->RealArray(tag)[0] = owner;
+            it->RealArray(tag)[1] = min_distance;
+       }
+        
         ReduceData(tag, CELL, 0, OperationMinDistance);
         ExchangeData(tag, CELL, 0);
 
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
         {
+            if (it->GetStatus() == Element::Owned) continue;
             int new_owner = it->RealArray(tag)[0];
 
             it->IntegerDF(tag_owner) = new_owner;
@@ -1599,6 +1673,9 @@ namespace INMOST
                 it->SetStatus(Element::Ghost);
             }
         }
+
+		RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
+        DeleteTag(tag);
 	}
 	
 	void Mesh::EndModification()
