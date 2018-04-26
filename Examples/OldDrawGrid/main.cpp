@@ -23,6 +23,7 @@
 #include "tga.h"
 #include "screenshot.h"
 #include "volumetric.h"
+#include "vector.h"
 #include "input.h"
 #include "picker.h"
 #include "clipper.h"
@@ -206,6 +207,7 @@ std::vector<face2gl> clip_boundary;
 
 
 volumetric * CommonVolumetricView;
+Vectors * CommonVectors = NULL;
 
 
 
@@ -1294,6 +1296,9 @@ void draw_screen()
 			if( bndupdate ) CommonVolumetricView->camera(campos,interactive);
 			CommonVolumetricView->draw(interactive);
 		}
+		
+		if( CommonVectors )
+			CommonVectors->Draw(interactive);
 
 
 		for(int k = 0; k < streamlines.size(); ++k)
@@ -1504,6 +1509,11 @@ void draw_screen()
 							correct_input = true;
 							streamlines.clear();
 							glutPostRedisplay();
+							if( CommonVectors )
+							{
+								delete CommonVectors;
+								CommonVectors = NULL;
+							}
 
 						}
 					}
@@ -1515,79 +1525,90 @@ void draw_screen()
 						visualization_type = NONE;
 						for (size_t q = 0; q < stype.size(); ++q)
 							stype[q] = tolower(stype[q]);
-						if (stype == "node") visualization_type = NODE;
-						else if (stype == "edge") visualization_type = EDGE;
-						else if (stype == "face") visualization_type = FACE;
-						else if (stype == "cell") visualization_type = CELL;
-						else if (stype == "eset") visualization_type = ESET;
-						if (visualization_type == NONE)
-							printf("unknown element type %s\n", typen);
+						if (stype == "scale")
+						{
+							double scale = atof(visualization_prompt + k + 1);
+							std::cout << "input scale: " << scale << std::endl;
+							if( CommonVectors )
+								CommonVectors->SetScale(scale);
+							correct_input = true;
+							glutPostRedisplay();
+						}
 						else
 						{
-							disp_e = InvalidElement();
-							bool is_number = true;
-							for (l = k + 1; l < slen; ++l)
-							if (!isdigit(visualization_prompt[l]))
-								is_number = false;
-							if (is_number)
+							if (stype == "node") visualization_type = NODE;
+							else if (stype == "edge") visualization_type = EDGE;
+							else if (stype == "face") visualization_type = FACE;
+							else if (stype == "cell") visualization_type = CELL;
+							else if (stype == "eset") visualization_type = ESET;
+							if (visualization_type == NONE)
+								printf("unknown element type %s\n", typen);
+							else
 							{
-								comp = atoi(visualization_prompt + k + 1);
-								visualization_prompt[k] = ':';
-
-
-								correct_input = true;
-
-								if (mesh->isValidElement(visualization_type, comp))
+								disp_e = InvalidElement();
+								bool is_number = true;
+								for (l = k + 1; l < slen; ++l)
+								if (!isdigit(visualization_prompt[l]))
+									is_number = false;
+								if (is_number)
 								{
-									printf("Display data for %s:%d\n", typen, comp);
-									disp_e = mesh->ElementByLocalID(visualization_type, comp);
-								}
-								else
-									printf("No valid element at %s:%d\n", typen, comp);
-							}
-							else if (visualization_type == ESET)
-							{
-								std::string name = std::string(visualization_prompt + k + 1);
-								visualization_prompt[k] = ':';
-								correct_input = true;
-								disp_e = mesh->GetSet(name);
-								if (disp_e.isValid())
-									printf("Display data for %s:%d\n", typen, disp_e.LocalID());
-								else
-									printf("Cannot find set with name %s\n", name.c_str());
-							}
+									comp = atoi(visualization_prompt + k + 1);
+									visualization_prompt[k] = ':';
 
-							if (disp_e.isValid())
-							{
-								if (disp_e.GetElementType() != ESET)
-								{
-									disp_e->Centroid(shift);
-									for (int r = 0; r < 3; ++r)
-										shift[r] = -shift[r];
-								}
-								else
-								{
-									shift[0] = shift[1] = shift[2] = 0;
-									ElementSet s = disp_e.getAsSet();
-									int nelem = 0;
-									for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
+
+									correct_input = true;
+
+									if (mesh->isValidElement(visualization_type, comp))
 									{
-										double cnt[3];
-										it->Centroid(cnt);
-										shift[0] += cnt[0];
-										shift[1] += cnt[1];
-										shift[2] += cnt[2];
-										nelem++;
+										printf("Display data for %s:%d\n", typen, comp);
+										disp_e = mesh->ElementByLocalID(visualization_type, comp);
 									}
-									shift[0] /= (double)nelem;
-									shift[1] /= (double)nelem;
-									shift[2] /= (double)nelem;
-									for (int r = 0; r < 3; ++r)
-										shift[r] = -shift[r];
+									else
+										printf("No valid element at %s:%d\n", typen, comp);
+								}
+								else if (visualization_type == ESET)
+								{
+									std::string name = std::string(visualization_prompt + k + 1);
+									visualization_prompt[k] = ':';
+									correct_input = true;
+									disp_e = mesh->GetSet(name);
+									if (disp_e.isValid())
+										printf("Display data for %s:%d\n", typen, disp_e.LocalID());
+									else
+										printf("Cannot find set with name %s\n", name.c_str());
+								}
+
+								if (disp_e.isValid())
+								{
+									if (disp_e.GetElementType() != ESET)
+									{
+										disp_e->Centroid(shift);
+										for (int r = 0; r < 3; ++r)
+											shift[r] = -shift[r];
+									}
+									else
+									{
+										shift[0] = shift[1] = shift[2] = 0;
+										ElementSet s = disp_e.getAsSet();
+										int nelem = 0;
+										for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
+										{
+											double cnt[3];
+											it->Centroid(cnt);
+											shift[0] += cnt[0];
+											shift[1] += cnt[1];
+											shift[2] += cnt[2];
+											nelem++;
+										}
+										shift[0] /= (double)nelem;
+										shift[1] /= (double)nelem;
+										shift[2] /= (double)nelem;
+										for (int r = 0; r < 3; ++r)
+											shift[r] = -shift[r];
+									}
 								}
 							}
 						}
-						
 					}
 
 					if( k < slen && l < slen && l+1 < slen )
@@ -1606,16 +1627,19 @@ void draw_screen()
 							comp = ENUMUNDEF;
 						else if (std::string(visualization_prompt + l + 1) == "streamline")
 							comp = ENUMUNDEF-2;
+						else if (std::string(visualization_prompt + l + 1) == "vector" ||
+								 std::string(visualization_prompt + l + 1) == "vec")
+							comp = ENUMUNDEF-3;
 						else
 						{
-							std::cout << "unknown name for component, expected number or 'mag'" << std::endl;
+							std::cout << "unknown name for component, expected number or 'mag' or 'vec' or 'streamline'" << std::endl;
 							comp = ENUMUNDEF-1;
 						}
 						visualization_prompt[k] = ':';
 						visualization_prompt[l] = ':';
 						printf("type %s name %s comp %d\n",typen,name,comp);
 						std::string stype(typen), sname(name);
-						if (mesh->HaveTag(sname) && comp == ENUMUNDEF - 2)
+						if (mesh->HaveTag(sname) && (comp == ENUMUNDEF - 2 || comp == ENUMUNDEF - 3))
 						{
 							ElementType vel_def = NONE;
 							for (size_t q = 0; q < stype.size(); ++q)
@@ -1628,8 +1652,16 @@ void draw_screen()
 							else if (stype == "face") vel_def = FACE;
 							else if (stype == "cell") vel_def = CELL;
 							
-							streamlines.clear();
-							BuildStreamlines(mesh,mesh->GetTag(sname),vel_def,streamlines);
+							if( comp == ENUMUNDEF - 2 )
+							{
+								streamlines.clear();
+								BuildStreamlines(mesh,mesh->GetTag(sname),vel_def,streamlines);
+							}
+							else if( comp == ENUMUNDEF - 3 )
+							{
+								if( CommonVectors ) delete CommonVectors;
+								CommonVectors = new Vectors(mesh,mesh->GetTag(sname),vel_def);
+							}
 						}
 						else if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
 						{
@@ -2017,6 +2049,9 @@ void svg_draw(std::ostream & file)
 			//if( bndupdate ) CommonVolumetricView->camera(campos,interactive);
 			//CommonVolumetricView->draw(interactive);
 		}
+		
+		if( CommonVectors )
+			CommonVectors->SVGDraw(file,modelview,projection,viewport);
 
 
 		for(int k = 0; k < streamlines.size(); ++k)

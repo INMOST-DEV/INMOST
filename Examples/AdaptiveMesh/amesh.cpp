@@ -562,6 +562,7 @@ namespace INMOST
 			ReleaseMarker(mark_hanging_nodes);
 			ReleaseMarker(mark_cell_edges);
 			DeleteTag(internal_face_edges);
+			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
@@ -592,12 +593,9 @@ namespace INMOST
 
 
 		//11. Restore parallel connectivity, global ids
-        // AAND REFINE
-        ResolveShared(1);
-        cout << ro() << rank << "Before modificatrion| " << call_counter << endl;
+        ResolveShared(true);
         //if (call_counter == 0)
-		ResolveModification(0);
-        cout << ro() << rank << "After modificatrion|" << endl;
+		ResolveModification();
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
@@ -898,13 +896,14 @@ namespace INMOST
 				}
 			}
 			//jump to later schedule
+			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			schedule_counter--;
 		}
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//todo:
-        ResolveShared(1);
-		ResolveModification(0);
+    	ResolveShared(true);
+		ResolveModification();
 		//todo:
 		//let the user update their data
 		ApplyModification();
@@ -930,11 +929,4 @@ namespace INMOST
 		call_counter++;
 		return ret != 0;
 	}
-
-
-    void AdaptiveMesh::test_sets()
-    {
-    }
-
-
 }

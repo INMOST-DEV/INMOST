@@ -1,7 +1,7 @@
+#include "inmost.h"
 #include <cstdio>
 #include <cmath>
 
-#include "inmost.h"
 using namespace INMOST;
 
 typedef Storage::real_array real_array;

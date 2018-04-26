@@ -1,7 +1,7 @@
+#include "inmost.h"
 #include <string>
 #include <iostream>
 
-#include "inmost.h"
 using namespace INMOST;
 
 #if defined(USE_MPI)

@@ -1,10 +1,10 @@
+#include "inmost.h"
 #include <string>
 #include <iostream>
 #include <iomanip>
 #include <cmath>
 #include <cstdio>
 
-#include "inmost.h"
 
 using namespace INMOST;
 

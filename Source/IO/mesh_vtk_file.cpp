@@ -329,13 +329,14 @@ safe_output:
 				//printf("%s %d %d %d\n",tag_names[i].c_str(),t.isDefined(CELL),!t.isSparse(CELL),t.GetDataType() != DATA_BULK);
 				if (((t.isDefined(CELL) && !t.isSparse(CELL))
 					|| (t.isDefined(FACE) && output_faces)) &&
-            t.GetDataType() != DATA_BULK && 
-            t.GetDataType() != DATA_REFERENCE &&
-            t.GetDataType() != DATA_REMOTE_REFERENCE &&
-					  t != CoordsTag() && 
-            t != SharedTag() && 
-            t != SendtoTag() && 
-            t != ProcessorsTag())
+						t.GetPrint() && //Temporary solution: @see Mesh::file_option
+						t.GetDataType() != DATA_BULK && 
+						t.GetDataType() != DATA_REFERENCE &&
+						t.GetDataType() != DATA_REMOTE_REFERENCE &&
+						t != CoordsTag() && 
+						t != SharedTag() && 
+						t != SendtoTag() && 
+						t != ProcessorsTag())
 				{
 					//printf("added!\n");
 					tags.push_back(t);

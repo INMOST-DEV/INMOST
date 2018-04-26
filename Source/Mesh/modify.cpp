@@ -1226,6 +1226,9 @@ namespace INMOST
 	
 	ElementArray<Face> Face::SplitFace(Face face, const ElementArray<Edge> & edges, MarkerType del_protect)
 	{
+		//bool did_restart = false;
+		//bool report = false;
+		//restart_algorithm:
 		Mesh * m = face->GetMeshLink();
 		ElementArray<Edge> loop(m);
 		ElementArray<Face> ret(m);
@@ -1233,10 +1236,20 @@ namespace INMOST
 		if( edges.empty() || face->GetMarker(del_protect) ) return ret;
 		MarkerType hm = m->HideMarker();
 		dynarray<HandleType,2> cells;
+		
+		//if( report ) std::cout << "Marker for hidden elements: " << hm << std::endl;
 
 		adj_type & hc = m->HighConn(face->GetHandle());
-		for(adj_type::size_type it = 0; it < hc.size(); ++it) if( !m->GetMarker(hc[it],hm) )
-			cells.push_back(hc[it]);
+		//if( report ) std::cout << "Adjacent cells for face: ";
+		for(adj_type::size_type it = 0; it < hc.size(); ++it) 
+		{
+			if( !m->GetMarker(hc[it],hm) )
+			{
+				cells.push_back(hc[it]);
+				//if( report ) std::cout << GetHandleID(hc[it]) << " ";
+			}
+		}
+		//if( report ) std::cout << std::endl;
 
 		//assert(cells.size() == 2);
 
@@ -1245,15 +1258,24 @@ namespace INMOST
 
 		int ninner = 0;
 		adj_type & lc = m->LowConn(face->GetHandle());
+		//if( report ) std::cout << "Edges for face: ";
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
+		{
 			m->SetMarker(lc[it],outer);
+			//if( report ) std::cout << GetHandleID(lc[it]) << " ";
+		}
+		//if( report ) std::cout << std::endl;
 		
+		
+		//if( report ) std::cout << "Split edges: ";
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
 			if( !m->GetMarker(edges[it].GetHandle(),outer) )
 			{
 				temp.push_back(edges[it].GetHandle());
+				//if( report ) std::cout << GetHandleID(edges[it].GetHandle()) << " ";
 				ninner++;
 			}
+		//if( report ) std::cout << std::endl;
 
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
 		{
@@ -1268,6 +1290,43 @@ namespace INMOST
 			ret.push_back(face);
 			return ret;
 		}
+		
+		/*
+		if( !did_restart )
+		{
+			incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner);
+			do
+			{
+				mat.find_shortest_loop(loop);
+				if (!loop.empty())
+				{
+					if( loop.size() > 2 )
+					{
+						//ret.push_back(m->CreateFace(loop).first);
+						//adj_type & hc = m->HighConn(ret.back()->GetHandle());
+						//hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+					}
+					else report = true;
+				}
+				else break;
+			} while(true);
+			
+			
+			if(report )//!mat.all_visited())
+			{
+				mat.print_matrix();
+				incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner,GridCoords(),true);
+				do
+				{
+					mat.find_shortest_loop(loop);
+					if( loop.empty() ) break;
+				} while( true );
+				did_restart = true;
+				goto restart_algorithm;
+			}
+		}
+		*/
+
 		
 		if( !face->Hide() )
 		{
@@ -1289,20 +1348,22 @@ namespace INMOST
 		
 		incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner);
 
+		
 		do
 		{
 			mat.find_shortest_loop(loop);
 			if (!loop.empty())
 			{
-				ret.push_back(m->CreateFace(loop).first);
-				adj_type & hc = m->HighConn(ret.back()->GetHandle());
-				hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+				if( loop.size() > 2 )
+				{
+					ret.push_back(m->CreateFace(loop).first);
+					adj_type & hc = m->HighConn(ret.back()->GetHandle());
+					hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+				}
 			}
 			else break;
 		} while(true);
-		
 
-		
 
 
 		for(dynarray<HandleType,2>::size_type it = 0; it < cells.size(); ++it)
@@ -1381,17 +1442,24 @@ namespace INMOST
 		incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner);
 		//mat.print_matrix();
 		cell->Delete();
-			
+		
+		bool report = false;
 		do
 		{
 			mat.find_shortest_loop(loop);
-			if (!loop.empty()) ret.push_back(m->CreateCell(loop).first);
+			if (!loop.empty() ) 
+			{
+				if( loop.size() > 3 )
+					ret.push_back(m->CreateCell(loop).first);
+				else
+					report = true;
+			}
 			else break;
 		} while( true );
 		
 		//debug
-		/*
-		if(!mat.all_visited())
+		
+		if(report )//!mat.all_visited())
 		{
 			mat.print_matrix();
 			incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner,GridCoords(),true);
@@ -1401,7 +1469,7 @@ namespace INMOST
 				if( loop.empty() ) break;
 			} while( true );
 		}
-		 */
+		 
 
 		return ret;
 	}
@@ -1541,7 +1609,7 @@ namespace INMOST
 
     void OperationMinDistance(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
     {        
-        int owner  =  *((double*)data);
+        int owner  =  (int)*((double*)data);
         double dist = *((double*)(data+sizeof(double)));
 
         TagReal r_tag = tag;
@@ -1551,42 +1619,42 @@ namespace INMOST
             element->RealArray(tag)[0] = owner;
             element->RealArray(tag)[1] = dist;
         }
+        (void)size;
     }
 
 	void Mesh::ResolveModification()
 	{
-		int rank = GetProcessorRank(),mpisize = GetProcessorsNumber();
+        int rank = GetProcessorRank();
 	    
         Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
 
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
         {
-            double min = 0;
-            int first = 0;
+            double mind = 1.0e+100;
             Cell near_cell;
-		    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false)
+		    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false && jt->GetStatus() == Element::Owned)
             {
                 double d = dist(it->getAsCell(), jt->getAsCell());
-                if (first++ == 0 || min > d) 
+                if (mind > d) 
                 {
-                    min = d;
+                    mind = d;
                     near_cell = jt->getAsCell();
                 }
             }
             
-            int owner1 = it->IntegerDF(tag_owner);
+            //int owner1 = it->IntegerDF(tag_owner);
             int owner2 = near_cell.IntegerDF(tag_owner);
     
             it->RealArray(tag)[0] = owner2;
-            it->RealArray(tag)[1] = min;
+            it->RealArray(tag)[1] = mind;
        }
 
         ReduceData(tag, CELL, 0, OperationMinDistance);
         ExchangeData(tag, CELL, 0);
 
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
         {
-            int new_owner = it->RealArray(tag)[0];
+            int new_owner = (int)it->RealArray(tag)[0];
 
             it->IntegerDF(tag_owner) = new_owner;
 
@@ -1616,6 +1684,15 @@ namespace INMOST
 					Destroy(h);
 			}
 		}
+		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
+		{
+			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+			{
+				if( ElementByLocalID(etype,it).nbAdjElements(NextElementType(etype)) == 0 )
+					Destroy(ComposeHandle(etype,it));
+			}
+		}
+		RecomputeParallelStorage(ESET|CELL|FACE|EDGE|NODE);
 		memset(hidden_count,0,sizeof(integer)*6);
 		memset(hidden_count_zero,0,sizeof(integer)*6);
 		ReleaseMarker(hide_element);

@@ -249,76 +249,6 @@ void MatrixFinalizeFcbiilu2(matrix_fcbiilu2 *data) {
     (void) data;
 }
 
-void VectorInitDataFcbiilu2(vector_fcbiilu2 **ppA, INMOST_MPI_Comm comm, const char *name) {
-    if (ppA == NULL) throw INMOST::DataCorruptedInSolver;
-    *ppA = (vector_fcbiilu2 *) malloc(sizeof(vector_fcbiilu2));
-    vector_fcbiilu2 *A = (vector_fcbiilu2 *) *ppA;
-    A->n = 0;
-    (void) comm;
-    (void) name;
-}
-
-void VectorCopyDataFcbiilu2(vector_fcbiilu2 **ppA, vector_fcbiilu2 *pB) {
-    T(std::cout << "##### ins. VectorCopyDataFcbiilu2 \n";)//db!
-    if (ppA == NULL || pB == NULL) throw INMOST::DataCorruptedInSolver;
-    *ppA = (vector_fcbiilu2 *) malloc(sizeof(vector_fcbiilu2));
-    vector_fcbiilu2 *A = (vector_fcbiilu2 *) *ppA;
-    vector_fcbiilu2 *B = (vector_fcbiilu2 *) pB;
-    A->n = B->n;
-    if (B->n != 0) {
-        A->v = (double *) malloc(sizeof(double) * A->n);
-        memcpy(A->v, B->v, sizeof(double) * A->n);
-    }
-}
-
-void VectorAssignDataFcbiilu2(vector_fcbiilu2 *pA, vector_fcbiilu2 *pB) {
-    T(std::cout << "##### ins. VectorAssignDataFcbiilu2 \n";)//db!
-    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
-    vector_fcbiilu2 *B = (vector_fcbiilu2 *) pB;
-    if (A == NULL || B == NULL) throw INMOST::DataCorruptedInSolver;
-    if (A != B) {
-        if (A->n != 0) free(A->v);
-        A->n = B->n;
-        if (B->n != 0) {
-            A->v = (double *) malloc(sizeof(double) * A->n);
-            memcpy(A->v, B->v, sizeof(double) * A->n);
-        }
-    }
-}
-
-void VectorPreallocateFcbiilu2(vector_fcbiilu2 *pA, int size) {
-    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
-    if (A == NULL) throw INMOST::DataCorruptedInSolver;
-    A->n = size;
-    A->v = (double *) malloc(sizeof(double) * size);
-}
-
-void VectorFillFcbiilu2(vector_fcbiilu2 *pA, double *values) {
-    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
-    if (A == NULL) throw INMOST::DataCorruptedInSolver;
-    memcpy(A->v, values, sizeof(double) * A->n);
-}
-
-void VectorLoadFcbiilu2(vector_fcbiilu2 *pA, double *values) {
-    vector_fcbiilu2 *A = (vector_fcbiilu2 *) pA;
-    if (A == NULL) throw INMOST::DataCorruptedInSolver;
-    memcpy(values, A->v, sizeof(double) * A->n);
-}
-
-void VectorFinalizeFcbiilu2(vector_fcbiilu2 *data) {
-    (void) data;
-}
-
-void VectorDestroyDataFcbiilu2(vector_fcbiilu2 **ppA) {
-    if (ppA == NULL) throw INMOST::DataCorruptedInSolver;
-    if (*ppA != NULL) {
-        vector_fcbiilu2 *A = (vector_fcbiilu2 *) *ppA;
-        free(A->v);
-        free(*ppA);
-        *ppA = NULL;
-    }
-}
-
 void SolverInitializeFcbiilu2(bcg_fcbiilu2 *data, int *argc, char ***argv, const char *file_options) {
     T(std::cout << "##### ins. SolverInitializeFcbiilu2 (" << file_options << ") \n";)//db!
     if (file_options == NULL) return;
@@ -342,7 +272,8 @@ void SolverInitializeFcbiilu2(bcg_fcbiilu2 *data, int *argc, char ***argv, const
         getline(is, s);
         sscanf(s.c_str(), "%lg", &(data->tau));  //9 tau
         //? msglev
-    } else { // file: "biilu2_options.txt"
+        data->params_initialized = true;
+    } else if (s == "biilu2_options.txt") { // file: "biilu2_options.txt"
         getline(is, s);
         sscanf(s.c_str(), "%d", &(data->kovl));   //1 kovl
         getline(is, s);
@@ -353,6 +284,7 @@ void SolverInitializeFcbiilu2(bcg_fcbiilu2 *data, int *argc, char ***argv, const
         sscanf(s.c_str(), "%d", &(data->nit));    //4 nit
         getline(is, s);
         sscanf(s.c_str(), "%d", &(data->msglev)); //5 msglev
+        data->params_initialized = true;
     }
     T(std::cout << "##### ins. SolverInitializeFcbiilu2:  kovl=" << set_kovl << " tau=" << set_tau << " eps=" << set_eps << " nit=" << set_nit << " msglev="
                 << set_msglev << " from: " << file_options << " \n";)//db!

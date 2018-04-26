@@ -23,6 +23,7 @@ typedef struct
     double dstat[16]; // double  statistics array on return
     double RESID;     // residual norm
     int    ITER;      // number of BiCGStab iterations performed
+    bool   params_initialized; // backward compatibility with old parameter files
 } bcg_fcbiilu2;
 
 typedef struct
@@ -48,15 +49,6 @@ void MatrixDestroyDataFcbiilu2(matrix_fcbiilu2 ** pA);
 void MatrixFillFcbiilu2(matrix_fcbiilu2 * pA, int size, int nproc, int * ibl, int * ia, int * ja, double * values);
 void MatrixFillValuesFcbiilu2(matrix_fcbiilu2 * pA, double * values);
 void MatrixFinalizeFcbiilu2(matrix_fcbiilu2 * data);
-
-void VectorInitDataFcbiilu2(vector_fcbiilu2 ** ppA, INMOST_MPI_Comm comm, const char * name);
-void VectorCopyDataFcbiilu2(vector_fcbiilu2 ** ppA, vector_fcbiilu2 * pB);
-void VectorAssignDataFcbiilu2(vector_fcbiilu2 * pA, vector_fcbiilu2 * pB);
-void VectorPreallocateFcbiilu2(vector_fcbiilu2 * pA, int size);
-void VectorFillFcbiilu2(vector_fcbiilu2 * pA, double * values);
-void VectorLoadFcbiilu2(vector_fcbiilu2 * pA, double * values);
-void VectorFinalizeFcbiilu2(vector_fcbiilu2 * data);
-void VectorDestroyDataFcbiilu2(vector_fcbiilu2 ** ppA);
 
 void SolverInitializeFcbiilu2(bcg_fcbiilu2 *data, int * argc,char *** argv, const char * file_options);
 bool SolverIsFinalizedFcbiilu2();
