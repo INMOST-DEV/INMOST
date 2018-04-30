@@ -2296,7 +2296,7 @@ namespace INMOST
 		ElementType pack_types[2] = {NONE,NONE};
 		element_set::const_iterator eit;
 		buffer_type array_data_send;
-		std::vector<INMOST_DATA_ENUM_TYPE> array_size_send(2);
+		std::vector<INMOST_DATA_ENUM_TYPE> array_size_send;
 		array_data_send.reserve(4096);
 		array_size_send.reserve(4096);
 		unsigned int size = tag.GetSize();
@@ -2381,8 +2381,9 @@ namespace INMOST
 			}
 			REPORT_VAL("total packed records",total_packed);
 		}
-		array_size_send[0] = static_cast<INMOST_DATA_ENUM_TYPE>(array_size_send.size()-2);
-		array_size_send[1] = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
+		INMOST_DATA_ENUM_TYPE size_send, data_send;
+		size_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_size_send.size());
+		data_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 		REPORT_VAL("tag defined on",static_cast<int>(pack_types[0]));
 		REPORT_VAL("tag sparse on",static_cast<int>(pack_types[1]));
 		REPORT_VAL("size_size",array_size_send[0]);
@@ -2390,10 +2391,14 @@ namespace INMOST
 		int buffer_size = 0,position = static_cast<int>(buffer.size()),temp,bytes;
 		bytes = tag.GetPackedBytesSize();
 		MPI_Pack_size(2                                                                      ,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size+= temp;
+		MPI_Pack_size(1                                                                      ,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size+= temp;
+		MPI_Pack_size(1                                                                      ,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size+= temp;
 		MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(array_size_send.size())                   ,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size+= temp;
 		MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(array_data_send.size()/bytes),tag.GetBulkDataType()    ,comm,&temp); buffer_size+= temp;
 		buffer.resize(position+buffer_size);
 		MPI_Pack(pack_types,2,INMOST_MPI_DATA_BULK_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+		MPI_Pack(&size_send,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+		MPI_Pack(&data_send,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 		if( !array_size_send.empty() ) MPI_Pack(&array_size_send[0],static_cast<INMOST_MPI_SIZE>(array_size_send.size()),INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 		if( !array_data_send.empty() ) MPI_Pack(&array_data_send[0],static_cast<INMOST_MPI_SIZE>(array_data_send.size()/bytes),tag.GetBulkDataType(),&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 		buffer.resize(position);
@@ -2468,7 +2473,7 @@ namespace INMOST
 			array_size_recv.resize(size_recv);
 			array_data_recv.resize(data_recv);
 			if( !array_size_recv.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&array_size_recv[0],static_cast<INMOST_MPI_SIZE>(array_size_recv.size()),INMOST_MPI_DATA_ENUM_TYPE,comm);
-      if( !array_data_recv.empty() )
+			if( !array_data_recv.empty() )
 			{
 				int bytes = tag.GetPackedBytesSize();
 				REPORT_VAL("occupied by type",bytes);
