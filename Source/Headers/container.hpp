@@ -50,7 +50,7 @@ namespace INMOST
 	template<> struct make_unsigned<unsigned long> {typedef unsigned long type;};
 	template<> struct make_unsigned<unsigned long long> {typedef unsigned long long type;};
 	
-#define USE_OPTIMIZED_ARRAY_ALLOCATION
+//#define USE_OPTIMIZED_ARRAY_ALLOCATION
 #if defined(PACK_ARRAY)
 #pragma pack(push,r1,4)
 #endif

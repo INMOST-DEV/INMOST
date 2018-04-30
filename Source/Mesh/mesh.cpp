@@ -3,6 +3,17 @@
 #if defined(USE_MESH)
 #define WAITNL 	{char c;scanf("%c",&c);}
 
+
+#if defined(__LINUX__) || defined(__linux__) || defined(__APPLE__)
+#include <unistd.h>
+#define PROCESSID getpid()
+#elif defined(_WIN32)
+#include <windows.h>
+#define PROCESSID GetCurrentProcessId()
+#else
+#define PROCESSID -1
+#endif
+
 namespace INMOST
 {
   static std::vector<Mesh *> allocated_meshes;
@@ -187,7 +198,7 @@ namespace INMOST
 		out_time.open(temp.str().c_str(),std::ios::out);
 		out_time << "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>" << std::endl;
 		out_time << "<?xml-stylesheet type=\"text/xsl\" href=\"style.xsl\"?>" << std::endl;
-		out_time << "<Debug>" << std::endl;
+		out_time << "<Debug ProcessID=" << PROCESSID << ">" << std::endl;
 		tab = 1;
 		func_id = 0;
 #endif
