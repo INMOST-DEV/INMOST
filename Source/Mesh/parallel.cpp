@@ -4300,6 +4300,10 @@ namespace INMOST
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
+				REPORT_VAL("mpi_tag",mpi_tag);
+				REPORT_VAL("size",recv_bufs[i].second.size());
+				REPORT_VAL("proc",recv_bufs[i].first);
+				REPORT_VAL("empty",recv_bufs[i].second.empty());
 				REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(recv_bufs[i].second.size()),MPI_PACKED,recv_bufs[i].first,mpi_tag,comm,&recv_reqs[i]));
 			}
 			REPORT_VAL("send bufs size",send_bufs.size());
@@ -4307,6 +4311,10 @@ namespace INMOST
 			{
 				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+mpirank*mpisize+send_bufs[i].first;
+				REPORT_VAL("mpi_tag",mpi_tag);
+				REPORT_VAL("size",send_bufs[i].second.size());
+				REPORT_VAL("proc",send_bufs[i].first);
+				REPORT_VAL("empty",send_bufs[i].second.empty());
 				REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[0],static_cast<INMOST_MPI_SIZE>(send_bufs[i].second.size()),MPI_PACKED,send_bufs[i].first,mpi_tag,comm,&send_reqs[i]));	
 			}
 		}
