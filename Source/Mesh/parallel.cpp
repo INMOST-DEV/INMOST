@@ -2394,9 +2394,9 @@ namespace INMOST
 			}
 			REPORT_VAL("total packed records",total_packed);
 		}
-		static INMOST_DATA_ENUM_TYPE tail = 1;
-		REPORT_VAL("add tail",tail);
-		array_size_send.push_back(tail++);
+		//static INMOST_DATA_ENUM_TYPE tail = 1;
+		//REPORT_VAL("add tail",tail);
+		//array_size_send.push_back(tail++);
 		INMOST_DATA_ENUM_TYPE size_send, data_send;
 		size_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_size_send.size());
 		data_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
@@ -2802,7 +2802,7 @@ namespace INMOST
 						MPI_Pack_size(2,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size += temp;
 						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
 						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						MPI_Pack_size(5+n*2,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						MPI_Pack_size(6+n*2,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
 						MPI_Pack_size(n*tags[k].GetSize(),tags[k].GetBulkDataType(),comm,&temp); buffer_size += temp;
 					}
 					storage.recv_buffers[num_recv].second.resize(buffer_size);
