@@ -2689,9 +2689,9 @@ namespace INMOST
 			   || tags[k].GetDataType() == DATA_VARIABLE
 #endif
 			   ) unknown_size = true;
-			for(int i = 0; i < 5; ++i)
-				if( (mask & ElementTypeFromDim(i)) && tags[k].isSparseByDim(i) )
-					unknown_size = true;
+			//for(int i = 0; i < 5; ++i)
+			//	if( (mask & ElementTypeFromDim(i)) && tags[k].isSparseByDim(i) )
+			//		unknown_size = true;
 		}
     	int rank = GetProcessorRank();
 		//precompute sizes
@@ -2802,7 +2802,7 @@ namespace INMOST
 						MPI_Pack_size(2,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size += temp;
 						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
 						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						MPI_Pack_size(n,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						MPI_Pack_size(5+n*2,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
 						MPI_Pack_size(n*tags[k].GetSize(),tags[k].GetBulkDataType(),comm,&temp); buffer_size += temp;
 					}
 					storage.recv_buffers[num_recv].second.resize(buffer_size);
