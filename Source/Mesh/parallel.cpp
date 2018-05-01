@@ -2297,7 +2297,7 @@ namespace INMOST
 	
 	void Mesh::PackTagData(const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer)
 	{
-        	if( tag.GetDataType() == DATA_REMOTE_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
+		if( tag.GetDataType() == DATA_REMOTE_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		REPORT_VAL("Processor",destination);
@@ -2682,13 +2682,17 @@ namespace INMOST
 		std::vector<INMOST_DATA_ENUM_TYPE> send_size(procs.size(),0), recv_size(procs.size(),0);
 		
 		bool unknown_size = false;
-		for(unsigned int k = 0; k < tags.size(); k++) 
-      if( tags[k].GetSize() == ENUMUNDEF 
+		for(unsigned int k = 0; k < tags.size(); k++)
+		{
+			if( tags[k].GetSize() == ENUMUNDEF
 #if defined(USE_AUTODIFF)
-        || tags[k].GetDataType() == DATA_VARIABLE 
+			   || tags[k].GetDataType() == DATA_VARIABLE
 #endif
-        ) unknown_size = true;
-		
+			   ) unknown_size = true;
+			for(int i = 0; i < 5; ++i)
+				if( (mask & ElementTypeFromDim(i)) && tags[k].isSparseByDim(i) )
+					unknown_size = true;
+		}
     	int rank = GetProcessorRank();
 		//precompute sizes
 		for(p = procs.begin(); p != procs.end(); p++ )
@@ -2698,13 +2702,13 @@ namespace INMOST
 			{
 				find = from.find(*p);
 				if( find != from.end() )
-					for(int i = 0; i < 4; i++)  if( mask & ElementTypeFromDim(i) )
+					for(int i = 0; i < 5; i++)  if( mask & ElementTypeFromDim(i) )
 						for(element_set::const_iterator it = find->second[i].begin(); it != find->second[i].end(); ++it)
 							if( GetMarker(*it,select) ) send_size[pos]++;
 				
 				find = to.find(*p);
 				if( find != to.end() )
-					for(int i = 0; i < 4; i++)  if( mask & ElementTypeFromDim(i) )
+					for(int i = 0; i < 5; i++)  if( mask & ElementTypeFromDim(i) )
 						for(element_set::const_iterator it = find->second[i].begin(); it != find->second[i].end(); ++it)
 							if( GetMarker(*it,select) ) recv_size[pos]++;
 			}
@@ -2782,7 +2786,7 @@ namespace INMOST
 			REPORT_VAL("recv size",recv_size[p-procs.begin()]);
 			if( send_size[p-procs.begin()] )
 			{
-                		for(unsigned int k = 0; k < tags.size(); k++)
+				for(unsigned int k = 0; k < tags.size(); k++)
 					PackTagData(tags[k],from.find(*p)->second,*p,mask,select,storage.send_buffers[num_send].second);
 				storage.send_buffers[num_send].first = *p;
 				num_send++;
@@ -2795,7 +2799,10 @@ namespace INMOST
 					for(unsigned int k = 0; k < tags.size(); k++)
 					{
 						int temp;
-						MPI_Pack_size(3+n*2,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						MPI_Pack_size(2,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size += temp;
+						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						MPI_Pack_size(n,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
 						MPI_Pack_size(n*tags[k].GetSize(),tags[k].GetBulkDataType(),comm,&temp); buffer_size += temp;
 					}
 					storage.recv_buffers[num_recv].second.resize(buffer_size);
