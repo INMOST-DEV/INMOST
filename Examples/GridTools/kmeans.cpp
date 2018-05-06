@@ -16,6 +16,8 @@ int main(int argc, char ** argv)
 		return -1;
 	}
 	
+	Mesh::Initialize(&argc,&argv);
+	
 	int K = 10;
 	if( argc > 2 ) K = atoi(argv[2]);
 	int max_iterations = 10;
@@ -32,6 +34,7 @@ int main(int argc, char ** argv)
 
 
 	Mesh m;
+	m.SetCommunicator(INMOST_MPI_COMM_WORLD);
 	m.Load(argv[1]);
 
 	std::cout << "Start:" << std::endl;
@@ -51,7 +54,7 @@ int main(int argc, char ** argv)
 	std::cout << "Time to fix normals: " << Timer() - tt << std::endl;
 	std::cout << "Total face normals fixed: " << fixed << std::endl;
 	*/
-	int total_points = 0
+	int total_points = 0, total_global_points = 0;
 	
 #if defined(USE_OMP)
 #pragma omp parallel for reduction(+:total_points)
@@ -62,7 +65,11 @@ int main(int argc, char ** argv)
 		if( n->GetStatus() != Element::Ghost ) total_points++;
 	}
 	
-	
+#if defined(USE_MPI)
+	MPI_Allreduce(&total_global_points,&total,points,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD)
+#else
+	total_global_points = total_points;
+#endif
 	
 	
 	std::vector< double > points_center(total_points*3);
@@ -94,10 +101,12 @@ int main(int argc, char ** argv)
 		points_center[q*3+2] = cnt[2];
 	}
 	
+	std::cout << m.GetProcessorRank() << " init clusters" << std::endl;
+	
 	// choose K distinct values for the centers of the clusters
 	{
 		std::vector<int> prohibited_indexes;
-		int Kpart = (int)ceil((double)K/(double)m.GetProessorsNumber());
+		int Kpart = (int)ceil((double)K/(double)m.GetProcessorsNumber());
 		int Kstart = Kpart * m.GetProcessorRank();
 		int Kend = Kstart + Kpart;
 		if( Kend > K ) Kend = K;
@@ -122,19 +131,32 @@ int main(int argc, char ** argv)
 		//guter cluster centers over all processes
 #if defined(USE_MPI)
 		{
-			std::vector<int> recvcounts(m.GetProcessorNumber()), displs(m.GetProcessorNumber());
+			std::vector<int> recvcounts(m.GetProcessorsNumber()), displs(m.GetProcessorsNumber());
 			displs[0] = 0;
 			recvcounts[0] = Kpart*3;
-			for(int i = 1; i < (int)m.GetProcessorNumber(); ++i)
+			for(int i = 1; i < (int)m.GetProcessorsNumber(); ++i)
 			{
 				displs[i] = displs[i-1] + recvcounts[i-1];
 				recvcounts[i] = Kpart*3;
 			}
-			recvcounts.back() = K - displs.back();
-			MPI_Allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,&cluster_center[0],&recvcounts[0],&displs[0],MPI_DOUBLE,MPI_COMM_WORLD);
+			recvcounts.back() = K*3 - displs.back();
+			std::cout << m.GetProcessorRank() << " " << Kstart << " " << Kend << std::endl;
+			for(int i = 0; i < (int)m.GetProcessorsNumber(); ++i)
+			{
+				std::cout << m.GetProcessorRank() << " " << i << " " << displs[i] << " " << recvcounts[i] << std::endl;
+			}
+			for(int i = Kstart; i < Kend; ++i)
+			{
+				cluster_center_tmp[i*3+0] = cluster_center[i*3+0];
+				cluster_center_tmp[i*3+1] = cluster_center[i*3+1];
+				cluster_center_tmp[i*3+2] = cluster_center[i*3+2];
+			}
+			MPI_Allgatherv(&cluster_center_tmp[Kstart*3],(Kend-Kstart)*3,MPI_DOUBLE,&cluster_center[0],&recvcounts[0],&displs[0],MPI_DOUBLE,MPI_COMM_WORLD);
 		}
 #endif
 	}
+	
+	std::cout << m.GetProcessorRank() << " start clustering" << std::endl;
 	
 	int iter = 1;
 	double t = Timer();
@@ -181,7 +203,7 @@ int main(int argc, char ** argv)
 		
 		if(changed == 0 || iter >= max_iterations)
 		{
-			std::cout << "Break in iteration " << iter << std::endl;
+			std::cout << m.GetProcessorRank() << " break in iteration " << iter << std::endl;
 			break;
 		}
 		
@@ -246,5 +268,7 @@ int main(int argc, char ** argv)
 	m.ExchangeData(mat,CELL,0);
 
 	m.Save(grid_out);
+	
+	Mesh::Finalize();
 	return 0;
 }
