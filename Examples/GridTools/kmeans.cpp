@@ -6,106 +6,7 @@ using namespace INMOST;
 //see todo: inside text
 
 
-double dot(const double a[3], const double b[3])
-{
-	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
 
-
-
-struct coords
-{
-	double v[3];
-	double operator [] (int i) const {return v[i];}
-	double & operator [] (int i) {return v[i];}
-	int compare(const double bv[3]) const
-	{
-		const double eps = 1.0e-11;//pow(10,-14);
-		for (int i = 0; i < 3; i++)
-		{
-			if (fabs(v[i] - bv[i]) > eps)
-			{
-				if (v[i] > bv[i])
-					return 1;
-				else
-					return -1;
-			}
-		}
-		return 0;
-	}
-	bool operator <(const coords & b) const { return compare(b.v) < 0; }
-	coords() {v[0] = v[1] = v[2] = 0;}
-	coords(double x, double y, double z)
-	{
-		v[0] = x;
-		v[1] = y;
-		v[2] = z;
-	}
-	coords(double _v[3]) { memcpy(v, _v, sizeof(double)* 3); }
-	coords(const coords &b) { memcpy(v, b.v, sizeof(double)* 3); }
-	coords & operator =(coords const & b) { memmove(v, b.v, sizeof(double)* 3); return *this; }
-	coords operator -(const coords & b) const { return coords(v[0] - b.v[0], v[1] - b.v[1], v[2] - b.v[2]); }
-	coords operator +(const coords & b) const { return coords(v[0] + b.v[0], v[1] + b.v[1], v[2] + b.v[2]); }
-	coords operator /(double l) const {return coords(v[0]/l, v[1]/l, v[2]/l);}
-};
-
-double len2(const coords & p)
-{
-	return p[0]*p[0] + p[1]*p[1] + p[2]*p[2];
-}
-
-struct Point
-{
-	coords c;
-	int cluster;
-	int position;
-	int node;
-	void set_cluster(int c, int p)
-	{
-		cluster = c;
-		position = p;
-	}
-	coords & get_center()
-	{
-		return c;
-	}
-};
-
-struct Cluster
-{
-	std::vector<int> points;
-	std::vector<int> emptyp;
-	coords center;
-	int add_position(int p)
-	{
-		if( emptyp.empty() )
-		{
-			points.push_back(p);
-			return points.size()-1;
-		}
-		else
-		{
-			int pos = emptyp.back();
-			points[pos] = p;
-			emptyp.pop_back();
-			return pos;
-		}
-	}
-	void rem_position(int k)
-	{
-		points[k] = -1;
-		emptyp.push_back(k);
-	}
-	void set_center(coords c)
-	{
-		center = c;
-	}
-	int num_points()
-	{
-		return (int)(points.size() - emptyp.size());
-	}
-	coords & get_center() {return center;}
-};
 
 int main(int argc, char ** argv)
 {
@@ -140,6 +41,7 @@ int main(int argc, char ** argv)
 
 	double tt = Timer();
 	//There seems to be a problem with the mesh
+	/*
 	int fixed = 0;
 	for (Mesh::iteratorFace f = m.BeginFace(); f != m.EndFace(); ++f)
 	{
@@ -148,29 +50,58 @@ int main(int argc, char ** argv)
 	}
 	std::cout << "Time to fix normals: " << Timer() - tt << std::endl;
 	std::cout << "Total face normals fixed: " << fixed << std::endl;
+	*/
+	int total_points = 0
 	
-	int total_points = m.NumberOfCells();
-	
-	std::vector< Cluster > clusters(K);
-	std::vector< Point > points(total_points);
-	
-	int k = 0;
-	double cnt[3];
-	for(Mesh::iteratorCell n = m.BeginCell(); n != m.EndCell(); ++n)
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:total_points)
+#endif
+	for(int q = 0; q < m.CellLastLocalID(); ++q) if( m.isValidCell(q) )
 	{
-		n->Centroid(cnt);
-		points[k].c = coords(cnt);
-		points[k].cluster = -1;
-		points[k].position = -1;
-		points[k].node = n->LocalID();
-		k++;
+		Cell n = m.CellByLocalID(q);
+		if( n->GetStatus() != Element::Ghost ) total_points++;
 	}
 	
+	
+	
+	
+	std::vector< double > points_center(total_points*3);
+	std::vector< int > points_node(total_points);
+	std::vector< int > points_cluster(total_points,-1);
+	std::vector< double > cluster_center(K*3);
+	std::vector< int > cluster_npoints(K);
+#if defined(USE_MPI)
+	std::vector< double > cluster_center_tmp(K*3);
+	std::vector< int > cluster_npoints_tmp(K);
+#endif
+	int k = 0;
+	for(int q = 0; q < m.CellLastLocalID(); ++q) if( m.isValidCell(q) )
+	{
+		Cell n = m.CellByLocalID(q);
+		if( n->GetStatus() != Element::Ghost ) points_node[k++] = n->LocalID();
+	}
+	
+#if defined(USE_OMP)
+#pragma omp paralell for
+#endif
+	for(int q = 0; q < total_points; ++q)
+	{
+		Cell n = m.CellByLocalID(points_node[q]);
+		double cnt[3];
+		n->Centroid(cnt);
+		points_center[q*3+0] = cnt[0];
+		points_center[q*3+1] = cnt[1];
+		points_center[q*3+2] = cnt[2];
+	}
 	
 	// choose K distinct values for the centers of the clusters
 	{
 		std::vector<int> prohibited_indexes;
-		for(int i = 0; i < K; i++)
+		int Kpart = (int)ceil((double)K/(double)m.GetProessorsNumber());
+		int Kstart = Kpart * m.GetProcessorRank();
+		int Kend = Kstart + Kpart;
+		if( Kend > K ) Kend = K;
+		for(int i = Kstart; i < Kend; i++)
 		{
 			while(true)
 			{
@@ -180,31 +111,55 @@ int main(int argc, char ** argv)
 						index_point) == prohibited_indexes.end())
 				{
 					prohibited_indexes.push_back(index_point);
-					int pos = clusters[i].add_position(index_point);
-					points[index_point].set_cluster(i,pos);
-					clusters[i].set_center(points[index_point].c);
+					cluster_center[i*3+0] = points_center[index_point*3+0];
+					cluster_center[i*3+1] = points_center[index_point*3+1];
+					cluster_center[i*3+2] = points_center[index_point*3+2];
+					points_cluster[index_point] = i;
 					break;
 				}
 			}
 		}
+		//guter cluster centers over all processes
+#if defined(USE_MPI)
+		{
+			std::vector<int> recvcounts(m.GetProcessorNumber()), displs(m.GetProcessorNumber());
+			displs[0] = 0;
+			recvcounts[0] = Kpart*3;
+			for(int i = 1; i < (int)m.GetProcessorNumber(); ++i)
+			{
+				displs[i] = displs[i-1] + recvcounts[i-1];
+				recvcounts[i] = Kpart*3;
+			}
+			recvcounts.back() = K - displs.back();
+			MPI_Allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,&cluster_center[0],&recvcounts[0],&displs[0],MPI_DOUBLE,MPI_COMM_WORLD);
+		}
+#endif
 	}
 	
 	int iter = 1;
-	
+	double t = Timer();
 	while(true)
 	{
-		bool done = true;
+		int changed = 0;
 		
 		// associates each point to the nearest center
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:changed)
+#endif
 		for(int i = 0; i < total_points; i++)
 		{
-			int id_old_cluster = points[i].cluster;
+			int id_old_cluster = points_cluster[i];
 			int id_nearest_center = -1;
 			double lmin = 1.0e+100;
 			
 			for(int j = 0; j < K; ++j)
 			{
-				double l = len2(points[i].get_center() - clusters[j].get_center());
+				double v[3];
+				v[0] = (points_center[i*3+0] - cluster_center[j*3+0]);
+				v[1] = (points_center[i*3+1] - cluster_center[j*3+1]);
+				v[2] = (points_center[i*3+2] - cluster_center[j*3+2]);
+				
+				double l = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
 				if( l < lmin )
 				{
 					lmin = l;
@@ -214,48 +169,81 @@ int main(int argc, char ** argv)
 			
 			if(id_old_cluster != id_nearest_center)
 			{
-				if(id_old_cluster != -1)
-					clusters[id_old_cluster].rem_position(points[i].position);
-				
-				int pos = clusters[id_nearest_center].add_position(i);
-				points[i].set_cluster(id_nearest_center,pos);
-				done = false;
+				points_cluster[i] = id_nearest_center;
+				changed++;
 			}
 		}
 		
-		// recalculating the center of each cluster
-		for(int i = 0; i < K; i++)
-		{
-			int total_points_cluster = clusters[i].num_points();
-			coords sum(0,0,0);
-			
-			if(total_points_cluster > 0)
-			{
-				for(int p = 0; p < (int)clusters[i].points.size(); p++)
-					if( clusters[i].points[p] != -1 )
-						sum = sum + points[clusters[i].points[p]].get_center();
-				clusters[i].set_center(sum / (double) total_points_cluster);
-			}
-		}
+#if defined(USE_MPI)
+		int tmp = changed;
+		MPI_Allreduce(&tmp,&changed,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+#endif
 		
-		if(done == true || iter >= max_iterations)
+		if(changed == 0 || iter >= max_iterations)
 		{
-			std::cout << "Break in iteration " << iter << "\n\n";
+			std::cout << "Break in iteration " << iter << std::endl;
 			break;
 		}
-		else std::cout << "Iteration " << iter << std::endl;
+		
+		for(int i = 0; i < K; i++)
+		{
+			cluster_center[i*3+0] = 0;
+			cluster_center[i*3+1] = 0;
+			cluster_center[i*3+2] = 0;
+			cluster_npoints[i] = 0;
+		}
+		// recalculating the center of each cluster
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+		{
+			std::vector< double > local_sum(K*3,0.0);
+			std::vector< int > local_npoints(K,0);
+			for(int j = 0; j < total_points; ++j)
+			{
+				local_sum[points_cluster[j]*3+0] += points_center[j*3+0];
+				local_sum[points_cluster[j]*3+1] += points_center[j*3+1];
+				local_sum[points_cluster[j]*3+2] += points_center[j*3+2];
+				local_npoints[points_cluster[j]]++;
+			}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+			{
+				for(int i = 0; i < K; ++i)
+				{
+					cluster_center[i*3+0] += local_sum[i*3+0];
+					cluster_center[i*3+1] += local_sum[i*3+1];
+					cluster_center[i*3+2] += local_sum[i*3+2];
+					cluster_npoints[i] += local_npoints[i];
+				}
+			}
+		}
+#if defined(USE_MPI)
+		MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+		MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+		cluster_center.swap(cluster_center_tmp);
+		cluster_npoints.swap(cluster_npoints_tmp);
+#endif
+		for(int i = 0; i < K; i++)
+		{
+			cluster_center[i*3+0] /= (double) cluster_npoints[i];
+			cluster_center[i*3+1] /= (double) cluster_npoints[i];
+			cluster_center[i*3+2] /= (double) cluster_npoints[i];
+		}
+		
+		std::cout << "Iteration " << iter << std::endl;
 		iter++;
 	}
-	
+	std::cout << "Clustering in " << Timer() - t << " secs " << std::endl;
 	// shows elements of clusters
 	TagInteger mat = m.CreateTag("MATERIAL",DATA_INTEGER,CELL,NONE,1);
-	for(int i = 0; i < K; i++)
-	{
-		for(int j = 0; j < (int)clusters[i].points.size(); ++j)
-			if( clusters[i].points[j] != -1 )
-				mat[m.CellByLocalID(points[clusters[i].points[j]].node)] = i+1;
-	}
-	
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+	for(int j = 0; j < total_points; ++j)
+		mat[m.CellByLocalID(points_node[j])] = points_cluster[j]+1;
+	m.ExchangeData(mat,CELL,0);
 
 	m.Save(grid_out);
 	return 0;
