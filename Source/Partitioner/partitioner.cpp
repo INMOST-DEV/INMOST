@@ -256,7 +256,7 @@ namespace INMOST
 		int package = 0;
 		switch(pt)
 		{
-			case Inner_RCM:
+			case INNER_RCM:
 				package = 0;
 				break;
 			case Zoltan_Parmetis:
@@ -269,6 +269,9 @@ namespace INMOST
 				break;
 			case Parmetis:
 				package = 2;
+				break;
+			case INNER_KMEANS:
+				package = 3;
 				break;
 		}
 		if( package == 0 )
@@ -1260,6 +1263,10 @@ namespace INMOST
 			}
 #endif
 		}
+		if( package == 3 ) //KMEANS
+		{
+			
+		}
 		EXIT_FUNC();
 	}
 	
@@ -1270,7 +1277,7 @@ namespace INMOST
 		int package = 0;
 		switch(pt)
 		{
-			case Inner_RCM:
+			case INNER_RCM:
 				package = 0;
 				break;
 			case Zoltan_Parmetis:
@@ -1283,6 +1290,9 @@ namespace INMOST
 				break;
 			case Parmetis:
 				package = 2;
+				break;
+			case INNER_KMEANS:
+				package = 3;
 				break;
 		}
 		if( package == 1 )
@@ -1378,7 +1388,7 @@ namespace INMOST
 		int package = 0;
 		switch(pt)
 		{
-			case Inner_RCM:
+			case INNER_RCM:
 				package = 0;
 				break;
 			case Zoltan_Parmetis:
@@ -1391,6 +1401,9 @@ namespace INMOST
 				break;
 			case Parmetis:
 				package = 2;
+				break;
+			case INNER_KMEANS:
+				package = 3;
 				break;
 		}
 		if( package == 1 )
@@ -1434,7 +1447,7 @@ namespace INMOST
 		int package = 0;
 		switch(pt)
 		{
-			case Inner_RCM:
+			case INNER_RCM:
 				package = 0;
 				break;
 			case Zoltan_Parmetis:
@@ -1447,6 +1460,9 @@ namespace INMOST
 				break;
 			case Parmetis:
 				package = 2;
+				break;
+			case INNER_KMEANS:
+				package = 3;
 				break;
 		}
 		if( package == 1 )
