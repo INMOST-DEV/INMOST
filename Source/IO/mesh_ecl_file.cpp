@@ -1,6 +1,10 @@
 #ifdef _MSC_VER //kill some warnings
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
+#ifndef _SCL_SECURE_NO_WARNINGS
 #define _SCL_SECURE_NO_WARNINGS
+#endif
 #endif
 
 #include "inmost.h"

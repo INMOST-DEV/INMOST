@@ -1,6 +1,8 @@
 #include "inmost.h"
 
-
+#if defined(_WIN32) || defined(_WIN64) || defined(WIN32) || defined(WIN64)
+__declspec( dllexport ) void partitioner_stub(){} //to avoid LNK4221 warning
+#endif
 
 #if defined(USE_PARTITIONER)
 
@@ -8,6 +10,7 @@
 #include <zoltan.h>
 #endif
 #if defined(USE_PARTITIONER_PARMETIS)
+#define METIS_EXPORT
 #include <metis.h>
 #include <parmetis.h>
 #endif

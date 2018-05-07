@@ -46,6 +46,9 @@ namespace INMOST {
         if (!solver->isInitialized()) {
             solver->Initialize();
         }
+
+        (void)ModifiedPattern;
+        (void)OldPreconditioner;
     }
 
     void SolverDDPQILUC2::SetParameter(std::string name, std::string value) {

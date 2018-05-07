@@ -23,6 +23,7 @@ class MTILUC_preconditioner : public Method
 	} row_col;
 	typedef dynarray<INMOST_DATA_ENUM_TYPE,256> levels_t;
 	
+	//Sparse::Vector div;
 	std::vector<Sparse::Row::entry> LU_Entries, B_Entries;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LU_Diag;
 	interval<INMOST_DATA_ENUM_TYPE, Interval> U_Address, L_Address, B_Address;

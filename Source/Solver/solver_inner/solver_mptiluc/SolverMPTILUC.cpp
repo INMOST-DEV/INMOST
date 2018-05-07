@@ -43,6 +43,9 @@ namespace INMOST {
         if (!solver->isInitialized()) {
             solver->Initialize();
         }
+
+        (void)ModifiedPattern;
+        (void)OldPreconditioner;
     }
 
     void SolverMPTILUC::SetParameter(std::string name, std::string value) {

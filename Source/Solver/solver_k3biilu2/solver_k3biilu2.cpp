@@ -321,76 +321,6 @@ void MatrixFinalizeK3biilu2(matrix_k3biilu2 *data) {
     (void) data;
 }
 
-void VectorInitDataK3biilu2(vector_k3biilu2 **ppA, INMOST_MPI_Comm comm, const char *name) {
-    if (ppA == NULL) throw INMOST::DataCorruptedInSolver;
-    *ppA = (vector_k3biilu2 *) malloc(sizeof(vector_k3biilu2));
-    vector_k3biilu2 *A = *ppA;
-    A->n = 0;
-    (void) comm;
-    (void) name;
-}
-
-void VectorCopyDataK3biilu2(vector_k3biilu2 **ppA, vector_k3biilu2 *pB) {
-    T(std::cout << "##### ins. VectorCopyDataK3biilu2 \n";)//db!
-    if (ppA == NULL || pB == NULL) throw INMOST::DataCorruptedInSolver;
-    *ppA = (vector_k3biilu2 *) malloc(sizeof(vector_k3biilu2));
-    vector_k3biilu2 *A = *ppA;
-    vector_k3biilu2 *B = pB;
-    A->n = B->n;
-    if (B->n != 0) {
-        A->v = (double *) malloc(sizeof(double) * A->n);
-        memcpy(A->v, B->v, sizeof(double) * A->n);
-    }
-}
-
-void VectorAssignDataK3biilu2(vector_k3biilu2 *pA, vector_k3biilu2 *pB) {
-    T(std::cout << "##### ins. VectorAssignDataK3biilu2 \n";)//db!
-    vector_k3biilu2 *A = pA;
-    vector_k3biilu2 *B = pB;
-    if (A == NULL || B == NULL) throw INMOST::DataCorruptedInSolver;
-    if (A != B) {
-        if (A->n != 0) free(A->v);
-        A->n = B->n;
-        if (B->n != 0) {
-            A->v = (double *) malloc(sizeof(double) * A->n);
-            memcpy(A->v, B->v, sizeof(double) * A->n);
-        }
-    }
-}
-
-void VectorPreallocateK3biilu2(vector_k3biilu2 *pA, int size) {
-    vector_k3biilu2 *A = pA;
-    if (A == NULL) throw INMOST::DataCorruptedInSolver;
-    A->n = size;
-    A->v = (double *) malloc(sizeof(double) * size);
-}
-
-void VectorFillK3biilu2(vector_k3biilu2 *pA, double *values) {
-    vector_k3biilu2 *A = pA;
-    if (A == NULL) throw INMOST::DataCorruptedInSolver;
-    memcpy(A->v, values, sizeof(double) * A->n);
-}
-
-void VectorLoadK3biilu2(vector_k3biilu2 *pA, double *values) {
-    vector_k3biilu2 *A = pA;
-    if (A == NULL) throw INMOST::DataCorruptedInSolver;
-    memcpy(values, A->v, sizeof(double) * A->n);
-}
-
-void VectorFinalizeK3biilu2(vector_k3biilu2 *data) {
-    (void) data;
-}
-
-void VectorDestroyDataK3biilu2(vector_k3biilu2 **ppA) {
-    if (ppA == NULL) throw INMOST::DataCorruptedInSolver;
-    if (*ppA != NULL) {
-        vector_k3biilu2 *A = *ppA;
-        free(A->v);
-        free(*ppA);
-        *ppA = NULL;
-    }
-}
-
 void SolverInitializeK3biilu2(bcg_k3biilu2 *data, int *argc, char ***argv, const char *file_options) {
     T(std::cout << "##### ins. SolverInitializeK3biilu2 (" << file_options << ") \n";)//db!
     if (file_options == NULL) return;
@@ -440,6 +370,7 @@ void SolverInitializeK3biilu2(bcg_k3biilu2 *data, int *argc, char ***argv, const
         sscanf(s.c_str(), "%d", &parIter.ichk);         //18 ichk
         getline(is, s);
         sscanf(s.c_str(), "%d", &parIter.msglev);       //19 msglev
+        data->parameters_initialized = true;
     } else if (s == "ctrl_dat") {
         getline(is, s);                                                  //1 skip iext
         getline(is, s);                                                  //2 skip mtx filename
@@ -458,8 +389,9 @@ void SolverInitializeK3biilu2(bcg_k3biilu2 *data, int *argc, char ***argv, const
         sscanf(s.c_str(), "%lg", &parPrec.tau1);         //9 tau
         parPrec.tau2 = -1.0;
         parIter.ittype = (parIter.niter_cycle > 1) ? 1 : 0;
+        data->parameters_initialized = true;
         //? msglev
-    } else { // file: "biilu2_options.txt"
+    } else if (s == "biilu2_options.txt") { // file: "biilu2_options.txt"
         getline(is, s);
         sscanf(s.c_str(), "%d", &parPrec.ncycle); //1 kovl
         getline(is, s);
@@ -471,6 +403,7 @@ void SolverInitializeK3biilu2(bcg_k3biilu2 *data, int *argc, char ***argv, const
         getline(is, s);
         sscanf(s.c_str(), "%d", &parIter.msglev); //5 msglev
         parPrec.tau2 = -1.0;
+        data->parameters_initialized = true;
     }
     T(std::cout << "##### ins. SolverInitializeK3biilu2:  prec_float=" << parPrec.prec_float << " ncycle=" << parPrec.ncycle << " ordtype=" << parPrec.ordtype
                 << " collap=" << parPrec.collap << " sctype=" << parPrec.sctype << " nitersc=" << parPrec.nitersc << " fcttype=" << parPrec.fcttype
@@ -507,6 +440,7 @@ void SolverInitDataK3biilu2(bcg_k3biilu2 **data, INMOST_MPI_Comm comm, const cha
     (*data)->pSolver = new k3d::CK3D_Solver<int, double, double>();
     (*data)->pParIter = new ParIter();
     (*data)->pParams = new k3d::SParams();
+    (*data)->parameters_initialized = false;
     ParametersDefault(*((*data)->pParIter), *((*data)->pParams));
     T(cout << "HHHHH bef. Clean in SolverInitDataK3biilu2 \n";)//DB!
     (*data)->pSolver->Clean();

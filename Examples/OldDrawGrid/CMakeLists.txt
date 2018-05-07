@@ -29,7 +29,9 @@ set(SOURCE main.cpp
 		   picker.h
 		   picker.cpp
 		   clipper.h
-		   clipper.cpp)
+		   clipper.cpp
+		   vector.h
+		   vector.cpp)
 find_package(OpenGL)
 find_package(GLUT)
 

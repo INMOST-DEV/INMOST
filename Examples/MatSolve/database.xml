@@ -12,10 +12,10 @@
         <test file="inner_options.txt" />
     </inner_mptilu2>
     <fcbiilu2>
-        <test file="ctrl_dat" />
+        <test file="inner_options.txt" />
     </fcbiilu2>
     <k3biilu2>
-        <test file="ctrl_dat" />
+        <test file="inner_options.txt" />
     </k3biilu2>
     <petsc>
         <test file="petsc_options.txt" />

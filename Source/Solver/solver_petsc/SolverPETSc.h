@@ -3,8 +3,8 @@
 
 #include "petsc.h"
 #include "solver_petsc.h"
-#include "Source/Solver/SolverInterface.h"
-#include "Source/Misc/utils.h"
+#include "../Solver/SolverInterface.h"
+#include "../Misc/utils.h"
 
 
 namespace INMOST {

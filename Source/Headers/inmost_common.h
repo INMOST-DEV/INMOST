@@ -84,7 +84,7 @@
 #define NOMINMAX
 #include <mpi.h>
 #if !defined(MSMPI_VER) && !defined(MPIO_INCLUDE) && defined(USE_MPI_FILE) && !defined(OMPI_PROVIDE_MPI_FILE_INTERFACE)
-#include <mpio.h> //some versions of MPI doesn't include that
+//#include <mpio.h> //some versions of MPI doesn't include that
 #endif
 #endif
 
@@ -100,9 +100,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+
 #if defined(USE_OMP)
-#include <omp.h>
-#endif
+#define OMP_THREAD omp_get_thread_num()
+#define MAX_THREADS omp_get_max_threads()
+#else //USE_OMP
+#define OMP_THREAD 0
+#define MAX_THREADS 1
+#endif //USE_OMP
+
 
 #if defined(min)
 #undef min
@@ -253,6 +259,22 @@ namespace INMOST
 
 #include "container.hpp"
 //#include "io.hpp"
+
+
+namespace INMOST
+{
+	template<typename Var>
+	class AbstractMatrix;
+	
+	template<typename Var>
+	class SubMatrix;
+	
+	template<typename Var, typename Storage = array<Var> >
+	class Matrix;
+	
+	template<typename Var, typename Storage = array<Var> >
+	class SymmetricMatrix;
+}
 
 
 #endif //INMOST_COMMON_INCLUDED
