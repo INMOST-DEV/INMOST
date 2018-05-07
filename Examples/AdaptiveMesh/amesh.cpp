@@ -562,7 +562,6 @@ namespace INMOST
 			ReleaseMarker(mark_hanging_nodes);
 			ReleaseMarker(mark_cell_edges);
 			DeleteTag(internal_face_edges);
-			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
@@ -603,6 +602,7 @@ namespace INMOST
 		//14. Done
         //cout << rank << ": Before end " << endl;
 		EndModification();
+		ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << endl;
 		//reorder element's data to free up space
 		ReorderEmpty(CELL|FACE|EDGE|NODE);
@@ -896,7 +896,6 @@ namespace INMOST
 				}
 			}
 			//jump to later schedule
-			//ExchangeData(hanging_nodes,CELL | FACE,0);
 			schedule_counter--;
 		}
 		//free created tag
@@ -909,6 +908,7 @@ namespace INMOST
 		ApplyModification();
 		//done
 		EndModification();
+        ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 		{

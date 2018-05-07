@@ -1689,6 +1689,8 @@ namespace INMOST
 	void Mesh::ResolveModification(int metric)
 	{
         int rank = GetProcessorRank();
+        int size = GetProcessorsNumber();
+        if (size == 1) return;
 	    
         Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
         stringstream ss;

@@ -44,7 +44,7 @@ namespace INMOST
 			case DATA_INTEGER:   return sizeof(INMOST_DATA_INTEGER_TYPE);
 			case DATA_REAL:      return sizeof(INMOST_DATA_REAL_TYPE);
 			case DATA_REMOTE_REFERENCE: throw -1; //todo, exchange of this data type is not yet supported
-			case DATA_REFERENCE: throw -1; //todo, exchange of this data type is not yet supported
+			case DATA_REFERENCE: return sizeof(HandleType); //todo, exchange of this data type is not yet supported
 #if defined(USE_AUTODIFF)
 			case DATA_VARIABLE:  return sizeof(Sparse::Row::entry);
 #endif

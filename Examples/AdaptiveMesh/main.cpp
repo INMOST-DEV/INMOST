@@ -74,7 +74,9 @@ int main(int argc, char ** argv)
 						m.Save(file.str());
 					}
 					*/
-					if( !m.Refine(indicator) ) break;
+    				int res = m.Refine(indicator);
+                    res = m.Integrate(res);
+                    if (!res) break;
 					
 					{
 						std::stringstream file;

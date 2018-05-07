@@ -2552,7 +2552,14 @@ namespace INMOST
                                         if (FindSharedGhost(global_id,GetHandleElementNum(data),target))
                                         {
                                             TagReferenceArray ref_tag = tag;
-                                            ref_tag[*eit].push_back(target);
+
+                                            reference_array refs = ReferenceArray(*eit, ref_tag);
+                                            bool already_exist = false;
+                                            for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+                                            {
+                                                if (target  == refs[i].GetHandle()) already_exist = true;
+                                            }
+                                            if (!already_exist) ref_tag[*eit].push_back(target);
                                         }
                                     }
                                 }
@@ -2673,7 +2680,7 @@ namespace INMOST
         ///////////
         if ( block_recursion == 0)
         {
-			bool call_exchange = false;
+			int call_exchange = 0;
             for(unsigned int k = 0; k < tags.size(); k++)
             {
                 if(tags[k].GetDataType() == DATA_REFERENCE)
@@ -2695,7 +2702,7 @@ namespace INMOST
                                     for(ElementSet child = set.GetChild(); child.isValid(); child = child.GetSibling())
                                     {
                                         child.IntegerArray(tag_sendto).push_back(*p);
-                                        call_exchange = true;
+                                        call_exchange = 1;
                                     }
                                 }
                                 else
@@ -2704,7 +2711,7 @@ namespace INMOST
                                     {
                                         if (refs[i] == InvalidElement()) continue;
                                         refs[i].IntegerArray(tag_sendto).push_back(*p);
-                                        call_exchange = true;
+                                        call_exchange = 1;
                                     }
                                 }
                             }
@@ -2712,6 +2719,7 @@ namespace INMOST
                     }
                 }
             }
+            call_exchange = Integrate(call_exchange);
             if( call_exchange )
             {
 				block_recursion = 1;
