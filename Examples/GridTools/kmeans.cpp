@@ -5,8 +5,124 @@ using namespace INMOST;
 //todo: want to separate all faces into those that share edges
 //see todo: inside text
 
-
-
+struct kdtree
+{
+	struct entry
+	{
+		double v[3];
+		int pos;
+	};
+	struct compare
+	{
+		int comp;
+		compare(int c) : comp(c) {}
+		compare(const compare & b) : comp(b.comp) {}
+		bool operator () (const entry & a, const entry & b) { return a.v[comp] < b.v[comp]; }
+	};
+	entry * set;
+	kdtree * l, * r;
+	int size;
+	double split;
+	kdtree()
+	{
+		size = 0;
+		set = NULL;
+		l = NULL;
+		r = NULL;
+	}
+	~kdtree()
+	{
+		if( l != NULL ) delete l;
+		if( r != NULL ) delete r;
+		set = NULL;
+		size = 0;
+	}
+	void resize(int set_size)
+	{
+		clear();
+		size = set_size;
+		set = new entry[size];
+	}
+	void clear()
+	{
+		if( set != NULL ) delete [] set;
+		size = 0;
+	}
+	void build_tree(int comp)
+	{
+		if( l != NULL ) {delete l; l = NULL;}
+		if( r != NULL ) {delete r; r = NULL;}
+		if( size > 1 )
+		{
+			std::sort(set,set+size,compare(comp));
+			int middle = size/2;
+			l = new kdtree;
+			l->set = set;
+			l->size = middle;
+			r = new kdtree;
+			r->set = set + middle;
+			r->size = size - middle;
+			split = set[middle].v[comp];
+			l->build_tree((comp+1)%3);
+			r->build_tree((comp+1)%3);
+		}
+	}
+	void build(double * coords)
+	{
+		for(int k = 0; k < size; ++k)
+		{
+			set[k].v[0] = coords[k*3+0];
+			set[k].v[1] = coords[k*3+1];
+			set[k].v[2] = coords[k*3+2];
+			set[k].pos = k;
+		}
+		build_tree(0);
+	}
+	void closest_tree(double p[3], int & pos, double & min_dist, int comp)
+	{
+		if( size == 0 )
+		{
+			std::cout << "size is " << size << std::endl;
+		}
+		else if ( size == 1 )
+		{
+			double v[3];
+			v[0] = (set[0].v[0] - p[0]);
+			v[1] = (set[0].v[1] - p[1]);
+			v[2] = (set[0].v[2] - p[2]);
+			double dist = v[0]*v[0]+v[1]*v[1]+v[2]*v[2];
+			if (dist < min_dist)
+			{
+				min_dist = dist;
+				pos = set[0].pos;
+			}
+		}
+		else
+		{
+			if (p[comp] < split)
+			{
+				// search left first
+				l->closest_tree(p, pos, min_dist, (comp+1)%3);
+				if (p[comp] + min_dist >= split)
+					r->closest_tree(p, pos, min_dist, (comp+1)%3);
+			}
+			else
+			{
+				// search right first
+				r->closest_tree(p, pos, min_dist, (comp+1)%3);
+				if (p[comp] - min_dist <= split)
+					l->closest_tree(p, pos, min_dist, (comp+1)%3);
+			}
+		}
+	}
+	int closest(double p[3])
+	{
+		double min_dist = std::numeric_limits<double>::max();
+		int ret;
+		closest_tree(p,ret,min_dist,0);
+		return ret;
+	}
+};
 
 int main(int argc, char ** argv)
 {
@@ -149,6 +265,8 @@ int main(int argc, char ** argv)
 	std::vector< double > cluster_center_tmp(K*3);
 	std::vector< int > cluster_npoints_tmp(K);
 #endif
+	//kdtree tree;
+	//tree.resize(K);
 	
 	
 	if( m.GetProcessorRank() == 0 )
@@ -209,7 +327,11 @@ int main(int argc, char ** argv)
 	double t = Timer();
 	while(true)
 	{
+		
+		
 		int changed = 0;
+		
+		//tree.build(&cluster_center[0]);
 		
 		// associates each point to the nearest center
 #if defined(USE_OMP)
@@ -219,6 +341,7 @@ int main(int argc, char ** argv)
 		{
 			int id_old_cluster = points_cluster[i];
 			int id_nearest_center = -1;
+			
 			double lmin = 1.0e+100;
 			
 			for(int j = 0; j < K; ++j)
@@ -236,6 +359,8 @@ int main(int argc, char ** argv)
 				}
 			}
 			
+			//id_nearest_center = tree.closest(&points_center[i*3]);
+			
 			if(id_old_cluster != id_nearest_center)
 			{
 				points_cluster[i] = id_nearest_center;
@@ -245,7 +370,7 @@ int main(int argc, char ** argv)
 		
 #if defined(USE_MPI)
 		int tmp = changed;
-		MPI_Allreduce(&tmp,&changed,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+		MPI_Allreduce(&tmp,&changed,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
 #endif
 		
 		if(changed == 0 || iter >= max_iterations)
@@ -303,9 +428,10 @@ int main(int argc, char ** argv)
 		}
 		
 		if( m.GetProcessorRank() == 0 )
-			std::cout << "Iteration " << iter << std::endl;
+			std::cout << "Iteration " << iter << " changed " << changed << std::endl;
 		iter++;
 	}
+	//tree.clear();
 	std::cout << "Clustering in " << Timer() - t << " secs " << std::endl;
 #if defined(USE_MPI)
 	if( balance )
