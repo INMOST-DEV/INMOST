@@ -90,7 +90,7 @@ int main(int argc,char ** argv)
 		{ // currently only non-distributed meshes are supported by Inner_RCM partitioner
 			ttt = Timer();
 			Partitioner * p = new Partitioner(m);
-			p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition); // Specify the partitioner
+			p->SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition); // Specify the partitioner
 			p->Evaluate(); // Compute the partitioner and store new processor ID in the mesh
 			delete p;
 			BARRIER;

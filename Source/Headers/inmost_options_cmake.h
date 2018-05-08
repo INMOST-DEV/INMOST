@@ -2,12 +2,12 @@
 #define INMOST_OPTIONS_CMAKE_INCLUDED
 
 #cmakedefine USE_OMP
+#cmakedefine USE_OPENCL
 
 #cmakedefine USE_MESH
 
 #cmakedefine USE_AUTODIFF
 #cmakedefine USE_AUTODIFF_EXPRESSION_TEMPLATES
-#cmakedefine USE_AUTODIFF_OPENCL
 #cmakedefine USE_AUTODIFF_ASMJIT
 
 #cmakedefine USE_PARTITIONER

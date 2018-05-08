@@ -320,7 +320,7 @@ int main(int argc,char ** argv)
         {
             { // Compute mesh partitioning
                 Partitioner p(&m); //Create Partitioning object
-                p.SetMethod(Partitioner::Inner_RCM,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
+                p.SetMethod(Partitioner::INNER_KMEANS,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
                 p.Evaluate(); // Compute the partitioner and store new processor ID in the mesh
             }
 

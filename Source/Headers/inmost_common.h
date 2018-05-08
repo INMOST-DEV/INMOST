@@ -7,6 +7,7 @@
 #if !defined(INMOST_OPTIONS_CMAKE_INCLUDED)
 //no options from cmake -- define minimum
 //#define USE_OMP
+//#define USE_OPENCL
 
 #define USE_MESH
 
@@ -28,7 +29,6 @@
 
 #define USE_AUTODIFF
 //#define USE_AUTODIFF_ASMJIT
-//#define USE_AUTODIFF_OPENCL
 //#define USE_AUTODIFF_EXPRESSION_TEMPLATES
 
 //#define USE_MPI //include mpi for mpi functions
@@ -85,6 +85,14 @@
 #include <mpi.h>
 #if !defined(MSMPI_VER) && !defined(MPIO_INCLUDE) && defined(USE_MPI_FILE) && !defined(OMPI_PROVIDE_MPI_FILE_INTERFACE)
 //#include <mpio.h> //some versions of MPI doesn't include that
+#endif
+#endif
+
+#if defined(USE_OPENCL)
+#ifdef __APPLE__
+#include "OpenCL/opencl.h"
+#else
+#include "CL/cl.h"
 #endif
 #endif
 

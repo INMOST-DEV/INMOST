@@ -6,9 +6,7 @@
 #include "asmjit.h"
 #endif
 
-#if defined(USE_AUTODIFF_OPENCL)
-#include <CL/cl.h>
-#endif
+
 
 
 namespace INMOST
