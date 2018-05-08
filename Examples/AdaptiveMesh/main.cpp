@@ -57,6 +57,7 @@ int main(int argc, char ** argv)
 						q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
 					q = sqrt(q);
 					if( q < r*(k+1) && q > r*k)
+				//	if( q < 0.4 && q >  0.3)
 					//if( q < 0.02 )
 					{
 						indicator[it->self()] = 1;
@@ -91,6 +92,7 @@ int main(int argc, char ** argv)
 			}
 			while(numref);
 			refcnt = 0;
+			//if (0)
 			do
 			{
 				numref = 0;
@@ -111,7 +113,7 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
-					std::cout << "k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " numcrs " << numref << " cells " << m.NumberOfCells() <<  std::endl;
+					std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " numcrs " << numref << " cells " << m.NumberOfCells() <<  std::endl;
 					/*
 					{
 						std::stringstream file;
@@ -119,6 +121,8 @@ int main(int argc, char ** argv)
 						m.Save(file.str());
 					}
 					 */
+					 
+				
 					if( !m.Coarse(indicator) ) break;
 					
 					{
@@ -127,18 +131,39 @@ int main(int argc, char ** argv)
 						m.Save(file.str());
 					}
 					
+					std::cout << " Output " << k << std::endl;
+				m.UpdateStatus();
+				TagInteger isface = m.CreateTag("isface",DATA_INTEGER,CELL|FACE,NONE,1);
+				for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) isface[*it] = 1;
+				std::stringstream file;
+				//m.SetFileOption("VTK_OUTPUT_FACES","1");
+				file << "step_" << k << "_" << m.GetProcessorRank() << ".xml";
+				//file << "step_" << k << "_" << refcnt << ".pvtk";
+				m.Save(file.str());
+					
+					if (k == 6 && refcnt==0) exit(-1);
 					
 					
 					//cleanup indicator
 					for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) indicator[it->self()] = 0;
 				}
+				
+				{
+				
+			}
 				//return -1;
 				refcnt++;
 			}
 			while(numref);
 			
 			{
+				std::cout << " Output " << k << std::endl;
+				m.UpdateStatus();
+				TagInteger isface = m.CreateTag("isface",DATA_INTEGER,CELL|FACE,NONE,1);
+				for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) isface[*it] = 1;
 				std::stringstream file;
+				//m.SetFileOption("VTK_OUTPUT_FACES","1");
+				//file << "step_" << k << "_" << m.GetProcessorRank() << ".xml";
 				file << "step_" << k << ".pvtk";
 				m.Save(file.str());
 			}

@@ -750,14 +750,21 @@ namespace INMOST
 	
 	void determine_my_procs_low(Mesh * m, HandleType h, dynarray<Storage::integer,64> & result, dynarray<Storage::integer,64> & intersection)
 	{
+		MarkerType hm = m->HideMarker();
 		Element::adj_type const & subelements = m->LowConn(h);
 		Element::adj_type::const_iterator i = subelements.begin();
-		Storage::integer_array p = m->IntegerArrayDV(*i,m->ProcessorsTag());
 		result.clear();
-		result.insert(result.end(),p.begin(),p.end());
-		i++;
 		while(i != subelements.end())
 		{
+			if( hm && m->GetMarker(*i,hm) ) {i++; continue;}
+			Storage::integer_array p = m->IntegerArrayDV(*i,m->ProcessorsTag());
+			result.insert(result.end(),p.begin(),p.end());
+			i++;
+			break;
+		}
+		while(i != subelements.end())
+		{
+			if( hm && m->GetMarker(*i,hm) ) {i++; continue;}
 			Storage::integer_array q = m->IntegerArrayDV(*i,m->ProcessorsTag());
 			intersection.resize(std::max(static_cast<unsigned>(result.size()),static_cast<unsigned>(q.size())));
 			dynarray<Storage::integer,64>::iterator qt = std::set_intersection(result.begin(),result.end(),q.begin(),q.end(),intersection.begin());
@@ -769,12 +776,14 @@ namespace INMOST
 	
 	void determine_my_procs_high(Mesh * m, HandleType h, const Tag & procs, dynarray<Storage::integer,64> & result, dynarray<Storage::integer,64> & intersection)
 	{
+		MarkerType hm = m->HideMarker();
 		Element::adj_type const & overelements = m->HighConn(h);
 		if( overelements.empty() ) return;
 		Element::adj_type::const_iterator i = overelements.begin();
 		result.clear();
 		while(i != overelements.end())
 		{
+			if( hm && m->GetMarker(*i,hm) ) {i++; continue;}
 			Storage::integer_array q = m->IntegerArrayDV(*i,procs);
 			intersection.resize(result.size()+q.size());
 			dynarray<Storage::integer,64>::iterator qt = std::set_union(result.begin(),result.end(),q.begin(),q.end(),intersection.begin());
@@ -1047,7 +1056,7 @@ namespace INMOST
 			}
 			else
 			{
-                
+                /*
                 if (only_new)
                 {
 		            for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
@@ -1059,6 +1068,7 @@ namespace INMOST
                         }
                     }
                 }
+                */
 
 				double time = Timer();
 				Storage::real epsilon = GetEpsilon();
@@ -1081,6 +1091,7 @@ namespace INMOST
 				for(integer nit = 0; nit < NodeLastLocalID(); ++nit) if( isValidNode(nit) )
 				{
 					Node it = NodeByLocalID(nit);
+					if (only_new && GetMarker(it->GetHandle(),NewMarker()) == false) continue;
 					Storage::integer_array arr = it->IntegerArrayDV(tag_processors);
 					arr.resize(1);
 					arr[0] = mpirank;
@@ -1100,6 +1111,7 @@ namespace INMOST
 				
 				for(iteratorNode n = BeginNode(); n != EndNode(); n++)
 				{
+					if (only_new && GetMarker(*n,NewMarker()) == false) continue;
 					real_array c = n->Coords();
 					for(real_array::size_type k = 0; k < procs.size(); k++)
 						if( point_in_bbox(c.data(),bboxs.data()+procs[k]*dim*2,dim,GetEpsilon()) )
@@ -1316,7 +1328,12 @@ namespace INMOST
 					REPORT_VAL("time",time);
 					
 					
+					MarkerType new_lc;
+					if( only_new ) new_lc = CreateMarker();
+					TagInteger lc_mrk = CreateTag("LC_MARKER",DATA_INTEGER,CELL|FACE|EDGE,NONE,1);
+					MarkerType hm = HideMarker();
 					
+					for (iteratorElement it = BeginElement(CELL|FACE|EDGE); it != EndElement(); it++) lc_mrk[*it] = 0;
 					
 					for(ElementType current_mask = EDGE; current_mask <= CELL; current_mask = NextElementType(current_mask))
 					{
@@ -1330,6 +1347,32 @@ namespace INMOST
 						Element::Status estat;
 						
 						time = Timer();
+						if(only_new)
+						{
+							for(integer eit = 0; eit < LastLocalID(current_mask); ++eit) if( isValidElement(current_mask,eit) )
+							{
+								Element it = ElementByLocalID(current_mask,eit);
+								if( it->GetMarker(hm) ) continue;
+                                if (GetMarker(it.GetHandle(),NewMarker()) == true) 
+                                {
+									SetMarker(ComposeHandle(current_mask,eit),new_lc);
+									lc_mrk[ComposeHandle(current_mask,eit)] = 1;
+									continue;
+								}
+
+								Element::adj_type low_conn = LowConn(ComposeHandle(current_mask,eit));
+								for (Element::adj_type::iterator it = low_conn.begin(); it != low_conn.end(); it++)
+									if (GetMarker(*it,NewMarker())) 
+									{
+										SetMarker(ComposeHandle(current_mask,eit),new_lc);
+										lc_mrk[ComposeHandle(current_mask,eit)] = 1;
+										break;
+									}
+							}
+						}
+						stringstream ss;
+						ss << "file_" << GetProcessorRank() << ".txt";
+										ofstream ofs(ss.str().c_str());
 						//Determine what processors potentially share the element
 #if defined(USE_OMP)
 #pragma omp parallel
@@ -1344,10 +1387,37 @@ namespace INMOST
 								if( isValidElement(current_mask,eit) )
 								{
 									Element it = ElementByLocalID(current_mask,eit);
-                                    if (only_new && GetMarker(it.GetHandle(),NewMarker()) == false) continue;
+									if( it->GetMarker(hm) ) continue;
+                                    if (only_new && GetMarker(it.GetHandle(),new_lc) == false) continue;
 
+									
+									
 									determine_my_procs_low(this,it->GetHandle(), result, intersection);
 									Storage::integer_array p = it->IntegerArrayDV(tag_processors);
+									
+									//if (current_mask == CELL)
+									//if (GetProcessorRank() == 0 && it->LocalID() == 59 ||GetProcessorRank() == 1 && it->LocalID() == 49)									
+									{
+										Element::adj_type const & subelements = LowConn(it->GetHandle());
+										Element::adj_type::const_iterator i = subelements.begin();
+										
+										double cnt[3];
+										it->Centroid(cnt);
+										ofs << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << cnt[0]  << "  " << cnt[1] << " " << cnt[2] << std::endl;
+										for (int k = 0; k < result.size(); k++) ofs << result[k] << " ";
+										ofs << std::endl;
+										while( i != subelements.end() )
+										{
+											Storage::integer_array p = IntegerArrayDV(*i,ProcessorsTag());	
+											ofs << "| face:" << GetHandleID(*i) << " " << Element::StatusName(Bulk(*i,SharedTag())) << " ";
+											for (int k = 0; k < p.size(); k++) ofs << p[k] << " ";
+											ofs << std::endl;
+											i++;
+										}
+										
+										//out << ro() << GetProcessorRank() << "!!!!! " << ss.str() << endl;
+									}
+									
 									if( result.empty() )
 									{
 										p.clear();
@@ -1402,7 +1472,7 @@ namespace INMOST
 						
 						std::vector< MPI_Request > send_reqs,recv_reqs;
 						exch_buffer_type send_buffs(procs.size()), recv_buffs(procs.size());
-						
+
 						//Gather all possible shared elements and send global ids of their connectivity to the neighbouring proccessors
 						for(p = procs.begin(); p != procs.end(); p++)
 						{
@@ -1414,18 +1484,23 @@ namespace INMOST
 								message_send.push_back(0);
 								for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
 								{
-                                    if (only_new && GetMarker(*it,NewMarker()) == false) continue;
+                                    if (only_new && GetMarker(*it,new_lc) == false) continue;
 									Storage::integer_array pr = it->IntegerArrayDV(tag_processors);
 									if( std::binary_search(pr.begin(),pr.end(),*p) )
 									{
 										Element::adj_type & sub = LowConn(*it);
 										if( sub.size() == 0 ) throw Impossible;
-										message_send.push_back(static_cast<int>(sub.size()));
+										int message_size_pos = message_send.size();
+										message_send.push_back(0);
 										REPORT_VAL("number of connections",sub.size());
-										for(Element::adj_type::iterator kt = sub.begin(); kt != sub.end(); kt++)
+										REPORT_STR("element " << ElementTypeName(current_mask) << ":" << it->LocalID());
+										for(Element::adj_type::iterator kt = sub.begin(); kt != sub.end(); kt++) if( !hm || !GetMarker(*kt,hm) )
 										{
 											message_send.push_back(GlobalID(*kt));
-											REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()));
+											message_send[message_size_pos]++;
+											double cnt[3];
+											ElementByLocalID(PrevElementType(current_mask),GetHandleID(*kt))->Centroid(cnt);
+											REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
 										}
 										message_send[1]++;
 										elements[m].push_back(*it);
@@ -1512,6 +1587,7 @@ namespace INMOST
 									}
 									int find_local_id = mapping[find].second;
 									REPORT_STR("global id " << global_id << " local id " << find_local_id << " " << Element::StatusName(ElementByLocalID(PrevElementType(current_mask), find_local_id)->GetStatus()));
+									if( GetMarker(ComposeHandle(PrevElementType(current_mask), find_local_id),hm) ) std::cout << "Found hidden element" << std::endl;
 									sub_elements.push_back(ComposeHandle(PrevElementType(current_mask), find_local_id));
 									
 								}
@@ -1568,7 +1644,7 @@ namespace INMOST
 						//Now mark all the processors status
 						for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
 						{
-                            if (only_new && (GetMarker(*it,NewMarker()) == false)) continue;
+                            if (only_new && (GetMarker(*it,new_lc) == false)) continue;
     
 							Storage::integer_array pr = it->IntegerArrayDV(tag_processors);
 							if( pr.empty() )
@@ -1614,6 +1690,8 @@ namespace INMOST
 						REPORT_STR("Set parallel info");
 						REPORT_VAL("time",time);
 					}
+					ReleaseMarker(new_lc,EDGE | FACE|CELL);
+					
 				}
 				RemoveGeometricData(table);	
 			}
@@ -4840,6 +4918,28 @@ namespace INMOST
 		(void)mask;
 #endif
 	}
+	
+		void Mesh::CheckCentroids()
+	{
+		TagRealArray checker = CreateTag("CHECK_CENTROIDS",DATA_REAL,CELL|FACE|EDGE|NODE,CELL|FACE|EDGE|NODE,3);
+		for(Mesh::iteratorElement it = BeginElement(CELL|FACE|EDGE|NODE); it != EndElement(); ++it) if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+			it->Centroid(checker[*it].data());
+		ExchangeData(checker,CELL|FACE|EDGE|NODE,0);
+		for(Mesh::iteratorElement it = BeginElement(CELL|FACE|EDGE|NODE); it != EndElement(); ++it) if( it->GetStatus() & (Element::Ghost | Element::Shared) )
+		{
+			double cnt[3];
+			it->Centroid(cnt);
+			bool problem = false;
+			for(int k = 0; k < 3; ++k)
+				if( fabs(cnt[k] - checker[*it][k]) > 1.0e-9 )
+					problem = true;
+			if( problem )
+			{
+				std::cout << "bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << cnt[0] << " " << cnt[1] << " " << cnt[2] << " != " << checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2] << std::endl;
+			}
+		}
+	}
+
 
 	void Mesh::SortParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask)
 	{

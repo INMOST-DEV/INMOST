@@ -2113,6 +2113,12 @@ int main(int argc, char ** argv)
 		if( argc > 2 )	mesh->SetFileOption("VTK_GRID_DIMS",argv[2]);
 		mesh->Load(argv[1]);
 	} 
+	
+	TagInteger global_id = mesh->GetTag("GLOBAL_ID");
+	for(Mesh::iteratorElement e = mesh->BeginElement(FACE); e != mesh->EndElement(); ++e)
+	{
+		if( global_id[*e] == 201 || global_id[*e] == 203 || global_id[*e] == 208 ) std::cout << e->LocalID() << " " << global_id[*e] << std::endl;
+	}
 	/*
 	catch(...)
 	{

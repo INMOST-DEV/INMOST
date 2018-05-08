@@ -3163,11 +3163,12 @@ namespace INMOST
 		/// newly created elements, provide them valid global identificators, resolve owners of
 		/// the elements potentially optimized using information from BridgeTag and LayersTag
 		/// May use ResolveShared function as basis but instead the whole mesh run the same algorithm for subset.
-		void                              ResolveModification(int metric=0); //resolve parallel state of newly created elements, restore ghost layers; not implemented, resuse ResolveShared code
+		void                              ResolveModification(bool only_new, int metric=0); //resolve parallel state of newly created elements, restore ghost layers; not implemented, resuse ResolveShared code
 		void                              EndModification    ();    //delete hidden elements
 		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
 		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
         void                              FindMinDijkstra    (Cell c, double& dist, int& owner);
+        void CheckCentroids();
 		//implemented in mesh.cpp
 	private:
 		Tag                   tag_topologyerror;

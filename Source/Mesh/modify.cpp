@@ -1658,7 +1658,8 @@ namespace INMOST
                         assert(oc.GetHandle() != *it);
                         if (tag_mark[oc] == 1) continue;
 
-                        if (GetMarker(oc.GetHandle(),NewMarker()) == false) 
+                        //if (GetMarker(oc.GetHandle(),NewMarker()) == false) 
+			if (oc.GetStatus() == Element::Owned)
                         {
                             dist = tag_dist[*it] + 1;
                             owner = oc.IntegerDF(tag_owner);
@@ -1686,15 +1687,23 @@ namespace INMOST
     }
 
 
-	void Mesh::ResolveModification(int metric)
+	
+
+	void Mesh::ResolveModification(bool only_new, int metric)
 	{
         int rank = GetProcessorRank();
         int size = GetProcessorsNumber();
         if (size == 1) return;
 	    
         Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
+        TagInteger tag_d = CreateTag("DIJ",DATA_INTEGER,CELL,NONE,1);
+        TagInteger tag_ow = CreateTag("DIJ_OW",DATA_INTEGER,CELL,NONE,1);
+        TagReal tag_dis = CreateTag("DIJ_DIS",DATA_REAL,CELL,NONE,1);
         stringstream ss;
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
+			//if (GetMarker(*it,NewMarker()))
+			if (!only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
+
         {
             if (it->GetStatus() == Element::Owned) continue;
             double min_distance = 0;
@@ -1718,7 +1727,10 @@ namespace INMOST
             }
             else  
             {
+		    tag_d[*it] = 1;
                 FindMinDijkstra(it->getAsCell(), min_distance, owner);
+		tag_ow[*it] = owner;
+		tag_dis[*it] = min_distance;
             }
             it->RealArray(tag)[0] = owner;
             it->RealArray(tag)[1] = min_distance;
@@ -1727,22 +1739,23 @@ namespace INMOST
         ReduceData(tag, CELL, 0, OperationMinDistance);
         ExchangeData(tag, CELL, 0);
 
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
-        {
-            if (it->GetStatus() == Element::Owned) continue;
-            int new_owner = (int)it->RealArray(tag)[0];
+	for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) //if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
+			if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
+	{
+		if (it->GetStatus() == Element::Owned) continue;
+		int new_owner = (int)it->RealArray(tag)[0];
 
-            it->IntegerDF(tag_owner) = new_owner;
+		it->IntegerDF(tag_owner) = new_owner;
 
-            if (rank == new_owner)
-            {
-                it->SetStatus(Element::Shared);
-            }
-            else
-            {
-                it->SetStatus(Element::Ghost);
-            }
-        }
+		if (rank == new_owner)
+		{
+			it->SetStatus(Element::Shared);
+		}
+		else
+		{
+			it->SetStatus(Element::Ghost);
+		}
+	}
 
 		RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
         DeleteTag(tag);

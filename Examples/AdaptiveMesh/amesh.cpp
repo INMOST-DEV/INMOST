@@ -294,7 +294,7 @@ namespace INMOST
 	AdaptiveMesh::AdaptiveMesh() : Mesh()
 	{
 		//create a tag that stores maximal refinement level of each element
-		level = CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
+		level = CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|ESET,NONE,1);
 		tag_status = CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_an = CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		ref_tag = CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
@@ -376,6 +376,7 @@ namespace INMOST
 			scheduled = Integrate(scheduled);
 			if( scheduled ) schedule_counter++;
 		}
+		ExchangeData(indicator,CELL | FACE | EDGE,0);
 		//6.Refine
 		BeginModification();
 		while(schedule_counter)
@@ -396,7 +397,7 @@ namespace INMOST
 					//create middle node
 					Node n = CreateNode(xyz);
 					//set increased level for new node
-					level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e]+1;
+					//level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e]+1;
 					//for each face provide link to a new hanging node
 					for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt)
 						hanging_nodes[edge_faces[kt]].push_back(n);
@@ -427,7 +428,7 @@ namespace INMOST
 					//create middle node
 					Node n = CreateNode(xyz);
 					//set increased level for the new node
-					level[n] = level[f]+1;
+					//level[n] = level[f]+1;
 					//for each cell provide link to new hanging node
 					for(ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
 						hanging_nodes[face_cells[kt]].push_back(n);
@@ -471,7 +472,7 @@ namespace INMOST
 					//create middle node
 					Node n = CreateNode(xyz);
 					//set increased level for the new node
-					level[n] = level[c]+1;
+					//level[n] = level[c]+1;
 					//retrive all edges of current face to mark them
 					ElementArray<Edge> cell_edges = c.getEdges();
 					//mark all edges so that we can retive them later
@@ -594,7 +595,7 @@ namespace INMOST
 		//11. Restore parallel connectivity, global ids
         ResolveShared(true);
         //if (call_counter == 0)
-		ResolveModification();
+	//	ResolveModification(false,1);
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
@@ -602,7 +603,8 @@ namespace INMOST
 		//14. Done
         //cout << rank << ": Before end " << endl;
 		EndModification();
-		ExchangeData(hanging_nodes,CELL | FACE,0);
+		CheckCentroids();
+		//ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << endl;
 		//reorder element's data to free up space
 		ReorderEmpty(CELL|FACE|EDGE|NODE);
@@ -648,11 +650,13 @@ namespace INMOST
 					indicator[e] = INT_MAX;
 					for(ElementArray<Element>::size_type kt = 0; kt < adj.size(); ++kt)
 						if( level[e] == level[adj[kt]]) indicator[e] = std::min(indicator[e],indicator[adj[kt]]);
-					assert(indicator[e] != INT_MAX);
+					//if (indicator[e] == INT_MAX) cout << ro() << rank << ": " << ElementTypeName(e.GetElementType()) << e.GlobalID() << endl;
+					//assert(indicator[e] != INT_MAX);
 				}
 			}
 			//2.Communicate indicator on faces and edges
 			ReduceData(indicator,FACE|EDGE,0,ReduceMin);
+			ExchangeData(indicator,FACE|EDGE,0);
 			//3.If there is adjacent finer edge that are not marked for coarsening
 			// then this cell should not be coarsened
 			unscheduled = scheduled = 0;
@@ -734,6 +738,7 @@ namespace INMOST
 			}
 			//c) data reduction to get maximum over mesh partition
 			ReduceData(coarse_indicator,EDGE,0,ReduceMax);
+			ExchangeData(coarse_indicator,EDGE,0);
 			//d) look from cells if any edge is coarsened earlier
 			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
 			{
@@ -752,6 +757,7 @@ namespace INMOST
 					}
 				}
 			}
+			ExchangeData(indicator,CELL|FACE|EDGE,0);
 			//5.Go back to 1 until no new elements scheduled
 			scheduled = Integrate(scheduled);
 			unscheduled = Integrate(unscheduled);
@@ -895,6 +901,20 @@ namespace INMOST
 					assert(visited);
 				}
 			}
+			/*
+			for(Storage::integer it = 0; it < NodeLastLocalID(); ++it) if( isValidNode(it) )
+			{
+				Node e = NodeByLocalID(it);
+				if( !e.Hidden() )
+				{
+					int my_level = -1;
+					ElementArray<Edge> edges = e.getEdges();
+					for(ElementArray<Edge>::iterator kt = edges.begin(); kt != edges.end(); ++kt)
+						my_level = std::max(my_level,level[*kt]);
+					level[e] = my_level;
+				}
+			}
+			*/
 			//jump to later schedule
 			schedule_counter--;
 		}
@@ -902,13 +922,14 @@ namespace INMOST
 		DeleteTag(indicator,FACE|EDGE);
 		//todo:
     	ResolveShared(true);
-		ResolveModification();
+		//ResolveModification(false,1);
 		//todo:
 		//let the user update their data
 		ApplyModification();
 		//done
 		EndModification();
-        ExchangeData(hanging_nodes,CELL | FACE,0);
+		CheckCentroids();
+        //ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 		{
