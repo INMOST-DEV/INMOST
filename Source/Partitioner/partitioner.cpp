@@ -1288,7 +1288,7 @@ namespace INMOST
 			}
 			
 #if defined(USE_OMP)
-#pragma omp paralell for
+#pragma omp parallel for
 #endif
 			for(int q = 0; q < total_points; ++q)
 			{

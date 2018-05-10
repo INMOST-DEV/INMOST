@@ -193,7 +193,7 @@ int main(int argc, char ** argv)
 	}
 
 #if defined(USE_OMP)
-#pragma omp paralell for
+#pragma omp parallel for
 #endif
 	for(int q = 0; q < total_points; ++q)
 	{
