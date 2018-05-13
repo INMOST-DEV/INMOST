@@ -1327,7 +1327,8 @@ namespace INMOST
 			{
 				for(int k = 0; k < (int) m->GetProcessorsNumber(); ++k)
 					total_global_points += npoints[k];
-				total_local_points = (int)ceil((double)total_global_points/(double)m->GetProcessorsNumber());
+				total_local_points = (int)floor((double)total_global_points/(double)m->GetProcessorsNumber());
+				std::cout << total_global_points << " " << total_local_points << " " << m->GetProcessorRank() << " " <<  total_global_points - (m->GetProcessorsNumber()-1)*total_local_points << std::endl;
 				
 				std::vector<double> points_center_global(m->GetProcessorRank() == 0 ? total_global_points*3 : 1);
 				displs[0] = 0;
