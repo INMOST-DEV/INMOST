@@ -1265,8 +1265,10 @@ namespace INMOST
 		}
 		if( package == 3 ) //KMEANS
 		{
+			
 			int total_points = 0;
 			int K = (int)m->GetProcessorsNumber(); //number of clusters
+			//std::cout << "Start K-means on " << m->GetProcessorRank() << " clusters " << K << std::endl;
 			int max_iterations = 100;
 #if defined(USE_OMP)
 #pragma omp parallel for reduction(+:total_points)
@@ -1553,7 +1555,7 @@ namespace INMOST
 #pragma omp parallel for
 #endif
 			for(int j = 0; j < total_points; ++j)
-				mat[m->CellByLocalID(points_node[j])] = points_cluster[j]+1;
+				mat[m->CellByLocalID(points_node[j])] = points_cluster[j];
 			//m->ExchangeData(mat,CELL,0);
 		}
 		EXIT_FUNC();
