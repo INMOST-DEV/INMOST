@@ -1315,8 +1315,8 @@ namespace INMOST
 			{
 				for(int l = k+1; l < (int) m->GetProcessorsNumber(); ++l)
 				{
-					imbalance = std::max(imbalance,npoints[k]/(double)npoints[l]);
-					imbalance = std::max(imbalance,npoints[l]/(double)npoints[k]);
+					imbalance = std::max(imbalance,(npoints[k]+1.0e-15)/(npoints[l]+1.0e-15));
+					imbalance = std::max(imbalance,(npoints[l]+1.0e-15)/(npoints[k]+1.0e-15));
 				}
 			}
 			//if( m->GetProcessorRank() == 0 )
@@ -1328,7 +1328,7 @@ namespace INMOST
 				for(int k = 0; k < (int) m->GetProcessorsNumber(); ++k)
 					total_global_points += npoints[k];
 				total_local_points = (int)floor((double)total_global_points/(double)m->GetProcessorsNumber());
-				std::cout << total_global_points << " " << total_local_points << " " << m->GetProcessorRank() << " " <<  total_global_points - (m->GetProcessorsNumber()-1)*total_local_points << std::endl;
+				//std::cout << total_global_points << " " << total_local_points << " " << m->GetProcessorRank() << " " <<  total_global_points - (m->GetProcessorsNumber()-1)*total_local_points << std::endl;
 				
 				std::vector<double> points_center_global(m->GetProcessorRank() == 0 ? total_global_points*3 : 1);
 				displs[0] = 0;
