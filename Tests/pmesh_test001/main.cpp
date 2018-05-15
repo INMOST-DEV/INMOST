@@ -101,6 +101,7 @@ int main(int argc,char ** argv)
 	switch(itype)
 	{
 		case 0: type = Partitioner::INNER_RCM; break;
+		case 9: type = Partitioner::INNER_KMEANS; break;
 		case 1: type = Partitioner::Parmetis; break;
 		case 2: type = Partitioner::Zoltan_HSFC; break;
 		case 3: type = Partitioner::Zoltan_RIB; break;
