@@ -3167,7 +3167,7 @@ namespace INMOST
 		void                              EndModification    ();    //delete hidden elements
 		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
 		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
-        void                              FindMinDijkstra    (Cell c, double& dist, int& owner);
+        void                              Dijkstra();
         void CheckCentroids();
 		//implemented in mesh.cpp
 	private:

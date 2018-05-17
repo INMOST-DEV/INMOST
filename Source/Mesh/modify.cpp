@@ -1,5 +1,6 @@
 #include "inmost.h"
 #include "incident_matrix.hpp"
+#include <queue>
 #if defined(USE_MESH)
 
 //TODO:
@@ -1622,72 +1623,60 @@ namespace INMOST
         (void)size;
     }
 
-    void Mesh::FindMinDijkstra(Cell c, double& dist, int& owner)
-    {   
-        TagInteger tag_dist = CreateTag("TEMP_DIJ_DISTANSE",DATA_INTEGER,CELL,CELL,1);
-        TagInteger tag_mark = CreateTag("TEMP_DIJ_MARK",DATA_INTEGER,CELL,CELL,1);
+    void Mesh::Dijkstra()
+    {
+        std::queue<Cell> cells_queue;
+        Tag tag = GetTag("TEMP_DISTANSE");
 
-        stringstream ss;
+        // Push nearest to owned cell into queue
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
-        {
-            tag_mark[*it] = 0;
-        }
-
-        ElementSet set = CreateSetUnique("DIST").first;
-        set.PutElement(c);
-        tag_dist[c] = 0;
-
-        int cur_dist = 0;
-        bool was_change;
-        while (set.getCells().size() > 0)
-        {
-            was_change = false;
-            ElementArray<Cell> cells = set.getCells();
-            for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); it++)
+            if (it->GetStatus() != Element::Owned)
             {
-                assert(tag_mark[*it] == 0);
-
-                if (tag_dist[*it] == cur_dist)
+                it->RealArray(tag)[1] = INT_MAX; 
+                ElementArray<Face> faces = Cell(this,*it).getFaces();
+                for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
                 {
-                    was_change = true;
-                    ElementArray<Face> faces = Cell(this,*it).getFaces();
-                    for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
+                    if (f->getCells().size() <= 1) continue;
+                    Cell oc = (*it == f->BackCell().GetHandle()) ? f->FrontCell() : f->BackCell();
+                    assert(oc.GetHandle() != *it);
+                    if (oc.GetStatus() == Element::Owned)
                     {
-                        if (f->getCells().size() <= 1) continue;
-                        Cell oc = (*it == f->BackCell().GetHandle()) ? f->FrontCell() : f->BackCell();
-                        assert(oc.GetHandle() != *it);
-                        if (tag_mark[oc] == 1) continue;
-
-                        //if (GetMarker(oc.GetHandle(),NewMarker()) == false) 
-			if (oc.GetStatus() == Element::Owned)
-                        {
-                            dist = tag_dist[*it] + 1;
-                            owner = oc.IntegerDF(tag_owner);
-                            DeleteTag(tag_dist);
-                            DeleteTag(tag_mark);
-                            return;
-                        }
-                        // oc - is new cell
-                        if (tag_dist[oc] == 0 || tag_dist[oc] > cur_dist+1)
-                            tag_dist[oc] = tag_dist[*it]+1;
-                        set.AddElement(oc.GetHandle());
+                        cells_queue.push(it->getAsCell());
+                        it->RealArray(tag)[0] = oc.IntegerDF(tag_owner);
+                        it->RealArray(tag)[1] = 1;
+                        break;
                     }
-
-                    tag_mark[*it] = 1;
-                    set.RemoveElement(Cell(this,*it));
-                    break;
                 }
             }
-            if (was_change == false) cur_dist++;
-        }
         
-        DeleteTag(tag_dist);
-        DeleteTag(tag_mark);
-        throw "Cannot find other process elements";
+        int cur_dist = 1; // For assert
+
+        while (!cells_queue.empty())
+        {
+            cout << "Queue size: " << cells_queue.size() << endl;
+            Cell c = cells_queue.front();
+            cells_queue.pop();
+
+            if (cur_dist > c.RealArray(tag)[1]) assert(0); 
+            if (cur_dist < c.RealArray(tag)[1]) cur_dist++;
+
+            ElementArray<Face> faces = c.getFaces();
+            for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
+            {
+                if (f->getCells().size() <= 1) continue;
+                Cell oc = (c == f->BackCell()) ? f->FrontCell() : f->BackCell();
+                assert(oc != c);
+                
+                if (oc.GetStatus() == Element::Owned) continue;
+                if (oc.RealArray(tag)[1] > c.RealArray(tag)[1] + 1)
+                {
+                    oc.RealArray(tag)[0] = c.RealArray(tag)[0];
+                    oc.RealArray(tag)[1] = c.RealArray(tag)[1] + 1;
+                    cells_queue.push(oc);
+                }
+            }
+        }
     }
-
-
-	
 
 	void Mesh::ResolveModification(bool only_new, int metric)
 	{
@@ -1700,68 +1689,74 @@ namespace INMOST
         TagInteger tag_ow = CreateTag("DIJ_OW",DATA_INTEGER,CELL,NONE,1);
         TagReal tag_dis = CreateTag("DIJ_DIS",DATA_REAL,CELL,NONE,1);
         stringstream ss;
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
-			//if (GetMarker(*it,NewMarker()))
-			if (!only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
-
+        if (metric == 0) // Find near owned cell using Euclidean distance
         {
-            if (it->GetStatus() == Element::Owned) continue;
-            double min_distance = 0;
-            int owner = rank;
-
-            if (metric == 0)
-            {
-                int first = 0;
-                Cell near_cell;
-                for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false)
+            for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
+                //if (GetMarker(*it,NewMarker()))
+                if (!only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
                 {
-                    double d = dist(it->getAsCell(), jt->getAsCell());
-                    if (first++ == 0 || min_distance > d) 
-                    {
-                        min_distance = d;
-                        near_cell = jt->getAsCell();
-                    }
-               }
+                    if (it->GetStatus() == Element::Owned) continue;
+                    double min_distance = 0;
+                    int owner = rank;
 
-                owner = near_cell.IntegerDF(tag_owner);
-            }
-            else  
-            {
-		    tag_d[*it] = 1;
-                FindMinDijkstra(it->getAsCell(), min_distance, owner);
-		tag_ow[*it] = owner;
-		tag_dis[*it] = min_distance;
-            }
-            it->RealArray(tag)[0] = owner;
-            it->RealArray(tag)[1] = min_distance;
-       }
-        
+                    int first = 0;
+                    Cell near_cell;
+                    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) 
+                        //if (GetMarker(*jt,NewMarker()) == false)
+                        if (jt->GetStatus() == Element::Owned)
+                        {
+                            double d = dist(it->getAsCell(), jt->getAsCell());
+                            if (first++ == 0 || min_distance > d) 
+                            {
+                                min_distance = d;
+                                near_cell = jt->getAsCell();
+                            }
+                        }
+
+                    owner = near_cell.IntegerDF(tag_owner);
+                    it->RealArray(tag)[0] = owner;
+                    it->RealArray(tag)[1] = min_distance;
+                }
+        }
+        else if (metric == 1)
+        {
+            Dijkstra();
+        }
+
+
         ReduceData(tag, CELL, 0, OperationMinDistance);
         ExchangeData(tag, CELL, 0);
 
-	for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) //if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
-			if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
-	{
-		if (it->GetStatus() == Element::Owned) continue;
-		int new_owner = (int)it->RealArray(tag)[0];
+        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
+            if (!only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
+            {
+                tag_ow[*it] =  it->RealArray(tag)[0];
+                tag_dis[*it] = it->RealArray(tag)[1];
+            }
 
-		it->IntegerDF(tag_owner) = new_owner;
+        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) //if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
+            if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
+            {
+                if (it->GetStatus() == Element::Owned) continue;
+                int new_owner = (int)it->RealArray(tag)[0];
 
-		if (rank == new_owner)
-		{
-			it->SetStatus(Element::Shared);
-		}
-		else
-		{
-			it->SetStatus(Element::Ghost);
-		}
-	}
+                it->IntegerDF(tag_owner) = new_owner;
 
-		RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
+                if (rank == new_owner)
+                {
+                    it->SetStatus(Element::Shared);
+                }
+                else
+                {
+                    it->SetStatus(Element::Ghost);
+                }
+            }
+
+        RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
         DeleteTag(tag);
-	}
-	
-	void Mesh::EndModification()
+    }
+
+    void Mesh::EndModification()
 	{
 		//ApplyModification();
 		//temp_hide_element = hide_element;
