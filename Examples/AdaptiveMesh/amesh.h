@@ -9,8 +9,6 @@ namespace INMOST
 		ElementSet root; //< Root set that links all the other sets for coarsements
 		TagInteger tag_status; 
 		TagInteger tag_an; 
-		TagReference parent_set; //<Link to the set that contains an element.
-		TagReferenceArray hanging_nodes; //< Link to current hanging nodes of the cell.
         int rank;
         int size;
 		/// Prepare sets for coarsements.
@@ -18,9 +16,12 @@ namespace INMOST
 		void PrepareSet();
         void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
 	public:
+		TagReference parent_set; //<Link to the set that contains an element.
+		TagReferenceArray hanging_nodes; //< Link to current hanging nodes of the cell.
 		TagInteger level; //< Refinement level of the cell
 		TagReferenceArray ref_tag; //<Link to the set that contains an element.
 		Storage::integer GetLevel(const Storage & e) {return level[e];}
+        void SynchronizeSet(ElementSet set);
 		AdaptiveMesh();
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined

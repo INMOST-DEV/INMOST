@@ -2421,6 +2421,7 @@ namespace INMOST
 			}
 			else
 			{
+                int rank = GetProcessorRank();
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 				{
          // REPORT_STR("element type " << ElementTypeName(*eit) << " global id " << Integer(*eit,GlobalIDTag()));
@@ -2439,13 +2440,16 @@ namespace INMOST
 						array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
                         if (tag.GetDataType() == DATA_REFERENCE)
                         {
+                            //cout << "Element: " << Element(this,*eit).GlobalID() << endl;
                             reference_array refs = ReferenceArray(*eit, tag);
+                            cout << "Size: " << refs.size() << endl;
                             int bytes = tag.GetBytesSize();
                             for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
                             {
                                 if (refs[i] == InvalidElement()) continue;
                                 HandleType data = ComposeHandle(refs[i]->GetElementType(), refs[i]->GlobalID());
                                 memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
+                                cout << ro() << rank << ": Pack elem " << refs[i]->GlobalID() << endl;
                             }
                         }
                         else
@@ -2765,12 +2769,15 @@ namespace INMOST
                 {
                     for(p = procs.begin(); p != procs.end(); p++ )
                     {
+                        if (from.find(*p) == from.end()) continue;
                         const elements_by_type& elements = from.find(*p)->second;
                         for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (mask & ElementTypeFromDim(i)) && tags[k].isDefinedByDim(i) )
                         {
                             for (int j = 0; j < elements[i].size(); j++)
                             {
                                 if (!isValidHandleRange(elements[i][j])) continue;
+                                //if (!isValidElement(ElementTypeFromDim(i),elements[i][j])) continue;
+                                //cout << GlobalID(elements[i][j]) << " <-=-" << endl;
                                 reference_array refs = ReferenceArray(elements[i][j], tags[k]);
                                 if (refs.size() == 0) continue;
                                 if (tags[k] == HighConnTag()) 
@@ -3109,6 +3116,7 @@ namespace INMOST
 		MarkerType busy = CreateMarker();
         
         // Recursevely looking for all high connections for ESETs
+        // At now parent set are't include !!
         for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); ++it) SetMarker(*it,busy);
         int ind = 0;
         while (ind < selems[4].size())
@@ -3117,6 +3125,7 @@ namespace INMOST
             // looking to child, sibling and parent
             for (int i = 0; i <= 2; i++)
             {
+                if (i == 2) continue;
                 ElementSet _set;
                 switch (i)
                 {
@@ -3490,10 +3499,12 @@ namespace INMOST
 
         /////////////////////////////////////////
         // pack esets
+        // For now parent set are't pack. 
         //if( false )
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[4].size());
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // TODO - 3
+            cout << "@@@ size" << selems[4].size() << endl;
 			std::vector<Storage::integer> low_conn_nums;  // array composed elements : ElementType and position in array 
 			std::vector<int> high_conn_nums(selems[4].size() * 3);        // array of indexes of children, sibling, parent. -1 if has't
 			INMOST_DATA_ENUM_TYPE num_high = 0;
@@ -3543,7 +3554,9 @@ namespace INMOST
 
                 if (set.HaveChild())   high_conn_nums[k*3+0] = Integer(selems[4][Integer(set.GetChild().GetHandle(),  arr_position)],arr_position); else high_conn_nums[k*3 + 0] = -1;
                 if (set.HaveSibling()) high_conn_nums[k*3+1] = Integer(selems[4][Integer(set.GetSibling().GetHandle(),arr_position)],arr_position); else high_conn_nums[k*3 + 1] = -1;
-                if (set.HaveParent())  high_conn_nums[k*3+2] = Integer(selems[4][Integer(set.GetParent().GetHandle(), arr_position)],arr_position); else high_conn_nums[k*3 + 2] = -1;
+
+                // Parent set are't pack now.!!
+                if (0 && set.HaveParent())  high_conn_nums[k*3+2] = Integer(selems[4][Integer(set.GetParent().GetHandle(), arr_position)],arr_position); else high_conn_nums[k*3 + 2] = -1;
 
                 stringstream ss5;
                 ss5 << ro() << mpirank << ": high_conn_nums for set " << set.GetName() << ": ";
@@ -4168,7 +4181,7 @@ namespace INMOST
                         ss1 << "(" << type  << "," << array_pos << ") ";
 
                         ElementSet set(this, selems[4][i]);
-                        set.PutElement(elem);
+                        set.AddElement(elem);
 
                         ind++;
                     }
@@ -4191,8 +4204,25 @@ namespace INMOST
                 }
                 //cout << ss6.str() << endl;
 
-                for (int i = 0; i < num; i++) if (high_conn_nums[i*3+0] != -1) ElementSet(this,selems[4][i]).AddChild(ElementSet(this,selems[4][high_conn_nums[i*3+0]]));
-                for (int i = 0; i < num; i++) if (high_conn_nums[i*3+1] != -1) ElementSet(this,selems[4][i]).AddSibling(ElementSet(this,selems[4][high_conn_nums[i*3+1]]));
+                for (int i = 0; i < num; i++) if (high_conn_nums[i*3+0] != -1) 
+                {
+                    ElementSet par_set = ElementSet(this,selems[4][i]);
+                    ElementSet chd_set = ElementSet(this,selems[4][high_conn_nums[i*3+0]]);
+
+
+                    bool chld_exist = false;
+                    for(ElementSet it = par_set->GetChild(); it->isValid(); it = it->GetSibling())
+                    {
+                        if (chd_set == it->getAsSet()) { chld_exist = true; break; }
+                    }
+
+                    if (!chld_exist) par_set.AddChild(chd_set);
+                }
+                for (int i = 0; i < num; i++) if (high_conn_nums[i*3+1] != -1) 
+                {
+                    ElementSet set = ElementSet(this,selems[4][i]);
+                    if (!set->HaveSibling()) set.AddSibling(ElementSet(this,selems[4][high_conn_nums[i*3+1]]));
+                }
             }
 		}
         /////////////////////////////////////////////////////////////

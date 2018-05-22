@@ -70,7 +70,7 @@ namespace INMOST
             if (p->GetElementType() == FACE) type = "face";
             if (p->GetElementType() == EDGE) type = "edge";
             if (p->GetElementType() == NODE) type = "node";
-            ss << type << "-" << p->GlobalID() << " ";
+            ss << type << "-" << setw(2) << p->GlobalID() << " ";
             p++;
         }
         ss << endl;
@@ -93,6 +93,24 @@ namespace INMOST
         cout << ss.str() << endl;
     }
 
+    void PrintRefs(ostream& os, Storage::reference_array refs)
+    {
+        for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+        {
+            string type = "unknw";
+            if (refs[i].GetElementType() == CELL) type = "cell";
+            if (refs[i].GetElementType() == FACE) type = "face";
+            if (refs[i].GetElementType() == EDGE) type = "edge";
+            if (refs[i].GetElementType() == NODE) type = "node";
+            os << "(" << type << "," << refs[i]->GlobalID() << ") ";
+			Storage::real xyz[3] = {0,0,0};
+            refs[i]->Centroid(xyz);
+            os << "(" << xyz[0] << "," << xyz[1] << "," << xyz[2] <<")" <<  endl;
+        }
+
+
+    }
+
     void AdaptiveMesh::PrintMesh(ostream& os, int cell, int face, int edge, int node)
     {
         if (cell + face + edge + node == 0) return;
@@ -103,24 +121,32 @@ namespace INMOST
             ss << "Cells: " << NumberOfCells() <<  endl;
             for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
             {
-                ss << rank << ": " << it->GlobalID() << " - " ;            
+                ss << rank << ": " << it->GlobalID() << " - " << it->LocalID() << " - ";            
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
-
-                Storage::reference_array refs = ref_tag[it->self()];
-                if (refs.size() > 0) ss << ". Ref: ";
-                for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+                
+                /*
+                ss << " (";
+                Storage::integer_array arr = it->IntegerArrayDV(tag_processors);
+                for (int i = 0; i < arr.size(); i++) ss << arr[i] << " ";
+                ss << ") ";
+*/
+                /*
+                Storage::reference_array refs = hanging_nodes[it->self()];
+                if (refs.size() > 0)
                 {
-                    string type = "unknw";
-                    if (refs[i].GetElementType() == CELL) type = "cell";
-                    if (refs[i].GetElementType() == FACE) type = "face";
-                    if (refs[i].GetElementType() == EDGE) type = "edge";
-                    if (refs[i].GetElementType() == NODE) type = "node";
-                    ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
+                    ss << endl << "   Hanging nodes: ";
+                    PrintRefs(ss,refs);
                 }
-
                 ss << endl;
+                ss << "   ParentSet: " << ElementSet(this,parent_set[*it]).GetName();
+                */
+/*
+                orage::reference_array refs = ref_tag[it->self()];
+                PrintRefs(refs);
+                */
+                    ss << endl;
             }
         }
 
@@ -147,6 +173,16 @@ namespace INMOST
                 }
 
                 ss << endl;
+
+                {
+                    Storage::reference_array refs = hanging_nodes[it->self()];
+                    if (refs.size() > 0)
+                    {
+                        ss << endl << "   Hanging nodes: ";
+                        PrintRefs(ss,refs);
+                    }
+                    ss << endl;
+                }
             }
         }
 
@@ -254,6 +290,19 @@ namespace INMOST
             PrintSet(child,offset + "  ");
         }
 
+    }
+
+    void AdaptiveMesh::SynchronizeSet(ElementSet set)
+    {
+    #ifdef USE_MPI
+        int size = GetProcessorsNumber();
+        int rank = GetProcessorRank();
+        for (int i = 0; i < size; i++)
+        {
+            set.IntegerArray(tag_sendto).push_back(i);
+            ExchangeMarked();
+        }
+    #endif
     }
 
     void AdaptiveMesh::Test()
@@ -595,7 +644,7 @@ namespace INMOST
 		//11. Restore parallel connectivity, global ids
         ResolveShared(true);
         //if (call_counter == 0)
-	//	ResolveModification(false,1);
+		ResolveModification(false,1);
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
@@ -684,6 +733,7 @@ namespace INMOST
 			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
 			{
 				Cell c = CellByLocalID(it);
+                if (!isValidElement(c.GetHandle())) continue;
 				if( indicator[c] )
 				{
 					ElementSet parent(this,parent_set[c]);
@@ -922,7 +972,7 @@ namespace INMOST
 		DeleteTag(indicator,FACE|EDGE);
 		//todo:
     	ResolveShared(true);
-		//ResolveModification(false,1);
+		ResolveModification(false,1);
 		//todo:
 		//let the user update their data
 		ApplyModification();

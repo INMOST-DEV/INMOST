@@ -1653,7 +1653,6 @@ namespace INMOST
 
         while (!cells_queue.empty())
         {
-            cout << "Queue size: " << cells_queue.size() << endl;
             Cell c = cells_queue.front();
             cells_queue.pop();
 
