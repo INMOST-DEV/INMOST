@@ -2729,6 +2729,10 @@ namespace INMOST
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
+	/// shortcut for matrix of integer values.
+	typedef Matrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idMatrix;
+	/// shortcut for matrix of real values.
+	typedef Matrix<INMOST_DATA_REAL_TYPE, dynarray<INMOST_DATA_REAL_TYPE,128> > rdMatrix;
 	/// shortcut for matrix of integer values in existing array.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE,shell<INMOST_DATA_INTEGER_TYPE> > iaMatrix;
 	/// shortcut for matrix of real values in existing array.
@@ -2743,6 +2747,12 @@ namespace INMOST
 	typedef Matrix<variable> vMatrix;
 	//< shortcut for matrix of variables with first and second order derivatives.
 	typedef Matrix<hessian_variable> hMatrix;
+	/// shortcut for matrix of variables with single unit entry of first order derivative.
+	typedef Matrix<unknown, dynarray<unknown,128> > udMatrix;
+	/// shortcut for matrix of variables with first order derivatives.
+	typedef Matrix<variable, dynarray<variable,128> > vdMatrix;
+	//< shortcut for matrix of variables with first and second order derivatives.
+	typedef Matrix<hessian_variable, dynarray<hessian_variable,128> > hdMatrix;
 	/// shortcut for matrix of unknowns in existing array.
 	typedef Matrix<unknown,shell<unknown> > uaMatrix;
 	/// shortcut for matrix of variables in existing array.
