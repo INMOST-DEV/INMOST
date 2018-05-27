@@ -2254,7 +2254,7 @@ namespace INMOST
 		int                                 parallel_file_strategy;
 	private:
 		void                              ComputeSharedProcs ();
-		proc_elements                     ComputeSharedSkinSet(ElementType bridge);
+		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType* marker = NULL);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
 		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op);
 		void                              PackElementsData   (element_set & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
@@ -2426,7 +2426,7 @@ namespace INMOST
 		/// Find sets that are common between processors.
 		void                              ResolveSets        ();
 		/// Delete all the ghost cells.
-		void                              RemoveGhost        ();
+		void                              RemoveGhost        (MarkerType* marker = NULL);
 		/// Delete some ghost cells provided in array.
 		/// Non-ghost elements will also be deleted.
 		///
@@ -2681,7 +2681,7 @@ namespace INMOST
 		/// @param bridge bitwise mask of elements for which neighbouring cells should be considered a layer
 		/// @see Mesh::ExchangeMarked
 		/// @see Mesh::Redistribute
-		void                              ExchangeGhost      (integer layers, ElementType bridge);
+		void                              ExchangeGhost      (integer layers, ElementType bridge, MarkerType* marker = NULL);
 		/// Migrate all the elements to the new owners prescribed in data corresponding to RedistributeTag.
 		/// This will perform all the actions to send mesh elements and data and reproduce new mesh partitions
 		/// on remote elements and correctly resolve parallel state of the mesh. If you have priviously
@@ -3168,6 +3168,7 @@ namespace INMOST
 		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
 		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
         void                              Dijkstra();
+        void CheckFaces();
         void CheckCentroids();
 		//implemented in mesh.cpp
 	private:

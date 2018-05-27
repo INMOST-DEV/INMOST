@@ -1,5 +1,6 @@
 #include "amesh.h"
 #include <iomanip>
+#include <set>
 
 using namespace std;
 
@@ -620,25 +621,31 @@ namespace INMOST
 		DeleteTag(indicator,FACE|EDGE);
 
 
-        stringstream ss;
-        ss << ro() << rank << ": during refine: ";
+        MarkerType marker_new = CreateMarker();
         for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
         {
-            int marked = (it->GetMarker(NewMarker())) ? 1 : 0;
-            int st = 0;
-            if (it->GetStatus() == Element::Shared) st = 1;
-            else if (it->GetStatus() == Element::Ghost) st = 2;
-            //tag_an[it->self()] = it->IntegerDF(OwnerTag());
-            tag_an[it->self()] = marked;
-            ss << "(" << it->GlobalID() << "," << level[it->self()] << "," << marked << ") ";
+            if (it->GetMarker(NewMarker()) == false) continue;
+            it->SetMarker(marker_new);
 
         }
+
+        for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) 
+        {
+            if (it->GetMarker(NewMarker()) == false) continue;
+            it->SetMarker(marker_new);
+        }
+
+        for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); ++it) 
+        {
+            if (it->GetMarker(NewMarker()) == false) continue;
+            it->SetMarker(marker_new);
+        }
+
         for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) 
         {
-            int marked = (it->GetMarker(NewMarker())) ? 1 : 0;
-            tag_an[it->self()] = marked;
+            if (it->GetMarker(NewMarker()) == false) continue;
+            it->SetMarker(marker_new);
         }
-        //cout << ss.str() << endl;
 
 
 		//11. Restore parallel connectivity, global ids
@@ -653,6 +660,9 @@ namespace INMOST
         //cout << rank << ": Before end " << endl;
 		EndModification();
 		CheckCentroids();
+        //RemoveGhost(&marker_new);
+        //ExchangeGhost(1,FACE,&marker_new); // Construct Ghost cells in 2 layers connected via nodes
+        //ReleaseMarker(marker_new);
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << endl;
 		//reorder element's data to free up space

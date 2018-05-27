@@ -168,6 +168,37 @@ namespace INMOST
 			e->SetData(tag,old_size,size,data);
 		}
 	}
+
+    void Mesh::CheckFaces()
+    {
+        std::cout << "Check faces" << endl;
+
+        for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) 
+        {
+            std::set<int> set_nodes;
+            ElementArray<Node> nodes = it->getNodes();
+            bool suc = true;
+            for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
+                if (set_nodes.find(node->LocalID()) != set_nodes.end())
+                {
+                    suc = false;
+                    break;
+                }
+                else
+                {
+                    set_nodes.insert(node->LocalID());
+                }
+            if (suc) std::cout << "-=== Good face: " << setw(2) << it->LocalID();
+            else std::cout << "-=== Error face: " << setw(2) << it->LocalID();
+
+            cout << ". Nodes = " << nodes.size() << ": ";
+            for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
+                std::cout << node->LocalID() << " ";
+            std::cout << endl;
+        }
+    }
+
+
 	
 
 	void UnpackSyncMarkerOR(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
@@ -1706,7 +1737,7 @@ namespace INMOST
 	}
 	
 	
-	void Mesh::RemoveGhost()
+	void Mesh::RemoveGhost(MarkerType* marker)
 	{
 		if( m_state == Mesh::Serial ) return;
 		ENTER_FUNC()
@@ -1720,6 +1751,7 @@ namespace INMOST
 		
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 		{
+            if (marker &&  !it->GetMarker(*marker)) continue;
 			Element::Status estat = GetStatus(*it);
 			if( estat == Element::Ghost ) 
 			{
@@ -2119,7 +2151,7 @@ namespace INMOST
 	
 	
 	
-	Mesh::proc_elements Mesh::ComputeSharedSkinSet(ElementType bridge_type)
+	Mesh::proc_elements Mesh::ComputeSharedSkinSet(ElementType bridge_type, MarkerType* marker)
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
@@ -2196,6 +2228,7 @@ namespace INMOST
 			bool flag = false;
 			Element::Status estat1 = GetStatus(*it), estat2;
 			if( estat1 == Element::Owned ) continue;
+            if (marker && !it->GetMarker(*marker)) continue;
       //Storage::integer_array skin_data = it->IntegerArray(tag_skin);
       //REPORT_STR("face " << it->LocalID() << " global " << it->GlobalID() << " type " << Element::StatusName(estat1));
       //for(Storage::integer_array::iterator kt = skin_data.begin(); kt != skin_data.end(); kt+=2)
@@ -2449,7 +2482,7 @@ namespace INMOST
                                 if (refs[i] == InvalidElement()) continue;
                                 HandleType data = ComposeHandle(refs[i]->GetElementType(), refs[i]->GlobalID());
                                 memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
-                                cout << ro() << rank << ": Pack elem " << refs[i]->GlobalID() << endl;
+                                cout << ro() << rank << ": Pack elem " << refs[i]->GlobalID() <<endl;
                             }
                         }
                         else
@@ -3504,7 +3537,7 @@ namespace INMOST
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[4].size());
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // TODO - 3
-            cout << "@@@ size" << selems[4].size() << endl;
+            //cout << "@@@ size" << selems[4].size() << endl;
 			std::vector<Storage::integer> low_conn_nums;  // array composed elements : ElementType and position in array 
 			std::vector<int> high_conn_nums(selems[4].size() * 3);        // array of indexes of children, sibling, parent. -1 if has't
 			INMOST_DATA_ENUM_TYPE num_high = 0;
@@ -5039,7 +5072,7 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 	
-	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge)
+	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge, MarkerType* marker)
 	{
     //printf("%d called exchange ghost with layers %d bridge %s\n",GetProcessorRank(), layers,ElementTypeName(bridge));
 		if( m_state == Serial ) return;
@@ -5064,10 +5097,9 @@ namespace INMOST
 		Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 		proc_elements old_layers;
 		proc_elements current_layers;
-		element_set all_visited;
-		{
-			
-			proc_elements shared_skin = ComputeSharedSkinSet(bridge);
+        element_set all_visited;
+        {
+			proc_elements shared_skin = ComputeSharedSkinSet(bridge, marker);
       //printf("%d shared skin size %d\n",GetProcessorRank(),shared_skin.size());
 			time = Timer();
 			for(Storage::integer_array::iterator p = procs.begin(); p != procs.end(); p++)

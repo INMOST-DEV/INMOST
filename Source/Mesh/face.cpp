@@ -525,6 +525,9 @@ namespace INMOST
 					aret.data()[1] = temp;
 				}
 				adj_type::size_type it = i, iend = lc.size()-1;
+
+                while (m->GetMarker(lc[iend],hm) && iend > 0) iend--;
+
 				while(it != iend)
 				{
 					if( !m->GetMarker(lc[it],hm) ) //loop over edges
@@ -539,7 +542,7 @@ namespace INMOST
 						else
 							aret.push_back(ilc[k1]);
 					}
-					++it;
+                    ++it;
 				}
 			}
 
