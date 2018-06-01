@@ -1,5 +1,5 @@
 #include "inmost_model.h"
-
+#if defined(USE_AUTODIFF) && defined(USE_MESH) && defined(USE_SOLVER)
 
 namespace INMOST
 {
@@ -273,3 +273,4 @@ namespace INMOST
 		return ret;
 	}
 }
+#endif

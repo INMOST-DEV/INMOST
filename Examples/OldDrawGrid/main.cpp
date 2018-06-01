@@ -1693,10 +1693,19 @@ void draw_screen()
 								{
 									if (source_tag.isDefined(visualization_type))
 									{
-										if (source_tag.GetDataType() == DATA_REAL || source_tag.GetDataType() == DATA_INTEGER || source_tag.GetDataType() == DATA_BULK || source_tag.GetDataType() == DATA_VARIABLE)
+										if (source_tag.GetDataType() == DATA_REAL || 
+											source_tag.GetDataType() == DATA_INTEGER || 
+											source_tag.GetDataType() == DATA_BULK 
+#if defined(USE_AUTODIFF)
+											|| 
+											source_tag.GetDataType() == DATA_VARIABLE
+#endif
+											)
 										{
+#if defined(USE_AUTODIFF)
 											if (source_tag.GetDataType() == DATA_VARIABLE)
 												printf("I can show only value for data of type variable\n");
+#endif
 											float min = 1.0e20, max = -1.0e20;
 											printf("prepearing data for visualization\n");
 											if (visualization_tag.isValid())
@@ -1760,6 +1769,7 @@ void draw_screen()
 														}
 														else val += wgt * static_cast<double>(v[comp]);
 													}
+#if defined(USE_AUTODIFF)
 													else if (source_tag.GetDataType() == DATA_VARIABLE)
 													{
 														Storage::var_array v = jt->VariableArray(source_tag);
@@ -1772,6 +1782,7 @@ void draw_screen()
 														}
 														else val += wgt * static_cast<double>(v[comp].GetValue());
 													}
+#endif
 													vol += wgt;
 												}
 												res = val / vol;
@@ -1832,6 +1843,7 @@ void draw_screen()
 														}
 														else val += wgt * static_cast<double>(v[comp]);
 													}
+#if defined(USE_AUTODIFF)
 													else if (source_tag.GetDataType() == DATA_VARIABLE)
 													{
 														Storage::var_array v = jt->VariableArray(source_tag);
@@ -1844,6 +1856,7 @@ void draw_screen()
 														}
 														else val += wgt * v[comp].GetValue();
 													}
+#endif
 													vol += wgt;
 												}
 												res = val / vol;

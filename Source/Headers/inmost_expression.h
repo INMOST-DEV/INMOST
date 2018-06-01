@@ -2283,6 +2283,9 @@ __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_RE
 
 
 #else //USE_AUTODIFF
+__INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
+__INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return std::isinf(val);}
+__INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val) || check_infs(val);}
 __INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = Val;}
 __INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
 __INLINE void                     assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = Val;}

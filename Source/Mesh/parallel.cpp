@@ -2334,12 +2334,14 @@ namespace INMOST
 						//array_data_send.resize(had_s+s*tag.GetBytesSize());
 						if( s )
 						{
+#if defined(USE_AUTODIFF)
 							if( tag.GetDataType() == DATA_VARIABLE )
 							{
 								REPORT_VAL("data size: ", s);
 								REPORT_VAL("data capacity: ", GetDataCapacity(*eit,tag));
 								REPORT_VAL("array size: ", had_s);
 							}
+#endif
 							array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
 							GetData(*eit,tag,0,s,&array_data_send[had_s]);
             //REPORT_VAL("size",s);
@@ -2364,6 +2366,7 @@ namespace INMOST
 					//array_data_send.resize(had_s+s*tag.GetBytesSize());
 					if( s )
 					{
+#if defined(USE_AUTODIFF)
 						if( tag.GetDataType() == DATA_VARIABLE )
 						{
 							REPORT_VAL("on element ",Element(this,*eit).GlobalID());
@@ -2371,6 +2374,7 @@ namespace INMOST
 							REPORT_VAL("data capacity: ", GetDataCapacity(*eit,tag));
 							REPORT_VAL("size: ", s);
 						}
+#endif
 						array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
                         if (tag.GetDataType() == DATA_REFERENCE)
                         {
@@ -2630,6 +2634,7 @@ namespace INMOST
 						{
 							if( !select || GetMarker(*eit,select) )
 							{
+#if defined(USE_AUTODIFF)
 								if( tag.GetDataType() == DATA_VARIABLE )
 								{
 									REPORT_VAL("on element ",Element(this,*eit).GlobalID());
@@ -2637,6 +2642,7 @@ namespace INMOST
 									REPORT_VAL("capacity ", GetDataCapacity(&array_data_recv[pos],size,tag));
 									REPORT_VAL("size ", size);
 								}
+#endif
 								op(tag,Element(this,*eit),&array_data_recv[pos],size);
 								pos += GetDataCapacity(&array_data_recv[pos],size,tag);
 								//pos += size*tag.GetBytesSize();
