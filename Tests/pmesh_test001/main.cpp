@@ -100,7 +100,8 @@ int main(int argc,char ** argv)
 	Partitioner::Type type;
 	switch(itype)
 	{
-		case 0: type = Partitioner::Inner_RCM; break;
+		case 0: type = Partitioner::INNER_RCM; break;
+		case 9: type = Partitioner::INNER_KMEANS; break;
 		case 1: type = Partitioner::Parmetis; break;
 		case 2: type = Partitioner::Zoltan_HSFC; break;
 		case 3: type = Partitioner::Zoltan_RIB; break;
@@ -139,12 +140,18 @@ int main(int argc,char ** argv)
 	}
 	else if( itype >= 0 )
 	{
+		double t0 = Timer();
 		Partitioner * p = new Partitioner(m);
 		p->SetMethod(type,action); // Specify the partitioner
 		p->Evaluate(); // Compute the partitioner and store new processor ID in the mesh
+		t0 = m->AggregateMax(Timer()-t0);
+		if( m->GetProcessorRank() == 0 ) std::cout << "Color: " << t0 << std::endl;
 		delete p;
 		m->RemoveGhost(); // Delete all ghost cells
+		t0 = Timer();
 		m->Redistribute(); // Redistribute the mesh data
+		t0 = m->AggregateMax(Timer()-t0);
+		if( m->GetProcessorRank() == 0 ) std::cout << "Distribute: " << t0 << std::endl;
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE); // Clean the data after reordring
 	}
 

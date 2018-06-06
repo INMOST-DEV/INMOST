@@ -332,13 +332,15 @@ namespace INMOST
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//11. Restore parallel connectivity, global ids
-		//ResolveModification();
+		ResolveShared(true);
+		ResolveModification();
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
 		ApplyModification();
 		//14. Done
 		EndModification();
+		//ExchangeData(hanging_nodes,CELL | FACE,0);
 		//reorder element's data to free up space
 		ReorderEmpty(CELL|FACE|EDGE|NODE);
 		//return number of refined cells
@@ -640,12 +642,14 @@ namespace INMOST
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//todo:
-		//ResolveModification();
+		ResolveShared(true);
+		ResolveModification();
 		//todo:
 		//let the user update their data
 		ApplyModification();
 		//done
 		EndModification();
+		//ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 		{

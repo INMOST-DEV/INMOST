@@ -40,7 +40,10 @@ double func2(double x, double y, double z, int n)
 		return y-(10*x*x*x*x-8*x*x*x-5*x*x+0.2+4*x)+z*z*z;
 	else if( n == 5 )
 	{
-		double Lx = 0.2, Rx = 0.4, Ly = 0.1, Ry = 0.3;
+		
+		//double Lx = 0.2, Rx = 0.4, Ly = 0.1, Ry = 0.3;
+		/*
+		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
 		if (x > Rx){
 			if (y > Ry) return -sqrt( (x-Rx)*(x-Rx) + (y-Ry)*(y-Ry) );
 			else return -(x-Rx);
@@ -52,6 +55,29 @@ double func2(double x, double y, double z, int n)
 		if (y > Ry) return Ry - y;
 		if (y < Ly) return y - Ly;
 		return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
+		*/
+		
+		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
+	    if (x > Rx)
+	    {
+	        if (y > Ry) return -sqrt( (x-Rx)*(x-Rx) + (y-Ry)*(y-Ry) );
+	        if (y < Ly) return -sqrt( (x-Rx)*(x-Rx) + (y-Ly)*(y-Ly) );
+	        return -(x-Rx);
+	    }
+	    if (x < Lx)
+	    {
+	        if (y < Ly)  return -sqrt( (x-Lx)*(x-Lx) + (y-Ly)*(y-Ly) );
+	        if (y > Ry)  return -sqrt( (x-Lx)*(x-Lx) + (y-Ry)*(y-Ry) );
+	        else return (x - Lx);
+	    }
+	    if (y > Ry) return Ry - y;
+	    if (y < Ly) return y - Ly;
+	    return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
+	    
+	}
+	else if( n == 6 )
+	{
+		return std::min(std::min(sqrt((x-0.48)*(x-0.48) + (z-1)*(z-1))-0.25,sqrt((y-0.53)*(y-0.53) + (z-3)*(z-3))-0.24),sqrt((x-0.6)*(x-0.6) + (z-5)*(z-5))-0.3);
 	}
 	return 1;
 }
@@ -153,6 +179,57 @@ double search_zero(double r0, double r1, double c0[3], double c1[3], double p[3]
     return rp;
 }
 
+
+double search_zero(double r0, double r1, double c0[3], double c1[3], double p[3],int type)
+{
+	int iters = 0;
+	double rp = 1.0e+20;
+	do
+	{
+		p[0] = 0.5*c1[0] + 0.5*c0[0];
+		p[1] = 0.5*c1[1] + 0.5*c0[1];
+		p[2] = 0.5*c1[2] + 0.5*c0[2];
+		rp = func(p[0],p[1],p[2],type);
+		if( fabs(rp) < 1.0e-8 )
+		{
+			if( fabs(r0) < 1.0e-8 )
+			{
+				c0[0] = p[0];
+				c0[1] = p[1];
+				c0[2] = p[2];
+				r0 = rp;
+			}
+			else
+			{
+				c1[0] = p[0];
+				c1[1] = p[1];
+				c1[2] = p[2];
+				r1 = rp;
+			}
+		}
+		else
+		{
+			if( fabs(r0) > 1.0e-8 )
+			{
+				c0[0] = p[0];
+				c0[1] = p[1];
+				c0[2] = p[2];
+				r0 = rp;
+			}
+			else
+			{
+				c1[0] = p[0];
+				c1[1] = p[1];
+				c1[2] = p[2];
+				r1 = rp;
+			}
+		}
+		iters++;
+	} while( iters < 20 );
+	
+	return rp;
+}
+
 int main(int argc, char ** argv)
 {
 	if( argc < 2 )
@@ -171,7 +248,7 @@ int main(int argc, char ** argv)
 
 	Mesh m;
 	m.Load(argv[1]);
-	m.SetTopologyCheck(NEED_TEST_CLOSURE|PROHIBIT_MULTILINE|PROHIBIT_MULTIPOLYGON|GRID_CONFORMITY|DEGENERATE_EDGE|DEGENERATE_FACE|DEGENERATE_CELL | FACE_EDGES_ORDER);
+	m.SetTopologyCheck(NEED_TEST_CLOSURE|PROHIBIT_MULTILINE|PROHIBIT_MULTIPOLYGON|GRID_CONFORMITY|DEGENERATE_EDGE|DEGENERATE_FACE|DEGENERATE_CELL | FACE_EDGES_ORDER | MARK_ON_ERROR);
 	//m.RemTopologyCheck(THROW_EXCEPTION);
 	TagInteger material = m.CreateTag("MATERIAL",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 	Tag sliced = m.CreateTag("SLICED",DATA_BULK,FACE|EDGE|NODE,FACE|EDGE|NODE,1);
@@ -1302,17 +1379,36 @@ int main_old(int argc, char ** argv)
 		material[it->getBeg()] = (r0 <= 0)? 0 : 1;
 		material[it->getEnd()] = (r1 <= 0)? 0 : 1;
 		//std::cout << "r0 " << r0 << " r1 " << r1 << std::endl;
-		if( r0*r1 < -1.0e-12 )
+		if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))) )
 		{
 			pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 			pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-			double rp = search(r0,r1,pc0,pc1,p,type);
-			if( rp > 1.0e-3 ) //cannot find intersection
+			if((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))
 			{
-				rp = search(r0,r1,pc0,pc1,p,type,true);
-				p[0] = c0[0]*0.5+c1[0]*0.5;
-				p[1] = c0[1]*0.5+c1[1]*0.5;
-				p[2] = c0[2]*0.5+c1[2]*0.5;
+				search_zero(r0,r1,pc0,pc1,p,type);
+				if( fabs(r0) < 1.0e-6 )
+				{
+					material[it->getBeg()] = 2;
+					it->getBeg()->SetMarker(slice);
+					nmark++;
+				}
+				if( fabs(r1) < 1.0e-6 )
+				{
+					material[it->getEnd()] = 2;
+					it->getEnd()->SetMarker(slice);
+					nmark++;
+				}
+			}
+			else
+			{
+				double rp = search(r0,r1,pc0,pc1,p,type);
+				if( rp > 1.0e-3 ) //cannot find intersection
+				{
+					rp = search(r0,r1,pc0,pc1,p,type,true);
+					p[0] = c0[0]*0.5+c1[0]*0.5;
+					p[1] = c0[1]*0.5+c1[1]*0.5;
+					p[2] = c0[2]*0.5+c1[2]*0.5;
+				}
 			}
 			//p[0] = (r0*c1[0] - r1*c0[0])/(r0-r1);
 			//p[1] = (r0*c1[1] - r1*c0[1])/(r0-r1);
@@ -1329,13 +1425,13 @@ int main_old(int argc, char ** argv)
 			l0 = sqrt(l0);
 			l1 = sqrt(l1);
 			l = l0+l1;
-			if( l0 < 1.0e-5*l )
+			if( l0 < 5.0e-2*l )
 			{
 				material[it->getBeg()] = 2;
 				it->getBeg()->SetMarker(slice);
 				nmark++;
 			}
-			else if( l1 < 1.0e-5*l )
+			else if( l1 < 5.0e-2*l )
 			{
 				material[it->getEnd()] = 2;
 				it->getEnd()->SetMarker(slice);
@@ -1399,7 +1495,7 @@ int main_old(int argc, char ** argv)
 		if( !(mat[0] == 0 || mat[1] == 0) )
 		{
 			material[*it] = 2;
-			std::cout << "oops, materials for edge nodes were not split, 0: " << mat[0] << " ,1: " << mat[1] << " ,2: " << mat[2] << std::endl;
+			std::cout << "oops, materials for edge nodes were not split, 0: " << mat[0] << ", 1: " << mat[1] << ", 2: " << mat[2] << std::endl;
 		}
 		else if( mat[0] != 0 ) material[*it] = 0;
 		else if( mat[1] != 0 ) material[*it] = 1;
@@ -1408,6 +1504,7 @@ int main_old(int argc, char ** argv)
 	
 	
 	nslice = 0;
+	MarkerType unique = m.CreateMarker();
 	for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if( !it->GetMarker(mrk) )
 	{
 		ElementArray<Node> nodes = it->getNodes(slice); //those nodes should be ordered so that each pair forms an edge
@@ -1467,20 +1564,27 @@ int main_old(int argc, char ** argv)
 					nodes[q].Centroid(c1);
 					double r1 = func(c1[0],c1[1],c1[2],type);
 					//std::cout << "NODE:" << nodes[q].LocalID() << " r0 " << r0 << " r1 " << r1 << " r0*r1 " << r0*r1 << std::endl;
-					if( r0*r1 < -1.0e-12 )
+					if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))))
 					{
 						pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 						pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-						double rp = search(r0,r1,pc0,pc1,p,type);
-						if( rp > 1.0e-3 )
+						if((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))
 						{
-							//std::cout << "inaccurate search " << rp;
-							rp = search(r0,r1,pc0,pc1,p,type,true);
-							//std::cout << " binary " << rp << std::endl;
-							p[0] = c0[0]*0.5+c1[0]*0.5;
-							p[1] = c0[1]*0.5+c1[1]*0.5;
-							p[2] = c0[2]*0.5+c1[2]*0.5;
-							
+							search_zero(r0,r1,pc0,pc1,p,type);
+						}
+						else
+						{						
+							double rp = search(r0,r1,pc0,pc1,p,type);
+							if( rp > 1.0e-3 )
+							{
+								//std::cout << "inaccurate search " << rp;
+								rp = search(r0,r1,pc0,pc1,p,type,true);
+								//std::cout << " binary " << rp << std::endl;
+								p[0] = c0[0]*0.5+c1[0]*0.5;
+								p[1] = c0[1]*0.5+c1[1]*0.5;
+								p[2] = c0[2]*0.5+c1[2]*0.5;
+								
+							}
 						}
 						//distance to the center node
 						double l0 = 0, l1 = 0, l;
@@ -1492,14 +1596,14 @@ int main_old(int argc, char ** argv)
 						l0 = sqrt(l0);
 						l1 = sqrt(l1);
 						l = l0+l1;
-						if( l0 < 1.0e-3*l ) //edge goes through centernode
+						if( l0 < 5.0e-2*l ) //edge goes through centernode
 						{
 							if( !centernode.isValid() )
 								centernode = m.CreateNode(c0);
 							cutnodes[q] = centernode;
 							//std::cout << "selected centernode " << std::endl;
 						}
-						else if( l1 > 1.0e-3*l )
+						else if( l1 > 5.0e-2*l )
 						{
 							cutnodes[q] = m.CreateNode(p);
 							//std::cout << "created new node " << std::endl;
@@ -1549,11 +1653,15 @@ int main_old(int argc, char ** argv)
 						{
 							edge_nodes[0] = n2;
 							edge_nodes[1] = cutnodes[i1];
-							Edge e = m.CreateEdge(edge_nodes).first;
-							material[e] = 2; //on slice
-							e.Bulk(sliced) = 1;
-							e.SetMarker(slice);
-							split_edges.push_back(e);
+							std::pair<Edge,bool> en = m.CreateEdge(edge_nodes);
+							//if( en.second )
+							{
+								Edge e = en.first;
+								material[e] = 2; //on slice
+								e.Bulk(sliced) = 1;
+								e.SetMarker(slice);
+								split_edges.push_back(e);
+							}
 						}
 					}
 					else if( s1 )
@@ -1563,27 +1671,47 @@ int main_old(int argc, char ** argv)
 						{
 							edge_nodes[0] = n1;
 							edge_nodes[1] = cutnodes[i2];
-							Edge e = m.CreateEdge(edge_nodes).first;
-							material[e] = 2; //on slice
-							e.Bulk(sliced) = 1;
-							e.SetMarker(slice);
-							split_edges.push_back(e);
+							std::pair<Edge,bool> en = m.CreateEdge(edge_nodes);
+							//if( en.second )
+							{
+								Edge e = en.first;
+								material[e] = 2; //on slice
+								e.Bulk(sliced) = 1;
+								e.SetMarker(slice);
+								split_edges.push_back(e);
+							}
 						}
 					}
 					else if( cutnodes[i1].isValid() && cutnodes[i2].isValid() )
 					{
 						edge_nodes[0] = cutnodes[i1];
 						edge_nodes[1] = cutnodes[i2];
-						Edge e = m.CreateEdge(edge_nodes).first;
-						material[e] = 2; //on slice
-						e.Bulk(sliced) = 1;
-						e.SetMarker(slice);
-						split_edges.push_back(e);
+						std::pair<Edge,bool> en = m.CreateEdge(edge_nodes);
+						//if( en.second )
+						{
+							Edge e = en.first;
+							material[e] = 2; //on slice
+							e.Bulk(sliced) = 1;
+							e.SetMarker(slice);
+							split_edges.push_back(e);
+						}
 					}
 				}
 				//split face with multiple edges
 				if( !split_edges.empty() )
 				{
+					
+					int k = 0;
+					for(int q = 0; q < split_edges.size(); ++q)
+					{
+						if( !split_edges[q].GetMarker(unique) )
+						{
+							split_edges[q].SetMarker(unique);
+							split_edges[k++] = split_edges[q];
+						}
+					}
+					split_edges.RemMarker(unique);
+					split_edges.resize(k);
 					//std::cout << "Split edges " << split_edges.size() << std::endl;
 					//for(int q = 0; q < (int)split_edges.size(); ++q)
 					//	std::cout << split_edges[q].getBeg().LocalID() << "<->" << split_edges[q].getEnd().LocalID() << std::endl;
@@ -1608,7 +1736,7 @@ int main_old(int argc, char ** argv)
 		}
 		//else std::cout << "Only one adjacent slice node, face " << it->LocalID() << std::endl;
 	}
-	
+	m.ReleaseMarker(unique);
 	
 
 	nmark = 0;
@@ -1813,20 +1941,28 @@ int main_old(int argc, char ** argv)
 						cnodes[q].Centroid(c1);
 						double r1 = func(c1[0],c1[1],c1[2],type);
 						//std::cout << "NODE:" << cnodes[q].LocalID() << " r0 " << r0 << " r1 " << r1 << " r0*r1 " << r0*r1 << " " << (cnodes[q].GetMarker(slice)?"":"not ") << "sliced" << std::endl;
-						if( r0*r1 < -1.0e-12 )
+						
+						if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))))
 						{
 							pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 							pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
-							double rp = search(r0,r1,pc0,pc1,p,type);
-							if( rp > 1.0e-3 )
+							if((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))
 							{
-								//std::cout << "inaccurate search " << rp;
-								rp = search(r0,r1,pc0,pc1,p,type,true);
-								//std::cout << " binary " << rp << std::endl;
-								p[0] = c0[0]*0.5+c1[0]*0.5;
-								p[1] = c0[1]*0.5+c1[1]*0.5;
-								p[2] = c0[2]*0.5+c1[2]*0.5;
-								
+								search_zero(r0,r1,pc0,pc1,p,type);
+							}
+							else
+							{						
+								double rp = search(r0,r1,pc0,pc1,p,type);
+								if( rp > 1.0e-3 )
+								{
+									//std::cout << "inaccurate search " << rp;
+									rp = search(r0,r1,pc0,pc1,p,type,true);
+									//std::cout << " binary " << rp << std::endl;
+									p[0] = c0[0]*0.5+c1[0]*0.5;
+									p[1] = c0[1]*0.5+c1[1]*0.5;
+									p[2] = c0[2]*0.5+c1[2]*0.5;
+									
+								}
 							}
 							//distance to the center node
 							double l0 = 0, l1 = 0, l;
@@ -1838,14 +1974,14 @@ int main_old(int argc, char ** argv)
 							l0 = sqrt(l0);
 							l1 = sqrt(l1);
 							l = l0+l1;
-							if( l0 < 1.0e-3*l ) //edge goes through centernode
+							if( l0 < 5.0e-2*l ) //edge goes through centernode
 							{
 								if( !centernode.isValid() )
 									centernode = m.CreateNode(c0);
 								cutnodes[q] = centernode;
 								//std::cout << "selected centernode " << cutnodes[q].LocalID() << std::endl;
 							}
-							else if( l1 > 1.0e-3*l )
+							else if( l1 > 5.0e-2*l )
 							{
 								cutnodes[q] = m.CreateNode(p);
 								//std::cout << "created new node " << cutnodes[q].LocalID() << std::endl;
@@ -1979,6 +2115,7 @@ int main_old(int argc, char ** argv)
 					}
 				
 				if( isolate_alogirthm )
+				//if( false )
 				{
 					//std::cout << "Isolation algorithm" << std::endl;
 					//on pyramids, build faces that start from cutedges and end up with edge on original edge
@@ -2231,7 +2368,7 @@ int main_old(int argc, char ** argv)
 			nvv++;
 		}
 		vv /= nvv;
-		if( v < vv*0.15 )
+		if( v < vv*0.01 )
 		{
 			if( false )
 			{
@@ -2289,15 +2426,15 @@ int main_old(int argc, char ** argv)
 		}
 		
 	}
-	
+	/*
 	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
-		if( material[*it] == 0 )
+		if( material[*it] == 0 || it->Integer(collapse) )
 			it->Delete();
 	
 	for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype) )
 		for(Mesh::iteratorElement it = m.BeginElement(etype); it != m.EndElement(); ++it)
 			if( it->nbAdjElements(CELL) == 0 ) it->Delete();
-	
+	*/
 
 	m.ReleaseMarker(slice,NODE|EDGE);
 	m.ReleaseMarker(original,NODE|EDGE);

@@ -9,6 +9,7 @@ int main(int argc, char ** argv)
 	if( argc > 1 )
 	{
 		AdaptiveMesh m;
+		m.SetCommunicator(INMOST_MPI_COMM_WORLD);
 		m.Load(argv[1]);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
@@ -29,6 +30,8 @@ int main(int argc, char ** argv)
 				if( it->Coords()[d] < cmin[d] ) cmin[d] = it->Coords()[d];
 			}
 		}
+		m.AggregateMax(cmax,3);
+		m.AggregateMin(cmin,3);
 		r = 1;
 		for(int d = 0; d < 3; ++d)
 		{
@@ -47,18 +50,20 @@ int main(int argc, char ** argv)
 				numref = 0;
 				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( m.GetLevel(it->self()) < max_levels )
 				{
-					it->Centroid(xyz);
+					it->Barycenter(xyz);
 					//refine a circle
 					q = 0;
 					for(int d = 0; d < 3; ++d)
 						q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
 					q = sqrt(q);
 					if( q < r*(k+1) && q > r*k)
+					//if( q < 0.02 )
 					{
 						indicator[it->self()] = 1;
 						numref++;
 					}
 				}
+				numref = m.Integrate(numref);
 				if( numref )
 				{
 					std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " numref " << numref << " cells " << m.NumberOfCells() << std::endl;
@@ -89,7 +94,7 @@ int main(int argc, char ** argv)
 				numref = 0;
 				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( m.GetLevel(it->self()) > 0 )
 				{
-					it->Centroid(xyz);
+					it->Barycenter(xyz);
 					//refine a circle
 					q = 0;
 					for(int d = 0; d < 3; ++d)
@@ -101,6 +106,7 @@ int main(int argc, char ** argv)
 						numref++;
 					}
 				}
+				numref = m.Integrate(numref);
 				if( numref )
 				{
 					std::cout << "k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " numcrs " << numref << " cells " << m.NumberOfCells() <<  std::endl;
@@ -131,11 +137,19 @@ int main(int argc, char ** argv)
 			
 			{
 				std::stringstream file;
-				file << "step_" << k << ".vtk";
+				file << "step_" << k << ".pvtk";
 				m.Save(file.str());
 			}
 			
 			{
+				TagInteger tag_owner = m.CreateTag("OWN",DATA_INTEGER,CELL,NONE,1);
+				TagInteger tag_owner0 = m.GetTag("OWNER_PROCESSOR");
+				TagInteger tag_stat = m.CreateTag("STAT",DATA_INTEGER,CELL,NONE,1);
+				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
+				{
+					tag_owner[*it] = tag_owner0[*it];
+					tag_stat[*it] = it->GetStatus();
+				}
 				std::stringstream file;
 				file << "step_" << k << ".pmf";
 				m.Save(file.str());
@@ -143,4 +157,6 @@ int main(int argc, char ** argv)
 		}
 	}
 	else std::cout << "Usage: " << argv[0] << " mesh_file [max_levels=2]" << std::endl;
+	
+	Mesh::Finalize();
 }

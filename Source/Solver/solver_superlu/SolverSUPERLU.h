@@ -1,7 +1,7 @@
 #ifndef INMOST_SOLVERSUPERLU_H
 #define INMOST_SOLVERSUPERLU_H
 
-#include "Source/Solver/SolverInterface.h"
+#include "../Solver/SolverInterface.h"
 #include "superlu/slu_ddefs.h"
 
 namespace INMOST {

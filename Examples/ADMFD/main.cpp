@@ -1,9 +1,9 @@
+#include "inmost.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
-#include "inmost.h"
 using namespace INMOST;
 
 #ifndef M_PI
@@ -125,7 +125,7 @@ int main(int argc,char ** argv)
 			{ // Compute mesh partitioning
 				ttt = Timer();
 				Partitioner p(m); //Create Partitioning object
-				p.SetMethod(Partitioner::Inner_RCM,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
+				p.SetMethod(Partitioner::INNER_KMEANS,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
 				p.Evaluate(); // Compute the partitioner and store new processor ID in the mesh
 				BARRIER
 				if( m->GetProcessorRank() == 0 ) std::cout << "Evaluate: " << Timer()-ttt << std::endl;

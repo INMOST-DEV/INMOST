@@ -29,7 +29,8 @@ namespace INMOST
 			Zoltan_RIB,      ///< Zoltan geometry-based method using Recursive Inertial Bisection.
 			Zoltan_HSFC,     ///< Zoltan geometry-based method using Hilbert Space-Filling Curve partitioning.
 			Parmetis,        ///< Parmetis partitioner with the original interface.
-			Inner_RCM        ///< Internal serial only partitioner based on the Reverse Cuthill–McKee algorithm ordering.
+			INNER_RCM,       ///< Internal serial only partitioner based on the Reverse Cuthill–McKee algorithm ordering.
+			INNER_KMEANS     ///< Internal parallel paritioner based on K-means clustering.
 		};
 		enum Action
 		{

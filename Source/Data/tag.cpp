@@ -35,6 +35,22 @@ namespace INMOST
 		}
 		return 0;
 	}
+	
+	__INLINE static INMOST_DATA_ENUM_TYPE DataTypePackedBytesSize(DataType t)
+	{
+		switch(t)
+		{
+			case DATA_BULK:      return sizeof(INMOST_DATA_BULK_TYPE);
+			case DATA_INTEGER:   return sizeof(INMOST_DATA_INTEGER_TYPE);
+			case DATA_REAL:      return sizeof(INMOST_DATA_REAL_TYPE);
+			case DATA_REMOTE_REFERENCE: throw -1; //todo, exchange of this data type is not yet supported
+			case DATA_REFERENCE: throw -1; //todo, exchange of this data type is not yet supported
+#if defined(USE_AUTODIFF)
+			case DATA_VARIABLE:  return sizeof(Sparse::Row::entry);
+#endif
+		}
+		return 0;
+	}
 
 
 	__INLINE static INMOST_DATA_ENUM_TYPE VariableDataSize(DataType t)
@@ -51,6 +67,11 @@ namespace INMOST
 #endif
 		}
 		return 0;
+	}
+	
+	INMOST_DATA_ENUM_TYPE Tag::GetPackedBytesSize() const
+	{
+		return DataTypePackedBytesSize(GetDataType());
 	}
 
 	Tag::~Tag() 
@@ -142,8 +163,8 @@ namespace INMOST
 	{
 		for(int i = 0; i < NUM_ELEMENT_TYPS; i++)
 		{
-			pos[i]	= other.pos[i];
-			sparse[i] = other.sparse[i];
+			pos[i]	   = other.pos[i];
+			sparse[i]  = other.sparse[i];
 		}
 		tagname		   = other.tagname;
 		dtype		   = other.dtype;
@@ -152,23 +173,25 @@ namespace INMOST
 		size           = other.size;
 		record_size    = other.record_size;
 		bytes_size     = other.bytes_size;
+		print_tag      = other.print_tag; //Temporary solution: @see Mesh::file_options
 	}
 	
 	TagMemory & TagMemory::operator =(TagMemory const & other)
 	{
 		for(int i = 0; i < NUM_ELEMENT_TYPS; i++)
 		{
-			pos[i]      = other.pos[i];
-			sparse[i]   = other.sparse[i];
+			pos[i]     = other.pos[i];
+			sparse[i]  = other.sparse[i];
 		}
-		tagname         = other.tagname;
-		dtype           = other.dtype;
-		bulk_data_type  = other.bulk_data_type;
-		m_link          = other.m_link;
-		size            = other.size;
-		record_size     = other.record_size;
-		bytes_size      = other.bytes_size;
-		return *this;	
+		tagname        = other.tagname;
+		dtype          = other.dtype;
+		bulk_data_type = other.bulk_data_type;
+		m_link         = other.m_link;
+		size           = other.size;
+		record_size    = other.record_size;
+		bytes_size     = other.bytes_size;
+		print_tag      = other.print_tag; //Temporary solution: @see Mesh::file_options
+		return *this;
 	}
 	
 	TagMemory::TagMemory()
@@ -179,6 +202,7 @@ namespace INMOST
 			sparse[i] = false;
 		}
 		tagname = "";
+		print_tag = true;
 	}
 	
 	Tag::Tag(Mesh * m, std::string name, DataType _dtype,INMOST_DATA_ENUM_TYPE size)
@@ -310,7 +334,7 @@ namespace INMOST
 		{
 			new_tag = Tag(m,name,dtype,size);
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_tags)
 #endif
 			{
 				tags.push_back(new_tag);
@@ -332,7 +356,7 @@ namespace INMOST
 				{
 					INMOST_DATA_ENUM_TYPE new_pos = ENUMUNDEF;
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_data)
 #endif
 					{
 						new_pos = static_cast<INMOST_DATA_ENUM_TYPE>(dense_data.size());
@@ -360,7 +384,7 @@ namespace INMOST
 				if( new_size < 1024 && j != ElementNum(MESH) ) new_size = 1024;
 				if( new_size != 1   && j == ElementNum(MESH) ) new_size = 1;
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_data)
 #endif
 				{
 					sparse_data[j].resize(new_size);
@@ -400,9 +424,9 @@ namespace INMOST
 				if( !tag.isSparse(mask) ) 
 				{
           //this was already done in Mesh::DeleteTag()
-          //ReallocateData(tag,ElementNum(mask),0); //this should clean up the structures
-          dense_data[tpos].clear(); //here all data should be deleted
-				  empty_dense_data.push_back(tpos);
+					ReallocateData(tag,ElementNum(mask),0); //this should clean up the structures
+					dense_data[tpos].clear(); //here all data should be deleted
+					empty_dense_data.push_back(tpos);
 				}
 #if !defined(LAZY_SPARSE_ALLOCATION)
 				else was_sparse[ElementNum(mask)] = true;
@@ -423,14 +447,17 @@ namespace INMOST
 			}
 			for(int j = 0; j < 6; j++) 
 				if( was_sparse[j] && !have_sparse[j] )
-			sparse_data[j].clear();
+				{
+					//ReallocateData(tag,j,0); //this should clean up the structures
+					sparse_data[j].clear();
+				}
 #endif
 			for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 			{
 				if( tags[i] == tag )
 				{
-				  tags.erase(tags.begin()+i);
-      		flag = true;
+					tags.erase(tags.begin()+i);
+					flag = true;
 					break;
 				}
 			}
@@ -495,6 +522,7 @@ namespace INMOST
 	
 	void TagManager::ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size)
 	{
+		//std::cout << "reallocate for " << t.GetTagName() << " type " << DataTypeName(t.GetDataType()) << " element type " << ElementTypeName(ElementTypeFromDim(etypenum)) << " size " << new_size << std::endl;
 		INMOST_DATA_ENUM_TYPE        data_pos    = t.GetPositionByDim(etypenum);
 		INMOST_DATA_ENUM_TYPE        data_size   = t.GetSize();
 		TagManager::dense_sub_type & arr         = GetDenseData(data_pos);
@@ -530,7 +558,7 @@ namespace INMOST
 		}
 #endif
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_data)
 #endif
 		{
 			arr.resize(new_size);

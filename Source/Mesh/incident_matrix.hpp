@@ -594,7 +594,7 @@ namespace INMOST
 		: mesh(other.mesh), matrix(other.matrix), head_column(other.head_column), head_row(other.head_row),
 		head_row_count(other.head_row_count), min_loop(other.min_loop),
 		hide_row(other.hide_row), hide_column(other.hide_column),
-		stub_row(other.stub_row), coords(other.coords.Copy())
+		stub_row(other.stub_row), coords(other.coords->Copy())
 		{
 		}
 		incident_matrix & operator =(const incident_matrix & other)
@@ -608,7 +608,7 @@ namespace INMOST
 			hide_row = other.hide_row;
 			hide_column = other.hide_column;
 			stub_row = other.stub_row;
-			coords = other.coords.Copy();
+			coords = other.coords->Copy();
 			return *this;
 		}
 		~incident_matrix()

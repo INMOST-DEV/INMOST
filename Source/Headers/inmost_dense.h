@@ -27,6 +27,15 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
+	//for unknown
+	//For INMOST_DATA_INTEGER_TYPE
+	template<> struct Promote<unknown, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
+	template<> struct Promote<unknown, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
+	template<> struct Promote<unknown, unknown>  {typedef variable type;};
+	template<> struct Promote<unknown, variable>  {typedef variable type;};
+	template<> struct Promote<unknown, multivar_expression_reference>  {typedef variable type;};
+	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
+	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
 	//For multivar_expression_reference
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
@@ -61,14 +70,7 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #endif
 	
-	template<typename Var>
-	class SubMatrix;
 	
-	template<typename Var, typename Storage = array<Var> >
-	class Matrix;
-	
-	template<typename Var, typename Storage = array<Var> >
-	class SymmetricMatrix;
 	
 	/// Abstract class for a matrix,
 	/// used to abstract away all the data storage and access
@@ -169,13 +171,37 @@ namespace INMOST
 		virtual void Resize(enumerator rows, enumerator cols) = 0;
 		/// Check all matrix entries for nans.
 		/// Also checks derivatives for matrices of variables.
-		bool CheckNans()
+		bool CheckNans() const
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					if( check_nans((*this)(i,j)) ) return true;
 			return false;
 		}
+		bool CheckInfs() const
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					if( check_infs((*this)(i,j)) ) return true;
+			return false;
+		}
+		bool CheckNansInfs() const
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					if( check_nans_infs((*this)(i,j)) ) return true;
+			return false;
+		}
+		/// Maximum product transversal.
+		/// Computes unsymmetric reordering that maximizes product on diagonal.
+		/// Returns reordering matrix P and scaling matrix S that transforms matrix into I-dominant matrix.
+		/// @param Perm Array for reordering, size of columns of the matrix.
+		/// @param SL Diagonal for rescaling matrix from left, size of columns of the matrix.
+		/// @param SR Diagonal for rescaling matrix from right, size of rows of the matrix.
+		/// \todo 
+		/// 1. Test rescaling.
+		/// 2. Test on non-square matrices.
+		void MPT(INMOST_DATA_ENUM_TYPE * Perm, INMOST_DATA_REAL_TYPE * SL = NULL, INMOST_DATA_REAL_TYPE * SR = NULL) const;
 		/// Singular value decomposition.
 		/// Reconstruct matrix: A = U*Sigma*V.Transpose().
 		/// Source http://www.public.iastate.edu/~dicook/JSS/paper/code/svd.c
@@ -183,10 +209,11 @@ namespace INMOST
 		/// @param U Left unitary matrix, U^T U = I.
 		/// @param Sigma Diagonal matrix with singular values.
 		/// @param V Right unitary matrix, not transposed.
-		/// @param order_singular_values
+		/// @param order_singular_values Return singular values in descending order.
+		/// @param nonnegative Change sign of singular values.
 		/// \warning Somehow result differ in auto-differential mode.
 		/// \todo Test implementation for auto-differentiation.
-		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true) const
+		bool SVD(AbstractMatrix<Var> & U, AbstractMatrix<Var> & Sigma, AbstractMatrix<Var> & V, bool order_singular_values = true, bool nonnegative = true) const
 		{
 			int flag, i, its, j, jj, k, l, nm;
 			int n = Rows();
@@ -214,18 +241,18 @@ namespace INMOST
 			V.Resize(m,m);
 			std::swap(n,m); //this how original algorithm takes it
 			// Householder reduction to bidiagonal form
-			for (i = 0; i < (int)n; i++)
+			for (i = 0; i < n; i++)
 			{
 				// left-hand reduction
 				l = i + 1;
 				rv1[i] = scale * g;
 				g = s = scale = 0.0;
-				if (i < (int)m)
+				if (i < m)
 				{
-					for (k = i; k < (int)m; k++) scale += fabs(U(k,i));
+					for (k = i; k < m; k++) scale += fabs(U(k,i));
 					if (get_value(scale))
 					{
-						for (k = i; k < (int)m; k++)
+						for (k = i; k < m; k++)
 						{
 							U(k,i) /= scale;
 							s += U(k,i) * U(k,i);
@@ -236,25 +263,25 @@ namespace INMOST
 						U(i,i) = f - g;
 						if (i != n - 1)
 						{
-							for (j = l; j < (int)n; j++)
+							for (j = l; j < n; j++)
 							{
-								for (s = 0.0, k = i; k < (int)m; k++) s += U(k,i) * U(k,j);
+								for (s = 0.0, k = i; k < m; k++) s += U(k,i) * U(k,j);
 								f = s / h;
-								for (k = i; k < (int)m; k++) U(k,j) += f * U(k,i);
+								for (k = i; k < m; k++) U(k,j) += f * U(k,i);
 							}
 						}
-						for (k = i; k < (int)m; k++) U(k,i) *= scale;
+						for (k = i; k < m; k++) U(k,i) *= scale;
 					}
 				}
 				Sigma(i,i) = scale * g;
 				// right-hand reduction
 				g = s = scale = 0.0;
-				if (i < (int)m && i != n - 1)
+				if (i < m && i != n - 1)
 				{
-					for (k = l; k < (int)n; k++) scale += fabs(U(i,k));
+					for (k = l; k < n; k++) scale += fabs(U(i,k));
 					if (get_value(scale))
 					{
-						for (k = l; k < (int)n; k++)
+						for (k = l; k < n; k++)
 						{
 							U(i,k) = U(i,k)/scale;
 							s += U(i,k) * U(i,k);
@@ -263,16 +290,16 @@ namespace INMOST
 						g = -sign_func(sqrt(s), f);
 						h = f * g - s;
 						U(i,l) = f - g;
-						for (k = l; k < (int)n; k++) rv1[k] = U(i,k) / h;
+						for (k = l; k < n; k++) rv1[k] = U(i,k) / h;
 						if (i != m - 1)
 						{
-							for (j = l; j < (int)m; j++)
+							for (j = l; j < m; j++)
 							{
-								for (s = 0.0, k = l; k < (int)n; k++) s += U(j,k) * U(i,k);
-								for (k = l; k < (int)n; k++) U(j,k) += s * rv1[k];
+								for (s = 0.0, k = l; k < n; k++) s += U(j,k) * U(i,k);
+								for (k = l; k < n; k++) U(j,k) += s * rv1[k];
 							}
 						}
-						for (k = l; k < (int)n; k++) U(i,k) *= scale;
+						for (k = l; k < n; k++) U(i,k) *= scale;
 					}
 				}
 				anorm = max_func(anorm,fabs(get_value(Sigma(i,i))) + fabs(get_value(rv1[i])));
@@ -281,19 +308,19 @@ namespace INMOST
 			// accumulate the right-hand transformation
 			for (i = n - 1; i >= 0; i--)
 			{
-				if (i < (int)(n - 1))
+				if (i < (n - 1))
 				{
 					if (get_value(g))
 					{
-						for (j = l; j < (int)n; j++) V(j,i) = ((U(i,j) / U(i,l)) / g);
+						for (j = l; j < n; j++) V(j,i) = ((U(i,j) / U(i,l)) / g);
 						// double division to avoid underflow
-						for (j = l; j < (int)n; j++)
+						for (j = l; j < n; j++)
 						{
-							for (s = 0.0, k = l; k < (int)n; k++) s += U(i,k) * V(k,j);
-							for (k = l; k < (int)n; k++) V(k,j) += s * V(k,i);
+							for (s = 0.0, k = l; k < n; k++) s += U(i,k) * V(k,j);
+							for (k = l; k < n; k++) V(k,j) += s * V(k,i);
 						}
 					}
-					for (j = l; j < (int)n; j++) V(i,j) = V(j,i) = 0.0;
+					for (j = l; j < n; j++) V(i,j) = V(j,i) = 0.0;
 				}
 				V(i,i) = 1.0;
 				g = rv1[i];
@@ -305,24 +332,24 @@ namespace INMOST
 			{
 				l = i + 1;
 				g = Sigma(i,i);
-				if (i < (int)(n - 1))
-					for (j = l; j < (int)n; j++)
+				if (i < (n - 1))
+					for (j = l; j < n; j++)
 						U(i,j) = 0.0;
 				if (get_value(g))
 				{
 					g = 1.0 / g;
 					if (i != n - 1)
 					{
-						for (j = l; j < (int)n; j++)
+						for (j = l; j < n; j++)
 						{
-							for (s = 0.0, k = l; k < (int)m; k++) s += (U(k,i) * U(k,j));
+							for (s = 0.0, k = l; k < m; k++) s += (U(k,i) * U(k,j));
 							f = (s / U(i,i)) * g;
-							for (k = i; k < (int)m; k++) U(k,j) += f * U(k,i);
+							for (k = i; k < m; k++) U(k,j) += f * U(k,i);
 						}
 					}
-					for (j = i; j < (int)m; j++) U(j,i) = U(j,i)*g;
+					for (j = i; j < m; j++) U(j,i) = U(j,i)*g;
 				}
-				else for (j = i; j < (int)m; j++) U(j,i) = 0.0;
+				else for (j = i; j < m; j++) U(j,i) = 0.0;
 				U(i,i) += 1;
 			}
 			
@@ -359,7 +386,7 @@ namespace INMOST
 								h = 1.0 / h;
 								c = g * h;
 								s = (- f * h);
-								for (j = 0; j < (int)m; j++)
+								for (j = 0; j < m; j++)
 								{
 									y = U(j,nm);
 									z = U(j,i);
@@ -372,10 +399,10 @@ namespace INMOST
 					z = Sigma(k,k);
 					if (l == k)
 					{// convergence
-						if (z < 0.0)
+						if (z < 0.0 && nonnegative)
 						{// make singular value nonnegative
 							Sigma(k,k) = -z;
-							for (j = 0; j < (int)n; j++) V(j,k) = -V(j,k);
+							for (j = 0; j < n; j++) V(j,k) = -V(j,k);
 						}
 						break;
 					}
@@ -411,7 +438,7 @@ namespace INMOST
 						g = g * c - x * s;
 						h = y * s;
 						y = y * c;
-						for (jj = 0; jj < (int)n; jj++)
+						for (jj = 0; jj < n; jj++)
 						{
 							x = V(jj,j);
 							z = V(jj,i);
@@ -428,7 +455,7 @@ namespace INMOST
 						}
 						f = (c * g) + (s * y);
 						x = (c * y) - (s * g);
-						for (jj = 0; jj < (int)m; jj++)
+						for (jj = 0; jj < m; jj++)
 						{
 							y = U(jj,j);
 							z = U(jj,i);
@@ -445,10 +472,10 @@ namespace INMOST
 			if( order_singular_values )
 			{
 				Var temp;
-				for(i = 0; i < (int)n; i++)
+				for(i = 0; i < n; i++)
 				{
 					k = i;
-					for(j = i+1; j < (int)n; ++j)
+					for(j = i+1; j < n; ++j)
 						if( Sigma(k,k) < Sigma(j,j) ) k = j;
 					if( Sigma(k,k) > Sigma(i,i) )
 					{
@@ -456,14 +483,14 @@ namespace INMOST
 						Sigma(k,k) = Sigma(i,i);
 						Sigma(i,i) = temp;
 						// U is m by n
-						for(int j = 0; j < (int)m; ++j)
+						for(int j = 0; j < m; ++j)
 						{
 							temp   = U(j,k);
 							U(j,k) = U(j,i);
 							U(j,i) = temp;
 						}
 						// V is n by n
-						for(int j = 0; j < (int)n; ++j)
+						for(int j = 0; j < n; ++j)
 						{
 							temp   = V(j,k);
 							V(j,k) = V(j,i);
@@ -611,7 +638,11 @@ namespace INMOST
 			{
 				for(enumerator l = 0; l < Cols(); ++l)
 				{
-					if( fabs(get_value((*this)(k,l))) > threshold )
+					if( std::isinf(get_value((*this)(k,l))) )
+						std::cout << std::setw(12) << "inf";
+					else if( std::isnan(get_value((*this)(k,l))) )
+						std::cout << std::setw(12) << "nan";
+					else if( fabs(get_value((*this)(k,l))) > threshold )
 						std::cout << std::setw(12) << get_value((*this)(k,l));
 					else
 						std::cout << std::setw(12) << 0;
@@ -1319,6 +1350,23 @@ namespace INMOST
 		/// Obtain number of rows.
 		/// @return Reference to number of columns.
 		enumerator & Cols() {return m;}
+		/// Construct row permutation matrix from array of new positions for rows.
+		/// Row permutation matrix multiplies matrix from left.
+		/// Column permutation matrix is obtained by transposition and is multiplied
+		/// from the right.
+		/// Argument Perm is filled with the new position for rows, i.e.
+		/// i-th row takes new position Perm[i]
+		/// @param Perm Array with new positions for rows.
+		/// @param size Size of the array and the resulting matrix.
+		/// @return Permutation matrix.
+		static Matrix<Var> Permutation(const INMOST_DATA_ENUM_TYPE * Perm, enumerator size)
+		{
+			Matrix<Var> Ret(size,size);
+			Ret.Zero();
+			for(enumerator k = 0; k < size; ++k)
+				Ret(k,Perm[k]) = 1;
+			return Ret;
+		}
 		/// Convert values in array into square matrix.
 		/// Supports the following representation, depending on the size
 		/// of input array and size of side of final tensors' matrix:
@@ -1514,7 +1562,8 @@ namespace INMOST
 		/// @return Returns a unit matrix.
 		static Matrix Unit(enumerator pn, const Var & c = 1.0)
 		{
-			Matrix ret(pn,pn,0.0);
+			Matrix ret(pn,pn);
+			ret.Zero();
 			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
 			return ret;
 		}
@@ -1778,6 +1827,7 @@ namespace INMOST
 		{
 			assert(Cols() == cols);
 			assert(Rows() == rows);
+            (void)cols; (void)rows;
 		}
 	};
 	
@@ -2136,7 +2186,7 @@ namespace INMOST
 		Matrix<typename Promote<Var,typeB>::type> AtB = At*B; //m by l matrix
 		Matrix<Var> AtA = At*(*this); //m by m matrix
 		enumerator l = AtB.Cols();
-		enumerator n = Rows();
+        //enumerator n = Rows();
 		enumerator m = Cols();
 		enumerator * order = new enumerator [m];
 		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
@@ -2298,7 +2348,7 @@ namespace INMOST
 		ret.second = SVD(U,S,V);
 		if( print_fail && !ret.second )
 			std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
-		for(int k = 0; k < S.Cols(); ++k)
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k)
 		{
 			if( S(k,k) > tol )
 				S(k,k) = 1.0/S(k,k);
@@ -2358,17 +2408,361 @@ namespace INMOST
 	{
 		return ::INMOST::SubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
+	
+	
+	template<class T> struct make_integer;
+	template<> struct make_integer<float> {typedef int type;};
+	template<> struct make_integer<double> {typedef long long type;};
+
+	__INLINE static bool compare(INMOST_DATA_REAL_TYPE * a, INMOST_DATA_REAL_TYPE * b)
+	{
+		return (*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(a)) <=
+			(*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(b));
+	}
+	
+	class BinaryHeapDense
+	{
+		INMOST_DATA_ENUM_TYPE size_max, size;
+		std::vector<INMOST_DATA_ENUM_TYPE> heap;
+		std::vector<INMOST_DATA_ENUM_TYPE> index;
+		INMOST_DATA_REAL_TYPE * keys;
+		
+		void swap(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j)
+		{
+			INMOST_DATA_ENUM_TYPE t = heap[i];
+			heap[i] = heap[j];
+			heap[j] = t;
+			index[heap[i]] = i;
+			index[heap[j]] = j;
+		}
+		void bubbleUp(INMOST_DATA_ENUM_TYPE k)
+		{
+			while(k > 1 && keys[heap[k/2]] > keys[heap[k]])
+			{
+				swap(k, k/2);
+				k = k/2;
+			}
+		}
+		void bubbleDown(INMOST_DATA_ENUM_TYPE k)
+		{
+			INMOST_DATA_ENUM_TYPE j;
+			while(2*k <= size)
+			{
+				j = 2*k;
+				if(j < size && keys[heap[j]] > keys[heap[j+1]])
+					j++;
+				if(keys[heap[k]] <= keys[heap[j]])
+					break;
+				swap(k, j);
+				k = j;
+			}
+		}
+	public:
+		BinaryHeapDense(INMOST_DATA_REAL_TYPE * pkeys, INMOST_DATA_ENUM_TYPE len)
+		{
+			size_max = len;
+			keys = pkeys;
+			size = 0;
+			heap.resize(size_max+1);
+			index.resize(size_max+1);
+			for(INMOST_DATA_ENUM_TYPE i = 0; i <= size_max; i++)
+				index[i] = ENUMUNDEF;
+		}
+		void PushHeap(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
+		{
+			size++;
+			index[i] = size;
+			heap[size] = i;
+			keys[i] = key;
+			bubbleUp(size);
+		}
+		INMOST_DATA_ENUM_TYPE PopHeap()
+		{
+			if( size == 0 ) return ENUMUNDEF;
+			INMOST_DATA_ENUM_TYPE min = heap[1];
+			swap(1, size--);
+			bubbleDown(1);
+			index[min] = ENUMUNDEF;
+			heap[size+1] = ENUMUNDEF;
+			return min;
+		}
+		void DecreaseKey(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
+		{
+			keys[i] = key;
+			bubbleUp(index[i]);
+		}
+		void Clear()
+		{
+			while( size ) keys[PopHeap()] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+		}
+		bool Contains(INMOST_DATA_ENUM_TYPE i)
+		{
+			return index[i] != ENUMUNDEF;
+		}
+	};
+	
+	template<typename Var>
+	void AbstractMatrix<Var>::MPT(INMOST_DATA_ENUM_TYPE * Perm, INMOST_DATA_REAL_TYPE * SL, INMOST_DATA_REAL_TYPE * SR) const
+	{
+		const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1;
+		int n = Rows();
+		int m = Cols();
+		INMOST_DATA_REAL_TYPE u, l;
+		array<INMOST_DATA_REAL_TYPE> Cmax(m,0.0);
+		array<INMOST_DATA_REAL_TYPE> U(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		array<INMOST_DATA_REAL_TYPE> V(n,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		std::fill(Perm,Perm+m,ENUMUNDEF);
+		//array<INMOST_DATA_ENUM_TYPE> Perm(m,ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> IPerm(std::max(n,m),ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> ColumnList(m,ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> ColumnPosition(n,ENUMUNDEF);
+		array<INMOST_DATA_ENUM_TYPE> Parent(n,ENUMUNDEF);
+		array<INMOST_DATA_REAL_TYPE> Dist(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		const AbstractMatrix<Var> & A = *this;
+		Matrix<INMOST_DATA_REAL_TYPE> C(n,m);
+		INMOST_DATA_ENUM_TYPE Li, Ui;
+		INMOST_DATA_ENUM_TYPE ColumnBegin, PathEnd, Trace, IPermPrev;
+		INMOST_DATA_REAL_TYPE ShortestPath, AugmentPath;
+		BinaryHeapDense Heap(&Dist[0],m);
+		//Initial LOG transformation to dual problem and initial extreme match
+		for(int k = 0; k < n; ++k)
+		{
+			for(int i = 0; i < m; ++i)
+			{
+				C(k,i) = fabs(get_value(A(k,i)));
+				if( Cmax[i] < C(k,i) ) Cmax[i] = C(k,i);
+			}
+		}
+		for(int k = 0; k < n; ++k)
+		{
+			for (int i = 0; i < m; ++i)
+			{
+				if( Cmax[i] == 0 || C(k,i) == 0 )
+					C(k,i) = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+				else
+				{
+					C(k,i) = log(Cmax[i])-log(C(k,i));
+					if( C(k,i) < U[i] ) U[i] = C(k,i);
+				}
+			}
+		}
+		for(int k = 0; k < n; ++k)
+		{
+			for (int i = 0; i < m; ++i)
+			{
+				u = C(k,i) - U[i];
+				if( u < V[k] ) V[k] = u;
+			}
+		}
+		// Update cost and match 
+		for(int k = 0; k < n; ++k)
+		{
+			for (int i = 0; i < m; ++i)
+			{
+				u = fabs(C(k,i) - V[k] - U[i]);
+				if( u < 1.0e-30 && Perm[i] == ENUMUNDEF && IPerm[k] == ENUMUNDEF )
+				{
+					 Perm[i] = k;
+					 IPerm[k] = i;
+					 ColumnPosition[k] = i;
+				}
+			}
+		}
+		//1-step augmentation 
+		for(int k = 0; k < n; ++k)
+		{
+			if( IPerm[k] == ENUMUNDEF ) //unmatched row
+			{
+				for (int i = 0; i < m && IPerm[k] == ENUMUNDEF; ++i)
+				{
+					u = fabs(C(k,i) - V[k] - U[i]);
+					if( u <= 1.0e-30 )
+					{
+						Li = Perm[i];
+						assert(Li != ENUMUNDEF);
+						// Search other row in C for 0
+						for (int Lit = 0; Lit < m; ++Lit)
+						{
+							u = fabs(C(Li,Lit) - V[Li] - U[Lit]);
+							if( u <= 1.0e-30 && Perm[Lit] == ENUMUNDEF )
+							{
+								Perm[i] = k;
+								IPerm[k] = i;
+								ColumnPosition[k] = i;
+								Perm[Lit] = Li;
+								IPerm[Li] = Lit;
+								ColumnPosition[Li] = Lit;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+		// Weighted bipartite matching 
+		for(int k = 0; k < n; ++k)
+		{
+			if( IPerm[k] != ENUMUNDEF )
+				continue;
+			Li = k;
+			ColumnBegin = EOL;
+			Parent[Li] = ENUMUNDEF;
+			PathEnd = ENUMUNDEF;
+			Trace = k;
+			ShortestPath = 0;
+			AugmentPath = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+			while(true)
+			{
+				for (int Lit = 0; Lit < m; ++Lit)
+				{
+					if( ColumnList[Lit] != ENUMUNDEF ) continue;
+					l = ShortestPath + C(Li,Lit) - V[Li] - U[Lit];
+					if( l < 0.0 && fabs(l) < 1.0e-12 ) l = 0;
+					if( l < AugmentPath )
+					{
+						if( Perm[Lit] == ENUMUNDEF )
+						{
+							PathEnd = Lit;
+							Trace = Li;
+							AugmentPath = l;
+						}
+						else if( l < Dist[Lit] )
+						{
+							Parent[Perm[Lit]] = Li;
+							if( Heap.Contains(Lit) )
+								Heap.DecreaseKey(Lit,l);
+							else 
+								Heap.PushHeap(Lit,l);
+						}
+					}
+				}
+
+				INMOST_DATA_ENUM_TYPE pop_heap_pos = Heap.PopHeap();
+				if( pop_heap_pos == ENUMUNDEF ) break;
+			
+				Ui = pop_heap_pos;
+				ShortestPath = Dist[Ui];
+
+				if( AugmentPath <= ShortestPath ) 
+				{
+					Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					break;
+				}
+
+
+				ColumnList[Ui] = ColumnBegin;
+				ColumnBegin = Ui;
+
+				Li = Perm[Ui];
+				
+			}
+			if( PathEnd != ENUMUNDEF )
+			{
+				Ui = ColumnBegin;
+				while(Ui != EOL)
+				{
+					U[Ui] += Dist[Ui] - AugmentPath;
+					if( Perm[Ui] != ENUMUNDEF ) V[Perm[Ui]] = C(Perm[Ui],ColumnPosition[Perm[Ui]]) - U[Ui];
+					Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					Li = ColumnList[Ui];
+					ColumnList[Ui] = ENUMUNDEF;
+					Ui = Li;
+				}
+
+				Ui = PathEnd;
+				while(Trace != ENUMUNDEF)
+				{
+					IPermPrev = IPerm[Trace];
+					Perm[Ui] = Trace;
+					IPerm[Trace] = Ui;
+
+					ColumnPosition[Trace] = Ui;
+					V[Trace] = C(Trace,ColumnPosition[Trace]) - U[Ui];
+
+					Ui = IPermPrev;
+					Trace = Parent[Trace];
+
+				}
+				Heap.Clear();
+			}
+		}
+		
+		if( SL || SR )
+		{
+			for (int k = 0; k < std::min(n,m); ++k)
+			{
+				l = (V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ? 1 : exp(V[k]));
+				u = (U[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[k] == 0 ? 1 : exp(U[k])/Cmax[k]);
+				
+				if( l*get_value(A(k,Perm[k]))*u < 0.0 ) l *= -1;
+				
+				if( SL ) SL[Perm[k]] = u;
+				if( SR ) SR[k] = l;
+			}
+			if( SR ) for(int k = std::min(n,m); k < n; ++k) SR[k] = 1;
+			if( SL ) for(int k = std::min(n,m); k < m; ++k) SL[k] = 1;
+		}
+		//check that there are no gaps in Perm
+		std::fill(IPerm.begin(),IPerm.end(),ENUMUNDEF);
+		std::vector<INMOST_DATA_ENUM_TYPE> gaps;
+		for(int k = 0; k < m; ++k)
+		{
+			if( Perm[k] != ENUMUNDEF )
+				IPerm[Perm[k]] = 0;
+		}
+		for(int k = 0; k < m; ++k)
+		{
+			if( IPerm[k] == ENUMUNDEF )
+				gaps.push_back(k);
+		}
+		for(int k = 0; k < m; ++k)
+		{
+			if( Perm[k] == ENUMUNDEF )
+			{
+				Perm[k] = gaps.back();
+				gaps.pop_back();
+			}
+		}
+	}
+	
 	/// shortcut for matrix of integer values.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
+	/// shortcut for matrix of integer values.
+	typedef Matrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idMatrix;
+	/// shortcut for matrix of real values.
+	typedef Matrix<INMOST_DATA_REAL_TYPE, dynarray<INMOST_DATA_REAL_TYPE,128> > rdMatrix;
+	/// shortcut for matrix of integer values in existing array.
+	typedef Matrix<INMOST_DATA_INTEGER_TYPE,shell<INMOST_DATA_INTEGER_TYPE> > iaMatrix;
+	/// shortcut for matrix of real values in existing array.
+	typedef Matrix<INMOST_DATA_REAL_TYPE,shell<INMOST_DATA_REAL_TYPE> > raMatrix;
+	/// return a matrix
+	static iaMatrix iaMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaMatrix::enumerator n, iaMatrix::enumerator m) {return iaMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*m),n,m);}
+	static raMatrix raMatrixMake(INMOST_DATA_REAL_TYPE * p, raMatrix::enumerator n, raMatrix::enumerator m) {return raMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*m),n,m);}
 #if defined(USE_AUTODIFF)
-/// shortcut for matrix of variables with single unit entry of first order derivative.
+	/// shortcut for matrix of variables with single unit entry of first order derivative.
 	typedef Matrix<unknown> uMatrix;
 	/// shortcut for matrix of variables with first order derivatives.
 	typedef Matrix<variable> vMatrix;
 	//< shortcut for matrix of variables with first and second order derivatives.
 	typedef Matrix<hessian_variable> hMatrix;
+	/// shortcut for matrix of variables with single unit entry of first order derivative.
+	typedef Matrix<unknown, dynarray<unknown,128> > udMatrix;
+	/// shortcut for matrix of variables with first order derivatives.
+	typedef Matrix<variable, dynarray<variable,128> > vdMatrix;
+	//< shortcut for matrix of variables with first and second order derivatives.
+	typedef Matrix<hessian_variable, dynarray<hessian_variable,128> > hdMatrix;
+	/// shortcut for matrix of unknowns in existing array.
+	typedef Matrix<unknown,shell<unknown> > uaMatrix;
+	/// shortcut for matrix of variables in existing array.
+	typedef Matrix<variable,shell<variable> > vaMatrix;
+	/// shortcut for matrix of variables in existing array.
+	typedef Matrix<hessian_variable,shell<hessian_variable> > haMatrix;
+	
+	static uaMatrix uaMatrixMake(unknown * p, uaMatrix::enumerator n, uaMatrix::enumerator m) {return uaMatrix(shell<unknown>(p,n*m),n,m);}
+	static vaMatrix vaMatrixMake(variable * p, vaMatrix::enumerator n, vaMatrix::enumerator m) {return vaMatrix(shell<variable>(p,n*m),n,m);}
+	static haMatrix vaMatrixMake(hessian_variable * p, haMatrix::enumerator n, haMatrix::enumerator m) {return haMatrix(shell<hessian_variable>(p,n*m),n,m);}
 #endif
 }
 /// Multiplication of matrix by constant from left.
@@ -2379,6 +2773,14 @@ template<typename typeB>
 INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 #if defined(USE_AUTODIFF)
+/// Multiplication of matrix by a unknown from left.
+/// Takes account for derivatives of variable.
+/// @param coef Variable coefficient multiplying matrix.
+/// @param other Matrix to be multiplied.
+/// @return Matrix, each entry multiplied by a variable.
+template<typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type> operator *(const INMOST::unknown & coef, const INMOST::AbstractMatrix<typeB> & other)
+{return other*coef;}
 /// Multiplication of matrix by a variable from left.
 /// Takes account for derivatives of variable.
 /// @param coef Variable coefficient multiplying matrix.
@@ -2398,5 +2800,11 @@ INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> o
 {return other*coef;}
 #endif
 
+template<typename T>
+__INLINE bool check_nans(const INMOST::AbstractMatrix<T> & A) {return A.CheckNans();}
+template<typename T>
+__INLINE bool check_infs(const INMOST::AbstractMatrix<T> & A) {return A.CheckInfs();}
+template<typename T>
+__INLINE bool check_nans_infs(const INMOST::AbstractMatrix<T> & A) {return A.CheckNansInfs();}
 
 #endif //INMOST_DENSE_INCLUDED

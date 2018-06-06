@@ -1,9 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include <iomanip>
+
 #include "inmost_solver.h"
 #if defined(USE_SOLVER)
 #include "solver_ddpqiluc2.hpp"
-
+#include <iomanip>
 
 /// \todo
 /// 1. Correct estimator (as in MPTILUC)

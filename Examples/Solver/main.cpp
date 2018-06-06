@@ -206,7 +206,7 @@ int main(int argc,char ** argv)
 #if defined(USE_PARTITIONER)
         ttt = Timer();
         Partitioner * p = new Partitioner(m);
-        p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition);
+        p->SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
         p->Evaluate();
         delete p;
         BARRIER

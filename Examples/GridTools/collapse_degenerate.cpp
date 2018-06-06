@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include "inmost.h"
+#include <stdio.h>
 
 
 using namespace INMOST;

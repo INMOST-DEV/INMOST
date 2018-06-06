@@ -1,14 +1,16 @@
 #ifndef INMOST_SOLVER_INTERFACE_H
 #define INMOST_SOLVER_INTERFACE_H
 
+#include "inmost_sparse.h"
 #include <string>
 #include <sstream>
-#include "inmost_sparse.h"
+
 
 #define SILENCE_SET_PARAMETER
 #if defined(USE_SOLVER)
 namespace INMOST {
 
+    class SolverInterface;
     class SolverParameters {
     public:
         std::string solverName;
@@ -21,6 +23,8 @@ namespace INMOST {
         SolverParameters(const SolverParameters &other);
 
         ~SolverParameters();
+
+        static void SetInnerParametersFromFile(const std::string &file, SolverInterface *solver);
     };
 
     typedef std::vector<std::pair<std::string, std::string> >::iterator parameters_iterator_t;
@@ -61,6 +65,7 @@ namespace INMOST {
 
         virtual INMOST_DATA_REAL_TYPE Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxiter) {
             throw INMOST::SolverUnsupportedOperation;
+            (void) tol; (void) maxiter;
         };
 
         virtual ~SolverInterface() {};

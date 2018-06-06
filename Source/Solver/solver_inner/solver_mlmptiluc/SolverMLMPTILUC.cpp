@@ -26,6 +26,7 @@ namespace INMOST
 	{
         //You should not really want to copy solver's information
         throw INMOST::SolverUnsupportedOperation;
+        (void)other;
     }
 
     void SolverMLMPTILUC::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner)
@@ -48,6 +49,9 @@ namespace INMOST
 		
         if (!solver->isInitialized())
             solver->Initialize();
+
+        (void)ModifiedPattern;
+        (void)OldPreconditioner;
     }
 
     void SolverMLMPTILUC::SetParameter(std::string name, std::string value)

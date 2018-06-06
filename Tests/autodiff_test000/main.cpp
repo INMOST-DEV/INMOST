@@ -1,6 +1,6 @@
+#include "inmost.h"
 #include <cstdio>
 #include <cmath>
-#include "inmost.h"
 using namespace INMOST;
 
 int main(int argc,char ** argv)

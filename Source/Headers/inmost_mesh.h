@@ -12,6 +12,7 @@
 namespace INMOST
 {
 
+    std::string ro();
 
 	class Mesh;
 	class Storage;
@@ -38,6 +39,7 @@ namespace INMOST
 	static const SyncBitOp SYNC_BIT_XOR = 2;
 	static const SyncBitOp SYNC_BIT_AND = 3;
 
+    
 
 	///Definition for data type of topology error or event. This type may be extended later to 64 bits
 	/// to accomodate more topological errors or events.
@@ -1286,12 +1288,11 @@ namespace INMOST
         //INMOST_MPI_Group                    group;
 		Tag                                 tag_shared;
 		Tag                                 tag_owner;
-		Tag                                 tag_processors;
 		Tag                                 tag_layers;
-		Tag                                 tag_sendto;
 		Tag                                 tag_bridge;
 		Tag                                 tag_redistribute;
 	private:
+        double dist(Cell a, Cell b);
 		void AllocatePrivateMarkers();
 		void DeallocatePrivateMarkers();
 		__INLINE static sparse_rec          mkrec               (const Tag & t) {sparse_rec ret; ret.tag = t.mem; ret.rec = NULL; return ret;}
@@ -1310,6 +1311,9 @@ namespace INMOST
 		void                                AllocateSparseData  (void * & q, const Tag & t);
 		void                                Init                (std::string name);
 	public:
+		Tag                                 tag_sendto;
+		TagInteger                         tag_an_id;
+		Tag                                 tag_processors;
 		/// Go through all elements and detect presence of prescribed element in
 		/// any reference data tag.
 		void                                ReportConnection(HandleType h);
@@ -2081,6 +2085,10 @@ namespace INMOST
 		/// @param h handle to the element
 		/// @param tag tag that indicates the data
 		void                              DelDenseData       (HandleType h,const Tag & tag);
+		/// Removes data of variable size, clears to zero data of fixed size.
+		/// @param data link to data
+		/// @param tag tag that indicates the data
+		void                              DelDenseData       (void * data,const Tag & tag);
 		/// Removes data of variable size and sparse tag data.
 		/// @param h handle to the element
 		/// @param tag tag that indicates the data
@@ -2222,10 +2230,10 @@ namespace INMOST
 		class elements_by_type
 		{
 		private:
-			element_set container[4];
+			element_set container[5];
 		public:
 			elements_by_type() {}
-			elements_by_type(const elements_by_type & other) {for(int i = 0; i < 4; i++) container[i] = other.container[i];}
+			elements_by_type(const elements_by_type & other) {for(int i = 0; i < 5; i++) container[i] = other.container[i];}
 			~elements_by_type(){}
 			element_set & operator [](int i){ return container[i]; }
 			const element_set & operator [](int i) const { return container[i]; }
@@ -2251,7 +2259,7 @@ namespace INMOST
 	private:
 		void                              ComputeSharedProcs ();
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge);
-		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer);
+		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
 		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op);
 		void                              PackElementsData   (element_set & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
 		void                              UnpackElementsData (element_set & output, buffer_type & buffer, int source, std::vector<std::string> & tag_list);
@@ -2263,6 +2271,7 @@ namespace INMOST
 		void                              SortParallelStorage(parallel_storage & ghost, parallel_storage & shared,ElementType mask);
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
 	public:
+        bool                              FindSharedGhost(int global_id, INMOST_DATA_INTEGER_TYPE el_type_num,  HandleType& res);
 #if defined(USE_PARALLEL_WRITE_TIME)	
 		//this part is needed to test parallel performance
 		void                              Enter              ();
@@ -2417,7 +2426,9 @@ namespace INMOST
 		/// Set MPI communicator
 		void                              SetCommunicator    (INMOST_MPI_Comm _comm);
 		/// Find elements that are common between processors.
-		void                              ResolveShared      ();
+		void                              ResolveShared      (bool only_new = false);
+		/// Find sets that are common between processors.
+		void                              ResolveSets        ();
 		/// Delete all the ghost cells.
 		void                              RemoveGhost        ();
 		/// Delete some ghost cells provided in array.
@@ -3223,6 +3234,20 @@ namespace INMOST
 			bool operator() (HandleType a, integer gid) const {if( a == InvalidHandle() ) return false; return m->GlobalID(a) < gid;}
 		};
 
+        class SetNameComparator
+        {
+			Mesh * m;
+            public:
+			    SetNameComparator(Mesh * m) :m(m) {}
+                bool operator()(HandleType a, HandleType b) const
+			    {
+                    if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; 
+
+                    return ElementSet(m,a).GetName() < ElementSet(m,b).GetName();
+                }  
+
+        };
+
 		class HierarchyComparator
 		{
 			Mesh * m;
@@ -3683,7 +3708,7 @@ namespace INMOST
 }
 
   //Implementation of inlined functions
-//#include "Source/Data/storage_inline.hpp"
+//#include "../Data/storage_inline.hpp"
 
 #endif
 
