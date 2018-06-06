@@ -15,6 +15,7 @@ namespace INMOST
 		/// Do not do this in constructor, since mesh may contain no cells.
 		void PrepareSet();
         void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
+        void SynchronizeIndicated(TagInteger& indicator);
 	public:
 		TagReference parent_set; //<Link to the set that contains an element.
 		TagReferenceArray hanging_nodes; //< Link to current hanging nodes of the cell.

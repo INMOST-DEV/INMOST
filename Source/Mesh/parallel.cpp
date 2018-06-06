@@ -1819,7 +1819,8 @@ namespace INMOST
 		del_shared.clear();
 #endif //USE_PARALLEL_STORAGE
 
-		for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
+		//for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
+		for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Delete(*it);
 		
 		delete_elements.clear();
 		for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
@@ -2024,7 +2025,8 @@ namespace INMOST
 			}
 			del_shared.clear();
 #endif //USE_PARALLEL_STORAGE
-			for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
+			//for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
+			for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Delete(*it);
 			delete_elements.clear();			
 		}
 		DeleteTag(tag_delete);
@@ -5081,8 +5083,10 @@ namespace INMOST
 		int mpirank = GetProcessorRank();
 		bool delete_ghost = false;
 		//if( layers == Integer(tag_layers) && bridge == Integer(tag_bridge) ) return;
+        cout << "Check " << layers << " " << Integer(GetHandle(),tag_layers) << endl;
 		if( layers < Integer(GetHandle(),tag_layers) ) delete_ghost = true;
 		else if( layers == Integer(GetHandle(),tag_layers) && bridge < Integer(GetHandle(),tag_bridge) ) delete_ghost = true;
+        if (marker != NULL) delete_ghost = true;
 		int test_bridge = 0;
 		
 		if( (bridge & MESH) || (bridge & ESET) || (bridge & CELL) ) throw Impossible;
@@ -5091,7 +5095,7 @@ namespace INMOST
 		if( test_bridge == 0 || test_bridge > 1 ) throw Impossible;
 		double time;
 		//RemoveGhost();
-		Tag layers_marker = CreateTag("TEMPORARY_LAYERS_MARKER",DATA_INTEGER,CELL,CELL);
+		Tag layers_marker = CreateTag("TEMPORARY_LAYERS_MARKER",DATA_INTEGER,CELL|bridge,CELL|bridge);
 		Integer(GetHandle(),tag_layers) = layers;
 		Integer(GetHandle(),tag_bridge) = bridge;
 		Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);

@@ -156,11 +156,26 @@ namespace INMOST
             ss << "Faces: " << NumberOfFaces() <<  endl;
             for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) 
             {
-                ss << rank << ": " << it->GlobalID() << " - " ;            
+                ss << rank << ": " << setw(2) << it->LocalID() << " " << setw(2) << it->GlobalID() << " - " ;            
+                ss << setw(6);
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
 
+
+                double xyz[3];
+                it->Centroid(xyz);
+                ss << "   (" << setw(5) << xyz[0] << " " << setw(5) << xyz[1] << " " << setw(5) << xyz[2] << ")";
+
+                ss << "  " << GetMarker(*it,NewMarker());
+
+                ss << " nc(" << it->getNodes().size() << ": "; 
+                ElementArray<Node> nodes = it->getNodes();
+                for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
+                    ss << setw(2) << node->GlobalID() << " ";
+                ss << ")";
+
+                /*
                 Storage::reference_array refs = ref_tag[it->self()];
                 if (refs.size() > 0) ss << ". Ref: ";
                 for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
@@ -184,6 +199,8 @@ namespace INMOST
                     }
                     ss << endl;
                 }
+                */
+                ss << endl;
             }
         }
 
@@ -218,7 +235,8 @@ namespace INMOST
             ss << "Nodes:" << endl;
             for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) 
             {
-                ss << rank << ": " << it->GlobalID() << " - " ;            
+                ss << rank << ": " << setw(2) << it->GlobalID() << " - " ;            
+                ss << setw(6);
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
@@ -236,6 +254,14 @@ namespace INMOST
                         ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
                         
                     }
+
+                    ss << "  " << GetMarker(*it,NewMarker());
+
+                    ss << "(" << 
+                        setw(3) << it->RealArray(CoordsTag())[0] << " " << 
+                        setw(3) << it->RealArray(CoordsTag())[1] << " " << 
+                        setw(3) << it->RealArray(CoordsTag())[2] << ")";
+
                 }
                 ss << endl;
             }
@@ -652,6 +678,7 @@ namespace INMOST
         ResolveShared(true);
         //if (call_counter == 0)
 		ResolveModification(false,1);
+        //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
@@ -659,11 +686,17 @@ namespace INMOST
 		//14. Done
         //cout << rank << ": Before end " << endl;
 		EndModification();
+        ResolveSets();
+
 		CheckCentroids();
-        //RemoveGhost(&marker_new);
-        //ExchangeGhost(1,FACE,&marker_new); // Construct Ghost cells in 2 layers connected via nodes
-        //ReleaseMarker(marker_new);
-		//ExchangeData(hanging_nodes,CELL | FACE,0);
+
+        BeginModification();
+            ExchangeGhost(1,NODE,&marker_new); // Construct Ghost cells in 2 layers connected via nodes
+            ReleaseMarker(marker_new);
+		ApplyModification();
+    	EndModification();
+
+        //ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << endl;
 		//reorder element's data to free up space
 		ReorderEmpty(CELL|FACE|EDGE|NODE);
@@ -672,9 +705,73 @@ namespace INMOST
         cout << ro() << rank << ": END REFINE " << (ret != 0) << endl;
 		return ret != 0;
 	}
+
+    void OperationMin(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+    {
+        int value  =  (int)*((int*)data);
+
+
+        if (value < element->Integer(tag))
+        {
+            element->Integer(tag) = value;
+        }
+        (void)size;
+    }
 	
+    void AdaptiveMesh::SynchronizeIndicated(TagInteger& indicator)
+    {
+        if (GetProcessorsNumber() == 1) return;
+        int rank = GetProcessorRank();
+
+        // Check all sets. All elements in sets must be indicated. At first we check indicator in local processor, and second integrate data
+        TagInteger tag_indicated = CreateTag("INDICATED",DATA_INTEGER,ESET,NONE,1);
+        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+        {
+            ElementSet set = ElementSet(this,*it);
+            set.Integer(tag_indicated) = 1;
+            ElementSet::iterator p = set.Begin();
+            while(p != set.End())
+            {
+                if (indicator[*p] == 0)
+                {
+                    tag_indicated[set] = 0;
+                    //cout << ro() << rank << ": Set " << set.GetName() << " not all indicated" << endl;
+                    break;
+                }
+
+                p++;
+            }
+        }
+
+        ReduceData(tag_indicated,ESET,0,OperationMin);
+        ExchangeData(tag_indicated,ESET,0);
+
+        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+            if (it->Integer(tag_indicated) == 0)
+            {
+                ElementSet::iterator p = it->Begin();
+                while(p != it->End())
+                {
+                    p->Integer(indicator) = 0;
+                    p++;
+                }
+            }
+        /*
+                stringstream ss;
+        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+        {
+            ss << it->GetName() << " - " << it->Integer(tag_indicated) << endl;;
+        }
+        cout << ro() << rank << " Sets: \n" << ss.str() << endl;
+        */
+    }
+
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
+        cout << ro() << rank << ": BEGIN COARSE\n";
+        SynchronizeIndicated(indicator);
+        return false;
+
 		static int call_counter = 0;
 		//return number of coarsened cells
 		int ret = 0;
@@ -983,12 +1080,13 @@ namespace INMOST
 		//todo:
     	ResolveShared(true);
 		ResolveModification(false,1);
+		CheckCentroids();
 		//todo:
 		//let the user update their data
 		ApplyModification();
 		//done
 		EndModification();
-		CheckCentroids();
+		//CheckCentroids();
         //ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
@@ -1008,6 +1106,7 @@ namespace INMOST
 		ReorderEmpty(CELL|FACE|EDGE|NODE|ESET);
 		
 		call_counter++;
+        cout << ro() << rank << ": END COARSE\n";
 		return ret != 0;
 	}
 }
