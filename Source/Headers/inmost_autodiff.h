@@ -11,6 +11,14 @@ namespace INMOST
 {
 	class Automatizator; //forward declaration
 	
+	//return specific type with specific template
+	template<class T> struct Demote;
+	template<> struct Demote<INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_INTEGER_TYPE type;};
+	template<> struct Demote<INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Demote<unknown> {typedef unknown type;};
+	template<> struct Demote<variable> {typedef unknown type;};
+	template<> struct Demote<hessian_variable> {typedef unknown type;};
+	
 	/// This class is used to organize unknowns in abstract way,
 	/// it should be registered with and managed by class Automatizator.
 	/// \todo
@@ -62,11 +70,11 @@ namespace INMOST
 		virtual uMatrix Unknown(const Storage & e) const = 0;
 		/// Return vector filled with either values or indices or unknowns of the block,
 		/// depending on the template parameter.
-		template<typename T> Matrix<T> Access(const Storage &e) const;
+		template<typename T> Matrix<typename Demote<T>::type> Access(const Storage &e) const;
 		/// Return either value or index or unknown at specified position of the block,
 		/// depending on the template parameter.
 		/// @param pos Position in the block, should be no larger then MatrixSize.
-		template<typename T> T Access(const Storage &e, INMOST_DATA_ENUM_TYPE pos) const;
+		template<typename T> typename Demote<T>::type Access(const Storage &e, INMOST_DATA_ENUM_TYPE pos) const;
 		/// Return vector filled with unknowns of the block with their derivatives.
 		virtual uMatrix operator [](const Storage & e) const = 0;
 		/// The intended size of the matrix for this entry.

@@ -11,13 +11,19 @@
 
 namespace INMOST
 {
-	template<> Matrix<INMOST_DATA_REAL_TYPE>    AbstractEntry::Access(const Storage& e) const {return Value(e);}
-	template<> Matrix<INMOST_DATA_INTEGER_TYPE> AbstractEntry::Access(const Storage& e) const {return Index(e);}
-	template<> Matrix<unknown>                  AbstractEntry::Access(const Storage& e) const {return Unknown(e);}
 	
-	template<> INMOST_DATA_REAL_TYPE    AbstractEntry::Access(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
-	template<> INMOST_DATA_INTEGER_TYPE AbstractEntry::Access(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
-	template<> unknown                  AbstractEntry::Access(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	template<> Demote<INMOST_DATA_REAL_TYPE>::type    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
+	template<> Demote<INMOST_DATA_INTEGER_TYPE>::type AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
+	template<> Demote<unknown>::type                  AbstractEntry::Access<unknown>                 (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	template<> Demote<variable>::type                 AbstractEntry::Access<variable>                (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	template<> Demote<hessian_variable>::type         AbstractEntry::Access<hessian_variable>        (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	
+	template<> Matrix<typename Demote<INMOST_DATA_REAL_TYPE>::type>    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e) const {return Value(e);}
+	template<> Matrix<typename Demote<INMOST_DATA_INTEGER_TYPE>::type> AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e) const {return Index(e);}
+	template<> Matrix<typename Demote<unknown>::type>                  AbstractEntry::Access<unknown>                 (const Storage& e) const {return Unknown(e);}
+	template<> Matrix<typename Demote<variable>::type>                 AbstractEntry::Access<variable>                (const Storage& e) const {return Unknown(e);}
+	template<> Matrix<typename Demote<hessian_variable>::type>         AbstractEntry::Access<hessian_variable>        (const Storage& e) const {return Unknown(e);}
+	
 	
 #if defined(USE_MESH)
 	Automatizator * Automatizator::CurrentAutomatizator = NULL;

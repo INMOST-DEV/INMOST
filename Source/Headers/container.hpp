@@ -2799,8 +2799,8 @@ namespace INMOST
 		const T & get() const {return items[omp_get_thread_num()].item;}
 		T & get(int k) {return items[k].item;}
 		const T & get(int k) const {return items[k].item;}
-		T * operator ->() {return get();}
-		const T * operator ->() const {return get();}
+		T * operator ->() {return &items[omp_get_thread_num()].item;}
+		const T * operator ->() const {return &items[omp_get_thread_num()].item;}
 	};
 #else //_OPENMP
 	template<typename T>
