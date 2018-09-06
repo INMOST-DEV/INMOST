@@ -1956,7 +1956,11 @@ void svg_draw(std::ostream & file)
 {
 	//file << "<?xml version=\"1.0\" stanfalone=\"no\">" << std::endl;
 	//file << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">" << std::endl;
-	file << "<svg width=\"" << width << "\" height=\"" << height << "\" version=\"1.1\">" << std::endl;
+	
+	file << "<svg version=\"1.1\"";
+	file << " baseProfile=\"full\"";
+	file << " width=\"" << width << "\"";
+	file << " height=\"" << height << "\" xmlns=\"http://www.w3.org/2000/svg\">" << std::endl;
 
 	//glDepthMask(GL_TRUE);
 	glLoadIdentity();

@@ -2779,26 +2779,28 @@ namespace INMOST
 			}
 			return *this;
 		}
-		operator T & () {return items[omp_get_thread_num()].item;}
-		operator const T & () const {return items[omp_get_thread_num()].item;}
+		T & operator *() {return items[omp_get_thread_num()].item;}
+		const T & operator *() const {return items[omp_get_thread_num()].item;}
+		//operator T & () {return items[omp_get_thread_num()].item;}
+		//operator const T & () const {return items[omp_get_thread_num()].item;}
 		//operator T () {return items[omp_get_thread_num()].item;}
 		//operator T () const {return items[omp_get_thread_num()].item;}
-		template <typename B>
-		T & operator = (B const & b) {items[omp_get_thread_num()].item = b; return items[omp_get_thread_num()].item;}
-		template <typename B>
-		T & operator += (B const & b) {items[omp_get_thread_num()].item += b; return items[omp_get_thread_num()].item;}
-		template <typename B>
-		T & operator -= (B const & b) {items[omp_get_thread_num()].item -= b; return items[omp_get_thread_num()].item;}
-		template <typename B>
-		T & operator *= (B const & b) {items[omp_get_thread_num()].item *= b; return items[omp_get_thread_num()].item;}
-		template <typename B>
-		T & operator /= (B const & b) {items[omp_get_thread_num()].item /= b; return items[omp_get_thread_num()].item;}
+		//template <typename B>
+		//T & operator = (B const & b) {items[omp_get_thread_num()].item = b; return items[omp_get_thread_num()].item;}
+		//template <typename B>
+		//T & operator += (B const & b) {items[omp_get_thread_num()].item += b; return items[omp_get_thread_num()].item;}
+		//template <typename B>
+		//T & operator -= (B const & b) {items[omp_get_thread_num()].item -= b; return items[omp_get_thread_num()].item;}
+		//template <typename B>
+		//T & operator *= (B const & b) {items[omp_get_thread_num()].item *= b; return items[omp_get_thread_num()].item;}
+		//template <typename B>
+		//T & operator /= (B const & b) {items[omp_get_thread_num()].item /= b; return items[omp_get_thread_num()].item;}
 		T & get() {return items[omp_get_thread_num()].item;}
 		const T & get() const {return items[omp_get_thread_num()].item;}
 		T & get(int k) {return items[k].item;}
 		const T & get(int k) const {return items[k].item;}
-		T & operator ->() {return get();}
-		const T & operator ->() const {return get();}
+		T * operator ->() {return get();}
+		const T * operator ->() const {return get();}
 	};
 #else //_OPENMP
 	template<typename T>
@@ -2811,26 +2813,28 @@ namespace INMOST
 		thread_private(const T & b) {item = b;}
 		thread_private(const thread_private & b) {item = b();}
 		thread_private & operator = (thread_private const & b) {item = b(); return *this;}
-		operator T & () {return item;}
-		operator const T & () const {return item;}
+		T & operator *() {return item;}
+		const T & operator *() const {return item;}
+		//operator T & () {return item;}
+		//operator const T & () const {return item;}
 		//operator T () {return items[omp_get_thread_num()].item;}
 		//operator T () const {return items[omp_get_thread_num()].item;}
-		template <typename B>
-		T & operator = (B const & b) {item = b; return item;}
-		template <typename B>
-		T & operator += (B const & b) {item += b; return item;}
-		template <typename B>
-		T & operator -= (B const & b) {item -= b; return item;}
-		template <typename B>
-		T & operator *= (B const & b) {item *= b; return item;}
-		template <typename B>
-		T & operator /= (B const & b) {item /= b; return item;}
+		//template <typename B>
+		//T & operator = (B const & b) {item = b; return item;}
+		//template <typename B>
+		//T & operator += (B const & b) {item += b; return item;}
+		//template <typename B>
+		//T & operator -= (B const & b) {item -= b; return item;}
+		//template <typename B>
+		//T & operator *= (B const & b) {item *= b; return item;}
+		//template <typename B>
+		//T & operator /= (B const & b) {item /= b; return item;}
 		T & get() {return item;}
 		const T & get() const {return item;}
 		T & get(int k) {return item;}
 		const T & get(int k) const {return item;}
-		T & operator ->() {return get();}
-		const T & operator ->() const {return get();}
+		T * operator ->() {return &item;}
+		const T * operator ->() const {return &item;}
 	};
 #endif //_OPENMP
 	/*

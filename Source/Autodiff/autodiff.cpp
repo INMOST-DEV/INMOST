@@ -11,6 +11,13 @@
 
 namespace INMOST
 {
+	template<> Matrix<INMOST_DATA_REAL_TYPE>    AbstractEntry::Access(const Storage& e) const {return Value(e);}
+	template<> Matrix<INMOST_DATA_INTEGER_TYPE> AbstractEntry::Access(const Storage& e) const {return Index(e);}
+	template<> Matrix<unknown>                  AbstractEntry::Access(const Storage& e) const {return Unknown(e);}
+	
+	template<> INMOST_DATA_REAL_TYPE    AbstractEntry::Access(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
+	template<> INMOST_DATA_INTEGER_TYPE AbstractEntry::Access(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
+	template<> unknown                  AbstractEntry::Access(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
 	
 #if defined(USE_MESH)
 	Automatizator * Automatizator::CurrentAutomatizator = NULL;
@@ -127,13 +134,23 @@ namespace INMOST
 		}
 		
 		reg_blocks[ret]->reg_index = ret;
+		//b.reg_index = ret;
 		
 		{
 			std::stringstream tag_name;
 			tag_name << name << "_BLK_" << ret << "_Offset";
 			reg_blocks[ret]->SetOffsetTag(m->CreateTag(tag_name.str(),DATA_INTEGER,b.GetElementType(),sparse,1));
+			//b.SetOffsetTag(reg_blocks[ret]->GetOffsetTag());
 		}
 					
+		return ret;
+	}
+	
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterEntry(AbstractEntry & b)
+	{
+		INMOST_DATA_ENUM_TYPE ret = RegisterEntry(static_cast<const AbstractEntry &>(b));
+		b.reg_index = reg_blocks[ret]->GetRegistrationIndex();
+		b.SetOffsetTag(reg_blocks[ret]->GetOffsetTag());
 		return ret;
 	}
 	

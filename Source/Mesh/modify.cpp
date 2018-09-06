@@ -1674,6 +1674,16 @@ namespace INMOST
 		//ApplyModification();
 		//temp_hide_element = hide_element;
 		//hide_element = 0;
+		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
+		{
+			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+			{
+				//all upper elements are deleted
+				if( ElementByLocalID(etype,it).nbAdjElements(NextElementType(etype),hide_element) ==
+				    ElementByLocalID(etype,it).nbAdjElements(NextElementType(etype)) )
+					SetMarker(ComposeHandle(etype,it),hide_element);
+			}
+		}
 		for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
@@ -1684,6 +1694,7 @@ namespace INMOST
 					Destroy(h);
 			}
 		}
+		/*
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
@@ -1692,6 +1703,7 @@ namespace INMOST
 					Destroy(ComposeHandle(etype,it));
 			}
 		}
+		 */
 		RecomputeParallelStorage(ESET|CELL|FACE|EDGE|NODE);
 		memset(hidden_count,0,sizeof(integer)*6);
 		memset(hidden_count_zero,0,sizeof(integer)*6);

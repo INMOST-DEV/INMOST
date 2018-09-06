@@ -262,23 +262,26 @@ namespace INMOST
 		double px1, py1, z;
 		double px2, py2;
 		int height = glutGet(GLUT_WINDOW_HEIGHT);
-		file << "<g>" << std::endl;
+		
 		for (int i = 0; i < ticks.size() - 1; ++i)
 		{
+			file << "<g>" << std::endl;
 			colors[i].set_color();
 			gluProject(left, bottom + ticks[i] * (top - bottom), 0, modelview, projection, viewport, &px1, &py1, &z); py1 = height - py1;
 			gluProject(right, bottom + ticks[i + 1] * (top - bottom), 0, modelview, projection, viewport, &px2, &py2, &z); py2 = height - py2;
-			file << "<def>" << std::endl;
-			file << "<linearGradient id=\"grad" << i << "\" gradientUnits=\"userSpaceOnUse\" x1=\"" << px1 << "\" y1=\"" << py1 << "\" x2=\"" << px1 << "\" y2=\"" << py2 << "\">" << std::endl;
-			file << "<stop offset=\"0%\" stop-color=\"" << colors[i].svg_rgb() << "\"/>" << std::endl;
-			file << "<stop offset=\"100%\" stop-color=\"" << colors[i + 1].svg_rgb() << "\"/>" << std::endl;
+			file << "<defs>" << std::endl;
+			file << "<linearGradient id=\"grad" << i << "\" x1=\"0%\" y1=\"100%\" x2=\"0%\" y2=\"0%\">" << std::endl;
+			file << "<stop offset=\"0%\" style=\"stop-color:" << colors[i].svg_rgb() << ";stop-opacity:1\"/>" << std::endl;
+			file << "<stop offset=\"100%\" style=\"stop-color:" << colors[i + 1].svg_rgb() << ";stop-opacity:1\"/>" << std::endl;
 			file << "</linearGradient>" << std::endl;
-			file << "</def>" << std::endl;
-			file << "<rect stroke=\"none\" x=\"" << px1 << "\" y=\"" << py2 << "\" width=\"" << px2 - px1 << "\" height=\"" << py1 - py2 << "\" fill=\"url(#grad" << i << ")\"/>" << std::endl;
+			file << "</defs>" << std::endl;
+			file << "<rect stroke=\"none\" x=\"" << px1 << "\" y=\"" << py2 << "\" width=\"" << fabs(px2 - px1) << "\" height=\"" << fabs(py1 - py2) << "\" fill=\"url(#grad" << i << ")\"/>" << std::endl;
+			file << "</g>" << std::endl;
 		}
 
 		int tickmarks = 11;
 
+		file << "<g>" << std::endl;
 		for (int i = 0; i < tickmarks; ++i)
 		{
 			float t = 1.0f*i / static_cast<float>(tickmarks - 1);
@@ -294,6 +297,7 @@ namespace INMOST
 		gluProject(left, bottom, 0, modelview, projection, viewport, &px1, &py1, &z); py1 = height - py1;
 		gluProject(right, top, 0, modelview, projection, viewport, &px2, &py2, &z); py2 = height - py2;
 		file << "<rect stroke=\"black\" fill=\"none\" x=\"" << px1 << "\" y=\"" << py2 << "\" width=\"" << px2 - px1 << "\" height=\"" << py1 - py2 << "\"/>" << std::endl;
+		file << "</g>" << std::endl;
 
 		file << "<g stroke=\"black\">" << std::endl;
 		for (int i = 0; i < tickmarks; ++i)
@@ -304,7 +308,7 @@ namespace INMOST
 			svg_line(file, right + (left - right)*0.25, pos, 0, right, pos, 0, modelview, projection, viewport);
 		}
 		file << "</g>" << std::endl;
-		file << "</g>" << std::endl;
+		//file << "</g>" << std::endl;
 	}
 
 

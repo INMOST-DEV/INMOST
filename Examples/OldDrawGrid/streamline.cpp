@@ -215,7 +215,7 @@ namespace INMOST
 		Storage::real coef, len, size;
 		coord next = pos, vel;
 		Element c;
-		const int maxsteps = 8000;
+		const int maxsteps = 250;
 		points.reserve(maxsteps / 2);
 		velarr.reserve(maxsteps / 2);
 		points.push_back(pos);
