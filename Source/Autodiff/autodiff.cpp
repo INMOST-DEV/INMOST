@@ -6,13 +6,24 @@
 #include "asmjit.h"
 #endif
 
-#if defined(USE_AUTODIFF_OPENCL)
-#include <CL/cl.h>
-#endif
+
 
 
 namespace INMOST
 {
+	
+	template<> Demote<INMOST_DATA_REAL_TYPE>::type    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
+	template<> Demote<INMOST_DATA_INTEGER_TYPE>::type AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
+	template<> Demote<unknown>::type                  AbstractEntry::Access<unknown>                 (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	template<> Demote<variable>::type                 AbstractEntry::Access<variable>                (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	template<> Demote<hessian_variable>::type         AbstractEntry::Access<hessian_variable>        (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	
+	template<> Matrix<typename Demote<INMOST_DATA_REAL_TYPE>::type>    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e) const {return Value(e);}
+	template<> Matrix<typename Demote<INMOST_DATA_INTEGER_TYPE>::type> AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e) const {return Index(e);}
+	template<> Matrix<typename Demote<unknown>::type>                  AbstractEntry::Access<unknown>                 (const Storage& e) const {return Unknown(e);}
+	template<> Matrix<typename Demote<variable>::type>                 AbstractEntry::Access<variable>                (const Storage& e) const {return Unknown(e);}
+	template<> Matrix<typename Demote<hessian_variable>::type>         AbstractEntry::Access<hessian_variable>        (const Storage& e) const {return Unknown(e);}
+	
 	
 #if defined(USE_MESH)
 	Automatizator * Automatizator::CurrentAutomatizator = NULL;
@@ -129,13 +140,23 @@ namespace INMOST
 		}
 		
 		reg_blocks[ret]->reg_index = ret;
+		//b.reg_index = ret;
 		
 		{
 			std::stringstream tag_name;
 			tag_name << name << "_BLK_" << ret << "_Offset";
 			reg_blocks[ret]->SetOffsetTag(m->CreateTag(tag_name.str(),DATA_INTEGER,b.GetElementType(),sparse,1));
+			//b.SetOffsetTag(reg_blocks[ret]->GetOffsetTag());
 		}
 					
+		return ret;
+	}
+	
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterEntry(AbstractEntry & b)
+	{
+		INMOST_DATA_ENUM_TYPE ret = RegisterEntry(static_cast<const AbstractEntry &>(b));
+		b.reg_index = reg_blocks[ret]->GetRegistrationIndex();
+		b.SetOffsetTag(reg_blocks[ret]->GetOffsetTag());
 		return ret;
 	}
 	

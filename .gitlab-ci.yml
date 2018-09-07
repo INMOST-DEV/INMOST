@@ -1,0 +1,45 @@
+# use the official gcc image, based on debian
+# can use versions as well, like gcc:5.2
+image: gcc
+
+stages:
+  - build
+  - test
+
+build_debug:
+  stage: build
+  script:
+    - mkdir build_debug
+    - cd build_debug
+    - cmake -DCOMPILE_TESTS=ON -DUSE_OMP=ON -DCMAKE_CXX_FLAGS="-O0 -g" -DCMAKE_C_FLAGS="-O0 -g" ..
+    - make VERBOSE=1
+  artifacts:
+    paths:
+    - build_debug/
+
+build_opt:
+  stage: build
+  script:
+    - mkdir build_opt
+    - cd build_opt
+    - cmake -DCOMPILE_TESTS=ON -DCOMPILE_EXAMPLES=ON -DUSE_OMP=ON -DCMAKE_CXX_FLAGS="-Ofast -march=native" -DCMAKE_C_FLAGS="-Ofast -march=native" ..
+    - make VERBOSE=1
+  artifacts:
+    paths:
+    - build_opt/
+
+test_debug:
+  stage: test
+  script:
+    - cd build_debug
+    - ctest --output-on-failure
+  dependencies:
+    - build_debug
+
+test_opt:
+  stage: test
+  script:
+    - cd build_opt
+    - ctest --output-on-failure
+  dependencies:
+    - build_opt

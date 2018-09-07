@@ -1628,17 +1628,16 @@ namespace INMOST
 	    
         Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
 
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
         {
-            double min = 0;
-            int first = 0;
+            double mind = 1.0e+100;
             Cell near_cell;
-		    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false)
+		    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) if (GetMarker(*jt,NewMarker()) == false && jt->GetStatus() == Element::Owned)
             {
                 double d = dist(it->getAsCell(), jt->getAsCell());
-                if (first++ == 0 || min > d) 
+                if (mind > d) 
                 {
-                    min = d;
+                    mind = d;
                     near_cell = jt->getAsCell();
                 }
             }
@@ -1647,13 +1646,13 @@ namespace INMOST
             int owner2 = near_cell.IntegerDF(tag_owner);
     
             it->RealArray(tag)[0] = owner2;
-            it->RealArray(tag)[1] = min;
+            it->RealArray(tag)[1] = mind;
        }
 
         ReduceData(tag, CELL, 0, OperationMinDistance);
         ExchangeData(tag, CELL, 0);
 
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()))
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
         {
             int new_owner = (int)it->RealArray(tag)[0];
 
@@ -1675,6 +1674,16 @@ namespace INMOST
 		//ApplyModification();
 		//temp_hide_element = hide_element;
 		//hide_element = 0;
+		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
+		{
+			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+			{
+				//all upper elements are deleted
+				if( ElementByLocalID(etype,it).nbAdjElements(NextElementType(etype),hide_element) ==
+				    ElementByLocalID(etype,it).nbAdjElements(NextElementType(etype)) )
+					SetMarker(ComposeHandle(etype,it),hide_element);
+			}
+		}
 		for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
@@ -1685,6 +1694,17 @@ namespace INMOST
 					Destroy(h);
 			}
 		}
+		/*
+		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
+		{
+			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+			{
+				if( ElementByLocalID(etype,it).nbAdjElements(NextElementType(etype)) == 0 )
+					Destroy(ComposeHandle(etype,it));
+			}
+		}
+		 */
+		RecomputeParallelStorage(ESET|CELL|FACE|EDGE|NODE);
 		memset(hidden_count,0,sizeof(integer)*6);
 		memset(hidden_count_zero,0,sizeof(integer)*6);
 		ReleaseMarker(hide_element);

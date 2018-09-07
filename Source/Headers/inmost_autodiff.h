@@ -11,6 +11,14 @@ namespace INMOST
 {
 	class Automatizator; //forward declaration
 	
+	//return specific type with specific template
+	template<class T> struct Demote;
+	template<> struct Demote<INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_INTEGER_TYPE type;};
+	template<> struct Demote<INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Demote<unknown> {typedef unknown type;};
+	template<> struct Demote<variable> {typedef unknown type;};
+	template<> struct Demote<hessian_variable> {typedef unknown type;};
+	
 	/// This class is used to organize unknowns in abstract way,
 	/// it should be registered with and managed by class Automatizator.
 	/// \todo
@@ -42,17 +50,17 @@ namespace INMOST
 		/// Check that the block is valid on given element.
 		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && (e.GetElementType() & etype) && (mask == 0 || e->GetMarker(mask));}
 		/// Return value in vector of unknowns of the block at certain position.
-		/// @param pos Position for which to extract the value, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the value, should be no larger then MatrixSize.
 		virtual INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
 		/// Return value in vector of unknowns of the block at certain position.
-		/// @param pos Position for which to extract the value, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the value, should be no larger then MatrixSize.
 		virtual INMOST_DATA_REAL_TYPE & Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) = 0;
 		/// Return index in vector of indices of the block at certain position.
 		/// The index may be ENUMUNDEF if the unknown is inactive.
-		/// @param pos Position for which to extract the index, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the index, should be no larger then MatrixSize.
 		virtual INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
 		/// Return unknown in vector of variables of the block at certain position.
-		/// @param pos Position for which to extract the unknown, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the unknown, should be no larger then MatrixSize.
 		virtual unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
 		/// Return vector filled with values of unknowns of the block.
 		virtual rMatrix Value(const Storage & e) const = 0;
@@ -60,6 +68,13 @@ namespace INMOST
 		virtual iMatrix Index(const Storage & e) const = 0;
 		/// Return vector filled with unknowns of the block with their derivatives.
 		virtual uMatrix Unknown(const Storage & e) const = 0;
+		/// Return vector filled with either values or indices or unknowns of the block,
+		/// depending on the template parameter.
+		template<typename T> Matrix<typename Demote<T>::type> Access(const Storage &e) const;
+		/// Return either value or index or unknown at specified position of the block,
+		/// depending on the template parameter.
+		/// @param pos Position in the block, should be no larger then MatrixSize.
+		template<typename T> typename Demote<T>::type Access(const Storage &e, INMOST_DATA_ENUM_TYPE pos) const;
 		/// Return vector filled with unknowns of the block with their derivatives.
 		virtual uMatrix operator [](const Storage & e) const = 0;
 		/// The intended size of the matrix for this entry.
@@ -91,6 +106,9 @@ namespace INMOST
 		friend class Automatizator; //provide registration index from inside of Automatizator
 		friend class Model; //provide registration index from inside of Model
 	};
+	
+	
+	
 	/// This class is used to organize unknowns into blocks,
 	/// blocks enumeration are managed by class Automatizator.
 	class BlockEntry : public AbstractEntry
@@ -390,6 +408,7 @@ namespace INMOST
 		/// \warning
 		/// 1. If you create your entry with intention to use it after registration, then you should use the function as entry = aut.GetEntry(aut.RegisterEntry(entry));
 		INMOST_DATA_ENUM_TYPE RegisterEntry(const AbstractEntry & e);
+		INMOST_DATA_ENUM_TYPE RegisterEntry(AbstractEntry & e);
 		/// Erase a registered tag.
 		/// @param ind Integer returned from Automatizator::RegisterTag.
 		/// \warning

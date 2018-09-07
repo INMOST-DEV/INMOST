@@ -3,7 +3,7 @@
 
 #include "inmost_variable.h"
 
-#if defined(USE_AUTODIFF) && defined(USE_MESH)
+#if defined(USE_AUTODIFF) && defined(USE_MESH) && defined(USE_SOLVER)
 
 namespace INMOST
 {

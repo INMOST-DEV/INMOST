@@ -3,6 +3,17 @@
 #if defined(USE_MESH)
 #define WAITNL 	{char c;scanf("%c",&c);}
 
+
+#if defined(__LINUX__) || defined(__linux__) || defined(__APPLE__)
+#include <unistd.h>
+#define PROCESSID getpid()
+#elif defined(_WIN32)
+#include <windows.h>
+#define PROCESSID GetCurrentProcessId()
+#else
+#define PROCESSID -1
+#endif
+
 namespace INMOST
 {
   static std::vector<Mesh *> allocated_meshes;
@@ -166,7 +177,7 @@ namespace INMOST
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
 		AllocatePrivateMarkers();
-		for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 			ReallocateData(ElementNum(etype),GetArrayCapacity(ElementNum(etype)));
 		epsilon = 1.0e-8;
 		m_state = Mesh::Serial;
@@ -187,7 +198,7 @@ namespace INMOST
 		out_time.open(temp.str().c_str(),std::ios::out);
 		out_time << "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>" << std::endl;
 		out_time << "<?xml-stylesheet type=\"text/xsl\" href=\"style.xsl\"?>" << std::endl;
-		out_time << "<Debug>" << std::endl;
+		out_time << "<Debug ProcessID=" << PROCESSID << ">" << std::endl;
 		tab = 1;
 		func_id = 0;
 #endif
@@ -392,7 +403,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
-    AllocatePrivateMarkers();
+		AllocatePrivateMarkers();
 		//copy supplimentary values
 		m_state = other.m_state;
 		checkset = other.checkset;
@@ -409,7 +420,7 @@ namespace INMOST
 		//this is not needed as it was copied with all the other data
 		//recompute global ids
 		//AssignGlobalID(other.have_global_id);
-    allocated_meshes.push_back(this);
+		allocated_meshes.push_back(this);
 	}
 	
 	Mesh & Mesh::operator =(Mesh const & other)
@@ -435,6 +446,7 @@ namespace INMOST
 		}
 #endif
 #endif
+		
 		//clear all data fields
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 		{
@@ -463,6 +475,7 @@ namespace INMOST
 				}
 			}
 		}
+		
 		//clear links
 		for(int i = 0; i < 5; i++)
 		{
@@ -471,6 +484,7 @@ namespace INMOST
 			empty_space[i].clear();
 		}
 		DeallocatePrivateMarkers();
+		//while( !tags.empty() ) DeleteTag(tags.back(),CELL|FACE|EDGE|NODE|ESET|MESH);
 		//this should copy tags, clear sparse data, set up dense links
 		TagManager::operator =(other);
 		//set up new links
@@ -517,7 +531,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
-    AllocatePrivateMarkers();
+		AllocatePrivateMarkers();
 		//copy supplimentary values
 		m_state = other.m_state;
 		checkset = other.checkset;
@@ -539,6 +553,8 @@ namespace INMOST
 
 	void Mesh::Clear()
 	{
+		
+		/*
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 		{
 			for(tag_array_type::size_type i = 0; i < tags.size(); ++i)
@@ -566,8 +582,10 @@ namespace INMOST
 				}
 			}
 		}
+		*/
 		DeallocatePrivateMarkers();
 		memset(remember,0,sizeof(bool)*15);
+		while( !tags.empty() ) DeleteTag(tags.back(),CELL|FACE|EDGE|NODE|ESET|MESH);
 		tags.clear();
 		//clear links
 		dense_data.clear();
@@ -590,6 +608,8 @@ namespace INMOST
 	Mesh::~Mesh()
 	{
 		//clear all data fields
+		//while( !tags.empty() ) DeleteTag(tags.back(),CELL|FACE|EDGE|NODE|ESET|MESH);
+		/*
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 		{
 			for(tag_array_type::size_type i = 0; i < tags.size(); ++i)
@@ -617,7 +637,9 @@ namespace INMOST
 				}
 			}
 		}
+		*/
 		DeallocatePrivateMarkers();
+		while( !tags.empty() ) DeleteTag(tags.back(),CELL|FACE|EDGE|NODE|ESET|MESH);
 		//clear links
 		for(int i = 0; i < 5; i++)
 		{
@@ -674,6 +696,9 @@ namespace INMOST
 	}
 	Tag Mesh::DeleteTag(Tag tag, ElementType type_mask)
 	{
+		//std::cout << "Delete tag " << tag.GetTagName() << " type " << DataTypeName(tag.GetDataType()) << " on ";
+		//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( (etype & type_mask) && tag.isDefined(etype) ) std::cout << ElementTypeName(etype) << " ";
+		//std::cout << std::endl;
 		//deallocate data on elements
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 		{
@@ -700,7 +725,7 @@ namespace INMOST
 			}
 		}
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_tags)
 #endif
 		{
 			tag = TagManager::DeleteTag(tag,type_mask);
@@ -1861,8 +1886,8 @@ namespace INMOST
 				if( data_pos == ENUMUNDEF ) continue;
 				TagManager::dense_sub_type & arr = GetDenseData(data_pos);
 				INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
-				memcpy(&arr[new_addr],&arr[old_addr],record_size);
-				memset(&arr[old_addr],0,record_size);
+				TagManager::CopyData(*t,static_cast<void *>(&arr[new_addr]),static_cast<void *>(&arr[old_addr]));
+				DelDenseData(static_cast<void *>(&arr[old_addr]),*t);
 			}
 		}
 	}
@@ -2371,27 +2396,26 @@ namespace INMOST
 		}
 #endif
 	}
+	
+	void Mesh::DelDenseData(void * data, const Tag & tag)
+	{
+		if( tag.GetSize() == ENUMUNDEF )
+			TagManager::DestroyVariableData(tag,data);
+#if defined(USE_AUTODIFF)
+		else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
+		{
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k) (static_cast<variable *>(data)[k]) = 0.0;
+		}
+#endif
+		else memset(data,0,tag.GetRecordSize());
+	}
 
 	void Mesh::DelDenseData(HandleType h, const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
 		assert( !tag.isSparseByDim(GetHandleElementNum(h)) );
 		void * data = MGetLink(h,tag);
-		if( data != NULL )
-		{
-			if( tag.GetSize() == ENUMUNDEF )
-				TagManager::DestroyVariableData(tag,data);
-#if defined(USE_AUTODIFF)
-      else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
-      {
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
-          (static_cast<variable *>(data)[k]).~variable();
-      }
-#endif
-			//else if( tag.GetDataType() == DATA_REFERENCE )
-			//	 memset(data,0xff,tag.GetRecordSize());
-			else memset(data,0,tag.GetRecordSize());
-		}
+		if( data != NULL ) DelDenseData(data,tag);
 	}
 
 	void Mesh::DelSparseData(HandleType h,const Tag & tag)

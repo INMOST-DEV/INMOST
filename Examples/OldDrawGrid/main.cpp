@@ -420,6 +420,7 @@ void keyboard(unsigned char key, int x, int y)
 		if( oclipper ) delete oclipper;
 		if( bclipper ) delete bclipper;
 		if( current_picker ) delete current_picker;
+		delete CommonVolumetricView;
 		delete mesh;
 		exit(-1);
 	}
@@ -1692,10 +1693,19 @@ void draw_screen()
 								{
 									if (source_tag.isDefined(visualization_type))
 									{
-										if (source_tag.GetDataType() == DATA_REAL || source_tag.GetDataType() == DATA_INTEGER || source_tag.GetDataType() == DATA_BULK || source_tag.GetDataType() == DATA_VARIABLE)
+										if (source_tag.GetDataType() == DATA_REAL || 
+											source_tag.GetDataType() == DATA_INTEGER || 
+											source_tag.GetDataType() == DATA_BULK 
+#if defined(USE_AUTODIFF)
+											|| 
+											source_tag.GetDataType() == DATA_VARIABLE
+#endif
+											)
 										{
+#if defined(USE_AUTODIFF)
 											if (source_tag.GetDataType() == DATA_VARIABLE)
 												printf("I can show only value for data of type variable\n");
+#endif
 											float min = 1.0e20, max = -1.0e20;
 											printf("prepearing data for visualization\n");
 											if (visualization_tag.isValid())
@@ -1759,6 +1769,7 @@ void draw_screen()
 														}
 														else val += wgt * static_cast<double>(v[comp]);
 													}
+#if defined(USE_AUTODIFF)
 													else if (source_tag.GetDataType() == DATA_VARIABLE)
 													{
 														Storage::var_array v = jt->VariableArray(source_tag);
@@ -1771,6 +1782,7 @@ void draw_screen()
 														}
 														else val += wgt * static_cast<double>(v[comp].GetValue());
 													}
+#endif
 													vol += wgt;
 												}
 												res = val / vol;
@@ -1831,6 +1843,7 @@ void draw_screen()
 														}
 														else val += wgt * static_cast<double>(v[comp]);
 													}
+#if defined(USE_AUTODIFF)
 													else if (source_tag.GetDataType() == DATA_VARIABLE)
 													{
 														Storage::var_array v = jt->VariableArray(source_tag);
@@ -1843,6 +1856,7 @@ void draw_screen()
 														}
 														else val += wgt * v[comp].GetValue();
 													}
+#endif
 													vol += wgt;
 												}
 												res = val / vol;
@@ -1942,7 +1956,11 @@ void svg_draw(std::ostream & file)
 {
 	//file << "<?xml version=\"1.0\" stanfalone=\"no\">" << std::endl;
 	//file << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">" << std::endl;
-	file << "<svg width=\"" << width << "\" height=\"" << height << "\" version=\"1.1\">" << std::endl;
+	
+	file << "<svg version=\"1.1\"";
+	file << " baseProfile=\"full\"";
+	file << " width=\"" << width << "\"";
+	file << " height=\"" << height << "\" xmlns=\"http://www.w3.org/2000/svg\">" << std::endl;
 
 	//glDepthMask(GL_TRUE);
 	glLoadIdentity();

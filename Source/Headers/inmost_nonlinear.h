@@ -17,11 +17,12 @@ namespace INMOST
 	
 	class NonlinearSolver
 	{
-		Automatizator & aut;
+		//Automatizator & aut;
 	public:
-		NonlinearSolver(Automatizator & aut) : aut(aut) {}
-		NonlinearSolver(const NonlinearSolver & b) : aut(b.aut) {}
-		NonlinearSolver & operator =(NonlinearSolver const & b) {aut = b.aut; return *this;}
+		//NonlinearSolver(Automatizator & aut) : aut(aut) {}
+		NonlinearSolver() {}
+		NonlinearSolver(const NonlinearSolver & b) /*: aut(b.aut)*/ {}
+		NonlinearSolver & operator =(NonlinearSolver const & b) {/*aut = b.aut;*/ return *this;}
 		~NonlinearSolver() {}
 		
 		RequestedAction GetAction() const;

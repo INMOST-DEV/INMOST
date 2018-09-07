@@ -26,7 +26,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-//#define REORDER_METIS_ND
+#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -45,15 +45,15 @@ using namespace INMOST;
 //#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
-#define PIVOT_THRESHOLD_VALUE 1.0e-6
-#define DIAGONAL_PERTURBATION
+#define PIVOT_THRESHOLD_VALUE 1.0e-9
+//#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
 #define DIAGONAL_PERTURBATION_ABS 1.0e-10
 //#define DIAGONAL_PIVOT //probably there is some bug
 #define DIAGONAL_PIVOT_TAU 0.01
 //#define DIAGONAL_PIVOT_COND 100
 #define ILUC2
-#define TRACK_DIAGONAL
+//#define TRACK_DIAGONAL
 
 #if defined(DIAGONAL_PIVOT) && defined(DIAGONAL_PIVOT_TAU) && !defined(TRACK_DIAGONAL)
 #define TRACK_DIAGONAL
@@ -443,6 +443,7 @@ using namespace INMOST;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ubeg(mobeg, moend,EOL), Lbeg(mobeg, moend,EOL), Bbeg(mobeg,moend,EOL);
 
 		INMOST_DATA_REAL_TYPE NuU = 1, NuL = 1, NuD, NuU_max = 1.0, NuL_max = 1.0;
+		INMOST_DATA_REAL_TYPE NuUsqrt = 1, NuLsqrt = 1;
 #if defined(ESTIMATOR)
 		//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
 		INMOST_DATA_REAL_TYPE mup, mum, smup, smum, NuL1 = 1, NuL2 = 1, NuU1 = 1, NuU2 = 1;
@@ -2754,6 +2755,9 @@ swap_algorithm:
 #endif
 						NuL_max = std::max(NuL,NuL_max);
 						NuU_max = std::max(NuU,NuU_max);
+			  
+			  NuUsqrt = sqrt(NuU);
+			  NuLsqrt = sqrt(NuL);
           }
 #endif //ESTIMATOR
 					
@@ -2794,7 +2798,7 @@ swap_algorithm:
 					{
 						u = fabs(LineValuesL[Li]);
 						//if( !(u == u) ) std::cout << __FILE__ << ":" << __LINE__ << " nan " << std::endl;
-						if (u*NuL /*NuU_old*/ > tau) //apply dropping 
+						if (u*NuL /*NuU_old*/ > tau) //apply dropping
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
 						else if (u*NuL /*NuU_old*/ > tau2)
