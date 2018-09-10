@@ -1067,7 +1067,7 @@ namespace INMOST
 		/// @return Submatrix of the original matrix.
 		::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
 		
-		const ::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
+		::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	
 	/// Class for linear algebra operations on dense matrices.
@@ -1728,7 +1728,7 @@ namespace INMOST
 		/// @return Submatrix of the original matrix.
 		::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
 
-		const ::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
+		::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	/// This class allows for in-place operations on submatrix of the matrix elements.
 	template<typename Var>
@@ -1828,6 +1828,82 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
             (void)cols; (void)rows;
+		}
+	};
+	
+	/// This class allows for in-place operations on submatrix of the matrix elements.
+	template<typename Var>
+	class ConstSubMatrix : public AbstractMatrix<Var>
+	{
+	public:
+		typedef unsigned enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrix<Var> * M;
+		enumerator brow; //< First row in matrix M.
+		enumerator erow; //< Last row in matrix M.
+		enumerator bcol; //< First column in matrix M.
+		enumerator ecol; //< Last column in matrix M.
+	public:
+		/// Number of rows in submatrix.
+		/// @return Number of rows.
+		enumerator Rows() const {return erow-brow;}
+		/// Number of columns in submatrix.
+		/// @return Number of columns.
+		enumerator Cols() const {return ecol-bcol;}
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param first_row First row in the matrix.
+		/// @param last_row Last row in the matrix.
+		/// @param first_column First column in the matrix.
+		/// @param last_column Last column in the matrix.
+		ConstSubMatrix(const AbstractMatrix<Var> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
+		{}
+		ConstSubMatrix(const ConstSubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
+		
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to element.
+		Var & operator()(enumerator i, enumerator j)
+		{
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
+			return const_cast<Var &>((*M)(i+brow,j+bcol));
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		const Var & operator()(enumerator i, enumerator j) const
+		{
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
+			return (*M)(i+brow,j+bcol);
+		}
+		/// Convert submatrix into matrix.
+		/// Note, that modifying returned matrix does
+		/// not affect elements of the submatrix or original matrix
+		/// used to create submatrix.
+		/// @return Matrix with same entries as submatrix.
+		::INMOST::Matrix<Var> MakeMatrix()
+		{
+			::INMOST::Matrix<Var> ret(Rows(),Cols());
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret(i,j) = (*this)(i,j);
+			return ret;
+		}
+		/// This is a stub function to fulfill abstract
+		/// inheritance. SubMatrix cannot change it's size,
+		/// since it just points to a part of the original matrix.
+		void Resize(enumerator rows, enumerator cols)
+		{
+			assert(Cols() == cols);
+			assert(Rows() == rows);
+			(void)cols; (void)rows;
 		}
 	};
 	
@@ -2393,9 +2469,9 @@ namespace INMOST
 		return ::INMOST::SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
 	}
 	template<typename Var, typename storage_type>
-	const SubMatrix<Var> SymmetricMatrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+	ConstSubMatrix<Var> SymmetricMatrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
 	{
-		return ::INMOST::SubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
+		return ::INMOST::ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
 	
 	template<typename Var,typename storage_type>
@@ -2404,9 +2480,9 @@ namespace INMOST
 		return ::INMOST::SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
 	}
 	template<typename Var, typename storage_type>
-	const SubMatrix<Var> Matrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+	ConstSubMatrix<Var> Matrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
 	{
-		return ::INMOST::SubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
+		return ::INMOST::ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
 	
 	
