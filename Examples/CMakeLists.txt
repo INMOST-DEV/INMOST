@@ -1,7 +1,7 @@
 if(USE_MESH)
 add_subdirectory(AdaptiveMesh)
 add_subdirectory(DrawGrid)
-add_subdirectory(OldDrawGrid)
+add_subdirectory(DrawGridTests)
 add_subdirectory(GridGen)
 add_subdirectory(GridTools)
 endif(USE_MESH)
