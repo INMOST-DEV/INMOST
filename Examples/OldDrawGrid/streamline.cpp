@@ -54,6 +54,50 @@ namespace INMOST
 		if (ret > 1.0e+19) std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
 		return ret;
 	}
+	
+	void GetBbox(Element c, Storage::real bounds[3][2])
+	{
+		bounds[0][0] = 1.0e20;
+		bounds[0][1] = -1.0e20;
+		bounds[1][0] = 1.0e20;
+		bounds[1][1] = -1.0e20;
+		bounds[2][0] = 1.0e20;
+		bounds[2][1] = -1.0e20;
+		//bounds[3][2] = { { 1.0e20, -1.0e20 }, { 1.0e20, -1.0e20 }, { 1.0e20, -1.0e20 } };
+		ElementArray<Node> nodes = c->getNodes();
+		for (ElementArray<Node>::iterator n = nodes.begin(); n != nodes.end(); ++n)
+		{
+			Storage::real_array cnt = n->Coords();
+			for (int k = 0; k < 3; ++k)
+			{
+				if (bounds[k][0] > cnt[k]) bounds[k][0] = cnt[k];
+				if (bounds[k][1] < cnt[k]) bounds[k][1] = cnt[k];
+			}
+		}
+		return;
+		//Storage::real ret = 1.0e+20;
+		//for (int k = 0; k < 3; ++k) if (bounds[k][1] - bounds[k][0])
+		//	ret = std::min(ret, bounds[k][1] - bounds[k][0]);
+		//if (ret > 1.0e+19) std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+		//return ret;
+	}
+
+	double GetSizeProj(double bounds[3][2], const coord & v)
+	{
+		double vl = v.length();
+		if( !vl ) return 0;
+		coord uv = v/vl;
+		double ret = 0;
+		for(int k = 0; k < 3; ++k) ret += fabs(uv[k]*(bounds[k][1]-bounds[k][0]));
+		return ret;
+	}
+	
+	double GetSizeProj(Element c, const coord & v)
+	{
+		double bounds[3][2];
+		GetBbox(c,bounds);
+		return GetSizeProj(bounds,v);
+	}
 
 
 	Storage::real GetSize(Element n, const Tag & size_tag)
@@ -107,14 +151,16 @@ namespace INMOST
 		
 		{
 			MarkerType visited = mesh->CreateMarker();
-
-			printf("started building streamlines from boundary elements\n");
 			int tot = 0;
+			int k = 0;
+			/*
+			printf("started building streamlines from boundary elements\n");
+			
 			for (Mesh::iteratorElement f = mesh->BeginElement(vel_def); f != mesh->EndElement(); ++f) if (f->Boundary())
 				tot++;
 
 			printf("total elements: %d\n",tot);
-			int k = 0;
+			
 			for (Mesh::iteratorElement f = mesh->BeginElement(vel_def); f != mesh->EndElement(); ++f) if (f->Boundary())
 			{
 				coord v(f->RealArray(vel).data());
@@ -169,6 +215,7 @@ namespace INMOST
 			}
 
 			printf("done from boundary faces, total streamlines = %lu\n", output.size());
+			 */
 
 			printf("started building streamlines from unvisited cells\n");
 			tot = 0;
@@ -185,8 +232,8 @@ namespace INMOST
 					it->Centroid(cntc.data());
 					if (coord(it->RealArray(vel).data()).length() > 1.0e-4)
 					{
-						output.push_back(Streamline(octsearch, cntc, vel, vel_def, cell_size, velmin, velmax, 1.0, 0));
-						output.push_back(Streamline(octsearch, cntc, vel, vel_def, cell_size, velmin, velmax, -1.0, 0));
+						output.push_back(Streamline(octsearch, cntc, vel, vel_def, cell_size, velmin, velmax, 1.0, visited));
+						output.push_back(Streamline(octsearch, cntc, vel, vel_def, cell_size, velmin, velmax, -1.0, visited));
 					}
 				}
 				k++;
@@ -215,7 +262,7 @@ namespace INMOST
 		Storage::real coef, len, size;
 		coord next = pos, vel;
 		Element c;
-		const int maxsteps = 250;
+		const int maxsteps = 8000;
 		points.reserve(maxsteps / 2);
 		velarr.reserve(maxsteps / 2);
 		points.push_back(pos);
@@ -224,6 +271,7 @@ namespace INMOST
 		{
 			c = octsearch.FindClosestCell(next.data());
 			if (!c.isValid()) break;
+			//if( !c.getAsCell().Inside(next.data()) ) break;
 			//check we are inside mesh
 			/*
 			ElementArray<Cell> cells = c->BridgeAdjacencies2Cell(NODE);
@@ -235,9 +283,10 @@ namespace INMOST
 			c.SetMarker(visited);
 			GetVelocity(c, velocity_tag, velocity_defined, next, vel);
 			len = vel.length();
-			if (len < 1.0e-4) break;
-			size = GetSize(c, cell_size);// c->RealDF(cell_size);
-			coef = 0.05*size / len;
+			if (len < 1.0e-7) break;
+			//size = GetSize(c, cell_size);// c->RealDF(cell_size);
+			size = GetSizeProj(c,vel);
+			coef = 0.02*size / len;
 			next += vel*coef*sign;
 			points.push_back(next);
 			velarr.push_back((log(len + 1.0e-25) - velocity_min) / (velocity_max - velocity_min));
@@ -282,7 +331,7 @@ namespace INMOST
 		else for (unsigned int i = 0; i < points.size() - 1; i++)
 		{
 			glColor3f(velarr[i + 1] * 0.65, 0.65*(velarr[i + 1] < 0.5 ? velarr[i] : 1.0 - velarr[i]), 0.65*(1 - velarr[i + 1]));
-			drawcylinder(points[i], points[i + 1], 0.25*abs(points[i + 1] - points[i]));
+			drawcylinder(points[i], points[i + 1], 0.5*abs(points[i + 1] - points[i]));
 		}
 	}
 
