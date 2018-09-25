@@ -24,11 +24,6 @@ typedef Storage::enumerator enumerator;
 typedef Storage::real_array real_array;
 typedef Storage::var_array var_array;
 
-const real reg_abs = 1.0e-12; //regularize abs(x) as sqrt(x*x+reg_abs)
-const real reg_div = 1.0e-15; //regularize (|x|+reg_div)/(|x|+|y|+2*reg_div) to reduce to 1/2 when |x| ~= |y| ~= 0
-
-
-
 
 int main(int argc,char ** argv)
 {
@@ -44,13 +39,15 @@ int main(int argc,char ** argv)
 		{ // Load the mesh
 			ttt = Timer();
 			m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
-			if( m->GetProcessorRank() == 0 ) std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
+			if( m->GetProcessorRank() == 0 )
+				std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
 			if( m->isParallelFileFormat(argv[1]) ) //The format is
 			{
 				m->Load(argv[1]); // Load mesh from the parallel file format
 				repartition = true; // Ask to repartition the mesh
 			}
-			else if( m->GetProcessorRank() == 0 ) m->Load(argv[1]); // Load mesh from the serial file format
+			else if( m->GetProcessorRank() == 0 )
+				m->Load(argv[1]); // Load mesh from the serial file format
 			BARRIER
 			if( m->GetProcessorRank() == 0 ) std::cout << "Load the mesh: " << Timer()-ttt << std::endl;
 		}
