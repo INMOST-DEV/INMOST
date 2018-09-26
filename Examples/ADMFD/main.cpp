@@ -1,9 +1,10 @@
+#include "inmost.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
-#include "inmost.h"
+
 using namespace INMOST;
 
 #ifndef M_PI
@@ -97,7 +98,7 @@ int main(int argc,char ** argv)
         Tag tag_F;  // Forcing term
         Tag tag_BC; // Boundary conditions
         Tag tag_W;  // Gradient matrix acting on harmonic points on faces and returning gradient on faces
-        Tag tag_DMP; // Indicates weather local W matrix satisfy DMP condition
+		
 
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
@@ -157,7 +158,7 @@ int main(int argc,char ** argv)
             }
             m->ExchangeData(tag_P,CELL|FACE,0); //Synchronize initial solution with boundary unknowns
             tag_W = m->CreateTag("nKGRAD",DATA_REAL,CELL,NONE);
-            tag_DMP = m->CreateTag("isDMP",DATA_BULK,CELL,NONE);
+			
             ttt = Timer();
             //Assemble gradient matrix W on cells
 #if defined(USE_OMP)
@@ -168,7 +169,6 @@ int main(int argc,char ** argv)
 				rMatrix x(1,3), xf(1,3), n(1,3);
 				double area; //area of the face
 				double volume; //volume of the cell
-				Areas.Zero();
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -184,8 +184,9 @@ int main(int argc,char ** argv)
 					 //get permeability for the cell
 					 rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),
 													 cell->RealArrayDF(tag_K).size());
-					 NK.Resize(NF,3);
-					 R.Resize(NF,3), Areas(NF,NF); //big gradient matrix, co-normals, directions
+					 NK.Resize(NF,3); //co-normals
+					 R.Resize(NF,3); //directions
+					 Areas.Resize(NF,NF); //areas
 					 Areas.Zero();
 					 for(int k = 0; k < NF; ++k) //loop over faces
 					 {

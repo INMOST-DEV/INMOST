@@ -1,8 +1,9 @@
+#include "inmost.h"
 #include "octgrid.h"
 #include "my_glut.h"
 #include "rotate.h"
 #include <math.h>
-#include "inmost.h"
+
 
 #include <iomanip>
 #include <iostream>

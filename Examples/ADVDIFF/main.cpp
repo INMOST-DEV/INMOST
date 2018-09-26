@@ -1,8 +1,8 @@
+#include "inmost.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "inmost.h"
 #include "checks.h"
 #include "save_mesh.h"
 #include "conv_diff.h"
