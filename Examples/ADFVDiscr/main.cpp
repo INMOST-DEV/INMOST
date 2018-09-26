@@ -240,9 +240,15 @@ int main(int argc,char ** argv)
 						// pb = (c + bTp1)/(a+bT)
 						// F = T/(a+bT)(c - ap1)
 						T = k1/d1;
-						a = tag_BC[face][0];
-						b = tag_BC[face][1];
-						c = tag_BC[face][2];
+						a = 0;
+						b = 1;
+						c = 0;
+						if( tag_BC.isValid() )
+						{
+							a = tag_BC[face][0];
+							b = tag_BC[face][1];
+							c = tag_BC[face][2];
+						}
 						R.Lock(Phi.Index(r1));
 						R[Phi.Index(r1)] -=  T/(a + b*T) * area * (c - a*Phi(r1));
 						R.UnLock(Phi.Index(r1));
