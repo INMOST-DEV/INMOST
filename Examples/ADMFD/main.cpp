@@ -384,7 +384,7 @@ int main(int argc,char ** argv)
 
         if( m->HaveTag("REFERENCE_SOLUTION") )
         {
-            Tag tag_E = m->CreateTag("ERRROR",DATA_REAL,CELL,NONE,1);
+            Tag tag_E = m->CreateTag("ERROR",DATA_REAL,CELL,NONE,1);
             Tag tag_R = m->GetTag("REFERENCE_SOLUTION");
             real C, L2, volume;
             C = L2 = volume = 0.0;
@@ -398,8 +398,11 @@ int main(int argc,char ** argv)
                 volume += vol;
                 cell->Real(tag_E) = err;
             }
+			C = m->AggregateMax(C);
+			L2 = m->Integrate(L2);
+			volume = m->Integrate(volume);
             L2 = sqrt(L2/volume);
-            std::cout << "Error on cells, C-norm " << C << " L2-norm " << L2 << std::endl;
+            if( m->GetProcessorRank() == 0 ) std::cout << "Error on cells, C-norm " << C << " L2-norm " << L2 << std::endl;
             C = L2 = volume = 0.0;
             if( tag_R.isDefined(FACE) )
             {
@@ -414,8 +417,11 @@ int main(int argc,char ** argv)
                     volume += vol;
                     face->Real(tag_E) = err;
                 }
+				C = m->AggregateMax(C);
+				L2 = m->Integrate(L2);
+				volume = m->Integrate(volume);
                 L2 = sqrt(L2/volume);
-                std::cout << "Error on faces, C-norm " << C << " L2-norm " << L2 << std::endl;
+                if( m->GetProcessorRank() == 0 ) std::cout << "Error on faces, C-norm " << C << " L2-norm " << L2 << std::endl;
             }
             else std::cout << "Reference solution was not defined on faces" << std::endl;
         }

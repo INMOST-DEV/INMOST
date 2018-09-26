@@ -104,6 +104,7 @@ int main(int argc,char ** argv)
 		{
 			tag_K = m->GetTag("PERM");
 			makerefsol = false;
+			std::cout << "Permeability from grid" << std::endl;
 		}
 		else
 		{
@@ -117,6 +118,7 @@ int main(int argc,char ** argv)
 		{
 			tag_F = m->GetTag("FORCE");
 			makerefsol = false;
+			std::cout << "Force from grid" << std::endl;
 		}
 		else
 		{
@@ -126,7 +128,8 @@ int main(int argc,char ** argv)
 			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 			{
 				cell->Centroid(x);
-				tag_F[*cell] = func_rhs(x,1);  //cell->Mean(func_rhs, 1);
+				tag_F[*cell] = -func_rhs(x,1);
+				//tag_F[*cell] = -cell->Mean(func_rhs,1);
 			}
 		}
 		
@@ -134,12 +137,13 @@ int main(int argc,char ** argv)
 		{
 			tag_BC = m->GetTag("BOUNDARY_CONDITION");
 			makerefsol = false;
+			std::cout << "Boundary conditions from grid" << std::endl;
 		}
 		else
 		{
 			std::cout << "Set boundary conditions" << std::endl;
 			double x[3];
-			tag_BC = m->CreateTag("BOUNDARY_CONDITION",DATA_REAL,FACE,NONE,3);
+			tag_BC = m->CreateTag("BOUNDARY_CONDITION",DATA_REAL,FACE,FACE,3);
 			for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
 				if( face->Boundary() && !(face->GetStatus() == Element::Ghost) )
 				{
@@ -243,11 +247,12 @@ int main(int argc,char ** argv)
 						a = 0;
 						b = 1;
 						c = 0;
-						if( tag_BC.isValid() )
+						if( tag_BC.isValid() && face.HaveData(tag_BC) )
 						{
 							a = tag_BC[face][0];
 							b = tag_BC[face][1];
 							c = tag_BC[face][2];
+							//std::cout << "a " << a << " b " << b << " c " << c << std::endl;
 						}
 						R.Lock(Phi.Index(r1));
 						R[Phi.Index(r1)] -=  T/(a + b*T) * area * (c - a*Phi(r1));
@@ -283,7 +288,7 @@ int main(int argc,char ** argv)
 			{
 				Cell cell = Cell(m,ComposeCellHandle(icell));
 				if( cell->GetStatus() != Element::Ghost )
-					R[Phi.Index(cell)] += tag_F[cell] * cell->Volume();
+					R[Phi.Index(cell)] -= tag_F[cell] * cell->Volume();
 			}
 			BARRIER;
 			if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
@@ -317,16 +322,16 @@ int main(int argc,char ** argv)
 			if( phi_ref.isValid() )
 			{
 				Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
-				double err_C = 0.0, err_L2 = 0.0;
+				double err_C = 0.0, err_L2 = 0.0, vol = 0.0;
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 				{
 					double local_err_C = 0;
 #if defined(USE_OMP)
-#pragma omp for reduction(+:err_L2)
+#pragma omp for reduction(+:err_L2, +:vol)
 #endif
-					for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell )
+					for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
 					{
 						Cell cell = Cell(m,ComposeCellHandle(icell));
 						if( cell->GetStatus() != Element::Ghost )
@@ -338,6 +343,7 @@ int main(int argc,char ** argv)
 							double err = fabs (sol - exact);
 							if (err > local_err_C) local_err_C = err;
 							err_L2 += err * err * cell->Volume();
+							vol += cell->Volume();
 							cell->Real(error) = err;
 							phi[cell] = sol;
 						}
@@ -350,7 +356,7 @@ int main(int argc,char ** argv)
 					}
 				}
 				err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
-				err_L2 = sqrt(m->Integrate(err_L2)); // Compute the global L2 norm for the error
+				err_L2 = sqrt(m->Integrate(err_L2)/m->Integrate(vol)); // Compute the global L2 norm for the error
 				if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;
 				if( m->GetProcessorRank() == 0 ) std::cout << "err_L2 = " << err_L2 << std::endl;
 			}
