@@ -88,8 +88,8 @@ int main(int argc,char ** argv)
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
 
 #if defined(USE_PARTITIONER)
-		if (m->GetProcessorsNumber() > 1 && !repartition)
-    { // currently only non-distributed meshes are supported by Inner_RCM partitioner
+		if (m->GetProcessorsNumber() > 1 )// && !repartition)
+		{ // currently only non-distributed meshes are supported by Inner_RCM partitioner
 			ttt = Timer();
 			Partitioner * p = new Partitioner(m);
 			p->SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition); // Specify the partitioner

@@ -1,7 +1,8 @@
+#include "inmost.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "inmost.h"
+
 
 using namespace INMOST;
 std::string problem_name = "advection_degenerate_diffusion_reaction";

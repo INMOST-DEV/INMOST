@@ -1,7 +1,7 @@
+#include "inmost.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "inmost.h"
 
 std::string mesh_name = "SHESTAKOV";
 

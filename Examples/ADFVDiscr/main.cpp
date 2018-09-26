@@ -75,7 +75,7 @@ int main(int argc,char ** argv)
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
 
 #if defined(USE_PARTITIONER)
-		if (!repartition) 
+		if (m->GetProcessorsNumber() > 1)
 		{ // currently only non-distributed meshes are supported by Inner_RCM partitioner
 			ttt = Timer();
 			Partitioner * p = new Partitioner(m);
@@ -107,6 +107,7 @@ int main(int argc,char ** argv)
 		}
 		else
 		{
+			std::cout << "Set perm" << std::endl;
 			tag_K = m->CreateTag("PERM",DATA_REAL,CELL,NONE,1); // Create a new tag for K tensor
 			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 				tag_K[*cell][0] = 1.0; // Store the tensor K value into the tag
@@ -119,7 +120,8 @@ int main(int argc,char ** argv)
 		}
 		else
 		{
-			tag_F = m->CreateTag("PERM",DATA_REAL,CELL,NONE,1); // Create a new tag for external force
+			std::cout << "Set rhs" << std::endl;
+			tag_F = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,1); // Create a new tag for external force
 			double x[3];
 			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 			{
@@ -135,10 +137,11 @@ int main(int argc,char ** argv)
 		}
 		else
 		{
+			std::cout << "Set boundary conditions" << std::endl;
 			double x[3];
-			tag_BC = m->CreateTag("BOUNDARY_CONDITION",DATA_REAL,CELL,NONE,3);
+			tag_BC = m->CreateTag("BOUNDARY_CONDITION",DATA_REAL,FACE,NONE,3);
 			for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
-				if( face->Boundary() && face->GetStatus() == Element::Owned )
+				if( face->Boundary() && !(face->GetStatus() == Element::Ghost) )
 				{
 					face->Centroid(x);
 					tag_BC[*face][0] = 1; //dirichlet
