@@ -145,7 +145,7 @@ int main(int argc,char ** argv)
 					tag_BC[*face][1] = 0; //neumann
 					tag_BC[*face][2] = func(x,0);//face->Mean(func, 0);
 				}
-		}`
+		}
 		
 		if(m->HaveTag("REFERENCE_SOLUTION") )
 			phi_ref = m->GetTag("REFERENCE_SOLUTION");
@@ -304,44 +304,47 @@ int main(int argc,char ** argv)
 
 			ttt = Timer();
 
-			Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
-
-			double err_C = 0.0, err_L2 = 0.0;
+			
+			if( phi_ref.isValid() )
+			{
+				Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
+				double err_C = 0.0, err_L2 = 0.0;
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
-			{
-				double local_err_C = 0;
+				{
+					double local_err_C = 0;
 #if defined(USE_OMP)
 #pragma omp for reduction(+:err_L2)
 #endif
-				for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell )
-				{
-					Cell cell = Cell(m,ComposeCellHandle(icell));
-					if( cell->GetStatus() != Element::Ghost )
+					for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell )
 					{
-						double old = phi[cell];
-						double exact = phi_ref[cell];
-						double res = Update[Phi.Index(cell)];
-						double sol = old-res;
-						double err = fabs (sol - exact);
-						if (err > local_err_C) local_err_C = err;
-						err_L2 += err * err * cell->Volume();
-						cell->Real(error) = err;
-						phi[cell] = sol;
+						Cell cell = Cell(m,ComposeCellHandle(icell));
+						if( cell->GetStatus() != Element::Ghost )
+						{
+							double old = phi[cell];
+							double exact = phi_ref[cell];
+							double res = Update[Phi.Index(cell)];
+							double sol = old-res;
+							double err = fabs (sol - exact);
+							if (err > local_err_C) local_err_C = err;
+							err_L2 += err * err * cell->Volume();
+							cell->Real(error) = err;
+							phi[cell] = sol;
+						}
 					}
-				}
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-				{
-					if( local_err_C > err_C ) err_C = local_err_C;
+					{
+						if( local_err_C > err_C ) err_C = local_err_C;
+					}
 				}
+				err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
+				err_L2 = sqrt(m->Integrate(err_L2)); // Compute the global L2 norm for the error
+				if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;
+				if( m->GetProcessorRank() == 0 ) std::cout << "err_L2 = " << err_L2 << std::endl;
 			}
-			err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
-			err_L2 = sqrt(m->Integrate(err_L2)); // Compute the global L2 norm for the error
-			if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;
-			if( m->GetProcessorRank() == 0 ) std::cout << "err_L2 = " << err_L2 << std::endl;
 		}
 		BARRIER;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Compute true residual: " << Timer()-ttt << std::endl;

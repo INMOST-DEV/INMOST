@@ -165,7 +165,7 @@ int main(int argc,char ** argv)
 #endif
 			{
 				rMatrix NK, R, Areas;
-				rMatrix x(1,3), xf(1,3), n(1,3)
+				rMatrix x(1,3), xf(1,3), n(1,3);
 				double area; //area of the face
 				double volume; //volume of the cell
 				Areas.Zero();
@@ -193,14 +193,14 @@ int main(int argc,char ** argv)
 						 faces[k].Centroid(xf.data());
 						 faces[k].OrientedUnitNormal(cell->self(),n.data());
 						 // assemble matrix of directions
-						 R(k,k+1,0,3) = (yf-x)*area;
+						 R(k,k+1,0,3) = (xf-x)*area;
 						 // assemble matrix of co-normals
 						 NK(k,k+1,0,3) = n*K;
 						 Areas(k,k) = area;
 					 } //end of loop over faces
 					 W = NK*(NK.Transpose()*R).Invert(true).first*NK.Transpose(); //stability part
 					 W+=(rMatrix::Unit(NF) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*
-						(2.0/(static_cast<real>(NF)*vP)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
+						(2.0/(static_cast<real>(NF)*volume)*(NK*K.Invert(true).first*NK.Transpose()).Trace());
 			 		 W = Areas*W*Areas;
 					 //access data structure for gradient matrix in mesh
 					 real_array store_W = cell->RealArrayDV(tag_W);
