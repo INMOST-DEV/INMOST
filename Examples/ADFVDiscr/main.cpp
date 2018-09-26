@@ -329,7 +329,7 @@ int main(int argc,char ** argv)
 				{
 					double local_err_C = 0;
 #if defined(USE_OMP)
-#pragma omp for reduction(+:err_L2, +:vol)
+#pragma omp for reduction(+:err_L2) reduction(+:vol)
 #endif
 					for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
 					{
