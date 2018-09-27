@@ -44,7 +44,7 @@ int main(int argc, char ** argv)
 	
 	std::string fout = "grid_out.pmf";
 	int is2D = 1;
-	double height = 0.6;
+	double height = 0.7;
 	double length = 0.2;
 	if( argc > 2 ) is2D = atoi(argv[2]);
 	if( argc > 3 ) height = atof(argv[3]);
@@ -99,7 +99,6 @@ int main(int argc, char ** argv)
 		}
 		else if( fabs(n(0,0)+1) < 1.0e-3 && x(0,0) < 1.0e-3 ) //inlet
 		{
-			std::cout << "hi" << std::endl;
 			bc[*it][0] = 1;
 			bc[*it][1] = 0;
 			bc[*it][2] = 1;
