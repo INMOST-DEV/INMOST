@@ -27,8 +27,41 @@ add_executable(test_two_wells_3d two_wells_3d.cpp)
 add_executable(test_edwards_3dtest4 edwards_3dtest4.cpp)
 add_executable(test_discontinuous_4zones discontinuous_4zones.cpp)
 add_executable(test_linear_sol linear_sol.cpp)
+add_executable(test_ns_linear ns_linear.cpp)
+add_executable(test_ns_cavity ns_cavity.cpp)
+add_executable(test_ns_backward_step ns_backward_step.cpp)
 
 
+
+target_link_libraries(test_ns_linear inmost)
+if(USE_MPI)
+  message("linking test_ns_linear with MPI")
+  target_link_libraries(test_ns_linear ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(test_ns_linear PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS test_ns_linear EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+target_link_libraries(test_ns_cavity inmost)
+if(USE_MPI)
+  message("linking test_ns_cavity with MPI")
+  target_link_libraries(test_ns_cavity ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(test_ns_cavity PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS test_ns_cavity EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
+
+target_link_libraries(test_ns_backward_step inmost)
+if(USE_MPI)
+  message("linking test_ns_backward_step with MPI")
+  target_link_libraries(test_ns_backward_step ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(test_ns_backward_step PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS test_ns_backward_step EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
 
 
 
