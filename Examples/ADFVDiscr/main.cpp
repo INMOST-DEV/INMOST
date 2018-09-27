@@ -114,24 +114,7 @@ int main(int argc,char ** argv)
 				tag_K[*cell][0] = 1.0; // Store the tensor K value into the tag
 		}
 		
-		if( m->HaveTag("FORCE") )
-		{
-			tag_F = m->GetTag("FORCE");
-			makerefsol = false;
-			std::cout << "Force from grid" << std::endl;
-		}
-		else
-		{
-			std::cout << "Set rhs" << std::endl;
-			tag_F = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,1); // Create a new tag for external force
-			double x[3];
-			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
-			{
-				cell->Centroid(x);
-				tag_F[*cell] = -func_rhs(x,1);
-				//tag_F[*cell] = -cell->Mean(func_rhs,1);
-			}
-		}
+		
 		
 		if( m->HaveTag("BOUNDARY_CONDITION") )
 		{
@@ -152,6 +135,25 @@ int main(int argc,char ** argv)
 					tag_BC[*face][1] = 0; //neumann
 					tag_BC[*face][2] = func(x,0);//face->Mean(func, 0);
 				}
+		}
+		
+		if( m->HaveTag("FORCE") )
+		{
+			tag_F = m->GetTag("FORCE");
+			makerefsol = false;
+			std::cout << "Force from grid" << std::endl;
+		}
+		else if( makerefsol )
+		{
+			std::cout << "Set rhs" << std::endl;
+			tag_F = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,1); // Create a new tag for external force
+			double x[3];
+			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
+			{
+				cell->Centroid(x);
+				tag_F[*cell] = -func_rhs(x,1);
+				//tag_F[*cell] = -cell->Mean(func_rhs,1);
+			}
 		}
 		
 		if(m->HaveTag("REFERENCE_SOLUTION") )
