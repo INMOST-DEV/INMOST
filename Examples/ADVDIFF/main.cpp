@@ -99,7 +99,7 @@ int main(int argc,char ** argv)
 				ttt = Timer();
 				Partitioner p(m); //Create Partitioning object
 				//p.SetMethod(Partitioner::Inner_RCM,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
-				p.SetMethod(Partitioner::Parmetis,Partitioner::Partition); // Specify the partitioner
+				p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition); // Specify the partitioner
 				//p.SetMethod(Partitioner::Zoltan_PHG,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
 				p.Evaluate(); // Compute the partitioner and store new processor ID in the mesh
 				BARRIER
