@@ -283,14 +283,17 @@ int main(int argc,char ** argv)
 					}
 				}
 			}
+			if( tag_F.isValid() )
+			{
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-			for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
-			{
-				Cell cell = Cell(m,ComposeCellHandle(icell));
-				if( cell->GetStatus() != Element::Ghost )
-					R[Phi.Index(cell)] -= tag_F[cell] * cell->Volume();
+				for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
+				{
+					Cell cell = Cell(m,ComposeCellHandle(icell));
+					if( cell->GetStatus() != Element::Ghost )
+						R[Phi.Index(cell)] -= tag_F[cell] * cell->Volume();
+				}
 			}
 			BARRIER;
 			if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
