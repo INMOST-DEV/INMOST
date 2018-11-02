@@ -433,11 +433,11 @@ namespace INMOST
 		}
 		/// Get value of variable expression on provided element e.
 		rMatrix Value(const Storage & e) const
-		{return (ArgA.Value(e)/ArgB.Value(e)).first;}
+		{return (ArgA.Value(e)/ArgB.Value(e));}
 		/// Get value with derivatives of variable expression on provided element e.
 		/// This function collapses associated expression tree into multivar_expression.
 		vMatrix Variable(const Storage & e) const
-		{return (ArgA.Variable(e)/ArgB.Variable(e)).first;}
+		{return (ArgA.Variable(e)/ArgB.Variable(e));}
 		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
 		abstract_dynamic_block_variable * Copy() const {return static_cast<abstract_dynamic_block_variable *>(new division_block_variable(*this));}
 	};
@@ -694,11 +694,11 @@ namespace INMOST
 		}
 		/// Get value of variable expression on provided element e.
 		rMatrix Value(const Storage & e) const
-		{return ArgA.Value(e).Invert(true).first;}
+		{return ArgA.Value(e).Invert();}
 		/// Get value with derivatives of variable expression on provided element e.
 		/// This function collapses associated expression tree into multivar_expression.
 		vMatrix Variable(const Storage & e) const
-		{return ArgA.Variable(e).Invert(true).first;}
+		{return ArgA.Variable(e).Invert();}
 		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
 		abstract_dynamic_block_variable * Copy() const {return static_cast<abstract_dynamic_block_variable *>(new inverse_block_variable(*this));}
 	};
@@ -725,11 +725,11 @@ namespace INMOST
 		}
 		/// Get value of variable expression on provided element e.
 		rMatrix Value(const Storage & e) const
-		{return ArgA.Value(e).PseudoInvert(eps,true).first;}
+		{return ArgA.Value(e).PseudoInvert(eps);}
 		/// Get value with derivatives of variable expression on provided element e.
 		/// This function collapses associated expression tree into multivar_expression.
 		vMatrix Variable(const Storage & e) const
-		{return ArgA.Variable(e).PseudoInvert(eps,true).first;}
+		{return ArgA.Variable(e).PseudoInvert(eps);}
 		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
 		abstract_dynamic_block_variable * Copy() const {return static_cast<abstract_dynamic_block_variable *>(new pseudo_inverse_block_variable(*this));}
 	};

@@ -18,11 +18,21 @@ namespace INMOST
 	template<> Demote<variable>::type                 AbstractEntry::Access<variable>                (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
 	template<> Demote<hessian_variable>::type         AbstractEntry::Access<hessian_variable>        (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
 	
-	template<> Matrix<Demote<INMOST_DATA_REAL_TYPE>::type>    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e) const {return Value(e);}
-	template<> Matrix<Demote<INMOST_DATA_INTEGER_TYPE>::type> AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e) const {return Index(e);}
-	template<> Matrix<Demote<unknown>::type>                  AbstractEntry::Access<unknown>                 (const Storage& e) const {return Unknown(e);}
-	template<> Matrix<Demote<variable>::type>                 AbstractEntry::Access<variable>                (const Storage& e) const {return Unknown(e);}
-	template<> Matrix<Demote<hessian_variable>::type>         AbstractEntry::Access<hessian_variable>        (const Storage& e) const {return Unknown(e);}
+	template<>
+	Matrix<Demote<INMOST_DATA_REAL_TYPE>::type, pool_array_t<Demote<INMOST_DATA_REAL_TYPE>::type> >
+	AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e) const {return Value(e);}
+	template<>
+	Matrix<Demote<INMOST_DATA_INTEGER_TYPE>::type, pool_array_t<Demote<INMOST_DATA_INTEGER_TYPE>::type> >
+	AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e) const {return Index(e);}
+	template<>
+	Matrix<Demote<unknown>::type, pool_array_t<Demote<unknown>::type> >
+	AbstractEntry::Access<unknown>(const Storage& e) const {return Unknown(e);}
+	template<>
+	Matrix<Demote<variable>::type, pool_array_t<Demote<variable>::type> >
+	AbstractEntry::Access<variable>(const Storage& e) const {return Unknown(e);}
+	template<>
+	Matrix<Demote<hessian_variable>::type,pool_array_t<Demote<hessian_variable>::type> >
+	AbstractEntry::Access<hessian_variable>(const Storage& e) const {return Unknown(e);}
 	
 	
 #if defined(USE_MESH)
@@ -392,9 +402,9 @@ namespace INMOST
 		throw Impossible;
 	}
 	
-	rMatrix MultiEntry::Value(const Storage & e) const
+	rpMatrix MultiEntry::Value(const Storage & e) const
 	{
-		vMatrix ret(MatrixSize(e),1);
+		rpMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
@@ -405,9 +415,9 @@ namespace INMOST
 		return ret;
 	}
 	
-	iMatrix MultiEntry::Index(const Storage & e) const
+	ipMatrix MultiEntry::Index(const Storage & e) const
 	{
-		iMatrix ret(MatrixSize(e),1);
+		ipMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
@@ -418,9 +428,9 @@ namespace INMOST
 		return ret;
 	}
 	
-	uMatrix MultiEntry::operator [](const Storage & e) const
+	upMatrix MultiEntry::operator [](const Storage & e) const
 	{
-		uMatrix ret(MatrixSize(e),1);
+		upMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{

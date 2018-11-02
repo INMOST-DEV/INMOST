@@ -23,5 +23,5 @@ endif()
 endif()
 
 
-
+add_subdirectory(linalg_test000)
 add_subdirectory(xml_reader_test000)

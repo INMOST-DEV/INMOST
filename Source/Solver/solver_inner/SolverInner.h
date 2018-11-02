@@ -5,7 +5,7 @@
 #include "../Misc/utils.h"
 #include "solver_prototypes.hpp"
 #include "solver_bcgsl.hpp"
-#define KSOLVER BCGS_solver
+#define KSOLVER BCGSL_solver
 
 namespace INMOST {
 

@@ -4,6 +4,8 @@
 #include "inmost_expression.h"
 #include <iomanip>
 
+#define pool_array_t pool_array
+//#define pool_array_t array
 
 namespace INMOST
 {
@@ -221,24 +223,35 @@ namespace INMOST
 			Var c, f, h, s, x, y, z;
 			Var g = 0.0, scale = 0.0;
 			INMOST_DATA_REAL_TYPE anorm = 0.0;
+			if (n >= m)
+			{
+				U = (*this);
+				Sigma.Resize(m,m);
+				Sigma.Zero();
+				V.Resize(m,m);
+			}
+			else // n < m
+			{
+				U.Resize(n,n);
+				Sigma.Resize(n,n);
+				Sigma.Zero();
+				V.Resize(m,n);
+			}
 			if (n < m)
 			{
-				bool success = Transpose().SVD(U,Sigma,V);
+				bool success = Transpose().SVD(V,Sigma,U);
 				if( success )
 				{
-					U.Swap(V);
-					U = U.Transpose();
-					V = V.Transpose();
+					//U.Swap(V);
+					//U = U.Transpose();
+					//V = V.Transpose();
 					return true;
 				}
 				else return false;
 			} //m <= n
-			array<Var> _rv1(m);
-			shell<Var> rv1(_rv1);
-			U = (*this);
-			Sigma.Resize(m,m);
-			Sigma.Zero();
-			V.Resize(m,m);
+			dynarray<Var,128> rv1(m);
+			//array<Var> _rv1(m);
+			//shell<Var> rv1(_rv1);
 			std::swap(n,m); //this how original algorithm takes it
 			// Householder reduction to bidiagonal form
 			for (i = 0; i < n; i++)
@@ -512,16 +525,32 @@ namespace INMOST
 		}
 		/// Transpose the current matrix.
 		/// @return Transposed matrix.
-		Matrix<Var> Transpose() const;
+		Matrix<Var, pool_array_t<Var> > Transpose() const;
 		///Exchange contents of two matrices.
 		virtual void Swap(AbstractMatrix<Var> & b);
 		/// Unary minus. Change sign of each element of the matrix.
-		Matrix<Var> operator-() const;
+		Matrix<Var, pool_array_t<Var> > operator-() const;
+		/// Cross-product operation for a vector.
+		/// Both right hand side and left hand side should be a vector
+		/// @param other The right hand side of cross product.
+		/// @return The cross product of current and right hand side vector.
+		/// \warning Works for 3x1 vector and 3xm m-vectors as right hand side.
+		template<typename typeB>
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		CrossProduct(const AbstractMatrix<typeB> & other) const;
+		/// Transformation matrix from current vector to provided vector.
+		/// @param other Vector to transform to.
+		/// @return A sqaure (rotation) matrix that transforms current vector into right hand side vector.
+		/// \warning Works only for 3x1 vectors.
+		template<typename typeB>
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		Transform(const AbstractMatrix<typeB> & other) const;
 		/// Subtract a matrix.
 		/// @param other The matrix to be subtracted.
 		/// @return Difference of current matrix with another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator-(const AbstractMatrix<typeB> & other) const;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		operator-(const AbstractMatrix<typeB> & other) const;
 		/// Subtract a matrix and store result in the current.
 		/// @param other The matrix to be subtracted.
 		/// @return Reference to the current matrix.
@@ -531,7 +560,8 @@ namespace INMOST
 		/// @param other The matrix to be added.
 		/// @return Sum of current matrix with another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator+(const AbstractMatrix<typeB> & other) const;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		operator+(const AbstractMatrix<typeB> & other) const;
 		/// Add a matrix and store result in the current.
 		/// @param other The matrix to be added.
 		/// @return Reference to the current matrix.
@@ -541,7 +571,8 @@ namespace INMOST
 		/// @param other Matrix to be multiplied from right.
 		/// @return Matrix multipled by another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator*(const AbstractMatrix<typeB> & other) const;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		operator*(const AbstractMatrix<typeB> & other) const;
 		/// Multiply matrix with another matrix in-place.
 		/// @param B Another matrix to the right in multiplication.
 		/// @return Reference to current matrix.
@@ -551,7 +582,8 @@ namespace INMOST
 		/// @param coef Coefficient.
 		/// @return Matrix multiplied by the coefficient.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type> operator*(typeB coef) const;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		operator*(typeB coef) const;
 		/// Multiply the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
@@ -561,7 +593,7 @@ namespace INMOST
 		/// @param coef Coefficient.
 		/// @return Matrix divided by the coefficient.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type>
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator/(typeB coef) const;
 		/// Divide the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
@@ -570,42 +602,49 @@ namespace INMOST
 		AbstractMatrix &
 		operator/=(typeB coef);
 		/// Performs B^{-1}*A, multiplication by inverse matrix from left.
+		/// Throws exception if matrix is not invertable. See Mesh::PseudoSolve for
+		/// singular matrices.
 		/// @param other Matrix to be inverted and multiplied from left.
 		/// @return Multiplication of current matrix by inverse of another
-		/// matrix from left and boolean.
-		/// If boolean is true, then the matrix was inverted successfully.
-		/// \todo (test) Use Solve here.
+		/// @see Matrix::PseudoInvert.
 		template<typename typeB>
-		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator/(const AbstractMatrix<typeB> & other) const
 		{
-			return other.Solve(*this);
+			Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(other.Cols(),Cols());
+			ret = other.Solve(*this);
+			return ret;
 		}
 		/// Kronecker product, latex symbol \otimes.
 		/// @param other Matrix on the right of the Kronecker product.
 		/// @return Result of the Kronecker product of current and another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var,typeB>::type>
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		Kronecker(const AbstractMatrix<typeB> & other) const;
 		/// Inverts matrix using Crout-LU decomposition with full pivoting for
 		/// maximum element. Works well for non-singular matrices, for singular
 		/// matrices look see Matrix::PseudoInvert.
-		/// @param print_fail Verbose output for singular matrices.
-		/// @return A pair of inverse matrix and boolean. If boolean is true,
-		/// then the matrix was inverted successfully.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr equal to a positive integer that represents the row
+		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		/// @return Inverse matrix.
 		/// @see Matrix::PseudoInvert.
 		/// \todo (test) Activate and test implementation with Solve.
-		std::pair<Matrix<Var>,bool> Invert(bool print_fail = false) const;
+		Matrix<Var, pool_array_t<Var> > Invert(int * ierr = NULL) const;
 		/// Inverts symmetric positive-definite matrix using Cholesky decomposition.
-		std::pair<Matrix<Var>,bool> CholeskyInvert(bool print_fail = false) const;
+		Matrix<Var, pool_array_t<Var> > CholeskyInvert(int * ierr = NULL) const;
 		/// Finds X in A*X=B, where A and B are general matrices.
 		/// Converts system into A^T*A*X=A^T*B.
 		/// Inverts matrix A^T*A using Crout-LU decomposition with full pivoting for
 		/// maximum element. Works well for non-singular matrices, for singular
 		/// matrices see Matrix::PseudoInvert.
-		/// @param print_fail Verbose output for singular matrices.
-		/// @return A pair of inverse matrix and boolean. If boolean is true,
-		/// then the matrix was inverted successfully.
+		/// @param B Right hand side matrix.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr equal to a positive integer that represents the row
+		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		/// @return Inverse matrix,
 		/// @see Matrix::PseudoInvert.
 		/// \warning Number of rows in matrices A and B should match.
 		/// \todo
@@ -613,13 +652,20 @@ namespace INMOST
 		/// 2. Maximum product transversal + block pivoting instead of pivoting
 		///    by maximum element.
 		template<typename typeB>
-		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-		Solve(const AbstractMatrix<typeB> & B, bool print_fail = false) const;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		Solve(const AbstractMatrix<typeB> & B, int * ierr = NULL) const;
 		/// Finds X in A*X=B, where A is a square symmetric positive definite matrix.
 		/// Uses Cholesky decomposition algorithm.
+		/// @param B Right hand side matrix.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr equal to a positive integer that represents the row
+		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		/// @see Matrix::PseudoInvert.
+		/// @return Inverse matrix,
 		template<typename typeB>
-		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-		CholeskySolve(const AbstractMatrix<typeB> & B, bool print_fail = false) const;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		CholeskySolve(const AbstractMatrix<typeB> & B, int * ierr = NULL) const;
 		/// Calculate sum of the diagonal elements of the matrix.
 		/// @return Trace of the matrix.
 		Var Trace() const
@@ -638,7 +684,7 @@ namespace INMOST
 			{
 				for(enumerator l = 0; l < Cols(); ++l)
 				{
-					if( std::isinf(get_value((*this)(k,l))) )
+					if( __isinf__(get_value((*this)(k,l))) )
 						std::cout << std::setw(12) << "inf";
 					else if( std::isnan(get_value((*this)(k,l))) )
 						std::cout << std::setw(12) << "nan";
@@ -701,24 +747,26 @@ namespace INMOST
 		}
 		/// Calculates Moore-Penrose pseudo-inverse of the matrix.
 		/// @param tol Thershold for singular values. Singular values smaller
-		///                      then threshold are considered to be zero.
-		/// @param print_fail Verbose output if singular value decomposition
-		///                   algorithm has failed.
+		///            then threshold are considered to be zero.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
 		/// @return A pair of pseudo-inverse matrix and boolean. If boolean is true,
 		///         then the matrix was inverted successfully.
-		std::pair<Matrix<Var>,bool> PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, bool print_fail = false) const;
+		Matrix<Var, pool_array_t<Var> > PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, int * ierr = NULL) const;
 		/// Solves the system of equations of the form A*X=B, with A and B matrices.
 		/// Uses Moore-Penrose pseudo-inverse of the matrix A and calculates X = A^+*B.
 		/// @param B Matrix at the right hand side.
 		/// @param tol Thershold for singular values. Singular values smaller
-		///                      then threshold are considered to be zero.
-		/// @param print_fail Verbose output if singular value decomposition
-		///                   algorithm has failed.
+		///            then threshold are considered to be zero.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
 		/// @return A pair of the solution matrix X and boolean. If boolean is true,
 		///         then the matrix was inverted successfully.
 		template<typename typeB>
-		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-		PseudoSolve(const AbstractMatrix<typeB> & B, INMOST_DATA_REAL_TYPE tol = 0, bool print_fail = false) const;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+		PseudoSolve(const AbstractMatrix<typeB> & B, INMOST_DATA_REAL_TYPE tol = 0, int * ierr = NULL) const;
 		/// Extract submatrix of a matrix.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -728,12 +776,12 @@ namespace INMOST
 		/// @param jbeg Starting column in the original matrix.
 		/// @param jend Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		Matrix<Var> ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const;
+		Matrix<Var, pool_array_t<Var> > ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const;
 		/// Change representation of the matrix into matrix of another size.
 		/// Useful to change representation from matrix into vector and back.
 		/// Replaces original number of columns and rows with a new one.
 		/// @return Matrix with same entries and provided number of rows and columns.
-		Matrix<Var> Repack(enumerator rows, enumerator cols) const;
+		Matrix<Var, pool_array_t<Var> > Repack(enumerator rows, enumerator cols) const;
 	};
 	
 	
@@ -919,9 +967,9 @@ namespace INMOST
 		/// @param size Size of the input array.
 		/// @param matsize Size of the final tensor.
 		/// @return Matrix of the tensor of size matsize by matsize.
-		static SymmetricMatrix<Var> FromTensor(const Var * K, enumerator size, enumerator matsize = 3)
+		static SymmetricMatrix<Var, pool_array_t<Var> > FromTensor(const Var * K, enumerator size, enumerator matsize = 3)
 		{
-			Matrix<Var> Kc(matsize,matsize);
+			SymmetricMatrix<Var, pool_array_t<Var> > Kc(matsize,matsize);
 			if( matsize == 1 )
 			{
 				assert(size == 1);
@@ -1015,9 +1063,9 @@ namespace INMOST
 		/// @param r Array of diagonal elements.
 		/// @param size Size of the matrix.
 		/// @return Matrix with diagonal defined by array, other elements are zero.
-		static SymmetricMatrix FromDiagonal(const Var * r, enumerator size)
+		static SymmetricMatrix<Var, pool_array_t<Var> > FromDiagonal(const Var * r, enumerator size)
 		{
-			SymmetricMatrix ret(size);
+			SymmetricMatrix<Var, pool_array_t<Var> > ret(size);
 			ret.Zero();
 			for(enumerator k = 0; k < size; ++k) ret(k,k) = r[k];
 			return ret;
@@ -1026,9 +1074,9 @@ namespace INMOST
 		/// @param r Array of diagonal elements.
 		/// @param size Size of the matrix.
 		/// @return Matrix with diagonal defined by inverse of array elements.
-		static SymmetricMatrix FromDiagonalInverse(const Var * r, enumerator size)
+		static SymmetricMatrix<Var, pool_array_t<Var> > FromDiagonalInverse(const Var * r, enumerator size)
 		{
-			SymmetricMatrix ret(size);
+			SymmetricMatrix<Var, pool_array_t<Var> > ret(size);
 			ret.Zero();
 			for(enumerator k = 0; k < size; ++k) ret(k,k) = 1.0/r[k];
 			return ret;
@@ -1038,9 +1086,9 @@ namespace INMOST
 		/// @param pn Number of rows and columns in the matrix.
 		/// @param c Value to put onto diagonal.
 		/// @return Returns a unit matrix.
-		static SymmetricMatrix Unit(enumerator pn, const Var & c = 1.0)
+		static SymmetricMatrix<Var, pool_array_t<Var> > Unit(enumerator pn, const Var & c = 1.0)
 		{
-			SymmetricMatrix ret(pn,0.0);
+			SymmetricMatrix<Var, pool_array_t<Var> > ret(pn,0.0);
 			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
 			return ret;
 		}
@@ -1359,9 +1407,9 @@ namespace INMOST
 		/// @param Perm Array with new positions for rows.
 		/// @param size Size of the array and the resulting matrix.
 		/// @return Permutation matrix.
-		static Matrix<Var> Permutation(const INMOST_DATA_ENUM_TYPE * Perm, enumerator size)
+		static Matrix<Var, pool_array_t<Var> > Permutation(const INMOST_DATA_ENUM_TYPE * Perm, enumerator size)
 		{
-			Matrix<Var> Ret(size,size);
+			Matrix<Var, pool_array_t<Var> > Ret(size,size);
 			Ret.Zero();
 			for(enumerator k = 0; k < size; ++k)
 				Ret(k,Perm[k]) = 1;
@@ -1388,9 +1436,9 @@ namespace INMOST
 		/// @param size Size of the input array.
 		/// @param matsize Size of the final tensor.
 		/// @return Matrix of the tensor of size matsize by matsize.
-		static Matrix<Var> FromTensor(const Var * K, enumerator size, enumerator matsize = 3)
+		static Matrix<Var, pool_array_t<Var> > FromTensor(const Var * K, enumerator size, enumerator matsize = 3)
 		{
-			Matrix<Var> Kc(matsize,matsize);
+			Matrix<Var, pool_array_t<Var> > Kc(matsize,matsize);
 			if( matsize == 1 )
 			{
 				assert(size == 1);
@@ -1506,17 +1554,17 @@ namespace INMOST
 		/// @param r Array of elements of the vector.
 		/// @param size Size of the vector.
 		/// @return Vector with contents of the array.
-		static Matrix FromVector(const Var * r, enumerator size)
+		static Matrix<Var, pool_array_t<Var> > FromVector(const Var * r, enumerator size)
 		{
-			return Matrix(r,size,1);
+			return Matrix<Var, pool_array_t<Var> >(r,size,1);
 		}
 		/// Create diagonal matrix from array
 		/// @param r Array of diagonal elements.
 		/// @param size Size of the matrix.
 		/// @return Matrix with diagonal defined by array, other elements are zero.
-		static Matrix FromDiagonal(const Var * r, enumerator size)
+		static Matrix<Var, pool_array_t<Var> > FromDiagonal(const Var * r, enumerator size)
 		{
-			Matrix ret(size,size);
+			Matrix<Var, pool_array_t<Var> > ret(size,size);
 			ret.Zero();
 			for(enumerator k = 0; k < size; ++k) ret(k,k) = r[k];
 			return ret;
@@ -1525,9 +1573,9 @@ namespace INMOST
 		/// @param r Array of diagonal elements.
 		/// @param size Size of the matrix.
 		/// @return Matrix with diagonal defined by inverse of array elements.
-		static Matrix FromDiagonalInverse(const Var * r, enumerator size)
+		static Matrix<Var, pool_array_t<Var> > FromDiagonalInverse(const Var * r, enumerator size)
 		{
-			Matrix ret(size,size);
+			Matrix<Var, pool_array_t<Var> > ret(size,size);
 			ret.Zero();
 			for(enumerator k = 0; k < size; ++k) ret(k,k) = 1.0/r[k];
 			return ret;
@@ -1538,12 +1586,12 @@ namespace INMOST
 		/// and vector. For a x b equivalent is CrossProduct(a)*b.
 		/// @param vec Array of elements representing a vector.
 		/// @return A matrix representing cross product.
-		static Matrix CrossProduct(const Var vec[3])
+		static Matrix<Var, pool_array_t<Var> > CrossProduct(const Var vec[3])
 		{
 			// |  0  -z   y |
 			// |  z   0  -x |
 			// | -y   x   0 |
-			Matrix ret(3,3);
+			Matrix<Var, pool_array_t<Var> > ret(3,3);
 			ret(0,0) = 0.0;
 			ret(0,1) = -vec[2]; //-z
 			ret(0,2) = vec[1]; //y
@@ -1560,9 +1608,9 @@ namespace INMOST
 		/// @param pn Number of rows and columns in the matrix.
 		/// @param c Value to put onto diagonal.
 		/// @return Returns a unit matrix.
-		static Matrix Unit(enumerator pn, const Var & c = 1.0)
+		static Matrix<Var, pool_array_t<Var> > Unit(enumerator pn, const Var & c = 1.0)
 		{
-			Matrix ret(pn,pn);
+			Matrix<Var, pool_array_t<Var> > ret(pn,pn);
 			ret.Zero();
 			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
 			return ret;
@@ -1572,18 +1620,18 @@ namespace INMOST
 		/// @param pn Number of columns.
 		/// @param c Value to fill the matrix.
 		/// @return Returns a matrix with 1 row.
-		static Matrix Row(enumerator pn, const Var & c = 1.0)
+		static Matrix<Var, pool_array_t<Var> > Row(enumerator pn, const Var & c = 1.0)
 		{
-			return Matrix(1,pn,c);
+			return Matrix<Var, pool_array_t<Var> >(1,pn,c);
 		}
 		/// Matix with 1 column, Create a matrix of size pn by 1 and
 		/// fills it with c.
 		/// @param pn Number of rows.
 		/// @param c Value to fill the matrix.
 		/// @return Returns a matrix with 1 column.
-		static Matrix Col(enumerator pn, const Var & c = 1.0)
+		static Matrix<Var, pool_array_t<Var> > Col(enumerator pn, const Var & c = 1.0)
 		{
-			return Matrix(pn, 1, c);
+			return Matrix<Var, pool_array_t<Var> >(pn, 1, c);
 		}
 		/// Concatenate B matrix as columns of current matrix.
 		/// Assumes that number of rows of current matrix is
@@ -1591,10 +1639,10 @@ namespace INMOST
 		/// @param B Matrix to be concatenated to current matrix.
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatRows
-		Matrix ConcatCols(const Matrix & B) const
+		Matrix<Var, pool_array_t<Var> > ConcatCols(const Matrix & B) const
 		{
 			assert(Rows() == B.Rows());
-			Matrix ret(Rows(),Cols()+B.Cols());
+			Matrix<Var, pool_array_t<Var> > ret(Rows(),Cols()+B.Cols());
 			const Matrix & A = *this;
 			for(enumerator i = 0; i < Rows(); ++i)
 			{
@@ -1611,10 +1659,10 @@ namespace INMOST
 		/// @param B Matrix to be concatenated to current matrix.
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatCols
-		Matrix ConcatRows(const Matrix & B) const
+		Matrix<Var, pool_array_t<Var> > ConcatRows(const Matrix & B) const
 		{
 			assert(Cols() == B.Cols());
-			Matrix ret(Rows()+B.Rows(),Cols());
+			Matrix<Var, pool_array_t<Var> > ret(Rows()+B.Rows(),Cols());
 			const Matrix & A = *this;
 			for(enumerator i = 0; i < Rows(); ++i)
 			{
@@ -1640,13 +1688,13 @@ namespace INMOST
 		/// @return A unitary n by n matrix V used to diagonalize array of
 		/// initial matrices. Current matrix is replaced by concatination of
 		/// V^T*A_i*V, a collection of diagonalized matrices.
-		Matrix JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-7)
+		Matrix<Var, pool_array_t<Var> > JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-7)
 		{
 			enumerator N = Rows();
 			enumerator M = Cols() / Rows();
-			Matrix V = Matrix::Unit(m);
-			Matrix R(2,M);
-			Matrix G(2,2);
+			Matrix<Var, pool_array_t<Var> > V(Matrix<Var, pool_array_t<Var> >::Unit(m));
+			Matrix<Var, pool_array_t<Var> > R(2,M);
+			Matrix<Var, pool_array_t<Var> > G(2,2);
 			Matrix & A = *this;
 			Var ton, toff, theta, c, s, Ap, Aq, Vp, Vq;
 			bool repeat;
@@ -1812,9 +1860,9 @@ namespace INMOST
 		/// not affect elements of the submatrix or original matrix
 		/// used to create submatrix.
 		/// @return Matrix with same entries as submatrix.
-		::INMOST::Matrix<Var> MakeMatrix()
+		::INMOST::Matrix<Var, pool_array_t<Var> > MakeMatrix()
 		{
-			::INMOST::Matrix<Var> ret(Rows(),Cols());
+			::INMOST::Matrix<Var, pool_array_t<Var> > ret(Rows(),Cols());
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					ret(i,j) = (*this)(i,j);
@@ -1888,9 +1936,9 @@ namespace INMOST
 		/// not affect elements of the submatrix or original matrix
 		/// used to create submatrix.
 		/// @return Matrix with same entries as submatrix.
-		::INMOST::Matrix<Var> MakeMatrix()
+		::INMOST::Matrix<Var, pool_array_t<Var> > MakeMatrix()
 		{
-			::INMOST::Matrix<Var> ret(Rows(),Cols());
+			::INMOST::Matrix<Var, pool_array_t<Var> > ret(Rows(),Cols());
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					ret(i,j) = (*this)(i,j);
@@ -1908,10 +1956,10 @@ namespace INMOST
 	};
 	
 	template<typename Var>
-	Matrix<Var>
+	Matrix<Var, pool_array_t<Var> >
 	AbstractMatrix<Var>::Transpose() const
 	{
-		Matrix<Var> ret(Cols(),Rows());
+		Matrix<Var, pool_array_t<Var> > ret(Cols(),Rows());
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				ret(j,i) = (*this)(i,j);
@@ -1922,16 +1970,16 @@ namespace INMOST
 	void
 	AbstractMatrix<Var>::Swap(AbstractMatrix<Var> & b)
 	{
-		Matrix<Var> tmp = b;
+		Matrix<Var, pool_array_t<Var> > tmp = b;
 		b = (*this);
 		(*this) = tmp;
 	}
 	
 	template<typename Var>
-	Matrix<Var>
+	Matrix<Var, pool_array_t<Var> >
 	AbstractMatrix<Var>::operator-() const
 	{
-		Matrix<Var> ret(Rows(),Cols());
+		Matrix<Var, pool_array_t<Var> > ret(Rows(),Cols());
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				ret(i,j) = -(*this)(i,j);
@@ -1940,12 +1988,68 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+	AbstractMatrix<Var>::CrossProduct(const AbstractMatrix<typeB> & B) const
+	{
+		const AbstractMatrix<Var> & A = *this;
+		assert(A.Rows() == 3);
+		assert(A.Cols() == 1);
+		assert(B.Rows() == 3);
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(3,B.Cols()); //check RVO
+		for(unsigned k = 0; k < B.Cols(); ++k)
+		{
+			ret(0,k) = (A(1,0)*B(2,k) - A(2,0)*B(1,k));
+			ret(1,k) = (A(2,0)*B(0,k) - A(0,0)*B(2,k));
+			ret(2,k) = (A(0,0)*B(1,k) - A(1,0)*B(0,k));
+		}
+		return ret;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+	AbstractMatrix<Var>::Transform(const AbstractMatrix<typeB> & B) const
+	{
+		const AbstractMatrix<Var> & A = *this;
+		assert(A.Rows() == 3);
+		assert(A.Cols() == 1);
+		assert(B.Rows() == 3);
+		assert(B.Cols() == 1);
+		typedef typename Promote<Var,typeB>::type var_t;
+		Matrix<var_t, pool_array_t<var_t> > Q(3,3);
+		var_t x,y,z,w,n,l;
+		
+		x = -(B(1,0)*A(2,0) - B(2,0)*A(1,0));
+		y = -(B(2,0)*A(0,0) - B(0,0)*A(2,0));
+		z = -(B(0,0)*A(1,0) - B(1,0)*A(0,0));
+		w = A.FrobeniusNorm()*B.FrobeniusNorm() + A.DotProduct(B);
+		
+		l = B.FrobeniusNorm()/A.FrobeniusNorm();
+		n = 2*l/(x*x+y*y+z*z+w*w);
+		
+		Q(0,0) = l - (y*y + z*z)*n;
+		Q(0,1) = (x*y - z*w)*n;
+		Q(0,2) = (x*z + y*w)*n;
+		
+		Q(1,0) = (x*y + z*w)*n;
+		Q(1,1) = l - (x*x + z*z)*n;
+		Q(1,2) = (y*z - x*w)*n;
+		
+		Q(2,0) = (x*z - y*w)*n;
+		Q(2,1) = (y*z + x*w)*n;
+		Q(2,2) = l - (x*x + y*y)*n;
+		
+		return Q;
+	}
+	
+	template<typename Var>
+	template<typename typeB>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 	AbstractMatrix<Var>::operator-(const AbstractMatrix<typeB> & other) const
 	{
 		assert(Rows() == other.Rows());
 		assert(Cols() == other.Cols());
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(Rows(),Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				ret(i,j) = (*this)(i,j)-other(i,j);
@@ -1967,12 +2071,12 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 	AbstractMatrix<Var>::operator+(const AbstractMatrix<typeB> & other) const
 	{
 		assert(Rows() == other.Rows());
 		assert(Cols() == other.Cols());
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(Rows(),Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				ret(i,j) = (*this)(i,j)+other(i,j);
@@ -1995,11 +2099,11 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 	AbstractMatrix<Var>::operator*(const AbstractMatrix<typeB> & other) const
 	{
 		assert(Cols() == other.Rows());
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),other.Cols()); //check RVO
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(Rows(),other.Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i) //loop rows
 		{
 			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
@@ -2061,10 +2165,10 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 	AbstractMatrix<Var>::operator*(typeB coef) const
 	{
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(Rows(),Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				ret(i,j) = (*this)(i,j)*coef;
@@ -2084,10 +2188,10 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 	AbstractMatrix<Var>::operator/(typeB coef) const
 	{
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols());
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(Rows(),Cols());
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				ret(i,j) = (*this)(i,j)/coef;
@@ -2107,10 +2211,10 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 	AbstractMatrix<Var>::Kronecker(const AbstractMatrix<typeB> & other) const
 	{
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows()*other.Rows(),Cols()*other.Cols());
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(Rows()*other.Rows(),Cols()*other.Cols());
 		for(enumerator i = 0; i < Rows(); ++i) //loop rows
 		{
 			for(enumerator j = 0; j < other.Rows(); ++j) //loop columns
@@ -2128,35 +2232,36 @@ namespace INMOST
 	}
 	
 	template<typename Var>
-	std::pair<Matrix<Var>,bool>
-	AbstractMatrix<Var>::Invert(bool print_fail) const
+	Matrix<Var, pool_array_t<Var> >
+	AbstractMatrix<Var>::Invert(int * ierr) const
 	{
-		return Solve(Matrix<Var>::Unit(Rows()),print_fail);
+		Matrix<Var, pool_array_t<Var> > ret(Cols(),Rows());
+		ret = Solve(Matrix<Var, pool_array_t<Var> >::Unit(Rows()),ierr);
+		return ret;
 	}
 	
 	template<typename Var>
-	std::pair<Matrix<Var>,bool>
-	AbstractMatrix<Var>::CholeskyInvert(bool print_fail) const
+	Matrix<Var, pool_array_t<Var> >
+	AbstractMatrix<Var>::CholeskyInvert(int * ierr) const
 	{
-		return CholeskySolve(Matrix<Var>::Unit(Rows()),print_fail);
+		Matrix<Var, pool_array_t<Var> > ret(Rows(),Rows());
+		ret = CholeskySolve(Matrix<Var, pool_array_t<Var> >::Unit(Rows()),ierr);
+		return ret;
 	}
 	
 	
 	template<typename Var>
 	template<typename typeB>
-	std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-	AbstractMatrix<Var>::CholeskySolve(const AbstractMatrix<typeB> & B, bool print_fail) const
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+	AbstractMatrix<Var>::CholeskySolve(const AbstractMatrix<typeB> & B, int * ierr) const
 	{
-		
-		
 		const AbstractMatrix<Var> & A = *this;
 		assert(A.Rows() == A.Cols());
 		assert(A.Rows() == B.Rows());
 		enumerator n = A.Rows();
 		enumerator l = B.Cols();
-		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(B),true);
-		SymmetricMatrix<Var> L = A;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(B);
+		SymmetricMatrix<Var, pool_array_t<Var> > L(A);
 		
 		//SAXPY
 		/*
@@ -2190,8 +2295,12 @@ namespace INMOST
 		{
 			if( L(k,k) < 0.0 )
 			{
-				ret.second = false;
-				if( print_fail ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << std::endl;
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
 			
@@ -2199,8 +2308,12 @@ namespace INMOST
 			
 			if( fabs(L(k,k)) < 1.0e-24 )
 			{
-				ret.second = false;
-				if( print_fail ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << std::endl;
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
 			
@@ -2214,7 +2327,7 @@ namespace INMOST
 			}
 		}
 		// LY=B
-		Matrix<typename Promote<Var,typeB>::type> & Y = ret.first;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > & Y = ret;
 		for(enumerator i = 0; i < n; ++i)
 		{
 			for(enumerator k = 0; k < l; ++k)
@@ -2225,7 +2338,7 @@ namespace INMOST
 			}
 		}
 		// L^TX = Y
-		Matrix<typename Promote<Var,typeB>::type> & X = ret.first;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > & X = ret;
 		for(enumerator it = n; it > 0; --it)
 		{
 			enumerator i = it-1;
@@ -2239,13 +2352,14 @@ namespace INMOST
 				X(i,k) /= L(i,i);
 			}
 		}
+		if( ierr ) *ierr = 0;
 		return ret;
 	}
 	
 	template<typename Var>
 	template<typename typeB>
-	std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-	AbstractMatrix<Var>::Solve(const AbstractMatrix<typeB> & B, bool print_fail) const
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+	AbstractMatrix<Var>::Solve(const AbstractMatrix<typeB> & B, int * ierr) const
 	{
 		// for A^T B
 		assert(Rows() == B.Rows());
@@ -2258,15 +2372,18 @@ namespace INMOST
 		Matrix<typeB> AtB = B; //m by l matrix
 		Matrix<Var> AtA = (*this); //m by m matrix
 		 */
-		Matrix<Var> At = this->Transpose(); //m by n matrix
-		Matrix<typename Promote<Var,typeB>::type> AtB = At*B; //m by l matrix
-		Matrix<Var> AtA = At*(*this); //m by m matrix
-		enumerator l = AtB.Cols();
-        //enumerator n = Rows();
+		enumerator l = B.Cols();
 		enumerator m = Cols();
-		enumerator * order = new enumerator [m];
-		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(m,l),true);
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(m,l);
+		Matrix<Var, pool_array_t<Var> > At = this->Transpose(); //m by n matrix
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > AtB = At*B; //m by l matrix
+		Matrix<Var, pool_array_t<Var> > AtA = At*(*this); //m by m matrix
+		assert(l == AtB.Cols());
+		//enumerator l = AtB.Cols();
+        //enumerator n = Rows();
+		
+		dynarray<enumerator,128> order(m);
+		
 		//Var temp;
 		INMOST_DATA_REAL_TYPE max,v;
 		//typeB tempb;
@@ -2344,9 +2461,12 @@ namespace INMOST
 				if( ok ) AtA(i,i) = AtA(i,i) < 0.0 ? - 1.0e-12 : 1.0e-12;
 				else
 				{
-					if( print_fail ) std::cout << "Failed to invert matrix" << std::endl;
-					ret.second = false;
-					delete [] order;
+					if( ierr )
+					{
+						if( *ierr == -1 ) std::cout << "Failed to invert matrix" << std::endl;
+						*ierr = i+1;
+					}
+					else throw MatrixSolveFail;
 					return ret;
 				}
 			}
@@ -2381,21 +2501,22 @@ namespace INMOST
 					AtB(i,k) -= AtB(j,k) * AtA(i,j);
 				}
 			for(enumerator i = 0; i < m; i++)
-				ret.first(order[i],k) = AtB(i,k);
+				ret(order[i],k) = AtB(i,k);
 		}
-		delete [] order;
+		//delete [] order;
+		if( ierr ) *ierr = 0;
 		return ret;
 	}
 	
 	template<typename Var>
-	Matrix<Var>
+	Matrix<Var, pool_array_t<Var> >
 	AbstractMatrix<Var>::ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const
 	{
 		assert(ibeg < Rows());
 		assert(iend < Rows());
 		assert(jbeg < Cols());
 		assert(jend < Cols());
-		Matrix<Var> ret(iend-ibeg,jend-jbeg);
+		Matrix<Var, pool_array_t<Var> > ret(iend-ibeg,jend-jbeg);
 		for(enumerator i = ibeg; i < iend; ++i)
 		{
 			for(enumerator j = jbeg; j < jend; ++j)
@@ -2405,25 +2526,33 @@ namespace INMOST
 	}
 	
 	template<typename Var>
-	Matrix<Var>
+	Matrix<Var, pool_array_t<Var> >
 	AbstractMatrix<Var>::Repack(enumerator rows, enumerator cols) const
 	{
 		assert(Cols()*Rows()==rows*cols);
-		Matrix<Var> ret(*this);
+		Matrix<Var, pool_array_t<Var> > ret(*this);
 		ret.Rows() = rows;
 		ret.Cols() = cols;
 		return ret;
 	}
 	
 	template<typename Var>
-	std::pair<Matrix<Var>,bool>
-	AbstractMatrix<Var>::PseudoInvert(INMOST_DATA_REAL_TYPE tol, bool print_fail) const
+	Matrix<Var, pool_array_t<Var> >
+	AbstractMatrix<Var>::PseudoInvert(INMOST_DATA_REAL_TYPE tol, int * ierr) const
 	{
-		std::pair<Matrix<Var>,bool> ret = std::make_pair(Matrix<Var>(Cols(),Rows()),true);
-		Matrix<Var> U,S,V;
-		ret.second = SVD(U,S,V);
-		if( print_fail && !ret.second )
-			std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
+		Matrix<Var, pool_array_t<Var> > ret(Cols(),Rows());
+		Matrix<Var, pool_array_t<Var> > U,S,V;
+		bool success = SVD(U,S,V);
+		if( !success )
+		{
+			if( ierr )
+			{
+				if( *ierr == -1 ) std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
+				*ierr = 1;
+				return ret;
+			}
+			else throw MatrixPseudoSolveFail;
+		}
         for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k)
 		{
 			if( S(k,k) > tol )
@@ -2431,21 +2560,28 @@ namespace INMOST
 			else
 				S(k,k) = 0.0;
 		}
-		ret.first = V*S*U.Transpose();
+		ret = V*S*U.Transpose();
+		if( ierr ) *ierr = 0;
 		return ret;
 	}
 	
 	template<typename Var>
 	template<typename typeB>
-	std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-	AbstractMatrix<Var>::PseudoSolve(const AbstractMatrix<typeB> & B, INMOST_DATA_REAL_TYPE tol, bool print_fail) const
+	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
+	AbstractMatrix<Var>::PseudoSolve(const AbstractMatrix<typeB> & B, INMOST_DATA_REAL_TYPE tol, int * ierr) const
 	{
-		std::pair<Matrix<typename Promote<Var,typeB>::type>,bool>
-		ret = std::make_pair(Matrix<typename Promote<Var,typeB>::type>(Cols(),B.Cols()),true);
-		Matrix<Var> U,S,V;
-		ret.second = SVD(U,S,V);
-		if( print_fail && !ret.second )
-			std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
+		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> > ret(Cols(),B.Cols());
+		Matrix<Var, pool_array_t<Var> > U,S,V;
+		bool success = SVD(U,S,V);
+		if( !success )
+		{
+			if( ierr )
+			{
+				if( *ierr == -1 ) std::cout << "Failed to compute Moore-Penrose inverse of the matrix" << std::endl;
+				*ierr = 1;
+			}
+			else throw MatrixPseudoSolveFail;
+		}
 		for(int k = 0; k < S.Cols(); ++k)
 		{
 			if( S(k,k) > tol )
@@ -2453,7 +2589,8 @@ namespace INMOST
 			else
 				S(k,k) = 0.0;
 		}
-		ret.first = V*S*U.Transpose()*B;
+		ret = V*S*U.Transpose()*B;
+		if( ierr ) *ierr = 0;
 		return ret;
 	}
 	
@@ -2805,14 +2942,30 @@ namespace INMOST
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
-	/// shortcut for matrix of integer values.
+	/// shortcut for matrix of integer values in stack-preallocated and dynamically reallocated array.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idMatrix;
-	/// shortcut for matrix of real values.
+	/// shortcut for matrix of real values in stack-preallocated and dynamically reallocated array.
 	typedef Matrix<INMOST_DATA_REAL_TYPE, dynarray<INMOST_DATA_REAL_TYPE,128> > rdMatrix;
+	/// shortcut for matrix of integer values in pool-allocated array (beaware of deallocation order issue).
+	typedef Matrix<INMOST_DATA_INTEGER_TYPE,pool_array_t<INMOST_DATA_INTEGER_TYPE> > ipMatrix;
+	/// shortcut for matrix of real values in pool-allocated array (beaware of deallocation order issue).
+	typedef Matrix<INMOST_DATA_REAL_TYPE, pool_array_t<INMOST_DATA_REAL_TYPE> > rpMatrix;
 	/// shortcut for matrix of integer values in existing array.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE,shell<INMOST_DATA_INTEGER_TYPE> > iaMatrix;
 	/// shortcut for matrix of real values in existing array.
 	typedef Matrix<INMOST_DATA_REAL_TYPE,shell<INMOST_DATA_REAL_TYPE> > raMatrix;
+	/// shortcut for symmetric matrix of integer values.
+	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE> iSymmetricMatrix;
+	/// shortcut for symmetric matrix of real values.
+	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE> rSymmetricMatrix;
+	/// shortcut for symmetric matrix of integer values in stack-preallocated and dynamically reallocated array.
+	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idSymmetricMatrix;
+	/// shortcut for symmetric matrix of real values in stack-preallocated and dynamically reallocated array.
+	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE,dynarray<INMOST_DATA_REAL_TYPE,128> > rdSymmetricMatrix;
+	/// shortcut for symmetric matrix of integer values in pool-allocated array (beaware of deallocation order issue).
+	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,pool_array_t<INMOST_DATA_INTEGER_TYPE> > ipSymmetricMatrix;
+	/// shortcut for symmetric matrix of real values in pool-allocated array (beaware of deallocation order issue).
+	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE,pool_array_t<INMOST_DATA_REAL_TYPE> > rpSymmetricMatrix;
 	/// shortcut for matrix of integer values in existing array.
 	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,shell<INMOST_DATA_INTEGER_TYPE> > iaSymmetricMatrix;
 	/// shortcut for matrix of real values in existing array.
@@ -2829,12 +2982,18 @@ namespace INMOST
 	typedef Matrix<variable> vMatrix;
 	//< shortcut for matrix of variables with first and second order derivatives.
 	typedef Matrix<hessian_variable> hMatrix;
-	/// shortcut for matrix of variables with single unit entry of first order derivative.
+	/// shortcut for matrix of variables with single unit entry of first order derivative in stack-preallocated and dynamically reallocated array.
 	typedef Matrix<unknown, dynarray<unknown,128> > udMatrix;
-	/// shortcut for matrix of variables with first order derivatives.
+	/// shortcut for matrix of variables with first order derivatives in stack-preallocated and dynamically reallocated array.
 	typedef Matrix<variable, dynarray<variable,128> > vdMatrix;
-	//< shortcut for matrix of variables with first and second order derivatives.
+	//< shortcut for matrix of variables with first and second order derivatives in stack-preallocated and dynamically reallocated array.
 	typedef Matrix<hessian_variable, dynarray<hessian_variable,128> > hdMatrix;
+	/// shortcut for matrix of variables with single unit entry of first order derivative in pool-allocated array (beaware of deallocation order issue).
+	typedef Matrix<unknown, pool_array_t<unknown> > upMatrix;
+	/// shortcut for matrix of variables with first order derivatives in pool-allocated array (beaware of deallocation order issue).
+	typedef Matrix<variable, pool_array_t<variable> > vpMatrix;
+	//< shortcut for matrix of variables with first and second order derivatives in pool-allocated array (beaware of deallocation order issue).
+	typedef Matrix<hessian_variable, pool_array_t<hessian_variable> > hpMatrix;
 	/// shortcut for matrix of unknowns in existing array.
 	typedef Matrix<unknown,shell<unknown> > uaMatrix;
 	/// shortcut for matrix of variables in existing array.
@@ -2847,6 +3006,19 @@ namespace INMOST
 	typedef SymmetricMatrix<variable,shell<variable> > vaSymmetricMatrix;
 	/// shortcut for matrix of variables in existing array.
 	typedef SymmetricMatrix<hessian_variable,shell<hessian_variable> > haSymmetricMatrix;
+	/// shortcut for symmetric matrix of variables with single unit entry of first order derivative in stack-preallocated and dynamically reallocated array.
+	typedef SymmetricMatrix<unknown, dynarray<unknown,128> > udSymmetricMatrix;
+	/// shortcut for symmetric matrix of variables with first order derivatives in stack-preallocated and dynamically reallocated array.
+	typedef SymmetricMatrix<variable, dynarray<variable,128> > vdSymmetricMatrix;
+	//< shortcut for symmetric matrix of variables with first and second order derivatives in stack-preallocated and dynamically reallocated array.
+	typedef SymmetricMatrix<hessian_variable, dynarray<hessian_variable,128> > hdSymmetricMatrix;
+	/// shortcut for symmetric matrix of variables with single unit entry of first order derivative in pool-allocated array (beaware of deallocation order issue).
+	typedef SymmetricMatrix<unknown, pool_array_t<unknown> > upSymmetricMatrix;
+	/// shortcut for symmetric matrix of variables with first order derivatives in pool-allocated array (beaware of deallocation order issue).
+	typedef SymmetricMatrix<variable, pool_array_t<variable> > vpSymmetricMatrix;
+	//< shortcut for symmetric matrix of variables with first and second order derivatives in pool-allocated array (beaware of deallocation order issue).
+	typedef SymmetricMatrix<hessian_variable, pool_array_t<hessian_variable> > hpSymmetricMatrix;
+	
 	
 	
 	static uaMatrix uaMatrixMake(unknown * p, uaMatrix::enumerator n, uaMatrix::enumerator m) {return uaMatrix(shell<unknown>(p,n*m),n,m);}
@@ -2862,7 +3034,8 @@ namespace INMOST
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::AbstractMatrix<typeB> & other)
+INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> >
+operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 #if defined(USE_AUTODIFF)
 /// Multiplication of matrix by a unknown from left.
@@ -2871,7 +3044,8 @@ INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type> oper
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type> operator *(const INMOST::unknown & coef, const INMOST::AbstractMatrix<typeB> & other)
+INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST::unknown,typeB>::type> >
+operator *(const INMOST::unknown & coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 /// Multiplication of matrix by a variable from left.
 /// Takes account for derivatives of variable.
@@ -2879,7 +3053,8 @@ INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type> operator *
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator *(const INMOST::variable & coef, const INMOST::AbstractMatrix<typeB> & other)
+INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST::variable,typeB>::type> >
+operator *(const INMOST::variable & coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 /// Multiplication of matrix by a variable with first and
 /// second order derivatives from left.
@@ -2888,7 +3063,8 @@ INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type> operator 
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> operator *(const INMOST::hessian_variable & coef, const INMOST::AbstractMatrix<typeB> & other)
+INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> >
+operator *(const INMOST::hessian_variable & coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
 #endif
 

@@ -249,7 +249,7 @@ bool find_stencils(Cell cK,
 								rK = nF.DotProduct(xF-xK);
 								rN = nF.DotProduct(xN-xF);
 								//correction due to tensor
-								iQ = -iC * iT.Invert(true).first;
+								iQ = -iC * iT.Invert();
 								rQ = nF.DotProduct(iQ);
 								//harmonic point
 								yS = (lambdaC*rN*(xK - iQ - rQ*nF) + lambdaN*(rK+rQ)*xN + rN*(rK+rQ)*nF*KD)/(lambdaC*rN + lambdaN*(rK+rQ));

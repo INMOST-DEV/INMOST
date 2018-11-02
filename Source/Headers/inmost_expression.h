@@ -21,6 +21,7 @@
 //10.1 user should be able to provide RowMerger when Automatizator is not compiled
 //10.2 Automatizator may provide internal structure for RowMerger
 
+
 #ifdef _MSC_VER
 #pragma warning(disable : 4503)
 #endif
@@ -118,7 +119,7 @@ namespace INMOST
 		}
 		bool check_infs() const
 		{
-			return std::isinf(value);
+			return __isinf__(value);
 		}
 	};
 	
@@ -292,9 +293,9 @@ namespace INMOST
 		}
 		bool check_infs() const
 		{
-			if( std::isinf(value) ) return true;
+			if( __isinf__(value) ) return true;
 			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-				if( std::isinf(it->second) ) return true;
+				if( __isinf__(it->second) ) return true;
 			return false;
 		}
 		/// Write variable into array of entries.
@@ -571,11 +572,11 @@ namespace INMOST
 		}
 		bool check_infs() const
 		{
-			if( std::isinf(value)) return true;
+			if( __isinf__(value)) return true;
 			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-				if( std::isinf(it->second) ) return true;
+				if( __isinf__(it->second) ) return true;
 			for(Sparse::HessianRow::const_iterator it = hessian_entries.Begin(); it != hessian_entries.End(); ++it)
-				if( std::isinf(it->second) ) return true;
+				if( __isinf__(it->second) ) return true;
 			return false;
 		}
 		friend class hessian_multivar_expression_reference;
@@ -766,9 +767,9 @@ namespace INMOST
 		}
 		bool check_infs() const
 		{
-			if( std::isinf(value) ) return true;
+			if( __isinf__(value) ) return true;
 			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-				if( std::isinf(it->second) ) return true;
+				if( __isinf__(it->second) ) return true;
 			return false;
 		}
 	};
@@ -979,11 +980,11 @@ namespace INMOST
 		}
 		bool check_infs() const
 		{
-			if( std::isinf(value) ) return true;
+			if( __isinf__(value) ) return true;
 			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-				if( std::isinf(it->second) ) return true;
+				if( __isinf__(it->second) ) return true;
 			for(Sparse::HessianRow::iterator it = hentries->Begin(); it != hentries->End(); ++it)
-				if( std::isinf(it->second) ) return true;
+				if( __isinf__(it->second) ) return true;
 			return false;
 		}
 	};
@@ -2146,7 +2147,7 @@ __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
 __INLINE bool check_nans(INMOST::var_expression const & e) {return e.check_nans();}
 __INLINE bool check_nans(INMOST::multivar_expression const & e) {return e.check_nans();}
 __INLINE bool check_nans(INMOST::multivar_expression_reference const & e) {return e.check_nans();}
-__INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return std::isinf(val);}
+__INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return __isinf__(val);}
 __INLINE bool check_infs(INMOST::var_expression const & e) {return e.check_infs();}
 __INLINE bool check_infs(INMOST::multivar_expression const & e) {return e.check_infs();}
 __INLINE bool check_infs(INMOST::multivar_expression_reference const & e) {return e.check_infs();}
@@ -2284,7 +2285,7 @@ __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_RE
 
 #else //USE_AUTODIFF
 __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
-__INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return std::isinf(val);}
+__INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return __isinf__(val);}
 __INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val) || check_infs(val);}
 __INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = Val;}
 __INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
