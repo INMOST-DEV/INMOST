@@ -699,13 +699,13 @@ namespace INMOST
 		}
 		/// Check if the matrix is symmetric.
 		/// @return Returns true if the matrix is symmetric, otherwise false.
-		bool isSymmetric() const
+		bool isSymmetric(double eps = 1.0e-7) const
 		{
 			if( Rows() != Cols() ) return false;
 			for(enumerator k = 0; k < Rows(); ++k)
 			{
 				for(enumerator l = k+1; l < Rows(); ++l)
-					if( fabs((*this)(k,l)-(*this)(l,k)) > 1.0e-7 )
+					if( fabs((*this)(k,l)-(*this)(l,k)) > eps )
 						return false;
 			}
 			return true;
@@ -910,7 +910,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to element.
-		Var & operator()(enumerator i, enumerator j)
+		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
 			assert(i >= 0 && i < n);
 			assert(j >= 0 && j < n);
@@ -922,7 +922,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		const Var & operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i >= 0 && i < n);
 			assert(j >= 0 && j < n);
@@ -932,23 +932,23 @@ namespace INMOST
 		
 		/// Return raw pointer to matrix data, stored in row-wise format.
 		/// @return Pointer to data.
-		Var * data() {return space.data();}
+		__INLINE Var * data() {return space.data();}
 		/// Return raw pointer to matrix data without right of change,
 		/// stored in row-wise format.
 		/// @return Pointer to constant data.
-		const Var * data() const {return space.data();}
+		__INLINE const Var * data() const {return space.data();}
 		/// Obtain number of rows.
 		/// @return Number of rows.
-		enumerator Rows() const {return n;}
+		__INLINE enumerator Rows() const {return n;}
 		/// Obtain number of columns.
 		/// @return Number of columns.
-		enumerator Cols() const {return n;}
+		__INLINE enumerator Cols() const {return n;}
 		/// Obtain number of rows.
 		/// @return Reference to number of rows.
-		enumerator & Rows() {return n;}
+		__INLINE enumerator & Rows() {return n;}
 		/// Obtain number of rows.
 		/// @return Reference to number of columns.
-		enumerator & Cols() {return n;}
+		__INLINE enumerator & Cols() {return n;}
 		/// Convert values in array into square matrix.
 		/// Supports the following representation, depending on the size
 		/// of input array and size of side of final tensors' matrix:
@@ -1348,18 +1348,18 @@ namespace INMOST
 		{
 			if( Cols()*Rows() != other.Cols()*other.Rows() )
 				space.resize(other.Cols()*other.Rows());
+			n = other.Rows();
+			m = other.Cols();
 			for(enumerator i = 0; i < other.Rows(); ++i)
 				for(enumerator j = 0; j < other.Cols(); ++j)
 					assign((*this)(i,j),other(i,j));
-			n = other.Rows();
-			m = other.Cols();
 			return *this;
 		}
 		/// Access element of the matrix by row and column indices.
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to element.
-		Var & operator()(enumerator i, enumerator j)
+		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
 			assert(i >= 0 && i < n);
 			assert(j >= 0 && j < m);
@@ -1371,7 +1371,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		const Var & operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i >= 0 && i < n);
 			assert(j >= 0 && j < m);
@@ -1381,23 +1381,23 @@ namespace INMOST
 		
 		/// Return raw pointer to matrix data, stored in row-wise format.
 		/// @return Pointer to data.
-		Var * data() {return space.data();}
+		__INLINE Var * data() {return space.data();}
 		/// Return raw pointer to matrix data without right of change,
 		/// stored in row-wise format.
 		/// @return Pointer to constant data.
-		const Var * data() const {return space.data();}
+		__INLINE const Var * data() const {return space.data();}
 		/// Obtain number of rows.
 		/// @return Number of rows.
-		enumerator Rows() const {return n;}
+		__INLINE enumerator Rows() const {return n;}
 		/// Obtain number of columns.
 		/// @return Number of columns.
-		enumerator Cols() const {return m;}
+		__INLINE enumerator Cols() const {return m;}
 		/// Obtain number of rows.
 		/// @return Reference to number of rows.
-		enumerator & Rows() {return n;}
+		__INLINE enumerator & Rows() {return n;}
 		/// Obtain number of rows.
 		/// @return Reference to number of columns.
-		enumerator & Cols() {return m;}
+		__INLINE enumerator & Cols() {return m;}
 		/// Construct row permutation matrix from array of new positions for rows.
 		/// Row permutation matrix multiplies matrix from left.
 		/// Column permutation matrix is obtained by transposition and is multiplied
@@ -1793,10 +1793,10 @@ namespace INMOST
 	public:
 		/// Number of rows in submatrix.
 		/// @return Number of rows.
-		enumerator Rows() const {return erow-brow;}
+		__INLINE enumerator Rows() const {return erow-brow;}
 		/// Number of columns in submatrix.
 		/// @return Number of columns.
-		enumerator Cols() const {return ecol-bcol;}
+		__INLINE enumerator Cols() const {return ecol-bcol;}
 		/// Create submatrix for a matrix.
 		/// @param rM Reference to the matrix that stores elements.
 		/// @param first_row First row in the matrix.
@@ -1836,7 +1836,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to element.
-		Var & operator()(enumerator i, enumerator j)
+		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
 			assert(i >= 0 && i < Rows());
 			assert(j >= 0 && j < Cols());
@@ -1848,7 +1848,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		const Var & operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i >= 0 && i < Rows());
 			assert(j >= 0 && j < Cols());
@@ -1894,10 +1894,10 @@ namespace INMOST
 	public:
 		/// Number of rows in submatrix.
 		/// @return Number of rows.
-		enumerator Rows() const {return erow-brow;}
+		__INLINE enumerator Rows() const {return erow-brow;}
 		/// Number of columns in submatrix.
 		/// @return Number of columns.
-		enumerator Cols() const {return ecol-bcol;}
+		__INLINE enumerator Cols() const {return ecol-bcol;}
 		/// Create submatrix for a matrix.
 		/// @param rM Reference to the matrix that stores elements.
 		/// @param first_row First row in the matrix.
@@ -1912,7 +1912,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to element.
-		Var & operator()(enumerator i, enumerator j)
+		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
 			assert(i >= 0 && i < Rows());
 			assert(j >= 0 && j < Cols());
@@ -1924,7 +1924,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		const Var & operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i >= 0 && i < Rows());
 			assert(j >= 0 && j < Cols());
@@ -2463,7 +2463,14 @@ namespace INMOST
 				{
 					if( ierr )
 					{
-						if( *ierr == -1 ) std::cout << "Failed to invert matrix" << std::endl;
+						if( *ierr == -1 )
+						{
+							std::cout << "Failed to invert matrix diag " << get_value(AtA(i,i)) << std::endl;
+							std::cout << "rhs:";
+							for(enumerator k = 0; k < l; k++)
+								std::cout << " " << get_value(AtB(i,k));
+							std::cout << std::endl;
+						}
 						*ierr = i+1;
 					}
 					else throw MatrixSolveFail;
