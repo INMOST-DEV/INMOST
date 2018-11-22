@@ -332,8 +332,8 @@ namespace INMOST
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//11. Restore parallel connectivity, global ids
-		ResolveShared(true);
-		ResolveModification();
+		//ResolveShared(true);
+		//ResolveModification();
 		//12. Let the user update their data
 		//todo: call back function for New() cells
 		//13. Delete old elements of the mesh
@@ -642,8 +642,8 @@ namespace INMOST
 		//free created tag
 		DeleteTag(indicator,FACE|EDGE);
 		//todo:
-		ResolveShared(true);
-		ResolveModification();
+		//ResolveShared(true);
+		//ResolveModification();
 		//todo:
 		//let the user update their data
 		ApplyModification();

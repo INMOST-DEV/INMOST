@@ -15,6 +15,14 @@ int main(int argc, char ** argv)
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
 		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON);
 		TagInteger indicator = m.CreateTag("INDICATOR",DATA_INTEGER,CELL,NONE,1);
+		/*
+		for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
+			indicator[*it] = 1;
+		if( !m.Refine(indicator) ) std::cout << "refine failed" << std::endl;
+		else std::cout << "refine ok!" << std::endl;
+		m.Save("grid.pmf");
+		return 0;
+		*/
 		int max_levels = 2;
 		if( argc > 2 ) max_levels = atoi(argv[2]);
 		//bounding box around mesh
@@ -159,4 +167,5 @@ int main(int argc, char ** argv)
 	else std::cout << "Usage: " << argv[0] << " mesh_file [max_levels=2]" << std::endl;
 	
 	Mesh::Finalize();
+	return 0;
 }

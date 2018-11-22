@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include "../../Source/Misc/utils.h"
 
 
 using namespace INMOST;
@@ -33,6 +34,57 @@ bool print_niter = false; //save file on nonlinear iterations
 //S*\sigma = \varepsilon. Here \varepsilon = \frac{G+G^T}{2},
 //with G - gradient of displacement matrix
 bool inverse_tensor = true;
+bool reference_solution = false;
+bool print_matrix = false;
+
+
+template<typename T>
+static void SVD2Eigen(const Matrix<T> & U, Matrix<T> & S, Matrix<T> & V)
+{
+	for (int i = 0; i < V.Cols(); ++i)
+	{
+		double dot = 0.0;
+		for (int j = 0; j < V.Rows(); ++j)
+			dot += get_value(U(j, i))*get_value(V(j, i));
+		if (dot < 0.0)
+		{
+			S(i, i) *= -1;
+			for (int j = 0; j < V.Rows(); ++j)
+				V(j, i) *= -1;
+		}
+	}
+	//check
+	//if ((U - V).FrobeniusNorm() > 1.0e-8)
+	//	(U - V).Print();
+}
+
+
+class BlockRow
+{
+	std::map< unsigned, rMatrix > entries;
+	unsigned height, width;
+	rMatrix & GetAdd(unsigned col)
+	{
+		std::map< unsigned, rMatrix >::iterator s = entries.find(col/width);
+		if( s == entries.end() )
+			return (entries[col/width] = rMatrix(height,width,0.0));
+		else
+			return s->second;
+	}
+public:
+	BlockRow(unsigned h, unsigned w) : height(h), width(w) {}
+	rMatrix & operator [] (unsigned col) { return GetAdd(col); }
+	double & operator () (unsigned i, unsigned j) { return GetAdd(j)(i%height,j%width);}
+	double operator () (unsigned i, unsigned j) const
+	{
+		std::map< unsigned, rMatrix >::const_iterator s = entries.find(j/width);
+		if( s != entries.end() )
+			return s->second(i%height,j%width);
+		throw -1;
+	}
+	std::map< unsigned, rMatrix >::iterator Begin() {return entries.begin();}
+	std::map< unsigned, rMatrix >::iterator End() {return entries.end();}
+};
 
 //indices for tensor
 const int IC11 = 0;
@@ -238,14 +290,14 @@ void PrintSV(const rMatrix & A)
 	A.SVD(U,S,V);
 	std::cout << "singular values:";
 	int cnt = 0;
-	for(int k = 0; k < A.Rows(); ++k) if( fabs(S(k,k)) > 1.0e-10 )
+	for(int k = 0; k < A.Cols(); ++k) if( fabs(S(k,k)) > 1.0e-10 )
 	{
 		std::cout << " " << S(k,k);
 		cnt++;
 	}
 	else
 		std::cout << " 0";
-	std::cout << " count: " << cnt << "/" << A.Rows() << std::endl;
+	std::cout << " count: " << cnt << "/" << A.Cols() << std::endl;
 }
 
 void PrintRS(const rMatrix & A)
@@ -314,11 +366,12 @@ int main(int argc,char ** argv)
         { // prepare geometrical data on the mesh
             ttt = Timer();
             Mesh::GeomParam table;
-            table[CENTROID]    = CELL | FACE; //Compute averaged center of mass
+            table[BARYCENTER]    = CELL | FACE; //Compute averaged center of mass
             table[NORMAL]      = FACE;        //Compute normals
             table[ORIENTATION] = FACE;        //Check and fix normal orientation
             table[MEASURE]     = CELL | FACE; //Compute volumes and areas
             //table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
+			m->RemoveGeometricData(table);
             m->PrepareGeometricData(table); //Ask to precompute the data
             BARRIER
             if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
@@ -357,8 +410,41 @@ int main(int argc,char ** argv)
 			0,0,0,1,0,0,
 			0,0,1,0,0,0
 		};
+		// |  0  -z   y | u   | w_y - v_z |
+		// |  z   0  -x | v = | u_z - w_x |
+		// | -y   x   0 | w   | v_x - u_y |
+		//
+		// 0  0  0  0  0 -z  0 +y  0
+		// 0  0 +z  0  0  0 -x  0  0
+		// 0 -y  0 +x  0  0  0  0  0
+		//
+		// 0  0  0  0  0  0  0  0  0
+		// 0  0  0  0  0  0  0  1  0
+		// 0  0  0  0  0 -1  0  0  0
+		// 0  0  0  0  0  0 -1  0  0
+		// 0  0  0  0  0  0  0  0  0
+		// 0  0  1  0  0  0  0  0  0
+		// 0  0  0  1  0  0  0  0  0
+		// 0 -1  0  0  0  0  0  0  0
+		// 0  0  0  0  0  0  0  0  0
+		//
+		const double vCurl[] =
+		{
+			0,  0,  0,  0,  0,  0,  0,  0,  0,
+			0,  0,  0,  0,  0,  0,  0,  1,  0,
+			0,  0,  0,  0,  0, -1,  0,  0,  0,
+			0,  0,  0,  0,  0,  0, -1,  0,  0,
+			0,  0,  0,  0,  0,  0,  0,  0,  0,
+			0,  0,  1,  0,  0,  0,  0,  0,  0,
+			0,  0,  0,  1,  0,  0,  0,  0,  0,
+			0, -1,  0,  0,  0,  0,  0,  0,  0,
+			0,  0,  0,  0,  0,  0,  0,  0,  0
+		};
 		const rMatrix B(vB,9,6);
+		const rMatrix Curl(vCurl,9,9);
 		const rMatrix I = rMatrix::Unit(3);
+		
+		//PrintSV(B);
 		
 		(B.Transpose()*B).Print();
 
@@ -390,7 +476,7 @@ int main(int argc,char ** argv)
 #pragma omp parallel
 #endif
 			{
-				rMatrix N, R, L, T, K(9,9), C(6,6), U,S,V, W1, W2;
+				rMatrix N, R, L, T, K(9,9), C(6,6), W1, W2, W3, U,S,V, w, u, v;
 				rMatrix x(3,1), xf(3,1), n(3,1);
 				double area; //area of the face
 				double volume; //volume of the cell
@@ -405,10 +491,10 @@ int main(int argc,char ** argv)
 					 ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
 					 int NF = (int)faces.size(); //number of faces;
 					 volume = cell->Volume(); //volume of the cell
-					 cell->Centroid(x.data());
+					 cell->Barycenter(x.data());;
 					 //get permeability for the cell
 					 KTensor(tag_C[cell],K);
-					 //CTensor(tag_C[cell],C);
+					 CTensor(tag_C[cell],C);
 					 if( !inverse_tensor ) K = K.Invert();
 					 //K += rMatrix::Unit(9)*1.0e-6*K.FrobeniusNorm();
 					 //PrintSV(K);
@@ -417,19 +503,21 @@ int main(int argc,char ** argv)
 					 R.Resize(3*NF,9); //directions
 					 L.Resize(3*NF,3*NF);
 					 L.Zero();
+					 
 					 //A.Resize(3*NF,3*NF);
 					 //A.Zero();
+					 //K += rMatrix::Unit(9)*volume;
 					 for(int k = 0; k < NF; ++k) //loop over faces
 					 {
 						 area = faces[k].Area();
-						 faces[k].Centroid(xf.data());
+						 faces[k].Barycenter(xf.data());
 						 faces[k].OrientedUnitNormal(cell->self(),n.data());
 						 dist = n.DotProduct(xf-x);
 						 // assemble matrix of directions
 						 R(3*k,3*(k+1),0,9) = I.Kronecker((xf-x).Transpose());
 						 // assemble matrix of co-normals
 						 
-						 L(3*k,3*(k+1),3*k,3*(k+1)) = (area/dist)*I.Kronecker(n.Transpose())*K*I.Kronecker(n);
+						 L(3*k,3*(k+1),3*k,3*(k+1)) = (area/dist)*(I.Kronecker(n.Transpose())*K*I.Kronecker(n));
 						 
 						 N(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
 						 
@@ -444,6 +532,7 @@ int main(int argc,char ** argv)
 						 //A(3*k,3*(k+1),3*k,3*(k+1)) = I*area;
 						 //NK(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
 					 } //end of loop over faces
+					 //R += N*Curl;
 					 tag_W[cell].resize(9*NF*NF);
 					 //int ierr = -1;
 					 //tag_W(cell,3*NF,3*NF) = N*(N.Transpose()*R).PseudoInvert(1.0e-9)*N.Transpose() //stability part
@@ -463,10 +552,122 @@ int main(int argc,char ** argv)
 					 //W1.Resize(3*NF,3*NF);
 					 //W2.Resize(3*NF,3*NF);
 					 
-					 W1 = (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-7)*(N*K).Transpose();
-					 W2 = L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-7)*(L*R).Transpose();
 					 
-					 tag_W(cell,3*NF,3*NF) = W1+W2;
+					 //W1 = (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-9)*(N*K).Transpose();
+					 //W2 = L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-9)*(L*R).Transpose();
+					 //W3 = pow(volume,2.0/3.0)*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).PseudoInvert(1.0e-7)*(R*B).Transpose());
+					 //tag_W(cell,3*NF,3*NF) = W1+W2+W3;
+					 //K.SVD(U,S,V);
+					 /*
+					 std::cout << "U" << std::endl;
+					 U.Print();
+					 
+					 std::cout << "S" << std::endl;
+					 S.Print();
+					 
+					 std::cout << "V" << std::endl;
+					 V.Print();
+					 
+					 std::cout << "K - U*S*U^T" << std::endl;
+					 (K - U*S*U.Transpose()).Print();
+					 
+					 std::cout << "K - V*S*V^T" << std::endl;
+					 (K - V*S*V.Transpose()).Print();
+					 std::cout << "K - (U+V)*S*(U+V)^T/4" << std::endl;
+					 (K - (U+V)*S*(U+V).Transpose()/4.0).Print();
+					 */
+					 //w = (0.5*(U+V))(0,9,6,9);
+					 
+					 //u = U(0,9,6,9);
+					 
+					 //v = V(0,9,6,9);
+					 /*
+					 std::cout << "w^T*w" << std::endl;
+					 (w.Transpose()*w).Print();
+					 
+					 std::cout << "u^T*u" << std::endl;
+					 (u.Transpose()*u).Print();
+					 
+					 std::cout << "v^T*v" << std::endl;
+					 (v.Transpose()*v).Print();
+					 
+					 std::cout << "K" << std::endl;
+					 K.Print();
+					 
+					 std::cout << "(I - u*u^T)*K" << std::endl;
+					 ((rMatrix::Unit(9) - u*u.Transpose())*K).Print();
+					 
+					 std::cout << "(I - v*v^T)*K" << std::endl;
+					 ((rMatrix::Unit(9) - v*v.Transpose())*K).Print();
+					 
+					 
+					 std::cout << "(I - w*w^T)*K" << std::endl;
+					 ((rMatrix::Unit(9) - w*w.Transpose())*K).Print();
+					 
+					 std::cout << "K-(I - u*u^T)*K" << std::endl;
+					 (K-(rMatrix::Unit(9) - u*u.Transpose())*K).Print();
+					 */
+					 //double ssum = 0;
+					 //for(int k = 0; k < 9; ++k) ssum += S(k,k);
+					 
+					 //K += (v*v.Transpose())*ssum*volume;
+					 //K += volume*rMatrix::Unit(9);
+					 //PrintSV(K);
+					 
+					 //std::cout << "N*CURL*R" << std::endl;
+					 //((N*Curl).Transpose()*R).Print();
+					 
+					 //W1 = (N*B*C)*((N*B*C).Transpose()*R*B).Invert()*(N*B*C).Transpose();
+					 //W2 = L - (L*R*B)*((L*R*B).Transpose()*R*B).CholeskyInvert()*(L*R*B).Transpose();
+					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).Invert()*(R*B).Transpose());
+					 
+					 double alpha = 1;
+					 double beta = alpha;
+					 
+					 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose();
+					 W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+					 //+ L.Trace()*pow(volume,1.0/3.0)*(rMatrix::Unit(3*NF) - R*B*((R*B).Transpose()*R*B).PseudoInvert(1.0e-7)*(R*B).Transpose());
+					 /*
+					 std::cout << "W1:" << std::endl;
+					 (W1 - W1.Transpose()).Print();
+					 std::cout << "W2:" << std::endl;
+					 (W2 - W2.Transpose()).Print();
+					 std::cout << "Ker: " << std::endl;
+					 ((N*K+alpha*L*R).Transpose()*R).Print();
+					 std::cout << "N^T*R: " << std::endl;
+					 (N.Transpose()*R).Print();
+					 std::cout << "(N*K)^T*R: " << std::endl;
+					 ((N*K).Transpose()*R).Print();
+					  */
+					 //W2 = L.Trace()*(rMatrix::Unit(3*NF) - (1+alpha)*(R)*((R).Transpose()*R).PseudoInvert(1.0e-9)*(R).Transpose());
+					 //+ (rMatrix::Unit(3*NF) - N*Curl*((N*Curl).Transpose()*R).PseudoInvert(1.0e-12)*(N*Curl).Transpose());
+					 //W1 = L;
+					 //W2 = (N*K-L*R)*(N.Transpose()*R)*N.Transpose();
+					 
+					 //W1 = N*K*N.Transpose()/volume;
+					 
+					 //W1 = (N*B*C)*((N*B*C).Transpose()*R*B).PseudoInvert(1.0e-9)*(N*B*C).Transpose();
+					 //W2 = L - (L*R*B)*((L*R*B).Transpose()*R*B).PseudoInvert(1.0e-9)*(L*R*B).Transpose();
+					 //W2 = L.Trace()*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).PseudoInvert(1.0e-9)*(R*B).Transpose());
+					 
+					 //W1 = (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-9)*(N*K).Transpose();
+					 //W2 = L - (L*R)*((L*R*B).Transpose()*R).PseudoInvert(1.0e-9)*(L*R*B).Transpose();
+					 //W1 = L;
+					 //W2 = (N*K-L*R)*((N*K-L*R).Transpose()*R).PseudoInvert(1.0e-9)*(N*K-L*R).Transpose();
+					 
+					 tag_W(cell,3*NF,3*NF) = W1+W2;// + rMatrix::Unit(3*NF)*volume;
+					 
+					 //PrintSV(tag_W(cell,3*NF,3*NF));
+					 
+					 //std::cout << "W1: "; PrintSV(W1);
+					 //std::cout << "W2: "; PrintSV(W2);
+					 //std::cout << "W3: "; PrintSV(W3);
+					 
+					 
+					 
+					 //(W3*R).Print();
+					 
+					 //PrintSV(W1+W2+W3);
 					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - R*(R.Transpose()*R).PseudoInvert(1.0e-7)*R.Transpose());
 					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - R*((N*K).Transpose()*R).PseudoInvert(1.0e-7)*(N*K).Transpose());
 					 /*
@@ -570,7 +771,8 @@ int main(int argc,char ** argv)
 						 (K-K.Transpose()).Print();
 					 }
 					 
-					 if( true ) if( !tag_W(cell,3*NF,3*NF).isSymmetric(1.0e-3) )
+					 //if( false )
+						 if( !tag_W(cell,3*NF,3*NF).isSymmetric(1.0e-5) )
 					 {
 						 std::cout << "W nonsymmetric: " << std::endl;
 						 (tag_W(cell,3*NF,3*NF)-tag_W(cell,3*NF,3*NF).Transpose()).Print();
@@ -639,17 +841,33 @@ int main(int argc,char ** argv)
 				//srand(1); // Randomization
 				tag_UVW = m->CreateTag("UVW",DATA_REAL,CELL|FACE,NONE,3); // Create a new tag for the displacement
 				for(Mesh::iteratorElement e = m->BeginElement(CELL|FACE); e != m->EndElement(); ++e) //Loop over mesh cells
-					tag_UVW(*e,3,1).Zero();//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+				{
+					//tag_UVW(*e,3,1).Zero();//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+					tag_UVW[*e][0] = (rand()*1.0)/(RAND_MAX*1.0);
+					tag_UVW[*e][1] = (rand()*1.0)/(RAND_MAX*1.0);
+					tag_UVW[*e][2] = (rand()*1.0)/(RAND_MAX*1.0);
+				}
 			}
 			
 			if( !tag_UVW.isDefined(FACE) )
 			{
 				tag_UVW = m->CreateTag("UVW",DATA_REAL,FACE,NONE,3);
 				for(Mesh::iteratorElement e = m->BeginElement(FACE); e != m->EndElement(); ++e) //Loop over mesh cells
-					tag_UVW(*e,3,1).Zero();//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+				{
+					//tag_UVW(*e,3,1).Zero();//(rand()*1.0)/(RAND_MAX*1.0); // Prescribe random value in [0,1]
+					tag_UVW[*e][0] = (rand()*1.0)/(RAND_MAX*1.0);
+					tag_UVW[*e][1] = (rand()*1.0)/(RAND_MAX*1.0);
+					tag_UVW[*e][2] = (rand()*1.0)/(RAND_MAX*1.0);
+				}
 			}
 			m->ExchangeData(tag_UVW,CELL|FACE,0); //Synchronize initial solution with boundary unknowns
 			
+			if( reference_solution && m->HaveTag("REFERENCE_SOLUTION") )
+			{
+				TagRealArray tag_R = m->GetTag("REFERENCE_SOLUTION");
+				for(Mesh::iteratorElement it = m->BeginElement(CELL|FACE); it != m->EndElement(); ++it)
+					tag_UVW(*it,3,1) = tag_R(*it,3,1);
+			}
 			
 			tag_FLUX = m->CreateTag("FLUX",DATA_REAL,FACE,NONE,3);
         } //end of initialize data
@@ -680,9 +898,9 @@ int main(int argc,char ** argv)
                     Cell cell = m->CellByLocalID(q);
                     if( cell.GetStatus() != Element::Ghost )
 					{
-                        Text.SetAnnotation(UVW.Index(cell,0),"Divergence, U");
-						Text.SetAnnotation(UVW.Index(cell,1),"Divergence, V");
-						Text.SetAnnotation(UVW.Index(cell,2),"Divergence, W");
+                        Text.SetAnnotation(UVW.Index(cell,0),"Divergence, U " + to_string(UVW.Index(cell,0)));
+						Text.SetAnnotation(UVW.Index(cell,1),"Divergence, V " + to_string(UVW.Index(cell,1)));
+						Text.SetAnnotation(UVW.Index(cell,2),"Divergence, W " + to_string(UVW.Index(cell,2)));
 					}
                 }
                 for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
@@ -692,15 +910,15 @@ int main(int argc,char ** argv)
                     {
                         if( tag_BC.isValid() && face.HaveData(tag_BC) )
 						{
-                            Text.SetAnnotation(UVW.Index(face,0),"Boundary condition, U");
-							Text.SetAnnotation(UVW.Index(face,1),"Boundary condition, V");
-							Text.SetAnnotation(UVW.Index(face,2),"Boundary condition, W");
+                            Text.SetAnnotation(UVW.Index(face,0),"Boundary condition, U " + to_string(UVW.Index(face,0)));
+							Text.SetAnnotation(UVW.Index(face,1),"Boundary condition, V " + to_string(UVW.Index(face,1)));
+							Text.SetAnnotation(UVW.Index(face,2),"Boundary condition, W " + to_string(UVW.Index(face,2)));
 						}
                         else
 						{
-                            Text.SetAnnotation(UVW.Index(face,0),"Flux continuity, U");
-							Text.SetAnnotation(UVW.Index(face,1),"Flux continuity, V");
-							Text.SetAnnotation(UVW.Index(face,2),"Flux continuity, W");
+                            Text.SetAnnotation(UVW.Index(face,0),"Flux continuity, U " + to_string(UVW.Index(face,0)));
+							Text.SetAnnotation(UVW.Index(face,1),"Flux continuity, V " + to_string(UVW.Index(face,1)));
+							Text.SetAnnotation(UVW.Index(face,2),"Flux continuity, W " + to_string(UVW.Index(face,2)));
 						}
                     }
                 }
@@ -774,6 +992,118 @@ int main(int argc,char ** argv)
 							Locks.UnLock(index);
 						}
 					} //end of loop over cells
+					
+					
+					if( print_matrix )
+					{
+						std::fstream ff;
+						ff.open("mat.txt",std::ios::out);
+						for(Mesh::iteratorElement it = m->BeginElement(CELL|FACE); it != m->EndElement(); ++it)
+						{
+							
+							ff << "Element " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID();
+							if( it->GetElementType() == FACE && it->getAsFace()->Boundary() )
+								ff << " boundary";
+							ff << std::endl;
+							const int bs = 3;
+							std::vector<double> VR(3);
+							BlockRow BR(bs,bs);
+							
+							for(int q = 0; q < bs; ++q)
+							{
+								VR[q] = R[UVW.Index(it->self(),q)].GetValue();
+								Sparse::Row & r = R[UVW.Index(it->self(),q)].GetRow();
+								//r.Print();
+								for(int l = 0; l < r.Size(); ++l) if( r.GetValue(l) )
+									BR(q,r.GetIndex(l)) = r.GetValue(l);
+							}
+							
+							ff << std::setprecision(5);
+							ff << std::scientific;
+							std::map< unsigned, rMatrix >::iterator jt;
+							for(int q = 0; q < bs; ++q)
+							{
+								
+								ff << std::setw(13) << VR[q] << ": ";
+								for(jt = BR.Begin(); jt != BR.End(); ++jt)
+								{
+									for(int l = 0; l < bs; ++l)
+										ff << std::setw(13) << jt->second(q,l) << " ";
+									ff << "|";
+								}
+								ff << std::endl;
+							}
+							
+							rMatrix Sum(bs,bs);
+							Sum.Zero();
+							for(jt = BR.Begin(); jt != BR.End(); ++jt)
+								Sum += jt->second;
+							ff << "Sum: " << std::endl;
+							for(int q = 0; q < bs; ++q)
+							{
+								for(int l = 0; l < bs; ++l)
+									ff << std::setw(13) << Sum(q,l) << " ";
+								ff << std::endl;
+							}
+							ff << "diagonal block: " << UVW.Index(it->self(),0)/bs << std::endl;
+							rMatrix Diag = BR[UVW.Index(it->self(),0)/bs*bs];
+							rMatrix iDiag = Diag.PseudoInvert(1.0e-13);
+							ff << "Diag: " << std::endl;
+							for(int q = 0; q < bs; ++q)
+							{
+								for(int l = 0; l < bs; ++l)
+									ff << std::setw(13) << Diag(q,l) << " ";
+								ff << std::endl;
+							}
+							ff << "iDiag: " << std::endl;
+							for(int q = 0; q < bs; ++q)
+							{
+								for(int l = 0; l < bs; ++l)
+									ff << std::setw(13) << iDiag(q,l) << " ";
+								ff << std::endl;
+							}
+							
+							rMatrix W(bs,bs), U(bs,bs), S(bs,bs), V(bs,bs);
+							Sum.Zero();
+							bool diag = false;
+							for(jt = BR.Begin(); jt != BR.End(); ++jt)
+							{
+								int nz = 0;
+								bool curdiag = false;
+								W = jt->second;
+								W.SVD(U,S,V);
+								SVD2Eigen(U,S,V);
+								ff << "Block " << jt->first << std::endl;
+								if( jt->first == UVW.Index(it->self(),0)/bs )
+								{
+									ff << "diagonal" << std::endl;
+									diag = true;
+									curdiag = true;
+								}
+								for(int k = 0; k < bs; ++k) if( fabs(S(k,k)) < 1.0e-4 )
+									nz++;
+								if( curdiag && nz ) ff << "problem: " << bs-nz << "/" << bs << std::endl;
+								ff << "A | U | S | V" << std::endl;
+								for(int k = 0; k < bs; ++k)
+								{
+									for(int l = 0; l < bs; ++l)
+										ff << std::setw(13) << W(k,l) << " ";
+									ff << "|";
+									for(int l = 0; l < bs; ++l)
+										ff << std::setw(13) << U(k,l) << " ";
+									ff << "|";
+									for(int l = 0; l < bs; ++l)
+										ff << std::setw(13) << S(k,l) << " ";
+									ff << "|";
+									for(int l = 0; l < bs; ++l)
+										ff << std::setw(13) << V(k,l) << " ";
+									ff << std::endl;
+								}
+							}
+							if( !diag ) std::cout << "no diagonal block!" << std::endl;
+						}
+						ff.close();
+					}
 
 
 					 if( tag_F.isValid() )
@@ -795,6 +1125,8 @@ int main(int argc,char ** argv)
 
                 if( R.Norm() < 1.0e-4 ) break;
 				tttt = Timer();
+				
+				//R.GetJacobian().Save("A.mtx",&Text);
 
 				Solver S(Solver::INNER_MPTILU2);
                 //Solver S(Solver::INNER_MPTILUC);
@@ -802,7 +1134,7 @@ int main(int argc,char ** argv)
                 S.SetParameter("relative_tolerance", "1.0e-14");
                 S.SetParameter("absolute_tolerance", "1.0e-12");
                 S.SetParameter("drop_tolerance", "1.0e-2");
-                S.SetParameter("reuse_tolerance", "1.0e-4");
+                S.SetParameter("reuse_tolerance", "1.0e-3");
 
                 S.SetMatrix(R.GetJacobian());
 				

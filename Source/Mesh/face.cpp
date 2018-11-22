@@ -48,7 +48,8 @@ namespace INMOST
 				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
 				i = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),i,hm); //found first
-				i = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),i,hm); //found second
+				if( i != hc.size() )
+					i = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),i,hm); //found second
 				if( i != hc.size() ) return Cell(m,hc[i]);
 			}
 			return Cell(m,InvalidHandle());
@@ -106,13 +107,16 @@ namespace INMOST
 				enumerator i = ENUMUNDEF;
 				MarkerType hm = m->HideMarker();
 				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
-				i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
-				if( i != static_cast<enumerator>(lc.size()) ) 
+				if( i != static_cast<enumerator>(lc.size()) )
 				{
-					adj_type const & llc = m->LowConn(lc[i]);
-					enumerator j = ENUMUNDEF;
-					j = m->getNext(llc.data(),static_cast<enumerator>(llc.size()),j,hm);
-					if( j != static_cast<enumerator>(llc.size()) ) return Node(m,llc[j]);
+					i = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),i,hm);
+					if( i != static_cast<enumerator>(lc.size()) )
+					{
+						adj_type const & llc = m->LowConn(lc[i]);
+						enumerator j = ENUMUNDEF;
+						j = m->getNext(llc.data(),static_cast<enumerator>(llc.size()),j,hm);
+						if( j != static_cast<enumerator>(llc.size()) ) return Node(m,llc[j]);
+					}
 				}
 			}
 			return Node(m,InvalidHandle());

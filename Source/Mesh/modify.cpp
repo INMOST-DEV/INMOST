@@ -247,6 +247,7 @@ namespace INMOST
 		//delete inner faces
 		for(dynarray<HandleType,64>::size_type j = 0; j < inner_faces.size(); j++)
 		{
+			//std::cout << "delete face " << GetHandleID(inner_faces[j]) << std::endl;
 			if( m->GetMarker(inner_faces[j],rem) )
 			{
 				m->RemMarker(inner_faces[j],rem);
@@ -1865,7 +1866,7 @@ namespace INMOST
 	{
 		Mesh * m = GetMeshLink();
 		
-		if( m->HaveGeometricData(ORIENTATION,FACE) )
+		//if( m->HaveGeometricData(ORIENTATION,FACE) )
 		{
 			//retrive faces
 			MarkerType hm = m->HideMarker();
@@ -1883,7 +1884,7 @@ namespace INMOST
 						std::swap(hc[k1],hc[k2]);
 						//hc[k2] = GetHandle(); //cannot use the cell because virtualization table is already destroyed and FixNormalOrientation will do bad things
 						//hc.resize(1); //just remove element, we will do this anyway later
-						Face(m,lc[it])->FixNormalOrientation(); //restore orientation
+						if( m->HaveGeometricData(ORIENTATION,FACE) ) Face(m,lc[it])->FixNormalOrientation(); //restore orientation
 					}
 				}
 			}
