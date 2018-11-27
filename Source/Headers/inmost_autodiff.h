@@ -147,7 +147,13 @@ namespace INMOST
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Number of entries for each tag in the block.
-        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
+        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const
+		{
+			INMOST_DATA_ENUM_TYPE ret = 0;
+			for(unsigned k = 0; k < unknown_tags.size(); ++k)
+				if( e.HaveData(unknown_tags[k]) )	ret++;
+			return ret;
+		}
 		/// Retrive component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {return unknown_comp[unk];}
 		/// Retrive tag related to unknown value.
@@ -190,7 +196,7 @@ namespace INMOST
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
-        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return 1;}
+        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return e.HaveData(unknown_tag) ? 1 : 0;}
 		/// Retrive component of the tag related to unknown.
         INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk == 0); return unknown_comp;}
 		/// Retrive tag related to unknown value.
@@ -232,7 +238,7 @@ namespace INMOST
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
-		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size();}
+		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return e.HaveData(unknown_tag) ? (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size() : 0;}
 		/// Retrive component of the tag related to unknown.
         INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk==0); return ENUMUNDEF;}
 		/// Retrive tag related to unknown value.

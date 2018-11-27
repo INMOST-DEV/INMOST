@@ -500,7 +500,7 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE ret = 0; 
 		int stat = status_tag[e];
 		for(unsigned k = 0; k < unknown_tags.size(); ++k) 
-			if( status_tbl[stat][k] ) ret++;
+			if( e.HaveData(unknown_tags[k]) && status_tbl[stat][k] ) ret++;
 		return ret;
 	}
 	
