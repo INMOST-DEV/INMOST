@@ -1078,6 +1078,244 @@ namespace INMOST
 
 		return true;
 	}
+	
+	
+	Node Edge::CollapseEdge(Edge e, MarkerType del_protect)
+	{
+		Node n = InvalidNode();
+		Mesh & m = *e.GetMeshLink();
+		ElementArray<Cell> cells = e.getCells();
+		Element::adj_type & faces = m.HighConn(e.GetHandle());
+		if( del_protect )
+		{
+			if( e.GetMarker(del_protect) )
+				return n;
+			if( e.getBeg().GetMarker(del_protect) )
+				return n;
+			if( e.getEnd().GetMarker(del_protect) )
+				return n;
+			for(unsigned k = 0; k < cells.size(); ++k)
+				if( cells[k]->GetGeometricType() == Element::Tet )
+				{
+					if( cells[k].GetMarker(del_protect) ) return n;
+					//check that one of two faces that do not attach to collapsed edge can be deleted
+				}
+			for(unsigned k = 0; k < faces.size(); ++k)
+				if( m.GetGeometricType(faces[k]) == Element::Tri )
+				{
+					if( m.GetMarker(faces[k],del_protect) ) return n;
+					Element::adj_type & edges = m.LowConn(faces[k]);
+					for(unsigned l = 0; l < 3; ++l)
+						if( edges[l] == e.GetHandle() )
+						{
+							if( m.GetMarker(edges[(l+1)%3],del_protect) &&
+							    m.GetMarker(edges[(l+2)%3],del_protect) )
+								return n;
+							break;
+						}
+				}
+		}
+		dynarray<Storage::real,3> coords(m.GetDimensions());
+		for(unsigned k = 0; k < m.GetDimensions(); ++k)
+			coords[k] = 0.5*(e.getBeg().Coords()[k] + e.getEnd().Coords()[k]);
+		n = m.CreateNode(coords.data());
+		Element::adj_type & n_edges = m.HighConn(n.GetHandle());
+		dynarray<HandleType,128> all_cells, all_faces, all_edges;
+		HandleType nn[2] = {e.getBeg().GetHandle(),e.getEnd().GetHandle()};
+		//Collect all cells, faces and edges
+		MarkerType unique = m.CreateMarker();
+		for(unsigned k = 0; k < 2; ++k)
+		{
+			Element::adj_type & cells = m.LowConn(nn[k]);
+			for(unsigned l = 0; l < cells.size(); ++l) if( !m.GetMarker(cells[l],unique) )
+			{
+				all_cells.push_back(cells[l]);
+				m.SetMarker(cells[l],unique);
+				//change all connections of cells from old nodes to new node
+				Element::adj_type & cell_nodes = m.HighConn(cells[l]);
+				for(unsigned j = 0; j < cell_nodes.size(); ++j)
+				{
+					if( cell_nodes[j] == nn[k] )
+						cell_nodes[j] = n.GetHandle();
+				}
+			}
+			Element::adj_type & edges = m.HighConn(nn[k]);
+			for(unsigned l = 0; l < edges.size(); ++l) if( !m.GetMarker(edges[l],unique) )
+			{
+				all_edges.push_back(edges[l]);
+				m.SetMarker(edges[l],unique);
+				//Change all connections of edges from old nodes to new node
+				Element::adj_type & nodes = m.LowConn(edges[l]);
+				assert( !((nodes[0] == n1 || nodes[0] == n2) &&
+						  (nodes[1] == n1 || nodes[1] == n2)));
+				if( nodes[0] == nn[k] )
+				{
+					nodes[0] = n.GetHandle();
+					n_edges.push_back(edges[l]);
+				}
+				if( nodes[1] == nn[k] )
+				{
+					nodes[1] = n.GetHandle();
+					n_edges.push_back(edges[l]);
+				}
+				Element::adj_type & edge_faces = m.HighConn(edges[l]);
+				for(unsigned j = 0; j < edge_faces.size(); ++j) if( !m.GetMarker(edge_faces[l],unique) )
+				{
+					all_faces.push_back(edge_faces[j]);
+					m.SetMarker(edge_faces[j],unique);
+				}
+			}
+			//delete node
+			cells.clear();
+			edges.clear();
+			m.Delete(nn[k]);
+		}
+		m.RemMarkerArray(all_cells.data(),all_cells.size(),unique);
+		m.RemMarkerArray(all_faces.data(),all_faces.size(),unique);
+		m.RemMarkerArray(all_edges.data(),all_edges.size(),unique);
+		m.ReleaseMarker(unique);
+		//erase links on edge
+		m.LowConn(e.GetHandle()).clear();
+		m.HighConn(e.GetHandle()).clear();
+		//Check faces to be deleted
+		//also should erase edge
+		MarkerType del = m.CreateMarker();
+		for(unsigned k = 0; k < faces.size(); ++k)
+		{
+			//two edges will match, should replace them with one
+			if( m.GetGeometricType(faces[k]) == Element::Tri )
+			{
+				Element::adj_type & edges = m.LowConn(faces[k]);
+				for(unsigned l = 0; l < 3; ++l)
+					if( edges[l] == e.GetHandle() )
+					{
+						//delete e2 keep e1
+						HandleType e1 = edges[(l+1)%3], e2 = edges[(l+2)%3];
+						if( m.GetMarker(e1,del_protect) )
+						{
+							std::swap(e1,e2);
+							assert(!m.GetMarker(e1,del_protect));
+						}
+						//reconnect adjacent faces to e1
+						Element::adj_type & edge_faces = m.HighConn(e2);
+						//replace link from e2 to e1 in all of the faces of the e2
+						for(unsigned r = 0; r < edge_faces.size(); ++r)
+							if( edge_faces[r] != faces[k] )
+							{
+								Element::adj_type & face_edges = m.LowConn(edge_faces[r]);
+								for(unsigned j = 0; j < face_edges.size(); ++j)
+									if( face_edges[j] == e2 )
+									{
+										face_edges[j] = e1;
+										break;
+									}
+							}
+						//cleanup links to faces in current edge
+						edge_faces.clear();
+						//delete this edge
+						m.SetMarker(e2,del);
+						break;
+					}
+				Element::adj_type & face_cells = m.HighConn(faces[k]);
+				//erase link to the face from adjacent cells
+				for(unsigned l = 0; l < face_cells.size(); ++l)
+				{
+					Element::adj_type & cell_faces = m.LowConn(face_cells[l]);
+					for(unsigned r = 0; r < cell_faces.size(); ++r)
+					{
+						if( cell_faces[r] == faces[k] )
+						{
+							cell_faces.erase(cell_faces.begin()+r);
+							break;
+						}
+					}
+				}
+				//clean-up all lniks of current face
+				face_cells.clear();
+				edges.clear();
+				//delete this face
+				m.SetMarker(faces[k],del);
+			}
+			else
+			{
+				//remove link to edge
+				Element::adj_type & face_edges = m.LowConn(faces[k]);
+				for(unsigned l = 0; l < face_edges.size(); ++l)
+					if( face_edges[l] == e.GetHandle() )
+					{
+						face_edges.erase(face_edges.begin()+l);
+						break;
+					}
+			}
+		}
+		//check cells to be deleted
+		//also correct two links to the same node
+		for(unsigned k = 0; k < cells.size(); ++k)
+		{
+			if( m.GetGeometricType(cells.at(k)) == Element::Tet )
+			{
+				//there are 2 faces now that should become just one
+				Element::adj_type & cell_faces = m.LowConn(cells.at(k));
+				assert(cell_faces.size() == 2);
+				HandleType f1 = cell_faces[0], f2 = cell_faces[1];
+				//reconnect adjacent cells to f1
+				Element::adj_type & face_cells = m.HighConn(f2);
+				//replace link from f2 to f1 in all of the cells of the f2
+				for(unsigned r = 0; r < face_cells.size(); ++r)
+					if( face_cells[r] != cells.at(k) )
+					{
+						Element::adj_type & cell_faces2 = m.LowConn(face_cells[r]);
+						for(unsigned j = 0; j < cell_faces2.size(); ++j)
+							if( cell_faces2[j] == f2 )
+								cell_faces2[j] = f1;
+					}
+				face_cells.clear();
+				m.SetMarker(f2,del);
+				m.SetMarker(cells.at(k),del);
+			}
+			else
+			{
+				//there are two subsequent links to the same node
+				Element::adj_type & cell_nodes = m.HighConn(cells.at(k));
+				for(unsigned l = 0; l < cell_nodes.size(); ++l)
+					if( cell_nodes[l] == n.GetHandle() )
+					{
+						cell_nodes.erase(cell_nodes.begin()+l);
+						break;
+					}
+			}
+		}
+		//delete marked elements
+		//recompute geometry and types for the rest
+		for(int k = 0; k < all_cells.size(); ++k)
+			if( m.GetMarker(all_cells[k],del) )
+				m.Delete(all_cells[k]);
+			else
+			{
+				m.RecomputeGeometricData(all_cells[k]);
+				m.ComputeGeometricType(all_cells[k]);
+			}
+		for(int k = 0; k < all_faces.size(); ++k)
+			if( m.GetMarker(all_faces[k],del) )
+				m.Delete(all_faces[k]);
+			else
+			{
+				m.RecomputeGeometricData(all_faces[k]);
+				m.ComputeGeometricType(all_faces[k]);
+			}
+		for(int k = 0; k < all_edges.size(); ++k)
+			if( m.GetMarker(all_edges[k],del) )
+				m.Delete(all_edges[k]);
+			else
+			{
+				m.RecomputeGeometricData(all_edges[k]);
+				m.ComputeGeometricType(all_edges[k]);
+			}
+		
+		m.ReleaseMarker(del);
+		e.Delete();
+		return n;
+	}
 
 
 	ElementArray<Edge> Edge::SplitEdge(Edge e, const ElementArray<Node> & nodes, MarkerType del_protect)

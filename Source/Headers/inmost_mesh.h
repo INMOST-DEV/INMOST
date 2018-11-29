@@ -548,6 +548,7 @@ namespace INMOST
 		static bool                 TestUniteEdges          (const ElementArray<Edge> & edges, MarkerType del_protect);
 		static ElementArray<Edge>   SplitEdge               (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
 		static bool                 TestSplitEdge           (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect);
+		static Node                 CollapseEdge            (Edge e, MarkerType del_protect);
 		//implemented in geometry.cpp
 		Storage::real               Length                  () const;
 		///Swap positions of first node and last node
