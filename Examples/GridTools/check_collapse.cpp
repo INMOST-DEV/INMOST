@@ -24,10 +24,10 @@ int main(int argc, char ** argv)
 	
 	int edge_num = atoi(argv[2]);
 	
-	if( edge_num >= A.EdgeMaxLocalID(); )
+	if( edge_num >= A.EdgeLastLocalID() )
 	{
 		std::cout << "input edge is " << edge_num << " but only ";
-		std::cout << A.EdgeMaxLocalID() << " edges in the mesh" << std::endl;;
+		std::cout << A.EdgeLastLocalID() << " edges in the mesh" << std::endl;;
 		return -1;
 	}
 
