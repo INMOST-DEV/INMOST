@@ -2,6 +2,7 @@ project(GridGen)
 
 add_executable(FixFaults fix_faults.cpp)
 add_executable(FixTiny fix_tiny.cpp)
+add_executable(FixTinyCollapse fix_tiny_collapse.cpp)
 add_executable(UniteFaces unite_faces.cpp)
 add_executable(Dual dual.cpp)
 add_executable(Tetra tetra.cpp)
@@ -30,6 +31,17 @@ add_executable(split_faces split_faces.cpp)
 add_executable(glue_faces glue_faces.cpp)
 add_executable(check_collapse check_collapse.cpp)
 add_library(FractureLib fracture.cpp fracture.h)
+
+
+target_link_libraries(FixTinyCollapse inmost)
+if(USE_MPI)
+  message("linking FixTinyCollapse with MPI")
+  target_link_libraries(FixTinyCollapse ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(FixTinyCollapse PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS FixTinyCollapse EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
 
 target_link_libraries(split_faces inmost)
 if(USE_MPI)
@@ -91,7 +103,8 @@ if(USE_MPI)
     set_target_properties(UniteFaces PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS UniteFaces EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS UniteFaces EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 
 target_link_libraries(Dual inmost)
@@ -112,7 +125,9 @@ if(USE_MPI)
     set_target_properties(Tetra PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS Tetra EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Tetra EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
+
 
 
 target_link_libraries(Slice inmost)
@@ -123,7 +138,8 @@ if(USE_MPI)
     set_target_properties(Slice PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS Slice EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Slice EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 
 target_link_libraries(SliceFunc inmost)
@@ -134,7 +150,8 @@ if(USE_MPI)
     set_target_properties(SliceFunc PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS SliceFunc EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS SliceFunc EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 
 target_link_libraries(SplitNonplanar inmost)
@@ -145,7 +162,8 @@ if(USE_MPI)
     set_target_properties(SplitNonplanar PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS SplitNonplanar EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS SplitNonplanar EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 
 target_link_libraries(CollapseDegenerate inmost)
@@ -156,7 +174,8 @@ if(USE_MPI)
     set_target_properties(CollapseDegenerate PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS CollapseDegenerate EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS CollapseDegenerate EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 
 target_link_libraries(Bnd2Stl inmost)
@@ -167,7 +186,8 @@ if(USE_MPI)
     set_target_properties(Bnd2Stl PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS Bnd2Stl EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Bnd2Stl EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 target_link_libraries(Sector inmost)
 if(USE_MPI)
@@ -177,7 +197,8 @@ if(USE_MPI)
     set_target_properties(Sector PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS Sector EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Sector EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 target_link_libraries(Sew inmost)
 if(USE_MPI)
@@ -187,7 +208,8 @@ if(USE_MPI)
     set_target_properties(Sew PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS Sew EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Sew EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 target_link_libraries(Scale inmost)
 if(USE_MPI)
@@ -197,7 +219,8 @@ if(USE_MPI)
     set_target_properties(Scale PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS Scale EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Scale EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 
 target_link_libraries(Move inmost)
@@ -208,7 +231,8 @@ if(USE_MPI)
     set_target_properties(Move PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS Move EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Move EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 target_link_libraries(Convert inmost)
 if(USE_MPI)
@@ -218,7 +242,8 @@ if(USE_MPI)
     set_target_properties(Convert PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS Convert EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS Convert EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 target_link_libraries(SameMeshDifference inmost)
 if(USE_MPI)
@@ -228,7 +253,8 @@ if(USE_MPI)
     set_target_properties(SameMeshDifference PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS SameMeshDifference EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS SameMeshDifference EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 target_link_libraries(MeshDifference inmost)
 if(USE_MPI)
@@ -288,7 +314,8 @@ if(USE_MPI)
     set_target_properties(hex_mesh PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS hex_mesh EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS hex_mesh EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 target_link_libraries(kershaw_mesh inmost)
 if(USE_MPI)
@@ -328,7 +355,8 @@ if(USE_MPI)
     set_target_properties(sinusoidal_mesh PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif()
 endif(USE_MPI)
-install(TARGETS sinusoidal_mesh EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+install(TARGETS sinusoidal_mesh EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 set_property(TARGET FractureLib PROPERTY PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/fracture.h")
 
