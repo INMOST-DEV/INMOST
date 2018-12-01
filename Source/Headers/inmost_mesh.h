@@ -3327,6 +3327,32 @@ namespace INMOST
 			bool operator() (HandleType a, bulk b) const {if( a == InvalidHandle() ) return true; return m->BulkDF(a,t) < b;}
 		};
 		
+		class MeasureComparator
+		{
+			Mesh * m;
+		public:
+			MeasureComparator(Mesh * m) :m(m) {}
+			MeasureComparator(const MeasureComparator & other) :m(other.m) {}
+			MeasureComparator & operator = (MeasureComparator const & other) { m = other.m; return *this;}
+			bool operator() (HandleType a, HandleType b) const
+			{
+				if( a == InvalidHandle() || b == InvalidHandle() )
+					return a > b;
+				double ma, mb;
+				m->GetGeometricData(a,MEASURE,&ma);
+				m->GetGeometricData(b,MEASURE,&mb);
+				return ma < mb;
+			}
+			bool operator() (HandleType a, bulk b) const
+			{
+				if( a == InvalidHandle() )
+					return true;
+				double ma;
+				m->GetGeometricData(a,MEASURE,&ma);
+				return ma < b;
+			}
+		};
+		
 		class MarkerComparator
 		{
 			Mesh * m; MarkerType mrk; bool inverse;

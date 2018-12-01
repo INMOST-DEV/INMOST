@@ -1174,15 +1174,15 @@ int main(int argc, char ** argv)
 	}
 	
 	
-	/*
+	
 	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
-		if( material[*it] == 0 || it->Integer(collapse) )
+		if( material[*it] == 0 )//|| it->Integer(collapse) )
 			it->Delete();
 	
 	for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype) )
 		for(Mesh::iteratorElement it = m.BeginElement(etype); it != m.EndElement(); ++it)
 			if( it->nbAdjElements(CELL) == 0 ) it->Delete();
-	*/
+	
 
 	m.ReleaseMarker(slice,NODE|EDGE);
 	m.ReleaseMarker(original,NODE|EDGE);
