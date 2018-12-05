@@ -1938,7 +1938,7 @@ namespace INMOST
 		new_element = CreateMarker();
 	}
 	
-	void Mesh::SwapModification()
+	void Mesh::SwapModification(bool recompute_geometry)
 	{
 		MarkerType temp = hide_element;
 		hide_element = new_element;
@@ -1949,15 +1949,18 @@ namespace INMOST
 		memcpy(hidden_count,hidden_count_zero,sizeof(integer)*6);
 		memcpy(hidden_count_zero,tmp,sizeof(integer)*6);
 
-		for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
+		if( recompute_geometry )
 		{
-			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+			for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
 			{
-				HandleType h = ComposeHandle(etype,it);
-				if( GetMarker(h,new_element) )
+				for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 				{
-					ComputeGeometricType(h);
-					RecomputeGeometricData(h);
+					HandleType h = ComposeHandle(etype,it);
+					if( GetMarker(h,new_element) )
+					{
+						ComputeGeometricType(h);
+						RecomputeGeometricData(h);
+					}
 				}
 			}
 		}

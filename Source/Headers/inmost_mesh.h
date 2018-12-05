@@ -3149,7 +3149,7 @@ namespace INMOST
 		bool                              isMeshModified     () const {return new_element != 0;} 
 		MarkerType                        HideMarker         () const {return hide_element;}
 		MarkerType                        NewMarker          () const {return new_element;}
-		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
+		void                              SwapModification   (bool recompute_geometry); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
 		/// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
@@ -3392,7 +3392,9 @@ namespace INMOST
 	
 	
 	
-	
+	///This structure is a helper structure to aid with search of cells by position.
+	///Currently the structure is very specific to the step of mesh modification,
+	///as it performs search over old elements of the mesh.
 	class SearchKDTree
 	{
 	public:
@@ -3406,7 +3408,7 @@ namespace INMOST
 		{
 			for(int i = 0; i < 3; i++)
 			{
-				if( p[i] < bbox[i*2] || p[i] > bbox[i*2+1] )
+				if( p[i] < bbox[i*2]-1.0e-4 || p[i] > bbox[i*2+1]+1.0e-4 )
 					return 0;
 			}
 			return 1;
@@ -3542,22 +3544,55 @@ namespace INMOST
 		}
 		SearchKDTree() : set(NULL), size(0), children(NULL) {}
 		
-		Cell SubSearchCell(const Storage::real p[3])
+		Cell SubSearchCell(const Storage::real p[3], bool print)
 		{
 			Cell ret = InvalidCell();
 			if( size == 1 )
 			{
-				if( cell_point(Cell(m,set[0].e),p) )
-					ret = Cell(m,set[0].e);
+				if( print ) std::cout << "test cell " << GetHandleID(set[0].e) << std::endl;
+				if( m->HideMarker() ) 
+				{
+					m->SwapModification(false);
+					if( cell_point(Cell(m,set[0].e),p) )
+						ret = Cell(m,set[0].e);
+					m->SwapModification(false);
+				}
+				else
+				{
+					if( cell_point(Cell(m,set[0].e),p) )
+						ret = Cell(m,set[0].e);
+				}
 			}
 			else
 			{
 				assert(size > 1);
 				if( bbox_point(p,bbox) )
 				{
-					ret = children[0].SubSearchCell(p);
+					if( print )
+					{
+						std::cout << "point " << p[0] << " " << p[1] << " " << p[2] << " is in bbox ";
+						std::cout << " x " << bbox[0] << ":" << bbox[1];
+						std::cout << " y " << bbox[2] << ":" << bbox[3];
+						std::cout << " z " << bbox[4] << ":" << bbox[5];
+						std::cout << std::endl;
+					}
+					if( print ) std::cout << "try left child" << std::endl;
+					ret = children[0].SubSearchCell(p,print);
+					if( print ) std::cout << "ret " << (ret.isValid() ? ret.LocalID() : -1) << std::endl;
 					if( !ret.isValid() )
-						ret = children[1].SubSearchCell(p);
+					{
+						if( print ) std::cout << "try right child" << std::endl;
+						ret = children[1].SubSearchCell(p,print);
+						if( print ) std::cout << "ret " << (ret.isValid() ? ret.LocalID() : -1) << std::endl;
+					}
+				}
+				else if( print ) 
+				{
+					std::cout << "point " << p[0] << " " << p[1] << " " << p[2] << " is not in bbox ";
+					std::cout << " x " << bbox[0] << ":" << bbox[1];
+					std::cout << " y " << bbox[2] << ":" << bbox[3];
+					std::cout << " z " << bbox[4] << ":" << bbox[5];
+					std::cout << std::endl;
 				}
 			}
 			return ret;
@@ -3636,9 +3671,9 @@ namespace INMOST
 			}
 		}
 		
-		Cell SearchCell(const Storage::real * point)
+		Cell SearchCell(const Storage::real * point, bool print = false)
 		{
-			return SubSearchCell(point);
+			return SubSearchCell(point, print);
 		}
 	};
 

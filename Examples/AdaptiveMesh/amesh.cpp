@@ -333,6 +333,17 @@ namespace INMOST
 		}
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
+		//restore face orientation
+		//BUG: bad orientation not fixed automatically
+		int nfixed = 0;
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+			if( !it->CheckNormalOrientation() )
+			{
+				it->FixNormalOrientation();
+				nfixed++;
+			}
+			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 		//11. Restore parallel connectivity, global ids
 		//ResolveShared(true);
 		//ResolveModification();
@@ -645,6 +656,17 @@ namespace INMOST
 		}
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
+		//restore face orientation
+		//BUG: bad orientation not fixed automatically
+		int nfixed = 0;
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+			if( !it->CheckNormalOrientation() )
+			{
+				it->FixNormalOrientation();
+				nfixed++;
+			}
+			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 		//todo:
 		//ResolveShared(true);
 		//ResolveModification();
