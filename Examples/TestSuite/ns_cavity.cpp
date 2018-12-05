@@ -67,8 +67,13 @@ int main(int argc, char ** argv)
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 	{
 		it->UnitNormal(n.data());
-		if( is2D && (fabs(n(2,0)-1) < 1.0-3 || fabs(n(2,0)+1) < 1.0e-3 ) ) //roller bc
+		//std::cout << "face " << it->LocalID() << std::endl;
+		//std::cout << std::scientific;
+		//std::cout <<  "n " << (n(2,0)-1) << " " << (fabs(n(2,0)-1) < 1.0e-3) << " " << (n(2,0)+1) << " " << (fabs(n(2,0)+1) < 1.0e-3) << std::endl;
+		//n.Transpose().Print();
+		if( is2D && (fabs(n(2,0)-1) < 1.0e-3 || fabs(n(2,0)+1) < 1.0e-3) ) //roller bc
 		{
+			//std::cout << "roller bc" << std::endl;
 			bc[*it][0] = 1;
 			bc[*it][1] = 0;
 			bc[*it][2] = 0;
@@ -85,12 +90,14 @@ int main(int argc, char ** argv)
 			bc[*it][3] = 0;
 			if( fabs(n(1,0)-1) < 1.0e-3 ) //top
 			{
+				//std::cout << "dirichlet bc top" << std::endl;
 				bc[*it][4] = 1;
 				bc[*it][5] = 0;
 				bc[*it][6] = 0;
 			}
 			else
 			{
+				//std::cout << "dirichlet bc" << std::endl;
 				bc[*it][4] = 0;
 				bc[*it][5] = 0;
 				bc[*it][6] = 0;

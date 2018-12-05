@@ -38,9 +38,13 @@ namespace INMOST
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() = 0;
 		/// Calculate multiplier for update for this model. Can simply return 1.
-                virtual double UpdateMultiplier(const Sparse::Vector & sol) const {(void)sol; return 1;}
+		virtual double UpdateMultiplier(const Sparse::Vector & sol) const {(void)sol; return 1;}
 		/// Calculate time step for this model. Can simply return dt.
 		virtual double AdjustTimeStep(double dt) const {return dt;}
+		/// Adapt the data of the model after the mesh refinement/coarsement.
+		/// No algorithm by default
+		/// If this submodel depends on provided adpated mesh, it should update it's data
+		virtual void Adaptation(Mesh & m, SearchKDTree & search_old_cells) const {};
 	};
 	
 	/// A class to organize a model.
@@ -140,6 +144,9 @@ namespace INMOST
 		double UpdateMultiplier(const Sparse::Vector & sol) const;
 		/// Calculate optimal time step for submodels.
 		double AdjustTimeStep(double dt) const;
+		/// Adapt the data of the model after the mesh refinement/coarsement.
+		/// Those model that use the adapted mesh should update their data
+		virtual void Adaptation(Mesh & m) const;
 	};
 }
 

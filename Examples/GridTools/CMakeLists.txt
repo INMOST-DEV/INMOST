@@ -30,7 +30,20 @@ add_executable(sinusoidal_mesh sinusoidal_grid.cpp)
 add_executable(split_faces split_faces.cpp)
 add_executable(glue_faces glue_faces.cpp)
 add_executable(check_collapse check_collapse.cpp)
+add_executable(test_fracture test_fracture.cpp)
 add_library(FractureLib fracture.cpp fracture.h)
+
+target_link_libraries(test_fracture inmost)
+target_link_libraries(test_fracture FractureLib)
+if(USE_MPI)
+  message("linking test_fracture with MPI")
+  target_link_libraries(test_fracture ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(test_fracture PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS test_fracture EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
+
 
 
 target_link_libraries(FixTinyCollapse inmost)

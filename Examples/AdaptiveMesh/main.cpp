@@ -8,9 +8,10 @@ int main(int argc, char ** argv)
 	
 	if( argc > 1 )
 	{
-		AdaptiveMesh m;
+		Mesh m;
 		m.SetCommunicator(INMOST_MPI_COMM_WORLD);
 		m.Load(argv[1]);
+		AdaptiveMesh am(m);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
 		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON);
@@ -56,7 +57,7 @@ int main(int argc, char ** argv)
 			do
 			{
 				numref = 0;
-				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( m.GetLevel(it->self()) < max_levels )
+				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( am.GetLevel(it->self()) < max_levels )
 				{
 					it->Barycenter(xyz);
 					//refine a circle
@@ -82,7 +83,7 @@ int main(int argc, char ** argv)
 						m.Save(file.str());
 					}
 					*/
-					if( !m.Refine(indicator) ) break;
+					if( !am.Refine(indicator) ) break;
 					
 					{
 						std::stringstream file;
@@ -100,7 +101,7 @@ int main(int argc, char ** argv)
 			do
 			{
 				numref = 0;
-				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( m.GetLevel(it->self()) > 0 )
+				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( am.GetLevel(it->self()) > 0 )
 				{
 					it->Barycenter(xyz);
 					//refine a circle
@@ -125,7 +126,7 @@ int main(int argc, char ** argv)
 						m.Save(file.str());
 					}
 					 */
-					if( !m.Coarse(indicator) ) break;
+					if( !am.Coarse(indicator) ) break;
 					
 					{
 						std::stringstream file;

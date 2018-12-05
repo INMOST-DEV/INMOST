@@ -4,8 +4,10 @@
 
 namespace INMOST
 {
-	class AdaptiveMesh : public Mesh
+	class AdaptiveMesh
 	{
+		Mesh * m;
+		Model * model;
 		ElementSet root; //< Root set that links all the other sets for coarsements
 		TagInteger level; //< Refinement level of the cell
 		TagReference parent_set; //<Link to the set that contains an element.
@@ -15,7 +17,7 @@ namespace INMOST
 		void PrepareSet();
 	public:
 		Storage::integer GetLevel(const Storage & e) {return level[e];}
-		AdaptiveMesh();
+		AdaptiveMesh(Mesh & m);
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined
 		/// and 0 on all other cells
@@ -23,6 +25,7 @@ namespace INMOST
 		bool Coarse(TagInteger & indicator);
 		/// Delete all data related to mesh refinement-coarsement.
 		void ClearData();
+		void SetModel(Model * mm) {model = mm;}
 	};
 }
 
