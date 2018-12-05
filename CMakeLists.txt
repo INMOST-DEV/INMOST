@@ -282,14 +282,25 @@ set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
                            Source/Headers/inmost_block_variable.h
                            Source/Headers/container.hpp)
 
-
+#if( COMPILE_EXAMPLES )
+#list(APPEND INMOST_INSTALL_HEADERS "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
+#message(${INMOST_INSTALL_HEADERS})
+#endif( COMPILE_EXAMPLES )
 
 include(CPack)
 export(TARGETS inmost FILE inmost-targets.cmake)
 export(PACKAGE inmost)
 set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/Source/Headers" "${PROJECT_BINARY_DIR}")
+set(CONF_LIBRARY_DIRS "")
+if( COMPILE_EXAMPLES )
+list(APPEND CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh")
+list(APPEND CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/Examples/GridTools")
+list(APPEND CONF_LIBRARY_DIRS "${PROJECT_BINARY_DIR}/Examples/AdaptiveMesh")
+list(APPEND CONF_LIBRARY_DIRS "${PROJECT_BINARY_DIR}/Examples/GridTools")
+endif( COMPILE_EXAMPLES )
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}/inmost-config.cmake" @ONLY)
 set(CONF_INCLUDE_DIRS "\${inmost_DIR}/include")
+set(CONF_LIBRARY_DIRS "\$")
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake" @ONLY)
 configure_file(inmost-config-version.cmake.in "${PROJECT_BINARY_DIR}/inmost-config-version.cmake" @ONLY)
 
@@ -315,6 +326,12 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_block_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp")
+
+#if( COMPILE_EXAMPLES )
+#set_property(TARGET inmost APPEND PROPERTY PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
+#get_property(PRINT_PUBLIC_HEADER TARGET inmost PROPERTY PUBLIC_HEADER)
+#message(${PRINT_PUBLIC_HEADER})
+#endif( COMPILE_EXAMPLES )
 
 install(FILES
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake"
