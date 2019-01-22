@@ -379,10 +379,12 @@ int main(int argc,char ** argv)
 
         // data tags for
         TagRealArray tag_UVW;// Displacement
+        TagRealArray tag_S;  // Stress (for error)
         TagRealArray tag_C;  // Elasticity tensor in Voigt format
         TagRealArray tag_F;  // Forcing term
         TagRealArray tag_BC; // Boundary conditions
         TagRealArray tag_W;  // Gradient matrix
+        TagRealArray tag_Ws; // Matrix to reconstruct stress from fluxes
 		TagRealArray tag_FLUX; // Flux (for error)
 
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
@@ -409,6 +411,15 @@ int main(int argc,char ** argv)
 			0,0,0,0,1,0,
 			0,0,0,1,0,0,
 			0,0,1,0,0,0
+		};
+		const double viBtB[] =
+		{
+			1,0,0,0.0,0.0,0.0,
+			0,1,0,0.0,0.0,0.0,
+			0,0,1,0.0,0.0,0.0,
+			0,0,0,0.5,0.0,0.0,
+			0,0,0,0.0,0.5,0.0,
+			0,0,0,0.0,0.0,0.5
 		};
 		// |  0  -z   y | u   | w_y - v_z |
 		// |  z   0  -x | v = | u_z - w_x |
@@ -441,12 +452,19 @@ int main(int argc,char ** argv)
 			0,  0,  0,  0,  0,  0,  0,  0,  0
 		};
 		const rMatrix B(vB,9,6);
+		const rMatrix iBtB(viBtB,6,6);
 		const rMatrix Curl(vCurl,9,9);
 		const rMatrix I = rMatrix::Unit(3);
 		
 		//PrintSV(B);
-		
+		std::cout << "B^T*B" << std::endl;
 		(B.Transpose()*B).Print();
+		
+		std::cout << "B^T*B*iBtB" << std::endl;
+		(B.Transpose()*B*iBtB).Print();
+		
+		std::cout << "B*B^T" << std::endl;
+		(B*B.Transpose()).Print();
 
         { //initialize data
             if( m->HaveTag("ELASTIC_TENSOR") ) // is elasticity tensor already defined on the mesh?
@@ -469,6 +487,7 @@ int main(int argc,char ** argv)
                 //initialize unknowns at boundary
             }
             tag_W = m->CreateTag("W",DATA_REAL,CELL,NONE);
+            tag_Ws = m->CreateTag("Ws",DATA_REAL,CELL,NONE);
 			
             ttt = Timer();
             //Assemble gradient matrix W on cells
@@ -533,6 +552,8 @@ int main(int argc,char ** argv)
 						 //NK(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
 					 } //end of loop over faces
 					 //R += N*Curl;
+					 tag_Ws[cell].resize(6*3*NF);
+					 tag_Ws(cell,6,3*NF) = ((R*B*iBtB).Transpose()*N*B).Invert()*(R*B*iBtB).Transpose();
 					 tag_W[cell].resize(9*NF*NF);
 					 //int ierr = -1;
 					 //tag_W(cell,3*NF,3*NF) = N*(N.Transpose()*R).PseudoInvert(1.0e-9)*N.Transpose() //stability part
@@ -621,11 +642,49 @@ int main(int argc,char ** argv)
 					 //W2 = L - (L*R*B)*((L*R*B).Transpose()*R*B).CholeskyInvert()*(L*R*B).Transpose();
 					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).Invert()*(R*B).Transpose());
 					 
-					 double alpha = 1;
-					 double beta = alpha;
+					 if( true )
+					 {
+						 double alpha = 1;
+						 double beta = alpha;
+						 
+						 //R = R*(rMatrix::Unit(9) + B*iBtB*B.Transpose())*0.5;
+						 K += 1.0e-5*K.Trace()*(rMatrix::Unit(9) - B*iBtB*B.Transpose());
+						 
+						 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose();
+						 W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).PseudoInvert()*(L*R).Transpose();
+					 }
+					 else
+					 {
+						 //W2 = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+						 
+						 N = N*B;
+						 R = R*B*iBtB;
+						 
+						 W1 = (N*C)*((N*C).Transpose()*R).Invert()*(N*C).Transpose();
+						 //double alpha = 1;
+						 //W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose() - alpha*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+						 
+						 //R = R*B*iBtB;
+						 W2 += L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+						 //W2 = 2*W1.Trace()/(3*NF) *(rMatrix::Unit(3*NF) - (R)*((R).Transpose()*R).Invert()*(R).Transpose());
+						/*	
+						 #pragma omp critical
+						 {
+						 //std::cout << "NC - W1R" << std::endl;
+						 //(N*C - W1*R).Print();
+						 std::cout << "W2R" << std::endl;
+						 (W2*R).Print();
+						 std::cout << "W1 eig: " << std::endl;
+						 PrintSV(W1);
+						 std::cout << "W2 eig: " << std::endl;
+						 PrintSV(W2);
+						 std::cout << "(W1+W2) eig: " << std::endl;
+						 PrintSV(W1+W2);
+						}
+						*/
+						
+					 }
 					 
-					 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose();
-					 W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
 					 //+ L.Trace()*pow(volume,1.0/3.0)*(rMatrix::Unit(3*NF) - R*B*((R*B).Transpose()*R*B).PseudoInvert(1.0e-7)*(R*B).Transpose());
 					 /*
 					 std::cout << "W1:" << std::endl;
@@ -776,12 +835,15 @@ int main(int argc,char ** argv)
 					 {
 						 std::cout << "W nonsymmetric: " << std::endl;
 						 (tag_W(cell,3*NF,3*NF)-tag_W(cell,3*NF,3*NF).Transpose()).Print();
+						 //std::cout << "(N*C)^T*R" << std::endl;
+						 //((N*C).Transpose()*R).Print();
 					 }
 					 
-					 if( false ) if( (N*K - tag_W(cell,3*NF,3*NF)*R).FrobeniusNorm() > 1.0e-3 )
+					 if( false ) 
+					 if( (N*C - tag_W(cell,3*NF,3*NF)*R).FrobeniusNorm() > 1.0e-3 )
 					 {
 						 std::cout << "error: " << std::endl;
-						 (N*K - tag_W(cell,3*NF,3*NF)*R).Print();
+						 (N*C - tag_W(cell,3*NF,3*NF)*R).Print();
 					 }
 					 
 					 //std::cout << "L ";
@@ -870,6 +932,7 @@ int main(int argc,char ** argv)
 			}
 			
 			tag_FLUX = m->CreateTag("FLUX",DATA_REAL,FACE,NONE,3);
+			tag_S = m->CreateTag("STRESS",DATA_REAL,CELL,NONE,6);
         } //end of initialize data
 		
 
@@ -925,7 +988,7 @@ int main(int argc,char ** argv)
             }
 
             std::cout << "Matrix was annotated" << std::endl;
-			 
+			double condest = 0;
             do
 			{
                 R.Clear(); //clean up the residual
@@ -963,6 +1026,7 @@ int main(int argc,char ** argv)
 						for(int k = 0; k < NF; ++k)
 							U(3*k,3*(k+1),0,1) = (UVW[faces[k]] - UVW[cell]);
 						T = W*U; //fluxes on faces
+						tag_S(cell,6,1) = tag_Ws(cell,6,3*NF)*T;
 						if( cell.GetStatus() != Element::Ghost )
 						{
 							for(int k = 0; k < NF; ++k) //loop over faces of current cell
@@ -1170,18 +1234,45 @@ int main(int argc,char ** argv)
                             str << ".pvtk";
                         m->Save(str.str());
                     }
+                    condest = 0;//S.Condest(1.0e-12,500);
+                    std::cout << "condition number " << condest << "            " << std::endl;
                 }
                 else
                 {
                     std::cout << "Unable to solve: " << S.ReturnReason() << std::endl;
                     break;
                 }
-				std::cout << "solved in " << Timer() - tttt << "\t\t\t" << std::endl;
+				std::cout << "solved in " << Timer() - tttt << "\t\t\t\t" << std::endl;
                 ++nit;
             } while( R.Norm() > 1.0e-4 && nit < 10); //check the residual norm
         }
         std::cout << "Solved problem in " << Timer() - ttt << " seconds with " << nit << " iterations " << std::endl;
-
+        
+        
+        std::fstream stat;
+		
+		if( m->GetProcessorRank() == 0 )
+		{
+			stat.open("stat.csv",std::ios::in);
+			if( stat.fail() )
+			{
+				stat.clear();
+				stat.open("stat.csv",std::ios::out);
+				stat << "cells; faces; ";
+				stat << "uvw_C; uvw_L2; ";
+				stat << "uvw_f_C; uvw_f_L2; ";
+				stat << "F_C; F_L2; ";
+				stat << "S_C; S_L2; ";
+				stat << "energy; grid; problem;" << std::endl;
+				stat.close();
+			}
+			else stat.close();
+			
+			stat.open("stat.csv",std::ios::app);
+			
+			stat << m->TotalNumberOf(CELL) << "; ";
+			stat << m->TotalNumberOf(FACE) << "; ";
+		}
         if( m->HaveTag("REFERENCE_SOLUTION") )
         {
             TagReal tag_E = m->CreateTag("ERROR",DATA_REAL,CELL,NONE,1);
@@ -1202,7 +1293,11 @@ int main(int argc,char ** argv)
 			L2 = m->Integrate(L2);
 			volume = m->Integrate(volume);
             L2 = sqrt(L2/volume);
-            if( m->GetProcessorRank() == 0 ) std::cout << "Error on cells, C-norm " << C << " L2-norm " << L2 << std::endl;
+            if( m->GetProcessorRank() == 0 ) 
+            {
+				std::cout << "Error on cells, C-norm " << C << " L2-norm " << L2 << std::endl;
+				stat << C << "; " << L2 << "; ";
+			}
             C = L2 = volume = 0.0;
             if( tag_R.isDefined(FACE) )
             {
@@ -1221,10 +1316,19 @@ int main(int argc,char ** argv)
 				L2 = m->Integrate(L2);
 				volume = m->Integrate(volume);
                 L2 = sqrt(L2/volume);
-                if( m->GetProcessorRank() == 0 ) std::cout << "Error on faces, C-norm " << C << " L2-norm " << L2 << std::endl;
+                if( m->GetProcessorRank() == 0 ) 
+                {
+					std::cout << "Error on faces, C-norm " << C << " L2-norm " << L2 << std::endl;
+					stat << C << "; " << L2 << "; ";
+				}
             }
-            else std::cout << "Reference solution was not defined on faces" << std::endl;
+            else 
+            {
+				std::cout << "Reference solution was not defined on faces" << std::endl;
+				stat << "NA; NA; ";
+			}
         }
+        else stat << "NA; NA; NA; NA; ";
 		
 		if( m->HaveTag("REFERENCE_FLUX") )
 		{
@@ -1248,8 +1352,86 @@ int main(int argc,char ** argv)
 			L2 = m->Integrate(L2);
 			volume = m->Integrate(volume);
 			L2 = sqrt(L2/volume);
-			if( m->GetProcessorRank() == 0 ) std::cout << "Error of fluxes, C-norm " << C << " L2-norm " << L2 << std::endl;
+			if( m->GetProcessorRank() == 0 ) 
+			{
+				std::cout << "Error of fluxes, C-norm " << C << " L2-norm " << L2 << std::endl;
+				stat << C << "; " << L2 << "; ";
+			}
 		}
+		else stat << "NA; NA; ";
+		if( m->HaveTag("REFERENCE_STRESS") )
+		{
+			TagReal tag_E = m->CreateTag("ERROR_STRESS",DATA_REAL,CELL,NONE,1);
+			TagRealArray tag_R = m->GetTag("REFERENCE_STRESS");
+			real C, L2, volume;
+			C = L2 = volume = 0.0;
+			for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+            {
+                Cell cell = m->CellByLocalID(q);
+                real err = (tag_S(cell,6,1) - tag_R(cell,6,1)).FrobeniusNorm();
+                real vol = cell->Volume();
+				if( C < fabs(err) ) C = fabs(err);
+				L2 += err*err*vol;
+				volume += vol;
+				tag_E[cell] = err;
+			}
+			C = m->AggregateMax(C);
+			L2 = m->Integrate(L2);
+			volume = m->Integrate(volume);
+			L2 = sqrt(L2/volume);
+			if( m->GetProcessorRank() == 0 ) 
+			{
+				std::cout << "Error of stress C-norm " << C << " L2-norm " << L2 << std::endl;
+				stat << C << "; " << L2 << "; ";
+			}
+		}
+		else stat << "NA; NA; ";
+		
+		//compute energy by applying inverse of elastic tensor on stress to get strain
+		{
+			real energy = 0;
+#if defined(USE_OMP)
+#pragma omp parallel reduction(+:energy)
+#endif
+			{
+				rMatrix s(6,1), e(6,1);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for(int i = 0; i < m->CellLastLocalID(); ++i) if( m->isValidCell(i) )
+				{
+					Cell c1 = m->CellByLocalID(i);
+					//extract stress
+					s = rMatrix::FromVector(tag_S[c1].data(),6);
+					e = rMatrix::FromTensor(tag_C[c1].data(),21,6).Solve(s);
+					//calculate energy
+					energy += e.DotProduct(s)*c1.Volume();
+					
+				}
+			}
+			energy *= 0.5;
+			std::cout << "Energy: " << energy << std::endl;
+			stat << energy << "; ";
+		}
+		
+		if( m->HaveTag("GRIDNAME") )
+		{
+			Tag tagname = m->GetTag("GRIDNAME");
+			Storage::bulk_array name = m->self().BulkArray(tagname);
+			stat << std::string(name.begin(),name.end()) << ";";
+		}
+		else stat << "NA;";
+		if( m->HaveTag("PROBLEMNAME") )
+		{
+			Tag tagname = m->GetTag("PROBLEMNAME");
+			Storage::bulk_array name = m->self().BulkArray(tagname);
+			stat << std::string(name.begin(),name.end()) << ";";
+		}
+		else stat << "NA;";
+		stat << std::endl;
+		
+		stat.close();
+		
 
         if( m->GetProcessorsNumber() == 1 )
             m->Save("out.vtk");
