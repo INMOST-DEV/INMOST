@@ -455,6 +455,7 @@ int main(int argc,char ** argv)
 		const rMatrix iBtB(viBtB,6,6);
 		const rMatrix Curl(vCurl,9,9);
 		const rMatrix I = rMatrix::Unit(3);
+		const rMatrix I9 = rMatrix::Unit(9);
 		
 		//PrintSV(B);
 		std::cout << "B^T*B" << std::endl;
@@ -492,10 +493,10 @@ int main(int argc,char ** argv)
             ttt = Timer();
             //Assemble gradient matrix W on cells
 #if defined(USE_OMP)
-#pragma omp parallel
+//#pragma omp parallel
 #endif
 			{
-				rMatrix N, R, L, T, K(9,9), C(6,6), W1, W2, W3, U,S,V, w, u, v;
+				rMatrix N, R, L, M, T, K(9,9), C(6,6), W1, W2, W3, U,S,V, w, u, v;
 				rMatrix x(3,1), xf(3,1), n(3,1);
 				double area; //area of the face
 				double volume; //volume of the cell
@@ -518,9 +519,11 @@ int main(int argc,char ** argv)
 					 //K += rMatrix::Unit(9)*1.0e-6*K.FrobeniusNorm();
 					 //PrintSV(K);
 					 N.Resize(3*NF,9); //co-normals
+					 //NQ.Resize(3*NF,9);
 					 //T.Resize(3*NF,9); //transversals
 					 R.Resize(3*NF,9); //directions
 					 L.Resize(3*NF,3*NF);
+					 M.Resize(3*NF,3*NF);
 					 L.Zero();
 					 
 					 //A.Resize(3*NF,3*NF);
@@ -539,6 +542,32 @@ int main(int argc,char ** argv)
 						 L(3*k,3*(k+1),3*k,3*(k+1)) = (area/dist)*(I.Kronecker(n.Transpose())*K*I.Kronecker(n));
 						 
 						 N(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
+						 
+						 /*
+						 Cell c2 = cell.Neighbour(faces[k]);
+						 
+						 if( c2.isValid() )
+						 {
+							 KTensor(tag_C[c2],K2);
+							 CTensor(tag_C[c2],C2);
+							 //T1 = I.Kronecker(n.Transpose())*K*I.Kronecker(n);
+							 T2 = I.Kronecker(n.Transpose())*K2*I.Kronecker(n);
+							 //TagRealArray tag_G = m->GetTag("REFERENCE_GRADIENT");
+							 Q1 = I9 + I.Kronecker(n)*T2.Invert()*I.Kronecker(n.Transpose())*(K-K2);
+							 //Q2 = I9 + I.Kronecker(n)*T1.Invert()*I.Kronecker(n.Transpose())*(K2-K);
+							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*(I9 - B*Q*((B*Q).Transpose()*B*Q)*(B*Q).Transpose());
+							 Q1 = Q1.Root();
+							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*(I9 - (Q1.Transpose()*B)*((Q1.Transpose()*B).Transpose()*(Q1.Transpose()*B))*(Q1.Transpose()*B).Transpose());
+							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*Q1*(I9 - B*(B.Transpose()*B)*B.Transpose());
+							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*(I9 - B*(B.Transpose()*B)*B.Transpose())*Q1;
+							 NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*Q1;
+							 //NQ(3*k,3*(k+1),0,9).Zero();
+						 }
+						 else
+						 {
+							 NQ(3*k,3*(k+1),0,9).Zero();
+						 }
+						 */
 						 
 						 //std::cout << "I\otimes n^T" << std::endl;
 						 //I.Kronecker(n.Transpose()).Print();
@@ -642,30 +671,61 @@ int main(int argc,char ** argv)
 					 //W2 = L - (L*R*B)*((L*R*B).Transpose()*R*B).CholeskyInvert()*(L*R*B).Transpose();
 					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).Invert()*(R*B).Transpose());
 					 
-					 if( true )
+					 if( false )
 					 {
 						 double alpha = 1;
 						 double beta = alpha;
 						 
 						 //R = R*(rMatrix::Unit(9) + B*iBtB*B.Transpose())*0.5;
-						 K += 1.0e-5*K.Trace()*(rMatrix::Unit(9) - B*iBtB*B.Transpose());
+						 //if( cell.GetElementType() == Element::Tet )
+							//K += 1.0e-3*K.Trace()*(rMatrix::Unit(9) - B*iBtB*B.Transpose());
 						 
-						 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose();
-						 W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).PseudoInvert()*(L*R).Transpose();
+						 
+						 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).PseudoInvert(1.0e-11)*(N*K+alpha*L*R).Transpose();
+						 
+						 //R += N*(rMatrix::Unit(9) - B*iBtB*B.Transpose())*K.Trace()*2*NF/volume;
+						 
+						 W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose();
+						 
+						 if( cell.GetElementType() == Element::Tet )
+						 {
+							 //R = R*B*iBtB;
+							 //W2 += (L - (L*R)*((L*R).Transpose()*L*R).PseudoInvert(1.0e-11)*(L*R).Transpose());
+							 N = N*B;
+							 R = R*B*iBtB;//*B.Transpose();
+							 
+							 //W1 = (N*C)*((N*C).Transpose()*R).Invert()*(N*C).Transpose();
+							 W2 += 1.0e-5*(L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose());
+						 }
+						 
+#pragma omp critical
+						{
+						 std::cout << "W1: "; PrintSV(W1);
+						 std::cout << "W2: "; PrintSV(W2);
+						 std::cout << "S : "; PrintSV(W1+W2);
+						}
 					 }
 					 else
 					 {
-						 //W2 = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+						 
 						 
 						 N = N*B;
-						 R = R*B*iBtB;
+						 R = R*B;//*iBtB;
 						 
-						 W1 = (N*C)*((N*C).Transpose()*R).Invert()*(N*C).Transpose();
+						 W1 = (N*C*(B.Transpose()*B))*((N*C*(B.Transpose()*B)).Transpose()*R).Invert()*(N*C*(B.Transpose()*B)).Transpose();
+						 W2 = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+						 
 						 //double alpha = 1;
 						 //W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose() - alpha*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
 						 
+#pragma omp critical
+						{
+						 std::cout << "W1: "; PrintSV(W1);
+						 std::cout << "W2: "; PrintSV(W2);
+						 std::cout << "S : "; PrintSV(W1+W2);
+						}
 						 //R = R*B*iBtB;
-						 W2 += L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+						 //W2 = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
 						 //W2 = 2*W1.Trace()/(3*NF) *(rMatrix::Unit(3*NF) - (R)*((R).Transpose()*R).Invert()*(R).Transpose());
 						/*	
 						 #pragma omp critical
@@ -1192,8 +1252,8 @@ int main(int argc,char ** argv)
 				
 				//R.GetJacobian().Save("A.mtx",&Text);
 
-				Solver S(Solver::INNER_MPTILU2);
-                //Solver S(Solver::INNER_MPTILUC);
+				//Solver S(Solver::INNER_MPTILU2);
+                Solver S(Solver::INNER_MPTILUC);
 				//Solver S("superlu");
                 S.SetParameter("relative_tolerance", "1.0e-14");
                 S.SetParameter("absolute_tolerance", "1.0e-12");

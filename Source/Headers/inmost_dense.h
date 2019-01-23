@@ -751,9 +751,25 @@ namespace INMOST
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
 		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
-		/// @return A pair of pseudo-inverse matrix and boolean. If boolean is true,
-		///         then the matrix was inverted successfully.
+		/// @return A pseudo-inverse of the matrix.
 		Matrix<Var, pool_array_t<Var> > PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, int * ierr = NULL) const;
+		
+		/// Calcuate A^n, where n is some real value.
+		/// @param n Real value.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
+		///             The error may be caused by error in SVD algorithm.
+		/// @return Matrix in power of n.
+		//Matrix<Var, pool_array_t<Var> > Power(INMOST_DATA_REAL_TYPE n = 1, int * ierr = NULL) const;
+		/// Calculate square root of A matrix by Babylonian method.
+		/// @param iter Number of iterations.
+		/// @param tol  Convergence tolerance.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
+		/// @return Square root of a matrix.
+		Matrix<Var, pool_array_t<Var> > Root(INMOST_DATA_ENUM_TYPE iter = 25, INMOST_DATA_REAL_TYPE tol = 1.0e-7, int * ierr = NULL) const;
 		/// Solves the system of equations of the form A*X=B, with A and B matrices.
 		/// Uses Moore-Penrose pseudo-inverse of the matrix A and calculates X = A^+*B.
 		/// @param B Matrix at the right hand side.
@@ -2571,7 +2587,58 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	
+	template<typename Var>
+	Matrix<Var, pool_array_t<Var> >
+	AbstractMatrix<Var>::Root(INMOST_DATA_ENUM_TYPE iter, INMOST_DATA_REAL_TYPE tol, int *ierr) const
+	{
+		assert(Rows() == Cols());
+		Matrix<Var, pool_array_t<Var> > ret(Cols(),Cols());
+		Matrix<Var, pool_array_t<Var> > ret0(Cols(),Cols());
+		ret.Zero();
+		ret0.Zero();
+		int k = 0;
+		for(k = 0; k < Cols(); ++k) ret(k,k) = ret0(k,k) = 1;
+		while(k < iter)
+		{
+			ret0 = ret;
+			ret = 0.5*(ret + (*this)*ret.Invert());
+			if( (ret - ret0).FrobeniusNorm() < tol ) return ret; 
+		}
+		if( ierr )
+		{
+			if( *ierr == -1 ) std::cout << "Failed to find square root of matrix by Babylonian method" << std::endl;
+			*ierr = 1;
+			return ret;
+		}
+		return ret;
+	}
+	/*
+	template<typename Var>
+	Matrix<Var, pool_array_t<Var> >
+	AbstractMatrix<Var>::Power(INMOST_DATA_REAL_TYPE n, int * ierr) const
+	{
+		Matrix<Var, pool_array_t<Var> > ret(Cols(),Rows());
+		Matrix<Var, pool_array_t<Var> > L,S,iL;
+		bool success = Eigensolver(L,S,iL);
+		if( !success )
+		{
+			if( ierr )
+			{
+				if( *ierr == -1 ) std::cout << "Failed to compute eigenvalue decomposition of the matrix" << std::endl;
+				*ierr = 1;
+				return ret;
+			}
+			else throw MatrixEigensolverFail;
+		}
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k) S(k,k) = pow(S(k,k),n);
+        if( n >= 0 )
+			ret = U*S*V.Transpose();
+		else
+			ret = V*S*U.Transpose();
+		if( ierr ) *ierr = 0;
+		return ret;
+	}
+	*/
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
