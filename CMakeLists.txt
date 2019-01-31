@@ -46,7 +46,7 @@ endif( MSVC )
 add_subdirectory(Source)
 add_definitions(${SOLVER_DEFINITIONS})
 
-add_library(inmost STATIC ${SOURCE} ${HEADER} Source/Solver/ttsp/optimization_parameters.cpp Source/Solver/ttsp/optimization_parameters.h Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.cpp Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h)
+add_library(inmost STATIC ${SOURCE} ${HEADER})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_find/")
 
