@@ -34,6 +34,7 @@ option(USE_SOLVER_MONDRIAAN "Use Mondriaan for matrix reordering" OFF)
 option(USE_SOLVER_PETSC "Use PETSc solvers" OFF)
 option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
+option(USE_SOLVER_TTSP_FEATURE "Use Trace and Tune Solver Parameters optimization toolkit" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
@@ -45,7 +46,7 @@ endif( MSVC )
 add_subdirectory(Source)
 add_definitions(${SOLVER_DEFINITIONS})
 
-add_library(inmost STATIC ${SOURCE} ${HEADER})
+add_library(inmost STATIC ${SOURCE} ${HEADER} Source/Solver/ttsp/optimization_parameters.cpp Source/Solver/ttsp/optimization_parameters.h Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.cpp Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_find/")
 
