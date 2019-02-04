@@ -6,7 +6,6 @@
 #include <cstdio>
 
 #include "Source/Solver/ttsp/ttsp.h"
-#include "Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h"
 
 using namespace INMOST;
 
@@ -32,6 +31,7 @@ int main(int argc, char **argv) {
         std::string vectorBFileName = "";
         std::string parametersFileName = "";
         std::string solverName = "fcbiilu2";
+        std::string optimizerType = "bruteforce";
 
         bool matrixFound = false;
         bool vectorBFound = false;
@@ -54,10 +54,16 @@ int main(int argc, char **argv) {
                     std::cout << "-b, --bvector <RHS vector file name>" << std::endl;
                     std::cout << "-d, --database <Solver parameters file name>" << std::endl;
                     std::cout << "-t, --type <Solver type name>" << std::endl;
+                    std::cout << "-o, --optt <Optimizer type name>" << std::endl;
                     std::cout << "  Available solvers:" << std::endl;
                     Solver::Initialize(NULL, NULL, NULL);
                     std::vector<std::string> availableSolvers = Solver::getAvailableSolvers();
-                    for (auto it = availableSolvers.begin(); it != availableSolvers.end(); it++) {
+                    for (auto it = availableSolvers.begin(); it != availableSolvers.end(); ++it) {
+                        std::cout << "      " << *it << std::endl;
+                    }
+                    std::cout << "  Available optimizers:" << std::endl;
+                    std::vector<std::string> availableOptimizers = TTSP::OptimizerInterface::getAvailableOptimizers();
+                    for (auto it = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
                         std::cout << "      " << *it << std::endl;
                     }
                     Solver::Finalize();
@@ -110,6 +116,15 @@ int main(int argc, char **argv) {
                 }
                 typeFound = true;
                 solverName = std::string(argv[i + 1]);
+                i++;
+                continue;
+            }
+            //Optimizer type found with -o ot --optt options
+            if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--optt") == 0) {
+                if (rank == 0) {
+                    std::cout << "Optimizer type index found: " << argv[i + 1] << std::endl;
+                }
+                optimizerType = std::string(argv[i + 1]);
                 i++;
                 continue;
             }
@@ -182,7 +197,18 @@ int main(int argc, char **argv) {
         parameters.push_back(std::make_pair(tau, 1e-3));
 
         TTSP::OptimizationParametersSpace space(solverName, "test", parameters);
-        TTSP::BruteforceOptimizer optimizer(space);
+        TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::getOptimizer(optimizerType, space);
+        if (optimizer == nullptr) {
+            if (rank == 0) {
+                std::cout << "Optimizer " << optimizerType << " not found" << std::endl;
+                std::cout << "  Available optimizers:" << std::endl;
+                std::vector<std::string> availableOptimizers = TTSP::OptimizerInterface::getAvailableOptimizers();
+                for (auto it = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
+                    std::cout << "      " << *it << std::endl;
+                }
+            }
+            std::exit(0);
+        }
 
         //        BARRIER;
         //        timer = Timer();
@@ -200,16 +226,16 @@ int main(int argc, char **argv) {
 
         while (test < 15) {
 
-            optimizer.Solve(solver, mat, b, x);
+            optimizer->Solve(solver, mat, b, x);
 
             std::cout << std::endl << "Best optimization parameters found for current iteration:" << std::endl;
-            const TTSP::OptimizationParameterPoints &best = optimizer.GetSpace().GetPoints();
+            const TTSP::OptimizationParameterPoints &best = optimizer->GetSpace().GetPoints();
             std::for_each(best.begin(), best.end(), [](const TTSP::OptimizationParameterPoint &p) {
                 std::cout << "\t" << p.first << " = " << p.second << std::endl;
             });
 
             std::cout << std::endl << "Optimization results buffer output:" << std::endl;
-            const TTSP::OptimizationParameterResultsBuffer &results = optimizer.GetResults();
+            const TTSP::OptimizationParameterResultsBuffer &results = optimizer->GetResults();
 
             int index = 1;
             std::for_each(results.begin(), results.end(), [&index](const TTSP::OptimizationParameterResult &result) {

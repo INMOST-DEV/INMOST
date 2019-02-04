@@ -2,6 +2,7 @@
 // Created by bvdmitri on 04.02.19.
 //
 
+#include <Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h>
 #include "ttsp.h"
 
 namespace TTSP {
@@ -226,9 +227,18 @@ namespace TTSP {
     const OptimizationParametersSpace &OptimizerInterface::GetSpace() const {
         return space;
     }
+
     const OptimizationParameterResultsBuffer &OptimizerInterface::GetResults() const {
         return results;
     };
+
+    void OptimizerInterface::SetProperty(const std::string &name, const std::string &value) {
+        properties[name] = value;
+    }
+
+    const std::string &OptimizerInterface::GetProperty(const std::string &name) const {
+        return properties.at(name);
+    }
 
     double OptimizerInterface::DefaultGetPreconditionerTime(const INMOST::Solver &solver) {
         return atof(solver.GetParameter("time_prec").c_str());
@@ -236,5 +246,23 @@ namespace TTSP {
 
     double OptimizerInterface::DefaultGetSolveTime(const INMOST::Solver &solver) {
         return atof(solver.GetParameter("time_iter").c_str());
+    }
+
+    bool OptimizerInterface::isOptimizerAvailable(const std::string &type) {
+        std::vector<std::string> available = OptimizerInterface::getAvailableOptimizers();
+        return std::find(available.begin(), available.end(), type) != available.end();
+    }
+
+    std::vector<std::string> OptimizerInterface::getAvailableOptimizers() {
+        std::vector<std::string> available;
+
+        available.push_back("bruteforce");
+
+        return available;
+    }
+
+    OptimizerInterface *OptimizerInterface::getOptimizer(const std::string &type, const OptimizationParametersSpace &space) {
+        if (type == "bruteforce") return new BruteforceOptimizer(space);
+        return nullptr;
     }
 }

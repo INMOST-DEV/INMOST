@@ -226,11 +226,13 @@ namespace TTSP {
 
     typedef double (*GetPreconditionerTimeFromSolverLambda)(const INMOST::Solver &solver);
     typedef double (*GetSolveTimeFromSolverLambda)(const INMOST::Solver &solver);
+    typedef std::map<std::string, std::string> OptimizerProperties;
 
     class OptimizerInterface {
     protected:
         OptimizationParameterResultsBuffer results;
         OptimizationParametersSpace space;
+        OptimizerProperties properties;
     public:
         OptimizerInterface(const OptimizationParametersSpace &space, std::size_t buffer_capacity) : space(space), results(buffer_capacity) {};
 
@@ -249,11 +251,21 @@ namespace TTSP {
 
         const OptimizationParameterResultsBuffer &GetResults() const;
 
+        void SetProperty(const std::string &name, const std::string &value);
+
+        const std::string &GetProperty(const std::string &name) const;
+
         virtual ~OptimizerInterface() {};
 
         static double DefaultGetPreconditionerTime(const INMOST::Solver &solver);
 
         static double DefaultGetSolveTime(const INMOST::Solver &solver);
+
+        static bool isOptimizerAvailable(const std::string &type);
+
+        static std::vector<std::string> getAvailableOptimizers();
+
+        static OptimizerInterface *getOptimizer(const std::string &type, const OptimizationParametersSpace &space);
     };
 
 };
