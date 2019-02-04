@@ -27,8 +27,7 @@ namespace INMOST
 
     std::string string_to_lower(const std::string &str);
 	
-	
-	
+	void MPIBarrier();
 	
 	class BinaryHeap
 	{

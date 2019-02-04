@@ -5,18 +5,16 @@
 #ifndef INMOST_TTSP_BRUTEFORCE_H
 #define INMOST_TTSP_BRUTEFORCE_H
 
-#include <Source/Solver/ttsp/optimizer_interface.h>
+#include <Source/Solver/ttsp/ttsp.h>
 
 namespace TTSP {
 
     class BruteforceOptimizer : public OptimizerInterface {
     public:
-        BruteforceOptimizer(const OptimizationParametersSpace &parameters);
+        BruteforceOptimizer(const OptimizationParametersSpace &space);
 
-        OptimizationParameterPoints RequestNewParameters(const OptimizationParameterPoints &current,
-                                                         INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                         INMOST::Sparse::Vector &RHS,
-                                                         INMOST::Sparse::Vector &SOL) const override;
+        OptimizationParameterPoints MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
+                                                              INMOST::Sparse::Vector &RHS) const override;
 
         virtual ~BruteforceOptimizer();
     };

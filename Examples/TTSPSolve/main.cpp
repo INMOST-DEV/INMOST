@@ -5,8 +5,7 @@
 #include <cmath>
 #include <cstdio>
 
-#include "Source/Solver/ttsp/optimization_parameters.h"
-#include "Source/Solver/ttsp/optimizer_interface.h"
+#include "Source/Solver/ttsp/ttsp.h"
 #include "Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h"
 
 using namespace INMOST;
@@ -176,10 +175,7 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Load vector time:    " << Timer() - timer << std::endl;
 
-        TTSP::OptimizationParameter tau("tau", { 1e-4, 3e-4, 5e-4, 7e-4,
-                                                 1e-3, 3e-3, 5e-3, 7e-3,
-                                                 1e-2, 3e-2, 5e-2, 7e-2,
-                                                 1e-1, 3e-1, 5e-1, 7e-1 }, 1e-3);
+        TTSP::OptimizationParameter tau("tau", {1e-3, 3e-3, 5e-3, 7e-3, 1e-2, 3e-2, 5e-2, 7e-2}, 1e-3);
 
 
         TTSP::OptimizationParameters parameters;
@@ -188,32 +184,55 @@ int main(int argc, char **argv) {
         TTSP::OptimizationParametersSpace space(solverName, "test", parameters);
         TTSP::BruteforceOptimizer optimizer(space);
 
-//        BARRIER;
-//        timer = Timer();
-//        solver.SetMatrix(mat);       // Compute the preconditioner for the original matrix
-//        BARRIER;
-//
-//        if (rank == 0) std::cout << "Preconditioner time: " << Timer() - timer << std::endl;
-//
-//        BARRIER;
-//        timer = Timer();
-//        bool isSuccess = solver.Solve(b, x); // Solve the linear system with the previously computted preconditioner
-//        BARRIER;
+        //        BARRIER;
+        //        timer = Timer();
+        //        solver.SetMatrix(mat);       // Compute the preconditioner for the original matrix
+        //        BARRIER;
+        //
+        //        if (rank == 0) std::cout << "Preconditioner time: " << Timer() - timer << std::endl;
+        //
+        //        BARRIER;
+        //        timer = Timer();
+        //        bool isSuccess = solver.Solve(b, x); // Solve the linear system with the previously computted preconditioner
+        //        BARRIER;
 
-        optimizer.Solve(solver, mat, b, x);
+        int test = 0;
 
-        std::cout << "Best optimization parameters found for current iteration:" << std::endl;
-        const TTSP::OptimizationParameterPoints &best = optimizer.GetParametersCurrentValues();
-        std::for_each(best.begin(), best.end(), [](const TTSP::OptimizationParameterPoint &p) {
-           std::cout << "\t" << p.first << " = " << p.second << std::endl;
-        });
+        while (test < 15) {
 
-        if (rank == 0) {
-            std::cout << "Solved with " << solver.SolverName()
-                      << " on " << solver.Iterations()
-                      << " iterations and " << solver.Residual()
-                      << " residual. Reason: " << solver.ReturnReason()
-                      << std::endl;
+            optimizer.Solve(solver, mat, b, x);
+
+            std::cout << std::endl << "Best optimization parameters found for current iteration:" << std::endl;
+            const TTSP::OptimizationParameterPoints &best = optimizer.GetSpace().GetPoints();
+            std::for_each(best.begin(), best.end(), [](const TTSP::OptimizationParameterPoint &p) {
+                std::cout << "\t" << p.first << " = " << p.second << std::endl;
+            });
+
+            std::cout << std::endl << "Optimization results buffer output:" << std::endl;
+            const TTSP::OptimizationParameterResultsBuffer &results = optimizer.GetResults();
+
+            int index = 1;
+            std::for_each(results.begin(), results.end(), [&index](const TTSP::OptimizationParameterResult &result) {
+                std::cout << "\t" << index++ << "\t" << " [";
+
+                const TTSP::OptimizationParameterPoints &points = result.GetPoints();
+                std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &point) {
+                    std::cout << " " << point.first << "=" << point.second << " ";
+                });
+
+                std::cout << "] " << result.GetPreconditionerTime() << "\t" << result.GetSolveTime() << "\t" << result.GetTime() << std::endl;
+            });
+
+            if (rank == 0) {
+                std::cout << std::endl
+                          << "Solved with " << solver.SolverName()
+                          << " on " << solver.Iterations()
+                          << " iterations and " << solver.Residual()
+                          << " residual. Reason: " << solver.ReturnReason()
+                          << std::endl;
+            }
+
+            test += 1;
         }
     }
 

@@ -6,65 +6,58 @@
 
 namespace TTSP {
 
-    BruteforceOptimizer::BruteforceOptimizer(const OptimizationParametersSpace &parameters) :
-            OptimizerInterface(parameters) {}
 
+    BruteforceOptimizer::BruteforceOptimizer(const OptimizationParametersSpace &space) : OptimizerInterface(space, 10) {}
 
-    BruteforceOptimizer::~BruteforceOptimizer() {}
-
-    OptimizationParameterPoints BruteforceOptimizer::RequestNewParameters(const OptimizationParameterPoints &current,
-                                                                          INMOST::Solver &solver,
-                                                                          INMOST::Sparse::Matrix &matrix,
-                                                                          INMOST::Sparse::Vector &RHS,
-                                                                          INMOST::Sparse::Vector &SOL) const {
+    OptimizationParameterPoints BruteforceOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
+                                                                               INMOST::Sparse::Vector &RHS) const {
 
         const OptimizationParameters &parameters = space.GetParameters();
 
-        OptimizationParameterPoints best(parameters.size());
+        OptimizationParameterPoints output(parameters.size());
 
-        std::transform(parameters.begin(), parameters.end(), best.begin(), [&](const OptimizationParametersEntry &p) {
-            const std::vector<double> &values = p.first.GetValues();
-            double timer = 0.0;
+        std::transform(parameters.begin(), parameters.end(), output.begin(), [&](const OptimizationParametersEntry &entry) {
+            const std::vector<double> &values = entry.first.GetValues();
+
+            double tmp_time = 0.0;
             double best_time = -1.0;
-
             double best_value = 0.0;
 
             std::for_each(values.begin(), values.end(), [&](double value) {
-                std::cout << "[TTSP] [Bruteforce] Solving with " << p.first.GetName() << " = " << value << "\t\t";
+                std::cout << "[TTSP] [Bruteforce] Solving with " << entry.first.GetName() << " = " << value << "\t\t";
 
-                solver.SetParameter(p.first.GetName(), INMOST::to_string(value));
+                solver.SetParameter(entry.first.GetName(), INMOST::to_string(value));
 
-                INMOST::Sparse::Vector RHSCopy(RHS);
-                INMOST::Sparse::Vector SOLCopy(SOL);
+                INMOST::Sparse::Vector SOL("SOL", RHS.GetFirstIndex(), RHS.GetLastIndex());
+                std::fill(SOL.Begin(), SOL.End(), 0.0);
 
-                TimeBarrier();
-                timer = Timer();
+                INMOST::MPIBarrier();
+
+                tmp_time = Timer();
                 solver.SetMatrix(matrix);
-                bool isSolved = solver.Solve(RHSCopy, SOLCopy);
-                TimeBarrier();
+                bool is_solved = solver.Solve(RHS, SOL);
 
-                double time = Timer() - timer;
+                INMOST::MPIBarrier();
 
-                if (isSolved && (best_time < 0 || time < best_time)) {
+                double time = Timer() - tmp_time;
+
+                if (is_solved && (best_time < 0 || time < best_time)) {
                     best_time = time;
                     best_value = value;
                 }
 
-                std::cout << "| Time = " << time << "\t" << isSolved << std::endl;
-
-                solver.SetParameter(p.first.GetName(), INMOST::to_string(best_value));
+                std::cout << "| Time = " << time << "\t" << is_solved << std::endl;
             });
 
-            return std::make_pair(p.first.GetName(), best_value);
+            solver.SetParameter(entry.first.GetName(), INMOST::to_string(best_value));
+
+            return std::make_pair(entry.first.GetName(), best_value);
         });
 
-        std::for_each(current.begin(), current.end(), [&solver](const OptimizationParameterPoint &point) {
-            solver.SetParameter(point.first, INMOST::to_string(point.second));
-        });
+        return output;
+    }
 
-        solver.SetMatrix(matrix);
-        solver.Solve(RHS, SOL);
+    BruteforceOptimizer::~BruteforceOptimizer() {
 
-        return best;
     }
 }

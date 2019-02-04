@@ -1,9 +1,8 @@
 set(SOURCE ${SOURCE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/optimization_parameters.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/ttsp.cpp)
 
 set(HEADER ${HEADER}
-        ${CMAKE_CURRENT_SOURCE_DIR}/optimizer_interface.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/optimization_parameters.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/ttsp.h)
 
 add_subdirectory(optimizers)
 
