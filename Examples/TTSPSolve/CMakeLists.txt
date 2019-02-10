@@ -1,5 +1,5 @@
 project(TTSPSolve)
-set(SOURCE main.cpp)
+set(SOURCE main.cpp series.cpp series.h)
 
 add_executable(TTSPSolve ${SOURCE})
 

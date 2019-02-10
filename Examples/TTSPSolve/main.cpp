@@ -6,6 +6,7 @@
 #include <cstdio>
 
 #include "Source/Solver/ttsp/ttsp.h"
+#include "series.h"
 
 using namespace INMOST;
 
@@ -27,16 +28,14 @@ int main(int argc, char **argv) {
 
 
     {
-        std::string matrixFileName = "";
-        std::string vectorBFileName = "";
+        std::string seriesFileName = "";
+        std::string seriesDirectory = "";
         std::string parametersFileName = "";
         std::string solverName = "fcbiilu2";
         std::string optimizerType = "bruteforce";
 
-        bool matrixFound = false;
-        bool vectorBFound = false;
+        bool seriesFound = false;
         bool parametersFound = false;
-        bool typeFound = false;
 
         //Parse argv parameters
         if (argc == 1) goto helpMessage;
@@ -49,12 +48,13 @@ int main(int argc, char **argv) {
                     std::cout << "Help message: " << std::endl;
                     std::cout << "Command line options: " << std::endl;
                     std::cout << "Required: " << std::endl;
-                    std::cout << "-m, --matrix <Matrix file name>" << std::endl;
+                    std::cout << "-s, --series <Series file name>" << std::endl;
                     std::cout << "Optional: " << std::endl;
-                    std::cout << "-b, --bvector <RHS vector file name>" << std::endl;
-                    std::cout << "-d, --database <Solver parameters file name>" << std::endl;
-                    std::cout << "-t, --type <Solver type name>" << std::endl;
-                    std::cout << "-o, --optt <Optimizer type name>" << std::endl;
+                    std::cout << "-sd, --series-dir <Series directory path>" << std::endl;
+                    std::cout << "-b,  --bvector <RHS vector file name>" << std::endl;
+                    std::cout << "-d,  --database <Solver parameters file name>" << std::endl;
+                    std::cout << "-t,  --type <Solver type name>" << std::endl;
+                    std::cout << "-o,  --optt <Optimizer type name>" << std::endl;
                     std::cout << "  Available solvers:" << std::endl;
                     Solver::Initialize(NULL, NULL, NULL);
                     std::vector<std::string> availableSolvers = Solver::getAvailableSolvers();
@@ -70,32 +70,31 @@ int main(int argc, char **argv) {
                 }
                 return 0;
             }
-            //Matrix file name found with -m or --matrix options
-            if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--matrix") == 0) {
-                matrixFound = true;
-                matrixFileName = std::string(argv[i + 1]);
-                FILE *matrixFile = fopen(matrixFileName.c_str(), "r");
-                if (matrixFile == NULL) {
+            //Series file name found with -s or --series options
+            if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--series") == 0) {
+                seriesFound = true;
+                seriesFileName = std::string(argv[i + 1]);
+                FILE *seriesFile = fopen(seriesFileName.c_str(), "r");
+                if (seriesFile == NULL) {
                     if (rank == 0) {
-                        std::cout << "Matrix file not found: " << argv[i + 1] << std::endl;
+                        std::cout << "Series file not found: " << argv[i + 1] << std::endl;
                         exit(1);
                     }
                 } else {
                     if (rank == 0) {
-                        std::cout << "Matrix file found: " << argv[i + 1] << std::endl;
+                        std::cout << "Series file found: " << argv[i + 1] << std::endl;
                     }
                 }
-                fclose(matrixFile);
+                fclose(seriesFile);
                 i++;
                 continue;
             }
-            //B vector file name found with -b or --bvector options
-            if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--bvector") == 0) {
+            //Series directory path found with -sd or --series-dir options
+            if (strcmp(argv[i], "-sd") == 0 || strcmp(argv[i], "--series-dir") == 0) {
+                seriesDirectory = std::string(argv[i + 1]);
                 if (rank == 0) {
-                    std::cout << "B vector file found: " << argv[i + 1] << std::endl;
+                    std::cout << "Series directory prefix found: " << argv[i + 1] << std::endl;
                 }
-                vectorBFound = true;
-                vectorBFileName = std::string(argv[i + 1]);
                 i++;
                 continue;
             }
@@ -114,7 +113,6 @@ int main(int argc, char **argv) {
                 if (rank == 0) {
                     std::cout << "Solver type index found: " << argv[i + 1] << std::endl;
                 }
-                typeFound = true;
                 solverName = std::string(argv[i + 1]);
                 i++;
                 continue;
@@ -130,30 +128,23 @@ int main(int argc, char **argv) {
             }
         }
 
-        if (!matrixFound) {
+        if (!seriesFound) {
             if (rank == 0) {
                 std::cout <<
-                          "Matrix not found, you can specify matrix file name using -m or --matrix options, otherwise specify -h option to see all options, exiting...";
+                          "Series file not found, you can specify series file name using -s or --series options, otherwise specify -h option to see all options, exiting...";
             }
             return -1;
         }
 
-        if (!typeFound) {
-            if (rank == 0) {
-                std::cout <<
-                          "Solver type not found in command line, you can specify solver type with -t or --type option, using INNER_ILU2 solver by default."
-                          <<
-                          std::endl;
-            }
-        }
+        // Initialize series
+        MatrixSeries series(seriesFileName, seriesDirectory);
 
-        if (!vectorBFound) {
+        if (series.end()) {
             if (rank == 0) {
                 std::cout <<
-                          "B vector not found, you can specify b vector file name with -b or --bvector option, using identity vector by default."
-                          <<
-                          std::endl;
+                          "Series file found, but it looks empty or invalid, please check series file, exiting...";
             }
+            return -1;
         }
 
         // Initialize the linear solver in accordance with args
@@ -169,30 +160,9 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
-        Sparse::Vector b("rhs"); // Declare the right-hand side vector
-        Sparse::Vector x("sol"); // Declare the solution vector
-
         double timer = Timer();
-        mat.Load(matrixFileName); //ifinterval parameters not set, matrix will be divided automatically
-
-        if (rank == 0) std::cout << "Load matrix time:    " << Timer() - timer << std::endl;
-
-        timer = Timer();
-        if (vectorBFound) {
-            b.Load(vectorBFileName); //if interval parameters not set, matrix will be divided automatically
-        } else { // Set local RHS to 1 if it was not specified
-            INMOST_DATA_ENUM_TYPE mbeg, mend, k;
-            mat.GetInterval(mbeg, mend);
-            b.SetInterval(mbeg, mend);
-            for (k = mbeg; k < mend; ++k) b[k] = 1.0;
-        }
-
-        if (rank == 0) std::cout << "Load vector time:    " << Timer() - timer << std::endl;
 
         TTSP::OptimizationParameter tau("tau", {1e-3, 3e-3, 5e-3, 7e-3, 1e-2, 3e-2, 5e-2, 7e-2}, 1e-3);
-
-
         TTSP::OptimizationParameters parameters;
         parameters.push_back(std::make_pair(tau, 1e-3));
 
@@ -210,23 +180,35 @@ int main(int argc, char **argv) {
             std::exit(0);
         }
 
-        //        BARRIER;
-        //        timer = Timer();
-        //        solver.SetMatrix(mat);       // Compute the preconditioner for the original matrix
-        //        BARRIER;
-        //
-        //        if (rank == 0) std::cout << "Preconditioner time: " << Timer() - timer << std::endl;
-        //
-        //        BARRIER;
-        //        timer = Timer();
-        //        bool isSuccess = solver.Solve(b, x); // Solve the linear system with the previously computted preconditioner
-        //        BARRIER;
 
-        int test = 0;
+        while (!series.end()) {
 
-        while (test < 15) {
+            std::pair<const char *, const char *> next = series.next();
 
-            optimizer->Solve(solver, mat, b, x);
+            INMOST::Sparse::Matrix matrix("A");
+            INMOST::Sparse::Vector rhs("b");
+            INMOST::Sparse::Vector x("x");
+
+            INMOST_DATA_ENUM_TYPE mbeg, mend;
+            matrix.GetInterval(mbeg, mend);
+
+            x.SetInterval(mbeg, mend);
+            for (int k = mbeg; k < mend; ++k) {
+                x[k] = 0.0;
+            }
+
+            if (next.second != nullptr) {
+                rhs.Load(next.second);
+            } else {
+                rhs.SetInterval(mbeg, mend);
+                for (int k = mbeg; k < mend; ++k) rhs[k] = 1.0;
+            }
+
+            matrix.Load(next.first);
+
+            std::cout << "Solving with A = " << next.first << " and b = " << next.second << std::endl;
+
+            optimizer->Solve(solver, matrix, rhs, x);
 
             std::cout << std::endl << "Best optimization parameters found for current iteration:" << std::endl;
             const TTSP::OptimizationParameterPoints &best = optimizer->GetSpace().GetPoints();
@@ -257,8 +239,6 @@ int main(int argc, char **argv) {
                           << " residual. Reason: " << solver.ReturnReason()
                           << std::endl;
             }
-
-            test += 1;
         }
     }
 
