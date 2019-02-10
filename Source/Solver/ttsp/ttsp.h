@@ -62,6 +62,9 @@ namespace TTSP {
         /// Getter for values of a parameter
         const std::vector<double> &GetValues() const;
 
+        /// Getter for number of values of a parameter
+        const std::size_t GetValuesCount() const;
+
         /// Getter for default_value of a parameter
         const double &GetDefaultValue() const;
     };
@@ -212,6 +215,8 @@ namespace TTSP {
         /// Begin iterator of the buffer
         std::deque<OptimizationParameterResult>::const_reverse_iterator begin() const;
 
+        const OptimizationParameterResult &at(std::size_t index) const;
+
         /// End iterator of the buffer
         std::deque<OptimizationParameterResult>::const_reverse_iterator end() const;
 
@@ -245,7 +250,7 @@ namespace TTSP {
                         GetSolveTimeFromSolverLambda solve_time = OptimizerInterface::DefaultGetSolveTime);
 
         virtual OptimizationParameterPoints MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                                      INMOST::Sparse::Vector &RHS) const = 0;
+                                                                      INMOST::Sparse::Vector &RHS) = 0;
 
         const OptimizationParametersSpace &GetSpace() const;
 

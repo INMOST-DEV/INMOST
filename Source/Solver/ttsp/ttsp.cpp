@@ -3,6 +3,7 @@
 //
 
 #include <Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h>
+#include <Source/Solver/ttsp/optimizers/alternating/ttsp_alternating.h>
 #include "ttsp.h"
 
 namespace TTSP {
@@ -51,6 +52,10 @@ namespace TTSP {
 
     const std::vector<double> &OptimizationParameter::GetValues() const {
         return values;
+    }
+
+    const std::size_t OptimizationParameter::GetValuesCount() const {
+        return values.size();
     }
 
     const double &OptimizationParameter::GetDefaultValue() const {
@@ -184,6 +189,10 @@ namespace TTSP {
         return buffer.crbegin();
     }
 
+    const OptimizationParameterResult &OptimizationParameterResultsBuffer::at(std::size_t index) const {
+        return *(begin() + index);
+    }
+
     std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::end() const {
         return buffer.crend();
     }
@@ -257,12 +266,14 @@ namespace TTSP {
         std::vector<std::string> available;
 
         available.push_back("bruteforce");
+        available.push_back("alternating");
 
         return available;
     }
 
     OptimizerInterface *OptimizerInterface::getOptimizer(const std::string &type, const OptimizationParametersSpace &space) {
         if (type == "bruteforce") return new BruteforceOptimizer(space);
+        if (type == "alternating") return new AlternatingOptimizer(space);
         return nullptr;
     }
 }

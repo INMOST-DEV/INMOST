@@ -10,7 +10,7 @@ namespace TTSP {
     BruteforceOptimizer::BruteforceOptimizer(const OptimizationParametersSpace &space) : OptimizerInterface(space, 10) {}
 
     OptimizationParameterPoints BruteforceOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                                               INMOST::Sparse::Vector &RHS) const {
+                                                                               INMOST::Sparse::Vector &RHS) {
 
         const OptimizationParameters &parameters = space.GetParameters();
 
@@ -57,7 +57,5 @@ namespace TTSP {
         return output;
     }
 
-    BruteforceOptimizer::~BruteforceOptimizer() {
-
-    }
+    BruteforceOptimizer::~BruteforceOptimizer() {}
 }

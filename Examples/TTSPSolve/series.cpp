@@ -39,10 +39,10 @@ MatrixSeries::MatrixSeries(const std::string &file, const std::string &directory
         }
 
         line = trim(line);
-        std::string path = directory_prefix + "/" + line.substr(2);
+        std::string path = directory_prefix + line.substr(2);
 
         if (!is_file_exist(path)) {
-            std::cerr << "[WARN] File" << path << " does not exist. Skipping..." << std::endl;
+            std::cerr << "[WARN] File " << path << " does not exist. Skipping..." << std::endl;
             continue;
         }
 

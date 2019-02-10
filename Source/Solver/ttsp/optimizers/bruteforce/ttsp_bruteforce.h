@@ -14,7 +14,7 @@ namespace TTSP {
         BruteforceOptimizer(const OptimizationParametersSpace &space);
 
         OptimizationParameterPoints MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                              INMOST::Sparse::Vector &RHS) const override;
+                                                              INMOST::Sparse::Vector &RHS) override;
 
         virtual ~BruteforceOptimizer();
     };
