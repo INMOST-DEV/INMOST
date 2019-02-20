@@ -2,7 +2,7 @@
 // Created by bvdmitri on 04.02.19.
 //
 
-#include <Source/Solver/ttsp/optimizers/default/ttsp_default.h>
+#include <Source/Solver/ttsp/optimizers/noop/ttsp_noop.h>
 #include <Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h>
 #include <Source/Solver/ttsp/optimizers/alternating/ttsp_alternating.h>
 #include "ttsp.h"
@@ -21,7 +21,7 @@ namespace TTSP {
             name(name),
             values(static_cast<unsigned long>((range.second - range.first) / step)),
             default_value(default_value) {
-        int index = 0;
+        int    index = 0;
         double value = range.first;
         while (value < range.second) {
             values[index++] = value;
@@ -246,6 +246,10 @@ namespace TTSP {
         properties[name] = value;
     }
 
+    bool OptimizerInterface::HasProperty(const std::string &name) const {
+        return properties.find(name) != properties.end();
+    }
+
     const std::string &OptimizerInterface::GetProperty(const std::string &name) const {
         return properties.at(name);
     }
@@ -266,9 +270,9 @@ namespace TTSP {
     std::vector<std::string> OptimizerInterface::getAvailableOptimizers() {
         std::vector<std::string> available;
 
-        available.push_back("noop");
-        available.push_back("bruteforce");
-        available.push_back("alternating");
+        available.emplace_back("noop");
+        available.emplace_back("bruteforce");
+        available.emplace_back("alternating");
 
         return available;
     }

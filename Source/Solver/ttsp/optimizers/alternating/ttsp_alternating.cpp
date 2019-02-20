@@ -15,9 +15,11 @@ namespace TTSP {
     const OptimizationParameter &AlternatingParameterHandler::GetParameter() const {
         return parameter;
     }
+
     std::size_t AlternatingParameterHandler::GetDirection() const {
         return direction;
     }
+
     std::size_t AlternatingParameterHandler::GetCurrentIndex() const {
         return current_index;
     }
@@ -62,21 +64,18 @@ namespace TTSP {
         current_index = index;
     }
 
-    AlternatingOptimizer::AlternatingOptimizer(const OptimizationParametersSpace &space) :
-            OptimizerInterface(space, 10), current_handler_index(0) {
+    AlternatingOptimizer::AlternatingOptimizer(const OptimizationParametersSpace &space) : OptimizerInterface(space, 10), current_handler_index(0) {
         const OptimizationParameters &parameters = space.GetParameters();
-        handlers.reserve(space.GetParameters().size());
-        for (const auto &parameter : space.GetParameters()) {
-            handlers.emplace_back(AlternatingParameterHandler(parameter.first));
-        }
+        handlers.reserve(parameters.size());
+        std::for_each(parameters.begin(), parameters.end(), [this](const OptimizationParametersEntry &entry) {
+            handlers.emplace_back(AlternatingParameterHandler(entry.first));
+        });
     }
 
     OptimizationParameterPoints AlternatingOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
                                                                                 INMOST::Sparse::Vector &RHS) {
 
         OptimizationParameterPoints points(space.GetParameters().size());
-
-        std::cout << handlers.at(0).GetParameter().GetName() << std::endl;
 
         if (results.size() < 2) {
             if (results.size() == 0) {
@@ -93,8 +92,8 @@ namespace TTSP {
                 });
             }
         } else {
-            AlternatingParameterHandler &current = handlers.at(current_handler_index);
-            const OptimizationParameterResult &last = results.at(0);
+            AlternatingParameterHandler       &current     = handlers.at(current_handler_index);
+            const OptimizationParameterResult &last        = results.at(0);
             const OptimizationParameterResult &before_last = results.at(1);
 
             if (last.IsSolved() && (last.GetTime() < before_last.GetTime())) {

@@ -2,7 +2,7 @@
 // Created by bvdmitri on 31.01.19.
 //
 
-#include "ttsp_default.h"
+#include "ttsp_noop.h"
 
 namespace TTSP {
 

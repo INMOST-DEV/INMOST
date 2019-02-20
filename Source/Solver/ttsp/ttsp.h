@@ -260,6 +260,8 @@ namespace TTSP {
 
         void SetProperty(const std::string &name, const std::string &value);
 
+        bool HasProperty(const std::string &name) const;
+
         const std::string &GetProperty(const std::string &name) const;
 
         virtual ~OptimizerInterface() {};
