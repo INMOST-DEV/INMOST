@@ -1,3 +1,4 @@
+add_subdirectory(default)
 add_subdirectory(bruteforce)
 add_subdirectory(alternating)
 

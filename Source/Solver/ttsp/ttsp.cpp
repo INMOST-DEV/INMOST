@@ -2,6 +2,7 @@
 // Created by bvdmitri on 04.02.19.
 //
 
+#include <Source/Solver/ttsp/optimizers/default/ttsp_default.h>
 #include <Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h>
 #include <Source/Solver/ttsp/optimizers/alternating/ttsp_alternating.h>
 #include "ttsp.h"
@@ -265,6 +266,7 @@ namespace TTSP {
     std::vector<std::string> OptimizerInterface::getAvailableOptimizers() {
         std::vector<std::string> available;
 
+        available.push_back("noop");
         available.push_back("bruteforce");
         available.push_back("alternating");
 
@@ -272,6 +274,7 @@ namespace TTSP {
     }
 
     OptimizerInterface *OptimizerInterface::getOptimizer(const std::string &type, const OptimizationParametersSpace &space) {
+        if (type == "noop") return new NoopOptimizer(space);
         if (type == "bruteforce") return new BruteforceOptimizer(space);
         if (type == "alternating") return new AlternatingOptimizer(space);
         return nullptr;

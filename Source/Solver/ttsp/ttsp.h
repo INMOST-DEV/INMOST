@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by bvdmitri on 04.02.19.
 //
@@ -239,7 +241,7 @@ namespace TTSP {
         OptimizationParametersSpace space;
         OptimizerProperties properties;
     public:
-        OptimizerInterface(const OptimizationParametersSpace &space, std::size_t buffer_capacity) : space(space), results(buffer_capacity) {};
+        OptimizerInterface(OptimizationParametersSpace space, std::size_t buffer_capacity) : space(std::move(space)), results(buffer_capacity) {};
 
         bool Solve(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix, INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL,
                    GetPreconditionerTimeFromSolverLambda preconditioner_time = OptimizerInterface::DefaultGetPreconditionerTime,

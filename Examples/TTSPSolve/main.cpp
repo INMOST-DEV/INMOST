@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        TTSP::OptimizationParameter tau("tau", {1e-3, 3e-3, 5e-3, 7e-3, 1e-2, 3e-2, 5e-2, 6e-2, 7e-2, 8e-2, 9e-2, 1e-1, 2e-1, 3e-1}, 1e-3);
+        TTSP::OptimizationParameter tau("tau", {3e-2, 5e-2, 6e-2, 7e-2, 8e-2, 9e-2, 1e-1, 2e-1, 3e-1, 5e-1, 7e-1, 9e-1}, 1e-3);
         TTSP::OptimizationParameters parameters;
         parameters.push_back(std::make_pair(tau, 1e-3));
 

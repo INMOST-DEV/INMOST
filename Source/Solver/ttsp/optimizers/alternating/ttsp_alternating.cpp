@@ -66,7 +66,7 @@ namespace TTSP {
             OptimizerInterface(space, 10), current_handler_index(0) {
         const OptimizationParameters &parameters = space.GetParameters();
         handlers.reserve(space.GetParameters().size());
-        for (auto parameter : space.GetParameters()) {
+        for (const auto &parameter : space.GetParameters()) {
             handlers.emplace_back(AlternatingParameterHandler(parameter.first));
         }
     }
