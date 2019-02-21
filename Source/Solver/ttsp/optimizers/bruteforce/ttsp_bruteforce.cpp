@@ -7,7 +7,8 @@
 namespace TTSP {
 
 
-    BruteforceOptimizer::BruteforceOptimizer(const OptimizationParametersSpace &space) : OptimizerInterface(space, 10) {}
+    BruteforceOptimizer::BruteforceOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+            OptimizerInterface(space, properties, buffer_capacity) {}
 
     OptimizationParameterPoints BruteforceOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
                                                                                INMOST::Sparse::Vector &RHS) {
@@ -19,8 +20,8 @@ namespace TTSP {
         std::transform(parameters.begin(), parameters.end(), output.begin(), [&](const OptimizationParametersEntry &entry) {
             const std::vector<double> &values = entry.first.GetValues();
 
-            double tmp_time = 0.0;
-            double best_time = -1.0;
+            double tmp_time   = 0.0;
+            double best_time  = -1.0;
             double best_value = 0.0;
 
             std::for_each(values.begin(), values.end(), [&](double value) {
@@ -42,7 +43,7 @@ namespace TTSP {
                 double time = Timer() - tmp_time;
 
                 if (is_solved && (best_time < 0 || time < best_time)) {
-                    best_time = time;
+                    best_time  = time;
                     best_value = value;
                 }
 

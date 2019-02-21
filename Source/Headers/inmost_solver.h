@@ -11,6 +11,12 @@ namespace INMOST
 	class SolverInterface;
 	class SolverParameters;
 
+	enum SolverVerbosityLevel {
+		Level0 = 0,
+		Level1 = 1,
+		Level2 = 2
+	};
+
 	/// Main class to set and solve linear system.
 	/// Solver class is used to set the coefficient Matrix, the right-hand side Vector
 	/// and the initial guess Vector, construct the preconditioner and Solve
@@ -45,7 +51,7 @@ namespace INMOST
 		/// @param value Value for the parameter.
 		/// @see Solver::SetParameter
 		void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
-		/// Backward-compatibility access to real-typed parameters. 
+		/// Backward-compatibility access to real-typed parameters.
 		/// Check Solver::SetParameter for availible parameter names.
 		/// @param name Name of the parameter.
 		/// @param value Value for the parameter.
@@ -62,6 +68,10 @@ namespace INMOST
 		static bool is_finalized; ///< Indicator that solvers were finalized for MPI operations.
 		SolverInterface *solver; ///< Pointer to abstract linear solver.
 		std::string prefix; ///< Prescribed solver name that is used to assign solver parameters.
+		SolverVerbosityLevel versbosity;
+		double preconditioner_time;
+		double iterations_time;
+		bool is_solved;
 		/// Reads the parameters from database file stored in xml format.
 		/// @param xml_database Path to xml file with solver parameters.
 		static void parseXMLDatabase(const char* xml_database);
@@ -83,7 +93,7 @@ namespace INMOST
 			std::vector<INMOST_DATA_REAL_TYPE> recv_storage; ///< Storage used to receive data of the vector.
 			std::vector<INMOST_MPI_Request> send_requests; ///< Sturctures used to wait complition of send operations.
 			std::vector<INMOST_MPI_Request> recv_requests; ///< Sturctures used to detect complition of receive operations.
-			std::vector<INMOST_DATA_ENUM_TYPE> extended_indexes; ///< All the indices that appear outside of the local 
+			std::vector<INMOST_DATA_ENUM_TYPE> extended_indexes; ///< All the indices that appear outside of the local
 			INMOST_DATA_ENUM_TYPE local_vector_begin; ///< Remember the first index in expanded vector.
 			INMOST_DATA_ENUM_TYPE local_vector_end; ///< Remember the last index in expanded vector.
 			INMOST_DATA_ENUM_TYPE initial_matrix_begin; ///< Initial the first index of the matrix before overlapping was computed.
@@ -148,10 +158,10 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE GetSize() const { return size; }
 			/// Update the shared data in parallel vector.
 			/// @param x Vector for which the shared data should be updated.
-			void Update(Sparse::Vector &x); 
+			void Update(Sparse::Vector &x);
 			/// Sum shared values in parallel vector.
 			/// @param x Vector for which the shared data should be accumulated.
-			void Accumulate(Sparse::Vector &x); 
+			void Accumulate(Sparse::Vector &x);
 			/// Get the sum of num elements of real array on all processes.
 			/// @param inout Data that should be integrated.
 			/// @param num Number of entries in inout array.
@@ -198,12 +208,17 @@ namespace INMOST
 		/// Assign a solver.
 		/// \warning Not all solvers support assignment. This operation may be very expensive.
 		Solver &operator=(const Solver &other);
-		/// Return the solver name 
+		/// Return the solver name
 		/// @see Sparse::Solve
 		std::string SolverName() const;
 		/// Return the solver user specified name of the current solver
 		/// @see Sparse::Solve
 		std::string SolverPrefix() const;
+		/// Return the solver verbosity specified level of the current solver
+		/// @see Sparse::Solve
+		SolverVerbosityLevel VerbosityLevel() const;
+		///
+		void SetVerbosityLevel(SolverVerbosityLevel level);
 		/// Initialize the stage of parallel solution.
 		/// If MPI is not initialized yet, then it will be initialized.
 		///
@@ -238,11 +253,11 @@ namespace INMOST
 		static bool isFinalized();
 		/// Set the matrix and construct the preconditioner.
 		/// @param A Matrix A in linear problem Ax = b
-		/// @param ModifiedPattern Indicates whether the structure of the matrix have 
+		/// @param ModifiedPattern Indicates whether the structure of the matrix have
 		/// changed since last call to Solver::SetMatrix.
 		/// @param OldPreconditioner If this parameter is set to true,
 		/// then the previous preconditioner will be used,
-		/// otherwise the new preconditioner will be constructed. 
+		/// otherwise the new preconditioner will be constructed.
 		///
 		/// Preconditioner will be constructed on call to this function
 		/// - for INNER_*, PETSc and ANI packages
@@ -348,6 +363,18 @@ namespace INMOST
 		/// Get the reason of convergence or divergence of the last solution.
 		/// @see Sparse::Solve
 		const std::string ReturnReason() const;
+		/// Return the time of preconditioner evaluation by the last solution
+		/// @see Sparse::Solve
+		double PreconditionerTime() const;
+		/// Return the time of iteration stage by the last solution
+		/// @see Sparse::Solve
+		double IterationsTime() const;
+        /// Return the last solution successfullness
+        /// @see Sparse::Solve
+		bool IsSolved() const;
+        /// Get the useful info of the last solution.
+        /// @see Sparse::Solve
+        const std::string SolutionMetadataLine(const std::string &delimiter) const;
 		/// Computes the smallest and the largest eigenvalue with the power method.
 		/// Requires SetMatrix to be called to compute the preconditioner.
 		/// Currently works for internal methods only, since it uses internal matrix-vector multiplication.

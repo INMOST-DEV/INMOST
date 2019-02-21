@@ -43,7 +43,7 @@ namespace TTSP {
         std::size_t current_handler_index;
         std::vector<AlternatingParameterHandler> handlers;
     public:
-        AlternatingOptimizer(const OptimizationParametersSpace &space);
+        AlternatingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         OptimizationParameterPoints MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
                                                               INMOST::Sparse::Vector &RHS) override;

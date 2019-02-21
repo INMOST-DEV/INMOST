@@ -5,6 +5,7 @@
 #include <Source/Solver/ttsp/optimizers/noop/ttsp_noop.h>
 #include <Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h>
 #include <Source/Solver/ttsp/optimizers/alternating/ttsp_alternating.h>
+#include <Source/Solver/ttsp/optimizers/annealing/ttsp_annealing.h>
 #include "ttsp.h"
 
 namespace TTSP {
@@ -53,6 +54,20 @@ namespace TTSP {
 
     const std::vector<double> &OptimizationParameter::GetValues() const {
         return values;
+    }
+
+    double OptimizationParameter::GetMinimalValue() const {
+        return values.at(0);
+    }
+
+    double OptimizationParameter::GetMaximumValue() const {
+        return values.at(values.size() - 1);
+    }
+
+    double OptimizationParameter::GetClosestTo(double to) const {
+        return *std::min_element(values.begin(), values.end(), [to](double x, double y) {
+            return std::abs(x - to) < std::abs(y - to);
+        });
     }
 
     const std::size_t OptimizationParameter::GetValuesCount() const {
@@ -211,6 +226,8 @@ namespace TTSP {
 
     bool OptimizerInterface::Solve(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix, INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL,
                                    GetPreconditionerTimeFromSolverLambda preconditioner_time, GetSolveTimeFromSolverLambda solve_time) {
+        int rank = INMOST::MPIGetRank();
+
         const OptimizationParameterPoints &current = space.GetPoints();
 
         std::for_each(current.begin(), current.end(), [&solver](const OptimizationParameterPoint &p) {
@@ -225,6 +242,42 @@ namespace TTSP {
         const OptimizationParameterPoints &update = this->MakeOptimizationIteration(solver, matrix, RHS);
 
         space.Update(update);
+
+        // On Level1 print some metadata information about solution and used parameters
+        if (rank == 0 && versbosity > OptimizerVerbosityLevel::Level0) {
+            std::string metadata = solver.SolutionMetadataLine("\t");
+            std::for_each(current.begin(), current.end(), [&metadata](const OptimizationParameterPoint &p) {
+                metadata += ("\t" + INMOST::to_string(p.second));
+            });
+            std::cout << metadata << std::endl;
+        }
+
+        // On Level2 also print information about next parameters
+        if (rank == 0 && versbosity > OptimizerVerbosityLevel::Level1) {
+            std::cout << std::endl << "Next optimization parameters found for current iteration:" << std::endl;
+            const TTSP::OptimizationParameterPoints &best = GetSpace().GetPoints();
+            std::for_each(best.begin(), best.end(), [](const TTSP::OptimizationParameterPoint &p) {
+                std::cout << "\t" << p.first << " = " << p.second << std::endl;
+            });
+        }
+
+        // On Level3 also print additional information about buffer
+        if (rank == 0 && versbosity > OptimizerVerbosityLevel::Level2) {
+            std::cout << std::endl << "Optimization results buffer output:" << std::endl;
+            const TTSP::OptimizationParameterResultsBuffer &results = GetResults();
+
+            int index = 1;
+            std::for_each(results.begin(), results.end(), [&index](const TTSP::OptimizationParameterResult &result) {
+                std::cout << "\t" << index++ << "\t" << " [";
+
+                const TTSP::OptimizationParameterPoints &points = result.GetPoints();
+                std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &point) {
+                    std::cout << " " << point.first << "=" << point.second << " ";
+                });
+
+                std::cout << "] " << result.GetPreconditionerTime() << "\t" << result.GetSolveTime() << "\t" << result.GetTime() << std::endl;
+            });
+        }
 
         return solved;
     }
@@ -242,6 +295,14 @@ namespace TTSP {
         return results;
     };
 
+    void OptimizerInterface::SetVerbosityLevel(OptimizerVerbosityLevel level) {
+        versbosity = level;
+    }
+
+    OptimizerVerbosityLevel OptimizerInterface::GetVerbosityLevel() const {
+        return versbosity;
+    }
+
     void OptimizerInterface::SetProperty(const std::string &name, const std::string &value) {
         properties[name] = value;
     }
@@ -255,11 +316,11 @@ namespace TTSP {
     }
 
     double OptimizerInterface::DefaultGetPreconditionerTime(const INMOST::Solver &solver) {
-        return atof(solver.GetParameter("time_prec").c_str());
+        return solver.PreconditionerTime();
     }
 
     double OptimizerInterface::DefaultGetSolveTime(const INMOST::Solver &solver) {
-        return atof(solver.GetParameter("time_iter").c_str());
+        return solver.IterationsTime();
     }
 
     bool OptimizerInterface::isOptimizerAvailable(const std::string &type) {
@@ -273,14 +334,17 @@ namespace TTSP {
         available.emplace_back("noop");
         available.emplace_back("bruteforce");
         available.emplace_back("alternating");
+        available.emplace_back("annealing");
 
         return available;
     }
 
-    OptimizerInterface *OptimizerInterface::getOptimizer(const std::string &type, const OptimizationParametersSpace &space) {
-        if (type == "noop") return new NoopOptimizer(space);
-        if (type == "bruteforce") return new BruteforceOptimizer(space);
-        if (type == "alternating") return new AlternatingOptimizer(space);
+    OptimizerInterface *OptimizerInterface::getOptimizer(const std::string &type,
+                                                         const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) {
+        if (type == "noop") return new NoopOptimizer(space, properties, buffer_capacity);
+        if (type == "bruteforce") return new BruteforceOptimizer(space, properties, buffer_capacity);
+        if (type == "alternating") return new AlternatingOptimizer(space, properties, buffer_capacity);
+        if (type == "annealing") return new AnnealingOptimizer(space, properties, buffer_capacity);
         return nullptr;
     }
 }

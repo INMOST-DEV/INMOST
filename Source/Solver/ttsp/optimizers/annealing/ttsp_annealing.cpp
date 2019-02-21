@@ -6,6 +6,12 @@
 
 namespace TTSP {
 
+    template<typename T>
+    int sgn(T val) {
+        return (T(0) < val) - (val < T(0));
+    }
+
+
     AnnealingUniformDistribution::AnnealingUniformDistribution() : distribution(0.0, 1.0) {
         int rank, size;
 
@@ -39,7 +45,7 @@ namespace TTSP {
     bool                                 AnnealingParameterHandler::DEFAULT_USE_CLOSEST       = true;
 
     AnnealingParameterHandler::AnnealingParameterHandler(const OptimizationParameter &parameter, const OptimizerInterface &optimizer) :
-            parameter(parameter),
+            count(0), parameter(parameter), current_value(parameter.GetDefaultValue()),
             optimization_type(AnnealingParameterHandler::DEFAULT_OPTIMIZATION_TYPE),
             temp0(AnnealingParameterHandler::DEFAULT_TEMP0),
             decrement(AnnealingParameterHandler::DEFAULT_DECREMENT),
@@ -105,6 +111,7 @@ namespace TTSP {
     }
 
     AnnealingParameterHandler::AnnealingParameterHandler(const AnnealingParameterHandler &other) :
+            count(other.count), current_value(other.current_value),
             parameter(other.parameter), optimization_type(other.optimization_type), temp0(other.temp0), decrement(other.decrement),
             allow_oscillation(other.allow_oscillation), oscillation_temp(other.oscillation_temp), strict_bound(other.strict_bound),
             use_closest(other.use_closest) {}
@@ -119,6 +126,10 @@ namespace TTSP {
 
     double AnnealingParameterHandler::GetTemp0() const {
         return temp0;
+    }
+
+    double AnnealingParameterHandler::GetCurrentTemp() const {
+        return temp0 * std::exp(-decrement * std::pow(count, 1.0 / 2.0));
     }
 
     double AnnealingParameterHandler::GetDecrement() const {
@@ -141,17 +152,113 @@ namespace TTSP {
         return use_closest;
     }
 
-    AnnealingOptimizer::AnnealingOptimizer(const OptimizationParametersSpace &space) : OptimizerInterface(space, 10), current_handler_index(0) {
+    double AnnealingParameterHandler::GetNextValue() const {
+
+        double current = GetCurrentValue();
+        double temp    = GetCurrentTemp();
+        double alpha   = random.next();
+        double z       = sgn(alpha - 1.0 / 2.0) * temp * (std::pow(1.0 + 1.0 / temp, std::abs(2 * alpha - 1)) - 1);
+
+        double a     = parameter.GetMinimalValue();
+        double b     = parameter.GetMaximumValue();
+        double bound = (b - a);
+
+        if (strict_bound) {
+            double aa = current - a;
+            double bb = b - current;
+
+            if (bb < aa) {
+                bound = 2 * bb;
+            } else {
+                bound = 2 * aa;
+            }
+        }
+
+        double next = current + z * bound;
+        while (!((next >= a) && (next <= b))) {
+            alpha = random.next();
+            z     = sgn(alpha - 1.0 / 2.0) * temp * (std::pow(1.0 + 1.0 / temp, std::abs(2 * alpha - 1)) - 1);
+            next  = current + z * bound;
+        }
+
+        if (use_closest) {
+            next = parameter.GetClosestTo(next);
+        }
+
+        if (optimization_type == EXPONENT) {
+            return std::pow(10, -next);
+        } else {
+            return next;
+        }
+    }
+
+    double AnnealingParameterHandler::GetRandom() const {
+        return random.next();
+    }
+
+    void AnnealingParameterHandler::SetValue(double value) {
+        current_value = value;
+        count += 1;
+    }
+
+    double AnnealingParameterHandler::GetCurrentValue() const {
+        return current_value;
+    }
+
+    AnnealingOptimizer::AnnealingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+            OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0), values(space.GetParameters().size()) {
         const OptimizationParameters &parameters = space.GetParameters();
         handlers.reserve(parameters.size());
         std::for_each(parameters.begin(), parameters.end(), [this](const OptimizationParametersEntry &entry) {
             handlers.emplace_back(AnnealingParameterHandler(entry.first, *this));
         });
+        std::transform(parameters.begin(), parameters.end(), values.begin(), [](const OptimizationParametersEntry &entry) {
+            return entry.first.GetDefaultValue();
+        });
     }
 
     OptimizationParameterPoints AnnealingOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
                                                                               INMOST::Sparse::Vector &RHS) {
-        return TTSP::OptimizationParameterPoints();
+
+        OptimizationParameterPoints points(space.GetParameters().size());
+
+        if (results.size() < 2) {
+            if (results.size() == 0) {
+                std::transform(handlers.begin(), handlers.end(), points.begin(), [](const AnnealingParameterHandler &h) {
+                    return std::make_pair(h.GetParameter().GetName(), h.GetCurrentValue());
+                });
+            } else if (results.size() == 1) {
+                int i = 0;
+                std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AnnealingParameterHandler &h) {
+                    return std::make_pair(h.GetParameter().GetName(), i++ == current_handler_index ? h.GetNextValue() : h.GetCurrentValue());
+                });
+            }
+        } else {
+            AnnealingParameterHandler         &h           = handlers.at(current_handler_index);
+            const OptimizationParameterResult &last        = results.at(0);
+            const OptimizationParameterResult &before_last = results.at(1);
+
+            double temp    = h.GetCurrentTemp();
+            double delta_e = last.GetTime() - before_last.GetTime();
+            double et      = 1.0 / (1.0 + std::exp(delta_e / temp));
+            //double h = std::exp(-delta_e / temp);
+            double alpha   = h.GetRandom();
+
+
+            if (last.IsSolved() && ((delta_e < 0.0) || alpha < et)) {
+                double update_value = last.GetPoints().at(current_handler_index).second;
+                h.SetValue(update_value);
+            }
+
+            current_handler_index = (current_handler_index + 1) % (handlers.size());
+
+            int i = 0;
+            std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](AnnealingParameterHandler &h) {
+                return std::make_pair(h.GetParameter().GetName(), i++ == current_handler_index ? h.GetNextValue() : h.GetCurrentValue());
+            });
+        }
+
+        return points;
     }
 
     AnnealingOptimizer::~AnnealingOptimizer() {}

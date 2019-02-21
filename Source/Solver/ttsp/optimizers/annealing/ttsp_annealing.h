@@ -35,6 +35,11 @@ namespace TTSP {
         static bool                               DEFAULT_STRICT_BOUND;
         static bool                               DEFAULT_USE_CLOSEST;
 
+        std::size_t count;
+        double      current_value;
+
+        mutable AnnealingUniformDistribution random;
+
         const OptimizationParameter        &parameter;
         AnnealingParameterOptimizationType optimization_type;
         double                             temp0;
@@ -54,6 +59,8 @@ namespace TTSP {
 
         double GetTemp0() const;
 
+        double GetCurrentTemp() const;
+
         double GetDecrement() const;
 
         bool IsAllowOscillation() const;
@@ -63,15 +70,23 @@ namespace TTSP {
         bool IsStrictBound() const;
 
         bool IsUseClosest() const;
+
+        double GetNextValue() const;
+
+        double GetRandom() const;
+
+        void SetValue(double value);
+
+        double GetCurrentValue() const;
     };
 
     class AnnealingOptimizer : public OptimizerInterface {
     private:
-        AnnealingUniformDistribution           random;
         std::size_t                            current_handler_index;
         std::vector<AnnealingParameterHandler> handlers;
+        std::vector<double>                    values;
     public:
-        AnnealingOptimizer(const OptimizationParametersSpace &space);
+        AnnealingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         OptimizationParameterPoints MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
                                                               INMOST::Sparse::Vector &RHS) override;

@@ -1,20 +1,22 @@
 #include <inmost.h>
 #include "SolverMaster.h"
 #include "../Misc/utils.h"
+
 #if defined(USE_SOLVER)
 
 namespace INMOST {
 
-    int *Solver::argc = NULL;
-    char ***Solver::argv = NULL;
+    int  *Solver::argc          = NULL;
+    char ***Solver::argv        = NULL;
     bool Solver::is_initialized = false;
-    bool Solver::is_finalized = false;
+    bool Solver::is_finalized   = false;
     std::vector<SolverParameters> Solver::parameters = std::vector<SolverParameters>();
-	
-	void Solver::SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) {SetParameter(name,to_string(value));}
-	void Solver::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) {SetParameter(name,to_string(value));}
 
-    Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) {
+    void Solver::SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) { SetParameter(name, to_string(value)); }
+    void Solver::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) { SetParameter(name, to_string(value)); }
+
+    Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) :
+            versbosity(SolverVerbosityLevel::Level0), preconditioner_time(0), iterations_time(0), is_solved(false) {
         std::string lowerName = string_to_lower(solverName);
         this->solver = SolverMaster::getSolver(solverName);
         this->prefix = string_to_lower(prefix);
@@ -37,7 +39,8 @@ namespace INMOST {
 
     }
 
-    Solver::Solver(const Solver &other) {
+    Solver::Solver(const Solver &other) :
+            versbosity(other.versbosity), preconditioner_time(other.preconditioner_time), iterations_time(other.iterations_time), is_solved(other.is_solved) {
         this->solver = SolverMaster::getSolver(other.solver->SolverName());
         this->solver->Copy(other.solver);
         this->prefix = other.prefix;
@@ -62,8 +65,13 @@ namespace INMOST {
     Solver &Solver::operator=(const Solver &other) {
         if (this != &other) {
             this->solver->SetCommunicator(other.solver->GetCommunicator());
-            this->prefix = other.prefix;
             this->solver->Assign(other.solver);
+
+            this->prefix              = other.prefix;
+            this->versbosity          = other.versbosity;
+            this->preconditioner_time = other.preconditioner_time;
+            this->iterations_time     = other.iterations_time;
+            this->is_solved           = other.is_solved;
         }
         return *this;
     }
@@ -76,11 +84,19 @@ namespace INMOST {
         return prefix;
     }
 
+    SolverVerbosityLevel Solver::VerbosityLevel() const {
+        return versbosity;
+    }
+
+    void Solver::SetVerbosityLevel(INMOST::SolverVerbosityLevel level) {
+        versbosity = level;
+    }
+
     void Solver::Initialize(int *argc, char ***argv, const char *database) {
-        Solver::argc = argc;
-        Solver::argv = argv;
+        Solver::argc           = argc;
+        Solver::argv           = argv;
         Solver::is_initialized = true;
-        Solver::is_finalized = false;
+        Solver::is_finalized   = false;
 #if defined(USE_MPI)
         {
             int flag = 0;
@@ -109,7 +125,7 @@ namespace INMOST {
             }
         }
 #endif
-        Solver::is_finalized = true;
+        Solver::is_finalized   = true;
         Solver::is_initialized = false;
     }
 
@@ -122,7 +138,10 @@ namespace INMOST {
     }
 
     void Solver::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
+        double preconditioner_timer_start = Timer();
         solver->SetMatrix(A, ModifiedPattern, OldPreconditioner);
+        INMOST::MPIBarrier();
+        preconditioner_time = Timer() - preconditioner_timer_start;
     }
 
     bool Solver::Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL) {
@@ -138,7 +157,24 @@ namespace INMOST {
                 for (Sparse::Vector::iterator ri = SOL.Begin(); ri != SOL.End(); ++ri) *ri = 0.0;
             } else throw InconsistentSizesInSolver;
         }
-        return solver->Solve(RHS, SOL);
+
+        double iterations_timer_start = Timer();
+
+        is_solved = solver->Solve(RHS, SOL);
+        INMOST::MPIBarrier();
+        iterations_time = Timer() - iterations_timer_start;
+
+        if (versbosity > SolverVerbosityLevel::Level1) {
+#if defined(USE_MPI)
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            if (rank == 0) {
+                std::cout << SolutionMetadataLine("\t") << std::endl;
+            }
+#endif
+        }
+
+        return is_solved;
     }
 
     bool Solver::Clear() {
@@ -163,6 +199,29 @@ namespace INMOST {
 
     const std::string Solver::ReturnReason() const {
         return solver->ReturnReason();
+    }
+
+    double Solver::PreconditionerTime() const {
+        return preconditioner_time;
+    }
+
+    double Solver::IterationsTime() const {
+        return iterations_time;
+    }
+
+    bool Solver::IsSolved() const {
+        return is_solved;
+    }
+
+    const std::string Solver::SolutionMetadataLine(const std::string &delimiter) const {
+        return this->SolverName() + delimiter +
+               this->SolverPrefix() + delimiter +
+               INMOST::to_string(this->IsSolved()) + delimiter +
+               INMOST::to_string(this->Iterations()) + delimiter +
+               INMOST::to_string(this->Residual()) + delimiter +
+               INMOST::to_string(this->PreconditionerTime()) + delimiter +
+               INMOST::to_string(this->IterationsTime()) + delimiter +
+               INMOST::to_string(this->PreconditionerTime() + this->IterationsTime());
     }
 
     INMOST_DATA_REAL_TYPE Solver::Condest(INMOST_DATA_REAL_TYPE tol, unsigned int maxits) {
@@ -200,12 +259,12 @@ namespace INMOST {
             XMLReader::XMLTree root = reader.ReadXML();
 
             if (root.tag.name != "SolverParameters") {
-                std::cout << __FILE__ << ":" << __LINE__ <<  ": Bad XML database file " << xml_database << "!" << std::endl;
+                std::cout << __FILE__ << ":" << __LINE__ << ": Bad XML database file " << xml_database << "!" << std::endl;
                 return;
             }
 
             for (xml_reader_tree_iterator_t solver = root.children.begin(); solver < root.children.end(); solver++) {
-                std::string solverName = string_to_lower((*solver).tag.name);
+                std::string solverName   = string_to_lower((*solver).tag.name);
                 std::string internalFile = "";
 
                 if ((*solver).tag.attributes.size() != 0) {

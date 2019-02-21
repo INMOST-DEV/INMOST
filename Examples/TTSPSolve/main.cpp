@@ -28,15 +28,15 @@ int main(int argc, char **argv) {
 
 
     {
-        std::string seriesFileName = "";
-        std::string seriesDirectory = "";
+        std::string seriesFileName     = "";
+        std::string seriesDirectory    = "";
         std::string parametersFileName = "";
-        std::string solverName = "fcbiilu2";
-        std::string optimizerType = "bruteforce";
+        std::string solverName         = "fcbiilu2";
+        std::string optimizerType      = "bruteforce";
 
-        bool seriesFound = false;
+        bool seriesFound     = false;
         bool parametersFound = false;
-        bool waitNext = false;
+        bool waitNext        = false;
 
         //Parse argv parameters
         if (argc == 1) goto helpMessage;
@@ -60,12 +60,12 @@ int main(int argc, char **argv) {
                     std::cout << "  Available solvers:" << std::endl;
                     Solver::Initialize(NULL, NULL, NULL);
                     std::vector<std::string> availableSolvers = Solver::getAvailableSolvers();
-                    for (auto it = availableSolvers.begin(); it != availableSolvers.end(); ++it) {
+                    for (auto                it               = availableSolvers.begin(); it != availableSolvers.end(); ++it) {
                         std::cout << "      " << *it << std::endl;
                     }
                     std::cout << "  Available optimizers:" << std::endl;
                     std::vector<std::string> availableOptimizers = TTSP::OptimizerInterface::getAvailableOptimizers();
-                    for (auto it = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
+                    for (auto                it                  = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
                         std::cout << "      " << *it << std::endl;
                     }
                     Solver::Finalize();
@@ -74,8 +74,8 @@ int main(int argc, char **argv) {
             }
             //Series file name found with -s or --series options
             if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--series") == 0) {
-                seriesFound = true;
-                seriesFileName = std::string(argv[i + 1]);
+                seriesFound      = true;
+                seriesFileName   = std::string(argv[i + 1]);
                 FILE *seriesFile = fopen(seriesFileName.c_str(), "r");
                 if (seriesFile == NULL) {
                     if (rank == 0) {
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
                 if (rank == 0) {
                     std::cout << "Solver parameters file found: " << argv[i + 1] << std::endl;
                 }
-                parametersFound = true;
+                parametersFound    = true;
                 parametersFileName = std::string(argv[i + 1]);
                 i++;
                 continue;
@@ -165,26 +165,33 @@ int main(int argc, char **argv) {
 
         Solver solver = Solver(solverName, "test");
 
+        solver.SetVerbosityLevel(SolverVerbosityLevel::Level0);
+
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        TTSP::OptimizationParameter tau("tau", {3e-2, 5e-2, 6e-2, 7e-2, 8e-2, 9e-2, 1e-1, 2e-1, 3e-1, 5e-1, 7e-1, 9e-1}, 1e-3);
+        TTSP::OptimizationParameter  tau("tau", {3e-2, 5e-2, 6e-2, 7e-2, 8e-2, 9e-2, 1e-1, 2e-1, 3e-1, 5e-1, 7e-1, 9e-1}, 1e-3);
         TTSP::OptimizationParameters parameters;
         parameters.push_back(std::make_pair(tau, 1e-3));
 
+        TTSP::OptimizerProperties properties;
+
+        properties["tau:use_closest"]                = "false";
+
         TTSP::OptimizationParametersSpace space(solverName, "test", parameters);
-        TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::getOptimizer(optimizerType, space);
+        TTSP::OptimizerInterface          *optimizer = TTSP::OptimizerInterface::getOptimizer(optimizerType, space, properties, 10);
         if (optimizer == nullptr) {
             if (rank == 0) {
                 std::cout << "Optimizer " << optimizerType << " not found" << std::endl;
                 std::cout << "  Available optimizers:" << std::endl;
                 std::vector<std::string> availableOptimizers = TTSP::OptimizerInterface::getAvailableOptimizers();
-                for (auto it = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
+                for (auto                it                  = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
                     std::cout << "      " << *it << std::endl;
                 }
             }
             std::exit(0);
         }
 
+        optimizer->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level1);
 
         while (!series.end()) {
 
@@ -211,42 +218,9 @@ int main(int argc, char **argv) {
 
             matrix.Load(next.first);
 
-            if (rank == 0) std::cout << "Solving with A = " << next.first << " and b = " << next.second << std::endl;
+            // if (rank == 0) std::cout << "Solving with A = " << next.first << " and b = " << next.second << std::endl;
 
             optimizer->Solve(solver, matrix, rhs, x);
-
-            if (rank == 0) {
-                std::cout << std::endl << "Next optimization parameters found for current iteration:" << std::endl;
-                const TTSP::OptimizationParameterPoints &best = optimizer->GetSpace().GetPoints();
-                std::for_each(best.begin(), best.end(), [](const TTSP::OptimizationParameterPoint &p) {
-                    std::cout << "\t" << p.first << " = " << p.second << std::endl;
-                });
-
-                std::cout << std::endl << "Optimization results buffer output:" << std::endl;
-                const TTSP::OptimizationParameterResultsBuffer &results = optimizer->GetResults();
-
-                int index = 1;
-                std::for_each(results.begin(), results.end(), [&index](const TTSP::OptimizationParameterResult &result) {
-                    std::cout << "\t" << index++ << "\t" << " [";
-
-                    const TTSP::OptimizationParameterPoints &points = result.GetPoints();
-                    std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &point) {
-                        std::cout << " " << point.first << "=" << point.second << " ";
-                    });
-
-                    std::cout << "] " << result.GetPreconditionerTime() << "\t" << result.GetSolveTime() << "\t" << result.GetTime() << std::endl;
-                });
-            }
-
-
-            if (rank == 0) {
-                std::cout << std::endl
-                          << "Solved with " << solver.SolverName()
-                          << " on " << solver.Iterations()
-                          << " iterations and " << solver.Residual()
-                          << " residual. Reason: " << solver.ReturnReason()
-                          << std::endl;
-            }
 
             if (rank == 0 && waitNext) {
                 std::cin.get();
