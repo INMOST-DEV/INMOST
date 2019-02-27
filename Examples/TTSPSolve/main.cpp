@@ -166,6 +166,7 @@ int main(int argc, char **argv) {
         Solver solver = Solver(solverName, "test");
 
         solver.SetVerbosityLevel(SolverVerbosityLevel::Level0);
+        solver.SetParameter("eps", "1e-12");
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
@@ -247,18 +248,17 @@ int main(int argc, char **argv) {
                 return std::make_pair(is_solved, time);
             };
 
-            const TTSP::OptimizationParameterPoints      &before     = optimizer->GetSpace().GetPoints();
             const TTSP::OptimizationParametersSuggestion &suggestion = optimizer->Suggest(invoke, nullptr);
 
-            const TTSP::OptimizationFunctionInvokeResult &result = invoke(before, suggestion.second, nullptr);
+            const TTSP::OptimizationFunctionInvokeResult &result = invoke(suggestion.GetPointsBefore(), suggestion.GetPointsAfter(), nullptr);
 
             bool   is_good = result.first;
             double metrics = result.second;
 
-            optimizer->SaveResult(suggestion.first, before, suggestion.second, metrics, is_good);
+            optimizer->SaveResult(suggestion.GetChangedParameter(), suggestion.GetPointsBefore(), suggestion.GetPointsAfter(), metrics, is_good);
 
             if (is_good) {
-                optimizer->UpdateSpacePoints(suggestion.second);
+                optimizer->UpdateSpacePoints(suggestion.GetPointsAfter());
             }
 
             TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level3;
@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
             // On Level1 print some metadata information about solution and used parameters
             if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level0) {
                 std::string metadata = solver.SolutionMetadataLine("\t");
-                std::for_each(suggestion.second.begin(), suggestion.second.end(), [&metadata](const TTSP::OptimizationParameterPoint &p) {
+                std::for_each(suggestion.GetPointsAfter().begin(), suggestion.GetPointsAfter().end(), [&metadata](const TTSP::OptimizationParameterPoint &p) {
                     metadata += ("\t" + INMOST::to_string(p.second));
                 });
                 std::cout << metadata << std::endl;
@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
             // On Level2 also print information about next parameters
             if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level1) {
                 std::cout << std::endl << "Next optimization parameters found for current iteration:" << std::endl;
-                const TTSP::OptimizationParameterPoints &points = optimizer->GetSpace().GetPoints();
+                const TTSP::OptimizationParameterPoints &points = optimizer->GetCurrentPoints();
                 std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &p) {
                     std::cout << "\t" << p.first << " = " << p.second << std::endl;
                 });
@@ -290,19 +290,19 @@ int main(int argc, char **argv) {
                 std::for_each(results.begin(), results.end(), [&index](const TTSP::OptimizationParameterResult &result) {
                     std::cout << "\t" << index++ << "\t" << " [";
 
-                    const TTSP::OptimizationParameterPoints &before = result.GetPointsBefore();
-                    std::for_each(before.begin(), before.end(), [](const TTSP::OptimizationParameterPoint &point) {
+                    const TTSP::OptimizationParameterPoints &pbefore = result.GetPointsBefore();
+                    std::for_each(pbefore.begin(), pbefore.end(), [](const TTSP::OptimizationParameterPoint &point) {
                         std::cout << " " << point.first << "=" << point.second << " ";
                     });
 
-                    std::cout << "] >> [";
+                    std::cout << "] -> [";
 
-                    const TTSP::OptimizationParameterPoints &after = result.GetPointsAfter();
-                    std::for_each(after.begin(), after.end(), [](const TTSP::OptimizationParameterPoint &point) {
+                    const TTSP::OptimizationParameterPoints &pafter = result.GetPointsAfter();
+                    std::for_each(pafter.begin(), pafter.end(), [](const TTSP::OptimizationParameterPoint &point) {
                         std::cout << " " << point.first << "=" << point.second << " ";
                     });
 
-                    std::cout << "] " << result.GetMetrics() << std::endl;
+                    std::cout << "]\t\t(" << result.GetMetricsBefore() << " -> " << result.GetMetricsAfter() << ")" << std::endl;
                 });
             }
 

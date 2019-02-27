@@ -98,7 +98,7 @@ namespace TTSP {
             const OptimizationParameterResult &last        = results.at(0);
             const OptimizationParameterResult &before_last = results.at(1);
 
-            if (last.IsGood() && (last.GetMetrics() < before_last.GetMetrics())) {
+            if (last.IsGood() && (last.GetMetricsAfter() < before_last.GetMetricsAfter())) {
                 current.UpdateIndex(current.NextIndex());
             } else {
                 current.NextDirection();
@@ -115,7 +115,15 @@ namespace TTSP {
             });
         }
 
-        return std::make_pair(handlers.at(current_handler_index).GetParameter(), points);
+        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), GetCurrentPoints(), points);
+    }
+
+    const OptimizationParameterPoints AlternatingOptimizer::GetCurrentPoints() const noexcept {
+        OptimizationParameterPoints points(space.GetParameters().size());
+        std::transform(handlers.cbegin(), handlers.cend(), points.begin(), [](const AlternatingParameterHandler &h) {
+            return std::make_pair(h.GetParameter().GetName(), h.GetParameter().GetValues().at(h.GetCurrentIndex()));
+        });
+        return points;
     }
 
     AlternatingOptimizer::~AlternatingOptimizer() {}

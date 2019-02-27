@@ -106,7 +106,21 @@ namespace TTSP {
     /// @see OptimizationParameterPoint
     /// @see OptimizationParameterPoints
     /// @see OptimizationParametersSpace
-    typedef std::pair<const OptimizationParameter &, OptimizationParameterPoints> OptimizationParametersSuggestion;
+    class OptimizationParametersSuggestion {
+    private:
+        const OptimizationParameter &changed;
+        OptimizationParameterPoints before;
+        OptimizationParameterPoints after;
+    public:
+        OptimizationParametersSuggestion(const OptimizationParameter &changed,
+                                         const OptimizationParameterPoints &before, const OptimizationParameterPoints &after);
+
+        const OptimizationParameter &GetChangedParameter() const noexcept;
+
+        const OptimizationParameterPoints &GetPointsBefore() const noexcept;
+
+        const OptimizationParameterPoints &GetPointsAfter() const noexcept;
+    };
 
     /// This class is used to define an Optimization parameters space
     /// Usage: OptimizationParametersSpace space("fcbiilu2", "prefix", parameters);
@@ -169,8 +183,9 @@ namespace TTSP {
     private:
         const OptimizationParameter &changed;            /// Changed optimization parameter reference
         OptimizationParameterPoints before;              /// Optimization parameter points before changing
+        double                      metrics_before;      /// Optimization metrics before changing
         OptimizationParameterPoints after;               /// Optimization parameter points after changing
-        double                      metrics;             /// Optimization metrics
+        double                      metrics_after;       /// Optimization metrics after changing
         bool                        is_good;             /// Is problem solved or not with new parameters
 
         static void swap(OptimizationParameterResult &left, OptimizationParameterResult &right);
@@ -182,7 +197,7 @@ namespace TTSP {
         /// @param solve_time          - Solve timings
         /// @param is_solved           - Is problem solved or not
         OptimizationParameterResult(const OptimizationParameter &changed, const OptimizationParameterPoints &before, const OptimizationParameterPoints &after,
-                                    double metrics, bool is_good);
+                                    double metrics_before, double metrics_after, bool is_good);
 
         /// Copy constructor
         /// @param other - OptimizationParameterResult to make copy of
@@ -202,8 +217,11 @@ namespace TTSP {
         /// Getter for points of this result after changing
         const OptimizationParameterPoints &GetPointsAfter() const noexcept;
 
-        /// Getter for metrics
-        double GetMetrics() const noexcept;
+        /// Getter for metrics before changing
+        double GetMetricsBefore() const noexcept;
+
+        /// Getter for metrics after changing
+        double GetMetricsAfter() const noexcept;
 
         /// Getter for is solved status
         bool IsGood() const noexcept;
@@ -289,10 +307,15 @@ namespace TTSP {
                                                                                                               const OptimizationParameterPoints &,
                                                                                                               void *)> &invoke, void *data) = 0;
 
-        void SaveResult(const OptimizationParameter &changed,
-                        const OptimizationParameterPoints &before, const OptimizationParameterPoints &after, double metrics, bool is_solved);
+        virtual const OptimizationParameterPoints GetCurrentPoints() const noexcept = 0;
 
-        const OptimizationParametersSpace &GetSpace() const noexcept;
+        void SaveResult(const OptimizationParameter &changed,
+                        const OptimizationParameterPoints &before, double metrics_before,
+                        const OptimizationParameterPoints &after, double metrics_after, bool is_good);
+
+        void SaveResult(const OptimizationParameter &changed,
+                        const OptimizationParameterPoints &before,
+                        const OptimizationParameterPoints &after, double metrics_after, bool is_good);
 
         const OptimizationParameterResultsBuffer &GetResults() const noexcept;
 

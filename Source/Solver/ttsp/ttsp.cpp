@@ -78,6 +78,22 @@ namespace TTSP {
         return default_value;
     }
 
+    OptimizationParametersSuggestion::OptimizationParametersSuggestion(const OptimizationParameter &changed, const OptimizationParameterPoints &before,
+                                                                       const OptimizationParameterPoints &after) :
+            changed(changed), before(before), after(after) {}
+
+    const OptimizationParameter &OptimizationParametersSuggestion::GetChangedParameter() const noexcept {
+        return changed;
+    }
+
+    const OptimizationParameterPoints &OptimizationParametersSuggestion::GetPointsBefore() const noexcept {
+        return before;
+    }
+
+    const OptimizationParameterPoints &OptimizationParametersSuggestion::GetPointsAfter() const noexcept {
+        return after;
+    }
+
     void OptimizationParametersSpace::swap(OptimizationParametersSpace &left, OptimizationParametersSpace &right) {
         std::swap(left.solver_name, right.solver_name);
         std::swap(left.solver_prefix, right.solver_prefix);
@@ -147,18 +163,20 @@ namespace TTSP {
 
     void OptimizationParameterResult::swap(OptimizationParameterResult &left, OptimizationParameterResult &right) {
         std::swap(left.before, right.before);
+        std::swap(left.metrics_before, right.metrics_before);
         std::swap(left.after, right.after);
-        std::swap(left.metrics, right.metrics);
+        std::swap(left.metrics_after, right.metrics_after);
         std::swap(left.is_good, right.is_good);
     }
 
     OptimizationParameterResult::OptimizationParameterResult(const OptimizationParameter &changed, const OptimizationParameterPoints &before,
                                                              const OptimizationParameterPoints &after,
-                                                             double metrics, bool is_good) :
-            changed(changed), before(before), after(after), metrics(metrics), is_good(is_good) {}
+                                                             double metrics_before, double metrics_after, bool is_good) :
+            changed(changed), before(before), after(after), metrics_before(metrics_before), metrics_after(metrics_after), is_good(is_good) {}
 
     OptimizationParameterResult::OptimizationParameterResult(const OptimizationParameterResult &other) :
-            changed(other.changed), before(other.before), after(other.after), metrics(other.metrics), is_good(other.is_good) {}
+            changed(other.changed), before(other.before), after(other.after),
+            metrics_before(other.metrics_before), metrics_after(other.metrics_after), is_good(other.is_good) {}
 
     OptimizationParameterResult::OptimizationParameterResult(OptimizationParameterResult &&other) noexcept : changed(std::move(other).changed) {
         OptimizationParameterResult::swap(*this, other);
@@ -178,8 +196,12 @@ namespace TTSP {
         return after;
     }
 
-    double OptimizationParameterResult::GetMetrics() const noexcept {
-        return metrics;
+    double OptimizationParameterResult::GetMetricsBefore() const noexcept {
+        return metrics_before;
+    }
+
+    double OptimizationParameterResult::GetMetricsAfter() const noexcept {
+        return metrics_after;
     }
 
     bool OptimizationParameterResult::IsGood() const noexcept {
@@ -252,12 +274,18 @@ namespace TTSP {
     }
 
     void OptimizerInterface::SaveResult(const OptimizationParameter &changed,
-                                        const OptimizationParameterPoints &before, const OptimizationParameterPoints &after, double metrics, bool is_good) {
-        results.push(OptimizationParameterResult(changed, before, after, metrics, is_good));
+                                        const OptimizationParameterPoints &before, double metrics_before,
+                                        const OptimizationParameterPoints &after, double metrics_after, bool is_good) {
+        results.push(OptimizationParameterResult(changed, before, after, metrics_before, metrics_after, is_good));
     }
 
-    const OptimizationParametersSpace &OptimizerInterface::GetSpace() const noexcept {
-        return space;
+    void OptimizerInterface::SaveResult(const OptimizationParameter &changed,
+                                        const OptimizationParameterPoints &before,
+                                        const OptimizationParameterPoints &after,
+                                        double metrics_after, bool is_good) {
+        results.push(
+                OptimizationParameterResult(changed, before, after, results.IsEmpty() ? -1.0 : (*results.begin()).GetMetricsAfter(), metrics_after, is_good)
+        );
     }
 
     const OptimizationParameterResultsBuffer &OptimizerInterface::GetResults() const noexcept {

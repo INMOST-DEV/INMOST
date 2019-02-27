@@ -240,7 +240,7 @@ namespace TTSP {
             const OptimizationParameterResult &before_last = results.at(1);
 
             double temp    = h.GetCurrentTemp();
-            double delta_e = last.GetMetrics() - before_last.GetMetrics();
+            double delta_e = last.GetMetricsAfter() - before_last.GetMetricsAfter();
             double et      = 1.0 / (1.0 + std::exp(delta_e / temp));
             //double h = std::exp(-delta_e / temp);
             double alpha   = h.GetRandom();
@@ -259,7 +259,15 @@ namespace TTSP {
             });
         }
 
-        return std::make_pair(handlers.at(current_handler_index).GetParameter(), points);
+        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), GetCurrentPoints(), points);
+    }
+
+    const OptimizationParameterPoints AnnealingOptimizer::GetCurrentPoints() const noexcept {
+        OptimizationParameterPoints points(space.GetParameters().size());
+        std::transform(handlers.cbegin(), handlers.cend(), points.begin(), [](const AnnealingParameterHandler &handler) {
+            return std::make_pair(handler.GetParameter().GetName(), handler.GetCurrentValue());
+        });
+        return points;
     }
 
     AnnealingOptimizer::~AnnealingOptimizer() {}

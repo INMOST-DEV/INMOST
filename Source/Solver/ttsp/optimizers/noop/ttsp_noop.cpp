@@ -20,7 +20,11 @@ namespace TTSP {
             return std::make_pair(entry.first.GetName(), entry.first.GetDefaultValue());
         });
 
-        return std::make_pair(parameters.at(0).first, output);
+        return OptimizationParametersSuggestion(parameters.at(0).first, GetCurrentPoints(), output);
+    }
+
+    const OptimizationParameterPoints NoopOptimizer::GetCurrentPoints() const noexcept {
+        return space.GetPoints();
     }
 
     NoopOptimizer::~NoopOptimizer() {}

@@ -46,7 +46,11 @@ namespace TTSP {
             return std::make_pair(entry.first.GetName(), best_value);
         });
 
-        return std::make_pair(parameters.at(0).first, output);
+        return OptimizationParametersSuggestion(parameters.at(0).first, GetCurrentPoints(), output);
+    }
+
+    const OptimizationParameterPoints BruteforceOptimizer::GetCurrentPoints() const noexcept {
+        return space.GetPoints();
     }
 
     BruteforceOptimizer::~BruteforceOptimizer() {}

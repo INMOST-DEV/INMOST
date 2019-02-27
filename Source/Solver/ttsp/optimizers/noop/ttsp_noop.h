@@ -17,6 +17,8 @@ namespace TTSP {
                                                                                                       const OptimizationParameterPoints &,
                                                                                                       void *)> &invoke, void *data) override;
 
+        const OptimizationParameterPoints GetCurrentPoints() const noexcept override;
+
         virtual ~NoopOptimizer();
     };
 
