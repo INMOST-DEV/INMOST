@@ -19,10 +19,11 @@ namespace TTSP {
     class AlternatingParameterHandler {
     private:
         const OptimizationParameter &parameter;
-        std::size_t direction;
-        std::size_t current_index;
+        std::size_t                 direction;
+        std::size_t                 current_index;
     public:
         explicit AlternatingParameterHandler(const OptimizationParameter &parameter);
+
         AlternatingParameterHandler(const AlternatingParameterHandler &other);
 
         const OptimizationParameter &GetParameter() const;
@@ -40,19 +41,19 @@ namespace TTSP {
 
     class AlternatingOptimizer : public OptimizerInterface {
     private:
-        std::size_t current_handler_index;
+        std::size_t                              current_handler_index;
         std::vector<AlternatingParameterHandler> handlers;
     public:
         AlternatingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
-        OptimizationParameterPoints MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                              INMOST::Sparse::Vector &RHS) override;
+        OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                      const OptimizationParameterPoints &,
+                                                                                                      void *)> &invoke, void *data) override;
 
         virtual ~AlternatingOptimizer();
     };
 
 }
-
 
 
 #endif //INMOST_TTSP_ALTERNATING_H

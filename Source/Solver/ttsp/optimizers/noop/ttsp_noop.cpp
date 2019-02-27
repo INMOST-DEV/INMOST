@@ -9,8 +9,9 @@ namespace TTSP {
     NoopOptimizer::NoopOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity) {}
 
-    OptimizationParameterPoints NoopOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                                         INMOST::Sparse::Vector &RHS) {
+    OptimizationParametersSuggestion NoopOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                 const OptimizationParameterPoints &,
+                                                                                                                 void *)> &invoke, void *data) {
         const OptimizationParameters &parameters = space.GetParameters();
 
         OptimizationParameterPoints output(parameters.size());
@@ -19,7 +20,7 @@ namespace TTSP {
             return std::make_pair(entry.first.GetName(), entry.first.GetDefaultValue());
         });
 
-        return output;
+        return std::make_pair(parameters.at(0).first, output);
     }
 
     NoopOptimizer::~NoopOptimizer() {}

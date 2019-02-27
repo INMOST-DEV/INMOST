@@ -10,52 +10,43 @@ namespace TTSP {
     BruteforceOptimizer::BruteforceOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity) {}
 
-    OptimizationParameterPoints BruteforceOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                                               INMOST::Sparse::Vector &RHS) {
+    OptimizationParametersSuggestion BruteforceOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                       const OptimizationParameterPoints &,
+                                                                                                                       void *)> &invoke, void *data) {
 
-        const OptimizationParameters &parameters = space.GetParameters();
+        const OptimizationParameters      &parameters = space.GetParameters();
+        const OptimizationParameterPoints &before     = space.GetPoints();
 
         OptimizationParameterPoints output(parameters.size());
 
         std::transform(parameters.begin(), parameters.end(), output.begin(), [&](const OptimizationParametersEntry &entry) {
             const std::vector<double> &values = entry.first.GetValues();
 
-            double tmp_time   = 0.0;
-            double best_time  = -1.0;
-            double best_value = 0.0;
+            double best_metrics = -1.0;
+            double best_value   = 0.0;
 
             std::for_each(values.begin(), values.end(), [&](double value) {
                 std::cout << "[TTSP] [Bruteforce] Solving with " << entry.first.GetName() << " = " << value << "\t\t";
 
-                solver.SetParameter(entry.first.GetName(), INMOST::to_string(value));
+                const OptimizationParameterPoints &after = space.GetPointsWithChangedParameter(entry.first, value);
 
-                INMOST::Sparse::Vector SOL("SOL", RHS.GetFirstIndex(), RHS.GetLastIndex());
-                std::fill(SOL.Begin(), SOL.End(), 0.0);
+                OptimizationFunctionInvokeResult result = invoke(before, after, data);
 
-                INMOST::MPIBarrier();
+                bool   is_solved = result.first;
+                double metrics   = result.second;
 
-                tmp_time = Timer();
-                solver.SetMatrix(matrix);
-                bool is_solved = solver.Solve(RHS, SOL);
-
-                INMOST::MPIBarrier();
-
-                double time = Timer() - tmp_time;
-
-                if (is_solved && (best_time < 0 || time < best_time)) {
-                    best_time  = time;
-                    best_value = value;
+                if (is_solved && (best_metrics < 0 || metrics < best_metrics)) {
+                    best_metrics = metrics;
+                    best_value   = value;
                 }
 
-                std::cout << "| Time = " << time << "\t" << is_solved << std::endl;
+                std::cout << "| Metrics = " << metrics << "\t" << is_solved << std::endl;
             });
-
-            solver.SetParameter(entry.first.GetName(), INMOST::to_string(best_value));
 
             return std::make_pair(entry.first.GetName(), best_value);
         });
 
-        return output;
+        return std::make_pair(parameters.at(0).first, output);
     }
 
     BruteforceOptimizer::~BruteforceOptimizer() {}

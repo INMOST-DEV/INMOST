@@ -73,8 +73,9 @@ namespace TTSP {
         });
     }
 
-    OptimizationParameterPoints AlternatingOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                                                INMOST::Sparse::Vector &RHS) {
+    OptimizationParametersSuggestion AlternatingOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                        const OptimizationParameterPoints &,
+                                                                                                                        void *)> &invoke, void *data) {
 
         OptimizationParameterPoints points(space.GetParameters().size());
 
@@ -97,7 +98,7 @@ namespace TTSP {
             const OptimizationParameterResult &last        = results.at(0);
             const OptimizationParameterResult &before_last = results.at(1);
 
-            if (last.IsSolved() && (last.GetTime() < before_last.GetTime())) {
+            if (last.IsGood() && (last.GetMetrics() < before_last.GetMetrics())) {
                 current.UpdateIndex(current.NextIndex());
             } else {
                 current.NextDirection();
@@ -114,7 +115,7 @@ namespace TTSP {
             });
         }
 
-        return points;
+        return std::make_pair(handlers.at(current_handler_index).GetParameter(), points);
     }
 
     AlternatingOptimizer::~AlternatingOptimizer() {}

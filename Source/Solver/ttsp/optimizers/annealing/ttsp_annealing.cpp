@@ -217,8 +217,9 @@ namespace TTSP {
         });
     }
 
-    OptimizationParameterPoints AnnealingOptimizer::MakeOptimizationIteration(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix,
-                                                                              INMOST::Sparse::Vector &RHS) {
+    OptimizationParametersSuggestion AnnealingOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                      const OptimizationParameterPoints &,
+                                                                                                                      void *)> &invoke, void *data) {
 
         OptimizationParameterPoints points(space.GetParameters().size());
 
@@ -239,14 +240,14 @@ namespace TTSP {
             const OptimizationParameterResult &before_last = results.at(1);
 
             double temp    = h.GetCurrentTemp();
-            double delta_e = last.GetTime() - before_last.GetTime();
+            double delta_e = last.GetMetrics() - before_last.GetMetrics();
             double et      = 1.0 / (1.0 + std::exp(delta_e / temp));
             //double h = std::exp(-delta_e / temp);
             double alpha   = h.GetRandom();
 
 
-            if (last.IsSolved() && ((delta_e < 0.0) || alpha < et)) {
-                double update_value = last.GetPoints().at(current_handler_index).second;
+            if (last.IsGood() && ((delta_e < 0.0) || alpha < et)) {
+                double update_value = last.GetPointsAfter().at(current_handler_index).second;
                 h.SetValue(update_value);
             }
 
@@ -258,7 +259,7 @@ namespace TTSP {
             });
         }
 
-        return points;
+        return std::make_pair(handlers.at(current_handler_index).GetParameter(), points);
     }
 
     AnnealingOptimizer::~AnnealingOptimizer() {}

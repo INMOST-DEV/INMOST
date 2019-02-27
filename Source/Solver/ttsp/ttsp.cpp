@@ -48,33 +48,33 @@ namespace TTSP {
 
     }
 
-    const std::string &OptimizationParameter::GetName() const {
+    const std::string &OptimizationParameter::GetName() const noexcept {
         return name;
     }
 
-    const std::vector<double> &OptimizationParameter::GetValues() const {
+    const std::vector<double> &OptimizationParameter::GetValues() const noexcept {
         return values;
     }
 
-    double OptimizationParameter::GetMinimalValue() const {
+    double OptimizationParameter::GetMinimalValue() const noexcept {
         return values.at(0);
     }
 
-    double OptimizationParameter::GetMaximumValue() const {
+    double OptimizationParameter::GetMaximumValue() const noexcept {
         return values.at(values.size() - 1);
     }
 
-    double OptimizationParameter::GetClosestTo(double to) const {
+    double OptimizationParameter::GetClosestTo(double to) const noexcept {
         return *std::min_element(values.begin(), values.end(), [to](double x, double y) {
             return std::abs(x - to) < std::abs(y - to);
         });
     }
 
-    const std::size_t OptimizationParameter::GetValuesCount() const {
+    std::size_t OptimizationParameter::GetValuesCount() const noexcept {
         return values.size();
     }
 
-    const double &OptimizationParameter::GetDefaultValue() const {
+    double OptimizationParameter::GetDefaultValue() const noexcept {
         return default_value;
     }
 
@@ -102,30 +102,39 @@ namespace TTSP {
         return *this;
     }
 
-    bool OptimizationParametersSpace::isSolverNameMatch(const std::string &solver_name) const {
+    bool OptimizationParametersSpace::isSolverNameMatch(const std::string &solver_name) const noexcept {
         return this->solver_name == solver_name;
     }
 
-    bool OptimizationParametersSpace::isSolverPrefixMatch(const std::string &solver_prefix) const {
+    bool OptimizationParametersSpace::isSolverPrefixMatch(const std::string &solver_prefix) const noexcept {
         return this->solver_prefix == solver_prefix;
     }
 
-    const std::string &OptimizationParametersSpace::GetSolverName() const {
+    const std::string &OptimizationParametersSpace::GetSolverName() const noexcept {
         return solver_name;
     }
 
-    const std::string &OptimizationParametersSpace::GetSolverPrefix() const {
+    const std::string &OptimizationParametersSpace::GetSolverPrefix() const noexcept {
         return solver_prefix;
     }
 
-    const OptimizationParameters &OptimizationParametersSpace::GetParameters() const {
+    const OptimizationParameters &OptimizationParametersSpace::GetParameters() const noexcept {
         return parameters;
     }
 
-    const OptimizationParameterPoints OptimizationParametersSpace::GetPoints() const {
+    const OptimizationParameterPoints OptimizationParametersSpace::GetPoints() const noexcept {
         OptimizationParameterPoints points(parameters.size());
         std::transform(parameters.begin(), parameters.end(), points.begin(), [](const OptimizationParametersEntry &p) {
             return std::make_pair(p.first.GetName(), p.second);
+        });
+        return points;
+    }
+
+    const OptimizationParameterPoints OptimizationParametersSpace::GetPointsWithChangedParameter(const OptimizationParameter &parameter,
+                                                                                                 double value) const noexcept {
+        OptimizationParameterPoints points(parameters.size());
+        std::transform(parameters.begin(), parameters.end(), points.begin(), [&parameter, value](const OptimizationParametersEntry &p) {
+            return p.first.GetName() == parameter.GetName() ? std::make_pair(p.first.GetName(), value) : std::make_pair(p.first.GetName(), p.second);
         });
         return points;
     }
@@ -137,20 +146,21 @@ namespace TTSP {
     }
 
     void OptimizationParameterResult::swap(OptimizationParameterResult &left, OptimizationParameterResult &right) {
-        std::swap(left.points, right.points);
-        std::swap(left.preconditioner_time, right.preconditioner_time);
-        std::swap(left.solve_time, right.solve_time);
-        std::swap(left.is_solved, right.is_solved);
+        std::swap(left.before, right.before);
+        std::swap(left.after, right.after);
+        std::swap(left.metrics, right.metrics);
+        std::swap(left.is_good, right.is_good);
     }
 
-    OptimizationParameterResult::OptimizationParameterResult(const OptimizationParameterPoints &points,
-                                                             double preconditioner_time, double solve_time, bool is_solved) :
-            points(points), preconditioner_time(preconditioner_time), solve_time(solve_time), is_solved(is_solved) {}
+    OptimizationParameterResult::OptimizationParameterResult(const OptimizationParameter &changed, const OptimizationParameterPoints &before,
+                                                             const OptimizationParameterPoints &after,
+                                                             double metrics, bool is_good) :
+            changed(changed), before(before), after(after), metrics(metrics), is_good(is_good) {}
 
     OptimizationParameterResult::OptimizationParameterResult(const OptimizationParameterResult &other) :
-            points(other.points), preconditioner_time(other.preconditioner_time), solve_time(other.solve_time), is_solved(other.is_solved) {}
+            changed(other.changed), before(other.before), after(other.after), metrics(other.metrics), is_good(other.is_good) {}
 
-    OptimizationParameterResult::OptimizationParameterResult(OptimizationParameterResult &&other) noexcept {
+    OptimizationParameterResult::OptimizationParameterResult(OptimizationParameterResult &&other) noexcept : changed(std::move(other).changed) {
         OptimizationParameterResult::swap(*this, other);
     }
 
@@ -160,25 +170,22 @@ namespace TTSP {
         return *this;
     }
 
-    const OptimizationParameterPoints &OptimizationParameterResult::GetPoints() const {
-        return points;
+    const OptimizationParameterPoints &OptimizationParameterResult::GetPointsBefore() const noexcept {
+        return before;
     }
 
-    const double &OptimizationParameterResult::GetPreconditionerTime() const {
-        return preconditioner_time;
+    const OptimizationParameterPoints &OptimizationParameterResult::GetPointsAfter() const noexcept {
+        return after;
     }
 
-    const double &OptimizationParameterResult::GetSolveTime() const {
-        return solve_time;
+    double OptimizationParameterResult::GetMetrics() const noexcept {
+        return metrics;
     }
 
-    double OptimizationParameterResult::GetTime() const {
-        return preconditioner_time + solve_time;
+    bool OptimizationParameterResult::IsGood() const noexcept {
+        return is_good;
     }
 
-    bool OptimizationParameterResult::IsSolved() const {
-        return is_solved;
-    }
 
     void OptimizationParameterResultsBuffer::swap(OptimizationParameterResultsBuffer &left,
                                                   OptimizationParameterResultsBuffer &right) {
@@ -201,7 +208,7 @@ namespace TTSP {
         return *this;
     }
 
-    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::begin() const {
+    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::begin() const noexcept {
         return buffer.crbegin();
     }
 
@@ -209,7 +216,7 @@ namespace TTSP {
         return *(begin() + index);
     }
 
-    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::end() const {
+    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::end() const noexcept {
         return buffer.crend();
     }
 
@@ -220,94 +227,56 @@ namespace TTSP {
         buffer.push_back(result);
     }
 
-    std::size_t OptimizationParameterResultsBuffer::size() const {
+    std::size_t OptimizationParameterResultsBuffer::size() const noexcept {
         return buffer.size();
     }
 
-    bool OptimizerInterface::Solve(INMOST::Solver &solver, INMOST::Sparse::Matrix &matrix, INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL,
-                                   GetPreconditionerTimeFromSolverLambda preconditioner_time, GetSolveTimeFromSolverLambda solve_time) {
-        int rank = INMOST::MPIGetRank();
+    bool OptimizationParameterResultsBuffer::IsEmpty() const noexcept {
+        return buffer.size() == 0;
+    }
 
-        const OptimizationParameterPoints &current = space.GetPoints();
+    bool OptimizationParameterResultsBuffer::IsLastResultSuccessful() const noexcept {
+        return IsEmpty() ? false : (*begin()).IsGood();
+    }
 
-        std::for_each(current.begin(), current.end(), [&solver](const OptimizationParameterPoint &p) {
-            solver.SetParameter(p.first, INMOST::to_string(p.second));
+    bool OptimizationParameterResultsBuffer::IsSuccessfulResultExist() const noexcept {
+        return std::find_if(begin(), end(), [](const OptimizationParameterResult &r) {
+            return r.IsGood();
+        }) != end();
+    }
+
+    const OptimizationParameterResult &OptimizationParameterResultsBuffer::GetLastSuccessfulResult() const {
+        return *std::find_if(begin(), end(), [](const OptimizationParameterResult &r) {
+            return r.IsGood();
         });
-
-        solver.SetMatrix(matrix);
-        bool solved = solver.Solve(RHS, SOL);
-
-        SaveResult(current, solver, solved, preconditioner_time, solve_time);
-
-        const OptimizationParameterPoints &update = this->MakeOptimizationIteration(solver, matrix, RHS);
-
-        space.Update(update);
-
-        // On Level1 print some metadata information about solution and used parameters
-        if (rank == 0 && versbosity > OptimizerVerbosityLevel::Level0) {
-            std::string metadata = solver.SolutionMetadataLine("\t");
-            std::for_each(current.begin(), current.end(), [&metadata](const OptimizationParameterPoint &p) {
-                metadata += ("\t" + INMOST::to_string(p.second));
-            });
-            std::cout << metadata << std::endl;
-        }
-
-        // On Level2 also print information about next parameters
-        if (rank == 0 && versbosity > OptimizerVerbosityLevel::Level1) {
-            std::cout << std::endl << "Next optimization parameters found for current iteration:" << std::endl;
-            const TTSP::OptimizationParameterPoints &best = GetSpace().GetPoints();
-            std::for_each(best.begin(), best.end(), [](const TTSP::OptimizationParameterPoint &p) {
-                std::cout << "\t" << p.first << " = " << p.second << std::endl;
-            });
-        }
-
-        // On Level3 also print additional information about buffer
-        if (rank == 0 && versbosity > OptimizerVerbosityLevel::Level2) {
-            std::cout << std::endl << "Optimization results buffer output:" << std::endl;
-            const TTSP::OptimizationParameterResultsBuffer &results = GetResults();
-
-            int index = 1;
-            std::for_each(results.begin(), results.end(), [&index](const TTSP::OptimizationParameterResult &result) {
-                std::cout << "\t" << index++ << "\t" << " [";
-
-                const TTSP::OptimizationParameterPoints &points = result.GetPoints();
-                std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &point) {
-                    std::cout << " " << point.first << "=" << point.second << " ";
-                });
-
-                std::cout << "] " << result.GetPreconditionerTime() << "\t" << result.GetSolveTime() << "\t" << result.GetTime() << std::endl;
-            });
-        }
-
-        return solved;
     }
 
-    void OptimizerInterface::SaveResult(const OptimizationParameterPoints &points, const INMOST::Solver &solver, bool is_solved,
-                                        GetPreconditionerTimeFromSolverLambda preconditioner_time, GetSolveTimeFromSolverLambda solve_time) {
-        results.push(OptimizationParameterResult(points, preconditioner_time(solver), solve_time(solver), is_solved));
+    void OptimizerInterface::SaveResult(const OptimizationParameter &changed,
+                                        const OptimizationParameterPoints &before, const OptimizationParameterPoints &after, double metrics, bool is_good) {
+        results.push(OptimizationParameterResult(changed, before, after, metrics, is_good));
     }
 
-    const OptimizationParametersSpace &OptimizerInterface::GetSpace() const {
+    const OptimizationParametersSpace &OptimizerInterface::GetSpace() const noexcept {
         return space;
     }
 
-    const OptimizationParameterResultsBuffer &OptimizerInterface::GetResults() const {
+    const OptimizationParameterResultsBuffer &OptimizerInterface::GetResults() const noexcept {
         return results;
     };
 
-    void OptimizerInterface::SetVerbosityLevel(OptimizerVerbosityLevel level) {
-        versbosity = level;
+    void OptimizerInterface::SetVerbosityLevel(OptimizerVerbosityLevel level) noexcept {
+        verbosity = level;
     }
 
-    OptimizerVerbosityLevel OptimizerInterface::GetVerbosityLevel() const {
-        return versbosity;
+    OptimizerVerbosityLevel OptimizerInterface::GetVerbosityLevel() const noexcept {
+        return verbosity;
     }
 
     void OptimizerInterface::SetProperty(const std::string &name, const std::string &value) {
         properties[name] = value;
     }
 
-    bool OptimizerInterface::HasProperty(const std::string &name) const {
+    bool OptimizerInterface::HasProperty(const std::string &name) const noexcept {
         return properties.find(name) != properties.end();
     }
 
@@ -315,20 +284,16 @@ namespace TTSP {
         return properties.at(name);
     }
 
-    double OptimizerInterface::DefaultGetPreconditionerTime(const INMOST::Solver &solver) {
-        return solver.PreconditionerTime();
+    void OptimizerInterface::UpdateSpacePoints(const OptimizationParameterPoints &update) {
+        space.Update(update);
     }
 
-    double OptimizerInterface::DefaultGetSolveTime(const INMOST::Solver &solver) {
-        return solver.IterationsTime();
-    }
-
-    bool OptimizerInterface::isOptimizerAvailable(const std::string &type) {
-        std::vector<std::string> available = OptimizerInterface::getAvailableOptimizers();
+    bool OptimizerInterface::IsOptimizerAvailable(const std::string &type) {
+        std::vector<std::string> available = OptimizerInterface::GetAvailableOptimizers();
         return std::find(available.begin(), available.end(), type) != available.end();
     }
 
-    std::vector<std::string> OptimizerInterface::getAvailableOptimizers() {
+    std::vector<std::string> OptimizerInterface::GetAvailableOptimizers() {
         std::vector<std::string> available;
 
         available.emplace_back("noop");
@@ -339,8 +304,9 @@ namespace TTSP {
         return available;
     }
 
-    OptimizerInterface *OptimizerInterface::getOptimizer(const std::string &type,
-                                                         const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) {
+    OptimizerInterface *OptimizerInterface::GetOptimizer(const std::string &type,
+                                                         const OptimizationParametersSpace &space, const OptimizerProperties &properties,
+                                                         std::size_t buffer_capacity) {
         if (type == "noop") return new NoopOptimizer(space, properties, buffer_capacity);
         if (type == "bruteforce") return new BruteforceOptimizer(space, properties, buffer_capacity);
         if (type == "alternating") return new AlternatingOptimizer(space, properties, buffer_capacity);
