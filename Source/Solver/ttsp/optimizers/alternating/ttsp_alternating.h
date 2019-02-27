@@ -19,8 +19,8 @@ namespace TTSP {
     class AlternatingParameterHandler {
     private:
         const OptimizationParameter &parameter;
-        std::size_t                 direction;
         std::size_t                 current_index;
+        mutable std::size_t         direction;
     public:
         explicit AlternatingParameterHandler(const OptimizationParameter &parameter);
 
@@ -32,7 +32,7 @@ namespace TTSP {
 
         std::size_t GetCurrentIndex() const;
 
-        std::size_t NextIndex();
+        std::size_t NextIndex() const;
 
         void NextDirection();
 
@@ -43,14 +43,15 @@ namespace TTSP {
     private:
         std::size_t                              current_handler_index;
         std::vector<AlternatingParameterHandler> handlers;
+    protected:
+        void UpdateSpaceWithLatestResults() override;
+
     public:
         AlternatingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                       const OptimizationParameterPoints &,
-                                                                                                      void *)> &invoke, void *data) override;
-
-        const OptimizationParameterPoints GetCurrentPoints() const noexcept override;
+                                                                                                      void *)> &invoke, void *data) const override;
 
         virtual ~AlternatingOptimizer();
     };

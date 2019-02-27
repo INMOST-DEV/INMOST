@@ -11,7 +11,7 @@ namespace TTSP {
 
     OptimizationParametersSuggestion NoopOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                  const OptimizationParameterPoints &,
-                                                                                                                 void *)> &invoke, void *data) {
+                                                                                                                 void *)> &invoke, void *data) const {
         const OptimizationParameters &parameters = space.GetParameters();
 
         OptimizationParameterPoints output(parameters.size());
@@ -20,11 +20,7 @@ namespace TTSP {
             return std::make_pair(entry.first.GetName(), entry.first.GetDefaultValue());
         });
 
-        return OptimizationParametersSuggestion(parameters.at(0).first, GetCurrentPoints(), output);
-    }
-
-    const OptimizationParameterPoints NoopOptimizer::GetCurrentPoints() const noexcept {
-        return space.GetPoints();
+        return OptimizationParametersSuggestion(parameters.at(0).first, space.GetPoints(), space.GetMetrics(), output);
     }
 
     NoopOptimizer::~NoopOptimizer() {}

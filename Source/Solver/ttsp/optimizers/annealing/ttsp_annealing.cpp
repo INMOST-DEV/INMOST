@@ -219,55 +219,34 @@ namespace TTSP {
 
     OptimizationParametersSuggestion AnnealingOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                       const OptimizationParameterPoints &,
-                                                                                                                      void *)> &invoke, void *data) {
+                                                                                                                      void *)> &invoke, void *data) const {
 
         OptimizationParameterPoints points(space.GetParameters().size());
 
-        if (results.size() < 2) {
-            if (results.size() == 0) {
-                std::transform(handlers.begin(), handlers.end(), points.begin(), [](const AnnealingParameterHandler &h) {
-                    return std::make_pair(h.GetParameter().GetName(), h.GetCurrentValue());
-                });
-            } else if (results.size() == 1) {
-                int i = 0;
-                std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AnnealingParameterHandler &h) {
-                    return std::make_pair(h.GetParameter().GetName(), i++ == current_handler_index ? h.GetNextValue() : h.GetCurrentValue());
-                });
-            }
-        } else {
-            AnnealingParameterHandler         &h           = handlers.at(current_handler_index);
-            const OptimizationParameterResult &last        = results.at(0);
-            const OptimizationParameterResult &before_last = results.at(1);
+        int i = 0;
+        std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AnnealingParameterHandler &h) {
+            return std::make_pair(h.GetParameter().GetName(), i++ == current_handler_index ? h.GetNextValue() : h.GetCurrentValue());
+        });
 
-            double temp    = h.GetCurrentTemp();
-            double delta_e = last.GetMetricsAfter() - before_last.GetMetricsAfter();
-            double et      = 1.0 / (1.0 + std::exp(delta_e / temp));
-            //double h = std::exp(-delta_e / temp);
-            double alpha   = h.GetRandom();
-
-
-            if (last.IsGood() && ((delta_e < 0.0) || alpha < et)) {
-                double update_value = last.GetPointsAfter().at(current_handler_index).second;
-                h.SetValue(update_value);
-            }
-
-            current_handler_index = (current_handler_index + 1) % (handlers.size());
-
-            int i = 0;
-            std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](AnnealingParameterHandler &h) {
-                return std::make_pair(h.GetParameter().GetName(), i++ == current_handler_index ? h.GetNextValue() : h.GetCurrentValue());
-            });
-        }
-
-        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), GetCurrentPoints(), points);
+        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), space.GetPoints(), space.GetMetrics(), points);
     }
 
-    const OptimizationParameterPoints AnnealingOptimizer::GetCurrentPoints() const noexcept {
-        OptimizationParameterPoints points(space.GetParameters().size());
-        std::transform(handlers.cbegin(), handlers.cend(), points.begin(), [](const AnnealingParameterHandler &handler) {
-            return std::make_pair(handler.GetParameter().GetName(), handler.GetCurrentValue());
-        });
-        return points;
+    void AnnealingOptimizer::UpdateSpaceWithLatestResults() {
+        AnnealingParameterHandler         &h    = handlers.at(current_handler_index);
+        const OptimizationParameterResult &last = results.at(0);
+
+        double temp    = h.GetCurrentTemp();
+        double delta_e = last.GetMetricsAfter() - last.GetMetricsBefore();
+        double et      = 1.0 / (1.0 + std::exp(delta_e / temp));
+        double alpha   = h.GetRandom();
+
+        if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || ((delta_e < 0.0) || alpha < et))) {
+            double update_value = last.GetPointsAfter().at(current_handler_index).second;
+            h.SetValue(update_value);
+            space.Update(current_handler_index, update_value, last.GetMetricsAfter());
+        }
+
+        current_handler_index = (current_handler_index + 1) % (handlers.size());
     }
 
     AnnealingOptimizer::~AnnealingOptimizer() {}

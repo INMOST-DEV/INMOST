@@ -24,7 +24,7 @@ namespace TTSP {
         return current_index;
     }
 
-    std::size_t AlternatingParameterHandler::NextIndex() {
+    std::size_t AlternatingParameterHandler::NextIndex() const {
         std::size_t count = parameter.GetValues().size() - 1;
         std::size_t index = current_index;
 
@@ -75,57 +75,36 @@ namespace TTSP {
 
     OptimizationParametersSuggestion AlternatingOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                         const OptimizationParameterPoints &,
-                                                                                                                        void *)> &invoke, void *data) {
+                                                                                                                        void *)> &invoke, void *data) const {
 
         OptimizationParameterPoints points(space.GetParameters().size());
 
-        if (results.size() < 2) {
-            if (results.size() == 0) {
-                std::transform(handlers.begin(), handlers.end(), points.begin(), [](const AlternatingParameterHandler &h) {
-                    return std::make_pair(h.GetParameter().GetName(), h.GetParameter().GetValues().at(h.GetCurrentIndex()));
-                });
-            } else if (results.size() == 1) {
-                int i = 0;
-                std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](AlternatingParameterHandler &h) {
-                    return std::make_pair(
-                            h.GetParameter().GetName(),
-                            h.GetParameter().GetValues().at(i++ == current_handler_index ? h.NextIndex() : h.GetCurrentIndex())
-                    );
-                });
-            }
-        } else {
-            AlternatingParameterHandler       &current     = handlers.at(current_handler_index);
-            const OptimizationParameterResult &last        = results.at(0);
-            const OptimizationParameterResult &before_last = results.at(1);
+        int i = 0;
+        std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AlternatingParameterHandler &h) {
+            return std::make_pair(
+                    h.GetParameter().GetName(),
+                    h.GetParameter().GetValues().at(i++ == current_handler_index ? h.NextIndex() : h.GetCurrentIndex())
+            );
+        });
 
-            if (last.IsGood() && (last.GetMetricsAfter() < before_last.GetMetricsAfter())) {
-                current.UpdateIndex(current.NextIndex());
-            } else {
-                current.NextDirection();
-            }
-
-            current_handler_index = (current_handler_index + 1) % (handlers.size());
-
-            int i = 0;
-            std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](AlternatingParameterHandler &h) {
-                return std::make_pair(
-                        h.GetParameter().GetName(),
-                        h.GetParameter().GetValues().at(i++ == current_handler_index ? h.NextIndex() : h.GetCurrentIndex())
-                );
-            });
-        }
-
-        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), GetCurrentPoints(), points);
+        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), space.GetPoints(), space.GetMetrics(), points);
     }
 
-    const OptimizationParameterPoints AlternatingOptimizer::GetCurrentPoints() const noexcept {
-        OptimizationParameterPoints points(space.GetParameters().size());
-        std::transform(handlers.cbegin(), handlers.cend(), points.begin(), [](const AlternatingParameterHandler &h) {
-            return std::make_pair(h.GetParameter().GetName(), h.GetParameter().GetValues().at(h.GetCurrentIndex()));
-        });
-        return points;
+    void AlternatingOptimizer::UpdateSpaceWithLatestResults() {
+        AlternatingParameterHandler       &current = handlers.at(current_handler_index);
+        const OptimizationParameterResult &last    = results.at(0);
+
+        if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || last.GetMetricsAfter() < last.GetMetricsBefore())) {
+            current.UpdateIndex(current.NextIndex());
+            space.Update(current_handler_index, space.GetParameter(current_handler_index).GetValues().at(current.GetCurrentIndex()), last.GetMetricsAfter());
+        } else {
+            current.NextDirection();
+        }
+
+        current_handler_index = (current_handler_index + 1) % (handlers.size());
     }
 
     AlternatingOptimizer::~AlternatingOptimizer() {}
+
 
 }

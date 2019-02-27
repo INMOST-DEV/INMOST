@@ -110,14 +110,18 @@ namespace TTSP {
     private:
         const OptimizationParameter &changed;
         OptimizationParameterPoints before;
+        double                      metrics_before;
         OptimizationParameterPoints after;
     public:
         OptimizationParametersSuggestion(const OptimizationParameter &changed,
-                                         const OptimizationParameterPoints &before, const OptimizationParameterPoints &after);
+                                         const OptimizationParameterPoints &before, double metrics_before,
+                                         const OptimizationParameterPoints &after);
 
         const OptimizationParameter &GetChangedParameter() const noexcept;
 
         const OptimizationParameterPoints &GetPointsBefore() const noexcept;
+
+        double GetMetricsBefore() const noexcept;
 
         const OptimizationParameterPoints &GetPointsAfter() const noexcept;
     };
@@ -128,7 +132,8 @@ namespace TTSP {
     private:
         std::string            solver_name;           /// A name of a solver to which parameters are belong to
         std::string            solver_prefix;         /// Solver prefix
-        OptimizationParameters parameters; /// List of optimization parameters in this space
+        OptimizationParameters parameters;            /// List of optimization parameters in this space
+        double                 metrics;               /// Metrics value for current optimization parameters
 
         static void swap(OptimizationParametersSpace &left, OptimizationParametersSpace &right);
 
@@ -138,7 +143,7 @@ namespace TTSP {
         /// @param solver_prefix - Solver prefix
         /// @param parameters    - List of optimization parameters in this space
         OptimizationParametersSpace(const std::string &solver_name, const std::string &solver_prefix,
-                                    const OptimizationParameters &parameters);
+                                    const OptimizationParameters &parameters, double metrics);
 
         /// Copy constructor
         /// @param other - OptimizationParametersSpace to make copy of
@@ -169,13 +174,24 @@ namespace TTSP {
         /// Getter for parameters of this space
         const OptimizationParameters &GetParameters() const noexcept;
 
+        /// Getter for parameter entry of this space by index
+        const OptimizationParametersEntry &GetParameterEntry(std::size_t index) const;
+
+        /// Getter for parameter reference of this space by index
+        const OptimizationParameter &GetParameter(std::size_t index) const;
+
         /// Getter for slice of parameters of this space
         const OptimizationParameterPoints GetPoints() const noexcept;
+
+        /// Getter for metrics for current parameters of this space
+        double GetMetrics() const noexcept;
 
         /// Getter for slice of parameters of this space with changed parameter
         const OptimizationParameterPoints GetPointsWithChangedParameter(const OptimizationParameter &parameter, double value) const noexcept;
 
-        void Update(const OptimizationParameterPoints &update);
+        void Update(const OptimizationParameterPoints &update, double metrics);
+
+        void Update(std::size_t index, double value, double metrics);
     };
 
     /// This class is used to store timings result for some optimization parameter points
@@ -298,38 +314,35 @@ namespace TTSP {
     protected:
         OptimizationParameterResultsBuffer results;
         OptimizationParametersSpace        space;
-        OptimizerProperties                properties;
+        const OptimizerProperties          properties;
+
+        virtual void UpdateSpaceWithLatestResults();
+
     public:
         OptimizerInterface(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
                 space(space), properties(properties), results(buffer_capacity) {};
 
         virtual OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                               const OptimizationParameterPoints &,
-                                                                                                              void *)> &invoke, void *data) = 0;
-
-        virtual const OptimizationParameterPoints GetCurrentPoints() const noexcept = 0;
+                                                                                                              void *)> &invoke, void *data) const = 0;
 
         void SaveResult(const OptimizationParameter &changed,
                         const OptimizationParameterPoints &before, double metrics_before,
                         const OptimizationParameterPoints &after, double metrics_after, bool is_good);
 
-        void SaveResult(const OptimizationParameter &changed,
-                        const OptimizationParameterPoints &before,
-                        const OptimizationParameterPoints &after, double metrics_after, bool is_good);
+        void SaveResult(const OptimizationParameter &changed, const OptimizationParameterPoints &after, double metrics_after, bool is_good);
 
         const OptimizationParameterResultsBuffer &GetResults() const noexcept;
+
+        const OptimizationParameterPoints GetPoints() const noexcept;
 
         void SetVerbosityLevel(OptimizerVerbosityLevel level) noexcept;
 
         OptimizerVerbosityLevel GetVerbosityLevel() const noexcept;
 
-        void SetProperty(const std::string &name, const std::string &value);
-
         bool HasProperty(const std::string &name) const noexcept;
 
         const std::string &GetProperty(const std::string &name) const;
-
-        void UpdateSpacePoints(const OptimizationParameterPoints &update);
 
         virtual ~OptimizerInterface() {};
 

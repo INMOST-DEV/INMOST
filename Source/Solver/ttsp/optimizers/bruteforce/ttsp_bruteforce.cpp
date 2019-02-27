@@ -12,7 +12,7 @@ namespace TTSP {
 
     OptimizationParametersSuggestion BruteforceOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                        const OptimizationParameterPoints &,
-                                                                                                                       void *)> &invoke, void *data) {
+                                                                                                                       void *)> &invoke, void *data) const {
 
         const OptimizationParameters      &parameters = space.GetParameters();
         const OptimizationParameterPoints &before     = space.GetPoints();
@@ -46,11 +46,7 @@ namespace TTSP {
             return std::make_pair(entry.first.GetName(), best_value);
         });
 
-        return OptimizationParametersSuggestion(parameters.at(0).first, GetCurrentPoints(), output);
-    }
-
-    const OptimizationParameterPoints BruteforceOptimizer::GetCurrentPoints() const noexcept {
-        return space.GetPoints();
+        return OptimizationParametersSuggestion(parameters.at(0).first, space.GetPoints(), space.GetMetrics(), output);
     }
 
     BruteforceOptimizer::~BruteforceOptimizer() {}

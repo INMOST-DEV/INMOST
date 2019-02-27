@@ -85,14 +85,14 @@ namespace TTSP {
         std::size_t                            current_handler_index;
         std::vector<AnnealingParameterHandler> handlers;
         std::vector<double>                    values;
+    protected:
+        void UpdateSpaceWithLatestResults() override;
     public:
         AnnealingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                       const OptimizationParameterPoints &,
-                                                                                                      void *)> &invoke, void *data) override;
-
-        const OptimizationParameterPoints GetCurrentPoints() const noexcept override;
+                                                                                                      void *)> &invoke, void *data) const override;
 
         virtual ~AnnealingOptimizer();
     };

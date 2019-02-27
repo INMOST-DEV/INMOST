@@ -179,10 +179,9 @@ int main(int argc, char **argv) {
         properties["tau:use_closest"]  = "false";
         properties["tau:strict_bound"] = "false";
 
-        TTSP::OptimizationParametersSpace space(solverName, "test", parameters);
+        TTSP::OptimizationParametersSpace space(solverName, "test", parameters, -1.0);
 
-        TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::GetOptimizer(optimizerType, space, properties, 10);
-        if (optimizer == nullptr) {
+        if (!TTSP::OptimizerInterface::IsOptimizerAvailable(optimizerType)) {
             if (rank == 0) {
                 std::cout << "Optimizer " << optimizerType << " not found" << std::endl;
                 std::cout << "  Available optimizers:" << std::endl;
@@ -193,6 +192,8 @@ int main(int argc, char **argv) {
             }
             std::exit(0);
         }
+
+        TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::GetOptimizer(optimizerType, space, properties, 50);
 
         optimizer->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level1);
 
@@ -255,11 +256,7 @@ int main(int argc, char **argv) {
             bool   is_good = result.first;
             double metrics = result.second;
 
-            optimizer->SaveResult(suggestion.GetChangedParameter(), suggestion.GetPointsBefore(), suggestion.GetPointsAfter(), metrics, is_good);
-
-            if (is_good) {
-                optimizer->UpdateSpacePoints(suggestion.GetPointsAfter());
-            }
+            optimizer->SaveResult(suggestion.GetChangedParameter(), suggestion.GetPointsAfter(), metrics, is_good);
 
             TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level3;
 
@@ -275,7 +272,7 @@ int main(int argc, char **argv) {
             // On Level2 also print information about next parameters
             if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level1) {
                 std::cout << std::endl << "Next optimization parameters found for current iteration:" << std::endl;
-                const TTSP::OptimizationParameterPoints &points = optimizer->GetCurrentPoints();
+                const TTSP::OptimizationParameterPoints &points = optimizer->GetPoints();
                 std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &p) {
                     std::cout << "\t" << p.first << " = " << p.second << std::endl;
                 });
