@@ -1,11 +1,9 @@
-#include <utility>
+#ifndef INMOST_INMOST_TTSP_H
+#define INMOST_INMOST_TTSP_H
 
-//
-// Created by bvdmitri on 04.02.19.
-//
+#include "inmost.h"
 
-#ifndef INMOST_TTSP_H
-#define INMOST_TTSP_H
+#if defined(USE_TTSP)
 
 #include <vector>
 #include <algorithm>
@@ -338,5 +336,6 @@ namespace TTSP {
 
 };
 
+#endif
 
-#endif //INMOST_TTSP_H
+#endif //INMOST_INMOST_TTSP_H

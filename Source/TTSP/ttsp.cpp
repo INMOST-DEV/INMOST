@@ -2,11 +2,12 @@
 // Created by bvdmitri on 04.02.19.
 //
 
-#include <Source/Solver/ttsp/optimizers/noop/ttsp_noop.h>
-#include <Source/Solver/ttsp/optimizers/bruteforce/ttsp_bruteforce.h>
-#include <Source/Solver/ttsp/optimizers/alternating/ttsp_alternating.h>
-#include <Source/Solver/ttsp/optimizers/annealing/ttsp_annealing.h>
-#include "ttsp.h"
+#include <inmost_ttsp.h>
+
+#include "optimizers/noop/ttsp_noop.h"
+#include "optimizers/bruteforce/ttsp_bruteforce.h"
+#include "optimizers/alternating/ttsp_alternating.h"
+#include "optimizers/annealing/ttsp_annealing.h"
 
 namespace TTSP {
 

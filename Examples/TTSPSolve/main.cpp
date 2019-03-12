@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstdio>
 
-#include "Source/Solver/ttsp/ttsp.h"
+#include <inmost_ttsp.h>
 #include "series.h"
 
 using namespace INMOST;

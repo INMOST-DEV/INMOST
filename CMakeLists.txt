@@ -34,7 +34,7 @@ option(USE_SOLVER_MONDRIAAN "Use Mondriaan for matrix reordering" OFF)
 option(USE_SOLVER_PETSC "Use PETSc solvers" OFF)
 option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
-option(USE_SOLVER_TTSP_FEATURE "Use Trace and Tune Solver Parameters optimization toolkit" OFF)
+option(USE_TTSP "Use Trace and Tune Solver Parameters optimization toolkit" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
@@ -281,6 +281,7 @@ set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
                            Source/Headers/inmost_xml.h
                            Source/Headers/inmost_variable.h
                            Source/Headers/inmost_block_variable.h
+						   Source/Headers/inmost_ttsp.h
                            Source/Headers/container.hpp)
 
 
@@ -315,6 +316,7 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_block_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_ttsp.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp")
 
 install(FILES

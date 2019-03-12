@@ -5,7 +5,7 @@
 #ifndef INMOST_TTSP_ANNEALING_H
 #define INMOST_TTSP_ANNEALING_H
 
-#include <Source/Solver/ttsp/ttsp.h>
+#include <inmost_ttsp.h>
 #include <random>
 
 namespace TTSP {

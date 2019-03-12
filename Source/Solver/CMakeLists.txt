@@ -32,10 +32,6 @@ endif()
 if (USE_SOLVER_SUPERLU)
     add_subdirectory(solver_superlu)
 endif()
-
-if (USE_SOLVER_TTSP_FEATURE)
-    add_subdirectory(ttsp)
-endif()
 endif(USE_SOLVER)
 
 set(HEADER ${HEADER} PARENT_SCOPE)

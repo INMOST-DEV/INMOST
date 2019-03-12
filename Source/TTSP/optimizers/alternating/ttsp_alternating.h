@@ -5,7 +5,7 @@
 #ifndef INMOST_TTSP_ALTERNATING_H
 #define INMOST_TTSP_ALTERNATING_H
 
-#include <Source/Solver/ttsp/ttsp.h>
+#include <inmost_ttsp.h>
 
 namespace TTSP {
 
