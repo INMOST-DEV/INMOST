@@ -24,4 +24,7 @@
 #include "inmost_model.h"
 #include "inmost_xml.h"
 
+// temporary fix for GeRa
+bool IsMaster();
+
 #endif // INMOST_H_INCLUDED
