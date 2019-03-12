@@ -7,6 +7,7 @@
 
 #include <inmost_ttsp.h>
 #include "series.h"
+#include <Source/Misc/utils.h>
 
 using namespace INMOST;
 

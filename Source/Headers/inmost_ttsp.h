@@ -9,8 +9,6 @@
 #include <algorithm>
 #include <string>
 #include <deque>
-#include <inmost_solver.h>
-#include <Source/Misc/utils.h>
 
 namespace TTSP {
 
