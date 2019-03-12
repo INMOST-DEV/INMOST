@@ -2,6 +2,12 @@
 #ifndef INMOST_H_INCLUDED
 #define INMOST_H_INCLUDED
 
+// temporary fix for GeRa
+#ifndef Cout
+#define Cout std::cout
+#endif
+
+
 #include "inmost_common.h"
 #include "inmost_mesh.h"
 #include "inmost_dense.h"
