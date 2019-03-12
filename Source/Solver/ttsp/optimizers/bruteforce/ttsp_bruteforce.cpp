@@ -7,19 +7,19 @@
 namespace TTSP {
 
 
-    BruteforceOptimizer::BruteforceOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+    BruteforceOptimizer::BruteforceOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity) {}
 
     OptimizationParametersSuggestion BruteforceOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                        const OptimizationParameterPoints &,
                                                                                                                        void *)> &invoke, void *data) const {
 
-        const OptimizationParameters      &parameters = space.GetParameters();
-        const OptimizationParameterPoints &before     = space.GetPoints();
+        const OptimizationParameterEntries &entries = parameters.GetParameterEntries();
+        const OptimizationParameterPoints  &before  = parameters.GetPoints();
 
-        OptimizationParameterPoints output(parameters.size());
+        OptimizationParameterPoints output(entries.size());
 
-        std::transform(parameters.begin(), parameters.end(), output.begin(), [&](const OptimizationParametersEntry &entry) {
+        std::transform(entries.begin(), entries.end(), output.begin(), [&](const OptimizationParametersEntry &entry) {
             const std::vector<double> &values = entry.first.GetValues();
 
             double best_metrics = -1.0;
@@ -28,7 +28,7 @@ namespace TTSP {
             std::for_each(values.begin(), values.end(), [&](double value) {
                 std::cout << "[TTSP] [Bruteforce] Solving with " << entry.first.GetName() << " = " << value << "\t\t";
 
-                const OptimizationParameterPoints &after = space.GetPointsWithChangedParameter(entry.first, value);
+                const OptimizationParameterPoints &after = parameters.GetPointsWithChangedParameter(entry.first, value);
 
                 OptimizationFunctionInvokeResult result = invoke(before, after, data);
 
@@ -46,7 +46,7 @@ namespace TTSP {
             return std::make_pair(entry.first.GetName(), best_value);
         });
 
-        return OptimizationParametersSuggestion(parameters.at(0).first, space.GetPoints(), space.GetMetrics(), output);
+        return OptimizationParametersSuggestion(entries.at(0).first, parameters.GetPoints(), parameters.GetMetrics(), output);
     }
 
     BruteforceOptimizer::~BruteforceOptimizer() {}

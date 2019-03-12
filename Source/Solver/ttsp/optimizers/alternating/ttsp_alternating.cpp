@@ -64,9 +64,9 @@ namespace TTSP {
         current_index = index;
     }
 
-    AlternatingOptimizer::AlternatingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+    AlternatingOptimizer::AlternatingOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0) {
-        const OptimizationParameters &parameters = space.GetParameters();
+        const OptimizationParameterEntries &parameters = space.GetParameterEntries();
         handlers.reserve(parameters.size());
         std::for_each(parameters.begin(), parameters.end(), [this](const OptimizationParametersEntry &entry) {
             handlers.emplace_back(AlternatingParameterHandler(entry.first));
@@ -77,7 +77,7 @@ namespace TTSP {
                                                                                                                         const OptimizationParameterPoints &,
                                                                                                                         void *)> &invoke, void *data) const {
 
-        OptimizationParameterPoints points(space.GetParameters().size());
+        OptimizationParameterPoints points(parameters.GetParameterEntries().size());
 
         int i = 0;
         std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AlternatingParameterHandler &h) {
@@ -87,7 +87,7 @@ namespace TTSP {
             );
         });
 
-        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), space.GetPoints(), space.GetMetrics(), points);
+        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), parameters.GetPoints(), parameters.GetMetrics(), points);
     }
 
     void AlternatingOptimizer::UpdateSpaceWithLatestResults() {
@@ -96,7 +96,7 @@ namespace TTSP {
 
         if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || last.GetMetricsAfter() < last.GetMetricsBefore())) {
             current.UpdateIndex(current.NextIndex());
-            space.Update(current_handler_index, space.GetParameter(current_handler_index).GetValues().at(current.GetCurrentIndex()), last.GetMetricsAfter());
+            parameters.Update(current_handler_index, parameters.GetParameter(current_handler_index).GetValues().at(current.GetCurrentIndex()), last.GetMetricsAfter());
         } else {
             current.NextDirection();
         }

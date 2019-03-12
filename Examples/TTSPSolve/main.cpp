@@ -170,16 +170,16 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        TTSP::OptimizationParameter  tau("tau", {3e-2, 5e-2, 6e-2, 7e-2, 8e-2, 9e-2, 1e-1, 2e-1, 3e-1, 5e-1, 7e-1, 9e-1}, 1e-3);
-        TTSP::OptimizationParameters parameters;
-        parameters.push_back(std::make_pair(tau, 1e-3));
+        TTSP::OptimizationParameter        tau("tau", {3e-2, 5e-2, 6e-2, 7e-2, 8e-2, 9e-2, 1e-1, 2e-1, 3e-1, 5e-1, 7e-1, 9e-1}, 1e-3);
+        TTSP::OptimizationParameterEntries entries;
+        entries.push_back(std::make_pair(tau, 1e-3));
 
         TTSP::OptimizerProperties properties;
 
         properties["tau:use_closest"]  = "false";
         properties["tau:strict_bound"] = "false";
 
-        TTSP::OptimizationParametersSpace space(solverName, "test", parameters, -1.0);
+        TTSP::OptimizationParameters parameters(entries, -1.0);
 
         if (!TTSP::OptimizerInterface::IsOptimizerAvailable(optimizerType)) {
             if (rank == 0) {
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
             std::exit(0);
         }
 
-        TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::GetOptimizer(optimizerType, space, properties, 50);
+        TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::GetOptimizer(optimizerType, parameters, properties, 50);
 
         optimizer->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level1);
 

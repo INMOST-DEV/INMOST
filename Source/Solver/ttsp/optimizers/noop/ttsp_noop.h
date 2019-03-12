@@ -11,7 +11,7 @@ namespace TTSP {
 
     class NoopOptimizer : public OptimizerInterface {
     public:
-        NoopOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+        NoopOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                       const OptimizationParameterPoints &,

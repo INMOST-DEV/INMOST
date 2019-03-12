@@ -88,7 +88,7 @@ namespace TTSP {
     protected:
         void UpdateSpaceWithLatestResults() override;
     public:
-        AnnealingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+        AnnealingOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                       const OptimizationParameterPoints &,

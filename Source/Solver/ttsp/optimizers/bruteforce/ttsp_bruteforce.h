@@ -11,7 +11,7 @@ namespace TTSP {
 
     class BruteforceOptimizer : public OptimizerInterface {
     public:
-        BruteforceOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+        BruteforceOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                       const OptimizationParameterPoints &,

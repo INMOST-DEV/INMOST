@@ -205,9 +205,9 @@ namespace TTSP {
         return current_value;
     }
 
-    AnnealingOptimizer::AnnealingOptimizer(const OptimizationParametersSpace &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
-            OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0), values(space.GetParameters().size()) {
-        const OptimizationParameters &parameters = space.GetParameters();
+    AnnealingOptimizer::AnnealingOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+            OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0), values(space.GetParameterEntries().size()) {
+        const OptimizationParameterEntries &parameters = space.GetParameterEntries();
         handlers.reserve(parameters.size());
         std::for_each(parameters.begin(), parameters.end(), [this](const OptimizationParametersEntry &entry) {
             handlers.emplace_back(AnnealingParameterHandler(entry.first, *this));
@@ -221,14 +221,14 @@ namespace TTSP {
                                                                                                                       const OptimizationParameterPoints &,
                                                                                                                       void *)> &invoke, void *data) const {
 
-        OptimizationParameterPoints points(space.GetParameters().size());
+        OptimizationParameterPoints points(parameters.GetParameterEntries().size());
 
         int i = 0;
         std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AnnealingParameterHandler &h) {
             return std::make_pair(h.GetParameter().GetName(), i++ == current_handler_index ? h.GetNextValue() : h.GetCurrentValue());
         });
 
-        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), space.GetPoints(), space.GetMetrics(), points);
+        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), parameters.GetPoints(), parameters.GetMetrics(), points);
     }
 
     void AnnealingOptimizer::UpdateSpaceWithLatestResults() {
@@ -243,7 +243,7 @@ namespace TTSP {
         if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || ((delta_e < 0.0) || alpha < et))) {
             double update_value = last.GetPointsAfter().at(current_handler_index).second;
             h.SetValue(update_value);
-            space.Update(current_handler_index, update_value, last.GetMetricsAfter());
+            parameters.Update(current_handler_index, update_value, last.GetMetricsAfter());
         }
 
         current_handler_index = (current_handler_index + 1) % (handlers.size());
