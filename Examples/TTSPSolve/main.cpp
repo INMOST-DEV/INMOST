@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
                         std::cout << "      " << *it << std::endl;
                     }
                     std::cout << "  Available optimizers:" << std::endl;
-                    std::vector<std::string> availableOptimizers = TTSP::OptimizerInterface::GetAvailableOptimizers();
+                    std::vector<std::string> availableOptimizers = TTSP::Optimizers::GetAvailableOptimizers();
                     for (auto                it                  = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
                         std::cout << "      " << *it << std::endl;
                     }
@@ -190,11 +190,11 @@ int main(int argc, char **argv) {
 
         TTSP::OptimizationParameters parameters(entries, -1.0);
 
-        if (!TTSP::OptimizerInterface::IsOptimizerAvailable(optimizerType)) {
+        if (!TTSP::Optimizers::IsOptimizerAvailable(optimizerType)) {
             if (rank == 0) {
                 std::cout << "Optimizer " << optimizerType << " not found" << std::endl;
                 std::cout << "  Available optimizers:" << std::endl;
-                std::vector<std::string> availableOptimizers = TTSP::OptimizerInterface::GetAvailableOptimizers();
+                std::vector<std::string> availableOptimizers = TTSP::Optimizers::GetAvailableOptimizers();
                 for (auto                it                  = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
                     std::cout << "      " << *it << std::endl;
                 }
@@ -202,10 +202,12 @@ int main(int argc, char **argv) {
             std::exit(0);
         }
 
-        TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::GetOptimizer(optimizerType, parameters, properties, 50);
+        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, parameters, properties, 50);
 
-        optimizer->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level3);
-        optimizer->SetRestartStrategy(TTSP::OptimizerRestartStrategy::RESTART_WITH_BEST, 10);
+        TTSP::OptimizerInterface *topt = TTSP::Optimizers::GetOptimizer(optimizerType, parameters, properties, 50);
+
+        topt->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level3);
+        topt->SetRestartStrategy(TTSP::OptimizerRestartStrategy::RESTART_WITH_BEST, 10);
 
         while (!series.end()) {
 
@@ -259,6 +261,8 @@ int main(int argc, char **argv) {
                 return std::make_pair(is_solved, time);
             };
 
+            TTSP::OptimizerInterface *optimizer = TTSP::Optimizers::GetSavedOptimizer("test");
+
             const TTSP::OptimizationParametersSuggestion &suggestion = optimizer->Suggest(invoke, nullptr);
 
             const TTSP::OptimizationFunctionInvokeResult &result = invoke(suggestion.GetPointsBefore(), suggestion.GetPointsAfter(), nullptr);
@@ -268,7 +272,7 @@ int main(int argc, char **argv) {
 
             optimizer->SaveResult(suggestion, metrics, is_good);
 
-            TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level3;
+            TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level1;
 
             // On Level1 print some metadata information about solution and used parameters
             if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level0) {

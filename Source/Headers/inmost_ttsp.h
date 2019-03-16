@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <string>
 #include <deque>
+#include <unordered_map>
 
 namespace TTSP {
 
@@ -395,13 +396,25 @@ namespace TTSP {
         void SetRestartStrategy(OptimizerRestartStrategy strategy, std::size_t max_fails) noexcept;
 
         virtual ~OptimizerInterface() {};
+    };
 
+    typedef std::unordered_map<std::string, OptimizerInterface *> SavedOptimizersMap;
+
+    class Optimizers {
+    private:
+        static SavedOptimizersMap optimizers;
+    public:
         static bool IsOptimizerAvailable(const std::string &type);
 
         static std::vector<std::string> GetAvailableOptimizers();
 
         static OptimizerInterface *GetOptimizer(const std::string &type,
                                                 const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+
+        static void SaveOptimizerOrReplace(const std::string &name, const std::string &type,
+                                           const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+
+        static OptimizerInterface *GetSavedOptimizer(const std::string &name);
     };
 
 };

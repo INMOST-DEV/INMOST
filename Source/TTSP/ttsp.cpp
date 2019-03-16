@@ -443,12 +443,14 @@ namespace TTSP {
         this->max_fails        = max_fails;
     }
 
-    bool OptimizerInterface::IsOptimizerAvailable(const std::string &type) {
-        std::vector<std::string> available = OptimizerInterface::GetAvailableOptimizers();
+    bool Optimizers::IsOptimizerAvailable(const std::string &type) {
+        std::vector<std::string> available = Optimizers::GetAvailableOptimizers();
         return std::find(available.cbegin(), available.cend(), type) != available.cend();
     }
 
-    std::vector<std::string> OptimizerInterface::GetAvailableOptimizers() {
+    SavedOptimizersMap Optimizers::optimizers = SavedOptimizersMap();
+
+    std::vector<std::string> Optimizers::GetAvailableOptimizers() {
         std::vector<std::string> available;
 
         available.emplace_back("noop");
@@ -459,13 +461,34 @@ namespace TTSP {
         return available;
     }
 
-    OptimizerInterface *OptimizerInterface::GetOptimizer(const std::string &type,
-                                                         const OptimizationParameters &space, const OptimizerProperties &properties,
-                                                         std::size_t buffer_capacity) {
+    OptimizerInterface *Optimizers::GetOptimizer(const std::string &type,
+                                                 const OptimizationParameters &space, const OptimizerProperties &properties,
+                                                 std::size_t buffer_capacity) {
         if (type == "noop") return new NoopOptimizer(space, properties, buffer_capacity);
         if (type == "bruteforce") return new BruteforceOptimizer(space, properties, buffer_capacity);
         if (type == "alternating") return new AlternatingOptimizer(space, properties, buffer_capacity);
         if (type == "annealing") return new AnnealingOptimizer(space, properties, buffer_capacity);
         return nullptr;
+    }
+
+    void Optimizers::SaveOptimizerOrReplace(const std::string &name, const std::string &type, const TTSP::OptimizationParameters &space,
+                                            const TTSP::OptimizerProperties &properties, std::size_t buffer_capacity) {
+
+        OptimizerInterface *created = Optimizers::GetOptimizer(type, space, properties, buffer_capacity);
+
+        auto optimizer = Optimizers::optimizers.find(name);
+        if (optimizer != Optimizers::optimizers.end()) {
+            delete (*optimizer).second;
+        }
+        Optimizers::optimizers[name] = created;
+    }
+
+    OptimizerInterface *Optimizers::GetSavedOptimizer(const std::string &name) {
+        auto optimizer = Optimizers::optimizers.find(name);
+        if (optimizer == Optimizers::optimizers.end()) {
+            return nullptr;
+        } else {
+            return (*optimizer).second;
+        }
     }
 }
