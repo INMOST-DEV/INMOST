@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        TTSP::OptimizationParameter        tau("tau", std::make_pair(-4, -1), 0.1, 1e-3, TTSP::OptimizationParameterType::EXPONENT);
+        TTSP::OptimizationParameter        tau("tau", std::make_pair(-4, -1), 0.1, -3, TTSP::OptimizationParameterType::EXPONENT);
         //TTSP::OptimizationParameter        q("q", {0, 1, 2, 3, 4}, 2);
         //TTSP::OptimizationParameter        eps("eps", {1e-7, 1e-6, 1e-5, 1e-4, 1e-3}, 1e-5);
         TTSP::OptimizationParameterEntries entries;
@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
         TTSP::OptimizerProperties properties;
 
         properties["tau:use_closest"]  = "false";
-        properties["tau:strict_bound"] = "true";
+        properties["tau:strict_bound"] = "false";
 
         properties["eps:use_closest"]  = "false";
         properties["eps:strict_bound"] = "false";
@@ -205,6 +205,7 @@ int main(int argc, char **argv) {
         TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::GetOptimizer(optimizerType, parameters, properties, 50);
 
         optimizer->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level3);
+        optimizer->SetRestartStrategy(TTSP::OptimizerRestartStrategy::RESTART_WITH_BEST, 10);
 
         while (!series.end()) {
 
@@ -265,7 +266,7 @@ int main(int argc, char **argv) {
             bool   is_good = result.first;
             double metrics = result.second;
 
-            optimizer->SaveResult(suggestion.GetChangedParameter(), suggestion.GetPointsAfter(), metrics, is_good);
+            optimizer->SaveResult(suggestion, metrics, is_good);
 
             TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level3;
 

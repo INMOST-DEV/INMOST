@@ -200,7 +200,7 @@ namespace TTSP {
         return std::make_pair(current_handler_index, handlers.at(current_handler_index).GetNextValue());
     }
 
-    void AnnealingOptimizer::UpdateSpaceWithLatestResults() {
+    bool AnnealingOptimizer::UpdateSpaceWithLatestResults() {
         AnnealingParameterHandler         &h    = handlers.at(current_handler_index);
         const OptimizationParameterResult &last = results.at(0);
 
@@ -209,13 +209,18 @@ namespace TTSP {
         double et      = 1.0 / (1.0 + std::exp(delta_e / temp));
         double alpha   = h.GetRandom();
 
+        bool is_updated = false;
+
         if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || ((delta_e < 0.0) || alpha < et))) {
-            double update_value = last.GetPointsAfter().at(current_handler_index).GetValue();
+            double update_value = last.GetChangedValue();
             h.SetValue(update_value);
             parameters.Update(current_handler_index, update_value, last.GetMetricsAfter());
+            is_updated = true;
         }
 
         current_handler_index = (current_handler_index + 1) % (handlers.size());
+
+        return is_updated;
     }
 
     AnnealingOptimizer::~AnnealingOptimizer() {}

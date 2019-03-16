@@ -114,6 +114,7 @@ namespace TTSP {
         static void swap(OptimizationParameterPoint &left, OptimizationParameterPoint &right);
 
         static double convert(double value, OptimizationParameterType type);
+
     public:
         OptimizationParameterPoint(const OptimizationParameterPoint &other);
 
@@ -121,7 +122,7 @@ namespace TTSP {
 
         OptimizationParameterPoint &operator=(const OptimizationParameterPoint &other);
 
-        const std::string& GetName() const noexcept;
+        const std::string &GetName() const noexcept;
 
         double GetValue() const noexcept;
 
@@ -145,16 +146,19 @@ namespace TTSP {
     /// @see OptimizationParameters
     class OptimizationParametersSuggestion {
     private:
-        const OptimizationParameter &changed;
+        std::size_t                 changed_index;
+        double                      changed_value;
         OptimizationParameterPoints before;
         double                      metrics_before;
         OptimizationParameterPoints after;
     public:
-        OptimizationParametersSuggestion(const OptimizationParameter &changed,
+        OptimizationParametersSuggestion(std::size_t changed_index, double changed_value,
                                          const OptimizationParameterPoints &before, double metrics_before,
                                          const OptimizationParameterPoints &after);
 
-        const OptimizationParameter &GetChangedParameter() const noexcept;
+        std::size_t GetChangedParameterIndex() const noexcept;
+
+        double GetChangedValue() const noexcept;
 
         const OptimizationParameterPoints &GetPointsBefore() const noexcept;
 
@@ -211,7 +215,7 @@ namespace TTSP {
         /// Getter for slice of parameters of this space with changed parameter
         const OptimizationParameterPoints GetPointsWithChangedParameter(const OptimizationParameter &parameter, double value) const noexcept;
 
-        void Update(const OptimizationParameterPoints &update, double metrics);
+        void Update(const std::vector<double> &update, double metrics);
 
         void Update(std::size_t index, double value, double metrics);
     };
@@ -219,7 +223,8 @@ namespace TTSP {
     /// This class is used to store timings result for some optimization parameter points
     class OptimizationParameterResult {
     private:
-        const OptimizationParameter &changed;            /// Changed optimization parameter reference
+        std::size_t                 changed_index;       /// Changed optimization parameter index
+        double                      changed_value;       /// New changed value for 'changed' parameter
         OptimizationParameterPoints before;              /// Optimization parameter points before changing
         double                      metrics_before;      /// Optimization metrics before changing
         OptimizationParameterPoints after;               /// Optimization parameter points after changing
@@ -230,11 +235,8 @@ namespace TTSP {
 
     public:
         /// Default constructor to define an OptimizationParameterResult
-        /// @param points              - Optimization parameter points to store result for
-        /// @param preconditioner_time - Preconditioner timings
-        /// @param solve_time          - Solve timings
-        /// @param is_solved           - Is problem solved or not
-        OptimizationParameterResult(const OptimizationParameter &changed, const OptimizationParameterPoints &before, const OptimizationParameterPoints &after,
+        OptimizationParameterResult(std::size_t changed_index, double changed_value,
+                                    const OptimizationParameterPoints &before, const OptimizationParameterPoints &after,
                                     double metrics_before, double metrics_after, bool is_good);
 
         /// Copy constructor
@@ -263,6 +265,12 @@ namespace TTSP {
 
         /// Getter for is solved status
         bool IsGood() const noexcept;
+
+        /// Getter for changed parameter
+        std::size_t GetChangedParameterIndex() const noexcept;
+
+        /// Getter for new changed value
+        double GetChangedValue() const noexcept;
     };
 
     /// This class is used to store last N solve results and used parameters on it
@@ -321,11 +329,16 @@ namespace TTSP {
 
     typedef std::map<std::string, std::string> OptimizerProperties;
 
-    enum OptimizerVerbosityLevel {
+    enum class OptimizerVerbosityLevel {
         Level0,
         Level1,
         Level2,
         Level3
+    };
+
+    enum class OptimizerRestartStrategy {
+        NO_RESTART,
+        RESTART_WITH_BEST
     };
 
     typedef std::pair<bool, double> OptimizationFunctionInvokeResult;
@@ -333,12 +346,19 @@ namespace TTSP {
     class OptimizerInterface {
     private:
         OptimizerVerbosityLevel verbosity = OptimizerVerbosityLevel::Level0;
+
+        OptimizerRestartStrategy restart_strategy = OptimizerRestartStrategy::NO_RESTART;
+        std::size_t              max_fails        = std::numeric_limits<std::size_t>::max();
+        std::size_t              fails_count      = 0;
+
+        void RestartWithBestStrategy();
+
     protected:
         OptimizationParameterResultsBuffer results;
         OptimizationParameters             parameters;
         const OptimizerProperties          properties;
 
-        virtual void UpdateSpaceWithLatestResults();
+        virtual bool UpdateSpaceWithLatestResults();
 
         virtual OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                              const OptimizationParameterPoints &,
@@ -352,11 +372,13 @@ namespace TTSP {
                                                                                                       const OptimizationParameterPoints &,
                                                                                                       void *)> &invoke, void *data) const;
 
-        void SaveResult(const OptimizationParameter &changed,
+        void SaveResult(std::size_t changed_index, double changed_value,
                         const OptimizationParameterPoints &before, double metrics_before,
                         const OptimizationParameterPoints &after, double metrics_after, bool is_good);
 
-        void SaveResult(const OptimizationParameter &changed, const OptimizationParameterPoints &after, double metrics_after, bool is_good);
+        void SaveResult(std::size_t changed_index, double changed_value, const OptimizationParameterPoints &after, double metrics_after, bool is_good);
+
+        void SaveResult(const OptimizationParametersSuggestion &suggestion, double metrics, bool is_good);
 
         const OptimizationParameterResultsBuffer &GetResults() const noexcept;
 
@@ -369,6 +391,8 @@ namespace TTSP {
         bool HasProperty(const std::string &name) const noexcept;
 
         const std::string &GetProperty(const std::string &name) const;
+
+        void SetRestartStrategy(OptimizerRestartStrategy strategy, std::size_t max_fails) noexcept;
 
         virtual ~OptimizerInterface() {};
 

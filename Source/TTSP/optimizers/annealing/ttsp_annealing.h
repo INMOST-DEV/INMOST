@@ -76,7 +76,7 @@ namespace TTSP {
         std::size_t                            current_handler_index;
         std::vector<AnnealingParameterHandler> handlers;
     protected:
-        void UpdateSpaceWithLatestResults() override;
+        bool UpdateSpaceWithLatestResults() override;
 
         OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                      const OptimizationParameterPoints &,

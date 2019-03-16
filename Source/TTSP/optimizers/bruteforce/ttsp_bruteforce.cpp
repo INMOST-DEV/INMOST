@@ -40,11 +40,12 @@ namespace TTSP {
         return std::make_pair(current_index, best_value);
     }
 
-    void BruteforceOptimizer::UpdateSpaceWithLatestResults() {
+    bool BruteforceOptimizer::UpdateSpaceWithLatestResults() {
         const OptimizationParameterResult &last = results.at(0);
         if (last.IsGood()) {
             parameters.Update(current_index, last.GetPointsAfter().at(current_index).GetValue(), last.GetMetricsAfter());
         }
+        return true;
     }
 
     BruteforceOptimizer::~BruteforceOptimizer() {}

@@ -80,18 +80,23 @@ namespace TTSP {
         return std::make_pair(current_handler_index, handler.GetParameter().GetValues().at(handler.NextIndex()));
     }
 
-    void AlternatingOptimizer::UpdateSpaceWithLatestResults() {
+    bool AlternatingOptimizer::UpdateSpaceWithLatestResults() {
         AlternatingParameterHandler       &current = handlers.at(current_handler_index);
         const OptimizationParameterResult &last    = results.at(0);
+
+        bool is_updated = false;
 
         if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || last.GetMetricsAfter() < last.GetMetricsBefore())) {
             current.UpdateIndex(current.NextIndex());
             parameters.Update(current_handler_index, parameters.GetParameter(current_handler_index).GetValues().at(current.GetCurrentIndex()), last.GetMetricsAfter());
+            is_updated = true;
         } else {
             current.NextDirection();
         }
 
         current_handler_index = (current_handler_index + 1) % (handlers.size());
+
+        return is_updated;
     }
 
     AlternatingOptimizer::~AlternatingOptimizer() {}

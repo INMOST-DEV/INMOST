@@ -121,13 +121,17 @@ namespace TTSP {
 
     OptimizationParameterPoint::~OptimizationParameterPoint() {}
 
-    OptimizationParametersSuggestion::OptimizationParametersSuggestion(const OptimizationParameter &changed,
+    OptimizationParametersSuggestion::OptimizationParametersSuggestion(std::size_t changed_index, double changed_value,
                                                                        const OptimizationParameterPoints &before, double metrics_before,
                                                                        const OptimizationParameterPoints &after) :
-            changed(changed), before(before), metrics_before(metrics_before), after(after) {}
+            changed_index(changed_index), changed_value(changed_value), before(before), metrics_before(metrics_before), after(after) {}
 
-    const OptimizationParameter &OptimizationParametersSuggestion::GetChangedParameter() const noexcept {
-        return changed;
+    std::size_t OptimizationParametersSuggestion::GetChangedParameterIndex() const noexcept {
+        return changed_index;
+    }
+
+    double OptimizationParametersSuggestion::GetChangedValue() const noexcept {
+        return changed_value;
     }
 
     const OptimizationParameterPoints &OptimizationParametersSuggestion::GetPointsBefore() const noexcept {
@@ -206,9 +210,9 @@ namespace TTSP {
         return points;
     }
 
-    void OptimizationParameters::Update(const OptimizationParameterPoints &update, double metrics) {
+    void OptimizationParameters::Update(const std::vector<double> &update, double metrics) {
         for (int i = 0; i < update.size(); ++i) {
-            this->entries[i].second = update[i].GetValue();
+            this->entries[i].second = update[i];
         }
 
         this->metrics = metrics;
@@ -220,6 +224,8 @@ namespace TTSP {
     }
 
     void OptimizationParameterResult::swap(OptimizationParameterResult &left, OptimizationParameterResult &right) {
+        std::swap(left.changed_index, right.changed_index);
+        std::swap(left.changed_value, right.changed_value);
         std::swap(left.before, right.before);
         std::swap(left.metrics_before, right.metrics_before);
         std::swap(left.after, right.after);
@@ -227,16 +233,17 @@ namespace TTSP {
         std::swap(left.is_good, right.is_good);
     }
 
-    OptimizationParameterResult::OptimizationParameterResult(const OptimizationParameter &changed, const OptimizationParameterPoints &before,
-                                                             const OptimizationParameterPoints &after,
+    OptimizationParameterResult::OptimizationParameterResult(std::size_t changed_index, double changed_value,
+                                                             const OptimizationParameterPoints &before, const OptimizationParameterPoints &after,
                                                              double metrics_before, double metrics_after, bool is_good) :
-            changed(changed), before(before), after(after), metrics_before(metrics_before), metrics_after(metrics_after), is_good(is_good) {}
+            changed_index(changed_index), changed_value(changed_value),
+            before(before), after(after), metrics_before(metrics_before), metrics_after(metrics_after), is_good(is_good) {}
 
     OptimizationParameterResult::OptimizationParameterResult(const OptimizationParameterResult &other) :
-            changed(other.changed), before(other.before), after(other.after),
+            changed_index(other.changed_index), changed_value(other.changed_value), before(other.before), after(other.after),
             metrics_before(other.metrics_before), metrics_after(other.metrics_after), is_good(other.is_good) {}
 
-    OptimizationParameterResult::OptimizationParameterResult(OptimizationParameterResult &&other) noexcept : changed(std::move(other).changed) {
+    OptimizationParameterResult::OptimizationParameterResult(OptimizationParameterResult &&other) noexcept {
         OptimizationParameterResult::swap(*this, other);
     }
 
@@ -264,6 +271,15 @@ namespace TTSP {
 
     bool OptimizationParameterResult::IsGood() const noexcept {
         return is_good;
+    }
+
+    std::size_t OptimizationParameterResult::GetChangedParameterIndex() const noexcept {
+        return changed_index;
+    }
+
+    /// Getter for new changed value
+    double OptimizationParameterResult::GetChangedValue() const noexcept {
+        return changed_value;
     }
 
 
@@ -331,11 +347,23 @@ namespace TTSP {
         });
     }
 
-    void OptimizerInterface::UpdateSpaceWithLatestResults() {
+    void OptimizerInterface::RestartWithBestStrategy() {
+        auto min = std::min_element(results.cbegin(), results.cbegin() + max_fails, [](const OptimizationParameterResult &l, const OptimizationParameterResult &r) {
+            return l.GetMetricsAfter() < r.GetMetricsAfter();
+        });
+
+        results.push(OptimizationParameterResult(*min));
+        parameters.Update(min->GetChangedParameterIndex(), min->GetChangedValue(), min->GetMetricsAfter());
+
+        this->fails_count = 0;
+    }
+
+    bool OptimizerInterface::UpdateSpaceWithLatestResults() {
         if (!results.IsEmpty()) {
-            const OptimizationParameterResult &result = (*results.cbegin());
-            parameters.Update(result.GetPointsAfter(), result.GetMetricsAfter());
+            const OptimizationParameterResult &last = results.at(0);
+            parameters.Update(last.GetChangedParameterIndex(), last.GetChangedValue(), last.GetMetricsAfter());
         }
+        return true;
     }
 
     OptimizationParametersSuggestion OptimizerInterface::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
@@ -344,24 +372,46 @@ namespace TTSP {
         OptimizationAlgorithmSuggestion algorithm = this->AlgorithmMakeSuggestion(invoke, data);
 
         return OptimizationParametersSuggestion(
-                parameters.GetParameter(algorithm.first),
+                algorithm.first,
+                algorithm.second,
                 parameters.GetPoints(),
                 parameters.GetMetrics(),
                 parameters.GetPointsWithChangedParameter(parameters.GetParameter(algorithm.first), algorithm.second)
         );
     }
 
-    void OptimizerInterface::SaveResult(const OptimizationParameter &changed,
+    void OptimizerInterface::SaveResult(std::size_t changed_index, double changed_value,
                                         const OptimizationParameterPoints &before, double metrics_before,
                                         const OptimizationParameterPoints &after, double metrics_after, bool is_good) {
-        results.push(OptimizationParameterResult(changed, before, after, metrics_before, metrics_after, is_good));
-        if (is_good) {
-            this->UpdateSpaceWithLatestResults();
+        results.push(OptimizationParameterResult(changed_index, changed_value, before, after, metrics_before, metrics_after, is_good));
+
+        bool is_updated = is_good && this->UpdateSpaceWithLatestResults();
+        if (is_updated) {
+            this->fails_count = 0;
+        } else {
+            this->fails_count += 1;
+        }
+
+        if (this->fails_count > this->max_fails) {
+            switch (restart_strategy) {
+                case OptimizerRestartStrategy::NO_RESTART:
+                    break;
+                case OptimizerRestartStrategy::RESTART_WITH_BEST:
+                    RestartWithBestStrategy();
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
-    void OptimizerInterface::SaveResult(const OptimizationParameter &changed, const OptimizationParameterPoints &after, double metrics_after, bool is_good) {
-        SaveResult(changed, parameters.GetPoints(), parameters.GetMetrics(), after, metrics_after, is_good);
+    void OptimizerInterface::SaveResult(std::size_t changed_index, double changed_value,
+                                        const OptimizationParameterPoints &after, double metrics_after, bool is_good) {
+        SaveResult(changed_index, changed_value, parameters.GetPoints(), parameters.GetMetrics(), after, metrics_after, is_good);
+    }
+
+    void OptimizerInterface::SaveResult(const OptimizationParametersSuggestion &suggestion, double metrics, bool is_good) {
+        SaveResult(suggestion.GetChangedParameterIndex(), suggestion.GetChangedValue(), suggestion.GetPointsAfter(), metrics, is_good);
     }
 
     const OptimizationParameterResultsBuffer &OptimizerInterface::GetResults() const noexcept {
@@ -386,6 +436,11 @@ namespace TTSP {
 
     const std::string &OptimizerInterface::GetProperty(const std::string &name) const {
         return properties.at(name);
+    }
+
+    void OptimizerInterface::SetRestartStrategy(OptimizerRestartStrategy strategy, std::size_t max_fails) noexcept {
+        this->restart_strategy = strategy;
+        this->max_fails        = max_fails;
     }
 
     bool OptimizerInterface::IsOptimizerAvailable(const std::string &type) {

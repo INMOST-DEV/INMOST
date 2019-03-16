@@ -13,7 +13,7 @@ namespace TTSP {
     private:
         std::size_t current_index;
     protected:
-        void UpdateSpaceWithLatestResults() override;
+        bool UpdateSpaceWithLatestResults() override;
 
         OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                      const OptimizationParameterPoints &,
