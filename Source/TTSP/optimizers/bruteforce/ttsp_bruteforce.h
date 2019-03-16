@@ -10,12 +10,17 @@
 namespace TTSP {
 
     class BruteforceOptimizer : public OptimizerInterface {
+    private:
+        std::size_t current_index;
+    protected:
+        void UpdateSpaceWithLatestResults() override;
+
+        OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                     const OptimizationParameterPoints &,
+                                                                                                                     void *)> &invoke, void *data) const override;
+
     public:
         BruteforceOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
-
-        OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                      const OptimizationParameterPoints &,
-                                                                                                      void *)> &invoke, void *data) const override;
 
         virtual ~BruteforceOptimizer();
     };

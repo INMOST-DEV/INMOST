@@ -15,14 +15,12 @@ namespace TTSP {
         std::swap(left.name, right.name);
         std::swap(left.values, right.values);
         std::swap(left.default_value, right.default_value);
+        std::swap(left.type, right.type);
     }
 
-    OptimizationParameter::OptimizationParameter(const std::string &name,
-                                                 const OptimizationParameterRange &range,
-                                                 double step, double default_value) :
-            name(name),
-            values(static_cast<unsigned long>((range.second - range.first) / step)),
-            default_value(default_value) {
+    OptimizationParameter::OptimizationParameter(const std::string &name, const OptimizationParameterRange &range, double step,
+                                                 double default_value, OptimizationParameterType type) :
+            name(name), values(static_cast<unsigned long>((range.second - range.first) / step)), default_value(default_value), type(type) {
         int    index = 0;
         double value = range.first;
         while (value < range.second) {
@@ -31,12 +29,11 @@ namespace TTSP {
         }
     }
 
-    OptimizationParameter::OptimizationParameter(const std::string &name, const std::vector<double> &values,
-                                                 double default_value) :
-            name(name), values(values), default_value(default_value) {}
+    OptimizationParameter::OptimizationParameter(const std::string &name, const std::vector<double> &values, double default_value, OptimizationParameterType type) :
+            name(name), values(values), default_value(default_value), type(type) {}
 
     OptimizationParameter::OptimizationParameter(const OptimizationParameter &other) :
-            name(other.name), values(other.values), default_value(other.default_value) {}
+            name(other.name), values(other.values), default_value(other.default_value), type(other.type) {}
 
     OptimizationParameter::OptimizationParameter(OptimizationParameter &&other) noexcept {
         OptimizationParameter::swap(*this, other);
@@ -78,6 +75,51 @@ namespace TTSP {
     double OptimizationParameter::GetDefaultValue() const noexcept {
         return default_value;
     }
+
+    OptimizationParameterType OptimizationParameter::GetType() const noexcept {
+        return type;
+    }
+
+    OptimizationParameterPoint::OptimizationParameterPoint(const std::string &name, double value, OptimizationParameterType type) :
+            name(name), value(OptimizationParameterPoint::convert(value, type)) {}
+
+    void OptimizationParameterPoint::swap(OptimizationParameterPoint &left, OptimizationParameterPoint &right) {
+        std::swap(left.name, right.name);
+        std::swap(left.value, right.value);
+    }
+
+    double OptimizationParameterPoint::convert(double value, OptimizationParameterType type) {
+        switch (type) {
+            case OptimizationParameterType::DEFAULT:
+                return value;
+            case OptimizationParameterType::EXPONENT:
+                return std::pow(10, value);
+            default:
+                return value;
+        }
+    }
+
+    OptimizationParameterPoint::OptimizationParameterPoint(const OptimizationParameterPoint &other) : name(other.name), value(other.value) {}
+
+    OptimizationParameterPoint::OptimizationParameterPoint(OptimizationParameterPoint &&other) noexcept {
+        OptimizationParameterPoint::swap(*this, other);
+    }
+
+    OptimizationParameterPoint &OptimizationParameterPoint::operator=(const OptimizationParameterPoint &other) {
+        OptimizationParameterPoint tmp(other);
+        OptimizationParameterPoint::swap(*this, tmp);
+        return *this;
+    }
+
+    const std::string &OptimizationParameterPoint::GetName() const noexcept {
+        return name;
+    }
+
+    double OptimizationParameterPoint::GetValue() const noexcept {
+        return value;
+    }
+
+    OptimizationParameterPoint::~OptimizationParameterPoint() {}
 
     OptimizationParametersSuggestion::OptimizationParametersSuggestion(const OptimizationParameter &changed,
                                                                        const OptimizationParameterPoints &before, double metrics_before,
@@ -131,11 +173,18 @@ namespace TTSP {
         return GetParameterEntry(index).first;
     }
 
+    std::size_t OptimizationParameters::Size() const {
+        return entries.size();
+    }
+
     const OptimizationParameterPoints OptimizationParameters::GetPoints() const noexcept {
-        OptimizationParameterPoints points(entries.size());
-        std::transform(entries.begin(), entries.end(), points.begin(), [](const OptimizationParametersEntry &p) {
-            return std::make_pair(p.first.GetName(), p.second);
+        OptimizationParameterPoints points;
+        points.reserve(entries.size());
+
+        std::for_each(entries.cbegin(), entries.cend(), [&points](const OptimizationParametersEntry &p) {
+            points.emplace_back(OptimizationParameterPoint(p.first.GetName(), p.second, p.first.GetType()));
         });
+
         return points;
     }
 
@@ -145,16 +194,21 @@ namespace TTSP {
 
     const OptimizationParameterPoints OptimizationParameters::GetPointsWithChangedParameter(const OptimizationParameter &parameter,
                                                                                             double value) const noexcept {
-        OptimizationParameterPoints points(entries.size());
-        std::transform(entries.begin(), entries.end(), points.begin(), [&parameter, value](const OptimizationParametersEntry &p) {
-            return p.first.GetName() == parameter.GetName() ? std::make_pair(p.first.GetName(), value) : std::make_pair(p.first.GetName(), p.second);
+        OptimizationParameterPoints points;
+        points.reserve(entries.size());
+
+        std::for_each(entries.cbegin(), entries.cend(), [&points, &parameter, value](const OptimizationParametersEntry &p) {
+            points.emplace_back(p.first.GetName() == parameter.GetName() ?
+                                OptimizationParameterPoint(p.first.GetName(), value, p.first.GetType()) :
+                                OptimizationParameterPoint(p.first.GetName(), p.second, p.first.GetType()));
         });
+
         return points;
     }
 
     void OptimizationParameters::Update(const OptimizationParameterPoints &update, double metrics) {
         for (int i = 0; i < update.size(); ++i) {
-            this->entries[i].second = update[i].second;
+            this->entries[i].second = update[i].GetValue();
         }
 
         this->metrics = metrics;
@@ -234,15 +288,15 @@ namespace TTSP {
         return *this;
     }
 
-    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::begin() const noexcept {
+    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::cbegin() const noexcept {
         return buffer.crbegin();
     }
 
     const OptimizationParameterResult &OptimizationParameterResultsBuffer::at(std::size_t index) const {
-        return *(begin() + index);
+        return *(cbegin() + index);
     }
 
-    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::end() const noexcept {
+    std::deque<OptimizationParameterResult>::const_reverse_iterator OptimizationParameterResultsBuffer::cend() const noexcept {
         return buffer.crend();
     }
 
@@ -262,26 +316,39 @@ namespace TTSP {
     }
 
     bool OptimizationParameterResultsBuffer::IsLastResultSuccessful() const noexcept {
-        return IsEmpty() ? false : (*begin()).IsGood();
+        return IsEmpty() ? false : (*cbegin()).IsGood();
     }
 
     bool OptimizationParameterResultsBuffer::IsSuccessfulResultExist() const noexcept {
-        return std::find_if(begin(), end(), [](const OptimizationParameterResult &r) {
+        return std::find_if(cbegin(), cend(), [](const OptimizationParameterResult &r) {
             return r.IsGood();
-        }) != end();
+        }) != cend();
     }
 
     const OptimizationParameterResult &OptimizationParameterResultsBuffer::GetLastSuccessfulResult() const {
-        return *std::find_if(begin(), end(), [](const OptimizationParameterResult &r) {
+        return *std::find_if(cbegin(), cend(), [](const OptimizationParameterResult &r) {
             return r.IsGood();
         });
     }
 
     void OptimizerInterface::UpdateSpaceWithLatestResults() {
         if (!results.IsEmpty()) {
-            const OptimizationParameterResult &result = (*results.begin());
+            const OptimizationParameterResult &result = (*results.cbegin());
             parameters.Update(result.GetPointsAfter(), result.GetMetricsAfter());
         }
+    }
+
+    OptimizationParametersSuggestion OptimizerInterface::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                      const OptimizationParameterPoints &,
+                                                                                                                      void *)> &invoke, void *data) const {
+        OptimizationAlgorithmSuggestion algorithm = this->AlgorithmMakeSuggestion(invoke, data);
+
+        return OptimizationParametersSuggestion(
+                parameters.GetParameter(algorithm.first),
+                parameters.GetPoints(),
+                parameters.GetMetrics(),
+                parameters.GetPointsWithChangedParameter(parameters.GetParameter(algorithm.first), algorithm.second)
+        );
     }
 
     void OptimizerInterface::SaveResult(const OptimizationParameter &changed,
@@ -323,7 +390,7 @@ namespace TTSP {
 
     bool OptimizerInterface::IsOptimizerAvailable(const std::string &type) {
         std::vector<std::string> available = OptimizerInterface::GetAvailableOptimizers();
-        return std::find(available.begin(), available.end(), type) != available.end();
+        return std::find(available.cbegin(), available.cend(), type) != available.cend();
     }
 
     std::vector<std::string> OptimizerInterface::GetAvailableOptimizers() {

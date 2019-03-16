@@ -68,26 +68,16 @@ namespace TTSP {
             OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0) {
         const OptimizationParameterEntries &parameters = space.GetParameterEntries();
         handlers.reserve(parameters.size());
-        std::for_each(parameters.begin(), parameters.end(), [this](const OptimizationParametersEntry &entry) {
+        std::for_each(parameters.cbegin(), parameters.cend(), [this](const OptimizationParametersEntry &entry) {
             handlers.emplace_back(AlternatingParameterHandler(entry.first));
         });
     }
 
-    OptimizationParametersSuggestion AlternatingOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                        const OptimizationParameterPoints &,
-                                                                                                                        void *)> &invoke, void *data) const {
-
-        OptimizationParameterPoints points(parameters.GetParameterEntries().size());
-
-        int i = 0;
-        std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AlternatingParameterHandler &h) {
-            return std::make_pair(
-                    h.GetParameter().GetName(),
-                    h.GetParameter().GetValues().at(i++ == current_handler_index ? h.NextIndex() : h.GetCurrentIndex())
-            );
-        });
-
-        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), parameters.GetPoints(), parameters.GetMetrics(), points);
+    OptimizationAlgorithmSuggestion AlternatingOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                                       const OptimizationParameterPoints &,
+                                                                                                                                       void *)> &invoke, void *data) const {
+        const AlternatingParameterHandler &handler = handlers.at(current_handler_index);
+        return std::make_pair(current_handler_index, handler.GetParameter().GetValues().at(handler.NextIndex()));
     }
 
     void AlternatingOptimizer::UpdateSpaceWithLatestResults() {

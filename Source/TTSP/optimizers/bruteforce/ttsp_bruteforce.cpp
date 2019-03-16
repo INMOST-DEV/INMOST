@@ -8,45 +8,43 @@ namespace TTSP {
 
 
     BruteforceOptimizer::BruteforceOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
-            OptimizerInterface(space, properties, buffer_capacity) {}
+            OptimizerInterface(space, properties, buffer_capacity), current_index(0) {}
 
-    OptimizationParametersSuggestion BruteforceOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                       const OptimizationParameterPoints &,
-                                                                                                                       void *)> &invoke, void *data) const {
+    OptimizationAlgorithmSuggestion BruteforceOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                                      const OptimizationParameterPoints &,
+                                                                                                                                      void *)> &invoke, void *data) const {
+        const OptimizationParameterPoints &before    = parameters.GetPoints();
+        const OptimizationParameter       &parameter = parameters.GetParameter(current_index);
 
-        const OptimizationParameterEntries &entries = parameters.GetParameterEntries();
-        const OptimizationParameterPoints  &before  = parameters.GetPoints();
+        double best_metrics = -1.0;
+        double best_value   = 0.0;
 
-        OptimizationParameterPoints output(entries.size());
+        std::for_each(parameter.GetValues().cbegin(), parameter.GetValues().cend(), [&](double value) {
+            std::cout << "[TTSP] [Bruteforce] Solving with " << parameter.GetName() << " = " << value << "\t\t";
 
-        std::transform(entries.begin(), entries.end(), output.begin(), [&](const OptimizationParametersEntry &entry) {
-            const std::vector<double> &values = entry.first.GetValues();
+            const OptimizationParameterPoints &after = parameters.GetPointsWithChangedParameter(parameter, value);
 
-            double best_metrics = -1.0;
-            double best_value   = 0.0;
+            OptimizationFunctionInvokeResult result = invoke(before, after, data);
 
-            std::for_each(values.begin(), values.end(), [&](double value) {
-                std::cout << "[TTSP] [Bruteforce] Solving with " << entry.first.GetName() << " = " << value << "\t\t";
+            bool   is_solved = result.first;
+            double metrics   = result.second;
 
-                const OptimizationParameterPoints &after = parameters.GetPointsWithChangedParameter(entry.first, value);
+            if (is_solved && (best_metrics < 0 || metrics < best_metrics)) {
+                best_metrics = metrics;
+                best_value   = value;
+            }
 
-                OptimizationFunctionInvokeResult result = invoke(before, after, data);
-
-                bool   is_solved = result.first;
-                double metrics   = result.second;
-
-                if (is_solved && (best_metrics < 0 || metrics < best_metrics)) {
-                    best_metrics = metrics;
-                    best_value   = value;
-                }
-
-                std::cout << "| Metrics = " << metrics << "\t" << is_solved << std::endl;
-            });
-
-            return std::make_pair(entry.first.GetName(), best_value);
+            std::cout << "| Metrics = " << metrics << "\t" << is_solved << std::endl;
         });
 
-        return OptimizationParametersSuggestion(entries.at(0).first, parameters.GetPoints(), parameters.GetMetrics(), output);
+        return std::make_pair(current_index, best_value);
+    }
+
+    void BruteforceOptimizer::UpdateSpaceWithLatestResults() {
+        const OptimizationParameterResult &last = results.at(0);
+        if (last.IsGood()) {
+            parameters.Update(current_index, last.GetPointsAfter().at(current_index).GetValue(), last.GetMetricsAfter());
+        }
     }
 
     BruteforceOptimizer::~BruteforceOptimizer() {}

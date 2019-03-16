@@ -16,15 +16,24 @@ namespace TTSP {
     /// Usage: OptimizationParameterRange range = std::make_pair(0.0, 1.0)
     typedef std::pair<double, double> OptimizationParameterRange;
 
+    /// This class is used to defined a type of a parameter
+    /// - DEFAULT  - parameter values should be used as is
+    /// - EXPONENT - parameter values should be converted to 10^v
+    enum class OptimizationParameterType {
+        DEFAULT,
+        EXPONENT
+    };
+
     /// This class is used to define a solver parameter for optimization algortihms
     /// Usage:
     ///    1.  OptimizationParameter tau("tau", range, 0.1, 1e-3);
     ///    2.  OptimizationParameter kovl("kovl", { 0, 1, 2, 3 }, 0);
     class OptimizationParameter {
     private:
-        std::string         name;          /// A name of a parameter
-        std::vector<double> values;        /// List of possible values for a paramater
-        double              default_value; /// Default value for this parameter
+        std::string               name;          /// A name of a parameter
+        std::vector<double>       values;        /// List of possible values for a parameter
+        double                    default_value; /// Default value for this parameter
+        OptimizationParameterType type;          /// Parameter type
 
         static void swap(OptimizationParameter &left, OptimizationParameter &right);
 
@@ -34,14 +43,17 @@ namespace TTSP {
         /// @param range         - Range of possible values for this parameter
         /// @param step          - Step associated with the range (used to split up values in a list)
         /// @param default_value - Default value for this parameter
-        OptimizationParameter(const std::string &name, const OptimizationParameterRange &range,
-                              double step, double default_value);
+        /// @param type          - Parameter type
+        OptimizationParameter(const std::string &name, const OptimizationParameterRange &range, double step,
+                              double default_value, OptimizationParameterType type = OptimizationParameterType::DEFAULT);
 
         /// Default constructor to define an OptimizationParameter with list of possible values
         /// @param name          - Name of a parameter
         /// @param values        - List of possible values for this parameter
         /// @param default_value - Default value for this parameter
-        OptimizationParameter(const std::string &name, const std::vector<double> &values, double default_value);
+        /// @param type          - Parameter type
+        OptimizationParameter(const std::string &name, const std::vector<double> &values,
+                              double default_value, OptimizationParameterType type = OptimizationParameterType::DEFAULT);
 
         /// Copy constructor
         /// @param other - OptimizationParameter to make copy of
@@ -75,33 +87,62 @@ namespace TTSP {
 
         /// Getter for default_value of a parameter
         double GetDefaultValue() const noexcept;
+
+        /// Getter for type of a parameter
+        OptimizationParameterType GetType() const noexcept;
     };
 
     /// This class is used to store an OptimizationParameter and associated current value
     /// @see OptimizationParameter
     typedef std::pair<OptimizationParameter, double> OptimizationParametersEntry;
 
-    /// This class is used to store a list of OptimizationParameter and associated current value
+    /// This class is used to store a list of OptimizationParameterEntry
     /// @see OptimizationParameter
     /// @see OptimizationParametersEntry
     typedef std::vector<OptimizationParametersEntry> OptimizationParameterEntries;
 
-    /// This class is used to store a slice of OptimizationParametersSpace for some optimization parameter
+    /// This class is used to store a slice of OptimizationParameters for some optimization parameter
     /// @see OptimizationParameter
     /// @see OptimizationParametersSpace
-    typedef std::pair<std::string, double> OptimizationParameterPoint;
+    class OptimizationParameterPoint {
+    private:
+        std::string name;
+        double      value;
 
-    /// This class is used to store a slice of OptimizationParametersSpace for all optimization parameters
+        OptimizationParameterPoint(const std::string &name, double value, OptimizationParameterType type);
+
+        static void swap(OptimizationParameterPoint &left, OptimizationParameterPoint &right);
+
+        static double convert(double value, OptimizationParameterType type);
+    public:
+        OptimizationParameterPoint(const OptimizationParameterPoint &other);
+
+        OptimizationParameterPoint(OptimizationParameterPoint &&other) noexcept;
+
+        OptimizationParameterPoint &operator=(const OptimizationParameterPoint &other);
+
+        const std::string& GetName() const noexcept;
+
+        double GetValue() const noexcept;
+
+        ~OptimizationParameterPoint();
+
+        friend class OptimizationParameters;
+    };
+
+    /// This class is used to store a slice of OptimizationParameters for all optimization parameters
     /// @see OptimizationParameter
     /// @see OptimizationParameterPoint
     /// @see OptimizationParametersSpace
     typedef std::vector<OptimizationParameterPoint> OptimizationParameterPoints;
 
+    typedef std::pair<std::size_t, double> OptimizationAlgorithmSuggestion;
+
     /// This class is used to store a result of optimization iterations with suggested points and changed parameter
     /// @see OptimizationParameter
     /// @see OptimizationParameterPoint
     /// @see OptimizationParameterPoints
-    /// @see OptimizationParametersSpace
+    /// @see OptimizationParameters
     class OptimizationParametersSuggestion {
     private:
         const OptimizationParameter &changed;
@@ -157,6 +198,9 @@ namespace TTSP {
 
         /// Getter for parameter reference of this space by index
         const OptimizationParameter &GetParameter(std::size_t index) const;
+
+        /// Getter for parameters count
+        std::size_t Size() const;
 
         /// Getter for slice of parameters of this space
         const OptimizationParameterPoints GetPoints() const noexcept;
@@ -248,12 +292,12 @@ namespace TTSP {
         OptimizationParameterResultsBuffer &operator=(const OptimizationParameterResultsBuffer &other);
 
         /// Begin iterator of the buffer
-        std::deque<OptimizationParameterResult>::const_reverse_iterator begin() const noexcept;
+        std::deque<OptimizationParameterResult>::const_reverse_iterator cbegin() const noexcept;
 
         const OptimizationParameterResult &at(std::size_t index) const;
 
         /// End iterator of the buffer
-        std::deque<OptimizationParameterResult>::const_reverse_iterator end() const noexcept;
+        std::deque<OptimizationParameterResult>::const_reverse_iterator cend() const noexcept;
 
         /// Utility method to push result to the start of ring buffer
         /// @param result - Result to store
@@ -296,13 +340,17 @@ namespace TTSP {
 
         virtual void UpdateSpaceWithLatestResults();
 
+        virtual OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                             const OptimizationParameterPoints &,
+                                                                                                                             void *)> &invoke, void *data) const = 0;
+
     public:
         OptimizerInterface(const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity) :
                 parameters(parameters), properties(properties), results(buffer_capacity) {};
 
-        virtual OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                              const OptimizationParameterPoints &,
-                                                                                                              void *)> &invoke, void *data) const = 0;
+        OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                      const OptimizationParameterPoints &,
+                                                                                                      void *)> &invoke, void *data) const;
 
         void SaveResult(const OptimizationParameter &changed,
                         const OptimizationParameterPoints &before, double metrics_before,

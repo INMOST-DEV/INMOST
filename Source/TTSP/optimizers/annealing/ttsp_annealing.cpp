@@ -36,7 +36,6 @@ namespace TTSP {
         return distribution(generator);
     }
 
-    AnnealingParameterOptimizationType   AnnealingParameterHandler::DEFAULT_OPTIMIZATION_TYPE = STRICT;
     double                               AnnealingParameterHandler::DEFAULT_TEMP0             = 0.0010037;
     double                               AnnealingParameterHandler::DEFAULT_DECREMENT         = 2;
     bool                                 AnnealingParameterHandler::DEFAULT_ALLOW_OSCILLATION = false;
@@ -45,24 +44,13 @@ namespace TTSP {
     bool                                 AnnealingParameterHandler::DEFAULT_USE_CLOSEST       = true;
 
     AnnealingParameterHandler::AnnealingParameterHandler(const OptimizationParameter &parameter, const OptimizerInterface &optimizer) :
-            count(0), parameter(parameter), current_value(parameter.GetDefaultValue()),
-            optimization_type(AnnealingParameterHandler::DEFAULT_OPTIMIZATION_TYPE),
+            count(0), parameter(parameter), value(parameter.GetDefaultValue()),
             temp0(AnnealingParameterHandler::DEFAULT_TEMP0),
             decrement(AnnealingParameterHandler::DEFAULT_DECREMENT),
             allow_oscillation(AnnealingParameterHandler::DEFAULT_ALLOW_OSCILLATION),
             oscillation_temp(AnnealingParameterHandler::DEFAULT_OSCILLATION_TEMP),
             strict_bound(AnnealingParameterHandler::DEFAULT_STRICT_BOUND),
             use_closest(AnnealingParameterHandler::DEFAULT_USE_CLOSEST) {
-
-        const std::string &optimization_type_property = parameter.GetName() + ":optimization_type";
-        if (optimizer.HasProperty(optimization_type_property)) {
-            const std::string &type = optimizer.GetProperty(optimization_type_property);
-            if (type == "strict") {
-                optimization_type = STRICT;
-            } else if (type == "exponent") {
-                optimization_type = EXPONENT;
-            }
-        }
 
         const std::string &temp0_property = parameter.GetName() + ":temp0";
         if (optimizer.HasProperty(temp0_property)) {
@@ -111,17 +99,13 @@ namespace TTSP {
     }
 
     AnnealingParameterHandler::AnnealingParameterHandler(const AnnealingParameterHandler &other) :
-            count(other.count), current_value(other.current_value),
-            parameter(other.parameter), optimization_type(other.optimization_type), temp0(other.temp0), decrement(other.decrement),
+            count(other.count), value(other.value),
+            parameter(other.parameter), temp0(other.temp0), decrement(other.decrement),
             allow_oscillation(other.allow_oscillation), oscillation_temp(other.oscillation_temp), strict_bound(other.strict_bound),
             use_closest(other.use_closest) {}
 
     const OptimizationParameter &AnnealingParameterHandler::GetParameter() const {
         return parameter;
-    }
-
-    AnnealingParameterOptimizationType AnnealingParameterHandler::GetOptimizationType() const {
-        return optimization_type;
     }
 
     double AnnealingParameterHandler::GetTemp0() const {
@@ -185,50 +169,35 @@ namespace TTSP {
             next = parameter.GetClosestTo(next);
         }
 
-        if (optimization_type == EXPONENT) {
-            return std::pow(10, -next);
-        } else {
-            return next;
-        }
+        return next;
     }
 
     double AnnealingParameterHandler::GetRandom() const {
         return random.next();
     }
 
-    void AnnealingParameterHandler::SetValue(double value) {
-        current_value = value;
-        count += 1;
+    double AnnealingParameterHandler::GetCurrentValue() const {
+        return value;
     }
 
-    double AnnealingParameterHandler::GetCurrentValue() const {
-        return current_value;
+    void AnnealingParameterHandler::SetValue(double value) {
+        this->count += 1;
+        this->value = value;
     }
 
     AnnealingOptimizer::AnnealingOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
-            OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0), values(space.GetParameterEntries().size()) {
+            OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0) {
         const OptimizationParameterEntries &parameters = space.GetParameterEntries();
         handlers.reserve(parameters.size());
-        std::for_each(parameters.begin(), parameters.end(), [this](const OptimizationParametersEntry &entry) {
+        std::for_each(parameters.cbegin(), parameters.cend(), [this](const OptimizationParametersEntry &entry) {
             handlers.emplace_back(AnnealingParameterHandler(entry.first, *this));
-        });
-        std::transform(parameters.begin(), parameters.end(), values.begin(), [](const OptimizationParametersEntry &entry) {
-            return entry.first.GetDefaultValue();
         });
     }
 
-    OptimizationParametersSuggestion AnnealingOptimizer::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                      const OptimizationParameterPoints &,
-                                                                                                                      void *)> &invoke, void *data) const {
-
-        OptimizationParameterPoints points(parameters.GetParameterEntries().size());
-
-        int i = 0;
-        std::transform(handlers.begin(), handlers.end(), points.begin(), [this, &i](const AnnealingParameterHandler &h) {
-            return std::make_pair(h.GetParameter().GetName(), i++ == current_handler_index ? h.GetNextValue() : h.GetCurrentValue());
-        });
-
-        return OptimizationParametersSuggestion(handlers.at(current_handler_index).GetParameter(), parameters.GetPoints(), parameters.GetMetrics(), points);
+    OptimizationAlgorithmSuggestion AnnealingOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                                     const OptimizationParameterPoints &,
+                                                                                                                                     void *)> &invoke, void *data) const {
+        return std::make_pair(current_handler_index, handlers.at(current_handler_index).GetNextValue());
     }
 
     void AnnealingOptimizer::UpdateSpaceWithLatestResults() {
@@ -241,7 +210,7 @@ namespace TTSP {
         double alpha   = h.GetRandom();
 
         if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || ((delta_e < 0.0) || alpha < et))) {
-            double update_value = last.GetPointsAfter().at(current_handler_index).second;
+            double update_value = last.GetPointsAfter().at(current_handler_index).GetValue();
             h.SetValue(update_value);
             parameters.Update(current_handler_index, update_value, last.GetMetricsAfter());
         }

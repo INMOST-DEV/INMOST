@@ -171,19 +171,19 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        TTSP::OptimizationParameter        tau("tau", {3e-2, 5e-2, 6e-2, 7e-2, 8e-2, 9e-2, 1e-1, 2e-1, 3e-1, 5e-1, 7e-1, 9e-1}, 1e-3);
+        TTSP::OptimizationParameter        tau("tau", std::make_pair(-4, -1), 0.1, 1e-3, TTSP::OptimizationParameterType::EXPONENT);
         //TTSP::OptimizationParameter        q("q", {0, 1, 2, 3, 4}, 2);
-        TTSP::OptimizationParameter        eps("eps", {1e-7, 1e-6, 1e-5, 1e-4, 1e-3}, 1e-5);
+        //TTSP::OptimizationParameter        eps("eps", {1e-7, 1e-6, 1e-5, 1e-4, 1e-3}, 1e-5);
         TTSP::OptimizationParameterEntries entries;
 
-        entries.emplace_back(std::make_pair(eps, eps.GetDefaultValue()));
+        //entries.emplace_back(std::make_pair(eps, eps.GetDefaultValue()));
         entries.emplace_back(std::make_pair(tau, tau.GetDefaultValue()));
         //entries.emplace_back(std::make_pair(q, q.GetDefaultValue()));
 
         TTSP::OptimizerProperties properties;
 
         properties["tau:use_closest"]  = "false";
-        properties["tau:strict_bound"] = "false";
+        properties["tau:strict_bound"] = "true";
 
         properties["eps:use_closest"]  = "false";
         properties["eps:strict_bound"] = "false";
@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
 
         TTSP::OptimizerInterface *optimizer = TTSP::OptimizerInterface::GetOptimizer(optimizerType, parameters, properties, 50);
 
-        optimizer->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level1);
+        optimizer->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level3);
 
         while (!series.end()) {
 
@@ -236,7 +236,7 @@ int main(int argc, char **argv) {
                                                        void *data) -> TTSP::OptimizationFunctionInvokeResult {
 
                 std::for_each(after.begin(), after.end(), [&solver](const TTSP::OptimizationParameterPoint &point) {
-                    solver.SetParameter(point.first, INMOST::to_string(point.second));
+                    solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
                 });
 
                 INMOST::Sparse::Vector SOL("SOL", rhs.GetFirstIndex(), rhs.GetLastIndex());
@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
                 double time = Timer() - tmp_time;
 
                 std::for_each(before.begin(), before.end(), [&solver](const TTSP::OptimizationParameterPoint &point) {
-                    solver.SetParameter(point.first, INMOST::to_string(point.second));
+                    solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
                 });
 
                 return std::make_pair(is_solved, time);
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
             if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level0) {
                 std::string metadata = solver.SolutionMetadataLine("\t");
                 std::for_each(suggestion.GetPointsAfter().begin(), suggestion.GetPointsAfter().end(), [&metadata](const TTSP::OptimizationParameterPoint &p) {
-                    metadata += ("\t" + INMOST::to_string(p.second));
+                    metadata += ("\t" + INMOST::to_string(p.GetValue()));
                 });
                 std::cout << metadata << std::endl;
             }
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
                 std::cout << std::endl << "Next optimization parameters found for current iteration:" << std::endl;
                 const TTSP::OptimizationParameterPoints &points = optimizer->GetPoints();
                 std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &p) {
-                    std::cout << "\t" << p.first << " = " << p.second << std::endl;
+                    std::cout << "\t" << p.GetName() << " = " << p.GetValue() << std::endl;
                 });
             }
 
@@ -293,19 +293,19 @@ int main(int argc, char **argv) {
                 const TTSP::OptimizationParameterResultsBuffer &results = optimizer->GetResults();
 
                 int index = 1;
-                std::for_each(results.begin(), results.end(), [&index](const TTSP::OptimizationParameterResult &result) {
+                std::for_each(results.cbegin(), results.cend(), [&index](const TTSP::OptimizationParameterResult &result) {
                     std::cout << "\t" << index++ << "\t" << " [";
 
                     const TTSP::OptimizationParameterPoints &pbefore = result.GetPointsBefore();
                     std::for_each(pbefore.begin(), pbefore.end(), [](const TTSP::OptimizationParameterPoint &point) {
-                        std::cout << " " << point.first << "=" << point.second << " ";
+                        std::cout << " " << point.GetName() << "=" << point.GetValue() << " ";
                     });
 
                     std::cout << "] -> [";
 
                     const TTSP::OptimizationParameterPoints &pafter = result.GetPointsAfter();
                     std::for_each(pafter.begin(), pafter.end(), [](const TTSP::OptimizationParameterPoint &point) {
-                        std::cout << " " << point.first << "=" << point.second << " ";
+                        std::cout << " " << point.GetName() << "=" << point.GetValue() << " ";
                     });
 
                     std::cout << "]\t\t(" << result.GetMetricsBefore() << " -> " << result.GetMetricsAfter() << ")" << std::endl;

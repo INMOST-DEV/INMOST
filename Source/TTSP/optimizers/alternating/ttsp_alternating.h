@@ -46,12 +46,12 @@ namespace TTSP {
     protected:
         void UpdateSpaceWithLatestResults() override;
 
+        OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                     const OptimizationParameterPoints &,
+                                                                                                                     void *)> &invoke, void *data) const override;
+
     public:
         AlternatingOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
-
-        OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                      const OptimizationParameterPoints &,
-                                                                                                      void *)> &invoke, void *data) const override;
 
         virtual ~AlternatingOptimizer();
     };
