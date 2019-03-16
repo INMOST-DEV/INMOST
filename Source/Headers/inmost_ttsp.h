@@ -21,8 +21,8 @@ namespace TTSP {
     /// - DEFAULT  - parameter values should be used as is
     /// - EXPONENT - parameter values should be converted to 10^v
     enum class OptimizationParameterType {
-        DEFAULT,
-        EXPONENT
+        PARAMETER_TYPE_DEFAULT,
+        PARAMETER_TYPE_EXPONENT
     };
 
     /// This class is used to define a solver parameter for optimization algortihms
@@ -46,7 +46,7 @@ namespace TTSP {
         /// @param default_value - Default value for this parameter
         /// @param type          - Parameter type
         OptimizationParameter(const std::string &name, const OptimizationParameterRange &range, double step,
-                              double default_value, OptimizationParameterType type = OptimizationParameterType::DEFAULT);
+                              double default_value, OptimizationParameterType type = OptimizationParameterType::PARAMETER_TYPE_DEFAULT);
 
         /// Default constructor to define an OptimizationParameter with list of possible values
         /// @param name          - Name of a parameter
@@ -54,7 +54,7 @@ namespace TTSP {
         /// @param default_value - Default value for this parameter
         /// @param type          - Parameter type
         OptimizationParameter(const std::string &name, const std::vector<double> &values,
-                              double default_value, OptimizationParameterType type = OptimizationParameterType::DEFAULT);
+                              double default_value, OptimizationParameterType type = OptimizationParameterType::PARAMETER_TYPE_DEFAULT);
 
         /// Copy constructor
         /// @param other - OptimizationParameter to make copy of
@@ -338,8 +338,8 @@ namespace TTSP {
     };
 
     enum class OptimizerRestartStrategy {
-        NO_RESTART,
-        RESTART_WITH_BEST
+        RESTART_STRATEGY_NO_RESTART,
+        RESTART_STRATEGY_WITH_BEST
     };
 
     typedef std::pair<bool, double> OptimizationFunctionInvokeResult;
@@ -348,7 +348,7 @@ namespace TTSP {
     private:
         OptimizerVerbosityLevel verbosity = OptimizerVerbosityLevel::Level0;
 
-        OptimizerRestartStrategy restart_strategy = OptimizerRestartStrategy::NO_RESTART;
+        OptimizerRestartStrategy restart_strategy = OptimizerRestartStrategy::RESTART_STRATEGY_NO_RESTART;
         std::size_t              max_fails        = std::numeric_limits<std::size_t>::max();
         std::size_t              fails_count      = 0;
 

@@ -90,9 +90,9 @@ namespace TTSP {
 
     double OptimizationParameterPoint::convert(double value, OptimizationParameterType type) {
         switch (type) {
-            case OptimizationParameterType::DEFAULT:
+            case OptimizationParameterType::PARAMETER_TYPE_DEFAULT:
                 return value;
-            case OptimizationParameterType::EXPONENT:
+            case OptimizationParameterType::PARAMETER_TYPE_EXPONENT:
                 return std::pow(10, value);
             default:
                 return value;
@@ -394,9 +394,9 @@ namespace TTSP {
 
         if (this->fails_count > this->max_fails) {
             switch (restart_strategy) {
-                case OptimizerRestartStrategy::NO_RESTART:
+                case OptimizerRestartStrategy::RESTART_STRATEGY_NO_RESTART:
                     break;
-                case OptimizerRestartStrategy::RESTART_WITH_BEST:
+                case OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST:
                     RestartWithBestStrategy();
                     break;
                 default:
