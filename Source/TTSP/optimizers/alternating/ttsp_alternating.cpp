@@ -7,7 +7,7 @@
 namespace TTSP {
 
     AlternatingParameterHandler::AlternatingParameterHandler(const OptimizationParameter &parameter) :
-            parameter(parameter), direction(AlternatingDirection::RIGHT), current_index(0) {}
+            parameter(parameter), direction(AlternatingDirection::RIGHT), current_index(parameter.GetClosestIndexTo(parameter.GetDefaultValue())) {}
 
     AlternatingParameterHandler::AlternatingParameterHandler(const AlternatingParameterHandler &other) :
             parameter(other.parameter), direction(other.direction), current_index(other.current_index) {}

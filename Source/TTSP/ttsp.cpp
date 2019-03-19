@@ -68,6 +68,12 @@ namespace TTSP {
         });
     }
 
+    std::size_t OptimizationParameter::GetClosestIndexTo(double to) const noexcept {
+        return std::min_element(values.begin(), values.end(), [to](double x, double y) {
+            return std::abs(x - to) < std::abs(y - to);
+        }) - values.begin();
+    }
+
     std::size_t OptimizationParameter::GetValuesCount() const noexcept {
         return values.size();
     }

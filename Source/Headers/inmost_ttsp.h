@@ -83,6 +83,9 @@ namespace TTSP {
         /// Getter for closest value of a parameter to specified values in creation stage
         double GetClosestTo(double to) const noexcept;
 
+        /// Getter for closest value index of a parameter to specified values in creation stage
+        std::size_t GetClosestIndexTo(double to) const noexcept;
+
         /// Getter for number of values of a parameter
         std::size_t GetValuesCount() const noexcept;
 
