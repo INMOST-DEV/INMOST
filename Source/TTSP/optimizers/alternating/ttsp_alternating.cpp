@@ -28,6 +28,10 @@ namespace TTSP {
         std::size_t count = parameter.GetValues().size() - 1;
         std::size_t index = current_index;
 
+        if (count < 2) {
+            return index;
+        }
+
         switch_direction:
         switch (direction) {
             case RIGHT:
@@ -38,8 +42,6 @@ namespace TTSP {
                     index += 1;
                 }
                 break;
-            case STAY1:
-                break;
             case LEFT:
                 if (index == 0) {
                     direction = RIGHT;
@@ -48,8 +50,6 @@ namespace TTSP {
                     index -= 1;
                 }
                 break;
-            case STAY2:
-                break;
             default:
                 break;
         }
@@ -57,7 +57,7 @@ namespace TTSP {
     }
 
     void AlternatingParameterHandler::NextDirection() {
-        direction = (direction + 1) % 4;
+        direction = (direction + 1) % 2;
     }
 
     void AlternatingParameterHandler::UpdateIndex(std::size_t index) {

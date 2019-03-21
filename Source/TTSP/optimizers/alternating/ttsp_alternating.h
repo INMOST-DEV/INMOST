@@ -11,9 +11,7 @@ namespace TTSP {
 
     enum AlternatingDirection : std::size_t {
         RIGHT = 0,
-        STAY1 = 1,
-        LEFT  = 2,
-        STAY2 = 3,
+        LEFT  = 1,
     };
 
     class AlternatingParameterHandler {
