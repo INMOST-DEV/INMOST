@@ -10,6 +10,7 @@
 #include <string>
 #include <deque>
 #include <unordered_map>
+#include <functional>
 
 namespace TTSP {
 
@@ -355,6 +356,8 @@ namespace TTSP {
         std::size_t              max_fails        = std::numeric_limits<std::size_t>::max();
         std::size_t              fails_count      = 0;
 
+        std::deque<OptimizationParametersSuggestion> suggestions;
+
         void RestartWithBestStrategy();
 
     protected:
@@ -372,9 +375,12 @@ namespace TTSP {
         OptimizerInterface(const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity) :
                 parameters(parameters), properties(properties), results(buffer_capacity) {};
 
-        OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                      const OptimizationParameterPoints &,
-                                                                                                      void *)> &invoke, void *data) const;
+        OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &, const OptimizationParameterPoints &,
+                                                                                                      void *)> &invoke = [](const OptimizationParameterPoints &,
+                                                                                                                            const OptimizationParameterPoints &,
+                                                                                                                            void *) -> OptimizationFunctionInvokeResult {
+            return std::make_pair(false, 0);
+        }, void *data = nullptr);
 
         void SaveResult(std::size_t changed_index, double changed_value,
                         const OptimizationParameterPoints &before, double metrics_before,
@@ -395,6 +401,8 @@ namespace TTSP {
         bool HasProperty(const std::string &name) const noexcept;
 
         const std::string &GetProperty(const std::string &name) const;
+
+        const OptimizationParametersSuggestion &GetLastSuggestion() const;
 
         void SetRestartStrategy(OptimizerRestartStrategy strategy, std::size_t max_fails) noexcept;
 

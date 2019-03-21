@@ -373,17 +373,25 @@ namespace TTSP {
     }
 
     OptimizationParametersSuggestion OptimizerInterface::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                      const OptimizationParameterPoints &,
-                                                                                                                      void *)> &invoke, void *data) const {
+                                                                                                                const OptimizationParameterPoints &,
+                                                                                                                void *)> &invoke, void *data) {
         OptimizationAlgorithmSuggestion algorithm = this->AlgorithmMakeSuggestion(invoke, data);
 
-        return OptimizationParametersSuggestion(
+        OptimizationParametersSuggestion suggestion = OptimizationParametersSuggestion(
                 algorithm.first,
                 algorithm.second,
                 parameters.GetPoints(),
                 parameters.GetMetrics(),
                 parameters.GetPointsWithChangedParameter(parameters.GetParameter(algorithm.first), algorithm.second)
         );
+
+        if (!suggestions.empty()) {
+            suggestions.pop_front();
+        }
+
+        suggestions.push_front(suggestion);
+
+        return suggestion;
     }
 
     void OptimizerInterface::SaveResult(std::size_t changed_index, double changed_value,
@@ -442,6 +450,10 @@ namespace TTSP {
 
     const std::string &OptimizerInterface::GetProperty(const std::string &name) const {
         return properties.at(name);
+    }
+
+    const OptimizationParametersSuggestion& OptimizerInterface::GetLastSuggestion() const {
+        return suggestions.at(0);
     }
 
     void OptimizerInterface::SetRestartStrategy(OptimizerRestartStrategy strategy, std::size_t max_fails) noexcept {
