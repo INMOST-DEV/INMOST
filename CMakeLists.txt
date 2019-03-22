@@ -35,6 +35,7 @@ option(USE_SOLVER_PETSC "Use PETSc solvers" OFF)
 option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
 option(USE_TTSP "Use Trace and Tune Solver Parameters optimization toolkit" OFF)
+option(USE_TTSP_LIMBO "Compile TTSP module against Limbo library to provide Bayesian optimization algorithm")
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
@@ -73,6 +74,20 @@ if(TEST_FORTRAN_ANI3D)
 
 endif()
 
+if(USE_TTSP_LIMBO)
+	include_directories(/Users/bvdmitri/Projects/CXX/limbo/src)
+	target_link_libraries(inmost /Users/bvdmitri/Projects/CXX/limbo/build/src/liblimbo.a)
+
+	find_package(Eigen3 REQUIRED)
+	include_directories(${EIGEN3_INCLUDE_DIR})
+
+	include_directories(/usr/local/Cellar/nlopt/2.4.2_2/include)
+	target_link_libraries(inmost /usr/local/Cellar/nlopt/2.4.2_2/lib/libnlopt.a)
+
+	find_package(boost REQUIRED)
+	include_directories(${Boost_INCLUDE_DIRS})
+	target_link_libraries(inmost ${Boost_LIBRARIES})
+endif()
 
 if(USE_MPI)
 	find_package(MPI)

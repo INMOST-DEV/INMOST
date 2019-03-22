@@ -24,6 +24,7 @@
 #cmakedefine USE_SOLVER_SUPERLU
 
 #cmakedefine USE_TTSP
+#cmakedefine USE_TTSP_LIMBO
 
 #cmakedefine USE_NONLINEAR
 #cmakedefine USE_NONLINEAR_TRILINOS

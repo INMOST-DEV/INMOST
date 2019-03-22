@@ -9,6 +9,12 @@
 #include "optimizers/alternating/ttsp_alternating.h"
 #include "optimizers/annealing/ttsp_annealing.h"
 
+#if defined(USE_TTSP_LIMBO)
+
+#include "optimizers/bayesian/ttsp_bayesian.h"
+
+#endif
+
 namespace TTSP {
 
     void OptimizationParameter::swap(OptimizationParameter &left, OptimizationParameter &right) {
@@ -84,6 +90,17 @@ namespace TTSP {
 
     OptimizationParameterType OptimizationParameter::GetType() const noexcept {
         return type;
+    }
+
+    double OptimizationParameter::ExtractValueFromPoint(const OptimizationParameterPoint &point) const noexcept {
+        switch (type) {
+            case OptimizationParameterType::PARAMETER_TYPE_DEFAULT:
+                return point.GetValue();
+            case OptimizationParameterType::PARAMETER_TYPE_EXPONENT:
+                return std::log10(point.GetValue());
+            default:
+                return point.GetValue();
+        }
     }
 
     OptimizationParameterPoint::OptimizationParameterPoint(const std::string &name, double value, OptimizationParameterType type) :
@@ -373,8 +390,8 @@ namespace TTSP {
     }
 
     OptimizationParametersSuggestion OptimizerInterface::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                const OptimizationParameterPoints &,
-                                                                                                                void *)> &invoke, void *data) {
+                                                                                                                      const OptimizationParameterPoints &,
+                                                                                                                      void *)> &invoke, void *data) {
         OptimizationAlgorithmSuggestion algorithm = this->AlgorithmMakeSuggestion(invoke, data);
 
         OptimizationParametersSuggestion suggestion = OptimizationParametersSuggestion(
@@ -452,7 +469,7 @@ namespace TTSP {
         return properties.at(name);
     }
 
-    const OptimizationParametersSuggestion& OptimizerInterface::GetLastSuggestion() const {
+    const OptimizationParametersSuggestion &OptimizerInterface::GetLastSuggestion() const {
         return suggestions.at(0);
     }
 
@@ -475,6 +492,9 @@ namespace TTSP {
         available.emplace_back("bruteforce");
         available.emplace_back("alternating");
         available.emplace_back("annealing");
+#if defined(USE_TTSP_LIMBO)
+        available.emplace_back("bayesian");
+#endif
 
         return available;
     }
@@ -486,6 +506,9 @@ namespace TTSP {
         if (type == "bruteforce") return new BruteforceOptimizer(space, properties, buffer_capacity);
         if (type == "alternating") return new AlternatingOptimizer(space, properties, buffer_capacity);
         if (type == "annealing") return new AnnealingOptimizer(space, properties, buffer_capacity);
+#if defined(USE_TTSP_LIMBO)
+        if (type == "bayesian") return new BayesianOptimizer(space, properties, buffer_capacity);
+#endif
         return nullptr;
     }
 

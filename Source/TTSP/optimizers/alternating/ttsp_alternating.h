@@ -9,16 +9,17 @@
 
 namespace TTSP {
 
-    enum AlternatingDirection : std::size_t {
+    enum class AlternatingDirection : std::size_t {
         RIGHT = 0,
-        LEFT  = 1,
+        STAY  = 1,
+        LEFT  = 2,
     };
 
     class AlternatingParameterHandler {
     private:
-        const OptimizationParameter &parameter;
-        std::size_t                 current_index;
-        mutable std::size_t         direction;
+        const OptimizationParameter  &parameter;
+        std::size_t                  current_index;
+        mutable AlternatingDirection direction;
     public:
         explicit AlternatingParameterHandler(const OptimizationParameter &parameter);
 
@@ -26,7 +27,7 @@ namespace TTSP {
 
         const OptimizationParameter &GetParameter() const;
 
-        std::size_t GetDirection() const;
+        AlternatingDirection GetDirection() const;
 
         std::size_t GetCurrentIndex() const;
 

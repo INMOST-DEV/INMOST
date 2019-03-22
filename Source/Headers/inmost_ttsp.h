@@ -14,10 +14,6 @@
 
 namespace TTSP {
 
-    /// This class is used to define a range of possible values for some parameter
-    /// Usage: OptimizationParameterRange range = std::make_pair(0.0, 1.0)
-    typedef std::pair<double, double> OptimizationParameterRange;
-
     /// This class is used to defined a type of a parameter
     /// - DEFAULT  - parameter values should be used as is
     /// - EXPONENT - parameter values should be converted to 10^v
@@ -25,6 +21,46 @@ namespace TTSP {
         PARAMETER_TYPE_DEFAULT,
         PARAMETER_TYPE_EXPONENT
     };
+
+    /// This class is used to store a slice of OptimizationParameters for some optimization parameter
+    /// @see OptimizationParameter
+    /// @see OptimizationParametersSpace
+    class OptimizationParameterPoint {
+    private:
+        std::string name;
+        double      value;
+
+        OptimizationParameterPoint(const std::string &name, double value, OptimizationParameterType type);
+
+        static void swap(OptimizationParameterPoint &left, OptimizationParameterPoint &right);
+
+        static double convert(double value, OptimizationParameterType type);
+
+    public:
+        OptimizationParameterPoint(const OptimizationParameterPoint &other);
+
+        OptimizationParameterPoint(OptimizationParameterPoint &&other) noexcept;
+
+        OptimizationParameterPoint &operator=(const OptimizationParameterPoint &other);
+
+        const std::string &GetName() const noexcept;
+
+        double GetValue() const noexcept;
+
+        ~OptimizationParameterPoint();
+
+        friend class OptimizationParameters;
+    };
+
+    /// This class is used to store a slice of OptimizationParameters for all optimization parameters
+    /// @see OptimizationParameter
+    /// @see OptimizationParameterPoint
+    /// @see OptimizationParametersSpace
+    typedef std::vector<OptimizationParameterPoint> OptimizationParameterPoints;
+
+    /// This class is used to define a range of possible values for some parameter
+    /// Usage: OptimizationParameterRange range = std::make_pair(0.0, 1.0)
+    typedef std::pair<double, double> OptimizationParameterRange;
 
     /// This class is used to define a solver parameter for optimization algortihms
     /// Usage:
@@ -95,6 +131,8 @@ namespace TTSP {
 
         /// Getter for type of a parameter
         OptimizationParameterType GetType() const noexcept;
+
+        double ExtractValueFromPoint(const OptimizationParameterPoint &point) const noexcept;
     };
 
     /// This class is used to store an OptimizationParameter and associated current value
@@ -105,42 +143,6 @@ namespace TTSP {
     /// @see OptimizationParameter
     /// @see OptimizationParametersEntry
     typedef std::vector<OptimizationParametersEntry> OptimizationParameterEntries;
-
-    /// This class is used to store a slice of OptimizationParameters for some optimization parameter
-    /// @see OptimizationParameter
-    /// @see OptimizationParametersSpace
-    class OptimizationParameterPoint {
-    private:
-        std::string name;
-        double      value;
-
-        OptimizationParameterPoint(const std::string &name, double value, OptimizationParameterType type);
-
-        static void swap(OptimizationParameterPoint &left, OptimizationParameterPoint &right);
-
-        static double convert(double value, OptimizationParameterType type);
-
-    public:
-        OptimizationParameterPoint(const OptimizationParameterPoint &other);
-
-        OptimizationParameterPoint(OptimizationParameterPoint &&other) noexcept;
-
-        OptimizationParameterPoint &operator=(const OptimizationParameterPoint &other);
-
-        const std::string &GetName() const noexcept;
-
-        double GetValue() const noexcept;
-
-        ~OptimizationParameterPoint();
-
-        friend class OptimizationParameters;
-    };
-
-    /// This class is used to store a slice of OptimizationParameters for all optimization parameters
-    /// @see OptimizationParameter
-    /// @see OptimizationParameterPoint
-    /// @see OptimizationParametersSpace
-    typedef std::vector<OptimizationParameterPoint> OptimizationParameterPoints;
 
     typedef std::pair<std::size_t, double> OptimizationAlgorithmSuggestion;
 

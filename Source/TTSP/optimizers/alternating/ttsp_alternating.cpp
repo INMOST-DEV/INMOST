@@ -16,7 +16,7 @@ namespace TTSP {
         return parameter;
     }
 
-    std::size_t AlternatingParameterHandler::GetDirection() const {
+    AlternatingDirection AlternatingParameterHandler::GetDirection() const {
         return direction;
     }
 
@@ -34,17 +34,19 @@ namespace TTSP {
 
         switch_direction:
         switch (direction) {
-            case RIGHT:
+            case AlternatingDirection::RIGHT:
                 if (index == count) {
-                    direction = LEFT;
+                    direction = AlternatingDirection::LEFT;
                     goto switch_direction;
                 } else {
                     index += 1;
                 }
                 break;
-            case LEFT:
+            case AlternatingDirection::STAY:
+                break;
+            case AlternatingDirection::LEFT:
                 if (index == 0) {
-                    direction = RIGHT;
+                    direction = AlternatingDirection::RIGHT;
                     goto switch_direction;
                 } else {
                     index -= 1;
@@ -57,7 +59,19 @@ namespace TTSP {
     }
 
     void AlternatingParameterHandler::NextDirection() {
-        direction = (direction + 1) % 2;
+        switch (direction) {
+            case AlternatingDirection::RIGHT:
+                direction = AlternatingDirection::STAY;
+                break;
+            case AlternatingDirection::STAY:
+                direction = AlternatingDirection::LEFT;
+                break;
+            case AlternatingDirection::LEFT:
+                direction = AlternatingDirection::RIGHT;
+                break;
+            default:
+                break;
+        }
     }
 
     void AlternatingParameterHandler::UpdateIndex(std::size_t index) {
@@ -84,13 +98,17 @@ namespace TTSP {
         AlternatingParameterHandler       &current = handlers.at(current_handler_index);
         const OptimizationParameterResult &last    = results.at(0);
 
-        bool is_updated = false;
+        bool is_updated        = false;
+        bool is_metrics_better = (last.GetMetricsBefore() < 0.0 || (last.GetMetricsAfter() < last.GetMetricsBefore()));
+        bool is_direction_stay = (current.GetDirection() == AlternatingDirection::STAY);
 
-        if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || last.GetMetricsAfter() < last.GetMetricsBefore())) {
+        if (last.IsGood() && (is_metrics_better || is_direction_stay)) {
             current.UpdateIndex(current.NextIndex());
             parameters.Update(current_handler_index, parameters.GetParameter(current_handler_index).GetValues().at(current.GetCurrentIndex()), last.GetMetricsAfter());
             is_updated = true;
-        } else {
+        }
+
+        if (!is_metrics_better) {
             current.NextDirection();
         }
 
