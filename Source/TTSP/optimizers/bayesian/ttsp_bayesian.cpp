@@ -51,7 +51,7 @@ namespace TTSP {
         return distribution(generator);
     }
 
-    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT  = 5;
+    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT  = 7;
     double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS = 0.05;
 
     BayesianOptimizer::BayesianOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
@@ -63,9 +63,11 @@ namespace TTSP {
                                                                                                                                     const OptimizationParameterPoints &,
                                                                                                                                     void *)> &invoke, void *data) const {
 
-        if (results.size() == 0) {
+        auto unique = results.GetLastUniqueEntries(initial_iterations_count);
+
+        if (unique.size() == 0) {
             return std::make_pair(0, parameters.GetParameter(0).GetDefaultValue());
-        } else if (results.size() < initial_iterations_count) {
+        } else if (unique.size() < initial_iterations_count) {
 
             auto parameter = parameters.GetParameter(0);
 
@@ -102,7 +104,7 @@ namespace TTSP {
         std::vector<Eigen::VectorXd> samples;
         std::vector<Eigen::VectorXd> observations;
 
-        std::for_each(results.cbegin(), results.cend(), [this, &samples, &observations](const OptimizationParameterResult &result) {
+        std::for_each(unique.cbegin(), unique.cend(), [this, &samples, &observations](const OptimizationParameterResult &result) {
             Eigen::VectorXd sample(parameters.Size());
 
             int i = 0;

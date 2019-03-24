@@ -370,6 +370,36 @@ namespace TTSP {
         });
     }
 
+    const std::vector<OptimizationParameterResult> OptimizationParameterResultsBuffer::GetLastUniqueEntries(std::size_t max) const {
+        std::vector<OptimizationParameterResult> unique;
+
+        std::for_each(cbegin(), cend(), [&unique, max](const OptimizationParameterResult &r) {
+
+            if (unique.size() <= max) {
+
+                auto same = std::find_if(unique.cbegin(), unique.cend(), [&r](const OptimizationParameterResult &u) {
+                    for (std::size_t i = 0; i < r.GetPointsAfter().size(); ++i) {
+                        auto rpi = r.GetPointsAfter().at(i);
+                        auto upi = u.GetPointsAfter().at(i);
+
+                        if (std::abs(rpi.GetValue() - upi.GetValue()) > 1e-8) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+
+                if (same == unique.cend()) {
+                    unique.push_back(r);
+                }
+
+            }
+
+        });
+
+        return unique;
+    }
+
     void OptimizerInterface::RestartWithBestStrategy() {
         auto min = std::min_element(results.cbegin(), results.cbegin() + max_fails, [](const OptimizationParameterResult &l, const OptimizationParameterResult &r) {
             return l.GetMetricsAfter() < r.GetMetricsAfter();

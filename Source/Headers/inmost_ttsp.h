@@ -332,6 +332,9 @@ namespace TTSP {
 
         /// Getter for last successful result
         const OptimizationParameterResult &GetLastSuccessfulResult() const;
+
+        /// Getter for last unique point entries
+        const std::vector<OptimizationParameterResult> GetLastUniqueEntries(std::size_t max) const;
     };
 
     typedef std::map<std::string, std::string> OptimizerProperties;
