@@ -51,11 +51,13 @@ namespace TTSP {
         return distribution(generator);
     }
 
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT   = 10;
     unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT  = 5;
     double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS = 0.01;
 
     BayesianOptimizer::BayesianOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity),
+            unique_points_max_count(BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT),
             initial_iterations_count(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT),
             initial_iterations_radius(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS) {}
 
@@ -63,7 +65,7 @@ namespace TTSP {
                                                                                                                                     const OptimizationParameterPoints &,
                                                                                                                                     void *)> &invoke, void *data) const {
 
-        auto unique = results.GetLastUniqueEntries(initial_iterations_count);
+        auto unique = results.GetLastUniqueEntries(unique_points_max_count);
 
         if (unique.size() == 0) {
             return std::make_pair(0, parameters.GetParameter(0).GetDefaultValue());
