@@ -19,15 +19,19 @@ namespace TTSP {
         explicit BayesianUniformDistribution();
 
         double next();
+
+        unsigned int operator()(unsigned int n);
     };
 
     class BayesianOptimizer : public OptimizerInterface {
     private:
         static unsigned int DEFAULT_UNIQUE_POINTS_MAX_COUNT;
+        static unsigned int DEFAULT_UNIQUE_POINTS_RANDOM_COUNT;
         static unsigned int DEFAULT_INITIAL_ITERATIONS_COUNT;
         static double       DEFAULT_INITIAL_ITERATIONS_RADIUS;
 
         unsigned int unique_points_max_count;
+        unsigned int unique_points_random_count;
         unsigned int initial_iterations_count;
         double       initial_iterations_radius;
 

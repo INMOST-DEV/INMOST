@@ -51,13 +51,19 @@ namespace TTSP {
         return distribution(generator);
     }
 
-    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT   = 10;
-    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT  = 5;
-    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS = 0.01;
+    unsigned int BayesianUniformDistribution::operator()(unsigned int n) {
+        return static_cast<unsigned int>(next() * n);
+    }
+
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT    = 10;
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 7;
+    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 5;
+    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.01;
 
     BayesianOptimizer::BayesianOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity),
             unique_points_max_count(BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT),
+            unique_points_random_count(BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT),
             initial_iterations_count(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT),
             initial_iterations_radius(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS) {}
 
@@ -80,6 +86,8 @@ namespace TTSP {
 
             return std::make_pair(0, parameter.GetDefaultValue() + r);
         }
+
+        std::random_shuffle(unique.begin(), unique.end(), random);
 
         struct Params {
             struct kernel : public limbo::defaults::kernel {
@@ -106,7 +114,8 @@ namespace TTSP {
         std::vector<Eigen::VectorXd> samples;
         std::vector<Eigen::VectorXd> observations;
 
-        std::for_each(unique.cbegin(), unique.cend(), [this, &samples, &observations](const OptimizationParameterResult &result) {
+        std::for_each(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), [this, &samples, &observations]
+                (const OptimizationParameterResult &result) {
             Eigen::VectorXd sample(parameters.Size());
 
             int i = 0;
