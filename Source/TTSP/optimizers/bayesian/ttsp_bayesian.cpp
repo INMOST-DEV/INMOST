@@ -65,7 +65,25 @@ namespace TTSP {
             unique_points_max_count(BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT),
             unique_points_random_count(BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT),
             initial_iterations_count(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT),
-            initial_iterations_radius(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS) {}
+            initial_iterations_radius(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS) {
+
+        if (this->HasProperty("unique_points_max_count")) {
+            unique_points_max_count = static_cast<unsigned int>(std::atoi(this->GetProperty("unique_points_max_count").c_str()));
+        }
+
+        if (this->HasProperty("unique_points_random_count")) {
+            unique_points_random_count = static_cast<unsigned int>(std::atoi(this->GetProperty("unique_points_random_count").c_str()));
+        }
+
+        if (this->HasProperty("initial_iterations_count")) {
+            initial_iterations_count = static_cast<unsigned int>(std::atoi(this->GetProperty("initial_iterations_count").c_str()));
+        }
+
+        if (this->HasProperty("initial_iterations_radius")) {
+            initial_iterations_radius = std::atof(this->GetProperty("initial_iterations_radius").c_str());
+        }
+
+    }
 
     OptimizationAlgorithmSuggestion BayesianOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                                     const OptimizationParameterPoints &,
