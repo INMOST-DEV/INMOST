@@ -51,8 +51,8 @@ namespace TTSP {
         return distribution(generator);
     }
 
-    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT  = 7;
-    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS = 0.05;
+    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT  = 5;
+    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS = 0.01;
 
     BayesianOptimizer::BayesianOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity),
