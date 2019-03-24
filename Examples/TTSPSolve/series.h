@@ -24,6 +24,8 @@ public:
 
     void restart();
 
+    int size() const;
+
     std::pair<const char *, const char *> next();
 };
 

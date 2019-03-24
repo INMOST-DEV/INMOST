@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        TTSP::OptimizationParameter        tau("tau", std::make_pair(-4, -1), 0.1, -3, TTSP::OptimizationParameterType::PARAMETER_TYPE_EXPONENT);
+        TTSP::OptimizationParameter        tau("tau", std::make_pair(-3, -1.0), 0.05, -2, TTSP::OptimizationParameterType::PARAMETER_TYPE_EXPONENT);
         //TTSP::OptimizationParameter        q("q", {0, 1, 2, 3, 4}, 2);
         //TTSP::OptimizationParameter        eps("eps", {1e-7, 1e-6, 1e-5, 1e-4, 1e-3}, 1e-5);
         TTSP::OptimizationParameterEntries entries;
@@ -202,12 +202,14 @@ int main(int argc, char **argv) {
             std::exit(0);
         }
 
-        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, parameters, properties, 50);
+        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, parameters, properties, 15);
 
-        TTSP::OptimizerInterface *topt = TTSP::Optimizers::GetOptimizer(optimizerType, parameters, properties, 50);
+        TTSP::OptimizerInterface *topt = TTSP::Optimizers::GetSavedOptimizer("test");
 
         topt->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level3);
         topt->SetRestartStrategy(TTSP::OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 10);
+
+        double metrics_total = 0.0;
 
         while (!series.end()) {
 
@@ -270,9 +272,11 @@ int main(int argc, char **argv) {
             bool   is_good = result.first;
             double metrics = result.second;
 
+            metrics_total += metrics;
+
             optimizer->SaveResult(suggestion, metrics, is_good);
 
-            TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level1;
+            TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level3;
 
             // On Level1 print some metadata information about solution and used parameters
             if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level0) {
@@ -323,6 +327,8 @@ int main(int argc, char **argv) {
 
             INMOST::MPIBarrier();
         }
+
+        std::cout << "Metrics total from " << series.size() << " iterations: " << metrics_total << " (mean = " << metrics_total / series.size() << ")" << std::endl;
     }
 
     Solver::Finalize(); // Finalize solver and close MPI activity

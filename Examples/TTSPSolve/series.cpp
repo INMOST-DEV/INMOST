@@ -73,3 +73,7 @@ std::pair<const char *, const char *> MatrixSeries::next() {
     current += 1;
     return std::make_pair(matrix, rhs);
 }
+
+int MatrixSeries::size() const {
+    return matrices.size();
+}
