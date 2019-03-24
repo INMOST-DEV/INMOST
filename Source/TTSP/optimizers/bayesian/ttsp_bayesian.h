@@ -7,12 +7,30 @@
 
 
 #include <inmost_ttsp.h>
+#include <random>
 
 namespace TTSP {
 
+    class BayesianUniformDistribution {
+    private:
+        std::mt19937                     generator;
+        std::uniform_real_distribution<> distribution;
+    public:
+        explicit BayesianUniformDistribution();
+
+        double next();
+    };
+
     class BayesianOptimizer : public OptimizerInterface {
     private:
-        mutable std::size_t current_iteration;
+        static unsigned int DEFAULT_INITIAL_ITERATIONS_COUNT;
+        static double       DEFAULT_INITIAL_ITERATIONS_RADIUS;
+
+        unsigned int initial_iterations_count;
+        double       initial_iterations_radius;
+
+        mutable BayesianUniformDistribution random;
+
     protected:
         OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                      const OptimizationParameterPoints &,

@@ -27,9 +27,37 @@
 
 namespace TTSP {
 
+    BayesianUniformDistribution::BayesianUniformDistribution() : distribution(0.0, 1.0) {
+        int rank, size;
+
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+        unsigned int seed = static_cast<unsigned int>(time(NULL));
+
+        if (rank == 0) {
+            for (int i = 1; i < size; i++) {
+                MPI_Send(&seed, 1, MPI_UNSIGNED, i, 0, MPI_COMM_WORLD);
+            }
+        } else {
+            MPI_Status status;
+            MPI_Recv(&seed, 1, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD, &status);
+        }
+
+        generator.seed(seed);
+    }
+
+    double BayesianUniformDistribution::next() {
+        return distribution(generator);
+    }
+
+    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT  = 5;
+    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS = 0.05;
 
     BayesianOptimizer::BayesianOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
-            OptimizerInterface(space, properties, buffer_capacity), current_iteration(0) {}
+            OptimizerInterface(space, properties, buffer_capacity),
+            initial_iterations_count(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT),
+            initial_iterations_radius(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS) {}
 
     OptimizationAlgorithmSuggestion BayesianOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                                     const OptimizationParameterPoints &,
@@ -37,6 +65,16 @@ namespace TTSP {
 
         if (results.size() == 0) {
             return std::make_pair(0, parameters.GetParameter(0).GetDefaultValue());
+        } else if (results.size() < initial_iterations_count) {
+
+            auto parameter = parameters.GetParameter(0);
+
+            double min_bound = parameter.GetMinimalValue();
+            double max_bound = parameter.GetMaximumValue();
+
+            double r = (random.next() - 0.5) * 2.0 * (max_bound - min_bound) * initial_iterations_radius;
+
+            return std::make_pair(0, parameter.GetDefaultValue() + r);
         }
 
         struct Params {
@@ -102,7 +140,7 @@ namespace TTSP {
         using acquisition_function_t = limbo::acqui::UCB<Params, GP2_t>;
 
         acquiopt_t             acquiopt;
-        acquisition_function_t acqui(gp_ard, static_cast<int>(current_iteration));
+        acquisition_function_t acqui(gp_ard, 0);
 
         auto afun               = limbo::FirstElem();
         auto acqui_optimization = [&](const Eigen::VectorXd &x, bool g) { return acqui(x, afun, g); };
@@ -132,8 +170,6 @@ namespace TTSP {
 
             new_sample(k) = (new_sample(k) * (max_bound - min_bound)) + min_bound;
         }
-
-        current_iteration += 1;
 
         return std::make_pair(0, new_sample[0]);
     }
