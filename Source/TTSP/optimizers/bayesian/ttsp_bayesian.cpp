@@ -79,7 +79,19 @@ namespace TTSP {
             });
 
             samples.push_back(sample);
-            observations.push_back(limbo::tools::make_vector(-1000.0 * result.GetMetricsAfter()));
+            observations.push_back(limbo::tools::make_vector(-1.0 * result.GetMetricsAfter()));
+        });
+
+        double min_observation = (*std::min_element(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &l, const Eigen::VectorXd &r) {
+            return l(0) < r(0);
+        }))(0);
+
+        double max_observation = (*std::max_element(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &l, const Eigen::VectorXd &r) {
+            return l(0) < r(0);
+        }))(0);
+
+        std::transform(observations.cbegin(), observations.cend(), observations.begin(), [min_observation, max_observation](const Eigen::VectorXd &ob) {
+            return limbo::tools::make_vector((ob(0) - min_observation) / (max_observation - min_observation));
         });
 
 
@@ -105,14 +117,12 @@ namespace TTSP {
             double min_bound = parameter.GetMinimalValue();
             double max_bound = parameter.GetMaximumValue();
 
-            starting_point(i) = (entry.first.GetDefaultValue() - min_bound) / (max_bound - min_bound);
+            starting_point(i) = (entry.second - min_bound) / (max_bound - min_bound);
 
             i += 1;
         });
 
         Eigen::VectorXd new_sample = acquiopt(acqui_optimization, starting_point, true);
-
-        std::cout << "Sample: " << new_sample << std::endl;
 
         for (int k = 0; k < parameters.Size(); ++k) {
             auto parameter = parameters.GetParameter(static_cast<size_t>(k));
