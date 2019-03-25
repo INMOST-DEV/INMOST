@@ -56,9 +56,9 @@ namespace TTSP {
     }
 
     unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT    = 15;
-    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 15;
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 10;
     unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 5;
-    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.05;
+    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.1;
     double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.1;
 
     BayesianOptimizer::BayesianOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
@@ -108,8 +108,12 @@ namespace TTSP {
             double max_bound = parameter.GetMaximumValue();
 
             double r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
-            while (r < min_bound || r > max_bound) {
+
+            double next = parameters.GetParameterEntry(0).second + r;
+
+            while (next < min_bound || next > max_bound) {
                 r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
+                next = parameters.GetParameterEntry(0).second + r;
             }
 
             return std::make_pair(0, parameters.GetParameterEntry(0).second + r);
@@ -144,7 +148,7 @@ namespace TTSP {
         std::vector<Eigen::VectorXd> samples;
         std::vector<Eigen::VectorXd> observations;
 
-        std::cout << "Used: [ ";
+//        std::cout << "Used: [ ";
 
 //        double min_unique = (*std::min_element(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), []
 //                (const OptimizationParameterResult &l, const OptimizationParameterResult &r) {
@@ -171,7 +175,7 @@ namespace TTSP {
 
                 sample(i) = normalized;
 
-                std::cout << sample(i) << " ";
+//                std::cout << sample(i) << " ";
 
                 i += 1;
             });
@@ -180,7 +184,7 @@ namespace TTSP {
             observations.push_back(limbo::tools::make_vector(-1.0 * result.GetMetricsAfter()));
         });
 
-        std::cout << "]" << std::endl;
+//        std::cout << "]" << std::endl;
 
         double min_observation = (*std::min_element(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &l, const Eigen::VectorXd &r) {
             return l(0) < r(0);
@@ -194,13 +198,13 @@ namespace TTSP {
             return limbo::tools::make_vector((ob(0) - min_observation) / ((10.0 / 6.0) * (max_observation - min_observation)) + 0.2); // Normalize here to [ 0.2, 0.8 ]
         });
 
-        std::cout << "Obse: [ ";
-
-        std::for_each(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &ob) {
-            std::cout << ob(0) << " ";
-        });
-
-        std::cout << " ]" << std::endl;
+//        std::cout << "Obse: [ ";
+//
+//        std::for_each(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &ob) {
+//            std::cout << ob(0) << " ";
+//        });
+//
+//        std::cout << " ]" << std::endl;
 
 
         gp_ard.compute(samples, observations);
