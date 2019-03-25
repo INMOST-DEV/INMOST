@@ -425,10 +425,10 @@ namespace TTSP {
         static std::vector<std::string> GetAvailableOptimizers();
 
         static OptimizerInterface *GetOptimizer(const std::string &type,
-                                                const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+                                                const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         static void SaveOptimizerOrReplace(const std::string &name, const std::string &type,
-                                           const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+                                           const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         static OptimizerInterface *GetSavedOptimizer(const std::string &name);
     };

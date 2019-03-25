@@ -530,22 +530,22 @@ namespace TTSP {
     }
 
     OptimizerInterface *Optimizers::GetOptimizer(const std::string &type,
-                                                 const OptimizationParameters &space, const OptimizerProperties &properties,
+                                                 const OptimizationParameters &parameters, const OptimizerProperties &properties,
                                                  std::size_t buffer_capacity) {
-        if (type == "noop") return new NoopOptimizer(space, properties, buffer_capacity);
-        if (type == "bruteforce") return new BruteforceOptimizer(space, properties, buffer_capacity);
-        if (type == "alternating") return new AlternatingOptimizer(space, properties, buffer_capacity);
-        if (type == "annealing") return new AnnealingOptimizer(space, properties, buffer_capacity);
+        if (type == "noop") return new NoopOptimizer(parameters, properties, buffer_capacity);
+        if (type == "bruteforce") return new BruteforceOptimizer(parameters, properties, buffer_capacity);
+        if (type == "alternating") return new AlternatingOptimizer(parameters, properties, buffer_capacity);
+        if (type == "annealing") return new AnnealingOptimizer(parameters, properties, buffer_capacity);
 #if defined(USE_TTSP_LIMBO)
-        if (type == "bayesian") return new BayesianOptimizer(space, properties, buffer_capacity);
+        if (type == "bayesian") return new BayesianOptimizer(parameters, properties, buffer_capacity);
 #endif
         return nullptr;
     }
 
-    void Optimizers::SaveOptimizerOrReplace(const std::string &name, const std::string &type, const TTSP::OptimizationParameters &space,
+    void Optimizers::SaveOptimizerOrReplace(const std::string &name, const std::string &type, const TTSP::OptimizationParameters &parameters,
                                             const TTSP::OptimizerProperties &properties, std::size_t buffer_capacity) {
 
-        OptimizerInterface *created = Optimizers::GetOptimizer(type, space, properties, buffer_capacity);
+        OptimizerInterface *created = Optimizers::GetOptimizer(type, parameters, properties, buffer_capacity);
 
         auto optimizer = Optimizers::optimizers.find(name);
         if (optimizer != Optimizers::optimizers.end()) {

@@ -101,6 +101,9 @@ namespace TTSP {
             double max_bound = parameter.GetMaximumValue();
 
             double r = (random.next() - 0.5) * 2.0 * (max_bound - min_bound) * initial_iterations_radius;
+            while (r < min_bound || r > max_bound) {
+                r = (random.next() - 0.5) * 2.0 * (max_bound - min_bound) * initial_iterations_radius;
+            }
 
             return std::make_pair(0, parameter.GetDefaultValue() + r);
         }
