@@ -36,12 +36,13 @@ namespace TTSP {
         return distribution(generator);
     }
 
-    double                               AnnealingParameterHandler::DEFAULT_TEMP0             = 0.0010037;
-    double                               AnnealingParameterHandler::DEFAULT_DECREMENT         = 2;
-    bool                                 AnnealingParameterHandler::DEFAULT_ALLOW_OSCILLATION = false;
-    double                               AnnealingParameterHandler::DEFAULT_OSCILLATION_TEMP  = 9.76563e-10;
-    bool                                 AnnealingParameterHandler::DEFAULT_STRICT_BOUND      = true;
-    bool                                 AnnealingParameterHandler::DEFAULT_USE_CLOSEST       = false;
+    double                                 AnnealingParameterHandler::DEFAULT_TEMP0             = 0.0010037;
+    double                                 AnnealingParameterHandler::DEFAULT_DECREMENT         = 2;
+    bool                                   AnnealingParameterHandler::DEFAULT_ALLOW_OSCILLATION = false;
+    double                                 AnnealingParameterHandler::DEFAULT_OSCILLATION_TEMP  = 9.76563e-10;
+    bool                                   AnnealingParameterHandler::DEFAULT_STRICT_BOUND      = true;
+    bool                                   AnnealingParameterHandler::DEFAULT_USE_CLOSEST       = false;
+    double                                 AnnealingParameterHandler::DEFAULT_MAX_JUMP_BARRIER  = 0.1;
 
     AnnealingParameterHandler::AnnealingParameterHandler(const OptimizationParameter &parameter, const OptimizerInterface &optimizer) :
             count(0), parameter(parameter), value(parameter.GetDefaultValue()),
@@ -50,7 +51,8 @@ namespace TTSP {
             allow_oscillation(AnnealingParameterHandler::DEFAULT_ALLOW_OSCILLATION),
             oscillation_temp(AnnealingParameterHandler::DEFAULT_OSCILLATION_TEMP),
             strict_bound(AnnealingParameterHandler::DEFAULT_STRICT_BOUND),
-            use_closest(AnnealingParameterHandler::DEFAULT_USE_CLOSEST) {
+            use_closest(AnnealingParameterHandler::DEFAULT_USE_CLOSEST),
+            max_jump_barrier(AnnealingParameterHandler::DEFAULT_MAX_JUMP_BARRIER) {
 
         const std::string &temp0_property = parameter.GetName() + ":temp0";
         if (optimizer.HasProperty(temp0_property)) {
@@ -96,13 +98,18 @@ namespace TTSP {
                 use_closest = false;
             }
         }
+
+        const std::string &max_jump_property = parameter.GetName() + ":max_jump_barrier";
+        if (optimizer.HasProperty(max_jump_property)) {
+            max_jump_barrier = std::atof(optimizer.GetProperty(max_jump_property).c_str());
+        }
     }
 
     AnnealingParameterHandler::AnnealingParameterHandler(const AnnealingParameterHandler &other) :
             count(other.count), value(other.value),
             parameter(other.parameter), temp0(other.temp0), decrement(other.decrement),
             allow_oscillation(other.allow_oscillation), oscillation_temp(other.oscillation_temp), strict_bound(other.strict_bound),
-            use_closest(other.use_closest) {}
+            use_closest(other.use_closest), max_jump_barrier(other.max_jump_barrier) {}
 
     const OptimizationParameter &AnnealingParameterHandler::GetParameter() const {
         return parameter;
@@ -163,6 +170,17 @@ namespace TTSP {
             alpha = random.next();
             z     = sgn(alpha - 1.0 / 2.0) * temp * (std::pow(1.0 + 1.0 / temp, std::abs(2 * alpha - 1)) - 1);
             next  = current + z * bound;
+        }
+
+        if (max_jump_barrier > 0.0) {
+            double normalized_current = (current - a) / (b - a);
+            double normalized_next    = (next - a) / (b - a);
+
+            if (std::abs(normalized_next - normalized_current) > max_jump_barrier) {
+                normalized_next = normalized_current + max_jump_barrier * (normalized_next - normalized_current);
+            }
+
+            next = normalized_next * (b - a) + a;
         }
 
         if (use_closest) {

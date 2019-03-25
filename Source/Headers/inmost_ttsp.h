@@ -117,6 +117,10 @@ namespace TTSP {
         /// Getter for maximum value of a parameter
         double GetMaximumValue() const noexcept;
 
+        double GetMinStrictBound(double v, double modifier = 1.0) const noexcept;
+
+        double GetMaxStrictBound(double v, double modifier = 1.0) const noexcept;
+
         /// Getter for closest value of a parameter to specified values in creation stage
         double GetClosestTo(double to) const noexcept;
 

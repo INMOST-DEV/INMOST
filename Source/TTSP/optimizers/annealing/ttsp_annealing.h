@@ -28,6 +28,7 @@ namespace TTSP {
         static double DEFAULT_OSCILLATION_TEMP;
         static bool   DEFAULT_STRICT_BOUND;
         static bool   DEFAULT_USE_CLOSEST;
+        static double DEFAULT_MAX_JUMP_BARRIER;
 
         double      value;
         std::size_t count;
@@ -41,6 +42,7 @@ namespace TTSP {
         double                      oscillation_temp;
         bool                        strict_bound;
         bool                        use_closest;
+        double                      max_jump_barrier;
     public:
         explicit AnnealingParameterHandler(const OptimizationParameter &parameter, const OptimizerInterface &optimizer);
 

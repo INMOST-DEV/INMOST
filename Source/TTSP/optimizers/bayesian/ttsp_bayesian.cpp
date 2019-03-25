@@ -55,17 +55,19 @@ namespace TTSP {
         return static_cast<unsigned int>(next() * n);
     }
 
-    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT    = 10;
-    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 7;
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT    = 15;
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 15;
     unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 5;
-    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.01;
+    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.05;
+    double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.1;
 
     BayesianOptimizer::BayesianOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(space, properties, buffer_capacity),
             unique_points_max_count(BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT),
             unique_points_random_count(BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT),
             initial_iterations_count(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT),
-            initial_iterations_radius(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS) {
+            initial_iterations_radius(BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS),
+            max_jump_barrier(BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER) {
 
         if (this->HasProperty("unique_points_max_count")) {
             unique_points_max_count = static_cast<unsigned int>(std::atoi(this->GetProperty("unique_points_max_count").c_str()));
@@ -83,6 +85,10 @@ namespace TTSP {
             initial_iterations_radius = std::atof(this->GetProperty("initial_iterations_radius").c_str());
         }
 
+        if (this->HasProperty("max_jump_barrier")) {
+            max_jump_barrier = std::atof(this->GetProperty("max_jump_barrier").c_str());
+        }
+
     }
 
     OptimizationAlgorithmSuggestion BayesianOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
@@ -95,20 +101,21 @@ namespace TTSP {
             return std::make_pair(0, parameters.GetParameter(0).GetDefaultValue());
         } else if (unique.size() < initial_iterations_count) {
 
+            // TODO Make for all
             auto parameter = parameters.GetParameter(0);
 
             double min_bound = parameter.GetMinimalValue();
             double max_bound = parameter.GetMaximumValue();
 
-            double r = (random.next() - 0.5) * 2.0 * (max_bound - min_bound) * initial_iterations_radius;
+            double r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
             while (r < min_bound || r > max_bound) {
-                r = (random.next() - 0.5) * 2.0 * (max_bound - min_bound) * initial_iterations_radius;
+                r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
             }
 
-            return std::make_pair(0, parameter.GetDefaultValue() + r);
+            return std::make_pair(0, parameters.GetParameterEntry(0).second + r);
         }
 
-        std::random_shuffle(unique.begin(), unique.end(), random);
+        std::random_shuffle(unique.begin() + 1, unique.end(), random);
 
         struct Params {
             struct kernel : public limbo::defaults::kernel {
@@ -120,6 +127,8 @@ namespace TTSP {
             struct opt_nloptnograd : public limbo::defaults::opt_nloptnograd {
             };
             struct acqui_ucb : public limbo::defaults::acqui_ucb {
+            };
+            struct acqui_gpucb : public limbo::defaults::acqui_gpucb {
             };
             struct acqui_ei : public limbo::defaults::acqui_ei {
             };
@@ -135,6 +144,18 @@ namespace TTSP {
         std::vector<Eigen::VectorXd> samples;
         std::vector<Eigen::VectorXd> observations;
 
+        std::cout << "Used: [ ";
+
+//        double min_unique = (*std::min_element(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), []
+//                (const OptimizationParameterResult &l, const OptimizationParameterResult &r) {
+//            return l.GetMetricsAfter() < r.GetMetricsAfter();
+//        })).GetMetricsAfter();
+//
+//        double max_unique = (*std::max_element(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), []
+//                (const OptimizationParameterResult &l, const OptimizationParameterResult &r) {
+//            return l.GetMetricsAfter() < r.GetMetricsAfter();
+//        })).GetMetricsAfter();
+
         std::for_each(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), [this, &samples, &observations]
                 (const OptimizationParameterResult &result) {
             Eigen::VectorXd sample(parameters.Size());
@@ -146,13 +167,20 @@ namespace TTSP {
                 double min_bound = parameter.GetMinimalValue();
                 double max_bound = parameter.GetMaximumValue();
 
-                sample(i) = (parameter.ExtractValueFromPoint(point) - min_bound) / (max_bound - min_bound); // Normalize here to [0, 1]
+                double normalized = (parameter.ExtractValueFromPoint(point) - min_bound) / (max_bound - min_bound); // Normalize here to [0, 1]
+
+                sample(i) = normalized;
+
+                std::cout << sample(i) << " ";
+
                 i += 1;
             });
 
             samples.push_back(sample);
             observations.push_back(limbo::tools::make_vector(-1.0 * result.GetMetricsAfter()));
         });
+
+        std::cout << "]" << std::endl;
 
         double min_observation = (*std::min_element(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &l, const Eigen::VectorXd &r) {
             return l(0) < r(0);
@@ -163,14 +191,22 @@ namespace TTSP {
         }))(0);
 
         std::transform(observations.cbegin(), observations.cend(), observations.begin(), [min_observation, max_observation](const Eigen::VectorXd &ob) {
-            return limbo::tools::make_vector((ob(0) - min_observation) / (max_observation - min_observation));
+            return limbo::tools::make_vector((ob(0) - min_observation) / ((10.0 / 6.0) * (max_observation - min_observation)) + 0.2); // Normalize here to [ 0.2, 0.8 ]
         });
+
+        std::cout << "Obse: [ ";
+
+        std::for_each(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &ob) {
+            std::cout << ob(0) << " ";
+        });
+
+        std::cout << " ]" << std::endl;
 
 
         gp_ard.compute(samples, observations);
         gp_ard.optimize_hyperparams();
 
-        using acquiopt_t = limbo::opt::NLOptNoGrad<Params, nlopt::GN_DIRECT_L_RAND>;
+        using acquiopt_t = limbo::opt::NLOptNoGrad<Params, nlopt::GN_ISRES>;
         using acquisition_function_t = limbo::acqui::UCB<Params, GP2_t>;
 
         acquiopt_t             acquiopt;
@@ -202,10 +238,15 @@ namespace TTSP {
             double min_bound = parameter.GetMinimalValue();
             double max_bound = parameter.GetMaximumValue();
 
+            double barrier = max_jump_barrier;
+            if (std::abs(new_sample(k) - starting_point(k)) > barrier) {
+                new_sample(k) = starting_point(k) + barrier * (new_sample(k) - starting_point(k));
+            }
+
             new_sample(k) = (new_sample(k) * (max_bound - min_bound)) + min_bound;
         }
 
-        return std::make_pair(0, new_sample[0]);
+        return std::make_pair(0, new_sample(0));
     }
 
     BayesianOptimizer::~BayesianOptimizer() {}

@@ -68,6 +68,42 @@ namespace TTSP {
         return values.at(values.size() - 1);
     }
 
+    double OptimizationParameter::GetMinStrictBound(double v, double modifier) const noexcept {
+        double min = GetMinimalValue();
+        double max = GetMaximumValue();
+
+        double aa = v - min;
+        double bb = max - v;
+
+        double bound = 0.0;
+
+        if (bb < aa) {
+            bound = 2 * bb;
+        } else {
+            bound = 2 * aa;
+        }
+
+        return std::min(v - bound * modifier, max - (max - min) * modifier);
+    }
+
+    double OptimizationParameter::GetMaxStrictBound(double v, double modifier) const noexcept {
+        double min = GetMinimalValue();
+        double max = GetMaximumValue();
+
+        double aa = v - min;
+        double bb = max - v;
+
+        double bound = 0.0;
+
+        if (bb < aa) {
+            bound = 2 * bb;
+        } else {
+            bound = 2 * aa;
+        }
+
+        return std::max(v + bound * modifier, min + (max - min) * modifier);
+    }
+
     double OptimizationParameter::GetClosestTo(double to) const noexcept {
         return *std::min_element(values.begin(), values.end(), [to](double x, double y) {
             return std::abs(x - to) < std::abs(y - to);
