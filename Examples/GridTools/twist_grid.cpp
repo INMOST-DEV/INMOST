@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
   if( argc > 2 )
     nz = atoi(argv[2])+1;
 	
-  int np = 10;
+  int np = 2;
   double w = 0.5/(double)(np+1);
   
   mesh = new Mesh();

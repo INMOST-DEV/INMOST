@@ -1201,6 +1201,7 @@ namespace INMOST
 
 	void Mesh::LoadECL(std::string File)
 	{
+		bool parallel_read = true;
 		char have_perm = 0;
 		std::cout << std::scientific;
 		int perform_splitting = 0;
@@ -2943,7 +2944,10 @@ namespace INMOST
 				//std::cout << "x: " << beg_dims[0] << " " << end_dims[0] << std::endl;
 				//std::cout << "y: " << beg_dims[1] << " " << end_dims[1] << std::endl;
 				int mpi_dims[2] = { 0, 0 };
-				MPI_Dims_create(GetProcessorsNumber(), 2, mpi_dims);
+				if( parallel_read )
+					MPI_Dims_create(GetProcessorsNumber(), 2, mpi_dims);
+				else
+					mpi_dims[0] = mpi_dims[1] = 1;
 				//std::cout << "mpi: " << mpi_dims[0] << " " << mpi_dims[1] << std::endl;
 				int rank = GetProcessorRank();
 				//my position on the grid
