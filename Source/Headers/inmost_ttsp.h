@@ -33,9 +33,6 @@ namespace TTSP {
         OptimizationParameterPoint(const std::string &name, double value, OptimizationParameterType type);
 
         static void swap(OptimizationParameterPoint &left, OptimizationParameterPoint &right);
-
-        static double convert(double value, OptimizationParameterType type);
-
     public:
         OptimizationParameterPoint(const OptimizationParameterPoint &other);
 
@@ -48,6 +45,8 @@ namespace TTSP {
         double GetValue() const noexcept;
 
         ~OptimizationParameterPoint();
+
+        static double convert(double value, OptimizationParameterType type);
 
         friend class OptimizationParameters;
     };
@@ -359,6 +358,9 @@ namespace TTSP {
 
     class OptimizerInterface {
     private:
+        int mpi_rank;
+
+        std::string             name;
         OptimizerVerbosityLevel verbosity = OptimizerVerbosityLevel::Level0;
 
         OptimizerRestartStrategy restart_strategy = OptimizerRestartStrategy::RESTART_STRATEGY_NO_RESTART;
@@ -381,8 +383,12 @@ namespace TTSP {
                                                                                                                              void *)> &invoke, void *data) const = 0;
 
     public:
-        OptimizerInterface(const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity) :
-                parameters(parameters), properties(properties), results(buffer_capacity) {};
+        OptimizerInterface(const std::string &name, const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+                name(name), parameters(parameters), properties(properties), results(buffer_capacity), mpi_rank(0) {
+#ifdef USE_MPI
+            MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+#endif
+        };
 
         OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &, const OptimizationParameterPoints &,
                                                                                                       void *)> &invoke = [](const OptimizationParameterPoints &,
@@ -415,6 +421,8 @@ namespace TTSP {
 
         void SetRestartStrategy(OptimizerRestartStrategy strategy, std::size_t max_fails) noexcept;
 
+        const std::string &GetName() const noexcept;
+
         virtual ~OptimizerInterface() {};
     };
 
@@ -428,7 +436,7 @@ namespace TTSP {
 
         static std::vector<std::string> GetAvailableOptimizers();
 
-        static OptimizerInterface *GetOptimizer(const std::string &type,
+        static OptimizerInterface *GetOptimizer(const std::string &name, const std::string &type,
                                                 const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         static void SaveOptimizerOrReplace(const std::string &name, const std::string &type,

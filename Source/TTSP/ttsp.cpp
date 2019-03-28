@@ -474,6 +474,13 @@ namespace TTSP {
 
         suggestions.push_front(suggestion);
 
+        if (verbosity >= OptimizerVerbosityLevel::Level2 && mpi_rank == 0) {
+            std::cout << "[Optimizer:" << name << ":Suggestion]"
+                      << "\t" << parameters.GetParameter(suggestion.GetChangedParameterIndex()).GetName()
+                      << "=" << OptimizationParameterPoint::convert(suggestion.GetChangedValue(), parameters.GetParameter(suggestion.GetChangedParameterIndex()).GetType())
+                      << std::endl;
+        }
+
         return suggestion;
     }
 
@@ -481,6 +488,46 @@ namespace TTSP {
                                         const OptimizationParameterPoints &before, double metrics_before,
                                         const OptimizationParameterPoints &after, double metrics_after, bool is_good) {
         results.push(OptimizationParameterResult(changed_index, changed_value, before, after, metrics_before, metrics_after, is_good));
+
+        if (verbosity >= OptimizerVerbosityLevel::Level1 && mpi_rank == 0) {
+            std::cout << "[Optimizer:" << name << ":Result]";
+
+            std::size_t i = 0;
+
+            for (const OptimizationParametersEntry &entry : parameters.GetParameterEntries()) {
+                std::cout << "\t" << "before." << entry.first.GetName() << "=" << before.at(i++).GetValue();
+            }
+            std::cout << "\tbefore.metrics=" << metrics_before;
+
+            i = 0;
+            for (const OptimizationParametersEntry &entry : parameters.GetParameterEntries()) {
+                std::cout << "\t" << "after." << entry.first.GetName() << "=" << after.at(i++).GetValue();
+            }
+            std::cout << "\tafter.metrics=" << metrics_after << std::endl;
+        }
+
+        if (verbosity >= TTSP::OptimizerVerbosityLevel::Level3 && mpi_rank == 0) {
+            std::cout << "[Optimizer:" << name << ":ResultsBuffer]" << std::endl;
+
+            int index = 1;
+            std::for_each(results.cbegin(), results.cend(), [&index](const TTSP::OptimizationParameterResult &result) {
+                std::cout << "\t" << index++ << "\t" << " [";
+
+                const TTSP::OptimizationParameterPoints &pbefore = result.GetPointsBefore();
+                std::for_each(pbefore.begin(), pbefore.end(), [](const TTSP::OptimizationParameterPoint &point) {
+                    std::cout << " " << point.GetName() << "=" << point.GetValue() << " ";
+                });
+
+                std::cout << "] -> [";
+
+                const TTSP::OptimizationParameterPoints &pafter = result.GetPointsAfter();
+                std::for_each(pafter.begin(), pafter.end(), [](const TTSP::OptimizationParameterPoint &point) {
+                    std::cout << " " << point.GetName() << "=" << point.GetValue() << " ";
+                });
+
+                std::cout << "]\t(" << result.GetMetricsBefore() << " -> " << result.GetMetricsAfter() << ")" << std::endl;
+            });
+        }
 
         bool is_updated = is_good && this->UpdateSpaceWithLatestResults();
         if (is_updated) {
@@ -544,6 +591,10 @@ namespace TTSP {
         this->max_fails        = max_fails;
     }
 
+    const std::string &OptimizerInterface::GetName() const noexcept {
+        return name;
+    }
+
     bool Optimizers::IsOptimizerAvailable(const std::string &type) {
         std::vector<std::string> available = Optimizers::GetAvailableOptimizers();
         return std::find(available.cbegin(), available.cend(), type) != available.cend();
@@ -565,15 +616,15 @@ namespace TTSP {
         return available;
     }
 
-    OptimizerInterface *Optimizers::GetOptimizer(const std::string &type,
+    OptimizerInterface *Optimizers::GetOptimizer(const std::string &name, const std::string &type,
                                                  const OptimizationParameters &parameters, const OptimizerProperties &properties,
                                                  std::size_t buffer_capacity) {
-        if (type == "noop") return new NoopOptimizer(parameters, properties, buffer_capacity);
-        if (type == "bruteforce") return new BruteforceOptimizer(parameters, properties, buffer_capacity);
-        if (type == "alternating") return new AlternatingOptimizer(parameters, properties, buffer_capacity);
-        if (type == "annealing") return new AnnealingOptimizer(parameters, properties, buffer_capacity);
+        if (type == "noop") return new NoopOptimizer(name, parameters, properties, buffer_capacity);
+        if (type == "bruteforce") return new BruteforceOptimizer(name, parameters, properties, buffer_capacity);
+        if (type == "alternating") return new AlternatingOptimizer(name, parameters, properties, buffer_capacity);
+        if (type == "annealing") return new AnnealingOptimizer(name, parameters, properties, buffer_capacity);
 #if defined(USE_TTSP_LIMBO)
-        if (type == "bayesian") return new BayesianOptimizer(parameters, properties, buffer_capacity);
+        if (type == "bayesian") return new BayesianOptimizer(name, parameters, properties, buffer_capacity);
 #endif
         return nullptr;
     }
@@ -581,7 +632,7 @@ namespace TTSP {
     void Optimizers::SaveOptimizerOrReplace(const std::string &name, const std::string &type, const TTSP::OptimizationParameters &parameters,
                                             const TTSP::OptimizerProperties &properties, std::size_t buffer_capacity) {
 
-        OptimizerInterface *created = Optimizers::GetOptimizer(type, parameters, properties, buffer_capacity);
+        OptimizerInterface *created = Optimizers::GetOptimizer(name, type, parameters, properties, buffer_capacity);
 
         auto optimizer = Optimizers::optimizers.find(name);
         if (optimizer != Optimizers::optimizers.end()) {

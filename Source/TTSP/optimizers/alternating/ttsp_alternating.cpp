@@ -78,8 +78,8 @@ namespace TTSP {
         current_index = index;
     }
 
-    AlternatingOptimizer::AlternatingOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
-            OptimizerInterface(space, properties, buffer_capacity), current_handler_index(0) {
+    AlternatingOptimizer::AlternatingOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+            OptimizerInterface(name, space, properties, buffer_capacity), current_handler_index(0) {
         const OptimizationParameterEntries &parameters = space.GetParameterEntries();
         handlers.reserve(parameters.size());
         std::for_each(parameters.cbegin(), parameters.cend(), [this](const OptimizationParametersEntry &entry) {

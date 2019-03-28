@@ -7,8 +7,8 @@
 namespace TTSP {
 
 
-    BruteforceOptimizer::BruteforceOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
-            OptimizerInterface(space, properties, buffer_capacity), current_index(0) {}
+    BruteforceOptimizer::BruteforceOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
+            OptimizerInterface(name, space, properties, buffer_capacity), current_index(0) {}
 
     OptimizationAlgorithmSuggestion BruteforceOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                                       const OptimizationParameterPoints &,

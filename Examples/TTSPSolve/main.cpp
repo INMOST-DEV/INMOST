@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
 
         TTSP::OptimizerInterface *topt = TTSP::Optimizers::GetSavedOptimizer("test");
 
-        topt->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level3);
+        topt->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level1);
         topt->SetRestartStrategy(TTSP::OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 10);
 
         double metrics_total = 0.0;
@@ -275,51 +275,6 @@ int main(int argc, char **argv) {
             metrics_total += metrics;
 
             optimizer->SaveResult(suggestion, metrics, is_good);
-
-            TTSP::OptimizerVerbosityLevel verbosity = TTSP::OptimizerVerbosityLevel::Level3;
-
-            // On Level1 print some metadata information about solution and used parameters
-            if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level0) {
-                std::string metadata = solver.SolutionMetadataLine("\t");
-                std::for_each(suggestion.GetPointsAfter().begin(), suggestion.GetPointsAfter().end(), [&metadata](const TTSP::OptimizationParameterPoint &p) {
-                    metadata += ("\t" + INMOST::to_string(p.GetValue()));
-                });
-                std::cout << metadata << std::endl;
-            }
-
-            // On Level2 also print information about next parameters
-            if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level1) {
-                std::cout << std::endl << "Next optimization parameters found for current iteration:" << std::endl;
-                const TTSP::OptimizationParameterPoints &points = optimizer->GetPoints();
-                std::for_each(points.begin(), points.end(), [](const TTSP::OptimizationParameterPoint &p) {
-                    std::cout << "\t" << p.GetName() << " = " << p.GetValue() << std::endl;
-                });
-            }
-
-            // On Level3 also print additional information about buffer
-            if (rank == 0 && verbosity > TTSP::OptimizerVerbosityLevel::Level2) {
-                std::cout << std::endl << "Optimization results buffer output:" << std::endl;
-                const TTSP::OptimizationParameterResultsBuffer &results = optimizer->GetResults();
-
-                int index = 1;
-                std::for_each(results.cbegin(), results.cend(), [&index](const TTSP::OptimizationParameterResult &result) {
-                    std::cout << "\t" << index++ << "\t" << " [";
-
-                    const TTSP::OptimizationParameterPoints &pbefore = result.GetPointsBefore();
-                    std::for_each(pbefore.begin(), pbefore.end(), [](const TTSP::OptimizationParameterPoint &point) {
-                        std::cout << " " << point.GetName() << "=" << point.GetValue() << " ";
-                    });
-
-                    std::cout << "] -> [";
-
-                    const TTSP::OptimizationParameterPoints &pafter = result.GetPointsAfter();
-                    std::for_each(pafter.begin(), pafter.end(), [](const TTSP::OptimizationParameterPoint &point) {
-                        std::cout << " " << point.GetName() << "=" << point.GetValue() << " ";
-                    });
-
-                    std::cout << "]\t\t(" << result.GetMetricsBefore() << " -> " << result.GetMetricsAfter() << ")" << std::endl;
-                });
-            }
 
             if (rank == 0 && waitNext) {
                 std::cin.get();

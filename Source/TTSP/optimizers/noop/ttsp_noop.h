@@ -16,7 +16,7 @@ namespace TTSP {
                                                                                                                void *)> &invoke, void *data) const override;
 
     public:
-        NoopOptimizer(const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
+        NoopOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
         virtual ~NoopOptimizer();
     };

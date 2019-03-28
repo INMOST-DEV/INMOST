@@ -30,7 +30,7 @@ double DynamicX2::GetMinimumValue(int iteration) const noexcept {
 }
 
 std::pair<double, double> DynamicX2::GetMinimumPoint(int iteration) const noexcept {
-    return std::make_pair(2 + std::sin(iteration / 50.0), 0.0);
+    return std::make_pair(2 + std::sin(iteration / 100.0), 0.0);
 }
 
 std::pair<double, double> DynamicX2::GetXRange() const noexcept {
