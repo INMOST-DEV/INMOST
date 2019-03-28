@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 	
 	for(Mesh::iteratorTag t = m1.BeginTag(); t != m1.EndTag(); t++)
 	{
-		if( *t == m1.CoordsTag() ) continue;
+		//if( *t == m1.CoordsTag() ) continue;
 		if( t->GetSize() == ENUMUNDEF ) continue;
 		if( t->GetDataType() != DATA_REAL && t->GetDataType() != DATA_VARIABLE ) continue;
 		if( m2.HaveTag(t->GetTagName()) )

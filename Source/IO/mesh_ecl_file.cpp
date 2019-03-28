@@ -4423,6 +4423,7 @@ namespace INMOST
 
 						}
 					}
+					ExchangeData(centroid_tag,CELL,0);
 					if (verbosity)
 						std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
 				}
@@ -5343,7 +5344,7 @@ namespace INMOST
 		}
 
 
-		DeleteTag(cell_number);
+		//DeleteTag(cell_number);
 		DeleteTag(block_index);
 		/*
 		{
