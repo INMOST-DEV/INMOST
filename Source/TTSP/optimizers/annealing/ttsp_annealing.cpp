@@ -212,10 +212,10 @@ namespace TTSP {
         });
     }
 
-    OptimizationAlgorithmSuggestion AnnealingOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                                     const OptimizationParameterPoints &,
-                                                                                                                                     void *)> &invoke, void *data) const {
-        return std::make_pair(current_handler_index, handlers.at(current_handler_index).GetNextValue());
+    SuggestionChangedParameters AnnealingOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                                 const OptimizationParameterPoints &,
+                                                                                                                                 void *)> &invoke, void *data) const {
+        return std::vector<SuggestionChangedParameter>{SuggestionChangedParameter(current_handler_index, handlers.at(current_handler_index).GetNextValue())};
     }
 
     bool AnnealingOptimizer::UpdateSpaceWithLatestResults() {
@@ -230,7 +230,7 @@ namespace TTSP {
         bool is_updated = false;
 
         if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || ((delta_e < 0.0) || alpha < et))) {
-            double update_value = last.GetChangedValue();
+            double update_value = last.GetChangedParameters().at(0).GetValue();
             h.SetValue(update_value);
             parameters.Update(current_handler_index, update_value, last.GetMetricsAfter());
             is_updated = true;

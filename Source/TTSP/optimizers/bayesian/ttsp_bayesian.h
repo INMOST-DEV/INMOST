@@ -40,9 +40,9 @@ namespace TTSP {
         mutable BayesianUniformDistribution random;
 
     protected:
-        OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                     const OptimizationParameterPoints &,
-                                                                                                                     void *)> &invoke, void *data) const override;
+        SuggestionChangedParameters AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                 const OptimizationParameterPoints &,
+                                                                                                                 void *)> &invoke, void *data) const override;
 
     public:
         BayesianOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);

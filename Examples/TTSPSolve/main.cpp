@@ -172,13 +172,13 @@ int main(int argc, char **argv) {
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
         TTSP::OptimizationParameter        tau("tau", std::make_pair(-3, -0.1), 0.05, -2, TTSP::OptimizationParameterType::PARAMETER_TYPE_EXPONENT);
-        //TTSP::OptimizationParameter        q("q", {0, 1, 2, 3, 4}, 2);
+        TTSP::OptimizationParameter        q("q", {0, 1, 2, 3, 4}, 2);
         //TTSP::OptimizationParameter        eps("eps", {1e-7, 1e-6, 1e-5, 1e-4, 1e-3}, 1e-5);
         TTSP::OptimizationParameterEntries entries;
 
         //entries.emplace_back(std::make_pair(eps, eps.GetDefaultValue()));
         entries.emplace_back(std::make_pair(tau, tau.GetDefaultValue()));
-        //entries.emplace_back(std::make_pair(q, q.GetDefaultValue()));
+        entries.emplace_back(std::make_pair(q, q.GetDefaultValue()));
 
         TTSP::OptimizerProperties properties;
 

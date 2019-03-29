@@ -11,7 +11,7 @@ namespace TTSP {
 
     class NoopOptimizer : public OptimizerInterface {
     protected:
-        OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+        SuggestionChangedParameters AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                const OptimizationParameterPoints &,
                                                                                                                void *)> &invoke, void *data) const override;
 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <dynamic_function.h>
 #include <static_sin.h>
+#include <static_sin_r2.h>
 #include <dynamic_x2.h>
 
 #include <inmost_ttsp.h>
@@ -29,7 +30,7 @@ int main(int argc, char **argv) {
 
     std::string optimizer_type = "noop";
     std::string function_type  = "sin1d";
-    std::string out_file = "";
+    std::string out_file       = "";
 
     //Parse argv parameters
     if (argc == 1) goto help_message;
@@ -111,11 +112,14 @@ int main(int argc, char **argv) {
     DynamicFunction *f = nullptr;
     if (function_type == "sin1d") {
         f = new StaticSin();
+    } else if (function_type == "sin2d") {
+        f = new StaticSinR2();
     } else if (function_type == "x21d") {
         f = new DynamicX2();
     } else {
         std::cout << "Available function types:" << std::endl;
         std::cout << "    sin1d - Static sin with x parameter only" << std::endl;
+        std::cout << "    sin2d - Static sin with x and y parameters" << std::endl;
         std::cout << "    x21d  - Dynamic x2 with x parameter only" << std::endl;
         return 0;
     }

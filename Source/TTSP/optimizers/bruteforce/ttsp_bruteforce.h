@@ -15,9 +15,9 @@ namespace TTSP {
     protected:
         bool UpdateSpaceWithLatestResults() override;
 
-        OptimizationAlgorithmSuggestion AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                     const OptimizationParameterPoints &,
-                                                                                                                     void *)> &invoke, void *data) const override;
+        SuggestionChangedParameters AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                 const OptimizationParameterPoints &,
+                                                                                                                 void *)> &invoke, void *data) const override;
 
     public:
         BruteforceOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);

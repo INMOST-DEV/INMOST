@@ -91,39 +91,56 @@ namespace TTSP {
 
     }
 
-    OptimizationAlgorithmSuggestion BayesianOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                                    const OptimizationParameterPoints &,
-                                                                                                                                    void *)> &invoke, void *data) const {
+    SuggestionChangedParameters BayesianOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                                const OptimizationParameterPoints &,
+                                                                                                                                void *)> &invoke, void *data) const {
 
-        auto unique = results.GetLastUniqueEntries(unique_points_max_count);
+        auto unique  = results.GetLastUniqueEntries(unique_points_max_count);
+        auto entries = parameters.GetParameterEntries();
+
+        std::vector<SuggestionChangedParameter> changed_parameters;
 
         if (unique.size() == 0) {
-            return std::make_pair(0, parameters.GetParameter(0).GetDefaultValue());
+
+            std::size_t index = 0;
+            std::for_each(entries.cbegin(), entries.cend(), [&index, &changed_parameters](const OptimizationParametersEntry &entry) {
+                changed_parameters.emplace_back(SuggestionChangedParameter(index++, entry.first.GetDefaultValue()));
+            });
+
+            return changed_parameters;
         } else if (unique.size() < initial_iterations_count) {
 
-            // TODO Make for all
-            auto parameter = parameters.GetParameter(0);
+            std::size_t index = 0;
+            std::for_each(entries.cbegin(), entries.cend(), [&index, &changed_parameters, this](const OptimizationParametersEntry &entry) {
+                auto parameter = entry.first;
 
-            double min_bound = parameter.GetMinimalValue();
-            double max_bound = parameter.GetMaximumValue();
+                double min_bound = parameter.GetMinimalValue();
+                double max_bound = parameter.GetMaximumValue();
 
-            double r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
+                double r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
 
-            double next = parameters.GetParameterEntry(0).second + r;
+                double next = entry.second + r;
 
-            while (next < min_bound || next > max_bound) {
-                r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
-                next = parameters.GetParameterEntry(0).second + r;
-            }
+                while (next < min_bound || next > max_bound) {
+                    r    = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
+                    next = entry.second + r;
+                }
 
-            return std::make_pair(0, parameters.GetParameterEntry(0).second + r);
+                changed_parameters.emplace_back(SuggestionChangedParameter(index++, next));
+            });
+
+            return changed_parameters;
         }
 
         std::random_shuffle(unique.begin() + 1, unique.end(), random);
 
         struct Params {
-            struct kernel : public limbo::defaults::kernel {
+            struct kernel {
+                BO_PARAM(double, noise, 0.02);
+
+                BO_PARAM(bool, optimize_noise, false);
             };
+
             struct kernel_squared_exp_ard : public limbo::defaults::kernel_squared_exp_ard {
             };
             struct opt_rprop : public limbo::defaults::opt_rprop {
@@ -143,22 +160,9 @@ namespace TTSP {
         using GP2_t = limbo::model::GP<Params, Kernel2_t, Mean_t, limbo::model::gp::KernelMeanLFOpt<Params>>;
 
         GP2_t gp_ard;
-        // do not forget to call the optimization!
 
         std::vector<Eigen::VectorXd> samples;
         std::vector<Eigen::VectorXd> observations;
-
-//        std::cout << "Used: [ ";
-
-//        double min_unique = (*std::min_element(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), []
-//                (const OptimizationParameterResult &l, const OptimizationParameterResult &r) {
-//            return l.GetMetricsAfter() < r.GetMetricsAfter();
-//        })).GetMetricsAfter();
-//
-//        double max_unique = (*std::max_element(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), []
-//                (const OptimizationParameterResult &l, const OptimizationParameterResult &r) {
-//            return l.GetMetricsAfter() < r.GetMetricsAfter();
-//        })).GetMetricsAfter();
 
         std::for_each(unique.cbegin(), unique.cbegin() + std::min(static_cast<std::size_t>(unique_points_random_count), unique.size()), [this, &samples, &observations]
                 (const OptimizationParameterResult &result) {
@@ -175,16 +179,12 @@ namespace TTSP {
 
                 sample(i) = normalized;
 
-//                std::cout << sample(i) << " ";
-
                 i += 1;
             });
 
             samples.push_back(sample);
             observations.push_back(limbo::tools::make_vector(-1.0 * result.GetMetricsAfter()));
         });
-
-//        std::cout << "]" << std::endl;
 
         double min_observation = (*std::min_element(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &l, const Eigen::VectorXd &r) {
             return l(0) < r(0);
@@ -197,15 +197,6 @@ namespace TTSP {
         std::transform(observations.cbegin(), observations.cend(), observations.begin(), [min_observation, max_observation](const Eigen::VectorXd &ob) {
             return limbo::tools::make_vector((ob(0) - min_observation) / ((10.0 / 6.0) * (max_observation - min_observation)) + 0.2); // Normalize here to [ 0.2, 0.8 ]
         });
-
-//        std::cout << "Obse: [ ";
-//
-//        std::for_each(observations.cbegin(), observations.cend(), [](const Eigen::VectorXd &ob) {
-//            std::cout << ob(0) << " ";
-//        });
-//
-//        std::cout << " ]" << std::endl;
-
 
         gp_ard.compute(samples, observations);
         gp_ard.optimize_hyperparams();
@@ -247,10 +238,10 @@ namespace TTSP {
                 new_sample(k) = starting_point(k) + barrier * (new_sample(k) - starting_point(k));
             }
 
-            new_sample(k) = (new_sample(k) * (max_bound - min_bound)) + min_bound;
+            changed_parameters.emplace_back(SuggestionChangedParameter(k, (new_sample(k) * (max_bound - min_bound)) + min_bound));
         }
 
-        return std::make_pair(0, new_sample(0));
+        return changed_parameters;
     }
 
     BayesianOptimizer::~BayesianOptimizer() {}

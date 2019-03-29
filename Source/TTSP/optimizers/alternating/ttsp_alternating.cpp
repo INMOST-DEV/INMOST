@@ -87,11 +87,11 @@ namespace TTSP {
         });
     }
 
-    OptimizationAlgorithmSuggestion AlternatingOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                                       const OptimizationParameterPoints &,
-                                                                                                                                       void *)> &invoke, void *data) const {
+    SuggestionChangedParameters AlternatingOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                                   const OptimizationParameterPoints &,
+                                                                                                                                   void *)> &invoke, void *data) const {
         const AlternatingParameterHandler &handler = handlers.at(current_handler_index);
-        return std::make_pair(current_handler_index, handler.GetParameter().GetValues().at(handler.NextIndex()));
+        return std::vector<SuggestionChangedParameter>{SuggestionChangedParameter(current_handler_index, handler.GetParameter().GetValues().at(handler.NextIndex()))};
     }
 
     bool AlternatingOptimizer::UpdateSpaceWithLatestResults() {

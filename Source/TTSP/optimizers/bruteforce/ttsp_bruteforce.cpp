@@ -10,9 +10,9 @@ namespace TTSP {
     BruteforceOptimizer::BruteforceOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(name, space, properties, buffer_capacity), current_index(0) {}
 
-    OptimizationAlgorithmSuggestion BruteforceOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                                      const OptimizationParameterPoints &,
-                                                                                                                                      void *)> &invoke, void *data) const {
+    SuggestionChangedParameters BruteforceOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
+                                                                                                                                  const OptimizationParameterPoints &,
+                                                                                                                                  void *)> &invoke, void *data) const {
         const OptimizationParameterPoints &before    = parameters.GetPoints();
         const OptimizationParameter       &parameter = parameters.GetParameter(current_index);
 
@@ -37,7 +37,7 @@ namespace TTSP {
             std::cout << "| Metrics = " << metrics << "\t" << is_solved << std::endl;
         });
 
-        return std::make_pair(current_index, best_value);
+        return std::vector<SuggestionChangedParameter>{SuggestionChangedParameter(current_index, best_value)};
     }
 
     bool BruteforceOptimizer::UpdateSpaceWithLatestResults() {
