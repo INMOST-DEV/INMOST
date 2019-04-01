@@ -101,6 +101,7 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);  (void)multH; (void)H;}
+		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE i) {return index == i? 1.0 : 0.0;}
 		__INLINE var_expression & operator =(var_expression const & other)
 		{
 			value = other.value;
@@ -205,6 +206,7 @@ namespace INMOST
 		*/
 		__INLINE Sparse::Row & GetRow() {return entries;}
 		__INLINE const Sparse::Row & GetRow() const {return entries;}
+		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) {return GetRow()[index];}
 		__INLINE multivar_expression & operator +=(basic_expression const & expr)
 		{
 			value += expr.GetValue();
@@ -484,6 +486,7 @@ namespace INMOST
 		__INLINE Sparse::Row & GetRow() {return entries;}
 		__INLINE Sparse::HessianRow & GetHessianRow() {return hessian_entries;}
 		__INLINE const Sparse::Row & GetRow() const {return entries;}
+		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) {return GetRow()[index];}
 		__INLINE const Sparse::HessianRow & GetHessianRow() const {return hessian_entries;}
 		__INLINE hessian_multivar_expression & operator +=(basic_expression const & expr)
 		{
@@ -679,6 +682,7 @@ namespace INMOST
 		*/
 		__INLINE Sparse::Row & GetRow() {return *entries;}
 		__INLINE const Sparse::Row & GetRow() const {return *entries;}
+		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) {return GetRow()[index];}
 		__INLINE multivar_expression_reference & operator +=(basic_expression const & expr)
 		{
 			value += expr.GetValue();
@@ -820,6 +824,7 @@ namespace INMOST
 			H = *hentries;
 			for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
 		}
+		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) {return GetRow()[index];}
 		__INLINE multivar_expression GetVariable(INMOST_DATA_ENUM_TYPE index)
 		{
 			multivar_expression ret(0);

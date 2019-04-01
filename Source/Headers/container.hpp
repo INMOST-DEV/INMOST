@@ -2844,9 +2844,12 @@ namespace INMOST
 		//typedef char pool_type[pool_size];
 		typedef std::map<void *,unsigned> page_fault_type;
 		std::vector< char * > pool;           ///< Data storage
+		std::vector<bool>     inuse; ///< marks block as in use, for unordered deallocation
 		std::vector<unsigned> last_alloc; ///< Last allocated block position, used to track allocation
 		page_fault_type page_fault;
 	public:
+		unsigned last_byte() const {return last_alloc.back();}
+		unsigned allocations() const {return inuse.size(); }
 		memory_pool(){pool.push_back(new char[1 << pool_size_bits]); last_alloc.push_back(0); }
 		//memory_pool(const memory_pool & b) : pool(b.pool), last_alloc(b.last_alloc) {}
 		//memory_pool & operator = (memory_pool const & b) {pool = b.pool; last_alloc = b.last_alloc; return *this;}
@@ -2877,6 +2880,7 @@ namespace INMOST
 				void * data = (void *)&pool[pagepos][datapos];
 				for(unsigned i = 0; i < n; ++i) new (&static_cast<T *>(data)[i]) T(c);
 				last_alloc.push_back(newpos);
+				inuse.push_back(true);
 				//std::cout << "allocated " << sizeof(T)*n << " bytes from " << oldpos << " to " << newpos << " at page " << pagepos << " at " << data << std::endl;
 				//std::cout << this << " last_alloc[" << last_alloc.size() << "]:";
 				//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i];
@@ -2900,27 +2904,31 @@ namespace INMOST
 		template<typename T>
 		void deallocate(T * mem)
 		{
-			unsigned oldpos = last_alloc.size() > 1 ? last_alloc[last_alloc.size()-2] : 0;
-			unsigned newpos = last_alloc.size() > 0 ? last_alloc[last_alloc.size()-1] : 0;
-			unsigned pagepos = newpos >> pool_size_bits;
-			unsigned datapos = oldpos % (1 << pool_size_bits);
+			bool find = false;
+			unsigned checkpos = last_alloc.size(), oldpos, newpos, pagepos, datapos;
+			if( checkpos > 1 )
+			{
+				while( !find && checkpos > 1 )
+				{
+					oldpos = last_alloc[checkpos-2];
+					newpos = last_alloc[checkpos-1];
+					pagepos = newpos >> pool_size_bits;
+					datapos = oldpos % (1 << pool_size_bits);
+					if( (((T*)&pool[pagepos][datapos]) == mem) )
+					{
+						unsigned n = (newpos - oldpos)/sizeof(T);
+						for(unsigned i = 0; i < n; ++i) mem[i].~T();
+						inuse[checkpos-2] = false;
+						find = true;
+					}
+					checkpos--;
+				}
+			}
 			//std::cout << "deallocate " << mem << " from " << oldpos << " to " << newpos << " page " << pagepos <<  std::endl;
 			//std::cout << this << " last_alloc[" << last_alloc.size() << "]:";
 			//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i];
 			//std::cout << std::endl;
-			if( last_alloc.size() > 1 && (((T*)&pool[pagepos][datapos]) == mem) )
-			{
-				unsigned n = (newpos - oldpos)/sizeof(T);
-				for(unsigned i = 0; i < n; ++i) mem[i].~T();
-				last_alloc.pop_back();
-				//std::cout << "deallocate from " << oldpos << " to " << newpos << std::endl;
-				if( last_alloc.back() != 0 && last_alloc.back()%(1<<pool_size_bits) == 0 )
-				{
-					//std::cout << "remove page " << (last_alloc.back() >> pool_size_bits) << " start marker " << std::endl;
-					last_alloc.pop_back();
-				}
-			}
-			else
+			if( !find )
 			{
 				page_fault_type::iterator it = page_fault.find((void *)mem);
 				assert(it != page_fault.end() && "deallocated block does not match neither last allocated block nor page fault");
@@ -2935,6 +2943,18 @@ namespace INMOST
 				for(unsigned i = 0; i < n; ++i)	mem[i].~T();
 				free(mem);
 				page_fault.erase(it);
+			}
+			
+			while( !inuse.empty() && inuse.back() == false )
+			{
+				inuse.pop_back();
+				last_alloc.pop_back();
+				//std::cout << "deallocate from " << oldpos << " to " << newpos << std::endl;
+				if( last_alloc.back() != 0 && last_alloc.back()%(1<<pool_size_bits) == 0 )
+				{
+					//std::cout << "remove page " << (last_alloc.back() >> pool_size_bits) << " start marker " << std::endl;
+					last_alloc.pop_back();
+				}
 			}
 		}
 		~memory_pool()
