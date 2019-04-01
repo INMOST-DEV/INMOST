@@ -10,6 +10,7 @@ namespace INMOST
 
 	memory_pool & get_pool()
 	{
+		//std::cout << "get pool " << (void *)&(*_pool) << std::endl;
 		return *_pool;
 	}
 }

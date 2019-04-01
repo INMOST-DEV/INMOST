@@ -2738,6 +2738,13 @@ namespace INMOST
 	{
 		T item;
 		char padding[PADDING_SIZE-sizeof(T)];
+		thread_private_item() :item() {}
+		thread_private_item(const thread_private_item & b) :item(b.item){}
+		thread_private_item & operator =(thread_private_item const & b)
+		{
+			item = b.item;
+			return *this;
+		}
 	};
 
 	/// This class is used to replace #pragma omp threadprivate
@@ -2745,42 +2752,51 @@ namespace INMOST
 	template<typename T>
 	class thread_private
 	{
-		std::vector< thread_private_item<T> > items;
+		//std::vector< thread_private_item<T> > items;
+		T * items;
 	public:
 		thread_private() 
 		{
-			items.resize(omp_get_max_threads());
+			//std::cout << "constructor " << this << std::endl;
+			items = new T[omp_get_max_threads()];
+			//for(int k = 0; k < omp_get_max_threads(); ++k)
+			//{
+			//	std::cout << (void *)&items[k] << std::endl;
+			//}
 		}
 		thread_private(const T & b)
 		{
-			items.resize(omp_get_max_threads());
+			//std::cout << "T copy constructor " << this << std::endl;
+			items = new T[omp_get_max_threads()];
 			for(int k = 0; k < omp_get_max_threads(); ++k)
-				items[k].item = b;
+				items[k] = b;
 		}
 		thread_private(const thread_private & b)
 		{
-			items.resize(omp_get_max_threads());
+			//std::cout << "copy constructor " << this << std::endl;
+			items = new T[omp_get_max_threads()];
 			for(int k = 0; k < omp_get_max_threads(); ++k)
-				items[k].item = b.get(k);
+				items[k] = b.get(k);
 		}
 		~thread_private() 
 		{
+			//std::cout << "destructor " << this << std::endl;
 		}
 		thread_private & operator =(thread_private const & b)
 		{
 			if( omp_in_parallel() )
 			{
-				items[omp_get_thread_num()].item = b.get();
+				items[omp_get_thread_num()] = b.get();
 			}
 			else
 			{
 #pragma omp parallel
-				items[omp_get_thread_num()].item = b.get();
+				items[omp_get_thread_num()] = b.get();
 			}
 			return *this;
 		}
-		T & operator *() {return items[omp_get_thread_num()].item;}
-		const T & operator *() const {return items[omp_get_thread_num()].item;}
+		T & operator *() {return items[omp_get_thread_num()];}
+		const T & operator *() const {return items[omp_get_thread_num()];}
 		//operator T & () {return items[omp_get_thread_num()].item;}
 		//operator const T & () const {return items[omp_get_thread_num()].item;}
 		//operator T () {return items[omp_get_thread_num()].item;}
@@ -2795,12 +2811,12 @@ namespace INMOST
 		//T & operator *= (B const & b) {items[omp_get_thread_num()].item *= b; return items[omp_get_thread_num()].item;}
 		//template <typename B>
 		//T & operator /= (B const & b) {items[omp_get_thread_num()].item /= b; return items[omp_get_thread_num()].item;}
-		T & get() {return items[omp_get_thread_num()].item;}
-		const T & get() const {return items[omp_get_thread_num()].item;}
-		T & get(int k) {return items[k].item;}
-		const T & get(int k) const {return items[k].item;}
-		T * operator ->() {return &items[omp_get_thread_num()].item;}
-		const T * operator ->() const {return &items[omp_get_thread_num()].item;}
+		T & get() {return items[omp_get_thread_num()];}
+		const T & get() const {return items[omp_get_thread_num()];}
+		T & get(int k) {return items[k];}
+		const T & get(int k) const {return items[k];}
+		T * operator ->() {return &items[omp_get_thread_num()];}
+		const T * operator ->() const {return &items[omp_get_thread_num()];}
 	};
 #else //_OPENMP
 	template<typename T>
@@ -2850,7 +2866,12 @@ namespace INMOST
 	public:
 		unsigned last_byte() const {return last_alloc.back();}
 		unsigned allocations() const {return inuse.size(); }
-		memory_pool(){pool.push_back(new char[1 << pool_size_bits]); last_alloc.push_back(0); }
+		memory_pool()
+		{
+			pool.push_back((char*)malloc(sizeof(char)*(1 << pool_size_bits))); 
+			last_alloc.push_back(0); 
+			//std::cout << "mempool " << (void *)this << " constructor, addr " << (void *)pool.back() << std::endl;
+		}
 		//memory_pool(const memory_pool & b) : pool(b.pool), last_alloc(b.last_alloc) {}
 		//memory_pool & operator = (memory_pool const & b) {pool = b.pool; last_alloc = b.last_alloc; return *this;}
 		template<typename T>
@@ -2866,7 +2887,7 @@ namespace INMOST
 				if( pagepos == pool.size() )
 				{
 					//std::cout << "position from " << oldpos << " to " << newpos << " need new page " << pagepos << std::endl;
-					pool.push_back(new char[1 << pool_size_bits]);
+					pool.push_back((char*)malloc(sizeof(char)*(1 << pool_size_bits)));
 				}
 				
 				if( pagepos != pageold || last_alloc.empty() )
@@ -2959,9 +2980,15 @@ namespace INMOST
 		}
 		~memory_pool()
 		{
+			//std::cout << "mempool destructor " << (void *)this << " in pool: ";
 			if( last_alloc.back() != 0 ) std::cout << "warning: memory pool not empty on deallocation!!!" << std::endl;
 			for(unsigned k = 0; k < pool.size(); ++k)
-				delete [] pool[k];
+			{
+				std::cout << (void *)pool[k] << " ";
+				free(pool[k]);
+			}
+			std::cout << std::endl;
+			pool.clear();
 			if( !page_fault.empty() )
 			{
 				std::cout << "warning: memory pool's page fault not empty on deallocation!!!" << std::endl;
