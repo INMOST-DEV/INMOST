@@ -7,8 +7,6 @@
 // incident_matrix class should measure for minimal volume,
 // possibly check and update from projects/OctreeCutcell/octgrid.cpp
 
-using namespace std;
-
 namespace INMOST
 {
 
@@ -2066,150 +2064,88 @@ namespace INMOST
     }
 
     void OperationMinDistance(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-    {        
-        int owner  =  (int)*((double*)data);
-        double dist = *((double*)(data+sizeof(double)));
-
-        TagReal r_tag = tag;
-
-        if (dist < element->RealArray(tag)[1])
+    {
+		(void)size;
+		assert(size == 2);
+		INMOST_DATA_INTEGER_TYPE * idata = (INMOST_DATA_INTEGER_TYPE *)data;
+        Storage::integer_array rdata = element->IntegerArray(tag);
+        if (data[1] < rdata[1])
         {
-            element->RealArray(tag)[0] = owner;
-            element->RealArray(tag)[1] = dist;
+            rdata[0] = data[0];
+            rdata[1] = data[1];
         }
-        (void)size;
     }
 
     void Mesh::Dijkstra()
     {
-        std::queue<Cell> cells_queue;
-        Tag tag = GetTag("TEMP_DISTANSE");
+        std::queue<HandleType> cells_queue;
+        TagIntegerArray dist = GetTag("TEMPORARY_OWNER_DISTANSE_TAG");
 
         // Push nearest to owned cell into queue
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
-            if (it->GetStatus() != Element::Owned)
-            {
-                it->RealArray(tag)[1] = INT_MAX; 
-                ElementArray<Face> faces = Cell(this,*it).getFaces();
-                for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
-                {
-                    if (f->getCells().size() <= 1) continue;
-                    Cell oc = (*it == f->BackCell().GetHandle()) ? f->FrontCell() : f->BackCell();
-                    assert(oc.GetHandle() != *it);
-                    if (oc.GetStatus() == Element::Owned)
-                    {
-                        cells_queue.push(it->getAsCell());
-                        it->RealArray(tag)[0] = oc.IntegerDF(tag_owner);
-                        it->RealArray(tag)[1] = 1;
-                        break;
-                    }
-                }
-            }
+		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
+		{
+			Cell c = CellByLocalID(k);
+			if (c.GetStatus() != Element::Owned)
+			{
+				dist[c][1] = INT_MAX; 
+				ElementArray<Cell> cells = c.NeighbouringCells();
+				for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() == Element::Owned)
+				{
+					cells_queue.push(c.GetHandle());
+					dist[c][0] = cells[l].Integer(tag_owner);
+					dist[c][1] = 1;
+					break;
+				}
+			}
+		}
         
         int cur_dist = 1; // For assert
 
         while (!cells_queue.empty())
         {
-            Cell c = cells_queue.front();
+            Cell c(this,cells_queue.front());
             cells_queue.pop();
 
-            if (cur_dist > c.RealArray(tag)[1]) assert(0); 
-            if (cur_dist < c.RealArray(tag)[1]) cur_dist++;
+            if (cur_dist > dist[c][1]) assert(0); 
+            if (cur_dist < dist[c][1]) cur_dist++;
 
-            ElementArray<Face> faces = c.getFaces();
-            for(ElementArray<Face>::iterator f = faces.begin(); f != faces.end(); f++)
+            ElementArray<Cell> cells = c.NeighbouringCells();
+            for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() != Element::Owned)
             {
-                if (f->getCells().size() <= 1) continue;
-                Cell oc = (c == f->BackCell()) ? f->FrontCell() : f->BackCell();
-                assert(oc != c);
-                
-                if (oc.GetStatus() == Element::Owned) continue;
-                if (oc.RealArray(tag)[1] > c.RealArray(tag)[1] + 1)
+                if (dist[cells[l]][1] > dist[c][1] + 1)
                 {
-                    oc.RealArray(tag)[0] = c.RealArray(tag)[0];
-                    oc.RealArray(tag)[1] = c.RealArray(tag)[1] + 1;
-                    cells_queue.push(oc);
+                    dist[cells[l]][0] = dist[c][0];
+                    dist[cells[l]][1] = dist[c][1] + 1;
+                    cells_queue.push(cells[l].GetHandle());
                 }
             }
         }
     }
 
-	void Mesh::ResolveModification(bool only_new, int metric)
+	void Mesh::ResolveModification(bool only_new)
 	{
         int rank = GetProcessorRank();
         int size = GetProcessorsNumber();
         if (size == 1) return;
-	    
-        Tag tag = CreateTag("TEMP_DISTANSE",DATA_REAL,CELL,CELL,2);
-        TagInteger tag_d = CreateTag("DIJ",DATA_INTEGER,CELL,NONE,1);
-        TagInteger tag_ow = CreateTag("DIJ_OW",DATA_INTEGER,CELL,NONE,1);
-        TagReal tag_dis = CreateTag("DIJ_DIS",DATA_REAL,CELL,NONE,1);
-        stringstream ss;
-        if (metric == 0) // Find near owned cell using Euclidean distance
-        {
-            for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
-                //if (GetMarker(*it,NewMarker()))
-                if (!only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
-                {
-                    if (it->GetStatus() == Element::Owned) continue;
-                    double min_distance = 0;
-                    int owner = rank;
-
-                    int first = 0;
-                    Cell near_cell;
-                    for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); jt++) 
-                        //if (GetMarker(*jt,NewMarker()) == false)
-                        if (jt->GetStatus() == Element::Owned)
-                        {
-                            double d = dist(it->getAsCell(), jt->getAsCell());
-                            if (first++ == 0 || min_distance > d) 
-                            {
-                                min_distance = d;
-                                near_cell = jt->getAsCell();
-                            }
-                        }
-
-                    owner = near_cell.IntegerDF(tag_owner);
-                    it->RealArray(tag)[0] = owner;
-                    it->RealArray(tag)[1] = min_distance;
-                }
-        }
-        else if (metric == 1)
-        {
-            Dijkstra();
-        }
-
-
+        TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANSE_TAG",DATA_INTEGER,CELL,CELL,2);
+        Dijkstra();
         ReduceData(tag, CELL, 0, OperationMinDistance);
         ExchangeData(tag, CELL, 0);
-
-        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) 
-            if (!only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
-            {
-                tag_ow[*it] =  it->RealArray(tag)[0];
-                tag_dis[*it] = it->RealArray(tag)[1];
-            }
-
-        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) //if (GetMarker(*it,NewMarker()) && (it->GetStatus() == Element::Ghost || it->GetStatus() == Element::Shared) )
+        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
+        {
             if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
             {
                 if (it->GetStatus() == Element::Owned) continue;
-                int new_owner = (int)it->RealArray(tag)[0];
-
+                int new_owner = tag[*it][0];
                 it->IntegerDF(tag_owner) = new_owner;
-
                 if (rank == new_owner)
-                {
                     it->SetStatus(Element::Shared);
-                }
                 else
-                {
                     it->SetStatus(Element::Ghost);
-                }
             }
-
+		}
+		DeleteTag(tag);
         RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
-        DeleteTag(tag);
     }
 
     void Mesh::EndModification()

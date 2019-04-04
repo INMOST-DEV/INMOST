@@ -7,9 +7,6 @@
 using namespace std;
 using namespace INMOST;
 
-int rank;
-int size;
-
 void add_elem_to_set(AdaptiveMesh& m, ElementSet& set, Element& elem)
 {
     set.PutElement(elem);
@@ -20,19 +17,20 @@ int main(int argc, char ** argv)
 {
     Mesh::Initialize(&argc,&argv);
 
-    AdaptiveMesh m;
+	Mesh m;
+    AdaptiveMesh am(m);
     m.Load("grid_for_set.pvtk");
 
-    size = m.GetProcessorsNumber();
-    rank = m.GetProcessorRank();
+    int size = m.GetProcessorsNumber();
+    int rank = m.GetProcessorRank();
     m.SetCommunicator(MPI_COMM_WORLD);
 
     m.ResolveShared();
-    m.UpdateStatus();
+    am.UpdateStatus();
     m.Save("test_sets_begin.pvtk");
 
     m.ResolveModification(false,1);
-    m.UpdateStatus();
+    am.UpdateStatus();
     m.Save("test_sets_resolve.pvtk");
     
     ElementSet base;
@@ -55,40 +53,40 @@ int main(int argc, char ** argv)
     for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) 
     {
         int gl = it->GlobalID();
-        if (rank == 0 && gl == 0 ) add_elem_to_set(m,base,it->self());
-        if (rank == 1 && gl == 16) add_elem_to_set(m,base,it->self());
+        if (rank == 0 && gl == 0 ) add_elem_to_set(am,base,it->self());
+        if (rank == 1 && gl == 16) add_elem_to_set(am,base,it->self());
 
-        if (gl >= 1 && gl <= 8             ) add_elem_to_set(m,C1,it->self());
-        if (gl >= 9 && gl <= 17 && gl != 16) add_elem_to_set(m,C2,it->self());
+        if (gl >= 1 && gl <= 8             ) add_elem_to_set(am,C1,it->self());
+        if (gl >= 9 && gl <= 17 && gl != 16) add_elem_to_set(am,C2,it->self());
     }
 
     // PrintSets
-    m.PrintSet();
+    am.PrintSet();
 
     // Print Mesh cells to beforeSync_rank file
     {
         stringstream ss;
         ss << "beforeSync_" << rank;
         ofstream ofs(ss.str().c_str());
-        m.PrintMesh(ofs,1,0,0,0);
+        am.PrintMesh(ofs,1,0,0,0);
     }
     
     // Synchronize sets. 
-    m.SynchronizeSet(C1); // C1 = C1 (on 0 rank) union C1 (on 1 rank)
-    m.SynchronizeSet(C2); 
+    am.SynchronizeSet(C1); // C1 = C1 (on 0 rank) union C1 (on 1 rank)
+    am.SynchronizeSet(C2); 
 
     // Print Mesh cells to afterSync_rank file
     {
         stringstream ss;
         ss << "afterSync_" << rank;
         ofstream ofs(ss.str().c_str());
-        m.PrintMesh(ofs,1,0,0,0);
+        am.PrintMesh(ofs,1,0,0,0);
     }
     
     // PrintSets
-    m.PrintSet();
+    am.PrintSet();
 
-    m.UpdateStatus();
+    am.UpdateStatus();
     m.Save("after_set_sync.pvtk");
 
 	Mesh::Finalize();

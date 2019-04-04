@@ -768,20 +768,20 @@ namespace INMOST
 	}
 	void Mesh::FinalizeFile()
 	{
-    //std::stringstream str;
-    if( tab > 1 )
+		//std::stringstream str;
+		if( tab > 1 )
 		{
-      out_time << "<TEXT><![CDATA[Died!]]></TEXT>\n";// << std::endl;
+			out_time << "<TEXT><![CDATA[Died!]]></TEXT>\n";// << std::endl;
 		}
-    while(tab > 1)
+		while(tab > 1)
 		{
-      out_time << "<TIME>-1</TIME>\n</FUNCTION>\n";// << std::endl; 
-      Exit(); 
+			out_time << "<TIME>-1</TIME>\n</FUNCTION>\n";// << std::endl; 
+			Exit(); 
 		}
 		out_time << "</Debug>" << std::endl;
-    //out_time << str;
-    //out_time.flush();
-    out_time.close();
+		//out_time << str;
+		//out_time.flush();
+		out_time.close();
 	}
 #endif //USE_PARALLEL_WRITE_TIME
 	
@@ -5064,7 +5064,7 @@ namespace INMOST
 #endif
 	}
 	
-		void Mesh::CheckCentroids()
+	void Mesh::CheckCentroids()
 	{
 		TagRealArray checker = CreateTag("CHECK_CENTROIDS",DATA_REAL,CELL|FACE|EDGE|NODE,CELL|FACE|EDGE|NODE,3);
 		for(Mesh::iteratorElement it = BeginElement(CELL|FACE|EDGE|NODE); it != EndElement(); ++it) if( it->GetStatus() & (Element::Ghost | Element::Shared) )

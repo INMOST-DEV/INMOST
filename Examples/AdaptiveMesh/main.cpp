@@ -49,7 +49,7 @@ int main(int argc, char ** argv)
 		}
 		r = pow(r,1.0/3.0)/20.0;
 		
-		for(int k = 0; k < 16; ++k)
+		for(int k = 0; k < 1; ++k)
 		{
 			
 			int numref;
@@ -57,124 +57,71 @@ int main(int argc, char ** argv)
 			do
 			{
 				numref = 0;
-				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( am.GetLevel(it->self()) < max_levels )
+				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) 
 				{
-					it->Barycenter(xyz);
-					//refine a circle
-					q = 0;
-					for(int d = 0; d < 3; ++d)
-						q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
-					q = sqrt(q);
-					if( q < r*(k+1) && q > r*k)
-				//	if( q < 0.4 && q >  0.3)
-					//if( q < 0.02 )
+					if( am.GetLevel(it->self()) < max_levels )
 					{
-						indicator[it->self()] = 1;
-						numref++;
+						it->Barycenter(xyz);
+						//refine a circle
+						q = 0;
+						for(int d = 0; d < 3; ++d)
+							q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
+						q = sqrt(q);
+						if( q < r*(k+1) && q > r*k)
+						{
+							indicator[*it] = 1;
+							numref++;
+						}
 					}
+					else indicator[*it] = 0;
 				}
 				numref = m.Integrate(numref);
 				if( numref )
 				{
 					std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " numref " << numref << " cells " << m.NumberOfCells() << std::endl;
-					/*
-					{
-						std::stringstream file;
-						file << "indicator_" << k << "_" << refcnt << "r.pmf";
-						m.Save(file.str());
-					}
-					*/
-    				int res = m.Refine(indicator);
+					
+					int res = am.Refine(indicator);
                     res = m.Integrate(res);
                     if (!res) break;
-					
-					{
-						std::stringstream file;
-						file << "dump_" << k << "_" << refcnt << "r.pmf";
-						m.Save(file.str());
-					}
-					
-					//cleanup indicator
-					for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) indicator[it->self()] = 0;
 				}
 				refcnt++;
 			}
 			while(numref);
 			refcnt = 0;
-			//if (0)
 			do
 			{
 				numref = 0;
-				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( am.GetLevel(it->self()) > 0 )
+				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 				{
-					it->Barycenter(xyz);
-					//refine a circle
-					q = 0;
-					for(int d = 0; d < 3; ++d)
-						q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
-					q = sqrt(q);
-					if( q < r*k)
+					if( am.GetLevel(it->self()) > 0 )
 					{
-						indicator[it->self()] = 1;
-						numref++;
+						it->Barycenter(xyz);
+						//refine a circle
+						q = 0;
+						for(int d = 0; d < 3; ++d)
+							q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
+						q = sqrt(q);
+						if( q < r*k)
+						{
+							indicator[*it] = 1;
+							numref++;
+						}
 					}
+					else indicator[*it] = 0;
 				}
 				numref = m.Integrate(numref);
 				if( numref )
 				{
 					std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " numcrs " << numref << " cells " << m.NumberOfCells() <<  std::endl;
-					/*
-					{
-						std::stringstream file;
-						file << "indicator_" << k << "_" << refcnt << "c.pmf";
-						m.Save(file.str());
-					}
-					 */
-					if( !am.Coarse(indicator) ) break;
-				
-					
-					{
-						std::stringstream file;
-						file << "dump_" << k << "_" << refcnt << "c.pmf";
-						m.Save(file.str());
-					}
-					
-					std::cout << " Output " << k << std::endl;
-				m.UpdateStatus();
-				TagInteger isface = m.CreateTag("isface",DATA_INTEGER,CELL|FACE,NONE,1);
-				for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) isface[*it] = 1;
-				std::stringstream file;
-				//m.SetFileOption("VTK_OUTPUT_FACES","1");
-				file << "step_" << k << "_" << m.GetProcessorRank() << ".xml";
-				//file << "step_" << k << "_" << refcnt << ".pvtk";
-				m.Save(file.str());
-					
-					if (k == 6 && refcnt==0) exit(-1);
-					
-					
-					//cleanup indicator
-					for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) indicator[it->self()] = 0;
+					int res = am.Coarse(indicator);
+					res = m.Integrate(res);
+					if( !res ) break;
 				}
 				
-				{
-				
-			}
-				//return -1;
 				refcnt++;
 			}
 			while(numref);
 			
-			{
-				std::cout << " Output " << k << std::endl;
-				m.UpdateStatus();
-				TagInteger isface = m.CreateTag("isface",DATA_INTEGER,CELL|FACE,NONE,1);
-				for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) isface[*it] = 1;
-				std::stringstream file;
-				//m.SetFileOption("VTK_OUTPUT_FACES","1");
-				//file << "step_" << k << "_" << m.GetProcessorRank() << ".xml";
-				file << "step_" << k << ".pvtk";
-				m.Save(file.str());
-			}
 			
 			{
 				TagInteger tag_owner = m.CreateTag("OWN",DATA_INTEGER,CELL,NONE,1);
@@ -188,6 +135,7 @@ int main(int argc, char ** argv)
 				std::stringstream file;
 				file << "step_" << k << ".pmf";
 				m.Save(file.str());
+				std::cout << "Save " << file.str() << std::endl;
 			}
 		}
 	}

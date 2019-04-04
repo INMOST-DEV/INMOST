@@ -49,12 +49,12 @@ namespace INMOST
         else if (it.GetStatus() == Element::Owned) ss << "owned";
         else ss << "none";
 
-        ss << " tag_owner (" << it.IntegerDF(OwnerTag()) << ")";
+        ss << " tag_owner (" << it.IntegerDF(m->OwnerTag()) << ")";
 
         //ss << "   level (" << level[it.self()] << ")  ";
         ss << " tag_processors (";
         stringstream ss2;
-        Storage::integer_array arr = it.IntegerArrayDV(tag_processors);
+        Storage::integer_array arr = it.IntegerArrayDV(m->ProcessorsTag());
         for (int i = 0; i < arr.size(); i++)
             ss2 << arr[i] << " ";
         ss << setw(5) << ss2.str() <<")";
@@ -86,10 +86,10 @@ namespace INMOST
     void AdaptiveMesh::PrintSet()
     {
         stringstream ss;
-        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+        for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
         {
             if (it->HaveParent()) continue;
-            PrintSetLocal("",ElementSet(this,*it),ss);
+            PrintSetLocal("",ElementSet(m,*it),ss);
         }
         cout << ss.str() << endl;
     }
@@ -119,8 +119,8 @@ namespace INMOST
         ss << "================= " << rank << " =====================" << endl;
         if (cell)
         {
-            ss << "Cells: " << NumberOfCells() <<  endl;
-            for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
+            ss << "Cells: " << m->NumberOfCells() <<  endl;
+            for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) 
             {
                 ss << rank << ": " << it->GlobalID() << " - " << it->LocalID() << " - ";            
                 if (it->GetStatus() == Element::Shared) ss << "shared";
@@ -153,8 +153,8 @@ namespace INMOST
 
         if (face)
         {
-            ss << "Faces: " << NumberOfFaces() <<  endl;
-            for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) 
+            ss << "Faces: " << m->NumberOfFaces() <<  endl;
+            for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
             {
                 ss << rank << ": " << setw(2) << it->LocalID() << " " << setw(2) << it->GlobalID() << " - " ;            
                 ss << setw(6);
@@ -167,7 +167,7 @@ namespace INMOST
                 it->Centroid(xyz);
                 ss << "   (" << setw(5) << xyz[0] << " " << setw(5) << xyz[1] << " " << setw(5) << xyz[2] << ")";
 
-                ss << "  " << GetMarker(*it,NewMarker());
+                ss << "  " << m->GetMarker(*it,m->NewMarker());
 
                 ss << " nc(" << it->getNodes().size() << ": "; 
                 ElementArray<Node> nodes = it->getNodes();
@@ -206,8 +206,8 @@ namespace INMOST
 
         if (edge)
         {
-            ss << "Edges: " << NumberOfEdges() <<  endl;
-            for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); ++it) 
+            ss << "Edges: " << m->NumberOfEdges() <<  endl;
+            for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it) 
             {
                 ss << rank << ": " << it->GlobalID() << " - " ;            
                 if (it->GetStatus() == Element::Shared) ss << "shared";
@@ -233,7 +233,7 @@ namespace INMOST
         if (node)
         {
             ss << "Nodes:" << endl;
-            for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) 
+            for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) 
             {
                 ss << rank << ": " << setw(2) << it->GlobalID() << " - " ;            
                 ss << setw(6);
@@ -248,19 +248,19 @@ namespace INMOST
                     {
                         string type = "unknw";
                         if (refs[i].GetElementType() == CELL) type = "cell";
-                    if (refs[i].GetElementType() == FACE) type = "face";
-                    if (refs[i].GetElementType() == EDGE) type = "edge";
+						if (refs[i].GetElementType() == FACE) type = "face";
+						if (refs[i].GetElementType() == EDGE) type = "edge";
                         if (refs[i].GetElementType() == NODE) type = "node";
                         ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
                         
                     }
 
-                    ss << "  " << GetMarker(*it,NewMarker());
+                    ss << "  " << m->GetMarker(*it,m->NewMarker());
 
                     ss << "(" << 
-                        setw(3) << it->RealArray(CoordsTag())[0] << " " << 
-                        setw(3) << it->RealArray(CoordsTag())[1] << " " << 
-                        setw(3) << it->RealArray(CoordsTag())[2] << ")";
+                        setw(3) << it->RealArray(m->CoordsTag())[0] << " " << 
+                        setw(3) << it->RealArray(m->CoordsTag())[1] << " " << 
+                        setw(3) << it->RealArray(m->CoordsTag())[2] << ")";
 
                 }
                 ss << endl;
@@ -276,7 +276,7 @@ namespace INMOST
 
         for(ElementType mask = CELL; mask >= NODE; mask = PrevElementType(mask))
         {
-            for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
+            for(Mesh::iteratorElement it = m->BeginElement(mask); it != m->EndElement(); it++)
             {
                 int stat = 0;
                 if (it->GetStatus() == Element::Shared) stat = 1;
@@ -285,11 +285,6 @@ namespace INMOST
                 tag_status[it->self()] = stat;
             }
         }
-
-
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
-        {
-                }
     }
     
     void AdaptiveMesh::PrintSet(ElementSet set, std::string offset)
@@ -299,7 +294,7 @@ namespace INMOST
 		ElementSet::iterator it = set.Begin();
 		while(it != set.End())
         {
-		    ElementSet parent(this,parent_set[*it]);
+		    ElementSet parent(m,parent_set[*it]);
             std::cout << offset << it->GlobalID() << " - " << level[*it] << " : ";
 		    
             ElementSet::iterator p = parent.Begin();
@@ -322,12 +317,12 @@ namespace INMOST
     void AdaptiveMesh::SynchronizeSet(ElementSet set)
     {
     #ifdef USE_MPI
-        int size = GetProcessorsNumber();
-        int rank = GetProcessorRank();
+        int size = m->GetProcessorsNumber();
+        int rank = m->GetProcessorRank();
         for (int i = 0; i < size; i++)
         {
-            set.IntegerArray(tag_sendto).push_back(i);
-            ExchangeMarked();
+            set.IntegerArray(m->SendtoTag()).push_back(i);
+            m->ExchangeMarked();
         }
     #endif
     }
@@ -372,15 +367,15 @@ namespace INMOST
 		model = NULL;
 		//create a tag that stores maximal refinement level of each element
 		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
-		tag_status = CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
-		tag_an = CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
-		ref_tag = CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+		tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+		tag_an = m->CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+		ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
 		hanging_nodes = m->CreateTag("HANGING_NODES",DATA_REFERENCE,CELL|FACE,NONE);
 		//create a tag that stores links to sets
 		parent_set = m->CreateTag("PARENT_SET",DATA_REFERENCE,CELL,NONE,1);
-	    size = GetProcessorsNumber();
-    	rank = GetProcessorRank();
+	    size = m->GetProcessorsNumber();
+    	rank = m->GetProcessorRank();
 	}
 	
 	AdaptiveMesh::~AdaptiveMesh()
@@ -391,7 +386,7 @@ namespace INMOST
 	
 	bool AdaptiveMesh::Refine(TagInteger & indicator)
 	{
-        cout << ro() << rank << ": IN REFINE" << endl;
+        std::cout << rank << ": IN REFINE" << endl;
 		static int call_counter = 0;
 		int ret = 0; //return number of refined cells
 		//initialize tree structure
@@ -453,7 +448,8 @@ namespace INMOST
 			scheduled = m->Integrate(scheduled);
 			if( scheduled ) schedule_counter++;
 		}
-		ExchangeData(indicator,CELL | FACE | EDGE,0);
+		m->ExchangeData(indicator,CELL | FACE | EDGE,0);
+		m->Save("indicator.pmf");
 		//6.Refine
 		m->BeginModification();
 		while(schedule_counter)
@@ -474,7 +470,7 @@ namespace INMOST
 					//create middle node
 					Node n = m->CreateNode(xyz);
 					//set increased level for new node
-					//level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e]+1;
+					level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e]+1;
 					//for each face provide link to a new hanging node
 					for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt)
 						hanging_nodes[edge_faces[kt]].push_back(n);
@@ -505,7 +501,7 @@ namespace INMOST
 					//create middle node
 					Node n = m->CreateNode(xyz);
 					//set increased level for the new node
-					//level[n] = level[f]+1;
+					level[n] = level[f]+1;
 					//for each cell provide link to new hanging node
 					for(ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
 						hanging_nodes[face_cells[kt]].push_back(n);
@@ -549,7 +545,7 @@ namespace INMOST
 					//create middle node
 					Node n = m->CreateNode(xyz);
 					//set increased level for the new node
-					//level[n] = level[c]+1;
+					level[n] = level[c]+1;
 					//retrive all edges of current face to mark them
 					ElementArray<Edge> cell_edges = c.getEdges();
 					//mark all edges so that we can retive them later
@@ -659,37 +655,37 @@ namespace INMOST
 		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 
 
-        MarkerType marker_new = CreateMarker();
-        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) 
+        MarkerType marker_new = m->CreateMarker();
+        for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) 
         {
-            if (it->GetMarker(NewMarker()) == false) continue;
+            if (it->GetMarker(m->NewMarker()) == false) continue;
             it->SetMarker(marker_new);
 
         }
 
-        for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) 
+        for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
         {
-            if (it->GetMarker(NewMarker()) == false) continue;
+            if (it->GetMarker(m->NewMarker()) == false) continue;
             it->SetMarker(marker_new);
         }
 
-        for(Mesh::iteratorEdge it = BeginEdge(); it != EndEdge(); ++it) 
+        for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it) 
         {
-            if (it->GetMarker(NewMarker()) == false) continue;
+            if (it->GetMarker(m->NewMarker()) == false) continue;
             it->SetMarker(marker_new);
         }
 
-        for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) 
+        for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) 
         {
-            if (it->GetMarker(NewMarker()) == false) continue;
+            if (it->GetMarker(m->NewMarker()) == false) continue;
             it->SetMarker(marker_new);
         }
 
 
 		//11. Restore parallel connectivity, global ids
-        ResolveShared(true);
+        m->ResolveShared(true);
         //if (call_counter == 0)
-		ResolveModification(false,1);
+		m->ResolveModification(false);
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New() cells
@@ -700,15 +696,15 @@ namespace INMOST
         //cout << rank << ": Before end " << endl;
 		m->EndModification();
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
-        ResolveSets();
+        m->ResolveSets();
 
-		CheckCentroids();
+		m->CheckCentroids();
 
-        BeginModification();
-            ExchangeGhost(1,NODE,&marker_new); // Construct Ghost cells in 2 layers connected via nodes
-            ReleaseMarker(marker_new);
-		ApplyModification();
-    	EndModification();
+        m->BeginModification();
+            m->ExchangeGhost(1,NODE,&marker_new); // Construct Ghost cells in 2 layers connected via nodes
+            m->ReleaseMarker(marker_new,CELL|FACE|EDGE|NODE);
+		m->ApplyModification();
+    	m->EndModification();
 
         //ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << endl;
@@ -716,7 +712,7 @@ namespace INMOST
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
 		//return number of refined cells
 		call_counter++;
-        cout << ro() << rank << ": END REFINE " << (ret != 0) << endl;
+        std::cout << rank << ": END REFINE " << (ret != 0) << endl;
 		return ret != 0;
 	}
 
@@ -734,14 +730,14 @@ namespace INMOST
 	
     void AdaptiveMesh::SynchronizeIndicated(TagInteger& indicator)
     {
-        if (GetProcessorsNumber() == 1) return;
-        int rank = GetProcessorRank();
+        if (m->GetProcessorsNumber() == 1) return;
+        int rank = m->GetProcessorRank();
 
         // Check all sets. All elements in sets must be indicated. At first we check indicator in local processor, and second integrate data
-        TagInteger tag_indicated = CreateTag("INDICATED",DATA_INTEGER,ESET,NONE,1);
-        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+        TagInteger tag_indicated = m->CreateTag("INDICATED",DATA_INTEGER,ESET,NONE,1);
+        for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
         {
-            ElementSet set = ElementSet(this,*it);
+            ElementSet set = ElementSet(m,*it);
             set.Integer(tag_indicated) = 1;
             ElementSet::iterator p = set.Begin();
             while(p != set.End())
@@ -749,7 +745,7 @@ namespace INMOST
                 if (indicator[*p] == 0)
                 {
                     tag_indicated[set] = 0;
-                    //cout << ro() << rank << ": Set " << set.GetName() << " not all indicated" << endl;
+                    //std::cout << rank << ": Set " << set.GetName() << " not all indicated" << endl;
                     break;
                 }
 
@@ -757,10 +753,10 @@ namespace INMOST
             }
         }
 
-        ReduceData(tag_indicated,ESET,0,OperationMin);
-        ExchangeData(tag_indicated,ESET,0);
+        m->ReduceData(tag_indicated,ESET,0,OperationMin);
+        m->ExchangeData(tag_indicated,ESET,0);
 
-        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
+        for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
             if (it->Integer(tag_indicated) == 0)
             {
                 ElementSet::iterator p = it->Begin();
@@ -776,13 +772,13 @@ namespace INMOST
         {
             ss << it->GetName() << " - " << it->Integer(tag_indicated) << endl;;
         }
-        cout << ro() << rank << " Sets: \n" << ss.str() << endl;
+        cout << rank << " Sets: \n" << ss.str() << endl;
         */
     }
 
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
-        cout << ro() << rank << ": BEGIN COARSE\n";
+        std::cout << rank << ": BEGIN COARSE\n";
         SynchronizeIndicated(indicator);
         return false;
 
@@ -820,13 +816,13 @@ namespace INMOST
 					indicator[e] = INT_MAX;
 					for(ElementArray<Element>::size_type kt = 0; kt < adj.size(); ++kt)
 						if( level[e] == level[adj[kt]]) indicator[e] = std::min(indicator[e],indicator[adj[kt]]);
-					//if (indicator[e] == INT_MAX) cout << ro() << rank << ": " << ElementTypeName(e.GetElementType()) << e.GlobalID() << endl;
+					//if (indicator[e] == INT_MAX) cout << rank << ": " << ElementTypeName(e.GetElementType()) << e.GlobalID() << endl;
 					//assert(indicator[e] != INT_MAX);
 				}
 			}
 			//2.Communicate indicator on faces and edges
 			m->ReduceData(indicator,FACE|EDGE,0,ReduceMin);
-			ExchangeData(indicator,FACE|EDGE,0);
+			m->ExchangeData(indicator,FACE|EDGE,0);
 			//3.If there is adjacent finer edge that are not marked for coarsening
 			// then this cell should not be coarsened
 			unscheduled = scheduled = 0;
@@ -854,7 +850,7 @@ namespace INMOST
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
-                if (!isValidElement(c.GetHandle())) continue;
+                //if (!isValidElement(c.GetHandle())) continue;
 				if( indicator[c] )
 				{
 					ElementSet parent(m,parent_set[c]);
@@ -909,7 +905,7 @@ namespace INMOST
 			}
 			//c) data reduction to get maximum over mesh partition
 			m->ReduceData(coarse_indicator,EDGE,0,ReduceMax);
-			ExchangeData(coarse_indicator,EDGE,0);
+			m->ExchangeData(coarse_indicator,EDGE,0);
 			//d) look from cells if any edge is coarsened earlier
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
@@ -928,7 +924,7 @@ namespace INMOST
 					}
 				}
 			}
-			ExchangeData(indicator,CELL|FACE|EDGE,0);
+			m->ExchangeData(indicator,CELL|FACE|EDGE,0);
 			//5.Go back to 1 until no new elements scheduled
 			scheduled = m->Integrate(scheduled);
 			unscheduled = m->Integrate(unscheduled);
@@ -1103,9 +1099,9 @@ namespace INMOST
 			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
 		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 		//todo:
-    	ResolveShared(true);
-		ResolveModification(false,1);
-		CheckCentroids();
+    	m->ResolveShared(true);
+		m->ResolveModification(false);
+		m->CheckCentroids();
 		//todo:
 		//let the user update their data
 		if( model ) model->Adaptation(*m);
@@ -1132,7 +1128,7 @@ namespace INMOST
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE|ESET);
 		
 		call_counter++;
-        cout << ro() << rank << ": END COARSE\n";
+        std::cout << rank << ": END COARSE\n";
 		return ret != 0;
 	}
 }
