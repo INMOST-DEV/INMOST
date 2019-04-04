@@ -57,10 +57,10 @@ namespace TTSP {
     }
 
     unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT    = 15;
-    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 12;
-    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 7;
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 9;
+    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 9;
     double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.1;
-    double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.15;
+    double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.1;
 
     BayesianOptimizer::BayesianOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(name, space, properties, buffer_capacity),
