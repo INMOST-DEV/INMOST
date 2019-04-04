@@ -548,6 +548,7 @@ namespace INMOST
 		static bool                 TestUniteEdges          (const ElementArray<Edge> & edges, MarkerType del_protect);
 		static ElementArray<Edge>   SplitEdge               (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
 		static bool                 TestSplitEdge           (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect);
+		static Node                 CollapseEdge            (Edge e, MarkerType del_protect);
 		//implemented in geometry.cpp
 		Storage::real               Length                  () const;
 		///Swap positions of first node and last node
@@ -2085,6 +2086,10 @@ namespace INMOST
 		/// @param h handle to the element
 		/// @param tag tag that indicates the data
 		void                              DelDenseData       (HandleType h,const Tag & tag);
+		/// Removes data of variable size, clears to zero data of fixed size.
+		/// @param data link to data
+		/// @param tag tag that indicates the data
+		void                              DelDenseData       (void * data,const Tag & tag);
 		/// Removes data of variable size and sparse tag data.
 		/// @param h handle to the element
 		/// @param tag tag that indicates the data
@@ -3144,7 +3149,7 @@ namespace INMOST
 		bool                              isMeshModified     () const {return new_element != 0;} 
 		MarkerType                        HideMarker         () const {return hide_element;}
 		MarkerType                        NewMarker          () const {return new_element;}
-		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
+		void                              SwapModification   (bool recompute_geometry); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
 		/// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
@@ -3325,6 +3330,32 @@ namespace INMOST
 			bool operator() (HandleType a, bulk b) const {if( a == InvalidHandle() ) return true; return m->BulkDF(a,t) < b;}
 		};
 		
+		class MeasureComparator
+		{
+			Mesh * m;
+		public:
+			MeasureComparator(Mesh * m) :m(m) {}
+			MeasureComparator(const MeasureComparator & other) :m(other.m) {}
+			MeasureComparator & operator = (MeasureComparator const & other) { m = other.m; return *this;}
+			bool operator() (HandleType a, HandleType b) const
+			{
+				if( a == InvalidHandle() || b == InvalidHandle() )
+					return a > b;
+				double ma, mb;
+				m->GetGeometricData(a,MEASURE,&ma);
+				m->GetGeometricData(b,MEASURE,&mb);
+				return ma < mb;
+			}
+			bool operator() (HandleType a, bulk b) const
+			{
+				if( a == InvalidHandle() )
+					return true;
+				double ma;
+				m->GetGeometricData(a,MEASURE,&ma);
+				return ma < b;
+			}
+		};
+		
 		class MarkerComparator
 		{
 			Mesh * m; MarkerType mrk; bool inverse;
@@ -3359,6 +3390,54 @@ namespace INMOST
 		void SetMeshName(std::string new_name);
 		/// Find mesh by name.
 		static Mesh * GetMesh(std::string name);
+	};
+	
+	
+	
+	
+	///This structure is a helper structure to aid with search of cells by position.
+	///Currently the structure is very specific to the step of mesh modification,
+	///as it performs search over old elements of the mesh.
+	class SearchKDTree
+	{
+	public:
+		
+		inline static bool cell_point(const Cell & c, const Storage::real p[3]) {return c.Inside(p);}
+		template<typename bbox_type>
+		inline static int bbox_point(const Storage::real p[3], const bbox_type bbox[6], bool print = false);
+	private:
+		struct entry
+		{
+			HandleType e;
+			float xyz[3];
+			struct entry & operator =(const struct entry & other)
+			{
+				e = other.e;
+				xyz[0] = other.xyz[0];
+				xyz[1] = other.xyz[1];
+				xyz[2] = other.xyz[2];
+				return *this;
+			}
+		} * set;
+		Mesh * m;
+		INMOST_DATA_ENUM_TYPE size;
+		float bbox[6];
+		SearchKDTree * children;
+		static int cmpElements0(const void * a,const void * b);
+		static int cmpElements1(const void * a,const void * b);
+		static int cmpElements2(const void * a,const void * b);
+		inline static unsigned int flip(const unsigned int * fp);
+		void radix_sort(int dim, struct entry * temp);
+		void kdtree_build(int dim, int & done, int total, struct entry * temp);
+		SearchKDTree() : set(NULL), size(0), children(NULL) {}
+		
+		Cell SubSearchCell(const Storage::real p[3], bool print);
+		void clear_children();
+	public:
+		SearchKDTree(Mesh * m);
+		SearchKDTree(Mesh * m, HandleType * _set, unsigned set_size);
+		~SearchKDTree();
+		Cell SearchCell(const Storage::real * point, bool print = false);
 	};
 
 

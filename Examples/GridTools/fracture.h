@@ -29,7 +29,7 @@ public:
 	INMOST_DATA_REAL_TYPE Volume(Cell c) const;
 	INMOST_DATA_REAL_TYPE Area(Face f) const;
 	void FaceCenter(Face f, INMOST_DATA_REAL_TYPE cnt[3]) const;
-	void Open(Tag aperture);
+	void Open(Tag aperture, bool fill_fracture);
 };
 
 #endif //__FRACTURE_H

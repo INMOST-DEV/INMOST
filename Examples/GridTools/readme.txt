@@ -32,6 +32,20 @@ difference_same mesh_file1 mesh_file2
 mesh_file1 - first mesh file
 mesh_file2 - second mesh file
 
+difference_same_match - Computes difference between the real data on all elements of two similar grids
+                        and writes the grid with the difference. It writes absolute value of difference.
+                        These variant works for meshes that has different order of elements but same mesh
+                        geometry.
+                        Outputs L_inf, L_1, L_2 norms of the difference.
+                        Similar grids means their geometry should match between each other
+
+Usage:
+
+difference_same_match mesh_file1 mesh_file2
+
+mesh_file1 - first mesh file
+mesh_file2 - second mesh file
+
 
 difference_map - Computes difference between the real data on cells of two different grids
                  and writes both grids with the difference. It writes absolute value of difference.

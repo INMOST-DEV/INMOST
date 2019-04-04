@@ -10,6 +10,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_gmv_file.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_mkf_file.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_ecl_file.cpp
+#    ${CMAKE_CURRENT_SOURCE_DIR}/mesh_openfoam_file.cpp
     PARENT_SCOPE
 )
 

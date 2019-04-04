@@ -227,7 +227,7 @@ Mesh * ParallelGenerator(INMOST_MPI_Comm comm, int ng, int nx, int ny, int nz)
 				{
 					CreateCubeElement(m,verts);
 				}
-				else if ((i + j) % 2 == 0) // Create two prism cells
+				else if ((i + j) % 2 == 0 || ng == 6) // Create two prism cells
 				{
 					CreateNWPrismElements(m,verts);
 				}

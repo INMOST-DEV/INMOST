@@ -13,6 +13,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/iterator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/modify.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/parallel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/kdtree.cpp
     PARENT_SCOPE
 )
 

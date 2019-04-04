@@ -334,7 +334,7 @@ namespace INMOST
 		{
 			new_tag = Tag(m,name,dtype,size);
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_tags)
 #endif
 			{
 				tags.push_back(new_tag);
@@ -356,7 +356,7 @@ namespace INMOST
 				{
 					INMOST_DATA_ENUM_TYPE new_pos = ENUMUNDEF;
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_data)
 #endif
 					{
 						new_pos = static_cast<INMOST_DATA_ENUM_TYPE>(dense_data.size());
@@ -384,7 +384,7 @@ namespace INMOST
 				if( new_size < 1024 && j != ElementNum(MESH) ) new_size = 1024;
 				if( new_size != 1   && j == ElementNum(MESH) ) new_size = 1;
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_data)
 #endif
 				{
 					sparse_data[j].resize(new_size);
@@ -424,9 +424,9 @@ namespace INMOST
 				if( !tag.isSparse(mask) ) 
 				{
           //this was already done in Mesh::DeleteTag()
-          //ReallocateData(tag,ElementNum(mask),0); //this should clean up the structures
-          dense_data[tpos].clear(); //here all data should be deleted
-				  empty_dense_data.push_back(tpos);
+					ReallocateData(tag,ElementNum(mask),0); //this should clean up the structures
+					dense_data[tpos].clear(); //here all data should be deleted
+					empty_dense_data.push_back(tpos);
 				}
 #if !defined(LAZY_SPARSE_ALLOCATION)
 				else was_sparse[ElementNum(mask)] = true;
@@ -447,14 +447,17 @@ namespace INMOST
 			}
 			for(int j = 0; j < 6; j++) 
 				if( was_sparse[j] && !have_sparse[j] )
-			sparse_data[j].clear();
+				{
+					//ReallocateData(tag,j,0); //this should clean up the structures
+					sparse_data[j].clear();
+				}
 #endif
 			for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 			{
 				if( tags[i] == tag )
 				{
-				  tags.erase(tags.begin()+i);
-      		flag = true;
+					tags.erase(tags.begin()+i);
+					flag = true;
 					break;
 				}
 			}
@@ -519,6 +522,7 @@ namespace INMOST
 	
 	void TagManager::ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size)
 	{
+		//std::cout << "reallocate for " << t.GetTagName() << " type " << DataTypeName(t.GetDataType()) << " element type " << ElementTypeName(ElementTypeFromDim(etypenum)) << " size " << new_size << std::endl;
 		INMOST_DATA_ENUM_TYPE        data_pos    = t.GetPositionByDim(etypenum);
 		INMOST_DATA_ENUM_TYPE        data_size   = t.GetSize();
 		TagManager::dense_sub_type & arr         = GetDenseData(data_pos);
@@ -554,7 +558,7 @@ namespace INMOST
 		}
 #endif
 #if defined(USE_OMP)
-#pragma omp critical
+#pragma omp critical (change_data)
 #endif
 		{
 			arr.resize(new_size);

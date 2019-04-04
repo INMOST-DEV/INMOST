@@ -8,13 +8,22 @@ int main(int argc, char ** argv)
 	
 	if( argc > 1 )
 	{
-		AdaptiveMesh m;
+		Mesh m;
 		m.SetCommunicator(INMOST_MPI_COMM_WORLD);
 		m.Load(argv[1]);
+		AdaptiveMesh am(m);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
 		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON);
 		TagInteger indicator = m.CreateTag("INDICATOR",DATA_INTEGER,CELL,NONE,1);
+		/*
+		for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
+			indicator[*it] = 1;
+		if( !m.Refine(indicator) ) std::cout << "refine failed" << std::endl;
+		else std::cout << "refine ok!" << std::endl;
+		m.Save("grid.pmf");
+		return 0;
+		*/
 		int max_levels = 2;
 		if( argc > 2 ) max_levels = atoi(argv[2]);
 		//bounding box around mesh
@@ -48,7 +57,7 @@ int main(int argc, char ** argv)
 			do
 			{
 				numref = 0;
-				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( m.GetLevel(it->self()) < max_levels )
+				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( am.GetLevel(it->self()) < max_levels )
 				{
 					it->Barycenter(xyz);
 					//refine a circle
@@ -96,7 +105,7 @@ int main(int argc, char ** argv)
 			do
 			{
 				numref = 0;
-				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( m.GetLevel(it->self()) > 0 )
+				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( am.GetLevel(it->self()) > 0 )
 				{
 					it->Barycenter(xyz);
 					//refine a circle
@@ -121,9 +130,8 @@ int main(int argc, char ** argv)
 						m.Save(file.str());
 					}
 					 */
-					 
+					if( !am.Coarse(indicator) ) break;
 				
-					if( !m.Coarse(indicator) ) break;
 					
 					{
 						std::stringstream file;
@@ -186,4 +194,5 @@ int main(int argc, char ** argv)
 	else std::cout << "Usage: " << argv[0] << " mesh_file [max_levels=2]" << std::endl;
 	
 	Mesh::Finalize();
+	return 0;
 }

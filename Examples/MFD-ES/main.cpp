@@ -320,7 +320,7 @@ int main(int argc,char ** argv)
         {
             { // Compute mesh partitioning
                 Partitioner p(&m); //Create Partitioning object
-                p.SetMethod(Partitioner::Inner_RCM,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
+                p.SetMethod(Partitioner::INNER_KMEANS,repartition ? Partitioner::Repartition : Partitioner::Partition); // Specify the partitioner
                 p.Evaluate(); // Compute the partitioner and store new processor ID in the mesh
             }
 
@@ -429,8 +429,8 @@ int main(int argc,char ** argv)
 					if( faces[k].BackCell() == c )
 						tag_i[faces[k]] = k;
 				} //end of loop over faces
-				W = N*(N.Transpose()*R).Invert(true).first*N.Transpose(); //stability part
-				W += (rMatrix::Unit(faces.size()) - R*(R.Transpose()*R).Invert(true).first*R.Transpose())*(4.0/(faces.size())*W.Trace());
+				W = N*(N.Transpose()*R).Invert()*N.Transpose(); //stability part
+				W += (rMatrix::Unit(faces.size()) - R*(R.Transpose()*R).Invert()*R.Transpose())*(4.0/(faces.size())*W.Trace());
             } //end of loop over cells
 			
 			//initialize normal velocity

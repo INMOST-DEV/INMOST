@@ -1,5 +1,5 @@
 #include "inmost_model.h"
-
+#if defined(USE_AUTODIFF) && defined(USE_MESH) && defined(USE_SOLVER)
 
 namespace INMOST
 {
@@ -272,4 +272,20 @@ namespace INMOST
 #endif
 		return ret;
 	}
+	
+	void Model::Adaptation(Mesh & m) const
+	{
+		array<HandleType> old_cells;
+		for(int k = 0; k < m.CellLastLocalID(); ++k) if( m.isValidCell(k) )
+		{
+			Cell c = m.CellByLocalID(k);
+			if( c.Hidden() ) old_cells.push_back(c.GetHandle());
+		}
+		//std::cout << "old cells: " << old_cells.size() << std::endl;
+		SearchKDTree tree(&m,old_cells.data(),old_cells.size());
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->Adaptation(m,tree);
+	}
 }
+#endif

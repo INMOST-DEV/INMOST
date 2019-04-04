@@ -105,9 +105,6 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 	rMatrix M(A.Cols(), A.Cols());
 
 
-	std::pair<rMatrix, bool> inv, iQ;
-	inv.first.Resize(d + 1, d + 1);
-	iQ.first.Resize(d, d);
 	int done_iters = 0;
 	double n = d+1, ep , en, kp, kn, beta;
 	int jp,jn;
@@ -115,9 +112,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 	{
 
 		for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
-		inv = (A1*D*A1.Transpose()).Invert(true); // d+1 by d+1
-		if (!inv.second) return false;
-		M = A1.Transpose()*inv.first*A1; // m by m
+		M = A1.Transpose()*(A1*D*A1.Transpose()).Invert()*A1; // m by m
 		//std::cout << "matrix M:" << std::endl;
 		//M.Print();
 		kp = -1.0e20;
@@ -167,9 +162,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		
 	}
 	for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
-	iQ = (A*(D - p*p.Transpose())*A.Transpose()).Invert(true);
-	if (!iQ.second) return false;
-	Q = iQ.first / static_cast<double>(d);
+	Q = (A*(D - p*p.Transpose())*A.Transpose()).Invert() / static_cast<double>(d);
 	c = A*p;
 	//check
 	if (d == 2)

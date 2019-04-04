@@ -24,7 +24,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-//#define REORDER_METIS_ND
+#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -37,13 +37,13 @@ static bool rescale_b = true;
 static bool allow_pivot = true;
 
 #define ESTIMATOR
-//#define ESTIMATOR_REFINE
+#define ESTIMATOR_REFINE
 
 //#define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
-#define EQUALIZE_2NORM
-//#define EQUALIZE_IDOMINANCE
+//#define EQUALIZE_2NORM
+#define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
 #define PIVOT_THRESHOLD_VALUE 1.0e-12
@@ -52,7 +52,7 @@ static bool allow_pivot = true;
 #define DIAGONAL_PERTURBATION_ABS 1.0e-10
 #define ILUC2
 #define ILUC2_SCHUR
-//#define TRACK_DIAGONAL
+#define TRACK_DIAGONAL
 //#define PIVOT_COND_DEFAULT 0.1/tau
 #define PIVOT_COND_DEFAULT 1.0e+2
 #define PIVOT_DIAG_DEFAULT 1.0e+5

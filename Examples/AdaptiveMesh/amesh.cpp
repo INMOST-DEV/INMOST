@@ -341,9 +341,9 @@ namespace INMOST
 	
 	void AdaptiveMesh::ClearData()
 	{
-		level         = DeleteTag(level);
-		hanging_nodes = DeleteTag(hanging_nodes);
-		parent_set    = DeleteTag(parent_set);
+		level         = m->DeleteTag(level);
+		hanging_nodes = m->DeleteTag(hanging_nodes);
+		parent_set    = m->DeleteTag(parent_set);
 		root.DeleteSetTree();
 	}
 	
@@ -352,32 +352,33 @@ namespace INMOST
 		//retrive set for coarsening, initialize set if is not present
 		if( !root.isValid() )
 		{
-			root = GetSet("ROOT_SET");
+			root = m->GetSet("ROOT_SET");
 			if( root == InvalidElement() )
 			{
-				root = CreateSetUnique("ROOT_SET").first;
+				root = m->CreateSetUnique("ROOT_SET").first;
 				level[root] = 0;
-				for(iteratorCell it = BeginCell(); it != EndCell(); ++it)
+				for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 				{
 					root.PutElement(it->self());
 					parent_set[it->self()] = root.GetHandle();
 				}
 			}
         }
-		if( !HaveGlobalID(CELL) ) AssignGlobalID(CELL); //for unique set names
+		if( !m->HaveGlobalID(CELL) ) m->AssignGlobalID(CELL); //for unique set names
 	}
 	
-	AdaptiveMesh::AdaptiveMesh() : Mesh()
+	AdaptiveMesh::AdaptiveMesh(Mesh & _m) : m(&_m)
 	{
+		model = NULL;
 		//create a tag that stores maximal refinement level of each element
-		level = CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|ESET,NONE,1);
+		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
 		tag_status = CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_an = CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		ref_tag = CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
-		hanging_nodes = CreateTag("HANGING_NODES",DATA_REFERENCE,CELL|FACE,NONE);
+		hanging_nodes = m->CreateTag("HANGING_NODES",DATA_REFERENCE,CELL|FACE,NONE);
 		//create a tag that stores links to sets
-		parent_set = CreateTag("PARENT_SET",DATA_REFERENCE,CELL,NONE,1);
+		parent_set = m->CreateTag("PARENT_SET",DATA_REFERENCE,CELL,NONE,1);
 	    size = GetProcessorsNumber();
     	rank = GetProcessorRank();
 	}
@@ -398,16 +399,16 @@ namespace INMOST
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1; //indicates that at least one element was scheduled on current sweep
 		//0. Extend indicator for edges and faces
-		indicator = CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
+		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
 		while(scheduled)
 		{
 			//1.Communicate indicator - it may be not synced
-			ExchangeData(indicator,CELL,0);
+			m->ExchangeData(indicator,CELL,0);
 			//2.Propogate indicator down to the faces,edges
 			//  select schedule for them
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
 				if( indicator[c] == schedule_counter )
 				{
 					ElementArray<Element> adj = c.getAdjElements(FACE|EDGE);
@@ -419,14 +420,14 @@ namespace INMOST
 				}
 			}
 			//3.Communicate indicator on faces and edges
-			ExchangeData(indicator,FACE|EDGE,0);
+			m->ExchangeData(indicator,FACE|EDGE,0);
 			//4.Check for each cell if there is
 			//  any hanging node with adjacent in a need to refine,
 			//  schedule for refinement earlier.
 			scheduled = 0;
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
 				//already scheduled cells may be required to be refined first
 				//if( indicator[c] == 0 ) //some optimization
 				{
@@ -449,44 +450,44 @@ namespace INMOST
 				}
 			}
 			//5.Go back to 1 until no new elements scheduled
-			scheduled = Integrate(scheduled);
+			scheduled = m->Integrate(scheduled);
 			if( scheduled ) schedule_counter++;
 		}
 		ExchangeData(indicator,CELL | FACE | EDGE,0);
 		//6.Refine
-		BeginModification();
+		m->BeginModification();
 		while(schedule_counter)
 		{
 			Storage::real xyz[3] = {0,0,0};
 			//7.split all edges of the current schedule
-			for(Storage::integer it = 0; it < EdgeLastLocalID(); ++it) if( isValidEdge(it) )
+			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
 			{
-				Edge e = EdgeByLocalID(it);
+				Edge e = m->EdgeByLocalID(it);
 				if( !e.Hidden() && indicator[e] == schedule_counter )
 				{
 					//remember adjacent faces that should get information about new hanging node
 					ElementArray<Face> edge_faces = e.getFaces();
 					//location on the center of the edge
-					for(Storage::integer d = 0; d < GetDimensions(); ++d)
+					for(Storage::integer d = 0; d < m->GetDimensions(); ++d)
 						xyz[d] = (e.getBeg().Coords()[d]+e.getEnd().Coords()[d])*0.5;
 					//todo: request transformation of node location according to geometrical model
 					//create middle node
-					Node n = CreateNode(xyz);
+					Node n = m->CreateNode(xyz);
 					//set increased level for new node
 					//level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e]+1;
 					//for each face provide link to a new hanging node
 					for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt)
 						hanging_nodes[edge_faces[kt]].push_back(n);
 					//split the edge by the middle node
-					ElementArray<Edge> new_edges = Edge::SplitEdge(e,ElementArray<Node>(this,1,n.GetHandle()),0);
+					ElementArray<Edge> new_edges = Edge::SplitEdge(e,ElementArray<Node>(m,1,n.GetHandle()),0);
 					//set increased level for new edges
 					level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
 				}
 			}
 			//8.split all faces of the current schedule, using hanging nodes on edges
-			for(Storage::integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
+			for(Storage::integer it = 0; it < m->FaceLastLocalID(); ++it) if( m->isValidFace(it) )
 			{
-				Face f = FaceByLocalID(it);
+				Face f = m->FaceByLocalID(it);
 				if( !f.Hidden() && indicator[f] == schedule_counter )
 				{
 					//connect face center to hanging nodes of the face
@@ -502,19 +503,19 @@ namespace INMOST
 					for(int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)face_hanging_nodes.size();
 					//todo: request transformation of node location according to geometrical model
 					//create middle node
-					Node n = CreateNode(xyz);
+					Node n = m->CreateNode(xyz);
 					//set increased level for the new node
 					//level[n] = level[f]+1;
 					//for each cell provide link to new hanging node
 					for(ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
 						hanging_nodes[face_cells[kt]].push_back(n);
-					ElementArray<Node> edge_nodes(this,2); //to create new edges
-					ElementArray<Edge> hanging_edges(this,face_hanging_nodes.size());
+					ElementArray<Node> edge_nodes(m,2); //to create new edges
+					ElementArray<Edge> hanging_edges(m,face_hanging_nodes.size());
 					edge_nodes[0] = n;
 					for(Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
 					{
 						edge_nodes[1] = face_hanging_nodes[kt].getAsNode();
-						hanging_edges[kt] = CreateEdge(edge_nodes).first;
+						hanging_edges[kt] = m->CreateEdge(edge_nodes).first;
 						//set increased level for new edges
 						level[hanging_edges[kt]] = level[f]+1;
 					}
@@ -526,15 +527,15 @@ namespace INMOST
 				}
 			}
 			//this tag helps recreate internal face
-			TagReferenceArray internal_face_edges = CreateTag("INTERNAL_FACE_EDGES",DATA_REFERENCE,NODE,NODE,4);
+			TagReferenceArray internal_face_edges = m->CreateTag("INTERNAL_FACE_EDGES",DATA_REFERENCE,NODE,NODE,4);
 			//this marker helps detect edges of current cell only
-			MarkerType mark_cell_edges = CreateMarker();
+			MarkerType mark_cell_edges = m->CreateMarker();
 			//this marker helps detect nodes hanging on edges of unrefined cell
-			MarkerType mark_hanging_nodes = CreateMarker();
+			MarkerType mark_hanging_nodes = m->CreateMarker();
 			//9.split all cells of the current schedule
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
 				if( !c.Hidden() && indicator[c] == schedule_counter )
 				{
 					Storage::reference_array cell_hanging_nodes = hanging_nodes[c]; //nodes to be connected
@@ -546,7 +547,7 @@ namespace INMOST
 					//c->Centroid(xyz);
 					//todo: request transformation of node location according to geometrical model
 					//create middle node
-					Node n = CreateNode(xyz);
+					Node n = m->CreateNode(xyz);
 					//set increased level for the new node
 					//level[n] = level[c]+1;
 					//retrive all edges of current face to mark them
@@ -554,15 +555,15 @@ namespace INMOST
 					//mark all edges so that we can retive them later
 					cell_edges.SetMarker(mark_cell_edges);
 					//connect face center to centers of faces by edges
-					ElementArray<Node> edge_nodes(this,2);
-					ElementArray<Edge> edges_to_faces(this,cell_hanging_nodes.size());
+					ElementArray<Node> edge_nodes(m,2);
+					ElementArray<Edge> edges_to_faces(m,cell_hanging_nodes.size());
 					edge_nodes[0] = n;
 					for(Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
 					{
 						assert(cell_hanging_nodes[kt].isValid());
 						//todo: unmark hanging node on edge if no more cells depend on it
 						edge_nodes[1] = cell_hanging_nodes[kt].getAsNode();
-						edges_to_faces[kt] = CreateEdge(edge_nodes).first;
+						edges_to_faces[kt] = m->CreateEdge(edge_nodes).first;
 						//set increased level for new edges
 						level[edges_to_faces[kt]] = level[c]+1;
 						//for each node other then the hanging node of the face
@@ -598,7 +599,7 @@ namespace INMOST
 					cell_edges.RemMarker(mark_cell_edges);
 					//now we have to create internal faces
 					ElementArray<Node> edge_hanging_nodes = c.getNodes(mark_hanging_nodes,0);
-					ElementArray<Face> internal_faces(this,edge_hanging_nodes.size());
+					ElementArray<Face> internal_faces(m,edge_hanging_nodes.size());
 					//unmark hanging nodes on edges
 					edge_hanging_nodes.RemMarker(mark_hanging_nodes);
 					for(ElementArray<Node>::size_type kt = 0; kt < edge_hanging_nodes.size(); ++kt)
@@ -609,7 +610,7 @@ namespace INMOST
 						assert(face_edges[1].isValid());
 						assert(face_edges[2].isValid());
 						assert(face_edges[3].isValid());
-						internal_faces[kt] = CreateFace(ElementArray<Edge>(this,face_edges.begin(),face_edges.end())).first;
+						internal_faces[kt] = m->CreateFace(ElementArray<Edge>(m,face_edges.begin(),face_edges.end())).first;
 						//set increased level
 						level[internal_faces[kt]] = level[c]+1;
 						//clean up structure, so that other cells can use it
@@ -618,11 +619,11 @@ namespace INMOST
 					//split the cell
 					ElementArray<Cell> new_cells = Cell::SplitCell(c,internal_faces,0);
 					//retrive parent set
-					ElementSet parent(this,parent_set[c]);
+					ElementSet parent(m,parent_set[c]);
 					//create set corresponding to old coarse cell
 					std::stringstream set_name;
 					set_name << parent.GetName() << "_C" << c.GlobalID(); //rand may be unsafe
-					ElementSet cell_set = CreateSetUnique(set_name.str()).first;
+					ElementSet cell_set = m->CreateSetUnique(set_name.str()).first;
 					level[cell_set] = level[c]+1;
 					//set up increased level for the new cells
 					for(ElementArray<Cell>::size_type kt = 0; kt < new_cells.size(); ++kt)
@@ -636,15 +637,26 @@ namespace INMOST
 					ret++;
 				}
 			}
-			ReleaseMarker(mark_hanging_nodes);
-			ReleaseMarker(mark_cell_edges);
-			DeleteTag(internal_face_edges);
+			m->ReleaseMarker(mark_hanging_nodes);
+			m->ReleaseMarker(mark_cell_edges);
+			m->DeleteTag(internal_face_edges);
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
 
 		//free created tag
-		DeleteTag(indicator,FACE|EDGE);
+		m->DeleteTag(indicator,FACE|EDGE);
+		//restore face orientation
+		//BUG: bad orientation not fixed automatically
+		int nfixed = 0;
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+			if( !it->CheckNormalOrientation() )
+			{
+				it->FixNormalOrientation();
+				nfixed++;
+			}
+			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 
 
         MarkerType marker_new = CreateMarker();
@@ -681,11 +693,13 @@ namespace INMOST
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New() cells
+		if( model ) model->Adaptation(*m);
 		//13. Delete old elements of the mesh
-		ApplyModification();
+		m->ApplyModification();
 		//14. Done
         //cout << rank << ": Before end " << endl;
-		EndModification();
+		m->EndModification();
+		//ExchangeData(hanging_nodes,CELL | FACE,0);
         ResolveSets();
 
 		CheckCentroids();
@@ -699,7 +713,7 @@ namespace INMOST
         //ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << endl;
 		//reorder element's data to free up space
-		ReorderEmpty(CELL|FACE|EDGE|NODE);
+		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
 		//return number of refined cells
 		call_counter++;
         cout << ro() << rank << ": END REFINE " << (ret != 0) << endl;
@@ -780,9 +794,9 @@ namespace INMOST
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
 		//TagInteger coarsened = CreateTag("COARSENED",DATA_INTEGER,CELL,NONE,1);
-		TagInteger coarse_indicator = CreateTag("COARSE_INDICATOR",DATA_INTEGER,EDGE,NONE,1); //used to find on fine cells indicator on coarse cells
+		TagInteger coarse_indicator = m->CreateTag("COARSE_INDICATOR",DATA_INTEGER,EDGE,NONE,1); //used to find on fine cells indicator on coarse cells
 		//0. Extend indicator for sets, edges and faces
-		indicator = CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
+		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
 		while(scheduled || unscheduled)
 		{
 			// rules
@@ -791,7 +805,7 @@ namespace INMOST
 			// b) If there is adjacent coarser cell, then this cell should be coarsened
 			// first
 			//0.Communicate indicator - it may be not synced
-			ExchangeData(indicator,CELL,0);
+			m->ExchangeData(indicator,CELL,0);
 			//1. Mark each adjacent face/edge for coarsement schedule
 			// problem: should mark so that if every adjacent cell is coarsened
 			// then adjacent face/edge are also coarsened
@@ -799,9 +813,9 @@ namespace INMOST
 			{
 				//for(Storage::integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 				//	indicator[ElementByLocalID(etype,it)] = 0;
-				for(Storage::integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+				for(Storage::integer it = 0; it < m->LastLocalID(etype); ++it) if( m->isValidElement(etype,it) )
 				{
-					Element e = ElementByLocalID(etype,it);
+					Element e = m->ElementByLocalID(etype,it);
 					ElementArray<Cell> adj = e.getCells();
 					indicator[e] = INT_MAX;
 					for(ElementArray<Element>::size_type kt = 0; kt < adj.size(); ++kt)
@@ -811,14 +825,14 @@ namespace INMOST
 				}
 			}
 			//2.Communicate indicator on faces and edges
-			ReduceData(indicator,FACE|EDGE,0,ReduceMin);
+			m->ReduceData(indicator,FACE|EDGE,0,ReduceMin);
 			ExchangeData(indicator,FACE|EDGE,0);
 			//3.If there is adjacent finer edge that are not marked for coarsening
 			// then this cell should not be coarsened
 			unscheduled = scheduled = 0;
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
 				if( indicator[c] )
 				{
 					ElementArray<Edge> edges = c.getEdges();
@@ -837,13 +851,13 @@ namespace INMOST
 			// of the set are marked for coarsening, then mark the set for coarsement
 			// otherwise unmark.
 			// Unmark all cells that are not to be coarsened
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
                 if (!isValidElement(c.GetHandle())) continue;
 				if( indicator[c] )
 				{
-					ElementSet parent(this,parent_set[c]);
+					ElementSet parent(m,parent_set[c]);
 					//intermediate cell may not be coarsened
 					//root set may not have coarsening cells
 					if( parent.HaveChild() || !parent.HaveParent() )
@@ -877,12 +891,12 @@ namespace INMOST
 			//5.If there is an adjacent coarser element to be refined, then
 			//   this one should be scheduled to be refined first
 			//a) clean up coarse indicator tag
-			for(Storage::integer it = 0; it < EdgeLastLocalID(); ++it) if( isValidEdge(it) )
-				coarse_indicator[EdgeByLocalID(it)] = 0;
+			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
+				coarse_indicator[m->EdgeByLocalID(it)] = 0;
 			//b) each cell mark it's finer edges with cell's schedule
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
 				if( indicator[c] )
 				{
 					ElementArray<Element> adj = c.getAdjElements(EDGE);
@@ -894,12 +908,12 @@ namespace INMOST
 				}
 			}
 			//c) data reduction to get maximum over mesh partition
-			ReduceData(coarse_indicator,EDGE,0,ReduceMax);
+			m->ReduceData(coarse_indicator,EDGE,0,ReduceMax);
 			ExchangeData(coarse_indicator,EDGE,0);
 			//d) look from cells if any edge is coarsened earlier
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
 				if( indicator[c] )
 				{
 					ElementArray<Element> adj = c.getAdjElements(EDGE);
@@ -916,28 +930,28 @@ namespace INMOST
 			}
 			ExchangeData(indicator,CELL|FACE|EDGE,0);
 			//5.Go back to 1 until no new elements scheduled
-			scheduled = Integrate(scheduled);
-			unscheduled = Integrate(unscheduled);
+			scheduled = m->Integrate(scheduled);
+			unscheduled = m->Integrate(unscheduled);
 			if( scheduled ) schedule_counter++;
 		}
 		//cleanup
-		coarse_indicator = DeleteTag(coarse_indicator);
+		coarse_indicator = m->DeleteTag(coarse_indicator);
 		//Make schedule which elements should be refined earlier.
-		BeginModification();
+		m->BeginModification();
 		while(schedule_counter)
 		{
 			//unite cells
 			//should find and set hanging nodes on faces
 			//find single node at the center, all other nodes,
 			//adjacent over edge are hanging nodes
-			for(Storage::integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
-				Cell c = CellByLocalID(it);
+				Cell c = m->CellByLocalID(it);
 				if( !c.Hidden() && indicator[c] == schedule_counter )
 				{
 					//this set contains all the cells to be united
-					ElementSet parent(this,parent_set[c]);
-					ElementArray<Cell> unite_cells(this,parent.Size());
+					ElementSet parent(m,parent_set[c]);
+					ElementArray<Cell> unite_cells(m,parent.Size());
 					//unmark indicator to prevent coarsement with next element
 					Storage::integer kt = 0;
 					for(ElementSet::iterator jt = parent.Begin(); jt != parent.End(); ++jt)
@@ -960,7 +974,7 @@ namespace INMOST
 					//set new parent
 					parent_set[v] = parent.GetParent().GetHandle();
 					//add cell to parent set
-					ElementSet(this,parent_set[v]).PutElement(v);
+					ElementSet(m,parent_set[v]).PutElement(v);
 					//set level for new cell
 					level[v] = level[c]-1;
 					//delete set that contained cells
@@ -975,9 +989,9 @@ namespace INMOST
 			//find single node at the center, all other nodes,
 			//adjacent over edge of the face are hanging nodes
 			int numcoarsened = 0;
-			for(Storage::integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
+			for(Storage::integer it = 0; it < m->FaceLastLocalID(); ++it) if( m->isValidFace(it) )
 			{
-				Face f = FaceByLocalID(it);
+				Face f = m->FaceByLocalID(it);
 				if( !f.Hidden() && indicator[f] == schedule_counter )
 				{
 					//one (or both) of the adjacent cells were coarsened and has lower level
@@ -1023,9 +1037,9 @@ namespace INMOST
 				}
 			}
 			//unite edges
-			for(Storage::integer it = 0; it < EdgeLastLocalID(); ++it) if( isValidEdge(it) )
+			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
 			{
-				Edge e = EdgeByLocalID(it);
+				Edge e = m->EdgeByLocalID(it);
 				if( !e.Hidden() && indicator[e] == schedule_counter )
 				{
 					//at least one face must have lower level
@@ -1076,24 +1090,36 @@ namespace INMOST
 			schedule_counter--;
 		}
 		//free created tag
-		DeleteTag(indicator,FACE|EDGE);
+		m->DeleteTag(indicator,FACE|EDGE);
+		//restore face orientation
+		//BUG: bad orientation not fixed automatically
+		int nfixed = 0;
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+			if( !it->CheckNormalOrientation() )
+			{
+				it->FixNormalOrientation();
+				nfixed++;
+			}
+			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 		//todo:
     	ResolveShared(true);
 		ResolveModification(false,1);
 		CheckCentroids();
 		//todo:
 		//let the user update their data
-		ApplyModification();
+		if( model ) model->Adaptation(*m);
+		m->ApplyModification();
 		//done
-		EndModification();
+		m->EndModification();
 		//CheckCentroids();
         //ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 		{
-			for(Storage::integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+			for(Storage::integer it = 0; it < m->LastLocalID(etype); ++it) if( m->isValidElement(etype,it) )
 			{
-				Storage::reference_array arr = hanging_nodes[ElementByLocalID(etype,it)];
+				Storage::reference_array arr = hanging_nodes[m->ElementByLocalID(etype,it)];
 				Storage::reference_array::size_type jt = 0;
 				for(Storage::reference_array::size_type kt = 0; kt < arr.size(); ++kt)
 					if( arr[kt] != InvalidElement() ) arr[jt++] = arr[kt];
@@ -1103,7 +1129,7 @@ namespace INMOST
 		//cleanup null links in sets
 		CleanupSets(root);
 		//reorder element's data to free up space
-		ReorderEmpty(CELL|FACE|EDGE|NODE|ESET);
+		m->ReorderEmpty(CELL|FACE|EDGE|NODE|ESET);
 		
 		call_counter++;
         cout << ro() << rank << ": END COARSE\n";

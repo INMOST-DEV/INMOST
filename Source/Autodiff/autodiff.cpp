@@ -6,13 +6,34 @@
 #include "asmjit.h"
 #endif
 
-#if defined(USE_AUTODIFF_OPENCL)
-#include <CL/cl.h>
-#endif
+
 
 
 namespace INMOST
 {
+	
+	template<> Demote<INMOST_DATA_REAL_TYPE>::type    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
+	template<> Demote<INMOST_DATA_INTEGER_TYPE>::type AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
+	template<> Demote<unknown>::type                  AbstractEntry::Access<unknown>                 (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	template<> Demote<variable>::type                 AbstractEntry::Access<variable>                (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	template<> Demote<hessian_variable>::type         AbstractEntry::Access<hessian_variable>        (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
+	
+	template<>
+	Matrix<Demote<INMOST_DATA_REAL_TYPE>::type, pool_array_t<Demote<INMOST_DATA_REAL_TYPE>::type> >
+	AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e) const {return Value(e);}
+	template<>
+	Matrix<Demote<INMOST_DATA_INTEGER_TYPE>::type, pool_array_t<Demote<INMOST_DATA_INTEGER_TYPE>::type> >
+	AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e) const {return Index(e);}
+	template<>
+	Matrix<Demote<unknown>::type, pool_array_t<Demote<unknown>::type> >
+	AbstractEntry::Access<unknown>(const Storage& e) const {return Unknown(e);}
+	template<>
+	Matrix<Demote<variable>::type, pool_array_t<Demote<variable>::type> >
+	AbstractEntry::Access<variable>(const Storage& e) const {return Unknown(e);}
+	template<>
+	Matrix<Demote<hessian_variable>::type,pool_array_t<Demote<hessian_variable>::type> >
+	AbstractEntry::Access<hessian_variable>(const Storage& e) const {return Unknown(e);}
+	
 	
 #if defined(USE_MESH)
 	Automatizator * Automatizator::CurrentAutomatizator = NULL;
@@ -129,13 +150,23 @@ namespace INMOST
 		}
 		
 		reg_blocks[ret]->reg_index = ret;
+		//b.reg_index = ret;
 		
 		{
 			std::stringstream tag_name;
 			tag_name << name << "_BLK_" << ret << "_Offset";
 			reg_blocks[ret]->SetOffsetTag(m->CreateTag(tag_name.str(),DATA_INTEGER,b.GetElementType(),sparse,1));
+			//b.SetOffsetTag(reg_blocks[ret]->GetOffsetTag());
 		}
 					
+		return ret;
+	}
+	
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterEntry(AbstractEntry & b)
+	{
+		INMOST_DATA_ENUM_TYPE ret = RegisterEntry(static_cast<const AbstractEntry &>(b));
+		b.reg_index = reg_blocks[ret]->GetRegistrationIndex();
+		b.SetOffsetTag(reg_blocks[ret]->GetOffsetTag());
 		return ret;
 	}
 	
@@ -371,9 +402,9 @@ namespace INMOST
 		throw Impossible;
 	}
 	
-	rMatrix MultiEntry::Value(const Storage & e) const
+	rpMatrix MultiEntry::Value(const Storage & e) const
 	{
-		vMatrix ret(MatrixSize(e),1);
+		rpMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
@@ -384,9 +415,9 @@ namespace INMOST
 		return ret;
 	}
 	
-	iMatrix MultiEntry::Index(const Storage & e) const
+	ipMatrix MultiEntry::Index(const Storage & e) const
 	{
-		iMatrix ret(MatrixSize(e),1);
+		ipMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
@@ -397,9 +428,9 @@ namespace INMOST
 		return ret;
 	}
 	
-	uMatrix MultiEntry::operator [](const Storage & e) const
+	upMatrix MultiEntry::operator [](const Storage & e) const
 	{
-		uMatrix ret(MatrixSize(e),1);
+		upMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
@@ -469,7 +500,7 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE ret = 0; 
 		int stat = status_tag[e];
 		for(unsigned k = 0; k < unknown_tags.size(); ++k) 
-			if( status_tbl[stat][k] ) ret++;
+			if( e.HaveData(unknown_tags[k]) && status_tbl[stat][k] ) ret++;
 		return ret;
 	}
 	

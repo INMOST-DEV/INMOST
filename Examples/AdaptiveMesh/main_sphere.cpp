@@ -8,9 +8,10 @@ int main(int argc, char ** argv)
 	
 	if( argc > 1 )
 	{
-		AdaptiveMesh m;
+		Mesh m;
 		m.Load(argv[1]);
 		TagInteger indicator = m.CreateTag("INDICATOR",DATA_INTEGER,CELL,NONE,1);
+		AdaptiveMesh am(m);
 		
 		int max_levels = 2;
 		if( argc > 2 ) max_levels = atoi(argv[2]);
@@ -20,7 +21,7 @@ int main(int argc, char ** argv)
 		{
 			numref = 0;
 			for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
-				if( m.GetLevel(it->self()) < max_levels )
+				if( am.GetLevel(it->self()) < max_levels )
 				{
 					double x[3];
 					it->Centroid(x);
@@ -32,7 +33,7 @@ int main(int argc, char ** argv)
 				}
 			if( numref )
 			{
-				if( !m.Refine(indicator) ) break;
+				if( !am.Refine(indicator) ) break;
 				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) indicator[it->self()] = 0;
 			}
 		}

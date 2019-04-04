@@ -4,6 +4,7 @@ using namespace INMOST;
 
 double func(double x, double y, double z, int n)
 {
+            
 	if( n == 0 )
 		return sqrt(x*x+y*y)-0.25;
 	else if( n == 1 )
@@ -38,7 +39,7 @@ double func(double x, double y, double z, int n)
 		return fmin( fmin(x-Lx,Rx-x), fmin(y-Ly, Ry-y) );
 		*/
 		
-		double Lx = 0., Rx = 2, Ly = 0.0, Ry = 4.5;
+            double Lx = 0., Rx = 20, Ly = -2.5, Ry = 17.5;
 	    if (x > Rx)
 	    {
 	        if (y > Ry) return -sqrt( (x-Rx)*(x-Rx) + (y-Ry)*(y-Ry) );
@@ -184,12 +185,21 @@ int main(int argc, char ** argv)
 	//m.RemTopologyCheck(THROW_EXCEPTION);
 	TagInteger material = m.CreateTag("MATERIAL",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 	Tag sliced = m.CreateTag("SLICED",DATA_BULK,FACE|EDGE|NODE,FACE|EDGE|NODE,1);
+        TagReal level = m.CreateTag("level",DATA_REAL,NODE,NONE,1);
 
 	std::cout << "Cells: " << m.NumberOfCells() << std::endl;
 	std::cout << "Faces: " << m.NumberOfFaces() << std::endl;
 	
 	MarkerType original = m.CreateMarker();
-	for(Mesh::iteratorNode it = m.BeginNode(); it != m.EndNode(); ++it) it->SetMarker(original);
+#pragma omp parallel for
+        for(int k = 0; k < m.NodeLastLocalID(); ++k) if(m.isValidNode(k))
+        {
+            Node it = m.NodeByLocalID(k);
+            it->SetMarker(original);
+            material[it] = 3;
+            Storage::real_array c0 = it->Coords();
+            level[it] = func(c0[0],c0[1],c0[2],type);
+        }
 	for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it) it->SetMarker(original);
 
 	MarkerType slice = m.CreateMarker();
@@ -202,8 +212,8 @@ int main(int argc, char ** argv)
 		Storage::real_array c1 = it->getEnd()->Coords();
 		double r0 = func(c0[0],c0[1],c0[2],type);
 		double r1 = func(c1[0],c1[1],c1[2],type);
-		material[it->getBeg()] = (r0 <= 0)? 0 : 1;
-		material[it->getEnd()] = (r1 <= 0)? 0 : 1;
+                if (material[it->getBeg()] == 3) material[it->getBeg()] = (r0 <= 0)? 0 : 1;
+                if (material[it->getEnd()] == 3) material[it->getEnd()] = (r1 <= 0)? 0 : 1;
 		//std::cout << "r0 " << r0 << " r1 " << r1 << std::endl;
 		if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))) )
 		{
@@ -322,6 +332,7 @@ int main(int argc, char ** argv)
 		{
 			material[*it] = 2;
 			std::cout << "oops, materials for edge nodes were not split, 0: " << mat[0] << ", 1: " << mat[1] << ", 2: " << mat[2] << std::endl;
+                        
 		}
 		else if( mat[0] != 0 ) material[*it] = 0;
 		else if( mat[1] != 0 ) material[*it] = 1;
@@ -359,24 +370,14 @@ int main(int argc, char ** argv)
 				//std::cout << "Sliced nodes " << nodes.size() << " total nodes: ";
 				nodes = it->getNodes();
 				//std::cout << nodes.size() << std::endl;
-				for(int q = 0; q < (int)nodes.size(); ++q)
-				{
-					Storage::real_array c0 = nodes[q].Coords();
-					double r0 = func(c0[0],c0[1],c0[2],type);
-					//std::cout << "NODE:" << nodes[q].LocalID() << " " << (nodes[q]->GetMarker(slice)?"":"not ") << "slice " << (nodes[q]->GetMarker(original)?"":"not ") << "original r="<<r0 << " material " << material[nodes[q]] << std::endl;
-				}
-				ElementArray<Edge> fedges = it->getEdges();
-				for(int q = 0; q < (int)fedges.size(); ++q)
-				{
-					//std::cout << "EDGE:" << fedges[q].LocalID() << " " << fedges[q].getBeg().LocalID() << "<->" << fedges[q].getEnd().LocalID() << " " << (fedges[q]->GetMarker(slice)?"":"not ") << "slice material " << material[fedges[q]] << std::endl;
-				}
 
 				
 				double c0[3],c1[3],pc0[3],pc1[3],p[3];
 				it->Centroid(c0);
 				double r0 = func(c0[0],c0[1],c0[2],type);
 				int material0 = (r0 <= 0)? 0 : 1;
-				bool s0 = false;
+                                
+                                bool s0 = false;
 				if( fabs(r0) < 1.0e-6 ) s0 = true;
 				
 				//std::cout << "Centernode " << (s0?"sliced":"") << " r=" << r0 << std::endl;
@@ -631,7 +632,7 @@ int main(int argc, char ** argv)
 			if( simple )
 			{
 				//gather loop by loop and create faces
-				int loop_cnt = 0;
+				//int loop_cnt = 0;
 				//order edges
 				ElementArray<Edge> order_edges(&m);
 				
@@ -748,7 +749,7 @@ int main(int argc, char ** argv)
 				double c0[3],c1[3],pc0[3],pc1[3],p[3];
 				it->Centroid(c0);
 				double r0 = func(c0[0],c0[1],c0[2],type);
-				int material0 = (r0 <= 0)? 0 : 1;
+
 				bool s0 = false;
 				if( fabs(r0) < 1.0e-6 ) s0 = true;
 				
@@ -800,22 +801,26 @@ int main(int argc, char ** argv)
 							l0 = sqrt(l0);
 							l1 = sqrt(l1);
 							l = l0+l1;
-							if( l0 < 5.0e-2*l ) //edge goes through centernode
+							if( l0 < 1.0e-3*l ) //edge goes through centernode
 							{
 								if( !centernode.isValid() )
 									centernode = m.CreateNode(c0);
 								cutnodes[q] = centernode;
 								//std::cout << "selected centernode " << cutnodes[q].LocalID() << std::endl;
 							}
-							else if( l1 > 5.0e-2*l )
+							else if( l1 > 1.0e-3*l )
 							{
 								cutnodes[q] = m.CreateNode(p);
 								//std::cout << "created new node " << cutnodes[q].LocalID() << std::endl;
 							}
-							else
+							else if( !cnodes[q].GetMarker(slice))
 							{
 								material[cnodes[q]] = 2;
 								cnodes[q].SetMarker(slice);
+                                                                ElementArray<Edge> nedges = cnodes[q]->getEdges();
+                                                                for(int r = 0; r < nedges.size();++r)
+                                                                    if( material[nedges[r]->getBeg()] == 2 && material[nedges[r]->getEnd()] == 2)
+                                                                        material[nedges[r]] = 2;
 								//std::cout << "use old node " << std::endl;
 							}
 						}
@@ -1018,7 +1023,7 @@ int main(int argc, char ** argv)
 			
 			if( !split_faces.empty() )
 			{
-				int lid = it->LocalID();
+				//int lid = it->LocalID();
 				ElementArray<Cell> ret = Cell::SplitCell(it->self(),split_faces,0);
 				
 				
@@ -1168,103 +1173,24 @@ int main(int argc, char ** argv)
 		std::cout << "cell materials, 0: " << mat[0] << " 1: " << mat[1] << " 2: " << mat[2] << std::endl;
 	}
 	
-	Tag collapse = m.CreateTag("COLLAPSE",DATA_INTEGER,CELL,NONE,1);
-	Tag el_mat = m.CreateTag("ELLIPSE_MATRIX",DATA_REAL,CELL,CELL,9);
-	Tag el_cnt = m.CreateTag("ELLIPSE_CENTER",DATA_REAL,CELL,CELL,3);
-	Tag level = m.CreateTag("LEVEL",DATA_REAL,CELL|FACE|EDGE|NODE,NONE,1);
 	
-	int ncollapsed = 0;
-	for(Mesh::iteratorElement it = m.BeginElement(NODE|EDGE|FACE|CELL); it != m.EndElement(); ++it)
-	{
-		double cnt[3];
-		it->Centroid(cnt);
-		it->Real(level) = func(cnt[0],cnt[1],cnt[2],type);
-	}
 	
 	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
-	{
-		double vv, v, nvv, cnt[3];
-		v = it->Volume();
-		vv = v;
-		nvv = 1;
-		ElementArray<Cell> cells = it->NeighbouringCells();
-		for(ElementArray<Cell>::iterator jt = cells.begin(); jt != cells.end(); ++jt)
-		{
-			vv += jt->Volume();
-			nvv++;
-		}
-		vv /= nvv;
-		if( v < vv*0.01 )
-		{
-			if( false )
-			{
-				std::cout << "looks like cell " << it->LocalID() << " is too small, volume " << it->Volume() << std::endl;
-				for(ElementArray<Cell>::iterator jt = cells.begin(); jt != cells.end(); ++jt)
-				{
-					std::cout << "adjacent cell " << jt->LocalID() << " volume " << jt->Volume() << std::endl;
-				}
-			}
-			it->Integer(collapse) = 1;
-			
-			/*
-			it->Centroid(cnt);
-			vMatrix A(3,3), b(3,1);
-			A(0,0) = unknown(1,0);
-			A(1,1) = unknown(1,1);
-			A(2,2) = unknown(1,2);
-			A(1,2) = A(2,1) = unknown(0,3);
-			A(1,3) = A(3,1) = unknown(0,4);
-			A(2,3) = A(3,2) = unknown(0,5);
-			b(0,0) = unknown(cnt[0],6);
-			b(1,0) = unknown(cnt[1],7);
-			b(2,0) = unknown(cnt[2],8);
-			
-			ElementArray<Node> nodes = it->getNodes();
-			*/
-			
-			
-			//find biggest face
-			/*
-			ElementArray<Face> faces = it->getFaces();
-			Cell n = InvalidCell();
-			double area = 0;
-			for(int k = 0; k < (int)faces.size(); ++k)
-			{
-				Cell nn = it->Neighbour(faces[k]);
-				if( nn.isValid() )
-				{
-					if( faces[k].Area() > area )
-					{
-						n = nn;
-						area = faces[k].Area();
-					}
-				}
-			}
-			//merge cells
-			if( n.isValid() )
-			{
-				ElementArray<Cell> unite(&m,2);
-				unite[0] = it->self();
-				unite[1] = n;
-				Cell::UniteCells(unite,0);
-			}
-			 */
-		}
-		
-	}
-	/*
-	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
-		if( material[*it] == 0 || it->Integer(collapse) )
+		if( material[*it] == 0 )//|| it->Integer(collapse) )
 			it->Delete();
 	
 	for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype) )
 		for(Mesh::iteratorElement it = m.BeginElement(etype); it != m.EndElement(); ++it)
 			if( it->nbAdjElements(CELL) == 0 ) it->Delete();
-	*/
+	
 
 	m.ReleaseMarker(slice,NODE|EDGE);
 	m.ReleaseMarker(original,NODE|EDGE);
 	m.ReleaseMarker(mrk,EDGE|FACE|NODE);
+        
+        m.DeleteTag(material);
+        m.DeleteTag(level);
+        
 	m.Save(grid_out);
 	return 0;
 }

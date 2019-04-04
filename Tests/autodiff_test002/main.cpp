@@ -204,6 +204,26 @@ int main(int argc,char ** argv)
 		f = (sin(((vx-0.5)*(vx-0.5) + (vy-0.5)*(vy-0.5) + (vz-0.5)*(vz-0.5))*8)+1)*exp(-vt);
 		f2 = (sin(((vx-0.5)*(vx-0.5) + (vy-0.5)*(vy-0.5) + (vz-0.5)*(vz-0.5))*8)+1)*exp(-vt);
 	}
+	else if( test == 8 )
+	{
+		dx = 0;
+		dy = 0;
+		dz = 0;
+		dt = -exp(-t);
+		dxdx = 0;
+		dxdy = 0;
+		dxdz = 0;
+		dydy = 0;
+		dydz = 0;
+		dzdz = 0;
+		dxdt = 0;
+		dydt = 0;
+		dzdt = 0;
+		dtdt = exp(-t);
+		
+		f = exp(-vt);
+		f2 = exp(-vt);
+	}
 	//mixed derivative computed twice: dxdy and dydx
 	dxdy *= 2;
 	dxdz *= 2;

@@ -4,8 +4,10 @@
 
 namespace INMOST
 {
-	class AdaptiveMesh : public Mesh
+	class AdaptiveMesh
 	{
+		Mesh * m;
+		Model * model;
 		ElementSet root; //< Root set that links all the other sets for coarsements
 		TagInteger tag_status; 
 		TagInteger tag_an; 
@@ -23,7 +25,7 @@ namespace INMOST
 		TagReferenceArray ref_tag; //<Link to the set that contains an element.
 		Storage::integer GetLevel(const Storage & e) {return level[e];}
         void SynchronizeSet(ElementSet set);
-		AdaptiveMesh();
+		AdaptiveMesh(Mesh & m);
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined
 		/// and 0 on all other cells
@@ -32,6 +34,7 @@ namespace INMOST
 		/// Delete all data related to mesh refinement-coarsement.
 		void ClearData();
         void PrintSet(ElementSet set, std::string offset);
+		void SetModel(Model * mm) {model = mm;}
         void Test();
         void PrintMesh(std::ostream& os, int cell = 0, int face = 0, int edge = 0, int node = 0);
         void PrintSet();
