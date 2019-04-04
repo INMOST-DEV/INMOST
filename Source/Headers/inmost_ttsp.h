@@ -62,7 +62,7 @@ namespace TTSP {
     /// Usage: OptimizationParameterRange range = std::make_pair(0.0, 1.0)
     typedef std::pair<double, double> OptimizationParameterRange;
 
-    /// This class is used to define a solver parameter for optimization algortihms
+    /// This class is used to define a parameter for optimization algorithms
     /// Usage:
     ///    1.  OptimizationParameter tau("tau", range, 0.1, 1e-3);
     ///    2.  OptimizationParameter kovl("kovl", { 0, 1, 2, 3 }, 0);
@@ -451,6 +451,8 @@ namespace TTSP {
     class Optimizers {
     private:
         static SavedOptimizersMap optimizers;
+
+        Optimizers() = delete;
     public:
         static bool IsOptimizerAvailable(const std::string &type);
 
@@ -462,7 +464,28 @@ namespace TTSP {
         static void SaveOptimizerOrReplace(const std::string &name, const std::string &type,
                                            const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity);
 
+        static void SaveOptimizerOrReplace(const std::string &name, const std::string &type, const OptimizerProperties &properties, std::size_t buffer_capacity);
+
         static OptimizerInterface *GetSavedOptimizer(const std::string &name);
+    };
+
+    class OptimizersConfiguration {
+    private:
+        enum class OptimizerConfigurationReaderState {
+            READ_GLOBAL_PARAMETER
+        };
+
+        static std::vector<OptimizationParameter> global_parameters;
+
+        OptimizersConfiguration() = delete;
+
+        static OptimizationParameter ParseOptimizationParameter(const std::string &line);
+    public:
+        static void FromFile(const std::string &path);
+
+        static void FromStream(std::istream &stream);
+
+        static OptimizationParameters GetGlobalOptimizationParameters();
     };
 
 };

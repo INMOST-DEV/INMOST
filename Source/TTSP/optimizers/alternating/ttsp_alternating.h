@@ -17,7 +17,7 @@ namespace TTSP {
 
     class AlternatingParameterHandler {
     private:
-        const OptimizationParameter  &parameter;
+        const OptimizationParameter  parameter;
         std::size_t                  current_index;
         mutable AlternatingDirection direction;
     public:

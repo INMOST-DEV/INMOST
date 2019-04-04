@@ -29,14 +29,16 @@ int main(int argc, char **argv) {
 
 
     {
-        std::string seriesFileName     = "";
+        std::string seriesFilePath     = "";
         std::string seriesDirectory    = "";
-        std::string parametersFileName = "";
+        std::string databaseFilePath   = "";
+        std::string parametersFilePath = "";
         std::string solverName         = "fcbiilu2";
         std::string optimizerType      = "bruteforce";
 
         bool seriesFound     = false;
         bool parametersFound = false;
+        bool databaseFound   = false;
         bool waitNext        = false;
 
         //Parse argv parameters
@@ -50,7 +52,8 @@ int main(int argc, char **argv) {
                     std::cout << "Help message: " << std::endl;
                     std::cout << "Command line options: " << std::endl;
                     std::cout << "Required: " << std::endl;
-                    std::cout << "-s, --series <Series file name>" << std::endl;
+                    std::cout << "-s, --series <Series file path>" << std::endl;
+                    std::cout << "-p, --parameters <Optimizer parameters file path>" << std::endl;
                     std::cout << "Optional: " << std::endl;
                     std::cout << "-sd, --series-dir <Series directory path>" << std::endl;
                     std::cout << "-b,  --bvector <RHS vector file name>" << std::endl;
@@ -76,8 +79,8 @@ int main(int argc, char **argv) {
             //Series file name found with -s or --series options
             if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--series") == 0) {
                 seriesFound      = true;
-                seriesFileName   = std::string(argv[i + 1]);
-                FILE *seriesFile = fopen(seriesFileName.c_str(), "r");
+                seriesFilePath   = std::string(argv[i + 1]);
+                FILE *seriesFile = fopen(seriesFilePath.c_str(), "r");
                 if (seriesFile == NULL) {
                     if (rank == 0) {
                         std::cout << "Series file not found: " << argv[i + 1] << std::endl;
@@ -89,6 +92,24 @@ int main(int argc, char **argv) {
                     }
                 }
                 fclose(seriesFile);
+                i++;
+                continue;
+            }
+            if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--parameters") == 0) {
+                parametersFound      = true;
+                parametersFilePath   = std::string(argv[i + 1]);
+                FILE *parametersFile = fopen(parametersFilePath.c_str(), "r");
+                if (parametersFile == NULL) {
+                    if (rank == 0) {
+                        std::cout << "Parameters file not found: " << argv[i + 1] << std::endl;
+                        exit(1);
+                    }
+                } else {
+                    if (rank == 0) {
+                        std::cout << "Series file found: " << argv[i + 1] << std::endl;
+                    }
+                }
+                fclose(parametersFile);
                 i++;
                 continue;
             }
@@ -106,8 +127,8 @@ int main(int argc, char **argv) {
                 if (rank == 0) {
                     std::cout << "Solver parameters file found: " << argv[i + 1] << std::endl;
                 }
-                parametersFound    = true;
-                parametersFileName = std::string(argv[i + 1]);
+                databaseFound    = true;
+                databaseFilePath = std::string(argv[i + 1]);
                 i++;
                 continue;
             }
@@ -144,8 +165,16 @@ int main(int argc, char **argv) {
             return -1;
         }
 
+        if (!parametersFound) {
+            if (rank == 0) {
+                std::cout <<
+                          "Parameters file not found, you can specify series file name using -p or --parameters options, otherwise specify -h option to see all options, exiting...";
+            }
+            return -1;
+        }
+
         // Initialize series
-        MatrixSeries series(seriesFileName, seriesDirectory);
+        MatrixSeries series(seriesFilePath, seriesDirectory);
 
         if (series.end()) {
             if (rank == 0) {
@@ -156,7 +185,7 @@ int main(int argc, char **argv) {
         }
 
         // Initialize the linear solver in accordance with args
-        Solver::Initialize(&argc, &argv, parametersFound ? parametersFileName.c_str() : NULL);
+        Solver::Initialize(&argc, &argv, databaseFound ? databaseFilePath.c_str() : NULL);
 
         if (!Solver::isSolverAvailable(solverName)) {
             if (rank == 0) std::cout << "Solver " << solverName << " is not available" << std::endl;
@@ -171,25 +200,6 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        TTSP::OptimizationParameter        tau("tau", std::make_pair(-3, -0.1), 0.05, -2, TTSP::OptimizationParameterType::PARAMETER_TYPE_EXPONENT);
-        TTSP::OptimizationParameter        q("q", {0, 1, 2, 3, 4}, 2);
-        //TTSP::OptimizationParameter        eps("eps", {1e-7, 1e-6, 1e-5, 1e-4, 1e-3}, 1e-5);
-        TTSP::OptimizationParameterEntries entries;
-
-        //entries.emplace_back(std::make_pair(eps, eps.GetDefaultValue()));
-        entries.emplace_back(std::make_pair(tau, tau.GetDefaultValue()));
-        entries.emplace_back(std::make_pair(q, q.GetDefaultValue()));
-
-        TTSP::OptimizerProperties properties;
-
-        properties["tau:use_closest"]  = "false";
-        properties["tau:strict_bound"] = "false";
-
-        properties["eps:use_closest"]  = "false";
-        properties["eps:strict_bound"] = "false";
-
-        TTSP::OptimizationParameters parameters(entries, -1.0);
-
         if (!TTSP::Optimizers::IsOptimizerAvailable(optimizerType)) {
             if (rank == 0) {
                 std::cout << "Optimizer " << optimizerType << " not found" << std::endl;
@@ -202,7 +212,17 @@ int main(int argc, char **argv) {
             std::exit(0);
         }
 
-        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, parameters, properties, 15);
+        TTSP::OptimizersConfiguration::FromFile(parametersFilePath);
+
+        TTSP::OptimizerProperties properties;
+
+        properties["tau:use_closest"]  = "false";
+        properties["tau:strict_bound"] = "false";
+
+        properties["eps:use_closest"]  = "false";
+        properties["eps:strict_bound"] = "false";
+
+        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, properties, 15);
 
         TTSP::OptimizerInterface *topt = TTSP::Optimizers::GetSavedOptimizer("test");
 

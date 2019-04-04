@@ -676,6 +676,11 @@ namespace TTSP {
     void Optimizers::SaveOptimizerOrReplace(const std::string &name, const std::string &type, const TTSP::OptimizationParameters &parameters,
                                             const TTSP::OptimizerProperties &properties, std::size_t buffer_capacity) {
 
+        if (parameters.Size() == 0) {
+            std::cout << "Cannot create optimizer with empty parameters" << std::endl;
+            return;
+        }
+
         OptimizerInterface *created = Optimizers::GetOptimizer(name, type, parameters, properties, buffer_capacity);
 
         auto optimizer = Optimizers::optimizers.find(name);
@@ -685,6 +690,10 @@ namespace TTSP {
         Optimizers::optimizers[name] = created;
     }
 
+    void Optimizers::SaveOptimizerOrReplace(const std::string &name, const std::string &type, const OptimizerProperties &properties, std::size_t buffer_capacity) {
+        SaveOptimizerOrReplace(name, type, OptimizersConfiguration::GetGlobalOptimizationParameters(), properties, buffer_capacity);
+    }
+
     OptimizerInterface *Optimizers::GetSavedOptimizer(const std::string &name) {
         auto optimizer = Optimizers::optimizers.find(name);
         if (optimizer == Optimizers::optimizers.end()) {
@@ -692,5 +701,78 @@ namespace TTSP {
         } else {
             return (*optimizer).second;
         }
+    }
+
+    std::vector<OptimizationParameter> OptimizersConfiguration::global_parameters;
+
+    OptimizationParameter OptimizersConfiguration::ParseOptimizationParameter(const std::string &line) {
+        std::istringstream line_stream(line);
+
+        std::string type;
+        std::string name;
+        double      default_value;
+
+        line_stream >> type >> name >> default_value;
+
+        std::vector<double> values;
+
+        while (!line_stream.eof()) {
+            double tmp;
+            line_stream >> tmp;
+            values.push_back(tmp);
+        }
+
+        bool is_raw_values = true;
+
+        if (type.find("range", 0) != std::string::npos) {
+            is_raw_values = false;
+            std::cout << "range " << std::endl;
+        }
+
+        OptimizationParameterType ptype = OptimizationParameterType::PARAMETER_TYPE_DEFAULT;
+
+        if (type.find("exponent", 0) != std::string::npos) {
+            ptype = OptimizationParameterType::PARAMETER_TYPE_EXPONENT;
+        }
+
+        if (is_raw_values) {
+            return OptimizationParameter(name, values, default_value, ptype);
+        } else {
+            return OptimizationParameter(name, std::make_pair(values.at(0), values.at(1)), values.at(2), default_value, ptype);
+        }
+    }
+
+    void OptimizersConfiguration::FromFile(const std::string &path) {
+        std::ifstream file;
+        file.open(path);
+        if (!file.bad()) {
+            FromStream(file);
+        } else {
+            std::cout << "[OptimizersConfiguration] Cannot open file: " << path << std::endl;
+        }
+    }
+
+    void OptimizersConfiguration::FromStream(std::istream &stream) {
+        OptimizerConfigurationReaderState state = OptimizerConfigurationReaderState::READ_GLOBAL_PARAMETER;
+
+        std::string line;
+        while (std::getline(stream, line)) {
+            // TODO more features
+            switch (state) {
+                case OptimizerConfigurationReaderState::READ_GLOBAL_PARAMETER:
+                    OptimizersConfiguration::global_parameters.emplace_back(OptimizersConfiguration::ParseOptimizationParameter(line));
+                    break;
+                default:
+                    std::cout << "[OptimizersConfiguration] Unreachable state in optimizers configuration reader" << std::endl;
+            }
+        }
+    }
+
+    OptimizationParameters OptimizersConfiguration::GetGlobalOptimizationParameters() {
+        std::vector<OptimizationParametersEntry> entries;
+        std::for_each(OptimizersConfiguration::global_parameters.cbegin(), OptimizersConfiguration::global_parameters.cend(), [&entries](const OptimizationParameter &p) {
+            entries.emplace_back(std::make_pair(OptimizationParameter(p), p.GetDefaultValue()));
+        });
+        return OptimizationParameters(entries, -1);
     }
 }

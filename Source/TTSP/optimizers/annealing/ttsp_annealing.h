@@ -35,7 +35,7 @@ namespace TTSP {
 
         mutable AnnealingUniformDistribution random;
 
-        const OptimizationParameter &parameter;
+        const OptimizationParameter parameter;
         double                      temp0;
         double                      decrement;
         bool                        allow_oscillation;

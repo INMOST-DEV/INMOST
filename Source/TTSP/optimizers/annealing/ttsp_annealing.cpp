@@ -40,9 +40,9 @@ namespace TTSP {
     double                                 AnnealingParameterHandler::DEFAULT_DECREMENT         = 2;
     bool                                   AnnealingParameterHandler::DEFAULT_ALLOW_OSCILLATION = false;
     double                                 AnnealingParameterHandler::DEFAULT_OSCILLATION_TEMP  = 9.76563e-10;
-    bool                                   AnnealingParameterHandler::DEFAULT_STRICT_BOUND      = true;
+    bool                                   AnnealingParameterHandler::DEFAULT_STRICT_BOUND      = false;
     bool                                   AnnealingParameterHandler::DEFAULT_USE_CLOSEST       = false;
-    double                                 AnnealingParameterHandler::DEFAULT_MAX_JUMP_BARRIER  = 0.1;
+    double                                 AnnealingParameterHandler::DEFAULT_MAX_JUMP_BARRIER  = 0.15;
 
     AnnealingParameterHandler::AnnealingParameterHandler(const OptimizationParameter &parameter, const OptimizerInterface &optimizer) :
             count(0), parameter(parameter), value(parameter.GetDefaultValue()),

@@ -22,6 +22,7 @@
 #include <limbo/bayes_opt/bo_base.hpp>
 #include <limbo/bayes_opt/boptimizer.hpp>
 #include <limbo/model/gp/kernel_mean_lf_opt.hpp>
+#include <limbo/model/multi_gp.hpp>
 #include <limbo/acqui/gp_ucb.hpp>
 #include <limbo/acqui/ei.hpp>
 
@@ -56,10 +57,10 @@ namespace TTSP {
     }
 
     unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT    = 15;
-    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 10;
-    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 5;
+    unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 12;
+    unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 7;
     double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.1;
-    double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.1;
+    double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.15;
 
     BayesianOptimizer::BayesianOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(name, space, properties, buffer_capacity),
@@ -111,19 +112,19 @@ namespace TTSP {
         } else if (unique.size() < initial_iterations_count) {
 
             std::size_t index = 0;
-            std::for_each(entries.cbegin(), entries.cend(), [&index, &changed_parameters, this](const OptimizationParametersEntry &entry) {
+            std::for_each(entries.cbegin(), entries.cend(), [&index, &changed_parameters, this, &unique](const OptimizationParametersEntry &entry) {
                 auto parameter = entry.first;
 
                 double min_bound = parameter.GetMinimalValue();
                 double max_bound = parameter.GetMaximumValue();
 
-                double r = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
+                double r = random.next() * (max_bound - min_bound) * initial_iterations_radius;
 
-                double next = entry.second + r;
+                double next = entry.second + r * (2.0 * (unique.size() % 2) - 1.0) * 1.0;
 
                 while (next < min_bound || next > max_bound) {
                     r    = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
-                    next = entry.second + r;
+                    next = entry.second + r * (2.0 * (unique.size() % 2) - 1.0) * 1.0;;
                 }
 
                 changed_parameters.emplace_back(SuggestionChangedParameter(index++, next));
