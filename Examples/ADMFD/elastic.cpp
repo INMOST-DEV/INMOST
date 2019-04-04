@@ -496,7 +496,7 @@ int main(int argc,char ** argv)
 //#pragma omp parallel
 #endif
 			{
-				rMatrix N, R, L, M, T, K(9,9), C(6,6), W1, W2, W3, U,S,V, w, u, v;
+				rMatrix N, R, L, M(9,9), T, K(9,9), iK(9,9), C(6,6), Q, W1, W2, W3, W3s, U,S,V, w, u, v;
 				rMatrix x(3,1), xf(3,1), n(3,1);
 				double area; //area of the face
 				double volume; //volume of the cell
@@ -515,6 +515,7 @@ int main(int argc,char ** argv)
 					 //get permeability for the cell
 					 KTensor(tag_C[cell],K);
 					 CTensor(tag_C[cell],C);
+					 iK = K.PseudoInvert(1.0e-11);
 					 if( !inverse_tensor ) K = K.Invert();
 					 //K += rMatrix::Unit(9)*1.0e-6*K.FrobeniusNorm();
 					 //PrintSV(K);
@@ -523,7 +524,7 @@ int main(int argc,char ** argv)
 					 //T.Resize(3*NF,9); //transversals
 					 R.Resize(3*NF,9); //directions
 					 L.Resize(3*NF,3*NF);
-					 M.Resize(3*NF,3*NF);
+					 //M.Resize(3*NF,3*NF);
 					 L.Zero();
 					 
 					 //A.Resize(3*NF,3*NF);
@@ -673,20 +674,31 @@ int main(int argc,char ** argv)
 					 
 					 if( false )
 					 {
-						 double alpha = 1;
+						 double alpha = 0;
 						 double beta = alpha;
 						 
 						 //R = R*(rMatrix::Unit(9) + B*iBtB*B.Transpose())*0.5;
 						 //if( cell.GetElementType() == Element::Tet )
 							//K += 1.0e-3*K.Trace()*(rMatrix::Unit(9) - B*iBtB*B.Transpose());
+						M = B*iBtB*B.Transpose();
+						R = R*(I9 + M)*0.5;
+						//K = K + M;
+						//iK = iK + I9;
+						//R = R*(I9 + 0.001*(I9-M) );//B*iBtB*C.Invert()*iBtB*B.Transpose());
 						 
+						 //W1 = (N*K)*((N*K).Transpose()*R*iK).PseudoInvert(1.0e-11)*(N*K).Transpose();
+						 //W2 = L - (L*R*iK)*((L*R*iK).Transpose()*R*iK).PseudoInvert(1.0e-11)*(L*R*iK).Transpose();
 						 
-						 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).PseudoInvert(1.0e-11)*(N*K+alpha*L*R).Transpose();
+						 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R*M).PseudoInvert(1.0e-11)*(N*K+alpha*L*R).Transpose();
 						 
 						 //R += N*(rMatrix::Unit(9) - B*iBtB*B.Transpose())*K.Trace()*2*NF/volume;
 						 
 						 W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose();
 						 
+						 //R = R*(I9 - M);
+						 
+						 //W2+= L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose();
+						 /*
 						 if( cell.GetElementType() == Element::Tet )
 						 {
 							 //R = R*B*iBtB;
@@ -697,9 +709,15 @@ int main(int argc,char ** argv)
 							 //W1 = (N*C)*((N*C).Transpose()*R).Invert()*(N*C).Transpose();
 							 W2 += 1.0e-5*(L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose());
 						 }
-						 
+						 */
 #pragma omp critical
 						{
+							//std::cout << "iK" << std::endl;
+							//(iK-I9).Print();
+							//std::cout << "B*(B^T*B)^{-1} C^{-1} (B^T*B)^{-1} B^T" << std::endl;
+							//(B*iBtB*C.Invert()*iBtB*B.Transpose()).Print();
+							std::cout << "K:  "; PrintSV(K);
+							std::cout << "iK: "; PrintSV(iK);
 						 std::cout << "W1: "; PrintSV(W1);
 						 std::cout << "W2: "; PrintSV(W2);
 						 std::cout << "S : "; PrintSV(W1+W2);
@@ -709,20 +727,51 @@ int main(int argc,char ** argv)
 					 {
 						 
 						 
-						 N = N*B;
-						 R = R*B;//*iBtB;
+						 //N = N*B;
+						 //R = R*B;//*iBtB;
 						 
-						 W1 = (N*C*(B.Transpose()*B))*((N*C*(B.Transpose()*B)).Transpose()*R).Invert()*(N*C*(B.Transpose()*B)).Transpose();
-						 W2 = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+						 M = B*iBtB*B.Transpose();
 						 
+						 W1 = (N*B*C)*((N*B*C).Transpose()*R*B*iBtB).Invert()*(N*B*C).Transpose();
+						 W2 = L - (L*R*B*iBtB)*((L*R*B*iBtB).Transpose()*R*B*iBtB).Invert()*(L*R*B*iBtB).Transpose();
+						 //Q = -W2*R;
+						 //W3 = Q*(Q.Transpose()*R).PseudoInvert(1.0e-11)*Q.Transpose();
+						 //W2+=W3;
+						 //W2+= W3;
+						 //W3s = W3.Trace()*(rMatrix::Unit(3*NF) - R*(R.Transpose()*R)*R.Transpose());
+						 //W2 += W3+W3s;
 						 //double alpha = 1;
 						 //W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose() - alpha*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
 						 
-#pragma omp critical
+//#pragma omp critical
+						if(false)
 						{
-						 std::cout << "W1: "; PrintSV(W1);
-						 std::cout << "W2: "; PrintSV(W2);
-						 std::cout << "S : "; PrintSV(W1+W2);
+							if( (W2*R).FrobeniusNorm() > 1.0e-9 || ((W1+W2)*R - N*K).FrobeniusNorm() > 1.0e-9 )
+							{
+								std::cout << "R^T*W2*R" << std::endl;
+								(R.Transpose()*W2*R).Print();
+							std::cout << "W2*R" << std::endl;
+							(W2*R).Print();
+							std::cout << "W2*R*(I-M)" << std::endl;
+							(W2*R*(I9-M)).Print();
+							std::cout << "W2*R*M" << std::endl;
+							(W2*R*M).Print();
+							std::cout << "W3*R" << std::endl;
+							(W3*R).Print();
+							std::cout << "W3*R*(I-M)" << std::endl;
+							(W3*R*(I9-M)).Print();
+							std::cout << "W3*R*M" << std::endl;
+							(W3*R*M).Print();
+							std::cout << "W1*R - N*K" << std::endl;
+							(W1*R - N*K).Print();
+							std::cout << "(W1+W2)*R - N*K" << std::endl;
+							((W1+W2)*R - N*K).Print();
+							std::cout << "(W1+W2+W3)*R - N*K" << std::endl;
+							((W1+W2)*R - N*K).Print();
+							}
+							std::cout << "W1: "; PrintSV(W1);
+							std::cout << "W2: "; PrintSV(W2);
+							std::cout << "S : "; PrintSV(W1+W2);
 						}
 						 //R = R*B*iBtB;
 						 //W2 = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
@@ -1257,8 +1306,8 @@ int main(int argc,char ** argv)
 				//Solver S("superlu");
                 S.SetParameter("relative_tolerance", "1.0e-14");
                 S.SetParameter("absolute_tolerance", "1.0e-12");
-                S.SetParameter("drop_tolerance", "1.0e-2");
-                S.SetParameter("reuse_tolerance", "1.0e-3");
+                S.SetParameter("drop_tolerance", "1.0e-4");
+                S.SetParameter("reuse_tolerance", "1.0e-6");
 
                 S.SetMatrix(R.GetJacobian());
 				
