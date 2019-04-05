@@ -2076,24 +2076,27 @@ namespace INMOST
         }
     }
 
-    void Mesh::Dijkstra()
-    {
+    
+    void Mesh::EquilibrateGhost(bool only_new)
+	{
+		if( GetProcessorsNumber() == 1 ) return;
+        TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG",DATA_INTEGER,CELL,CELL,2);
+        
+        //TODO: compute graph distance only in new elements!!!!
         std::queue<HandleType> cells_queue;
-        TagIntegerArray dist = GetTag("TEMPORARY_OWNER_DISTANSE_TAG");
-
         // Push nearest to owned cell into queue
 		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
 			Cell c = CellByLocalID(k);
 			if (c.GetStatus() != Element::Owned)
 			{
-				dist[c][1] = INT_MAX; 
+				tag[c][1] = INT_MAX; 
 				ElementArray<Cell> cells = c.NeighbouringCells();
 				for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() == Element::Owned)
 				{
 					cells_queue.push(c.GetHandle());
-					dist[c][0] = cells[l].Integer(tag_owner);
-					dist[c][1] = 1;
+					tag[c][0] = cells[l].Integer(tag_owner);
+					tag[c][1] = 1;
 					break;
 				}
 			}
@@ -2106,39 +2109,29 @@ namespace INMOST
             Cell c(this,cells_queue.front());
             cells_queue.pop();
 
-            if (cur_dist > dist[c][1]) assert(0); 
-            if (cur_dist < dist[c][1]) cur_dist++;
+            if (cur_dist > tag[c][1]) assert(0); 
+            if (cur_dist < tag[c][1]) cur_dist++;
 
             ElementArray<Cell> cells = c.NeighbouringCells();
             for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() != Element::Owned)
             {
-                if (dist[cells[l]][1] > dist[c][1] + 1)
+                if (tag[cells[l]][1] > tag[c][1] + 1)
                 {
-                    dist[cells[l]][0] = dist[c][0];
-                    dist[cells[l]][1] = dist[c][1] + 1;
+                    tag[cells[l]][0] = tag[c][0];
+                    tag[cells[l]][1] = tag[c][1] + 1;
                     cells_queue.push(cells[l].GetHandle());
                 }
             }
         }
-    }
-
-	void Mesh::ResolveModification(bool only_new)
-	{
-        int rank = GetProcessorRank();
-        int size = GetProcessorsNumber();
-        if (size == 1) return;
-        TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANSE_TAG",DATA_INTEGER,CELL,CELL,2);
-        Dijkstra();
         ReduceData(tag, CELL, 0, OperationMinDistance);
         ExchangeData(tag, CELL, 0);
-        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
+        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if( it->GetStatus() != Element::Owned )
         {
             if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
             {
-                if (it->GetStatus() == Element::Owned) continue;
                 int new_owner = tag[*it][0];
                 it->IntegerDF(tag_owner) = new_owner;
-                if (rank == new_owner)
+                if (GetProcessorRank() == new_owner)
                     it->SetStatus(Element::Shared);
                 else
                     it->SetStatus(Element::Ghost);
@@ -2146,6 +2139,14 @@ namespace INMOST
 		}
 		DeleteTag(tag);
         RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
+    }
+
+	void Mesh::ResolveModification()
+	{
+		if( GetProcessorsNumber() == 1 ) return;
+		ResolveShared(true);
+		//ExchangeGhost(1,NODE,NewMarker()); //TODO!!!!
+        ResolveSets();
     }
 
     void Mesh::EndModification()

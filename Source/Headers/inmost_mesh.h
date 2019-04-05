@@ -2256,7 +2256,7 @@ namespace INMOST
 		int                                 parallel_file_strategy;
 	private:
 		void                              ComputeSharedProcs ();
-		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType* marker = NULL);
+		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
 		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op);
 		void                              PackElementsData   (element_set & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
@@ -2428,7 +2428,7 @@ namespace INMOST
 		/// Find sets that are common between processors.
 		void                              ResolveSets        ();
 		/// Delete all the ghost cells.
-		void                              RemoveGhost        (MarkerType* marker = NULL);
+		void                              RemoveGhost        (MarkerType marker = 0);
 		/// Delete some ghost cells provided in array.
 		/// Non-ghost elements will also be deleted.
 		///
@@ -2479,7 +2479,7 @@ namespace INMOST
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @see Mesh::ReduceData
-		void                              ExchangeData       (const Tag & tag, ElementType mask, MarkerType select);
+		void                              ExchangeData       (const Tag & tag, ElementType mask, MarkerType select = 0);
 		/// Start asynchronous synchronization of data.
 		/// You should define object of type exchange_data that will hold temporary buffers for data.
 		/// every Mesh::ExchangeDataBegin should be matched with Mesh::ExchangeDataEnd with the same
@@ -2516,7 +2516,7 @@ namespace INMOST
 		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
-		void                              ExchangeData       (const tag_set & tags, ElementType mask, MarkerType select);
+		void                              ExchangeData       (const tag_set & tags, ElementType mask, MarkerType select = 0);
 		/// This function will initialize exchange of multiple data tags.
 		/// Using this function may lead to good overlapping between communication and computation.
 		///
@@ -2683,7 +2683,7 @@ namespace INMOST
 		/// @param bridge bitwise mask of elements for which neighbouring cells should be considered a layer
 		/// @see Mesh::ExchangeMarked
 		/// @see Mesh::Redistribute
-		void                              ExchangeGhost      (integer layers, ElementType bridge, MarkerType* marker = NULL);
+		void                              ExchangeGhost      (integer layers, ElementType bridge, MarkerType select = 0);
 		/// Migrate all the elements to the new owners prescribed in data corresponding to RedistributeTag.
 		/// This will perform all the actions to send mesh elements and data and reproduce new mesh partitions
 		/// on remote elements and correctly resolve parallel state of the mesh. If you have priviously
@@ -3165,12 +3165,12 @@ namespace INMOST
 		/// newly created elements, provide them valid global identificators, resolve owners of
 		/// the elements potentially optimized using information from BridgeTag and LayersTag
 		/// May use ResolveShared function as basis but instead the whole mesh run the same algorithm for subset.
-		void                              ResolveModification(bool only_new); //resolve parallel state of newly created elements, restore ghost layers; not implemented, resuse ResolveShared code
+		void                              ResolveModification(); //resolve parallel state of newly created elements, restore ghost layers; not implemented, resuse ResolveShared code
 		void                              EndModification    ();    //delete hidden elements
 		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
 		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
-        void                              Dijkstra();
-        void CheckFaces();
+        void                              EquilibrateGhost   (bool only_new = false); //Use in ResolveShared
+        //void CheckFaces();
         void CheckCentroids();
 		//implemented in mesh.cpp
 	private:

@@ -29,7 +29,7 @@ int main(int argc, char ** argv)
     am.UpdateStatus();
     m.Save("test_sets_begin.pvtk");
 
-    m.ResolveModification(false,1);
+    m.ResolveModification();
     am.UpdateStatus();
     m.Save("test_sets_resolve.pvtk");
     

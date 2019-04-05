@@ -10,7 +10,23 @@ int main(int argc, char ** argv)
 	{
 		Mesh m;
 		m.SetCommunicator(INMOST_MPI_COMM_WORLD);
-		m.Load(argv[1]);
+		if( m.isParallelFileFormat(argv[1]) )
+			m.Load(argv[1]);
+		else if( m.GetProcessorRank() == 0 )
+			m.Load(argv[1]);
+	
+#if defined(USE_PARTITIONER)
+		if( true )
+		{
+			std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			Partitioner p(&m);
+			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+			p.Evaluate();
+			m.Redistribute();
+			m.ReorderEmpty(CELL|FACE|EDGE|NODE);
+			std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+		}
+#endif		
 		AdaptiveMesh am(m);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
@@ -49,7 +65,7 @@ int main(int argc, char ** argv)
 		}
 		r = pow(r,1.0/3.0)/20.0;
 		
-		for(int k = 0; k < 1; ++k)
+		for(int k = 0; k < 15; ++k)
 		{
 			
 			int numref;
@@ -83,6 +99,14 @@ int main(int argc, char ** argv)
 					int res = am.Refine(indicator);
                     res = m.Integrate(res);
                     if (!res) break;
+                    
+                    {
+						std::stringstream file;
+						file << "ref_" << k << "_" << refcnt << ".pvtk";
+						m.Save(file.str());
+						if( m.GetProcessorRank() == 0 )
+						std::cout << "Save " << file.str() << std::endl;
+					}
 				}
 				refcnt++;
 			}
@@ -133,9 +157,10 @@ int main(int argc, char ** argv)
 					tag_stat[*it] = it->GetStatus();
 				}
 				std::stringstream file;
-				file << "step_" << k << ".pmf";
+				file << "step_" << k << ".pvtk";
 				m.Save(file.str());
-				std::cout << "Save " << file.str() << std::endl;
+				if( m.GetProcessorRank() == 0 )
+					std::cout << "Save " << file.str() << std::endl;
 			}
 		}
 	}

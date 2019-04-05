@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <set>
 
-using namespace std;
+//using namespace std;
 
 /// todo:
 /// 1. coarsment
@@ -37,13 +37,13 @@ namespace INMOST
 	}
 
 
-    void AdaptiveMesh::PrintSetLocal(string offset, ElementSet it, stringstream& ss)
+    void AdaptiveMesh::PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss)
     {
-        stringstream ss1;
-        ss1 << offset << rank << ": Set : " << setw(5) << it.GetName() << " ";
+        std::stringstream ss1;
+        ss1 << offset << rank << ": Set : " << std::setw(5) << it.GetName() << " ";
         for (int i = ss1.str().length(); i < 23; i++) ss1 << " ";
         ss << ss1.str();
-        ss << setw(6);
+        ss << std::setw(6);
         if (it.GetStatus() == Element::Shared) ss << "shared";
         else if (it.GetStatus() == Element::Ghost) ss << "ghost";
         else if (it.GetStatus() == Element::Owned) ss << "owned";
@@ -53,11 +53,11 @@ namespace INMOST
 
         //ss << "   level (" << level[it.self()] << ")  ";
         ss << " tag_processors (";
-        stringstream ss2;
+        std::stringstream ss2;
         Storage::integer_array arr = it.IntegerArrayDV(m->ProcessorsTag());
         for (int i = 0; i < arr.size(); i++)
             ss2 << arr[i] << " ";
-        ss << setw(5) << ss2.str() <<")";
+        ss << std::setw(5) << ss2.str() <<")";
         
 
         ElementSet::iterator p = it.Begin();
@@ -66,15 +66,15 @@ namespace INMOST
         while(p != it.End())
         {
         //    if (first++ == 0) ss << endl << offset << "   ";
-            string type = "unknw";
+            std::string type = "unknw";
             if (p->GetElementType() == CELL) type = "cell";
             if (p->GetElementType() == FACE) type = "face";
             if (p->GetElementType() == EDGE) type = "edge";
             if (p->GetElementType() == NODE) type = "node";
-            ss << type << "-" << setw(2) << p->GlobalID() << " ";
+            ss << type << "-" << std::setw(2) << p->GlobalID() << " ";
             p++;
         }
-        ss << endl;
+        ss << std::endl;
 
         for(ElementSet child = it.GetChild(); child.isValid(); child = child.GetSibling())
         {
@@ -85,20 +85,20 @@ namespace INMOST
 
     void AdaptiveMesh::PrintSet()
     {
-        stringstream ss;
+        std::stringstream ss;
         for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
         {
-            if (it->HaveParent()) continue;
+            //if (it->HaveParent()) continue;
             PrintSetLocal("",ElementSet(m,*it),ss);
         }
-        cout << ss.str() << endl;
+        std::cout << ss.str() << std::endl;
     }
 
-    void PrintRefs(ostream& os, Storage::reference_array refs)
+    void PrintRefs(std::ostream& os, Storage::reference_array refs)
     {
         for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
         {
-            string type = "unknw";
+            std::string type = "unknw";
             if (refs[i].GetElementType() == CELL) type = "cell";
             if (refs[i].GetElementType() == FACE) type = "face";
             if (refs[i].GetElementType() == EDGE) type = "edge";
@@ -106,20 +106,20 @@ namespace INMOST
             os << "(" << type << "," << refs[i]->GlobalID() << ") ";
 			Storage::real xyz[3] = {0,0,0};
             refs[i]->Centroid(xyz);
-            os << "(" << xyz[0] << "," << xyz[1] << "," << xyz[2] <<")" <<  endl;
+            os << "(" << xyz[0] << "," << xyz[1] << "," << xyz[2] <<")" <<  std::endl;
         }
 
 
     }
 
-    void AdaptiveMesh::PrintMesh(ostream& os, int cell, int face, int edge, int node)
+    void AdaptiveMesh::PrintMesh(std::ostream& os, int cell, int face, int edge, int node)
     {
         if (cell + face + edge + node == 0) return;
-        stringstream ss;
-        ss << "================= " << rank << " =====================" << endl;
+        std::stringstream ss;
+        ss << "================= " << rank << " =====================" << std::endl;
         if (cell)
         {
-            ss << "Cells: " << m->NumberOfCells() <<  endl;
+            ss << "Cells: " << m->NumberOfCells() <<  std::endl;
             for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) 
             {
                 ss << rank << ": " << it->GlobalID() << " - " << it->LocalID() << " - ";            
@@ -137,27 +137,27 @@ namespace INMOST
                 Storage::reference_array refs = hanging_nodes[it->self()];
                 if (refs.size() > 0)
                 {
-                    ss << endl << "   Hanging nodes: ";
+                    ss << std::endl << "   Hanging nodes: ";
                     PrintRefs(ss,refs);
                 }
-                ss << endl;
+                ss << std::endl;
                 ss << "   ParentSet: " << ElementSet(this,parent_set[*it]).GetName();
                 */
 /*
                 orage::reference_array refs = ref_tag[it->self()];
                 PrintRefs(refs);
                 */
-                    ss << endl;
+                    ss << std::endl;
             }
         }
 
         if (face)
         {
-            ss << "Faces: " << m->NumberOfFaces() <<  endl;
+            ss << "Faces: " << m->NumberOfFaces() <<  std::endl;
             for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
             {
-                ss << rank << ": " << setw(2) << it->LocalID() << " " << setw(2) << it->GlobalID() << " - " ;            
-                ss << setw(6);
+                ss << rank << ": " << std::setw(2) << it->LocalID() << " " << std::setw(2) << it->GlobalID() << " - " ;            
+                ss << std::setw(6);
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
@@ -165,14 +165,14 @@ namespace INMOST
 
                 double xyz[3];
                 it->Centroid(xyz);
-                ss << "   (" << setw(5) << xyz[0] << " " << setw(5) << xyz[1] << " " << setw(5) << xyz[2] << ")";
+                ss << "   (" << std::setw(5) << xyz[0] << " " << std::setw(5) << xyz[1] << " " << std::setw(5) << xyz[2] << ")";
 
                 ss << "  " << m->GetMarker(*it,m->NewMarker());
 
                 ss << " nc(" << it->getNodes().size() << ": "; 
                 ElementArray<Node> nodes = it->getNodes();
                 for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
-                    ss << setw(2) << node->GlobalID() << " ";
+                    ss << std::setw(2) << node->GlobalID() << " ";
                 ss << ")";
 
                 /*
@@ -188,65 +188,66 @@ namespace INMOST
                     ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
                 }
 
-                ss << endl;
+                ss << std::endl;
 
                 {
                     Storage::reference_array refs = hanging_nodes[it->self()];
                     if (refs.size() > 0)
                     {
-                        ss << endl << "   Hanging nodes: ";
+                        ss << std::endl << "   Hanging nodes: ";
                         PrintRefs(ss,refs);
                     }
-                    ss << endl;
+                    ss << std::endl;
                 }
                 */
-                ss << endl;
+                ss << std::endl;
             }
         }
 
         if (edge)
         {
-            ss << "Edges: " << m->NumberOfEdges() <<  endl;
+            ss << "Edges: " << m->NumberOfEdges() <<  std::endl;
             for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it) 
             {
                 ss << rank << ": " << it->GlobalID() << " - " ;            
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
-
+				/*
                 Storage::reference_array refs = ref_tag[it->self()];
                 if (refs.size() > 0) ss << ". Ref: ";
                 for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
                 {
-                    string type = "unknw";
+                    std::string type = "unknw";
                     if (refs[i].GetElementType() == CELL) type = "cell";
                     if (refs[i].GetElementType() == FACE) type = "face";
                     if (refs[i].GetElementType() == EDGE) type = "edge";
                     if (refs[i].GetElementType() == NODE) type = "node";
                     ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
                 }
-
-                ss << endl;
+                */
+                ss << std::endl;
             }
         }
 
         if (node)
         {
-            ss << "Nodes:" << endl;
+            ss << "Nodes:" << std::endl;
             for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) 
             {
-                ss << rank << ": " << setw(2) << it->GlobalID() << " - " ;            
-                ss << setw(6);
+                ss << rank << ": " << std::setw(2) << it->GlobalID() << " - " ;            
+                ss << std::setw(6);
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
 
                 {
+					/*
                     Storage::reference_array refs = ref_tag[it->self()];
                     if (refs.size() > 0) ss << ". Ref: ";
                     for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
                     {
-                        string type = "unknw";
+                        std::string type = "unknw";
                         if (refs[i].GetElementType() == CELL) type = "cell";
 						if (refs[i].GetElementType() == FACE) type = "face";
 						if (refs[i].GetElementType() == EDGE) type = "edge";
@@ -254,21 +255,21 @@ namespace INMOST
                         ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
                         
                     }
-
+					*/
                     ss << "  " << m->GetMarker(*it,m->NewMarker());
 
                     ss << "(" << 
-                        setw(3) << it->RealArray(m->CoordsTag())[0] << " " << 
-                        setw(3) << it->RealArray(m->CoordsTag())[1] << " " << 
-                        setw(3) << it->RealArray(m->CoordsTag())[2] << ")";
+                        std::setw(3) << it->RealArray(m->CoordsTag())[0] << " " << 
+                        std::setw(3) << it->RealArray(m->CoordsTag())[1] << " " << 
+                        std::setw(3) << it->RealArray(m->CoordsTag())[2] << ")";
 
                 }
-                ss << endl;
+                ss << std::endl;
             }
         }
 
-        ss << "=========================================" << endl;
-        os << ss.str() << endl;
+        ss << "=========================================" << std::endl;
+        os << ss.str() << std::endl;
     }
 
     void AdaptiveMesh::UpdateStatus()
@@ -329,7 +330,7 @@ namespace INMOST
 
     void AdaptiveMesh::Test()
     {
-        std::cout << rank << ": ================" << endl;
+        std::cout << rank << ": ================" << std::endl;
         PrintSet(root,"");
     }
 	
@@ -368,8 +369,8 @@ namespace INMOST
 		//create a tag that stores maximal refinement level of each element
 		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
 		tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
-		tag_an = m->CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
-		ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
+		//tag_an = m->CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+		//ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
 		hanging_nodes = m->CreateTag("HANGING_NODES",DATA_REFERENCE,CELL|FACE,NONE);
 		//create a tag that stores links to sets
@@ -386,7 +387,7 @@ namespace INMOST
 	
 	bool AdaptiveMesh::Refine(TagInteger & indicator)
 	{
-        std::cout << rank << ": IN REFINE" << endl;
+        std::cout << rank << " enter " << __FUNCTION__ << std::endl;
 		static int call_counter = 0;
 		int ret = 0; //return number of refined cells
 		//initialize tree structure
@@ -642,17 +643,6 @@ namespace INMOST
 
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
-		//restore face orientation
-		//BUG: bad orientation not fixed automatically
-		int nfixed = 0;
-		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
-			if( !it->CheckNormalOrientation() )
-			{
-				it->FixNormalOrientation();
-				nfixed++;
-			}
-			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
-		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 
 
         MarkerType marker_new = m->CreateMarker();
@@ -683,9 +673,9 @@ namespace INMOST
 
 
 		//11. Restore parallel connectivity, global ids
-        m->ResolveShared(true);
+        
         //if (call_counter == 0)
-		m->ResolveModification(false);
+		m->ResolveModification();
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New() cells
@@ -693,26 +683,41 @@ namespace INMOST
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
 		//14. Done
-        //cout << rank << ": Before end " << endl;
+        //cout << rank << ": Before end " << std::endl;
 		m->EndModification();
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
-        m->ResolveSets();
+        //m->ResolveSets();
 
 		m->CheckCentroids();
 
-        m->BeginModification();
-            m->ExchangeGhost(1,NODE,&marker_new); // Construct Ghost cells in 2 layers connected via nodes
-            m->ReleaseMarker(marker_new,CELL|FACE|EDGE|NODE);
-		m->ApplyModification();
-    	m->EndModification();
+        //m->BeginModification();
+        //    m->ExchangeGhost(1,NODE,marker_new); // Construct Ghost cells in 2 layers connected via nodes
+        //    m->ReleaseMarker(marker_new,CELL|FACE|EDGE|NODE);
+		//m->ApplyModification();
+    	//m->EndModification();
+    	//PrintSet();
+    	//m->ExchangeData(parent_set,CELL,0);
+    	
+    			//restore face orientation
+		//BUG: bad orientation not fixed automatically
+		int nfixed = 0;
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+			if( !it->CheckNormalOrientation() )
+			{
+				it->FixNormalOrientation();
+				nfixed++;
+			}
+			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
+
 
         //ExchangeData(hanging_nodes,CELL | FACE,0);
-        //cout << rank << ": After end " << endl;
+        //cout << rank << ": After end " << std::endl;
 		//reorder element's data to free up space
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
 		//return number of refined cells
 		call_counter++;
-        std::cout << rank << ": END REFINE " << (ret != 0) << endl;
+        std::cout << rank << " exit " << __FUNCTION__ << std::endl;
 		return ret != 0;
 	}
 
@@ -778,7 +783,7 @@ namespace INMOST
 
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
-        std::cout << rank << ": BEGIN COARSE\n";
+        std::cout << rank << " enter " << __FUNCTION__ << std::endl;
         SynchronizeIndicated(indicator);
         return false;
 
@@ -1087,27 +1092,16 @@ namespace INMOST
 		}
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
-		//restore face orientation
-		//BUG: bad orientation not fixed automatically
-		int nfixed = 0;
-		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
-			if( !it->CheckNormalOrientation() )
-			{
-				it->FixNormalOrientation();
-				nfixed++;
-			}
-			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
-		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
 		//todo:
-    	m->ResolveShared(true);
-		m->ResolveModification(false);
-		m->CheckCentroids();
+		m->ResolveModification();
 		//todo:
 		//let the user update their data
 		if( model ) model->Adaptation(*m);
 		m->ApplyModification();
 		//done
 		m->EndModification();
+		
+		m->CheckCentroids();
 		//CheckCentroids();
         //ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
@@ -1124,11 +1118,25 @@ namespace INMOST
 		}
 		//cleanup null links in sets
 		CleanupSets(root);
+		
+		
+		//restore face orientation
+		//BUG: bad orientation not fixed automatically
+		int nfixed = 0;
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+			if( !it->CheckNormalOrientation() )
+			{
+				it->FixNormalOrientation();
+				nfixed++;
+			}
+			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
+		
 		//reorder element's data to free up space
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE|ESET);
 		
 		call_counter++;
-        std::cout << rank << ": END COARSE\n";
+        std::cout << rank << " exit " << __FUNCTION__ << std::endl;
 		return ret != 0;
 	}
 }

@@ -13,7 +13,7 @@
 #include <sstream>
 #include <string>
 
-using namespace std;
+//using namespace std;
 
 #if defined(USE_MPI)
 static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
@@ -46,7 +46,7 @@ static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 namespace INMOST
 {
     static int block_recursion = 0;
-
+	/*
     std::string ro()
     {
         int rank = 0;
@@ -58,7 +58,7 @@ namespace INMOST
             ss << "   ";
         return ss.str();
     }
-    
+    */
 	//////////////////////////////
 	/// REDUCTION FUNCTIONS    ///
 	//////////////////////////////
@@ -176,10 +176,10 @@ namespace INMOST
 			e->SetData(tag,old_size,size,data);
 		}
 	}
-
+/*
     void Mesh::CheckFaces()
     {
-        std::cout << "Check faces" << endl;
+        //std::cout << "Check faces" << endl;
 
         for(Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) 
         {
@@ -196,16 +196,16 @@ namespace INMOST
                 {
                     set_nodes.insert(node->LocalID());
                 }
-            if (suc) std::cout << "-=== Good face: " << setw(2) << it->LocalID();
-            else std::cout << "-=== Error face: " << setw(2) << it->LocalID();
+            //if (suc) std::cout << "-=== Good face: " << setw(2) << it->LocalID();
+            //else std::cout << "-=== Error face: " << setw(2) << it->LocalID();
 
-            cout << ". Nodes = " << nodes.size() << ": ";
-            for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
-                std::cout << node->LocalID() << " ";
-            std::cout << endl;
+            //cout << ". Nodes = " << nodes.size() << ": ";
+            //for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
+             //   std::cout << node->LocalID() << " ";
+            //std::cout << endl;
         }
     }
-
+*/
 
 	
 
@@ -1409,9 +1409,9 @@ namespace INMOST
 									}
 							}
 						}
-						stringstream ss;
-						ss << "file_" << GetProcessorRank() << ".txt";
-										ofstream ofs(ss.str().c_str());
+						//stringstream ss;
+						//ss << "file_" << GetProcessorRank() << ".txt";
+						//				ofstream ofs(ss.str().c_str());
 						//Determine what processors potentially share the element
 #if defined(USE_OMP)
 #pragma omp parallel
@@ -1436,26 +1436,26 @@ namespace INMOST
 									
 									//if (current_mask == CELL)
 									//if (GetProcessorRank() == 0 && it->LocalID() == 59 ||GetProcessorRank() == 1 && it->LocalID() == 49)									
-									{
-										Element::adj_type const & subelements = LowConn(it->GetHandle());
-										Element::adj_type::const_iterator i = subelements.begin();
+									//{
+										//Element::adj_type const & subelements = LowConn(it->GetHandle());
+										//Element::adj_type::const_iterator i = subelements.begin();
 										
-										double cnt[3];
-										it->Centroid(cnt);
-										ofs << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << cnt[0]  << "  " << cnt[1] << " " << cnt[2] << std::endl;
-										for (int k = 0; k < result.size(); k++) ofs << result[k] << " ";
-										ofs << std::endl;
-										while( i != subelements.end() )
-										{
-											Storage::integer_array p = IntegerArrayDV(*i,ProcessorsTag());	
-											ofs << "| face:" << GetHandleID(*i) << " " << Element::StatusName(Bulk(*i,SharedTag())) << " ";
-											for (int k = 0; k < p.size(); k++) ofs << p[k] << " ";
-											ofs << std::endl;
-											i++;
-										}
+										//double cnt[3];
+										//it->Centroid(cnt);
+										//ofs << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << cnt[0]  << "  " << cnt[1] << " " << cnt[2] << std::endl;
+										//for (int k = 0; k < result.size(); k++) ofs << result[k] << " ";
+										//ofs << std::endl;
+										//while( i != subelements.end() )
+										//{
+										//	Storage::integer_array p = IntegerArrayDV(*i,ProcessorsTag());	
+										//	ofs << "| face:" << GetHandleID(*i) << " " << Element::StatusName(Bulk(*i,SharedTag())) << " ";
+										//	for (int k = 0; k < p.size(); k++) ofs << p[k] << " ";
+										//	ofs << std::endl;
+										//	i++;
+										//}
 										
 										//out << ro() << GetProcessorRank() << "!!!!! " << ss.str() << endl;
-									}
+									//}
 									
 									if( result.empty() )
 									{
@@ -1736,7 +1736,7 @@ namespace INMOST
 			}
 		}
 		//RemoveGhost();
-		
+		EquilibrateGhost(only_new);
 #else //USE_MPI
 		AssignGlobalID(CELL | FACE | EDGE | NODE);
         (void)only_new;
@@ -1745,7 +1745,7 @@ namespace INMOST
 	}
 	
 	
-	void Mesh::RemoveGhost(MarkerType* marker)
+	void Mesh::RemoveGhost(MarkerType marker)
 	{
 		if( m_state == Mesh::Serial ) return;
 		ENTER_FUNC()
@@ -1759,7 +1759,7 @@ namespace INMOST
 		
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 		{
-            if (marker &&  !it->GetMarker(*marker)) continue;
+            if (marker &&  !it->GetMarker(marker)) continue;
 			Element::Status estat = GetStatus(*it);
 			if( estat == Element::Ghost ) 
 			{
@@ -2055,12 +2055,12 @@ namespace INMOST
 #if defined(USE_MPI)
 		if( m_state == Parallel )
 		{
-			INMOST_DATA_BIG_ENUM_TYPE number,shift[4], shift_recv[4], local_shift;
+			INMOST_DATA_BIG_ENUM_TYPE number,shift[5], shift_recv[5], local_shift;
 			//int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
 			int num;
 			//std::vector<INMOST_DATA_BIG_ENUM_TYPE> shifts(mpisize*4);
 			memset(shift,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE));
-			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = NextElementType(currenttype) )
+			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 			{
 				if( mask & currenttype )
 				{
@@ -2079,7 +2079,7 @@ namespace INMOST
 				REPORT_MPI(ierr = MPI_Scan(shift,shift_recv,4,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_SUM,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			}
-			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = NextElementType(currenttype) )
+			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 			{
 				if( mask & currenttype )
 				{
@@ -2106,7 +2106,7 @@ namespace INMOST
 		{
 #endif //USE_MPI
 			INMOST_DATA_BIG_ENUM_TYPE number;
-			for(ElementType currenttype = NODE; currenttype <= CELL; currenttype = NextElementType(currenttype) )
+			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 				if( mask & currenttype )
 				{
 					number = 0;
@@ -2161,7 +2161,7 @@ namespace INMOST
 	
 	
 	
-	Mesh::proc_elements Mesh::ComputeSharedSkinSet(ElementType bridge_type, MarkerType* marker)
+	Mesh::proc_elements Mesh::ComputeSharedSkinSet(ElementType bridge_type, MarkerType marker)
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
@@ -2238,7 +2238,7 @@ namespace INMOST
 			bool flag = false;
 			Element::Status estat1 = GetStatus(*it), estat2;
 			if( estat1 == Element::Owned ) continue;
-            if (marker && !it->GetMarker(*marker)) continue;
+            if (marker && !it->GetMarker(marker)) continue;
       //Storage::integer_array skin_data = it->IntegerArray(tag_skin);
       //REPORT_STR("face " << it->LocalID() << " global " << it->GlobalID() << " type " << Element::StatusName(estat1));
       //for(Storage::integer_array::iterator kt = skin_data.begin(); kt != skin_data.end(); kt+=2)
@@ -2494,14 +2494,14 @@ namespace INMOST
                         {
                             //cout << "Element: " << Element(this,*eit).GlobalID() << endl;
                             reference_array refs = ReferenceArray(*eit, tag);
-                            cout << "Size: " << refs.size() << endl;
+                            //cout << "Size: " << refs.size() << endl;
                             int bytes = tag.GetBytesSize();
                             for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
                             {
                                 if (refs[i] == InvalidElement()) continue;
                                 HandleType data = ComposeHandle(refs[i]->GetElementType(), refs[i]->GlobalID());
                                 memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
-                                cout << ro() << rank << ": Pack elem " << refs[i]->GlobalID() <<endl;
+                                //cout << ro() << rank << ": Pack elem " << refs[i]->GlobalID() <<endl;
                             }
                         }
                         else
@@ -2767,6 +2767,10 @@ namespace INMOST
 									REPORT_VAL("size ", size);
 								}
 #endif
+								if( tag.GetDataType() == DATA_REFERENCE )
+								{
+									std::cout << __FILE__ <<":" << __LINE__ << "Hello there!" << std::endl;
+								}
 								op(tag,Element(this,*eit),&array_data_recv[pos],size);
 								pos += GetDataCapacity(&array_data_recv[pos],size,tag);
 								//pos += size*tag.GetBytesSize();
@@ -3261,7 +3265,7 @@ namespace INMOST
 			{
                // GetHandleElementNum(*it) - 4:ESET, 3:CELL, ... , 0:NODE
 				Element::adj_type const & adj = LowConn(*it);
-				for(Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
+				for(Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++) if( *jt != InvalidHandle() )
 				{
 					if( !GetMarker(*jt,busy) )
 					{
@@ -3641,14 +3645,14 @@ namespace INMOST
                 names_buff_pos += set.GetName().length() + 1;
 
                 // Add all low conns to low_conn_nums
-                stringstream ss;
-                ss << ro() << mpirank << ": For set " << ElementSet(this,*it).GetName() << " low conns (";
+                //stringstream ss;
+                //ss << ro() << mpirank << ": For set " << ElementSet(this,*it).GetName() << " low conns (";
 				low_conn_size[k] = 0;
 				Element::adj_type const & lc = LowConn(*it);
-				for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); jt++) if( !Hidden(*jt) )
+				for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); jt++) if( *jt != InvalidHandle() && !Hidden(*jt) )
 				{
                     INMOST_DATA_INTEGER_TYPE el_num = GetHandleElementNum(*jt);
-                    ss << "(" << el_num << "," <<  GlobalID(*jt) << ") ";
+                    //ss << "(" << el_num << "," <<  GlobalID(*jt) << ") ";
 			    	assert(Integer(*jt,arr_position) == Integer(selems[el_num][Integer(*jt,arr_position)],arr_position));
                     HandleType composed = ComposeHandle(GetHandleElementType(*jt), Integer(*jt,arr_position));
                     low_conn_nums.push_back(composed);
@@ -3656,7 +3660,7 @@ namespace INMOST
 					low_conn_size[k]++;
 					num++;
 				}
-                ss << ")";
+                //ss << ")";
                 //cout << ss.str() << endl;
 
                 if (set.HaveChild())   high_conn_nums[k*3+0] = Integer(selems[4][Integer(set.GetChild().GetHandle(),  arr_position)],arr_position); else high_conn_nums[k*3 + 0] = -1;
@@ -3665,10 +3669,10 @@ namespace INMOST
                 // Parent set are't pack now.!!
                 if (0 && set.HaveParent())  high_conn_nums[k*3+2] = Integer(selems[4][Integer(set.GetParent().GetHandle(), arr_position)],arr_position); else high_conn_nums[k*3 + 2] = -1;
 
-                stringstream ss5;
-                ss5 << ro() << mpirank << ": high_conn_nums for set " << set.GetName() << ": ";
-                ss5 << high_conn_nums[k*3 + 0] << " " << high_conn_nums[k*3 + 1] << " " << high_conn_nums[k*3 + 2] << endl;
-                cout << ss5.str();
+                //stringstream ss5;
+                //ss5 << ro() << mpirank << ": high_conn_nums for set " << set.GetName() << ": ";
+                //ss5 << high_conn_nums[k*3 + 0] << " " << high_conn_nums[k*3 + 1] << " " << high_conn_nums[k*3 + 2] << endl;
+                //cout << ss5.str();
             	
                 k++;
 			}
@@ -4228,10 +4232,10 @@ namespace INMOST
 
             // Gather sets names to array
             int pos = 0;
-            std::vector<string> names;
+            std::vector<std::string> names;
             while (pos < names_buff_size)
             {
-                names.push_back(string(&names_buff[pos]));
+                names.push_back(std::string(&names_buff[pos]));
                 pos += names[names.size() - 1].length() + 1;
             }
             /*   
@@ -4257,9 +4261,9 @@ namespace INMOST
                 // Unpack low_conn_size array
 				if( num != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
                 
-                stringstream ss;
-                ss << ro() << rank << ": unpack low_conns_size array: ";
-                for (int i = 0; i < num; i++) ss << low_conn_size[i] << " ";
+                //stringstream ss;
+                //ss << ro() << rank << ": unpack low_conns_size array: ";
+                //for (int i = 0; i < num; i++) ss << low_conn_size[i] << " ";
               //  cout << ss.str() << endl;
 
                 temp = 0;
@@ -4272,12 +4276,12 @@ namespace INMOST
 				}
 
                 // Add low conns for sets
-                stringstream ss1;
-                ss1 << ro() << rank << ": unpack low_conns_nums array: " << endl;
+                //stringstream ss1;
+                //ss1 << ro() << rank << ": unpack low_conns_nums array: " << endl;
                 int ind = 0;
                 for (int i = 0; i < num; i++) 
                 {
-                    ss1 << ro();
+                    //ss1 << ro();
                     for (int j = 0; j < low_conn_size[i]; j++)
                     {
                         INMOST_DATA_ENUM_TYPE type = GetHandleElementNum(low_conn_nums[ind]);
@@ -4285,14 +4289,14 @@ namespace INMOST
                         Element elem = Element(this,selems[type][array_pos]);
 
                         assert(type == GetHandleElementNum(elem.GetHandle()));
-                        ss1 << "(" << type  << "," << array_pos << ") ";
+                        //ss1 << "(" << type  << "," << array_pos << ") ";
 
                         ElementSet set(this, selems[4][i]);
                         set.AddElement(elem);
 
                         ind++;
                     }
-                    ss1 << " | ";
+                    //ss1 << " | ";
                 }
                 //cout << ss1.str() << endl;
 
@@ -4302,13 +4306,13 @@ namespace INMOST
                     MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num*3),INMOST_MPI_DATA_INTEGER_TYPE,comm);
 
 
-                stringstream ss6;
-                ss6 << ro() << rank << ": unpack high conn nums: ";
-                for (int i = 0; i < num*3; i++)
-                {
-                    if (i%3 == 0) ss6 << "|";
-                    ss6 << high_conn_nums[i] << " ";
-                }
+                //stringstream ss6;
+                //ss6 << ro() << rank << ": unpack high conn nums: ";
+                //for (int i = 0; i < num*3; i++)
+                //{
+                //    if (i%3 == 0) ss6 << "|";
+                //    ss6 << high_conn_nums[i] << " ";
+                //}
                 //cout << ss6.str() << endl;
 
                 for (int i = 0; i < num; i++) if (high_conn_nums[i*3+0] != -1) 
@@ -5154,7 +5158,7 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 	
-	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge, MarkerType* marker)
+	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge, MarkerType marker)
 	{
     //printf("%d called exchange ghost with layers %d bridge %s\n",GetProcessorRank(), layers,ElementTypeName(bridge));
 		if( m_state == Serial ) return;
@@ -5163,10 +5167,10 @@ namespace INMOST
 		int mpirank = GetProcessorRank();
 		bool delete_ghost = false;
 		//if( layers == Integer(tag_layers) && bridge == Integer(tag_bridge) ) return;
-        cout << "Check " << layers << " " << Integer(GetHandle(),tag_layers) << endl;
+        //cout << "Check " << layers << " " << Integer(GetHandle(),tag_layers) << endl;
 		if( layers < Integer(GetHandle(),tag_layers) ) delete_ghost = true;
 		else if( layers == Integer(GetHandle(),tag_layers) && bridge < Integer(GetHandle(),tag_bridge) ) delete_ghost = true;
-        if (marker != NULL) delete_ghost = true;
+        if (marker != 0) delete_ghost = true;
 		int test_bridge = 0;
 		
 		if( (bridge & MESH) || (bridge & ESET) || (bridge & CELL) ) throw Impossible;
@@ -5665,7 +5669,7 @@ namespace INMOST
         int mpirank = GetProcessorRank();
         int mpisize = GetProcessorsNumber();
 
-        map<string, vector<int> > map_names; // key - set_name, value - array of processors ranks which has this set
+        std::map<std::string, std::vector<int> > map_names; // key - set_name, value - array of processors ranks which has this set
 
         // Collect all set names to vector<string>
         //vector<string>* all_set_names = new vector<string>[mpisize];
@@ -5737,7 +5741,8 @@ namespace INMOST
                 delete[] recv_buffer;
             }
         }
-
+		delete [] buffer;
+		delete [] all_bytes_sizes;
 
         /*
         stringstream sss;
@@ -5769,7 +5774,7 @@ namespace INMOST
        // Change status for self sets
        for(Mesh::iteratorSet set = BeginSet(); set != EndSet(); ++set)
        {
-           string set_name = set->GetName();
+           std::string set_name = set->GetName();
 
            Storage::integer_array arr = set->IntegerArrayDV(tag_processors);
            arr.resize(map_names[set_name].size());
@@ -5799,7 +5804,7 @@ namespace INMOST
        }
 
        GatherParallelStorage(ghost_elements, shared_elements, ESET);
-
+		AssignGlobalID(ESET);
         
        /* 
        if (mpirank == 0)
