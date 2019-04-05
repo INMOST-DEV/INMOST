@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-DynamicX2::DynamicX2() : distribution(-0.01, 0.01) {}
+DynamicX2::DynamicX2() : distribution(-0.4, 0.4) {}
 
 double DynamicX2::invoke(double x, double y, int iteration) const noexcept {
 

@@ -60,7 +60,7 @@ namespace TTSP {
     unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 5;
     unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 5;
     double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.1;
-    double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.1;
+    double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.5;
 
     BayesianOptimizer::BayesianOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
             OptimizerInterface(name, space, properties, buffer_capacity),
@@ -142,7 +142,7 @@ namespace TTSP {
                 BO_PARAM(bool, optimize_noise, false);
             };
             struct kernel_squared_exp_ard {
-                BO_PARAM(int, k, 5);
+                BO_PARAM(int, k, 4);
 
                 BO_PARAM(double, sigma_sq, 0.02);
             };
@@ -151,7 +151,7 @@ namespace TTSP {
             struct opt_nloptnograd : public limbo::defaults::opt_nloptnograd {
             };
             struct acqui_ucb {
-                BO_PARAM(double, alpha, 0.5);
+                BO_PARAM(double, alpha, 0.05);
             };
             struct acqui_gpucb : public limbo::defaults::acqui_gpucb {
             };
