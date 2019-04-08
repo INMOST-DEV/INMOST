@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
         std::exit(0);
     }
 
-    OptimizerInterface *opt = Optimizers::GetOptimizer(function_type, optimizer_type, parameters, OptimizerProperties(), 30);
+    OptimizerInterface *opt = Optimizers::GetOptimizer(function_type, optimizer_type, parameters, OptimizerProperties(), 15);
 
     opt->SetVerbosityLevel(OptimizerVerbosityLevel::Level0);
     opt->SetRestartStrategy(OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 10);

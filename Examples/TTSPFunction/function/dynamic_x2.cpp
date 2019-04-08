@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-DynamicX2::DynamicX2() : distribution(-0.4, 0.4) {}
+DynamicX2::DynamicX2() : distribution(-0.04, 0.04) {}
 
 double DynamicX2::invoke(double x, double y, int iteration) const noexcept {
 
@@ -36,7 +36,7 @@ double DynamicX2::GetMinimumValue(int iteration) const noexcept {
 }
 
 std::pair<double, double> DynamicX2::GetMinimumPoint(int iteration) const noexcept {
-    return std::make_pair(2 + std::sin(iteration / 75.0), 0.0);
+    return std::make_pair(2 + std::sin(iteration / 150.0), 0.0);
 }
 
 std::pair<double, double> DynamicX2::GetXRange() const noexcept {
