@@ -683,6 +683,8 @@ namespace INMOST
 		if( model ) model->Adaptation(*m);
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
+		
+		m->ExchangeGhost(1,NODE,m->NewMarker());
 		//14. Done
         //cout << rank << ": Before end " << std::endl;
 		m->EndModification();
