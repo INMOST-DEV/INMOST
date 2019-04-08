@@ -45,7 +45,7 @@ static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 
 namespace INMOST
 {
-    static int block_recursion = 0;
+    //static int block_recursion = 0;
 	/*
     std::string ro()
     {
@@ -2417,6 +2417,7 @@ namespace INMOST
 		REPORT_VAL("Buffer size before pack",buffer.size());
 		ElementType pack_types[2] = {NONE,NONE};
 		element_set::const_iterator eit;
+		element_set pack_elements;
 		buffer_type array_data_send;
 		std::vector<INMOST_DATA_ENUM_TYPE> array_size_send;
 		array_data_send.reserve(4096);
@@ -2435,79 +2436,67 @@ namespace INMOST
 				unsigned count = static_cast<unsigned>(array_size_send.size());
 				array_size_send.push_back(0);
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++)
+				{
 					if( (!select || GetMarker(*eit,select)) && HaveData(*eit,tag) )
 					{
-            //REPORT_STR("element type " << ElementTypeName(GetHandleElementType(*eit)) << " global id " << Integer(*eit,GlobalIDTag()));
 						REPORT_VAL("element index", static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
-
 						array_size_send.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send[count]++;
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 						INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
-						//array_data_send.resize(had_s+s*tag.GetBytesSize());
 						if( s )
 						{
-#if defined(USE_AUTODIFF)
-							if( tag.GetDataType() == DATA_VARIABLE )
-							{
-								REPORT_VAL("data size: ", s);
-								REPORT_VAL("data capacity: ", GetDataCapacity(*eit,tag));
-								REPORT_VAL("array size: ", had_s);
-							}
-#endif
 							array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
-							GetData(*eit,tag,0,s,&array_data_send[had_s]);
-            //REPORT_VAL("size",s);
-            //for(int qq = 0; qq < s; ++qq)
-            //{
-            //  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_send[had_s+qq*tag.GetBytesSize()]));
-            //}
+							if( tag.GetDataType() == DATA_REFERENCE )
+							{
+								reference_array refs = ReferenceArray(*eit, tag);
+								INMOST_DATA_ENUM_TYPE bytes = tag.GetBytesSize();
+								for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+								{
+									HandleType data = InvalidHandle();
+									if ( refs[i].isValid() ) 
+									{
+										data = ComposeHandle(refs[i]->GetElementType(), pack_elements.size());
+										pack_elements.push_back(refs[i]->GetHandle());
+									}
+									memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
+								}
+							}
+							else GetData(*eit,tag,0,s,&array_data_send[had_s]);
 						}
 						if( size == ENUMUNDEF ) array_size_send.push_back(s);
 						++total_packed;
 					}
+				}
 				REPORT_VAL("count",array_size_send[count]);
 				REPORT_VAL("index", count);
 			}
 			else
 			{
-                int rank = GetProcessorRank();
+				int rank = GetProcessorRank();
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 				{
-         // REPORT_STR("element type " << ElementTypeName(*eit) << " global id " << Integer(*eit,GlobalIDTag()));
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 					INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
-					//array_data_send.resize(had_s+s*tag.GetBytesSize());
 					if( s )
 					{
-#if defined(USE_AUTODIFF)
-						if( tag.GetDataType() == DATA_VARIABLE )
-						{
-							REPORT_VAL("on element ",Element(this,*eit).GlobalID());
-							REPORT_VAL("position: ", had_s);
-							REPORT_VAL("data capacity: ", GetDataCapacity(*eit,tag));
-							REPORT_VAL("size: ", s);
-						}
-#endif
 						array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
-                        if (tag.GetDataType() == DATA_REFERENCE)
-                        {
-                            //cout << "Element: " << Element(this,*eit).GlobalID() << endl;
-                            reference_array refs = ReferenceArray(*eit, tag);
-                            //cout << "Size: " << refs.size() << endl;
-                            int bytes = tag.GetBytesSize();
-                            for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
-                            {
-                                if (refs[i] == InvalidElement()) continue;
-                                HandleType data = ComposeHandle(refs[i]->GetElementType(), refs[i]->GlobalID());
-                                memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
-                                //cout << ro() << rank << ": Pack elem " << refs[i]->GlobalID() <<endl;
-                            }
-                        }
-                        else
-                        {
-                            GetData(*eit,tag,0,s,&array_data_send[had_s]);
-                        }
+						if (tag.GetDataType() == DATA_REFERENCE)
+						{
+							reference_array refs = ReferenceArray(*eit, tag);
+							INMOST_DATA_ENUM_TYPE bytes = tag.GetBytesSize();
+							for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
+							{
+								HandleType data = InvalidHandle();
+								if ( refs[i].isValid() ) 
+								{
+									data = ComposeHandle(refs[i]->GetElementType(), pack_elements.size());
+									pack_elements.push_back(refs[i]->GetHandle());
+								}
+								memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
+							}
+						}
+						else GetData(*eit,tag,0,s,&array_data_send[had_s]);
 					}
 					if( size == ENUMUNDEF ) array_size_send.push_back(s);
 					++total_packed;
@@ -2515,9 +2504,6 @@ namespace INMOST
 			}
 			REPORT_VAL("total packed records",total_packed);
 		}
-		//static INMOST_DATA_ENUM_TYPE tail = 1;
-		//REPORT_VAL("add tail",tail);
-		//array_size_send.push_back(tail++);
 		INMOST_DATA_ENUM_TYPE size_send, data_send;
 		size_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_size_send.size());
 		data_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
@@ -2538,6 +2524,8 @@ namespace INMOST
 		MPI_Pack(&data_send,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 		if( !array_size_send.empty() ) MPI_Pack(&array_size_send[0],static_cast<INMOST_MPI_SIZE>(array_size_send.size()),INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 		if( !array_data_send.empty() ) MPI_Pack(&array_data_send[0],static_cast<INMOST_MPI_SIZE>(array_data_send.size()/bytes),tag.GetBulkDataType(),&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+		if( tag.GetDataType() == DATA_REFERENCE )
+			PackElementsData(pack_elements,buffer,destination,std::vector<std::string>());
 		buffer.resize(position);
 		REPORT_VAL("Buffer size after pack",buffer.size());
 		if( size_send < 6 )
@@ -2590,10 +2578,10 @@ namespace INMOST
      }               
 
 
-	void Mesh::UnpackTagData(const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op)
+	void Mesh::UnpackTagData(const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op)
 	{
         (void) mask;
-		if( tag.GetDataType() == DATA_REMOTE_REFERENCE) return; //NOT IMPLEMENTED TODO 14
+		//if( tag.GetDataType() == DATA_REMOTE_REFERENCE) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 		REPORT_VAL("TagName",tag.GetTagName());
 		REPORT_VAL("select marker",select);
@@ -2605,6 +2593,7 @@ namespace INMOST
 			ElementType recv_mask[2] = {NONE,NONE};
 			INMOST_DATA_ENUM_TYPE data_recv, size_recv;
 			element_set::const_iterator eit;
+			element_set unpack_elements;
 			unsigned int size = tag.GetSize();
 			std::vector<INMOST_DATA_BULK_TYPE> array_data_recv;
 			std::vector<INMOST_DATA_ENUM_TYPE> array_size_recv;
@@ -2634,6 +2623,11 @@ namespace INMOST
 				REPORT_VAL("calculated size of data",array_data_recv.size()/sizeof(Sparse::Row::entry));
 				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&array_data_recv[0],static_cast<INMOST_MPI_SIZE>(array_data_recv.size()/bytes),tag.GetBulkDataType(),comm);
 			}
+			if( tag.GetDataType() == DATA_REFERENCE )
+			{
+				std::vector<std::string> tag_recv; //should remain empty
+				UnpackElementsData(unpack_elements,buffer,source,position,tag_recv);
+			}
 			REPORT_VAL("Position after unpack",position);
 			for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (recv_mask[0] & ElementTypeFromDim(i)) )
 			{
@@ -2658,16 +2652,17 @@ namespace INMOST
 						for(unsigned j = 0; j < count; j++)
 						{
 							eit = elements[i].begin() + array_size_recv[k++];
-							//REPORT_STR("element type " << ElementTypeName(GetHandleElementType(*eit)) << " global id " << Integer(*eit,GlobalIDTag()));
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
-							//REPORT_VAL("size",array_size_recv[k]);
-							//for(int qq = 0; qq < array_size_recv[k]; ++qq)
-							//{
-							//  REPORT_VAL("value " << qq, (*(Storage::integer *)&array_data_recv[pos+qq*tag.GetBytesSize()]));
-							//}
+							if( tag.GetDataType() == DATA_REFERENCE )
+							{
+								for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size_recv[k]; i++)
+								{
+									HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+									if( *data != InvalidHandle() ) *data = unpack_elements[GetHandleID(*data)];
+								}
+							}
 							op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
 							pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
-							//pos += array_size_recv[k]*tag.GetBytesSize();
 							++k;
 							++total_unpacked;
 						}
@@ -2681,24 +2676,16 @@ namespace INMOST
 							REPORT_VAL("pos",pos);
 							eit = elements[i].begin() + array_size_recv[k++];
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
-							if( pos >= array_data_recv.size() )
+							if( tag.GetDataType() == DATA_REFERENCE )
 							{
-								REPORT_STR("ERROR!");
-								REPORT_VAL("pos", pos );
-								REPORT_VAL("array_size", array_size_recv.size());
-								REPORT_VAL("array_data", array_data_recv.size());
-								REPORT_VAL("size_recv", size_recv);
-								REPORT_VAL("data_recv", data_recv);
-								REPORT_VAL("count", count);
-								REPORT_VAL("buffer position",position);
-								REPORT_VAL("size[0]", array_size_recv[0]);
-								REPORT_VAL("size[1]", array_size_recv[1]);
-								REPORT_VAL("size[2]", array_size_recv[2]);
-								REPORT_VAL("k",k);
+								for (INMOST_DATA_ENUM_TYPE i = 0; i < size; i++)
+								{
+									HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+									if( *data != InvalidHandle() ) *data = unpack_elements[GetHandleID(*data)];
+								}
 							}
 							op(tag,Element(this,*eit),&array_data_recv[pos],size);
 							pos += GetDataCapacity(&array_data_recv[pos],size,tag);
-							//pos += size*tag.GetBytesSize();
 							++total_unpacked;
 						}
 					}
@@ -2713,38 +2700,16 @@ namespace INMOST
 						{
 							if( !select || GetMarker(*eit,select) )
 							{
-                                if (tag.GetDataType() == DATA_REFERENCE)
+                                if (tag.GetDataType() == DATA_REFERENCE) //convert input offsets into real handles
                                 {
-                                    int bytes = tag.GetBytesSize();
-                                    for (int i = 0; i < array_size_recv[k]; i++)
+                                    for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size_recv[k]; i++)
                                     {
-                                        int global_id;
-                                        HandleType data;
-                                        memcpy(&data,&array_data_recv[pos + i*bytes],sizeof(HandleType));
-                                        global_id = GetHandleID(data);
-                                        int type = GetHandleElementNum(data);
-                                        HandleType target;
-                                        if (FindSharedGhost(global_id,GetHandleElementNum(data),target))
-                                        {
-                                            TagReferenceArray ref_tag = tag;
-
-                                            reference_array refs = ReferenceArray(*eit, ref_tag);
-                                            bool already_exist = false;
-                                            for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
-                                            {
-                                                if (target  == refs[i].GetHandle()) already_exist = true;
-                                            }
-                                            if (!already_exist) ref_tag[*eit].push_back(target);
-                                        }
+                                        HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+                                        if( *data != InvalidHandle() ) *data = unpack_elements[GetHandleID(*data)];
                                     }
                                 }
-                                else
-                                {
-								    op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
-                                }
-
+                                op(tag,Element(this,*eit),&array_data_recv[pos],array_size_recv[k]);
 								pos += GetDataCapacity(&array_data_recv[pos],array_size_recv[k],tag);
-								//pos += array_size_recv[k]*tag.GetBytesSize();
 								++k;
 								++total_unpacked;
 							} 
@@ -2758,22 +2723,16 @@ namespace INMOST
 						{
 							if( !select || GetMarker(*eit,select) )
 							{
-#if defined(USE_AUTODIFF)
-								if( tag.GetDataType() == DATA_VARIABLE )
-								{
-									REPORT_VAL("on element ",Element(this,*eit).GlobalID());
-									REPORT_VAL("position ", pos);
-									REPORT_VAL("capacity ", GetDataCapacity(&array_data_recv[pos],size,tag));
-									REPORT_VAL("size ", size);
-								}
-#endif
 								if( tag.GetDataType() == DATA_REFERENCE )
 								{
-									std::cout << __FILE__ <<":" << __LINE__ << "Hello there!" << std::endl;
+									for (INMOST_DATA_ENUM_TYPE i = 0; i < size; i++)
+                                    {
+                                        HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+                                        if( *data != InvalidHandle() ) *data = unpack_elements[GetHandleID(*data)];
+                                    }
 								}
 								op(tag,Element(this,*eit),&array_data_recv[pos],size);
 								pos += GetDataCapacity(&array_data_recv[pos],size,tag);
-								//pos += size*tag.GetBytesSize();
 								++total_unpacked;
 							}
 							else total_skipped++;
@@ -2822,6 +2781,8 @@ namespace INMOST
 #if defined(USE_AUTODIFF)
 			   || tags[k].GetDataType() == DATA_VARIABLE
 #endif
+			   || tags[k].GetDataType() == DATA_REFERENCE
+			   || tags[k].GetDataType() == DATA_REMOTE_REFERENCE
 			   ) unknown_size = true;
 			//for(int i = 0; i < 5; ++i)
 			//	if( (mask & ElementTypeFromDim(i)) && tags[k].isSparseByDim(i) )
@@ -2863,6 +2824,7 @@ namespace INMOST
 		
 		int num_send = 0, num_recv = 0;
         ///////////
+		/*
         if ( block_recursion == 0)
         {
 			int call_exchange = 0;
@@ -2916,6 +2878,7 @@ namespace INMOST
 				block_recursion = 0;
 			}
         }
+		 */
         ///////////
 		for(p = procs.begin(); p != procs.end(); p++ )
 		{
@@ -2989,7 +2952,7 @@ namespace INMOST
 				for(unsigned int k = 0; k < tags.size(); k++)
 				{
 					REPORT_VAL("processor",storage.recv_buffers[*qt].first);
-					UnpackTagData(tags[k],to.find(storage.recv_buffers[*qt].first)->second,mask,select,storage.recv_buffers[*qt].second,position,op);
+					UnpackTagData(tags[k],to.find(storage.recv_buffers[*qt].first)->second,storage.recv_buffers[*qt].first,mask,select,storage.recv_buffers[*qt].second,position,op);
 				}
 			}
 		}
@@ -3792,7 +3755,7 @@ namespace INMOST
 	}
 	
 	
-	void Mesh::UnpackElementsData(element_set & all, buffer_type & buffer, int source, std::vector<std::string> & tag_recv)
+	void Mesh::UnpackElementsData(element_set & all, buffer_type & buffer, int source, int & position, std::vector<std::string> & tag_recv)
 	{
 		ENTER_FUNC();
 		REPORT_VAL("source",source);
@@ -3801,7 +3764,7 @@ namespace INMOST
         int rank = mpirank;
 		INMOST_DATA_ENUM_TYPE num, temp;
 		INMOST_DATA_ENUM_TYPE shift = 0;
-		int position = 0;
+		//int position = 0;
 		elements_by_type selems;
 		MarkerType unpack_tags_mrk = CreateMarker();
 		//MarkerType swap_normal = 0;
@@ -4380,7 +4343,7 @@ namespace INMOST
 				Tag tag = CreateTag(tag_name,static_cast<enum DataType>(datatype),static_cast<ElementType>(defined),static_cast<ElementType>(sparse),datasize);
 				//TODO 46 old
 				//UnpackTagData(tag,unpack_tags,0,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
-				UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,position,DefaultUnpack);
+				UnpackTagData(tag,selems,source,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,position,DefaultUnpack);
 				//UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0, buffer,position,DefaultUnpack);
 			}
 			
@@ -4889,7 +4852,8 @@ namespace INMOST
 			{
 				element_set recv_elements;
 				REPORT_STR("call unpack");
-				UnpackElementsData(recv_elements,recv_bufs[*qt].second,recv_bufs[*qt].first,tag_list_recv);
+				int position = 0;
+				UnpackElementsData(recv_elements,recv_bufs[*qt].second,recv_bufs[*qt].first,position,tag_list_recv);
 				if( action == AGhost )
 				{
 					for(element_set::iterator it = recv_elements.begin(); it != recv_elements.end(); it++)
@@ -4973,7 +4937,8 @@ namespace INMOST
 				for(std::vector<int>::iterator qt = done.begin(); qt != done.end(); qt++)
 				{
 					element_set recv_elements;
-					UnpackElementsData(recv_elements,recv_bufs[*qt].second,recv_bufs[*qt].first,tag_list_recv);	
+					int position = 0;
+					UnpackElementsData(recv_elements,recv_bufs[*qt].second,recv_bufs[*qt].first,position,tag_list_recv);	
 					for(element_set::iterator it = recv_elements.begin(); it != recv_elements.end(); it++)
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);

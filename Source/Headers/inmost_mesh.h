@@ -2258,9 +2258,9 @@ namespace INMOST
 		void                              ComputeSharedProcs ();
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
-		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op);
+		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op);
 		void                              PackElementsData   (element_set & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
-		void                              UnpackElementsData (element_set & output, buffer_type & buffer, int source, std::vector<std::string> & tag_list);
+		void                              UnpackElementsData (element_set & output, buffer_type & buffer, int source, int & position, std::vector<std::string> & tag_list);
 		void                              PrepareReceiveInner(Prepare todo, exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs);
 		void                              ExchangeDataInnerBegin(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, exchange_data & storage);
 		void                              ExchangeDataInnerEnd(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, ReduceOperation op, exchange_data & storage);

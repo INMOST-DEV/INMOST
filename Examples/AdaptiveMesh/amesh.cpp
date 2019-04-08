@@ -644,7 +644,7 @@ namespace INMOST
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
 
-
+		/*
         MarkerType marker_new = m->CreateMarker();
         for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) 
         {
@@ -670,6 +670,7 @@ namespace INMOST
             if (it->GetMarker(m->NewMarker()) == false) continue;
             it->SetMarker(marker_new);
         }
+        */
 
 
 		//11. Restore parallel connectivity, global ids
@@ -696,7 +697,7 @@ namespace INMOST
 		//m->ApplyModification();
     	//m->EndModification();
     	//PrintSet();
-    	//m->ExchangeData(parent_set,CELL,0);
+    	m->ExchangeData(parent_set,CELL,0);
     	
     			//restore face orientation
 		//BUG: bad orientation not fixed automatically
