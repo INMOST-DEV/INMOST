@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
         properties["eps:use_closest"]  = "false";
         properties["eps:strict_bound"] = "false";
 
-        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, properties, 10);
+        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, properties, 15);
 
         TTSP::OptimizerInterface *topt = TTSP::Optimizers::GetSavedOptimizer("test");
 

@@ -40,6 +40,8 @@ namespace TTSP {
         mutable BayesianUniformDistribution random;
 
     protected:
+        bool UpdateSpaceWithLatestResults() override;
+
         SuggestionChangedParameters AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
                                                                                                                  const OptimizationParameterPoints &,
                                                                                                                  void *)> &invoke, void *data) const override;

@@ -259,6 +259,18 @@ namespace TTSP {
         return changed_parameters;
     }
 
+    bool BayesianOptimizer::UpdateSpaceWithLatestResults() {
+        const OptimizationParameterResult &last = results.at(0);
+
+
+        if (last.IsGood() && (last.GetMetricsBefore() < 0.0 || (last.GetMetricsAfter() < last.GetMetricsBefore()))) {
+            parameters.Update(last.GetChangedParameters(), last.GetMetricsAfter());
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     BayesianOptimizer::~BayesianOptimizer() {}
 
 
