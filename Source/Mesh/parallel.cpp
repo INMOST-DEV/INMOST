@@ -2238,13 +2238,7 @@ namespace INMOST
 			bool flag = false;
 			Element::Status estat1 = GetStatus(*it), estat2;
 			if( estat1 == Element::Owned ) continue;
-            if (marker && !it->GetMarker(marker)) continue;
-      //Storage::integer_array skin_data = it->IntegerArray(tag_skin);
-      //REPORT_STR("face " << it->LocalID() << " global " << it->GlobalID() << " type " << Element::StatusName(estat1));
-      //for(Storage::integer_array::iterator kt = skin_data.begin(); kt != skin_data.end(); kt+=2)
-      //{
-      //  REPORT_STR("id " << *kt << " owner " << *(kt+1));
-      //}
+			if (marker && !it->GetMarker(marker)) continue;
 			Cell c1 = it->BackCell();
 			Cell c2 = it->FrontCell();
 			if( !c1.isValid() && !c2.isValid() ) continue; //no cells per face - skip hanging face
@@ -4728,17 +4722,13 @@ namespace INMOST
 		{
 			REPORT_STR("Gathering elements to send");
 			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
-			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
-//			for(Mesh::iteratorElement it = BeginElement(CELL | FACE | EDGE | NODE); it != EndElement(); ++it) if( it->HaveData(tag_sendto) )
-			{
-				Storage::integer_array mark = it->IntegerArray(tag_sendto);
-				for(Storage::integer_array::iterator kt = mark.begin(); kt != mark.end(); kt++)
-					if( *kt != mpirank )
-                    {
-						send_elements[*kt].push_back(*it);
-                    }
-				it->DelData(tag_sendto);
-			}
+				for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
+				{
+					Storage::integer_array mark = it->IntegerArray(tag_sendto);
+					for(Storage::integer_array::iterator kt = mark.begin(); kt != mark.end(); kt++)
+						if( *kt != mpirank ) send_elements[*kt].push_back(*it);
+					it->DelData(tag_sendto);
+				}
 		}
 		num_wait = 0;
 		send_bufs.resize(send_elements.size());
@@ -4831,16 +4821,15 @@ namespace INMOST
 			//now delete elements that we have not yet deleted
 			int count = 0;
 			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
-			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
-			//for(iteratorElement it = BeginElement(CELL | FACE | EDGE | NODE); it != EndElement(); it++)
-			{
-				Storage::integer_array procs = it->IntegerArray(tag_new_processors);
-				if( !std::binary_search(procs.begin(),procs.end(),mpirank) ) 
+				for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 				{
-					Destroy(*it);
-					++count;
+					Storage::integer_array procs = it->IntegerArray(tag_new_processors);
+					if( !std::binary_search(procs.begin(),procs.end(),mpirank) ) 
+					{
+						Destroy(*it);
+						++count;
+					}
 				}
-			}
 			REPORT_VAL("number of some other",count);
 			REPORT_STR("Done deleting");
 		}
