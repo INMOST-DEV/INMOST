@@ -113,26 +113,25 @@ namespace INMOST
 	{
 		if( size )
 		{
-      for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k+=2 )
-      {
-			  bool flag = true;
-			  const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data))+k;
-			  Storage::integer_array arr = e->IntegerArray(tag);
-      
-        for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it+=2)
-        {
-          if( *it == recv[0] )
-				  {
-					  flag = false;
-					  break;
-				  }
-        }
-			  if( flag ) 
-			  {
-				  arr.push_back(recv[0]);
-				  arr.push_back(recv[1]);
-			  }
-      }
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; k+=2 )
+			{
+				bool flag = true;
+				const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data))+k;
+				Storage::integer_array arr = e->IntegerArray(tag);
+				for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it+=2)
+				{
+					if( *it == recv[0] )
+					{
+						flag = false;
+						break;
+					}
+				}
+				if( flag ) 
+				{
+					arr.push_back(recv[0]);
+					arr.push_back(recv[1]);
+				}
+			}
 		}
 	}
 	
@@ -1367,12 +1366,13 @@ namespace INMOST
 					REPORT_VAL("time",time);
 					
 					
-					MarkerType new_lc;
+					MarkerType new_lc = 0;
 					if( only_new ) new_lc = CreateMarker();
-					TagInteger lc_mrk = CreateTag("LC_MARKER",DATA_INTEGER,CELL|FACE|EDGE,NONE,1);
+					//TagInteger lc_mrk = CreateTag("LC_MARKER",DATA_INTEGER,CELL|FACE|EDGE,NONE,1);
 					MarkerType hm = HideMarker();
+					MarkerType nm = NewMarker();
 					
-					for (iteratorElement it = BeginElement(CELL|FACE|EDGE); it != EndElement(); it++) lc_mrk[*it] = 0;
+					//for (iteratorElement it = BeginElement(CELL|FACE|EDGE); it != EndElement(); it++) lc_mrk[*it] = 0;
 					
 					for(ElementType current_mask = EDGE; current_mask <= CELL; current_mask = NextElementType(current_mask))
 					{
@@ -1392,19 +1392,19 @@ namespace INMOST
 							{
 								Element it = ElementByLocalID(current_mask,eit);
 								if( it->GetMarker(hm) ) continue;
-                                if (GetMarker(it.GetHandle(),NewMarker()) == true) 
+                                if( it->GetMarker(nm) ) 
                                 {
-									SetMarker(ComposeHandle(current_mask,eit),new_lc);
-									lc_mrk[ComposeHandle(current_mask,eit)] = 1;
+									it->SetMarker(new_lc);
+									//lc_mrk[ComposeHandle(current_mask,eit)] = 1;
 									continue;
 								}
 
 								Element::adj_type low_conn = LowConn(ComposeHandle(current_mask,eit));
-								for (Element::adj_type::iterator it = low_conn.begin(); it != low_conn.end(); it++)
-									if (GetMarker(*it,NewMarker())) 
+								for (Element::adj_type::iterator jt = low_conn.begin(); jt != low_conn.end(); jt++)
+									if( GetMarker(*jt,nm)) 
 									{
-										SetMarker(ComposeHandle(current_mask,eit),new_lc);
-										lc_mrk[ComposeHandle(current_mask,eit)] = 1;
+										it->SetMarker(new_lc);
+										//lc_mrk[ComposeHandle(current_mask,eit)] = 1;
 										break;
 									}
 							}
@@ -1427,7 +1427,7 @@ namespace INMOST
 								{
 									Element it = ElementByLocalID(current_mask,eit);
 									if( it->GetMarker(hm) ) continue;
-                                    if (only_new && GetMarker(it.GetHandle(),new_lc) == false) continue;
+                                    if (only_new && it->GetMarker(new_lc)) continue;
 
 									
 									
@@ -1523,7 +1523,7 @@ namespace INMOST
 								message_send.push_back(0);
 								for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
 								{
-                                    if (only_new && GetMarker(*it,new_lc) == false) continue;
+                                    if (only_new && it->GetMarker(new_lc)) continue;
 									Storage::integer_array pr = it->IntegerArrayDV(tag_processors);
 									if( std::binary_search(pr.begin(),pr.end(),*p) )
 									{
@@ -1683,7 +1683,7 @@ namespace INMOST
 						//Now mark all the processors status
 						for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
 						{
-                            if (only_new && (GetMarker(*it,new_lc) == false)) continue;
+                            if (only_new && !it->GetMarker(new_lc)) continue;
     
 							Storage::integer_array pr = it->IntegerArrayDV(tag_processors);
 							if( pr.empty() )
@@ -1729,16 +1729,16 @@ namespace INMOST
 						REPORT_STR("Set parallel info");
 						REPORT_VAL("time",time);
 					}
-					ReleaseMarker(new_lc,EDGE | FACE|CELL);
+					if( only_new ) ReleaseMarker(new_lc,EDGE|FACE|CELL);
 					
 				}
 				RemoveGeometricData(table);	
 			}
 		}
 		//RemoveGhost();
-		EquilibrateGhost(only_new);
 #else //USE_MPI
 		AssignGlobalID(CELL | FACE | EDGE | NODE);
+		EquilibrateGhost(only_new);
         (void)only_new;
 #endif //USE_MPI
 		EXIT_FUNC();

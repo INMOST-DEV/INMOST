@@ -4377,7 +4377,7 @@ namespace INMOST
 			//compute cell centers that lay inside
 			if (true) //TODO16
 			{
-				if( true )
+				if( false )
 				{
 					if (verbosity > 0)
 					{
