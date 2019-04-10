@@ -390,7 +390,7 @@ using namespace INMOST;
 		INMOST_DATA_ENUM_TYPE vbeg, vend; // vector interval
 		
 		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next;
-		INMOST_DATA_REAL_TYPE l,u,udiag, abs_udiag, max_diag, min_diag, mean_diag;
+		INMOST_DATA_REAL_TYPE l,u,udiag, abs_udiag, max_diag = -1.0e+20, min_diag = 1.0e+20, mean_diag;
 		INMOST_DATA_ENUM_TYPE nzA, nzLU = 0;
 		Sparse::Vector DL, DR;
 		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
