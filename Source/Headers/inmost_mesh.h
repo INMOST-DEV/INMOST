@@ -2258,7 +2258,7 @@ namespace INMOST
 		void                              ComputeSharedProcs ();
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
-		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op);
+		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, proc_elements * send_elements = NULL);
 		void                              PackElementsData   (element_set & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
 		void                              UnpackElementsData (element_set & output, buffer_type & buffer, int source, int & position, std::vector<std::string> & tag_list);
 		void                              PrepareReceiveInner(Prepare todo, exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs);
@@ -2268,8 +2268,9 @@ namespace INMOST
 		std::vector<int>                  FinishRequests     (std::vector<INMOST_MPI_Request> & recv_reqs);
 		void                              SortParallelStorage(parallel_storage & ghost, parallel_storage & shared,ElementType mask);
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
+		void                              InformElementsOwners(proc_elements & send_elements, exchange_data & storage);
 	public:
-        bool                              FindSharedGhost(int global_id, INMOST_DATA_INTEGER_TYPE el_type_num,  HandleType& res);
+        //bool                              FindSharedGhost(int global_id, INMOST_DATA_INTEGER_TYPE el_type_num,  HandleType& res);
 #if defined(USE_PARALLEL_WRITE_TIME)	
 		//this part is needed to test parallel performance
 		void                              Enter              ();
