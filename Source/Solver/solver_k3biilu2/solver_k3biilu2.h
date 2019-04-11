@@ -1,7 +1,7 @@
 #ifndef SOLVER_K3BIILU2_H_INCLUDED
 #define SOLVER_K3BIILU2_H_INCLUDED
 
-#include "k3d.h"
+#include "k3d_slv.hxx"
 #include "inmost.h"
 #include "inmost_solver.h"
 

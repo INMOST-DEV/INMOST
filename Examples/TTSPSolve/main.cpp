@@ -222,12 +222,12 @@ int main(int argc, char **argv) {
         properties["eps:use_closest"]  = "false";
         properties["eps:strict_bound"] = "false";
 
-        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, properties, 15);
+        TTSP::Optimizers::SaveOptimizerOrReplace("test", optimizerType, properties, 9);
 
         TTSP::OptimizerInterface *topt = TTSP::Optimizers::GetSavedOptimizer("test");
 
         topt->SetVerbosityLevel(TTSP::OptimizerVerbosityLevel::Level1);
-        topt->SetRestartStrategy(TTSP::OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 10);
+        topt->SetRestartStrategy(TTSP::OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 7);
 
         double metrics_total = 0.0;
 
