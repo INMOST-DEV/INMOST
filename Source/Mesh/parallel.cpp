@@ -1121,7 +1121,8 @@ namespace INMOST
 				same_boxes &= same_box;
 			}
 			
-			if( same_boxes )
+			//if( same_boxes )
+			if( false )
 			{
 				REPORT_STR("All bounding boxes are the same - assuming that mesh is replicated over all nodes");
 				//for(Mesh::iteratorElement it = BeginElement(CELL | EDGE | FACE | NODE); it != EndElement(); it++)

@@ -826,8 +826,6 @@ namespace INMOST
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
         //m->ResolveSets();
 
-		m->CheckCentroids(__FILE__,__LINE__);
-
         //m->BeginModification();
         //    m->ExchangeGhost(1,NODE,marker_new); // Construct Ghost cells in 2 layers connected via nodes
         //    m->ReleaseMarker(marker_new,CELL|FACE|EDGE|NODE);
@@ -835,13 +833,14 @@ namespace INMOST
     	//m->EndModification();
     	//PrintSet();
     	//m->ResolveSets();
-		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		m->CheckCentroids(__FILE__,__LINE__);
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
@@ -1275,13 +1274,13 @@ namespace INMOST
 		}
 		//m->ResolveSets();
 		m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		m->CheckCentroids(__FILE__,__LINE__);
 		//cleanup null links in sets
 		CleanupSets(root);
