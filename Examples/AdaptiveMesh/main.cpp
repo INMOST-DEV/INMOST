@@ -26,7 +26,8 @@ int main(int argc, char ** argv)
 			m.ReorderEmpty(CELL|FACE|EDGE|NODE);
 			std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 		}
-#endif		
+#endif
+		m.ExchangeGhost(2,NODE);
 		AdaptiveMesh am(m);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
@@ -99,7 +100,7 @@ int main(int argc, char ** argv)
 					int res = am.Refine(indicator);
                     res = m.Integrate(res);
                     if (!res) break;
-                    
+                    /*
                     {
 						std::stringstream file;
 						file << "ref_" << k << "_" << refcnt << ".pvtk";
@@ -107,6 +108,7 @@ int main(int argc, char ** argv)
 						if( m.GetProcessorRank() == 0 )
 						std::cout << "Save " << file.str() << std::endl;
 					}
+					 */
 				}
 				refcnt++;
 			}

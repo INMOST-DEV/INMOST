@@ -198,7 +198,7 @@ namespace INMOST
 		out_time.open(temp.str().c_str(),std::ios::out);
 		out_time << "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>" << std::endl;
 		out_time << "<?xml-stylesheet type=\"text/xsl\" href=\"style.xsl\"?>" << std::endl;
-		out_time << "<Debug ProcessID=" << PROCESSID << ">" << std::endl;
+		out_time << "<Debug ProcessID=\"" << PROCESSID << "\">" << std::endl;
 		tab = 1;
 		func_id = 0;
 #endif

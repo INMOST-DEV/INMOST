@@ -674,9 +674,28 @@ namespace INMOST
 
 
 		//11. Restore parallel connectivity, global ids
-        
+		{
+			std::fstream fout;
+			fout.open("out"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
+			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype) )
+			{
+				int cnt = 0;
+				for(Mesh::iteratorElement it = m->BeginElement(etype); it != m->EndElement(); ++it)
+				{
+					if( it->New() )
+					{
+						fout << "new element " << ElementTypeName(etype) << ":" << it->LocalID() <<std::endl;//<< " gid " << it->GlobalID() << std::endl;
+						cnt++;
+					}
+				}
+				fout << ElementTypeName(etype) << " count: " << cnt << std::endl;
+			}
+			
+			fout.close();
+		}
         //if (call_counter == 0)
 		m->ResolveModification();
+		//m->SynchronizeMarker(m->NewMarker(),CELL|FACE|EDGE|NODE,SYNC_BIT_OR);
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New() cells
@@ -684,10 +703,12 @@ namespace INMOST
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
 		
-		m->ExchangeGhost(1,NODE,m->NewMarker());
+		//m->ExchangeGhost(1,NODE,m->NewMarker());
 		//14. Done
         //cout << rank << ": Before end " << std::endl;
 		m->EndModification();
+		
+		
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
         //m->ResolveSets();
 
@@ -699,6 +720,7 @@ namespace INMOST
 		//m->ApplyModification();
     	//m->EndModification();
     	//PrintSet();
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
     	m->ExchangeData(parent_set,CELL,0);
     	
     			//restore face orientation
@@ -788,7 +810,7 @@ namespace INMOST
 	{
         std::cout << rank << " enter " << __FUNCTION__ << std::endl;
         SynchronizeIndicated(indicator);
-        return false;
+        //return false;
 
 		static int call_counter = 0;
 		//return number of coarsened cells
@@ -1106,7 +1128,6 @@ namespace INMOST
 		
 		m->CheckCentroids();
 		//CheckCentroids();
-        //ExchangeData(hanging_nodes,CELL | FACE,0);
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 		{
@@ -1119,6 +1140,8 @@ namespace INMOST
 				arr.resize(jt);
 			}
 		}
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		m->ExchangeData(parent_set,CELL,0);
 		//cleanup null links in sets
 		CleanupSets(root);
 		
