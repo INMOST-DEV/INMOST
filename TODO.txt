@@ -44,6 +44,7 @@ mpiexec -np 2 lldb -s lldb.in ./AdaptiveMesh grid.vtk
 11) add cell_set_id to create new sets with same short name instead of base64_encode
 12) check MFD-F scalability on cluster
 13) ResolveShared same_boxes - add whole mesh centroid comparison!
+14) AdaptiveMesh - second parent_set update in Coarse
 
 Изменение сетки:
 0) (готово) избавиться от получения ссылок на первый элемент массивов, заменить на data()
