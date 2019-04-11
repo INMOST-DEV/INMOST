@@ -215,13 +215,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)
-				if( (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) ) //check for type filters invalid handles
+				if( *it != InvalidHandle() && (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) ) //check for type filters invalid handles
 					m->SetPrivateMarker(*it,mrk);
 		}
 		else
 		{
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(*it) & etype )
+				if( *it != InvalidHandle() && (GetHandleElementType(*it) & etype) )
 					m->SetPrivateMarker(*it,mrk);
 		}
 	}
@@ -234,13 +234,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)
-				if( (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) )//check for type filters invalid handles
+				if( *it != InvalidHandle() && (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) )//check for type filters invalid handles
 					m->RemMarker(*it,mrk);
 		}
 		else
 		{
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(*it) & etype )
+				if( *it != InvalidHandle() && (GetHandleElementType(*it) & etype) )
 					m->RemMarker(*it,mrk);
 		}
 	}
@@ -253,13 +253,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)
-				if( (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) )//check for type filters invalid handles
+				if( *it != InvalidHandle() && (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) )//check for type filters invalid handles
 					m->RemPrivateMarker(*it,mrk);
 		}
 		else
 		{
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(*it) & etype )
+				if( *it != InvalidHandle() && (GetHandleElementType(*it) & etype) )
 					m->RemPrivateMarker(*it,mrk);
 		}
 	}
@@ -275,13 +275,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(lc[it]) & etype )
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) )
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -297,13 +297,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
 					++ret;
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(lc[it]) & etype )
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) )
 					++ret;
 		}
 		return ret;
@@ -319,13 +319,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -341,13 +341,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					++ret;
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & etype) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					++ret;
 		}
 		return ret;
@@ -363,13 +363,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & NODE) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & NODE) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(lc[it]) & NODE )
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & NODE) )
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -385,13 +385,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & NODE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & NODE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & NODE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & NODE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -407,13 +407,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & EDGE) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & EDGE) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(lc[it]) & EDGE )
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & EDGE) )
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -429,13 +429,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & EDGE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & EDGE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & EDGE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & EDGE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -451,13 +451,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & FACE) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & FACE) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(lc[it]) & FACE )
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & FACE) )
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -473,13 +473,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & FACE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & FACE) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & FACE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & FACE) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -495,13 +495,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & CELL) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & CELL) && !m->GetMarker(lc[it],hm) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(lc[it]) & CELL )
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & CELL) )
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -517,13 +517,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & CELL) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & CELL) && !m->GetMarker(lc[it],hm) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		else
 		{
 			for(Element::adj_type::size_type it = 0; it < lc.size(); ++it)
-				if( (GetHandleElementType(lc[it]) & CELL) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
+				if( lc[it] != InvalidHandle() && (GetHandleElementType(lc[it]) & CELL) && (invert ^ m->GetMarker(lc[it],select)) )//check for type filters invalid handles
 					ret.push_back(lc[it]);
 		}
 		return ret;
@@ -650,7 +650,7 @@ namespace INMOST
 							lc[static_cast<enumerator>(hc.back())] = h[it];
 							hc.pop_back();
 						}
-						else lc.push_back(hc[it]);
+						else lc.push_back(h[it]);
 					}
 					++it;
 				}
@@ -963,7 +963,7 @@ namespace INMOST
 		Element::adj_type::size_type i;
 		MarkerType mrk = m->CreatePrivateMarker();
 		m->SetPrivateMarkerArray(h,num,mrk);
-		for(i = 0; i < lc.size(); i++)
+		for(i = 0; i < lc.size(); i++) if( lc[i] != InvalidHandle() )
 		{
 			if( m->GetPrivateMarker(lc[i],mrk) )
 			{
@@ -1298,6 +1298,12 @@ namespace INMOST
 		m->RemPrivateMarkerArray(handles,num,mrk);
 		m->ReleasePrivateMarker(mrk);
 	}
+	
+	void ElementSet::SetExchange(ExchangeType comp) const
+	{
+		assert(GetElementType() == ESET);
+		Bulk(GetMeshLink()->SetExchangeTag()) = comp;
+	}
 
 	void ElementSet::SortSet(ComparatorType comp) const
 	{
@@ -1442,12 +1448,14 @@ namespace INMOST
 		else hSorted(hc) = 0;
 		comparator = comp;
 	}
-
-  ElementSet::ComparatorType ElementSet::GetComparator() const
-  {
-    return BulkDF(GetMeshLink()->SetComparatorTag());
-  }
-
+	ElementSet::ComparatorType ElementSet::GetComparator() const
+	{
+		return BulkDF(GetMeshLink()->SetComparatorTag());
+	}
+	ElementSet::ExchangeType ElementSet::GetExchange() const
+	{
+		return BulkDF(GetMeshLink()->SetExchangeTag());
+	}
 	Element ElementSet::FindElementByGlobalID(integer global_id) const
 	{
 		assert(GetElementType() == ESET);

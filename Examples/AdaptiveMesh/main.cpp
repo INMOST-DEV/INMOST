@@ -98,17 +98,18 @@ int main(int argc, char ** argv)
 					std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " numref " << numref << " cells " << m.NumberOfCells() << std::endl;
 					
 					int res = am.Refine(indicator);
-                    res = m.Integrate(res);
-                    if (!res) break;
-                    /*
-                    {
+					res = m.Integrate(res);
+					if (!res) break;
+					
+					if( false )
+					{
 						std::stringstream file;
 						file << "ref_" << k << "_" << refcnt << ".pvtk";
 						m.Save(file.str());
 						if( m.GetProcessorRank() == 0 )
-						std::cout << "Save " << file.str() << std::endl;
+							std::cout << "Save " << file.str() << std::endl;
 					}
-					 */
+					
 				}
 				refcnt++;
 			}
@@ -142,13 +143,23 @@ int main(int argc, char ** argv)
 					int res = am.Coarse(indicator);
 					res = m.Integrate(res);
 					if( !res ) break;
+					
+					if( false ) 
+					{
+						std::stringstream file;
+						file << "crs_" << k << "_" << refcnt << ".pvtk";
+						m.Save(file.str());
+						if( m.GetProcessorRank() == 0 )
+							std::cout << "Save " << file.str() << std::endl;
+					}
+					
 				}
 				
 				refcnt++;
 			}
 			while(numref);
 			
-			
+			if( false ) 
 			{
 				TagInteger tag_owner = m.CreateTag("OWN",DATA_INTEGER,CELL,NONE,1);
 				TagInteger tag_owner0 = m.GetTag("OWNER_PROCESSOR");
@@ -164,6 +175,7 @@ int main(int argc, char ** argv)
 				if( m.GetProcessorRank() == 0 )
 					std::cout << "Save " << file.str() << std::endl;
 			}
+			else if( m.GetProcessorRank() == 0 ) std::cout << "step " << k << std::endl;
 		}
 	}
 	else std::cout << "Usage: " << argv[0] << " mesh_file [max_levels=2]" << std::endl;

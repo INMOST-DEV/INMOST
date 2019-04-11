@@ -1,13 +1,61 @@
 #include "amesh.h"
 #include <iomanip>
 #include <set>
-
+#include "../../Source/Misc/base64.h"
 //using namespace std;
 
+//from inmost
+//std::string base64_encode(unsigned char const* buf, unsigned int bufLen);
+	std::string base64_encode_(unsigned char const* buf, unsigned int bufLen)
+	{
+		static const std::string base64_chars =
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz"
+		"0123456789+/";
+		std::string ret;
+		int i = 0;
+		int j = 0;
+		unsigned char char_array_3[3];
+		unsigned char char_array_4[4];
+		
+		while (bufLen--)
+		{
+			char_array_3[i++] = *(buf++);
+			if (i == 3)
+			{
+				char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+				char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+				char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+				char_array_4[3] = char_array_3[2] & 0x3f;
+				for(i = 0; (i <4) ; i++)
+					ret += base64_chars[char_array_4[i]];
+				i = 0;
+			}
+		}
+		
+		if (i)
+		{
+			for(j = i; j < 3; j++)
+				char_array_3[j] = '\0';
+	  
+			char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+			char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+			char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+			char_array_4[3] = char_array_3[2] & 0x3f;
+	  
+			for (j = 0; (j < i + 1); j++)
+				ret += base64_chars[char_array_4[j]];
+	  
+			while((i++ < 3))
+				ret += '=';
+		}
+		
+		return ret;
+	}
 /// todo:
 /// 1. coarsment
 /// 2. strategy for faces/edges with faults
-/// 3. geom model support
+/// 3. geom model supportbn
 /// 4. make class abstract virtual for user implementation of refinement and coarsment indicators
 /// see in code todo:
 namespace INMOST
@@ -352,6 +400,7 @@ namespace INMOST
 			if( root == InvalidElement() )
 			{
 				root = m->CreateSetUnique("ROOT_SET").first;
+				root.SetExchange(ElementSet::SYNC_ELEMENTS_SHARED);
 				level[root] = 0;
 				for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 				{
@@ -361,6 +410,7 @@ namespace INMOST
 			}
         }
 		if( !m->HaveGlobalID(CELL) ) m->AssignGlobalID(CELL); //for unique set names
+		m->ResolveSets();
 	}
 	
 	AdaptiveMesh::AdaptiveMesh(Mesh & _m) : m(&_m)
@@ -385,13 +435,42 @@ namespace INMOST
 		//as extension of class mesh in limited code span
 	}
 	
+	void AdaptiveMesh::CheckParentSet()
+	{
+		std::cout << rank << " enter " << __FUNCTION__ << std::endl;
+		int err = 0;
+		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+		{
+			if( parent_set[*it] == InvalidHandle() )
+			{
+				std::cout << m->GetProcessorRank() << " parent set not valid on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
+				err++;
+			}
+			else if( GetHandleElementType(parent_set[*it]) != ESET )
+			{
+				std::cout << m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
+				err++;
+			}
+		}
+		err = m->Integrate(err);
+		if( err ) 
+		{
+			std::cout << rank << " error in " << __FUNCTION__ << std::endl;
+			exit(-1);
+		}
+		std::cout << rank << " exit " << __FUNCTION__ << std::endl;
+		
+	}
+	
 	bool AdaptiveMesh::Refine(TagInteger & indicator)
 	{
         std::cout << rank << " enter " << __FUNCTION__ << std::endl;
 		static int call_counter = 0;
 		int ret = 0; //return number of refined cells
 		//initialize tree structure
+		m->CheckCentroids(__FILE__,__LINE__);
 		PrepareSet();
+		CheckParentSet();
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1; //indicates that at least one element was scheduled on current sweep
 		//0. Extend indicator for edges and faces
@@ -450,7 +529,7 @@ namespace INMOST
 			if( scheduled ) schedule_counter++;
 		}
 		m->ExchangeData(indicator,CELL | FACE | EDGE,0);
-		m->Save("indicator.pmf");
+		//m->Save("indicator.pmf");
 		//6.Refine
 		m->BeginModification();
 		while(schedule_counter)
@@ -613,14 +692,38 @@ namespace INMOST
 						//clean up structure, so that other cells can use it
 						edge_hanging_nodes[kt].DelData(internal_face_edges);
 					}
+					//if( c.GlobalID() == 228 )
+					//{
+					//	double cnt[3];
+					//	c.Centroid(cnt);
+					//	std::cout << "Split CELL:" << c.LocalID() << " " << c.GlobalID() << " " << Element::StatusName(c.GetStatus()) << " " << cnt[0] << " " << cnt[1] << " " << cnt[2] << std::endl;
+					//	
+					//}
 					//split the cell
 					ElementArray<Cell> new_cells = Cell::SplitCell(c,internal_faces,0);
 					//retrive parent set
 					ElementSet parent(m,parent_set[c]);
 					//create set corresponding to old coarse cell
+					Storage::real cnt[3];
+					c.Centroid(cnt);
 					std::stringstream set_name;
-					set_name << parent.GetName() << "_C" << c.GlobalID(); //rand may be unsafe
+					//set_name << parent.GetName() << "_C" << c.GlobalID(); //rand may be unsafe
+					set_name << base64_encode_((unsigned char *)cnt,3*sizeof(double)/sizeof(unsigned char));
+					/*
+					ElementSet check_set = m->GetSet(set_name.str());
+					if( check_set.isValid() )
+					{
+						std::cout << rank << " set " << set_name.str() << " for cell " << c.GlobalID() << " " << Element::StatusName(c.GetStatus()) << " already exists" << std::endl;
+						if( check_set->HaveParent() )
+							std::cout << rank << " parent is " << check_set->GetParent()->GetName() << " cell parent is " << parent.GetName() << std::endl;
+						std::cout << rank << " Elements: ";
+						for(ElementSet::iterator it = check_set.Begin(); it != check_set.End(); ++it)
+							std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << "," << it->GlobalID() << "," << Element::StatusName(c.GetStatus()) << "," << level[*it] << " ";
+						std::cout << std::endl;
+					}
+					*/
 					ElementSet cell_set = m->CreateSetUnique(set_name.str()).first;
+					cell_set->SetExchange(ElementSet::SYNC_ELEMENTS_ALL);
 					level[cell_set] = level[c]+1;
 					//set up increased level for the new cells
 					for(ElementArray<Cell>::size_type kt = 0; kt < new_cells.size(); ++kt)
@@ -629,7 +732,18 @@ namespace INMOST
 						cell_set.PutElement(new_cells[kt]);
 						parent_set[new_cells[kt]] = cell_set.GetHandle();
 					}
+					/*
+					if( check_set.isValid() )
+					{
+						std::cout << rank << " Elements: ";
+						for(ElementSet::iterator it = check_set.Begin(); it != check_set.End(); ++it)
+							std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << "," << it->GlobalID() << "," << Element::StatusName(c.GetStatus()) << "," << level[*it] << " ";
+						std::cout << std::endl;
+					}
+					*/
+					//if( !cell_set->HaveParent() )
 					parent.AddChild(cell_set);
+					//else assert(cell_set->GetParent() == parent);
 					//increment number of refined cells
 					ret++;
 				}
@@ -712,7 +826,7 @@ namespace INMOST
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
         //m->ResolveSets();
 
-		m->CheckCentroids();
+		m->CheckCentroids(__FILE__,__LINE__);
 
         //m->BeginModification();
         //    m->ExchangeGhost(1,NODE,marker_new); // Construct Ghost cells in 2 layers connected via nodes
@@ -720,10 +834,16 @@ namespace INMOST
 		//m->ApplyModification();
     	//m->EndModification();
     	//PrintSet();
+    	//m->ResolveSets();
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-    	m->ExchangeData(parent_set,CELL,0);
-    	
-    			//restore face orientation
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ResolveSets();
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		//restore face orientation
 		//BUG: bad orientation not fixed automatically
 		int nfixed = 0;
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
@@ -733,8 +853,18 @@ namespace INMOST
 				nfixed++;
 			}
 			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
-		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
-
+		if( nfixed ) std::cout << rank << " fixed " << nfixed << " faces" << std::endl;
+		/*
+		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+		{
+			if( parent_set[*it] == InvalidHandle() )
+				std::cout << m->GetProcessorRank() << " parent set not valid on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << std::endl;
+			else if( GetHandleElementType(parent_set[*it]) != ESET )
+				std::cout << m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << std::endl;
+		}
+		*/
+		std::cout << rank << " check parent_set at end" << std::endl;
+		CheckParentSet();
 
         //ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << std::endl;
@@ -761,6 +891,7 @@ namespace INMOST
     void AdaptiveMesh::SynchronizeIndicated(TagInteger& indicator)
     {
         if (m->GetProcessorsNumber() == 1) return;
+        std::cout << rank << " enter " << __FUNCTION__ << std::endl;
         int rank = m->GetProcessorRank();
 
         // Check all sets. All elements in sets must be indicated. At first we check indicator in local processor, and second integrate data
@@ -804,19 +935,21 @@ namespace INMOST
         }
         cout << rank << " Sets: \n" << ss.str() << endl;
         */
+        std::cout << rank << " exit " << __FUNCTION__ << std::endl;
     }
 
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
         std::cout << rank << " enter " << __FUNCTION__ << std::endl;
-        SynchronizeIndicated(indicator);
         //return false;
-
+		m->CheckCentroids(__FILE__,__LINE__);
 		static int call_counter = 0;
 		//return number of coarsened cells
 		int ret = 0;
 		//initialize tree structure
 		PrepareSet();
+		SynchronizeIndicated(indicator);
+		CheckParentSet();
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
 		//TagInteger coarsened = CreateTag("COARSENED",DATA_INTEGER,CELL,NONE,1);
@@ -1126,7 +1259,7 @@ namespace INMOST
 		//done
 		m->EndModification();
 		
-		m->CheckCentroids();
+		m->CheckCentroids(__FILE__,__LINE__);
 		//CheckCentroids();
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
@@ -1140,10 +1273,20 @@ namespace INMOST
 				arr.resize(jt);
 			}
 		}
+		//m->ResolveSets();
+		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ResolveSets();
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
 		//cleanup null links in sets
 		CleanupSets(root);
+		
+		CheckParentSet();
 		
 		
 		//restore face orientation

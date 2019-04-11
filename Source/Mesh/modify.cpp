@@ -2048,108 +2048,15 @@ namespace INMOST
 		}
 		//Destroy(erase);//old approach
 	}
-
-    double Mesh::dist(Cell a, Cell b)
-    {
-        double xyza[3];
-        double xyzb[3];
-        a.Centroid(xyza);
-        b.Centroid(xyzb);
-
-
-        double dx = xyza[0] - xyzb[0];
-        double dy = xyza[1] - xyzb[1];
-        double dz = xyza[2] - xyzb[2];
-        return sqrt(dx*dx + dy*dy + dz*dz);
-    }
-
-    void OperationMinDistance(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
-    {
-		(void)size;
-		assert(size == 2);
-		INMOST_DATA_INTEGER_TYPE * idata = (INMOST_DATA_INTEGER_TYPE *)data;
-        Storage::integer_array rdata = element->IntegerArray(tag);
-        if (data[1] < rdata[1])
-        {
-            rdata[0] = data[0];
-            rdata[1] = data[1];
-        }
-    }
-
-    
-    void Mesh::EquilibrateGhost(bool only_new)
-	{
-		if( GetProcessorsNumber() == 1 ) return;
-        TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG",DATA_INTEGER,CELL,CELL,2);
-        
-        //TODO: compute graph distance only in new elements!!!!
-        std::queue<HandleType> cells_queue;
-        // Push nearest to owned cell into queue
-		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
-		{
-			Cell c = CellByLocalID(k);
-			if (c.GetStatus() != Element::Owned)
-			{
-				tag[c][1] = INT_MAX; 
-				ElementArray<Cell> cells = c.NeighbouringCells();
-				for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() == Element::Owned)
-				{
-					cells_queue.push(c.GetHandle());
-					tag[c][0] = cells[l].Integer(tag_owner);
-					tag[c][1] = 1;
-					break;
-				}
-			}
-		}
-        
-        int cur_dist = 1; // For assert
-
-        while (!cells_queue.empty())
-        {
-            Cell c(this,cells_queue.front());
-            cells_queue.pop();
-
-            if (cur_dist > tag[c][1]) assert(0); 
-            if (cur_dist < tag[c][1]) cur_dist++;
-
-            ElementArray<Cell> cells = c.NeighbouringCells();
-            for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() != Element::Owned)
-            {
-                if (tag[cells[l]][1] > tag[c][1] + 1)
-                {
-                    tag[cells[l]][0] = tag[c][0];
-                    tag[cells[l]][1] = tag[c][1] + 1;
-                    cells_queue.push(cells[l].GetHandle());
-                }
-            }
-        }
-        ReduceData(tag, CELL, 0, OperationMinDistance);
-        ExchangeData(tag, CELL, 0);
-        for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if( it->GetStatus() != Element::Owned )
-        {
-            if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
-            {
-                int new_owner = tag[*it][0];
-                it->IntegerDF(tag_owner) = new_owner;
-                if (GetProcessorRank() == new_owner)
-                    it->SetStatus(Element::Shared);
-                else
-                    it->SetStatus(Element::Ghost);
-            }
-		}
-		DeleteTag(tag);
-        RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
-    }
-
 	void Mesh::ResolveModification()
 	{
 		if( GetProcessorsNumber() == 1 ) return;
 		ResolveShared(true);
 		//ExchangeGhost(1,NODE,NewMarker()); //TODO!!!!
-        ResolveSets();
-    }
-
-    void Mesh::EndModification()
+		ResolveSets();
+	}
+	
+	void Mesh::EndModification()
 	{
 		//ApplyModification();
 		//temp_hide_element = hide_element;
