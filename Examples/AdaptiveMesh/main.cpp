@@ -159,7 +159,7 @@ int main(int argc, char ** argv)
 			}
 			while(numref);
 			
-			if( false ) 
+			if( true )
 			{
 				TagInteger tag_owner = m.CreateTag("OWN",DATA_INTEGER,CELL,NONE,1);
 				TagInteger tag_owner0 = m.GetTag("OWNER_PROCESSOR");

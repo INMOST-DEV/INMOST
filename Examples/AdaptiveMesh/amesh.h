@@ -9,7 +9,8 @@ namespace INMOST
 		Mesh * m;
 		Model * model;
 		ElementSet root; //< Root set that links all the other sets for coarsements
-		TagInteger tag_status; 
+		TagInteger tag_status;
+		TagInteger set_id;
 		//TagInteger tag_an; 
         int rank;
         int size;

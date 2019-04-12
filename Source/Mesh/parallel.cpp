@@ -231,7 +231,7 @@ namespace INMOST
 		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
 			Cell c = CellByLocalID(k);
-			if (c.GetStatus() != Element::Owned)
+			if (!c.Hidden() && c.GetStatus() != Element::Owned)
 			{
 				tag[c][1] = INT_MAX; 
 				ElementArray<Cell> cells = c.NeighbouringCells();
@@ -264,16 +264,50 @@ namespace INMOST
 		}
 		ReduceData(tag, CELL, 0, OperationMinDistance);
 		ExchangeData(tag, CELL, 0);
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if( it->GetStatus() != Element::Owned )
+		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
-			//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
+			Cell c = CellByLocalID(k);
+			if( !c.Hidden() && c.GetStatus() != Element::Owned )
 			{
-				int new_owner = tag[*it][0];
-				it->IntegerDF(tag_owner) = new_owner;
-				if (GetProcessorRank() == new_owner)
-					it->SetStatus(Element::Shared);
-				else
-					it->SetStatus(Element::Ghost);
+				//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
+				if( !only_new || c.nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) )
+				{
+					int new_owner = tag[c][0];
+					c.IntegerDF(tag_owner) = new_owner;
+					if (GetProcessorRank() == new_owner)
+						c.SetStatus(Element::Shared);
+					else
+						c.SetStatus(Element::Ghost);
+				}
+			}
+		}
+		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
+		{
+			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
+			{
+				Element e = ElementByLocalID(etype,k);
+				if( !e.Hidden() && e.GetStatus() != Element::Owned )
+				{
+					if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
+					{
+						Element::adj_type & hc = HighConn(e.GetHandle());
+						int new_owner = INT_MAX;
+						for(int l = 0; l < hc.size(); ++l)
+						{
+							if( !GetMarker(hc[l],HideMarker()) )
+								new_owner = std::min(new_owner,Integer(hc[l],tag_owner));
+						}
+						if( new_owner != INT_MAX &&
+						   e.IntegerDF(tag_owner) != new_owner )
+						{
+							e.IntegerDF(tag_owner) = new_owner;
+							if (GetProcessorRank() == new_owner)
+								e.SetStatus(Element::Shared);
+							else
+								e.SetStatus(Element::Ghost);
+						}
+					}
+				}
 			}
 		}
 #endif
@@ -1953,7 +1987,8 @@ namespace INMOST
 			}
 			del_shared.clear();
 #endif //USE_PARALLEL_STORAGE
-			for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
+			//for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
+			for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Delete(*it);
 			delete_elements.clear();
 		}		
 		DeleteTag(tag_delete);
@@ -5040,8 +5075,9 @@ namespace INMOST
 				for(int j = ElementNum(CELL); j >= ElementNum(NODE); j--)
 				{
 					//this is not really needed because we destroy those elements
-					//for(element_set::iterator kt = delete_elements[j].begin(); kt != delete_elements[j].end(); ++kt) RemMarker(*kt,delete_marker);
-					for(element_set::iterator kt = delete_elements[j].begin(); kt != delete_elements[j].end(); ++kt) Destroy(*kt);
+					for(element_set::iterator kt = delete_elements[j].begin(); kt != delete_elements[j].end(); ++kt) RemMarker(*kt,delete_marker);
+					//for(element_set::iterator kt = delete_elements[j].begin(); kt != delete_elements[j].end(); ++kt) Destroy(*kt);
+					for(element_set::iterator kt = delete_elements[j].begin(); kt != delete_elements[j].end(); ++kt) Delete(*kt);
 				}
 				ReleaseMarker(delete_marker);
 			}
@@ -5054,7 +5090,8 @@ namespace INMOST
 					Storage::integer_array procs = it->IntegerArray(tag_new_processors);
 					if( !std::binary_search(procs.begin(),procs.end(),mpirank) ) 
 					{
-						Destroy(*it);
+						//Destroy(*it);
+						Delete(*it);
 						++count;
 					}
 				}
@@ -5298,7 +5335,8 @@ namespace INMOST
         //cout << "Check " << layers << " " << Integer(GetHandle(),tag_layers) << endl;
 		if( layers < Integer(GetHandle(),tag_layers) ) delete_ghost = true;
 		else if( layers == Integer(GetHandle(),tag_layers) && bridge < Integer(GetHandle(),tag_bridge) ) delete_ghost = true;
-        if (marker != 0) delete_ghost = true;
+        if (marker != 0)
+			delete_ghost = true;
 		int test_bridge = 0;
 		
 		if( (bridge & MESH) || (bridge & ESET) || (bridge & CELL) ) throw Impossible;

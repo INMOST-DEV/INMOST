@@ -2052,7 +2052,7 @@ namespace INMOST
 	{
 		if( GetProcessorsNumber() == 1 ) return;
 		ResolveShared(true);
-		//ExchangeGhost(1,NODE,NewMarker()); //TODO!!!!
+//		ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge),NewMarker()); //TODO!!!!
 		ResolveSets();
 	}
 	
@@ -2091,7 +2091,8 @@ namespace INMOST
 			}
 		}
 		 */
-		RecomputeParallelStorage(ESET|CELL|FACE|EDGE|NODE);
+		//RecomputeParallelStorage(ESET|CELL|FACE|EDGE|NODE);
+		//ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge),NewMarker()); //TODO!!!!
 		memset(hidden_count,0,sizeof(integer)*6);
 		memset(hidden_count_zero,0,sizeof(integer)*6);
 		ReleaseMarker(hide_element);
@@ -2167,7 +2168,7 @@ namespace INMOST
 	
 	bool Mesh::Delete(HandleType h) 
 	{
-		if(!New(h) && Hide(h))
+		if(/*!New(h) &&*/ Hide(h))
 		{
 			//mark all elements that rely on this that they should be deleted
 			if( GetHandleElementType(h) < CELL )

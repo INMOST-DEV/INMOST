@@ -6,6 +6,7 @@
 
 //from inmost
 //std::string base64_encode(unsigned char const* buf, unsigned int bufLen);
+/*
 	std::string base64_encode_(unsigned char const* buf, unsigned int bufLen)
 	{
 		static const std::string base64_chars =
@@ -52,6 +53,7 @@
 		
 		return ret;
 	}
+ */
 /// todo:
 /// 1. coarsment
 /// 2. strategy for faces/edges with faults
@@ -385,6 +387,7 @@ namespace INMOST
 	
 	void AdaptiveMesh::ClearData()
 	{
+		set_id        = m->DeleteTag(set_id);
 		level         = m->DeleteTag(level);
 		hanging_nodes = m->DeleteTag(hanging_nodes);
 		parent_set    = m->DeleteTag(parent_set);
@@ -407,6 +410,7 @@ namespace INMOST
 					root.PutElement(it->self());
 					parent_set[it->self()] = root.GetHandle();
 				}
+				m->Enumerate(CELL,set_id);
 			}
         }
 		if( !m->HaveGlobalID(CELL) ) m->AssignGlobalID(CELL); //for unique set names
@@ -419,6 +423,7 @@ namespace INMOST
 		//create a tag that stores maximal refinement level of each element
 		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
 		tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+		set_id = m->CreateTag("SET_ID",DATA_INTEGER,CELL,NONE,1);
 		//tag_an = m->CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		//ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
@@ -470,6 +475,17 @@ namespace INMOST
 		//initialize tree structure
 		m->CheckCentroids(__FILE__,__LINE__);
 		PrepareSet();
+		
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ResolveSets();
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		
 		CheckParentSet();
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1; //indicates that at least one element was scheduled on current sweep
@@ -708,8 +724,12 @@ namespace INMOST
 					c.Centroid(cnt);
 					std::stringstream set_name;
 					//set_name << parent.GetName() << "_C" << c.GlobalID(); //rand may be unsafe
+					if( parent == root )
+						set_name << "r" << set_id[c];
+					else
+						set_name << parent.GetName() << "c" << set_id[c];
 					set_name << base64_encode_((unsigned char *)cnt,3*sizeof(double)/sizeof(unsigned char));
-					/*
+					
 					ElementSet check_set = m->GetSet(set_name.str());
 					if( check_set.isValid() )
 					{
@@ -720,14 +740,16 @@ namespace INMOST
 						for(ElementSet::iterator it = check_set.Begin(); it != check_set.End(); ++it)
 							std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << "," << it->GlobalID() << "," << Element::StatusName(c.GetStatus()) << "," << level[*it] << " ";
 						std::cout << std::endl;
+						exit(-1);
 					}
-					*/
+					
 					ElementSet cell_set = m->CreateSetUnique(set_name.str()).first;
 					cell_set->SetExchange(ElementSet::SYNC_ELEMENTS_ALL);
 					level[cell_set] = level[c]+1;
 					//set up increased level for the new cells
 					for(ElementArray<Cell>::size_type kt = 0; kt < new_cells.size(); ++kt)
 					{
+						set_id[new_cells[kt]] = kt;
 						level[new_cells[kt]] = level[c]+1;
 						cell_set.PutElement(new_cells[kt]);
 						parent_set[new_cells[kt]] = cell_set.GetHandle();
@@ -788,6 +810,7 @@ namespace INMOST
 
 
 		//11. Restore parallel connectivity, global ids
+		/*
 		{
 			std::fstream fout;
 			fout.open("out"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
@@ -807,6 +830,7 @@ namespace INMOST
 			
 			fout.close();
 		}
+		 */
         //if (call_counter == 0)
 		m->ResolveModification();
 		//m->SynchronizeMarker(m->NewMarker(),CELL|FACE|EDGE|NODE,SYNC_BIT_OR);
@@ -822,6 +846,10 @@ namespace INMOST
         //cout << rank << ": Before end " << std::endl;
 		m->EndModification();
 		
+		static int fi = 0;
+		m->Save("refine"+std::to_string(fi)+".pvtk");
+		std::cout << "Save refine"+std::to_string(fi)+".pvtk" << std::endl;
+		fi++;
 		
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
         //m->ResolveSets();
@@ -833,15 +861,7 @@ namespace INMOST
     	//m->EndModification();
     	//PrintSet();
     	//m->ResolveSets();
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ResolveSets();
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-		m->CheckCentroids(__FILE__,__LINE__);
+		
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
 		int nfixed = 0;
@@ -862,8 +882,8 @@ namespace INMOST
 				std::cout << m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << std::endl;
 		}
 		*/
-		std::cout << rank << " check parent_set at end" << std::endl;
-		CheckParentSet();
+		//std::cout << rank << " check parent_set at end" << std::endl;
+		//CheckParentSet();
 
         //ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << std::endl;
@@ -947,6 +967,17 @@ namespace INMOST
 		int ret = 0;
 		//initialize tree structure
 		PrepareSet();
+		
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ResolveSets();
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		m->CheckCentroids(__FILE__,__LINE__);
+		
 		SynchronizeIndicated(indicator);
 		CheckParentSet();
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
@@ -1257,6 +1288,11 @@ namespace INMOST
 		m->ApplyModification();
 		//done
 		m->EndModification();
+		static int fi = 0;
+		m->Save("coarse"+std::to_string(fi)+".pvtk");
+		std::cout << "Save coarse"+std::to_string(fi)+".pvtk" << std::endl;
+		fi++;
+		//exit(-1);
 		
 		m->CheckCentroids(__FILE__,__LINE__);
 		//CheckCentroids();
@@ -1273,19 +1309,11 @@ namespace INMOST
 			}
 		}
 		//m->ResolveSets();
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ResolveSets();
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-		m->CheckCentroids(__FILE__,__LINE__);
+		
 		//cleanup null links in sets
 		CleanupSets(root);
 		
-		CheckParentSet();
+		//CheckParentSet();
 		
 		
 		//restore face orientation
