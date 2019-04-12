@@ -6,6 +6,22 @@
 //TODO:
 // incident_matrix class should measure for minimal volume,
 // possibly check and update from projects/OctreeCutcell/octgrid.cpp
+#if defined(USE_PARALLEL_WRITE_TIME)
+#define REPORT_MPI(x) {WriteTab(out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
+#define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
+#define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
+#define ENTER_FUNC() double all_time = Timer(); {WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << func_id++ << "\">" << std::endl; Enter();}
+#define EXIT_FUNC() {WriteTab(out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC_DIE() {WriteTab(out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#else
+#define REPORT_MPI(x) x
+#define REPORT_STR(x) {}
+#define REPORT_VAL(str,x) {}
+#define ENTER_FUNC() {}
+#define EXIT_FUNC() {}
+#define EXIT_FUNC_DIE()  {}
+#endif
+
 
 namespace INMOST
 {
@@ -1933,12 +1949,15 @@ namespace INMOST
 	
 	void Mesh::BeginModification()
 	{
+		ENTER_FUNC();
 		hide_element = CreateMarker();
 		new_element = CreateMarker();
+		EXIT_FUNC();
 	}
 	
 	void Mesh::SwapModification(bool recompute_geometry)
 	{
+		ENTER_FUNC();
 		MarkerType temp = hide_element;
 		hide_element = new_element;
 		new_element = temp;
@@ -1963,10 +1982,12 @@ namespace INMOST
 				}
 			}
 		}
+		EXIT_FUNC();
 	}
 	
 	void Mesh::ApplyModification()
 	{
+		ENTER_FUNC();
 		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); ++it)
 		{
 			if( it->GetDataType() == DATA_REFERENCE )
@@ -2047,17 +2068,68 @@ namespace INMOST
 			//it->Subtract(erase); //old approach
 		}
 		//Destroy(erase);//old approach
+		EXIT_FUNC();
 	}
 	void Mesh::ResolveModification()
 	{
 		if( GetProcessorsNumber() == 1 ) return;
+		ENTER_FUNC();
+		//ReportParallelStorage();
+		//CheckCentroids(__FILE__,__LINE__);
+		/*
+		int h = 0, n = 0, hn = 0;
+		for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
+		for(int k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k) )
+		{
+			Element it = ElementByLocalID(etype,k);
+			if( it->New() ) n++;
+			if( it->Hidden() ) h++;
+			if( it->New() && it->Hidden() ) hn++;
+		}
+		std::cout << GetProcessorRank() << " before resolve shared new " << n << " hidden " << h << " both " << hn << std::endl;
+		*/
 		ResolveShared(true);
-//		ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge),NewMarker()); //TODO!!!!
+		//ReportParallelStorage();
+		//CheckCentroids(__FILE__,__LINE__);
+		/*
+		h = 0, n = 0, hn = 0;
+		for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
+		for(int k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k) )
+		{
+			Element it = ElementByLocalID(etype,k);
+			if( it->New() ) n++;
+			if( it->Hidden() ) h++;
+			if( it->New() && it->Hidden() ) hn++;
+		}
+		std::cout << GetProcessorRank() << " before exchange ghost new " << n << " hidden " << h << " both " << hn << std::endl;
+		*/
+		//std::cout << "layers " << Integer(GetHandle(),tag_layers) << " bridge " << ElementTypeName(ElementType(Integer(GetHandle(),tag_bridge))) << std::endl;
+		ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge));//,NewMarker()); //TODO!!!!
+		//ReportParallelStorage();
+		//CheckCentroids(__FILE__,__LINE__);
+		//Save("after_exchange_ghost.pvtk");
+		/*
+		h = 0, n = 0, hn = 0;
+		for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
+		for(int k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k) )
+		{
+			Element it = ElementByLocalID(etype,k);
+			if( it->New() ) n++;
+			if( it->Hidden() ) h++;
+			if( it->New() && it->Hidden() ) hn++;
+		}
+		std::cout << GetProcessorRank() << " after exchange ghost new " << n << " hidden " << h << " both " << hn << std::endl;
+		*/
 		ResolveSets();
+		//ReportParallelStorage();
+		//CheckCentroids(__FILE__,__LINE__);
+		//exit(-1);
+		EXIT_FUNC();
 	}
 	
 	void Mesh::EndModification()
 	{
+		ENTER_FUNC();
 		//ApplyModification();
 		//temp_hide_element = hide_element;
 		//hide_element = 0;
@@ -2107,16 +2179,14 @@ namespace INMOST
 				if( GlobalIDTag().isDefined(etype) ) have_global_id |= etype;
 		}
 		if( have_global_id ) AssignGlobalID(have_global_id);
+		EXIT_FUNC();
 	}
 
-#if defined(USE_PARALLEL_WRITE_TIME)
-#define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
-#define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
-#endif
 
 	void Mesh::Destroy(HandleType h)
 	{
-		//std::cout << "destroy " << ElementTypeName(GetHandleElementType(h)) << " id " << GetHandleID(h) << " handle " << h << (GetMarker(h,temp_hide_element) ? " hidden " : " not hidden ") << std::endl;
+		//if( h == 1073743552 || h == 1073742933)
+		//	std::cout << GetProcessorRank() << " destroy " << ElementTypeName(GetHandleElementType(h)) << " id " << GetHandleID(h) << " handle " << h << std::endl;// << (GetMarker(h,temp_hide_element) ? " hidden " : " not hidden ") << std::endl;
 		assert(isValidHandleRange(h));
 		assert(isValidHandle(h));
 		ElementType htype = GetHandleElementType(h);

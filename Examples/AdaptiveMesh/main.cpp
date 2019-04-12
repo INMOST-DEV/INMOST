@@ -18,13 +18,13 @@ int main(int argc, char ** argv)
 #if defined(USE_PARTITIONER)
 		if( true )
 		{
-			std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			//std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 			Partitioner p(&m);
 			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
 			p.Evaluate();
 			m.Redistribute();
 			m.ReorderEmpty(CELL|FACE|EDGE|NODE);
-			std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			//std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 		}
 #endif
 		m.ExchangeGhost(2,NODE);

@@ -44,7 +44,7 @@
 // in Mesh::Init function change two variables:
 // check_shared_mrk  - check shared markers.
 // check_private_mrk - check private markers.
-//#define CHECKS_MARKERS
+#define CHECKS_MARKERS
 
 // use additional sets to store elements for parallel
 // exchanges, otherwise it will recompute those elements

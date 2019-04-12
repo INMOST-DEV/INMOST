@@ -1,7 +1,28 @@
 #include "amesh.h"
 #include <iomanip>
 #include <set>
-#include "../../Source/Misc/base64.h"
+
+
+#if defined(USE_PARALLEL_WRITE_TIME)
+#define REPORT_MPI(x) {m->WriteTab(m->out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
+#define REPORT_STR(x) {m->WriteTab(m->out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
+#define REPORT_VAL(str,x) {m->WriteTab(m->out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
+#define ENTER_FUNC() double all_time = Timer(); {m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();}
+#define ENTER_BLOCK() { double btime = Timer(); m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();
+#define EXIT_BLOCK() m->WriteTab(m->out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC() {m->WriteTab(m->out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC_DIE() {m->WriteTab(m->out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
+#else
+#define REPORT_MPI(x) x
+#define REPORT_STR(x) {}
+#define REPORT_VAL(str,x) {}
+#define ENTER_FUNC() {}
+#define EXIT_FUNC() {}
+#define EXIT_FUNC_DIE()  {}
+#endif
+
+
+//#include "../../Source/Misc/base64.h"
 //using namespace std;
 
 //from inmost
@@ -86,7 +107,7 @@ namespace INMOST
 		element->Integer(tag) = std::min(element->Integer(tag),*((const INMOST_DATA_INTEGER_TYPE *)data));
 	}
 
-
+	/*
     void AdaptiveMesh::PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss)
     {
         std::stringstream ss1;
@@ -131,8 +152,9 @@ namespace INMOST
             PrintSetLocal(offset + "   ",child,ss);
         }
     }
+	*/
 
-
+	/*
     void AdaptiveMesh::PrintSet()
     {
         std::stringstream ss;
@@ -143,7 +165,9 @@ namespace INMOST
         }
         std::cout << ss.str() << std::endl;
     }
+	*/
 
+	/*
     void PrintRefs(std::ostream& os, Storage::reference_array refs)
     {
         for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
@@ -158,10 +182,10 @@ namespace INMOST
             refs[i]->Centroid(xyz);
             os << "(" << xyz[0] << "," << xyz[1] << "," << xyz[2] <<")" <<  std::endl;
         }
-
-
     }
+	*/
 
+	/*
     void AdaptiveMesh::PrintMesh(std::ostream& os, int cell, int face, int edge, int node)
     {
         if (cell + face + edge + node == 0) return;
@@ -176,28 +200,7 @@ namespace INMOST
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
-                
-                /*
-                ss << " (";
-                Storage::integer_array arr = it->IntegerArrayDV(tag_processors);
-                for (int i = 0; i < arr.size(); i++) ss << arr[i] << " ";
-                ss << ") ";
-*/
-                /*
-                Storage::reference_array refs = hanging_nodes[it->self()];
-                if (refs.size() > 0)
-                {
-                    ss << std::endl << "   Hanging nodes: ";
-                    PrintRefs(ss,refs);
-                }
                 ss << std::endl;
-                ss << "   ParentSet: " << ElementSet(this,parent_set[*it]).GetName();
-                */
-/*
-                orage::reference_array refs = ref_tag[it->self()];
-                PrintRefs(refs);
-                */
-                    ss << std::endl;
             }
         }
 
@@ -224,32 +227,6 @@ namespace INMOST
                 for (ElementArray<Node>::iterator node = nodes.begin(); node != nodes.end(); node++)
                     ss << std::setw(2) << node->GlobalID() << " ";
                 ss << ")";
-
-                /*
-                Storage::reference_array refs = ref_tag[it->self()];
-                if (refs.size() > 0) ss << ". Ref: ";
-                for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
-                {
-                    string type = "unknw";
-                    if (refs[i].GetElementType() == CELL) type = "cell";
-                    if (refs[i].GetElementType() == FACE) type = "face";
-                    if (refs[i].GetElementType() == EDGE) type = "edge";
-                    if (refs[i].GetElementType() == NODE) type = "node";
-                    ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
-                }
-
-                ss << std::endl;
-
-                {
-                    Storage::reference_array refs = hanging_nodes[it->self()];
-                    if (refs.size() > 0)
-                    {
-                        ss << std::endl << "   Hanging nodes: ";
-                        PrintRefs(ss,refs);
-                    }
-                    ss << std::endl;
-                }
-                */
                 ss << std::endl;
             }
         }
@@ -263,19 +240,6 @@ namespace INMOST
                 if (it->GetStatus() == Element::Shared) ss << "shared";
                 else if (it->GetStatus() == Element::Ghost) ss << "ghost";
                 else ss << "none";
-				/*
-                Storage::reference_array refs = ref_tag[it->self()];
-                if (refs.size() > 0) ss << ". Ref: ";
-                for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
-                {
-                    std::string type = "unknw";
-                    if (refs[i].GetElementType() == CELL) type = "cell";
-                    if (refs[i].GetElementType() == FACE) type = "face";
-                    if (refs[i].GetElementType() == EDGE) type = "edge";
-                    if (refs[i].GetElementType() == NODE) type = "node";
-                    ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
-                }
-                */
                 ss << std::endl;
             }
         }
@@ -292,20 +256,6 @@ namespace INMOST
                 else ss << "none";
 
                 {
-					/*
-                    Storage::reference_array refs = ref_tag[it->self()];
-                    if (refs.size() > 0) ss << ". Ref: ";
-                    for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
-                    {
-                        std::string type = "unknw";
-                        if (refs[i].GetElementType() == CELL) type = "cell";
-						if (refs[i].GetElementType() == FACE) type = "face";
-						if (refs[i].GetElementType() == EDGE) type = "edge";
-                        if (refs[i].GetElementType() == NODE) type = "node";
-                        ss << "(" << type << "," << refs[i]->GlobalID() << ") ";
-                        
-                    }
-					*/
                     ss << "  " << m->GetMarker(*it,m->NewMarker());
 
                     ss << "(" << 
@@ -321,7 +271,9 @@ namespace INMOST
         ss << "=========================================" << std::endl;
         os << ss.str() << std::endl;
     }
+	*/
 
+	/*
     void AdaptiveMesh::UpdateStatus()
     {
 
@@ -337,7 +289,9 @@ namespace INMOST
             }
         }
     }
+	*/
     
+	/*
     void AdaptiveMesh::PrintSet(ElementSet set, std::string offset)
     {
         std::cout << offset << "Set: " << std::endl;
@@ -364,7 +318,9 @@ namespace INMOST
         }
 
     }
+	*/
 
+	/*
     void AdaptiveMesh::SynchronizeSet(ElementSet set)
     {
     #ifdef USE_MPI
@@ -377,13 +333,15 @@ namespace INMOST
         }
     #endif
     }
+	*/
 
+	/*
     void AdaptiveMesh::Test()
     {
         std::cout << rank << ": ================" << std::endl;
         PrintSet(root,"");
     }
-	
+	*/
 	
 	void AdaptiveMesh::ClearData()
 	{
@@ -422,7 +380,7 @@ namespace INMOST
 		model = NULL;
 		//create a tag that stores maximal refinement level of each element
 		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
-		tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
+		//tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		set_id = m->CreateTag("SET_ID",DATA_INTEGER,CELL,NONE,1);
 		//tag_an = m->CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		//ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
@@ -442,40 +400,48 @@ namespace INMOST
 	
 	void AdaptiveMesh::CheckParentSet()
 	{
-		std::cout << rank << " enter " << __FUNCTION__ << std::endl;
+		ENTER_FUNC();
 		int err = 0;
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
 			if( parent_set[*it] == InvalidHandle() )
 			{
-				std::cout << m->GetProcessorRank() << " parent set not valid on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
+				REPORT_STR(m->GetProcessorRank() << " parent set not valid on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
 				err++;
 			}
 			else if( GetHandleElementType(parent_set[*it]) != ESET )
 			{
-				std::cout << m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
+				REPORT_STR(m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
 				err++;
 			}
 		}
 		err = m->Integrate(err);
+		EXIT_FUNC();
 		if( err ) 
 		{
+			REPORT_STR(rank << " error in " << __FUNCTION__);
 			std::cout << rank << " error in " << __FUNCTION__ << std::endl;
 			exit(-1);
 		}
-		std::cout << rank << " exit " << __FUNCTION__ << std::endl;
 		
 	}
 	
 	bool AdaptiveMesh::Refine(TagInteger & indicator)
 	{
-        std::cout << rank << " enter " << __FUNCTION__ << std::endl;
+		static int fi = 0;
+        ENTER_FUNC();
 		static int call_counter = 0;
 		int ret = 0; //return number of refined cells
 		//initialize tree structure
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
+		ENTER_BLOCK();
 		PrepareSet();
+		EXIT_BLOCK();
+
+		m->Save("before_refine"+std::to_string(fi)+".pvtk");
+		std::cout << "Save before_refine"+std::to_string(fi)+".pvtk" << std::endl;
 		
+		ENTER_BLOCK();
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
 		m->CheckCentroids(__FILE__,__LINE__);
@@ -485,10 +451,17 @@ namespace INMOST
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		m->CheckCentroids(__FILE__,__LINE__);
-		
 		CheckParentSet();
+		EXIT_BLOCK();
+
+		m->Save("before_refine_parent"+std::to_string(fi)+".pvtk");
+		std::cout << "Save before_refine_parent"+std::to_string(fi)+".pvtk" << std::endl;
+		
+
+		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1; //indicates that at least one element was scheduled on current sweep
+		ENTER_BLOCK();
 		//0. Extend indicator for edges and faces
 		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
 		while(scheduled)
@@ -545,8 +518,10 @@ namespace INMOST
 			if( scheduled ) schedule_counter++;
 		}
 		m->ExchangeData(indicator,CELL | FACE | EDGE,0);
+		EXIT_BLOCK();
 		//m->Save("indicator.pmf");
 		//6.Refine
+		ENTER_BLOCK();
 		m->BeginModification();
 		while(schedule_counter)
 		{
@@ -728,7 +703,7 @@ namespace INMOST
 						set_name << "r" << set_id[c];
 					else
 						set_name << parent.GetName() << "c" << set_id[c];
-					set_name << base64_encode_((unsigned char *)cnt,3*sizeof(double)/sizeof(unsigned char));
+					//set_name << base64_encode_((unsigned char *)cnt,3*sizeof(double)/sizeof(unsigned char));
 					
 					ElementSet check_set = m->GetSet(set_name.str());
 					if( check_set.isValid() )
@@ -780,58 +755,8 @@ namespace INMOST
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
 
-		/*
-        MarkerType marker_new = m->CreateMarker();
-        for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) 
-        {
-            if (it->GetMarker(m->NewMarker()) == false) continue;
-            it->SetMarker(marker_new);
-
-        }
-
-        for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
-        {
-            if (it->GetMarker(m->NewMarker()) == false) continue;
-            it->SetMarker(marker_new);
-        }
-
-        for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it) 
-        {
-            if (it->GetMarker(m->NewMarker()) == false) continue;
-            it->SetMarker(marker_new);
-        }
-
-        for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) 
-        {
-            if (it->GetMarker(m->NewMarker()) == false) continue;
-            it->SetMarker(marker_new);
-        }
-        */
-
 
 		//11. Restore parallel connectivity, global ids
-		/*
-		{
-			std::fstream fout;
-			fout.open("out"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
-			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype) )
-			{
-				int cnt = 0;
-				for(Mesh::iteratorElement it = m->BeginElement(etype); it != m->EndElement(); ++it)
-				{
-					if( it->New() )
-					{
-						fout << "new element " << ElementTypeName(etype) << ":" << it->LocalID() <<std::endl;//<< " gid " << it->GlobalID() << std::endl;
-						cnt++;
-					}
-				}
-				fout << ElementTypeName(etype) << " count: " << cnt << std::endl;
-			}
-			
-			fout.close();
-		}
-		 */
-        //if (call_counter == 0)
 		m->ResolveModification();
 		//m->SynchronizeMarker(m->NewMarker(),CELL|FACE|EDGE|NODE,SYNC_BIT_OR);
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
@@ -845,10 +770,11 @@ namespace INMOST
 		//14. Done
         //cout << rank << ": Before end " << std::endl;
 		m->EndModification();
+		EXIT_BLOCK();
 		
-		static int fi = 0;
-		m->Save("refine"+std::to_string(fi)+".pvtk");
-		std::cout << "Save refine"+std::to_string(fi)+".pvtk" << std::endl;
+		
+		m->Save("after_refine"+std::to_string(fi)+".pvtk");
+		std::cout << "Save after_refine"+std::to_string(fi)+".pvtk" << std::endl;
 		fi++;
 		
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
@@ -864,6 +790,7 @@ namespace INMOST
 		
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
+		ENTER_BLOCK();
 		int nfixed = 0;
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
 			if( !it->CheckNormalOrientation() )
@@ -872,7 +799,8 @@ namespace INMOST
 				nfixed++;
 			}
 			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
-		if( nfixed ) std::cout << rank << " fixed " << nfixed << " faces" << std::endl;
+		if( nfixed ) REPORT_STR(rank << " fixed " << nfixed << " faces");
+		EXIT_BLOCK();
 		/*
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
@@ -888,10 +816,12 @@ namespace INMOST
         //ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << std::endl;
 		//reorder element's data to free up space
+		ENTER_BLOCK();
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
+		EXIT_BLOCK();
 		//return number of refined cells
 		call_counter++;
-        std::cout << rank << " exit " << __FUNCTION__ << std::endl;
+        EXIT_FUNC();
 		return ret != 0;
 	}
 
@@ -910,7 +840,7 @@ namespace INMOST
     void AdaptiveMesh::SynchronizeIndicated(TagInteger& indicator)
     {
         if (m->GetProcessorsNumber() == 1) return;
-        std::cout << rank << " enter " << __FUNCTION__ << std::endl;
+        ENTER_FUNC();
         int rank = m->GetProcessorRank();
 
         // Check all sets. All elements in sets must be indicated. At first we check indicator in local processor, and second integrate data
@@ -946,28 +876,26 @@ namespace INMOST
                     p++;
                 }
             }
-        /*
-                stringstream ss;
-        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it) 
-        {
-            ss << it->GetName() << " - " << it->Integer(tag_indicated) << endl;;
-        }
-        cout << rank << " Sets: \n" << ss.str() << endl;
-        */
-        std::cout << rank << " exit " << __FUNCTION__ << std::endl;
+        EXIT_FUNC();
     }
 
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
-        std::cout << rank << " enter " << __FUNCTION__ << std::endl;
+		static int fi = 0;
+        ENTER_FUNC();
         //return false;
-		m->CheckCentroids(__FILE__,__LINE__);
 		static int call_counter = 0;
 		//return number of coarsened cells
 		int ret = 0;
 		//initialize tree structure
+		ENTER_BLOCK();
 		PrepareSet();
+		EXIT_BLOCK();
+
+		m->Save("before_coarse"+std::to_string(fi)+".pvtk");
+		std::cout << "Save before_coarse"+std::to_string(fi)+".pvtk" << std::endl;
 		
+		ENTER_BLOCK();
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
 		m->CheckCentroids(__FILE__,__LINE__);
@@ -977,11 +905,20 @@ namespace INMOST
 		m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		m->CheckCentroids(__FILE__,__LINE__);
-		
-		SynchronizeIndicated(indicator);
 		CheckParentSet();
+		EXIT_BLOCK();
+
+		m->Save("before_coarse_parent"+std::to_string(fi)+".pvtk");
+		std::cout << "Save before_coarse_parent"+std::to_string(fi)+".pvtk" << std::endl;
+		
+		ENTER_BLOCK();
+		SynchronizeIndicated(indicator);
+		EXIT_BLOCK();
+		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
+
+		ENTER_BLOCK();
 		//TagInteger coarsened = CreateTag("COARSENED",DATA_INTEGER,CELL,NONE,1);
 		TagInteger coarse_indicator = m->CreateTag("COARSE_INDICATOR",DATA_INTEGER,EDGE,NONE,1); //used to find on fine cells indicator on coarse cells
 		//0. Extend indicator for sets, edges and faces
@@ -1125,7 +1062,9 @@ namespace INMOST
 		}
 		//cleanup
 		coarse_indicator = m->DeleteTag(coarse_indicator);
+		EXIT_BLOCK();
 		//Make schedule which elements should be refined earlier.
+		ENTER_BLOCK();
 		m->BeginModification();
 		while(schedule_counter)
 		{
@@ -1288,12 +1227,14 @@ namespace INMOST
 		m->ApplyModification();
 		//done
 		m->EndModification();
-		static int fi = 0;
-		m->Save("coarse"+std::to_string(fi)+".pvtk");
-		std::cout << "Save coarse"+std::to_string(fi)+".pvtk" << std::endl;
+		EXIT_BLOCK();
+		
+		m->Save("after_coarse"+std::to_string(fi)+".pvtk");
+		std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;
 		fi++;
 		//exit(-1);
 		
+		ENTER_BLOCK();
 		m->CheckCentroids(__FILE__,__LINE__);
 		//CheckCentroids();
 		//cleanup null links to hanging nodes
@@ -1308,6 +1249,7 @@ namespace INMOST
 				arr.resize(jt);
 			}
 		}
+		EXIT_BLOCK();
 		//m->ResolveSets();
 		
 		//cleanup null links in sets
@@ -1318,6 +1260,7 @@ namespace INMOST
 		
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
+		ENTER_BLOCK();
 		int nfixed = 0;
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
 			if( !it->CheckNormalOrientation() )
@@ -1326,13 +1269,16 @@ namespace INMOST
 				nfixed++;
 			}
 			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
-		if( nfixed ) std::cout << "fixed " << nfixed << " faces" << std::endl;
+		if( nfixed ) REPORT_STR("fixed " << nfixed << " faces");
+		EXIT_BLOCK();
 		
 		//reorder element's data to free up space
+		ENTER_BLOCK();
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE|ESET);
+		EXIT_BLOCK();
 		
 		call_counter++;
-        std::cout << rank << " exit " << __FUNCTION__ << std::endl;
+        EXIT_FUNC();
 		return ret != 0;
 	}
 }

@@ -2260,7 +2260,9 @@ namespace INMOST
 #endif
 #if defined(USE_PARALLEL_WRITE_TIME)
 		int                                 num_exchanges;
+	public:
 		std::fstream                        out_time;
+	private:
 		int                                 tab;
 		int                                 func_id;
 #endif
@@ -2283,6 +2285,7 @@ namespace INMOST
 		void                              ExchangeBuffersInner(exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs,std::vector<INMOST_MPI_Request> & send_reqs, std::vector<INMOST_MPI_Request> & recv_reqs);
 		std::vector<int>                  FinishRequests     (std::vector<INMOST_MPI_Request> & recv_reqs);
 		void                              SortParallelStorage(parallel_storage & ghost, parallel_storage & shared,ElementType mask);
+		void                              ReportParallelStorage();
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
 		void                              InformElementsOwners(proc_elements_by_type & send_elements, exchange_data & storage);
 	public:

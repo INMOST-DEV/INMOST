@@ -9,7 +9,7 @@ namespace INMOST
 		Mesh * m;
 		Model * model;
 		ElementSet root; //< Root set that links all the other sets for coarsements
-		TagInteger tag_status;
+		//TagInteger tag_status;
 		TagInteger set_id;
 		//TagInteger tag_an; 
         int rank;
@@ -18,7 +18,7 @@ namespace INMOST
 		/// Do not do this in constructor, since mesh may contain no cells.
 		void CheckParentSet();
 		void PrepareSet();
-        void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
+        //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
         void SynchronizeIndicated(TagInteger& indicator);
 	public:
 		TagReference parent_set; //<Link to the set that contains an element.
@@ -35,13 +35,13 @@ namespace INMOST
 		bool Coarse(TagInteger & indicator);
 		/// Delete all data related to mesh refinement-coarsement.
 		void ClearData();
-        void PrintSet(ElementSet set, std::string offset);
+       // void PrintSet(ElementSet set, std::string offset);
 		void SetModel(Model * mm) {model = mm;}
-        void Test();
-        void PrintMesh(std::ostream& os, int cell = 0, int face = 0, int edge = 0, int node = 0);
-        void PrintSet();
-        void UpdateStatus();
-        void test_sets();
+        //void Test();
+        //void PrintMesh(std::ostream& os, int cell = 0, int face = 0, int edge = 0, int node = 0);
+        //void PrintSet();
+        //void UpdateStatus();
+        //void test_sets();
 	};
 }
 
