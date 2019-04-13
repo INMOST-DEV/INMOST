@@ -521,6 +521,15 @@ namespace INMOST
 			const bool &         isParallel() const { return is_parallel; }
 			/// Get the matrix name specified in the main constructor.
 			std::string          GetName() const {return name;}
+			/// Calculate the real residual.
+			///
+			/// @param RHS The right-hand side Vector b.
+			/// @param SOL The initial guess to the solution on input and the solution Vector x on return.
+			/// @return ||A*x-b||
+			///
+			/// It is assumed that the coefficient matrix A have been set
+			/// and the preconditioner have been already constructed.
+			INMOST_DATA_REAL_TYPE Residual(Sparse::Vector &RHS, Sparse::Vector &SOL);
 		};
 		
 #endif //defined(USE_SOLVER)

@@ -220,7 +220,7 @@ namespace INMOST
     }
 */
 
-	void OperationMinDistance(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	static void OperationMinDistance(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
 	{
 		(void)size;
 		assert(size == 2);
@@ -237,6 +237,15 @@ namespace INMOST
 			rdata[1] = idata[1];
 		}
 	}
+	
+	static void OperationMinOwner(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		(void)size;
+		assert(size == 1);
+		INMOST_DATA_INTEGER_TYPE idata = *(INMOST_DATA_INTEGER_TYPE *)data;
+		element->Integer(tag) = std::min(element->Integer(tag),idata);
+	}
+	
 	void Mesh::EquilibrateGhost(bool only_new)
 	{
 		if( GetProcessorsNumber() == 1 ) return;
@@ -244,7 +253,7 @@ namespace INMOST
 #if defined(USE_MPI)
 		ElementType bridge = FACE;
 		if( tag_bridge.isValid() ) bridge = ElementType(Integer(GetHandle(),tag_bridge));
-		TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG",DATA_INTEGER,CELL,NONE,2);
+		TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG",DATA_INTEGER,CELL,CELL,2);
 		std::queue<HandleType> cells_queue;
 		ENTER_BLOCK();
 		//TODO: compute graph distance only in new elements!!!!
@@ -312,7 +321,6 @@ namespace INMOST
 			if( !c.Hidden() && c.GetStatus() != Element::Owned )
 			{
 				//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
-				//if( !only_new || c.nbAdjElements(NODE | FACE | CELL, NewMarker()) )
 				{
 					int new_owner = tag[c][0];
 					c.IntegerDF(tag_owner) = new_owner;
@@ -324,31 +332,46 @@ namespace INMOST
 			}
 		}
 		EXIT_BLOCK();
+		DeleteTag(tag);
+		
+		
+		
 		ENTER_BLOCK();
+		
+		TagInteger new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,NODE|EDGE|FACE,NODE|EDGE|FACE,1);
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{
-			//ElementType check = etype | NextElementType(etype) | PrevElementType(etype);
-			//if( etype == NODE ) etype |= CELL;
-			ElementType check = NODE | FACE | EDGE | CELL;
 			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
 			{
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
 				{
-					//if( !only_new || e.nbAdjElements(check,NewMarker()) )
+					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
 					{
 						Element::adj_type & hc = HighConn(e.GetHandle());
-						int new_owner = INT_MAX;
+						new_owner[e] = INT_MAX;
 						for(int l = 0; l < hc.size(); ++l)
 						{
 							if( !GetMarker(hc[l],HideMarker()) )
-								new_owner = std::min(new_owner,Integer(hc[l],tag_owner));
+								new_owner[e] = std::min(new_owner[e],Integer(hc[l],tag_owner));
 						}
-						if( new_owner != INT_MAX &&
-						   e.IntegerDF(tag_owner) != new_owner )
+					}
+				}
+			}
+			ReduceData(new_owner,etype,0,OperationMinOwner);
+			ExchangeData(new_owner,etype);
+			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
+			{
+				Element e = ElementByLocalID(etype,k);
+				if( !e.Hidden() && e.GetStatus() != Element::Owned )
+				{
+					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
+					{
+						if( new_owner[e] != INT_MAX &&
+						   e.IntegerDF(tag_owner) != new_owner[e] )
 						{
-							e.IntegerDF(tag_owner) = new_owner;
-							if (GetProcessorRank() == new_owner)
+							e.IntegerDF(tag_owner) = new_owner[e];
+							if (GetProcessorRank() == new_owner[e])
 								e.SetStatus(Element::Shared);
 							else
 								e.SetStatus(Element::Ghost);
@@ -357,10 +380,8 @@ namespace INMOST
 				}
 			}
 		}
+		DeleteTag(new_owner);
 		
-		
-		
-		DeleteTag(tag);
 		EXIT_BLOCK();
 		RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
 #endif
