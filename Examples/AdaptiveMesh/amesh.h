@@ -35,7 +35,7 @@ namespace INMOST
 		bool Coarse(TagInteger & indicator);
 		/// Delete all data related to mesh refinement-coarsement.
 		void ClearData();
-       // void PrintSet(ElementSet set, std::string offset);
+		void PrintSet(std::ostream & fout, ElementSet set);
 		void SetModel(Model * mm) {model = mm;}
         //void Test();
         //void PrintMesh(std::ostream& os, int cell = 0, int face = 0, int edge = 0, int node = 0);

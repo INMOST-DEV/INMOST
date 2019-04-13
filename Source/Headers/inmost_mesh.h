@@ -1271,6 +1271,7 @@ namespace INMOST
 											senum;
 	private:
 		std::string                         name;
+		std::map<std::string,HandleType>    set_search;
 		real                                epsilon;
 		empty_container                     empty_space[6];
 		empty_container                     empty_links[6];

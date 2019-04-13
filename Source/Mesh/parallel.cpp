@@ -20,11 +20,22 @@
 static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 #endif
 
+static std::string NameSlash(std::string input)
+{
+	for(unsigned l = input.size(); l > 0; --l)
+		if( input[l-1] == '/' || input[l-1] == '\\' )
+			return std::string(input.c_str() + l);
+	return input;
+}
+
 #if defined(USE_PARALLEL_WRITE_TIME)
 #define REPORT_MPI(x) {WriteTab(out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
 #define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
 #define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
 #define ENTER_FUNC() double all_time = Timer(); {WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << func_id++ << "\">" << std::endl; Enter();}
+#define ENTER_BLOCK() { double btime = Timer(); WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << NameSlash(__FILE__) << ":" << __LINE__ << "\" id=\"func" << GetFuncID()++ << "\">" << std::endl; Enter();
+#define EXIT_BLOCK() WriteTab(out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+
 #define EXIT_FUNC() {WriteTab(out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #define EXIT_FUNC_DIE() {WriteTab(out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #else
@@ -32,6 +43,8 @@ static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 #define REPORT_STR(x) {}
 #define REPORT_VAL(str,x) {}
 #define ENTER_FUNC() {}
+#define ENTER_BLOCK()
+#define EXIT_BLOCK()
 #define EXIT_FUNC() {}
 #define EXIT_FUNC_DIE()  {}
 #endif
@@ -218,6 +231,11 @@ namespace INMOST
 			rdata[0] = idata[0];
 			rdata[1] = idata[1];
 		}
+		else if(idata[1] == rdata[1] && idata[0] < rdata[0])
+		{
+			rdata[0] = idata[0];
+			rdata[1] = idata[1];
+		}
 	}
 	void Mesh::EquilibrateGhost(bool only_new)
 	{
@@ -227,8 +245,9 @@ namespace INMOST
 		ElementType bridge = FACE;
 		if( tag_bridge.isValid() ) bridge = ElementType(Integer(GetHandle(),tag_bridge));
 		TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG",DATA_INTEGER,CELL,NONE,2);
-		//TODO: compute graph distance only in new elements!!!!
 		std::queue<HandleType> cells_queue;
+		ENTER_BLOCK();
+		//TODO: compute graph distance only in new elements!!!!
 		// Push nearest to owned cell into queue
 		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
@@ -247,7 +266,9 @@ namespace INMOST
 				}
 			}
 		}
+		EXIT_BLOCK();
 		int cur_dist = 1; // For assert
+		ENTER_BLOCK();
 		while (!cells_queue.empty())
 		{
 			Cell c(this,cells_queue.front());
@@ -266,15 +287,32 @@ namespace INMOST
 				}
 			}
 		}
+		EXIT_BLOCK();
+		
+		//static int equiv = 0;
+		//std::string file;
+		//file = "aequiv"+std::to_string(equiv)+".pvtk";
+		//std::cout << "Save " << file << std::endl;
+		//Save(file);
+		
+		CheckCentroids(__FILE__,__LINE__);
 		ReduceData(tag, CELL, 0, OperationMinDistance);
 		ExchangeData(tag, CELL, 0);
+		
+		
+		//file = "bequiv"+std::to_string(equiv)+".pvtk";
+		//std::cout << "Save " << file << std::endl;
+		//Save(file);
+		//equiv++;
+		
+		ENTER_BLOCK();
 		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
 			Cell c = CellByLocalID(k);
 			if( !c.Hidden() && c.GetStatus() != Element::Owned )
 			{
 				//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
-				if( !only_new || c.nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) )
+				//if( !only_new || c.nbAdjElements(NODE | FACE | CELL, NewMarker()) )
 				{
 					int new_owner = tag[c][0];
 					c.IntegerDF(tag_owner) = new_owner;
@@ -285,14 +323,19 @@ namespace INMOST
 				}
 			}
 		}
+		EXIT_BLOCK();
+		ENTER_BLOCK();
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{
+			//ElementType check = etype | NextElementType(etype) | PrevElementType(etype);
+			//if( etype == NODE ) etype |= CELL;
+			ElementType check = NODE | FACE | EDGE | CELL;
 			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
 			{
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
 				{
-					if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
+					//if( !only_new || e.nbAdjElements(check,NewMarker()) )
 					{
 						Element::adj_type & hc = HighConn(e.GetHandle());
 						int new_owner = INT_MAX;
@@ -314,9 +357,13 @@ namespace INMOST
 				}
 			}
 		}
-#endif
+		
+		
+		
 		DeleteTag(tag);
+		EXIT_BLOCK();
 		RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
+#endif
 		EXIT_FUNC();
 	}
 	
@@ -1075,6 +1122,7 @@ namespace INMOST
 		//Compute local bounding box containing nodes.
 		//Will be more convinient to compute (or store)
 		//and communicate local octree over all the nodes.
+		ENTER_BLOCK();
 		for(integer k = 0; k < dim; k++)
 		{
 			bbox[k] = 1e20;
@@ -1134,7 +1182,7 @@ namespace INMOST
 				if( flag ) procs.push_back(k);
 			}
 		REPORT_VAL("neighbour processors",procs.size());
-		
+		EXIT_BLOCK();
 		//~ if( procs.empty() )
 		//~ {
 			//~ REPORT_STR("no processors around - all elements are owned");
@@ -1149,6 +1197,7 @@ namespace INMOST
 			//~ AssignGlobalID(CELL | EDGE | FACE | NODE);
 		//~ }
 		//~ else
+		ENTER_BLOCK();
 		{
 			bool same_boxes = true, same_box;
 			for(int k = 0; k < mpisize && same_boxes; k++)
@@ -1164,6 +1213,7 @@ namespace INMOST
 			{
 				REPORT_STR("All bounding boxes are the same - assuming that mesh is replicated over all nodes");
 				//for(Mesh::iteratorElement it = BeginElement(CELL | EDGE | FACE | NODE); it != EndElement(); it++)
+				ENTER_BLOCK();
 				for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype) )
 				{
 #if defined(USE_OMP)
@@ -1185,9 +1235,11 @@ namespace INMOST
 							SetStatus(it->GetHandle(),Element::Ghost);
 					}
 				}
+				EXIT_BLOCK();
 				ComputeSharedProcs();
 				RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
 				AssignGlobalID(CELL | EDGE | FACE | NODE);
+				ENTER_BLOCK();
 #if defined(USE_PARALLEL_STORAGE)
 				for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
 					for(int i = 0; i < 4; i++)
@@ -1204,6 +1256,7 @@ namespace INMOST
 							//qsort(&it->second[i][0],it->second[i].size(),sizeof(Element *),CompareElementsCGID);
 					}
 #endif //USE_PARALLEL_STORAGE
+				EXIT_BLOCK();
 			}
 			else
 			{
@@ -1221,21 +1274,22 @@ namespace INMOST
                 }
                 */
 
-				double time = Timer();
+				
 				Storage::real epsilon = GetEpsilon();
-			
 				GeomParam table;
+				
+				ENTER_BLOCK();
+				
 				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
 					if( !HaveGeometricData(CENTROID,etype) )
 						table[CENTROID] |= etype;
 				PrepareGeometricData(table);
-				
-				time = Timer() - time;
 			
 				REPORT_STR("Prepare geometric data");
-				REPORT_VAL("time",time);
+				EXIT_BLOCK();
 			
 				//for(iteratorNode it = BeginNode(); it != EndNode(); it++)
+				ENTER_BLOCK();
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -1247,6 +1301,7 @@ namespace INMOST
 					arr.resize(1);
 					arr[0] = mpirank;
 				}
+				EXIT_BLOCK();
 			
 
 				buffer_type exch_data;
@@ -1256,10 +1311,7 @@ namespace INMOST
 				
 				sorted_nodes.reserve(NumberOfNodes());
 				
-				
-				time = Timer();
-				
-				
+				ENTER_BLOCK();
 				for(iteratorNode n = BeginNode(); n != EndNode(); n++)
 				{
 					if (only_new && GetMarker(*n,NewMarker()) == false) continue;
@@ -1272,48 +1324,43 @@ namespace INMOST
 						}
 				}
 				
-				time = Timer() - time;
 				REPORT_STR("Prepare array of nodes");
-				REPORT_VAL("time",time);
 				REPORT_VAL("share nodes", sorted_nodes.size());
 				REPORT_VAL("total nodes", NumberOfNodes());
+				EXIT_BLOCK();
 				
 				
-				
-				time = Timer();
+				ENTER_BLOCK();
 				if( !sorted_nodes.empty() )
 					std::sort(sorted_nodes.begin(),sorted_nodes.end(),CentroidComparator(this));
 					//qsort(&sorted_nodes[0],sorted_nodes.size(),sizeof(Element *),CompareElementsCCentroid);
-				time = Timer() - time;
 				REPORT_STR("Sort nodes");
-				REPORT_VAL("time",time);
+				EXIT_BLOCK();
 				
 				
 				pack_real.reserve(sorted_nodes.size()*dim);
 				
 				
-				time = Timer();
+				ENTER_BLOCK();
 				for(element_set::iterator it = sorted_nodes.begin(); it != sorted_nodes.end(); it++)
 				{
 					Storage::real_array arr = RealArrayDF(*it,CoordsTag());
 					pack_real.insert(pack_real.end(),arr.begin(),arr.end());
 				}
-				time = Timer() - time;
 				REPORT_STR("Gather coordinates");
-				REPORT_VAL("time",time);
+				EXIT_BLOCK();
 				
 				
-				time = Timer();
-			
+				int position = 0;
+				ENTER_BLOCK();
 				MPI_Pack_size(static_cast<int>(pack_real.size()),INMOST_MPI_DATA_REAL_TYPE,comm,&sendsize);
 				exch_data.resize(sendsize);
-				int position = 0;
 				if( sendsize > 0 ) MPI_Pack(&pack_real[0],static_cast<INMOST_MPI_SIZE>(pack_real.size()),INMOST_MPI_DATA_REAL_TYPE,&exch_data[0],static_cast<INMOST_MPI_SIZE>(exch_data.size()),&position,comm);
 				
 				
-				time = Timer() - time;
+				
 				REPORT_STR("Pack coordinates");
-				REPORT_VAL("time",time);
+				EXIT_BLOCK();
 
 				
 				
@@ -1332,6 +1379,7 @@ namespace INMOST
 					std::vector<unsigned> sendsizeall(mpisize*2);
 					int pack_size2 = 0;
 					unsigned usend[2] = {static_cast<unsigned>(sendsize),static_cast<unsigned>(pack_real.size())};
+					ENTER_BLOCK();
 					MPI_Pack_size(2,MPI_UNSIGNED,comm,&pack_size2);
 					for(dynarray<integer,64>::size_type k = 0; k < procs.size(); k++)
 					{
@@ -1342,7 +1390,9 @@ namespace INMOST
 						recv_buffs[k].first = procs[k];
 						recv_buffs[k].second.resize(pack_size2);
 					}
+					EXIT_BLOCK();
 					ExchangeBuffersInner(send_buffs,recv_buffs,send_reqs,recv_reqs);
+					ENTER_BLOCK();
 					while( !(done = FinishRequests(recv_reqs)).empty() )
 					{
 						for(std::vector<int>::iterator qt = done.begin(); qt != done.end(); qt++)
@@ -1355,12 +1405,13 @@ namespace INMOST
 					{
 						REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_reqs.size()),&send_reqs[0],MPI_STATUSES_IGNORE));
 					}
+					EXIT_BLOCK();
 					//~ REPORT_MPI(MPI_Allgather(usend,2,MPI_UNSIGNED,&sendsizeall[0],2,MPI_UNSIGNED,comm));
 //~ #endif
-					double time2 = Timer();
+					ENTER_BLOCK();
 					{
 						
-						
+						ENTER_BLOCK();
 						for(dynarray<integer,64>::size_type k = 0; k < procs.size(); k++)
 						{
 							send_buffs[k].first = procs[k];
@@ -1368,17 +1419,16 @@ namespace INMOST
 							recv_buffs[k].first = procs[k];
 							recv_buffs[k].second.resize(sendsizeall[procs[k]*2]);
 						}
-						
+						EXIT_BLOCK();
 						//PrepareReceiveInner(send_buffs,recv_buffs);
 						ExchangeBuffersInner(send_buffs,recv_buffs,send_reqs,recv_reqs);
 						
 						
-						
+						ENTER_BLOCK();
 						while( !(done = FinishRequests(recv_reqs)).empty() )
 						{
 							for(std::vector<int>::iterator qt = done.begin(); qt != done.end(); qt++)
 							{
-								time = Timer();
 								REPORT_STR("receive node coordinates");
 								REPORT_VAL("processor",recv_buffs[*qt].first);
 								int count = 0;
@@ -1409,23 +1459,22 @@ namespace INMOST
 									}
 								}
 								REPORT_VAL("intersected coords",count);
-								time = Timer() - time;
 								REPORT_STR("Intersect coordinates");
-								REPORT_VAL("time",time);
 							}
 						}
+						
 						if( !send_reqs.empty() )
 						{
 							REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_reqs.size()),&send_reqs[0],MPI_STATUSES_IGNORE));
 						}
-					}			
-					
-					time2 = Timer() - time2;
+						EXIT_BLOCK();
+					}
 					REPORT_STR("Intersect all coordinates");
-					REPORT_VAL("time",time2);
+					EXIT_BLOCK();
 					
-					time = Timer();
+					
 					Element::Status estat;
+					ENTER_BLOCK();
 					for(Mesh::iteratorElement it = BeginElement(NODE); it != EndElement(); it++)
 					{
                         if (only_new && GetMarker(*it,NewMarker()) == false) continue;
@@ -1453,11 +1502,11 @@ namespace INMOST
 							estat = Element::Ghost;
 						SetStatus(*it,estat);
 					}
-					
+					EXIT_BLOCK();
 					ComputeSharedProcs();
 					RecomputeParallelStorage(NODE);
 					AssignGlobalID(NODE);
-					
+					ENTER_BLOCK();
 #if defined(USE_PARALLEL_STORAGE)
 					for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
 					{
@@ -1472,11 +1521,8 @@ namespace INMOST
 							//qsort(&it->second[0][0],it->second[0].size(),sizeof(Element *),CompareElementsCGID);
 					}
 #endif //USE_PARALLEL_STORAGE
-					
-					
-					time = Timer() - time;
 					REPORT_STR("Set parallel info for nodes");
-					REPORT_VAL("time",time);
+					EXIT_BLOCK();
 					
 					
 					MarkerType new_lc = 0;
@@ -1486,7 +1532,7 @@ namespace INMOST
 					MarkerType nm = NewMarker();
 					
 					//for (iteratorElement it = BeginElement(CELL|FACE|EDGE); it != EndElement(); it++) lc_mrk[*it] = 0;
-					
+					ENTER_BLOCK();
 					for(ElementType current_mask = EDGE; current_mask <= CELL; current_mask = NextElementType(current_mask))
 					{
 						REPORT_STR("Set parallel info for");
@@ -1498,7 +1544,7 @@ namespace INMOST
 						int owner;
 						Element::Status estat;
 						
-						time = Timer();
+						ENTER_BLOCK();
 						if(only_new)
 						{
 							for(integer eit = 0; eit < LastLocalID(current_mask); ++eit) if( isValidElement(current_mask,eit) )
@@ -1521,10 +1567,12 @@ namespace INMOST
 									}
 							}
 						}
+						EXIT_BLOCK();
 						//stringstream ss;
 						//ss << "file_" << GetProcessorRank() << ".txt";
 						//				ofstream ofs(ss.str().c_str());
 						//Determine what processors potentially share the element
+						ENTER_BLOCK();
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
@@ -1551,16 +1599,16 @@ namespace INMOST
 								}
 							}
 						}
-						time = Timer() - time;
+						
 						//REPORT_VAL("predicted owned elements",owned_elems);
 						//REPORT_VAL("predicted shared elements",shared_elems);
 						REPORT_STR("Predict processors for elements");
-						REPORT_VAL("time",time);
+						EXIT_BLOCK();
 						
 						
-						time = Timer();
 						//Initialize mapping that helps get local id by global id
 						std::vector<std::pair<int,int> > mapping;
+						ENTER_BLOCK();
 						REPORT_VAL("mapping type",ElementTypeName(PrevElementType(current_mask)));
 						for(Mesh::iteratorElement it = BeginElement(PrevElementType(current_mask)); it != EndElement(); it++)
 						{
@@ -1568,19 +1616,13 @@ namespace INMOST
 						}
 						if( !mapping.empty() ) 
 							std::sort(mapping.begin(),mapping.end(),MappingComparator());
-						/*
-#if defined(USE_PARALLEL_WRITE_TIME)
-						for(std::vector<std::pair<int,int> >::iterator it = mapping.begin(); it != mapping.end(); ++it)
-							REPORT_STR("global " << it->first << " local " << it->second << Element::StatusName(ElementByLocalID(PrevElementType(current_mask),it->second)->GetStatus()));
-#endif
-						 */
-						time = Timer() - time;
+						
 						REPORT_VAL("mapping size",mapping.size())
 						REPORT_STR("Compute global to local indexes mapping");
-						REPORT_VAL("time",time);
+						EXIT_BLOCK();
 						//Initialize arrays
 						
-						time = Timer();
+						
 						Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 						Storage::integer_array::iterator p = procs.begin();
 						std::vector<int> message_send;
@@ -1590,6 +1632,7 @@ namespace INMOST
 						std::vector< MPI_Request > send_reqs,recv_reqs;
 						exch_buffer_type send_buffs(procs.size()), recv_buffs(procs.size());
 
+						ENTER_BLOCK();
 						//Gather all possible shared elements and send global ids of their connectivity to the neighbouring proccessors
 						for(p = procs.begin(); p != procs.end(); p++)
 						{
@@ -1636,17 +1679,16 @@ namespace INMOST
 							}
 						}
 						
+						
+						REPORT_STR("Pack messages for other processors");
+						EXIT_BLOCK();
+						
 						PrepareReceiveInner(UnknownSize,send_buffs,recv_buffs);
 						ExchangeBuffersInner(send_buffs,recv_buffs,send_reqs,recv_reqs);
 						
-						time = Timer() - time;
-						REPORT_STR("Pack messages for other processors");
-						REPORT_VAL("time",time);
 						
-						
-						time = Timer();
 						std::vector<int> done;
-						
+						ENTER_BLOCK();
 						while( !(done = FinishRequests(recv_reqs)).empty() )
 						{
 							for(std::vector<int>::iterator qt = done.begin(); qt != done.end(); qt++)
@@ -1668,11 +1710,11 @@ namespace INMOST
 							}
 						}
 						
-						time = Timer() - time;
-						REPORT_STR("Exchange messages");
-						REPORT_VAL("time",time);
 						
-						time = Timer();
+						REPORT_STR("Exchange messages");
+						EXIT_BLOCK();
+						
+						ENTER_BLOCK();
 						//Now find the difference of local elements with given processor number and remote elements
 						for(p = procs.begin(); p != procs.end(); p++)
 						{
@@ -1753,11 +1795,11 @@ namespace INMOST
 							}
 						}
 						
-						time = Timer() - time;
-						REPORT_STR("Determine true shared based on remote info");
-						REPORT_VAL("time",time);
 						
-						time = Timer();
+						REPORT_STR("Determine true shared based on remote info");
+						EXIT_BLOCK();
+						
+						ENTER_BLOCK();
 						//Now mark all the processors status
 						for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
 						{
@@ -1782,6 +1824,7 @@ namespace INMOST
 								estat = Element::Ghost;
 							SetStatus(*it, estat);
 						}
+						EXIT_BLOCK();
 						RecomputeParallelStorage(current_mask);
 						if( !send_reqs.empty() )
 						{
@@ -1789,6 +1832,7 @@ namespace INMOST
 						}
 						AssignGlobalID(current_mask);					
 						integer num = ElementNum(current_mask);
+						ENTER_BLOCK();
 #if defined(USE_PARALLEL_STORAGE)
 						for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
 						{
@@ -1802,16 +1846,17 @@ namespace INMOST
 						}
 #endif //USE_PARALLEL_STORAGE
 	
-						time = Timer() - time;
 						REPORT_STR("Set parallel info");
-						REPORT_VAL("time",time);
+						EXIT_BLOCK();
 					}
+					EXIT_BLOCK();
 					if( only_new ) ReleaseMarker(new_lc,EDGE|FACE|CELL);
 					
 				}
 				RemoveGeometricData(table);	
 			}
 		}
+		EXIT_BLOCK();
 		EquilibrateGhost(only_new);
 		//RemoveGhost();
 #else //USE_MPI
@@ -5892,118 +5937,94 @@ namespace INMOST
 
         std::map<std::string, std::vector<int> > map_names; // key - set_name, value - array of processors ranks which has this set
 
-        // Collect all set names to vector<string>
-        //vector<string>* all_set_names = new vector<string>[mpisize];
-        //std::vector<std::string>& set_names = all_set_names[mpirank];
-        std::vector<std::string> set_names;
-        int bytes_size = 0;
-        for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); ++it)
-        {
-            set_names.push_back(it->GetName());
-            map_names[it->GetName()].push_back(mpirank);
-            bytes_size += it->GetName().length() + 1; // +1 for terminator
-        }
-
-        // Gather size of buffers from other processors
-        int* all_bytes_sizes = new int[mpisize];
-        all_bytes_sizes[mpirank] = bytes_size;
-
-        for (int p = 0; p < mpisize; p++)
-        {
-            if (mpirank == p)
-                MPI_Bcast(&bytes_size,1,MPI_INTEGER,p,GetCommunicator());
-            else
-                MPI_Bcast(&all_bytes_sizes[p],1,MPI_INTEGER,p,GetCommunicator());
-        }
-
-/*
-        stringstream ss;
-        for (int i = 0; i < mpisize; i++)
-        {
-            ss << all_bytes_sizes[i] << " ";
-        }
-        cout << mpirank << ": " << ss.str() << endl;
-*/
-
-        // Configure buffer for send to other processors: name1/0 name2/0 ...
-        char* buffer = new char[bytes_size];
-        char* ptr = buffer;
-        for (int i = 0; i < set_names.size(); i++)
-        {
-            strcpy(ptr,set_names[i].c_str());
-            ptr += set_names[i].length() + 1;
-        }
-
-        // send/receive buffers to/from other processors
-        char* recv_buffer;
-        for (int p = 0; p < mpisize; p++)
-        {
-            if (mpirank == p)
-            {
-                MPI_Bcast(buffer,all_bytes_sizes[p],MPI_CHAR,p,GetCommunicator());
-            }
-            else
-            {
-                recv_buffer = new char[all_bytes_sizes[p]];
-                MPI_Bcast(recv_buffer,all_bytes_sizes[p],MPI_CHAR,p,GetCommunicator());
-
-
-                // after receive - configure map_names
-                ptr = recv_buffer;
-                while (ptr-recv_buffer < all_bytes_sizes[p])
-                {
-                    int length = strlen(ptr);
-                    char* set_name = new char[length+1];
-                    strcpy(set_name,ptr);
-                    //all_set_names[p].push_back(std::string(set_name));
-                    map_names[set_name].push_back(p);
-                    ptr += length+1;
-                }
-                delete[] recv_buffer;
-            }
-        }
-		delete [] buffer;
-		delete [] all_bytes_sizes;
-		// Change status for self sets
-		for(Mesh::iteratorSet set = BeginSet(); set != EndSet(); ++set)
+		std::vector<char> set_names_send;
+		std::vector<char> set_names_recv;
+		std::vector<int> size_recv(mpisize);
+		int size_send, size_recv_all = 0, prealloc = 0;
+		ENTER_BLOCK();
+		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)
+			prealloc += it->first.size()+1;
+		set_names_send.reserve(prealloc);
+		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)
 		{
-			std::string set_name = set->GetName();
+			set_names_send.insert(set_names_send.end(),it->first.begin(),it->first.end());
+			set_names_send.push_back('\0');
+		}
+		size_send = (int)set_names_send.size();
+		EXIT_BLOCK();
+		REPORT_MPI(MPI_Allgather(&size_send,1,MPI_INT,&size_recv[0],1,MPI_INT,comm));
+		
+		std::vector<int> displs(mpisize+1,0);
+		for(int k = 0; k < mpisize; k++)
+		{
+			size_recv_all += size_recv[k];
+			displs[k+1] = displs[k]+size_recv[k];
+		}
+		set_names_recv.resize(size_recv_all);
+		char * send_ptr = set_names_send.empty() ? NULL : &set_names_send[0];
+		char * recv_ptr = set_names_recv.empty() ? NULL : &set_names_recv[0];
+			REPORT_MPI(MPI_Allgatherv(send_ptr,size_send,MPI_CHAR,recv_ptr,&size_recv[0],&displs[0],MPI_CHAR,comm));
+		ENTER_BLOCK();
+		for(int k = 0; k < mpisize; ++k)
+		{
+			char * beg_ptr = recv_ptr + displs[k];
+			char * end_ptr = recv_ptr + displs[k] + size_recv[k];
+			while( beg_ptr < end_ptr )
+			{
+				std::string name(beg_ptr);
+				REPORT_STR("\"" << name << "\" size " << name.size() << " proc " << k);
+				map_names[name].push_back(k);
+				beg_ptr += name.size()+1;
+			}
+		}
+		EXIT_BLOCK();
+		
+		// Change status for self sets
+		//for(Mesh::iteratorSet set = BeginSet(); set != EndSet(); ++set)
+		//ENTER_BLOCK();
+		//for(std::map<std::string,std::vector<int> >::iterator it = map_names.begin(); it != map_names.end(); ++it)
+		//{
+		//	REPORT_STR("\"" << it->first << "\" size " << it->first.size() << " handle " << it->second.size());
+		//}
+		//EXIT_BLOCK();
+		ENTER_BLOCK();
+		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)
+		{
+			//REPORT_STR("\"" << it->first << "\" size " << it->first.size() << " handle " << it->second);
+			std::vector<int> & procs = map_names[it->first];
+			//if( procs.empty() )
+			//	std::cout << "no procs for " << it->first << std::endl;
+			//REPORT_VAL("procs ",procs.size());
+			//std::string set_name = set->GetName();
 			//REPORT_VAL("set name: ", set_name);
-			Storage::integer_array arr = set->IntegerArrayDV(tag_processors);
-			std::sort(map_names[set_name].begin(),map_names[set_name].end());
-			map_names[set_name].resize(std::unique(map_names[set_name].begin(),map_names[set_name].end())-map_names[set_name].begin());
-			arr.resize(map_names[set_name].size());
-			for (int i = 0; i < map_names[set_name].size(); i++)
+			Storage::integer_array arr = IntegerArrayDV(it->second,tag_processors);
+			//if( !std::is_sorted(procs.begin(),procs.end()))
+			//	std::cout << __FILE__ << ":" << __LINE__ << " not sorted!" << std::endl;
+			//std::sort(map_names[set_name].begin(),map_names[set_name].end());
+			//map_names[set_name].resize(std::unique(map_names[set_name].begin(),map_names[set_name].end())-map_names[set_name].begin());
+			arr.resize(procs.size());
+			for (int i = 0; i < procs.size(); i++) arr[i] = procs[i];
+			assert(procs.size() > 0);
+			if (procs.size() == 1)
 			{
-				arr[i] = map_names[set_name][i];   
-				//REPORT_VAL("proc: ", arr[i]);
-			}
-			assert(map_names[set_name].size() > 0);
-			if (map_names[set_name].size() == 1)
-			{
-				//REPORT_STR("owned");
-				assert(map_names[set_name][0] == mpirank);
-				SetStatus(set->GetHandle(), Element::Owned);
-				set->IntegerDF(tag_owner) = mpirank;
-				continue;
-			}
-			int min = map_names[set_name][0];
-			for (int i = 1; i < map_names[set_name].size(); i++)
-				if (map_names[set_name][i] < min)
-					min = map_names[set_name][i];
-			//REPORT_VAL("onwer processor",min);
-			set->IntegerDF(tag_owner) = min;
-			if (min == mpirank)
-			{
-				//REPORT_STR("shared");
-				SetStatus(set->GetHandle(), Element::Shared);
+				assert(procs[0] == mpirank);
+				SetStatus(it->second, Element::Owned);
+				IntegerDF(it->second, tag_owner) = mpirank;
 			}
 			else
 			{
-				//REPORT_STR("ghost");
-				SetStatus(set->GetHandle(), Element::Ghost);
+				//int min = map_names[set_name][0];
+				//for (int i = 1; i < map_names[set_name].size(); i++)
+				//	if (map_names[set_name][i] < min)
+				//		min = map_names[set_name][i];
+				IntegerDF(it->second,tag_owner) = procs[0];
+				if (procs[0] == mpirank)
+					SetStatus(it->second, Element::Shared);
+				else
+					SetStatus(it->second, Element::Ghost);
 			}
 		}
+		EXIT_BLOCK();
 		RecomputeParallelStorage(ESET);
 		AssignGlobalID(ESET);
 #endif

@@ -2196,6 +2196,7 @@ namespace INMOST
 		else if( htype & ESET )
 		{
 			ElementSet eset(this,h);
+			set_search.erase(eset->GetName());
 			if( eset->HaveParent() )
 				eset->GetParent()->RemChild(eset);
 			while( eset->HaveChild() )

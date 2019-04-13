@@ -9,6 +9,7 @@ int main(int argc, char ** argv)
 	if( argc > 1 )
 	{
 		Mesh m;
+		
 		m.SetCommunicator(INMOST_MPI_COMM_WORLD);
 		if( m.isParallelFileFormat(argv[1]) )
 			m.Load(argv[1]);
@@ -95,7 +96,9 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
-					std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " numref " << numref << " cells " << m.NumberOfCells() << std::endl;
+					int ncells = m.TotalNumberOf(CELL);
+					if( m.GetProcessorRank() == 0 )
+						std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " numref " << numref << " cells " << ncells << std::endl;
 					
 					int res = am.Refine(indicator);
 					res = m.Integrate(res);
@@ -139,7 +142,18 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
-					std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " numcrs " << numref << " cells " << m.NumberOfCells() <<  std::endl;
+					int ncells = m.TotalNumberOf(CELL);
+					if( m.GetProcessorRank() == 0 )
+						std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " numcrs " << numref << " cells " << ncells <<  std::endl;
+					//if( k == 5 && refcnt == 1 ) exit(-1);
+					if( false )
+					{
+						std::stringstream file;
+						file << "crsind_" << k << "_" << refcnt << ".pvtk";
+						m.Save(file.str());
+						if( m.GetProcessorRank() == 0 )
+							std::cout << "Save " << file.str() << std::endl;
+					}
 					int res = am.Coarse(indicator);
 					res = m.Integrate(res);
 					if( !res ) break;

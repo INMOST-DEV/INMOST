@@ -1755,17 +1755,15 @@ namespace INMOST
 		memcpy(set_name.data(),name.c_str(),name.size());
 		HighConn(he).resize(ElementSet::high_conn_reserved); //Allocate initial space for parent/sibling/child/unsorted info
 		BulkDF(he, SetComparatorTag()) = ElementSet::UNSORTED_COMPARATOR;
+		set_search[name] = he;
 		return std::make_pair(ElementSet(this,he),true);
 	}
 	
 	std::pair<ElementSet,bool> Mesh::CreateSet(std::string name)
 	{
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
-		{
-			ElementSet e = EsetByLocalID(it);
-			if( e->GetName() == name )
-				return std::make_pair(e->self(),false);
-		}
+		ElementSet check = GetSet(name);
+		if( check != InvalidElementSet() )
+			return std::make_pair(check,false);
 		return CreateSetUnique(name);
 	}
 	
@@ -2483,11 +2481,17 @@ namespace INMOST
 
 	ElementSet Mesh::GetSet(std::string name)
 	{
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//{
+		//	ElementSet e = EsetByLocalID(it);
+		//	if( e->GetName() == name )
+		//		return e;
+		//}
+		std::map<std::string,HandleType>::iterator find = set_search.find(name);
+		if( find != set_search.end() )
 		{
-			ElementSet e = EsetByLocalID(it);
-			if( e->GetName() == name )
-				return e;
+			assert(find->first == name);
+			return ElementSet(this,find->second);
 		}
 		return InvalidElementSet();
 	}
@@ -2495,11 +2499,27 @@ namespace INMOST
 	ElementArray<ElementSet> Mesh::GetSetsByPrefix(std::string name)
 	{
 		ElementArray<ElementSet> ret(this);
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//{
+		//	ElementSet e = EsetByLocalID(it);
+		//	if( e->GetName().substr(0,name.size()) == name )
+		//		ret.push_back(e->self());
+		//}
+		//std::cout << __FUNCTION__ << "(" << name << ")" << std::endl;
+		std::map<std::string,HandleType>::iterator beg,end;
+		beg = set_search.lower_bound(name);
+		//end = set_search.upper_bound(name);
+		//if( beg != set_search.end() ) std::cout << "beg " << beg->first << " " << beg->second << std::endl; else std::cout << "no beg" << std::endl;
+		//if( end != set_search.end() ) std::cout << "end " << end->first << " " << end->second << std::endl; else std::cout << "no end" << std::endl;
+		while( beg != set_search.end() )
 		{
-			ElementSet e = EsetByLocalID(it);
-			if( e->GetName().substr(0,name.size()) == name )
-				ret.push_back(e->self());
+			//std::cout << "check " << beg->first << " against " << name << std::endl;
+			std::string prefix = beg->first.substr(0,name.size());
+			if( prefix == name )
+				ret.push_back(beg->second);
+			else if( prefix > name )
+				break;
+			beg++;
 		}
 		return ret;
 	}

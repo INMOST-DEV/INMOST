@@ -8,7 +8,7 @@
 #define REPORT_STR(x) {m->WriteTab(m->out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
 #define REPORT_VAL(str,x) {m->WriteTab(m->out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
 #define ENTER_FUNC() double all_time = Timer(); {m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();}
-#define ENTER_BLOCK() { double btime = Timer(); m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();
+#define ENTER_BLOCK() { double btime = Timer(); m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << NameSlash(__FILE__) << ":" << __LINE__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();
 #define EXIT_BLOCK() m->WriteTab(m->out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
 #define EXIT_FUNC() {m->WriteTab(m->out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
 #define EXIT_FUNC_DIE() {m->WriteTab(m->out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
@@ -21,13 +21,21 @@
 #define EXIT_FUNC_DIE()  {}
 #endif
 
+static std::string NameSlash(std::string input)
+{
+	for(unsigned l = input.size(); l > 0; --l)
+		if( input[l-1] == '/' || input[l-1] == '\\' )
+			return std::string(input.c_str() + l);
+	return input;
+}
+
 
 //#include "../../Source/Misc/base64.h"
 //using namespace std;
 
 //from inmost
 //std::string base64_encode(unsigned char const* buf, unsigned int bufLen);
-/*
+
 	std::string base64_encode_(unsigned char const* buf, unsigned int bufLen)
 	{
 		static const std::string base64_chars =
@@ -74,7 +82,7 @@
 		
 		return ret;
 	}
- */
+
 /// todo:
 /// 1. coarsment
 /// 2. strategy for faces/edges with faults
@@ -291,34 +299,18 @@ namespace INMOST
     }
 	*/
     
-	/*
-    void AdaptiveMesh::PrintSet(ElementSet set, std::string offset)
+	
+	void AdaptiveMesh::PrintSet(std::ostream & fout, ElementSet set)
     {
-        std::cout << offset << "Set: " << std::endl;
-
-		ElementSet::iterator it = set.Begin();
-		while(it != set.End())
-        {
-		    ElementSet parent(m,parent_set[*it]);
-            std::cout << offset << it->GlobalID() << " - " << level[*it] << " : ";
-		    
-            ElementSet::iterator p = parent.Begin();
-    		while(p != parent.End())
-            {
-                std::cout << p->GlobalID() << " ";
-                p++;
-            }
-            std::cout << std::endl;
-            it++;
-        }
-
+		fout << "set " << set.GetName();
+		fout << " size " << set.Size();
+		if(set.HaveParent()) fout << " parent " << set.GetParent().GetName();
+		fout << " children ";
 		for(ElementSet child = set.GetChild(); child.isValid(); child = child.GetSibling())
-        {
-            PrintSet(child,offset + "  ");
-        }
-
+            fout << child.GetName() << " ";
+		fout << std::endl;
     }
-	*/
+	
 
 	/*
     void AdaptiveMesh::SynchronizeSet(ElementSet set)
@@ -438,24 +430,24 @@ namespace INMOST
 		PrepareSet();
 		EXIT_BLOCK();
 
-		m->Save("before_refine"+std::to_string(fi)+".pvtk");
-		std::cout << "Save before_refine"+std::to_string(fi)+".pvtk" << std::endl;
+		//m->Save("before_refine"+std::to_string(fi)+".pvtk");
+		//std::cout << "Save before_refine"+std::to_string(fi)+".pvtk" << std::endl;
 		
 		ENTER_BLOCK();
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-		m->CheckCentroids(__FILE__,__LINE__);
-		CheckParentSet();
+		//m->CheckCentroids(__FILE__,__LINE__);
+		//CheckParentSet();
 		EXIT_BLOCK();
 
-		m->Save("before_refine_parent"+std::to_string(fi)+".pvtk");
-		std::cout << "Save before_refine_parent"+std::to_string(fi)+".pvtk" << std::endl;
+		//m->Save("before_refine_parent"+std::to_string(fi)+".pvtk");
+		//std::cout << "Save before_refine_parent"+std::to_string(fi)+".pvtk" << std::endl;
 		
 
 		
@@ -466,10 +458,12 @@ namespace INMOST
 		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
 		while(scheduled)
 		{
+			REPORT_VAL("scheduled",scheduled);
 			//1.Communicate indicator - it may be not synced
 			m->ExchangeData(indicator,CELL,0);
 			//2.Propogate indicator down to the faces,edges
 			//  select schedule for them
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -483,12 +477,14 @@ namespace INMOST
 					}
 				}
 			}
+			EXIT_BLOCK();
 			//3.Communicate indicator on faces and edges
 			m->ExchangeData(indicator,FACE|EDGE,0);
 			//4.Check for each cell if there is
 			//  any hanging node with adjacent in a need to refine,
 			//  schedule for refinement earlier.
 			scheduled = 0;
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -513,6 +509,7 @@ namespace INMOST
 					}
 				}
 			}
+			EXIT_BLOCK();
 			//5.Go back to 1 until no new elements scheduled
 			scheduled = m->Integrate(scheduled);
 			if( scheduled ) schedule_counter++;
@@ -527,6 +524,7 @@ namespace INMOST
 		{
 			Storage::real xyz[3] = {0,0,0};
 			//7.split all edges of the current schedule
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
 			{
 				Edge e = m->EdgeByLocalID(it);
@@ -551,7 +549,9 @@ namespace INMOST
 					level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
 				}
 			}
+			EXIT_BLOCK();
 			//8.split all faces of the current schedule, using hanging nodes on edges
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->FaceLastLocalID(); ++it) if( m->isValidFace(it) )
 			{
 				Face f = m->FaceByLocalID(it);
@@ -593,6 +593,7 @@ namespace INMOST
 						level[new_faces[kt]] = level[f]+1;
 				}
 			}
+			EXIT_BLOCK();
 			//this tag helps recreate internal face
 			TagReferenceArray internal_face_edges = m->CreateTag("INTERNAL_FACE_EDGES",DATA_REFERENCE,NODE,NODE,4);
 			//this marker helps detect edges of current cell only
@@ -600,6 +601,7 @@ namespace INMOST
 			//this marker helps detect nodes hanging on edges of unrefined cell
 			MarkerType mark_hanging_nodes = m->CreateMarker();
 			//9.split all cells of the current schedule
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -692,6 +694,7 @@ namespace INMOST
 					//}
 					//split the cell
 					ElementArray<Cell> new_cells = Cell::SplitCell(c,internal_faces,0);
+					std::sort(new_cells.begin(),new_cells.end(),Mesh::CentroidComparator(m));
 					//retrive parent set
 					ElementSet parent(m,parent_set[c]);
 					//create set corresponding to old coarse cell
@@ -745,6 +748,7 @@ namespace INMOST
 					ret++;
 				}
 			}
+			EXIT_BLOCK();
 			m->ReleaseMarker(mark_hanging_nodes);
 			m->ReleaseMarker(mark_cell_edges);
 			m->DeleteTag(internal_face_edges);
@@ -773,8 +777,8 @@ namespace INMOST
 		EXIT_BLOCK();
 		
 		
-		m->Save("after_refine"+std::to_string(fi)+".pvtk");
-		std::cout << "Save after_refine"+std::to_string(fi)+".pvtk" << std::endl;
+		//m->Save("after_refine"+std::to_string(fi)+".pvtk");
+		//std::cout << "Save after_refine"+std::to_string(fi)+".pvtk" << std::endl;
 		fi++;
 		
 		//ExchangeData(hanging_nodes,CELL | FACE,0);
@@ -790,6 +794,8 @@ namespace INMOST
 		
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
+		
+		/*
 		ENTER_BLOCK();
 		int nfixed = 0;
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
@@ -801,6 +807,8 @@ namespace INMOST
 			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
 		if( nfixed ) REPORT_STR(rank << " fixed " << nfixed << " faces");
 		EXIT_BLOCK();
+		 */
+		
 		/*
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
@@ -845,6 +853,7 @@ namespace INMOST
 
         // Check all sets. All elements in sets must be indicated. At first we check indicator in local processor, and second integrate data
         TagInteger tag_indicated = m->CreateTag("INDICATED",DATA_INTEGER,ESET,NONE,1);
+		ENTER_BLOCK();
         for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
         {
             ElementSet set = ElementSet(m,*it);
@@ -862,10 +871,10 @@ namespace INMOST
                 p++;
             }
         }
-
+		EXIT_BLOCK();
         m->ReduceData(tag_indicated,ESET,0,OperationMin);
         m->ExchangeData(tag_indicated,ESET,0);
-
+		ENTER_BLOCK();
         for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
             if (it->Integer(tag_indicated) == 0)
             {
@@ -876,11 +885,13 @@ namespace INMOST
                     p++;
                 }
             }
+		EXIT_BLOCK();
         EXIT_FUNC();
     }
 
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
+		std::string file;
 		static int fi = 0;
         ENTER_FUNC();
         //return false;
@@ -892,28 +903,30 @@ namespace INMOST
 		PrepareSet();
 		EXIT_BLOCK();
 
-		m->Save("before_coarse"+std::to_string(fi)+".pvtk");
-		std::cout << "Save before_coarse"+std::to_string(fi)+".pvtk" << std::endl;
+		//m->Save("before_coarse"+std::to_string(fi)+".pvtk");
+		//std::cout << "Save before_coarse"+std::to_string(fi)+".pvtk" << std::endl;
 		
 		ENTER_BLOCK();
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-		m->CheckCentroids(__FILE__,__LINE__);
-		CheckParentSet();
+		//m->CheckCentroids(__FILE__,__LINE__);
+		//CheckParentSet();
 		EXIT_BLOCK();
 
-		m->Save("before_coarse_parent"+std::to_string(fi)+".pvtk");
-		std::cout << "Save before_coarse_parent"+std::to_string(fi)+".pvtk" << std::endl;
+		//m->Save("before_coarse_parent"+std::to_string(fi)+".pvtk");
+		//std::cout << "Save before_coarse_parent"+std::to_string(fi)+".pvtk" << std::endl;
 		
-		ENTER_BLOCK();
-		SynchronizeIndicated(indicator);
-		EXIT_BLOCK();
+		//ENTER_BLOCK();
+		//SynchronizeIndicated(indicator);
+		//EXIT_BLOCK();
+		
+		
 		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
@@ -923,8 +936,14 @@ namespace INMOST
 		TagInteger coarse_indicator = m->CreateTag("COARSE_INDICATOR",DATA_INTEGER,EDGE,NONE,1); //used to find on fine cells indicator on coarse cells
 		//0. Extend indicator for sets, edges and faces
 		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
+		//int mi = 0;
+		//file = "w"+std::to_string(mi++)+".pvtk";
+		//m->Save(file);
+		//std::cout << "Save " << file << " " << __FILE__ << ":" << __LINE__ << std::endl;
 		while(scheduled || unscheduled)
 		{
+			REPORT_VAL("scheduled",scheduled);
+			REPORT_VAL("unscheduled",unscheduled);
 			// rules
 			// a) If there is adjacent finer edge that is not marked for coarsening
 			// then this cell should not be coarsened
@@ -935,6 +954,7 @@ namespace INMOST
 			//1. Mark each adjacent face/edge for coarsement schedule
 			// problem: should mark so that if every adjacent cell is coarsened
 			// then adjacent face/edge are also coarsened
+			ENTER_BLOCK();
 			for(ElementType etype = EDGE; etype <= FACE; etype = NextElementType(etype))
 			{
 				//for(Storage::integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
@@ -950,12 +970,14 @@ namespace INMOST
 					//assert(indicator[e] != INT_MAX);
 				}
 			}
+			EXIT_BLOCK();
 			//2.Communicate indicator on faces and edges
 			m->ReduceData(indicator,FACE|EDGE,0,ReduceMin);
 			m->ExchangeData(indicator,FACE|EDGE,0);
 			//3.If there is adjacent finer edge that are not marked for coarsening
 			// then this cell should not be coarsened
 			unscheduled = scheduled = 0;
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -972,11 +994,18 @@ namespace INMOST
 					}
 				}
 			}
+			EXIT_BLOCK();
+			//file = "w"+std::to_string(mi++)+".pvtk";
+			//m->Save(file);
+			//std::cout << "Save " << file << " " << __FILE__ << ":" << __LINE__ << std::endl;
 			//4. Propogate coarsement info over set tree to detect valid coarsenings.
 			// go down over sets, if set does not have children and all of the cells
 			// of the set are marked for coarsening, then mark the set for coarsement
 			// otherwise unmark.
 			// Unmark all cells that are not to be coarsened
+			ENTER_BLOCK();
+			//int v1 = 0, v2 = 0, v3 = 0;
+			//std::fstream fout("set"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -986,10 +1015,12 @@ namespace INMOST
 					ElementSet parent(m,parent_set[c]);
 					//intermediate cell may not be coarsened
 					//root set may not have coarsening cells
-					if( parent.HaveChild() || !parent.HaveParent() )
+					if( parent.HaveChild() )//|| !parent.HaveParent() )
 					{
+						//PrintSet(fout,parent);
 						indicator[c] = 0;
 						unscheduled++;
+						//v1++;
 					}
 					else
 					{
@@ -1005,21 +1036,33 @@ namespace INMOST
 						{
 							indicator[c] = 0;
 							unscheduled++;
+							//v2++;
 						}
 						else if( indicator[c] != schedule_first )
 						{
 							indicator[c] = schedule_first;
 							unscheduled++;
+							//v3++;
 						}
 					}
 				}
 			}
+			//fout.close();
+			//std::cout << "v1 " << v1 << " v2 " << v2 << " v3 " << v3 << std::endl;
+			EXIT_BLOCK();
+			//file = "w"+std::to_string(mi++)+".pvtk";
+			//m->Save(file);
+			//std::cout << "Save " << file << " " << __FILE__ << ":" << __LINE__ << std::endl;
+			//if( fi == 5 && mi == 3 ) exit(-1);
 			//5.If there is an adjacent coarser element to be refined, then
 			//   this one should be scheduled to be refined first
 			//a) clean up coarse indicator tag
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
 				coarse_indicator[m->EdgeByLocalID(it)] = 0;
+			EXIT_BLOCK();
 			//b) each cell mark it's finer edges with cell's schedule
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1033,10 +1076,15 @@ namespace INMOST
 					}
 				}
 			}
+			EXIT_BLOCK();
+			//file = "w"+std::to_string(mi++)+".pvtk";
+			//m->Save(file);
+			//std::cout << "Save " << file << " " << __FILE__ << ":" << __LINE__ << std::endl;
 			//c) data reduction to get maximum over mesh partition
 			m->ReduceData(coarse_indicator,EDGE,0,ReduceMax);
 			m->ExchangeData(coarse_indicator,EDGE,0);
 			//d) look from cells if any edge is coarsened earlier
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1054,7 +1102,11 @@ namespace INMOST
 					}
 				}
 			}
+			EXIT_BLOCK();
 			m->ExchangeData(indicator,CELL|FACE|EDGE,0);
+			//file = "w"+std::to_string(mi++)+".pvtk";
+			//m->Save(file);
+			//std::cout << "Save " << file << " " << __FILE__ << ":" << __LINE__ << std::endl;
 			//5.Go back to 1 until no new elements scheduled
 			scheduled = m->Integrate(scheduled);
 			unscheduled = m->Integrate(unscheduled);
@@ -1063,6 +1115,9 @@ namespace INMOST
 		//cleanup
 		coarse_indicator = m->DeleteTag(coarse_indicator);
 		EXIT_BLOCK();
+		
+		//m->Save("unschdind"+std::to_string(fi)+".pvtk");
+		//std::cout << "Save unschdind"+std::to_string(fi)+".pvtk" << std::endl;
 		//Make schedule which elements should be refined earlier.
 		ENTER_BLOCK();
 		m->BeginModification();
@@ -1072,6 +1127,7 @@ namespace INMOST
 			//should find and set hanging nodes on faces
 			//find single node at the center, all other nodes,
 			//adjacent over edge are hanging nodes
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1112,11 +1168,13 @@ namespace INMOST
 					ret++;
 				}
 			}
+			EXIT_BLOCK();
 			//unite faces
 			//should find and set hanging nodes on edges
 			//find single node at the center, all other nodes,
 			//adjacent over edge of the face are hanging nodes
 			int numcoarsened = 0;
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->FaceLastLocalID(); ++it) if( m->isValidFace(it) )
 			{
 				Face f = m->FaceByLocalID(it);
@@ -1164,7 +1222,9 @@ namespace INMOST
 					assert(visited);
 				}
 			}
+			EXIT_BLOCK();
 			//unite edges
+			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
 			{
 				Edge e = m->EdgeByLocalID(it);
@@ -1200,6 +1260,7 @@ namespace INMOST
 					assert(visited);
 				}
 			}
+			EXIT_BLOCK();
 			/*
 			for(Storage::integer it = 0; it < NodeLastLocalID(); ++it) if( isValidNode(it) )
 			{
@@ -1229,13 +1290,13 @@ namespace INMOST
 		m->EndModification();
 		EXIT_BLOCK();
 		
-		m->Save("after_coarse"+std::to_string(fi)+".pvtk");
-		std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;
+		//m->Save("after_coarse"+std::to_string(fi)+".pvtk");
+		//std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;
 		fi++;
 		//exit(-1);
 		
 		ENTER_BLOCK();
-		m->CheckCentroids(__FILE__,__LINE__);
+		//m->CheckCentroids(__FILE__,__LINE__);
 		//CheckCentroids();
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
@@ -1260,6 +1321,8 @@ namespace INMOST
 		
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
+		
+		/*
 		ENTER_BLOCK();
 		int nfixed = 0;
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
@@ -1271,6 +1334,7 @@ namespace INMOST
 			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
 		if( nfixed ) REPORT_STR("fixed " << nfixed << " faces");
 		EXIT_BLOCK();
+		 */
 		
 		//reorder element's data to free up space
 		ENTER_BLOCK();
