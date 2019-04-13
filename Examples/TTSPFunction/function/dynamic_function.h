@@ -6,6 +6,7 @@
 #define INMOST_DYNAMIC_FUNCTION_H
 
 #include <utility>
+#include <inmost_ttsp.h>
 
 class DynamicFunction {
 public:
@@ -18,6 +19,14 @@ public:
     virtual std::pair<double, double> GetXRange() const noexcept = 0;
 
     virtual std::pair<double, double> GetYRange() const noexcept = 0;
+
+    virtual TTSP::OptimizationParameterType GetXParameterType() const noexcept {
+        return TTSP::OptimizationParameterType::PARAMETER_TYPE_DEFAULT;
+    }
+
+    virtual TTSP::OptimizationParameterType GetYParameterType() const noexcept {
+        return TTSP::OptimizationParameterType::PARAMETER_TYPE_DEFAULT;
+    }
 };
 
 

@@ -239,12 +239,13 @@ int main(int argc, char **argv) {
             INMOST::Sparse::Vector rhs("b");
             INMOST::Sparse::Vector x("x");
 
+            matrix.Load(next.first);
+
             INMOST_DATA_ENUM_TYPE mbeg, mend;
             matrix.GetInterval(mbeg, mend);
 
             x.SetInterval(mbeg, mend);
-            for (int k = mbeg;
-                 k < mend; ++k) {
+            for (int k = mbeg; k < mend; ++k) {
                 x[k] = 0.0;
             }
 
@@ -254,8 +255,6 @@ int main(int argc, char **argv) {
                 rhs.SetInterval(mbeg, mend);
                 for (int k = mbeg; k < mend; ++k) rhs[k] = 1.0;
             }
-
-            matrix.Load(next.first);
 
             auto invoke = [&solver, &matrix, &rhs, &x](const TTSP::OptimizationParameterPoints &before, const TTSP::OptimizationParameterPoints &after,
                                                        void *data) -> TTSP::OptimizationFunctionInvokeResult {

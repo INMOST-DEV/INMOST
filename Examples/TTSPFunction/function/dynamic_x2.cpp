@@ -6,7 +6,10 @@
 
 #include <cmath>
 
-DynamicX2::DynamicX2() : distribution(-0.04, 0.04) {}
+DynamicX2::DynamicX2() : distribution(-0.04, 0.04) {
+    unsigned int seed = static_cast<unsigned int>(time(NULL));
+    generator.seed(seed);
+}
 
 double DynamicX2::invoke(double x, double y, int iteration) const noexcept {
 
@@ -28,7 +31,7 @@ double DynamicX2::invoke(double x, double y, int iteration) const noexcept {
         f = a * x * x + b * x + c;
     }
 
-    return f + 1 + 2 * distribution(generator);
+    return f + 1 + f * distribution(generator);
 }
 
 double DynamicX2::GetMinimumValue(int iteration) const noexcept {
