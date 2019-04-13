@@ -59,7 +59,7 @@ namespace TTSP {
     unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_MAX_COUNT    = 7;
     unsigned int    BayesianOptimizer::DEFAULT_UNIQUE_POINTS_RANDOM_COUNT = 5;
     unsigned int    BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_COUNT   = 5;
-    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.1;
+    double          BayesianOptimizer::DEFAULT_INITIAL_ITERATIONS_RADIUS  = 0.2;
     double          BayesianOptimizer::DEFAULT_MAX_JUMP_BARRIER           = 0.1;
 
     BayesianOptimizer::BayesianOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity) :
@@ -120,11 +120,11 @@ namespace TTSP {
 
                 double r = random.next() * (max_bound - min_bound) * initial_iterations_radius;
 
-                double next = entry.second + r * (2.0 * (unique.size() % 2) - 1.0) * 1.0;
+                double next = entry.second + r * (2.0 * (unique.size() % 2) - 1.0);
 
                 while (next < min_bound || next > max_bound) {
-                    r    = (random.next() - 0.5) * (max_bound - min_bound) * initial_iterations_radius;
-                    next = entry.second + r * (2.0 * (unique.size() % 2) - 1.0) * 1.0;;
+                    r    = random.next() * (max_bound - min_bound) * initial_iterations_radius;
+                    next = entry.second + r * (2.0 * (unique.size() % 2) - 1.0);
                 }
 
                 changed_parameters.emplace_back(SuggestionChangedParameter(index++, next));
