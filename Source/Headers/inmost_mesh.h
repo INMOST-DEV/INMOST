@@ -956,10 +956,10 @@ namespace INMOST
 		static const ComparatorType         CENTROID_COMPARATOR = 2;
 		static const ComparatorType         HIERARCHY_COMPARATOR= 3;
 		static const ComparatorType         HANDLE_COMPARATOR   = 4;
-		typedef INMOST_DATA_BULK_TYPE       ExchangeType;
-		static const ExchangeType           SYNC_ELEMENTS_NONE  = 0; //elements are not synced in parallel set
-		static const ExchangeType           SYNC_ELEMENTS_ALL   = 1; //all elements are synchronized in parallel set
-		static const ExchangeType           SYNC_ELEMENTS_SHARED= 2; //only shared elements are present
+		//typedef INMOST_DATA_BULK_TYPE       ExchangeType;
+		//static const ExchangeType           SYNC_ELEMENTS_NONE  = 0; //elements are not synced in parallel set
+		//static const ExchangeType           SYNC_ELEMENTS_ALL   = 1; //all elements are synchronized in parallel set
+		//static const ExchangeType           SYNC_ELEMENTS_SHARED= 2; //only shared elements are present
 		                                    ElementSet          () : Element() {}
 		                                    ElementSet          (Mesh * m, HandleType h) : Element(m,h) {}
 		                                    ElementSet          (Mesh * m, HandleType * h) : Element(m,h) {}
@@ -1153,7 +1153,7 @@ namespace INMOST
 		void SortSet(ComparatorType comp) const;
 		/// Sets the synchronization regime for set elements
 		/// @param comp one of the synchronization types from description.
-		void SetExchange(ExchangeType comp) const;
+		//void SetExchange(ExchangeType comp) const;
 		/// Perform binary search by global id. In set sorted with GLOBALID_COMPARATOR in O(log(n)) time
 		/// otherwise search needs O(n) comparisons
 		Element FindElementByGlobalID(integer global_id) const;
@@ -1229,7 +1229,7 @@ namespace INMOST
 		/// Retrieve current set comparator
 		ComparatorType GetComparator() const;
 		/// Retrieve current set exchange type
-		ExchangeType GetExchange() const;
+		//ExchangeType GetExchange() const;
 		/// Compact holes in inner representation
 		void ReorderEmpty() const;
 		/// Is there any elements in the set
@@ -1246,6 +1246,10 @@ namespace INMOST
 		/// Remove the set and all it's children.
 		/// @return Same as Element::Delete.
 		bool DeleteSetTree();
+		/// Asks all the elements to be sent to other processors.
+		/// Call ExchangeMarked afterwards.
+		/// @see Mesh::ExchangeMarked
+		void SynchronizeSetElements();
 	};
 
 	__INLINE const ElementSet & InvalidElementSet() {static ElementSet ret(NULL,InvalidHandle()); return ret;}
@@ -1285,7 +1289,7 @@ namespace INMOST
 		Tag                                 tag_geom_type;
 		Tag                                 tag_setname;
 		Tag                                 tag_setcomparator;
-		Tag                                 tag_setexchange;
+		//Tag                                 tag_setexchange;
 		MeshState                           m_state;
 		integer                             dim;
 		HandleType                          last_created;
@@ -1397,7 +1401,7 @@ namespace INMOST
 		__INLINE const Tag &              ProcessorsTag      () const {return tag_processors;}
 		__INLINE const Tag &              SetNameTag         () const {return tag_setname;}
 		__INLINE const Tag &              SetComparatorTag   () const {return tag_setcomparator;}
-		__INLINE const Tag &              SetExchangeTag     () const {return tag_setexchange;}
+		//__INLINE const Tag &              SetExchangeTag     () const {return tag_setexchange;}
 		/// Don't put this shortcut to any function directly, as it creates tag inside
 		/// assign to other object of type Tag and put this object to functions.
 		__INLINE Tag                      RedistributeTag    () {return CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,CELL,NONE,1);}

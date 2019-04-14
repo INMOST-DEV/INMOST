@@ -16,6 +16,8 @@
 #define REPORT_MPI(x) x
 #define REPORT_STR(x) {}
 #define REPORT_VAL(str,x) {}
+#define ENTER_BLOCK()
+#define EXIT_BLOCK()
 #define ENTER_FUNC() {}
 #define EXIT_FUNC() {}
 #define EXIT_FUNC_DIE()  {}
@@ -305,6 +307,9 @@ namespace INMOST
 		fout << "set " << set.GetName();
 		fout << " size " << set.Size();
 		if(set.HaveParent()) fout << " parent " << set.GetParent().GetName();
+		fout << " elements ";
+		for(ElementSet::iterator it = set.Begin(); it != set.End(); ++it)
+			fout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << ":" << it->GlobalID() << " ";
 		fout << " children ";
 		for(ElementSet child = set.GetChild(); child.isValid(); child = child.GetSibling())
             fout << child.GetName() << " ";
@@ -349,11 +354,11 @@ namespace INMOST
 		//retrive set for coarsening, initialize set if is not present
 		if( !root.isValid() )
 		{
-			root = m->GetSet("ROOT_SET");
+			root = m->GetSet("AM_ROOT_SET");
 			if( root == InvalidElement() )
 			{
-				root = m->CreateSetUnique("ROOT_SET").first;
-				root.SetExchange(ElementSet::SYNC_ELEMENTS_SHARED);
+				root = m->CreateSetUnique("AM_ROOT_SET").first;
+				//root.SetExchange(ElementSet::SYNC_ELEMENTS_SHARED);
 				level[root] = 0;
 				for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 				{
@@ -433,18 +438,29 @@ namespace INMOST
 		//m->Save("before_refine"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save before_refine"+std::to_string(fi)+".pvtk" << std::endl;
 		
+		//ENTER_BLOCK();
+		//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
+		//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
+		//EXIT_BLOCK();
+		
 		ENTER_BLOCK();
+		m->ResolveSets();
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
 		//m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(parent_set,CELL,0);
+		//m->ExchangeData(parent_set,CELL,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//CheckParentSet();
 		EXIT_BLOCK();
+		
+		//ENTER_BLOCK();
+		//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
+		//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
+		//EXIT_BLOCK();
 
 		//m->Save("before_refine_parent"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save before_refine_parent"+std::to_string(fi)+".pvtk" << std::endl;
@@ -517,6 +533,14 @@ namespace INMOST
 		m->ExchangeData(indicator,CELL | FACE | EDGE,0);
 		EXIT_BLOCK();
 		//m->Save("indicator.pmf");
+		
+		//ENTER_BLOCK();
+		//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
+		//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
+		//EXIT_BLOCK();
+		
+		//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
+		//m->CheckCentroids(__FILE__,__LINE__);
 		//6.Refine
 		ENTER_BLOCK();
 		m->BeginModification();
@@ -530,6 +554,13 @@ namespace INMOST
 				Edge e = m->EdgeByLocalID(it);
 				if( !e.Hidden() && indicator[e] == schedule_counter )
 				{
+					//ENTER_BLOCK();
+					//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
+					//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
+					//EXIT_BLOCK();
+					//REPORT_STR("split edge " << e.LocalID() << " nodes " << e.getBeg().LocalID() << "," << e.getEnd().LocalID() << " level " << level[e] << " lc size " << m->LowConn(e.GetHandle()).size() );
+					//ElementArray<Node> nodes = e.getNodes();
+					//for(int q = 0; q < nodes.size(); ++q) REPORT_STR("node " << nodes[q].GetHandle() << " " << nodes[q].LocalID() << (nodes[q].Hidden()?" hidden " : " good ") );
 					//remember adjacent faces that should get information about new hanging node
 					ElementArray<Face> edge_faces = e.getFaces();
 					//location on the center of the edge
@@ -547,6 +578,13 @@ namespace INMOST
 					ElementArray<Edge> new_edges = Edge::SplitEdge(e,ElementArray<Node>(m,1,n.GetHandle()),0);
 					//set increased level for new edges
 					level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
+					
+					//for(int q = 0; q < 2; ++q)
+					//{
+					//	REPORT_STR("new edges["<<q<<"]" << new_edges[q].LocalID() << " nodes " << new_edges[q].getBeg().LocalID() << "," << new_edges[q].getEnd().LocalID() << " level " << level[new_edges[q]]);
+					//}
+					
+					//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
 				}
 			}
 			EXIT_BLOCK();
@@ -703,9 +741,9 @@ namespace INMOST
 					std::stringstream set_name;
 					//set_name << parent.GetName() << "_C" << c.GlobalID(); //rand may be unsafe
 					if( parent == root )
-						set_name << "r" << set_id[c];
+						set_name << "AM_R" << set_id[c];
 					else
-						set_name << parent.GetName() << "c" << set_id[c];
+						set_name << parent.GetName() << "C" << set_id[c];
 					//set_name << base64_encode_((unsigned char *)cnt,3*sizeof(double)/sizeof(unsigned char));
 					
 					ElementSet check_set = m->GetSet(set_name.str());
@@ -722,7 +760,7 @@ namespace INMOST
 					}
 					
 					ElementSet cell_set = m->CreateSetUnique(set_name.str()).first;
-					cell_set->SetExchange(ElementSet::SYNC_ELEMENTS_ALL);
+					//cell_set->SetExchange(ElementSet::SYNC_ELEMENTS_ALL);
 					level[cell_set] = level[c]+1;
 					//set up increased level for the new cells
 					for(ElementArray<Cell>::size_type kt = 0; kt < new_cells.size(); ++kt)
@@ -892,8 +930,7 @@ namespace INMOST
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
 		std::string file;
-		static int fi = 0;
-        ENTER_FUNC();
+		ENTER_FUNC();
         //return false;
 		static int call_counter = 0;
 		//return number of coarsened cells
@@ -908,13 +945,14 @@ namespace INMOST
 		
 		ENTER_BLOCK();
 		//m->CheckCentroids(__FILE__,__LINE__);
+		m->ResolveSets();
 		m->ExchangeData(parent_set,CELL,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
 		//m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(parent_set,CELL,0);
+		//m->ExchangeData(parent_set,CELL,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		//m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//CheckParentSet();
 		EXIT_BLOCK();
@@ -933,9 +971,12 @@ namespace INMOST
 
 		ENTER_BLOCK();
 		//TagInteger coarsened = CreateTag("COARSENED",DATA_INTEGER,CELL,NONE,1);
-		TagInteger coarse_indicator = m->CreateTag("COARSE_INDICATOR",DATA_INTEGER,EDGE,NONE,1); //used to find on fine cells indicator on coarse cells
+		TagInteger coarse_indicator = m->CreateTag("COARSE_INDICATOR",DATA_INTEGER,ESET|EDGE,ESET,1); //used to find on fine cells indicator on coarse cells
 		//0. Extend indicator for sets, edges and faces
-		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
+		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,ESET|FACE|EDGE,ESET,1);
+		std::vector<Tag> indicators;
+		indicators.push_back(coarse_indicator);
+		indicators.push_back(indicator);
 		//int mi = 0;
 		//file = "w"+std::to_string(mi++)+".pvtk";
 		//m->Save(file);
@@ -1006,6 +1047,76 @@ namespace INMOST
 			ENTER_BLOCK();
 			//int v1 = 0, v2 = 0, v3 = 0;
 			//std::fstream fout("set"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
+			for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+			{
+				ElementSet set = m->EsetByLocalID(it);
+				if( set.GetName().substr(0,3) != "AM_" ) continue;
+				if( !set.HaveChild() )
+				{
+					indicator[set] = INT_MAX;
+					coarse_indicator[set] = 0;
+					for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt)
+					{
+						assert(parent_set[*jt] == set.GetHandle());
+						indicator[set] = std::min(indicator[set],indicator[*jt]);
+						coarse_indicator[set] = std::max(coarse_indicator[set],indicator[*jt]);
+					}
+				}
+			}
+			EXIT_BLOCK();
+			m->ReduceData(indicator,ESET,0,ReduceMin);
+			m->ReduceData(coarse_indicator,ESET,0,ReduceMax);
+			m->ExchangeData(indicators,ESET,0);
+			ENTER_BLOCK()
+			for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+			{
+				ElementSet set = m->EsetByLocalID(it);
+				if( set.GetName().substr(0,3) != "AM_" ) continue;
+				if( set.HaveChild() )
+				{
+					//we have finer elements to be coarsened first,
+					//so unschedule all the cells
+					for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt) if( indicator[*jt] != 0 )
+					{
+						indicator[*jt] = 0;
+						unscheduled++;
+					}
+				}
+				else
+				{
+					//check max and min of indicator over set matches
+					if( coarse_indicator[set] != indicator[set] )
+					{
+						//we have to change schedule for some elements,
+						//since elements of the set are scheduled in different order
+						if( indicator[set] == 0 )
+						{
+							//some elements were denied from coarsening, so we have to deny the rest
+							for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt) if( indicator[*jt] != 0 )
+							{
+								indicator[*jt] = 0;
+								unscheduled++;
+							}
+						}
+						else
+						{
+							for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt)
+							{
+								//some elements were scheduled later, so we have to reschedule the rest
+								for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt) if( indicator[*jt] != coarse_indicator[set] )
+								{
+									indicator[*jt] = coarse_indicator[set];
+									unscheduled++;
+								}
+							}
+						}
+					}
+				}
+			}
+			EXIT_BLOCK();
+			
+			/*
+			 ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1018,6 +1129,7 @@ namespace INMOST
 					if( parent.HaveChild() )//|| !parent.HaveParent() )
 					{
 						//PrintSet(fout,parent);
+						indicator[parent] = 0;
 						indicator[c] = 0;
 						unscheduled++;
 						//v1++;
@@ -1047,9 +1159,11 @@ namespace INMOST
 					}
 				}
 			}
+			 EXIT_BLOCK();
+			 */
 			//fout.close();
 			//std::cout << "v1 " << v1 << " v2 " << v2 << " v3 " << v3 << std::endl;
-			EXIT_BLOCK();
+			
 			//file = "w"+std::to_string(mi++)+".pvtk";
 			//m->Save(file);
 			//std::cout << "Save " << file << " " << __FILE__ << ":" << __LINE__ << std::endl;
@@ -1116,6 +1230,36 @@ namespace INMOST
 		coarse_indicator = m->DeleteTag(coarse_indicator);
 		EXIT_BLOCK();
 		
+		
+		//Order exchange of elemnets of the sets that are to be coarsened
+		ENTER_BLOCK();
+		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+		{
+			ElementSet set = m->EsetByLocalID(it);
+			if( indicator[set] != 0 ) set.SynchronizeSetElements();
+		}
+		EXIT_BLOCK();
+		m->ExchangeMarked();
+		
+		ENTER_BLOCK();
+		//m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(parent_set,CELL,0);
+		//m->CheckCentroids(__FILE__,__LINE__);
+		m->ResolveSets();
+		//m->CheckCentroids(__FILE__,__LINE__);
+		//m->ExchangeData(parent_set,CELL,0);
+		//m->CheckCentroids(__FILE__,__LINE__);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		//m->CheckCentroids(__FILE__,__LINE__);
+		//CheckParentSet();
+		EXIT_BLOCK();
+		
+		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
+		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
+		//	PrintSet(fout,it->self());
+		
+		
+		
 		//m->Save("unschdind"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save unschdind"+std::to_string(fi)+".pvtk" << std::endl;
 		//Make schedule which elements should be refined earlier.
@@ -1123,6 +1267,7 @@ namespace INMOST
 		m->BeginModification();
 		while(schedule_counter)
 		{
+			//fout << "schedule_counter " << schedule_counter << std::endl;
 			//unite cells
 			//should find and set hanging nodes on faces
 			//find single node at the center, all other nodes,
@@ -1133,6 +1278,8 @@ namespace INMOST
 				Cell c = m->CellByLocalID(it);
 				if( !c.Hidden() && indicator[c] == schedule_counter )
 				{
+					double x[3];
+					c.Centroid(x);
 					//this set contains all the cells to be united
 					ElementSet parent(m,parent_set[c]);
 					ElementArray<Cell> unite_cells(m,parent.Size());
@@ -1143,11 +1290,53 @@ namespace INMOST
 						unite_cells[kt++] = jt->getAsCell();
 						indicator[jt->self()] = 0; //prevent algorithm from visiting again
 					}
+					//fout << "parent set " << parent.GetName() << " size " << parent.Size() << " cell " << c.GlobalID() << " " << x[0] << " " << x[1] << " " << x[2] << std::endl;
+					//fout << "cells(" << unite_cells.size() << "):" << std::endl;
+					//for(kt = 0; kt < unite_cells.size(); ++kt)
+					//{
+					//	unite_cells[kt].Centroid(x);
+					//	fout << unite_cells[kt].GlobalID();
+					//	fout << " parent " << ElementSet(m,parent_set[unite_cells[kt]]).GetName();
+					//	fout << " " << x[0] << " " << x[1] << " " << x[2];
+					//	fout << " lvl " << level[unite_cells[kt]];
+					//	fout << std::endl;
+					//}
 					//find a node common to all the cells
 					ElementArray<Node> center_node = unite_cells[0].getNodes();
 					for(kt = 1; kt < unite_cells.size(); ++kt)
 						center_node.Intersect(unite_cells[kt].getNodes());
+					
+					//fout << "nodes(" << center_node.size() << "):" << std::endl;
+					//for(kt = 0; kt < center_node.size(); ++kt)
+					//	fout << center_node[kt].Coords()[0] << " " << center_node[kt].Coords()[1] << " " << center_node[kt].Coords()[2] << std::endl;
+					//fout << "child sets: ";
+					//for(ElementSet chld = parent.GetChild(); chld.isValid(); chld = chld.GetSibling())
+					//	fout << " " << chld.GetName();
+					//fout << std::endl;
 					//only one should be found
+					if( center_node.size() != 1 )
+					{
+						double x[3];
+						std::cout << "call_counter " << call_counter << " schedule_counter " << schedule_counter << std::endl;
+						c.Centroid(x);
+						std::cout << "parent set " << parent.GetName() << " size " << parent.Size() << " cell " << c.GlobalID() << " " << x[0] << " " << x[1] << " " << x[2] << std::endl;
+						std::cout << "cells(" << unite_cells.size() << "):" << std::endl;
+						for(kt = 0; kt < unite_cells.size(); ++kt)
+						{
+							unite_cells[kt].Centroid(x);
+							std::cout << unite_cells[kt].GlobalID() << " lid " << unite_cells[kt].LocalID();
+							std::cout << " parent " << ElementSet(m,parent_set[unite_cells[kt]]).GetName();
+							std::cout << " " << x[0] << " " << x[1] << " " << x[2];
+							std::cout << std::endl;
+						}
+						std::cout << "nodes(" << center_node.size() << "):" << std::endl;
+						for(kt = 0; kt < center_node.size(); ++kt)
+							std::cout << center_node[kt].Coords()[0] << " " << center_node[kt].Coords()[1] << " " << center_node[kt].Coords()[2] << std::endl;
+						std::cout << "child sets: ";
+						for(ElementSet chld = parent.GetChild(); chld.isValid(); chld = chld.GetSibling())
+							std::cout << " " << chld.GetName();
+						std::cout << std::endl;
+					}
 					assert(center_node.size() == 1);
 					ElementArray<Node> hanging = center_node[0].BridgeAdjacencies2Node(EDGE);
 					Cell v = Cell::UniteCells(unite_cells,0);
@@ -1161,8 +1350,16 @@ namespace INMOST
 					ElementSet(m,parent_set[v]).PutElement(v);
 					//set level for new cell
 					level[v] = level[c]-1;
+					
+					v.Centroid(x);
+					//fout << v.GlobalID() << " lid " << v.LocalID();
+					//fout << " parent " << ElementSet(m,parent_set[v]).GetName();
+					//fout << " " << x[0] << " " << x[1] << " " << x[2];
+					//fout << " lvl " << level[v];
+					//fout << std::endl;
 					//delete set that contained cells
 					//tree structure should be resolved on ApplyModification
+					//fout << "delete set " << parent.GetName() << std::endl;
 					parent.DeleteSet();
 					//increment number of coarsened cells
 					ret++;
@@ -1289,10 +1486,10 @@ namespace INMOST
 		//done
 		m->EndModification();
 		EXIT_BLOCK();
+		//fout.close();
 		
 		//m->Save("after_coarse"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;
-		fi++;
 		//exit(-1);
 		
 		ENTER_BLOCK();

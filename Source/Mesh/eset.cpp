@@ -1299,11 +1299,11 @@ namespace INMOST
 		m->ReleasePrivateMarker(mrk);
 	}
 	
-	void ElementSet::SetExchange(ExchangeType comp) const
-	{
-		assert(GetElementType() == ESET);
-		Bulk(GetMeshLink()->SetExchangeTag()) = comp;
-	}
+	//void ElementSet::SetExchange(ExchangeType comp) const
+	//{
+	//	assert(GetElementType() == ESET);
+	//	Bulk(GetMeshLink()->SetExchangeTag()) = comp;
+	//}
 
 	void ElementSet::SortSet(ComparatorType comp) const
 	{
@@ -1452,10 +1452,10 @@ namespace INMOST
 	{
 		return BulkDF(GetMeshLink()->SetComparatorTag());
 	}
-	ElementSet::ExchangeType ElementSet::GetExchange() const
-	{
-		return BulkDF(GetMeshLink()->SetExchangeTag());
-	}
+	//ElementSet::ExchangeType ElementSet::GetExchange() const
+	//{
+	//	return BulkDF(GetMeshLink()->SetExchangeTag());
+	//}
 	Element ElementSet::FindElementByGlobalID(integer global_id) const
 	{
 		assert(GetElementType() == ESET);
@@ -1758,6 +1758,46 @@ namespace INMOST
 		lc.clear();
 		BulkDF(m->SetComparatorTag()) = UNSORTED_COMPARATOR;
 		return Delete();
+	}
+	
+	void ElementSet::SynchronizeSetElements()
+	{
+		Mesh * m = GetMeshLink();
+		if( m->GetMeshState() == Mesh::Serial ) return;
+		
+		if( GetStatus() != Element::Owned )
+		{
+			Storage::integer_array set_procs = IntegerArray(m->ProcessorsTag());
+			Storage::integer_array elem_procs;
+			std::set<Storage::integer> send_set;
+			std::vector<Storage::integer> send_procs, temp;
+			std::vector<Storage::integer>::iterator itr;
+			for(iterator it = Begin(); it != End(); ++it)
+			{
+				elem_procs = m->IntegerArray(*it,m->ProcessorsTag());
+				send_procs.resize(set_procs.size());
+				send_procs.resize(std::set_difference(set_procs.begin(),set_procs.end(),
+													  elem_procs.begin(),elem_procs.end(),
+													  send_procs.begin())-send_procs.begin());
+				if( !send_procs.empty() )
+				{
+					Storage::integer_array sendto = m->IntegerArray(*it,m->SendtoTag());
+					send_set.insert(send_procs.begin(),send_procs.end());
+					std::sort(sendto.begin(),sendto.end());
+					temp.resize(sendto.size()+send_procs.size());
+					temp.resize(std::set_union(sendto.begin(),sendto.end(),
+											   send_procs.begin(),send_procs.end(),
+											   temp.begin())-temp.begin());
+					sendto.resize(temp.size());
+					for(unsigned k = 0; k < sendto.size(); ++k) sendto[k] = temp[k];
+				}
+			}
+			Storage::integer_array sendto = IntegerArray(m->SendtoTag());
+			sendto.resize(send_set.size());
+			unsigned k = 0;
+			for(std::set<Storage::integer>::iterator it = send_set.begin();
+				it != send_set.end(); ++it) sendto[k++] = *it;
+		}
 	}
 }
 

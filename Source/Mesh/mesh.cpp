@@ -176,7 +176,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
-		tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
+		//tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
 		AllocatePrivateMarkers();
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 			ReallocateData(ElementNum(etype),GetArrayCapacity(ElementNum(etype)));
@@ -404,7 +404,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
-		tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
+		//tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
 		AllocatePrivateMarkers();
 		//copy supplimentary values
 		m_state = other.m_state;
@@ -533,7 +533,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
-		tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
+		//tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
 		AllocatePrivateMarkers();
 		//copy supplimentary values
 		m_state = other.m_state;

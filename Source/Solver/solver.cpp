@@ -318,8 +318,8 @@ namespace INMOST
 		{
 			std::cout << __FILE__ << ":" << __LINE__ << " matrix already in parallel state " << std::endl;
 			MatVec(1.0, SOL, -1.0, R);
-			mbeg = RHS.GetFirstIndex();
-			mend = RHS.GetLastIndex();
+			mbeg = GetFirstIndex();
+			mend = GetLastIndex();
 #if defined(USE_MPI)
 			int rank, size;
 			MPI_Comm_rank(GetCommunicator(),&rank);

@@ -17,10 +17,10 @@ int main(int argc, char ** argv)
 			m.Load(argv[1]);
 	
 #if defined(USE_PARTITIONER)
+		Partitioner p(&m);
 		if( true )
 		{
 			//std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
-			Partitioner p(&m);
 			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
 			p.Evaluate();
 			m.Redistribute();
@@ -173,7 +173,22 @@ int main(int argc, char ** argv)
 			}
 			while(numref);
 			
+			/*
+#if defined(USE_PARTITIONER)
 			if( true )
+			{
+				//std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+				p.Evaluate();
+				m.Redistribute();
+				m.ReorderEmpty(CELL|FACE|EDGE|NODE);
+				//std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			}
+#endif
+			 */
+			 
+
+			
+			if( false )
 			{
 				TagInteger tag_owner = m.CreateTag("OWN",DATA_INTEGER,CELL,NONE,1);
 				TagInteger tag_owner0 = m.GetTag("OWNER_PROCESSOR");

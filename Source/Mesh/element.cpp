@@ -980,17 +980,29 @@ namespace INMOST
 		adj_type const & hc = mesh->HighConn(GetHandle());
 		for(adj_type::size_type jt = 0; jt < hc.size(); jt++) //iterate over upper adjacent
 		{
-			bool found = false;
+			if( hc[jt] == InvalidHandle() )
+			{
+				std::cout << "Invalid connection from ";
+				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
+				std::cout << " in HighConn" << std::endl;
+				return false;
+			}
+			int found = 0;
 			adj_type const & ilc = mesh->LowConn(hc[jt]);
 			for(adj_type::size_type kt = 0; kt < ilc.size(); kt++) //search for the link to me
-				if( ilc[kt] == me )
-				{
-					found = true;
-					break;
-				}
+				if( ilc[kt] == me ) found++;
 			if( !found )
 			{
 				std::cout << "Not found connection from ";
+				std::cout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
+				std::cout << " to ";
+				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
+				std::cout << std::endl;
+				return false;
+			}
+			else if( found > 1 )
+			{
+				std::cout << "Found " << found << " connections from ";
 				std::cout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
 				std::cout << " to ";
 				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
@@ -1001,17 +1013,29 @@ namespace INMOST
 		adj_type const & lc = mesh->LowConn(GetHandle());
 		for(adj_type::size_type jt = 0; jt < lc.size(); jt++) //iterate over lower adjacent
 		{
-			bool found = false;
+			if( lc[jt] == InvalidHandle() )
+			{
+				std::cout << "Invalid connection from ";
+				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
+				std::cout << " in LowConn" << std::endl;
+				return false;
+			}
+			int found = 0;
 			adj_type const & ihc = mesh->HighConn(lc[jt]);
 			for(adj_type::size_type kt = 0; kt < ihc.size(); kt++) //search for the link to me
-				if( ihc[kt] == me )
-				{
-					found = true;
-					break;
-				}
+				if( ihc[kt] == me ) found++;
 			if( !found )
 			{
 				std::cout << "Not found connection from ";
+				std::cout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
+				std::cout << " to ";
+				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
+				std::cout << std::endl;
+				return false;
+			}
+			else if( found > 1 )
+			{
+				std::cout << "Found " << found << " connections from ";
 				std::cout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
 				std::cout << " to ";
 				std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
