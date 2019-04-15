@@ -20,6 +20,9 @@ namespace INMOST
 		void PrepareSet();
         //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
         void SynchronizeIndicated(TagInteger& indicator);
+		void SetNewOwner(ElementSet set, TagInteger owner);
+		void SetNewProcs(ElementSet set, TagIntegerArray procs);
+		void RestoreParent(ElementSet set);
 	public:
 		TagReference parent_set; //<Link to the set that contains an element.
 		TagReferenceArray hanging_nodes; //< Link to current hanging nodes of the cell.
@@ -37,6 +40,7 @@ namespace INMOST
 		void ClearData();
 		void PrintSet(std::ostream & fout, ElementSet set);
 		void SetModel(Model * mm) {model = mm;}
+		void Repartition();
         //void Test();
         //void PrintMesh(std::ostream& os, int cell = 0, int face = 0, int edge = 0, int node = 0);
         //void PrintSet();

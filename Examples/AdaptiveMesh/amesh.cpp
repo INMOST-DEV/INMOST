@@ -116,6 +116,16 @@ namespace INMOST
 		(void) size;
 		element->Integer(tag) = std::min(element->Integer(tag),*((const INMOST_DATA_INTEGER_TYPE *)data));
 	}
+	
+	void ReduceUnion(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		(void) size;
+		const INMOST_DATA_INTEGER_TYPE * idata = (const INMOST_DATA_INTEGER_TYPE *)data;
+		Storage::integer_array odata = element->IntegerArray(tag);
+		std::vector<int> tmp(size+odata.size());
+		tmp.resize(std::set_union(odata.begin(),odata.end(),idata,idata+size,tmp.begin())-tmp.begin());
+		odata.replace(odata.begin(),odata.end(),tmp.begin(),tmp.end());
+	}
 
 	/*
     void AdaptiveMesh::PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss)
@@ -867,6 +877,7 @@ namespace INMOST
 		EXIT_BLOCK();
 		//return number of refined cells
 		call_counter++;
+		ret = m->Integrate(ret);
         EXIT_FUNC();
 		return ret != 0;
 	}
@@ -1539,7 +1550,111 @@ namespace INMOST
 		EXIT_BLOCK();
 		
 		call_counter++;
+		
+		ret = m->Integrate(ret);
         EXIT_FUNC();
 		return ret != 0;
 	}
+	
+#if defined(USE_PARTITIONER)
+	void AdaptiveMesh::SetNewOwner(ElementSet set, TagInteger owner)
+	{
+		if( set.HaveChild() )
+		{
+			if( set.Empty() ) owner[set] = INT_MAX;
+			for(ElementSet chld = set.GetChild(); chld.isValid(); chld = chld.GetSibling())
+			{
+				SetNewOwner(chld,owner);
+				owner[set] = std::min(owner[set],owner[chld]);
+			}
+		}
+		//for(ElementSet::iterator it = set.Begin(); it != set.End(); ++it)
+		//	owner[set] = std::min(owner[set],owner[*it]);
+	}
+	void AdaptiveMesh::SetNewProcs(ElementSet set, TagIntegerArray procs)
+	{
+		std::vector<int> tmp;
+		for(ElementSet chld = set.GetChild(); chld.isValid(); chld = chld.GetSibling())
+		{
+			SetNewProcs(chld,procs);
+			Storage::integer_array pm = procs[set];
+			Storage::integer_array pc = procs[chld];
+			tmp.resize(pm.size()+pc.size());
+			tmp.resize(std::set_union(pm.begin(),pm.end(),pc.begin(),pc.end(),tmp.begin())-tmp.begin());
+			pm.replace(pm.begin(),pm.end(),tmp.begin(),tmp.end());
+		}
+	}
+	void AdaptiveMesh::RestoreParent(ElementSet set)
+	{
+		for(ElementSet chld = set.GetChild(); chld.isValid(); chld = chld.GetSibling())
+			RestoreParent(chld);
+		for(ElementSet::iterator it = set.Begin(); it != set.End(); ++it)
+			parent_set[*it] = set.GetHandle();
+	}
+	void AdaptiveMesh::Repartition()
+	{
+		if( !root.isValid() ) return;
+		TagInteger redist = m->RedistributeTag();
+		TagInteger new_owner = m->CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,ESET, NONE,1); //workaround for sets
+		TagIntegerArray new_procs =  m->CreateTag("TEMPORARY_NEW_PROCESSORS",DATA_INTEGER,ESET, NONE);
+		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+		{
+			ElementSet set = m->EsetByLocalID(it);
+			new_owner[set] = INT_MAX;
+			new_procs[set].clear();
+		}
+		std::cout << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << std::endl;
+		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
+		{
+			Cell c = m->CellByLocalID(it);
+			ElementSet parent(m,parent_set[c]);
+			std::cout << "cell:" << it << " gid " << c.GlobalID() << " has parent " << parent.LocalID() << " " << parent.GetName() << " redist " << redist[c] << std::endl;
+			new_owner[parent] = std::min(new_owner[parent],redist[c]);
+			Storage::integer_array procs = new_procs[parent];
+			Storage::integer_array::iterator insp = std::lower_bound(procs.begin(),procs.end(),redist[c]);
+			if( insp == procs.end() || *insp != redist[c] ) procs.insert(insp,redist[c]);
+		}
+		SetNewOwner(root,new_owner);
+		SetNewProcs(root,new_procs);
+		m->ReduceData(new_owner,ESET,0,ReduceMin);
+		m->ExchangeData(new_owner,ESET,0);
+		m->ReduceData(new_procs,ESET,0,ReduceUnion);
+		m->ExchangeData(new_procs,ESET,0);
+		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+		{
+			ElementSet set = m->EsetByLocalID(it);
+			Storage::integer_array old_p = set->IntegerArray(m->ProcessorsTag());
+			Storage::integer_array new_p = new_procs[set];
+			Storage::integer_array sendto = set->IntegerArray(m->SendtoTag());
+			sendto.resize(std::max(old_p.size(),new_p.size()));
+			sendto.resize(std::set_difference(new_p.begin(),new_p.end(),old_p.begin(),old_p.end(),sendto.begin())-sendto.begin());
+		}
+		
+		std::cout << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << std::endl;
+		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+		{
+			ElementSet set = m->EsetByLocalID(it);
+			if( new_owner[set] == INT_MAX ) std::cout << "no new owner for set " << it << " " << set.GetName() << std::endl;
+		}
+		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
+		{
+			Cell c = m->CellByLocalID(it);
+			if( parent_set[c] == InvalidHandle() ) std::cout << "No parent set for cell:" << it << " gid " << c.GlobalID() << std::endl;
+		}
+		
+		m->BeginModification();
+		m->Redistribute();
+		m->ExchangeData(hanging_nodes,CELL|FACE,0); //maybe will work
+		m->ApplyModification(); //this will correctly remove links
+		m->EndModification();
+		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
+		RestoreParent(root);
+		std::cout << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << std::endl;
+		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
+		{
+			Cell c = m->CellByLocalID(it);
+			if( parent_set[c] == InvalidHandle() ) std::cout << "No parent set for cell:" << it << " gid " << c.GlobalID() << std::endl;
+		}
+	}
+#endif
 }

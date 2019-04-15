@@ -3961,12 +3961,11 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_nums;  // array composed elements : ElementType and position in array 
 			std::vector<Storage::integer> high_conn_nums(selems[4].size() * 3);        // array of indexes of children, sibling, parent. -1 if has't
 			std::vector<char> names_buff;
-			INMOST_DATA_ENUM_TYPE num_high = 0;
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
 			num = 0; k = 0;
 			int marked_for_data = 0, marked_shared = 0;
-			int names_buff_size = 0; 
+			//int names_buff_size = 0;
 
             // Pack sequence: 
             // 1) all names of sets
@@ -3974,9 +3973,9 @@ namespace INMOST
             // 3) high conn for sets (3 arr_pos: child, sibling, parent.  -1 if has't)
             
             // Compute names_buff_size
-			for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) names_buff_size += ElementSet(this,*it).GetName().size() + 1;
-			names_buff.resize(names_buff_size);
-			int names_buff_pos = 0;
+			//for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) names_buff_size += ElementSet(this,*it).GetName().size() + 1;
+			//names_buff.resize(names_buff_size);
+			//int names_buff_pos = 0;
 			//MarkerType pack_set = CreateMarker();
 			//if( selems[4].size() ) SetMarkerArray(&selems[4][0],selems[4].size(),pack_set);
 			for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) 
@@ -3985,8 +3984,9 @@ namespace INMOST
 				
 				Storage::integer & owner = Integer(*it,tag_owner);
 				
-//				if( GetStatus(*it) == Element::Owned || GetStatus(*it) == Element::Any )
-//					owner = mpirank;
+				//if( GetStatus(*it) == Element::Owned || GetStatus(*it) == Element::Any )
+				//	owner = mpirank;
+				//REPORT_STR("set name \"" << set.GetName() << "\" owner " << owner);
 				
 				if( owner == mpirank )
 				{
@@ -4010,30 +4010,33 @@ namespace INMOST
 				}
 				
 				// Add set name to names_buffer
-				strcpy(&names_buff[names_buff_pos],set.GetName().c_str());
-				names_buff[names_buff_pos+set.GetName().length()] = '\0';
-				names_buff_pos += set.GetName().length() + 1;
+				std::string set_name = set.GetName();
+				names_buff.insert(names_buff.end(),set_name.begin(),set_name.end());
+				names_buff.push_back('\0');
+				//strcpy(&names_buff[names_buff_pos],set.GetName().c_str());
+				//names_buff[names_buff_pos+set.GetName().length()] = '\0';
+				//names_buff_pos += set.GetName().length() + 1;
 				// Add all low conns to low_conn_nums
 				low_conn_size[k] = 0;
 				//ElementSet::ExchangeType exch = set.Bulk(SetExchangeTag());
 				//if( exch != ElementSet::SYNC_ELEMENTS_NONE )
+				assert(!Hidden(*it));
+				Element::adj_type const & lc = LowConn(*it);
+				for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); jt++)
 				{
-					Element::adj_type const & lc = LowConn(*it);
-					for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); jt++) if( *jt != InvalidHandle() && !Hidden(*jt) )
+					if( *jt != InvalidHandle() && !Hidden(*jt) && GetMarker(*jt,busy) )
 					{
-						if( GetMarker(*jt,busy) )
-						{
-							INMOST_DATA_INTEGER_TYPE el_num = GetHandleElementNum(*jt);
-							assert( GetMarker(*jt,busy) );
-							assert(*jt == selems[el_num][Integer(*jt,arr_position)]);
-							assert(Integer(*jt,arr_position) == Integer(selems[el_num][Integer(*jt,arr_position)],arr_position));
-							low_conn_nums.push_back(ComposeHandle(GetHandleElementType(*jt), Integer(*jt,arr_position)));
-							low_conn_size[k]++;
-							num++;
-						}
+						INMOST_DATA_INTEGER_TYPE el_num = GetHandleElementNum(*jt);
+						assert( GetMarker(*jt,busy) );
+						assert(*jt == selems[el_num][Integer(*jt,arr_position)]);
+						assert(Integer(*jt,arr_position) == Integer(selems[el_num][Integer(*jt,arr_position)],arr_position));
+						low_conn_nums.push_back(ComposeHandle(GetHandleElementType(*jt), Integer(*jt,arr_position)));
+						low_conn_size[k]++;
+						num++;
 					}
 				}
-				if( set.HaveChild() ) 
+				assert(k*3 + 2 < high_conn_nums.size());
+				if( set.HaveChild() )
 				{
 					assert(set.GetChild().GetMarker(busy));
 					assert(set.GetChild().GetHandle() == selems[4][Integer(set.GetChild().GetHandle(),arr_position)]);
@@ -4067,15 +4070,16 @@ namespace INMOST
 			//ReleaseMarker(pack_set);
 			MPI_Pack_size(1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // count of sets
 			MPI_Pack_size(1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // names_buff_size
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(names_buff_size)   ,INMOST_MPI_DATA_BULK_TYPE   ,comm,&temp); new_size += temp;   // names_buff
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(names_buff.size()) ,MPI_CHAR                    ,comm,&temp); new_size += temp;   // names_buff
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size())  ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_sizes array
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_nums array
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size()*3),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp; // high_conn_nums array
 			buffer.resize(position+new_size);
 			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[4].size());
-			                              MPI_Pack(&temp             ,1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			                              MPI_Pack(&names_buff_size  ,1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( names_buff_size > 0 )     MPI_Pack(&names_buff[0]    ,static_cast<INMOST_MPI_SIZE>(names_buff_size)   ,MPI_CHAR                    ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			                              MPI_Pack(&temp             ,1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			temp = static_cast<INMOST_DATA_ENUM_TYPE>(names_buff.size());
+			                              MPI_Pack(&temp  ,1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !names_buff.empty() )     MPI_Pack(&names_buff[0]    ,static_cast<INMOST_MPI_SIZE>(names_buff.size()) ,MPI_CHAR                    ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_size.empty() )  MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[4].size())  ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_nums.empty() )  MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( selems[4].size() > 0 )    MPI_Pack(&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(selems[4].size()*3),INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
@@ -4627,27 +4631,40 @@ namespace INMOST
         //unpack esets
 		ENTER_BLOCK();
 		{
-			ElementArray<Face> c_faces(this);
-			ElementArray<Node> c_nodes(this);
 			std::vector<char> names_buff;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
-			INMOST_DATA_ENUM_TYPE shift_high = 0;
-			INMOST_DATA_ENUM_TYPE names_buff_size  = 0;
-			shift = 0;
 			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff_size,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			names_buff.resize(names_buff_size);
-			if( names_buff_size != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff[0],static_cast<INMOST_MPI_SIZE>(names_buff_size),MPI_CHAR,comm);
+			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&temp,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			REPORT_VAL("number of sets ",num);
+			REPORT_VAL("length of buffer ",temp);
+			names_buff.resize(temp);
+			if( temp ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff[0],static_cast<INMOST_MPI_SIZE>(temp),MPI_CHAR,comm);
 			// Gather sets names to array
-			int pos = 0;
+			high_conn_nums.resize(num*3);
+			low_conn_size.resize(num);
+			if( num ) // Unpack low_conn_size array
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
+			temp = 0;
+			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
+			low_conn_nums.resize(temp);
+			if( temp ) // Unpack low_conn_nums array
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_ENUM_TYPE,comm);
+			if( num ) // Unpack high_conn_nums array
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num*3),INMOST_MPI_DATA_INTEGER_TYPE,comm);
+			REPORT_VAL("buffer position",position);
+			
 			std::vector<std::string> names;
-			while (pos < names_buff_size)
+			int pos = 0;
+			while (pos < names_buff.size())
 			{
 				names.push_back(std::string(&names_buff[pos]));
-				pos += names[names.size() - 1].length() + 1;
+				pos += names.back().length() + 1;
 			}
+			assert(names.size() == num);
+			
+			
 			// Looking to all names and create the sets if it's needed
 			int found = 0, marked_for_data = 0, marked_ghost = 0;
 			for (int i = 0; i < names.size(); i++)
@@ -4672,6 +4689,8 @@ namespace INMOST
 				}
 				else
 				{
+					//REPORT_VAL("found old ",set->GetHandle());
+					//REPORT_VAL("owner ",IntegerDF(set.GetHandle(),tag_owner));
 					if( IntegerDF(set.GetHandle(),tag_owner) != mpirank )
 					{
 						//TODO 46 old
@@ -4689,20 +4708,8 @@ namespace INMOST
 				
 				selems[4].push_back(set.GetHandle());
 			}
-			high_conn_nums.resize(num*3);
-			low_conn_size.resize(num);
 			if( num )
 			{
-				// Unpack low_conn_size array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
-				temp = 0;
-				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
-				low_conn_nums.resize(temp);
-				// Unpack low_conn_num array
-				if( temp )
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_ENUM_TYPE,comm);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num*3),INMOST_MPI_DATA_INTEGER_TYPE,comm);
-				
 				// Add low conns for sets
 				int ind = 0;
 				for (INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) 
@@ -5259,10 +5266,12 @@ namespace INMOST
 					if( !it->second.empty() )
 					{
 						//Have packed all entities, now delete those entities that i should not own	
-						for(int k = 0; k < 5; ++k)
-						for(element_set::iterator kt = it->second[k].begin(); kt != it->second[k].end(); kt++)
-							if( !GetMarker(*kt,delete_marker) )
+						for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_processors.isDefined(etype) )
+						{
+							int k = ElementNum(etype);
+							for(element_set::iterator kt = it->second[k].begin(); kt != it->second[k].end(); kt++) if( !GetMarker(*kt,delete_marker) )
 							{
+								if( IntegerArray(*kt,tag_new_processors).empty() ) continue; //don't delete elements without processors
 								Storage::integer_array procs = IntegerArray(*kt,tag_new_processors);
 								if( !std::binary_search(procs.begin(),procs.end(),mpirank) )
 								{
@@ -5270,6 +5279,7 @@ namespace INMOST
 									SetMarker(*kt,delete_marker);
 								}
 							}
+						}
 					}
 				}
 				//Should delete elements in order by CELL..NODE
@@ -5278,7 +5288,8 @@ namespace INMOST
 				REPORT_VAL("number of edges to delete",delete_elements[1].size());
 				REPORT_VAL("number of faces to delete",delete_elements[2].size());
 				REPORT_VAL("number of cells to delete",delete_elements[3].size());
-				for(int j = ElementNum(CELL); j >= ElementNum(NODE); j--)
+				REPORT_VAL("number of esets to delete",delete_elements[4].size());
+				for(int j = ElementNum(ESET); j >= ElementNum(NODE); j--)
 				{
 					//this is not really needed because we destroy those elements
 					for(element_set::iterator kt = delete_elements[j].begin(); kt != delete_elements[j].end(); ++kt) RemMarker(*kt,delete_marker);
@@ -5290,10 +5301,11 @@ namespace INMOST
 			REPORT_STR("Deleting some other not owned elements");
 			//now delete elements that we have not yet deleted
 			int count = 0;
-			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
+			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_processors.isDefined(etype) )
 				for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 				{
 					Storage::integer_array procs = it->IntegerArray(tag_new_processors);
+					if( procs.empty() ) continue;//don't delete elements without processors
 					if( !std::binary_search(procs.begin(),procs.end(),mpirank) ) 
 					{
 						//Destroy(*it);
@@ -5358,9 +5370,10 @@ namespace INMOST
 			REPORT_STR("Computing new values");
 			Tag tag_new_owner = GetTag("TEMPORARY_NEW_OWNER");
 			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");	
-			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
+			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
 			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 			{
+				if( it->IntegerArray(tag_new_processors).empty() ) continue;
 				Storage::integer new_owner = it->Integer(tag_new_owner);
 				it->IntegerDF(tag_owner) = new_owner;
 				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);

@@ -28,7 +28,7 @@ int main(int argc, char ** argv)
 			//std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 		}
 #endif
-		m.ExchangeGhost(2,NODE);
+		m.ExchangeGhost(2,FACE);
 		AdaptiveMesh am(m);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
@@ -93,16 +93,14 @@ int main(int argc, char ** argv)
 					}
 					else indicator[*it] = 0;
 				}
-				numref = m.Integrate(numref);
-				if( numref )
+				if( m.Integrate(numref) )
 				{
 					int ncells = m.TotalNumberOf(CELL);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " numref " << numref << " cells " << ncells << std::endl;
+						std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " cells " << ncells << std::endl;
 					
-					int res = am.Refine(indicator);
-					res = m.Integrate(res);
-					if (!res) break;
+					
+					if (!am.Refine(indicator)) break;
 					
 					if( false )
 					{
@@ -139,24 +137,13 @@ int main(int argc, char ** argv)
 					}
 					else indicator[*it] = 0;
 				}
-				numref = m.Integrate(numref);
-				if( numref )
+				if( m.Integrate(numref) )
 				{
 					int ncells = m.TotalNumberOf(CELL);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " numcrs " << numref << " cells " << ncells <<  std::endl;
-					//if( k == 5 && refcnt == 1 ) exit(-1);
-					if( false )
-					{
-						std::stringstream file;
-						file << "crsind_" << k << "_" << refcnt << ".pvtk";
-						m.Save(file.str());
-						if( m.GetProcessorRank() == 0 )
-							std::cout << "Save " << file.str() << std::endl;
-					}
-					int res = am.Coarse(indicator);
-					res = m.Integrate(res);
-					if( !res ) break;
+						std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " cells " << ncells <<  std::endl;
+					
+					if( !am.Coarse(indicator) ) break;
 					
 					if( false ) 
 					{
@@ -173,22 +160,19 @@ int main(int argc, char ** argv)
 			}
 			while(numref);
 			
-			/*
+			
 #if defined(USE_PARTITIONER)
-			if( true )
+			if( false )
 			{
-				//std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 				p.Evaluate();
-				m.Redistribute();
-				m.ReorderEmpty(CELL|FACE|EDGE|NODE);
-				//std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+				am.Repartition();
 			}
 #endif
-			 */
+			 
 			 
 
 			
-			if( false )
+			if( true )
 			{
 				TagInteger tag_owner = m.CreateTag("OWN",DATA_INTEGER,CELL,NONE,1);
 				TagInteger tag_owner0 = m.GetTag("OWNER_PROCESSOR");
