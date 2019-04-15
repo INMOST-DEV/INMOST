@@ -3194,9 +3194,14 @@ namespace INMOST
 		void                              EndModification    ();    //delete hidden elements
 		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
 		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
-        void                              EquilibrateGhost   (bool only_new = false); //Use in ResolveShared
-        //void CheckFaces();
-        void CheckCentroids(std::string file, int line);
+		void                              EquilibrateGhost   (bool only_new = false); //Use in ResolveShared
+		//void CheckFaces();
+		/// Check that centroids of ghost and shared elements match to each other.
+		/// Exits if does not match.
+		void                              CheckCentroids     (std::string file, int line);
+		/// Check that number of ghost and shared elements match to each other.
+		/// Exits if does not match.
+		void                              CheckGhostSharedCount(std::string file, int line, ElementType etype = ESET | CELL | FACE | EDGE | NODE);
 		//implemented in mesh.cpp
 	private:
 		Tag                   tag_topologyerror;

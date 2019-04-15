@@ -313,6 +313,9 @@ namespace INMOST
 		//std::cout << "Save " << file << std::endl;
 		//Save(file);
 		//equiv++;
+
+		CheckGhostSharedCount(__FILE__,__LINE__);
+		CheckCentroids(__FILE__,__LINE__);
 		
 		ENTER_BLOCK();
 		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
@@ -320,6 +323,7 @@ namespace INMOST
 			Cell c = CellByLocalID(k);
 			if( !c.Hidden() && c.GetStatus() != Element::Owned )
 			{
+				assert( c.GetStatus() != Element::Any );
 				//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
 				{
 					int new_owner = tag[c][0];
@@ -331,6 +335,8 @@ namespace INMOST
 				}
 			}
 		}
+		RecomputeParallelStorage(CELL);
+		CheckGhostSharedCount(__FILE__,__LINE__,CELL);
 		EXIT_BLOCK();
 		DeleteTag(tag);
 		
@@ -341,11 +347,14 @@ namespace INMOST
 		TagInteger new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,NODE|EDGE|FACE,NODE|EDGE|FACE,1);
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{
+			REPORT_VAL("etype ", ElementTypeName(etype));
+			ENTER_BLOCK();
 			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
 			{
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
 				{
+					assert( e.GetStatus() != Element::Any );
 					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
 					{
 						Element::adj_type & hc = HighConn(e.GetHandle());
@@ -358,13 +367,16 @@ namespace INMOST
 					}
 				}
 			}
+			EXIT_BLOCK();
 			ReduceData(new_owner,etype,0,OperationMinOwner);
 			ExchangeData(new_owner,etype);
+			ENTER_BLOCK();
 			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
 			{
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
 				{
+					assert( e.GetStatus() != Element::Any );
 					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
 					{
 						if( new_owner[e] != INT_MAX &&
@@ -379,11 +391,14 @@ namespace INMOST
 					}
 				}
 			}
+			EXIT_BLOCK();
+			RecomputeParallelStorage(etype);
+			CheckGhostSharedCount(__FILE__,__LINE__,etype);
 		}
 		DeleteTag(new_owner);
 		
 		EXIT_BLOCK();
-		RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
+		//RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
 #endif
 		EXIT_FUNC();
 	}
@@ -1300,15 +1315,19 @@ namespace INMOST
 				Storage::real epsilon = GetEpsilon();
 				GeomParam table;
 				
-				ENTER_BLOCK();
+				//if( !only_new )
+				{
+					ENTER_BLOCK();
+					
+					for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
+						if( !HaveGeometricData(CENTROID,etype) )
+							table[CENTROID] |= etype;
+					PrepareGeometricData(table);
 				
-				for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
-					if( !HaveGeometricData(CENTROID,etype) )
-						table[CENTROID] |= etype;
-				PrepareGeometricData(table);
-			
-				REPORT_STR("Prepare geometric data");
-				EXIT_BLOCK();
+					REPORT_STR("Prepare geometric data");
+					EXIT_BLOCK();
+				}
+				
 			
 				//for(iteratorNode it = BeginNode(); it != EndNode(); it++)
 				ENTER_BLOCK();
@@ -1318,7 +1337,7 @@ namespace INMOST
 				for(integer nit = 0; nit < NodeLastLocalID(); ++nit) if( isValidNode(nit) )
 				{
 					Node it = NodeByLocalID(nit);
-					if (only_new && GetMarker(it->GetHandle(),NewMarker()) == false) continue;
+					if (only_new && !GetMarker(it->GetHandle(),NewMarker())) continue;
 					Storage::integer_array arr = it->IntegerArrayDV(tag_processors);
 					arr.resize(1);
 					arr[0] = mpirank;
@@ -1336,7 +1355,7 @@ namespace INMOST
 				ENTER_BLOCK();
 				for(iteratorNode n = BeginNode(); n != EndNode(); n++)
 				{
-					if (only_new && GetMarker(*n,NewMarker()) == false) continue;
+					if (only_new && !GetMarker(*n,NewMarker())) continue;
 					real_array c = n->Coords();
 					for(real_array::size_type k = 0; k < procs.size(); k++)
 						if( point_in_bbox(c.data(),bboxs.data()+procs[k]*dim*2,dim,GetEpsilon()) )
@@ -1877,12 +1896,15 @@ namespace INMOST
 					if( only_new ) ReleaseMarker(new_lc,EDGE|FACE|CELL);
 					
 				}
+				//if( !only_new ) 
 				RemoveGeometricData(table);	
 			}
 		}
 		EXIT_BLOCK();
 		ReportParallelStorage();
+		CheckGhostSharedCount(__FILE__,__LINE__);
 		EquilibrateGhost(only_new);
+		CheckGhostSharedCount(__FILE__,__LINE__);
 		//RemoveGhost();
 #else //USE_MPI
 		AssignGlobalID(CELL | FACE | EDGE | NODE);
@@ -5439,9 +5461,71 @@ namespace INMOST
 		(void)mask;
 #endif
 	}
+
+	void Mesh::CheckGhostSharedCount(std::string file, int line, ElementType etype)
+	{
+#if !defined(NDEBUG)
+		ENTER_FUNC();
+#if defined(USE_MPI)
+#if !defined(USE_PARALLEL_STORAGE)
+		parallel_storage ghost_elements, shared_elements;
+		GatherParallelStorage(ghost_elements,shared_elements,FACE);
+#endif //USE_PARALLEL_STORAGE
+		int size = GetProcessorsNumber();
+		int rank = GetProcessorRank();
+		std::vector<int> send_counts(size*5*2,0);
+		std::vector<int> recv_counts(size*size*5*2);
+		for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); ++it)
+		{
+			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype )
+				send_counts[it->first*5+k] = it->second[k].size();
+		}
+		for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); ++it)
+		{
+			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype )
+				send_counts[it->first*5+k + size*5] = it->second[k].size();
+		}
+		REPORT_MPI(MPI_Allgather(&send_counts[0],size*5*2,MPI_INT,&recv_counts[0],size*5*2,MPI_INT,GetCommunicator()));
+		//check only my against others
+		//if I have N shared elements with processor I, then procesoor I should have N ghost elements
+		int err = 0;
+		for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); ++it)
+		{
+			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype && recv_counts[it->first*size*5*2 + rank*5+k + size*5] != it->second[k].size() )
+			{
+				std::cout << "processor " << GetProcessorRank() << " has " << it->second[k].size() << " of shared " << ElementTypeName(ElementTypeFromDim(k));
+				std::cout  << " for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k + size*5] << " ghost elements on " << it->first << std::endl;
+				REPORT_STR("processor " << GetProcessorRank() << " has " << it->second[k].size() << " of shared " << ElementTypeName(ElementTypeFromDim(k)) <<
+					" for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k + size*5] << " ghost elements on " << it->first);
+				err++;
+			}
+		}
+		for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); ++it)
+		{
+			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype && recv_counts[it->first*size*5*2 + rank*5+k] != it->second[k].size() )
+			{
+				std::cout << "processor " << GetProcessorRank() << " has " << it->second[k].size() << " of ghost " << ElementTypeName(ElementTypeFromDim(k));
+				std::cout  << " for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k] << " shared elements on " << it->first << std::endl;
+				REPORT_STR("processor " << GetProcessorRank() << " has " << it->second[k].size() << " of ghost " << ElementTypeName(ElementTypeFromDim(k)) <<
+					" for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k] << " shared elements on " << it->first);
+				err++;
+			}
+		}
+		err = Integrate(err);
+#endif //USE_MPI
+		EXIT_FUNC();
+		if( err ) 
+		{
+			std::cout << "crash from " << file << ":" << line << std::endl;
+			REPORT_STR("crash from " << file << ":" << line)
+			exit(-1);
+		}
+#endif //NDEBUG
+	}
 	
 	void Mesh::CheckCentroids(std::string file, int line)
 	{
+#if !defined(NDEBUG)
 		ENTER_FUNC();
 		TagRealArray checker = CreateTag("CHECK_CENTROIDS",DATA_REAL,CELL|FACE|EDGE|NODE,CELL|FACE|EDGE|NODE,3);
 		for(Mesh::iteratorElement it = BeginElement(CELL|FACE|EDGE|NODE); it != EndElement(); ++it) if( it->GetStatus() & (Element::Ghost | Element::Shared) )
@@ -5471,13 +5555,14 @@ namespace INMOST
 			crash++;
 		}
 		crash = Integrate(crash);
-		EXIT_FUNC();
 		if( crash ) 
 		{
 			std::cout << "crash from " << file << ":" << line << std::endl;
 			REPORT_STR("crash from " << file << ":" << line)
 			exit(-1);
 		}
+		EXIT_FUNC();
+#endif //NDEBUG
 	}
 
 
@@ -5569,6 +5654,7 @@ namespace INMOST
 
 	void Mesh::ReportParallelStorage()
 	{
+#if !defined(NDEBUG)
 		ENTER_FUNC();
 #if defined(USE_PARALLEL_STORAGE)
 		REPORT_STR("shared");
@@ -5605,6 +5691,7 @@ namespace INMOST
 		}
 #endif //USE_PARALLEL_STORAGE
 		EXIT_FUNC();
+#endif //NDEBUG
 	}
 	
 	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge, MarkerType marker)
