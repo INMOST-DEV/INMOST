@@ -26,6 +26,22 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+
+if(USE_PARTITIONER)
+  if(USE_PARTITIONER_ZOLTAN)
+    message("linking AdaptiveMesh with Zoltan")
+    target_link_libraries(AdaptiveMesh ${ZOLTAN_LIBRARIES})
+    target_link_libraries(AdaptiveMeshCube ${ZOLTAN_LIBRARIES}) 
+    target_link_libraries(AdaptiveMeshSphere ${ZOLTAN_LIBRARIES}) 
+  endif()
+  if(USE_PARTITIONER_PARMETIS)
+    message("linking AdaptiveMesh with ParMETIS")
+    target_link_libraries(AdaptiveMesh ${PARMETIS_LIBRARIES})
+    target_link_libraries(AdaptiveMeshCube ${PARMETIS_LIBRARIES})
+    target_link_libraries(AdaptiveMeshSphere ${PARMETIS_LIBRARIES})
+  endif()
+endif()
+
 set_property(TARGET AdaptiveMeshLib PROPERTY PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/amesh.h")
 
 install(TARGETS AdaptiveMeshLib EXPORT inmost-targets 

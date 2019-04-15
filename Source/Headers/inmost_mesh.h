@@ -2278,7 +2278,8 @@ namespace INMOST
 		int                                 parallel_strategy;
 		int                                 parallel_file_strategy;
 	private:
-		void                              ComputeSharedProcs ();
+		std::vector<int>                  ComputeSharedProcs (const parallel_storage & from, const parallel_storage & to);
+		std::vector<int>                  ComputeSharedProcs (ElementType etype);
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
 		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, proc_elements_by_type * send_elements = NULL);
@@ -3199,6 +3200,8 @@ namespace INMOST
 		/// Check that centroids of ghost and shared elements match to each other.
 		/// Exits if does not match.
 		void                              CheckCentroids     (std::string file, int line);
+		/// Check that processors are sorted on every element
+		void                              CheckProcsSorted(std::string file, int line);
 		/// Check that number of ghost and shared elements match to each other.
 		/// Exits if does not match.
 		void                              CheckGhostSharedCount(std::string file, int line, ElementType etype = ESET | CELL | FACE | EDGE | NODE);

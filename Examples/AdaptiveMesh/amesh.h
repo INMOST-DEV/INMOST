@@ -19,7 +19,7 @@ namespace INMOST
 		void CheckParentSet();
 		void PrepareSet();
         //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
-        void SynchronizeIndicated(TagInteger& indicator);
+        //void SynchronizeIndicated(TagInteger& indicator);
 		void SetNewOwner(ElementSet set, TagInteger owner);
 		void SetNewProcs(ElementSet set, TagIntegerArray procs);
 		void RestoreParent(ElementSet set);

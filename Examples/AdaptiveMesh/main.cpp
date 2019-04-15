@@ -20,12 +20,12 @@ int main(int argc, char ** argv)
 		Partitioner p(&m);
 		if( true )
 		{
-			//std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
 			p.Evaluate();
 			m.Redistribute();
 			m.ReorderEmpty(CELL|FACE|EDGE|NODE);
-			//std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 		}
 #endif
 		m.ExchangeGhost(2,FACE);
@@ -93,13 +93,16 @@ int main(int argc, char ** argv)
 					}
 					else indicator[*it] = 0;
 				}
-				if( m.Integrate(numref) )
+				numref = m.Integrate(numref);
+				if( numref )
 				{
 					int ncells = m.TotalNumberOf(CELL);
 					if( m.GetProcessorRank() == 0 )
 						std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " cells " << ncells << std::endl;
-					
-					
+					//m.BeginSequentialCode();
+					//std::cout << m.GetProcessorRank() << " cells " << m.NumberOfCells() << std::endl;
+					//m.EndSequentialCode();
+
 					if (!am.Refine(indicator)) break;
 					
 					if( false )
@@ -137,11 +140,15 @@ int main(int argc, char ** argv)
 					}
 					else indicator[*it] = 0;
 				}
-				if( m.Integrate(numref) )
+				numref = m.Integrate(numref);
+				if( numref )
 				{
 					int ncells = m.TotalNumberOf(CELL);
 					if( m.GetProcessorRank() == 0 )
 						std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " cells " << ncells <<  std::endl;
+					//m.BeginSequentialCode();
+					//std::cout << m.GetProcessorRank() << " cells " << m.NumberOfCells() << std::endl;
+					//m.EndSequentialCode();
 					
 					if( !am.Coarse(indicator) ) break;
 					

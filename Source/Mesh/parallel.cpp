@@ -248,9 +248,12 @@ namespace INMOST
 	
 	void Mesh::EquilibrateGhost(bool only_new)
 	{
+		static int counter = 0;
 		if( GetProcessorsNumber() == 1 ) return;
 		ENTER_FUNC();
 #if defined(USE_MPI)
+		//std::cout << "before_equiv"+std::to_string(counter)+".pvtk" << std::endl;
+		//Save("before_equiv"+std::to_string(counter)+".pvtk");
 		ElementType bridge = FACE;
 		if( tag_bridge.isValid() ) bridge = ElementType(Integer(GetHandle(),tag_bridge));
 		TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG",DATA_INTEGER,CELL,CELL,2);
@@ -263,6 +266,8 @@ namespace INMOST
 			Cell c = CellByLocalID(k);
 			if (!c.Hidden() && c.GetStatus() != Element::Owned)
 			{
+				assert( c.GetStatus() == Element::Shared || c.GetStatus() == Element::Ghost );
+				tag[c][0] = -1;
 				tag[c][1] = INT_MAX; 
 				//ElementArray<Cell> cells = c.NeighbouringCells();
 				ElementArray<Cell> cells = c.BridgeAdjacencies2Cell(bridge);
@@ -288,6 +293,7 @@ namespace INMOST
 			ElementArray<Cell> cells = c.BridgeAdjacencies2Cell(bridge);
 			for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() != Element::Owned)
 			{
+				assert( cells[l].GetStatus() == Element::Shared || cells[l].GetStatus() == Element::Ghost );
 				if (tag[cells[l]][1] > tag[c][1] + 1)
 				{
 					tag[cells[l]][0] = tag[c][0];
@@ -308,7 +314,8 @@ namespace INMOST
 		ReduceData(tag, CELL, 0, OperationMinDistance);
 		ExchangeData(tag, CELL, 0);
 		
-		
+		//std::cout << "comput_equiv"+std::to_string(counter)+".pvtk" << std::endl;
+		//Save("comput_equiv"+std::to_string(counter)+".pvtk");
 		//file = "bequiv"+std::to_string(equiv)+".pvtk";
 		//std::cout << "Save " << file << std::endl;
 		//Save(file);
@@ -318,15 +325,38 @@ namespace INMOST
 		CheckCentroids(__FILE__,__LINE__);
 		
 		ENTER_BLOCK();
+		//TagInteger tag_new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,CELL,NONE,1);
+		//for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
+		//{
+		//	Cell c = CellByLocalID(k);
+		//	if( !c.Hidden() && c.GetStatus() != Element::Owned )
+		//	{
+		//		assert( c.GetStatus() == Element::Shared || c.GetStatus() == Element::Ghost );
+		//		tag_new_owner[c] = tag[c][0];
+		//	}
+		//}
+		//ExchangeData(tag_new_owner,CELL,0);
+
 		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
 			Cell c = CellByLocalID(k);
 			if( !c.Hidden() && c.GetStatus() != Element::Owned )
 			{
-				assert( c.GetStatus() != Element::Any );
+				assert( c.GetStatus() == Element::Shared || c.GetStatus() == Element::Ghost );
 				//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
 				{
 					int new_owner = tag[c][0];
+					if( new_owner == -1 ) continue;
+					//int new_owner = tag_new_owner[c];
+
+					Storage::integer_array procs = c.IntegerArray(ProcessorsTag());
+					if( !std::binary_search(procs.begin(),procs.end(),tag[c][0]) ) 
+					{
+						std::cout << "new owner " << tag[c][0] << " dist " << tag[c][1] << " is not among processors ";
+						for(int k = 0; k < procs.size();++k) std::cout << procs[k] << " ";
+						std::cout << " for cell " << c.LocalID() << " " << c.GlobalID() << std::endl;
+					}
+					
 					c.IntegerDF(tag_owner) = new_owner;
 					if (GetProcessorRank() == new_owner)
 						c.SetStatus(Element::Shared);
@@ -335,6 +365,9 @@ namespace INMOST
 				}
 			}
 		}
+		//DeleteTag(tag_new_owner);
+		//ExchangeData(tag_owner,CELL,0);
+
 		RecomputeParallelStorage(CELL);
 		CheckGhostSharedCount(__FILE__,__LINE__,CELL);
 		EXIT_BLOCK();
@@ -354,7 +387,7 @@ namespace INMOST
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
 				{
-					assert( e.GetStatus() != Element::Any );
+					assert( e.GetStatus() == Element::Shared || e.GetStatus() == Element::Ghost );
 					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
 					{
 						Element::adj_type & hc = HighConn(e.GetHandle());
@@ -376,7 +409,7 @@ namespace INMOST
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
 				{
-					assert( e.GetStatus() != Element::Any );
+					assert( e.GetStatus() == Element::Shared || e.GetStatus() == Element::Ghost );
 					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
 					{
 						if( new_owner[e] != INT_MAX &&
@@ -396,11 +429,14 @@ namespace INMOST
 			CheckGhostSharedCount(__FILE__,__LINE__,etype);
 		}
 		DeleteTag(new_owner);
-		
+		//ComputeSharedProcs();
+		//std::cout << "after_equiv"+std::to_string(counter)+".pvtk" << std::endl;
+		//Save("after_equiv"+std::to_string(counter)+".pvtk");
 		EXIT_BLOCK();
 		//RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
 #endif
 		EXIT_FUNC();
+		counter++;
 	}
 	
 	void UnpackSyncMarkerOR(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
@@ -896,7 +932,7 @@ namespace INMOST
 		ENTER_FUNC();
 		tag_shared = CreateTag("PROTECTED_STATUS",DATA_BULK,  ESET |CELL | FACE | EDGE | NODE,NONE,1);
 		tag_owner = CreateTag("OWNER_PROCESSOR",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE,NONE,1);
-		tag_processors = CreateTag("PROCESSORS_LIST",DATA_INTEGER, ESET|  MESH | NODE | EDGE | FACE | CELL,NONE);
+		tag_processors = CreateTag("PROCESSORS_LIST",DATA_INTEGER, ESET | NODE | EDGE | FACE | CELL,NONE);
 		tag_layers = CreateTag("LAYERS",DATA_INTEGER,MESH,NONE,1);
 		tag_bridge = CreateTag("BRIDGE",DATA_INTEGER,MESH,NONE,1);
 		tag_sendto = CreateTag("PROTECTED_SENDTO",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE);
@@ -1273,7 +1309,7 @@ namespace INMOST
 					}
 				}
 				EXIT_BLOCK();
-				ComputeSharedProcs();
+				//ComputeSharedProcs();
 				RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
 				AssignGlobalID(CELL | EDGE | FACE | NODE);
 				ENTER_BLOCK();
@@ -1544,7 +1580,7 @@ namespace INMOST
 						SetStatus(*it,estat);
 					}
 					EXIT_BLOCK();
-					ComputeSharedProcs();
+					//ComputeSharedProcs();
 					RecomputeParallelStorage(NODE);
 					AssignGlobalID(NODE);
 					ReportParallelStorage();
@@ -1665,8 +1701,8 @@ namespace INMOST
 						//Initialize arrays
 						
 						
-						Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
-						Storage::integer_array::iterator p = procs.begin();
+						std::vector<int> procs = ComputeSharedProcs(PrevElementType(current_mask));
+						std::vector<int>::iterator p = procs.begin();
 						std::vector<int> message_send;
 						std::vector< std::vector<int> > message_recv(procs.size());
 						std::vector< element_set > elements(procs.size());
@@ -1905,6 +1941,7 @@ namespace INMOST
 		CheckGhostSharedCount(__FILE__,__LINE__);
 		EquilibrateGhost(only_new);
 		CheckGhostSharedCount(__FILE__,__LINE__);
+		CheckProcsSorted(__FILE__,__LINE__);
 		//RemoveGhost();
 #else //USE_MPI
 		AssignGlobalID(CELL | FACE | EDGE | NODE);
@@ -2088,7 +2125,7 @@ namespace INMOST
 			delete_elements.clear();
 		}		
 		DeleteTag(tag_delete);
-		ComputeSharedProcs();
+		//ComputeSharedProcs();
 		Integer(GetHandle(),tag_layers) = 0;
 		Integer(GetHandle(),tag_bridge) = NONE;
 #endif //USE_MPI
@@ -2212,7 +2249,7 @@ namespace INMOST
 			//std::cout << GetProcessorRank() << " finish " << ElementTypeName(mask) << std::endl;
 		}
 		DeleteTag(tag_delete);
-		ComputeSharedProcs();
+		//ComputeSharedProcs();
 #else //USE_MPI
 		(void) ghost;
 		(void) num;
@@ -2294,43 +2331,93 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 		
-	void Mesh::ComputeSharedProcs()
+	std::vector<int> Mesh::ComputeSharedProcs(const parallel_storage & from, const parallel_storage & to)
 	{
+		std::vector<int> ret;
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		std::set<int> shared_procs;
 		int mpirank = GetProcessorRank();
-#if defined(USE_OMP)
-#pragma omp parallel
-#endif
+		for(parallel_storage::const_iterator it = from.begin(); it != from.end(); ++it) 
+			shared_procs.insert(it->first);
+		for(parallel_storage::const_iterator it = to.begin(); it != to.end(); ++it) 
+			shared_procs.insert(it->first);
+		std::set<int>::iterator ir = shared_procs.find(mpirank);
+		if( ir != shared_procs.end() ) shared_procs.erase(ir);
+		ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
+
+		REPORT_STR("result:");
+		for(std::set<int>::iterator it = shared_procs.begin(); it != shared_procs.end(); ++it)
+			REPORT_VAL("proc ",*it);
+
+		ir = shared_procs.find(-1);
+		if( ir != shared_procs.end() )
 		{
-			std::set<int> shared_procs_local;
-#if defined(USE_OMP)
-#pragma omp for
+			std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
+			REPORT_STR(GetProcessorRank() << " found processor -1 ");
+			exit(-1);
+		}
+		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
+		//procs.clear();
+		//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
+		
+		REPORT_VAL("number of processors",ret.size());
+		for(int k = 0; k < ret.size(); ++k)
+		{
+			REPORT_VAL("proc ",ret[k])
+		}
+#if !defined(NDEBUG)
+#endif //NDEBUG
 #endif
-			for(integer nit = 0; nit < NodeLastLocalID(); nit++) if( isValidNode(nit) )
-			{
-				Node it = NodeByLocalID(nit);
-				integer_array p = it->IntegerArrayDV(tag_processors);
-				for(integer_array::iterator kt = p.begin(); kt != p.end(); kt++)
-					shared_procs_local.insert(*kt);
-			}
+		EXIT_FUNC();
+		return ret;
+	}
+
+	std::vector<int> Mesh::ComputeSharedProcs(ElementType mask)
+	{
+		std::vector<int> ret;
+		ENTER_FUNC();
+#if defined(USE_MPI)
+		std::set<int> shared_procs;
+		int mpirank = GetProcessorRank();
+		for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( etype & mask )
+		{
+			REPORT_VAL("check type: ",ElementTypeName(etype));
 #if defined(USE_OMP)
-#pragma omp critical
-#endif
+#pragma omp parallel for
+#endif //USE_OMP
+			for(int k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k))
 			{
-				shared_procs.insert(shared_procs_local.begin(),shared_procs_local.end());
+				Element e = ElementByLocalID(etype,k);
+				Storage::integer_array procs = e.IntegerArray(ProcessorsTag());
+				shared_procs.insert(procs.begin(),procs.end());
 			}
+			REPORT_STR("result:");
+			for(std::set<int>::iterator it = shared_procs.begin(); it != shared_procs.end(); ++it)
+				REPORT_VAL("proc ",*it);
 		}
 		std::set<int>::iterator ir = shared_procs.find(mpirank);
 		if( ir != shared_procs.end() ) shared_procs.erase(ir);
-		Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
-		procs.clear();
-		procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
-		
-		REPORT_VAL("processors",procs.size());
+		ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
+		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
+		//procs.clear();
+		//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
+		ir = shared_procs.find(-1);
+		if( ir != shared_procs.end() )
+		{
+			std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
+			REPORT_STR(GetProcessorRank() << " found processor -1 ");
+			exit(-1);
+		}
+		//REPORT_VAL("processors",procs.size());
+		REPORT_VAL("number of processors",ret.size());
+		for(int k = 0; k < ret.size(); ++k)
+		{
+			REPORT_VAL("proc ",ret[k])
+		}
 #endif
 		EXIT_FUNC();
+		return ret;
 	}
 	
 	
@@ -2826,6 +2913,7 @@ namespace INMOST
 				REPORT_VAL("calculated size of data",array_data_recv.size()/sizeof(Sparse::Row::entry));
 				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&array_data_recv[0],static_cast<INMOST_MPI_SIZE>(array_data_recv.size()/bytes),tag.GetBulkDataType(),comm);
 			}
+			ENTER_BLOCK();
 			if( tag.GetDataType() == DATA_REFERENCE )
 			{
 				int mpirank = GetProcessorRank();
@@ -2841,11 +2929,23 @@ namespace INMOST
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),mpirank);
 						if( ip == proc.end() || (*ip) != mpirank )
 						{
+							if( GetHandleElementType(*it) == ESET )
+							{
+								REPORT_VAL("mpirank ",mpirank);
+								if( ip == proc.end() )
+									{REPORT_STR("my proc " << mpirank << " not found");}
+								else
+									{REPORT_VAL("found proc ", *ip);}
+								REPORT_VAL("set name ",ElementSet(this,*it).GetName());
+								REPORT_VAL("owner ",Integer(*it,tag_owner));
+								for(ip = proc.begin(); ip != proc.end(); ++ip) REPORT_VAL("procs ",*ip);
+							}
 							proc.insert(ip,mpirank);
 							(*send_elements)[owner][GetHandleElementNum(*it)].push_back(*it);
 						}
 					}
 			}
+			EXIT_BLOCK();
 			REPORT_VAL("Position after unpack",position);
 			for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (recv_mask[0] & ElementTypeFromDim(i)) )
 			{
@@ -3036,8 +3136,10 @@ namespace INMOST
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		//int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
-		Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
-		Storage::integer_array::iterator p = procs.begin();
+		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
+		//Storage::integer_array::iterator p = procs.begin();
+		std::vector<int> procs = ComputeSharedProcs(from,to);
+		std::vector<int>::iterator p = procs.begin();
 		REPORT_VAL("processors",procs.size());
 		storage.send_buffers.resize(procs.size());
 		storage.recv_buffers.resize(procs.size());
@@ -3275,6 +3377,8 @@ namespace INMOST
 					have_reference_tag = true;
 			}
 			if( tags.empty() ) return;
+			if( have_reference_tag )
+				CheckProcsSorted(__FILE__,__LINE__);
 		}
 		if( m_state == Serial ) return;
 		ENTER_FUNC();
@@ -3300,10 +3404,12 @@ namespace INMOST
 		//additional round of communication to tell the tag owner about exchange of elements
 		if( have_reference_tag )
 		{
+			CheckProcsSorted(__FILE__,__LINE__);
 			InformElementsOwners(send_elements,storage);
 			RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
 			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
-			ComputeSharedProcs();
+			CheckProcsSorted(__FILE__,__LINE__);
+			//ComputeSharedProcs();
 		}
 #else //USE_MPI
 		(void) tags;
@@ -4122,9 +4228,9 @@ namespace INMOST
 		//for(int i = 3; i >= 0; --i)
 		//	all.insert(all.end(),selems[i].begin(),selems[i].end());
 		//REPORT_VAL("number of all elements",all.size());
-		Storage::integer_array proc = IntegerArrayDV(GetHandle(),tag_processors);
-		Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
-		if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);		
+		//Storage::integer_array proc = IntegerArrayDV(GetHandle(),tag_processors);
+		//Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
+		//if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);		
 		//pack number of tags
 		ENTER_BLOCK();
 		REPORT_STR("prepare elements to pack tag data");
@@ -4195,6 +4301,7 @@ namespace INMOST
 		for(integer i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( !selems[i].empty() )
 			RemMarkerArray(&selems[i][0],static_cast<enumerator>(selems[i].size()),pack_tags_mrk);
 		ReleaseMarker(pack_tags_mrk);
+
 #else
 		(void) selems;
 		(void) buffer;
@@ -4696,6 +4803,7 @@ namespace INMOST
 				ElementSet set = GetSet(names[i]);
 				if (set == InvalidElementSet())
 				{
+					REPORT_VAL("create new set", names[i]);
 					set = CreateSetUnique(names[i]).first;
 					//REPORT_VAL("create new ",set->GetHandle());
 					
@@ -4815,9 +4923,9 @@ namespace INMOST
 		//for(int i = 3; i >= 0; --i)
 		//	all.insert(all.end(),selems[i].begin(),selems[i].end());
 		//REPORT_VAL("number of all elements",all.size());
-		Storage::integer_array proc = IntegerArrayDV(GetHandle(),tag_processors);
-		Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),source);
-		if( ip == proc.end() || (*ip) != source ) proc.insert(ip,source);
+		//Storage::integer_array proc = IntegerArrayDV(GetHandle(),tag_processors);
+		//Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),source);
+		//if( ip == proc.end() || (*ip) != source ) proc.insert(ip,source);
 		
 		ENTER_BLOCK();
 		time = Timer();
@@ -5421,7 +5529,7 @@ namespace INMOST
 			//Probably now owner should send processors_tag data
 			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
 		}
-		ComputeSharedProcs();
+		//ComputeSharedProcs();
 		
 		if( action == AMigrate ) 
 		{
@@ -5522,6 +5630,38 @@ namespace INMOST
 		}
 #endif //NDEBUG
 	}
+
+	void Mesh::CheckProcsSorted(std::string file, int line)
+	{
+#if !defined(NDEBUG)
+		ENTER_FUNC();
+		int err = 0;
+		if( ProcessorsTag().isValid() )
+		{
+			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
+			{
+				//std::cout << GetProcessorRank() << " start " << ElementTypeName(etype) << std::endl;
+				for(int k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k))
+				{
+					Element e = ElementByLocalID(etype,k);
+					Storage::integer_array arr = e.IntegerArray(ProcessorsTag());
+					//std::cout << ElementTypeName(etype) << " " << k << " " << arr.size() << std::endl;
+					for(int q = 1; q < arr.size(); q++)
+						if( arr[q-1] >= arr[q] ) err++;
+				}
+				//std::cout << GetProcessorRank() << " finish " << ElementTypeName(etype) << std::endl;
+			}
+		}
+		err = Integrate(err);
+		if( err ) 
+		{
+			std::cout << "crash from " << file << ":" << line << std::endl;
+			REPORT_STR("crash from " << file << ":" << line)
+			exit(-1);
+		}
+		EXIT_FUNC();
+#endif //NDEBUG
+	}
 	
 	void Mesh::CheckCentroids(std::string file, int line)
 	{
@@ -5593,7 +5733,10 @@ namespace INMOST
             {
 				if( !it->second[4].empty() )
                 {
-			        std::sort(it->second[4].begin(),it->second[4].end(), SetNameComparator(this));
+					if(HaveGlobalID(ElementTypeFromDim(4)))
+						std::sort(it->second[4].begin(),it->second[4].end(),GlobalIDComparator(this));
+					else
+			        	std::sort(it->second[4].begin(),it->second[4].end(), SetNameComparator(this));
 //					for(int k = 0; k < it->second[4].size(); ++k)
 //					{
 //						ElementSet set(this,it->second[4][k]);
@@ -5631,7 +5774,10 @@ namespace INMOST
             {
 				if( !it->second[4].empty() )
                 {
-			        std::sort(it->second[4].begin(),it->second[4].end(), SetNameComparator(this));
+					if(HaveGlobalID(ElementTypeFromDim(4)))
+						std::sort(it->second[4].begin(),it->second[4].end(),GlobalIDComparator(this));
+					else
+			        	std::sort(it->second[4].begin(),it->second[4].end(), SetNameComparator(this));
 //					for(int k = 0; k < it->second[4].size(); ++k)
 //					{
 //						ElementSet set(this,it->second[4][k]);
@@ -5719,7 +5865,7 @@ namespace INMOST
 		Tag layers_marker = CreateTag("TEMPORARY_LAYERS_MARKER",DATA_INTEGER,CELL,CELL);
 		Integer(GetHandle(),tag_layers) = layers;
 		Integer(GetHandle(),tag_bridge) = bridge;
-		Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
+		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 		proc_elements old_layers;
 		proc_elements current_layers;
 		element_set all_visited;
@@ -5727,26 +5873,26 @@ namespace INMOST
 			proc_elements shared_skin = ComputeSharedSkinSet(bridge, marker);
 			//printf("%d shared skin size %d\n",GetProcessorRank(),shared_skin.size());
 			time = Timer();
-			for(Storage::integer_array::iterator p = procs.begin(); p != procs.end(); p++)
+			for(proc_elements::iterator p = shared_skin.begin(); p != shared_skin.end(); p++)
 			{
 				MarkerType busy = CreateMarker();
 				all_visited.clear();
-				for(element_set::iterator it = shared_skin[*p].begin(); it != shared_skin[*p].end(); it++)
+				for(element_set::iterator it = p->second.begin(); it != p->second.end(); it++)
 				{
 					ElementArray<Element> adj = Element(this,*it)->getAdjElements(CELL);
 					for(ElementArray<Element>::iterator jt = adj.begin(); jt != adj.end(); jt++)
 						if( !jt->GetMarker(busy) )
 						{
-							if( jt->IntegerDF(tag_owner) != *p )
+							if( jt->IntegerDF(tag_owner) != p->first )
 							//if( jt->IntegerDF(tag_owner) == mpirank )
 							{
-								current_layers[*p].push_back(*jt);
+								current_layers[p->first].push_back(*jt);
 								if( layers > 0 )
 								{
 									Storage::integer_array adj_procs = jt->IntegerArrayDV(tag_processors);
-									if( !std::binary_search(adj_procs.begin(),adj_procs.end(),*p) )
-										jt->IntegerArray(tag_sendto).push_back(*p);
-									if( delete_ghost ) jt->IntegerArray(layers_marker).push_back(*p);
+									if( !std::binary_search(adj_procs.begin(),adj_procs.end(),p->first) )
+										jt->IntegerArray(tag_sendto).push_back(p->first);
+									if( delete_ghost ) jt->IntegerArray(layers_marker).push_back(p->first);
 								}
 							}
 							jt->SetMarker(busy);
@@ -5769,10 +5915,11 @@ namespace INMOST
 			if( k > 0 ) 
 			{
 				time = Timer();
-				for(Storage::integer_array::iterator p = procs.begin(); p != procs.end(); p++)
+				//!!!
+				for(proc_elements::iterator p = old_layers.begin(); p != old_layers.end(); p++)
 				{
-					element_set & ref_cur = current_layers[*p];
-					element_set & ref_old = old_layers[*p];
+					element_set & ref_cur = current_layers[p->first];
+					element_set & ref_old = old_layers[p->first];
 					MarkerType busy = CreateMarker();
 					all_visited.clear();
 					for(element_set::iterator it = ref_old.begin(); it != ref_old.end(); ++it) SetMarker(*it,busy);
@@ -5786,13 +5933,13 @@ namespace INMOST
 								for(ElementArray<Element>::iterator kt = adj.begin(); kt != adj.end(); kt++)
 									if( !kt->GetMarker(busy) )
 									{
-										if( jt->IntegerDF(tag_owner) != *p )
+										if( jt->IntegerDF(tag_owner) != p->first )
 										{
 											ref_cur.push_back(*kt);
 											Storage::integer_array adj_procs = kt->IntegerArrayDV(tag_processors);
-											if( !std::binary_search(adj_procs.begin(),adj_procs.end(),*p) )
-												kt->IntegerArray(tag_sendto).push_back(*p);
-											if( delete_ghost ) kt->IntegerArray(layers_marker).push_back(*p);
+											if( !std::binary_search(adj_procs.begin(),adj_procs.end(),p->first) )
+												kt->IntegerArray(tag_sendto).push_back(p->first);
+											if( delete_ghost ) kt->IntegerArray(layers_marker).push_back(p->first);
 										}
 										kt->SetMarker(busy);
 										all_visited.push_back(*kt);
@@ -6210,6 +6357,7 @@ namespace INMOST
     {
 		ENTER_FUNC();
 #ifdef USE_MPI
+		if( tag_global_id.isValid() ) tag_global_id = DeleteTag(tag_global_id,ESET);
         int mpirank = GetProcessorRank();
         int mpisize = GetProcessorsNumber();
 
@@ -6259,7 +6407,7 @@ namespace INMOST
 		
 		// Change status for self sets
 		//for(Mesh::iteratorSet set = BeginSet(); set != EndSet(); ++set)
-		/*
+		
 		ENTER_BLOCK();
 		for(std::map<std::string,std::vector<int> >::iterator it = map_names.begin(); it != map_names.end(); ++it)
 		{
@@ -6271,15 +6419,16 @@ namespace INMOST
 			{
 				REPORT_VAL("handle ", find->second);
 				REPORT_VAL("status ",Element::StatusName(GetStatus(find->second)));
+				REPORT_VAL("owner ",Integer(find->second,tag_owner));
 			}
 			for(std::vector<int>::iterator jt = it->second.begin(); jt != it->second.end(); ++jt) REPORT_STR("proc " << *jt);
 		}
 		EXIT_BLOCK();
-		 */
+		 
 		ENTER_BLOCK();
 		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)
 		{
-//			REPORT_STR("\"" << it->first << "\" size " << it->first.size() << " handle " << it->second);
+			REPORT_STR("\"" << it->first << "\" size " << it->first.size() << " handle " << it->second);
 			std::vector<int> & procs = map_names[it->first];
 			//if( procs.empty() )
 			//	std::cout << "no procs for " << it->first << std::endl;
@@ -6312,12 +6461,17 @@ namespace INMOST
 				else
 					SetStatus(it->second, Element::Ghost);
 			}
-//			REPORT_VAL("owner ",IntegerDF(it->second, tag_owner));
-//			REPORT_VAL("status ",Element::StatusName(GetStatus(it->second)));
+			REPORT_VAL("owner ",IntegerDF(it->second, tag_owner));
+			REPORT_VAL("status ",Element::StatusName(GetStatus(it->second)));
 		}
 		EXIT_BLOCK();
+		//CheckGhostSharedCount(__FILE__,__LINE__,ESET);
 		RecomputeParallelStorage(ESET);
+		//ComputeSharedProcs();
+		CheckGhostSharedCount(__FILE__,__LINE__,ESET);
 		AssignGlobalID(ESET);
+		CheckGhostSharedCount(__FILE__,__LINE__,ESET);
+		CheckProcsSorted(__FILE__,__LINE__);
 #endif
 		EXIT_FUNC();
     }

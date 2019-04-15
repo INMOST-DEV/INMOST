@@ -1386,7 +1386,7 @@ namespace INMOST
 				}
 				
 			}
-			ComputeSharedProcs();
+			//ComputeSharedProcs();
 			RecomputeParallelStorage(CELL | FACE | EDGE | NODE);
 			
 			//Share number of Layers

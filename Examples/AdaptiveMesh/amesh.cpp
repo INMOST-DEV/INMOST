@@ -878,6 +878,7 @@ namespace INMOST
 		//return number of refined cells
 		call_counter++;
 		ret = m->Integrate(ret);
+		REPORT_VAL("ret ",ret)
         EXIT_FUNC();
 		return ret != 0;
 	}
@@ -894,49 +895,6 @@ namespace INMOST
         (void)size;
     }
 	
-    void AdaptiveMesh::SynchronizeIndicated(TagInteger& indicator)
-    {
-        if (m->GetProcessorsNumber() == 1) return;
-        ENTER_FUNC();
-        int rank = m->GetProcessorRank();
-
-        // Check all sets. All elements in sets must be indicated. At first we check indicator in local processor, and second integrate data
-        TagInteger tag_indicated = m->CreateTag("INDICATED",DATA_INTEGER,ESET,NONE,1);
-		ENTER_BLOCK();
-        for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
-        {
-            ElementSet set = ElementSet(m,*it);
-            set.Integer(tag_indicated) = 1;
-            ElementSet::iterator p = set.Begin();
-            while(p != set.End())
-            {
-                if (indicator[*p] == 0)
-                {
-                    tag_indicated[set] = 0;
-                    //std::cout << rank << ": Set " << set.GetName() << " not all indicated" << endl;
-                    break;
-                }
-
-                p++;
-            }
-        }
-		EXIT_BLOCK();
-        m->ReduceData(tag_indicated,ESET,0,OperationMin);
-        m->ExchangeData(tag_indicated,ESET,0);
-		ENTER_BLOCK();
-        for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it) 
-            if (it->Integer(tag_indicated) == 0)
-            {
-                ElementSet::iterator p = it->Begin();
-                while(p != it->End())
-                {
-                    p->Integer(indicator) = 0;
-                    p++;
-                }
-            }
-		EXIT_BLOCK();
-        EXIT_FUNC();
-    }
 
 	bool AdaptiveMesh::Coarse(TagInteger & indicator)
 	{
@@ -1552,6 +1510,7 @@ namespace INMOST
 		call_counter++;
 		
 		ret = m->Integrate(ret);
+		REPORT_VAL("ret ",ret)
         EXIT_FUNC();
 		return ret != 0;
 	}
