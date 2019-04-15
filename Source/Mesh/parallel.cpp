@@ -5652,6 +5652,7 @@ namespace INMOST
 				//std::cout << GetProcessorRank() << " finish " << ElementTypeName(etype) << std::endl;
 			}
 		}
+		if( err ) std::cout << "error on " << GetProcessorRank() << std::endl;
 		err = Integrate(err);
 		if( err ) 
 		{
