@@ -969,6 +969,9 @@ namespace INMOST
 		__INLINE const ElementSet *         operator ->         () const {return this;}
 		__INLINE ElementSet &               self                ()              {return *this;}
 		__INLINE const ElementSet &         self                () const        {return *this;}
+	private:
+		void                                CollectProcessors   (std::set<Storage::integer> & procs);
+		void                                SetSendTo(std::set<Storage::integer> & procs);
 	public:
 		/// Get name of the set
 		std::string                 GetName() const;
@@ -1250,6 +1253,10 @@ namespace INMOST
 		/// Call ExchangeMarked afterwards.
 		/// @see Mesh::ExchangeMarked
 		void SynchronizeSetElements();
+		/// Asks all the children to be sent to other processors.
+		/// Call ExchangeMarked afterwards.
+		/// @see Mesh::ExchangeMarked
+		void SynchronizeSetTree();
 	};
 
 	__INLINE const ElementSet & InvalidElementSet() {static ElementSet ret(NULL,InvalidHandle()); return ret;}

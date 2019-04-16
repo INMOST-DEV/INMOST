@@ -1799,6 +1799,46 @@ namespace INMOST
 				it != send_set.end(); ++it) sendto[k++] = *it;
 		}
 	}
+	void ElementSet::SetSendTo(std::set<Storage::integer> & procs)
+	{
+		{
+			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
+			Storage::integer_array sendto = IntegerArray(GetMeshLink()->SendtoTag());
+			sendto.resize(procs.size());
+			sendto.resize(std::set_difference(procs.begin(),procs.end(),
+											  set_procs.begin(),set_procs.end(),
+											  sendto.begin())-sendto.begin());
+		}
+		if( HaveChild() )
+		{
+			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
+				it->SetSendTo(procs);
+		}
+	}
+	void ElementSet::CollectProcessors(std::set<Storage::integer> & procs)
+	{
+		{
+			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
+			procs.insert(set_procs.begin(),set_procs.end());
+		}
+		if( HaveChild() )
+		{
+			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
+				it.CollectProcessors(procs);
+		}
+	}
+	void ElementSet::SynchronizeSetTree()
+	{
+		Mesh * m = GetMeshLink();
+		if( m->GetMeshState() == Mesh::Serial ) return;
+		
+		if( GetStatus() != Element::Owned )
+		{
+			std::set<Storage::integer> send_set;
+			CollectProcessors(send_set);
+			SetSendTo(send_set);
+		}
+	}
 }
 
 #endif

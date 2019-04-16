@@ -464,7 +464,7 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
-		//CheckParentSet();
+		CheckParentSet();
 		EXIT_BLOCK();
 		
 		//ENTER_BLOCK();
@@ -1205,7 +1205,11 @@ namespace INMOST
 		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
 		{
 			ElementSet set = m->EsetByLocalID(it);
-			if( indicator[set] != 0 ) set.SynchronizeSetElements();
+			if( indicator[set] != 0 )
+			{
+				set.SynchronizeSetElements();
+				if( set.HaveParent() ) set.GetParent().SynchronizeSetTree();
+			}
 		}
 		EXIT_BLOCK();
 		m->ExchangeMarked();
@@ -1220,7 +1224,7 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
-		//CheckParentSet();
+		CheckParentSet();
 		EXIT_BLOCK();
 		
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
@@ -1236,6 +1240,7 @@ namespace INMOST
 		m->BeginModification();
 		while(schedule_counter)
 		{
+			CheckParentSet();
 			//fout << "schedule_counter " << schedule_counter << std::endl;
 			//unite cells
 			//should find and set hanging nodes on faces

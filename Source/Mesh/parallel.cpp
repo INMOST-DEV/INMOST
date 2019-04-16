@@ -2929,17 +2929,20 @@ namespace INMOST
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),mpirank);
 						if( ip == proc.end() || (*ip) != mpirank )
 						{
+							/*
 							if( GetHandleElementType(*it) == ESET )
 							{
 								REPORT_VAL("mpirank ",mpirank);
 								if( ip == proc.end() )
-									{REPORT_STR("my proc " << mpirank << " not found");}
+								{REPORT_STR("my proc " << mpirank << " not found");}
 								else
-									{REPORT_VAL("found proc ", *ip);}
+								{REPORT_VAL("found proc ", *ip);}
 								REPORT_VAL("set name ",ElementSet(this,*it).GetName());
 								REPORT_VAL("owner ",Integer(*it,tag_owner));
-								for(ip = proc.begin(); ip != proc.end(); ++ip) REPORT_VAL("procs ",*ip);
+								Storage::integer_array::iterator jp;
+								for(jp = proc.begin(); jp != proc.end(); ++jp) REPORT_VAL("procs ",*jp);
 							}
+							 */
 							proc.insert(ip,mpirank);
 							(*send_elements)[owner][GetHandleElementNum(*it)].push_back(*it);
 						}
@@ -3150,6 +3153,7 @@ namespace INMOST
 		std::vector<INMOST_DATA_ENUM_TYPE> send_size(procs.size(),0), recv_size(procs.size(),0);
 		
 		bool unknown_size = false;
+		bool have_reference_tag = false;
 		for(unsigned int k = 0; k < tags.size(); k++)
 		{
 			if( tags[k].GetSize() == ENUMUNDEF
@@ -3162,6 +3166,8 @@ namespace INMOST
 			//for(int i = 0; i < 5; ++i)
 			//	if( (mask & ElementTypeFromDim(i)) && tags[k].isSparseByDim(i) )
 			//		unknown_size = true;
+			if( tags[k].GetDataType() == DATA_REFERENCE )
+				have_reference_tag = true;
 		}
     	int rank = GetProcessorRank();
 		//precompute sizes
@@ -3377,8 +3383,6 @@ namespace INMOST
 					have_reference_tag = true;
 			}
 			if( tags.empty() ) return;
-			if( have_reference_tag )
-				CheckProcsSorted(__FILE__,__LINE__);
 		}
 		if( m_state == Serial ) return;
 		ENTER_FUNC();
@@ -3404,11 +3408,16 @@ namespace INMOST
 		//additional round of communication to tell the tag owner about exchange of elements
 		if( have_reference_tag )
 		{
-			CheckProcsSorted(__FILE__,__LINE__);
 			InformElementsOwners(send_elements,storage);
-			RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
-			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
 			CheckProcsSorted(__FILE__,__LINE__);
+			
+			RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
+			
+			CheckGhostSharedCount(__FILE__,__LINE__);
+			CheckCentroids(__FILE__,__LINE__);
+			
+			
+			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
 			//ComputeSharedProcs();
 		}
 #else //USE_MPI
@@ -3430,6 +3439,8 @@ namespace INMOST
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		int mpirank = GetProcessorRank();
+		int mpisize = GetProcessorsNumber();
+		int err = 0;
 		REPORT_STR("gather ghost and shared elements")
 		double time = Timer();
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
@@ -3439,11 +3450,36 @@ namespace INMOST
 			{ 
 				Storage::integer_array v = it->IntegerArrayDV(tag_processors);
 				for(Storage::integer_array::iterator vit = v.begin(); vit != v.end(); vit++)
+				{
+					if( !(*vit >= 0 && *vit < mpisize) )
+					{
+						err++;
+						REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc in list " << *vit);
+						std::cout << GetProcessorRank() << " " << __FILE__ << ":" << __LINE__ << " bad proc in list " << *vit << std::endl;
+					}
+					//assert(*vit >= 0 && *vit < mpisize);
 					if( *vit != mpirank )
 						shared[*vit][ElementNum(it->GetElementType())].push_back(*it);
+				}
 			}
 			else if( estat == Element::Ghost )
-				ghost[it->IntegerDF(tag_owner)][ElementNum(it->GetElementType())].push_back(*it);
+			{
+				int proc = it->IntegerDF(tag_owner);
+				if( !(proc >= 0 && proc < mpisize) )
+				{
+					err++;
+					REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc in list " << proc);
+					std::cout << GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc in list " << proc << std::endl;
+				}
+				//assert(proc >= 0 && proc < mpisize);
+				ghost[proc][ElementNum(it->GetElementType())].push_back(*it);
+			}
+		}
+		err = Integrate(err);
+		if( err )
+		{
+			std::cout << "crash" << std::endl;
+			exit(-1);
 		}
 		time = Timer() - time;
 		REPORT_VAL("time",time);
@@ -3655,8 +3691,7 @@ namespace INMOST
 				if( *jt != InvalidHandle() && !Hidden(*jt) && !GetMarker(*jt,busy) )
 				{
 					Storage::integer_array procs = IntegerArrayDV(*jt,ProcessorsTag());
-					if( std::find(procs.begin(),procs.end(),destination) != procs.end() )
-						//if( std::binary_search(procs.begin(),procs.end(),destination) )
+					if( std::binary_search(procs.begin(),procs.end(),destination) )
 					{
 						prealloc[GetHandleElementNum(*jt)] += 1;
 						selems[GetHandleElementNum(*jt)].push_back(*jt);
@@ -3695,28 +3730,38 @@ namespace INMOST
 			{
 				if( !set.GetChild().GetMarker(busy) && !set.GetChild().Hidden() )
 				{
-					selems[4].push_back(set.GetChild().GetHandle());
-					set.GetChild().SetMarker(busy);
+					Storage::integer_array procs = set.GetChild().IntegerArrayDV(ProcessorsTag());
+					if( std::binary_search(procs.begin(),procs.end(),destination) )
+					{
+						selems[4].push_back(set.GetChild().GetHandle());
+						set.GetChild().SetMarker(busy);
+					}
 				}
 			}
 			if( set.HaveSibling() )
 			{
 				if( !set.GetSibling().GetMarker(busy) && !set.GetSibling().Hidden()  )
 				{
-					selems[4].push_back(set.GetSibling().GetHandle());
-					set.GetSibling().SetMarker(busy);
+					Storage::integer_array procs = set.GetSibling().IntegerArrayDV(ProcessorsTag());
+					if( std::binary_search(procs.begin(),procs.end(),destination) )
+					{
+						selems[4].push_back(set.GetSibling().GetHandle());
+						set.GetSibling().SetMarker(busy);
+					}
 				}
 			}
-			/*
 			if( set.HaveParent() )
 			{
-				if( !set.GetParent().GetMarker(busy) )
+				if( !set.GetParent().GetMarker(busy) && !set.GetParent().Hidden() )
 				{
-					selems[4].push_back(set.GetParent().GetHandle());
-					set.GetParent().SetMarker(busy);
+					Storage::integer_array procs = set.GetParent().IntegerArrayDV(ProcessorsTag());
+					if( std::binary_search(procs.begin(),procs.end(),destination) )
+					{
+						selems[4].push_back(set.GetParent().GetHandle());
+						set.GetParent().SetMarker(busy);
+					}
 				}
 			}
-			*/
 		}
 		
 		//compute how many node connections should be sent
@@ -3853,7 +3898,6 @@ namespace INMOST
 					//low_conn_nums.push_back(static_cast<Storage::integer>(find - selems[0].begin()));
 					assert( GetMarker(*jt,busy) );
 					assert( *jt == selems[0][Integer(*jt,arr_position)] );
-					assert(Integer(*jt,arr_position) == Integer(selems[0][Integer(*jt,arr_position)],arr_position));
 					//REPORT_VAL("pack node position",Integer(*jt,arr_position));
 					low_conn_nums.push_back(Integer(*jt,arr_position));
 					low_conn_size[k]++;
@@ -3935,7 +3979,6 @@ namespace INMOST
 					//low_conn_nums.push_back(static_cast<Storage::integer>(find - selems[1].begin()));
 					assert( GetMarker(*jt,busy) );
 					assert( *jt == selems[1][Integer(*jt,arr_position)] );
-					assert(Integer(*jt,arr_position) == Integer(selems[1][Integer(*jt,arr_position)],arr_position));
 					//REPORT_VAL("pack edge position",Integer(*jt,arr_position));
 					low_conn_nums.push_back(Integer(*jt,arr_position));
 					low_conn_size[k]++;
@@ -4010,7 +4053,6 @@ namespace INMOST
 					//low_conn_nums.push_back(static_cast<Storage::integer>(find - selems[2].begin()));
 					assert( GetMarker(*jt,busy) );
 					assert( *jt == selems[2][Integer(*jt,arr_position)] );
-					assert(Integer(*jt,arr_position) == Integer(selems[2][Integer(*jt,arr_position)],arr_position));
 					//REPORT_VAL("pack face position",Integer(*jt,arr_position));
 					low_conn_nums.push_back(Integer(*jt,arr_position));
 					low_conn_size[k]++;
@@ -4028,7 +4070,6 @@ namespace INMOST
 					//high_conn_nums.push_back(static_cast<Storage::integer>(find - selems[0].begin()));
 					assert( GetMarker(*jt,busy) );
 					assert( *jt == selems[0][Integer(*jt,arr_position)] );
-					assert(Integer(*jt,arr_position) == Integer(selems[0][Integer(*jt,arr_position)],arr_position));
 					//REPORT_VAL("pack node position",Integer(*jt,arr_position));
 					high_conn_nums.push_back(Integer(*jt,arr_position));
 					high_conn_size[k]++;
@@ -4109,7 +4150,8 @@ namespace INMOST
 			for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) 
 			{
 				ElementSet set(this, *it);
-				
+				//REPORT_VAL("pack set ", set.GetName());
+				//REPORT_VAL("set owner ", set.Integer(tag_owner));
 				Storage::integer & owner = Integer(*it,tag_owner);
 				
 				//if( GetStatus(*it) == Element::Owned || GetStatus(*it) == Element::Any )
@@ -4119,7 +4161,7 @@ namespace INMOST
 				if( owner == mpirank )
 				{
 					Storage::integer_array proc = IntegerArray(*it,tag_processors);
-					Storage::integer_array::iterator ip = std::find(proc.begin(),proc.end(),destination);
+					Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
 					if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
 					if( GetStatus(*it) != Element::Shared)
 					{
@@ -4155,40 +4197,32 @@ namespace INMOST
 					if( *jt != InvalidHandle() && !Hidden(*jt) && GetMarker(*jt,busy) )
 					{
 						INMOST_DATA_INTEGER_TYPE el_num = GetHandleElementNum(*jt);
-						assert( GetMarker(*jt,busy) );
 						assert(*jt == selems[el_num][Integer(*jt,arr_position)]);
-						assert(Integer(*jt,arr_position) == Integer(selems[el_num][Integer(*jt,arr_position)],arr_position));
 						low_conn_nums.push_back(ComposeHandle(GetHandleElementType(*jt), Integer(*jt,arr_position)));
 						low_conn_size[k]++;
 						num++;
 					}
 				}
 				assert(k*3 + 2 < high_conn_nums.size());
-				if( set.HaveChild() )
+				if( set.HaveChild() && set.GetChild().GetMarker(busy) )
 				{
-					assert(set.GetChild().GetMarker(busy));
 					assert(set.GetChild().GetHandle() == selems[4][Integer(set.GetChild().GetHandle(),arr_position)]);
-					assert(Integer(set.GetChild().GetHandle(),  arr_position) == Integer(selems[4][Integer(set.GetChild().GetHandle(),  arr_position)],arr_position));
-					high_conn_nums[k*3 + 0] = Integer(set.GetChild().GetHandle(),  arr_position); 
+					high_conn_nums[k*3 + 0] = Integer(set.GetChild().GetHandle(),  arr_position);
 				}
 				else 
 					high_conn_nums[k*3 + 0] = -1;                
 				if( set.HaveParent() && set.GetParent().GetMarker(busy) )
 				{
-					assert(set.GetParent().GetMarker(busy));
 					assert(set.GetParent().GetHandle() == selems[4][Integer(set.GetParent().GetHandle(),arr_position)]);
-					assert(Integer(set.GetParent().GetHandle(),  arr_position) == Integer(selems[4][Integer(set.GetParent().GetHandle(),  arr_position)],arr_position));
-					high_conn_nums[k*3 + 1] = Integer(set.GetParent().GetHandle(), arr_position); 
+					high_conn_nums[k*3 + 1] = Integer(set.GetParent().GetHandle(), arr_position);
 				}
 				else 
 					high_conn_nums[k*3 + 1] = -1;
 					
-				if( set.HaveSibling() ) 
+				if( set.HaveSibling() && set.GetSibling().GetMarker(busy) )
                 {
-					assert(set.GetSibling().GetMarker(busy));
 					assert(set.GetSibling().GetHandle() == selems[4][Integer(set.GetSibling().GetHandle(),arr_position)]);
-					assert(Integer(set.GetSibling().GetHandle(),  arr_position) == Integer(selems[4][Integer(set.GetSibling().GetHandle(),  arr_position)],arr_position));
-					high_conn_nums[k*3 + 2] = Integer(set.GetSibling().GetHandle(),arr_position); 
+					high_conn_nums[k*3 + 2] = Integer(set.GetSibling().GetHandle(),arr_position);
 				}
 				else 
 					high_conn_nums[k*3 + 2] = -1;
@@ -4803,7 +4837,7 @@ namespace INMOST
 				ElementSet set = GetSet(names[i]);
 				if (set == InvalidElementSet())
 				{
-					REPORT_VAL("create new set", names[i]);
+					//REPORT_VAL("create new set", names[i]);
 					set = CreateSetUnique(names[i]).first;
 					//REPORT_VAL("create new ",set->GetHandle());
 					
@@ -4885,9 +4919,11 @@ namespace INMOST
 						REPORT_VAL("par set handle", par_set->GetHandle());
 						REPORT_VAL("own parent set", own_set->GetParent()->GetName());
 						REPORT_VAL("own parent set", own_set->GetParent()->GetHandle());
+						exit(-1);
 					}
 					assert( !own_set->HaveParent() || own_set->GetParent() == par_set );
 					if( !own_set->HaveParent() ) par_set->AddChild(own_set);
+					assert( own_set->GetParent().GetElementType() == ESET );
 				}
 				for (int i = 0; i < num; i++) if (high_conn_nums[i*3+2] != -1) 
 				{
@@ -5522,7 +5558,13 @@ namespace INMOST
 			EXIT_BLOCK();
 		}
 		
+		CheckProcsSorted(__FILE__,__LINE__);
+		
 		RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
+		
+		CheckGhostSharedCount(__FILE__,__LINE__);
+		CheckCentroids(__FILE__,__LINE__);
+		
 
 		if( action == AGhost ) 
 		{
@@ -5538,6 +5580,7 @@ namespace INMOST
 				REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(storage.send_reqs.size()),&storage.send_reqs[0],MPI_STATUSES_IGNORE));
 			}
 		}
+		
 #else
 		(void) action;
 #endif
@@ -5653,7 +5696,7 @@ namespace INMOST
 			}
 		}
 		if( err ) std::cout << "error on " << GetProcessorRank() << std::endl;
-		err = Integrate(err);
+		//err = Integrate(err);
 		if( err ) 
 		{
 			std::cout << "crash from " << file << ":" << line << std::endl;
