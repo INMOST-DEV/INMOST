@@ -3658,6 +3658,16 @@ namespace INMOST
 #endif
 		EXIT_FUNC();
 	}
+
+	void Mesh::GatherElements(proc_elements_by_type & pselems, const std::vector<std::string> & tag_list, bool force_send)
+	{
+		ENTER_FUNC();
+		for(proc_elements_by_type::iterator it = pselems.begin(); it != pselems.end(); ++it)
+		{
+			
+		}
+		EXIT_FUNC();
+	}
 	
 	void Mesh::PackElementsData(elements_by_type & selems, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list)
 	{

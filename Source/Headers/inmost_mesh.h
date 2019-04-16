@@ -2300,6 +2300,7 @@ namespace INMOST
 		std::vector<int>                  ComputeSharedProcs (const parallel_storage & from, const parallel_storage & to);
 		std::vector<int>                  ComputeSharedProcs (ElementType etype);
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
+		void                              GatherElements     (proc_elements_by_type & pselems, const std::vector<std::string> & tag_list, bool force_send);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
 		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, proc_elements_by_type * send_elements = NULL);
 		void                              PackElementsData   (elements_by_type & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
