@@ -970,8 +970,14 @@ namespace INMOST
 		__INLINE ElementSet &               self                ()              {return *this;}
 		__INLINE const ElementSet &         self                () const        {return *this;}
 	private:
-		void                                CollectProcessors   (std::set<Storage::integer> & procs);
-		void                                SetSendTo(std::set<Storage::integer> & procs);
+		/// Compute union of processors on elements.
+		/// @param procs Set of processors to fill.
+		/// @param dir Directon for tree traversal, 1 - downwards, 2, upwards, 3 - both directions
+		void                                CollectProcessors   (std::set<Storage::integer> & procs, char dir);
+		/// Fill Mesh::SendtoTag() to send sets to processors from procs set that currently don't have this set
+		/// @param procs Set of processors to send the set to.
+		/// @param dir Directon for tree traversal, 1 - downwards, 2, upwards, 3 - both directions
+		void                                SetSendTo(std::set<Storage::integer> & procs, char dir);
 	public:
 		/// Get name of the set
 		std::string                 GetName() const;
@@ -1256,7 +1262,13 @@ namespace INMOST
 		/// Asks all the children to be sent to other processors.
 		/// Call ExchangeMarked afterwards.
 		/// @see Mesh::ExchangeMarked
-		void SynchronizeSetTree();
+		void SynchronizeSetChildren();
+		/// Asks all the parents upwards to be sent to other processors.
+		/// This function does not ask children of the parents to be synchronized,
+		/// for this traverse to the upppermost parent and call ElementSet::SynchronizeSetChildren
+		/// Call ExchangeMarked afterwards.
+		/// @see Mesh::ExchangeMarked
+		void SynchronizeSetParents();
 	};
 
 	__INLINE const ElementSet & InvalidElementSet() {static ElementSet ret(NULL,InvalidHandle()); return ret;}

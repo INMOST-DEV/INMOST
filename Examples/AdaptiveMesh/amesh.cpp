@@ -421,6 +421,32 @@ namespace INMOST
 				REPORT_STR(m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
 				err++;
 			}
+			else if( parent_set[*it] != root.GetHandle() )
+			{
+				ElementSet set(m,parent_set[*it]);
+				if( !set.HaveParent() )
+				{
+					REPORT_STR(m->GetProcessorRank() << 
+					" parent set " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << 
+					" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
+					" does not have parent " <<
+					" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
+					err++;
+				}
+				else
+				{
+					HandleType parent = set.GetParent().GetHandle();
+					if( GetHandleElementType(parent) != ESET )
+					{
+						REPORT_STR(m->GetProcessorRank() << 
+						" parent set " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << 
+						" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
+						" has parent " << ElementTypeName(GetHandleElementType(parent)) << ":" << GetHandleID(parent) <<
+						" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
+						err++;
+					}
+				}
+			}
 		}
 		err = m->Integrate(err);
 		EXIT_FUNC();
@@ -1206,13 +1232,12 @@ namespace INMOST
 		{
 			ElementSet set = m->EsetByLocalID(it);
 			if( indicator[set] != 0 )
-			{
 				set.SynchronizeSetElements();
-				if( set.HaveParent() ) set.GetParent().SynchronizeSetTree();
-			}
 		}
 		EXIT_BLOCK();
 		m->ExchangeMarked();
+
+		//CheckParentSet();
 		
 		ENTER_BLOCK();
 		//m->CheckCentroids(__FILE__,__LINE__);
@@ -1224,8 +1249,21 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
-		CheckParentSet();
+		
 		EXIT_BLOCK();
+
+
+		ENTER_BLOCK();
+		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+		{
+			ElementSet set = m->EsetByLocalID(it);
+			if( indicator[set] != 0 )
+				set.SynchronizeSetParents();
+		}
+		EXIT_BLOCK();
+		m->ExchangeMarked();
+		
+		CheckParentSet();
 		
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
@@ -1241,6 +1279,7 @@ namespace INMOST
 		while(schedule_counter)
 		{
 			CheckParentSet();
+			//CheckParentSet();
 			//fout << "schedule_counter " << schedule_counter << std::endl;
 			//unite cells
 			//should find and set hanging nodes on faces

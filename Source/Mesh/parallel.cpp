@@ -2137,21 +2137,31 @@ namespace INMOST
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		int mpirank = GetProcessorRank();
-		Tag tag_delete = CreateTag("TEMPORARY_DELETE_GHOST_ELEMENTS_TAG",DATA_INTEGER,CELL | FACE | EDGE | NODE,CELL | FACE | EDGE | NODE);
+		Tag tag_delete = CreateTag("TEMPORARY_DELETE_GHOST_ELEMENTS_TAG",DATA_INTEGER,ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE);
 		element_set delete_elements;
 #if defined(USE_PARALLEL_STORAGE)
 		proc_elements del_shared, del_ghost;
 #endif //USE_PARALLEL_STORAGE
 		
-		for(ElementType mask = CELL; mask >= NODE; mask = PrevElementType(mask))
+		for(ElementType mask = ESET; mask >= NODE; mask = PrevElementType(mask))
 		{
 			//std::cout << GetProcessorRank() << " start " << ElementTypeName(mask) << std::endl;
-			if( mask & CELL )
+			//if( mask & CELL )
+			//{
+			int cnt = 0;
+			for(const HandleType * it = ghost; it != ghost + num; it++)
+				if( (GetHandleElementType(*it) & mask) && GetStatus(*it) == Element::Ghost ) 
+				{
+					Integer(*it,tag_delete) = mpirank;
+					cnt++;
+				}
+			if( mask & (ESET|CELL) )
 			{
-				for(const HandleType * it = ghost; it != ghost + num; it++)
-					if( GetStatus(*it) == Element::Ghost ) Integer(*it,tag_delete) = mpirank;
+				cnt = Integrate(cnt);
+				if( !cnt ) continue;
 			}
-			else 
+			//}
+			if( mask & (FACE|EDGE|NODE) )
 			{
 				for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 				{
@@ -3446,6 +3456,12 @@ namespace INMOST
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 		{
 			Element::Status estat = it->GetStatus();
+			if( it->Hidden() )
+			{
+				err++;
+				REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ << "Adding hidden element " << ElementTypeName(mask));
+				std::cout << GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  "Adding hidden element " << ElementTypeName(mask) << std::endl;
+			}
 			if( estat == Element::Shared ) 
 			{ 
 				Storage::integer_array v = it->IntegerArrayDV(tag_processors);
@@ -3754,8 +3770,8 @@ namespace INMOST
 			{
 				if( !set.GetParent().GetMarker(busy) && !set.GetParent().Hidden() )
 				{
-					Storage::integer_array procs = set.GetParent().IntegerArrayDV(ProcessorsTag());
-					if( std::binary_search(procs.begin(),procs.end(),destination) )
+					//Storage::integer_array procs = set.GetParent().IntegerArrayDV(ProcessorsTag());
+					//if( std::binary_search(procs.begin(),procs.end(),destination) )
 					{
 						selems[4].push_back(set.GetParent().GetHandle());
 						set.GetParent().SetMarker(busy);
@@ -5755,12 +5771,13 @@ namespace INMOST
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		REPORT_STR("sort shared elements")
-		double time = Timer();
+		ENTER_BLOCK();
 		for(parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
 		{
 			REPORT_VAL("processor",it->first);
 			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
 			{
+				ENTER_BLOCK();
 				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
@@ -5770,11 +5787,13 @@ namespace INMOST
 						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
 				}
 				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
+				EXIT_BLOCK();
 			}
 
             // ESET sort
 			if (mask & ElementTypeFromDim(4))
             {
+				ENTER_BLOCK();
 				if( !it->second[4].empty() )
                 {
 					if(HaveGlobalID(ElementTypeFromDim(4)))
@@ -5791,17 +5810,18 @@ namespace INMOST
 //					}
                 }
                 REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(4)),it->second[4].size());
+				EXIT_BLOCK();
             }
 		}
-		time = Timer() - time;
-		REPORT_VAL("time",time);
+		EXIT_BLOCK();
 		REPORT_STR("sort ghost elements")
-		time = Timer();
+		ENTER_BLOCK();
 		for(parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
 		{
 			REPORT_VAL("processor",it->first);
 			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
 			{
+				ENTER_BLOCK();
 				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
@@ -5811,11 +5831,13 @@ namespace INMOST
 						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
 				}
 				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
+				EXIT_BLOCK();
 			}
 
             // ESET sort
 			if (mask & ElementTypeFromDim(4))
             {
+				ENTER_BLOCK();
 				if( !it->second[4].empty() )
                 {
 					if(HaveGlobalID(ElementTypeFromDim(4)))
@@ -5832,10 +5854,10 @@ namespace INMOST
 //					}
                 }
                 REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(4)),it->second[4].size());
+				EXIT_BLOCK();
             }
 		}
-		time = Timer() - time;
-		REPORT_VAL("time",time);
+		EXIT_BLOCK();
 #else //USE_MPI and USE_PARALLEL_STORAGE
 		(void) ghost; (void) shared; (void) mask;
 #endif //USE_MPI and USE_PARALLEL_STORAGE
@@ -6412,10 +6434,10 @@ namespace INMOST
 		std::vector<int> size_recv(mpisize);
 		int size_send, size_recv_all = 0, prealloc = 0;
 		ENTER_BLOCK();
-		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)
+		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it) if( !Hidden(it->second) )
 			prealloc += it->first.size()+1;
 		set_names_send.reserve(prealloc);
-		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)
+		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it) if( !Hidden(it->second) )
 		{
 			set_names_send.insert(set_names_send.end(),it->first.begin(),it->first.end());
 			set_names_send.push_back('\0');
@@ -6451,7 +6473,7 @@ namespace INMOST
 		
 		// Change status for self sets
 		//for(Mesh::iteratorSet set = BeginSet(); set != EndSet(); ++set)
-		
+		/*
 		ENTER_BLOCK();
 		for(std::map<std::string,std::vector<int> >::iterator it = map_names.begin(); it != map_names.end(); ++it)
 		{
@@ -6468,11 +6490,14 @@ namespace INMOST
 			for(std::vector<int>::iterator jt = it->second.begin(); jt != it->second.end(); ++jt) REPORT_STR("proc " << *jt);
 		}
 		EXIT_BLOCK();
-		 
+		 */
 		ENTER_BLOCK();
-		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)
+		REPORT_VAL("number of sets in set_search: ", set_search.size());
+		REPORT_VAL("number of sets in mesh: ", NumberOfSets());
+		REPORT_VAL("number of sets in map_names: ", map_names.size());
+		for(std::map<std::string,HandleType>::iterator it = set_search.begin(); it != set_search.end(); ++it)  if( !Hidden(it->second) )
 		{
-			REPORT_STR("\"" << it->first << "\" size " << it->first.size() << " handle " << it->second);
+			//REPORT_STR("\"" << it->first << "\" size " << it->first.size() << " handle " << it->second);
 			std::vector<int> & procs = map_names[it->first];
 			//if( procs.empty() )
 			//	std::cout << "no procs for " << it->first << std::endl;
@@ -6505,8 +6530,16 @@ namespace INMOST
 				else
 					SetStatus(it->second, Element::Ghost);
 			}
-			REPORT_VAL("owner ",IntegerDF(it->second, tag_owner));
-			REPORT_VAL("status ",Element::StatusName(GetStatus(it->second)));
+			std::stringstream pstr;
+			pstr << "name " << it->first;
+			pstr << " handle " << it->second;
+			pstr << " owner " << IntegerDF(it->second, tag_owner);
+			pstr << " status " << Element::StatusName(GetStatus(it->second));
+			pstr << " procs";
+			if( Hidden(it->second) ) pstr << " hidden";
+			else pstr << " not hidden";
+			for (int i = 0; i < arr.size(); i++) pstr << " " << arr[i];
+			REPORT_STR(pstr.str());
 		}
 		EXIT_BLOCK();
 		//CheckGhostSharedCount(__FILE__,__LINE__,ESET);

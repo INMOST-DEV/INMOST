@@ -1799,7 +1799,7 @@ namespace INMOST
 				it != send_set.end(); ++it) sendto[k++] = *it;
 		}
 	}
-	void ElementSet::SetSendTo(std::set<Storage::integer> & procs)
+	void ElementSet::SetSendTo(std::set<Storage::integer> & procs, char dir)
 	{
 		{
 			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
@@ -1809,36 +1809,55 @@ namespace INMOST
 											  set_procs.begin(),set_procs.end(),
 											  sendto.begin())-sendto.begin());
 		}
-		if( HaveChild() )
+		if( (dir & 1) && HaveChild() )
 		{
 			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
-				it->SetSendTo(procs);
+				it->SetSendTo(procs, dir & 1); // don't let children to go upwards
+		}
+		if( (dir & 2) && HaveParent() )
+		{
+			GetParent();
 		}
 	}
-	void ElementSet::CollectProcessors(std::set<Storage::integer> & procs)
+	void ElementSet::CollectProcessors(std::set<Storage::integer> & procs, char dir)
 	{
 		{
 			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
 			procs.insert(set_procs.begin(),set_procs.end());
 		}
-		if( HaveChild() )
+		if( dir & 1 && HaveChild() )
 		{
 			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
-				it.CollectProcessors(procs);
+				it.CollectProcessors(procs,dir & 1); //don't let children to go upwards
+		}
+		if( dir & 2 && HaveParent() )
+		{
+			GetParent().CollectProcessors(procs,dir & 2); //don't let parent to go downwards
 		}
 	}
-	void ElementSet::SynchronizeSetTree()
+	void ElementSet::SynchronizeSetChildren()
 	{
-		Mesh * m = GetMeshLink();
-		if( m->GetMeshState() == Mesh::Serial ) return;
+		if( GetMeshLink()->GetMeshState() == Mesh::Serial ) return;
 		
 		if( GetStatus() != Element::Owned )
 		{
 			std::set<Storage::integer> send_set;
-			CollectProcessors(send_set);
-			SetSendTo(send_set);
+			CollectProcessors(send_set,1);
+			SetSendTo(send_set,1);
 		}
 	}
+
+	void ElementSet::SynchronizeSetParents()
+	{
+		if( GetMeshLink()->GetMeshState() == Mesh::Serial ) return;
+		if( GetStatus() != Element::Owned )
+		{
+			std::set<Storage::integer> send_set;
+			CollectProcessors(send_set,2);
+			SetSendTo(send_set,2);
+		}
+	}
+	
 }
 
 #endif

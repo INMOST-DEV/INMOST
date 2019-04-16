@@ -2088,6 +2088,7 @@ namespace INMOST
 		}
 		std::cout << GetProcessorRank() << " before resolve shared new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
+		ResolveSets();
 		ResolveShared(true);
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
@@ -2120,7 +2121,7 @@ namespace INMOST
 		}
 		std::cout << GetProcessorRank() << " after exchange ghost new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
-		ResolveSets();
+		
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
 		//exit(-1);
