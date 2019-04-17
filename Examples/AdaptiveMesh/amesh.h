@@ -16,7 +16,7 @@ namespace INMOST
         int size;
 		/// Prepare sets for coarsements.
 		/// Do not do this in constructor, since mesh may contain no cells.
-		void CheckParentSet();
+		void CheckParentSet(std::string file, int line, TagInteger indicator);
 		void PrepareSet();
         //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
         //void SynchronizeIndicated(TagInteger& indicator);

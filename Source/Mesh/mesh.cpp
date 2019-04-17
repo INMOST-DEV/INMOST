@@ -192,7 +192,14 @@ namespace INMOST
 		}
 #endif
 
+		ClearFile();
+    allocated_meshes.push_back(this);
+  }
+
+	void Mesh::ClearFile()
+	{
 #if defined(USE_PARALLEL_WRITE_TIME)
+		if( out_time.is_open() ) out_time.close();
 		num_exchanges = 0;
 		std::stringstream temp;
 		temp << "time_" << GetProcessorRank() << ".xml";
@@ -203,8 +210,7 @@ namespace INMOST
 		tab = 1;
 		func_id = 0;
 #endif
-    allocated_meshes.push_back(this);
-  }
+	}
 		
 	Mesh::Mesh()
 	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))

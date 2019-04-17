@@ -2985,6 +2985,12 @@ namespace INMOST
 							assert( k < array_size_recv.size() );
 							assert( array_size_recv[k] < elements[i].size() );
 							eit = elements[i].begin() + array_size_recv[k++];
+							//if( select && !GetMarker(*eit,select) )
+							//{
+							//	std::cout << __FILE__ << ":" << __LINE__ << " unpack " << tag.GetTagName() << " from " << source;
+							//	std::cout << " element " << ElementTypeName(GetHandleElementType(*eit)) << ":" << GetHandleID(*eit);
+							//	std::cout << " no marker" << std::endl;
+							//}
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
 							if( tag.GetDataType() == DATA_REFERENCE )
 							{
@@ -3023,6 +3029,15 @@ namespace INMOST
 							assert( k < array_size_recv.size() );
 							assert( array_size_recv[k] < elements[i].size() );
 							eit = elements[i].begin() + array_size_recv[k++];
+							if( select && !GetMarker(*eit,select) )
+							{
+								std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank();
+								std::cout << " unpack " << tag.GetTagName() << " from " << source;
+								std::cout << " offset " << array_size_recv[k-1];
+								std::cout << " element " << ElementTypeName(GetHandleElementType(*eit)) << ":" << GetHandleID(*eit);
+								if( GetHandleElementType(*eit) == ESET ) std::cout << " " << ElementSet(this,*eit).GetName();
+								std::cout << " no marker" << std::endl;
+							}
 							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
 							if( tag.GetDataType() == DATA_REFERENCE )
 							{
@@ -3664,7 +3679,7 @@ namespace INMOST
 		ENTER_FUNC();
 		for(proc_elements_by_type::iterator it = pselems.begin(); it != pselems.end(); ++it)
 		{
-			
+
 		}
 		EXIT_FUNC();
 	}
@@ -3752,39 +3767,30 @@ namespace INMOST
 		{
 			ElementSet set(this,selems[4][i]);
 			// looking to child, sibling and parent
-			if( set.HaveChild() )
-			{
-				if( !set.GetChild().GetMarker(busy) && !set.GetChild().Hidden() )
-				{
-					Storage::integer_array procs = set.GetChild().IntegerArrayDV(ProcessorsTag());
-					if( std::binary_search(procs.begin(),procs.end(),destination) )
-					{
-						selems[4].push_back(set.GetChild().GetHandle());
-						set.GetChild().SetMarker(busy);
-					}
-				}
-			}
-			if( set.HaveSibling() )
-			{
-				if( !set.GetSibling().GetMarker(busy) && !set.GetSibling().Hidden()  )
-				{
-					Storage::integer_array procs = set.GetSibling().IntegerArrayDV(ProcessorsTag());
-					if( std::binary_search(procs.begin(),procs.end(),destination) )
-					{
-						selems[4].push_back(set.GetSibling().GetHandle());
-						set.GetSibling().SetMarker(busy);
-					}
-				}
-			}
 			if( set.HaveParent() )
 			{
 				if( !set.GetParent().GetMarker(busy) && !set.GetParent().Hidden() )
 				{
-					//Storage::integer_array procs = set.GetParent().IntegerArrayDV(ProcessorsTag());
-					//if( std::binary_search(procs.begin(),procs.end(),destination) )
+					Storage::integer_array procs = set.GetParent().IntegerArrayDV(ProcessorsTag());
+					if( std::binary_search(procs.begin(),procs.end(),destination) )
 					{
 						selems[4].push_back(set.GetParent().GetHandle());
 						set.GetParent().SetMarker(busy);
+					}
+				}
+			}
+			if( set.HaveChild() )
+			{
+				for(ElementSet jt = set.GetChild(); jt.isValid(); jt = jt.GetSibling() )
+				{
+					if( !jt.GetMarker(busy) && !jt.Hidden() )
+					{
+						Storage::integer_array procs = jt.IntegerArrayDV(ProcessorsTag());
+						if( std::binary_search(procs.begin(),procs.end(),destination) )
+						{
+							selems[4].push_back(jt.GetHandle());
+							jt.SetMarker(busy);
+						}
 					}
 				}
 			}
@@ -3842,58 +3848,58 @@ namespace INMOST
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
 			MPI_Pack_size(1                                                 ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
+			MPI_Pack_size(1                                                 ,MPI_INT                     ,comm,&temp); new_size += temp;
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,comm,&temp); new_size += temp;
 			if( HaveGlobalID(NODE) )
 				MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			buffer.resize(position+new_size);
 			num = static_cast<INMOST_DATA_ENUM_TYPE>(selems[0].size());
-			MPI_Pack(&num,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			int marked_for_data = 0, marked_shared = 0;
+			k = 0;
+			std::vector<Storage::real> coords(selems[0].size()*dim);
+			for(element_set::iterator it = selems[0].begin(); it != selems[0].end(); it++)
 			{
-				k = 0;
-				std::vector<Storage::real> coords(selems[0].size()*dim);
-				for(element_set::iterator it = selems[0].begin(); it != selems[0].end(); it++)
+				Storage::real_array c = RealArray(*it,tag_coords);
+				//REPORT_VAL("packed coords",k << " " << c[0] << " " << c[1] << " " << c[2]);
+				for(integer j = 0; j < dim; j++) coords[k*GetDimensions()+j] = c[j];
+				Storage::integer & owner = IntegerDF(*it,tag_owner);
 				{
-					Storage::real_array c = RealArray(*it,tag_coords);
-					//REPORT_VAL("packed coords",k << " " << c[0] << " " << c[1] << " " << c[2]);
-					for(integer j = 0; j < dim; j++) coords[k*GetDimensions()+j] = c[j];
-					Storage::integer & owner = IntegerDF(*it,tag_owner);
+					if( owner == mpirank )
 					{
-						if( owner == mpirank )
+						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
+						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
+						if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
+						if( GetStatus(*it) != Element::Shared)
 						{
-							Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
-							Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
-							if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
-							if( GetStatus(*it) != Element::Shared)
-							{
-								//if( GetStatus(*it) != Element::Owned )
-								//	std::cout << "node " << GetHandleID(*it) << " " << Element::StatusName(GetStatus(*it)) << std::endl;
-								//assert(GetStatus(*it) == Element::Owned);
-								++marked_shared;
-								SetStatus(*it, Element::Shared);
-							}
+							//if( GetStatus(*it) != Element::Owned )
+							//	std::cout << "node " << GetHandleID(*it) << " " << Element::StatusName(GetStatus(*it)) << std::endl;
+							//assert(GetStatus(*it) == Element::Owned);
+							++marked_shared;
+							SetStatus(*it, Element::Shared);
 						}
 					}
-					//TODO: 45
-					if( owner != destination ) 
-					{
-						SetMarker(*it,pack_tags_mrk);
-						//TODO 46 old
-						//	pack_tags[0].push_back(*it);
-						++marked_for_data;
-					}
-					if( HaveGlobalID(NODE) )
-					{
-						global_ids.push_back(Integer(*it,GlobalIDTag()));
-						//REPORT_VAL("packed global_id",global_ids.back());
-					}
-					k++;
 				}
-				if( !coords.empty() ) 
-					MPI_Pack(&coords[0]    ,static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				if( HaveGlobalID(NODE) && !global_ids.empty() )
-					MPI_Pack(&global_ids[0],static_cast<INMOST_MPI_SIZE>(selems[0].size())    ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+				//TODO: 45
+				if( owner != destination ) 
+				{
+					SetMarker(*it,pack_tags_mrk);
+					//TODO 46 old
+					//	pack_tags[0].push_back(*it);
+					++marked_for_data;
+				}
+				if( HaveGlobalID(NODE) )
+				{
+					global_ids.push_back(Integer(*it,GlobalIDTag()));
+					//REPORT_VAL("packed global_id",global_ids.back());
+				}
+				k++;
 			}
+			MPI_Pack(&num,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !coords.empty() ) 
+				MPI_Pack(&coords[0]    ,static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( HaveGlobalID(NODE) && !global_ids.empty() )
+				MPI_Pack(&global_ids[0],static_cast<INMOST_MPI_SIZE>(selems[0].size())    ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[0].size());
 			buffer.resize(position);
@@ -3969,12 +3975,15 @@ namespace INMOST
 			REPORT_VAL("number of edge nodes",num);
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[1].size());
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(1+selems[1].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
+			MPI_Pack_size(1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
+			MPI_Pack_size(1                                             ,MPI_INT                     ,comm,&temp); new_size += temp;
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[1].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[1].size())  ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			buffer.resize(position+new_size);
 			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[1].size());
 			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[1].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			buffer.resize(position);
@@ -4039,12 +4048,15 @@ namespace INMOST
 			REPORT_VAL("number of face edges",num);
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[2].size());
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(1+selems[2].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(1)               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(1)               ,MPI_INT                     ,comm,&temp); new_size += temp;
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[2].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[2].size())  ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			buffer.resize(position+new_size);
 			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[2].size());
 			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[2].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			buffer.resize(position);
@@ -4131,6 +4143,7 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
 			MPI_Pack_size(1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
+			MPI_Pack_size(1                                             ,MPI_INT                     ,comm,&temp); new_size += temp;
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
@@ -4139,6 +4152,7 @@ namespace INMOST
 			buffer.resize(position+new_size);
 			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[3].size());
 			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_size.empty() )  MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !low_conn_nums.empty() )  MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			if( !high_conn_size.empty() ) MPI_Pack(&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
@@ -4151,17 +4165,16 @@ namespace INMOST
         // pack esets
 		ENTER_BLOCK();
 		{
-			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[4].size());
-			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // TODO - 3
+			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[4].size()); //store number of elements in set
+			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // store number of children in set
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_nums;  // array composed elements : ElementType and position in array 
-			std::vector<Storage::integer> high_conn_nums(selems[4].size() * 3);        // array of indexes of children, sibling, parent. -1 if has't
+			std::vector<Storage::integer> high_conn_nums;  // array of indexes of parent (-1 if no parent), then all children
 			std::vector<char> names_buff;
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
-			num = 0; k = 0;
+			k = 0;
 			int marked_for_data = 0, marked_shared = 0;
 			//int names_buff_size = 0;
-
             // Pack sequence: 
             // 1) all names of sets
             // 2) low conn for sets (arr_pos + element_type)
@@ -4175,11 +4188,12 @@ namespace INMOST
 			//if( selems[4].size() ) SetMarkerArray(&selems[4][0],selems[4].size(),pack_set);
 			for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++) 
 			{
+				assert(!Hidden(*it));
 				ElementSet set(this, *it);
+				//bool print = (set.GetName() == "AM_R446C0") || (set.GetName() == "AM_R446");
 				//REPORT_VAL("pack set ", set.GetName());
 				//REPORT_VAL("set owner ", set.Integer(tag_owner));
 				Storage::integer & owner = Integer(*it,tag_owner);
-				
 				//if( GetStatus(*it) == Element::Owned || GetStatus(*it) == Element::Any )
 				//	owner = mpirank;
 				//REPORT_STR("set name \"" << set.GetName() << "\" owner " << owner);
@@ -4196,14 +4210,29 @@ namespace INMOST
 						SetStatus(*it,Element::Shared);
 					}
 				}
+
+				
 				
 				if( owner != destination )
 				{
+					
 					SetMarker(*it, pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[3].push_back(*it);
 					++marked_for_data;
 				}
+				/*
+				if( (set.GetName() == "AM_ROOT_SET" || set.GetName() == "AM_R270") && GetProcessorRank() == 4 && destination == 0 )
+				{
+					std::cout << "Hello there!!!" << std::endl;
+					Storage::integer_array arr = set.IntegerArray(tag_processors);
+					std::cout << set.GetName() << " offset " << k;
+					std::cout << " procs ";
+					for(int r = 0; r < arr.size(); ++r) std::cout << arr[r] << " ";
+					//std::cout << std::endl;
+					std::cout << "owner " << owner << (set.GetMarker(pack_tags_mrk) ? " has marker " : " no marker ") << std::endl;
+				}
+				*/
 				
 				// Add set name to names_buffer
 				std::string set_name = set.GetName();
@@ -4214,9 +4243,6 @@ namespace INMOST
 				//names_buff_pos += set.GetName().length() + 1;
 				// Add all low conns to low_conn_nums
 				low_conn_size[k] = 0;
-				//ElementSet::ExchangeType exch = set.Bulk(SetExchangeTag());
-				//if( exch != ElementSet::SYNC_ELEMENTS_NONE )
-				assert(!Hidden(*it));
 				Element::adj_type const & lc = LowConn(*it);
 				for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); jt++)
 				{
@@ -4226,25 +4252,41 @@ namespace INMOST
 						assert(*jt == selems[el_num][Integer(*jt,arr_position)]);
 						low_conn_nums.push_back(ComposeHandle(GetHandleElementType(*jt), Integer(*jt,arr_position)));
 						low_conn_size[k]++;
-						num++;
 					}
 				}
-				assert(k*3 + 2 < high_conn_nums.size());
-				if( set.HaveChild() && set.GetChild().GetMarker(busy) )
-				{
-					assert(set.GetChild().GetHandle() == selems[4][Integer(set.GetChild().GetHandle(),arr_position)]);
-					high_conn_nums[k*3 + 0] = Integer(set.GetChild().GetHandle(),  arr_position);
-				}
-				else 
-					high_conn_nums[k*3 + 0] = -1;                
+
+				//if( print ) std::cout << GetProcessorRank() << " set " << set.GetName();
+				high_conn_size[k] = 1; //reserve for parent
 				if( set.HaveParent() && set.GetParent().GetMarker(busy) )
 				{
 					assert(set.GetParent().GetHandle() == selems[4][Integer(set.GetParent().GetHandle(),arr_position)]);
-					high_conn_nums[k*3 + 1] = Integer(set.GetParent().GetHandle(), arr_position);
+					high_conn_nums.push_back(Integer(set.GetParent().GetHandle(), arr_position));
+					//if( print ) std::cout << " pack parent " << set.GetParent().GetName();
 				}
 				else 
-					high_conn_nums[k*3 + 1] = -1;
-					
+				{
+					high_conn_nums.push_back(-1);
+					//if( print ) std::cout << " no pack parent " << (set.HaveChild() ? set.GetChild().GetName() : "none");
+				}
+				if( set.HaveChild() )
+				{
+					//if( print ) std::cout << " pack";
+					for(ElementSet jt = set.GetChild(); jt.isValid(); jt = jt.GetSibling() ) 
+					{
+						if( jt.GetMarker(busy) )
+						{
+							assert(jt.GetHandle() == selems[4][Integer(jt.GetHandle(),arr_position)]);
+							high_conn_nums.push_back(Integer(jt.GetHandle(),  arr_position));
+							high_conn_size[k]++;
+							//if( print ) std::cout << " " << jt.GetName();
+						}
+						//else if( print ) std::cout << " no pack " << jt.GetName();
+					}
+				}
+				//else  if( print ) std::cout << " no children";
+				//if( print ) std::cout << " for " << destination << std::endl;
+				
+				/*	
 				if( set.HaveSibling() && set.GetSibling().GetMarker(busy) )
                 {
 					assert(set.GetSibling().GetHandle() == selems[4][Integer(set.GetSibling().GetHandle(),arr_position)]);
@@ -4252,25 +4294,30 @@ namespace INMOST
 				}
 				else 
 					high_conn_nums[k*3 + 2] = -1;
+					*/
 				k++;
 			}
 			//if( selems[4].size() ) RemMarkerArray(&selems[4][0],selems[4].size(),pack_set);
 			//ReleaseMarker(pack_set);
-			MPI_Pack_size(1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // count of sets
-			MPI_Pack_size(1                                               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // names_buff_size
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(names_buff.size()) ,MPI_CHAR                    ,comm,&temp); new_size += temp;   // names_buff
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size())  ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_sizes array
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_nums array
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size()*3),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp; // high_conn_nums array
+			MPI_Pack_size(1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // count of sets
+			MPI_Pack_size(1                                                  ,MPI_INT                     ,comm,&temp); new_size += temp;   // marked_for_data
+			MPI_Pack_size(1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // names_buff_size
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(names_buff.size())    ,MPI_CHAR                    ,comm,&temp); new_size += temp;   // names_buff
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_size array
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(low_conn_nums.size()) ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_nums array
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // high_conn_size array
+			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(high_conn_nums.size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp; // low_conn_nums array
 			buffer.resize(position+new_size);
 			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[4].size());
-			                              MPI_Pack(&temp             ,1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			                             MPI_Pack(&temp             ,1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+										 MPI_Pack(&marked_for_data  ,1                                                  ,MPI_INT                     ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			temp = static_cast<INMOST_DATA_ENUM_TYPE>(names_buff.size());
-			                              MPI_Pack(&temp  ,1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !names_buff.empty() )     MPI_Pack(&names_buff[0]    ,static_cast<INMOST_MPI_SIZE>(names_buff.size()) ,MPI_CHAR                    ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_size.empty() )  MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[4].size())  ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_nums.empty() )  MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(num)               ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( selems[4].size() > 0 )    MPI_Pack(&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(selems[4].size()*3),INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			                             MPI_Pack(&temp             ,1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !names_buff.empty() )    MPI_Pack(&names_buff[0]    ,static_cast<INMOST_MPI_SIZE>(names_buff.size())    ,MPI_CHAR                    ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(low_conn_nums.size()) ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !high_conn_size.empty()) MPI_Pack(&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			if( !high_conn_nums.empty()) MPI_Pack(&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(high_conn_nums.size()),INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
 			buffer.resize(position);
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
@@ -4380,6 +4427,7 @@ namespace INMOST
 #if defined(USE_MPI)
 		int mpirank = GetProcessorRank();
         int rank = mpirank;
+		int marked_remote;
 		INMOST_DATA_ENUM_TYPE num, temp;
 		INMOST_DATA_ENUM_TYPE shift = 0;
 		//int position = 0;
@@ -4437,6 +4485,7 @@ namespace INMOST
 			REPORT_STR("unpack number of nodes");
             num = 0;
 			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
 			REPORT_VAL("number of nodes",num);
 			REPORT_STR("unpack nodes coordinates");
 			coords.resize(num*dim);
@@ -4533,6 +4582,7 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[0].size());
 			REPORT_VAL("buffer position",position);
+			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
 		REPORT_STR("unpack nodes");
@@ -4547,7 +4597,9 @@ namespace INMOST
 			shift = 0;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
+			num = 0;
 			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
 			REPORT_VAL("number of edges",num);
 			if( num > 0 )
 			{
@@ -4614,6 +4666,7 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[1].size());
 			REPORT_VAL("buffer position",position);
+			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
 		REPORT_STR("unpack edges");
@@ -4628,7 +4681,9 @@ namespace INMOST
 			shift = 0;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
+			num = 0;
 			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
 			REPORT_VAL("number of faces",num);
 			if( num > 0 )
 			{
@@ -4714,6 +4769,7 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[2].size());
 			REPORT_VAL("buffer position",position);
+			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
 		REPORT_STR("unpack faces");
@@ -4732,7 +4788,9 @@ namespace INMOST
 			std::vector<Storage::integer> high_conn_nums;
 			INMOST_DATA_ENUM_TYPE shift_high = 0;
 			shift = 0;
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			num = 0;
+			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
 			REPORT_VAL("number of cells",num);
 			if( num > 0 )
 			{
@@ -4811,6 +4869,7 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[3].size());
 			REPORT_VAL("buffer position",position);
+			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
 		REPORT_STR("unpack cells");
@@ -4818,30 +4877,43 @@ namespace INMOST
 		EXIT_BLOCK();
         /////////////////////////////////////////////////////////////
         //unpack esets
+		MarkerType mrk_chld = CreateMarker();
 		ENTER_BLOCK();
 		{
 			std::vector<char> names_buff;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
+			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&temp,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			num = 0;
+			if( !buffer.empty() ) 
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num              ,1                                 ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
+			if( !buffer.empty() ) 
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote    ,1                                 ,MPI_INT                     ,comm);
+			if( !buffer.empty() ) 
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&temp             ,1                                 ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
 			REPORT_VAL("number of sets ",num);
 			REPORT_VAL("length of buffer ",temp);
 			names_buff.resize(temp);
-			if( temp ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff[0],static_cast<INMOST_MPI_SIZE>(temp),MPI_CHAR,comm);
+			if( temp ) 
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff[0]    ,static_cast<INMOST_MPI_SIZE>(temp),MPI_CHAR,comm);
 			// Gather sets names to array
-			high_conn_nums.resize(num*3);
 			low_conn_size.resize(num);
 			if( num ) // Unpack low_conn_size array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(num) ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
 			temp = 0;
 			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
 			low_conn_nums.resize(temp);
 			if( temp ) // Unpack low_conn_nums array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_ENUM_TYPE,comm);
-			if( num ) // Unpack high_conn_nums array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num*3),INMOST_MPI_DATA_INTEGER_TYPE,comm);
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_ENUM_TYPE   ,comm);
+			high_conn_size.resize(num);
+			if( num ) // Unpack high_conn_size array
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(num) ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
+			temp = 0;
+			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += high_conn_size[i];
+			high_conn_nums.resize(temp);
+			if( temp ) // Unpack high_conn_nums array
+				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
 			REPORT_VAL("buffer position",position);
 			
 			std::vector<std::string> names;
@@ -4867,12 +4939,12 @@ namespace INMOST
 					set = CreateSetUnique(names[i]).first;
 					//REPORT_VAL("create new ",set->GetHandle());
 					
-					assert(GetStatus(set.GetHandle()) == Element::Any);
-					SetStatus(set.GetHandle(),Element::Ghost);
-					IntegerDF(set.GetHandle(),tag_owner) = -1;
+					assert(set.GetStatus() == Element::Any);
+					set.SetStatus(Element::Ghost);
+					set.IntegerDF(tag_owner) = -1;
 					//TODO 46 old
 					//unpack_tags[3].push_back(new_cell);
-					SetMarker(set.GetHandle(),unpack_tags_mrk);
+					set.SetMarker(unpack_tags_mrk);
 					++marked_for_data;
 					++marked_ghost;
 					
@@ -4881,11 +4953,11 @@ namespace INMOST
 				{
 					//REPORT_VAL("found old ",set->GetHandle());
 					//REPORT_VAL("owner ",IntegerDF(set.GetHandle(),tag_owner));
-					if( IntegerDF(set.GetHandle(),tag_owner) != mpirank )
+					if( set.IntegerDF(tag_owner) != mpirank )
 					{
 						//TODO 46 old
 						//unpack_tags[3].push_back(new_cell);
-						SetMarker(set.GetHandle(),unpack_tags_mrk);
+						set.SetMarker(unpack_tags_mrk);
 						++marked_for_data;
 					}
 					++found;
@@ -4901,10 +4973,11 @@ namespace INMOST
 			if( num )
 			{
 				// Add low conns for sets
-				int ind = 0;
+				int ind = 0, indh = 0;
 				for (INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) 
 				{
 					ElementSet set(this, selems[4][i]);
+					//unpack elements
 					for (INMOST_DATA_ENUM_TYPE j = 0; j < low_conn_size[i]; j++)
 					{
 						Storage::integer type = GetHandleElementNum(low_conn_nums[ind+j]);
@@ -4914,8 +4987,45 @@ namespace INMOST
 					}
 					set.AddElements(&low_conn_nums[ind],low_conn_size[i]);
 					ind += low_conn_size[i];
+					//unpack parent
+					if( high_conn_nums[indh] != -1 )
+					{
+						assert(indh < high_conn_nums.size());
+						assert(high_conn_nums[indh] < selems[4].size());
+						ElementSet own_set = ElementSet(this,selems[4][i]);
+						ElementSet par_set = ElementSet(this,selems[4][high_conn_nums[indh]]);
+						if( own_set->HaveParent() && own_set->GetParent() != par_set  )
+						{
+							std::cout << "PROBLEM!!!!";
+							REPORT_VAL("own set name", own_set->GetName());
+							REPORT_VAL("own set handle", own_set->GetHandle());
+							REPORT_VAL("par set name", par_set->GetName());
+							REPORT_VAL("par set handle", par_set->GetHandle());
+							REPORT_VAL("own parent set", own_set->GetParent()->GetName());
+							REPORT_VAL("own parent set", own_set->GetParent()->GetHandle());
+							exit(-1);
+						}
+						assert( !own_set->HaveParent() || own_set->GetParent() == par_set );
+						if( !own_set->HaveParent() ) par_set->AddChild(own_set);
+					}
+					//unpack children
+					for(ElementSet jt = set.GetChild(); jt.isValid(); jt = jt.GetSibling()) jt.SetMarker(mrk_chld);
+					for(INMOST_DATA_ENUM_TYPE j = 1; j < high_conn_size[i]; j++)
+					{
+						assert(indh+j < high_conn_nums.size());
+						assert(high_conn_nums[indh+j] < selems[4].size());
+						ElementSet chld_set = ElementSet(this,selems[4][high_conn_nums[indh+j]]);
+						if( !chld_set.GetMarker(mrk_chld) )
+						{
+							set.AddChild(chld_set);
+							chld_set.SetMarker(mrk_chld);
+						}
+					}
+					for(ElementSet jt = set.GetChild(); jt.isValid(); jt = jt.GetSibling()) jt.RemMarker(mrk_chld);
+					indh += high_conn_size[i];
 				}
 				// Unpack high conn array
+				/*
 				for (int i = 0; i < num; i++) if (high_conn_nums[i*3+0] != -1) 
 				{
 					ElementSet par_set = ElementSet(this,selems[4][i]);
@@ -4971,13 +5081,16 @@ namespace INMOST
 							own_set.AddSibling(sib_set);
 					}
                 }
+				*/
             }
 			REPORT_VAL("total found", found << " / " << selems[4].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[4].size());
 			REPORT_VAL("buffer position",position);
+			assert(marked_for_data == marked_remote);
 		}
 		EXIT_BLOCK();
+		ReleaseMarker(mrk_chld);
         /////////////////////////////////////////////////////////////
 		
 		
@@ -5376,6 +5489,15 @@ namespace INMOST
         return ret;
 	}
 	
+
+	void Mesh::Barrier()
+	{
+		ENTER_FUNC();
+#if defined(USE_MPI)
+		MPI_Barrier(GetCommunicator());
+#endif
+		EXIT_FUNC();
+	}
 	
 	void Mesh::ExchangeMarked(enum Action action)
 	{

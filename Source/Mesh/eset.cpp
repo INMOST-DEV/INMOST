@@ -1768,47 +1768,20 @@ namespace INMOST
 		if( GetStatus() != Element::Owned )
 		{
 			Storage::integer_array set_procs = IntegerArray(m->ProcessorsTag());
-			Storage::integer_array elem_procs;
-			std::set<Storage::integer> send_set;
-			std::vector<Storage::integer> send_procs, temp;
-			std::vector<Storage::integer>::iterator itr;
+			//Storage::integer_array elem_procs;
+			std::set<Storage::integer> send_set(set_procs.begin(),set_procs.end());
+			//for(iterator it = Begin(); it != End(); ++it)
+			//{
+			//	elem_procs = m->IntegerArray(*it,m->ProcessorsTag());
+			//	send_set.insert(elem_procs.begin(),elem_procs.end());
+			//}
 			for(iterator it = Begin(); it != End(); ++it)
-			{
-				elem_procs = m->IntegerArray(*it,m->ProcessorsTag());
-				send_procs.resize(set_procs.size());
-				send_procs.resize(std::set_difference(set_procs.begin(),set_procs.end(),
-													  elem_procs.begin(),elem_procs.end(),
-													  send_procs.begin())-send_procs.begin());
-				if( !send_procs.empty() )
-				{
-					Storage::integer_array sendto = m->IntegerArray(*it,m->SendtoTag());
-					send_set.insert(send_procs.begin(),send_procs.end());
-					std::sort(sendto.begin(),sendto.end());
-					temp.resize(sendto.size()+send_procs.size());
-					temp.resize(std::set_union(sendto.begin(),sendto.end(),
-											   send_procs.begin(),send_procs.end(),
-											   temp.begin())-temp.begin());
-					sendto.resize(temp.size());
-					for(unsigned k = 0; k < sendto.size(); ++k) sendto[k] = temp[k];
-				}
-			}
-			Storage::integer_array sendto = IntegerArray(m->SendtoTag());
-			sendto.resize(send_set.size());
-			unsigned k = 0;
-			for(std::set<Storage::integer>::iterator it = send_set.begin();
-				it != send_set.end(); ++it) sendto[k++] = *it;
+				it->SendTo(send_set);
 		}
 	}
 	void ElementSet::SetSendTo(std::set<Storage::integer> & procs, char dir)
 	{
-		{
-			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
-			Storage::integer_array sendto = IntegerArray(GetMeshLink()->SendtoTag());
-			sendto.resize(procs.size());
-			sendto.resize(std::set_difference(procs.begin(),procs.end(),
-											  set_procs.begin(),set_procs.end(),
-											  sendto.begin())-sendto.begin());
-		}
+		SendTo(procs);
 		if( (dir & 1) && HaveChild() )
 		{
 			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
@@ -1816,7 +1789,7 @@ namespace INMOST
 		}
 		if( (dir & 2) && HaveParent() )
 		{
-			GetParent();
+			GetParent()->SetSendTo(procs,dir & 2); // don't let parent to go downwards
 		}
 	}
 	void ElementSet::CollectProcessors(std::set<Storage::integer> & procs, char dir)
@@ -1825,12 +1798,12 @@ namespace INMOST
 			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
 			procs.insert(set_procs.begin(),set_procs.end());
 		}
-		if( dir & 1 && HaveChild() )
+		if( (dir & 1) && HaveChild() )
 		{
 			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
 				it.CollectProcessors(procs,dir & 1); //don't let children to go upwards
 		}
-		if( dir & 2 && HaveParent() )
+		if( (dir & 2) && HaveParent() )
 		{
 			GetParent().CollectProcessors(procs,dir & 2); //don't let parent to go downwards
 		}
@@ -1842,8 +1815,8 @@ namespace INMOST
 		if( GetStatus() != Element::Owned )
 		{
 			std::set<Storage::integer> send_set;
-			CollectProcessors(send_set,1);
-			SetSendTo(send_set,1);
+			CollectProcessors(send_set,1); //collect procs from children
+			if( !send_set.empty() ) SetSendTo(send_set,1);
 		}
 	}
 
@@ -1853,8 +1826,11 @@ namespace INMOST
 		if( GetStatus() != Element::Owned )
 		{
 			std::set<Storage::integer> send_set;
-			CollectProcessors(send_set,2);
-			SetSendTo(send_set,2);
+			CollectProcessors(send_set,0); //don't collect procs from parents
+			//std::cout << GetMeshLink()->GetProcessorRank() << " SynchronizeSetParents " << GetName() << " procs ";
+			//for(std::set<Storage::integer>::iterator it = send_set.begin(); it != send_set.end(); ++it) std::cout << *it << " ";
+			if( !send_set.empty() ) SetSendTo(send_set,2);
+			//std::cout << std::endl;
 		}
 	}
 	

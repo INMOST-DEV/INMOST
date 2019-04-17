@@ -69,6 +69,8 @@ int main(int argc, char ** argv)
 		
 		for(int k = 0; k < 15; ++k)
 		{
+
+			m.ClearFile();
 			
 			int numref;
 			int refcnt = 0;

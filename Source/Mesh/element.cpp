@@ -1273,7 +1273,20 @@ namespace INMOST
 		GetMeshLink()->SetGeometricType(GetHandle(),t); 
 	}
 
-	
+	void Element::SendTo(std::set<Storage::integer> & procs) const
+	{
+		if( GetMeshLink()->GetMeshState() != Mesh::Serial )
+		{
+			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
+			Storage::integer_array sendto = IntegerArray(GetMeshLink()->SendtoTag());
+			std::sort(sendto.begin(),sendto.end());
+			std::vector<Storage::integer> tmp1(procs.size()),tmp2;
+			tmp1.resize(std::set_difference(procs.begin(),procs.end(),set_procs.begin(),set_procs.end(),tmp1.begin())-tmp1.begin());
+			tmp2.resize(tmp1.size()+sendto.size());
+			tmp2.resize(std::set_union(tmp1.begin(),tmp1.end(),sendto.begin(),sendto.end(),tmp2.begin())-tmp2.begin());
+			sendto.replace(sendto.begin(),sendto.end(),tmp2.begin(),tmp2.end());
+		}
+	}	
 
 }
 #endif

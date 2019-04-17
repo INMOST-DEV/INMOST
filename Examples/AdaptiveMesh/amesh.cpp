@@ -405,7 +405,7 @@ namespace INMOST
 		//as extension of class mesh in limited code span
 	}
 	
-	void AdaptiveMesh::CheckParentSet()
+	void AdaptiveMesh::CheckParentSet(std::string file, int line, TagInteger indicator)
 	{
 		ENTER_FUNC();
 		int err = 0;
@@ -414,14 +414,16 @@ namespace INMOST
 			if( parent_set[*it] == InvalidHandle() )
 			{
 				REPORT_STR(m->GetProcessorRank() << " parent set not valid on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
+				std::cout << m->GetProcessorRank() << " parent set not valid on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
 				err++;
 			}
 			else if( GetHandleElementType(parent_set[*it]) != ESET )
 			{
 				REPORT_STR(m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
+				std::cout << m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
 				err++;
 			}
-			else if( parent_set[*it] != root.GetHandle() )
+			else if( parent_set[*it] != root.GetHandle() && (!indicator.isValid() || indicator[*it]) )
 			{
 				ElementSet set(m,parent_set[*it]);
 				if( !set.HaveParent() )
@@ -431,6 +433,11 @@ namespace INMOST
 					" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
 					" does not have parent " <<
 					" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
+					std::cout << m->GetProcessorRank() << 
+					" parent set " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << 
+					" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
+					" does not have parent " <<
+					" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
 					err++;
 				}
 				else
@@ -443,6 +450,11 @@ namespace INMOST
 						" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
 						" has parent " << ElementTypeName(GetHandleElementType(parent)) << ":" << GetHandleID(parent) <<
 						" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
+						std::cout << m->GetProcessorRank() << 
+						" parent set " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << 
+						" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
+						" has parent " << ElementTypeName(GetHandleElementType(parent)) << ":" << GetHandleID(parent) <<
+						" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
 						err++;
 					}
 				}
@@ -452,8 +464,8 @@ namespace INMOST
 		EXIT_FUNC();
 		if( err ) 
 		{
-			REPORT_STR(rank << " error in " << __FUNCTION__);
-			std::cout << rank << " error in " << __FUNCTION__ << std::endl;
+			REPORT_STR(rank << " error in " << __FUNCTION__ << " " << file << ":" << line);
+			std::cout << rank << " error in " << __FUNCTION__ << " " << file << ":" << line << std::endl;
 			exit(-1);
 		}
 		
@@ -490,7 +502,7 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		//m->CheckCentroids(__FILE__,__LINE__);
-		CheckParentSet();
+		//CheckParentSet(Tag());
 		EXIT_BLOCK();
 		
 		//ENTER_BLOCK();
@@ -1231,8 +1243,11 @@ namespace INMOST
 		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
 		{
 			ElementSet set = m->EsetByLocalID(it);
-			if( indicator[set] != 0 )
-				set.SynchronizeSetElements();
+			if( set.GetName().substr(0,3) == "AM_" )
+			{
+				if( indicator[set] != 0 && !set.Empty() )
+					set.SynchronizeSetElements();
+			}
 		}
 		EXIT_BLOCK();
 		m->ExchangeMarked();
@@ -1251,19 +1266,34 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		
 		EXIT_BLOCK();
-
+		//m->Barrier();
 
 		ENTER_BLOCK();
 		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
 		{
 			ElementSet set = m->EsetByLocalID(it);
-			if( indicator[set] != 0 )
-				set.SynchronizeSetParents();
+			if( set.GetName().substr(0,3) == "AM_" )
+			{
+				//int imax = -1, imin = INT_MAX;
+				//for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt)
+				//{
+				//	imax = std::max(imax,indicator[*jt]);
+				//	imin = std::min(imin,indicator[*jt]);
+				//}
+				//std::cout << "on proc " << m->GetProcessorRank() << " set " << set.GetName() << " size " << set.Size() << " set indicator " << indicator[set] << " elements indicator " << imin << ":" << imax;
+				//if( set.HaveParent() ) std::cout << " parent " << set.GetParent().GetName();
+				//std::cout << std::endl;
+				if( indicator[set] != 0 )
+					set.SynchronizeSetParents();
+			}
 		}
 		EXIT_BLOCK();
+		//m->Barrier();
+		//std::cout << m->GetProcessorRank() << " call exchange marked" << std::endl;
 		m->ExchangeMarked();
-		
-		CheckParentSet();
+		//std::cout << m->GetProcessorRank() << " finish exchange marked" << std::endl;
+		//m->Barrier();
+		CheckParentSet(__FILE__,__LINE__,indicator);
 		
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
@@ -1278,7 +1308,7 @@ namespace INMOST
 		m->BeginModification();
 		while(schedule_counter)
 		{
-			CheckParentSet();
+			CheckParentSet(__FILE__,__LINE__,indicator);
 			//CheckParentSet();
 			//fout << "schedule_counter " << schedule_counter << std::endl;
 			//unite cells

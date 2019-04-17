@@ -485,7 +485,10 @@ namespace INMOST
 		///	  3. Should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder).
 		void                        Connect                 (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
 		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
-		void                        UpdateGeometricData     () const; 
+		void                        UpdateGeometricData     () const;
+		/// Marks element to be sent to remote processors that current processor don't belong to.
+		/// Call Mesh::ExchangeMarked to perform the exchange.
+		void                        SendTo                  (std::set<Storage::integer> & procs) const; 
 	};
 	
 	__INLINE const Element & InvalidElement() {static Element ret(NULL,InvalidHandle()); return ret;}
@@ -2323,6 +2326,7 @@ namespace INMOST
 		int &                             GetFuncID          () {return func_id;}
 		std::fstream &                    GetStream          ();
 		std::ostream &                    WriteTab           (std::ostream & f);
+		void                              ClearFile          ();
 		void                              FinalizeFile       ();
 		static void                       AtExit             (void);
 #endif
@@ -2919,6 +2923,7 @@ namespace INMOST
 		/// @param op operation, one of SYNC_BIT_SET, SYNC_BIT_OR, SYNC_BIT_XOR, SYNC_BIT_AND
 		void                              SynchronizeMarker  (MarkerType marker, ElementType mask, SyncBitOp op);	
 		//for debug
+		void                              Barrier            ();
 		void                              BeginSequentialCode();
 		void                              EndSequentialCode  ();
 		//iterator.cpp::::::::::::::::::::::::::::::::::::::::::::::::::
