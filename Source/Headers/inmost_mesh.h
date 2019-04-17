@@ -2300,14 +2300,17 @@ namespace INMOST
 		int                                 parallel_strategy;
 		int                                 parallel_file_strategy;
 	private:
+		void                              ListTags           (tag_set & list);
 		std::vector<int>                  ComputeSharedProcs (const parallel_storage & from, const parallel_storage & to);
 		std::vector<int>                  ComputeSharedProcs (ElementType etype);
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
-		void                              GatherElements     (proc_elements_by_type & pselems, const std::vector<std::string> & tag_list, bool force_send);
-		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
-		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, proc_elements_by_type * send_elements = NULL);
-		void                              PackElementsData   (elements_by_type & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
-		void                              UnpackElementsData (elements_by_type & output, buffer_type & buffer, int source, int & position, std::vector<std::string> & tag_list);
+		void                              GatherPackElements (elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send);
+		void                              EnumPackElements   (elements_by_type & selems, TagInteger pack_position);
+		void                              UnenumPackElements (elements_by_type & selems, TagInteger pack_position);
+		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer, TagInteger pack_position);
+		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, const elements_by_type & unpack_elements);//, proc_elements_by_type * send_elements = NULL);
+		void                              PackElementsData   (elements_by_type & input, buffer_type & buffer, int destination, const tag_set & tag_list,TagInteger pack_position);
+		void                              UnpackElementsData (elements_by_type & output, buffer_type & buffer, int source, int & position, tag_set & tag_list);
 		void                              PrepareReceiveInner(Prepare todo, exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs);
 		void                              ExchangeDataInnerBegin(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, exchange_data & storage);
 		void                              ExchangeDataInnerEnd(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, ReduceOperation op, exchange_data & storage);
