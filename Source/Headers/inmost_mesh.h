@@ -2329,10 +2329,10 @@ namespace INMOST
 		int &                             GetFuncID          () {return func_id;}
 		std::fstream &                    GetStream          ();
 		std::ostream &                    WriteTab           (std::ostream & f);
-		void                              ClearFile          ();
 		void                              FinalizeFile       ();
 		static void                       AtExit             (void);
 #endif
+		void                              ClearFile          ();
 		/// Initial initialization. Calls MPI_Initialize, if MPI was not initialized
 		/// it is necessery to invoke this function if you plan to use any parallel algorithms
 		/// Accepts arguments passed to console aplication or NULL

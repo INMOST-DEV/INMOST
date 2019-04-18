@@ -3258,7 +3258,7 @@ namespace INMOST
 		tag_set tag_pack_list;
 		if( have_reference_tag )
 		{
-			pack_position = CreateTag("TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+			pack_position = CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
 			ListTags(tag_pack_list);
 			{
 				tag_set::iterator it = tag_pack_list.begin();
@@ -3352,7 +3352,7 @@ namespace INMOST
 		storage.send_buffers.resize(send_elements.size());
 		
 		int num_wait = 0;
-		TagInteger pack_position = CreateTag("TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+		TagInteger pack_position = CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
 		for(proc_elements_by_type::iterator it = send_elements.begin(); it != send_elements.end(); it++)
 		{
 			if( !it->second.empty() )
@@ -3384,6 +3384,13 @@ namespace INMOST
 				for(int k = 0; k < 5; ++k)
 					for(element_set::iterator it = recv_elements[k].begin(); it != recv_elements[k].end(); it++)
 					{
+						if( IntegerDF(*it,tag_owner) == -1 )
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " proc " << GetProcessorRank() << " receive from " << storage.recv_buffers[*qt].first;
+							std::cout << " element " << ElementTypeName(GetHandleElementType(*it)) << ":" << GetHandleID(*it);
+							std::cout << std::endl;
+							exit(-1);
+						}
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),storage.recv_buffers[*qt].first);
 						if( ip == proc.end() || (*ip) != storage.recv_buffers[*qt].first ) proc.insert(ip,storage.recv_buffers[*qt].first);
@@ -3722,14 +3729,6 @@ namespace INMOST
 			int q = 0;
 			for(element_set::iterator it = selems[etypenum].begin(); it != selems[etypenum].end(); it++)
 				DelData(*it,pack_position);
-			
-			ElementType etype = ElementTypeFromDim(etypenum);
-			for(q = 0; q < LastLocalID(etype); ++q) if( isValidElement(etype,q) )
-				if( ElementByLocalID(etype,q).HaveData(pack_position) )
-				{
-					std::cout << "found data on " << ElementTypeName(etype) << ":" << q << std::endl;
-					exit(-1);
-				}
 		}
 	}
 
@@ -3777,7 +3776,8 @@ namespace INMOST
 										if( !add )
 										{
 											integer_array procs = refs[i]->IntegerArray(ProcessorsTag());
-											add |= std::binary_search(procs.begin(),procs.end(),destination);
+											if( std::binary_search(procs.begin(),procs.end(),destination) )
+												add = true;
 										}
 										if( add )
 										{
@@ -4759,6 +4759,11 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[0].size());
 			REPORT_VAL("buffer position",position);
+			if( marked_for_data != marked_remote )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
+				std::cout << " on " << GetProcessorRank() << " from " << source << std::endl;
+			}
 			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
@@ -4843,6 +4848,11 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[1].size());
 			REPORT_VAL("buffer position",position);
+			if( marked_for_data != marked_remote )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
+				std::cout << " on " << GetProcessorRank() << " from " << source << std::endl;
+			}
 			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
@@ -4946,6 +4956,11 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[2].size());
 			REPORT_VAL("buffer position",position);
+			if( marked_for_data != marked_remote )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
+				std::cout << " on " << GetProcessorRank() << " from " << source << std::endl;
+			}
 			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
@@ -5046,6 +5061,11 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[3].size());
 			REPORT_VAL("buffer position",position);
+			if( marked_for_data != marked_remote )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
+				std::cout << " on " << GetProcessorRank() << " from " << source << std::endl;
+			}
 			assert(marked_for_data == marked_remote);
 		}
 		time = Timer() - time;
@@ -5264,6 +5284,11 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[4].size());
 			REPORT_VAL("buffer position",position);
+			if( marked_for_data != marked_remote )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
+				std::cout << " on " << GetProcessorRank() << " from " << source << std::endl;
+			}
 			assert(marked_for_data == marked_remote);
 		}
 		EXIT_BLOCK();
@@ -5707,8 +5732,8 @@ namespace INMOST
 			{
 				if( it->GetTagName().substr(0,9) == "PROTECTED" ) 
 					it = tag_list.erase(it);
-                else if(it->GetDataType() == DATA_REFERENCE)
-					it = tag_list.erase(it);
+                //else if(it->GetDataType() == DATA_REFERENCE)
+				//	it = tag_list.erase(it);
 				else if(it->GetDataType() == DATA_REMOTE_REFERENCE)
 					it = tag_list.erase(it);
 				else it++;
@@ -5730,7 +5755,7 @@ namespace INMOST
         //std::cout << mpirank << ": Send size: " << send_elements.size() << std::endl;
 		ENTER_BLOCK();
 		REPORT_STR("Packing elements to send");
-		TagInteger pack_position =  CreateTag("TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+		TagInteger pack_position =  CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
 		for(proc_elements_by_type::iterator it = send_elements.begin(); it != send_elements.end(); it++)
 			if( !it->second.empty() )
 			{
