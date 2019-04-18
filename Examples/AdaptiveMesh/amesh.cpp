@@ -490,7 +490,9 @@ namespace INMOST
 		//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
 		//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
 		//EXIT_BLOCK();
+
 		
+		/*
 		ENTER_BLOCK();
 		m->ResolveSets();
 		//m->CheckCentroids(__FILE__,__LINE__);
@@ -504,7 +506,7 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//CheckParentSet(Tag());
 		EXIT_BLOCK();
-		
+		*/
 		//ENTER_BLOCK();
 		//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
 		//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
@@ -862,6 +864,7 @@ namespace INMOST
 		m->EndModification();
 		EXIT_BLOCK();
 		
+		m->ExchangeData(parent_set,CELL,0);
 		
 		//m->Save("after_refine"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_refine"+std::to_string(fi)+".pvtk" << std::endl;
@@ -949,7 +952,7 @@ namespace INMOST
 
 		//m->Save("before_coarse"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save before_coarse"+std::to_string(fi)+".pvtk" << std::endl;
-		
+		/*
 		ENTER_BLOCK();
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
@@ -963,7 +966,7 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//CheckParentSet();
 		EXIT_BLOCK();
-
+		*/
 		//m->Save("before_coarse_parent"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save before_coarse_parent"+std::to_string(fi)+".pvtk" << std::endl;
 		
@@ -1252,8 +1255,11 @@ namespace INMOST
 		EXIT_BLOCK();
 		m->ExchangeMarked();
 
+
+		m->ExchangeData(parent_set,CELL,0);
+
 		//CheckParentSet();
-		
+		/*
 		ENTER_BLOCK();
 		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ExchangeData(parent_set,CELL,0);
@@ -1266,6 +1272,7 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		
 		EXIT_BLOCK();
+		*/
 		//m->Barrier();
 
 		ENTER_BLOCK();
@@ -1530,6 +1537,8 @@ namespace INMOST
 		m->EndModification();
 		EXIT_BLOCK();
 		//fout.close();
+
+		m->ExchangeData(parent_set,CELL,0);
 		
 		//m->Save("after_coarse"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;

@@ -173,10 +173,14 @@ int main(int argc, char ** argv)
 			
 			
 #if defined(USE_PARTITIONER)
-			if( false )
+			if( true )
 			{
+				m.Barrier();
+				std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 				p.Evaluate();
-				am.Repartition();
+				//am.Repartition();
+				m.Redistribute();
+				std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 			}
 #endif
 			 

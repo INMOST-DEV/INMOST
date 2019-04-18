@@ -1273,20 +1273,33 @@ namespace INMOST
 		GetMeshLink()->SetGeometricType(GetHandle(),t); 
 	}
 
+	template<typename InputContainer>
+	void UnionSendTo(const Element * e, InputContainer cont)
+	{
+		Storage::integer_array set_procs = e->IntegerArray(e->GetMeshLink()->ProcessorsTag());
+		Storage::integer_array sendto = e->IntegerArray(e->GetMeshLink()->SendtoTag());
+		std::sort(sendto.begin(),sendto.end());
+		dynarray<Storage::integer,64> tmp1(cont.size()),tmp2;
+		tmp1.resize(std::set_difference(cont.begin(),cont.end(),set_procs.begin(),set_procs.end(),tmp1.begin())-tmp1.begin());
+		tmp2.resize(tmp1.size()+sendto.size());
+		tmp2.resize(std::set_union(tmp1.begin(),tmp1.end(),sendto.begin(),sendto.end(),tmp2.begin())-tmp2.begin());
+		sendto.replace(sendto.begin(),sendto.end(),tmp2.begin(),tmp2.end());
+	}
+
 	void Element::SendTo(std::set<Storage::integer> & procs) const
 	{
-		if( GetMeshLink()->GetMeshState() != Mesh::Serial )
-		{
-			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
-			Storage::integer_array sendto = IntegerArray(GetMeshLink()->SendtoTag());
-			std::sort(sendto.begin(),sendto.end());
-			std::vector<Storage::integer> tmp1(procs.size()),tmp2;
-			tmp1.resize(std::set_difference(procs.begin(),procs.end(),set_procs.begin(),set_procs.end(),tmp1.begin())-tmp1.begin());
-			tmp2.resize(tmp1.size()+sendto.size());
-			tmp2.resize(std::set_union(tmp1.begin(),tmp1.end(),sendto.begin(),sendto.end(),tmp2.begin())-tmp2.begin());
-			sendto.replace(sendto.begin(),sendto.end(),tmp2.begin(),tmp2.end());
-		}
+		if( GetMeshLink()->GetMeshState() != Mesh::Serial ) UnionSendTo(this,procs);
 	}	
+
+	void Element::SendTo(std::vector<Storage::integer> & procs) const
+	{
+		if( GetMeshLink()->GetMeshState() != Mesh::Serial ) UnionSendTo(this,procs);
+	}
+
+	void Element::SendTo(Storage::integer_array procs) const
+	{
+		if( GetMeshLink()->GetMeshState() != Mesh::Serial ) UnionSendTo(this,procs);
+	}
 
 }
 #endif

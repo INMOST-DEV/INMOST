@@ -489,6 +489,8 @@ namespace INMOST
 		/// Marks element to be sent to remote processors that current processor don't belong to.
 		/// Call Mesh::ExchangeMarked to perform the exchange.
 		void                        SendTo                  (std::set<Storage::integer> & procs) const; 
+		void                        SendTo                  (std::vector<Storage::integer> & procs) const; 
+		void                        SendTo                  (Storage::integer_array procs) const; 
 	};
 	
 	__INLINE const Element & InvalidElement() {static Element ret(NULL,InvalidHandle()); return ret;}
@@ -976,11 +978,13 @@ namespace INMOST
 		/// Compute union of processors on elements.
 		/// @param procs Set of processors to fill.
 		/// @param dir Directon for tree traversal, 1 - downwards, 2, upwards, 3 - both directions
-		void                                CollectProcessors   (std::set<Storage::integer> & procs, char dir);
+		void                                CollectProcessors   (std::set<Storage::integer> & procs, char dir) const;
 		/// Fill Mesh::SendtoTag() to send sets to processors from procs set that currently don't have this set
 		/// @param procs Set of processors to send the set to.
 		/// @param dir Directon for tree traversal, 1 - downwards, 2, upwards, 3 - both directions
-		void                                SetSendTo(std::set<Storage::integer> & procs, char dir);
+		void                                SetSendTo(std::set<Storage::integer> & procs, char dir) const;
+		void                                SetSendTo(std::vector<Storage::integer> & procs, char dir) const;
+		void                                SetSendTo(Storage::integer_array procs, char dir) const;
 	public:
 		/// Get name of the set
 		std::string                 GetName() const;

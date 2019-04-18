@@ -170,11 +170,8 @@ namespace INMOST
 			Storage::integer_array p1 = e->IntegerArray(tag);
 			const Storage::integer * p2 = static_cast<const Storage::integer *>(static_cast<const void *>(data));
 			dynarray<Storage::integer,64> result(p1.size()+size);
-			dynarray<Storage::integer,64>::iterator end;
-			end = std::set_union(p1.begin(),p1.end(),p2,p2+size,result.begin());
-			result.resize(end-result.begin());
-			p1.clear();
-			p1.insert(p1.end(),result.begin(),result.end());
+			result.resize(std::set_union(p1.begin(),p1.end(),p2,p2+size,result.begin())-result.begin());
+			p1.replace(p1.begin(),p1.end(),result.begin(),result.end());
 		}
 	}
 
@@ -3897,9 +3894,7 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE num;
 		//assume hex mesh for forward allocation 
 		//8 nodes per cell, 2 nodes per edge, 4 edges per face, 6 faces per cell
-		const INMOST_DATA_ENUM_TYPE size_hint[5] = {8,2,4,6,1};
-		int position,new_size,k, mpirank = GetProcessorRank();
-		int temp;
+		int position,new_size,k, mpirank = GetProcessorRank(), temp;
 		//MarkerType busy = CreateMarker();
 		//Tag arr_position = CreateTag("TEMP_ARRAY_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
 		//TagInteger arr_position = GetTag("TEMP_ARRAY_POSITION");
@@ -5197,7 +5192,7 @@ namespace INMOST
 						assert(type == GetHandleElementNum(selems[type][array_pos]));
 						low_conn_nums[ind+j] = selems[type][array_pos];
 					}
-					set.AddElements(&low_conn_nums[ind],low_conn_size[i]);
+					if( low_conn_size[i] ) set.AddElements(&low_conn_nums[ind],low_conn_size[i]);
 					ind += low_conn_size[i];
 					//unpack parent
 					if( high_conn_nums[indh] != -1 )
@@ -5792,11 +5787,12 @@ namespace INMOST
 		PrepareReceiveInner(UnknownSource, storage.send_buffers,storage.recv_buffers);
 		ExchangeBuffersInner(storage.send_buffers,storage.recv_buffers,storage.send_reqs,storage.recv_reqs);
 			
-		if( action == AMigrate ) // delete packed elements
+		if( false )//action == AMigrate ) // delete packed elements
 		{
+			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");
+			/*
 			ENTER_BLOCK();
 			REPORT_STR("Gathering elements to delete");
-			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");
 			{
 				elements_by_type delete_elements;
 				MarkerType delete_marker = CreateMarker();
@@ -5812,8 +5808,8 @@ namespace INMOST
 							int k = ElementNum(etype);
 							for(element_set::iterator kt = it->second[k].begin(); kt != it->second[k].end(); kt++) if( !GetMarker(*kt,delete_marker) )
 							{
-								if( IntegerArray(*kt,tag_new_processors).empty() ) continue; //don't delete elements without processors
 								Storage::integer_array procs = IntegerArray(*kt,tag_new_processors);
+								if( procs.empty() ) continue; //don't delete elements without processors
 								if( !std::binary_search(procs.begin(),procs.end(),mpirank) )
 								{
 									delete_elements[GetHandleElementNum(*kt)].push_back(*kt);
@@ -5839,10 +5835,15 @@ namespace INMOST
 				}
 				ReleaseMarker(delete_marker);
 			}
-			REPORT_STR("Deleting some other not owned elements");
+			EXIT_BLOCK();
+			*/
+			ENTER_BLOCK();
+			REPORT_STR("Deleting not owned elements");
 			//now delete elements that we have not yet deleted
 			int count = 0;
-			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_processors.isDefined(etype) )
+			for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype)) if( tag_new_processors.isDefined(etype) )
+			{
+				int ecount = 0;
 				for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 				{
 					Storage::integer_array procs = it->IntegerArray(tag_new_processors);
@@ -5851,9 +5852,12 @@ namespace INMOST
 					{
 						//Destroy(*it);
 						Delete(*it);
-						++count;
+						++ecount;
 					}
 				}
+				REPORT_STR("number of " << ElementTypeName(etype) << " to delete " << ecount);
+				count += ecount;
+			}
 			REPORT_VAL("number of some other",count);
 			REPORT_STR("Done deleting");
 			EXIT_BLOCK();
@@ -5919,8 +5923,7 @@ namespace INMOST
 				it->IntegerDF(tag_owner) = new_owner;
 				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
 				Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
-				old_procs.clear();
-				old_procs.insert(old_procs.end(),new_procs.begin(),new_procs.end());
+				old_procs.replace(old_procs.begin(),old_procs.end(),new_procs.begin(),new_procs.end());
 				if( new_owner == mpirank )
 				{
 					if( old_procs.size() == 1 ) //there is only one processors and that's me
@@ -5929,6 +5932,8 @@ namespace INMOST
 						SetStatus(*it,Element::Shared);
 				}
 				else SetStatus(*it,Element::Ghost);
+				if( !std::binary_search(old_procs.begin(),old_procs.end(),mpirank) )
+					Delete(*it);
 			}
 			EXIT_BLOCK();
 		}
@@ -6494,7 +6499,28 @@ namespace INMOST
 
 	}
 	
-	
+	std::set<Storage::integer> CollectSetProcessors(ElementSet root, TagIntegerArray tag_processors)
+	{
+		Storage::integer_array parr;
+		std::set<Storage::integer> ret_procs;
+		if( root.HaveChild() )
+		{
+			for(ElementSet it = root.GetChild(); it != InvalidElementSet(); it = it.GetSibling())
+			{
+				std::set<Storage::integer> fill_procs = CollectSetProcessors(it,tag_processors);
+				ret_procs.insert(fill_procs.begin(),fill_procs.end());
+			}
+			parr = root.IntegerArray(tag_processors);
+			ret_procs.insert(parr.begin(),parr.end());
+			parr.replace(parr.begin(),parr.end(),ret_procs.begin(),ret_procs.end());
+		}
+		else
+		{
+			parr = root.IntegerArray(tag_processors);
+			ret_procs.insert(parr.begin(),parr.end());
+		}
+		return ret_procs;
+	}
 	
 	void Mesh::Redistribute()
 	{
@@ -6502,22 +6528,20 @@ namespace INMOST
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		int mpirank = GetProcessorRank();
-		Tag tag_new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,FACE | EDGE | NODE, NONE,1);
+		Tag tag_new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,ESET | FACE | EDGE | NODE, NONE,1);
 		if( !tag_new_owner.isDefined(CELL) ) throw DistributionTagWasNotFilled;
-		Tag tag_new_processors = CreateTag("TEMPORARY_NEW_PROCESSORS",DATA_INTEGER,CELL | FACE | EDGE | NODE, NONE);
+		Tag tag_new_processors = CreateTag("TEMPORARY_NEW_PROCESSORS",DATA_INTEGER,ESET | CELL | FACE | EDGE | NODE, NONE);
 		ElementType bridge = Integer(GetHandle(),tag_bridge);
 		Storage::integer layers = Integer(GetHandle(),tag_layers);
+		dynarray<Storage::integer,64> result,intersection;
 		
 		ExchangeData(tag_new_owner,CELL,0);
 		
 		
-		double time = Timer();
-		
-		
+		ENTER_BLOCK();
+		REPORT_STR("Determine new processors");
 		for(iteratorElement it = BeginElement(CELL); it != EndElement(); it++)
 			it->IntegerArrayDV(tag_new_processors).push_back(it->Integer(tag_new_owner));
-		
-		dynarray<Storage::integer,64> result,intersection;
 		//determine tag_new_processors for FACEs to calculate shared skin
 		for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 		{
@@ -6555,11 +6579,10 @@ namespace INMOST
 			}
 #endif
 		}	
-		time = Timer() - time;
-		REPORT_STR("Determine new processors");
-		REPORT_VAL("time",time);
+		EXIT_BLOCK();
 		ExchangeData(tag_new_owner,FACE | EDGE | NODE,0);
-		time = Timer();
+		ENTER_BLOCK();
+		REPORT_STR("Determine new processors for layers");
 		if( bridge != NONE && layers != 0 )
 		{
 			REPORT_STR("Multiple layers");
@@ -6569,7 +6592,8 @@ namespace INMOST
 			ReduceData(tag_new_processors,FACE,0,RedistUnpack);
 			ExchangeData(tag_new_processors,FACE,0);
 			
-			double time2 = Timer();
+			ENTER_BLOCK();
+			REPORT_STR("Compute shared skin");
 			//compute skin around migrated cells to compute ghost layer
 			for(iteratorElement it = BeginElement(FACE); it != EndElement(); it++)
 			{
@@ -6604,15 +6628,15 @@ namespace INMOST
 				ReleaseMarker(busy);
 			}
 			skin_faces.clear();
-			time2 = Timer() - time2;
-			REPORT_STR("Compute shared skin");
-			REPORT_VAL("time",time2);
+			EXIT_BLOCK();
 			
-			double time3 = Timer();
+			ENTER_BLOCK();
+			REPORT_STR("Mark all layers");
 			//now mark all cell layers 
 			{
-				time2 = Timer();
 				proc_elements current_layers,old_layers;
+				ENTER_BLOCK();
+				REPORT_STR("Mark first layer");
 				MarkerType busy = CreateMarker();
 				for(proc_elements::iterator it = redistribute_skin.begin(); it != redistribute_skin.end(); it++)
 				{
@@ -6638,13 +6662,13 @@ namespace INMOST
 					for(element_set::iterator it = all_visited.begin(); it != all_visited.end(); ++it) RemMarker(*it,busy);
 				}
 				ReleaseMarker(busy);
-				time2 = Timer() - time2;
-				REPORT_STR("Mark first layer");
-				REPORT_VAL("time",time2);
+				EXIT_BLOCK();
 				
 				for(Storage::integer k = layers-1; k > 0; k--)
 				{
-					time2 = Timer();
+					ENTER_BLOCK();
+					REPORT_STR("Mark layer");
+					REPORT_VAL("layer",k);
 					old_layers.swap(current_layers);
 					current_layers.clear();
 					for(proc_elements::iterator qt = old_layers.begin(); qt != old_layers.end(); qt++)
@@ -6683,22 +6707,14 @@ namespace INMOST
 						for(element_set::iterator it = all_visited.begin(); it != all_visited.end(); it++) RemMarker(*it,busy);
 						ReleaseMarker(busy);
 					}
-					time2 = Timer() - time2;
-					REPORT_STR("Mark layer");
-					REPORT_VAL("layer",k);
-					REPORT_VAL("time",time2);
+					EXIT_BLOCK();
 				}
 			}
-			
+			EXIT_BLOCK();
 			ReduceData(tag_new_processors,CELL,0,RedistUnpack);
 			ExchangeData(tag_new_processors,CELL,0);
 			
-			time3 = Timer() - time3;
-			REPORT_STR("Mark all layers");
-			REPORT_VAL("time",time3);
-			
-			time2 = Timer();
-			
+			ENTER_BLOCK();
 			for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 			{
 				for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
@@ -6718,9 +6734,8 @@ namespace INMOST
 			
 			ReduceData(tag_new_processors,FACE| EDGE| NODE,0,RedistUnpack);
 			ExchangeData(tag_new_processors,FACE|EDGE|NODE,0);
-			time2 = Timer() - time2;
 			REPORT_STR("Detect processors");
-			REPORT_VAL("time",time2);
+			EXIT_BLOCK();
 		}
 		else 
 		{
@@ -6728,21 +6743,87 @@ namespace INMOST
 			ReduceData(tag_new_processors,FACE | EDGE | NODE,0,RedistUnpack);
 			ExchangeData(tag_new_processors,FACE | EDGE | NODE,0);
 		}
-		
-		time = Timer() - time;
-		REPORT_STR("Determine new processors for layers");
-		REPORT_VAL("time",time);
-		
-		
-		time = Timer();
+		EXIT_BLOCK();
 
-
-		for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
-		for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
-		//for(iteratorElement it = BeginElement(CELL | FACE | EDGE | NODE); it != EndElement(); it++)
+		ENTER_BLOCK();
+		REPORT_STR("Determine new processors for sets");
+		ENTER_BLOCK();
+		for(INMOST_DATA_ENUM_TYPE eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
 		{
+			ElementSet it = EsetByLocalID(eit);
+			std::set<Storage::integer> elem_procs;
+			Storage::integer_array new_procs;
+			for(ElementSet::iterator jt = it.Begin(); jt != it.End(); ++jt)
+			{
+				new_procs = jt->IntegerArray(tag_new_processors);
+				elem_procs.insert(new_procs.begin(),new_procs.end());
+			}
+			new_procs = it->IntegerArray(tag_new_processors);
+			new_procs.replace(new_procs.begin(),new_procs.end(),elem_procs.begin(),elem_procs.end());
+		}
+		EXIT_BLOCK();
+		
+		ENTER_BLOCK();
+		for(INMOST_DATA_ENUM_TYPE eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
+		{
+			ElementSet it = EsetByLocalID(eit);
+			if( !it.HaveParent() )  CollectSetProcessors(it,tag_new_processors);
+		}
+		EXIT_BLOCK();
+		ReduceData(tag_new_processors,ESET,0,RedistUnpack);
+		ExchangeData(tag_new_processors,ESET,0);
+
+		for(INMOST_DATA_ENUM_TYPE eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
+		{
+			ElementSet it = EsetByLocalID(eit);
 			Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
-			if( it->IntegerDF(tag_owner) == mpirank ) // deal with my entities, others will deal with theirs
+			if( !new_procs.empty() ) 
+				it->Integer(tag_new_owner) = new_procs[0];
+		}
+		EXIT_BLOCK();
+
+		MarkerType reffered = CreateMarker();
+		ENTER_BLOCK();
+		REPORT_STR("Determine entities to store links to elements");
+		for(iteratorTag t = BeginTag(); t != EndTag(); t++)
+		{
+			if( t->GetTagName().substr(0,9) == "PROTECTED" ) continue;
+			if( t->GetDataType() == DATA_REFERENCE )
+			{
+				for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( t->isDefined(etype) )
+					for(INMOST_DATA_ENUM_TYPE eit = 0; eit < LastLocalID(etype); ++eit) if( isValidElement(etype,eit) )
+					{
+						Element it = ElementByLocalID(etype,eit);
+						Storage::integer owner = it->Integer(tag_new_owner);
+						Storage::integer_array procs;
+						Storage::reference_array refs = it->ReferenceArray(*t);
+						for(Storage::reference_array::iterator jt = refs.begin(); jt != refs.end(); ++jt) if( jt->isValid() )
+						{
+							procs = jt->IntegerArray(tag_new_processors);
+							Storage::integer_array::iterator find = std::lower_bound(procs.begin(),procs.end(),owner);
+							if( find == procs.end() || *find != owner ) procs.insert(find,owner);
+							jt->SetMarker(reffered);
+						}
+					}
+			}
+		}
+		ReduceData(tag_new_processors,ESET|CELL|FACE|EDGE|NODE,0,RedistUnpack);
+		ExchangeData(tag_new_processors,ESET,0);
+		EXIT_BLOCK();
+		
+		
+		ENTER_BLOCK();
+		REPORT_STR("Determine local entities to send");
+		for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
+		//for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
+		//for(iteratorElement it = BeginElement(CELL | FACE | EDGE | NODE); it != EndElement(); it++)
+		for(INMOST_DATA_ENUM_TYPE eit = 0; eit < LastLocalID(etype); ++eit) if( isValidElement(etype,eit) )
+		{
+			Element it = ElementByLocalID(etype,eit);
+			//Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
+			if( it->IntegerDF(tag_owner) == mpirank || it->GetMarker(reffered) ) // deal with my entities, others will deal with theirs
+				it->SendTo(it->IntegerArray(tag_new_processors));
+			/*
 			{
 				//compute processors that should have the entity but they have not
 				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
@@ -6753,31 +6834,24 @@ namespace INMOST
 				Storage::integer_array sendto = it->IntegerArray(tag_sendto);
 				sendto.insert(sendto.end(),result.begin(),result.end());
 			}
+			*/
 		}
-		
-		
-		//std::stringstream str;
-		//str << "before_migrate" << GetProcessorRank() << ".xml";
-		//Save(str.str());
-		
-		time = Timer() - time;
-		REPORT_STR("Determine local entities to send");
-		REPORT_VAL("time",time);
+		EXIT_BLOCK();
 
-		time = Timer();
-		ExchangeMarked(AMigrate);
-		time = Timer() - time;
+		ReleaseMarker(reffered,ESET|CELL|FACE|EDGE|NODE);
+
+		ENTER_BLOCK();
 		REPORT_STR("Migrate elements");
-		REPORT_VAL("time",time);
+		ExchangeMarked(AMigrate);
+		EXIT_BLOCK();
 		
 		
 		
-		time = Timer();
+		ENTER_BLOCK();
+		REPORT_STR("Delete auxilarry tags");
 		DeleteTag(tag_new_owner);
 		DeleteTag(tag_new_processors);
-		time = Timer() - time;
-		REPORT_STR("Delete auxilarry tags");
-		REPORT_VAL("time",time);
+		EXIT_BLOCK();
 		//throw NotImplemented;
 #endif
 		EXIT_FUNC();

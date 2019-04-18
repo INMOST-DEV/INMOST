@@ -1779,7 +1779,7 @@ namespace INMOST
 				it->SendTo(send_set);
 		}
 	}
-	void ElementSet::SetSendTo(std::set<Storage::integer> & procs, char dir)
+	void ElementSet::SetSendTo(std::set<Storage::integer> & procs, char dir) const
 	{
 		SendTo(procs);
 		if( (dir & 1) && HaveChild() )
@@ -1792,7 +1792,33 @@ namespace INMOST
 			GetParent()->SetSendTo(procs,dir & 2); // don't let parent to go downwards
 		}
 	}
-	void ElementSet::CollectProcessors(std::set<Storage::integer> & procs, char dir)
+	void ElementSet::SetSendTo(std::vector<Storage::integer> & procs, char dir) const
+	{
+		SendTo(procs);
+		if( (dir & 1) && HaveChild() )
+		{
+			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
+				it->SetSendTo(procs, dir & 1); // don't let children to go upwards
+		}
+		if( (dir & 2) && HaveParent() )
+		{
+			GetParent()->SetSendTo(procs,dir & 2); // don't let parent to go downwards
+		}
+	}
+	void ElementSet::SetSendTo(Storage::integer_array procs, char dir) const
+	{
+		SendTo(procs);
+		if( (dir & 1) && HaveChild() )
+		{
+			for(ElementSet it = GetChild(); it != InvalidElementSet(); it = it.GetSibling() )
+				it->SetSendTo(procs, dir & 1); // don't let children to go upwards
+		}
+		if( (dir & 2) && HaveParent() )
+		{
+			GetParent()->SetSendTo(procs,dir & 2); // don't let parent to go downwards
+		}
+	}
+	void ElementSet::CollectProcessors(std::set<Storage::integer> & procs, char dir) const
 	{
 		{
 			Storage::integer_array set_procs = IntegerArray(GetMeshLink()->ProcessorsTag());
