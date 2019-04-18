@@ -5910,11 +5910,42 @@ namespace INMOST
 		
 		if( action == AMigrate ) //Compute new values
 		{
+			Tag tag_new_owner = GetTag("TEMPORARY_NEW_OWNER");
+			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");
+			for(iteratorTag t = BeginTag(); t != EndTag(); t++)
+			{
+				if( t->GetTagName().substr(0,9) == "PROTECTED" ) continue;
+				if( t->GetDataType() == DATA_REFERENCE )
+				{
+					for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( t->isDefined(etype) )
+						for(INMOST_DATA_ENUM_TYPE eit = 0; eit < LastLocalID(etype); ++eit) if( isValidElement(etype,eit) )
+						{
+							Element it = ElementByLocalID(etype,eit);
+							Storage::integer owner = it->Integer(tag_new_owner);
+							Storage::integer_array procs = it->IntegerArray(tag_new_processors);
+							if( std::binary_search(procs.begin(),procs.end(),owner) )
+							{
+								Storage::reference_array refs = it->ReferenceArray(*t);
+								for(Storage::reference_array::iterator jt = refs.begin(); jt != refs.end(); ++jt) if( jt->isValid() )
+								{
+									procs = jt->IntegerArray(tag_new_processors);
+									Storage::integer_array::iterator find = std::lower_bound(procs.begin(),procs.end(),owner);
+									if( find == procs.end() || *find != owner ) 
+									{
+										std::cout << t->GetTagName() << " reference from " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID();
+										std::cout << " to " << ElementTypeName(jt->GetElementType()) << ":" << jt->LocalID() << std::endl;
+									}
+								}
+							}
+						}
+				}
+			}
+
+
 			ENTER_BLOCK();
 			REPORT_STR("Second round for elements migration");
 			REPORT_STR("Computing new values");
-			Tag tag_new_owner = GetTag("TEMPORARY_NEW_OWNER");
-			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");	
+				
 			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
 			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 			{
