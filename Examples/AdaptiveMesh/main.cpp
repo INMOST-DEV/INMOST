@@ -16,6 +16,8 @@ int main(int argc, char ** argv)
 		else if( m.GetProcessorRank() == 0 )
 			m.Load(argv[1]);
 	
+		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE | DEGENERATE_CELL | DEGENERATE_EDGE | DEGENERATE_FACE | PRINT_NOTIFY | TRIPLE_SHARED_FACE | FLATTENED_CELL | INTERLEAVED_FACES | NEED_TEST_CLOSURE);
+		//m.RemTopologyCheck(THROW_EXCEPTION);
 #if defined(USE_PARTITIONER)
 		Partitioner p(&m);
 		if( true )

@@ -3266,8 +3266,8 @@ namespace INMOST
 				{
 					if( it->GetTagName().substr(0,9) == "PROTECTED" ) 
 						it = tag_pack_list.erase(it);
-					else if(it->GetDataType() == DATA_REFERENCE)
-						it = tag_pack_list.erase(it);
+					//else if(it->GetDataType() == DATA_REFERENCE)
+					//	it = tag_pack_list.erase(it);
 					else if(it->GetDataType() == DATA_REMOTE_REFERENCE)
 						it = tag_pack_list.erase(it);
 					else it++;
@@ -3478,6 +3478,8 @@ namespace INMOST
 			
 			
 			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
+			CheckOwners();
+			CheckProcessors();
 			//ComputeSharedProcs();
 		}
 #else //USE_MPI
@@ -3770,18 +3772,18 @@ namespace INMOST
 								reference_array refs = ReferenceArray(eit, tag);
 								for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i) if ( refs[i].isValid() ) 
 								{
-									if( !refs[i]->GetMarker(busy) )
+									if( !refs[i].Hidden() && !refs[i].GetMarker(busy) )
 									{
 										bool add = force_send;
 										if( !add )
 										{
-											integer_array procs = refs[i]->IntegerArray(ProcessorsTag());
+											integer_array procs = refs[i].IntegerArray(ProcessorsTag());
 											if( std::binary_search(procs.begin(),procs.end(),destination) )
 												add = true;
 										}
 										if( add )
 										{
-											selems[refs[i]->GetElementNum()].push_back(refs[i].GetHandle());
+											selems[refs[i].GetElementNum()].push_back(refs[i].GetHandle());
 											refs[i]->SetMarker(busy);
 										}
 									} //if
@@ -4029,7 +4031,10 @@ namespace INMOST
 			MPI_Pack_size(1                                                 ,MPI_INT                     ,comm,&temp); new_size += temp;
 			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,comm,&temp); new_size += temp;
 			if( HaveGlobalID(NODE) )
+			{
+				global_ids.reserve(selems[0].size());
 				MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
+			}
 			buffer.resize(position+new_size);
 			num = static_cast<INMOST_DATA_ENUM_TYPE>(selems[0].size());
 			int marked_for_data = 0, marked_shared = 0;
@@ -4037,6 +4042,7 @@ namespace INMOST
 			std::vector<Storage::real> coords(selems[0].size()*dim);
 			for(element_set::iterator it = selems[0].begin(); it != selems[0].end(); it++)
 			{
+				assert(!Hidden(*it));
 				Storage::real_array c = RealArray(*it,tag_coords);
 				//REPORT_VAL("packed coords",k << " " << c[0] << " " << c[1] << " " << c[2]);
 				for(integer j = 0; j < dim; j++) coords[k*GetDimensions()+j] = c[j];
@@ -4089,12 +4095,14 @@ namespace INMOST
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[1].size());
 			std::vector<Storage::integer> low_conn_nums;
+			low_conn_nums.reserve(selems[1].size()*2);
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
 			num = 0; k = 0;
 			int marked_for_data = 0, marked_shared = 0;
 			for(element_set::iterator it = selems[1].begin(); it != selems[1].end(); it++) 
 			{
+				assert(!Hidden(*it));
 				low_conn_size[k] = 0;
 				Element::adj_type const & lc = LowConn(*it);
 				//REPORT_VAL("edge number",k);
@@ -4172,12 +4180,14 @@ namespace INMOST
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[2].size());
 			std::vector<Storage::integer> low_conn_nums;
+			low_conn_nums.reserve(selems[2].size()*4);
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
 			num = 0; k = 0;
 			int marked_for_data = 0, marked_shared = 0;
 			for(element_set::iterator it = selems[2].begin(); it != selems[2].end(); it++) 
 			{
+				assert(!Hidden(*it));
 				low_conn_size[k] = 0;
 				Element::adj_type const & lc = LowConn(*it);
 				//REPORT_VAL("face number",k);
@@ -4247,6 +4257,8 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[3].size());
 			std::vector<Storage::integer> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
+			low_conn_nums.reserve(selems[3].size()*6);
+			high_conn_nums.reserve(selems[3].size()*8);
 			INMOST_DATA_ENUM_TYPE num_high = 0;
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
@@ -4254,6 +4266,7 @@ namespace INMOST
 			int marked_for_data = 0, marked_shared = 0;
 			for(element_set::iterator it = selems[3].begin(); it != selems[3].end(); it++) 
 			{
+				assert(!Hidden(*it));
 				//REPORT_VAL("cell number",k);
 				low_conn_size[k] = 0;
 				Element::adj_type const & lc = LowConn(*it);
@@ -4346,6 +4359,8 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // store number of children in set
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_nums;  // array composed elements : ElementType and position in array 
 			std::vector<Storage::integer> high_conn_nums;  // array of indexes of parent (-1 if no parent), then all children
+			low_conn_nums.reserve(selems[4].size()*8);
+			high_conn_nums.reserve(selems[4].size()*3);
 			std::vector<char> names_buff;
 			position = static_cast<int>(buffer.size());
 			new_size = 0;
@@ -5732,7 +5747,7 @@ namespace INMOST
 			{
 				if( it->GetTagName().substr(0,9) == "PROTECTED" ) 
 					it = tag_list.erase(it);
-                //else if(it->GetDataType() == DATA_REFERENCE)
+            	//else if(it->GetDataType() == DATA_REFERENCE)
 				//	it = tag_list.erase(it);
 				else if(it->GetDataType() == DATA_REMOTE_REFERENCE)
 					it = tag_list.erase(it);
@@ -5930,6 +5945,8 @@ namespace INMOST
 		{
 			//Probably now owner should send processors_tag data
 			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
+			CheckOwners();
+			CheckProcessors();
 		}
 		//ComputeSharedProcs();
 		
@@ -6091,6 +6108,7 @@ namespace INMOST
 			}
 			total[it->GetElementNum()]++;
 		}
+		DeleteTag(checker);
 		int crash = 0;
 		for(int k = 0; k < 4; ++k) if( bad[k] )
 		{
@@ -6107,6 +6125,66 @@ namespace INMOST
 		}
 		EXIT_FUNC();
 #endif //NDEBUG
+	}
+
+
+	void UnpackCheckOwner(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if( element->Integer(tag) != *(const Storage::integer *)data || size != 1 )
+		{
+			if( size != 1 ) 
+				std::cout << __FILE__ << ":" << __LINE__ <<  " wrong size of array " << std::endl;
+			std::cout << __FILE__ << ":" << __LINE__ <<  " wrong owner on " << tag.GetMeshLink()->GetProcessorRank();
+			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
+			std::cout << " owner " << element->Integer(tag) << " remote " << *(const Storage::integer*)data;
+			std::cout << std::endl;
+			exit(-1);
+		}
+	}
+
+	void Mesh::CheckOwners()
+	{
+#if !defined(NDEBUG)
+		ENTER_FUNC();
+		ReduceData(tag_owner,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckOwner);
+		EXIT_FUNC();
+#endif
+	}
+
+	void UnpackCheckProcessors(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		Storage::integer_array procs = element->IntegerArray(tag);
+		bool compare = true;
+		if( size == procs.size() )
+		{
+			const INMOST_DATA_INTEGER_TYPE * rdata = (const INMOST_DATA_INTEGER_TYPE *)data;
+			for(unsigned k = 0; k < size; ++k)
+				if( procs[k] != rdata[k] )
+					compare = false;
+		}
+		else compare = false;
+		if( !compare )
+		{
+			if( size != procs.size() ) 
+				std::cout << __FILE__ << ":" << __LINE__ <<  " wrong size of array " << std::endl;
+			std::cout << __FILE__ << ":" << __LINE__ <<  " on " << tag.GetMeshLink()->GetProcessorRank();
+			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
+			std::cout << " procs";
+			for(unsigned k = 0; k < procs.size(); ++k) std::cout << " " << procs[k];
+			std::cout << " remote";
+			for(unsigned k = 0; k < size; ++k) std::cout << " " << ((const INMOST_DATA_INTEGER_TYPE *)data)[k];
+			std::cout << std::endl;
+			exit(-1);
+		}
+	}
+
+	void Mesh::CheckProcessors()
+	{
+#if !defined(NDEBUG)
+		ENTER_FUNC();
+		ReduceData(tag_processors,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckProcessors);
+		EXIT_FUNC();
+#endif
 	}
 
 

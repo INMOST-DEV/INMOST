@@ -3229,10 +3229,14 @@ namespace INMOST
 		/// Exits if does not match.
 		void                              CheckCentroids     (std::string file, int line);
 		/// Check that processors are sorted on every element
-		void                              CheckProcsSorted(std::string file, int line);
+		void                              CheckProcsSorted   (std::string file, int line);
 		/// Check that number of ghost and shared elements match to each other.
 		/// Exits if does not match.
 		void                              CheckGhostSharedCount(std::string file, int line, ElementType etype = ESET | CELL | FACE | EDGE | NODE);
+		/// Let ghost elements send processors list to master elements and see if they match
+		void                              CheckOwners        ();
+		/// Let ghost elements send owner processor to master elements and see if they match
+		void                              CheckProcessors    ();
 		//implemented in mesh.cpp
 	private:
 		Tag                   tag_topologyerror;
