@@ -2067,6 +2067,30 @@ namespace INMOST
 			hide_element = temp_hide_element;
 			//it->Subtract(erase); //old approach
 		}
+#if defined(USE_PARALLEL_STORAGE)
+		for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
+			for(int i = 0; i < 5; i++)
+			{
+				unsigned k = 0, l;
+				for(l = 0; l < it->second[i].size(); ++l)
+				{
+					if( !GetMarker(it->second[i][l],hide_element) )
+						it->second[i][k++] = it->second[i][l];
+				}
+				it->second[i].resize(k);
+			}
+		for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); it++)
+			for(int i = 0; i < 5; i++)
+			{
+				unsigned k = 0, l;
+				for(l = 0; l < it->second[i].size(); ++l)
+				{
+					if( !GetMarker(it->second[i][l],hide_element) )
+						it->second[i][k++] = it->second[i][l];
+				}
+				it->second[i].resize(k);
+			}
+#endif
 		//Destroy(erase);//old approach
 		EXIT_FUNC();
 	}
@@ -2088,8 +2112,11 @@ namespace INMOST
 		}
 		std::cout << GetProcessorRank() << " before resolve shared new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
+		CheckSetLinks(__FILE__,__LINE__);
 		ResolveSets();
+		CheckSetLinks(__FILE__,__LINE__);
 		ResolveShared(true);
+		CheckSetLinks(__FILE__,__LINE__);
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
 		/*
@@ -2134,6 +2161,7 @@ namespace INMOST
 		//ApplyModification();
 		//temp_hide_element = hide_element;
 		//hide_element = 0;
+		/*
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
@@ -2144,16 +2172,20 @@ namespace INMOST
 					SetMarker(ComposeHandle(etype,it),hide_element);
 			}
 		}
+		 */
+		MarkerType nm = new_element;
+		new_element = 0;
 		for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
 		{
 			for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 			{
 				HandleType h = ComposeHandle(etype,it);
-				RemMarker(h,new_element);
+				RemMarker(h,nm);
 				if( GetMarker(h,hide_element) )
 					Destroy(h);
 			}
 		}
+		new_element = nm;
 		/*
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{

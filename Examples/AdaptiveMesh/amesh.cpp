@@ -491,7 +491,7 @@ namespace INMOST
 		//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
 		//EXIT_BLOCK();
 
-		
+		m->CheckSetLinks(__FILE__,__LINE__);
 		/*
 		ENTER_BLOCK();
 		m->ResolveSets();
@@ -843,18 +843,20 @@ namespace INMOST
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
-
+		m->CheckSetLinks(__FILE__,__LINE__);
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
 
 
+		m->CheckSetLinks(__FILE__,__LINE__);
 		//11. Restore parallel connectivity, global ids
 		m->ResolveModification();
 		//m->SynchronizeMarker(m->NewMarker(),CELL|FACE|EDGE|NODE,SYNC_BIT_OR);
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
-		//todo: call back function for New() cells
+		//todo: call back function for New( cells
 		if( model ) model->Adaptation(*m);
+		m->CheckSetLinks(__FILE__,__LINE__);
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
 		

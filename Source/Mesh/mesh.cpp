@@ -1816,6 +1816,7 @@ namespace INMOST
 #pragma omp critical (links_interraction)
 #endif
 		{
+			assert(!isMeshModified());
 			integer ADDR = links[etypenum][ID];
 			links[etypenum][ID] = -1;
 			back_links[etypenum][ADDR] = -1;

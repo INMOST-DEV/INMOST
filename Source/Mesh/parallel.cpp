@@ -5912,6 +5912,7 @@ namespace INMOST
 		{
 			Tag tag_new_owner = GetTag("TEMPORARY_NEW_OWNER");
 			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");
+			/*
 			for(iteratorTag t = BeginTag(); t != EndTag(); t++)
 			{
 				if( t->GetTagName().substr(0,9) == "PROTECTED" ) continue;
@@ -5940,11 +5941,24 @@ namespace INMOST
 						}
 				}
 			}
-
+			 */
+			
+			CheckSetLinks(__FILE__,__LINE__);
 
 			ENTER_BLOCK();
 			REPORT_STR("Second round for elements migration");
 			REPORT_STR("Computing new values");
+			for(iteratorSet it = BeginSet(); it != EndSet(); ++it)
+			{
+				ElementSet::iterator jt = it->Begin();
+				while(jt != it->End())
+				{
+					Storage::integer_array procs = jt->IntegerArrayDV(tag_new_processors);
+					if( !std::binary_search(procs.begin(),procs.end(),mpirank) )
+						jt = it->Erase(jt);
+					else jt++;
+				}
+			}
 				
 			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
 			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
@@ -5967,6 +5981,7 @@ namespace INMOST
 					Delete(*it);
 			}
 			EXIT_BLOCK();
+			CheckSetLinks(__FILE__,__LINE__);
 		}
 		
 		CheckProcsSorted(__FILE__,__LINE__);
@@ -6118,6 +6133,33 @@ namespace INMOST
 		}
 		EXIT_FUNC();
 #endif //NDEBUG
+	}
+	
+	void Mesh::CheckSetLinks(std::string file, int line)
+	{
+		ENTER_FUNC();
+#if !defined(NDEBUG)
+		int err = 0;
+		for(iteratorSet it = BeginSet(); it != EndSet(); ++it)
+		{
+			const Element::adj_type & lc = LowConn(*it);
+			for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); ++jt)
+				if( *jt != InvalidHandle() && !isValidElement(*jt) )
+				{
+					std::cout << "set " << it->GetName() << " has bad link to " << ElementTypeName(GetHandleElementType(*jt)) << ":" << GetHandleID(*jt) << std::endl;
+					REPORT_STR("set " << it->GetName() << " has bad link to " << ElementTypeName(GetHandleElementType(*jt)) << ":" << GetHandleID(*jt));
+					err++;
+				}
+		}
+		err = Integrate(err);
+		if( err )
+		{
+			std::cout << file << ":" <<line <<  " " << err << " invalid links in sets" << std::endl;
+			REPORT_STR(file << ":" <<line <<  " " << err << " invalid links in sets");
+			exit(-1);
+		}
+#endif //NDEBUG
+		EXIT_FUNC();
 	}
 	
 	void Mesh::CheckCentroids(std::string file, int line)
@@ -6389,6 +6431,7 @@ namespace INMOST
 		Tag layers_marker = CreateTag("TEMPORARY_LAYERS_MARKER",DATA_INTEGER,CELL,CELL);
 		Integer(GetHandle(),tag_layers) = layers;
 		Integer(GetHandle(),tag_bridge) = bridge;
+		CheckSetLinks(__FILE__,__LINE__);
 		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 		proc_elements old_layers;
 		proc_elements current_layers;
@@ -6433,6 +6476,7 @@ namespace INMOST
 		}
 		for(Storage::integer k = layers-1; k >= 0; k--)
 		{
+			CheckSetLinks(__FILE__,__LINE__);
 			ExchangeMarked();
 			old_layers.swap(current_layers);
 			current_layers.clear();
@@ -6484,6 +6528,7 @@ namespace INMOST
 		}
 		if( delete_ghost )
 		{
+			CheckSetLinks(__FILE__,__LINE__);
 			time = Timer();
 			ReduceData(layers_marker,CELL,0,UnpackLayersMarker);
 			ExchangeData(layers_marker,CELL,0);
@@ -6517,6 +6562,7 @@ namespace INMOST
 			REPORT_STR("Select ghost elements to remove");
 			REPORT_VAL("time",time);
 			RemoveGhostElements(del_ghost);
+			CheckSetLinks(__FILE__,__LINE__);
 			//Save("after_delete_ghost.pvtk");
 			//exit(-1);
 		}

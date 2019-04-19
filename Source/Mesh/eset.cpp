@@ -1621,7 +1621,7 @@ namespace INMOST
 		assert(pos.pos < lc.size()); //cannot point over the end
 		assert(&lc == pos.ptr);
 		assert(lc[pos.pos] != InvalidHandle()); //cannot point to invalid handles
-		assert( !m->isMeshModified() || !m->GetMarker(lc[pos.pos],m->HideMarker())); //cannot point to hidden markers
+		//assert( !m->isMeshModified() || !m->GetMarker(lc[pos.pos],m->HideMarker())); //cannot point to hidden markers
 		lc[pos.pos] = InvalidHandle();
 		hc.push_back(pos.pos);
 		return ++pos;
