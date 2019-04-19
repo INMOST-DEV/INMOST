@@ -2,6 +2,8 @@
 
 using namespace INMOST;
 
+std::string file_format = ".pmf";
+
 int main(int argc, char ** argv)
 {
 	Mesh::Initialize(&argc,&argv);
@@ -22,12 +24,15 @@ int main(int argc, char ** argv)
 		Partitioner p(&m);
 		if( true )
 		{
+			m.Barrier();
 			std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+			//p.SetMethod(Partitioner::Parmetis,Partitioner::Refine);
 			p.Evaluate();
 			m.Redistribute();
 			m.ReorderEmpty(CELL|FACE|EDGE|NODE);
 			std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
 		}
 #endif
 		m.ExchangeGhost(2,FACE);
@@ -49,7 +54,7 @@ int main(int argc, char ** argv)
 		//bounding box around mesh
 		Storage::real cmax[3] = {-1.0e20,-1.0e20,-1.0e20};
 		Storage::real cmin[3] = {+1.0e20,+1.0e20,+1.0e20};
-		Storage::real xyz[3], r, q, cnt[3];
+		Storage::real xyz[3], r, q, cnt[3], cnt0[3], r0;
 		//find bounding box around mesh
 		for(Mesh::iteratorNode it = m.BeginNode(); it != m.EndNode(); ++it)
 		{
@@ -61,16 +66,22 @@ int main(int argc, char ** argv)
 		}
 		m.AggregateMax(cmax,3);
 		m.AggregateMin(cmin,3);
-		r = 1;
+		r0 = 1;
 		for(int d = 0; d < 3; ++d)
 		{
-			r *= cmax[d]-cmin[d];
+			r0 *= cmax[d]-cmin[d];
 			cnt[d] = (cmax[d]+cmin[d])*0.5;
+			cnt0[d] = cnt[d];
 		}
-		r = pow(r,1.0/3.0)/20.0;
+		//r = pow(r,1.0/3.0)/20.0;
+		r0 = pow(r0,1.0/3.0);
+		r = r0/8.0;
 		
-		for(int k = 0; k < 15; ++k)
+		for(int k = 0; k < 64; ++k)
 		{
+
+			cnt[0] = cnt0[0] + 0.25*r0*sin(k/16.0*M_PI);
+			cnt[1] = cnt0[1] + 0.25*r0*cos(k/16.0*M_PI);
 
 			m.ClearFile();
 			
@@ -86,10 +97,11 @@ int main(int argc, char ** argv)
 						it->Barycenter(xyz);
 						//refine a circle
 						q = 0;
-						for(int d = 0; d < 3; ++d)
+						for(int d = 0; d < 2; ++d)
 							q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
 						q = sqrt(q);
-						if( q < r*(k+1) && q > r*k)
+						//if( q < r*(k+1) && q > r*k)
+						if( q < r*1.4 && q > r)
 						{
 							indicator[*it] = 1;
 							numref++;
@@ -112,7 +124,7 @@ int main(int argc, char ** argv)
 					if( false )
 					{
 						std::stringstream file;
-						file << "ref_" << k << "_" << refcnt << ".pvtk";
+						file << "ref_" << k << "_" << refcnt << file_format;
 						m.Save(file.str());
 						if( m.GetProcessorRank() == 0 )
 							std::cout << "Save " << file.str() << std::endl;
@@ -133,10 +145,11 @@ int main(int argc, char ** argv)
 						it->Barycenter(xyz);
 						//refine a circle
 						q = 0;
-						for(int d = 0; d < 3; ++d)
+						for(int d = 0; d < 2; ++d)
 							q += (xyz[d]-cnt[d])*(xyz[d]-cnt[d]);
 						q = sqrt(q);
-						if( q < r*k)
+						//if( q < r*k)
+						if( !(q < r*1.4 && q > r) )
 						{
 							indicator[*it] = 1;
 							numref++;
@@ -159,7 +172,7 @@ int main(int argc, char ** argv)
 					if( false ) 
 					{
 						std::stringstream file;
-						file << "crs_" << k << "_" << refcnt << ".pvtk";
+						file << "crs_" << k << "_" << refcnt << file_format;
 						m.Save(file.str());
 						if( m.GetProcessorRank() == 0 )
 							std::cout << "Save " << file.str() << std::endl;
@@ -178,8 +191,12 @@ int main(int argc, char ** argv)
 				m.Barrier();
 				std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 				p.Evaluate();
+				am.CheckParentSet(__FILE__,__LINE__);
 				//am.Repartition();
 				m.Redistribute();
+				//std::fstream fout("sets"+std::to_string(m.GetProcessorRank())+".txt",std::ios::out);
+				//am.ReportSets(fout);
+				am.CheckParentSet(__FILE__,__LINE__);
 				std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 			}
 #endif
@@ -198,7 +215,7 @@ int main(int argc, char ** argv)
 					tag_stat[*it] = it->GetStatus();
 				}
 				std::stringstream file;
-				file << "step_" << k << ".pvtk";
+				file << "step_" << k << file_format;
 				m.Save(file.str());
 				if( m.GetProcessorRank() == 0 )
 					std::cout << "Save " << file.str() << std::endl;

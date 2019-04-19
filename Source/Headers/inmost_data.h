@@ -783,17 +783,20 @@ namespace INMOST
 	__INLINE void Tag::SetPosition(INMOST_DATA_ENUM_TYPE pos, 
 		ElementType type) 
 	{
+		assert(type != NONE);
 		mem->pos[ElementNum(type)] = pos;
 	}
 
 	__INLINE INMOST_DATA_ENUM_TYPE Tag::GetPosition(ElementType type) const 
 	{
 		assert(mem != NULL); 
+		assert(type != NONE);
 		return mem->pos[ElementNum(type)];
 	}
 
 	__INLINE void Tag::SetSparse(ElementType type) 
 	{
+		assert(type != NONE);
 		mem->sparse[ElementNum(type)] = true;
 	}
 

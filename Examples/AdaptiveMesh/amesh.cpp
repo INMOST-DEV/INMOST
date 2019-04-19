@@ -388,7 +388,7 @@ namespace INMOST
 		//create a tag that stores maximal refinement level of each element
 		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
 		//tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
-		set_id = m->CreateTag("SET_ID",DATA_INTEGER,CELL,NONE,1);
+		set_id = m->CreateTag("SET_ID",DATA_INTEGER,CELL|ESET,ESET,1);
 		//tag_an = m->CreateTag("TAG_AN",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
 		//ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
@@ -398,6 +398,28 @@ namespace INMOST
 	    size = m->GetProcessorsNumber();
     	rank = m->GetProcessorRank();
 	}
+
+	void ReportSub(ElementSet root, int tab, std::fstream & fout)
+	{
+		if( root.HaveChild() )
+		{
+			for(ElementSet jt = root.GetChild(); jt.isValid(); jt = jt.GetSibling())
+				ReportSub(jt,tab+1,fout);
+		}
+		Storage::integer_array parr = root.IntegerArray(root.GetMeshLink()->ProcessorsTag());
+		for(int q = 0; q < tab; ++q) fout << "  ";
+		fout << "set " << root.GetName() << " procs ";
+		for(unsigned q = 0; q < parr.size(); ++q) fout << parr[q] << " ";
+		fout << " owner " << root.Integer(root.GetMeshLink()->OwnerTag());
+		fout << " kids " << root.Size();
+		fout << " status " << Element::StatusName(root.GetStatus()) << std::endl;
+	}
+
+	void AdaptiveMesh::ReportSets(std::fstream & fout)
+	{
+		for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
+			if( !it->HaveParent() ) ReportSub(it->self(),0,fout);
+	}
 	
 	AdaptiveMesh::~AdaptiveMesh()
 	{
@@ -405,10 +427,11 @@ namespace INMOST
 		//as extension of class mesh in limited code span
 	}
 	
-	void AdaptiveMesh::CheckParentSet(std::string file, int line, TagInteger indicator)
+	void AdaptiveMesh::CheckParentSet(std::string file, int line)//, TagInteger indicator)
 	{
 		ENTER_FUNC();
 		int err = 0;
+		Storage::integer_array procs;
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
 			if( parent_set[*it] == InvalidHandle() )
@@ -423,21 +446,25 @@ namespace INMOST
 				std::cout << m->GetProcessorRank() << " parent set is something else " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << " on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
 				err++;
 			}
-			else if( parent_set[*it] != root.GetHandle() && (!indicator.isValid() || indicator[*it]) )
+			else if( parent_set[*it] != root.GetHandle() )//&& (!indicator.isValid() || indicator[*it]) )
 			{
 				ElementSet set(m,parent_set[*it]);
 				if( !set.HaveParent() )
 				{
 					REPORT_STR(m->GetProcessorRank() << 
 					" parent set " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << 
-					" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
+					" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << " kids " << set.Size() <<
 					" does not have parent " <<
-					" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it]);
+					" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " owner " << it->Integer(m->OwnerTag()) << " lvl " << level[*it]);
 					std::cout << m->GetProcessorRank() << 
 					" parent set " << ElementTypeName(GetHandleElementType(parent_set[*it])) << ":" << GetHandleID(parent_set[*it]) << 
-					" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << 
+					" name " << set.GetName() << " owner " << set.Integer(m->OwnerTag()) << " status " << Element::StatusName(set.GetStatus()) << " kids " << set.Size() <<
 					" does not have parent " <<
-					" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " " << level[*it] << std::endl;
+					" on CELL:" << it->LocalID() << " " << Element::StatusName(it->GetStatus()) << " owner " << it->Integer(m->OwnerTag()) << " lvl " << level[*it] << std::endl;
+					procs = it->IntegerArray(m->ProcessorsTag());
+					std::cout << "cell procs:"; for(unsigned q = 0; q < procs.size(); ++q) std::cout << " " << procs[q]; std::cout << std::endl;
+					procs = set.IntegerArray(m->ProcessorsTag());
+					std::cout << "eset procs:"; for(unsigned q = 0; q < procs.size(); ++q) std::cout << " " << procs[q]; std::cout << std::endl;
 					err++;
 				}
 				else
@@ -492,6 +519,7 @@ namespace INMOST
 		//EXIT_BLOCK();
 
 		m->CheckSetLinks(__FILE__,__LINE__);
+		CheckParentSet(__FILE__,__LINE__);
 		/*
 		ENTER_BLOCK();
 		m->ResolveSets();
@@ -781,13 +809,11 @@ namespace INMOST
 					//	
 					//}
 					//split the cell
-					ElementArray<Cell> new_cells = Cell::SplitCell(c,internal_faces,0);
-					std::sort(new_cells.begin(),new_cells.end(),Mesh::CentroidComparator(m));
 					//retrive parent set
 					ElementSet parent(m,parent_set[c]);
 					//create set corresponding to old coarse cell
-					Storage::real cnt[3];
-					c.Centroid(cnt);
+					//Storage::real cnt[3];
+					//c.Centroid(cnt);
 					std::stringstream set_name;
 					//set_name << parent.GetName() << "_C" << c.GlobalID(); //rand may be unsafe
 					if( parent == root )
@@ -802,16 +828,32 @@ namespace INMOST
 						std::cout << rank << " set " << set_name.str() << " for cell " << c.GlobalID() << " " << Element::StatusName(c.GetStatus()) << " already exists" << std::endl;
 						if( check_set->HaveParent() )
 							std::cout << rank << " parent is " << check_set->GetParent()->GetName() << " cell parent is " << parent.GetName() << std::endl;
-						std::cout << rank << " Elements: ";
+						std::cout << rank << " Elements of " << check_set.GetName() << ": ";
 						for(ElementSet::iterator it = check_set.Begin(); it != check_set.End(); ++it)
-							std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << "," << it->GlobalID() << "," << Element::StatusName(c.GetStatus()) << "," << level[*it] << " ";
+							std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << "," << it->GlobalID() << "," << Element::StatusName(c.GetStatus()) << "," << level[*it] << "," << indicator[*it] << " ";
 						std::cout << std::endl;
+						std::cout << rank << " Elements of " << parent.GetName() << ": ";
+						for(ElementSet::iterator it = parent.Begin(); it != parent.End(); ++it)
+							std::cout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << "," << it->GlobalID() << "," << Element::StatusName(c.GetStatus()) << "," << level[*it] << "," << indicator[*it] << " ";
+						std::cout << std::endl;
+						if( parent.HaveChild() )
+						{
+							std::cout << rank << " Children of " << parent.GetName() << ": ";
+							for(ElementSet jt = parent.GetChild(); jt.isValid(); jt = jt.GetSibling() )
+								std::cout << jt.GetName() << " size " << jt.Size() << " ";
+							std::cout << std::endl;
+						}
 						exit(-1);
 					}
 					
 					ElementSet cell_set = m->CreateSetUnique(set_name.str()).first;
 					//cell_set->SetExchange(ElementSet::SYNC_ELEMENTS_ALL);
 					level[cell_set] = level[c]+1;
+					set_id[cell_set] = set_id[c];
+
+					ElementArray<Cell> new_cells = Cell::SplitCell(c,internal_faces,0);
+					std::sort(new_cells.begin(),new_cells.end(),Mesh::CentroidComparator(m));
+					
 					//set up increased level for the new cells
 					for(ElementArray<Cell>::size_type kt = 0; kt < new_cells.size(); ++kt)
 					{
@@ -867,6 +909,31 @@ namespace INMOST
 		EXIT_BLOCK();
 		
 		m->ExchangeData(parent_set,CELL,0);
+
+		/*
+		ENTER_BLOCK();
+		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+		{
+			ElementSet set = m->EsetByLocalID(it);
+			if( set.GetName().substr(0,3) == "AM_" )
+			{
+				//int imax = -1, imin = INT_MAX;
+				//for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt)
+				//{
+				//	imax = std::max(imax,indicator[*jt]);
+				//	imin = std::min(imin,indicator[*jt]);
+				//}
+				//std::cout << "on proc " << m->GetProcessorRank() << " set " << set.GetName() << " size " << set.Size() << " set indicator " << indicator[set] << " elements indicator " << imin << ":" << imax;
+				//if( set.HaveParent() ) std::cout << " parent " << set.GetParent().GetName();
+				//std::cout << std::endl;
+				//if( !set.HaveChild() )
+					set.SynchronizeSetParents();
+			}
+		}
+		m->ExchangeMarked();
+		EXIT_BLOCK();
+		*/
+		CheckParentSet(__FILE__,__LINE__);
 		
 		//m->Save("after_refine"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_refine"+std::to_string(fi)+".pvtk" << std::endl;
@@ -976,7 +1043,7 @@ namespace INMOST
 		//SynchronizeIndicated(indicator);
 		//EXIT_BLOCK();
 		
-		
+		CheckParentSet(__FILE__,__LINE__);
 		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		int scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
@@ -1259,23 +1326,9 @@ namespace INMOST
 
 
 		m->ExchangeData(parent_set,CELL,0);
-
-		//CheckParentSet();
-		/*
-		ENTER_BLOCK();
-		//m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(parent_set,CELL,0);
-		//m->CheckCentroids(__FILE__,__LINE__);
 		m->ResolveSets();
-		//m->CheckCentroids(__FILE__,__LINE__);
-		//m->ExchangeData(parent_set,CELL,0);
-		//m->CheckCentroids(__FILE__,__LINE__);
-		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-		//m->CheckCentroids(__FILE__,__LINE__);
-		
-		EXIT_BLOCK();
-		*/
-		//m->Barrier();
+
+		/*
 
 		ENTER_BLOCK();
 		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
@@ -1292,17 +1345,19 @@ namespace INMOST
 				//std::cout << "on proc " << m->GetProcessorRank() << " set " << set.GetName() << " size " << set.Size() << " set indicator " << indicator[set] << " elements indicator " << imin << ":" << imax;
 				//if( set.HaveParent() ) std::cout << " parent " << set.GetParent().GetName();
 				//std::cout << std::endl;
-				if( indicator[set] != 0 )
-					set.SynchronizeSetParents();
+				//if( indicator[set] != 0 )
+				//if( !set.HaveChild() )
+				set.SynchronizeSetParents();
 			}
 		}
 		EXIT_BLOCK();
+		*/
 		//m->Barrier();
 		//std::cout << m->GetProcessorRank() << " call exchange marked" << std::endl;
 		m->ExchangeMarked();
 		//std::cout << m->GetProcessorRank() << " finish exchange marked" << std::endl;
 		//m->Barrier();
-		CheckParentSet(__FILE__,__LINE__,indicator);
+		CheckParentSet(__FILE__,__LINE__);//,indicator);
 		
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
@@ -1317,7 +1372,7 @@ namespace INMOST
 		m->BeginModification();
 		while(schedule_counter)
 		{
-			CheckParentSet(__FILE__,__LINE__,indicator);
+			//CheckParentSet(__FILE__,__LINE__);//,indicator);
 			//CheckParentSet();
 			//fout << "schedule_counter " << schedule_counter << std::endl;
 			//unite cells
@@ -1392,6 +1447,7 @@ namespace INMOST
 					assert(center_node.size() == 1);
 					ElementArray<Node> hanging = center_node[0].BridgeAdjacencies2Node(EDGE);
 					Cell v = Cell::UniteCells(unite_cells,0);
+					set_id[v] = set_id[parent];
 					//connect hanging nodes to the cell
 					assert(hanging_nodes[v].size() == 0);
 					for(ElementArray<Node>::size_type kt = 0; kt < hanging.size(); ++kt)
@@ -1541,6 +1597,31 @@ namespace INMOST
 		//fout.close();
 
 		m->ExchangeData(parent_set,CELL,0);
+		/*
+		ENTER_BLOCK();
+		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
+		{
+			ElementSet set = m->EsetByLocalID(it);
+			if( set.GetName().substr(0,3) == "AM_" )
+			{
+				//int imax = -1, imin = INT_MAX;
+				//for(ElementSet::iterator jt = set.Begin(); jt != set.End(); ++jt)
+				//{
+				//	imax = std::max(imax,indicator[*jt]);
+				//	imin = std::min(imin,indicator[*jt]);
+				//}
+				//std::cout << "on proc " << m->GetProcessorRank() << " set " << set.GetName() << " size " << set.Size() << " set indicator " << indicator[set] << " elements indicator " << imin << ":" << imax;
+				//if( set.HaveParent() ) std::cout << " parent " << set.GetParent().GetName();
+				//std::cout << std::endl;
+				//if( !set.HaveChild() )
+					set.SynchronizeSetParents();
+			}
+		}
+		m->ExchangeMarked();
+		EXIT_BLOCK();
+		*/
+
+		CheckParentSet(__FILE__,__LINE__);
 		
 		//m->Save("after_coarse"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;
@@ -1600,105 +1681,4 @@ namespace INMOST
 		return ret != 0;
 	}
 	
-#if defined(USE_PARTITIONER)
-	void AdaptiveMesh::SetNewOwner(ElementSet set, TagInteger owner)
-	{
-		if( set.HaveChild() )
-		{
-			if( set.Empty() ) owner[set] = INT_MAX;
-			for(ElementSet chld = set.GetChild(); chld.isValid(); chld = chld.GetSibling())
-			{
-				SetNewOwner(chld,owner);
-				owner[set] = std::min(owner[set],owner[chld]);
-			}
-		}
-		//for(ElementSet::iterator it = set.Begin(); it != set.End(); ++it)
-		//	owner[set] = std::min(owner[set],owner[*it]);
-	}
-	void AdaptiveMesh::SetNewProcs(ElementSet set, TagIntegerArray procs)
-	{
-		std::vector<int> tmp;
-		for(ElementSet chld = set.GetChild(); chld.isValid(); chld = chld.GetSibling())
-		{
-			SetNewProcs(chld,procs);
-			Storage::integer_array pm = procs[set];
-			Storage::integer_array pc = procs[chld];
-			tmp.resize(pm.size()+pc.size());
-			tmp.resize(std::set_union(pm.begin(),pm.end(),pc.begin(),pc.end(),tmp.begin())-tmp.begin());
-			pm.replace(pm.begin(),pm.end(),tmp.begin(),tmp.end());
-		}
-	}
-	void AdaptiveMesh::RestoreParent(ElementSet set)
-	{
-		for(ElementSet chld = set.GetChild(); chld.isValid(); chld = chld.GetSibling())
-			RestoreParent(chld);
-		for(ElementSet::iterator it = set.Begin(); it != set.End(); ++it)
-			parent_set[*it] = set.GetHandle();
-	}
-	void AdaptiveMesh::Repartition()
-	{
-		if( !root.isValid() ) return;
-		TagInteger redist = m->RedistributeTag();
-		TagInteger new_owner = m->CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,ESET, NONE,1); //workaround for sets
-		TagIntegerArray new_procs =  m->CreateTag("TEMPORARY_NEW_PROCESSORS",DATA_INTEGER,ESET, NONE);
-		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
-		{
-			ElementSet set = m->EsetByLocalID(it);
-			new_owner[set] = INT_MAX;
-			new_procs[set].clear();
-		}
-		std::cout << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << std::endl;
-		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
-		{
-			Cell c = m->CellByLocalID(it);
-			ElementSet parent(m,parent_set[c]);
-			std::cout << "cell:" << it << " gid " << c.GlobalID() << " has parent " << parent.LocalID() << " " << parent.GetName() << " redist " << redist[c] << std::endl;
-			new_owner[parent] = std::min(new_owner[parent],redist[c]);
-			Storage::integer_array procs = new_procs[parent];
-			Storage::integer_array::iterator insp = std::lower_bound(procs.begin(),procs.end(),redist[c]);
-			if( insp == procs.end() || *insp != redist[c] ) procs.insert(insp,redist[c]);
-		}
-		SetNewOwner(root,new_owner);
-		SetNewProcs(root,new_procs);
-		m->ReduceData(new_owner,ESET,0,ReduceMin);
-		m->ExchangeData(new_owner,ESET,0);
-		m->ReduceData(new_procs,ESET,0,ReduceUnion);
-		m->ExchangeData(new_procs,ESET,0);
-		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
-		{
-			ElementSet set = m->EsetByLocalID(it);
-			Storage::integer_array old_p = set->IntegerArray(m->ProcessorsTag());
-			Storage::integer_array new_p = new_procs[set];
-			Storage::integer_array sendto = set->IntegerArray(m->SendtoTag());
-			sendto.resize(std::max(old_p.size(),new_p.size()));
-			sendto.resize(std::set_difference(new_p.begin(),new_p.end(),old_p.begin(),old_p.end(),sendto.begin())-sendto.begin());
-		}
-		
-		std::cout << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << std::endl;
-		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
-		{
-			ElementSet set = m->EsetByLocalID(it);
-			if( new_owner[set] == INT_MAX ) std::cout << "no new owner for set " << it << " " << set.GetName() << std::endl;
-		}
-		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
-		{
-			Cell c = m->CellByLocalID(it);
-			if( parent_set[c] == InvalidHandle() ) std::cout << "No parent set for cell:" << it << " gid " << c.GlobalID() << std::endl;
-		}
-		
-		m->BeginModification();
-		m->Redistribute();
-		m->ExchangeData(hanging_nodes,CELL|FACE,0); //maybe will work
-		m->ApplyModification(); //this will correctly remove links
-		m->EndModification();
-		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
-		RestoreParent(root);
-		std::cout << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << std::endl;
-		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
-		{
-			Cell c = m->CellByLocalID(it);
-			if( parent_set[c] == InvalidHandle() ) std::cout << "No parent set for cell:" << it << " gid " << c.GlobalID() << std::endl;
-		}
-	}
-#endif
 }

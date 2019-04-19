@@ -340,9 +340,9 @@ namespace INMOST
 				tags.push_back(new_tag);
 			}
 		}
-		for(ElementType mask = NODE; mask <= MESH; mask = mask << 1)
+		for(ElementType mask = NODE; mask <= MESH; mask = NextElementType(mask)) if(mask & etype)
 		{
-			if( (mask & etype) && new_tag.GetPosition(etype&mask) == ENUMUNDEF ) 
+			if( new_tag.GetPosition(etype&mask) == ENUMUNDEF ) 
 			{
 				if( sparse & mask )
 				{
