@@ -16,11 +16,16 @@
 
 //using namespace std;
 
+#if defined(USE_PARALLEL_STORAGE)
 bool allow_pack_by_gids = true;
+#else // USE_PARALLEL_STORAGE
+bool allow_pack_by_gids = false;
+#endif // USE_PARALLEL_STORAGE
+
 
 #if defined(USE_MPI)
 static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
-#endif
+#endif // USE_MPI
 
 static std::string NameSlash(std::string input)
 {
@@ -40,7 +45,7 @@ static std::string NameSlash(std::string input)
 
 #define EXIT_FUNC() {WriteTab(out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #define EXIT_FUNC_DIE() {WriteTab(out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
-#else
+#else // USE_PARALLEL_WRITE_TIME
 #define REPORT_MPI(x) x
 #define REPORT_STR(x) {}
 #define REPORT_VAL(str,x) {}
@@ -49,7 +54,7 @@ static std::string NameSlash(std::string input)
 #define EXIT_BLOCK()
 #define EXIT_FUNC() {}
 #define EXIT_FUNC_DIE()  {}
-#endif
+#endif // USE_PARALLEL_WRITE_TIME
 
 
 #if defined(__LINUX__) || defined(__linux__) || defined(__APPLE__)
@@ -2830,6 +2835,7 @@ namespace INMOST
 	
 	HandleType Mesh::FindSharedGhost(ElementType etype, Storage::integer global_id, int source_proc, int owner_proc)
     {
+#if defined(USE_PARALLEL_STORAGE)
 		int k = ElementNum(etype), mpirank = GetProcessorRank();
 		element_set::iterator search;
 		if( owner_proc == mpirank )
@@ -2858,6 +2864,7 @@ namespace INMOST
 			if( search != ghost.end() && GlobalID(*search) == global_id )
 				return *search;
 		}
+#endif
 		//std::cout << "not found source " << source_proc << " owner " << owner_proc << " " << ElementTypeName(etype) << " gid " << global_id << std::endl;
 		return InvalidHandle();
      }
