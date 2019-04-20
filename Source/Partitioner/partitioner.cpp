@@ -679,7 +679,8 @@ namespace INMOST
 			}
 			
 			
-			wgtflag = have_vwgt + have_adjwgt*2;
+			wgtflag = have_vwgt*2 + have_adjwgt;
+			//std::cout << "wgtflag: " <<wgtflag << std::endl;
 			
 			//debug_output = true;
 			

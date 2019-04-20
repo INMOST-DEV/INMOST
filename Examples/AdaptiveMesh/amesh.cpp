@@ -63,6 +63,11 @@ namespace INMOST
 		(void) size;
 		element->Integer(tag) = std::min(element->Integer(tag),*((const INMOST_DATA_INTEGER_TYPE *)data));
 	}
+	void ReduceSum(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
+	{
+		(void) size;
+		element.Real(tag) += *((const INMOST_DATA_REAL_TYPE *)data);
+	}
 	
 	void ReduceUnion(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
 	{
@@ -1680,6 +1685,46 @@ namespace INMOST
 		REPORT_VAL("ret ",ret)
         EXIT_FUNC();
 		return ret != 0;
+	}
+	
+	void AdaptiveMesh::ComputeWeightCoarse(TagInteger indicator, TagReal wgt)
+	{
+		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) wgt[*it] = 0;
+		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) if( it->GetStatus() != Element::Ghost )
+		{
+			if( indicator[*it] )
+			{
+				ElementSet parent(m,parent_set[*it]);
+				for(ElementSet::iterator jt = parent.Begin(); jt != parent.End(); ++jt)
+					if( jt->GetStatus() != Element::Ghost )
+						wgt[*it]+=20;
+			}
+			else wgt[*it] = 1;
+		}
+		m->ReduceData(wgt,CELL,0,ReduceSum);
+		m->ExchangeData(wgt,CELL,0);
+	}
+	
+	void AdaptiveMesh::ComputeWeightRefine(TagInteger indicator, TagReal wgt)
+	{
+		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+		{
+			if( indicator[*it] )
+			{
+				Storage::reference_array hanging;
+				ElementArray<Node> nodes = it->getNodes();
+				ElementArray<Face> faces = it->getFaces();
+				hanging = hanging_nodes[*it];
+				nodes.Subtract(hanging.data(),hanging.size());
+				for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
+				{
+					Storage::reference_array hanging = hanging_nodes[*jt];
+					nodes.Subtract(hanging.data(),hanging.size());
+				}
+				wgt[*it] = nodes.size()*20;
+			}
+			else wgt[*it] = 1;
+		}
 	}
 	
 }

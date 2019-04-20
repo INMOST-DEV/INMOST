@@ -2,6 +2,10 @@
 
 using namespace INMOST;
 
+bool output_file = false;
+bool balance_mesh = true;
+bool balance_mesh_refine = true;
+bool balance_mesh_coarse = false;
 std::string file_format = ".pmf";
 
 int main(int argc, char ** argv)
@@ -26,18 +30,20 @@ int main(int argc, char ** argv)
 		//				   | ADJACENT_DUPLICATE | ADJACENT_HIDDEN | ADJACENT_VALID | ADJACENT_DIMENSION);
 		//m.RemTopologyCheck(THROW_EXCEPTION);
 #if defined(USE_PARTITIONER)
+		std::vector<Storage::integer> nc(m.GetProcessorsNumber());
 		Partitioner p(&m);
 		if( true )
 		{
-			m.Barrier();
-			std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			//p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
 			p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
 			//p.SetMethod(Partitioner::Parmetis,Partitioner::Refine);
 			p.Evaluate();
 			m.Redistribute();
 			m.ReorderEmpty(CELL|FACE|EDGE|NODE);
-			std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+			
+			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+			m.Barrier();
 			p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
 		}
 #endif
@@ -47,6 +53,10 @@ int main(int argc, char ** argv)
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
 		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON);
 		TagInteger indicator = m.CreateTag("INDICATOR",DATA_INTEGER,CELL,NONE,1);
+		TagReal wgt = m.CreateTag("WEIGHT",DATA_REAL,CELL,NONE,1);
+#if defined(USE_PARTITIONER)
+		p.SetWeight(wgt);
+#endif
 		/*
 		for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 			indicator[*it] = 1;
@@ -93,6 +103,9 @@ int main(int argc, char ** argv)
 
 			m.ClearFile();
 			
+			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+			
+			
 			int numref;
 			int refcnt = 0;
 			do
@@ -120,6 +133,21 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
+#if defined(USE_PARTITIONER)
+					if( balance_mesh_refine && refcnt == 0)
+					{
+						m.Barrier();
+						am.ComputeWeightRefine(indicator,wgt);
+						p.SetWeight(wgt);
+						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						
+						p.Evaluate();
+						m.Redistribute();
+						
+						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						m.Barrier();
+					}
+#endif
 					ncells = m.TotalNumberOf(CELL);
 					nfaces = m.TotalNumberOf(FACE);
 					nedges = m.TotalNumberOf(EDGE);
@@ -179,6 +207,20 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
+#if defined(USE_PARTITIONER)
+					if( balance_mesh_coarse && refcnt == 0)
+					{
+						m.Barrier();
+						am.ComputeWeightCoarse(indicator,wgt);
+						p.SetWeight(wgt);
+						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						p.Evaluate();
+						m.Redistribute();
+						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						m.Barrier();
+					}
+#endif
+					
 					ncells = m.TotalNumberOf(CELL);
 					nfaces = m.TotalNumberOf(FACE);
 					nedges = m.TotalNumberOf(EDGE);
@@ -215,25 +257,24 @@ int main(int argc, char ** argv)
 			
 			
 #if defined(USE_PARTITIONER)
-			if( true )
+			if( balance_mesh )
 			{
 				m.Barrier();
-				std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+				p.SetWeight(Tag());
+				std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 				p.Evaluate();
-				//am.CheckParentSet(__FILE__,__LINE__);
-				//am.Repartition();
 				m.Redistribute();
-				//std::fstream fout("sets"+std::to_string(m.GetProcessorRank())+".txt",std::ios::out);
-				//am.ReportSets(fout);
-				//am.CheckParentSet(__FILE__,__LINE__);
-				std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
+				std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				m.Barrier();
 			}
 #endif
+			
+			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			 
 			 
 
 			
-			if( true )
+			if( output_file )
 			{
 				TagInteger tag_owner = m.CreateTag("OWN",DATA_INTEGER,CELL,NONE,1);
 				TagInteger tag_owner0 = m.GetTag("OWNER_PROCESSOR");

@@ -38,6 +38,11 @@ namespace INMOST
 		void ClearData();
 		void PrintSet(std::ostream & fout, ElementSet set);
 		void SetModel(Model * mm) {model = mm;}
+		//the work on each cell is supposed to be proportional to the number of cells refined
+		//this number is equal to number of original nodes
+		void ComputeWeightRefine(TagInteger indicator, TagReal weight);
+		//the work on each cell is supposed to be proportional to the number of cells united
+		void ComputeWeightCoarse(TagInteger indicator, TagReal weight);
         //void Test();
         //void PrintMesh(std::ostream& os, int cell = 0, int face = 0, int edge = 0, int node = 0);
         //void PrintSet();
