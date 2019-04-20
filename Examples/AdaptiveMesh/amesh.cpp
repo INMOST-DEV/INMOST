@@ -32,59 +32,6 @@ static std::string NameSlash(std::string input)
 }
 
 
-//#include "../../Source/Misc/base64.h"
-//using namespace std;
-
-//from inmost
-//std::string base64_encode(unsigned char const* buf, unsigned int bufLen);
-
-	std::string base64_encode_(unsigned char const* buf, unsigned int bufLen)
-	{
-		static const std::string base64_chars =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		"abcdefghijklmnopqrstuvwxyz"
-		"0123456789+/";
-		std::string ret;
-		int i = 0;
-		int j = 0;
-		unsigned char char_array_3[3];
-		unsigned char char_array_4[4];
-		
-		while (bufLen--)
-		{
-			char_array_3[i++] = *(buf++);
-			if (i == 3)
-			{
-				char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-				char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-				char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-				char_array_4[3] = char_array_3[2] & 0x3f;
-				for(i = 0; (i <4) ; i++)
-					ret += base64_chars[char_array_4[i]];
-				i = 0;
-			}
-		}
-		
-		if (i)
-		{
-			for(j = i; j < 3; j++)
-				char_array_3[j] = '\0';
-	  
-			char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-			char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-			char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-			char_array_4[3] = char_array_3[2] & 0x3f;
-	  
-			for (j = 0; (j < i + 1); j++)
-				ret += base64_chars[char_array_4[j]];
-	  
-			while((i++ < 3))
-				ret += '=';
-		}
-		
-		return ret;
-	}
-
 /// todo:
 /// 1. coarsment
 /// 2. strategy for faces/edges with faults
@@ -430,6 +377,7 @@ namespace INMOST
 	void AdaptiveMesh::CheckParentSet(std::string file, int line)//, TagInteger indicator)
 	{
 		ENTER_FUNC();
+#if !defined(NDEBUG)
 		int err = 0;
 		Storage::integer_array procs;
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
@@ -495,7 +443,7 @@ namespace INMOST
 			std::cout << rank << " error in " << __FUNCTION__ << " " << file << ":" << line << std::endl;
 			exit(-1);
 		}
-		
+#endif //NDEBUG
 	}
 	
 	bool AdaptiveMesh::Refine(TagInteger & indicator)
@@ -550,11 +498,11 @@ namespace INMOST
 		ENTER_BLOCK();
 		//0. Extend indicator for edges and faces
 		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
+		//1.Communicate indicator - it may be not synced
+		m->ExchangeData(indicator,CELL,0);
 		while(scheduled)
 		{
 			REPORT_VAL("scheduled",scheduled);
-			//1.Communicate indicator - it may be not synced
-			m->ExchangeData(indicator,CELL,0);
 			//2.Propogate indicator down to the faces,edges
 			//  select schedule for them
 			ENTER_BLOCK();
@@ -573,6 +521,7 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			//3.Communicate indicator on faces and edges
+			m->ReduceData(indicator,FACE|EDGE,0,ReduceMax);
 			m->ExchangeData(indicator,FACE|EDGE,0);
 			//4.Check for each cell if there is
 			//  any hanging node with adjacent in a need to refine,
@@ -604,12 +553,17 @@ namespace INMOST
 				}
 			}
 			EXIT_BLOCK();
-			//5.Go back to 1 until no new elements scheduled
+			//5.Exchange indicator on cells
+			m->ReduceData(indicator,CELL,0,ReduceMax);
+			m->ExchangeData(indicator,CELL,0);
+			//6.Go back to 1 until no new elements scheduled
 			scheduled = m->Integrate(scheduled);
 			if( scheduled ) schedule_counter++;
 		}
-		m->ExchangeData(indicator,CELL | FACE | EDGE,0);
+		//m->ExchangeData(indicator,CELL | FACE | EDGE,0);
 		EXIT_BLOCK();
+		
+		//m->ExchangeData(hanging_nodes,CELL|FACE,NONE);
 		//m->Save("indicator.pmf");
 		
 		//ENTER_BLOCK();
@@ -673,6 +627,42 @@ namespace INMOST
 				Face f = m->FaceByLocalID(it);
 				if( !f.Hidden() && indicator[f] == schedule_counter )
 				{
+#if !defined(NDEBUG)
+					ElementArray<Edge> face_edges = f.getEdges();
+					for(ElementArray<Edge>::iterator jt = face_edges.begin(); jt != face_edges.end(); ++jt)
+					{
+						if( level[*jt] != level[f]+1 )
+						{
+							std::cout << m->GetProcessorRank() << " face " << f.LocalID();
+							std::cout << " " << Element::StatusName(f.GetStatus()) << " owner " << f.Integer(m->OwnerTag());
+							std::cout << " lvl " << level[f] << " ind " << indicator[f];
+							std::cout << " edge " << jt->LocalID();
+							std::cout << " " << Element::StatusName(jt->GetStatus()) << " owner " << jt->Integer(m->OwnerTag());
+							std::cout << " lvl " << level[*jt] << " ind " << indicator[*jt];
+							std::cout << std::endl;
+							ElementArray<Cell> adj_cells;
+							adj_cells = f.getCells();
+							std::cout << "face cells ";
+							for(ElementArray<Cell>::iterator kt = adj_cells.begin(); kt != adj_cells.end(); ++kt)
+							{
+								std::cout << m->GetProcessorRank() << " face " << kt->LocalID();
+								std::cout << " " << Element::StatusName(kt->GetStatus()) << " owner " << kt->Integer(m->OwnerTag());
+								std::cout << " lvl " << level[*kt] << " ind " << indicator[*kt];
+								std::cout << std::endl;
+							}
+							std::cout << "edge cells ";
+							adj_cells = jt->getCells();
+							for(ElementArray<Cell>::iterator kt = adj_cells.begin(); kt != adj_cells.end(); ++kt)
+							{
+								std::cout << m->GetProcessorRank() << " face " << kt->LocalID();
+								std::cout << " " << Element::StatusName(kt->GetStatus()) << " owner " << kt->Integer(m->OwnerTag());
+								std::cout << " lvl " << level[*kt] << " ind " << indicator[*kt];
+								std::cout << std::endl;
+							}
+						}
+						assert(level[*jt] == level[f]+1);
+					}
+#endif //NDEBUG
 					//connect face center to hanging nodes of the face
 					Storage::reference_array face_hanging_nodes = hanging_nodes[f];
 					//remember adjacent cells that should get information about new hanging node
@@ -737,6 +727,11 @@ namespace INMOST
 					level[n] = level[c]+1;
 					//retrive all edges of current face to mark them
 					ElementArray<Edge> cell_edges = c.getEdges();
+#if !defined(NDEBUG)
+					for(ElementArray<Edge>::iterator jt = cell_edges.begin(); jt != cell_edges.end(); ++jt) assert(level[*jt] == level[c]+1);
+					ElementArray<Face> cell_faces = c.getFaces();
+					for(ElementArray<Face>::iterator jt = cell_faces.begin(); jt != cell_faces.end(); ++jt) assert(level[*jt] == level[c]+1);
+#endif //NDEBUG
 					//mark all edges so that we can retive them later
 					cell_edges.SetMarker(mark_cell_edges);
 					//connect face center to centers of faces by edges

@@ -18,7 +18,12 @@ int main(int argc, char ** argv)
 		else if( m.GetProcessorRank() == 0 )
 			m.Load(argv[1]);
 	
-		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE | DEGENERATE_CELL | DEGENERATE_EDGE | DEGENERATE_FACE | PRINT_NOTIFY | TRIPLE_SHARED_FACE | FLATTENED_CELL | INTERLEAVED_FACES | NEED_TEST_CLOSURE);
+		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE
+		//				   | DEGENERATE_CELL | DEGENERATE_EDGE | DEGENERATE_FACE
+		//				   | PRINT_NOTIFY | TRIPLE_SHARED_FACE | FLATTENED_CELL
+		//				   | INTERLEAVED_FACES | NEED_TEST_CLOSURE
+		//				   | DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL
+		//				   | ADJACENT_DUPLICATE | ADJACENT_HIDDEN | ADJACENT_VALID | ADJACENT_DIMENSION);
 		//m.RemTopologyCheck(THROW_EXCEPTION);
 #if defined(USE_PARTITIONER)
 		Partitioner p(&m);
@@ -26,7 +31,8 @@ int main(int argc, char ** argv)
 		{
 			m.Barrier();
 			std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
-			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+			//p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+			p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
 			//p.SetMethod(Partitioner::Parmetis,Partitioner::Refine);
 			p.Evaluate();
 			m.Redistribute();
@@ -191,12 +197,12 @@ int main(int argc, char ** argv)
 				m.Barrier();
 				std::cout << "before on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 				p.Evaluate();
-				am.CheckParentSet(__FILE__,__LINE__);
+				//am.CheckParentSet(__FILE__,__LINE__);
 				//am.Repartition();
 				m.Redistribute();
 				//std::fstream fout("sets"+std::to_string(m.GetProcessorRank())+".txt",std::ios::out);
 				//am.ReportSets(fout);
-				am.CheckParentSet(__FILE__,__LINE__);
+				//am.CheckParentSet(__FILE__,__LINE__);
 				std::cout << "after on " << m.GetProcessorRank() << " " << m.NumberOfCells() << std::endl;
 			}
 #endif
