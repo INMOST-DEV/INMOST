@@ -4,7 +4,7 @@ using namespace INMOST;
 
 bool output_file = false;
 bool balance_mesh = true;
-bool balance_mesh_refine = true;
+bool balance_mesh_refine = false;
 bool balance_mesh_coarse = false;
 std::string file_format = ".pmf";
 
@@ -47,7 +47,7 @@ int main(int argc, char ** argv)
 			p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
 		}
 #endif
-		m.ExchangeGhost(2,FACE);
+		m.ExchangeGhost(1,FACE);
 		AdaptiveMesh am(m);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
@@ -95,15 +95,15 @@ int main(int argc, char ** argv)
 		
 		int ncells, nfaces, nedges, nnodes;
 		
-		for(int k = 0; k < 64; ++k)
+		for(int k = 0; k < 80; ++k)
 		{
 
-			cnt[0] = cnt0[0] + 0.25*r0*sin(k/16.0*M_PI);
-			cnt[1] = cnt0[1] + 0.25*r0*cos(k/16.0*M_PI);
+			cnt[0] = cnt0[0] + 0.25*r0*sin(k/20.0*M_PI);
+			cnt[1] = cnt0[1] + 0.25*r0*cos(k/20.0*M_PI);
 
 			m.ClearFile();
 			
-			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+			//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			
 			
 			int numref;
@@ -136,16 +136,16 @@ int main(int argc, char ** argv)
 #if defined(USE_PARTITIONER)
 					if( balance_mesh_refine && refcnt == 0)
 					{
-						m.Barrier();
+						//m.Barrier();
 						am.ComputeWeightRefine(indicator,wgt);
 						p.SetWeight(wgt);
-						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						
 						p.Evaluate();
 						m.Redistribute();
 						
-						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
-						m.Barrier();
+						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						//m.Barrier();
 					}
 #endif
 					ncells = m.TotalNumberOf(CELL);
@@ -259,13 +259,13 @@ int main(int argc, char ** argv)
 #if defined(USE_PARTITIONER)
 			if( balance_mesh )
 			{
-				m.Barrier();
+				//m.Barrier();
 				p.SetWeight(Tag());
-				std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 				p.Evaluate();
 				m.Redistribute();
-				std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
-				m.Barrier();
+				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				//m.Barrier();
 			}
 #endif
 			
