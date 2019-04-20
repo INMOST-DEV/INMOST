@@ -2308,12 +2308,12 @@ namespace INMOST
 		std::vector<int>                  ComputeSharedProcs (const parallel_storage & from, const parallel_storage & to);
 		std::vector<int>                  ComputeSharedProcs (ElementType etype);
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
-		void                              GatherPackElements (elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send, bool send_links_to_owner);
-		void                              EnumPackElements   (elements_by_type & selems, TagInteger pack_position);
-		void                              UnenumPackElements (elements_by_type & selems, TagInteger pack_position);
+		void                              PackElementsGather (elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send, bool send_links_to_owner, bool pack_by_gids);
+		void                              PackElementsEnumerate   (elements_by_type & selems, TagInteger pack_position);
+		void                              PackElementsUnenumerate (elements_by_type & selems, TagInteger pack_position);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer, TagInteger pack_position);
 		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, const elements_by_type & unpack_elements);//, proc_elements_by_type * send_elements = NULL);
-		void                              PackElementsData   (elements_by_type & input, buffer_type & buffer, int destination, const tag_set & tag_list,TagInteger pack_position);
+		void                              PackElementsData   (elements_by_type & input, buffer_type & buffer, int destination, const tag_set & tag_list,TagInteger pack_position, bool pack_gids);
 		void                              UnpackElementsData (elements_by_type & output, buffer_type & buffer, int source, int & position, tag_set & tag_list);
 		void                              PrepareReceiveInner(Prepare todo, exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs);
 		void                              ExchangeDataInnerBegin(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, exchange_data & storage);
@@ -2325,7 +2325,7 @@ namespace INMOST
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
 		void                              InformElementsOwners(proc_elements_by_type & send_elements, exchange_data & storage);
 	public:
-        //bool                              FindSharedGhost(int global_id, INMOST_DATA_INTEGER_TYPE el_type_num,  HandleType& res);
+		HandleType                        FindSharedGhost(ElementType etype, Storage::integer global_id, int source_proc, int owner_proc);
 #if defined(USE_PARALLEL_WRITE_TIME)	
 		//this part is needed to test parallel performance
 		void                              Enter              ();

@@ -571,6 +571,8 @@ namespace INMOST
 		//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
 		//EXIT_BLOCK();
 		
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		
 		//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//6.Refine
@@ -903,7 +905,9 @@ namespace INMOST
 		m->EndModification();
 		EXIT_BLOCK();
 		
+		//keep links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 
 		/*
 		ENTER_BLOCK();
@@ -1321,6 +1325,7 @@ namespace INMOST
 
 
 		m->ExchangeData(parent_set,CELL,0);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
 		m->ResolveSets();
 
 		/*
@@ -1349,7 +1354,7 @@ namespace INMOST
 		*/
 		//m->Barrier();
 		//std::cout << m->GetProcessorRank() << " call exchange marked" << std::endl;
-		m->ExchangeMarked();
+		//m->ExchangeMarked();
 		//std::cout << m->GetProcessorRank() << " finish exchange marked" << std::endl;
 		//m->Barrier();
 		CheckParentSet(__FILE__,__LINE__);//,indicator);
@@ -1357,8 +1362,6 @@ namespace INMOST
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
 		//	PrintSet(fout,it->self());
-		
-		
 		
 		//m->Save("unschdind"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save unschdind"+std::to_string(fi)+".pvtk" << std::endl;
@@ -1591,7 +1594,10 @@ namespace INMOST
 		EXIT_BLOCK();
 		//fout.close();
 
+		//restore links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
+		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		
 		/*
 		ENTER_BLOCK();
 		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )

@@ -83,6 +83,8 @@ int main(int argc, char ** argv)
 		r0 = pow(r0,1.0/3.0);
 		r = r0/8.0;
 		
+		int ncells, nfaces, nedges, nnodes;
+		
 		for(int k = 0; k < 64; ++k)
 		{
 
@@ -118,14 +120,25 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
-					int ncells = m.TotalNumberOf(CELL);
+					ncells = m.TotalNumberOf(CELL);
+					nfaces = m.TotalNumberOf(FACE);
+					nedges = m.TotalNumberOf(EDGE);
+					nnodes = m.TotalNumberOf(NODE);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << "k " << k << " refcnt " << refcnt << " " <<  r*k << " < r < " << r*(k+1) << " cells " << ncells << std::endl;
+						std::cout << "beg k " << k << " refcnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					//m.BeginSequentialCode();
 					//std::cout << m.GetProcessorRank() << " cells " << m.NumberOfCells() << std::endl;
 					//m.EndSequentialCode();
 
 					if (!am.Refine(indicator)) break;
+					
+					
+					ncells = m.TotalNumberOf(CELL);
+					nfaces = m.TotalNumberOf(FACE);
+					nedges = m.TotalNumberOf(EDGE);
+					nnodes = m.TotalNumberOf(NODE);
+					if( m.GetProcessorRank() == 0 )
+						std::cout << "end k " << k << " refcnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					
 					if( false )
 					{
@@ -166,14 +179,24 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
-					int ncells = m.TotalNumberOf(CELL);
+					ncells = m.TotalNumberOf(CELL);
+					nfaces = m.TotalNumberOf(FACE);
+					nedges = m.TotalNumberOf(EDGE);
+					nnodes = m.TotalNumberOf(NODE);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << ": k " << k << " crscnt " << refcnt << " " << r*k << " < r < " << r*(k+1) << " cells " << ncells <<  std::endl;
+						std::cout << ":beg k " << k << " crscnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					//m.BeginSequentialCode();
 					//std::cout << m.GetProcessorRank() << " cells " << m.NumberOfCells() << std::endl;
 					//m.EndSequentialCode();
 					
 					if( !am.Coarse(indicator) ) break;
+					
+					ncells = m.TotalNumberOf(CELL);
+					nfaces = m.TotalNumberOf(FACE);
+					nedges = m.TotalNumberOf(EDGE);
+					nnodes = m.TotalNumberOf(NODE);
+					if( m.GetProcessorRank() == 0 )
+						std::cout << ":end k " << k << " crscnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					
 					if( false ) 
 					{
