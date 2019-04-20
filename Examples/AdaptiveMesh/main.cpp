@@ -4,7 +4,7 @@ using namespace INMOST;
 
 bool output_file = false;
 bool balance_mesh = true;
-bool balance_mesh_refine = false;
+bool balance_mesh_refine = true;
 bool balance_mesh_coarse = false;
 std::string file_format = ".pmf";
 

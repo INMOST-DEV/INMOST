@@ -5437,6 +5437,10 @@ namespace INMOST
 						ElementSet chld_set = ElementSet(this,selems[4][high_conn_nums[indh+j]]);
 						if( !chld_set.GetMarker(mrk_chld) )
 						{
+							if( chld_set.HaveParent() )
+							{
+								std::cout << "child " << chld_set.GetName() << " for " << set.GetName() << " has parent " << chld_set.GetParent().GetName() << std::endl;
+							}
 							set.AddChild(chld_set);
 							chld_set.SetMarker(mrk_chld);
 						}
@@ -5932,7 +5936,7 @@ namespace INMOST
 	void Mesh::ExchangeMarked(enum Action action)
 	{
 		ENTER_FUNC();
-		bool dely_delete = false;
+		bool dely_delete = true;
 		if( m_state == Serial ) return;
 #if defined(USE_MPI)
         INMOST_DATA_BIG_ENUM_TYPE num_wait;
@@ -6077,7 +6081,9 @@ namespace INMOST
 					if( !std::binary_search(procs.begin(),procs.end(),mpirank) ) 
 					{
 						//Destroy(*it);
-						Delete(*it);
+						if( etype == ESET )
+							ElementSet(this,*it).DeleteSet();
+						else Delete(*it);
 						++ecount;
 					}
 				}
@@ -6188,7 +6194,7 @@ namespace INMOST
 					}
 				}
 			}
-			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
+			for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype)) if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
 			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 			{
 				Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
@@ -6206,7 +6212,11 @@ namespace INMOST
 				}
 				else SetStatus(*it,Element::Ghost);
 				if( dely_delete && !std::binary_search(old_procs.begin(),old_procs.end(),mpirank) )
-					Delete(*it);
+				{
+					if( etype == ESET )
+						ElementSet(this,*it).DeleteSet();
+					else Delete(*it);
+				}
 			}
 			EXIT_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
