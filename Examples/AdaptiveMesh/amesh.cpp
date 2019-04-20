@@ -1697,7 +1697,7 @@ namespace INMOST
 				ElementSet parent(m,parent_set[*it]);
 				for(ElementSet::iterator jt = parent.Begin(); jt != parent.End(); ++jt)
 					if( jt->GetStatus() != Element::Ghost )
-						wgt[*it]+=20;
+						wgt[*it]+=5;
 			}
 			else wgt[*it] = 1;
 		}
@@ -1721,7 +1721,7 @@ namespace INMOST
 					Storage::reference_array hanging = hanging_nodes[*jt];
 					nodes.Subtract(hanging.data(),hanging.size());
 				}
-				wgt[*it] = nodes.size()*20;
+				wgt[*it] = nodes.size()*5;
 			}
 			else wgt[*it] = 1;
 		}

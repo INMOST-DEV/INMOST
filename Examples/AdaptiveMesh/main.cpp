@@ -94,9 +94,14 @@ int main(int argc, char ** argv)
 		r = r0/8.0;
 		
 		int ncells, nfaces, nedges, nnodes;
+
+		double time = Timer();
 		
 		for(int k = 0; k < 80; ++k)
 		{
+
+
+			double step_time = Timer();
 
 			cnt[0] = cnt0[0] + 0.25*r0*sin(k/20.0*M_PI);
 			cnt[1] = cnt0[1] + 0.25*r0*cos(k/20.0*M_PI);
@@ -139,12 +144,12 @@ int main(int argc, char ** argv)
 						//m.Barrier();
 						am.ComputeWeightRefine(indicator,wgt);
 						p.SetWeight(wgt);
-						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						
 						p.Evaluate();
 						m.Redistribute();
 						
-						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						//m.Barrier();
 					}
 #endif
@@ -291,7 +296,14 @@ int main(int argc, char ** argv)
 					std::cout << "Save " << file.str() << std::endl;
 			}
 			else if( m.GetProcessorRank() == 0 ) std::cout << "step " << k << std::endl;
+			
+			step_time = Timer() - step_time;
+			if( m.GetProcessorRank() == 0 ) std::cout << "step time " << step_time << std::endl;
 		}
+
+
+		time = Timer() - time;
+		if( m.GetProcessorRank() == 0 ) std::cout << "total time: " << time << " processors " << m.GetProcessorsNumber() << std::endl;
 	}
 	else std::cout << "Usage: " << argv[0] << " mesh_file [max_levels=2]" << std::endl;
 	
