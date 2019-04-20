@@ -2308,7 +2308,7 @@ namespace INMOST
 		std::vector<int>                  ComputeSharedProcs (const parallel_storage & from, const parallel_storage & to);
 		std::vector<int>                  ComputeSharedProcs (ElementType etype);
 		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
-		void                              GatherPackElements (elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send);
+		void                              GatherPackElements (elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send, bool send_links_to_owner);
 		void                              EnumPackElements   (elements_by_type & selems, TagInteger pack_position);
 		void                              UnenumPackElements (elements_by_type & selems, TagInteger pack_position);
 		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer, TagInteger pack_position);

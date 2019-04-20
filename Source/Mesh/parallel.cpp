@@ -3282,7 +3282,7 @@ namespace INMOST
 				elements_by_type selems;
 				if( have_reference_tag )
 				{
-					GatherPackElements(selems,from.find(*p)->second,*p,mask,select,tags,true);
+					GatherPackElements(selems,from.find(*p)->second,*p,mask,select,tags,true,true);
 					EnumPackElements(selems,pack_position);
 					//PackElementsData(selems,storage.send_buffers[num_send].second,*p,tags,pack_position);
 					PackElementsData(selems,storage.send_buffers[num_send].second,*p,tag_pack_list,pack_position);
@@ -3354,7 +3354,7 @@ namespace INMOST
 		{
 			if( !it->second.empty() )
 			{
-				GatherPackElements(it->second,it->second,it->first,NONE,0,tag_set(),false);
+				GatherPackElements(it->second,it->second,it->first,NONE,0,tag_set(),false,true);
 				EnumPackElements(it->second,pack_position);
 				PackElementsData(it->second,storage.send_buffers[num_wait].second,it->first,tag_set(),pack_position);
 				UnenumPackElements(it->second,pack_position);
@@ -3731,7 +3731,7 @@ namespace INMOST
 		}
 	}
 
-	void Mesh::GatherPackElements(elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send)
+	void Mesh::GatherPackElements(elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send, bool send_links_to_owner)
 	{
 		ENTER_FUNC();
 
@@ -3751,6 +3751,7 @@ namespace INMOST
 
 
 		//Add all elements from tags
+		if( send_links_to_owner )
 		for(unsigned k = 0; k < tag_list.size(); ++k)
 		{
 			const Tag & tag = tag_list[k];
@@ -3794,6 +3795,7 @@ namespace INMOST
 
 		// Add low conns elements to selems array.
 		// Low conns for ESET can contain any element
+		if( send_links_to_owner )
 		for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++)
 		{
 			Element::adj_type const & adj = LowConn(*it);
@@ -3849,6 +3851,7 @@ namespace INMOST
 					}
 				}
 			}
+			if( send_links_to_owner )
 			if( set.HaveChild() )
 			{
 				for(ElementSet jt = set.GetChild(); jt.isValid(); jt = jt.GetSibling() )
@@ -4791,7 +4794,9 @@ namespace INMOST
 			if( marked_for_data != marked_remote )
 			{
 				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
-				std::cout << " on " << GetProcessorRank() << " from " << source << std::endl;
+				std::cout << " on " << GetProcessorRank() << " from " << source;
+				std::cout << " found " << found << " marked ghost " << marked_ghost << " total " << selems[0].size();
+				std::cout << std::endl;
 			}
 			assert(marked_for_data == marked_remote);
 		}
@@ -5801,7 +5806,7 @@ namespace INMOST
 				REPORT_VAL("pack for", it->first);
 				REPORT_VAL("number of provided elements",it->second.size());
 //                std::cout << mpirank << "Number of provided els " << it->second.size() << std::endl;
-				GatherPackElements(it->second,it->second,it->first,ESET|CELL|FACE|EDGE|NODE,0,tag_list,false);
+				GatherPackElements(it->second,it->second,it->first,ESET|CELL|FACE|EDGE|NODE,0,tag_list,false, action == AGhost);
 				EnumPackElements(it->second,pack_position);
 				PackElementsData(it->second,storage.send_buffers[num_wait].second,it->first,tag_list,pack_position);
 				UnenumPackElements(it->second,pack_position);
@@ -5816,7 +5821,7 @@ namespace INMOST
 		PrepareReceiveInner(UnknownSource, storage.send_buffers,storage.recv_buffers);
 		ExchangeBuffersInner(storage.send_buffers,storage.recv_buffers,storage.send_reqs,storage.recv_reqs);
 			
-		if( false )//action == AMigrate ) // delete packed elements
+		if( action == AMigrate ) // delete packed elements
 		{
 			Tag tag_new_processors = GetTag("TEMPORARY_NEW_PROCESSORS");
 			/*
@@ -5867,6 +5872,18 @@ namespace INMOST
 			EXIT_BLOCK();
 			*/
 			ENTER_BLOCK();
+			REPORT_STR("Deleting links to deleted elements from sets");
+			for(iteratorSet it = BeginSet(); it != EndSet(); ++it)
+			{
+				ElementSet::iterator jt = it->Begin();
+				while(jt != it->End())
+				{
+					Storage::integer_array procs = jt->IntegerArrayDV(tag_new_processors);
+					if( !std::binary_search(procs.begin(),procs.end(),mpirank) )
+						jt = it->Erase(jt);
+					else jt++;
+				}
+			}
 			REPORT_STR("Deleting not owned elements");
 			//now delete elements that we have not yet deleted
 			int count = 0;
@@ -5977,6 +5994,7 @@ namespace INMOST
 			ENTER_BLOCK();
 			REPORT_STR("Second round for elements migration");
 			REPORT_STR("Computing new values");
+			/*
 			for(iteratorSet it = BeginSet(); it != EndSet(); ++it)
 			{
 				ElementSet::iterator jt = it->Begin();
@@ -5988,15 +6006,15 @@ namespace INMOST
 					else jt++;
 				}
 			}
-				
+			*/
 			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
 			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 			{
-				if( it->IntegerArray(tag_new_processors).empty() ) continue;
+				Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
+				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
+				if( new_procs.empty() ) continue;
 				Storage::integer new_owner = it->Integer(tag_new_owner);
 				it->IntegerDF(tag_owner) = new_owner;
-				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
-				Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
 				old_procs.replace(old_procs.begin(),old_procs.end(),new_procs.begin(),new_procs.end());
 				if( new_owner == mpirank )
 				{
@@ -6006,8 +6024,8 @@ namespace INMOST
 						SetStatus(*it,Element::Shared);
 				}
 				else SetStatus(*it,Element::Ghost);
-				if( !std::binary_search(old_procs.begin(),old_procs.end(),mpirank) )
-					Delete(*it);
+				//if( !std::binary_search(old_procs.begin(),old_procs.end(),mpirank) )
+				//	Delete(*it);
 			}
 			EXIT_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
@@ -6960,7 +6978,13 @@ namespace INMOST
 		{
 			Element it = ElementByLocalID(etype,eit);
 			//Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
-			if( etype == ESET || it->IntegerDF(tag_owner) == mpirank || it->GetMarker(reffered) ) // deal with my entities, others will deal with theirs
+			if( it->GetMarker(reffered) )
+			{
+				Storage::integer_array sendto = it->IntegerArray(SendtoTag());
+				Storage::integer_array procs = it->IntegerArray(tag_new_processors);
+				sendto.replace(sendto.begin(),sendto.end(),procs.begin(),procs.end());
+			}
+			else if( etype == ESET || it->IntegerDF(tag_owner) == mpirank ) // deal with my entities, others will deal with theirs
 				it->SendTo(it->IntegerArray(tag_new_processors));
 			/*
 			{
