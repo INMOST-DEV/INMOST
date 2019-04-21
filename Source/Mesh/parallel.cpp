@@ -5936,7 +5936,7 @@ namespace INMOST
 	void Mesh::ExchangeMarked(enum Action action)
 	{
 		ENTER_FUNC();
-		bool dely_delete = true;
+		bool dely_delete = false;
 		if( m_state == Serial ) return;
 #if defined(USE_MPI)
         INMOST_DATA_BIG_ENUM_TYPE num_wait;
@@ -6194,28 +6194,33 @@ namespace INMOST
 					}
 				}
 			}
-			for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype)) if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
-			for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
+			for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
 			{
-				Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
-				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
-				if( new_procs.empty() ) continue;
-				Storage::integer new_owner = it->Integer(tag_new_owner);
-				it->IntegerDF(tag_owner) = new_owner;
-				old_procs.replace(old_procs.begin(),old_procs.end(),new_procs.begin(),new_procs.end());
-				if( new_owner == mpirank )
+				if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
 				{
-					if( old_procs.size() == 1 ) //there is only one processors and that's me
-						SetStatus(*it,Element::Owned);
-					else
-						SetStatus(*it,Element::Shared);
-				}
-				else SetStatus(*it,Element::Ghost);
-				if( dely_delete && !std::binary_search(old_procs.begin(),old_procs.end(),mpirank) )
-				{
-					if( etype == ESET )
-						ElementSet(this,*it).DeleteSet();
-					else Delete(*it);
+					for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
+					{
+						Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
+						Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
+						if( new_procs.empty() ) continue;
+						Storage::integer new_owner = it->Integer(tag_new_owner);
+						it->IntegerDF(tag_owner) = new_owner;
+						old_procs.replace(old_procs.begin(),old_procs.end(),new_procs.begin(),new_procs.end());
+						if( new_owner == mpirank )
+						{
+							if( old_procs.size() == 1 ) //there is only one processors and that's me
+								SetStatus(*it,Element::Owned);
+							else
+								SetStatus(*it,Element::Shared);
+						}
+						else SetStatus(*it,Element::Ghost);
+						if( dely_delete && !std::binary_search(old_procs.begin(),old_procs.end(),mpirank) )
+						{
+							if( etype == ESET )
+								ElementSet(this,*it).DeleteSet();
+							else Delete(*it);
+						}
+					}
 				}
 			}
 			EXIT_BLOCK();
@@ -7149,6 +7154,8 @@ namespace INMOST
 			if( !new_procs.empty() ) 
 				it->Integer(tag_new_owner) = new_procs[0];
 		}
+		
+		ExchangeData(tag_new_owner,ESET,0);
 		/*
 		{
 			std::fstream fout("file"+std::to_string(GetProcessorRank())+".txt",std::ios::out);
