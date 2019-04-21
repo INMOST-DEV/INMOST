@@ -101,7 +101,7 @@ int main(int argc, char ** argv)
 		{
 
 
-			double step_time = Timer();
+			double step_time = Timer(), ref_time, crs_time, redist_time = 0, tmp_time;
 
 			cnt[0] = cnt0[0] + 0.25*r0*sin(k/20.0*M_PI);
 			cnt[1] = cnt0[1] + 0.25*r0*cos(k/20.0*M_PI);
@@ -115,6 +115,7 @@ int main(int argc, char ** argv)
 			int refcnt = 0;
 			do
 			{
+				ref_time = Timer();
 				numref = 0;
 				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) 
 				{
@@ -138,27 +139,31 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
+					tmp_time = Timer();
 #if defined(USE_PARTITIONER)
 					if( balance_mesh_refine && refcnt == 0)
 					{
 						//m.Barrier();
 						am.ComputeWeightRefine(indicator,wgt);
 						p.SetWeight(wgt);
-						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						
 						p.Evaluate();
 						m.Redistribute();
 						
-						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						//m.Barrier();
 					}
 #endif
-					ncells = m.TotalNumberOf(CELL);
-					nfaces = m.TotalNumberOf(FACE);
-					nedges = m.TotalNumberOf(EDGE);
-					nnodes = m.TotalNumberOf(NODE);
+					tmp_time = Timer() - tmp_time;
+					redist_time += tmp_time;
+					ref_time += tmp_time;
+					//ncells = m.TotalNumberOf(CELL);
+					//nfaces = m.TotalNumberOf(FACE);
+					//nedges = m.TotalNumberOf(EDGE);
+					//nnodes = m.TotalNumberOf(NODE);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << "beg k " << k << " refcnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
+						std::cout << "beg k " << k << " refcnt " << refcnt << std::endl;// << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					//m.BeginSequentialCode();
 					//std::cout << m.GetProcessorRank() << " cells " << m.NumberOfCells() << std::endl;
 					//m.EndSequentialCode();
@@ -166,12 +171,12 @@ int main(int argc, char ** argv)
 					if (!am.Refine(indicator)) break;
 					
 					
-					ncells = m.TotalNumberOf(CELL);
-					nfaces = m.TotalNumberOf(FACE);
-					nedges = m.TotalNumberOf(EDGE);
-					nnodes = m.TotalNumberOf(NODE);
+					//ncells = m.TotalNumberOf(CELL);
+					//nfaces = m.TotalNumberOf(FACE);
+					//nedges = m.TotalNumberOf(EDGE);
+					//nnodes = m.TotalNumberOf(NODE);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << "end k " << k << " refcnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
+						std::cout << "end k " << k << " refcnt " << refcnt << std::endl;// << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					
 					if( false )
 					{
@@ -186,6 +191,9 @@ int main(int argc, char ** argv)
 				refcnt++;
 			}
 			while(numref);
+			ref_time = Timer() - ref_time;
+			
+			crs_time = Timer();
 			refcnt = 0;
 			do
 			{
@@ -212,38 +220,42 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
+					tmp_time = Timer();
 #if defined(USE_PARTITIONER)
 					if( balance_mesh_coarse && refcnt == 0)
 					{
 						m.Barrier();
 						am.ComputeWeightCoarse(indicator,wgt);
 						p.SetWeight(wgt);
-						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						p.Evaluate();
 						m.Redistribute();
-						std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						m.Barrier();
 					}
 #endif
+					tmp_time = Timer() - tmp_time;
+					redist_time += tmp_time;
+					crs_time += tmp_time;
 					
-					ncells = m.TotalNumberOf(CELL);
-					nfaces = m.TotalNumberOf(FACE);
-					nedges = m.TotalNumberOf(EDGE);
-					nnodes = m.TotalNumberOf(NODE);
+					//ncells = m.TotalNumberOf(CELL);
+					//nfaces = m.TotalNumberOf(FACE);
+					//nedges = m.TotalNumberOf(EDGE);
+					//nnodes = m.TotalNumberOf(NODE);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << ":beg k " << k << " crscnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
+						std::cout << ":beg k " << k << " crscnt " << refcnt << std::endl;//" cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					//m.BeginSequentialCode();
 					//std::cout << m.GetProcessorRank() << " cells " << m.NumberOfCells() << std::endl;
 					//m.EndSequentialCode();
 					
 					if( !am.Coarse(indicator) ) break;
 					
-					ncells = m.TotalNumberOf(CELL);
-					nfaces = m.TotalNumberOf(FACE);
-					nedges = m.TotalNumberOf(EDGE);
-					nnodes = m.TotalNumberOf(NODE);
+					//ncells = m.TotalNumberOf(CELL);
+					//nfaces = m.TotalNumberOf(FACE);
+					//nedges = m.TotalNumberOf(EDGE);
+					//nnodes = m.TotalNumberOf(NODE);
 					if( m.GetProcessorRank() == 0 )
-						std::cout << ":end k " << k << " crscnt " << refcnt << " cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
+						std::cout << ":end k " << k << " crscnt " << refcnt << std::endl;//" cells " << ncells << " faces " << nfaces << " nedges " << nedges << " nnodes " << nnodes << std::endl;
 					
 					if( false ) 
 					{
@@ -259,22 +271,25 @@ int main(int argc, char ** argv)
 				refcnt++;
 			}
 			while(numref);
+			crs_time = Timer() - crs_time;
 			
-			
+			tmp_time = Timer();
 #if defined(USE_PARTITIONER)
 			if( balance_mesh )
 			{
 				//m.Barrier();
 				p.SetWeight(Tag());
-				std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 				p.Evaluate();
 				m.Redistribute();
-				std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 				//m.Barrier();
 			}
 #endif
+			tmp_time = Time() - tmp_time;
+			redist_time += tmp_time;
 			
-			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+			//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			 
 			 
 
@@ -298,7 +313,7 @@ int main(int argc, char ** argv)
 			else if( m.GetProcessorRank() == 0 ) std::cout << "step " << k << std::endl;
 			
 			step_time = Timer() - step_time;
-			if( m.GetProcessorRank() == 0 ) std::cout << "step time " << step_time << std::endl;
+			if( m.GetProcessorRank() == 0 ) std::cout << "step time " << step_time << " refine " << ref_time << " coarse " << crs_time << " balance " << redist_time << std::endl;
 		}
 
 
