@@ -7052,6 +7052,7 @@ namespace INMOST
 			ExchangeData(tag_new_processors,CELL,0);
 			
 			ENTER_BLOCK();
+			REPORT_STR("Extend processors list to lower level adjacencies");
 			for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 			{
 				for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
@@ -7067,12 +7068,10 @@ namespace INMOST
 				}
 			}
 			
-			
-			
+			EXIT_BLOCK();
 			ReduceData(tag_new_processors,FACE| EDGE| NODE,0,RedistUnpack);
 			ExchangeData(tag_new_processors,FACE|EDGE|NODE,0);
 			REPORT_STR("Detect processors");
-			EXIT_BLOCK();
 		}
 		else 
 		{
@@ -7112,6 +7111,27 @@ namespace INMOST
 		}
 		ReduceData(tag_new_processors,ESET|CELL|FACE|EDGE|NODE,0,RedistUnpack);
 		ExchangeData(tag_new_processors,ESET|CELL|FACE|EDGE|NODE,0);
+		EXIT_BLOCK();
+
+		ENTER_BLOCK();
+		REPORT_STR("Extend processors list to lower level adjacencies");
+		//OPTIMIZE!!!
+		for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
+		{
+			for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
+			{
+				Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
+				determine_my_procs_high(this,*it,tag_new_processors,result,intersection);
+				if( result.empty() ) 
+				{
+					procs.clear();
+					procs.push_back(mpirank);
+				}
+				else procs.replace(procs.begin(),procs.end(),result.begin(),result.end());
+			}
+		}
+		ReduceData(tag_new_processors,FACE| EDGE| NODE,0,RedistUnpack);
+		ExchangeData(tag_new_processors,FACE|EDGE|NODE,0);
 		EXIT_BLOCK();
 
 		ENTER_BLOCK();
