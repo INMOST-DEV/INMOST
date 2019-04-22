@@ -331,7 +331,7 @@ namespace INMOST
 			}
         }
 		if( !m->HaveGlobalID(CELL) ) m->AssignGlobalID(CELL); //for unique set names
-		m->ResolveSets();
+		//m->ResolveSets();
 	}
 	
 	AdaptiveMesh::AdaptiveMesh(Mesh & _m) : m(&_m)
@@ -1331,7 +1331,7 @@ namespace INMOST
 
 		m->ExchangeData(parent_set,CELL,0);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-		m->ResolveSets();
+		//m->ResolveSets();
 
 		/*
 

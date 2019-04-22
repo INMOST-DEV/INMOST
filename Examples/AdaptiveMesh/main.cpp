@@ -3,9 +3,9 @@
 using namespace INMOST;
 
 bool output_file = false;
-bool balance_mesh = false;
-bool balance_mesh_refine = true;
-bool balance_mesh_coarse = true;
+bool balance_mesh = true;
+bool balance_mesh_refine = false;
+bool balance_mesh_coarse = false;
 std::string file_format = ".pmf";
 
 int main(int argc, char ** argv)
@@ -35,8 +35,8 @@ int main(int argc, char ** argv)
 		if( true )
 		{
 			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
-			//p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
-			p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
+			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+			//p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
 			//p.SetMethod(Partitioner::Parmetis,Partitioner::Refine);
 			p.Evaluate();
 			m.Redistribute();
@@ -44,7 +44,7 @@ int main(int argc, char ** argv)
 			
 			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			m.Barrier();
-			p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
+			//p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
 		}
 #endif
 		m.ExchangeGhost(1,FACE);
@@ -110,12 +110,11 @@ int main(int argc, char ** argv)
 			
 			//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			
-			
+			ref_time = Timer();
 			int numref;
 			int refcnt = 0;
 			do
 			{
-				ref_time = Timer();
 				numref = 0;
 				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) 
 				{
@@ -147,10 +146,11 @@ int main(int argc, char ** argv)
 						am.ComputeWeightRefine(indicator,wgt);
 						p.SetWeight(wgt);
 						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
-						
+						if( m.GetProcessorRank() == 0 ) std::cout << "call Evaluate refine" << std::endl;
 						p.Evaluate();
+						if( m.GetProcessorRank() == 0 ) std::cout << "call Redistribute refine" << std::endl;
 						m.Redistribute();
-						
+						if( m.GetProcessorRank() == 0 ) std::cout << "balance done refine" << std::endl;
 						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						//m.Barrier();
 					}
@@ -228,8 +228,11 @@ int main(int argc, char ** argv)
 						am.ComputeWeightCoarse(indicator,wgt);
 						p.SetWeight(wgt);
 						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+						if( m.GetProcessorRank() == 0 ) std::cout << "call Evaluate coarse" << std::endl;
 						p.Evaluate();
+						if( m.GetProcessorRank() == 0 ) std::cout << "call Redistribute coarse" << std::endl;
 						m.Redistribute();
+						if( m.GetProcessorRank() == 0 ) std::cout << "balance done coarse" << std::endl;
 						//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 						m.Barrier();
 					}
@@ -280,13 +283,16 @@ int main(int argc, char ** argv)
 				//m.Barrier();
 				p.SetWeight(Tag());
 				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				if( m.GetProcessorRank() == 0 ) std::cout << "call Evaluate" << std::endl;
 				p.Evaluate();
+				if( m.GetProcessorRank() == 0 ) std::cout << "call Redistribute" << std::endl;
 				m.Redistribute();
+				if( m.GetProcessorRank() == 0 ) std::cout << "balance done" << std::endl;
 				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 				//m.Barrier();
 			}
 #endif
-			tmp_time = Time() - tmp_time;
+			tmp_time = Timer() - tmp_time;
 			redist_time += tmp_time;
 			
 			//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
