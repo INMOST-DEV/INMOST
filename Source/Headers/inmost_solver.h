@@ -261,7 +261,7 @@ namespace INMOST
 		/// and the preconditioner have been already constructed.
 		///
 		/// @see Sparse::SetMatrix
-		bool Solve(INMOST::Sparse::Vector &RHS, INMOST::Sparse::Vector &SOL);
+		bool Solve(Sparse::Vector &RHS, Sparse::Vector &SOL);
 		/// Clear all internal data of the current solver including matrix, preconditioner etc.
 		bool Clear();
 		/// Get the solver output parameter
@@ -342,7 +342,7 @@ namespace INMOST
 		/// Return the number of iterations performed by the last solution.
 		/// @see Sparse::Solve
 		INMOST_DATA_ENUM_TYPE Iterations() const;
-		/// Return the final residual achieved by the last solution.
+		/// Return the final precondioned residual achieved by the last solution.
 		/// @see Sparse::Solve
 		INMOST_DATA_REAL_TYPE Residual() const;
 		/// Get the reason of convergence or divergence of the last solution.

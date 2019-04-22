@@ -926,6 +926,9 @@ namespace INMOST
 				out[ind] = beta * out[ind] + alpha * (*this)[ind].RowVec(x);
 			// outer procedure should update out vector, if needed
 		}
+		
+		
+		
 
 
 		void Matrix::MatVecTranspose(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y

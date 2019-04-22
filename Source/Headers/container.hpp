@@ -2987,7 +2987,7 @@ namespace INMOST
 			if( last_alloc.back() != 0 ) std::cout << "warning: memory pool not empty on deallocation!!!" << std::endl;
 			for(unsigned k = 0; k < pool.size(); ++k)
 			{
-				std::cout << (void *)pool[k] << " ";
+				//std::cout << (void *)pool[k] << " ";
 				free(pool[k]);
 			}
 			std::cout << std::endl;

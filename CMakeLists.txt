@@ -5,7 +5,7 @@ project (INMOST)
 include_directories("Source/Headers")
 
 set(INMOST_MAJOR_VERSION 0)
-set(INMOST_MINOR_VERSION 1)
+set(INMOST_MINOR_VERSION 3)
 set(INMOST_PATCH_VERSION 0)
 set(INMOST_VERSION "${INMOST_MAJOR_VERSION}.${INMOST_MINOR_VERSION}.${INMOST_PATCH_VERSION}")
 
@@ -28,6 +28,7 @@ option(COMPILE_EXAMPLES "Compile examples" OFF)
 option(COMPILE_TESTS "Compile some tests" OFF)
 
 option(USE_PARTITIONER_PARMETIS "Use ParMetis partitioner" OFF)
+option(USE_PARTITIONER_PARMETIS_DOWNLOAD "Attempts to download ParMetis if library not found" OFF)
 option(USE_PARTITIONER_ZOLTAN "Use Zoltan partitioner" OFF)
 option(USE_SOLVER_METIS "Use METIS for matrix reordering" OFF)
 option(USE_SOLVER_MONDRIAAN "Use Mondriaan for matrix reordering" OFF)
@@ -36,6 +37,8 @@ option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
+
+set(LIB_DOWNLOAD_PATH "${CMAKE_BINARY_DIR}/Libraries/download")
 
 if( MSVC )
 option(USE_MT "Use /MT switch instead of /MD switch for libraries generated with Visual Studio" OFF)
@@ -100,8 +103,52 @@ endif()
 if(USE_PARTITIONER_PARMETIS)
 	find_package(ParMETIS)
 	if(NOT PARMETIS_FOUND)
-		set(USE_PARTITIONER_PARMETIS OFF CACHE BOOL "Use ParMetis partitioner" FORCE)
+		#set(USE_PARTITIONER_PARMETIS OFF CACHE BOOL "Use ParMetis partitioner" FORCE)
 		message("PARMETIS NOT FOUND")
+
+		if( USE_PARTITIONER_PARMETIS_DOWNLOAD )
+			include(ExternalProject)
+			message("-- Download ParMetis")
+			string (REPLACE ";" "|" PASS_MPI "${MPI_INCLUDE_PATH}")
+			message("-- Passing MPI include to ParMETIS: '${PASS_MPI}'")
+			
+			ExternalProject_Add(ParMETIS
+								#This one is not good
+								#GIT_REPOSITORY "https://github.com/ibaned/parmetis.git"
+								GIT_REPOSITORY "https://github.com/scibuilder/parmetis.git"
+								GIT_TAG "master"
+								#UPDATE_DISCONNECTED ${EXTERNAL_NOUPDATE}
+								PREFIX "${LIB_DOWNLOAD_PATH}"
+								#this command is responsible for update of repository from git
+								#UPDATE_COMMAND ""
+								LIST_SEPARATOR | # Use the alternate list separator
+								#for the one from ibaned
+								#CMAKE_ARGS "-DMPI_INCLUDE_PATH:PATH='${PASS_MPI}'"
+								CMAKE_ARGS  "-DDISABLE_PARMETIS_PROGRAMS:BOOL=TRUE "
+											"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
+											"-DCMAKE_BUILD_TYPE=Release "
+											"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
+											"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
+											"-DCMAKE_POSITION_INDEPENDENT_CODE=ON "
+											"-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} "
+											"-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
+								)
+			set(PARMETIS_INCLUDE_DIR "${LIB_DOWNLOAD_PATH}/include")
+			set(METIS_INCLUDE_DIR "${LIB_DOWNLOAD_PATH}/include")
+			if( WIN32 )
+				set(PARMETIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/parmetis.lib;${LIB_DOWNLOAD_PATH}/lib/metis.lib")
+				set(METIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/metis.lib")
+			else( WIN32 )
+				set(PARMETIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/libparmetis.a;${LIB_DOWNLOAD_PATH}/lib/libmetis.a")
+				set(METIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/libmetis.a")
+			endif( WIN32 )
+			message("-- PARMETIS_INCLUDE_DIR: ${PARMETIS_INCLUDE_DIR}")
+			message("-- PARMETIS_LIBRARIES: ${PARMETIS_LIBRARIES}")
+			include_directories(${PARMETIS_INCLUDE_DIR})
+			include_directories(${METIS_INCLUDE_DIR})
+		else(USE_PARTITIONER_PARMETIS_DOWNLOAD)
+			set(USE_PARTITIONER_PARMETIS OFF CACHE BOOL "Use ParMetis partitioner" FORCE)
+		endif(USE_PARTITIONER_PARMETIS_DOWNLOAD)
 	else()
 		include_directories(${PARMETIS_INCLUDE_DIR})
 		include_directories(${METIS_INCLUDE_DIR})

@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	Tag volumes_tag = m1.CreateTag("VOLUMES_FOR_NORMS_CALCULATION",DATA_REAL,CELL|FACE|EDGE|NODE,NONE,1);
+	TagReal volumes_tag = m1.CreateTag("VOLUMES_FOR_NORMS_CALCULATION",DATA_REAL,CELL|FACE|EDGE|NODE,NONE,1);
 	
 	Tag ref12 = m1.CreateTag("M1TOM2",DATA_REMOTE_REFERENCE,NODE|EDGE|FACE|CELL,NONE,1);
 	Tag ref21 = m2.CreateTag("M2TOM1",DATA_REMOTE_REFERENCE,NODE|EDGE|FACE|CELL,NONE,1);
@@ -113,9 +113,12 @@ int main(int argc, char *argv[])
 		std::cout << "matching done for " << ElementTypeName(etype) << std::endl;
 	}
 		
-	
+	/*
 	for(ElementType etype = NODE; etype <= CELL; etype = etype << 1)
 	{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 		for(int id = 0; id < m1.LastLocalID(etype); id++)
 		{
 			Element c1 = m1.ElementByLocalID(etype,id);
@@ -130,7 +133,26 @@ int main(int argc, char *argv[])
 				c1->RealDF(volumes_tag) = vol;
 			}
 		}
+		std::cout << "volumes precomputed for " << ElementTypeName(etype) << std::endl;
 	}
+	*/
+	for(int id = 0; id < m1.CellLastLocalID(); id++)
+	{
+		Cell c1 = m1.CellByLocalID(id);
+		if( c1.isValid() )
+		{
+			double vol = c1.Volume();
+			volumes_tag[c1] = vol;
+			
+			for(ElementType etype = NODE; etype <= FACE; etype = NextElementType(etype) )
+			{
+				ElementArray<Element> adj = c1.getAdjElements(etype);
+				for(ElementArray<Element>::iterator it = adj.begin(); it != adj.end(); ++it)
+					volumes_tag[*it] += vol / adj.size();
+			}
+		}
+	}
+	std::cout << "volumes precomputed" << std::endl;
 	
 	for(Mesh::iteratorTag t = m1.BeginTag(); t != m1.EndTag(); t++)
 	{
@@ -163,7 +185,16 @@ int main(int argc, char *argv[])
 								{
 									absval = fabs(arr1[k]-arr2[k]);
 									
-									arr1[k] = absval;
+									if( *t != m1.CoordsTag() )
+										arr1[k] = absval;
+										
+									if( absval > 1.0e-3 )
+									{
+										std::cout << "tag " << t->GetTagName() << " position " << k;
+										std::cout << " on MESH1:" << ElementTypeName(etype) << ":" << c1.LocalID() << " " << arr1[k];
+										std::cout << " on MESH2:" << ElementTypeName(etype) << ":" << c2.LocalID() << " " << arr2[k];
+										std::cout << std::endl;
+									}
 									
 									
 									if( Cnorm < absval ) Cnorm = absval;
@@ -196,7 +227,7 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	
+	m1.DeleteTag(ref12);
 	m1.DeleteTag(volumes_tag);
 	m1.Save("diff.gmv");
 	m1.Save("diff.vtk");

@@ -4377,6 +4377,7 @@ namespace INMOST
 			//compute cell centers that lay inside
 			if (true) //TODO16
 			{
+				TagRealArray ecl_centroid;
 				if( true )
 				{
 					if (verbosity > 0)
@@ -4384,9 +4385,10 @@ namespace INMOST
 						ttt = Timer();
 						std::cout << "Compute geometric data for cell centers" << std::endl;
 					}
-					GeomParam table;
-					table[CENTROID] = CELL;
-					PrepareGeometricData(table);
+					//GeomParam table;
+					//table[CENTROID] = CELL;
+					//PrepareGeometricData(table);
+					ecl_centroid = CreateTag("ECL_CENTROID",DATA_REAL,CELL,NONE,3);
 					if (verbosity)
 						std::cout << "Finished computing geometric data time " << Timer() - ttt << std::endl;
 					//overwrite centroid info
@@ -4416,14 +4418,14 @@ namespace INMOST
 								ctop[1] += tc[1] * 0.25;
 								ctop[2] += tc[2] * 0.25;
 							}
-							real_array cnt = c->RealArray(centroid_tag);
+							real_array cnt = c->RealArray(ecl_centroid);
 							cnt[0] = (cbottom[0] + ctop[0])*0.5;
 							cnt[1] = (cbottom[1] + ctop[1])*0.5;
 							cnt[2] = (cbottom[2] + ctop[2])*0.5;
 
 						}
 					}
-					ExchangeData(centroid_tag,CELL,0);
+					ExchangeData(ecl_centroid,CELL,0);
 					if (verbosity)
 						std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
 				}
@@ -4443,12 +4445,15 @@ namespace INMOST
 					integer bnum = c->Integer(cell_number) - 1;
 					if (bnum >= 0) //maybe this cell existed before
 					{
-						Storage::real cnt[3];
-						c->Centroid(cnt);
-						if (!c->Inside(cnt))
+						if( ecl_centroid.isValid() )
 						{
-							//std::cout << "Centroid is outside of cell " << bnum << std::endl;
-							num_outside++;
+							if (!c->Inside(ecl_centroid[c].data())) num_outside++;
+						}
+						else
+						{
+							Storage::real cnt[3];
+							c->Centroid(cnt);
+							if (!c->Inside(cnt)) num_outside++;
 						}
 						num_total++;
 					}
