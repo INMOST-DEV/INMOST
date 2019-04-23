@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	for(Mesh::iteratorTag t = m1.BeginTag(); t != m1.EndTag(); t++)
 	{
 		//if( *t == m1.CoordsTag() ) continue;
-		if( t->GetSize() == ENUMUNDEF ) continue;
+		//if( t->GetSize() == ENUMUNDEF ) continue;
 		if( t->GetDataType() != DATA_REAL && t->GetDataType() != DATA_VARIABLE ) continue;
 		if( m2.HaveTag(t->GetTagName()) )
 		{
@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
 				if( m1.ElementDefined(*t,etype) && m2.ElementDefined(t2,etype) )
 				{
 					Storage::real Cnorm = 0, L1norm = 0, L2norm = 0, absval, Lvol = 0, vol;
+					int err = 0, tot = 0, diff_size = 0, tot_size = 0;
 					for(int id = 0; id < m1.LastLocalID(etype); id++)
 					{
 						Element c1 = m1.ElementByLocalID(etype,id);
@@ -181,21 +182,35 @@ int main(int argc, char *argv[])
 							{
 								Storage::real_array arr1 = c1->RealArray(*t);
 								Storage::real_array arr2 = c2->RealArray(t2);
+								tot_size++;
+								if( arr1.size() != arr2.size() )
+								{
+									diff_size++;
+									continue;
+									std::cout << "tag " << t->GetTagName() << " position " << k;
+									std::cout << " arrays of different size ";
+									std::cout << " on MESH1:" << ElementTypeName(etype) << ":" << c1.LocalID() << " " << arr1.size();
+									std::cout << " on MESH2:" << ElementTypeName(etype) << ":" << c2.LocalID() << " " << arr2.size();
+									std::cout << std::endl;
+									continue;
+								}
 								for(int k = 0; k < (int)arr1.size(); k++)
 								{
 									absval = fabs(arr1[k]-arr2[k]);
-									
-									if( *t != m1.CoordsTag() )
-										arr1[k] = absval;
 										
-									if( absval > 1.0e-3 )
+									if( false )//absval > 1.0e-3 )
 									{
 										std::cout << "tag " << t->GetTagName() << " position " << k;
 										std::cout << " on MESH1:" << ElementTypeName(etype) << ":" << c1.LocalID() << " " << arr1[k];
 										std::cout << " on MESH2:" << ElementTypeName(etype) << ":" << c2.LocalID() << " " << arr2[k];
 										std::cout << std::endl;
+										err++;
 									}
 									
+									if( *t != m1.CoordsTag() )
+										arr1[k] = absval;
+									
+									tot++;
 									
 									if( Cnorm < absval ) Cnorm = absval;
 									L1norm += absval*vol;
@@ -222,6 +237,8 @@ int main(int argc, char *argv[])
 							}
 						}
 					}
+					if( diff_size ) std::cout << "Size is different on " << diff_size << " / " << tot_size << " of " << ElementTypeName(etype) << std::endl;
+					if( err ) std::cout << "Reported error on " << err << " / " << tot << " of " << ElementTypeName(etype) << std::endl;
 					std::cout << "Data " << t->GetTagName() << " on " << ElementTypeName(etype) << " Cnorm " << Cnorm << " L1norm " << L1norm/Lvol << " L2norm " << sqrt(L2norm/Lvol) << std::endl;
 				}
 			}
