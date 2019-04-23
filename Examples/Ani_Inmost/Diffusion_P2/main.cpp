@@ -7,17 +7,15 @@
 #include "inmost.h"
 #include "utils.h"
 #include "inmost_ani_fem.h"
-#define USE_MPI
-#define USE_PARTITIONER
+//#define USE_MPI
+//#define USE_PARTITIONER
 using namespace INMOST;
 #if defined(USE_MPI)
 #define BARRIER MPI_Barrier(MPI_COMM_WORLD);
 #else
 #define BARRIER
 #endif
-extern "C" {
- int dbc_(double &x, double &y, double &z, int &label, double *DDATA,int *IDATA,int *iSYS, double* eBC);
-};
+
 
 
 
@@ -222,14 +220,16 @@ int main(int argc, char **argv) {
             it->Integer(Label_tag) = No_BC_mark;
         }
     }
-    for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++) {
+
+    for (Mesh::iteratorFace it = mesh_main->BeginFace(); it != mesh_main->EndFace(); it++) {
         if (it->GetStatus() != Element::Ghost) {
-            if (it->Coords()[0] == 0) it->Integer(Label_tag) = 1;
-            if ((it->Coords()[0] == 0) && (it->Coords()[1] >= 0.25) && (it->Coords()[1] <= 0.75) &&
-                (it->Coords()[2] >= 0.25) && (it->Coords()[2] <= 0.75))
-                it->Integer(Label_tag) = 2;
+            ElementArray<Node> nodes = it->getNodes();
+            for(i=0;i<nodes.size();i++){
+                nodes[i].Integer(Label_tag) = std::max(nodes[i].Integer(Label_tag),it->Integer(Label_tag));
+            }
         }
     }
+
     mesh_main->ExchangeData(Label_tag, NODE, 0);
     mesh_main->ExchangeData(Label_tag, EDGE, 0);
     //////////////////////////////////create discretization/////////////////////////////
@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
     if (mesh_main->GetProcessorRank() == 0)
         std::cout << "before create Discr" << std::endl;
 
-    discr->PrepareProblemAni(1, 0, 0, 0, ANITYPE, REVERSE);
+    discr->PrepareProblemAni(1, 1, 0, 0, ANITYPE, REVERSE);
     if (processRank == 0) {
         std::cout << " preparation success" << std::endl;
     }
@@ -248,178 +248,79 @@ int main(int argc, char **argv) {
     double DeltaT = 0.015;
     int Itime = 0;
     double Time = 0;
-    double FinalTime = 0.045;
-    double Velocity[3] = {1, 0, 0};
-    double D_coeff = 1e-4;
+    double FinalTime = 0.090    ;
+    double Velocity[3] = {3, 2, 1};
+    double D_coeff = 1;
+    Tag Sol_tag = mesh_main->CreateTag("U", DATA_REAL, NODE|EDGE, NODE, 1);
+    double *DDATA = new double[4];
 
-    Tag Sol_tag = mesh_main->CreateTag("U", DATA_REAL, NODE, NODE, 2);
-    Tag Sol_tags[2];// = mesh_main->CreateTag("U", DATA_REAL, NODE, NODE, 2);
-    Sol_tags[0] = mesh_main->CreateTag("U0", DATA_REAL, NODE, NODE, 1);
-    Sol_tags[1] = mesh_main->CreateTag("U1", DATA_REAL, NODE, NODE, 1);
-
-
-    double *DDATA = new double[5 + mesh_main->NumberOfCells() + mesh_main->NumberOfNodes()];
-    DDATA[0] = D_coeff;// ! D
-    DDATA[1] = Velocity[0];//    ! v_x
-    DDATA[2] = Velocity[1];//    ! v_y
-    DDATA[3] = Velocity[2];//   ! v_y
-    DDATA[4] = DeltaT;
-
-    for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++)
-        if (it->GetStatus() != Element::Ghost) {
-            //std::cout<<it->GlobalID()<<" "<<sol_ind<<" "<<prev_sol_ind<< std::endl;
-            if (it->Integer(Label_tag) > 0) {
-                double dd[2], ec[2];
-                int id[2];
-                double x0 = it->Coords()[0];
-                double y = it->Coords()[1];
-                double z = it->Coords()[2];
-                int lb = it->Integer(Label_tag);
-                int iSYS[21];
-                dbc_(x0, y, z, lb, dd, id, iSYS, ec);
-                it->Real(Sol_tags[sol_ind]) = ec[0];
-                it->Real(Sol_tags[prev_sol_ind]) = ec[0];
-            } else {
-                it->Real(Sol_tags[sol_ind]) = 0.0;
-                it->Real(Sol_tags[prev_sol_ind]) = 0.0;
-            }
-        }
-    mesh_main->ExchangeData(Sol_tag, NODE, 0);
-    mesh_main->ExchangeData(Sol_tags[0], NODE, 0);
-    mesh_main->ExchangeData(Sol_tags[1], NODE, 0);
-    //std::cout<<"end set IC"<<std::endl;
-    int *IDATA = new int[5];
-    IDATA[0] = 5 + mesh_main->NumberOfCells() + mesh_main->NumberOfNodes();
-
-    sum_t_prepare = 0.0;
-    sum_t_assmble = 0.0;
-    sum_t_solve = 0.0;
-    sum_t_exch = 0.0;
-    BARRIER
-    t_prepare = Timer();
-
-    do {
-        BARRIER
-        t_begin_it = Timer();
-        Solver solv = Solver(solverName, "test");
-
-        Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
-        Sparse::Vector b("rhs"); // Declare the right-hand side vector
-        Sparse::Vector x("sol"); // Declare the solution vector
-        x.SetInterval(discr->getMinInd(), discr->getMaxInd() + 1);
+    DDATA[0] = Velocity[0];//    ! v_x
+    DDATA[1] = Velocity[1];//    ! v_y
+    DDATA[2] = Velocity[2];//   ! v_y
+    DDATA[3] = D_coeff;// ! D
+    int *IDATA = new int[1];
+    IDATA[0] = 4;
 
 
-        Itime++;
+    Solver solv = Solver(solverName, "test");
 
-        Time += DeltaT;
-        for (Mesh::iteratorCell it = mesh_main->BeginCell(); it != mesh_main->EndCell(); it++) {
-            ElementArray<Node> nodes = it->getNodes();
-            DDATA[5 + it->DataLocalID()] = 0.0;
-            for (i = 0; i < 4; i++) {
-                DDATA[5 + it->DataLocalID()] +=
-                        nodes[i].Real(Sol_tags[sol_ind]) / 2.0 - nodes[i].Real(Sol_tags[prev_sol_ind]) / 8.0;
-            }
-        }
-
-        for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++) {
-            int ind = it->IntegerArray(discr->NumTags[0])[0];
-            DDATA[5 + mesh_main->NumberOfCells() + it->DataLocalID()] =
-                    -(it->Real(Sol_tags[prev_sol_ind]) - 4 * it->Real(Sol_tags[sol_ind])) / 3.0;
-        }
-        BARRIER
-        t_prepare_it = Timer();
-
-        discr->Assemble(Label_tag, mat, b, DDATA, IDATA[0], IDATA, 5);
-
-        if (processRank == 0) {
-            std::cout << " assembling success" << std::endl;
-        }
-        BARRIER
-        t_assmble = Timer();
-
-        mat.Save("A.mtx");
-        b.Save("b.rhs");
-        solv.SetMatrix(mat);
-
-        //    BARRIER
-        if (processRank == 0) {
-            std::cout << "solving" << std::endl;
-        }
-        if (!solv.Solve(b, x)) {
-            std::cout << "solution failed, residual  " << solv.Residual() << " iterations " << solv.Iterations()
-                      << " name "
-                      << std::endl;
-            return 0;
-        }
-        BARRIER
-        t_solve = Timer();
-        if (processRank == 0) {
-            std::cout << processorsCount << " processors for Solver " << solverName;
-            std::cout << " with " << solv.Iterations() << " iterations to " << solv.Residual() << " norm" << std::endl;
-        }
-
-        for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++)
-            if (it->GetStatus() != Element::Ghost) {
-                if (it->Integer(Label_tag) > 0) {
-                    double dd[2], ec[2];
-                    int id[2];
-                    double x0 = it->Coords()[0];
-                    double y = it->Coords()[1];
-                    double z = it->Coords()[2];
-                    int lb = it->Integer(Label_tag);
-                    int iSYS[21];
-                    dbc_(x0, y, z, lb, dd, id, iSYS, ec);
-                    it->Real(Sol_tags[prev_sol_ind]) = ec[0];
-                } else {
-                    it->Real(Sol_tags[prev_sol_ind]) = x[it->IntegerArray(discr->NumTags[0])[0]];
-                }
-            }
-        mesh_main->ExchangeData(Sol_tags[prev_sol_ind], NODE, 0);
-
-        i = sol_ind;
-        sol_ind = prev_sol_ind;
-        prev_sol_ind = i;
-
-        solv.Clear();
-
-        BARRIER
-        t_exch = Timer();
-        if (processRank == 0) {
-            std::cout << "iteration " << Itime << " t_prep "
-                      << t_prepare_it - t_begin_it << " t_assmble " << t_assmble - t_prepare_it << " t_solve "
-                      << t_solve - t_assmble << " T_exchange " << t_exch - t_solve << std::endl;
-        }
-
-        sum_t_prepare += t_prepare_it - t_begin_it;
-        sum_t_assmble += t_assmble - t_prepare_it;
-        sum_t_solve += t_solve - t_assmble;
-        sum_t_exch += t_exch - t_solve;
-    } while (Time < FinalTime);
-
+    Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
+    Sparse::Vector b("rhs"); // Declare the right-hand side vector
+    Sparse::Vector x("sol"); // Declare the solution vector
+    x.SetInterval(discr->getMinInd(), discr->getMaxInd() + 1);
+    discr->Assemble(Label_tag, mat, b, DDATA, IDATA[0], IDATA, 1);
 
     if (processRank == 0) {
-        std::cout << std::endl;
-        std::cout << "End of program, Time init " << t_init - t0 << " t_refine " << t_refine - t_init << " t_prepare "
-                  << t_prepare - t_refine << std::endl;
-        std::cout << "iterations number " << Itime << " t_prep "
-                  << sum_t_prepare << " t_assmble " << sum_t_assmble << " t_solve "
-                  << sum_t_solve << " T_exchange " << sum_t_exch << std::endl;
+        std::cout << " assembling success" << std::endl;
     }
+    BARRIER
+    t_assmble = Timer();
 
-    std::vector<Tag> tags;
-    tags.push_back(Sol_tags[sol_ind]);
+    mat.Save("A.mtx");
+    b.Save("b.rhs");
+    solv.SetMatrix(mat);
+
+    //    BARRIER
+    if (processRank == 0) {
+        std::cout << "solving" << std::endl;
+    }
+    if (!solv.Solve(b, x)) {
+        std::cout << "solution failed, residual  " << solv.Residual() << " iterations " << solv.Iterations()
+                  << " name "
+                  << std::endl;
+        return 0;
+    }
+    if (processRank == 0) {
+        std::cout << "solving success" << std::endl;
+    }
+    for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++)
+        if (it->GetStatus() != Element::Ghost) {
+
+            {
+                it->Real(Sol_tag) = x[it->IntegerArray(discr->NumTags[0])[0]];
+            }
+        }
+
+    for (Mesh::iteratorEdge it = mesh_main->BeginEdge(); it != mesh_main->EndEdge(); it++)
+        if (it->GetStatus() != Element::Ghost) {
+
+            {
+                it->Real(Sol_tag) = x[it->IntegerArray(discr->NumTags[1])[0]];
+            }
+        }
+
+    mesh_main->ExchangeData(Sol_tag, NODE|EDGE, 0);
+
+
+    // std::vector<Tag> tags;
+    // tags.push_back(Sol_tags[sol_ind]);
     std::vector<Tag> tags2;
-    tags2.push_back(Sol_tags[sol_ind]);
-    tags2.push_back(Label_tag);
+    tags2.push_back(Sol_tag);
+    //tags2.push_back(Label_tag);
     WriteTags("test_writer", mesh_main, tags2);
-  /*  if (mesh_main->GetProcessorsNumber() == 1) {
-        WriteTags_vtk("test_writer.vtk", mesh_main, tags2);
-
-    } else {
-        WriteTags_pvtk("test_pvtk_writer.pvtk", mesh_main, tags2);
-    }*/
 
     //mesh_main->Save("save_sol.pvtk");
+    //return 0;
 
     return 0;
 

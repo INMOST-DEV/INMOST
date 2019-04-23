@@ -1,6 +1,6 @@
 #cmake_minimum_required(VERSION 2.6)
 #enable_language(Fortran)
-project(Elasticity)
+project(MixedHybrid)
 #enable_language (CXX C Fortran)
 
 
@@ -42,7 +42,7 @@ include_directories($ENV{ANI_DIR}/src/aniFEM)
 
 
 
-set(EXEC_NAME Elast)
+set(EXEC_NAME MixH)
 
 add_executable(${EXEC_NAME} main.cpp forlibfem.f)
 
@@ -69,6 +69,7 @@ target_link_libraries(${EXEC_NAME} $ENV{ANI_DIR}/lib/liblapack-3.2.a)
 target_link_libraries(${EXEC_NAME} $ENV{ANI_DIR}/lib/liblapack_ext-3.2.a)
 target_link_libraries(${EXEC_NAME} $ENV{ANI_DIR}/lib/libblas-3.2.a)
 endif()
+
 
 if(USE_MPI)
   message("linking ${EXEC_NAME} with MPI")

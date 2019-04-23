@@ -1,6 +1,6 @@
 #cmake_minimum_required(VERSION 2.6)
 #enable_language(Fortran)
-project(Elasticity)
+project(Stokes)
 #enable_language (CXX C Fortran)
 
 
@@ -42,7 +42,7 @@ include_directories($ENV{ANI_DIR}/src/aniFEM)
 
 
 
-set(EXEC_NAME Elast)
+set(EXEC_NAME Stokes)
 
 add_executable(${EXEC_NAME} main.cpp forlibfem.f)
 

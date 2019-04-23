@@ -88,7 +88,7 @@ void SaveMatrix(INMOST::Sparse::Matrix &mat, int MaxInd,MPI_Comm comm) {
     MPI_Comm_rank(comm, &processRank);  // Get the rank of the current process
     MPI_Comm_size(comm, &processorsCount); // Get the total number of processors used
     std::string name = mat.GetName();
-    std::string filename = name + ".mat";
+    std::string filename = name + ".mtx";
     std::string ordname = name + ".ord";
     int *buf;
     if (processRank == 0){
@@ -125,6 +125,47 @@ void SaveMatrix(INMOST::Sparse::Matrix &mat, int MaxInd,MPI_Comm comm) {
 
 
 
+void PrintCurrentMemory(std::ostream &os, INMOST::Mesh *m){
+/*
+    unsigned long int memory_test = getCurrentRSS();
+    std::cout<<"Processor rank "<< m->GetProcessorRank()<<" current memory usage "<<memory_test << " B, or "<<memory_test/(1024L)
+             <<" KB, or "<<memory_test/(1024L*1024L)<<" MB, or "<<memory_test/(1024L*1024L* 1024L) <<" GB "<<std::endl;
+    unsigned long int total_memory;
+    if (m->GetProcessorsNumber() > 1) {
+        MPI_Barrier(INMOST_MPI_COMM_WORLD);
+        MPI_Reduce(&memory_test, &total_memory, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, INMOST_MPI_COMM_WORLD);
+        MPI_Barrier(INMOST_MPI_COMM_WORLD);
+    }
+    else
+        total_memory = memory_test;
+    if(m->GetProcessorRank()==0){
+        std::cout<<"total current memory usage "<<total_memory << " B, or "<<total_memory/(1024L)
+                 <<" KB, or "<<total_memory/(1024L*1024L)<<" MB, or "<<total_memory/(1024L*1024L* 1024L) <<" GB "<<std::endl;
+    }
+
+*/
+}
+void PrintPeakMemory(std::ostream &os, INMOST::Mesh *m) {
+    /*
+    unsigned long int memory_test = getPeakRSS();
+    std::cout << "Processor rank " << m->GetProcessorRank() << " current memory usage " << memory_test << " B, or "
+              << memory_test / (1024L)
+              << " KB, or " << memory_test / (1024L * 1024L) << " MB, or " << memory_test / (1024L * 1024L * 1024L)
+              << " GB " << std::endl;
+    unsigned long int total_memory;// = m->Integrate(memory_test);
+    if (m->GetProcessorsNumber() > 1) {
+        MPI_Barrier(INMOST_MPI_COMM_WORLD);
+        MPI_Reduce(&memory_test, &total_memory, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, INMOST_MPI_COMM_WORLD);
+        MPI_Barrier(INMOST_MPI_COMM_WORLD);
+    }
+    else
+        total_memory = memory_test;
+    if(m->GetProcessorRank()==0){
+        std::cout<<"total peak memory usage "<<total_memory << " B, or "<<total_memory/(1024L)
+                 <<" KB, or "<<total_memory/(1024L*1024L)<<" MB, or "<<total_memory/(1024L*1024L* 1024L) <<" GB "<<std::endl;
+    }*/
+}
+
 
 
 
@@ -136,12 +177,13 @@ void WriteTags_element(std::string filename, INMOST::Mesh *m, std::vector<INMOST
     cur_num = 0;
     for(INMOST::Mesh::iteratorElement it = m->BeginElement(Mask); it != m->EndElement(); ++it) it->IntegerDF(set_id) = cur_num++;
 
+
     std::fstream fs;
     fs.open(filename.c_str(), std::fstream::out);
     if (!fs.is_open())
         std::cout << "DIDNT OPEN file "<<filename << "\n";
     fs<<std::setprecision(10);
-    fs << "# vtk DataFile Version 3.0 "<<std::endl << "file is written by INMOST"<<std::endl << "ASCII"<<std::endl << "DATASET UNSTRUCTURED_GRID"<<std::endl;
+    fs << "# vtk DataFile Version 2.0 "<<std::endl << "file is written by INMOST"<<std::endl << "ASCII"<<std::endl << "DATASET UNSTRUCTURED_GRID"<<std::endl;
     fs << "POINTS " << m->NumberOfNodes() << " double"<<std::endl;
     cur_num=0;
     for(INMOST::Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) {
@@ -149,9 +191,12 @@ void WriteTags_element(std::string filename, INMOST::Mesh *m, std::vector<INMOST
     }
     fs<<std::endl;
 
-    int size_of_el = m->BeginElement(Mask)->getNodes().size();
-    int num_elem = m->NumberOf(Mask);
 
+
+ //   int size_of_el = m->BeginElement(Mask)->getNodes().size();
+    int num_elem = m->NumberOf(Mask);
+    //std::cout<<"in in "<<std::endl;
+/*
     fs << "CELLS " << num_elem << " " << (size_of_el+1)*num_elem << std::endl;
     for(INMOST::Mesh::iteratorElement it = m->BeginElement(Mask); it != m->EndElement(); it++)
     {
@@ -161,9 +206,94 @@ void WriteTags_element(std::string filename, INMOST::Mesh *m, std::vector<INMOST
             fs<< nodes[j].Integer(set_id)<< " ";// << m->CellByLocalID(i).getNodes()[1].LocalID() << " " << m->CellByLocalID(i).getNodes()[2].LocalID()<< std::endl;;// tris[i].get_vert(0)->get_num() << " " << tris[i].get_vert(1)->get_num() << " " << tris[i].get_vert(2)->get_num() << std::endl;
         fs<<std::endl;
     }
+    fs<<std::endl;*/
+
+    long int count_cells=0;
+    for(INMOST::Mesh::iteratorElement it = m->BeginElement(Mask); it != m->EndElement(); it++)
+    {
+
+        switch (it->GetGeometricType()) {
+            case INMOST::Element::Vertex:
+            case INMOST::Element::Line:
+            case INMOST::Element::Tri:
+            case INMOST::Element::Quad:
+            case INMOST::Element::Polygon:
+            case INMOST::Element::MultiLine:
+            case INMOST::Element::Tet:
+            case INMOST::Element::Hex :
+            case INMOST::Element::Prism:
+            case INMOST::Element::Pyramid : {
+                count_cells += (it->getNodes().size() + 1);
+                break;
+            }
+            case INMOST::Element::Polyhedron: {
+                INMOST::ElementArray<INMOST::Face> faces = it->getFaces();
+                count_cells += faces.size();
+                for (i = 0; i < faces.size(); i++) {
+                    count_cells += 1 + faces[i].getNodes().size();
+                }
+                break;
+            }
+            case INMOST::Element::Unset :
+            default:
+            std::cout<<m->GetProcessorRank()<<" proc have fail element num "<<it->Integer(set_id)<<std::endl;
+                abort();
+        }
+    }
+    fs << "CELLS " << num_elem << " " << count_cells << std::endl;
+    for(INMOST::Mesh::iteratorElement it = m->BeginElement(Mask); it != m->EndElement(); it++)
+    {
+        switch (it->GetGeometricType()) {
+            case INMOST::Element::Vertex:
+            case INMOST::Element::Line:
+            case INMOST::Element::Tri:
+            case INMOST::Element::Quad:
+            case INMOST::Element::Polygon:
+            case INMOST::Element::MultiLine:
+            case INMOST::Element::Tet:
+            case INMOST::Element::Hex :
+            case INMOST::Element::Prism:
+            case INMOST::Element::Pyramid : {
+                INMOST::ElementArray<INMOST::Node> nodes = it->getNodes();
+                fs << nodes.size() << " ";
+                for (j = 0; j < nodes.size(); j++)
+                    fs << nodes[j].Integer(set_id)<< " ";
+                       // << m->CellByLocalID(i).getNodes()[1].LocalID() << " " << m->CellByLocalID(i).getNodes()[2].LocalID()<< std::endl;;// tris[i].get_vert(0)->get_num() << " " << tris[i].get_vert(1)->get_num() << " " << tris[i].get_vert(2)->get_num() << std::endl;
+                fs << std::endl;
+                break;
+            }
+            case INMOST::Element::Polyhedron: {
+                INMOST::ElementArray<INMOST::Face> faces = it->getFaces();
+                fs << faces.size() << " ";
+                for (i = 0; i < faces.size(); i++)
+                    fs << faces[i].getNodes().size() << " ";
+                for (i = 0; i < faces.size(); i++) {
+                    INMOST::ElementArray<INMOST::Node> nodes = faces[i].getNodes();
+                    for (j = 0; j < nodes.size(); j++)
+                        fs << nodes[j].Integer(set_id)<< " ";
+                           // << m->CellByLocalID(i).getNodes()[1].LocalID() << " " << m->CellByLocalID(i).getNodes()[2].LocalID()<< std::endl;;// tris[i].get_vert(0)->get_num() << " " << tris[i].get_vert(1)->get_num() << " " << tris[i].get_vert(2)->get_num() << std::endl;
+                }
+                fs << std::endl;
+                break;
+            }
+            case INMOST::Element::Unset :
+            default:
+                std::cout<<m->GetProcessorRank()<<" proc have fail element num "<<it->Integer(set_id)<<std::endl;
+                abort();
+
+        }
+    }
     fs<<std::endl;
+
+   // std::cout<<"in in "<<std::endl;
     fs << "CELL_TYPES " << num_elem << std::endl;
-    MPI_Barrier(INMOST_MPI_COMM_WORLD);
+
+
+
+
+
+   // MPI_Barrier(INMOST_MPI_COMM_WORLD);
+    /*
     int vtk_label;
     switch (Mask){
         case INMOST::CELL :
@@ -182,7 +312,50 @@ void WriteTags_element(std::string filename, INMOST::Mesh *m, std::vector<INMOST
     for (i = 0; i < num_elem; i++){
         fs << vtk_label<<std::endl;
     }
+*/
 
+//    fs << "CELL_TYPES " << num_elem << std::endl;
+    MPI_Barrier(INMOST_MPI_COMM_WORLD);
+    for(INMOST::Mesh::iteratorElement it = m->BeginElement(Mask); it != m->EndElement(); it++) {
+
+        switch (it->GetGeometricType()) {
+            case INMOST::Element::Vertex:
+                fs<< 1<<" ";
+                break;
+            case INMOST::Element::Line:
+                fs<< 3<<" ";
+                break;
+            case INMOST::Element::Tri:
+                fs<< 5<<" ";
+                break;
+            case INMOST::Element::Quad:
+                fs<< 9<<" ";
+                break;
+            case INMOST::Element::Polygon:
+                fs<< 7<<" ";
+                break;
+            case INMOST::Element::MultiLine:
+                fs<< 4<<" ";
+                break;
+            case INMOST::Element::Tet:
+                fs<< 10<<" ";
+                break;
+            case INMOST::Element::Hex :
+                fs<< 12<<" ";
+                break;
+            case INMOST::Element::Prism:
+                fs<< 13<<" ";
+                break;
+            case INMOST::Element::Pyramid :
+                fs<< 14<<" ";
+                break;
+            case INMOST::Element::Polyhedron:
+                fs<< 42<<" ";
+                break;
+        }
+        fs<<std::endl;
+
+    }
     MPI_Barrier(INMOST_MPI_COMM_WORLD);
     fs<<std::endl;
     for(i=0;i<tags.size();i++)
@@ -198,10 +371,10 @@ void WriteTags_element(std::string filename, INMOST::Mesh *m, std::vector<INMOST
 
     for(i=0;i<tags.size();i++)
         if(tags[i].isDefined(Mask) ){
-            if(tags[i].GetSize()>1){
-                std::cout<<"mesh proc "<<m->GetProcessorRank()<<" tag "<<tags[i].GetTagName()<< " has size more than one, "<<tags[i].GetSize()<<std::endl;
-                continue;
-            }
+           // if(tags[i].GetSize()>1){
+              //  std::cout<<"mesh proc "<<m->GetProcessorRank()<<" tag "<<tags[i].GetTagName()<< " has size more than one, "<<tags[i].GetSize()<<std::endl;
+              //  continue;
+           // }
             if (tags[i].GetSize()== 1) {
                 fs << "SCALARS " << tags[i].GetTagName();
                 if (tags[i].GetDataType() == INMOST::DATA_INTEGER) {
@@ -265,10 +438,10 @@ void WriteTags_element(std::string filename, INMOST::Mesh *m, std::vector<INMOST
     for(i=0;i<tags.size();i++)
         if(tags[i].isDefined(INMOST::NODE)){
 
-            if(tags[i].GetSize()>1){
-                std::cout<<"mesh proc "<<m->GetProcessorRank()<<" tag "<<tags[i].GetTagName()<< " has size more than one, "<<tags[i].GetSize()<<std::endl;
-                continue;
-            }
+            //if(tags[i].GetSize()>1){
+             //   std::cout<<"mesh proc "<<m->GetProcessorRank()<<" tag "<<tags[i].GetTagName()<< " has size more than one, "<<tags[i].GetSize()<<std::endl;
+             //   continue;
+            //}
             if(tags[i].GetSize()==1) {
                 fs << "SCALARS " << tags[i].GetTagName();
                 if (tags[i].GetDataType() == INMOST::DATA_INTEGER) {
@@ -290,27 +463,30 @@ void WriteTags_element(std::string filename, INMOST::Mesh *m, std::vector<INMOST
                 }
             }
             else{
-                std::stringstream ss;
-                std::string name_tag;
-                ss << j;
-                name_tag=tags[i].GetTagName() + "_"+ss.str();
-                fs << "SCALARS " << name_tag;
-                if (tags[i].GetDataType() == INMOST::DATA_INTEGER) {
-                    fs << " int  " << std::endl << "LOOKUP_TABLE default " << std::endl;
-                    for (INMOST::Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); it++) {
-                        fs << it->IntegerArray(tags[i])[j] << std::endl;
+                for(j=0;j<tags[i].GetSize();j++){
+                    std::stringstream ss;
+                    std::string name_tag;
+                    ss << j;
+                    name_tag=tags[i].GetTagName() + "_"+ss.str();
+                    fs << "SCALARS " << name_tag;
+                    if (tags[i].GetDataType() == INMOST::DATA_INTEGER) {
+                        fs << " int  " << std::endl << "LOOKUP_TABLE default " << std::endl;
+                        for (INMOST::Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); it++) {
+                            fs << it->IntegerArray(tags[i])[j] << std::endl;
+                        }
+
+                    } else {
+                        if (tags[i].GetDataType() == INMOST::DATA_REAL) {
+                            fs << " double  " << std::endl << "LOOKUP_TABLE default " << std::endl;
+                            for (INMOST::Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); it++) {
+                                fs << it->RealArray(tags[i])[j] << std::endl;
+                            }
+                        } else {
+                            std::cerr << "Wrong datatype for writing " << tags[i].GetDataType() << std::endl;
+                            exit(0);
+                        }
                     }
 
-                } else {
-                    if (tags[i].GetDataType() == INMOST::DATA_REAL) {
-                        fs << " double  " << std::endl << "LOOKUP_TABLE default " << std::endl;
-                        for (INMOST::Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); it++) {
-                            fs << it->RealArray(tags[i])[j] << std::endl;
-                        }
-                    } else {
-                        std::cerr << "Wrong datatype for writing " << tags[i].GetDataType() << std::endl;
-                        exit(0);
-                    }
                 }
             }
         }
@@ -337,16 +513,16 @@ void WriteTags_vtk(std::string filename, INMOST::Mesh *m, std::vector<INMOST::Ta
             edge = true;
     }
     //std::cout<<"test bools, cell "<<cell<<" face "<<face<<" edge "<<edge<<std::endl;
-    if (filename.find(".vtk") == std::string::npos) {
+   /* if (filename.find(".vtk") == std::string::npos) {
         std::cout << "fail to save vtk file" << std::endl;
         abort();
-    }
+    }*/
     std::string name = filename;
-    std::string::size_type pos = name.rfind(".vtk");
-    name.erase(pos);
+   // std::string::size_type pos = name.rfind(".vtk");
+ //   name.erase(pos);
     std::string::size_type l = name.find_last_of("/\\");
     std::string fname = name.substr(l + 1, name.length());
-
+   // std::cout<<"in write tags"<<std::endl;
     //if(cell)
     {
         std::string end=fname+"_cells.vtk";
@@ -375,13 +551,13 @@ void WriteTags_pvtk(std::string filename, INMOST::Mesh *m, std::vector<INMOST::T
         if (tags[i].isDefined(INMOST::EDGE))
             edge = true;
     }
-    if (filename.find(".pvtk") == std::string::npos) {
+   /* if (filename.find(".pvtk") == std::string::npos) {
         std::cout << "fail to save pvtk file" << std::endl;
         abort();
-    }
+    }*/
     std::string name = filename;
-    std::string::size_type pos = name.rfind(".pvtk");
-    name.erase(pos);
+  //  std::string::size_type pos = name.rfind(".pvtk");
+  //  name.erase(pos);
     std::string::size_type l = name.find_last_of("/\\");
     std::string fname_init = name.substr(l + 1, name.length());
 
@@ -485,10 +661,77 @@ void WriteTags(std::string filename, INMOST::Mesh *m, std::vector<INMOST::Tag> t
 
     if(m->GetProcessorsNumber()==1){
         //std::string filename = "solution.vtk";
-//        WriteTags_vtk(filename,m,tags);
-        WriteTags_element(filename,m,tags,INMOST::CELL);
+        WriteTags_vtk(filename,m,tags);
+       // WriteTags_element(filename,m,tags,INMOST::CELL);
+    }
+    else{
+        WriteTags_pvtk(filename,m,tags);
     }
 
 }
 
 
+//==============================================================================================================================================
+
+void Write_global(std::string filename, INMOST::Mesh *m ) {
+       bool cell = false, face = false, edge = false;
+
+    int i;
+    std::vector<INMOST::Tag> tags;
+
+    std::vector<std::string> names;
+    m->ListTagNames(names);
+    for(i=0;i<names.size();i++){
+        //std::cout<<names[i]<<std::endl;
+        if(m->HaveTag(names[i])){
+            INMOST::Tag tg = m->GetTag(names[i]);
+           // std::cout<<tg.isValid()<<" "<<(tg.isSparse(INMOST::NODE))<<" "<<(tg.isSparse( INMOST::EDGE))<<" "<<(tg.isSparse(INMOST::FACE))<< " "<<(tg.isSparse(INMOST::CELL))<<std::endl;
+           // std::cout<<( (tg.GetDataType() ==INMOST::DATA_REAL ) || (tg.GetDataType() ==INMOST::DATA_INTEGER ))<<" "<<(names[i].find("PROTECTED_") != std::string::npos)<<std::endl;
+            if(tg.isValid()  &&
+                    ( (tg.GetDataType() ==INMOST::DATA_REAL ) || (tg.GetDataType() ==INMOST::DATA_INTEGER )) &&
+                    (tg != m->CoordsTag()) &&
+                    (tg != m->SharedTag()) &&
+                    (tg != m->SendtoTag()) &&
+                    (tg != m->ProcessorsTag()) && (tg.GetTagName() != "TEMPORARY_ON_SKIN") )
+            {
+                std::cout<<tg.GetTagName()<<std::endl;
+                    tags.push_back(tg);
+            }
+        }
+    }
+
+    for (i = 0; i < tags.size(); i++) {
+        //std::cout<<"test bools inner, cell "<<tags[i].isDefined(INMOST::CELL)<<" face "<<tags[i].isDefined(INMOST::FACE)<<" edge "<<tags[i].isDefined(INMOST::EDGE)<<std::endl;
+        //std::cout<<tags[i].GetTagName()<<" "<<tags[i].GetDataType()<<" "<<std::endl;
+        if (tags[i].isDefined(INMOST::CELL))
+            cell = true;
+        if (tags[i].isDefined(INMOST::FACE))
+            face = true;
+        if (tags[i].isDefined(INMOST::EDGE))
+            edge = true;
+    }
+    //std::cout<<"test bools, cell "<<cell<<" face "<<face<<" edge "<<edge<<std::endl;
+    if (filename.find(".vtk") == std::string::npos) {
+        std::cout << "fail to save vtk file" << std::endl;
+        abort();
+    }
+    std::string name = filename;
+    std::string::size_type pos = name.rfind(".vtk");
+    name.erase(pos);
+    std::string::size_type l = name.find_last_of("/\\");
+    std::string fname = name.substr(l + 1, name.length());
+   // std::cout<<"in write tags gl"<<std::endl;
+    //if(cell)
+    {
+        std::string end=fname+"_cells.vtk";
+        WriteTags_element(end,m,tags,INMOST::CELL);
+    }
+    if(face){
+        std::string end=fname+"_faces.vtk";
+        WriteTags_element(end,m,tags,INMOST::FACE);
+    }
+    if(edge){
+        std::string end=fname+"_edges.vtk";
+        WriteTags_element(end,m,tags,INMOST::EDGE);
+    }
+}

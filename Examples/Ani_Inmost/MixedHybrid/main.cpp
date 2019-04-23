@@ -9,7 +9,7 @@
 #include "utils.h"
 #include <fstream>
 #include <string>
-#include "inmost_ani_fem.h"
+#include "../inmost_ani_lib/inmost_ani_fem.h"
 #define USE_MPI
 #define USE_PARTITIONER
 using namespace INMOST;
@@ -19,6 +19,31 @@ using namespace INMOST;
 #define BARRIER
 #endif
 
+
+//#define DEBUG_FORTRAN_NUMERATION
+extern "C" {
+    void drotate_(double *D, int *i, double *theta);
+    void drecover_(double *vrt,int * lbE,double *  DDATA,int * IDATA,double* Sol,double * SolCell,double *SolVCell);
+
+
+//      Subroutine HMFEMrecoverUP(nv, vrt, nt, tet, material, DDATA,IDATA,
+//    &                          SOL, SOLatTets, VECatTets, iW, MaxWi)
+
+//    void hmfemrecoverup_(int *nv ,double *vrt,int *nt, int *tet,int *material,double *  DDATA,int * IDATA,
+//                         double *SOL, double *SOLatTets, double *VECatTets, int *iW, int *MaxWi);
+/*
+void refine_(int *number_of_refines ,int *nv ,int *nvmax ,int *nt ,int *ntmax ,int *nb ,int *nbmax,
+             double *vrt, int *tet, int *bnd, int *material, int *labelF,
+             double *MapMtr, int* Ref2MapMtr, int *iW, int *MaxWi,int* flag_write);
+
+void loadmani_(
+        int * nvmax,int * nbmax,int * ntmax,
+        int * nv,int * nb,int * nt,
+        double * vrt,int * bnd,int * tet,int * labelF,int * material,
+        int *nvfix,int * nbfix,int * ntfix,int * ivfix,int * ibfix,int * itfix,
+        int *iW,int * iW1, const char * name);
+*/
+}
 
 
 int main(int argc, char *argv[]) {
@@ -123,7 +148,7 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 /////////////////////////////////////////////////////////////////////////////end get parameters/////////////////////////////////
-    ////////////////////////////////////// prepare  INMOST //////////////////////////
+
     Mesh::Initialize(&argc, &argv);
     Partitioner::Initialize(&argc, &argv);
     Solver::Initialize(&argc, &argv, parametersFound ? parametersFileName.c_str() : NULL);
@@ -145,13 +170,14 @@ int main(int argc, char *argv[]) {
     double t0, t_init, t_prepare, t_assmble, t_solve;
     BARRIER
     t0 = Timer();
-    ////////////////////////////////////// load and repartition mesh //////////////////////////
+
     Mesh *mesh_init;
     mesh_init = new Mesh();
 #if defined(USE_MPI)
     mesh_init->SetCommunicator(INMOST_MPI_COMM_WORLD);
 #endif
     if (mesh_init->GetProcessorRank() == 0) {
+        //  LoadAFT(MeshName,mesh_init);
         ReadInmostFromAniFile(mesh_init, MeshName);
         std::cout << " loading success of mesh " << MeshName << std::endl;
     }
@@ -178,8 +204,8 @@ int main(int argc, char *argv[]) {
     }
 
     Mesh *mesh_main;
- //   RepartitionStatistics(mesh_init, std::cout);
-////////////////////////////////////////////////////refine mesh , if it is needed/////////////////////////////////////////////
+    RepartitionStatistics(mesh_init, std::cout);
+
     if (refine) {
         mesh_main = new Mesh();
 #if defined(USE_MPI)
@@ -194,7 +220,7 @@ int main(int argc, char *argv[]) {
 
         mesh_main->ResolveShared();
         mesh_main->ExchangeGhost(1, NODE); // Construct Ghost cells in 1 layers connected via nodes
-       // RepartitionStatistics(mesh_main, std::cout);
+        RepartitionStatistics(mesh_main, std::cout);
     } else {
         mesh_main = mesh_init;
     }
@@ -202,6 +228,8 @@ int main(int argc, char *argv[]) {
     // return 0;
     Tag Label_tag = mesh_main->GetTag(LabelTag);
     M_Assert(Label_tag.isValid(), "We have no valid Label tag");
+    Tag Fortran_num_tag = mesh_main->GetTag(FortranNumTag);
+    M_Assert(Fortran_num_tag.isValid(), "We have no valid Fortran_num_tag tag");
 
     ////mark BC for points
     //   Tag BC_Edge_tag_init = mesh_init->CreateTag(EdgeTagBC,DATA_INTEGER,EDGE,EDGE,1);
@@ -219,54 +247,77 @@ int main(int argc, char *argv[]) {
             it->Integer(Label_tag) = No_BC_mark;
         }
     }
-/////////////////////////////////////////set Boundary conditions, an in Adi3D example////////////////////
-    for (Mesh::iteratorFace it = mesh_main->BeginFace(); it != mesh_main->EndFace(); it++)
-        if ((it->Integer(Label_tag) != No_BC_mark)) {
-            ElementArray<Node> nodes = it->getNodes();
-            ////see Dbc in forlibfem.f Dbc is always Dirichlet in this case
-            if ((it->Integer(Label_tag) == 1) || (it->Integer(Label_tag)==18)) {
-                for (i = 0; i < 3; i++)
-                    if (nodes[i].GetStatus() != Element::Ghost) {
-                        nodes[i].Integer(Label_tag) = std::max(nodes[i].Integer(Label_tag) ,it->Integer(Label_tag));
-                    }
-            }
+
+
+//  return 0;
+
+    for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++) {
+        if (it->GetStatus() != Element::Ghost) {
+            it->Integer(Label_tag) = 0;
         }
+    }
 
-    mesh_main->ExchangeData(Label_tag,NODE,0);
-    mesh_main->ExchangeData(Label_tag,EDGE,0);
-    //////////////////////////////////create discretization/////////////////////////////
+    mesh_main->ExchangeData(Label_tag, NODE, 0);
+    mesh_main->ExchangeData(Label_tag, EDGE, 0);
 
+    //return 0;
     BARRIER
     t_init = Timer();
-
-    Ani_discretization *discr =  new Ani_discretization(mesh_main);
+    Ani_discretization *discr = new Ani_discretization(mesh_main);
 //    std::cout<<"Processor rank "<< mesh_main->GetProcessorRank()<<" marking success"<<std::endl;
-    discr->PrepareProblemAni(3,0,0,0,ANITYPE,REVERSE);
+    discr->PrepareProblemAni(0, 0, 1, 0, ANITYPE, STRAIGHT);
     Sparse::Matrix mat("A"); // Declare the matrix of the linear system to be solved
     Sparse::Vector b("rhs"); // Declare the right-hand side vector
     Sparse::Vector x("sol"); // Declare the solution vector
 
+    x.SetInterval(discr->getMinInd(), discr->getMaxInd() + 1);
 
+    double *DDATA = new double[9];
+    int num_ax;
+    double theta;
+    for (i = 0; i < 9; i++) DDATA[i] = 0.0;
+    DDATA[0] = 100.0;
+    DDATA[4] = 10.0;
+    DDATA[8] = 1.0;
 
-    x.SetInterval(discr->getMinInd(),discr->getMaxInd()+1);
-    double *DDATA = new double[2];
-    DDATA[0] = 3.0;
-    DDATA[1] = 1.0;
+    theta = M_PI / 3.0;
+    num_ax = 1;
+    drotate_(DDATA, &num_ax, &theta);
 
+    theta = M_PI / 4.0;
+    num_ax = 2;
+    drotate_(DDATA, &num_ax, &theta);
+
+    theta = M_PI / 6.0;
+    num_ax = 3;
+    drotate_(DDATA, &num_ax, &theta);
+
+    std::cout << "test rotate " << std::endl;
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++)
+            std::cout << DDATA[i * 3 + j] << " ";
+        std::cout << std::endl;
+    }
     int *IDATA = new int[1];
-    IDATA[0] = 2;
+    IDATA[0] = 9;
     BARRIER
     t_prepare = Timer();
-    /////////////////////////////////////////////////////assemble matrix////////////////////////////
-    discr->Assemble( Label_tag, mat, b, DDATA, 5, IDATA, 5);
+    discr->Assemble(Label_tag, mat, b, DDATA, 9, IDATA, 5);
     if (processRank == 0) {
-        std::cout<<" assembling success"<<std::endl;
+        std::cout << " assembling success" << std::endl;
     }
     BARRIER
     t_assmble = Timer();
+    //  if(mesh_main->GetProcessorsNumber() > 1)
+    //    SaveMatrix(mat,discr->MaxInd,INMOST_MPI_COMM_WORLD);
 
-
-    //std::cout<<"Processor rank "<< mesh_main->GetProcessorRank()<<" minInd "<<discr->MinInd<<" maxInd "<<discr->MaxInd<< " MatrSize "<<discr->MatrSize<<std::endl;
+    mat.Save("mat_hybr_cpp.mtx");
+  //  return 0;
+    //  if (processRank == 0) {
+    //std::cout<<"try to solve main task"<<std::endl;}
+    //BARRIER
+    std::cout << "Processor rank " << mesh_main->GetProcessorRank() << " minInd " << discr->MinInd << " maxInd "
+              << discr->MaxInd << " MatrSize " << discr->MatrSize << std::endl;
     if (processRank == 0) {
         std::cout << "set matrix" << std::endl;
     }
@@ -276,35 +327,40 @@ int main(int argc, char *argv[]) {
     if (processRank == 0) {
         std::cout << "solving" << std::endl;
     }
-    if(!s.Solve(b,x)){
-        std::cout<<"solution failed, residual  "<<s.Residual()<<" iterations "<<s.Iterations()<<" name "<<std::endl;
+    if (!s.Solve(b, x)) {
+        std::cout << "solution failed, residual  " << s.Residual() << " iterations " << s.Iterations() << " name "
+                  << std::endl;
         return -1;
     }
     BARRIER
-    t_solve=Timer();
+    t_solve = Timer();
+    //std::cout<<"solution ended, residual  "<<s.Residual()<<" iterations "<<s.Iterations()<<std::endl;
     if (processRank == 0) {
         std::cout << "init " << t_init - t0 << " preparing " << t_prepare - t_init << " assembling "
                   << t_assmble - t_prepare << " solving " << t_solve - t_assmble << std::endl;
     }
-    Tag Z_result;
-    Z_result = mesh_main->CreateTag("Z_res",DATA_REAL,NODE,NODE,1);
-    for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++)
-        if (it->GetStatus() != Element::Ghost)
-        {
-            it->Real(Z_result)= x[it->IntegerArray(discr->NumTags[0])[2]];
+
+    x.Save("test_sol.rhs");
+    Tag SolutionFace = mesh_main->CreateTag("SolFace", DATA_REAL, FACE, FACE, 1);
+
+    for (Mesh::iteratorFace it = mesh_main->BeginFace(); it != mesh_main->EndFace(); it++)
+        if (it->GetStatus() != Element::Ghost) {
+//            std::cout<<it->IntegerArray(discr->NumTags[2])[0]<<" "<<it->Integer(discr->NumTags[2])<<std::endl;
+            it->Real(SolutionFace) = x[it->IntegerArray(discr->NumTags[2])[0]];
         }
-
-    mesh_main->ExchangeData(Z_result,NODE,0);
-
+    Tag Fortran_tag = mesh_main->GetTag(FortranNumTag);
     std::vector<Tag> tags;
-    tags.push_back(Z_result);
-  //  mesh_main->Save("tst_s.vtk");
-    WriteTags("Result_elasticity",mesh_main,tags);
+    tags.push_back(SolutionFace);
+    tags.push_back(Fortran_tag);
+
+    WriteTags("test_init.vtk", mesh_main, tags);
 
 
+    ///////recover solution/////
     Solver::Finalize();
     Partitioner::Finalize();
     Mesh::Finalize();
     return 0;
 
 }
+
