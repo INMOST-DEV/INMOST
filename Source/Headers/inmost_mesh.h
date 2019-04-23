@@ -3089,6 +3089,8 @@ namespace INMOST
 		/// - "ECL_TOPOLOGY"     - If "TRUE" checks topology of the grid for errors, this may provide useful
 		///                        warnings if layers of the mesh enter each other and the grid cannot be
 		///                        considered conformal. Default: "FALSE".
+		///   "ECL_PARALLEL_READ"- if "TRUE" then each processor loads part of the eclipse mesh, requires some synchronization.
+		///                        Otherwise if "FALSE" then each processor loads entire mesh. Default: "TRUE".
 		///
 		/// \todo
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write

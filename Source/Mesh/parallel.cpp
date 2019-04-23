@@ -3514,7 +3514,7 @@ namespace INMOST
 #if defined(USE_MPI)
 		int mpirank = GetProcessorRank();
 		int mpisize = GetProcessorsNumber();
-		int err = 0;
+		//int err = 0;
 		REPORT_STR("gather ghost and shared elements")
 		double time = Timer();
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
@@ -3522,7 +3522,7 @@ namespace INMOST
 			Element::Status estat = it->GetStatus();
 			if( it->Hidden() )
 			{
-				err++;
+				// err++;
 				REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ << "Adding hidden element " << ElementTypeName(it->GetElementType()));
 				std::cout << GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  "Adding hidden element " << ElementTypeName(it->GetElementType()) << std::endl;
 			}
@@ -3533,7 +3533,7 @@ namespace INMOST
 				{
 					if( !(*vit >= 0 && *vit < mpisize) )
 					{
-						err++;
+						// err++;
 						REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc in list " << *vit << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() );
 						std::cout << GetProcessorRank() << " " << __FILE__ << ":" << __LINE__ << " bad proc in list " << *vit << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID()  << std::endl;
 					}
@@ -3547,7 +3547,7 @@ namespace INMOST
 				int proc = it->IntegerDF(tag_owner);
 				if( !(proc >= 0 && proc < mpisize) )
 				{
-					err++;
+					// err++;
 					REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc owner " << proc << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() );
 					std::cout << GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc owner " << proc << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID()  << std::endl;
 				}
@@ -3555,12 +3555,12 @@ namespace INMOST
 				ghost[proc][ElementNum(it->GetElementType())].push_back(*it);
 			}
 		}
-		err = Integrate(err);
-		if( err )
-		{
-			std::cout << "crash" << std::endl;
-			exit(-1);
-		}
+		// err = Integrate(err);
+		// if( err )
+		// {
+		// 	std::cout << "crash" << std::endl;
+		// 	exit(-1);
+		// }
 		time = Timer() - time;
 		REPORT_VAL("time",time);
 		SortParallelStorage(ghost,shared,mask);
