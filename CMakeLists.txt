@@ -117,7 +117,8 @@ if(USE_PARTITIONER_PARMETIS)
 								#GIT_REPOSITORY "https://github.com/ibaned/parmetis.git"
 								GIT_REPOSITORY "https://github.com/scibuilder/parmetis.git"
 								GIT_TAG "master"
-								#UPDATE_DISCONNECTED ${EXTERNAL_NOUPDATE}
+								UPDATE_DISCONNECTED 1 
+								#${EXTERNAL_NOUPDATE}
 								PREFIX "${LIB_DOWNLOAD_PATH}"
 								#this command is responsible for update of repository from git
 								#UPDATE_COMMAND ""

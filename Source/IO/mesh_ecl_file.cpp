@@ -1211,6 +1211,13 @@ namespace INMOST
 		int verbosity = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
+			if (file_options[k].first == "ECL_PARALLEL_READ") 
+			{
+				if (file_options[k].second == "TRUE")
+					parallel_read = true;
+				else
+					parallel_read = false;
+			}
 			if (file_options[k].first == "ECL_SPLIT_GLUED")
 			{
 				if (file_options[k].second == "ALL")
@@ -3258,21 +3265,21 @@ namespace INMOST
 			DeleteTag(node_pos);
 
 
-			/*      (6)*<<------[3]--------*(7)
-			/|                  /|
-			[6]                 [7]|
-			/  |                /  |
-			(4)*--------[2]------>>*(5)|
-			|  [10]             |  [11]
-			|                   |   |
-			|   |               |   |
-			|                   |   |
-			[8]  |              [9]  |
-			|(2)*- - - - [1]- - |->>*(3)
-			|  /                |  /
-			|[4]                |[5]
-			|/                  |/
-			(0)*<<------[0]--------*(1)
+			/*   (6)*<<------[3]--------*(7)
+			       /|                  /|
+			     [6]                 [7]|
+			     /  |                /  |
+			 (4)*--------[2]------>>*(5)|
+			    |  [10]             |  [11]
+			    |                   |   |
+			    |   |               |   |
+			    |                   |   |
+			   [8]  |              [9]  |
+			    |(2)*- - - - [1]- - |->>*(3)
+			    |  /                |  /
+			    |[4]                |[5]
+			    |/                  |/
+			 (0)*<<------[0]--------*(1)
 			*/
 			//Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
 			//tags to be transfered
@@ -4425,7 +4432,8 @@ namespace INMOST
 
 						}
 					}
-					ExchangeData(ecl_centroid,CELL,0);
+					if( parallel_read )
+						ExchangeData(ecl_centroid,CELL,0);
 					if (verbosity)
 						std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
 				}
@@ -5384,7 +5392,8 @@ namespace INMOST
 
 		//if( GetProcessorsNumber() )
 		//exit(0);
-		ResolveShared();
+		if( parallel_read )
+			ResolveShared();
 	} //LoadECL
 } //namespace
 
