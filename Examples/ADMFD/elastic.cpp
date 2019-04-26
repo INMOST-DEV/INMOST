@@ -386,6 +386,7 @@ int main(int argc,char ** argv)
         TagRealArray tag_W;  // Gradient matrix
         TagRealArray tag_Ws; // Matrix to reconstruct stress from fluxes
 		TagRealArray tag_FLUX; // Flux (for error)
+		TagInteger   tag_Row;
 
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
@@ -461,6 +462,9 @@ int main(int argc,char ** argv)
 		std::cout << "B^T*B" << std::endl;
 		(B.Transpose()*B).Print();
 		
+		std::cout << "B*iBtB*B^T" << std::endl;
+		(B*iBtB*B.Transpose()).Print();
+		
 		std::cout << "B^T*B*iBtB" << std::endl;
 		(B.Transpose()*B*iBtB).Print();
 		
@@ -492,6 +496,8 @@ int main(int argc,char ** argv)
 			
             ttt = Timer();
             //Assemble gradient matrix W on cells
+			
+			tag_Row = m->CreateTag("row_index",DATA_INTEGER,FACE,NONE,2);
 #if defined(USE_OMP)
 //#pragma omp parallel
 #endif
@@ -527,9 +533,6 @@ int main(int argc,char ** argv)
 					 //M.Resize(3*NF,3*NF);
 					 L.Zero();
 					 
-					 //A.Resize(3*NF,3*NF);
-					 //A.Zero();
-					 //K += rMatrix::Unit(9)*volume;
 					 for(int k = 0; k < NF; ++k) //loop over faces
 					 {
 						 area = faces[k].Area();
@@ -543,396 +546,41 @@ int main(int argc,char ** argv)
 						 L(3*k,3*(k+1),3*k,3*(k+1)) = (area/dist)*(I.Kronecker(n.Transpose())*K*I.Kronecker(n));
 						 
 						 N(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
-						 
-						 /*
-						 Cell c2 = cell.Neighbour(faces[k]);
-						 
-						 if( c2.isValid() )
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 						 {
-							 KTensor(tag_C[c2],K2);
-							 CTensor(tag_C[c2],C2);
-							 //T1 = I.Kronecker(n.Transpose())*K*I.Kronecker(n);
-							 T2 = I.Kronecker(n.Transpose())*K2*I.Kronecker(n);
-							 //TagRealArray tag_G = m->GetTag("REFERENCE_GRADIENT");
-							 Q1 = I9 + I.Kronecker(n)*T2.Invert()*I.Kronecker(n.Transpose())*(K-K2);
-							 //Q2 = I9 + I.Kronecker(n)*T1.Invert()*I.Kronecker(n.Transpose())*(K2-K);
-							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*(I9 - B*Q*((B*Q).Transpose()*B*Q)*(B*Q).Transpose());
-							 Q1 = Q1.Root();
-							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*(I9 - (Q1.Transpose()*B)*((Q1.Transpose()*B).Transpose()*(Q1.Transpose()*B))*(Q1.Transpose()*B).Transpose());
-							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*Q1*(I9 - B*(B.Transpose()*B)*B.Transpose());
-							 //NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*(I9 - B*(B.Transpose()*B)*B.Transpose())*Q1;
-							 NQ(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose())*Q1;
-							 //NQ(3*k,3*(k+1),0,9).Zero();
+							 if( faces[k].BackCell() == cell )
+								 tag_Row[faces[k]][0] = k; //detect my row
+							 else
+								 tag_Row[faces[k]][1] = k; //detect my row
 						 }
-						 else
-						 {
-							 NQ(3*k,3*(k+1),0,9).Zero();
-						 }
-						 */
-						 
-						 //std::cout << "I\otimes n^T" << std::endl;
-						 //I.Kronecker(n.Transpose()).Print();
-						 
-						 //std::cout << "I\otimes n^T B" << std::endl;
-						 
-						 //(I.Kronecker(n.Transpose())*B).Print();
-						 
-						 //T(3*k,3*(k+1),0,9) = N(3*k,3*(k+1),0,9)*K - L(3*k,3*(k+1),3*k,3*(k+1))*I.Kronecker(n.Transpose());
-						 //A(3*k,3*(k+1),3*k,3*(k+1)) = I*area;
-						 //NK(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
 					 } //end of loop over faces
 					 //R += N*Curl;
 					 tag_Ws[cell].resize(6*3*NF);
 					 tag_Ws(cell,6,3*NF) = ((R*B*iBtB).Transpose()*N*B).Invert()*(R*B*iBtB).Transpose();
 					 tag_W[cell].resize(9*NF*NF);
-					 //int ierr = -1;
-					 //tag_W(cell,3*NF,3*NF) = N*(N.Transpose()*R).PseudoInvert(1.0e-9)*N.Transpose() //stability part
-					 // + (rMatrix::Unit(3*NF) - R*(R.Transpose()*R).PseudoInvert(1.0e-9)*R.Transpose())*
-					 //(2.0/(static_cast<real>(NF)*volume)*(N*K.PseudoInvert(1.0e-9)*N.Transpose()).Trace());
-					 
-					 //+  (rMatrix::Unit(3*NF) - R*(N.Transpose()*R).PseudoInvert(1.0e-12)*N.Transpose())*
-					  //   (2.0/(static_cast<real>(NF)*volume)*(N*K.Invert()*N.Transpose()).Trace());
-					 
-					 //tag_W(cell,3*NF,3*NF) = N*(N.Transpose()*R).PseudoInvert(1.0e-9)*N.Transpose() + (L - L*R*((L*R).Transpose()*R).PseudoInvert(1.0e-9)*(L*R).Transpose());
-					 
-					 
-					 //tag_W(cell,3*NF,3*NF) = L + (N*K-L*R)*((N*K-L*R).Transpose()*R).PseudoInvert(1.0e-9)*(N*K-L*R).Transpose() + (L - L*R*((L*R).Transpose()*R).PseudoInvert(1.0e-9)*(L*R).Transpose());
-					 
-					 //tag_W(cell,3*NF,3*NF) = (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-9)*(N*K).Transpose() + (L - L*R*((L*R).Transpose()*R).PseudoInvert(1.0e-9)*(L*R).Transpose());
-					 
-					 //W1.Resize(3*NF,3*NF);
-					 //W2.Resize(3*NF,3*NF);
-					 
-					 
-					 //W1 = (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-9)*(N*K).Transpose();
-					 //W2 = L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-9)*(L*R).Transpose();
-					 //W3 = pow(volume,2.0/3.0)*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).PseudoInvert(1.0e-7)*(R*B).Transpose());
-					 //tag_W(cell,3*NF,3*NF) = W1+W2+W3;
-					 //K.SVD(U,S,V);
-					 /*
-					 std::cout << "U" << std::endl;
-					 U.Print();
-					 
-					 std::cout << "S" << std::endl;
-					 S.Print();
-					 
-					 std::cout << "V" << std::endl;
-					 V.Print();
-					 
-					 std::cout << "K - U*S*U^T" << std::endl;
-					 (K - U*S*U.Transpose()).Print();
-					 
-					 std::cout << "K - V*S*V^T" << std::endl;
-					 (K - V*S*V.Transpose()).Print();
-					 std::cout << "K - (U+V)*S*(U+V)^T/4" << std::endl;
-					 (K - (U+V)*S*(U+V).Transpose()/4.0).Print();
-					 */
-					 //w = (0.5*(U+V))(0,9,6,9);
-					 
-					 //u = U(0,9,6,9);
-					 
-					 //v = V(0,9,6,9);
-					 /*
-					 std::cout << "w^T*w" << std::endl;
-					 (w.Transpose()*w).Print();
-					 
-					 std::cout << "u^T*u" << std::endl;
-					 (u.Transpose()*u).Print();
-					 
-					 std::cout << "v^T*v" << std::endl;
-					 (v.Transpose()*v).Print();
-					 
-					 std::cout << "K" << std::endl;
-					 K.Print();
-					 
-					 std::cout << "(I - u*u^T)*K" << std::endl;
-					 ((rMatrix::Unit(9) - u*u.Transpose())*K).Print();
-					 
-					 std::cout << "(I - v*v^T)*K" << std::endl;
-					 ((rMatrix::Unit(9) - v*v.Transpose())*K).Print();
-					 
-					 
-					 std::cout << "(I - w*w^T)*K" << std::endl;
-					 ((rMatrix::Unit(9) - w*w.Transpose())*K).Print();
-					 
-					 std::cout << "K-(I - u*u^T)*K" << std::endl;
-					 (K-(rMatrix::Unit(9) - u*u.Transpose())*K).Print();
-					 */
-					 //double ssum = 0;
-					 //for(int k = 0; k < 9; ++k) ssum += S(k,k);
-					 
-					 //K += (v*v.Transpose())*ssum*volume;
-					 //K += volume*rMatrix::Unit(9);
-					 //PrintSV(K);
-					 
-					 //std::cout << "N*CURL*R" << std::endl;
-					 //((N*Curl).Transpose()*R).Print();
-					 
-					 //W1 = (N*B*C)*((N*B*C).Transpose()*R*B).Invert()*(N*B*C).Transpose();
-					 //W2 = L - (L*R*B)*((L*R*B).Transpose()*R*B).CholeskyInvert()*(L*R*B).Transpose();
-					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).Invert()*(R*B).Transpose());
-					 
-					 if( false )
-					 {
-						 double alpha = 0;
-						 double beta = alpha;
+					
+					if( true )
+					{
+						double alpha = 0;
+						double beta = alpha;
 						 
-						 //R = R*(rMatrix::Unit(9) + B*iBtB*B.Transpose())*0.5;
-						 //if( cell.GetElementType() == Element::Tet )
-							//K += 1.0e-3*K.Trace()*(rMatrix::Unit(9) - B*iBtB*B.Transpose());
+						//M = B*iBtB*B.Transpose();
+						//R = R*(I9 + M)*0.5;
+						W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).PseudoInvert(1.0e-11)*(N*K+alpha*L*R).Transpose();
+						W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose();
+					}
+					else
+					{
 						M = B*iBtB*B.Transpose();
-						R = R*(I9 + M)*0.5;
-						//K = K + M;
-						//iK = iK + I9;
-						//R = R*(I9 + 0.001*(I9-M) );//B*iBtB*C.Invert()*iBtB*B.Transpose());
+						W1 = (N*B*C)*((N*B*C).Transpose()*R*B*iBtB).Invert()*(N*B*C).Transpose();
+						W2 = L - (L*R*B*iBtB)*((L*R*B*iBtB).Transpose()*R*B*iBtB).Invert()*(L*R*B*iBtB).Transpose();
 						 
-						 //W1 = (N*K)*((N*K).Transpose()*R*iK).PseudoInvert(1.0e-11)*(N*K).Transpose();
-						 //W2 = L - (L*R*iK)*((L*R*iK).Transpose()*R*iK).PseudoInvert(1.0e-11)*(L*R*iK).Transpose();
-						 
-						 W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R*M).PseudoInvert(1.0e-11)*(N*K+alpha*L*R).Transpose();
-						 
-						 //R += N*(rMatrix::Unit(9) - B*iBtB*B.Transpose())*K.Trace()*2*NF/volume;
-						 
-						 W2 = L - (1+beta)*(L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose();
-						 
-						 //R = R*(I9 - M);
-						 
-						 //W2+= L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose();
-						 /*
-						 if( cell.GetElementType() == Element::Tet )
-						 {
-							 //R = R*B*iBtB;
-							 //W2 += (L - (L*R)*((L*R).Transpose()*L*R).PseudoInvert(1.0e-11)*(L*R).Transpose());
-							 N = N*B;
-							 R = R*B*iBtB;//*B.Transpose();
-							 
-							 //W1 = (N*C)*((N*C).Transpose()*R).Invert()*(N*C).Transpose();
-							 W2 += 1.0e-5*(L - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-11)*(L*R).Transpose());
-						 }
-						 */
-#pragma omp critical
-						{
-							//std::cout << "iK" << std::endl;
-							//(iK-I9).Print();
-							//std::cout << "B*(B^T*B)^{-1} C^{-1} (B^T*B)^{-1} B^T" << std::endl;
-							//(B*iBtB*C.Invert()*iBtB*B.Transpose()).Print();
-							std::cout << "K:  "; PrintSV(K);
-							std::cout << "iK: "; PrintSV(iK);
-						 std::cout << "W1: "; PrintSV(W1);
-						 std::cout << "W2: "; PrintSV(W2);
-						 std::cout << "S : "; PrintSV(W1+W2);
-						}
 					 }
-					 else
-					 {
-						 
-						 
-						 //N = N*B;
-						 //R = R*B;//*iBtB;
-						 
-						 M = B*iBtB*B.Transpose();
-						 
-						 W1 = (N*B*C)*((N*B*C).Transpose()*R*B*iBtB).Invert()*(N*B*C).Transpose();
-						 W2 = L - (L*R*B*iBtB)*((L*R*B*iBtB).Transpose()*R*B*iBtB).Invert()*(L*R*B*iBtB).Transpose();
-						 //Q = -W2*R;
-						 //W3 = Q*(Q.Transpose()*R).PseudoInvert(1.0e-11)*Q.Transpose();
-						 //W2+=W3;
-						 //W2+= W3;
-						 //W3s = W3.Trace()*(rMatrix::Unit(3*NF) - R*(R.Transpose()*R)*R.Transpose());
-						 //W2 += W3+W3s;
-						 //double alpha = 1;
-						 //W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).Invert()*(N*K+alpha*L*R).Transpose() - alpha*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
-						 
-//#pragma omp critical
-						if(false)
-						{
-							if( (W2*R).FrobeniusNorm() > 1.0e-9 || ((W1+W2)*R - N*K).FrobeniusNorm() > 1.0e-9 )
-							{
-								std::cout << "R^T*W2*R" << std::endl;
-								(R.Transpose()*W2*R).Print();
-							std::cout << "W2*R" << std::endl;
-							(W2*R).Print();
-							std::cout << "W2*R*(I-M)" << std::endl;
-							(W2*R*(I9-M)).Print();
-							std::cout << "W2*R*M" << std::endl;
-							(W2*R*M).Print();
-							std::cout << "W3*R" << std::endl;
-							(W3*R).Print();
-							std::cout << "W3*R*(I-M)" << std::endl;
-							(W3*R*(I9-M)).Print();
-							std::cout << "W3*R*M" << std::endl;
-							(W3*R*M).Print();
-							std::cout << "W1*R - N*K" << std::endl;
-							(W1*R - N*K).Print();
-							std::cout << "(W1+W2)*R - N*K" << std::endl;
-							((W1+W2)*R - N*K).Print();
-							std::cout << "(W1+W2+W3)*R - N*K" << std::endl;
-							((W1+W2)*R - N*K).Print();
-							}
-							std::cout << "W1: "; PrintSV(W1);
-							std::cout << "W2: "; PrintSV(W2);
-							std::cout << "S : "; PrintSV(W1+W2);
-						}
-						 //R = R*B*iBtB;
-						 //W2 = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
-						 //W2 = 2*W1.Trace()/(3*NF) *(rMatrix::Unit(3*NF) - (R)*((R).Transpose()*R).Invert()*(R).Transpose());
-						/*	
-						 #pragma omp critical
-						 {
-						 //std::cout << "NC - W1R" << std::endl;
-						 //(N*C - W1*R).Print();
-						 std::cout << "W2R" << std::endl;
-						 (W2*R).Print();
-						 std::cout << "W1 eig: " << std::endl;
-						 PrintSV(W1);
-						 std::cout << "W2 eig: " << std::endl;
-						 PrintSV(W2);
-						 std::cout << "(W1+W2) eig: " << std::endl;
-						 PrintSV(W1+W2);
-						}
-						*/
-						
-					 }
-					 
-					 //+ L.Trace()*pow(volume,1.0/3.0)*(rMatrix::Unit(3*NF) - R*B*((R*B).Transpose()*R*B).PseudoInvert(1.0e-7)*(R*B).Transpose());
-					 /*
-					 std::cout << "W1:" << std::endl;
-					 (W1 - W1.Transpose()).Print();
-					 std::cout << "W2:" << std::endl;
-					 (W2 - W2.Transpose()).Print();
-					 std::cout << "Ker: " << std::endl;
-					 ((N*K+alpha*L*R).Transpose()*R).Print();
-					 std::cout << "N^T*R: " << std::endl;
-					 (N.Transpose()*R).Print();
-					 std::cout << "(N*K)^T*R: " << std::endl;
-					 ((N*K).Transpose()*R).Print();
-					  */
-					 //W2 = L.Trace()*(rMatrix::Unit(3*NF) - (1+alpha)*(R)*((R).Transpose()*R).PseudoInvert(1.0e-9)*(R).Transpose());
-					 //+ (rMatrix::Unit(3*NF) - N*Curl*((N*Curl).Transpose()*R).PseudoInvert(1.0e-12)*(N*Curl).Transpose());
-					 //W1 = L;
-					 //W2 = (N*K-L*R)*(N.Transpose()*R)*N.Transpose();
-					 
-					 //W1 = N*K*N.Transpose()/volume;
-					 
-					 //W1 = (N*B*C)*((N*B*C).Transpose()*R*B).PseudoInvert(1.0e-9)*(N*B*C).Transpose();
-					 //W2 = L - (L*R*B)*((L*R*B).Transpose()*R*B).PseudoInvert(1.0e-9)*(L*R*B).Transpose();
-					 //W2 = L.Trace()*(rMatrix::Unit(3*NF) - (R*B)*((R*B).Transpose()*R*B).PseudoInvert(1.0e-9)*(R*B).Transpose());
-					 
-					 //W1 = (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-9)*(N*K).Transpose();
-					 //W2 = L - (L*R)*((L*R*B).Transpose()*R).PseudoInvert(1.0e-9)*(L*R*B).Transpose();
-					 //W1 = L;
-					 //W2 = (N*K-L*R)*((N*K-L*R).Transpose()*R).PseudoInvert(1.0e-9)*(N*K-L*R).Transpose();
 					 
 					 tag_W(cell,3*NF,3*NF) = W1+W2;// + rMatrix::Unit(3*NF)*volume;
 					 
-					 //PrintSV(tag_W(cell,3*NF,3*NF));
-					 
-					 //std::cout << "W1: "; PrintSV(W1);
-					 //std::cout << "W2: "; PrintSV(W2);
-					 //std::cout << "W3: "; PrintSV(W3);
-					 
-					 
-					 
-					 //(W3*R).Print();
-					 
-					 //PrintSV(W1+W2+W3);
-					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - R*(R.Transpose()*R).PseudoInvert(1.0e-7)*R.Transpose());
-					 //W2 = W1.Trace()*(rMatrix::Unit(3*NF) - R*((N*K).Transpose()*R).PseudoInvert(1.0e-7)*(N*K).Transpose());
-					 /*
-					 std::cout << "L " << std::endl;
-					 L.Print();
-					 
-					 std::cout << "N*K*N^T" << std::endl;
-					 (N*K*N.Transpose()).Print();
-					 
-					 std::cout << "N*R^T" << std::endl;
-					 (N*R.Transpose()).Print();
-					 */
-					 //L = N*K*N.Transpose()*(N*R.Transpose()).PseudoInvert(1.0e-9);
-					 //std::cout << "L2 " << std::endl;
-					 // L.Print();
-					 
-					 //PrintSV(W1);
-					 //PrintSV(W2);
-					 //PrintSV(W1+W2);
-					 
-					 //tag_W(cell,3*NF,3*NF) = W1+W2;
-					 
-					 //std::cout << "W1(" << W1.Rows() << "," << W1.Cols() << ")" << std::endl;
-					 //W1.Print();
-					 
-					 //std::cout << "W2(" << W2.Rows() << "," << W2.Cols() << ")" << std::endl;
-					 //W2.Print();
-					 /*
-					 tag_W(cell,3*NF,3*NF) =
-					 L
-					 //+ (N*K - L*R)*((N*K-L*R).Transpose()*R).PseudoInvert(1.0e-12)*(N*K-L*R).Transpose()
-					 + (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-7)*(N*K).Transpose()
-					 //+ L.Trace()*(rMatrix::Unit(3*NF) - R*((R).Transpose()*R).PseudoInvert(1.0e-14)*(R).Transpose())
-					 - (L*R)*((L*R).Transpose()*R).PseudoInvert(1.0e-7)*(L*R).Transpose()
-					 ;
-					 */
-					 //(tag_W(cell,3*NF,3*NF) - W1-W2).Print();
-					 //tag_W(cell,3*NF,3*NF) = W1+W2;
-					 
-					 
-					 //std::cout << " (NK)^T*R ";
-					 //PrintSV((N*K).Transpose()*R);
-					 
-					 //std::cout << " (LR)^T*R ";
-					 //PrintSV((L*R).Transpose()*R);
-					 
-					 
-					 //std::cout << " vol mat: " << std::endl;
-					 //((N).Transpose()*R).PseudoInvert(1.0e-12).Print();
-					 
-					 //std::cout << " grad mat: ";// << std::endl;
-					 //PrintSV(((N).Transpose()*R).PseudoInvert(1.0e-12)*(N).Transpose());
-					 //(((N).Transpose()*R).PseudoInvert(1.0e-12)*(N).Transpose()).Print();
-					 /*
-					 std::cout << " W1 ";
-					 PrintSV(L);
-					 
-					 L.Print();
-					 
-					 std::cout << " W2 ";
-					 PrintSV((N*K - L*R)*((N*K).Transpose()*R).PseudoInvert(1.0e-12)*(N*K).Transpose());
-					 
-					 ((N*K - L*R)*((N*K).Transpose()*R).PseudoInvert(1.0e-12)*(N*K).Transpose()).Print();
-					 
-					 std::cout << " W ";
-					 PrintSV(tag_W(cell,3*NF,3*NF));
-					 tag_W(cell,3*NF,3*NF).Print();
-					 */
-					 //Convergent on tetra
-					 //tag_W(cell,3*NF,3*NF) =
-					 //L
-					 //+ (N*K-L*R)*((N*K).Transpose()*R).PseudoInvert(1.0e-14)*(N*K).Transpose()
-					 //+ (N*K-L*R)*((N*K-L*R).Transpose()*R).PseudoInvert(1.0e-14)*(N*K-L*R).Transpose()
-					 //+ (L - L*R*((L*R).Transpose()*R).PseudoInvert(1.0e-14)*(L*R).Transpose())
-					 //+ L.Trace()*(rMatrix::Unit(3*NF) - R*((R).Transpose()*R).PseudoInvert(1.0e-14)*(R).Transpose())
-					 ;
-					 
-					 //tag_W(cell,3*NF,3*NF) = (N*K)*((N*K).Transpose()*R).PseudoInvert(1.0e-14)*(N*K).Transpose() + (L - L*R*((L*R).Transpose()*R).PseudoInvert(1.0e-14)*(L*R).Transpose());
-					 
-					 
-					 //tag_W(cell,3*NF,3*NF) = N*K*((N*K).Transpose()*R).PseudoInvert(1.0e-9)*(N*K).Transpose() + (L - L*R*((L*R).Transpose()*R).PseudoInvert(1.0e-9)*(L*R).Transpose());
-					 
-					 //tag_W(cell,3*NF,3*NF) = L + (N*K-L*R)*(R.Transpose()*R).PseudoInvert(1.0e-9)*R.Transpose();
-					 //tag_W(cell,3*NF,3*NF) = (N*K)*(N.Transpose()*R).PseudoInvert(1.0e-9)*N.Transpose();
-					 
-					 //std::cout << "K*V" << std::endl;
-					 //(K).Print();
-					 //std::cout << "N^T*R" << std::endl;
-					 //(N.Transpose()*R/volume).Print();
-					 
-					 //std::cout << "R^T*R" << std::endl;
-					 //(R.Transpose()*R).Print();
-					 //std::cout << "(R^T*R)^{-1}" << std::endl;
-					 //(R.Transpose()*R).PseudoInvert(1.0e-12).Print();
-					 //std::cout << "W:" <<std::endl;
-					 //tag_W(cell,3*NF,3*NF).Print();
-					 //PrintRS(tag_W(cell,3*NF,3*NF));
 					 if(false)if(!K.isSymmetric() )
 					 {
 						 std::cout << "K nonsymmetric: " << std::endl;
@@ -955,54 +603,35 @@ int main(int argc,char ** argv)
 						 (N*C - tag_W(cell,3*NF,3*NF)*R).Print();
 					 }
 					 
-					 //std::cout << "L ";
-					 //PrintSV(L);
+					
 					 
-					 //std::cout << "W2 ";
-					 //PrintSV((N*K-L*R)*((N*K-L*R).Transpose()*R).PseudoInvert(1.0e-9)*(N*K-L*R).Transpose());
-					 
-					 //std::cout << "R ";
-					 //PrintSV(rMatrix::Unit(3*NF) - R*(R.Transpose()*R).PseudoInvert(1.0e-9)*R.Transpose());
-					 
-					 //std::cout << "consistency ";
-					 //PrintSV(NK*(NK.Transpose()*R).PseudoInvert(1.0e-12,&ierr)*NK.Transpose());
-					 //std::cout << "stability   ";
-					 //PrintSV((1.5/(static_cast<real>(NF)*volume)*(NK*K.Invert()*NK.Transpose()).Trace())*(rMatrix::Unit(3*NF) - R*(R.Transpose()*R).PseudoInvert(1.0e-12)*R.Transpose()));
-					 
-					 
-					 //std::cout << "K ";
-					 //PrintSV(K);
 					 if( false )
 					 {
 						 std::cout << "total       ";
 						 PrintSV(tag_W(cell,3*NF,3*NF));
 					 }
 					 
-					 
-					 //std::cout << "Check:" << std::endl;
-					 //(NK - tag_W(cell,3*NF,3*NF)*R).Print();
-					 //std::cout << "R^T*R:" << std::endl;
-					 //(R.Transpose()*R).Print();
-					 //std::cout << "NK^T*R:" << std::endl;
-					 //(NK.Transpose()*R).Print();
-					 /*
-					 if( ierr )
-					 {
-						 std::cout << "K:" << std::endl;
-						 K.Print();
-						 std::cout << "NK:" << std::endl;
-						 NK.Print();
-						 std::cout << "R:" << std::endl;
-						 R.Print();
-						 std::cout << "NK^T*R:" << std::endl;
-						 (NK.Transpose()*R).Print();
-						 std::cout << "sym? " << tag_W(cell,3*NF,3*NF).isSymmetric() << std::endl;
-						 std::cout << "ierr " << ierr << std::endl;
-					 }
-					  */
+					
 				 } //end of loop over cells
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
+			
+			ttt = Timer();
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+			{
+				
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
+				{
+					Mesh * mesh = m;
+					Face face = m->faceByLocalID(q);
+				}
+			}
+			std::cout << "Construct fluxes and interpolations: " << Timer() - ttt << std::endl;
 			
 			if( m->HaveTag("UVW") ) //Is there a displacement on the mesh?
 				tag_UVW = m->GetTag("UVW"); //Get the pressure
