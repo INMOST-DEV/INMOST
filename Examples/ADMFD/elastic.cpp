@@ -510,62 +510,62 @@ int main(int argc,char ** argv)
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-				 for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
-				 {
-					 Mesh * mesh = m;
-					 Cell cell = m->CellByLocalID(q);
-					 ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
-					 int NF = (int)faces.size(); //number of faces;
-					 volume = cell->Volume(); //volume of the cell
-					 cell->Barycenter(x.data());;
-					 //get permeability for the cell
-					 KTensor(tag_C[cell],K);
-					 CTensor(tag_C[cell],C);
-					 iK = K.PseudoInvert(1.0e-11);
-					 if( !inverse_tensor ) K = K.Invert();
-					 //K += rMatrix::Unit(9)*1.0e-6*K.FrobeniusNorm();
-					 //PrintSV(K);
-					 N.Resize(3*NF,9); //co-normals
-					 //NQ.Resize(3*NF,9);
-					 //T.Resize(3*NF,9); //transversals
-					 R.Resize(3*NF,9); //directions
-					 L.Resize(3*NF,3*NF);
-					 //M.Resize(3*NF,3*NF);
-					 L.Zero();
-					 
-					 for(int k = 0; k < NF; ++k) //loop over faces
-					 {
-						 area = faces[k].Area();
-						 faces[k].Barycenter(xf.data());
-						 faces[k].OrientedUnitNormal(cell->self(),n.data());
-						 dist = n.DotProduct(xf-x);
-						 // assemble matrix of directions
-						 R(3*k,3*(k+1),0,9) = I.Kronecker((xf-x).Transpose());
-						 // assemble matrix of co-normals
-						 
-						 L(3*k,3*(k+1),3*k,3*(k+1)) = (area/dist)*(I.Kronecker(n.Transpose())*K*I.Kronecker(n));
-						 
-						 N(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
+				for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+				{
+					Mesh * mesh = m;
+					Cell cell = m->CellByLocalID(q);
+					ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
+					int NF = (int)faces.size(); //number of faces;
+					volume = cell->Volume(); //volume of the cell
+					cell->Barycenter(x.data());;
+					//get permeability for the cell
+					KTensor(tag_C[cell],K);
+					CTensor(tag_C[cell],C);
+					iK = K.PseudoInvert(1.0e-11);
+					if( !inverse_tensor ) K = K.Invert();
+					//K += rMatrix::Unit(9)*1.0e-6*K.FrobeniusNorm();
+					//PrintSV(K);
+					N.Resize(3*NF,9); //co-normals
+					//NQ.Resize(3*NF,9);
+					//T.Resize(3*NF,9); //transversals
+					R.Resize(3*NF,9); //directions
+					L.Resize(3*NF,3*NF);
+					//M.Resize(3*NF,3*NF);
+					L.Zero();
+					
+					for(int k = 0; k < NF; ++k) //loop over faces
+					{
+						area = faces[k].Area();
+						faces[k].Barycenter(xf.data());
+						faces[k].OrientedUnitNormal(cell->self(),n.data());
+						dist = n.DotProduct(xf-x);
+						// assemble matrix of directions
+						R(3*k,3*(k+1),0,9) = I.Kronecker((xf-x).Transpose());
+						// assemble matrix of co-normals
+						
+						L(3*k,3*(k+1),3*k,3*(k+1)) = (area/dist)*(I.Kronecker(n.Transpose())*K*I.Kronecker(n));
+						
+						N(3*k,3*(k+1),0,9) = area*I.Kronecker(n.Transpose());
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-						 {
-							 if( faces[k].BackCell() == cell )
-								 tag_Row[faces[k]][0] = k; //detect my row
-							 else
-								 tag_Row[faces[k]][1] = k; //detect my row
-						 }
-					 } //end of loop over faces
-					 //R += N*Curl;
-					 tag_Ws[cell].resize(6*3*NF);
-					 tag_Ws(cell,6,3*NF) = ((R*B*iBtB).Transpose()*N*B).Invert()*(R*B*iBtB).Transpose();
-					 tag_W[cell].resize(9*NF*NF);
+						{
+							if( faces[k].BackCell() == cell )
+								tag_Row[faces[k]][0] = k; //detect my row
+							else
+								tag_Row[faces[k]][1] = k; //detect my row
+						}
+					} //end of loop over faces
+					//R += N*Curl;
+					tag_Ws[cell].resize(6*3*NF);
+					tag_Ws(cell,6,3*NF) = ((R*B*iBtB).Transpose()*N*B).Invert()*(R*B*iBtB).Transpose();
+					tag_W[cell].resize(9*NF*NF);
 					
 					if( true )
 					{
 						double alpha = 0;
 						double beta = alpha;
-						 
+						
 						//M = B*iBtB*B.Transpose();
 						//R = R*(I9 + M)*0.5;
 						W1 = (N*K+alpha*L*R)*((N*K+alpha*L*R).Transpose()*R).PseudoInvert(1.0e-11)*(N*K+alpha*L*R).Transpose();
@@ -576,45 +576,153 @@ int main(int argc,char ** argv)
 						M = B*iBtB*B.Transpose();
 						W1 = (N*B*C)*((N*B*C).Transpose()*R*B*iBtB).Invert()*(N*B*C).Transpose();
 						W2 = L - (L*R*B*iBtB)*((L*R*B*iBtB).Transpose()*R*B*iBtB).Invert()*(L*R*B*iBtB).Transpose();
-						 
-					 }
-					 
-					 tag_W(cell,3*NF,3*NF) = W1+W2;// + rMatrix::Unit(3*NF)*volume;
-					 
-					 if(false)if(!K.isSymmetric() )
-					 {
-						 std::cout << "K nonsymmetric: " << std::endl;
-						 (K-K.Transpose()).Print();
-					 }
-					 
-					 //if( false )
-						 if( !tag_W(cell,3*NF,3*NF).isSymmetric(1.0e-5) )
-					 {
-						 std::cout << "W nonsymmetric: " << std::endl;
-						 (tag_W(cell,3*NF,3*NF)-tag_W(cell,3*NF,3*NF).Transpose()).Print();
-						 //std::cout << "(N*C)^T*R" << std::endl;
-						 //((N*C).Transpose()*R).Print();
-					 }
-					 
-					 if( false ) 
-					 if( (N*C - tag_W(cell,3*NF,3*NF)*R).FrobeniusNorm() > 1.0e-3 )
-					 {
-						 std::cout << "error: " << std::endl;
-						 (N*C - tag_W(cell,3*NF,3*NF)*R).Print();
-					 }
-					 
+						
+					}
 					
-					 
-					 if( false )
-					 {
-						 std::cout << "total       ";
-						 PrintSV(tag_W(cell,3*NF,3*NF));
-					 }
-					 
+					tag_W(cell,3*NF,3*NF) = W1+W2;// + rMatrix::Unit(3*NF)*volume;
 					
-				 } //end of loop over cells
+					if(false)if(!K.isSymmetric() )
+					{
+						std::cout << "K nonsymmetric: " << std::endl;
+						(K-K.Transpose()).Print();
+					}
+					
+					//if( false )
+					if( !tag_W(cell,3*NF,3*NF).isSymmetric(1.0e-5) )
+					{
+						std::cout << "W nonsymmetric: " << std::endl;
+						(tag_W(cell,3*NF,3*NF)-tag_W(cell,3*NF,3*NF).Transpose()).Print();
+						//std::cout << "(N*C)^T*R" << std::endl;
+						//((N*C).Transpose()*R).Print();
+					}
+					
+					if( false )
+						if( (N*C - tag_W(cell,3*NF,3*NF)*R).FrobeniusNorm() > 1.0e-3 )
+						{
+							std::cout << "error: " << std::endl;
+							(N*C - tag_W(cell,3*NF,3*NF)*R).Print();
+						}
+					
+					
+					
+					if( false )
+					{
+						std::cout << "total       ";
+						PrintSV(tag_W(cell,3*NF,3*NF));
+					}
+					
+					
+				} //end of loop over cells
+				rMatrix W1(3,3),W2(3,3), iW12sum, W1sum(3,3), W2sum(3,3), C(3,3);
+				raMatrix W[2];
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
+				{
+					Mesh * mesh = m;
+					Face f = m->FaceByLocalID(q);
+					
+					Storage::integer_array rows = f->IntegerArray(tag_Row);
+					ElementArray<Face> faces[2];
+					ElementArray<Cell> cells = f->getCells();
+					//std::cout << "face " << f->LocalID() << " NC " << cells.size() << std::endl;
+					for(int q = 0; q < (int)cells.size(); ++q)
+					{
+						Cell cell = cells[q];
+						faces[q] = cell->getFaces(); //obtain faces of the cell
+						W[q] = raMatrixMake(cell->RealArray(tag_W).data(),3*faces[q].size(),3*faces[q].size());
+					}
+					Storage::reference_array f_elems = f->ReferenceArray(tag_elems);
+					Storage::reference_array i_elems = f->ReferenceArray(intrp_elems);
+					Storage::real_array f_coefs = f->RealArray(trans);
+					Storage::real_array i_coefs = f->RealArray(intrp_trans);
+					real & f_rhs = f->Real(rhs);
+					real & i_rhs = f->Real(intrp_rhs);
+					real aF = 1;
+					f_rhs = i_rhs = 0;
+					real multi = 1, multf = -aF, multfbnd = -aF;
+					if( cells.size() == 2 ) //internal face
+					{
+						W1 = W[0](rows[0]*3,rows[0]*3+3,rows[0]*3,rows[0]*3+3)*aF;
+						W2 = W[1](rows[1]*3,rows[1]*3+3,rows[1]*3,rows[1]*3+3)*aF;
+						iW12sum = (W1+W2).Invert();
+						W1sum.Zero();
+						W2sum.Zero();
+						//add back cell faces and compute sum
+						for(int q = 0; q < (int)faces[0].size(); ++q) if( fabs(W[0](rows[0],q)) > 1.0e-12 )
+						{
+							C = W[0](rows[0]*3,rows[0]*3+3,q*3+3);
+							W1sum += C;
+							C = iW12sum*C;
+							if( faces[0][q] != f )
+							{
+								f_elems.push_back(faces[0][q]);
+								//f_coefs.push_back(-W[0](rows[0],q)*W2/(W1+W2)*multf);
+								f_coefs.push_back(-C*W2*multf);
+								i_elems.push_back(faces[0][q]);
+								i_coefs.push_back(-C*multi);
+							}
+							
+						}
+						//add front cell faces and compute sum
+						for(int q = 0; q < (int)faces[1].size(); ++q) if( fabs(W[1](rows[1],q)) > 1.0e-12 )
+						{
+							C = W[1](rows[1]*3,rows[1]*3+3,q*3+3);
+							W2sum += C;
+							C = iW12sum*C;
+							if( faces[1][q] != f )
+							{
+								f_elems.push_back(faces[1][q]);
+								f_coefs.push_back(C*W1*multf);
+								i_elems.push_back(faces[1][q]);
+								i_coefs.push_back(-C*multi);
+							}
+						}
+						//already have back cell and front cell
+						f_coefs[0] = iW12sum*W1sum*W2*multf; //BackCell
+						assert(f_elems[0] == f->BackCell());
+						f_coefs[1] = -iW12sum*W1*W2sum*multf; //FrontCell
+						assert(f_elems[1] == f->FrontCell());
+						i_coefs[0] = iW12sum*W1sum*multi;
+						i_coefs[1] = iW12sum*W2sum*multi;
+					}
+					else //Boundary face
+					{
+						real alpha = 0, beta = 1, gamma = 0; //alpha p + beta K \nabla p \cdot n = gamma
+						if( bnd_conds.isValid() && f->HaveData(bnd_conds) )
+						{
+							real_array bnd = f->RealArray(bnd_conds);
+							alpha = bnd[0];
+							beta = bnd[1];
+							gamma = bnd[2];
+						}
+						real Wsum = 0.0, Wc = W[0](rows[0],rows[0])*aF;
+						f_rhs = 0;
+						//f_rhs = gamma*Wc/(alpha+beta*Wc)*aF;
+						i_rhs = gamma/(alpha+beta*Wc);
+						for(int q = 0; q < (int)faces[0].size(); ++q) if( fabs(W[0](rows[0],q)) > 1.0e-12 )
+						{
+							f_elems.push_back(faces[0][q]);
+							f_coefs.push_back(-W[0](rows[0],q)*multfbnd);
+							if( faces[0][q] != f )
+							{
+								//f_elems.push_back(faces[0][q]);
+								//f_coefs.push_back(W[0](rows[0],q)*alpha/(alpha+beta*Wc)*aF);
+								i_elems.push_back(faces[0][q]);
+								i_coefs.push_back(-W[0](rows[0],q)*beta/(alpha+beta*Wc));
+							}
+							Wsum += W[0](rows[0],q);
+						}
+						//f_coefs[0] = -alpha/(alpha+beta*Wc)*Wsum*aF;
+						f_coefs[0] = Wsum*multfbnd;
+						assert(f_elems[0] == f->BackCell());
+						i_coefs[0] = beta*Wsum/(alpha+beta*Wc);
+					}
+				} //end of loop over faces
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
+			
 			
 			ttt = Timer();
 #if defined(USE_OMP)
