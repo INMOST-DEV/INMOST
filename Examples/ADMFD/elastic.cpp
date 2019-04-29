@@ -386,7 +386,7 @@ int main(int argc,char ** argv)
         TagRealArray tag_W;  // Gradient matrix
         TagRealArray tag_Ws; // Matrix to reconstruct stress from fluxes
 		TagRealArray tag_FLUX; // Flux (for error)
-		TagInteger   tag_Row;
+		TagIntegerArray tag_Row;
 
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
@@ -613,7 +613,8 @@ int main(int argc,char ** argv)
 					
 					
 				} //end of loop over cells
-				rMatrix W1(3,3),W2(3,3), iW12sum, W1sum(3,3), W2sum(3,3), C(3,3);
+				/*
+				rMatrix C1(3,3),C2(3,3), iC12sum, C1sum(3,3), C2sum(3,3), CC(3,3);
 				raMatrix W[2];
 #if defined(USE_OMP)
 #pragma omp for
@@ -633,7 +634,7 @@ int main(int argc,char ** argv)
 						faces[q] = cell->getFaces(); //obtain faces of the cell
 						W[q] = raMatrixMake(cell->RealArray(tag_W).data(),3*faces[q].size(),3*faces[q].size());
 					}
-					Storage::reference_array f_elems = f->ReferenceArray(tag_elems);
+					Storage::reference_array f_elems = f->ReferenceArray(elems);
 					Storage::reference_array i_elems = f->ReferenceArray(intrp_elems);
 					Storage::real_array f_coefs = f->RealArray(trans);
 					Storage::real_array i_coefs = f->RealArray(intrp_trans);
@@ -644,48 +645,48 @@ int main(int argc,char ** argv)
 					real multi = 1, multf = -aF, multfbnd = -aF;
 					if( cells.size() == 2 ) //internal face
 					{
-						W1 = W[0](rows[0]*3,rows[0]*3+3,rows[0]*3,rows[0]*3+3)*aF;
-						W2 = W[1](rows[1]*3,rows[1]*3+3,rows[1]*3,rows[1]*3+3)*aF;
-						iW12sum = (W1+W2).Invert();
-						W1sum.Zero();
-						W2sum.Zero();
+						C1 = W[0](rows[0]*3,rows[0]*3+3,rows[0]*3,rows[0]*3+3)*aF;
+						C2 = W[1](rows[1]*3,rows[1]*3+3,rows[1]*3,rows[1]*3+3)*aF;
+						iC12sum = (C1+C2).Invert();
+						C1sum.Zero();
+						C2sum.Zero();
 						//add back cell faces and compute sum
 						for(int q = 0; q < (int)faces[0].size(); ++q) if( fabs(W[0](rows[0],q)) > 1.0e-12 )
 						{
-							C = W[0](rows[0]*3,rows[0]*3+3,q*3+3);
-							W1sum += C;
-							C = iW12sum*C;
+							CC = W[0](rows[0]*3,rows[0]*3+3,q*3+3);
+							C1sum += CC;
+							CC = iC12sum*CC;
 							if( faces[0][q] != f )
 							{
 								f_elems.push_back(faces[0][q]);
 								//f_coefs.push_back(-W[0](rows[0],q)*W2/(W1+W2)*multf);
-								f_coefs.push_back(-C*W2*multf);
+								f_coefs.push_back(-CC*C2*multf);
 								i_elems.push_back(faces[0][q]);
-								i_coefs.push_back(-C*multi);
+								i_coefs.push_back(-CC*multi);
 							}
 							
 						}
 						//add front cell faces and compute sum
 						for(int q = 0; q < (int)faces[1].size(); ++q) if( fabs(W[1](rows[1],q)) > 1.0e-12 )
 						{
-							C = W[1](rows[1]*3,rows[1]*3+3,q*3+3);
-							W2sum += C;
-							C = iW12sum*C;
+							CC = W[1](rows[1]*3,rows[1]*3+3,q*3+3);
+							C2sum += CC;
+							CC = iC12sum*CC;
 							if( faces[1][q] != f )
 							{
 								f_elems.push_back(faces[1][q]);
-								f_coefs.push_back(C*W1*multf);
+								f_coefs.push_back(CC*C1*multf);
 								i_elems.push_back(faces[1][q]);
-								i_coefs.push_back(-C*multi);
+								i_coefs.push_back(-CC*multi);
 							}
 						}
 						//already have back cell and front cell
-						f_coefs[0] = iW12sum*W1sum*W2*multf; //BackCell
+						f_coefs[0] = iC12sum*C1sum*C2*multf; //BackCell
 						assert(f_elems[0] == f->BackCell());
-						f_coefs[1] = -iW12sum*W1*W2sum*multf; //FrontCell
+						f_coefs[1] = -iC12sum*C1*C2sum*multf; //FrontCell
 						assert(f_elems[1] == f->FrontCell());
-						i_coefs[0] = iW12sum*W1sum*multi;
-						i_coefs[1] = iW12sum*W2sum*multi;
+						i_coefs[0] = iC12sum*C1sum*multi;
+						i_coefs[1] = iC12sum*C2sum*multi;
 					}
 					else //Boundary face
 					{
@@ -720,6 +721,7 @@ int main(int argc,char ** argv)
 						i_coefs[0] = beta*Wsum/(alpha+beta*Wc);
 					}
 				} //end of loop over faces
+				 */
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
 			
@@ -736,7 +738,7 @@ int main(int argc,char ** argv)
 				for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
 				{
 					Mesh * mesh = m;
-					Face face = m->faceByLocalID(q);
+					Face face = m->FaceByLocalID(q);
 				}
 			}
 			std::cout << "Construct fluxes and interpolations: " << Timer() - ttt << std::endl;
