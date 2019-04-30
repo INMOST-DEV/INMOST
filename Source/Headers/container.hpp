@@ -2756,12 +2756,13 @@ namespace INMOST
 	class thread_private
 	{
 		//std::vector< thread_private_item<T> > items;
-		T * items;
+		//T * items;
+		thread_private_item<T> * items;
 	public:
 		thread_private()
 		{
 			//std::cout << "constructor " << this << std::endl;
-			items = new T[omp_get_max_threads()];
+			items = new thread_private_item<T>[omp_get_max_threads()];
 			//for(int k = 0; k < omp_get_max_threads(); ++k)
 			//{
 			//	std::cout << (void *)&items[k] << std::endl;
@@ -2770,16 +2771,16 @@ namespace INMOST
 		thread_private(const T & b)
 		{
 			//std::cout << "T copy constructor " << this << std::endl;
-			items = new T[omp_get_max_threads()];
+			items = new thread_private_item<T>[omp_get_max_threads()];
 			for(int k = 0; k < omp_get_max_threads(); ++k)
-				items[k] = b;
+				items[k].item = b;
 		}
 		thread_private(const thread_private & b)
 		{
 			//std::cout << "copy constructor " << this << std::endl;
-			items = new T[omp_get_max_threads()];
+			items = new thread_private_item<T>[omp_get_max_threads()];
 			for(int k = 0; k < omp_get_max_threads(); ++k)
-				items[k] = b.get(k);
+				items[k].item = b.get(k);
 		}
 		~thread_private()
 		{
@@ -2789,17 +2790,17 @@ namespace INMOST
 		{
 			if( omp_in_parallel() )
 			{
-				items[omp_get_thread_num()] = b.get();
+				items[omp_get_thread_num()].item = b.get();
 			}
 			else
 			{
 #pragma omp parallel
-				items[omp_get_thread_num()] = b.get();
+				items[omp_get_thread_num()].item = b.get();
 			}
 			return *this;
 		}
-		T & operator *() {return items[omp_get_thread_num()];}
-		const T & operator *() const {return items[omp_get_thread_num()];}
+		T & operator *() {return items[omp_get_thread_num()].item;}
+		const T & operator *() const {return items[omp_get_thread_num()].item;}
 		//operator T & () {return items[omp_get_thread_num()].item;}
 		//operator const T & () const {return items[omp_get_thread_num()].item;}
 		//operator T () {return items[omp_get_thread_num()].item;}
@@ -2814,12 +2815,12 @@ namespace INMOST
 		//T & operator *= (B const & b) {items[omp_get_thread_num()].item *= b; return items[omp_get_thread_num()].item;}
 		//template <typename B>
 		//T & operator /= (B const & b) {items[omp_get_thread_num()].item /= b; return items[omp_get_thread_num()].item;}
-		T & get() {return items[omp_get_thread_num()];}
-		const T & get() const {return items[omp_get_thread_num()];}
-		T & get(int k) {return items[k];}
-		const T & get(int k) const {return items[k];}
-		T * operator ->() {return &items[omp_get_thread_num()];}
-		const T * operator ->() const {return &items[omp_get_thread_num()];}
+		T & get() {return items[omp_get_thread_num()].item;}
+		const T & get() const {return items[omp_get_thread_num()].item;}
+		T & get(int k) {return items[k].item;}
+		const T & get(int k) const {return items[k].item;}
+		T * operator ->() {return &items[omp_get_thread_num()].item;}
+		const T * operator ->() const {return &items[omp_get_thread_num()].item;}
 	};
 #else //_OPENMP
 	template<typename T>
@@ -2868,11 +2869,12 @@ namespace INMOST
 		page_fault_type page_fault;
 	public:
 		unsigned last_byte() const {return last_alloc.back();}
-		unsigned allocations() const {return inuse.size(); }
+		unsigned allocations() const {return inuse.size()-1; }
 		memory_pool()
 		{
 			pool.push_back((char*)malloc(sizeof(char)*(1 << pool_size_bits))); 
 			last_alloc.push_back(0); 
+			inuse.push_back(true); //never delete
 			//std::cout << "mempool " << (void *)this << " constructor, addr " << (void *)pool.back() << std::endl;
 		}
 		//memory_pool(const memory_pool & b) : pool(b.pool), last_alloc(b.last_alloc) {}
@@ -2897,6 +2899,7 @@ namespace INMOST
 				{
 					//std::cout << "add page " << pagepos << " start marker" << std::endl;
 					last_alloc.push_back(pagepos << pool_size_bits);
+					inuse.push_back(false);
 					oldpos = last_alloc.back();
 					newpos = oldpos + sizeof(T)*n;
 				}
@@ -2907,7 +2910,7 @@ namespace INMOST
 				inuse.push_back(true);
 				//std::cout << "allocated " << sizeof(T)*n << " bytes from " << oldpos << " to " << newpos << " at page " << pagepos << " at " << data << std::endl;
 				//std::cout << this << " last_alloc[" << last_alloc.size() << "]:";
-				//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i];
+				//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i] << "(" << (inuse[i] ? '+' : '-') << ")";
 				//std::cout << std::endl;
 				return data;
 			}
@@ -2920,7 +2923,7 @@ namespace INMOST
 				page_fault[(void *)data] = n;
 				//std::cout << "page fault for " << sizeof(T)*n << " bytes allocated at " << data << std::endl;
 				//std::cout << this << " last_alloc[" << last_alloc.size() << "]:";
-				//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i];
+				//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i] << "(" << (inuse[i] ? '+' : '-') << ")";
 				//std::cout << std::endl;
 				return (void *)data;
 			}
@@ -2942,59 +2945,66 @@ namespace INMOST
 					{
 						unsigned n = (newpos - oldpos)/sizeof(T);
 						for(unsigned i = 0; i < n; ++i) mem[i].~T();
-						inuse[checkpos-2] = false;
+						inuse[checkpos-1] = false;
 						find = true;
 					}
 					checkpos--;
 				}
 			}
-			//std::cout << "deallocate " << mem << " from " << oldpos << " to " << newpos << " page " << pagepos <<  std::endl;
+			//if( find )
+			//	std::cout << "deallocate " << mem << " from " << oldpos << " to " << newpos << " page " << pagepos <<  std::endl;
+			//else
+			//	std::cout << "deallocate " << mem << " position not found " << std::endl;
 			//std::cout << this << " last_alloc[" << last_alloc.size() << "]:";
-			//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i];
+			//for(unsigned i = 0; i < last_alloc.size(); ++i) std::cout << " " << last_alloc[i] << "(" << (inuse[i] ? '+' : '-') << ")";
 			//std::cout << std::endl;
 			if( !find )
 			{
 				page_fault_type::iterator it = page_fault.find((void *)mem);
 				assert(it != page_fault.end() && "deallocated block does not match neither last allocated block nor page fault");
-				//if(it != page_fault.end() )
-				//{
+				if(it != page_fault.end() )
+				{
 				//	std::cout << "deallocated block does not match neither last allocated block nor page fault";
 				//	throw -1;
-				//}
-				unsigned n = it->second;
-				//std::cout << "deallocate page fault of " << sizeof(T)*n << " bytes at " << mem << std::endl;
-				//delete [] mem;
-				for(unsigned i = 0; i < n; ++i)	mem[i].~T();
-				free(mem);
-				page_fault.erase(it);
+				}
+				else
+				{
+					unsigned n = it->second;
+					//std::cout << "deallocate page fault of " << sizeof(T)*n << " bytes at " << mem << std::endl;
+					//delete [] mem;
+					for(unsigned i = 0; i < n; ++i)	mem[i].~T();
+					free(mem);
+					page_fault.erase(it);
+				}
 			}
 			
 			while( !inuse.empty() && inuse.back() == false )
 			{
+				//std::cout << "pop " << last_alloc.back() << "(" << (inuse.back() ? '+' : '-') << ") sizes " << last_alloc.size() << " " << inuse.size() << std::endl;
 				inuse.pop_back();
 				last_alloc.pop_back();
 				//std::cout << "deallocate from " << oldpos << " to " << newpos << std::endl;
-				if( last_alloc.back() != 0 && last_alloc.back()%(1<<pool_size_bits) == 0 )
-				{
-					//std::cout << "remove page " << (last_alloc.back() >> pool_size_bits) << " start marker " << std::endl;
-					last_alloc.pop_back();
-				}
+				//if( last_alloc.back() != 0 && last_alloc.back()%(1<<pool_size_bits) == 0 )
+				//{
+				//	std::cout << "next should remove page " << (last_alloc.back() >> pool_size_bits) << " start marker " << std::endl;
+					//last_alloc.pop_back();
+				//}
 			}
 		}
 		~memory_pool()
 		{
 			//std::cout << "mempool destructor " << (void *)this << " in pool: ";
-			if( last_alloc.back() != 0 ) std::cout << "warning: memory pool not empty on deallocation!!!" << std::endl;
+			//if( last_alloc.back() != 0 ) std::cout << "warning: memory pool not empty on deallocation!!!" << std::endl;
 			for(unsigned k = 0; k < pool.size(); ++k)
 			{
 				//std::cout << (void *)pool[k] << " ";
 				free(pool[k]);
 			}
-			std::cout << std::endl;
+			//std::cout << std::endl;
 			pool.clear();
 			if( !page_fault.empty() )
 			{
-				std::cout << "warning: memory pool's page fault not empty on deallocation!!!" << std::endl;
+				//std::cout << "warning: memory pool's page fault not empty on deallocation!!!" << std::endl;
 				for(page_fault_type::iterator it = page_fault.begin(); it != page_fault.end(); ++it)
 					free(it->first);
 			}
