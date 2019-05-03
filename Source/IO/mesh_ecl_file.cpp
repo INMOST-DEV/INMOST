@@ -1208,6 +1208,7 @@ namespace INMOST
 		bool project_perm = false;
 		int split_degenerate = 0;
 		bool check_topology = false;
+		bool compute_ecl_centroid = true;
 		int verbosity = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
@@ -4385,7 +4386,7 @@ namespace INMOST
 			if (true) //TODO16
 			{
 				TagRealArray ecl_centroid;
-				if( true )
+				if( compute_ecl_centroid )
 				{
 					if (verbosity > 0)
 					{
@@ -4460,7 +4461,7 @@ namespace INMOST
 						else
 						{
 							Storage::real cnt[3];
-							c->Centroid(cnt);
+							c->Barycenter(cnt);
 							if (!c->Inside(cnt)) num_outside++;
 						}
 						num_total++;

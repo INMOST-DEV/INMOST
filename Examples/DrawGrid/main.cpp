@@ -47,6 +47,7 @@ double zoom = 1;
 int width = 800, height = 800;
 double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20, snear = 1e20;
 double shift[3] = {0,0,0};
+double scale[3] = {1,1,1};
 bool perspective = false;
 int drawedges = 0, draw_orphan = true;
 bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false, elevation = false;
@@ -727,6 +728,15 @@ void keyboard(unsigned char key, int x, int y)
 		}
 		glutPostRedisplay();
 	}
+	else if( key == 'k' )
+	{
+		if( CommonInput == NULL )
+		{
+			CommonInput = new Input(visualization_prompt, "Enter data for mesh scale as x,y,z");
+			visualization_prompt_active = 3;
+		}
+		glutPostRedisplay();
+	}
 	else if( key == 'q' )
 	{
 		mesh->Save("mesh.vtk");
@@ -1144,11 +1154,7 @@ void draw_screen()
 	}
 	//glPointSize(1);
 	
-	//glTranslated(-(sleft+sright)*0.5+shift[0],-(sbottom+stop)*0.5 + shift[1],-(snear+sfar)*0.5 + shift[2]);
 	
-	glTranslated(shift[0],shift[1],shift[2]);
-
-
 	//if( planecontrol )
 	if( drawaxis )
 	{
@@ -1158,7 +1164,7 @@ void draw_screen()
 		glVertex3dv(p);
 		glEnd();
 		glPointSize(1);
-
+		
 		glColor3f(0.2,0.4,0.6);
 		glLineWidth(3.0);
 		glBegin(GL_LINES);
@@ -1167,8 +1173,17 @@ void draw_screen()
 		glEnd();
 		glLineWidth(1.0);
 	}
-
 	
+	
+	
+	//glTranslated(-(sleft+sright)*0.5+shift[0],-(sbottom+stop)*0.5 + shift[1],-(snear+sfar)*0.5 + shift[2]);
+	//glTranslated(-(sleft+sright)*0.5,-(sbottom+stop)*0.5,-(snear+sfar)*0.5);
+	glScaled(scale[0],scale[1],scale[2]);
+	//glTranslated((sleft+sright)*0.5,(sbottom+stop)*0.5,(snear+sfar)*0.5);
+	glTranslated(shift[0],shift[1],shift[2]);
+	
+
+
 
 	double campos[3] = {0.5,0.5,0}, pickp[3], pickd[3];
 	whereami(campos[0], campos[1], campos[2]);
@@ -1467,6 +1482,39 @@ void draw_screen()
 						clipupdate = true;
 					}
 					else printf("malformed string %s for color map bounds\n",visualization_prompt);
+					visualization_prompt_active = 0;
+				}
+				else if( visualization_prompt_active == 3 )
+				{
+					int k1 = 0, k2, slen = (int)strlen(visualization_prompt);
+					for(int k = 0; k < slen; ++k)
+					{
+						if( visualization_prompt[k] == ',' )
+						{
+							visualization_prompt[k] = '\0';
+							k1 = k;
+							break;
+						}
+					}
+					for(int k = k1+1; k < slen; ++k)
+					{
+						if( visualization_prompt[k] == ',' )
+						{
+							visualization_prompt[k] = '\0';
+							k2 = k;
+							break;
+						}
+					}
+					if( (k1 < slen && k1+1 < slen) && (k2 < slen && k2+1 < slen) )
+					{
+						scale[0] = atof(visualization_prompt);
+						scale[1] = atof(visualization_prompt+k1+1);
+						scale[2] = atof(visualization_prompt+k2+1);
+						visualization_prompt[k1] = ',';
+						visualization_prompt[k2] = ',';
+						clipupdate = true;
+					}
+					else printf("malformed string %s for mesh rescale\n",visualization_prompt);
 					visualization_prompt_active = 0;
 				}
 				else if( visualization_prompt_active == 1 )
@@ -2001,7 +2049,7 @@ void svg_draw(std::ostream & file)
 	//glPointSize(1);
 	
 	//glTranslated(-(sleft+sright)*0.5+shift[0],-(sbottom+stop)*0.5 + shift[1],-(snear+sfar)*0.5 + shift[2]);
-	
+	glScaled(scale[0],scale[1],scale[2]);
 	glTranslated(shift[0],shift[1],shift[2]);
 
 	glGetDoublev (GL_PROJECTION_MATRIX, projection);
