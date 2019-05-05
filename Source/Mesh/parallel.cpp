@@ -2412,22 +2412,25 @@ namespace INMOST
 		}
 		std::set<int>::iterator ir = shared_procs.find(mpirank);
 		if( ir != shared_procs.end() ) shared_procs.erase(ir);
-		ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
-		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
-		//procs.clear();
-		//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
-		ir = shared_procs.find(-1);
-		if( ir != shared_procs.end() )
+		if( !shared_procs.empty() ) 
 		{
-			std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
-			REPORT_STR(GetProcessorRank() << " found processor -1 ");
-			exit(-1);
-		}
-		//REPORT_VAL("processors",procs.size());
-		REPORT_VAL("number of processors",ret.size());
-		for(int k = 0; k < ret.size(); ++k)
-		{
-			REPORT_VAL("proc ",ret[k])
+			ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
+			//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
+			//procs.clear();
+			//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
+			ir = shared_procs.find(-1);
+			if( ir != shared_procs.end() )
+			{
+				std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
+				REPORT_STR(GetProcessorRank() << " found processor -1 ");
+				exit(-1);
+			}
+			//REPORT_VAL("processors",procs.size());
+			REPORT_VAL("number of processors",ret.size());
+			for(int k = 0; k < ret.size(); ++k)
+			{
+				REPORT_VAL("proc ",ret[k])
+			}
 		}
 #endif
 		EXIT_FUNC();
