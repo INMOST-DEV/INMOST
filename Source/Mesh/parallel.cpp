@@ -2356,20 +2356,26 @@ namespace INMOST
 			shared_procs.insert(it->first);
 		for(parallel_storage::const_iterator it = to.begin(); it != to.end(); ++it) 
 			shared_procs.insert(it->first);
-		std::set<int>::iterator ir = shared_procs.find(mpirank);
-		if( ir != shared_procs.end() ) shared_procs.erase(ir);
-		ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
-
-		REPORT_STR("result:");
-		for(std::set<int>::iterator it = shared_procs.begin(); it != shared_procs.end(); ++it)
-			REPORT_VAL("proc ",*it);
-
-		ir = shared_procs.find(-1);
-		if( ir != shared_procs.end() )
+		if( !shared_procs.empty() )
 		{
-			std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
-			REPORT_STR(GetProcessorRank() << " found processor -1 ");
-			exit(-1);
+			std::set<int>::iterator ir = shared_procs.find(mpirank);
+			if( ir != shared_procs.end() ) shared_procs.erase(ir);
+			if( !shared_procs.empty() )
+			{
+				ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
+
+				REPORT_STR("result:");
+				for(std::set<int>::iterator it = shared_procs.begin(); it != shared_procs.end(); ++it)
+					REPORT_VAL("proc ",*it);
+
+				ir = shared_procs.find(-1);
+				if( ir != shared_procs.end() )
+				{
+					std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
+					REPORT_STR(GetProcessorRank() << " found processor -1 ");
+					exit(-1);
+				}
+			}
 		}
 		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 		//procs.clear();
@@ -2398,40 +2404,56 @@ namespace INMOST
 		{
 			REPORT_VAL("check type: ",ElementTypeName(etype));
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel 
 #endif //USE_OMP
-			for(int k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k))
 			{
-				Element e = ElementByLocalID(etype,k);
-				Storage::integer_array procs = e.IntegerArray(ProcessorsTag());
-				shared_procs.insert(procs.begin(),procs.end());
+				std::set<int> shared_procs_local;
+#if defined(USE_OMP)
+#pragma omp for
+#endif //USE_OMP
+				for(int k = 0; k < LastLocalID(etype); ++k) if( isValidElement(etype,k))
+				{
+					Element e = ElementByLocalID(etype,k);
+					Storage::integer_array procs = e.IntegerArray(ProcessorsTag());
+					shared_procs_local.insert(procs.begin(),procs.end());
+				}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+				{
+					shared_procs.insert(shared_procs_local.begin(),shared_procs_local.end());
+				}
 			}
-			REPORT_STR("result:");
-			for(std::set<int>::iterator it = shared_procs.begin(); it != shared_procs.end(); ++it)
-				REPORT_VAL("proc ",*it);
 		}
-		std::set<int>::iterator ir = shared_procs.find(mpirank);
-		if( ir != shared_procs.end() ) shared_procs.erase(ir);
+		REPORT_STR("result:");
+		for(std::set<int>::iterator it = shared_procs.begin(); it != shared_procs.end(); ++it)
+			REPORT_VAL("proc ",*it);
 		if( !shared_procs.empty() ) 
 		{
-			ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
-			//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
-			//procs.clear();
-			//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
-			ir = shared_procs.find(-1);
-			if( ir != shared_procs.end() )
+			std::set<int>::iterator ir = shared_procs.find(mpirank);
+			if( ir != shared_procs.end() ) shared_procs.erase(ir);
+			if( !shared_procs.empty() ) 
 			{
-				std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
-				REPORT_STR(GetProcessorRank() << " found processor -1 ");
-				exit(-1);
-			}
-			//REPORT_VAL("processors",procs.size());
-			REPORT_VAL("number of processors",ret.size());
-			for(int k = 0; k < ret.size(); ++k)
-			{
-				REPORT_VAL("proc ",ret[k])
+				ret.insert(ret.end(),shared_procs.begin(),shared_procs.end());
+				//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
+				//procs.clear();
+				//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
+				ir = shared_procs.find(-1);
+				if( ir != shared_procs.end() )
+				{
+					std::cout << GetProcessorRank() << " found processor -1 " << std::endl;
+					REPORT_STR(GetProcessorRank() << " found processor -1 ");
+					exit(-1);
+				}
 			}
 		}
+		//REPORT_VAL("processors",procs.size());
+		REPORT_VAL("number of processors",ret.size());
+		for(int k = 0; k < ret.size(); ++k)
+		{
+			REPORT_VAL("proc ",ret[k])
+		}
+	
 #endif
 		EXIT_FUNC();
 		return ret;
