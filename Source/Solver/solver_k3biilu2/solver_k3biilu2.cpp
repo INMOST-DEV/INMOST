@@ -8,7 +8,7 @@
 #include <math.h>
 #include <string>
 
-#include "k3d.h"
+#include "k3d_slv.hxx"
 
 #define T(x) //x // Trace of function calls. Use: "T(x) x" for trace and "T(x)" for silence
 
