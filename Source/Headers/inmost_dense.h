@@ -584,6 +584,12 @@ namespace INMOST
 		template<typename typeB>
 		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator*(typeB coef) const;
+		/// Multiply the matrix by a coefficient.
+		/// @param coef Coefficient.
+		/// @return Matrix multiplied by the coefficient.
+		template<class A>
+		Matrix<typename Promote<Var,variable>::type, pool_array_t<typename Promote<Var,variable>::type> >
+		operator*(shell_expression<A> const & coef) const {return operator*(variable(coef));}
 		/// Multiply the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
@@ -595,6 +601,12 @@ namespace INMOST
 		template<typename typeB>
 		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator/(typeB coef) const;
+		/// Divide the matrix by a coefficient of a different type.
+		/// @param coef Coefficient.
+		/// @return Matrix divided by the coefficient.
+		template<class A>
+		Matrix<typename Promote<Var,variable>::type, pool_array_t<typename Promote<Var,variable>::type> >
+		operator/(shell_expression<A> const & coef) const {return operator/(variable(coef));}
 		/// Divide the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
@@ -3140,6 +3152,14 @@ template<typename typeB>
 INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> >
 operator *(const INMOST::hessian_variable & coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
+/// Multiplication of matrix by constant from left.
+/// @param coef Constant coefficient multiplying matrix.
+/// @param other Matrix to be multiplied.
+/// @return Matrix, each entry multiplied by a constant.
+template<class A, typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST::variable,typeB>::type> >
+operator *(INMOST::shell_expression<A> const & coef, const INMOST::AbstractMatrix<typeB> & other)
+{return other*INMOST::variable(coef);}
 #endif
 
 template<typename T>
