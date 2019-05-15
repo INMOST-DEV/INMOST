@@ -46,6 +46,7 @@
 #endif
 
 #if defined(USE_METIS)
+#define METIS_EXPORT
 #include <metis.h>
 #endif
 
