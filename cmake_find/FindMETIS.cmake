@@ -13,8 +13,6 @@
 #                       (set only if different from ${METIS_DIR}/include)
 #  METIS_LIB_DIR      - Library directory of the METIS installation
 #                       (set only if different from ${METIS_DIR}/lib)
-#  METIS_TEST_RUNS    - Skip tests building and running a test
-#                       executable linked against METIS libraries
 #  METIS_LIB_SUFFIX   - Also search for non-standard library names with the
 #                       given suffix appended
 #
@@ -94,18 +92,6 @@ if(METIS_INCLUDE_DIR AND METIS_LIBRARY)
   set(CMAKE_REQUIRED_INCLUDES ${METIS_INCLUDE_DIR})
   set(CMAKE_REQUIRED_LIBRARIES ${METIS_LIBRARY})
 
-  # Build and run test program
-  include(CheckCSourceRuns)
-  check_c_source_runs("
-#define METIS_EXPORT
-#include \"metis.h\"
-int main( int argc, char* argv[] )
-{
-  // FIXME: Find a simple but sensible test for METIS
-  return 0;
-}
-" METIS_TEST_RUNS)
-
   unset(CMAKE_REQUIRED_INCLUDES)
   unset(CMAKE_REQUIRED_LIBRARIES)
 endif()
@@ -114,11 +100,11 @@ endif()
 include(FindPackageHandleStandardArgs)
 if(CMAKE_VERSION VERSION_GREATER 2.8.2)
   find_package_handle_standard_args(METIS
-    REQUIRED_VARS METIS_LIBRARY METIS_INCLUDE_DIR METIS_TEST_RUNS
+    REQUIRED_VARS METIS_LIBRARY METIS_INCLUDE_DIR 
     VERSION_VAR METIS_VERSION_STRING)
 else()
   find_package_handle_standard_args(METIS
-    REQUIRED_VARS METIS_LIBRARY METIS_INCLUDE_DIR METIS_TEST_RUNS)
+    REQUIRED_VARS METIS_LIBRARY METIS_INCLUDE_DIR)
 endif()
 
 if(METIS_FOUND)
