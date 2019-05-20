@@ -108,15 +108,15 @@ namespace INMOST
 		act_blocks.clear();
 		reg_blocks.clear();
 	}
-	INMOST_DATA_ENUM_TYPE Automatizator::RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask)
+	INMOST_DATA_ENUM_TYPE Automatizator::RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask, bool inverse)
 	{
 		if( t.GetSize() == ENUMUNDEF )
-			return RegisterEntry(VectorEntry(typemask,domain_mask,t));
+			return RegisterEntry(VectorEntry(typemask,domain_mask,inverse,t));
 		else if( t.GetSize() == 1 )
-			return RegisterEntry(SingleEntry(typemask,domain_mask,t,0));
+			return RegisterEntry(SingleEntry(typemask,domain_mask,inverse,t,0));
 		else
 		{
-			BlockEntry b(typemask,domain_mask);
+			BlockEntry b(typemask,domain_mask,inverse);
             for(INMOST_DATA_ENUM_TYPE k = 0; k < t.GetSize(); ++k)
 				b.AddTag(t,k);
 			return RegisterEntry(b);
@@ -459,7 +459,7 @@ namespace INMOST
 	
 	AbstractEntry * MultiEntry::Copy() const
 	{
-		MultiEntry * ret = new MultiEntry(GetElementType(),GetMask());
+		MultiEntry * ret = new MultiEntry(GetElementType(),GetMask(),GetMaskInverse());
 		for(unsigned k = 0; k < entries.size(); ++k)
 			ret->entries.push_back(entries[k]->Copy());
 		return ret;
@@ -506,7 +506,7 @@ namespace INMOST
 	
 	AbstractEntry * StatusBlockEntry::Copy() const 
 	{
-		StatusBlockEntry * ret = new StatusBlockEntry(GetElementType(),GetMask(),status_tag,status_tbl); 
+		StatusBlockEntry * ret = new StatusBlockEntry(GetElementType(),GetMask(),GetMaskInverse(),status_tag,status_tbl);
 		for(unsigned k = 0; k < Size(); ++k) 
 			ret->AddTag(unknown_tags[k],unknown_comp[k]); 
 		return ret; 
