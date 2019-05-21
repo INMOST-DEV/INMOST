@@ -249,7 +249,8 @@ namespace INMOST
 				}
 				else return false;
 			} //m <= n
-			dynarray<Var,128> rv1(m);
+			//dynarray<Var,128> rv1(m);
+			std::vector<Var> rv1(m);
 			//array<Var> _rv1(m);
 			//shell<Var> rv1(_rv1);
 			std::swap(n,m); //this how original algorithm takes it
@@ -2430,13 +2431,13 @@ namespace INMOST
 		
 		dynarray<enumerator,128> order(m);
 		
-		//Var temp;
+		Var temp;
 		INMOST_DATA_REAL_TYPE max,v;
-		//typeB tempb;
+		typeB tempb;
 		for(enumerator i = 0; i < m; ++i) order[i] = i;
 		for(enumerator i = 0; i < m; i++)
 		{
-			enumerator maxk = i, maxq = i;//, temp2;
+			enumerator maxk = i, maxq = i, temp2;
 			max = fabs(get_value(AtA(maxk,maxq)));
 			//Find best pivot
 			//if( max < 1.0e-8 )
@@ -2459,18 +2460,18 @@ namespace INMOST
 				{
 					for(enumerator q = 0; q < m; q++) // over columns of A
 					{
-						std::swap(AtA(maxk,q),AtA(i,q));
-						//temp = AtA(maxk,q);
-						//AtA(maxk,q) = AtA(i,q);
-						//AtA(i,q) = temp;
+						//std::swap(AtA(maxk,q),AtA(i,q));
+						temp = AtA(maxk,q);
+						AtA(maxk,q) = AtA(i,q);
+						AtA(i,q) = temp;
 					}
 					//exchange rhs
 					for(enumerator q = 0; q < l; q++) // over columns of B
 					{
-						std::swap(AtB(maxk,q),AtB(i,q));
-						//tempb = AtB(maxk,q);
-						//AtB(maxk,q) = AtB(i,q);
-						//AtB(i,q) = tempb;
+						//std::swap(AtB(maxk,q),AtB(i,q));
+						tempb = AtB(maxk,q);
+						AtB(maxk,q) = AtB(i,q);
+						AtB(i,q) = tempb;
 					}
 				}
 				//Exchange columns
@@ -2478,17 +2479,17 @@ namespace INMOST
 				{
 					for(enumerator k = 0; k < m; k++) //over rows
 					{
-						std::swap(AtA(k,maxq),AtA(k,i));
-						//temp = AtA(k,maxq);
-						//AtA(k,maxq) = AtA(k,i);
-						//AtA(k,i) = temp;
+						//std::swap(AtA(k,maxq),AtA(k,i));
+						temp = AtA(k,maxq);
+						AtA(k,maxq) = AtA(k,i);
+						AtA(k,i) = temp;
 					}
 					//remember order in sol
 					{
-						std::swap(order[maxq],order[i]);
-						//temp2 = order[maxq];
-						//order[maxq] = order[i];
-						//order[i] = temp2;
+						//std::swap(order[maxq],order[i]);
+						temp2 = order[maxq];
+						order[maxq] = order[i];
+						order[i] = temp2;
 					}
 				}
 			}
