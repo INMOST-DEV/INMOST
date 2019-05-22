@@ -679,7 +679,8 @@ namespace INMOST
 			}
 			
 			
-			wgtflag = have_vwgt + have_adjwgt*2;
+			wgtflag = have_vwgt*2 + have_adjwgt;
+			//std::cout << "wgtflag: " <<wgtflag << std::endl;
 			
 			//debug_output = true;
 			
@@ -1267,7 +1268,7 @@ namespace INMOST
 		{
 			
 			int total_points = 0;
-			int K = (int)m->GetProcessorsNumber(); //number of clusters
+			int K = (int)m->GetProcessorsNumber(), rank = (int)m->GetProcessorRank(); //number of clusters
 			//std::cout << "Start K-means on " << m->GetProcessorRank() << " clusters " << K << std::endl;
 			int max_iterations = 100;
 #if defined(USE_OMP)
@@ -1281,6 +1282,14 @@ namespace INMOST
 			std::vector< int > points_node(total_points);
 			std::vector< double > points_center(total_points*3);
 			std::vector< int > points_cluster(total_points,-1);
+			std::vector< double > cluster_center(K*3,0.0);
+			std::vector< int > cluster_npoints(K,0);
+			std::vector< double > cluster_weight(K,1/(double)K);
+			std::vector< double > cluster_shift(K*3,0);
+#if defined(USE_MPI)
+			std::vector< double > cluster_center_tmp(K*3);
+			std::vector< int > cluster_npoints_tmp(K);
+#endif
 			
 			int k = 0;
 			for(int q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
@@ -1289,18 +1298,72 @@ namespace INMOST
 				if( n->GetStatus() != Element::Ghost ) points_node[k++] = n->LocalID();
 			}
 			
+			double pmax[3] = {-1.0e+100,-1.0e+100,-1.0e+100};
+			double pmin[3] = {+1.0e+100,+1.0e+100,+1.0e+100};
+			
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-			for(int q = 0; q < total_points; ++q)
 			{
-				Cell n = m->CellByLocalID(points_node[q]);
-				double cnt[3];
-				n->Centroid(cnt);
-				points_center[q*3+0] = cnt[0];
-				points_center[q*3+1] = cnt[1];
-				points_center[q*3+2] = cnt[2];
+				double pmaxl[3] = {-1.0e+100,-1.0e+100,-1.0e+100};
+				double pminl[3] = {+1.0e+100,+1.0e+100,+1.0e+100};
+#if defined(USE_OMP)
+#pragma omp	for
+#endif
+				for(int q = 0; q < total_points; ++q)
+				{
+					Cell n = m->CellByLocalID(points_node[q]);
+					double cnt[3];
+					n->Centroid(cnt);
+					points_center[q*3+0] = cnt[0];
+					points_center[q*3+1] = cnt[1];
+					points_center[q*3+2] = cnt[2];
+					cluster_center[rank*3+0] += cnt[0];
+					cluster_center[rank*3+1] += cnt[1];
+					cluster_center[rank*3+2] += cnt[2];
+					if( pmaxl[0] < points_center[q*3+0] ) pmaxl[0] = std::max(pmaxl[0],points_center[q*3+0]);
+					if( pmaxl[1] < points_center[q*3+1] ) pmaxl[1] = std::max(pmaxl[1],points_center[q*3+1]);
+					if( pmaxl[2] < points_center[q*3+2] ) pmaxl[2] = std::max(pmaxl[2],points_center[q*3+2]);
+					if( pminl[0] > points_center[q*3+0] ) pminl[0] = std::min(pminl[0],points_center[q*3+0]);
+					if( pminl[1] > points_center[q*3+1] ) pminl[1] = std::min(pminl[1],points_center[q*3+1]);
+					if( pminl[2] > points_center[q*3+2] ) pminl[2] = std::min(pminl[2],points_center[q*3+2]);
+				}
+#if defined(USE_OMP)
+#pragma omp	critical
+#endif
+				{
+					if( pmax[0] < pmaxl[0] ) pmax[0] = std::max(pmax[0],pmaxl[0]);
+					if( pmax[1] < pmaxl[1] ) pmax[1] = std::max(pmax[1],pmaxl[1]);
+					if( pmax[2] < pmaxl[2] ) pmax[2] = std::max(pmax[2],pmaxl[2]);
+					if( pmin[0] > pminl[0] ) pmin[0] = std::min(pmin[0],pminl[0]);
+					if( pmin[1] > pminl[1] ) pmin[1] = std::min(pmin[1],pminl[1]);
+					if( pmin[2] > pminl[2] ) pmin[2] = std::min(pmin[2],pminl[2]);
+				}
 			}
+			m->AggregateMax(pmax,3);
+			m->AggregateMin(pmin,3);
+			
+			double mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
+			mesh_dist /= (double)K*3.0;
+			//mesh_dist *= 10;
+			/*
+			if( m->GetProcessorRank() == 0)
+			{
+				std::cout << "mesh dist " << mesh_dist;
+				std::cout << " " << pmin[0] << ":" << pmax[0];
+				std::cout << " " << pmin[1] << ":" << pmax[1];
+				std::cout << " " << pmin[2] << ":" << pmax[2];
+				std::cout << " K " << K << std::endl;
+			}
+			*/
+			if( total_points )
+			{
+				cluster_center[rank*3+0] /= (double) total_points;
+				cluster_center[rank*3+1] /= (double) total_points;
+				cluster_center[rank*3+2] /= (double) total_points;
+				cluster_npoints[rank] = total_points;
+			}
+			
 			
 #if defined(USE_MPI)
 			std::vector<int> displs(m->GetProcessorsNumber());
@@ -1318,6 +1381,7 @@ namespace INMOST
 					imbalance = std::max(imbalance,(npoints[k]+1.0e-15)/(npoints[l]+1.0e-15));
 					imbalance = std::max(imbalance,(npoints[l]+1.0e-15)/(npoints[k]+1.0e-15));
 				}
+				total_global_points += npoints[k];
 			}
 			//if( m->GetProcessorRank() == 0 )
 			//	std::cout << "Imbalance is " << imbalance << std::endl;
@@ -1325,8 +1389,6 @@ namespace INMOST
 				balance = true;
 			if( balance )//redistribute points
 			{
-				for(int k = 0; k < (int) m->GetProcessorsNumber(); ++k)
-					total_global_points += npoints[k];
 				total_local_points = (int)floor((double)total_global_points/(double)m->GetProcessorsNumber());
 				//std::cout << total_global_points << " " << total_local_points << " " << m->GetProcessorRank() << " " <<  total_global_points - (m->GetProcessorsNumber()-1)*total_local_points << std::endl;
 				
@@ -1357,12 +1419,8 @@ namespace INMOST
 			
 			
 			
-			std::vector< double > cluster_center(K*3);
-			std::vector< int > cluster_npoints(K);
-#if defined(USE_MPI)
-			std::vector< double > cluster_center_tmp(K*3);
-			std::vector< int > cluster_npoints_tmp(K);
-#endif
+			//if( m->GetProcessorRank() == 0 )
+			//	std::cout << "Global number of points " << total_global_points << std::endl;
 			
 			//if( m->GetProcessorRank() == 0 )
 			//	std::cout << "Init clusters" << std::endl;
@@ -1374,7 +1432,7 @@ namespace INMOST
 				int Kstart = Kpart * m->GetProcessorRank();
 				int Kend = Kstart + Kpart;
 				if( Kend > K ) Kend = K;
-				for(int i = Kstart; i < Kend; i++)
+				for(int i = Kstart; i < Kend; i++) if( cluster_npoints[i] == 0 )
 				{
 					while(true)
 					{
@@ -1443,7 +1501,8 @@ namespace INMOST
 						v[1] = (points_center[i*3+1] - cluster_center[j*3+1]);
 						v[2] = (points_center[i*3+2] - cluster_center[j*3+2]);
 						
-						double l = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+						//the bigger is the cluster weight the further is the distance
+						double l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) + cluster_weight[j]*mesh_dist;
 						if( l < lmin )
 						{
 							lmin = l;
@@ -1512,13 +1571,57 @@ namespace INMOST
 				cluster_center.swap(cluster_center_tmp);
 				cluster_npoints.swap(cluster_npoints_tmp);
 #endif
+				//if( m->GetProcessorRank() == 0 ) std::cout << "cluster weight: " << std::endl;
 				for(int i = 0; i < K; i++)
 				{
 					cluster_center[i*3+0] /= (double) cluster_npoints[i];
 					cluster_center[i*3+1] /= (double) cluster_npoints[i];
 					cluster_center[i*3+2] /= (double) cluster_npoints[i];
+					//recompute cluster weights based on the number of points each cluster possess
+					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(double)total_global_points*0.75);
+					//if( m->GetProcessorRank() == 0 ) std::cout << cluster_weight[i]*K << " (" <<cluster_npoints[i]<< ") ";
 				}
-				
+				//if( m->GetProcessorRank() == 0 ) std::cout << std::endl;
+				/*
+				std::fill(cluster_shift.begin(),cluster_shift.end(),0.0);
+				for(int i = 0; i < K; i++)
+					for(int j = i+1; j < K; j++)
+					{
+						double q1 = cluster_weight[i]*K - 1.0;
+						double q2 = cluster_weight[j]*K - 1.0;
+						double v[3];
+						v[0] = (cluster_center[i*3+0] - cluster_center[j*3+0]);
+						v[1] = (cluster_center[i*3+1] - cluster_center[j*3+1]);
+						v[2] = (cluster_center[i*3+2] - cluster_center[j*3+2]);
+						double l = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+						//if( l )
+						{
+							double Q = 5.0e-3*q1*q2/(l+1.0e-4);
+							l = sqrt(l+1.0e-4);
+							v[0] /= l; v[1] /= l; v[2] /= l;
+							cluster_shift[3*i+0] += v[0] * Q / (q1+1.1);
+							cluster_shift[3*i+1] += v[1] * Q / (q1+1.1);
+							cluster_shift[3*i+2] += v[2] * Q / (q1+1.1);
+							
+							cluster_shift[3*j+0] -= v[0] * Q / (q2+1.1);
+							cluster_shift[3*j+1] -= v[1] * Q / (q2+1.1);
+							cluster_shift[3*j+2] -= v[2] * Q / (q2+1.1);
+						}
+					}
+				for(int i = 0; i < K; i++)
+				{
+					if( m->GetProcessorRank() == 0 )
+					{
+					std::cout << "cluster " << i;
+					std::cout << " pos " << cluster_center[i*3+0] << "," << cluster_center[i*3+1] << "," << cluster_center[i*3+2];
+					std::cout << " shift " << cluster_shift[i*3+0] << "," << cluster_shift[i*3+1] << "," << cluster_shift[i*3+2];
+					std::cout << std::endl;
+					}
+					cluster_center[i*3+0] += cluster_shift[3*i+0];
+					cluster_center[i*3+1] += cluster_shift[3*i+1];
+					cluster_center[i*3+2] += cluster_shift[3*i+2];
+				}
+				*/
 				//if( m->GetProcessorRank() == 0 )
 				//	std::cout << "Iteration " << iter << " changed " << changed << std::endl;
 				iter++;

@@ -358,9 +358,13 @@ namespace INMOST
 		return true;
 	}
 	
-	Element::GeometricType Mesh::ComputeGeometricType(ElementType etype, const HandleType * lc, INMOST_DATA_ENUM_TYPE s) const
+	Element::GeometricType Mesh::ComputeGeometricType(ElementType etype, const HandleType * lc, INMOST_DATA_ENUM_TYPE size) const
 	{
 		Element::GeometricType ret = Element::Unset;
+		INMOST_DATA_ENUM_TYPE s = 0;
+		if( isMeshModified() )
+			s = Mesh::Count(lc,size,HideMarker());
+		else s = size;
 		int dmax = -1, dmin = 4;
 		if( s == 0 && etype != NODE) return ret;
 		switch(etype)
@@ -373,7 +377,7 @@ namespace INMOST
 					ret = Element::Line;
 				break;
 			case FACE:
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k) if( !Hidden(lc[k]) )
 				{
 					int d = Element::GetGeometricDimension(GetGeometricType(lc[k]));
 					if (dmax < d) dmax = d;
@@ -389,7 +393,7 @@ namespace INMOST
 				}
 				else
 				{
-					if( !GetTopologyCheck(NEED_TEST_CLOSURE) || TestClosure(lc,s) )
+					if( !GetTopologyCheck(NEED_TEST_CLOSURE) || TestClosure(lc,size) )
 					{
 						if( s == 3 )
 							ret = Element::Tri;
@@ -402,7 +406,7 @@ namespace INMOST
 				}
 				break;
 			case CELL:
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k) if( !Hidden(lc[k]) )
 				{
 					int d = Element::GetGeometricDimension(GetGeometricType(lc[k]));
 					if (dmax < d) dmax = d;
@@ -414,7 +418,7 @@ namespace INMOST
 				}
 				else if(  dmax == 1 )
 				{
-					if( !GetTopologyCheck(NEED_TEST_CLOSURE) || TestClosure(lc,s) )
+					if( !GetTopologyCheck(NEED_TEST_CLOSURE) || TestClosure(lc,size) )
 					{
 						if( s == 3 )
 							ret = Element::Tri;
@@ -427,11 +431,11 @@ namespace INMOST
 				}
 				else 
 				{
-					if( !GetTopologyCheck(NEED_TEST_CLOSURE) ||  TestClosure(lc,s) )
+					if( !GetTopologyCheck(NEED_TEST_CLOSURE) ||  TestClosure(lc,size) )
 					{
 						//test c_faces closure, if no closure, set as MultiPolygon
 						INMOST_DATA_ENUM_TYPE quads = 0,tris = 0,i;
-						for(i = 0; i < s; i++)
+						for(i = 0; i < size; i++) if( !Hidden(lc[i]) )
 						{
 							if( GetGeometricType(lc[i]) == Element::Tri )
 								tris++;

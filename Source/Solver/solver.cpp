@@ -13,6 +13,7 @@ namespace INMOST {
     std::vector<SolverParameters> Solver::parameters = std::vector<SolverParameters>();
 
     void Solver::SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) { SetParameter(name, to_string(value)); }
+
     void Solver::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) { SetParameter(name, to_string(value)); }
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) :
@@ -120,9 +121,8 @@ namespace INMOST {
         {
             int flag = 0;
             MPI_Finalized(&flag);
-            if (!flag) {
+            if (!flag)
                 MPI_Finalize();
-            }
         }
 #endif
         Solver::is_finalized   = true;
@@ -316,7 +316,6 @@ namespace INMOST {
         }
 
     }
-
 }
 
 #endif //USE_SOLVER

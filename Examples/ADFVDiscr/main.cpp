@@ -16,30 +16,15 @@ using namespace INMOST;
 #define BARRIER
 #endif
 
-void make_vec(Storage::real v1[3], Storage::real v2[3], Storage::real out[3])
-{
-	out[0] = v1[0] - v2[0];
-	out[1] = v1[1] - v2[1];
-	out[2] = v1[2] - v2[2];
-}
-
-Storage::real dot_prod(Storage::real v1[3], Storage::real v2[3])
-{
-	return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
-}
-
-
-Storage::real func(Storage::real x[3], Storage::real tmp)
+double func(double x[3], double tmp)
 {
 	//  	return x[0] + 2 * x[1] + 3 * x[2];
-	double s0 = sin (M_PI * x[0]); 
-	double s1 = sin (M_PI * x[1]);
-	double s2 = sin (M_PI * x[2]);
-	return s0 * s1 * s2;
+	return sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
 	(void) tmp;
 }
 
-Storage::real func_rhs(Storage::real x[3], Storage::real tmp)
+
+double func_rhs(double x[3], double tmp)
 {
 	//  	return 0;
 	return -3 * tmp * M_PI * M_PI * sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
@@ -55,7 +40,11 @@ int main(int argc,char ** argv)
 #endif
 	if( argc > 1 )
 	{
-		Tag phi, tensor_K, id;
+		TagReal phi;
+		TagReal tag_F;
+		TagRealArray tag_K;
+		TagRealArray tag_BC;
+		TagReal phi_ref;
 		Mesh * m = new Mesh(); // Create an empty mesh
 		double ttt = Timer();
 		bool repartition = false;
@@ -86,7 +75,7 @@ int main(int argc,char ** argv)
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
 
 #if defined(USE_PARTITIONER)
-		if (!repartition) 
+		if (m->GetProcessorsNumber() > 1)
 		{ // currently only non-distributed meshes are supported by Inner_RCM partitioner
 			ttt = Timer();
 			Partitioner * p = new Partitioner(m);
@@ -107,21 +96,82 @@ int main(int argc,char ** argv)
 #endif
 
 		ttt = Timer();
-		m->AssignGlobalID(CELL | EDGE | FACE | NODE);
-		BARRIER;
-		if( m->GetProcessorRank() == 0 ) std::cout << "Assign id: " << Timer()-ttt << std::endl;
-		id = m->GlobalIDTag(); // Get the tag of the global ID
-		//m->Save("solution_check_0.vtk");
 		phi = m->CreateTag("Solution",DATA_REAL,CELL,NONE,1); // Create a new tag for the solution phi
-		tensor_K = m->CreateTag("K",DATA_REAL,CELL,NONE,1); // Create a new tag for K tensor
-		//m->Save("solution_check_1.vtk");
-		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
-			if( cell->GetStatus() != Element::Ghost ) // If the cell is an own one
-				cell->Real(tensor_K) = 1.0; // Store the tensor K value into the tag
+		
+		bool makerefsol = true;
+		
+		if( m->HaveTag("PERM" ) )
+		{
+			tag_K = m->GetTag("PERM");
+			makerefsol = false;
+			std::cout << "Permeability from grid" << std::endl;
+		}
+		else
+		{
+			std::cout << "Set perm" << std::endl;
+			tag_K = m->CreateTag("PERM",DATA_REAL,CELL,NONE,1); // Create a new tag for K tensor
+			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
+				tag_K[*cell][0] = 1.0; // Store the tensor K value into the tag
+		}
+		
+		
+		
+		if( m->HaveTag("BOUNDARY_CONDITION") )
+		{
+			tag_BC = m->GetTag("BOUNDARY_CONDITION");
+			makerefsol = false;
+			std::cout << "Boundary conditions from grid" << std::endl;
+		}
+		else
+		{
+			std::cout << "Set boundary conditions" << std::endl;
+			double x[3];
+			tag_BC = m->CreateTag("BOUNDARY_CONDITION",DATA_REAL,FACE,FACE,3);
+			for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
+				if( face->Boundary() && !(face->GetStatus() == Element::Ghost) )
+				{
+					face->Centroid(x);
+					tag_BC[*face][0] = 1; //dirichlet
+					tag_BC[*face][1] = 0; //neumann
+					tag_BC[*face][2] = func(x,0);//face->Mean(func, 0);
+				}
+		}
+		
+		if( m->HaveTag("FORCE") )
+		{
+			tag_F = m->GetTag("FORCE");
+			makerefsol = false;
+			std::cout << "Force from grid" << std::endl;
+		}
+		else if( makerefsol )
+		{
+			std::cout << "Set rhs" << std::endl;
+			tag_F = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,1); // Create a new tag for external force
+			double x[3];
+			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
+			{
+				cell->Centroid(x);
+				tag_F[*cell] = -func_rhs(x,1);
+				//tag_F[*cell] = -cell->Mean(func_rhs,1);
+			}
+		}
+		
+		if(m->HaveTag("REFERENCE_SOLUTION") )
+			phi_ref = m->GetTag("REFERENCE_SOLUTION");
+		else if( makerefsol )
+		{
+			phi_ref = m->CreateTag("REFRENCE_SOLUTION",DATA_REAL,CELL,NONE,1);
+			double x[3];
+			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+			{
+				cell->Centroid(x);
+				phi_ref[*cell] = func(x,0);//cell->Mean(func, 0);
+			}
+		}
 
 		ttt = Timer();
 		m->ExchangeGhost(1,FACE);
-		m->ExchangeData(tensor_K,CELL,0); // Exchange the tensor_K data over processors
+		m->ExchangeData(tag_K,CELL,0); // Exchange the tag_K data over processors
 		BARRIER;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Exchange ghost: " << Timer()-ttt << std::endl;
 
@@ -135,16 +185,18 @@ int main(int argc,char ** argv)
     	Sparse::LockService Locks;
 		Sparse::Vector Update; // Declare the solution and the right-hand side vectors
 
-		Mesh::GeomParam table;
-
-		table[CENTROID] = CELL | FACE;
-		table[NORMAL] = FACE;
-		table[ORIENTATION] = FACE;
-		table[MEASURE] = CELL | FACE;
-		table[BARYCENTER] = CELL | FACE;
-		m->PrepareGeometricData(table);
-		//~ BARRIER
-		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
+		{
+			Mesh::GeomParam table;
+			table[CENTROID] = CELL | FACE;
+			table[NORMAL] = FACE;
+			table[ORIENTATION] = FACE;
+			table[MEASURE] = CELL | FACE;
+			table[BARYCENTER] = CELL | FACE;
+			m->PrepareGeometricData(table);
+		}
+		BARRIER
+		if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
+		
 		{
 			Automatizator aut;
 			Automatizator::MakeCurrent(&aut);
@@ -155,7 +207,7 @@ int main(int argc,char ** argv)
 			R.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
 			R.InitLocks();
 			Update.SetInterval(aut.GetFirstIndex(),aut.GetLastIndex());
-			//~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
+			
 			dynamic_variable Phi(aut,iphi);
 			// Solve \nabla \cdot \nabla phi = f equation
 			//for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
@@ -164,6 +216,8 @@ int main(int argc,char ** argv)
 #endif
 			{
 				variable flux; //should be more efficient to define here to avoid multiple memory allocations if storage for variations should be expanded
+				rMatrix x1(3,1), x2(3,1), xf(3,1), n(3,1);
+				double d1, d2, k1, k2, area, T, a, b, c;
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -175,65 +229,76 @@ int main(int argc,char ** argv)
 					Cell r2 = face->FrontCell();
 					if( ((!r1->isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +
 						((!r2->isValid() || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
-					Storage::integer i1 = aut.GetIndex(r1,iphi), i2;
-					Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1, d2, D, v[3], T;
-					Storage::real f_area = face->Area(); // Get the face area
-					face->UnitNormal(f_nrm); // Get the face normal
-					r1->Centroid(r1_cnt);  // Get the barycenter of the cell
-					face->Centroid(f_cnt); // Get the barycenter of the face
+					
+					
+					area = face->Area(); // Get the face area
+					face->UnitNormal(n.data()); // Get the face normal
+					face->Centroid(xf.data()); // Get the barycenter of the face
+					r1->Centroid(x1.data());  // Get the barycenter of the cell
+					k1 = n.DotProduct(rMatrix::FromTensor(tag_K[r1].data(),
+														  tag_K[r1].size(),3)*n);
+					d1 = fabs(n.DotProduct(xf-x1));
 					if( !r2->isValid() ) // boundary condition
 					{
-						Storage::real bnd_pnt[3], dist;
-						make_vec(f_cnt,r1_cnt,v);
-						dist = dot_prod(f_nrm,v);
 						// bnd_pnt is a projection of the cell center to the face
-						bnd_pnt[0] = r1_cnt[0] + dist * f_nrm[0];
-						bnd_pnt[1] = r1_cnt[1] + dist * f_nrm[1];
-						bnd_pnt[2] = r1_cnt[2] + dist * f_nrm[2];
-						T = r1->Real(tensor_K) * f_area / dist;
-						//flux =  T * (func(bnd_pnt,0) - variable(aut,r1,iphi));
-						R.Lock(i1);
-						R[i1] -=  T * (func(bnd_pnt,0) - Phi(r1));
-						R.UnLock(i1);
+						// a*pb + bT(pb-p1) = c
+						// F = T(pb-p1)
+						// pb = (c + bTp1)/(a+bT)
+						// F = T/(a+bT)(c - ap1)
+						T = k1/d1;
+						a = 0;
+						b = 1;
+						c = 0;
+						if( tag_BC.isValid() && face.HaveData(tag_BC) )
+						{
+							a = tag_BC[face][0];
+							b = tag_BC[face][1];
+							c = tag_BC[face][2];
+							//std::cout << "a " << a << " b " << b << " c " << c << std::endl;
+						}
+						R.Lock(Phi.Index(r1));
+						R[Phi.Index(r1)] -=  T/(a + b*T) * area * (c - a*Phi(r1));
+						R.UnLock(Phi.Index(r1));
 					}
 					else
 					{
-						i2 = aut.GetIndex(r2,iphi);
-						r2->Centroid(r2_cnt);
-						D = dot_prod(f_nrm,f_cnt);
-						d1 = fabs(dot_prod(r1_cnt,f_nrm) - D);
-						d2 = fabs(dot_prod(r2_cnt,f_nrm) - D);
-						T = 1.0 / (d1/r1->Real(tensor_K) + d2/r2->Real(tensor_K)) * f_area;
-						//flux = T * (variable(aut,r2,iphi) - variable(aut,r1,iphi));//(unknown(aut,r2,iphi) - unknown(aut,r1,iphi));
-						flux = T * (Phi(r2) - Phi(r1));
+						r2->Centroid(x2.data());
+						k2 = n.DotProduct(rMatrix::FromTensor(tag_K[r2].data(),
+															  tag_K[r2].size(),3)*n);
+						d2 = fabs(n.DotProduct(x2-xf));
+						T = 1.0/(d1/k1 + d2/k2);
+						flux = T* area * (Phi(r2) - Phi(r1));
 						if( s1 != Element::Ghost )
 						{
-							R.Lock(i1);
-							R[i1] -= flux;
-							R.UnLock(i1);
+							R.Lock(Phi.Index(r1));
+							R[Phi.Index(r1)] -= flux;
+							R.UnLock(Phi.Index(r1));
 						}
 						if( s2 != Element::Ghost )
 						{
-							R.Lock(i2);
-							R[i2] += flux;
-							R.UnLock(i2);
+							R.Lock(Phi.Index(r2));
+							R[Phi.Index(r2)] += flux;
+							R.UnLock(Phi.Index(r2));
 						}
 					}
 				}
 			}
+			if( tag_F.isValid() )
+			{
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-			for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
-			{
-				Cell cell = Cell(m,ComposeCellHandle(icell));
-				if( cell->GetStatus() != Element::Ghost )
-					R[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
+				for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
+				{
+					Cell cell = Cell(m,ComposeCellHandle(icell));
+					if( cell->GetStatus() != Element::Ghost )
+						R[Phi.Index(cell)] -= tag_F[cell] * cell->Volume();
+				}
 			}
 			BARRIER;
 			if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
 
-			m->RemoveGeometricData(table); // Clean the computed geometric data
+			//m->RemoveGeometricData(table); // Clean the computed geometric data
 
 			if( argc > 3 ) // Save the matrix and RHS if required
 			{
@@ -258,44 +323,48 @@ int main(int argc,char ** argv)
 
 			ttt = Timer();
 
-			Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
-
-			Storage::real err_C = 0.0, err_L2 = 0.0;
+			
+			if( phi_ref.isValid() )
+			{
+				Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
+				double err_C = 0.0, err_L2 = 0.0, vol = 0.0;
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
-			{
-				Storage::real local_err_C = 0;
-#if defined(USE_OMP)
-#pragma omp for reduction(+:err_L2)
-#endif
-				for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell )
 				{
-					Cell cell = Cell(m,ComposeCellHandle(icell));
-					if( cell->GetStatus() != Element::Ghost )
+					double local_err_C = 0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:err_L2) reduction(+:vol)
+#endif
+					for( Storage::integer icell = 0; icell < m->CellLastLocalID(); ++icell ) if( m->isValidCell(icell) )
 					{
-						Storage::real old = cell->Real(phi);
-						Storage::real exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
-						Storage::real res = Update[aut.GetIndex(cell->self(),iphi)];
-						Storage::real sol = old-res;
-						Storage::real err = fabs (sol - exact);
-						if (err > local_err_C) local_err_C = err;
-						err_L2 += err * err * cell->Volume();
-						cell->Real(error) = err;
-						cell->Real(phi) = sol;
+						Cell cell = Cell(m,ComposeCellHandle(icell));
+						if( cell->GetStatus() != Element::Ghost )
+						{
+							double old = phi[cell];
+							double exact = phi_ref[cell];
+							double res = Update[Phi.Index(cell)];
+							double sol = old-res;
+							double err = fabs (sol - exact);
+							if (err > local_err_C) local_err_C = err;
+							err_L2 += err * err * cell->Volume();
+							vol += cell->Volume();
+							cell->Real(error) = err;
+							phi[cell] = sol;
+						}
 					}
-				}
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
-				{
-					if( local_err_C > err_C ) err_C = local_err_C;
+					{
+						if( local_err_C > err_C ) err_C = local_err_C;
+					}
 				}
+				err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
+				err_L2 = sqrt(m->Integrate(err_L2)/m->Integrate(vol)); // Compute the global L2 norm for the error
+				if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;
+				if( m->GetProcessorRank() == 0 ) std::cout << "err_L2 = " << err_L2 << std::endl;
 			}
-			err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
-			err_L2 = sqrt(m->Integrate(err_L2)); // Compute the global L2 norm for the error
-			if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;
-			if( m->GetProcessorRank() == 0 ) std::cout << "err_L2 = " << err_L2 << std::endl;
 		}
 		BARRIER;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Compute true residual: " << Timer()-ttt << std::endl;

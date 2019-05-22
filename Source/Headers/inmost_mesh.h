@@ -11,9 +11,6 @@
 
 namespace INMOST
 {
-
-    std::string ro();
-
 	class Mesh;
 	class Storage;
 	class Element;
@@ -488,7 +485,12 @@ namespace INMOST
 		///	  3. Should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder).
 		void                        Connect                 (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
 		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
-		void                        UpdateGeometricData     () const; 
+		void                        UpdateGeometricData     () const;
+		/// Marks element to be sent to remote processors that current processor don't belong to.
+		/// Call Mesh::ExchangeMarked to perform the exchange.
+		void                        SendTo                  (std::set<Storage::integer> & procs) const; 
+		void                        SendTo                  (std::vector<Storage::integer> & procs) const; 
+		void                        SendTo                  (Storage::integer_array procs) const; 
 	};
 	
 	__INLINE const Element & InvalidElement() {static Element ret(NULL,InvalidHandle()); return ret;}
@@ -548,6 +550,7 @@ namespace INMOST
 		static bool                 TestUniteEdges          (const ElementArray<Edge> & edges, MarkerType del_protect);
 		static ElementArray<Edge>   SplitEdge               (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
 		static bool                 TestSplitEdge           (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect);
+		static Node                 CollapseEdge            (Edge e, MarkerType del_protect);
 		//implemented in geometry.cpp
 		Storage::real               Length                  () const;
 		///Swap positions of first node and last node
@@ -956,8 +959,12 @@ namespace INMOST
 		static const ComparatorType         UNSORTED_COMPARATOR = 0;
 		static const ComparatorType         GLOBALID_COMPARATOR = 1;
 		static const ComparatorType         CENTROID_COMPARATOR = 2;
-		static const ComparatorType         HIERARCHY_COMPARATOR  = 3;
+		static const ComparatorType         HIERARCHY_COMPARATOR= 3;
 		static const ComparatorType         HANDLE_COMPARATOR   = 4;
+		//typedef INMOST_DATA_BULK_TYPE       ExchangeType;
+		//static const ExchangeType           SYNC_ELEMENTS_NONE  = 0; //elements are not synced in parallel set
+		//static const ExchangeType           SYNC_ELEMENTS_ALL   = 1; //all elements are synchronized in parallel set
+		//static const ExchangeType           SYNC_ELEMENTS_SHARED= 2; //only shared elements are present
 		                                    ElementSet          () : Element() {}
 		                                    ElementSet          (Mesh * m, HandleType h) : Element(m,h) {}
 		                                    ElementSet          (Mesh * m, HandleType * h) : Element(m,h) {}
@@ -967,6 +974,17 @@ namespace INMOST
 		__INLINE const ElementSet *         operator ->         () const {return this;}
 		__INLINE ElementSet &               self                ()              {return *this;}
 		__INLINE const ElementSet &         self                () const        {return *this;}
+	private:
+		/// Compute union of processors on elements.
+		/// @param procs Set of processors to fill.
+		/// @param dir Directon for tree traversal, 1 - downwards, 2, upwards, 3 - both directions
+		void                                CollectProcessors   (std::set<Storage::integer> & procs, char dir) const;
+		/// Fill Mesh::SendtoTag() to send sets to processors from procs set that currently don't have this set
+		/// @param procs Set of processors to send the set to.
+		/// @param dir Directon for tree traversal, 1 - downwards, 2, upwards, 3 - both directions
+		void                                SetSendTo(std::set<Storage::integer> & procs, char dir) const;
+		void                                SetSendTo(std::vector<Storage::integer> & procs, char dir) const;
+		void                                SetSendTo(Storage::integer_array procs, char dir) const;
 	public:
 		/// Get name of the set
 		std::string                 GetName() const;
@@ -1146,9 +1164,12 @@ namespace INMOST
 		///
 		/// \todo
 		/// !TODO 52 - check radix sort on big endian computer
-		/// @param comp one of the comparators from description
+		/// @param comp one of the comparators from description.
 		/// @see Mesh::SetComparatorTag
 		void SortSet(ComparatorType comp) const;
+		/// Sets the synchronization regime for set elements
+		/// @param comp one of the synchronization types from description.
+		//void SetExchange(ExchangeType comp) const;
 		/// Perform binary search by global id. In set sorted with GLOBALID_COMPARATOR in O(log(n)) time
 		/// otherwise search needs O(n) comparisons
 		Element FindElementByGlobalID(integer global_id) const;
@@ -1223,6 +1244,8 @@ namespace INMOST
 		void Erase(iterator beg, iterator end) const;
 		/// Retrieve current set comparator
 		ComparatorType GetComparator() const;
+		/// Retrieve current set exchange type
+		//ExchangeType GetExchange() const;
 		/// Compact holes in inner representation
 		void ReorderEmpty() const;
 		/// Is there any elements in the set
@@ -1239,6 +1262,20 @@ namespace INMOST
 		/// Remove the set and all it's children.
 		/// @return Same as Element::Delete.
 		bool DeleteSetTree();
+		/// Asks all the elements to be sent to other processors.
+		/// Call ExchangeMarked afterwards.
+		/// @see Mesh::ExchangeMarked
+		void SynchronizeSetElements();
+		/// Asks all the children to be sent to other processors.
+		/// Call ExchangeMarked afterwards.
+		/// @see Mesh::ExchangeMarked
+		void SynchronizeSetChildren();
+		/// Asks all the parents upwards to be sent to other processors.
+		/// This function does not ask children of the parents to be synchronized,
+		/// for this traverse to the upppermost parent and call ElementSet::SynchronizeSetChildren
+		/// Call ExchangeMarked afterwards.
+		/// @see Mesh::ExchangeMarked
+		void SynchronizeSetParents();
 	};
 
 	__INLINE const ElementSet & InvalidElementSet() {static ElementSet ret(NULL,InvalidHandle()); return ret;}
@@ -1264,6 +1301,7 @@ namespace INMOST
 											senum;
 	private:
 		std::string                         name;
+		std::map<std::string,HandleType>    set_search;
 		real                                epsilon;
 		empty_container                     empty_space[6];
 		empty_container                     empty_links[6];
@@ -1277,6 +1315,7 @@ namespace INMOST
 		Tag                                 tag_geom_type;
 		Tag                                 tag_setname;
 		Tag                                 tag_setcomparator;
+		//Tag                                 tag_setexchange;
 		MeshState                           m_state;
 		integer                             dim;
 		HandleType                          last_created;
@@ -1292,18 +1331,18 @@ namespace INMOST
 		Tag                                 tag_bridge;
 		Tag                                 tag_redistribute;
 	private:
-        double dist(Cell a, Cell b);
+        //double dist(Cell a, Cell b);
 		void AllocatePrivateMarkers();
 		void DeallocatePrivateMarkers();
 		__INLINE static sparse_rec          mkrec               (const Tag & t) {sparse_rec ret; ret.tag = t.mem; ret.rec = NULL; return ret;}
-		__INLINE sparse_type const &        MGetSparseLink      (integer etypenum, integer ID) const {return GetSparseData(etypenum,links[etypenum][ID]);}
-		__INLINE sparse_type &              MGetSparseLink      (integer etypenum, integer ID) {return GetSparseData(etypenum,links[etypenum][ID]);}
+		__INLINE sparse_type const &        MGetSparseLink      (integer etypenum, integer ID) const {assert(links[etypenum][ID] != -1); return GetSparseData(etypenum,links[etypenum][ID]);}
+		__INLINE sparse_type &              MGetSparseLink      (integer etypenum, integer ID) {assert(links[etypenum][ID] != -1); return GetSparseData(etypenum,links[etypenum][ID]);}
 		__INLINE sparse_type const &        MGetSparseLink      (HandleType h) const {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
 		__INLINE sparse_type &              MGetSparseLink      (HandleType h) {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
 		__INLINE const void *               MGetSparseLink      (HandleType h, const Tag & t) const {sparse_type const & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; return NULL;}
 		__INLINE void * &                   MGetSparseLink      (HandleType h, const Tag & t) {sparse_type & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec;}
-		__INLINE const void *               MGetDenseLink       (integer n, integer id, const Tag & t) const {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
-		__INLINE void *                     MGetDenseLink       (integer n, integer id, const Tag & t) {return &(GetDenseData(t.GetPositionByDim(n))[links[n][id]]);}
+		__INLINE const void *               MGetDenseLink       (integer n, integer ID, const Tag & t) const {assert(links[n][ID] != -1); return &(GetDenseData(t.GetPositionByDim(n))[links[n][ID]]);}
+		__INLINE void *                     MGetDenseLink       (integer n, integer ID, const Tag & t) {assert(links[n][ID] != -1); return &(GetDenseData(t.GetPositionByDim(n))[links[n][ID]]);}
 		__INLINE const void *               MGetDenseLink       (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE void *                     MGetDenseLink       (HandleType h, const Tag & t) {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
 		__INLINE const void *               MGetLink            (HandleType h, const Tag & t) const {if( !t.isSparseByDim(GetHandleElementNum(h)) ) return MGetDenseLink(h,t); else return MGetSparseLink(h,t);}
@@ -1388,6 +1427,7 @@ namespace INMOST
 		__INLINE const Tag &              ProcessorsTag      () const {return tag_processors;}
 		__INLINE const Tag &              SetNameTag         () const {return tag_setname;}
 		__INLINE const Tag &              SetComparatorTag   () const {return tag_setcomparator;}
+		//__INLINE const Tag &              SetExchangeTag     () const {return tag_setexchange;}
 		/// Don't put this shortcut to any function directly, as it creates tag inside
 		/// assign to other object of type Tag and put this object to functions.
 		__INLINE Tag                      RedistributeTag    () {return CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,CELL,NONE,1);}
@@ -2227,6 +2267,7 @@ namespace INMOST
 			Random(const Random & other);
 			unsigned int Number();
 		} randomizer;
+	public:
 		class elements_by_type
 		{
 		private:
@@ -2237,8 +2278,12 @@ namespace INMOST
 			~elements_by_type(){}
 			element_set & operator [](int i){ return container[i]; }
 			const element_set & operator [](int i) const { return container[i]; }
+			bool empty() {bool ret = true; for(int i = 0; i < 5 && ret; i++) ret &= container[i].empty(); return ret;}
+			int size() {unsigned ret = 0; for(int i = 0; i < 5; ++i) ret += container[i].size(); return ret;}
 		};
 		typedef std::map<int, elements_by_type > parallel_storage;
+	
+		typedef std::map<int, elements_by_type >               proc_elements_by_type;
 	private:
 #if defined(USE_PARALLEL_STORAGE)
 		parallel_storage                    shared_elements;
@@ -2246,7 +2291,9 @@ namespace INMOST
 #endif
 #if defined(USE_PARALLEL_WRITE_TIME)
 		int                                 num_exchanges;
+	public:
 		std::fstream                        out_time;
+	private:
 		int                                 tab;
 		int                                 func_id;
 #endif
@@ -2257,21 +2304,28 @@ namespace INMOST
 		int                                 parallel_strategy;
 		int                                 parallel_file_strategy;
 	private:
-		void                              ComputeSharedProcs ();
-		proc_elements                     ComputeSharedSkinSet(ElementType bridge);
-		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer);
-		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op);
-		void                              PackElementsData   (element_set & input, buffer_type & buffer, int destination, const std::vector<std::string> & tag_list);
-		void                              UnpackElementsData (element_set & output, buffer_type & buffer, int source, std::vector<std::string> & tag_list);
+		void                              ListTags           (tag_set & list);
+		std::vector<int>                  ComputeSharedProcs (const parallel_storage & from, const parallel_storage & to);
+		std::vector<int>                  ComputeSharedProcs (ElementType etype);
+		proc_elements                     ComputeSharedSkinSet(ElementType bridge, MarkerType marker = 0);
+		void                              PackElementsGather (elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send, bool send_links_to_owner, bool pack_by_gids);
+		void                              PackElementsEnumerate   (elements_by_type & selems, TagInteger pack_position);
+		void                              PackElementsUnenumerate (elements_by_type & selems, TagInteger pack_position);
+		void                              PackTagData        (const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer, TagInteger pack_position);
+		void                              UnpackTagData      (const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, const elements_by_type & unpack_elements);//, proc_elements_by_type * send_elements = NULL);
+		void                              PackElementsData   (elements_by_type & input, buffer_type & buffer, int destination, const tag_set & tag_list,TagInteger pack_position, bool pack_gids);
+		void                              UnpackElementsData (elements_by_type & output, buffer_type & buffer, int source, int & position, tag_set & tag_list);
 		void                              PrepareReceiveInner(Prepare todo, exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs);
 		void                              ExchangeDataInnerBegin(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, exchange_data & storage);
 		void                              ExchangeDataInnerEnd(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, ReduceOperation op, exchange_data & storage);
 		void                              ExchangeBuffersInner(exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs,std::vector<INMOST_MPI_Request> & send_reqs, std::vector<INMOST_MPI_Request> & recv_reqs);
 		std::vector<int>                  FinishRequests     (std::vector<INMOST_MPI_Request> & recv_reqs);
 		void                              SortParallelStorage(parallel_storage & ghost, parallel_storage & shared,ElementType mask);
+		void                              ReportParallelStorage();
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
+		void                              InformElementsOwners(proc_elements_by_type & send_elements, exchange_data & storage);
 	public:
-        bool                              FindSharedGhost(int global_id, INMOST_DATA_INTEGER_TYPE el_type_num,  HandleType& res);
+		HandleType                        FindSharedGhost(ElementType etype, Storage::integer global_id, int source_proc, int owner_proc);
 #if defined(USE_PARALLEL_WRITE_TIME)	
 		//this part is needed to test parallel performance
 		void                              Enter              ();
@@ -2282,6 +2336,7 @@ namespace INMOST
 		void                              FinalizeFile       ();
 		static void                       AtExit             (void);
 #endif
+		void                              ClearFile          ();
 		/// Initial initialization. Calls MPI_Initialize, if MPI was not initialized
 		/// it is necessery to invoke this function if you plan to use any parallel algorithms
 		/// Accepts arguments passed to console aplication or NULL
@@ -2430,7 +2485,7 @@ namespace INMOST
 		/// Find sets that are common between processors.
 		void                              ResolveSets        ();
 		/// Delete all the ghost cells.
-		void                              RemoveGhost        ();
+		void                              RemoveGhost        (MarkerType marker = 0);
 		/// Delete some ghost cells provided in array.
 		/// Non-ghost elements will also be deleted.
 		///
@@ -2481,7 +2536,7 @@ namespace INMOST
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @see Mesh::ReduceData
-		void                              ExchangeData       (const Tag & tag, ElementType mask, MarkerType select);
+		void                              ExchangeData       (const Tag & tag, ElementType mask, MarkerType select = 0);
 		/// Start asynchronous synchronization of data.
 		/// You should define object of type exchange_data that will hold temporary buffers for data.
 		/// every Mesh::ExchangeDataBegin should be matched with Mesh::ExchangeDataEnd with the same
@@ -2518,7 +2573,7 @@ namespace INMOST
 		/// @param tags multiple tags that represents data
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
-		void                              ExchangeData       (const tag_set & tags, ElementType mask, MarkerType select);
+		void                              ExchangeData       (const tag_set & tags, ElementType mask, MarkerType select = 0);
 		/// This function will initialize exchange of multiple data tags.
 		/// Using this function may lead to good overlapping between communication and computation.
 		///
@@ -2685,7 +2740,7 @@ namespace INMOST
 		/// @param bridge bitwise mask of elements for which neighbouring cells should be considered a layer
 		/// @see Mesh::ExchangeMarked
 		/// @see Mesh::Redistribute
-		void                              ExchangeGhost      (integer layers, ElementType bridge);
+		void                              ExchangeGhost      (integer layers, ElementType bridge, MarkerType select = 0);
 		/// Migrate all the elements to the new owners prescribed in data corresponding to RedistributeTag.
 		/// This will perform all the actions to send mesh elements and data and reproduce new mesh partitions
 		/// on remote elements and correctly resolve parallel state of the mesh. If you have priviously
@@ -2875,6 +2930,7 @@ namespace INMOST
 		/// @param op operation, one of SYNC_BIT_SET, SYNC_BIT_OR, SYNC_BIT_XOR, SYNC_BIT_AND
 		void                              SynchronizeMarker  (MarkerType marker, ElementType mask, SyncBitOp op);	
 		//for debug
+		void                              Barrier            ();
 		void                              BeginSequentialCode();
 		void                              EndSequentialCode  ();
 		//iterator.cpp::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -3033,6 +3089,8 @@ namespace INMOST
 		/// - "ECL_TOPOLOGY"     - If "TRUE" checks topology of the grid for errors, this may provide useful
 		///                        warnings if layers of the mesh enter each other and the grid cannot be
 		///                        considered conformal. Default: "FALSE".
+		///   "ECL_PARALLEL_READ"- if "TRUE" then each processor loads part of the eclipse mesh, requires some synchronization.
+		///                        Otherwise if "FALSE" then each processor loads entire mesh. Default: "TRUE".
 		///
 		/// \todo
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write
@@ -3148,7 +3206,7 @@ namespace INMOST
 		bool                              isMeshModified     () const {return new_element != 0;} 
 		MarkerType                        HideMarker         () const {return hide_element;}
 		MarkerType                        NewMarker          () const {return new_element;}
-		void                              SwapModification   (); // swap hidden and new elements, so that old mesh is recovered
+		void                              SwapModification   (bool recompute_geometry); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
 		/// This will modify DATA_REFERENCE tags and contents of sets, so that all deleted elements are not referenced anymore.
@@ -3171,6 +3229,22 @@ namespace INMOST
 		void                              EndModification    ();    //delete hidden elements
 		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
 		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
+		void                              EquilibrateGhost   (bool only_new = false); //Use in ResolveShared
+		//void CheckFaces();
+		/// Check that centroids of ghost and shared elements match to each other.
+		/// Exits if does not match.
+		void                              CheckCentroids     (std::string file, int line);
+		/// Check that processors are sorted on every element
+		void                              CheckProcsSorted   (std::string file, int line);
+		/// Check that number of ghost and shared elements match to each other.
+		/// Exits if does not match.
+		void                              CheckGhostSharedCount(std::string file, int line, ElementType etype = ESET | CELL | FACE | EDGE | NODE);
+		/// Let ghost elements send processors list to master elements and see if they match
+		void                              CheckOwners        ();
+		/// Let ghost elements send owner processor to master elements and see if they match
+		void                              CheckProcessors    ();
+		/// Checks that there are no invalid links in sets
+		void                              CheckSetLinks      (std::string file, int line);
 		//implemented in mesh.cpp
 	private:
 		Tag                   tag_topologyerror;
@@ -3326,6 +3400,32 @@ namespace INMOST
 			bool operator() (HandleType a, bulk b) const {if( a == InvalidHandle() ) return true; return m->BulkDF(a,t) < b;}
 		};
 		
+		class MeasureComparator
+		{
+			Mesh * m;
+		public:
+			MeasureComparator(Mesh * m) :m(m) {}
+			MeasureComparator(const MeasureComparator & other) :m(other.m) {}
+			MeasureComparator & operator = (MeasureComparator const & other) { m = other.m; return *this;}
+			bool operator() (HandleType a, HandleType b) const
+			{
+				if( a == InvalidHandle() || b == InvalidHandle() )
+					return a > b;
+				double ma, mb;
+				m->GetGeometricData(a,MEASURE,&ma);
+				m->GetGeometricData(b,MEASURE,&mb);
+				return ma < mb;
+			}
+			bool operator() (HandleType a, bulk b) const
+			{
+				if( a == InvalidHandle() )
+					return true;
+				double ma;
+				m->GetGeometricData(a,MEASURE,&ma);
+				return ma < b;
+			}
+		};
+		
 		class MarkerComparator
 		{
 			Mesh * m; MarkerType mrk; bool inverse;
@@ -3360,6 +3460,54 @@ namespace INMOST
 		void SetMeshName(std::string new_name);
 		/// Find mesh by name.
 		static Mesh * GetMesh(std::string name);
+	};
+	
+	
+	
+	
+	///This structure is a helper structure to aid with search of cells by position.
+	///Currently the structure is very specific to the step of mesh modification,
+	///as it performs search over old elements of the mesh.
+	class SearchKDTree
+	{
+	public:
+		
+		inline static bool cell_point(const Cell & c, const Storage::real p[3]) {return c.Inside(p);}
+		template<typename bbox_type>
+		inline static int bbox_point(const Storage::real p[3], const bbox_type bbox[6], bool print = false);
+	private:
+		struct entry
+		{
+			HandleType e;
+			float xyz[3];
+			struct entry & operator =(const struct entry & other)
+			{
+				e = other.e;
+				xyz[0] = other.xyz[0];
+				xyz[1] = other.xyz[1];
+				xyz[2] = other.xyz[2];
+				return *this;
+			}
+		} * set;
+		Mesh * m;
+		INMOST_DATA_ENUM_TYPE size;
+		float bbox[6];
+		SearchKDTree * children;
+		static int cmpElements0(const void * a,const void * b);
+		static int cmpElements1(const void * a,const void * b);
+		static int cmpElements2(const void * a,const void * b);
+		inline static unsigned int flip(const unsigned int * fp);
+		void radix_sort(int dim, struct entry * temp);
+		void kdtree_build(int dim, int & done, int total, struct entry * temp);
+		SearchKDTree() : set(NULL), size(0), children(NULL) {}
+		
+		Cell SubSearchCell(const Storage::real p[3], bool print);
+		void clear_children();
+	public:
+		SearchKDTree(Mesh * m);
+		SearchKDTree(Mesh * m, HandleType * _set, unsigned set_size);
+		~SearchKDTree();
+		Cell SearchCell(const Storage::real * point, bool print = false);
 	};
 
 

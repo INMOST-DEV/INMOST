@@ -27,10 +27,10 @@
 
 #define R_QUIT		  100
 
-static int __isnan__(double x) { return x != x; }
+//static int __isnan__(double x) { return x != x; }
 //static int isinf(double x) { return !isnan(x) && isnan(x - x); }
-static int __isinf__(double x) { return fabs(x) > DBL_MAX; }
-static int __isbad(double x) { return __isnan__(x) || __isinf__(x); }
+//static int __isinf__(double x) { return fabs(x) > DBL_MAX; }
+//static int __isbad(double x) { return __isnan__(x) || __isinf__(x); }
 
 template<typename T>
 void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])

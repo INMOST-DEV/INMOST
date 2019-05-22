@@ -8,9 +8,10 @@ int main(int argc, char ** argv)
 	
 	if( argc > 1 )
 	{
-		AdaptiveMesh m;
-		m.Load(argv[1]);
-		TagInteger indicator = m.CreateTag("INDICATOR",DATA_INTEGER,CELL,NONE,1);
+		Mesh mm;
+		mm.Load(argv[1]);
+		TagInteger indicator = mm.CreateTag("INDICATOR",DATA_INTEGER,CELL,NONE,1);
+		AdaptiveMesh m(mm);
 		
 		int max_levels = 2;
 		if( argc > 2 ) max_levels = atoi(argv[2]);
@@ -19,7 +20,7 @@ int main(int argc, char ** argv)
 		do
 		{
 			numref = 0;
-			for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
+			for(Mesh::iteratorCell it = mm.BeginCell(); it != mm.EndCell(); ++it)
 				if( m.GetLevel(it->self()) < max_levels )
 				{
 					double x[3];
@@ -33,13 +34,13 @@ int main(int argc, char ** argv)
 			if( numref )
 			{
 				if( !m.Refine(indicator) ) break;
-				for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) indicator[it->self()] = 0;
+				for(Mesh::iteratorCell it = mm.BeginCell(); it != mm.EndCell(); ++it) indicator[it->self()] = 0;
 			}
 		}
 		while(numref);
 		std::string file = "out.vtk";
 		if( argc > 3 ) file = std::string(argv[3]);
-		m.Save(file);
+		mm.Save(file);
 	}
 	else std::cout << "Usage: " << argv[0] << " mesh_file [max_levels=2] [mesh_out=out.vtk]" << std::endl;
 }

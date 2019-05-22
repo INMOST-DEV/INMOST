@@ -6,10 +6,10 @@
 #include <cstdio>
 #include <map>
 #include "inmost.h"
-#include "../inmost_ani_lib/utils.h"
+#include "utils.h"
 #include <fstream>
 #include <string>
-#include "../inmost_ani_lib/inmost_ani_fem.h"
+#include "inmost_ani_fem.h"
 #define USE_MPI
 #define USE_PARTITIONER
 using namespace INMOST;
@@ -159,7 +159,13 @@ int main(int argc, char *argv[]) {
 #ifdef USE_PARTITIONER
     Partitioner *p = new Partitioner(mesh_init);
 //     p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition);
+#ifdef USE_PARTITIONER_PARMETIS
     p->SetMethod(Partitioner::Parmetis, Partitioner::Partition);
+#elif USE_PARTITIONER_ZOLTAN
+    p->SetMethod(Partitioner::Zoltan, Partitioner::Partition);
+#else
+    p->SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+#endif
     p->Evaluate();
     delete p;
     mesh_init->Redistribute();
@@ -172,7 +178,7 @@ int main(int argc, char *argv[]) {
     }
 
     Mesh *mesh_main;
-    //RepartitionStatistics(mesh_init, std::cout);
+ //   RepartitionStatistics(mesh_init, std::cout);
 ////////////////////////////////////////////////////refine mesh , if it is needed/////////////////////////////////////////////
     if (refine) {
         mesh_main = new Mesh();
@@ -188,7 +194,7 @@ int main(int argc, char *argv[]) {
 
         mesh_main->ResolveShared();
         mesh_main->ExchangeGhost(1, NODE); // Construct Ghost cells in 1 layers connected via nodes
-        //RepartitionStatistics(mesh_main, std::cout);
+       // RepartitionStatistics(mesh_main, std::cout);
     } else {
         mesh_main = mesh_init;
     }
@@ -283,16 +289,18 @@ int main(int argc, char *argv[]) {
     Tag Z_result;
     Z_result = mesh_main->CreateTag("Z_res",DATA_REAL,NODE,NODE,1);
     for (Mesh::iteratorNode it = mesh_main->BeginNode(); it != mesh_main->EndNode(); it++)
-        if (it->GetStatus() != Element::Ghost) {
+        if (it->GetStatus() != Element::Ghost)
+        {
             it->Real(Z_result)= x[it->IntegerArray(discr->NumTags[0])[2]];
         }
 
+    mesh_main->ExchangeData(Z_result,NODE,0);
+
     std::vector<Tag> tags;
     tags.push_back(Z_result);
-   if(mesh_main->GetProcessorsNumber() == 1)
-        WriteTags_vtk("Result_elasticity.vtk",mesh_main,tags);
-    else
-        WriteTags_pvtk("Result_elasticity.pvtk",mesh_main,tags);
+  //  mesh_main->Save("tst_s.vtk");
+    WriteTags("Result_elasticity",mesh_main,tags);
+
 
     Solver::Finalize();
     Partitioner::Finalize();

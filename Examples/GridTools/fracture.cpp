@@ -72,11 +72,13 @@ void Fracture::FaceCenter(Face f, INMOST_DATA_REAL_TYPE cnt[3]) const
 	else f->Centroid(cnt);
 }
 
-void Fracture::Open(Tag aperture)
+void Fracture::Open(Tag aperture, bool fill_fracture)
 {
 	fracture_aperture = aperture;
 	m->BeginModification();
 	fracture_marker = m->CreateMarker();
+	for(Mesh::iteratorFace f = m->BeginFace(); f != m->EndFace(); ++f)
+		if( f->HaveData(aperture) ) f->SetMarker(fracture_marker);
 	m->self()->Integer(m->CreateTag("FRACTURE_MARKER",DATA_INTEGER,MESH,NONE,1)) = fracture_marker;
 	//break up all the faces with fractures into volumes?
 	fracture_volume = m->CreateTag("VOLUME_FRACTURE",DATA_REAL,CELL,CELL,1);
@@ -213,7 +215,7 @@ void Fracture::Open(Tag aperture)
 	Tag centroid_tag;
 	if( m->HaveTag("GEOM_UTIL_CENTROID") )
 		centroid_tag = m->GetTag("GEOM_UTIL_CENTROID");
-	if( !centroid_tag.isDefined(FACE) )
+	if( centroid_tag.isValid() && !centroid_tag.isDefined(FACE) )
 		centroid_tag = Tag();
 	////////
 	std::vector<Tag> transfer_face_real_tags;
@@ -620,7 +622,7 @@ void Fracture::Open(Tag aperture)
 					}
 				}
 			}
-			
+			if( fill_fracture )
 			{
 				assert(fracfaces.size() >= 4); //tetrahedra or more
 				/*
@@ -986,6 +988,7 @@ void Fracture::Open(Tag aperture)
 				}
 			}
 
+			if( fill_fracture )
 			{
 				assert(fracfaces.size() >= 3); //triangle or more
 				Cell fcell = m->CreateCell(fracfaces).first;

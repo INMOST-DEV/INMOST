@@ -176,6 +176,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
+		//tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
 		AllocatePrivateMarkers();
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 			ReallocateData(ElementNum(etype),GetArrayCapacity(ElementNum(etype)));
@@ -191,19 +192,25 @@ namespace INMOST
 		}
 #endif
 
+		ClearFile();
+    allocated_meshes.push_back(this);
+  }
+
+	void Mesh::ClearFile()
+	{
 #if defined(USE_PARALLEL_WRITE_TIME)
+		if( out_time.is_open() ) out_time.close();
 		num_exchanges = 0;
 		std::stringstream temp;
 		temp << "time_" << GetProcessorRank() << ".xml";
 		out_time.open(temp.str().c_str(),std::ios::out);
 		out_time << "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>" << std::endl;
 		out_time << "<?xml-stylesheet type=\"text/xsl\" href=\"style.xsl\"?>" << std::endl;
-		out_time << "<Debug ProcessID=" << PROCESSID << ">" << std::endl;
+		out_time << "<Debug ProcessID=\"" << PROCESSID << "\">" << std::endl;
 		tab = 1;
 		func_id = 0;
 #endif
-    allocated_meshes.push_back(this);
-  }
+	}
 		
 	Mesh::Mesh()
 	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
@@ -403,6 +410,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
+		//tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
 		AllocatePrivateMarkers();
 		//copy supplimentary values
 		m_state = other.m_state;
@@ -531,6 +539,7 @@ namespace INMOST
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
 		tag_setcomparator = CreateTag("PROTECTED_SET_COMPARATOR",DATA_BULK,ESET,NONE,1);
+		//tag_setexchange   = CreateTag("PROTECTED_SET_EXCHANGE",DATA_BULK,ESET,NONE,1);
 		AllocatePrivateMarkers();
 		//copy supplimentary values
 		m_state = other.m_state;
@@ -1752,17 +1761,15 @@ namespace INMOST
 		memcpy(set_name.data(),name.c_str(),name.size());
 		HighConn(he).resize(ElementSet::high_conn_reserved); //Allocate initial space for parent/sibling/child/unsorted info
 		BulkDF(he, SetComparatorTag()) = ElementSet::UNSORTED_COMPARATOR;
+		set_search[name] = he;
 		return std::make_pair(ElementSet(this,he),true);
 	}
 	
 	std::pair<ElementSet,bool> Mesh::CreateSet(std::string name)
 	{
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
-		{
-			ElementSet e = EsetByLocalID(it);
-			if( e->GetName() == name )
-				return std::make_pair(e->self(),false);
-		}
+		ElementSet check = GetSet(name);
+		if( check != InvalidElementSet() )
+			return std::make_pair(check,false);
 		return CreateSetUnique(name);
 	}
 	
@@ -1809,6 +1816,7 @@ namespace INMOST
 #pragma omp critical (links_interraction)
 #endif
 		{
+			assert(!isMeshModified());
 			integer ADDR = links[etypenum][ID];
 			links[etypenum][ID] = -1;
 			back_links[etypenum][ADDR] = -1;
@@ -2480,11 +2488,17 @@ namespace INMOST
 
 	ElementSet Mesh::GetSet(std::string name)
 	{
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//{
+		//	ElementSet e = EsetByLocalID(it);
+		//	if( e->GetName() == name )
+		//		return e;
+		//}
+		std::map<std::string,HandleType>::iterator find = set_search.find(name);
+		if( find != set_search.end() )
 		{
-			ElementSet e = EsetByLocalID(it);
-			if( e->GetName() == name )
-				return e;
+			assert(find->first == name);
+			return ElementSet(this,find->second);
 		}
 		return InvalidElementSet();
 	}
@@ -2492,11 +2506,27 @@ namespace INMOST
 	ElementArray<ElementSet> Mesh::GetSetsByPrefix(std::string name)
 	{
 		ElementArray<ElementSet> ret(this);
-		for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//for(integer it = 0; it < EsetLastLocalID(); ++it) if( isValidElement(ESET,it) )
+		//{
+		//	ElementSet e = EsetByLocalID(it);
+		//	if( e->GetName().substr(0,name.size()) == name )
+		//		ret.push_back(e->self());
+		//}
+		//std::cout << __FUNCTION__ << "(" << name << ")" << std::endl;
+		std::map<std::string,HandleType>::iterator beg,end;
+		beg = set_search.lower_bound(name);
+		//end = set_search.upper_bound(name);
+		//if( beg != set_search.end() ) std::cout << "beg " << beg->first << " " << beg->second << std::endl; else std::cout << "no beg" << std::endl;
+		//if( end != set_search.end() ) std::cout << "end " << end->first << " " << end->second << std::endl; else std::cout << "no end" << std::endl;
+		while( beg != set_search.end() )
 		{
-			ElementSet e = EsetByLocalID(it);
-			if( e->GetName().substr(0,name.size()) == name )
-				ret.push_back(e->self());
+			//std::cout << "check " << beg->first << " against " << name << std::endl;
+			std::string prefix = beg->first.substr(0,name.size());
+			if( prefix == name )
+				ret.push_back(beg->second);
+			else if( prefix > name )
+				break;
+			beg++;
 		}
 		return ret;
 	}

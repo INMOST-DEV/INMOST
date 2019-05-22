@@ -1201,18 +1201,29 @@ namespace INMOST
 
 	void Mesh::LoadECL(std::string File)
 	{
+		bool parallel_read = true;
 		char have_perm = 0;
 		std::cout << std::scientific;
 		int perform_splitting = 0;
 		bool project_perm = false;
 		int split_degenerate = 0;
 		bool check_topology = false;
+		bool compute_ecl_centroid = true;
 		int verbosity = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
-			if (file_options[k].first == "ECL_SPLIT_GLUED")
+			if (file_options[k].first == "ECL_PARALLEL_READ") 
 			{
 				if (file_options[k].second == "TRUE")
+					parallel_read = true;
+				else
+					parallel_read = false;
+			}
+			if (file_options[k].first == "ECL_SPLIT_GLUED")
+			{
+				if (file_options[k].second == "ALL")
+					perform_splitting = 2;
+				else if (file_options[k].second == "TRUE")
 					perform_splitting = 1;
 				else
 					perform_splitting = 0;
@@ -2941,7 +2952,10 @@ namespace INMOST
 				//std::cout << "x: " << beg_dims[0] << " " << end_dims[0] << std::endl;
 				//std::cout << "y: " << beg_dims[1] << " " << end_dims[1] << std::endl;
 				int mpi_dims[2] = { 0, 0 };
-				MPI_Dims_create(GetProcessorsNumber(), 2, mpi_dims);
+				if( parallel_read )
+					MPI_Dims_create(GetProcessorsNumber(), 2, mpi_dims);
+				else
+					mpi_dims[0] = mpi_dims[1] = 1;
 				//std::cout << "mpi: " << mpi_dims[0] << " " << mpi_dims[1] << std::endl;
 				int rank = GetProcessorRank();
 				//my position on the grid
@@ -3252,21 +3266,21 @@ namespace INMOST
 			DeleteTag(node_pos);
 
 
-			/*      (6)*<<------[3]--------*(7)
-			/|                  /|
-			[6]                 [7]|
-			/  |                /  |
-			(4)*--------[2]------>>*(5)|
-			|  [10]             |  [11]
-			|                   |   |
-			|   |               |   |
-			|                   |   |
-			[8]  |              [9]  |
-			|(2)*- - - - [1]- - |->>*(3)
-			|  /                |  /
-			|[4]                |[5]
-			|/                  |/
-			(0)*<<------[0]--------*(1)
+			/*   (6)*<<------[3]--------*(7)
+			       /|                  /|
+			     [6]                 [7]|
+			     /  |                /  |
+			 (4)*--------[2]------>>*(5)|
+			    |  [10]             |  [11]
+			    |                   |   |
+			    |   |               |   |
+			    |                   |   |
+			   [8]  |              [9]  |
+			    |(2)*- - - - [1]- - |->>*(3)
+			    |  /                |  /
+			    |[4]                |[5]
+			    |/                  |/
+			 (0)*<<------[0]--------*(1)
 			*/
 			//Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
 			//tags to be transfered
@@ -4369,56 +4383,61 @@ namespace INMOST
 			//TODO4: crack up the mesh along degenerate active cells
 
 			//compute cell centers that lay inside
-			if (false) //TODO16
+			if (true) //TODO16
 			{
-				
-				if (verbosity > 0)
+				TagRealArray ecl_centroid;
+				if( compute_ecl_centroid )
 				{
-					ttt = Timer();
-					std::cout << "Compute geometric data for cell centers" << std::endl;
-				}
-				GeomParam table;
-				table[CENTROID] = CELL;
-				PrepareGeometricData(table);
-				if (verbosity)
-					std::cout << "Finished computing geometric data time " << Timer() - ttt << std::endl;
-				//overwrite centroid info
-				if (verbosity > 0)
-				{
-					ttt = Timer();
-					std::cout << "Started rewriting cell centers" << std::endl;
-				}
+					if (verbosity > 0)
+					{
+						ttt = Timer();
+						std::cout << "Compute geometric data for cell centers" << std::endl;
+					}
+					//GeomParam table;
+					//table[CENTROID] = CELL;
+					//PrepareGeometricData(table);
+					ecl_centroid = CreateTag("ECL_CENTROID",DATA_REAL,CELL,NONE,3);
+					if (verbosity)
+						std::cout << "Finished computing geometric data time " << Timer() - ttt << std::endl;
+					//overwrite centroid info
+					if (verbosity > 0)
+					{
+						ttt = Timer();
+						std::cout << "Started rewriting cell centers" << std::endl;
+					}
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-				for (integer it = 0; it < CellLastLocalID(); ++it) if (isValidCell(it))
-				{
-					Cell c = CellByLocalID(it);
-					integer bnum = c->Integer(cell_number) - 1;
-					if (bnum >= 0) //maybe this cell existed before
+					for (integer it = 0; it < CellLastLocalID(); ++it) if (isValidCell(it))
 					{
-						real ctop[3] = { 0.0, 0.0, 0.0 }, cbottom[3] = { 0.0, 0.0, 0.0 };
-						for (int l = 0; l < 4; ++l)
+						Cell c = CellByLocalID(it);
+						integer bnum = c->Integer(cell_number) - 1;
+						if (bnum >= 0) //maybe this cell existed before
 						{
-							real_array bc = Node(this, block_nodes[bnum * 8 + l + 0]).Coords();
-							real_array tc = Node(this, block_nodes[bnum * 8 + l + 4]).Coords();
-							cbottom[0] += bc[0] * 0.25;
-							cbottom[1] += bc[1] * 0.25;
-							cbottom[2] += bc[2] * 0.25;
-							ctop[0] += tc[0] * 0.25;
-							ctop[1] += tc[1] * 0.25;
-							ctop[2] += tc[2] * 0.25;
+							real ctop[3] = { 0.0, 0.0, 0.0 }, cbottom[3] = { 0.0, 0.0, 0.0 };
+							for (int l = 0; l < 4; ++l)
+							{
+								real_array bc = Node(this, block_nodes[bnum * 8 + l + 0]).Coords();
+								real_array tc = Node(this, block_nodes[bnum * 8 + l + 4]).Coords();
+								cbottom[0] += bc[0] * 0.25;
+								cbottom[1] += bc[1] * 0.25;
+								cbottom[2] += bc[2] * 0.25;
+								ctop[0] += tc[0] * 0.25;
+								ctop[1] += tc[1] * 0.25;
+								ctop[2] += tc[2] * 0.25;
+							}
+							real_array cnt = c->RealArray(ecl_centroid);
+							cnt[0] = (cbottom[0] + ctop[0])*0.5;
+							cnt[1] = (cbottom[1] + ctop[1])*0.5;
+							cnt[2] = (cbottom[2] + ctop[2])*0.5;
+
 						}
-						real_array cnt = c->RealArray(centroid_tag);
-						cnt[0] = (cbottom[0] + ctop[0])*0.5;
-						cnt[1] = (cbottom[1] + ctop[1])*0.5;
-						cnt[2] = (cbottom[2] + ctop[2])*0.5;
-
 					}
+					if( parallel_read )
+						ExchangeData(ecl_centroid,CELL,0);
+					if (verbosity)
+						std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
 				}
-				if (verbosity)
-					std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
-
 
 				if (verbosity > 0)
 				{
@@ -4435,12 +4454,15 @@ namespace INMOST
 					integer bnum = c->Integer(cell_number) - 1;
 					if (bnum >= 0) //maybe this cell existed before
 					{
-						Storage::real cnt[3];
-						c->Centroid(cnt);
-						if (!c->Inside(cnt))
+						if( ecl_centroid.isValid() )
 						{
-							//std::cout << "Centroid is outside of cell " << bnum << std::endl;
-							num_outside++;
+							if (!c->Inside(ecl_centroid[c].data())) num_outside++;
+						}
+						else
+						{
+							Storage::real cnt[3];
+							c->Barycenter(cnt);
+							if (!c->Inside(cnt)) num_outside++;
 						}
 						num_total++;
 					}
@@ -4677,8 +4699,34 @@ namespace INMOST
 							K(0, 0) = perm[3 * q + 0];
 							K(1, 1) = perm[3 * q + 1];
 							K(2, 2) = perm[3 * q + 2];
+							
+							//double norm1 = K.FrobeniusNorm();
 
 							K = V*Sinv*U.Transpose()*K*U*Sinv*V.Transpose();
+							
+							//double norm2 = K.FrobeniusNorm();
+							/*
+							if( norm2/norm1 > 100 )
+							{
+								std::cout << "#####" << std::endl;
+								std::cout << "norm1 " << norm1 << " norm2 " << norm2 << std::endl;
+								std::cout << "K:" << std::endl;
+								K.Print();
+								std::cout << "axis: " << std::endl;
+								block_axis(c, 3, 3).Print();
+								std::cout << "Sinv: " << std::endl;
+								Sinv.Print();
+								std::cout << "U: " << std::endl;
+								U.Print();
+								std::cout << "V: " << std::endl;
+								V.Print();
+								K.SVD(U,S,V);
+								std::cout << "KS:" << std::endl;
+								S.Print();
+								std::cout << "kx ky kz: " << std::endl;
+								std::cout << perm[3*q+0] << " " << perm[3*q+1] << " " << perm[3*q+2] << std::endl;
+							}
+							*/
 
 							arr_perm[0] = K(0, 0);
 							arr_perm[1] = K(0, 1);
@@ -5310,7 +5358,7 @@ namespace INMOST
 		}
 
 
-		DeleteTag(cell_number);
+		//DeleteTag(cell_number);
 		DeleteTag(block_index);
 		/*
 		{
@@ -5345,7 +5393,8 @@ namespace INMOST
 
 		//if( GetProcessorsNumber() )
 		//exit(0);
-		ResolveShared();
+		if( parallel_read )
+			ResolveShared();
 	} //LoadECL
 } //namespace
 

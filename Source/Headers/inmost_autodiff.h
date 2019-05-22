@@ -11,6 +11,14 @@ namespace INMOST
 {
 	class Automatizator; //forward declaration
 	
+	//return specific type with specific template
+	template<class T> struct Demote;
+	template<> struct Demote<INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_INTEGER_TYPE type;};
+	template<> struct Demote<INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Demote<unknown> {typedef unknown type;};
+	template<> struct Demote<variable> {typedef unknown type;};
+	template<> struct Demote<hessian_variable> {typedef unknown type;};
+	
 	/// This class is used to organize unknowns in abstract way,
 	/// it should be registered with and managed by class Automatizator.
 	/// \todo
@@ -23,14 +31,17 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE              reg_index;    ///< Index of block registry with Automatizator.
 		TagInteger                         offset_tag;   ///< Starting index of the entry.
 		MarkerType                         mask;         ///< Allows to enable or disable the entire block.
+		bool                               inverse_mask; ///< Invert marker mask
 		ElementType                        etype;        ///< Type of elements on which unknowns are defined.
 	public:
-		AbstractEntry(ElementType etype = NONE, MarkerType mask = 0)
-		: reg_index(ENUMUNDEF), offset_tag(Tag()), mask(mask), etype(etype) {}
+		AbstractEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false)
+		: reg_index(ENUMUNDEF), offset_tag(Tag()), mask(mask), inverse_mask(inverse), etype(etype) {}
 		/// Retrive mask of the block.
 		MarkerType GetMask() const {return mask;}
+		/// Retrive if the mask is inverted
+		bool GetMaskInverse() const {return inverse_mask;}
 		/// Set mask for the block.
-		void SetMask(MarkerType _mask) {mask = _mask;}
+		void SetMask(MarkerType _mask, bool inverse = false) {mask = _mask; inverse_mask = inverse;}
 		/// Retrive element type of the block.
 		ElementType GetElementType() const {return etype;}
 		/// Set element type for the block.
@@ -40,28 +51,39 @@ namespace INMOST
 		/// Retrive tag that stores enumeration offset on each element.
 		void SetOffsetTag(TagInteger tag) {offset_tag = tag;}
 		/// Check that the block is valid on given element.
-		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && (e.GetElementType() & etype) && (mask == 0 || e->GetMarker(mask));}
+		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && (e.GetElementType() & etype) && (mask == 0 || (e->GetMarker(mask) ^ inverse_mask));}
 		/// Return value in vector of unknowns of the block at certain position.
-		/// @param pos Position for which to extract the value, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the value, should be no larger then MatrixSize.
 		virtual INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
 		/// Return value in vector of unknowns of the block at certain position.
-		/// @param pos Position for which to extract the value, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the value, should be no larger then MatrixSize.
 		virtual INMOST_DATA_REAL_TYPE & Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) = 0;
 		/// Return index in vector of indices of the block at certain position.
 		/// The index may be ENUMUNDEF if the unknown is inactive.
-		/// @param pos Position for which to extract the index, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the index, should be no larger then MatrixSize.
 		virtual INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
 		/// Return unknown in vector of variables of the block at certain position.
-		/// @param pos Position for which to extract the unknown, should be no larger the MatrixSize.
+		/// @param pos Position for which to extract the unknown, should be no larger then MatrixSize.
 		virtual unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
 		/// Return vector filled with values of unknowns of the block.
-		virtual rMatrix Value(const Storage & e) const = 0;
+		virtual rpMatrix Value(const Storage & e) const = 0;
 		/// Return vector filled with indices of unknowns of the block.
-		virtual iMatrix Index(const Storage & e) const = 0;
+		virtual ipMatrix Index(const Storage & e) const = 0;
 		/// Return vector filled with unknowns of the block with their derivatives.
-		virtual uMatrix Unknown(const Storage & e) const = 0;
+		virtual upMatrix Unknown(const Storage & e) const = 0;
+		/// Return vector filled with either values or indices or unknowns of the block,
+		/// depending on the template parameter.
+		template<typename T>
+		Matrix<typename Demote<T>::type, pool_array_t<typename Demote<T>::type> >
+		Access(const Storage &e) const;
+		/// Return either value or index or unknown at specified position of the block,
+		/// depending on the template parameter.
+		/// @param pos Position in the block, should be no larger then MatrixSize.
+		template<typename T>
+		typename Demote<T>::type
+		Access(const Storage &e, INMOST_DATA_ENUM_TYPE pos) const;
 		/// Return vector filled with unknowns of the block with their derivatives.
-		virtual uMatrix operator [](const Storage & e) const = 0;
+		virtual upMatrix operator [](const Storage & e) const = 0;
 		/// The intended size of the matrix for this entry.
 		virtual INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const = 0;
 		/// Number of tags in block.
@@ -91,6 +113,9 @@ namespace INMOST
 		friend class Automatizator; //provide registration index from inside of Automatizator
 		friend class Model; //provide registration index from inside of Model
 	};
+	
+	
+	
 	/// This class is used to organize unknowns into blocks,
 	/// blocks enumeration are managed by class Automatizator.
 	class BlockEntry : public AbstractEntry
@@ -99,7 +124,7 @@ namespace INMOST
 		std::vector<INMOST_DATA_ENUM_TYPE> unknown_comp; ///< Component of the tag used as unknown.
 	public:
 		/// Default constructor.
-		BlockEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		BlockEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		/// Add a component of the tag as unknown, by default all components of the tag are added.
 		/// Adding all components of variable-sized tags is not supported.
 		/// \warning Tags should belong to the same mesh and should be defined on the elements indicated in etype.
@@ -113,19 +138,25 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const {rMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
+		rpMatrix Value(const Storage & e) const {rpMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
-		iMatrix Index(const Storage & e) const {iMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
+		ipMatrix Index(const Storage & e) const {ipMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix Unknown(const Storage & e) const {return BlockEntry::operator [](e);}
+		upMatrix Unknown(const Storage & e) const {return BlockEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
+		upMatrix operator [](const Storage & e) const {upMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
         INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {(void)e; return Size();}
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Number of entries for each tag in the block.
-        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
+        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const
+		{
+			INMOST_DATA_ENUM_TYPE ret = 0;
+			for(unsigned k = 0; k < unknown_tags.size(); ++k)
+				if( e.HaveData(unknown_tags[k]) )	ret++;
+			return ret;
+		}
 		/// Retrive component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {return unknown_comp[unk];}
 		/// Retrive tag related to unknown value.
@@ -133,7 +164,7 @@ namespace INMOST
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tags.back().GetMeshLink();}
 		/// Make a copy of the object
-		AbstractEntry * Copy() const {BlockEntry * ret = new BlockEntry(GetElementType(),GetMask()); for(unsigned k = 0; k < Size(); ++k) ret->AddTag(unknown_tags[k],unknown_comp[k]); return ret; }
+		AbstractEntry * Copy() const {BlockEntry * ret = new BlockEntry(GetElementType(),GetMask(),GetMaskInverse()); for(unsigned k = 0; k < Size(); ++k) ret->AddTag(unknown_tags[k],unknown_comp[k]); return ret; }
 	};
 	/// This class is used to organize a single unknown,
 	class SingleEntry : public AbstractEntry
@@ -142,9 +173,9 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE unknown_comp;
 	public:
 		///Default constructor.
-		SingleEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		SingleEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		///Constructor with tag.
-		SingleEntry(ElementType etype, MarkerType mask, Tag unknown_tag, INMOST_DATA_ENUM_TYPE unknown_comp = 0) : AbstractEntry(etype,mask), unknown_tag(unknown_tag), unknown_comp(unknown_comp) {}
+		SingleEntry(ElementType etype, MarkerType mask, bool inverse, Tag unknown_tag, INMOST_DATA_ENUM_TYPE unknown_comp = 0) : AbstractEntry(etype,mask,inverse), unknown_tag(unknown_tag), unknown_comp(unknown_comp) {}
 		///Provide tag.
 		void SetTag(Tag unknown_tag_in, INMOST_DATA_ENUM_TYPE unknown_comp_in = 0) {unknown_tag = unknown_tag_in; unknown_comp = unknown_comp_in;}
 		/// Return value in vector of unknowns of the block at certain position.
@@ -156,19 +187,19 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos==0); return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const { rMatrix ret(1,1); ret(0,0) = Value(e,0); return ret; }
+		rpMatrix Value(const Storage & e) const { rpMatrix ret(1,1); ret(0,0) = Value(e,0); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
-		iMatrix Index(const Storage & e) const { iMatrix ret(1,1); ret(0,0) = Index(e,0); return ret; }
+		ipMatrix Index(const Storage & e) const { ipMatrix ret(1,1); ret(0,0) = Index(e,0); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix Unknown(const Storage & e) const {return SingleEntry::operator [](e);}
+		upMatrix Unknown(const Storage & e) const {return SingleEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix operator [](const Storage & e) const { uMatrix ret(1,1); ret(0,0) = Unknown(e,0); return ret; }
+		upMatrix operator [](const Storage & e) const { upMatrix ret(1,1); ret(0,0) = Unknown(e,0); return ret; }
 		/// The intended size of the matrix for this entry.
         INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {(void)e; return 1;}
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
-        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return 1;}
+        INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return e.HaveData(unknown_tag) ? 1 : 0;}
 		/// Retrive component of the tag related to unknown.
         INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk == 0); return unknown_comp;}
 		/// Retrive tag related to unknown value.
@@ -176,7 +207,7 @@ namespace INMOST
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
-		AbstractEntry * Copy() const {return new SingleEntry(GetElementType(),GetMask(),unknown_tag,unknown_comp);}
+		AbstractEntry * Copy() const {return new SingleEntry(GetElementType(),GetMask(),GetMaskInverse(),unknown_tag,unknown_comp);}
 	};
 	/// This class is used to organize multiple unknowns resided on single tag of variable or static size,
 	class VectorEntry : public AbstractEntry
@@ -184,9 +215,9 @@ namespace INMOST
 		TagRealArray          unknown_tag;
 	public:
 		///Default constructor.
-		VectorEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		VectorEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		///Constructor with tag.
-		VectorEntry(ElementType etype, MarkerType mask, Tag unknown_tag) : AbstractEntry(etype,mask), unknown_tag(unknown_tag) {}
+		VectorEntry(ElementType etype, MarkerType mask, bool inverse, Tag unknown_tag) : AbstractEntry(etype,mask,inverse), unknown_tag(unknown_tag) {}
 		///Provide tag.
 		void SetTag(Tag unknown_tag_in) {unknown_tag = unknown_tag_in;}
 		/// Return value in vector of unknowns of the block at certain position.
@@ -198,19 +229,19 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos<unknown_tag[e].size()); return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const { rMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Value(e,k); return ret; }
+		rpMatrix Value(const Storage & e) const { rpMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
-		iMatrix Index(const Storage & e) const { iMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Index(e,k); return ret; }
+		ipMatrix Index(const Storage & e) const { ipMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Index(e,k); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix Unknown(const Storage & e) const {return VectorEntry::operator [](e);}
+		upMatrix Unknown(const Storage & e) const {return VectorEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix operator [](const Storage & e) const { uMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(0,0) = Unknown(e,k); return ret; }
+		upMatrix operator [](const Storage & e) const { upMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(0,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
 		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size();}
 		/// Number of tags in block.
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
-		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size();}
+		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return e.HaveData(unknown_tag) ? (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size() : 0;}
 		/// Retrive component of the tag related to unknown.
         INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk==0); return ENUMUNDEF;}
 		/// Retrive tag related to unknown value.
@@ -218,7 +249,7 @@ namespace INMOST
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
-		AbstractEntry * Copy() const {return new VectorEntry(GetElementType(),GetMask(),unknown_tag);}
+		AbstractEntry * Copy() const {return new VectorEntry(GetElementType(),GetMask(),GetMaskInverse(),unknown_tag);}
 	};
 	/// This class is used to organize unknowns into blocks and provides mechanisms to change activation statuses of individual unknowns,
 	/// blocks enumeration are managed by class Automatizator. This is less efficient then BlockEntry for single status.
@@ -232,11 +263,11 @@ namespace INMOST
 		std::vector< std::vector<bool> >   status_tbl; ///< Array of statuses for activation of unknowns, length should be equal to number of unknowns, provided by user.
 	public:
 		/// Default constructor.
-		StatusBlockEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask), status_tag(Tag()) {}
+		StatusBlockEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse), status_tag(Tag()) {}
 		/// Constructor with status tag.
-		StatusBlockEntry(ElementType etype, MarkerType mask, TagInteger status_tag) : AbstractEntry(etype,mask), status_tag(status_tag) {}
+		StatusBlockEntry(ElementType etype, MarkerType mask, bool inverse, TagInteger status_tag) : AbstractEntry(etype,mask,inverse), status_tag(status_tag) {}
 		/// Constructor with status tag and status table.
-		StatusBlockEntry(ElementType etype, MarkerType mask, TagInteger status_tag, const std::vector< std::vector<bool> >  & status_tbl) : AbstractEntry(etype,mask), status_tag(status_tag), status_tbl(status_tbl) {}
+		StatusBlockEntry(ElementType etype, MarkerType mask, bool inverse, TagInteger status_tag, const std::vector< std::vector<bool> >  & status_tbl) : AbstractEntry(etype,mask,inverse), status_tag(status_tag), status_tbl(status_tbl) {}
 		/// Add a component of the tag as unknown, by default all components of the tag are added.
 		/// Adding all components of variable-sized tags is not supported.
 		/// \warning Tags should belong to the same mesh and should be defined on the elements indicated in etype.
@@ -254,13 +285,13 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const {rMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
+		rpMatrix Value(const Storage & e) const {rpMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
-		iMatrix Index(const Storage & e) const {iMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
+		ipMatrix Index(const Storage & e) const {ipMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix Unknown(const Storage & e) const {return StatusBlockEntry::operator [](e);}
+		upMatrix Unknown(const Storage & e) const {return StatusBlockEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix operator [](const Storage & e) const {uMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
+		upMatrix operator [](const Storage & e) const {upMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
         INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {(void)e; return Size();}
 		/// Number of tags in block.
@@ -287,7 +318,7 @@ namespace INMOST
 		std::vector<AbstractEntry *> entries;
 	public:
 		///Default constructor.
-		MultiEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		MultiEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		///Destructor.
 		~MultiEntry() {for(unsigned k = 0; k < entries.size(); ++k) delete entries[k];}
 		///Add entry into block of entries.
@@ -307,13 +338,13 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const;
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const;
+		rpMatrix Value(const Storage & e) const;
 		/// Return vector filled with indices of unknowns of the block.
-		iMatrix Index(const Storage & e) const;
+		ipMatrix Index(const Storage & e) const;
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix Unknown(const Storage & e) const {return MultiEntry::operator [](e);}
+		upMatrix Unknown(const Storage & e) const {return MultiEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
-		uMatrix operator [](const Storage & e) const;
+		upMatrix operator [](const Storage & e) const;
 		/// The intended size of the matrix for this entry.
 		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const;
 		/// Number of tags in block.
@@ -383,13 +414,14 @@ namespace INMOST
 		/// \warning
 		/// 1. Don't register tag twice.
 		/// 2. Have to call Automatizator::EnumerateEntries to compute indices.
-		INMOST_DATA_ENUM_TYPE RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask = 0, bool inverse = false);
 		/// Register block with the automatizator.
 		/// Note that copy of entry is stored with Automatizator.
 		/// @param b Entry that represents block of indepenedent unknowns of the model.
 		/// \warning
 		/// 1. If you create your entry with intention to use it after registration, then you should use the function as entry = aut.GetEntry(aut.RegisterEntry(entry));
 		INMOST_DATA_ENUM_TYPE RegisterEntry(const AbstractEntry & e);
+		INMOST_DATA_ENUM_TYPE RegisterEntry(AbstractEntry & e);
 		/// Erase a registered tag.
 		/// @param ind Integer returned from Automatizator::RegisterTag.
 		/// \warning

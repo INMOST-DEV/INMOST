@@ -5,8 +5,8 @@
 #include <cmath>
 #include <map>
 #include "inmost.h"
-#include "../inmost_ani_lib/utils.h"
-#include "../inmost_ani_lib/inmost_ani_fem.h"
+#include "utils.h"
+#include "inmost_ani_fem.h"
 #define USE_MPI
 #define USE_PARTITIONER
 using namespace INMOST;
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
 #elif USE_PARTITIONER_ZOLTAN
     p->SetMethod(Partitioner::Zoltan, Partitioner::Partition);
 #else
-    p->SetMethod(Partitioner::Inner_RCM,Partitioner::Partition);
+    p->SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
 #endif
     p->Evaluate();
     delete p;
@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
     double DeltaT = 0.015;
     int Itime = 0;
     double Time = 0;
-    double FinalTime = 0.45;
+    double FinalTime = 0.045;
     double Velocity[3] = {1, 0, 0};
     double D_coeff = 1e-4;
 
@@ -406,14 +406,18 @@ int main(int argc, char **argv) {
                   << sum_t_solve << " T_exchange " << sum_t_exch << std::endl;
     }
 
+    std::vector<Tag> tags;
+    tags.push_back(Sol_tags[sol_ind]);
     std::vector<Tag> tags2;
     tags2.push_back(Sol_tags[sol_ind]);
-    if (mesh_main->GetProcessorsNumber() == 1) {
+    tags2.push_back(Label_tag);
+    WriteTags("test_writer", mesh_main, tags2);
+  /*  if (mesh_main->GetProcessorsNumber() == 1) {
         WriteTags_vtk("test_writer.vtk", mesh_main, tags2);
 
     } else {
         WriteTags_pvtk("test_pvtk_writer.pvtk", mesh_main, tags2);
-    }
+    }*/
 
     //mesh_main->Save("save_sol.pvtk");
 

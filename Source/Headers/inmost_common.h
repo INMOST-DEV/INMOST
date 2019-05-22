@@ -259,6 +259,12 @@ namespace INMOST
 		UnknownWeightSize,
 		DistributionTagWasNotFilled,
 		
+		/// The list of errros that may occur in linear algebra
+		MatrixError = 600,
+		MatrixCholeskySolveFail,
+		MatrixSolveFail,
+		MatrixPseudoSolveFail,
+		
 		/// The very tail of the errors list.
 		NotImplemented = 1000,
 		Impossible
@@ -277,12 +283,21 @@ namespace INMOST
 	template<typename Var>
 	class SubMatrix;
 	
+	template<typename Var>
+	class ConstSubMatrix;
+	
 	template<typename Var, typename Storage = array<Var> >
 	class Matrix;
 	
 	template<typename Var, typename Storage = array<Var> >
 	class SymmetricMatrix;
 }
+
+#include <cfloat>
+
+static int __isnan__(double x) { return x != x; }
+static int __isinf__(double x) { return fabs(x) > DBL_MAX; }
+static int __isbad(double x) { return __isnan__(x) || __isinf__(x); }
 
 
 #endif //INMOST_COMMON_INCLUDED

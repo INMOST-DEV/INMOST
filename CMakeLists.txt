@@ -5,7 +5,7 @@ project (INMOST)
 include_directories("Source/Headers")
 
 set(INMOST_MAJOR_VERSION 0)
-set(INMOST_MINOR_VERSION 1)
+set(INMOST_MINOR_VERSION 3)
 set(INMOST_PATCH_VERSION 0)
 set(INMOST_VERSION "${INMOST_MAJOR_VERSION}.${INMOST_MINOR_VERSION}.${INMOST_PATCH_VERSION}")
 
@@ -28,6 +28,7 @@ option(COMPILE_EXAMPLES "Compile examples" OFF)
 option(COMPILE_TESTS "Compile some tests" OFF)
 
 option(USE_PARTITIONER_PARMETIS "Use ParMetis partitioner" OFF)
+option(USE_PARTITIONER_PARMETIS_DOWNLOAD "Attempts to download ParMetis if library not found" OFF)
 option(USE_PARTITIONER_ZOLTAN "Use Zoltan partitioner" OFF)
 option(USE_SOLVER_METIS "Use METIS for matrix reordering" OFF)
 option(USE_SOLVER_MONDRIAAN "Use Mondriaan for matrix reordering" OFF)
@@ -38,6 +39,8 @@ option(USE_TTSP "Use Trace and Tune Solver Parameters optimization toolkit" OFF)
 option(USE_TTSP_LIMBO "Compile TTSP module against Limbo library to provide Bayesian optimization algorithm")
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
+
+set(LIB_DOWNLOAD_PATH "${CMAKE_BINARY_DIR}/Libraries/download")
 
 if( MSVC )
 option(USE_MT "Use /MT switch instead of /MD switch for libraries generated with Visual Studio" OFF)
@@ -117,8 +120,55 @@ endif()
 if(USE_PARTITIONER_PARMETIS)
 	find_package(ParMETIS)
 	if(NOT PARMETIS_FOUND)
-		set(USE_PARTITIONER_PARMETIS OFF CACHE BOOL "Use ParMetis partitioner" FORCE)
+		#set(USE_PARTITIONER_PARMETIS OFF CACHE BOOL "Use ParMetis partitioner" FORCE)
 		message("PARMETIS NOT FOUND")
+
+		if( USE_PARTITIONER_PARMETIS_DOWNLOAD )
+			include(ExternalProject)
+			message("-- Download ParMetis")
+			string (REPLACE ";" "|" PASS_MPI "${MPI_INCLUDE_PATH}")
+			message("-- Passing MPI include to ParMETIS: '${PASS_MPI}'")
+			
+			ExternalProject_Add(ParMETIS
+								#This one is not good
+								#GIT_REPOSITORY "https://github.com/ibaned/parmetis.git"
+								GIT_REPOSITORY "https://github.com/scibuilder/parmetis.git"
+								GIT_TAG "master"
+								UPDATE_DISCONNECTED 1 
+								#${EXTERNAL_NOUPDATE}
+								PREFIX "${LIB_DOWNLOAD_PATH}"
+								#this command is responsible for update of repository from git
+								#UPDATE_COMMAND ""
+								LIST_SEPARATOR | # Use the alternate list separator
+								#for the one from ibaned
+								#CMAKE_ARGS "-DMPI_INCLUDE_PATH:PATH='${PASS_MPI}'"
+								CMAKE_ARGS  "-DDISABLE_PARMETIS_PROGRAMS:BOOL=TRUE "
+											"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
+											"-DCMAKE_BUILD_TYPE=Release "
+											"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
+											"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
+											"-DCMAKE_POSITION_INDEPENDENT_CODE=ON "
+											"-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} "
+											"-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
+								)
+			set(PARMETIS_INCLUDE_DIR "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "PARMETIS_INCLUDE_DIR is set" FORCE)
+			set(METIS_INCLUDE_DIR    "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "METIS_INCLUDE_DIR is set" FORCE)
+			if( WIN32 )
+				set(PARMETIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/parmetis.lib;${LIB_DOWNLOAD_PATH}/lib/metis.lib")
+				set(METIS_LIBRARIES    "${LIB_DOWNLOAD_PATH}/lib/metis.lib")
+			else( WIN32 )
+				set(PARMETIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/libparmetis.a;${LIB_DOWNLOAD_PATH}/lib/libmetis.a" CACHE PATH "PARMETIS_LIBRARIES is set" FORCE)
+				set(METIS_LIBRARIES    "${LIB_DOWNLOAD_PATH}/lib/libmetis.a" CACHE PATH "METIS_LIBRARIES is set" FORCE)
+			endif( WIN32 )
+			message("-- PARMETIS_INCLUDE_DIR: ${PARMETIS_INCLUDE_DIR}")
+			message("-- PARMETIS_LIBRARIES:   ${PARMETIS_LIBRARIES}")
+			message("-- METIS_INCLUDE_DIR:    ${METIS_INCLUDE_DIR}")
+			message("-- METIS_LIBRARIES:      ${METIS_LIBRARIES}")
+			include_directories(${PARMETIS_INCLUDE_DIR})
+			include_directories(${METIS_INCLUDE_DIR})
+		else(USE_PARTITIONER_PARMETIS_DOWNLOAD)
+			set(USE_PARTITIONER_PARMETIS OFF CACHE BOOL "Use ParMetis partitioner" FORCE)
+		endif(USE_PARTITIONER_PARMETIS_DOWNLOAD)
 	else()
 		include_directories(${PARMETIS_INCLUDE_DIR})
 		include_directories(${METIS_INCLUDE_DIR})
@@ -300,14 +350,25 @@ set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
 						   Source/Headers/inmost_ttsp.h
                            Source/Headers/container.hpp)
 
-
+#if( COMPILE_EXAMPLES )
+#list(APPEND INMOST_INSTALL_HEADERS "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
+#message(${INMOST_INSTALL_HEADERS})
+#endif( COMPILE_EXAMPLES )
 
 include(CPack)
 export(TARGETS inmost FILE inmost-targets.cmake)
 export(PACKAGE inmost)
 set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/Source/Headers" "${PROJECT_BINARY_DIR}")
+set(CONF_LIBRARY_DIRS "")
+if( COMPILE_EXAMPLES )
+list(APPEND CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh")
+list(APPEND CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/Examples/GridTools")
+list(APPEND CONF_LIBRARY_DIRS "${PROJECT_BINARY_DIR}/Examples/AdaptiveMesh")
+list(APPEND CONF_LIBRARY_DIRS "${PROJECT_BINARY_DIR}/Examples/GridTools")
+endif( COMPILE_EXAMPLES )
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}/inmost-config.cmake" @ONLY)
 set(CONF_INCLUDE_DIRS "\${inmost_DIR}/include")
+set(CONF_LIBRARY_DIRS "\$")
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake" @ONLY)
 configure_file(inmost-config-version.cmake.in "${PROJECT_BINARY_DIR}/inmost-config-version.cmake" @ONLY)
 
@@ -335,13 +396,19 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_ttsp.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp")
 
+#if( COMPILE_EXAMPLES )
+#set_property(TARGET inmost APPEND PROPERTY PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
+#get_property(PRINT_PUBLIC_HEADER TARGET inmost PROPERTY PUBLIC_HEADER)
+#message(${PRINT_PUBLIC_HEADER})
+#endif( COMPILE_EXAMPLES )
+
 install(FILES
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake"
   "${PROJECT_BINARY_DIR}/inmost-config-version.cmake"
   DESTINATION "${CMAKE_INSTALL_PREFIX}")
 
 install(TARGETS inmost EXPORT inmost-targets
-        ARCHIVE DESTINATION lib
+	ARCHIVE DESTINATION lib
 	LIBRARY DESTINATION lib
 	RUNTIME DESTINATION bin
 	PUBLIC_HEADER DESTINATION include)

@@ -1357,11 +1357,11 @@ static bool allow_pivot = true;
 			double tt1, tt2,ttt;
 			//in localPQ numbers indicate where to put current row/column
 			//reorder E,F blocks by swaps
-			//tt1 = Timer();
+			tt1 = Timer();
 			//inverse ordering
 			ReorderEF(wbeg,wend, donePQ, localP, localQ);
 			inversePQ(wbeg,wend,localP,localQ, invP,invQ);
-			//tt1 = Timer() - tt1;
+			tt1 = Timer() - tt1;
 
 			//std::cout << "reorder: " << tt1 << std::endl;
 			tt2 = Timer();
