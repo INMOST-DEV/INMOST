@@ -81,8 +81,9 @@ if(USE_TTSP_LIMBO)
 	find_package(Eigen3 REQUIRED)
 	include_directories(${EIGEN3_INCLUDE_DIR})
 
-	include_directories(/usr/local/Cellar/nlopt/2.4.2_2/include)
-	target_link_libraries(inmost /usr/local/Cellar/nlopt/2.4.2_2/lib/libnlopt.a)
+	find_package(NLOPT)
+	include_directories(${NLOPT_INCLUDE_DIRS})
+	target_link_libraries(inmost ${NLOPT_LIBRARIES})
 
 	find_package(boost REQUIRED)
 	include_directories(${Boost_INCLUDE_DIRS})
