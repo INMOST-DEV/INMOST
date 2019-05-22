@@ -249,8 +249,7 @@ namespace INMOST
 				}
 				else return false;
 			} //m <= n
-			//dynarray<Var,128> rv1(m);
-			std::vector<Var> rv1(m);
+			dynarray<Var,128> rv1(m);
 			//array<Var> _rv1(m);
 			//shell<Var> rv1(_rv1);
 			std::swap(n,m); //this how original algorithm takes it

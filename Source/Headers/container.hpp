@@ -1743,8 +1743,11 @@ namespace INMOST
 
 		~dynarray()
 		{
-			for(element * i = pbegin; i < pend; i++) (*i).~element();
-			if( pbegin != stack ) free(pbegin);
+			if( pbegin != stack ) 
+			{
+				for(element * i = pbegin; i < pend; i++) (*i).~element();
+				free(pbegin);
+			}
 		}
 		dynarray & operator =(dynarray const & other)
 		{
