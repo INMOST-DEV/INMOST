@@ -2,7 +2,7 @@
 add_subdirectory(Data)
 add_subdirectory(Mesh)
 add_subdirectory(IO)
-add_subdirectory(TTSP)
+add_subdirectory(Optimizer)
 add_subdirectory(Solver)
 add_subdirectory(NonlinearSolver)
 add_subdirectory(Autodiff)

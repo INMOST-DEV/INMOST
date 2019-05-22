@@ -23,8 +23,8 @@
 #cmakedefine USE_SOLVER_ANI
 #cmakedefine USE_SOLVER_SUPERLU
 
-#cmakedefine USE_TTSP
-#cmakedefine USE_TTSP_LIMBO
+#cmakedefine USE_OPTIMIZER
+#cmakedefine USE_OPTIMIZER_BAYESIAN
 
 #cmakedefine USE_NONLINEAR
 #cmakedefine USE_NONLINEAR_TRILINOS
