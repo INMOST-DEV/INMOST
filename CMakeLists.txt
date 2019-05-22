@@ -36,7 +36,7 @@ option(USE_SOLVER_PETSC "Use PETSc solvers" OFF)
 option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
 option(USE_TTSP "Use Trace and Tune Solver Parameters optimization toolkit" OFF)
-option(USE_TTSP_LIMBO "Compile TTSP module against Limbo library to provide Bayesian optimization algorithm")
+option(USE_TTSP_LIMBO "Compile TTSP module against Limbo library to provide Bayesian optimization algorithm" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
