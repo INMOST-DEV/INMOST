@@ -13,15 +13,22 @@
 #include "assert.h"
 using namespace INMOST;
 
-#define STATISTICS
+//#define STATISTICS
+#define NO_INTERNAL_MARKS
+
+#define DebugCellTag "DebugCellTag"
+#define DebugFaceTag "DebugFaceTag"
+#define DebugEdgeTag "DebugEdgeTag"
+#define DebugNodeTag "DebugNodeTag"
 
 
 #define FortranCellTag "FrotranCellTag"
 #define FortranNodeTag "FrotranNodeTag"
-#define FaceTag "Boundary"
-#define CellTag  "Material"
-#define NodeTagBC "Node_BC"
-#define EdgeTagBC "Edge_BC"
+
+
+
+
+#define FortranNumTag "Fortran_number"
 #define LabelTag "Label"
 const int No_BC_mark = 0;
 #define EPS 1e-10
@@ -41,6 +48,16 @@ struct Ani_Mesh {
 	Ani_Mesh();
 	~Ani_Mesh();
 };
+inline bool comp_numb(int n, int num[3])
+{
+    if((n==num[0])||(n==num[1])||(n==num[2]))
+        return true;
+    else
+        return false;
+};
+
+
+void CreateAniMeshFromInmost(Mesh *m,  Ani_Mesh &animesh);
 void ReadInmostFromAniFile(INMOST::Mesh *m,std::string filename );
 void RefineLocalMesh(Mesh *m,Mesh *m_result,   int NumberOfRefines);
 void ReadAniFromFile(std::string filename,Ani_Mesh &m );

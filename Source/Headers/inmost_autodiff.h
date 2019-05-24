@@ -31,14 +31,17 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE              reg_index;    ///< Index of block registry with Automatizator.
 		TagInteger                         offset_tag;   ///< Starting index of the entry.
 		MarkerType                         mask;         ///< Allows to enable or disable the entire block.
+		bool                               inverse_mask; ///< Invert marker mask
 		ElementType                        etype;        ///< Type of elements on which unknowns are defined.
 	public:
-		AbstractEntry(ElementType etype = NONE, MarkerType mask = 0)
-		: reg_index(ENUMUNDEF), offset_tag(Tag()), mask(mask), etype(etype) {}
+		AbstractEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false)
+		: reg_index(ENUMUNDEF), offset_tag(Tag()), mask(mask), inverse_mask(inverse), etype(etype) {}
 		/// Retrive mask of the block.
 		MarkerType GetMask() const {return mask;}
+		/// Retrive if the mask is inverted
+		bool GetMaskInverse() const {return inverse_mask;}
 		/// Set mask for the block.
-		void SetMask(MarkerType _mask) {mask = _mask;}
+		void SetMask(MarkerType _mask, bool inverse = false) {mask = _mask; inverse_mask = inverse;}
 		/// Retrive element type of the block.
 		ElementType GetElementType() const {return etype;}
 		/// Set element type for the block.
@@ -48,7 +51,7 @@ namespace INMOST
 		/// Retrive tag that stores enumeration offset on each element.
 		void SetOffsetTag(TagInteger tag) {offset_tag = tag;}
 		/// Check that the block is valid on given element.
-		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && (e.GetElementType() & etype) && (mask == 0 || e->GetMarker(mask));}
+		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && offset_tag.isDefined(e.GetElementType()) && (e.GetElementType() & etype) && (mask == 0 || (e->GetMarker(mask) ^ inverse_mask));}
 		/// Return value in vector of unknowns of the block at certain position.
 		/// @param pos Position for which to extract the value, should be no larger then MatrixSize.
 		virtual INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
@@ -121,7 +124,7 @@ namespace INMOST
 		std::vector<INMOST_DATA_ENUM_TYPE> unknown_comp; ///< Component of the tag used as unknown.
 	public:
 		/// Default constructor.
-		BlockEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		BlockEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		/// Add a component of the tag as unknown, by default all components of the tag are added.
 		/// Adding all components of variable-sized tags is not supported.
 		/// \warning Tags should belong to the same mesh and should be defined on the elements indicated in etype.
@@ -161,7 +164,7 @@ namespace INMOST
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tags.back().GetMeshLink();}
 		/// Make a copy of the object
-		AbstractEntry * Copy() const {BlockEntry * ret = new BlockEntry(GetElementType(),GetMask()); for(unsigned k = 0; k < Size(); ++k) ret->AddTag(unknown_tags[k],unknown_comp[k]); return ret; }
+		AbstractEntry * Copy() const {BlockEntry * ret = new BlockEntry(GetElementType(),GetMask(),GetMaskInverse()); for(unsigned k = 0; k < Size(); ++k) ret->AddTag(unknown_tags[k],unknown_comp[k]); return ret; }
 	};
 	/// This class is used to organize a single unknown,
 	class SingleEntry : public AbstractEntry
@@ -170,9 +173,9 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE unknown_comp;
 	public:
 		///Default constructor.
-		SingleEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		SingleEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		///Constructor with tag.
-		SingleEntry(ElementType etype, MarkerType mask, Tag unknown_tag, INMOST_DATA_ENUM_TYPE unknown_comp = 0) : AbstractEntry(etype,mask), unknown_tag(unknown_tag), unknown_comp(unknown_comp) {}
+		SingleEntry(ElementType etype, MarkerType mask, bool inverse, Tag unknown_tag, INMOST_DATA_ENUM_TYPE unknown_comp = 0) : AbstractEntry(etype,mask,inverse), unknown_tag(unknown_tag), unknown_comp(unknown_comp) {}
 		///Provide tag.
 		void SetTag(Tag unknown_tag_in, INMOST_DATA_ENUM_TYPE unknown_comp_in = 0) {unknown_tag = unknown_tag_in; unknown_comp = unknown_comp_in;}
 		/// Return value in vector of unknowns of the block at certain position.
@@ -204,7 +207,7 @@ namespace INMOST
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
-		AbstractEntry * Copy() const {return new SingleEntry(GetElementType(),GetMask(),unknown_tag,unknown_comp);}
+		AbstractEntry * Copy() const {return new SingleEntry(GetElementType(),GetMask(),GetMaskInverse(),unknown_tag,unknown_comp);}
 	};
 	/// This class is used to organize multiple unknowns resided on single tag of variable or static size,
 	class VectorEntry : public AbstractEntry
@@ -212,9 +215,9 @@ namespace INMOST
 		TagRealArray          unknown_tag;
 	public:
 		///Default constructor.
-		VectorEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		VectorEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		///Constructor with tag.
-		VectorEntry(ElementType etype, MarkerType mask, Tag unknown_tag) : AbstractEntry(etype,mask), unknown_tag(unknown_tag) {}
+		VectorEntry(ElementType etype, MarkerType mask, bool inverse, Tag unknown_tag) : AbstractEntry(etype,mask,inverse), unknown_tag(unknown_tag) {}
 		///Provide tag.
 		void SetTag(Tag unknown_tag_in) {unknown_tag = unknown_tag_in;}
 		/// Return value in vector of unknowns of the block at certain position.
@@ -246,7 +249,7 @@ namespace INMOST
 		/// Retrive mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
-		AbstractEntry * Copy() const {return new VectorEntry(GetElementType(),GetMask(),unknown_tag);}
+		AbstractEntry * Copy() const {return new VectorEntry(GetElementType(),GetMask(),GetMaskInverse(),unknown_tag);}
 	};
 	/// This class is used to organize unknowns into blocks and provides mechanisms to change activation statuses of individual unknowns,
 	/// blocks enumeration are managed by class Automatizator. This is less efficient then BlockEntry for single status.
@@ -260,11 +263,11 @@ namespace INMOST
 		std::vector< std::vector<bool> >   status_tbl; ///< Array of statuses for activation of unknowns, length should be equal to number of unknowns, provided by user.
 	public:
 		/// Default constructor.
-		StatusBlockEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask), status_tag(Tag()) {}
+		StatusBlockEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse), status_tag(Tag()) {}
 		/// Constructor with status tag.
-		StatusBlockEntry(ElementType etype, MarkerType mask, TagInteger status_tag) : AbstractEntry(etype,mask), status_tag(status_tag) {}
+		StatusBlockEntry(ElementType etype, MarkerType mask, bool inverse, TagInteger status_tag) : AbstractEntry(etype,mask,inverse), status_tag(status_tag) {}
 		/// Constructor with status tag and status table.
-		StatusBlockEntry(ElementType etype, MarkerType mask, TagInteger status_tag, const std::vector< std::vector<bool> >  & status_tbl) : AbstractEntry(etype,mask), status_tag(status_tag), status_tbl(status_tbl) {}
+		StatusBlockEntry(ElementType etype, MarkerType mask, bool inverse, TagInteger status_tag, const std::vector< std::vector<bool> >  & status_tbl) : AbstractEntry(etype,mask,inverse), status_tag(status_tag), status_tbl(status_tbl) {}
 		/// Add a component of the tag as unknown, by default all components of the tag are added.
 		/// Adding all components of variable-sized tags is not supported.
 		/// \warning Tags should belong to the same mesh and should be defined on the elements indicated in etype.
@@ -315,7 +318,7 @@ namespace INMOST
 		std::vector<AbstractEntry *> entries;
 	public:
 		///Default constructor.
-		MultiEntry(ElementType etype = NONE, MarkerType mask = 0) : AbstractEntry(etype,mask) {}
+		MultiEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
 		///Destructor.
 		~MultiEntry() {for(unsigned k = 0; k < entries.size(); ++k) delete entries[k];}
 		///Add entry into block of entries.
@@ -411,7 +414,7 @@ namespace INMOST
 		/// \warning
 		/// 1. Don't register tag twice.
 		/// 2. Have to call Automatizator::EnumerateEntries to compute indices.
-		INMOST_DATA_ENUM_TYPE RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask = 0);
+		INMOST_DATA_ENUM_TYPE RegisterTag(Tag t, ElementType typemask, MarkerType domain_mask = 0, bool inverse = false);
 		/// Register block with the automatizator.
 		/// Note that copy of entry is stored with Automatizator.
 		/// @param b Entry that represents block of indepenedent unknowns of the model.

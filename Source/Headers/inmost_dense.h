@@ -584,6 +584,12 @@ namespace INMOST
 		template<typename typeB>
 		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator*(typeB coef) const;
+		/// Multiply the matrix by a coefficient.
+		/// @param coef Coefficient.
+		/// @return Matrix multiplied by the coefficient.
+		template<class A>
+		Matrix<typename Promote<Var,variable>::type, pool_array_t<typename Promote<Var,variable>::type> >
+		operator*(shell_expression<A> const & coef) const {return operator*(variable(coef));}
 		/// Multiply the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
@@ -595,6 +601,12 @@ namespace INMOST
 		template<typename typeB>
 		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator/(typeB coef) const;
+		/// Divide the matrix by a coefficient of a different type.
+		/// @param coef Coefficient.
+		/// @return Matrix divided by the coefficient.
+		template<class A>
+		Matrix<typename Promote<Var,variable>::type, pool_array_t<typename Promote<Var,variable>::type> >
+		operator/(shell_expression<A> const & coef) const {return operator/(variable(coef));}
 		/// Divide the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
@@ -798,6 +810,20 @@ namespace INMOST
 		/// Replaces original number of columns and rows with a new one.
 		/// @return Matrix with same entries and provided number of rows and columns.
 		Matrix<Var, pool_array_t<Var> > Repack(enumerator rows, enumerator cols) const;
+		
+		
+		/// Extract submatrix of a matrix for in-place manipulation of elements.
+		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
+		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
+		/// and j in [jbeg,jend).
+		/// @param first_row Starting row in the original matrix.
+		/// @param last_row Last row (excluded) in the original matrix.
+		/// @param first_col Starting column in the original matrix.
+		/// @param last_col Last column (excluded) in the original matrix.
+		/// @return Submatrix of the original matrix.
+		SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		
+		ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	
 	
@@ -805,6 +831,7 @@ namespace INMOST
 	class SymmetricMatrix : public AbstractMatrix<Var>
 	{
 	public:
+		using AbstractMatrix<Var>::operator();
 		typedef unsigned enumerator; //< Integer type for indexes.
 	protected:
 		storage_type space; //< Array of row-wise stored elements.
@@ -1129,9 +1156,9 @@ namespace INMOST
 		/// @param first_col Starting column in the original matrix.
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		//::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
 		
-		::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
+		//::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	
 	/// Class for linear algebra operations on dense matrices.
@@ -1162,6 +1189,7 @@ namespace INMOST
 	class Matrix : public AbstractMatrix<Var>
 	{
 	public:
+		using AbstractMatrix<Var>::operator();
 		typedef unsigned enumerator; //< Integer type for indexes.
 	protected:
 		//array<Var> space; //< Array of row-wise stored elements.
@@ -1790,15 +1818,16 @@ namespace INMOST
 		/// @param first_col Starting column in the original matrix.
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		//::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
 
-		::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
+		//::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	/// This class allows for in-place operations on submatrix of the matrix elements.
 	template<typename Var>
 	class SubMatrix : public AbstractMatrix<Var>
 	{
 	public:
+		using AbstractMatrix<Var>::operator();
 		typedef unsigned enumerator; //< Integer type for indexes.
 	private:
 		AbstractMatrix<Var> * M;
@@ -1900,6 +1929,7 @@ namespace INMOST
 	class ConstSubMatrix : public AbstractMatrix<Var>
 	{
 	public:
+		using AbstractMatrix<Var>::operator();
 		typedef unsigned enumerator; //< Integer type for indexes.
 	private:
 		const AbstractMatrix<Var> * M;
@@ -2400,13 +2430,13 @@ namespace INMOST
 		
 		dynarray<enumerator,128> order(m);
 		
-		//Var temp;
+		Var temp;
 		INMOST_DATA_REAL_TYPE max,v;
-		//typeB tempb;
+		typeB tempb;
 		for(enumerator i = 0; i < m; ++i) order[i] = i;
 		for(enumerator i = 0; i < m; i++)
 		{
-			enumerator maxk = i, maxq = i;//, temp2;
+			enumerator maxk = i, maxq = i, temp2;
 			max = fabs(get_value(AtA(maxk,maxq)));
 			//Find best pivot
 			//if( max < 1.0e-8 )
@@ -2429,18 +2459,18 @@ namespace INMOST
 				{
 					for(enumerator q = 0; q < m; q++) // over columns of A
 					{
-						std::swap(AtA(maxk,q),AtA(i,q));
-						//temp = AtA(maxk,q);
-						//AtA(maxk,q) = AtA(i,q);
-						//AtA(i,q) = temp;
+						//std::swap(AtA(maxk,q),AtA(i,q));
+						temp = AtA(maxk,q);
+						AtA(maxk,q) = AtA(i,q);
+						AtA(i,q) = temp;
 					}
 					//exchange rhs
 					for(enumerator q = 0; q < l; q++) // over columns of B
 					{
-						std::swap(AtB(maxk,q),AtB(i,q));
-						//tempb = AtB(maxk,q);
-						//AtB(maxk,q) = AtB(i,q);
-						//AtB(i,q) = tempb;
+						//std::swap(AtB(maxk,q),AtB(i,q));
+						tempb = AtB(maxk,q);
+						AtB(maxk,q) = AtB(i,q);
+						AtB(i,q) = tempb;
 					}
 				}
 				//Exchange columns
@@ -2448,17 +2478,17 @@ namespace INMOST
 				{
 					for(enumerator k = 0; k < m; k++) //over rows
 					{
-						std::swap(AtA(k,maxq),AtA(k,i));
-						//temp = AtA(k,maxq);
-						//AtA(k,maxq) = AtA(k,i);
-						//AtA(k,i) = temp;
+						//std::swap(AtA(k,maxq),AtA(k,i));
+						temp = AtA(k,maxq);
+						AtA(k,maxq) = AtA(k,i);
+						AtA(k,i) = temp;
 					}
 					//remember order in sol
 					{
-						std::swap(order[maxq],order[i]);
-						//temp2 = order[maxq];
-						//order[maxq] = order[i];
-						//order[i] = temp2;
+						//std::swap(order[maxq],order[i]);
+						temp2 = order[maxq];
+						order[maxq] = order[i];
+						order[i] = temp2;
 					}
 				}
 			}
@@ -2673,7 +2703,7 @@ namespace INMOST
 	//{
 	//	return ::INMOST::SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
 	//}
-	
+	/*
 	template<typename Var,typename storage_type>
 	SubMatrix<Var> SymmetricMatrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{
@@ -2684,16 +2714,16 @@ namespace INMOST
 	{
 		return ::INMOST::ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
-	
-	template<typename Var,typename storage_type>
-	SubMatrix<Var> Matrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
+	*/
+	template<typename Var>
+	SubMatrix<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{
-		return ::INMOST::SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
+		return SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
 	}
-	template<typename Var, typename storage_type>
-	ConstSubMatrix<Var> Matrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+	template<typename Var>
+	ConstSubMatrix<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
 	{
-		return ::INMOST::ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
+		return ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
 	
 	
@@ -3140,6 +3170,14 @@ template<typename typeB>
 INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type> >
 operator *(const INMOST::hessian_variable & coef, const INMOST::AbstractMatrix<typeB> & other)
 {return other*coef;}
+/// Multiplication of matrix by constant from left.
+/// @param coef Constant coefficient multiplying matrix.
+/// @param other Matrix to be multiplied.
+/// @return Matrix, each entry multiplied by a constant.
+template<class A, typename typeB>
+INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type, INMOST::pool_array_t<typename INMOST::Promote<INMOST::variable,typeB>::type> >
+operator *(INMOST::shell_expression<A> const & coef, const INMOST::AbstractMatrix<typeB> & other)
+{return other*INMOST::variable(coef);}
 #endif
 
 template<typename T>

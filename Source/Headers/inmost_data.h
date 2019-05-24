@@ -223,6 +223,7 @@ namespace INMOST
 		__INLINE INMOST_DATA_ENUM_TYPE GetSize() const;
 		__INLINE std::string GetTagName() const;
 		__INLINE bool isDefined(ElementType type) const;
+		__INLINE bool isDefinedMask(ElementType mask) const;
 		__INLINE bool isSparse(ElementType type) const;
 		__INLINE bool isValid() const;
 		__INLINE Mesh * GetMeshLink() const;
@@ -783,17 +784,20 @@ namespace INMOST
 	__INLINE void Tag::SetPosition(INMOST_DATA_ENUM_TYPE pos, 
 		ElementType type) 
 	{
+		assert(type != NONE);
 		mem->pos[ElementNum(type)] = pos;
 	}
 
 	__INLINE INMOST_DATA_ENUM_TYPE Tag::GetPosition(ElementType type) const 
 	{
 		assert(mem != NULL); 
+		assert(type != NONE);
 		return mem->pos[ElementNum(type)];
 	}
 
 	__INLINE void Tag::SetSparse(ElementType type) 
 	{
+		assert(type != NONE);
 		mem->sparse[ElementNum(type)] = true;
 	}
 
@@ -870,6 +874,14 @@ namespace INMOST
 		assert(mem!=NULL);
 		assert(OneType(type)); 
 		return GetPosition(type) != ENUMUNDEF;
+	}
+	__INLINE bool Tag::isDefinedMask(ElementType mask) const 
+	{
+		assert(mem!=NULL);
+		bool ret = false;
+		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+			if( etype & mask ) ret |= isDefined(etype&mask);
+		return ret;
 	}
 	__INLINE bool Tag::isSparse(ElementType type) const 
 	{

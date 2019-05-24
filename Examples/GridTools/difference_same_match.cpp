@@ -17,8 +17,8 @@ int main(int argc, char *argv[])
 	Mesh m1,m2;
 	//m1.SetFileOption("VTK_GRID_DIMS","2");
 	//m2.SetFileOption("VTK_GRID_DIMS","2");
-	m1.SetFileOption("VERBOSITY","2");
-	m2.SetFileOption("VERBOSITY","2");
+	//m1.SetFileOption("VERBOSITY","2");
+	//m2.SetFileOption("VERBOSITY","2");
 	m1.Load(argv[1]);
 	m2.Load(argv[2]);
 	
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	Tag volumes_tag = m1.CreateTag("VOLUMES_FOR_NORMS_CALCULATION",DATA_REAL,CELL|FACE|EDGE|NODE,NONE,1);
+	TagReal volumes_tag = m1.CreateTag("VOLUMES_FOR_NORMS_CALCULATION",DATA_REAL,CELL|FACE|EDGE|NODE,NONE,1);
 	
 	Tag ref12 = m1.CreateTag("M1TOM2",DATA_REMOTE_REFERENCE,NODE|EDGE|FACE|CELL,NONE,1);
 	Tag ref21 = m2.CreateTag("M2TOM1",DATA_REMOTE_REFERENCE,NODE|EDGE|FACE|CELL,NONE,1);
@@ -113,9 +113,12 @@ int main(int argc, char *argv[])
 		std::cout << "matching done for " << ElementTypeName(etype) << std::endl;
 	}
 		
-	
+	/*
 	for(ElementType etype = NODE; etype <= CELL; etype = etype << 1)
 	{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 		for(int id = 0; id < m1.LastLocalID(etype); id++)
 		{
 			Element c1 = m1.ElementByLocalID(etype,id);
@@ -130,12 +133,31 @@ int main(int argc, char *argv[])
 				c1->RealDF(volumes_tag) = vol;
 			}
 		}
+		std::cout << "volumes precomputed for " << ElementTypeName(etype) << std::endl;
 	}
+	*/
+	for(int id = 0; id < m1.CellLastLocalID(); id++)
+	{
+		Cell c1 = m1.CellByLocalID(id);
+		if( c1.isValid() )
+		{
+			double vol = c1.Volume();
+			volumes_tag[c1] = vol;
+			
+			for(ElementType etype = NODE; etype <= FACE; etype = NextElementType(etype) )
+			{
+				ElementArray<Element> adj = c1.getAdjElements(etype);
+				for(ElementArray<Element>::iterator it = adj.begin(); it != adj.end(); ++it)
+					volumes_tag[*it] += vol / adj.size();
+			}
+		}
+	}
+	std::cout << "volumes precomputed" << std::endl;
 	
 	for(Mesh::iteratorTag t = m1.BeginTag(); t != m1.EndTag(); t++)
 	{
 		//if( *t == m1.CoordsTag() ) continue;
-		if( t->GetSize() == ENUMUNDEF ) continue;
+		//if( t->GetSize() == ENUMUNDEF ) continue;
 		if( t->GetDataType() != DATA_REAL && t->GetDataType() != DATA_VARIABLE ) continue;
 		if( m2.HaveTag(t->GetTagName()) )
 		{
@@ -148,6 +170,8 @@ int main(int argc, char *argv[])
 				if( m1.ElementDefined(*t,etype) && m2.ElementDefined(t2,etype) )
 				{
 					Storage::real Cnorm = 0, L1norm = 0, L2norm = 0, absval, Lvol = 0, vol;
+					Storage::real max_val = -1.0e+20, min_val = 1.0e+20;
+					int err = 0, tot = 0, diff_size = 0, tot_size = 0;
 					for(int id = 0; id < m1.LastLocalID(etype); id++)
 					{
 						Element c1 = m1.ElementByLocalID(etype,id);
@@ -159,12 +183,43 @@ int main(int argc, char *argv[])
 							{
 								Storage::real_array arr1 = c1->RealArray(*t);
 								Storage::real_array arr2 = c2->RealArray(t2);
+								tot_size++;
+								if( arr1.size() != arr2.size() )
+								{
+									diff_size++;
+									continue;
+									std::cout << "tag " << t->GetTagName() << " position " << k << "/" << arr1.size();
+									std::cout << " arrays of different size ";
+									std::cout << " on MESH1:" << ElementTypeName(etype) << ":" << c1.LocalID() << " " << arr1.size();
+									std::cout << " on MESH2:" << ElementTypeName(etype) << ":" << c2.LocalID() << " " << arr2.size();
+									std::cout << std::endl;
+									continue;
+								}
 								for(int k = 0; k < (int)arr1.size(); k++)
 								{
+									max_val = std::max(max_val,arr1[k]);
+									max_val = std::max(max_val,arr2[k]);
+									min_val = std::min(min_val,arr1[k]);
+									min_val = std::min(min_val,arr2[k]);
+
 									absval = fabs(arr1[k]-arr2[k]);
+										
+									if( absval > 1.0e-3 )
+									{
+										if( true )
+										{
+											std::cout << "tag " << t->GetTagName() << " position " << k << "/" << arr1.size();
+											std::cout << " on MESH1:" << ElementTypeName(etype) << ":" << c1.LocalID() << " " << arr1[k];
+											std::cout << " on MESH2:" << ElementTypeName(etype) << ":" << c2.LocalID() << " " << arr2[k];
+											std::cout << std::endl;
+										}
+										err++;
+									}
 									
-									arr1[k] = absval;
+									if( *t != m1.CoordsTag() )
+										arr1[k] = absval;
 									
+									tot++;
 									
 									if( Cnorm < absval ) Cnorm = absval;
 									L1norm += absval*vol;
@@ -176,12 +231,25 @@ int main(int argc, char *argv[])
 							{
 								Storage::var_array arr1 = c1->VariableArray(*t);
 								Storage::var_array arr2 = c2->VariableArray(t2);
+								tot_size++;
+								if( arr1.size() != arr2.size() )
+								{
+									diff_size++;
+									continue;
+								}
 								for(int k = 0; k < (int)arr1.size(); k++)
 								{
+									max_val = std::max(max_val,get_value(arr1[k]));
+									max_val = std::max(max_val,get_value(arr2[k]));
+									min_val = std::min(min_val,get_value(arr1[k]));
+									min_val = std::min(min_val,get_value(arr2[k]));
+
+
 									absval = fabs(get_value(arr1[k])-get_value(arr2[k]));
 									
 									arr1[k] = absval;
 									
+									if( absval > 1.0e-3 ) err++;
 									
 									if( Cnorm < absval ) Cnorm = absval;
 									L1norm += absval*vol;
@@ -191,12 +259,14 @@ int main(int argc, char *argv[])
 							}
 						}
 					}
-					std::cout << "Data " << t->GetTagName() << " on " << ElementTypeName(etype) << " Cnorm " << Cnorm << " L1norm " << L1norm/Lvol << " L2norm " << sqrt(L2norm/Lvol) << std::endl;
+					if( diff_size ) std::cout << "Size is different on " << diff_size << " / " << tot_size << " of " << ElementTypeName(etype) << std::endl;
+					if( err ) std::cout << "Reported error on " << err << " / " << tot << " of " << ElementTypeName(etype) << std::endl;
+					std::cout << "Data " << t->GetTagName() << " on " << ElementTypeName(etype) << " Cnorm " << Cnorm << " L1norm " << L1norm/Lvol << " L2norm " << sqrt(L2norm/Lvol) << " Min " << min_val << " Max " << max_val << std::endl;
 				}
 			}
 		}
 	}
-	
+	m1.DeleteTag(ref12);
 	m1.DeleteTag(volumes_tag);
 	m1.Save("diff.gmv");
 	m1.Save("diff.vtk");

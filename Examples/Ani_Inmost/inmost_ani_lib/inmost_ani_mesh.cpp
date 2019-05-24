@@ -2,7 +2,7 @@
 
 
 
-extern "C" {
+    extern "C" {
     void refine_(int *number_of_refines ,int *nv ,int *nvmax ,int *nt ,int *ntmax ,int *nb ,int *nbmax,
                  double *vrt, int *tet, int *bnd, int *material, int *labelF,
                     double *MapMtr, int* Ref2MapMtr, int *iW, int *MaxWi,int* flag_write);
@@ -13,6 +13,13 @@ extern "C" {
          double * vrt,int * bnd,int * tet,int * labelF,int * material,
          int *nvfix,int * nbfix,int * ntfix,int * ivfix,int * ibfix,int * itfix,
          int *iW,int * iW1, const char * name);
+
+void liste2r_(int *nP, int *nR, int *nE, int *IPE, int *IRE, int *nEP, int *IEP);
+
+void liste2f_(int *nP, int *nF, int *nE, int *IPE, int *IFE, int *nEP, int *IEP);
+void order2d_(int *n_t, int *nE, int *IPE);
+//order2D_(&n_t,&animesh.nt,animesh.tet);
+//      Subroutine listE2F(nP, nF, nE, IPE, IFE, nEP, IEP)
 
 }
 
@@ -136,6 +143,10 @@ void ReadAniFromFile(std::string filename,Ani_Mesh &m ){
          &m.nvfix,&m.nbfix,&m.ntfix,m.ivfix,m.ibfix, m.itfix,
          iW,iF, filename.c_str());
 
+ //   std::cout<<"bef"<<std::endl;
+    int n_t=4;
+    order2d_(&n_t,&m.nt,m.tet);
+   // std::cout<<"aft"<<std::endl;
 	free(iW);free(iF);
     std::cout<<"Reading ended"<<std::endl;
 }	
@@ -147,9 +158,13 @@ void LoadAFT(std::string filename,INMOST::Mesh *m)
     std::ifstream file;
     file.open(filename.c_str());
     M_Assert((file.is_open()),"cannto open file in read aft");
-    Tag Label_tag = m->CreateTag(LabelTag, DATA_INTEGER, CELL | FACE | EDGE | NODE, CELL | FACE | EDGE | NODE, 1);
-    Tag Fortran_Cell_Tag = m->CreateTag(FortranCellTag, DATA_INTEGER, CELL , CELL , 1);
-    Tag Fortran_Node_Tag = m->CreateTag(FortranNodeTag, DATA_INTEGER, NODE , NODE , 1);
+    Tag Label_tag = m->CreateTag(LabelTag, DATA_INTEGER, CELL | FACE | EDGE | NODE, NONE, 1);
+    Tag Fortran_Num_Tag = m->CreateTag(FortranNumTag, DATA_INTEGER, CELL | FACE | EDGE | NODE, NONE, 1);
+
+ //   Tag Fortran_Cell_Tag = m->CreateTag(DebugCellTag, DATA_INTEGER, CELL , CELL , 1);
+ //   Tag Fortran_Node_Tag = m->CreateTag(DebugNodeTag, DATA_INTEGER, NODE , NODE , 1);
+ //   Tag Fortran_Edge_Tag = m->CreateTag(DebugEdgeTag, DATA_INTEGER, EDGE , EDGE , 1);
+  //  Tag Fortran_Face_Tag = m->CreateTag(DebugFaceTag, DATA_INTEGER, EDGE , EDGE , 1);
 
     int nv,nt,nf;
     file >> nv;
@@ -167,7 +182,7 @@ void LoadAFT(std::string filename,INMOST::Mesh *m)
 //        xyz[2] = animesh.vrt[3 * i + 2];
         //   std::cout<<i<<std::endl;
         Node nod =m->CreateNode(xyz);
-        nod->Integer(Fortran_Node_Tag) = i;
+        nod->Integer(Fortran_Num_Tag) = i;
         newverts.push_back(nod);
     }
 
@@ -187,17 +202,24 @@ void LoadAFT(std::string filename,INMOST::Mesh *m)
         const INMOST_DATA_INTEGER_TYPE ne_face_nodes[12] = {0, 1, 2, 2, 1, 3, 1, 0, 3, 3, 0, 2};
         const INMOST_DATA_INTEGER_TYPE ne_num_nodes[4] = {3, 3, 3, 3};
 
-        std::pair<Cell, bool> pair = m->CreateCell(verts, ne_face_nodes, ne_num_nodes,
-                                                     4);
+        std::pair<Cell, bool> pair = m->CreateCell(verts, ne_face_nodes, ne_num_nodes,4);
         file>>pair.first.Integer(Label_tag) ;
-        pair.first.Integer(Fortran_Cell_Tag) = i;
+        pair.first.Integer(Fortran_Num_Tag) = i;
         //std::cout<<i<<std::endl;
         //newtets.push_back(pair.first);
     }
     for (Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); it++) {
         // it->Integer(BC_tag) = No_BC_mark;
         it->Integer(Label_tag) = No_BC_mark;
+        it->Integer(Fortran_Num_Tag) = -1;
     }
+
+    for (Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); it++) {
+        // it->Integer(BC_tag) = No_BC_mark;
+        //it->Integer(Label_tag) = No_BC_mark;
+        it->Integer(Fortran_Num_Tag) = -1;
+    }
+
 
     file >> nf;
    // std::cout<<"mesh bnd "<< nf<<std::endl;
@@ -209,7 +231,7 @@ void LoadAFT(std::string filename,INMOST::Mesh *m)
         for(j=0;j<3;j++) file>>num_face[j];
         file>>labelF;
         for (Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); it++) {
-            for(j=0;j<3;j++) num_nodes[j] = it->getNodes()[j].Integer(Fortran_Node_Tag);
+            for(j=0;j<3;j++) num_nodes[j] = it->getNodes()[j].Integer(Fortran_Num_Tag);
             flag_find = true;
             for(j=0;j<3;j++)
                 if( (num_face[j] != num_nodes[0])&& (num_face[j] != num_nodes[1]) && (num_face[j] != num_nodes[2]) ){
@@ -222,6 +244,8 @@ void LoadAFT(std::string filename,INMOST::Mesh *m)
             }
         }
     }
+
+
 }
 
 void CreateInmostMeshFromAni(INMOST::Mesh *m,Ani_Mesh &animesh) {
@@ -231,7 +255,10 @@ void CreateInmostMeshFromAni(INMOST::Mesh *m,Ani_Mesh &animesh) {
 
     ElementArray<Node> newverts(m);
     newverts.reserve(animesh.nv);
-  //  std::cout<<"mesh begin "<< animesh.nv<<" max nv "<<animesh.nvmax<<std::endl;
+    Tag Label_tag = m->CreateTag(LabelTag, DATA_INTEGER, CELL | FACE | EDGE | NODE,NONE, 1);
+    Tag Fortran_Num_Tag = m->CreateTag(FortranNumTag, DATA_INTEGER, CELL | FACE | EDGE | NODE, NONE, 1);
+
+   // std::cout<<"mesh begin "<< animesh.nv<<" max nv "<<animesh.nvmax<<std::endl;
     for (i = 0; i < animesh.nv; i++) {
         Storage::real xyz[3];
     //    std::cout<<i<<std::endl;
@@ -240,210 +267,224 @@ void CreateInmostMeshFromAni(INMOST::Mesh *m,Ani_Mesh &animesh) {
         xyz[2] = animesh.vrt[3 * i + 2];
      //   std::cout<<i<<std::endl;
         newverts.push_back(m->CreateNode(xyz));
+        newverts[newverts.size()-1].Integer(Fortran_Num_Tag) = i;
     }
 
-  //  std::cout<<"mesh tet "<< animesh.nt<<" max nv "<<animesh.ntmax<<std::endl;
+    //std::cout<<"mesh tet "<< animesh.nt<<" max nv "<<animesh.ntmax<<std::endl;
     ElementArray<Cell> newtets(m);
     newtets.reserve(animesh.nt);
     for (i = 0; i < animesh.nt; i++) {
+//        std::cout<<i<<std::endl;
         ElementArray<Node> verts(m);
         for (j = 0; j < 4; j++) {
             verts.push_back(newverts[animesh.tet[4 * i + j] - 1]);
         }
-
         const INMOST_DATA_INTEGER_TYPE ne_face_nodes[12] = {0, 1, 2, 2, 1, 3, 1, 0, 3, 3, 0, 2};
         const INMOST_DATA_INTEGER_TYPE ne_num_nodes[4] = {3, 3, 3, 3};
 
-        std::pair<Cell, bool> pair = m->CreateCell(verts, ne_face_nodes, ne_num_nodes,
-                                                   4); // Create north-east prismatic cell
+        std::pair<Cell, bool> pair = m->CreateCell(verts, ne_face_nodes, ne_num_nodes,4);
         newtets.push_back(pair.first);
+        newtets[newtets.size() - 1].Integer(Label_tag) = animesh.labelT[i];
+        newtets[newtets.size() - 1].Integer(Fortran_Num_Tag) = i;
     }
 
+    std::cout<<"numeration begin"<<std::endl;
 
-        //  std::cout<<"mesh created"<<std::endl;
-    //Tag Material_tag = m->CreateTag(name_material_tag.c_str(), DATA_INTEGER, CELL, CELL, 1);
-    Tag Label_tag = m->CreateTag(LabelTag, DATA_INTEGER, CELL | FACE | EDGE | NODE, CELL | FACE | EDGE | NODE, 1);
-    Tag Fortran_Cell_Tag = m->CreateTag(FortranCellTag, DATA_INTEGER, CELL , CELL , 1);
+    // std::cout<<animesh.nt<<std::endl;
+    //std::cout<<m->NumberOfEdges()<<std::endl;
+    int nEds;
+    int nEP[animesh.nv];
+   // int IRE[6*animesh.nt];
+    int *IRE;
+    IRE = new int[6*animesh.nt];
+  //  std::cout<<"before"<<std::endl;
+   // std::cout<<"bef"<<std::endl;
 
-    Tag Fortran_Node_Tag = m->CreateTag(FortranNodeTag, DATA_INTEGER, NODE , NODE , 1);
-    for (i = 0; i < animesh.nt; i++) {
-      //  newtets[i].Integer(Material_tag) = animesh.labelT[i];
-        newtets[i].Integer(Label_tag) = animesh.labelT[i];
-        newtets[i].Integer(Fortran_Cell_Tag) = i;
-    }
-    for (i = 0; i < animesh.nv; i++) {
-        newverts[i].Integer(Fortran_Node_Tag) = i;
-    }
-  //  Tag BC_tag = m->CreateTag(name_bc_tag.c_str(), DATA_INTEGER, FACE, FACE, 1);
-//    for(i=0;i<animesh.nb;i++){
-  //     M_Assert((animesh.labelF[i] != No_BC_mark),"We have labelF woth NO_BC_MARK");
-  //  }
-    double **centroids;
-    double dist;
-    centroids = (double **) malloc(animesh.nb * sizeof(double *));
-    for (i = 0; i < animesh.nb; i++) {
-        centroids[i] = (double *) malloc(3 * sizeof(double));
-        for (j = 0; j < 3; j++)
-            centroids[i][j] = 0.0;
-        for (j = 0; j < 3; j++)
-            for (k = 0; k < 3; k++)
-                centroids[i][k] += animesh.vrt[3 * (animesh.bnd[3 * i + j] - 1) + k];
-        for (j = 0; j < 3; j++)
-            centroids[i][j] /= 3.0;
-    }
-    int count_bc = 0;
-    //std::cout<<"find bound faces "<<std::endl;
-#ifdef STATISTICS
-  //  std::cout<<"Sizeof centroids "<< animesh.nb *3 * sizeof(double)/(1048576)<<" MB , or "<<animesh.nb * 3 * sizeof(double)/(1024)<<" KB "<<std::endl;
-#endif
 
     for (Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); it++) {
-       // it->Integer(BC_tag) = No_BC_mark;
-        it->Integer(Label_tag) = No_BC_mark;
+        // it->Integer(BC_tag) = No_BC_mark;
+        it->Integer(Fortran_Num_Tag)=-1;
+    }
+    for (Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); it++) {
+        // it->Integer(BC_tag) = No_BC_mark;
+        it->Integer(Fortran_Num_Tag)=-1;
     }
 
-    for(Mesh::iteratorFace it = m->BeginFace();it != m->EndFace();it++)
-        if(it->GetStatus() != Element::Ghost)
-    {
-        if( (it->Boundary()))
-        {
-            // std::cout<<it->LocalID()<<std::endl;
-            bool flag_found = false;
-            it->Centroid(center);
-            for (i = 0; i < animesh.nb; i++) {
-                dist = 0;
-                for (j = 0; j < 3; j++)
-                    dist += (center[j] - centroids[i][j]) * (center[j] - centroids[i][j]);
-                dist = sqrt(dist);
-                if (dist < EPS) {
-                    // it->Integer(BC_tag) = animesh.labelF[i];
-                    it->Integer(Label_tag) = animesh.labelF[i];
-                    flag_found = true;
-                    if (animesh.labelF[i] != No_BC_mark)
-                        count_bc++;
-                    break;
+
+  //  int IEP[4*m->NumberOfEdges()];
+    int *IEP;
+    IEP = new int[4*m->NumberOfEdges()];
+
+    //std::cout<<m->NumberOfEdges()<<std::endl;
+    liste2r_(&animesh.nv,&nEds,&animesh.nt,animesh.tet,IRE,nEP,IEP);
+
+
+    int nFs;
+   // int nEP[animesh.nv];
+    //int IFE[4*animesh.nt];
+    int *IFE;
+    IFE = new int[4*animesh.nt];
+    //int IEP[4*m->NumberOfEdges()];
+  //  Call order2D(4, nt,tet)
+    int n_t= 4;
+    int i1,i2,i3;
+    liste2f_(&animesh.nv,&nFs,&animesh.nt,animesh.tet,IFE,nEP,IEP);
+
+    std::cout<<"numeration"<<std::endl;
+/*for(i=0;i<16;i++)
+    std::cout<<IFE[i]-1<<" ";
+std::cout<<std::endl;
+for(i=0;i<16;i++)
+    std::cout<<animesh.tet[i]-1<<" ";
+std::cout<<std::endl;*/
+
+    for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); it++){
+        int num_tet = it->Integer(Fortran_Num_Tag);
+        //edges
+        ElementArray<Edge> edges = it->getEdges();
+        int count_local =0;
+        bool flag_find = false;
+
+
+
+
+        for(i=0;i<3;i++)
+            for(j=i+1;j<4;j++){
+                for(k=0;k<edges.size();k++){
+                    ElementArray<Node> nodes_f = edges[k].getNodes();//it->getEdges();
+                    //std::cout<<nodes_f[0].Integer(Fortran_Num_Tag)<<" "<<animesh.tet[4*num_tet + i]-1<<std::endl;
+                   // std::cout<<nodes_f[1].Integer(Fortran_Num_Tag)<<" "<<animesh.tet[4*num_tet + j]-1<<std::endl;
+                   // std::cout<<std::endl;
+                    if(((nodes_f[0].Integer(Fortran_Num_Tag) == animesh.tet[4*num_tet + i]-1)  && (nodes_f[1].Integer(Fortran_Num_Tag) == animesh.tet[4*num_tet + j]-1) ) ||
+                            ((nodes_f[1].Integer(Fortran_Num_Tag) == animesh.tet[4*num_tet + i]-1)  && (nodes_f[0].Integer(Fortran_Num_Tag) == animesh.tet[4*num_tet + j]-1) )){
+                        flag_find=true;
+
+                        if(edges[k].Integer(Fortran_Num_Tag) != -1) {
+
+                          if(edges[k].Integer(Fortran_Num_Tag)!= IRE[6*num_tet + count_local]-1){
+                              std::cout<<"Already marked "<<edges[k].Integer(Fortran_Num_Tag)<<" "<<IRE[6*num_tet + count_local]-1<<  std::endl;  
+                              exit(-1);                  
+                           }  
+                        }
+                        else{
+                          edges[k].Integer(Fortran_Num_Tag)= IRE[6*num_tet + count_local]-1;
+
+                        }
+                        count_local++;
+                        break;
+                    }
                 }
+                M_Assert(flag_find,"Didn't find edge num !!!");
+                flag_find=false;
+
             }
-              if(!flag_found){
-                 std::cout<<"DIDNT FIND BOUNDARY TAG!!! "<<it->DataLocalID()<<std::endl;
-            // it->Integer(BC_tag) = No_BC_mark;
-                  it->Integer(Label_tag) = No_BC_mark;
 
-             }
-        }
-        else
-        {
-            // it->Integer(BC_tag) = No_BC_mark;
-            it->Integer(Label_tag) = No_BC_mark;
+        //faces
+        ElementArray<Face> faces = it->getFaces();
+        //count_local =0;
+        flag_find = false;
+        
+       // i1=0;i2=1;i3=2;
+        for(i=0;i<4;i++){
+            i1= (0+i)%4;
+            i2= (1+i)%4;
+            i3= (2+i)%4;
+           // std::cout<<animesh.tet[4*num_tet + i1]-1<<" "<<animesh.tet[4*num_tet + i2]-1<<" "<<animesh.tet[4*num_tet + i3]-1<<std::endl;
 
-        }
+            for(int k1=0;k1<faces.size();k1++){
+                ElementArray<Node> nodes_f = faces[k1].getNodes();//it->getEdges();
+                int num_fort_loc[3]; for(int j1=0;j1<3;j1++) num_fort_loc[j1] = nodes_f[j1].Integer(Fortran_Num_Tag);
+                if(comp_numb(animesh.tet[4*num_tet + i1]-1,num_fort_loc)&& comp_numb(animesh.tet[4*num_tet + i2]-1,num_fort_loc)&& comp_numb(animesh.tet[4*num_tet + i3]-1,num_fort_loc)){
+              //      std::cout<<faces[k1].Integer(Fortran_Num_Tag)<<" "<<faces[k1].DataLocalID()<<std::endl;
+                    flag_find=true;
+                    if(faces[k1].Integer(Fortran_Num_Tag) !=-1){
+                        if(faces[k1].Integer(Fortran_Num_Tag) != IFE[4*num_tet + i]-1){
+                            std::cout<<"already marked "<<std::endl; 
+                            std::cout<<"tet "<<num_tet<<std::endl;
+                            std::cout<<i1<<" "<<i2<<" "<<i3<<std::endl;
+                            std::cout<<i<<std::endl;
+                            std::cout<<faces[k1].Integer(Fortran_Num_Tag) <<" "<<IFE[4*num_tet + i]-1<<std::endl;
+                            std::cout<<animesh.tet[4*num_tet + i1]-1<<" "<<animesh.tet[4*num_tet + i2]-1<<" "<<animesh.tet[4*num_tet + i3]-1<<std::endl;
+                            std::cout<<num_fort_loc[0]<<" "<<num_fort_loc[1]<<" "<<num_fort_loc[2]<<std::endl;
+                            std::cout<<IFE[4*num_tet + 0]-1<<" "<<IFE[4*num_tet + 1]-1<<" "<<IFE[4*num_tet + 2]-1<<" "<<IFE[4*num_tet + 3]-1<<std::endl;
+                            exit(-1);
+                        }
+                   }
+                   else{
+                       faces[k1].Integer(Fortran_Num_Tag) = IFE[4*num_tet + i]-1;
+                     //  std::cout<<faces[k1].Integer(Fortran_Num_Tag)<<" "<<faces[k1].DataLocalID()<<std::endl;
+                     //  std::cout<<faces[k1].Integer(Fortran_Num_Tag)<<std::endl;
+                   }
+                   break;
+
+               }
+           }
+            if(! flag_find){
+                std::cout<<i1<<" "<<i2<<" "<<i3<<std::endl;
+            }
+           M_Assert(flag_find,"Didn't find face num !!!");
+           flag_find=false;
+      }
+     // std::cout<<std::endl;
     }
-
-
-    int control_bc=0;
-    for(i=0;i<animesh.nb;i++)
-        if(animesh.labelF[i] != No_BC_mark)
-           control_bc++;
-    //M_Warinig((control_bc == animesh.nb), " There are bnd with No_BC_Tag");
-    if(control_bc != count_bc)
-        std::cout<<"some faces are unmarked!! "<<control_bc<<" "<< count_bc<<std::endl;
-
-//    std::cout<<"Processor rank "<< m->GetProcessorRank()<<" creating ended"<<std::endl;
-
-
-    for(i=0;i<animesh.nb;i++)
-        free(centroids[i]);
-    free(centroids);
-   // return m;
-
-
-}
-
-
-void CreateInmostMeshFromAni_with_interial_marks(INMOST::Mesh *m,Ani_Mesh &animesh) {
-    int i, j, k;
-    double center[3];
-
-
-    ElementArray<Node> newverts(m);
-    newverts.reserve(animesh.nv);
-    //  std::cout<<"mesh begin "<< animesh.nv<<" max nv "<<animesh.nvmax<<std::endl;
-    for (i = 0; i < animesh.nv; i++) {
-        Storage::real xyz[3];
-        //    std::cout<<i<<std::endl;
-        xyz[0] = animesh.vrt[3 * i + 0];
-        xyz[1] = animesh.vrt[3 * i + 1];
-        xyz[2] = animesh.vrt[3 * i + 2];
-        //   std::cout<<i<<std::endl;
-        newverts.push_back(m->CreateNode(xyz));
-    }
-
-    //  std::cout<<"mesh tet "<< animesh.nt<<" max nv "<<animesh.ntmax<<std::endl;
-    ElementArray<Cell> newtets(m);
-    newtets.reserve(animesh.nt);
-    for (i = 0; i < animesh.nt; i++) {
-        ElementArray<Node> verts(m);
-        for (j = 0; j < 4; j++) {
-            verts.push_back(newverts[animesh.tet[4 * i + j] - 1]);
-        }
-
-        const INMOST_DATA_INTEGER_TYPE ne_face_nodes[12] = {0, 1, 2, 2, 1, 3, 1, 0, 3, 3, 0, 2};
-        const INMOST_DATA_INTEGER_TYPE ne_num_nodes[4] = {3, 3, 3, 3};
-
-        std::pair<Cell, bool> pair = m->CreateCell(verts, ne_face_nodes, ne_num_nodes,
-                                                   4); // Create north-east prismatic cell
-        newtets.push_back(pair.first);
-    }
-
-
-    //  std::cout<<"mesh created"<<std::endl;
+          std::cout<<"mesh created"<<std::endl;
     //Tag Material_tag = m->CreateTag(name_material_tag.c_str(), DATA_INTEGER, CELL, CELL, 1);
-    Tag Label_tag = m->CreateTag(LabelTag, DATA_INTEGER, CELL | FACE | EDGE | NODE, CELL | FACE | EDGE | NODE, 1);
-    Tag Fortran_Cell_Tag = m->CreateTag(FortranCellTag, DATA_INTEGER, CELL , CELL , 1);
+    //Tag Fortran_Cell_Tag = m->CreateTag(FortranCellTag, DATA_INTEGER, CELL , CELL , 1);
 
-    Tag Fortran_Node_Tag = m->CreateTag(FortranNodeTag, DATA_INTEGER, NODE , NODE , 1);
-    for (i = 0; i < animesh.nt; i++) {
-        //  newtets[i].Integer(Material_tag) = animesh.labelT[i];
-        newtets[i].Integer(Label_tag) = animesh.labelT[i];
-        newtets[i].Integer(Fortran_Cell_Tag) = i;
-    }
-    for (i = 0; i < animesh.nv; i++) {
-        newverts[i].Integer(Fortran_Node_Tag) = i;
-    }
+   // Tag Fortran_Node_Tag = m->CreateTag(FortranNodeTag, DATA_INTEGER, NODE , NODE , 1);
 
-//    Tag BC_tag = m->CreateTag(name_bc_tag.c_str(), DATA_INTEGER, FACE, FACE, 1);
-    for(i=0;i<animesh.nb;i++){
-        M_Assert((animesh.labelF[i] != No_BC_mark),"We have labelF woth NO_BC_MARK");
-    }
-    double **centroids;
-    double dist;
-    centroids = (double **) malloc(animesh.nb * sizeof(double *));
-    for (i = 0; i < animesh.nb; i++) {
-        centroids[i] = (double *) malloc(3 * sizeof(double));
-        for (j = 0; j < 3; j++)
-            centroids[i][j] = 0.0;
-        for (j = 0; j < 3; j++)
-            for (k = 0; k < 3; k++)
-                centroids[i][k] += animesh.vrt[3 * (animesh.bnd[3 * i + j] - 1) + k];
-        for (j = 0; j < 3; j++)
-            centroids[i][j] /= 3.0;
-    }
-    int count_bc = 0;
-    //std::cout<<"find bound faces "<<std::endl;
-#ifdef STATISTICS
-    //  std::cout<<"Sizeof centroids "<< animesh.nb *3 * sizeof(double)/(1048576)<<" MB , or "<<animesh.nb * 3 * sizeof(double)/(1024)<<" KB "<<std::endl;
-#endif
+  //  Tag BC_tag = m->CreateTag(name_bc_tag.c_str(), DATA_INTEGER, FACE, FACE, 1);
+   // for(i=0;i<animesh.nb;i++){
+   //    M_Assert((animesh.labelF[i] != No_BC_mark),"We have labelF woth NO_BC_MARK ");
+    //}
+
 
     for (Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); it++) {
         // it->Integer(BC_tag) = No_BC_mark;
         it->Integer(Label_tag) = No_BC_mark;
     }
 
-    for(Mesh::iteratorFace it = m->BeginFace();it != m->EndFace();it++) {
-        //if( (it->Boundary()))
-        if(it->GetStatus() != Element::Ghost)
+
+    for(i=0;i<animesh.nb;i++){
+        ElementArray<Node> verts(m);
+        for (j = 0; j < 3; j++) {
+            verts.push_back(newverts[animesh.bnd[3 * i + j] - 1]);
+        }
+        std::pair<Face, bool> pair = m->CreateFace(verts);
+        M_Assert((!pair.second), "we didn't find face!!!");
+        pair.first.Integer(Label_tag) = animesh.labelF[i];
+
+    }
+
+
+    /*
+    double **centroids;
+    double dist;
+    centroids = (double **) malloc(animesh.nb * sizeof(double *));
+    for (i = 0; i < animesh.nb; i++) {
+        centroids[i] = (double *) malloc(3 * sizeof(double));
+        for (j = 0; j < 3; j++)
+            centroids[i][j] = 0.0;
+        for (j = 0; j < 3; j++)
+            for (k = 0; k < 3; k++)
+                centroids[i][k] += animesh.vrt[3 * (animesh.bnd[3 * i + j] - 1) + k];
+        for (j = 0; j < 3; j++)
+            centroids[i][j] /= 3.0;
+    }
+    int count_bc = 0;
+    std::cout<<"find bound faces "<<std::endl;
+#ifdef STATISTICS
+    std::cout<<"Sizeof centroids "<< animesh.nb *3 * sizeof(double)/(1048576)<<" MB , or "<<animesh.nb * 3 * sizeof(double)/(1024)<<" KB "<<std::endl;
+#endif
+
+
+    for(Mesh::iteratorFace it = m->BeginFace();it != m->EndFace();it++)
+    if(it->GetStatus() != Element::Ghost)
+    {
+#ifdef NO_INTERNAL_MARKS
+        if( (it->Boundary()))
+#endif
         {
-            // std::cout<<it->LocalID()<<std::endl;
             bool flag_found = false;
             it->Centroid(center);
             for (i = 0; i < animesh.nb; i++) {
@@ -460,49 +501,49 @@ void CreateInmostMeshFromAni_with_interial_marks(INMOST::Mesh *m,Ani_Mesh &anime
                     break;
                 }
             }
-        }
+#ifdef NO_INTERNAL_MARKS
+            if(!flag_found){
+                 std::cout<<"DIDNT FIND BOUNDARY TAG!!! "<<it->DataLocalID()<<std::endl;
+            // it->Integer(BC_tag) = No_BC_mark;
+                  it->Integer(Label_tag) = No_BC_mark;
 
+             }
+#endif
+        }
+#ifdef NO_INTERNAL_MARKS
+        else
+        {
+            // it->Integer(BC_tag) = No_BC_mark;
+            it->Integer(Label_tag) = No_BC_mark;
+
+        }
+#endif
     }
 
-/*
-    for(i=0;i<animesh.nb;i++) {
-        bool flag_found=false;
-        for(Mesh::iteratorFace it = m->BeginFace();it != m->EndFace();it++) {
-            it->Centroid(center);
-            dist = 0;
-            for(j=0;j<3;j++)
-                dist += (center[j]- centroids[i][j])*(center[j]- centroids[i][j]);
-            dist = sqrt(dist);
-            if(dist < EPS){
-                it->Integer(BC_tag) = animesh.labelF[i];
-                it->Integer(Label_tag) = animesh.labelF[i];
-                flag_found = true;
-                if( animesh.labelF[i] != No_BC_mark)
-                    count_bc++;
-                break;
-            }
-        }
-        M_Assert(flag_found,"DIDNT FIND MARKED FACE");
-    }
+
 */
-    int control_bc=0;
-    for(i=0;i<animesh.nb;i++)
-        if(animesh.labelF[i] != No_BC_mark)
-            control_bc++;
-    //M_Warinig((control_bc == animesh.nb), " There are bnd with No_BC_Tag");
-    if(control_bc != count_bc)
-        std::cout<<"some faces are unmarked!! "<<control_bc<<" "<< count_bc<<std::endl;
+//           control_bc++;
+
+
+    //
+//    if(control_bc != count_bc)
+//        std::cout<<"some faces are unmarked!! "<<control_bc<<" "<< count_bc<<std::endl;
 
 //    std::cout<<"Processor rank "<< m->GetProcessorRank()<<" creating ended"<<std::endl;
 
-
-    for(i=0;i<animesh.nb;i++)
-        free(centroids[i]);
-    free(centroids);
-    // return m;
+//////////////////// Debug edge and face tags/////////
+    delete[] IFE;
+    delete[] IEP;
+    delete [] IRE;
+ //   for(i=0;i<animesh.nb;i++)
+ //       free(centroids[i]);
+  //  free(centroids);
+   // return m;
 
 
 }
+
+
 
 
 void CreateAniMeshFromInmost(Mesh *m,  Ani_Mesh &animesh){
@@ -626,8 +667,8 @@ void RefineLocalMesh(Mesh *m,Mesh *m_result,   int NumberOfRefines){
     refine_(&NumberOfRefines,&animesh.nv,&animesh.nvmax,&animesh.nt,&animesh.ntmax,&animesh.nb,&animesh.nbmax,
             animesh.vrt,animesh.tet,animesh.bnd,animesh.labelT,animesh.labelF,MapMtr,Ref2MapMtr,iW,&MaxWi,&FlagWrite);
 //    exit(1);//db!!
-//    std::cout<<"refine ended"<<std::endl;
-  //  std::cout<<animesh.vrt[0]<<" "<<animesh.vrt[1]<<" "<<animesh.vrt[2]<<std::endl;
+    std::cout<<"refine ended"<<std::endl;
+    std::cout<<animesh.vrt[0]<<" "<<animesh.vrt[1]<<" "<<animesh.vrt[2]<<std::endl;
     CreateInmostMeshFromAni(m_result,animesh);
   //  m_result->ResolveShared();
   //  m_result->ExchangeGhost(1,NODE); // Construct Ghost cells in 1 layers connected via nodes

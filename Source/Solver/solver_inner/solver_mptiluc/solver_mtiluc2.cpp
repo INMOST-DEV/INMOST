@@ -385,13 +385,13 @@ using namespace INMOST;
 		const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 		
-		INMOST_DATA_ENUM_TYPE wbeg, wend; //working interval
-		INMOST_DATA_ENUM_TYPE mobeg, moend; // total interval
-		INMOST_DATA_ENUM_TYPE vbeg, vend; // vector interval
+		INMOST_DATA_ENUM_TYPE wbeg = 0, wend = 0; //working interval
+		INMOST_DATA_ENUM_TYPE mobeg = 0, moend = 0; // total interval
+		INMOST_DATA_ENUM_TYPE vbeg = 0, vend = 0; // vector interval
 		
-		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next;
-		INMOST_DATA_REAL_TYPE l,u,udiag, abs_udiag, max_diag, min_diag, mean_diag;
-		INMOST_DATA_ENUM_TYPE nzA, nzLU = 0;
+		INMOST_DATA_ENUM_TYPE k = 0, i = 0, j = 0, Li = 0, Ui = 0, curr = 0, next = 0;
+		INMOST_DATA_REAL_TYPE l = 0, u = 0,udiag = 0, abs_udiag = 0, max_diag = -1.0e+20, min_diag = 1.0e+20, mean_diag = 0;
+		INMOST_DATA_ENUM_TYPE nzA = 0, nzLU = 0;
 		Sparse::Vector DL, DR;
 		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
 		info->GetVectorRegion(vbeg,vend);
@@ -427,7 +427,7 @@ using namespace INMOST;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Bstart(mobeg,moend);
 
 		//supplimentary data structures for ILUC
-		INMOST_DATA_ENUM_TYPE LU_Beg;
+		INMOST_DATA_ENUM_TYPE LU_Beg = 0;
 		U_Address.set_interval_beg(mobeg);
 		U_Address.set_interval_end(moend);
 		L_Address.set_interval_beg(mobeg);
@@ -446,18 +446,18 @@ using namespace INMOST;
 		INMOST_DATA_REAL_TYPE NuUsqrt = 1, NuLsqrt = 1;
 #if defined(ESTIMATOR)
 		//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
-		INMOST_DATA_REAL_TYPE mup, mum, smup, smum, NuL1 = 1, NuL2 = 1, NuU1 = 1, NuU2 = 1;
+		INMOST_DATA_REAL_TYPE mup = 0, mum = 0, smup = 0, smum = 0, NuL1 = 1, NuL2 = 1, NuU1 = 1, NuU2 = 1;
 		INMOST_DATA_REAL_TYPE NuU1_old = 1, NuL1_old = 1, NuU2_old = 1, NuL2_old = 1;
-		INMOST_DATA_REAL_TYPE NuU1_new = 1, NuL1_new = 1, vp, vm, v;
+		INMOST_DATA_REAL_TYPE NuU1_new = 1, NuL1_new = 1, vp = 0, vm = 0, v = 0;
 #if defined(ESTIMATOR_REFINE)
-		INMOST_DATA_ENUM_TYPE np, nm;
-		INMOST_DATA_REAL_TYPE NuU2_new, NuL2_new;
+		INMOST_DATA_ENUM_TYPE np = 0, nm = 0;
+		INMOST_DATA_REAL_TYPE NuU2_new = 0, NuL2_new = 0;
 #endif
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL1(mobeg, moend,0.0), EstU1(mobeg, moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL2(mobeg, moend,0.0), EstU2(mobeg, moend,0.0);
 #endif
 #if defined(ESTIMATOR) && defined(DIAGONAL_PIVOT_COND)
-		INMOST_DATA_REAL_TYPE NuU_tmp, NuL_tmp;
+		INMOST_DATA_REAL_TYPE NuU_tmp = 0, NuL_tmp = 0;
 #endif
 		//supplimentary data structures for returning values of dropped elements
 		//INMOST_DATA_REAL_TYPE DropLk, DropUk;
@@ -470,7 +470,7 @@ using namespace INMOST;
 		
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
-		double tfactor = 0.0, tswap = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tlocal;
+		double tfactor = 0.0, tswap = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt = 0.0, testimator = 0.0, tlocal = 0.0;
         (void) tswap; //can be unused for some defines
 #if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
@@ -3204,8 +3204,8 @@ swap_algorithm:
 			U_Address[cbeg].first = LU_Beg;
 			L_Address[cbeg].first = U_Address[cbeg].last;
 #if defined(ILUC2)
-      U2_Address[cbeg].first = 0;
-      L2_Address[cbeg].first = U2_Address[cbeg].last;
+			U2_Address[cbeg].first = 0;
+			L2_Address[cbeg].first = U2_Address[cbeg].last;
 #endif
 			for (k = cbeg+1; k < cend; ++k)
 			{

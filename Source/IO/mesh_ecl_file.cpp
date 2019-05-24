@@ -1208,9 +1208,17 @@ namespace INMOST
 		bool project_perm = false;
 		int split_degenerate = 0;
 		bool check_topology = false;
+		bool compute_ecl_centroid = true;
 		int verbosity = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
+			if (file_options[k].first == "ECL_PARALLEL_READ") 
+			{
+				if (file_options[k].second == "TRUE")
+					parallel_read = true;
+				else
+					parallel_read = false;
+			}
 			if (file_options[k].first == "ECL_SPLIT_GLUED")
 			{
 				if (file_options[k].second == "ALL")
@@ -3258,21 +3266,21 @@ namespace INMOST
 			DeleteTag(node_pos);
 
 
-			/*      (6)*<<------[3]--------*(7)
-			/|                  /|
-			[6]                 [7]|
-			/  |                /  |
-			(4)*--------[2]------>>*(5)|
-			|  [10]             |  [11]
-			|                   |   |
-			|   |               |   |
-			|                   |   |
-			[8]  |              [9]  |
-			|(2)*- - - - [1]- - |->>*(3)
-			|  /                |  /
-			|[4]                |[5]
-			|/                  |/
-			(0)*<<------[0]--------*(1)
+			/*   (6)*<<------[3]--------*(7)
+			       /|                  /|
+			     [6]                 [7]|
+			     /  |                /  |
+			 (4)*--------[2]------>>*(5)|
+			    |  [10]             |  [11]
+			    |                   |   |
+			    |   |               |   |
+			    |                   |   |
+			   [8]  |              [9]  |
+			    |(2)*- - - - [1]- - |->>*(3)
+			    |  /                |  /
+			    |[4]                |[5]
+			    |/                  |/
+			 (0)*<<------[0]--------*(1)
 			*/
 			//Tag pillar_mark = CreateTag("PILLAR_MARK",DATA_INTEGER,EDGE,NONE,3);
 			//tags to be transfered
@@ -4377,16 +4385,18 @@ namespace INMOST
 			//compute cell centers that lay inside
 			if (true) //TODO16
 			{
-				if( true )
+				TagRealArray ecl_centroid;
+				if( compute_ecl_centroid )
 				{
 					if (verbosity > 0)
 					{
 						ttt = Timer();
 						std::cout << "Compute geometric data for cell centers" << std::endl;
 					}
-					GeomParam table;
-					table[CENTROID] = CELL;
-					PrepareGeometricData(table);
+					//GeomParam table;
+					//table[CENTROID] = CELL;
+					//PrepareGeometricData(table);
+					ecl_centroid = CreateTag("ECL_CENTROID",DATA_REAL,CELL,NONE,3);
 					if (verbosity)
 						std::cout << "Finished computing geometric data time " << Timer() - ttt << std::endl;
 					//overwrite centroid info
@@ -4416,14 +4426,15 @@ namespace INMOST
 								ctop[1] += tc[1] * 0.25;
 								ctop[2] += tc[2] * 0.25;
 							}
-							real_array cnt = c->RealArray(centroid_tag);
+							real_array cnt = c->RealArray(ecl_centroid);
 							cnt[0] = (cbottom[0] + ctop[0])*0.5;
 							cnt[1] = (cbottom[1] + ctop[1])*0.5;
 							cnt[2] = (cbottom[2] + ctop[2])*0.5;
 
 						}
 					}
-					ExchangeData(centroid_tag,CELL,0);
+					if( parallel_read )
+						ExchangeData(ecl_centroid,CELL,0);
 					if (verbosity)
 						std::cout << "Finished rewriting cell centers time " << Timer() - ttt << std::endl;
 				}
@@ -4443,12 +4454,15 @@ namespace INMOST
 					integer bnum = c->Integer(cell_number) - 1;
 					if (bnum >= 0) //maybe this cell existed before
 					{
-						Storage::real cnt[3];
-						c->Centroid(cnt);
-						if (!c->Inside(cnt))
+						if( ecl_centroid.isValid() )
 						{
-							//std::cout << "Centroid is outside of cell " << bnum << std::endl;
-							num_outside++;
+							if (!c->Inside(ecl_centroid[c].data())) num_outside++;
+						}
+						else
+						{
+							Storage::real cnt[3];
+							c->Barycenter(cnt);
+							if (!c->Inside(cnt)) num_outside++;
 						}
 						num_total++;
 					}
@@ -5379,7 +5393,8 @@ namespace INMOST
 
 		//if( GetProcessorsNumber() )
 		//exit(0);
-		ResolveShared();
+		if( parallel_read )
+			ResolveShared();
 	} //LoadECL
 } //namespace
 
