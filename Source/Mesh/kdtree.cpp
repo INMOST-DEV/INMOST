@@ -147,7 +147,7 @@ namespace INMOST
 				}
 				else for(unsigned k = 0; k < nodes.size(); ++k)
 				{
-					Storage::real_array coords = m->RealArrayDF(set[0].e,m->CoordsTag());;
+					Storage::real_array coords = m->RealArrayDF(nodes[k],m->CoordsTag());;
 					for(unsigned q = 0; q < coords.size(); q++)
 					{
 						bbox[q*2+0] = std::min<float>(bbox[q*2+0],(float)coords[q]);
