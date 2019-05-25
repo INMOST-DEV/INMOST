@@ -327,7 +327,7 @@ safe_output:
 			{
 				Tag t = GetTag(tag_names[i]);
 				//printf("%s %d %d %d\n",tag_names[i].c_str(),t.isDefined(CELL),!t.isSparse(CELL),t.GetDataType() != DATA_BULK);
-				if (((t.isDefined(CELL) && !t.isSparse(CELL))
+				if (((t.isDefined(CELL) /*&& !t.isSparse(CELL)*/)
 					|| (t.isDefined(FACE) && output_faces)) &&
 						t.GetPrint() && //Temporary solution: @see Mesh::file_option
 						t.GetDataType() != DATA_BULK && 
@@ -360,12 +360,12 @@ safe_output:
 				else
 				{
 					{
-            std::string type_str = "int";
-            if(  tags[i].GetDataType() == DATA_REAL
+						std::string type_str = "int";
+						if(  tags[i].GetDataType() == DATA_REAL
 #if defined(USE_AUTODIFF)
-              || tags[i].GetDataType() == DATA_VARIABLE
+						   || tags[i].GetDataType() == DATA_VARIABLE
 #endif
-              ) type_str = "double";
+						   ) type_str = "double";
 						fprintf(f,"SCALARS %s %s %d\n",Space2Underscore(tags[i].GetTagName()).c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
 						for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
@@ -374,46 +374,46 @@ safe_output:
 							{
 							case DATA_REAL:
 							{
-											  if (tags[i].isDefined(CELL))
-											  {
-												  Storage::real_array arr = it->RealArray(tags[i]);
-												  for (unsigned int m = 0; m < comps; m++)
-												  {
-													  double val = static_cast<double>(arr[m]);
-													  fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
-												  }
-											  }
-											  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-											  fprintf(f, "\n");
+								if (tags[i].isDefined(CELL) && it->HaveData(tags[i]))
+								{
+									Storage::real_array arr = it->RealArray(tags[i]);
+									for (unsigned int m = 0; m < comps; m++)
+									{
+										double val = static_cast<double>(arr[m]);
+										fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
+									}
+								}
+								else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
+								fprintf(f, "\n");
 							}
-								break;
+							break;
 							case DATA_INTEGER:
 							{
-												 if (tags[i].isDefined(CELL))
-												 {
-													 Storage::integer_array arr = it->IntegerArray(tags[i]);
-													 for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
-												 }
-												 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
-												 fprintf(f, "\n");
+								if (tags[i].isDefined(CELL) && it->HaveData(tags[i]))
+								{
+									Storage::integer_array arr = it->IntegerArray(tags[i]);
+									for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
+								}
+								else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
+								fprintf(f, "\n");
 							}
-								break;
+							break;
 #if defined(USE_AUTODIFF)
 							case DATA_VARIABLE:
 							{
-												  if (tags[i].isDefined(CELL))
-												  {
-													  Storage::var_array arr = it->VariableArray(tags[i]);
-													  for (unsigned int m = 0; m < comps; m++)
-													  {
-														  double val = static_cast<double>(arr[m].GetValue());
-														  fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
-													  }
-												  }
-												  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-												  fprintf(f, "\n");
+								if (tags[i].isDefined(CELL) && it->HaveData(tags[i]))
+								{
+									Storage::var_array arr = it->VariableArray(tags[i]);
+									for (unsigned int m = 0; m < comps; m++)
+									{
+										double val = static_cast<double>(arr[m].GetValue());
+										fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
+									}
+								}
+								else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
+								fprintf(f, "\n");
 							}
-								break;
+							break;
 #endif
 							default: continue;
 							}
@@ -421,49 +421,50 @@ safe_output:
 							
 
 
-						if (output_faces){
+						if (output_faces)
+						{
 							for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
 							{
 								switch (tags[i].GetDataType())
 								{
 								case DATA_REAL:
 								{
-												  if (tags[i].isDefined(FACE))
-												  {
-													  Storage::real_array arr = it->RealArray(tags[i]);
-													  for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", arr[m]);
-												  }
-												  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-												  fprintf(f, "\n");
+									if (tags[i].isDefined(FACE) && it->HaveData(tags[i]))
+									{
+										Storage::real_array arr = it->RealArray(tags[i]);
+										for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", arr[m]);
+									}
+									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
+									fprintf(f, "\n");
 								}
-									break;
+								break;
 								case DATA_INTEGER:
 								{
-													 if (tags[i].isDefined(FACE))
-													 {
-														 Storage::integer_array arr = it->IntegerArray(tags[i]);
-														 for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
-													 }
-													 else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
-													 fprintf(f, "\n");
+									if (tags[i].isDefined(FACE) && it->HaveData(tags[i]))
+									{
+										Storage::integer_array arr = it->IntegerArray(tags[i]);
+										for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
+									}
+									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
+									fprintf(f, "\n");
 								}
-									break;
+								break;
 #if defined(USE_AUTODIFF)
 								case DATA_VARIABLE:
 								{
-													  if (tags[i].isDefined(FACE))
-													  {
-														  Storage::var_array arr = it->VariableArray(tags[i]);
-														  for (unsigned int m = 0; m < comps; m++)
-														  {
-															  double val = static_cast<double>(arr[m].GetValue());
-															  fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
-														  }
-													  }
-													  else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-													  fprintf(f, "\n");
+									if (tags[i].isDefined(FACE) && it->HaveData(tags[i]))
+									{
+										Storage::var_array arr = it->VariableArray(tags[i]);
+										for (unsigned int m = 0; m < comps; m++)
+										{
+											double val = static_cast<double>(arr[m].GetValue());
+											fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
+										}
+									}
+									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
+									fprintf(f, "\n");
 								}
-									break;
+								break;
 #endif
 								default: continue;
 								}
@@ -480,15 +481,14 @@ safe_output:
 			for(unsigned int i = 0; i < tag_names.size(); i++)
 			{
 				Tag t = GetTag(tag_names[i]);
-				if( t.isDefined(NODE) && 
-            !t.isSparse(NODE) && 
-            t.GetDataType() != DATA_BULK && 
-            t.GetDataType() != DATA_REFERENCE &&
-            t.GetDataType() != DATA_REMOTE_REFERENCE &&
-					  t != CoordsTag() && 
-            t != SharedTag() && 
-            t != SendtoTag() && 
-            t != ProcessorsTag())
+				if( t.isDefined(NODE) && /*!t.isSparse(NODE) &&*/
+				    t.GetDataType() != DATA_BULK &&
+				    t.GetDataType() != DATA_REFERENCE &&
+				    t.GetDataType() != DATA_REMOTE_REFERENCE &&
+					t != CoordsTag() &&
+				    t != SharedTag() &&
+				    t != SendtoTag() &&
+				    t != ProcessorsTag())
 					tags.push_back(t);
 			}
 				
@@ -504,12 +504,12 @@ safe_output:
 				else
 				{
 					{
-            std::string type_str = "int";
-            if(  tags[i].GetDataType() == DATA_REAL
+						std::string type_str = "int";
+						if(  tags[i].GetDataType() == DATA_REAL
 #if defined(USE_AUTODIFF)
-              || tags[i].GetDataType() == DATA_VARIABLE
+						   || tags[i].GetDataType() == DATA_VARIABLE
 #endif
-              ) type_str = "double";
+						   ) type_str = "double";
 						fprintf(f,"SCALARS %s %s %d\n",Space2Underscore(tags[i].GetTagName()).c_str(),type_str.c_str(),comps);
 						fprintf(f,"LOOKUP_TABLE default\n");
 						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
@@ -518,32 +518,44 @@ safe_output:
 							{
 								case DATA_REAL:
 								{
-									Storage::real_array arr = it->RealArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) 
+									if (it->HaveData(tags[i]))
 									{
-										double val = static_cast<double>(arr[m]);
-										fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
+										Storage::real_array arr = it->RealArray(tags[i]);
+										for(unsigned int m = 0; m < comps; m++)
+										{
+											double val = static_cast<double>(arr[m]);
+											fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
+										}
+										fprintf(f,"\n");
 									}
-									fprintf(f,"\n");
+									else for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",-0.9999E30);
 								}
 								break;
 								case DATA_INTEGER:
 								{
-									Storage::integer_array arr = it->IntegerArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) fprintf(f,"%d ",arr[m]);
-									fprintf(f,"\n");
+									if (it->HaveData(tags[i]))
+									{
+										Storage::integer_array arr = it->IntegerArray(tags[i]);
+										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%d ",arr[m]);
+										fprintf(f,"\n");
+									}
+									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
 								}
 								break;
 #if defined(USE_AUTODIFF)
-                case DATA_VARIABLE:
+								case DATA_VARIABLE:
 								{
-									Storage::var_array arr = it->VariableArray(tags[i]);
-									for(unsigned int m = 0; m < comps; m++) 
+									if (it->HaveData(tags[i]))
 									{
-										double val = static_cast<double>(arr[m].GetValue());
-										fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
+										Storage::var_array arr = it->VariableArray(tags[i]);
+										for(unsigned int m = 0; m < comps; m++)
+										{
+											double val = static_cast<double>(arr[m].GetValue());
+											fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
+										}
+										fprintf(f,"\n");
 									}
-									fprintf(f,"\n");
+									else for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",-0.9999E30);
 								}
 								break;
 #endif
@@ -559,7 +571,7 @@ safe_output:
 
   void Mesh::LoadVTK(std::string File)
   {
-    int verbosity = 0;
+	  int verbosity = 0;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "VERBOSITY" )
