@@ -80,9 +80,7 @@ namespace INMOST {
     protected:
         bool UpdateSpaceWithLatestResults() override;
 
-        SuggestionChangedParameters AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                 const OptimizationParameterPoints &,
-                                                                                                                 void *)> &invoke, void *data) const override;
+        SuggestionChangedParameters AlgorithmMakeSuggestion() const override;
 
     public:
         AnnealingOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);

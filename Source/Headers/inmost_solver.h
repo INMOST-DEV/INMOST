@@ -402,6 +402,25 @@ namespace INMOST
 	typedef std::vector<std::string>::iterator solvers_names_iterator_t;
 	typedef std::vector<SolverParameters>::iterator solver_parameters_iterator_t;
 
+	/// Helper functions for Optimizer module and Solver
+	namespace TTSP {
+
+	    void Enable();
+
+	    void Disable();
+
+	    bool isEnabled();
+
+	    bool isDisabled();
+
+	    void SolverOptimize(const std::string &name, const std::string &type, Solver &solver);
+
+	    void SolverOptimizeSaveResult(const std::string &name, const std::string &type, double metrics, bool is_good);
+
+	    void DestroySavedOptimizer(const std::string &name, const std::string &type);
+
+	}
+
 }
 
 #endif

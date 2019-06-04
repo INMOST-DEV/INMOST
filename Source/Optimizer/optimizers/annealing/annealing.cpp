@@ -212,9 +212,7 @@ namespace INMOST {
         });
     }
 
-    SuggestionChangedParameters AnnealingOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                                 const OptimizationParameterPoints &,
-                                                                                                                                 void *)> &invoke, void *data) const {
+    SuggestionChangedParameters AnnealingOptimizer::AlgorithmMakeSuggestion() const {
         return std::vector<SuggestionChangedParameter>{SuggestionChangedParameter(current_handler_index, handlers.at(current_handler_index).GetNextValue())};
     }
 

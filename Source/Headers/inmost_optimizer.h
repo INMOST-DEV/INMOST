@@ -398,9 +398,7 @@ namespace INMOST {
 
         virtual bool UpdateSpaceWithLatestResults();
 
-        virtual SuggestionChangedParameters AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                         const OptimizationParameterPoints &,
-                                                                                                                         void *)> &invoke, void *data) const = 0;
+        virtual SuggestionChangedParameters AlgorithmMakeSuggestion() const = 0;
 
     public:
         OptimizerInterface(const std::string &name, const OptimizationParameters &parameters, const OptimizerProperties &properties, std::size_t buffer_capacity) :
@@ -410,12 +408,7 @@ namespace INMOST {
 #endif
         };
 
-        OptimizationParametersSuggestion Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &, const OptimizationParameterPoints &,
-                                                                                                      void *)> &invoke = [](const OptimizationParameterPoints &,
-                                                                                                                            const OptimizationParameterPoints &,
-                                                                                                                            void *) -> OptimizationFunctionInvokeResult {
-            return std::make_pair(false, 0);
-        }, void *data = nullptr);
+        OptimizationParametersSuggestion Suggest();
 
         void SaveResult(const SuggestionChangedParameters &changed,
                         const OptimizationParameterPoints &before, double metrics_before,

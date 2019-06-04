@@ -5,7 +5,6 @@
 #include <inmost_optimizer.h>
 
 #include "Source/Optimizer/optimizers/noop/noop.h"
-#include "Source/Optimizer/optimizers/bruteforce/bruteforce.h"
 #include "Source/Optimizer/optimizers/alternating/alternating.h"
 #include "Source/Optimizer/optimizers/annealing/annealing.h"
 
@@ -496,10 +495,9 @@ namespace INMOST {
         return true;
     }
 
-    OptimizationParametersSuggestion OptimizerInterface::Suggest(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                      const OptimizationParameterPoints &,
-                                                                                                                      void *)> &invoke, void *data) {
-        SuggestionChangedParameters changed = this->AlgorithmMakeSuggestion(invoke, data);
+    OptimizationParametersSuggestion OptimizerInterface::Suggest() {
+
+        SuggestionChangedParameters changed = this->AlgorithmMakeSuggestion();
 
         OptimizationParametersSuggestion suggestion = OptimizationParametersSuggestion(
                 changed,
@@ -650,7 +648,6 @@ namespace INMOST {
         std::vector<std::string> available;
 
         available.emplace_back("noop");
-        available.emplace_back("bruteforce");
         available.emplace_back("alternating");
         available.emplace_back("annealing");
 #if defined(USE_OPTIMIZER_BAYESIAN)
@@ -664,7 +661,6 @@ namespace INMOST {
                                                  const OptimizationParameters &parameters, const OptimizerProperties &properties,
                                                  std::size_t buffer_capacity) {
         if (type == "noop") return new NoopOptimizer(name, parameters, properties, buffer_capacity);
-        if (type == "bruteforce") return new BruteforceOptimizer(name, parameters, properties, buffer_capacity);
         if (type == "alternating") return new AlternatingOptimizer(name, parameters, properties, buffer_capacity);
         if (type == "annealing") return new AnnealingOptimizer(name, parameters, properties, buffer_capacity);
 #if defined(USE_OPTIMIZER_BAYESIAN)

@@ -92,9 +92,7 @@ namespace INMOST {
 
     }
 
-    SuggestionChangedParameters BayesianOptimizer::AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                                                const OptimizationParameterPoints &,
-                                                                                                                                void *)> &invoke, void *data) const {
+    SuggestionChangedParameters BayesianOptimizer::AlgorithmMakeSuggestion() const {
 
         auto unique  = results.GetLastUniqueEntries(unique_points_max_count);
         auto entries = parameters.GetParameterEntries();

@@ -1,6 +1,6 @@
 if (USE_OPTIMIZER)
     set(SOURCE ${SOURCE}
-            ${CMAKE_CURRENT_SOURCE_DIR}/ttsp.cpp)
+            ${CMAKE_CURRENT_SOURCE_DIR}/optimizers.cpp)
 
     add_subdirectory(optimizers)
 endif ()

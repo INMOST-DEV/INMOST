@@ -11,9 +11,7 @@ namespace INMOST {
 
     class NoopOptimizer : public OptimizerInterface {
     protected:
-        SuggestionChangedParameters AlgorithmMakeSuggestion(const std::function<OptimizationFunctionInvokeResult(const OptimizationParameterPoints &,
-                                                                                                               const OptimizationParameterPoints &,
-                                                                                                               void *)> &invoke, void *data) const override;
+        SuggestionChangedParameters AlgorithmMakeSuggestion() const override;
 
     public:
         NoopOptimizer(const std::string &name, const OptimizationParameters &space, const OptimizerProperties &properties, std::size_t buffer_capacity);

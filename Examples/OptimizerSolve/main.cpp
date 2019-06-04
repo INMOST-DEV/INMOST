@@ -284,7 +284,7 @@ int main(int argc, char **argv) {
 
             INMOST::OptimizerInterface *optimizer = INMOST::Optimizers::GetSavedOptimizer("test");
 
-            const INMOST::OptimizationParametersSuggestion &suggestion = optimizer->Suggest(invoke, nullptr);
+            const INMOST::OptimizationParametersSuggestion &suggestion = optimizer->Suggest();
 
             const INMOST::OptimizationFunctionInvokeResult &result = invoke(suggestion.GetPointsBefore(), suggestion.GetPointsAfter(), nullptr);
 

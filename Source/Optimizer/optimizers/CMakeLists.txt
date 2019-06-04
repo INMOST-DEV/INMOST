@@ -1,5 +1,4 @@
 add_subdirectory(noop)
-add_subdirectory(bruteforce)
 add_subdirectory(alternating)
 add_subdirectory(annealing)
 
