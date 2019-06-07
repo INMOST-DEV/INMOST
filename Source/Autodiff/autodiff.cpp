@@ -155,7 +155,7 @@ namespace INMOST
 		{
 			std::stringstream tag_name;
 			tag_name << name << "_BLK_" << ret << "_Offset";
-			reg_blocks[ret]->SetOffsetTag(m->CreateTag(tag_name.str(),DATA_INTEGER,b.GetElementType(),sparse,1));
+			reg_blocks[ret]->SetOffsetTag(m->CreateTag(tag_name.str(),DATA_INTEGER,b.GetElementType() | MESH,sparse,1));
 			//b.SetOffsetTag(reg_blocks[ret]->GetOffsetTag());
 		}
 					
@@ -184,14 +184,31 @@ namespace INMOST
 	void Automatizator::DeactivateEntry(INMOST_DATA_ENUM_TYPE ind)
 	{
 		assert(reg_blocks[ind] != NULL); ///This block was not deleted
-		reg_blocks[ind]->reg_index = ENUMUNDEF;
+		AbstractEntry & b = GetEntry(ind);
+		Mesh * m = b.GetMeshLink();
+		b.reg_index = ENUMUNDEF;
+		//std::cout << "delete " << reg_blocks[ind]->GetOffsetTag().GetTagName() << " on " << ElementTypeName(reg_blocks[ind]->GetElementType()) << std::endl;
+		m->DeleteTag(b.GetOffsetTag(),b.GetElementType());
 		act_blocks[ind] = false;
 	}
 	
 	void Automatizator::ActivateEntry(INMOST_DATA_ENUM_TYPE ind)
 	{
 		assert(reg_blocks[ind] != NULL); ///This block was not deleted
-		reg_blocks[ind]->reg_index = ind;
+		AbstractEntry & b = GetEntry(ind);
+		Mesh * m = b.GetMeshLink();
+		b.reg_index = ind;
+		{
+			ElementType sparse = NONE;// b.GetElementType();
+			for (ElementType q = NODE; q <= MESH; q = NextElementType(q)) if (q & b.GetElementType())
+			{
+				for(unsigned unk = 0; unk < b.Size(); ++unk)
+					sparse |= b.GetValueTag(unk).isSparse(q) ? q : NONE;
+			}
+			std::stringstream tag_name;
+			tag_name << name << "_BLK_" << ind << "_Offset";
+			b.SetOffsetTag(m->CreateTag(tag_name.str(),DATA_INTEGER,b.GetElementType(),sparse,1));
+		}
 		act_blocks[ind] = true;
 	}
 	

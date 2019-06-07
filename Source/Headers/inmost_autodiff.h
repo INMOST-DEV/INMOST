@@ -51,7 +51,7 @@ namespace INMOST
 		/// Retrive tag that stores enumeration offset on each element.
 		void SetOffsetTag(TagInteger tag) {offset_tag = tag;}
 		/// Check that the block is valid on given element.
-		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && (e.GetElementType() & etype) && (mask == 0 || (e->GetMarker(mask) ^ inverse_mask));}
+		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && offset_tag.isDefined(e.GetElementType()) && (e.GetElementType() & etype) && (mask == 0 || (e->GetMarker(mask) ^ inverse_mask));}
 		/// Return value in vector of unknowns of the block at certain position.
 		/// @param pos Position for which to extract the value, should be no larger then MatrixSize.
 		virtual INMOST_DATA_REAL_TYPE Value(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
