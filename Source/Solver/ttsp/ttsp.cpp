@@ -85,6 +85,10 @@ namespace INMOST {
                 OptimizationParameters optparams(entries, -1.0);
 
                 optimizer = Optimizers::GetOptimizer(name, g_parameters[name].type, optparams, properties, 15);
+
+                optimizer->SetVerbosityLevel(OptimizerVerbosityLevel::Level3);
+                optimizer->SetRestartStrategy(OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 15);
+
                 g_optimizers[name] = optimizer;
             } else {
                 optimizer = g_optimizers[name];
