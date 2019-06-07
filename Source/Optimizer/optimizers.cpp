@@ -4,13 +4,13 @@
 
 #include <inmost_optimizer.h>
 
-#include "Source/Optimizer/optimizers/noop/noop.h"
-#include "Source/Optimizer/optimizers/alternating/alternating.h"
-#include "Source/Optimizer/optimizers/annealing/annealing.h"
+#include "optimizers/noop/noop.h"
+#include "optimizers/alternating/alternating.h"
+#include "optimizers/annealing/annealing.h"
 
 #if defined(USE_OPTIMIZER_BAYESIAN)
 
-#include "Source/Optimizer/optimizers/bayesian/bayesian.h"
+#include "optimizers/bayesian/bayesian.h"
 
 #endif
 
