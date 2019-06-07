@@ -72,21 +72,27 @@ namespace INMOST {
 
         void SolverOptimize(const std::string &name, const std::string &type, Solver &solver) {
 #if defined(USE_OPTIMIZER)
-            OptimizerInterface *optimizer = GetOrCreateOptimizer(name, type);
+            if (isEnabled()) {
+                OptimizerInterface *optimizer = GetOrCreateOptimizer(name, type);
 
-            const OptimizationParametersSuggestion &suggestion = optimizer->Suggest();
+                const OptimizationParametersSuggestion &suggestion = optimizer->Suggest();
 
-            std::for_each(suggestion.GetPointsAfter().begin(), suggestion.GetPointsAfter().end(), [&solver](const OptimizationParameterPoint &point) {
-                solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
-            });
+                std::for_each(suggestion.GetPointsAfter().begin(), suggestion.GetPointsAfter().end(), [&solver](const OptimizationParameterPoint &point) {
+                    solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
+                });
+            }
 #endif
         }
 
         void SolverOptimizeSaveResult(const std::string &name, const std::string &type, double metrics, bool is_good) {
-            OptimizerInterface *optimizer = GetOrCreateOptimizer(name, type);
+#if defined(USE_OPTIMIZER)
+            if (isEnabled()) {
+                OptimizerInterface *optimizer = GetOrCreateOptimizer(name, type);
 
-            auto last_suggestion = optimizer->GetLastSuggestion();
-            optimizer->SaveResult(last_suggestion, metrics, is_good);
+                auto last_suggestion = optimizer->GetLastSuggestion();
+                optimizer->SaveResult(last_suggestion, metrics, is_good);
+            }
+#endif
         }
 
         void DestroySavedOptimizer(const std::string &name, const std::string &type) {
