@@ -10,14 +10,12 @@ if (USE_MPI)
                     ${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.h
                     ${CMAKE_CURRENT_SOURCE_DIR}/k3d_base.hxx
                     ${CMAKE_CURRENT_SOURCE_DIR}/k3d_slv.hxx
-                    ${CMAKE_CURRENT_SOURCE_DIR}/k3d_slv_thr.hxx
                     ${CMAKE_CURRENT_SOURCE_DIR}/SolverK3BIILU2.h PARENT_SCOPE)
 
             set(SOURCE ${SOURCE}
                     ${CMAKE_CURRENT_SOURCE_DIR}/solver_k3biilu2.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/k3d_base.cxx
                     ${CMAKE_CURRENT_SOURCE_DIR}/k3d_slv.cxx
-                    ${CMAKE_CURRENT_SOURCE_DIR}/k3d_slv_thr.cxx
                     ${CMAKE_CURRENT_SOURCE_DIR}/SolverK3BIILU2.cpp PARENT_SCOPE)
     endif()
     else ()
