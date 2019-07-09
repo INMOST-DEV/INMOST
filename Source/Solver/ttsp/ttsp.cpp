@@ -1,6 +1,7 @@
 #include "inmost.h"
 #include "inmost_solver.h"
 #include "inmost_optimizer.h"
+#include "ttsp_configuration.h"
 #include "../../Misc/utils.h"
 
 namespace INMOST {
@@ -14,9 +15,19 @@ namespace INMOST {
             // TODO add array of specific parameters here, like tau and so on
         };
 
-        static std::map<std::string, TTSPParameters>               g_parameters = std::map<std::string, TTSPParameters>();
-        static std::map<std::string, INMOST::OptimizerInterface *> g_optimizers = std::map<std::string, INMOST::OptimizerInterface *>();
+        static TTSPConfiguration                                   *configuration = nullptr;
+        static std::map<std::string, TTSPParameters>               g_parameters   = std::map<std::string, TTSPParameters>();
+        static std::map<std::string, INMOST::OptimizerInterface *> g_optimizers   = std::map<std::string, INMOST::OptimizerInterface *>();
 #endif
+
+        void Initialize(const std::string &path) {
+#if defined(USE_OPTIMIZER)
+            if (INMOST::TTSP::configuration != nullptr) {
+                delete INMOST::TTSP::configuration;
+            }
+            INMOST::TTSP::configuration = new TTSPConfiguration(path);
+#endif
+        }
 
         void Enable(const std::string &name, const std::string &type) {
 #if defined(USE_OPTIMIZER)

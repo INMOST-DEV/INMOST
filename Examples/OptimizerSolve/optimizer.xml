@@ -1,0 +1,19 @@
+<SolverOptimization>
+    <parameter ref="tau" name="tau" from="-3.0" to="-0.9" step="0.1" type="log10" initial="-2" />
+    <parameter ref="q" name="q" initial="0">
+        <value>0</value>
+        <value>1</value>
+        <value>2</value>
+        <value>3</value>
+    </parameter>
+
+    <fcbiilu2 enabled="true">
+        <tran optimizer="alternating" enabled="true">
+            <parameter ref="tau" />
+            <parameter ref="q" />
+        </tran>
+        <flow optimizer="alternating" enabled="false">
+            <parameter ref="tau" />
+        </flow>
+    </fcbiilu2>
+</SolverOptimization>
