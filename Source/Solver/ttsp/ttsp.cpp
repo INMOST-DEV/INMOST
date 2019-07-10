@@ -93,7 +93,7 @@ namespace INMOST {
                 OptimizationParameterEntries entries;
 
                 const TTSPConfigurationSolverPrefixEntry &entry = INMOST::TTSP::configuration->FindForSolverAndPrefix(solver.SolverName(), solver.SolverPrefix());
-                std::cout << "gere" << std::endl;
+
                 std::for_each(entry.GetParameters().cbegin(), entry.GetParameters().cend(), [&entries](const TTSPConfigurationParameterEntry &e) {
                     OptimizationParameter o(e.GetName(), e.GetValues(), e.GetInitial(), e.GetParameterType());
                     entries.emplace_back(std::make_pair(o, o.GetDefaultValue()));
@@ -103,9 +103,9 @@ namespace INMOST {
 
                 OptimizerProperties properties;
 
-                optimizer = Optimizers::GetOptimizer(key, entry.GetOptimizer(), optparams, properties, 15);
+                optimizer = Optimizers::GetOptimizer(key, entry.GetOptimizer(), optparams, properties, entry.GetBufferCapacity());
 
-                optimizer->SetVerbosityLevel(OptimizerVerbosityLevel::Level3);
+                optimizer->SetVerbosityLevel(entry.GetVerbosityLevel());
                 optimizer->SetRestartStrategy(OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 15);
 
                 g_optimizers[key] = optimizer;

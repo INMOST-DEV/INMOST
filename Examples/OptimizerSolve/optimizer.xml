@@ -8,9 +8,8 @@
     </parameter>
 
     <fcbiilu2 enabled="true">
-        <test optimizer="alternating" enabled="true" verbosity="3" buffer="15">
+        <test optimizer="alternating" enabled="true" verbosity="1" buffer="5">
             <parameter ref="tau" />
-            <parameter ref="q" />
         </test>
     </fcbiilu2>
 </SolverOptimization>

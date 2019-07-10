@@ -8,7 +8,6 @@
 #include <inmost_optimizer.h>
 #include "series.h"
 #include <Source/Misc/utils.h>
-#include <Source/Solver/ttsp/ttsp_configuration.h>
 
 using namespace INMOST;
 
@@ -191,7 +190,6 @@ int main(int argc, char **argv) {
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
         INMOST::TTSP::Initialize(parametersFilePath);
-        INMOST::TTSP::Enable(solver.SolverName(), solver.SolverPrefix());
 
         double total_time = 0.0;
 

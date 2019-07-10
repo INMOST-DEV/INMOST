@@ -151,7 +151,8 @@ namespace INMOST {
         }
 
         TTSPConfigurationSolverPrefixEntry::TTSPConfigurationSolverPrefixEntry(const TTSPConfigurationSolverPrefixEntry &other) :
-                enabled(other.enabled), prefix(other.prefix), optimizer(other.optimizer), parameters(other.parameters) {}
+                enabled(other.enabled), prefix(other.prefix), optimizer(other.optimizer), verbosity(other.verbosity), buffer_capacity(other.buffer_capacity),
+                parameters(other.parameters) {}
 
         TTSPConfigurationSolverPrefixEntry::TTSPConfigurationSolverPrefixEntry(TTSPConfigurationSolverPrefixEntry &&other) noexcept {
             TTSPConfigurationSolverPrefixEntry::swap(*this, other);
@@ -180,6 +181,31 @@ namespace INMOST {
                 this->enabled = entry.GetAttrib(enabledi).value == "true";
             } else {
                 this->enabled = true;
+            }
+
+            int verbosityi = entry.FindAttrib("verbosity");
+            if (verbosityi != num_attr) {
+                std::string v = entry.GetAttrib(verbosityi).value;
+                if (v == "0") {
+                    this->verbosity = OptimizerVerbosityLevel::Level0;
+                } else if (v == "1") {
+                    this->verbosity = OptimizerVerbosityLevel::Level1;
+                } else if (v == "2") {
+                    this->verbosity = OptimizerVerbosityLevel::Level2;
+                } else if (v == "3") {
+                    this->verbosity = OptimizerVerbosityLevel::Level3;
+                } else {
+                    throw "Bad parameter in XML solver optimization configuration file: Invalid 'verbosity' property in prefix configuration!";
+                }
+            } else {
+                this->verbosity = OptimizerVerbosityLevel::Level1;
+            }
+
+            std::size_t buffer_capacityi = entry.FindAttrib("buffer");
+            if (buffer_capacityi != num_attr) {
+                this->buffer_capacity = static_cast<std::size_t>(atol(entry.GetAttrib(buffer_capacityi).value.c_str()));
+            } else {
+                this->buffer_capacity = 15;
             }
 
             for (std::vector<const XMLReader::XMLTree>::iterator param = entry.children.begin(); param != entry.children.end(); ++param) {
@@ -218,6 +244,14 @@ namespace INMOST {
 
         const std::string &TTSPConfigurationSolverPrefixEntry::GetOptimizer() const noexcept {
             return optimizer;
+        }
+
+        INMOST::OptimizerVerbosityLevel TTSPConfigurationSolverPrefixEntry::GetVerbosityLevel() const noexcept {
+            return verbosity;
+        }
+
+        std::size_t TTSPConfigurationSolverPrefixEntry::GetBufferCapacity() const noexcept {
+            return buffer_capacity;
         }
 
         const std::vector<TTSPConfigurationParameterEntry> &TTSPConfigurationSolverPrefixEntry::GetParameters() const noexcept {

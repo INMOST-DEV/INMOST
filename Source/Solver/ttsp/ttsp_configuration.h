@@ -73,6 +73,10 @@ namespace INMOST {
 
             const std::string &GetOptimizer() const noexcept;
 
+            INMOST::OptimizerVerbosityLevel GetVerbosityLevel() const noexcept;
+
+            std::size_t GetBufferCapacity() const noexcept;
+
             const std::vector<TTSPConfigurationParameterEntry> &GetParameters() const noexcept;
 
             ~TTSPConfigurationSolverPrefixEntry();
