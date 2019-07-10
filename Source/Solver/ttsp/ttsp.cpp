@@ -2,49 +2,66 @@
 #include "inmost_solver.h"
 #include "inmost_optimizer.h"
 #include "../../Misc/utils.h"
+#include "ttsp_configuration.h"
 
 namespace INMOST {
 
     namespace TTSP {
 
 #if defined(USE_OPTIMIZER)
-        struct TTSPParameters {
-            bool        disabled;
-            std::string type;
-            // TODO add array of specific parameters here, like tau and so on
+        struct TTSPOptions {
+            bool enabled;
         };
 
-        static std::map<std::string, TTSPParameters>               g_parameters = std::map<std::string, TTSPParameters>();
-        static std::map<std::string, INMOST::OptimizerInterface *> g_optimizers = std::map<std::string, INMOST::OptimizerInterface *>();
+        static TTSPConfiguration                                   *configuration = nullptr;
+        static std::map<std::string, TTSPOptions>                  g_options      = std::map<std::string, TTSPOptions>();
+        static std::map<std::string, INMOST::OptimizerInterface *> g_optimizers   = std::map<std::string, INMOST::OptimizerInterface *>();
 #endif
 
-        void Enable(const std::string &name, const std::string &type) {
+        void Initialize(const std::string &path) {
 #if defined(USE_OPTIMIZER)
-            if (g_parameters.find(name) == g_parameters.end()) {
-                TTSPParameters p;
+            if (INMOST::TTSP::configuration != nullptr) {
+                delete INMOST::TTSP::configuration;
+            }
+            INMOST::TTSP::configuration = new TTSPConfiguration(path);
 
-                p.disabled = false;
-                p.type     = type;
+            std::for_each(INMOST::TTSP::configuration->GetSolvers().cbegin(), INMOST::TTSP::configuration->GetSolvers().cend(), [](const TTSPConfigurationSolverEntry &s) {
+                if (s.IsEnabled()) {
+                    std::for_each(s.GetPrefixes().cbegin(), s.GetPrefixes().cend(), [&s](const TTSPConfigurationSolverPrefixEntry &p) {
+                        if (p.IsEnabled()) {
+                            Enable(s.GetSolver(), p.GetPrefix());
+                        }
+                    });
+                }
+            });
+#endif
+        }
 
-                g_parameters[name] = p;
+        void Enable(const std::string &solver_name, const std::string &solver_prefix) {
+#if defined(USE_OPTIMIZER)
+            const std::string &key = solver_name + ":" + solver_prefix;
+            if (g_options.find(key) == g_options.end()) {
+                g_options[key] = {.enabled = true};
             } else {
-                g_parameters[name].disabled = false;
+                g_options[key].enabled = true;
             }
 #endif
         }
 
-        void Disable(const std::string &name, const std::string &type) {
+        void Disable(const std::string &solver_name, const std::string &solver_prefix) {
 #if defined(USE_OPTIMIZER)
-            if (g_parameters.find(name) != g_parameters.end()) {
-                g_parameters[name].disabled = true;
+            const std::string &key = solver_name + ":" + solver_prefix;
+            if (g_options.find(key) != g_options.end()) {
+                g_options[key].enabled = false;
             }
 #endif
         }
 
-        bool isEnabled(const std::string &name) {
+        bool isEnabled(const std::string &solver_name, const std::string &solver_prefix) {
 #if defined(USE_OPTIMIZER)
-            if (g_parameters.find(name) != g_parameters.end()) {
-                return !g_parameters[name].disabled;
+            const std::string &key = solver_name + ":" + solver_prefix;
+            if (g_options.find(key) != g_options.end()) {
+                return g_options[key].enabled;
             } else {
                 return false;
             }
@@ -53,10 +70,11 @@ namespace INMOST {
 #endif
         }
 
-        bool isDisabled(const std::string &name) {
+        bool isDisabled(const std::string &solver_name, const std::string &solver_prefix) {
 #if defined(USE_OPTIMIZER)
-            if (g_parameters.find(name) != g_parameters.end()) {
-                return g_parameters[name].disabled;
+            const std::string &key = solver_name + ":" + solver_prefix;
+            if (g_options.find(key) != g_options.end()) {
+                return !g_options[key].enabled;
             } else {
                 return true;
             }
@@ -67,67 +85,72 @@ namespace INMOST {
 
 #if defined(USE_OPTIMIZER)
 
-        OptimizerInterface *GetOrCreateOptimizer(const std::string &name) {
+        OptimizerInterface *GetOrCreateOptimizer(Solver &solver) {
             OptimizerInterface *optimizer = nullptr;
+            const std::string  &key       = solver.SolverName() + ":" + solver.SolverPrefix();
+            if (g_optimizers.find(key) == g_optimizers.end()) {
 
-            if (g_optimizers.find(name) == g_optimizers.end()) {
-
-                // TODO Here parameters for fcbiilu2 only
-                OptimizationParameter        tau("tau", std::make_pair(-3, -1.0), 0.05, -2.0, OptimizationParameterType::PARAMETER_TYPE_EXPONENT);
                 OptimizationParameterEntries entries;
 
-                entries.emplace_back(std::make_pair(tau, tau.GetDefaultValue()));
-
-                OptimizerProperties properties;
-                properties["tau:use_closest"]  = "false";
-                properties["tau:strict_bound"] = "false";
+                const TTSPConfigurationSolverPrefixEntry &entry = INMOST::TTSP::configuration->FindForSolverAndPrefix(solver.SolverName(), solver.SolverPrefix());
+                std::cout << "gere" << std::endl;
+                std::for_each(entry.GetParameters().cbegin(), entry.GetParameters().cend(), [&entries](const TTSPConfigurationParameterEntry &e) {
+                    OptimizationParameter o(e.GetName(), e.GetValues(), e.GetInitial(), e.GetParameterType());
+                    entries.emplace_back(std::make_pair(o, o.GetDefaultValue()));
+                });
 
                 OptimizationParameters optparams(entries, -1.0);
 
-                optimizer = Optimizers::GetOptimizer(name, g_parameters[name].type, optparams, properties, 15);
+                OptimizerProperties properties;
+
+                optimizer = Optimizers::GetOptimizer(key, entry.GetOptimizer(), optparams, properties, 15);
 
                 optimizer->SetVerbosityLevel(OptimizerVerbosityLevel::Level3);
                 optimizer->SetRestartStrategy(OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 15);
 
-                g_optimizers[name] = optimizer;
+                g_optimizers[key] = optimizer;
             } else {
-                optimizer = g_optimizers[name];
+                optimizer = g_optimizers[key];
             }
             return optimizer;
         }
 
 #endif
 
-        void SolverOptimize(const std::string &name, Solver &solver, bool use_last_suggestion) {
+        void SolverOptimize(Solver &solver, bool use_last_suggestion) {
 #if defined(USE_OPTIMIZER)
-            if (isEnabled(name)) {
-                OptimizerInterface *optimizer = GetOrCreateOptimizer(name);
+            if (isEnabled(solver.SolverName(), solver.SolverPrefix())) {
+                OptimizerInterface *optimizer = GetOrCreateOptimizer(solver);
 
-                const OptimizationParametersSuggestion &suggestion = use_last_suggestion ? optimizer->GetLastSuggestion() : optimizer->Suggest();
+                if (optimizer != nullptr) {
+                    const OptimizationParametersSuggestion &suggestion = use_last_suggestion ? optimizer->GetLastSuggestion() : optimizer->Suggest();
 
-                std::for_each(suggestion.GetPointsAfter().begin(), suggestion.GetPointsAfter().end(), [&solver](const OptimizationParameterPoint &point) {
-                    solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
-                });
+                    std::for_each(suggestion.GetPointsAfter().begin(), suggestion.GetPointsAfter().end(), [&solver](const OptimizationParameterPoint &point) {
+                        solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
+                    });
+                }
             }
 #endif
         }
 
-        void SolverOptimizeSaveResult(const std::string &name, double metrics, bool is_good) {
+        void SolverOptimizeSaveResult(Solver &solver, double metrics, bool is_good) {
 #if defined(USE_OPTIMIZER)
-            if (isEnabled(name)) {
-                OptimizerInterface *optimizer = GetOrCreateOptimizer(name);
-
-                auto last_suggestion = optimizer->GetLastSuggestion();
-                optimizer->SaveResult(last_suggestion, metrics, is_good);
+            if (isEnabled(solver.SolverName(), solver.SolverPrefix())) {
+                OptimizerInterface *optimizer = GetOrCreateOptimizer(solver);
+                if (optimizer != nullptr) {
+                    auto last_suggestion = optimizer->GetLastSuggestion();
+                    optimizer->SaveResult(last_suggestion, metrics, is_good);
+                }
             }
 #endif
         }
 
-        void DestroySavedOptimizer(const std::string &name) {
+        void DestroySavedOptimizer(Solver &solver) {
 #if defined(USE_OPTIMIZER)
-            if (g_optimizers.find(name) != g_optimizers.end()) {
-                delete g_optimizers[name];
-                g_optimizers.erase(name);
+            const std::string &key = solver.SolverName() + ":" + solver.SolverPrefix();
+            if (g_optimizers.find(key) != g_optimizers.end()) {
+                delete g_optimizers[key];
+                g_optimizers.erase(key);
             }
 #endif
         }

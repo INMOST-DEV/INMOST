@@ -461,19 +461,21 @@ namespace INMOST {
     /// Helper functions for Optimizer module and Solver
     namespace TTSP {
 
-        void Enable(const std::string &name, const std::string &type = "alternating");
+        void Initialize(const std::string &path);
 
-        void Disable(const std::string &name);
+        void Enable(const std::string &solver_name, const std::string &solver_prefix);
 
-        bool isEnabled(const std::string &name);
+        void Disable(const std::string &solver_name, const std::string &solver_prefix);
 
-        bool isDisabled(const std::string &name);
+        bool isEnabled(const std::string &solver_name, const std::string &solver_prefix);
 
-        void SolverOptimize(const std::string &name, Solver &solver, bool use_last_suggestion = false);
+        bool isDisabled(const std::string &solver_name, const std::string &solver_prefix);
 
-        void SolverOptimizeSaveResult(const std::string &name, double metrics, bool is_good);
+        void SolverOptimize(Solver &solver, bool use_last_suggestion = false);
 
-        void DestroySavedOptimizer(const std::string &name);
+        void SolverOptimizeSaveResult(Solver &solver, double metrics, bool is_good);
+
+        void DestroySavedOptimizer(Solver &solver);
 
     }
 

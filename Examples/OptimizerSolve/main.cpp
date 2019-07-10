@@ -8,6 +8,7 @@
 #include <inmost_optimizer.h>
 #include "series.h"
 #include <Source/Misc/utils.h>
+#include <Source/Solver/ttsp/ttsp_configuration.h>
 
 using namespace INMOST;
 
@@ -34,7 +35,6 @@ int main(int argc, char **argv) {
         std::string databaseFilePath   = "";
         std::string parametersFilePath = "";
         std::string solverName         = "fcbiilu2";
-        std::string optimizerType      = "bruteforce";
 
         bool seriesFound     = false;
         bool parametersFound = false;
@@ -59,7 +59,6 @@ int main(int argc, char **argv) {
                     std::cout << "-b,  --bvector <RHS vector file name>" << std::endl;
                     std::cout << "-d,  --database <Solver parameters file name>" << std::endl;
                     std::cout << "-t,  --type <Solver type name>" << std::endl;
-                    std::cout << "-o,  --optt <Optimizer type name>" << std::endl;
                     std::cout << "-w,  --wait " << std::endl;
                     std::cout << "  Available solvers:" << std::endl;
                     Solver::Initialize(NULL, NULL, NULL);
@@ -141,15 +140,6 @@ int main(int argc, char **argv) {
                 i++;
                 continue;
             }
-            //Optimizer type found with -o ot --optt options
-            if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--optt") == 0) {
-                if (rank == 0) {
-                    std::cout << "Optimizer type index found: " << argv[i + 1] << std::endl;
-                }
-                optimizerType = std::string(argv[i + 1]);
-                i++;
-                continue;
-            }
             //Wait for each iteration
             if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--wait") == 0) {
                 waitNext = true;
@@ -200,36 +190,10 @@ int main(int argc, char **argv) {
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;
 
-        if (!INMOST::Optimizers::IsOptimizerAvailable(optimizerType)) {
-            if (rank == 0) {
-                std::cout << "Optimizer " << optimizerType << " not found" << std::endl;
-                std::cout << "  Available optimizers:" << std::endl;
-                std::vector<std::string> availableOptimizers = INMOST::Optimizers::GetAvailableOptimizers();
-                for (auto                it                  = availableOptimizers.begin(); it != availableOptimizers.end(); ++it) {
-                    std::cout << "      " << *it << std::endl;
-                }
-            }
-            std::exit(0);
-        }
+        INMOST::TTSP::Initialize(parametersFilePath);
+        INMOST::TTSP::Enable(solver.SolverName(), solver.SolverPrefix());
 
-        INMOST::OptimizersConfiguration::FromFile(parametersFilePath);
-
-        INMOST::OptimizerProperties properties;
-
-        properties["tau:use_closest"]  = "false";
-        properties["tau:strict_bound"] = "false";
-
-        properties["eps:use_closest"]  = "false";
-        properties["eps:strict_bound"] = "false";
-
-        INMOST::Optimizers::SaveOptimizerOrReplace("test", optimizerType, properties, 9);
-
-        INMOST::OptimizerInterface *topt = INMOST::Optimizers::GetSavedOptimizer("test");
-
-        topt->SetVerbosityLevel(INMOST::OptimizerVerbosityLevel::Level1);
-        topt->SetRestartStrategy(INMOST::OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 7);
-
-        double metrics_total = 0.0;
+        double total_time = 0.0;
 
         while (!series.end()) {
 
@@ -256,44 +220,23 @@ int main(int argc, char **argv) {
                 for (int k = mbeg; k < mend; ++k) rhs[k] = 1.0;
             }
 
-            auto invoke = [&solver, &matrix, &rhs, &x](const INMOST::OptimizationParameterPoints &before, const INMOST::OptimizationParameterPoints &after,
-                                                       void *data) -> INMOST::OptimizationFunctionInvokeResult {
+            INMOST::TTSP::SolverOptimize(solver);
 
-                std::for_each(after.begin(), after.end(), [&solver](const INMOST::OptimizationParameterPoint &point) {
-                    solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
-                });
+            INMOST::Sparse::Vector SOL("SOL", rhs.GetFirstIndex(), rhs.GetLastIndex());
+            std::fill(SOL.Begin(), SOL.End(), 0.0);
 
-                INMOST::Sparse::Vector SOL("SOL", rhs.GetFirstIndex(), rhs.GetLastIndex());
-                std::fill(SOL.Begin(), SOL.End(), 0.0);
+            INMOST::MPIBarrier();
 
-                INMOST::MPIBarrier();
+            double tmp_time = Timer();
+            solver.SetMatrix(matrix);
+            bool is_solved = solver.Solve(rhs, SOL);
+            INMOST::MPIBarrier();
 
-                double tmp_time = Timer();
-                solver.SetMatrix(matrix);
-                bool is_solved = solver.Solve(rhs, SOL);
-                INMOST::MPIBarrier();
+            double time = Timer() - tmp_time;
 
-                double time = Timer() - tmp_time;
+            total_time += time;
 
-                std::for_each(before.begin(), before.end(), [&solver](const INMOST::OptimizationParameterPoint &point) {
-                    solver.SetParameter(point.GetName(), INMOST::to_string(point.GetValue()));
-                });
-
-                return std::make_pair(is_solved, time);
-            };
-
-            INMOST::OptimizerInterface *optimizer = INMOST::Optimizers::GetSavedOptimizer("test");
-
-            const INMOST::OptimizationParametersSuggestion &suggestion = optimizer->Suggest();
-
-            const INMOST::OptimizationFunctionInvokeResult &result = invoke(suggestion.GetPointsBefore(), suggestion.GetPointsAfter(), nullptr);
-
-            bool   is_good = result.first;
-            double metrics = result.second;
-
-            metrics_total += metrics;
-
-            optimizer->SaveResult(suggestion, metrics, is_good);
+            INMOST::TTSP::SolverOptimizeSaveResult(solver, time, is_solved);
 
             if (rank == 0 && waitNext) {
                 std::cin.get();
@@ -302,7 +245,7 @@ int main(int argc, char **argv) {
             INMOST::MPIBarrier();
         }
 
-        std::cout << "Metrics total from " << series.size() << " iterations: " << metrics_total << " (mean = " << metrics_total / series.size() << ")" << std::endl;
+        std::cout << "Metrics total from " << series.size() << " iterations: " << total_time << " (mean = " << total_time / series.size() << ")" << std::endl;
     }
 
     Solver::Finalize(); // Finalize solver and close MPI activity
