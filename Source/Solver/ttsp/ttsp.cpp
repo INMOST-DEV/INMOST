@@ -106,7 +106,7 @@ namespace INMOST {
                 optimizer = Optimizers::GetOptimizer(key, entry.GetOptimizer(), optparams, properties, entry.GetBufferCapacity());
 
                 optimizer->SetVerbosityLevel(entry.GetVerbosityLevel());
-                optimizer->SetRestartStrategy(OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, 15);
+                optimizer->SetRestartStrategy(OptimizerRestartStrategy::RESTART_STRATEGY_WITH_BEST, entry.GetBufferCapacity() - 1);
 
                 g_optimizers[key] = optimizer;
             } else {
