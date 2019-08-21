@@ -19,7 +19,7 @@ namespace INMOST {
             std::string               name;
             double                    initial;
             std::vector<double>       values;
-            OptimizationParameterType type;
+            INMOST::OptimizationParameterType type;
 
             static void swap(TTSPConfigurationParameterEntry &left, TTSPConfigurationParameterEntry &right);
 
