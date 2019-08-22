@@ -463,6 +463,8 @@ namespace INMOST {
 
         void Initialize(const std::string &path);
 
+        void Deinitialize();
+
         void Enable(const std::string &solver_name, const std::string &solver_prefix);
 
         void Disable(const std::string &solver_name, const std::string &solver_prefix);
