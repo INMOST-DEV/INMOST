@@ -5,6 +5,8 @@
 #include "../../Misc/utils.h"
 #include "ttsp_configuration.h"
 
+#if defined(USE_OPTIMIZER)
+
 namespace INMOST {
 
     namespace TTSP {
@@ -439,3 +441,5 @@ namespace INMOST {
         }
     }
 }
+
+#endif

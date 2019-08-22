@@ -9,6 +9,8 @@
 #include <string>
 #include <inmost_optimizer.h>
 
+#if defined(USE_OPTIMIZER)
+
 namespace INMOST {
 
     namespace TTSP {
@@ -139,5 +141,6 @@ namespace INMOST {
 
 }
 
+#endif
 
 #endif //INMOST_TTSP_CONFIGURATION_H
