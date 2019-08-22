@@ -21,7 +21,7 @@ namespace INMOST {
         void Initialize(const std::string &path) {
 #if defined(USE_OPTIMIZER)
             Deinitialize();
-            
+
             INMOST::TTSP::configuration = new TTSPConfiguration(path);
 
             std::for_each(INMOST::TTSP::configuration->GetSolvers().cbegin(), INMOST::TTSP::configuration->GetSolvers().cend(), [](const TTSPConfigurationSolverEntry &s) {
@@ -39,6 +39,7 @@ namespace INMOST {
         void Deinitialize() {
 #if defined(USE_OPTIMIZER)
             delete INMOST::TTSP::configuration;
+            INMOST::TTSP::configuration = nullptr;
             g_options.clear();
             g_optimizers.clear();
 #endif

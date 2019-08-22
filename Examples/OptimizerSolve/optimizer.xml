@@ -34,6 +34,7 @@
     <petsc enabled="true">
         <flow optimizer="alternating" enabled="true" verbosity="1" buffer="5">
             <parameter ref="p1" />
+            <parameter ref="p2" />
         </flow>
         <tran optimizer="alternating" enabled="true" verbosity="1" buffer="5">
             <parameter ref="p1" />
