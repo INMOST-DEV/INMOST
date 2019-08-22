@@ -41,7 +41,9 @@ namespace INMOST {
 #if defined(USE_OPTIMIZER)
             const std::string &key = solver_name + ":" + solver_prefix;
             if (g_options.find(key) == g_options.end()) {
-                g_options[key] = {.enabled = true};
+                TTSPOptions n_options;
+                n_options.enabled = true;
+                g_options[key] = n_options;
             } else {
                 g_options[key].enabled = true;
             }
