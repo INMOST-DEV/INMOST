@@ -63,7 +63,7 @@ namespace INMOST {
 
 
             if (entry.children.size() != 0) {
-                for (std::vector<const XMLReader::XMLTree>::iterator value = entry.children.begin(); value != entry.children.end(); ++value) {
+                for (std::vector<XMLReader::XMLTree>::const_iterator value = entry.children.begin(); value != entry.children.end(); ++value) {
                     if ((*value).tag.name == "value") {
                         this->values.push_back(atof((*value).contents.c_str()));
                     } else {
@@ -208,7 +208,7 @@ namespace INMOST {
                 this->buffer_capacity = 15;
             }
 
-            for (std::vector<const XMLReader::XMLTree>::iterator param = entry.children.begin(); param != entry.children.end(); ++param) {
+            for (std::vector<XMLReader::XMLTree>::const_iterator param = entry.children.begin(); param != entry.children.end(); ++param) {
 
                 if ((*param).tag.name == "parameter") {
                     if ((*param).FindAttrib("ref") != (*param).NumAttrib()) {
@@ -304,7 +304,7 @@ namespace INMOST {
                 this->enabled = true;
             }
 
-            for (std::vector<const XMLReader::XMLTree>::iterator prefix = entry.children.begin(); prefix != entry.children.end(); ++prefix) {
+            for (std::vector<XMLReader::XMLTree>::const_iterator prefix = entry.children.begin(); prefix != entry.children.end(); ++prefix) {
                 TTSPConfigurationSolverPrefixEntry p = TTSPConfigurationSolverPrefixEntry(*prefix, global);
                 this->prefixes.emplace_back(p);
             }
