@@ -1,6 +1,6 @@
 <SolverOptimization>
     <parameter ref="tau" name="tau" from="-3.0" to="-0.9" step="0.1" type="log10" initial="-2" />
-    <parameter ref="q" name="q" initial="0">
+    <parameter ref="q" name="q" initial="1">
         <value>0</value>
         <value>1</value>
         <value>2</value>
@@ -8,8 +8,40 @@
     </parameter>
 
     <fcbiilu2 enabled="true">
-        <test optimizer="alternating" enabled="true" verbosity="1" buffer="5">
+        <flow optimizer="alternating" enabled="true" verbosity="1" buffer="5">
             <parameter ref="tau" />
-        </test>
+        </flow>
+        <tran optimizer="alternating" enabled="true" verbosity="1" buffer="5">
+            <parameter ref="tau" />
+        </tran>
+        <heat optimizer="alternating" enabled="true" verbosity="1" buffer="5">
+            <parameter ref="tau" />
+        </heat>
     </fcbiilu2>
+
+    <parameter ref="p1" name="schwartz_overlap" initial="1">
+        <value>0</value>
+        <value>1</value>
+        <value>2</value>
+        <value>3</value>
+    </parameter>
+    <parameter ref="p2" name="fill_level" initial="1">
+        <value>0</value>
+        <value>1</value>
+        <value>2</value>
+        <value>3</value>
+    </parameter>
+    <petsc enabled="true">
+        <flow optimizer="alternating" enabled="true" verbosity="1" buffer="5">
+            <parameter ref="p1" />
+        </flow>
+        <tran optimizer="alternating" enabled="true" verbosity="1" buffer="5">
+            <parameter ref="p1" />
+            <parameter ref="p2" />
+        </tran>
+        <heat optimizer="alternating" enabled="true" verbosity="1" buffer="5">
+            <parameter ref="p1" />
+            <parameter ref="p2" />
+        </heat>
+    </petsc>
 </SolverOptimization>
