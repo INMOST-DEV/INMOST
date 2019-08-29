@@ -316,6 +316,58 @@ namespace INMOST {
         }
 
     }
+
+	INMOST_DATA_REAL_TYPE Sparse::Matrix::Residual(Sparse::Vector &RHS, Sparse::Vector &SOL)
+	{
+		Sparse::Vector R(RHS);
+		INMOST_DATA_ENUM_TYPE mbeg, mend, k;
+		if( isParallel() )
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " matrix already in parallel state " << std::endl;
+			MatVec(1.0, SOL, -1.0, R);
+			mbeg = GetFirstIndex();
+			mend = GetLastIndex();
+#if defined(USE_MPI)
+			int rank, size;
+			MPI_Comm_rank(GetCommunicator(),&rank);
+			MPI_Comm_size(GetCommunicator(),&size);
+			if( rank == size-1 )
+				MPI_Send(&mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank-1,rank-1,
+						 GetCommunicator());//,MPI_STATUS_IGNORE);
+			else if( rank > 0 )
+				MPI_Sendrecv(&mbeg,1,INMOST_MPI_DATA_ENUM_TYPE,rank-1,rank-1,
+							 &mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank+1,rank,
+							 GetCommunicator(),MPI_STATUS_IGNORE);
+			else
+				MPI_Recv(&mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank+1,rank,
+						 GetCommunicator(),MPI_STATUS_IGNORE);
+			std::cout << "on " << rank << " " << mbeg << ":" << mend << std::endl;
+#endif
+		}
+		else
+		{
+			Solver::OrderInfo info;
+			info.PrepareMatrix(*this, 0);
+			info.PrepareVector(SOL);
+			info.GetLocalRegion(info.GetRank(), mbeg, mend);
+			info.Update(SOL);
+			MatVec(1.0, SOL, -1.0, R);
+			info.RestoreVector(SOL);
+			info.RestoreMatrix(*this);
+
+		}
+		INMOST_DATA_REAL_TYPE aresid = 0, bresid = 0;
+		for (k = mbeg; k < mend; ++k)
+		{
+			aresid += R[k] * R[k];
+			bresid += RHS[k] * RHS[k];
+		}
+		double temp[2] = {aresid, bresid}, recv[2] = {aresid, bresid};
+#if defined(USE_MPI)
+		MPI_Allreduce(temp, recv, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+		return sqrt(recv[0]/(recv[1] + 1.0e-100));
+	}
 }
 
 #endif //USE_SOLVER
