@@ -15,12 +15,16 @@
 #cmakedefine USE_PARTITIONER_PARMETIS
 
 #cmakedefine USE_SOLVER
+#cmakedefine USE_SOLVER_TTSP_FEATURE
 #cmakedefine USE_SOLVER_MONDRIAAN
 #cmakedefine USE_SOLVER_METIS
 #cmakedefine USE_SOLVER_PETSC
 #cmakedefine USE_SOLVER_TRILINOS
 #cmakedefine USE_SOLVER_ANI
 #cmakedefine USE_SOLVER_SUPERLU
+
+#cmakedefine USE_OPTIMIZER
+#cmakedefine USE_OPTIMIZER_BAYESIAN
 
 #cmakedefine USE_NONLINEAR
 #cmakedefine USE_NONLINEAR_TRILINOS

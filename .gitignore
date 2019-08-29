@@ -10,12 +10,13 @@ SyncToy*
 .idea/
 
 Source/Solver/solver_fcbiilu2/fcbiilu2.cpp
-
 Source/Solver/solver_fcbiilu2/fcbiilu2_nosign.cpp
 
-Source/Solver/solver_k3biilu2/k3d.cpp
 
 Source/Solver/solver_k3biilu2/k3d.h
+Source/Solver/solver_k3biilu2/k3d.cpp
+Source/Solver/solver_k3biilu2/k3d_block.cxx
+Source/Solver/solver_k3biilu2/k3d_block.hxx
 
 .vscode/*
 

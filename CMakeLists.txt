@@ -36,6 +36,8 @@ option(USE_SOLVER_PETSC "Use PETSc solvers" OFF)
 option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
 option(USE_SOLVER_SUPERLU_DOWNLOAD "Attempts to download SuperLU solver if library not found" OFF)
+option(USE_OPTIMIZER "Use Optimization toolkit" OFF)
+option(USE_OPTIMIZER_BAYESIAN "Compile Optimization module against Limbo library to provide Bayesian optimization algorithm" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
@@ -76,6 +78,21 @@ if(TEST_FORTRAN_ANI3D)
 
 endif()
 
+if(USE_OPTIMIZER_BAYESIAN)
+	include_directories(/Users/bvdmitri/Projects/CXX/limbo/src)
+	target_link_libraries(inmost /Users/bvdmitri/Projects/CXX/limbo/build/src/liblimbo.a)
+
+	find_package(Eigen3 REQUIRED)
+	include_directories(${EIGEN3_INCLUDE_DIR})
+
+	find_package(NLOPT)
+	include_directories(${NLOPT_INCLUDE_DIRS})
+	target_link_libraries(inmost ${NLOPT_LIBRARIES})
+
+	find_package(boost REQUIRED)
+	include_directories(${Boost_INCLUDE_DIRS})
+	target_link_libraries(inmost ${Boost_LIBRARIES})
+endif()
 
 if(USE_MPI)
 	find_package(MPI)
@@ -379,6 +396,7 @@ set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
                            Source/Headers/inmost_xml.h
                            Source/Headers/inmost_variable.h
                            Source/Headers/inmost_block_variable.h
+		Source/Headers/inmost_optimizer.h
                            Source/Headers/container.hpp)
 
 #if( COMPILE_EXAMPLES )
@@ -424,6 +442,7 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_block_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_optimizer.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp")
 
 #if( COMPILE_EXAMPLES )

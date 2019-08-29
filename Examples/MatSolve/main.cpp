@@ -339,7 +339,7 @@ int main(int argc, char **argv) {
             }
             mat.Load(matrixFileName, ENUMUNDEF, ENUMUNDEF, orderingFileName);
         } else {
-            mat.Load(matrixFileName); //if interval parameters not set, matrix will be divided automatically
+            mat.Load(matrixFileName); //ifinterval parameters not set, matrix will be divided automatically
         }
         if (processorsCount == 1) {
             ps_inmost(mat, "a.ps"); //db !IK!
