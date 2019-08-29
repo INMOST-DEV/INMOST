@@ -2048,7 +2048,7 @@ namespace INMOST
 		return chunks * (1 << chunk_bits_elems);
 	}
 #if defined(USE_AUTODIFF)
-  Storage::var & Mesh::Variable(HandleType h, const Tag & tag) 
+	Storage::var & Mesh::Variable(HandleType h, const Tag & tag)
 	{
 		Asserts(h,tag,DATA_VARIABLE);
 		void * p = MGetLink(h,tag); 
@@ -2057,7 +2057,7 @@ namespace INMOST
 		else 
 			return static_cast<inner_variable_array*>(p)->at_safe(0);
 	}
-  Storage::var_array Mesh::VariableArray(HandleType h, const Tag & tag) 
+	Storage::var_array Mesh::VariableArray(HandleType h, const Tag & tag)
 	{
 		Asserts(h,tag,DATA_VARIABLE);
 		void * p = MGetLink(h,tag); 
@@ -2102,7 +2102,7 @@ namespace INMOST
 		else 
 			return static_cast<inner_reference_array*>(p)->at_safe(0);
 	}
-  Storage::remote_reference & Mesh::RemoteReference(HandleType h, const Tag & tag) 
+	Storage::remote_reference & Mesh::RemoteReference(HandleType h, const Tag & tag)
 	{
 		Asserts(h,tag,DATA_REMOTE_REFERENCE);
 		void * p = MGetLink(h,tag); 
@@ -2138,7 +2138,7 @@ namespace INMOST
 			return bulk_array(*static_cast<inner_bulk_array     *>(p)); 
 		else 
 			return bulk_array(static_cast<bulk*>(p),tag.GetSize());
-  }
+	}
 	Storage::reference_array Mesh::ReferenceArray(HandleType h, const Tag & tag) 
 	{
 		Asserts(h,tag,DATA_REFERENCE);
@@ -2148,7 +2148,7 @@ namespace INMOST
 		else 
 			return reference_array(this,static_cast<reference *>(p),tag.GetSize());
 	}
-  Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag) 
+	Storage::remote_reference_array Mesh::RemoteReferenceArray(HandleType h, const Tag & tag)
 	{
 		Asserts(h,tag,DATA_REMOTE_REFERENCE);
 		void * p = MGetLink(h,tag); 
@@ -2473,7 +2473,26 @@ namespace INMOST
 			return false;
 		}
 	}
-
+	
+	void Mesh::CopyData(Element a, Element b)
+	{
+		assert(a.GetElementType() == b.GetElementType());
+		Mesh * ma = a.GetMeshLink();
+		Mesh * mb = b.GetMeshLink();
+		for(Mesh::iteratorTag t = mb->BeginTag(); t != mb->EndTag(); ++t)
+			if( t->isDefined(b.GetElementType()) && t->GetTagName().substr(0,9) != "PROTECTED" && b.HaveData(*t) )
+			{
+				Tag ta = ma->GetTag(t->GetTagName());
+				if(ta.isValid() && ta.isDefined(a.GetElementType()) &&
+				   ta.GetDataType() == t->GetDataType() && ta.GetSize() == t->GetSize() )
+					TagManager::CopyData(*t,ma->MGetLink(a.GetHandle(),ta),mb->MGetLink(b.GetHandle(),*t));
+			}
+		Storage::bulk marker_space[MarkerFields];
+		b.GetMarkerSpace(marker_space);
+		a.SetMarkerSpace(marker_space);
+	}
+	
+	
 	bool Mesh::isValidHandleRange (HandleType h) const
 	{
 		if( !isValidHandle(h) ) return false;

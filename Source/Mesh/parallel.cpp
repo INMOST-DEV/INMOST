@@ -6361,12 +6361,14 @@ namespace INMOST
 		err = Integrate(err);
 #endif //USE_MPI
 		EXIT_FUNC();
+#if defined(USE_MPI)
 		if( err ) 
 		{
 			std::cout << "crash from " << file << ":" << line << std::endl;
 			REPORT_STR("crash from " << file << ":" << line)
 			exit(-1);
 		}
+#endif //USE_MPI
 #endif //NDEBUG
 	}
 

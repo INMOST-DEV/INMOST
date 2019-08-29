@@ -1,6 +1,8 @@
 #ifndef _INC_GLUT_H
 #define _INC_GLUT_H
 
+#define MAC_WORKAROUND
+
 #if defined (__APPLE__) || defined(MACOSX)
 #include <GLUT/glut.h>
 #endif

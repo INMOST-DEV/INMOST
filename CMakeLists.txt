@@ -35,6 +35,7 @@ option(USE_SOLVER_MONDRIAAN "Use Mondriaan for matrix reordering" OFF)
 option(USE_SOLVER_PETSC "Use PETSc solvers" OFF)
 option(USE_SOLVER_TRILINOS "Use Trilinos solvers" OFF)
 option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
+option(USE_SOLVER_SUPERLU_DOWNLOAD "Attempts to download SuperLU solver if library not found" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
@@ -245,8 +246,56 @@ endif()
 if(USE_SOLVER_SUPERLU)
 	find_package(SUPERLU)
 	if(NOT SUPERLU_FOUND)
-		set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
+		#set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
 		MESSAGE("SUPERLU NOT FOUND")
+		if( USE_SOLVER_SUPERLU_DOWNLOAD )
+			
+			include(ExternalProject)
+			message("-- Download SUPERLU")
+			#string (REPLACE ";" "|" PASS_MPI "${MPI_INCLUDE_PATH}")
+			#message("-- Passing MPI include to ParMETIS: '${PASS_MPI}'")
+			
+			ExternalProject_Add(SUPERLU
+								GIT_REPOSITORY "https://github.com/xiaoyeli/superlu.git"
+								GIT_TAG "master"
+								UPDATE_DISCONNECTED 1 
+								#${EXTERNAL_NOUPDATE}
+								PREFIX "${LIB_DOWNLOAD_PATH}"
+								#this command is responsible for update of repository from git
+								#UPDATE_COMMAND ""
+								LIST_SEPARATOR | # Use the alternate list separator
+								#for the one from ibaned
+								#CMAKE_ARGS "-DMPI_INCLUDE_PATH:PATH='${PASS_MPI}'"
+								CMAKE_ARGS  		"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
+											"-DCMAKE_INSTALL_INCLUDEDIR=${LIB_DOWNLOAD_PATH}/include/superlu "
+											"-DCMAKE_BUILD_TYPE=Release "
+											"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
+											"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
+											"-DCMAKE_POSITION_INDEPENDENT_CODE=ON "
+											"-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} "
+											"-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
+								)
+			find_package(BLAS)
+			if (NOT BLAS_FOUND)
+				if( WIN32 )
+					set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/SUPERLU-build/CBLAS/blas.lib" CACHE FILEPATH "BLAS_LIBRARIES" FORCE)
+				else( WIN32 )
+					set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/SUPERLU-build/CBLAS/libblas.a" CACHE FILEPATH "BLAS_LIBRARIES" FORCE)
+				endif( WIN32 )
+			endif()
+
+			set(SUPERLU_INCLUDES "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "SUPERLU_INCLUDE_DIR is set" FORCE)
+			if( WIN32 )
+				set(SUPERLU_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/superlu.lib;${BLAS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
+			else( WIN32 )
+				set(SUPERLU_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/libsuperlu.a;${BLAS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
+			endif( WIN32 )
+			message("-- SUPERLU_INCLUDE_DIR: ${SUPERLU_INCLUDES}")
+			message("-- SUPERLU_LIBRARIES:   ${SUPERLU_LIBRARIES}")
+			include_directories(${SUPERLU_INCLUDES})
+		else(USE_SOLVER_SUPERLU_DOWNLOAD)
+			set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
+		endif(USE_SOLVER_SUPERLU_DOWNLOAD)
 	else()
 		MESSAGE("\nFound SuperLU!  Here are the details: ")
 		MESSAGE("INCLUDES:  ${SUPERLU_INCLUDES}")

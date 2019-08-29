@@ -3157,7 +3157,7 @@ swap_algorithm:
 					nzLU += U_Address[k].Size() + L_Address[k].Size() + 1;
 					
 #if defined(REPORT_ILU)
-					if (k % 2000 == 0)
+					if (k % 100 == 0)
 					{
 						
 						std::cout << std::fixed << std::setprecision(2) << std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg) << "%";

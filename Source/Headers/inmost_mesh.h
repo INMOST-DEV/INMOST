@@ -3181,7 +3181,7 @@ namespace INMOST
 		integer                           CountBoundaryFaces ();
 		integer                           CountInteriorFaces ();
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
-		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size) const;
+		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size);
 		/// Sets marker for all the faces that have only one neighbouring cell, works correctly in parallel environment.
 		/// @param boundary_marker Non-private marker that will indicate boundary faces.
 		void                              MarkBoundaryFaces(MarkerType boundary_marker);
@@ -3245,6 +3245,11 @@ namespace INMOST
 		void                              CheckProcessors    ();
 		/// Checks that there are no invalid links in sets
 		void                              CheckSetLinks      (std::string file, int line);
+		/// Copy all the data from b to a (a = b).
+		/// Except for protected data.
+		/// Non-private markers are copied.
+		/// Elements should be of same type.
+		static void                              CopyData(Element a, Element b);
 		//implemented in mesh.cpp
 	private:
 		Tag                   tag_topologyerror;

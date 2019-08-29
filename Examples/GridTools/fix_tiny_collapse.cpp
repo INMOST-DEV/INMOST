@@ -111,7 +111,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 	{
 		
 		for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
-		M = A1.Transpose()*(A1*D*A1.Transpose()).Invert()*A1; // m by m
+		M = A1.Transpose()*(A1*D*A1.Transpose()).Solve(A1); // m by m
 		//std::cout << "matrix M:" << std::endl;
 		//M.Print();
 		kp = -1.0e20;
@@ -161,7 +161,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		
 	}
 	for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
-	Q = (A*(D - p*p.Transpose())*A.Transpose()).Invert() / static_cast<double>(d);
+	Q = (A*(D - p*p.Transpose())*A.Transpose()).PseudoInvert() / static_cast<double>(d);
 	c = A*p;
 	//check
 	if (d == 2)
@@ -405,6 +405,18 @@ int main(int argc, char ** argv)
 
 	std::cout << "collapse edges: " << nedges << std::endl;
 	*/
+	/*
+	for(int k = 0; k < m.EdgeLastLocalID(); ++k) if( m.isValidEdge(k) )
+	{
+		Edge e = m.EdgeByLocalID(k);
+		if( e.GetMarker(collapse) && e.Boundary() )
+		{
+			std::cout << "Unmark boundary edge " << e.LocalID() << std::endl;
+			e.RemMarker(collapse);
+		}
+	}
+	*/
+	/*
 	std::vector<HandleType> edges;
 	for(int k = 0; k < m.EdgeLastLocalID(); ++k) if( m.isValidEdge(k) )
 	{
@@ -413,16 +425,32 @@ int main(int argc, char ** argv)
 			edges.push_back(e.GetHandle());
 	}
 	std::sort(edges.begin(),edges.end(),Mesh::MeasureComparator(&m));
+	 */
 	int ncollapsed = 0;
 	m.Save("collapsed.pmf");
 	//scanf("%*c");
-	for(unsigned k = 0; k < edges.size(); ++k)
+	bool found_edge;
+	do
 	{
-		if( !m.isValidEdge(GetHandleID(edges[k])) ) continue; //it may be already deleted
-		Node n = Edge::CollapseEdge(Edge(&m,edges[k]),0);
-		cosm[n] = 1;
-		std::cout << n.LocalID() << std::endl;
-		ncollapsed++;
+		found_edge = false;
+		Edge e = InvalidEdge();
+		for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it)
+			if( it->GetMarker(collapse) )
+			{
+				if( e == InvalidEdge() || e.Length() > it->Length() )
+				{
+					e = it->self();
+					found_edge = true;
+				}
+			}
+		if( e.isValid() )
+		{
+			std::cout << "collapse edge " << e.LocalID() << std::endl;
+			Node n = Edge::CollapseEdge(e,0);
+			cosm[n] = 1;
+			std::cout << "new node " << n.LocalID() << std::endl;
+			ncollapsed++;
+		}
 			
 		m.Save("collapsed.pmf");
 		//scanf("%*c");
@@ -433,9 +461,10 @@ int main(int argc, char ** argv)
 			throw -1;
 		}
 	}
+	while( found_edge );
 	
 	
-	
+	std::cout << "Collapsed: " << ncollapsed << std::endl;
 	std::cout << "Time to fix tiny:" << Timer() - tt << std::endl;
 	std::cout << "Cells: " << m.NumberOfCells() << std::endl;
 	std::cout << "Faces: " << m.NumberOfFaces() << std::endl;

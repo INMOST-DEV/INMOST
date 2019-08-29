@@ -1,6 +1,6 @@
 #include "inc_glut.h"
 #include "tga.h"
-
+#include <stdio.h>
 
 extern void draw_screen(); //global openl drawing routine
 
@@ -15,7 +15,9 @@ void screenshot(int tiles)
 
 	char * pixelbuffer = new char[width*height * 3 + oldwidth*oldheight * 3];
 	char * tempbuffer = pixelbuffer + width*height * 3;
-	
+	//int WH[2];
+	//glGetIntegerv(GL_VIEWPORT,WH);
+	//printf("W %d H %d\n",WH[0],WH[1]);
 
 
 	for (int i = 0; i < tiles; ++i)
@@ -57,5 +59,7 @@ void screenshot(int tiles)
 	delete[] pixelbuffer;
 	width = oldwidth;
 	height = oldheight;
+//#if !(defined(MAC_WORKAROUND) && (defined (__APPLE__) || defined(MACOSX)))
 	glViewport(0, 0, width, height);
+//#endf //MAC_WORKAROUND
 }

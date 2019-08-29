@@ -386,6 +386,8 @@ int main(int argc,char ** argv)
         TagRealArray tag_W;  // Gradient matrix
         TagRealArray tag_Ws; // Matrix to reconstruct stress from fluxes
 		TagRealArray tag_FLUX; // Flux (for error)
+		TagRealArray tag_f_coefs, tag_i_coefs, tag_f_rhs, tag_i_rhs;
+		TagReferenceArray tag_f_elems, tag_i_elems;
 		TagIntegerArray tag_Row;
 
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
@@ -491,6 +493,12 @@ int main(int argc,char ** argv)
                 tag_BC = m->GetTag("BOUNDARY_CONDITION");
                 //initialize unknowns at boundary
             }
+			tag_i_elems = m->CreateTag("i_elems",DATA_REFERENCE,FACE,NONE);
+			tag_f_elems = m->CreateTag("f_elems",DATA_REFERENCE,FACE,NONE);
+			tag_i_coefs = m->CreateTag("i_coefs",DATA_REAL,FACE,NONE);
+			tag_f_coefs = m->CreateTag("f_coefs",DATA_REAL,FACE,NONE);
+			tag_i_rhs = m->CreateTag("i_rhs",DATA_REAL,FACE,NONE,3);
+			tag_f_rhs = m->CreateTag("f_rhs",DATA_REAL,FACE,NONE,3);
             tag_W = m->CreateTag("W",DATA_REAL,CELL,NONE);
             tag_Ws = m->CreateTag("Ws",DATA_REAL,CELL,NONE);
 			
@@ -613,9 +621,8 @@ int main(int argc,char ** argv)
 					
 					
 				} //end of loop over cells
-				/*
-				rMatrix C1(3,3),C2(3,3), iC12sum, C1sum(3,3), C2sum(3,3), CC(3,3);
-				raMatrix W[2];
+				rMatrix C1(3,3),C2(3,3), iC12sum, C1sum(3,3), C2sum(3,3), CC(3,3), CCI(3,3), CCF(3,3), B_D(3,3), B_N(3,3), B_R(3,1);
+				rMatrix W[2];
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -634,14 +641,14 @@ int main(int argc,char ** argv)
 						faces[q] = cell->getFaces(); //obtain faces of the cell
 						W[q] = raMatrixMake(cell->RealArray(tag_W).data(),3*faces[q].size(),3*faces[q].size());
 					}
-					Storage::reference_array f_elems = f->ReferenceArray(elems);
-					Storage::reference_array i_elems = f->ReferenceArray(intrp_elems);
-					Storage::real_array f_coefs = f->RealArray(trans);
-					Storage::real_array i_coefs = f->RealArray(intrp_trans);
-					real & f_rhs = f->Real(rhs);
-					real & i_rhs = f->Real(intrp_rhs);
+					Storage::reference_array f_elems = f->ReferenceArray(tag_f_elems);
+					Storage::reference_array i_elems = f->ReferenceArray(tag_i_elems);
+					Storage::real_array f_coefs = f->RealArray(tag_f_coefs);
+					Storage::real_array i_coefs = f->RealArray(tag_i_coefs);
+					tag_f_rhs(f,3,1).Zero();
+					tag_i_rhs(f,3,1).Zero();
 					real aF = 1;
-					f_rhs = i_rhs = 0;
+					//f_rhs = i_rhs = 0;
 					real multi = 1, multf = -aF, multfbnd = -aF;
 					if( cells.size() == 2 ) //internal face
 					{
@@ -651,77 +658,93 @@ int main(int argc,char ** argv)
 						C1sum.Zero();
 						C2sum.Zero();
 						//add back cell faces and compute sum
-						for(int q = 0; q < (int)faces[0].size(); ++q) if( fabs(W[0](rows[0],q)) > 1.0e-12 )
+						for(int q = 0; q < (int)faces[0].size(); ++q)
 						{
-							CC = W[0](rows[0]*3,rows[0]*3+3,q*3+3);
-							C1sum += CC;
-							CC = iC12sum*CC;
-							if( faces[0][q] != f )
+							CC = W[0](rows[0]*3,rows[0]*3+3,q*3,q*3+3);
+							if( CC.FrobeniusNorm() > 1.0e-12 )
 							{
-								f_elems.push_back(faces[0][q]);
-								//f_coefs.push_back(-W[0](rows[0],q)*W2/(W1+W2)*multf);
-								f_coefs.push_back(-CC*C2*multf);
-								i_elems.push_back(faces[0][q]);
-								i_coefs.push_back(-CC*multi);
+								C1sum += CC;
+								CC = iC12sum*CC;
+								if( faces[0][q] != f )
+								{
+									CCI = -CC*multi;
+									CCF = -CC*C2*multf;
+									i_coefs.insert(i_coefs.end(),CCI.data(),CCI.data()+9);
+									f_coefs.insert(f_coefs.end(),CCF.data(),CCF.data()+9);
+									i_elems.push_back(faces[0][q]);
+									f_elems.push_back(faces[0][q]);
+									
+								}
 							}
 							
 						}
 						//add front cell faces and compute sum
-						for(int q = 0; q < (int)faces[1].size(); ++q) if( fabs(W[1](rows[1],q)) > 1.0e-12 )
+						for(int q = 0; q < (int)faces[1].size(); ++q)
 						{
-							CC = W[1](rows[1]*3,rows[1]*3+3,q*3+3);
-							C2sum += CC;
-							CC = iC12sum*CC;
-							if( faces[1][q] != f )
+							CC = W[1](rows[1]*3,rows[1]*3+3,q*3,q*3+3);
+							if( CC.FrobeniusNorm() > 1.0e-12 )
 							{
-								f_elems.push_back(faces[1][q]);
-								f_coefs.push_back(CC*C1*multf);
-								i_elems.push_back(faces[1][q]);
-								i_coefs.push_back(-CC*multi);
+								C2sum += CC;
+								CC = iC12sum*CC;
+								if( faces[1][q] != f )
+								{
+									CCI = -CC*multi;
+									CCF = CC*C1*multf;
+									i_coefs.insert(i_coefs.end(),CCI.data(),CCI.data()+9);
+									f_coefs.insert(f_coefs.end(),CCF.data(),CCF.data()+9);
+									i_elems.push_back(faces[1][q]);
+									f_elems.push_back(faces[1][q]);
+								}
 							}
 						}
 						//already have back cell and front cell
-						f_coefs[0] = iC12sum*C1sum*C2*multf; //BackCell
+						raMatrixMake(f_coefs.data()+0,3,3) = iC12sum*C1sum*C2*multf; //BackCell
 						assert(f_elems[0] == f->BackCell());
-						f_coefs[1] = -iC12sum*C1*C2sum*multf; //FrontCell
+						raMatrixMake(f_coefs.data()+9,3,3) = -iC12sum*C1*C2sum*multf; //FrontCell
 						assert(f_elems[1] == f->FrontCell());
-						i_coefs[0] = iC12sum*C1sum*multi;
-						i_coefs[1] = iC12sum*C2sum*multi;
+						//i_coefs[0] = iC12sum*C1sum*multi;
+						//i_coefs[1] = iC12sum*C2sum*multi;
 					}
 					else //Boundary face
 					{
-						real alpha = 0, beta = 1, gamma = 0; //alpha p + beta K \nabla p \cdot n = gamma
-						if( bnd_conds.isValid() && f->HaveData(bnd_conds) )
+						B_D.Zero();
+						B_N = I;
+						B_R.Zero();
+						if( tag_BC.isValid() && f.HaveData(tag_BC) )
 						{
-							real_array bnd = f->RealArray(bnd_conds);
-							alpha = bnd[0];
-							beta = bnd[1];
-							gamma = bnd[2];
+							f.UnitNormal(n.data());
+							GetBC(f.RealArray(tag_BC),n,B_D,B_N,B_R);
 						}
-						real Wsum = 0.0, Wc = W[0](rows[0],rows[0])*aF;
-						f_rhs = 0;
-						//f_rhs = gamma*Wc/(alpha+beta*Wc)*aF;
-						i_rhs = gamma/(alpha+beta*Wc);
+						C1 = W[0](rows[0]*3,rows[0]*3+3,rows[0]*3,rows[0]*3+3)*aF;
+						C1sum.Zero();
+						//TODO
+						//iC12sum = (alpha*I+beta*C1).Invert();
+						
+						tag_f_rhs(f,3,1).Zero();
+						tag_i_rhs(f,3,1) = iC12sum*B_R;
 						for(int q = 0; q < (int)faces[0].size(); ++q) if( fabs(W[0](rows[0],q)) > 1.0e-12 )
 						{
-							f_elems.push_back(faces[0][q]);
-							f_coefs.push_back(-W[0](rows[0],q)*multfbnd);
-							if( faces[0][q] != f )
+							CC = W[0](rows[0]*3,rows[0]*3+3,q*3,q*3+3);
+							if( CC.FrobeniusNorm() > 1.0e-12 )
 							{
+								//TODO
 								//f_elems.push_back(faces[0][q]);
-								//f_coefs.push_back(W[0](rows[0],q)*alpha/(alpha+beta*Wc)*aF);
-								i_elems.push_back(faces[0][q]);
-								i_coefs.push_back(-W[0](rows[0],q)*beta/(alpha+beta*Wc));
+								//f_coefs.push_back(-CC*multfbnd);
+								if( faces[0][q] != f )
+								{
+									//i_elems.push_back(faces[0][q]);
+									//i_coefs.push_back(-beta*iC12sum*CC);
+								}
+								C1sum += CC;
 							}
-							Wsum += W[0](rows[0],q);
 						}
-						//f_coefs[0] = -alpha/(alpha+beta*Wc)*Wsum*aF;
-						f_coefs[0] = Wsum*multfbnd;
-						assert(f_elems[0] == f->BackCell());
-						i_coefs[0] = beta*Wsum/(alpha+beta*Wc);
+						//TODO
+						//f_coefs[0] = C1sum*multfbnd;
+						//assert(f_elems[0] == f->BackCell());
+						//i_coefs[0] = beta*C1sum*iC12sum;
 					}
 				} //end of loop over faces
-				 */
+				
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
 			

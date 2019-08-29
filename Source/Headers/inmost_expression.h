@@ -207,6 +207,24 @@ namespace INMOST
 		__INLINE Sparse::Row & GetRow() {return entries;}
 		__INLINE const Sparse::Row & GetRow() const {return entries;}
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) const {return GetRow().get_safe(index);}
+		__INLINE bool operator < (INMOST_DATA_REAL_TYPE right) const {return value < right;}
+		__INLINE bool operator > (INMOST_DATA_REAL_TYPE right) const {return value > right;}
+		__INLINE bool operator <=(INMOST_DATA_REAL_TYPE right) const {return value <= right;}
+		__INLINE bool operator >=(INMOST_DATA_REAL_TYPE right) const {return value >= right;}
+		__INLINE bool operator ==(INMOST_DATA_REAL_TYPE right) const {return value == right;}
+		__INLINE bool operator !=(INMOST_DATA_REAL_TYPE right) const {return value != right;}
+		__INLINE bool operator < (basic_expression const & expr) const {return value < expr.GetValue();}
+		__INLINE bool operator > (basic_expression const & expr) const {return value > expr.GetValue();}
+		__INLINE bool operator <=(basic_expression const & expr) const {return value <= expr.GetValue();}
+		__INLINE bool operator >=(basic_expression const & expr) const {return value >= expr.GetValue();}
+		__INLINE bool operator ==(basic_expression const & expr) const {return value == expr.GetValue();}
+		__INLINE bool operator !=(basic_expression const & expr) const {return value != expr.GetValue();}
+		__INLINE bool operator < (multivar_expression const & expr) const {return value < expr.GetValue();}
+		__INLINE bool operator > (multivar_expression const & expr) const {return value > expr.GetValue();}
+		__INLINE bool operator <=(multivar_expression const & expr) const {return value <= expr.GetValue();}
+		__INLINE bool operator >=(multivar_expression const & expr) const {return value >= expr.GetValue();}
+		__INLINE bool operator ==(multivar_expression const & expr) const {return value == expr.GetValue();}
+		__INLINE bool operator !=(multivar_expression const & expr) const {return value != expr.GetValue();}
 		__INLINE multivar_expression & operator +=(basic_expression const & expr)
 		{
 			value += expr.GetValue();

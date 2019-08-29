@@ -538,7 +538,7 @@ namespace INMOST
 		template<typename typeB>
 		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		CrossProduct(const AbstractMatrix<typeB> & other) const;
-		/// Transformation matrix from current vector to provided vector.
+		/// Transformation matrix from current vector to provided vector using shortest arc rotation.
 		/// @param other Vector to transform to.
 		/// @return A sqaure (rotation) matrix that transforms current vector into right hand side vector.
 		/// \warning Works only for 3x1 vectors.
@@ -824,6 +824,18 @@ namespace INMOST
 		SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
 		
 		ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
+		
+		/// Define matrix as a part of a matrix of larger size with in-place manipulation of elements.
+		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
+		/// Then the method returns B = {a_ij}, if i in [offset_row,offset_row+n),
+		/// and j in [offset_col,offset_col+m) and B = {0} otherwise.
+		/// @param nrows Number of rows in larger matrix.
+		/// @param ncols Number of columns in larger matrix.
+		/// @param offset_row Offset for row number.
+		/// @param offset_col Offset for column number.
+		/// @return Submatrix of the original matrix.
+		BlockOfMatrix<Var> BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col);
+		ConstBlockOfMatrix<Var> BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col) const;
 	};
 	
 	
@@ -2001,6 +2013,197 @@ namespace INMOST
 		}
 	};
 	
+	/// This class allows to address a matrix as a block of an empty matrix of larger size.
+	template<typename Var>
+	class BlockOfMatrix : public AbstractMatrix<Var>
+	{
+	public:
+		using AbstractMatrix<Var>::operator();
+		typedef unsigned enumerator; //< Integer type for indexes.
+	private:
+		AbstractMatrix<Var> * M;
+		enumerator nrows; //< Number of rows in larger matrix.
+		enumerator ncols; //< Number of colums in larger matrix.
+		enumerator orow; //< Row offset in larger matrix.
+		enumerator ocol; //< Column offset in larger matrix.
+	public:
+		/// Number of rows in submatrix.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const {return nrows;}
+		/// Number of columns in submatrix.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const {return ncols;}
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		BlockOfMatrix(AbstractMatrix<Var> & rM, enumerator num_rows, enumerator num_cols, enumerator offset_row, enumerator offset_col) : M(&rM), nrows(num_rows), ncols(num_cols), orow(offset_row), ocol(offset_col)
+		{}
+		BlockOfMatrix(const BlockOfMatrix & b) : M(b.M), nrows(b.nrows), ncols(b.ncols), orow(b.orow), ocol(b.ocol) {}
+		/// Assign matrix of another type to the block of matrix.
+		/// \warning Only part of the matrix related to non-empty block is copied, other entries are ignored.
+		/// @param other Another matrix of different type.
+		/// @return Reference to current submatrix.
+		template<typename typeB>
+		BlockOfMatrix & operator =(AbstractMatrix<typeB> const & other)
+		{
+			assert( Cols() == other.Cols() );
+			assert( Rows() == other.Rows() );
+			for(enumerator i = orow; i < orow+M->Rows(); ++i)
+				for(enumerator j = ocol; j < ocol+M->Cols(); ++j)
+					assign((*M)(i-orow,j-ocol),other(i,j));
+			return *this;
+		}
+		/// Assign matrix of another type to the block of matrix.
+		/// \warning Only part of the matrix related to non-empty block is copied, other entries are ignored.
+		/// @return Reference to current submatrix.
+		template<typename typeB>
+		BlockOfMatrix & operator =(BlockOfMatrix<typeB> const & other)
+		{
+			assert( Cols() == other.Cols() );
+			assert( Rows() == other.Rows() );
+			for(enumerator i = orow; i < orow+M->Rows(); ++i)
+				for(enumerator j = ocol; j < ocol+M->Cols(); ++j)
+					assign((*M)(i-orow,j-ocol),other(i,j));
+			return *this;
+		}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to element.
+		__INLINE Var & operator()(enumerator i, enumerator j)
+		{
+			static Var zero = 0;
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
+				return zero;
+			else
+				return (*M)(i-orow,j-ocol);
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
+		{
+			static const Var zero = 0;
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
+				return zero;
+			else
+				return (*M)(i-orow,j-ocol);
+		}
+		/// Convert block of matrix into matrix.
+		/// Note, that modifying returned matrix does
+		/// not affect elements of the matrix or original matrix
+		/// used to create block of matrix.
+		/// @return Matrix with same entries as block of matrix including empty elements.
+		::INMOST::Matrix<Var, pool_array_t<Var> > MakeMatrix()
+		{
+			::INMOST::Matrix<Var, pool_array_t<Var> > ret(Rows(),Cols());
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret(i,j) = (*this)(i,j);
+			return ret;
+		}
+		/// This is a stub function to fulfill abstract
+		/// inheritance. BlockOfMatrix cannot change it's size,
+		/// since it just points to a part of the larger empty matrix.
+		void Resize(enumerator rows, enumerator cols)
+		{
+			assert(Cols() == cols);
+			assert(Rows() == rows);
+            (void)cols; (void)rows;
+		}
+	};
+	
+	/// This class allows to address a matrix as a block of an empty matrix of larger size.
+	template<typename Var>
+	class ConstBlockOfMatrix : public AbstractMatrix<Var>
+	{
+	public:
+		using AbstractMatrix<Var>::operator();
+		typedef unsigned enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrix<Var> * M;
+		enumerator nrows; //< Number of rows in larger matrix.
+		enumerator ncols; //< Number of colums in larger matrix.
+		enumerator orow; //< Row offset in larger matrix.
+		enumerator ocol; //< Column offset in larger matrix.
+	public:
+		/// Number of rows in submatrix.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const {return nrows;}
+		/// Number of columns in submatrix.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const {return ncols;}
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		ConstBlockOfMatrix(const AbstractMatrix<Var> & rM, enumerator num_rows, enumerator num_cols, enumerator offset_row, enumerator offset_col) : M(&rM), nrows(num_rows), ncols(num_cols), orow(offset_row), ocol(offset_col)
+		{}
+		ConstBlockOfMatrix(const ConstBlockOfMatrix & b) : M(b.M), nrows(b.nrows), ncols(b.ncols), orow(b.orow), ocol(b.ocol) {}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to element.
+		__INLINE Var & operator()(enumerator i, enumerator j)
+		{
+			static Var zero = 0;
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
+				return zero;
+			else
+				return const_cast<Var &>((*M)(i-orow,j-ocol));
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
+		{
+			static const Var zero = 0;
+			assert(i >= 0 && i < Rows());
+			assert(j >= 0 && j < Cols());
+			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
+				return zero;
+			else
+				return (*M)(i-orow,j-ocol);
+		}
+		/// Convert block of matrix into matrix.
+		/// Note, that modifying returned matrix does
+		/// not affect elements of the matrix or original matrix
+		/// used to create block of matrix.
+		/// @return Matrix with same entries as block of matrix including empty elements.
+		::INMOST::Matrix<Var, pool_array_t<Var> > MakeMatrix()
+		{
+			::INMOST::Matrix<Var, pool_array_t<Var> > ret(Rows(),Cols());
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret(i,j) = (*this)(i,j);
+			return ret;
+		}
+		/// This is a stub function to fulfill abstract
+		/// inheritance. BlockOfMatrix cannot change it's size,
+		/// since it just points to a part of the larger empty matrix.
+		void Resize(enumerator rows, enumerator cols)
+		{
+			assert(Cols() == cols);
+			assert(Rows() == rows);
+            (void)cols; (void)rows;
+		}
+	};
+	
 	template<typename Var>
 	Matrix<Var, pool_array_t<Var> >
 	AbstractMatrix<Var>::Transpose() const
@@ -2724,6 +2927,17 @@ namespace INMOST
 	ConstSubMatrix<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
 	{
 		return ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
+	}
+	
+	template<typename Var>
+	BlockOfMatrix<Var> AbstractMatrix<Var>::BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col)
+	{
+		return BlockOfMatrix<Var>(*this,nrows,ncols,offset_row,offset_col);
+	}
+	template<typename Var>
+	ConstBlockOfMatrix<Var> AbstractMatrix<Var>::BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col) const
+	{
+		return ConstBlockOfMatrix<Var>(*this,nrows,ncols,offset_row,offset_col);
 	}
 	
 	

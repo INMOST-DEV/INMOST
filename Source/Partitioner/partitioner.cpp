@@ -1364,12 +1364,12 @@ namespace INMOST
 				cluster_npoints[rank] = total_points;
 			}
 			
-			
+			int total_global_points = total_points;
 #if defined(USE_MPI)
 			std::vector<int> displs(m->GetProcessorsNumber());
 			std::vector<int> counts(m->GetProcessorsNumber());
 			std::vector<int> npoints(m->GetProcessorsNumber());
-			int total_global_points = 0;
+			total_global_points = 0;
 			int total_local_points = 0;
 			bool balance = false;
 			MPI_Allgather(&total_points,1,MPI_INT,&npoints[0],1,MPI_INT,MPI_COMM_WORLD);

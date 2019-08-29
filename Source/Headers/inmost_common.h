@@ -54,7 +54,7 @@
 // output xml files for debugging of parallel algorithms
 // search for style.xsl within examples for comfortable
 // view of generated xml files
-//#define USE_PARALLEL_WRITE_TIME
+#define USE_PARALLEL_WRITE_TIME
 
 // this will revert Mesh::PrepareReceiveInner to always
 // use MPI point to point functionality disregarding problem type
@@ -285,6 +285,12 @@ namespace INMOST
 	
 	template<typename Var>
 	class ConstSubMatrix;
+	
+	template<typename Var>
+	class BlockOfMatrix;
+	
+	template<typename Var>
+	class ConstBlockOfMatrix;
 	
 	template<typename Var, typename Storage = array<Var> >
 	class Matrix;

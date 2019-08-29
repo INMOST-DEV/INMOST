@@ -143,6 +143,23 @@ namespace INMOST
 		}
 	}
 	
+	void Face::SwapCells() const
+	{
+		Mesh * m = GetMeshLink();
+		MarkerType hm = m->HideMarker();
+		adj_type & hc = m->HighConn(GetHandle());
+		if( m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 )
+		{
+			enumerator k1 = ENUMUNDEF, k2;
+			k1 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
+			k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
+			HandleType temp = hc[k1];
+			hc[k1] = hc[k2];
+			hc[k2] = temp;
+			//FixNormalOrientation(); //maybe should change orientation?
+		}
+	}
+	
 	bool Face::CheckEdgeOrder() const
 	{
 		assert(GetHandleElementType(GetHandle())==FACE);

@@ -2,6 +2,7 @@
 #include <stack>
 #if defined(USE_MESH)
 
+#define MEASURE_EPS 1.0e-11
 //#define NEW_ALGORITHM
 //#define RECORD_PATH
 //#define DEEP_RECURSE
@@ -408,9 +409,9 @@ namespace INMOST
 							std::cout << "measure " << measure << std::endl;
 						}
 						
-						if( min_loop.empty() || min_loop_measure + 1.0e-6 >= measure )
+						if( min_loop.empty() || min_loop_measure + MEASURE_EPS >= measure )
 						{
-							if( !(fabs(min_loop_measure-measure) < 1.0e-6 && min_loop.size() < temp_loop.size()) )
+							if( !(fabs(min_loop_measure-measure) < MEASURE_EPS && min_loop.size() < temp_loop.size()) )
 							{
 								min_loop.swap(temp_loop);
 								min_loop_measure = measure;
@@ -984,9 +985,9 @@ namespace INMOST
 							std::cout << "measure " << measure << std::endl;
 						}
 						
-						if( min_loop.empty() || min_loop_measure + 1.0e-6 >= measure )
+						if( min_loop.empty() || min_loop_measure + MEASURE_EPS >= measure )
 						{
-							if( !(fabs(min_loop_measure-measure) < 1.0e-6 && min_loop.size() < temp_loop.size()) )
+							if( !(fabs(min_loop_measure-measure) < MEASURE_EPS && min_loop.size() < temp_loop.size()) )
 							{
 								min_loop.swap(temp_loop);
 								min_loop_measure = measure;

@@ -377,20 +377,20 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> datasizes(numprocs,0);
 			REPORT_VAL("local_write_file_size",datasize);
 			REPORT_MPI(ierr = MPI_Gather(&datasize,1,INMOST_MPI_DATA_ENUM_TYPE,&datasizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
-			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+			if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 #if defined(USE_MPI_FILE) //We have access to MPI_File
 			if( parallel_file_strategy == 1 )
 			{
 				MPI_File fh;
 				MPI_Status stat;
 				REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				REPORT_MPI(ierr = MPI_File_close(&fh));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				REPORT_MPI(ierr = MPI_Barrier(GetCommunicator()));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				if( GetProcessorRank() == 0 )
 				{
 					std::stringstream header;
@@ -402,16 +402,16 @@ namespace INMOST
 					
 					std::string header_data(header.str());
 					REPORT_MPI(ierr = MPI_File_write_shared(fh,&header_data[0],static_cast<INMOST_MPI_SIZE>(header_data.size()),MPI_CHAR,&stat));
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				}
 				{
 					std::string local_data(out.str());
 					REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&stat));
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				}
 				
 				REPORT_MPI(ierr = MPI_File_close(&fh));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 			}
 			else
 #endif
@@ -434,7 +434,7 @@ namespace INMOST
 				}
 				else file_contents.resize(1); //protect from accessing bad pointer
 				REPORT_MPI(ierr = MPI_Gatherv(&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&file_contents[0],&recvcounts[0],&displs[0],MPI_CHAR,0,GetCommunicator()));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				if( GetProcessorRank() == 0 )
 				{
 					std::fstream fout(File.c_str(),std::ios::out | std::ios::binary);
@@ -529,7 +529,7 @@ namespace INMOST
 					buffer.resize(uconv.get_source_iByteSize());
 					//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
 					REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
-					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 					
 					header.write(&buffer[0],buffer.size());
 					uconv.read_iValue(header,datanum);
@@ -1337,7 +1337,7 @@ namespace INMOST
 				}
 				std::vector<INMOST_DATA_ENUM_TYPE> procs(procs_sum);
 				REPORT_MPI(ierr = MPI_Allgatherv(myprocs.data(),procs_sizes[myrank],INMOST_MPI_DATA_ENUM_TYPE,&procs[0],&recvcnts[0],&displs[0],INMOST_MPI_DATA_ENUM_TYPE,GetCommunicator()));
-				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				//we have to distinguish new elements and old elements
 				//all new elements with owner in myprocs belong to me
 				

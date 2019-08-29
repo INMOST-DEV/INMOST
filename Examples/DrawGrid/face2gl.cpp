@@ -488,7 +488,7 @@ namespace INMOST
 	void svg_draw_faces_nc(std::ostream & file, std::vector<face2gl> & set, bool drawedges, double modelview[16], double projection[16], int viewport[4], int highlight)
 	{
 		
-		file << "<g stroke=\"none\" fill=\"green\" fill-opacity=\"0.1\">" << std::endl;
+		file << "<g stroke=\"none\" fill=\"green\" fill-opacity=\"0.1\" stroke-opacity=\"0.1\">" << std::endl;
 		for (INMOST_DATA_ENUM_TYPE q = 0; q < set.size(); q++) set[q].svg_draw(file, drawedges, modelview, projection, viewport);
 		file << "</g>" << std::endl;
 		if (highlight != -1)

@@ -27,41 +27,9 @@ namespace INMOST
 {
 
 	
-	void Face::SwapCells() const
-	{
-		Mesh * m = GetMeshLink();
-		MarkerType hm = m->HideMarker();
-		adj_type & hc = m->HighConn(GetHandle());
-		if( m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) == 2 )
-		{
-			enumerator k1 = ENUMUNDEF, k2;
-			k1 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
-			k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
-			HandleType temp = hc[k1];
-			hc[k1] = hc[k2];
-			hc[k2] = temp;
-			//FixNormalOrientation(); //maybe should change orientation?
-		}
-	}
 
-	void Edge::SwapEnds()
-	{
-		Mesh * m = GetMeshLink();
-		MarkerType hm = m->HideMarker();
-		adj_type & lc = m->LowConn(GetHandle());
-		if( m->Count(lc.data(),static_cast<enumerator>(lc.size()),hm) == 2 )
-		{
-			enumerator k1 = ENUMUNDEF, k2;
-			k1 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
-			k2 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
-			//std::cout << "k " << k1 << " " << k2 << std::endl;
-			//std::cout << "was " << lc[k1] << " " << lc[k2] << std::endl;
-			HandleType temp = lc[k1];
-			lc[k1] = lc[k2];
-			lc[k2] = temp;
-			//std::cout << "now " << lc[k1] << " " << lc[k2] << std::endl;
-		}
-	}
+
+	
 	
 	void Element::Disconnect(bool del_upper) const
 	{
@@ -1099,451 +1067,122 @@ namespace INMOST
 	{
 		Node n = InvalidNode();
 		Mesh & m = *e.GetMeshLink();
-		e.PrintElementConnectivity();
-		ElementArray<Cell> cells = e.getCells();
-		Element::adj_type & faces = m.HighConn(e.GetHandle());
-		std::cout << "number of faces " << faces.size() << std::endl;
-		if( del_protect )
+		bool reconnect = true;
+		//e.PrintElementConnectivity();
 		{
-			if( e.GetMarker(del_protect) )
-				return n;
-			if( e.getBeg().GetMarker(del_protect) )
-				return n;
-			if( e.getEnd().GetMarker(del_protect) )
-				return n;
-			for(unsigned k = 0; k < cells.size(); ++k)
-				if( cells[k]->GetGeometricType() == Element::Tet )
-				{
-					if( cells[k].GetMarker(del_protect) ) return n;
-					//check that one of two faces that do not attach to collapsed edge can be deleted
-				}
-			for(unsigned k = 0; k < faces.size(); ++k)
-				if( m.GetGeometricType(faces[k]) == Element::Tri )
-				{
-					if( m.GetMarker(faces[k],del_protect) ) return n;
-					Element::adj_type & edges = m.LowConn(faces[k]);
-					for(unsigned l = 0; l < 3; ++l)
-						if( edges[l] == e.GetHandle() )
-						{
-							if( m.GetMarker(edges[(l+1)%3],del_protect) &&
-							    m.GetMarker(edges[(l+2)%3],del_protect) )
-								return n;
-							break;
-						}
-				}
+			double a = 0.5, cnt[3] = {0,0,0};
+			if( e.getBeg().Boundary() ) a -= 0.5;
+			if( e.getEnd().Boundary() ) a += 0.5;
+			for(unsigned k = 0; k < m.GetDimensions(); ++k)
+				cnt[k] = (1-a)*e.getBeg().Coords()[k] + a*e.getEnd().Coords()[k];
+			n = m.CreateNode(cnt);
 		}
-		dynarray<Storage::real,3> coords(m.GetDimensions());
-		for(unsigned k = 0; k < m.GetDimensions(); ++k)
-			coords[k] = 0.5*(e.getBeg().Coords()[k] + e.getEnd().Coords()[k]);
-		n = m.CreateNode(coords.data());
-		Element::adj_type & n_edges = m.HighConn(n.GetHandle());
-		Element::adj_type & n_cells = m.LowConn(n.GetHandle());
-		dynarray<HandleType,128> all_cells, all_faces, all_edges;
-		HandleType nn[2] = {e.getBeg().GetHandle(),e.getEnd().GetHandle()};
-		//Collect all cells, faces and edges
-		MarkerType unique = m.CreateMarker();
-		std::cout << "collapse edge " << GetHandleID(e.GetHandle()) << " " << GetHandleID(nn[0]) << "<->" << GetHandleID(nn[1]) << std::endl;
-		for(unsigned k = 0; k < 2; ++k)
+		TagInteger index = m.CreateTag("element_index",DATA_INTEGER,CELL|FACE|EDGE,NONE,1);
+		ElementArray<Node> nodes = e.getNodes();
+		ElementArray<Edge> edges(&m), new_edges(&m);
+		ElementArray<Face> faces(&m), new_faces(&m);
+		ElementArray<Cell> cells(&m), new_cells(&m);
+		for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 		{
-			std::cout << "node " << GetHandleID(nn[k]) << std::endl;
-			Element::adj_type & cells = m.LowConn(nn[k]);
-			std::cout << "cells: " << cells.size() << std::endl;
-			for(unsigned l = 0; l < cells.size(); ++l)
-			{
-				if( !m.GetMarker(cells[l],unique) )
-				{
-					all_cells.push_back(cells[l]);
-					m.SetMarker(cells[l],unique);
-				}
-				//change all connections of cells from old nodes to new node
-				Element::adj_type & cell_nodes = m.HighConn(cells[l]);
-				for(unsigned j = 0; j < cell_nodes.size(); ++j)
-				{
-					//std::cout << " cell " << GetHandleID(cells[l]) << " node " << GetHandleID(cell_nodes[j]) << std::endl;
-					if( cell_nodes[j] == nn[k] )
-					{
-						std::cout << "replace node " << GetHandleID(nn[k]) << " in cell " << GetHandleID(cells[l]) << " with " << n.LocalID() << std::endl;
-						cell_nodes[j] = n.GetHandle();
-					}
-				}
-			}
-			cells.clear();
-			Element::adj_type & edges = m.HighConn(nn[k]);
-			std::cout << "edges: " << edges.size() << std::endl;
-			for(unsigned l = 0; l < edges.size(); ++l) if( edges[l] != e.GetHandle() )
-			{
-				if( !m.GetMarker(edges[l],unique) )
-				{
-					all_edges.push_back(edges[l]);
-					m.SetMarker(edges[l],unique);
-				}
-				//Change all connections of edges from old nodes to new node
-				Element::adj_type & nodes = m.LowConn(edges[l]);
-				std::cout << "visit edge " << GetHandleID(edges[l]) << std::endl;
-				if( nodes[0] == nn[k] )
-				{
-					std::cout << "replace node " << GetHandleID(nn[k]) << " in edge " << GetHandleID(edges[l]) << std::endl;
-					nodes[0] = n.GetHandle();
-					n_edges.push_back(edges[l]);
-				}
-				if( nodes[1] == nn[k] )
-				{
-					std::cout << "replace node " << GetHandleID(nn[k]) << " in edge " << GetHandleID(edges[l]) << std::endl;
-					nodes[1] = n.GetHandle();
-					n_edges.push_back(edges[l]);
-				}
-				Element::adj_type & edge_faces = m.HighConn(edges[l]);
-				for(unsigned j = 0; j < edge_faces.size(); ++j) if( !m.GetMarker(edge_faces[j],unique) )
-				{
-					all_faces.push_back(edge_faces[j]);
-					m.SetMarker(edge_faces[j],unique);
-				}
-			}
-			edges.clear();
-			//delete node
-			std::cout << "delete node " << GetHandleID(nn[k]) << std::endl;
-			m.Delete(nn[k]);
+			edges.Unite(kt->getEdges());
+			faces.Unite(kt->getFaces());
+			cells.Unite(kt->getCells());
 		}
-		m.RemMarkerArray(all_cells.data(),all_cells.size(),unique);
-		m.RemMarkerArray(all_faces.data(),all_faces.size(),unique);
-		m.RemMarkerArray(all_edges.data(),all_edges.size(),unique);
-		//m.ReleaseMarker(unique);
-		//Check faces to be deleted
-		//also should erase edge
-		MarkerType del = m.CreateMarker();
-		std::cout << "number of faces " << faces.size() << std::endl;
-		for(unsigned k = 0; k < faces.size(); ++k)
+		for(ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); ++it)
 		{
-			std::cout << "check face " << GetHandleID(faces[k]) << " " << Element::GeometricTypeName(m.GetGeometricType(faces[k])) << std::endl;
-			//two edges will match, should replace them with one
-			Element::adj_type & edges = m.LowConn(faces[k]);
-			if( edges.size() == 3 )
+			ElementArray<Node> edge_nodes = it->getNodes();
+			if( edge_nodes[0] == nodes[0] || edge_nodes[0] == nodes[1] ) edge_nodes[0] = n;
+			if( edge_nodes[1] == nodes[0] || edge_nodes[1] == nodes[1] ) edge_nodes[1] = n;
+			if( edge_nodes[0] != edge_nodes[1] )
 			{
-				std::cout << "collapse triangle " << GetHandleID(faces[k]) << std::endl;
-				
-				std::cout << "edges: ";
-				for(unsigned l = 0; l < 3; ++l)
-					std::cout << GetHandleID(edges[l]) << " ";
-				std::cout << std::endl;
-				for(unsigned l = 0; l < 3; ++l)
-					if( edges[l] == e.GetHandle() )
-					{
-						std::cout << "found collapsed edge at " << l << std::endl;
-						//delete e2 keep e1
-						HandleType e1 = edges[(l+1)%3], e2 = edges[(l+2)%3];
-						if( m.GetMarker(e1,del_protect) )
-						{
-							std::swap(e1,e2);
-							assert(!m.GetMarker(e1,del_protect));
-						}
-						std::cout << "delete edge " << GetHandleID(e1) << " keep " << GetHandleID(e2) << std::endl;
-						if( e1 == e2 ) throw -1;
-						//reconnect adjacent faces to e1
-						Element::adj_type & edge_faces = m.HighConn(e2);
-						Element::adj_type & edge_faces_e1 = m.HighConn(e1);
-						m.SetMarkerArray(edge_faces_e1.data(),edge_faces_e1.size(),unique);
-						
-						std::cout << "was faces: ";
-						for(unsigned r = 0; r < edge_faces_e1.size(); ++r) std::cout << GetHandleID(edge_faces_e1[r]) << " ";
-						std::cout << std::endl;
-						//replace link from e2 to e1 in all of the faces of the e2
-						std::cout << "replace edge in faces connected to " << GetHandleID(e2) << std::endl;
-						for(unsigned r = 0; r < edge_faces.size(); ++r)
-							if( edge_faces[r] != faces[k] )
-							{
-								Element::adj_type & face_edges = m.LowConn(edge_faces[r]);
-								for(unsigned j = 0; j < face_edges.size(); ++j)
-									if( face_edges[j] == e2 )
-									{
-										std::cout << "replace edge in face " << GetHandleID(edge_faces[r]) << std::endl;
-										face_edges[j] = e1;
-										std::cout << "add face " << GetHandleID(edge_faces[r]) << " to edge " << GetHandleID(e1) << std::endl;
-										if( !m.GetMarker(edge_faces[r],unique) )
-											edge_faces_e1.push_back(edge_faces[r]);
-										break;
-									}
-							}
-						m.RemMarkerArray(edge_faces_e1.data(),edge_faces_e1.size(),unique);
-						//cleanup links to faces in e2
-						edge_faces.clear();
-						//erase link to face in e1
-						for(unsigned r = 0; r < edge_faces_e1.size(); ++r)
-							if( edge_faces_e1[r] == faces[k] )
-							{
-								std::cout << "erase face " << GetHandleID(faces[k]) << " from edge " << GetHandleID(e1) << std::endl;
-								edge_faces_e1.erase(edge_faces_e1.begin()+r);
-								break;
-							}
-						std::cout << "now faces: ";
-						for(unsigned r = 0; r < edge_faces_e1.size(); ++r) std::cout << GetHandleID(edge_faces_e1[r]) << " ";
-						std::cout << std::endl;
-						//delete this edge
-						m.SetMarker(e2,del);
-						break;
-					}
-				Element::adj_type & face_cells = m.HighConn(faces[k]);
-				//erase link to the face from adjacent cells
-				for(unsigned l = 0; l < face_cells.size(); ++l)
-				{
-					Element::adj_type & cell_faces = m.LowConn(face_cells[l]);
-					for(unsigned r = 0; r < cell_faces.size(); ++r)
-					{
-						if( cell_faces[r] == faces[k] )
-						{
-							cell_faces.erase(cell_faces.begin()+r);
-							break;
-						}
-					}
-				}
-				//clean-up all lniks of current face
-				face_cells.clear();
-				edges.clear();
-				//delete this face
-				m.SetMarker(faces[k],del);
+				Edge ne = m.CreateEdge(edge_nodes).first;
+				new_edges.push_back(ne);
+				index[*it] = new_edges.size();
 			}
-			else
-			{
-				std::cout << "erase edge in face " << GetHandleID(faces[k]) << std::endl;
-				//remove link to edge
-				for(unsigned l = 0; l < edges.size(); ++l)
-					if( edges[l] == e.GetHandle() )
-					{
-						std::cout << "edge erased at " << l << std::endl;
-						edges.erase(edges.begin()+l);
-						break;
-					}
-			}
+			else index[*it] = -1;
 		}
-		//correct two links to the same node
-		for(unsigned k = 0; k < cells.size(); ++k)
+		for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
 		{
-			std::cout << "erase node in cell " << GetHandleID(cells.at(k)) << std::endl;
-			//there are two subsequent links to the same node
-			Element::adj_type & cell_nodes = m.HighConn(cells.at(k));
-			int cnt = 0;
-			for(unsigned l = 0; l < cell_nodes.size(); ++l)
-				if( cell_nodes[l] == n.GetHandle() ) cnt++;
-			if( cnt == 2 )
+			ElementArray<Edge> face_edges = it->getEdges();
+			ElementArray<Edge>::iterator jt = face_edges.begin();
+			while(jt != face_edges.end())
 			{
-				for(unsigned l = 0; l < cell_nodes.size(); ++l)
-					if( cell_nodes[l] == n.GetHandle() )
-					{
-						std::cout << "node erased at " << l << std::endl;
-						cell_nodes.erase(cell_nodes.begin()+l);
-						break;
-					}
-			}
-			else 
-			{
-				std::cout << "node encountered " << cnt << std::endl;
-				assert(cnt < 2);
-			}
-		}
-		//connect new node to remaining cells
-		for(int k = 0; k < all_cells.size(); ++k)
-		{
-			if( !m.GetMarker(all_cells[k],del) )
-				n_cells.push_back(all_cells[k]);
-		}
-		//delete degenerate cells
-		for(unsigned k = 0; k < cells.size(); ++k)
-		{
-			std::cout << "check cell " << GetHandleID(cells.at(k)) << " " << Element::GeometricTypeName(m.GetGeometricType(cells.at(k))) << std::endl;
-			Element::adj_type & cell_faces = m.LowConn(cells.at(k));
-			Element::adj_type & cell_nodes = m.HighConn(cells.at(k));
-			std::cout << "faces: ";
-			for(unsigned l = 0; l < cell_faces.size(); ++l) std::cout << GetHandleID(cell_faces[l]) << " ";
-			std::cout << std::endl;
-			
-			cells[k].PrintElementConnectivity();
-			
-			bool collapse_cell = false;
-			if( cell_faces.size() < 4 )
-				collapse_cell = true;
-			else //advanced check for degeneracy
-			{
-				for(unsigned l = 0; l < cell_faces.size(); ++l)
-					if( m.LowConn(cell_faces[l]).size() == cell_nodes.size() ) // number of edges in one of the faces is equal to all nodes
-					{
-						collapse_cell = true;
-						break;
-					}
-			}
-			
-			if( collapse_cell )
-			{
-				std::cout << "collapse cell " << GetHandleID(cells.at(k)) <<  std::endl;
-				std::cout << "faces: ";
-				for( unsigned l = 0; l < cell_faces.size(); ++l) std::cout << GetHandleID(cell_faces[l]) << " ";
-				std::cout << std::endl;
-				for( unsigned l = 0; l < cell_faces.size(); ++l)
+				if( index[*jt] == -1 )
+					jt = face_edges.erase(jt);
+				else
 				{
-					Face(&m,cell_faces[l]).PrintElementConnectivity();
+					if( index[*jt] > 0 ) *jt = new_edges[index[*jt]-1].GetHandle();
+					jt++;
 				}
-				//first case - there are 2 remaining faces
-				if( cell_faces.size() == 2 )
-				{
-					//there are 2 faces now that should become just one
-					assert(cell_faces.size() == 2);
-					HandleType f1 = cell_faces[0], f2 = cell_faces[1];
-					//reconnect adjacent cells to f1
-					Element::adj_type & face_cells = m.HighConn(f2);
-					Element::adj_type & face_cells_f1 = m.HighConn(f1);
-					std::cout << "was cells: ";
-						for(unsigned r = 0; r < face_cells_f1.size(); ++r) std::cout << GetHandleID(face_cells_f1[r]) << " ";
-					std::cout << std::endl;
-						
-					//replace link from f2 to f1 in all of the cells of the f2
-					for(unsigned r = 0; r < face_cells.size(); ++r)
-						if( face_cells[r] != cells.at(k) )
-						{
-							Element::adj_type & cell_faces2 = m.LowConn(face_cells[r]);
-							for(unsigned j = 0; j < cell_faces2.size(); ++j)
-								if( cell_faces2[j] == f2 )
-								{
-									cell_faces2[j] = f1;
-									face_cells_f1.push_back(face_cells[r]);
-									//assert(face_cells_f1.size() <= 2); //maybe have to delete current cell?
-								}
-						}
-					std::cout << "now cells: ";
-					for(unsigned r = 0; r < face_cells_f1.size(); ++r) std::cout << GetHandleID(face_cells_f1[r]) << " ";
-					std::cout << std::endl;
-					face_cells.clear();
-					m.SetMarker(f2,del);
-				}
-				else //second case - replace face that holds all the nodes by multiple other faces
-				{
-					HandleType fdel = InvalidHandle();
-					for(unsigned l = 0; l < cell_faces.size(); ++l)
-						if( m.LowConn(cell_faces[l]).size() == cell_nodes.size() ) // number of edges in one of the faces is equal to all nodes
-						{
-							fdel = cell_faces[l];
-							break;
-						}
-					assert(fdel != InvalidHandle());
-					
-					//get cell of fdel, remove fdel and add all of the rest faces
-					// connect all of the rest faces to cell of fdel
-					Element::adj_type & cell_fdel = m.HighConn(fdel);
-					assert(cell_fdel.size() <= 2);
-					HandleType cfdel = InvalidHandle();
-					for(unsigned l = 0; l < cell_fdel.size(); ++l)
-					{
-						if( cell_fdel[l] != cells.at(k) )
-						{
-							cfdel = cell_fdel[l];
-							break;
-						}
-					}
-					if( cfdel != InvalidHandle() )
-					{
-						Element::adj_type & cfdel_faces = m.LowConn(cfdel);
-						for(unsigned l = 0; l < cfdel_faces.size(); ++l)
-							if( cfdel_faces[l] == fdel )
-							{
-								cfdel_faces.erase(cfdel_faces.begin()+l);
-								break;
-							}
-						for(unsigned l = 0; l < cell_faces.size(); ++l)
-						{
-							if( cell_faces[l] != fdel )
-							{
-								cfdel_faces.push_back(cell_faces[l]);
-								Element::adj_type & face_cells = m.HighConn(cell_faces[l]);
-								face_cells.push_back(cfdel);
-								//assert(face_cells.size() <= 2); //maybe have to delete current cell?
-							}
-						}
-					}
-					m.SetMarker(fdel,del);
-				}
-				//any other case????
-				
-				
-				m.SetMarker(cells.at(k),del);
 			}
+			if( face_edges.size() >= 3 )
+			{
+				Face nf = m.CreateFace(face_edges).first;
+				new_faces.push_back(nf);
+				index[*it] = new_faces.size();
+			}
+			else index[*it] = -1;
 		}
-		//delete marked elements
-		//recompute geometry and types for the rest
-		for(int k = 0; k < all_cells.size(); ++k)
+		//transfer edge data
+		for(ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); ++it)
 		{
-			if( m.GetMarker(all_cells[k],del) )
-			{
-				std::cout << "delete cell " << GetHandleID(all_cells[k]) << std::endl;
-				m.Delete(all_cells[k]);
-			}
-			else
-			{
-				std::cout << "recompute data for cell " << GetHandleID(all_cells[k]) << std::endl;
-				std::cout << "nodes: ";
-				Element::adj_type & hc = m.HighConn(all_cells[k]);
-				for(unsigned l = 0; l < hc.size(); ++l)
-					std::cout << GetHandleID(hc[l]) << " ";
-				std::cout << std::endl;
-				std::cout << "faces: ";
-				Element::adj_type & lc = m.LowConn(all_cells[k]);
-				for(unsigned l = 0; l < lc.size(); ++l)
-					std::cout << GetHandleID(lc[l]) << " ";
-				std::cout << std::endl;
-				Cell(&m,all_cells[k]).PrintElementConnectivity();
-				m.RecomputeGeometricData(all_cells[k]);
-				m.ComputeGeometricType(all_cells[k]);
-			}
+			if( index[*it] > 0 )
+				Mesh::CopyData(new_edges[index[*it]-1],it->self());
+			index[*it] = 0;
 		}
-		for(int k = 0; k < all_faces.size(); ++k)
-			if( m.GetMarker(all_faces[k],del) )
+		for(ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it)
+		{
+			ElementArray<Face> cell_faces = it->getFaces();
+			ElementArray<Face>::iterator jt = cell_faces.begin();
+			while(jt != cell_faces.end())
 			{
-				std::cout << "delete face " << GetHandleID(all_faces[k]) << std::endl;
-				m.Delete(all_faces[k]);
+				if( index[*jt] == -1 )
+					jt = cell_faces.erase(jt);
+				else
+				{
+					if( index[*jt] > 0 ) *jt = new_faces[index[*jt]-1].GetHandle();
+					jt++;
+				}
 			}
-			else
+			if( cell_faces.size() >= 4 )
 			{
-				std::cout << "recompute data for face " << GetHandleID(all_faces[k]) << std::endl;
-				std::cout << "cells: ";
-				Element::adj_type & hc = m.HighConn(all_faces[k]);
-				for(unsigned l = 0; l < hc.size(); ++l)
-					std::cout << GetHandleID(hc[l]) << " ";
-				std::cout << std::endl;
-				std::cout << "edges: ";
-				Element::adj_type & lc = m.LowConn(all_faces[k]);
-				for(unsigned l = 0; l < lc.size(); ++l)
-					std::cout << GetHandleID(lc[l]) << " ";
-				std::cout << std::endl;
-				Face(&m,all_faces[k]).PrintElementConnectivity();
-				m.RecomputeGeometricData(all_faces[k]);
-				m.ComputeGeometricType(all_faces[k]);
+				ElementArray<Node> check_nodes(&m);
+				for(jt = cell_faces.begin(); jt != cell_faces.end(); ++jt)
+					check_nodes.Unite(jt->getNodes());
+				bool flattened = false;
+				for(jt = cell_faces.begin(); jt != cell_faces.end(); ++jt)
+					if( check_nodes.size() == jt->nbAdjElements(NODE) )
+						flattened = true;
+				if( !flattened )
+				{
+					Cell nc = m.CreateCell(cell_faces).first;
+					new_cells.push_back(nc);
+					index[*it] = new_cells.size();
+				}
+				else index[*it] = -1;
 			}
-		for(int k = 0; k < all_edges.size(); ++k)
-			if( m.GetMarker(all_edges[k],del) )
-			{
-				std::cout << "delete edge " << GetHandleID(all_edges[k]) << std::endl;
-				m.Delete(all_edges[k]);
-			}
-			else
-			{
-				std::cout << "recompute data for edge " << GetHandleID(all_edges[k]) << std::endl;
-				std::cout << "faces: ";
-				Element::adj_type & hc = m.HighConn(all_edges[k]);
-				for(unsigned l = 0; l < hc.size(); ++l)
-					std::cout << GetHandleID(hc[l]) << " ";
-				std::cout << std::endl;
-				std::cout << "nodes: ";
-				Element::adj_type & lc = m.LowConn(all_edges[k]);
-				for(unsigned l = 0; l < lc.size(); ++l)
-					std::cout << GetHandleID(lc[l]) << " ";
-				std::cout << std::endl;
-				Edge(&m,all_edges[k]).PrintElementConnectivity();
-				m.RecomputeGeometricData(all_edges[k]);
-				m.ComputeGeometricType(all_edges[k]);
-			}
-		
-		m.ReleaseMarker(del);
-		//erase links on edge
-		m.LowConn(e.GetHandle()).clear();
-		m.HighConn(e.GetHandle()).clear();
-		e.Delete();
-		m.ReleaseMarker(unique);
+			else index[*it] = -1;
+		}
+		//transfer face data
+		for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
+		{
+			if( index[*it] > 0 )
+				Mesh::CopyData(new_faces[index[*it]-1],it->self());
+			index[*it] = 0;
+		}
+		//transfer cell data
+		for(ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it)
+		{
+			if( index[*it] > 0 )
+				Mesh::CopyData(new_cells[index[*it]-1],it->self());
+			index[*it] = 0;
+		}
+		//delete old elements
+		for(ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it) it->Delete();
+		for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it) it->Delete();
+		for(ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); ++it) it->Delete();
+		for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++) kt->Delete();
+		m.DeleteTag(index);
 		return n;
 	}
 
@@ -1928,7 +1567,7 @@ namespace INMOST
 		
 		//debug
 		
-		if(report )//!mat.all_visited())
+		if(report || !mat.all_visited())
 		{
 			mat.print_matrix();
 			incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner,GridCoords(),true);

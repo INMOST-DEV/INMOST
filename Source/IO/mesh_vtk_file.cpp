@@ -735,7 +735,8 @@ safe_output:
 						}
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
+							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
+							Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -800,7 +801,8 @@ safe_output:
 						if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,read_into_cell & ~CELL,nentries);
+							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
+							Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -871,7 +873,8 @@ safe_output:
 						if( fgets(readline,2048,f) == NULL ) throw BadFile; //LOOK_UP TABLE
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
+							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
+							Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -948,7 +951,8 @@ safe_output:
 						if( fgets(readline,2048,f) == NULL ) throw BadFile; //LOOK_UP TABLE
 						if( read_into == 2 )
 						{
-							Tag attr = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
+							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
+							Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
 							for(unsigned int it = 0; it < newcells.size(); it++)
 							{
@@ -1027,7 +1031,8 @@ safe_output:
 								throw BadFile;
 							if( read_into == 2 )
 							{
-								Tag attr  = CreateTag(attrname,t,read_into_cell,read_into_cell & ~CELL,nentries);
+								bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
+								Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 								if( ntuples != newcells.size() ) printf("number of tuples in field is not equal to number of cells\n");
 								unsigned report_pace = std::max<unsigned>(ntuples/250,1);
 								for(unsigned int it = 0; it < ntuples; it++)

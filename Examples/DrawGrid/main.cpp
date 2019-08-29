@@ -260,7 +260,10 @@ void reshape(int w, int h)
 	width = w;
 	height = h;
 	set_matrix3d();
+	//latest mac os issue
+//#if !(defined(MAC_WORKAROUND) && (defined (__APPLE__) || defined(MACOSX)))
 	glViewport(0, 0, w, h);
+//#endf //MAC_WORKAROUND
 }
 
 
@@ -271,7 +274,7 @@ double mymy = 0;
 void myclickmotion(int nmx, int nmy) // Mouse
 {
 	double lmx = 2.*(nmx/(double)width - 0.5),lmy = 2.*(0.5 - nmy/(double)height), dmx = lmx-mymx, dmy = lmy - mymy;
-	if( actionstate == 1 ) //middle button
+	if( actionstate == 1 )//|| (glutGetModifiers() & GLUT_ACTIVE_CTRL) ) //middle button
 	{
 		double shiftmod[3] = {0,0,0};
 		shiftmod[0] += dmx*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear);
@@ -299,7 +302,7 @@ void myclickmotion(int nmx, int nmy) // Mouse
 		mymx = lmx;
 		mymy = lmy;
 	}
-	else if( actionstate == 2 ) //right button
+	else if( actionstate == 2 )// || (glutGetModifiers() & GLUT_ACTIVE_SHIFT) ) //right button
 	{
 		if( planecontrol )
 		{
@@ -2082,7 +2085,7 @@ void svg_draw(std::ostream & file)
 	}
 	else
 	{
-		
+		std::vector<face2gl> sorted_clip_boundary;
 		if( oclipper || bclipper ) 
 		{
 			/*
@@ -2095,7 +2098,7 @@ void svg_draw(std::ostream & file)
 				svg_draw_faces(file,:drawedges && ::drawedges != 2,temp_boundary,modelview,projection,viewport);
 			 */
 			
-			std::vector<face2gl> sorted_clip_boundary(clip_boundary);
+			sorted_clip_boundary.insert(sorted_clip_boundary.begin(),clip_boundary.begin(),clip_boundary.end());
 			for(INMOST_DATA_ENUM_TYPE q = 0; q < sorted_clip_boundary.size() ; q++)
 				sorted_clip_boundary[q].compute_dist(campos);
 			face2gl::radix_sort_dist(sorted_clip_boundary);
@@ -2127,15 +2130,42 @@ void svg_draw(std::ostream & file)
 		for (int k = 0; k < segments.size(); ++k)
 			segments[k].SVGDraw(file, modelview, projection, viewport);
 		file << "</g>" << std::endl;
-
-		if( boundary )
+		
+		if( (oclipper || bclipper) && boundary )
 		{
-			file << "<g fill=\"black\" fill-opacity=\"0.25\">" << std::endl;
+			face2gl::radix_sort_dist(all_boundary);
+			unsigned i = 0, j = 0;
+			while( i < sorted_clip_boundary.size() || j < all_boundary.size() )
+			{
+				if( j == all_boundary.size() || (i != sorted_clip_boundary.size() && all_boundary[j] < sorted_clip_boundary[i])  )
+				{
+					sorted_clip_boundary[i].svg_draw_colour(file, ::drawedges && ::drawedges != 2, modelview, projection, viewport);
+					i++;
+				}
+				else
+				{
+					file << "<g stroke=\"none\" fill=\"green\" fill-opacity=\"0.1\" stroke-opacity=\"0.3\">" << std::endl;
+					all_boundary[j].svg_draw(file, ::drawedges && ::drawedges != 2, modelview, projection, viewport);
+					file << "</g>" << std::endl;
+					j++;
+				}
+			}
+		}
+		else if( oclipper || bclipper )
+		{
+			if (!(drawedges == 2 || drawedges == 3))
+				svg_draw_faces(file, sorted_clip_boundary, ::drawedges && ::drawedges != 2, modelview, projection, viewport);
+		}
+		else if( boundary )
+		{
+			//file << "<g fill=\"black\" fill-opacity=\"0.25\">" << std::endl;
 			//if (drawedges && drawedges != 2)svg_draw_edges(file,all_boundary,modelview,projection,viewport);
 			if (!(drawedges == 2 || drawedges == 3))
 				svg_draw_faces_nc(file, all_boundary, ::drawedges && ::drawedges != 2, modelview, projection, viewport);
-			file << "</g>" << std::endl;
+			//file << "</g>" << std::endl;
 		}
+		
+		
 	}
 
 	
