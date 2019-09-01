@@ -140,7 +140,7 @@ namespace INMOST {
     void Solver::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) {
         double preconditioner_timer_start = Timer();
         solver->SetMatrix(A, ModifiedPattern, OldPreconditioner);
-        INMOST::MPIBarrier();
+        //INMOST::MPIBarrier();
         preconditioner_time = Timer() - preconditioner_timer_start;
     }
 
@@ -161,7 +161,7 @@ namespace INMOST {
         double iterations_timer_start = Timer();
 
         is_solved = solver->Solve(RHS, SOL);
-        INMOST::MPIBarrier();
+        //INMOST::MPIBarrier();
         iterations_time = Timer() - iterations_timer_start;
 
         if (versbosity > SolverVerbosityLevel::Level1) {

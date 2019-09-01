@@ -2,12 +2,6 @@
 #ifndef INMOST_H_INCLUDED
 #define INMOST_H_INCLUDED
 
-// temporary fix for GeRa
-#ifndef Cout
-#define Cout std::cout
-#endif
-
-
 #include "inmost_common.h"
 #include "inmost_mesh.h"
 #include "inmost_dense.h"
@@ -23,8 +17,5 @@
 #include "inmost_operator.h"
 #include "inmost_model.h"
 #include "inmost_xml.h"
-
-// temporary fix for GeRa
-bool IsMaster();
 
 #endif // INMOST_H_INCLUDED

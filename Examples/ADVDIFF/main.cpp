@@ -18,8 +18,8 @@ using namespace INMOST;
 #define BARRIER
 #endif
 
-Solver::Type linear_solver_type = "inner_ilu2";
-//Solver::Type linear_solver_type = Solver::INNER_MPTILUC;
+//Solver::Type linear_solver_type = "inner_ilu2";
+Solver::Type linear_solver_type = "inner_mptiluc";
 //Solver::Type linear_solver_type = Solver::SUPERLU;
 
 //shortcuts
@@ -38,12 +38,14 @@ const bool use_reference_solution = false;
 //SchemeType scheme_type = NMPFA_QUADRATIC_CORRECTED;
 //SchemeType scheme_type = NMPFA_VAN_ALBADA_CORRECTED;
 //SchemeType scheme_type = NMPFA_VAN_ALBADA_CORRECTED;
-SchemeType scheme_type = NMPFA_VAN_LEER;
+SchemeType scheme_type = NMPFA_VAN_ALBADA;
+//SchemeType scheme_type = NMPFA_VAN_LEER;
 //SchemeType scheme_type = NTPFA_PICARD;
-OutputMeshFormat output_format = VTK; //current choice of mesh format
+//SchemeType scheme_type = NTPFA;
+OutputMeshFormat output_format = PMF; //current choice of mesh format
 
 //scheme behavior
-bool split_diffusion = true; //diffusion is represented by two-point part plus correction
+bool split_diffusion = false; //diffusion is represented by two-point part plus correction
 bool joint_advection_diffusion = true; //nonlinear weighting is performed for advection and diffusion simultaneously
 //time stepping constants
 //#define FRACTIONAL //tvd-limited fractional time-stepping scheme, bacwards euler if commented
@@ -56,8 +58,8 @@ bool check_div = false; //check that the velocity is divergence free.
 
 //parameters for nonlinear solver
 double nonlinear_iterations                = 100; //maximal number of iterations
-double nonlinear_abs_tolerance             = 1.0e-10; //absolute tolerance
-double nonlinear_rel_tolerance             = 1.0e-8; //relative tolerance
+double nonlinear_abs_tolerance             = 1.0e-6; //absolute tolerance
+double nonlinear_rel_tolerance             = 1.0e-5; //relative tolerance
 double regularization                      = 1.0e-9; //eps regularization in |x| = sqrt(x*x+eps)
 double degenerate_diffusion_regularization = 1.0e-8; //eps regularization when diffusion goes to zero
 
@@ -123,7 +125,7 @@ int main(int argc,char ** argv)
 			table[NORMAL]      = FACE;        //Compute normals
 			table[ORIENTATION] = FACE;        //Check and fix normal orientation
 			table[MEASURE]     = CELL | FACE; //Compute volumes and areas
-			//table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
+			table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
 			m->RemoveGeometricData(table);
 			m->PrepareGeometricData(table); //Ask to precompute the data
 			BARRIER
@@ -268,8 +270,11 @@ int main(int argc,char ** argv)
 
 		ttt = Timer();
 		
+		if( m->GetProcessorRank() == 0 )
+			std::cout << "Create problem" << std::endl;
 		ConvectionDiffusion * Problem = new ConvectionDiffusion(m,tag_U,tag_K,tag_BC,boundary_face,perform_correction_convection,perform_correction_diffusion);
-		
+		if( m->GetProcessorRank() == 0 )
+			std::cout << "Done create problem" << std::endl;
 
 		if( m->GetProcessorRank() == 0 )
 			std::cout << "Precompute gradients: " << Timer() - ttt << std::endl;

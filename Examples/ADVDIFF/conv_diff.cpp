@@ -72,7 +72,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 	{
 		build_flux = m->CreateMarker();
 #if defined(USE_OMP)
-#pragma omp for
+#pragma omp parallel for
 #endif
 		for(integer q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
 		{
@@ -180,7 +180,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 					uL = uK;
 					T = A * lambdaK*lambdaL/(dK*lambdaL+dL*lambdaK + 1.0e-100);
 				}
-				else //un-splitted diffusion
+				if( !split_diffusion || T < 0 ) //un-splitted diffusion
 				{
 					uK = A * KKn;
 					uL = A * KLn;
@@ -202,7 +202,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 					uK = KKn - ((xKL - xK) * lambdaK / dK);
 					T = lambdaK / dK;
 				}
-				else //un-splitted diffusion
+				if( !split_diffusion || T < 0 ) //un-splitted diffusion
 				{
 					uK = KKn;
 					T = 0;
