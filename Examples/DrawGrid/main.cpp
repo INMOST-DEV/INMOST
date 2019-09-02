@@ -283,9 +283,9 @@ void myclickmotion(int nmx, int nmy) // Mouse
 		{
 			
 			rotatevector_from_stack((double*)shiftmod);
-			p[0] += shiftmod[0];
-			p[1] += shiftmod[1];
-			p[2] += shiftmod[2];
+			p[0] += shiftmod[0]/scale[0];
+			p[1] += shiftmod[1]/scale[1];
+			p[2] += shiftmod[2]/scale[2];
 			clipupdate = true;
 		}
 		else
@@ -293,9 +293,9 @@ void myclickmotion(int nmx, int nmy) // Mouse
 			//shiftmod[0] += dmx*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
 			//shiftmod[1] += dmy*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5;
 			rotatevector((double*)shiftmod);
-			shift[0] += shiftmod[0];
-			shift[1] += shiftmod[1];
-			shift[2] += shiftmod[2];
+			shift[0] += shiftmod[0]/scale[0];
+			shift[1] += shiftmod[1]/scale[1];
+			shift[2] += shiftmod[2]/scale[2];
 			bndupdate = true;
 		}
 		glutPostRedisplay();
@@ -309,9 +309,9 @@ void myclickmotion(int nmx, int nmy) // Mouse
 			double shiftmod[3] = {0,0,0};
 			shiftmod[2] -= dmy*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear);
 			rotatevector_from_stack((double*)shiftmod);
-			p[0] += shiftmod[0];
-			p[1] += shiftmod[1];
-			p[2] += shiftmod[2];
+			p[0] += shiftmod[0]/scale[0];
+			p[1] += shiftmod[1]/scale[1];
+			p[2] += shiftmod[2]/scale[2];
 			clipupdate = true;
 		}
 		else
@@ -321,9 +321,9 @@ void myclickmotion(int nmx, int nmy) // Mouse
 			double shiftmod[3] = {0,0,0};
 			shiftmod[2] += dmx*zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear);
 			rotatevector((double*)shiftmod);
-			shift[0] += shiftmod[0];
-			shift[1] += shiftmod[1];
-			shift[2] += shiftmod[2];
+			shift[0] += shiftmod[0]/scale[0];
+			shift[1] += shiftmod[1]/scale[1];
+			shift[2] += shiftmod[2]/scale[2];
 			bndupdate = true;
 		}
 		glutPostRedisplay();
@@ -456,18 +456,18 @@ void keyboard(unsigned char key, int x, int y)
 		if( !planecontrol )
 		{
 			rotatevector((double*)shiftmod);
-			shift[0] += shiftmod[0];
-			shift[1] += shiftmod[1];
-			shift[2] += shiftmod[2];
+			shift[0] += shiftmod[0]/scale[0];
+			shift[1] += shiftmod[1]/scale[1];
+			shift[2] += shiftmod[2]/scale[2];
 			interactive = true;
 			bndupdate = true;
 		}
 		else
 		{
 			rotatevector_from_stack((double*)shiftmod);
-			p[0] -= shiftmod[0];
-			p[1] -= shiftmod[1];
-			p[2] -= shiftmod[2];
+			p[0] -= shiftmod[0]/scale[0];
+			p[1] -= shiftmod[1]/scale[1];
+			p[2] -= shiftmod[2]/scale[2];
 			clipupdate = true;
 		}
 		glutPostRedisplay();
@@ -479,18 +479,18 @@ void keyboard(unsigned char key, int x, int y)
 		if( !planecontrol )
 		{
 			rotatevector((double*)shiftmod);
-			shift[0] += shiftmod[0];
-			shift[1] += shiftmod[1];
-			shift[2] += shiftmod[2];
+			shift[0] += shiftmod[0]/scale[0];
+			shift[1] += shiftmod[1]/scale[1];
+			shift[2] += shiftmod[2]/scale[2];
 			interactive = true;
 			bndupdate = true;
 		}
 		else
 		{
 			rotatevector_from_stack((double*)shiftmod);
-			p[0] -= shiftmod[0];
-			p[1] -= shiftmod[1];
-			p[2] -= shiftmod[2];
+			p[0] -= shiftmod[0]/scale[0];
+			p[1] -= shiftmod[1]/scale[1];
+			p[2] -= shiftmod[2]/scale[2];
 			clipupdate = true;
 		}
 		glutPostRedisplay();
@@ -502,18 +502,18 @@ void keyboard(unsigned char key, int x, int y)
 		if( !planecontrol )
 		{
 			rotatevector((double*)shiftmod);
-			shift[0] += shiftmod[0];
-			shift[1] += shiftmod[1];
-			shift[2] += shiftmod[2];
+			shift[0] += shiftmod[0]/scale[0];
+			shift[1] += shiftmod[1]/scale[1];
+			shift[2] += shiftmod[2]/scale[2];
 			interactive = true;
 			bndupdate = true;
 		}
 		else
 		{
 			rotatevector_from_stack((double*)shiftmod);
-			p[0] -= shiftmod[0];
-			p[1] -= shiftmod[1];
-			p[2] -= shiftmod[2];
+			p[0] -= shiftmod[0]/scale[0];
+			p[1] -= shiftmod[1]/scale[1];
+			p[2] -= shiftmod[2]/scale[2];
 			clipupdate = true;
 		}
 		glutPostRedisplay();
@@ -525,17 +525,17 @@ void keyboard(unsigned char key, int x, int y)
 		if(!planecontrol)
 		{
 			rotatevector((double*)shiftmod);
-			shift[0] += shiftmod[0];
-			shift[1] += shiftmod[1];
-			shift[2] += shiftmod[2];
+			shift[0] += shiftmod[0]/scale[0];
+			shift[1] += shiftmod[1]/scale[1];
+			shift[2] += shiftmod[2]/scale[2];
 			interactive = true;
 			bndupdate = true;
 		}
 		else
 		{	rotatevector_from_stack((double*)shiftmod);
-			p[0] -= shiftmod[0];
-			p[1] -= shiftmod[1];
-			p[2] -= shiftmod[2];
+			p[0] -= shiftmod[0]/scale[0];
+			p[1] -= shiftmod[1]/scale[1];
+			p[2] -= shiftmod[2]/scale[2];
 			clipupdate = true;
 		}
 		glutPostRedisplay();
