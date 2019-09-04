@@ -110,6 +110,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 				KD(3,3), //difference of tensors
 				gammaK(1,3), //transversal part of co-normal at cell K
 				gammaL(1,3),  //transversal part of co-normal at cell L
+				gamma(1,3), //common transversal part for flux
 				iT(3,3), //heterogeneous interpolation tensor
 				iC(1,3) //heterogeneous interpolation correction
 				;
@@ -121,7 +122,8 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 				dK, //distance from center to interface at cell K
 				dL, //distance from center to interface at cell L
 				lambdaK, //projection of co-normal onto normal at cell K
-				lambdaL //projection of co-normal onto normal at cell L
+				lambdaL, //projection of co-normal onto normal at cell L
+				div //divider
 				;
 		const real eps = degenerate_diffusion_regularization;
 		Cell cK, cL, cU;
@@ -155,6 +157,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 				KK = rMatrix::FromTensor(cK.RealArray(tag_K).data(),cK.RealArray(tag_K).size());//.Transpose();
 			KKn = nKL*KK;
 			lambdaK = nKL.DotProduct(KKn);
+			if( lambdaK < 0 ) std::cout << __FILE__ << ":" << __LINE__ << " lambdaK=" << lambdaK << std::endl;
 			gammaK = KKn - lambdaK*nKL;
 					
 			//Diffusion part
@@ -169,6 +172,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 					KL = rMatrix::FromTensor(cL.RealArray(tag_K).data(),cL.RealArray(tag_K).size());//.Transpose();
 				KLn = nKL*KL;
 				lambdaL = nKL.DotProduct(KLn);
+				if( lambdaL < 0 ) std::cout << __FILE__ << ":" << __LINE__ << " lambdaL=" << lambdaL << std::endl;
 				gammaL = KLn - lambdaL*nKL;
 						
 						
@@ -176,16 +180,36 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 				R = 0;
 				if( split_diffusion )
 				{
-					uK = A * (lambdaK*lambdaL*(yK-yL) + lambdaL*dK*gammaK + lambdaK*dL*gammaL)/(dK*lambdaL+dL*lambdaK + 1.0e-100);
-					uL = uK;
-					T = A * lambdaK*lambdaL/(dK*lambdaL+dL*lambdaK + 1.0e-100);
+					div = (dK*lambdaL+dL*lambdaK);
+					if( div > 0 )
+					{
+						T = A * lambdaK*lambdaL/div;
+						gamma = A * (lambdaK*lambdaL*(yK-yL) + lambdaL*dK*gammaK + lambdaK*dL*gammaL)/div;
+						uK = gamma;
+						uL = gamma;
+					}
+					else if( div < 0 )
+					{
+						T = -A * lambdaK*lambdaL/div;
+						gamma = A * (lambdaK*lambdaL*(yK-yL) + lambdaL*dK*gammaK + lambdaK*dL*gammaL)/div;
+						uK = 2*A*KKn - gamma;
+						uL = 2*A*KLn - gamma;
+					}
+					else
+					{
+						uK = A * KKn;
+						uL = A * KLn;
+						T = 0;
+					}
 				}
-				if( !split_diffusion || T < 0 ) //un-splitted diffusion
+				else //un-splitted diffusion
 				{
 					uK = A * KKn;
 					uL = A * KLn;
 					T = 0;
 				}
+				
+				if( T < 0 ) std::cout << __FILE__ << ":" << __LINE__ << " T=" << T << std::endl;
 
 						
 				//internal
@@ -199,14 +223,31 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 				//don't forget the area!
 				if( split_diffusion )
 				{
-					uK = KKn - ((xKL - xK) * lambdaK / dK);
-					T = lambdaK / dK;
+					if( dK > 0 )
+					{
+						T = lambdaK / dK;
+						gamma = KKn - ((xKL - xK) * lambdaK / dK);
+						uK = gamma;
+					}
+					else if( dK < 0 )
+					{
+						T = -lambdaK / dK;
+						gamma = KKn - ((xKL - xK) * lambdaK / dK);
+						uK = 2*KKn - gamma;
+					}
+					else
+					{
+						T = 0;
+						uK = KKn;
+					}
 				}
-				if( !split_diffusion || T < 0 ) //un-splitted diffusion
+				else //un-splitted diffusion
 				{
 					uK = KKn;
 					T = 0;
 				}
+				
+				if( T < 0 ) std::cout << __FILE__ << ":" << __LINE__ << " T=" << T << std::endl;
 						
 				real bcconds[3] = {0.0,1.0,0.0}; //pure neumann boundary condition
 				if( tag_BC.isValid() && fKL.HaveData(tag_BC) ) //are there boundary conditions on face?
@@ -219,9 +260,9 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 				}
 
 				//account for boundary conditions
-				R  = A*T*bcconds[2]/(bcconds[0] + bcconds[1]*T + 1.0e-100);
-				uK *=A*  bcconds[0]/(bcconds[0] + bcconds[1]*T + 1.0e-100);
-				T  *=A*  bcconds[0]/(bcconds[0] + bcconds[1]*T + 1.0e-100);
+				R  = A*T*bcconds[2]/(bcconds[0] + bcconds[1]*T);
+				uK *=A*  bcconds[0]/(bcconds[0] + bcconds[1]*T);
+				T  *=A*  bcconds[0]/(bcconds[0] + bcconds[1]*T);
 						
 				//on BC
 				if( uK.FrobeniusNorm() > 0 )
@@ -395,7 +436,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 		bulk flag;
 		real_array v;
 #if defined(USE_OMP)
-#pragma omp for 
+#pragma omp for schedule(dynamic)
 #endif
 		for(integer q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
 		{

@@ -34,18 +34,18 @@ typedef Storage::reference_array ref_array;
 
 const bool use_reference_solution = false;
 
-//SchemeType scheme_type = MPFA;
+SchemeType scheme_type = MPFA;
 //SchemeType scheme_type = NMPFA_QUADRATIC_CORRECTED;
 //SchemeType scheme_type = NMPFA_VAN_ALBADA_CORRECTED;
 //SchemeType scheme_type = NMPFA_VAN_ALBADA_CORRECTED;
-SchemeType scheme_type = NMPFA_VAN_ALBADA;
+//SchemeType scheme_type = NMPFA_VAN_ALBADA;
 //SchemeType scheme_type = NMPFA_VAN_LEER;
 //SchemeType scheme_type = NTPFA_PICARD;
 //SchemeType scheme_type = NTPFA;
 OutputMeshFormat output_format = PMF; //current choice of mesh format
 
 //scheme behavior
-bool split_diffusion = false; //diffusion is represented by two-point part plus correction
+bool split_diffusion = true; //diffusion is represented by two-point part plus correction
 bool joint_advection_diffusion = true; //nonlinear weighting is performed for advection and diffusion simultaneously
 //time stepping constants
 //#define FRACTIONAL //tvd-limited fractional time-stepping scheme, bacwards euler if commented
@@ -60,11 +60,11 @@ bool check_div = false; //check that the velocity is divergence free.
 double nonlinear_iterations                = 100; //maximal number of iterations
 double nonlinear_abs_tolerance             = 1.0e-6; //absolute tolerance
 double nonlinear_rel_tolerance             = 1.0e-5; //relative tolerance
-double regularization                      = 1.0e-9; //eps regularization in |x| = sqrt(x*x+eps)
-double degenerate_diffusion_regularization = 1.0e-8; //eps regularization when diffusion goes to zero
+double regularization                      = 1.0e-32; //eps regularization in |x| = sqrt(x*x+eps)
+double degenerate_diffusion_regularization = 1.0e-32; //eps regularization when diffusion goes to zero
 
 //constants for stencils
-int max_layers = 3; //maximum number of layers to be considered in interpolation
+int max_layers = 5; //maximum number of layers to be considered in interpolation
 ElementType bridge_layers = FACE; //used as bridge elements for layers
 
 
@@ -634,10 +634,10 @@ int main(int argc,char ** argv)
 					
 					Solver S(linear_solver_type);
 					
-					S.SetParameterReal("relative_tolerance", 1.0e-14);
-					S.SetParameterReal("absolute_tolerance", 1.0e-12);
+					S.SetParameterReal("relative_tolerance", 1.0e-18);
+					S.SetParameterReal("absolute_tolerance", 1.0e-15);
 					S.SetParameterReal("drop_tolerance", 1.0e-2);
-					S.SetParameterReal("reuse_tolerance", 1.0e-4);
+					S.SetParameterReal("reuse_tolerance", 1.0e-3);
 					S.SetMatrix(R.GetJacobian());
 					std::fill(Update.Begin(),Update.End(),0.0);
 					if( S.Solve(R.GetResidual(),Update) )

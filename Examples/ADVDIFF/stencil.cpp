@@ -2,7 +2,7 @@
 
 using namespace INMOST;
 
-#define HARMONIC_VERSION
+//#define HARMONIC_VERSION
 
 //shortcuts
 typedef Storage::real            real;
@@ -43,6 +43,7 @@ bool find_stencils(Cell cK,
 
 	//remember condition number
 	std::vector<real> mincond(compute.size());
+	std::vector<real> minsum(compute.size());
 	std::vector<integer> minwgt(compute.size());
 
 	//fill data
@@ -50,6 +51,7 @@ bool find_stencils(Cell cK,
 	{
 		minwgt[k] = max_layers*3;
 		mincond[k] = 1.0e+100;
+		minsum[k] = 1.0e+100;
 		compute[k].computed = false;
 	}
 
@@ -387,10 +389,11 @@ bool find_stencils(Cell cK,
 						(rMatrix(compute[l].v,1,3)*V*Sinv*U.Transpose()).Print();
 					}
 				}
+				
 				//check factorization
 				//if( (I - rMatrix::Unit(3)).FrobeniusNorm() < 1.0e-8 )
 				{
-					for(integer l = 0; l < (integer)compute.size(); ++l) if( cond < mincond[l] && combination_wgt < minwgt[l] )
+					for(integer l = 0; l < (integer)compute.size(); ++l) //if( cond < mincond[l] )//&& combination_wgt < minwgt[l] )
 					{
 						//current vector
 						v = rMatrix(compute[l].v,1,3);
@@ -404,19 +407,33 @@ bool find_stencils(Cell cK,
 							coef_sum = 0.0;
 							for(integer q = 0; q < 3; ++q)
 								coef_sum += fabs(coef(0,q));
+								
+							
 							for(integer q = 0; q < 3; ++q)
 							{
 								if( coef(0,q) < 0.0 )
 								{
 									if( coef(0,q)/coef_sum < -1.0e-5 )
 										nonnegative = false;
-									else //truncate small values
-										coef(0,q) = 0.0;
+									//else //truncate small values
+									//	coef(0,q) = 0.0;
 								}
 							}
 							//it's positive and condition number is improved
-							if( nonnegative )
+							if( nonnegative && coef_sum < minsum[l] )
 							{
+								/*
+								if( (I - rMatrix::Unit(3)).FrobeniusNorm() > 1.0e-8 )
+								{
+#pragma omp critical
+									{
+										std::cout << "deviation from unit: " << std::endl;
+										(I - rMatrix::Unit(3)).Print();
+										std::cout << "deviation from conormal: " << std::endl;
+										(v-coef*A).Print();
+									}
+								}
+								*/
 								//remember stencil
 								if( !compute[l].computed )
 								{
@@ -437,6 +454,8 @@ bool find_stencils(Cell cK,
 								compute[l].nonnegative = nonnegative;
 								*compute[l].rhs = compute[l].sign*(bndrhs[C[0]]*coef(0,0) + bndrhs[C[1]]*coef(0,1) + bndrhs[C[2]]*coef(0,2));
 								mincond[l] = cond;
+								minsum[l] = coef_sum;
+								minwgt[l] = combination_wgt;
 							} //if nonnegative
 						} //check coefficients
 					} //loop over stencils
