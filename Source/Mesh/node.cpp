@@ -170,7 +170,7 @@ namespace INMOST
 				}
 			}
 		}
-		for(ElementArray<Face>::size_type it = 0; it < aret.size(); it++) m->RemMarker(aret.at(it),mrk);
+		for(ElementArray<Face>::size_type it = 0; it < aret.size(); it++) m->RemPrivateMarker(aret.at(it),mrk);
 		m->ReleasePrivateMarker(mrk);
 		return aret;
 	}

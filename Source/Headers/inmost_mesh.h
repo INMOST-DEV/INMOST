@@ -3155,6 +3155,7 @@ namespace INMOST
 		bool         remember[5][3];
 	private:
 		void                              RestoreGeometricTags();
+	public:
 		void                              RepairGeometricTags();
 	public:
 		bool                              HideGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
