@@ -76,7 +76,7 @@ using namespace INMOST;
 
 
 	void MTILUC_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-									std::vector<Sparse::Row::entry> & Entries,
+									array<Sparse::Row::entry> & Entries,
 									INMOST_DATA_ENUM_TYPE wmbeg, INMOST_DATA_ENUM_TYPE wmend,
 									std::string file_name)
 	{
@@ -160,7 +160,7 @@ using namespace INMOST;
 		fout.close();
 	}
 	void MTILUC_preconditioner::CheckOrder(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					 std::vector<Sparse::Row::entry> & Entries, 
+					 array<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend)
 	{
 		INMOST_DATA_ENUM_TYPE i,r;
@@ -210,7 +210,7 @@ using namespace INMOST;
 		}
 	}
 	void MTILUC_preconditioner::SwapEntries(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					 std::vector<Sparse::Row::entry> & Entries, 
+					 array<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend, 
 					 INMOST_DATA_ENUM_TYPE k, INMOST_DATA_ENUM_TYPE j)
 	{
@@ -493,7 +493,7 @@ using namespace INMOST;
 		//sort_indeces.reserve(256);
 		A_Entries.resize(nzA);
 		B_Entries.reserve(nzA);
-		LU_Entries.reserve(nzA*4);
+		//LU_Entries.reserve(nzA*4);
 
 #if defined(REORDER_NNZ)
 		wgt_coords sort_wgts(2*(moend - mobeg));
@@ -584,11 +584,11 @@ using namespace INMOST;
 #if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0;
 		INMOST_DATA_REAL_TYPE tau2 = iluc2_tau;
-		std::vector<Sparse::Row::entry> LU2_Entries;
+		array<Sparse::Row::entry> LU2_Entries;
 		interval<INMOST_DATA_ENUM_TYPE, Interval> L2_Address(mobeg, moend+1), U2_Address(mobeg, moend+1);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> U2list(mobeg, moend, UNDEF), L2list(mobeg, moend, UNDEF);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> U2beg(mobeg, moend, EOL), L2beg(mobeg, moend, EOL);
-		LU2_Entries.reserve(nzA*4);
+		//LU2_Entries.reserve(nzA*4);
 #else
 		INMOST_DATA_REAL_TYPE tau2 = tau;
 #endif
@@ -2767,7 +2767,7 @@ swap_algorithm:
           //insert line to U part
 					U_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
-          U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
+					U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
 					Ui = LineIndecesU[k];
 					while (Ui != EOL)
@@ -2792,7 +2792,7 @@ swap_algorithm:
 					Li = LineIndecesL[k];
 					L_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
-          L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
+					L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
 					while (Li != EOL)
 					{
@@ -2808,7 +2808,7 @@ swap_algorithm:
 					}
 					L_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU_Entries.size());
 #if defined(ILUC2)
-          L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
+					L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
 ///////////////////////////////////////////////////////////////////////////////////
 //                 Update estimator vectors                                      //
@@ -3160,17 +3160,17 @@ swap_algorithm:
 					if (k % 100 == 0)
 					{
 						
-						std::cout << std::fixed << std::setprecision(2) << std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg) << "%";
-						std::cout << " nnz LU " << std::setprecision(10) << std::setw(10) << nzLU;
+						std::cout << /*std::fixed << std::setprecision(2) <<*/ std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg) << "%";
+						std::cout << " nnz LU " /*<< std::setprecision(10)*/ << std::setw(10) << nzLU;
 #if defined(ILUC2)
 						std::cout << " LU2 " << std::setw(10) << nzLU2;
 #endif
-						std::cout << std::scientific << std::setprecision(5) << " condition L " << NuL << " D " << NuD << " U " << NuU;
-            std::cout << " pivot swaps " << swaps;
+						std::cout << /*std::scientific << std::setprecision(5) <<*/ " condition L " << NuL << " D " << NuD << " U " << NuU;
+						std::cout << " pivot swaps " << swaps;
 						std::cout << "\r"; //carrige return
 						std::cout.flush();
-            //std::cout << std::endl;
-						std::cout << std::setprecision(0);
+						//std::cout << std::endl;
+						//std::cout << std::setprecision(0);
 						//std::cout.setf(0,std::ios::floatfield);
 						
 						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);

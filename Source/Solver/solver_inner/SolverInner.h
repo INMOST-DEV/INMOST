@@ -6,6 +6,7 @@
 #include "solver_prototypes.hpp"
 #include "solver_bcgsl.hpp"
 #define KSOLVER BCGS_solver
+//#define ACCELERATED_CONDEST
 
 namespace INMOST {
 

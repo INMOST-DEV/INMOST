@@ -16,22 +16,18 @@ class MTILUC_preconditioner : public Method
 	typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> coord;
 	typedef std::pair<INMOST_DATA_REAL_TYPE, coord > wgt_coord;
 	typedef std::vector< wgt_coord > wgt_coords;
-	typedef struct row_col_t
-	{
-		Sparse::Row row, col;
-		INMOST_DATA_REAL_TYPE diag;
-	} row_col;
 	typedef dynarray<INMOST_DATA_ENUM_TYPE,256> levels_t;
 	
 	//Sparse::Vector div;
-	std::vector<Sparse::Row::entry> LU_Entries, B_Entries;
+	array<Sparse::Row::entry> LU_Entries;
+	std::vector<Sparse::Row::entry> B_Entries;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LU_Diag;
 	interval<INMOST_DATA_ENUM_TYPE, Interval> U_Address, L_Address, B_Address;
 	
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> temp; // temporal place for solve phase
 	//reordering information
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE > ddP,ddQ;
-  INMOST_DATA_REAL_TYPE condestL, condestU;	
+	INMOST_DATA_REAL_TYPE condestL, condestU;	
 	INMOST_DATA_ENUM_TYPE estimator;
 	INMOST_DATA_REAL_TYPE iluc2_tau;
 	INMOST_DATA_REAL_TYPE tau, eps;
@@ -40,14 +36,14 @@ class MTILUC_preconditioner : public Method
 	Solver::OrderInfo * info;
 	bool init;
 	void DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-									std::vector<Sparse::Row::entry> & Entries,
+									array<Sparse::Row::entry> & Entries,
 									INMOST_DATA_ENUM_TYPE wmbeg, INMOST_DATA_ENUM_TYPE wmend,
 									std::string file_name);
 	void CheckOrder(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					 std::vector<Sparse::Row::entry> & Entries, 
+					 array<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend);
 	void SwapEntries(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					 std::vector<Sparse::Row::entry> & Entries, 
+					 array<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend, 
 					 INMOST_DATA_ENUM_TYPE k, INMOST_DATA_ENUM_TYPE j);
 	void SwapLine(interval<INMOST_DATA_ENUM_TYPE, Interval> & Line, INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j);
