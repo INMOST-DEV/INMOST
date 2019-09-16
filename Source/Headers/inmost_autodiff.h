@@ -235,7 +235,7 @@ namespace INMOST
 		/// Return vector filled with unknowns of the block with their derivatives.
 		upMatrix Unknown(const Storage & e) const {return VectorEntry::operator [](e);}
 		/// Return vector filled with unknowns of the block with their derivatives.
-		upMatrix operator [](const Storage & e) const { upMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(0,0) = Unknown(e,k); return ret; }
+		upMatrix operator [](const Storage & e) const { upMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Unknown(e,k); return ret; }
 		/// The intended size of the matrix for this entry.
 		INMOST_DATA_ENUM_TYPE MatrixSize(const Storage & e) const {return (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size();}
 		/// Number of tags in block.
