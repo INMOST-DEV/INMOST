@@ -6,8 +6,6 @@
 
 #include "inmost_solver.h"
 #include "../solver_prototypes.hpp"
-//#define REPORT_ILU
-//#define REPORT_ILU_PROGRESS
 using namespace INMOST;
 
 #define DEFAULT_TAU 0.005
@@ -27,11 +25,12 @@ private:
     std::vector<INMOST_DATA_REAL_TYPE> luv;
     std::vector<INMOST_DATA_ENUM_TYPE> lui;
     interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ilu, iu;
-    INMOST_DATA_ENUM_TYPE Lfill;
+    INMOST_DATA_ENUM_TYPE Lfill,verbosity;
     INMOST_DATA_REAL_TYPE tau, tau2;
     Sparse::Vector DL, DR;
     INMOST_DATA_ENUM_TYPE nnz, sciters;
     bool init;
+    
 public:
     INMOST_DATA_REAL_TYPE &RealParameter(std::string name)
     {
@@ -44,6 +43,7 @@ public:
     {
         if (name == "fill") return Lfill;
         else if (name == "scale_iters") return sciters;
+        else if (name == "verbosity" ) return verbosity;
         throw -1;
     }
 
@@ -54,6 +54,7 @@ public:
         init = false;
         sciters = 12;
         Lfill = 1;
+        verbosity = 0;
     }
 
     bool Initialize()
@@ -99,11 +100,13 @@ public:
         iu.set_interval_end(moend);
         ilu[mobeg] = 0;
         ir[mobeg] = 0;
-#if defined(REPORT_ILU)
-        std::cout << "Matrix overlap    " << mobeg << ".." << moend << std::endl;
-        std::cout << "Local vector part " << vlocbeg << ".." << vlocend << std::endl;
-        std::cout << "Entire vector     " << vbeg << ".." << vend << std::endl;
-#endif
+		if( verbosity > 1 )
+		{
+			std::cout << "Matrix overlap    " << mobeg << ".." << moend << std::endl;
+			std::cout << "Local vector part " << vlocbeg << ".." << vlocend << std::endl;
+			std::cout << "Entire vector     " << vbeg << ".." << vend << std::endl;
+		}
+
         //Rescale Matrix
         DL.SetInterval(mobeg, moend);
         info->PrepareVector(DR);
@@ -143,15 +146,19 @@ public:
         //for(k = mobeg; k != moend; k++) nza += A[k].Size();
         for (k = mobeg; k != moend; k++)
         {
-#if defined(REPORT_ILU_PROGRESS)
-            if (k % 1000 == 0)
-            {
-                //std::cout << "precond: " << (double)(k-mobeg)/(double)(moend-mobeg)*100 << "\r";
-                //printf("%6.2f nza %12d nzl %12d nzu %12d nzu2 %12d\r", (double)(k-mobeg)/(double)(moend-mobeg)*100,nza,nzl,nzu,nzu2);
-                printf("precond: %6.2f\r", (double)(k - mobeg) / (double)(moend - mobeg) * 100);
-                fflush(stdout);
-            }
-#endif
+			if( verbosity)
+			{
+				if (k % 100 == 0)
+				{
+					//std::cout << "precond: " << (double)(k-mobeg)/(double)(moend-mobeg)*100 << "\r";
+					if( verbosity )//== 1 )
+						printf("precond: %6.2f\r", (double)(k - mobeg) / (double)(moend - mobeg) * 100);
+					//else //statistics computation removed!
+					//	printf("%6.2f nza %12d nzl %12d nzu %12d nzu2 %12d\r", (double)(k-mobeg)/(double)(moend-mobeg)*100,nza,nzl,nzu,nzu2);
+					fflush(stdout);
+				}
+			}
+
             //Uncompress row
             //row_uncompr
             Sparse::Row &Ak = (*Alink)[k];
@@ -425,24 +432,25 @@ public:
                 rit->second = rit->second / DL[k] / DR[rit->first];
         //std::cout << "matisc: " << Timer() - timer << std::endl;
 
-#if defined(REPORT_ILU)
-        INMOST_DATA_ENUM_TYPE nzu,nzl, nza;
-        nzu = 0;
-        nzl = 0;
-        nza = 0;
-        for(INMOST_DATA_ENUM_TYPE k = mobeg; k < moend; k++)
-        {
-            nzl += iu[k] - ilu[k];
-            nzu += ilu[k+1] - iu[k] - 1;
-            nza += (*Alink)[k].Size();
-        }
-        std::cout << "      nonzeros in A = " << nza << std::endl;
-        std::cout << "      nonzeros in L = " << nzl - (moend-mobeg) << std::endl;
-        std::cout << "      nonzeros in U = " << nzu << std::endl;
-        std::cout << "     nonzeros in LU = " << ilu[moend] - 1 << std::endl;
-        std::cout << "     nonzeros in U2 = " << ir[moend] - 1 << std::endl;
+		if( verbosity > 1  )
+		{
+			INMOST_DATA_ENUM_TYPE nzu,nzl, nza;
+			nzu = 0;
+			nzl = 0;
+			nza = 0;
+			for(INMOST_DATA_ENUM_TYPE k = mobeg; k < moend; k++)
+			{
+				nzl += iu[k] - ilu[k];
+				nzu += ilu[k+1] - iu[k] - 1;
+				nza += (*Alink)[k].Size();
+			}
+			std::cout << "      nonzeros in A = " << nza << std::endl;
+			std::cout << "      nonzeros in L = " << nzl - (moend-mobeg) << std::endl;
+			std::cout << "      nonzeros in U = " << nzu << std::endl;
+			std::cout << "     nonzeros in LU = " << ilu[moend] - 1 << std::endl;
+			std::cout << "     nonzeros in U2 = " << ir[moend] - 1 << std::endl;
+		}
         //std::cout << __FUNCTION__ << " done" << std::endl;
-#endif
 
 		/*
         info->PrepareVector(div);
@@ -488,6 +496,7 @@ public:
         lui = b->lui;
         iu = b->iu;
         ilu = b->ilu;
+        verbosity = b->verbosity;
     }
 
     ILU2_preconditioner(const ILU2_preconditioner &other)

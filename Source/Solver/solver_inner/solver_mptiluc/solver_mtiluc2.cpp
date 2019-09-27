@@ -7,12 +7,6 @@
 #include <deque>
 #include <iomanip>
 #include "../../../Misc/utils.h"
-//#define REPORT_ILU
-//#undef REPORT_ILU
-//#define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
-//#undef REPORT_ILU_PROGRESS
 
 //#define USE_OMP
 
@@ -331,6 +325,7 @@ using namespace INMOST;
 	{
 		if (name == "scale_iters") return sciters;
 		else if( name == "estimator" ) return estimator;
+		else if( name == "verbosity" ) return verbosity;
 		throw - 1;
 	}
 	INMOST_DATA_REAL_TYPE & MTILUC_preconditioner::RealParameter(std::string name)
@@ -350,6 +345,7 @@ using namespace INMOST;
 		info = b->info;
 		sciters = b->sciters;
 		eps = b->eps;
+		verbosity = b->verbosity;
 	}
 	MTILUC_preconditioner::MTILUC_preconditioner(const MTILUC_preconditioner & other) :Method(other)
 	{
@@ -372,6 +368,7 @@ using namespace INMOST;
 #else
 		estimator = 0;
 #endif
+		verbosity = 0;
 		tau = 1.0e-3;
 		iluc2_tau = tau*tau;
 	}
@@ -601,10 +598,10 @@ using namespace INMOST;
 			L2_Address[k].first = L2_Address[k].last = ENUMUNDEF;
 		}
 
-#if defined(REPORT_ILU)
-		std::cout << "nonzeros in A " << nzA << std::endl;
+
+		if( verbosity > 1 ) 
+			std::cout << "nonzeros in A " << nzA << std::endl;
 		int swaps = 0;
-#endif
 		//set up working interval
 		wbeg = mobeg;
 		wend = moend;
@@ -901,9 +898,8 @@ using namespace INMOST;
 			tt = Timer();
 #if defined(REORDER_DDPQ)
 
-#if defined(REPORT_ILU)
-			std::cout << level_size.size() << " calculate weights" << std::endl;
-#endif
+			if( verbosity > 1 )
+				std::cout << level_size.size() << " calculate weights" << std::endl;
 			std::fill(DL.Begin() + wbeg - mobeg, DL.Begin() + wend - mobeg, 0.0);
 			std::fill(DR.Begin() + wbeg - mobeg, DR.Begin() + wend - mobeg, 0.0);
 			std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, 0);
@@ -964,9 +960,9 @@ using namespace INMOST;
 			}
 			//if(reorder_nnz) 
 				std::sort(sort_wgts.rbegin(), sort_wgts.rend());
-#if defined(REPORT_ILU)
-			std::cout << level_size.size() << " fill reordering" << std::endl;
-#endif
+			if( verbosity > 1 )
+				std::cout << level_size.size() << " fill reordering" << std::endl;
+
 			i = wbeg;
 			for (wgt_coords::iterator it = sort_wgts.begin(); it != sort_wgts.end(); ++it)
 			{
@@ -1319,12 +1315,13 @@ using namespace INMOST;
 				break;
 			}
 #if defined(REORDER_DDPQ)
-#if defined(REPORT_ILU)
-			//std::cout << level_size.size() << " new level " << cbeg << ".." << cend << " out of " << wbeg << ".." << wend << std::endl;
-			std::cout << std::setw(8) << level_size.size() << " total " << std::setw(8) << wend - wbeg << " after tau filtering " << std::setw(8) << sort_wgts.size() << " selected " << std::setw(8) << cend - wbeg;
-			std::cout << std::scientific << " max " << std::setw(8) << ddmaxall << " mean " << std::setw(8) << ddmaxmean << " min " << std::setw(8) << ddmaxmin << " ratio " << ddmaxall/ddmaxmean;
-			std::cout << std::endl;
-#endif
+			if( verbosity > 1 )
+			{
+				//std::cout << level_size.size() << " new level " << cbeg << ".." << cend << " out of " << wbeg << ".." << wend << std::endl;
+				std::cout << std::setw(8) << level_size.size() << " total " << std::setw(8) << wend - wbeg << " after tau filtering " << std::setw(8) << sort_wgts.size() << " selected " << std::setw(8) << cend - wbeg;
+				std::cout << std::scientific << " max " << std::setw(8) << ddmaxall << " mean " << std::setw(8) << ddmaxmean << " min " << std::setw(8) << ddmaxmin << " ratio " << ddmaxall/ddmaxmean;
+				std::cout << std::endl;
+			}
 #endif
 			tt = Timer();
 			//finish reordering
@@ -1431,9 +1428,9 @@ using namespace INMOST;
 			//Rescale current B block by Row-Column alternating scaling
 			tt = Timer();
 #if defined(RESCALE_B)
-#if defined(REPORT_ILU)
-			std::cout << " rescaling block B " << std::endl;
-#endif
+			if( verbosity > 1 )
+				std::cout << " rescaling block B " << std::endl;
+
 			for (k = cbeg; k < cend; k++)
 			{
 				for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
@@ -1640,9 +1637,8 @@ using namespace INMOST;
 /////////// FACTORIZATION BEGIN ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
-        //int discarded = 0;
-#if defined(ILUC2)
 				nzLU2 = 0;
+#if defined(ILUC2)
 				LU2_Entries.clear();
 #endif
 				mean_diag = 0.0;
@@ -1868,9 +1864,8 @@ using namespace INMOST;
 				max_diag = min_diag = fabs(LU_Diag[cbeg]);
 				*/
 				NuD = 1.0;
-#if defined(REPORT_ILU)
-				std::cout << " starting factorization " << std::endl;
-#endif
+				if( verbosity > 1 )
+					std::cout << " starting factorization " << std::endl;
 				for (k = cbeg; k < cend; ++k)
 				{
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1923,11 +1918,12 @@ swap_algorithm:
 						{
 							//TODO!!!
 							
-#if defined(REPORT_ILU)
 							++swaps;
-							//std::cout << "Detected, that there is a much better pivot, i'm " << k << " " << LU_Diag[k] << " other " << j << " " << LU_Diag[j] << std::endl;
-							//std::cout << "Condition numbers: L " << NuL << " D " << NuD << " U " << NuU << std::endl;
-#endif
+							if( verbosity > 2 )
+							{
+								std::cout << "Detected, that there is a much better pivot, i'm " << k << " " << LU_Diag[k] << " other " << j << " " << LU_Diag[j] << std::endl;
+								std::cout << "Condition numbers: L " << NuL << " D " << NuD << " U " << NuU << std::endl;
+							}
 							//scanf("%*c");
 							//std::cout << "But repivoting algorithm not implemented" << std::endl;
 							//This algorithm may be quite costly, but the effect is miraculous
@@ -2712,20 +2708,19 @@ swap_algorithm:
 					NuU_tmp = NuU1_new;
 					NuL_tmp = NuL1_new;
 #endif
-          if( k != cend-1 && no_swap_algorithm && (NuU_tmp > DIAGONAL_PIVOT_COND || NuL_tmp > DIAGONAL_PIVOT_COND) )
-          {
-#if defined(REPORT_ILU)
-            std::cout << "Requested pivoting based on condition estimator (L" << NuL1_new << " " << NuL2_new << " U " << NuU1_new << " " << NuU2_new << ")! row " << k << "/" << cend << std::endl;
-#endif //REPORT_ILU
-            //restore condition number
+					if( k != cend-1 && no_swap_algorithm && (NuU_tmp > DIAGONAL_PIVOT_COND || NuL_tmp > DIAGONAL_PIVOT_COND) )
+					{
+						if( verbosity > 1 )
+							std::cout << "Requested pivoting based on condition estimator (L" << NuL1_new << " " << NuL2_new << " U " << NuU1_new << " " << NuU2_new << ")! row " << k << "/" << cend << std::endl;
+						//restore condition number
 						NuL1 = NuU1_old;
 						NuU1 = NuU1_old;
 #if defined(ESTIMATOR_REFINE)
 						NuL2 = NuU2_old;
-            NuU2 = NuU2_old;
+						NuU2 = NuU2_old;
 #endif
-            //clean up values
-            Li = cbeg;
+						//clean up values
+						Li = cbeg;
 						while (Li != EOL)
 						{
 							i = LineIndecesL[Li];
@@ -2741,11 +2736,11 @@ swap_algorithm:
 							LineIndecesU[Ui] = UNDEF; //clean indeces after use
 							Ui = i;
 						}
-            goto swap_algorithm;
-          }
-          else
+						goto swap_algorithm;
+					}
+					else
 #endif //DIAGONAL_PIVOT / DIAGONAL_PIVOT_COND
-          {
+					{
 #if defined(ESTIMATOR_REFINE)
 						NuL = std::max(NuL1_new,NuL2_new);
 						NuU = std::max(NuU1_new,NuU2_new);
@@ -2756,9 +2751,9 @@ swap_algorithm:
 						NuL_max = std::max(NuL,NuL_max);
 						NuU_max = std::max(NuU,NuU_max);
 			  
-			  NuUsqrt = sqrt(NuU);
-			  NuLsqrt = sqrt(NuL);
-          }
+						NuUsqrt = sqrt(NuU);
+						NuLsqrt = sqrt(NuL);
+					}
 #endif //ESTIMATOR
 					
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3156,46 +3151,35 @@ swap_algorithm:
 					//number of nonzeros
 					nzLU += U_Address[k].Size() + L_Address[k].Size() + 1;
 					
-#if defined(REPORT_ILU)
-					if (k % 100 == 0)
+
+					if( verbosity )
 					{
-						
-						std::cout << /*std::fixed << std::setprecision(2) <<*/ std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg) << "%";
-						std::cout << " nnz LU " /*<< std::setprecision(10)*/ << std::setw(10) << nzLU;
-#if defined(ILUC2)
-						std::cout << " LU2 " << std::setw(10) << nzLU2;
-#endif
-						std::cout << /*std::scientific << std::setprecision(5) <<*/ " condition L " << NuL << " D " << NuD << " U " << NuU;
-						std::cout << " pivot swaps " << swaps;
-						std::cout << "\r"; //carrige return
-						std::cout.flush();
-						//std::cout << std::endl;
-						//std::cout << std::setprecision(0);
-						//std::cout.setf(0,std::ios::floatfield);
-						
-						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
-						//fflush(stdout);
+						if( k % 100 == 0 )
+						{
+							if (verbosity == 1)
+							{
+								printf("%d/%d factor %6.2f%%\t\t\r",cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
+								//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
+								fflush(stdout);
+							}
+							else 
+							{
+								printf("%6.2f%% nnz LU %8d LU2 %8d condition L %10f D %10f U %10f pivot %d\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, nzLU2, NuL, NuD, NuU, swaps);
+								fflush(stdout);
+							}
+						}
 					}
-#elif defined(REPORT_ILU_PROGRESS)
-					if (k % 500 == 0)
-					{
-						printf("%d/%d factor %6.2f%%\t\t\r",cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
-						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
-						fflush(stdout);
-					}
-#endif
 ///////////////////////////////////////////////////////////////////////////////////
 //                       iteration done                                          //
 ///////////////////////////////////////////////////////////////////////////////////
 				}
-#if defined(REPORT_ILU_END)
-        std::cout << "size " << moend-mobeg;
-				std::cout << " total nonzeros in A " << nzA << " in LU " << nzLU;
-#if defined(ILUC2)
-				std::cout << " in LU2 " << nzLU2;
-#endif
-				std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max/* << " pivot swaps " << swaps*/ << std::endl;
-#endif
+				if( verbosity > 1 )
+				{
+					std::cout << "size " << moend-mobeg;
+					std::cout << " total nonzeros in A " << nzA << " in LU " << nzLU;
+					std::cout << " in LU2 " << nzLU2;
+					std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max/* << " pivot swaps " << swaps*/ << std::endl;
+				}
 			}
 			tlfactor = Timer() - tt;
 			tfactor += tlfactor;
@@ -3225,9 +3209,9 @@ swap_algorithm:
 			//After we have factored the rescaled matrix we must rescale obtained factors
 			tt = Timer();
 #if defined(RESCALE_B)
-#if defined(REPORT_ILU)
-			std::cout << " rescaling block B back " << std::endl;
-#endif
+			if( verbosity > 1 )
+				std::cout << " rescaling block B back " << std::endl;
+
 			for (k = cbeg; k < cend; ++k)
 			{
 				LU_Diag[k] /= DL[k] * DR[k];
@@ -3246,18 +3230,6 @@ swap_algorithm:
 /////////// RESCALING DONE   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			
-			/*
-//#if defined(REPORT_ILU)
-			std::cout << "============================================================================" << std::endl;
-			//std::cout << "factor: " << tlrescale + tlfactor << " trescale: " << tlrescale << " tfactor " << tlfactor << std::endl;
-			//std::cout << "schur:  " << tlreorder + tlreassamble + tlschur << " treorder: " << tlreorder << " treassamble " << tlreassamble << " tschur: " << tlschur << std::endl;
-			std::cout << " time ratio " << ratio << std::endl;
-			std::cout << " time ratio2 " << ratio2 << std::endl;
-			std::cout << " ddpq_tau " << ddpq_tau << std::endl;
-			std::cout <<  cbeg << "..." << cend << " of " << mobeg << "..." << moend << " level " << level_size.size() << std::endl;
-			std::cout << "============================================================================" << std::endl;
-//#endif
-			*/
 			wend = wbeg;
 		}
 		
@@ -3270,29 +3242,30 @@ swap_algorithm:
 ///////////  FACTORIZATION COMPLETE ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		ttotal = Timer() - ttotal;
-#if defined(REPORT_ILU_SUMMARY)
-		printf("total      %f\n",ttotal);
-		printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
-		printf("   mpt     %f (%6.2f%%)\n",ttransversal, 100.0*ttransversal/ttotal);
+		if( verbosity > 2 )
+		{
+			printf("total      %f\n",ttotal);
+			printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
+			printf("   mpt     %f (%6.2f%%)\n",ttransversal, 100.0*ttransversal/ttotal);
 #if defined(REORDER_METIS_ND)
-		printf("   graph   %f (%6.2f%%)\n",tmetisgraph, 100.0*tmetisgraph/ttotal);
-		printf("   nd      %f (%6.2f%%)\n", tmetisnd, 100.0*tmetisnd/ttotal);
+			printf("   graph   %f (%6.2f%%)\n",tmetisgraph, 100.0*tmetisgraph/ttotal);
+			printf("   nd      %f (%6.2f%%)\n", tmetisnd, 100.0*tmetisnd/ttotal);
 #endif
 #if defined(REORDER_RCM)
-		printf("   graph   %f (%6.2f%%)\n",trcmgraph, 100.0*trcmgraph/ttotal);
-		printf("   rcm     %f (%6.2f%%)\n", trcmorder, 100.0*trcmorder/ttotal);
+			printf("   graph   %f (%6.2f%%)\n",trcmgraph, 100.0*trcmgraph/ttotal);
+			printf("   rcm     %f (%6.2f%%)\n", trcmorder, 100.0*trcmorder/ttotal);
 #endif
-		printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
-		printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
-		printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
-		printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
-		printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
+			printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
+			printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
+			printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
+			printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
+			printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
 #if defined(ILUC2)
-		printf("nnz A %d LU %d LU2 %d\n",nzA,nzLU,nzLU2);//, swaps);
+			printf("nnz A %d LU %d LU2 %d\n",nzA,nzLU,nzLU2);//, swaps);
 #else
-		printf("nnz A %d LU %d swaps %d\n",nzA,nzLU,swaps);
+			printf("nnz A %d LU %d swaps %d\n",nzA,nzLU,swaps);
 #endif
-#endif
+		}
 		init = true;
 		/*
 		level_interval.resize(level_size.size());

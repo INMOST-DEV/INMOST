@@ -176,7 +176,7 @@ namespace INMOST {
 
     void SolverK3BIILU2::SetParameter(std::string name, std::string value) {
         const char *val = value.c_str();
-        if (name == "msglev" ) solver_data->pParIter->msglev = atoi(val);
+        if (name == "msglev" || name == "verbosity" ) solver_data->pParIter->msglev = atoi(val);
         else if (name == "kovl" || name == "schwartz_overlap") solver_data->pParams->ncycle = atoi(val);
         else if (name == "tau" || name == "drop_tolerance" ) 
         {

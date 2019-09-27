@@ -8,7 +8,7 @@
 namespace INMOST {
 
     class SolverMPTILUC : public SolverInner {
-        INMOST_DATA_ENUM_TYPE rescale_iterations, condition_estimation, schwartz_overlap, gmres_substeps, reorder_nnz, fill_level;
+        INMOST_DATA_ENUM_TYPE rescale_iterations, condition_estimation, schwartz_overlap, gmres_substeps, reorder_nnz, fill_level, verbosity;
         INMOST_DATA_REAL_TYPE drop_tolerance, reuse_tolerance;
     public:
         SolverMPTILUC();

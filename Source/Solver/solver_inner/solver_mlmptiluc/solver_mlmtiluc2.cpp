@@ -5,12 +5,7 @@
 #include <sstream>
 #include <deque>
 #include <iomanip>
-//#define REPORT_ILU
-//#undef REPORT_ILU
-//#define REPORT_ILU_PROGRESS
-//#define REPORT_ILU_END
-//#define REPORT_ILU_SUMMARY
-//#undef REPORT_ILU_PROGRESS
+
 #include "../../../Misc/utils.h"
 //#define USE_OMP
 
@@ -321,6 +316,7 @@ static bool allow_pivot = true;
 	{
 		if (name == "scale_iters") return sciters;
 		else if( name == "estimator" ) return estimator;
+		else if( name == "verbosity" ) return verbosity;
 		throw - 1;
 	}
 	INMOST_DATA_REAL_TYPE & MLMTILUC_preconditioner::RealParameter(std::string name)
@@ -596,8 +592,9 @@ static bool allow_pivot = true;
 		INMOST_DATA_REAL_TYPE EUnorm, EUnum, EUmax, EUmin, EUtau, EUdrop;
 		INMOST_DATA_REAL_TYPE Snorm, Snum, Smax, Smin, Stau, Sdrop;
 
-#if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0, nzLU2tot = 0, ndrops = 0;
+#if defined(ILUC2)
+		
 		INMOST_DATA_REAL_TYPE tau2 = iluc2_tau;
 		std::vector<Sparse::Row::entry> LU2_Entries;
 		interval<INMOST_DATA_ENUM_TYPE, Interval> L2_Address(mobeg, moend+1), U2_Address(mobeg, moend+1);
@@ -616,9 +613,9 @@ static bool allow_pivot = true;
 			L2_Address[k].first = L2_Address[k].last = ENUMUNDEF;
 		}
 
-#if defined(REPORT_ILU)
-		std::cout << "nonzeros in A " << nzA << " pivot cond " << pivot_cond << " diag " << pivot_diag << " tau " << tau << " tau2 " << tau2 << std::endl;
-#endif
+		if( verbosity > 1 ) 
+			std::cout << "nonzeros in A " << nzA << " pivot cond " << pivot_cond << " diag " << pivot_diag << " tau " << tau << " tau2 " << tau2 << std::endl;
+
 		
 		int swaps = 0, totswaps = 0;
 		//set up working interval
@@ -635,9 +632,9 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 			if( run_mpt )
 			{
-#if defined(REPORT_ILU)
-				printf("Reordering with MPT\n");
-#endif
+				if( verbosity > 1 )
+					printf("Reordering with MPT\n");
+
 				ttransversal = Timer();
 				INMOST_DATA_ENUM_TYPE ColumnBegin;
 				INMOST_DATA_ENUM_TYPE pop_heap_pos;
@@ -959,9 +956,9 @@ static bool allow_pivot = true;
 				ttransversal = Timer() - ttransversal;
 
 				treorder += ttransversal;
-#if defined(REPORT_ILU)
-				printf("Time %g\n",ttransversal);
-#endif
+				if( verbosity > 1 )
+					printf("Time %g\n",ttransversal);
+
 			}
 			else
 			{
@@ -979,9 +976,9 @@ static bool allow_pivot = true;
 			idx_t nvtxs = wend-wbeg;
 			std::vector<idx_t> xadj(nvtxs+1), adjncy, perm(nvtxs),iperm(nvtxs);
 			//adjncy.reserve(nzA*2);
-#if defined(REPORT_ILU)
-			printf("Reordering with METIS\n");
-#endif
+			if( verbosity > 1 )
+				printf("Reordering with METIS\n");
+
 			
 			for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) printf("%s:%d No column permutation for row %d. Matrix is structurally singular\n",__FILE__,__LINE__,k);
 
@@ -1132,9 +1129,8 @@ static bool allow_pivot = true;
 			i = wend;
 #elif defined(REORDER_RCM)
 			{
-#if defined(REPORT_ILU)
-				printf("Reordering with RCM\n");
-#endif
+				if( verbosity ) 
+					printf("Reordering with RCM\n");
 				//create a symmetric graph of the matrix A + A^T
 				std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1), adjncy;
 				//adjncy.reserve(nzA*2);
@@ -1293,10 +1289,11 @@ static bool allow_pivot = true;
 #endif
 			tt = Timer() - tt;
 			treorder += tt;
-#if defined(REPORT_ILU)
-			printf("Time %g\n",tt);
-			printf("Reorder\n");
-#endif
+			if( verbosity > 1 )
+			{
+				printf("Time %g\n",tt);
+				printf("Reorder\n");
+			}
 			tt = Timer();
 			if (cbeg == cend && cbeg != wend)
 			{
@@ -1344,15 +1341,13 @@ static bool allow_pivot = true;
 			
 			tlreorder = Timer() - tt;
 			treorder += tlreorder;
-#if defined(REPORT_ILU)
-			printf("Time %g\n",tlreorder);
-#endif
+			if( verbosity > 1 )
+				printf("Time %g\n",tlreorder);
 ///////////////////////////////////////////////////////////////////////////////////
 ///                  REASSAMBLE                                                 ///
 ///////////////////////////////////////////////////////////////////////////////////
-#if defined(REPORT_ILU)
-			printf("Reassemble\n");
-#endif
+			if( verbosity > 1 ) 
+				printf("Reassemble\n");
 			//tt = Timer();
 			double tt1, tt2,ttt;
 			//in localPQ numbers indicate where to put current row/column
@@ -1432,9 +1427,8 @@ static bool allow_pivot = true;
 			*/
 			tlreassamble = Timer() - tt;
 			treassamble += tlreassamble;
-#if defined(REPORT_ILU)
-			printf("Time %g\n",tlreassamble);
-#endif
+			if( verbosity > 1 )
+				printf("Time %g\n",tlreassamble);
 ///////////////////////////////////////////////////////////////////////////////////
 ///                  RESCALING                                                  ///
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1442,9 +1436,9 @@ static bool allow_pivot = true;
 			tt = Timer();
 			if( rescale_b )
 			{
-#if defined(REPORT_ILU)
-				std::cout << " rescaling block B " << std::endl;
-#endif
+				if( verbosity > 1 )
+					std::cout << " rescaling block B " << std::endl;
+
 				
 #if defined(EQUALIZE_1NORM) || defined(EQUALIZE_2NORM)
 				for (k = cbeg; k < cend; k++) DL[k] = DR[k] = 1.0;
@@ -1714,9 +1708,9 @@ static bool allow_pivot = true;
 				//End rescale B block
 				tlrescale = Timer() - tt;
 				trescale += tlrescale;
-#if defined(REPORT_ILU)
-				printf("Time %g\n",tlrescale);
-#endif
+				if( verbosity > 1 )
+					printf("Time %g\n",tlrescale);
+
 			}
 			/*
 			{
@@ -1775,9 +1769,9 @@ static bool allow_pivot = true;
 				max_diag = 0;
 				min_diag = 1.0e300;
 				NuD = 1.0;
-#if defined(REPORT_ILU)
-				std::cout << " starting factorization " << std::endl;
-#endif
+				if( verbosity > 1 )
+					std::cout << " starting factorization " << std::endl;
+
 				for (k = cbeg; k < cend; ++k)
 				{
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2899,49 +2893,28 @@ static bool allow_pivot = true;
 #endif //TRACK_DIAGONAL
 					//number of nonzeros
 					nzLU += U_Address[k].Size() + L_Address[k].Size() + 1;
-#if defined(REPORT_ILU)
-					//if (k % 2000 == 0)
+					if( verbosity )
 					{
-						
-						std::cout << /*std::fixed << std::setprecision(2) <<*/ std::setw(6) << 100.0f*(k - cbeg) / (float)(cend - cbeg-1) << "%";
-						std::cout << " nnz LU " << /*std::setprecision(10) <<*/ std::setw(10) << nzLU;
-#if defined(ILUC2)
-						std::cout << " LU2 " << std::setw(10) << nzLU2;
-#endif
-						//std::cout << std::scientific << std::setprecision(5);
-						std::cout << " condition L " << NuL << " D " << NuD << " U " << NuU;
-						std::cout << " swaps " << swaps;
-						std::cout << " drops " << ndrops;
-						std::cout << "\r"; //carrige return
-						std::cout.flush();
-						//std::cout << std::endl;
-						//std::cout << std::setprecision(0);
-						//std::cout.setf(0,std::ios::floatfield);
-						
-						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
-						//fflush(stdout);
+						if( k % 100 == 0 )
+						{
+							if (verbosity == 1)
+								printf("%d/%d factor %6.2f%%\t\t\r",cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
+							else 
+								printf("%6.2f%% nnz LU %8d LU2 %8d condition L %10f D %10f U %10f swaps %4d drops %4d\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, nzLU2, NuL, NuD, NuU, swaps,ndrops);
+							fflush(stdout);
+						}
 					}
-#elif defined(REPORT_ILU_PROGRESS)
-					if (k % 500 == 0)
-					{
-						printf("%lu %d/%d factor %6.2f%%\t\t\r",static_cast<unsigned long>(level_size.size()), cend,moend, 100.0f*(k - cbeg + 1) / (float)(cend - cbeg));
-						//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
-						fflush(stdout);
-					}
-#endif
 ///////////////////////////////////////////////////////////////////////////////////
 //                       iteration done                                          //
 ///////////////////////////////////////////////////////////////////////////////////
 				}
-#if defined(REPORT_ILU_END)
-				std::cout << "size " << cend-cbeg;
-				//std::cout << std::scientific << std::setprecision(15);
-				std::cout << " total nonzeros in A " << nzA << " (sparsity " << nzA/(double)(cend-cbeg)/(double)(cend-cbeg)*100.0 << "%) in LU " << nzLU << " (fill " << nzLU/(double)nzA0*100.0 << "%)";
-#if defined(ILUC2)
-				std::cout << " in LU2 " << nzLU2;
-#endif
-				std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max << " pivot swaps " << swaps << "                  " << std::endl;
-#endif
+				if( verbosity > 1 )
+				{
+					std::cout << "size " << cend-cbeg;
+					std::cout << " total nonzeros in A " << nzA << " (sparsity " << nzA/(double)(cend-cbeg)/(double)(cend-cbeg)*100.0 << "%) in LU " << nzLU << " (fill " << nzLU/(double)nzA0*100.0 << "%)";
+					std::cout << " in LU2 " << nzLU2;
+					std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max << " pivot swaps " << swaps << " drops " << ndrops << "            " << std::endl;
+				}
 			}
 
 			//restore indexes
@@ -2967,9 +2940,9 @@ static bool allow_pivot = true;
 ///////////////////////////////////////////////////////////////////////////////////
 			tlfactor = Timer() - tt;
 			tfactor += tlfactor;
-#if defined(REPORT_ILU)
-			printf("Time %g\n",tlfactor);
-#endif
+			if( verbosity > 1 )
+				printf("Time %g\n",tlfactor);
+
 			//After we have factored the rescaled matrix we must rescale obtained factors
 			/*
 			tt = Timer();
@@ -3013,10 +2986,12 @@ static bool allow_pivot = true;
 				tlocal = Timer();
 				cend = wend-swaps;
 				tt = Timer();
-#if defined(REPORT_ILU)
-				std::cout << "Total swaps: " << swaps << " interval: " << cend << " " << wend << std::endl;
-				printf("Reassemble pivots\n");
-#endif
+				if( verbosity > 1 )
+				{
+					std::cout << "Total swaps: " << swaps << " interval: " << cend << " " << wend << std::endl;
+					printf("Reassemble pivots\n");
+				}
+
 				level_size.push_back(cend - wbeg);
 				i = wbeg;
 				//enumerate entries that we keep first
@@ -3279,9 +3254,9 @@ static bool allow_pivot = true;
 				 */
 				applyPQ(wbeg, wend, localP, localQ, invP, invQ);
 				tt = Timer()-tt;
-#if defined(REPORT_ILU)
-				printf("Time %g\n",tt);
-#endif
+				if( verbosity > 1 )
+					printf("Time %g\n",tt);
+
 				int ndrops_lf = 0, ndrops_eu = 0, ndrops_s = 0;
 ///////////////////////////////////////////////////////////////////////////////////
 //  Compute Schur                                                                //
@@ -3296,9 +3271,9 @@ static bool allow_pivot = true;
 				//
 				//first precompute LF block
 				tt = Timer();
-#if defined(REPORT_ILU)
-				printf("Assemble LF\n");
-#endif
+				if( verbosity > 1 )
+					printf("Assemble LF\n");
+
 				
 				for (k = cend; k < wend; ++k)
 				{
@@ -3465,30 +3440,33 @@ static bool allow_pivot = true;
 						Li = j;
 					}
 					LineIndecesU[cbeg] = UNDEF;
-#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (k % 100 == 0)
+					if( verbosity )
 					{
-						printf("LF %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),LF_Entries.size(),ndrops_lf);
-						fflush(stdout);
+						if (k % 100 == 0)
+						{
+							printf("LF %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),LF_Entries.size(),ndrops_lf);
+							fflush(stdout);
+						}
 					}
-#endif
+
 ///////////////////////////////////////////////////////////////////////////////////
 //             iteration done!                                                   //
 ///////////////////////////////////////////////////////////////////////////////////
 				}
 				tt = Timer()-tt;
-#if defined(REPORT_ILU)
-				printf("LF nnz %lu drops %d         \t\t\n", LF_Entries.size(),ndrops_lf);
-				printf("Time %g\n",tt);
-#endif
+				if( verbosity > 1 )
+				{
+					printf("LF nnz %lu drops %d         \t\t\n", LF_Entries.size(),ndrops_lf);
+					printf("Time %g\n",tt);
+				}
+
 				//DumpMatrix(LF_Address,LF_Entries,wbeg,wend,"LF.mtx");
 ///////////////////////////////////////////////////////////////////////////////////
 //         prepearing LF block for transposed traversal                          //
 ///////////////////////////////////////////////////////////////////////////////////
 				tt = Timer();
-#if defined(REPORT_ILU)
-				printf("Transpose LF\n");
-#endif
+				if( verbosity > 1 )
+					printf("Transpose LF\n");
 				//std::fill(Fbeg.begin() + wbeg - mobeg, Fbeg.begin() + cend - mobeg, EOL);
 				for(k = wbeg; k < cend; ++k) Fbeg[k] = EOL;
 				for(k = wend; k > cend; --k)
@@ -3546,17 +3524,17 @@ static bool allow_pivot = true;
 				}
 				LF_Entries.clear();
 				tt = Timer()-tt;
-#if defined(REPORT_ILU)
-				printf("Time %g\n",tt);
-#endif
+				if( verbosity > 1 )
+					printf("Time %g\n",tt);
+
 				//DumpMatrix(LFt_Address,LFt_Entries,wbeg,wend,"LFt.mtx");
 ///////////////////////////////////////////////////////////////////////////////////
 //             EU and Schur                                                      //
 ///////////////////////////////////////////////////////////////////////////////////
 				tt = Timer();
-#if defined(REPORT_ILU)
-				printf("Assemble EU\n");
-#endif
+				if( verbosity > 1 )
+					printf("Assemble EU\n");
+
 				for(k = cend; k < wend; ++k)
 				{
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3714,27 +3692,30 @@ static bool allow_pivot = true;
 						Li = j;
 					}
 					LineIndecesU[cbeg] = UNDEF;
-#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (k % 100 == 0)
+					if( verbosity )
 					{
-						printf("EU %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),EU_Entries.size(),ndrops_eu);
-						fflush(stdout);
+						if (k % 100 == 0)
+						{
+							printf("EU %6.2f%% nnz %lu drops %d\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)),EU_Entries.size(),ndrops_eu);
+							fflush(stdout);
+						}
 					}
-#endif
 				}
 				tt = Timer()-tt;
-#if defined(REPORT_ILU)
-				printf("EU nnz %lu drops %d          \t\t\n",EU_Entries.size(),ndrops_eu);
-				printf("Time %g\n",tt);
-#endif
+				if(verbosity > 1 )
+				{
+					printf("EU nnz %lu drops %d          \t\t\n",EU_Entries.size(),ndrops_eu);
+					printf("Time %g\n",tt);
+				}
+
 #if defined(SCHUR_DROPPING_S)
 ///////////////////////////////////////////////////////////////////////////////////
 //         Compute column-norms of schur                                         //
 ///////////////////////////////////////////////////////////////////////////////////
 				tt = Timer();
-#if defined(REPORT_ILU)
-				printf("Compute Schur column norm\n");
-#endif
+				if( verbosity > 1 )
+					printf("Compute Schur column norm\n");
+
 				for(k = cend; k < wend; ++k) Scolnorm[k] = Scolnum[k] = 0.0;
 				for(k = cend; k < wend; ++k)
 				{
@@ -3770,27 +3751,27 @@ static bool allow_pivot = true;
 						Ui = LineIndecesU[Ui];
 						LineIndecesU[Li] = UNDEF;
 					}
-#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (k % 100 == 0)
+					if( verbosity )
 					{
-						printf("Schur column norm %6.2f%%\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)));
-						fflush(stdout);
+						if (k % 100 == 0)
+						{
+							printf("Schur column norm %6.2f%%\t\t\r", 100.f*(k - cend+1) / (1.f*(wend - cend)));
+							fflush(stdout);
+						}
 					}
-#endif
 				}
 				for(k = cend; k < wend; ++k) Scolnorm[k] = Scolnum[k] ? sqrt(Scolnorm[k]/(double)Scolnum[k]) : 1.0;
 				tt = Timer()-tt;
-#if defined(REPORT_ILU)
-				printf("\nTime %g\n",tt);
-#endif //REPORT_ILU
+				if( verbosity > 1 )
+					printf("\nTime %g\n",tt);
 #endif //SCHUR_DROPPING_S
 ///////////////////////////////////////////////////////////////////////////////////
 //         Construction of Schur complement                                      //
 ///////////////////////////////////////////////////////////////////////////////////
 				tt = Timer();
-#if defined(REPORT_ILU)
-				printf("Construct Schur\n");
-#endif
+				if( verbosity > 1 )
+					printf("Construct Schur\n");
+
 				for(k = cend; k < wend; ++k)
 				{
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3945,22 +3926,25 @@ static bool allow_pivot = true;
 					}
 					LineIndecesU[cbeg] = UNDEF;
 					*/
-#if defined(REPORT_ILU) || defined(REPORT_ILU_PROGRESS)
-					if (k % 100 == 0)
+					if( verbosity )
 					{
-						printf("Schur %6.2f%% nnz %lu drop S %d\t\t\r",  100.f*(k - cend+1) / (1.f*(wend - cend)),S_Entries.size(),ndrops_s);
-						fflush(stdout);
+						if (k % 100 == 0)
+						{
+							printf("Schur %6.2f%% nnz %lu drop S %d\t\t\r",  100.f*(k - cend+1) / (1.f*(wend - cend)),S_Entries.size(),ndrops_s);
+							fflush(stdout);
+						}
 					}
-#endif
 ///////////////////////////////////////////////////////////////////////////////////
 //         Schur complement row done                                             //
 ///////////////////////////////////////////////////////////////////////////////////
 				}
 				tt = Timer()-tt;
-#if defined(REPORT_ILU)
-				printf("Schur nnz %lu drop S %d          \t\t\n", S_Entries.size(),ndrops_s);
-				printf("Time %g\n",tt);
-#endif
+				if( verbosity > 1 )
+				{
+					printf("Schur nnz %lu drop S %d          \t\t\n", S_Entries.size(),ndrops_s);
+					printf("Time %g\n",tt);
+				}
+
 				//DumpMatrix(EU_Address,EU_Entries,wbeg,wend,"EU.mtx");
 				LFt_Entries.clear();
 				EU_Entries.clear();
@@ -3977,9 +3961,9 @@ static bool allow_pivot = true;
 //         Cleanup arrays for the next iteration                                 //
 ///////////////////////////////////////////////////////////////////////////////////
 				tt = Timer();
-#if defined(REPORT_ILU)
-				printf("Cleanup\n");
-#endif
+				if( verbosity > 1 )
+					printf("Cleanup\n");
+
 				for(k = wbeg; k < wend; ++k)
 				{
 					localP[k] = localQ[k] = ENUMUNDEF;
@@ -4030,10 +4014,12 @@ static bool allow_pivot = true;
 				tt = Timer()-tt;
 				tlschur = Timer()-tlocal;
 				tschur += tlschur;
-#if defined(REPORT_ILU)
-				printf("Time %g\n",tt);
-				printf("Total Schur %g\n",tlschur);
-#endif
+				if( verbosity > 1 )
+				{
+					printf("Time %g\n",tt);
+					printf("Total Schur %g\n",tlschur);
+				}
+
 				wbeg = cend; //there is more work to do
 			}
 			else
@@ -4049,9 +4035,9 @@ static bool allow_pivot = true;
 		
 		if( rescale_b )
 		{
-#if defined(REPORT_ILU)
-			std::cout << std::endl << " rescaling block B back " << std::endl;
-#endif
+			if( verbosity > 1 )
+				std::cout << std::endl << " rescaling block B back " << std::endl;
+
 			for (k = mobeg; k < moend; ++k)
 			{
 				LU_Diag[k] /= (DL0[k] * DR0[k]);
@@ -4113,29 +4099,26 @@ static bool allow_pivot = true;
 ///  FACTORIZATION COMPLETE                                                     ///
 ///////////////////////////////////////////////////////////////////////////////////
 		ttotal = Timer() - ttotal;
-#if defined(REPORT_ILU_SUMMARY)
-		printf("total      %f\n",ttotal);
-		printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
-		printf("   mpt     %f (%6.2f%%)\n",ttransversal, 100.0*ttransversal/ttotal);
+		if( verbosity > 1 )
+		{
+			printf("total      %f\n",ttotal);
+			printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
+			printf("   mpt     %f (%6.2f%%)\n",ttransversal, 100.0*ttransversal/ttotal);
 #if defined(REORDER_METIS_ND)
-		printf("   graph   %f (%6.2f%%)\n",tmetisgraph, 100.0*tmetisgraph/ttotal);
-		printf("   nd      %f (%6.2f%%)\n", tmetisnd, 100.0*tmetisnd/ttotal);
+			printf("   graph   %f (%6.2f%%)\n",tmetisgraph, 100.0*tmetisgraph/ttotal);
+			printf("   nd      %f (%6.2f%%)\n", tmetisnd, 100.0*tmetisnd/ttotal);
 #endif
 #if defined(REORDER_RCM)
-		printf("   graph   %f (%6.2f%%)\n",trcmgraph, 100.0*trcmgraph/ttotal);
-		printf("   rcm     %f (%6.2f%%)\n", trcmorder, 100.0*trcmorder/ttotal);
+			printf("   graph   %f (%6.2f%%)\n",trcmgraph, 100.0*trcmgraph/ttotal);
+			printf("   rcm     %f (%6.2f%%)\n", trcmorder, 100.0*trcmorder/ttotal);
 #endif
-		printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
-		printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
-		printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
-        printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
-		printf("  schur    %f (%6.2f%%)\n", tschur, 100.0*tschur / ttotal);
-#if defined(ILUC2)
-		printf("nnz A %d LU %d LU2 %d swaps %d levels %d\n",nzA,nzLU,nzLU2tot, totswaps, (int)level_size.size());
-#else
-		printf("nnz A %d LU %d swaps %d levels %d\n",nzA,nzLU,totswaps, (int)level_size.size());
-#endif
-#endif
+			printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
+			printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
+			printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
+			printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
+			printf("  schur    %f (%6.2f%%)\n", tschur, 100.0*tschur / ttotal);
+			printf("nnz A %d LU %d LU2 %d swaps %d levels %d\n",nzA,nzLU,nzLU2tot, totswaps, (int)level_size.size());
+		}
 		init = true;
 		/*
 		{

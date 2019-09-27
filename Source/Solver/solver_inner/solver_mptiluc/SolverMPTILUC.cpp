@@ -11,7 +11,7 @@ namespace INMOST {
         schwartz_overlap = 1;
         gmres_substeps = 2;
         reorder_nnz = 1;
-
+		verbosity = 0;
         drop_tolerance = 0.005;
         reuse_tolerance = 0.00005;
         fill_level = 3;
@@ -35,6 +35,8 @@ namespace INMOST {
         solver->RealParameter(":tau2") = reuse_tolerance;
         solver->EnumParameter(":scale_iters") = rescale_iterations;
         solver->EnumParameter(":estimator") = condition_estimation;
+        solver->EnumParameter(":verbosity") = verbosity;
+        solver->EnumParameter("verbosity") = verbosity;
 
         if (sizeof(KSOLVER) == sizeof(BCGSL_solver)) {
             solver->EnumParameter("levels") = gmres_substeps;
@@ -58,6 +60,7 @@ namespace INMOST {
         else if (name == "fill_level") fill_level = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
         else if (name == "drop_tolerance") drop_tolerance = atof(val);
         else if (name == "reuse_tolerance") reuse_tolerance = atof(val);
+        else if (name == "verbosity") verbosity = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
         else SolverInner::SetParameter(name, value);
     }
 

@@ -30,7 +30,7 @@ class MLMTILUC_preconditioner : public Method
 	INMOST_DATA_REAL_TYPE pivot_cond;
 	INMOST_DATA_REAL_TYPE pivot_diag;
 	INMOST_DATA_REAL_TYPE tau, eps;
-	INMOST_DATA_ENUM_TYPE sciters;
+	INMOST_DATA_ENUM_TYPE sciters, verbosity;
 	Sparse::Matrix * Alink;
 	Solver::OrderInfo * info;
 	bool init;

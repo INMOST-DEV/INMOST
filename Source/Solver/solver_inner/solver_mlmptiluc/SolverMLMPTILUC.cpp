@@ -20,6 +20,7 @@ namespace INMOST
 		pivot_condition = 1.0e+6;
 		pivot_diag = 1.0e+6;
         fill_level = 3;
+        verbosity = 0;
     }
 
     SolverMLMPTILUC::SolverMLMPTILUC(const SolverInterface *other)
@@ -41,6 +42,8 @@ namespace INMOST
         solver->RealParameter(":tau2") = reuse_tolerance;
         solver->EnumParameter(":scale_iters") = rescale_iterations;
         solver->EnumParameter(":estimator") = condition_estimation;
+        solver->EnumParameter(":verbosity") = verbosity;
+        solver->EnumParameter("verbosity") = verbosity;
 		solver->RealParameter(":pivot_cond") = pivot_condition;
 		solver->RealParameter(":pivot_diag") = pivot_diag;
 
@@ -67,6 +70,7 @@ namespace INMOST
         else if (name == "reuse_tolerance") reuse_tolerance = atof(val);
 		else if (name == "pivot_condition") pivot_condition = atof(val);
 		else if (name == "pivot_diag") pivot_diag = atof(val);
+		else if (name == "verbosity") verbosity = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
         else SolverInner::SetParameter(name, value);
     }
 

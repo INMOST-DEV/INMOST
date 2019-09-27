@@ -111,6 +111,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 	{
 		if (name == "fill") return Lfill;
 		else if (name == "scale_iters") return sciters;
+		else if (name == "verbosity" ) return verbosity;
 		throw -1;
 	}
 	MTILU2_preconditioner::MTILU2_preconditioner(Solver::OrderInfo & info)
@@ -503,11 +504,13 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 		iu.set_interval_end(moend);
 		ilu[mobeg] = 0;
 		ir[mobeg] = 0;
-#if defined(REPORT_ILU)
-		std::cout << "Matrix overlap    " << mobeg << ".." << moend << std::endl;
-		std::cout << "Local vector part " << vlocbeg << ".." << vlocend << std::endl;
-		std::cout << "Entire vector     " << vbeg << ".." << vend << std::endl;
-#endif
+		if( verbosity )
+		{
+			std::cout << "Matrix overlap    " << mobeg << ".." << moend << std::endl;
+			std::cout << "Local vector part " << vlocbeg << ".." << vlocend << std::endl;
+			std::cout << "Entire vector     " << vbeg << ".." << vend << std::endl;
+		}
+
 
 #if defined(RESCALE_EQUALIZE_1NORM)
 		{
@@ -590,15 +593,19 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 		//for(k = mobeg; k != moend; k++) nza += A[k].Size();
 		for (k = mobeg; k != moend; k++)
 		{
-#if defined(REPORT_ILU_PROGRESS)
-			if (k % 1000 == 0)
+			if( verbosity )
 			{
-				//std::cout << "precond: " << (double)(k-mobeg)/(double)(moend-mobeg)*100 << "\r";
-				//printf("%6.2f nza %12d nzl %12d nzu %12d nzu2 %12d\r", (double)(k-mobeg)/(double)(moend-mobeg)*100,nza,nzl,nzu,nzu2);
-				printf("precond: %6.2f\r", (double)(k - mobeg) / (double)(moend - mobeg) * 100);
-				fflush(stdout);
+				if (k % 100 == 0)
+				{
+					//std::cout << "precond: " << (double)(k-mobeg)/(double)(moend-mobeg)*100 << "\r";
+					if( verbosity )//== 1 )
+						printf("precond: %6.2f\r", (double)(k - mobeg) / (double)(moend - mobeg) * 100);
+					//else no statistics
+					//	printf("%6.2f nza %12d nzl %12d nzu %12d nzu2 %12d\r", (double)(k-mobeg)/(double)(moend-mobeg)*100,nza,nzl,nzu,nzu2);
+					fflush(stdout);
+				}
 			}
-#endif
+
 			//Uncompress row
 			//row_uncompr
 			sort_indeces.clear();
@@ -855,30 +862,32 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 
 		tfactor = Timer() - tfactor;
 		ttotal = Timer() - ttotal;
-#if defined(REPORT_ILU_SUMMARY)
-		INMOST_DATA_ENUM_TYPE nzu,nzl;
-		nzu = 0;
-		nzl = 0;
-		for(INMOST_DATA_ENUM_TYPE k = mobeg; k < moend; k++)
+		if( verbosity > 1 )
 		{
-			nzl += iu[k] - ilu[k];
-			nzu += ilu[k+1] - iu[k] - 1;
-		}
-		std::cout << "      nonzeros in A = " << nnz << std::endl;
-		std::cout << "      nonzeros in L = " << nzl - (moend-mobeg) << std::endl;
-		std::cout << "      nonzeros in U = " << nzu << std::endl;
-		std::cout << "     nonzeros in LU = " << ilu[moend] - 1 << std::endl;
-		std::cout << "     nonzeros in U2 = " << ir[moend] - 1 << std::endl;
-		//std::cout << __FUNCTION__ << " done" << std::endl;
-		printf("total      %f\n",ttotal);
-		printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
+			INMOST_DATA_ENUM_TYPE nzu,nzl;
+			nzu = 0;
+			nzl = 0;
+			for(INMOST_DATA_ENUM_TYPE k = mobeg; k < moend; k++)
+			{
+				nzl += iu[k] - ilu[k];
+				nzu += ilu[k+1] - iu[k] - 1;
+			}
+			std::cout << "      nonzeros in A = " << nnz << std::endl;
+			std::cout << "      nonzeros in L = " << nzl - (moend-mobeg) << std::endl;
+			std::cout << "      nonzeros in U = " << nzu << std::endl;
+			std::cout << "     nonzeros in LU = " << ilu[moend] - 1 << std::endl;
+			std::cout << "     nonzeros in U2 = " << ir[moend] - 1 << std::endl;
+			//std::cout << __FUNCTION__ << " done" << std::endl;
+			printf("total      %f\n",ttotal);
+			printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
 #if defined(REORDER_METIS_ND)
-		printf("metis      graph %f nd %f\n", tmetisgraph, tmetisnd);
+			printf("metis      graph %f nd %f\n", tmetisgraph, tmetisnd);
 #endif
-		printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
-		printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
+			printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
+			printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
 
-#endif
+
+		}
 
 		/*
 		//partition of unity for unrestricted additive schwartz
@@ -945,14 +954,14 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 			INMOST_DATA_ENUM_TYPE mobeg, moend, r, k, vbeg,vend; //, end;
 			info->GetOverlapRegion(info->GetRank(),mobeg,moend);
 			info->GetVectorRegion(vbeg,vend);
-      for(k = vbeg; k < mobeg; k++) temporary[k] = 0;
+			for(k = vbeg; k < mobeg; k++) temporary[k] = 0;
 			for(k = mobeg; k < moend; k++) temporary[k] = input[k];
-      for(k = moend; k < vend; k++) temporary[k] = 0;
+			for(k = moend; k < vend; k++) temporary[k] = 0;
 
-      //for(k = vbeg; k < vend; k++) temporary[k] = input[k];
-      
-      //for(k = vbeg; k < vend; k++) temporary[k] = input[Perm[k]];
-      //for(k = vbeg; k < vend; k++) temporary[Perm[k]] = input[k];
+			//for(k = vbeg; k < vend; k++) temporary[k] = input[k];
+			//for(k = vbeg; k < vend; k++) temporary[k] = input[Perm[k]];
+			//for(k = vbeg; k < vend; k++) temporary[Perm[k]] = input[k];
+
 			for(k = mobeg; k < moend; k++) //iterate over L part
 			{
 				for(r = iu[k]-1; r > ilu[k]; r--) 
@@ -966,10 +975,10 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 				temporary[k-1] *= luv[iu[k-1]];
 			}
 			
-      //for (k = mobeg; k < moend; ++k) output[k] = temporary[k];
+			//for (k = mobeg; k < moend; ++k) output[k] = temporary[k];
 			for (k = mobeg; k < moend; ++k) if( Perm[k] != ENUMUNDEF ) output[k] = temporary[Perm[k]];
 			//for (k = mobeg; k < moend; ++k) output[Perm[k]] = temporary[k];
-      for(k = vbeg; k < mobeg; k++) output[k] = 0;
+			for(k = vbeg; k < mobeg; k++) output[k] = 0;
 			for(k = moend; k < vend; k++) output[k] = 0;
 		}
 		info->Accumulate(output);

@@ -8,7 +8,7 @@
 namespace INMOST {
 
     class SolverILU2 : public SolverInner {
-        INMOST_DATA_ENUM_TYPE rescale_iterations, schwartz_overlap, gmres_substeps, reorder_nnz, fill_level;
+        INMOST_DATA_ENUM_TYPE rescale_iterations, schwartz_overlap, gmres_substeps, reorder_nnz, fill_level, verbosity;
         INMOST_DATA_REAL_TYPE drop_tolerance, reuse_tolerance;
     public:
         SolverILU2();

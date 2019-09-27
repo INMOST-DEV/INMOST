@@ -31,7 +31,7 @@ class MTILUC_preconditioner : public Method
 	INMOST_DATA_ENUM_TYPE estimator;
 	INMOST_DATA_REAL_TYPE iluc2_tau;
 	INMOST_DATA_REAL_TYPE tau, eps;
-	INMOST_DATA_ENUM_TYPE sciters;
+	INMOST_DATA_ENUM_TYPE sciters,verbosity;
 	Sparse::Matrix * Alink;
 	Solver::OrderInfo * info;
 	bool init;

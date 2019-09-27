@@ -14,10 +14,6 @@
 #define PSEUDOINVERSE  // same trick as in petsc with pseudoinverse
 //#define USE_LAPACK_SVD // use lapack's dgesvd routine instead of built-in svdnxn
 
-//#if !defined(NDEBUG)
-#define REPORT_RESIDUAL
-//#endif
-//#define USE_OMP
 
 
 namespace INMOST
@@ -437,7 +433,7 @@ namespace INMOST
     {
         INMOST_DATA_REAL_TYPE length;
         INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
-        INMOST_DATA_ENUM_TYPE iters, maxits, l, last_it;
+        INMOST_DATA_ENUM_TYPE iters, maxits, l, last_it, verbosity;
         INMOST_DATA_REAL_TYPE resid;
         INMOST_DATA_REAL_TYPE * tau, * sigma, * gamma, *theta1, * theta2, * theta3;
         Sparse::Vector r_tilde, x0, t, * u, * r;
@@ -446,6 +442,7 @@ namespace INMOST
         std::string reason;
         Solver::OrderInfo * info;
         bool init;
+        
     public:
         INMOST_DATA_ENUM_TYPE GetIterations() {return last_it;}
         INMOST_DATA_REAL_TYPE GetResidual() {return last_resid;}
@@ -468,6 +465,7 @@ namespace INMOST
                 if (prec != NULL) return prec->EnumParameter(name.substr(1, name.size() - 1));
             }
             if (name == "maxits") return maxits;
+            else if (name == "verbosity" ) return verbosity;
             else if (name == "levels")
             {
                 if( init ) throw - 1; //solver was already initialized, value should not be changed
@@ -477,7 +475,7 @@ namespace INMOST
             throw - 1;
         }
         BCGSL_solver(Method * prec, Solver::OrderInfo & info)
-                :rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500),l(2),prec(prec),info(&info)
+                :rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500),l(2),prec(prec),info(&info), verbosity(0)
         {
             Alink = NULL;
             init = false;
@@ -533,6 +531,7 @@ namespace INMOST
             resid = b->resid;
             Alink = b->Alink;
             info = b->info;
+            verbosity = b->verbosity;
             if (init) Finalize();
             if (b->prec != NULL)
             {
@@ -618,16 +617,18 @@ namespace INMOST
             for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) // r_tilde = r[0] / dot(r[0],r[0])
                 r_tilde[k] /= resid;
             last_it = 0;
-#if defined(REPORT_RESIDUAL)
-            if( info->GetRank() == 0 )
+			if( verbosity )
 			{
-				//std::cout << "iter " << last_it << " residual " << resid << std::endl;
-				//std::cout << "iter " << last_it << " resid " << resid << "\r";
-				//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-				printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
-				fflush(stdout);
+				if( info->GetRank() == 0 )
+				{
+					//std::cout << "iter " << last_it << " residual " << resid << std::endl;
+					//std::cout << "iter " << last_it << " resid " << resid << "\r";
+					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
+					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+					fflush(stdout);
+				}
 			}
-#endif
+
 
             bool halt = false;
             if( last_resid < atol || last_resid < rtol*resid0 )
@@ -1212,21 +1213,23 @@ namespace INMOST
                         resid = sqrt(resid/rhs_norm);
                     }
 
-#if defined(REPORT_RESIDUAL)
-                    if( info->GetRank() == 0 )
+					if( verbosity )
 					{
-						//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
-						//std::cout << "iter " << last_it << " resid " << resid << "\r";
-						//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
+						if( info->GetRank() == 0 )
+						{
+							//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
+							//std::cout << "iter " << last_it << " resid " << resid << "\r";
+							//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						{
-							printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
-							fflush(stdout);
+							{
+								printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+								fflush(stdout);
+							}
 						}
 					}
-#endif
+
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -1301,7 +1304,7 @@ namespace INMOST
     class BCGS_solver : public IterativeMethod
     {
         INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
-        INMOST_DATA_ENUM_TYPE iters, maxits, last_it;
+        INMOST_DATA_ENUM_TYPE iters, maxits, last_it,verbosity;
         INMOST_DATA_REAL_TYPE resid;
         Sparse::Vector r0, p, y, s, t, z, r, v;
         Sparse::Matrix * Alink;
@@ -1331,11 +1334,12 @@ namespace INMOST
                 if (prec != NULL) return prec->EnumParameter(name.substr(1, name.size() - 1));
             }
             if (name == "maxits") return maxits;
+            else if (name == "verbosity") return verbosity;
             else if (prec != NULL) return prec->EnumParameter(name);
             throw - 1;
         }
         BCGS_solver(Method * prec, Solver::OrderInfo & info)
-                :rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500),prec(prec),info(&info)
+                :rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500),prec(prec),info(&info),verbosity(0)
         {
             init = false;
         }
@@ -1377,6 +1381,7 @@ namespace INMOST
             last_it = b->last_it;
             resid = b->resid;
             Alink = b->Alink;
+            verbosity = b->verbosity;
             if (b->prec != NULL)
             {
                 if (prec == NULL) prec = b->prec->Duplicate();
@@ -1444,16 +1449,17 @@ namespace INMOST
             for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k) // r_tilde = r[0] / dot(r[0],r[0])
                 r0[k] /= resid;
             last_it = 0;
-#if defined(REPORT_RESIDUAL)
-            if( info->GetRank() == 0 )
+			if( verbosity )
 			{
-				//std::cout << "iter " << last_it << " residual " << resid << std::endl;
-				//std::cout << "iter " << last_it << " resid " << resid << "\r";
-				//printf("iter %3d resid %12g | %12g relative %12g | %12g\r",last_it,resid,atol,resid/resid0,rtol);
-				printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
-				fflush(stdout);
+				if( info->GetRank() == 0 )
+				{
+					//std::cout << "iter " << last_it << " residual " << resid << std::endl;
+					//std::cout << "iter " << last_it << " resid " << resid << "\r";
+					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r",last_it,resid,atol,resid/resid0,rtol);
+					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+					fflush(stdout);
+				}
 			}
-#endif
 
             bool halt = false;
             if( last_resid < atol || last_resid < rtol*resid0 )
@@ -1775,22 +1781,23 @@ namespace INMOST
                     {
                         resid = sqrt(resid);
                     }
-#if defined(REPORT_RESIDUAL)
-                    if( info->GetRank() == 0 )
+					if( verbosity )
 					{
-						//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5 << " precond " << tp*0.5 << std::endl;
-						//std::cout << "iter " << last_it << " resid " << resid << "\r";
-						//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
+						if( info->GetRank() == 0 )
+						{
+							//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5 << " precond " << tp*0.5 << std::endl;
+							//std::cout << "iter " << last_it << " resid " << resid << "\r";
+							//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
-						{
-							printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
-              //printf("iter %3d resid %12g | %g rho %e beta %e alpha %e omega %e\n", last_it, resid, atol,rho,beta,alpha,omega);
-							fflush(stdout);
+							{
+								printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+				  //printf("iter %3d resid %12g | %g rho %e beta %e alpha %e omega %e\n", last_it, resid, atol,rho,beta,alpha,omega);
+								fflush(stdout);
+							}
 						}
 					}
-#endif
 #if defined(USE_OMP)
 #pragma omp single
 #endif
