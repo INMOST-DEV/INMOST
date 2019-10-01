@@ -34,7 +34,7 @@ static bool allow_pivot = true;
 #define ESTIMATOR
 #define ESTIMATOR_REFINE
 
-//#define PREMATURE_DROPPING
+#define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
 //#define EQUALIZE_2NORM
@@ -1856,7 +1856,7 @@ static bool allow_pivot = true;
 						assert(LU_Entries[L_Address[i].first].first == k);
 						l = LU_Entries[L_Address[i].first].second*LU_Diag[i];
 #if defined(PREMATURE_DROPPING)
-						if( fabs(l) > tau2*tau2 * abs_udiag )
+						if( fabs(l) > 1.0e-9 )
 #endif
 						{
 							curr = cbeg;
@@ -1897,7 +1897,7 @@ static bool allow_pivot = true;
 //                 second order U-part elimination with L                        //
 ///////////////////////////////////////////////////////////////////////////////////
 #if defined(PREMATURE_DROPPING)
-						if( fabs(l) > tau2*abs_udiag )
+						if( fabs(l) > 1.0e-9 )
 #endif
 						{
 							curr = cbeg;
@@ -1947,7 +1947,7 @@ static bool allow_pivot = true;
 						assert(LU2_Entries[L2_Address[i].first].first == k);
 						l = LU2_Entries[L2_Address[i].first].second*LU_Diag[i];
 #if defined(PREMATURE_DROPPING)
-						if( fabs(l) > tau2*abs_udiag )
+						if( fabs(l) > 1.0e-9 )
 #endif
 						{
 							curr = cbeg;
@@ -2135,7 +2135,7 @@ static bool allow_pivot = true;
 						assert(LU_Entries[U_Address[i].first].first == k);
 						u = LU_Entries[U_Address[i].first].second*LU_Diag[i];
 #if defined(PREMATURE_DROPPING)
-						if( fabs(u) > tau2*tau2*abs_udiag )
+						if( fabs(u) > 1.0e-9 )
 #endif
 						{
 							curr = cbeg;
@@ -2177,7 +2177,7 @@ static bool allow_pivot = true;
 //                 second-order L-part elimination with U                        //
 ///////////////////////////////////////////////////////////////////////////////////
 #if defined(PREMATURE_DROPPING)
-						if( fabs(u) > tau2*abs_udiag )
+						if( fabs(u) > 1.0e-9 )
 #endif
 						{
 							curr = cbeg;
@@ -2227,7 +2227,7 @@ static bool allow_pivot = true;
 						assert(LU2_Entries[U2_Address[i].first].first == k);
 						u = LU2_Entries[U2_Address[i].first].second*LU_Diag[i];
 #if defined(PREMATURE_DROPPING)
-						if( fabs(u) > tau2*abs_udiag )
+						if( fabs(u) > 1.0e-9 )
 #endif
 						{
 							curr = cbeg;
@@ -2497,6 +2497,7 @@ static bool allow_pivot = true;
 #if defined(ILUC2)
 					U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
+					/*
 					Unum = Unorm = 0;
 					
 					Ui = LineIndecesU[k];
@@ -2508,19 +2509,20 @@ static bool allow_pivot = true;
 						Ui = LineIndecesU[Ui];
 					}
 					if( Unum ) Unorm = sqrt(Unorm/Unum);
-					Unorm = std::min(1.0,Unorm);
+					*/
+					//Unorm = std::min(1.0,Unorm);
 					
 					Ui = LineIndecesU[k];
 					while (Ui != EOL)
 					{
 						u = fabs(LineValuesU[Ui]);
-						if (u*NuU > tau*Unorm) // apply dropping rule
+						if (u*NuU > tau)// *Unorm) // apply dropping rule
 						//if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
 						//if (u*NuU_acc*NuD_acc > tau) // apply dropping rule
 						//if( u > tau*Unorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						else if (u*NuU > tau2*Unorm)
+						else if (u*NuU > tau2)// *Unorm)
 						//else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuU_acc*NuD_acc > tau2)
 						//else if( u > tau2*Unorm )
@@ -2541,6 +2543,7 @@ static bool allow_pivot = true;
 #if defined(ILUC2)
 					L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
+					/*
 					Lnum = Lnorm = 0;
 					
 					Li = LineIndecesL[k];
@@ -2552,19 +2555,20 @@ static bool allow_pivot = true;
 						Li = LineIndecesL[Li];
 					}
 					if( Lnum ) Lnorm = sqrt(Lnorm/Lnum);
-					Lnorm = std::min(1.0,Lnorm);
+					*/
+					//Lnorm = std::min(1.0,Lnorm);
 					
 					Li = LineIndecesL[k];
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
-						if (u*NuL > tau*Lnorm) //apply dropping
+						if (u*NuL > tau) // *Lnorm) //apply dropping
 						//if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
 						//if (u*NuL_acc*NuD_acc > tau) //apply dropping
 						//if( u > tau*Lnorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						else if (u*NuL > tau2*Lnorm)
+						else if (u*NuL > tau2)// *Lnorm)
 						//else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuL_acc*NuD_acc > tau2)
 						//else if( u > tau2*Lnorm )
