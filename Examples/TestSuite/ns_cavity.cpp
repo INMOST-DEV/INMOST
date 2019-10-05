@@ -35,6 +35,9 @@ int main(int argc, char ** argv)
 	try
 	{
 		m->Load(argv[1]);
+		Mesh::GeomParam table;
+		table[ORIENTATION] = FACE;
+		m->PrepareGeometricData(table);
 	}
 	catch(...)
 	{
