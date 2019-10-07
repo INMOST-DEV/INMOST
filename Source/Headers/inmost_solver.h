@@ -12,9 +12,9 @@ namespace INMOST {
     class SolverParameters;
 
     enum SolverVerbosityLevel {
-        Level0 = 0,
-        Level1 = 1,
-        Level2 = 2
+        SolverVerbosityLevel0 = 0,
+        SolverVerbosityLevel1 = 1,
+        SolverVerbosityLevel2 = 2
     };
 
     /// Main class to set and solve linear system.

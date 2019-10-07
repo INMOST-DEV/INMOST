@@ -17,7 +17,7 @@ namespace INMOST {
     void Solver::SetParameterReal(std::string name, INMOST_DATA_REAL_TYPE value) { SetParameter(name, to_string(value)); }
 
     Solver::Solver(std::string solverName, std::string prefix, INMOST_MPI_Comm _comm) :
-            versbosity(SolverVerbosityLevel::Level0), preconditioner_time(0), iterations_time(0), is_solved(false) {
+            versbosity(SolverVerbosityLevel0), preconditioner_time(0), iterations_time(0), is_solved(false) {
         std::string lowerName = string_to_lower(solverName);
         this->solver = SolverMaster::getSolver(solverName);
         this->prefix = string_to_lower(prefix);
@@ -164,7 +164,7 @@ namespace INMOST {
         //INMOST::MPIBarrier();
         iterations_time = Timer() - iterations_timer_start;
 
-        if (versbosity > SolverVerbosityLevel::Level1) {
+        if (versbosity > SolverVerbosityLevel1) {
 #if defined(USE_MPI)
             int rank;
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
