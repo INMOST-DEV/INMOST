@@ -49,9 +49,11 @@ double sleft = 1e20, sright = -1e20, sbottom = 1e20, stop = -1e20, sfar = -1e20,
 double shift[3] = {0,0,0};
 double scale[3] = {1,1,1};
 bool perspective = false;
+bool pick_element = true;
 int drawedges = 0, draw_orphan = true;
 bool boundary = true, planecontrol = false, clipupdate = false, bndupdate = true, clipboxupdate = false, draw_volumetric = false, elevation = false;
 bool drawaxis = true, drawcolorbar = true;
+extern int font_size;
 Element disp_e;
 Mesh::GeomParam table;
 ElementArray<Element> orphans;
@@ -66,6 +68,85 @@ std::map<int,double> material_x;
 std::map<int,double> material_y;
 std::map<int,double> material_z;
 std::vector<double> harmonic_points, dual_harmonic_points, conormals;
+std::vector< std::pair<int,std::string> > input_history;
+std::vector< std::pair<int,std::string> > input_dely;
+
+void write_state(std::string fname)
+{
+	double quat[4];
+	if( planecontrol )
+		quatget4_from_stack(quat);
+	else
+		quatget4(quat);
+	std::fstream fout(fname.c_str(),std::ios::out);
+	fout << width << " " << height << "  # window width and height " << std::endl;
+	fout << zoom << "   # zoom " << std::endl;
+	fout << shift[0] << " " << shift[1] << " " << shift[2] << "   # shift of origin " << std::endl;
+	fout << scale[0] << " " << scale[1] << " " << scale[2] << "   # scaling of the mesh " << std::endl;
+	fout << p[0] << " " << p[1] << " " << p[2] << "   # slice plane coordinates " << std::endl;
+	fout << n[0] << " " << n[1] << " " << n[2] << "   # slice plane normal " << std::endl;
+	fout << quat[0] << " " << quat[1] << " " << quat[2] << " " << quat[3] << "   # rotating quaternion " << std::endl;
+	fout << perspective     << "   #perspective " << std::endl;
+	fout << drawedges      << "   #draw edges " << std::endl;
+	fout << boundary        << "   #draw boundary " << std::endl;
+	fout << draw_volumetric << "   #draw volumetric " << std::endl;
+	fout << elevation       << "   #draw data elevation " << std::endl;
+	fout << drawaxis        << "   #draw axis " << std::endl;
+	fout << drawcolorbar    << "   #draw color bar " << std::endl;
+	fout << pick_element    << "   #display element data under cursor" << std::endl;
+	fout << font_size       << "   #font size" << std::endl;
+	fout << input_history.size() << "   #number of input commands " << std::endl;
+	for(size_t k = 0; k < input_history.size(); ++k)
+	{
+		fout << input_history[k].first << "  #type of input command followed by input string " << std::endl;
+		fout << input_history[k].second << std::endl;
+	}
+	fout.close();
+}
+
+void ProcessCommonInput(char inpstr[8192], int inptype);
+
+std::istream& skip_endl(std::istream& in)
+{
+    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    return in;
+}
+
+void read_state(std::string fname)
+{
+	int history_size, inptype;
+	char inpstr[8192];
+	double quat[4];
+	std::fstream fin(fname.c_str(),std::ios::in);
+	fin >> width >> height >> skip_endl;
+	fin >> zoom >> skip_endl;
+	fin >> shift[0] >> shift[1] >> shift[2] >> skip_endl;
+	fin >> scale[0] >> scale[1] >> scale[2] >> skip_endl;
+	fin >> p[0] >> p[1] >> p[2] >> skip_endl;
+	fin >> n[0] >> n[1] >> n[2] >> skip_endl;
+	fin >> quat[0] >> quat[1] >> quat[2] >> quat[3] >> skip_endl;
+	quatset4(quat);
+	fin >> perspective >> skip_endl;
+	fin >> drawedges >> skip_endl;
+	fin >> boundary >> skip_endl;
+	fin >> draw_volumetric >> skip_endl;
+	fin >> elevation >> skip_endl;
+	fin >> drawaxis >> skip_endl;
+	fin >> drawcolorbar >> skip_endl;
+	fin >> pick_element >> skip_endl;
+	fin >> font_size >> skip_endl;
+	fin >> history_size >> skip_endl;
+	for(int k = 0; k < history_size; ++k)
+	{
+		fin >> inptype >> skip_endl;
+		fin >> inpstr;
+		if( inptype == 4 )
+			input_dely.push_back(std::make_pair(inptype,std::string(inpstr)));
+		else
+			ProcessCommonInput(inpstr,inptype);
+	}
+	fin.close();
+}
 
 
 
@@ -754,6 +835,10 @@ void keyboard(unsigned char key, int x, int y)
 		svg_draw(fout);
 		fout.close();
 	}
+	else if( key == 'u' )
+	{
+		write_state("state.txt");
+	}
 }
 
 void keyboard2(unsigned char key, int x, int y)
@@ -1123,6 +1208,558 @@ double display_elem_info(Element e, double top, double left, double interval)
 	return top-2*interval;
 }
 
+
+void ProcessCommonInput(char inpstr[8192], int inptype)
+{
+	bool success = false;
+	if( inptype == 2 )
+	{
+		int k = 0, slen = (int)strlen(inpstr);
+		for(k = 0; k < slen; ++k) 
+		{
+			if( inpstr[k] == ':' )
+			{
+				inpstr[k] = '\0';
+				break;
+			}
+		}
+		if( k < slen && k+1 < slen )
+		{
+			double minv, maxv;
+			inpstr[k] = ':';
+			minv = atof(inpstr);
+			maxv = atof(inpstr+k+1);
+			GetColorBar()->set_min(minv);
+			GetColorBar()->set_max(maxv);
+			clipupdate = true;
+			success = true;
+		}
+		else printf("malformed string %s for color map bounds\n",inpstr);
+	}
+	else if( inptype == 3 )
+	{
+		int k1 = 0, k2, slen = (int)strlen(inpstr);
+		for(int k = 0; k < slen; ++k)
+		{
+			if( inpstr[k] == ',' )
+			{
+				inpstr[k] = '\0';
+				k1 = k;
+				break;
+			}
+		}
+		for(int k = k1+1; k < slen; ++k)
+		{
+			if( inpstr[k] == ',' )
+			{
+				inpstr[k] = '\0';
+				k2 = k;
+				break;
+			}
+		}
+		if( (k1 < slen && k1+1 < slen) && (k2 < slen && k2+1 < slen) )
+		{
+			scale[0] = atof(inpstr);
+			scale[1] = atof(inpstr+k1+1);
+			scale[2] = atof(inpstr+k2+1);
+			inpstr[k1] = ',';
+			inpstr[k2] = ',';
+			clipupdate = true;
+			success = true;
+		}
+		else printf("malformed string %s for mesh rescale\n",inpstr);
+	}
+	else if( inptype == 4 )
+	{
+		if( std::string(inpstr) == "hide" )
+			glutHideWindow();
+		else if( std::string(inpstr) == "exit" )
+			exit(0);
+		else if( std::string(inpstr) == "screenshot_svg" )
+		{
+			std::fstream fout("screenshot.svg",std::ios::out);
+			svg_draw(fout);
+			fout.close();
+			success = true;
+		}
+		else if( std::string(inpstr).substr(0,14) == "screenshot_tga" )
+		{
+			int tiles = 2;
+			size_t l = std::string(inpstr).find(":");
+			if( l != std::string::npos )
+				tiles = atoi(std::string(inpstr+l+1).c_str());
+			std::cout << "screenshot.tga with " << tiles << std::endl;
+			screenshot(tiles);
+			success = true;
+		}
+	}
+	else if( inptype == 1 )
+	{
+		char typen[1024],name[1024];
+		unsigned comp;
+		bool correct_input = false;
+		int k = 0,l, slen = (int)strlen(inpstr);
+		for(k = 0; k < slen; ++k) 
+		{
+			if( inpstr[k] == ':' )
+			{
+				inpstr[k] = '\0';
+				break;
+			}
+		}
+		for(l = k+1; l < slen; ++l) 
+		{
+			if( inpstr[l] == ':' )
+			{
+				inpstr[l] = '\0';
+				break;
+			}
+		}
+
+		//std::cout << "k: " << k << " l: " << l << std::endl;
+
+		if( k == slen && l == slen+1 )
+		{
+			for(int q = 0; q < slen; ++q)
+				inpstr[q] = tolower(inpstr[q]);
+			if( std::string(inpstr) == "clear" )
+			{
+				disp_e = InvalidElement();
+				if( visualization_tag.isValid() )
+				{
+					visualization_tag =  mesh->DeleteTag(visualization_tag);
+					color_bar::UnsetVisualizationTag();
+					clipupdate = true;
+				}
+				correct_input = true;
+				streamlines.clear();
+				glutPostRedisplay();
+				if( CommonVectors )
+				{
+					delete CommonVectors;
+					CommonVectors = NULL;
+				}
+				input_history.clear();
+				success = true;
+			}
+		}
+
+		if( k < slen && l == slen ) //ElementType:Number format
+		{
+			strcpy(typen, inpstr);
+			std::string stype(typen);
+			visualization_type = NONE;
+			for (size_t q = 0; q < stype.size(); ++q)
+				stype[q] = tolower(stype[q]);
+			if (stype == "scale")
+			{
+				double scale = atof(inpstr + k + 1);
+				std::cout << "input scale: " << scale << std::endl;
+				if( CommonVectors )
+					CommonVectors->SetScale(scale);
+				correct_input = true;
+				glutPostRedisplay();
+				success = true;
+			}
+			else
+			{
+				if (stype == "node") visualization_type = NODE;
+				else if (stype == "edge") visualization_type = EDGE;
+				else if (stype == "face") visualization_type = FACE;
+				else if (stype == "cell") visualization_type = CELL;
+				else if (stype == "eset") visualization_type = ESET;
+				if (visualization_type == NONE)
+					printf("unknown element type %s\n", typen);
+				else
+				{
+					disp_e = InvalidElement();
+					bool is_number = true;
+					for (l = k + 1; l < slen; ++l)
+					if (!isdigit(inpstr[l]))
+						is_number = false;
+					if (is_number)
+					{
+						comp = atoi(inpstr + k + 1);
+						inpstr[k] = ':';
+
+
+						correct_input = true;
+
+						if (mesh->isValidElement(visualization_type, comp))
+						{
+							printf("Display data for %s:%d\n", typen, comp);
+							disp_e = mesh->ElementByLocalID(visualization_type, comp);
+							success = true;
+						}
+						else
+							printf("No valid element at %s:%d\n", typen, comp);
+					}
+					else if (visualization_type == ESET)
+					{
+						std::string name = std::string(inpstr + k + 1);
+						inpstr[k] = ':';
+						correct_input = true;
+						disp_e = mesh->GetSet(name);
+						if (disp_e.isValid())
+						{
+							printf("Display data for %s:%d\n", typen, disp_e.LocalID());
+							success = true;
+						}
+						else
+							printf("Cannot find set with name %s\n", name.c_str());
+					}
+
+					if (disp_e.isValid())
+					{
+						if (disp_e.GetElementType() != ESET)
+						{
+							disp_e->Centroid(shift);
+							for (int r = 0; r < 3; ++r)
+								shift[r] = -shift[r];
+						}
+						else
+						{
+							shift[0] = shift[1] = shift[2] = 0;
+							ElementSet s = disp_e.getAsSet();
+							int nelem = 0;
+							for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
+							{
+								double cnt[3];
+								it->Centroid(cnt);
+								shift[0] += cnt[0];
+								shift[1] += cnt[1];
+								shift[2] += cnt[2];
+								nelem++;
+							}
+							shift[0] /= (double)nelem;
+							shift[1] /= (double)nelem;
+							shift[2] /= (double)nelem;
+							for (int r = 0; r < 3; ++r)
+								shift[r] = -shift[r];
+						}
+					}
+				}
+			}
+		}
+
+		if( k < slen && l < slen && l+1 < slen )
+		{
+			bool is_number = true;
+			for(int r = l+1; r < slen; ++r)
+				if( !isdigit(inpstr[r]) )
+					is_number = false;
+			if( !is_number ) for(int r = l+1; r < slen; ++r) inpstr[r] = tolower(inpstr[r]);
+
+			strcpy(typen,inpstr);
+			strcpy(name,inpstr+k+1);
+			if( is_number )
+				comp = atoi(inpstr+l+1);
+			else if( std::string(inpstr+l+1) == "mag" )
+				comp = ENUMUNDEF;
+			else if (std::string(inpstr + l + 1) == "streamline")
+				comp = ENUMUNDEF-2;
+			else if (std::string(inpstr + l + 1) == "vector" ||
+					 std::string(inpstr + l + 1) == "vec")
+				comp = ENUMUNDEF-3;
+			else
+			{
+				std::cout << "unknown name for component, expected number or 'mag' or 'vec' or 'streamline'" << std::endl;
+				comp = ENUMUNDEF-1;
+			}
+			inpstr[k] = ':';
+			inpstr[l] = ':';
+			printf("type %s name %s comp %d\n",typen,name,comp);
+			std::string stype(typen), sname(name);
+			if (mesh->HaveTag(sname) && (comp == ENUMUNDEF - 2 || comp == ENUMUNDEF - 3))
+			{
+				ElementType vel_def = NONE;
+				for (size_t q = 0; q < stype.size(); ++q)
+				{
+					stype[q] = tolower(stype[q]);
+					typen[q] = tolower(typen[q]);
+				}
+				if (stype == "node") vel_def = NODE;
+				else if (stype == "edge") vel_def = EDGE;
+				else if (stype == "face") vel_def = FACE;
+				else if (stype == "cell") vel_def = CELL;
+				
+				if( comp == ENUMUNDEF - 2 )
+				{
+					streamlines.clear();
+					BuildStreamlines(mesh,mesh->GetTag(sname),vel_def,streamlines);
+				}
+				else if( comp == ENUMUNDEF - 3 )
+				{
+					if( CommonVectors ) delete CommonVectors;
+					CommonVectors = new Vectors(mesh,mesh->GetTag(sname),vel_def);
+				}
+				success = true;
+			}
+			else if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
+			{
+				Tag source_tag = mesh->GetTag(sname);
+				if ((comp >= 0 && comp < source_tag.GetSize()) || comp == ENUMUNDEF)
+				{
+					visualization_type = NONE;
+					for (size_t q = 0; q < stype.size(); ++q)
+					{
+						stype[q] = tolower(stype[q]);
+						typen[q] = tolower(typen[q]);
+					}
+					if (stype == "node") visualization_type = NODE;
+					else if (stype == "edge") visualization_type = EDGE;
+					else if (stype == "face") visualization_type = FACE;
+					else if (stype == "cell")
+					{
+						visualization_type = CELL;
+						visualization_smooth = false;
+					}
+					else if (stype == "smooth_cell")
+					{
+						visualization_type = CELL;
+						visualization_smooth = true;
+					}
+
+					if (visualization_type != NONE)
+					{
+						if (source_tag.isDefined(visualization_type))
+						{
+							if (source_tag.GetDataType() == DATA_REAL || 
+								source_tag.GetDataType() == DATA_INTEGER || 
+								source_tag.GetDataType() == DATA_BULK 
+#if defined(USE_AUTODIFF)
+								|| 
+								source_tag.GetDataType() == DATA_VARIABLE
+#endif
+								)
+							{
+#if defined(USE_AUTODIFF)
+								if (source_tag.GetDataType() == DATA_VARIABLE)
+									printf("I can show only value for data of type variable\n");
+#endif
+								float min = 1.0e20, max = -1.0e20;
+								printf("prepearing data for visualization\n");
+								if (visualization_tag.isValid())
+								{
+									visualization_tag = mesh->DeleteTag(visualization_tag);
+									color_bar::UnsetVisualizationTag();
+								}
+								visualization_tag = mesh->CreateTag("VISUALIZATION_TAG", DATA_REAL, NODE, NONE, 1);
+								color_bar::SetVisualizationTag(visualization_tag,visualization_type,visualization_smooth);
+								for (Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
+								{
+									ElementArray<Element> elems = it->getAdjElements(visualization_type);
+									Storage::real_array coords = it->Coords();
+									Storage::real cnt[3], dist, wgt;
+									Storage::real val = 0.0, vol = 0.0, res;
+									for (ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if (jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF))
+									{
+										jt->Centroid(cnt);
+										if( mesh->GetDimensions() == 2 )
+											dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]);
+										else
+											dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
+										wgt = 1.0 / (dist + 1.0e-8);
+										if (source_tag.GetDataType() == DATA_REAL)
+										{
+											Storage::real_array v = jt->RealArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * v[comp];
+										}
+										else if (source_tag.GetDataType() == DATA_INTEGER)
+										{
+											Storage::integer_array v = jt->IntegerArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * static_cast<double>(v[comp]);
+										}
+										else if (source_tag.GetDataType() == DATA_BULK)
+										{
+											Storage::bulk_array v = jt->BulkArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q)
+												{
+													double g = static_cast<double>(v[q]);
+													l += g * g;
+												}
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * static_cast<double>(v[comp]);
+										}
+#if defined(USE_AUTODIFF)
+										else if (source_tag.GetDataType() == DATA_VARIABLE)
+										{
+											Storage::var_array v = jt->VariableArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q) l += v[q].GetValue() * v[q].GetValue();
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * static_cast<double>(v[comp].GetValue());
+										}
+#endif
+										vol += wgt;
+									}
+									res = val / vol;
+									if (res < min) min = res;
+									if (res > max) max = res;
+									it->RealDF(visualization_tag) = res;
+								}
+								visualization_tag = mesh->CreateTag("VISUALIZATION_TAG", DATA_REAL, CELL, NONE, 1);
+								for (Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
+								{
+									ElementArray<Element> elems = it->getAdjElements(visualization_type);
+									Storage::real coords[3];
+									it->Centroid(coords);
+									Storage::real cnt[3], dist, wgt;
+									Storage::real val = 0.0, vol = 0.0, res;
+									for (ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if (jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF))
+									{
+										jt->Centroid(cnt);
+										dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
+										wgt = 1.0 / (dist + 1.0e-8);
+										if (source_tag.GetDataType() == DATA_REAL)
+										{
+											Storage::real_array v = jt->RealArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * v[comp];
+										}
+										else if (source_tag.GetDataType() == DATA_INTEGER)
+										{
+											Storage::integer_array v = jt->IntegerArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * v[comp];
+										}
+										else if (source_tag.GetDataType() == DATA_BULK)
+										{
+											Storage::bulk_array v = jt->BulkArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q)
+												{
+													double g = static_cast<double>(v[q]);
+													l += g*g;
+												}
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * static_cast<double>(v[comp]);
+										}
+#if defined(USE_AUTODIFF)
+										else if (source_tag.GetDataType() == DATA_VARIABLE)
+										{
+											Storage::var_array v = jt->VariableArray(source_tag);
+											if (comp == ENUMUNDEF)
+											{
+												double l = 0;
+												for (unsigned q = 0; q < v.size(); ++q) l += v[q].GetValue() * v[q].GetValue();
+												l = sqrt(l);
+												val += wgt * l;
+											}
+											else val += wgt * v[comp].GetValue();
+										}
+#endif
+										vol += wgt;
+									}
+									res = val / vol;
+									if (res < min) min = res;
+									if (res > max) max = res;
+									it->RealDF(visualization_tag) = res;
+								}
+
+								GetColorBar()->set_min(min);
+								GetColorBar()->set_max(max);
+								char comment[1024];
+								sprintf(comment, "%s[%d] on %s, [%g:%g]", name, comp, typen, min, max);
+								GetColorBar()->set_comment(comment);
+								clipupdate = true;
+								/*
+								all_boundary.clear();
+								INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
+								for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++)
+								{
+								all_boundary.push_back(DrawFace(boundary_faces[k]));
+								if( k%pace == 0 ) all_boundary.back().set_flag(true);
+								}
+								*/
+								success = true;
+							}
+							else if (source_tag.GetDataType() == DATA_REFERENCE)
+							{
+								segments.clear();
+								if (comp == ENUMUNDEF)
+								{
+									for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
+									{
+										coord cnt1, cnt2;
+										it->Centroid(cnt1.data());
+										Storage::reference_array arr = it->ReferenceArray(source_tag);
+										for (Storage::reference_array::iterator jt = arr.begin(); jt != arr.end(); ++jt) if (jt->isValid())
+										{
+											jt->Centroid(cnt2.data());
+											segments.push_back(segment(cnt1, cnt2));
+										}
+									}
+								}
+								else for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
+								{
+									coord cnt1, cnt2;
+									it->Centroid(cnt1.data());
+									Storage::reference_array arr = it->ReferenceArray(source_tag);
+									if( arr.size() > comp )
+									{
+										arr[comp]->Centroid(cnt2.data());
+										segments.push_back(segment(cnt1, cnt2));
+									}
+								}
+								success = true;
+							}
+							else printf("tag %s is not real or integer or bulk or variable or reference\n", name);
+						}
+						else printf("tag %s is not defined on element type %s\n", name, typen);
+					}
+					else printf("do not understand element type %s, should be: node, edge, face, cell, smooth_cell\n", typen);
+				}
+				else printf("component is out of range for tag %s of size %u\n", name, source_tag.GetSize());
+			}
+			else printf("mesh do not have tag with name %s\n",name);
+		}
+		else if(!correct_input) printf("malformed string %s for visualization\n",inpstr);
+		//inpstr[0] = '\0';
+
+	}
+	if( success ) input_history.push_back(std::make_pair(inptype,std::string(inpstr)));
+}
+
 void draw_screen()
 {
 	//glDepthMask(GL_TRUE);
@@ -1443,7 +2080,7 @@ void draw_screen()
 
 
 	double top = 0.96;
-	if( picked != -1 )
+	if( pick_element && picked != -1 )
 	{
 
 		Element e = clip_boundary[picked].get_elem(mesh);
@@ -1463,519 +2100,8 @@ void draw_screen()
 		{
 			if( ! CommonInput->Canceled() )
 			{
-				if( visualization_prompt_active == 2 )
-				{
-					int k = 0, slen = (int)strlen(visualization_prompt);
-					for(k = 0; k < slen; ++k) 
-					{
-						if( visualization_prompt[k] == ':' )
-						{
-							visualization_prompt[k] = '\0';
-							break;
-						}
-					}
-					if( k < slen && k+1 < slen )
-					{
-						double minv, maxv;
-						visualization_prompt[k] = ':';
-						minv = atof(visualization_prompt);
-						maxv = atof(visualization_prompt+k+1);
-						GetColorBar()->set_min(minv);
-						GetColorBar()->set_max(maxv);
-						clipupdate = true;
-					}
-					else printf("malformed string %s for color map bounds\n",visualization_prompt);
-					visualization_prompt_active = 0;
-				}
-				else if( visualization_prompt_active == 3 )
-				{
-					int k1 = 0, k2, slen = (int)strlen(visualization_prompt);
-					for(int k = 0; k < slen; ++k)
-					{
-						if( visualization_prompt[k] == ',' )
-						{
-							visualization_prompt[k] = '\0';
-							k1 = k;
-							break;
-						}
-					}
-					for(int k = k1+1; k < slen; ++k)
-					{
-						if( visualization_prompt[k] == ',' )
-						{
-							visualization_prompt[k] = '\0';
-							k2 = k;
-							break;
-						}
-					}
-					if( (k1 < slen && k1+1 < slen) && (k2 < slen && k2+1 < slen) )
-					{
-						scale[0] = atof(visualization_prompt);
-						scale[1] = atof(visualization_prompt+k1+1);
-						scale[2] = atof(visualization_prompt+k2+1);
-						visualization_prompt[k1] = ',';
-						visualization_prompt[k2] = ',';
-						clipupdate = true;
-					}
-					else printf("malformed string %s for mesh rescale\n",visualization_prompt);
-					visualization_prompt_active = 0;
-				}
-				else if( visualization_prompt_active == 1 )
-				{
-					char typen[1024],name[1024];
-					unsigned comp;
-					bool correct_input = false;
-					int k = 0,l, slen = (int)strlen(visualization_prompt);
-					for(k = 0; k < slen; ++k) 
-					{
-						if( visualization_prompt[k] == ':' )
-						{
-							visualization_prompt[k] = '\0';
-							break;
-						}
-					}
-					for(l = k+1; l < slen; ++l) 
-					{
-						if( visualization_prompt[l] == ':' )
-						{
-							visualization_prompt[l] = '\0';
-							break;
-						}
-					}
-
-					//std::cout << "k: " << k << " l: " << l << std::endl;
-
-					if( k == slen && l == slen+1 )
-					{
-						for(int q = 0; q < slen; ++q)
-							visualization_prompt[q] = tolower(visualization_prompt[q]);
-						if( std::string(visualization_prompt) == "clear" )
-						{
-							disp_e = InvalidElement();
-							if( visualization_tag.isValid() )
-							{
-								visualization_tag =  mesh->DeleteTag(visualization_tag);
-								color_bar::UnsetVisualizationTag();
-								clipupdate = true;
-							}
-							correct_input = true;
-							streamlines.clear();
-							glutPostRedisplay();
-							if( CommonVectors )
-							{
-								delete CommonVectors;
-								CommonVectors = NULL;
-							}
-
-						}
-					}
-
-					if( k < slen && l == slen ) //ElementType:Number format
-					{
-						strcpy(typen, visualization_prompt);
-						std::string stype(typen);
-						visualization_type = NONE;
-						for (size_t q = 0; q < stype.size(); ++q)
-							stype[q] = tolower(stype[q]);
-						if (stype == "scale")
-						{
-							double scale = atof(visualization_prompt + k + 1);
-							std::cout << "input scale: " << scale << std::endl;
-							if( CommonVectors )
-								CommonVectors->SetScale(scale);
-							correct_input = true;
-							glutPostRedisplay();
-						}
-						else
-						{
-							if (stype == "node") visualization_type = NODE;
-							else if (stype == "edge") visualization_type = EDGE;
-							else if (stype == "face") visualization_type = FACE;
-							else if (stype == "cell") visualization_type = CELL;
-							else if (stype == "eset") visualization_type = ESET;
-							if (visualization_type == NONE)
-								printf("unknown element type %s\n", typen);
-							else
-							{
-								disp_e = InvalidElement();
-								bool is_number = true;
-								for (l = k + 1; l < slen; ++l)
-								if (!isdigit(visualization_prompt[l]))
-									is_number = false;
-								if (is_number)
-								{
-									comp = atoi(visualization_prompt + k + 1);
-									visualization_prompt[k] = ':';
-
-
-									correct_input = true;
-
-									if (mesh->isValidElement(visualization_type, comp))
-									{
-										printf("Display data for %s:%d\n", typen, comp);
-										disp_e = mesh->ElementByLocalID(visualization_type, comp);
-									}
-									else
-										printf("No valid element at %s:%d\n", typen, comp);
-								}
-								else if (visualization_type == ESET)
-								{
-									std::string name = std::string(visualization_prompt + k + 1);
-									visualization_prompt[k] = ':';
-									correct_input = true;
-									disp_e = mesh->GetSet(name);
-									if (disp_e.isValid())
-										printf("Display data for %s:%d\n", typen, disp_e.LocalID());
-									else
-										printf("Cannot find set with name %s\n", name.c_str());
-								}
-
-								if (disp_e.isValid())
-								{
-									if (disp_e.GetElementType() != ESET)
-									{
-										disp_e->Centroid(shift);
-										for (int r = 0; r < 3; ++r)
-											shift[r] = -shift[r];
-									}
-									else
-									{
-										shift[0] = shift[1] = shift[2] = 0;
-										ElementSet s = disp_e.getAsSet();
-										int nelem = 0;
-										for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
-										{
-											double cnt[3];
-											it->Centroid(cnt);
-											shift[0] += cnt[0];
-											shift[1] += cnt[1];
-											shift[2] += cnt[2];
-											nelem++;
-										}
-										shift[0] /= (double)nelem;
-										shift[1] /= (double)nelem;
-										shift[2] /= (double)nelem;
-										for (int r = 0; r < 3; ++r)
-											shift[r] = -shift[r];
-									}
-								}
-							}
-						}
-					}
-
-					if( k < slen && l < slen && l+1 < slen )
-					{
-						bool is_number = true;
-						for(int r = l+1; r < slen; ++r)
-							if( !isdigit(visualization_prompt[r]) )
-								is_number = false;
-						if( !is_number ) for(int r = l+1; r < slen; ++r) visualization_prompt[r] = tolower(visualization_prompt[r]);
-
-						strcpy(typen,visualization_prompt);
-						strcpy(name,visualization_prompt+k+1);
-						if( is_number )
-							comp = atoi(visualization_prompt+l+1);
-						else if( std::string(visualization_prompt+l+1) == "mag" )
-							comp = ENUMUNDEF;
-						else if (std::string(visualization_prompt + l + 1) == "streamline")
-							comp = ENUMUNDEF-2;
-						else if (std::string(visualization_prompt + l + 1) == "vector" ||
-								 std::string(visualization_prompt + l + 1) == "vec")
-							comp = ENUMUNDEF-3;
-						else
-						{
-							std::cout << "unknown name for component, expected number or 'mag' or 'vec' or 'streamline'" << std::endl;
-							comp = ENUMUNDEF-1;
-						}
-						visualization_prompt[k] = ':';
-						visualization_prompt[l] = ':';
-						printf("type %s name %s comp %d\n",typen,name,comp);
-						std::string stype(typen), sname(name);
-						if (mesh->HaveTag(sname) && (comp == ENUMUNDEF - 2 || comp == ENUMUNDEF - 3))
-						{
-							ElementType vel_def = NONE;
-							for (size_t q = 0; q < stype.size(); ++q)
-							{
-								stype[q] = tolower(stype[q]);
-								typen[q] = tolower(typen[q]);
-							}
-							if (stype == "node") vel_def = NODE;
-							else if (stype == "edge") vel_def = EDGE;
-							else if (stype == "face") vel_def = FACE;
-							else if (stype == "cell") vel_def = CELL;
-							
-							if( comp == ENUMUNDEF - 2 )
-							{
-								streamlines.clear();
-								BuildStreamlines(mesh,mesh->GetTag(sname),vel_def,streamlines);
-							}
-							else if( comp == ENUMUNDEF - 3 )
-							{
-								if( CommonVectors ) delete CommonVectors;
-								CommonVectors = new Vectors(mesh,mesh->GetTag(sname),vel_def);
-							}
-						}
-						else if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
-						{
-							Tag source_tag = mesh->GetTag(sname);
-							if ((comp >= 0 && comp < source_tag.GetSize()) || comp == ENUMUNDEF)
-							{
-								visualization_type = NONE;
-								for (size_t q = 0; q < stype.size(); ++q)
-								{
-									stype[q] = tolower(stype[q]);
-									typen[q] = tolower(typen[q]);
-								}
-								if (stype == "node") visualization_type = NODE;
-								else if (stype == "edge") visualization_type = EDGE;
-								else if (stype == "face") visualization_type = FACE;
-								else if (stype == "cell")
-								{
-									visualization_type = CELL;
-									visualization_smooth = false;
-								}
-								else if (stype == "smooth_cell")
-								{
-									visualization_type = CELL;
-									visualization_smooth = true;
-								}
-
-								if (visualization_type != NONE)
-								{
-									if (source_tag.isDefined(visualization_type))
-									{
-										if (source_tag.GetDataType() == DATA_REAL || 
-											source_tag.GetDataType() == DATA_INTEGER || 
-											source_tag.GetDataType() == DATA_BULK 
-#if defined(USE_AUTODIFF)
-											|| 
-											source_tag.GetDataType() == DATA_VARIABLE
-#endif
-											)
-										{
-#if defined(USE_AUTODIFF)
-											if (source_tag.GetDataType() == DATA_VARIABLE)
-												printf("I can show only value for data of type variable\n");
-#endif
-											float min = 1.0e20, max = -1.0e20;
-											printf("prepearing data for visualization\n");
-											if (visualization_tag.isValid())
-											{
-												visualization_tag = mesh->DeleteTag(visualization_tag);
-												color_bar::UnsetVisualizationTag();
-											}
-											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG", DATA_REAL, NODE, NONE, 1);
-											color_bar::SetVisualizationTag(visualization_tag,visualization_type,visualization_smooth);
-											for (Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
-											{
-												ElementArray<Element> elems = it->getAdjElements(visualization_type);
-												Storage::real_array coords = it->Coords();
-												Storage::real cnt[3], dist, wgt;
-												Storage::real val = 0.0, vol = 0.0, res;
-												for (ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if (jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF))
-												{
-													jt->Centroid(cnt);
-													if( mesh->GetDimensions() == 2 )
-														dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]);
-													else
-														dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
-													wgt = 1.0 / (dist + 1.0e-8);
-													if (source_tag.GetDataType() == DATA_REAL)
-													{
-														Storage::real_array v = jt->RealArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * v[comp];
-													}
-													else if (source_tag.GetDataType() == DATA_INTEGER)
-													{
-														Storage::integer_array v = jt->IntegerArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * static_cast<double>(v[comp]);
-													}
-													else if (source_tag.GetDataType() == DATA_BULK)
-													{
-														Storage::bulk_array v = jt->BulkArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q)
-															{
-																double g = static_cast<double>(v[q]);
-																l += g * g;
-															}
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * static_cast<double>(v[comp]);
-													}
-#if defined(USE_AUTODIFF)
-													else if (source_tag.GetDataType() == DATA_VARIABLE)
-													{
-														Storage::var_array v = jt->VariableArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q) l += v[q].GetValue() * v[q].GetValue();
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * static_cast<double>(v[comp].GetValue());
-													}
-#endif
-													vol += wgt;
-												}
-												res = val / vol;
-												if (res < min) min = res;
-												if (res > max) max = res;
-												it->RealDF(visualization_tag) = res;
-											}
-											visualization_tag = mesh->CreateTag("VISUALIZATION_TAG", DATA_REAL, CELL, NONE, 1);
-											for (Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
-											{
-												ElementArray<Element> elems = it->getAdjElements(visualization_type);
-												Storage::real coords[3];
-												it->Centroid(coords);
-												Storage::real cnt[3], dist, wgt;
-												Storage::real val = 0.0, vol = 0.0, res;
-												for (ElementArray<Element>::iterator jt = elems.begin(); jt != elems.end(); ++jt) if (jt->HaveData(source_tag) && (jt->GetDataSize(source_tag) > comp || comp == ENUMUNDEF))
-												{
-													jt->Centroid(cnt);
-													dist = (cnt[0] - coords[0])*(cnt[0] - coords[0]) + (cnt[1] - coords[1])*(cnt[1] - coords[1]) + (cnt[2] - coords[2])*(cnt[2] - coords[2]);
-													wgt = 1.0 / (dist + 1.0e-8);
-													if (source_tag.GetDataType() == DATA_REAL)
-													{
-														Storage::real_array v = jt->RealArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * v[comp];
-													}
-													else if (source_tag.GetDataType() == DATA_INTEGER)
-													{
-														Storage::integer_array v = jt->IntegerArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q) l += v[q] * v[q];
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * v[comp];
-													}
-													else if (source_tag.GetDataType() == DATA_BULK)
-													{
-														Storage::bulk_array v = jt->BulkArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q)
-															{
-																double g = static_cast<double>(v[q]);
-																l += g*g;
-															}
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * static_cast<double>(v[comp]);
-													}
-#if defined(USE_AUTODIFF)
-													else if (source_tag.GetDataType() == DATA_VARIABLE)
-													{
-														Storage::var_array v = jt->VariableArray(source_tag);
-														if (comp == ENUMUNDEF)
-														{
-															double l = 0;
-															for (unsigned q = 0; q < v.size(); ++q) l += v[q].GetValue() * v[q].GetValue();
-															l = sqrt(l);
-															val += wgt * l;
-														}
-														else val += wgt * v[comp].GetValue();
-													}
-#endif
-													vol += wgt;
-												}
-												res = val / vol;
-												if (res < min) min = res;
-												if (res > max) max = res;
-												it->RealDF(visualization_tag) = res;
-											}
-
-											GetColorBar()->set_min(min);
-											GetColorBar()->set_max(max);
-											char comment[1024];
-											sprintf(comment, "%s[%d] on %s, [%g:%g]", name, comp, typen, min, max);
-											GetColorBar()->set_comment(comment);
-											clipupdate = true;
-											/*
-											all_boundary.clear();
-											INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
-											for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++)
-											{
-											all_boundary.push_back(DrawFace(boundary_faces[k]));
-											if( k%pace == 0 ) all_boundary.back().set_flag(true);
-											}
-											*/
-										}
-										else if (source_tag.GetDataType() == DATA_REFERENCE)
-										{
-											segments.clear();
-											if (comp == ENUMUNDEF)
-											{
-												for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
-												{
-													coord cnt1, cnt2;
-													it->Centroid(cnt1.data());
-													Storage::reference_array arr = it->ReferenceArray(source_tag);
-													for (Storage::reference_array::iterator jt = arr.begin(); jt != arr.end(); ++jt) if (jt->isValid())
-													{
-														jt->Centroid(cnt2.data());
-														segments.push_back(segment(cnt1, cnt2));
-													}
-												}
-											}
-											else for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
-											{
-												coord cnt1, cnt2;
-												it->Centroid(cnt1.data());
-												Storage::reference_array arr = it->ReferenceArray(source_tag);
-												if( arr.size() > comp )
-												{
-													arr[comp]->Centroid(cnt2.data());
-													segments.push_back(segment(cnt1, cnt2));
-												}
-											}
-										}
-										else printf("tag %s is not real or integer or bulk or variable or reference\n", name);
-									}
-									else printf("tag %s is not defined on element type %s\n", name, typen);
-								}
-								else printf("do not understand element type %s, should be: node, edge, face, cell, smooth_cell\n", typen);
-							}
-							else printf("component is out of range for tag %s of size %u\n", name, source_tag.GetSize());
-						}
-						else printf("mesh do not have tag with name %s\n",name);
-					}
-					else if(!correct_input) printf("malformed string %s for visualization\n",visualization_prompt);
-					visualization_prompt_active = 0;
-					//visualization_prompt[0] = '\0';
-
-				}
+				ProcessCommonInput(visualization_prompt, visualization_prompt_active);
+				visualization_prompt_active = 0;
 
 				glutPostRedisplay();
 			}
@@ -2201,12 +2327,12 @@ int main(int argc, char ** argv)
 	mesh->SetFileOption("VERBOSITY","2");
 	if( argc < 2 )
 	{
-		printf("Usage: %s mesh_file [dims]\n",argv[0]);
+		printf("Usage: %s mesh_file [state] [dims]\n",argv[0]);
 		return 0;
 	}
 	//try
 	{
-		if( argc > 2 )	mesh->SetFileOption("VTK_GRID_DIMS",argv[2]);
+		if( argc > 3 )	mesh->SetFileOption("VTK_GRID_DIMS",argv[3]);
 		mesh->Load(argv[1]);
 	} 
 	/*
@@ -2488,6 +2614,9 @@ int main(int argc, char ** argv)
   }
 
 	quatinit();
+	color_bar::InitColorBar();
+	if( argc > 2 ) read_state(argv[2]);
+	
 	glutInit(&argc,argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 	glutInitWindowSize(width, height);
@@ -2499,8 +2628,8 @@ int main(int argc, char ** argv)
 	glEnable(GL_DEPTH_TEST);
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
-
-	color_bar::InitColorBar();
+	color_bar::InitColorBarTexture();
+	
 	
 	glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
 	glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);
@@ -2508,14 +2637,32 @@ int main(int argc, char ** argv)
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	
 	glClearColor (1.0f, 1.0f, 1.0f, 1.f);
-	glutDisplayFunc(draw);
+	
 	glutReshapeFunc(reshape);
+	
+	if( !input_dely.empty() )
+	{
+		for(size_t k = 0; k < input_dely.size(); ++k)
+		{
+			char inpstr[8192];
+			strcpy(inpstr,input_dely[k].second.c_str());
+			ProcessCommonInput(inpstr,input_dely[k].first);
+		}
+		input_dely.clear();
+	}
+	
+	glutDisplayFunc(draw);
+	
+	
+	
+	
 	
 	glutKeyboardFunc(keyboard);
 	glutKeyboardUpFunc(keyboard2);
 	glutMouseFunc(myclick);
 	glutMotionFunc(myclickmotion);
 	glutPassiveMotionFunc(mymotion);
+	
 	
 	//glutIdleFunc(idle);
 	

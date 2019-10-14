@@ -292,6 +292,31 @@ void quatget(double *vec)
 	vec[2] = q.z / q.w;
 }
 
+void quatget4(double gq[4])
+{
+	gq[0] = q.x;
+	gq[1] = q.y;
+	gq[2] = q.z;
+	gq[3] = q.w;
+}
+
+void quatget4_from_stack(double gq[4])
+{
+	gq[0] = storage.back().x;
+	gq[1] = storage.back().y;
+	gq[2] = storage.back().z;
+	gq[3] = storage.back().w;
+}
+
+void quatset4(double gq[4])
+{
+	q.x = gq[0];
+	q.y = gq[1];
+	q.z = gq[2];
+	q.w = gq[3];
+}
+
+
 void reverse_rotatevector_from_stack(double * vec)
 {
 	int i;

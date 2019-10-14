@@ -19,6 +19,7 @@ namespace INMOST
 		std::string comment;
 		unsigned texture;
 		int samples;
+		void InitTexture();
 	public:
 		color_bar();
 		~color_bar();
@@ -42,6 +43,7 @@ namespace INMOST
 		static bool isVisualizationSmooth() { return smooth; }
 		static void SetVisualizationTag(Tag t, ElementType et, bool st) { vtag = t; vtype = et; smooth = st; }
 		static void UnsetVisualizationTag() { vtag = Tag(); vtype = NONE;}
+		static void InitColorBarTexture() { CommonColorBar->InitTexture(); }
 	};
 
 	Tag GetVisualizationTag();

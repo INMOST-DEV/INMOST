@@ -88,6 +88,35 @@ namespace INMOST
 		colors.push_back(color_t(0.45, 0, 0.55));
 		colors.push_back(color_t(0, 0, 0));
 
+		
+		//colors.push_back(color_t(1,0,0));
+	}
+
+
+	color_t color_bar::pick_color(float value) const
+	{
+		if (value < min)
+			return color_t(0.4, 1.0, 0.4);
+		if (value > max)
+			return color_t(0, 0.6, 0);
+		float t = (value - min) / (max - min);
+		std::vector<float>::const_iterator it = std::lower_bound(ticks.begin(), ticks.end(), t);
+		size_t pos = it - ticks.begin();
+		if (it == ticks.end() || pos >= ticks.size())
+		{
+			return colors.back();
+		}
+		if (pos == 0)
+		{
+			return colors[0];
+		}
+		float interp = (t - ticks[pos - 1]) / (ticks[pos] - ticks[pos - 1]);
+		return (colors[pos] * interp + colors[pos - 1] * (1 - interp));
+	}
+	
+	
+	void color_bar::InitTexture()
+	{
 		samples = 4096;
 
 		float * pixel_array = new float[(samples + 2) * 4];
@@ -139,31 +168,7 @@ namespace INMOST
 		UnbindTexture();
 
 		delete[] pixel_array;
-		//colors.push_back(color_t(1,0,0));
 	}
-
-
-	color_t color_bar::pick_color(float value) const
-	{
-		if (value < min)
-			return color_t(0.4, 1.0, 0.4);
-		if (value > max)
-			return color_t(0, 0.6, 0);
-		float t = (value - min) / (max - min);
-		std::vector<float>::const_iterator it = std::lower_bound(ticks.begin(), ticks.end(), t);
-		size_t pos = it - ticks.begin();
-		if (it == ticks.end() || pos >= ticks.size())
-		{
-			return colors.back();
-		}
-		if (pos == 0)
-		{
-			return colors[0];
-		}
-		float interp = (t - ticks[pos - 1]) / (ticks[pos] - ticks[pos - 1]);
-		return (colors[pos] * interp + colors[pos - 1] * (1 - interp));
-	}
-
 
 	void color_bar::BindTexture()
 	{

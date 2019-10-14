@@ -262,7 +262,7 @@ namespace INMOST
 		Storage::real coef, len, size;
 		coord next = pos, vel;
 		Element c;
-		const int maxsteps = 8000;
+		const int maxsteps = 25000;
 		points.reserve(maxsteps / 2);
 		velarr.reserve(maxsteps / 2);
 		points.push_back(pos);
@@ -283,10 +283,10 @@ namespace INMOST
 			c.SetMarker(visited);
 			GetVelocity(c, velocity_tag, velocity_defined, next, vel);
 			len = vel.length();
-			if (len < 1.0e-7) break;
+			if (len < 1.0e-12) break;
 			//size = GetSize(c, cell_size);// c->RealDF(cell_size);
 			size = GetSizeProj(c,vel);
-			coef = 0.02*size / len;
+			coef = 0.01*size / len;
 			next += vel*coef*sign;
 			points.push_back(next);
 			velarr.push_back((log(len + 1.0e-25) - velocity_min) / (velocity_max - velocity_min));

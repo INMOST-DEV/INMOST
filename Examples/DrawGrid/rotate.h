@@ -32,4 +32,8 @@ void revrotatevector(double * vec);
 void rotatevector_from_stack(double * vec);
 void reverse_rotatevector_from_stack(double * vec);
 
+void quatget4(double gq[4]);
+void quatget4_from_stack(double gq[4]);
+void quatset4(double gq[4]);
+
 #endif
