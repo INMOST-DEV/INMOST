@@ -16,7 +16,10 @@ int main(int argc, char ** argv)
 
 	Mesh m;
 	for(int k = 1 ; k < argc; ++k)
+	{
+		std::cout << "load " << argv[k] << std::endl;
 		m.Load(argv[k]);
+	}
 	
 	double xmax = -1.0e20, xmin = 1.0e20;
 	double ymax = -1.0e20, ymin = 1.0e20;

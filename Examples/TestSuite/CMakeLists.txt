@@ -29,6 +29,7 @@ add_executable(test_discontinuous_4zones discontinuous_4zones.cpp)
 add_executable(test_linear_sol linear_sol.cpp)
 add_executable(test_ns_linear ns_linear.cpp)
 add_executable(test_ns_cavity ns_cavity.cpp)
+add_executable(test_ns_pousielle ns_pousielle.cpp)
 add_executable(test_ns_backward_step ns_backward_step.cpp)
 
 
@@ -51,6 +52,16 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 install(TARGETS test_ns_cavity EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
+target_link_libraries(test_ns_pousielle inmost)
+if(USE_MPI)
+  message("linking test_ns_cavity with MPI")
+  target_link_libraries(test_ns_pousielle ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(test_ns_pousielle PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS test_ns_pousielle EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
 
 
 target_link_libraries(test_ns_backward_step inmost)

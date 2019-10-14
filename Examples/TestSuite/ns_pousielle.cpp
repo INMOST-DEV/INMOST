@@ -25,11 +25,6 @@ using namespace INMOST;
 // REFERENCE_PRESSURE - 1 entry
 //
 
-double Len = 8;
-double Diam = 1;
-double shear = 10;//0; //shear rate
-double dp = 0;//36e-6;
-double vmax = 0;
 
 
 typedef Storage::real real;
@@ -41,7 +36,7 @@ int main(int argc, char ** argv)
 	
 	if( argc < 2 )
 	{
-		std::cout << "Usage: " << argv[0] << " mesh is2D=1 height=0.6 length=0.2 mesh_out=grid_out.pmf" << std::endl;
+		std::cout << "Usage: " << argv[0] << " mesh [axis=2 (0:x,1:y,2:z)] [control=0 (0:shear rate,1:pressure drop,2:maximal velocity)] [control_value=10] [visc=1.0e-5] [mesh_out=grid_out.pmf]" << std::endl;
 		return 0;
 	}
 	
@@ -58,7 +53,58 @@ int main(int argc, char ** argv)
 	}
 	
 	std::string fout = "grid_out.pmf";
-	std::string 
+	int axis = 2;
+	double visc = 1.0e-5;
+	int control = 0;
+	double control_value = 10;
+	double Len = 8;
+	double Diam = 1;
+	double shear = 10;//0; //shear rate
+	double dp = 0;//36e-6;
+	double vmax = 0;
+
+	if( argc > 2 ) axis = atoi(argv[2]);
+	if( argc > 3 ) control = atoi(argv[3]);
+	if( argc > 4 ) control_value = atof(argv[4]);
+	if( argc > 5 ) visc = atof(argv[5]);
+	if( argc > 6 ) fout = std::string(argv[6]);
+	
+	
+	
+	if( axis < 0 || axis > 2 )
+	{
+		std::cout << "bad axis: " << axis << " should be 0 - x, 1 - y, 2 - z" << std::endl;
+		return -1;
+	}
+	
+	if( control < 0 || control > 2 )
+	{
+		std::cout << "bad control: " << control << " should be 0 - shear rate, 1 - pressure drop, 2 - maximal velocity" << std::endl;
+		return -1;
+	}
+	
+	if( visc <= 0 )
+	{
+		std::cout << "bad viscosity: " << visc << std::endl;
+		return -1;
+	}
+	
+	if( control == 0 )
+	{
+		shear = control_value;
+		dp = vmax = 0;
+	}
+	else if( control == 1 )
+	{
+		dp = control_value;
+		shear = vmax = 0;
+	}
+	else if( control == 2 )
+	{
+		vmax = control_value;
+		dp = shear = 0;
+	}
+	
 	
 	double cmax[3] = {-1.0e20,-1.0e20,-1.0e20}, cmin[3] = {1.0e20,1.0e20,1.0e20};
 	for(Mesh::iteratorNode n = m->BeginNode(); n != m->EndNode(); ++n)
@@ -70,71 +116,73 @@ int main(int argc, char ** argv)
 			if( cmin[k] > c[k] ) cmin[k] = c[k];
 		}
 	}
-	Len = cmax[2] - cmin[2];
-	Diam = sqrt(pow(cmax[0] - cmin[0],2) + pow(cmax[1]-cmin[1],2))/sqrt(2);
+	Len = cmax[axis] - cmin[axis];
+	Diam = std::max(cmax[(axis+1)%3]-cmin[(axis+1)%3],cmax[(axis+2)%3]-cmin[(axis+2)%3]);
 			
 	
-	if( argc > 5 ) fout = std::string(argv[5]);
+	if( shear )
+	{
+		dp = 4*Len/Diam*shear*visc;
+		vmax = Diam*Diam*dp/(16*visc*Len);
+	}
+	else if( dp )
+	{
+		vmax = Diam*Diam*dp/(16*visc*Len);
+		shear = 4*vmax/Diam;
+	}
+	else if( vmax )
+	{
+		shear = 4*vmax/Diam;
+		dp = 4*Len/Diam*shear*visc;
+	}
+	
+	std::cout << "shear " << shear << " dp " << dp << " vmax " << vmax << std::endl;
 	
 	//TagRealArray force = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,3);
-	TagRealArray bc = m->CreateTag("BOUNDARY_CONDITION_VELOCITY",DATA_REAL,FACE,FACE,7);
-	TagReal bcp = m->CreateTag("BOUNDARY_CONDITION_PRESSURE",DATA_REAL,FACE,FACE,1);
-	TagRealArray uvw = m->CreateTag("UVW",DATA_REAL,CELL,NONE,3);
-	TagReal p = m->CreateTag("P",DATA_REAL,CELL,NONE,1);
+	TagRealArray  bc      = m->CreateTag("BOUNDARY_CONDITION_VELOCITY",DATA_REAL,FACE,FACE,7);
+	TagReal       bcp     = m->CreateTag("BOUNDARY_CONDITION_PRESSURE",DATA_REAL,FACE,FACE,1);
+	TagRealArray  uvw     = m->CreateTag("UVW",DATA_REAL,CELL,NONE,3);
+	TagRealArray  uvw_ref = m->CreateTag("REFERENCE_VELOCITY",DATA_REAL,CELL,NONE,3); //depends on viscosity
+	TagReal       p_ref   = m->CreateTag("REFERENCE_PRESSURE",DATA_REAL,CELL,NONE,1);
+	TagReal       p       = m->CreateTag("P",DATA_REAL,CELL,NONE,1);
 	
-	//cut part of the grid
-	
-	rMatrix n(3,1), x(3,1);
-	
-	for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
-	{
-		it->Centroid(x.data());
-		if( x(0,0) < length && x(1,0) < height )
-			it->Delete();
-	}
 	
 	
 	//this should not be needed?
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 		it->FixNormalOrientation();
 	
+	double cnt0[3];
+	cnt0[axis] = 0;
+	cnt0[(axis+1)%2] = (cmax[(axis+1)%2] + cmin[(axis+1)%2])*0.5;
+	cnt0[(axis+2)%2] = (cmax[(axis+2)%2] + cmin[(axis+2)%2])*0.5;
 	for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 	{
+		double cnt[3];
+		it->Barycenter(cnt);
+		double r = sqrt(pow(cnt[(axis+1)%2]-cnt0[(axis+1)%2],2)+pow(cnt[(axis+2)%2]-cnt0[(axis+2)%2],2));
 		uvw(*it,3,1).Zero();
 		p[*it] = 0;
+		uvw_ref(*it,3,1).Zero();
+		uvw_ref(*it,3,1)(axis,0) = (Diam*Diam/4.0-r*r)*dp/(4.0*visc*Len);
+		p_ref[*it] = dp*(cnt[axis]-cmin[axis])/Len;
 	}
 	
-	if( is2D ) std::cout << "2D setup" << std::endl;
-	else std::cout << "3D setup" << std::endl;
-	std::cout << "height=" << height << " length=" << length << std::endl;
+	
 	
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 	{
-		it->Centroid(x.data());
-		it->UnitNormal(n.data());
-		if( is2D && (fabs(n(2,0)-1) < 1.0-3 || fabs(n(2,0)+1) < 1.0e-3 ) ) //roller bc
+		double  n[3];
+		it->UnitNormal(n);
+		if( fabs(n[axis]-1) < 1.0e-3 ) // outflow
 		{
-			bc[*it][0] = 1;
-			bc[*it][1] = 0;
-			bc[*it][2] = 0;
-			bc[*it][3] = 1;
-			bc[*it][4] = 0;
-			bc[*it][5] = 0;
-			bc[*it][6] = 0;
-		}
-		else if( fabs(n(0,0)+1) < 1.0e-3 && x(0,0) < 1.0e-3 ) //inlet
-		{
-			bc[*it][0] = 1;
-			bc[*it][1] = 0;
-			bc[*it][2] = 1;
-			bc[*it][3] = 0;
-			bc[*it][4] = 1;
-			bc[*it][5] = 0;
-			bc[*it][6] = 0;
-		}
-		else if( fabs(n(0,0)-1) < 1.0e-3 ) //outlet
 			bcp[*it] = 0;
-		else //no-slip
+		}
+		else if(  fabs(n[axis]+1) < 1.0e-3 ) //inflow
+		{
+			bcp[*it] = dp;
+		}
+		else //no-slip walls
 		{
 			bc[*it][0] = 1;
 			bc[*it][1] = 0;
