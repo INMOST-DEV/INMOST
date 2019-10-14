@@ -6,6 +6,17 @@
 
 namespace INMOST
 {
+	inline static void crossproduct(const Storage::real vecin1[3],const Storage::real vecin2[3], Storage::real vecout[3])
+	{
+		vecout[0] = vecin1[1]*vecin2[2] - vecin1[2]*vecin2[1];
+		vecout[1] = vecin1[2]*vecin2[0] - vecin1[0]*vecin2[2];
+		vecout[2] = vecin1[0]*vecin2[1] - vecin1[1]*vecin2[0];
+	}
+	
+	inline static Storage::real dotproduct(const  Storage::real * vecin1, const Storage::real * vecin2)
+	{
+		return vecin1[0]*vecin2[0]+vecin1[1]*vecin2[1]+vecin1[2]*vecin2[2];
+	}
 	template<typename bbox_type>
 	inline int SearchKDTree::bbox_point(const Storage::real p[3], const bbox_type bbox[6], bool print)
 	{
@@ -290,6 +301,179 @@ namespace INMOST
 			}
 		}
 		else set = NULL;
+	}
+	
+	inline int SearchKDTree::segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3])
+	{
+		const Storage::real eps = 1.0e-7;
+		Storage::real a[3],b[3],c[3],n[3], ray[3], d, k, m, l;
+		Storage::real dot00,dot01,dot02,dot11,dot12,invdenom, uq,vq;
+		ray[0] = p2[0]-p1[0];
+		ray[1] = p2[1]-p1[1];
+		ray[2] = p2[2]-p1[2];
+		l = sqrt(dotproduct(ray,ray));
+		ray[0] /= l;
+		ray[1] /= l;
+		ray[2] /= l;
+		a[0] = tri[0][0] - tri[2][0];
+		a[1] = tri[0][1] - tri[2][1];
+		a[2] = tri[0][2] - tri[2][2];
+		b[0] = tri[1][0] - tri[2][0];
+		b[1] = tri[1][1] - tri[2][1];
+		b[2] = tri[1][2] - tri[2][2];
+		crossproduct(a,b,n);
+		d = -dotproduct(n,tri[0]);
+		m =  dotproduct(n,ray);
+		if( fabs(m) < 1.0e-25 )
+			return 0;
+		k = -(d + dotproduct(n,p1))/m;
+		if( k < 0 )
+			return 0;
+		if( k > l )
+			return 0;
+		c[0] = p1[0] + k*ray[0] - tri[2][0];
+		c[1] = p1[1] + k*ray[1] - tri[2][1];
+		c[2] = p1[2] + k*ray[2] - tri[2][2];
+		dot00 = dotproduct(a,a);
+		dot01 = dotproduct(a,b);
+		dot02 = dotproduct(a,c);
+		dot11 = dotproduct(b,b);
+		dot12 = dotproduct(b,c);
+		invdenom = (dot00*dot11 - dot01*dot01);
+		uq = (dot11*dot02-dot01*dot12);
+		vq = (dot00*dot12-dot01*dot02);
+		if( fabs(invdenom) < 1.0e-25 && fabs(uq) > 0.0 && fabs(vq) > 0.0 )
+			return 0;
+		uq = uq/invdenom;
+		vq = vq/invdenom;
+		if( uq >= -eps && vq >= -eps && 1.0-(uq+vq) >= -eps )
+			return 1;
+		return 0;
+	}
+	
+	inline int SearchKDTree::segment_bbox(const Storage::real p1[3], const Storage::real p2[3])
+	{
+		Storage::real tnear = -1.0e20, tfar = 1.0e20;
+		Storage::real t1,t2,c;
+		for(int i = 0; i < 3; i++)
+		{
+			if( fabs(p2[i]-p1[i]) < 1.0e-15 )
+			{
+				if( p1[i] < bbox[i*2] || p1[i] > bbox[i*2+1] )
+					return 0;
+			}
+			else
+			{
+				t1 = (bbox[i*2+0] - p1[i])/(p2[i]-p1[i]);
+				t2 = (bbox[i*2+1] - p1[i])/(p2[i]-p1[i]);
+				if( t1 > t2 )
+				{
+					c = t1;
+					t1 = t2;
+					t2 = c;
+				}
+				if( t1 > tnear ) tnear = t1;
+				if( t2 < tfar ) tfar = t2;
+				if( tnear > tfar ) return 0;
+				if( tfar < 0 ) return 0;
+				if( tnear > 1 ) return 0;
+			}
+		}
+		return 1;
+	}
+	
+	inline bool SearchKDTree::segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3])
+	{
+		Mesh * m = f->GetMeshLink();
+		Storage::real tri[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
+		m->GetGeometricData(f->GetHandle(),CENTROID,tri[2]);
+		ElementArray<Node> nodes = f->getNodes();
+		m->GetGeometricData(nodes[0]->GetHandle(),CENTROID,tri[1]);
+		for(ElementArray<Node>::size_type k = 0; k < nodes.size(); ++k)
+		{
+			memcpy(tri[0],tri[1],sizeof(Storage::real)*3);
+			//m->GetGeometricData(nodes[k]->GetHandle(),CENTROID,tri[0]);
+			m->GetGeometricData(nodes[(k+1)%nodes.size()]->GetHandle(),CENTROID,tri[1]);
+			if( segment_tri(tri,p1,p2) ) return true;
+		}
+		return false;
+	}
+	
+	inline bool SearchKDTree::segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3])
+	{
+		ElementArray<Face> faces = c->getFaces();
+		for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
+			if( segment_face(it->self(),p1,p2) ) return true;
+		return false;
+	}
+	
+	void SearchKDTree::IntersectSegment(ElementArray<Cell> & cells, const Storage::real p1[3], const Storage::real p2[3])
+	{
+		ElementArray<Element> temp(m);
+		MarkerType mrk = m->CreateMarker();
+		sub_intersect_segment(temp, mrk, p1, p2);
+		m->RemMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
+		for (ElementArray<Element>::iterator it = temp.begin(); it != temp.end(); ++it)
+		{
+			if (it->GetElementType() == CELL && !it->GetMarker(mrk))
+			{
+				cells.push_back(it->getAsCell());
+				it->SetMarker(mrk);
+			}
+			else if (it->GetElementType() == FACE)
+			{
+				ElementArray<Cell> f_cells = it->getCells();
+				for (ElementArray<Cell>::iterator kt = f_cells.begin(); kt != f_cells.end(); ++kt) if (!kt->GetMarker(mrk))
+				{
+					cells.push_back(kt->self());
+					kt->SetMarker(mrk);
+				}
+			}
+		}
+		m->RemMarkerArray(cells.data(), static_cast<Storage::enumerator>(cells.size()), mrk);
+		m->ReleaseMarker(mrk);
+	}
+	
+	
+	void SearchKDTree::sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3])
+	{
+		if( size == 1 )
+		{
+			if( !m->GetMarker(set[0].e,mrk) )
+			{
+				Storage::integer edim = Element::GetGeometricDimension(m->GetGeometricType(set[0].e));
+				if( edim == 2 )
+				{
+					if( segment_face(Element(m,set[0].e),p1,p2) )
+					{
+						hits.push_back(set[0].e);
+						m->SetMarker(set[0].e,mrk);
+					}
+				}
+				else if( edim == 3 )
+				{
+					if( segment_cell(Element(m,set[0].e),p1,p2) )
+					{
+						hits.push_back(set[0].e);
+						m->SetMarker(set[0].e,mrk);
+					}
+				}
+				else
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " kd-tree structure is not suitable to intersect edges with segments" << std::endl;
+					exit(-1);
+				}
+			}
+		}
+		else
+		{
+			assert(size > 1);
+			if( segment_bbox(p1,p2) )
+			{
+				children[0].sub_intersect_segment(hits,mrk,p1,p2);
+				children[1].sub_intersect_segment(hits,mrk,p1,p2);
+			}
+		}
 	}
 	
 	SearchKDTree::~SearchKDTree()

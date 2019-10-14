@@ -3509,11 +3509,18 @@ namespace INMOST
 		
 		Cell SubSearchCell(const Storage::real p[3], bool print);
 		void clear_children();
+		
+		inline int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]);
+		inline int  segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]);
+		inline bool segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]);
+		inline bool segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]);
+		void sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3]);
 	public:
 		SearchKDTree(Mesh * m);
 		SearchKDTree(Mesh * m, HandleType * _set, unsigned set_size);
 		~SearchKDTree();
 		Cell SearchCell(const Storage::real * point, bool print = false);
+		void IntersectSegment(ElementArray<Cell> & cells, const Storage::real p1[3], const Storage::real p2[3]);
 	};
 
 
