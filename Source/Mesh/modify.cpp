@@ -1567,7 +1567,7 @@ namespace INMOST
 		
 		//debug
 		
-		if(report || !mat.all_visited())
+		if( false ) if(report || !mat.all_visited())
 		{
 			mat.print_matrix();
 			incident_matrix<Face> mat(m,temp.begin(),temp.end(),ninner,GridCoords(),true);

@@ -7,7 +7,7 @@ add_executable(UniteFaces unite_faces.cpp)
 add_executable(Dual dual.cpp)
 add_executable(Tetra tetra.cpp)
 add_executable(Slice slice.cpp)
-add_executable(SliceFunc slice_func.cpp)
+add_executable(SliceFunc slice_func_test.cpp)
 add_executable(SplitNonplanar split_nonplanar.cpp)
 add_executable(CollapseDegenerate collapse_degenerate.cpp)
 add_executable(Bnd2Stl bnd2stl.cpp)
@@ -36,6 +36,7 @@ add_executable(check_collapse check_collapse.cpp)
 add_executable(test_fracture test_fracture.cpp)
 add_executable(segment_data segment_data.cpp)
 add_library(FractureLib fracture.cpp fracture.h)
+add_library(SliceFuncLib slice_func.cpp slice_func.h)
 
 target_link_libraries(test_fracture inmost)
 target_link_libraries(test_fracture FractureLib)
@@ -160,6 +161,7 @@ install(TARGETS Slice EXPORT inmost-targets RUNTIME DESTINATION bin/GridTools)
 
 
 target_link_libraries(SliceFunc inmost)
+target_link_libraries(SliceFunc SliceFuncLib)
 if(USE_MPI)
   message("linking SliceFunc with MPI")
   target_link_libraries(SliceFunc ${MPI_LIBRARIES}) 
@@ -418,8 +420,9 @@ install(TARGETS segment_data EXPORT inmost-targets RUNTIME DESTINATION bin/GridT
 
 
 set_property(TARGET FractureLib PROPERTY PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/fracture.h")
+set_property(TARGET SliceFuncLib PROPERTY PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/slice_func.h")
 
-install(TARGETS FractureLib EXPORT inmost-targets 
+install(TARGETS FractureLib SliceFuncLib EXPORT inmost-targets 
         LIBRARY DESTINATION lib 
         ARCHIVE DESTINATION lib
         PUBLIC_HEADER DESTINATION include)
