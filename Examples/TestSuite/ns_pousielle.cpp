@@ -136,7 +136,7 @@ int main(int argc, char ** argv)
 		dp = 4*Len/Diam*shear*visc;
 	}
 	
-	std::cout << "shear " << shear << " dp " << dp << " vmax " << vmax << std::endl;
+	std::cout << "viscosity " << visc << " shear " << shear << " dp " << dp << " vmax " << vmax << " length " << Len << " diameter " << Diam << std::endl;
 	
 	//TagRealArray force = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,3);
 	TagRealArray  bc      = m->CreateTag("BOUNDARY_CONDITION_VELOCITY",DATA_REAL,FACE,FACE,7);
