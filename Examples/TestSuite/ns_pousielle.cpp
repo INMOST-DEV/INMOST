@@ -176,11 +176,11 @@ int main(int argc, char ** argv)
 		it->UnitNormal(n);
 		if( fabs(n[axis]-1) < 1.0e-3 ) // outflow
 		{
-			bcp[*it] = 0;
+			bcp[*it] = 0+10;
 		}
 		else if(  fabs(n[axis]+1) < 1.0e-3 ) //inflow
 		{
-			bcp[*it] = dp;
+			bcp[*it] = dp+10;
 		}
 		else //no-slip walls
 		{
