@@ -36,7 +36,7 @@ int main(int argc, char ** argv)
 	
 	if( argc < 2 )
 	{
-		std::cout << "Usage: " << argv[0] << " mesh [axis=2 (0:x,1:y,2:z)] [control=0 (0:shear rate,1:pressure drop,2:maximal velocity)] [control_value=10] [visc=1.0e-5] [mesh_out=grid_out.pmf]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " mesh [axis=2 (0:x,1:y,2:z)] [control=0 (0:shear rate,1:pressure drop,2:maximal velocity)] [control_value=10] [visc=1.0e-5] [mesh_out=grid_out.pmf] [addsym=0]" << std::endl;
 		return 0;
 	}
 	
@@ -62,12 +62,14 @@ int main(int argc, char ** argv)
 	double shear = 10;//0; //shear rate
 	double dp = 0;//36e-6;
 	double vmax = 0;
+	double addsym = 0;
 
 	if( argc > 2 ) axis = atoi(argv[2]);
 	if( argc > 3 ) control = atoi(argv[3]);
 	if( argc > 4 ) control_value = atof(argv[4]);
 	if( argc > 5 ) visc = atof(argv[5]);
 	if( argc > 6 ) fout = std::string(argv[6]);
+	if( argc > 7 ) addsym = atof(argv[7]);
 	
 	
 	
@@ -152,10 +154,12 @@ int main(int argc, char ** argv)
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 		it->FixNormalOrientation();
 	
-	double cnt0[3];
+	double cnt0[3], p0 = 10;
 	cnt0[axis] = 0;
 	cnt0[(axis+1)%2] = (cmax[(axis+1)%2] + cmin[(axis+1)%2])*0.5;
 	cnt0[(axis+2)%2] = (cmax[(axis+2)%2] + cmin[(axis+2)%2])*0.5;
+	std::cout << "center " << cnt0[0] << " " << cnt0[1] << " " << cnt0[2] << std::endl;
+	
 	for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 	{
 		double cnt[3];
@@ -165,7 +169,7 @@ int main(int argc, char ** argv)
 		p[*it] = 0;
 		uvw_ref(*it,3,1).Zero();
 		uvw_ref(*it,3,1)(axis,0) = (Diam*Diam/4.0-r*r)*dp/(4.0*visc*Len);
-		p_ref[*it] = dp*(cnt[axis]-cmin[axis])/Len;
+		p_ref[*it] = p0 + dp*(cmax[axis] - cnt[axis])/Len - 0.5*addsym*uvw_ref(*it,3,1).DotProduct(uvw_ref(*it,3,1));
 	}
 	
 	
@@ -176,11 +180,11 @@ int main(int argc, char ** argv)
 		it->UnitNormal(n);
 		if( fabs(n[axis]-1) < 1.0e-3 ) // outflow
 		{
-			bcp[*it] = 0+10;
+			bcp[*it] = 0+p0;
 		}
 		else if(  fabs(n[axis]+1) < 1.0e-3 ) //inflow
 		{
-			bcp[*it] = dp+10;
+			bcp[*it] = dp+p0;
 		}
 		else //no-slip walls
 		{
