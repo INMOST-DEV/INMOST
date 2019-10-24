@@ -10,7 +10,7 @@ int main(int argc, char ** argv)
 {
 	if( argc < 2 ) 
 	{
-		printf("Usage: %s input_mesh [rotation_angle=0 degrees] [refine_boundary=1] [output_mesh]\n",argv[0]);
+		printf("Usage: %s input_mesh [rotation_angle=0 degrees] [refine_boundary=1] [output_mesh] [type=0]\n",argv[0]);
 		return -1;
 	}
 
@@ -20,8 +20,10 @@ int main(int argc, char ** argv)
 	const double pi = 3.1415926536;
 	double theta = 0, ct, st;
 	int refine = 1;
+	int stype = 0;
 	if( argc > 2 ) theta = atof(argv[2])/180.0*pi;
 	if( argc > 3 ) refine = atoi(argv[3]);
+	if( argc > 5 ) stype = atoi(argv[5]);
 	ct = cos(theta);
 	st = sin(theta);
 	
@@ -46,7 +48,10 @@ int main(int argc, char ** argv)
 		for(Mesh::iteratorNode n = m.BeginNode(); n != m.EndNode(); ++n)
 		{
 			double a = (n->Coords()[0]-xmin)/(xmax-xmin);
-			a = sin(3.14159265359*a/2.0);
+			if( refine == 1 )
+				a = sin(3.14159265359*a/2.0);
+			else if( refine == -1 )
+				a = 1 - sin(3.14159265359*(1-a)/2.0);
 			n->Coords()[0] = (xmax-xmin)*a + xmin;
 		}
 	}
@@ -56,8 +61,32 @@ int main(int argc, char ** argv)
 		double x = n->Coords()[0], mx = x;
 		double y = n->Coords()[1], my = y;
 		double alpha = pi/4*(2*y-1);
-		mx += 1 - x*(1-cos(alpha)) + x*cos(2*alpha)*0.2;
-		my += x*sin(alpha);
+		double outer = - x*(1-cos(alpha)) + x*(cos(alpha)-1.0/sqrt(2.0))/(1-1.0/sqrt(2))*(1.0/sqrt(2.0)-0.5);
+		double inner = (1-x)*(cos(alpha)-1.0/sqrt(2))/(1-1.0/sqrt(2))*(1.0/sqrt(2.0)-0.5);
+		//~ double inner = (1-x)*(cos(alpha*4.0/6.0)-sqrt(3.0)/2.0)/(1-sqrt(3.0)/2.0)*(1.0/sqrt(2.0)-0.5);
+		//~ double inner = (1-x)*cos(2*alpha)*(1.0/sqrt(2.0)-0.5);
+		if( stype == 0 )
+		{
+			mx += 1 + outer;
+			//~ mx += 1 - x*(1-cos(alpha));
+			my += x*sin(alpha);
+		}
+		else if( stype == 1 )
+		{
+			mx += 1 + inner;
+			my += x*sin(alpha)*sqrt(2);
+		}
+		else if( stype == 2 )
+		{
+			mx += 1;
+			my += x*sin(alpha)*sqrt(2);
+		}
+		else if( stype == 3 )
+		{
+			mx += 1 + inner+outer;
+			my += x*sin(alpha);
+		}
+		
 		n->Coords()[0] = (mx-0.5)*ct - (my-0.5)*st + 0.5;
 		n->Coords()[1] = (mx-0.5)*st + (my-0.5)*ct + 0.5;
 	}
