@@ -430,6 +430,8 @@ int main(int argc,char ** argv)
             m->Save("out.vtk");
         else
             m->Save("out.pvtk");
+            
+        m->Save("solution.pmf");
 
         delete m; //clean up the mesh
     }

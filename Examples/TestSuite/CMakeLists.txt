@@ -31,7 +31,7 @@ add_executable(test_ns_linear ns_linear.cpp)
 add_executable(test_ns_cavity ns_cavity.cpp)
 add_executable(test_ns_pousielle ns_pousielle.cpp)
 add_executable(test_ns_backward_step ns_backward_step.cpp)
-
+add_executable(test_ns_turek ns_turek.cpp)
 
 
 target_link_libraries(test_ns_linear inmost)
@@ -63,6 +63,16 @@ if(USE_MPI)
 endif(USE_MPI)
 install(TARGETS test_ns_pousielle EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
 
+
+target_link_libraries(test_ns_turek inmost)
+if(USE_MPI)
+  message("linking test_ns_cavity with MPI")
+  target_link_libraries(test_ns_turek ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(test_ns_turek PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS test_ns_turek EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
 
 target_link_libraries(test_ns_backward_step inmost)
 if(USE_MPI)

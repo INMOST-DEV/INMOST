@@ -74,12 +74,15 @@ int main(int argc, char ** argv)
 		else if( stype == 1 )
 		{
 			mx += 1 + inner;
-			my += x*sin(alpha)*sqrt(2);
+			//~ my += x*sin(alpha)*sqrt(2);
+			my = 3*y-1 - (1-x)*(2*y-1);
 		}
 		else if( stype == 2 )
 		{
 			mx += 1;
-			my += x*sin(alpha)*sqrt(2);
+			//~ my += x*sin(alpha)*sqrt(2);
+			//~ my += x*(2*y-1);
+			my = 3*y-1 - (1-x)*(2*y-1);
 		}
 		else if( stype == 3 )
 		{
