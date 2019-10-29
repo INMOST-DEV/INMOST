@@ -202,6 +202,7 @@ namespace INMOST
 		__INLINE INMOST_DATA_ENUM_TYPE GetPosition(ElementType type) const;
 		__INLINE void SetSparse(ElementType type);
 		__INLINE INMOST_DATA_ENUM_TYPE GetPositionByDim(INMOST_DATA_ENUM_TYPE typenum) const;
+		__INLINE void ChangeName(std::string newname);
 	public:
 		~Tag();
 		Tag();
@@ -270,6 +271,8 @@ namespace INMOST
 		virtual Tag DeleteTag(Tag tag, ElementType mask); 
 		/// Check that the tag was defined on certain elements.
 		bool ElementDefined(Tag const & tag, ElementType etype) const;
+		/// Change tag name
+		bool RenameTag(std::string oldname, std::string newname);
 	protected:
 		/// Shrink or enlarge arrays for a dense data.
 		void ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum,INMOST_DATA_ENUM_TYPE new_size);

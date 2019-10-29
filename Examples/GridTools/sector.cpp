@@ -19,10 +19,10 @@ int main(int argc, char ** argv)
 	
 	const double pi = 3.1415926536;
 	double theta = 0, ct, st;
-	int refine = 1;
+	double refine = 1;
 	int stype = 0;
 	if( argc > 2 ) theta = atof(argv[2])/180.0*pi;
-	if( argc > 3 ) refine = atoi(argv[3]);
+	if( argc > 3 ) refine = atof(argv[3]);
 	if( argc > 5 ) stype = atoi(argv[5]);
 	ct = cos(theta);
 	st = sin(theta);
@@ -52,6 +52,13 @@ int main(int argc, char ** argv)
 				a = sin(3.14159265359*a/2.0);
 			else if( refine == -1 )
 				a = 1 - sin(3.14159265359*(1-a)/2.0);
+			else
+			{
+				if( refine < 0 )
+					a = 2*(0.5 + 0.5*(a*0.5-0.5)/sqrt(pow(a*0.5-0.5,2)+pow(refine,2))*sqrt(0.25+pow(refine,2))*2);
+				else if( refine > 0 )
+					a = 2*(0.5 + 0.5*(a*0.5)/sqrt(pow(a*0.5,2)+pow(refine,2))*sqrt(0.25+pow(refine,2))*2-0.5);
+			}
 			n->Coords()[0] = (xmax-xmin)*a + xmin;
 		}
 	}

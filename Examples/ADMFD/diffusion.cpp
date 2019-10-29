@@ -98,7 +98,11 @@ int main(int argc,char ** argv)
         Tag tag_F;  // Forcing term
         Tag tag_BC; // Boundary conditions
         Tag tag_W;  // Gradient matrix acting on harmonic points on faces and returning gradient on faces
+        
 		
+		
+		TagRealArray tag_PG; // Pressure gradient
+		TagRealArray tag_WG; // matrix to reconstruct gradient
 
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
@@ -133,6 +137,9 @@ int main(int argc,char ** argv)
 
             if( m->HaveTag("PRESSURE") ) //Is there a pressure on the mesh?
                 tag_P = m->GetTag("PRESSURE"); //Get the pressure
+                
+            tag_PG = m->CreateTag("PRESSURE_GRADIENT",DATA_REAL,CELL,NONE,3);
+            tag_WG = m->CreateTag("WGRAD",DATA_REAL,CELL,NONE);
 
             if( !tag_P.isValid() || !tag_P.isDefined(CELL) ) // Pressure was not initialized or was not defined on nodes
             {
@@ -209,6 +216,9 @@ int main(int argc,char ** argv)
 					 store_W.resize(NF*NF);
 					 //write down the gradient matrix
 					 std::copy(W.data(),W.data()+NF*NF,store_W.data());
+					 
+					 tag_WG[cell].resize(3*NF);
+					 tag_WG(cell,3,NF) = (NK.Transpose()*R).PseudoInvert(1.0e-12)*NK.Transpose()*Areas;
 				 } //end of loop over cells
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
@@ -288,6 +298,7 @@ int main(int argc,char ** argv)
 						for(int k = 0; k < NF; ++k)
 							pF(k,0) = (P(faces[k]) - P(cell));
 						FLUX = W*pF; //fluxes on faces
+						tag_PG(cell,3,1) = tag_WG(cell,3,NF)*pF;
 						if( cell.GetStatus() != Element::Ghost )
 						{
 							for(int k = 0; k < NF; ++k) //loop over faces of current cell

@@ -88,6 +88,11 @@ namespace INMOST
 	{
 		mem = other.mem;
 	}
+	
+	void Tag::ChangeName(std::string name)
+	{
+		mem->tagname = name;
+	}
 
 	void TagManager::CopyData(const Tag & t, void * adata, const void * bdata)
 	{
@@ -309,6 +314,23 @@ namespace INMOST
 		tags.clear();
 	}
 	
+	bool TagManager::RenameTag(std::string old_name, std::string new_name)
+	{
+		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
+		{
+			if( tags[i].GetTagName() == new_name )
+				return false; //tag already exists
+		}
+		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
+		{
+			if( tags[i].GetTagName() == old_name )
+			{
+				tags[i].ChangeName(new_name);
+				return true;
+			}
+		}
+		return false; //tag not found
+	}
 	
 	
 	Tag TagManager::CreateTag(Mesh *m, std::string name, DataType dtype, ElementType etype,ElementType sparse, INMOST_DATA_ENUM_TYPE size)
