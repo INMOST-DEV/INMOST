@@ -77,7 +77,7 @@ int main(int argc, char ** argv)
 	TagReal       bcp     = m->CreateTag("BOUNDARY_CONDITION_PRESSURE",DATA_REAL,FACE,FACE,1);
 	TagRealArray  uvw     = m->CreateTag("UVW",DATA_REAL,CELL,NONE,3);
 	TagReal       p       = m->CreateTag("P",DATA_REAL,CELL,NONE,1);
-	
+	m->self().Real(m->CreateTag("Umax",DATA_REAL,MESH,NONE,1)) = Umax;
 	
 	
 	//this should not be needed?
