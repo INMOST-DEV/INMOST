@@ -72,8 +72,6 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #endif
 	
-	
-	
 	/// Abstract class for a matrix,
 	/// used to abstract away all the data storage and access
 	/// and provide common implementation of the algorithms.
@@ -2345,6 +2343,121 @@ namespace INMOST
 		return *this;
 	}
 	
+	template<>
+	template<>
+	__INLINE Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> >
+	AbstractMatrix<INMOST_DATA_REAL_TYPE>::operator*<variable>(const AbstractMatrix<variable> & other) const
+	{
+		//~ std::cout << __FUNCTION__ << std::endl;
+		assert(Cols() == other.Rows());
+		Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> > ret(Rows(),other.Cols()); //check RVO
+		for(enumerator i = 0; i < Rows(); ++i) //loop rows
+		{
+			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = 0.0;
+					for(enumerator k = 0; k < Cols(); ++k)
+					{
+						value += (*this)(i,k)*other(k,j).GetValue();
+						merger.AddRow((*this)(i,k),other(k,j).GetRow());
+					}
+					ret(i,j).SetValue(value);
+					merger.RetriveRow(ret(i,j).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
+#pragma unroll
+					for(enumerator k = 0; k < Cols(); ++k)
+						ret(i,j) += (*this)(i,k)*other(k,j);
+					//~ ret(i,j) = tmp;
+				}
+			}
+		}
+		return ret;
+	}
+	
+	
+	template<>
+	template<>
+	__INLINE Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> >
+	AbstractMatrix<variable>::operator*<INMOST_DATA_REAL_TYPE>(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & other) const
+	{
+		//~ std::cout << __FUNCTION__ << std::endl;
+		assert(Cols() == other.Rows());
+		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > ret(Rows(),other.Cols()); //check RVO
+		for(enumerator i = 0; i < Rows(); ++i) //loop rows
+		{
+			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = 0.0;
+					for(enumerator k = 0; k < Cols(); ++k)
+					{
+						value += (*this)(i,k).GetValue()*other(k,j);
+						merger.AddRow(other(k,j),(*this)(i,k).GetRow());
+					}
+					ret(i,j).SetValue(value);
+					merger.RetriveRow(ret(i,j).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
+#pragma unroll
+					for(enumerator k = 0; k < Cols(); ++k)
+						ret(i,j) += (*this)(i,k)*other(k,j);
+					//~ ret(i,j) = tmp;
+				}
+			}
+		}
+		return ret;
+	}
+	
+	template<>
+	template<>
+	__INLINE Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> >
+	AbstractMatrix<variable>::operator*<variable>(const AbstractMatrix<variable> & other) const
+	{
+		//~ std::cout << __FUNCTION__ << std::endl;
+		assert(Cols() == other.Rows());
+		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > ret(Rows(),other.Cols()); //check RVO
+		for(enumerator i = 0; i < Rows(); ++i) //loop rows
+		{
+			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = 0.0;
+					for(enumerator k = 0; k < Cols(); ++k)
+					{
+						value += (*this)(i,k).GetValue()*other(k,j).GetValue();
+						merger.AddRow(other(k,j).GetValue(),(*this)(i,k).GetRow());
+						merger.AddRow((*this)(i,k).GetValue(),other(k,j).GetRow());
+					}
+					ret(i,j).SetValue(value);
+					merger.RetriveRow(ret(i,j).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
+#pragma unroll
+					for(enumerator k = 0; k < Cols(); ++k)
+						ret(i,j) += (*this)(i,k)*other(k,j);
+					//~ ret(i,j) = tmp;
+				}
+			}
+		}
+		return ret;
+	}
 	
 	template<typename Var>
 	template<typename typeB>
@@ -2357,14 +2470,111 @@ namespace INMOST
 		{
 			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
 			{
-				typename Promote<Var,typeB>::type tmp = 0.0;
+				//~ typename Promote<Var,typeB>::type tmp = 0.0;
+#pragma unroll
 				for(enumerator k = 0; k < Cols(); ++k)
-					tmp += (*this)(i,k)*other(k,j);
-				ret(i,j) = tmp;
+					ret(i,j) += (*this)(i,k)*other(k,j);
+				//~ ret(i,j) = tmp;
 			}
 		}
 		return ret;
 	}
+	
+	template<>
+	template<>
+	__INLINE typename Promote<INMOST_DATA_REAL_TYPE,variable>::type
+	AbstractMatrix<INMOST_DATA_REAL_TYPE>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
+	{
+		assert(Cols() == other.Cols());
+		assert(Rows() == other.Rows());
+		typename Promote<INMOST_DATA_REAL_TYPE,variable>::type ret = 0.0;
+		if( CheckCurrentAutomatizator() )
+		{
+			Sparse::RowMerger & merger = GetCurrentMerger();
+			double value = 0.0;
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+				{
+					value += (*this)(i,j)*other(i,j).GetValue();
+					merger.AddRow((*this)(i,j),other(i,j).GetRow());
+				}
+			ret.SetValue(value);
+			merger.RetriveRow(ret.GetRow());
+			merger.Clear();
+		}
+		else
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret += ((*this)(i,j))*other(i,j);
+		}
+		return ret;
+	}
+	
+	template<>
+	template<>
+	__INLINE typename Promote<variable,INMOST_DATA_REAL_TYPE>::type
+	AbstractMatrix<variable>::DotProduct<INMOST_DATA_REAL_TYPE>(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & other) const
+	{
+		assert(Cols() == other.Cols());
+		assert(Rows() == other.Rows());
+		typename Promote<variable,INMOST_DATA_REAL_TYPE>::type ret = 0.0;
+		if( CheckCurrentAutomatizator() )
+		{
+			Sparse::RowMerger & merger = GetCurrentMerger();
+			double value = 0.0;
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+				{
+					value += (*this)(i,j).GetValue()*other(i,j);
+					merger.AddRow(other(i,j),(*this)(i,j).GetRow());
+				}
+			ret.SetValue(value);
+			merger.RetriveRow(ret.GetRow());
+			merger.Clear();
+		}
+		else
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret += ((*this)(i,j))*other(i,j);
+		}
+		return ret;
+	}
+	
+	template<>
+	template<>
+	__INLINE typename Promote<variable,variable>::type
+	AbstractMatrix<variable>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
+	{
+		assert(Cols() == other.Cols());
+		assert(Rows() == other.Rows());
+		typename Promote<variable,variable>::type ret = 0.0;
+		if( CheckCurrentAutomatizator() )
+		{
+			Sparse::RowMerger & merger = GetCurrentMerger();
+			double value = 0.0;
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+				{
+					value += (*this)(i,j).GetValue()*other(i,j).GetValue();
+					merger.AddRow(other(i,j).GetValue(),(*this)(i,j).GetRow());
+					merger.AddRow((*this)(i,j).GetValue(),other(i,j).GetRow());
+				}
+			ret.SetValue(value);
+			merger.RetriveRow(ret.GetRow());
+			merger.Clear();
+		}
+		else
+		{
+			for(enumerator i = 0; i < Rows(); ++i)
+				for(enumerator j = 0; j < Cols(); ++j)
+					ret += ((*this)(i,j))*other(i,j);
+		}
+		return ret;
+	}
+
+	
 	
 	
 	/*
@@ -2567,7 +2777,7 @@ namespace INMOST
 			}
 			
 			for(enumerator i = k+1; i < n; ++i)
-				L(i,k) = L(i,k)/L(k,k);
+				L(i,k) /= L(k,k);
 			
 			for(enumerator j = k+1; j < n; ++j)
 			{
@@ -2597,6 +2807,353 @@ namespace INMOST
 				{
 					enumerator j = jt-1;
 					X(i,k) -= X(j,k)*L(i,j);
+				}
+				X(i,k) /= L(i,i);
+			}
+		}
+		if( ierr ) *ierr = 0;
+		return ret;
+	}
+	
+	template<>
+	template<>
+	__INLINE Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> >
+	AbstractMatrix<variable>::CholeskySolve(const AbstractMatrix<variable> & B, int * ierr) const
+	{
+		const AbstractMatrix<variable> & A = *this;
+		assert(A.Rows() == A.Cols());
+		assert(A.Rows() == B.Rows());
+		enumerator n = A.Rows();
+		enumerator l = B.Cols();
+		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > ret(B);
+		SymmetricMatrix<variable, pool_array_t<variable> > L(A);
+		
+		//Outer product
+		for(enumerator k = 0; k < n; ++k)
+		{
+			if( L(k,k).GetValue() < 0.0 )
+			{
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
+				return ret;
+			}
+			
+			L(k,k) = sqrt(L(k,k));
+			
+			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
+			{
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
+				return ret;
+			}
+			
+			for(enumerator i = k+1; i < n; ++i)
+				L(i,k) /= L(k,k);
+			
+			for(enumerator j = k+1; j < n; ++j)
+			{
+				for(enumerator i = j; i < n; ++i)
+					L(i,j) -= L(i,k)*L(j,k);
+			}
+		}
+		// LY=B
+		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & Y = ret;
+		for(enumerator i = 0; i < n; ++i)
+		{
+			for(enumerator k = 0; k < l; ++k)
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = Y(i,k).GetValue();
+					merger.PushRow(1.0,Y(i,k).GetRow());
+					for(enumerator j = 0; j < i; ++j)
+					{
+						value -= Y(j,k).GetValue()*L(j,i).GetValue();
+						merger.AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
+						merger.AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
+					}
+					Y(i,k).SetValue(value);
+					merger.RetriveRow(Y(i,k).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					for(enumerator j = 0; j < i; ++j)
+						Y(i,k) -= Y(j,k)*L(j,i);
+				}
+				Y(i,k) /= L(i,i);
+			}
+		}
+		// L^TX = Y
+		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & X = ret;
+		for(enumerator it = n; it > 0; --it)
+		{
+			enumerator i = it-1;
+			for(enumerator k = 0; k < l; ++k)
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = X(i,k).GetValue();
+					merger.PushRow(1.0,X(i,k).GetRow());
+					for(enumerator jt = n; jt > it; --jt)
+					{
+						enumerator j = jt-1;
+						value -= X(j,k).GetValue()*L(i,j).GetValue();
+						merger.AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
+						merger.AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
+					}
+					X(i,k).SetValue(value);
+					merger.RetriveRow(X(i,k).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					for(enumerator jt = n; jt > it; --jt)
+					{
+						enumerator j = jt-1;
+						X(i,k) -= X(j,k)*L(i,j);
+					}
+				}
+				X(i,k) /= L(i,i);
+			}
+		}
+		if( ierr ) *ierr = 0;
+		return ret;
+	}
+
+
+	template<>
+	template<>
+	__INLINE Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> >
+	AbstractMatrix<INMOST_DATA_REAL_TYPE>::CholeskySolve(const AbstractMatrix<variable> & B, int * ierr) const
+	{
+		const AbstractMatrix<INMOST_DATA_REAL_TYPE> & A = *this;
+		assert(A.Rows() == A.Cols());
+		assert(A.Rows() == B.Rows());
+		enumerator n = A.Rows();
+		enumerator l = B.Cols();
+		Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> > ret(B);
+		SymmetricMatrix<INMOST_DATA_REAL_TYPE, pool_array_t<INMOST_DATA_REAL_TYPE> > L(A);
+		
+		//Outer product
+		for(enumerator k = 0; k < n; ++k)
+		{
+			if( L(k,k) < 0.0 )
+			{
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
+				return ret;
+			}
+			
+			L(k,k) = sqrt(L(k,k));
+			
+			if( fabs(L(k,k)) < 1.0e-24 )
+			{
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
+				return ret;
+			}
+			
+			for(enumerator i = k+1; i < n; ++i)
+				L(i,k) /= L(k,k);
+			
+			for(enumerator j = k+1; j < n; ++j)
+			{
+				for(enumerator i = j; i < n; ++i)
+					L(i,j) -= L(i,k)*L(j,k);
+			}
+		}
+		// LY=B
+		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & Y = ret;
+		for(enumerator i = 0; i < n; ++i)
+		{
+			for(enumerator k = 0; k < l; ++k)
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = Y(i,k).GetValue();
+					merger.PushRow(1.0,Y(i,k).GetRow());
+					for(enumerator j = 0; j < i; ++j)
+					{
+						value -= Y(j,k).GetValue()*L(j,i);
+						merger.AddRow(-L(j,i),Y(j,k).GetRow());
+					}
+					Y(i,k).SetValue(value);
+					merger.RetriveRow(Y(i,k).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					for(enumerator j = 0; j < i; ++j)
+						Y(i,k) -= Y(j,k)*L(j,i);
+				}
+				Y(i,k) /= L(i,i);
+			}
+		}
+		// L^TX = Y
+		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & X = ret;
+		for(enumerator it = n; it > 0; --it)
+		{
+			enumerator i = it-1;
+			for(enumerator k = 0; k < l; ++k)
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = X(i,k).GetValue();
+					merger.PushRow(1.0,X(i,k).GetRow());
+					for(enumerator jt = n; jt > it; --jt)
+					{
+						enumerator j = jt-1;
+						value -= X(j,k).GetValue()*L(i,j);
+						merger.AddRow(-L(i,j),X(j,k).GetRow());
+					}
+					X(i,k).SetValue(value);
+					merger.RetriveRow(X(i,k).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					for(enumerator jt = n; jt > it; --jt)
+					{
+						enumerator j = jt-1;
+						X(i,k) -= X(j,k)*L(i,j);
+					}
+				}
+				X(i,k) /= L(i,i);
+			}
+		}
+		if( ierr ) *ierr = 0;
+		return ret;
+	}
+
+	template<>
+	template<>
+	__INLINE Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> >
+	AbstractMatrix<variable>::CholeskySolve(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & B, int * ierr) const
+	{
+		const AbstractMatrix<variable> & A = *this;
+		assert(A.Rows() == A.Cols());
+		assert(A.Rows() == B.Rows());
+		enumerator n = A.Rows();
+		enumerator l = B.Cols();
+		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > ret(B);
+		SymmetricMatrix<variable, pool_array_t<variable> > L(A);
+		
+		//Outer product
+		for(enumerator k = 0; k < n; ++k)
+		{
+			if( L(k,k).GetValue() < 0.0 )
+			{
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
+				return ret;
+			}
+			
+			L(k,k) = sqrt(L(k,k));
+			
+			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
+			{
+				if( ierr )
+				{
+					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
+					*ierr = k+1;
+				}
+				else throw MatrixCholeskySolveFail;
+				return ret;
+			}
+			
+			for(enumerator i = k+1; i < n; ++i)
+				L(i,k) /= L(k,k);
+			
+			for(enumerator j = k+1; j < n; ++j)
+			{
+				for(enumerator i = j; i < n; ++i)
+					L(i,j) -= L(i,k)*L(j,k);
+			}
+		}
+		// LY=B
+		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > & Y = ret;
+		for(enumerator i = 0; i < n; ++i)
+		{
+			for(enumerator k = 0; k < l; ++k)
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = Y(i,k).GetValue();
+					merger.PushRow(1.0,Y(i,k).GetRow());
+					for(enumerator j = 0; j < i; ++j)
+					{
+						value -= Y(j,k).GetValue()*L(j,i).GetValue();
+						merger.AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
+						merger.AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
+					}
+					Y(i,k).SetValue(value);
+					merger.RetriveRow(Y(i,k).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					for(enumerator j = 0; j < i; ++j)
+						Y(i,k) -= Y(j,k)*L(j,i);
+				}
+				Y(i,k) /= L(i,i);
+			}
+		}
+		// L^TX = Y
+		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > & X = ret;
+		for(enumerator it = n; it > 0; --it)
+		{
+			enumerator i = it-1;
+			for(enumerator k = 0; k < l; ++k)
+			{
+				if( CheckCurrentAutomatizator() )
+				{
+					Sparse::RowMerger & merger = GetCurrentMerger();
+					double value = X(i,k).GetValue();
+					merger.PushRow(1.0,X(i,k).GetRow());
+					for(enumerator jt = n; jt > it; --jt)
+					{
+						enumerator j = jt-1;
+						value -= X(j,k).GetValue()*L(i,j).GetValue();
+						merger.AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
+						merger.AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
+					}
+					X(i,k).SetValue(value);
+					merger.RetriveRow(X(i,k).GetRow());
+					merger.Clear();
+				}
+				else
+				{
+					for(enumerator jt = n; jt > it; --jt)
+					{
+						enumerator j = jt-1;
+						X(i,k) -= X(j,k)*L(i,j);
+					}
 				}
 				X(i,k) /= L(i,i);
 			}

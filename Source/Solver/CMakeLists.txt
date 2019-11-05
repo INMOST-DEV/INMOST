@@ -5,6 +5,7 @@ set(SOURCE
         ${CMAKE_CURRENT_SOURCE_DIR}/SolverMaster.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/SolverParameters.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/sparse.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/dense.cpp
         )
 
 set(HEADER

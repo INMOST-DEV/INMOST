@@ -118,7 +118,7 @@ int main(int argc, char ** argv)
 			bc[*it][4] = 0;
 			bc[*it][5] = 0;
 			bc[*it][6] = 0;
-			if( fabs(n[2]) < eps && c[0] > 0.45-eps && c[0] < 0.55+eps && c[1] > 0.15-eps && c[1] < 0.25+eps )
+			if( fabs(n[2]) < 0.7 && c[0] > 0.45-eps && c[0] < 0.55+eps && c[1] > 0.15-eps && c[1] < 0.25+eps )
 				bcphi[*it][2] = 1;
 		}
 	}

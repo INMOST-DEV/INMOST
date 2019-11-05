@@ -47,6 +47,7 @@ namespace INMOST
 	void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr);
 	void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr);
 	void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r);
+	Sparse::RowMerger & GetCurrentMerger();
 	//bool GetAutodiffPrint();
 	//void SetAutodiffPrint(bool set);
 	
@@ -2304,8 +2305,6 @@ template<class A>          __INLINE                 INMOST::function_expression<
 	return INMOST::function_expression<A>(Arg,both.first,both.second);
 }
 __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_REAL_TYPE Arg, const INMOST::keyval_table & Table) {return Table.GetValue(Arg);}
-
-
 #else //USE_AUTODIFF
 __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
 __INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return __isinf__(val);}

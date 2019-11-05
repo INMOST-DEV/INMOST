@@ -67,6 +67,7 @@ namespace INMOST
 		merger.RetriveRow(r);
 		merger.Clear();
 	}
+	Sparse::RowMerger & GetCurrentMerger() {return Automatizator::GetCurrent()->GetMerger();}
 #else //USE_MESH
 	bool CheckCurrentAutomatizator() {return false;}
 	void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr) {}
