@@ -126,7 +126,7 @@ namespace INMOST
 		for (int q = 0; q < samples + 2; ++q)
 		{
 			float t = 1.0f*q / static_cast<float>(samples + 1);
-			color_t c = pick_color(t);
+			color_t c = pick_color(t*(max-min)+min);
 			//countour lines
 			//if( ((q+1) % 128 == 0 || (q+1) % 128 == 127) && (q+1) < samples )
 			//	c = pick_color(1-t) + color_t(0,2*t*(1-t),0);

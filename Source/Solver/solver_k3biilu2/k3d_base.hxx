@@ -8,6 +8,7 @@
 #define TURN_ON_EX
 
 #if defined(TURN_ON_EX)
+#include "inmost_options.h"
 
 #ifndef USE_MPI
 #define USE_MPI
@@ -53,6 +54,9 @@
 #if defined(USE_OMP)
 #define USE_THREADS
 #include <omp.h>
+#pragma message("Using openmp threads in k3d")
+#else
+#pragma message("Not using openmp threads in k3d")
 #endif
 
 #ifndef USE_MPI

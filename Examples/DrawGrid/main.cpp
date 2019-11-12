@@ -2628,7 +2628,7 @@ int main(int argc, char ** argv)
 	glEnable(GL_DEPTH_TEST);
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
-	color_bar::InitColorBarTexture();
+	
 	
 	
 	glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
@@ -2639,6 +2639,8 @@ int main(int argc, char ** argv)
 	glClearColor (1.0f, 1.0f, 1.0f, 1.f);
 	
 	glutReshapeFunc(reshape);
+	
+	color_bar::InitColorBarTexture();
 	
 	if( !input_dely.empty() )
 	{

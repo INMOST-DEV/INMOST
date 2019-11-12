@@ -624,7 +624,7 @@ namespace INMOST
 					//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 					//std::cout << "iter " << last_it << " resid " << resid << "\r";
 					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+					printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
 					fflush(stdout);
 				}
 			}
@@ -1224,7 +1224,7 @@ namespace INMOST
 #pragma omp single
 #endif
 							{
-								printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+								printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
 								fflush(stdout);
 							}
 						}
@@ -1456,7 +1456,7 @@ namespace INMOST
 					//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 					//std::cout << "iter " << last_it << " resid " << resid << "\r";
 					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r",last_it,resid,atol,resid/resid0,rtol);
-					printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+					printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
 					fflush(stdout);
 				}
 			}
@@ -1792,7 +1792,7 @@ namespace INMOST
 #pragma omp single
 #endif
 							{
-								printf("iter %3d resid %12g | %g\r", last_it, resid, atol);
+								printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
 				  //printf("iter %3d resid %12g | %g rho %e beta %e alpha %e omega %e\n", last_it, resid, atol,rho,beta,alpha,omega);
 								fflush(stdout);
 							}
