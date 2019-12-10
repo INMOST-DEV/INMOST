@@ -44,7 +44,9 @@ int main(int argc,char ** argv)
         Mesh * m = new Mesh(); // Create an empty mesh
         { // Load the mesh
             ttt = Timer();
-            m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
+            //~ m->SetParallelFileStrategy(0);
+			//~ m->SetParallelStrategy(1);
+            //~ m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
             if( m->GetProcessorRank() == 0 ) std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
             if( m->isParallelFileFormat(argv[1]) ) //The format is
             {
@@ -341,8 +343,10 @@ int main(int argc,char ** argv)
                 if( R.Norm() < 1.0e-4 ) break;
 
 				//Solver S(Solver::INNER_ILU2);
-                Solver S(Solver::INNER_MPTILUC);
+                //~ Solver S(Solver::INNER_MPTILUC);
+                Solver S(Solver::K3BIILU2);
 				//Solver S("superlu");
+				S.SetParameter("verbosity","1");
                 S.SetParameter("relative_tolerance", "1.0e-14");
                 S.SetParameter("absolute_tolerance", "1.0e-12");
                 S.SetParameter("drop_tolerance", "1.0e-2");

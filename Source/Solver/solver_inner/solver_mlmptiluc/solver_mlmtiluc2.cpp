@@ -34,10 +34,10 @@ static bool allow_pivot = true;
 #define ESTIMATOR
 #define ESTIMATOR_REFINE
 
-#define PREMATURE_DROPPING
+//~ #define PREMATURE_DROPPING
 
 //#define EQUALIZE_1NORM
-//#define EQUALIZE_2NORM
+//~ #define EQUALIZE_2NORM
 #define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
@@ -51,9 +51,9 @@ static bool allow_pivot = true;
 //#define PIVOT_COND_DEFAULT 0.1/tau
 #define PIVOT_COND_DEFAULT 1.0e+2
 #define PIVOT_DIAG_DEFAULT 1.0e+5
-#define SCHUR_DROPPING_LF
-#define SCHUR_DROPPING_EU
-#define SCHUR_DROPPING_S
+//~ #define SCHUR_DROPPING_LF
+//~ #define SCHUR_DROPPING_EU
+//~ #define SCHUR_DROPPING_S
 #define DIAGONAL_PIVOT
 #define CONDITION_PIVOT
 
@@ -2448,7 +2448,7 @@ static bool allow_pivot = true;
 					NuL_tmp = NuL1_new;
 #endif
 #if defined(CONDITION_PIVOT)
-					if(allow_pivot && !block_pivot && (NuU_tmp > pivot_cond || NuL_tmp > pivot_cond || NuD > pivot_cond) )
+					if(allow_pivot && !block_pivot && (NuU_tmp > pivot_cond || NuL_tmp > pivot_cond || NuD > pivot_diag) )
 					{
 						//restore condition number
 						NuL1 = NuU1_old;
@@ -2497,7 +2497,7 @@ static bool allow_pivot = true;
 #if defined(ILUC2)
 					U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
-					/*
+					
 					Unum = Unorm = 0;
 					
 					Ui = LineIndecesU[k];
@@ -2509,20 +2509,20 @@ static bool allow_pivot = true;
 						Ui = LineIndecesU[Ui];
 					}
 					if( Unum ) Unorm = sqrt(Unorm/Unum);
-					*/
+					
 					//Unorm = std::min(1.0,Unorm);
 					
 					Ui = LineIndecesU[k];
 					while (Ui != EOL)
 					{
 						u = fabs(LineValuesU[Ui]);
-						if (u*NuU > tau)// *Unorm) // apply dropping rule
+						if (u*NuU > tau )//*Unorm) // apply dropping rule
 						//if (u*NuU*NuU_acc*NuD*NuD_acc > tau) // apply dropping rule
 						//if (u*NuU_acc*NuD_acc > tau) // apply dropping rule
 						//if( u > tau*Unorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-						else if (u*NuU > tau2)// *Unorm)
+						else if (u*NuU > tau2 )//*Unorm)
 						//else if (u*NuU*NuU_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuU_acc*NuD_acc > tau2)
 						//else if( u > tau2*Unorm )
@@ -2543,7 +2543,7 @@ static bool allow_pivot = true;
 #if defined(ILUC2)
 					L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LU2_Entries.size());
 #endif
-					/*
+					
 					Lnum = Lnorm = 0;
 					
 					Li = LineIndecesL[k];
@@ -2555,20 +2555,20 @@ static bool allow_pivot = true;
 						Li = LineIndecesL[Li];
 					}
 					if( Lnum ) Lnorm = sqrt(Lnorm/Lnum);
-					*/
+					
 					//Lnorm = std::min(1.0,Lnorm);
 					
 					Li = LineIndecesL[k];
 					while (Li != EOL)
 					{
 						u = fabs(LineValuesL[Li]);
-						if (u*NuL > tau) // *Lnorm) //apply dropping
+						if (u*NuL > tau )//*Lnorm) //apply dropping
 						//if (u*NuL*NuL_acc*NuD*NuD_acc > tau) //apply dropping
 						//if (u*NuL_acc*NuD_acc > tau) //apply dropping
 						//if( u > tau*Lnorm )
 							LU_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-						else if (u*NuL > tau2)// *Lnorm)
+						else if (u*NuL > tau2 )//*Lnorm)
 						//else if (u*NuL*NuL_acc*NuD*NuD_acc > tau2)
 						//else if (u*NuL_acc*NuD_acc > tau2)
 						//else if( u > tau2*Lnorm )

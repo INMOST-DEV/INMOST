@@ -32,7 +32,7 @@ int main(int argc, char ** argv)
 	
 	if( argc < 2 )
 	{
-		std::cout << "Usage: " << argv[0] << " mesh [mesh_out=grid_out.pmf] [Umax=2.25]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " mesh [mesh_out=grid_out.pmf] [Umax=2.25] [fix_cylinder=false]" << std::endl;
 		return 0;
 	}
 	
@@ -50,8 +50,10 @@ int main(int argc, char ** argv)
 	
 	std::string fout = "grid_out.pmf";
 	double Umax = 2.25;
+	bool fix_cylinder = false;
 	if( argc > 2 ) fout = std::string(argv[2]);
 	if( argc > 3 ) Umax = atof(argv[3]);
+	if( argc > 4 ) fix_cylinder = atoi(argv[4]);
 	
 	
 	
@@ -84,14 +86,111 @@ int main(int argc, char ** argv)
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 		it->FixNormalOrientation();
 	
+	{ // prepare geometrical data on the mesh
+		Mesh::GeomParam table;
+		table[CENTROID]    = CELL | FACE; //Compute averaged center of mass
+		table[NORMAL]      = FACE;        //Compute normals
+		table[MEASURE]     = CELL | FACE; //Compute volumes and areas
+		table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
+		m->RemoveGeometricData(table); //Ask to precompute the data
+	}
 	
+	if( fix_cylinder )
+	{
+		MarkerType cylinder = m->CreateMarker();
+		
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
+		{
+			double  n[3], c[3];
+			it->UnitNormal(n);
+			it->Centroid(c);
+			if( fabs(n[0]-1) < 1.0e-3 && c[0] > 2.5-eps) // outflow
+			{
+			}
+			else if(  fabs(n[0]+1) < 1.0e-3 && c[0] < 0.0+eps) //inflow
+			{
+			}
+			else //no-slip walls
+			{
+				if( fabs(n[2]) < 0.7 && c[0] > 0.45-eps && c[0] < 0.55+eps && c[1] > 0.15-eps && c[1] < 0.25+eps )
+					it->SetMarker(cylinder);
+			}
+		}
+		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it)
+			if( it->nbAdjElements(FACE,cylinder) ) it->SetMarker(cylinder);
+			
+		TagRealArray vec_t = m->CreateTag("vec_t",DATA_REAL,FACE,FACE,2);
+		
+		std::cout << "project boundary nodes onto cylinder " << std::endl;
+		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
+		{
+			double x = it->Coords()[0], y = it->Coords()[1], dx, dy;
+			double r = sqrt((x-0.5)*(x-0.5) + (y-0.2)*(y-0.2));
+			if( r )
+			{
+				dx = (0.05/r-1.0)*(x-0.5);
+				dy = (0.05/r-1.0)*(y-0.2);
+				//std::cout << "at " << x << "," << y << " r " << r << " dx " << dx << " dy " << dy << std::endl;
+				it->Coords()[0] += dx;
+				it->Coords()[1] += dy;
+			}
+			else std::cout << "node at center of cylinder: " << x << "," << y << std::endl;
+		}
+		std::cout << "project centers of boundary faces onto cylinder " << std::endl;
+		int iter = 0;
+		while(iter < 1000)
+		{
+			double A = 0, err = 0, fA;
+			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->GetMarker(cylinder) )
+			{
+				double cnt[3], dx, dy;
+				it->Centroid(cnt);
+				double r = sqrt((cnt[0]-0.5)*(cnt[0]-0.5) + (cnt[1]-0.2)*(cnt[1]-0.2));
+				if( r )
+				{
+					dx = (0.05/r-1.0)*(cnt[0]-0.5);
+					dy = (0.05/r-1.0)*(cnt[1]-0.2);
+					//std::cout << "at " << cnt[0] << "," << cnt[1] << " r " << r << " dx " << dx << " dy " << dy << std::endl;
+					vec_t[*it][0] = dx;
+					vec_t[*it][1] = dy;
+					fA = it->Area();
+					err += sqrt(dx*dx+dy*dy)*fA;
+					A += fA;
+				}
+				else std::cout << " face center is at center of cylinder: " << cnt[0] << "," << cnt[1] << std::endl;
+			}
+			err = err/A;
+			if( iter % 50 == 0 )
+				std::cout << "iter " << iter << " error: " << err << " area " << A << std::endl;
+			if( err < 1.0e-8 ) break;
+			for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
+			{
+				ElementArray<Face> faces = it->getFaces(cylinder);
+				double dxy[2] = {0,0}, dxyA = 0;
+				for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
+				{
+					fA = jt->Area();
+					dxy[0] += vec_t[*jt][0]*fA;
+					dxy[1] += vec_t[*jt][1]*fA;
+					dxyA += fA;
+				}
+				dxy[0] /= dxyA;
+				dxy[1] /= dxyA;
+				it->Coords()[0] += dxy[0];
+				it->Coords()[1] += dxy[1];
+			}
+			iter++;
+		}
+		m->DeleteTag(vec_t);
+		m->ReleaseMarker(cylinder,FACE);
+	}
 	
 	
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 	{
 		double  n[3], c[3];
 		it->UnitNormal(n);
-		it->Barycenter(c);
+		it->Centroid(c);
 		bcphi[*it][0] = 1;
 		bcphi[*it][1] = 0;
 		bcphi[*it][2] = 0;
