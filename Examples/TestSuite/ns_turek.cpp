@@ -32,7 +32,7 @@ int main(int argc, char ** argv)
 	
 	if( argc < 2 )
 	{
-		std::cout << "Usage: " << argv[0] << " mesh [mesh_out=grid_out.pmf] [Umax=2.25] [fix_cylinder=false]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " mesh [mesh_out=grid_out.pmf] [Umax=2.25] [fix_cylinder=0 (0:no fix; 1:project nodes; 2: project faces)]" << std::endl;
 		return 0;
 	}
 	
@@ -119,7 +119,7 @@ int main(int argc, char ** argv)
 		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it)
 			if( it->nbAdjElements(FACE,cylinder) ) it->SetMarker(cylinder);
 			
-		TagRealArray vec_t = m->CreateTag("vec_t",DATA_REAL,FACE,FACE,2);
+		
 		
 		std::cout << "project boundary nodes onto cylinder " << std::endl;
 		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
@@ -136,53 +136,57 @@ int main(int argc, char ** argv)
 			}
 			else std::cout << "node at center of cylinder: " << x << "," << y << std::endl;
 		}
-		std::cout << "project centers of boundary faces onto cylinder " << std::endl;
-		int iter = 0;
-		while(iter < 1000)
+		if( fix_cylinder == 2 )
 		{
-			double A = 0, err = 0, fA;
-			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->GetMarker(cylinder) )
+			TagRealArray vec_t = m->CreateTag("vec_t",DATA_REAL,FACE,FACE,2);
+			std::cout << "project centers of boundary faces onto cylinder " << std::endl;
+			int iter = 0;
+			while(iter < 1000)
 			{
-				double cnt[3], dx, dy;
-				it->Centroid(cnt);
-				double r = sqrt((cnt[0]-0.5)*(cnt[0]-0.5) + (cnt[1]-0.2)*(cnt[1]-0.2));
-				if( r )
+				double A = 0, err = 0, fA;
+				for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->GetMarker(cylinder) )
 				{
-					dx = (0.05/r-1.0)*(cnt[0]-0.5);
-					dy = (0.05/r-1.0)*(cnt[1]-0.2);
-					//std::cout << "at " << cnt[0] << "," << cnt[1] << " r " << r << " dx " << dx << " dy " << dy << std::endl;
-					vec_t[*it][0] = dx;
-					vec_t[*it][1] = dy;
-					fA = it->Area();
-					err += sqrt(dx*dx+dy*dy)*fA;
-					A += fA;
+					double cnt[3], dx, dy;
+					it->Centroid(cnt);
+					double r = sqrt((cnt[0]-0.5)*(cnt[0]-0.5) + (cnt[1]-0.2)*(cnt[1]-0.2));
+					if( r )
+					{
+						dx = (0.05/r-1.0)*(cnt[0]-0.5);
+						dy = (0.05/r-1.0)*(cnt[1]-0.2);
+						//std::cout << "at " << cnt[0] << "," << cnt[1] << " r " << r << " dx " << dx << " dy " << dy << std::endl;
+						vec_t[*it][0] = dx;
+						vec_t[*it][1] = dy;
+						fA = it->Area();
+						err += sqrt(dx*dx+dy*dy)*fA;
+						A += fA;
+					}
+					else std::cout << " face center is at center of cylinder: " << cnt[0] << "," << cnt[1] << std::endl;
 				}
-				else std::cout << " face center is at center of cylinder: " << cnt[0] << "," << cnt[1] << std::endl;
-			}
-			err = err/A;
-			if( iter % 50 == 0 )
-				std::cout << "iter " << iter << " error: " << err << " area " << A << std::endl;
-			if( err < 1.0e-8 ) break;
-			for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
-			{
-				ElementArray<Face> faces = it->getFaces(cylinder);
-				double dxy[2] = {0,0}, dxyA = 0;
-				for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
+				err = err/A;
+				if( iter % 50 == 0 )
+					std::cout << "iter " << iter << " error: " << err << " area " << A << std::endl;
+				if( err < 1.0e-8 ) break;
+				for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
 				{
-					fA = jt->Area();
-					dxy[0] += vec_t[*jt][0]*fA;
-					dxy[1] += vec_t[*jt][1]*fA;
-					dxyA += fA;
+					ElementArray<Face> faces = it->getFaces(cylinder);
+					double dxy[2] = {0,0}, dxyA = 0;
+					for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
+					{
+						fA = jt->Area();
+						dxy[0] += vec_t[*jt][0]*fA;
+						dxy[1] += vec_t[*jt][1]*fA;
+						dxyA += fA;
+					}
+					dxy[0] /= dxyA;
+					dxy[1] /= dxyA;
+					it->Coords()[0] += dxy[0];
+					it->Coords()[1] += dxy[1];
 				}
-				dxy[0] /= dxyA;
-				dxy[1] /= dxyA;
-				it->Coords()[0] += dxy[0];
-				it->Coords()[1] += dxy[1];
+				iter++;
 			}
-			iter++;
+			m->DeleteTag(vec_t);
 		}
-		m->DeleteTag(vec_t);
-		m->ReleaseMarker(cylinder,FACE);
+		m->ReleaseMarker(cylinder,FACE|NODE);
 	}
 	
 	
