@@ -2,19 +2,33 @@
 #define INMOST_SOLVERSUPERLU_H
 
 #include "../Solver/SolverInterface.h"
+
+#if defined(USE_SOLVER_SUPERLU_DIST)
+#include "superlu_ddefs.h"
+#else
 #include "superlu/slu_ddefs.h"
+#endif
 
 namespace INMOST {
 
     class SolverSUPERLU : public SolverInterface {
     private:
-        SuperMatrix A, L, U;
+#if defined(USE_SOLVER_SUPERLU_DIST)
+		LUstruct_t LUstruct;
+		SOLVEstruct_t SOLVEstruct;
+		ScalePermstruct_t ScalePermstruct;
+		gridinfo_t grid;
+		superlu_dist_options_t options_;
+		SuperLUStat_t stat_;
+#else //USE_SOLVER_SUPERLU_DIST
         int * perm_r;
         int * perm_c;
         int * remap;
-        int a_size, info;
         superlu_options_t options;
         SuperLUStat_t stat;
+#endif //USE_SOLVER_SUPERLU_DIST
+		int a_size, info;
+        SuperMatrix A, L, U;
     public:
         SolverSUPERLU();
 

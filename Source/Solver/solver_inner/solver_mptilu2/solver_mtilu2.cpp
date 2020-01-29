@@ -8,8 +8,8 @@
 //#define LFILL //control, that factorization is not less then fill for ilu2
 
 //select one of the two rescaling techniques
-#define RESCALE_EQUALIZE_1NORM //equalize 1-norms of each row and each column to 1
-//#define RESCALE_EQUALIZE_2NORM
+//#define RESCALE_EQUALIZE_1NORM //equalize 1-norms of each row and each column to 1
+#define RESCALE_EQUALIZE_2NORM
 //#define RESCALE_MAXIMUM_TRANSVERSAL //use rescaling produced by maximum product transversal algorithm that bounds all values between -1 and 1
 
 #define REORDER_MAXIMUM_TRANSVERSAL

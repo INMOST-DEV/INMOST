@@ -36,7 +36,7 @@ int main(int argc, char ** argv)
 	
 	if( argc < 2 )
 	{
-		std::cout << "Usage: " << argv[0] << " mesh [axis=2 (0:x,1:y,2:z)] [control=0 (0:shear rate,1:pressure drop,2:maximal velocity)] [control_value=10] [visc=1.0e-5] [mesh_out=grid_out.pmf] [addsym=0]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " mesh [axis=2 (0:x,1:y,2:z)] [control=0 (0:shear rate,1:pressure drop,2:maximal velocity)] [control_value=10] [visc=1.0e-5] [Diam=-1(autodetect)] [mesh_out=grid_out.pmf] [addsym=0]" << std::endl;
 		return 0;
 	}
 	
@@ -58,7 +58,7 @@ int main(int argc, char ** argv)
 	int control = 0;
 	double control_value = 10;
 	double Len = 8;
-	double Diam = 1;
+	double Diam = -1;
 	double shear = 10;//0; //shear rate
 	double dp = 0;//36e-6;
 	double vmax = 0;
@@ -68,8 +68,9 @@ int main(int argc, char ** argv)
 	if( argc > 3 ) control = atoi(argv[3]);
 	if( argc > 4 ) control_value = atof(argv[4]);
 	if( argc > 5 ) visc = atof(argv[5]);
-	if( argc > 6 ) fout = std::string(argv[6]);
-	if( argc > 7 ) addsym = atof(argv[7]);
+	if( argc > 6 ) Diam = atof(argv[6]);
+	if( argc > 7 ) fout = std::string(argv[7]);
+	if( argc > 8 ) addsym = atof(argv[8]);
 	
 	
 	
@@ -119,7 +120,41 @@ int main(int argc, char ** argv)
 		}
 	}
 	Len = cmax[axis] - cmin[axis];
-	Diam = std::max(cmax[(axis+1)%3]-cmin[(axis+1)%3],cmax[(axis+2)%3]-cmin[(axis+2)%3]);
+	if( Diam == -1 ) Diam = std::max(cmax[(axis+1)%3]-cmin[(axis+1)%3],cmax[(axis+2)%3]-cmin[(axis+2)%3]);
+	
+	if( true ) //project nodes to diameter
+	{
+		MarkerType bnode = m->CreateMarker();
+		double n[3];
+		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
+		{
+			it->UnitNormal(n);
+			if( fabs(n[axis]) < 1.0e-2 ) it->getNodes().SetMarker(bnode);
+		}
+		int ix = (axis+1)%3, iy = (axis+2)%3;
+		//double cx = 0.5*(cmax[ix]+cmin[ix]), cy = 0.5*(cmax[iy]+cmin[iy]), R = 0.5*Diam;
+		double cx = 0.5, cy = 0.5, R = 0.5*Diam;
+		std::cout << "center of cylinder " << cx << " " << cy << std::endl;
+		double tot_corr = 0;
+		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(bnode) )
+		{
+			double & x = it->Coords()[ix];
+			double & y = it->Coords()[iy];
+			double r = sqrt(pow(x-cx,2)+pow(y-cy,2));
+			if( r )
+			{
+				double dx = (R/r-1.0)*(x-cx);
+				double dy = (R/r-1.0)*(y-cy);
+				//std::cout << "at " << x << "," << y << " r " << r << " dx " << dx << " dy " << dy << std::endl;
+				x += dx;
+				y += dy;
+				tot_corr += sqrt(dx*dx+dy*dy);
+			}
+			else std::cout << "node at center of cylinder: " << x << "," << y << std::endl;
+		}
+		m->ReleaseMarker(bnode,NODE);
+		std::cout << "projection done tot_corr " << tot_corr << std::endl;
+	}
 			
 	
 	if( shear )

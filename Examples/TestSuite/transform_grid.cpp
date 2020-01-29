@@ -74,7 +74,7 @@ void rotate_tensor(double nrm[3], const rMatrix & Kin, rMatrix & Kout, double ph
 	double qmat[16], qrmat[16], sclmat[16], qnrm;
 	struct quat q, qr;
 	rMatrix N = rMatrix::FromVector(nrm,3);
-	rMatrix NX = rMatrix::CrossProduct(nrm);
+	rMatrix NX = rMatrix::CrossProductMatrix(nrm);
 	rMatrix U(3,1), NXU;
 	U(0,0) = 0;
 	U(1,0) = 0;

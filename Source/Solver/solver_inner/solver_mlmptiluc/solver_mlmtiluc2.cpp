@@ -19,7 +19,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-#define REORDER_METIS_ND
+//~ #define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -1129,7 +1129,7 @@ static bool allow_pivot = true;
 			i = wend;
 #elif defined(REORDER_RCM)
 			{
-				if( verbosity ) 
+				if( verbosity > 1 ) 
 					printf("Reordering with RCM\n");
 				//create a symmetric graph of the matrix A + A^T
 				std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1), adjncy;

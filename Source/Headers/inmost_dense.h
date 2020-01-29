@@ -1640,7 +1640,7 @@ namespace INMOST
 		/// and vector. For a x b equivalent is CrossProduct(a)*b.
 		/// @param vec Array of elements representing a vector.
 		/// @return A matrix representing cross product.
-		static Matrix<Var, pool_array_t<Var> > CrossProduct(const Var vec[3])
+		static Matrix<Var, pool_array_t<Var> > CrossProductMatrix(const Var vec[3])
 		{
 			// |  0  -z   y |
 			// |  z   0  -x |

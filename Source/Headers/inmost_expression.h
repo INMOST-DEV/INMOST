@@ -58,8 +58,8 @@ namespace INMOST
 		shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Created for " << dynamic_cast<basic_expression *>(this) << std::endl;}
 		shell_expression(const shell_expression & other) {}//std::cout << this << " Shell Created from " << &other << std::endl;}
 		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const {return static_cast<const Derived *>(this)->GetValue(); }
-		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
-		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
+		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
+		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
 		__INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {return static_cast<const Derived *>(this)->GetHessian(multJ,J,multH,H); }
 		operator Derived & () {return *static_cast<Derived *>(this);}
 		operator const Derived & () const {return *static_cast<const Derived *>(this);}
@@ -99,8 +99,8 @@ namespace INMOST
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE INMOST_DATA_ENUM_TYPE GetIndex() const { return index; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( index != ENUMUNDEF ) r[index] += mult;}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( mult && index != ENUMUNDEF ) r[index] += mult;}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( mult && index != ENUMUNDEF ) r[index] += mult;}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);  (void)multH; (void)H;}
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE i) const {return index == i? 1.0 : 0.0;}
 		__INLINE var_expression & operator =(var_expression const & other)
@@ -157,8 +157,9 @@ namespace INMOST
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-				r[it->first] += it->second*mult;
+			r.AddRow(mult, entries);
+			//~ for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				//~ r[it->first] += it->second*mult;
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
@@ -424,8 +425,9 @@ namespace INMOST
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-				r[it->first] += it->second*mult;
+			r.AddRow(mult,entries);
+			//for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+			//	r[it->first] += it->second*mult;
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
@@ -635,8 +637,9 @@ namespace INMOST
 		{
 			if( entries )
 			{
-				for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-					r[it->first] += it->second*mult;
+				r.AddRow(mult,*entries);
+				//~ for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+					//~ r[it->first] += it->second*mult;
 			}
 		}
 		/// Retrive derivatives with multiplier into Sparse::Row structure.
@@ -821,8 +824,9 @@ namespace INMOST
 		/// Retrive derivatives with multiplier into Sparse::RowMerger structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-				r[it->first] += it->second*mult;
+			r.AddRow(mult,*entries);
+			//~ for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+				//~ r[it->first] += it->second*mult;
 		}
 		/// Retrive derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const

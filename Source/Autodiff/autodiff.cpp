@@ -35,7 +35,7 @@ namespace INMOST
 	AbstractEntry::Access<hessian_variable>(const Storage& e) const {return Unknown(e);}
 	
 	
-#if defined(USE_MESH)
+#if defined(USE_MESH) //Automatizator class does not exist without mesh
 	Automatizator * Automatizator::CurrentAutomatizator = NULL;
 	bool print_ad_ctor = false;
 	bool GetAutodiffPrint() {return print_ad_ctor;}

@@ -276,25 +276,28 @@ namespace INMOST
 		{
 			assert(Nonzeros == 0); //Linked list should be empty
 			assert(LinkedList.begin()->first == EOL); //again check that list is empty
-			INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
-			Row::const_iterator it = r.Begin(), jt;
-			while( it != r.End() )
+			if( coef )
 			{
-				INMOST_DATA_ENUM_TYPE pos = it->first;
-				INMOST_DATA_ENUM_TYPE map = MapIndex(pos);
-				if( map == ENUMUNDEF )
-					Nonlocal[pos] = it->second*coef;
-				else
+				INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
+				Row::const_iterator it = r.Begin(), jt;
+				while( it != r.End() )
 				{
-					LinkedList[index].first = map+1;
-					LinkedList[map+1].first = EOL;
-					LinkedList[map+1].second = it->second*coef;
-					index = map+1;
-					++Nonzeros;
+					INMOST_DATA_ENUM_TYPE pos = it->first;
+					INMOST_DATA_ENUM_TYPE map = MapIndex(pos);
+					if( map == ENUMUNDEF )
+						Nonlocal[pos] = it->second*coef;
+					else
+					{
+						LinkedList[index].first = map+1;
+						LinkedList[map+1].first = EOL;
+						LinkedList[map+1].second = it->second*coef;
+						index = map+1;
+						++Nonzeros;
+					}
+					jt = it;
+					++it;
+					assert(!Sorted || it == r.End() || jt->first < it->first);
 				}
-				jt = it;
-				++it;
-				assert(!Sorted || it == r.End() || jt->first < it->first);
 			}
 		}
 
@@ -306,44 +309,47 @@ namespace INMOST
 
 		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row & r)
 		{
-			INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
-			Row::const_iterator it = r.Begin(), jt;
-			while( it != r.End() )
+			if( coef )
 			{
-				INMOST_DATA_ENUM_TYPE pos = it->first;
-				INMOST_DATA_ENUM_TYPE map = MapIndex(pos);
-				if( map == ENUMUNDEF )
-					Nonlocal[pos] += coef*it->second;
-				else
+				INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
+				Row::const_iterator it = r.Begin(), itend = r.End(), jt;
+				while( it != itend )
 				{
-					if( LinkedList[map+1].first != UNDEF )
-						LinkedList[map+1].second += coef*it->second;
-					else if( Sorted )
-					{
-						next = index;
-						while(next < map+1)
-						{
-							index = next;
-							next = LinkedList[index].first;
-						}
-						assert(index < map+1);
-						assert(map+1 < next);
-						LinkedList[index].first = map+1;
-						LinkedList[map+1].first = next;
-						LinkedList[map+1].second = coef*it->second;
-						++Nonzeros;
-					}
+					INMOST_DATA_ENUM_TYPE pos = it->first;
+					INMOST_DATA_ENUM_TYPE map = MapIndex(pos);
+					if( map == ENUMUNDEF )
+						Nonlocal[pos] += coef*it->second;
 					else
 					{
-						LinkedList[map+1].first = LinkedList[index].first;
-						LinkedList[map+1].second = coef*it->second;
-						LinkedList[index].first = map+1;
-						++Nonzeros;
+						if( LinkedList[map+1].first != UNDEF )
+							LinkedList[map+1].second += coef*it->second;
+						else if( Sorted )
+						{
+							next = index;
+							while(next < map+1)
+							{
+								index = next;
+								next = LinkedList[index].first;
+							}
+							assert(index < map+1);
+							assert(map+1 < next);
+							LinkedList[index].first = map+1;
+							LinkedList[map+1].first = next;
+							LinkedList[map+1].second = coef*it->second;
+							++Nonzeros;
+						}
+						else
+						{
+							LinkedList[map+1].first = LinkedList[index].first;
+							LinkedList[map+1].second = coef*it->second;
+							LinkedList[index].first = map+1;
+							++Nonzeros;
+						}
 					}
+					jt = it;
+					++it;
+					assert(!Sorted || it == itend || jt->first < it->first);
 				}
-				jt = it;
-				++it;
-				assert(!Sorted || it == r.End() || jt->first < it->first);
 			}
 		}
 

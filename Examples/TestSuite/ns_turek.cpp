@@ -50,7 +50,7 @@ int main(int argc, char ** argv)
 	
 	std::string fout = "grid_out.pmf";
 	double Umax = 2.25;
-	bool fix_cylinder = false;
+	int fix_cylinder = 0;
 	if( argc > 2 ) fout = std::string(argv[2]);
 	if( argc > 3 ) Umax = atof(argv[3]);
 	if( argc > 4 ) fix_cylinder = atoi(argv[4]);
