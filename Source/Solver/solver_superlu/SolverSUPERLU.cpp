@@ -20,7 +20,7 @@ namespace INMOST
         perm_c = NULL;
         perm_r = NULL;
 #endif //USE_SOLVER_SUPERLU_DIST
-        a_size = 0;
+        g_size = a_size = 0;
     }
 
     SolverInterface *SolverSUPERLU::Copy(const SolverInterface *other) 
@@ -84,6 +84,7 @@ namespace INMOST
 		dCreate_CompRowLoc_Matrix_dist(&(this->A),global_size, global_size, nnz,local_size,offset,a,ja,ia,SLU_NR_loc, SLU_D, SLU_GE);
 		ScalePermstructInit(global_size,global_size,&ScalePermstruct);
 		LUstructInit(global_size,&LUstruct);
+		g_size = global_size;
 		a_size = size;
 #else //USE_SOLVER_SUPERLU_DIST
 		remap = new int[mend - mbeg];
@@ -175,15 +176,18 @@ namespace INMOST
 
     bool SolverSUPERLU::Clear() 
     {
-		//~ std::cout << "call clear!" << std::endl;
 #if defined(USE_SOLVER_SUPERLU_DIST)
+		//~ std::cout << "call clear!" << std::endl;
 		PStatFree(&stat_);
-		Destroy_CompRowLoc_Matrix_dist(&A);
 		ScalePermstructFree(&ScalePermstruct);
-		Destroy_LU(a_size,&grid,&LUstruct);
+		Destroy_LU(g_size,&grid,&LUstruct);
 		LUstructFree(&LUstruct);
 		if( options_.SolveInitialized )
+		{
+			//~ std::cout << "call dSolveFinalize!" << std::endl;
 			dSolveFinalize(&options_,&SOLVEstruct);
+		}
+		Destroy_CompRowLoc_Matrix_dist(&A);
 		superlu_gridexit(&grid);
 #else //USE_SOLVER_SUPERLU_DIST
 		Destroy_CompCol_Matrix(&A);
@@ -194,6 +198,7 @@ namespace INMOST
 		if (perm_r != NULL) delete[] perm_r;
 		if (remap != NULL) delete[] remap; //allocated outside
 #endif
+		//~ SUPERLU_FREE(A.Store);
         return true;
     }
 

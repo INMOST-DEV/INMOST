@@ -20,6 +20,7 @@ namespace INMOST {
 		gridinfo_t grid;
 		superlu_dist_options_t options_;
 		SuperLUStat_t stat_;
+		int g_size;
 #else //USE_SOLVER_SUPERLU_DIST
         int * perm_r;
         int * perm_c;

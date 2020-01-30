@@ -213,7 +213,7 @@ int main(int argc,char ** argv)
 					 } //end of loop over faces
 					 W = NK*(NK.Transpose()*R).PseudoInvert(1.0e-12)*NK.Transpose(); //stability part
 					 W+=(rMatrix::Unit(NF) - R*(R.Transpose()*R).CholeskyInvert()*R.Transpose())*
-						(4.0/(static_cast<real>(NF)*volume)*(NK*K.CholeskyInvert()*NK.Transpose()).Trace());
+						(1.0/(static_cast<real>(NF)*volume)*(NK*K.CholeskyInvert()*NK.Transpose()).Trace());
 			 		 W = Areas*W*Areas;
 					 //access data structure for gradient matrix in mesh
 					 real_array store_W = cell->RealArrayDV(tag_W);
