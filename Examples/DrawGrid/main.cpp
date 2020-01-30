@@ -39,7 +39,7 @@ inline static unsigned int flip(const unsigned int * fp)
 
 void draw_screen();
 void svg_draw(std::ostream & file);
-
+int wnd = -1;
 using namespace INMOST;
 Mesh * mesh;
 int interactive = 0;
@@ -502,12 +502,21 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	if( key == 27 )
 	{
+		std::cout << "delete volumetric clipper" << std::endl;
 		if( oclipper ) delete oclipper;
+		std::cout << "delete boundary clipper" << std::endl;
 		if( bclipper ) delete bclipper;
+		std::cout << "delete picker" << std::endl;
 		if( current_picker ) delete current_picker;
+		std::cout << "delete volumetric view" << std::endl;
 		delete CommonVolumetricView;
+		std::cout << "delete mesh" << std::endl;
 		delete mesh;
+		std::cout << "destroy window" << std::endl;
+		glutDestroyWindow(wnd);
+		std::cout << "call exit!" << std::endl;
 		exit(-1);
+		std::cout << "after exit" << std::endl;
 	}
 	else if( key == '=' || key == '+')
 	{
@@ -2621,7 +2630,7 @@ int main(int argc, char ** argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 	glutInitWindowSize(width, height);
 	glutInitWindowPosition (100, 100);
-	glutCreateWindow("Graph");
+	wnd = glutCreateWindow("Graph");
 	
 	glDepthFunc(GL_LEQUAL);
 	glClearDepth(1.f);

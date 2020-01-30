@@ -152,6 +152,7 @@ if(USE_PARTITIONER_PARMETIS)
 											"-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} "
 											"-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
 								)
+			add_dependencies(inmost ParMETIS)
 			set(PARMETIS_INCLUDE_DIR "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "PARMETIS_INCLUDE_DIR is set" FORCE)
 			set(METIS_INCLUDE_DIR    "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "METIS_INCLUDE_DIR is set" FORCE)
 			if( WIN32 )
@@ -261,146 +262,169 @@ endif()
 
 
 if(USE_SOLVER_SUPERLU)
-	find_package(SUPERLU)
-	if(NOT SUPERLU_FOUND)
-		#set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
-		MESSAGE("SUPERLU NOT FOUND")
-		if( USE_SOLVER_SUPERLU_DOWNLOAD )
-			
-			include(ExternalProject)
-			message("-- Download SUPERLU")
-			#string (REPLACE ";" "|" PASS_MPI "${MPI_INCLUDE_PATH}")
-			#message("-- Passing MPI include to ParMETIS: '${PASS_MPI}'")
-			
-			ExternalProject_Add(SUPERLU
-								GIT_REPOSITORY "https://github.com/xiaoyeli/superlu.git"
-								GIT_TAG "master"
-								UPDATE_DISCONNECTED 1 
-								#${EXTERNAL_NOUPDATE}
-								PREFIX "${LIB_DOWNLOAD_PATH}"
-								#this command is responsible for update of repository from git
-								#UPDATE_COMMAND ""
-								LIST_SEPARATOR | # Use the alternate list separator
-								#for the one from ibaned
-								#CMAKE_ARGS "-DMPI_INCLUDE_PATH:PATH='${PASS_MPI}'"
-								CMAKE_ARGS  		"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
-											"-DCMAKE_INSTALL_INCLUDEDIR=${LIB_DOWNLOAD_PATH}/include/superlu "
-											"-DCMAKE_BUILD_TYPE=Release "
-											"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
-											"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
-											"-DCMAKE_POSITION_INDEPENDENT_CODE=ON "
-											"-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} "
-											"-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
-								)
-			find_package(BLAS)
-			if (NOT BLAS_FOUND)
-				if( WIN32 )
-					set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/SUPERLU-build/CBLAS/blas.lib" CACHE FILEPATH "BLAS_LIBRARIES" FORCE)
-				else( WIN32 )
-					set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/SUPERLU-build/CBLAS/libblas.a" CACHE FILEPATH "BLAS_LIBRARIES" FORCE)
-				endif( WIN32 )
-			endif()
-
-			set(SUPERLU_INCLUDES "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "SUPERLU_INCLUDE_DIR is set" FORCE)
-			if( WIN32 )
-				set(SUPERLU_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/superlu.lib;${BLAS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
-			else( WIN32 )
-				set(SUPERLU_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/libsuperlu.a;${BLAS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
-			endif( WIN32 )
-			message("-- SUPERLU_INCLUDE_DIR: ${SUPERLU_INCLUDES}")
-			message("-- SUPERLU_LIBRARIES:   ${SUPERLU_LIBRARIES}")
-		else(USE_SOLVER_SUPERLU_DOWNLOAD)
-			set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
-		endif(USE_SOLVER_SUPERLU_DOWNLOAD)
-	else()
-		MESSAGE("\nFound SuperLU!  Here are the details: ")
-		MESSAGE("INCLUDES:  ${SUPERLU_INCLUDES}")
-		MESSAGE("LIBRARIES: ${SUPERLU_LIBRARIES}")
+	find_package(LAPACK)
+	if( NOT LAPACK_FOUND )
+		message("-- Download LAPACK")
+		ExternalProject_Add(LAPACK
+							URL "https://www.netlib.org/clapack/clapack-3.2.1-CMAKE.tgz"
+							UPDATE_DISCONNECTED 1
+							PREFIX "${LIB_DOWNLOAD_PATH}"
+							INSTALL_COMMAND true
+							CMAKE_ARGS #"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} " #no install script!
+									   "-DMPI_C_COMPILER=${MPI_C_COMPILER} "
+									   "-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
+									   "-DCMAKE_BUILD_TYPE=Release ")
+		if( WIN32 )
+			set(LAPACK_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/LAPACK-build/SRC/lapack.lib" CACHE PATH "LAPACK_LIBRARIES is set" FORCE)
+			set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/LAPACK-build/BLAS/SRC/blas.lib;${LIB_DOWNLOAD_PATH}/src/LAPACK-build/F2CLIBS/libf2c/f2c.lib" CACHE PATH "LAPACK_LIBRARIES is set" FORCE)
+		else( WIN32 )
+			set(LAPACK_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/LAPACK-build/SRC/liblapack.a" CACHE PATH "LAPACK_LIBRARIES is set" FORCE)
+			set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/LAPACK-build/BLAS/SRC/libblas.a;${LIB_DOWNLOAD_PATH}/src/LAPACK-build/F2CLIBS/libf2c/libf2c.a" CACHE PATH "LAPACK_LIBRARIES is set" FORCE)
+		endif( WIN32 )
 	endif()
-	find_package(SUPERLU_DIST)
-	if(NOT SUPERLU_DIST_FOUND)
-		#set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
-		MESSAGE("SUPERLU_DIST NOT FOUND")
-		
-		if( USE_SOLVER_SUPERLU_DOWNLOAD )
-			if( USE_MPI AND USE_PARTITIONER_PARMETIS )
-				message("-- Download SuperLU_DIST")
-				set(C_STANDARD_FLAG "-std=c99")
-				string (REPLACE ";" "|" PASS_PARMETIS_LIBRARIES "${PARMETIS_LIBRARIES}")
-				message("-- Pass parmetis libraries ${PASS_PARMETIS_LIBRARIES} ")
-				#do we need blas?
-				find_package(LAPACK)
-				if( NOT LAPACK_FOUND )
-					ExternalProject_Add(LAPACK
-										URL "https://www.netlib.org/clapack/clapack-3.2.1-CMAKE.tgz"
-										UPDATE_DISCONNECTED 1
-										PREFIX "${LIB_DOWNLOAD_PATH}")
-					if( WIN32 )
-						set(LAPACK_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/lapack.lib" CACHE PATH "LAPACK_LIBRARIES is set" FORCE)
-					else( WIN32 )
-						set(LAPACK_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/liblapack.a" CACHE PATH "LAPACK_LIBRARIES is set" FORCE)
-					endif( WIN32 )
-					set(LAPACK_LIBRARIES "${SUPERLU_LIBRARIES};${LAPACK_LIBRARIES};${PARMETIS_LIBRARIES};${LIB_DOWNLOAD_PATH}/lib/superlu_dist.lib" CACHE PATH "LAPACK_LIBRARIES is set" FORCE)
-				endif()
-				message("-- Pass lapack libraries ${LAPACK_LIBRARIES} ")
-				ExternalProject_Add(SuperLU_DIST
-									GIT_REPOSITORY "https://github.com/xiaoyeli/superlu_dist.git"
+	string (REPLACE ";" "|" PASS_LAPACK_LIBRARIES "${LAPACK_LIBRARIES}")
+	string (REPLACE ";" "|" PASS_BLAS_LIBRARIES "${BLAS_LIBRARIES}")
+	
+	if( NOT USE_MPI )
+		find_package(SUPERLU)
+		if(NOT SUPERLU_FOUND)
+			#set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
+			MESSAGE("SUPERLU NOT FOUND")
+			if( USE_SOLVER_SUPERLU_DOWNLOAD )
+				
+				include(ExternalProject)
+				message("-- Download SUPERLU")
+				#string (REPLACE ";" "|" PASS_MPI "${MPI_INCLUDE_PATH}")
+				#message("-- Passing MPI include to ParMETIS: '${PASS_MPI}'")
+				
+				ExternalProject_Add(SUPERLU
+									GIT_REPOSITORY "https://github.com/xiaoyeli/superlu.git"
 									GIT_TAG "master"
-									UPDATE_DISCONNECTED 1
+									UPDATE_DISCONNECTED 1 
+									#${EXTERNAL_NOUPDATE}
 									PREFIX "${LIB_DOWNLOAD_PATH}"
 									#this command is responsible for update of repository from git
 									#UPDATE_COMMAND ""
 									LIST_SEPARATOR | # Use the alternate list separator
-									CMAKE_ARGS  "-DTPL_PARMETIS_INCLUDE_DIRS=${PARMETIS_INCLUDE_DIR} "
-												"-DTPL_PARMETIS_LIBRARIES=${PASS_PARMETIS_LIBRARIES} "
-												"-DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}"
-												"-Denable_examples=OFF "
-												"-Denable_tests=OFF "
-												"-Denable_doc=OFF "
-												"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
-												"-DUSE_XSDK_DEFAULTS=TRUE "
-												"-DXSDK_ENABLE_Fortran=FALSE "
-												"-DNOFORTRAN=TRUE "
-												"-DCMAKE_C_FLAGS='${C_STANDARD_FLAG} -DMETIS_EXPORT=' "
-												"-DCMAKE_CXX_FLAGS='-DMETIS_EXPORT=' "
+									#for the one from ibaned
+									#CMAKE_ARGS "-DMPI_INCLUDE_PATH:PATH='${PASS_MPI}'"
+									CMAKE_ARGS  		"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
+												"-DCMAKE_INSTALL_INCLUDEDIR=${LIB_DOWNLOAD_PATH}/include/superlu "
+												"-DBLAS_LIBRARIES=${PASS_BLAS_LIBRARIES} " #should come from find_pacakge(LAPACK)
 												"-DCMAKE_BUILD_TYPE=Release "
 												"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
 												"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
-												"-DCMAKE_DISABLE_FIND_PACKAGE_OpenMP=TRUE "
 												"-DCMAKE_POSITION_INDEPENDENT_CODE=ON "
+												"-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} "
+												"-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
 									)
+				#get internal blas
+				#find_package(BLAS)
+				#if (NOT BLAS_FOUND)
+				#	if( WIN32 )
+				#		set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/SUPERLU-build/CBLAS/blas.lib" CACHE FILEPATH "BLAS_LIBRARIES" FORCE)
+				#	else( WIN32 )
+				#		set(BLAS_LIBRARIES "${LIB_DOWNLOAD_PATH}/src/SUPERLU-build/CBLAS/libblas.a" CACHE FILEPATH "BLAS_LIBRARIES" FORCE)
+				#	endif( WIN32 )
+				#endif()
+				
+				add_dependencies(inmost SUPERLU)
 
-				message("-- Linking SuperLU_dist and ParMETIS")
-
-				add_dependencies(SuperLU_DIST ParMETIS)
-				add_definitions(-DUSE_SOLVER_SUPERLU_DIST)
-				#same as above
-				#set(SUPERLU_INCLUDES "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "SUPERLU_INCLUDE_DIR is set" FORCE)
-				#extended
-				#TODO: properly install lapack
+				set(SUPERLU_INCLUDES "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "SUPERLU_INCLUDE_DIR is set" FORCE)
 				if( WIN32 )
-					set(SUPERLU_LIBRARIES "${SUPERLU_LIBRARIES};${LIB_DOWNLOAD_PATH}/lib/superlu_dist.lib;${LAPACK_LIBRARIES};${PARMETIS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
+					set(SUPERLU_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/superlu.lib;${BLAS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
 				else( WIN32 )
-					set(SUPERLU_LIBRARIES "${SUPERLU_LIBRARIES};${METIS_LIBRARIES};${LIB_DOWNLOAD_PATH}/lib/libsuperlu_dist.a;${LAPACK_LIBRARIES};${PARMETIS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
+					set(SUPERLU_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/libsuperlu.a;${BLAS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
 				endif( WIN32 )
 				message("-- SUPERLU_INCLUDE_DIR: ${SUPERLU_INCLUDES}")
-				message("-- SUPERLU_LIBRARIES:   ${SUPERLU_LIBRARIES}")					
-			else()
-				message("-- Skip SuperLU_DIST as either USE_MPI or USE_PARTITIONER_PARMETIS are not checked for compilation")
-			endif()
-			
-			
-		else(USE_SOLVER_SUPERLU_DOWNLOAD)
-			set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
-		endif(USE_SOLVER_SUPERLU_DOWNLOAD)
+				message("-- SUPERLU_LIBRARIES:   ${SUPERLU_LIBRARIES}")
+			else(USE_SOLVER_SUPERLU_DOWNLOAD)
+				set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
+			endif(USE_SOLVER_SUPERLU_DOWNLOAD)
+		else()
+			MESSAGE("\nFound SuperLU!  Here are the details: ")
+			MESSAGE("INCLUDES:  ${SUPERLU_INCLUDES}")
+			MESSAGE("LIBRARIES: ${SUPERLU_LIBRARIES}")
+		endif()
 	else()
-		MESSAGE("\nFound SuperLU_DIST!  Here are the details: ")
-		set(SUPERLU_INCLUDES "${SUPERLU_INCLUDES};${SUPERLU_DIST_INCLUDES}")
-		set(SUPERLU_LIBRARIES "${SUPERLU_LIBRARIES};${SUPERLU_DIST_LIBRARIES}")
-		MESSAGE("INCLUDES:  ${SUPERLU_INCLUDES}")
-		MESSAGE("LIBRARIES: ${SUPERLU_LIBRARIES}")
+		find_package(SUPERLU_DIST)
+		if(NOT SUPERLU_DIST_FOUND)
+			#set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
+			MESSAGE("SUPERLU_DIST NOT FOUND")
+			
+			if( USE_SOLVER_SUPERLU_DOWNLOAD )
+				if( USE_MPI AND USE_PARTITIONER_PARMETIS )
+					message("-- Download SuperLU_DIST")
+					set(C_STANDARD_FLAG "-std=c99")
+					string (REPLACE ";" "|" PASS_PARMETIS_LIBRARIES "${PARMETIS_LIBRARIES}")
+					message("-- Pass parmetis libraries ${PASS_PARMETIS_LIBRARIES} ")
+					message("-- Pass lapack libraries ${PASS_LAPACK_LIBRARIES} ")
+					message("-- Pass blas libraries ${PASS_BLAS_LIBRARIES} ")
+					ExternalProject_Add(SuperLU_DIST
+										GIT_REPOSITORY "https://github.com/xiaoyeli/superlu_dist.git"
+										GIT_TAG "master"
+										UPDATE_DISCONNECTED 1
+										PREFIX "${LIB_DOWNLOAD_PATH}"
+										#this command is responsible for update of repository from git
+										#UPDATE_COMMAND ""
+										LIST_SEPARATOR | # Use the alternate list separator
+										CMAKE_ARGS  "-DTPL_PARMETIS_INCLUDE_DIRS=${PARMETIS_INCLUDE_DIR} "
+													"-DTPL_PARMETIS_LIBRARIES=${PASS_PARMETIS_LIBRARIES} "
+													"-DTPL_LAPACK_LIBRARIES=${PASS_LAPACK_LIBRARIES} "
+													"-DBLAS_LIBRARIES=${PASS_BLAS_LIBRARIES} " #should come from find_pacakge(LAPACK)
+													"-Denable_examples=OFF "
+													"-Denable_tests=OFF "
+													"-Denable_doc=OFF "
+													"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
+													"-DUSE_XSDK_DEFAULTS=TRUE "
+													"-DXSDK_ENABLE_Fortran=FALSE "
+													"-DNOFORTRAN=TRUE "
+													"-DCMAKE_C_FLAGS='${C_STANDARD_FLAG} -DMETIS_EXPORT=' "
+													"-DCMAKE_CXX_FLAGS='-DMETIS_EXPORT=' "
+													"-DCMAKE_BUILD_TYPE=Release "
+													"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
+													"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
+													"-DCMAKE_DISABLE_FIND_PACKAGE_OpenMP=TRUE "
+													"-DCMAKE_POSITION_INDEPENDENT_CODE=ON "
+										)
+
+					message("-- Linking SuperLU_dist and ParMETIS")
+					if( NOT LAPACK_FOUND )
+						add_dependencies(SuperLU_DIST LAPACK)
+					endif()
+					add_dependencies(SuperLU_DIST ParMETIS)
+					add_dependencies(inmost SuperLU_DIST)
+					add_definitions(-DUSE_SOLVER_SUPERLU_DIST)
+					#same as above
+					#set(SUPERLU_INCLUDES "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "SUPERLU_INCLUDE_DIR is set" FORCE)
+					#extended
+					#TODO: properly install lapack
+					if( WIN32 )
+						set(SUPERLU_LIBRARIES "${SUPERLU_LIBRARIES};${METIS_LIBRARIES};${LIB_DOWNLOAD_PATH}/lib/superlu_dist.lib;${LAPACK_LIBRARIES};${BLAS_LIBRARIES};${PARMETIS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
+					else( WIN32 )
+						set(SUPERLU_LIBRARIES "${SUPERLU_LIBRARIES};${METIS_LIBRARIES};${LIB_DOWNLOAD_PATH}/lib/libsuperlu_dist.a;${LAPACK_LIBRARIES};${BLAS_LIBRARIES};${PARMETIS_LIBRARIES}" CACHE PATH "SUPERLU_LIBRARIES is set" FORCE)
+					endif( WIN32 )
+					message("-- SUPERLU_INCLUDE_DIR: ${SUPERLU_INCLUDES}")
+					message("-- SUPERLU_LIBRARIES:   ${SUPERLU_LIBRARIES}")					
+				else()
+					message("-- Skip SuperLU_DIST as either USE_MPI or USE_PARTITIONER_PARMETIS are not checked for compilation")
+				endif()
+				
+				
+			else(USE_SOLVER_SUPERLU_DOWNLOAD)
+				set(USE_SOLVER_SUPERLU OFF CACHE BOOL "Use SuperLU solver" FORCE)
+			endif(USE_SOLVER_SUPERLU_DOWNLOAD)
+		else()
+			MESSAGE("\nFound SuperLU_DIST!  Here are the details: ")
+			set(SUPERLU_INCLUDES "${SUPERLU_INCLUDES};${SUPERLU_DIST_INCLUDES}")
+			set(SUPERLU_LIBRARIES "${SUPERLU_LIBRARIES};${SUPERLU_DIST_LIBRARIES}")
+			MESSAGE("INCLUDES:  ${SUPERLU_INCLUDES}")
+			MESSAGE("LIBRARIES: ${SUPERLU_LIBRARIES}")
+		endif()
 	endif()
-	include_directories(${SUPERLU_INCLUDES})
+	if( USE_SOLVER_SUPERLU )
+		include_directories(${SUPERLU_INCLUDES})
+	endif()
 endif()
 
 if(USE_OPENCL)

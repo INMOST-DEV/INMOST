@@ -1432,6 +1432,7 @@ namespace INMOST
 				int Kstart = Kpart * m->GetProcessorRank();
 				int Kend = Kstart + Kpart;
 				if( Kend > K ) Kend = K;
+				srand(0);
 				for(int i = Kstart; i < Kend; i++) if( cluster_npoints[i] == 0 )
 				{
 					while(true)

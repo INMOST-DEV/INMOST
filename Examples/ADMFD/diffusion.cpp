@@ -38,7 +38,8 @@ int main(int argc,char ** argv)
 #endif
     if( argc > 1 )
     {
-
+		std::string force_name = "FORCE";
+		int force_comp = 0;
         double ttt; // Variable used to measure timing
         bool repartition = false; // Is it required to redistribute the mesh?
         Mesh * m = new Mesh(); // Create an empty mesh
@@ -58,6 +59,8 @@ int main(int argc,char ** argv)
             if( m->GetProcessorRank() == 0 ) std::cout << "Load the mesh: " << Timer()-ttt << std::endl;
         }
 
+		if( argc > 2 ) force_name = std::string(argv[2]);
+		if( argc > 3 ) force_comp = atoi(argv[3]);
 		
 #if defined(USE_PARTITIONER)
         if (m->GetProcessorsNumber() > 1 )//&& !repartition) // Currently only non-distributed meshes are supported by Inner_RCM partitioner
@@ -210,7 +213,7 @@ int main(int argc,char ** argv)
 					 } //end of loop over faces
 					 W = NK*(NK.Transpose()*R).PseudoInvert(1.0e-12)*NK.Transpose(); //stability part
 					 W+=(rMatrix::Unit(NF) - R*(R.Transpose()*R).CholeskyInvert()*R.Transpose())*
-						(2.0/(static_cast<real>(NF)*volume)*(NK*K.CholeskyInvert()*NK.Transpose()).Trace());
+						(4.0/(static_cast<real>(NF)*volume)*(NK*K.CholeskyInvert()*NK.Transpose()).Trace());
 			 		 W = Areas*W*Areas;
 					 //access data structure for gradient matrix in mesh
 					 real_array store_W = cell->RealArrayDV(tag_W);
@@ -225,9 +228,9 @@ int main(int argc,char ** argv)
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
 			 
-            if( m->HaveTag("FORCE") ) //Is there force on the mesh?
+            if( m->HaveTag(force_name) ) //Is there force on the mesh?
             {
-                tag_F = m->GetTag("FORCE"); //initial force
+                tag_F = m->GetTag(force_name); //initial force
                 assert(tag_F.isDefined(CELL)); //assuming it was defined on cells
             } // end of force
         } //end of initialize data
@@ -311,10 +314,16 @@ int main(int argc,char ** argv)
 							if( faces[k].GetStatus() == Element::Ghost ) continue;
 							int index = P.Index(faces[k]);
 							Locks.Lock(index);
-							if( tag_BC.isValid() && faces[k].HaveData(tag_BC) )
+							
+							if( faces[k].Boundary() )
 							{
-								real_array BC = faces[k].RealArray(tag_BC);
-								R[index] -= BC[0]*P(faces[k]) + BC[1]*FLUX(k,0) - BC[2];
+								double a = 1, b = 0, c = 0;
+								if( tag_BC.isValid() && faces[k].HaveData(tag_BC) )
+								{
+									real_array BC = faces[k].RealArray(tag_BC);
+									a = BC[0], b = BC[1], c = BC[2];
+								}
+								R[index] -= a*P(faces[k]) + b*FLUX(k,0) - c;
 							}
 							else
 								R[index] -= FLUX(k,0);
@@ -332,9 +341,11 @@ int main(int argc,char ** argv)
 						 {
 							 Cell cell = m->CellByLocalID(q);
 							 if( cell.GetStatus() == Element::Ghost ) continue;
-							 if( cell->HaveData(tag_F) ) R[P.Index(cell)] += cell->Real(tag_F)*cell->Volume();
+							 if( cell->HaveData(tag_F) ) R[P.Index(cell)] += cell->RealArray(tag_F)[force_comp]*cell->Volume();
 						 }
 					 }
+					 
+					 //R[P.Index(m->BeginCell()->self())] = P[m->BeginCell()->self()];
 				}
 				std::cout << "assembled in " << Timer() - tttt << "\t\t\t" << std::endl;
 
@@ -343,14 +354,14 @@ int main(int argc,char ** argv)
                 if( R.Norm() < 1.0e-4 ) break;
 
 				//Solver S(Solver::INNER_ILU2);
-                //~ Solver S(Solver::INNER_MPTILUC);
-                Solver S(Solver::K3BIILU2);
+                Solver S(Solver::INNER_MPTILUC);
+                //~ Solver S(Solver::K3BIILU2);
 				//Solver S("superlu");
 				S.SetParameter("verbosity","1");
                 S.SetParameter("relative_tolerance", "1.0e-14");
                 S.SetParameter("absolute_tolerance", "1.0e-12");
-                S.SetParameter("drop_tolerance", "1.0e-2");
-                S.SetParameter("reuse_tolerance", "1.0e-3");
+                S.SetParameter("drop_tolerance", "1.0e-3");
+                S.SetParameter("reuse_tolerance", "1.0e-4");
 
                 S.SetMatrix(R.GetJacobian());
 				
