@@ -113,6 +113,87 @@ namespace INMOST
 			return f->FrontCell();
 		return b;
 	}
+
+	bool Face::Inside(const Storage::real * point) const
+	{
+		Mesh * mesh = GetMeshLink();
+		integer dim = mesh->GetDimensions();
+		if(dim < 3)
+		{
+			// TODO check that point lies on edge?
+			return false;
+		}
+		real eps = mesh->GetEpsilon();
+		real nrm[3], cnt[3], dx[3], y[3], e1[3], e2[3];
+
+		UnitNormal(nrm);
+		Centroid(cnt);
+		vec_diff(cnt, point, dx, dim);
+		real r_v = vec_dot_product(nrm, dx, dim);
+		if(fabs(r_v) > eps)	return false;	// point is too far from the face plane
+		y[0] = point[0] + r_v * nrm[0];
+		y[1] = point[1] + r_v * nrm[1];
+		y[2] = point[2] + r_v * nrm[2];
+		vec_diff(y,cnt,e1,dim);
+		if(vec_len(e1,dim) < eps)	return true;	// point is near the face centroid
+
+		real ylen = vec_normalize(e1,dim);
+		vec_cross_product(nrm,e1,e2);
+		vec_normalize(e2,dim);
+		{
+			integer mdim = 2;
+			Storage::real data[9][3];
+			memset(data,0,sizeof(Storage::real)*9*3);
+			//Centroid(data[0]);
+			data[3][0] = ylen;
+			data[3][1] = 0;
+			data[3][2] = 0;
+			ElementArray<Node> nodes = getNodes();
+			real r;
+			real dx1[3], y1[3];
+			for(int i = 0; i < static_cast<int>(nodes.size()); i++)
+			{
+				int j = (i+1)%nodes.size();
+				
+				nodes[i].Centroid(data[1]);
+				vec_diff(cnt,data[1],dx1,dim);
+				r = vec_dot_product(nrm,dx1,dim);
+				y1[0] = data[1][0] + r*nrm[0];
+				y1[1] = data[1][1] + r*nrm[1];
+				y1[2] = data[1][2] + r*nrm[2];
+				vec_diff(y1,cnt,y1,dim);
+				data[1][0] = vec_dot_product(e1,y1,dim);
+				data[1][1] = vec_dot_product(e2,y1,dim);
+				data[1][2] = 0;
+				
+				nodes[j].Centroid(data[2]);
+				vec_diff(cnt,data[2],dx1,dim);
+				r = vec_dot_product(nrm,dx1,dim);
+				y1[0] = data[2][0] + r*nrm[0];
+				y1[1] = data[2][1] + r*nrm[1];
+				y1[2] = data[2][2] + r*nrm[2];
+				vec_diff(y1,cnt,y1,dim);
+				data[2][0] = vec_dot_product(e1,y1,dim);
+				data[2][1] = vec_dot_product(e2,y1,dim);
+				data[2][2] = 0;
+				
+				//vec_diff(data[3],cnt,    data[3],mdim);
+				vec_diff(data[3],data[1],data[4],mdim);
+				vec_diff(data[3],data[2],data[5],mdim);
+				vec_cross_product(data[3],data[4],data[6]);
+				vec_cross_product(data[4],data[5],data[7]);
+				vec_cross_product(data[5],data[3],data[8]);
+				
+				if( vec_dot_product(data[6],data[7],dim) >= 0 &&
+				   vec_dot_product(data[7],data[8],dim) >= 0 &&
+				   vec_dot_product(data[8],data[6],dim) >= 0 )
+					return true; //inside one of the triangles
+			}
+			return false;
+		}
+
+		return false;
+	}
 	
 	bool Cell::Inside(const Storage::real * point) const//check for 2d case
 	{
@@ -120,6 +201,10 @@ namespace INMOST
 		integer dim = GetElementDimension();
 		if( dim == 3 )
 		{
+			// Check faces first
+			ElementArray<Face> faces = getFaces();
+			for(int i = 0; i < faces.size(); i++)
+				if(faces[i].Inside(point))	return true;
 			/*
 			tiny_map<HandleType,real,16> hits;
 			real ray[3];

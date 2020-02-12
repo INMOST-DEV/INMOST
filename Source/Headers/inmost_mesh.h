@@ -643,6 +643,7 @@ namespace INMOST
 		bool                        FixNormalOrientation    () const;  //returns true if orientation was corrected, otherwise returns false
 		bool                        CheckNormalOrientation  () const; //returns true if orientation is correct, otherwise returns false
 		bool                        Closure                 () const; // test integrity of polygon
+		bool                        Inside                  (const real * point) const; //is point inside face
 	};
 
 	__INLINE const Face & InvalidFace() {static Face ret(NULL,InvalidHandle()); return ret;}
