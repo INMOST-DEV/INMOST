@@ -147,6 +147,8 @@ namespace INMOST
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// Those model that use the adapted mesh should update their data
 		virtual void Adaptation(Mesh & m) const;
+		
+		void ReportErrors(const Residual & R) const;
 	};
 }
 

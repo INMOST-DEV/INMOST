@@ -109,6 +109,15 @@ namespace INMOST
 				new (&ret(i,j)) multivar_expression_reference(residual[rows(i,j)],&jacobian[rows(i,j)]);
 		return ret;
 	}
+	
+	rpMatrix Residual::Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows) const
+	{
+		rpMatrix ret(rows.Rows(),rows.Cols());
+		for(INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
+			for(INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
+				ret(i,j) = residual[rows(i,j)];
+		return ret;
+	}
 #endif //USE_SOLVER
 } //namespace INMOST
 

@@ -197,9 +197,17 @@ namespace INMOST
 		bool success = true;
 		R.Clear();
 		Automatizator::MakeCurrent(&aut);
+		double total_time = Timer(), model_time = 0;
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
+		{
+			model_time = Timer();
 			success &= it->second->FillResidual(R);
+			model_time = Timer() - model_time;
+			//~ std::cout << it->first << ":" << model_time << " ";
+		}
+		total_time = Timer() - total_time;
+		//~ std::cout << "total:" << total_time << std::endl;
 		Automatizator::RemoveCurrent();
 		return success;
 	}
@@ -286,6 +294,64 @@ namespace INMOST
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 			it->second->Adaptation(m,tree);
+	}
+	
+	void Model::ReportErrors(const Residual & R) const
+	{
+		for(std::vector< std::pair< std::string, AbstractEntry *> >::const_iterator it = Entries.begin(); it != Entries.end(); ++it)
+		{
+			ElementType etypes = it->second->GetElementType();
+			Mesh * m = it->second->GetMeshLink();
+			//if( m->GetProcessorRank() == 0 )
+			//	std::cout << "Errors for entry " << it->first << std::endl;
+			for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) ) if ( etype & etypes )
+			{
+				if( !m->HaveGlobalID(etype) ) m->AssignGlobalID(etype); //to report element number
+				//account for variable size!
+				std::vector<double> err_comp(it->second->Size(),0.0);
+				//std::vector<Element> err_elem(it->second->Size());
+				std::vector<double> err_int(it->second->Size(),0.0);
+				double max_err = 0, int_err = 0;
+				Element e;
+				for(Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt) if( jt->GetStatus() != Element::Ghost )
+				{
+					rpMatrix err = R.Value(it->second->Index(jt->self()));
+					double block_err = err.FrobeniusNorm();
+					if( block_err > max_err )
+					{
+						e = jt->self();
+						max_err = block_err;
+					}
+					int_err += block_err*block_err;
+					int N = err.Rows()*err.Cols();
+					if( N > it->second->Size() ) continue; //No account for variable size
+					//~ std::cout << jt->LocalID() << " block err " << block_err << " comp err ";
+					for(int k = 0; k < N; ++k)
+					{
+						//~ std::cout << err.data()[k] << " ";
+						err_int[k] += err.data()[k]*err.data()[k];
+						if( fabs(err.data()[k]) > err_comp[k] )
+						{
+							err_comp[k] = fabs(err.data()[k]);
+							//err_elem[k] = jt->self();
+						}
+					}
+					//~ std::cout << std::endl;
+				}
+				m->Integrate(&err_int[0],it->second->Size());
+				m->AggregateMax(&err_comp[0],it->second->Size());
+				int_err = m->Integrate(int_err);
+				max_err = m->AggregateMax(max_err); //we need MPI_Allreduce to zero proc to know index of element with largest error
+				if( m->GetProcessorRank() == 0 )
+				{
+					std::cout << std::setw(30) << it->first << " element type " << ElementTypeName(etype) << " error integral " << std::setw(12) << sqrt(int_err) << " maximal " << std::setw(12) << max_err << std::endl;// " on element " << e.GlobalID() << std::endl;
+					for(int k = 0; k < (int)err_int.size(); ++k)
+					{
+						std::cout << "\t\t" << std::setw(2) << k << " error integral " << std::setw(12) << sqrt(err_int[k]) << " maximal " << std::setw(12) << err_comp[k] << std::endl;
+					}
+				}
+			}
+		}
 	}
 }
 #endif

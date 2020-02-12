@@ -91,7 +91,7 @@ int main(int argc,char ** argv)
             table[NORMAL]      = FACE;        //Compute normals
             table[ORIENTATION] = FACE;        //Check and fix normal orientation
             table[MEASURE]     = CELL | FACE; //Compute volumes and areas
-            //table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
+            table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
             m->PrepareGeometricData(table); //Ask to precompute the data
             BARRIER
             if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
@@ -177,9 +177,9 @@ int main(int argc,char ** argv)
 #pragma omp parallel
 #endif
 			{
-				rMatrix NK, R, Areas;
+				rMatrix NK, L, R, Areas;
 				rMatrix x(1,3), xf(1,3), n(1,3);
-				double area; //area of the face
+				double area, dist; //area of the face
 				double volume; //volume of the cell
 #if defined(USE_OMP)
 #pragma omp for
@@ -192,29 +192,38 @@ int main(int argc,char ** argv)
 					 int NF = (int)faces.size(); //number of faces;
 					 rMatrix W(NF,NF);
 					 volume = cell->Volume(); //volume of the cell
-					 cell->Centroid(x.data());
+					 cell->Barycenter(x.data());
 					 //get permeability for the cell
 					 rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),
 													 cell->RealArrayDF(tag_K).size());
 					 NK.Resize(NF,3); //co-normals
 					 R.Resize(NF,3); //directions
+					 L.Resize(NF,NF);
 					 Areas.Resize(NF,NF); //areas
 					 Areas.Zero();
+					 L.Zero();
 					 for(int k = 0; k < NF; ++k) //loop over faces
 					 {
 						 area = faces[k].Area();
-						 faces[k].Centroid(xf.data());
+						 faces[k].Barycenter(xf.data());
 						 faces[k].OrientedUnitNormal(cell->self(),n.data());
+						 dist = n.DotProduct(xf-x);
 						 // assemble matrix of directions
-						 R(k,k+1,0,3) = (xf-x)*area;
+						 R(k,k+1,0,3) = (xf-x);
 						 // assemble matrix of co-normals
-						 NK(k,k+1,0,3) = n*K;
+						 NK(k,k+1,0,3) = n*K*area;
+						 L(k,k) =  n.DotProduct(n*K)*area/dist;
 						 Areas(k,k) = area;
 					 } //end of loop over faces
-					 W = NK*(NK.Transpose()*R).PseudoInvert(1.0e-12)*NK.Transpose(); //stability part
-					 W+=(rMatrix::Unit(NF) - R*(R.Transpose()*R).CholeskyInvert()*R.Transpose())*
-						(1.0/(static_cast<real>(NF)*volume)*(NK*K.CholeskyInvert()*NK.Transpose()).Trace());
-			 		 W = Areas*W*Areas;
+					 //~ W = NK*(NK.Transpose()*R).PseudoInvert(1.0e-12)*NK.Transpose(); //stability part
+					 //~ W+=(rMatrix::Unit(NF) - R*(R.Transpose()*R).CholeskyInvert()*R.Transpose())*
+						//~ (2.0/(static_cast<real>(NF)*volume)*(NK*K.CholeskyInvert()*NK.Transpose()).Trace());
+			 		 
+			 		 double ca = 0, ba = ca;
+			 		 W = (NK+ca*L*R)*((NK+ca*L*R).Transpose()*R).Invert()*(NK+ca*L*R).Transpose();
+					 W+= L - (1+ba)*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+					 
+					 //~ W = Areas*W*Areas;
 					 //access data structure for gradient matrix in mesh
 					 real_array store_W = cell->RealArrayDV(tag_W);
 					 //resize the structure
@@ -223,7 +232,7 @@ int main(int argc,char ** argv)
 					 std::copy(W.data(),W.data()+NF*NF,store_W.data());
 					 
 					 tag_WG[cell].resize(3*NF);
-					 tag_WG(cell,3,NF) = (NK.Transpose()*R).PseudoInvert(1.0e-12)*NK.Transpose()*Areas;
+					 tag_WG(cell,3,NF) = (NK.Transpose()*R+ca*L*R).PseudoInvert(1.0e-12)*(NK+ca*L*R).Transpose();
 				 } //end of loop over cells
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
@@ -286,6 +295,7 @@ int main(int argc,char ** argv)
 				{
 					vMatrix pF; //vector of pressure differences on faces
 					vMatrix FLUX; //computed flux on faces
+					rMatrix n(3,1);
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -317,7 +327,15 @@ int main(int argc,char ** argv)
 							
 							if( faces[k].Boundary() )
 							{
-								double a = 1, b = 0, c = 0;
+								double a = 0, b = 1, c = 0;
+								//~ faces[k].UnitNormal(n.data());
+								//~ double a = 1, b = 0, c = 0;
+								//~ if( fabs(n(2,0)-1) < 1.0e-4 )
+								//~ {
+									//~ a = 0;
+									//~ b = 1;
+								//~ }
+								
 								if( tag_BC.isValid() && faces[k].HaveData(tag_BC) )
 								{
 									real_array BC = faces[k].RealArray(tag_BC);
@@ -354,8 +372,8 @@ int main(int argc,char ** argv)
                 if( R.Norm() < 1.0e-4 ) break;
 
 				//Solver S(Solver::INNER_ILU2);
-                Solver S(Solver::INNER_MPTILUC);
-                //~ Solver S(Solver::K3BIILU2);
+                //~ Solver S(Solver::INNER_MPTILUC);
+                Solver S(Solver::K3BIILU2);
 				//Solver S("superlu");
 				S.SetParameter("verbosity","1");
                 S.SetParameter("relative_tolerance", "1.0e-14");

@@ -120,28 +120,31 @@ int main(int argc, char ** argv)
 			if( it->nbAdjElements(FACE,cylinder) ) it->SetMarker(cylinder);
 			
 		
-		
-		std::cout << "project boundary nodes onto cylinder " << std::endl;
-		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
+		if( fix_cylinder != 3 )
 		{
-			double x = it->Coords()[0], y = it->Coords()[1], dx, dy;
-			double r = sqrt((x-0.5)*(x-0.5) + (y-0.2)*(y-0.2));
-			if( r )
+			std::cout << "project boundary nodes onto cylinder " << std::endl;
+			for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
 			{
-				dx = (0.05/r-1.0)*(x-0.5);
-				dy = (0.05/r-1.0)*(y-0.2);
-				//std::cout << "at " << x << "," << y << " r " << r << " dx " << dx << " dy " << dy << std::endl;
-				it->Coords()[0] += dx;
-				it->Coords()[1] += dy;
+				double x = it->Coords()[0], y = it->Coords()[1], dx, dy;
+				double r = sqrt((x-0.5)*(x-0.5) + (y-0.2)*(y-0.2));
+				if( r )
+				{
+					dx = (0.05/r-1.0)*(x-0.5);
+					dy = (0.05/r-1.0)*(y-0.2);
+					//std::cout << "at " << x << "," << y << " r " << r << " dx " << dx << " dy " << dy << std::endl;
+					it->Coords()[0] += dx;
+					it->Coords()[1] += dy;
+				}
+				else std::cout << "node at center of cylinder: " << x << "," << y << std::endl;
 			}
-			else std::cout << "node at center of cylinder: " << x << "," << y << std::endl;
 		}
+		else fix_cylinder = 2;
 		if( fix_cylinder == 2 )
 		{
 			TagRealArray vec_t = m->CreateTag("vec_t",DATA_REAL,FACE,FACE,2);
 			std::cout << "project centers of boundary faces onto cylinder " << std::endl;
 			int iter = 0;
-			while(iter < 1000)
+			while(iter < 5000)
 			{
 				double A = 0, err = 0, fA;
 				for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->GetMarker(cylinder) )
