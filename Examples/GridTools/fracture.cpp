@@ -72,7 +72,7 @@ void Fracture::FaceCenter(Face f, INMOST_DATA_REAL_TYPE cnt[3]) const
 	else f->Centroid(cnt);
 }
 
-void Fracture::Open(Tag aperture, bool fill_fracture)
+void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 {
 	fracture_aperture = aperture;
 	m->BeginModification();
@@ -82,7 +82,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture)
 	m->self()->Integer(m->CreateTag("FRACTURE_MARKER",DATA_INTEGER,MESH,NONE,1)) = fracture_marker;
 	//break up all the faces with fractures into volumes?
 	fracture_volume = m->CreateTag("VOLUME_FRACTURE",DATA_REAL,CELL,CELL,1);
-	const Storage::real mult = 0.95;
+	const Storage::real mult = gap_multiplier;
 	Tag indexes = m->CreateTag("FRAC_TEMP_INDEXES",DATA_INTEGER,CELL,NONE,2);
 	//associate a node or a pair of nodes to each non-fracture edge that ends with a fracture node
 	Tag cell2node = m->CreateTag("CELL2NODE",DATA_REFERENCE,CELL,NONE);
@@ -333,7 +333,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture)
 				}
 			}
 		}
-		/*
+		
 		std::cout << "Copying following real-value tags from fracture faces to fracture cells:" << std::endl;
 		for(std::vector<Tag>::iterator q = transfer_real_tags.begin(); q != transfer_real_tags.end(); ++q)
 			std::cout << q->GetTagName() << std::endl;
@@ -341,7 +341,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture)
 		std::cout << "Copying following integer-value tags from fracture faces to fracture cells:" << std::endl;
 		for(std::vector<Tag>::iterator q = transfer_integer_tags.begin(); q != transfer_integer_tags.end(); ++q)
 			std::cout << q->GetTagName() << std::endl;
-		*/
+		
 		
 		
 		//now create fracture-fracture control volumes, add fracture-matrix faces to matrix cells

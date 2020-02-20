@@ -1,5 +1,5 @@
 #include "inmost.h"
-
+#include "fix_faults.h"
 using namespace INMOST;
 
 //todo: non-flat faces
@@ -448,21 +448,9 @@ struct coords
 
 
 
-int main(int argc, char ** argv)
+void FixFaults::FixMeshFaults()
 {
-	if (argc < 2)
-	{
-		std::cout << "Usage: " << argv[0] << " mesh [mesh_out=grid.vtk]" << std::endl;
-		return -1;
-	}
-
-	std::string grid_out = "grid.vtk";
-	if (argc > 2) grid_out = std::string(argv[2]);
-
-
-	Mesh m;
-	m.Load(argv[1]);
-
+	
 	std::cout << "Start:" << std::endl;
 	std::cout << "Cells: " << m.NumberOfCells() << std::endl;
 	std::cout << "Faces: " << m.NumberOfFaces() << std::endl;
@@ -919,6 +907,9 @@ int main(int argc, char ** argv)
 		}
 	}
 	m.EndModification();
+	
+	m.DeleteTag(new_points);
+	m.DeleteTag(new_edges);
 
 
 	std::cout << "time to split: " << Timer() - tt << std::endl;
@@ -927,7 +918,4 @@ int main(int argc, char ** argv)
 	std::cout << "Cells: " << m.NumberOfCells() << std::endl;
 	std::cout << "Faces: " << m.NumberOfFaces() << std::endl;
 	std::cout << "Edges: " << m.NumberOfEdges() << std::endl;
-
-	m.Save(grid_out);
-	return 0;
 }
