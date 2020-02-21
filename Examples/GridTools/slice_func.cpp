@@ -122,6 +122,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 
 	
 	MarkerType original = m.CreateMarker();
+	std::cout << "marker original " << original << std::endl;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -135,7 +136,9 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 	for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it) it->SetMarker(original);
 
 	MarkerType slice = m.CreateMarker();
+	std::cout << "marker slice " << slice << std::endl;
 	MarkerType mrk = m.CreateMarker();
+	std::cout << "marker mrk " << mrk << std::endl;
 	int nslice = 0, nmark = 0;
 	for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it) if( !it->GetMarker(mrk) )
 	{
@@ -290,6 +293,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 	
 	nslice = 0;
 	MarkerType unique = m.CreateMarker();
+	std::cout << "marker unique " << unique << std::endl;
 	for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if( !it->GetMarker(mrk) )
 	{
 		ElementArray<Node> nodes = it->getNodes(slice); //those nodes should be ordered so that each pair forms an edge
@@ -523,6 +527,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 		//else std::cout << "Only one adjacent slice node, face " << it->LocalID() << std::endl;
 	}
 	m.ReleaseMarker(unique);
+	std::cout << "release marker unique " << unique << std::endl;
 	
 
 	nmark = 0;
@@ -571,8 +576,11 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 	nslice = 0;
 	TagInteger indx = m.CreateTag("TEMP_INDX",DATA_INTEGER,NODE|EDGE,NONE,1);
 	MarkerType visited = m.CreateMarker();
+	std::cout << "marker visited " << visited << std::endl;
 	MarkerType cmrk = m.CreateMarker();
+	std::cout << "marker cmrk " << cmrk << std::endl;
 	MarkerType isolate = m.CreateMarker();
+	std::cout << "marker isolate " << isolate << std::endl;
 	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( !it->GetMarker(mrk) )
 	{
 		ElementArray<Edge> edges = it->getEdges(slice);
@@ -1159,8 +1167,11 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 		}
 	}
 	m.ReleaseMarker(isolate);
+	std::cout << "release marker isolate " << isolate << std::endl;
 	m.ReleaseMarker(cmrk);
+	std::cout << "release marker cmrk " << cmrk << std::endl;
 	m.ReleaseMarker(visited);
+	std::cout << "release marker visited " << visited << std::endl;
 	m.DeleteTag(indx);
 
 	std::cout << "sliced cells: " << nslice << std::endl;
@@ -1228,8 +1239,11 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 	}
 
 	m.ReleaseMarker(slice,NODE|EDGE);
+	std::cout << "release marker slice " << slice << std::endl;
 	m.ReleaseMarker(original,NODE|EDGE);
-	m.ReleaseMarker(mrk,EDGE|FACE|NODE);
+	std::cout << "release marker original " << original << std::endl;
+	m.ReleaseMarker(mrk,EDGE|FACE|NODE|CELL);
+	std::cout << "release marker mrk " << mrk << std::endl;
         
     // m.DeleteTag(material);
     // m.DeleteTag(level);

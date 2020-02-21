@@ -8,14 +8,11 @@ class SliceFault : public Slice
 {
 	double v[3]; // vector for projection in z direction
 	std::vector< std::pair<double,double> > curvxy; //a curve that defines a fault
-	double func(double x, double y, double z)
-	{
-	}
 public:
 	SliceFault(double cmin[3], double cmax[3]) :Slice() 
 	{
-		v[0] = 0.1*(rand()*1.0/RAND_MAX);
-		v[1] = 0.1*(rand()*1.0/RAND_MAX);
+		v[0] = 0;//0.1*(rand()*1.0/RAND_MAX);
+		v[1] = 0;//0.1*(rand()*1.0/RAND_MAX);
 		v[2] = 1;
 		double l = sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
 		v[0] /= l; v[1] /= l; v[2] /= l;
@@ -122,7 +119,7 @@ int main(int argc, char ** argv)
 		
 		Fracture fr(m);
 		//fr.Open(aperture,false,0.5);
-		fr.Open(aperture,false);
+		fr.Open(aperture,false,1.0);
 		
 		//shift nodes
 		
@@ -134,6 +131,7 @@ int main(int argc, char ** argv)
 		double sc = t*(cmax[2]-cmin[2])*0.4;
 		
 		std::cout << "shift nodes by " << sc << std::endl;
+		
 		
 		for(Mesh::iteratorNode n = m.BeginNode(); n != m.EndNode(); ++n)
 		{
@@ -150,8 +148,13 @@ int main(int argc, char ** argv)
 		}
 		
 		
-		//FixFaults fix(m);	
-		//fix.FixMeshFaults();
+		FixFaults fix(m);	
+		MarkerType fault = m.CreateMarker();
+		for(Mesh::iteratorFace f = m.BeginFace(); f != m.EndFace(); ++f)
+			if( mat[*f] == 2 ) f->SetMarker(fault);
+		fix.FixMeshFaults(fault);
+		m.ReleaseMarker(fault,FACE);
+		
 		m.Save(grid_out);
 	}
 	return 0;

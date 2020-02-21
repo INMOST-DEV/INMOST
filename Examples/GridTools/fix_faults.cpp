@@ -59,7 +59,7 @@ static bool MatchPoints(const double v1[3], const double v2[3])
 	double l = 0;
 	for (int k = 0; k < 3; ++k)
 		l += (v1[k] - v2[k])*(v1[k] - v2[k]);
-	return sqrt(l) < 1.0e-7;
+	return sqrt(l) < 1.0e-6;
 }
 
 //returns distance between line if shortest line is within segments, writes position of distance into last argument
@@ -316,31 +316,60 @@ class kdtree
 	kdtree() : set(NULL), size(0), children(NULL) {}
 	void clear_children() { if (children) { children[0].clear_children(); children[1].clear_children(); free(children); } }
 public:
-	kdtree(Mesh * m) :  m(m), children(NULL)
+	kdtree(Mesh * m, MarkerType mrk = 0) :  m(m), children(NULL)
 	{
 		double tt;
-		size = m->NumberOfFaces();
-		assert(size > 1);
-		set = new entry[size];
-		INMOST_DATA_ENUM_TYPE k = 0;
-		tt = Timer();
-		printf("Prepearing face set.\n");
-		m->ReorderEmpty(FACE);
+		if( mrk == 0 )
+		{
+			size = m->NumberOfFaces();
+			assert(size > 1);
+			set = new entry[size];
+			INMOST_DATA_ENUM_TYPE k = 0;
+			tt = Timer();
+			printf("Prepearing face set.\n");
+			m->ReorderEmpty(FACE);
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-		for (int i = 0; i < m->FaceLastLocalID(); ++i) if (m->isValidFace(i))
-		{
-			Face it = m->FaceByLocalID(i);
-			Storage::real cnt[3];
-			it->Centroid(cnt);
-			int k = it->DataLocalID();
-			set[k].e = it->GetHandle();
-			set[k].xyz[0] = static_cast<float>(cnt[0]);
-			set[k].xyz[1] = static_cast<float>(cnt[1]);
-			set[k].xyz[2] = static_cast<float>(cnt[2]);
+			for (int i = 0; i < m->FaceLastLocalID(); ++i) if (m->isValidFace(i))
+			{
+				Face it = m->FaceByLocalID(i);
+				Storage::real cnt[3];
+				it->Centroid(cnt);
+				int k = it->DataLocalID();
+				set[k].e = it->GetHandle();
+				set[k].xyz[0] = static_cast<float>(cnt[0]);
+				set[k].xyz[1] = static_cast<float>(cnt[1]);
+				set[k].xyz[2] = static_cast<float>(cnt[2]);
+			}
+			printf("Done. Time %lg\n", Timer() - tt);
 		}
-		printf("Done. Time %lg\n", Timer() - tt);
+		else
+		{
+			size = 0;
+			for (int i = 0; i < m->FaceLastLocalID(); ++i)
+				if( m->isValidFace(i) && m->FaceByLocalID(i).GetMarker(mrk) ) size++;
+			assert(size > 1);
+			set = new entry[size];
+			INMOST_DATA_ENUM_TYPE k = 0;
+			tt = Timer();
+			printf("Prepearing face set.\n");
+			for (int i = 0; i < m->FaceLastLocalID(); ++i) if (m->isValidFace(i))
+			{
+				Face it = m->FaceByLocalID(i);
+				if( it->GetMarker(mrk) )
+				{
+					Storage::real cnt[3];
+					it->Centroid(cnt);
+					set[k].e = it->GetHandle();
+					set[k].xyz[0] = static_cast<float>(cnt[0]);
+					set[k].xyz[1] = static_cast<float>(cnt[1]);
+					set[k].xyz[2] = static_cast<float>(cnt[2]);
+					k++;
+				}
+			}
+			printf("Done. Time %lg\n", Timer() - tt);
+		}
 		int done = 0, total = size;
 		printf("Building KD-tree.\n");
 		tt = Timer();
@@ -448,7 +477,7 @@ struct coords
 
 
 
-void FixFaults::FixMeshFaults()
+void FixFaults::FixMeshFaults(MarkerType mrk)
 {
 	
 	std::cout << "Start:" << std::endl;
@@ -468,7 +497,7 @@ void FixFaults::FixMeshFaults()
 	std::cout << "Total face normals fixed: " << fixed << std::endl;
 	
 
-	kdtree t(&m);
+	kdtree t(&m,mrk);
 
 	TagReferenceArray new_points = m.CreateTag("EDGEPOINTS", DATA_REFERENCE, EDGE, NONE);
 	TagReferenceArray new_edges = m.CreateTag("FACEEDGES", DATA_REFERENCE, FACE, NONE);
@@ -484,9 +513,13 @@ void FixFaults::FixMeshFaults()
 	for (int it = 0; it < m.FaceLastLocalID(); ++it) if (m.isValidFace(it))
 	{
 		Face f = m.FaceByLocalID(it);
+		if( !f.GetMarker(mrk) ) continue;
 		int fid = f.LocalID();
 		ElementArray<Face> ifaces(&m);
 		t.intersect_nonadj_face(f, ifaces);
+		std::cout << "face " << f.LocalID() << " finds: ";
+		for(int kk = 0; kk < ifaces.size(); ++kk) std::cout << ifaces[kk].LocalID() << " ";
+		std::cout << std::endl;
 		if (!ifaces.empty())
 		{
 			marked++;
@@ -873,6 +906,7 @@ void FixFaults::FixMeshFaults()
 	//start splitting
 	m.BeginModification();
 	//split all edges
+	int nedges = 0;
 	for (Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it) if (!it->New())
 	{
 		Storage::reference_array nodes = new_points[it->self()];
@@ -892,20 +926,25 @@ void FixFaults::FixMeshFaults()
 			ElementArray<Edge> new_edges = Edge::SplitEdge(it->self(), split_nodes, 0);
 			for (int k = 0; k < (int)new_edges.size(); ++k)
 				mark[new_edges[k]] = 1;
-
+			nedges++;
 		}
 	}
+	std::cout << "split edges " << nedges << std::endl;
 	//split all faces
+	int nfaces = 0;
 	for (Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if (!it->New())
 	{
 		Storage::reference_array edges = new_edges[it->self()];
 		if (!edges.empty())
 		{
 			ElementArray<Face> new_faces = Face::SplitFace(it->self(), ElementArray<Edge>(&m, edges.begin(), edges.end()), 0);
+			if( new_faces.size() == 1 || new_faces.size() == 0 ) std::cout << "split " << it->LocalID() << " gets " << (new_faces.empty()?-1:new_faces[0].LocalID()) << " edges " << edges.size() << std::endl;
 			for (int k = 0; k < (int)new_faces.size(); ++k)
 				mark[new_faces[k]] = 1;
+			nfaces++;
 		}
 	}
+	std::cout << "split faces " << nedges << std::endl;
 	m.EndModification();
 	
 	m.DeleteTag(new_points);

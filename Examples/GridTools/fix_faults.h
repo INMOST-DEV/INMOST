@@ -14,7 +14,7 @@ public:
 	FixFaults & operator =(FixFaults const & b) {m = b.m; return *this;}
 	~FixFaults() {}
 	
-	void FixMeshFaults();
+	void FixMeshFaults(MarkerType mrk = 0);
 };
 
 #endif //_FIX_FAULTS_H

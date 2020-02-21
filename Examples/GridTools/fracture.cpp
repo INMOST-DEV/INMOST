@@ -75,8 +75,17 @@ void Fracture::FaceCenter(Face f, INMOST_DATA_REAL_TYPE cnt[3]) const
 void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 {
 	fracture_aperture = aperture;
+	std::cout << "Cells: " << m->NumberOfCells() << std::endl;
+	std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
+	std::cout << "Edges: " << m->NumberOfEdges() << std::endl;
+	std::cout << "Nodes: " << m->NumberOfNodes() << std::endl;
 	m->BeginModification();
 	fracture_marker = m->CreateMarker();
+	std::cout << "create marker fracture_marker " << fracture_marker << std::endl;
+	for(Mesh::iteratorFace f = m->BeginFace(); f != m->EndFace(); ++f)
+		if( f->GetMarker(fracture_marker) ) std::cout << "Face " << f->LocalID() << " already marked fracture " << fracture_marker << std::endl;
+	for(Mesh::iteratorCell f = m->BeginCell(); f != m->EndCell(); ++f)
+		if( f->GetMarker(fracture_marker) ) std::cout << "Cell " << f->LocalID() << " already marked fracture " << fracture_marker << std::endl;
 	for(Mesh::iteratorFace f = m->BeginFace(); f != m->EndFace(); ++f)
 		if( f->HaveData(aperture) ) f->SetMarker(fracture_marker);
 	m->self()->Integer(m->CreateTag("FRACTURE_MARKER",DATA_INTEGER,MESH,NONE,1)) = fracture_marker;
@@ -92,31 +101,41 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 	Tag origcoords = m->CreateTag("ORIGINAL_FRACTURE_COORDS",DATA_REAL,NODE,NODE,3);
 	//std::cout << "Initial number of nodes: " << m->NumberOfNodes() << std::endl;
 	
+	std::cout << "mult is " << mult << std::endl;
 
 	//Unmark any boundary faces
+	int unmrk = 0, mrk = 0;
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it)
 	{
+		if( it->GetMarker(isFracture()) ) mrk++;
 		if( !it->FrontCell().isValid() && it->GetMarker(isFracture()) )
+		{
 			it->RemMarker(isFracture());
+			unmrk++;
+		}
 	}
+	
+	std::cout << "fracture marked " << mrk << " boundary unmarked " << unmrk << std::endl;
 
 	std::vector<Tag> transfer_node_real_tags;
-	//std::vector<Tag> transfer_node_integer_tags;
+	std::vector<Tag> transfer_node_integer_tags;
 	for(Mesh::iteratorTag t = m->BeginTag(); t != m->EndTag(); ++t)
 		if( t->isDefined(NODE) && *t != m->CoordsTag() )
 		{
 			if( t->GetDataType() == DATA_REAL )
 				transfer_node_real_tags.push_back(*t);
-			//else if( t->GetDataType() == DATA_INTEGER )
-			//	transfer_node_integer_tags.push_back(*t);
+			else if( t->GetDataType() == DATA_INTEGER )
+				transfer_node_integer_tags.push_back(*t);
 		}
-	//std::cout << "Transfer real tags:" << std::endl;
-	//for(int q = 0; q < (int)transfer_node_real_tags.size(); ++q)
-	//	std::cout << transfer_node_real_tags[q].GetTagName() << std::endl;
-	//std::cout << "Transfer integer tags:" << std::endl;
-	//for(int q = 0; q < (int)transfer_node_integer_tags.size(); ++q)
-	//	std::cout << transfer_node_integer_tags[q].GetTagName() << std::endl;
+	std::cout << "Transfer real tags:" << std::endl;
+	for(int q = 0; q < (int)transfer_node_real_tags.size(); ++q)
+		std::cout << transfer_node_real_tags[q].GetTagName() << std::endl;
+	std::cout << "Transfer integer tags:" << std::endl;
+	for(int q = 0; q < (int)transfer_node_integer_tags.size(); ++q)
+		std::cout << transfer_node_integer_tags[q].GetTagName() << std::endl;
 	//For each node create several new ones that will be used in open fracture
+	std::cout << "Nodes in mesh " << m->NumberOfNodes() << std::endl;
+	int nfrac_nodes =0, new_nodes=0;
 	for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it)
 	{
 		ElementArray<Face> n_faces = it->getFaces(); //retrive all faces joining at the node
@@ -146,6 +165,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			nums.resize(std::unique(nums.begin(),nums.end()) - nums.begin());
 			if( nums.size() > 1 ) //at least two distinctive nodes
 			{
+				nfrac_nodes++;
 				for(int k = 0; k < nums.size(); k++)
 				{
 					Node image;
@@ -169,6 +189,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 					for( Storage::real_array::size_type q = 0; q < coords.size(); ++q)
 						xyz[q] = coords[q]*mult + (1-mult)*xyz[q];
 					image = m->CreateNode(xyz);
+					new_nodes++;
 					Storage::real_array save_coords = image->RealArray(origcoords);
 					save_coords[0] = coords[0];
 					save_coords[1] = coords[1];
@@ -182,7 +203,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							for(int qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
-					/*
+					
 					for(int q = 0; q < (int)transfer_node_integer_tags.size(); ++q)
 						if( it->HaveData(transfer_node_integer_tags[q]) )
 						{
@@ -192,7 +213,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							for(int qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
-					*/
+					
 					for(int q = 0; q < n_cells.size(); q++)
 					{
 						if( n_cells[q].IntegerDF(indexes) == nums[k] )
@@ -209,6 +230,11 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			
 		}
 	}
+	std::cout << "Nodes in mesh " << m->NumberOfNodes() << " frac nodes " << nfrac_nodes << " new nodes " << new_nodes << std::endl;
+	std::cout << "Cells: " << m->NumberOfCells() << std::endl;
+	std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
+	std::cout << "Edges: " << m->NumberOfEdges() << std::endl;
+	std::cout << "Nodes: " << m->NumberOfNodes() << std::endl;
 	m->DeleteTag(indexes);
 
 	//this tag is used to transfer position of fracture edge center onto fracture face center
@@ -234,16 +260,24 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 	{
 		fracture_edge_length = m->CreateTag("LENGTH_FRACTURE",DATA_REAL,FACE,FACE,1);
 		//Mark edges that will be incorporated into fracture cells
+		int nedges = 0;
 		for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
 		{
-			if( it->nbAdjElements(FACE,isFracture()) > 2) it->SetMarker(isFracture());
+			if( it->nbAdjElements(FACE,isFracture()) > 2) 
+			{
+				it->SetMarker(isFracture());
+				nedges++;
+			}
 		}
+		
+		std::cout << "fracture edges with multiple joints " << nedges << std::endl;
 		
 		
 		
 
 		//create new matrix-matrix faces, adjacent to fractures
 		//for all non-fracture faces that have any fracture edge create new face
+		int nfaces = 0;
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( !it->GetMarker(isFracture()) && it->nbAdjElements(NODE,isFracture()) )
 		{
 			ElementArray<Edge> edges = it->getEdges(); //go through edges of current face
@@ -280,6 +314,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				else newedges.push_back(*jt);
 			}
 			std::pair<Face,bool> f = m->CreateFace(newedges);
+			nfaces++;
 			if( !f.second ) std::cout << __FILE__ << ":" << __LINE__ << " Face already exists!!! source " << *it << " new " << f.first.GetHandle()  << std::endl;
 			else
 			{
@@ -307,6 +342,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			if(it->BackCell().isValid() ) it->BackCell()->ReferenceArray(connface).push_back(f.first);
 			if(it->FrontCell().isValid() ) it->FrontCell()->ReferenceArray(connface).push_back(f.first);
 		}
+		std::cout << "new fracture faces " << nfaces << std::endl;
 		if( !fracture_aperture.isDefined(CELL) ) // this is to extend volume factor
 			m->CreateTag(fracture_aperture.GetTagName(),fracture_aperture.GetDataType(),CELL,CELL,fracture_aperture.GetSize());
 
@@ -345,7 +381,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 		
 		
 		//now create fracture-fracture control volumes, add fracture-matrix faces to matrix cells
-		int kid = 0;
+		int kid = 0, new_edges = 0, new_faces = 0, new_cells = 0;
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->GetMarker(isFracture()) && it->nbAdjElements(NODE,isFracture()) )
 		{
 			//I need all elements adjacent to neighbouring cells of current face
@@ -377,11 +413,13 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 						enodes[0] = nodesb[k];
 						enodes[1] = nodesb[(k+1)%N];
 						edgesb[k] = m->CreateEdge(enodes).first;
+						new_edges++;
 					}
 					else edgesb.data()[k] = edges.data()[k];
 				}
 				//This is matrix-fracture face
 				std::pair<Face,bool> facesb = m->CreateFace(edgesb);
+				new_faces++;
 				if(!facesb.second ) std::cout << __FILE__ << ":" << __LINE__ << " Face already exists!!! " << *it << " " << facesb.first->GetHandle() << std::endl;
 				else
 				{
@@ -432,11 +470,13 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 						enodes[0] = nodesf[k];
 						enodes[1] = nodesf[(k+1)%N];
 						edgesf[k] = m->CreateEdge(enodes).first;
+						new_edges++;
 					}
 					else edgesf[k] = edges[k];
 				}
 				//This is matrix-fracture face
 				std::pair<Face,bool> facesf = m->CreateFace(edgesf);
+				new_faces++;
 				if( !facesf.second ) std::cout << __FILE__ << ":" << __LINE__ << " Face already exists!!! " << *it << " " << facesf.first->GetHandle() << std::endl;
 				else
 				{
@@ -480,12 +520,13 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 						enodes2[1] = nodes[(k+1)%N];
 						
 						f_edges.push_back(edgesb[k]);
-						if( enodes1[0] != enodes1[1] ) f_edges.push_back(m->CreateEdge(enodes1).first);
+						if( enodes1[0] != enodes1[1] ) {f_edges.push_back(m->CreateEdge(enodes1).first); new_edges++;}
 						f_edges.push_back(edges[k]);
-						if( enodes2[0] != enodes2[1] ) f_edges.push_back(m->CreateEdge(enodes2).first);
+						if( enodes2[0] != enodes2[1] ) {f_edges.push_back(m->CreateEdge(enodes2).first); new_edges++;}
 						
 						assert(f_edges.size() > 2 );
 						Face f1 = m->CreateFace(f_edges).first;
+						new_faces++;
 						f1->Real(fracture_edge_length) = edges[k]->Length();
 						if( centroid_tag.isValid() )
 						{
@@ -506,15 +547,16 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 						enodes4[0] = nodesf[(k+1)%N];
 						enodes4[1] = nodes[(k+1)%N];
 
-						if( enodes3[0] != enodes3[1] ) f_edges.push_back(m->CreateEdge(enodes3).first);
+						if( enodes3[0] != enodes3[1] ) {f_edges.push_back(m->CreateEdge(enodes3).first); new_edges++;}
 						f_edges.push_back(edgesf[k]);
-						if( enodes4[0] != enodes4[1] ) f_edges.push_back(m->CreateEdge(enodes4).first);
+						if( enodes4[0] != enodes4[1] ) {f_edges.push_back(m->CreateEdge(enodes4).first); new_edges++;}
 						f_edges.push_back(edges[k]);
 						
 
 						assert(f_edges.size() > 2 );
 
 						Face f2 = m->CreateFace(f_edges).first;
+						new_faces++;
 						if( centroid_tag.isValid() )
 						{
 							edges[k]->Centroid(ecnt);
@@ -539,16 +581,19 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 								enodes[0] = nodesb[k];
 								enodes[1] = nodes[k];
 								f_edges.push_back(m->CreateEdge(enodes).first);
+								new_edges++;
 
 								enodes[0] = nodes[k];
 								enodes[1] = nodesf[k];
 								f_edges.push_back(m->CreateEdge(enodes).first);
+								new_edges++;
 							}
 							else if( nodes[k].GetMarker(isFracture()) )
 							{
 								enodes[0] = nodesb[k];
 								enodes[1] = nodesf[k];
 								f_edges.push_back(m->CreateEdge(enodes).first);
+								new_edges++;
 							}
 							f_edges.push_back(edgesf[k]);
 
@@ -557,16 +602,19 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 								enodes[0] = nodesf[(k+1)%N];
 								enodes[1] = nodes[(k+1)%N];
 								f_edges.push_back(m->CreateEdge(enodes).first);
+								new_edges++;
 
 								enodes[0] = nodes[(k+1)%N];
 								enodes[1] = nodesb[(k+1)%N];
 								f_edges.push_back(m->CreateEdge(enodes).first);
+								new_edges++;
 							}
 							else if( nodes[(k+1)%N].GetMarker(isFracture()) )
 							{
 								enodes[0] = nodesf[(k+1)%N];
 								enodes[1] = nodesb[(k+1)%N];
 								f_edges.push_back(m->CreateEdge(enodes).first);
+								new_edges++;
 							}
 							f_edges.push_back(edgesb[k]);
 
@@ -574,6 +622,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							assert(f_edges.size() > 2 );
 
 							Face f = m->CreateFace(f_edges).first;
+							new_faces++;
 							if( centroid_tag.isValid() )
 							{
 								edges[k]->Centroid(ecnt);
@@ -608,14 +657,15 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 						enodes2[0] = nodesb[(k+1)%N];
 						enodes2[1] = nodes[(k+1)%N];
 						
-						if( enodes1[0] != enodes1[1] ) f_edges.push_back(m->CreateEdge(enodes1).first);
+						if( enodes1[0] != enodes1[1] ) {f_edges.push_back(m->CreateEdge(enodes1).first); new_edges++;}
 						f_edges.push_back(edgesb.data()[k]);
-						if( enodes2[0] != enodes2[1] ) f_edges.push_back(m->CreateEdge(enodes2).first);
+						if( enodes2[0] != enodes2[1] ) {f_edges.push_back(m->CreateEdge(enodes2).first); new_edges++;}
 						f_edges.push_back(edges.data()[k]);
 						
 						assert(f_edges.size() > 2);
 
 						Face f = m->CreateFace(f_edges).first;
+						new_faces++;
 						fracfaces.push_back(f);
 						f->Real(fracture_edge_length) = edges[k]->Length();
 						f_edges.clear();
@@ -639,6 +689,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				fout.close();
 				*/
 				Cell fcell = m->CreateCell(fracfaces).first;
+				new_cells++;
 				fcell->Real(fracture_volume) = it->Area()*it->Real(fracture_aperture);
 				//move permiability and volume factor to cell
 				/*
@@ -670,7 +721,13 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			}
 			kid++;
 		}
+		std::cout << "kid " << kid << " new edges " << new_edges << " new faces " << new_faces << " new_cells " << new_cells << std::endl;
+		std::cout << "Cells: " << m->NumberOfCells() << std::endl;
+		std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
+		std::cout << "Edges: " << m->NumberOfEdges() << std::endl;
+		std::cout << "Nodes: " << m->NumberOfNodes() << std::endl;
 		//now reconnect matrix cells to new faces
+		int reconnect = 0;
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) if( !it->GetMarker(isFracture()) && it->nbAdjElements(NODE,isFracture()) )
 		{
 			ElementArray<Face> change(m);
@@ -682,12 +739,18 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			}
 			if( !change.empty() )
 			{
+				reconnect++;
 				Storage::reference_array newfaces = it->ReferenceArray(connface);
 				assert(change.size() == newfaces.size());
 				it->Disconnect(change.data(),(Storage::enumerator)change.size());
 				it->Connect(newfaces.data(),(Storage::enumerator)newfaces.size());
 			}
 		}
+		std::cout << "reconnect " << reconnect << std::endl;
+		std::cout << "Cells: " << m->NumberOfCells() << std::endl;
+		std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
+		std::cout << "Edges: " << m->NumberOfEdges() << std::endl;
+		std::cout << "Nodes: " << m->NumberOfNodes() << std::endl;
 	}
 	else //number of dimensions is 2
 	{
@@ -1101,7 +1164,10 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			it->SetMarker(multiple_fracture_joints);
 	}
 	//precalculate area for fractures
-	
+	std::cout << "Cells: " << m->NumberOfCells() << std::endl;
+	std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
+	std::cout << "Edges: " << m->NumberOfEdges() << std::endl;
+	std::cout << "Nodes: " << m->NumberOfNodes() << std::endl;
 	fracture_area = m->CreateTag("AREA_FRACTURE",DATA_REAL,FACE,FACE,1);
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->GetMarker(isFracture()) )
 	{
@@ -1133,5 +1199,9 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 	}
 	m->ApplyModification();
 	m->EndModification();
+	std::cout << "Cells: " << m->NumberOfCells() << std::endl;
+	std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
+	std::cout << "Edges: " << m->NumberOfEdges() << std::endl;
+	std::cout << "Nodes: " << m->NumberOfNodes() << std::endl;
 	//m->Save("fracture_test.vtk");
 }
