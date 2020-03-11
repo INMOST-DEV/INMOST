@@ -150,12 +150,17 @@ namespace INMOST
 			data[3][2] = 0;
 			ElementArray<Node> nodes = getNodes();
 			real r;
-			real dx1[3], y1[3];
+			real dx1[3], y1[3], chk_eq[3];
 			for(int i = 0; i < static_cast<int>(nodes.size()); i++)
 			{
 				int j = (i+1)%nodes.size();
 				
 				nodes[i].Centroid(data[1]);
+
+				vec_diff(point, data[1], chk_eq, dim);
+				if(vec_len(chk_eq, dim) < eps)
+					return true;
+
 				vec_diff(cnt,data[1],dx1,dim);
 				r = vec_dot_product(nrm,dx1,dim);
 				y1[0] = data[1][0] + r*nrm[0];
@@ -167,6 +172,7 @@ namespace INMOST
 				data[1][2] = 0;
 				
 				nodes[j].Centroid(data[2]);
+				vec_diff(point, data[2], chk_eq, dim);
 				vec_diff(cnt,data[2],dx1,dim);
 				r = vec_dot_product(nrm,dx1,dim);
 				y1[0] = data[2][0] + r*nrm[0];
@@ -180,13 +186,15 @@ namespace INMOST
 				//vec_diff(data[3],cnt,    data[3],mdim);
 				vec_diff(data[3],data[1],data[4],mdim);
 				vec_diff(data[3],data[2],data[5],mdim);
+				vec_normalize(data[4], mdim);
+				vec_normalize(data[5], mdim);
 				vec_cross_product(data[3],data[4],data[6]);
 				vec_cross_product(data[4],data[5],data[7]);
 				vec_cross_product(data[5],data[3],data[8]);
 				
-				if( vec_dot_product(data[6],data[7],dim) >= 0 &&
-				   vec_dot_product(data[7],data[8],dim) >= 0 &&
-				   vec_dot_product(data[8],data[6],dim) >= 0 )
+				if( vec_dot_product(data[6],data[7],dim) >= -eps &&
+				   vec_dot_product(data[7],data[8],dim) >= -eps &&
+				   vec_dot_product(data[8],data[6],dim) >= -eps )
 					return true; //inside one of the triangles
 			}
 			return false;
