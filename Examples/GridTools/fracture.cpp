@@ -79,6 +79,10 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 	std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
 	std::cout << "Edges: " << m->NumberOfEdges() << std::endl;
 	std::cout << "Nodes: " << m->NumberOfNodes() << std::endl;
+	
+	if( !Element::CheckConnectivity(m) )
+		std::cout << "Connectivity is broken on entry to " << __FUNCTION__ << std::endl;
+	
 	m->BeginModification();
 	fracture_marker = m->CreateMarker();
 	std::cout << "create marker fracture_marker " << fracture_marker << std::endl;
@@ -1199,6 +1203,9 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 	}
 	m->ApplyModification();
 	m->EndModification();
+	
+	if( !Element::CheckConnectivity(m) )
+		std::cout << "Connectivity is broken on exit from " << __FUNCTION__ << std::endl;
 	std::cout << "Cells: " << m->NumberOfCells() << std::endl;
 	std::cout << "Faces: " << m->NumberOfFaces() << std::endl;
 	std::cout << "Edges: " << m->NumberOfEdges() << std::endl;

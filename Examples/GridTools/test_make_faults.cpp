@@ -16,13 +16,13 @@ public:
 		v[2] = 1;
 		double l = sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
 		v[0] /= l; v[1] /= l; v[2] /= l;
-		double dx = (cmax[0]-cmin[0])/25.0;
-		double dy = (cmax[1]-cmin[1])/25.0;
+		double dx = (cmax[0]-cmin[0])/50.0;
+		double dy = (cmax[1]-cmin[1])/50.0;
 		double dl = sqrt(dx*dx+dy*dy);
 		double t = 2.0*(rand()*1.0/RAND_MAX)-1.0;
-		double a = M_PI*0.5 + t*M_PI*0.2;
+		double a = M_PI*0.5 + t*M_PI*0.15;
 		double y = cmin[1];
-		double x = (0.1 + (rand()*1.0/RAND_MAX)*0.8)*(cmax[0]-cmin[0]) + cmin[0];
+		double x = (0.2 + (rand()*1.0/RAND_MAX)*0.6)*(cmax[0]-cmin[0]) + cmin[0];
 		std::cout << " starting point " << x << ", " << y << std::endl;
 		curvxy.push_back(std::make_pair(x,y));
 		bool ended = false;
@@ -36,7 +36,7 @@ public:
 			if( y <= cmin[1] ) {y = cmin[1]; ended = true;}
 			curvxy.push_back(std::make_pair(x,y));
 			t = 2.0*(rand()*1.0/RAND_MAX)-1.0;
-			a = a + M_PI*0.1*t;
+			a = a + M_PI*0.05*t;
 		}
 		std::cout << " ending point " << x << ", " << y << std::endl;
 		std::cout << " generated points " << curvxy.size() << std::endl;
@@ -77,13 +77,13 @@ int main(int argc, char ** argv)
 {
 	if (argc < 2)
 	{
-		std::cout << "Usage: " << argv[0] << " mesh [mesh_out=grid.vtk]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " mesh [mesh_out=grid.vtk] [nfaults=1]" << std::endl;
 		return -1;
 	}
 
 	std::string grid_out = "grid.vtk";
 	if (argc > 2) grid_out = std::string(argv[2]);
-
+	int nfaults = argc > 3 ? atoi(argv[3]) : 1;
 
 	{
 		Mesh m;
@@ -104,56 +104,66 @@ int main(int argc, char ** argv)
 				if( cmax[d] < n->Coords()[d] ) cmax[d] = n->Coords()[d];
 			}
 		}
-		SliceFault sf(cmin,cmax);
 		
-		sf.SliceMesh(m,false);
-		//create fake aperture tag
-		TagReal aperture = m.CreateTag("APERTURE",DATA_REAL,FACE,FACE,1);
-		TagBulk sliced = m.GetTag("SLICED"); //this was created by Slice
-		TagInteger mat = m.GetTag("MATERIAL");
-		
-		int nmrk = 0;
-		for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if( it->HaveData(sliced) ) {aperture[*it] = 1; nmrk++;}
-		
-		std::cout << "marked for fracture " << nmrk << std::endl;
-		
-		Fracture fr(m);
-		//fr.Open(aperture,false,0.5);
-		fr.Open(aperture,false,1.0);
-		
-		//shift nodes
-		
-		
-		double v[3];
-		sf.Getv(v);
-		
-		double t = 0.1+0.9*rand()*1.0/RAND_MAX;
-		double sc = t*(cmax[2]-cmin[2])*0.4;
-		
-		std::cout << "shift nodes by " << sc << std::endl;
-		
-		
-		for(Mesh::iteratorNode n = m.BeginNode(); n != m.EndNode(); ++n)
+		for(int kk = 0; kk < nfaults; ++kk)
 		{
-			ElementArray<Cell> adj_cells = n->getCells();
-			int mats[3] = {0,0,0};
-			for(ElementArray<Cell>::iterator kt = adj_cells.begin(); kt != adj_cells.end(); ++kt)
-				mats[mat[*kt]]++;
-			if( mats[1] == 0 )
+			SliceFault sf(cmin,cmax);
+			sf.SliceMesh(m,false);
+			//create fake aperture tag
+			TagReal aperture = m.CreateTag("APERTURE",DATA_REAL,FACE,FACE,1);
+			TagBulk sliced = m.GetTag("SLICED"); //this was created by Slice
+			TagInteger mat = m.GetTag("MATERIAL");
+		
+			int nmrk = 0;
+			for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if( it->HaveData(sliced) ) {aperture[*it] = 1; nmrk++;}
+		
+			std::cout << "marked for fracture " << nmrk << std::endl;
+		
+			Fracture fr(m);
+			//fr.Open(aperture,false,0.5);
+			fr.Open(aperture,false,1.0);
+		
+			//shift nodes
+			
+			
+			double v[3];
+			sf.Getv(v);
+			
+			double t = 0.1+0.9*rand()*1.0/RAND_MAX;
+			double sc = t*(cmax[2]-cmin[2])*0.05;
+			
+			std::cout << "shift nodes by " << sc << std::endl;
+			
+			
+			for(Mesh::iteratorNode n = m.BeginNode(); n != m.EndNode(); ++n)
 			{
-				n->Coords()[0] += v[0]*sc;
-				n->Coords()[1] += v[1]*sc;
-				n->Coords()[2] += v[2]*sc;
+				ElementArray<Cell> adj_cells = n->getCells();
+				int mats[3] = {0,0,0};
+				for(ElementArray<Cell>::iterator kt = adj_cells.begin(); kt != adj_cells.end(); ++kt)
+					mats[mat[*kt]]++;
+				if( mats[1] == 0 )
+				{
+					n->Coords()[0] += v[0]*sc;
+					n->Coords()[1] += v[1]*sc;
+					n->Coords()[2] += v[2]*sc;
+				}
 			}
+			
+			
+			FixFaults fix(m);	
+			MarkerType fault = m.CreateMarker();
+			std::cout << "fault marker: " << fault << std::endl;
+			for(Mesh::iteratorFace f = m.BeginFace(); f != m.EndFace(); ++f)
+				if( mat[*f] == 2 ) f->SetMarker(fault);
+			fix.FixMeshFaults(fault);
+			std::cout << "release fault marker: " << fault << std::endl;
+			m.ReleaseMarker(fault,FACE);
+			
+			//delete to clear data
+			m.DeleteTag(aperture);
+			m.DeleteTag(sliced);
+			m.DeleteTag(mat);
 		}
-		
-		
-		FixFaults fix(m);	
-		MarkerType fault = m.CreateMarker();
-		for(Mesh::iteratorFace f = m.BeginFace(); f != m.EndFace(); ++f)
-			if( mat[*f] == 2 ) f->SetMarker(fault);
-		fix.FixMeshFaults(fault);
-		m.ReleaseMarker(fault,FACE);
 		
 		m.Save(grid_out);
 	}

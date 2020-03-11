@@ -1464,9 +1464,31 @@ namespace INMOST
 			{
 				if( loop.size() > 2 )
 				{
-					ret.push_back(m->CreateFace(loop).first);
+					std::pair<Face,bool> ff = m->CreateFace(loop);
+					ret.push_back(ff.first); //collect new faces
 					adj_type & hc = m->HighConn(ret.back()->GetHandle());
-					hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+					if( ff.second ) //connect brand new face to cells
+					{
+						//std::cout << "hello1 from " << ff.first.LocalID() << std::endl;
+						hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+					}
+					else //face already existed before and may be connected to some cells
+					{
+						//std::cout << "hello2 from " << ff.first.LocalID() << std::endl;
+						//std::cout << "cells: ";
+						//for(int k = 0; k < (int)cells.size(); ++k) std::cout << GetHandleID(cells[k]) << " ";
+						//std::cout << std::endl;
+						//std::cout << "conns: ";
+						//for(int k = 0; k < (int)hc.size(); ++k) std::cout << GetHandleID(hc[k]) << " ";
+						//std::cout << std::endl;
+						for(int k = 0; k < (int)cells.size(); ++k)
+						{
+							bool add = true;
+							for(int j = 0; j < (int)hc.size() && add; ++j)
+								if( hc[j] == cells[k] ) add = false;
+							if( add ) hc.push_back(cells[k]);
+						} //FIXME: what if more then 2 connections? have to fire topology exception, unless there are hidden cells
+					}
 				}
 			}
 			else break;

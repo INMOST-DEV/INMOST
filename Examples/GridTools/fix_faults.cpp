@@ -23,13 +23,13 @@ static void GetBox(Element e, float minmax[6])
 	{
 		if (minmax[1 + 2 * i] < minmax[0 + 2 * i])
 		{
-			minmax[1 + 2 * i] = 1.0e-5f;
-			minmax[0 + 2 * i] = -1.0e-5f;
+			minmax[1 + 2 * i] = 1.0e-9f;
+			minmax[0 + 2 * i] = -1.0e-9f;
 		}
 		else if (minmax[1 + 2 * i] == minmax[0 + 2 * i])
 		{
-			minmax[1 + 2 * i] += 1.0e-5f;
-			minmax[0 + 2 * i] += -1.0e-5f;
+			minmax[1 + 2 * i] += 1.0e-9f;
+			minmax[0 + 2 * i] += -1.0e-9f;
 		}
 	}
 }
@@ -59,7 +59,7 @@ static bool MatchPoints(const double v1[3], const double v2[3])
 	double l = 0;
 	for (int k = 0; k < 3; ++k)
 		l += (v1[k] - v2[k])*(v1[k] - v2[k]);
-	return sqrt(l) < 1.0e-6;
+	return sqrt(l) < 1.0e-9;
 }
 
 //returns distance between line if shortest line is within segments, writes position of distance into last argument
@@ -90,7 +90,7 @@ static double SegmentDistance(const double v1[3], const double v2[3], const doub
 	parallel /= sqrt(d2121)*sqrt(d4343);
 	if (fabs(parallel - 1.0) > 1.0e-6)
 	*/
-	if (fabs(d2121*d4343 - d4321*d4321) > 1.0e-6)
+	if (fabs(d2121*d4343 - d4321*d4321) > 1.0e-9)
 	{
 		mu1 = (d1343*d4321 - d1321*d4343) / (d2121*d4343 - d4321*d4321);
 		mu2 = (d1343 + mu1*d4321) / d4343;
@@ -278,7 +278,7 @@ class kdtree
 				Storage::real fnrm[3], ffnrm[3];
 				f.UnitNormal(fnrm);
 				ff.UnitNormal(ffnrm);
-				if (fabs(fnrm[0] * ffnrm[0] + fnrm[1] * ffnrm[1] + fnrm[2] * ffnrm[2]) >= 1.0 - 1.0e-3)
+				if (fabs(fnrm[0] * ffnrm[0] + fnrm[1] * ffnrm[1] + fnrm[2] * ffnrm[2]) >= 0.85)
 				{
 					//todo: check that faces intersect
 					int fid = f.LocalID(), ffid = ff.LocalID();
@@ -303,7 +303,7 @@ class kdtree
 							}
 							l1 = sqrt(l1);
 							l2 = sqrt(l2);
-							if (h < (l1 + l2)*1.0e-13)
+							if (h < (l1 + l2)*1.0e-9)
 								intersect = true;
 						}
 					}
@@ -496,6 +496,9 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 	std::cout << "Time to fix normals: " << Timer() - tt << std::endl;
 	std::cout << "Total face normals fixed: " << fixed << std::endl;
 	
+	
+	if( !Element::CheckConnectivity(&m) )
+		std::cout << "Connectivity is broken on entry to " << __FUNCTION__ << std::endl;
 
 	kdtree t(&m,mrk);
 
@@ -517,9 +520,9 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 		int fid = f.LocalID();
 		ElementArray<Face> ifaces(&m);
 		t.intersect_nonadj_face(f, ifaces);
-		std::cout << "face " << f.LocalID() << " finds: ";
-		for(int kk = 0; kk < ifaces.size(); ++kk) std::cout << ifaces[kk].LocalID() << " ";
-		std::cout << std::endl;
+		//std::cout << "face " << f.LocalID() << " finds: ";
+		//for(int kk = 0; kk < ifaces.size(); ++kk) std::cout << ifaces[kk].LocalID() << " ";
+		//std::cout << std::endl;
 		if (!ifaces.empty())
 		{
 			marked++;
@@ -584,12 +587,12 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 						parallel /= sqrt(d2121)*sqrt(d4343);
 						if( fabs(parallel - 1.0) > 1.0e-6 )
 						*/
-						if (fabs(d2121*d4343 - d4321*d4321) > 1.0e-6)
+						if (fabs(d2121*d4343 - d4321*d4321) > 1.0e-9)
 						{
 							mu1 = (d1343*d4321 - d1321*d4343) / (d2121*d4343 - d4321*d4321);
 							mu2 = (d1343 + mu1*d4321) / d4343;
 							//here only one or zero intersections, but we have to introduce an edge
-							if (mu1 >= 0 - 1.0e-13 && mu1 <= 1 + 1.0e-13 && mu2 >= 0 - 1.0e-13 && mu2 <= 1 + 1.0e-13)
+							if (mu1 >= 0 - 1.0e-9 && mu1 <= 1 + 1.0e-9 && mu2 >= 0 - 1.0e-9 && mu2 <= 1 + 1.0e-9)
 							{
 								//find distance and point
 								double vs1[3], vs2[3], h = 0, vv[3];
@@ -600,7 +603,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 									vv[k] = (vs1[k] + vs2[k])*0.5;
 									h += (vs2[k] - vs1[k])*(vs2[k] - vs1[k]);
 								}
-								if (h < (l1 + l2)*1.0e-13)
+								if (h < (l1 + l2)*1.0e-9)
 								{
 									Node matchnode = InvalidNode();
 									if (MatchPoints(vv, v1))
@@ -738,7 +741,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 									double vs2 = v3[k] + mu2*(v4[k] - v3[k]);
 									h += (vs2 - vs1)*(vs2 - vs1);
 								}
-								if (h < (l1 + l2)*1.0e-13)
+								if (h < (l1 + l2)*1.0e-9)
 								{
 									Storage::reference_array nodes = new_points[it->self()];
 									for (int k = 0; k < nt; ++k)
@@ -900,6 +903,9 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 		Storage::real_array c = it->second->Coords();
 		std::cout << it->second->LocalID() << " " << it->first.v[0] << "," << it->first.v[1] << "," << it->first.v[2] << " " << c[0] << "," << c[1] << "," << c[2] << std::endl;
 	}
+	
+	if( !Element::CheckConnectivity(&m) )
+		std::cout << "Connectivity is broken before modification in " << __FUNCTION__ << std::endl;
 
 	tt = Timer();
 	TagInteger mark = m.CreateTag("SPLITTED", DATA_INTEGER, FACE | EDGE, NONE, 1);
@@ -937,16 +943,42 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 		Storage::reference_array edges = new_edges[it->self()];
 		if (!edges.empty())
 		{
+			ElementArray<Cell> adj_cells = it->getCells();
 			ElementArray<Face> new_faces = Face::SplitFace(it->self(), ElementArray<Edge>(&m, edges.begin(), edges.end()), 0);
 			if( new_faces.size() == 1 || new_faces.size() == 0 ) std::cout << "split " << it->LocalID() << " gets " << (new_faces.empty()?-1:new_faces[0].LocalID()) << " edges " << edges.size() << std::endl;
+			//std::cout << "split " << it->LocalID();
+			//std::cout << " adj cells: ";
+			//for (int k = 0; k < (int)adj_cells.size(); ++k) std::cout << adj_cells[k].LocalID() << " ";
+			//std::cout << " new faces: ";
 			for (int k = 0; k < (int)new_faces.size(); ++k)
+			{
 				mark[new_faces[k]] = 1;
+				//std::cout << new_faces[k].LocalID() << " (";
+				//ElementArray<Cell> adj_cells2 = new_faces[k].getCells();
+				//for(int q = 0; q < (int)adj_cells2.size(); ++q)
+				//	std::cout << adj_cells2[q].LocalID() << " ";
+				//std::cout << ") ";
+			}
+			//std::cout << std::endl;
 			nfaces++;
 		}
 	}
-	std::cout << "split faces " << nedges << std::endl;
+	std::cout << "split faces " << nfaces << std::endl;
+	m.ApplyModification();
 	m.EndModification();
+	/*
+	for (Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if( !it->CheckElementConnectivity() )
+	{
+		std::cout << "connectivity problem for face " << it->LocalID() << std::endl;
+		it->PrintElementConnectivity();
+	}
 	
+	for (Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it) if( !it->CheckElementConnectivity() )
+	{
+		std::cout << "connectivity problem for cell " << it->LocalID() << std::endl;
+		it->PrintElementConnectivity();
+	}
+	*/
 	m.DeleteTag(new_points);
 	m.DeleteTag(new_edges);
 
@@ -957,4 +989,13 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 	std::cout << "Cells: " << m.NumberOfCells() << std::endl;
 	std::cout << "Faces: " << m.NumberOfFaces() << std::endl;
 	std::cout << "Edges: " << m.NumberOfEdges() << std::endl;
+	m.ReorderEmpty(CELL|FACE|EDGE|NODE);
+	
+	if( !Element::CheckConnectivity(&m) )
+	{
+		std::cout << "Connectivity is broken on end of " << __FUNCTION__ << std::endl;
+		m.Save("problem.pmf");
+		m.Save("problem.xml");
+		exit(-1);
+	}
 }
