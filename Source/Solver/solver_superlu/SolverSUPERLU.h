@@ -14,9 +14,9 @@ namespace INMOST {
     class SolverSUPERLU : public SolverInterface {
     private:
 #if defined(USE_SOLVER_SUPERLU_DIST)
-		LUstruct_t LUstruct;
-		SOLVEstruct_t SOLVEstruct;
-		ScalePermstruct_t ScalePermstruct;
+		dLUstruct_t LUstruct;
+		dSOLVEstruct_t SOLVEstruct;
+		dScalePermstruct_t ScalePermstruct;
 		gridinfo_t grid;
 		superlu_dist_options_t options_;
 		SuperLUStat_t stat_;
