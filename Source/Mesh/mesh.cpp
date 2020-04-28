@@ -1957,7 +1957,7 @@ namespace INMOST
 		int thread = GetLocalProcessorRank();
 		Storage::bulk * marker_space = static_cast<Storage::bulk * >(MGetDenseLink(GetHandle(),tag_private_markers[thread]));
 		INMOST_DATA_ENUM_TYPE ret;
-		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFieldsPrivate; ++k)
 		{
 			Storage::bulk mask = ((~marker_space[k]) & (-(~marker_space[k])));
 			if( mask )
