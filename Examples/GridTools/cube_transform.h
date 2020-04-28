@@ -12,7 +12,16 @@ class CubeTransform
 public:
 	CubeTransform(Mesh & m) : mesh(m),
 	xyz({{0,0,0},{1,0,0},{0,1,0},{1,1,0},{0,0,1},{1,0,1},{0,1,1},{1,1,1}})
-	{}
+	{
+		xyz[0][0] = 0; xyz[0][1] = 0; xyz[0][2] = 0;
+		xyz[1][0] = 1; xyz[1][1] = 0; xyz[1][2] = 0;
+		xyz[2][0] = 0; xyz[2][1] = 1; xyz[2][2] = 0;
+		xyz[3][0] = 1; xyz[3][1] = 1; xyz[3][2] = 0;
+		xyz[4][0] = 0; xyz[4][1] = 0; xyz[4][2] = 1;
+		xyz[5][0] = 1; xyz[5][1] = 0; xyz[5][2] = 1;
+		xyz[6][0] = 0; xyz[6][1] = 1; xyz[6][2] = 1;
+		xyz[7][0] = 1; xyz[7][1] = 1; xyz[7][2] = 1;
+	}
 	CubeTransform(const CubeTransform & b) : mesh(b.mesh) {}
 	CubeTransform & operator = (CubeTransform const & b) {mesh = b.mesh; return *this;}
 	~CubeTransform() {}
