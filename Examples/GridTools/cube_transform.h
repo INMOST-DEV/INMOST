@@ -10,8 +10,7 @@ class CubeTransform
 	Mesh & mesh;
 	double xyz[8][3];
 public:
-	CubeTransform(Mesh & m) : mesh(m),
-	xyz({{0,0,0},{1,0,0},{0,1,0},{1,1,0},{0,0,1},{1,0,1},{0,1,1},{1,1,1}})
+	CubeTransform(Mesh & m) : mesh(m)
 	{
 		xyz[0][0] = 0; xyz[0][1] = 0; xyz[0][2] = 0;
 		xyz[1][0] = 1; xyz[1][1] = 0; xyz[1][2] = 0;
