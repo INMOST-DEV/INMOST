@@ -19,6 +19,35 @@ int zoom = 200;
 int block_size = 0;
 int draw_color = 0;
 
+struct block_t
+{
+	int rows, rowe;
+	int cols, cole;
+	block_t(int rows, int rowe, int cols, int cole)
+	: rows(rows), rowe(rowe), cols(cols), cole(cole){}
+	void drawgl(int mat_size)
+	{
+		glBegin(GL_LINES);
+		//top line
+		glVertex2i(cols,mat_size - rows);
+		glVertex2i(cole,mat_size - rows);
+		//bottom line
+		glVertex2i(cols,mat_size - rowe);
+		glVertex2i(cole,mat_size - rowe);
+		//left line
+		glVertex2i(cols,mat_size - rows);
+		glVertex2i(cols,mat_size - rowe);
+		//right line
+		//left line
+		glVertex2i(cole,mat_size - rows);
+		glVertex2i(cole,mat_size - rowe);
+		glEnd();
+	}
+};
+
+std::vector< block_t > blocks;
+
+
 double amin = 1e20,amax = -1e20;
 
 void printtext(const char * fmt, ...)
@@ -550,7 +579,14 @@ void draw()
 		}
 		glEnd();
 	}
-
+	
+	if( !blocks.empty() )
+	{
+		glColor3f(0.5,0,1);
+		//rows
+		for(int k = 0; k < blocks.size(); ++k)
+			blocks[k].drawgl(m->Size());
+	}
 	if (CommonInput != NULL)
 	{
 		glDisable(GL_DEPTH_TEST);
@@ -576,7 +612,7 @@ int main(int argc, char ** argv)
 {
 	if( argc < 2 )
 	{
-		std::cout << "usage: " << argv[0] << " matrix.mtx [text]" << std::endl;
+		std::cout << "usage: " << argv[0] << " matrix.mtx [(text [width]|blocks.txt)]" << std::endl;
 		return -1;
 	}
 	m = new Sparse::Matrix();
@@ -584,15 +620,15 @@ int main(int argc, char ** argv)
 	
 	if( argc > 2 )
 	{
-		int recw = (argc > 3 ? (atoi(argv[3])+4) : 10);
-		if( recw <= 4 )
-		{
-			std::cout << "Bad record width " << argv[3] << " on input, setting 10" << std::endl;
-			recw = 10;
-		}
-		std::string line(recw,'-');
 		if( std::string(argv[2]) == "text" )
 		{
+			int recw = (argc > 4 ? (atoi(argv[3])+4) : 10);
+			if( recw <= 4 )
+			{
+				std::cout << "Bad record width " << argv[3] << " on input, setting 10" << std::endl;
+				recw = 10;
+			}
+			std::string line(recw,'-');
 			std::cout << std::fixed << std::setprecision(recw-4);
 			std::cout << "    ";
 			for(int k = 0; k < (int)m->Size(); ++k)
@@ -633,9 +669,21 @@ int main(int argc, char ** argv)
 			for(int k = 0; k < (int)m->Size(); ++k)
 				std::cout << line;
 			std::cout << "*" << std::endl;
+			
+			delete m;
+			return 0;
 		}
-		delete m;
-		return 0;
+		else
+		{
+			std::ifstream file(argv[2]);
+			INMOST_DATA_ENUM_TYPE rows, rowe, cols, cole;
+			while( !file.eof() )
+			{
+				file >> rows >> rowe >> cols >> cole;
+				blocks.push_back(block_t(rows,rowe,cols,cole));
+			}
+			file.close();
+		}
 	}
 	
 	//ord = new Reorder_ARMS(m,0,m->Size());
