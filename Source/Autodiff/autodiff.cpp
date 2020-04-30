@@ -249,7 +249,7 @@ namespace INMOST
 				}
 			}
 		}
-		std::set<INMOST_DATA_ENUM_TYPE> Pre, Post; //Nonlocal indices
+		//~ std::set<INMOST_DATA_ENUM_TYPE> Pre, Post; //Nonlocal indices
 #if defined(USE_MPI)
 		int size;
 		MPI_Comm_size(MPI_COMM_WORLD,&size);
@@ -283,6 +283,7 @@ namespace INMOST
 				for(std::map<Mesh *,std::vector<Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)
 					it->first->ExchangeData(it->second, exch_mask,0);
 			}
+#if 0
 			//compute out-of-bounds indices
 			for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
 			{
@@ -309,6 +310,7 @@ namespace INMOST
 					}
 				} //etype
 			} //it
+#endif
 			// after cycle
 		}
 #endif
@@ -324,7 +326,8 @@ namespace INMOST
 			{
 				merger.resize(MAX_THREADS);
 			}
-			merger[OMP_THREAD].Resize(first_num,last_num,std::vector<INMOST_DATA_ENUM_TYPE>(Pre.begin(),Pre.end()),std::vector<INMOST_DATA_ENUM_TYPE>(Post.begin(),Post.end()),false);
+			//~ merger[OMP_THREAD].Resize(first_num,last_num,std::vector<INMOST_DATA_ENUM_TYPE>(Pre.begin(),Pre.end()),std::vector<INMOST_DATA_ENUM_TYPE>(Post.begin(),Post.end()),false);
+			merger[OMP_THREAD].Resize(first_num,last_num,false);
 		}
 	}
 	

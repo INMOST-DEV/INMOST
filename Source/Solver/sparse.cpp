@@ -192,43 +192,45 @@ namespace INMOST
 
 		INMOST_DATA_ENUM_TYPE RowMerger::MapIndex(INMOST_DATA_ENUM_TYPE pos) const
 		{
-			if( pos < IntervalBeg )
-			{
-				//return ENUMUNDEF;
-				//assert(!NonlocalPre.empty()); //there are indices provided
-				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPre.begin(),NonlocalPre.end(),pos);
-				//assert(*search == pos); //is there such index?
-				if( search != NonlocalPre.end() && *search == pos )
-					return static_cast<INMOST_DATA_ENUM_TYPE>(IntervalBeg - NonlocalPre.size() + static_cast<INMOST_DATA_ENUM_TYPE>(search - NonlocalPre.begin()));
-				else
-					return ENUMUNDEF;
-			}
-			else if( pos >= IntervalEnd )
-			{
-				//return ENUMUNDEF;
-				//assert(!NonlocalPost.empty()); //there are indices provided
-				std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPost.begin(),NonlocalPost.end(),pos);
-				//assert(*search == pos); //is there such index?
-				if( search != NonlocalPost.end() && *search == pos )
-					return IntervalEnd + static_cast<INMOST_DATA_ENUM_TYPE>(search-NonlocalPost.begin());
-				else
-					return ENUMUNDEF;
-			}
+			//~ if( pos < IntervalBeg )
+			//~ {
+				//~ //return ENUMUNDEF;
+				//~ //assert(!NonlocalPre.empty()); //there are indices provided
+				//~ std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPre.begin(),NonlocalPre.end(),pos);
+				//~ //assert(*search == pos); //is there such index?
+				//~ if( search != NonlocalPre.end() && *search == pos )
+					//~ return static_cast<INMOST_DATA_ENUM_TYPE>(IntervalBeg - NonlocalPre.size() + static_cast<INMOST_DATA_ENUM_TYPE>(search - NonlocalPre.begin()));
+				//~ else
+					//~ return ENUMUNDEF;
+			//~ }
+			//~ else if( pos >= IntervalEnd )
+			//~ {
+				//~ //return ENUMUNDEF;
+				//~ //assert(!NonlocalPost.empty()); //there are indices provided
+				//~ std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPost.begin(),NonlocalPost.end(),pos);
+				//~ //assert(*search == pos); //is there such index?
+				//~ if( search != NonlocalPost.end() && *search == pos )
+					//~ return IntervalEnd + static_cast<INMOST_DATA_ENUM_TYPE>(search-NonlocalPost.begin());
+				//~ else
+					//~ return ENUMUNDEF;
+			//~ }
+			if( pos < IntervalBeg || pos >= IntervalEnd )
+				return ENUMUNDEF;
 			return pos;
 		}
 
 		INMOST_DATA_ENUM_TYPE RowMerger::UnmapIndex(INMOST_DATA_ENUM_TYPE pos) const
 		{
-			if( pos < IntervalBeg )
-			{
-				assert(pos >= IntervalBeg-NonlocalPre.size());
-				return NonlocalPre[pos+NonlocalPre.size()-IntervalBeg];
-			}
-			else if( pos >= IntervalEnd )
-			{
-				assert(pos < IntervalEnd+NonlocalPost.size());
-				return NonlocalPost[pos-IntervalEnd];
-			}
+			//~ if( pos < IntervalBeg )
+			//~ {
+				//~ assert(pos >= IntervalBeg-NonlocalPre.size());
+				//~ return NonlocalPre[pos+NonlocalPre.size()-IntervalBeg];
+			//~ }
+			//~ else if( pos >= IntervalEnd )
+			//~ {
+				//~ assert(pos < IntervalEnd+NonlocalPost.size());
+				//~ return NonlocalPost[pos-IntervalEnd];
+			//~ }
 			return pos;
 		}
 
