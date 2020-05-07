@@ -3192,7 +3192,7 @@ namespace INMOST
 		
 		Var temp;
 		INMOST_DATA_REAL_TYPE max,v;
-		typeB tempb;
+		typename Promote<Var,typeB>::type tempb;
 		for(enumerator i = 0; i < m; ++i) order[i] = i;
 		for(enumerator i = 0; i < m; i++)
 		{
