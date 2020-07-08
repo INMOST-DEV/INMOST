@@ -358,6 +358,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			}
 			else drop_sum += u;
 		}
+		return drop_sum;
 	}
 	INMOST_DATA_REAL_TYPE MLMTILUC_preconditioner::AddListUnordered(INMOST_DATA_ENUM_TYPE & Sbeg,
 																	Interval & Address,
@@ -582,7 +583,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP_FACT)
 #pragma omp for
 #endif
-			for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k) 
+			for(int k = wbeg; k < wend; ++k) 
 			{
 				INMOST_DATA_ENUM_TYPE Beg = EOL, nnz = 0;
 				// go over connection of k-th row
@@ -665,7 +666,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
+		for(int k = wbeg; k < wend; ++k)
 		{
 			// std::swap(G_out[k],G_in[invP[k]]); //invP is where to get the row
 			G_out[k] = G_in[invP[k]];
@@ -692,7 +693,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-		for(INMOST_DATA_ENUM_TYPE k = cbeg; k < cend; ++k)
+		for(int k = cbeg; k < cend; ++k)
 		{
 			// std::swap(tG_out[k],tG_in[invQ[k]]); //invQ is where to get the column
 			tG_out[k] = tG_in[invQ[k]];
@@ -718,7 +719,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
+		for(int k = wbeg; k < wend; ++k)
 		{
 			// std::swap(pG_out[k],pG_in[invP[k]]); //invP is where to get the row
 			pG_out[k] = pG_in[invP[k]];
@@ -1846,9 +1847,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 				//T = Timer();
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k,l,u,i,j)
+#pragma omp parallel for private(l,u,i,j)
 #endif
-				for (k = cbeg; k < cend; ++k)
+				for (int k = cbeg; k < cend; ++k)
 				{
 					if( V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ) l = 1;
 					else l = exp(V[k]);
@@ -2311,9 +2312,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				
 
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k)
+#pragma omp parallel for
 #endif
-				for(k = wbeg; k < wend; ++k)
+				for(int k = wbeg; k < wend; ++k)
 				{
 					for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
 					{
@@ -3030,9 +3031,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			B_Entries.push_back(Sparse::Row::make_entry(-1,0.0));
 			
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k)
+#pragma omp parallel for
 #endif
-			for (k = cbeg; k < cend; ++k)
+			for (int k = cbeg; k < cend; ++k)
 				std::sort(B_Entries.begin() + B_Address[k].first, B_Entries.begin() + B_Address[k].last);
 			
 			double sparsity = nzA/(double)(cend-cbeg)/(double)(cend-cbeg);
@@ -3130,9 +3131,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					for (k = cbeg; k < cend; k++) DL[k] = DR[k] = 1.0;
 #elif defined(EQUALIZE_IDOMINANCE)
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-					for (k = cbeg; k < cend; k++)
+					for (int k = cbeg; k < cend; k++)
 					{
 						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
 							B_Entries[r].second *= (DL[k] * DR[B_Entries[r].first]);
@@ -3347,9 +3348,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					}
 				
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k,u)
+#pragma omp for private(u)
 #endif
-					for(k = cbeg; k < cend; ++k)
+					for(int k = cbeg; k < cend; ++k)
 					{
 						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
 						{
@@ -3364,18 +3365,18 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				
 					//std::fill(temp.begin() + cbeg - mobeg, temp.begin() + cend - mobeg, 0.0);
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for 
 #endif
-					for(k = cbeg; k < cend; ++k) temp[k] = 0.0;
+					for(int k = cbeg; k < cend; ++k) temp[k] = 0.0;
 
 					for (INMOST_DATA_ENUM_TYPE iter = 0; iter < sciters; iter++)
 					{
 						//std::fill(DL.Begin() + cbeg - mobeg, DL.Begin() + cend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 						//std::fill(DR.Begin() + cbeg - mobeg, DR.Begin() + cend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-						for(k = cbeg; k < cend; ++k) DL[k] = DR[k] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+						for(int k = cbeg; k < cend; ++k) DL[k] = DR[k] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 					
 #if defined(USE_OMP_FACT)
 //#pragma omp for private(k,i,u)
@@ -3397,9 +3398,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						}
 
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-						for (k = cbeg; k < cend; k++)
+						for (int k = cbeg; k < cend; k++)
 						{
 							if( DR[k] != std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() &&
 								DL[k] != std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() )
@@ -3409,9 +3410,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					}
 
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-					for (k = cbeg; k < cend; k++)
+					for (int k = cbeg; k < cend; k++)
 					{
 						DL[k] = exp(-temp[k]);
 						DR[k] = exp(temp[k]);
@@ -3421,9 +3422,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						//if( isnan(DR[k]) || DR[k] != DR[k] || fabs(DR[k]) < 1.0e-12 ) std::cout << __FILE__ << ":" << __LINE__ << " DR[" << k << "] is " << DR[k] << std::endl;
 					}
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-					for (k = cbeg; k < cend; k++)
+					for (int k = cbeg; k < cend; k++)
 					{
 						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
 							B_Entries[r].second *= (DL[k] * DR[B_Entries[r].first]);
@@ -3452,9 +3453,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					*/
 #if defined(EQUALIZE_IDOMINANCE)
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-					for (k = cbeg; k < cend; k++)
+					for (int k = cbeg; k < cend; k++)
 					{
 						DL[k] *= U[k];
 						DR[k] *= V[k];
@@ -3467,9 +3468,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				
 				//stack scaling
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-					for (k = cbeg; k < cend; k++)
+					for (int k = cbeg; k < cend; k++)
 					{
 						DL0[k] *= DL[k];
 						DR0[k] *= DR[k];
@@ -3500,9 +3501,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							//std::cout << "rescaling [" << cbeg << "," << cend << "] ";
 							//std::cout << "selected [" << kbeg << ":" << kend << "]" << std::endl;
 #if defined(USE_OMP_FACT)
-#pragma omp for private(k)
+#pragma omp for
 #endif
-							for (k = kbeg; k < kend; ++k) 
+							for (int k = kbeg; k < kend; ++k) 
 							{
 								if( F_Address[level]->at(k).Size() )
 								{
@@ -4541,9 +4542,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					printf("Assemble LF\n");
 
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k, Li, u, j, curr, next, LFmin, LFmax, LFnorm, LFnum, LFtau, LFdrop) reduction(+:ndrops_lf)
+#pragma omp parallel for private(Li, u, j, curr, next, LFmin, LFmax, LFnorm, LFnum, LFtau, LFdrop) reduction(+:ndrops_lf)
 #endif
-				for (k = cend; k < wend; ++k)
+				for (int k = cend; k < wend; ++k)
 				{
 					int nthr = Thread();
 					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> & LineValues = LineValuesS[nthr];
@@ -4825,9 +4826,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				if( verbosity > 1 )
 					printf("Assemble EU\n");
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k, Li, u, i, j, curr, next, EUmin, EUmax, EUnorm, EUnum, EUtau, EUdrop) reduction(+:ndrops_eu)
+#pragma omp parallel for private(Li, u, i, j, curr, next, EUmin, EUmax, EUnorm, EUnum, EUtau, EUdrop) reduction(+:ndrops_eu)
 #endif
-				for(k = cend; k < wend; ++k)
+				for(int k = cend; k < wend; ++k)
 				{
 					int nthr = Thread();
 					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> & LineValues = LineValuesS[nthr];
@@ -5107,9 +5108,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				nnzA = 0;
 				for(k = cend; k < wend; ++k) nnzA += A_Address[k].Size();
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k, Sbeg, Li, Ui, i,j, u,l, Smin,Smax,Snorm,Snum,Stau,Sdrop) reduction(+:ndrops_s)
+#pragma omp parallel for private(Sbeg, Li, Ui, i,j, u,l, Smin,Smax,Snorm,Snum,Stau,Sdrop) reduction(+:ndrops_s)
 #endif
-				for(k = cend; k < wend; ++k)
+				for(int k = cend; k < wend; ++k)
 				{
 					int nthr = Thread();
 					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> & LineValues = LineValuesS[nthr];
