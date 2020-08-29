@@ -26,6 +26,19 @@ typedef Storage::real_array real_array;
 typedef Storage::var_array var_array;
 
 bool print_niter = false; //save file on nonlinear iterations
+bool output_matrix = true;
+bool norne_wells = true;
+
+//data for wells
+Cell cc[3] = {InvalidCell(),InvalidCell(),InvalidCell()};
+real WI[3] = {50000,50000,50000};
+real pbhp[3] = {265,105,110};
+real ccnt[3][3] =
+{
+	{4.567151e+05, 7.321079e+06, 2.767665e+03},
+	{4.609346e+05, 7.323503e+06, 2.597767e+03},
+	{4.595400e+05, 7.326078e+06, 2.803586e+03}
+};
 
 
 //#define OPTIMIZATION
@@ -101,8 +114,8 @@ int main(int argc,char ** argv)
         Tag tag_P;  // Pressure
         Tag tag_K;  // Diffusion tensor
         Tag tag_F;  // Forcing term
-        Tag tag_BC; // Boundary conditions
         Tag tag_W;  // Gradient matrix acting on harmonic points on faces and returning gradient on faces
+        TagRealArray tag_BC; // Boundary conditions
         
 		
 		
@@ -139,6 +152,18 @@ int main(int argc,char ** argv)
 
                 m->ExchangeData(tag_K,CELL,0); //Exchange diffusion tensor
             }
+            
+            if( norne_wells )
+            {
+				for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) if( it->GetStatus() != Element::Ghost )
+				{
+					for(int q = 0; q < 3; ++q) if( it->Inside(ccnt[q]) )
+					{
+						cc[q] = it->self();
+						std::cout << "proc " << m->GetProcessorRank() << " found c" << q << " " << cc[q].LocalID() << std::endl;
+					}
+				}
+			}
 
             if( m->HaveTag("PRESSURE") ) //Is there a pressure on the mesh?
                 tag_P = m->GetTag("PRESSURE"); //Get the pressure
@@ -219,9 +244,9 @@ int main(int argc,char ** argv)
 					 //~ W+=(rMatrix::Unit(NF) - R*(R.Transpose()*R).CholeskyInvert()*R.Transpose())*
 						//~ (2.0/(static_cast<real>(NF)*volume)*(NK*K.CholeskyInvert()*NK.Transpose()).Trace());
 			 		 
-			 		 double ca = 0, ba = ca;
-			 		 W = (NK+ca*L*R)*((NK+ca*L*R).Transpose()*R).Invert()*(NK+ca*L*R).Transpose();
-					 W+= L - (1+ba)*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+			 		 
+			 		 W = (NK)*((NK).Transpose()*R).Invert()*(NK).Transpose();
+					 W+= L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
 					 
 					 //~ W = Areas*W*Areas;
 					 //access data structure for gradient matrix in mesh
@@ -232,7 +257,7 @@ int main(int argc,char ** argv)
 					 std::copy(W.data(),W.data()+NF*NF,store_W.data());
 					 
 					 tag_WG[cell].resize(3*NF);
-					 tag_WG(cell,3,NF) = (NK.Transpose()*R+ca*L*R).PseudoInvert(1.0e-12)*(NK+ca*L*R).Transpose();
+					 tag_WG(cell,3,NF) = (NK.Transpose()*R).PseudoInvert(1.0e-12)*(NK).Transpose();
 				 } //end of loop over cells
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
@@ -254,7 +279,32 @@ int main(int argc,char ** argv)
         { //Main loop for problem solution
             Automatizator aut; // declare class to help manage unknowns
             Automatizator::MakeCurrent(&aut);
-            dynamic_variable P(aut,aut.RegisterTag(tag_P,CELL|FACE)); //register pressure as primary unknown
+            
+            MarkerType unk = m->CreateMarker();
+            for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+				m->CellByLocalID(q).SetMarker(unk);
+			for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
+			{
+				Face face = m->FaceByLocalID(q);
+				face.SetMarker(unk);
+				if( face.Boundary() )
+				{
+					double alpha = 0, beta = 1, gamma = 0;
+					if( tag_BC.isValid() && face.HaveData(tag_BC) )
+					{
+						alpha = tag_BC[face][0];
+						beta  = tag_BC[face][1];
+						gamma = tag_BC[face][2];
+					}
+					if( alpha != 0 && beta == 0 )
+					{
+						face.RemMarker(unk);
+						face.Real(tag_P) = gamma/alpha;
+					}
+				}
+			}
+            
+            dynamic_variable P(aut,aut.RegisterTag(tag_P,CELL|FACE,unk)); //register pressure as primary unknown
             aut.EnumerateEntries(); //enumerate all primary variables
             std::cout << "Enumeration done, size " << aut.GetLastIndex() - aut.GetFirstIndex() << std::endl;
 
@@ -272,10 +322,21 @@ int main(int argc,char ** argv)
                 for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
                 {
                     Face face = m->FaceByLocalID(q);
-                    if( face.GetStatus() != Element::Ghost )
+                    if( face.GetStatus() != Element::Ghost && face.GetMarker(unk) )
                     {
-                        if( tag_BC.isValid() && face.HaveData(tag_BC) )
-                            Text.SetAnnotation(P.Index(face),"Pressure guided by boundary condition");
+                        if( face.Boundary() )
+                        {
+							double alpha = 0, beta = 1, gamma = 0;
+							if( tag_BC.isValid() && face.HaveData(tag_BC) )
+							{
+								alpha = tag_BC[face][0];
+								beta  = tag_BC[face][1];
+								gamma = tag_BC[face][2];
+							}
+							std::stringstream str;
+							str << "Pressure guided by boundary condition " << alpha << " " << beta << " " << gamma;
+                            Text.SetAnnotation(P.Index(face),str.str());
+						}
                         else
                             Text.SetAnnotation(P.Index(face),"Interface pressure");
                     }
@@ -311,7 +372,7 @@ int main(int argc,char ** argv)
 						FLUX.Resize(NF,1);
 						
 						for(int k = 0; k < NF; ++k)
-							pF(k,0) = (P(faces[k]) - P(cell));
+							pF(k,0) = (P[faces[k]] - P[cell]);
 						FLUX = W*pF; //fluxes on faces
 						tag_PG(cell,3,1) = tag_WG(cell,3,NF)*pF;
 						if( cell.GetStatus() != Element::Ghost )
@@ -322,6 +383,7 @@ int main(int argc,char ** argv)
 						for(int k = 0; k < NF; ++k) //loop over faces of current cell
 						{
 							if( faces[k].GetStatus() == Element::Ghost ) continue;
+							if( !faces[k].GetMarker(unk) ) continue;
 							int index = P.Index(faces[k]);
 							Locks.Lock(index);
 							
@@ -363,6 +425,12 @@ int main(int argc,char ** argv)
 						 }
 					 }
 					 
+					 if( norne_wells )
+					 {
+						 for(int q = 0; q < 3; ++q) if( cc[q].isValid() )
+							R[P.Index(cc[q])] += WI[q]*(pbhp[q] - P[cc[q]])*cc[q].Volume();
+					 }
+					 
 					 //R[P.Index(m->BeginCell()->self())] = P[m->BeginCell()->self()];
 				}
 				std::cout << "assembled in " << Timer() - tttt << "\t\t\t" << std::endl;
@@ -371,20 +439,53 @@ int main(int argc,char ** argv)
 
                 if( R.Norm() < 1.0e-4 ) break;
 
+				//~ R.GetJacobian().Save("A.mtx");
+				//~ R.GetResidual().Save("b.mtx");
 				//Solver S(Solver::INNER_ILU2);
-                //~ Solver S(Solver::INNER_MPTILUC);
-                Solver S(Solver::K3BIILU2);
+                Solver S(Solver::INNER_MPTILUC);
+                //~ Solver S(Solver::INNER_MLMPTILUC);
+                //~ Solver S(Solver::K3BIILU2);
 				//Solver S("superlu");
-				S.SetParameter("verbosity","1");
+				S.SetParameter("verbosity","3");
+				S.SetParameter("rescale_iterations", "10");
                 S.SetParameter("relative_tolerance", "1.0e-14");
                 S.SetParameter("absolute_tolerance", "1.0e-12");
-                S.SetParameter("drop_tolerance", "1.0e-3");
+                //~ S.SetParameter("drop_tolerance", "5.0e-2");
+                //~ S.SetParameter("reuse_tolerance", "2.5e-3");
+                S.SetParameter("drop_tolerance", "1.0e-2");
                 S.SetParameter("reuse_tolerance", "1.0e-4");
+                S.SetParameter("pivot_condition", "20");
+                double tset = Timer(), titr;
 
                 S.SetMatrix(R.GetJacobian());
+                
+                tset = Timer() - tset;
+                
+				if( output_matrix )
+				{
+					std::cout << "write A.mtx" << std::endl;
+					R.GetJacobian().Save("A.mtx");//,&Text);
+					std::cout << "write b.mtx" << std::endl;
+					R.GetResidual().Save("b.mtx");
+					std::cout << "write done, solve" << std::endl;
+				}
 				
-                if( S.Solve(R.GetResidual(),Update) )
+				titr = Timer();
+				
+				bool success =  S.Solve(R.GetResidual(),Update);
+				
+				titr = Timer() - titr;
+				
+                if( success )
                 {
+					std::cout << "Solved system in " << S.Iterations() << " iterations, time for setup " << tset << "s iterations " << titr << "s" << std::endl;
+					if( output_matrix )
+					{
+						std::cout << "write x.mtx" << std::endl;
+						Update.Save("x.mtx");
+						//std::cout << "exit" << std::endl;
+						//exit(-1);
+					}
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -392,6 +493,7 @@ int main(int argc,char ** argv)
                     {
                         Cell cell = m->CellByLocalID(q);
 						if( cell->GetStatus() == Element::Ghost ) continue;
+						if( !cell->GetMarker(unk) ) continue;
                         cell->Real(tag_P) -= Update[P.Index(cell)];
                     }
 #if defined(USE_OMP)
@@ -401,6 +503,7 @@ int main(int argc,char ** argv)
                     {
                         Face face = m->FaceByLocalID(q);
 						if( face->GetStatus() == Element::Ghost ) continue;
+						if( !face->GetMarker(unk) ) continue;
                         face->Real(tag_P) -= Update[P.Index(face)];
                     }
                     m->ExchangeData(tag_P, CELL|FACE, 0);

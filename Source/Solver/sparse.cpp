@@ -24,13 +24,13 @@ namespace INMOST
 			if( !HaveRowEntryType() )
 			{
 				int ierr;
-				MPI_Datatype type[3] = { INMOST_MPI_DATA_ENUM_TYPE, INMOST_MPI_DATA_REAL_TYPE, MPI_UB};
-				int blocklen[3] = { 1, 1, 1 };
-				MPI_Aint disp[3];
+				MPI_Datatype type[2] = { INMOST_MPI_DATA_ENUM_TYPE, INMOST_MPI_DATA_REAL_TYPE };
+				int blocklen[2] = { 1, 1 };
+				MPI_Aint disp[2];
 				disp[0] = offsetof(Sparse::Row::entry,first);
 				disp[1] = offsetof(Sparse::Row::entry,second);
-				disp[2] = sizeof(Sparse::Row::entry);
-				ierr = MPI_Type_create_struct(3, blocklen, disp, type, &RowEntryType);
+				//disp[2] = sizeof(Sparse::Row::entry);
+				ierr = MPI_Type_create_struct(2, blocklen, disp, type, &RowEntryType);
 				if( ierr != MPI_SUCCESS )
 				{
 					std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_create_struct" << std::endl;
@@ -956,6 +956,7 @@ namespace INMOST
 			imbeg = mbeg;
 			imend = mend;
 			if( beta ) for(Vector::iterator it = out.Begin(); it != out.End(); ++it) (*it) *= beta;
+			else for(Vector::iterator it = out.Begin(); it != out.End(); ++it) (*it) = 0.0;
 #if defined(USE_OMP)
 #pragma omp for private(ind)
 #endif

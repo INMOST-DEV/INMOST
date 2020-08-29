@@ -24,7 +24,7 @@ using namespace INMOST;
 
 //~ #define REORDER_RCM
 #define REORDER_WRCM
-// #define REORDER_BRCM
+//~ #define REORDER_BRCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
 //~ #define REORDER_METIS_ND
@@ -42,29 +42,29 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 //~ #define PREMATURE_DROPPING
 
-//#define EQUALIZE_1NORM
+//~ #define EQUALIZE_1NORM
 //~ #define EQUALIZE_2NORM
 #define EQUALIZE_IDOMINANCE
 
 #define PIVOT_THRESHOLD
-#define PIVOT_THRESHOLD_VALUE 1.0e-12
+#define PIVOT_THRESHOLD_VALUE 1.0e-9
 //#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
 #define DIAGONAL_PERTURBATION_ABS 1.0e-10
 #define ILUC2
-#define ILUC2_SCHUR
+//~ #define ILUC2_SCHUR
 
 //#define PIVOT_COND_DEFAULT 0.1/tau
 #define PIVOT_COND_DEFAULT 1.0e+2
 #define PIVOT_DIAG_DEFAULT 1.0e+5
 //~ #define SCHUR_DROPPING_LF
 //~ #define SCHUR_DROPPING_EU
-//~ #define SCHUR_DROPPING_S
+#define SCHUR_DROPPING_S
 #define SCHUR_DROPPING_LF_PREMATURE
 #define SCHUR_DROPPING_EU_PREMATURE
 // #define SCHUR_DROPPING_S_PREMATURE
 #define CONDITION_PIVOT
-#define NNZ_PIVOT
+// #define NNZ_PIVOT
 
 #define NNZ_GROWTH_PARAM 1.05
 
@@ -358,6 +358,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			}
 			else drop_sum += u;
 		}
+		return drop_sum;
 	}
 	INMOST_DATA_REAL_TYPE MLMTILUC_preconditioner::AddListUnordered(INMOST_DATA_ENUM_TYPE & Sbeg,
 																	Interval & Address,
@@ -582,7 +583,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP_FACT)
 #pragma omp for
 #endif
-			for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k) 
+			for(int k = wbeg; k < wend; ++k) 
 			{
 				INMOST_DATA_ENUM_TYPE Beg = EOL, nnz = 0;
 				// go over connection of k-th row
@@ -1362,7 +1363,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		INMOST_DATA_ENUM_TYPE mobeg, moend; // total interval
 		INMOST_DATA_ENUM_TYPE vbeg, vend; // vector interval
 		
-		INMOST_DATA_ENUM_TYPE k, i, j, Li, Ui, curr, next;
+		int k;
+		INMOST_DATA_ENUM_TYPE i, j, Li, Ui, curr, next;
 		INMOST_DATA_REAL_TYPE l,u, max_diag = 0, min_diag = 0;
 		INMOST_DATA_ENUM_TYPE nzA, nzLU = 0, nzA0;
 		Sparse::Vector DL, DR;
@@ -1925,7 +1927,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
                         if( localP[k] == ENUMUNDEF )
                             gaps.push_back(k);
 					
-					//std::cout << "@ gaps: " << gaps.size() << std::endl;
+					//~ std::cout << "@ gaps: " << gaps.size() << std::endl;
                     
                     for(k = cbeg; k < cend; ++k)
                         if( Perm[k] == ENUMUNDEF )
@@ -1933,6 +1935,11 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
                             Perm[k] = gaps.back();
                             gaps.pop_back();
                         }
+                        
+                    //~ int perms = 0;
+                    //~ for(k = cbeg; k < cend; ++k)
+						//~ if( Perm[k] != k ) perms++;
+                    //~ std::cout << "@ perms: " << perms << std::endl;
                     //std::fill(localP.begin() + (wbeg - mobeg), localP.begin() + (wend - mobeg), ENUMUNDEF);
                     for(k = wbeg; k < wend; ++k) localP[k] = ENUMUNDEF;
                 }
@@ -2547,8 +2554,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 				std::vector<Block> blocks;
 
-				// NestedDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,(wend-wbeg)/8);
-				KwayDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,8);
+				 NestedDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,(wend-wbeg)/64);
+				//KwayDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,64);
 
 				cend = wend;
 				i = wend;
@@ -3040,7 +3047,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			if( verbosity > 1 )
 				printf("nzA %d size %d sparsity %g\n",nzA,cend-cbeg,sparsity);
 			
-			if ( /*(sparsity > 0.5) ||*/ (cend-cbeg < 32) )
+			if ( (sparsity > 0.85) || (cend-cbeg < 32) )
 			{
 				block_pivot = true;
 				//~ printf("block pivot!\n");
@@ -3115,7 +3122,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			if( rescale_b )
 			{
 				if( verbosity > 1 )
-					std::cout << " rescaling block B " << std::endl;
+					std::cout << " rescaling block B, iters " << sciters << std::endl;
 					
 #if defined(USE_OMP_FACT)
 #pragma omp parallel
@@ -3123,12 +3130,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				{
 
 				
-#if defined(EQUALIZE_1NORM) || defined(EQUALIZE_2NORM)
-#if defined(USE_OMP_FACT)
-#pragma omp for private(k)
-#endif
-					for (k = cbeg; k < cend; k++) DL[k] = DR[k] = 1.0;
-#elif defined(EQUALIZE_IDOMINANCE)
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
@@ -3140,16 +3141,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						U[k] = DL[k];
 						V[k] = DR[k];
 					}
-#else
-#if defined(USE_OMP_FACT)
-#pragma omp for private(k)
-#endif
-					for (k = cbeg; k < cend; k++)
-					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-							B_Entries[r].second *= (DL[k] * DR[B_Entries[r].first]);
-					}
-#endif
 					/*
 					{
 						std::stringstream s;
@@ -3450,7 +3441,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						printf("Gershgorin's radius after %d equilibration iterations: %e\n",sciters,radii);
 					}
 					*/
-#if defined(EQUALIZE_IDOMINANCE)
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
@@ -3459,7 +3449,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						DL[k] *= U[k];
 						DR[k] *= V[k];
 					}
-#endif
 				//DumpMatrix(B_Address,B_Entries,cbeg,cend,"mat_equilibration.mtx");
 ///////////////////////////////////////////////////////////////////////////////////
 ///               RESCALING DONE                                                ///
@@ -3526,15 +3515,15 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					printf("Time %g\n",tlrescale);
 
 			}
-			
-			//~ {
-				//~ std::stringstream s;
-				//~ s << "B" << level_size.size() << ".mtx";
-				//~ DumpMatrix(B_Address,B_Entries,cbeg,cend,s.str());
-				//~ std::cout << "Press any key" << std::endl;
-				//~ scanf("%*c");
-			//~ }
-			
+			/*
+			{
+				std::stringstream s;
+				s << "B" << level_size.size() << ".mtx";
+				DumpMatrix(B_Address,B_Entries,cbeg,cend,s.str());
+				std::cout << "Press any key" << std::endl;
+				scanf("%*c");
+			}
+			*/
 ///////////////////////////////////////////////////////////////////////////////////
 ///           FACTORIZATION BEGIN                                               ///
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3605,7 +3594,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 ///////////////////////////////////////////////////////////////////////////////////
 //              starting factorization step                                      //
 ///////////////////////////////////////////////////////////////////////////////////
-
+					/*
 					INMOST_DATA_REAL_TYPE udiag = LU_Diag[k]; // LU_Diag is calculated with less dropping
 ///////////////////////////////////////////////////////////////////////////////////
 // Prevent small pivot, hopefully it would work with correct right hand side     //
@@ -3620,6 +3609,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(DIAGONAL_PERTURBATION)
 					udiag = udiag * (1.0 + DIAGONAL_PERTURBATION_REL) + (udiag < 0.0 ? -1.0 : 1.0)*DIAGONAL_PERTURBATION_ABS;
 #endif
+					*/
 					//~ DropLk = DropUk = 0.0;
 ///////////////////////////////////////////////////////////////////////////////////
 //           Compute U-part                                                      //
@@ -3697,7 +3687,11 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						//rescale elements next after diagonal position
 						//~ std::cout << "Udiag["<<k<<"] drop " << LineValuesU[k] / udiag - 1.0 << " udiag " << udiag << std::endl;
 						//~ scanf("%*c");
-						ScaleList(1.0/udiag,LineIndecesU[k],LineIndecesU,LineValuesU);
+#if defined(PIVOT_THRESHOLD)
+						if( fabs(LineValuesU[k]) < tau2 ) LineValuesU[k] = (LineValuesU[k] < 0.0 ? -1 : 1)*tau2;
+#endif
+						ScaleList(1.0/LineValuesU[k],LineIndecesU[k],LineIndecesU,LineValuesU);
+						//~ ScaleList(1.0/udiag,LineIndecesU[k],LineIndecesU,LineValuesU);
 ///////////////////////////////////////////////////////////////////////////////////
 //                    Condition estimator for U part                             //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3790,7 +3784,11 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						//rescale line by diagonal
 						//~ std::cout << "Ldiag["<<k<<"] drop" << LineValuesL[k] / udiag - 1.0 << " udiag " << udiag << std::endl;
 						//~ scanf("%*c");
-						ScaleList(1.0/udiag,LineIndecesL[k],LineIndecesL,LineValuesL);
+#if defined(PIVOT_THRESHOLD)
+						if( fabs(LineValuesL[k]) < tau2 ) LineValuesL[k] = (LineValuesL[k] < 0.0 ? -1 : 1)*tau2;
+#endif
+						ScaleList(1.0/LineValuesL[k],LineIndecesL[k],LineIndecesL,LineValuesL);
+						//~ ScaleList(1.0/udiag,LineIndecesU[k],LineIndecesU,LineValuesU);
 ///////////////////////////////////////////////////////////////////////////////////
 //                 condition estimation for L part                               //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3807,11 +3805,12 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP_FACT)
 //~ #pragma omp taskwait
 #endif
+					LU_Diag[k] = (LineValuesU[k]+LineValuesL[k])*0.5;
 ///////////////////////////////////////////////////////////////////////////////////
 //                    Condition estimator for diagonal D                         //
 ///////////////////////////////////////////////////////////////////////////////////
 					NuD_old = NuD;
-					NuD = std::max(fabs(udiag),max_diag) / std::min(fabs(udiag),min_diag);
+					NuD = std::max(fabs(LU_Diag[k]),max_diag) / std::min(fabs(LU_Diag[k]),min_diag);
 ///////////////////////////////////////////////////////////////////////////////////
 //         discarding current iteration based on condition numbers               //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3875,9 +3874,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					{
 						NuL_max = std::max(NuL,NuL_max);
 						NuU_max = std::max(NuU,NuU_max);
-						max_diag = std::max(fabs(udiag),max_diag);
-						min_diag = std::min(fabs(udiag),min_diag);
-						
+						max_diag = std::max(fabs(LU_Diag[k]),max_diag);
+						min_diag = std::min(fabs(LU_Diag[k]),min_diag);
 ///////////////////////////////////////////////////////////////////////////////////
 //                 reconstruct U-part from linked list                           //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3885,6 +3883,16 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 //~ #pragma omp task
 #endif
 						{
+							Unorm = 0;
+							Ui = LineIndecesU[k];
+							while (Ui != EOL)
+							{
+								Unorm += LineValuesU[Ui]*LineValuesU[Ui];
+								Ui = LineIndecesU[Ui];
+							}
+							Unorm = sqrt(Unorm);
+							
+							
 							U_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
 #if defined(ILUC2)
 							U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(U2_Entries.size());
@@ -3894,10 +3902,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							while (Ui != EOL)
 							{
 								u = fabs(LineValuesU[Ui]);
-								if (u*NuU > tau) // apply dropping rule
+								if (u*NuU > tau*Unorm) // apply dropping rule
 									U_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 #if defined(ILUC2)
-								else if(u*NuU > tau2)
+								else if(u*NuU > tau2*Unorm)
 								{
 									U2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
 									//~ DropU2[Ui] += LineValuesU[Ui]*udiag*SumLk;
@@ -3934,6 +3942,15 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 //~ #pragma omp task
 #endif
 						{
+							Lnorm = 0;
+							Li = LineIndecesL[k];
+							while (Li != EOL)
+							{
+								Lnorm += LineValuesL[Li]*LineValuesL[Li];
+								Li = LineIndecesL[Li];
+							}
+							Lnorm = sqrt(Lnorm);
+							
 							//insert column to L part
 							L_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
 #if defined(ILUC2)
@@ -3944,10 +3961,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							while (Li != EOL)
 							{
 								u = fabs(LineValuesL[Li]);
-								if(u*NuL > tau)
+								if(u*NuL > tau*Lnorm)
 									L_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-								else if(u*NuL > tau2)
+								else if(u*NuL > tau2*Lnorm)
 								{
 									L2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 									//~ DropL2[Li] += LineValuesL[Li]*udiag*SumUk;
@@ -3980,7 +3997,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 ///////////////////////////////////////////////////////////////////////////////////
 //         Update values on the whole diagonal with L and U                      //
 ///////////////////////////////////////////////////////////////////////////////////
-						DiagonalUpdate(k,LU_Diag,LineIndecesL,LineValuesL,LineIndecesU,LineValuesU);
+						//~ DiagonalUpdate(k,LU_Diag,LineIndecesL,LineValuesL,LineIndecesU,LineValuesU);
 ///////////////////////////////////////////////////////////////////////////////////
 //      Iteration exit point with cleanups and updates                           //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -5138,14 +5155,16 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					for(INMOST_DATA_ENUM_TYPE r = EU_Address[k].first; r < EU_Address[k].last; ++r)
 					{
 						//iterate over corresponding row of LF, add multiplication to list
-						Li = EU_Entries[r].first;
-						l = -EU_Entries[r].second*LU_Diag[Li];
+						// Li = EU_Entries[r].first;
+						l = -EU_Entries[r].second*LU_Diag[EU_Entries[r].first];
+						AddListUnordered(Sbeg,LFt_Address[EU_Entries[r].first],LFt_Entries,l,LineIndeces,LineValues,0);
 						//cannot optimize due to drop tolerance depending on j-column norm
 // #if defined(SCHUR_DROPPING_S_PREMATURE)
 // 						Sdrop += AddListUnordered(Sbeg,LFt_Address[EU_Entries[r].first],LFt_Entries,l,LineIndeces,LineValues,std::min(Srowmax[k],Scolmax[j])*std::min(tau*tau,tau2));
 // #else
 // 						AddListUnordered(Sbeg,LFt_Address[EU_Entries[r].first],LFt_Entries,l,LineIndeces,LineValues,0);
 // #endif
+						/*
 						for (INMOST_DATA_ENUM_TYPE it = LFt_Address[Li].first; it < LFt_Address[Li].last; ++it)
 						{
 							//~ assert(!Pivot[i]); // pivoted rows should be empty
@@ -5165,8 +5184,13 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 								LineIndeces[j] = Sbeg;
 								Sbeg = j;
 							}
-							else Sdrop += u;
+							else 
+							{
+								Sdrop += u;
+								ndrops_s++;
+							}
 						}
+						*/
 					}
 ///////////////////////////////////////////////////////////////////////////////////
 //         sort contents of linked list                                          //
@@ -5175,6 +5199,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 ///////////////////////////////////////////////////////////////////////////////////
 //         prepare row norm for dropping                                         //
 ///////////////////////////////////////////////////////////////////////////////////
+					/*
 #if defined(SCHUR_DROPPING_S)
 					Snorm = Snum = 0;
 					Smax = 0;
@@ -5204,6 +5229,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					//fabs(u) > exp(0.5)/127*(Smax-Smin) + Smax
 					//Stau = Smin + (Smax-Smin)*pow(Snorm/Smax,4);
 #endif
+					*/
 ///////////////////////////////////////////////////////////////////////////////////
 //         put calculated row to Schur complement                                //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -5219,7 +5245,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(SCHUR_DROPPING_S)
 							//if( fabs(Smax-Smin) < 1.0e-5 || log((fabs(u)-Smin)/(Smax-Smin)*127+1)/log(128) > tau )
 							//~ if( fabs(u) >= Stau || fabs(u) >= Scolnorm[Ui] )//*std::min(Snorm,Scolnorm[Ui]) )
-							if( fabs(u) >= std::min(Srowmax[k],Scolmax[Ui])*std::min(tau*tau,tau2) )
+							if( fabs(u) >= std::min(Srowmax[k],Scolmax[Ui])*tau2 )
 #else
 							if( 1+u != 1 )
 #endif
@@ -5237,6 +5263,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 //         Substract dropped elements from maximal element to keep sum of row    //
 //    (TODO: may collect dropping per row/column and preserve row-column sum)    //
 ///////////////////////////////////////////////////////////////////////////////////
+					/*
 					if( Sdrop )
 					{
 						bool diag = false;
@@ -5256,6 +5283,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 								S_Entries[r].second += Sdrop;
 						}
 					}
+					*/
 					//assert(std::is_sorted(S_Entries.begin()+S_Addres[k].first,S_Entries.end()));
 ///////////////////////////////////////////////////////////////////////////////////
 //         clean up temporary linked list                                        //
@@ -5471,6 +5499,12 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			fout.close();
 		}
 		*/
+		// info->PrepareVector(div);
+		// std::fill(div.Begin(),div.End(),0);
+		// for(k = mobeg; k < moend; k++) div[k] = 1.0;
+		// info->Accumulate(div);
+		// for(k = mobeg; k < moend; k++) div[k] = 1.0/div[k];
+
 		condestL = NuL;
 		condestU = NuU;
 		return true;
@@ -5642,8 +5676,11 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			//Restrict additive schwartz (maybe do it outside?)
 			//May assamble partition of unity instead of restriction before accumulation
 			//assembly should be done instead of initialization
+			// for (k = vbeg; k < mobeg; ++k) output[k] = 0;
+			// for (k = moend; k < vend; ++k) output[k] = 0;
 			for (k = vbeg; k < mobeg; ++k) output[k] = 0;
 			for (k = moend; k < vend; ++k) output[k] = 0;
+			// for (k = mobeg; k < moend; ++k) output[k] *= div[k];
 		}
 		info->Accumulate(output);
 		return true;

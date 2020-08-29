@@ -255,6 +255,8 @@ class MLMTILUC_preconditioner : public Method
 
 	int Thread();
 	int Threads();
+
+	// Sparse::Vector div;
 public:
 	INMOST_DATA_ENUM_TYPE & EnumParameter(std::string name);
 	INMOST_DATA_REAL_TYPE & RealParameter(std::string name);

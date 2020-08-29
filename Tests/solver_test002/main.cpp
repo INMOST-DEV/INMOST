@@ -137,6 +137,9 @@ int main(int argc, char ** argv)
 			s.SetParameter("drop_tolerance", "0.001");
 			s.SetParameter("reuse_tolerance", "0.00001");
 			s.SetParameter("ddpq_tolerance", "0.7");
+			
+			mat.Save("A.mtx");
+			b.Save("b.mtx");
 
 			t = Timer();
 			s.SetMatrix(mat); // Compute the preconditioner for the original matrix
@@ -144,6 +147,8 @@ int main(int argc, char ** argv)
 			if( !rank ) std::cout << "preconditioner: " << Timer() - t << std::endl;
 			t = Timer();
 			success = s.Solve(b,x); // Solve the linear system with the previously computted preconditioner
+			
+			x.Save("x.mtx");
 			BARRIER
 			if( !rank ) std::cout << "solver: " << Timer() - t << std::endl;
 			iters = s.Iterations(); // Get the number of iterations performed

@@ -97,6 +97,11 @@ namespace INMOST
 			heap[size+1] = ENUMUNDEF;
 			return min;
 		}
+		INMOST_DATA_ENUM_TYPE PeekHeap()
+		{
+			if( size == 0 ) return ENUMUNDEF;
+			return heap[1];
+		}
 		void DecreaseKey(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
 		{
 			keys[i] = key;
@@ -163,7 +168,7 @@ namespace INMOST
 			for(INMOST_DATA_ENUM_TYPE i = 0; i <= size_max; i++)
 				index[i] = ENUMUNDEF;
 		}
-		void PushHeap(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
+		void PushHeap(INMOST_DATA_ENUM_TYPE i, KeyType key)
 		{
 			size++;
 			index[i] = size;
@@ -186,17 +191,17 @@ namespace INMOST
 			if( size == 0 ) return ENUMUNDEF;
 			return heap[1];
 		}
-		void DecreaseKey(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
+		void DecreaseKey(INMOST_DATA_ENUM_TYPE i, KeyType key)
 		{
 			keys[i] = key;
 			bubbleUp(index[i]);
 		}
-		void IncreaseKey(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
+		void IncreaseKey(INMOST_DATA_ENUM_TYPE i, KeyType key)
 		{
 			keys[i] = key;
 			bubbleDown(index[i]);
 		}
-		void ChangeKey(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)
+		void ChangeKey(INMOST_DATA_ENUM_TYPE i, KeyType key)
 		{
 			keys[i] = key;
 			if( !Comparator()(keys[i],key) )	
