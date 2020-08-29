@@ -82,8 +82,8 @@ namespace INMOST
 	  //std::cout << "M = " << m << " N = " << n << " local offset " << offset << std::endl;
 		//~ dCreate_CompRowLoc_Matrix_dist(&A_,m, n, pCSRMatrixFormat->nonzeros,local_size[0],offset,pCSRMatrixFormat->pData,pCSRMatrixFormat->pCols,pCSRMatrixFormat->pRows,SLU_NR_loc, SLU_D, SLU_GE);
 		dCreate_CompRowLoc_Matrix_dist(&(this->A),global_size, global_size, nnz,local_size,offset,a,ja,ia,SLU_NR_loc, SLU_D, SLU_GE);
-		ScalePermstructInit(global_size,global_size,&ScalePermstruct);
-		LUstructInit(global_size,&LUstruct);
+		dScalePermstructInit(global_size,global_size,&ScalePermstruct);
+		dLUstructInit(global_size,&LUstruct);
 		g_size = global_size;
 		a_size = size;
 #else //USE_SOLVER_SUPERLU_DIST
@@ -179,9 +179,9 @@ namespace INMOST
 #if defined(USE_SOLVER_SUPERLU_DIST)
 		//~ std::cout << "call clear!" << std::endl;
 		PStatFree(&stat_);
-		ScalePermstructFree(&ScalePermstruct);
-		Destroy_LU(g_size,&grid,&LUstruct);
-		LUstructFree(&LUstruct);
+		dScalePermstructFree(&ScalePermstruct);
+		dDestroy_LU(g_size,&grid,&LUstruct);
+		dLUstructFree(&LUstruct);
 		if( options_.SolveInitialized )
 		{
 			//~ std::cout << "call dSolveFinalize!" << std::endl;
