@@ -1217,6 +1217,107 @@ double display_elem_info(Element e, double top, double left, double interval)
 	return top-2*interval;
 }
 
+double display_elem_info_cout(Element e)
+{
+	printf("%s %d\n",ElementTypeName(e->GetElementType()),e->LocalID());
+	if( e->GetElementType() == ESET ) printf(" size %d\n",e->getAsSet().Size());
+	for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
+	{
+		if( e->HaveData(*t) )
+		{
+			char str[131072];
+			char temp[131072];
+			str[0] = '\0';
+			int dsize;
+			switch(t->GetDataType())
+			{
+				case DATA_INTEGER:
+				{
+					Storage::integer_array arr = e->IntegerArray(*t);
+					dsize = arr.size();
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						sprintf(temp,"%s %d",str,arr[k]);
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_REAL:
+				{
+					Storage::real_array arr = e->RealArray(*t);
+					dsize = arr.size();
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						sprintf(temp,"%s %lf",str,arr[k]);
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_BULK:
+				{
+					Storage::bulk_array arr = e->BulkArray(*t);
+					dsize = arr.size();
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						sprintf(temp,"%s %d",str,arr[k]);
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_REFERENCE:
+				{
+					Storage::reference_array arr = e->ReferenceArray(*t);
+					dsize = arr.size();
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						if(arr.at(k) == InvalidHandle()) sprintf(temp,"%s NULL",str);
+						else sprintf(temp,"%s %s:%d",str,ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
+						strcpy(str,temp);
+					}
+					break;
+				}
+				case DATA_REMOTE_REFERENCE:
+				{
+					Storage::remote_reference_array arr = e->RemoteReferenceArray(*t);
+					dsize = arr.size();
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sprintf(temp,"%s NULL",str);
+						else sprintf(temp,"%s %p:%s:%d",str,arr[k]->GetMeshLink(),ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
+						strcpy(str,temp);
+					}
+					break;
+				}
+#if defined(USE_AUTODIFF)
+				case DATA_VARIABLE:
+				{
+					Storage::var_array arr = e->VariableArray(*t);
+					dsize = arr.size();
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
+					{
+						std::stringstream stream;
+						stream << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
+						for(INMOST_DATA_ENUM_TYPE q = 0; q < arr[k].GetRow().Size(); ++q)
+						{
+							stream << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
+						}
+						stream << "}" << std::endl;
+						sprintf(temp,"%s %s",str,stream.str().c_str());
+						strcpy(str,temp);
+					}
+					break;
+				}
+#endif
+			}
+			sprintf(temp,"%s[%d] %s\n %s",t->GetTagName().c_str(),dsize,DataTypeName(t->GetDataType()),str);
+			strcpy(str,temp);
+			printf("%s\n",str);
+			
+		}
+	}
+	return 0;
+}
+
 
 void ProcessCommonInput(char inpstr[8192], int inptype)
 {
@@ -1420,6 +1521,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 
 					if (disp_e.isValid())
 					{
+						display_elem_info_cout(disp_e);
 						if (disp_e.GetElementType() != ESET)
 						{
 							disp_e->Centroid(shift);

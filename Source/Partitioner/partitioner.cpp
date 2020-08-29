@@ -1284,7 +1284,7 @@ namespace INMOST
 			std::vector< int > points_cluster(total_points,-1);
 			std::vector< double > cluster_center(K*3,0.0);
 			std::vector< int > cluster_npoints(K,0);
-			std::vector< double > cluster_weight(K,1/(double)K);
+			//std::vector< double > cluster_weight(K,1/(double)K);
 			std::vector< double > cluster_shift(K*3,0);
 #if defined(USE_MPI)
 			std::vector< double > cluster_center_tmp(K*3);
@@ -1503,7 +1503,7 @@ namespace INMOST
 						v[2] = (points_center[i*3+2] - cluster_center[j*3+2]);
 						
 						//the bigger is the cluster weight the further is the distance
-						double l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) + cluster_weight[j]*mesh_dist;
+						double l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);// + cluster_weight[j]*mesh_dist;
 						if( l < lmin )
 						{
 							lmin = l;
@@ -1579,7 +1579,7 @@ namespace INMOST
 					cluster_center[i*3+1] /= (double) cluster_npoints[i];
 					cluster_center[i*3+2] /= (double) cluster_npoints[i];
 					//recompute cluster weights based on the number of points each cluster possess
-					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(double)total_global_points*0.75);
+					//cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(double)total_global_points*0.75);
 					//if( m->GetProcessorRank() == 0 ) std::cout << cluster_weight[i]*K << " (" <<cluster_npoints[i]<< ") ";
 				}
 				//if( m->GetProcessorRank() == 0 ) std::cout << std::endl;

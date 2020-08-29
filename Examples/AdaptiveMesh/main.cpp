@@ -8,6 +8,10 @@ bool balance_mesh_refine = false;
 bool balance_mesh_coarse = false;
 std::string file_format = ".pmf";
 
+#ifndef M_PI
+#define M_PI 3.1415926535897932
+#endif
+
 int main(int argc, char ** argv)
 {
 	Mesh::Initialize(&argc,&argv);

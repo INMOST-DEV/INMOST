@@ -22,3 +22,6 @@ Source/Solver/solver_k3biilu2/k3d_block.hxx
 
 .DS_Store
 
+/.vs
+/out/install/x64-Release
+/CMakeSettings.json

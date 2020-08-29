@@ -582,12 +582,14 @@ namespace INMOST
 		template<typename typeB>
 		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator*(typeB coef) const;
+#if defined(USE_AUTODIFF)
 		/// Multiply the matrix by a coefficient.
 		/// @param coef Coefficient.
 		/// @return Matrix multiplied by the coefficient.
 		template<class A>
 		Matrix<typename Promote<Var,variable>::type, pool_array_t<typename Promote<Var,variable>::type> >
 		operator*(shell_expression<A> const & coef) const {return operator*(variable(coef));}
+#endif //USE_AUTODIFF
 		/// Multiply the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
@@ -599,12 +601,14 @@ namespace INMOST
 		template<typename typeB>
 		Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
 		operator/(typeB coef) const;
+#if defined(USE_AUTODIFF)
 		/// Divide the matrix by a coefficient of a different type.
 		/// @param coef Coefficient.
 		/// @return Matrix divided by the coefficient.
 		template<class A>
 		Matrix<typename Promote<Var,variable>::type, pool_array_t<typename Promote<Var,variable>::type> >
 		operator/(shell_expression<A> const & coef) const {return operator/(variable(coef));}
+#endif //USE_AUTODIFF
 		/// Divide the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
@@ -2342,15 +2346,16 @@ namespace INMOST
 				assign((*this)(i,j),(*this)(i,j)+other(i,j));
 		return *this;
 	}
-	
+
+#if defined(USE_AUTODIFF)
 	template<>
 	template<>
-	__INLINE Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> >
+	__INLINE Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<Promote<INMOST_DATA_REAL_TYPE,variable>::type> >
 	AbstractMatrix<INMOST_DATA_REAL_TYPE>::operator*<variable>(const AbstractMatrix<variable> & other) const
 	{
 		//~ std::cout << __FUNCTION__ << std::endl;
 		assert(Cols() == other.Rows());
-		Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> > ret(Rows(),other.Cols()); //check RVO
+		Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<Promote<INMOST_DATA_REAL_TYPE,variable>::type> > ret(Rows(),other.Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i) //loop rows
 		{
 			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
@@ -2384,12 +2389,12 @@ namespace INMOST
 	
 	template<>
 	template<>
-	__INLINE Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> >
+	__INLINE Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<Promote<variable,INMOST_DATA_REAL_TYPE>::type> >
 	AbstractMatrix<variable>::operator*<INMOST_DATA_REAL_TYPE>(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & other) const
 	{
 		//~ std::cout << __FUNCTION__ << std::endl;
 		assert(Cols() == other.Rows());
-		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > ret(Rows(),other.Cols()); //check RVO
+		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<Promote<variable,INMOST_DATA_REAL_TYPE>::type> > ret(Rows(),other.Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i) //loop rows
 		{
 			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
@@ -2422,12 +2427,12 @@ namespace INMOST
 	
 	template<>
 	template<>
-	__INLINE Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> >
+	__INLINE Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> >
 	AbstractMatrix<variable>::operator*<variable>(const AbstractMatrix<variable> & other) const
 	{
 		//~ std::cout << __FUNCTION__ << std::endl;
 		assert(Cols() == other.Rows());
-		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > ret(Rows(),other.Cols()); //check RVO
+		Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> > ret(Rows(),other.Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i) //loop rows
 		{
 			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
@@ -2458,7 +2463,7 @@ namespace INMOST
 		}
 		return ret;
 	}
-	
+#endif //USE_AUTODIFF
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
@@ -2480,14 +2485,15 @@ namespace INMOST
 		return ret;
 	}
 	
+#if defined(USE_AUTODIFF)
 	template<>
 	template<>
-	__INLINE typename Promote<INMOST_DATA_REAL_TYPE,variable>::type
+	__INLINE Promote<INMOST_DATA_REAL_TYPE,variable>::type
 	AbstractMatrix<INMOST_DATA_REAL_TYPE>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
-		typename Promote<INMOST_DATA_REAL_TYPE,variable>::type ret = 0.0;
+		Promote<INMOST_DATA_REAL_TYPE,variable>::type ret = 0.0;
 		if( CheckCurrentAutomatizator() )
 		{
 			Sparse::RowMerger & merger = GetCurrentMerger();
@@ -2513,12 +2519,12 @@ namespace INMOST
 	
 	template<>
 	template<>
-	__INLINE typename Promote<variable,INMOST_DATA_REAL_TYPE>::type
+	__INLINE Promote<variable,INMOST_DATA_REAL_TYPE>::type
 	AbstractMatrix<variable>::DotProduct<INMOST_DATA_REAL_TYPE>(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & other) const
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
-		typename Promote<variable,INMOST_DATA_REAL_TYPE>::type ret = 0.0;
+		Promote<variable,INMOST_DATA_REAL_TYPE>::type ret = 0.0;
 		if( CheckCurrentAutomatizator() )
 		{
 			Sparse::RowMerger & merger = GetCurrentMerger();
@@ -2544,12 +2550,12 @@ namespace INMOST
 	
 	template<>
 	template<>
-	__INLINE typename Promote<variable,variable>::type
+	__INLINE Promote<variable,variable>::type
 	AbstractMatrix<variable>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
-		typename Promote<variable,variable>::type ret = 0.0;
+		Promote<variable,variable>::type ret = 0.0;
 		if( CheckCurrentAutomatizator() )
 		{
 			Sparse::RowMerger & merger = GetCurrentMerger();
@@ -2573,7 +2579,7 @@ namespace INMOST
 		}
 		return ret;
 	}
-
+#endif //USE_AUTODIFF
 	
 	
 	
@@ -2814,10 +2820,10 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	
+#if defined(USE_AUTODIFF)
 	template<>
 	template<>
-	__INLINE Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> >
+	__INLINE Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> >
 	AbstractMatrix<variable>::CholeskySolve(const AbstractMatrix<variable> & B, int * ierr) const
 	{
 		const AbstractMatrix<variable> & A = *this;
@@ -2825,7 +2831,7 @@ namespace INMOST
 		assert(A.Rows() == B.Rows());
 		enumerator n = A.Rows();
 		enumerator l = B.Cols();
-		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > ret(B);
+		Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> > ret(B);
 		SymmetricMatrix<variable, pool_array_t<variable> > L(A);
 		
 		//Outer product
@@ -2865,7 +2871,7 @@ namespace INMOST
 			}
 		}
 		// LY=B
-		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & Y = ret;
+		Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> > & Y = ret;
 		for(enumerator i = 0; i < n; ++i)
 		{
 			for(enumerator k = 0; k < l; ++k)
@@ -2894,7 +2900,7 @@ namespace INMOST
 			}
 		}
 		// L^TX = Y
-		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & X = ret;
+		Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> > & X = ret;
 		for(enumerator it = n; it > 0; --it)
 		{
 			enumerator i = it-1;
@@ -2934,7 +2940,7 @@ namespace INMOST
 
 	template<>
 	template<>
-	__INLINE Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> >
+	__INLINE Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<Promote<INMOST_DATA_REAL_TYPE,variable>::type> >
 	AbstractMatrix<INMOST_DATA_REAL_TYPE>::CholeskySolve(const AbstractMatrix<variable> & B, int * ierr) const
 	{
 		const AbstractMatrix<INMOST_DATA_REAL_TYPE> & A = *this;
@@ -2942,7 +2948,7 @@ namespace INMOST
 		assert(A.Rows() == B.Rows());
 		enumerator n = A.Rows();
 		enumerator l = B.Cols();
-		Matrix<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<typename Promote<INMOST_DATA_REAL_TYPE,variable>::type> > ret(B);
+		Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type, pool_array_t<Promote<INMOST_DATA_REAL_TYPE,variable>::type> > ret(B);
 		SymmetricMatrix<INMOST_DATA_REAL_TYPE, pool_array_t<INMOST_DATA_REAL_TYPE> > L(A);
 		
 		//Outer product
@@ -2982,7 +2988,7 @@ namespace INMOST
 			}
 		}
 		// LY=B
-		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & Y = ret;
+		Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> > & Y = ret;
 		for(enumerator i = 0; i < n; ++i)
 		{
 			for(enumerator k = 0; k < l; ++k)
@@ -3010,7 +3016,7 @@ namespace INMOST
 			}
 		}
 		// L^TX = Y
-		Matrix<typename Promote<variable,variable>::type, pool_array_t<typename Promote<variable,variable>::type> > & X = ret;
+		Matrix<Promote<variable,variable>::type, pool_array_t<Promote<variable,variable>::type> > & X = ret;
 		for(enumerator it = n; it > 0; --it)
 		{
 			enumerator i = it-1;
@@ -3048,7 +3054,7 @@ namespace INMOST
 
 	template<>
 	template<>
-	__INLINE Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> >
+	__INLINE Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<Promote<variable,INMOST_DATA_REAL_TYPE>::type> >
 	AbstractMatrix<variable>::CholeskySolve(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & B, int * ierr) const
 	{
 		const AbstractMatrix<variable> & A = *this;
@@ -3056,7 +3062,7 @@ namespace INMOST
 		assert(A.Rows() == B.Rows());
 		enumerator n = A.Rows();
 		enumerator l = B.Cols();
-		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > ret(B);
+		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<Promote<variable,INMOST_DATA_REAL_TYPE>::type> > ret(B);
 		SymmetricMatrix<variable, pool_array_t<variable> > L(A);
 		
 		//Outer product
@@ -3096,7 +3102,7 @@ namespace INMOST
 			}
 		}
 		// LY=B
-		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > & Y = ret;
+		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<Promote<variable,INMOST_DATA_REAL_TYPE>::type> > & Y = ret;
 		for(enumerator i = 0; i < n; ++i)
 		{
 			for(enumerator k = 0; k < l; ++k)
@@ -3125,7 +3131,7 @@ namespace INMOST
 			}
 		}
 		// L^TX = Y
-		Matrix<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<typename Promote<variable,INMOST_DATA_REAL_TYPE>::type> > & X = ret;
+		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type, pool_array_t<Promote<variable,INMOST_DATA_REAL_TYPE>::type> > & X = ret;
 		for(enumerator it = n; it > 0; --it)
 		{
 			enumerator i = it-1;
@@ -3161,7 +3167,7 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	
+#endif //USE_AUTODIFF
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type, pool_array_t<typename Promote<Var,typeB>::type> >
@@ -3192,7 +3198,7 @@ namespace INMOST
 		
 		Var temp;
 		INMOST_DATA_REAL_TYPE max,v;
-		typeB tempb;
+		typename Promote<Var,typeB>::type tempb;
 		for(enumerator i = 0; i < m; ++i) order[i] = i;
 		for(enumerator i = 0; i < m; i++)
 		{

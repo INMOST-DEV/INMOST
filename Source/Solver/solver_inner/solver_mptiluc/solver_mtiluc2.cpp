@@ -1429,7 +1429,7 @@ using namespace INMOST;
 			tt = Timer();
 #if defined(RESCALE_B)
 			if( verbosity > 1 )
-				std::cout << " rescaling block B " << std::endl;
+				std::cout << " rescaling block B, iters " << sciters << std::endl;
 
 			for (k = cbeg; k < cend; k++)
 			{
