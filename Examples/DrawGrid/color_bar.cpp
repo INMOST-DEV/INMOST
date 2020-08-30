@@ -117,7 +117,7 @@ namespace INMOST
 	
 	void color_bar::InitTexture()
 	{
-		samples = 4096;
+		samples = 512	;
 
 		float * pixel_array = new float[(samples + 2) * 4];
 
@@ -147,23 +147,34 @@ namespace INMOST
 		pixel_array[(samples + 1) * 4 + 2] = 0;
 		pixel_array[(samples + 1) * 4 + 3] = 1;
 
+		glPrintError();
 
 
-		glEnable(GL_TEXTURE);
+		//glEnable(GL_TEXTURE);
+		//glPrintError();
 		glEnable(GL_TEXTURE_1D);
+		glPrintError();
 		glGenTextures(1, &texture);
+		glPrintError();
 		glBindTexture(GL_TEXTURE_1D, texture);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glPrintError();
+		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 		glTexImage1D(GL_TEXTURE_1D, 0, 4, samples + 2, 1, GL_RGBA, GL_FLOAT, pixel_array);
+		glPrintError();
 
 		std::cout << "Created texture " << texture << std::endl;
 
 		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
+		glPrintError();
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glPrintError();
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glPrintError();
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+
+		glPrintError();
+
 
 		UnbindTexture();
 
@@ -172,15 +183,21 @@ namespace INMOST
 
 	void color_bar::BindTexture()
 	{
-		//glDisable( GL_TEXTURE_GEN_S ); 
-		glDisable(GL_TEXTURE_2D);
+		//glDisable(GL_TEXTURE_GEN_S ); 
+		//glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_1D);
+		glPrintError();
 		glBindTexture(GL_TEXTURE_1D, texture);
+		glPrintError();
+
 	}
 
 	void color_bar::UnbindTexture()
 	{
+		//glDisable(GL_TEXTURE_1D);
 		glDisable(GL_TEXTURE_1D);
+		glPrintError();
+
 	}
 
 	double color_bar::pick_texture(double value) const

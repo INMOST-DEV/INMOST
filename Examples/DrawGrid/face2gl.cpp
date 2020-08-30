@@ -502,23 +502,30 @@ namespace INMOST
 	void draw_faces(std::vector<face2gl> & set, int highlight)
 	{
 		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPrintError();
 		glPolygonOffset(1.0, 1.0);
-
+		glPrintError();
 		if (isColorBarEnabled()) GetColorBar()->BindTexture();
-
+		glPrintError();
 		glBegin(GL_TRIANGLES);
-		for (INMOST_DATA_ENUM_TYPE q = 0; q < set.size(); q++) set[q].draw_colour();
+		for (INMOST_DATA_ENUM_TYPE q = 0; q < set.size(); q++) 
+			set[q].draw_colour();
 		glEnd();
+		glPrintError();
 		if (isColorBarEnabled()) GetColorBar()->UnbindTexture();
+		glPrintError();
 		if (highlight != -1)
 		{
 			glColor4f(1, 0, 0, 1);
+			glPrintError();
 			glBegin(GL_TRIANGLES);
 			set[highlight].draw();
 			glEnd();
+			glPrintError();
 		}
 
 		glDisable(GL_POLYGON_OFFSET_FILL);
+		glPrintError();
 
 	}
 

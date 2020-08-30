@@ -2376,7 +2376,6 @@ namespace INMOST
 				else
 				{
 					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
-#pragma unroll
 					for(enumerator k = 0; k < Cols(); ++k)
 						ret(i,j) += (*this)(i,k)*other(k,j);
 					//~ ret(i,j) = tmp;
@@ -2415,7 +2414,6 @@ namespace INMOST
 				else
 				{
 					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
-#pragma unroll
 					for(enumerator k = 0; k < Cols(); ++k)
 						ret(i,j) += (*this)(i,k)*other(k,j);
 					//~ ret(i,j) = tmp;
@@ -2454,7 +2452,6 @@ namespace INMOST
 				else
 				{
 					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
-#pragma unroll
 					for(enumerator k = 0; k < Cols(); ++k)
 						ret(i,j) += (*this)(i,k)*other(k,j);
 					//~ ret(i,j) = tmp;
@@ -2476,7 +2473,6 @@ namespace INMOST
 			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
 			{
 				//~ typename Promote<Var,typeB>::type tmp = 0.0;
-#pragma unroll
 				for(enumerator k = 0; k < Cols(); ++k)
 					ret(i,j) += (*this)(i,k)*other(k,j);
 				//~ ret(i,j) = tmp;
@@ -3452,7 +3448,7 @@ namespace INMOST
 			}
 			else throw MatrixPseudoSolveFail;
 		}
-		for(int k = 0; k < S.Cols(); ++k)
+		for(int k = 0; k < (int)S.Cols(); ++k)
 		{
 			if( S(k,k) > tol )
 				S(k,k) = 1.0/S(k,k);

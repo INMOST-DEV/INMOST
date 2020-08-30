@@ -2872,7 +2872,7 @@ namespace INMOST
 		page_fault_type page_fault;
 	public:
 		unsigned last_byte() const {return last_alloc.back();}
-		unsigned allocations() const {return inuse.size()-1; }
+		unsigned allocations() const {return (unsigned)(inuse.size()-1); }
 		memory_pool()
 		{
 			pool.push_back((char*)malloc(sizeof(char)*(1 << pool_size_bits))); 
@@ -2935,7 +2935,7 @@ namespace INMOST
 		void deallocate(T * mem)
 		{
 			bool find = false;
-			unsigned checkpos = last_alloc.size(), oldpos, newpos, pagepos, datapos;
+			unsigned checkpos = (unsigned)last_alloc.size(), oldpos, newpos, pagepos, datapos;
 			if( checkpos > 1 )
 			{
 				while( !find && checkpos > 1 )

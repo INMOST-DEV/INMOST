@@ -5063,7 +5063,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP_FACT)
 #pragma omp for
 #endif
-					for(k = cend; k < wend; ++k)
+					for(int k = cend; k < wend; ++k)
 					{
 						INMOST_DATA_REAL_TYPE v, coef;
 						INMOST_DATA_ENUM_TYPE Sbeg = EOL, i, j;
@@ -5102,7 +5102,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP_FACT)
 #pragma omp for
 #endif
-					for(k = cend; k < wend; ++k)
+					for(int k = cend; k < wend; ++k)
 					{
 						for(unsigned j = 0; j < Scolmax_local.size(); ++j)
 							Scolmax[k] = std::max(Scolmax[k],Scolmax_local[j][k]);

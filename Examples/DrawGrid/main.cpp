@@ -1806,6 +1806,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 									if (res > max) max = res;
 									it->RealDF(visualization_tag) = res;
 								}
+								printf("done\n");
 
 								GetColorBar()->set_min(min);
 								GetColorBar()->set_max(max);
@@ -1863,6 +1864,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 				else printf("component is out of range for tag %s of size %u\n", name, source_tag.GetSize());
 			}
 			else printf("mesh do not have tag with name %s\n",name);
+			printf("finished with %s\n",inpstr);
 		}
 		else if(!correct_input) printf("malformed string %s for visualization\n",inpstr);
 		//inpstr[0] = '\0';
@@ -2038,19 +2040,30 @@ void draw_screen()
 				//printf("draw2 %d %d\n",interactive, clipboxupdate);
 				if( interactive )
 				{
+					glPrintError();
 					if (!(drawedges == 2 || drawedges == 3)) 
 						draw_faces_interactive(clip_boundary);
-					glColor4f(0,0,0,1); 
+					glPrintError();
+					glColor4f(0.,0.,0.,1.); 
+					glPrintError();
 					if (drawedges && drawedges != 2) 
 						draw_edges_interactive(clip_boundary);
+					glPrintError();
 				}
 				else
 				{
+					glPrintError();
 					if (!(drawedges == 2 || drawedges == 3))
 						draw_faces(clip_boundary,picked);
-					glColor4f(0,0,0,1); 
+					std::cout << "draw faces passed" << std::endl;
+					glPrintError();
+					glColor4f(0.,0.,0.,1.); 
+					std::cout << "set color passed" << std::endl;
+					glPrintError();
 					if (drawedges && drawedges != 2) 
 						draw_edges(clip_boundary, picked);
+					std::cout << "draw edges passed" << std::endl;
+					glPrintError();
 				}
 			}
 		}
@@ -2071,8 +2084,9 @@ void draw_screen()
 		for(int k = 0; k < streamlines.size(); ++k)
 			streamlines[k].Draw(true);//interactive);
 
-		glColor4f(0, 0, 0, 1);
+		
 		glBegin(GL_LINES);
+		glColor4f(0, 0, 0, 1);
 		for (int k = 0; k < segments.size(); ++k)
 			segments[k].Draw();
 		glEnd();
@@ -2733,6 +2747,9 @@ int main(int argc, char ** argv)
 	glutInitWindowSize(width, height);
 	glutInitWindowPosition (100, 100);
 	wnd = glutCreateWindow("Graph");
+
+	//glEnable(GL_DEBUG_OUTPUT);
+	
 	
 	glDepthFunc(GL_LEQUAL);
 	glClearDepth(1.f);
@@ -2742,8 +2759,8 @@ int main(int argc, char ** argv)
 	
 	
 	
-	glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
-	glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);
+	//glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST);
+	//glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);
 	
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	

@@ -350,7 +350,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				iterator() :shell<HandleType>::iterator() {}
+				iterator() :shell<HandleType>::iterator(), m(NULL) {}
 				iterator(Mesh * m, const shell<HandleType>::iterator & other) : shell<HandleType>::iterator(other), m(m) {}
 				iterator(const iterator & other) : shell<HandleType>::iterator(other), m(other.m) {}
 				iterator & operator =(iterator const & other) {m = other.m; shell<HandleType>::iterator::operator=(other); return *this;}
@@ -364,7 +364,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				const_iterator() :shell<HandleType>::const_iterator() {}
+				const_iterator() :shell<HandleType>::const_iterator(), m(NULL) {}
 				const_iterator(Mesh * m, const shell<HandleType>::const_iterator & other) : shell<HandleType>::const_iterator(other) , m(m) {}
 				const_iterator(const const_iterator & other) : shell<HandleType>::const_iterator(other), m(other.m) {}
 				const_iterator & operator =(const_iterator const & other) {m = other.m; shell<HandleType>::const_iterator::operator=(other); return *this;}
