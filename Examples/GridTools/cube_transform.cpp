@@ -85,7 +85,7 @@ void CubeTransform::Transform()
 	
 	for(int d = 0; d < 3; ++d)
 	{
-		cmin[d]=1.0e+20;
+		cmin[d]=+1.0e+20;
 		cmax[d]=-1.0e+20;
 	}
 	

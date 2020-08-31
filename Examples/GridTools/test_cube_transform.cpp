@@ -40,13 +40,15 @@ int main(int argc, char *argv[])
 	int dims = 3;
 	if( argc > 3 ) outfile = std::string(argv[3]);
 	if( argc > 4 ) dims = atoi(argv[4]);
+	
+	std::cout << argv[1] << " mapping_file=" << mapfile << " mesh_file=" << infile << " output=" << outfile << " dims=" << dims << std::endl;
 	  
 	
 	Mesh mesh; 
 	mesh.Load(infile);
 	CubeTransform ct(mesh);
 	
-	ct.LoadMapping(mapfile);
+	ct.LoadMapping(mapfile,dims);
 	ct.PrintMapping();
 	ct.Transform();
 	
