@@ -1297,7 +1297,7 @@ namespace INMOST
 				Cell n = m->CellByLocalID(q);
 				if( n->GetStatus() != Element::Ghost ) points_node[k++] = n->LocalID();
 			}
-			
+			/*
 			double pmax[3] = {-1.0e+100,-1.0e+100,-1.0e+100};
 			double pmin[3] = {+1.0e+100,+1.0e+100,+1.0e+100};
 			
@@ -1345,6 +1345,7 @@ namespace INMOST
 			
 			double mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
 			mesh_dist /= (double)K*3.0;
+			*/
 			//mesh_dist *= 10;
 			/*
 			if( m->GetProcessorRank() == 0)
@@ -1546,6 +1547,9 @@ namespace INMOST
 				{
 					std::vector< double > local_sum(K*3,0.0);
 					std::vector< int > local_npoints(K,0);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
 					for(int j = 0; j < total_points; ++j)
 					{
 						local_sum[points_cluster[j]*3+0] += points_center[j*3+0];

@@ -26,7 +26,7 @@ typedef Storage::real_array real_array;
 typedef Storage::var_array var_array;
 
 bool print_niter = false; //save file on nonlinear iterations
-bool output_matrix = true;
+bool output_matrix = false;
 bool norne_wells = true;
 
 //data for wells

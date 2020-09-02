@@ -1793,7 +1793,8 @@ namespace INMOST
 		std::cout << GetProcessorRank() << " before exchange ghost new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
 		//std::cout << "layers " << Integer(GetHandle(),tag_layers) << " bridge " << ElementTypeName(ElementType(Integer(GetHandle(),tag_bridge))) << std::endl;
-		ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge));//,NewMarker()); //TODO!!!!
+		if( Integer(GetHandle(),tag_layers) )
+			ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge));//,NewMarker()); //TODO!!!!
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
 		//Save("after_exchange_ghost.pvtk");

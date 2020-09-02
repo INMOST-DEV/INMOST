@@ -27,8 +27,7 @@ namespace INMOST
 		TagInteger level; //< Refinement level of the cell
 		//TagReferenceArray ref_tag; //<Link to the set that contains an element.
 		Storage::integer GetLevel(const Storage & e) {return level[e];}
-        void SynchronizeSet(ElementSet set);
-		AdaptiveMesh(Mesh & m);
+        AdaptiveMesh(Mesh & m);
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined
 		/// and 0 on all other cells
