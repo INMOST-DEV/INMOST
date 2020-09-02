@@ -1618,7 +1618,7 @@ namespace INMOST
 	
 	void Mesh::SwapModification(bool recompute_geometry)
 	{
-		ENTER_FUNC();
+		//~ ENTER_FUNC();
 		MarkerType temp = hide_element;
 		hide_element = new_element;
 		new_element = temp;
@@ -1643,7 +1643,7 @@ namespace INMOST
 				}
 			}
 		}
-		EXIT_FUNC();
+		//~ EXIT_FUNC();
 	}
 	
 	void Mesh::ApplyModification()

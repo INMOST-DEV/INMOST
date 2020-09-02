@@ -441,7 +441,6 @@ namespace INMOST
 			}
 		}
 		err = m->Integrate(err);
-		EXIT_FUNC();
 		if( err ) 
 		{
 			REPORT_STR(rank << " error in " << __FUNCTION__ << " " << file << ":" << line);
@@ -449,6 +448,7 @@ namespace INMOST
 			exit(-1);
 		}
 #endif //NDEBUG
+		EXIT_FUNC();
 	}
 	
 	bool AdaptiveMesh::Refine(TagInteger & indicator)
