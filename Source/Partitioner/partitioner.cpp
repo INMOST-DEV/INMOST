@@ -1297,6 +1297,22 @@ namespace INMOST
 				Cell n = m->CellByLocalID(q);
 				if( n->GetStatus() != Element::Ghost ) points_node[k++] = n->LocalID();
 			}
+#if defined(USE_OMP)
+#pragma omp parallel for			
+#endif
+			for(int q = 0; q < total_points; ++q)
+			{
+				Cell n = m->CellByLocalID(points_node[q]);
+				double cnt[3];
+				n->Centroid(cnt);
+				points_center[q*3+0] = cnt[0];
+				points_center[q*3+1] = cnt[1];
+				points_center[q*3+2] = cnt[2];
+				cluster_center[rank*3+0] += cnt[0];
+				cluster_center[rank*3+1] += cnt[1];
+				cluster_center[rank*3+2] += cnt[2];
+			}
+			
 			/*
 			double pmax[3] = {-1.0e+100,-1.0e+100,-1.0e+100};
 			double pmin[3] = {+1.0e+100,+1.0e+100,+1.0e+100};
@@ -1422,13 +1438,13 @@ namespace INMOST
 			
 			//if( m->GetProcessorRank() == 0 )
 			//	std::cout << "Global number of points " << total_global_points << std::endl;
+			//std::cout << " local points on " << m->GetProcessorRank() << " is " << total_points << std::endl;
 			
 			//if( m->GetProcessorRank() == 0 )
 			//	std::cout << "Init clusters" << std::endl;
 			
 			// choose K distinct values for the centers of the clusters
 			{
-				std::vector<int> prohibited_indexes;
 				int Kpart = (int)ceil((double)K/(double)m->GetProcessorsNumber());
 				int Kstart = Kpart * m->GetProcessorRank();
 				int Kend = Kstart + Kpart;
@@ -1439,14 +1455,12 @@ namespace INMOST
 					while(true)
 					{
 						int index_point = rand() % total_points;
-						
-						if(find(prohibited_indexes.begin(), prohibited_indexes.end(),
-								index_point) == prohibited_indexes.end())
+						if(points_cluster[index_point]==-1)
 						{
-							prohibited_indexes.push_back(index_point);
 							cluster_center[i*3+0] = points_center[index_point*3+0];
 							cluster_center[i*3+1] = points_center[index_point*3+1];
 							cluster_center[i*3+2] = points_center[index_point*3+2];
+							cluster_npoints[i]++;
 							points_cluster[index_point] = i;
 							break;
 						}
@@ -1584,7 +1598,7 @@ namespace INMOST
 					cluster_center[i*3+2] /= (double) cluster_npoints[i];
 					//recompute cluster weights based on the number of points each cluster possess
 					//cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(double)total_global_points*0.75);
-					//if( m->GetProcessorRank() == 0 ) std::cout << cluster_weight[i]*K << " (" <<cluster_npoints[i]<< ") ";
+					//if( m->GetProcessorRank() == 0 ) std::cout << " (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+1] << "," << cluster_npoints[i] << ") ";
 				}
 				//if( m->GetProcessorRank() == 0 ) std::cout << std::endl;
 				/*
