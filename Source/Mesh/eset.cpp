@@ -1746,11 +1746,13 @@ namespace INMOST
 		Element::adj_type & lc = m->LowConn(GetHandle());
 		Element::adj_type & hc = m->HighConn(GetHandle());
 		HandleType hchild = hChild(hc), nchild;
+		hChild(hc) = InvalidHandle();
 		while(hchild != InvalidHandle())
 		{
 			Element::adj_type & chc = m->HighConn(hchild);
 			hParent(chc) = InvalidHandle();
 			nchild = hSibling(chc);
+			hSibling(chc) = InvalidHandle();
 			ElementSet(m,hchild).DeleteSetTree();
 			hchild = nchild;
 		}
