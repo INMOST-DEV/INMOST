@@ -14,6 +14,7 @@
 #include <limits>
 #include "inmost_common.h"
 
+//#define DEBUGMEM
 
 #define NEW_CHUNKS
 #define __VOLATILE volatile
@@ -172,7 +173,11 @@ namespace INMOST
 		array(size_type n,element c = element())
 		{
 			m_size = n;
-			m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
+			void * tmp = malloc(sizeof(element)*growth_formula(m_size));
+#if defined(DEBUGMEM)
+			if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+			m_arr = static_cast<element *>(tmp);
 			assert(m_arr != NULL);
 			for(size_type i = 0; i < m_size; i++) new (m_arr+i) element(c);
 		}
@@ -181,7 +186,11 @@ namespace INMOST
 		{
 			//isInputForwardIterators<element,InputIterator>();
 			m_size = static_cast<size_type>(std::distance(first,last));
-			m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
+			void * tmp = malloc(sizeof(element)*growth_formula(m_size));
+#if defined(DEBUGMEM)
+			if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+			m_arr = static_cast<element *>(tmp);
 			assert(m_arr != NULL);
 			{
 				size_type i = 0;
@@ -194,7 +203,11 @@ namespace INMOST
 			m_size = other.m_size;
 			if( m_size )
 			{
-				m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
+				void * tmp = malloc(sizeof(element)*growth_formula(m_size));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				m_arr = static_cast<element *>(tmp);
 				assert(m_arr != NULL);
 			}
 			else m_arr = NULL;
@@ -246,7 +259,11 @@ namespace INMOST
 				if( other.m_arr != NULL )
 				{
 					m_size = other.m_size;
-					m_arr = static_cast<element *>(malloc(sizeof(element)*growth_formula(m_size)));
+					void * tmp = malloc(sizeof(element)*growth_formula(m_size));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
 					assert(m_arr != NULL);
 					memcpy(m_arr,other.m_arr,sizeof(element)*m_size);
 				}
@@ -258,14 +275,32 @@ namespace INMOST
 #if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
 			//unoptimized variant
 			if( m_size+1 > growth_formula(m_size) )
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(++m_size)));
+			{
+				void * tmp = realloc(m_arr,sizeof(element)*growth_formula(++m_size));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif				
+				m_arr = static_cast<element *>(tmp);
+			}
 			else ++m_size;
 #else
 			//optimized for current growth_formula
 			if( m_size < 2 )
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(++m_size)));
+			{
+				void * tmp = realloc(m_arr,sizeof(element)*(++m_size));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif		
+				m_arr = static_cast<element *>(tmp);
+			}
 			else if( ((m_size+1) & (m_size-1)) == 1 )
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(m_size++ << 1)));
+			{
+				void * tmp = realloc(m_arr,sizeof(element)*(m_size++ << 1));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif		
+				m_arr = static_cast<element *>(tmp);
+			}
 			else m_size++;
 #endif
 			assert(m_arr != NULL);
@@ -281,10 +316,22 @@ namespace INMOST
 				//unoptimized variant
 				size_type gf = growth_formula(m_size);
 				if( m_size+1 > gf )
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif		
+					m_arr = static_cast<element *>(tmp);
+				}
 #else
 				if( ((m_size+1) & (m_size-1)) == 1 || m_size == 1)
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*m_size);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif		
+					m_arr = static_cast<element *>(tmp);
+				}
 #endif
 				assert(m_arr != NULL);
 			}
@@ -328,7 +375,13 @@ namespace INMOST
 			if( m_size > 0 )
 			{
 				if( growth_formula(oldsize) != growth_formula(m_size) )
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(m_size)));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*growth_formula(m_size));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
+				}
 				assert(m_arr != NULL);
 				for(size_type i = oldsize; i < m_size; i++) new (m_arr+i) element(c); //initialize extra entities
 			}
@@ -377,10 +430,22 @@ namespace INMOST
 #if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
 				size_type gf = growth_formula(m_size);
 				if( m_size+1 > gf )
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
+				}
 #else
 				if( ((m_size+1) & (m_size-1)) == 1 || m_size == 1)
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*m_size));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*m_size);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
+				}
 #endif
 				assert(m_arr != NULL);
 			}
@@ -403,7 +468,13 @@ namespace INMOST
 				if( s > 0 ) memmove(m_arr+d,m_arr+d+1,sizeof(element)*s);
 				size_type gf = growth_formula(m_size);
 				if( m_size+n > gf )
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
+				}
 				assert(m_arr != NULL);
 			}
 			else
@@ -419,6 +490,9 @@ namespace INMOST
 			{
 				assert(m_arr == NULL);
 				pos = iterator(m_arr = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+				if( m_arr == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert(m_arr != NULL);
 			}
 			ptrdiff_t d = pos-begin();
@@ -427,14 +501,32 @@ namespace INMOST
 			//unoptimized variant
 #if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
 			if( m_size+1 > growth_formula(m_size) )
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(++m_size)));
+			{
+				void * tmp = realloc(m_arr,sizeof(element)*growth_formula(++m_size));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				m_arr = static_cast<element *>(tmp);
+			}
 			else ++m_size;
 #else
 			//optimized for current growth_formula
 			if( m_size < 2 )
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(++m_size)));
+			{
+				void * tmp = realloc(m_arr,sizeof(element)*(++m_size));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				m_arr = static_cast<element *>(tmp);
+			}
 			else if( ((m_size+1) & (m_size-1)) == 1 )
-				m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*(m_size++ << 1)));
+			{
+				void * tmp = realloc(m_arr,sizeof(element)*(m_size++ << 1));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				m_arr = static_cast<element *>(tmp);
+			}
 			else ++m_size;
 #endif
 			assert(m_arr != NULL);
@@ -450,13 +542,22 @@ namespace INMOST
 				{
 					assert(m_arr == NULL);
 					pos = iterator(m_arr = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+					if( m_arr == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert(m_arr != NULL);
 				}
 				ptrdiff_t d = pos-begin();
 				ptrdiff_t s = end()-pos;
 
 				if( m_size+n > growth_formula(m_size) )
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(m_size+n)));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*growth_formula(m_size+n));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
+				}
 				m_size+=n;
 
 				assert(m_arr != NULL);
@@ -474,13 +575,22 @@ namespace INMOST
 				{
 					assert(m_arr == NULL);
 					pos = iterator(m_arr = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+					if( m_arr == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert(m_arr != NULL);
 				}
 				ptrdiff_t d = pos-begin();
 				ptrdiff_t s = end()-pos;
 
 				if( m_size+n > growth_formula(m_size) )
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*growth_formula(m_size+n)));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*growth_formula(m_size+n));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
+				}
 				m_size+=n;
 
 				assert(m_arr != NULL);
@@ -501,6 +611,9 @@ namespace INMOST
 			{
 				assert(m_arr == NULL);
 				m_first = m_last = iterator(m_arr = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+				if( m_arr == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert(m_arr != NULL);
 			}
 			ptrdiff_t q = m_last-m_first;
@@ -511,7 +624,13 @@ namespace INMOST
 			{
 				size_type gf = growth_formula(m_size+static_cast<size_type>(n-q));
 				if( gf != growth_formula(m_size) )
-					m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					m_arr = static_cast<element *>(tmp);
+				}
 				m_size+=static_cast<size_type>(n-q);
 				if( s > 0 ) memmove(m_arr+d+n,m_arr+d+q,sizeof(element)*s);
 			}
@@ -698,14 +817,32 @@ namespace INMOST
 #if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
 			//unoptimized variant
 			if( (*m_size)+1 > array<element>::growth_formula(*m_size) )
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula(++(*m_size))));
+			{
+				void * tmp = realloc(*m_arr,sizeof(element)*array<element>::growth_formula(++(*m_size)));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif				
+				*m_arr = static_cast<element *>(tmp);
+			}
 			else ++(*m_size);
 #else
 			//optimized for current growth_formula
 			if( *m_size < 2 )
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(++(*m_size))));
+			{
+				void * tmp = realloc(*m_arr,sizeof(element)*(++(*m_size)));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				*m_arr = static_cast<element *>(tmp);
+			}
 			else if( (((*m_size)+1) & ((*m_size)-1)) == 1 )
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*((*m_size)++ << 1)));
+			{
+				void * tmp = realloc(*m_arr,sizeof(element)*((*m_size)++ << 1));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				*m_arr = static_cast<element *>(tmp);
+			}
 			else ++(*m_size);
 #endif
 			assert((*m_arr) != NULL);
@@ -722,10 +859,22 @@ namespace INMOST
 				//unoptimized variant
 				size_type gf = array<element>::growth_formula(*m_size);
 				if( (*m_size)+1 > gf )
-					*m_arr = static_cast<element *>(realloc(m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 #else
 				if( (((*m_size)+1) & ((*m_size)-1)) == 1 || (*m_size) == 1)
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*(*m_size));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 #endif
 				assert( (*m_arr) != NULL );
 			}
@@ -770,7 +919,13 @@ namespace INMOST
 			if( *m_size > 0 )
 			{
 				if( array<element>::growth_formula(oldsize) != array<element>::growth_formula(*m_size) )
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula(*m_size)));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*array<element>::growth_formula(*m_size));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 				assert( (*m_arr) != NULL );
 				for(size_type i = oldsize; i < *m_size; i++) new ((*m_arr)+i) element(c); //initialize extra entities
 			}
@@ -819,10 +974,22 @@ namespace INMOST
 #if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
 				size_type gf = array<element>::growth_formula(*m_size);
 				if( (*m_size)+1 > gf )
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 #else
 				if( (((*m_size)+1) & ((*m_size)-1)) == 1 || (*m_size) == 1)
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(*m_size)));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*(*m_size));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 #endif
 				assert((*m_arr) != NULL);
 			}
@@ -846,7 +1013,13 @@ namespace INMOST
 				if( s > 0 ) memmove(*m_arr+d,*m_arr+d+n,sizeof(element)*s);
 				size_type gf = array<element>::growth_formula(*m_size);
 				if( (*m_size)+n > gf )
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 				assert((*m_arr) != NULL);
 			}
 			else
@@ -863,6 +1036,9 @@ namespace INMOST
 			{
 				assert((*m_arr) == NULL);
 				pos = iterator((*m_arr) = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+				if( *m_arr == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert((*m_arr) != NULL);
 			}
 			ptrdiff_t d = pos-begin();
@@ -871,14 +1047,32 @@ namespace INMOST
 #if !defined(USE_OPTIMIZED_ARRAY_ALLOCATION)
 			//unoptimized variant
 			if( (*m_size)+1 > array<element>::growth_formula(*m_size) )
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula(++(*m_size))));
+			{
+				void * tmp = realloc(*m_arr,sizeof(element)*array<element>::growth_formula(++(*m_size)));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				*m_arr = static_cast<element *>(tmp);
+			}
 			else ++(*m_size);
 #else
 			//optimized for current growth_formula
 			if( *m_size < 2 )
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*(++(*m_size))));
+			{
+				void * tmp = realloc(*m_arr,sizeof(element)*(++(*m_size)));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				*m_arr = static_cast<element *>(tmp);
+			}
 			else if( (((*m_size)+1) & ((*m_size)-1)) == 1 )
-				*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*((*m_size)++ << 1)));
+			{
+				void * tmp = realloc(*m_arr,sizeof(element)*((*m_size)++ << 1));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				*m_arr = static_cast<element *>(tmp);
+			}
 			else ++(*m_size);
 #endif
 			assert((*m_arr) != NULL);
@@ -895,13 +1089,22 @@ namespace INMOST
 				{
 					assert((*m_arr) == NULL);
 					pos = iterator((*m_arr) = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+					if( *m_arr == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert((*m_arr) != NULL);
 				}
 				ptrdiff_t d = pos-iterator(*m_arr);
 				ptrdiff_t s = iterator((*m_arr)+(*m_size))-pos;
 
 				if( (*m_size)+n > array<element>::growth_formula(*m_size) )
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula((*m_size)+n)));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*array<element>::growth_formula((*m_size)+n));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 				(*m_size)+=n;
 
 				assert((*m_arr) != NULL);
@@ -920,6 +1123,9 @@ namespace INMOST
 				{
 					assert((*m_arr) == NULL);
 					pos = iterator((*m_arr) = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+					if( *m_arr == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert((*m_arr) != NULL);
 				}
 				ptrdiff_t d = pos-iterator(*m_arr);
@@ -927,7 +1133,13 @@ namespace INMOST
 
 
 				if( (*m_size)+n > array<element>::growth_formula(*m_size) )
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*array<element>::growth_formula((*m_size)+static_cast<size_type>(n))));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*array<element>::growth_formula((*m_size)+static_cast<size_type>(n)));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 				(*m_size)+=static_cast<size_type>(n);
 
 				assert((*m_arr) != NULL);
@@ -947,6 +1159,9 @@ namespace INMOST
 			{
 				assert((*m_arr)==NULL);
 				m_first = m_last = iterator((*m_arr) = static_cast<element *>(malloc(sizeof(element))));
+#if defined(DEBUGMEM)
+				if( *m_arr == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert((*m_arr)!=NULL);
 			}
 			ptrdiff_t q = m_last-m_first;
@@ -958,7 +1173,13 @@ namespace INMOST
 				assert( !fixed ); // array size is fixed
 				size_type gf = array<element>::growth_formula((*m_size)+static_cast<size_type>(n-q));
 				if( gf != array<element>::growth_formula(*m_size) )
-					*m_arr = static_cast<element *>(realloc(*m_arr,sizeof(element)*gf));
+				{
+					void * tmp = realloc(*m_arr,sizeof(element)*gf);
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					*m_arr = static_cast<element *>(tmp);
+				}
 				(*m_size)+=static_cast<size_type>(n-q);
 			}
 			if( s > 0 )
@@ -994,7 +1215,7 @@ namespace INMOST
 		typedef pair * iterator;
 		typedef const iterator const_iterator;
 	private:
-		static int comparator(const void * pa, const void * pb)
+		static size_t comparator(const void * pa, const void * pb)
 		{
 			pair * a = (pair *)pa;
 			pair * b = (pair *)pb;
@@ -1009,7 +1230,11 @@ namespace INMOST
 			{
 				enumerate old_arr_alloc = arr_alloc;
 				while(arr_size > arr_alloc) arr_alloc = arr_alloc << 1;
-				array = static_cast<pair *>(realloc(array,arr_alloc*sizeof(pair)));
+				void * tmp = realloc(array,arr_alloc*sizeof(pair));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				array = static_cast<pair *>(tmp);
 				assert(array != NULL);
 				for (enumerate i = old_arr_alloc; i < arr_alloc; i++) array[i].first = std::numeric_limits<IndType>::max();
 				//memset(array+old_arr_alloc,0xff,sizeof(pair)*(arr_alloc-old_arr_alloc));
@@ -1032,7 +1257,11 @@ namespace INMOST
 		{
 			enumerate new_alloc = 1;
 			while( new_alloc < size ) new_alloc = new_alloc << 1;
-			array = static_cast<pair *>(realloc(array,new_alloc*sizeof(pair)));
+			void * tmp = realloc(array,new_alloc*sizeof(pair));
+#if defined(DEBUGMEM)
+			if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+			array = static_cast<pair *>(tmp);
 			assert(array != NULL);
 			for (enumerate i = arr_alloc; i < new_alloc; i++) array[i].first = std::numeric_limits<IndType>::max();
 			//memset(array+arr_alloc,0xff,sizeof(pair)*(new_alloc-arr_alloc));
@@ -1099,7 +1328,13 @@ namespace INMOST
 			arr_size = last-first;
 			arr_alloc = static_cast<enumerate>(prealloc);
 			if( arr_size <= arr_alloc )
-				array = static_cast<pair *>(malloc(arr_alloc*sizeof(pair)));
+			{
+				void * tmp = malloc(arr_alloc*sizeof(pair));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				array = static_cast<pair *>(tmp);
+			}
 			else
 			{
 				array = NULL;
@@ -1122,7 +1357,11 @@ namespace INMOST
 		{
 			arr_size = 0;
 			arr_alloc = static_cast<enumerate>(prealloc);
-			array = static_cast<pair *>(malloc(sizeof(pair)*arr_alloc));
+			void * tmp = malloc(sizeof(pair)*arr_alloc);
+#if defined(DEBUGMEM)
+			if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+			array = static_cast<pair *>(tmp);
 			assert(array != NULL);
 			for (enumerate i = 0; i < arr_alloc; i++) array[i].first = std::numeric_limits<IndType>::max();
 			//memset(array,0xff,sizeof(pair)*arr_alloc);
@@ -1131,7 +1370,11 @@ namespace INMOST
 		{
 			arr_size = other.arr_size;
 			arr_alloc = other.arr_alloc;
-			array = static_cast<pair *>(malloc(arr_alloc*sizeof(pair)));
+			void * tmp = malloc(arr_alloc*sizeof(pair));
+#if defined(DEBUGMEM)
+			if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+			array = static_cast<pair *>(tmp);
 			assert(array != NULL);
 			memcpy(array,other.array,other.arr_alloc*sizeof(pair));
 		}
@@ -1148,7 +1391,11 @@ namespace INMOST
 				for(iterator i = begin(); i != end(); i++) (i->second).~ValType();
 				arr_size = other.arr_size;
 				arr_alloc = other.arr_alloc;
-				array = static_cast<pair *>(realloc(array,arr_alloc*sizeof(pair)));
+				void * tmp = realloc(array,arr_alloc*sizeof(pair));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				array = static_cast<pair *>(tmp);
 				assert(array != NULL);
 				memcpy(array,other.array,arr_alloc*sizeof(pair));
 			}
@@ -1244,7 +1491,11 @@ namespace INMOST
 			end_index = end;
 			if (beg != end)
 			{
-				array = static_cast<ValType *>(malloc(sizeof(ValType)*(end_index - beg_index)));
+				void * tmp = malloc(sizeof(ValType)*(end_index - beg_index));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				array = static_cast<ValType *>(tmp);
 				assert(array != NULL);
 				array = array - beg_index;
 				for (IndType i = beg_index; i < end_index; ++i) new (array + i) ValType(c);
@@ -1260,7 +1511,11 @@ namespace INMOST
 			end_index = other.end_index;
 			if( beg_index != end_index )
 			{
-				array = static_cast<ValType *>(malloc(sizeof(ValType)*(end_index-beg_index)));
+				void * tmp = malloc(sizeof(ValType)*(end_index-beg_index));
+#if defined(DEBUGMEM)
+				if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+				array = static_cast<ValType *>(tmp);
 				assert(array != NULL);
 				array = array - beg_index;
 				for(IndType i = beg_index; i < end_index; ++i)
@@ -1288,7 +1543,11 @@ namespace INMOST
 				end_index = other.end_index;
 				if( beg_index != end_index )
 				{
-					array = static_cast<ValType *>(realloc(array+old_beg_index,sizeof(ValType)*(end_index-beg_index)));
+					void * tmp = realloc(array+old_beg_index,sizeof(ValType)*(end_index-beg_index));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d realloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					array = static_cast<ValType *>(tmp);
 					assert(array != NULL);
 					array = array - beg_index;
 					for(IndType i = beg_index; i < end_index; ++i) new (array+i) ValType(other.array[i]);
@@ -1353,6 +1612,9 @@ namespace INMOST
 			if( beg_index != end )
 			{
 				ValType * array_new = static_cast<ValType *>(malloc(sizeof(ValType)*(end-beg_index)));
+#if defined(DEBUGMEM)
+				if( array_new == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert(array_new != NULL);
 				array_new = array_new - beg_index;
 				for(IndType i = beg_index; i < std::min(end,end_index); ++i) new (array_new+i) ValType(array[i]);
@@ -1650,6 +1912,9 @@ namespace INMOST
 			else
 			{
 				pbegin = static_cast<element *>(malloc(sizeof(element)*n));
+#if defined(DEBUGMEM)
+				if( pbegin == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert(pbegin != NULL);
 				pend = pbegin+n;
 				preserved = pbegin+n;
@@ -1677,6 +1942,9 @@ namespace INMOST
 				if( pbegin == stack )
 				{
 					pbegin = static_cast<element *>(malloc(sizeof(element)*n));
+#if defined(DEBUGMEM)
+					if( pbegin == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert(pbegin != NULL);
 					for(size_type i = 0; i < k; i++)
 					{
@@ -1687,6 +1955,9 @@ namespace INMOST
 				else
 				{
 					element * pbegin_new = static_cast<element *>(malloc(sizeof(element)*n));
+#if defined(DEBUGMEM)
+					if( pbegin_new == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert(pbegin_new != NULL);
 					for(size_type i = 0; i < k; i++)
 					{
@@ -2175,7 +2446,7 @@ namespace INMOST
 		{
 			if (next)
 				next->clear();
-			for (int k = 0; k < ne; ++k)
+			for (size_t k = 0; k < ne; ++k)
 				e[k].~element();
 			ne = 0;
 		}
@@ -2205,7 +2476,7 @@ namespace INMOST
 				return next->operator [](n - base);
 			}
 		}
-		int size() const
+		size_t size() const
 		{
 			if( ne == base && next )
 				return base+next()->size();
@@ -2417,6 +2688,9 @@ namespace INMOST
 #else
 					element ** __VOLATILE chunks_old = chunks;
 					element ** __VOLATILE chunks_new = (element **)malloc(fwd_alloc_chunk_size*newn);
+#if defined(DEBUGMEM)
+					if( chunks_new == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert(chunks_new != NULL);
 					memcpy(chunks_new, chunks_old, fwd_alloc_chunk_size*oldn);
 					memset(chunks_new + oldn*fwd_alloc_chunk_val, 0, fwd_alloc_chunk_size*(newn - oldn));
@@ -2441,6 +2715,9 @@ namespace INMOST
 			{
 				assert(chunks[q] == NULL);
 				chunks[q] = (element *)malloc(block_size);
+#if defined(DEBUGMEM)
+				if( chunks[q] == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert(chunks[q] != NULL);
 			}
 			//for(size_type q = m_size; q < new_size; q++) new (&access_element(q)) element();
@@ -2643,6 +2920,9 @@ namespace INMOST
 #else
 					char ** __VOLATILE chunks_old = chunks;
 					char ** __VOLATILE chunks_new = (char **)malloc(fwd_alloc_chunk_size*newn);
+#if defined(DEBUGMEM)
+					if( chunks_new == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 					assert(chunks_new != NULL);
 					memcpy(chunks_new, chunks_old, fwd_alloc_chunk_size*oldn);
 					memset(chunks_new + oldn*fwd_alloc_chunk_val, 0, fwd_alloc_chunk_size*(newn - oldn));
@@ -2667,6 +2947,9 @@ namespace INMOST
 			{
 				assert(chunks[q] == NULL);
 				chunks[q] = static_cast<char *>(malloc(block_size*record_size));
+#if defined(DEBUGMEM)
+				if( chunks[q] == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				assert(chunks[q] != NULL);
 				memset(chunks[q],0,block_size*record_size);
 			}
@@ -2875,7 +3158,11 @@ namespace INMOST
 		unsigned allocations() const {return (unsigned)(inuse.size()-1); }
 		memory_pool()
 		{
-			pool.push_back((char*)malloc(sizeof(char)*(1 << pool_size_bits))); 
+			void * tmp = malloc(sizeof(char)*(1 << pool_size_bits));
+#if defined(DEBUGMEM)
+			if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+			pool.push_back((char*)tmp); 
 			last_alloc.push_back(0); 
 			inuse.push_back(true); //never delete
 			//std::cout << "mempool " << (void *)this << " constructor, addr " << (void *)pool.back() << std::endl;
@@ -2895,7 +3182,11 @@ namespace INMOST
 				if( pagepos == pool.size() )
 				{
 					//std::cout << "position from " << oldpos << " to " << newpos << " need new page " << pagepos << std::endl;
-					pool.push_back((char*)malloc(sizeof(char)*(1 << pool_size_bits)));
+					void * tmp = malloc(sizeof(char)*(1 << pool_size_bits));
+#if defined(DEBUGMEM)
+					if( tmp == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
+					pool.push_back((char*)tmp);
 				}
 				
 				if( pagepos != pageold || last_alloc.empty() )
@@ -2922,6 +3213,9 @@ namespace INMOST
 				//T * data = new T[n];
 				//for(unsigned i = 0; i < n; ++i) data[i] = c;
 				void * data = malloc(sizeof(T)*n);
+#if defined(DEBUGMEM)
+				if( data == NULL ) {printf("%s:%d malloc return NULL\n",__FILE__,__LINE__);}
+#endif
 				for(unsigned i = 0; i < n; ++i) new (&static_cast<T *>(data)[i]) T(c);
 				page_fault[(void *)data] = n;
 				//std::cout << "page fault for " << sizeof(T)*n << " bytes allocated at " << data << std::endl;

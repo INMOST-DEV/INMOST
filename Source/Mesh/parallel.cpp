@@ -594,7 +594,7 @@ namespace INMOST
 #endif//USE_MPI
 		shift += start;
 		for(ElementSet::iterator it = set.Begin(); it != set.End(); it++)
-			if( it->GetStatus() == Element::Owned && (define_sparse || it->HaveData(num_tag)) )
+			if( (it->GetStatus() == Element::Owned || it->GetStatus() == Element::Any) && (define_sparse || it->HaveData(num_tag)) )
 				it->Integer(num_tag) = shift++;
 		for(ElementSet::iterator it = set.Begin(); it != set.End(); it++)
 			if( it->GetStatus() == Element::Shared && (define_sparse || it->HaveData(num_tag)) )
@@ -622,7 +622,7 @@ namespace INMOST
 #endif//USE_MPI
 		shift += start;
 		for(const HandleType * it = set; it != set+n; ++it)
-			if( GetStatus(*it) == Element::Owned && (define_sparse || HaveData(*it,num_tag))) Integer(*it,num_tag) = shift++;
+			if( (GetStatus(*it) == Element::Owned || GetStatus(*it) == Element::Any) && (define_sparse || HaveData(*it,num_tag))) Integer(*it,num_tag) = shift++;
 		for(const HandleType * it = set; it != set+n; ++it)
 			if( GetStatus(*it) == Element::Shared && (define_sparse || HaveData(*it,num_tag))) Integer(*it,num_tag) = shift++;
 		ExchangeData(num_tag,mask,0);
@@ -648,7 +648,7 @@ namespace INMOST
 #endif//USE_MPI
 		shift += start;
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
-			if( it->GetStatus() == Element::Owned && (define_sparse || it->HaveData(num_tag)) )
+			if( (it->GetStatus() == Element::Owned || it->GetStatus() == Element::Any) && (define_sparse || it->HaveData(num_tag)) )
 				it->Integer(num_tag) = shift++;
 		for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 			if( it->GetStatus() == Element::Shared && (define_sparse || it->HaveData(num_tag)) )
