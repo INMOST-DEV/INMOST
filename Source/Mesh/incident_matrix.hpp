@@ -175,6 +175,16 @@ namespace INMOST
 		}
 		Storage::real compute_measure(ElementArray<T> & data)
 		{
+			Storage::real measure = 0, tmp;
+			for(int k = 1; k < data.size(); ++k)
+			{
+				mesh->GetGeometricData(data[k].GetHandle(),MEASURE,&tmp);
+				measure += tmp;
+			}
+			return measure;
+		}
+		Storage::real compute_measure_vol(ElementArray<T> & data)
+		{
 			Storage::real measure = 0;
 			if( data[0]->GetElementDimension() == 1 ) //this is edge //use geometric dimension here for 2d compatibility
 			{
