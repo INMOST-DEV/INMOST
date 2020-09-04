@@ -32,6 +32,8 @@
 //static int __isinf__(double x) { return fabs(x) > DBL_MAX; }
 //static int __isbad(double x) { return __isnan__(x) || __isinf__(x); }
 
+
+
 template<typename T>
 void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 {
@@ -51,6 +53,59 @@ void ReadCoords(FILE * f,INMOST_DATA_REAL_TYPE c[3])
 
 namespace INMOST
 {
+
+
+	void skip_empty(char * readline,FILE * f)
+	{
+		bool empty = true;
+		do
+		{
+			for(int k = 0; k < strlen(readline); ++k)
+				if( !isspace(readline[k]) ) empty = false;
+			if( empty )
+			{
+				if( fgets(readline,2048,f) == NULL ) 
+					break;
+			}
+		} while(empty);
+		
+	}
+
+	void skip_metadata(int comps, char * readline,FILE * f)
+	{
+		int dcnt,filled, scnt;
+		char ntype[256];
+		if( !strncmp(readline,"METADATA",8) )
+		{
+			for(int k = 0; k < 2; ++k)
+			{
+				if( fgets(readline,2048,f) == NULL ) throw BadFile;
+				if( !strncmp(readline,"INFORMATION",11) )
+				{
+					filled = sscanf(readline,"%*s %d",&dcnt); //INFORMATION %d
+					if( filled != 1 ) throw BadFile;
+					for(int k = 0; k < dcnt; ++k) //2 lines per data
+					{
+						if( fgets(readline,2048,f) == NULL )  //NAME
+							throw BadFile;
+						fscanf(f,"%*s"); //DATA
+						filled = fscanf(f,"%d",&scnt); //vector size
+						if( filled != 1 ) throw BadFile;
+						for(int q = 0; q < scnt; ++q) fscanf(f,"%*s\n");
+					}
+				}
+				else if( !strncmp(readline,"COMPONENT_NAMES",15) )
+				{
+					for(int k = 0; k < comps; ++k) //2 lines per data
+					{
+						if( fgets(readline,2048,f) == NULL ) 
+							throw BadFile;
+					}
+				}
+				//else printf("Unknown metadata field %s\n",readline);
+			}
+		}
+	}
 
 	std::string Space2Underscore(const std::string & inp)
 	{
@@ -642,14 +697,18 @@ safe_output:
 		int filled;
 		bool binary = false;
 		int read_into = NONE, read_into_cell = NONE;
+		bool read_next_line = true;
 		while( state != R_QUIT )
 		{
-				
-			if( fgets(readline,2048,f) == NULL )
+			
+			if( read_next_line )
 			{
-				state = R_QUIT;
-				continue;
-			}
+				if( fgets(readline,2048,f) == NULL )
+				{
+					state = R_QUIT;
+					continue;
+				}
+			} else read_next_line = true;
 			//if( readline[strlen(readline)-1] == '\n' )
 			//	readline[strlen(readline)-1] = '\0';
 			while( strlen(readline) != 0 && isspace(readline[strlen(readline)-1]) )
@@ -709,7 +768,7 @@ safe_output:
 					{
 						DataType t = DATA_BULK;
 						filled = sscanf(readline," SCALARS %s %s %d",attrname,attrtype,&nentries);
-						if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
+						if( verbosity > 0 ) printf("Reading scalar attribute %s.\n",attrname);
 						if( filled < 2 ) 
 						{
 							printf("%s:%d found %d arguments to SCALARS field, must be >= 2\nline:\n%s\n",__FILE__,__LINE__,filled,readline); 
@@ -765,7 +824,7 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 							datatags.push_back(attr);
 						}
 						if( read_into == 1 )
@@ -790,15 +849,21 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 						}
+						if( fgets(readline,2048,f) == NULL ) throw BadFile;
+						skip_empty(readline,f);
+						skip_metadata(3,readline,f);
+						skip_empty(readline,f);
+						read_next_line = false;
+						
 						break;
 					}
 					else if( !strcmp(dataname,"COLOR_SCALARS") )
 					{	
 						char attrname[1024];
 						filled = sscanf(readline," COLOR_SCALARS %s %d",attrname,&nentries);
-						if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
+						if( verbosity > 0 ) printf("Reading color attribute %s.\n",attrname);
 						if( read_into == 2 )
 						{
 							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
@@ -818,7 +883,7 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 							datatags.push_back(attr);
 						}
 						if( read_into == 1 )
@@ -835,8 +900,14 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 						}
+						if( fgets(readline,2048,f) == NULL ) throw BadFile;
+						skip_empty(readline,f);
+						skip_metadata(3,readline,f);
+						skip_empty(readline,f);
+						read_next_line = false;
+					
 						break;
 					}
 					else if( !strcmp(dataname," LOOKUP_TABLE") )
@@ -859,7 +930,7 @@ safe_output:
 						if( !strcmp(dataname,"TENSORS") ) nentries = 9;
 						DataType t = DATA_BULK;
 						filled = sscanf(readline,"%*s %s %s",attrname,attrtype);
-						if( verbosity > 0 ) printf("Reading attribute %s.\n",attrname);
+						if( verbosity > 0 ) printf("Reading %s attribute %s.\n",dataname,attrname);
 						if( filled != 2 ) throw BadFile;
 						for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 						if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -902,7 +973,7 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 							datatags.push_back(attr);
 						}
 						if( read_into == 1 )
@@ -927,8 +998,15 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 						}
+						
+						if( fgets(readline,2048,f) == NULL ) throw BadFile;
+						skip_empty(readline,f);
+						skip_metadata(3,readline,f);
+						skip_empty(readline,f);
+						read_next_line = false;
+						
 						break;
 					}
 					else if( !strcmp(dataname,"TEXTURE_COORDINATES") )
@@ -938,6 +1016,7 @@ safe_output:
 						int nentries;
 						DataType t = DATA_BULK;
 						filled = sscanf(readline," TEXTURE_COORDINATES %s %d %s",attrname,&nentries,attrtype);
+						if( verbosity > 0 ) printf("Reading texture coordinates attribute %s.\n",attrname);
 						if( filled != 3 ) throw BadFile;
 						for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 						if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -978,7 +1057,7 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 							datatags.push_back(attr);
 						}
 						if( read_into == 1 )
@@ -1003,8 +1082,15 @@ safe_output:
 									fflush(stdout);
 								}
 							}
-							filled = fscanf(f,"\n");
+							//filled = fscanf(f,"\n");
 						}
+						
+						if( fgets(readline,2048,f) == NULL ) throw BadFile;
+						skip_empty(readline,f);
+						skip_metadata(3,readline,f);
+						skip_empty(readline,f);
+						read_next_line = false;
+						
 						break;
 					}
 					else if( !strcmp(dataname,"FIELD") )
@@ -1018,7 +1104,9 @@ safe_output:
 							char attrtype[1024];
 							unsigned int nentries, ntuples;
 							DataType t = DATA_BULK;
-							filled = fscanf(f," %s %u %u %s\n",attrname,&nentries,&ntuples,attrtype);
+							if( read_next_line && fgets(readline,2048,f) == NULL ) throw BadFile;
+							filled = sscanf(readline," %s %u %u %s\n",attrname,&nentries,&ntuples,attrtype);
+							if( verbosity > 0 ) printf("Reading field %d / %d attribute %s.\n",i,nfields,attrname);
 							if( filled != 4 ) throw BadFile;
 							for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 							if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -1059,7 +1147,7 @@ safe_output:
 										fflush(stdout);
 									}
 								}
-								filled = fscanf(f,"\n");
+								//filled = fscanf(f,"\n");
 								datatags.push_back(attr);
 							}
 							if( read_into == 1 )
@@ -1085,8 +1173,14 @@ safe_output:
 										fflush(stdout);
 									}
 								}
-								filled = fscanf(f,"\n");
+								//filled = fscanf(f,"\n");
 							}
+							
+							if( fgets(readline,2048,f) == NULL ) throw BadFile;
+							skip_empty(readline,f);
+							skip_metadata(3,readline,f);
+							skip_empty(readline,f);
+							read_next_line = false;
 						}
 						break;
 					}
@@ -1298,9 +1392,14 @@ safe_output:
 							}
 							i++;
 						}
-						filled = fscanf(f,"\n");
+						//filled = fscanf(f,"\n");
 					}
+					
 					if( fgets(readline,2048,f) == NULL ) throw BadFile;
+					skip_empty(readline,f);
+					skip_metadata(3,readline,f);
+					skip_empty(readline,f);
+					
 					filled = sscanf(readline,"%*s %d %d\n",&ncells,&nints);
 					//printf("number of cells: %d\nnumber of ints: %d\n",ncells,nints);
 					if( filled != 2 ) throw BadFile;
