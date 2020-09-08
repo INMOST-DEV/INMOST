@@ -32,6 +32,7 @@ add_executable(test_ns_cavity ns_cavity.cpp)
 add_executable(test_ns_pousielle ns_pousielle.cpp)
 add_executable(test_ns_backward_step ns_backward_step.cpp)
 add_executable(test_ns_turek ns_turek.cpp)
+add_executable(test_ns_crevice ns_crevice.cpp)
 
 
 target_link_libraries(test_ns_linear inmost)
@@ -42,7 +43,9 @@ if(USE_MPI)
     set_target_properties(test_ns_linear PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_ns_linear EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_ns_linear EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
+
 target_link_libraries(test_ns_cavity inmost)
 if(USE_MPI)
   message("linking test_ns_cavity with MPI")
@@ -74,6 +77,17 @@ if(USE_MPI)
 endif(USE_MPI)
 install(TARGETS test_ns_turek EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
 
+target_link_libraries(test_ns_crevice inmost)
+if(USE_MPI)
+  message("linking test_ns_cavity with MPI")
+  target_link_libraries(test_ns_crevice ${MPI_LIBRARIES}) 
+  if(MPI_LINK_FLAGS)
+    set_target_properties(test_ns_crevice PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif() 
+endif(USE_MPI)
+install(TARGETS test_ns_crevice EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
+
 target_link_libraries(test_ns_backward_step inmost)
 if(USE_MPI)
   message("linking test_ns_backward_step with MPI")
@@ -104,7 +118,8 @@ if(USE_MPI)
     set_target_properties(test_circular_perm PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_circular_perm EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_circular_perm EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 target_link_libraries(test_channels_perm inmost)
@@ -115,7 +130,8 @@ if(USE_MPI)
     set_target_properties(test_channels_perm PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_channels_perm EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_channels_perm EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 target_link_libraries(test_locking_perm inmost)
@@ -126,7 +142,8 @@ if(USE_MPI)
     set_target_properties(test_locking_perm PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_locking_perm EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_locking_perm EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test1_1 inmost)
 if(USE_MPI)
@@ -136,7 +153,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test1_1 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test1_1 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test1_1 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test1_2 inmost)
 if(USE_MPI)
@@ -146,7 +164,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test1_2 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test1_2 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test1_2 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 target_link_libraries(test_fvca5_test3 inmost)
@@ -157,7 +176,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test3 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test3 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test3 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test4 inmost)
 if(USE_MPI)
@@ -167,7 +187,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test4 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test4 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test4 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test5 inmost)
 if(USE_MPI)
@@ -177,7 +198,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test5 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test5 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test5 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test6 inmost)
 if(USE_MPI)
@@ -187,7 +209,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test6 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test6 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test6 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test7 inmost)
 if(USE_MPI)
@@ -197,7 +220,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test7 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test7 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test7 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test7_adv inmost)
 if(USE_MPI)
@@ -207,7 +231,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test7_adv PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test7_adv EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test7_adv EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test8 inmost)
 if(USE_MPI)
@@ -217,7 +242,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test8 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test8 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test8 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_fvca5_test9 inmost)
 if(USE_MPI)
@@ -227,7 +253,8 @@ if(USE_MPI)
     set_target_properties(test_fvca5_test9 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_fvca5_test9 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_fvca5_test9 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_wugao_test2 inmost)
 if(USE_MPI)
@@ -237,7 +264,8 @@ if(USE_MPI)
     set_target_properties(test_wugao_test2 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_wugao_test2 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_wugao_test2 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 target_link_libraries(test_wugao_test3 inmost)
@@ -248,7 +276,8 @@ if(USE_MPI)
     set_target_properties(test_wugao_test3 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_wugao_test3 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_wugao_test3 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_wugao_test3_adv inmost)
 if(USE_MPI)
@@ -258,7 +287,8 @@ if(USE_MPI)
     set_target_properties(test_wugao_test3_adv PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_wugao_test3_adv EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_wugao_test3_adv EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 target_link_libraries(test_wugao_test4 inmost)
@@ -269,7 +299,8 @@ if(USE_MPI)
     set_target_properties(test_wugao_test4 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_wugao_test4 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_wugao_test4 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_adv_test00 inmost)
 if(USE_MPI)
@@ -279,7 +310,8 @@ if(USE_MPI)
     set_target_properties(test_adv_test00 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_adv_test00 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_adv_test00 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_adv_test01 inmost)
 if(USE_MPI)
@@ -289,7 +321,8 @@ if(USE_MPI)
     set_target_properties(test_adv_test01 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_adv_test01 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_adv_test01 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 target_link_libraries(test_adv_test02 inmost)
@@ -300,7 +333,8 @@ if(USE_MPI)
     set_target_properties(test_adv_test02 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_adv_test02 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_adv_test02 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 target_link_libraries(test_adv_test03 inmost)
@@ -311,7 +345,8 @@ if(USE_MPI)
     set_target_properties(test_adv_test03 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_adv_test03 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_adv_test03 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 
 
@@ -323,7 +358,8 @@ if(USE_MPI)
     set_target_properties(test_transform_grid PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_transform_grid EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_transform_grid EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_two_wells_3d inmost)
 if(USE_MPI)
@@ -333,7 +369,8 @@ if(USE_MPI)
     set_target_properties(test_two_wells_3d PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_two_wells_3d EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_two_wells_3d EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_edwards_3dtest4 inmost)
 if(USE_MPI)
@@ -343,7 +380,8 @@ if(USE_MPI)
     set_target_properties(test_edwards_3dtest4 PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_edwards_3dtest4 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_edwards_3dtest4 EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+
 
 target_link_libraries(test_discontinuous_4zones inmost)
 if(USE_MPI)
@@ -364,6 +402,8 @@ if(USE_MPI)
     set_target_properties(test_linear_sol PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   endif() 
 endif(USE_MPI)
-install(TARGETS test_linear_sol EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
+install(TARGETS test_linear_sol EXPORT projects-targets RUNTIME DESTINATION bin/TestSuite)
 
-install(FILES readme.txt DESTINATION bin/TestSuite)
+
+install(FILES readme.txt DESTINATION bin/TestSuite)
+
