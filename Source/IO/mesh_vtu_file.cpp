@@ -144,6 +144,7 @@ namespace INMOST
 				while (!faceoffsets.eof())
 				{
 					faceoffsets >> coffset;
+					if( coffset == -1 ) continue;
 					nread = coffset - totread;
 					faces >> nfaces;
 					hfaces.resize(nfaces);
