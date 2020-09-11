@@ -119,7 +119,7 @@ int main(int argc, char ** argv)
 			bc[*it][1] = 0;
 			bc[*it][2] = 1;
 			bc[*it][3] = 0;
-			bc[*it][4] = 17.3;
+			bc[*it][4] = 17.3 * c[1]*(3.0-c[1])/9.0 * 4.0 * (3.0 / 2.0); //parabolic profile with average of 17.3
 			bc[*it][5] = 0;
 			bc[*it][6] = 0;
 		}
