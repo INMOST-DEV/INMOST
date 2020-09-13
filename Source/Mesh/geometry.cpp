@@ -1092,6 +1092,8 @@ namespace INMOST
 								for(int q = 0; q < 3; ++q)
 									n0[q] += nt[q]*0.5;
 							}
+							//*ret = vec_len(n0,3);
+							//code below is not really needed
 							for(int i = 0; i < (int)nodes.size(); i++)
 							{
 								v1 = nodes[i].Coords();
@@ -1126,7 +1128,7 @@ namespace INMOST
 							FacesOrientation(faces,rev);
 						}
 						real vol = 0, a, at, volp;
-						real x[3] = {0,0,0}, n[3] = {0,0,0}, n0[3] = {0,0,0}, s, ss;
+						real x[3] = {0,0,0}, n0[3] = {0,0,0}, s, ss;
 						real l1[3] = {0,0,0}, l2[3] = {0,0,0};
 						real nt[3] = {0,0,0}, cxf[3] = {0,0,0};
 						real vc[3] = {0,0,0};
@@ -1141,7 +1143,6 @@ namespace INMOST
 							else
 								s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 							x[0] = x[1] = x[2] = 0;
-							n[0] = n[1] = n[2] = 0;
 							n0[0] = n0[1] = n0[2] = 0;
 							cxf[0] = cxf[1] = cxf[2] = 0;
 							vc[0] = vc[1] = vc[2] = 0;
@@ -1170,9 +1171,6 @@ namespace INMOST
 								ss = vec_dot_product(n0,nt,3);
 								if( ss ) ss /= fabs(ss);
 								at = sqrt(vec_dot_product(nt,nt,3))*ss;
-								//same as faces[j].Normal(n)
-								for(int q = 0; q < 3; ++q)
-									n[q] += nt[q];
 								//same as faces[j].Barycenter(x)
 								for(int q = 0; q < 3; ++q)
 									x[q] += at*(/*(v0[q]-cx[q])+*/(v1[q]-cxf[q])+(v2[q]-cxf[q]))/3.0;
@@ -1184,7 +1182,7 @@ namespace INMOST
 									x[q] = x[q]/a + cxf[q];
 							}
 							else for(int q = 0; q < 3; ++q) x[q] = cxf[q];
-							volp = vec_dot_product(x,n,3) / 3.0;
+							volp = vec_dot_product(x,n0,3) / 3.0;
 							vol += s*volp;
 						}
 						if( ornt )
@@ -1303,7 +1301,7 @@ namespace INMOST
 					}
 					real vol = 0, a, at, volp;
 					real x[3] = {0,0,0}, nt[3] = {0,0,0}, s;
-					real c[3] = {0,0,0}, n[3] = {0,0,0};
+					real c[3] = {0,0,0};
 					real n0[3] = {0,0,0}, ss;
 					real l1[3] = {0,0,0}, l2[3] = {0,0,0};
 					real cx[3] = {0,0,0}, cxf[3] = {0,0,0};
@@ -1319,7 +1317,6 @@ namespace INMOST
 							s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 						n0[0] = n0[1] = n0[2] = 0;
 						x[0] = x[1] = x[2] = 0;
-						n[0] = n[1] = n[2] = 0;
 						cxf[0] = cxf[1] = cxf[2] = 0;
 						vc[0] = vc[1] = vc[2] = 0;
 						a = 0;
@@ -1347,9 +1344,6 @@ namespace INMOST
 							ss = vec_dot_product(n0,nt,3);
 							if( ss ) ss /= fabs(ss);
 							at = sqrt(vec_dot_product(nt,nt,3))*ss;
-							//same as faces[j].Normal(n)
-							for(int q = 0; q < 3; ++q)
-								n[q] += nt[q];
 							//same as faces[j].Centroid(x)
 							for(int q = 0; q < 3; ++q)
 								x[q] += at*(/*(v0[q]-cxf[q])+*/(v1[q]-cxf[q])+(v2[q]-cxf[q]))/3.0;
@@ -1361,7 +1355,7 @@ namespace INMOST
 								x[q] = x[q]/a + cxf[q];
 						} else for(int q = 0; q < 3; ++q) x[q] = cxf[q];
 						vec_diff(x,cx,vc,3);
-						volp = vec_dot_product(vc,n,3) / 3.0;
+						volp = vec_dot_product(vc,n0,3) / 3.0;
 						for(int q = 0; q < 3; ++q)
 							c[q] += 0.75*(x[q]-cx[q])*s*volp; // x - base barycenter, cx - apex
 						vol += s*volp;
@@ -1456,14 +1450,13 @@ namespace INMOST
 		ElementArray<Node> p = getNodes();
 		if( p.size() <= 3 ) return true;
 		ElementArray<Node>::size_type i, s = p.size();
-		Storage::real v[2][3] = {{0,0,0},{0,0,0}};
-		vec_diff(p[1].Coords().data(),p[0].Coords().data(),v[0],3);
-		vec_diff(p[2].Coords().data(),p[0].Coords().data(),v[1],3);
-		vec_cross_product(v[0],v[1],v[1]);
-		for(i = 3; i < s; i++)
+		Storage::real c[3] = {0,0,0}, n[3] = {0,0,0}, v[3] = {0,0,0};
+		getAsFace()->Normal(n);
+		Centroid(c);
+		for(i = 0; i < s; i++)
 		{
-			vec_diff(p[i].Coords().data(),p[0].Coords().data(),v[0],3);
-			if( ::fabs(vec_dot_product(v[0],v[1],3)) > m->GetEpsilon() ) return false;
+			vec_diff(p[i].Coords().data(),c,v,3);
+			if( ::fabs(vec_dot_product(v,n,3)) > m->GetEpsilon() ) return false;
 		}
 		return true;
 	}
