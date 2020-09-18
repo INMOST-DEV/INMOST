@@ -1346,7 +1346,7 @@ namespace INMOST
 							for(int q = 0; q < 3; ++q)
 							{
 								x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
-								c[q] += at*nt[q]*(pow(v0[q]+v1[q],2)+pow(v1[q]+v2[q],2)+pow(v2[q]+v0[q],2))/24.0;
+								c[q] += s*nt[q]*(pow(v0[q]+v1[q],2)+pow(v1[q]+v2[q],2)+pow(v2[q]+v0[q],2))/24.0;
 							}
 							a += at;
 						}
