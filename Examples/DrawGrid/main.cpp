@@ -2055,14 +2055,14 @@ void draw_screen()
 					glPrintError();
 					if (!(drawedges == 2 || drawedges == 3))
 						draw_faces(clip_boundary,picked);
-					std::cout << "draw faces passed" << std::endl;
+					//~ std::cout << "draw faces passed" << std::endl;
 					glPrintError();
 					glColor4f(0.,0.,0.,1.); 
-					std::cout << "set color passed" << std::endl;
+					//~ std::cout << "set color passed" << std::endl;
 					glPrintError();
 					if (drawedges && drawedges != 2) 
 						draw_edges(clip_boundary, picked);
-					std::cout << "draw edges passed" << std::endl;
+					//~ std::cout << "draw edges passed" << std::endl;
 					glPrintError();
 				}
 			}

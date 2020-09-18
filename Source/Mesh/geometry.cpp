@@ -1079,27 +1079,28 @@ namespace INMOST
 						if( nodes.size() > 2 )
 						{
 							*ret = 0;
-							real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0},n0[3] = {0,0,0}, cxf[3] = {0,0,0}, ss, at;
-							real_array v1, v2;
-							Element(this,e)->Centroid(cxf);
-							for(int i = 0; i < (int)nodes.size(); i++)
+							real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0},n0[3] = {0,0,0}, ss, at;
+							real_array v0, v1, v2;
+							v0 = nodes[0].Coords();
+							for(int i = 1; i < (int)nodes.size()-1; i++)
 							{
 								v1 = nodes[i].Coords();
-								v2 = nodes[(i+1)%nodes.size()].Coords();
-								vec_diff(v1,cxf,l1,mdim);
-								vec_diff(v2,cxf,l2,mdim);
+								v2 = nodes[i+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
 								vec_cross_product(l1,l2,nt);
 								for(int q = 0; q < 3; ++q)
 									n0[q] += nt[q]*0.5;
 							}
-							//*ret = vec_len(n0,3);
+							*ret = vec_len(n0,3);
 							//code below is not really needed
-							for(int i = 0; i < (int)nodes.size(); i++)
+							/*
+							for(int i = 1; i < (int)nodes.size()-1; i++)
 							{
 								v1 = nodes[i].Coords();
-								v2 = nodes[(i+1)%nodes.size()].Coords();
-								vec_diff(v1,cxf,l1,mdim);
-								vec_diff(v2,cxf,l2,mdim);
+								v2 = nodes[i+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
 								vec_cross_product(l1,l2,nt);
 								for(int q = 0; q < 3; ++q) 
 									nt[q] *= 0.5;
@@ -1108,6 +1109,7 @@ namespace INMOST
 								at = sqrt(vec_dot_product(nt,nt,3))*ss;
 								*ret += at;
 							}
+							*/
 							if( *ret != *ret ) std::cout << "area is nan" << std::endl;
 							*ret = fabs(*ret);
 						} else *ret = 0;
@@ -1130,7 +1132,7 @@ namespace INMOST
 						real vol = 0, a, at, volp;
 						real x[3] = {0,0,0}, n0[3] = {0,0,0}, s, ss;
 						real l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real nt[3] = {0,0,0}, cxf[3] = {0,0,0};
+						real nt[3] = {0,0,0};
 						real vc[3] = {0,0,0};
 						//me.Centroid(cx);
 						//if( print ) std::cout << "cx: " << cx[0] << " " << cx[1] << " " << cx[2] << std::endl;
@@ -1144,44 +1146,43 @@ namespace INMOST
 								s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 							x[0] = x[1] = x[2] = 0;
 							n0[0] = n0[1] = n0[2] = 0;
-							cxf[0] = cxf[1] = cxf[2] = 0;
 							vc[0] = vc[1] = vc[2] = 0;
 							a = 0;
-							real_array /*v0 = nodes[0].Coords(),*/ v1, v2;
-							faces[j].Centroid(cxf);
-							for(int i = 0; i < (int)nodes.size(); i++)
+							real_array v0 = nodes[0].Coords(), v1, v2;
+							for(int i = 1; i < (int)nodes.size()-1; i++)
 							{
 								v1 = nodes[i].Coords();
-								v2 = nodes[(i+1)%nodes.size()].Coords();
-								vec_diff(v1,cxf,l1,mdim);
-								vec_diff(v2,cxf,l2,mdim);
+								v2 = nodes[i+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
 								vec_cross_product(l1,l2,nt);
 								for(int q = 0; q < 3; ++q)
 									n0[q] += nt[q]*0.5;
 							}
-							for(int k = 0; k < (int)nodes.size(); k++)
+							for(int i = 1; i < (int)nodes.size()-1; i++)
 							{
-								v1 = nodes[k].Coords();
-								v2 = nodes[(k+1)%nodes.size()].Coords();
-								vec_diff(v1,cxf,l1,mdim);
-								vec_diff(v2,cxf,l2,mdim);
+								v1 = nodes[i].Coords();
+								v2 = nodes[i+1].Coords();
+								vec_diff(v1,v0,l1,mdim);
+								vec_diff(v2,v0,l2,mdim);
 								vec_cross_product(l1,l2,nt);
 								for(int q = 0; q < 3; ++q) 
 									nt[q] *= 0.5;
 								ss = vec_dot_product(n0,nt,3);
-								if( ss ) ss /= fabs(ss);
+								if( ss ) 
+									ss /= fabs(ss);
 								at = sqrt(vec_dot_product(nt,nt,3))*ss;
 								//same as faces[j].Barycenter(x)
 								for(int q = 0; q < 3; ++q)
-									x[q] += at*(/*(v0[q]-cx[q])+*/(v1[q]-cxf[q])+(v2[q]-cxf[q]))/3.0;
+									x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
 								a += at;
 							}
 							if( a )
 							{
 								for(int q = 0; q < 3; ++q) 
-									x[q] = x[q]/a + cxf[q];
+									x[q] = x[q]/a;
 							}
-							else for(int q = 0; q < 3; ++q) x[q] = cxf[q];
+							else Element(this,e).Centroid(x);
 							volp = vec_dot_product(x,n0,3) / 3.0;
 							vol += s*volp;
 						}
@@ -1251,26 +1252,25 @@ namespace INMOST
 					{
 						*ret = 0;
 						real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss, cxf[3] = {0,0,0};
+						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss;
 						real_array v0 = nodes[0].Coords(), v1, v2;
-						Element(this,e).Centroid(cxf);
-						for(int i = 0; i < (int)nodes.size(); i++)
+						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
 							v1 = nodes[i].Coords();
-							v2 = nodes[(i+1)%nodes.size()].Coords();
-							vec_diff(v1,cxf,l1,mdim);
-							vec_diff(v2,cxf,l2,mdim);
+							v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
 							vec_cross_product(l1,l2,nt);
 							for(int q = 0; q < 3; ++q)
 								n0[q] += nt[q]*0.5;
 						}
 						real a = 0, at;
-						for(int i = 0; i < (int)nodes.size(); i++)
+						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
-							real_array v1 = nodes[i].Coords();
-							real_array v2 = nodes[(i+1)%nodes.size()].Coords();
-							vec_diff(v1,cxf,l1,mdim);
-							vec_diff(v2,cxf,l2,mdim);
+							v1 = nodes[i].Coords();
+							v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
 							vec_cross_product(l1,l2,nt);
 							for(int q = 0; q < 3; ++q) 
 								nt[q] *= 0.5;
@@ -1278,14 +1278,15 @@ namespace INMOST
 							if( ss ) ss /= fabs(ss);
 							at = sqrt(vec_dot_product(nt,nt,3))*ss;
 							for(int q = 0; q < mdim; ++q)
-								c[q] += at*(/*(v0[q]-cxf[q])+*/(v1[q]-cxf[q])+(v2[q]-cxf[q]))/3.0;
+								c[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
 							a += at;
 						}
 						if( a )
 						{
 							for(int q = 0; q < mdim; ++q) 
-								ret[q] = c[q]/a+cxf[q];
-						} else for(int q = 0; q < mdim; ++q) ret[q] = cxf[q];
+								ret[q] = c[q]/a;
+						} 
+						else Element(this,e).Centroid(ret);
 					}
 				}
 				else if( edim == 3 )
@@ -1304,9 +1305,7 @@ namespace INMOST
 					real c[3] = {0,0,0};
 					real n0[3] = {0,0,0}, ss;
 					real l1[3] = {0,0,0}, l2[3] = {0,0,0};
-					real cx[3] = {0,0,0}, cxf[3] = {0,0,0};
 					real vc[3] = {0,0,0};
-					me.Centroid(cx);
 					for(unsigned j = 0; j < faces.size(); j++)
 					{
 						//compute normal to face
@@ -1317,47 +1316,48 @@ namespace INMOST
 							s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 						n0[0] = n0[1] = n0[2] = 0;
 						x[0] = x[1] = x[2] = 0;
-						cxf[0] = cxf[1] = cxf[2] = 0;
 						vc[0] = vc[1] = vc[2] = 0;
 						a = 0;
-						real_array /*v0 = nodes[0].Coords(),*/ v1, v2;
-						faces[j].Centroid(cxf);
-						for(int i = 0; i < (int)nodes.size(); i++)
+						real_array v0 = nodes[0].Coords(), v1, v2;
+						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
 							v1 = nodes[i].Coords();
-							v2 = nodes[(i+1)%nodes.size()].Coords();
-							vec_diff(v1,cxf,l1,mdim);
-							vec_diff(v2,cxf,l2,mdim);
+							v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
 							vec_cross_product(l1,l2,nt);
 							for(int q = 0; q < 3; ++q)
 								n0[q] += nt[q]*0.5;
 						}
-						for(int i = 0; i < (int)nodes.size(); i++)
+						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
-							real_array v1 = nodes[i].Coords();
-							real_array v2 = nodes[(i+1)%nodes.size()].Coords();
-							vec_diff(v1,cxf,l1,mdim);
-							vec_diff(v2,cxf,l2,mdim);
+							v1 = nodes[i].Coords();
+							v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
 							vec_cross_product(l1,l2,nt);
 							for(int q = 0; q < 3; ++q)
 								nt[q] *= 0.5;
 							ss = vec_dot_product(n0,nt,3);
-							if( ss ) ss /= fabs(ss);
+							if( ss ) 
+								ss /= fabs(ss);
 							at = sqrt(vec_dot_product(nt,nt,3))*ss;
 							//same as faces[j].Centroid(x)
 							for(int q = 0; q < 3; ++q)
-								x[q] += at*(/*(v0[q]-cxf[q])+*/(v1[q]-cxf[q])+(v2[q]-cxf[q]))/3.0;
+							{
+								x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+								c[q] += at*nt[q]*(pow(v0[q]+v1[q],2)+pow(v1[q]+v2[q],2)+pow(v2[q]+v0[q],2))/24.0;
+							}
 							a += at;
 						}
 						if( a )
 						{
 							for(int q = 0; q < 3; ++q) 
-								x[q] = x[q]/a + cxf[q];
-						} else for(int q = 0; q < 3; ++q) x[q] = cxf[q];
-						vec_diff(x,cx,vc,3);
-						volp = vec_dot_product(vc,n0,3) / 3.0;
-						for(int q = 0; q < 3; ++q)
-							c[q] += 0.75*(x[q]-cx[q])*s*volp; // x - base barycenter, cx - apex
+								x[q] = x[q]/a;
+						} else faces[j].Centroid(x);
+						volp = vec_dot_product(x,n0,3) / 3.0;
+						//~ for(int q = 0; q < 3; ++q)
+							//~ c[q] += 0.75*(x[q]-cx[q])*s*volp; // x - base barycenter, cx - apex
 						vol += s*volp;
 					}
 					if( ornt )
@@ -1374,9 +1374,9 @@ namespace INMOST
 					if( vol ) 
 					{
 						for(int q = 0; q < mdim; ++q)
-							ret[q] = c[q]/(vol) + cx[q];
+							ret[q] = c[q]/vol;// + cx[q];
 					}
-					else for(int q = 0; q < mdim; ++q) ret[q] = cx[q];
+					else me.Centroid(ret);//for(int q = 0; q < mdim; ++q) ret[q] = cx[q];
 					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
 				}
 			}
@@ -1394,15 +1394,14 @@ namespace INMOST
 					{
 						ElementArray<Node> nodes = Element(this,e)->getNodes();
 						real n[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real nt[3] = {0,0,0}, cxf[3] = {0,0,0};
+						real nt[3] = {0,0,0};
 						real_array v0 = nodes[0].Coords();
-						Element(this,e)->Centroid(cxf);
-						for(int i = 0; i < (int)nodes.size(); i++)
+						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
 							real_array v1 = nodes[i].Coords();
-							real_array v2 = nodes[(i+1)%nodes.size()].Coords();
-							vec_diff(v1,cxf,l1,mdim);
-							vec_diff(v2,cxf,l2,mdim);
+							real_array v2 = nodes[i+1].Coords();
+							vec_diff(v1,v0,l1,mdim);
+							vec_diff(v2,v0,l2,mdim);
 							vec_cross_product(l1,l2,nt);
 							for(int q = 0; q < 3; ++q)
 								n[q] += nt[q]*0.5;
@@ -1447,17 +1446,45 @@ namespace INMOST
 		Mesh * m = GetMeshLink();
 		integer dim = m->GetDimensions();
 		if( dim < 3 ) return true;
-		ElementArray<Node> p = getNodes();
-		if( p.size() <= 3 ) return true;
-		ElementArray<Node>::size_type i, s = p.size();
+		ElementArray<Node> nodes = getNodes();
+		if( nodes.size() <= 3 ) return true;
+		/*
+		ElementArray<Node>::size_type i, s = nodes.size();
 		Storage::real c[3] = {0,0,0}, n[3] = {0,0,0}, v[3] = {0,0,0};
 		getAsFace()->Normal(n);
 		Centroid(c);
 		for(i = 0; i < s; i++)
 		{
-			vec_diff(p[i].Coords().data(),c,v,3);
+			vec_diff(nodes[i].Coords().data(),c,v,3);
 			if( ::fabs(vec_dot_product(v,n,3)) > m->GetEpsilon() ) return false;
 		}
+		*/
+		double l1[3] = {0,0,0}, l2[3] = {0,0,0}, nt[3] = {0,0,0}, n0[3] = {0,0,0};
+		real_array v0, v1, v2;
+		v0 = nodes[0].Coords();
+		for(int i = 1; i < (int)nodes.size()-1; i++)
+		{
+			v1 = nodes[i].Coords();
+			v2 = nodes[i+1].Coords();
+			vec_diff(v1,v0,l1,dim);
+			vec_diff(v2,v0,l2,dim);
+			vec_cross_product(l1,l2,nt);
+			for(int q = 0; q < 3; ++q)
+				n0[q] += nt[q]*0.5;
+		}
+		vec_normalize(n0,3);
+		for(int i = 1; i < (int)nodes.size()-1; i++)
+		{
+			v1 = nodes[i].Coords();
+			v2 = nodes[i+1].Coords();
+			vec_diff(v1,v0,l1,dim);
+			vec_diff(v2,v0,l2,dim);
+			vec_cross_product(l1,l2,nt);
+			vec_normalize(nt,3);
+			if( fabs(fabs(vec_dot_product(n0,nt,3))-1) > m->GetEpsilon() ) 
+				return false;
+		}
+		
 		return true;
 	}
 

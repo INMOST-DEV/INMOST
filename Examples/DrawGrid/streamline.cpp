@@ -153,7 +153,7 @@ namespace INMOST
 			MarkerType visited = mesh->CreateMarker();
 			int tot = 0;
 			int k = 0;
-			/*
+			
 			printf("started building streamlines from boundary elements\n");
 			
 			for (Mesh::iteratorElement f = mesh->BeginElement(vel_def); f != mesh->EndElement(); ++f) if (f->Boundary())
@@ -215,7 +215,7 @@ namespace INMOST
 			}
 
 			printf("done from boundary faces, total streamlines = %lu\n", output.size());
-			 */
+			 
 
 			printf("started building streamlines from unvisited cells\n");
 			tot = 0;
