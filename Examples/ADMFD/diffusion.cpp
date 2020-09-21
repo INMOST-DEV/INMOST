@@ -97,18 +97,18 @@ int main(int argc,char ** argv)
         }
 #endif
 
-        { // prepare geometrical data on the mesh
-            ttt = Timer();
-            Mesh::GeomParam table;
-            table[CENTROID]    = CELL | FACE; //Compute averaged center of mass
-            table[NORMAL]      = FACE;        //Compute normals
-            table[ORIENTATION] = FACE;        //Check and fix normal orientation
-            table[MEASURE]     = CELL | FACE; //Compute volumes and areas
-            table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
-            m->PrepareGeometricData(table); //Ask to precompute the data
-            BARRIER
-            if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
-        }
+        //{ // prepare geometrical data on the mesh
+		ttt = Timer();
+		Mesh::GeomParam table;
+		//~ table[CENTROID]    = CELL | FACE; //Compute averaged center of mass
+		table[NORMAL]      = FACE;        //Compute normals
+		table[ORIENTATION] = FACE;        //Check and fix normal orientation
+		table[MEASURE]     = CELL | FACE; //Compute volumes and areas
+		table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
+		m->PrepareGeometricData(table); //Ask to precompute the data
+		BARRIER
+		if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
+        //}
 
         // data tags for
         Tag tag_P;  // Pressure
@@ -136,18 +136,18 @@ int main(int argc,char ** argv)
 
             if( !tag_K.isValid() || !tag_K.isDefined(CELL) ) // diffusion tensor was not initialized or was not defined on cells.
             {
-                tag_K = m->CreateTag("PERM",DATA_REAL,CELL,NONE,6); // create a new tag for symmetric diffusion tensor K
+                tag_K = m->CreateTag("PERM",DATA_REAL,CELL,NONE,1); // create a new tag for symmetric diffusion tensor K
                 for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) ) // loop over mesh cells
                 {
                     Cell cell = m->CellByLocalID(q);
                     real_array K = cell->RealArray(tag_K);
                     // assign a symmetric positive definite tensor K
                     K[0] = 1.0; //XX
-                    K[1] = 0.0; //XY
-                    K[2] = 0.0; //XZ
-                    K[3] = 1.0; //YY
-                    K[4] = 0.0; //YZ
-                    K[5] = 1.0; //ZZ
+                    //~ K[1] = 0.0; //XY
+                    //~ K[2] = 0.0; //XZ
+                    //~ K[3] = 1.0; //YY
+                    //~ K[4] = 0.0; //YZ
+                    //~ K[5] = 1.0; //ZZ
                 }
 
                 m->ExchangeData(tag_K,CELL,0); //Exchange diffusion tensor
@@ -572,6 +572,12 @@ int main(int argc,char ** argv)
             }
             else std::cout << "Reference solution was not defined on faces" << std::endl;
         }
+        
+        tag_W = m->DeleteTag(tag_W);
+        tag_WG = m->DeleteTag(tag_WG);
+        tag_K = m->DeleteTag(tag_K);
+        tag_BC = m->DeleteTag(tag_BC);
+        m->RemoveGeometricData(table);
 
         if( m->GetProcessorsNumber() == 1 )
             m->Save("out.vtk");

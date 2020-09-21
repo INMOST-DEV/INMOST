@@ -26,6 +26,19 @@ namespace INMOST
 		gluCylinder(cylqs, width, width, sqrt((b - a) ^ (b - a)), 4, 2);
 		glPopMatrix();
 	}
+	
+	void Vectors::InitArrow()
+	{
+		quadObj = gluNewQuadric ();
+		gluQuadricDrawStyle ((GLUquadricObj*)quadObj, GLU_FILL);
+		gluQuadricOrientation((GLUquadricObj*)quadObj, GLU_OUTSIDE);
+		gluQuadricNormals ((GLUquadricObj*)quadObj, GLU_SMOOTH);			
+	}
+	
+	void Vectors::DeleteArrow()
+	{
+		gluDeleteQuadric((GLUquadricObj*)quadObj);
+	}
 
 	Vectors::Vectors(Mesh * m, TagRealArray t, ElementType etype) : m(m), etype(etype)
 	{
@@ -64,14 +77,52 @@ namespace INMOST
 		}
 		scale = diag/100.0;
 		std::cout << "scale: " << scale << std::endl;
+		InitArrow();
+	}
+	
+	void Vectors::DrawArrow(const coord & v1, const coord & v2) const
+	{
+		double matrix[16];
+		double x=v2[0]-v1[0];
+		double y=v2[1]-v1[1];
+		double z=v2[2]-v1[2];
+		double L=sqrt(x*x+y*y+z*z);
+		double D = 0.025*L;
+
+
+		glPushMatrix ();
+
+		glTranslated(v1[0],v1[1],v1[2]);
+		get_matrix(v1, v2, matrix);
+		glMultMatrixd(matrix);
+
+		int res = 4;
+
+		glTranslated(0,0,L-6*D);
+
+		//arrow
+		gluCylinder((GLUquadricObj*)quadObj, 3*D, 0.0, 6*D, res, 1);
+		gluDisk((GLUquadricObj*)quadObj, 0.0, 3*D, res, 1);
+		
+		glTranslated(0,0,-L+6*D);
+
+		//cylinder
+		gluCylinder((GLUquadricObj*)quadObj, D, D, L-6*D, res, 1);
+		gluDisk((GLUquadricObj*)quadObj, 0.0, D, res, 1);
+		
+		glPopMatrix ();
+
 	}
 	
 	void Vectors::Draw(int reduced)
 	{
-		glBegin(GL_LINES);
+		glColor3f(0.25,0.25,0.25);
+		
 		int pace = 1;
 		if( reduced )
+		{
 			pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)vecs.size()/100));
+			glBegin(GL_LINES);
 			for (unsigned int i = 0; i < vecs.size(); i+=pace)
 			{
 				if (isColorBarEnabled())
@@ -82,7 +133,20 @@ namespace INMOST
 				glVertex3dv(vecs[i].cnt.data());
 				glVertex3dv((vecs[i].cnt+vecs[i].dir*scale*vecs[i].length/max_length).data());
 			}
-		glEnd();
+			glEnd();
+		}
+		else
+		{
+			for (unsigned int i = 0; i < vecs.size(); ++i)
+			{
+				if (isColorBarEnabled())
+				{
+					color_t c = GetColorBar()->pick_color(m->ElementByLocalID(etype,vecs[i].eid)->RealDF(GetVisualizationTag()));
+					c.set_color();
+				}
+				DrawArrow(vecs[i].cnt, vecs[i].cnt+vecs[i].dir*scale*vecs[i].length/max_length);
+			}
+		}
 	}
 
 

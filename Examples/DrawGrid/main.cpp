@@ -2005,12 +2005,12 @@ void draw_screen()
 
 
 				if( current_picker != NULL ) {delete current_picker; current_picker = NULL;}
-				if( !clip_boundary.empty() ) current_picker = new picker(clip_boundary);
+				if( pick_element && !clip_boundary.empty() ) current_picker = new picker(clip_boundary);
 			}
 
 			
 
-			if( current_picker != NULL )
+			if( pick_element && current_picker != NULL )
 			{
 				pick_mouse(pickp,pickd);
 				picked = current_picker->select(pickp,pickd);
@@ -2054,14 +2054,14 @@ void draw_screen()
 				{
 					glPrintError();
 					if (!(drawedges == 2 || drawedges == 3))
-						draw_faces(clip_boundary,picked);
+						draw_faces(clip_boundary, pick_element ? picked : -1);
 					//~ std::cout << "draw faces passed" << std::endl;
 					glPrintError();
 					glColor4f(0.,0.,0.,1.); 
 					//~ std::cout << "set color passed" << std::endl;
 					glPrintError();
 					if (drawedges && drawedges != 2) 
-						draw_edges(clip_boundary, picked);
+						draw_edges(clip_boundary, pick_element ? picked : -1);
 					//~ std::cout << "draw edges passed" << std::endl;
 					glPrintError();
 				}

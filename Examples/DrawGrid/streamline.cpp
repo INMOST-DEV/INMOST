@@ -163,6 +163,11 @@ namespace INMOST
 			
 			for (Mesh::iteratorElement f = mesh->BeginElement(vel_def); f != mesh->EndElement(); ++f) if (f->Boundary())
 			{
+				if( k % 5 != 0 ) //every tenth face!
+				{
+					k++;
+					continue;
+				}
 				coord v(f->RealArray(vel).data());
 				if (v.length() > 1.0e-4)
 				{
@@ -216,11 +221,12 @@ namespace INMOST
 
 			printf("done from boundary faces, total streamlines = %lu\n", output.size());
 			 
-
+			
 			printf("started building streamlines from unvisited cells\n");
 			tot = 0;
 			for (Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
 				if (!it->GetMarker(visited)) tot++;
+			/*
 
 			printf("total elements: %d\n", tot);
 			k = 0;
@@ -244,8 +250,9 @@ namespace INMOST
 				}
 			}
 			printf("done from unvisited cells, total streamlines = %lu\n", output.size());
-
+			*/
 			mesh->ReleaseMarker(visited,vel_def);
+			
 
 		}
 		mesh->DeleteTag(cell_size);
@@ -283,7 +290,7 @@ namespace INMOST
 			c.SetMarker(visited);
 			GetVelocity(c, velocity_tag, velocity_defined, next, vel);
 			len = vel.length();
-			if (len < 1.0e-12) break;
+			if (len < 1.0e-7) break;
 			//size = GetSize(c, cell_size);// c->RealDF(cell_size);
 			size = GetSizeProj(c,vel);
 			coef = 0.01*size / len;
@@ -310,7 +317,7 @@ namespace INMOST
 		glTranslated(a[0], a[1], a[2]);
 		get_matrix(a, b, matrix);
 		glMultMatrixd(matrix);
-		gluCylinder(cylqs, width, width, sqrt((b - a) ^ (b - a)), 4, 2);
+		gluCylinder(cylqs, width, width, sqrt((b - a) ^ (b - a)), 4, 1);
 		glPopMatrix();
 	}
 
@@ -331,7 +338,7 @@ namespace INMOST
 		else for (unsigned int i = 0; i < points.size() - 1; i++)
 		{
 			glColor3f(velarr[i + 1] * 0.65, 0.65*(velarr[i + 1] < 0.5 ? velarr[i] : 1.0 - velarr[i]), 0.65*(1 - velarr[i + 1]));
-			drawcylinder(points[i], points[i + 1], 0.5*abs(points[i + 1] - points[i]));
+			drawcylinder(points[i], points[i + 1], 0.2*abs(points[i + 1] - points[i]));
 		}
 	}
 
