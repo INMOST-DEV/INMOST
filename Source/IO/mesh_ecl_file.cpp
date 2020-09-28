@@ -106,62 +106,65 @@
 #define ECL_PERMX 8
 #define ECL_PERMY 9
 #define ECL_PERMZ 10
-#define ECL_PORO 11
-#define ECL_MAPAXIS 12
-#define ECL_INRAD 13
-#define ECL_COORDS 14
-#define ECL_ZCORN 15
-#define ECL_ACTNUM 16
-#define ECL_SATNUM 17
-#define ECL_THCONR 18
-#define ECL_MULTIPLY 19
-#define ECL_MULTIPLY_MUL 20
-#define ECL_MULTIPLY_BLK 21
-#define ECL_EDITNNC 22
-#define ECL_EDITNNC_BLK 23
-#define ECL_EDITNNC_MUL 24
-#define ECL_NTG 25
-#define ECL_FAULTS 26
-#define ECL_FAULTS_BLK 27
-#define ECL_FAULTS_DIR 28
-#define ECL_MULTFLT 29
-#define ECL_MULTFLT_MUL 30
-#define ECL_PRESSURE 31
-#define ECL_SWAT 32
-#define ECL_SOIL 33
-#define ECL_SGAS 34
-#define ECL_PBUB 35
-#define ECL_EQLNUM 36
-#define ECL_ROCKNUM 37
-#define ECL_PVTNUM 38
-#define ECL_COMPDAT 39
-#define ECL_COMPDAT_BLK 40
-#define ECL_COMPDAT_OPEN 41
-#define ECL_COMPDAT_SATNUM 42
-#define ECL_COMPDAT_TRANS 43
-#define ECL_COMPDAT_BORE 44
-#define ECL_COMPDAT_PERM 45
-#define ECL_COMPDAT_SKIN 46
-#define ECL_COMPDAT_DFAC 47
-#define ECL_COMPDAT_DIR 48
-#define ECL_COMPDAT_RAD 49
-#define ECL_DATES 50
-#define ECL_DATES_MON 51
-#define ECL_DATES_YEAR 52
-#define ECL_DATES_HRS 53
-#define ECL_WELSPECS 54
-#define ECL_WELSPECS_GROUP 55
-#define ECL_WELSPECS_I 56
-#define ECL_WELSPECS_J 57
-#define ECL_WELSPECS_Z 58
-#define ECL_WELSPECS_PHASE 59
-#define ECL_TSTEP 60
-#define ECL_WCONPRODINJE 61
-#define ECL_WCONPRODINJE_TYPE 62
-#define ECL_WCONPRODINJE_OPEN 63
-#define ECL_WCONPRODINJE_CTRL 64
-#define ECL_WCONPRODINJE_RATES 65
-#define ECL_WCONPRODINJE_BHP 66
+#define ECL_PERMXY 11
+#define ECL_PERMXZ 12
+#define ECL_PERMYZ 13
+#define ECL_PORO 14
+#define ECL_MAPAXIS 15
+#define ECL_INRAD 16
+#define ECL_COORDS 17
+#define ECL_ZCORN 18
+#define ECL_ACTNUM 19
+#define ECL_SATNUM 20
+#define ECL_THCONR 21
+#define ECL_MULTIPLY 22
+#define ECL_MULTIPLY_MUL 23
+#define ECL_MULTIPLY_BLK 24
+#define ECL_EDITNNC 25
+#define ECL_EDITNNC_BLK 26
+#define ECL_EDITNNC_MUL 27
+#define ECL_NTG 28
+#define ECL_FAULTS 29
+#define ECL_FAULTS_BLK 30
+#define ECL_FAULTS_DIR 31
+#define ECL_MULTFLT 32
+#define ECL_MULTFLT_MUL 33
+#define ECL_PRESSURE 34
+#define ECL_SWAT 35
+#define ECL_SOIL 36
+#define ECL_SGAS 37
+#define ECL_PBUB 38
+#define ECL_EQLNUM 39
+#define ECL_ROCKNUM 40
+#define ECL_PVTNUM 41
+#define ECL_COMPDAT 42
+#define ECL_COMPDAT_BLK 43
+#define ECL_COMPDAT_OPEN 44
+#define ECL_COMPDAT_SATNUM 45
+#define ECL_COMPDAT_TRANS 46
+#define ECL_COMPDAT_BORE 47
+#define ECL_COMPDAT_PERM 48
+#define ECL_COMPDAT_SKIN 49
+#define ECL_COMPDAT_DFAC 50
+#define ECL_COMPDAT_DIR 51
+#define ECL_COMPDAT_RAD 52
+#define ECL_DATES 53
+#define ECL_DATES_MON 54
+#define ECL_DATES_YEAR 55
+#define ECL_DATES_HRS 56
+#define ECL_WELSPECS 57
+#define ECL_WELSPECS_GROUP 58
+#define ECL_WELSPECS_I 59
+#define ECL_WELSPECS_J 60
+#define ECL_WELSPECS_Z 61
+#define ECL_WELSPECS_PHASE 62
+#define ECL_TSTEP 63
+#define ECL_WCONPRODINJE 64
+#define ECL_WCONPRODINJE_TYPE 65
+#define ECL_WCONPRODINJE_OPEN 66
+#define ECL_WCONPRODINJE_CTRL 67
+#define ECL_WCONPRODINJE_RATES 68
+#define ECL_WCONPRODINJE_BHP 69
 
 
 #define ECL_GTYPE_NONE 0
@@ -186,6 +189,9 @@
 #define HAVE_PERM_X 1
 #define HAVE_PERM_Y 2
 #define HAVE_PERM_Z 4
+#define HAVE_PERM_XY 8
+#define HAVE_PERM_XZ 16
+#define HAVE_PERM_YZ 32
 
 
 
@@ -1453,40 +1459,76 @@ namespace INMOST
 						offset = state = ECL_TOPS;
 						gtype = ECL_GTYPE_TOPS;
 					}
-					else if (!ECLSTRCMP(pupper, "PERMX"))
+					else if (!ECLSTRCMP(pupper, "PERMX") || !ECLSTRCMP(pupper, "PERMXX"))
 					{
 						assert(have_dimens);
-						if (perm.empty()) perm.resize(3 * dims[0] * dims[1] * dims[2]);
+						if (perm.empty()) perm.resize(6 * dims[0] * dims[1] * dims[2]);
 						read_arrayf = perm.empty() ? NULL : &perm[0];
-						numrecs = 3;
+						numrecs = 6;
 						downread = totread = dims[0] * dims[1] * dims[2];
 						argtype = ECL_VAR_REAL;
 						offset = state = ECL_PERMX;
 						have_perm |= HAVE_PERM_X;
 					}
-					else if (!ECLSTRCMP(pupper, "PERMY"))
+					else if (!ECLSTRCMP(pupper, "PERMY") || !ECLSTRCMP(pupper, "PERMYY"))
 					{
 						assert(have_dimens);
-						if (perm.empty()) perm.resize(3 * dims[0] * dims[1] * dims[2]);
+						if (perm.empty()) perm.resize(6 * dims[0] * dims[1] * dims[2]);
 						read_arrayf = perm.empty() ? NULL : &perm[0];
-						numrecs = 3;
+						numrecs = 6;
 						downread = totread = dims[0] * dims[1] * dims[2];
 						argtype = ECL_VAR_REAL;
 						offset = ECL_PERMX;
 						state = ECL_PERMY;
 						have_perm |= HAVE_PERM_Y;
 					}
-					else if (!ECLSTRCMP(pupper, "PERMZ"))
+					else if (!ECLSTRCMP(pupper, "PERMZ") || !ECLSTRCMP(pupper, "PERMZZ"))
 					{
 						assert(have_dimens);
-						if (perm.empty()) perm.resize(3 * dims[0] * dims[1] * dims[2]);
+						if (perm.empty()) perm.resize(6 * dims[0] * dims[1] * dims[2]);
 						read_arrayf = perm.empty() ? NULL : &perm[0];
-						numrecs = 3;
+						numrecs = 6;
 						downread = totread = dims[0] * dims[1] * dims[2];
 						argtype = ECL_VAR_REAL;
 						offset = ECL_PERMX;
 						state = ECL_PERMZ;
 						have_perm |= HAVE_PERM_Z;
+					}
+					else if (!ECLSTRCMP(pupper, "PERMXY") )
+					{
+						assert(have_dimens);
+						if (perm.empty()) perm.resize(6 * dims[0] * dims[1] * dims[2]);
+						read_arrayf = perm.empty() ? NULL : &perm[0];
+						numrecs = 6;
+						downread = totread = dims[0] * dims[1] * dims[2];
+						argtype = ECL_VAR_REAL;
+						offset = ECL_PERMX;
+						state = ECL_PERMXY;
+						have_perm |= HAVE_PERM_XY;
+					}
+					else if (!ECLSTRCMP(pupper, "PERMXZ") )
+					{
+						assert(have_dimens);
+						if (perm.empty()) perm.resize(6 * dims[0] * dims[1] * dims[2]);
+						read_arrayf = perm.empty() ? NULL : &perm[0];
+						numrecs = 6;
+						downread = totread = dims[0] * dims[1] * dims[2];
+						argtype = ECL_VAR_REAL;
+						offset = ECL_PERMX;
+						state = ECL_PERMXZ;
+						have_perm |= HAVE_PERM_XZ;
+					}
+					else if (!ECLSTRCMP(pupper, "PERMYZ") )
+					{
+						assert(have_dimens);
+						if (perm.empty()) perm.resize(6 * dims[0] * dims[1] * dims[2]);
+						read_arrayf = perm.empty() ? NULL : &perm[0];
+						numrecs = 6;
+						downread = totread = dims[0] * dims[1] * dims[2];
+						argtype = ECL_VAR_REAL;
+						offset = ECL_PERMX;
+						state = ECL_PERMYZ;
+						have_perm |= HAVE_PERM_YZ;
 					}
 					else if (!ECLSTRCMP(pupper, "PORO"))
 					{
@@ -1723,6 +1765,9 @@ namespace INMOST
 				case ECL_PERMX:
 				case ECL_PERMY:
 				case ECL_PERMZ:
+				case ECL_PERMXY:
+				case ECL_PERMXZ:
+				case ECL_PERMYZ:
 				case ECL_PORO:
 				case ECL_NTG:
 				case ECL_ACTNUM:
@@ -1950,8 +1995,11 @@ namespace INMOST
 							mult_cur.name == STR8("TRANZ"))
 							multiply_trans = true;
 						else if (mult_cur.name == STR8("PERMX") ||
+							mult_cur.name == STR8("PERMXX") ||
 							mult_cur.name == STR8("PERMY") ||
+							mult_cur.name == STR8("PERMYY") ||
 							mult_cur.name == STR8("PERMZ") ||
+							mult_cur.name == STR8("PERMZZ") ||
 							mult_cur.name == STR8("PORO") ||
 							mult_cur.name == STR8("THCONR") ||
 							mult_cur.name == STR8("NTG"))
@@ -2697,14 +2745,14 @@ namespace INMOST
 				for (int i = 0; i < dims[0]; ++i)
 				for (int j = 0; j < dims[1]; ++j)
 				for (int k = 0; k < dims[2]; ++k)
-					perm[3 * ECL_IJK_DATA(i, j, k) + 0] = perm[3 * ECL_IJK_DATA(i, j, k) + 1];
+					perm[6 * ECL_IJK_DATA(i, j, k) + 0] = perm[6 * ECL_IJK_DATA(i, j, k) + 1];
 			}
 			if (HAVE_PERM_Z & have_perm)
 			{
 				for (int i = 0; i < dims[0]; ++i)
 				for (int j = 0; j < dims[1]; ++j)
 				for (int k = 0; k < dims[2]; ++k)
-					perm[3 * ECL_IJK_DATA(i, j, k) + 0] = perm[3 * ECL_IJK_DATA(i, j, k) + 2];
+					perm[6 * ECL_IJK_DATA(i, j, k) + 0] = perm[6 * ECL_IJK_DATA(i, j, k) + 2];
 			}
 		}
 		if (!(HAVE_PERM_Y & have_perm))
@@ -2714,14 +2762,14 @@ namespace INMOST
 				for (int i = 0; i < dims[0]; ++i)
 				for (int j = 0; j < dims[1]; ++j)
 				for (int k = 0; k < dims[2]; ++k)
-					perm[3 * ECL_IJK_DATA(i, j, k) + 1] = perm[3 * ECL_IJK_DATA(i, j, k) + 0];
+					perm[6 * ECL_IJK_DATA(i, j, k) + 1] = perm[6 * ECL_IJK_DATA(i, j, k) + 0];
 			}
 			if (HAVE_PERM_Z & have_perm)
 			{
 				for (int i = 0; i < dims[0]; ++i)
 				for (int j = 0; j < dims[1]; ++j)
 				for (int k = 0; k < dims[2]; ++k)
-					perm[3 * ECL_IJK_DATA(i, j, k) + 1] = perm[3 * ECL_IJK_DATA(i, j, k) + 2];
+					perm[6 * ECL_IJK_DATA(i, j, k) + 1] = perm[6 * ECL_IJK_DATA(i, j, k) + 2];
 			}
 		}
 		if (!(HAVE_PERM_Z & have_perm))
@@ -2731,14 +2779,14 @@ namespace INMOST
 				for (int i = 0; i < dims[0]; ++i)
 				for (int j = 0; j < dims[1]; ++j)
 				for (int k = 0; k < dims[2]; ++k)
-					perm[3 * ECL_IJK_DATA(i, j, k) + 2] = perm[3 * ECL_IJK_DATA(i, j, k) + 0];
+					perm[6 * ECL_IJK_DATA(i, j, k) + 2] = perm[6 * ECL_IJK_DATA(i, j, k) + 0];
 			}
 			if (HAVE_PERM_Y & have_perm)
 			{
 				for (int i = 0; i < dims[0]; ++i)
 				for (int j = 0; j < dims[1]; ++j)
 				for (int k = 0; k < dims[2]; ++k)
-					perm[3 * ECL_IJK_DATA(i, j, k) + 2] = perm[3 * ECL_IJK_DATA(i, j, k) + 1];
+					perm[6 * ECL_IJK_DATA(i, j, k) + 2] = perm[6 * ECL_IJK_DATA(i, j, k) + 1];
 			}
 		}
 
@@ -4496,8 +4544,8 @@ namespace INMOST
 				if (verbosity > 0) std::cout << "Multiplying PERMX and PERMY" << std::endl;
 				for (int i = 0; i < dims[0] * dims[1] * dims[2]; ++i)
 				{
-					perm[i * 3 + 0] *= ntg[i];
-					perm[i * 3 + 1] *= ntg[i];
+					perm[i * 6 + 0] *= ntg[i];
+					perm[i * 6 + 1] *= ntg[i];
 				}
 			}
 			if (verbosity)
@@ -4538,28 +4586,52 @@ namespace INMOST
 									if (c1.isValid()) thconr[c1.Integer(cell_number) - 1] *= multiply[q].mult;
 								}
 							}
-							else if (multiply[q].name == STR8("PERMX"))
+							else if (multiply[q].name == STR8("PERMX") || multiply[q].name == STR8("PERMXX"))
 							{
 								if (!perm.empty())
 								{
 									Cell c1(this, blocks[ECL_IJK_DATA(i, j, k)]);
-									if (c1.isValid()) perm[3 * (c1.Integer(cell_number) - 1) + 0] *= multiply[q].mult;
+									if (c1.isValid()) perm[6 * (c1.Integer(cell_number) - 1) + 0] *= multiply[q].mult;
 								}
 							}
-							else if (multiply[q].name == STR8("PERMY"))
+							else if (multiply[q].name == STR8("PERMY") || multiply[q].name == STR8("PERMYY"))
 							{
 								if (!perm.empty())
 								{
 									Cell c1(this, blocks[ECL_IJK_DATA(i, j, k)]);
-									if (c1.isValid()) perm[3 * (c1.Integer(cell_number) - 1) + 1] *= multiply[q].mult;
+									if (c1.isValid()) perm[6 * (c1.Integer(cell_number) - 1) + 1] *= multiply[q].mult;
 								}
 							}
-							else if (multiply[q].name == STR8("PERMZ"))
+							else if (multiply[q].name == STR8("PERMZ") || multiply[q].name == STR8("PERMZZ"))
 							{
 								if (!perm.empty())
 								{
 									Cell c1(this, blocks[ECL_IJK_DATA(i, j, k)]);
-									if (c1.isValid()) perm[3 * (c1.Integer(cell_number) - 1) + 2] *= multiply[q].mult;
+									if (c1.isValid()) perm[6 * (c1.Integer(cell_number) - 1) + 2] *= multiply[q].mult;
+								}
+							}
+							else if (multiply[q].name == STR8("PERMXY"))
+							{
+								if (!perm.empty())
+								{
+									Cell c1(this, blocks[ECL_IJK_DATA(i, j, k)]);
+									if (c1.isValid()) perm[6 * (c1.Integer(cell_number) - 1) + 3] *= multiply[q].mult;
+								}
+							}
+							else if (multiply[q].name == STR8("PERMXZ"))
+							{
+								if (!perm.empty())
+								{
+									Cell c1(this, blocks[ECL_IJK_DATA(i, j, k)]);
+									if (c1.isValid()) perm[6 * (c1.Integer(cell_number) - 1) + 4] *= multiply[q].mult;
+								}
+							}
+							else if (multiply[q].name == STR8("PERMYZ"))
+							{
+								if (!perm.empty())
+								{
+									Cell c1(this, blocks[ECL_IJK_DATA(i, j, k)]);
+									if (c1.isValid()) perm[6 * (c1.Integer(cell_number) - 1) + 5] *= multiply[q].mult;
 								}
 							}
 							else if (multiply[q].name == STR8("NTG"))
@@ -4599,7 +4671,10 @@ namespace INMOST
 		if (!perm.empty())
 		{
 			if (verbosity > 0) std::cout << " PERM";
-			tagperm = CreateTag("PERM", DATA_REAL, CELL, NONE, project_perm ? 9 : 3);
+			if( have_perm & (HAVE_PERM_XY | HAVE_PERM_XZ | HAVE_PERM_YZ) )
+				tagperm = CreateTag("PERM", DATA_REAL, CELL, NONE, project_perm ? 9 : 6);
+			else
+				tagperm = CreateTag("PERM", DATA_REAL, CELL, NONE, project_perm ? 9 : 3);
 		}
 		if (!satnum.empty())
 		{
@@ -4696,9 +4771,16 @@ namespace INMOST
 									Sinv(r, r) = 0.0;
 							}
 							K.Zero();
-							K(0, 0) = perm[3 * q + 0];
-							K(1, 1) = perm[3 * q + 1];
-							K(2, 2) = perm[3 * q + 2];
+							K(0, 0) = perm[6 * q + 0];
+							K(1, 1) = perm[6 * q + 1];
+							K(2, 2) = perm[6 * q + 2];
+							
+							if( have_perm & (HAVE_PERM_XY | HAVE_PERM_XZ | HAVE_PERM_YZ) )
+							{
+								K(0,1) = K(1,0) = perm[6 * q + 3];
+								K(0,2) = K(2,0) = perm[6 * q + 4];
+								K(1,2) = K(2,1) = perm[6 * q + 5];
+							}
 							
 							//double norm1 = K.FrobeniusNorm();
 
@@ -4739,10 +4821,22 @@ namespace INMOST
 							arr_perm[8] = K(2, 2);
 						}
 						else
-						{
-							arr_perm[0] = perm[q * 3 + 0];
-							arr_perm[1] = perm[q * 3 + 1];
-							arr_perm[2] = perm[q * 3 + 2];
+						{	
+							if( have_perm & (HAVE_PERM_XY | HAVE_PERM_XZ | HAVE_PERM_YZ) )
+							{
+								arr_perm[0] = perm[q * 6 + 0];
+								arr_perm[1] = perm[q * 6 + 3];
+								arr_perm[2] = perm[q * 6 + 4];
+								arr_perm[3] = perm[q * 6 + 1];
+								arr_perm[4] = perm[q * 6 + 5];
+								arr_perm[5] = perm[q * 6 + 2];
+							}
+							else
+							{
+								arr_perm[0] = perm[q * 6 + 0];
+								arr_perm[1] = perm[q * 6 + 1];
+								arr_perm[2] = perm[q * 6 + 2];
+							}
 						}
 					}
 				}
@@ -4854,6 +4948,12 @@ namespace INMOST
 							else if (multiply[q].name == STR8("PERMX"));//skip
 							else if (multiply[q].name == STR8("PERMY"));//skip
 							else if (multiply[q].name == STR8("PERMZ"));//skip
+							else if (multiply[q].name == STR8("PERMXX"));//skip
+							else if (multiply[q].name == STR8("PERMYY"));//skip
+							else if (multiply[q].name == STR8("PERMZZ"));//skip
+							else if (multiply[q].name == STR8("PERMXY"));//skip
+							else if (multiply[q].name == STR8("PERMXZ"));//skip
+							else if (multiply[q].name == STR8("PERMYZ"));//skip
 							else if (multiply[q].name == STR8("NTG"));//skip
 							else if (multiply[q].name == STR8("TRANX") || multiply[q].name == STR8("TRANY") || multiply[q].name == STR8("TRANZ"))
 							{
@@ -5043,9 +5143,9 @@ namespace INMOST
 										{
 											if( !perm.empty() )
 											{
-												kx = perm[3 * ECL_IJK_DATA(i, j, k) + 0];
-												ky = perm[3 * ECL_IJK_DATA(i, j, k) + 1];
-												kz = perm[3 * ECL_IJK_DATA(i, j, k) + 2];
+												kx = perm[6 * ECL_IJK_DATA(i, j, k) + 0];
+												ky = perm[6 * ECL_IJK_DATA(i, j, k) + 1];
+												kz = perm[6 * ECL_IJK_DATA(i, j, k) + 2];
 											}
 											else std::cout << __FILE__ << ":" << __LINE__ << " PERM is required to calculate correct well index" << std::endl;
 											if (kt->dir == 'X')
