@@ -103,25 +103,26 @@ int main(int argc, char ** argv)
 		bb[*it] = 0;
 		if( fabs(n[0]-1) < 1.0e-3 && c[0] > 1.8+eps) // outflow
 		{
-			//~ bcp[*it] = 0;
-			bc[*it][0] = 0;
-			bc[*it][1] = 1;
-			bc[*it][2] = 0;
-			bc[*it][3] = 1;
-			bc[*it][4] = 0;
-			bc[*it][5] = 0;
-			bc[*it][6] = 0;
+			bcp[*it] = 0;
+			//~ bc[*it][0] = 0;
+			//~ bc[*it][1] = 1;
+			//~ bc[*it][2] = 0;
+			//~ bc[*it][3] = 1;
+			//~ bc[*it][4] = 0;
+			//~ bc[*it][5] = 0;
+			//~ bc[*it][6] = 0;
 		}
 		else if(  fabs(n[0]+1) < 1.0e-3 && c[0] < 0.0+eps) //inflow
 		{
 			bb[*it] = 1;
-			bc[*it][0] = 1;
-			bc[*it][1] = 0;
-			bc[*it][2] = 1;
-			bc[*it][3] = 0;
-			bc[*it][4] = 17.3 * c[1]*(3.0-c[1])/9.0 * 4.0 * (3.0 / 2.0); //parabolic profile with average of 17.3
-			bc[*it][5] = 0;
-			bc[*it][6] = 0;
+			bcp[*it] = 0.825;
+			//~ bc[*it][0] = 1;
+			//~ bc[*it][1] = 0;
+			//~ bc[*it][2] = 1;
+			//~ bc[*it][3] = 0;
+			//~ bc[*it][4] = 17.3 * c[1]*(3.0-c[1])/9.0 * 4.0 * (3.0 / 2.0); //parabolic profile with average of 17.3
+			//~ bc[*it][5] = 0;
+			//~ bc[*it][6] = 0;
 		}
 		else if( (fabs(n[1]-1) < 1.0e-3 && c[1] > 1.5-eps) || (fabs(n[2]-1) < 1.0e-3 && c[2] > 0.1-eps) || (fabs(n[2]+1) < 1.0e-3 && c[2] < 0.0+eps) ) //slip wall
 		{
