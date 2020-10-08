@@ -281,7 +281,7 @@ public:
             }
             // Compress row
             //row_compr
-            j = RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg) - 1];
+            j = k;//RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg) - 1];
             //find minimum value in row
             ldiag = 0;
             while (j != EOL)

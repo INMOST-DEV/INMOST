@@ -504,7 +504,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 		iu.set_interval_end(moend);
 		ilu[mobeg] = 0;
 		ir[mobeg] = 0;
-		if( verbosity )
+		if( verbosity > 1 )
 		{
 			std::cout << "Matrix overlap    " << mobeg << ".." << moend << std::endl;
 			std::cout << "Local vector part " << vlocbeg << ".." << vlocend << std::endl;
@@ -726,7 +726,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 			}
 			// Compress row
 			//row_compr
-			j = RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg)-1];
+			j = k;// RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg)-1];
 			//find minimum value in row
 			ldiag = 0;
 			while (j != EOL)
