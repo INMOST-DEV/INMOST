@@ -614,8 +614,6 @@ namespace INMOST
 		/// In parallel column indices of the matrix may span wider then
 		/// local row indices, to prevent any problem you can safely
 		/// set total size of the matrix as interval of the RowMerger.
-		/// For efficiency you should use RowMerger::SetNonlocal function
-		/// to provide information about non-local elements.
 		class RowMerger
 		{
 		public:
@@ -651,8 +649,6 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE IntervalBeg; ///< Begin of global interval of owned index interval
 			INMOST_DATA_ENUM_TYPE IntervalEnd;  ///< End of global interval of owned index interval
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
-			std::vector< INMOST_DATA_ENUM_TYPE > NonlocalPre; ///< List of global indices, that are to the left of owned index interval
-			std::vector< INMOST_DATA_ENUM_TYPE > NonlocalPost; ///< List of global indices, that are to the right of owned index interval
 			std::map< INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE > Nonlocal; ///< Additional space
 		public:
 			/// This function converts global index into local index.
@@ -663,12 +659,6 @@ namespace INMOST
 			/// @param pos Local index.
 			/// @return Global index.
 			INMOST_DATA_ENUM_TYPE UnmapIndex(INMOST_DATA_ENUM_TYPE pos) const;
-			/// This function provides information about additional non-local indices.
-			/// \warning
-			/// All contents of linked list will be lost.
-			/// @param Pre Non-local indices that go before IntervalBegin.
-			/// @param Post Non-local indices that follow IntervalEnd.
-			void SetNonlocal(const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post);
 			/// Default constructor without size specified.
 			RowMerger();
 			/// Constructor with size specified.
@@ -676,13 +666,6 @@ namespace INMOST
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
 			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
-			/// Constructor with size and non-local mapping specified.
-			/// @param interval_begin First index in linked list.
-			/// @param interval_end Last index in linked list.
-			/// @param Pre Nonlocal indices before First index in linked list.
-			/// @param Post Nonlocal indices after Last index in linked list.
-			/// @param Sorted Result should be sorted or not.
-			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool Sorted = true);
 			/// Destructor.
 			~RowMerger();
 			/// Resize linked list for new interval.
@@ -692,15 +675,6 @@ namespace INMOST
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
 			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
-			/// Resize linked list for new interval with non-local mapping.
-			/// \warning
-			/// All contents of linked list will be lost after resize.
-			/// @param interval_begin First index in linked list.
-			/// @param interval_end Last index in linked list.
-			/// @param Pre Nonlocal indices before First index in linked list.
-			/// @param Post Nonlocal indices after Last index in linked list.
-			/// @param Sorted Result should be sorted or not.
-			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool Sorted = true);
 #if defined(USE_SOLVER)
 			/// Constructor that gets sizes from the matrix, including non-local mapping.
 			/// @param A Matrix to get sizes from.

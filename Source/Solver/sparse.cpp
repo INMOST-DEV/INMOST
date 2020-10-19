@@ -116,19 +116,10 @@ namespace INMOST
 			LinkedList.begin()->first = EOL;
 		}
 
-		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool Sorted)
-				: Sorted(Sorted), Nonzeros(0), IntervalBeg(interval_begin), IntervalEnd(interval_end), NonlocalPre(Pre), NonlocalPost(Post), 
-				LinkedList(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin - Pre.size()), static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + Post.size() + 1), Row::make_entry(UNDEF, 0.0))
-		{
-			//assert(std::is_sorted(Pre.begin(),Pre.end()));
-			//assert(std::is_sorted(Post.begin(),Post.end()));
-			LinkedList.begin()->first = EOL;
-		}
-
 		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool _Sorted)
 		{
-			LinkedList.set_interval_beg(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin - NonlocalPre.size()));
-			LinkedList.set_interval_end(static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + 1 + NonlocalPost.size()));
+			LinkedList.set_interval_beg(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin));// - NonlocalPre.size()));
+			LinkedList.set_interval_end(static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + 1));// + NonlocalPost.size()));
 			IntervalBeg = interval_begin;
 			IntervalEnd = interval_end;
 			std::fill(LinkedList.begin(),LinkedList.end(),Row::make_entry(UNDEF,0.0));
@@ -138,13 +129,6 @@ namespace INMOST
 			Nonlocal.clear();
 		}
 
-		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post, bool _Sorted)
-		{
-			NonlocalPre = Pre;
-			NonlocalPost = Post;
-			Resize(interval_begin,interval_end,_Sorted);
-			Nonlocal.clear();
-		}
 #if defined(USE_SOLVER)
 		void RowMerger::Resize(const Matrix & A, bool _Sorted)
 		{
@@ -162,11 +146,6 @@ namespace INMOST
 					else if( ind >= mend ) Post.insert(ind);
 				}
 			}
-			//sort to prepare for binary search
-			NonlocalPre.clear();
-			NonlocalPre.insert(NonlocalPre.end(),Pre.begin(),Pre.end());
-			NonlocalPost.clear();
-			NonlocalPost.insert(NonlocalPost.end(),Post.begin(),Post.end());
 			Resize(mbeg,mend,_Sorted);
 			Nonlocal.clear();
 		}
@@ -179,41 +158,9 @@ namespace INMOST
 
 		RowMerger::~RowMerger() {}
 
-		void RowMerger::SetNonlocal(const std::vector<INMOST_DATA_ENUM_TYPE> & Pre, const std::vector<INMOST_DATA_ENUM_TYPE> & Post)
-		{
-			//assert(std::is_sorted(Pre.begin(),Pre.end()));
-			//assert(std::is_sorted(Post.begin(),Post.end()));
-			NonlocalPre = Pre;
-			NonlocalPost = Post;
-			Resize(IntervalBeg,IntervalEnd,Sorted);
-			Nonlocal.clear();
-		}
-
-
+		
 		INMOST_DATA_ENUM_TYPE RowMerger::MapIndex(INMOST_DATA_ENUM_TYPE pos) const
 		{
-			//~ if( pos < IntervalBeg )
-			//~ {
-				//~ //return ENUMUNDEF;
-				//~ //assert(!NonlocalPre.empty()); //there are indices provided
-				//~ std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPre.begin(),NonlocalPre.end(),pos);
-				//~ //assert(*search == pos); //is there such index?
-				//~ if( search != NonlocalPre.end() && *search == pos )
-					//~ return static_cast<INMOST_DATA_ENUM_TYPE>(IntervalBeg - NonlocalPre.size() + static_cast<INMOST_DATA_ENUM_TYPE>(search - NonlocalPre.begin()));
-				//~ else
-					//~ return ENUMUNDEF;
-			//~ }
-			//~ else if( pos >= IntervalEnd )
-			//~ {
-				//~ //return ENUMUNDEF;
-				//~ //assert(!NonlocalPost.empty()); //there are indices provided
-				//~ std::vector< INMOST_DATA_ENUM_TYPE >::const_iterator search = std::lower_bound(NonlocalPost.begin(),NonlocalPost.end(),pos);
-				//~ //assert(*search == pos); //is there such index?
-				//~ if( search != NonlocalPost.end() && *search == pos )
-					//~ return IntervalEnd + static_cast<INMOST_DATA_ENUM_TYPE>(search-NonlocalPost.begin());
-				//~ else
-					//~ return ENUMUNDEF;
-			//~ }
 			if( pos < IntervalBeg || pos >= IntervalEnd )
 				return ENUMUNDEF;
 			return pos;
@@ -221,16 +168,6 @@ namespace INMOST
 
 		INMOST_DATA_ENUM_TYPE RowMerger::UnmapIndex(INMOST_DATA_ENUM_TYPE pos) const
 		{
-			//~ if( pos < IntervalBeg )
-			//~ {
-				//~ assert(pos >= IntervalBeg-NonlocalPre.size());
-				//~ return NonlocalPre[pos+NonlocalPre.size()-IntervalBeg];
-			//~ }
-			//~ else if( pos >= IntervalEnd )
-			//~ {
-				//~ assert(pos < IntervalEnd+NonlocalPost.size());
-				//~ return NonlocalPost[pos-IntervalEnd];
-			//~ }
 			return pos;
 		}
 
