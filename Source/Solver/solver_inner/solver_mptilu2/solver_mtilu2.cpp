@@ -136,7 +136,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 		Sparse::Matrix & A = *Alink;
 
 		INMOST_DATA_ENUM_TYPE mobeg, moend, vlocbeg, vlocend, vbeg, vend, k, r, j;
-		INMOST_DATA_REAL_TYPE leabs, flin, ldiag, udiag, mva;
+		INMOST_DATA_REAL_TYPE leabs, flin, ldiag, udiag, mva, lnorm, unorm;
 		INMOST_DATA_ENUM_TYPE curr, foll;
 		INMOST_DATA_ENUM_TYPE  ind, jn;
 		std::vector<INMOST_DATA_REAL_TYPE> rv;
@@ -158,6 +158,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 		std::vector<INMOST_DATA_ENUM_TYPE> lfill;
 		lfill.reserve(nnz * 4);
 #endif
+		interval<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> unorms(mobeg, moend, 0.0);
 		interval<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_ENUM_TYPE> RowIndeces(vbeg - 1, vend,UNDEF);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> B_Address(mobeg,moend+1);
 		std::vector<Sparse::Row::entry> B_Entries(nnz);
@@ -654,7 +655,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 #if defined(LFILL)
 				if (leabs > tau2*tau2)// introduce a non-zero, if threshold permits
 #else
-				if (leabs > tau2)// introduce a non-zero, if threshold permits
+				if (leabs* unorms[j] > tau2  )// introduce a non-zero, if threshold permits
 #endif
 				{
 					curr = j;
@@ -690,7 +691,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 						curr = ind;
 					}
 
-					if (leabs > tau)
+					if (leabs* unorms[j] > tau )
 					{
 						curr = j;
 						for (r = ir[j]; r < ir[j + 1]; r++)
@@ -726,6 +727,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 			}
 			// Compress row
 			//row_compr
+			/*
 			j = k;// RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg)-1];
 			//find minimum value in row
 			ldiag = 0;
@@ -742,22 +744,35 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 			}
 			else
 				ldiag = 1.0 / ldiag;
-
+			*/
+			ldiag = 1.0/std::max(std::fabs(RowValues[k]),tau2);
 			//if (ldiag > 1000) std::cout << "ldiag is big " << k << " " << ldiag << std::endl;
 			//divide all entries on right from the diagonal
+			unorm = 0;
 			j = k;
 			while (j != EOL)
 			{
 				RowValues[j] *= ldiag;
+				unorm += pow(RowValues[j],2);
 				j = RowIndeces[j];
 			}
+			unorm = sqrt(unorm);
+			unorms[k] = unorm;
+			lnorm = 0;
+			j = RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg)-1];
+			while (j < k)
+			{
+				lnorm += pow(RowValues[j],2);
+				j = RowIndeces[j];
+			}
+			lnorm = sqrt(lnorm);
 			j = RowIndeces[static_cast<INMOST_DATA_INTEGER_TYPE>(vbeg)-1];
 			while (j < k)
 			{
 				mva = fabs(RowValues[j]);
-				if (mva > tau2*tau2 )
+				//if (mva > tau2*tau2 )
 				{
-					if (mva > tau
+					if (mva > tau *lnorm
 #if defined(LFILL)
 						|| RowFill[j] <= Lfill
 #endif
@@ -810,9 +825,9 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 			while (j != EOL)
 			{
 				mva = fabs(RowValues[j]);
-				if (mva > tau2*tau2)
+				//if (mva > tau2*tau2)
 				{
-					if (mva > tau
+					if (mva > tau * unorm
 #if defined(LFILL)
 						|| RowFill[j] <= Lfill
 #endif
@@ -826,7 +841,7 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 #endif
 						//nzu++;
 					}
-					else if (mva > tau2)
+					else if (mva > tau2 * unorm)
 					{
 						//add values to U2 matrix
 						ri.push_back(j);
