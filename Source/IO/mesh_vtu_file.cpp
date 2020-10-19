@@ -21,6 +21,9 @@ namespace INMOST
 	
 	void Mesh::LoadVTU(std::string File)
 	{
+		std::set< std::string > noload, loadonly;		
+		noload = TagOptions("noload");
+		loadonly = TagOptions("loadonly");
 		int verbosity = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
@@ -78,7 +81,6 @@ namespace INMOST
 			//}
 		}
 
-		std::vector<Tag> datatags;
 		std::vector<HandleType> newnodes;
 		std::vector<HandleType> newpolyh;
 		std::vector<HandleType> newcells;
@@ -478,12 +480,15 @@ namespace INMOST
 								int ncomps = 1;
 								int nca = pd->FindAttrib("NumberOfComponents");
 								if (nca != pd->NumAttrib()) ncomps = atoi(pd->GetAttrib(nca).value.c_str());
-								TagRealArray t = CreateTag(pd->GetAttrib("Name"), DATA_REAL, dtype[j], dsparse[j], ncomps);
-								std::stringstream inp(pd->GetContents());
-								for (int l = 0; l < dsize[j]; ++l)
-								{
-									for (INMOST_DATA_ENUM_TYPE q = 0; q < t.GetSize(); ++q)
-										inp >> t[darray[j][l]][q];
+								if( !CheckLoadSkip(pd->GetAttrib("Name"),noload,loadonly) )
+								{								
+									TagRealArray t = CreateTag(pd->GetAttrib("Name"), DATA_REAL, dtype[j], dsparse[j], ncomps);
+									std::stringstream inp(pd->GetContents());
+									for (int l = 0; l < dsize[j]; ++l)
+									{
+										for (INMOST_DATA_ENUM_TYPE q = 0; q < t.GetSize(); ++q)
+											inp >> t[darray[j][l]][q];
+									}
 								}
 							}
 							else std::cout << __FILE__ << ":" << __LINE__ << "I don't know yet what is " << pd->GetName() << " in point data" << std::endl;

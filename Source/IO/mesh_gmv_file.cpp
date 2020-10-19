@@ -11,6 +11,9 @@ namespace INMOST
 {
   void Mesh::SaveGMV(std::string File)
   {
+		std::set< std::string > nosave, saveonly;
+		nosave = TagOptions("nosave");
+		saveonly = TagOptions("saveonly");
 		Storage::integer keynum;
 		Storage::real keyval;
 		//ReorderEmpty(CELL | FACE | NODE | ESET);
@@ -92,12 +95,14 @@ namespace INMOST
 			if( etype == EDGE ) continue;
 			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
 				if( t->isDefined(etype) && 
-            t->GetSize() == 1 && 
-            !t->isSparse(etype) && 
-            t->GetTagName().substr(0,9) != "PROTECTED" && 
-            t->GetDataType() != DATA_REFERENCE &&
-            t->GetDataType() != DATA_REMOTE_REFERENCE)
+					t->GetSize() == 1 && 
+					!t->isSparse(etype) && 
+					t->GetTagName().substr(0,9) != "PROTECTED" && 
+					t->GetDataType() != DATA_REFERENCE &&
+					t->GetDataType() != DATA_REMOTE_REFERENCE)
 				{
+					if( CheckSaveSkip(t->GetTagName(),nosave,saveonly) ) continue;
+					
 					sprintf(keyword,"%s",t->GetTagName().substr(0,8).c_str());
 					fwrite(keyword,1,8,file);
 					switch(etype)
@@ -133,11 +138,12 @@ namespace INMOST
 			if( etype == EDGE ) continue;
 			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
 				if( t->isDefined(etype) && 
-            t->GetSize() == 1 && 
-            t->isSparse(etype) && 
-            t->GetDataType() != DATA_REFERENCE && 
-            t->GetDataType() != DATA_REMOTE_REFERENCE)
+					t->GetSize() == 1 && 
+					t->isSparse(etype) && 
+					t->GetDataType() != DATA_REFERENCE && 
+					t->GetDataType() != DATA_REMOTE_REFERENCE)
 				{
+					if( CheckSaveSkip(t->GetTagName(),nosave,saveonly) ) continue;
 					Storage::integer temp;
 					keynum = 0;
 					for(Mesh::iteratorElement e = BeginElement(etype); e != EndElement(); e++)
@@ -171,7 +177,7 @@ namespace INMOST
 									case DATA_REAL: keyval = e->Real(*t); break;
 									case DATA_BULK: keyval = static_cast<Storage::real>(e->Bulk(*t)); break;
 #if defined(USE_AUTODIFF)
-                  case DATA_VARIABLE: keyval = e->Variable(*t).GetValue(); break;
+									case DATA_VARIABLE: keyval = e->Variable(*t).GetValue(); break;
 #endif
 									default: throw NotImplemented;
 								}
@@ -227,14 +233,15 @@ namespace INMOST
 			if( etype == EDGE ) continue;
 			for(Mesh::iteratorTag t = BeginTag(); t != EndTag(); t++) 
 				if( t->isDefined(etype) && 
-            t->GetSize() != 1 && 
-            t->GetSize() != ENUMUNDEF && 
-            !t->isSparse(etype) && 
-            t->GetTagName().substr(0,9) != "PROTECTED" && 
-            t->GetDataType() != DATA_REFERENCE &&
-            t->GetDataType() != DATA_REMOTE_REFERENCE
-            )
+					t->GetSize() != 1 && 
+					t->GetSize() != ENUMUNDEF && 
+					!t->isSparse(etype) && 
+					t->GetTagName().substr(0,9) != "PROTECTED" && 
+					t->GetDataType() != DATA_REFERENCE &&
+					t->GetDataType() != DATA_REMOTE_REFERENCE
+					)
 				{
+					if( CheckSaveSkip(t->GetTagName(),nosave,saveonly) ) continue;
 					sprintf(keyword,"%s",t->GetTagName().substr(0,8).c_str());
 					fwrite(keyword,1,8,file);
 					switch(etype)

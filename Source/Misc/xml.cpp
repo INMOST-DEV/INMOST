@@ -98,23 +98,28 @@ namespace INMOST
 
 
 #if defined(USE_AUTODIFF)
-	std::string VariableToString(INMOST::variable v)
+	std::string VariableToString(INMOST::variable v, bool noder)
 	{
 		std::stringstream ret;
 		const INMOST::Sparse::Row & r = v.GetRow();
 		ret << "(";
 		ret << v.GetValue() << ";";
-		ret << r.Size();
-		if( !r.Empty() )
+		if( noder )
+			ret << 0;
+		else
 		{
-			ret << ";";
-			for(int q = 0; q < (int)r.Size()-1; ++q)
+			ret << r.Size();
+			if( !r.Empty() )
 			{
-				ret << r.GetValue(q) << ";";
-				ret << r.GetIndex(q) << ";";
+				ret << ";";
+				for(int q = 0; q < (int)r.Size()-1; ++q)
+				{
+					ret << r.GetValue(q) << ";";
+					ret << r.GetIndex(q) << ";";
+				}
+				ret << r.GetValue(r.Size()-1) << ";";
+				ret << r.GetIndex(r.Size()-1);
 			}
-			ret << r.GetValue(r.Size()-1) << ";";
-			ret << r.GetIndex(r.Size()-1);
 		}
 		ret << ")";
 		return ret.str();

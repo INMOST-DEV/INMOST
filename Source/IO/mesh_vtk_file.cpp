@@ -182,7 +182,12 @@ namespace INMOST
 				output_faces = true;
 			}
 		}
-
+		
+		std::set< std::string > nosave, saveonly;
+		
+		nosave = TagOptions("nosave");
+		saveonly = TagOptions("saveonly");
+		
 		//ReorderEmpty(CELL | NODE);
 		Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL |FACE| NODE,NONE,1);
 		Storage::integer cur_num = 0;
@@ -316,27 +321,26 @@ safe_output:
 					{
 					case Element::Line:
 					{
-										  ElementArray<Node> nodes = it->getNodes();
-										  values.push_back(static_cast<integer>(nodes.size()));
-										  for (ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
-											  values.push_back(jt->IntegerDF(set_id));
-										  break;
+						ElementArray<Node> nodes = it->getNodes();
+						values.push_back(static_cast<integer>(nodes.size()));
+						for (ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
+							values.push_back(jt->IntegerDF(set_id));
+						break;
 					}
 					case Element::Tri:
 					case Element::Quad:
 					case Element::MultiLine:
 					case Element::Polygon:
 					{
-											 ElementArray<Node> nodes = it->getNodes();
-											 values.push_back(static_cast<integer>(nodes.size()));
-											 for (ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
-												 values.push_back(jt->IntegerDF(set_id));
-											 break;
+						ElementArray<Node> nodes = it->getNodes();
+						values.push_back(static_cast<integer>(nodes.size()));
+						for (ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
+							values.push_back(jt->IntegerDF(set_id));
+						break;
 					}
 					default: printf("This should not happen %s\n", Element::GeometricTypeName(it->GetGeometricType()));
 					}
 				}
-
 				fprintf(f, "CELLS %u %d\n", NumberOfCells() + NumberOfFaces(), (int)values.size());
 			}
 			else
@@ -349,9 +353,8 @@ safe_output:
 			}
 			fprintf(f,"\n");
 		}
-		if (output_faces){
+		if (output_faces)
 			fprintf(f, "CELL_TYPES %u\n", NumberOfCells() + NumberOfFaces());
-		}
 		else 			
 			fprintf(f, "CELL_TYPES %u\n", NumberOfCells());
 
@@ -393,8 +396,10 @@ safe_output:
 						t != SendtoTag() && 
 						t != ProcessorsTag())
 				{
+					bool skip = CheckSaveSkip(tag_names[i],nosave,saveonly);
 					//printf("added!\n");
-					tags.push_back(t);
+					if( !skip )
+						tags.push_back(t);
 				}
 			}
 				
@@ -624,9 +629,9 @@ safe_output:
 		fclose(f);	
 	}
 
-  void Mesh::LoadVTK(std::string File)
-  {
-	  int verbosity = 0;
+	void Mesh::LoadVTK(std::string File)
+	{
+		int verbosity = 0;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "VERBOSITY" )
@@ -639,6 +644,12 @@ safe_output:
 				}
 			}
 		}
+		
+		std::set< std::string > noload, loadonly;
+		
+		noload = TagOptions("noload");
+		loadonly = TagOptions("loadonly");
+		
 
 		MarkerType unused_marker = CreateMarker();
 		int grid_is_2d = 2;
@@ -768,7 +779,8 @@ safe_output:
 					{
 						DataType t = DATA_BULK;
 						filled = sscanf(readline," SCALARS %s %s %d",attrname,attrtype,&nentries);
-						if( verbosity > 0 ) printf("Reading scalar attribute %s.\n",attrname);
+						bool skip = CheckLoadSkip(attrname,noload,loadonly);
+						if( verbosity > 0 ) printf("%s scalar attribute %s.\n",skip?"Skipping":"Reading",attrname);
 						if( filled < 2 ) 
 						{
 							printf("%s:%d found %d arguments to SCALARS field, must be >= 2\nline:\n%s\n",__FILE__,__LINE__,filled,readline); 
@@ -795,58 +807,94 @@ safe_output:
 						if( read_into == 2 )
 						{
 							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
-							Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
-							for(unsigned int it = 0; it < newcells.size(); it++)
+							if( skip )
 							{
+								for(unsigned int it = 0; it < newcells.size(); it++)
+								{
 
-								if( t == DATA_INTEGER )
-								{
-									if( newcells[it] != InvalidHandle() )
+									if( t == DATA_INTEGER )
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+									if( t == DATA_REAL )
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
+									if( verbosity > 1 && it%report_pace == 0)
 									{
-										Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
-										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
 									}
-									else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
-								}
-								if( t == DATA_REAL )
-								{
-									if( newcells[it] != InvalidHandle() )
-									{
-										Storage::real_array attrdata = RealArray(newcells[it],attr);
-										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-									}
-									else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
-								}
-								if( verbosity > 1 && it%report_pace == 0)
-								{
-									printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-									fflush(stdout);
 								}
 							}
-							//filled = fscanf(f,"\n");
-							datatags.push_back(attr);
+							else
+							{
+								Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
+								for(unsigned int it = 0; it < newcells.size(); it++)
+								{
+
+									if( t == DATA_INTEGER )
+									{
+										if( newcells[it] != InvalidHandle() )
+										{
+											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
+											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										}
+										else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+									}
+									if( t == DATA_REAL )
+									{
+										if( newcells[it] != InvalidHandle() )
+										{
+											Storage::real_array attrdata = RealArray(newcells[it],attr);
+											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										}
+										else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
+									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
+								}
+								datatags.push_back(attr);
+							}
 						}
 						if( read_into == 1 )
 						{
-							Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size())/250,1);
-							for(unsigned int it = 0; it < newnodes.size(); it++)
+							if( skip )
 							{
-								if( t == DATA_INTEGER )
+								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
-									for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									if( t == DATA_INTEGER )
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+									if( t == DATA_REAL )
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
-								if( t == DATA_REAL )
+							}
+							else
+							{
+								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
+								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									Storage::real_array attrdata = RealArray(newnodes[it],attr);
-									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-								}
-								if( verbosity > 1 && it%report_pace == 0)
-								{
-									printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-									fflush(stdout);
+									if( t == DATA_INTEGER )
+									{
+										Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( t == DATA_REAL )
+									{
+										Storage::real_array attrdata = RealArray(newnodes[it],attr);
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
 							}
 							//filled = fscanf(f,"\n");
@@ -863,41 +911,71 @@ safe_output:
 					{	
 						char attrname[1024];
 						filled = sscanf(readline," COLOR_SCALARS %s %d",attrname,&nentries);
-						if( verbosity > 0 ) printf("Reading color attribute %s.\n",attrname);
+						bool skip = CheckLoadSkip(attrname,noload,loadonly);
+						if( verbosity > 0 ) printf("%s color attribute %s.\n",skip?"Skipping":"Reading",attrname);
 						if( read_into == 2 )
 						{
 							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
-							Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
-							for(unsigned int it = 0; it < newcells.size(); it++)
+							if( skip )
 							{
-								if( newcells[it] != InvalidHandle() )
+								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
-									Storage::real_array attrdata = RealArray(newcells[it],attr);
-									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-								}
-								else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
-								if( verbosity > 1 && it%100 == 0)
-								{
-									printf("data %3.1f%%\r",(it*report_pace)/(1.0*newcells.size()));
-									fflush(stdout);
+									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									if( verbosity > 1 && it%100 == 0)
+									{
+										printf("data %3.1f%%\r",(it*report_pace)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
 								}
 							}
-							//filled = fscanf(f,"\n");
-							datatags.push_back(attr);
+							else
+							{
+								Tag attr = CreateTag(attrname,DATA_REAL,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
+								for(unsigned int it = 0; it < newcells.size(); it++)
+								{
+									if( newcells[it] != InvalidHandle() )
+									{
+										Storage::real_array attrdata = RealArray(newcells[it],attr);
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									if( verbosity > 1 && it%100 == 0)
+									{
+										printf("data %3.1f%%\r",(it*report_pace)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
+								}
+								datatags.push_back(attr);
+							}
 						}
 						if( read_into == 1 )
 						{
-							Tag attr = CreateTag(attrname,DATA_REAL,NODE,NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size()/250),1);
-							for(unsigned int it = 0; it < newnodes.size(); it++)
+							if( skip ) 
 							{
-								Storage::real_array attrdata = RealArray(newnodes[it],attr);
-								for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-								if( verbosity > 1 && it%report_pace == 0)
+								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-									fflush(stdout);
+									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
+								}
+							}
+							else
+							{
+								Tag attr = CreateTag(attrname,DATA_REAL,NODE,NONE,nentries);
+								for(unsigned int it = 0; it < newnodes.size(); it++)
+								{
+									Storage::real_array attrdata = RealArray(newnodes[it],attr);
+									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
 							}
 							//filled = fscanf(f,"\n");
@@ -930,7 +1008,8 @@ safe_output:
 						if( !strcmp(dataname,"TENSORS") ) nentries = 9;
 						DataType t = DATA_BULK;
 						filled = sscanf(readline,"%*s %s %s",attrname,attrtype);
-						if( verbosity > 0 ) printf("Reading %s attribute %s.\n",dataname,attrname);
+						bool skip = CheckLoadSkip(attrname,noload,loadonly);
+						if( verbosity > 0 ) printf("%s %s attribute %s.\n",skip? "Skipping":"Reading",dataname,attrname);
 						if( filled != 2 ) throw BadFile;
 						for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 						if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -945,57 +1024,92 @@ safe_output:
 						if( read_into == 2 )
 						{
 							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
-							Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
-							for(unsigned int it = 0; it < newcells.size(); it++)
+							if( skip )
 							{
-								if( t == DATA_INTEGER )
+								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
-									if( newcells[it] != InvalidHandle() )
+									if( t == DATA_INTEGER )
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+									if( t == DATA_REAL )
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									if( verbosity > 1 && it%report_pace == 0)
 									{
-										Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
-										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
 									}
-									else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
-								}
-								if( t == DATA_REAL )
-								{
-									if( newcells[it] != InvalidHandle() )
-									{
-										Storage::real_array attrdata = RealArray(newcells[it],attr);
-										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-									}
-									else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
-								}
-								if( verbosity > 1 && it%report_pace == 0)
-								{
-									printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-									fflush(stdout);
 								}
 							}
-							//filled = fscanf(f,"\n");
-							datatags.push_back(attr);
+							else
+							{
+								Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
+								for(unsigned int it = 0; it < newcells.size(); it++)
+								{
+									if( t == DATA_INTEGER )
+									{
+										if( newcells[it] != InvalidHandle() )
+										{
+											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
+											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										}
+										else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+									}
+									if( t == DATA_REAL )
+									{
+										if( newcells[it] != InvalidHandle() )
+										{
+											Storage::real_array attrdata = RealArray(newcells[it],attr);
+											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										}
+										else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
+								}
+								datatags.push_back(attr);
+							}
 						}
 						if( read_into == 1 )
 						{
-							Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size()/250),1);
-							for(unsigned int it = 0; it < newnodes.size(); it++)
+							if( skip )
 							{
-								if( t == DATA_INTEGER )
+								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
-									for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									if( t == DATA_INTEGER )
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; }
+									if( t == DATA_REAL )
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
-								if( t == DATA_REAL )
+							}
+							else
+							{
+								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
+								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									Storage::real_array attrdata = RealArray(newnodes[it],attr);
-									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-								}
-								if( verbosity > 1 && it%report_pace == 0)
-								{
-									printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-									fflush(stdout);
+									if( t == DATA_INTEGER )
+									{
+										Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( t == DATA_REAL )
+									{
+										Storage::real_array attrdata = RealArray(newnodes[it],attr);
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
 							}
 							//filled = fscanf(f,"\n");
@@ -1016,7 +1130,8 @@ safe_output:
 						int nentries;
 						DataType t = DATA_BULK;
 						filled = sscanf(readline," TEXTURE_COORDINATES %s %d %s",attrname,&nentries,attrtype);
-						if( verbosity > 0 ) printf("Reading texture coordinates attribute %s.\n",attrname);
+						bool skip = CheckLoadSkip(attrname,noload,loadonly);
+						if( verbosity > 0 ) printf("%s texture coordinates attribute %s.\n",skip?"Skipping":"Reading",attrname);
 						if( filled != 3 ) throw BadFile;
 						for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 						if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -1031,55 +1146,90 @@ safe_output:
 						if( read_into == 2 )
 						{
 							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
-							Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newcells.size()/250),1);
-							for(unsigned int it = 0; it < newcells.size(); it++)
+							if( skip )
 							{
-								if( t == DATA_INTEGER )
+								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
-									if( newcells[it] != InvalidHandle() )
+									if( t == DATA_INTEGER )
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+									if( t == DATA_REAL )
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									if( verbosity > 1 && it%report_pace == 0)
 									{
-										Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
-										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-									} else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
-								}
-								if( t == DATA_REAL )
-								{
-									if( newcells[it] != InvalidHandle() )
-									{
-										Storage::real_array attrdata = RealArray(newcells[it],attr);
-										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-									} else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
-								}
-								if( verbosity > 1 && it%report_pace == 0)
-								{
-									printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-									fflush(stdout);
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
 								}
 							}
-							//filled = fscanf(f,"\n");
-							datatags.push_back(attr);
+							else
+							{
+								Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
+								for(unsigned int it = 0; it < newcells.size(); it++)
+								{
+									if( t == DATA_INTEGER )
+									{
+										if( newcells[it] != InvalidHandle() )
+										{
+											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
+											for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										} else for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+									}
+									if( t == DATA_REAL )
+									{
+										if( newcells[it] != InvalidHandle() )
+										{
+											Storage::real_array attrdata = RealArray(newcells[it],attr);
+											for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										} else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
+										fflush(stdout);
+									}
+								}
+								datatags.push_back(attr);
+							}
 						}
 						if( read_into == 1 )
 						{
-							Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
 							unsigned report_pace = std::max<unsigned>(static_cast<unsigned>(newnodes.size()/250),1);
-							for(unsigned int it = 0; it < newnodes.size(); it++)
+							if( skip )
 							{
-								if( t == DATA_INTEGER )
+								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
-									for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									if( t == DATA_INTEGER )
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; }
+									if( t == DATA_REAL )
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
-								if( t == DATA_REAL )
+							}
+							else
+							{
+								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
+								for(unsigned int it = 0; it < newnodes.size(); it++)
 								{
-									Storage::real_array attrdata = RealArray(newnodes[it],attr);
-									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-								}
-								if( verbosity > 1 && it%report_pace == 0)
-								{
-									printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-									fflush(stdout);
+									if( t == DATA_INTEGER )
+									{
+										Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
+										for(int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( t == DATA_REAL )
+									{
+										Storage::real_array attrdata = RealArray(newnodes[it],attr);
+										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+									}
+									if( verbosity > 1 && it%report_pace == 0)
+									{
+										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
+										fflush(stdout);
+									}
 								}
 							}
 							//filled = fscanf(f,"\n");
@@ -1106,7 +1256,8 @@ safe_output:
 							DataType t = DATA_BULK;
 							if( read_next_line && fgets(readline,2048,f) == NULL ) throw BadFile;
 							filled = sscanf(readline," %s %u %u %s\n",attrname,&nentries,&ntuples,attrtype);
-							if( verbosity > 0 ) printf("Reading field %d / %d attribute %s.\n",i,nfields,attrname);
+							bool skip = CheckLoadSkip(attrname,noload,loadonly);
+							if( verbosity > 0 ) printf("%s field %d / %d attribute %s.\n",skip?"Skipping":"Reading",i,nfields,attrname);
 							if( filled != 4 ) throw BadFile;
 							for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 							if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -1120,57 +1271,92 @@ safe_output:
 							if( read_into == 2 )
 							{
 								bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
-								Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
 								if( ntuples != newcells.size() ) printf("number of tuples in field is not equal to number of cells\n");
 								unsigned report_pace = std::max<unsigned>(ntuples/250,1);
-								for(unsigned int it = 0; it < ntuples; it++)
+								if( skip )
 								{
-									if( t == DATA_INTEGER )
+									for(unsigned int it = 0; it < ntuples; it++)
 									{
-										if( newcells[it] != InvalidHandle() )
+										if( t == DATA_INTEGER )
+											for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+										if( t == DATA_REAL )
+											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+										if( verbosity > 1 && it%report_pace == 0)
 										{
-											Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
-											for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-										} else for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
-									}
-									if( t == DATA_REAL )
-									{
-										if( newcells[it] != InvalidHandle() )
-										{
-											Storage::real_array attrdata = RealArray(newcells[it],attr);
-											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-										} else for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
-									}
-									if( verbosity > 1 && it%report_pace == 0)
-									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
-										fflush(stdout);
+											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
+											fflush(stdout);
+										}
 									}
 								}
-								//filled = fscanf(f,"\n");
-								datatags.push_back(attr);
+								else
+								{
+									Tag attr = CreateTag(attrname,t,read_into_cell,sparse ? read_into_cell & ~CELL : NONE,nentries);
+									for(unsigned int it = 0; it < ntuples; it++)
+									{
+										if( t == DATA_INTEGER )
+										{
+											if( newcells[it] != InvalidHandle() )
+											{
+												Storage::integer_array attrdata = IntegerArray(newcells[it],attr);
+												for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+											} else for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+										}
+										if( t == DATA_REAL )
+										{
+											if( newcells[it] != InvalidHandle() )
+											{
+												Storage::real_array attrdata = RealArray(newcells[it],attr);
+												for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+											} else for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+										}
+										if( verbosity > 1 && it%report_pace == 0)
+										{
+											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
+											fflush(stdout);
+										}
+									}
+									datatags.push_back(attr);
+								}
 							}
 							if( read_into == 1 )
 							{
-								Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
 								if( ntuples != newnodes.size() ) printf("number of tuples in field is not equal to number of nodes\n");
 								unsigned report_pace = std::max<unsigned>(ntuples/250,1);
-								for(unsigned int it = 0; it < ntuples; it++)
+								if( skip )
 								{
-									if( t == DATA_INTEGER )
+									for(unsigned int it = 0; it < ntuples; it++)
 									{
-										Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
-										for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										if( t == DATA_INTEGER )
+											for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile;}
+										if( t == DATA_REAL )
+											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
+										if( verbosity > 1 && it%report_pace == 0)
+										{
+											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
+											fflush(stdout);
+										}
 									}
-									if( t == DATA_REAL )
+								}
+								else
+								{
+									Tag attr = CreateTag(attrname,t,NODE,NONE,nentries);
+									for(unsigned int it = 0; it < ntuples; it++)
 									{
-										Storage::real_array attrdata = RealArray(newnodes[it],attr);
-										for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
-									}
-									if( verbosity > 1 && it%report_pace == 0)
-									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
-										fflush(stdout);
+										if( t == DATA_INTEGER )
+										{
+											Storage::integer_array attrdata = IntegerArray(newnodes[it],attr);
+											for(unsigned int jt = 0; jt < nentries; jt++) {int temp; filled = fscanf(f," %d",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										}
+										if( t == DATA_REAL )
+										{
+											Storage::real_array attrdata = RealArray(newnodes[it],attr);
+											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
+										}
+										if( verbosity > 1 && it%report_pace == 0)
+										{
+											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
+											fflush(stdout);
+										}
 									}
 								}
 								//filled = fscanf(f,"\n");

@@ -49,4 +49,15 @@ namespace INMOST {
         return rank;
     }
 
+	void split_string(const std::string & str, std::vector<std::string> & str_list, const std::string& delims)
+	{
+		std::string::size_type end = str.find_first_not_of(delims, 0);
+		std::string::size_type pos = str.find_first_of(delims, end);
+		while (std::string::npos != pos || std::string::npos != end) 
+		{
+			str_list.push_back(str.substr(end, pos - end));
+			end = str.find_first_not_of(delims, pos);
+			pos = str.find_first_of(delims, end);
+		}
+	}
 }

@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "io.hpp"
-
+#include "../Misc/utils.h"
 
 
 
@@ -57,7 +57,7 @@ namespace INMOST
 		file_options.push_back(std::make_pair(key,val));
 	}
 
-	std::string Mesh::GetFileOption(std::string key)
+	std::string Mesh::GetFileOption(std::string key) const
 	{
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); k++)
 		{
@@ -69,6 +69,49 @@ namespace INMOST
 		return "";
 	}
 	
+	std::set<std::string> Mesh::TagOptions(std::string name) const
+	{
+		std::set<std::string> ret;
+		std::vector<std::string> name_split;
+		std::vector<std::string> value_split;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); k++)
+		{
+			split_string(file_options[k].first,name_split,":");
+			if(name_split[0] == "Tag")
+			{
+				split_string(file_options[k].second,value_split,",");
+				for(size_t q = 0; q < value_split.size(); ++q)
+				{
+					if( value_split[q] == name )
+					{
+						ret.insert(name_split[1]);
+						break;
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	
+	bool Mesh::CheckLoadSkip(std::string name, const std::set<std::string> & noload, const std::set<std::string> & loadonly) const
+	{
+		bool skip = false;
+		if( !loadonly.empty() && loadonly.find(name) == loadonly.end() )
+			skip = true;
+		else if( noload.find(name) != noload.end() )
+			skip = true;
+		return skip;
+	}
+	
+	bool Mesh::CheckSaveSkip(std::string name, const std::set<std::string> & nosave, const std::set<std::string> & saveonly) const
+	{
+		bool skip = false;
+		if( saveonly.empty() && saveonly.find(name) == saveonly.end() )
+			skip = true;
+		else if( nosave.find(name) != nosave.end() )
+			skip = true;
+		return skip;
+	}
 	
 	void Mesh::Load(std::string File)
 	{

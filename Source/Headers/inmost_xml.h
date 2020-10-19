@@ -10,7 +10,7 @@ namespace INMOST
   std::string ReferenceToString(INMOST::HandleType h, int pos);
 #endif
 #if defined(USE_AUTODIFF)
-  std::string VariableToString(INMOST::variable v);
+  std::string VariableToString(INMOST::variable v, bool noder=false);
 #endif
   
     

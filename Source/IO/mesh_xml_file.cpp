@@ -13,6 +13,22 @@ namespace INMOST
 		  ret[k] = tolower(ret[k]);
 	  return ret;
   }
+  
+  struct TagData
+  {
+	  DataType dtype;
+	  ElementType defined;
+	  ElementType sparse;
+	  INMOST_DATA_ENUM_TYPE size;
+	  bool skip;
+	  TagData() {}
+	  TagData(const TagData & b)
+	  : dtype(b.dtype), defined(b.defined), sparse(b.sparse), size(b.size), skip(b.skip) {}
+	  TagData & operator =(TagData const & b)
+	  { dtype = b.dtype; defined = b.defined; sparse = b.sparse; size = b.size; skip = b.skip; return *this;}
+	  TagData(DataType dtype, ElementType defined, ElementType sparse, INMOST_DATA_ENUM_TYPE size, bool skip)
+	  : dtype(dtype), defined(defined), sparse(sparse), size(size), skip(skip) {}
+  };
 
   void Mesh::LoadXML(std::string File)
   {
@@ -24,6 +40,12 @@ namespace INMOST
     XMLReader::XMLTag PassTag;
     bool pass_tag = false;
     int nmeshes = 1;
+    std::map< std::string, TagData > tagdata;
+    std::set< std::string > noload, loadonly, noderivs;
+		
+	noload = TagOptions("noload");
+	loadonly = TagOptions("loadonly");
+	noderivs = TagOptions("noderivatives");
 
     XMLReader::XMLTag TagParallelMesh = reader.OpenTag();
     if( TagParallelMesh.name != "ParallelMesh" )
@@ -194,8 +216,8 @@ namespace INMOST
           XMLReader::XMLTag TagConns;
           for(TagConns = reader.OpenTag(); !TagConns.Finalize() && TagConns.name == "Connections"; reader.CloseTag(TagConns), TagConns = reader.OpenTag())
           {
-			  bool matchnconns = false;
-			  int nexpectconns = 0;
+		    bool matchnconns = false;
+			int nexpectconns = 0;
             int nconns = 0;
             int offset = 0;
 			int dims = 3; //to distinguish 3d cells from 2d cells when they are created with nodes
@@ -426,7 +448,13 @@ namespace INMOST
 					  reader.Report("Tag name was not specified");
 				  else if( defined == NONE )
 					  reader.Report("Domain of definition for the tag was not specified");
-				  tags.push_back(CreateTag(tagname,type,defined,sparse,size));
+					  
+				  bool skip = CheckLoadSkip(tagname,noload,loadonly);
+				  
+				  tagdata[tagname] = TagData(type,defined,sparse,size,skip);
+				  
+				  if( !skip )
+				    tags.push_back(CreateTag(tagname,type,defined,sparse,size));
 			  }
 			  reader.CloseTag(TagSetsData);
 
@@ -633,7 +661,7 @@ namespace INMOST
                 reader.Report("DataSet had no attribute TagName");
                 throw BadFile;
               }
-              if( !HaveTag(tagname) )
+              if( !tagdata[tagname].skip && !HaveTag(tagname) )
               {
                 reader.Report("Tag %s do not exist",tagname.c_str());
                 throw BadFile;
@@ -645,7 +673,7 @@ namespace INMOST
                   reader.Report("Remote mesh %s do not exist, you should create it first inside of your application",meshname.c_str());
               }
 
-              Tag t = GetTag(tagname);
+              TagData t = tagdata[tagname];
               HandleType * set_elems = NULL, *it = NULL;
               enumerator set_size = 0;
 
@@ -667,7 +695,7 @@ namespace INMOST
                 if( etype == NONE )
                 {
                   for(ElementType test = NODE; test <= MESH; test = NextElementType(test) )
-                    if( t.isDefined(test) ) etype |= test;
+                    if( t.defined & test ) etype |= test;
                   if( !OneType(etype) )
                   {
                     reader.Report("You must explicitly specify type of elements for which"
@@ -677,7 +705,7 @@ namespace INMOST
                 }
                 if( sparse_read == 2 )
                 {
-                  if( t.isSparse(etype) ) sparse_read = 1; //Expect data to be listed in sparse manner for sparse tag
+                  if( t.sparse & etype ) sparse_read = 1; //Expect data to be listed in sparse manner for sparse tag
                   else sparse_read = 0;
                 }
                 switch(etype)
@@ -720,223 +748,255 @@ namespace INMOST
                   it = set_elems + offset;
                   val = reader.GetContentsWord();
                 }
-                switch(t.GetDataType())
+                switch(t.dtype)
                 {
                 case DATA_REAL:
                   {
-                    Storage::real_array data = RealArray(*it,t);
                     std::vector<Storage::real> Vector; int Repeat;
                     reader.ParseReal(val,Vector,Repeat,set_size);
-					if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
+                    if( !t.skip )
                     {
-                      reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
-                      throw BadFile;
-                    }
-                      
-                    for(int l = 0; l < Repeat; ++l)
-                    {
-                      for(int q = 0; q < (int)Vector.size(); ++q)
-                      {
-                        data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
-                        if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
-                        {
-                          ++it;
-                          if( ((int)(it-set_elems)) < (int)set_size ) data = RealArray(*it,t);
-                        }
-                      }
-                    }
-					if( !sparse_read && t.GetSize() == ENUMUNDEF )
-					{
-						++it;
-						if( ((int)(it-set_elems)) < (int)set_size ) data = RealArray(*it,t);
+						Tag tag = GetTag(tagname);
+						Storage::real_array data = RealArray(*it,tag);
+						if( tag.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+						else if( tag.GetSize() != Vector.size()*Repeat && sparse_read )
+						{
+						  reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,tag.GetSize());
+						  throw BadFile;
+						}
+						for(int l = 0; l < Repeat; ++l)
+						{
+						  for(int q = 0; q < (int)Vector.size(); ++q)
+						  {
+							data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
+							if( !sparse_read && tag.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%tag.GetSize() == 0 )
+							{
+							  ++it;
+							  if( ((int)(it-set_elems)) < (int)set_size ) data = RealArray(*it,tag);
+							}
+						  }
+						}
+						if( !sparse_read && tag.GetSize() == ENUMUNDEF )
+						{
+							++it;
+							if( ((int)(it-set_elems)) < (int)set_size ) data = RealArray(*it,tag);
+						}
 					}
                   }
                   break;
                 case DATA_INTEGER:
                   {
-                    Storage::integer_array data = IntegerArray(*it,t);
                     std::vector<Storage::integer> Vector; int Repeat;
                     reader.ParseInteger(val,Vector,Repeat,set_size);
-                    if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read)
+                    if( !t.skip )
                     {
-                      reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
-                      throw BadFile;
-                    }
-                    for(int l = 0; l < Repeat; ++l)
-                    {
-                      for(int q = 0; q < (int)Vector.size(); ++q)
-                      {
-                        data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
-                        if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
-                        {
-                          ++it;
-                          if( ((int)(it-set_elems)) < (int)set_size ) data = IntegerArray(*it,t);
-                        }
-                      }
-                    }
-					if( !sparse_read && t.GetSize() == ENUMUNDEF )
-					{
-						++it;
-						if( ((int)(it-set_elems)) < (int)set_size ) data = IntegerArray(*it,t);
+						Tag tag = GetTag(tagname);
+						Storage::integer_array data = IntegerArray(*it,tag);
+						if( tag.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+						else if( tag.GetSize() != Vector.size()*Repeat && sparse_read)
+						{
+						  reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,tag.GetSize());
+						  throw BadFile;
+						}
+						for(int l = 0; l < Repeat; ++l)
+						{
+						  for(int q = 0; q < (int)Vector.size(); ++q)
+						  {
+							data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
+							if( !sparse_read && tag.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%tag.GetSize() == 0 )
+							{
+							  ++it;
+							  if( ((int)(it-set_elems)) < (int)set_size ) data = IntegerArray(*it,tag);
+							}
+						  }
+						}
+						if( !sparse_read && tag.GetSize() == ENUMUNDEF )
+						{
+							++it;
+							if( ((int)(it-set_elems)) < (int)set_size ) data = IntegerArray(*it,tag);
+						}
 					}
                   }
                   break;
                 case DATA_BULK:
                   {
-                    Storage::bulk_array data = BulkArray(*it,t);
-                    std::string Vector; int Repeat;
-                    reader.ParseBulk(val,Vector,Repeat,set_size);
-                    if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read)
-                    {
-                      reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
-                      throw BadFile;
-                    }
-                    for(int l = 0; l < Repeat; ++l)
-                    {
-                      for(int q = 0; q < (int)Vector.size(); ++q)
-                      {
-                        data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
-                        if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
-                        {
-                          ++it;
-                          if( ((int)(it-set_elems)) < (int)set_size ) data = BulkArray(*it,t);
-                        }
-                      }
-                    }
-					  if( !sparse_read && t.GetSize() == ENUMUNDEF )
-					  {
-						  ++it;
-						  if( ((int)(it-set_elems)) < (int)set_size ) data = BulkArray(*it,t);
-					  }
+						std::string Vector; int Repeat;
+						reader.ParseBulk(val,Vector,Repeat,set_size);
+						if( !t.skip )
+						{
+							Tag tag = GetTag(tagname);
+							Storage::bulk_array data = BulkArray(*it,tag);
+							if( tag.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+							else if( tag.GetSize() != Vector.size()*Repeat && sparse_read)
+							{
+							  reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,tag.GetSize());
+							  throw BadFile;
+							}
+							for(int l = 0; l < Repeat; ++l)
+							{
+							  for(int q = 0; q < (int)Vector.size(); ++q)
+							  {
+								data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
+								if( !sparse_read && tag.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%tag.GetSize() == 0 )
+								{
+								  ++it;
+								  if( ((int)(it-set_elems)) < (int)set_size ) data = BulkArray(*it,tag);
+								}
+							  }
+							}
+							  if( !sparse_read && tag.GetSize() == ENUMUNDEF )
+							  {
+								  ++it;
+								  if( ((int)(it-set_elems)) < (int)set_size ) data = BulkArray(*it,tag);
+							  }
+						}
                   }
                   break;
                 case DATA_REFERENCE:
                   {
-                    Storage::reference_array data = ReferenceArray(*it,t);
                     std::vector<std::pair<ElementType,int> > Vector; int Repeat;
                     reader.ParseReference(val,Vector,Repeat,set_size);
-                    if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read)
+                    if( !t.skip )
                     {
-                      reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
-                      throw BadFile;
-                    }
-                    for(int l = 0; l < Repeat; ++l)
-                    {
-                      for(int q = 0; q < (int)Vector.size(); ++q)
-                      {
-                        data[(q + l*((int)Vector.size()))%data.size()] = Element(this,links[ElementNum(Vector[q].first)][Vector[q].second-offset]);
-                        if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
-                        {
-                          ++it;
-                          if( ((int)(it-set_elems)) < (int)set_size ) data = ReferenceArray(*it,t);
-                        }
-                      }
-                    }
-					  if( !sparse_read && t.GetSize() == ENUMUNDEF )
-					  {
-						  ++it;
-						  if( ((int)(it-set_elems)) < (int)set_size ) data = ReferenceArray(*it,t);
-					  }
+						Tag tag = GetTag(tagname);
+						Storage::reference_array data = ReferenceArray(*it,tag);
+						if( tag.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+						else if( tag.GetSize() != Vector.size()*Repeat && sparse_read)
+						{
+						  reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,tag.GetSize());
+						  throw BadFile;
+						}
+						for(int l = 0; l < Repeat; ++l)
+						{
+						  for(int q = 0; q < (int)Vector.size(); ++q)
+						  {
+							data[(q + l*((int)Vector.size()))%data.size()] = Element(this,links[ElementNum(Vector[q].first)][Vector[q].second-offset]);
+							if( !sparse_read && tag.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%tag.GetSize() == 0 )
+							{
+							  ++it;
+							  if( ((int)(it-set_elems)) < (int)set_size ) data = ReferenceArray(*it,tag);
+							}
+						  }
+						}
+						  if( !sparse_read && tag.GetSize() == ENUMUNDEF )
+						  {
+							  ++it;
+							  if( ((int)(it-set_elems)) < (int)set_size ) data = ReferenceArray(*it,tag);
+						  }
+					}  
                   }
                   break;
                 case DATA_REMOTE_REFERENCE:
                   {
-                    Storage::remote_reference_array data = RemoteReferenceArray(*it,t);
                     if( remote_mesh != NULL )
                     {
                       std::vector<std::pair<ElementType,int> > Vector; int Repeat;
                       reader.ParseReference(val,Vector,Repeat,set_size);
-                      if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                      else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
+                      if( !t.skip )
                       {
-                        reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
-                        throw BadFile;
-                      }
-                      for(int l = 0; l < Repeat; ++l)
-                      {
-                        for(int q = 0; q < (int)Vector.size(); ++q)
-                        {
-                          data.at((q + l*((int)Vector.size()))%data.size()).first  = remote_mesh;
-                          data.at((q + l*((int)Vector.size()))%data.size()).second = ComposeHandle(Vector[q].first,Vector[q].second-offset);
-                          if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
-                          {
-                            ++it;
-                            if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
-                          }
-                        }
-                      }
-						if( !sparse_read && t.GetSize() == ENUMUNDEF )
-						{
-							++it;
-							if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
-						}
+						  Tag tag = GetTag(tagname);
+						  Storage::remote_reference_array data = RemoteReferenceArray(*it,tag);
+						  if( tag.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+						  else if( tag.GetSize() != Vector.size()*Repeat && sparse_read )
+						  {
+							reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,tag.GetSize());
+							throw BadFile;
+						  }
+						  for(int l = 0; l < Repeat; ++l)
+						  {
+							for(int q = 0; q < (int)Vector.size(); ++q)
+							{
+							  data.at((q + l*((int)Vector.size()))%data.size()).first  = remote_mesh;
+							  data.at((q + l*((int)Vector.size()))%data.size()).second = ComposeHandle(Vector[q].first,Vector[q].second-offset);
+							  if( !sparse_read && tag.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%tag.GetSize() == 0 )
+							  {
+								++it;
+								if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,tag);
+							  }
+							}
+						  }
+							if( !sparse_read && tag.GetSize() == ENUMUNDEF )
+							{
+								++it;
+								if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,tag);
+							}
+					  }
                     }
                     else
                     {
                       std::vector<std::pair<std::string,std::pair<ElementType,int> > > Vector; int Repeat;
                       reader.ParseRemoteReference(val,Vector,Repeat,set_size);
-                      if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                      else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
+                      if( !t.skip )
                       {
-                        reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
-                        throw BadFile;
-                      }
-                      for(int l = 0; l < Repeat; ++l)
-                      {
-                        for(int q = 0; q < (int)Vector.size(); ++q)
-                        {
-                          Mesh * m = GetMesh(Vector[q].first);
-                          if( m == NULL ) reader.Report("Cannot find remote mesh %s, you should create it first inside of your application",Vector[q].first.c_str());
-                          data.at((q + l*((int)Vector.size()))%data.size()).first = m;
-                          data.at((q + l*((int)Vector.size()))%data.size()).second = ComposeHandle(Vector[q].second.first,Vector[q].second.second-offset);
-                          if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
-                          {
-                            ++it;
-                            if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
-                          }
-                        }
-                      }
-						if( !sparse_read && t.GetSize() == ENUMUNDEF )
-						{
-							++it;
-							if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,t);
-						}
+						  Tag tag = GetTag(tagname);
+						  Storage::remote_reference_array data = RemoteReferenceArray(*it,tag);
+						  if( tag.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+						  else if( tag.GetSize() != Vector.size()*Repeat && sparse_read )
+						  {
+							reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,tag.GetSize());
+							throw BadFile;
+						  }
+						  for(int l = 0; l < Repeat; ++l)
+						  {
+							for(int q = 0; q < (int)Vector.size(); ++q)
+							{
+							  Mesh * m = GetMesh(Vector[q].first);
+							  if( m == NULL ) reader.Report("Cannot find remote mesh %s, you should create it first inside of your application",Vector[q].first.c_str());
+							  data.at((q + l*((int)Vector.size()))%data.size()).first = m;
+							  data.at((q + l*((int)Vector.size()))%data.size()).second = ComposeHandle(Vector[q].second.first,Vector[q].second.second-offset);
+							  if( !sparse_read && tag.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%tag.GetSize() == 0 )
+							  {
+								++it;
+								if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,tag);
+							  }
+							}
+						  }
+							if( !sparse_read && tag.GetSize() == ENUMUNDEF )
+							{
+								++it;
+								if( ((int)(it-set_elems)) < (int)set_size ) data = RemoteReferenceArray(*it,tag);
+							}
+					  }	
                     }
                   }
                   break;
 #if defined(USE_AUTODIFF)
                 case DATA_VARIABLE:
                   {
-                    Storage::var_array data = VariableArray(*it,t);
                     std::vector<Storage::var> Vector; int Repeat;
                     reader.ParseVariable(val,Vector,Repeat,set_size);
-                    if( t.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
-                    else if( t.GetSize() != Vector.size()*Repeat && sparse_read )
+                    if( !t.skip )
                     {
-                      reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,t.GetSize());
-                      throw BadFile;
-                    }
-                    for(int l = 0; l < Repeat; ++l)
-                    {
-                      for(int q = 0; q < (int)Vector.size(); ++q)
-                      {
-                        data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
-                        if( !sparse_read && t.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%t.GetSize() == 0 )
-                        {
-                          ++it;
-                          if( ((int)(it-set_elems)) < (int)set_size ) data = VariableArray(*it,t);
-                        }
-                      }
-                    }
-					  if( !sparse_read && t.GetSize() == ENUMUNDEF )
-					  {
-						  ++it;
-						  if( ((int)(it-set_elems)) < (int)set_size ) data = VariableArray(*it,t);
-					  }
+						bool noder = false;
+						if( noderivs.find(tagname) != noderivs.end() )
+							noder = true;
+						Tag tag = GetTag(tagname);
+						Storage::var_array data = VariableArray(*it,tag);
+						if( tag.GetSize() == ENUMUNDEF ) data.resize((enumerator)Vector.size()*Repeat);
+						else if( tag.GetSize() != Vector.size()*Repeat && sparse_read )
+						{
+						  reader.Report("Cannot write record of size %d into tag data of size %d",Vector.size()*Repeat,tag.GetSize());
+						  throw BadFile;
+						}
+						for(int l = 0; l < Repeat; ++l)
+						{
+						  for(int q = 0; q < (int)Vector.size(); ++q)
+						  {
+							if( noder ) Vector[q].GetRow().Clear();
+							data[(q + l*((int)Vector.size()))%data.size()] = Vector[q];
+							if( !sparse_read && tag.GetSize() != ENUMUNDEF && (q + l*((int)Vector.size())+1)%tag.GetSize() == 0 )
+							{
+							  ++it;
+							  if( ((int)(it-set_elems)) < (int)set_size ) data = VariableArray(*it,tag);
+							}
+						  }
+						}
+						  if( !sparse_read && tag.GetSize() == ENUMUNDEF )
+						  {
+							  ++it;
+							  if( ((int)(it-set_elems)) < (int)set_size ) data = VariableArray(*it,tag);
+						  }
+					}  
                   }
                   break;
 #endif
@@ -980,6 +1040,10 @@ namespace INMOST
 
   void Mesh::SaveXML(std::string File)
   {
+	std::set< std::string > nosave, saveonly, noderivs;
+	nosave = TagOptions("nosave");
+	saveonly = TagOptions("saveonly");
+	noderivs = TagOptions("noderivatives");
     std::fstream fout(File.c_str(),std::ios::out);
     fout << "<ParallelMesh>\n";
     fout << "\t<Mesh>\n";
@@ -1102,6 +1166,8 @@ namespace INMOST
     {
 	  if( tags[k] == idx ) continue;
       if( tags[k].GetTagName().substr(0,9) == "PROTECTED" ) continue;
+      if( CheckSaveSkip(tags[k].GetTagName(),nosave,saveonly) ) continue;
+      
       std::string names[6] = {"Nodes","Edges","Faces","Cells","Sets","Mesh"};
       std::string definition = "", sparse = "", type = "";
       switch(tags[k].GetDataType())
@@ -1136,6 +1202,7 @@ namespace INMOST
     {
       if( *t == idx ) continue;
       if( t->GetTagName().substr(0,9) == "PROTECTED" ) continue;
+      if( CheckSaveSkip(t->GetTagName(),nosave,saveonly) ) continue;
       for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( t->isDefined(etype) )
       {
         fout << "\t\t\t<DataSet TagName=\"" << t->GetTagName() << "\"\n";
@@ -1349,6 +1416,9 @@ namespace INMOST
         case DATA_VARIABLE:
           for(iteratorStorage jt = Begin(etype); jt != End(); ++jt) if( jt->HaveData(*t) )
           {
+			bool noder = false;
+			if( noderivs.find(t->GetTagName()) != noderivs.end() )
+				noder = true;
             Storage::var_array data = jt->VariableArray(*t);
             if( !data.empty() )
             {
@@ -1357,13 +1427,13 @@ namespace INMOST
                 fout << jt->Integer(idx) << " ";
                 endl_count++;
               }
-              if( data.size() == 1 ) fout << VariableToString(data.at(0));
+              if( data.size() == 1 ) fout << VariableToString(data.at(0),noder);
               else
               {
                 fout << "{";
                 for(int q = 0; q < (int)data.size()-1; ++q)
-                  fout << VariableToString(data.at(q)) << ",";
-                fout << VariableToString(data.back());
+                  fout << VariableToString(data.at(q),noder) << ",";
+                fout << VariableToString(data.back(),noder);
                 fout << "}";
               }
               endl_count+=data.size();

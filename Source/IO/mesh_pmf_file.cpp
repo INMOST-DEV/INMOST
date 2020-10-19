@@ -67,6 +67,33 @@ namespace INMOST
 		iconv.write_fByteOrder(out);
 		iconv.write_fByteSize(out);
 		
+		
+		std::set< std::string > nosave, saveonly, noderivs;
+		
+		nosave = TagOptions("nosave");
+		saveonly = TagOptions("saveonly");
+		noderivs = TagOptions("noderivatives");
+		
+		INMOST_DATA_ENUM_TYPE ntags = 0;
+		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
+		{
+			//SKIPHERE
+			//don't forget to change header[6] if you skip more
+			//should match with content after MeshDataHeader
+			if( *it == MarkersTag() ) continue; //temporary fix to protect markers being loaded into hide_marker and then marked elements being destroyed by EndModification
+			if( *it == HighConnTag() ) continue;
+			if( *it == LowConnTag() ) continue;
+			if( *it == CoordsTag() ) continue;
+			if( *it == SetNameTag() ) continue;
+			
+			if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
+				continue;
+			
+			ntags++;
+			
+		}
+		
+		
 		INMOST_DATA_ENUM_TYPE header[9] =
 		{
 			static_cast<INMOST_DATA_ENUM_TYPE>(GetDimensions()),
@@ -75,7 +102,8 @@ namespace INMOST
 			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfFaces()),
 			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfCells()),
 			static_cast<INMOST_DATA_ENUM_TYPE>(NumberOfSets()),
-			NumberOfTags()-5, //add counter to skip unwanted tags here SKIPHERE, search by SKIPHERE for additional instructions
+			//NumberOfTags()-5, //add counter to skip unwanted tags here SKIPHERE, search by SKIPHERE for additional instructions
+			ntags,
 			static_cast<INMOST_DATA_ENUM_TYPE>(m_state),
 			static_cast<INMOST_DATA_ENUM_TYPE>(GetProcessorRank())
 		},k;
@@ -100,6 +128,11 @@ namespace INMOST
 			if( *it == LowConnTag() ) continue;
 			if( *it == CoordsTag() ) continue;
 			if( *it == SetNameTag() ) continue;
+			
+			
+			if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
+				continue;
+			
 			
 			std::string name = it->GetTagName();
 			INMOST_DATA_ENUM_TYPE namesize = static_cast<INMOST_DATA_BULK_TYPE>(name.size());
@@ -273,6 +306,11 @@ namespace INMOST
 			if( *jt == MarkersTag() ) continue;
 			if( *jt == CoordsTag() ) continue;
 			if( *jt == SetNameTag() ) continue;
+			
+			if( CheckSaveSkip(tagname,nosave,saveonly) )
+				continue;
+			
+			
 			REPORT_VAL("TagName",tagname);
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if( jt->isDefined(etype) )
@@ -345,15 +383,27 @@ namespace INMOST
 								case DATA_VARIABLE:
 								{
 									Storage::var_array arr = it->VariableArray(*jt);
-									for(k = 0; k < recsize; k++)
+									if( noderivs.find(jt->GetTagName()) != noderivs.end() )
 									{
-										const Sparse::Row & r = arr[k].GetRow();
-										uconv.write_fValue(out,arr[k].GetValue());
-										uconv.write_iValue(out,arr[k].GetRow().Size());
-										for(int m = 0; m < (int)r.Size(); ++m)
+										for(k = 0; k < recsize; k++)
 										{
-											uconv.write_fValue(out,r.GetValue(m));
-											uconv.write_iValue(out,r.GetIndex(m));
+											const Sparse::Row & r = arr[k].GetRow();
+											uconv.write_fValue(out,arr[k].GetValue());
+											uconv.write_iValue(out,0);
+										}
+									}
+									else
+									{
+										for(k = 0; k < recsize; k++)
+										{
+											const Sparse::Row & r = arr[k].GetRow();
+											uconv.write_fValue(out,arr[k].GetValue());
+											uconv.write_iValue(out,arr[k].GetRow().Size());
+											for(int m = 0; m < (int)r.Size(); ++m)
+											{
+												uconv.write_fValue(out,r.GetValue(m));
+												uconv.write_iValue(out,r.GetIndex(m));
+											}
 										}
 									}
 								} break;
@@ -489,6 +539,13 @@ namespace INMOST
 		dynarray<INMOST_DATA_ENUM_TYPE,128> myprocs;
 		std::stringstream in(std::ios::in | std::ios::out | std::ios::binary);
 		HeaderType token;
+		std::set< std::string > noload, loadonly, noderivs;
+		
+		noload = TagOptions("noload");
+		loadonly = TagOptions("loadonly");
+		noderivs = TagOptions("noderivatives");
+		
+		
 #if defined(USE_MPI)
 		if( m_state == Mesh::Parallel )
 		{
@@ -780,8 +837,12 @@ namespace INMOST
 		//std::fstream in(File.c_str(),std::ios::in | std::ios::binary);
 		
 		std::vector<Tag> tags;
+		std::vector<bool> tags_skip;
+		std::vector<DataType> tags_dtype;
+		std::vector<std::string> tags_name;
 		std::vector<ElementType> tags_defined;
 		std::vector<ElementType> tags_sparse;
+		std::vector<INMOST_DATA_ENUM_TYPE> tags_sizes;
 		std::vector<HandleType> old_nodes;
 		std::vector<HandleType> new_nodes;
 		std::vector<HandleType> new_edges;
@@ -809,8 +870,12 @@ namespace INMOST
 					REPORT_STR("File chunk start read");
 					//~ std::cout << "start read" << std::endl;
 					tags.clear();
-					tags_sparse.clear();
+					tags_skip.clear();
+					tags_dtype.clear();
+					tags_name.clear();
 					tags_defined.clear();
+					tags_sparse.clear();
+					tags_sizes.clear();
 					old_nodes.clear();
 					old_nodes.resize(NumberOfNodes());
 					{
@@ -896,8 +961,13 @@ namespace INMOST
 				new_sets.clear();
 				new_sets.resize(header[5]);
 				tags.resize(header[6]);
-				tags_sparse.resize(header[6]);
+				
+				tags_skip.resize(header[6],false);
+				tags_dtype.resize(header[6]);
+				tags_name.resize(header[6]);
 				tags_defined.resize(header[6]);
+				tags_sparse.resize(header[6]);
+				tags_sizes.resize(header[6]);
 				//~ if( static_cast<Mesh::MeshState>(header[7]) == Mesh::Parallel && m_state != Mesh::Parallel)
 				//~ SetCommunicator(INMOST_MPI_COMM_WORLD);
 				myprocs.push_back(header[8]);
@@ -930,11 +1000,22 @@ namespace INMOST
 					//}
 					uconv.read_iValue(in,datalength);
 					REPORT_VAL("length",datalength);
-					tags[i] = CreateTag(std::string(name),static_cast<DataType>(datatype),
-										static_cast<ElementType>(definedmask),
-										static_cast<ElementType>(sparsemask),datalength);
+					
+					
+					
+					tags_skip[i] = false;
+					tags_dtype[i] = static_cast<DataType>(datatype);
 					tags_defined[i] = static_cast<ElementType>(definedmask);
 					tags_sparse[i] = static_cast<ElementType>(sparsemask);
+					tags_name[i] = std::string(name);
+					tags_sizes[i] = datalength;
+					
+					tags_skip[i] = CheckLoadSkip(tags_name[i],noload,loadonly);
+					
+					if( !tags_skip[i] ) 
+						tags[i] = CreateTag(std::string(name),static_cast<DataType>(datatype),
+											static_cast<ElementType>(definedmask),
+											static_cast<ElementType>(sparsemask),datalength);
 					
 					REPORT_VAL("output position, tag " << i,in.tellg());
 				}
@@ -1152,11 +1233,17 @@ namespace INMOST
 					new_sets.empty() ? NULL : &new_sets[0],
 					&m_storage
 				};
-				for(INMOST_DATA_ENUM_TYPE j = 0; j < tags.size(); j++)
+				for(INMOST_DATA_ENUM_TYPE j = 0; j < (INMOST_DATA_ENUM_TYPE)tags_skip.size(); j++)
 				{
-					REPORT_VAL("TagName",tags[j].GetTagName());
-					if( verbosity > 0 ) std::cout << "Reading " << tags[j].GetTagName() << std::endl;
-					Tag * jt = &tags[j];
+					REPORT_VAL("TagName",tags_name[j]);
+					if( verbosity > 0 ) 
+					{
+						if( tags_skip[j] )
+							std::cout << "Skipping " << tags_name[j] << std::endl;
+						else
+							std::cout << "Reading " << tags_name[j] << std::endl;
+					}
+					//Tag * jt = &tags[j];
 					for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 					{
 						if( etype & tags_defined[j] )
@@ -1167,14 +1254,14 @@ namespace INMOST
 							REPORT_VAL("cycle end",cycle_end);
 							bool sparse = false;
 							if( etype & tags_sparse[j] ) sparse = true;
-							INMOST_DATA_ENUM_TYPE tagsize = jt->GetSize(), recsize = tagsize, lid;
+							INMOST_DATA_ENUM_TYPE tagsize = tags_sizes[j], recsize = tagsize, lid;
 							INMOST_DATA_ENUM_TYPE k;
-							DataType data_type = jt->GetDataType();
+							DataType data_type = tags_dtype[j];
 							if( sparse )
 							{
 								REPORT_VAL("sparse on",ElementTypeName(etype));
 								uconv.read_iValue(in,q);
-								if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+								if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 							}
 							else q = 0;
 							
@@ -1187,96 +1274,200 @@ namespace INMOST
 								if( tagsize == ENUMUNDEF )
 								{
 									uconv.read_iValue(in,recsize);
-									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
-									SetDataSize(he,*jt,recsize);
+									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+									if( !tags_skip[j] ) SetDataSize(he,tags[j],recsize);
 								}
 								switch(data_type)
 								{
 									case DATA_REAL:
 									{
-										Storage::real_array arr = RealArray(he,*jt);
-										for(k = 0; k < recsize; k++)
+										if( tags_skip[j] )
 										{
-											iconv.read_fValue(in,arr[k]);
-											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											Storage::real tmp;
+											for(k = 0; k < recsize; k++)
+											{
+												iconv.read_fValue(in,tmp);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											}
+										}
+										else
+										{
+											Storage::real_array arr = RealArray(he,tags[j]);
+											for(k = 0; k < recsize; k++)
+											{
+												iconv.read_fValue(in,arr[k]);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											}
 										}
 									} break;
 									case DATA_INTEGER:
 									{
-										Storage::integer_array arr = IntegerArray(he,*jt);
-										for(k = 0; k < recsize; k++)
+										if( tags_skip[j] )
 										{
-											iconv.read_iValue(in,arr[k]);
-											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											Storage::integer tmp;
+											for(k = 0; k < recsize; k++)
+											{
+												iconv.read_iValue(in,tmp);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											}
+										}
+										else
+										{
+											Storage::integer_array arr = IntegerArray(he,tags[j]);
+											for(k = 0; k < recsize; k++)
+											{
+												iconv.read_iValue(in,arr[k]);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+											}
 										}
 									} break;
 									case DATA_BULK:
 									{
-										in.read(reinterpret_cast<char *>(&Bulk(he,*jt)),recsize);
-										if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+										if( tags_skip[j] )
+										{
+											std::vector<char> tmp(recsize);
+											in.read(reinterpret_cast<char *>(&tmp[0]),recsize);
+											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+										}
+										else
+										{
+											in.read(reinterpret_cast<char *>(&Bulk(he,tags[j])),recsize);
+											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+										}
 									} break;
 									case DATA_REFERENCE:
 									{
-										Storage::reference_array arr = ReferenceArray(he,*jt);
-										for(k = 0; k < recsize; k++)
+										if( tags_skip[j] )
 										{
-											char type;
-											in.get(type);
-											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
-											if (type != NONE)
+											for(k = 0; k < recsize; k++)
 											{
-												uconv.read_iValue(in, lid);
-												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
-												arr.at(k) = elem_links[ElementNum(type)][lid];
+												char type;
+												in.get(type);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+												}
 											}
-											else arr.at(k) = InvalidHandle();
+										}
+										else
+										{
+											Storage::reference_array arr = ReferenceArray(he,tags[j]);
+											for(k = 0; k < recsize; k++)
+											{
+												char type;
+												in.get(type);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+													arr.at(k) = elem_links[ElementNum(type)][lid];
+												}
+												else arr.at(k) = InvalidHandle();
+											}
 										}
 									} break;
 									case DATA_REMOTE_REFERENCE:
 									{
-										Storage::remote_reference_array arr = RemoteReferenceArray(he,*jt);
+										Storage::remote_reference_array arr = RemoteReferenceArray(he,tags[j]);
 										for(k = 0; k < recsize; k++)
 										{
-											INMOST_DATA_ENUM_TYPE size;
-											std::vector<char> name;
-											uconv.read_iValue(in,size);
-											name.resize(size);
-											if( !name.empty() ) in.read(&name[0],size);
-											else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
-											arr.at(k).first = GetMesh(std::string(name.begin(),name.end()));
-											if( arr.at(k).first == NULL )
-												std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(),name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;
-											char type;
-											in.get(type);
-											if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
-											if (type != NONE)
+											if( tags_skip[j] )
 											{
-												uconv.read_iValue(in, lid);
-												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
-												arr.at(k).second = ComposeHandle(type,lid);
+												INMOST_DATA_ENUM_TYPE size;
+												std::vector<char> name;
+												uconv.read_iValue(in,size);
+												name.resize(size);
+												if( !name.empty() ) in.read(&name[0],size);
+												else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
+												char type;
+												in.get(type);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+												}
 											}
-											else arr.at(k).second = InvalidHandle();
+											else
+											{
+												INMOST_DATA_ENUM_TYPE size;
+												std::vector<char> name;
+												uconv.read_iValue(in,size);
+												name.resize(size);
+												if( !name.empty() ) in.read(&name[0],size);
+												else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
+												arr.at(k).first = GetMesh(std::string(name.begin(),name.end()));
+												if( arr.at(k).first == NULL )
+													std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(),name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;
+												char type;
+												in.get(type);
+												if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+													arr.at(k).second = ComposeHandle(type,lid);
+												}
+												else arr.at(k).second = InvalidHandle();
+											}
 										}
 									} break;
 #if defined(USE_AUTODIFF)
 									case DATA_VARIABLE:
 									{
-										Storage::var_array arr = VariableArray(he,*jt);
-										Storage::real val;
-										Storage::integer ival;
-										for(k = 0; k < recsize; k++)
+										if( tags_skip[j] )
 										{
-											Sparse::Row & r = arr[k].GetRow();
-											iconv.read_fValue(in,val);
-											arr[k].SetValue(val);
-											iconv.read_iValue(in,ival);
-											r.Resize(ival);
-											for(int l = 0; l < (int)r.Size(); ++l)
+											Storage::real val;
+											Storage::integer ival;
+											for(k = 0; k < recsize; k++)
 											{
 												iconv.read_fValue(in,val);
 												iconv.read_iValue(in,ival);
-												r.GetValue(l) = val;
-												r.GetIndex(l) = ival;
+												int rend = ival;
+												for(int l = 0; l < rend; ++l)
+												{
+													iconv.read_fValue(in,val);
+													iconv.read_iValue(in,ival);
+												}
+											}
+										}
+										else
+										{
+											bool noder = false;
+											if( noderivs.find(tags_name[j]) != noderivs.end() )
+												noder = true;
+											Storage::var_array arr = VariableArray(he,tags[j]);
+											Storage::real val;
+											Storage::integer ival;
+											for(k = 0; k < recsize; k++)
+											{
+												Sparse::Row & r = arr[k].GetRow();
+												iconv.read_fValue(in,val);
+												arr[k].SetValue(val);
+												iconv.read_iValue(in,ival);
+												int rend = ival;
+												if( noder )
+												{
+													for(int l = 0; l < rend; ++l)
+													{
+														iconv.read_fValue(in,val);
+														iconv.read_iValue(in,ival);
+													}
+												}
+												else
+												{
+													r.Resize(ival);
+													for(int l = 0; l < rend; ++l)
+													{
+														iconv.read_fValue(in,val);
+														iconv.read_iValue(in,ival);
+														r.GetValue(l) = val;
+														r.GetIndex(l) = ival;
+													}
+												}
 											}
 										}
 									} break;
@@ -1285,7 +1476,7 @@ namespace INMOST
 								if( sparse )
 								{
 									uconv.read_iValue(in,q);
-									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags[j].GetTagName() << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
+									if( in.eof() ) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse? "sparse" : "dense") << std::endl;
 								}
 								else q++;
 							}

@@ -24,6 +24,8 @@ namespace INMOST
         ss << value;
         return ss.str();
     }
+    
+    void split_string(const std::string & str, std::vector<std::string> & str_list, const std::string& delims = ",");
 
     std::string string_to_lower(const std::string &str);
 	

@@ -3090,8 +3090,17 @@ namespace INMOST
 		/// - "ECL_TOPOLOGY"     - If "TRUE" checks topology of the grid for errors, this may provide useful
 		///                        warnings if layers of the mesh enter each other and the grid cannot be
 		///                        considered conformal. Default: "FALSE".
-		///   "ECL_PARALLEL_READ"- if "TRUE" then each processor loads part of the eclipse mesh, requires some synchronization.
+		///   "ECL_PARALLEL_READ"- If "TRUE" then each processor loads part of the eclipse mesh, requires some synchronization.
 		///                        Otherwise if "FALSE" then each processor loads entire mesh. Default: "TRUE".
+		///   "Tag:TAGNAME"      - Set comman-separated rules for tag with the name TAGNAME, the rules list is:
+		///                        nosave - do not save the tag data into files;
+		///                        noload - do not load the tag data from files;
+		///                        noderivatives - do not save/load the derivatives for data with type DATA_VARIABLE (for .xml and .pmf);
+		///                        loadonly - this creates an exclusive list for data to be loaded from files, all other tag names will be ignored;
+		///                        saveonly - this creates an exclusive list for data to be saved to files, all other tag names will be ignored.
+		///                        Example: mesh->SetFileOption("Tag:PressureGradient","noload,noderivatives");
+		///                        the tag with the name PressureGradient will not be loaded from files and 
+		///                        when recording the derivaives data will be not saved.
 		///
 		/// \todo
 		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write
@@ -3099,7 +3108,15 @@ namespace INMOST
 		void         SetFileOption(std::string,std::string);
 		/// Get current option corresponding to key.
 		/// @param key options for which options should be retrieven
-		std::string  GetFileOption(std::string key);
+		std::string  GetFileOption(std::string key) const;
+		/// Collect file options realated to records Tag:TAGNAME.
+		/// @param given option name, such as nosave, noload, noderivatives, loadonly, saveonly
+		/// @return a set of tags that has given option
+		std::set<std::string> TagOptions(std::string name) const;
+		/// Check if tag loading should be skipped.
+		bool CheckLoadSkip(std::string name, const std::set<std::string> & noload, const std::set<std::string> & loadonly) const;
+		/// Check if tag saving should be skipped.
+		bool CheckSaveSkip(std::string name, const std::set<std::string> & noload, const std::set<std::string> & loadonly) const;
 		/// Acceptable file formats for reading
 		/// - ".vtk"    - legacy vtk format for unstructured grid
 		/// - ".pvtk"   - legacy parallel vtk format
