@@ -86,7 +86,45 @@ int main(int argc,char ** argv)
 		//~ t.Load(argv[1]);
 		//~ BARRIER
 		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_Scatter): " << Timer()-ttt2 << std::endl;
-
+		/*
+		//output sizes of elements
+		for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype) )
+		{
+			double lmin = 1.0e+20, lmax = 0, l;
+			for(Mesh::iteratorElement it = m->BeginElement(etype); it != m->EndElement(); ++it)
+			{
+				m->GetGeometricData(*it,MEASURE,&l);
+				lmin = std::min(lmin,l);
+				lmax = std::max(lmax,l);
+			}
+			lmax = m->AggregateMax(lmax);
+			lmin = m->AggregateMin(lmin);
+			if( m->GetProcessorRank() == 0 )
+			std::cout << "Measure for " << ElementTypeName(etype) << " is " << lmin << ":" << lmax << std::endl;
+		}
+		// count presence of similar nodes
+		{
+			std::vector<HandleType> nodes;
+			nodes.reserve(m->NumberOfNodes());
+			for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it)
+				nodes.push_back(*it);
+			Mesh::CentroidComparator cmp(m);
+			std::sort(nodes.begin(),nodes.end(),cmp);	
+			TagRealArray coords = m->CoordsTag();
+			int match = 0;
+			if( !nodes.empty() )
+			{
+				for(size_t k = 0; k < nodes.size()-1; ++k)
+				{
+					if( cmp.Compare(coords[nodes[k]].data(),coords[nodes[k+1]].data()) == 0)
+						match++;
+				}
+			}
+			match = m->Integrate(match);
+			if( m->GetProcessorRank() == 0 )
+				std::cout << "nodes with the same coordinate: " << match << std::endl;
+		}
+		*/
 #if defined(USE_PARTITIONER)
 		if (m->GetProcessorsNumber() > 1 )// && !repartition)
 		{ // currently only non-distributed meshes are supported by Inner_RCM partitioner
@@ -130,7 +168,7 @@ int main(int argc,char ** argv)
 		ttt = Timer();
 		Solver S("inner_ilu2"); // Specify the linear solver to ASM+ILU2+BiCGStab one
 		S.SetParameter("absolute_tolerance", "1e-8");
-    Sparse::LockService L;
+		Sparse::LockService L;
 		Sparse::Matrix A; // Declare the matrix of the linear system to be solved
 		Sparse::Vector x,b; // Declare the solution and the right-hand side vectors
 
@@ -143,7 +181,8 @@ int main(int argc,char ** argv)
 		table[BARYCENTER] = CELL | FACE;
 		m->PrepareGeometricData(table);
 		//~ BARRIER
-		//~ if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
+		if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
+		
 
 		unsigned idmax = 0, idmin = UINT_MAX;
 		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
@@ -156,20 +195,20 @@ int main(int argc,char ** argv)
 			}
 
 		// Set the indeces intervals for the matrix and vectors
-    L.SetInterval(idmin,idmax);
+		L.SetInterval(idmin,idmax);
 		A.SetInterval(idmin,idmax);
 		x.SetInterval(idmin,idmax);
 		b.SetInterval(idmin,idmax);
-		//~ std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
+		std::cout << m->GetProcessorRank() << " A,x,b interval " << idmin << ":" << idmax << " size " << idmax-idmin << std::endl;
 
 		// Solve \nabla \cdot \nabla phi = f equation
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 		//for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
-    for(Storage::integer fi = 0; fi < m->FaceLastLocalID(); ++fi) if( m->isValidElement(FACE,fi) )
+		for(Storage::integer fi = 0; fi < m->FaceLastLocalID(); ++fi) if( m->isValidElement(FACE,fi) )
 		{
-      Face face(m,ComposeHandle(FACE,fi));
+			Face face(m,ComposeHandle(FACE,fi));
 			//~ std::cout << face->LocalID() << " / " << m->NumberOfFaces() << std::endl;
 			Element::Status s1,s2;
 			Cell r1 = face->BackCell();
@@ -196,10 +235,10 @@ int main(int argc,char ** argv)
 				bnd_pnt[1] = r1_cnt[1] + dist * f_nrm[1];
 				bnd_pnt[2] = r1_cnt[2] + dist * f_nrm[2];
 				Coef = K1 * f_area / dist;
-        L.Lock(id1);
+				L.Lock(id1);
 				A[id1][id1] += -Coef;
 				b[id1] += -Coef * func(bnd_pnt, 0);
-        L.UnLock(id1);
+				L.UnLock(id1);
 			}
 			else
 			{
@@ -213,17 +252,17 @@ int main(int argc,char ** argv)
 
 				if( s1 != Element::Ghost )
 				{
-          L.Lock(id1);
+					L.Lock(id1);
 					A[id1][id1] += -Coef;
 					A[id1][id2] += Coef;
-          L.UnLock(id2);
+					L.UnLock(id1);
 				}
 				if( s2 != Element::Ghost )
 				{
-          L.Lock(id2);
+					L.Lock(id2);
 					A[id2][id1] += Coef;
 					A[id2][id2] += -Coef;
-          L.UnLock(id2);
+					L.UnLock(id2);
 				}
 			}
 		}
@@ -233,12 +272,12 @@ int main(int argc,char ** argv)
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-    for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
-    {
-      Cell cell(m,ComposeHandle(CELL,ci));
-			if( cell->GetStatus() != Element::Ghost )
-				b[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
-    }
+		for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
+		{
+		  Cell cell(m,ComposeHandle(CELL,ci));
+				if( cell->GetStatus() != Element::Ghost )
+					b[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
+		}
 
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Matrix assemble: " << Timer()-ttt << std::endl;
@@ -271,20 +310,20 @@ int main(int argc,char ** argv)
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-    for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
-    {
-      Cell cell(m,ComposeHandle(CELL,ci));
-			if( cell->GetStatus() != Element::Ghost )
-			{
-				double exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
-				double err = fabs (x[cell->Integer(id)] - exact);
-				if (err > err_C)
-					err_C = err;
-				err_L2 += err * err * cell->Volume();
-				cell->Real(error) = err;
-// 				x[cell->Integer(id)] = err;
-			}
-    }
+		for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
+		{
+		  Cell cell(m,ComposeHandle(CELL,ci));
+				if( cell->GetStatus() != Element::Ghost )
+				{
+					double exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
+					double err = fabs (x[cell->Integer(id)] - exact);
+					if (err > err_C)
+						err_C = err;
+					err_L2 += err * err * cell->Volume();
+					cell->Real(error) = err;
+	// 				x[cell->Integer(id)] = err;
+				}
+		}
 		err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
 		err_L2 = sqrt(m->Integrate(err_L2)); // Compute the global L2 norm for the error
 		if( m->GetProcessorRank() == 0 ) std::cout << "err_C  = " << err_C << std::endl;
