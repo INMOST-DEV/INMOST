@@ -709,7 +709,7 @@ namespace INMOST
 					REPORT_MPI(ierr = MPI_File_get_position(fh,&off));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 					
-					std::cout << "file offset: " << off << " size of big enum " << sizeof(INMOST_DATA_BIG_ENUM_TYPE) << std::endl;
+					//~ std::cout << "file offset: " << off << " size of big enum " << sizeof(INMOST_DATA_BIG_ENUM_TYPE) << std::endl;
 					
 					offsets[0] = off;
 					for(k = 1; k < recvsizes.size(); k++)
@@ -730,8 +730,8 @@ namespace INMOST
 				REPORT_VAL("read on current processor",recvsize);
 				REPORT_VAL("offset on current processor",offset);
 				
-				std::cout << "read on " << GetProcessorRank() << " size " << recvsize << " offset " << offset << std::endl;
-				std::cout.flush();
+				//~ std::cout << "read on " << GetProcessorRank() << " size " << recvsize << " offset " << offset << std::endl;
+				//~ std::cout.flush();
 				
 				//~ {
 					//~ REPORT_MPI(ierr = MPI_File_read_ordered(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(recvsize),MPI_CHAR,&stat));
