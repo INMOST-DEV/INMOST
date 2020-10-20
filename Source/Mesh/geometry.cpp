@@ -2081,17 +2081,13 @@ namespace INMOST
 	{
 		if( size )
 		{
-			bool flag = true;
 			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
 			Storage::integer_array arr = element->IntegerArray(tag);
-			for(Storage::integer_array::iterator it = arr.begin(); it != arr.end(); it++)
-				if( *it == recv[0] )
-				{
-					flag = false;
-					break;
-				}
-				if( flag ) 
-					arr.push_back(recv[0]);
+			for(int k = 0; k < size; ++k)
+			{
+				if( std::find(arr.begin(),arr.end(),recv[k]) == arr.end() )
+					arr.push_back(recv[k]);
+			}
 		}
 	}
 
@@ -2121,8 +2117,11 @@ namespace INMOST
 			for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
 			{
 				Face face = FaceByLocalID(it);
+				assert(face->IntegerArray(tag_bnd).size() <= 2);
 				if( face->IntegerArray(tag_bnd).size() == 1 )
 					face->SetMarker(boundary_marker);
+				else
+					face->RemMarker(boundary_marker);
 			}
 			DeleteTag(tag_bnd);
 		}
@@ -2134,7 +2133,10 @@ namespace INMOST
 			for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
 			{
 				Face face = FaceByLocalID(it);
-				if( face->Boundary() ) face->SetMarker(boundary_marker);
+				if( face->Boundary() ) 
+					face->SetMarker(boundary_marker);
+				else 
+					face->RemMarker(boundary_marker);
 			}
 
 		}

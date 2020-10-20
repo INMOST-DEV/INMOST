@@ -123,8 +123,9 @@ namespace INMOST
 	{
 		if( size )
 		{
-      const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
+			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
 			Storage::integer_array arr = e->IntegerArray(tag);
+			//for(int k = 0; k < size; ++k)
 			arr.push_back(recv[0]);
 		}
 	}
@@ -1434,6 +1435,8 @@ namespace INMOST
 				
 				int position = 0;
 				ENTER_BLOCK();
+				
+				//TODO: overflow
 				MPI_Pack_size(static_cast<int>(pack_real.size()),INMOST_MPI_DATA_REAL_TYPE,comm,&sendsize);
 				exch_data.resize(sendsize);
 				if( sendsize > 0 ) MPI_Pack(&pack_real[0],static_cast<INMOST_MPI_SIZE>(pack_real.size()),INMOST_MPI_DATA_REAL_TYPE,&exch_data[0],static_cast<INMOST_MPI_SIZE>(exch_data.size()),&position,comm);
@@ -1449,14 +1452,7 @@ namespace INMOST
 					std::vector< MPI_Request > send_reqs, recv_reqs;
 					exch_buffer_type send_buffs(procs.size()), recv_buffs(procs.size());
 					std::vector<int> done;
-//~ #if defined(USE_MPI_P2P)
-					//~ unsigned * sendsizeall = shared_space;
-					//~ unsigned usend[2] = {sendsize,pack_real.size()};
-					//~ REPORT_MPI(MPI_Win_fence(0,window)); //start exchange session
-					//~ for(unsigned k = 0; k < procs.size(); k++)
-						//~ REPORT_MPI(MPI_Put(usend,2,MPI_UNSIGNED,procs[k],mpirank*2,2,MPI_UNSIGNED,window));
-					//~ REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
-//~ #else
+
 					std::vector<unsigned> sendsizeall(mpisize*2);
 					int pack_size2 = 0;
 					unsigned usend[2] = {static_cast<unsigned>(sendsize),static_cast<unsigned>(pack_real.size())};
@@ -1487,8 +1483,7 @@ namespace INMOST
 						REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_reqs.size()),&send_reqs[0],MPI_STATUSES_IGNORE));
 					}
 					EXIT_BLOCK();
-					//~ REPORT_MPI(MPI_Allgather(usend,2,MPI_UNSIGNED,&sendsizeall[0],2,MPI_UNSIGNED,comm));
-//~ #endif
+
 					ENTER_BLOCK();
 					{
 						
@@ -1515,6 +1510,8 @@ namespace INMOST
 								int count = 0;
 								int position = 0;
 								unpack_real.resize(sendsizeall[recv_buffs[*qt].first*2+1]);
+								
+								//TODO: overflow
 								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&unpack_real[0],static_cast<INMOST_MPI_SIZE>(unpack_real.size()),INMOST_MPI_DATA_REAL_TYPE,comm);
 								std::vector<Storage::real>::iterator it1 = pack_real.begin() , it2 = unpack_real.begin();
 								while(it1 != pack_real.end() && it2 != unpack_real.end() )
@@ -1751,6 +1748,8 @@ namespace INMOST
 								
 								REPORT_VAL("gathered elements",elements[m].size());
 								message_send[0] = static_cast<int>(message_send.size());
+								
+								//TODO: overflow
 								MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(message_send.size()),MPI_INT,comm,&sendsize);
 								send_buffs[m].first = *p;
 								send_buffs[m].second.resize(sendsize);
@@ -1785,6 +1784,7 @@ namespace INMOST
 										break;
 									}
 								if( pos == -1 ) throw Impossible;
+								//TODO: overflow
 								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&size,1,MPI_INT,comm);
 								REPORT_VAL("unpacked message size",size-1);
 								message_recv[pos].resize(size-1);
@@ -2281,11 +2281,9 @@ namespace INMOST
 #if defined(USE_MPI)
 		if( m_state == Parallel )
 		{
-			INMOST_DATA_BIG_ENUM_TYPE number,shift[5], shift_recv[5], local_shift;
-			//int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
+			INMOST_DATA_ENUM_TYPE number,shift[5], shift_recv[5], local_shift;
 			int num;
-			//std::vector<INMOST_DATA_BIG_ENUM_TYPE> shifts(mpisize*4);
-			memset(shift,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE));
+			memset(shift,0,sizeof(INMOST_DATA_ENUM_TYPE));
 			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 			{
 				if( mask & currenttype )
@@ -2302,7 +2300,7 @@ namespace INMOST
 			}
 			{
 				int ierr;
-				REPORT_MPI(ierr = MPI_Scan(shift,shift_recv,4,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_SUM,GetCommunicator()));
+				REPORT_MPI(ierr = MPI_Scan(shift,shift_recv,5,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			}
 			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
@@ -2331,7 +2329,7 @@ namespace INMOST
 		else
 		{
 #endif //USE_MPI
-			INMOST_DATA_BIG_ENUM_TYPE number;
+			INMOST_DATA_ENUM_TYPE number;
 			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 				if( mask & currenttype )
 				{
@@ -2485,12 +2483,13 @@ namespace INMOST
 				ElementArray<Element> adj = it->getAdjElements(CELL);
         		for(ElementArray<Element>::iterator jt = adj.begin(); jt != adj.end(); jt++)
 				{
+					assert(jt->IntegerDF(tag_owner) >= 0 && jt->IntegerDF(tag_owner) < GetProcessorsNumber());
 					arr.push_back(jt->GlobalID()); //identificator of the cell
 					arr.push_back(jt->IntegerDF(tag_owner)); //owner of the cell
         		}
 			}
 #if defined(USE_PARALLEL_WRITE_TIME)
-        ++numfacesperproc[it->IntegerDF(tag_owner)];
+			++numfacesperproc[it->IntegerDF(tag_owner)];
 #endif
 		}
 		REPORT_STR("number of ghosted or shared faces");
@@ -2562,6 +2561,7 @@ namespace INMOST
 				for(int i = 0; i < 2; i++) //assert checks that there are two cells
 				{
 					Storage::integer owner = skin_data[i*2+1]; //cell owner
+					assert(owner >= 0 && owner < GetProcessorsNumber());
 					if( owner != mpirank )
 					{
 						skin_faces[owner].push_back(*it);
@@ -2581,7 +2581,7 @@ namespace INMOST
 			REPORT_VAL("skin faces",it->second);
 		}
 #endif
-		DeleteTag(tag_skin);
+		tag_skin = DeleteTag(tag_skin);
 #if defined(DEBUG_COMPUTE_SHARED_SKIN_SET)
 		{
 			Storage::integer keynum;
@@ -2630,7 +2630,7 @@ namespace INMOST
 		else
 		{
 			element_set all_visited;
-			Tag on_skin = CreateTag("TEMPORARY_ON_SKIN",DATA_INTEGER,bridge_type,bridge_type);
+			Tag on_skin = CreateTag("TEMPORARY_ON_SKIN_BRIDGE",DATA_INTEGER,bridge_type,bridge_type);
 
 			REPORT_STR("gathering specified elements on skin");
 			REPORT_VAL("type",ElementTypeName(bridge_type));
@@ -2668,6 +2668,7 @@ namespace INMOST
 				Storage::integer_array os = IntegerArray(*it,on_skin);
 				for(Storage::integer_array::iterator p = os.begin(); p != os.end(); p++)
 				{
+					assert(*p >= 0 && *p < GetProcessorsNumber());
 					if( *p != mpirank )
 					{
 						bridge[*p].push_back(*it);
@@ -2677,6 +2678,7 @@ namespace INMOST
 					}
 				}
 			}
+			on_skin = DeleteTag(on_skin);
 			REPORT_STR("number of shared elements")
 #if defined(USE_PARALLEL_WRITE_TIME)
 			for(std::map<int,int>::iterator it = numelemsperproc.begin(); it != numelemsperproc.end(); ++it)
@@ -3556,13 +3558,13 @@ namespace INMOST
 				Storage::integer_array v = it->IntegerArrayDV(tag_processors);
 				for(Storage::integer_array::iterator vit = v.begin(); vit != v.end(); vit++)
 				{
-					if( !(*vit >= 0 && *vit < mpisize) )
-					{
-						// err++;
-						REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc in list " << *vit << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() );
-						std::cout << GetProcessorRank() << " " << __FILE__ << ":" << __LINE__ << " bad proc in list " << *vit << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID()  << std::endl;
-					}
-					//assert(*vit >= 0 && *vit < mpisize);
+					//~ if( !(*vit >= 0 && *vit < mpisize) )
+					//~ {
+						//~ // err++;
+						//~ REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc in list " << *vit << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() );
+						//~ std::cout << GetProcessorRank() << " " << __FILE__ << ":" << __LINE__ << " bad proc in list " << *vit << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID()  << std::endl;
+					//~ }
+					assert(*vit >= 0 && *vit < mpisize);
 					if( *vit != mpirank )
 						shared[*vit][ElementNum(it->GetElementType())].push_back(*it);
 				}
@@ -3570,13 +3572,13 @@ namespace INMOST
 			else if( estat == Element::Ghost )
 			{
 				int proc = it->IntegerDF(tag_owner);
-				if( !(proc >= 0 && proc < mpisize) )
-				{
-					// err++;
-					REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc owner " << proc << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() );
-					std::cout << GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc owner " << proc << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID()  << std::endl;
-				}
-				//assert(proc >= 0 && proc < mpisize);
+				//~ if( !(proc >= 0 && proc < mpisize) )
+				//~ {
+					//~ // err++;
+					//~ REPORT_STR(GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc owner " << proc << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() );
+					//~ std::cout << GetProcessorRank() <<  " " << __FILE__ << ":" << __LINE__ <<  " bad proc owner " << proc << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID()  << std::endl;
+				//~ }
+				assert(proc >= 0 && proc < mpisize);
 				ghost[proc][ElementNum(it->GetElementType())].push_back(*it);
 			}
 		}
@@ -5737,7 +5739,11 @@ namespace INMOST
 		memset(shared_space,0,sizeof(unsigned)*mpisize); //zero bits where we receive data
 		REPORT_MPI(MPI_Win_fence(0,window)); //wait memset finish
 		for(i = 0; i < end; i++) shared_space[mpisize+i] = send_bufs[i].second.size()+1; //put data to special part of the memory
-		for(i = 0; i < end; i++) REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,MPI_UNSIGNED,send_bufs[i].first,mpirank,1,MPI_UNSIGNED,window)); //request rdma
+		for(i = 0; i < end; i++) 
+		{
+			assert( send_bufs[i].first >= 0 && send_bufs[i].first < GetProcessorsNumber() );
+			REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,MPI_UNSIGNED,send_bufs[i].first,mpirank,1,MPI_UNSIGNED,window)); //request rdma
+		}
 		REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
 		if( parallel_strategy == 0 )
 		{
@@ -5834,6 +5840,9 @@ namespace INMOST
                 REPORT_VAL("put value", shared_space[mpisize+i]);
                 REPORT_VAL("destination", send_bufs[i].first);
                 REPORT_VAL("displacement", mpirank);
+                //~ if( !(send_bufs[i].first >= 0 && send_bufs[i].first < GetProcessorsNumber()) )
+					//~ std::cout << "requested put to " << send_bufs[i].first << "/" << GetProcessorsNumber() << std::endl;
+                assert( send_bufs[i].first >= 0 && send_bufs[i].first < GetProcessorsNumber() );
 				REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,MPI_UNSIGNED,send_bufs[i].first,mpirank,1,MPI_UNSIGNED,window)); //request rdma to target processors for each value
 			}
 			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
@@ -5999,7 +6008,10 @@ namespace INMOST
 				{
 					Storage::integer_array mark = it->IntegerArray(tag_sendto);
 					for(Storage::integer_array::iterator kt = mark.begin(); kt != mark.end(); kt++)
+					{
+						assert( *kt >= 0 && *kt < GetProcessorsNumber() );
 						if( *kt != mpirank ) send_elements[*kt][GetHandleElementNum(*it)].push_back(*it);
+					}
 					it->DelData(tag_sendto);
 				}
 		}
@@ -6686,10 +6698,10 @@ namespace INMOST
 		bool delete_ghost = false;
 		//if( layers == Integer(tag_layers) && bridge == Integer(tag_bridge) ) return;
 		//cout << "Check " << layers << " " << Integer(GetHandle(),tag_layers) << endl;
-		if( layers < Integer(GetHandle(),tag_layers) ) delete_ghost = true;
-		else if( layers == Integer(GetHandle(),tag_layers) && bridge < Integer(GetHandle(),tag_bridge) ) delete_ghost = true;
+		//~ if( layers <= Integer(GetHandle(),tag_layers) ) delete_ghost = true;
+		//~ else if( layers == Integer(GetHandle(),tag_layers) && bridge < Integer(GetHandle(),tag_bridge) ) delete_ghost = true;
 		//if (marker != 0)
-			delete_ghost = true;
+		delete_ghost = true;
 		int test_bridge = 0;
 		
 		if( (bridge & MESH) || (bridge & ESET) || (bridge & CELL) ) throw Impossible;
@@ -6728,7 +6740,10 @@ namespace INMOST
 								{
 									Storage::integer_array adj_procs = jt->IntegerArrayDV(tag_processors);
 									if( !std::binary_search(adj_procs.begin(),adj_procs.end(),p->first) )
+									{
+										assert(p->first >= 0 && p->first <= GetProcessorsNumber());
 										jt->IntegerArray(tag_sendto).push_back(p->first);
+									}
 									if( delete_ghost ) jt->IntegerArray(layers_marker).push_back(p->first);
 								}
 							}
@@ -6777,7 +6792,10 @@ namespace INMOST
 											ref_cur.push_back(*kt);
 											Storage::integer_array adj_procs = kt->IntegerArrayDV(tag_processors);
 											if( !std::binary_search(adj_procs.begin(),adj_procs.end(),p->first) )
+											{
+												assert(p->first >= 0 && p->first <= GetProcessorsNumber());
 												kt->IntegerArray(tag_sendto).push_back(p->first);
+											}
 											if( delete_ghost ) kt->IntegerArray(layers_marker).push_back(p->first);
 										}
 										kt->SetMarker(busy);
@@ -6837,7 +6855,7 @@ namespace INMOST
 			//Save("after_delete_ghost.pvtk");
 			//exit(-1);
 		}
-		DeleteTag(layers_marker);
+		layers_marker = DeleteTag(layers_marker);
 		//throw NotImplemented;
 #else
 		(void) layers;

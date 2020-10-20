@@ -482,7 +482,7 @@ namespace INMOST
 					while( shift != datasize )
 					{
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize-shift);
-						REPORT_MPI(ierr = MPI_File_write_at(fh,offset+shift,&local_data[shift],static_cast<INMOST_MPI_SIZE>(chunk),MPI_CHAR,&stat));
+						REPORT_MPI(ierr = MPI_File_write_at(fh,offset+shift,local_data.c_str()+shift,static_cast<INMOST_MPI_SIZE>(chunk),MPI_CHAR,&stat));
 						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 						shift += chunk;
 					}

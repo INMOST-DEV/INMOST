@@ -788,18 +788,40 @@ namespace INMOST
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()),MPI_MODE_WRONLY | MPI_MODE_CREATE,MPI_INFO_NULL,&fh);
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(rank ? 1 : size), offsets(rank ? 1 : size);
+				std::string buffer = rhs.str();
+				INMOST_DATA_BIG_ENUM_TYPE datasize = buffer.size(), offset;
+				ierr = MPI_Gather(&datasize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&datasizes[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
+				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				if( rank == 0 )
 				{
+					MPI_Offset off;
 					std::stringstream header;
 					//header << "% vector " << name << std::endl;
 					//header << "% is written by INMOST" << std::endl;
 					//header << "% by MPI_File_* api" << std::endl;
 					header << vecsize << std::endl;
-					ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
+					ierr = MPI_File_write(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					ierr = MPI_File_get_position(fh,&off);
+					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					offsets[0] = off;
+					for(int k = 1; k < size; ++k)
+						offsets[k] = offsets[k-1] + datasizes[k-1];
 				}
-				ierr = MPI_File_write_ordered(fh,const_cast<char *>(rhs.str().c_str()),static_cast<int>(rhs.str().size()),MPI_CHAR,&stat);
+				ierr = MPI_Scatter(&offsets[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&offset,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( datasize )
+				{
+					INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk;
+					while( shift != datasize )
+					{
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize-shift);
+						ierr = MPI_File_write_at(fh,offset+shift,buffer.c_str()+shift,static_cast<INMOST_MPI_SIZE>(chunk),MPI_CHAR,&stat);
+						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+						shift += chunk;
+					}
+				}
 				ierr = MPI_File_close(&fh);
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			}
@@ -1075,6 +1097,7 @@ namespace INMOST
 				int ierr, len;
 				MPI_File fh;
 				MPI_Status stat;
+				std::string buffer = mtx.str();
 				ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(file.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				ierr = MPI_File_close(&fh);
@@ -1088,8 +1111,13 @@ namespace INMOST
 					std::cout << estring << std::endl;
 					MPI_Abort(GetCommunicator(),__LINE__);
 				}
+				std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(rank ? 1 : size), offsets(rank ? 1 : size);
+				INMOST_DATA_BIG_ENUM_TYPE datasize = buffer.size(), offset;
+				ierr = MPI_Gather(&datasize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&datasizes[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
+				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				if( rank == 0 )
 				{
+					MPI_Offset off;
 					std::stringstream header;
 					header << "%%MatrixMarket matrix coordinate real general" << std::endl;
 					header << "% matrix " << name << std::endl;
@@ -1097,11 +1125,27 @@ namespace INMOST
 					header << "% by MPI_File_* api" << std::endl;
 					header << matsize << " " << matsize << " " << nonzero << std::endl;
 					//std::string header_data(header.str());
-					ierr = MPI_File_write_shared(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
+					ierr = MPI_File_write(fh,const_cast<char *>(header.str().c_str()),static_cast<int>(header.str().size()),MPI_CHAR,&stat);
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					ierr = MPI_File_get_position(fh,&off);
+					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					offsets[0] = off;
+					for(int k = 1; k < size; ++k)
+						offsets[k] = offsets[k-1] + datasizes[k-1];
 				}
-				ierr = MPI_File_write_ordered(fh,const_cast<char *>(mtx.str().c_str()),static_cast<int>(mtx.str().size()),MPI_CHAR,&stat);
+				ierr = MPI_Scatter(&offsets[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&offset,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+				if( datasize )
+				{
+					INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk;
+					while( shift != datasize )
+					{
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize-shift);
+						ierr = MPI_File_write_at(fh,offset+shift,buffer.c_str()+shift,static_cast<INMOST_MPI_SIZE>(chunk),MPI_CHAR,&stat);
+						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+						shift += chunk;
+					}
+				}
 				ierr = MPI_File_close(&fh);
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			}
