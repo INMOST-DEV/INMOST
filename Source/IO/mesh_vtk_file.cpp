@@ -88,10 +88,10 @@ namespace INMOST
 					{
 						if( fgets(readline,2048,f) == NULL )  //NAME
 							throw BadFile;
-						fscanf(f,"%*s"); //DATA
+						filled = fscanf(f,"%*s"); //DATA
 						filled = fscanf(f,"%d",&scnt); //vector size
 						if( filled != 1 ) throw BadFile;
-						for(int q = 0; q < scnt; ++q) fscanf(f,"%*s\n");
+						for(int q = 0; q < scnt; ++q) filled = fscanf(f,"%*s\n");
 					}
 				}
 				else if( !strncmp(readline,"COMPONENT_NAMES",15) )
