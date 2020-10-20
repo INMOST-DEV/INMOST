@@ -136,6 +136,8 @@
 #define INMOST_MPI_INT         0
 #define INMOST_MPI_DOUBLE      0
 #define INMOST_MPI_UNSIGNED    0
+#define INMOST_MPI_UNSIGNEDL   0
+#define INMOST_MPI_UNSIGNEDLL  0
 #define INMOST_MPI_Win         int
 #define INMOST_MPI_DATATYPE_NULL 0
 #define INMOST_MPI_GROUP_EMPTY 0
@@ -150,6 +152,8 @@
 #define INMOST_MPI_INT         MPI_INT
 #define INMOST_MPI_DOUBLE      MPI_DOUBLE
 #define INMOST_MPI_UNSIGNED    MPI_UNSIGNED
+#define INMOST_MPI_UNSIGNEDL   MPI_UNSIGNED_LONG
+#define INMOST_MPI_UNSIGNEDLL  MPI_UNSIGNED_LONG_LONG 
 #define INMOST_MPI_Win         MPI_Win
 #define INMOST_MPI_DATATYPE_NULL MPI_DATATYPE_NULL
 #define INMOST_MPI_GROUP_EMPTY MPI_GROUP_EMPTY
@@ -176,11 +180,11 @@
 
 #define INMOST_DATA_ENUM_TYPE       unsigned int
 #define ENUMUNDEF                 UINT_MAX
-#define INMOST_DATA_BIG_ENUM_TYPE   unsigned int
-#define BIGENUMUNDEF              UINT_MAX
+#define INMOST_DATA_BIG_ENUM_TYPE   unsigned long long
+#define BIGENUMUNDEF              ULLONG_MAX
 
 #define INMOST_MPI_DATA_ENUM_TYPE      INMOST_MPI_UNSIGNED
-#define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UNSIGNED
+#define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UNSIGNEDLL
 
 
 /// Cross-platform timer that return current time in seconds.

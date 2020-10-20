@@ -49,8 +49,9 @@ namespace INMOST
 	
 	void Mesh::SavePMF(std::string File)
 	{
-		io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
-		io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
+		io_converter<INMOST_DATA_INTEGER_TYPE ,INMOST_DATA_REAL_TYPE> iconv;
+		io_converter<INMOST_DATA_ENUM_TYPE    ,INMOST_DATA_REAL_TYPE> uconv;
+		io_converter<INMOST_DATA_BIG_ENUM_TYPE,INMOST_DATA_REAL_TYPE> buconv;
 		INMOST_DATA_ENUM_TYPE nlow,nhigh, lid;
 		char wetype;
 		//~ if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
@@ -385,6 +386,7 @@ namespace INMOST
 									Storage::var_array arr = it->VariableArray(*jt);
 									if( noderivs.find(jt->GetTagName()) != noderivs.end() )
 									{
+										//~ std::cout << "Saving " << jt->GetTagName() << " without derivatives" << std::endl;
 										for(k = 0; k < recsize; k++)
 										{
 											const Sparse::Row & r = arr[k].GetRow();
@@ -394,6 +396,7 @@ namespace INMOST
 									}
 									else
 									{
+										//~ std::cout << "Saving " << jt->GetTagName() << " with derivatives" << std::endl;
 										for(k = 0; k < recsize; k++)
 										{
 											const Sparse::Row & r = arr[k].GetRow();
@@ -423,10 +426,11 @@ namespace INMOST
 		{
 			REPORT_STR("Parallel write");
 			int ierr;
-			INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), datasize = static_cast<INMOST_DATA_ENUM_TYPE>(out.tellp()),k;
-			std::vector<INMOST_DATA_ENUM_TYPE> datasizes(numprocs,0);
+			INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(),k;
+			INMOST_DATA_BIG_ENUM_TYPE datasize = static_cast<INMOST_DATA_ENUM_TYPE>(out.tellp()), offset;
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(numprocs,0), offsets(numprocs,0);
 			REPORT_VAL("local_write_file_size",datasize);
-			REPORT_MPI(ierr = MPI_Gather(&datasize,1,INMOST_MPI_DATA_ENUM_TYPE,&datasizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
+			REPORT_MPI(ierr = MPI_Gather(&datasize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&datasizes[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
 			if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 #if defined(USE_MPI_FILE) //We have access to MPI_File
 			if( parallel_file_strategy == 1 )
@@ -445,19 +449,43 @@ namespace INMOST
 				{
 					std::stringstream header;
 					header.put(INMOST::INMOSTFile);
-					uconv.write_iByteOrder(header);
-					uconv.write_iByteSize(header);
-					uconv.write_iValue(header,numprocs);
-					for(k = 0; k < numprocs; k++) uconv.write_iValue(header,datasizes[k]);
+					buconv.write_iByteOrder(header);
+					buconv.write_iByteSize(header);
+					buconv.write_iValue(header,numprocs);
+					for(k = 0; k < numprocs; k++) buconv.write_iValue(header,datasizes[k]);
 					
 					std::string header_data(header.str());
-					REPORT_MPI(ierr = MPI_File_write_shared(fh,&header_data[0],static_cast<INMOST_MPI_SIZE>(header_data.size()),MPI_CHAR,&stat));
+					REPORT_MPI(ierr = MPI_File_write(fh,&header_data[0],static_cast<INMOST_MPI_SIZE>(header_data.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				
+					MPI_Offset off;
+					REPORT_MPI(ierr = MPI_File_get_position(fh,&off));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+					offsets[0] = off;
+					for(k = 1; k < numprocs; ++k)
+						offsets[k] = offsets[k-1] + datasizes[k-1];
 				}
+				else offsets.resize(1,0);
+				
+				REPORT_MPI(ierr = MPI_Scatter(&offsets[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&offset,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				REPORT_VAL("local write offset",offset);
+				
+				if( datasize )
 				{
+					INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk;
 					std::string local_data(out.str());
-					REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&stat));
-					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+					//TODO: remove temporary check!!!
+					if( static_cast<INMOST_DATA_BIG_ENUM_TYPE>(local_data.size()) != datasize )
+						std::cout << __FILE__ << ":" << __LINE__ << " different sizes " << local_data.size() << " and " << datasize << std::endl;
+					//REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&stat));
+					while( shift != datasize )
+					{
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize-shift);
+						REPORT_MPI(ierr = MPI_File_write_at(fh,offset+shift,&local_data[shift],static_cast<INMOST_MPI_SIZE>(chunk),MPI_CHAR,&stat));
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+						shift += chunk;
+					}
 				}
 				
 				REPORT_MPI(ierr = MPI_File_close(&fh));
@@ -466,33 +494,71 @@ namespace INMOST
 			else
 #endif
 			{
-				std::vector<INMOST_MPI_SIZE> displs(numprocs),recvcounts(numprocs);
 				std::string file_contents;
 				std::string local_data(out.str());
+				std::vector<MPI_Request> requests;
 				if( GetProcessorRank() == 0 )
 				{
-					recvcounts[0] = static_cast<INMOST_MPI_SIZE>(datasizes[0]);
-					displs[0] = 0;
-					int sizesum = recvcounts[0];
+					INMOST_DATA_BIG_ENUM_TYPE sizesum = datasizes[0];
+					for(k = 1; k < numprocs; k++)
+						sizesum += datasizes[k];
+					file_contents.resize(sizesum);
+					memcpy(&file_contents[0],&local_data[0],sizeof(char)*datasizes[0]);
+					INMOST_DATA_BIG_ENUM_TYPE offset = datasizes[0];
 					for(k = 1; k < numprocs; k++)
 					{
-						recvcounts[k] = static_cast<INMOST_MPI_SIZE>(datasizes[k]);
-						displs[k] = displs[k-1]+recvcounts[k-1];
-						sizesum += recvcounts[k];
+						INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+						int it = 0; // for mpi tag
+						while( shift != datasizes[k] )
+						{
+							MPI_Request req;
+							chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasizes[k] - shift);
+							REPORT_MPI(ierr = MPI_Irecv(&file_contents[offset+shift],chunk,MPI_CHAR,k, k*1000 + it, GetCommunicator(), &req) );
+							if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+							requests.push_back(req);
+							shift += chunk;
+							it++;
+							//TODO: remove temporary check
+							if( it >= 1000 )
+								std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << datasizes[k] << std::endl;
+						}
+						offset += shift;
 					}
-					file_contents.resize(sizesum);
 				}
-				else file_contents.resize(1); //protect from accessing bad pointer
-				REPORT_MPI(ierr = MPI_Gatherv(&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&file_contents[0],&recvcounts[0],&displs[0],MPI_CHAR,0,GetCommunicator()));
-				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				else 
+				{
+					INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+					int it = 0; // for mpi tag
+					while( shift != datasize )
+					{
+						MPI_Request req;
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize - shift);
+						REPORT_MPI(ierr = MPI_Isend(&local_data[shift],chunk,MPI_CHAR, 0, GetProcessorRank()*1000 + it, GetCommunicator(), &req) );
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+						requests.push_back(req);
+						shift += chunk;
+						it++;
+						//TODO: remove temporary check
+						if( it >= 1000 )
+							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << datasizes[k] << std::endl;
+					}
+				}
+				if( !requests.empty() )
+				{
+					REPORT_MPI(ierr = MPI_Waitall((int)requests.size(),&requests[0],MPI_STATUSES_IGNORE));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				}
+				//~ REPORT_MPI(ierr = MPI_Gatherv(&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&file_contents[0],&recvcounts[0],&displs[0],MPI_CHAR,0,GetCommunicator()));
+				//~ if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				if( GetProcessorRank() == 0 )
 				{
 					std::fstream fout(File.c_str(),std::ios::out | std::ios::binary);
 					fout.put(INMOST::INMOSTFile);
-					uconv.write_iByteOrder(fout);
-					uconv.write_iByteSize(fout);
-					uconv.write_iValue(fout,numprocs);
-					for(k = 0; k < numprocs; k++) uconv.write_iValue(fout,datasizes[k]);
+					buconv.write_iByteOrder(fout);
+					buconv.write_iByteSize(fout);
+					buconv.write_iValue(fout,numprocs);
+					for(k = 0; k < numprocs; k++) 
+						buconv.write_iValue(fout,datasizes[k]);
 					fout.write(&file_contents[0],file_contents.size());
 					fout.close();
 				}
@@ -503,13 +569,14 @@ namespace INMOST
 		{
 			REPORT_STR("Serial write");
 			std::fstream fout(File.c_str(),std::ios::out | std::ios::binary);
-			INMOST_DATA_ENUM_TYPE numprocs = 1, datasize = static_cast<INMOST_DATA_ENUM_TYPE>(out.tellp());
+			INMOST_DATA_ENUM_TYPE numprocs = 1;
+			INMOST_DATA_BIG_ENUM_TYPE datasize = static_cast<INMOST_DATA_BIG_ENUM_TYPE>(out.tellp());
 			REPORT_VAL("write_file_size",datasize);
 			fout.put(INMOST::INMOSTFile);
-			uconv.write_iByteOrder(fout);
-			uconv.write_iByteSize(fout);
-			uconv.write_iValue(fout,numprocs);
-			uconv.write_iValue(fout,datasize);
+			buconv.write_iByteOrder(fout);
+			buconv.write_iByteSize(fout);
+			buconv.write_iValue(fout,numprocs);
+			buconv.write_iValue(fout,datasize);
 			fout << out.rdbuf();
 			fout.close();
 		}
@@ -533,8 +600,9 @@ namespace INMOST
 			}
 		}
 		//std::cout << "parallel strategy " << parallel_strategy << " file strategy " << parallel_file_strategy << std::endl;
-		io_converter<INMOST_DATA_INTEGER_TYPE,INMOST_DATA_REAL_TYPE> iconv;
-		io_converter<INMOST_DATA_ENUM_TYPE   ,INMOST_DATA_REAL_TYPE> uconv;
+		io_converter<INMOST_DATA_INTEGER_TYPE ,INMOST_DATA_REAL_TYPE> iconv;
+		io_converter<INMOST_DATA_ENUM_TYPE    ,INMOST_DATA_REAL_TYPE> uconv;
+		io_converter<INMOST_DATA_BIG_ENUM_TYPE,INMOST_DATA_REAL_TYPE> buconv;
 		REPORT_STR("start load pmf");
 		dynarray<INMOST_DATA_ENUM_TYPE,128> myprocs;
 		std::stringstream in(std::ios::in | std::ios::out | std::ios::binary);
@@ -559,85 +627,61 @@ namespace INMOST
 				MPI_Status stat;
 				REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_RDONLY,MPI_INFO_NULL,&fh));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), recvsize = 0, mpirank = GetProcessorRank();
+				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(), mpirank = GetProcessorRank();
+				INMOST_DATA_BIG_ENUM_TYPE recvsize = 0, offset = 0;
 				REPORT_VAL("number of processors",numprocs);
 				REPORT_VAL("rank of processor", mpirank);
-				std::vector<INMOST_DATA_ENUM_TYPE> recvsizes;
+				std::vector<INMOST_DATA_BIG_ENUM_TYPE> recvsizes, offsets;
 				if( mpirank == 0 ) //the alternative is to read alltogether
 				{
-					INMOST_DATA_ENUM_TYPE datanum, chunk,pos,k,q;
+					INMOST_DATA_ENUM_TYPE datanum, chunk,pos,k,q;\
+					INMOST_DATA_BIG_ENUM_TYPE rdatanum;
 					std::stringstream header;
 					
 					buffer.resize(3);
 					//ierr = MPI_File_read_all(fh,&buffer[0],3,MPI_CHAR,&stat);
-					REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],3,MPI_CHAR,&stat));
+					REPORT_MPI(ierr = MPI_File_read(fh,&buffer[0],3,MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 					
 					if( static_cast<HeaderType>(buffer[0]) != INMOST::INMOSTFile ) throw BadFile;
 					
 					header.write(&buffer[1],2);
-					uconv.read_iByteOrder(header);
-					uconv.read_iByteSize(header);
+					buconv.read_iByteOrder(header);
+					buconv.read_iByteSize(header);
 					
-					REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
-					REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+					REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(uconv.get_iByteOrder()));
+					REPORT_VAL("integer_byte_size",(int)buconv.get_iByteSize());
 					
 					
-					buffer.resize(uconv.get_source_iByteSize());
+					buffer.resize(buconv.get_source_iByteSize());
 					//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
-					REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
+					REPORT_MPI(ierr = MPI_File_read(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 					
 					header.write(&buffer[0],buffer.size());
-					uconv.read_iValue(header,datanum);
+					buconv.read_iValue(header,rdatanum);
+					datanum = static_cast<INMOST_DATA_ENUM_TYPE>(rdatanum);
 					
 					REPORT_VAL("number of data entries",datanum);
 					
-					buffer.resize(datanum*uconv.get_source_iByteSize());
-					std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
+					buffer.resize(datanum*buconv.get_source_iByteSize());
+					std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(datanum);
 					//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
-					REPORT_MPI(ierr = MPI_File_read_shared(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
+					REPORT_MPI(ierr = MPI_File_read(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 					
-					INMOST_DATA_ENUM_TYPE datasum = 0;
+					INMOST_DATA_BIG_ENUM_TYPE datasum = 0;
 					header.write(&buffer[0],buffer.size());
 					for(k = 0; k < datanum; k++)
 					{
-						uconv.read_iValue(header,datasizes[k]);
+						buconv.read_iValue(header,datasizes[k]);
 						REPORT_VAL("size of data entry " << k,datasizes[k]);
 						datasum += datasizes[k];
 					}
 					REPORT_VAL("total size",datasum);
 					
-					// use this commented code when all processors read the file alltogether through MPI_File_read_all
-					//{
-					//	MPI_Offset off;
-					//	ierr = MPI_File_get_position(fh,&off);
-					//	if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
-					//	ierr = MPI_File_seek_shared( fh, off, MPI_SEEK_SET );
-					//	if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
-					//}
-					//if( datanum <= numprocs )
-					//{
-					//	if( mpirank < datanum )
-					//		recvsize = datasizes[mpirank];
-					//}
-					//else
-					//{
-					//	chunk = static_cast<INMOST_DATA_ENUM_TYPE>(floor(static_cast<double>(datanum)/static_cast<double>(numprocs)));
-					//	if( mpirank < numprocs - 1)
-					//	{
-					//		for(k = chunk*(mpirank); k < chunk*(mpirank+1); k++)
-					//			recvsize += datasizes[k];
-					//	}
-					//	else
-					//	{
-					//		for(k = chunk*(mpirank); k < datanum; k++)
-					//			recvsize += datasizes[k];
-					//	}
-					//}
-					
 					recvsizes.resize(numprocs,0);
+					offsets.resize(numprocs,0);
 					if( datanum <= recvsizes.size() )
 					{
 						REPORT_STR("number of processors is greater or equal then number of data entries");
@@ -661,20 +705,51 @@ namespace INMOST
 							recvsizes[recvsizes.size()-1] += datasizes[k];
 						REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
 					}
+					MPI_Offset off;
+					REPORT_MPI(ierr = MPI_File_get_position(fh,&off));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+					
+					std::cout << "file offset: " << off << " size of big enum " << sizeof(INMOST_DATA_BIG_ENUM_TYPE) << std::endl;
+					
+					offsets[0] = off;
+					for(k = 1; k < recvsizes.size(); k++)
+						offsets[k] = offsets[k-1] + recvsizes[k-1];
 				}
-				else recvsizes.resize(1,0); //protect from dereferencing null
+				else 
+				{
+					recvsizes.resize(1,0); //protect from dereferencing null
+					offsets.resize(1,0);
+				}
 				
-				REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
+				REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				
+				REPORT_MPI(ierr = MPI_Scatter(&offsets[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&offset,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				
 				REPORT_VAL("read on current processor",recvsize);
+				REPORT_VAL("offset on current processor",offset);
 				
-				buffer.resize(std::max(1u,recvsize)); //protect from dereferencing null
+				std::cout << "read on " << GetProcessorRank() << " size " << recvsize << " offset " << offset << std::endl;
+				std::cout.flush();
 				
+				//~ {
+					//~ REPORT_MPI(ierr = MPI_File_read_ordered(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(recvsize),MPI_CHAR,&stat));
+					//~ if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+					//~ in.write(&buffer[0],recvsize);
+				//~ }
 				
+				if( recvsize )
 				{
-					REPORT_MPI(ierr = MPI_File_read_ordered(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(recvsize),MPI_CHAR,&stat));
-					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+					buffer.resize(recvsize);
+					INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk;
+					while( shift != recvsize )
+					{
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize-shift);
+						REPORT_MPI(ierr = MPI_File_read_at(fh,offset+shift,&buffer[shift],static_cast<INMOST_MPI_SIZE>(chunk),MPI_CHAR,&stat));
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+						shift += chunk;
+					}
 					in.write(&buffer[0],recvsize);
 				}
 				
@@ -688,11 +763,12 @@ namespace INMOST
 				REPORT_STR("strategy 0");
 				int ierr;
 				std::vector<char> buffer, local_buffer;
-				INMOST_DATA_ENUM_TYPE recvsize;
+				INMOST_DATA_BIG_ENUM_TYPE recvsize;
 				
 				INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(),mpirank = GetProcessorRank();
-				std::vector<INMOST_DATA_ENUM_TYPE> recvsizes(numprocs,0);
-				std::vector<INMOST_MPI_SIZE> sendcnts(numprocs), displs(numprocs);
+				std::vector<INMOST_DATA_BIG_ENUM_TYPE> recvsizes(numprocs,0);
+				std::vector<MPI_Request> requests;
+				//~ std::vector<INMOST_MPI_SIZE> sendcnts(numprocs), displs(numprocs);
 				REPORT_VAL("number of processors",numprocs);
 				REPORT_VAL("rank of processor", mpirank);
 				if( mpirank == 0 ) //zero reads everything
@@ -700,25 +776,27 @@ namespace INMOST
 					std::fstream fin(File.c_str(),std::ios::in | std::ios::binary);
 					fin.get(token);
 					if( token != INMOST::INMOSTFile ) throw BadFile;
-					uconv.read_iByteOrder(fin);
-					uconv.read_iByteSize(fin);
+					buconv.read_iByteOrder(fin);
+					buconv.read_iByteSize(fin);
 					
 					REPORT_VAL("file position",fin.tellg());
 					
-					REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
-					REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+					REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(uconv.get_iByteOrder()));
+					REPORT_VAL("integer_byte_size",(int)buconv.get_iByteSize());
 					
 					
-					INMOST_DATA_ENUM_TYPE datanum,k,q,datasum = 0,chunk,pos;
-					uconv.read_iValue(fin,datanum);
-					
+					INMOST_DATA_ENUM_TYPE datanum,k,q,chunk,pos;
+					INMOST_DATA_BIG_ENUM_TYPE datasum = 0, rdatanum;
+					buconv.read_iValue(fin,rdatanum);
+					datanum = static_cast<INMOST_DATA_ENUM_TYPE>(rdatanum);
 					REPORT_VAL("number of data entries",datanum);
+					
 					REPORT_VAL("file position",fin.tellg());
 					
-					std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
+					std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(datanum);
 					for(k = 0; k < datanum; k++)
 					{
-						uconv.read_iValue(fin,datasizes[k]);
+						buconv.read_iValue(fin,datasizes[k]);
 						REPORT_VAL("size of data entry " << k,datasizes[k]);
 						datasum += datasizes[k];
 					}
@@ -728,7 +806,6 @@ namespace INMOST
 					{
 						buffer.resize(datasum);
 						fin.read(&buffer[0],buffer.size());
-						
 					}
 					REPORT_VAL("file position",fin.tellg());
 					REPORT_VAL("total size",datasum);
@@ -758,34 +835,85 @@ namespace INMOST
 						REPORT_VAL("recv on " << recvsizes.size()-1, recvsizes[recvsizes.size()-1]);
 					}
 					
-					displs[0] = 0;
-					sendcnts[0] = static_cast<INMOST_MPI_SIZE>(recvsizes[0]);
-					REPORT_VAL("disp on "<<0,displs[0]);
-					REPORT_VAL("send on "<<0,sendcnts[0]);
+					//~ displs[0] = 0;
+					//~ sendcnts[0] = static_cast<INMOST_MPI_SIZE>(recvsizes[0]);
+					//~ REPORT_VAL("disp on "<<0,displs[0]);
+					//~ REPORT_VAL("send on "<<0,sendcnts[0]);
+					
+					//copy local
+					local_buffer.resize(recvsizes[0]);
+					memcpy(&local_buffer[0],&buffer[0],sizeof(char)*recvsizes[0]);
+					in.write(&local_buffer[0],local_buffer.size());
+					REPORT_VAL("output position",in.tellg());
+					
+					INMOST_DATA_BIG_ENUM_TYPE offset = recvsizes[0];
 					for(k = 1; k < numprocs; k++)
 					{
-						sendcnts[k] = static_cast<INMOST_MPI_SIZE>(recvsizes[k]);
-						displs[k] = sendcnts[k-1]+displs[k-1];
-						REPORT_VAL("disp on "<<k,displs[k]);
-						REPORT_VAL("send on "<<k,sendcnts[k]);
+						//~ sendcnts[k] = static_cast<INMOST_MPI_SIZE>(recvsizes[k]);
+						//~ displs[k] = sendcnts[k-1]+displs[k-1];
+						//~ REPORT_VAL("disp on "<<k,displs[k]);
+						//~ REPORT_VAL("send on "<<k,sendcnts[k]);
+						
+						INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+						int it = 0; // for mpi tag
+						while( shift != recvsizes[k] )
+						{
+							MPI_Request req;
+							chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsizes[k] - shift);
+							REPORT_MPI(ierr = MPI_Isend(&buffer[offset+shift],chunk,MPI_CHAR, k, k*1000 + it, GetCommunicator(), &req) );
+							if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+							requests.push_back(req);
+							shift += chunk;
+							it++;
+							//TODO: remove temporary check
+							if( it >= 1000 )
+								std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsizes[k] << std::endl;
+						}
+						offset += shift;
 					}
 				}
-				else
-				{
-					//protect from dereferencing null
-					buffer.resize(1);
-				}
-				REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_ENUM_TYPE,0,GetCommunicator()));
+				
+				REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-				local_buffer.resize(std::max(1u,recvsize));
+				
+				//~ std::cout << "on processor " << mpirank << " recieve " << recvsize << std::endl;
 				
 				REPORT_VAL("read on current processor",recvsize);
 				
+				if( mpirank && recvsize )
+				{
+					local_buffer.resize(recvsize);
+					INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+					int it = 0; // for mpi tag
+					while( shift != recvsize )
+					{
+						MPI_Request req;
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize - shift);
+						REPORT_MPI(ierr = MPI_Irecv(&local_buffer[shift],chunk,MPI_CHAR, 0, GetProcessorRank()*1000 + it, GetCommunicator(), &req) );
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+						requests.push_back(req);
+						shift += chunk;
+						it++;
+						//TODO: remove temporary check
+						if( it >= 1000 )
+							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsize << std::endl;
+					}
+					in.write(&local_buffer[0],local_buffer.size());
+					REPORT_VAL("output position",in.tellg());
+				}
 				
-				REPORT_MPI(ierr = MPI_Scatterv(&buffer[0],&sendcnts[0],&displs[0],MPI_CHAR,&local_buffer[0],recvsize,MPI_CHAR,0,GetCommunicator()));
-				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-				in.write(&local_buffer[0],local_buffer.size());
-				REPORT_VAL("output position",in.tellg());
+				if( !requests.empty() )
+				{
+					//~ std::cout << mpirank << " wait " << requests.size() << std::endl;
+					REPORT_MPI(ierr = MPI_Waitall((int)requests.size(),&requests[0],MPI_STATUSES_IGNORE));
+					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				}
+				//~ std::cout << mpirank << " is out " << std::endl;
+				
+				//~ REPORT_MPI(ierr = MPI_Scatterv(&buffer[0],&sendcnts[0],&displs[0],MPI_CHAR,&local_buffer[0],recvsize,MPI_CHAR,0,GetCommunicator()));
+				//~ if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				//~ in.write(&local_buffer[0],local_buffer.size());
+				//~ REPORT_VAL("output position",in.tellg());
 			}
 			
 		}
@@ -795,25 +923,27 @@ namespace INMOST
 			std::fstream fin(File.c_str(),std::ios::in | std::ios::binary);
 			fin.get(token);
 			if( token != INMOST::INMOSTFile ) throw BadFile;
-			uconv.read_iByteOrder(fin);
-			uconv.read_iByteSize(fin);
+			buconv.read_iByteOrder(fin);
+			buconv.read_iByteSize(fin);
 			
 			REPORT_VAL("file position",fin.tellg());
 			
-			REPORT_VAL("integer_byte_order",uconv.str_iByteOrder(uconv.get_iByteOrder()));
-			REPORT_VAL("integer_byte_size",(int)uconv.get_iByteSize());
+			REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(uconv.get_iByteOrder()));
+			REPORT_VAL("integer_byte_size",(int)buconv.get_iByteSize());
 			
-			INMOST_DATA_ENUM_TYPE datanum,k,datasum = 0;
-			uconv.read_iValue(fin,datanum);
+			INMOST_DATA_ENUM_TYPE datanum,k;
+			INMOST_DATA_BIG_ENUM_TYPE datasum = 0, rdatanum;
+			buconv.read_iValue(fin,rdatanum);
+			datanum = static_cast<INMOST_DATA_ENUM_TYPE>(rdatanum);
 			
 			REPORT_VAL("file position",fin.tellg());
 			
 			REPORT_VAL("number of data entries",datanum);
 			
-			std::vector<INMOST_DATA_ENUM_TYPE> datasizes(datanum);
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(datanum);
 			for(k = 0; k < datanum; k++)
 			{
-				uconv.read_iValue(fin,datasizes[k]);
+				buconv.read_iValue(fin,datasizes[k]);
 				REPORT_VAL("size of data entry " << k,datasizes[k]);
 				datasum += datasizes[k];
 			}
