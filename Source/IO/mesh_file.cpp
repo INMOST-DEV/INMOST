@@ -79,16 +79,20 @@ namespace INMOST
 			split_string(file_options[k].first,name_split,":");
 			if(name_split[0] == "Tag")
 			{
+				//~ std::cout << "Tag option " << file_options[k].first << " value " << file_options[k].second << " tag " << name_split[1] << " searching " << name << std::endl;
 				split_string(file_options[k].second,value_split,",");
 				for(size_t q = 0; q < value_split.size(); ++q)
 				{
 					if( value_split[q] == name )
 					{
+						//~ std::cout << "found!" << std::endl;
 						ret.insert(name_split[1]);
 						break;
 					}
 				}
+				value_split.clear();
 			}
+			name_split.clear();
 		}
 		return ret;
 	}
@@ -106,7 +110,7 @@ namespace INMOST
 	bool Mesh::CheckSaveSkip(std::string name, const std::set<std::string> & nosave, const std::set<std::string> & saveonly) const
 	{
 		bool skip = false;
-		if( saveonly.empty() && saveonly.find(name) == saveonly.end() )
+		if( !saveonly.empty() && saveonly.find(name) == saveonly.end() )
 			skip = true;
 		else if( nosave.find(name) != nosave.end() )
 			skip = true;
