@@ -827,23 +827,62 @@ namespace INMOST
 			}
 #elif defined(USE_MPI) //USE_MPI alternative
 			std::string senddata = rhs.str(), recvdata;
-			int sendsize = static_cast<int>(senddata.size());
-			std::vector<int> recvsize(size), displ(size);
-			MPI_Gather(&sendsize,1,MPI_INT,&recvsize[0],1,MPI_INT,0,GetCommunicator());
+			INMOST_DATA_BIG_ENUM_TYPE sendsize = static_cast<int>(senddata.size());
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> recvsize(rank ? 1 : size);
+			std::vector<MPI_Request> requests;
+			int ierr = MPI_Gather(&sendsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
+			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			if( rank == 0 )
 			{
-				int totsize = recvsize[0];
-
-				displ[0] = 0;
-				for(int i = 1; i < size; i++)
+				INMOST_DATA_BIG_ENUM_TYPE sizesum = recvsize[0];
+				for(int k = 1; k < size; k++)
+					sizesum += recvsize[k];
+				recvdata.resize(sizesum);
+				memcpy(&recvdata[0],&senddata[0],sizeof(char)*recvsize[0]);
+				INMOST_DATA_BIG_ENUM_TYPE offset = recvsize[0];
+				for(int k = 1; k < size; k++)
 				{
-					totsize += recvsize[i];
-					displ[i] = displ[i-1]+recvsize[i-1];
+					INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+					int it = 0; // for mpi tag
+					while( shift != recvsize[k] )
+					{
+						MPI_Request req;
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize[k] - shift);
+						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, k*1000 + it, GetCommunicator(), &req);
+						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+						requests.push_back(req);
+						shift += chunk;
+						it++;
+						//TODO: remove temporary check
+						if( it >= 1000 )
+							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsize[k] << std::endl;
+					}
+					offset += shift;
 				}
-				recvdata.resize(totsize);
 			}
-			else recvdata.resize(1); //protect from dereferencing null
-			MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_CHAR,0,GetCommunicator());
+			else 
+			{
+				INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+				int it = 0; // for mpi tag
+				while( shift != sendsize )
+				{
+					MPI_Request req;
+					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),sendsize - shift);
+					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, rank*1000 + it, GetCommunicator(), &req);
+					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					requests.push_back(req);
+					shift += chunk;
+					it++;
+					//TODO: remove temporary check
+					if( it >= 1000 )
+						std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << sendsize << std::endl;
+				}
+			}
+			if( !requests.empty() )
+			{
+				ierr = MPI_Waitall((int)requests.size(),&requests[0],MPI_STATUSES_IGNORE);
+				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+			}
 			if( rank == 0 )
 			{
 				std::fstream output(file.c_str(),std::ios::out);
@@ -1151,23 +1190,63 @@ namespace INMOST
 			}
 #elif defined(USE_MPI)//USE_MPI alternative
 			std::string senddata = mtx.str(), recvdata;
-			int sendsize = static_cast<int>(senddata.size());
-			std::vector<int> recvsize(size), displ(size);
-			MPI_Gather(&sendsize,1,MPI_INT,&recvsize[0],1,MPI_INT,0,GetCommunicator());
+			INMOST_DATA_BIG_ENUM_TYPE sendsize = senddata.size();
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> recvsize(rank ? 1 : size);
+			std::vector<MPI_Request> requests;
+			int ierr = MPI_Gather(&sendsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
+			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 			if( rank == 0 )
 			{
-				int totsize = recvsize[0];
-
-				displ[0] = 0;
-				for(int i = 1; i < size; i++)
+				INMOST_DATA_BIG_ENUM_TYPE sizesum = recvsize[0];
+				for(int k = 1; k < size; k++)
+					sizesum += recvsize[k];
+				recvdata.resize(sizesum);
+				memcpy(&recvdata[0],&senddata[0],sizeof(char)*recvsize[0]);
+				INMOST_DATA_BIG_ENUM_TYPE offset = recvsize[0];
+				for(int k = 1; k < size; k++)
 				{
-					totsize += recvsize[i];
-					displ[i] = displ[i-1]+recvsize[i-1];
+					INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+					int it = 0; // for mpi tag
+					while( shift != recvsize[k] )
+					{
+						MPI_Request req;
+						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize[k] - shift);
+						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, k*1000 + it, GetCommunicator(), &req);
+						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+						requests.push_back(req);
+						shift += chunk;
+						it++;
+						//TODO: remove temporary check
+						if( it >= 1000 )
+							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsize[k] << std::endl;
+					}
+					offset += shift;
 				}
-				recvdata.resize(totsize);
 			}
-			else recvdata.resize(1); //protect from dereferencing null
-			MPI_Gatherv(&senddata[0],sendsize,MPI_CHAR,&recvdata[0],&recvsize[0],&displ[0],MPI_CHAR,0,GetCommunicator());
+			else 
+			{
+				INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
+				int it = 0; // for mpi tag
+				while( shift != sendsize )
+				{
+					MPI_Request req;
+					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),sendsize - shift);
+					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, rank*1000 + it, GetCommunicator(), &req);
+					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+					requests.push_back(req);
+					shift += chunk;
+					it++;
+					//TODO: remove temporary check
+					if( it >= 1000 )
+						std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << sendsize << std::endl;
+				}
+			}
+			if( !requests.empty() )
+			{
+				ierr = MPI_Waitall((int)requests.size(),&requests[0],MPI_STATUSES_IGNORE);
+				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+			}
+			
 			if( rank == 0 )
 			{
 				std::fstream output(file.c_str(),std::ios::out);
