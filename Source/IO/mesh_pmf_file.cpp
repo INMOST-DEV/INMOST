@@ -540,7 +540,7 @@ namespace INMOST
 						it++;
 						//TODO: remove temporary check
 						if( it >= 1000 )
-							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << datasizes[k] << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << datasize << std::endl;
 					}
 				}
 				if( !requests.empty() )
