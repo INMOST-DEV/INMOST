@@ -450,11 +450,11 @@ int main(int argc,char ** argv)
         BARRIER
         if( m->GetProcessorRank() == 0 ) std::cout << "Exchange phi: " << Timer()-ttt << std::endl;
 
-        for(int s = 0; s < 3; s++)
+        //for(int s = 0; s < 3; s++)
         {
-            if( m->GetProcessorRank() == 0 ) std::cout << "strategy: " << s << std::endl;
+           // if( m->GetProcessorRank() == 0 ) std::cout << "strategy: " << s << std::endl;
 
-            m->SetParallelStrategy(s);
+            //m->SetParallelStrategy(s);
 
             ttt = Timer();
             m->ExchangeData(tensor_K,CELL,0);

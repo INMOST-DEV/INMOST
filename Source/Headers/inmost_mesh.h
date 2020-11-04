@@ -2300,9 +2300,8 @@ namespace INMOST
 #endif
 #if defined(USE_MPI_P2P)
 		INMOST_MPI_Win                      window;
-		unsigned *                          shared_space;
+		INMOST_DATA_BIG_ENUM_TYPE *         shared_space;
 #endif
-		int                                 parallel_strategy;
 		int                                 parallel_file_strategy;
 	private:
 		void                              ListTags           (tag_set & list);
@@ -2419,10 +2418,12 @@ namespace INMOST
 		/// Algorithms above are implemented in Mesh::ExchangeBuffersInner
 		/// @see Mesh::PrepareReceiveInner
 		/// @see Mesh::ExchangeBuffersInner
-		void                              SetParallelStrategy(int strategy){assert( !(strategy < 0 || strategy > 3) ); parallel_strategy = strategy;}
+		//no longer used
+		//void                              SetParallelStrategy(int strategy){assert( !(strategy < 0 || strategy > 3) ); parallel_strategy = strategy;}
 		/// Retrieve currently set parallel strategy.
 		/// @see Mesh::SetParallelStrategy
-		int                               GetParallelStrategy() {return parallel_strategy;}
+		//no longer used
+		//int                               GetParallelStrategy() {return parallel_strategy;}
 		/// This strategy correspond only to internal ".pmf" mesh format.
 		/// There are two availible strategies for ".pmf" files loading and saving:
 		///

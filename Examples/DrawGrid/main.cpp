@@ -2446,9 +2446,9 @@ int main(int argc, char ** argv)
 	mesh = new Mesh();
 	printf("Started loading mesh.\n");
 	tt = Timer();
-  //mesh->SetCommunicator(INMOST_MPI_COMM_WORLD);
-  mesh->SetParallelFileStrategy(0);
-  mesh->SetParallelStrategy(1);
+	//mesh->SetCommunicator(INMOST_MPI_COMM_WORLD);
+	mesh->SetParallelFileStrategy(0);
+  	//mesh->SetParallelStrategy(1);
 	mesh->SetFileOption("VERBOSITY","2");
 	if( argc < 2 )
 	{

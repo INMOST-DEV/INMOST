@@ -599,7 +599,6 @@ namespace INMOST
 				}
 			}
 		}
-		//std::cout << "parallel strategy " << parallel_strategy << " file strategy " << parallel_file_strategy << std::endl;
 		io_converter<INMOST_DATA_INTEGER_TYPE ,INMOST_DATA_REAL_TYPE> iconv;
 		io_converter<INMOST_DATA_ENUM_TYPE    ,INMOST_DATA_REAL_TYPE> uconv;
 		io_converter<INMOST_DATA_BIG_ENUM_TYPE,INMOST_DATA_REAL_TYPE> buconv;
