@@ -1,0 +1,8 @@
+
+This test checks interpolation using Wachspress coordinates for 3d cell.
+Wachspress coordinates is generalized barycentric coordinates.
+Interpolation is node-based.
+
+First test - interpolation for edge, face and cell centers, where one cell is the unit cube.
+Second test - interpolation in unit tetrahedron ( vertices (1,0,0), (0,1,0), (0,0,1), (0,0,0) ) for point (0.25,0.2,0.3)
+Coefficients for the corresponding vertices are (0.25,0.2,0.3,0.25).

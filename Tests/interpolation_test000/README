@@ -1,0 +1,5 @@
+
+This test checks interpolation using Wachspress coordinates for 2d face.
+Wachspress coordinates is generalized barycentric coordinates.
+Interpolation is node-based.
+

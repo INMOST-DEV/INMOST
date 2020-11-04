@@ -2184,7 +2184,7 @@ namespace INMOST
 					double xf[3];
 					for(int k = 0; k < 3; k++)	xf[k] = x[k] + h[j]*nrm[3*j+k];
 					if( !nodes_stencil.empty() )	nodes_stencil.clear();
-					wachspress_2d(xf,faces[j],nodes_stencil);
+					WachspressInterpolation2D(xf,faces[j],nodes_stencil);
 					return;
 				}
 			}
