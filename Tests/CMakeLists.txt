@@ -24,6 +24,8 @@ endif()
 
 
 add_subdirectory(linalg_test000)
+add_subdirectory(interpolation_test000)
+add_subdirectory(interpolation_test001)
 
 add_subdirectory(container_test000)
 add_subdirectory(xml_reader_test000)

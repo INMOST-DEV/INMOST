@@ -97,6 +97,19 @@ namespace INMOST
 			vecin[i] /= len;
 		return len;
 	}
+
+	__INLINE static Storage::real triarea3d(const Storage::real p1[3], const Storage::real p2[3], const Storage::real p3[3])
+	{
+		Storage::real v12[3], v13[3], v23[3], l12, l13, l23, halfperim;
+		vec_diff(p2,p1,v12,3);
+		vec_diff(p3,p1,v13,3);
+		vec_diff(p3,p2,v23,3);
+		l12 = vec_len(v12,3);
+		l13 = vec_len(v13,3);
+		l23 = vec_len(v23,3);
+		halfperim = 0.5*(l12+l13+l23);
+		return sqrt(halfperim*(halfperim-l12)*(halfperim-l13)*(halfperim-l23));
+	}
 	
 	
 	ElementArray<Cell> Cell::NeighbouringCells() const
@@ -123,89 +136,58 @@ namespace INMOST
 	bool Face::Inside(const Storage::real * point) const
 	{
 		Mesh * mesh = GetMeshLink();
-		integer dim = mesh->GetDimensions();
-		if(dim < 3)
-		{
-			// TODO check that point lies on edge?
-			return false;
-		}
 		real eps = mesh->GetEpsilon();
-		real nrm[3], cnt[3], dx[3], y[3], e1[3], e2[3];
+		integer dim = mesh->GetDimensions();
+		integer mdim = GetElementDimension();
+		
+		if(mdim < 2)
+		{
+			// check whether point lies on edge
+			real v1[3], v2[3], v12[3], r1[3], r2[3], nrm[3], area, h, len;
+			ElementArray<Node> nodes = getNodes();
+			assert(nodes.size() == 2);// 
+			nodes[0].Centroid(v1);
+			nodes[1].Centroid(v2);
+			vec_diff(point,v1,r1,dim);
+			vec_diff(point,v2,r2,dim);
+			vec_diff(v2,v1,v12,dim);
+			len = vec_len(v12,dim);
+			assert(len > 1e-20);
+			vec_cross_product(r1,v12,nrm);
+			area = vec_len(nrm,dim);
+			h = area / len;
+			if( h > eps )	return false; // point does not lie on line
+			return vec_dot_product(r1,r2,dim) <= 0.0; // point is between edge nodes
+		}
 
+		real nrm[3], cnt[3], v[3];
 		UnitNormal(nrm);
 		Centroid(cnt);
-		vec_diff(cnt, point, dx, dim);
-		real r_v = vec_dot_product(nrm, dx, dim);
-		if(fabs(r_v) > eps)	return false;	// point is too far from the face plane
-		y[0] = point[0] + r_v * nrm[0];
-		y[1] = point[1] + r_v * nrm[1];
-		y[2] = point[2] + r_v * nrm[2];
-		vec_diff(y,cnt,e1,dim);
-		if(vec_len(e1,dim) < eps)	return true;	// point is near the face centroid
+		vec_diff(cnt,point,v,dim);
+		real d = vec_dot_product(nrm,v,dim);
+		if(fabs(d) > eps)	return false;	// point is too far from the face plane
 
-		real ylen = vec_normalize(e1,dim);
-		vec_cross_product(nrm,e1,e2);
-		vec_normalize(e2,dim);
+		// 2d algorithm from Cell::Inside 
+		real data[9][3];
+		for(int k = 0; k < 9; k++) for(int j = 0; j < 3; j++)	data[k][j] = 0;
+		ElementArray<Node> nodes = getNodes();
+		for(int i = 0; i < static_cast<int>(nodes.size()); i++)
 		{
-			integer mdim = 2;
-			Storage::real data[9][3];
-			memset(data,0,sizeof(Storage::real)*9*3);
-			//Centroid(data[0]);
-			data[3][0] = ylen;
-			data[3][1] = 0;
-			data[3][2] = 0;
-			ElementArray<Node> nodes = getNodes();
-			real r;
-			real dx1[3], y1[3], chk_eq[3];
-			for(int i = 0; i < static_cast<int>(nodes.size()); i++)
-			{
-				int j = (i+1)%nodes.size();
-				
-				nodes[i].Centroid(data[1]);
-
-				vec_diff(point, data[1], chk_eq, dim);
-				if(vec_len(chk_eq, dim) < eps)
-					return true;
-
-				vec_diff(cnt,data[1],dx1,dim);
-				r = vec_dot_product(nrm,dx1,dim);
-				y1[0] = data[1][0] + r*nrm[0];
-				y1[1] = data[1][1] + r*nrm[1];
-				y1[2] = data[1][2] + r*nrm[2];
-				vec_diff(y1,cnt,y1,dim);
-				data[1][0] = vec_dot_product(e1,y1,dim);
-				data[1][1] = vec_dot_product(e2,y1,dim);
-				data[1][2] = 0;
-				
-				nodes[j].Centroid(data[2]);
-				vec_diff(point, data[2], chk_eq, dim);
-				vec_diff(cnt,data[2],dx1,dim);
-				r = vec_dot_product(nrm,dx1,dim);
-				y1[0] = data[2][0] + r*nrm[0];
-				y1[1] = data[2][1] + r*nrm[1];
-				y1[2] = data[2][2] + r*nrm[2];
-				vec_diff(y1,cnt,y1,dim);
-				data[2][0] = vec_dot_product(e1,y1,dim);
-				data[2][1] = vec_dot_product(e2,y1,dim);
-				data[2][2] = 0;
-				
-				//vec_diff(data[3],cnt,    data[3],mdim);
-				vec_diff(data[3],data[1],data[4],mdim);
-				vec_diff(data[3],data[2],data[5],mdim);
-				vec_normalize(data[4], mdim);
-				vec_normalize(data[5], mdim);
-				vec_cross_product(data[3],data[4],data[6]);
-				vec_cross_product(data[4],data[5],data[7]);
-				vec_cross_product(data[5],data[3],data[8]);
-				
-				if( vec_dot_product(data[6],data[7],dim) >= -eps &&
-				   vec_dot_product(data[7],data[8],dim) >= -eps &&
-				   vec_dot_product(data[8],data[6],dim) >= -eps )
-					return true; //inside one of the triangles
-			}
-			return false;
+			int j = (i+1)%nodes.size();
+			nodes[i].Centroid(data[1]);
+			nodes[j].Centroid(data[2]);
+			vec_diff(point,data[0],data[3],dim);
+			vec_diff(point,data[1],data[4],dim);
+			vec_diff(point,data[2],data[5],dim);
+			vec_cross_product(data[3],data[4],data[6]);
+			vec_cross_product(data[4],data[5],data[7]);
+			vec_cross_product(data[5],data[3],data[8]);
+			
+			if( vec_dot_product(data[6],data[7],dim) >= 0 &&
+				vec_dot_product(data[7],data[8],dim) >= 0 &&
+				vec_dot_product(data[8],data[6],dim) >= 0 )
+				return true; //inside one of the triangles
 		}
-
 		return false;
 	}
 	
@@ -215,10 +197,6 @@ namespace INMOST
 		integer dim = GetElementDimension();
 		if( dim == 3 )
 		{
-			// Check faces first
-			ElementArray<Face> faces = getFaces();
-			for(int i = 0; i < faces.size(); i++)
-				if(faces[i].Inside(point))	return true;
 			/*
 			tiny_map<HandleType,real,16> hits;
 			real ray[3];
@@ -2073,6 +2051,160 @@ namespace INMOST
 			break;
 			*/
 		}
+	}
+
+	/// Wachspress interpolation from nodes to arbitrary point inside 2d face
+	/// 	x	point, should be inside face
+	/// 	f	2d face
+	/// 	nodes_stencil	array of pairs (handle of node, interpolation coefficient)
+	///
+	/// Example: 
+	///		tiny_map<HandleType,double,8> nodes_stencil;
+	///		wachspress_2d(x, f, nodes_stencil);
+	///		double xvalue = 0.0;
+	///		for(tiny_map<HandleType,double,8>::const_iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+	///		{
+	///			xvalue += it->second * tag_value.Real(it->first);
+	///		}
+	void Mesh::WachspressInterpolation2D(const real * x, const Face & f, tiny_map<HandleType,real,8> & nodes_stencil) const
+	{
+		ElementArray<Node> nodes = f.getNodes();
+		int n = nodes.size();
+		double xprev[3], xthis[3], xnext[3], dx[3];
+		double weight_sum = 0.0;
+		double areaface = f.Area();
+		double eps = GetEpsilon();
+		bool edge_interpolation = false;
+		int edgenode1 = -1, edgenode2 = -1;
+		for(int i = 0; i < n && !edge_interpolation; i++)
+		{
+			int prev = (i+n-1)%n, next = (i+1)%n;
+			nodes[i].Centroid(xthis);
+			vec_diff(x,xthis,dx,3);
+			nodes[prev].Centroid(xprev);
+			nodes[next].Centroid(xnext);
+			double area1 = triarea3d(x,xprev,xthis);
+			edge_interpolation = area1 < 1e-8 * areaface;
+			if( !edge_interpolation )
+			{
+				double area2 = triarea3d(x,xthis,xnext);
+				edge_interpolation = area2 < 1e-8 * areaface;
+				if( !edge_interpolation )
+				{
+					double area = triarea3d(xthis,xprev,xnext);
+					double weight = area / (area1 * area2);
+					weight_sum += weight;
+					nodes_stencil[nodes[i].GetHandle()] = weight;
+				}
+				else
+				{
+					edgenode1 = i;
+					edgenode2 = next;
+				}
+			}
+			else
+			{
+				edgenode1 = prev;
+				edgenode2 = i;
+			}
+		}
+		if( edge_interpolation )
+		{
+			if( !nodes_stencil.empty() )	nodes_stencil.clear();
+			double x1[3],x2[3], v12[3], v[3], alpha;
+			nodes[edgenode1].Centroid(x1);
+			nodes[edgenode2].Centroid(x2);
+			vec_diff(x2,x1,v12,3);
+			vec_diff(x,x1,v,3);
+			alpha = vec_dot_product(v12,v,3) / vec_dot_product(v12,v12,3);
+
+			nodes_stencil[nodes[edgenode1].GetHandle()] = alpha;
+			nodes_stencil[nodes[edgenode2].GetHandle()] = 1.0-alpha;
+		}
+		else if( weight_sum )
+			for(tiny_map<HandleType,real,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+				it->second /= weight_sum;
+	}
+	
+	void Mesh::WachspressInterpolation3D(const real * x, const Cell & c, tiny_map<HandleType,real,8> & nodes_stencil) const
+	{
+		ElementArray<Node> nodes = c.getNodes();
+		int n = nodes.size();
+		ElementArray<Face> cfaces = c.getFaces(), faces;
+		Face swp;
+
+		double weight_sum = 0;
+		for(int i = 0; i < n; i++)
+		{
+			double xthis[3], v[3];
+			nodes[i].Centroid(xthis);
+
+			faces = cfaces;
+			faces.Intersect(nodes[i].getFaces());
+			int nf = faces.size();
+			double nrm_mean[3] = {0,0,0}, cross[3];
+			double * nrm = new double[nf*3];	// oriented unit normal to face
+			double * h = new double[nf];		// distance to face
+			for(int j = 0; j < nf; j++)
+			{
+				faces[j].OrientedUnitNormal(c,nrm+3*j);
+				for(int k = 0; k < 3; k++)	nrm_mean[k] += nrm[3*j+k];
+			}
+			for(int k = 0; k < 3; k++)	nrm_mean[k] /= nf;
+			// sort faces counter-clockwise relative to mean normal
+			for(int j = 0; j < nf-1; j++)
+				for(int k = j+1; k < nf-1; k++)
+				{
+					vec_cross_product(nrm+3*j, nrm+3*k, cross);
+					if( vec_dot_product(nrm_mean,cross,3) < 0 )
+					{
+						swp = faces[j];
+						faces[j] = faces[k];
+						faces[k] = swp;
+						for(int l = 0; l < 3; l++)
+						{
+							cross[l] = nrm[3*j+l];
+							nrm[3*j+l] = nrm[3*k+l];
+							nrm[3*k+l] = cross[l];
+						}
+					}
+				}
+
+			vec_diff(xthis,x,v,3);
+			for(int j = 0; j < nf; j++)
+			{
+				h[j] = vec_dot_product(nrm+3*j,v,3);
+				if( h[j] < -1e-8 )
+				{
+					//std::cerr << __FILE__ << ":" << __LINE__ << " point is outside of cell" << std::endl;
+					h[j] = fabs(h[j]);
+				}
+				else if(h[j] < 1e-8) // point on the face plane
+				{
+					double xf[3];
+					for(int k = 0; k < 3; k++)	xf[k] = x[k] + h[j]*nrm[3*j+k];
+					if( !nodes_stencil.empty() )	nodes_stencil.clear();
+					wachspress_2d(xf,faces[j],nodes_stencil);
+					return;
+				}
+			}
+
+			double weight = 0.0;
+			for(int j = 0; j < nf-2; j++)
+			{
+				double tet_weight = fabs(det3v(nrm+3*j, nrm+3*(j+1), nrm+3*(nf-1))) / (h[j]*h[j+1]*h[nf-1]);
+				weight += tet_weight;
+			}
+			nodes_stencil[nodes[i].GetHandle()] = weight;
+			weight_sum += weight;
+			
+			delete [] h;
+			delete [] nrm;
+		}
+
+		if( weight_sum )
+			for(tiny_map<HandleType,real,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+				it->second /= weight_sum;
 	}
 
 

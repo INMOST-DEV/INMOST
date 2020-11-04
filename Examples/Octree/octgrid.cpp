@@ -895,6 +895,8 @@ void order_nodes_in_face_a(struct grid* g, ElementArray<Node>* nodes)
            (*nodes)[j] = tmp;
         }
     }
+
+	 delete[] alphas;
     
     return;
 }

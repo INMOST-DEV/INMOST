@@ -433,6 +433,7 @@ namespace INMOST
 		static bool                 CheckConnectivity       (Mesh * m);
 		//implemented in geometry.cpp
 		void                        CastRay                 (const real * pos, const real * dir, tiny_map<HandleType, real, 16> & hits) const;
+		
 		void                        ComputeGeometricType    () const;
 		void                        Centroid                (real * cnt) const;
 		void                        Barycenter              (real * cnt) const;
@@ -3202,6 +3203,18 @@ namespace INMOST
 		integer                           CountInteriorFaces ();
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size);
+		/// Compute node-centered interpolation on 2d face for point.
+		/// Point should be inside face or on its boundary.
+		/// @param x Interpolation point
+		/// @param f Face (should be 2d) which contains point
+		/// @param nodes_stencil Vector of pairs (node handle, coefficient) to store interpolation data
+		void                              WachspressInterpolation2D           (const real * x, const Face & f, tiny_map<HandleType,real,8> & nodes_stencil) const;
+		/// Compute node-centered interpolation on 3d cell for point
+		/// Point should be inside cell or on its boundary.
+		/// @param x Interpolation point
+		/// @param c Cell (should be 3d) which contains point
+		/// @param nodes_stencil Vector of pairs (node handle, coefficient) to store interpolation data
+		void                              WachspressInterpolation3D           (const real * x, const Cell & c, tiny_map<HandleType,real,8> & nodes_stencil) const;
 		/// Sets marker for all the faces that have only one neighbouring cell, works correctly in parallel environment.
 		/// @param boundary_marker Non-private marker that will indicate boundary faces.
 		void                              MarkBoundaryFaces(MarkerType boundary_marker);
