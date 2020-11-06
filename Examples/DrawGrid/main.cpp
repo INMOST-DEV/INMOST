@@ -839,7 +839,7 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	else if( key == 't' )
 	{
-		screenshot(4);
+		screenshot(1);
 		std::fstream fout("screenshot.svg",std::ios::out);
 		svg_draw(fout);
 		fout.close();

@@ -132,8 +132,9 @@ namespace INMOST
 			return;
 		}
 		printf("preparing octree around mesh, was sets %d\n", mesh->NumberOfSets());
-		Octree octsearch = Octree(mesh->CreateSet("octsearch").first);
-		octsearch.Construct(vel_def, false); //auto-detect octree or quadtree
+		SearchKDTree octsearch(mesh);
+		//~ Octree octsearch = Octree(mesh->CreateSet("octsearch").first);
+		//~ octsearch.Construct(vel_def, false); //auto-detect octree or quadtree
 		printf("done, sets %d\n", mesh->NumberOfSets());
 		printf("building streamlines\n");
 		Tag cell_size = mesh->CreateTag("STREAMLINES_TEMPORARY_CELL_SIZES", DATA_REAL, CELL, NONE, 1);
@@ -258,13 +259,13 @@ namespace INMOST
 		mesh->DeleteTag(cell_size);
 		printf("done, total streamlines = %lu\n", output.size());
 		printf("killing octree, was sets %d\n", mesh->NumberOfSets());
-		octsearch.Destroy();
+		//~ octsearch.Destroy();
 		printf("done, sets %d\n", mesh->NumberOfSets());
 
 	}
 
 
-	Streamline::Streamline(const Octree & octsearch, coord pos, Tag velocity_tag, ElementType velocity_defined, Tag cell_size, Storage::real velocity_min, Storage::real velocity_max, Storage::real sign, MarkerType visited)
+	Streamline::Streamline(SearchKDTree & octsearch, coord pos, Tag velocity_tag, ElementType velocity_defined, Tag cell_size, Storage::real velocity_min, Storage::real velocity_max, Storage::real sign, MarkerType visited)
 	{
 		Storage::real coef, len, size;
 		coord next = pos, vel;
@@ -276,7 +277,8 @@ namespace INMOST
 		velarr.push_back(0);
 		while (points.size() < maxsteps)
 		{
-			c = octsearch.FindClosestCell(next.data());
+			//c = octsearch.FindClosestCell(next.data());
+			c = octsearch.SearchCell(next.data());
 			if (!c.isValid()) break;
 			//if( !c.getAsCell().Inside(next.data()) ) break;
 			//check we are inside mesh
@@ -290,10 +292,10 @@ namespace INMOST
 			c.SetMarker(visited);
 			GetVelocity(c, velocity_tag, velocity_defined, next, vel);
 			len = vel.length();
-			if (len < 1.0e-7) break;
+			if (len < 1.0e-8) break;
 			//size = GetSize(c, cell_size);// c->RealDF(cell_size);
 			size = GetSizeProj(c,vel);
-			coef = 0.01*size / len;
+			coef = 0.05*size / len;
 			next += vel*coef*sign;
 			points.push_back(next);
 			velarr.push_back((log(len + 1.0e-25) - velocity_min) / (velocity_max - velocity_min));

@@ -17,7 +17,7 @@ namespace INMOST
 		std::vector<double> velarr;
 	public:
 		Streamline() {}
-		Streamline(const Octree & octsearch, coord pos, Tag velocity_tag, ElementType velocity_defined, Tag cell_size, Storage::real velocity_min, Storage::real velocity_max, Storage::real sign, MarkerType visited);
+		Streamline(SearchKDTree & octsearch, coord pos, Tag velocity_tag, ElementType velocity_defined, Tag cell_size, Storage::real velocity_min, Storage::real velocity_max, Storage::real sign, MarkerType visited);
 		Streamline(const Streamline & other) { points = other.points; velarr = other.velarr; }
 		Streamline & operator =(Streamline const & other) { points = other.points; velarr = other.velarr; return *this; }
 		~Streamline() { points.clear(); velarr.clear(); }
