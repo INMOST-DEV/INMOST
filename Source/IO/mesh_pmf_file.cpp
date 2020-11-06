@@ -427,8 +427,10 @@ namespace INMOST
 			REPORT_STR("Parallel write");
 			int ierr;
 			INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(),k;
-			INMOST_DATA_BIG_ENUM_TYPE datasize = static_cast<INMOST_DATA_ENUM_TYPE>(out.tellp()), offset;
+			INMOST_DATA_BIG_ENUM_TYPE datasize, offset;
 			std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(numprocs,0), offsets(numprocs,0);
+			std::string local_data(out.str());
+			datasize = local_data.size();
 			REPORT_VAL("local_write_file_size",datasize);
 			REPORT_MPI(ierr = MPI_Gather(&datasize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&datasizes[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
 			if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
@@ -474,10 +476,6 @@ namespace INMOST
 				if( datasize )
 				{
 					INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk;
-					std::string local_data(out.str());
-					//TODO: remove temporary check!!!
-					if( static_cast<INMOST_DATA_BIG_ENUM_TYPE>(local_data.size()) != datasize )
-						std::cout << __FILE__ << ":" << __LINE__ << " different sizes " << local_data.size() << " and " << datasize << std::endl;
 					//REPORT_MPI(ierr = MPI_File_write_ordered(fh,&local_data[0],static_cast<INMOST_MPI_SIZE>(local_data.size()),MPI_CHAR,&stat));
 					while( shift != datasize )
 					{
