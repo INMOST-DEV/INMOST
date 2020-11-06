@@ -2254,10 +2254,33 @@ namespace INMOST
 		typedef std::map<int, element_set >                            proc_elements;
 		typedef std::pair<int, buffer_type >                        proc_buffer_type;
 		typedef std::vector< proc_buffer_type >                     exch_buffer_type;
+		typedef std::vector<INMOST_MPI_Request>                       exch_reqs_type;
+		typedef struct
+		{
+			std::vector<unsigned> buf;
+			std::vector<unsigned> cnt;
+			std::vector<INMOST_MPI_Request> requests;
+			unsigned count()
+			{
+				unsigned ret = 0;
+				for(size_t i = 0; i < cnt.size(); ++i)
+					ret += cnt[i];
+				return ret;
+			}
+			void clear()
+			{
+				buf.clear();
+				buf.push_back(0);
+				cnt.clear();
+				requests.clear();
+			}
+		} exch_recv_reqs_type;
+		
 		class exchange_data
 		{
 		public:
-			std::vector<INMOST_MPI_Request> send_reqs, recv_reqs;
+			exch_reqs_type send_reqs;
+			exch_recv_reqs_type recv_reqs;
 			exch_buffer_type send_buffers, recv_buffers;
 		};
 	private:
@@ -2319,8 +2342,8 @@ namespace INMOST
 		void                              PrepareReceiveInner(Prepare todo, exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs);
 		void                              ExchangeDataInnerBegin(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, exchange_data & storage);
 		void                              ExchangeDataInnerEnd(const tag_set & tag, const parallel_storage & from, const parallel_storage & to, ElementType mask, MarkerType select, ReduceOperation op, exchange_data & storage);
-		void                              ExchangeBuffersInner(exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs,std::vector<INMOST_MPI_Request> & send_reqs, std::vector<INMOST_MPI_Request> & recv_reqs);
-		std::vector<int>                  FinishRequests     (std::vector<INMOST_MPI_Request> & recv_reqs);
+		void                              ExchangeBuffersInner(exch_buffer_type & send_bufs, exch_buffer_type & recv_bufs, exch_reqs_type & send_reqs, exch_recv_reqs_type & recv_reqs);
+		std::vector<int>                  FinishRequests     (exch_recv_reqs_type & recv_reqs);
 		void                              SortParallelStorage(parallel_storage & ghost, parallel_storage & shared,ElementType mask);
 		void                              ReportParallelStorage();
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
