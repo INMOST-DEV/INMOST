@@ -64,22 +64,106 @@ static std::string NameSlash(std::string input)
 #define PROCESSID -1
 #endif
 
+
+#if 1
+#define MPI_Pack_call(data,size,type,buf,buf_size,pos,comm)   MPI_Pack(data,size,type,buf,buf_size,pos,comm)
+#define MPI_Pack_size_call(size,type,comm,ret)                MPI_Pack_size(size,type,comm,ret)
+#define MPI_Unpack_call(buf,buf_size,pos,data,size,type,comm) MPI_Unpack(buf,buf_size,pos,data,size,type,comm)
+#define POS_TYPE int
+#define SEND_AS MPI_PACKED
+#else
+#define MPI_Pack_call(data,size,type,buf,buf_size,pos,comm)   MPI_Pack_external("external32",data,size,type,buf,buf_size,pos)
+#define MPI_Pack_size_call(size,type,comm,ret)                MPI_Pack_external_size("external32",size,type,ret)
+#define MPI_Unpack_call(buf,buf_size,pos,data,size,type,comm) MPI_Unpack_external("external32",buf,buf_size,pos,data,size,type)
+#define POS_TYPE MPI_Aint
+#define SEND_AS MPI_BYTE
+#endif
+
+
+#if SIZE_MAX == UCHAR_MAX
+#define MPI_SIZE_T MPI_UNSIGNED_CHAR
+#elif SIZE_MAX == USHRT_MAX
+#define MPI_SIZE_T MPI_UNSIGNED_SHORT
+#elif SIZE_MAX == UINT_MAX
+#define MPI_SIZE_T MPI_UNSIGNED
+#elif SIZE_MAX == ULONG_MAX
+#define MPI_SIZE_T MPI_UNSIGNED_LONG
+#elif SIZE_MAX == ULLONG_MAX
+#define MPI_SIZE_T MPI_UNSIGNED_LONG_LONG
+#else
+#error "Cannot detect size_t type"
+#endif
+
+
 namespace INMOST
 {
-    //static int block_recursion = 0;
-	/*
-    std::string ro()
-    {
-        int rank = 0;
-#ifdef USE_MPI
-        MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-#endif
-        std::stringstream ss;
-        for (int i = 0; i < rank; i++)
-            ss << "   ";
-        return ss.str();
-    }
-    */
+	
+	template<typename T> struct MPIType;
+	template<> struct MPIType<bool> {static MPI_Datatype Type() {return MPI_C_BOOL;}};
+	template<> struct MPIType<char> {static MPI_Datatype Type() {return MPI_CHAR;}};
+	template<> struct MPIType<int> {static MPI_Datatype Type() {return MPI_INT;}};
+	template<> struct MPIType<short> {static MPI_Datatype Type() {return MPI_SHORT;}};
+	template<> struct MPIType<long> {static MPI_Datatype Type() {return MPI_LONG;}};
+	template<> struct MPIType<long long> {static MPI_Datatype Type() {return MPI_LONG_LONG;}};
+	template<> struct MPIType<unsigned char> {static MPI_Datatype Type() {return MPI_UNSIGNED_CHAR;}};
+	template<> struct MPIType<unsigned short> {static MPI_Datatype Type() {return MPI_UNSIGNED_SHORT;}};
+	template<> struct MPIType<unsigned> {static MPI_Datatype Type() {return MPI_UNSIGNED;}};
+	template<> struct MPIType<unsigned long> {static MPI_Datatype Type() {return MPI_UNSIGNED_LONG;}};
+	template<> struct MPIType<unsigned long long> {static MPI_Datatype Type() {return MPI_UNSIGNED_LONG_LONG;}};
+	template<> struct MPIType<double> {static MPI_Datatype Type() {return MPI_DOUBLE;}};
+	template<> struct MPIType<long double> {static MPI_Datatype Type() {return MPI_LONG_DOUBLE;}};
+	template<> struct MPIType<float> {static MPI_Datatype Type() {return MPI_FLOAT;}};
+	//template<> struct MPIType<size_t> {static MPI_Datatype Type() {return MPI_SIZE_T;}};
+	
+	template<typename T>
+	void pack_data(Mesh::exch_buffer_type & buf, const T & data, INMOST_MPI_Comm comm)
+	{
+		int ierr;
+		POS_TYPE pack_size = 0, shift;
+		size_t write_pos = buf.size();
+		MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size); 
+		buf.resize(write_pos+pack_size);
+		MPI_Pack_call((void*)&data,1,MPIType<T>::Type(),&buf[write_pos],pack_size,&shift,comm);
+		buf.resize(write_pos+shift);
+	}
+	
+	
+	template<typename T>
+	void pack_data_array(Mesh::exch_buffer_type & buf, const std::vector<T> & data, INMOST_MPI_Comm comm)
+	{
+		pack_data(buf,data.size(),comm);
+		if( !data.empty() )
+		{
+			POS_TYPE pack_size = 0, shift;
+			size_t write_pos = buf.size();
+			MPI_Pack_size_call((int)data.size(),MPIType<T>::Type(),comm,&pack_size); 
+			buf.resize(write_pos+pack_size);
+			MPI_Pack_call((void *)&data[0],data.size(),MPIType<T>::Type(),&buf[write_pos],pack_size,&shift,comm);
+			buf.resize(write_pos+shift);
+		}
+	}
+	
+	
+	template<typename T>
+	void unpack_data(Mesh::exch_buffer_type & buf, int & pos, T & data, INMOST_MPI_Comm comm)
+	{
+		POS_TYPE lpos = (POS_TYPE)pos;
+		MPI_Unpack_call((void*)&buf[0],(int)buf.size(),&lpos,&data,1,MPIType<T>::Type(),comm);
+		pos = (int)lpos;
+	}
+	
+	template<typename T>
+	void unpack_data_array(Mesh::exch_buffer_type & buf, int & pos, std::vector<T> & data, INMOST_MPI_Comm comm)
+	{
+		size_t unpack_size;
+		unpack_data(buf,pos,unpack_size,comm);
+		data.resize(unpack_size);
+		POS_TYPE lpos = (POS_TYPE)pos;
+		MPI_Unpack_call((void*)&buf[0],(int)buf.size(),&lpos,&data[0],(int)unpack_size,MPIType<T>::Type(),comm);
+		pos = (int)lpos;
+	}
+
+    
 	//////////////////////////////
 	/// REDUCTION FUNCTIONS    ///
 	//////////////////////////////
