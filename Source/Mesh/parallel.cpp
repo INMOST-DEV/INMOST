@@ -101,6 +101,7 @@ namespace INMOST
 	template<typename T> struct MPIType;
 	template<> struct MPIType<bool> {static MPI_Datatype Type() {return MPI_C_BOOL;}};
 	template<> struct MPIType<char> {static MPI_Datatype Type() {return MPI_CHAR;}};
+	template<> struct MPIType<const char> {static MPI_Datatype Type() {return MPI_CHAR;}};
 	template<> struct MPIType<int> {static MPI_Datatype Type() {return MPI_INT;}};
 	template<> struct MPIType<short> {static MPI_Datatype Type() {return MPI_SHORT;}};
 	template<> struct MPIType<long> {static MPI_Datatype Type() {return MPI_LONG;}};
@@ -116,51 +117,158 @@ namespace INMOST
 	//template<> struct MPIType<size_t> {static MPI_Datatype Type() {return MPI_SIZE_T;}};
 	
 	template<typename T>
-	void pack_data(Mesh::exch_buffer_type & buf, const T & data, INMOST_MPI_Comm comm)
+	void pack_data(Mesh::buffer_type & buf, const T & data, INMOST_MPI_Comm comm)
 	{
 		int ierr;
-		POS_TYPE pack_size = 0, shift;
+		POS_TYPE pack_size = 0, shift = 0;
 		size_t write_pos = buf.size();
-		MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size); 
+		ierr = MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size); 
+		if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
 		buf.resize(write_pos+pack_size);
-		MPI_Pack_call((void*)&data,1,MPIType<T>::Type(),&buf[write_pos],pack_size,&shift,comm);
+		ierr = MPI_Pack_call((void*)&data,1,MPIType<T>::Type(),&buf[write_pos],pack_size,&shift,comm);
+		if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
 		buf.resize(write_pos+shift);
+	}
+	
+	template<typename T>
+	size_t pack_data_size(INMOST_MPI_Comm comm)
+	{
+		int ierr;
+		POS_TYPE pack_size = 0, shift = 0;
+		size_t ret = 0;
+		ierr = MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size); 
+		if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+		ret += pack_size;
+		return ret;
 	}
 	
 	
 	template<typename T>
-	void pack_data_array(Mesh::exch_buffer_type & buf, const std::vector<T> & data, INMOST_MPI_Comm comm)
+	void pack_data_array(Mesh::buffer_type & buf, const T * data, size_t N, INMOST_MPI_Comm comm)
 	{
-		pack_data(buf,data.size(),comm);
-		if( !data.empty() )
+		int ierr;
+		if( N )
 		{
-			POS_TYPE pack_size = 0, shift;
-			size_t write_pos = buf.size();
-			MPI_Pack_size_call((int)data.size(),MPIType<T>::Type(),comm,&pack_size); 
-			buf.resize(write_pos+pack_size);
-			MPI_Pack_call((void *)&data[0],data.size(),MPIType<T>::Type(),&buf[write_pos],pack_size,&shift,comm);
-			buf.resize(write_pos+shift);
+			POS_TYPE pack_size = 0;
+			ierr = MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size);
+			if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+			size_t rec_bytes = static_cast<size_t>(pack_size);
+			size_t max_bytes = rec_bytes*N;
+			size_t chunk_bytes = std::min(max_bytes,static_cast<size_t>(INT_MAX));
+			size_t chunk_size = chunk_bytes / rec_bytes;
+			size_t offset = 0;
+			while( offset != N )
+			{
+				size_t write_pos = buf.size();
+				size_t chunk = std::min(chunk_size, N-offset);
+				ierr = MPI_Pack_size_call(static_cast<POS_TYPE>(chunk),MPIType<T>::Type(),comm,&pack_size); //pack_size is expected to be within INT_MAX
+				if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+				buf.resize(write_pos+pack_size);
+				POS_TYPE shift = 0;
+				ierr = MPI_Pack_call((void *)&data[offset],static_cast<POS_TYPE>(chunk),MPIType<T>::Type(),&buf[write_pos],pack_size,&shift,comm);
+				if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+				buf.resize(write_pos+shift);
+				offset += chunk;
+			}
 		}
 	}
 	
 	
 	template<typename T>
-	void unpack_data(Mesh::exch_buffer_type & buf, int & pos, T & data, INMOST_MPI_Comm comm)
+	void pack_data_vector(Mesh::buffer_type & buf, const std::vector<T> & data, INMOST_MPI_Comm comm)
 	{
-		POS_TYPE lpos = (POS_TYPE)pos;
-		MPI_Unpack_call((void*)&buf[0],(int)buf.size(),&lpos,&data,1,MPIType<T>::Type(),comm);
-		pos = (int)lpos;
+		int ierr;
+		pack_data(buf,data.size(),comm);
+		if( !data.empty() ) 
+			pack_data_array(buf,&data[0],data.size(),comm);
 	}
 	
 	template<typename T>
-	void unpack_data_array(Mesh::exch_buffer_type & buf, int & pos, std::vector<T> & data, INMOST_MPI_Comm comm)
+	size_t pack_data_array_size(size_t N, INMOST_MPI_Comm comm)
 	{
+		int ierr;
+		size_t ret = 0;
+		if( N )
+		{
+			POS_TYPE pack_size = 0;
+			ierr = MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size);
+			if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+			size_t rec_bytes = static_cast<size_t>(pack_size);
+			size_t max_bytes = rec_bytes*N;
+			size_t chunk_bytes = std::min(max_bytes,static_cast<size_t>(INT_MAX));
+			size_t chunk_size = chunk_bytes / rec_bytes;
+			size_t offset = 0;
+			while( offset != N )
+			{
+				size_t chunk = std::min(chunk_size, N-offset);
+				ierr = MPI_Pack_size_call(static_cast<POS_TYPE>(chunk),MPIType<T>::Type(),comm,&pack_size); //pack_size is expected to be within INT_MAX
+				if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+				ret += pack_size;
+				offset += chunk;
+			}
+		}
+		return ret;
+	}
+	
+	template<typename T>
+	size_t pack_data_vector_size(size_t N, INMOST_MPI_Comm comm)
+	{
+		size_t ret = pack_data_size<size_t>(comm);
+		if( N ) ret += pack_data_array_size<T>(N,comm);
+		return ret;
+	}
+	
+	
+	template<typename T>
+	void unpack_data(Mesh::buffer_type & buf, size_t & buf_pos, T & data, INMOST_MPI_Comm comm)
+	{
+		int ierr;
+		POS_TYPE shift = 0, pack_size;
+		ierr = MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size); 
+		if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+		ierr = MPI_Unpack_call((void*)&buf[buf_pos],pack_size,&shift,&data,1,MPIType<T>::Type(),comm);
+		if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+		buf_pos += shift;
+	}
+	
+	
+	template<typename T>
+	void unpack_data_array(Mesh::buffer_type & buf, size_t & buf_pos, T * data, size_t N, INMOST_MPI_Comm comm)
+	{
+		int ierr;
+		if( N )
+		{
+			POS_TYPE pack_size = 0;
+			ierr = MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size);
+			if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+			size_t rec_bytes = static_cast<size_t>(pack_size);
+			size_t max_bytes = rec_bytes*N;
+			size_t chunk_bytes = std::min(max_bytes,static_cast<size_t>(INT_MAX));
+			size_t chunk_size = chunk_bytes / rec_bytes;
+			size_t offset = 0;
+			while( offset != N )
+			{
+				size_t chunk = std::min(chunk_size, N-offset);
+				ierr = MPI_Pack_size_call(static_cast<POS_TYPE>(chunk),MPIType<T>::Type(),comm,&pack_size); //pack_size is expected to be within INT_MAX
+				if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+				POS_TYPE shift = 0;
+				ierr = MPI_Unpack_call((void *)&buf[buf_pos],pack_size,&shift,&data[offset],static_cast<POS_TYPE>(chunk),MPIType<T>::Type(),comm);
+				if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
+				buf_pos += shift;
+				offset += chunk;
+			}
+		}
+	}
+	
+	template<typename T>
+	void unpack_data_vector(Mesh::buffer_type & buf, size_t & buf_pos, std::vector<T> & data, INMOST_MPI_Comm comm)
+	{
+		int ierr;
 		size_t unpack_size;
-		unpack_data(buf,pos,unpack_size,comm);
+		unpack_data(buf,buf_pos,unpack_size,comm);
 		data.resize(unpack_size);
-		POS_TYPE lpos = (POS_TYPE)pos;
-		MPI_Unpack_call((void*)&buf[0],(int)buf.size(),&lpos,&data[0],(int)unpack_size,MPIType<T>::Type(),comm);
-		pos = (int)lpos;
+		if( !data.empty() )
+			unpack_data_array(buf,buf_pos,&data[0],data.size(),comm);
 	}
 
     
@@ -1267,7 +1375,6 @@ namespace INMOST
 		if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
 		if( tag_global_id.isValid() ) tag_global_id = DeleteTag(tag_global_id,CELL | EDGE | FACE | NODE);
 		integer dim = GetDimensions();
-		int sendsize;
 		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
         int rank = mpirank;
 #if defined(USE_PARALLEL_STORAGE)
@@ -1516,13 +1623,11 @@ namespace INMOST
 				EXIT_BLOCK();
 				
 				
-				int position = 0;
+				//~ int position = 0;
 				ENTER_BLOCK();
 				
-				//TODO: overflow
-				MPI_Pack_size(static_cast<int>(pack_real.size()),INMOST_MPI_DATA_REAL_TYPE,comm,&sendsize);
-				exch_data.resize(sendsize);
-				if( sendsize > 0 ) MPI_Pack(&pack_real[0],static_cast<INMOST_MPI_SIZE>(pack_real.size()),INMOST_MPI_DATA_REAL_TYPE,&exch_data[0],static_cast<INMOST_MPI_SIZE>(exch_data.size()),&position,comm);
+				
+				pack_data_vector(exch_data,pack_real,GetCommunicator());
 				
 				
 				
@@ -1537,19 +1642,15 @@ namespace INMOST
 					exch_buffer_type send_buffs(procs.size()), recv_buffs(procs.size());
 					std::vector<int> done;
 
-					std::vector<unsigned> sendsizeall(mpisize*2);
-					int pack_size2 = 0;
-					unsigned usend[2] = {static_cast<unsigned>(sendsize),static_cast<unsigned>(pack_real.size())};
+					std::vector<size_t> sendsizeall(mpisize);
 					ENTER_BLOCK();
-					MPI_Pack_size(2,MPI_UNSIGNED,comm,&pack_size2);
+					
 					for(dynarray<integer,64>::size_type k = 0; k < procs.size(); k++)
 					{
 						send_buffs[k].first = procs[k];
-						send_buffs[k].second.resize(pack_size2);
-						position = 0;
-						MPI_Pack(usend,2,MPI_UNSIGNED,&send_buffs[k].second[0],static_cast<INMOST_MPI_SIZE>(send_buffs[k].second.size()),&position,comm);
+						pack_data(send_buffs[k].second,exch_data.size(),GetCommunicator());
 						recv_buffs[k].first = procs[k];
-						recv_buffs[k].second.resize(pack_size2);
+						recv_buffs[k].second.resize(send_buffs[k].second.size());
 					}
 					EXIT_BLOCK();
 					ExchangeBuffersInner(send_buffs,recv_buffs,send_reqs,recv_reqs);
@@ -1558,8 +1659,10 @@ namespace INMOST
 					{
 						for(std::vector<int>::iterator qt = done.begin(); qt != done.end(); qt++)
 						{
-							position = 0;
-							MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&sendsizeall[procs[*qt]*2],2,MPI_UNSIGNED,comm);
+							//~ position = 0;
+							//~ MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&sendsizeall[procs[*qt]*2],2,MPI_UNSIGNED,comm);
+							size_t buf_pos = 0;
+							unpack_data(recv_buffs[*qt].second,buf_pos,sendsizeall[procs[*qt]],GetCommunicator());
 						}
 					}
 					if( !send_reqs.empty() )
@@ -1577,7 +1680,7 @@ namespace INMOST
 							send_buffs[k].first = procs[k];
 							send_buffs[k].second = exch_data;
 							recv_buffs[k].first = procs[k];
-							recv_buffs[k].second.resize(sendsizeall[procs[k]*2]);
+							recv_buffs[k].second.resize(sendsizeall[procs[k]]);
 						}
 						EXIT_BLOCK();
 						//PrepareReceiveInner(send_buffs,recv_buffs);
@@ -1591,12 +1694,14 @@ namespace INMOST
 							{
 								REPORT_STR("receive node coordinates");
 								REPORT_VAL("processor",recv_buffs[*qt].first);
-								int count = 0;
-								int position = 0;
-								unpack_real.resize(sendsizeall[recv_buffs[*qt].first*2+1]);
+								size_t count = 0;
+								//~ int position = 0;
+								//~ unpack_real.resize(sendsizeall[recv_buffs[*qt].first*2+1]);
 								
 								//TODO: overflow
-								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&unpack_real[0],static_cast<INMOST_MPI_SIZE>(unpack_real.size()),INMOST_MPI_DATA_REAL_TYPE,comm);
+								//~ MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&unpack_real[0],static_cast<INMOST_MPI_SIZE>(unpack_real.size()),INMOST_MPI_DATA_REAL_TYPE,comm);
+								size_t buf_pos = 0;
+								unpack_data_vector(recv_buffs[*qt].second,buf_pos,unpack_real,GetCommunicator());
 								std::vector<Storage::real>::iterator it1 = pack_real.begin() , it2 = unpack_real.begin();
 								while(it1 != pack_real.end() && it2 != unpack_real.end() )
 								{
@@ -1805,7 +1910,6 @@ namespace INMOST
 							{
 								message_send.clear();
 								message_send.push_back(0);
-								message_send.push_back(0);
 								for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
 								{
                                     if (only_new && !it->GetMarker(new_lc)) continue;
@@ -1826,21 +1930,17 @@ namespace INMOST
 											ElementByLocalID(PrevElementType(current_mask),GetHandleID(*kt))->Centroid(cnt);
 											//REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
 										}
-										message_send[1]++;
+										//~ message_send[1]++;
+										message_send[0]++;
 										elements[m].push_back(*it);
 									}
 								}
 								
 								REPORT_VAL("gathered elements",elements[m].size());
-								message_send[0] = static_cast<int>(message_send.size());
-								
-								//TODO: overflow
-								MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(message_send.size()),MPI_INT,comm,&sendsize);
+						
+
 								send_buffs[m].first = *p;
-								send_buffs[m].second.resize(sendsize);
-								int position = 0;
-								MPI_Pack(&message_send[0],static_cast<INMOST_MPI_SIZE>(message_send.size()),MPI_INT,&send_buffs[m].second[0],static_cast<INMOST_MPI_SIZE>(send_buffs[m].second.size()),&position,comm);
-								send_buffs[m].second.resize(position);
+								pack_data_vector(send_buffs[m].second,message_send,GetCommunicator());
 								recv_buffs[m].first = *p;
 							}
 						}
@@ -1859,8 +1959,8 @@ namespace INMOST
 						{
 							for(std::vector<int>::iterator qt = done.begin(); qt != done.end(); qt++)
 							{
-								int position = 0;
-								int size;
+								//~ int position = 0;
+								//~ int size;
 								int pos = -1;
 								for(p = procs.begin(); p != procs.end(); p++)
 									if( *p == recv_buffs[*qt].first )
@@ -1869,11 +1969,8 @@ namespace INMOST
 										break;
 									}
 								if( pos == -1 ) throw Impossible;
-								//TODO: overflow
-								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&size,1,MPI_INT,comm);
-								REPORT_VAL("unpacked message size",size-1);
-								message_recv[pos].resize(size-1);
-								MPI_Unpack(&recv_buffs[*qt].second[0],static_cast<INMOST_MPI_SIZE>(recv_buffs[*qt].second.size()),&position,&message_recv[pos][0],static_cast<INMOST_MPI_SIZE>(message_recv[pos].size()),MPI_INT,comm);
+								size_t buf_pos = 0;
+								unpack_data_vector(recv_buffs[*qt].second,buf_pos,message_recv[pos],GetCommunicator());
 							}
 						}
 						
@@ -2825,7 +2922,7 @@ namespace INMOST
 						array_size_send.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send[count]++;
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
-						INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
+						size_t had_s = array_data_send.size();
 						if( s )
 						{
 							array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
@@ -2856,7 +2953,7 @@ namespace INMOST
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 				{
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
-					INMOST_DATA_ENUM_TYPE had_s = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
+					size_t had_s = array_data_send.size();
 					if( s )
 					{
 						array_data_send.resize(had_s+GetDataCapacity(*eit,tag));
@@ -2880,57 +2977,15 @@ namespace INMOST
 			}
 			REPORT_VAL("total packed records",total_packed);
 		}
-		//if( pack_position.isValid() ) DeleteTag(pack_position);
-		INMOST_DATA_ENUM_TYPE size_send, data_send;
-		size_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_size_send.size());
-		data_send = static_cast<INMOST_DATA_ENUM_TYPE>(array_data_send.size());
 		REPORT_VAL("tag defined on",static_cast<int>(pack_types[0]));
 		REPORT_VAL("tag sparse on",static_cast<int>(pack_types[1]));
-		REPORT_VAL("size_send",size_send);
-		REPORT_VAL("data_send",data_send);
-		int buffer_size = 0,position = static_cast<int>(buffer.size()),temp,bytes;
-		bytes = tag.GetPackedBytesSize();
-		MPI_Pack_size(2                                                                      ,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size+= temp;
-		MPI_Pack_size(1                                                                      ,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size+= temp;
-		MPI_Pack_size(1                                                                      ,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size+= temp;
-		MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(array_size_send.size())                   ,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size+= temp;
-		MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(array_data_send.size()/bytes),tag.GetBulkDataType()    ,comm,&temp); buffer_size+= temp;
-		buffer.resize(position+buffer_size);
-		MPI_Pack(pack_types,2,INMOST_MPI_DATA_BULK_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-		MPI_Pack(&size_send,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-		MPI_Pack(&data_send,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-		if( !array_size_send.empty() ) MPI_Pack(&array_size_send[0],static_cast<INMOST_MPI_SIZE>(array_size_send.size()),INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-		if( !array_data_send.empty() ) MPI_Pack(&array_data_send[0],static_cast<INMOST_MPI_SIZE>(array_data_send.size()/bytes),tag.GetBulkDataType(),&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-		buffer.resize(position);
-		/*
-		if( tag.GetDataType() == DATA_REFERENCE )
-		{
-			std::vector<std::string> tag_list;
-			ListTagNames(tag_list);
-			{
-				std::vector<std::string>::iterator it = tag_list.begin();
-				while( it != tag_list.end() )
-				{
-					if( it->substr(0,9) == "PROTECTED" )
-						it = tag_list.erase(it);
-					else if(GetTag(*it).GetDataType() == DATA_REFERENCE)
-						it = tag_list.erase(it);
-					else if(GetTag(*it).GetDataType() == DATA_REMOTE_REFERENCE)
-						it = tag_list.erase(it);
-					else it++;
-				}
-			}
-			PackElementsData(pack_elements,buffer,destination,tag_list);
-		}
-		*/
+		REPORT_VAL("size_send",array_size_send.size());
+		REPORT_VAL("data_send",array_data_send.size());
+		
+		pack_data_array(buffer,pack_types,2,GetCommunicator());
+		pack_data_vector(buffer,array_size_send,GetCommunicator());
+		pack_data_vector(buffer,array_data_send,GetCommunicator());
 		REPORT_VAL("Buffer size after pack",buffer.size());
-		if( size_send < 6 )
-		{
-			for(INMOST_DATA_ENUM_TYPE qq = 0; qq < size_send; ++qq)
-			{
-				REPORT_VAL("array_size_send["<<qq<<"]",array_size_send[qq]);
-			}
-		}
 #else
 		(void) tag;
 		(void) elements;
@@ -2983,7 +3038,7 @@ namespace INMOST
 	
 
 
-	void Mesh::UnpackTagData(const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, int & position, ReduceOperation op, const elements_by_type & unpack_elements)//, proc_elements_by_type * send_elements)
+	void Mesh::UnpackTagData(const Tag & tag, const elements_by_type & elements, int source, ElementType mask, MarkerType select, buffer_type & buffer, size_t & buffer_position, ReduceOperation op, const elements_by_type & unpack_elements)//, proc_elements_by_type * send_elements)
 	{
         (void) mask;
 		//if( tag.GetDataType() == DATA_REMOTE_REFERENCE) return; //NOT IMPLEMENTED TODO 14
@@ -2991,68 +3046,22 @@ namespace INMOST
 		REPORT_VAL("TagName",tag.GetTagName());
 		REPORT_VAL("select marker",select);
 #if defined(USE_MPI)
-		REPORT_VAL("Position before unpack",position);
+		REPORT_VAL("Position before unpack",buffer_position);
 		if( !buffer.empty() )
 		{
 			int pos = 0, k = 0;
 			ElementType recv_mask[2] = {NONE,NONE};
-			INMOST_DATA_ENUM_TYPE data_recv, size_recv;
 			element_set::const_iterator eit;
 			//elements_by_type unpack_elements;
 			unsigned int size = tag.GetSize();
-			std::vector<INMOST_DATA_BULK_TYPE> array_data_recv;
+			buffer_type array_data_recv;
 			std::vector<INMOST_DATA_ENUM_TYPE> array_size_recv;
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,recv_mask ,2,INMOST_MPI_DATA_BULK_TYPE,comm);
-			//assert(recv_mask[0] == mask);//Element types mask is not synchronized among processors, this may lead to nasty errors
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&size_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&data_recv,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			REPORT_VAL("size of size array",size_recv);
-			REPORT_VAL("size of data array",data_recv);
-			array_size_recv.resize(size_recv);
-			array_data_recv.resize(data_recv);
-			if( !array_size_recv.empty() ) 
-			{
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&array_size_recv[0],static_cast<INMOST_MPI_SIZE>(array_size_recv.size()),INMOST_MPI_DATA_ENUM_TYPE,comm);
-				REPORT_VAL("size array last", array_size_recv.back());
-			}
-
-			if( !array_data_recv.empty() )
-			{
-				int bytes = tag.GetPackedBytesSize();
-				REPORT_VAL("occupied by type",bytes);
-				REPORT_VAL("bytes in entry",sizeof(Sparse::Row::entry));
-				REPORT_VAL("stored in type",tag.GetBytesSize());
-				REPORT_VAL("all size recv",array_data_recv.size());
-				REPORT_VAL("incoming size of data",data_recv);
-				REPORT_VAL("calculated size of data",array_data_recv.size()/bytes);
-				REPORT_VAL("calculated size of data",array_data_recv.size()/sizeof(Sparse::Row::entry));
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&array_data_recv[0],static_cast<INMOST_MPI_SIZE>(array_data_recv.size()/bytes),tag.GetBulkDataType(),comm);
-			}
-			/*
-			ENTER_BLOCK();
-			if( tag.GetDataType() == DATA_REFERENCE )
-			{
-				int mpirank = GetProcessorRank();
-				std::vector<std::string> tag_recv;
-				UnpackElementsData(unpack_elements,buffer,source,position,tag_recv);
-				assert(send_elements);
-				for(int k = 0; k < 5; ++k)
-					for(element_set::iterator it = unpack_elements[k].begin(); it != unpack_elements[k].end(); it++)
-					{
-						Storage::integer owner = IntegerDF(*it,tag_owner);
-						if( owner == mpirank ) continue;
-						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
-						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),mpirank);
-						if( ip == proc.end() || (*ip) != mpirank )
-						{
-							proc.insert(ip,mpirank);
-							(*send_elements)[owner][GetHandleElementNum(*it)].push_back(*it);
-						}
-					}
-			}
-			EXIT_BLOCK();
-			*/
-			REPORT_VAL("Position after unpack",position);
+			unpack_data_array(buffer,buffer_position,recv_mask,2,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,array_size_recv,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,array_data_recv,GetCommunicator());
+			REPORT_VAL("size of size array",array_size_recv.size());
+			REPORT_VAL("size of data array",array_data_recv.size());
+			REPORT_VAL("Position after unpack",buffer_position);
 			for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (recv_mask[0] & ElementTypeFromDim(i)) )
 			{
 				REPORT_VAL("unpack for type",ElementTypeName(ElementTypeFromDim(i)));
@@ -3236,7 +3245,7 @@ namespace INMOST
 				REPORT_VAL("total unpacked records",total_unpacked);
 			}
 		}
-		REPORT_VAL("Position after unpack",position);
+		REPORT_VAL("Position after unpack",buffer_position);
 #else
 		(void) tag;
 		(void) elements;
@@ -3268,7 +3277,7 @@ namespace INMOST
 		REPORT_VAL("recv buffers size",storage.recv_buffers.size());
 		std::vector<int> done;
 		parallel_storage::const_iterator find;
-		std::vector<INMOST_DATA_ENUM_TYPE> send_size(procs.size(),0), recv_size(procs.size(),0);
+		std::vector<size_t> send_size(procs.size(),0), recv_size(procs.size(),0);
 		
 		bool unknown_size = false;
 		bool have_reference_tag = false;
@@ -3322,62 +3331,6 @@ namespace INMOST
 		}
 		
 		int num_send = 0, num_recv = 0;
-        ///////////
-		/*
-        if ( block_recursion == 0)
-        {
-			int call_exchange = 0;
-            for(unsigned int k = 0; k < tags.size(); k++)
-            {
-                if(tags[k].GetDataType() == DATA_REFERENCE)
-                {
-                    for(p = procs.begin(); p != procs.end(); p++ )
-                    {
-                        if (from.find(*p) == from.end()) continue;
-                        const elements_by_type& elements = from.find(*p)->second;
-                        for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (mask & ElementTypeFromDim(i)) && tags[k].isDefinedByDim(i) )
-                        {
-                            for (int j = 0; j < elements[i].size(); j++)
-                            {
-                                if (!isValidHandleRange(elements[i][j])) continue;
-                                //if (!isValidElement(ElementTypeFromDim(i),elements[i][j])) continue;
-                                //cout << GlobalID(elements[i][j]) << " <-=-" << endl;
-                                reference_array refs = ReferenceArray(elements[i][j], tags[k]);
-                                if (refs.size() == 0) continue;
-                                if (tags[k] == HighConnTag()) 
-                                {
-                                    assert(i == ElementNum(ESET));
-                                    ElementSet set(this,elements[i][j]);
-                                    for(ElementSet child = set.GetChild(); child.isValid(); child = child.GetSibling())
-                                    {
-                                        child.IntegerArray(tag_sendto).push_back(*p);
-                                        call_exchange = 1;
-                                    }
-                                }
-                                else
-                                {
-                                    for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i)
-                                    {
-                                        if (refs[i] == InvalidElement()) continue;
-                                        refs[i].IntegerArray(tag_sendto).push_back(*p);
-                                        call_exchange = 1;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            call_exchange = Integrate(call_exchange);
-            if( call_exchange )
-            {
-		REPORT_STR("call to ExchangeMarked");
-				block_recursion = 1;
-				ExchangeMarked();
-				block_recursion = 0;
-			}
-        }
-		 */
 		TagInteger pack_position;
 		tag_set tag_pack_list;
 		if( have_reference_tag )
@@ -3425,15 +3378,18 @@ namespace INMOST
 			{
 				if( !unknown_size )
 				{
-					int buffer_size = 0,n = recv_size[p-procs.begin()];
+					size_t buffer_size = 0,n = recv_size[p-procs.begin()];
 					for(unsigned int k = 0; k < tags.size(); k++)
 					{
-						int temp;
-						MPI_Pack_size(2,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size += temp;
-						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						MPI_Pack_size(6+n*2,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						MPI_Pack_size(n*tags[k].GetSize(),tags[k].GetBulkDataType(),comm,&temp); buffer_size += temp;
+						buffer_size += pack_data_array_size<ElementType>(2,GetCommunicator());
+						buffer_size += pack_data_vector_size<INMOST_DATA_ENUM_TYPE>(6+2*n,GetCommunicator());
+						buffer_size += pack_data_vector_size<INMOST_DATA_BULK_TYPE>(n*tags[k].GetSize()*tags[k].GetPackedBytesSize(),GetCommunicator());
+						//~ int temp;
+						//~ MPI_Pack_size(2,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size += temp;
+						//~ MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						//~ MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						//~ MPI_Pack_size(6+n*2,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
+						//~ MPI_Pack_size(n*tags[k].GetSize(),tags[k].GetBulkDataType(),comm,&temp); buffer_size += temp;
 					}
 					storage.recv_buffers[num_recv].second.resize(buffer_size);
 				}
@@ -3503,7 +3459,7 @@ namespace INMOST
 			{
 				tag_set tag_list_recv;
 				elements_by_type recv_elements;
-				int position = 0;
+				size_t position = 0;
 				UnpackElementsData(recv_elements,storage.recv_buffers[*qt].second,storage.recv_buffers[*qt].first,position,tag_list_recv);
 				for(int k = 0; k < 5; ++k)
 					for(element_set::iterator it = recv_elements[k].begin(); it != recv_elements[k].end(); it++)
@@ -3560,7 +3516,7 @@ namespace INMOST
 			{
 				tag_set tag_list_recv;
 				elements_by_type selems;
-				int position = 0;
+				size_t position = 0;
 				if( have_reference_tag )
 				{
 					UnpackElementsData(selems,storage.recv_buffers[*qt].second,storage.recv_buffers[*qt].first,position,tag_list_recv);
@@ -4043,131 +3999,8 @@ namespace INMOST
 		if( !allow_pack_by_gids ) pack_by_gids = false;
 		REPORT_VAL("dest",destination);
 #if defined(USE_MPI)
-		int rank = GetProcessorRank();
-		//std::cout << ro() << rank << " In pack elements data " << all.size() << std::endl;
-		//std::cout << rank << " In pack elements Data" << std::endl;
-		INMOST_DATA_ENUM_TYPE num;
-		//assume hex mesh for forward allocation 
-		//8 nodes per cell, 2 nodes per edge, 4 edges per face, 6 faces per cell
-		int position,new_size,k, mpirank = GetProcessorRank(), temp;
-		//MarkerType busy = CreateMarker();
-		//Tag arr_position = CreateTag("TEMP_ARRAY_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,NONE,1);
-		//TagInteger arr_position = GetTag("TEMP_ARRAY_POSITION");
-		//elements_by_type selems;
-		//TODO 46 old
-		//elements_by_type pack_tags
-		//{
-		//	for(element_set::iterator it = all.begin(); it != all.end(); it++)
-		//		selems[GetHandleElementNum(*it)].push_back(*it);
-		//	all.clear();
-		//}
-		//ENTER_BLOCK();
 		REPORT_VAL("buffer size",buffer.size());
-		/*
-		// Mark all elems as busy
-		for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(CELL); ++etypenum) if( !selems[etypenum].empty() )
-			SetMarkerArray(&selems[etypenum][0],selems[etypenum].size(),busy);
 		
-		// Add low conns elements to selems array.
-		// Low conns for ESET can contain any element
-		for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++)
-		{
-			Element::adj_type const & adj = LowConn(*it);
-			for(Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
-			{
-				if( *jt != InvalidHandle() && !Hidden(*jt) && !GetMarker(*jt,busy) )
-				{
-					Storage::integer_array procs = IntegerArrayDV(*jt,ProcessorsTag());
-					if( std::binary_search(procs.begin(),procs.end(),destination) )
-					{
-						selems[GetHandleElementNum(*jt)].push_back(*jt);
-						SetMarker(*jt,busy);
-					}
-				}
-			}
-		}
-		
-		// Low conns for CELLs, FACEs, EDGEs
-		for(int etypenum = ElementNum(CELL); etypenum > ElementNum(NODE); --etypenum)
-		{
-			selems[etypenum-1].reserve(selems[etypenum-1].size()+size_hint[etypenum]*selems[etypenum].size());
-			for(element_set::iterator it = selems[etypenum].begin(); it != selems[etypenum].end(); it++)
-			{
-				Element::adj_type const & adj = LowConn(*it);
-				for(Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
-				{
-					if( !Hidden(*jt) && !GetMarker(*jt,busy) )
-					{
-						selems[etypenum-1].push_back(*jt);
-						SetMarker(*jt,busy);
-					}
-				}
-			}
-			//for(element_set::iterator it = selems[etypenum-1].begin(); it != selems[etypenum-1].end(); ++it) RemMarker(*it,busy);
-		}
-		// Recursevely looking for all high connections for ESETs
-		if( !selems[4].empty() ) SetMarkerArray(&selems[4][0],selems[4].size(),busy);
-		for(int i = 0; i < selems[4].size(); ++i)
-		{
-			ElementSet set(this,selems[4][i]);
-			// looking to child, sibling and parent
-			if( set.HaveParent() )
-			{
-				if( !set.GetParent().GetMarker(busy) && !set.GetParent().Hidden() )
-				{
-					Storage::integer_array procs = set.GetParent().IntegerArrayDV(ProcessorsTag());
-					if( std::binary_search(procs.begin(),procs.end(),destination) )
-					{
-						selems[4].push_back(set.GetParent().GetHandle());
-						set.GetParent().SetMarker(busy);
-					}
-				}
-			}
-			if( set.HaveChild() )
-			{
-				for(ElementSet jt = set.GetChild(); jt.isValid(); jt = jt.GetSibling() )
-				{
-					if( !jt.GetMarker(busy) && !jt.Hidden() )
-					{
-						Storage::integer_array procs = jt.IntegerArrayDV(ProcessorsTag());
-						if( std::binary_search(procs.begin(),procs.end(),destination) )
-						{
-							selems[4].push_back(jt.GetHandle());
-							jt.SetMarker(busy);
-						}
-					}
-				}
-			}
-		}
-		
-			
-		for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(ESET); ++etypenum)
-		{
-			int q = 0;
-			for(element_set::iterator it = selems[etypenum].begin(); it != selems[etypenum].end(); it++)
-			{
-				arr_position[*it] = q++;
-				assert(GetHandleElementNum(*it) == etypenum);
-			}
-			//TODO: 44 old
-			//std::sort(selems[etypenum].begin(),selems[etypenum].end());
-		}
-		*/
-		/*
-        stringstream ss;
-        ss << ro() << mpirank << ": to send: ";
-        ss << "nodes: " << selems[0].size() << " | ";
-        ss << "edge: "  << selems[1].size() << " | ";
-        ss << "faces: " << selems[2].size() << " | ";
-        ss << "cells: " << selems[3].size() << " | ";
-        ss << "esets: " << selems[4].size() << endl;
-        ss << "esets: ";
-        for(element_set::iterator it = selems[4].begin(); it != selems[4].end(); it++)
-        {
-            ss << ElementSet(this,*it).GetName() << " ";
-        }
-        //cout << ss.str() << endl;
-		*/
 		
 		MarkerType pack_tags_mrk = CreateMarker();
 		//pack nodes coords
@@ -4176,22 +4009,12 @@ namespace INMOST
 			integer dim = GetDimensions();
 			char have_gids = HaveGlobalID(NODE);
 			std::vector<Storage::integer> global_ids;
-			position = static_cast<int>(buffer.size());
-			new_size = 0;
-			MPI_Pack_size(1                                                 ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(1                                                 ,MPI_INT                     ,comm,&temp); new_size += temp;
-			MPI_Pack_size(1                                                 ,MPI_CHAR                    ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,comm,&temp); new_size += temp;
 			if( have_gids )
 			{
 				REPORT_STR("pack nodes global id");
 				global_ids.reserve(selems[0].size());
-				MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[0].size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
 			}
-			buffer.resize(position+new_size);
-			num = static_cast<INMOST_DATA_ENUM_TYPE>(selems[0].size());
-			int marked_for_data = 0, marked_shared = 0;
-			k = 0;
+			size_t marked_for_data = 0, marked_shared = 0, k = 0;
 			std::vector<Storage::real> coords(selems[0].size()*dim);
 			for(element_set::iterator it = selems[0].begin(); it != selems[0].end(); it++)
 			{
@@ -4201,7 +4024,7 @@ namespace INMOST
 				for(integer j = 0; j < dim; j++) coords[k*GetDimensions()+j] = c[j];
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
 				{
-					if( owner == mpirank )
+					if( owner == GetProcessorRank() )
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
@@ -4231,17 +4054,14 @@ namespace INMOST
 				}
 				k++;
 			}
-			MPI_Pack(&num,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			MPI_Pack(&have_gids,1,MPI_CHAR,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !coords.empty() ) 
-				MPI_Pack(&coords[0]    ,static_cast<INMOST_MPI_SIZE>(selems[0].size()*dim),INMOST_MPI_DATA_REAL_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( have_gids && !global_ids.empty() )
-				MPI_Pack(&global_ids[0],static_cast<INMOST_MPI_SIZE>(selems[0].size())    ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
+			pack_data(buffer,selems[0].size(),GetCommunicator());
+			pack_data(buffer,marked_for_data,GetCommunicator());
+			pack_data(buffer,have_gids,GetCommunicator());
+			pack_data_vector(buffer,coords,GetCommunicator());
+			pack_data_vector(buffer,global_ids,GetCommunicator());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[0].size());
-			buffer.resize(position);
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
 		//pack edges
@@ -4250,10 +4070,8 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[1].size());
 			std::vector<Storage::integer> low_conn_nums;
 			low_conn_nums.reserve(selems[1].size()*2);
-			position = static_cast<int>(buffer.size());
-			new_size = 0;
-			num = 0; k = 0;
-			int marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
+			size_t num = 0, k = 0;
+			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
 			//pack nodes
 			for(element_set::iterator it = selems[1].begin(); it != selems[1].end(); it++) 
 			{
@@ -4320,7 +4138,7 @@ namespace INMOST
 				//REPORT_VAL("pack edge nodes ",k << " " << low_conn_nums[low_conn_nums.size()-2] << " " << low_conn_nums[low_conn_nums.size()-1]);
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
 				{
-					if( owner == mpirank )
+					if( owner == GetProcessorRank() )
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
@@ -4347,19 +4165,11 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[1].size());
 			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[1].size());
-			MPI_Pack_size(1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(1                                             ,MPI_INT                     ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[1].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
-			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[1].size())  ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
-			buffer.resize(position+new_size);
-			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[1].size());
-			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[1].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			buffer.resize(position);
-			REPORT_VAL("buffer position",position);
+			pack_data(buffer,selems[1].size(),GetCommunicator());
+			pack_data(buffer,marked_for_data,GetCommunicator());
+			pack_data_vector(buffer,low_conn_size,GetCommunicator());
+			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
+			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
 		//pack faces
@@ -4368,10 +4178,8 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[2].size());
 			std::vector<Storage::integer> low_conn_nums;
 			low_conn_nums.reserve(selems[2].size()*4);
-			position = static_cast<int>(buffer.size());
-			new_size = 0;
-			num = 0; k = 0;
-			int marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
+			size_t num = 0, k = 0;
+			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
 			for(element_set::iterator it = selems[2].begin(); it != selems[2].end(); it++) 
 			{
 				assert(!Hidden(*it));
@@ -4416,7 +4224,7 @@ namespace INMOST
 				//REPORT_VAL("pack size",low_conn_size[k]);
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
 				{
-					if( owner == mpirank )
+					if( owner == GetProcessorRank() )
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
@@ -4443,19 +4251,11 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[2].size());
 			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[2].size());
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(1)               ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(1)               ,MPI_INT                     ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[2].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
-			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[2].size())  ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
-			buffer.resize(position+new_size);
-			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[2].size());
-			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[2].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			buffer.resize(position);
-			REPORT_VAL("buffer position",position);
+			pack_data(buffer,selems[2].size(),GetCommunicator());
+			pack_data(buffer,marked_for_data,GetCommunicator());
+			pack_data_vector(buffer,low_conn_size,GetCommunicator());
+			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
+			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
 		//pack cells
@@ -4467,11 +4267,8 @@ namespace INMOST
 			std::vector<Storage::integer> high_conn_nums;
 			low_conn_nums.reserve(selems[3].size()*6);
 			high_conn_nums.reserve(selems[3].size()*8);
-			INMOST_DATA_ENUM_TYPE num_high = 0;
-			position = static_cast<int>(buffer.size());
-			new_size = 0;
-			num = 0; k = 0;
-			int marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
+			size_t num = 0, k = 0, num_high = 0;
+			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
 			for(element_set::iterator it = selems[3].begin(); it != selems[3].end(); it++) 
 			{
 				assert(!Hidden(*it));
@@ -4535,7 +4332,7 @@ namespace INMOST
 				//REPORT_VAL("pack high size",high_conn_size[k]);
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
 				{
-					if( owner == mpirank )
+					if( owner == GetProcessorRank() )
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
@@ -4562,23 +4359,13 @@ namespace INMOST
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
 			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[3].size());
-			MPI_Pack_size(1                                             ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(1                                             ,MPI_INT                     ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num_high)        ,INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
-			//MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp;
-			buffer.resize(position+new_size);
-			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[3].size());
-			MPI_Pack(&temp,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			MPI_Pack(&marked_for_data,1,MPI_INT,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_size.empty() )  MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_nums.empty() )  MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(num)             ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !high_conn_size.empty() ) MPI_Pack(&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[3].size()),INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !high_conn_nums.empty() ) MPI_Pack(&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(num_high)        ,INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			buffer.resize(position);
-			REPORT_VAL("buffer position",position);
+			pack_data(buffer,selems[3].size(),GetCommunicator());
+			pack_data(buffer,marked_for_data,GetCommunicator());
+			pack_data_vector(buffer,low_conn_size,GetCommunicator());
+			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
+			pack_data_vector(buffer,high_conn_size,GetCommunicator());
+			pack_data_vector(buffer,high_conn_nums,GetCommunicator());
+			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
         /////////////////////////////////////////
@@ -4592,10 +4379,8 @@ namespace INMOST
 			low_conn_nums.reserve(selems[4].size()*8);
 			high_conn_nums.reserve(selems[4].size()*3);
 			std::vector<char> names_buff;
-			position = static_cast<int>(buffer.size());
-			new_size = 0;
-			k = 0;
-			int marked_for_data = 0, marked_shared = 0, packed_only_name = 0;
+			size_t k = 0;
+			size_t marked_for_data = 0, marked_shared = 0, packed_only_name = 0;
 			//int names_buff_size = 0;
             // Pack sequence: 
             // 1) all names of sets
@@ -4620,7 +4405,7 @@ namespace INMOST
 				//	owner = mpirank;
 				//REPORT_STR("set name \"" << set.GetName() << "\" owner " << owner);
 				
-				if( owner == mpirank )
+				if( owner == GetProcessorRank() )
 				{
 					Storage::integer_array proc = IntegerArray(*it,tag_processors);
 					Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
@@ -4743,30 +4528,17 @@ namespace INMOST
 			}
 			//if( selems[4].size() ) RemMarkerArray(&selems[4][0],selems[4].size(),pack_set);
 			//ReleaseMarker(pack_set);
-			MPI_Pack_size(1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // count of sets
-			MPI_Pack_size(1                                                  ,MPI_INT                     ,comm,&temp); new_size += temp;   // marked_for_data
-			MPI_Pack_size(1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp;   // names_buff_size
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(names_buff.size())    ,MPI_CHAR                    ,comm,&temp); new_size += temp;   // names_buff
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_size array
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(low_conn_nums.size()) ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // low_conn_nums array
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,comm,&temp); new_size += temp; // high_conn_size array
-			MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(high_conn_nums.size()),INMOST_MPI_DATA_INTEGER_TYPE,comm,&temp); new_size += temp; // low_conn_nums array
-			buffer.resize(position+new_size);
-			temp = static_cast<INMOST_DATA_ENUM_TYPE>(selems[4].size());
-			                             MPI_Pack(&temp             ,1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-										 MPI_Pack(&marked_for_data  ,1                                                  ,MPI_INT                     ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			temp = static_cast<INMOST_DATA_ENUM_TYPE>(names_buff.size());
-			                             MPI_Pack(&temp             ,1                                                  ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !names_buff.empty() )    MPI_Pack(&names_buff[0]    ,static_cast<INMOST_MPI_SIZE>(names_buff.size())    ,MPI_CHAR                    ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_size.empty() ) MPI_Pack(&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !low_conn_nums.empty() ) MPI_Pack(&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(low_conn_nums.size()) ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !high_conn_size.empty()) MPI_Pack(&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(selems[4].size())     ,INMOST_MPI_DATA_ENUM_TYPE   ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			if( !high_conn_nums.empty()) MPI_Pack(&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(high_conn_nums.size()),INMOST_MPI_DATA_INTEGER_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			buffer.resize(position);
+			pack_data(buffer,selems[4].size(),GetCommunicator());
+			pack_data(buffer,marked_for_data,GetCommunicator());
+			pack_data_vector(buffer,names_buff,GetCommunicator());
+			pack_data_vector(buffer,low_conn_size,GetCommunicator());
+			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
+			pack_data_vector(buffer,high_conn_size,GetCommunicator());
+			pack_data_vector(buffer,high_conn_nums,GetCommunicator());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
 			REPORT_VAL("total packed only name ", packed_only_name << " / " << selems[4].size());
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
 		//for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(ESET); ++etypenum) if( !selems[etypenum].empty() )
@@ -4787,14 +4559,9 @@ namespace INMOST
 		ENTER_BLOCK();
 		REPORT_STR("prepare elements to pack tag data");
 		{
-			position = static_cast<int>(buffer.size());
-			num = static_cast<INMOST_DATA_ENUM_TYPE>(tag_list.size());
-			REPORT_VAL("number of tags",num);
-			MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&new_size);
-			buffer.resize(position+new_size);
-			MPI_Pack(&num,1,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-			buffer.resize(position);
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("number of tags",tag_list.size());
+			pack_data(buffer,tag_list.size(),GetCommunicator());
+			REPORT_VAL("buffer position",buffer.size());
 		}
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < tag_list.size(); i++)
 		{
@@ -4814,10 +4581,7 @@ namespace INMOST
 					if( tag.isDefined(mask) ) defined |= mask;
 					if( tag.isSparse(mask) ) sparse |= mask;
 				}
-				position = static_cast<int>(buffer.size());
-				new_size = 0;
-				num = static_cast<INMOST_DATA_ENUM_TYPE>(name.size());
-				REPORT_VAL("characters in name",num);
+				REPORT_VAL("characters in name",name.size());
 				REPORT_VAL("name of tag",name);
 				REPORT_VAL("data type",DataTypeName(static_cast<DataType>(datatype)));
 				REPORT_VAL("data size",datasize);
@@ -4828,17 +4592,13 @@ namespace INMOST
 					if( sparse & etype ) REPORT_VAL("sparse on",ElementTypeName(etype));
 				}
 #endif
-				MPI_Pack_size(5                                ,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); new_size += temp;
-				MPI_Pack_size(static_cast<INMOST_MPI_SIZE>(num),MPI_CHAR                 ,comm,&temp); new_size += temp;
-				buffer.resize(position+new_size);
-				MPI_Pack(&datatype                       ,1                                ,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				MPI_Pack(&defined                        ,1                                ,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				MPI_Pack(&sparse                         ,1                                ,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				MPI_Pack(&datasize                       ,1                                ,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				MPI_Pack(&num                            ,1                                ,INMOST_MPI_DATA_ENUM_TYPE,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				MPI_Pack(const_cast<char *>(name.c_str()),static_cast<INMOST_MPI_SIZE>(num),MPI_CHAR                 ,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,comm);
-				buffer.resize(position);
-				REPORT_VAL("buffer position",position);
+				pack_data(buffer,datatype,GetCommunicator());
+				pack_data(buffer,defined,GetCommunicator());
+				pack_data(buffer,sparse,GetCommunicator());
+				pack_data(buffer,datasize,GetCommunicator());
+				pack_data(buffer,name.size(),GetCommunicator());
+				pack_data_array(buffer,name.c_str(),name.size(),GetCommunicator());
+				REPORT_VAL("buffer position",buffer.size());
 			}
 			EXIT_BLOCK();
 			//TODO 46 old
@@ -4865,18 +4625,11 @@ namespace INMOST
 	}
 	
 	
-	void Mesh::UnpackElementsData(elements_by_type & selems, buffer_type & buffer, int source, int & position, tag_set & tag_recv)
+	void Mesh::UnpackElementsData(elements_by_type & selems, buffer_type & buffer, int source, size_t & buffer_position, tag_set & tag_recv)
 	{
 		ENTER_FUNC();
 		REPORT_VAL("source",source);
 #if defined(USE_MPI)
-		int mpirank = GetProcessorRank();
-        int rank = mpirank;
-		int marked_remote;
-		INMOST_DATA_ENUM_TYPE num, temp;
-		INMOST_DATA_ENUM_TYPE shift = 0;
-		//int position = 0;
-		//elements_by_type selems;
 		MarkerType unpack_tags_mrk = CreateMarker();
 		//MarkerType swap_normal = 0;
 		//if( HaveGeometricData(NORMAL,FACE) )
@@ -4888,7 +4641,7 @@ namespace INMOST
 		double time = Timer();
 		ENTER_BLOCK();
 		REPORT_VAL("buffer size",buffer.size());
-		REPORT_VAL("buffer position",position);
+		REPORT_VAL("buffer position",buffer_position);
 		for(int k = ElementNum(NODE); k <= ElementNum(ESET); ++k) selems[k].clear();
 		//TODO 49
 		{
@@ -4929,30 +4682,25 @@ namespace INMOST
 			std::vector<Storage::integer> global_ids;
 			integer dim = GetDimensions();
 			REPORT_STR("unpack number of nodes");
-            num = 0;
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&have_gids,1,MPI_CHAR,comm);
-			REPORT_VAL("number of nodes",num);
-			REPORT_STR("unpack nodes coordinates");
-			coords.resize(num*dim);
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&coords[0],static_cast<INMOST_MPI_SIZE>(num*dim),INMOST_MPI_DATA_REAL_TYPE,comm);
-			if( have_gids )
-			{
-				REPORT_STR("unpack nodes global identificators");
-				global_ids.resize(num);
-				if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&global_ids[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_INTEGER_TYPE,comm);
-			}
-			REPORT_VAL("buffer position",position);
+            size_t num = 0, marked_remote = 0;
+            unpack_data(buffer,buffer_position,num,GetCommunicator());
+            unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
+            unpack_data(buffer,buffer_position,have_gids,GetCommunicator());
+            REPORT_VAL("number of nodes",num);
+            REPORT_STR("unpack nodes coordinates");
+            unpack_data_vector(buffer,buffer_position,coords,GetCommunicator());
+            REPORT_STR("unpack nodes global identificators");
+            unpack_data_vector(buffer,buffer_position,global_ids,GetCommunicator());
+			REPORT_VAL("buffer position",buffer_position);
 			selems[0].resize(num);
 			//TODO 46 old
 			//unpack_tags[0].reserve(num);
 			REPORT_STR("creating nodes");
-			int found = 0, marked_for_data = 0, marked_ghost = 0;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0;
+			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_node = InvalidHandle();
-				int find = -1;
+				size_t find = -1;
 				//TODO 49
 				if( !old_nodes.empty() )
 				{
@@ -4966,7 +4714,7 @@ namespace INMOST
 							//REPORT_VAL("lower bound found",GlobalID(*it));
 							if( global_ids[i] == GlobalID(*it) )
 							{
-								find = static_cast<int>(it - old_nodes.begin());
+								find = it - old_nodes.begin();
 								found++;
 							}
 						} //else REPORT_STR("lower bound points to end");
@@ -4983,7 +4731,7 @@ namespace INMOST
 							//REPORT_VAL("lower bound found",itcoords[0] << " " << itcoords[1] << " " << itcoords[2]);
 							if( CentroidComparator(this).Compare(&coords[i*dim],itcoords.data()) == 0 )
 							{
-								find = static_cast<int>(it - old_nodes.begin());
+								find = it - old_nodes.begin();
 								found++;
 							}
 						} //else REPORT_STR("lower bound points to end");
@@ -4993,7 +4741,7 @@ namespace INMOST
 				if( find != -1 ) 
 				{
 					new_node = old_nodes[find];
-					if( IntegerDF(new_node,tag_owner) != mpirank ) 
+					if( IntegerDF(new_node,tag_owner) != GetProcessorRank() ) 
 					{
 						SetMarker(new_node,unpack_tags_mrk);
 						++marked_for_data;
@@ -5029,7 +4777,7 @@ namespace INMOST
 			REPORT_VAL("total found", found << " / " << selems[0].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[0].size());
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("buffer position",buffer_position);
 			if( marked_for_data != marked_remote )
 			{
 				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
@@ -5049,34 +4797,19 @@ namespace INMOST
 		//unpack edges
 		{
 			ElementArray<Node> e_nodes(this,2);
-			shift = 0;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
-			num = 0;
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
+			size_t num = 0, marked_remote = 0;
+			unpack_data(buffer,buffer_position,num,GetCommunicator());
+			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
 			REPORT_VAL("number of edges",num);
-			if( num > 0 )
-			{
-				low_conn_size.resize(num);
-				if( num != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
-				temp = 0;
-				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
-					if( low_conn_size[i] != ENUMUNDEF )
-						temp += low_conn_size[i];
-					else temp += 2;
-				REPORT_VAL("number of edge connections",temp);
-				if( temp > 0 )
-				{
-					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
-				}
-			}
-			REPORT_VAL("buffer position",position);
+			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
+			REPORT_VAL("buffer position",buffer_position);
 			selems[1].reserve(num);
 			
-			int found = 0, marked_for_data = 0, marked_ghost = 0;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0;
+			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_edge = InvalidHandle();
 				if( low_conn_size[i] == ENUMUNDEF )
@@ -5126,7 +4859,7 @@ namespace INMOST
 				}
 				else
 				{
-					if( IntegerDF(new_edge,tag_owner) != mpirank )
+					if( IntegerDF(new_edge,tag_owner) != GetProcessorRank() )
 					{
 						//TODO 46 old
 						//unpack_tags[1].push_back(new_edge);
@@ -5140,7 +4873,7 @@ namespace INMOST
 			REPORT_VAL("total found", found << " / " << selems[1].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[1].size());
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("buffer position",buffer_position);
 			if( marked_for_data != marked_remote )
 			{
 				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
@@ -5158,36 +4891,20 @@ namespace INMOST
 		//unpack faces
 		{
 			ElementArray<Edge> f_edges(this);
-			shift = 0;
+			//~ shift = 0;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
-			num = 0;
-			if( !buffer.empty() ) 
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			if( !buffer.empty() ) 
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
+			size_t num = 0, marked_remote = 0;
+			unpack_data(buffer,buffer_position,num,GetCommunicator());
+			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
 			REPORT_VAL("number of faces",num);
-			if( num > 0 )
-			{
-				low_conn_size.resize(num);
-				if( !buffer.empty() && !low_conn_size.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
-				temp = 0;
-				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
-					if( low_conn_size[i] != ENUMUNDEF )
-						temp += low_conn_size[i];
-					else temp+=2;
-				REPORT_VAL("number of face edges",temp);
-				if( temp > 0 )
-				{
-					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
-				}
-			}
-			REPORT_VAL("buffer position",position);
+			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
+			REPORT_VAL("buffer position",buffer_position);
 			selems[2].reserve(num);
 			
-			int found = 0, marked_for_data = 0, marked_ghost = 0;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0;
+			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_face = InvalidHandle();
 				if( low_conn_size[i] == ENUMUNDEF )
@@ -5235,7 +4952,7 @@ namespace INMOST
 					//existing face orientation, otherwise we would need
 					//to swap normal if it is precomputed and comes from remote
 					//processor the worong way
-					if( IntegerDF(new_face,tag_owner) != mpirank ) 
+					if( IntegerDF(new_face,tag_owner) != GetProcessorRank() ) 
 					{
 						//TODO 46 old
 						//unpack_tags[2].push_back(new_face);
@@ -5269,7 +4986,7 @@ namespace INMOST
 			REPORT_VAL("total found", found << " / " << selems[2].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[2].size());
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("buffer position",buffer_position);
 			if( marked_for_data != marked_remote )
 			{
 				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
@@ -5292,44 +5009,19 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
-			INMOST_DATA_ENUM_TYPE shift_high = 0;
-			shift = 0;
-			num = 0;
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-			if( !buffer.empty() ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote,1,MPI_INT,comm);
+			size_t num = 0, marked_remote = 0;
+			unpack_data(buffer,buffer_position,num,GetCommunicator());
+			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
 			REPORT_VAL("number of cells",num);
-			if( num > 0 )
-			{
-				low_conn_size.resize(num);
-				if( num != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
-				temp = 0;
-				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
-					if( low_conn_size[i] != ENUMUNDEF )
-						temp += low_conn_size[i];
-					else temp+=2;
-				REPORT_VAL("number of cell faces",temp);
-				if( temp > 0 )
-				{
-					low_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
-				}
-				high_conn_size.resize(num);
-				if( num != 0 ) MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(num),INMOST_MPI_DATA_ENUM_TYPE,comm);
-				temp = 0;
-				for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
-					temp += high_conn_size[i];
-				REPORT_VAL("number of cell nodes",temp);
-				if( temp > 0 )
-				{
-					high_conn_nums.resize(temp);
-					MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
-				}
-			}
-			REPORT_VAL("buffer position",position);
+			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,high_conn_size,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,high_conn_nums,GetCommunicator());
+			REPORT_VAL("buffer position",buffer_position);
 			selems[3].reserve(num);
 			
-			int found = 0, marked_for_data = 0, marked_ghost = 0;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0, shift_high = 0;
+			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_cell = InvalidHandle();
 				if( low_conn_size[i] == ENUMUNDEF )
@@ -5381,7 +5073,7 @@ namespace INMOST
 				} 
 				else 
 				{
-					if( IntegerDF(new_cell,tag_owner) != mpirank ) 
+					if( IntegerDF(new_cell,tag_owner) != GetProcessorRank() ) 
 					{
 						//TODO 46 old
 						//unpack_tags[3].push_back(new_cell);
@@ -5395,7 +5087,7 @@ namespace INMOST
 			REPORT_VAL("total found", found << " / " << selems[3].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[3].size());
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("buffer position",buffer_position);
 			if( marked_for_data != marked_remote )
 			{
 				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
@@ -5417,39 +5109,21 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
-			num = 0;
-			if( !buffer.empty() ) 
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num              ,1                                 ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
-			if( !buffer.empty() ) 
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&marked_remote    ,1                                 ,MPI_INT                     ,comm);
-			if( !buffer.empty() ) 
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&temp             ,1                                 ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
+			size_t num = 0, marked_remote = 0;
+			unpack_data(buffer,buffer_position,num,GetCommunicator());
+			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,names_buff,GetCommunicator());
 			REPORT_VAL("number of sets ",num);
-			REPORT_VAL("length of buffer ",temp);
-			names_buff.resize(temp);
-			if( temp ) 
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&names_buff[0]    ,static_cast<INMOST_MPI_SIZE>(temp),MPI_CHAR,comm);
-			// Gather sets names to array
-			low_conn_size.resize(num);
-			if( num ) // Unpack low_conn_size array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_size[0] ,static_cast<INMOST_MPI_SIZE>(num) ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
-			temp = 0;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += low_conn_size[i];
-			low_conn_nums.resize(temp);
-			if( temp ) // Unpack low_conn_nums array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&low_conn_nums[0] ,static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_ENUM_TYPE   ,comm);
-			high_conn_size.resize(num);
-			if( num ) // Unpack high_conn_size array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_size[0],static_cast<INMOST_MPI_SIZE>(num) ,INMOST_MPI_DATA_ENUM_TYPE   ,comm);
-			temp = 0;
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) temp += high_conn_size[i];
-			high_conn_nums.resize(temp);
-			if( temp ) // Unpack high_conn_nums array
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&high_conn_nums[0],static_cast<INMOST_MPI_SIZE>(temp),INMOST_MPI_DATA_INTEGER_TYPE,comm);
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("length of buffer ",names_buff.size());
+			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,high_conn_size,GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,high_conn_nums,GetCommunicator());
+				
+			REPORT_VAL("buffer position",buffer_position);
 			
 			std::vector<std::string> names;
-			int pos = 0;
+			size_t pos = 0;
 			while (pos < names_buff.size())
 			{
 				names.push_back(std::string(&names_buff[pos]));
@@ -5459,8 +5133,8 @@ namespace INMOST
 			
 			
 			// Looking to all names and create the sets if it's needed
-			int found = 0, marked_for_data = 0, marked_ghost = 0;
-			for (int i = 0; i < names.size(); i++)
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0;
+			for (size_t i = 0; i < names.size(); i++)
 			{
 				//REPORT_VAL("set name", names[i]);
 				//REPORT_STR("set name \"" << names[i] << "\"");
@@ -5485,7 +5159,7 @@ namespace INMOST
 				{
 					//REPORT_VAL("found old ",set->GetHandle());
 					//REPORT_VAL("owner ",IntegerDF(set.GetHandle(),tag_owner));
-					if( set.IntegerDF(tag_owner) != mpirank )
+					if( set.IntegerDF(tag_owner) != GetProcessorRank() )
 					{
 						//TODO 46 old
 						//unpack_tags[3].push_back(new_cell);
@@ -5505,8 +5179,8 @@ namespace INMOST
 			if( num )
 			{
 				// Add low conns for sets
-				int ind = 0, indh = 0;
-				for (INMOST_DATA_ENUM_TYPE i = 0; i < num; i++) 
+				size_t ind = 0, indh = 0;
+				for (size_t i = 0; i < num; i++) 
 				{
 					ElementSet set(this, selems[4][i]);
 					//unpack elements
@@ -5528,7 +5202,7 @@ namespace INMOST
 						ElementSet par_set = ElementSet(this,selems[4][high_conn_nums[indh]]);
 						if( own_set->HaveParent() && own_set->GetParent() != par_set  )
 						{
-							std::cout << "PROBLEM!!!!";
+							std::cout << __FILE__ << ":" << __LINE__ << "PROBLEM!!!!";
 							REPORT_VAL("own set name", own_set->GetName());
 							REPORT_VAL("own set handle", own_set->GetHandle());
 							REPORT_VAL("par set name", par_set->GetName());
@@ -5622,7 +5296,7 @@ namespace INMOST
 			REPORT_VAL("total found", found << " / " << selems[4].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[4].size());
-			REPORT_VAL("buffer position",position);
+			REPORT_VAL("buffer position",buffer_position);
 			if( marked_for_data != marked_remote )
 			{
 				std::cout << __FILE__ << ":" << __LINE__ << " marked for data " << marked_for_data << " remote " << marked_remote;
@@ -5647,22 +5321,24 @@ namespace INMOST
 		time = Timer();
 		//unpack tags
 		{	
-			MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&num,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
+			size_t num = 0, namesize;
+			unpack_data(buffer,buffer_position,num,GetCommunicator());
 			REPORT_VAL("number of tags",num);
-			for(INMOST_DATA_ENUM_TYPE i = 0; i < num; i++)
+			REPORT_VAL("buffer position",buffer_position);
+			for(size_t i = 0; i < num; i++)
 			{
 				INMOST_DATA_ENUM_TYPE defined, sparse, datatype, datasize;
 				std::string tag_name;
 				Tag tag;
 				ENTER_BLOCK();
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&datatype,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&defined,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&sparse,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&datasize,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&temp,1,INMOST_MPI_DATA_ENUM_TYPE,comm);
-				REPORT_VAL("characters in name",temp);
-				tag_name.resize(temp);
-				MPI_Unpack(&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),&position,&tag_name[0],temp,MPI_CHAR,comm);
+				unpack_data(buffer,buffer_position,datatype,GetCommunicator());
+				unpack_data(buffer,buffer_position,defined,GetCommunicator());
+				unpack_data(buffer,buffer_position,sparse,GetCommunicator());
+				unpack_data(buffer,buffer_position,datasize,GetCommunicator());
+				unpack_data(buffer,buffer_position,namesize,GetCommunicator());
+				REPORT_VAL("characters in name",namesize);
+				tag_name.resize(namesize);
+				unpack_data_array(buffer,buffer_position,&tag_name[0],namesize,GetCommunicator());
 				REPORT_VAL("name of tag",tag_name);
 				REPORT_VAL("data type",DataTypeName(static_cast<DataType>(datatype)));
 				REPORT_VAL("data size",datasize);
@@ -5671,15 +5347,15 @@ namespace INMOST
 					if( defined & etype ) REPORT_VAL("defined on",ElementTypeName(etype));
 					if( sparse & etype ) REPORT_VAL("sparse on",ElementTypeName(etype));
 				}
-				REPORT_VAL("buffer position",position);
+				REPORT_VAL("buffer position",buffer_position);
 				tag = CreateTag(tag_name,static_cast<enum DataType>(datatype),static_cast<ElementType>(defined),static_cast<ElementType>(sparse),datasize);
 				tag_recv.push_back(tag);
 				EXIT_BLOCK();
 				//TODO 46 old
 				//UnpackTagData(tag,unpack_tags,0,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
-				UnpackTagData(tag,selems,source,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,position,DefaultUnpack,selems);
+				UnpackTagData(tag,selems,source,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,buffer_position,DefaultUnpack,selems);
 				//UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0, buffer,position,DefaultUnpack);
-				REPORT_VAL("buffer position",position);
+				REPORT_VAL("buffer position",buffer_position);
 			}
 			
 		}
@@ -5762,7 +5438,7 @@ namespace INMOST
 					REPORT_VAL("size",chunk);
 					REPORT_VAL("proc",recv_bufs[i].first);
 					REPORT_VAL("empty",recv_bufs[i].second.empty());
-					REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),MPI_PACKED,recv_bufs[i].first,mpi_tag_it,comm,&req));
+					REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),SEND_AS,recv_bufs[i].first,mpi_tag_it,comm,&req));
 					recv_reqs.requests.push_back(req);
 					recv_reqs.buf.back()++;
 					recv_reqs.cnt.back()++;
@@ -5791,7 +5467,7 @@ namespace INMOST
 					REPORT_VAL("size",chunk);
 					REPORT_VAL("proc",send_bufs[i].first);
 					REPORT_VAL("empty",send_bufs[i].second.empty());
-					REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),MPI_PACKED,send_bufs[i].first,mpi_tag_it,comm,&req));	
+					REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),SEND_AS,send_bufs[i].first,mpi_tag_it,comm,&req));	
 					send_reqs.push_back(req);
 					shift += chunk;
 					it++;
@@ -6203,7 +5879,7 @@ namespace INMOST
 			{
 				elements_by_type recv_elements;
 				REPORT_STR("call unpack");
-				int position = 0;
+				size_t position = 0;
 				UnpackElementsData(recv_elements,storage.recv_buffers[*qt].second,storage.recv_buffers[*qt].first,position,tag_list_recv);
 				if( action == AGhost )
 				{

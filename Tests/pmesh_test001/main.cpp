@@ -2,6 +2,19 @@
 using namespace INMOST;
 
 
+void mpi_error_handler(MPI_Comm *communicator, int *error_code, ...) 
+{
+	char error_string[MPI_MAX_ERROR_STRING];
+	int error_string_length;
+	printf("mpi_error_handler: entry\n");
+	printf("mpi_error_handler: error_code = %d\n", *error_code);
+	MPI_Error_string(*error_code, error_string, &error_string_length);
+	error_string[error_string_length] = '\0';
+	printf("mpi_error_handler: error_string = %s\n", error_string); 
+	printf("mpi_error_handler: exit\n");
+	throw -1;
+}
+
 // Compute number of connected components
 int components(Mesh *m, Tag t)
 {
@@ -86,6 +99,10 @@ int main(int argc,char ** argv)
 
 	Mesh::Initialize(&argc,&argv);
 	Partitioner::Initialize(&argc,&argv);
+	
+	MPI_Errhandler errhandler;
+	MPI_Comm_create_errhandler(&mpi_error_handler, &errhandler); 
+	MPI_Comm_set_errhandler(MPI_COMM_WORLD, errhandler);
 
 	Mesh * m = new Mesh(); // Create an empty mesh
 	m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
