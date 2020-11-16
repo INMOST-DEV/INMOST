@@ -9,9 +9,15 @@ __declspec( dllexport ) void partitioner_stub(){} //to avoid LNK4221 warning
 #if defined(USE_PARTITIONER_ZOLTAN)
 #include <zoltan.h>
 #endif
-#if defined(USE_PARTITIONER_PARMETIS)
+#if defined(USE_PARTITIONER_METIS)
 #define METIS_EXPORT
 #include <metis.h>
+#endif
+#if defined(USE_PARTITIONER_PARMETIS)
+#if !defined(USE_PARTITIONER_METIS)
+#define METIS_EXPORT
+#include <metis.h>
+#endif
 #include <parmetis.h>
 #endif
 #include <sstream>
@@ -272,6 +278,16 @@ namespace INMOST
 				break;
 			case INNER_KMEANS:
 				package = 3;
+			case MetisRec:
+				package = 4;
+				break;
+			case MetisRecContig:
+				package = 5;
+			case MetisKway:
+				package = 6;
+				break;
+			case MetisKwayContig:
+				package = 7;
 				break;
 		}
 		if( package == 0 )
@@ -433,9 +449,9 @@ namespace INMOST
 								&exportProcs, &exportToPart);
 #endif
 		}
-		if( package == 2 )
+		if( package == 2 || package == 4 || package == 5 || package == 6 || package == 7)
 		{
-#if defined(USE_PARTITIONER_PARMETIS)
+#if defined(USE_PARTITIONER_PARMETIS) || defined(USE_PARTITIONER_METIS)
 			INMOST_DATA_ENUM_TYPE dim = m->GetDimensions();
 			double time;
 			bool debug_output = false;
@@ -524,6 +540,20 @@ namespace INMOST
 			vtxdist[0] = 0;
 			REPORT_MPI(result = MPI_Allgather(&mysize,1,IDX_T,&vtxdist[1],1,IDX_T,m->GetCommunicator()));
 			if( result != MPI_SUCCESS ) throw Impossible;
+			
+#if defined(USE_PARTITIONER_METIS)
+			if( package == 4 || package == 5 )
+			{
+				for(unsigned int i = 2; i < vtxdist.size(); i++)
+					if( vtxdist[i] )
+					{
+						std::cout << "For METIS the entire mesh has to be on zero-th processor" << std::endl;
+						throw Impossible;
+					}
+			}
+#endif
+			
+			
 			for(unsigned int i = 2; i < vtxdist.size(); i++)
 				vtxdist[i] += vtxdist[i-1];
 				
@@ -798,8 +828,8 @@ namespace INMOST
 			if( time_output ) time = Timer();
 			
 			
-			
-			if( true )
+#if defined(USE_PARTITIONER_PARMETIS)
+			if( package == 2 ) //parmetis expects non-empty graph on all processors
 			{
 				int it,jt,kt,flag;
 				unsigned int fill[3];
@@ -1017,6 +1047,7 @@ namespace INMOST
 				}
 				REPORT_STR("graph redistributed");
 			}
+#endif //USE_PARTITIONER_PARMETIS
 			
 			if( debug_output )
 			{
@@ -1164,35 +1195,66 @@ namespace INMOST
 			REPORT_VAL("xyz",link_xyz);
 			REPORT_VAL("vsize",link_vsize);
 
-			switch(pa)
+#if defined(USE_PARTITIONER_PARMETIS)
+			if( package == 2 )
 			{
-				 //case Partition:
-				 //result = ParMETIS_V3_PartKway(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&adjwgt[0],
-					//						   &wgtflag,&numflag,&ncon,&nparts,&tpwgts[0],
-					//						   &ubvec[0],&options[0],&edgecut,&part[0],&comm);
-				 break;
-				case Refine:
-				REPORT_STR("run refine");
-				result = ParMETIS_V3_RefineKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
-												&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
-												link_ubvec,link_options,&edgecut,link_part,&comm);	
-				break;
-				case Partition:
-				REPORT_STR("run partition");
-				result = ParMETIS_V3_PartGeomKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
-												  &wgtflag,&numflag,&ndims,link_xyz,&ncon,&nparts,link_tpwgts,
-												  link_ubvec,link_options,&edgecut,link_part,&comm);
-				break;
-				//~ case P_PartGeom:
-				//~ result = ParMETIS_V3_PartGeom(&vtxdist[0],&ndims,&xyz[0],&part[0],&comm);
-				//~ break;
-				case Repartition:
-				REPORT_STR("run repartition");
-				result = ParMETIS_V3_AdaptiveRepart(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_vsize,
-													link_adjwgt,&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
-													link_ubvec,&itr,link_options,&edgecut,link_part,&comm);
-				break;
+				switch(pa)
+				{
+					 //case Partition:
+					 //result = ParMETIS_V3_PartKway(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&adjwgt[0],
+						//						   &wgtflag,&numflag,&ncon,&nparts,&tpwgts[0],
+						//						   &ubvec[0],&options[0],&edgecut,&part[0],&comm);
+					 break;
+					case Refine:
+					REPORT_STR("run refine");
+					result = ParMETIS_V3_RefineKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
+													&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
+													link_ubvec,link_options,&edgecut,link_part,&comm);	
+					break;
+					case Partition:
+					REPORT_STR("run partition");
+					result = ParMETIS_V3_PartGeomKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
+													  &wgtflag,&numflag,&ndims,link_xyz,&ncon,&nparts,link_tpwgts,
+													  link_ubvec,link_options,&edgecut,link_part,&comm);
+					break;
+					//~ case P_PartGeom:
+					//~ result = ParMETIS_V3_PartGeom(&vtxdist[0],&ndims,&xyz[0],&part[0],&comm);
+					//~ break;
+					case Repartition:
+					REPORT_STR("run repartition");
+					result = ParMETIS_V3_AdaptiveRepart(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_vsize,
+														link_adjwgt,&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
+														link_ubvec,&itr,link_options,&edgecut,link_part,&comm);
+					break;
+				}
 			}
+#endif //USE_PARTITIONER_PARMETIS
+#if defined(USE_PARTITIONER_METIS)
+			if( package == 4 || package == 5  || package == 6 || package == 7)
+			{
+				if( m->GetProcessorRank() == 0 )
+				{
+					idx_t options[METIS_NOPTIONS];
+					idx_t nvtxs = vtxdist[1] - vtxdist[0];
+					METIS_SetDefaultOptions(options);
+					options[METIS_OPTION_CONTIG] = package % 2;
+					if( package == 4 || package == 5 )
+					{
+						result = METIS_PartGraphRecursive(&nvtxs, &ncon, link_xadj, 
+														  link_adjncy, link_vwgt, link_vsize, link_adjwgt, 
+														  &nparts, link_tpwgts, link_ubvec, options, 
+														  &edgecut, link_part);
+					}
+					if( package == 6 || package == 7 )
+					{
+						result = METIS_PartGraphKway(&nvtxs, &ncon, link_xadj, 
+													 link_adjncy, link_vwgt, link_vsize, link_adjwgt, 
+													 &nparts, link_tpwgts, link_ubvec, options, 
+													 &edgecut, link_part);
+					}
+				}
+			}
+#endif //USE_PARTITIONER_METIS
 			
 			
 			
@@ -1208,6 +1270,8 @@ namespace INMOST
 			if( time_output ) time = Timer();
 
 			//distribute computed parts back
+#if defined(USE_PARTITIONER_PARMETIS)
+			if( package == 2 )
 			{
 				REPORT_VAL("send_size",send.size()/3);
 				for(unsigned int i = 0; i < send.size()/3; i++)
@@ -1228,6 +1292,7 @@ namespace INMOST
 					}
 				}
 			}
+#endif
 
 			if( time_output )
 			{
@@ -1284,7 +1349,7 @@ namespace INMOST
 			std::vector< int > points_cluster(total_points,-1);
 			std::vector< double > cluster_center(K*3,0.0);
 			std::vector< int > cluster_npoints(K,0);
-			//std::vector< double > cluster_weight(K,1/(double)K);
+			std::vector< double > cluster_weight(K,1/(double)K);
 			std::vector< double > cluster_shift(K*3,0);
 #if defined(USE_MPI)
 			std::vector< double > cluster_center_tmp(K*3);
@@ -1313,7 +1378,7 @@ namespace INMOST
 				cluster_center[rank*3+2] += cnt[2];
 			}
 			
-			/*
+			
 			double pmax[3] = {-1.0e+100,-1.0e+100,-1.0e+100};
 			double pmin[3] = {+1.0e+100,+1.0e+100,+1.0e+100};
 			
@@ -1329,14 +1394,6 @@ namespace INMOST
 				for(int q = 0; q < total_points; ++q)
 				{
 					Cell n = m->CellByLocalID(points_node[q]);
-					double cnt[3];
-					n->Centroid(cnt);
-					points_center[q*3+0] = cnt[0];
-					points_center[q*3+1] = cnt[1];
-					points_center[q*3+2] = cnt[2];
-					cluster_center[rank*3+0] += cnt[0];
-					cluster_center[rank*3+1] += cnt[1];
-					cluster_center[rank*3+2] += cnt[2];
 					if( pmaxl[0] < points_center[q*3+0] ) pmaxl[0] = std::max(pmaxl[0],points_center[q*3+0]);
 					if( pmaxl[1] < points_center[q*3+1] ) pmaxl[1] = std::max(pmaxl[1],points_center[q*3+1]);
 					if( pmaxl[2] < points_center[q*3+2] ) pmaxl[2] = std::max(pmaxl[2],points_center[q*3+2]);
@@ -1361,7 +1418,7 @@ namespace INMOST
 			
 			double mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
 			mesh_dist /= (double)K*3.0;
-			*/
+			
 			//mesh_dist *= 10;
 			/*
 			if( m->GetProcessorRank() == 0)
@@ -1373,12 +1430,19 @@ namespace INMOST
 				std::cout << " K " << K << std::endl;
 			}
 			*/
-			if( total_points )
+#if defined(USE_MPI)
+			cluster_npoints[rank] = total_points;
+			MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+			MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+			cluster_center.swap(cluster_center_tmp);
+			cluster_npoints.swap(cluster_npoints_tmp);
+#endif
+			
+			for(int i = 0; i < K; ++i)
 			{
-				cluster_center[rank*3+0] /= (double) total_points;
-				cluster_center[rank*3+1] /= (double) total_points;
-				cluster_center[rank*3+2] /= (double) total_points;
-				cluster_npoints[rank] = total_points;
+				cluster_center[i*3+0] /= (double) cluster_npoints[i];
+				cluster_center[i*3+1] /= (double) cluster_npoints[i];
+				cluster_center[i*3+2] /= (double) cluster_npoints[i];
 			}
 			
 			int total_global_points = total_points;
@@ -1452,21 +1516,31 @@ namespace INMOST
 				srand(0);
 				for(int i = Kstart; i < Kend; i++) if( cluster_npoints[i] == 0 )
 				{
-					while(true)
+					if( total_points )
 					{
-						int index_point = rand() % total_points;
-						if(points_cluster[index_point]==-1)
+						while(true)
 						{
-							cluster_center[i*3+0] = points_center[index_point*3+0];
-							cluster_center[i*3+1] = points_center[index_point*3+1];
-							cluster_center[i*3+2] = points_center[index_point*3+2];
-							cluster_npoints[i]++;
-							points_cluster[index_point] = i;
-							break;
+							int index_point = rand() % total_points;
+							if(points_cluster[index_point]==-1)
+							{
+								cluster_center[i*3+0] = points_center[index_point*3+0];
+								cluster_center[i*3+1] = points_center[index_point*3+1];
+								cluster_center[i*3+2] = points_center[index_point*3+2];
+								cluster_npoints[i]++;
+								points_cluster[index_point] = i;
+								break;
+							}
 						}
 					}
+					else
+					{
+						cluster_center[i*3+0] = (pmax[0] - pmin[0])*rand()/RAND_MAX + pmin[0];
+						cluster_center[i*3+1] = (pmax[1] - pmin[1])*rand()/RAND_MAX + pmin[1];
+						cluster_center[i*3+2] = (pmax[2] - pmin[2])*rand()/RAND_MAX + pmin[2];
+						cluster_npoints[i] = 1;
+					}
 				}
-				//guter cluster centers over all processes
+				//gather cluster centers over all processes
 #if defined(USE_MPI)
 				{
 					//std::vector<int> counts(m->GetProcessorsNumber()), displs(m->GetProcessorsNumber());
@@ -1488,6 +1562,13 @@ namespace INMOST
 				}
 #endif
 			}
+			
+			//~ if( m->GetProcessorRank() == 0 ) 
+				//~ std::cout << "init " << std::endl;
+			//~ for(int i = 0; i < K; i++)
+			//~ {
+				//~ if( m->GetProcessorRank() == 0 ) std::cout << "cluster " << i << " center (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+2] << "," << cluster_npoints[i] << " , " << cluster_weight[i] << ") " << std::endl;
+			//~ }
 			
 			//if( m->GetProcessorRank() == 0 )
 			//	std::cout << "Start clustering" << std::endl;
@@ -1518,7 +1599,7 @@ namespace INMOST
 						v[2] = (points_center[i*3+2] - cluster_center[j*3+2]);
 						
 						//the bigger is the cluster weight the further is the distance
-						double l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);// + cluster_weight[j]*mesh_dist;
+						double l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) + cluster_weight[j]*mesh_dist;
 						if( l < lmin )
 						{
 							lmin = l;
@@ -1591,14 +1672,15 @@ namespace INMOST
 				cluster_npoints.swap(cluster_npoints_tmp);
 #endif
 				//if( m->GetProcessorRank() == 0 ) std::cout << "cluster weight: " << std::endl;
+				//~ if( m->GetProcessorRank() == 0 ) std::cout << "iteration " <<  iter << std::endl;
 				for(int i = 0; i < K; i++)
 				{
 					cluster_center[i*3+0] /= (double) cluster_npoints[i];
 					cluster_center[i*3+1] /= (double) cluster_npoints[i];
 					cluster_center[i*3+2] /= (double) cluster_npoints[i];
 					//recompute cluster weights based on the number of points each cluster possess
-					//cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(double)total_global_points*0.75);
-					//if( m->GetProcessorRank() == 0 ) std::cout << " (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+1] << "," << cluster_npoints[i] << ") ";
+					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(double)total_global_points*0.75);
+					//~ if( m->GetProcessorRank() == 0 ) std::cout << "cluster " << i << " center (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+2] << "," << cluster_npoints[i] << " , " << cluster_weight[i] << ") " << std::endl;
 				}
 				//if( m->GetProcessorRank() == 0 ) std::cout << std::endl;
 				/*
