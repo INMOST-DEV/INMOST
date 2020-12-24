@@ -3107,6 +3107,7 @@ namespace INMOST
 		/// - "ECL_PROJECT_PERM" - Set "TRUE" to project permeability tensor from grid block coordinates
 		///                        into global coordinates. Otherwise the tensor is considered to be
 		///                        defined on global coordinates. Default "FALSE".
+		/// - "ECL_COMPUTE_TRAN" - compute and store transmissibilities on the faces using NEWTRAN approach in eclipse 100
 		/// - "ECL_DEGENERATE"   - In GRDECL format some active grid block may have zero volume, which
 		///                        means there is a fault. Set "TRUE" to introduce a gap between blocks
 		///                        that share degenerate active grid block, set to "TRANM" to introduce

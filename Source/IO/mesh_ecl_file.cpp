@@ -1212,12 +1212,14 @@ namespace INMOST
 		std::cout << std::scientific;
 		int perform_splitting = 0;
 		bool project_perm = false;
+		bool compute_tran = false;
 		int split_degenerate = 0;
 		bool check_topology = false;
 		bool compute_ecl_centroid = true;
 		int verbosity = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
+			std::cout << file_options[k].first << " = " << file_options[k].second << std::endl;
 			if (file_options[k].first == "ECL_PARALLEL_READ") 
 			{
 				if (file_options[k].second == "TRUE")
@@ -1256,6 +1258,13 @@ namespace INMOST
 					project_perm = true;
 				else
 					project_perm = false;
+			}
+			if (file_options[k].first == "ECL_COMPUTE_TRAN")
+			{
+				if (file_options[k].second == "TRUE")
+					compute_tran = true;
+				else
+					compute_tran = false;
 			}
 			if (file_options[k].first == "VERBOSITY")
 			{
@@ -4336,6 +4345,122 @@ namespace INMOST
 			}
 			if (verbosity > 0)
 				std::cout << "Finished tops/bottoms/cells time " << Timer() - ttt << std::endl;
+				
+			if( compute_tran )
+				std::cout << "Compute tran is set! perm is " << (perm.empty()? "empty" : "present") << std::endl;
+			else
+				std::cout << "Compute tran is not set!" << std::endl;
+			
+			if( compute_tran && !perm.empty() )
+			{
+				if( verbosity > 0 )
+					std::cout << "Compute transmissibilities" << std::endl;
+				TagReal tran = CreateTag("ECLTRAN",DATA_REAL,FACE,NONE,1);
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+				{
+					int i1, j1, k1, i2, j2, k2, cur1, cur2;
+					real T1, T2, R1, R2, ntg1, ntg2;
+					rMatrix A(3,1), D1(3,1), D2(3,1), X1(3,1), XF1(3,1), X2(3,1), XF2(3,1);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+					for (int it = 0; it < FaceLastLocalID(); it++) if( isValidFace(it) )
+					{
+						Face f = FaceByLocalID(it);
+						Cell c1 = f.BackCell();
+						Cell c2 = f.FrontCell();
+						cur1 = cur2 = -1;
+						if( c1.isValid() )
+						{
+							i1 = c1.IntegerArray(block_index)[0];
+							j1 = c1.IntegerArray(block_index)[1];
+							k1 = c1.IntegerArray(block_index)[2];
+							cur1 = ECL_IJK_DATA(i1, j1, k1);
+						}
+						
+						if( c2.isValid() )
+						{
+							i2 = c2.IntegerArray(block_index)[0];
+							j2 = c2.IntegerArray(block_index)[1];
+							k2 = c2.IntegerArray(block_index)[2];
+							cur2 = ECL_IJK_DATA(i2, j2, k2);
+						}
+						
+						if( c1.isValid() && c2.isValid() )
+						{
+							bool swap = false;
+							//compute axis direction
+							if( (i1 != i2 ? 1 : 0) + (j1 != j2 ? 1 : 0) + (k1 != k2 ? 1 : 0) != 1 )
+								std::cout << "face connects faces (" << i1 << "," << j1 << "," << k1 << ") and (" << i2 << "," << j2 << "," << k2 << ") which has difference in more then one index" << std::endl;
+							if( i1 > i2 || j1 > j2 || k1 > k2 ) 
+							{
+								std::swap(c1,c2);
+								std::swap(i1,i2);
+								std::swap(j1,j2);
+								std::swap(k1,k2);
+								std::swap(cur1,cur2);
+							}
+							
+							const int nodes[3][4] = {{0,2,4,6},{0,1,4,5},{0,1,2,3}};
+							
+							int d, s;
+							if( i1 != i2 ) // this is X-axis
+								d = 0;
+							else if( j1 != j2 ) //this is Y-axis
+								d = 1;
+							else if( k1 != k2 ) //this is Z-axis
+								d = 2;
+								
+							XF1.Zero();
+							XF2.Zero();
+							s = pow(2,d);
+							for(int q = 0; q < 4; ++q)
+							{
+								XF1 += raMatrixMake(Node(this, block_nodes[cur1 * 8 + nodes[d][q] + s])->Coords().data(),3,1);
+								XF2 += raMatrixMake(Node(this, block_nodes[cur2 * 8 + nodes[d][q] + 0])->Coords().data(),3,1);
+							}
+							XF1 *= 0.25;
+							XF2 *= 0.25;
+							
+							//compute cell centers
+							X1.Zero();
+							X2.Zero();
+							for(int q = 0; q < 8; ++q)
+							{
+								X1 += raMatrixMake(Node(this, block_nodes[cur1 * 8 + q])->Coords().data(),3,1);
+								X2 += raMatrixMake(Node(this, block_nodes[cur2 * 8 + q])->Coords().data(),3,1);
+							}
+							X1 *= 0.125;
+							X2 *= 0.125;
+							
+							D1 = XF1 - X1;
+							D2 = X2 - XF2;
+							
+							f.OrientedNormal(c1,A.data());
+							
+							ntg1 = ntg2 = 1.0;
+							if( d != 2 && !ntg.empty() )
+							{
+								ntg1 = ntg[cur1];
+								ntg2 = ntg[cur2];
+							}
+							R1 = D1.DotProduct(D1);
+							R2 = D2.DotProduct(D2);
+							T1 = perm[6*cur1 + d] * ntg1 * A.DotProduct(D1);
+							T2 = perm[6*cur2 + d] * ntg2 * A.DotProduct(D2);
+							
+							tran[f] = T1*T2 / (T1*R2 + T2*R1); //also multiply by CDARCY and TMLTd (transmissibility multiplier)
+						}
+						else tran[f] = 0.0; //no transmissibility for boundary face
+					}
+				}
+				if( verbosity > 0 )
+					std::cout << "Done computing transmissibilities" << std::endl;
+			}
+			else if( compute_tran && perm.empty() )
+				std::cout << "Request to compute transmissibilities but permeability is absent." << std::endl;
 				
 			//mark boundary faces
 			TagBulk tag_bc_face = CreateTag("BCFACEDIR",DATA_BULK,FACE,FACE,1);
