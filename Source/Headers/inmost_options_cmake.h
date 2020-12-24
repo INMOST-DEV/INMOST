@@ -13,6 +13,7 @@
 #cmakedefine USE_PARTITIONER
 #cmakedefine USE_PARTITIONER_ZOLTAN
 #cmakedefine USE_PARTITIONER_PARMETIS
+#cmakedefine USE_PARTITIONER_METIS
 
 #cmakedefine USE_SOLVER
 #cmakedefine USE_SOLVER_TTSP_FEATURE
