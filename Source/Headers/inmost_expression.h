@@ -96,6 +96,7 @@ namespace INMOST
 		var_expression() : value(0), index(ENUMUNDEF) {}
 		var_expression(const var_expression & other) :value(other.value), index(other.index) {}
 		var_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex) : value(pvalue), index(pindex) {}
+		var_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue), index(ENUMUNDEF) {}
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE INMOST_DATA_ENUM_TYPE GetIndex() const { return index; }

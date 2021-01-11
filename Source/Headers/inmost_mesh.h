@@ -2255,7 +2255,7 @@ namespace INMOST
 		typedef std::pair<int, buffer_type >                        proc_buffer_type;
 		typedef std::vector< proc_buffer_type >                     exch_buffer_type;
 		typedef std::vector<INMOST_MPI_Request>                       exch_reqs_type;
-		typedef struct
+		typedef struct exch_recv_reqs_t
 		{
 			std::vector<unsigned> buf;
 			std::vector<unsigned> cnt;
@@ -2304,7 +2304,7 @@ namespace INMOST
 			element_set & operator [](int i){ return container[i]; }
 			const element_set & operator [](int i) const { return container[i]; }
 			bool empty() {bool ret = true; for(int i = 0; i < 5 && ret; i++) ret &= container[i].empty(); return ret;}
-			int size() {unsigned ret = 0; for(int i = 0; i < 5; ++i) ret += container[i].size(); return ret;}
+			unsigned size() {unsigned ret = 0; for(int i = 0; i < 5; ++i) ret += (unsigned)container[i].size(); return ret;}
 		};
 		typedef std::map<int, elements_by_type > parallel_storage;
 	
