@@ -278,6 +278,7 @@ namespace INMOST
 				break;
 			case INNER_KMEANS:
 				package = 3;
+				break;
 			case MetisRec:
 				package = 4;
 				break;
