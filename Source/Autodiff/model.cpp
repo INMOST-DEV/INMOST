@@ -18,6 +18,20 @@ namespace INMOST
 		Entries.insert(Entries.begin(),std::make_pair(name,&entry));
 	}
 	
+	void Model::AddAfterEntry(std::string name, AbstractEntry & entry, std::string after)
+	{
+		assert( !isInitialized() ); // do not add new data after initialization
+		assert( GetEntry(name) == NULL ); // do not overwrite entry with the same name
+		std::vector< std::pair< std::string, AbstractEntry *> >::iterator find = Entries.end();
+		for(std::vector< std::pair< std::string, AbstractEntry *> >::iterator it = Entries.begin(); it != Entries.end(); ++it)
+			if( it->first == after )
+			{
+				find = ++it;
+				break;
+			}
+		Entries.insert(find,std::make_pair(name,&entry));
+	}
+	
 	void Model::AddMesh(std::string name, Mesh & m)
 	{
 		assert( !isInitialized() ); // do not add new data after initialization
