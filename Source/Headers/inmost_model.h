@@ -45,6 +45,15 @@ namespace INMOST
 		/// No algorithm by default
 		/// If this submodel depends on provided adpated mesh, it should update it's data
 		virtual void Adaptation(Mesh & m, SearchKDTree & search_old_cells) const {};
+		
+		
+		virtual void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells) {}
+		virtual void FaceRefinement(Face & old_face, ElementArray<Face> & new_faces) {}
+		virtual void EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges) {}
+		
+		virtual void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell) {}
+		virtual void FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face) {}
+		virtual void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge) {}
 	};
 	
 	/// A class to organize a model.
@@ -152,6 +161,15 @@ namespace INMOST
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// Those model that use the adapted mesh should update their data
 		virtual void Adaptation(Mesh & m) const;
+		
+		
+		virtual void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells);
+		virtual void FaceRefinement(Face & old_face, ElementArray<Face> & new_faces);
+		virtual void EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges);
+		
+		virtual void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell);
+		virtual void FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face);
+		virtual void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge);
 		
 		void ReportErrors(const Residual & R) const;
 	};

@@ -618,6 +618,8 @@ namespace INMOST
 					//set increased level for new edges
 					level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
 					
+					if( model ) model->EdgeRefinement(e,new_edges);
+					
 					//for(int q = 0; q < 2; ++q)
 					//{
 					//	REPORT_STR("new edges["<<q<<"]" << new_edges[q].LocalID() << " nodes " << new_edges[q].getBeg().LocalID() << "," << new_edges[q].getEnd().LocalID() << " level " << level[new_edges[q]]);
@@ -704,6 +706,7 @@ namespace INMOST
 					//set increased level to new faces
 					for(ElementArray<Face>::size_type kt = 0; kt < new_faces.size(); ++kt)
 						level[new_faces[kt]] = level[f]+1;
+					if( model ) model->FaceRefinement(f,new_faces);
 				}
 			}
 			EXIT_BLOCK();
@@ -855,7 +858,6 @@ namespace INMOST
 
 					ElementArray<Cell> new_cells = Cell::SplitCell(c,internal_faces,0);
 					std::sort(new_cells.begin(),new_cells.end(),Mesh::CentroidComparator(m));
-					
 					//set up increased level for the new cells
 					for(ElementArray<Cell>::size_type kt = 0; kt < new_cells.size(); ++kt)
 					{
@@ -875,6 +877,8 @@ namespace INMOST
 					*/
 					//if( !cell_set->HaveParent() )
 					parent.AddChild(cell_set);
+					
+					if( model ) model->CellRefinement(c,new_cells);
 					//else assert(cell_set->GetParent() == parent);
 					//increment number of refined cells
 					ret++;
@@ -1462,7 +1466,8 @@ namespace INMOST
 					//set level for new cell
 					level[v] = level[c]-1;
 					
-					v.Centroid(x);
+					if( model ) model->CellCoarsening(unite_cells,v);
+					//~ v.Centroid(x);
 					//fout << v.GlobalID() << " lid " << v.LocalID();
 					//fout << " parent " << ElementSet(m,parent_set[v]).GetName();
 					//fout << " " << x[0] << " " << x[1] << " " << x[2];
@@ -1524,6 +1529,8 @@ namespace INMOST
 								hanging_nodes[v].push_back(hanging[lt]);
 							visited = true;
 							numcoarsened++;
+							
+							if( model ) model->FaceCoarsening(unite_faces,v);
 							break; //no need to visit the other cell
 						}
 					}
@@ -1562,6 +1569,8 @@ namespace INMOST
 							//set level for new edge
 							level[v] = level[e]-1;
 							visited = true;
+							
+							if( model ) model->EdgeCoarsening(unite_edges,v);
 							break; //no need to visit any other face
 						}
 					}

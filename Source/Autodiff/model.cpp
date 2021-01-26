@@ -367,5 +367,44 @@ namespace INMOST
 			}
 		}
 	}
+	
+	void Model::CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells)
+	{
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->CellRefinement(old_cell,new_cells);
+	}
+	void Model::FaceRefinement(Face & old_face, ElementArray<Face> & new_faces)
+	{
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->FaceRefinement(old_face,new_faces);
+	}
+	void Model::EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges)
+	{
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->EdgeRefinement(old_edge,new_edges);
+	}
+
+	
+	void Model::CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell)
+	{
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->CellCoarsening(old_cells,new_cell);
+	}
+	void Model::FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face)
+	{
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->FaceCoarsening(old_faces,new_face);
+	}
+	void Model::EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge)
+	{
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->EdgeCoarsening(old_edges,new_edge);
+	}
 }
 #endif
