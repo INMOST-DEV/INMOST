@@ -3202,8 +3202,8 @@ namespace INMOST
 	public:
 		void                              RepairGeometricTags();
 	public:
-		bool                              HideGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
-		bool                              ShowGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
+		bool                              HideGeometricData(GeometricData type, ElementType mask) { remember[type][ElementNum(mask) - 1] = false;  return  remember[type][ElementNum(mask) - 1]; }
+		bool                              ShowGeometricData(GeometricData type, ElementType mask) { remember[type][ElementNum(mask) - 1] = true;  return  remember[type][ElementNum(mask) - 1]; }
 	public:
 		typedef tiny_map<GeometricData, ElementType,5> GeomParam;
 		// types for MEASURE:     EDGE | FACE | CELL   (length, area, volume)
@@ -3561,7 +3561,7 @@ namespace INMOST
 		inline static unsigned int flip(const unsigned int * fp);
 		void radix_sort(int dim, struct entry * temp);
 		void kdtree_build(int dim, int & done, int total, struct entry * temp);
-		SearchKDTree() : set(NULL), size(0), children(NULL) {}
+		SearchKDTree() : m(NULL), set(NULL), size(0), children(NULL), bbox() {}
 		
 		Cell SubSearchCell(const Storage::real p[3], bool print);
 		void clear_children();

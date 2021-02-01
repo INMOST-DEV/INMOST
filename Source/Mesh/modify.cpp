@@ -1073,7 +1073,7 @@ namespace INMOST
 			double a = 0.5, cnt[3] = {0,0,0};
 			if( e.getBeg().Boundary() ) a -= 0.5;
 			if( e.getEnd().Boundary() ) a += 0.5;
-			for(unsigned k = 0; k < m.GetDimensions(); ++k)
+			for(INMOST_DATA_INTEGER_TYPE k = 0; k < m.GetDimensions(); ++k)
 				cnt[k] = (1-a)*e.getBeg().Coords()[k] + a*e.getEnd().Coords()[k];
 			n = m.CreateNode(cnt);
 		}
@@ -1097,7 +1097,7 @@ namespace INMOST
 			{
 				Edge ne = m.CreateEdge(edge_nodes).first;
 				new_edges.push_back(ne);
-				index[*it] = new_edges.size();
+				index[*it] = (INMOST_DATA_INTEGER_TYPE)new_edges.size();
 			}
 			else index[*it] = -1;
 		}
@@ -1119,7 +1119,7 @@ namespace INMOST
 			{
 				Face nf = m.CreateFace(face_edges).first;
 				new_faces.push_back(nf);
-				index[*it] = new_faces.size();
+				index[*it] = (INMOST_DATA_INTEGER_TYPE)new_faces.size();
 			}
 			else index[*it] = -1;
 		}
@@ -1157,7 +1157,7 @@ namespace INMOST
 				{
 					Cell nc = m.CreateCell(cell_faces).first;
 					new_cells.push_back(nc);
-					index[*it] = new_cells.size();
+					index[*it] = (INMOST_DATA_INTEGER_TYPE)new_cells.size();
 				}
 				else index[*it] = -1;
 			}

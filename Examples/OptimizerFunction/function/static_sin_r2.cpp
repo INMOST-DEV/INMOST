@@ -5,6 +5,9 @@
 #include "static_sin_r2.h"
 
 #include <cmath>
+#ifndef M_PI
+#define M_PI 3.1415926535897932384626433832795
+#endif
 
 double StaticSinR2::invoke(double x, double y, int iteration) const noexcept {
     return -1.0 * std::sin(x) * std::cos(y) + 1.0;

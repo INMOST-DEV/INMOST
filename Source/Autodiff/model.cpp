@@ -337,10 +337,10 @@ namespace INMOST
 						max_err = block_err;
 					}
 					int_err += block_err*block_err;
-					int N = err.Rows()*err.Cols();
+					INMOST_DATA_ENUM_TYPE N = err.Rows()*err.Cols();
 					if( N > it->second->Size() ) continue; //No account for variable size
 					//~ std::cout << jt->LocalID() << " block err " << block_err << " comp err ";
-					for(int k = 0; k < N; ++k)
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < N; ++k)
 					{
 						//~ std::cout << err.data()[k] << " ";
 						err_int[k] += err.data()[k]*err.data()[k];

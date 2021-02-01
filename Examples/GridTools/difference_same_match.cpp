@@ -158,7 +158,11 @@ int main(int argc, char *argv[])
 	{
 		//if( *t == m1.CoordsTag() ) continue;
 		//if( t->GetSize() == ENUMUNDEF ) continue;
-		if( t->GetDataType() != DATA_REAL && t->GetDataType() != DATA_VARIABLE ) continue;
+		if( t->GetDataType() != DATA_REAL 
+#if defined(USE_AUTODIFF)
+			&& t->GetDataType() != DATA_VARIABLE 
+#endif
+			) continue;
 		if( m2.HaveTag(t->GetTagName()) )
 		{
 			Tag t2 = m2.GetTag(t->GetTagName());
@@ -227,6 +231,7 @@ int main(int argc, char *argv[])
 									Lvol += vol;
 								}
 							}
+#if defined(USE_AUTODIFF)
 							else if( t->GetDataType() == DATA_VARIABLE )
 							{
 								Storage::var_array arr1 = c1->VariableArray(*t);
@@ -257,6 +262,7 @@ int main(int argc, char *argv[])
 									Lvol += vol;
 								}
 							}
+#endif
 						}
 					}
 					if( diff_size ) std::cout << "Size is different on " << diff_size << " / " << tot_size << " of " << ElementTypeName(etype) << std::endl;

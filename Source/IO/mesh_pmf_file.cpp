@@ -661,7 +661,7 @@ namespace INMOST
 					
 					REPORT_VAL("number of data entries",datanum);
 					
-					buffer.resize(datanum*buconv.get_source_iByteSize());
+					buffer.resize(static_cast<size_t>(datanum)*buconv.get_source_iByteSize());
 					std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(datanum);
 					//ierr = MPI_File_read_all(fh,&buffer[0],buffer.size(),MPI_CHAR,&stat);
 					REPORT_MPI(ierr = MPI_File_read(fh,&buffer[0],static_cast<INMOST_MPI_SIZE>(buffer.size()),MPI_CHAR,&stat));

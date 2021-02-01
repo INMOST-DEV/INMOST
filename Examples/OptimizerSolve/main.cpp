@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
 
         Solver solver = Solver(solverName, "test");
 
-        solver.SetVerbosityLevel(SolverVerbosityLevel::Level0);
+        solver.SetVerbosityLevel(SolverVerbosityLevel::SolverVerbosityLevel0);
         solver.SetParameter("eps", "1e-12");
 
         if (rank == 0) std::cout << "Solving with " << solverName << std::endl;

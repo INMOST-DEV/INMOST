@@ -83,6 +83,7 @@ int main(int argc, char ** argv)
 			else if( comp < oarr.size() ) std::cout << oarr[comp] << "; ";
 			else std::cout << "NAN; ";
 		}
+#if defined(USE_AUTODIFF)
 		else if( otag.GetDataType() == DATA_VARIABLE )
 		{
 			Storage::var_array oarr = it->VariableArray(otag);
@@ -90,6 +91,7 @@ int main(int argc, char ** argv)
 			else if( comp < oarr.size() ) std::cout << get_value(oarr[comp]) << "; ";
 			else std::cout << "NAN; ";
 		}
+#endif
 		else if( otag.GetDataType() == DATA_INTEGER )
 		{
 			Storage::integer_array oarr = it->IntegerArray(otag);
