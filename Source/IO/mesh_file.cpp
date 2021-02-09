@@ -148,22 +148,28 @@ namespace INMOST
 		else 
 		*/
 		if(LFile.find(".grdecl") != std::string::npos) // this is eclipse grid
-		  LoadECL(File);
+			LoadECL(File);
 		else if(LFile.find(".pvtk") != std::string::npos) //this is legacy parallel vtk
-		  LoadPVTK(File);
+			LoadPVTK(File);
+		else if(LFile.find(".pvtu") != std::string::npos) //this is new parallel vtk
+			LoadPVTU(File);
 		else if(LFile.find(".vtk") != std::string::npos) //this is legacy vtk
-		  LoadVTK(File);
+			LoadVTK(File);
 		else if(LFile.find(".grid") != std::string::npos ) // mesh format by Mohammad Karimi-Fard
-		  LoadMKF(File);
+			LoadMKF(File);
 		else if(LFile.find(".msh") != std::string::npos ) // GMSH file format
-		  LoadMSH(File);
+			LoadMSH(File);
 		else if (LFile.find(".xml") != std::string::npos) //new mesh format 
 			LoadXML(File);
-		else if (LFile.find(".vtu") != std::string::npos)
+		else if (LFile.find(".vtu") != std::string::npos) //this is new vtk
 			LoadVTU(File);
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
-		  LoadPMF(File);
-		else throw NotImplemented;
+			LoadPMF(File);
+		else 
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " File " << File << " cannot be loaded due to unknown extension." << std::endl;
+			throw NotImplemented;
+		}
 		EXIT_FUNC();
 	}
 	
@@ -175,16 +181,24 @@ namespace INMOST
 		LFile.resize(File.size());
 		std::transform(File.begin(),File.end(),LFile.begin(),::tolower);
 		if(LFile.find(".pvtk") != std::string::npos) //this is legacy parallel vtk
-		  SavePVTK(File);
-    else if(LFile.find(".xml") != std::string::npos)
-      SaveXML(File);
+			SavePVTK(File);
+		else if(LFile.find(".pvtu") != std::string::npos) //this is new parallel vtk
+			SavePVTU(File);
+		else if(LFile.find(".xml") != std::string::npos)
+			SaveXML(File);
 		else if(LFile.find(".vtk") != std::string::npos) //this is legacy vtk
-		  SaveVTK(File);
+			SaveVTK(File);
+		else if(LFile.find(".vtu") != std::string::npos) //this is new vtk
+			SaveVTU(File);
 		else if( LFile.find(".gmv") != std::string::npos) //this is gmv file
-		  SaveGMV(File);
+			SaveGMV(File);
 		else if(LFile.find(".pmf") != std::string::npos) //this is inner parallel/platform mesh format
-		  SavePMF(File);
-		else throw NotImplemented;	
+			SavePMF(File);
+		else 
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " File " << File << " cannot be saved due to unknown extension." << std::endl;
+			throw NotImplemented;	
+		}
 		EXIT_FUNC();
 	}
 	
@@ -199,9 +213,14 @@ namespace INMOST
 		else if(LFile.find(".vtk") != std::string::npos) return false;
 		else if(LFile.find(".gmv") != std::string::npos) return false;
 		else if(LFile.find(".pvtk") != std::string::npos) return true;
+		else if(LFile.find(".pvtu") != std::string::npos) return true;
 		else if(LFile.find(".pmf") != std::string::npos) return true;
 		else if(LFile.find(".xml") != std::string::npos) return true;
 		else if (LFile.find(".vtu") != std::string::npos) return false;
+		else
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " File " << File << " format is unknown." << std::endl;
+		}
 		throw NotImplemented;
 	}
 }

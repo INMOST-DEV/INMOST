@@ -3127,10 +3127,6 @@ namespace INMOST
 		///                        Example: mesh->SetFileOption("Tag:PressureGradient","noload,noderivatives");
 		///                        the tag with the name PressureGradient will not be loaded from files and 
 		///                        when recording the derivaives data will be not saved.
-		///
-		/// \todo
-		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write
-		///      or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip
 		void         SetFileOption(std::string,std::string);
 		/// Get current option corresponding to key.
 		/// @param key options for which options should be retrieven
@@ -3166,6 +3162,7 @@ namespace INMOST
 		void         LoadVTK(std::string File); 
 		void         LoadVTU(std::string File);
 		void         LoadPVTK(std::string File); 
+		void         LoadPVTU(std::string File); 
 		void         LoadMKF(std::string File);
 		/// Acceptable file formats for writing
 		/// - ".vtk"  - legacy vtk format for unstructured grid
@@ -3184,7 +3181,9 @@ namespace INMOST
 		void         SaveXML(std::string File);
 		void         SavePMF(std::string File);
 		void         SaveVTK(std::string File);
+		void         SaveVTU(std::string File);
 		void         SavePVTK(std::string File);
+		void         SavePVTU(std::string File);
 		void         SaveGMV(std::string File);
 		bool         isParallelFileFormat(std::string File);
 	public:

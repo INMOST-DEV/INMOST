@@ -17,7 +17,409 @@
 
 namespace INMOST
 {
+	
+	int VtkElementType(ElementType t); //from mesh_vtk_file.cpp
+	
+	static int getdigits(int val)
+	{
+		int digits = 0;
+		do
+		{
+			digits++;
+			val /= 10;
+		}
+		while(val);
+		return digits;
+	}
 
+	
+	void Mesh::SavePVTU(std::string file)
+	{
+		std::string name=file;
+		std::string::size_type pos=name.rfind(".pvtu");
+		name.erase(pos); 
+
+		std::string::size_type l=name.find_last_of("/\\");
+		std::string fname=name.substr(l+1,name.length());
+		
+		
+		
+		if( GetProcessorRank() == 0 )
+		{
+			std::set< std::string > nosave, saveonly;
+			nosave = TagOptions("nosave");
+			saveonly = TagOptions("saveonly");
+			std::ofstream fh(file.c_str());
+			
+			std::map<DataType,std::string> type_name;
+			type_name[DATA_INTEGER] = "Int32";
+			type_name[DATA_BULK] = "Int8";
+			type_name[DATA_REAL] = "Float64";
+#if defined(USE_AUTODIFF)
+			type_name[DATA_VARIABLE] = "Float64";
+#endif
+		
+			fh << "<VTKFile type=\"PUnstructuredGrid\">" << std::endl;
+			fh << "\t<PUnstructuredGrid GhostLevel=\"0\">" << std::endl;
+			fh << "\t\t<PPointData>" << std::endl;
+			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
+			{
+				//SKIPHERE
+				if( it->GetSize() == ENUMUNDEF ) continue;
+				if( it->GetDataType() == DATA_REFERENCE ) continue;
+				if( it->GetDataType() == DATA_REMOTE_REFERENCE ) continue;
+				if( *it == MarkersTag() ) continue; 
+				if( *it == HighConnTag() ) continue;
+				if( *it == LowConnTag() ) continue;
+				if( *it == CoordsTag() ) continue;
+				if( *it == SetNameTag() ) continue;
+				if( !it->isDefined(NODE) ) continue;
+				if( it->GetTagName().substr(0,9) == "PROTECTED" ) continue;
+				if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
+					continue;
+				fh << "\t\t\t<PDataArray";
+				fh << " type=\"" << type_name[it->GetDataType()] << "\"";
+				fh << " Name=\"" << it->GetTagName() << "\"";
+				fh << " Format=\"ascii\"";
+				fh << " NumberOfComponents=\"" << it->GetSize() << "\"";
+				fh << "/>" << std::endl;
+			}
+			fh << "\t\t</PPointData>" << std::endl;
+			fh << "\t\t<PCellData>" << std::endl;
+			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
+			{
+				//SKIPHERE
+				if( it->GetSize() == ENUMUNDEF ) continue;
+				if( it->GetDataType() == DATA_REFERENCE ) continue;
+				if( it->GetDataType() == DATA_REMOTE_REFERENCE ) continue;
+				if( *it == MarkersTag() ) continue; 
+				if( *it == HighConnTag() ) continue;
+				if( *it == LowConnTag() ) continue;
+				if( *it == CoordsTag() ) continue;
+				if( *it == SetNameTag() ) continue;
+				if( !it->isDefined(CELL) ) continue;
+				if( it->GetTagName().substr(0,9) == "PROTECTED" ) continue;
+				if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
+					continue;
+				fh << "\t\t\t<PDataArray";
+				fh << " type=\"" << type_name[it->GetDataType()] << "\"";
+				fh << " Name=\"" << it->GetTagName() << "\"";
+				fh << " Format=\"ascii\"";
+				fh << " NumberOfComponents=\"" << it->GetSize() << "\"";
+				fh << "/>" << std::endl;
+			}
+			fh << "\t\t</PCellData>" << std::endl;
+			fh << "\t\t<PPoints>" << std::endl;
+			fh << "\t\t\t<PDataArray";
+			fh << " type=\"Float64\"";
+			fh << " NumberOfComponents=\"" << GetDimensions() << "\"";
+			fh << " Format=\"ascii\"";
+			fh << "/>" << std::endl;
+			fh << "\t\t</PPoints>" << std::endl;
+			for(int k = 0; k < GetProcessorsNumber(); ++k)
+			{
+				std::stringstream filename;
+				filename << fname << 'p';
+				for(int q = getdigits(k+1); q < getdigits(GetProcessorsNumber()); ++q) 
+					filename << '0'; //leading zeros
+				filename << (k+1);
+				filename << ".vtu";
+				fh << "\t\t<Piece Source=\"" << filename.str() << "\"/>" << std::endl; 
+			}
+			fh << "\t</PUnstructuredGrid>" << std::endl;
+			fh << "</VTKFile>" << std::endl;
+		}
+		
+		
+		{
+			std::stringstream filename;
+			filename << name << 'p';
+			for(int q = getdigits(GetProcessorRank()+1); q < getdigits(GetProcessorsNumber()); ++q) 
+				filename << '0'; //leading zeros
+			filename << (GetProcessorRank()+1);
+			filename << ".vtu";
+			Save(filename.str());
+		}
+	}
+	
+	void Mesh::LoadPVTU(std::string file)
+	{
+		std::vector<std::string> files;
+		std::string path = "";
+		
+		size_t l = file.find_last_of("/\\");
+		if( l != std::string::npos )
+			path = file.substr(0,l+1);
+			
+		
+		std::fstream f(file.c_str(), std::ios::in);
+		XMLReader r(file, f);
+		XMLReader::XMLTree t = r.ReadXML();
+
+		if (t.GetName() == "VTKFile")
+		{
+			if(t.GetAttrib("type") != "PUnstructuredGrid")
+			{
+				std::cout << "Expected parallel unstructured grid type inside " << file << std::endl;
+				throw BadFile;
+			}
+			//const XMLReader::XMLTree * v = t.GetChild("PUnstructuredGrid")->GetChild("Piece");
+			const XMLReader::XMLTree * da = t.GetChild("PUnstructuredGrid");
+			for (int k = 0; k < da->NumChildren(); ++k)
+			{
+				const XMLReader::XMLTree * pd = &da->GetChild(k);
+				if (pd->GetName() == "Piece")
+				{
+					int ncomps = 1;
+					int nca = pd->FindAttrib("Source");
+					if (nca != pd->NumAttrib()) 
+					{
+						std::string filename = pd->GetAttrib(nca).value;
+						files.push_back(filename);
+					}
+				}
+				//else if( GetProcessorRank() == 0 ) std::cout << __FILE__ << ":" << __LINE__ << "I don't use yet " << pd->GetName() << " in PUnstructuredGrid" << std::endl;
+			}
+		}
+		for(int i = GetProcessorRank(); i < static_cast<int>(files.size()); i+= GetProcessorsNumber()) 
+		{
+			//std::cout << "load " << i << ": " << path + files[i] << " by " << GetProcessorRank() << std::endl;
+			Load(path + files[i]);
+		}
+		ResolveShared();
+	}
+	
+	void Mesh::SaveVTU(std::string File)
+	{
+		std::set< std::string > nosave, saveonly;
+		nosave = TagOptions("nosave");
+		saveonly = TagOptions("saveonly");
+		std::ofstream f(File.c_str());
+		std::map<DataType,std::string> type_name;
+		type_name[DATA_INTEGER] = "Int32";
+		type_name[DATA_BULK] = "Int8";
+		type_name[DATA_REAL] = "Float64";
+#if defined(USE_AUTODIFF)
+		type_name[DATA_VARIABLE] = "Float64";
+#endif
+		std::map<DataType,std::string> type_undef;
+		{
+			std::stringstream s;
+			s << INT_MIN;
+			type_undef[DATA_INTEGER] = s.str();
+		}
+		type_undef[DATA_BULK] = "255";
+		type_undef[DATA_REAL] = "-0.9999E30";
+#if defined(USE_AUTODIFF)
+		type_undef[DATA_VARIABLE] = "-0.9999E30";
+#endif
+		
+		f << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << std::endl;
+		f << "\t<UnstructuredGrid>" << std::endl;
+		//~ f << "\t\t<FieldData>" << std::endl;
+		//~ f << "\t\t\t<DataArray>" << std::endl;
+		//~ f << "\t\t\t</DataArray>" << std::endl;
+		//~ f << "\t\t</FieldData>" << std::endl;
+		f << "\t\t<Piece NumberOfPoints=\"" << NumberOfNodes() << "\" NumberOfCells=\"" << NumberOfCells() << "\">" << std::endl;
+		f << "\t\t\t<PointData>" << std::endl;
+		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
+		{
+			//SKIPHERE
+			if( it->GetSize() == ENUMUNDEF ) continue;
+			if( it->GetDataType() == DATA_REFERENCE ) continue;
+			if( it->GetDataType() == DATA_REMOTE_REFERENCE ) continue;
+			if( *it == MarkersTag() ) continue; 
+			if( *it == HighConnTag() ) continue;
+			if( *it == LowConnTag() ) continue;
+			if( *it == CoordsTag() ) continue;
+			if( *it == SetNameTag() ) continue;
+			if( !it->isDefined(NODE) ) continue;
+			if( it->GetTagName().substr(0,9) == "PROTECTED" ) continue;
+			if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
+				continue;
+			f << "\t\t\t\t<DataArray type=\"" << type_name[it->GetDataType()] << "\" Name=\"" << it->GetTagName() << "\" NumberOfComponents=\"" << it->GetSize() << "\" format=\"ascii\">" << std::endl;
+			for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
+			{
+				if( !jt->HaveData(*it) )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << type_undef[it->GetDataType()] << " ";
+				}
+				else if( it->GetDataType() == DATA_REAL )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << jt->RealArray(*it)[k] << " ";
+				}
+				else if( it->GetDataType() == DATA_INTEGER )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << jt->IntegerArray(*it)[k] << " ";
+				}
+				else if( it->GetDataType() == DATA_BULK )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << (int)jt->BulkArray(*it)[k] << " ";
+				}
+#if defined(USE_AUTODIFF)
+				else if( it->GetDataType() == DATA_VARIABLE )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << jt->VariableArray(*it)[k].GetValue() << " ";
+				}
+#endif
+				f << std::endl;
+			}
+			f << "\t\t\t\t</DataArray>" << std::endl;
+		}
+		f << "\t\t\t</PointData>" << std::endl;
+		f << "\t\t\t<CellData>" << std::endl;
+		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
+		{
+			//SKIPHERE
+			if( it->GetSize() == ENUMUNDEF ) continue;
+			if( it->GetDataType() == DATA_REFERENCE ) continue;
+			if( it->GetDataType() == DATA_REMOTE_REFERENCE ) continue;
+			if( *it == MarkersTag() ) continue; 
+			if( *it == HighConnTag() ) continue;
+			if( *it == LowConnTag() ) continue;
+			if( *it == CoordsTag() ) continue;
+			if( *it == SetNameTag() ) continue;
+			if( !it->isDefined(CELL) ) continue;
+			if( it->GetTagName().substr(0,9) == "PROTECTED" ) continue;
+			if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
+				continue;
+			f << "\t\t\t\t<DataArray type=\"" << type_name[it->GetDataType()] << "\" Name=\"" << it->GetTagName() << "\" NumberOfComponents=\"" << it->GetSize() << "\" format=\"ascii\">" << std::endl;
+			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+			{
+				if( !jt->HaveData(*it) )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << type_undef[it->GetDataType()] << " ";
+				}
+				else if( it->GetDataType() == DATA_REAL )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << jt->RealArray(*it)[k] << " ";
+				}
+				else if( it->GetDataType() == DATA_INTEGER )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << jt->IntegerArray(*it)[k] << " ";
+				}
+				else if( it->GetDataType() == DATA_BULK )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << (int)jt->BulkArray(*it)[k] << " ";
+				}
+#if defined(USE_AUTODIFF)
+				else if( it->GetDataType() == DATA_VARIABLE )
+				{
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+						f << jt->VariableArray(*it)[k].GetValue() << " ";
+				}
+#endif
+				f << std::endl;
+			}
+			f << "\t\t\t\t</DataArray>" << std::endl;
+		}
+		f << "\t\t\t</CellData>" << std::endl;
+		f << "\t\t\t<Points>" << std::endl;
+		f << "\t\t\t\t<DataArray type=\"Float64\" Name=\"Points\" NumberOfComponents=\"" << GetDimensions() << "\" format=\"ascii\">" << std::endl;
+		for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
+		{
+			for(int k = 0; k < GetDimensions(); ++k)
+				f << jt->Coords()[k] << " ";
+			f << std::endl;
+		}
+		f << "\t\t\t\t</DataArray>" << std::endl;
+		f << "\t\t\t</Points>" << std::endl;
+		f << "\t\t\t<Cells>" << std::endl;
+		//give id to nodes
+		TagInteger nid = CreateTag("TEMPORARY_NODE_ID",DATA_INTEGER,NODE,NONE,1);
+		{
+			INMOST_DATA_INTEGER_TYPE q = 0;
+			for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
+				nid[*jt] = q++;
+		}
+		
+		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << std::endl;
+		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+		{
+			ElementArray<Node> nodes = jt->getNodes();
+			for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); ++kt)
+				f << nid[*kt] << " ";
+			f << std::endl;
+		}
+		f << "\t\t\t\t</DataArray>" << std::endl;
+		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">" << std::endl;
+		{
+			size_t offset = 0;
+			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+			{
+				ElementArray<Node> nodes = jt->getNodes();
+				offset += nodes.size();
+				f << offset << std::endl;
+			}
+		}
+		f << "\t\t\t\t</DataArray>" << std::endl;
+		bool need_faces = false;
+		f << "\t\t\t\t<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << std::endl;
+		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+		{
+			int etype = VtkElementType(jt->GetGeometricType());
+			f << etype << std::endl;
+			if( etype == 42 ) need_faces = true;
+		}
+		f << "\t\t\t\t</DataArray>" << std::endl;
+		if( need_faces )
+		{
+			f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"faces\" format=\"ascii\">" << std::endl;	
+			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+			{
+				int etype = VtkElementType(jt->GetGeometricType());
+				if( etype == 42 ) //polyhedron
+				{
+					ElementArray<Face> faces = jt->getFaces();
+					f << faces.size() << " ";
+					for(ElementArray<Face>::iterator kt = faces.begin(); kt != faces.end(); ++kt)
+					{
+						ElementArray<Node> nodes = kt->getNodes();
+						f << nodes.size() << " ";
+						for(ElementArray<Node>::iterator qt = nodes.begin(); qt != nodes.end(); ++qt)
+							f << nid[*qt] << " ";
+					}
+					f << std::endl;
+				}
+				//else f << -1 << std::endl;
+			}
+			f << "\t\t\t\t</DataArray>" << std::endl;
+			f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"faceoffsets\" format=\"ascii\">" << std::endl;	
+			{
+				size_t offset = 0;
+				for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+				{
+					int etype = VtkElementType(jt->GetGeometricType());
+					if( etype == 42 ) //polyhedron
+					{
+						offset++; //number of faces
+						ElementArray<Face> faces = jt->getFaces();
+						for(ElementArray<Face>::iterator kt = faces.begin(); kt != faces.end(); ++kt)
+						{
+							offset++; //number of nodes in face
+							offset+= kt->getNodes().size(); //node ids
+						}
+						f << offset << std::endl;
+					}
+					else f << -1 << std::endl;
+				}
+			}
+			f << "\t\t\t\t</DataArray>" << std::endl;
+		}
+		f << "\t\t\t</Cells>" << std::endl;
+		f << "\t\t</Piece>" << std::endl;
+		f << "\t</UnstructuredGrid>" << std::endl;
+		f << "</VTKFile>" << std::endl;
+	}
 	
 	void Mesh::LoadVTU(std::string File)
 	{
@@ -92,7 +494,11 @@ namespace INMOST
 
 		if (t.GetName() == "VTKFile")
 		{
-			assert(t.GetAttrib("type") == "UnstructuredGrid");
+			if(t.GetAttrib("type") != "UnstructuredGrid")
+			{
+				std::cout << "Expected unstructured grid type inside " << File << std::endl;
+				throw BadFile;
+			}
 			if (t.FindAttrib("compression") != t.NumAttrib())
 			{
 				std::cout << "Compression is specified in " << File << " but not supported" << std::endl;
@@ -184,7 +590,7 @@ namespace INMOST
 			
 			
 
-			if (verbosity > 0)
+			if (verbosity > 0 && GetProcessorRank() == 0)
 			{
 				switch (grid_is_2d)
 				{
