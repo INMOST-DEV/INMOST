@@ -4828,7 +4828,7 @@ namespace INMOST
 				}
 				else
 				{
-					assert(low_conn_size[i] == 2);
+					//~ assert(low_conn_size[i] == 2);
 					e_nodes.resize(low_conn_size[i]);
 					//REPORT_VAL("Unpack size",low_conn_size[i]);
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < low_conn_size[i]; j++)
