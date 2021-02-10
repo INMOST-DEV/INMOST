@@ -4121,6 +4121,7 @@ namespace INMOST
 						low_conn_size[k]++;
 						num++;
 					}
+					/*
 					if( low_conn_size[k] != 2 )
 					{
 						std::cout << "pack edge " << *it << " lid " << ElementTypeName(GetHandleElementType(*it)) << ":" << GetHandleID(*it) << (Hidden(*it) ? " hidden " : " ok ") << std::endl;
@@ -4133,6 +4134,7 @@ namespace INMOST
 							std::cout << ElementTypeName(GetHandleElementType(hc[q])) << ":" << GetHandleID(hc[q]) << (Hidden(hc[q]) ? " hidden " : " ok ");
 					}
 					assert(low_conn_size[k] == 2);
+					*/
 				}
 				//REPORT_VAL("pack edge nodes ",k << " " << low_conn_nums[low_conn_nums.size()-2] << " " << low_conn_nums[low_conn_nums.size()-1]);
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
