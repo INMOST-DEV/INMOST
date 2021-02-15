@@ -2864,7 +2864,7 @@ swap_algorithm:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			tt = Timer();
 			
-			if ((1.0 * nzA / std::max(1u,(wend - wbeg)*(wend - wbeg))) > 0.75 && (1.0*(wend - wbeg)) / (1.0 * std::max(1u,moend - mobeg)) > 0.1)
+			if ((1.0 * nzA / std::max<INMOST_DATA_ENUM_TYPE>(1,(wend - wbeg)*(wend - wbeg))) > 0.75 && (1.0*(wend - wbeg)) / (1.0 * std::max<INMOST_DATA_ENUM_TYPE>(1,moend - mobeg)) > 0.1)
 			{
 				std::cout << "Try to sparsify schur complement!!!" << std::endl;
 				std::cout << "Sparsity: " << 1.0 * nzA / ((wend - wbeg)*(wend - wbeg)) << std::endl;

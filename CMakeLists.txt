@@ -18,6 +18,9 @@ option(USE_MPI2 "Use MPI-2 extensions, useful if your MPI library warns you to u
 option(USE_OMP "Compile with OpenMP support (experimental)" OFF)
 option(USE_OPENCL "Use OpenCL where possible (experimental)" OFF)
 
+option(USE_INT64 "Use 64-bit integer types (use for large problems)" OFF)
+option(USE_FP64 "Use 64-bit floating-point types (usually on)" ON)
+
 option(USE_MESH "Compile mesh capabilities" ON)
 option(USE_SOLVER "Compile solver capabilities" ON)
 option(USE_PARTITIONER "Compile partitioner capabilities" ON)

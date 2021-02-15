@@ -224,7 +224,7 @@ namespace INMOST {
                INMOST::to_string(this->PreconditionerTime() + this->IterationsTime());
     }
 
-    INMOST_DATA_REAL_TYPE Solver::Condest(INMOST_DATA_REAL_TYPE tol, unsigned int maxits) {
+    INMOST_DATA_REAL_TYPE Solver::Condest(INMOST_DATA_REAL_TYPE tol, INMOST_DATA_ENUM_TYPE maxits) {
         if (!solver->isMatrixSet()) throw MatrixNotSetInSolver;
         return solver->Condest(tol, maxits);
     }

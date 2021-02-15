@@ -2858,6 +2858,13 @@ namespace INMOST
 		/// @param input Value on current processor
 		/// @return Sum over all processors
 		real                              Integrate          (real input);
+		/// Integrate unsigned integer value over all processors.
+		///
+		/// Collective operation.
+		///
+		/// @param input Value on current processor
+		/// @return Sum over all processors
+		enumerator                        Integrate          (enumerator input);
 		/// Integrate integer value over all processors.
 		///
 		/// Collective operation.
@@ -2873,6 +2880,14 @@ namespace INMOST
 		/// @param size Size of the array.
 		/// @return sum over all processors.
 		void                              Integrate          (real * input, integer size);
+		/// Integrate an array of unsigned integer values over all processors.
+		///
+		/// Collective operation.
+		///
+		/// @param input An array of values on current processor.
+		/// @param size Size of the array.
+		/// @return Sum over all processors.
+		void                              Integrate          (enumerator * input, integer size);
 		/// Integrate an array of integer values over all processors.
 		///
 		/// Collective operation.

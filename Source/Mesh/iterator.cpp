@@ -233,7 +233,10 @@ namespace INMOST
 	template<typename EType>
 	void Mesh::base_iterator<EType>::Print()
 	{
-		printf("Number: %10d CurrentType %x types %x\n",lid,etype,types);
+		std::cout << "Number: " << lid << " CurrentType " << ElementTypeName(etype) << " types ";
+		for(ElementType et = NODE; et != LastElementType(); et = NextElementType(et) ) if( et & types ) std::cout << ElementTypeName(et) << " ";
+		std::cout << std::endl;
+		//printf("Number: %10d CurrentType %x types %x\n",lid,etype,types);
 	}
 
 	Storage::integer Mesh::NextLocalIDIter(ElementType etype, integer lid) const 

@@ -869,7 +869,18 @@ namespace INMOST
 		return output;
 	}
 	
-	
+	Storage::enumerator Mesh::Integrate(Storage::enumerator input)
+	{
+		ENTER_FUNC();
+		Storage::enumerator output = input;
+#if defined(USE_MPI)
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,comm));
+#else//USE_MPI
+		(void) input;
+#endif//USE_MPI
+		EXIT_FUNC();
+		return output;
+	}
 	
 	
 	Storage::integer Mesh::Integrate(Storage::integer input)
@@ -908,6 +919,21 @@ namespace INMOST
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
+#else//USE_MPI
+		(void) input;
+		(void) size;
+#endif//USE_MPI
+		EXIT_FUNC();
+	}
+	
+	void Mesh::Integrate(Storage::enumerator * input, Storage::integer size)
+	{
+		ENTER_FUNC();
+#if defined(USE_MPI)
+		static dynarray<Storage::enumerator,64> temp;
+		temp.resize(size);
+		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,comm));
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1754,7 +1780,7 @@ namespace INMOST
 							v.push_back(mpirank);
 						}
 						else
-							owner = std::min(mpirank,v[0]);
+							owner = std::min<Storage::integer>(mpirank,v[0]);
 						
 						it->IntegerDF(tag_owner) = owner;
 						
@@ -2075,7 +2101,7 @@ namespace INMOST
 								pr.push_back(mpirank);
 							}
 							else
-								owner = std::min(mpirank,pr[0]);
+								owner = std::min<Storage::integer>(mpirank,pr[0]);
 							it->IntegerDF(tag_owner) = owner;
 							if( mpirank == owner )
 							{
@@ -2334,7 +2360,7 @@ namespace INMOST
 			//std::cout << GetProcessorRank() << " start " << ElementTypeName(mask) << std::endl;
 			//if( mask & CELL )
 			//{
-			int cnt = 0;
+			INMOST_DATA_ENUM_TYPE cnt = 0;
 			for(const HandleType * it = ghost; it != ghost + num; it++)
 				if( (GetHandleElementType(*it) & mask) && GetStatus(*it) == Element::Ghost ) 
 				{

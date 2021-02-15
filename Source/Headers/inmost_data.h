@@ -65,7 +65,7 @@ namespace INMOST
 	/// Number of chars to hold all private markers, total number (MarkerFields * bits_per_char).
 	static const INMOST_DATA_ENUM_TYPE    MarkerFieldsPrivate = 4;
 	/// Last bit indicate whether the marker is private.
-	static const INMOST_DATA_ENUM_TYPE    MarkerPrivateBit    = 1 << (sizeof(INMOST_DATA_ENUM_TYPE)*8-1); 
+	static const INMOST_DATA_ENUM_TYPE    MarkerPrivateBit    = static_cast<INMOST_DATA_ENUM_TYPE>(1) << (sizeof(INMOST_DATA_ENUM_TYPE)*8-1); 
 	/// Bit mask to obtain marker mask within MarkerType.
 	static const INMOST_DATA_ENUM_TYPE    MarkerMask          = static_cast<INMOST_DATA_BULK_TYPE>(-1); 
 	/// sizeof(char) * bits_per_char.
@@ -80,7 +80,7 @@ namespace INMOST
 	typedef INMOST_DATA_ENUM_TYPE         HandleType;
 	static const INMOST_DATA_ENUM_TYPE    handle_etype_bits   = 3;
 	static const INMOST_DATA_ENUM_TYPE    handle_etype_shift  = sizeof(HandleType)*8-handle_etype_bits;
-	static const INMOST_DATA_ENUM_TYPE    handle_id_mask      = (1 << handle_etype_shift)-1;
+	static const INMOST_DATA_ENUM_TYPE    handle_id_mask      = (static_cast<INMOST_DATA_ENUM_TYPE>(1) << handle_etype_shift)-1;
 
 	static const INMOST_DATA_ENUM_TYPE    chunk_bits_elems    = 13;
 	static const INMOST_DATA_ENUM_TYPE    chunk_bits_empty    = 8;

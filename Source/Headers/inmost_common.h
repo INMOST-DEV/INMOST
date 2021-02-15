@@ -36,6 +36,9 @@
 //#define USE_MPI_P2P //use (probably) more effective mpi-2 algorithms
 //#define USE_MPI_FILE //use MPI_File_xxx functionality
 //#define USE_MPI2 //set of your version produce warnings
+
+//#define USE_INT64
+#define USE_FP64
 #endif //INMOST_OPTIONS_CMAKE_INCLUDED
 
 
@@ -132,10 +135,13 @@
 #define INMOST_MPI_Comm        int
 #define INMOST_MPI_Group       int
 #define INMOST_MPI_COMM_WORLD  0
-#define INMOST_MPI_COMM_SELF  0
+#define INMOST_MPI_COMM_SELF   0
 #define INMOST_MPI_BYTE        0
 #define INMOST_MPI_INT         0
+#define INMOST_MPI_INT64_T     0
+#define INMOST_MPI_UINT64_T    0
 #define INMOST_MPI_DOUBLE      0
+#define INMOST_MPI_FLOAT       0
 #define INMOST_MPI_UNSIGNED    0
 #define INMOST_MPI_UNSIGNEDL   0
 #define INMOST_MPI_UNSIGNEDLL  0
@@ -151,7 +157,10 @@
 #define INMOST_MPI_COMM_SELF   MPI_COMM_SELF
 #define INMOST_MPI_BYTE        MPI_BYTE
 #define INMOST_MPI_INT         MPI_INT
+#define INMOST_MPI_INT64_T     MPI_INT64_T
+#define INMOST_MPI_UINT64_T    MPI_UINT64_T
 #define INMOST_MPI_DOUBLE      MPI_DOUBLE
+#define INMOST_MPI_FLOAT       MPI_FLOAT
 #define INMOST_MPI_UNSIGNED    MPI_UNSIGNED
 #define INMOST_MPI_UNSIGNEDL   MPI_UNSIGNED_LONG
 #define INMOST_MPI_UNSIGNEDLL  MPI_UNSIGNED_LONG_LONG 
@@ -169,24 +178,45 @@
 
 #define INMOST_MPI_SIZE           int //in case MPI standard changes and compiler gives tons of warnings
 
-#define INMOST_DATA_INTEGER_TYPE  int           
-#define INMOST_DATA_REAL_TYPE     double        
 #define INMOST_DATA_BULK_TYPE     unsigned char //this should be one byte long
-
-#define INMOST_MPI_DATA_INTEGER_TYPE  INMOST_MPI_INT
-#define INMOST_MPI_DATA_REAL_TYPE     INMOST_MPI_DOUBLE
 #define INMOST_MPI_DATA_BULK_TYPE     INMOST_MPI_BYTE
 
+#if defined(USE_FP64)
+#define INMOST_DATA_REAL_TYPE     double
+#define INMOST_MPI_DATA_REAL_TYPE     INMOST_MPI_DOUBLE
+#else //USE_FP64
+#define INMOST_DATA_REAL_TYPE     float
+#define INMOST_MPI_DATA_REAL_TYPE     INMOST_MPI_FLOAT
+#endif //USE_FP64
 
 
+#if defined(USE_INT64)
+#define INMOST_DATA_INTEGER_TYPE   int64_t
+#define INMOST_DATA_ENUM_TYPE      uint64_t
+#define INMOST_DATA_BIG_ENUM_TYPE  uint64_t
+
+#ifndef UINT64_MAX
+#define UINT64_MAX ULLONG_MAX
+#endif //UINT64_MAX
+
+#define ENUMUNDEF                 UINT64_MAX
+#define BIGENUMUNDEF              UINT64_MAX
+
+#define INMOST_MPI_DATA_INTEGER_TYPE   INMOST_MPI_INT64_T
+#define INMOST_MPI_DATA_ENUM_TYPE      INMOST_MPI_UINT64_T
+#define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UINT64_T
+#else //USE_INT64
+#define INMOST_DATA_INTEGER_TYPE    int           
 #define INMOST_DATA_ENUM_TYPE       unsigned int
-#define ENUMUNDEF                 UINT_MAX
 #define INMOST_DATA_BIG_ENUM_TYPE   unsigned long long
-#define BIGENUMUNDEF              ULLONG_MAX
 
+#define ENUMUNDEF                     UINT_MAX
+#define BIGENUMUNDEF                  ULLONG_MAX
+
+#define INMOST_MPI_DATA_INTEGER_TYPE   INMOST_MPI_INT
 #define INMOST_MPI_DATA_ENUM_TYPE      INMOST_MPI_UNSIGNED
 #define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UNSIGNEDLL
-
+#endif //USE_INT64
 
 /// Cross-platform timer that return current time in seconds.
 /// The timer is similar to MPI_Wtime() and omp_get_wtime() but is independent on both flags USE_MPI and USE_OMP.

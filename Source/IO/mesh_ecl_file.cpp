@@ -2825,11 +2825,11 @@ namespace INMOST
 			int numnode = 0;
 			for (int i = 0; i < dims[0] + 1; i++)
 			{
-				Storage::integer pif = std::min(dims[0] - 1, i), pib = std::max(i - 1, 0);
+				Storage::integer pif = std::min<Storage::integer>(dims[0] - 1, i), pib = std::max(i - 1, 0);
 				y = 0.0;
 				for (int j = 0; j < dims[1] + 1; j++)
 				{
-					Storage::integer pjf = std::min(dims[1] - 1, j), pjb = std::max(j - 1, 0);
+					Storage::integer pjf = std::min<Storage::integer>(dims[1] - 1, j), pjb = std::max(j - 1, 0);
 					z = (
 						tops[ECL_IJK_DATA(pib, pjb, 0)] +
 						tops[ECL_IJK_DATA(pib, pjf, 0)] +
@@ -2844,7 +2844,7 @@ namespace INMOST
 						)*0.25;
 					for (int k = 0; k < dims[2] + 1; k++)
 					{
-						Storage::integer pkf = std::min(dims[2] - 1, k), pkb = std::max(k - 1, 0);
+						Storage::integer pkf = std::min<Storage::integer>(dims[2] - 1, k), pkb = std::max(k - 1, 0);
 						bool create = true;
 						if (!actnum.empty())
 						{
