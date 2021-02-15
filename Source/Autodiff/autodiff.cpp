@@ -11,13 +11,12 @@
 
 namespace INMOST
 {
-	
+#if defined(USE_MESH) //Automatizator class does not exist without mesh	
 	template<> Demote<INMOST_DATA_REAL_TYPE>::type    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
 	template<> Demote<INMOST_DATA_INTEGER_TYPE>::type AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
 	template<> Demote<unknown>::type                  AbstractEntry::Access<unknown>                 (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
 	template<> Demote<variable>::type                 AbstractEntry::Access<variable>                (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
 	template<> Demote<hessian_variable>::type         AbstractEntry::Access<hessian_variable>        (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
-	
 	template<>
 	Matrix<Demote<INMOST_DATA_REAL_TYPE>::type, pool_array_t<Demote<INMOST_DATA_REAL_TYPE>::type> >
 	AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e) const {return Value(e);}
@@ -35,7 +34,6 @@ namespace INMOST
 	AbstractEntry::Access<hessian_variable>(const Storage& e) const {return Unknown(e);}
 	
 	
-#if defined(USE_MESH) //Automatizator class does not exist without mesh
 	Automatizator * Automatizator::CurrentAutomatizator = NULL;
 	bool print_ad_ctor = false;
 	bool GetAutodiffPrint() {return print_ad_ctor;}

@@ -7,7 +7,9 @@ namespace INMOST
 	class AdaptiveMesh
 	{
 		Mesh * m;
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 		Model * model;
+#endif
 		ElementSet root; //< Root set that links all the other sets for coarsements
 		//TagInteger tag_status;
 		TagInteger set_id;
@@ -36,7 +38,9 @@ namespace INMOST
 		/// Delete all data related to mesh refinement-coarsement.
 		void ClearData();
 		void PrintSet(std::ostream & fout, ElementSet set);
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 		void SetModel(Model * mm) {model = mm;}
+#endif
 		//the work on each cell is supposed to be proportional to the number of cells refined
 		//this number is equal to number of original nodes
 		void ComputeWeightRefine(TagInteger indicator, TagReal weight);

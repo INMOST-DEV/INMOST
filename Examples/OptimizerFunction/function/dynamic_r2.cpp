@@ -3,6 +3,9 @@
 //
 
 #include "dynamic_r2.h"
+#ifndef M_PI
+#define M_PI 3.1415926535897932384626433832795
+#endif
 
 DynamicR2::DynamicR2() : distribution(-0.04, 0.04) {
     unsigned int seed = static_cast<unsigned int>(time(NULL));

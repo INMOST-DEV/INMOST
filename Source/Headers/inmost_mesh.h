@@ -3142,10 +3142,6 @@ namespace INMOST
 		///                        Example: mesh->SetFileOption("Tag:PressureGradient","noload,noderivatives");
 		///                        the tag with the name PressureGradient will not be loaded from files and 
 		///                        when recording the derivaives data will be not saved.
-		///
-		/// \todo
-		///      introduce "SET_TAGS_LOAD", "SET_TAGS_SAVE" to explicitly provide set of tags to write
-		///      or "SKIP_TAGS_LOAD", "SKIP_TAGS_SAVE" tags to skip
 		void         SetFileOption(std::string,std::string);
 		/// Get current option corresponding to key.
 		/// @param key options for which options should be retrieven
@@ -3181,6 +3177,7 @@ namespace INMOST
 		void         LoadVTK(std::string File); 
 		void         LoadVTU(std::string File);
 		void         LoadPVTK(std::string File); 
+		void         LoadPVTU(std::string File); 
 		void         LoadMKF(std::string File);
 		/// Acceptable file formats for writing
 		/// - ".vtk"  - legacy vtk format for unstructured grid
@@ -3199,7 +3196,9 @@ namespace INMOST
 		void         SaveXML(std::string File);
 		void         SavePMF(std::string File);
 		void         SaveVTK(std::string File);
+		void         SaveVTU(std::string File);
 		void         SavePVTK(std::string File);
+		void         SavePVTU(std::string File);
 		void         SaveGMV(std::string File);
 		bool         isParallelFileFormat(std::string File);
 	public:
@@ -3217,8 +3216,8 @@ namespace INMOST
 	public:
 		void                              RepairGeometricTags();
 	public:
-		bool                              HideGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = false;}
-		bool                              ShowGeometricData  (GeometricData type, ElementType mask) {return remember[type][ElementNum(mask)-1] = true;}
+		bool                              HideGeometricData(GeometricData type, ElementType mask) { remember[type][ElementNum(mask) - 1] = false;  return  remember[type][ElementNum(mask) - 1]; }
+		bool                              ShowGeometricData(GeometricData type, ElementType mask) { remember[type][ElementNum(mask) - 1] = true;  return  remember[type][ElementNum(mask) - 1]; }
 	public:
 		typedef tiny_map<GeometricData, ElementType,5> GeomParam;
 		// types for MEASURE:     EDGE | FACE | CELL   (length, area, volume)
@@ -3576,7 +3575,7 @@ namespace INMOST
 		inline static unsigned int flip(const unsigned int * fp);
 		void radix_sort(int dim, struct entry * temp);
 		void kdtree_build(int dim, int & done, int total, struct entry * temp);
-		SearchKDTree() : set(NULL), size(0), children(NULL) {}
+		SearchKDTree() : m(NULL), set(NULL), size(0), children(NULL), bbox() {}
 		
 		Cell SubSearchCell(const Storage::real p[3], bool print);
 		void clear_children();

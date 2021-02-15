@@ -378,7 +378,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				reverse_iterator() :shell<HandleType>::reverse_iterator() {}
+				reverse_iterator() :shell<HandleType>::reverse_iterator(), m(NULL) {}
 				reverse_iterator(Mesh * m, const shell<HandleType>::reverse_iterator & other) : shell<HandleType>::reverse_iterator(other), m(m) {}
 				reverse_iterator(const reverse_iterator & other) : shell<HandleType>::reverse_iterator(other), m(other.m)  {}
 				reverse_iterator & operator =(reverse_iterator const & other) {m = other.m; shell<HandleType>::reverse_iterator::operator=(other); return *this;}
@@ -392,7 +392,7 @@ namespace INMOST
 			{
 				Mesh * m;
 			public:
-				const_reverse_iterator() :shell<HandleType>::const_reverse_iterator() {}
+				const_reverse_iterator() :shell<HandleType>::const_reverse_iterator(), m(NULL) {}
 				const_reverse_iterator(Mesh * m, const shell<HandleType>::const_reverse_iterator & other) : shell<HandleType>::const_reverse_iterator(other), m(m) {}
 				const_reverse_iterator(const const_reverse_iterator & other) : shell<HandleType>::const_reverse_iterator(other), m(other.m) {}
 				const_reverse_iterator & operator =(const_reverse_iterator const & other) {m = other.m; shell<HandleType>::const_reverse_iterator::operator=(other); return *this;}

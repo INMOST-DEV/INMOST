@@ -3535,16 +3535,16 @@ namespace INMOST
 		}
 		void bubbleDown(INMOST_DATA_ENUM_TYPE k)
 		{
-			INMOST_DATA_ENUM_TYPE j;
+			size_t j;
 			while(2*k <= size)
 			{
-				j = 2*k;
+				j = 2*static_cast<size_t>(k);
 				if(j < size && keys[heap[j]] > keys[heap[j+1]])
 					j++;
 				if(keys[heap[k]] <= keys[heap[j]])
 					break;
-				swap(k, j);
-				k = j;
+				swap(k, static_cast<INMOST_DATA_ENUM_TYPE>(j));
+				k = static_cast<INMOST_DATA_ENUM_TYPE>(j);
 			}
 		}
 	public:
@@ -3553,8 +3553,8 @@ namespace INMOST
 			size_max = len;
 			keys = pkeys;
 			size = 0;
-			heap.resize(size_max+1);
-			index.resize(size_max+1);
+			heap.resize(static_cast<size_t>(size_max)+1);
+			index.resize(static_cast<size_t>(size_max)+1);
 			for(INMOST_DATA_ENUM_TYPE i = 0; i <= size_max; i++)
 				index[i] = ENUMUNDEF;
 		}
@@ -3573,7 +3573,7 @@ namespace INMOST
 			swap(1, size--);
 			bubbleDown(1);
 			index[min] = ENUMUNDEF;
-			heap[size+1] = ENUMUNDEF;
+			heap[static_cast<size_t>(size)+1] = ENUMUNDEF;
 			return min;
 		}
 		void DecreaseKey(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_REAL_TYPE key)

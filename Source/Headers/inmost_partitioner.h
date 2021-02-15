@@ -4,7 +4,7 @@
 #include "inmost.h"
 
 #if defined(USE_PARTITIONER) && !defined(USE_MESH)
-#warning "USE_PARTITIONER require USE_MESH"
+#pragma message("USE_PARTITIONER require USE_MESH")
 #undef USE_PARTITIONER
 #endif
 

@@ -4415,7 +4415,7 @@ namespace INMOST
 								
 							XF1.Zero();
 							XF2.Zero();
-							s = pow(2,d);
+							s = (int)pow(2,d);
 							for(int q = 0; q < 4; ++q)
 							{
 								XF1 += raMatrixMake(Node(this, block_nodes[cur1 * 8 + nodes[d][q] + s])->Coords().data(),3,1);

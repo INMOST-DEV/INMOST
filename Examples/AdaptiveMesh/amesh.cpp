@@ -25,7 +25,7 @@
 
 static std::string NameSlash(std::string input)
 {
-	for(unsigned l = input.size(); l > 0; --l)
+	for(unsigned l = static_cast<unsigned>(input.size()); l > 0; --l)
 		if( input[l-1] == '/' || input[l-1] == '\\' )
 			return std::string(input.c_str() + l);
 	return input;
@@ -74,7 +74,7 @@ namespace INMOST
 		(void) size;
 		const INMOST_DATA_INTEGER_TYPE * idata = (const INMOST_DATA_INTEGER_TYPE *)data;
 		Storage::integer_array odata = element->IntegerArray(tag);
-		std::vector<int> tmp(size+odata.size());
+		std::vector<int> tmp(static_cast<size_t>(size)+static_cast<size_t>(odata.size()));
 		tmp.resize(std::set_union(odata.begin(),odata.end(),idata,idata+size,tmp.begin())-tmp.begin());
 		odata.replace(odata.begin(),odata.end(),tmp.begin(),tmp.end());
 	}
@@ -336,7 +336,9 @@ namespace INMOST
 	
 	AdaptiveMesh::AdaptiveMesh(Mesh & _m) : m(&_m)
 	{
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 		model = NULL;
+#endif
 		//create a tag that stores maximal refinement level of each element
 		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
 		//tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
@@ -617,9 +619,9 @@ namespace INMOST
 					ElementArray<Edge> new_edges = Edge::SplitEdge(e,ElementArray<Node>(m,1,n.GetHandle()),0);
 					//set increased level for new edges
 					level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
-					
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 					if( model ) model->EdgeRefinement(e,new_edges);
-					
+#endif
 					//for(int q = 0; q < 2; ++q)
 					//{
 					//	REPORT_STR("new edges["<<q<<"]" << new_edges[q].LocalID() << " nodes " << new_edges[q].getBeg().LocalID() << "," << new_edges[q].getEnd().LocalID() << " level " << level[new_edges[q]]);
@@ -706,7 +708,9 @@ namespace INMOST
 					//set increased level to new faces
 					for(ElementArray<Face>::size_type kt = 0; kt < new_faces.size(); ++kt)
 						level[new_faces[kt]] = level[f]+1;
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 					if( model ) model->FaceRefinement(f,new_faces);
+#endif
 				}
 			}
 			EXIT_BLOCK();
@@ -861,7 +865,7 @@ namespace INMOST
 					//set up increased level for the new cells
 					for(ElementArray<Cell>::size_type kt = 0; kt < new_cells.size(); ++kt)
 					{
-						set_id[new_cells[kt]] = kt;
+						set_id[new_cells[kt]] = (int)kt;
 						level[new_cells[kt]] = level[c]+1;
 						cell_set.PutElement(new_cells[kt]);
 						parent_set[new_cells[kt]] = cell_set.GetHandle();
@@ -877,8 +881,9 @@ namespace INMOST
 					*/
 					//if( !cell_set->HaveParent() )
 					parent.AddChild(cell_set);
-					
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 					if( model ) model->CellRefinement(c,new_cells);
+#endif
 					//else assert(cell_set->GetParent() == parent);
 					//increment number of refined cells
 					ret++;
@@ -903,7 +908,9 @@ namespace INMOST
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New( cells
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 		if( model ) model->Adaptation(*m);
+#endif
 		m->CheckSetLinks(__FILE__,__LINE__);
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
@@ -1465,8 +1472,9 @@ namespace INMOST
 					ElementSet(m,parent_set[v]).PutElement(v);
 					//set level for new cell
 					level[v] = level[c]-1;
-					
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 					if( model ) model->CellCoarsening(unite_cells,v);
+#endif
 					//~ v.Centroid(x);
 					//fout << v.GlobalID() << " lid " << v.LocalID();
 					//fout << " parent " << ElementSet(m,parent_set[v]).GetName();
@@ -1529,8 +1537,9 @@ namespace INMOST
 								hanging_nodes[v].push_back(hanging[lt]);
 							visited = true;
 							numcoarsened++;
-							
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 							if( model ) model->FaceCoarsening(unite_faces,v);
+#endif
 							break; //no need to visit the other cell
 						}
 					}
@@ -1569,8 +1578,9 @@ namespace INMOST
 							//set level for new edge
 							level[v] = level[e]-1;
 							visited = true;
-							
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 							if( model ) model->EdgeCoarsening(unite_edges,v);
+#endif
 							break; //no need to visit any other face
 						}
 					}
@@ -1601,7 +1611,9 @@ namespace INMOST
 		m->ResolveModification();
 		//todo:
 		//let the user update their data
+#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 		if( model ) model->Adaptation(*m);
+#endif
 		m->ApplyModification();
 		//done
 		m->EndModification();
@@ -1730,7 +1742,7 @@ namespace INMOST
 					Storage::reference_array hanging = hanging_nodes[*jt];
 					nodes.Subtract(hanging.data(),hanging.size());
 				}
-				wgt[*it] = nodes.size();
+				wgt[*it] = (INMOST_DATA_REAL_TYPE)nodes.size();
 			}
 			else wgt[*it] = 0;
 		}

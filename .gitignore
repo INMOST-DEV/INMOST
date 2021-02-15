@@ -25,3 +25,5 @@ Source/Solver/solver_k3biilu2/k3d_block.hxx
 /.vs
 /out/install/x64-Release
 /CMakeSettings.json
+
+tmp/

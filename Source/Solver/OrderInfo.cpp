@@ -176,7 +176,8 @@ namespace INMOST
 		MPI_Status stat;
 		INMOST_DATA_ENUM_TYPE ext_pos = local_matrix_end;
 		//may replace std::map here
-		small_hash<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE, HASH_TABLE_SIZE> global_to_local;
+		//small_hash<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE, HASH_TABLE_SIZE> global_to_local;
+		std::map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> global_to_local;
 		std::vector<std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > current_global_to_local;
 		std::vector<Sparse::Row::entry> send_row_data, recv_row_data;
 		std::vector<INMOST_DATA_ENUM_TYPE> send_row_sizes, recv_row_sizes;
@@ -207,8 +208,13 @@ namespace INMOST
 				}
 			}
 			if (it == overlap)
-				current_global_to_local = global_to_local.serialize();
-			std::sort(current_global_to_local.begin(), current_global_to_local.end());
+			{
+				//current_global_to_local = global_to_local.serialize();
+				current_global_to_local.clear();
+				for(std::map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator it = global_to_local.begin();
+					it != global_to_local.end(); ++it) current_global_to_local.push_back(std::make_pair(it->first,it->second));
+			}
+			else std::sort(current_global_to_local.begin(), current_global_to_local.end());
 			//if( !current_global_to_local.empty() )
 			{
 				//check all the indexes that comes from other processors
@@ -300,13 +306,16 @@ namespace INMOST
 				//now we need to reorder off-diagonal parts of the matrix
 				for (INMOST_DATA_ENUM_TYPE k = local_matrix_begin; k < local_end; ++k)
 					for (Sparse::Row::iterator jt = m[k].Begin(); jt != m[k].End(); ++jt)
-						if (global_to_local.is_present(jt->first))
-							jt->first = global_to_local[jt->first];
+					{
+						std::map<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator f = global_to_local.find(jt->first);
+						if( f != global_to_local.end() )
+							jt->first = f->second;
 						else
 						{
 							assert(jt->first >= local_matrix_begin);
 							assert(jt->first < local_matrix_end);
 						}
+					}
 				local_vector_begin = local_matrix_begin;
 				local_vector_end = ext_pos;
 				{
@@ -321,8 +330,9 @@ namespace INMOST
 						j++; //skip processor number
 						for (k = 0; k < vector_exchange_recv[j]; ++k)
 						{
-							assert(global_to_local.is_present(vector_exchange_recv[j + k + 1]));
-							vector_exchange_recv[j + k + 1] = global_to_local[vector_exchange_recv[j + k + 1]];
+							std::map<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE>::iterator f = global_to_local.find(vector_exchange_recv[j + k + 1]);
+							assert(f != global_to_local.end());
+							vector_exchange_recv[j + k + 1] = f->second;//global_to_local[vector_exchange_recv[j + k + 1]];
 							assert(vector_exchange_recv[j + k + 1] >= local_matrix_end);
 						}
 						j += vector_exchange_recv[j] + 1; //add vector length + size position
@@ -470,7 +480,12 @@ namespace INMOST
 		for (Sparse::Matrix::iterator it = m.Begin(); it != m.End(); ++it)
 			for (Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
 				if (jt->first >= initial_matrix_end)
-					jt->first = extended_indexes[jt->first - initial_matrix_end];
+				{
+					if( jt->first - initial_matrix_end >= extended_indexes.size() )
+						std::cout << __FILE__ <<":" << __LINE__ << " index: " << jt->first - initial_matrix_end << " but extended_indexes size is " << extended_indexes.size() << std::endl;
+					else
+						jt->first = extended_indexes[jt->first - initial_matrix_end];
+				}
 		m.isParallel() = false;
 		have_matrix = false;
 #if defined(USE_MPI)

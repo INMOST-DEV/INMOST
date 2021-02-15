@@ -60,8 +60,8 @@ void init2d(double * arr, int N, double mint, double maxt)
 
 double intrp2d(double * arr, int N, double x, double y)
 {
-	int n = ceil(x*(N-1));
-	int m = ceil(y*(N-1));
+	int n = static_cast<int>(ceil(x*(N-1)));
+	int m = static_cast<int>(ceil(y*(N-1)));
 	if( n == 0 ) n = 1;
 	if( m == 0 ) m = 1;
 	double dh = 1.0/(double)(N-1);
@@ -154,7 +154,7 @@ void SetLayers::DeformLayers(double coef)
 		c->Centroid(cnt);
 		for(int d = 0; d < 3; ++d)
 			cc[d] = (cnt[d]-cmin[d])/(cmax[d]-cmin[d]);
-		std::pair<int,double> lc = layer1d(&layers_z[0],layers_z.size()-1,cc[2]);
+		std::pair<int,double> lc = layer1d(&layers_z[0],static_cast<int>(layers_z.size())-1,cc[2]);
 		layer_tag[*c] = lc.first;
 		coef_tag[*c] = lc.second;
 		
@@ -164,7 +164,7 @@ void SetLayers::DeformLayers(double coef)
 		double c[3] = {0,0,0};
 		for(int d = 0; d < 3; ++d)
 			c[d] = (n->Coords()[d]-cmin[d])/(cmax[d]-cmin[d]);
-		std::pair<int,double> lc = layer1d(&layers_z[0],layers_z.size()-1,c[2]);
+		std::pair<int,double> lc = layer1d(&layers_z[0],static_cast<int>(layers_z.size())-1,c[2]);
 		if( lc.first == -1 ) std::cout << "layer not found for " << c[0] << "," << c[1] << "," << c[2] << " node " << n->LocalID() << std::endl;
 		
 		double h = 0;

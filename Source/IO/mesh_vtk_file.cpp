@@ -74,7 +74,7 @@ namespace INMOST
 	void skip_metadata(int comps, char * readline,FILE * f)
 	{
 		int dcnt,filled, scnt;
-		char ntype[256];
+		//char ntype[256];
 		if( !strncmp(readline,"METADATA",8) )
 		{
 			for(int k = 0; k < 2; ++k)

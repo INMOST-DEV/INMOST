@@ -1057,7 +1057,7 @@ namespace INMOST
 						if( nodes.size() > 2 )
 						{
 							*ret = 0;
-							real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0},n0[3] = {0,0,0}, ss, at;
+							real nt[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 }, n0[3] = { 0,0,0 };// , ss, at;
 							real_array v0, v1, v2;
 							v0 = nodes[0].Coords();
 							for(int i = 1; i < (int)nodes.size()-1; i++)
@@ -2069,7 +2069,7 @@ namespace INMOST
 	void Mesh::WachspressInterpolation2D(const real * x, const Face & f, tiny_map<HandleType,real,8> & nodes_stencil) const
 	{
 		ElementArray<Node> nodes = f.getNodes();
-		int n = nodes.size();
+		int n = (int)nodes.size();
 		double xprev[3], xthis[3], xnext[3], dx[3];
 		double weight_sum = 0.0;
 		double areaface = f.Area();
@@ -2129,7 +2129,7 @@ namespace INMOST
 	void Mesh::WachspressInterpolation3D(const real * x, const Cell & c, tiny_map<HandleType,real,8> & nodes_stencil) const
 	{
 		ElementArray<Node> nodes = c.getNodes();
-		int n = nodes.size();
+		int n = (int)nodes.size();
 		ElementArray<Face> cfaces = c.getFaces(), faces;
 		Face swp;
 
@@ -2141,7 +2141,7 @@ namespace INMOST
 
 			faces = cfaces;
 			faces.Intersect(nodes[i].getFaces());
-			int nf = faces.size();
+			int nf = (int)faces.size();
 			double nrm_mean[3] = {0,0,0}, cross[3];
 			double * nrm = new double[nf*3];	// oriented unit normal to face
 			double * h = new double[nf];		// distance to face
@@ -2215,7 +2215,7 @@ namespace INMOST
 		{
 			const Storage::integer * recv = static_cast<const Storage::integer *>(static_cast<const void *>(data));
 			Storage::integer_array arr = element->IntegerArray(tag);
-			for(int k = 0; k < size; ++k)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
 			{
 				if( std::find(arr.begin(),arr.end(),recv[k]) == arr.end() )
 					arr.push_back(recv[k]);

@@ -3,7 +3,7 @@
 #include "inmost_optimizer.h"
 #include "../../Misc/utils.h"
 #include "ttsp_configuration.h"
-
+#if defined(USE_SOLVER)
 namespace INMOST {
 
     namespace TTSP {
@@ -168,3 +168,4 @@ namespace INMOST {
     }
 
 }
+#endif // USE_SOLVER

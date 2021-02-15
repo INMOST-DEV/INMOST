@@ -173,7 +173,7 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE unknown_comp;
 	public:
 		///Default constructor.
-		SingleEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
+		SingleEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype, mask, inverse) { unknown_comp = 0; }
 		///Constructor with tag.
 		SingleEntry(ElementType etype, MarkerType mask, bool inverse, Tag unknown_tag, INMOST_DATA_ENUM_TYPE unknown_comp = 0) : AbstractEntry(etype,mask,inverse), unknown_tag(unknown_tag), unknown_comp(unknown_comp) {}
 		///Provide tag.

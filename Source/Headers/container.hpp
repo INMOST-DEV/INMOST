@@ -265,7 +265,7 @@ namespace INMOST
 #endif
 					m_arr = static_cast<element *>(tmp);
 					assert(m_arr != NULL);
-					memcpy(m_arr,other.m_arr,sizeof(element)*m_size);
+					if( m_arr ) memcpy(m_arr,other.m_arr,sizeof(element)*m_size);
 				}
 			}
 			return *this;
@@ -740,28 +740,20 @@ namespace INMOST
 	public:
 		__INLINE element * data() {return *m_arr;}
 		__INLINE const element * data() const {return *m_arr;}
-		shell() {m_arr = NULL; m_size = NULL; fixed = false;}
+		shell() :local_link(NULL), local_size(0), m_arr(NULL), m_size(NULL), fixed(false) { }
 		shell(array<element> & arr) //dynamic
-		{
-			m_arr = &arr.m_arr;
-			m_size = &arr.m_size;
-			fixed = false;
-		}
+			:local_link(NULL), local_size(0), m_arr(&arr.m_arr), m_size(&arr.m_size), fixed(false) {}
 		shell(element * link, size_type size) //fixed
+			:local_link(NULL),local_size(0), m_arr(&local_link), m_size(&local_size), fixed(true)
 		{
-			m_arr = &local_link;
 			*m_arr = link;
-			m_size = &local_size;
 			*m_size = size;
-			fixed = true;
 		}
 		shell(const shell & other)
+			:local_link(NULL), local_size(0), m_arr(&local_link), m_size(&local_size),fixed(other.fixed)
 		{
-			fixed = other.fixed;
 			if( fixed )
 			{
-				m_size = &local_size;
-				m_arr = &local_link;
 				*m_size = *other.m_size;
 				*m_arr = *other.m_arr;
 			}
@@ -1982,18 +1974,18 @@ namespace INMOST
 			}
 			*/
 		}
-		dynarray()
+		dynarray() : stack()
 		{
 			pbegin = pend = stack;
 			preserved = stack+static_cast<size_type>(stacked);
 		}
-		dynarray(size_type n,element c = element())
+		dynarray(size_type n,element c = element()) : stack()
 		{
 			preallocate(n);
 			for(element * i = pbegin; i < pend; i++) new (i) element(c);
 		}
 		template<class InputIterator>
-		dynarray(InputIterator first, InputIterator last)
+		dynarray(InputIterator first, InputIterator last) : stack()
 		{
 			size_type n = static_cast<size_type>(std::distance(first,last));
 			preallocate(n);
@@ -2016,7 +2008,7 @@ namespace INMOST
 		{
 			if( pbegin != stack ) 
 			{
-				for(element * i = pbegin; i < pend; i++) (*i).~element();
+				for(element * i = pbegin; i < pend; i++) i->~element();
 				free(pbegin);
 			}
 		}
@@ -2025,7 +2017,7 @@ namespace INMOST
 			if( this != &other )
 			{
 				size_type n = size();
-				for(element * i = pbegin; i != pend; ++i) (*i).~element();
+				for(element * i = pbegin; i != pend; ++i) i->~element();
 				if(pbegin != stack) free(pbegin);
 				n = other.size();
 				preallocate(n);

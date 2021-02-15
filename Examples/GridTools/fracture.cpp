@@ -204,7 +204,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::real_array source = it->RealArray(transfer_node_real_tags[q]);
 							Storage::real_array target = image->RealArray(transfer_node_real_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 					
@@ -214,7 +214,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::integer_array source = it->IntegerArray(transfer_node_integer_tags[q]);
 							Storage::integer_array target = image->IntegerArray(transfer_node_integer_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 					
@@ -328,7 +328,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 						Storage::real_array source = it->RealArray(transfer_face_real_tags[q]);
 						Storage::real_array target = f.first->RealArray(transfer_face_real_tags[q]);
 						if( target.size() != source.size() ) target.resize(source.size());
-						for(int qq = 0; qq < source.size(); ++qq)
+						for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 							target[qq] = source[qq];
 					}
 				for(int q = 0; q < (int)transfer_face_integer_tags.size(); ++q)
@@ -337,7 +337,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 					 Storage::integer_array source = it->IntegerArray(transfer_face_integer_tags[q]);
 					 Storage::integer_array target = f.first->IntegerArray(transfer_face_integer_tags[q]);
 					 if( target.size() != source.size() ) target.resize(source.size());
-					 for(int qq = 0; qq < source.size(); ++qq)
+					 for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 						 target[qq] = source[qq];
 				 }
 				 
@@ -433,7 +433,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::real_array source = it->RealArray(transfer_face_real_tags[q]);
 							Storage::real_array target = facesb.first->RealArray(transfer_face_real_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 					for(int q = 0; q < (int)transfer_face_integer_tags.size(); ++q)
@@ -442,7 +442,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::integer_array source = it->IntegerArray(transfer_face_integer_tags[q]);
 							Storage::integer_array target = facesb.first->IntegerArray(transfer_face_integer_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 				}
@@ -490,7 +490,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::real_array source = it->RealArray(transfer_face_real_tags[q]);
 							Storage::real_array target = facesf.first->RealArray(transfer_face_real_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 					for(int q = 0; q < (int)transfer_face_integer_tags.size(); ++q)
@@ -499,7 +499,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::integer_array source = it->IntegerArray(transfer_face_integer_tags[q]);
 							Storage::integer_array target = facesf.first->IntegerArray(transfer_face_integer_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 				}
@@ -825,7 +825,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 						Storage::real_array source = it->RealArray(transfer_face_real_tags[q]);
 						Storage::real_array target = f.first->RealArray(transfer_face_real_tags[q]);
 						if( target.size() != source.size() ) target.resize(source.size());
-						for(int qq = 0; qq < source.size(); ++qq)
+						for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 							target[qq] = source[qq];
 					}
 				for(int q = 0; q < (int)transfer_face_integer_tags.size(); ++q)
@@ -834,7 +834,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 					 Storage::integer_array source = it->IntegerArray(transfer_face_integer_tags[q]);
 					 Storage::integer_array target = f.first->IntegerArray(transfer_face_integer_tags[q]);
 					 if( target.size() != source.size() ) target.resize(source.size());
-					 for(int qq = 0; qq < source.size(); ++qq)
+					 for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 						 target[qq] = source[qq];
 				 }
 			}
@@ -911,7 +911,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::real_array source = it->RealArray(transfer_face_real_tags[q]);
 							Storage::real_array target = facesb.first->RealArray(transfer_face_real_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 					for(int q = 0; q < (int)transfer_face_integer_tags.size(); ++q)
@@ -920,7 +920,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::integer_array source = it->IntegerArray(transfer_face_integer_tags[q]);
 							Storage::integer_array target = facesb.first->IntegerArray(transfer_face_integer_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 				}
@@ -954,7 +954,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::real_array source = it->RealArray(transfer_face_real_tags[q]);
 							Storage::real_array target = facesf.first->RealArray(transfer_face_real_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 					for(int q = 0; q < (int)transfer_face_integer_tags.size(); ++q)
@@ -963,7 +963,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 							Storage::integer_array source = it->IntegerArray(transfer_face_integer_tags[q]);
 							Storage::integer_array target = facesf.first->IntegerArray(transfer_face_integer_tags[q]);
 							if( target.size() != source.size() ) target.resize(source.size());
-							for(int qq = 0; qq < source.size(); ++qq)
+							for(INMOST_DATA_ENUM_TYPE qq = 0; qq < source.size(); ++qq)
 								target[qq] = source[qq];
 						}
 				}
