@@ -115,7 +115,7 @@ int main(int argc, char ** argv)
 			//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			
 			ref_time = Timer();
-			int numref;
+			Storage::integer numref;
 			int refcnt = 0;
 			do
 			{

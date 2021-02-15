@@ -383,7 +383,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if !defined(NDEBUG)
-		int err = 0;
+		Storage::Integer err = 0;
 		Storage::integer_array procs;
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
@@ -456,7 +456,7 @@ namespace INMOST
 		static int fi = 0;
         ENTER_FUNC();
 		static int call_counter = 0;
-		int ret = 0; //return number of refined cells
+		Storage::integer ret = 0; //return number of refined cells
 		//initialize tree structure
 		//m->CheckCentroids(__FILE__,__LINE__);
 		ENTER_BLOCK();
@@ -499,7 +499,7 @@ namespace INMOST
 
 		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
-		int scheduled = 1; //indicates that at least one element was scheduled on current sweep
+		Storage::integer scheduled = 1; //indicates that at least one element was scheduled on current sweep
 		ENTER_BLOCK();
 		//0. Extend indicator for edges and faces
 		indicator = m->CreateTag(indicator.GetTagName(),DATA_INTEGER,FACE|EDGE,NONE,1);
@@ -1021,7 +1021,7 @@ namespace INMOST
         //return false;
 		static int call_counter = 0;
 		//return number of coarsened cells
-		int ret = 0;
+		Storage::integer ret = 0;
 		//initialize tree structure
 		ENTER_BLOCK();
 		PrepareSet();
@@ -1054,7 +1054,7 @@ namespace INMOST
 		CheckParentSet(__FILE__,__LINE__);
 		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
-		int scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
+		Storage::integer scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
 
 		ENTER_BLOCK();
 		//TagInteger coarsened = CreateTag("COARSENED",DATA_INTEGER,CELL,NONE,1);
