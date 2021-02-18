@@ -92,7 +92,7 @@ int main(int argc,char ** argv)
 		err = tmp;
 #endif
 
-		if (rank==0)  
+		//if (rank==0)  
 		{
 			std::cout << "done, error " << err << "\t\t\t" << std::endl;
 		}

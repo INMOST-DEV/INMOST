@@ -953,6 +953,7 @@ namespace INMOST
 		/// @param ncols New number of columns.
 		void Resize(enumerator nrows, enumerator ncols)
 		{
+			(void)ncols;
 			assert(nrows == ncols);
 			if( space.size() != (nrows+1)*nrows/2 )
 				space.resize((nrows+1)*nrows/2);

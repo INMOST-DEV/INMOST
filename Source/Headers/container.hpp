@@ -991,12 +991,13 @@ namespace INMOST
 #endif
 				assert(parray_new != NULL);
 				parray_new = parray_new - beg_index;
+				IndType mend = std::min(end,end_index);
 				if( parray ) 
 				{
-					std::copy(parray+beg_index,parray+std::min(end,end_index),parray_new+beg_index);
+					std::copy(parray+beg_index,parray+mend,parray_new+beg_index);
 					delete [] (parray+beg_index);
 				}
-				std::fill(parray_new+std::min(end,end_index),parray_new+end,c);
+				if( mend < end ) std::fill(parray_new+mend,parray_new+end,c);
 				parray = parray_new;
 			}
 			else 
