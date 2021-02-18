@@ -63,7 +63,7 @@ namespace INMOST
 
 
 
-	Storage::integer clip_plane_edge(double sp0[3], double sp1[3], double p[3], double n[3], double node[3])
+	Storage::integer clip_plane_edge(Storage::real sp0[3], Storage::real sp1[3], Storage::real p[3], Storage::real n[3], Storage::real node[3])
 	{
 		Storage::real u[3], w[3], D, N, sI;
 		u[0] = sp1[0] - sp0[0]; u[1] = sp1[1] - sp0[1]; u[2] = sp1[2] - sp0[2];
@@ -188,7 +188,7 @@ namespace INMOST
 
 	kdtree::kdtree() : set(NULL), marked(0), size(0), children(NULL) {}
 
-	inline int kdtree::plane_bbox(double p[3], double n[3]) const
+	inline int kdtree::plane_bbox(Storage::real p[3], Storage::real n[3]) const
 	{
 		Storage::real pv[3], nv[3];
 		for (int k = 0; k < 3; ++k)
@@ -214,7 +214,7 @@ namespace INMOST
 		else return 0;
 	}
 
-	bool kdtree::sub_intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mrk, double p[3], double n[3])
+	bool kdtree::sub_intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mrk, Storage::real p[3], Storage::real n[3])
 	{
 		if (size == 1)
 		{
@@ -244,7 +244,7 @@ namespace INMOST
 		return marked != 0;
 	}
 
-	void kdtree::sub_intersect_plane_faces(Tag clip_state, double p[3], double n[3])
+	void kdtree::sub_intersect_plane_faces(Tag clip_state, Storage::real p[3], Storage::real n[3])
 	{
 		if (size == 1)
 		{
@@ -379,7 +379,7 @@ namespace INMOST
 		}
 	}
 
-	void kdtree::intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mark_cells, double p[3], double n[3])
+	void kdtree::intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mark_cells, Storage::real p[3], Storage::real n[3])
 	{
 		if (marked)
 		{
@@ -389,7 +389,7 @@ namespace INMOST
 		sub_intersect_plane_edge(clip_point, clip_state, cells, mark_cells, p, n);
 	}
 
-	void kdtree::intersect_plane_face(Tag clip_state, double p[3], double n[3])
+	void kdtree::intersect_plane_face(Tag clip_state, Storage::real p[3], Storage::real n[3])
 	{
 		sub_intersect_plane_faces(clip_state, p, n);
 	}
@@ -446,7 +446,7 @@ namespace INMOST
 		clip_state = m->CreateTag("CLIP_STATE", DATA_INTEGER, EDGE, NONE, 1);
 	}
 
-	double clipper::compute_value(Edge e, Storage::real * pnt)
+	Storage::real clipper::compute_value(Edge e, Storage::real * pnt)
 	{
 		if (isColorBarEnabled())
 		{
@@ -771,9 +771,9 @@ namespace INMOST
 				{
 					for (INMOST_DATA_ENUM_TYPE q = offset; q < offset + cln[r]; q++)
 					{
-						glVertex3dv(cnt);
-						glVertex3dv(&cl[q * 3]);
-						glVertex3dv(&cl[(((q + 1 - offset) % cln[r]) + offset) * 3]);
+						glVertexNdv(cnt);
+						glVertexNdv(&cl[q * 3]);
+						glVertexNdv(&cl[(((q + 1 - offset) % cln[r]) + offset) * 3]);
 					}
 				}
 				else if (elevation)
@@ -789,21 +789,21 @@ namespace INMOST
 						pos[0] = cnt[0] + n[0] * t;
 						pos[1] = cnt[1] + n[1] * t;
 						pos[2] = cnt[2] + n[2] * t;
-						glVertex3dv(pos);
+						glVertexNdv(pos);
 						if (!(GetVisualizationType() == CELL && !isVisualizationSmooth()))
 							glTexCoord1d(GetColorBar()->pick_texture(clv[q]));
 						t = (clv[q] - GetColorBar()->get_min()) / (GetColorBar()->get_max() - GetColorBar()->get_min());
 						pos[0] = cl[q * 3 + 0] + n[0] * t;
 						pos[1] = cl[q * 3 + 1] + n[1] * t;
 						pos[2] = cl[q * 3 + 2] + n[2] * t;
-						glVertex3dv(pos);
+						glVertexNdv(pos);
 						if (!(GetVisualizationType() == CELL && !isVisualizationSmooth()))
 							glTexCoord1d(GetColorBar()->pick_texture(clv[(q + 1 - offset) % cln[r] + offset]));
 						t = (clv[(q + 1 - offset) % cln[r] + offset] - GetColorBar()->get_min()) / (GetColorBar()->get_max() - GetColorBar()->get_min());
 						pos[0] = cl[((q + 1 - offset) % cln[r] + offset) * 3 + 0] + n[0] * t;
 						pos[1] = cl[((q + 1 - offset) % cln[r] + offset) * 3 + 1] + n[1] * t;
 						pos[2] = cl[((q + 1 - offset) % cln[r] + offset) * 3 + 2] + n[2] * t;
-						glVertex3dv(pos);
+						glVertexNdv(pos);
 					}
 				}
 				else
@@ -814,13 +814,13 @@ namespace INMOST
 							glTexCoord1d(GetColorBar()->pick_texture(cells[k].RealDF(GetVisualizationTag())));
 						else
 							glTexCoord1d(GetColorBar()->pick_texture(cntv));
-						glVertex3dv(cnt);
+						glVertexNdv(cnt);
 						if (!(GetVisualizationType() == CELL && !isVisualizationSmooth()))
 							glTexCoord1d(GetColorBar()->pick_texture(clv[q]));
-						glVertex3dv(&cl[q * 3]);
+						glVertexNdv(&cl[q * 3]);
 						if (!(GetVisualizationType() == CELL && !isVisualizationSmooth()))
 							glTexCoord1d(GetColorBar()->pick_texture(clv[(q + 1 - offset) % cln[r] + offset]));
-						glVertex3dv(&cl[((q + 1 - offset) % cln[r] + offset) * 3]);
+						glVertexNdv(&cl[((q + 1 - offset) % cln[r] + offset) * 3]);
 					}
 				}
 				offset += cln[r];
@@ -854,12 +854,12 @@ namespace INMOST
 						pos[0] = cl[q * 3 + 0] + t*n[0];
 						pos[1] = cl[q * 3 + 1] + t*n[1];
 						pos[2] = cl[q * 3 + 2] + t*n[2];
-						glVertex3dv(pos);
+						glVertexNdv(pos);
 						t = (clv[(q + 1 - offset) % cln[r] + offset] - GetColorBar()->get_min()) / (GetColorBar()->get_max() - GetColorBar()->get_min());
 						pos[0] = cl[((q + 1 - offset) % cln[r] + offset) * 3 + 0] + t*n[0];
 						pos[1] = cl[((q + 1 - offset) % cln[r] + offset) * 3 + 1] + t*n[1];
 						pos[2] = cl[((q + 1 - offset) % cln[r] + offset) * 3 + 2] + t*n[2];
-						glVertex3dv(pos);
+						glVertexNdv(pos);
 					}
 					offset += cln[r];
 				}
@@ -876,8 +876,8 @@ namespace INMOST
 				{
 					for (INMOST_DATA_ENUM_TYPE q = offset; q < offset + cln[r]; q++)
 					{
-						glVertex3dv(&cl[q * 3]);
-						glVertex3dv(&cl[((q + 1 - offset) % cln[r] + offset) * 3]);
+						glVertexNdv(&cl[q * 3]);
+						glVertexNdv(&cl[((q + 1 - offset) % cln[r] + offset) * 3]);
 					}
 					offset += cln[r];
 				}
@@ -913,7 +913,7 @@ namespace INMOST
 		else tree = new kdtree(mm, faces, nfaces);
 	}
 
-	double bnd_clipper::compute_value(Node n1, Node n2, Storage::real * c1, Storage::real * c2, Storage::real * pnt)
+	Storage::real bnd_clipper::compute_value(Node n1, Node n2, Storage::real * c1, Storage::real * c2, Storage::real * pnt)
 	{
 		if (isColorBarEnabled())
 		{

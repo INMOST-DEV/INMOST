@@ -94,7 +94,7 @@ int main(int argc, char ** argv)
 	//~ bool onep = false;
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 	{
-		double  n[3], c[3];
+		Storage::real  n[3], c[3];
 		it->UnitNormal(n);
 		it->Centroid(c);
 		bb[*it] = 0;

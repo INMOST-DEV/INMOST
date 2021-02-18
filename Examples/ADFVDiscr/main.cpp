@@ -16,7 +16,7 @@ using namespace INMOST;
 #define BARRIER
 #endif
 
-double func(double x[3], double tmp)
+Storage::real func(Storage::real x[3], Storage::real tmp)
 {
 	//  	return x[0] + 2 * x[1] + 3 * x[2];
 	return sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
@@ -24,7 +24,7 @@ double func(double x[3], double tmp)
 }
 
 
-double func_rhs(double x[3], double tmp)
+Storage::real func_rhs(Storage::real x[3], Storage::real tmp)
 {
 	//  	return 0;
 	return -3 * tmp * M_PI * M_PI * sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
@@ -46,7 +46,7 @@ int main(int argc,char ** argv)
 		TagRealArray tag_BC;
 		TagReal phi_ref;
 		Mesh * m = new Mesh(); // Create an empty mesh
-		double ttt = Timer();
+		Storage::real ttt = Timer();
 		bool repartition = false;
 		(void)repartition;
 		m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
@@ -67,7 +67,7 @@ int main(int argc,char ** argv)
 		if( m->GetProcessorRank() == 0 ) std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_File): " << Timer()-ttt << std::endl;
 
-		//~ double ttt2 = Timer();
+		//~ Storage::real ttt2 = Timer();
 		//~ Mesh t;
 		//~ t.SetCommunicator(INMOST_MPI_COMM_WORLD);
 		//~ t.SetParallelFileStrategy(0);
@@ -126,7 +126,7 @@ int main(int argc,char ** argv)
 		else
 		{
 			std::cout << "Set boundary conditions" << std::endl;
-			double x[3];
+			Storage::real x[3];
 			tag_BC = m->CreateTag("BOUNDARY_CONDITION",DATA_REAL,FACE,FACE,3);
 			for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
 				if( face->Boundary() && !(face->GetStatus() == Element::Ghost) )
@@ -148,7 +148,7 @@ int main(int argc,char ** argv)
 		{
 			std::cout << "Set rhs" << std::endl;
 			tag_F = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,1); // Create a new tag for external force
-			double x[3];
+			Storage::real x[3];
 			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 			{
 				cell->Centroid(x);
@@ -162,7 +162,7 @@ int main(int argc,char ** argv)
 		else if( makerefsol )
 		{
 			phi_ref = m->CreateTag("REFRENCE_SOLUTION",DATA_REAL,CELL,NONE,1);
-			double x[3];
+			Storage::real x[3];
 			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
 			{
 				cell->Centroid(x);
@@ -218,7 +218,7 @@ int main(int argc,char ** argv)
 			{
 				variable flux; //should be more efficient to define here to avoid multiple memory allocations if storage for variations should be expanded
 				rMatrix x1(3,1), x2(3,1), xf(3,1), n(3,1);
-				double d1, d2, k1, k2, area, T, a, b, c;
+				Storage::real d1, d2, k1, k2, area, T, a, b, c;
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -328,12 +328,12 @@ int main(int argc,char ** argv)
 			if( phi_ref.isValid() )
 			{
 				Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
-				double err_C = 0.0, err_L2 = 0.0, vol = 0.0;
+				Storage::real err_C = 0.0, err_L2 = 0.0, vol = 0.0;
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 				{
-					double local_err_C = 0;
+					Storage::real local_err_C = 0;
 #if defined(USE_OMP)
 #pragma omp for reduction(+:err_L2) reduction(+:vol)
 #endif
@@ -342,11 +342,11 @@ int main(int argc,char ** argv)
 						Cell cell = Cell(m,ComposeCellHandle(icell));
 						if( cell->GetStatus() != Element::Ghost )
 						{
-							double old = phi[cell];
-							double exact = phi_ref[cell];
-							double res = Update[Phi.Index(cell)];
-							double sol = old-res;
-							double err = fabs (sol - exact);
+							Storage::real old = phi[cell];
+							Storage::real exact = phi_ref[cell];
+							Storage::real res = Update[Phi.Index(cell)];
+							Storage::real sol = old-res;
+							Storage::real err = fabs (sol - exact);
 							if (err > local_err_C) local_err_C = err;
 							err_L2 += err * err * cell->Volume();
 							vol += cell->Volume();

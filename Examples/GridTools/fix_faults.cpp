@@ -54,25 +54,25 @@ static bool IntersectBox(const float bboxa[6], const float bboxb[6])
 	return true;
 }
 
-static bool MatchPoints(const double v1[3], const double v2[3])
+static bool MatchPoints(const Storage::real v1[3], const Storage::real v2[3])
 {
-	double l = 0;
+	Storage::real l = 0;
 	for (int k = 0; k < 3; ++k)
 		l += (v1[k] - v2[k])*(v1[k] - v2[k]);
 	return sqrt(l) < 1.0e-9;
 }
 
 //returns distance between line if shortest line is within segments, writes position of distance into last argument
-static double SegmentDistance(const double v1[3], const double v2[3], const double v3[3], const double v4[3], double vout[3])
+static Storage::real SegmentDistance(const Storage::real v1[3], const Storage::real v2[3], const Storage::real v3[3], const Storage::real v4[3], Storage::real vout[3])
 {
-	double v13[3], v21[3], v43[3];
+	Storage::real v13[3], v21[3], v43[3];
 	for (int k = 0; k < 3; ++k)
 	{
 		v13[k] = v1[k] - v3[k];
 		v21[k] = v2[k] - v1[k];
 		v43[k] = v4[k] - v3[k];
 	}
-	double d1321 = 0, d2121 = 0, d4321 = 0, d1343 = 0, d4343 = 0;
+	Storage::real d1321 = 0, d2121 = 0, d4321 = 0, d1343 = 0, d4343 = 0;
 	for (int k = 0; k < 3; ++k)
 	{
 		d1321 += v13[k] * v21[k];
@@ -81,9 +81,9 @@ static double SegmentDistance(const double v1[3], const double v2[3], const doub
 		d1343 += v13[k] * v43[k];
 		d4343 += v43[k] * v43[k];
 	}
-	double mu1 = 0, mu2 = 0;
+	Storage::real mu1 = 0, mu2 = 0;
 	/*
-	double parallel = 0;
+	Storage::real parallel = 0;
 	for (int k = 0; k < 3; ++k)
 	parallel += v21[k] * v43[k];
 	parallel = fabs(parallel);
@@ -102,8 +102,8 @@ static double SegmentDistance(const double v1[3], const double v2[3], const doub
 	else //parallel lines
 	{
 		//1d problem
-		double la = 0, ra = 0;
-		double lb = 0, rb = 0;
+		Storage::real la = 0, ra = 0;
+		Storage::real lb = 0, rb = 0;
 		for (int k = 0; k < 3; ++k)
 		{
 			la += v1[k] * v21[k];
@@ -145,7 +145,7 @@ static double SegmentDistance(const double v1[3], const double v2[3], const doub
 		}
 		if (invb) mu2 = 1 - mu2;
 	}
-	double vs1[3], vs2[3], h = 0;
+	Storage::real vs1[3], vs2[3], h = 0;
 	for (int k = 0; k < 3; ++k)
 	{
 		vs1[k] = v1[k] + mu1*(v2[k] - v1[k]);
@@ -289,13 +289,13 @@ class kdtree
 					{
 						for (ElementArray<Edge>::iterator jt = ffedges.begin(); jt != ffedges.end() && !intersect; ++jt)
 						{
-							double vs[3];
-							double * v1 = it->getBeg().Coords().data();
-							double * v2 = it->getEnd().Coords().data();
-							double * v3 = jt->getBeg().Coords().data();
-							double * v4 = jt->getEnd().Coords().data();
-							double l1 = 0, l2 = 0;
-							double h = SegmentDistance(v1, v2, v3, v4, vs);
+							Storage::real vs[3];
+							Storage::real * v1 = it->getBeg().Coords().data();
+							Storage::real * v2 = it->getEnd().Coords().data();
+							Storage::real * v3 = jt->getBeg().Coords().data();
+							Storage::real * v4 = jt->getEnd().Coords().data();
+							Storage::real l1 = 0, l2 = 0;
+							Storage::real h = SegmentDistance(v1, v2, v3, v4, vs);
 							for (int k = 0; k < 3; ++k)
 							{
 								l1 += (v2[k] - v1[k])*(v2[k] - v1[k]);
@@ -431,31 +431,31 @@ public:
 	}
 };
 
-void cross(const double a[3], const double b[3], double out[3])
+void cross(const Storage::real a[3], const Storage::real b[3], Storage::real out[3])
 {
 	out[0] = a[1] * b[2] - a[2] * b[1];
 	out[1] = a[2] * b[0] - a[0] * b[2];
 	out[2] = a[0] * b[1] - a[1] * b[0];
 }
 
-double dot(const double a[3], const double b[3])
+Storage::real dot(const Storage::real a[3], const Storage::real b[3])
 {
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-void normalize(double v[3])
+void normalize(Storage::real v[3])
 {
-	double d = sqrt(dot(v, v));
+	Storage::real d = sqrt(dot(v, v));
 	if (d) for (int k = 0; k < 3; ++k) v[k] /= d;
 }
 
 
 struct coords
 {
-	double v[3];
-	int compare(const double bv[3]) const
+	Storage::real v[3];
+	int compare(const Storage::real bv[3]) const
 	{
-		const double eps = 1.0e-11;//pow(10,-14);
+		const Storage::real eps = 1.0e-11;//pow(10,-14);
 		for (int i = 0; i < 3; i++)
 		{
 			if (fabs(v[i] - bv[i]) > eps)
@@ -469,9 +469,9 @@ struct coords
 		return 0;
 	}
 	bool operator <(const coords & b) const { return compare(b.v) < 0; }
-	coords(double _v[3]) { memcpy(v, _v, sizeof(double)* 3); }
-	coords(const coords &b) { memcpy(v, b.v, sizeof(double)* 3); }
-	coords & operator =(coords const & b) { memmove(v, b.v, sizeof(double)* 3); return *this; }
+	coords(Storage::real _v[3]) { memcpy(v, _v, sizeof(Storage::real)* 3); }
+	coords(const coords &b) { memcpy(v, b.v, sizeof(Storage::real)* 3); }
+	coords & operator =(coords const & b) { memmove(v, b.v, sizeof(Storage::real)* 3); return *this; }
 };
 
 
@@ -542,9 +542,9 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 				for (ElementArray<Edge>::iterator jt = ffedges.begin(); jt != ffedges.end(); ++jt)
 				{
 					//~ int jtid = jt->LocalID();
-					double * v3 = jt->getBeg().Coords().data();
-					double * v4 = jt->getEnd().Coords().data();
-					double l2 = 0;
+					Storage::real * v3 = jt->getBeg().Coords().data();
+					Storage::real * v4 = jt->getEnd().Coords().data();
+					Storage::real l2 = 0;
 					for (int k = 0; k < 3; ++k)
 						l2 += (v4[k] - v3[k])*(v4[k] - v3[k]);
 					l2 = sqrt(l2);
@@ -557,20 +557,20 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 					{
 						//~ int itid = it->LocalID();
 						//can put this algorithm to SegmentDistance function in future
-						double * v1 = it->getBeg().Coords().data();
-						double * v2 = it->getEnd().Coords().data();
-						double l1 = 0;
+						Storage::real * v1 = it->getBeg().Coords().data();
+						Storage::real * v2 = it->getEnd().Coords().data();
+						Storage::real l1 = 0;
 						for (int k = 0; k < 3; ++k)
 							l1 += (v2[k] - v1[k])*(v2[k] - v1[k]);
 						l1 = sqrt(l1);
-						double v13[3], v21[3], v43[3];
+						Storage::real v13[3], v21[3], v43[3];
 						for (int k = 0; k < 3; ++k)
 						{
 							v13[k] = v1[k] - v3[k];
 							v21[k] = v2[k] - v1[k];
 							v43[k] = v4[k] - v3[k];
 						}
-						double d1321 = 0, d2121 = 0, d4321 = 0, d1343 = 0, d4343 = 0;
+						Storage::real d1321 = 0, d2121 = 0, d4321 = 0, d1343 = 0, d4343 = 0;
 						for (int k = 0; k < 3; ++k)
 						{
 							d1321 += v13[k] * v21[k];
@@ -579,9 +579,9 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 							d1343 += v13[k] * v43[k];
 							d4343 += v43[k] * v43[k];
 						}
-						double mu1 = 0, mu2 = 0;
+						Storage::real mu1 = 0, mu2 = 0;
 						/*
-						double parallel = 0;
+						Storage::real parallel = 0;
 						for (int k = 0; k < 3; ++k)
 						parallel += v21[k] * v43[k];
 						parallel = fabs(parallel);
@@ -596,7 +596,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 							if (mu1 >= 0 - 1.0e-9 && mu1 <= 1 + 1.0e-9 && mu2 >= 0 - 1.0e-9 && mu2 <= 1 + 1.0e-9)
 							{
 								//find distance and point
-								double vs1[3], vs2[3], h = 0, vv[3];
+								Storage::real vs1[3], vs2[3], h = 0, vv[3];
 								for (int k = 0; k < 3; ++k)
 								{
 									vs1[k] = v1[k] + mu1*(v2[k] - v1[k]);
@@ -680,9 +680,9 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 						else //parallel lines
 						{
 							//1d problem
-							double la = 0, ra = 0;
-							double lb = 0, rb = 0;
-							double t[2]; //relative positions of intersection points on first segment
+							Storage::real la = 0, ra = 0;
+							Storage::real lb = 0, rb = 0;
+							Storage::real t[2]; //relative positions of intersection points on first segment
 							int nt = 0;  //number of intersection points
 							for (int k = 0; k < 3; ++k)
 							{
@@ -735,11 +735,11 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 							if (nt)
 							{
 								if (invb) mu2 = 1 - mu2;
-								double h = 0;
+								Storage::real h = 0;
 								for (int k = 0; k < 3; ++k)
 								{
-									double vs1 = v1[k] + mu1*(v2[k] - v1[k]);
-									double vs2 = v3[k] + mu2*(v4[k] - v3[k]);
+									Storage::real vs1 = v1[k] + mu1*(v2[k] - v1[k]);
+									Storage::real vs2 = v3[k] + mu2*(v4[k] - v3[k]);
 									h += (vs2 - vs1)*(vs2 - vs1);
 								}
 								if (h < (l1 + l2)*1.0e-9)
@@ -748,7 +748,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 									for (int k = 0; k < nt; ++k)
 									{
 										//calculate point position
-										double vv[3];
+										Storage::real vv[3];
 										for (int q = 0; q < 3; ++q)
 											vv[q] = v1[q] + t[k] * (v2[q] - v1[q]);
 										//if we do not coinside with the ends of current edge
@@ -809,8 +809,8 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 							else if (!_parallel) //check v3 or v4 is inside of the face, pick the one to construct the edge
 							{
 
-								double nrm[3], cnt[3], pcnt[3], d, nd;
-								double orthx[3], orthy[3];
+								Storage::real nrm[3], cnt[3], pcnt[3], d, nd;
+								Storage::real orthx[3], orthy[3];
 								(void)nd;
 								f.UnitNormal(nrm);
 								f.Centroid(cnt);
@@ -823,18 +823,18 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 								normalize(orthx);
 								cross(orthx, nrm, orthy);
 								//loop over two ends of the edge
-								double * v34[2] = { v3, v4 };
+								Storage::real * v34[2] = { v3, v4 };
 								bool inside[2] = { true, true };
 								int cn[2] = { 0, 0 };
 								for (int q = 0; q < 2; ++q)
 								{
-									double * v = v34[q];
+									Storage::real * v = v34[q];
 									nd = dot(v, nrm) - d;
 									for (int k = 0; k < 3; ++k)
 										pcnt[k] = v[k] - cnt[k];
 									//project current point
-									double px = dot(pcnt, orthx), py = dot(pcnt, orthy);
-									double v0x, v0y, v1x, v1y;
+									Storage::real px = dot(pcnt, orthx), py = dot(pcnt, orthy);
+									Storage::real v0x, v0y, v1x, v1y;
 									// loop through all edges of the polygon
 									for (INMOST_DATA_ENUM_TYPE j = 0; j < fnodes.size(); j++)
 									{
@@ -852,8 +852,8 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 										v1y = dot(orthy, pcnt);
 										if ((v0y <= py && v1y >= py) || (v0y >= py && v1y <= py))
 										{
-											double vt = (py - v0y) / (v1y - v0y);
-											double ptx = v0x + vt * (v1x - v0x);
+											Storage::real vt = (py - v0y) / (v1y - v0y);
+											Storage::real ptx = v0x + vt * (v1x - v0x);
 											if (px <= ptx) ++cn[q];
 										}
 									}
@@ -921,10 +921,10 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 		if (!nodes.empty())
 		{
 			//sort nodes according to distance from getBeg to getEnd
-			std::vector< std::pair<double, HandleType> > tnodes;
-			double *v1 = it->getBeg().Coords().data();
-			double *v2 = it->getEnd().Coords().data();
-			double v21[3];
+			std::vector< std::pair<Storage::real, HandleType> > tnodes;
+			Storage::real *v1 = it->getBeg().Coords().data();
+			Storage::real *v2 = it->getEnd().Coords().data();
+			Storage::real v21[3];
 			for (int k = 0; k < 3; ++k) v21[k] = v2[k] - v1[k];
 			for (int k = 0; k < (int)nodes.size(); ++k) tnodes.push_back(std::make_pair(dot(v21, nodes[k].getAsNode().Coords().data()), nodes[k].GetHandle()));
 			std::sort(tnodes.begin(), tnodes.end());

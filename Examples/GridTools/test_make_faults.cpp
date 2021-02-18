@@ -46,11 +46,11 @@ public:
 	}
 	SliceFault(const SliceFault &b) :Slice(b) { std::copy(b.v,b.v+3,v); }
 	SliceFault & operator =(SliceFault const & b) { Slice::operator =(b); std::copy(b.v,b.v+3,v); return *this;}
-	double LevelFunction(double p[3]) const 
+	Storage::real LevelFunction(Storage::real p[3]) const 
 	{
 		//project p to p[2] = 0;
-		double px = p[0] - v[0]/v[2]*p[2], py = p[1] - v[0]/v[2]*p[2];
-		double d[2], r[2], l, lmin = 1.0e+20, smin = 0;
+		Storage::real px = p[0] - v[0]/v[2]*p[2], py = p[1] - v[0]/v[2]*p[2];
+		Storage::real d[2], r[2], l, lmin = 1.0e+20, smin = 0;
 		for(size_t k = 0; k < curvxy.size()-1; ++k)
 		{
 			d[0] = curvxy[k+1].first  - curvxy[k].first;

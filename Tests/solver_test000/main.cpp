@@ -81,14 +81,14 @@ int main(int argc,char ** argv)
 		}
 		
 
-		double err = 0;
+		INMOST_DATA_REAL_TYPE err = 0;
 		for( INMOST_DATA_ENUM_TYPE i = mbeg; i !=  mend; i++ )
 		{
-			err += fabs(x[i] - static_cast<double>(i)/10.0);
+			err += fabs(x[i] - static_cast<INMOST_DATA_REAL_TYPE>(i)/10.0);
 		}
 #if defined(USE_MPI)
-		double tmp;
-		MPI_Allreduce(&err,&tmp,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+		INMOST_DATA_REAL_TYPE tmp;
+		MPI_Allreduce(&err,&tmp,1,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,MPI_COMM_WORLD);
 		err = tmp;
 #endif
 

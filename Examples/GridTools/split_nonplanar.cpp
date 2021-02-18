@@ -18,9 +18,9 @@ void cross(real a[3], real b[3], real out[3])
 	out[2] = a[0]*b[1] - a[1]*b[0];
 }
 
-static void normalize(double v[3])
+static void normalize(real v[3])
 {
-	double d = sqrt(dot(v, v));
+	real d = sqrt(dot(v, v));
 	if (d) for (int k = 0; k < 3; ++k) v[k] /= d;
 }
 

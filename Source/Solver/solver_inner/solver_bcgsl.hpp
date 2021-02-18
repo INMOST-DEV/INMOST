@@ -1650,7 +1650,10 @@ namespace INMOST
                         //if( temp[0] == 0 && temp[1] == 0 )
                         //	omega = 0;
                         //else
-                        omega = temp[0] / temp[1];
+                        if( temp[0] )
+							omega = temp[0] / temp[1];
+						else
+							omega = 0;
                     }
 
                     if( fabs(omega) > 1.0e+100 )

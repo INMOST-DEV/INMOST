@@ -125,7 +125,7 @@ int main(int argc, char ** argv)
 	if( true ) //project nodes to diameter
 	{
 		MarkerType bnode = m->CreateMarker();
-		double n[3];
+		Storage::real n[3];
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 		{
 			it->UnitNormal(n);
@@ -138,13 +138,13 @@ int main(int argc, char ** argv)
 		double tot_corr = 0;
 		for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(bnode) )
 		{
-			double & x = it->Coords()[ix];
-			double & y = it->Coords()[iy];
-			double r = sqrt(pow(x-cx,2)+pow(y-cy,2));
+			Storage::real & x = it->Coords()[ix];
+			Storage::real & y = it->Coords()[iy];
+			Storage::real r = sqrt(pow(x-cx,2)+pow(y-cy,2));
 			if( r )
 			{
-				double dx = (R/r-1.0)*(x-cx);
-				double dy = (R/r-1.0)*(y-cy);
+				Storage::real dx = (R/r-1.0)*(x-cx);
+				Storage::real dy = (R/r-1.0)*(y-cy);
 				//std::cout << "at " << x << "," << y << " r " << r << " dx " << dx << " dy " << dy << std::endl;
 				x += dx;
 				y += dy;
@@ -197,9 +197,9 @@ int main(int argc, char ** argv)
 	
 	for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 	{
-		double cnt[3];
+		Storage::real cnt[3];
 		it->Barycenter(cnt);
-		double r = sqrt(pow(cnt[(axis+1)%2]-cnt0[(axis+1)%2],2)+pow(cnt[(axis+2)%2]-cnt0[(axis+2)%2],2));
+		Storage::real r = sqrt(pow(cnt[(axis+1)%2]-cnt0[(axis+1)%2],2)+pow(cnt[(axis+2)%2]-cnt0[(axis+2)%2],2));
 		uvw(*it,3,1).Zero();
 		p[*it] = 0;
 		uvw_ref(*it,3,1).Zero();
@@ -211,7 +211,7 @@ int main(int argc, char ** argv)
 	
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 	{
-		double  n[3];
+		Storage::real  n[3];
 		it->UnitNormal(n);
 		if( fabs(n[axis]-1) < 1.0e-3 ) // outflow
 		{

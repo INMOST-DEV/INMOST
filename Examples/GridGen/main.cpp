@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
 
 	// Construct a mesh in parallel
 	//MPI_Barrier(mesh->GetCommunicator());
-	double tt = Timer();
+	Storage::real tt = Timer();
 	mesh = ParallelGenerator(INMOST_MPI_COMM_WORLD,ng,nx,ny,nz);
 	tt = Timer() - tt;
 	tt = mesh->Integrate(tt)/mesh->GetProcessorsNumber(); //???

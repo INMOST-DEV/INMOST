@@ -16,33 +16,33 @@ using namespace INMOST;
 #define BARRIER
 #endif
 
-void make_vec(double v1[3], double v2[3], double out[3])
+void make_vec(Storage::real v1[3], Storage::real v2[3], Storage::real out[3])
 {
 	out[0] = v1[0] - v2[0];
 	out[1] = v1[1] - v2[1];
 	out[2] = v1[2] - v2[2];
 }
 
-double dot_prod(double v1[3], double v2[3])
+Storage::real dot_prod(Storage::real v1[3], Storage::real v2[3])
 {
 	return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
 }
 
-double transmissibility(double vec[3], double K, double normal_face[3])
+Storage::real transmissibility(Storage::real vec[3], Storage::real K, Storage::real normal_face[3])
 {
-	double Kn[3];
+	Storage::real Kn[3];
 	Kn[0] = K * normal_face[0], Kn[1] = K * normal_face[1], Kn[2] = K * normal_face[2];
 	return dot_prod(vec,Kn);
 }
 
-double func(double x[3], double tmp)
+Storage::real func(Storage::real x[3], Storage::real tmp)
 {
 //  	return x[0] + 2 * x[1] + 3 * x[2];
 	return sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
 	(void) tmp;
 }
 
-double func_rhs(double x[3], double tmp)
+Storage::real func_rhs(Storage::real x[3], Storage::real tmp)
 {
 //  	return 0;
 	return -3 * tmp * M_PI * M_PI * sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
@@ -216,10 +216,10 @@ int main(int argc,char ** argv)
 			Cell r2 = face->FrontCell();
 			if( ((!r1->isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +
 			    ((!r2->isValid() || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
-			double f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1[3], Coef;
-			double f_area = face->Area(); // Get the face area
+			Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1[3], Coef;
+			Storage::real f_area = face->Area(); // Get the face area
 			Storage::integer id1 = r1->Integer(id), id2;
-			double K1 = r1->Real(tensor_K), K2, Kav;
+			Storage::real K1 = r1->Real(tensor_K), K2, Kav;
 			face->Normal(f_nrm); // Get the face normal
 			f_nrm[0] /= f_area;
 			f_nrm[1] /= f_area;
@@ -228,7 +228,7 @@ int main(int argc,char ** argv)
 			face->Barycenter(f_cnt); // Get the barycenter of the face
 			if( !r2->isValid() ) // boundary condition
 			{
-				double bnd_pnt[3], dist;
+				Storage::real bnd_pnt[3], dist;
 				make_vec(f_cnt,r1_cnt,d1);
 				dist = dot_prod(f_nrm,d1) / dot_prod(f_nrm,f_nrm);
 				// bnd_pnt is a projection of the cell center to the face
@@ -306,7 +306,7 @@ int main(int argc,char ** argv)
 
     Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
 
-		double err_C = 0.0, err_L2 = 0.0;
+		Storage::real err_C = 0.0, err_L2 = 0.0;
 		//for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
 #if defined(USE_OMP)
 #pragma omp parallel for
@@ -316,8 +316,8 @@ int main(int argc,char ** argv)
 		  Cell cell(m,ComposeHandle(CELL,ci));
 				if( cell->GetStatus() != Element::Ghost )
 				{
-					double exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
-					double err = fabs (x[cell->Integer(id)] - exact);
+					Storage::real exact = cell->Mean(func, 0); // Compute the mean value of the function over the cell
+					Storage::real err = fabs (x[cell->Integer(id)] - exact);
 					if (err > err_C)
 						err_C = err;
 					err_L2 += err * err * cell->Volume();

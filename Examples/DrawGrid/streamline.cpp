@@ -82,19 +82,19 @@ namespace INMOST
 		//return ret;
 	}
 
-	double GetSizeProj(double bounds[3][2], const coord & v)
+	INMOST_DATA_REAL_TYPE GetSizeProj(INMOST_DATA_REAL_TYPE bounds[3][2], const coord & v)
 	{
-		double vl = v.length();
+		INMOST_DATA_REAL_TYPE vl = v.length();
 		if( !vl ) return 0;
 		coord uv = v/vl;
-		double ret = 0;
+		INMOST_DATA_REAL_TYPE ret = 0;
 		for(int k = 0; k < 3; ++k) ret += fabs(uv[k]*(bounds[k][1]-bounds[k][0]));
 		return ret;
 	}
 	
-	double GetSizeProj(Element c, const coord & v)
+	INMOST_DATA_REAL_TYPE GetSizeProj(Element c, const coord & v)
 	{
-		double bounds[3][2];
+		INMOST_DATA_REAL_TYPE bounds[3][2];
 		GetBbox(c,bounds);
 		return GetSizeProj(bounds,v);
 	}
@@ -308,7 +308,7 @@ namespace INMOST
 	GLUquadric * cylqs = NULL;
 	void drawcylinder(coord a, coord b, double width)
 	{
-		double matrix[16];
+		INMOST_DATA_REAL_TYPE matrix[16];
 		if (cylqs == NULL)
 		{
 			cylqs = gluNewQuadric();
@@ -319,7 +319,11 @@ namespace INMOST
 		glPushMatrix();
 		glTranslated(a[0], a[1], a[2]);
 		get_matrix(a, b, matrix);
+#if defined(USE_FP64)
 		glMultMatrixd(matrix);
+#else
+		glMultMatrixf(matrix);
+#endif
 		gluCylinder(cylqs, width, width, sqrt((b - a) ^ (b - a)), 4, 1);
 		glPopMatrix();
 	}
@@ -350,8 +354,8 @@ namespace INMOST
 	{
 		for (unsigned int i = 0; i < points.size() - 1; i++)
 		{
-			double * v0 = points[i].data();
-			double * v1 = points[i + 1].data();
+			INMOST_DATA_REAL_TYPE * v0 = points[i].data();
+			INMOST_DATA_REAL_TYPE * v1 = points[i + 1].data();
 			color_t c(velarr[i + 1] * 0.65, 0.65*(velarr[i + 1] < 0.5 ? velarr[i] : 1.0 - velarr[i]), 0.65*(1 - velarr[i + 1]));
 			file << "<g stroke=\"" << c.svg_rgb() << "\">" << std::endl;
 			svg_line(file, v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], modelview, projection, viewport);

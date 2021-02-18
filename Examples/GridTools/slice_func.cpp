@@ -4,13 +4,13 @@ using namespace INMOST;
 
 
 
-double Slice::Search(double r0, double r1, double c0[3], double c1[3], double p[3], bool binary) const
+Storage::real Slice::Search(Storage::real r0, Storage::real r1, Storage::real c0[3], Storage::real c1[3], Storage::real p[3], bool binary) const
 {
-	double rp = 1.0e20, rp_min = 1.0e20, p_min[3];
+	Storage::real rp = 1.0e20, rp_min = 1.0e20, p_min[3];
 	int iters = 0;
 	do
 	{
-		double m1 = r0/(r0-r1), m0;
+		Storage::real m1 = r0/(r0-r1), m0;
 		if( m1 < 0.0 || m1 > 1.0 || binary ) m1 = 0.5;
 		m0 = 1.0-m1;
 		p[0] = m1*c1[0] + m0*c0[0];
@@ -54,11 +54,11 @@ double Slice::Search(double r0, double r1, double c0[3], double c1[3], double p[
 }
 
 
-double Slice::SearchZero(double r0, double r1, double c0[3], double c1[3], double p[3]) const
+Storage::real Slice::SearchZero(Storage::real r0, Storage::real r1, Storage::real c0[3], Storage::real c1[3], Storage::real p[3]) const
 {
 	(void)r1;
 	int iters = 0;
-	double rp = 1.0e+20;
+	Storage::real rp = 1.0e+20;
 	//std::cout << "r0 " << r0 << " r1 " << r1;
 	do
 	{
@@ -143,11 +143,11 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 	int nslice = 0, nmark = 0;
 	for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it) if( !it->GetMarker(mrk) )
 	{
-		double p[3],pc0[3],pc1[3];
+		Storage::real p[3],pc0[3],pc1[3];
 		Storage::real_array c0 = it->getBeg()->Coords();
 		Storage::real_array c1 = it->getEnd()->Coords();
-		double r0 = LevelFunction(c0.data());
-		double r1 = LevelFunction(c1.data());
+		Storage::real r0 = LevelFunction(c0.data());
+		Storage::real r1 = LevelFunction(c1.data());
 		int m0 = material[it->getBeg()];
 		int m1 = material[it->getEnd()];
 		//std::cout << "m0 " << m0 << " m1 " << m1;
@@ -197,7 +197,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 			}
 			else
 			{
-				double rp = Search(r0,r1,pc0,pc1,p);
+				Storage::real rp = Search(r0,r1,pc0,pc1,p);
 				alg = 2;
 				if( fabs(rp) > epsf ) //cannot find intersection
 				{
@@ -214,7 +214,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 			//pstd::cout << " p " << p[0] << " " << p[1] << " " << p[2];
 			//distance to the corners
 			
-			double l0 = 0, l1 = 0, l;
+			Storage::real l0 = 0, l1 = 0, l;
 			for(int r = 0; r < 3; ++r)
 			{
 				l0 += (p[r]-c0[r])*(p[r]-c0[r]);
@@ -326,9 +326,9 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				//std::cout << nodes.size();// << std::endl;
 
 				
-				double c0[3],c1[3],pc0[3],pc1[3],p[3];
+				Storage::real c0[3],c1[3],pc0[3],pc1[3],p[3];
 				it->Centroid(c0);
-				double r0 = LevelFunction(c0);
+				Storage::real r0 = LevelFunction(c0);
 				int m0,m1;
 				if( fabs(r0) < epsf ) m0 = 2;
 				else if( r0 < -epsf ) m0 = 0;
@@ -343,7 +343,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				for(int q = 0; q < (int)nodes.size(); ++q) if( !nodes[q].GetMarker(slice) )
 				{
 					nodes[q].Centroid(c1);
-					double r1 = LevelFunction(c1);
+					Storage::real r1 = LevelFunction(c1);
 					m1 = material[nodes[q]];
 					bool cut = !(m0 == 2 || m1 == 2);
 					//std::cout << " n" << q << " m " << m1 << " r1 " << r1;
@@ -356,7 +356,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 							SearchZero(r0,r1,pc0,pc1,p);
 						else
 						{						
-							double rp = Search(r0,r1,pc0,pc1,p);
+							Storage::real rp = Search(r0,r1,pc0,pc1,p);
 							if( fabs(rp) > epsf )
 							{
 								//std::cout << "inaccurate search " << rp;
@@ -369,7 +369,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 							}
 						}
 						//distance to the center node
-						double l0 = 0, l1 = 0, l;
+						Storage::real l0 = 0, l1 = 0, l;
 						for(int r = 0; r < 3; ++r)
 						{
 							l0 += (p[r]-c0[r])*(p[r]-c0[r]);
@@ -719,9 +719,9 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				for(Storage::integer k = 0; k < (Storage::integer)cnodes.size(); ++k) indx[cnodes[k]] = k;
 				for(Storage::integer k = 0; k < (Storage::integer)cedges.size(); ++k) indx[cedges[k]] = k;
 				
-				double c0[3],c1[3],pc0[3],pc1[3],p[3];
+				Storage::real c0[3],c1[3],pc0[3],pc1[3],p[3];
 				it->Centroid(c0);
-				double r0 = LevelFunction(c0);
+				Storage::real r0 = LevelFunction(c0);
 
 				int m0,m1;
 				if( fabs(r0) < epsf ) m0 = 2;
@@ -743,7 +743,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 					if( !cnodes[q].GetMarker(slice) )
 					{
 						cnodes[q].Centroid(c1);
-						double r1 = LevelFunction(c1);
+						Storage::real r1 = LevelFunction(c1);
 						m1 = material[cnodes[q]];
 						bool cut = !(m0 == 2 || m1 == 2);
 						//std::cout << "NODE:" << cnodes[q].LocalID() << " m " << m1 << " r " << r1  << " " << (cnodes[q].GetMarker(slice)?"":"not ") << "sliced" << std::endl;
@@ -756,7 +756,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 								SearchZero(r0,r1,pc0,pc1,p);
 							else
 							{						
-								double rp = Search(r0,r1,pc0,pc1,p);
+								Storage::real rp = Search(r0,r1,pc0,pc1,p);
 								if( fabs(rp) > epsf )
 								{
 									//std::cout << "inaccurate search " << rp;
@@ -769,7 +769,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 								}
 							}
 							//distance to the center node
-							double l0 = 0, l1 = 0, l;
+							Storage::real l0 = 0, l1 = 0, l;
 							for(int r = 0; r < 3; ++r)
 							{
 								l0 += (p[r]-c0[r])*(p[r]-c0[r]);

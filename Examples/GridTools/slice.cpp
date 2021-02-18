@@ -4,8 +4,8 @@ using namespace INMOST;
 
 int main(int argc, char ** argv)
 {
-	double nx = 2.0/7.0, ny = 6.0/7.0, nz = 3.0/7.0;
-	double px = 0.5, py = 0.5, pz = 0.5;
+	Storage::real nx = 2.0/7.0, ny = 6.0/7.0, nz = 3.0/7.0;
+	Storage::real px = 0.5, py = 0.5, pz = 0.5;
 
 	if( argc < 2 )
 	{
@@ -23,7 +23,7 @@ int main(int argc, char ** argv)
 	if( argc > 7 ) py = atof(argv[7]);
 	if( argc > 8 ) pz = atof(argv[8]);
 
-	double d = nx*px+ny*py+nz*pz;
+	Storage::real d = nx*px+ny*py+nz*pz;
 
 	Mesh m;
 	m.Load(argv[1]);
@@ -38,11 +38,11 @@ int main(int argc, char ** argv)
 	int nslice = 0, nmark = 0;
 	for(Mesh::iteratorEdge it = m.BeginEdge(); it != m.EndEdge(); ++it)
 	{
-		double p[3];
+		Storage::real p[3];
 		Storage::real_array c0 = it->getBeg()->Coords();
 		Storage::real_array c1 = it->getEnd()->Coords();
-		double r0 = c0[0]*nx+c0[1]*ny+c0[2]*nz - d;
-		double r1 = c1[0]*nx+c1[1]*ny+c1[2]*nz - d;
+		Storage::real r0 = c0[0]*nx+c0[1]*ny+c0[2]*nz - d;
+		Storage::real r1 = c1[0]*nx+c1[1]*ny+c1[2]*nz - d;
 		//std::cout << "r0 " << r0 << " r1 " << r1 << std::endl;
 		if( r0*r1 < -1.0e-12 )
 		{
@@ -155,9 +155,9 @@ int main(int argc, char ** argv)
 
 	for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 	{
-		double cnt[3];
+		Storage::real cnt[3];
 		it->Centroid(cnt);
-		double v = cnt[0]*nx+cnt[1]*ny+cnt[2]*nz-d;
+		Storage::real v = cnt[0]*nx+cnt[1]*ny+cnt[2]*nz-d;
 		if( v < 0.0 )
 			it->Integer(material) = 0;
 		else

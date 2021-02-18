@@ -8,7 +8,7 @@ class SliceTest : public Slice
 {
 	int testn;
 	
-	double func(double x, double y, double z, int n) const
+	Storage::real func(Storage::real x, Storage::real y, Storage::real z, int n) const
 	{
 				
 		if( n == 0 )
@@ -73,7 +73,7 @@ public:
 	SliceTest(int testn) :Slice(), testn(testn) {}
 	SliceTest(const SliceTest &b) :Slice(b), testn(b.testn) {}
 	SliceTest & operator =(SliceTest const & b) { Slice::operator =(b); testn = b.testn; return *this;}
-	double LevelFunction(double p[3]) const {return func(p[0],p[1],p[2],testn);}
+	Storage::real LevelFunction(Storage::real p[3]) const {return func(p[0],p[1],p[2],testn);}
 };
 
 

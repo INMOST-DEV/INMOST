@@ -43,7 +43,7 @@ static void SVD2Eigen(const Matrix<T> & U, Matrix<T> & S, Matrix<T> & V)
 {
 	for (unsigned i = 0; i < V.Cols(); ++i)
 	{
-		double dot = 0.0;
+		Storage::real dot = 0.0;
 		for (unsigned j = 0; j < V.Rows(); ++j)
 			dot += get_value(U(j, i))*get_value(V(j, i));
 		if (dot < 0.0)
@@ -74,8 +74,8 @@ class BlockRow
 public:
 	BlockRow(unsigned h, unsigned w) : height(h), width(w) {}
 	rMatrix & operator [] (unsigned col) { return GetAdd(col); }
-	double & operator () (unsigned i, unsigned j) { return GetAdd(j)(i%height,j%width);}
-	double operator () (unsigned i, unsigned j) const
+	Storage::real & operator () (unsigned i, unsigned j) { return GetAdd(j)(i%height,j%width);}
+	Storage::real operator () (unsigned i, unsigned j) const
 	{
 		std::map< unsigned, rMatrix >::const_iterator s = entries.find(j/width);
 		if( s != entries.end() )
@@ -247,11 +247,11 @@ void KTensor(const real_array & Cv, rMatrix & K)
 void GetBC(const real_array & bc, const rMatrix & n, rMatrix & Ra, rMatrix & Rb, rMatrix & r)
 {
 	const rMatrix I = rMatrix::Unit(3);
-	double alpha_perp, alpha_parallel, beta_perp, beta_parallel;
+	Storage::real alpha_perp, alpha_parallel, beta_perp, beta_parallel;
 
 	if( bc.size() == 6 )
 	{
-		double alpha, beta, proj;
+		Storage::real alpha, beta, proj;
 		alpha = bc[0];
 		beta = bc[1];
 		proj = bc[2];
@@ -302,7 +302,7 @@ void PrintSV(const rMatrix & A)
 
 void PrintRS(const rMatrix & A)
 {
-	double sum;
+	Storage::real sum;
 	std::cout << "row sum:";
 	for(unsigned i = 0; i < A.Rows(); ++i)
 	{
@@ -403,7 +403,7 @@ int main(int argc,char ** argv)
 		std::cout << "Edges " << m->TotalNumberOf(EDGE) << std::endl;
 		std::cout << "Nodes " << m->TotalNumberOf(NODE) << std::endl;
 		
-		const double vB[] =
+		const Storage::real vB[] =
 		{
 			1,0,0,0,0,0,
 			0,0,0,0,0,1,
@@ -415,7 +415,7 @@ int main(int argc,char ** argv)
 			0,0,0,1,0,0,
 			0,0,1,0,0,0
 		};
-		const double viBtB[] =
+		const Storage::real viBtB[] =
 		{
 			1,0,0,0.0,0.0,0.0,
 			0,1,0,0.0,0.0,0.0,
@@ -442,7 +442,7 @@ int main(int argc,char ** argv)
 		// 0 -1  0  0  0  0  0  0  0
 		// 0  0  0  0  0  0  0  0  0
 		//
-		const double vCurl[] =
+		const Storage::real vCurl[] =
 		{
 			0,  0,  0,  0,  0,  0,  0,  0,  0,
 			0,  0,  0,  0,  0,  0,  0,  1,  0,
@@ -512,9 +512,9 @@ int main(int argc,char ** argv)
 			{
 				rMatrix N, R, L, M(9,9), T, K(9,9), iK(9,9), C(6,6), Q, W1, W2, W3, W3s, U,S,V, w, u, v;
 				rMatrix x(3,1), xf(3,1), n(3,1);
-				double area; //area of the face
+				Storage::real area; //area of the face
 				//double volume; //volume of the cell
-				double dist; //distance from cell center to face
+				Storage::real dist; //distance from cell center to face
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -570,8 +570,8 @@ int main(int argc,char ** argv)
 					
 					if( true )
 					{
-						double alpha = 0;
-						double beta = alpha;
+						Storage::real alpha = 0;
+						Storage::real beta = alpha;
 						
 						//M = B*iBtB*B.Transpose();
 						//R = R*(I9 + M)*0.5;
@@ -856,7 +856,7 @@ int main(int argc,char ** argv)
             }
 
             std::cout << "Matrix was annotated" << std::endl;
-			double condest = 0;
+			Storage::real condest = 0;
             do
 			{
                 R.Clear(); //clean up the residual
@@ -938,7 +938,7 @@ int main(int argc,char ** argv)
 								ff << " boundary";
 							ff << std::endl;
 							const int bs = 3;
-							std::vector<double> VR(3);
+							std::vector<Storage::real> VR(3);
 							BlockRow BR(bs,bs);
 							
 							for(int q = 0; q < bs; ++q)

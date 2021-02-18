@@ -11,6 +11,16 @@
 #include "rotate.h"
 #include <stdarg.h>
 
+#if defined(USE_FP64)
+#define glVertex3v glVertex3dv
+#define glVertex2v glVertex2dv
+#define glRasterPos3v glRasterPos3dv
+#else
+#define glVertex3v glVertex3fv
+#define glVertex2v glVertex2fv
+#define glRasterPos3v glRasterPos3fv
+#endif
+
 
 using namespace INMOST;
 Mesh * mesh;
@@ -468,7 +478,8 @@ public:
 	void set_color(double r, double g, double b, double a) {c[0] = r; c[1] = g; c[2] = b; c[3] = a;}
 	void add_vert(double x, double y, double z) {unsigned s = verts.size(); verts.resize(s+3); verts[s] = x; verts[s+1] = y; verts[s+2] = z;}
 	void add_vert(double v[3]) {verts.insert(verts.end(),v,v+3);}
-	void set_center(double cnt[3], double cam[3])
+	void add_vert(float v[3]) {verts.insert(verts.end(),v,v+3);}
+	void set_center(Storage::real cnt[3], double cam[3])
 	{
 		dist = sqrt((cnt[0]-cam[0])*(cnt[0]-cam[0])+(cnt[1]-cam[1])*(cnt[1]-cam[1])+(cnt[2]-cam[2])*(cnt[2]-cam[2]));
 	}
@@ -478,7 +489,7 @@ public:
 
 face2gl DrawFace(Element & f, int mmat, double campos[3])
 {
-	double cnt[3];
+	Storage::real cnt[3];
 	face2gl ret;
 	f->Centroid(cnt);
 	ret.set_center(cnt,campos);
@@ -512,9 +523,9 @@ face2gl DrawFace(Element & f, int mmat, double campos[3])
 		for( ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); kt++)
 		{
 			if( f->GetMeshLink()->GetDimensions() == 2 )
-				glVertex2dv(&(kt->Coords()[0]));
+				glVertex2v(&(kt->Coords()[0]));
 			else 
-				glVertex3dv(&(kt->Coords()[0]));
+				glVertex3v(&(kt->Coords()[0]));
 		}
 		glEnd();
 		//glLineWidth(1.0);
@@ -640,8 +651,8 @@ void draw()
 			for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt) if(!jt->Boundary())
 			{
 				Storage::real_array cc = jt->RealArray(avg_coord);
-				glVertex3dv(cnt);
-				glVertex3dv(&cc[0]);
+				glVertex3v(cnt);
+				glVertex3v(&cc[0]);
 			}
 		}
 		glEnd();
@@ -652,7 +663,7 @@ void draw()
 		for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it) if(!it->Boundary() )
 		{
 			Storage::real_array cc = it->RealArray(avg_coord);
-			glVertex3dv(&cc[0]);
+			glVertex3v(&cc[0]);
 		}
 		glEnd();
 		glPointSize(1.0);
@@ -693,15 +704,15 @@ void draw()
 				v[1] = f1[1] + cnt[1];
 				v[2] = f1[2] + cnt[2];
 
-				glVertex3dv(cnt);
-				glVertex3dv(v);
+				glVertex3v(cnt);
+				glVertex3v(v);
 
 				v[0] = -f1[0] + cnt[0];
 				v[1] = -f1[1] + cnt[1];
 				v[2] = -f1[2] + cnt[2];
 
-				glVertex3dv(cnt);
-				glVertex3dv(v);
+				glVertex3v(cnt);
+				glVertex3v(v);
 
 				f2[0] = K2[0]*nrm[0] + K2[1]*nrm[1] + K2[2]*nrm[2];
 				f2[1] = K2[3]*nrm[0] + K2[4]*nrm[1] + K2[5]*nrm[2];
@@ -719,15 +730,15 @@ void draw()
 				v[1] = f2[1] + cnt[1];
 				v[2] = f2[2] + cnt[2];
 
-				glVertex3dv(cnt);
-				glVertex3dv(v);
+				glVertex3v(cnt);
+				glVertex3v(v);
 
 				v[0] = -f2[0] + cnt[0];
 				v[1] = -f2[1] + cnt[1];
 				v[2] = -f2[2] + cnt[2];
 
-				glVertex3dv(cnt);
-				glVertex3dv(v);
+				glVertex3v(cnt);
+				glVertex3v(v);
 			}
 		}
 
@@ -762,12 +773,12 @@ void draw()
 						if( mats_tag.isValid() ) fill_mat_str(edges[k].LocalID(), mats,sstr);
 						else fill_str(edges[k].LocalID(),sstr);
 						glColor3f(0,0,1);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						glColor3f(0,0,0);
 						glBegin(GL_LINES);
-						glVertex3dv(&nodes[0].Coords()[0]);
-						glVertex3dv(&nodes[1].Coords()[0]);
+						glVertex3v(&nodes[0].Coords()[0]);
+						glVertex3v(&nodes[1].Coords()[0]);
 						glEnd();
 					}
 
@@ -779,7 +790,7 @@ void draw()
 
 						if( mats_tag.isValid() ) fill_mat_str(nodes[0].LocalID(), mats,sstr);
 						else fill_str(nodes[0].LocalID(),sstr);
-						glRasterPos3dv(&nodes[0].Coords()[0]);
+						glRasterPos3v(&nodes[0].Coords()[0]);
 						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 
@@ -789,7 +800,7 @@ void draw()
 					{
 						if( mats_tag.isValid() ) fill_mat_str(nodes[1].LocalID(),mats,sstr);
 						else fill_str(nodes[1].LocalID(),sstr);
-						glRasterPos3dv(&nodes[1].Coords()[0]);
+						glRasterPos3v(&nodes[1].Coords()[0]);
 						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 				}
@@ -807,7 +818,7 @@ void draw()
 						faces[k].Centroid(cnt);
 						if( mats_tag.isValid() ) fill_mat_str(faces[k].LocalID(),mats,sstr);
 						else fill_str(faces[k].LocalID(), sstr);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						if( text == 3 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 						//~ glColor3f(0,0,0);
@@ -815,7 +826,7 @@ void draw()
 						//~ faces[k].OrientedNormal(it->getAsCell(),nrm);
 						//~ glLineWidth(2.0);
 						//~ glBegin(GL_LINES);
-						//~ glVertex3dv(cnt);
+						//~ glVertex3v(cnt);
 						//~ glVertex3d(cnt[0]+nrm[0]*20,cnt[1]+nrm[1]*20,cnt[2]+nrm[2]*20);
 						//~ glEnd();
 						//~ glLineWidth(1.0);
@@ -832,13 +843,13 @@ void draw()
 					if(parent_tag.isValid()) sstr << ", " << it->Integer(parent_tag);
 					if(cell_material_tag.isValid()) sstr << ", " << it->Integer(cell_material_tag);
 					if( problem_tag.isValid() ) sstr << ", " << it->Integer(problem_tag);
-					glRasterPos3dv(cnt);
+					glRasterPos3v(cnt);
 					if( text == 4 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 					glPointSize(3);
 					glColor3f(1,0,0);
 					glBegin(GL_POINTS);
-					glVertex3dv(cnt);
+					glVertex3v(cnt);
 					glEnd();
 					glPointSize(1);
 				}
@@ -873,13 +884,13 @@ void draw()
 						if( mats_tag.isValid() ) fill_mat_str(edges[k].LocalID(), mats,sstr);
 						else fill_str(edges[k].LocalID(),sstr);
 						glColor3f(0,0,1);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 						glColor3f(0,0,0);
 						glBegin(GL_LINES);
-						glVertex3dv(&nodes[0].Coords()[0]);
-						glVertex3dv(&nodes[1].Coords()[0]);
+						glVertex3v(&nodes[0].Coords()[0]);
+						glVertex3v(&nodes[1].Coords()[0]);
 						glEnd();
 
 						face2gl f;
@@ -897,7 +908,7 @@ void draw()
 					{
 						if( mats_tag.isValid() ) fill_mat_str(nodes[0].LocalID(), mats,sstr);
 						else fill_str(nodes[0].LocalID(),sstr);
-						glRasterPos3dv(&nodes[0].Coords()[0]);
+						glRasterPos3v(&nodes[0].Coords()[0]);
 						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 					if( mats_tag.isValid() ) mats = nodes[1].IntegerArray(mats_tag);
@@ -906,7 +917,7 @@ void draw()
 
 						if( mats_tag.isValid() ) fill_mat_str(nodes[1].LocalID(),mats,sstr);
 						else fill_str(nodes[1].LocalID(),sstr);
-						glRasterPos3dv(&nodes[1].Coords()[0]);
+						glRasterPos3v(&nodes[1].Coords()[0]);
 						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 
@@ -917,7 +928,7 @@ void draw()
 					glColor3f(0,1,0);
 					if( mats_tag.isValid() ) fill_mat_str(it->LocalID(),it->IntegerArray(mats_tag),sstr);
 					else fill_str(it->LocalID(),sstr);
-					glRasterPos3dv(cntf);
+					glRasterPos3v(cntf);
 					if( text == 3 || text == 5 ) if(text) printtext(sstr.str().c_str());
 				}
 #if 0
@@ -928,7 +939,7 @@ void draw()
 					glColor3f(0,0,0);
 					jt->Centroid(cnt);
 					fill_str(jt->LocalID(),sstr.str().c_str());
-					glRasterPos3dv(cnt);
+					glRasterPos3v(cnt);
 					if( text == 4 || text == 5 ) if(text) printtext(sstr.str().c_str());
 				}
 
@@ -961,8 +972,8 @@ void draw()
 
 					glColor3f(0,0,0);
 					glBegin(GL_LINES);
-					glVertex3dv(cnt0);
-					glVertex3dv(cnt);
+					glVertex3v(cnt0);
+					glVertex3v(cnt);
 					glEnd();
 
 					ElementArray<Face> faces = jt->getFaces();
@@ -972,11 +983,11 @@ void draw()
 						qt->Centroid(cnt);
 						glColor3f(0,0,1);
 						glBegin(GL_LINES);
-						glVertex3dv(cnt0);
-						glVertex3dv(cnt);
+						glVertex3v(cnt0);
+						glVertex3v(cnt);
 						glEnd();
 						fill_str(qt->LocalID(),sstr);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						printtext(sstr.str().c_str());
 
 						if( !qt->Boundary() )
@@ -989,14 +1000,14 @@ void draw()
 							FindHarmonicPoint(&*qt,&*jt,xQ,tensor,cnt0,cnt2,cnt,stub);
 							glColor3f(1,0,0);
 							glBegin(GL_LINES);
-							glVertex3dv(cnt0);
-							glVertex3dv(cnt);
-							glVertex3dv(cnt);
-							glVertex3dv(cnt2);
+							glVertex3v(cnt0);
+							glVertex3v(cnt);
+							glVertex3v(cnt);
+							glVertex3v(cnt2);
 							glEnd();
 
 							fill_str(xQ->LocalID());
-							glRasterPos3dv(cnt2);
+							glRasterPos3v(cnt2);
 							printtext(sstr.str().c_str());
 						}
 						else
@@ -1007,12 +1018,12 @@ void draw()
 
 							glColor3f(0,1,0);
 							glBegin(GL_LINES);
-							glVertex3dv(cnt0);
-							glVertex3dv(cnt);
+							glVertex3v(cnt0);
+							glVertex3v(cnt);
 							glEnd();
 
 							fill_str(qt->LocalID(),sstr);
-							glRasterPos3dv(cnt);
+							glRasterPos3v(cnt);
 							printtext(sstr.str().c_str());
 						}
 					}
@@ -1062,12 +1073,12 @@ void draw()
 					{
 						fill_mat_str(edges[k].LocalID(), mats,sstr);
 						glColor3f(0,0,1);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						glColor3f(0,0,0);
 						glBegin(GL_LINES);
-						glVertex3dv(&nodes[0].Coords()[0]);
-						glVertex3dv(&nodes[1].Coords()[0]);
+						glVertex3v(&nodes[0].Coords()[0]);
+						glVertex3v(&nodes[1].Coords()[0]);
 						glEnd();
 					}
 
@@ -1078,7 +1089,7 @@ void draw()
 					{
 
 						fill_mat_str(nodes[0].LocalID(), mats,sstr);
-						glRasterPos3dv(&nodes[0].Coords()[0]);
+						glRasterPos3v(&nodes[0].Coords()[0]);
 						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 
@@ -1087,7 +1098,7 @@ void draw()
 					if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 					{
 						fill_mat_str(nodes[1].LocalID(),mats,sstr);
-						glRasterPos3dv(&nodes[1].Coords()[0]);
+						glRasterPos3v(&nodes[1].Coords()[0]);
 						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 				}
@@ -1104,7 +1115,7 @@ void draw()
 						else glColor3f(0,1,0);
 						faces[k].Centroid(cnt);
 						fill_mat_str(faces[k].LocalID(),mats,sstr);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						if( text == 3 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 
@@ -1113,7 +1124,7 @@ void draw()
 						//~ faces[k].OrientedNormal(it->getAsCell(),nrm);
 						//~ glLineWidth(3.0);
 						//~ glBegin(GL_LINES);
-						//~ glVertex3dv(cnt);
+						//~ glVertex3v(cnt);
 						//~ glVertex3d(cnt[0]+nrm[0]*20,cnt[1]+nrm[1]*20,cnt[2]+nrm[2]*20);
 						//~ glEnd();
 						//~ glLineWidth(1.0);
@@ -1131,13 +1142,13 @@ void draw()
 					sstr << ", " << it->Integer(parent_tag), << ", " << it->Integer(cell_material_tag)+1;
 					if( problem_tag.isValid() ) //sprintf(str,"%s, %d", str, it->Integer(problem_tag));
 						sstr << ", " << it->Integer(problem_tag);
-					glRasterPos3dv(cnt);
+					glRasterPos3v(cnt);
 					if( text == 4 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 					glPointSize(3);
 					glColor3f(1,0,0);
 					glBegin(GL_POINTS);
-					glVertex3dv(cnt);
+					glVertex3v(cnt);
 					glEnd();
 					glPointSize(1);
 				}
@@ -1170,13 +1181,13 @@ void draw()
 						it->Centroid(cnt);
 						fill_mat_str(it->LocalID(), mats,sstr);
 						glColor3f(1,0,1);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 
 						glBegin(GL_LINES);
-						glVertex3dv(&nodes[0].Coords()[0]);
-						glVertex3dv(&nodes[1].Coords()[0]);
+						glVertex3v(&nodes[0].Coords()[0]);
+						glVertex3v(&nodes[1].Coords()[0]);
 						glEnd();
 
 
@@ -1190,12 +1201,12 @@ void draw()
 					//~ glColor3f(1,0,0);
 					//~ mats = nodes[0].IntegerArray(mats_tag);
 					//~ fill_mat_str(nodes[0].LocalID(), mats,str);
-					//~ glRasterPos3dv(&nodes[0].Coords()[0]);
+					//~ glRasterPos3v(&nodes[0].Coords()[0]);
 					//~ printtext(str);
 					//~
 					//~ mats = nodes[1].IntegerArray(mats_tag);
 					//~ fill_mat_str(nodes[1].LocalID(),mats,str);
-					//~ glRasterPos3dv(&nodes[1].Coords()[0]);
+					//~ glRasterPos3v(&nodes[1].Coords()[0]);
 					//~ printtext(str);
 
 				}
@@ -1226,13 +1237,13 @@ void draw()
 							edges[k].Centroid(cnt);
 							fill_mat_str(edges[k].LocalID(), mats,sstr);
 							glColor3f(0,0,1);
-							glRasterPos3dv(cnt);
+							glRasterPos3v(cnt);
 							if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 							glColor3f(0,0,0);
 							glBegin(GL_LINES);
-							glVertex3dv(&nodes[0].Coords()[0]);
-							glVertex3dv(&nodes[1].Coords()[0]);
+							glVertex3v(&nodes[0].Coords()[0]);
+							glVertex3v(&nodes[1].Coords()[0]);
 							glEnd();
 						}
 
@@ -1241,7 +1252,7 @@ void draw()
 						if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 						{
 							fill_mat_str(nodes[0].LocalID(), mats,sstr);
-							glRasterPos3dv(&nodes[0].Coords()[0]);
+							glRasterPos3v(&nodes[0].Coords()[0]);
 							if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						}
 
@@ -1249,7 +1260,7 @@ void draw()
 						{
 							mats = nodes[1].IntegerArray(mats_tag);
 							fill_mat_str(nodes[1].LocalID(),mats,sstr);
-							glRasterPos3dv(&nodes[1].Coords()[0]);
+							glRasterPos3v(&nodes[1].Coords()[0]);
 							if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						}
 					}
@@ -1262,7 +1273,7 @@ void draw()
 					{
 						it->Centroid(cnt);
 						glColor3f(0,0.5,0.5);
-						glRasterPos3dv(cnt);
+						glRasterPos3v(cnt);
 						fill_mat_str(it->LocalID(), mats,sstr);
 						if(text) printtext(sstr.str().c_str());
 					}
@@ -1322,8 +1333,8 @@ void draw()
 
 				{
 					glBegin(GL_LINES);
-					glVertex3dv(&nodes[0].Coords()[0]);
-					glVertex3dv(&nodes[1].Coords()[0]);
+					glVertex3v(&nodes[0].Coords()[0]);
+					glVertex3v(&nodes[1].Coords()[0]);
 					glEnd();
 
 				}
@@ -1343,8 +1354,8 @@ void draw()
 					ElementArray<Node> nodes = edges[k].getNodes();
 					{
 						glBegin(GL_LINES);
-						glVertex3dv(&nodes[0].Coords()[0]);
-						glVertex3dv(&nodes[1].Coords()[0]);
+						glVertex3v(&nodes[0].Coords()[0]);
+						glVertex3v(&nodes[1].Coords()[0]);
 						glEnd();
 					}
 				}

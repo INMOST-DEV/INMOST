@@ -150,7 +150,8 @@ void SetLayers::DeformLayers(double coef)
 	TagReal    coef_tag  = mesh.CreateTag("LAYER_COEF",DATA_REAL,CELL,NONE,1);
 	for(Mesh::iteratorCell c = mesh.BeginCell(); c != mesh.EndCell(); ++c)
 	{
-		double cnt[3], cc[3] = {0,0,0};
+		Storage::real cnt[3];
+		double cc[3] = {0,0,0};
 		c->Centroid(cnt);
 		for(int d = 0; d < 3; ++d)
 			cc[d] = (cnt[d]-cmin[d])/(cmax[d]-cmin[d]);

@@ -27,16 +27,16 @@ namespace INMOST
 		void radix_sort(int dim, struct entry * temp);
 		void kdtree_build(int dim, int & done, int total, struct entry * temp);
 		kdtree();
-		inline int plane_bbox(double p[3], double n[3]) const;
-		bool sub_intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mrk, double p[3], double n[3]);
-		void sub_intersect_plane_faces(Tag clip_state, double p[3], double n[3]);
+		inline int plane_bbox(Storage::real p[3], Storage::real n[3]) const;
+		bool sub_intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mrk, Storage::real p[3], Storage::real n[3]);
+		void sub_intersect_plane_faces(Tag clip_state, Storage::real p[3], Storage::real n[3]);
 		void unmark_old_edges(Tag clip_state);
 		void clear_children();
 	public:
 		kdtree(Mesh * m);
 		kdtree(Mesh * m, HandleType * eset, INMOST_DATA_ENUM_TYPE size);
-		void intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mark_cells, double p[3], double n[3]);
-		void intersect_plane_face(Tag clip_state, double p[3], double n[3]);
+		void intersect_plane_edge(Tag clip_point, Tag clip_state, ElementArray<Cell> & cells, MarkerType mark_cells, Storage::real p[3], Storage::real n[3]);
+		void intersect_plane_face(Tag clip_state, Storage::real p[3], Storage::real n[3]);
 		~kdtree();
 	};
 
@@ -45,7 +45,7 @@ namespace INMOST
 	public:
 		struct edge_point
 		{
-			double val;
+			Storage::real val;
 			Storage::real xyz[3];
 			Storage::integer edge;
 			edge_point();
@@ -64,7 +64,7 @@ namespace INMOST
 	public:
 		~clipper();
 		clipper(Mesh * m);
-		double compute_value(Edge e, Storage::real * pnt);
+		Storage::real compute_value(Edge e, Storage::real * pnt);
 		void clip_plane(Storage::real p[3], Storage::real n[3]);
 		void gen_clip(std::vector<face2gl> & out, Storage::real n[3],bool elevation);
 		void draw_clip(INMOST_DATA_ENUM_TYPE pace, Storage::real n[3], bool elevation);
@@ -82,7 +82,7 @@ namespace INMOST
 	public:
 		~bnd_clipper();
 		bnd_clipper(Mesh * m, HandleType * _faces, INMOST_DATA_ENUM_TYPE size);
-		double compute_value(Node n1, Node n2, Storage::real * c1, Storage::real * c2, Storage::real * pnt);
+		Storage::real compute_value(Node n1, Node n2, Storage::real * c1, Storage::real * c2, Storage::real * pnt);
 		void clip_plane(Storage::real p[3], Storage::real n[3]);
 		void gen_clip(std::vector<face2gl> & out, Storage::real p[3], Storage::real n[3], bool elevation);
 		void draw_clip(INMOST_DATA_ENUM_TYPE pace, Storage::real p[3], Storage::real n[3]);

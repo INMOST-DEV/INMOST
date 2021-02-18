@@ -8,15 +8,20 @@ int main(int argc,char ** argv)
 	int test = 0;
 	if (argc > 1)  test = atoi(argv[1]);
 
-	const double pi = 3.1415926535897932384626433832795;
-	double x = 0.51;
-	double y = 0.25;
-	double z = 0.15;
-	double t = 0.1;
-	double dx, dy, dz, dt, dxdx, dydy, dzdz, dtdt, dxdy, dxdz, dydz, dxdt, dydt, dzdt;
+	const INMOST_DATA_REAL_TYPE pi = 3.1415926535897932384626433832795;
+	INMOST_DATA_REAL_TYPE x = 0.51;
+	INMOST_DATA_REAL_TYPE y = 0.25;
+	INMOST_DATA_REAL_TYPE z = 0.15;
+	INMOST_DATA_REAL_TYPE t = 0.1;
+	INMOST_DATA_REAL_TYPE dx, dy, dz, dt, dxdx, dydy, dzdz, dtdt, dxdy, dxdz, dydz, dxdt, dydt, dzdt;
 	unknown vx(x,0), vy(y,1), vz(z,2), vt(t,3);
 	hessian_variable f;
 	variable f2;
+#if defined(USE_FP64)
+	INMOST_DATA_REAL_TYPE tol = 1.0e-9;
+#else
+	INMOST_DATA_REAL_TYPE tol = 1.0e-6;
+#endif	
 
 
 	if( test == 0 )
@@ -232,20 +237,20 @@ int main(int argc,char ** argv)
 	dydt *= 2;
 	dzdt *= 2;
 	
-	double vdx = f.GetRow()[0];
-	double vdy = f.GetRow()[1];
-	double vdz = f.GetRow()[2];
-	double vdt = f.GetRow()[3];
-	double vdxdx = f.GetHessianRow()[Sparse::HessianRow::make_index(0,0)];
-	double vdydy = f.GetHessianRow()[Sparse::HessianRow::make_index(1,1)];
-	double vdzdz = f.GetHessianRow()[Sparse::HessianRow::make_index(2,2)];
-	double vdtdt = f.GetHessianRow()[Sparse::HessianRow::make_index(3,3)];
-	double vdxdy = f.GetHessianRow()[Sparse::HessianRow::make_index(0,1)];
-	double vdxdz = f.GetHessianRow()[Sparse::HessianRow::make_index(0,2)];
-	double vdydz = f.GetHessianRow()[Sparse::HessianRow::make_index(1,2)];
-	double vdxdt = f.GetHessianRow()[Sparse::HessianRow::make_index(0,3)];
-	double vdydt = f.GetHessianRow()[Sparse::HessianRow::make_index(1,3)];
-	double vdzdt = f.GetHessianRow()[Sparse::HessianRow::make_index(2,3)];
+	INMOST_DATA_REAL_TYPE vdx = f.GetRow()[0];
+	INMOST_DATA_REAL_TYPE vdy = f.GetRow()[1];
+	INMOST_DATA_REAL_TYPE vdz = f.GetRow()[2];
+	INMOST_DATA_REAL_TYPE vdt = f.GetRow()[3];
+	INMOST_DATA_REAL_TYPE vdxdx = f.GetHessianRow()[Sparse::HessianRow::make_index(0,0)];
+	INMOST_DATA_REAL_TYPE vdydy = f.GetHessianRow()[Sparse::HessianRow::make_index(1,1)];
+	INMOST_DATA_REAL_TYPE vdzdz = f.GetHessianRow()[Sparse::HessianRow::make_index(2,2)];
+	INMOST_DATA_REAL_TYPE vdtdt = f.GetHessianRow()[Sparse::HessianRow::make_index(3,3)];
+	INMOST_DATA_REAL_TYPE vdxdy = f.GetHessianRow()[Sparse::HessianRow::make_index(0,1)];
+	INMOST_DATA_REAL_TYPE vdxdz = f.GetHessianRow()[Sparse::HessianRow::make_index(0,2)];
+	INMOST_DATA_REAL_TYPE vdydz = f.GetHessianRow()[Sparse::HessianRow::make_index(1,2)];
+	INMOST_DATA_REAL_TYPE vdxdt = f.GetHessianRow()[Sparse::HessianRow::make_index(0,3)];
+	INMOST_DATA_REAL_TYPE vdydt = f.GetHessianRow()[Sparse::HessianRow::make_index(1,3)];
+	INMOST_DATA_REAL_TYPE vdzdt = f.GetHessianRow()[Sparse::HessianRow::make_index(2,3)];
 	
 
 	bool error = false;
@@ -265,20 +270,20 @@ int main(int argc,char ** argv)
 	std::cout << std::setw(10) << "dzdz " << std::setw(10) << dzdz << std::setw(10) << vdzdz << std::endl;
 	std::cout << std::setw(10) << "dzdt " << std::setw(10) << dzdt << std::setw(10) << vdzdt << std::endl;
 	std::cout << std::setw(10) << "dtdt " << std::setw(10) << dtdt << std::setw(10) << vdtdt << std::endl;
-	if( std::abs(dx-vdx) > 1.0e-9 ) error = true, std::cout << "Error in dx: " << std::abs(dx-vdx) << " original " << dx << " computed " << vdx << std::endl;
-	if( std::abs(dy-vdy) > 1.0e-9 ) error = true, std::cout << "Error in dy: " << std::abs(dy-vdy) << " original " << dy << " computed " << vdy << std::endl;
-	if( std::abs(dz-vdz) > 1.0e-9 ) error = true, std::cout << "Error in dz: " << std::abs(dz-vdz) << " original " << dz << " computed " << vdz << std::endl;
-	if (std::abs(dt - vdt) > 1.0e-9) error = true, std::cout << "Error in dt: " << std::abs(dt - vdt) << " original " << dt << " computed " << vdt << std::endl;
-	if( std::abs(dxdx-vdxdx) > 1.0e-9 ) error = true, std::cout << "Error in dxdx: " << std::abs(dxdx-vdxdx) << " original " << dxdx << " computed " << vdxdx << std::endl;
-	if( std::abs(dxdy-vdxdy) > 1.0e-9 ) error = true, std::cout << "Error in dxdy: " << std::abs(dxdy-vdxdy) << " original " << dxdy << " computed " << vdxdy << std::endl;
-	if( std::abs(dxdz-vdxdz) > 1.0e-9 ) error = true, std::cout << "Error in dxdz: " << std::abs(dxdz-vdxdz) << " original " << dxdz << " computed " << vdxdz << std::endl;
-	if (std::abs(dxdt - vdxdt) > 1.0e-9) error = true, std::cout << "Error in dxdt: " << std::abs(dxdt - vdxdt) << " original " << dxdt << " computed " << vdxdt << std::endl;
-	if( std::abs(dydy-vdydy) > 1.0e-9 ) error = true, std::cout << "Error in dydy: " << std::abs(dydy-vdydy) << " original " << dydy << " computed " << vdydy << std::endl;
-	if( std::abs(dydz-vdydz) > 1.0e-9 ) error = true, std::cout << "Error in dydz: " << std::abs(dydz-vdydz) << " original " << dydz << " computed " << vdydz << std::endl;
-	if (std::abs(dydt - vdydt) > 1.0e-9) error = true, std::cout << "Error in dydt: " << std::abs(dydt - vdydt) << " original " << dydt << " computed " << vdydt << std::endl;
-	if( std::abs(dzdz-vdzdz) > 1.0e-9 ) error = true, std::cout << "Error in dzdz: " << std::abs(dzdz-vdzdz) << " original " << dzdz << " computed " << vdzdz << std::endl;
-	if (std::abs(dzdt - vdzdt) > 1.0e-9) error = true, std::cout << "Error in dzdt: " << std::abs(dzdt - vdzdt) << " original " << dzdt << " computed " << vdzdt << std::endl;
-	if (std::abs(dtdt - vdtdt) > 1.0e-9) error = true, std::cout << "Error in dtdt: " << std::abs(dtdt - vdtdt) << " original " << dtdt << " computed " << vdtdt << std::endl;
+	if( std::abs(dx-vdx) > tol ) error = true, std::cout << "Error in dx: " << std::abs(dx-vdx) << " original " << dx << " computed " << vdx << std::endl;
+	if( std::abs(dy-vdy) > tol ) error = true, std::cout << "Error in dy: " << std::abs(dy-vdy) << " original " << dy << " computed " << vdy << std::endl;
+	if( std::abs(dz-vdz) > tol ) error = true, std::cout << "Error in dz: " << std::abs(dz-vdz) << " original " << dz << " computed " << vdz << std::endl;
+	if (std::abs(dt - vdt) > tol) error = true, std::cout << "Error in dt: " << std::abs(dt - vdt) << " original " << dt << " computed " << vdt << std::endl;
+	if( std::abs(dxdx-vdxdx) > tol ) error = true, std::cout << "Error in dxdx: " << std::abs(dxdx-vdxdx) << " original " << dxdx << " computed " << vdxdx << std::endl;
+	if( std::abs(dxdy-vdxdy) > tol ) error = true, std::cout << "Error in dxdy: " << std::abs(dxdy-vdxdy) << " original " << dxdy << " computed " << vdxdy << std::endl;
+	if( std::abs(dxdz-vdxdz) > tol ) error = true, std::cout << "Error in dxdz: " << std::abs(dxdz-vdxdz) << " original " << dxdz << " computed " << vdxdz << std::endl;
+	if (std::abs(dxdt - vdxdt) > tol) error = true, std::cout << "Error in dxdt: " << std::abs(dxdt - vdxdt) << " original " << dxdt << " computed " << vdxdt << std::endl;
+	if( std::abs(dydy-vdydy) > tol ) error = true, std::cout << "Error in dydy: " << std::abs(dydy-vdydy) << " original " << dydy << " computed " << vdydy << std::endl;
+	if( std::abs(dydz-vdydz) > tol ) error = true, std::cout << "Error in dydz: " << std::abs(dydz-vdydz) << " original " << dydz << " computed " << vdydz << std::endl;
+	if (std::abs(dydt - vdydt) > tol) error = true, std::cout << "Error in dydt: " << std::abs(dydt - vdydt) << " original " << dydt << " computed " << vdydt << std::endl;
+	if( std::abs(dzdz-vdzdz) > tol ) error = true, std::cout << "Error in dzdz: " << std::abs(dzdz-vdzdz) << " original " << dzdz << " computed " << vdzdz << std::endl;
+	if (std::abs(dzdt - vdzdt) > tol) error = true, std::cout << "Error in dzdt: " << std::abs(dzdt - vdzdt) << " original " << dzdt << " computed " << vdzdt << std::endl;
+	if (std::abs(dtdt - vdtdt) > tol) error = true, std::cout << "Error in dtdt: " << std::abs(dtdt - vdtdt) << " original " << dtdt << " computed " << vdtdt << std::endl;
 	//if( error ) return -1;
 	vdx = f2.GetRow()[0];
 	vdy = f2.GetRow()[1];
@@ -290,10 +295,10 @@ int main(int argc,char ** argv)
 	std::cout << std::setw(10) << "dy " << std::setw(10) << dy << std::setw(10) << vdy << std::endl;
 	std::cout << std::setw(10) << "dz " << std::setw(10) << dz << std::setw(10) << vdz << std::endl;
 	std::cout << std::setw(10) << "dt " << std::setw(10) << dt << std::setw(10) << vdt << std::endl;
-	if (std::abs(dx - vdx) > 1.0e-9) error = true, std::cout << "Error in dx: " << std::abs(dx - vdx) << " original " << dx << " computed " << vdx << std::endl;
-	if (std::abs(dy - vdy) > 1.0e-9) error = true, std::cout << "Error in dy: " << std::abs(dy - vdy) << " original " << dy << " computed " << vdy << std::endl;
-	if (std::abs(dz - vdz) > 1.0e-9) error = true, std::cout << "Error in dz: " << std::abs(dz - vdz) << " original " << dz << " computed " << vdz << std::endl;
-	if (std::abs(dt - vdt) > 1.0e-9) error = true, std::cout << "Error in dt: " << std::abs(dt - vdt) << " original " << dt << " computed " << vdt << std::endl;
+	if (std::abs(dx - vdx) > tol) error = true, std::cout << "Error in dx: " << std::abs(dx - vdx) << " original " << dx << " computed " << vdx << std::endl;
+	if (std::abs(dy - vdy) > tol) error = true, std::cout << "Error in dy: " << std::abs(dy - vdy) << " original " << dy << " computed " << vdy << std::endl;
+	if (std::abs(dz - vdz) > tol) error = true, std::cout << "Error in dz: " << std::abs(dz - vdz) << " original " << dz << " computed " << vdz << std::endl;
+	if (std::abs(dt - vdt) > tol) error = true, std::cout << "Error in dt: " << std::abs(dt - vdt) << " original " << dt << " computed " << vdt << std::endl;
 	if (error) return -1;
 
 	return 0;

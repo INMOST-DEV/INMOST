@@ -2,15 +2,15 @@
 
 
 
-double abs(const coord & p)
+INMOST_DATA_REAL_TYPE abs(const coord & p)
 {
 	return sqrt(p^p);
 }
 
 
-void get_matrix(const coord & a, const coord & b, double matrix[16])
+void get_matrix(const coord & a, const coord & b, INMOST_DATA_REAL_TYPE matrix[16])
 {
-	double d;
+	INMOST_DATA_REAL_TYPE d;
 	coord z = (b - a) / sqrt((b - a) ^ (b - a));
 	coord y;
 	coord x;

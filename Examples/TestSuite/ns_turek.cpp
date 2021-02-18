@@ -101,7 +101,7 @@ int main(int argc, char ** argv)
 		
 		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 		{
-			double  n[3], c[3];
+			Storage::real  n[3], c[3];
 			it->UnitNormal(n);
 			it->Centroid(c);
 			if( fabs(n[0]-1) < 1.0e-3 && c[0] > 2.5-eps) // outflow
@@ -125,8 +125,8 @@ int main(int argc, char ** argv)
 			std::cout << "project boundary nodes onto cylinder " << std::endl;
 			for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
 			{
-				double x = it->Coords()[0], y = it->Coords()[1], dx, dy;
-				double r = sqrt((x-0.5)*(x-0.5) + (y-0.2)*(y-0.2));
+				Storage::real x = it->Coords()[0], y = it->Coords()[1], dx, dy;
+				Storage::real r = sqrt((x-0.5)*(x-0.5) + (y-0.2)*(y-0.2));
 				if( r )
 				{
 					dx = (0.05/r-1.0)*(x-0.5);
@@ -146,12 +146,12 @@ int main(int argc, char ** argv)
 			int iter = 0;
 			while(iter < 5000)
 			{
-				double A = 0, err = 0, fA;
+				Storage::real A = 0, err = 0, fA;
 				for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->GetMarker(cylinder) )
 				{
-					double cnt[3], dx, dy;
+					Storage::real cnt[3], dx, dy;
 					it->Centroid(cnt);
-					double r = sqrt((cnt[0]-0.5)*(cnt[0]-0.5) + (cnt[1]-0.2)*(cnt[1]-0.2));
+					Storage::real r = sqrt((cnt[0]-0.5)*(cnt[0]-0.5) + (cnt[1]-0.2)*(cnt[1]-0.2));
 					if( r )
 					{
 						dx = (0.05/r-1.0)*(cnt[0]-0.5);
@@ -172,7 +172,7 @@ int main(int argc, char ** argv)
 				for(Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it) if( it->GetMarker(cylinder) )
 				{
 					ElementArray<Face> faces = it->getFaces(cylinder);
-					double dxy[2] = {0,0}, dxyA = 0;
+					Storage::real dxy[2] = {0,0}, dxyA = 0;
 					for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
 					{
 						fA = jt->Area();
@@ -195,7 +195,7 @@ int main(int argc, char ** argv)
 	
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 	{
-		double  n[3], c[3];
+		Storage::real  n[3], c[3];
 		it->UnitNormal(n);
 		it->Centroid(c);
 		bcphi[*it][0] = 1;

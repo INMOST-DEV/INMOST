@@ -23,6 +23,11 @@ __INLINE static void vec_cross_product(const Storage::real * vecin1, const Stora
 int main(int argc,char ** argv)
 {
 	int errors = 0;
+#if defined(USE_FP64)
+	const Storage::real tol = 1.0e-9;
+#else
+	const Storage::real tol = 1.0e-5;
+#endif
 	Mesh::Initialize(&argc,&argv);
 	{
 		Mesh m;
@@ -40,7 +45,7 @@ int main(int argc,char ** argv)
 		t[ORIENTATION] = FACE;
 		t[NORMAL] = FACE;
 		m.RemoveGeometricData(t);
-		//m.PrepareGeometricData(t);
+		m.PrepareGeometricData(t);
 		for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it)
 			it->FixNormalOrientation();
 		int np = 0;
@@ -68,17 +73,20 @@ int main(int argc,char ** argv)
 			y /= it->Volume();
 			z /= it->Volume();
 
-			if( (x-e1).FrobeniusNorm() > 1.0e-9 || x.CheckNans() )
+			if( (x-e1).FrobeniusNorm() > tol || x.CheckNans() )
 			{
 				std::cout << "On CELL:" << it->LocalID() << " dx: " << x(0,0) << " " << x(1,0) << " " << x(2,0) << std::endl;
+				x.Print();
+				e1.Print();
+				std::cout << (x-e1).FrobeniusNorm() << std::endl;
 				errors++;
 			}
-			if( (y-e2).FrobeniusNorm() > 1.0e-9|| y.CheckNans() )
+			if( (y-e2).FrobeniusNorm() > tol || y.CheckNans() )
 			{
 				std::cout << "On CELL:" << it->LocalID() << " dy: " << y(0,0) << " " << y(1,0) << " " << y(2,0) << std::endl;
 				errors++;
 			}
-			if( (z-e3).FrobeniusNorm() > 1.0e-9|| z.CheckNans() )
+			if( (z-e3).FrobeniusNorm() > tol || z.CheckNans() )
 			{
 				std::cout << "On CELL:" << it->LocalID() << " dz: " << z(0,0) << " " << z(1,0) << " " << z(2,0) << std::endl;
 				errors++;

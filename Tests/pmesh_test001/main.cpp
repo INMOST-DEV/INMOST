@@ -163,13 +163,13 @@ int main(int argc,char ** argv)
 		Partitioner * p = new Partitioner(m);
 		p->SetMethod(type,action); // Specify the partitioner
 		p->Evaluate(); // Compute the partitioner and store new processor ID in the mesh
-		t0 = m->AggregateMax(Timer()-t0);
+		t0 = m->AggregateMax(static_cast<Storage::real>(Timer()-t0));
 		if( m->GetProcessorRank() == 0 ) std::cout << "Color: " << t0 << std::endl;
 		delete p;
 		m->RemoveGhost(); // Delete all ghost cells
 		t0 = Timer();
 		m->Redistribute(); // Redistribute the mesh data
-		t0 = m->AggregateMax(Timer()-t0);
+		t0 = m->AggregateMax(static_cast<Storage::real>(Timer()-t0));
 		if( m->GetProcessorRank() == 0 ) std::cout << "Distribute: " << t0 << std::endl;
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE); // Clean the data after reordring
 	}

@@ -8,28 +8,28 @@ using namespace INMOST;
 // if 1 dimension dominate, replace with edge
 //todo: when collapsing multiple adjacent elements, figure out when to collapse them into one element
 
-static void cross(const double a[3], const double b[3], double out[3])
+static void cross(const Storage::real a[3], const Storage::real b[3], Storage::real out[3])
 {
 	out[0] = a[1] * b[2] - a[2] * b[1];
 	out[1] = a[2] * b[0] - a[0] * b[2];
 	out[2] = a[0] * b[1] - a[1] * b[0];
 }
 
-static double dot(const double a[3], const double b[3])
+static Storage::real dot(const Storage::real a[3], const Storage::real b[3])
 {
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-static void normalize(double v[3])
+static void normalize(Storage::real v[3])
 {
-	double d = sqrt(dot(v, v));
+	Storage::real d = sqrt(dot(v, v));
 	if (d) for (int k = 0; k < 3; ++k) v[k] /= d;
 }
 
 
-static bool MatchPoints(const double v1[3], const double v2[3])
+static bool MatchPoints(const Storage::real v1[3], const Storage::real v2[3])
 {
-	double l = 0;
+	Storage::real l = 0;
 	for (int k = 0; k < 3; ++k)
 		l += (v1[k] - v2[k])*(v1[k] - v2[k]);
 	return sqrt(l) < 1.0e-7;
@@ -39,16 +39,16 @@ static bool MatchPoints(const double v1[3], const double v2[3])
 //should be similar to
 //https://people.orie.cornell.edu/miketodd/TYKhach.pdf
 //http://www.bnikolic.co.uk/blog/cpp-khachiyan-min-cov-ellipsoid.html
-static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatrix & c)
+static bool BoundingEllipse(Element e, Storage::real eps, int iters, rMatrix & Q, rMatrix & c)
 {
 	const bool print = false;
 	int d = 3;
-	double orthx[3], orthy[3], nrm[3], cnt[3];
+	Storage::real orthx[3], orthy[3], nrm[3], cnt[3];
 	ElementArray<Node> ss = e.getNodes();
 	rMatrix A;
 	if (e.Planarity())
 	{
-		double pcnt[3];
+		Storage::real pcnt[3];
 		d = 2;
 		A.Resize(d, ss.size());
 		if (e.GetElementType() == FACE)
@@ -76,7 +76,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		for (int j = 0; j < (int)ss.size(); ++j)
 		{
 
-			double * v = ss[j].Coords().data();
+			Storage::real * v = ss[j].Coords().data();
 			for (int k = 0; k < 3; ++k)
 				pcnt[k] = v[k] - cnt[k];
 			A(0, j) = dot(orthx, pcnt);
@@ -96,7 +96,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 
 	Q.Resize(d, d);
 	c.Resize(d, 1);
-	double init_p = 1.0 / static_cast<double>(A.Cols());
+	Storage::real init_p = 1.0 / static_cast<Storage::real>(A.Cols());
 	//init_p = 1.0;
 	rMatrix p(A.Cols(), 1, init_p);// m by 1
 	rMatrix _p(A.Cols(), 1); // m by 1
@@ -106,7 +106,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 
 
 	int done_iters = 0;
-	double n = d+1, ep , en, kp, kn, beta;
+	Storage::real n = d+1, ep , en, kp, kn, beta;
 	int jp,jn;
 	for (int i = 0; i < iters; ++i)
 	{
@@ -152,7 +152,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		}
 
 		//algorithm  in nikolic
-		//double beta = (kp - d - 1) / ((d + 1)*(kp - 1));
+		//Storage::real beta = (kp - d - 1) / ((d + 1)*(kp - 1));
 		//_p = p*(1 - beta);
 		//_p(jp, 0) += beta;
 		done_iters = i;
@@ -162,7 +162,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		
 	}
 	for (unsigned k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
-	Q = (A*(D - p*p.Transpose())*A.Transpose()).Invert() / static_cast<double>(d);
+	Q = (A*(D - p*p.Transpose())*A.Transpose()).Invert() / static_cast<Storage::real>(d);
 	c = A*p;
 	//check
 	if (d == 2)
@@ -178,7 +178,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 			for (int j = 0; j < (int)ss.size(); ++j)
 			{
 				rMatrix x = A(0, 2, j, j + 1);
-				double t = (x - c).DotProduct(Q*(x - c));
+				Storage::real t = (x - c).DotProduct(Q*(x - c));
 				std::cout << j << ": " << std::setw(14) << t << " " << (t <= 1.0 + eps * 2 ? "good" : "bad ");
 				std::cout << " x: "; x.Transpose().Print();
 			}
@@ -190,7 +190,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		//std::cout << "S: " << std::endl;
 		//S.Print();
 		U3.Zero();
-		double u0[3], u1[3], u2[3];
+		Storage::real u0[3], u1[3], u2[3];
 		//std::cout << "orthx: " << orthx[0] << " " << orthx[1] << " " << orthx[2] << std::endl;
 		//std::cout << "orthy: " << orthy[0] << " " << orthy[1] << " " << orthy[2] << std::endl;
 		for (int k = 0; k < 3; ++k)
@@ -228,7 +228,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		for (int j = 0; j < (int)ss.size(); ++j)
 		{
 			rMatrix x(ss[j].Coords().data(), 3, 1);
-			double t = (x - c).DotProduct(Q*(x - c));
+			Storage::real t = (x - c).DotProduct(Q*(x - c));
 			std::cout << j << ": " << std::setw(14) << t << " " << (t <= 1.0 + eps * 2 ? "good" : "bad ");
 			std::cout << " x: "; x.Transpose().Print();
 		}
@@ -284,7 +284,7 @@ int main(int argc, char ** argv)
 			if (cosm[it->self()] != 1)
 			{
 				ElementArray<Face> faces = it->getFaces();
-				double surface = 0;
+				Storage::real surface = 0;
 				for (ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
 					surface += jt->Area();
 				for (ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
@@ -307,7 +307,7 @@ int main(int argc, char ** argv)
 			if (cosm[it->self()] != 1) //do not check for collapsed faces
 			{
 				ElementArray<Edge> edges = it->getEdges();
-				double perimeter = 0;
+				Storage::real perimeter = 0;
 				for (ElementArray<Edge>::iterator jt = edges.begin(); jt != edges.end(); ++jt)
 					perimeter += jt->Length();
 				for (ElementArray<Edge>::iterator jt = edges.begin(); jt != edges.end(); ++jt)
@@ -342,7 +342,7 @@ int main(int argc, char ** argv)
 		{
 			if (cosm[it->self()] == 1)
 			{
-				double v[3];
+				Storage::real v[3];
 				for (int k = 0; k < 3; ++k)
 					v[k] = (it->getBeg().Coords()[k] + it->getEnd().Coords()[k])*0.5;
 				Node n = m.CreateNode(v);
@@ -388,7 +388,7 @@ int main(int argc, char ** argv)
 				{
 					//std::cout << "center: "; c.Transpose().Print();
 					Q.SVD(U, S, V);
-					double d[3], axis[3][3];
+					Storage::real d[3], axis[3][3];
 					int ek = -1;
 					int nk = 0;
 					for (unsigned k = 0; k < S.Rows(); ++k)
@@ -454,13 +454,13 @@ int main(int argc, char ** argv)
 						//intersect axis with the polygon, represented by current face
 						//project both face nodes and axis onto same plane
 						//find intersection nodes with the plane and create edge with them
-						double vv[2][3]; // expect two coordinates
+						Storage::real vv[2][3]; // expect two coordinates
 						int state[2] = { -1, -1 };
 						ElementArray<Node> edge_nodes(&m, 2);
 						Edge node_edges[2];
 						int nvv = 0;
-						double orthx[3], orthy[3];
-						double nrm[3], cnt[3], pcnt[3];
+						Storage::real orthx[3], orthy[3];
+						Storage::real nrm[3], cnt[3], pcnt[3];
 						it->UnitNormal(nrm);
 						it->Centroid(cnt);
 						ElementArray<Edge> edges = it->getEdges();
@@ -471,7 +471,7 @@ int main(int argc, char ** argv)
 						normalize(orthx);
 						cross(orthx, nrm, orthy);
 						//project l and axis
-						double cx, cy, axisx, axisy;
+						Storage::real cx, cy, axisx, axisy;
 						for (int k = 0; k < 3; ++k)
 							pcnt[k] = c.data()[k] - cnt[k];
 						cx = dot(pcnt, orthx);
@@ -486,7 +486,7 @@ int main(int argc, char ** argv)
 						//std::cout << "cnt:   " << cnt[0] << " " << cnt[1] << " " << cnt[2] << std::endl;
 						for (int j = 0; j < (int)edges.size(); ++j)
 						{
-							double vx[3], vy[3], *v, b, q;
+							Storage::real vx[3], vy[3], *v, b, q;
 							v = edges[j].getBeg().Coords().data();
 							for (int k = 0; k < 3; ++k)
 								pcnt[k] = v[k] - cnt[k];
@@ -527,7 +527,7 @@ int main(int argc, char ** argv)
 									vx[2] = vx[0] + b*(vx[1] - vx[0]);
 									vy[2] = vy[0] + b*(vy[1] - vy[0]);
 									//unproject point into 3d space
-									double tvv[3];
+									Storage::real tvv[3];
 									for (int k = 0; k < 3; ++k)
 										tvv[k] = orthx[k] * vx[2] + orthy[k] * vy[2] + cnt[k];
 									if (nvv >= 2) //expect only two points, otherwise face is non-convex

@@ -3,9 +3,9 @@
 using namespace INMOST;
 
 
-static bool MatchPoints(const double v1[3], const double v2[3])
+static bool MatchPoints(const Storage::real v1[3], const Storage::real v2[3])
 {
-	double l = 0, l2 = 0;
+	Storage::real l = 0, l2 = 0;
 	for (int k = 0; k < 3; ++k)
 	{
 		l += (v1[k] - v2[k])*(v1[k] - v2[k]);
@@ -14,9 +14,9 @@ static bool MatchPoints(const double v1[3], const double v2[3])
 	return sqrt(l) < 1.0e-13*sqrt(l2/4.0);
 }
 
-static double DistPoints(const double v1[3], const double v2[3])
+static Storage::real DistPoints(const Storage::real v1[3], const Storage::real v2[3])
 {
-	double l = 0;
+	Storage::real l = 0;
 	for (int k = 0; k < 3; ++k)
 		l += (v1[k] - v2[k])*(v1[k] - v2[k]);
 	return sqrt(l);
@@ -33,7 +33,7 @@ int main(int argc, char ** argv)
 
 		std::fstream f(fout.c_str(),std::ios::out);
 
-		double min[3] = {1.0e+20,1.0e+20,1.0e+20}, max[3] = {-1.0e+20,-1.0e+20,-1.0e+20};
+		Storage::real min[3] = {1.0e+20,1.0e+20,1.0e+20}, max[3] = {-1.0e+20,-1.0e+20,-1.0e+20};
 
 		for(Mesh::iteratorNode it = m.BeginNode(); it != m.EndNode(); ++it)
 		{
@@ -63,7 +63,7 @@ int main(int argc, char ** argv)
 		int nontri = 0, q = 0;
 		for(Mesh::iteratorFace it = m.BeginFace(); it != m.EndFace(); ++it) if( it->Boundary() )
 		{
-			double n[3];
+			Storage::real n[3];
 			it->UnitNormal(n);
 			
 			ElementArray<Node> nodes = it->getNodes();
@@ -106,7 +106,7 @@ int main(int argc, char ** argv)
 			{
 				std::cout << "non-tri begin: " << q << std::endl;
 				nontri++;
-				double c0[3];
+				Storage::real c0[3];
 				it->Centroid(c0);
 
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < nodes.size(); ++k)
@@ -138,7 +138,7 @@ int main(int argc, char ** argv)
 		//outer box
 		for(int k = 0; k < 3; ++k)
 		{
-			double d = (max[k]-min[k]);
+			Storage::real d = (max[k]-min[k]);
 			min[k] -= d*0.3;
 				max[k] += d*0.3;
 		}

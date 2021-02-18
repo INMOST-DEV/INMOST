@@ -15,7 +15,7 @@ int main(int argc, char ** argv)
 	Mesh m;
 	m.Load(argv[1]);
 
-	double p1[3], p2[3];
+	Storage::real p1[3], p2[3];
 	p1[0] = atof(argv[2]);
 	p1[1] = atof(argv[3]);
 	p1[2] = atof(argv[4]);
@@ -73,7 +73,7 @@ int main(int argc, char ** argv)
 	
 	for(ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it)
 	{
-		double cnt[3];
+		Storage::real cnt[3];
 		it->Centroid(cnt);
 		std::cout << cnt[0] << "; " << cnt[1] << "; " << cnt[2] << "; ";
 		if( otag.GetDataType() == DATA_REAL )

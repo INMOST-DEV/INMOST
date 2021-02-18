@@ -14,7 +14,7 @@ int main(int argc, char ** argv)
 
 	if( test == 0 )
 	{
-		double coords[8][3] = {
+		Storage::real coords[8][3] = {
 			{0,0,0},
 			{1,0,0},
 			{0,1,0},
@@ -48,26 +48,26 @@ int main(int argc, char ** argv)
 		}
 		Cell c = m.CreateCell(faces).first;
 
-		double midedges[12][3];
+		Storage::real midedges[12][3];
 		for(int k = 0; k < 12; k++)
 		{
 			for(int j = 0; j < 3; j++)	midedges[k][j] = 0.5*(coords[eindices[k][0]][j] + coords[eindices[k][1]][j]);
 		}
-		double midfaces[6][3];
+		Storage::real midfaces[6][3];
 		for(int k = 0; k < 6; k++)
 		{
 			for(int j = 0; j < 3; j++)	midfaces[k][j] = 0.5*(midedges[findices[k][0]][j] + midedges[findices[k][2]][j]);
 		}
 
-		double midcell[3] = {0.5,0.5,0.5};
+		Storage::real midcell[3] = {0.5,0.5,0.5};
 
-		std::map<HandleType,double> nodes_stencil;
+		std::map<HandleType,Storage::real> nodes_stencil;
 		for(int j = 0; j < 8; j++)
 		{
 			if(!nodes_stencil.empty())	nodes_stencil.clear();
 			m.WachspressInterpolation3D(coords[j]+0, c, nodes_stencil);
 			if( nodes_stencil.size() != 2 ) err++;
-			for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+			for(std::map<HandleType,Storage::real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 				if( fabs(it->second-1.0) > 1e-8 && fabs(it->second) > 1e-8 )
 				{
 					std::cout << "Coef " << it->second << " expected 1.0 or 0.0 num " << j << std::endl;
@@ -80,7 +80,7 @@ int main(int argc, char ** argv)
 			if(!nodes_stencil.empty())	nodes_stencil.clear();
 			m.WachspressInterpolation3D(midedges[j], c, nodes_stencil);
 			if( nodes_stencil.size() != 2 ) err++;
-			for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+			for(std::map<HandleType,Storage::real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 				if( fabs(it->second-0.5) > 1e-8 )
 				{
 					std::cout << "Coef " << it->second << " expected 0.5 " << std::endl;
@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
 			if(!nodes_stencil.empty())	nodes_stencil.clear();
 			m.WachspressInterpolation3D(midfaces[j], c, nodes_stencil);
 			if( nodes_stencil.size() != 4 ) err++;
-			for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+			for(std::map<HandleType,Storage::real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 				if( fabs(it->second-0.25) > 1e-8 )
 				{
 					std::cout << "Coef " << it->second << " expected 0.25 " << std::endl;
@@ -104,20 +104,20 @@ int main(int argc, char ** argv)
 		if(!nodes_stencil.empty())	nodes_stencil.clear();
 		m.WachspressInterpolation3D(midcell, c, nodes_stencil);
 		if( nodes_stencil.size() != 8 ) err++;
-		for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+		for(std::map<HandleType,Storage::real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 			if( fabs(it->second-0.125) > 1e-8 )
 			{
 				std::cout << "Coef " << it->second << " expected 0.125 " << std::endl;
 				err2++;
 			}
 		/*
-		double point[3] = {0.75,0.25,0.0};
-		double coefs[4] = {0.1875,0.0625,0.1875,0.5625};
+		Storage::real point[3] = {0.75,0.25,0.0};
+		Storage::real coefs[4] = {0.1875,0.0625,0.1875,0.5625};
 		if(!nodes_stencil.empty())	nodes_stencil.clear();
 		m.wachspress_2d(point, f, nodes_stencil);
 		if( nodes_stencil.size() != 4 ) err++;
 		int j = 0;
-		for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it,++j)
+		for(std::map<HandleType,Storage::real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it,++j)
 			if( fabs(it->second-coefs[j]) > 1e-8 )
 			{
 				std::cout << "Coef " << it->second << " expected " << coefs[j] << std::endl;
@@ -127,7 +127,7 @@ int main(int argc, char ** argv)
 	}
 	else if( test == 1 )
 	{
-		double coords[4][3] = {
+		Storage::real coords[4][3] = {
 			{1,0,0},
 			{0,1,0},
 			{0,0,1},
@@ -157,8 +157,8 @@ int main(int argc, char ** argv)
 		}
 		Cell c = m.CreateCell(faces).first;
 
-		double point[3] = {0.25,0.2,0.3};
-		double coefs[4][4], coefs_sum = 0.0;
+		Storage::real point[3] = {0.25,0.2,0.3};
+		Storage::real coefs[4][4], coefs_sum = 0.0;
 		coefs[0][3] = 200.0/3, coefs[1][3] = 160.0/3, coefs[2][3] = 80.0, coefs[3][3] = 200.0/3;
 		for(int k = 0; k < 4; k++)
 		{
@@ -167,15 +167,15 @@ int main(int argc, char ** argv)
 		}
 		for(int k = 0; k < 4; k++)	coefs[k][3] /= coefs_sum;
 
-		std::map<HandleType,double> nodes_stencil;
+		std::map<HandleType,Storage::real> nodes_stencil;
 
 		if(!nodes_stencil.empty())	nodes_stencil.clear();
 		m.WachspressInterpolation3D(point, c, nodes_stencil);
 		if( nodes_stencil.size() != 4 ) err++;
 		int k = 0;
-		for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it, ++k)
+		for(std::map<HandleType,Storage::real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it, ++k)
 		{
-			double cnt[3];
+			Storage::real cnt[3];
 			m.ElementByHandle(it->first).Centroid(cnt);
 			int k = -1;
 			for(int j = 0; j < 4 && k == -1; j++)

@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 						if (maxmin[2 * i + 1] > cc[i]) maxmin[2 * i + 1] = cc[i]; //min
 					}
 				}
-				h = std::min(h,sqrt((maxmin[2]-maxmin[3])*(maxmin[2]-maxmin[3])+(maxmin[0]-maxmin[1])*(maxmin[0]-maxmin[1])));
+				h = std::min<Storage::real>(h,sqrt((maxmin[2]-maxmin[3])*(maxmin[2]-maxmin[3])+(maxmin[0]-maxmin[1])*(maxmin[0]-maxmin[1])));
 			}
 			if( coords[0] > eps && coords[0] < 1.0-eps && coords[1] > eps && coords[1] < 1.0-eps )
 			{
@@ -223,9 +223,9 @@ int main(int argc, char *argv[])
 	Tag zone = mesh->CreateTag("ZONE",DATA_INTEGER,CELL,NONE,1);
 	int numinner = 0, numouter = 0;
 	int numinnern = 0, numoutern = 0;
-	const double eps = 1.0e-6;
-	const double mu = 1.0e-3;
-	const double velmult = 1;
+	const Storage::real eps = 1.0e-6;
+	const Storage::real mu = 1.0e-3;
+	const Storage::real velmult = 1;
 	for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it) 
 	{
 		Storage::real cnt[3], nrm[3];

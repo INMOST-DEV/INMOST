@@ -214,13 +214,13 @@ public:
 	}
 	void Draw()
 	{
-		glVertex3dv(v[0].data());
-		glVertex3dv(v[1].data());
+		glVertexNdv(v[0].data());
+		glVertexNdv(v[1].data());
 	}
 	void SVGDraw(std::ostream & file, double modelview[16], double projection[16], int viewport[4])
 	{
-		double * v0 = v[0].data();
-		double * v1 = v[1].data();
+		Storage::real * v0 = v[0].data();
+		Storage::real * v1 = v[1].data();
 		svg_line(file, v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], modelview, projection, viewport);
 	}
 };

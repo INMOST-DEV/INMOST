@@ -23,7 +23,7 @@ inline void vec_diff(INMOST::Storage::real * vecin1, INMOST::Storage::real * vec
     vecout[i] = vecin1[i] - vecin2[i];
 }
 
-void matmul(double * a, double * b, double * out)
+void matmul(Storage::real * a, Storage::real * b, Storage::real * out)
 {
   int i,j,k;
   double ret[9] = {0,0,0,0,0,0,0,0,0};
@@ -40,9 +40,9 @@ void matmul(double * a, double * b, double * out)
   for(i = 0; i < 9; i++) out[i] = ret[i];
 }
 
-void multangle(double t[9], double anglex, double angley, double anglez)
+void multangle(Storage::real t[9], Storage::real anglex, Storage::real angley, Storage::real anglez)
 {
-  double rot[9];
+  Storage::real rot[9];
   rot[0] = cos(anglex);	rot[1] = -sin(anglex); rot[2] = 0.0;
   rot[3] = -rot[1];     rot[4] = rot[0];      rot[5] = 0.0;
   rot[6] = 0.0;         rot[7] = 0.0;         rot[8] = 1.0;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
   
   Mesh * mesh;
   double alpha=0.4;
-  double h;
+  Storage::real h;
 	double outer_boundary_pressure = 0.0;
 	double inner_boundary_pressure = 1.0;
   int cut_grid = 1;

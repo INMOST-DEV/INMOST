@@ -7,28 +7,28 @@ using namespace INMOST;
 // edge-> node
 // based on eigenvalues in bounding ellipse
 
-static void cross(const double a[3], const double b[3], double out[3])
+static void cross(const Storage::real a[3], const Storage::real b[3], Storage::real out[3])
 {
 	out[0] = a[1] * b[2] - a[2] * b[1];
 	out[1] = a[2] * b[0] - a[0] * b[2];
 	out[2] = a[0] * b[1] - a[1] * b[0];
 }
 
-static double dot(const double a[3], const double b[3])
+static Storage::real dot(const Storage::real a[3], const Storage::real b[3])
 {
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-static void normalize(double v[3])
+static void normalize(Storage::real v[3])
 {
-	double d = sqrt(dot(v, v));
+	Storage::real d = sqrt(dot(v, v));
 	if (d) for (int k = 0; k < 3; ++k) v[k] /= d;
 }
 
 
-bool MatchPoints(const double v1[3], const double v2[3])
+bool MatchPoints(const Storage::real v1[3], const Storage::real v2[3])
 {
-	double l = 0;
+	Storage::real l = 0;
 	for (int k = 0; k < 3; ++k)
 		l += (v1[k] - v2[k])*(v1[k] - v2[k]);
 	return sqrt(l) < 1.0e-7;
@@ -38,16 +38,16 @@ bool MatchPoints(const double v1[3], const double v2[3])
 //should be similar to
 //https://people.orie.cornell.edu/miketodd/TYKhach.pdf
 //http://www.bnikolic.co.uk/blog/cpp-khachiyan-min-cov-ellipsoid.html
-static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatrix & c)
+static bool BoundingEllipse(Element e, Storage::real eps, int iters, rMatrix & Q, rMatrix & c)
 {
 	const bool print = false;
 	int d = 3;
-	double orthx[3], orthy[3], nrm[3], cnt[3];
+	Storage::real orthx[3], orthy[3], nrm[3], cnt[3];
 	ElementArray<Node> ss = e.getNodes();
 	rMatrix A;
 	if (e.Planarity())
 	{
-		double pcnt[3];
+		Storage::real pcnt[3];
 		d = 2;
 		A.Resize(d, ss.size());
 		if (e.GetElementType() == FACE)
@@ -75,7 +75,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		for (int j = 0; j < (int)ss.size(); ++j)
 		{
 			
-			double * v = ss[j].Coords().data();
+			Storage::real * v = ss[j].Coords().data();
 			for (int k = 0; k < 3; ++k)
 				pcnt[k] = v[k] - cnt[k];
 			A(0, j) = dot(orthx, pcnt);
@@ -95,7 +95,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 	
 	Q.Resize(d, d);
 	c.Resize(d, 1);
-	double init_p = 1.0 / static_cast<double>(A.Cols());
+	Storage::real init_p = 1.0 / static_cast<Storage::real>(A.Cols());
 	//init_p = 1.0;
 	rMatrix p(A.Cols(), 1, init_p);// m by 1
 	rMatrix _p(A.Cols(), 1); // m by 1
@@ -105,7 +105,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 	
 	
 	int done_iters = 0;
-	double n = d+1, ep , en, kp, kn, beta;
+	Storage::real n = d+1, ep , en, kp, kn, beta;
 	int jp,jn;
 	for (int i = 0; i < iters; ++i)
 	{
@@ -151,7 +151,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		}
 		
 		//algorithm  in nikolic
-		//double beta = (kp - d - 1) / ((d + 1)*(kp - 1));
+		//Storage::real beta = (kp - d - 1) / ((d + 1)*(kp - 1));
 		//_p = p*(1 - beta);
 		//_p(jp, 0) += beta;
 		done_iters = i;
@@ -161,7 +161,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		
 	}
 	for (unsigned k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
-	Q = (A*(D - p*p.Transpose())*A.Transpose()).PseudoInvert() / static_cast<double>(d);
+	Q = (A*(D - p*p.Transpose())*A.Transpose()).PseudoInvert() / static_cast<Storage::real>(d);
 	c = A*p;
 	//check
 	if (d == 2)
@@ -177,7 +177,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 			for (int j = 0; j < (int)ss.size(); ++j)
 			{
 				rMatrix x = A(0, 2, j, j + 1);
-				double t = (x - c).DotProduct(Q*(x - c));
+				Storage::real t = (x - c).DotProduct(Q*(x - c));
 				std::cout << j << ": " << std::setw(14) << t << " " << (t <= 1.0 + eps * 2 ? "good" : "bad ");
 				std::cout << " x: "; x.Transpose().Print();
 			}
@@ -189,7 +189,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		//std::cout << "S: " << std::endl;
 		//S.Print();
 		U3.Zero();
-		double u0[3], u1[3], u2[3];
+		Storage::real u0[3], u1[3], u2[3];
 		//std::cout << "orthx: " << orthx[0] << " " << orthx[1] << " " << orthx[2] << std::endl;
 		//std::cout << "orthy: " << orthy[0] << " " << orthy[1] << " " << orthy[2] << std::endl;
 		for (int k = 0; k < 3; ++k)
@@ -227,7 +227,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		for (int j = 0; j < (int)ss.size(); ++j)
 		{
 			rMatrix x(ss[j].Coords().data(), 3, 1);
-			double t = (x - c).DotProduct(Q*(x - c));
+			Storage::real t = (x - c).DotProduct(Q*(x - c));
 			std::cout << j << ": " << std::setw(14) << t << " " << (t <= 1.0 + eps * 2 ? "good" : "bad ");
 			std::cout << " x: "; x.Transpose().Print();
 		}
@@ -270,7 +270,7 @@ int main(int argc, char ** argv)
 	for (Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 	{
 		ElementArray<Cell> around = it->BridgeAdjacencies2Cell(FACE);
-		double vol0 = it->Volume(), vol = vol0;
+		Storage::real vol0 = it->Volume(), vol = vol0;
 		for(unsigned l = 0; l < around.size(); ++l)
 			vol += around[l].Volume();
 		if( vol0 / vol < 0.03 )
@@ -283,7 +283,7 @@ int main(int argc, char ** argv)
 				Q.SVD(U,S,V);
 				std::cout << "eigenvalues" << std::endl;
 				S.Print();
-				double d[3] = {0,0,0};
+				Storage::real d[3] = {0,0,0};
 				int nk = 0;
 				for (unsigned k = 0; k < S.Rows(); ++k)
 				{
@@ -294,7 +294,7 @@ int main(int argc, char ** argv)
 					}
 				}
 				
-				double l = sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
+				Storage::real l = sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
 				std::cout << "count: " << nk << " " << d[0] << " " << d[1] << " " << d[2] << " l " << l << std::endl;
 				int nn = 0;
 				for(int k = 0; k < 3; ++k)
@@ -309,7 +309,7 @@ int main(int argc, char ** argv)
 				else if( nn == 2 ) // collapse into face, find largest face
 				{
 					Face f;
-					double area = 0;
+					Storage::real area = 0;
 					ElementArray<Face> faces = it->getFaces();
 					for(unsigned k = 0; k < faces.size(); ++k)
 					{
@@ -347,7 +347,7 @@ int main(int argc, char ** argv)
 		if (cosm[it->self()] != 1)
 		{
 			ElementArray<Face> faces = it->getFaces();
-			double surface = 0;
+			Storage::real surface = 0;
 			for (ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
 				surface += jt->Area();
 			for (ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
@@ -370,7 +370,7 @@ int main(int argc, char ** argv)
 		if (cosm[it->self()] != 1) //do not check for collapsed faces
 		{
 			ElementArray<Edge> edges = it->getEdges();
-			double perimeter = 0;
+			Storage::real perimeter = 0;
 			for (ElementArray<Edge>::iterator jt = edges.begin(); jt != edges.end(); ++jt)
 				perimeter += jt->Length();
 			for (ElementArray<Edge>::iterator jt = edges.begin(); jt != edges.end(); ++jt)

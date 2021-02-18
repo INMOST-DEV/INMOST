@@ -11,7 +11,7 @@ using namespace INMOST;
 
 
 
-void normalize(double nrm[3])
+void normalize(Storage::real nrm[3])
 {
 	double l = 0.0;
 	for(int i = 0; i < 3; ++i) l += nrm[i]*nrm[i];
@@ -19,9 +19,9 @@ void normalize(double nrm[3])
 	if( l ) for(int i = 0; i < 3; ++i) nrm[i] /= l;
 }
 
-const double pi = 3.14;
+const Storage::real pi = 3.14;
 
-void transform(double xyz[3], double & ztop, double & zbottom, double nrmtop[3], double nrmbottom[3])
+void transform(Storage::real xyz[3], Storage::real & ztop, Storage::real & zbottom, Storage::real nrmtop[3], Storage::real nrmbottom[3])
 {
 	unknown x(xyz[0],0), y = unknown(xyz[1],1);
 	//zbottom = x*x*4-y*y*4-sin(6*x)*8 - cos(4*y)*4 - x*15;
@@ -50,11 +50,11 @@ void transform(double xyz[3], double & ztop, double & zbottom, double nrmtop[3],
 
 struct quat
 {
-	double vec[3];
-	double w;
+	Storage::real vec[3];
+	Storage::real w;
 };
 
-double quatnorm(const quat & a)
+Storage::real quatnorm(const quat & a)
 {
 	return a.vec[0]*a.vec[0] + a.vec[1]*a.vec[1]
 		 + a.vec[2]*a.vec[2] + a.w*a.w;
@@ -69,10 +69,10 @@ quat quatconj(const quat & a)
 	return ret;
 }
 
-void rotate_tensor(double nrm[3], const rMatrix & Kin, rMatrix & Kout, double phi[3])
+void rotate_tensor(Storage::real nrm[3], const rMatrix & Kin, rMatrix & Kout, Storage::real phi[3])
 {
 	//~ double qmat[16], qrmat[16], sclmat[16];
-	double qnrm;
+	Storage::real qnrm;
 	struct quat q, qr;
 	rMatrix N = rMatrix::FromVector(nrm,3);
 	rMatrix NX = rMatrix::CrossProductMatrix(nrm);
@@ -110,11 +110,11 @@ void rotate_tensor(double nrm[3], const rMatrix & Kin, rMatrix & Kout, double ph
 
 	Kout = Q.Transpose()*Kin*Q;
 
-	double t0 = -2.0 * (q.vec[1] * q.vec[1] + q.vec[2] * q.vec[2]) + 1.0;
-	double t1 = +2.0 * (q.vec[0] * q.vec[1] - q.w * q.vec[2]);
-	double t2 = -2.0 * (q.vec[0] * q.vec[2] + q.w * q.vec[1]);
-	double t3 = +2.0 * (q.vec[1] * q.vec[2] - q.w * q.vec[0]);
-	double t4 = -2.0 * (q.vec[0] * q.vec[0] + q.vec[1] * q.vec[1]) + 1.0;
+	Storage::real t0 = -2.0 * (q.vec[1] * q.vec[1] + q.vec[2] * q.vec[2]) + 1.0;
+	Storage::real t1 = +2.0 * (q.vec[0] * q.vec[1] - q.w * q.vec[2]);
+	Storage::real t2 = -2.0 * (q.vec[0] * q.vec[2] + q.w * q.vec[1]);
+	Storage::real t3 = +2.0 * (q.vec[1] * q.vec[2] - q.w * q.vec[0]);
+	Storage::real t4 = -2.0 * (q.vec[0] * q.vec[0] + q.vec[1] * q.vec[1]) + 1.0;
 
 	t2 = t2 > 1.0 ? 1.0 : t2;
 	t2 = t2 < -1.0 ? -1.0 : t2;
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
   }
   Tag outperm_tag = mesh->CreateTag("PERM_TRANSFORM",DATA_REAL,CELL,NONE,9);
 
-  double min[3] = {1.0e+20,1.0e+20,1.0e+20}, max[3] = {-1.0e+20,-1.0e+20,-1.0e+20};
+  Storage::real min[3] = {1.0e+20,1.0e+20,1.0e+20}, max[3] = {-1.0e+20,-1.0e+20,-1.0e+20};
 
   for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
   {
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 
   for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
   {
-	  double cnt[3], zb, zt, nrmb[3], nrmt[3], phi[3];
+	  Storage::real cnt[3], zb, zt, nrmb[3], nrmt[3], phi[3];
 	  it->Centroid(cnt);
 	  transform(cnt,zt,zb,nrmt,nrmb);
 	  Storage::real_array nrm = it->RealArray(nrm_tag);
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 
   for(Mesh::iteratorNode it = mesh->BeginNode(); it != mesh->EndNode(); ++it)
   {
-	  double ztop, zbottom, nrmb[3],nrmt[3];
+	  Storage::real ztop, zbottom, nrmb[3],nrmt[3];
 	  Storage::real_array c = it->Coords();
 	  transform(c.data(), ztop, zbottom,nrmt,nrmb);
 	  c[2] = (ztop-zbottom)*c[2] + zbottom;

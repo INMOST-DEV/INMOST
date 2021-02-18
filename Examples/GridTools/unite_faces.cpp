@@ -104,8 +104,10 @@ int main(int argc, char ** argv)
 					for (std::vector<HandleType>::iterator kt = jt->second.begin(); kt != jt->second.end(); ++kt)
 					{
 						Face f(&m, *kt);
+						Storage::real nrmv[3];
 						double nrm[3];
-						f->OrientedUnitNormal(it->self(), nrm);
+						f->OrientedUnitNormal(it->self(), nrmv);
+						nrm[0] = nrmv[0], nrm[1] = nrmv[1], nrm[2] = nrmv[2];
 						bool added = false;
 						for (std::vector< std::pair< coords, std::vector<HandleType> > >::iterator qt = nfaces.begin(); qt != nfaces.end(); ++qt)
 						{

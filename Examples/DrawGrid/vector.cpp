@@ -11,7 +11,7 @@ namespace INMOST
 	static GLUquadric * cylqs = NULL;
 	__INLINE void drawcylinder(coord a, coord b, double width)
 	{
-		double matrix[16];
+		Storage::real matrix[16];
 		if (cylqs == NULL)
 		{
 			cylqs = gluNewQuadric();
@@ -22,7 +22,11 @@ namespace INMOST
 		glPushMatrix();
 		glTranslated(a[0], a[1], a[2]);
 		get_matrix(a, b, matrix);
+#if defined(USE_FP64)
 		glMultMatrixd(matrix);
+#else
+		glMultMatrixf(matrix);
+#endif
 		gluCylinder(cylqs, width, width, sqrt((b - a) ^ (b - a)), 4, 2);
 		glPopMatrix();
 	}
@@ -82,7 +86,7 @@ namespace INMOST
 	
 	void Vectors::DrawArrow(const coord & v1, const coord & v2) const
 	{
-		double matrix[16];
+		Storage::real matrix[16];
 		double x=v2[0]-v1[0];
 		double y=v2[1]-v1[1];
 		double z=v2[2]-v1[2];
@@ -94,7 +98,11 @@ namespace INMOST
 
 		glTranslated(v1[0],v1[1],v1[2]);
 		get_matrix(v1, v2, matrix);
+#if defined(USE_FP64)
 		glMultMatrixd(matrix);
+#else
+		glMultMatrixf(matrix);
+#endif
 
 		int res = 4;
 
@@ -130,8 +138,8 @@ namespace INMOST
 					color_t c = GetColorBar()->pick_color(m->ElementByLocalID(etype,vecs[i].eid)->RealDF(GetVisualizationTag()));
 					c.set_color();
 				}
-				glVertex3dv(vecs[i].cnt.data());
-				glVertex3dv((vecs[i].cnt+vecs[i].dir*scale*vecs[i].length/max_length).data());
+				glVertexNdv(vecs[i].cnt.data());
+				glVertexNdv((vecs[i].cnt+vecs[i].dir*scale*vecs[i].length/max_length).data());
 			}
 			glEnd();
 		}
@@ -155,8 +163,8 @@ namespace INMOST
 		for (unsigned int i = 0; i < vecs.size(); i++)
 		{
 			coord p2 = (vecs[i].cnt+vecs[i].dir*scale*vecs[i].length/max_length);
-			double * v0 = vecs[i].cnt.data();
-			double * v1 = p2.data();
+			Storage::real * v0 = vecs[i].cnt.data();
+			Storage::real * v1 = p2.data();
 			
 			if (isColorBarEnabled())
 			{

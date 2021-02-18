@@ -13,9 +13,20 @@ namespace INMOST
 	/// Structure that selects desired class, depending on the operation.
 	template<class A, class B> struct Promote;
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_INTEGER_TYPE type;};
-	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
-	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
-	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>       {typedef INMOST_DATA_REAL_TYPE type;};
+#if defined(USE_FP64)
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, float> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<float, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, float>    {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<float, INMOST_DATA_REAL_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
+#else
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, double> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<double, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, double>    {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<double, INMOST_DATA_REAL_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
+#endif
 #if defined(USE_AUTODIFF)
 	//For INMOST_DATA_INTEGER_TYPE
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
@@ -70,6 +81,20 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
+#if defined(USE_FP64)
+	template<> struct Promote<unknown, float>  {typedef variable type;};
+	template<> struct Promote<multivar_expression_reference, float>  {typedef variable type;};
+	template<> struct Promote<variable, float>  {typedef variable type;};
+	template<> struct Promote<hessian_multivar_expression_reference, float>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, float>  {typedef hessian_variable type;};
+#else
+	template<> struct Promote<unknown, double>  {typedef variable type;};
+	template<> struct Promote<multivar_expression_reference, double>  {typedef variable type;};
+	template<> struct Promote<variable, double>  {typedef variable type;};
+	template<> struct Promote<hessian_multivar_expression_reference, double>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, double>  {typedef hessian_variable type;};
+
+#endif
 #endif
 	
 	/// Abstract class for a matrix,
@@ -971,8 +996,8 @@ namespace INMOST
 		/// @return Reference to element.
 		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
-			assert(i >= 0 && i < n);
-			assert(j >= 0 && j < n);
+			assert(i < n);
+			assert(j < n);
 			if( i > j ) std::swap(i,j);
 			return space[j+n*i-i*(i+1)/2];
 		}
@@ -983,8 +1008,8 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
-			assert(i >= 0 && i < n);
-			assert(j >= 0 && j < n);
+			assert(i < n);
+			assert(j < n);
 			if( i > j ) std::swap(i,j);
 			return space[j+n*i-i*(i+1)/2];
 		}
@@ -1421,8 +1446,8 @@ namespace INMOST
 		/// @return Reference to element.
 		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
-			assert(i >= 0 && i < n);
-			assert(j >= 0 && j < m);
+			assert(i < n);
+			assert(j < m);
 			assert(i*m+j < n*m); //overflow check?
 			return space[i*m+j];
 		}
@@ -1433,8 +1458,8 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
-			assert(i >= 0 && i < n);
-			assert(j >= 0 && j < m);
+			assert(i < n);
+			assert(j < m);
 			assert(i*m+j < n*m); //overflow check?
 			return space[i*m+j];
 		}
@@ -1899,8 +1924,8 @@ namespace INMOST
 		/// @return Reference to element.
 		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
 			return (*M)(i+brow,j+bcol);
 		}
@@ -1911,8 +1936,8 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
 			return (*M)(i+brow,j+bcol);
 		}
@@ -1976,8 +2001,8 @@ namespace INMOST
 		/// @return Reference to element.
 		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
 			return const_cast<Var &>((*M)(i+brow,j+bcol));
 		}
@@ -1988,8 +2013,8 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
 			return (*M)(i+brow,j+bcol);
 		}
@@ -2080,8 +2105,8 @@ namespace INMOST
 		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
 			static Var zero = 0;
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
 				return zero;
 			else
@@ -2095,8 +2120,8 @@ namespace INMOST
 		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			static const Var zero = 0;
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
 				return zero;
 			else
@@ -2162,8 +2187,8 @@ namespace INMOST
 		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
 			static Var zero = 0;
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
 				return zero;
 			else
@@ -2177,8 +2202,8 @@ namespace INMOST
 		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			static const Var zero = 0;
-			assert(i >= 0 && i < Rows());
-			assert(j >= 0 && j < Cols());
+			assert(i < Rows());
+			assert(j < Cols());
 			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
 				return zero;
 			else

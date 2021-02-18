@@ -198,7 +198,7 @@ int main(int argc, char ** argv)
 	for(int q = 0; q < total_points; ++q)
 	{
 		Cell n = m.CellByLocalID(points_node[q]);
-		double cnt[3];
+		Storage::real cnt[3];
 		n->Centroid(cnt);
 		points_center[q*3+0] = cnt[0];
 		points_center[q*3+1] = cnt[1];

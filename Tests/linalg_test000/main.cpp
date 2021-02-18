@@ -8,24 +8,24 @@ int main(int argc,char ** argv)
 	int test = 0;
 	if (argc > 1)  test = atoi(argv[1]);
 
-	double err = 1;
+	Storage::real err = 1;
 
 	if( test == 0 ) //A*B
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			4, 2,
 			3, 5,
 			9, 8,
 			1, 7
 		};
-		double C[] =
+		Storage::real C[] =
 		{
 			36,  68,
 			55,  69,
@@ -35,19 +35,19 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 1 ) // A/B == B^{-1}*A
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			4, 2,
 			9, 8,
 			2, 1
 		};
-		double C[] =
+		Storage::real C[] =
 		{
 			0.942857142857144,  0.685714285714285,  2.685714285714290,  2.142857142857140,
 			-0.685714285714285,  0.228571428571429, -2.771428571428570, -2.285714285714290
@@ -56,19 +56,19 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 2 ) // A+B
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			2, 6, 9, 1,
 			9, 1, 5, 3,
 			8, 21, 91, 9
 		};
-		double C[] =
+		Storage::real C[] =
 		{
 			3, 9, 11, 6,
 			12, 9, 7, 4,
@@ -78,19 +78,19 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 3 ) // A-B
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			2, 6, 9, 1,
 			9, 1, 5, 3,
 			8, 21, 91, 9
 		};
-		double C[] =
+		Storage::real C[] =
 		{
 			-1, -3, -7, 4,
 			-6, 7, -3, -2,
@@ -100,7 +100,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 4 ) // svd square
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
@@ -114,7 +114,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 5 ) // svd n > m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2,
 			3, 8, 2,
@@ -128,7 +128,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 6 ) // svd n < m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
@@ -141,7 +141,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 7 ) // inv square
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
@@ -154,7 +154,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 8 ) // inv n > m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2,
 			3, 8, 2,
@@ -166,7 +166,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 9 ) // inv n < m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
@@ -177,7 +177,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 10 ) // cholinv square
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			10, 3, 2, 5,
 			3, 8, 2, 1,
@@ -190,7 +190,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 11 ) // pinv square
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
@@ -203,7 +203,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 12 ) // pinv n > m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2,
 			3, 8, 2,
@@ -215,7 +215,7 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 13 ) // pinv n < m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
@@ -226,21 +226,21 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 14 ) // sol square
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0,
 			2, 1, 10, 9
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			1, 2,
 			3, 9,
 			4, 1,
 			2, 5
 		};
-		double C[] =
+		Storage::real C[] =
 		{
 			1.000000000000000, -8.333333333333330,
 			0.000000000000000,  3.666666666666670,
@@ -254,14 +254,14 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 15 ) // sol n > m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2,
 			3, 8, 2,
 			4, 2, 9,
 			2, 1, 10
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			1, 2,
 			3, 9,
@@ -276,13 +276,13 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 16 ) // sol n < m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			1, 2,
 			3, 9,
@@ -296,21 +296,21 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 17 ) // cholsol square
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			10, 3, 2, 5,
 			3, 8, 2, 1,
 			2, 2, 9, 0,
 			5, 1, 0, 9
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			1, 2,
 			3, 9,
 			4, 1,
 			2, 5
 		};
-		double C[] =
+		Storage::real C[] =
 		{
 			-0.241562583045445, -0.514217379750200,
 			0.318628753654002,  1.242625564709010,
@@ -324,21 +324,21 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 18 ) // psol square
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0,
 			2, 1, 10, 9
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			1, 2,
 			3, 9,
 			4, 1,
 			2, 5
 		};
-		double C[] =
+		Storage::real C[] =
 		{
 			1.000000000000000, -8.333333333333330,
 			0.000000000000000,  3.666666666666670,
@@ -353,14 +353,14 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 19 ) // psol n > m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2,
 			3, 8, 2,
 			4, 2, 9,
 			2, 1, 10
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			1, 2,
 			3, 9,
@@ -375,13 +375,13 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 20 ) // psol n < m
 	{
-		double A[] =
+		Storage::real A[] =
 		{
 			1, 3, 2, 5,
 			3, 8, 2, 1,
 			4, 2, 9, 0
 		};
-		double B[] =
+		Storage::real B[] =
 		{
 			1, 2,
 			3, 9,
@@ -395,8 +395,8 @@ int main(int argc,char ** argv)
 	}
 	else if( test == 21 ) // transform
 	{
-		double A[] = {2,4,9};
-		double B[] = {-1,5,-21};
+		Storage::real A[] = {2,4,9};
+		Storage::real B[] = {-1,5,-21};
 		raMatrix mA = raMatrixMake(A,3,1);
 		raMatrix mB = raMatrixMake(B,3,1);
 		rdMatrix Q = mA.Transform(mB);
@@ -435,7 +435,7 @@ int main(int argc,char ** argv)
 		}
 	}
 	
-	if( fabs(err) > 1.0e-10 )
+	if( fabs(err) > 1.0e-7 )
 	{
 		std::cout << "error is " << err << std::endl;
 		return -1;

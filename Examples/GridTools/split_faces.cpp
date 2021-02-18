@@ -23,7 +23,7 @@ int main(int argc, char ** argv)
 	m.SetFileOption("ECL_CURVILINEAR","FALSE");
 	m.SetFileOption("ECL_SPLIT_GLUED","TRUE");
 	m.Load(argv[1]);
-	double cnt[3];
+	Storage::real cnt[3];
 	ElementArray<Node> edge_nodes(&m,2);
 	MarkerType new_node = m.CreateMarker();
 	m.BeginModification();
