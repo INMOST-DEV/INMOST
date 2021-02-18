@@ -1479,7 +1479,7 @@ namespace INMOST
 		//determine which bboxes i intersect
 		dynarray<int,64> procs;
 		Storage::real bbox[6]; //local bounding box
-		std::vector<Storage::real> bboxs(mpisize*6);
+		std::vector<Storage::real> bboxs((size_t)mpisize*6);
 		//Compute local bounding box containing nodes.
 		//Will be more convinient to compute (or store)
 		//and communicate local octree over all the nodes.
@@ -1539,7 +1539,7 @@ namespace INMOST
 			{
 				bool flag = true;
 				for(integer q = 0; q < dim; q++)
-					flag &= !((bbox[q]-GetEpsilon() > bboxs[k*dim*2+q+dim]) || (bbox[dim+q]+GetEpsilon() < bboxs[k*dim*2+q]));
+					flag &= !((bbox[q]-GetEpsilon() > bboxs[(size_t)k*dim*2+q+dim]) || (bbox[dim+q]+GetEpsilon() < bboxs[(size_t)k*dim*2+q]));
 				if( flag ) procs.push_back(k);
 			}
 		REPORT_VAL("neighbour processors",procs.size());
@@ -1566,7 +1566,7 @@ namespace INMOST
 			{
 				same_box = true;
 				for(integer j = 0; j < dim*2; j++)
-					same_box &= ::fabs(bbox[j] - bboxs[k*dim*2+j]) < GetEpsilon();
+					same_box &= ::fabs(bbox[j] - bboxs[(size_t)k*dim*2+j]) < GetEpsilon();
 				same_boxes &= same_box;
 			}
 			
@@ -1683,7 +1683,7 @@ namespace INMOST
 					if (only_new && !GetMarker(*n,NewMarker())) continue;
 					real_array c = n->Coords();
 					for(real_array::size_type k = 0; k < procs.size(); k++)
-						if( point_in_bbox(c.data(),bboxs.data()+procs[k]*dim*2,dim,GetEpsilon()) )
+						if( point_in_bbox(c.data(),bboxs.data()+(size_t)procs[k]*dim*2,dim,GetEpsilon()) )
 						{
 							sorted_nodes.push_back(*n);
 							break;
@@ -2012,7 +2012,7 @@ namespace INMOST
 									{
 										Element::adj_type & sub = LowConn(*it);
 										if( sub.size() == 0 ) throw Impossible;
-										integer message_size_pos = message_send.size();
+										integer message_size_pos = (integer)message_send.size();
 										message_send.push_back(0);
 										//REPORT_VAL("number of connections",sub.size());
 										//REPORT_STR("element " << ElementTypeName(current_mask) << ":" << it->LocalID());
@@ -3007,7 +3007,7 @@ namespace INMOST
 			if( tag.isSparseByDim(i) )
 			{
 				pack_types[1] |= ElementTypeFromDim(i);
-				INMOST_DATA_ENUM_TYPE count = array_size_send.size();
+				INMOST_DATA_ENUM_TYPE count = (INMOST_DATA_ENUM_TYPE)array_size_send.size();
 				array_size_send.push_back(0);
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++)
 				{
@@ -3030,7 +3030,7 @@ namespace INMOST
 									HandleType data = InvalidHandle();
 									if ( refs[i].isValid() && refs[i].HaveData(pack_position) ) 
 										data = ComposeHandle(refs[i]->GetElementType(), pack_position[refs[i]]);
-									memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
+									memcpy(&array_data_send[had_s+(size_t)i*bytes],&data,sizeof(HandleType));
 								}
 							}
 							else GetData(*eit,tag,0,s,&array_data_send[had_s]);
@@ -3060,7 +3060,7 @@ namespace INMOST
 								HandleType data = InvalidHandle();
 								if ( refs[i].isValid() && refs[i].HaveData(pack_position) ) 
 									data = ComposeHandle(refs[i]->GetElementType(), pack_position[refs[i]]);
-								memcpy(&array_data_send[had_s+i*bytes],&data,sizeof(HandleType));
+								memcpy(&array_data_send[had_s+(size_t)i*bytes],&data,sizeof(HandleType));
 							}
 						}
 						else GetData(*eit,tag,0,s,&array_data_send[had_s]);
@@ -3192,7 +3192,7 @@ namespace INMOST
 							{
 								for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size_recv[k]; i++)
 								{
-									HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+									HandleType * data = (HandleType*)(&array_data_recv[pos + (size_t)i*tag.GetBytesSize()]);
 									int pos = -1;
 									if( *data != InvalidHandle() ) 
 									{
@@ -3239,7 +3239,7 @@ namespace INMOST
 							{
 								for (INMOST_DATA_ENUM_TYPE i = 0; i < size; i++)
 								{
-									HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+									HandleType * data = (HandleType*)(&array_data_recv[pos + (size_t)i*tag.GetBytesSize()]);
 									int pos = -1;
 									if( *data != InvalidHandle() ) 
 									{
@@ -3275,7 +3275,7 @@ namespace INMOST
 								{
 									for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size_recv[k]; i++)
 									{
-										HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+										HandleType * data = (HandleType*)(&array_data_recv[pos + (size_t)i*tag.GetBytesSize()]);
 										int pos = -1;
 										if( *data != InvalidHandle() ) 
 										{
@@ -3311,7 +3311,7 @@ namespace INMOST
 								{
 									for (INMOST_DATA_ENUM_TYPE i = 0; i < size; i++)
 									{
-										HandleType * data = (HandleType*)(&array_data_recv[pos + i*tag.GetBytesSize()]);
+										HandleType * data = (HandleType*)(&array_data_recv[pos + (size_t)i*tag.GetBytesSize()]);
 										int pos = -1;
 										if( *data != InvalidHandle() ) 
 										{
@@ -3326,7 +3326,7 @@ namespace INMOST
 									}
 								}
 								INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos],size,tag);
-								if( pos + data_size > array_data_recv.size() )
+								if( (size_t)pos + data_size > array_data_recv.size() )
 								{
 									std::cout << "element " << ElementTypeName(GetHandleElementType(*eit)) << " id " << GetHandleID(*eit);
 									std::cout << " data type " << DataTypeName(tag.GetDataType()) << " size " << size << " bytes " << tag.GetBytesSize() ;
@@ -3941,7 +3941,7 @@ namespace INMOST
 			{
 				for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
 				{
-					INMOST_DATA_ENUM_TYPE last = elements[i].size(); //avoid resize if selems == elements
+					INMOST_DATA_ENUM_TYPE last = (INMOST_DATA_ENUM_TYPE)elements[i].size(); //avoid resize if selems == elements
 					for(INMOST_DATA_ENUM_TYPE q = 0; q < last; ++q) 
 					{
 						HandleType eit = elements[i][q];
@@ -5520,7 +5520,7 @@ namespace INMOST
 			REPORT_VAL("recv bufs size",recv_bufs.size());
 			for(i = 0; i < recv_bufs.size(); i++)// if( !recv_bufs[i].second.empty() )
 			{
-				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
+				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)mpirank+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
 				INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk, datasize = recv_bufs[i].second.size();
 				int it = 0, mpi_tag_it; // for mpi tag
@@ -5551,7 +5551,7 @@ namespace INMOST
 			REPORT_VAL("send bufs size",send_bufs.size());
 			for(i = 0; i < send_bufs.size(); i++) //if( !send_bufs[i].second.empty() )
 			{
-				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
+				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)send_bufs[i].first+mpisize+rand_num))%max_tag;
 				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+mpirank*mpisize+send_bufs[i].first;
 				INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk, datasize = send_bufs[i].second.size();
 				int it = 0, mpi_tag_it; // for mpi tag
@@ -5644,7 +5644,7 @@ namespace INMOST
 				REPORT_VAL("recv buffers size",recv_bufs.size());
 				for(i = 0; i < recv_bufs.size(); i++)
 				{
-					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (mpirank+mpisize+rand_num))%max_tag;
+					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)mpirank+mpisize+rand_num))%max_tag;
 					REPORT_VAL("origin",recv_bufs[i].first);
 					REPORT_VAL("mpi_tag",mpi_tag);
 					//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
@@ -5653,7 +5653,7 @@ namespace INMOST
 				REPORT_VAL("send buffers size",send_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++)
 				{
-					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + (send_bufs[i].first+mpisize+rand_num))%max_tag;
+					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)send_bufs[i].first+mpisize+rand_num))%max_tag;
 					REPORT_VAL("destination",send_bufs[i].first);
 					REPORT_VAL("mpi_tag",mpi_tag);
 					REPORT_VAL("size",send_recv_size[i+recv_bufs.size()]);
@@ -5681,7 +5681,7 @@ namespace INMOST
 		{
 			REPORT_STR("Unknown source");
 #if defined(USE_MPI_P2P)
-			INMOST_DATA_ENUM_TYPE i, end = send_bufs.size();
+			INMOST_DATA_ENUM_TYPE i, end = (INMOST_DATA_ENUM_TYPE)send_bufs.size();
             REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 			memset(shared_space,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*mpisize); //zero bits where we receive data
 			REPORT_MPI(MPI_Win_fence( 0,window)); //wait memset finish
@@ -7219,11 +7219,11 @@ namespace INMOST
 		EXIT_BLOCK();
 		REPORT_MPI(MPI_Allgather(&size_send,1,MPI_INT,&size_recv[0],1,MPI_INT,comm));
 		
-		std::vector<int> displs(mpisize+1,0);
+		std::vector<int> displs((size_t)mpisize+1,0);
 		for(int k = 0; k < mpisize; k++)
 		{
 			size_recv_all += size_recv[k];
-			displs[k+1] = displs[k]+size_recv[k];
+			displs[(size_t)k+1] = displs[k]+size_recv[k];
 		}
 		set_names_recv.resize(size_recv_all);
 		char * send_ptr = set_names_send.empty() ? NULL : &set_names_send[0];
@@ -7283,7 +7283,7 @@ namespace INMOST
 			//std::sort(map_names[set_name].begin(),map_names[set_name].end());
 			//map_names[set_name].resize(std::unique(map_names[set_name].begin(),map_names[set_name].end())-map_names[set_name].begin());
 			arr.resize((INMOST_DATA_ENUM_TYPE)procs.size());
-			for (size_t i = 0; i < procs.size(); i++) arr[i] = procs[i];
+			for (size_t i = 0; i < procs.size(); i++) arr[(INMOST_DATA_ENUM_TYPE)i] = procs[i];
 			assert(procs.size() > 0);
 			if (procs.size() == 1)
 			{

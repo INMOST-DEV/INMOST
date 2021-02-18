@@ -2267,7 +2267,7 @@ template<class A>          __INLINE                                           vo
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 #if defined(USE_FP64)
-                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg,                      float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg,                      float Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg,                         float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg,                        float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg,                   float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }

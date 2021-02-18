@@ -716,8 +716,8 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				ElementArray<Edge> cutedges(&m,cedges.size());
 				ElementArray<Node> edge_nodes(&m,2);
 				
-				for(ElementArray<Node>::size_type k = 0; k < cnodes.size(); ++k) indx[cnodes[k]] = k;
-				for(ElementArray<Edge>::size_type k = 0; k < cedges.size(); ++k) indx[cedges[k]] = k;
+				for(Storage::integer k = 0; k < (Storage::integer)cnodes.size(); ++k) indx[cnodes[k]] = k;
+				for(Storage::integer k = 0; k < (Storage::integer)cedges.size(); ++k) indx[cedges[k]] = k;
 				
 				double c0[3],c1[3],pc0[3],pc1[3],p[3];
 				it->Centroid(c0);

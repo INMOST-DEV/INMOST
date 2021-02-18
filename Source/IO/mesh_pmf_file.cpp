@@ -510,7 +510,7 @@ namespace INMOST
 						{
 							MPI_Request req;
 							chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasizes[k] - shift);
-							REPORT_MPI(ierr = MPI_Irecv(&file_contents[offset+shift],chunk,MPI_CHAR,k, k*1000 + it, GetCommunicator(), &req) );
+							REPORT_MPI(ierr = MPI_Irecv(&file_contents[offset+shift], (INMOST_MPI_SIZE)chunk,MPI_CHAR,k, k*1000 + it, GetCommunicator(), &req) );
 							if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 							requests.push_back(req);
 							shift += chunk;
@@ -530,7 +530,7 @@ namespace INMOST
 					{
 						MPI_Request req;
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize - shift);
-						REPORT_MPI(ierr = MPI_Isend(&local_data[shift],chunk,MPI_CHAR, 0, GetProcessorRank()*1000 + it, GetCommunicator(), &req) );
+						REPORT_MPI(ierr = MPI_Isend(&local_data[shift],(INMOST_MPI_SIZE)chunk,MPI_CHAR, 0, GetProcessorRank()*1000 + it, GetCommunicator(), &req) );
 						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 						requests.push_back(req);
 						shift += chunk;
@@ -856,7 +856,7 @@ namespace INMOST
 						{
 							MPI_Request req;
 							chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsizes[k] - shift);
-							REPORT_MPI(ierr = MPI_Isend(&buffer[offset+shift],chunk,MPI_CHAR, k, k*1000 + it, GetCommunicator(), &req) );
+							REPORT_MPI(ierr = MPI_Isend(&buffer[offset+shift],(INMOST_MPI_SIZE)chunk,MPI_CHAR, k, k*1000 + it, GetCommunicator(), &req) );
 							if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 							requests.push_back(req);
 							shift += chunk;
@@ -885,7 +885,7 @@ namespace INMOST
 					{
 						MPI_Request req;
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize - shift);
-						REPORT_MPI(ierr = MPI_Irecv(&local_buffer[shift],chunk,MPI_CHAR, 0, GetProcessorRank()*1000 + it, GetCommunicator(), &req) );
+						REPORT_MPI(ierr = MPI_Irecv(&local_buffer[shift], (INMOST_MPI_SIZE)chunk,MPI_CHAR, 0, GetProcessorRank()*1000 + it, GetCommunicator(), &req) );
 						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 						requests.push_back(req);
 						shift += chunk;

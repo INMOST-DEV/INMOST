@@ -591,7 +591,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP_FACT)
 #pragma omp for
 #endif
-			for(int64_t k = wbeg; k < (int64_t)wend; ++k) 
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 			{
 				INMOST_DATA_ENUM_TYPE Beg = EOL, nnz = 0;
 				// go over connection of k-th row
@@ -674,7 +674,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-		for(int64_t k = wbeg; k < (int64_t)wend; ++k)
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 		{
 			// std::swap(G_out[k],G_in[invP[k]]); //invP is where to get the row
 			G_out[k] = G_in[invP[k]];
@@ -701,7 +701,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-		for(int64_t k = cbeg; k < (int64_t)cend; ++k)
+		for(INMOST_DATA_INTEGER_TYPE k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 		{
 			// std::swap(tG_out[k],tG_in[invQ[k]]); //invQ is where to get the column
 			tG_out[k] = tG_in[invQ[k]];
@@ -727,7 +727,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-		for(int64_t k = wbeg; k < (int64_t)wend; ++k)
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 		{
 			// std::swap(pG_out[k],pG_in[invP[k]]); //invP is where to get the row
 			pG_out[k] = pG_in[invP[k]];
